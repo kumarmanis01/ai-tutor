@@ -1,0 +1,11 @@
+/* styles/global.css - optional, if you want extra non-Tailwind styles */
+.chat-bubble-user {
+  background: #e0f2fe;
+  padding: 8px 12px;
+  border-radius: 14px;
+}
+.chat-bubble-assistant {
+  background: #f3f4f6;
+  padding: 8px 12px;
+  border-radius: 14px;
+}
