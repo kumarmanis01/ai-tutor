@@ -1,20 +1,33 @@
 // app/page.tsx
-import ChatBot from "../components/ChatBot";
-import WaitlistForm from "../components/WaitlistForm";
+import React from "react";
+import ChatBot from "@/components/Chat/ChatBot";
+import WaitlistForm from "@/components/WaitlistForm";
 
 export default function Page() {
   return (
-    <main className="flex min-h-screen items-center justify-center p-6 bg-gray-50">
-      <div className="w-full max-w-3xl bg-white shadow rounded-lg p-6">
-        <h1 className="text-2xl font-bold mb-3 text-center">AI Tutor</h1>
-        <p className="text-sm text-gray-600 text-center mb-6">
-          Choose a language from the dropdown, type your question and the AI will reply in that language.
-        </p>
+    <main
+      className="min-h-screen flex items-center justify-center p-6"
+      style={{
+        backgroundImage: "url('/background.jpg')",
+        backgroundSize: "cover",
+        backgroundPosition: "center",
+      }}
+    >
+      <div className="w-full max-w-4xl">
+        <div className="bg-white/90 dark:bg-gray-900/90 rounded-2xl shadow-lg overflow-hidden">
+          <header className="p-4 border-b">
+            <h1 className="text-2xl font-semibold">AI Tutor</h1>
+            <p className="text-sm text-gray-600">Multilingual tutor — English & Hindi (Phase 2)</p>
+          </header>
 
-        <ChatBot />
-
-        <div className="mt-8">
-          <WaitlistForm />
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 p-4">
+            <section className="lg:col-span-1">
+              <ChatBot />
+            </section>
+            <aside className="lg:col-span-1 p-4">
+              <WaitlistForm />
+            </aside>
+          </div>
         </div>
       </div>
     </main>
