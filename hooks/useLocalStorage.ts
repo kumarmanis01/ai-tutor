@@ -1,20 +1,16 @@
 // hooks/useLocalStorage.ts
-'use client';
-
 import { useEffect, useState } from "react";
 
 /**
- * useLocalStorage — small typed hook to keep data in localStorage.
- * - Key is prefixed for the app
- * - Values are JSON serialized
- * - Keeps a clean separation of storage strategy
+ * Typed useLocalStorage hook — small, robust, and replacable
+ * - key: storage key (no prefix here)
+ * - initial: default value
  */
 export function useLocalStorage<T>(key: string, initial: T) {
-  const fullKey = `ai-tutor:${key}`;
-  const [state, setState] = useState<T>(() => {
+  const [value, setValue] = useState<T>(() => {
     try {
       if (typeof window === "undefined") return initial;
-      const raw = localStorage.getItem(fullKey);
+      const raw = localStorage.getItem(key);
       return raw ? (JSON.parse(raw) as T) : initial;
     } catch {
       return initial;
@@ -23,11 +19,11 @@ export function useLocalStorage<T>(key: string, initial: T) {
 
   useEffect(() => {
     try {
-      localStorage.setItem(fullKey, JSON.stringify(state));
+      localStorage.setItem(key, JSON.stringify(value));
     } catch {
-      // ignore storage errors (quota)
+      // ignore write errors
     }
-  }, [fullKey, state]);
+  }, [key, value]);
 
-  return [state, setState] as const;
+  return [value, setValue] as const;
 }

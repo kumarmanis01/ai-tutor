@@ -1,49 +1,39 @@
 // components/WaitlistForm.tsx
-'use client';
-
+"use client";
 import React, { useState } from "react";
 
 /**
- * Simple waitlist form.
- * UI-only for Phase 2 — persists to localStorage so you can wire it to a server later.
+ * Simple client-side waitlist form (Phase-2 preserved)
+ * Stores entries in localStorage; backend can be wired in Phase-3+.
  */
 export default function WaitlistForm() {
   const [email, setEmail] = useState("");
   const [ok, setOk] = useState(false);
 
-  function handleSubmit(e: React.FormEvent) {
+  function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!email) return;
     try {
-      const ls = localStorage.getItem("ai-tutor:waitlist") || "[]";
-      const arr = JSON.parse(ls);
-      arr.push({ email, createdAt: new Date().toISOString() });
+      const raw = localStorage.getItem("ai-tutor:waitlist") || "[]";
+      const arr = JSON.parse(raw);
+      arr.push({ email, ts: new Date().toISOString() });
       localStorage.setItem("ai-tutor:waitlist", JSON.stringify(arr));
+      setOk(true);
+      setEmail("");
     } catch {
-      // ignore
+      setOk(false);
     }
-    setOk(true);
-    setEmail("");
   }
 
   return (
-    <form onSubmit={handleSubmit} className="bg-white p-4 rounded shadow">
-      <h3 className="font-semibold mb-2">Join the waitlist</h3>
+    <form onSubmit={onSubmit} className="space-y-3">
+      <h3 className="font-semibold">Join the waitlist</h3>
       {ok ? (
-        <div className="text-green-600">Thanks — you'll be notified.</div>
+        <div className="text-sm text-green-600">Thanks — we'll notify you.</div>
       ) : (
         <>
-          <input
-            type="email"
-            placeholder="Your email"
-            className="border p-2 w-full rounded mb-2"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-          />
-          <button type="submit" className="w-full bg-blue-600 text-white p-2 rounded">
-            Join Waitlist
-          </button>
+          <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" className="border p-2 rounded w-full" required />
+          <button type="submit" className="w-full p-2 bg-blue-600 text-white rounded">Join</button>
         </>
       )}
     </form>

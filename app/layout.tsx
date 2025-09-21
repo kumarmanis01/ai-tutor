@@ -1,20 +1,18 @@
 // app/layout.tsx
 import "./globals.css";
-import React from "react";
+import Providers from "./providers";
 
 export const metadata = {
   title: "AI Tutor",
-  description: "AI Tutor — multilingual, accessible MVP",
+  description: "Multilingual AI Tutor (English & Hindi)",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
-  // Theme handling can be moved to a provider later
   return (
     <html lang="en">
-      <body className="antialiased">
-        {children}
+      <body>
+        <Providers>{children}</Providers>
       </body>
     </html>
   );
 }
-// app/api/chat/route.ts
