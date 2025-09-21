@@ -1,3 +1,17 @@
+# AI Tutor — Phase 2 (MVP)
+
+## Quick start
+1. Copy files into project (folder structure above)
+2. Add `OPENAI_API_KEY` to `.env.local`
+3. Install deps: `npm install`
+4. Run locally: `npm run dev`
+5. Open http://localhost:3000
+
+## Notes
+- Phase 2 provides multilingual chat (English/Hindi), speech (TTS + mic), accessibility, local storage.
+- Server-side OpenAI key is required in `.env.local` as `OPENAI_API_KEY`.
+
+
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
 ## Getting Started
@@ -34,3 +48,4 @@ You can check out [the Next.js GitHub repository](https://github.com/vercel/next
 The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
 
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+
