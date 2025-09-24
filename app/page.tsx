@@ -1,40 +1,30 @@
 // app/page.tsx
 "use client";
 
-import ChatBot from "@/components/Chat/ChatBot";
-import WaitlistForm from "@/components/WaitlistForm";
-import LoginButton from "@/components/Auth/LoginButton";
-import UserInfo from "@/components/Auth/UserInfo";
 import { useSession } from "next-auth/react";
-import Link from "next/link";
+import ChatBot from "@/components/Chat/ChatBot"; // adjust path if your ChatBot is elsewhere
+import { useEffect } from "react";
 
-export default function Page() {
-  const { data: session } = useSession();
+export default function HomePage() {
+  const { data: session, status } = useSession();
+
+  // Optional: if you want to force user to sign in to use the tutor, you can redirect here.
+  useEffect(() => {
+    // no redirect by default; simply ensure we render the Tutor component
+  }, []);
 
   return (
-    <main
-      className="min-h-screen flex items-start justify-center p-6"
-      style={{ backgroundImage: "url('/background.jpg')", backgroundSize: "cover", backgroundPosition: "center" }}
-    >
-      <div className="w-full max-w-5xl">
-        <header className="flex items-center justify-between mb-4">
-          <h1 className="text-2xl font-bold">AI Tutor</h1>
-          <div className="flex items-center gap-3">
-            {session ? <UserInfo /> : <LoginButton />}
-            <Link href="/profile" className="text-sm underline">Profile</Link>
-          </div>
-        </header>
+    <div className="max-w-4xl mx-auto p-6">
+      {/* Welcome / promo area */}
+      <header className="mb-6">
+        <h1 className="text-3xl font-bold">AI Tutor</h1>
+        <p className="text-gray-600">Your personal tutor in English & Hindi — start by asking a question below.</p>
+      </header>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <section className="lg:col-span-2 bg-white/90 rounded-2xl shadow p-4">
-            <ChatBot />
-          </section>
-
-          <aside className="bg-white/90 rounded-2xl shadow p-4">
-            <WaitlistForm />
-          </aside>
-        </div>
-      </div>
-    </main>
+      {/* Tutor chat area (always visible). ChatBot should handle guest vs signed-in logic. */}
+      <section className="bg-white rounded-lg shadow p-4">
+        <ChatBot />
+      </section>
+    </div>
   );
 }

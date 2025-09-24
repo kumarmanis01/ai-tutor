@@ -1,64 +1,94 @@
 // app/api/chat/route.ts
-import { NextResponse } from "next/server";
-
 /**
- * Chat server route (safe: OpenAI key on server)
- * Accepts either:
- *  - { message: string, language?: string }
- *  - { messages: [{ role, content }], language?: string }
+ * POST /api/chat
+ * Body: { message: string, subject?: string }
  *
- * Returns { reply: string }
+ * Requirements:
+ * - User must be authenticated to ask questions (browsing allowed otherwise)
+ * - Free users: up to 3 questions/day
+ * - Premium users: unlimited
+ * - Saves chat to prisma.chat
  */
+
+import { NextResponse } from "next/server";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/authOptions";
+import { prisma } from "@/lib/db";
+// import { containsProfanity } from "@/lib/profanity";
+import { checkProfanity } from "@/lib/guardrails";
+
 export async function POST(req: Request) {
   try {
+    const session = await getServerSession(authOptions);
     const body = await req.json();
-    const OPENAI_KEY = process.env.OPENAI_API_KEY;
-    if (!OPENAI_KEY) return NextResponse.json({ error: "openai_key_missing" }, { status: 500 });
+    const { message, subject = "general" } = body;
 
-    // Build final conversation
-    const language = typeof body.language === "string" ? body.language : "English";
-    const systemPrompt =
-      (language || "").toLowerCase().startsWith("hi")
-        ? "आप एक सहायक AI ट्यूटर हैं। उपयोगकर्ता के प्रश्नों का उत्तर हिंदी में दें।"
-        : "You are a helpful AI tutor. Answer the user's questions in English.";
-
-    const messages = [{ role: "system", content: systemPrompt }];
-
-    if (Array.isArray(body.messages)) {
-      for (const m of body.messages) {
-        messages.push({ role: m.role, content: m.content });
-      }
-    } else if (typeof body.message === "string") {
-      messages.push({ role: "user", content: body.message });
-    } else {
-      return NextResponse.json({ error: "no_message" }, { status: 400 });
+    if (!message || typeof message !== "string") {
+      return NextResponse.json({ error: "message_required" }, { status: 400 });
     }
 
-    const payload = {
-      model: "gpt-3.5-turbo",
-      messages,
-      temperature: 0.6,
-      max_tokens: 800,
-    };
+    // Profanity guard
+    if (checkProfanity(message)) {
+      return NextResponse.json({ error: "profanity_detected" }, { status: 400 });
+    }
 
-    const r = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${OPENAI_KEY}` },
-      body: JSON.stringify(payload),
+    // Require auth for asking questions
+    if (!session || !(session as any).user?.id) {
+      return NextResponse.json({ error: "login_required" }, { status: 401 });
+    }
+
+    const userId = (session as any).user.id as string;
+
+    // Check subscription active
+    const activeSub = await prisma.subscription.findFirst({
+      where: {
+        userId,
+        status: "active",
+        endDate: { gte: new Date() },
+      },
+      orderBy: { createdAt: "desc" },
     });
 
-    if (!r.ok) {
-      const txt = await r.text();
-      console.error("OpenAI error", r.status, txt);
-      return NextResponse.json({ error: "openai_error", detail: txt }, { status: 502 });
+    // If not premium, count today's questions
+    if (!activeSub) {
+      const startOfDay = new Date();
+      startOfDay.setHours(0, 0, 0, 0);
+
+      const todaysCount = await prisma.chat.count({
+        where: { userId, createdAt: { gte: startOfDay } },
+      });
+
+      if (todaysCount >= 3) {
+        return NextResponse.json({ error: "free_limit_reached", message: "Free limit reached. Upgrade to continue." }, { status: 402 });
+      }
     }
 
-    const data = await r.json();
-    const reply = data?.choices?.[0]?.message?.content ?? "";
+    // Save user's question
+    const chat = await prisma.chat.create({
+      data: {
+        userId,
+        role: "user",
+        content: message,
+        subject,
+      },
+    });
 
-    return NextResponse.json({ reply });
-  } catch (err: any) {
-    console.error("chat route error:", err);
-    return NextResponse.json({ error: "server_error", detail: String(err) }, { status: 500 });
+    // TODO: Replace this with real AI call (OpenAI). For now: simple simulated reply.
+    const aiReply = `(${subject} tutor) Short answer to: "${message}"`;
+
+    // Save assistant reply
+    await prisma.chat.create({
+      data: {
+        userId,
+        role: "assistant",
+        content: aiReply,
+        subject,
+      },
+    });
+
+    return NextResponse.json({ reply: aiReply });
+  } catch (err) {
+    console.error("chat route error", err);
+    return NextResponse.json({ error: "server_error" }, { status: 500 });
   }
 }

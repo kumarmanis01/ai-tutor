@@ -1,7 +1,7 @@
 // app/api/profile/route.ts
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
-import { authOptions } from "@/lib/authOptions";
+import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 
 /**
@@ -10,6 +10,8 @@ import { prisma } from "@/lib/db";
  */
 export async function GET() {
   const session = await getServerSession(authOptions);
+  if (!session) return new Response("Unauthorized", { status: 401 });
+  
   if (!session?.user?.email) {
     return NextResponse.json({ language: "en", lastChats: [] });
   }
@@ -27,6 +29,8 @@ export async function GET() {
 
 export async function POST(req: Request) {
   const session = await getServerSession(authOptions);
+  if (!session) return new Response("Unauthorized", { status: 401 });
+
   if (!session?.user?.email) return NextResponse.json({ error: "unauthenticated" }, { status: 401 });
 
   const { language } = await req.json();

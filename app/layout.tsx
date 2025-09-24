@@ -1,16 +1,22 @@
-// app/layout.tsx
 import "./globals.css";
+import { Inter } from "next/font/google";
 import Providers from "./providers";
+
+const inter = Inter({ subsets: ["latin"] });
 
 export const metadata = {
   title: "AI Tutor",
-  description: "Multilingual AI Tutor (English & Hindi)",
+  description: "Learn interactively with AI Tutor",
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   return (
     <html lang="en">
-      <body>
+      <body className={inter.className}>
         <Providers>{children}</Providers>
       </body>
     </html>

@@ -1,30 +1,17 @@
-"use client"
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
 
-import { signIn } from "next-auth/react"
+export default async function AdminPage() {
+  const session = await getServerSession(authOptions);
 
-export default function SignInPage() {
+  if (session?.user?.email !== "admin@yourdomain.com") {
+    return <div className="p-6">Access denied</div>;
+  }
+
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-gray-100 p-4">
-      <h1 className="text-2xl font-bold mb-4">Sign in</h1>
-
-      <button
-        onClick={() => signIn("google")}
-        className="px-4 py-2 bg-red-500 text-white rounded mb-2"
-      >
-        Sign in with Google
-      </button>
-
-      <button
-        onClick={() =>
-          signIn("credentials", {
-            email: "test@example.com",
-            password: "password123",
-          })
-        }
-        className="px-4 py-2 bg-blue-500 text-white rounded"
-      >
-        Sign in with Email
-      </button>
+    <div className="p-6">
+      <h1 className="text-2xl font-bold">Admin Dashboard</h1>
+      <p>Here you can view metrics, logs, and manage subscriptions.</p>
     </div>
-  )
+  );
 }

@@ -3,7 +3,7 @@
 import { signIn } from "next-auth/react";
 import React from "react";
 
-export default function LoginButton({ label = "Sign in with Google" }: { label?: string }) {
+export default function LoginButton({ label = "Login with Google" }: { label?: string }) {
   return (
     <button
       onClick={() => signIn("google")}

@@ -8,23 +8,142 @@ datasource db {
   url      = env("DATABASE_URL") // e.g. file:./dev.db
 }
 
+/**
+ * Core user model (NextAuth compatible)
+ */
 model User {
-  id        String   @id @default(cuid())
-  name      String?
-  email     String?  @unique
-  image     String?
-  language  String   @default("en")
-  role      String   @default("user")
-  chats     Chat[]
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id            String         @id @default(cuid())
+  name          String?
+  email         String?        @unique
+  emailVerified DateTime?
+  image         String?
+  parentEmail   String?
+  // Relations
+  accounts      Account[]
+  sessions      Session[]
+  chats         Chat[] // one-to-one chat history (user <> AI)
+  subscriptions Subscription[]
+  events        Event[] // analytics/events tied to user
+  participants  Participant[] // room participation (optional)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  Room          Room[]
 }
 
+/**
+ * NextAuth account/session models
+ */
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+/**
+ * One-to-one Chat (user <-> AI) — used for personal chat history, profile, exports.
+ */
 model Chat {
   id        String   @id @default(cuid())
+  userId    String? // null if guest / anonymous
   user      User?    @relation(fields: [userId], references: [id])
-  userId    String?
-  role      String   // "user" | "assistant"
+  role      String // "user" | "assistant" | "system"
+  content   String // message content
+  subject   String? // optional subject tag (math, science, coding)
+  createdAt DateTime @default(now())
+}
+
+/**
+ * Events for analytics (question_sent, login, export_pdf, etc.)
+ */
+model Event {
+  id        String   @id @default(cuid())
+  userId    String? // optional: null for anonymous/guest events
+  user      User?    @relation(fields: [userId], references: [id])
+  type      String // e.g., "question_sent", "login", "export_pdf"
+  metadata  Json? // arbitrary JSON payload
+  createdAt DateTime @default(now())
+}
+
+/**
+ * Subscription model
+ */
+model Subscription {
+  id           String   @id @default(cuid())
+  userEmail    String   @unique
+  plan         String   // "free" | "pro" | "enterprise"
+  billingCycle String   // "monthly" | "annual"
+  startDate    DateTime
+  endDate      DateTime
+  active       Boolean  @default(true)
+
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+/**
+ * Room / Participant / Message models for group study rooms (Phase 5)
+ */
+model Room {
+  id           String        @id @default(cuid())
+  name         String
+  description  String?
+  isPrivate    Boolean       @default(false)
+  createdBy    String? // user id or null
+  creator      User?         @relation(fields: [createdBy], references: [id])
+  participants Participant[]
+  messages     Message[]
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+}
+
+model Participant {
+  id       String   @id @default(cuid())
+  room     Room     @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  roomId   String
+  userId   String? // null for guests
+  user     User?    @relation(fields: [userId], references: [id])
+  name     String?
+  joinedAt DateTime @default(now())
+}
+
+model Message {
+  id        String   @id @default(cuid())
+  room      Room     @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  roomId    String
+  senderId  String? // null for system/AI/guest
+  sender    String? // display name
+  role      String // "user" | "assistant" | "system"
   content   String
   createdAt DateTime @default(now())
+  aiMeta    Json? // optional AI metadata
 }

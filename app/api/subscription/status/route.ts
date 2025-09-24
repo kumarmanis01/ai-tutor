@@ -1,0 +1,47 @@
+// app/api/subscription/status/route.ts
+import { NextResponse } from "next/server";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/authOptions";
+import { prisma } from "@/lib/db";
+
+export async function GET(req: Request) {
+  try {
+    const session = await getServerSession(authOptions);
+    if (!session || !(session as any).user?.id) {
+      // not authenticated — indicate guest
+      return NextResponse.json({ authenticated: false, isPremium: false, todaysCount: 0 });
+    }
+
+    const userId = (session as any).user.id;
+
+    // Check active subscription
+    const sub = await prisma.subscription.findFirst({
+      where: {
+        userId,
+        status: "active",
+        endDate: { gte: new Date() },
+      },
+      orderBy: { createdAt: "desc" },
+    });
+
+    // Count today's question (chat messages) from Chat model
+    const startOfDay = new Date();
+    startOfDay.setHours(0, 0, 0, 0);
+
+    const todaysCount = await prisma.chat.count({
+      where: {
+        userId,
+        createdAt: { gte: startOfDay },
+      },
+    });
+
+    return NextResponse.json({
+      authenticated: true,
+      isPremium: !!sub,
+      todaysCount,
+    });
+  } catch (err) {
+    console.error("subscription status error", err);
+    return NextResponse.json({ error: "server_error" }, { status: 500 });
+  }
+}

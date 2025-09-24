@@ -1,0 +1,59 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+//     "version": "0.2.0",
+//     "configurations": [
+
+//         {
+//             "name": "Launch Chrome against localhost",
+//             "type": "chrome",
+//             "request": "launch",
+//             "name": "Launch Chrome against localhost",
+//             "url": "http://localhost:3000",
+//             "webRoot": "${workspaceFolder}"
+//         }
+//     ]
+// }
+
+// {
+//   "version": "0.2.0",
+//   "configurations": [
+//     {
+//       "name": "Launch Chrome against localhost",
+//       "type": "chrome", // Use "pwa-msedge" for Edge, "firefox" for Firefox
+//       "request": "launch",
+//       "url": "http://localhost:3000", // Make sure this matches your dev server's port!
+//       "webRoot": "${workspaceFolder}/src",
+//       "sourceMapPathOverrides": {
+//         "webpack:///src/*": "${webRoot}/*"
+//       }
+//     }
+//   ]
+// }
+
+
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Launch Chrome against localhost",
+      "type": "chrome",
+      "request": "launch",
+      "url": "http://localhost:3000",
+      "webRoot": "${workspaceFolder}/src",
+      // This section is CRITICAL for Create React App (Webpack)
+      "sourceMapPathOverrides": {
+        "webpack:///./src/*": "${webRoot}/*",
+        "webpack:///src/*": "${webRoot}/*",
+        "webpack:///*": "*",
+        "webpack:///./~/*": "${webRoot}/node_modules/*"
+      },
+      // This can also help
+      "skipFiles": [
+        "<node_internals>/**/*.js",
+        "${webRoot}/node_modules/**/*.js"
+      ]
+    }
+  ]
+}

@@ -1,45 +1,63 @@
 // components/Chat/Controls.tsx
 "use client";
-import React from "react";
 
-type Props = {
-  input: string;
-  onChange: (v: string) => void;
-  onSend: () => void;
-  onMicToggle: () => void;
-  isListening: boolean;
-  lang: string;
-  onLangChange: (l: string) => void;
-  volume: number;
-  onVolumeChange: (v: number) => void;
-};
+import { useState } from "react";
 
-export default function Controls({ input, onChange, onSend, onMicToggle, isListening, lang, onLangChange, volume, onVolumeChange }: Props) {
+export default function Controls({
+  onSend,
+  loading,
+  isPremium,
+  isValidSession,
+  todaysCount,
+}: {
+  onSend: (msg: string) => void;
+  loading: boolean;
+  isPremium: boolean;
+  isValidSession: boolean;
+  todaysCount: number;
+}) {
+  const [input, setInput] = useState("");
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!input.trim()) return;
+    onSend(input.trim());
+    setInput("");
+  };
+
+  const remaining = isPremium ? "∞" : Math.max(0, 3 - todaysCount);
+
   return (
-    <div className="pt-3 border-t">
-      <div className="flex items-center gap-3">
-        <select aria-label="Language" value={lang} onChange={(e) => onLangChange(e.target.value)} className="p-2 border rounded">
-          <option value="en">English</option>
-          <option value="hi">हिंदी</option>
-        </select>
-
-        <input value={input} onChange={(e) => onChange(e.target.value)} className="flex-1 border rounded px-3 py-2" placeholder="Ask me..." />
-
-        <button onClick={onSend} disabled={!input.trim()} className={`px-3 py-2 rounded ${input.trim() ? "bg-blue-600 text-white" : "bg-gray-200 text-gray-500"}`} aria-label="Send">
-          ✈️
+    <div className="border-t p-3">
+      <form onSubmit={handleSubmit} className="flex items-center gap-2">
+        <input
+          type="text"
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          placeholder="Ask a question..."
+          className="flex-1 rounded border px-3 py-2"
+          disabled={loading}
+        />
+        <button
+          type="submit"
+          className="px-4 py-2 bg-blue-600 text-white rounded disabled:opacity-50"
+          disabled={loading}
+        >
+          {loading ? "..." : "Send"}
         </button>
-
-        <button onClick={onMicToggle} aria-pressed={isListening} className={`p-2 rounded ${isListening ? "bg-red-500 text-white" : "bg-gray-100"}`} aria-label="Toggle mic">
-          🎤
-        </button>
-      </div>
-
-      <div className="mt-2 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <label className="text-xs">Volume</label>
-          <input type="range" min={0} max={1} step={0.1} value={String(volume)} onChange={(e) => onVolumeChange(Number(e.target.value))} />
-        </div>
-        <div className="text-xs text-gray-500">Guest limit: 3 (local)</div>
+      </form>
+      <div className="text-xs text-gray-500 mt-1">
+        {isValidSession ? (
+          isPremium ? (
+            <span>Premium: Unlimited questions</span>
+          ) : (
+            <span>
+              Free tier: {remaining} / 3 left today
+            </span>
+          )
+        ) : (
+          <span className="text-red-500">Session expired. Please log in again.</span>
+        )}
       </div>
     </div>
   );

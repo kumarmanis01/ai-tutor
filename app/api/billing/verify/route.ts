@@ -1,0 +1,53 @@
+import { NextResponse } from "next/server";
+import crypto from "crypto";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/authOptions";
+import prisma from "@/lib/prisma";
+
+/**
+ * Verifies Razorpay payment signature and updates user's subscription in DB.
+ */
+export async function POST(req: Request) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.email) {
+    return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+  }
+
+  const body = await req.json();
+  const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = body;
+
+  // Verify signature
+  const sign = crypto
+    .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET!)
+    .update(razorpay_order_id + "|" + razorpay_payment_id)
+    .digest("hex");
+
+  if (sign !== razorpay_signature) {
+    return NextResponse.json({ error: "Invalid signature" }, { status: 400 });
+  }
+
+  // Update subscription in DB
+  const plan = body.plan || "pro";
+  const billingCycle = body.billingCycle || "monthly";
+
+  const startDate = new Date();
+  const endDate =
+    billingCycle === "monthly"
+      ? new Date(new Date().setMonth(startDate.getMonth() + 1))
+      : new Date(new Date().setFullYear(startDate.getFullYear() + 1));
+
+  await prisma.subscription.upsert({
+    where: { userEmail: session.user.email },
+    update: { plan, billingCycle, startDate, endDate, active: true },
+    create: {
+      userEmail: session.user.email,
+      plan,
+      billingCycle,
+      startDate,
+      endDate,
+      active: true,
+    },
+  });
+
+  return NextResponse.json({ success: true });
+}
