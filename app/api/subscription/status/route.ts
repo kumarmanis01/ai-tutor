@@ -18,7 +18,7 @@ export async function GET(req: Request) {
     const sub = await prisma.subscription.findFirst({
       where: {
         userId,
-        status: "active",
+        active: true,
         endDate: { gte: new Date() },
       },
       orderBy: { createdAt: "desc" },
@@ -35,6 +35,8 @@ export async function GET(req: Request) {
       },
     });
 
+    console.log("Subscription status:", { userId, isPremium: !!sub, todaysCount });
+    // Return status
     return NextResponse.json({
       authenticated: true,
       isPremium: !!sub,

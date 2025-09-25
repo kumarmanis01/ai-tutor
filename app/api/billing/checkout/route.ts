@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/authOptions";
-import razorpay from "@/lib/razorpay";
+import { razorpay } from "@/lib/payments";
 
 /**
  * Creates a Razorpay order for the selected plan.
@@ -13,6 +13,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
   }
 
+  console.log("inside billing POST:");
   const { plan, billingCycle } = await req.json();
 
   // Amounts in paise
@@ -33,6 +34,7 @@ export async function POST(req: Request) {
     receipt: `order_${Date.now()}`,
   });
 
+  console.log("Razorpay order created:", order);
   return NextResponse.json({
     orderId: order.id,
     amount,

@@ -1,9 +1,11 @@
 "use client";
 
 import { useState } from "react";
+import { useSession, signIn } from "next-auth/react";
 import Script from "next/script";
 
 export default function PricingPage() {
+  const { data: session, status } = useSession();
   const [billingCycle, setBillingCycle] = useState<"monthly" | "annual">(
     "monthly"
   );
@@ -14,8 +16,14 @@ export default function PricingPage() {
 
   // Razorpay checkout handler
   const handleSubscribe = async (plan: string) => {
+    if (!session) {
+      signIn(undefined, { callbackUrl: "/pricing" });
+      return;
+    }
     try {
       setLoading(true);
+
+      console.log("inside PricingPage subscribe:");
 
       const res = await fetch("/api/billing/checkout", {
         method: "POST",
@@ -24,6 +32,7 @@ export default function PricingPage() {
       });
 
       const data = await res.json();
+      console.log("Checkout response order id:", data.orderId);
       if (!data.orderId) throw new Error("Failed to create order");
 
       const options = {

@@ -49,7 +49,7 @@ export default function Controls({
       <div className="text-xs text-gray-500 mt-1">
         {isValidSession ? (
           isPremium ? (
-            <span>Premium: Unlimited questions</span>
+            <span className="text-emerald-600 font-semibold">Thank you for being a premium member! Enjoy unlimited questions 🎉</span>
           ) : (
             <span>
               Free tier: {remaining} / 3 left today

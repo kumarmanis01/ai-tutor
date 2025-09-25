@@ -36,11 +36,15 @@ export async function POST(req: Request) {
       ? new Date(new Date().setMonth(startDate.getMonth() + 1))
       : new Date(new Date().setFullYear(startDate.getFullYear() + 1));
 
-  await prisma.subscription.upsert({
-    where: { userEmail: session.user.email },
-    update: { plan, billingCycle, startDate, endDate, active: true },
-    create: {
-      userEmail: session.user.email,
+  // Deactivate any existing subscriptions for this user
+  await prisma.subscription.updateMany({
+    where: { userId: session.user.id, active: true },
+    data: { active: false },
+  });
+  // Create new active subscription
+  await prisma.subscription.create({
+    data: {
+      userId: session.user.id,
       plan,
       billingCycle,
       startDate,

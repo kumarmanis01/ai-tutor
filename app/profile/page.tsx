@@ -1,8 +1,19 @@
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+"use client";
+import { useEffect, useState } from "react";
+import { useSession } from "next-auth/react";
 
-export default async function ProfilePage() {
-  const session = await getServerSession(authOptions);
+export default function ProfilePage() {
+  const { data: session } = useSession();
+  const [subscription, setSubscription] = useState<{ isPremium: boolean; plan?: string }>({ isPremium: false });
+
+  useEffect(() => {
+    async function fetchStatus() {
+      const res = await fetch("/api/subscription/status");
+      const data = await res.json();
+      setSubscription({ isPremium: data.isPremium, plan: data.plan });
+    }
+    if (session) fetchStatus();
+  }, [session]);
 
   if (!session) {
     return <div className="p-6">You are not signed in.</div>;
@@ -24,6 +35,12 @@ export default async function ProfilePage() {
           className="w-20 h-20 rounded-full"
         />
       )}
+      <p>
+        <strong>Subscription:</strong>{" "}
+        {subscription.isPremium
+          ? `Premium (${subscription.plan || "pro"})`
+          : "Free"}
+      </p>
     </div>
   );
 }

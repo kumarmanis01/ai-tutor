@@ -21,7 +21,7 @@ export async function POST(req: Request) {
 
     await prisma.chatHistory.create({
       data: {
-        userEmail: session.user.email,
+        userId: session.user.id,
         messages: JSON.stringify(messages)
       }
     });

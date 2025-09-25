@@ -51,6 +51,7 @@ export async function POST(req: Request) {
       data: {
         userId,
         plan,
+        billingCycle,
         status: "active",
         startDate,
         endDate,

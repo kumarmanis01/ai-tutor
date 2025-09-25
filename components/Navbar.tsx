@@ -28,7 +28,7 @@ export default function Navbar() {
         <nav className="flex items-center gap-6">
           <Link href="/" className="text-sm hover:text-blue-600">Home</Link>
           <Link href="/pricing" className="text-sm hover:text-blue-600">Pricing</Link>
-          <Link href="/profile" className="text-sm hover:text-blue-600">Profile</Link>
+          { session && <Link href="/profile" className="text-sm hover:text-blue-600">Profile</Link> }
         </nav>
 
         {/* Auth controls */}
