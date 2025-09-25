@@ -43,7 +43,7 @@ export async function POST(req: Request) {
     const activeSub = await prisma.subscription.findFirst({
       where: {
         userId,
-        status: "active",
+        active: true,
         endDate: { gte: new Date() },
       },
       orderBy: { createdAt: "desc" },
