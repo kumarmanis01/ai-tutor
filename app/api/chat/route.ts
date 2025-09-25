@@ -14,7 +14,6 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/authOptions";
 import { prisma } from "@/lib/db";
-// import { containsProfanity } from "@/lib/profanity";
 import { checkProfanity } from "@/lib/guardrails";
 
 export async function POST(req: Request) {
@@ -73,8 +72,69 @@ export async function POST(req: Request) {
       },
     });
 
+    const OPENAI_KEY = process.env.OPENAI_API_KEY;
+    if (!OPENAI_KEY) {
+      return NextResponse.json({ error: "Connection to Your AI Model broken" }, { status: 500 });
+    }
+    // Prepare messages for AI
+    const messages = [
+      { role: "system", content: `You are a helpful ${subject} tutor.` },
+      { role: "user", content: message },
+    ];
+
+    const payload = {
+      model: "gpt-3.5-turbo",
+      messages,
+      // messages: [
+      //   {
+      //     role: "system",
+      //     content: `You are a helpful AI tutor. ALWAYS reply in ${language}. Keep responses simple and clear for school students.`
+      //   },
+      //   { role: "user", content: message }
+      // ],
+      temperature: 0.6,
+      max_tokens: 800
+    };
+
+    const res = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${OPENAI_KEY}`
+      },
+      body: JSON.stringify(payload)
+    });
+
+    if (!res.ok) {
+      console.error("OpenAI API error:", data);
+      return NextResponse.json({ error: "ai_service_error", message: data.error?.message || "AI service error" }, { status: 500 });
+    }
+    const data = await res.json();
+
+    const aiReply = data.choices?.[0]?.message?.content?.trim();
+    if (!aiReply) {
+      return NextResponse.json({ error: "ai_no_response", message: "AI did not return a response" }, { status: 500 });
+    }
+
+
+    
+    // Call OpenAI API to get response
+    // (This is a placeholder - implement actual call to OpenAI's API)
+    // Example using fetch: https://platform.openai.com/docs/api-reference/chat/create
+    // const aiResponse = await fetch("https://api.openai.com/v1/chat/completions", {
+    //   method: "POST",
+    //   headers: {
+    //     "Content-Type": "application/json",
+    //     Authorization: `Bearer ${OPENAI_KEY}`,
+    //   },
+    //   body: JSON.stringify({
+    //     model: "gpt-4o",
+    //     messages: [
+    //       { role: "system", content: `You are a helpful ${subject} tutor.` },
+
+
     // TODO: Replace this with real AI call (OpenAI). For now: simple simulated reply.
-    const aiReply = `(${subject} tutor) Short answer to: "${message}"`;
+    // const aiReply = `(${subject} tutor) Short answer to: "${message}"`;
 
     // Save assistant reply
     await prisma.chat.create({
