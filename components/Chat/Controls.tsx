@@ -11,17 +11,20 @@ export default function Controls({
   isPremium,
   isValidSession,
   todaysCount,
+  volume,
+  setVolume,
 }: {
   onSend: (msg: string) => void;
   loading: boolean;
   isPremium: boolean;
   isValidSession: boolean;
   todaysCount: number;
+  volume: number;
+  setVolume: (v: number) => void;
 }) {
   const [input, setInput] = useState("");
   const [lang, setLang] = useState("English");
   const [speechError, setSpeechError] = useState<string>("");
-  const [volume, setVolume] = useState(1); // 1 = max volume
 
   // ...existing code...
 

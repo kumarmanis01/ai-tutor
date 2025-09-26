@@ -7,6 +7,7 @@ export type ChatMessage = { id: string; role: "user" | "assistant"; content: str
 type Props = {
   role: "user" | "assistant";
   content: string;
+  volume?: number;
 };
 
 // Speaker SVG icon
@@ -24,13 +25,12 @@ const StopIcon = () => (
   </svg>
 );
 
-export default function MessageBubble({ role, content }: Props) {
+export default function MessageBubble({ role, content, volume }: Props) {
   const isUser = role === "user";
   const containerClass = isUser ? "justify-end" : "justify-start";
   const bubbleClass = isUser ? "bg-[var(--user-bg)] text-white" : "bg-[var(--ai-bg)] text-black";
   const [isSpeaking, setIsSpeaking] = useState(false);
   const utterRef = useRef<SpeechSynthesisUtterance | null>(null);
-  const [volume, setVolume] = useState(1); // 1 = max volume
 
   // Play message as speech
   const handleSpeak = () => {
@@ -42,7 +42,7 @@ export default function MessageBubble({ role, content }: Props) {
     window.speechSynthesis.cancel();
     const utter = new window.SpeechSynthesisUtterance(content);
     utter.lang = "en-US";
-    utter.volume = volume;
+    utter.volume = typeof volume === "number" ? volume : 1;
     utter.onend = () => setIsSpeaking(false);
     utter.onerror = () => setIsSpeaking(false);
     setIsSpeaking(true);

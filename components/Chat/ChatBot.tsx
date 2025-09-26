@@ -24,6 +24,7 @@ export default function ChatBot() {
   const [loading, setLoading] = useState(false);
   const [showSubscriptionSubModal, setShowSubscriptionSubModal] = useState(false);
   const [showLoginModal, setShowLoginModal] = useState(false);
+  const [volume, setVolume] = useState(1); // 1 = max volume
 
   // fetch subscription status
   async function fetchStatus() {
@@ -90,7 +91,7 @@ export default function ChatBot() {
           <div className="text-gray-400 text-center mt-10">Ask your first question to get started</div>
         )}
         {messages.map((msg) => (
-          <MessageBubble key={msg.id} role={msg.role} content={msg.content} />
+          <MessageBubble key={msg.id} role={msg.role} content={msg.content} volume={volume} />
         ))}
       </div>
 
@@ -101,6 +102,8 @@ export default function ChatBot() {
         isPremium={subscription.isPremium}
         isValidSession={!!session}
         todaysCount={subscription.todaysCount}
+        volume={volume}
+        setVolume={setVolume}
       />
 
       {/* Login Modal for unauthenticated users */}
