@@ -21,6 +21,7 @@ export default function Controls({
   const [input, setInput] = useState("");
   const [lang, setLang] = useState("English");
   const [speechError, setSpeechError] = useState<string>("");
+  const [volume, setVolume] = useState(1); // 1 = max volume
 
   // ...existing code...
 
@@ -35,7 +36,7 @@ export default function Controls({
 
   return (
     <div className="border-t p-3">
-      <form onSubmit={handleSubmit} className="flex items-center gap-2">
+  <form onSubmit={handleSubmit} className="flex items-center gap-2">
         <div className="mr-2">
           <LanguageSelector lang={lang} setLang={setLang} />
         </div>
@@ -57,6 +58,21 @@ export default function Controls({
       {speechError && (
         <div className="text-xs text-red-500 mt-2">{speechError}</div>
       )}
+      {/* Common volume bar for speech synthesis */}
+      <div className="flex items-center gap-2 mt-4 justify-end">
+        <label htmlFor="volume-bar" className="text-sm">Volume:</label>
+        <input
+          id="volume-bar"
+          type="range"
+          min={0}
+          max={1}
+          step={0.01}
+          value={volume}
+          onChange={e => setVolume(Number(e.target.value))}
+          className="w-32"
+        />
+        <span className="text-xs text-gray-600">{Math.round(volume * 100)}%</span>
+      </div>
       <div className="text-xs text-gray-500 mt-1">
         {isValidSession ? (
           isPremium ? (

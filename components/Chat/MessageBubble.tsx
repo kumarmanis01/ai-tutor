@@ -70,17 +70,6 @@ export default function MessageBubble({ role, content }: Props) {
         >
           {isSpeaking ? <StopIcon /> : <SpeakerIcon />}
         </button>
-        {/* Volume slider */}
-        <input
-          type="range"
-          min={0}
-          max={1}
-          step={0.01}
-          value={volume}
-          onChange={e => setVolume(Number(e.target.value))}
-          className="ml-2 w-20"
-          aria-label="Volume"
-        />
       </div>
     </div>
   );
