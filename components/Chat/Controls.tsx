@@ -52,10 +52,15 @@ export default function Controls({
         />
         <button
           type="submit"
-          className="px-4 py-2 bg-blue-600 text-white rounded disabled:opacity-50"
+          className="px-4 py-2 bg-blue-600 text-white rounded disabled:opacity-50 flex items-center justify-center"
           disabled={loading}
+          aria-label="Send"
         >
-          {loading ? "..." : "Send"}
+          {loading ? "..." : (
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
+              <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" />
+            </svg>
+          )}
         </button>
       </form>
       {speechError && (

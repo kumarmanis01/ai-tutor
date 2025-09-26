@@ -16,6 +16,9 @@ interface ChatMessage {
 
 export default function ChatBot() {
   const { data: session } = useSession();
+  // Use session id or fallback to 'guest' for localStorage key
+  const sessionId = session?.user?.email || "guest";
+  const storageKey = `ai-tutor:chat:${sessionId}`;
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [subscription, setSubscription] = useState<{ isPremium: boolean; todaysCount: number }>({
     isPremium: false,
@@ -35,7 +38,21 @@ export default function ChatBot() {
 
   useEffect(() => {
     fetchStatus();
-  }, [session]);
+    // Load chat history from localStorage for this session
+    try {
+      const raw = localStorage.getItem(storageKey);
+      if (raw) {
+        setMessages(JSON.parse(raw));
+      }
+    } catch {}
+  }, [sessionId]);
+
+  // Save chat history to localStorage whenever messages change
+  useEffect(() => {
+    try {
+      localStorage.setItem(storageKey, JSON.stringify(messages));
+    } catch {}
+  }, [messages, storageKey]);
 
   async function handleSend(message: string) {
     if (!session) {
