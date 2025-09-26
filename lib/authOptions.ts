@@ -40,6 +40,7 @@ export const authOptions: NextAuthOptions = {
   // Use JWT tokens for sessions (suitable for App Router)
   session: {
     strategy: "jwt",
+    maxAge: 30 * 24 * 60 * 60, // 30 days
   },
 
   // Keep a stable secret for NextAuth
