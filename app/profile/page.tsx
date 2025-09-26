@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
+import Avatar from "@/components/UI/Avatar";
 
 export default function ProfilePage() {
   const { data: session } = useSession();
@@ -28,13 +29,13 @@ export default function ProfilePage() {
       <p>
         <strong>Email:</strong> {session.user?.email}
       </p>
-      {session.user?.image && (
-        <img
-          src={session.user.image}
-          alt="avatar"
-          className="w-20 h-20 rounded-full"
-        />
-      )}
+      <Avatar
+        src={session.user?.image || undefined}
+        alt={session.user?.name || session.user?.email || "User avatar"}
+        size={80}
+        fallback={session.user?.name ? session.user.name.charAt(0).toUpperCase() : session.user?.email?.charAt(0).toUpperCase()}
+        className="mb-2"
+      />
       <p>
         <strong>Subscription:</strong>{" "}
         {subscription.isPremium
