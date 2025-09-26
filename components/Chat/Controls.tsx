@@ -22,32 +22,7 @@ export default function Controls({
   const [lang, setLang] = useState("English");
   const [speechError, setSpeechError] = useState<string>("");
 
-    setIsListening(true);
-    setInterimTranscript("");
-    recognition.onresult = (event: any) => {
-      let final = "";
-      let interim = "";
-      for (let i = event.resultIndex; i < event.results.length; ++i) {
-        if (event.results[i].isFinal) {
-          final += event.results[i][0].transcript;
-        } else {
-          interim += event.results[i][0].transcript;
-        }
-      }
-      if (interim) setInterimTranscript(interim);
-          <SpeechInput
-            value={input}
-            setValue={setInput}
-            lang={lang}
-            disabled={loading}
-            onError={setSpeechError}
-          />
-    if (recognitionRef.current) {
-      recognitionRef.current.stop();
-      setIsListening(false);
-      setInterimTranscript("");
-    }
-  };
+  // ...existing code...
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
