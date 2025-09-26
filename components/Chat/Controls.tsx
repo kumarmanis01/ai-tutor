@@ -2,6 +2,8 @@
 "use client";
 
 import { useState } from "react";
+import LanguageSelector from "../LanguageSelector";
+import SpeechInput from "./SpeechInput";
 
 export default function Controls({
   onSend,
@@ -17,6 +19,35 @@ export default function Controls({
   todaysCount: number;
 }) {
   const [input, setInput] = useState("");
+  const [lang, setLang] = useState("English");
+  const [speechError, setSpeechError] = useState<string>("");
+
+    setIsListening(true);
+    setInterimTranscript("");
+    recognition.onresult = (event: any) => {
+      let final = "";
+      let interim = "";
+      for (let i = event.resultIndex; i < event.results.length; ++i) {
+        if (event.results[i].isFinal) {
+          final += event.results[i][0].transcript;
+        } else {
+          interim += event.results[i][0].transcript;
+        }
+      }
+      if (interim) setInterimTranscript(interim);
+          <SpeechInput
+            value={input}
+            setValue={setInput}
+            lang={lang}
+            disabled={loading}
+            onError={setSpeechError}
+          />
+    if (recognitionRef.current) {
+      recognitionRef.current.stop();
+      setIsListening(false);
+      setInterimTranscript("");
+    }
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -30,13 +61,15 @@ export default function Controls({
   return (
     <div className="border-t p-3">
       <form onSubmit={handleSubmit} className="flex items-center gap-2">
-        <input
-          type="text"
+        <div className="mr-2">
+          <LanguageSelector lang={lang} setLang={setLang} />
+        </div>
+        <SpeechInput
           value={input}
-          onChange={(e) => setInput(e.target.value)}
-          placeholder="Ask a question..."
-          className="flex-1 rounded border px-3 py-2"
+          setValue={setInput}
+          lang={lang}
           disabled={loading}
+          onError={setSpeechError}
         />
         <button
           type="submit"
@@ -46,6 +79,9 @@ export default function Controls({
           {loading ? "..." : "Send"}
         </button>
       </form>
+      {speechError && (
+        <div className="text-xs text-red-500 mt-2">{speechError}</div>
+      )}
       <div className="text-xs text-gray-500 mt-1">
         {isValidSession ? (
           isPremium ? (
