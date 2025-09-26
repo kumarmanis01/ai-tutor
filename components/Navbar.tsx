@@ -6,6 +6,7 @@ import { useSession, signIn, signOut } from "next-auth/react";
 import { useState } from "react";
 import LoginModal from "./LoginModal";
 import Button from "@/components/UI/Button";
+import Avatar from "@/components/UI/Avatar";
 
 /**
  * Sticky top navigation bar. Always visible.
@@ -37,6 +38,13 @@ export default function Navbar() {
             <span className="text-sm text-gray-500">Loading...</span>
           ) : session ? (
             <div className="flex items-center gap-3">
+              {/* Avatar (lazy loaded, reusable) */}
+              <Avatar
+                src={session.user?.image || undefined}
+                alt="User avatar"
+                size={32}
+                fallback={session.user?.name ? session.user.name.charAt(0).toUpperCase() : session.user?.email?.charAt(0).toUpperCase()}
+              />
               <span className="text-sm text-gray-700">{session.user?.name ?? session.user?.email}</span>
               <Button
                 variant="outline"
