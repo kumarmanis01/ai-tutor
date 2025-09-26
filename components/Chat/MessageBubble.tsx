@@ -30,19 +30,24 @@ export default function MessageBubble({ role, content }: Props) {
   const bubbleClass = isUser ? "bg-[var(--user-bg)] text-white" : "bg-[var(--ai-bg)] text-black";
   const [isSpeaking, setIsSpeaking] = useState(false);
   const utterRef = useRef<SpeechSynthesisUtterance | null>(null);
+  const [volume, setVolume] = useState(1); // 1 = max volume
 
   // Play message as speech
   const handleSpeak = () => {
-    if (window.speechSynthesis) {
-      window.speechSynthesis.cancel();
-      const utter = new window.SpeechSynthesisUtterance(content);
-      utter.lang = "en-US";
-      utter.onend = () => setIsSpeaking(false);
-      utter.onerror = () => setIsSpeaking(false);
-      setIsSpeaking(true);
-      window.speechSynthesis.speak(utter);
-      utterRef.current = utter;
+    if (!content || !content.trim()) return;
+    if (!window.speechSynthesis) {
+      alert("Speech synthesis is not supported in this browser.");
+      return;
     }
+    window.speechSynthesis.cancel();
+    const utter = new window.SpeechSynthesisUtterance(content);
+    utter.lang = "en-US";
+    utter.volume = volume;
+    utter.onend = () => setIsSpeaking(false);
+    utter.onerror = () => setIsSpeaking(false);
+    setIsSpeaking(true);
+    window.speechSynthesis.speak(utter);
+    utterRef.current = utter;
   };
 
   // Stop speech playback
@@ -65,6 +70,17 @@ export default function MessageBubble({ role, content }: Props) {
         >
           {isSpeaking ? <StopIcon /> : <SpeakerIcon />}
         </button>
+        {/* Volume slider */}
+        <input
+          type="range"
+          min={0}
+          max={1}
+          step={0.01}
+          value={volume}
+          onChange={e => setVolume(Number(e.target.value))}
+          className="ml-2 w-20"
+          aria-label="Volume"
+        />
       </div>
     </div>
   );
