@@ -1,4 +1,3 @@
-// components/Chat/ChatBot.tsx
 "use client";
 
 import { useEffect, useState } from "react";
@@ -7,6 +6,11 @@ import MessageBubble from "./MessageBubble";
 import Controls from "./Controls";
 import SubscriptionModal from "../SubscriptionModal";
 import LoginModal from "../LoginModal";
+
+// Helper to base64 encode keys for privacy
+function encodeKey(str: string) {
+  return btoa(unescape(encodeURIComponent(str)));
+}
 
 // ChatMessage type for chat history
 interface ChatMessage {
@@ -18,16 +22,14 @@ interface ChatMessage {
 export default function ChatBot() {
   const { data: session } = useSession();
 
-  // Use a hashed or obfuscated session id for localStorage key to avoid leaking user info
-  function getSafeSessionId() {
-    if (session?.user?.email) {
-      // Use a simple hash for demonstration; replace with a better hash in production
-      return btoa(unescape(encodeURIComponent(session.user.email)));
-    }
+  // Use a persistent user identifier for localStorage key (base64 encoded for privacy)
+  function getUserKey() {
+    if (session?.user?.id) return encodeKey(session.user.id);
+    if (session?.user?.email) return encodeKey(session.user.email);
     return "guest";
   }
-  const sessionId = getSafeSessionId();
-  const storageKey = `ai-tutor:chat:${sessionId}`;
+  const userKey = getUserKey();
+  const storageKey = `ai-tutor:chat:${userKey}`;
 
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [subscription, setSubscription] = useState<{ isPremium: boolean; todaysCount: number }>({
@@ -39,7 +41,7 @@ export default function ChatBot() {
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [volume, setVolume] = useState(1); // 1 = max volume
 
-  // --- Language state lifted here for written & spoken language ---
+  // Language state for written & spoken language
   const [lang, setLang] = useState("English");
 
   // Fetch subscription status from backend
@@ -51,16 +53,21 @@ export default function ChatBot() {
 
   useEffect(() => {
     fetchStatus();
-    // Load chat history from localStorage for this session
     try {
-      const raw = localStorage.getItem(storageKey);
+      let raw = localStorage.getItem(storageKey);
+      // Fallback: try old key if nothing found (for migration)
+      if (!raw && session?.user?.email) {
+        const oldKey = `ai-tutor:chat:${session.user.email}`;
+        raw = localStorage.getItem(oldKey);
+        if (raw) localStorage.setItem(storageKey, raw);
+      }
       if (raw) {
         setMessages(JSON.parse(raw));
       }
     } catch {}
-  }, [storageKey]);
+    // eslint-disable-next-line
+  }, [storageKey, session]);
 
-  // Save chat history to localStorage whenever messages change
   useEffect(() => {
     try {
       localStorage.setItem(storageKey, JSON.stringify(messages));
@@ -160,14 +167,3 @@ export default function ChatBot() {
     </div>
   );
 }
-
-/*
-  --- CHANGES & SECURITY IMPROVEMENTS ---
-  1. Removed any hardcoded credentials or secrets.
-  2. Session ID for localStorage is now a base64-encoded email (not plain email) to avoid leaking user info.
-     - For production, use a proper hash function for stronger privacy.
-  3. Language state (`lang`, `setLang`) is lifted to ChatBot and passed to Controls and MessageBubble.
-     - Ensures both written and spoken language match user selection.
-  4. When sending a message, the selected language is sent to the backend for correct AI response language.
-  5. All sensitive logic (like session) is handled via NextAuth, not hardcoded.
-*/
