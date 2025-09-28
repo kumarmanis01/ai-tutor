@@ -26,11 +26,11 @@ export default function Navbar() {
         </Link>
 
         {/* Navigation links */}
-        <nav className="flex items-center gap-6">
+        {/* <nav className="flex items-center gap-6">
           <Link href="/" className="text-sm hover:text-blue-600">Home</Link>
-          <Link href="/pricing" className="text-sm hover:text-blue-600">Pricing</Link>
+          <Link href="/pricing" className="text-sm hover:text-blue-600">Pricing</Link> */}
           {/* Removed Profile link here */}
-        </nav>
+        {/* </nav> */}
 
         {/* Auth controls */}
         <div>

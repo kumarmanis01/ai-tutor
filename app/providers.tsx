@@ -3,6 +3,7 @@
 import { SessionProvider } from "next-auth/react";
 import Script from "next/script";
 import Navbar from "@/components/Navbar";
+import Footer from "@/components/UI/Footer";
 
 export default function Providers({ children }: { children: React.ReactNode }) {
   return (
@@ -17,6 +18,7 @@ export default function Providers({ children }: { children: React.ReactNode }) {
       <Navbar />
 
       <main className="pt-16">{children}</main>
+      <Footer />
     </SessionProvider>
   );
 }
