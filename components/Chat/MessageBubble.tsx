@@ -1,6 +1,4 @@
-// components/Chat/MessageBubble.tsx
-
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 
 export type ChatMessage = { id: string; role: "user" | "assistant"; content: string };
 
@@ -8,6 +6,7 @@ type Props = {
   role: "user" | "assistant";
   content: string;
   volume?: number;
+  lang: string; // <-- Added
 };
 
 // Speaker SVG icon
@@ -25,12 +24,36 @@ const StopIcon = () => (
   </svg>
 );
 
-export default function MessageBubble({ role, content, volume }: Props) {
+// Map language names to voice selection logic
+const languageVoiceMap: Record<string, { lang: string; match?: (v: SpeechSynthesisVoice) => boolean }> = {
+  Hindi: { lang: "hi-IN", match: v => v.lang === "hi-IN" || v.name.toLowerCase().includes("hindi") },
+  English: { lang: "en-US", match: v => v.lang.startsWith("en") },
+  Tamil: { lang: "ta-IN", match: v => v.lang === "ta-IN" || v.name.toLowerCase().includes("tamil") },
+  Bengali: { lang: "bn-IN", match: v => v.lang === "bn-IN" || v.name.toLowerCase().includes("bengali") },
+  French: { lang: "fr-FR", match: v => v.lang.startsWith("fr") },
+  Spanish: { lang: "es-ES", match: v => v.lang.startsWith("es") },
+  // Add more language mappings as needed
+};
+
+export default function MessageBubble({ role, content, volume, lang }: Props) {
   const isUser = role === "user";
   const containerClass = isUser ? "justify-end" : "justify-start";
   const bubbleClass = isUser ? "bg-[var(--user-bg)] text-white" : "bg-[var(--ai-bg)] text-black";
   const [isSpeaking, setIsSpeaking] = useState(false);
+  const [voicesLoaded, setVoicesLoaded] = useState(false);
   const utterRef = useRef<SpeechSynthesisUtterance | null>(null);
+
+  // Ensure voices are loaded before speaking
+  useEffect(() => {
+    if (typeof window !== "undefined" && window.speechSynthesis) {
+      const handleVoicesChanged = () => setVoicesLoaded(true);
+      window.speechSynthesis.addEventListener("voiceschanged", handleVoicesChanged);
+      if (window.speechSynthesis.getVoices().length > 0) setVoicesLoaded(true);
+      return () => {
+        window.speechSynthesis.removeEventListener("voiceschanged", handleVoicesChanged);
+      };
+    }
+  }, []);
 
   // Play message as speech
   const handleSpeak = () => {
@@ -41,8 +64,28 @@ export default function MessageBubble({ role, content, volume }: Props) {
     }
     window.speechSynthesis.cancel();
     const utter = new window.SpeechSynthesisUtterance(content);
-    utter.lang = "en-US";
+
+    // Use selected language from prop, fallback to English
+    const langConfig = languageVoiceMap[lang] || languageVoiceMap["English"];
+    utter.lang = langConfig.lang;
     utter.volume = typeof volume === "number" ? volume : 1;
+
+    // Select appropriate voice
+    const voices = window.speechSynthesis.getVoices();
+    let selectedVoice: SpeechSynthesisVoice | undefined;
+    if (langConfig.match) {
+      selectedVoice = voices.find(langConfig.match);
+    } else {
+      selectedVoice = voices.find(v => v.lang === langConfig.lang);
+    }
+    if (selectedVoice) {
+      utter.voice = selectedVoice;
+    } else {
+      alert(`No voice found for language: ${langConfig.lang}. Please install a suitable voice or try a different browser.`);
+      setIsSpeaking(false);
+      return;
+    }
+
     utter.onend = () => setIsSpeaking(false);
     utter.onerror = () => setIsSpeaking(false);
     setIsSpeaking(true);
@@ -67,6 +110,7 @@ export default function MessageBubble({ role, content, volume }: Props) {
           aria-label={isSpeaking ? "Stop playback" : "Play message"}
           className={isSpeaking ? "text-red-600 px-1" : "text-green-700 px-1"}
           title={isSpeaking ? "Stop playback" : "Play message"}
+          disabled={!voicesLoaded}
         >
           {isSpeaking ? <StopIcon /> : <SpeakerIcon />}
         </button>
