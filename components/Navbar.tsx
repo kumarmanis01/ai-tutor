@@ -29,7 +29,7 @@ export default function Navbar() {
         <nav className="flex items-center gap-6">
           <Link href="/" className="text-sm hover:text-blue-600">Home</Link>
           <Link href="/pricing" className="text-sm hover:text-blue-600">Pricing</Link>
-          { session && <Link href="/profile" className="text-sm hover:text-blue-600">Profile</Link> }
+          {/* Removed Profile link here */}
         </nav>
 
         {/* Auth controls */}
@@ -38,14 +38,20 @@ export default function Navbar() {
             <span className="text-sm text-gray-500">Loading...</span>
           ) : session ? (
             <div className="flex items-center gap-3">
-              {/* Avatar (lazy loaded, reusable) */}
-              <Avatar
-                src={session.user?.image || undefined}
-                alt="User avatar"
-                size={32}
-                fallback={session.user?.name ? session.user.name.charAt(0).toUpperCase() : session.user?.email?.charAt(0).toUpperCase()}
-              />
-              <span className="text-sm text-gray-700">{session.user?.name ?? session.user?.email}</span>
+              {/* Avatar and name are now a link to /profile */}
+              <Link href="/profile" className="group">
+                <Avatar
+                  src={session.user?.image || undefined}
+                  alt="User avatar"
+                  size={32}
+                  fallback={
+                    session.user?.name
+                      ? session.user.name.charAt(0).toUpperCase()
+                      : session.user?.email?.charAt(0).toUpperCase()
+                  }
+                  className="group-hover:ring-2 group-hover:ring-blue-400 transition"
+                />
+              </Link>
               <Button
                 variant="outline"
                 onClick={() => signOut({ callbackUrl: "/" })}

@@ -20,22 +20,30 @@ export default function ProfilePage() {
     return <div className="p-6">You are not signed in.</div>;
   }
 
+  // Compute fallback initials (first letter of name or email)
+  const fallback =
+    session.user?.name?.charAt(0).toUpperCase() ||
+    session.user?.email?.charAt(0).toUpperCase() ||
+    "?";
+
   return (
     <div className="p-6 space-y-4">
       <h1 className="text-2xl font-bold">Profile</h1>
+      <div>
+        <Avatar
+          src={session.user?.image || undefined}
+          alt={session.user?.name || session.user?.email || "User avatar"}
+          size={80}
+          fallback={fallback}
+          className="mb-2"
+        />
+      </div>
       <p>
         <strong>Name:</strong> {session.user?.name}
       </p>
       <p>
         <strong>Email:</strong> {session.user?.email}
       </p>
-      <Avatar
-        src={session.user?.image || undefined}
-        alt={session.user?.name || session.user?.email || "User avatar"}
-        size={80}
-        fallback={session.user?.name ? session.user.name.charAt(0).toUpperCase() : session.user?.email?.charAt(0).toUpperCase()}
-        className="mb-2"
-      />
       <p>
         <strong>Subscription:</strong>{" "}
         {subscription.isPremium
