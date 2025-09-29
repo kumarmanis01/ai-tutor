@@ -5,7 +5,10 @@ import Avatar from "@/components/UI/Avatar";
 
 export default function ProfilePage() {
   const { data: session } = useSession();
-  const [subscription, setSubscription] = useState<{ isPremium: boolean; plan?: string }>({ isPremium: false });
+  const [subscription, setSubscription] = useState<{
+    isPremium: boolean;
+    plan?: string;
+  }>({ isPremium: false });
 
   useEffect(() => {
     async function fetchStatus() {

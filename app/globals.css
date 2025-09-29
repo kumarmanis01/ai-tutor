@@ -4,14 +4,16 @@
 @tailwind utilities;
 
 /* Accessible color variables - easy to swap for themes */
-:root{
+:root {
   --user-bg: #0b5cff; /* high-contrast blue for user */
   --user-text: #ffffff;
-  --ai-bg: #e6e6e6;   /* neutral for assistant */
+  --ai-bg: #e6e6e6; /* neutral for assistant */
   --ai-text: #0f172a;
 }
 
-html,body,#__next {
+html,
+body,
+#__next {
   height: 100%;
 }
 
@@ -25,10 +27,16 @@ html,body,#__next {
 
 /* small utility for focus outline (keyboard accessibility) */
 :focus {
-  outline: 3px solid rgba(59,130,246,0.6);
+  outline: 3px solid rgba(59, 130, 246, 0.6);
   outline-offset: 2px;
 }
 
 /* Scrollbar for chat pane */
-::-webkit-scrollbar { height: 8px; width: 8px; }
-::-webkit-scrollbar-thumb { background: rgba(99,102,241,0.35); border-radius: 8px; }
+::-webkit-scrollbar {
+  height: 8px;
+  width: 8px;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(99, 102, 241, 0.35);
+  border-radius: 8px;
+}

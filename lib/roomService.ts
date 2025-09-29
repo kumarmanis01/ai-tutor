@@ -8,7 +8,17 @@ import fetch from "node-fetch";
  * - Keeps DB logic in one place, used by API routes.
  */
 
-export async function createRoom({ name, description, createdBy, isPrivate = false }: { name: string; description?: string; createdBy?: string; isPrivate?: boolean }) {
+export async function createRoom({
+  name,
+  description,
+  createdBy,
+  isPrivate = false,
+}: {
+  name: string;
+  description?: string;
+  createdBy?: string;
+  isPrivate?: boolean;
+}) {
   return prisma.room.create({
     data: { name, description, createdBy, isPrivate },
   });
@@ -26,7 +36,22 @@ export async function getLastMessages(roomId: string, limit = 50) {
   });
 }
 
-export async function postMessage(roomId: string, { senderId, sender, role, content, aiMeta }: { senderId?: string; sender?: string; role: string; content: string; aiMeta?: any }) {
+export async function postMessage(
+  roomId: string,
+  {
+    senderId,
+    sender,
+    role,
+    content,
+    aiMeta,
+  }: {
+    senderId?: string;
+    sender?: string;
+    role: string;
+    content: string;
+    aiMeta?: any;
+  },
+) {
   // persist
   const m = await prisma.message.create({
     data: {
@@ -57,7 +82,8 @@ export async function postMessage(roomId: string, { senderId, sender, role, cont
 async function startAiFacilitator(roomId: string, userMessage: string) {
   try {
     // Build prompt — keep simple & replaceable
-    const system = "You are an AI study facilitator. Provide a short, friendly reply that helps the student and invites collaboration. Keep under 120 words.";
+    const system =
+      "You are an AI study facilitator. Provide a short, friendly reply that helps the student and invites collaboration. Keep under 120 words.";
     const messages = [
       { role: "system", content: system },
       { role: "user", content: userMessage },
@@ -69,7 +95,10 @@ async function startAiFacilitator(roomId: string, userMessage: string) {
 
     const res = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
-      headers: { Authorization: `Bearer ${OPENAI_KEY}`, "Content-Type": "application/json" },
+      headers: {
+        Authorization: `Bearer ${OPENAI_KEY}`,
+        "Content-Type": "application/json",
+      },
       body: JSON.stringify({
         model: "gpt-3.5-turbo",
         messages,

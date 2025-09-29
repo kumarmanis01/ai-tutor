@@ -18,7 +18,10 @@ export default function HomePage() {
       {/* Welcome / promo area */}
       <header className="mb-6">
         <h1 className="text-3xl font-bold">AI Tutor</h1>
-        <p className="text-gray-600">Unlock the power of learning in your language! - start by asking a question below.</p>
+        <p className="text-gray-600">
+          Unlock the power of learning in your language! - start by asking a
+          question below.
+        </p>
       </header>
 
       {/* Tutor chat area (always visible). ChatBot should handle guest vs signed-in logic. */}

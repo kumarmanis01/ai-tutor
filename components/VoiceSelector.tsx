@@ -20,9 +20,15 @@ export default function VoiceSelector() {
 
   return (
     <div className="flex gap-2 items-center">
-      <select value={voice} onChange={(e) => setVoice(e.target.value)} className="border rounded p-2">
+      <select
+        value={voice}
+        onChange={(e) => setVoice(e.target.value)}
+        className="border rounded p-2"
+      >
         {voices.map((v) => (
-          <option key={v} value={v}>{v}</option>
+          <option key={v} value={v}>
+            {v}
+          </option>
         ))}
       </select>
       <button

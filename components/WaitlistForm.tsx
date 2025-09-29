@@ -32,8 +32,20 @@ export default function WaitlistForm() {
         <div className="text-sm text-green-600">Thanks — we'll notify you.</div>
       ) : (
         <>
-          <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" className="border p-2 rounded w-full" required />
-          <button type="submit" className="w-full p-2 bg-blue-600 text-white rounded">Join</button>
+          <input
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="you@example.com"
+            className="border p-2 rounded w-full"
+            required
+          />
+          <button
+            type="submit"
+            className="w-full p-2 bg-blue-600 text-white rounded"
+          >
+            Join
+          </button>
         </>
       )}
     </form>

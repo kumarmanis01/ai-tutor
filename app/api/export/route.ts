@@ -18,7 +18,9 @@ export async function POST(req: Request) {
 
     if (format === "text") {
       // Concatenate simple text export
-      const textLines = messages.map((m: any) => `${m.role === "user" ? "You" : "AI"}: ${m.content}`);
+      const textLines = messages.map(
+        (m: any) => `${m.role === "user" ? "You" : "AI"}: ${m.content}`,
+      );
       const txt = textLines.join("\n\n");
       return new NextResponse(txt, {
         headers: {
@@ -71,6 +73,9 @@ export async function POST(req: Request) {
     });
   } catch (err) {
     console.error("export error:", err);
-    return NextResponse.json({ error: "server_error", detail: String(err) }, { status: 500 });
+    return NextResponse.json(
+      { error: "server_error", detail: String(err) },
+      { status: 500 },
+    );
   }
 }

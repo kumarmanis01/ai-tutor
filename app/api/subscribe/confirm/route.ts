@@ -11,16 +11,29 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/authOptions";
 import { prisma } from "@/lib/db";
 import crypto from "crypto";
+import { SessionUser } from "@/lib/types";
 
 export async function POST(req: Request) {
   try {
     const session = await getServerSession(authOptions);
-    if (!session || !(session as any).user?.id) {
+    if (!session) {
+      return new Response("Unauthorized", { status: 401 });
+    }
+
+    const sessionUser = session.user as SessionUser;
+
+    if (!sessionUser || !sessionUser.id) {
       return NextResponse.json({ error: "unauthenticated" }, { status: 401 });
     }
 
     const body = await req.json();
-    const { razorpay_order_id, razorpay_payment_id, razorpay_signature, plan = "pro", billing = "monthly" } = body;
+    const {
+      razorpay_order_id,
+      razorpay_payment_id,
+      razorpay_signature,
+      plan = "pro",
+      billing = "monthly",
+    } = body;
     if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature) {
       return NextResponse.json({ error: "missing_fields" }, { status: 400 });
     }
@@ -31,12 +44,18 @@ export async function POST(req: Request) {
     const expected = hmac.digest("hex");
 
     if (expected !== razorpay_signature) {
-      console.warn("Razorpay signature mismatch", { expected, got: razorpay_signature });
-      return NextResponse.json({ error: "signature_mismatch" }, { status: 400 });
+      console.warn("Razorpay signature mismatch", {
+        expected,
+        got: razorpay_signature,
+      });
+      return NextResponse.json(
+        { error: "signature_mismatch" },
+        { status: 400 },
+      );
     }
 
     // Successful payment → create Subscription record
-    const userId = (session as any).user.id as string;
+    const userId = sessionUser.id as string;
     const now = new Date();
     const startDate = now;
     const endDate = new Date(now);

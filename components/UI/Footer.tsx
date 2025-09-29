@@ -8,14 +8,25 @@ export default function Footer() {
           &copy; {new Date().getFullYear()} AI Tutor. All rights reserved.
         </div>
         <nav className="flex gap-4 text-sm">
-          <Link href="/" className="hover:text-blue-600">Home</Link>
-          <Link href="/pricing" className="hover:text-blue-600">Pricing</Link>
-          <Link href="/about" className="hover:text-blue-600">About</Link>
-          <Link href="/privacy" className="hover:text-blue-600">Privacy Policy</Link>
-          <Link href="/terms" className="hover:text-blue-600">Terms of Service</Link>
+          <Link href="/" className="hover:text-blue-600">
+            Home
+          </Link>
+          <Link href="/pricing" className="hover:text-blue-600">
+            Pricing
+          </Link>
+          <Link href="/about" className="hover:text-blue-600">
+            About
+          </Link>
+          <Link href="/privacy" className="hover:text-blue-600">
+            Privacy Policy
+          </Link>
+          <Link href="/terms" className="hover:text-blue-600">
+            Terms of Service
+          </Link>
         </nav>
         <div className="text-gray-400 text-xs">
-          Made with <span className="text-red-500">&hearts;</span> by Spinzy Digital
+          Made with <span className="text-red-500">&hearts;</span> by Spinzy
+          Digital
         </div>
       </div>
     </footer>

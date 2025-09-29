@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/authOptions";
 import { razorpay } from "@/lib/payments";
+import { SessionUser } from "@/lib/types";
 
 /**
  * Creates a Razorpay order for the selected plan.
@@ -9,7 +10,12 @@ import { razorpay } from "@/lib/payments";
  */
 export async function POST(req: Request) {
   const session = await getServerSession(authOptions);
-  if (!session?.user?.email) {
+  if (!session) {
+    return new Response("Unauthorized", { status: 401 });
+  }
+
+  const user = session.user as SessionUser;
+  if (!user || !user.email) {
     return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
   }
 
@@ -38,6 +44,6 @@ export async function POST(req: Request) {
   return NextResponse.json({
     orderId: order.id,
     amount,
-    email: session.user.email,
+    email: user.email,
   });
 }

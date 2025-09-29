@@ -23,7 +23,11 @@ export default function RoomList() {
   async function createRoom(e: React.FormEvent) {
     e.preventDefault();
     if (!name.trim()) return;
-    const res = await fetch("/api/rooms", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name, description: desc }) });
+    const res = await fetch("/api/rooms", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name, description: desc }),
+    });
     const data = await res.json();
     setName("");
     setDesc("");
@@ -37,8 +41,15 @@ export default function RoomList() {
   return (
     <div>
       <form onSubmit={createRoom} className="mb-4 flex gap-2">
-        <input value={name} placeholder="Room name" onChange={(e) => setName(e.target.value)} className="border p-2 rounded flex-1" />
-        <button className="px-3 py-2 bg-blue-600 text-white rounded">Create</button>
+        <input
+          value={name}
+          placeholder="Room name"
+          onChange={(e) => setName(e.target.value)}
+          className="border p-2 rounded flex-1"
+        />
+        <button className="px-3 py-2 bg-blue-600 text-white rounded">
+          Create
+        </button>
       </form>
 
       <ul className="space-y-2">

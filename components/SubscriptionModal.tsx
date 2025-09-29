@@ -14,7 +14,13 @@ import { signIn, useSession } from "next-auth/react";
  * NOTE: This component assumes `window.Razorpay` is available (include Razorpay script in _document or page).
  */
 
-export default function SubscriptionModal({ open, onClose }: { open: boolean; onClose: () => void }) {
+export default function SubscriptionModal({
+  open,
+  onClose,
+}: {
+  open: boolean;
+  onClose: () => void;
+}) {
   const { data: session } = useSession();
   const [plan, setPlan] = useState<"pro" | "enterprise">("pro");
   const [billing, setBilling] = useState<"monthly" | "yearly">("monthly");
@@ -87,7 +93,11 @@ export default function SubscriptionModal({ open, onClose }: { open: boolean; on
 
         <div className="mb-3">
           <label className="block text-sm text-gray-600">Plan</label>
-          <select value={plan} onChange={(e) => setPlan(e.target.value as any)} className="w-full border rounded p-2">
+          <select
+            value={plan}
+            onChange={(e) => setPlan(e.target.value as any)}
+            className="w-full border rounded p-2"
+          >
             <option value="pro">Pro</option>
             <option value="enterprise">Enterprise</option>
           </select>
@@ -96,18 +106,30 @@ export default function SubscriptionModal({ open, onClose }: { open: boolean; on
         <div className="mb-3">
           <label className="block text-sm text-gray-600">Billing</label>
           <div className="flex gap-2">
-            <button onClick={() => setBilling("monthly")} className={`px-3 py-1 rounded ${billing === "monthly" ? "bg-blue-600 text-white" : "border"}`}>
+            <button
+              onClick={() => setBilling("monthly")}
+              className={`px-3 py-1 rounded ${billing === "monthly" ? "bg-blue-600 text-white" : "border"}`}
+            >
               Monthly
             </button>
-            <button onClick={() => setBilling("yearly")} className={`px-3 py-1 rounded ${billing === "yearly" ? "bg-blue-600 text-white" : "border"}`}>
+            <button
+              onClick={() => setBilling("yearly")}
+              className={`px-3 py-1 rounded ${billing === "yearly" ? "bg-blue-600 text-white" : "border"}`}
+            >
               Yearly
             </button>
           </div>
         </div>
 
         <div className="flex justify-end gap-2">
-          <button onClick={onClose} className="px-3 py-1 border rounded">Cancel</button>
-          <button onClick={handleSubscribe} disabled={loading} className="px-3 py-1 bg-indigo-600 text-white rounded">
+          <button onClick={onClose} className="px-3 py-1 border rounded">
+            Cancel
+          </button>
+          <button
+            onClick={handleSubscribe}
+            disabled={loading}
+            className="px-3 py-1 bg-indigo-600 text-white rounded"
+          >
             {loading ? "Processing..." : "Subscribe"}
           </button>
         </div>

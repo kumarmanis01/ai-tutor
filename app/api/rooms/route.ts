@@ -16,7 +16,8 @@ export async function POST(req: Request) {
   try {
     const body = await req.json();
     const { name, description, isPrivate } = body;
-    if (!name) return NextResponse.json({ error: "name_required" }, { status: 400 });
+    if (!name)
+      return NextResponse.json({ error: "name_required" }, { status: 400 });
 
     const room = await roomService.createRoom({ name, description, isPrivate });
     return NextResponse.json({ room });

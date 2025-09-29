@@ -10,30 +10,17 @@
 
 import { PrismaAdapter } from "@next-auth/prisma-adapter";
 import GoogleProvider from "next-auth/providers/google";
-import FacebookProvider from "next-auth/providers/facebook";
-import EmailProvider from "next-auth/providers/email";
 import type { NextAuthOptions } from "next-auth";
 import { prisma } from "@/lib/db";
+import NextAuth from "next-auth";
 
-export const authOptions: NextAuthOptions = {
+export const authOptions = {
   adapter: PrismaAdapter(prisma),
   providers: [
     // Google (recommended)
     GoogleProvider({
       clientId: process.env.GOOGLE_CLIENT_ID!,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
-    }),
-
-    // Facebook (Meta) — optional, add in Google Console equivalent
-    FacebookProvider({
-      clientId: process.env.FACEBOOK_CLIENT_ID!,
-      clientSecret: process.env.FACEBOOK_CLIENT_SECRET!,
-    }),
-
-    // Email provider (magic link). Requires SMTP (EMAIL_SERVER)
-    EmailProvider({
-      server: process.env.EMAIL_SERVER,
-      from: process.env.EMAIL_FROM,
     }),
   ],
 
@@ -64,3 +51,6 @@ export const authOptions: NextAuthOptions = {
     },
   },
 };
+
+const handler = NextAuth(authOptions);
+export { handler as GET, handler as POST };

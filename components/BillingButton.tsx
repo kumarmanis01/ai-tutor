@@ -7,10 +7,17 @@ declare global {
   }
 }
 
-export default function BillingButton({ provider }: { provider: "stripe" | "razorpay" }) {
+export default function BillingButton({
+  provider,
+}: {
+  provider: "stripe" | "razorpay";
+}) {
   async function subscribe() {
     if (provider === "stripe") {
-      const res = await fetch("/api/billing/checkout", { method: "POST", body: JSON.stringify({ plan: "pro" }) });
+      const res = await fetch("/api/billing/checkout", {
+        method: "POST",
+        body: JSON.stringify({ plan: "pro" }),
+      });
       const data = await res.json();
       if (data.url) window.location.href = data.url;
     } else {

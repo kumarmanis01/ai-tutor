@@ -1,10 +1,16 @@
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
+import { SessionUser } from "@/lib/types";
 
 export default async function AdminPage() {
   const session = await getServerSession(authOptions);
+  if (!session) {
+    return new Response("Unauthorized", { status: 401 });
+  }
 
-  if (session?.user?.email !== "admin@yourdomain.com") {
+  const sessionUser = session.user as SessionUser;
+
+  if (sessionUser.email !== "admin@yourdomain.com") {
     return <div className="p-6">Access denied</div>;
   }
 

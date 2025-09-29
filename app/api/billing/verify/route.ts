@@ -3,13 +3,19 @@ import crypto from "crypto";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/authOptions";
 import prisma from "@/lib/prisma";
+import { SessionUser } from "@/lib/types";
 
 /**
  * Verifies Razorpay payment signature and updates user's subscription in DB.
  */
 export async function POST(req: Request) {
   const session = await getServerSession(authOptions);
-  if (!session?.user?.email) {
+  if (!session) {
+    return new Response("Unauthorized", { status: 401 });
+  }
+
+  const sessionUser = session.user as SessionUser;
+  if (!sessionUser || !sessionUser.email) {
     return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
   }
 
@@ -38,13 +44,13 @@ export async function POST(req: Request) {
 
   // Deactivate any existing subscriptions for this user
   await prisma.subscription.updateMany({
-    where: { userId: session.user.id, active: true },
+    where: { userId: sessionUser.id, active: true },
     data: { active: false },
   });
   // Create new active subscription
   await prisma.subscription.create({
     data: {
-      userId: session.user.id,
+      userId: sessionUser.id,
       plan,
       billingCycle,
       startDate,

@@ -7,7 +7,10 @@ import { subscribe } from "@/lib/realtime";
  * Client: new EventSource(`/api/rooms/${id}/stream`)
  * Server publishes JSON events: { type: "message", payload: { ... } }
  */
-export async function GET(req: Request, { params }: { params: { id: string } }) {
+export async function GET(
+  req: Request,
+  { params }: { params: { id: string } },
+) {
   const { id } = params;
   const encoder = new TextEncoder();
 
@@ -18,7 +21,9 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
 
       const push = (data: any) => {
         try {
-          controller.enqueue(encoder.encode(`data: ${JSON.stringify(data)}\n\n`));
+          controller.enqueue(
+            encoder.encode(`data: ${JSON.stringify(data)}\n\n`),
+          );
         } catch (e) {
           console.error("SSE enqueue error", e);
         }
@@ -29,7 +34,10 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
       });
 
       // ping every 30s to keep the connection alive in some proxies
-      const keepAlive = setInterval(() => controller.enqueue(encoder.encode(":\n\n")), 30000);
+      const keepAlive = setInterval(
+        () => controller.enqueue(encoder.encode(":\n\n")),
+        30000,
+      );
 
       // cleanup on cancel
       controller.oncancel = () => {

@@ -7,7 +7,7 @@ import Script from "next/script";
 export default function PricingPage() {
   const { data: session, status } = useSession();
   const [billingCycle, setBillingCycle] = useState<"monthly" | "annual">(
-    "monthly"
+    "monthly",
   );
   const [loading, setLoading] = useState(false);
 

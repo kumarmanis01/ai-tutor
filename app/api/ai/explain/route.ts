@@ -10,7 +10,10 @@ export async function POST(req: Request) {
     // Example: generate explanation text
     const completion = await openai.chat.completions.create({
       model: "gpt-4o",
-      messages: [{ role: "system", content: "Explain clearly with diagrams if useful." }, { role: "user", content: query }],
+      messages: [
+        { role: "system", content: "Explain clearly with diagrams if useful." },
+        { role: "user", content: query },
+      ],
     });
 
     const text = completion.choices[0].message?.content;

@@ -6,7 +6,11 @@ import React, { useState } from "react";
  * Props:
  *  - messages: [{ role, content }]
  */
-export default function ExportButtons({ messages }: { messages: { role: string; content: string }[] }) {
+export default function ExportButtons({
+  messages,
+}: {
+  messages: { role: string; content: string }[];
+}) {
   const [loading, setLoading] = useState(false);
 
   async function download(format: "pdf" | "text") {
@@ -41,10 +45,18 @@ export default function ExportButtons({ messages }: { messages: { role: string; 
 
   return (
     <div className="flex gap-2">
-      <button onClick={() => download("pdf")} disabled={loading || messages.length === 0} className="px-3 py-1 bg-sky-600 text-white rounded">
+      <button
+        onClick={() => download("pdf")}
+        disabled={loading || messages.length === 0}
+        className="px-3 py-1 bg-sky-600 text-white rounded"
+      >
         Export PDF
       </button>
-      <button onClick={() => download("text")} disabled={loading || messages.length === 0} className="px-3 py-1 bg-gray-200 rounded">
+      <button
+        onClick={() => download("text")}
+        disabled={loading || messages.length === 0}
+        className="px-3 py-1 bg-gray-200 rounded"
+      >
         Export Text
       </button>
     </div>

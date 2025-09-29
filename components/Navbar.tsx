@@ -29,7 +29,7 @@ export default function Navbar() {
         {/* <nav className="flex items-center gap-6">
           <Link href="/" className="text-sm hover:text-blue-600">Home</Link>
           <Link href="/pricing" className="text-sm hover:text-blue-600">Pricing</Link> */}
-          {/* Removed Profile link here */}
+        {/* Removed Profile link here */}
         {/* </nav> */}
 
         {/* Auth controls */}
@@ -62,7 +62,10 @@ export default function Navbar() {
             </div>
           ) : (
             <>
-              <Button onClick={() => setShowLoginModal(true)} aria-label="Login">
+              <Button
+                onClick={() => setShowLoginModal(true)}
+                aria-label="Login"
+              >
                 Login
               </Button>
               <LoginModal

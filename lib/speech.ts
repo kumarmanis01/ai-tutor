@@ -1,5 +1,10 @@
 // lib/speech.ts
-export type TTSOptions = { lang?: string; rate?: number; pitch?: number; volume?: number };
+export type TTSOptions = {
+  lang?: string;
+  rate?: number;
+  pitch?: number;
+  volume?: number;
+};
 
 /**
  * Speech helper — small adapter around browser APIs.
@@ -7,7 +12,8 @@ export type TTSOptions = { lang?: string; rate?: number; pitch?: number; volume?
  */
 export const Speech = {
   speak(text: string, opts?: TTSOptions) {
-    if (typeof window === "undefined" || !("speechSynthesis" in window)) return false;
+    if (typeof window === "undefined" || !("speechSynthesis" in window))
+      return false;
     window.speechSynthesis.cancel();
     const u = new SpeechSynthesisUtterance(text);
     u.lang = opts?.lang ?? "en-US";
@@ -24,7 +30,9 @@ export const Speech = {
   },
 
   createRecognizer(lang = "en-US") {
-    const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    const SR =
+      (window as any).SpeechRecognition ||
+      (window as any).webkitSpeechRecognition;
     if (!SR) return null;
     const rec = new SR();
     rec.lang = lang;

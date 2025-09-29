@@ -2,59 +2,48 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/authOptions";
 import prisma from "@/lib/prisma";
+import { SessionUser } from "@/lib/types";
+import { use } from "react";
 
 /**
  * Returns the user's current subscription status.
  */
 export async function GET() {
   const session = await getServerSession(authOptions);
-  if (!session?.user?.email) {
-    return NextResponse.json({ plan: "free", active: false });
+  if (!session) {
+    return new Response("Unauthorized", { status: 401 });
+  }
+
+  const sessionUser = session.user as SessionUser;
+  if (!sessionUser || !sessionUser.email) {
+    return NextResponse.json({ plan: "free", status: "inactive" });
+  }
+
+  // Get userId from session or fetch by email
+  let userId = sessionUser.id;
+  if (!userId) {
+    const savedUser = await prisma.user.findUnique({
+      where: { email: sessionUser.email },
+    });
+    userId = savedUser?.id;
+  }
+  if (!userId) {
+    return NextResponse.json({ plan: "free", status: "inactive" });
   }
 
   const subscription = await prisma.subscription.findFirst({
-    where: { userId: session.user.id, active: true },
+    where: { userId, status: "active" },
     orderBy: { createdAt: "desc" },
   });
 
-  if (!subscription || !subscription.active) {
-    return NextResponse.json({ plan: "free", active: false });
+  if (!subscription) {
+    return NextResponse.json({ plan: "free", status: "inactive" });
   }
 
   return NextResponse.json({
     plan: subscription.plan,
     billingCycle: subscription.billingCycle,
-    active: subscription.active,
+    status: subscription.status,
     validTill: subscription.endDate,
   });
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.email) {
-      return NextResponse.json({ plan: "free", status: "inactive" });
-    }
-
-    // Get userId from session or fetch by email
-    let userId = (session.user as any).id;
-    if (!userId) {
-      const user = await prisma.user.findUnique({ where: { email: session.user.email } });
-      userId = user?.id;
-    }
-    if (!userId) {
-      return NextResponse.json({ plan: "free", status: "inactive" });
-    }
-
-    const subscription = await prisma.subscription.findFirst({
-      where: { userId, status: "active" },
-      orderBy: { createdAt: "desc" },
-    });
-
-    if (!subscription) {
-      return NextResponse.json({ plan: "free", status: "inactive" });
-    }
-
-    return NextResponse.json({
-      plan: subscription.plan,
-      billingCycle: subscription.billingCycle,
-      status: subscription.status,
-      validTill: subscription.endDate,
-    });
 }

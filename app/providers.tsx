@@ -13,7 +13,7 @@ export default function Providers({ children }: { children: React.ReactNode }) {
         src="https://checkout.razorpay.com/v1/checkout.js"
         strategy="afterInteractive"
       />
-      
+
       {/* Sticky navbar always visible */}
       <Navbar />
 

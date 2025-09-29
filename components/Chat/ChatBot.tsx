@@ -32,12 +32,16 @@ export default function ChatBot() {
   const storageKey = `ai-tutor:chat:${userKey}`;
 
   const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [subscription, setSubscription] = useState<{ isPremium: boolean; todaysCount: number }>({
+  const [subscription, setSubscription] = useState<{
+    isPremium: boolean;
+    todaysCount: number;
+  }>({
     isPremium: false,
     todaysCount: 0,
   });
   const [loading, setLoading] = useState(false);
-  const [showSubscriptionSubModal, setShowSubscriptionSubModal] = useState(false);
+  const [showSubscriptionSubModal, setShowSubscriptionSubModal] =
+    useState(false);
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [volume, setVolume] = useState(1); // 1 = max volume
 
@@ -48,7 +52,10 @@ export default function ChatBot() {
   async function fetchStatus() {
     const res = await fetch("/api/subscription/status");
     const data = await res.json();
-    setSubscription({ isPremium: data.isPremium, todaysCount: data.todaysCount });
+    setSubscription({
+      isPremium: data.isPremium,
+      todaysCount: data.todaysCount,
+    });
   }
 
   useEffect(() => {
@@ -101,7 +108,7 @@ export default function ChatBot() {
         } else if (data.error === "profanity_detected") {
           alert(
             data.message ||
-              "I understand that you're frustrated, and I want to help. However, I must ask that we keep the conversation respectful and avoid using inappropriate language for me to assist you effectively"
+              "I understand that you're frustrated, and I want to help. However, I must ask that we keep the conversation respectful and avoid using inappropriate language for me to assist you effectively",
           );
         } else {
           alert(data.message || "Error asking question.");
@@ -129,7 +136,9 @@ export default function ChatBot() {
     <div className="flex flex-col h-full">
       <div className="flex-1 overflow-y-auto p-4 space-y-2">
         {messages.length === 0 && (
-          <div className="text-gray-400 text-center mt-10">Ask your first question to get started</div>
+          <div className="text-gray-400 text-center mt-10">
+            Ask your first question to get started
+          </div>
         )}
         {messages.map((msg) => (
           <MessageBubble
@@ -163,7 +172,10 @@ export default function ChatBot() {
       />
 
       {/* Subscription Modal */}
-      <SubscriptionModal open={showSubscriptionSubModal} onClose={() => setShowSubscriptionSubModal(false)} />
+      <SubscriptionModal
+        open={showSubscriptionSubModal}
+        onClose={() => setShowSubscriptionSubModal(false)}
+      />
     </div>
   );
 }

@@ -20,24 +20,51 @@ export default function SpeechInput({
 
   // Mic SVG icon
   const MicIcon = () => (
-    <svg width="22" height="22" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <svg
+      width="22"
+      height="22"
+      viewBox="0 0 20 20"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+    >
       <rect x="8" y="4" width="4" height="8" rx="2" fill="currentColor" />
-      <path d="M10 16V18" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-      <path d="M6 12C6 14.2091 7.79086 16 10 16C12.2091 16 14 14.2091 14 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+      <path
+        d="M10 16V18"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+      />
+      <path
+        d="M6 12C6 14.2091 7.79086 16 10 16C12.2091 16 14 14.2091 14 12"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+      />
     </svg>
   );
   // Stop SVG icon
   const StopIcon = () => (
-    <svg width="22" height="22" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <svg
+      width="22"
+      height="22"
+      viewBox="0 0 20 20"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+    >
       <rect x="5" y="5" width="10" height="10" rx="2" fill="currentColor" />
     </svg>
   );
 
   const handleMic = () => {
     if (onError) onError("");
-    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    const SpeechRecognition =
+      (window as any).SpeechRecognition ||
+      (window as any).webkitSpeechRecognition;
     if (!SpeechRecognition) {
-      onError && onError("Speech recognition is not supported in this browser. Try Chrome or Edge, and check microphone permissions.");
+      onError &&
+        onError(
+          "Speech recognition is not supported in this browser. Try Chrome or Edge, and check microphone permissions.",
+        );
       return;
     }
     const recognition = new SpeechRecognition();
@@ -76,11 +103,13 @@ export default function SpeechInput({
       setInterimTranscript("");
       let message = "Speech recognition error";
       if (e.error === "not-allowed") {
-        message = "Microphone access denied. Please allow microphone permissions in your browser settings.";
+        message =
+          "Microphone access denied. Please allow microphone permissions in your browser settings.";
       } else if (e.error === "no-speech") {
         message = "No speech detected. Please try again and speak clearly.";
       } else if (e.error === "audio-capture") {
-        message = "No microphone found. Please connect a microphone and try again.";
+        message =
+          "No microphone found. Please connect a microphone and try again.";
       } else if (e.error) {
         message = `Speech recognition error: ${e.error}`;
       }
@@ -103,7 +132,9 @@ export default function SpeechInput({
   };
 
   return (
-    <div className={`relative flex-1 flex items-center ${isListening ? "ring-2 ring-blue-400 bg-blue-50" : ""}`}>
+    <div
+      className={`relative flex-1 flex items-center ${isListening ? "ring-2 ring-blue-400 bg-blue-50" : ""}`}
+    >
       <input
         type="text"
         value={isListening && interimTranscript ? interimTranscript : value}

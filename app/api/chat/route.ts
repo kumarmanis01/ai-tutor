@@ -28,7 +28,10 @@ export async function POST(req: Request) {
 
     // Profanity guard
     if (checkProfanity(message)) {
-      return NextResponse.json({ error: "profanity_detected" }, { status: 400 });
+      return NextResponse.json(
+        { error: "profanity_detected" },
+        { status: 400 },
+      );
     }
 
     // Require auth for asking questions
@@ -58,7 +61,13 @@ export async function POST(req: Request) {
       });
 
       if (todaysCount >= 3) {
-        return NextResponse.json({ error: "free_limit_reached", message: "Free limit reached. Upgrade to continue." }, { status: 402 });
+        return NextResponse.json(
+          {
+            error: "free_limit_reached",
+            message: "Free limit reached. Upgrade to continue.",
+          },
+          { status: 402 },
+        );
       }
     }
 
@@ -74,7 +83,10 @@ export async function POST(req: Request) {
 
     const OPENAI_KEY = process.env.OPENAI_API_KEY;
     if (!OPENAI_KEY) {
-      return NextResponse.json({ error: "Connection to Your AI Model broken" }, { status: 500 });
+      return NextResponse.json(
+        { error: "Connection to Your AI Model broken" },
+        { status: 500 },
+      );
     }
     // Prepare messages for AI
     const messages = [
@@ -93,31 +105,38 @@ export async function POST(req: Request) {
       //   { role: "user", content: message }
       // ],
       temperature: 0.6,
-      max_tokens: 800
+      max_tokens: 800,
     };
 
     const res = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${OPENAI_KEY}`
+        Authorization: `Bearer ${OPENAI_KEY}`,
       },
-      body: JSON.stringify(payload)
+      body: JSON.stringify(payload),
     });
 
     if (!res.ok) {
       console.error("OpenAI API error:", data);
-      return NextResponse.json({ error: "ai_service_error", message: data.error?.message || "AI service error" }, { status: 500 });
+      return NextResponse.json(
+        {
+          error: "ai_service_error",
+          message: data.error?.message || "AI service error",
+        },
+        { status: 500 },
+      );
     }
     const data = await res.json();
 
     const aiReply = data.choices?.[0]?.message?.content?.trim();
     if (!aiReply) {
-      return NextResponse.json({ error: "ai_no_response", message: "AI did not return a response" }, { status: 500 });
+      return NextResponse.json(
+        { error: "ai_no_response", message: "AI did not return a response" },
+        { status: 500 },
+      );
     }
 
-
-    
     // Call OpenAI API to get response
     // (This is a placeholder - implement actual call to OpenAI's API)
     // Example using fetch: https://platform.openai.com/docs/api-reference/chat/create
@@ -131,7 +150,6 @@ export async function POST(req: Request) {
     //     model: "gpt-4o",
     //     messages: [
     //       { role: "system", content: `You are a helpful ${subject} tutor.` },
-
 
     // TODO: Replace this with real AI call (OpenAI). For now: simple simulated reply.
     // const aiReply = `(${subject} tutor) Short answer to: "${message}"`;

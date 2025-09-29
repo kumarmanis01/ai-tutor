@@ -3,16 +3,27 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/authOptions";
 import { prisma } from "@/lib/db";
+import { SessionUser } from "@/lib/types";
 
 export async function GET(req: Request) {
   try {
     const session = await getServerSession(authOptions);
-    if (!session || !(session as any).user?.id) {
-      // not authenticated — indicate guest
-      return NextResponse.json({ authenticated: false, isPremium: false, todaysCount: 0 });
+    if (!session) {
+      return new Response("Unauthorized", { status: 401 });
     }
 
-    const userId = (session as any).user.id;
+    const sessionUser = session.user as SessionUser;
+
+    if (!sessionUser || !sessionUser.id) {
+      // not authenticated — indicate guest
+      return NextResponse.json({
+        authenticated: false,
+        isPremium: false,
+        todaysCount: 0,
+      });
+    }
+
+    const userId = sessionUser.id;
 
     // Check active subscription
     const sub = await prisma.subscription.findFirst({
@@ -35,7 +46,11 @@ export async function GET(req: Request) {
       },
     });
 
-    console.log("Subscription status:", { userId, isPremium: !!sub, todaysCount });
+    console.log("Subscription status:", {
+      userId,
+      isPremium: !!sub,
+      todaysCount,
+    });
     // Return status
     return NextResponse.json({
       authenticated: true,

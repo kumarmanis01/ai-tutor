@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import prisma from "@/lib/db";
+import { SessionUser } from "@/lib/types";
 
 /**
  * Persists chat history for a logged-in user
@@ -9,9 +10,13 @@ import prisma from "@/lib/db";
  */
 export async function POST(req: Request) {
   const session = await getServerSession(authOptions);
-  if (!session) return new Response("Unauthorized", { status: 401 });
+  if (!session) {
+    return new Response("Unauthorized", { status: 401 });
+  }
 
-  if (!session?.user?.email) {
+  const sessionUser = session.user as SessionUser;
+
+  if (!sessionUser || !sessionUser.email) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -21,14 +26,17 @@ export async function POST(req: Request) {
 
     await prisma.chatHistory.create({
       data: {
-        userId: session.user.id,
-        messages: JSON.stringify(messages)
-      }
+        userId: sessionUser.id,
+        messages: JSON.stringify(messages),
+      },
     });
 
     return NextResponse.json({ success: true });
   } catch (err) {
     console.error("SaveChats API error:", err);
-    return NextResponse.json({ error: "Failed to save chats" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Failed to save chats" },
+      { status: 500 },
+    );
   }
 }

@@ -6,12 +6,16 @@ import useSWR from "swr";
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
 export default function Dashboard() {
-  const { data, error } = useSWR("/api/admin/metrics", fetcher, { refreshInterval: 15000 });
+  const { data, error } = useSWR("/api/admin/metrics", fetcher, {
+    refreshInterval: 15000,
+  });
 
-  if (error) return <div className="p-6 text-red-600">Failed to load metrics</div>;
+  if (error)
+    return <div className="p-6 text-red-600">Failed to load metrics</div>;
   if (!data) return <div className="p-6">Loading metrics…</div>;
 
-  const { userCount, totalChats, totalEvents, activeUsers, messagesPerDay } = data;
+  const { userCount, totalChats, totalEvents, activeUsers, messagesPerDay } =
+    data;
 
   return (
     <div className="p-6">
@@ -40,8 +44,12 @@ export default function Dashboard() {
           ) : (
             activeUsers.map((u: any, idx: number) => (
               <li key={idx} className="p-2 bg-white rounded shadow">
-                <div>User ID: <span className="font-mono">{u.userId}</span></div>
-                <div>Messages: <strong>{u.count}</strong></div>
+                <div>
+                  User ID: <span className="font-mono">{u.userId}</span>
+                </div>
+                <div>
+                  Messages: <strong>{u.count}</strong>
+                </div>
               </li>
             ))
           )}

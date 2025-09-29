@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { SessionUser } from "@/lib/types";
 
 /**
  * GET /api/admin/metrics
@@ -12,10 +13,13 @@ import { prisma } from "@/lib/db";
 export async function GET() {
   try {
     const session = await getServerSession(authOptions);
-    if (!session) return new Response("Unauthorized", { status: 401 });
+    if (!session) {
+      return new Response("Unauthorized", { status: 401 });
+    }
 
+    const sessionUser = session.user as SessionUser;
     // Simple RBAC: allow only admin users
-    if (!session?.user || (session.user as any).role !== "admin") {
+    if (!sessionUser || sessionUser.role !== "admin") {
       return NextResponse.json({ error: "forbidden" }, { status: 403 });
     }
 
@@ -46,11 +50,17 @@ export async function GET() {
       userCount,
       totalChats,
       totalEvents,
-      activeUsers: activeUsers.map((r) => ({ userId: r.userId, count: r._count.userId })),
+      activeUsers: activeUsers.map((r) => ({
+        userId: r.userId,
+        count: r._count.userId,
+      })),
       messagesPerDay: raw,
     });
   } catch (err) {
     console.error("admin/metrics error:", err);
-    return NextResponse.json({ error: "server_error", detail: String(err) }, { status: 500 });
+    return NextResponse.json(
+      { error: "server_error", detail: String(err) },
+      { status: 500 },
+    );
   }
 }
