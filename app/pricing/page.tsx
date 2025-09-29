@@ -4,13 +4,8 @@ import { useState } from 'react';
 import { useSession, signIn } from 'next-auth/react';
 import Script from 'next/script';
 
-declare global {
-  interface Window {
-    Razorpay: new (options: RazorpayOptions) => RazorpayInstance;
-  }
-}
-
-interface RazorpayOptions {
+// Define a type for RazorpayOptions to avoid self-referencing error
+type RazorpayOptions = {
   key: string;
   amount: number;
   currency: string;
@@ -19,16 +14,13 @@ interface RazorpayOptions {
   order_id: string;
   handler: (response: unknown) => void;
   prefill: {
+    name: string;
     email: string;
   };
   theme: {
     color: string;
   };
-}
-
-interface RazorpayInstance {
-  open: () => void;
-}
+};
 
 export default function PricingPage() {
   const { data: session } = useSession();
@@ -74,12 +66,16 @@ export default function PricingPage() {
           window.location.href = '/';
         },
         prefill: {
-          email: data.email,
+          name: session.user?.name ?? 'User',
+          email: data.email ?? session.user?.email ?? '',
         },
         theme: { color: '#2563eb' },
       };
 
-      const rzp = new window.Razorpay(options);
+      // Use the RazorpayOptions type in the cast to avoid self-reference
+      const rzp = new (
+        window as unknown as { Razorpay: new (options: RazorpayOptions) => { open: () => void } }
+      ).Razorpay(options);
       rzp.open();
     } catch (err) {
       console.error(err);

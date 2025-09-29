@@ -19,13 +19,22 @@ interface ChatMessage {
   content: string;
 }
 
+// Helper to get user id from session (supports custom SessionUser type)
+function getUserId(user: { id?: string; email?: string | null }) {
+  // Prefer id if present, else fallback to email
+  return user && typeof user === 'object' ? (user.id ?? user.email ?? 'guest') : 'guest';
+}
+
 export default function ChatBot() {
   const { data: session } = useSession();
 
   // Use a persistent user identifier for localStorage key (base64 encoded for privacy)
   function getUserKey() {
-    if (session?.user?.id) return encodeKey(session.user.id);
-    if (session?.user?.email) return encodeKey(session.user.email);
+    if (session?.user) {
+      // Try to get id, else fallback to email, else guest
+      const keySource = getUserId(session.user);
+      return encodeKey(keySource);
+    }
     return 'guest';
   }
   const userKey = getUserKey();

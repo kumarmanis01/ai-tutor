@@ -6,24 +6,24 @@
  * Verifies payment signature and saves a Subscription record for the logged-in user.
  */
 
-import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/authOptions";
-import { prisma } from "@/lib/db";
-import crypto from "crypto";
-import { SessionUser } from "@/lib/types";
+import { NextResponse } from 'next/server';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/authOptions';
+import { prisma } from '@/lib/db';
+import crypto from 'crypto';
+import { SessionUser } from '@/lib/types';
 
 export async function POST(req: Request) {
   try {
     const session = await getServerSession(authOptions);
     if (!session) {
-      return new Response("Unauthorized", { status: 401 });
+      return new Response('Unauthorized', { status: 401 });
     }
 
     const sessionUser = session.user as SessionUser;
 
     if (!sessionUser || !sessionUser.id) {
-      return NextResponse.json({ error: "unauthenticated" }, { status: 401 });
+      return NextResponse.json({ error: 'unauthenticated' }, { status: 401 });
     }
 
     const body = await req.json();
@@ -31,27 +31,24 @@ export async function POST(req: Request) {
       razorpay_order_id,
       razorpay_payment_id,
       razorpay_signature,
-      plan = "pro",
-      billing = "monthly",
+      plan = 'pro',
+      billing = 'monthly',
     } = body;
     if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature) {
-      return NextResponse.json({ error: "missing_fields" }, { status: 400 });
+      return NextResponse.json({ error: 'missing_fields' }, { status: 400 });
     }
 
     // Verify signature: HMAC_SHA256(order_id + "|" + payment_id, RAZORPAY_KEY_SECRET)
-    const hmac = crypto.createHmac("sha256", process.env.RAZORPAY_KEY_SECRET!);
+    const hmac = crypto.createHmac('sha256', process.env.RAZORPAY_KEY_SECRET!);
     hmac.update(`${razorpay_order_id}|${razorpay_payment_id}`);
-    const expected = hmac.digest("hex");
+    const expected = hmac.digest('hex');
 
     if (expected !== razorpay_signature) {
-      console.warn("Razorpay signature mismatch", {
+      console.warn('Razorpay signature mismatch', {
         expected,
         got: razorpay_signature,
       });
-      return NextResponse.json(
-        { error: "signature_mismatch" },
-        { status: 400 },
-      );
+      return NextResponse.json({ error: 'signature_mismatch' }, { status: 400 });
     }
 
     // Successful payment → create Subscription record
@@ -60,7 +57,7 @@ export async function POST(req: Request) {
     const startDate = now;
     const endDate = new Date(now);
 
-    if (billing === "monthly") {
+    if (billing === 'monthly') {
       endDate.setMonth(endDate.getMonth() + 1);
     } else {
       endDate.setFullYear(endDate.getFullYear() + 1);
@@ -70,8 +67,8 @@ export async function POST(req: Request) {
       data: {
         userId,
         plan,
-        billingCycle,
-        status: "active",
+        billingCycle: billing, // <-- fixed
+        active: true,
         startDate,
         endDate,
       },
@@ -79,7 +76,7 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ success: true, subscriptionId: sub.id });
   } catch (err) {
-    console.error("subscribe confirm error", err);
-    return NextResponse.json({ error: "server_error" }, { status: 500 });
+    console.error('subscribe confirm error', err);
+    return NextResponse.json({ error: 'server_error' }, { status: 500 });
   }
 }

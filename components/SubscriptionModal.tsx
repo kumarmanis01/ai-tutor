@@ -21,12 +21,6 @@ interface RazorpayOptions {
   };
 }
 
-declare global {
-  interface Window {
-    Razorpay: new (options: RazorpayOptions) => { open: () => void };
-  }
-}
-
 /**
  * Subscription modal
  * - Choose plan, billing cycle (monthly/yearly)

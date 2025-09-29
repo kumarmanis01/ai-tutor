@@ -1,14 +1,9 @@
-"use client";
+'use client';
 
-import { signIn } from "next-auth/react";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { useState } from "react";
+import { signIn } from 'next-auth/react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/UI/dialog';
+import Button from '@/components/UI/Button';
+import { useState } from 'react';
 
 export default function SignInDialog() {
   const [open, setOpen] = useState(false);
@@ -24,13 +19,13 @@ export default function SignInDialog() {
           <div className="flex flex-col gap-3">
             <Button
               className="bg-red-500 hover:bg-red-600 text-white"
-              onClick={() => signIn("google")}
+              onClick={() => signIn('google')}
             >
               Login with Google
             </Button>
             <Button
               className="bg-blue-500 hover:bg-blue-600 text-white"
-              onClick={() => signIn("email")}
+              onClick={() => signIn('email')}
             >
               Login with Email
             </Button>

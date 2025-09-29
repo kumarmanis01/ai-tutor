@@ -18,12 +18,6 @@ interface RazorpayOptions {
   prefill: { name: string; email: string };
 }
 
-declare global {
-  interface Window {
-    Razorpay: new (options: RazorpayOptions) => { open: () => void };
-  }
-}
-
 export default function BillingButton({ provider }: { provider: 'stripe' | 'razorpay' }) {
   async function subscribe() {
     if (provider === 'stripe') {
@@ -54,7 +48,10 @@ export default function BillingButton({ provider }: { provider: 'stripe' | 'razo
         prefill: { name: 'User', email: 'user@example.com' },
       };
 
-      const rzp = new window.Razorpay(options);
+      // Fix: Use 'as unknown as { Razorpay: ... }' to avoid TS error
+      const rzp = new (
+        window as unknown as { Razorpay: new (options: RazorpayOptions) => { open: () => void } }
+      ).Razorpay(options);
       rzp.open();
     }
   }

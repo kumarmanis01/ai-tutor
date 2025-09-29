@@ -1,8 +1,8 @@
-import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
-import prisma from "@/lib/db";
-import { SessionUser } from "@/lib/types";
+import { NextResponse } from 'next/server';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth';
+import prisma from '@/lib/db';
+import { SessionUser } from '@/lib/types';
 
 /**
  * Persists chat history for a logged-in user
@@ -11,13 +11,13 @@ import { SessionUser } from "@/lib/types";
 export async function POST(req: Request) {
   const session = await getServerSession(authOptions);
   if (!session) {
-    return new Response("Unauthorized", { status: 401 });
+    return new Response('Unauthorized', { status: 401 });
   }
 
   const sessionUser = session.user as SessionUser;
 
-  if (!sessionUser || !sessionUser.email) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!sessionUser || !sessionUser.email || !sessionUser.id) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
   try {
@@ -26,17 +26,14 @@ export async function POST(req: Request) {
 
     await prisma.chatHistory.create({
       data: {
-        userId: sessionUser.id,
+        userId: sessionUser.id, // Now guaranteed to be string
         messages: JSON.stringify(messages),
       },
     });
 
     return NextResponse.json({ success: true });
   } catch (err) {
-    console.error("SaveChats API error:", err);
-    return NextResponse.json(
-      { error: "Failed to save chats" },
-      { status: 500 },
-    );
+    console.error('SaveChats API error:', err);
+    return NextResponse.json({ error: 'Failed to save chats' }, { status: 500 });
   }
 }

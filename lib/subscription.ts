@@ -1,11 +1,11 @@
-import { prisma } from "./prisma";
+import { prisma } from './prisma';
 
 /**
  * Check if a user has an active premium subscription
  */
 export async function isPremiumUser(userId: string): Promise<boolean> {
   const sub = await prisma.subscription.findFirst({
-    where: { userId, status: "active" },
+    where: { userId, active: true },
   });
   return !!sub;
 }

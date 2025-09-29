@@ -9,15 +9,10 @@
 
   // Code style & linting
   "editor.codeActionsOnSave": {
-    "source.fixAll": "explicit",
-    "source.fixAll.eslint": "explicit"
+    "source.fixAll": true,
+    "source.fixAll.eslint": true
   },
-  "eslint.validate": [
-    "javascript",
-    "typescript",
-    "typescriptreact",
-    "javascriptreact"
-  ],
+  "eslint.validate": ["javascript", "typescript", "typescriptreact", "javascriptreact"],
 
   // Tabs & indentation
   "editor.tabSize": 2,

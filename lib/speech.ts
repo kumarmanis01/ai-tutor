@@ -6,12 +6,25 @@ export type TTSOptions = {
   volume?: number;
 };
 
+// Use 'unknown' for the type to avoid self-referencing error
 declare global {
   interface Window {
-    SpeechRecognition?: typeof SpeechRecognition;
-    webkitSpeechRecognition?: typeof SpeechRecognition;
+    SpeechRecognition?: unknown;
+    webkitSpeechRecognition?: unknown;
   }
 }
+
+// Define a minimal type for speech recognition instance
+type MinimalSpeechRecognition = {
+  lang: string;
+  interimResults: boolean;
+  maxAlternatives: number;
+  onresult: ((event: unknown) => void) | null;
+  onerror: ((event: unknown) => void) | null;
+  onend: (() => void) | null;
+  start: () => void;
+  stop: () => void;
+};
 
 /**
  * Speech helper — small adapter around browser APIs.
@@ -36,7 +49,19 @@ export const Speech = {
   },
 
   createRecognizer(lang = 'en-US') {
-    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    const SR =
+      (
+        window as Window & {
+          SpeechRecognition?: new () => MinimalSpeechRecognition;
+          webkitSpeechRecognition?: new () => MinimalSpeechRecognition;
+        }
+      ).SpeechRecognition ||
+      (
+        window as Window & {
+          SpeechRecognition?: new () => MinimalSpeechRecognition;
+          webkitSpeechRecognition?: new () => MinimalSpeechRecognition;
+        }
+      ).webkitSpeechRecognition;
     if (!SR) return null;
     const rec = new SR();
     rec.lang = lang;

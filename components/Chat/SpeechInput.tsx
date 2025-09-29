@@ -38,36 +38,58 @@ export default function SpeechInput({
   const recognitionRef = useRef<SpeechRecognitionType | null>(null);
 
   // Mic SVG icon
-  const MicIcon = () => (
-    <svg width="22" height="22" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <rect x="8" y="4" width="4" height="8" rx="2" fill="currentColor" />
-      <path d="M10 16V18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-      <path
-        d="M6 12C6 14.2091 7.79086 16 10 16C12.2091 16 14 14.2091 14 12"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-      />
-    </svg>
-  );
+  function MicIcon() {
+    return (
+      <svg
+        width="22"
+        height="22"
+        viewBox="0 0 20 20"
+        fill="none"
+        xmlns="http://www.w3.org/2000/svg"
+      >
+        <rect x="8" y="4" width="4" height="8" rx="2" fill="currentColor" />
+        <path d="M10 16V18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+        <path
+          d="M6 12C6 14.2091 7.79086 16 10 16C12.2091 16 14 14.2091 14 12"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+        />
+      </svg>
+    );
+  }
   // Stop SVG icon
-  const StopIcon = () => (
-    <svg width="22" height="22" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <rect x="5" y="5" width="10" height="10" rx="2" fill="currentColor" />
-    </svg>
-  );
+  function StopIcon() {
+    return (
+      <svg
+        width="22"
+        height="22"
+        viewBox="0 0 20 20"
+        fill="none"
+        xmlns="http://www.w3.org/2000/svg"
+      >
+        <rect x="5" y="5" width="10" height="10" rx="2" fill="currentColor" />
+      </svg>
+    );
+  }
 
   const handleMic = () => {
     if (onError) onError('');
+    // Use 'any' to avoid TS construct signature error and lint error
     const SpeechRecognitionClass =
       (
-        window as unknown as {
-          SpeechRecognition?: typeof window.SpeechRecognition;
-          webkitSpeechRecognition?: typeof window.SpeechRecognition;
+        window as Window & {
+          SpeechRecognition?: new () => SpeechRecognitionType;
+          webkitSpeechRecognition?: new () => SpeechRecognitionType;
         }
       ).SpeechRecognition ||
-      (window as unknown as { webkitSpeechRecognition?: typeof window.SpeechRecognition })
-        .webkitSpeechRecognition;
+      (
+        window as Window & {
+          SpeechRecognition?: new () => SpeechRecognitionType;
+          webkitSpeechRecognition?: new () => SpeechRecognitionType;
+        }
+      ).webkitSpeechRecognition;
+
     if (!SpeechRecognitionClass) {
       if (onError) {
         onError(
@@ -76,6 +98,7 @@ export default function SpeechInput({
       }
       return;
     }
+    // Use 'as any' to avoid TS2351 error and satisfy lint rules
     const recognition = new SpeechRecognitionClass() as SpeechRecognitionType;
     const langMap: Record<string, string> = {
       English: 'en-US',
