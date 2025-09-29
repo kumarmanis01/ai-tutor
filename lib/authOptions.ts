@@ -1,56 +1,40 @@
-// lib/authOptions.ts
-/**
- * Central NextAuth options used across app.
- * - Providers: Google, Facebook (Meta), Email
- * - Adapter: Prisma (using prisma client from lib/db)
- * - Session: JWT strategy; persist user id in token
- *
- * Make sure environment variables are set in .env.local.
- */
+import { PrismaAdapter } from '@next-auth/prisma-adapter';
+import GoogleProvider from 'next-auth/providers/google';
+import { prisma } from '@/lib/db';
+import type { NextAuthOptions, Session, User } from 'next-auth';
 
-import { PrismaAdapter } from "@next-auth/prisma-adapter";
-import GoogleProvider from "next-auth/providers/google";
-import type { NextAuthOptions } from "next-auth";
-import { prisma } from "@/lib/db";
-import NextAuth from "next-auth";
+interface SessionUser {
+  id?: string;
+  email?: string;
+  name?: string;
+  image?: string;
+}
 
-export const authOptions = {
+export const authOptions: NextAuthOptions = {
   adapter: PrismaAdapter(prisma),
   providers: [
-    // Google (recommended)
     GoogleProvider({
       clientId: process.env.GOOGLE_CLIENT_ID!,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
     }),
   ],
-
-  // Use JWT tokens for sessions (suitable for App Router)
   session: {
-    strategy: "jwt",
-    maxAge: 30 * 24 * 60 * 60, // 30 days
+    strategy: 'jwt',
+    maxAge: 30 * 24 * 60 * 60,
   },
-
-  // Keep a stable secret for NextAuth
   secret: process.env.NEXTAUTH_SECRET,
-
   callbacks: {
-    // Persist user.id on the token when initial sign-in occurs
-    async jwt({ token, user }) {
-      if (user) {
-        token.sub = (user as any).id;
+    async jwt({ token, user }: { token: Record<string, unknown>; user?: User }) {
+      if (user && user.id) {
+        token.sub = user.id;
       }
       return token;
     },
-
-    // Attach user.id to session.user on each session call
-    async session({ session, token }) {
+    async session({ session, token }: { session: Session; token: Record<string, unknown> }) {
       if (session.user && token.sub) {
-        (session.user as any).id = token.sub;
+        (session.user as SessionUser).id = token.sub as string;
       }
       return session;
     },
   },
 };
-
-const handler = NextAuth(authOptions);
-export { handler as GET, handler as POST };

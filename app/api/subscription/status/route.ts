@@ -1,15 +1,14 @@
-// app/api/subscription/status/route.ts
-import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/authOptions";
-import { prisma } from "@/lib/db";
-import { SessionUser } from "@/lib/types";
+import { NextResponse } from 'next/server';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/authOptions';
+import { prisma } from '@/lib/db';
+import { SessionUser } from '@/lib/types';
 
-export async function GET(req: Request) {
+export async function GET() {
   try {
     const session = await getServerSession(authOptions);
     if (!session) {
-      return new Response("Unauthorized", { status: 401 });
+      return new Response('Unauthorized', { status: 401 });
     }
 
     const sessionUser = session.user as SessionUser;
@@ -32,7 +31,7 @@ export async function GET(req: Request) {
         active: true,
         endDate: { gte: new Date() },
       },
-      orderBy: { createdAt: "desc" },
+      orderBy: { createdAt: 'desc' },
     });
 
     // Count today's question (chat messages) from Chat model
@@ -46,7 +45,7 @@ export async function GET(req: Request) {
       },
     });
 
-    console.log("Subscription status:", {
+    console.log('Subscription status:', {
       userId,
       isPremium: !!sub,
       todaysCount,
@@ -58,7 +57,7 @@ export async function GET(req: Request) {
       todaysCount,
     });
   } catch (err) {
-    console.error("subscription status error", err);
-    return NextResponse.json({ error: "server_error" }, { status: 500 });
+    console.error('subscription status error', err);
+    return NextResponse.json({ error: 'server_error' }, { status: 500 });
   }
 }

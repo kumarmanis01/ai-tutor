@@ -1,68 +1,89 @@
-"use client";
+'use client';
 
-import { useState } from "react";
-import { useSession, signIn } from "next-auth/react";
-import Script from "next/script";
+import { useState } from 'react';
+import { useSession, signIn } from 'next-auth/react';
+import Script from 'next/script';
+
+declare global {
+  interface Window {
+    Razorpay: new (options: RazorpayOptions) => RazorpayInstance;
+  }
+}
+
+interface RazorpayOptions {
+  key: string;
+  amount: number;
+  currency: string;
+  name: string;
+  description: string;
+  order_id: string;
+  handler: (response: unknown) => void;
+  prefill: {
+    email: string;
+  };
+  theme: {
+    color: string;
+  };
+}
+
+interface RazorpayInstance {
+  open: () => void;
+}
 
 export default function PricingPage() {
-  const { data: session, status } = useSession();
-  const [billingCycle, setBillingCycle] = useState<"monthly" | "annual">(
-    "monthly",
-  );
+  const { data: session } = useSession();
+  const [billingCycle, setBillingCycle] = useState<'monthly' | 'annual'>('monthly');
   const [loading, setLoading] = useState(false);
 
   // Prices
-  const proPrice = billingCycle === "monthly" ? 299 : 2999;
+  const proPrice = billingCycle === 'monthly' ? 299 : 2999;
 
   // Razorpay checkout handler
   const handleSubscribe = async (plan: string) => {
     if (!session) {
-      signIn(undefined, { callbackUrl: "/pricing" });
+      signIn(undefined, { callbackUrl: '/pricing' });
       return;
     }
     try {
       setLoading(true);
 
-      console.log("inside PricingPage subscribe:");
-
-      const res = await fetch("/api/billing/checkout", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+      const res = await fetch('/api/billing/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ plan, billingCycle }),
       });
 
       const data = await res.json();
-      console.log("Checkout response order id:", data.orderId);
-      if (!data.orderId) throw new Error("Failed to create order");
+      if (!data.orderId) throw new Error('Failed to create order');
 
-      const options = {
-        key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
+      const options: RazorpayOptions = {
+        key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID!,
         amount: data.amount,
-        currency: "INR",
-        name: "AI Tutor",
+        currency: 'INR',
+        name: 'AI Tutor',
         description: `${plan} Subscription (${billingCycle})`,
         order_id: data.orderId,
-        handler: async function (response: any) {
+        handler: async function (response: unknown) {
           // verify payment on server
-          await fetch("/api/billing/verify", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
+          await fetch('/api/billing/verify', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(response),
           });
-          alert("✅ Payment successful!");
-          window.location.href = "/";
+          alert('✅ Payment successful!');
+          window.location.href = '/';
         },
         prefill: {
           email: data.email,
         },
-        theme: { color: "#2563eb" },
+        theme: { color: '#2563eb' },
       };
 
-      const rzp = new (window as any).Razorpay(options);
+      const rzp = new window.Razorpay(options);
       rzp.open();
     } catch (err) {
       console.error(err);
-      alert("❌ Subscription failed");
+      alert('❌ Subscription failed');
     } finally {
       setLoading(false);
     }
@@ -78,10 +99,8 @@ export default function PricingPage() {
       {/* Toggle */}
       <div className="flex justify-center items-center mb-10 gap-4">
         <span
-          className={`cursor-pointer ${
-            billingCycle === "monthly" ? "font-bold" : "text-gray-500"
-          }`}
-          onClick={() => setBillingCycle("monthly")}
+          className={`cursor-pointer ${billingCycle === 'monthly' ? 'font-bold' : 'text-gray-500'}`}
+          onClick={() => setBillingCycle('monthly')}
         >
           Monthly
         </span>
@@ -89,20 +108,16 @@ export default function PricingPage() {
           <input
             type="checkbox"
             className="sr-only peer"
-            checked={billingCycle === "annual"}
-            onChange={() =>
-              setBillingCycle(billingCycle === "monthly" ? "annual" : "monthly")
-            }
+            checked={billingCycle === 'annual'}
+            onChange={() => setBillingCycle(billingCycle === 'monthly' ? 'annual' : 'monthly')}
           />
           <div className="relative w-11 h-6 bg-gray-200 rounded-full peer peer-checked:bg-blue-600">
             <div className="absolute top-0.5 left-[2px] w-5 h-5 bg-white rounded-full transition-transform peer-checked:translate-x-5"></div>
           </div>
         </label>
         <span
-          className={`cursor-pointer ${
-            billingCycle === "annual" ? "font-bold" : "text-gray-500"
-          }`}
-          onClick={() => setBillingCycle("annual")}
+          className={`cursor-pointer ${billingCycle === 'annual' ? 'font-bold' : 'text-gray-500'}`}
+          onClick={() => setBillingCycle('annual')}
         >
           Annual
         </span>
@@ -127,16 +142,14 @@ export default function PricingPage() {
         <div className="border rounded-xl shadow p-6 text-center bg-blue-50">
           <h2 className="text-xl font-semibold">Pro</h2>
           <p className="mt-4 text-4xl font-bold">₹{proPrice}</p>
-          <p className="text-gray-500">
-            {billingCycle === "monthly" ? "per month" : "per year"}
-          </p>
+          <p className="text-gray-500">{billingCycle === 'monthly' ? 'per month' : 'per year'}</p>
           <p className="mt-2">Unlimited questions</p>
           <button
-            onClick={() => handleSubscribe("pro")}
+            onClick={() => handleSubscribe('pro')}
             disabled={loading}
             className="mt-6 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
           >
-            {loading ? "Processing..." : "Subscribe"}
+            {loading ? 'Processing...' : 'Subscribe'}
           </button>
         </div>
 

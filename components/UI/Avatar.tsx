@@ -1,6 +1,7 @@
-"use client";
+'use client';
 
-import React, { useState } from "react";
+import React, { useState } from 'react';
+import Image from 'next/image';
 
 interface AvatarProps {
   src?: string;
@@ -12,22 +13,17 @@ interface AvatarProps {
 
 export default function Avatar({
   src,
-  alt = "User avatar",
+  alt = 'User avatar',
   size = 32,
   fallback,
-  className = "",
+  className = '',
 }: AvatarProps) {
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState(false);
 
   // Spinner SVG
   const spinner = (
-    <svg
-      className="animate-spin"
-      width={size / 2}
-      height={size / 2}
-      viewBox="0 0 24 24"
-    >
+    <svg className="animate-spin" width={size / 2} height={size / 2} viewBox="0 0 24 24">
       <circle
         className="opacity-25"
         cx="12"
@@ -37,41 +33,35 @@ export default function Avatar({
         strokeWidth="4"
         fill="none"
       />
-      <path
-        className="opacity-75"
-        fill="gray"
-        d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
-      />
+      <path className="opacity-75" fill="gray" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
     </svg>
   );
 
   return (
     <div
-      className={`bg-gray-200 rounded-full flex items-center justify-center border relative overflow-hidden ${!loaded && src ? "border-blue-500" : "border"} ${className}`}
+      className={`bg-gray-200 rounded-full flex items-center justify-center border relative overflow-hidden ${!loaded && src ? 'border-blue-500' : 'border'} ${className}`}
       style={{ width: size, height: size }}
     >
-      {/* Image is always rendered, but hidden with opacity if not loaded */}
+      {/* Optimized Image */}
       {src && !error && (
-        <img
+        <Image
           src={src}
           alt={alt}
           className="rounded-full object-cover w-full h-full absolute inset-0"
+          width={size}
+          height={size}
           style={{
-            width: size,
-            height: size,
             opacity: loaded ? 1 : 0,
-            transition: "opacity 0.2s",
+            transition: 'opacity 0.2s',
           }}
-          loading="lazy"
           onLoad={() => setLoaded(true)}
           onError={() => setError(true)}
+          loading="lazy"
         />
       )}
       {/* Spinner while loading */}
       {src && !loaded && !error && (
-        <span className="absolute inset-0 flex items-center justify-center">
-          {spinner}
-        </span>
+        <span className="absolute inset-0 flex items-center justify-center">{spinner}</span>
       )}
       {/* Fallback if no src or error */}
       {(!src || error) && (

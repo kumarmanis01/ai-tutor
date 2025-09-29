@@ -1,6 +1,6 @@
 // app/api/export/route.ts
-import { NextResponse } from "next/server";
-import { PDFDocument, StandardFonts } from "pdf-lib";
+import { NextResponse } from 'next/server';
+import { PDFDocument, StandardFonts } from 'pdf-lib';
 
 /**
  * POST /api/export
@@ -10,22 +10,20 @@ import { PDFDocument, StandardFonts } from "pdf-lib";
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const { title = "chat_export", messages, format = "pdf" } = body ?? {};
+    const { title = 'chat_export', messages, format = 'pdf' } = body ?? {};
 
     if (!Array.isArray(messages) || messages.length === 0) {
-      return NextResponse.json({ error: "no_messages" }, { status: 400 });
+      return NextResponse.json({ error: 'no_messages' }, { status: 400 });
     }
 
-    if (format === "text") {
+    if (format === 'text') {
       // Concatenate simple text export
-      const textLines = messages.map(
-        (m: any) => `${m.role === "user" ? "You" : "AI"}: ${m.content}`,
-      );
-      const txt = textLines.join("\n\n");
+      const textLines = messages.map((m) => `${m.role === 'user' ? 'You' : 'Tutor'}: ${m.content}`);
+      const txt = textLines.join('\n\n');
       return new NextResponse(txt, {
         headers: {
-          "Content-Type": "text/plain; charset=utf-8",
-          "Content-Disposition": `attachment; filename="${title}.txt"`,
+          'Content-Type': 'text/plain; charset=utf-8',
+          'Content-Disposition': `attachment; filename="${title}.txt"`,
         },
       });
     }
@@ -44,8 +42,8 @@ export async function POST(req: Request) {
 
     const maxChars = 90; // rough wrap
     for (const m of messages) {
-      const label = m.role === "user" ? "You: " : "AI: ";
-      const text = label + (m.content ?? "");
+      const label = m.role === 'user' ? 'You: ' : 'AI: ';
+      const text = label + (m.content ?? '');
       // naive wrap
       let remainder = text;
       while (remainder.length > 0) {
@@ -67,15 +65,12 @@ export async function POST(req: Request) {
     const pdfBytes = await pdfDoc.save();
     return new NextResponse(Buffer.from(pdfBytes), {
       headers: {
-        "Content-Type": "application/pdf",
-        "Content-Disposition": `attachment; filename="${title}.pdf"`,
+        'Content-Type': 'application/pdf',
+        'Content-Disposition': `attachment; filename="${title}.pdf"`,
       },
     });
   } catch (err) {
-    console.error("export error:", err);
-    return NextResponse.json(
-      { error: "server_error", detail: String(err) },
-      { status: 500 },
-    );
+    console.error('export error:', err);
+    return NextResponse.json({ error: 'server_error', detail: String(err) }, { status: 500 });
   }
 }

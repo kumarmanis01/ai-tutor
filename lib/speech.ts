@@ -6,17 +6,23 @@ export type TTSOptions = {
   volume?: number;
 };
 
+declare global {
+  interface Window {
+    SpeechRecognition?: typeof SpeechRecognition;
+    webkitSpeechRecognition?: typeof SpeechRecognition;
+  }
+}
+
 /**
  * Speech helper — small adapter around browser APIs.
  * Swap this file with an external cloud provider wrapper without touching UI.
  */
 export const Speech = {
   speak(text: string, opts?: TTSOptions) {
-    if (typeof window === "undefined" || !("speechSynthesis" in window))
-      return false;
+    if (typeof window === 'undefined' || !('speechSynthesis' in window)) return false;
     window.speechSynthesis.cancel();
     const u = new SpeechSynthesisUtterance(text);
-    u.lang = opts?.lang ?? "en-US";
+    u.lang = opts?.lang ?? 'en-US';
     if (opts?.rate !== undefined) u.rate = opts.rate;
     if (opts?.pitch !== undefined) u.pitch = opts.pitch;
     if (opts?.volume !== undefined) u.volume = opts.volume;
@@ -25,14 +31,12 @@ export const Speech = {
   },
 
   stop() {
-    if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
+    if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
     window.speechSynthesis.cancel();
   },
 
-  createRecognizer(lang = "en-US") {
-    const SR =
-      (window as any).SpeechRecognition ||
-      (window as any).webkitSpeechRecognition;
+  createRecognizer(lang = 'en-US') {
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SR) return null;
     const rec = new SR();
     rec.lang = lang;

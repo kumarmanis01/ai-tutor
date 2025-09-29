@@ -1,4 +1,3 @@
-// lib/realtime.ts
 /**
  * Small realtime broadcaster:
  * - Provides in-memory pub/sub for SSE streams (development, single-instance)
@@ -9,7 +8,13 @@
  *  publish(roomId, payload)
  */
 
-type Subscriber = (payload: any) => void;
+// Use a generic type for payloads
+export type RealtimePayload = {
+  type: string;
+  payload: unknown; // Replace 'unknown' with a more specific type if you know it
+};
+
+type Subscriber = (payload: RealtimePayload) => void;
 
 const subscribers = new Map<string, Set<Subscriber>>();
 
@@ -28,14 +33,14 @@ export function subscribe(roomId: string, onMessage: Subscriber) {
 }
 
 // publish to a room
-export function publish(roomId: string, payload: any) {
+export function publish(roomId: string, payload: RealtimePayload) {
   const s = subscribers.get(roomId);
   if (!s) return;
   for (const cb of Array.from(s)) {
     try {
       cb(payload);
     } catch (e) {
-      console.error("subscriber error", e);
+      console.error('subscriber error', e);
     }
   }
 }

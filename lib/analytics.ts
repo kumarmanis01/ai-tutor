@@ -5,15 +5,15 @@
  * - records events server-side for admin metrics
  */
 
-export async function logEvent(type: string, metadata?: Record<string, any>) {
+export async function logEvent(type: string, metadata?: Record<string, unknown>) {
   try {
-    await fetch("/api/events/log", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
+    await fetch('/api/events/log', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ type, metadata }),
     });
   } catch (err) {
     // Don't break the app — best effort only
-    console.warn("logEvent failed", err);
+    console.warn('logEvent failed', err);
   }
 }

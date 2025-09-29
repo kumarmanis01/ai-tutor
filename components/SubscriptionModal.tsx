@@ -1,9 +1,31 @@
-// components/SubscriptionModal.tsx
-"use client";
+'use client';
 
-import { useState } from "react";
-import Button from "@/components/UI/Loader" /* replace with your button if different */;
-import { signIn, useSession } from "next-auth/react";
+import { useState } from 'react';
+import { signIn, useSession } from 'next-auth/react';
+
+interface RazorpayResponse {
+  razorpay_order_id: string;
+  razorpay_payment_id: string;
+  razorpay_signature: string;
+}
+
+interface RazorpayOptions {
+  key: string;
+  amount: number;
+  currency: string;
+  order_id: string;
+  handler: (response: RazorpayResponse) => void;
+  prefill: {
+    name?: string | null;
+    email?: string | null;
+  };
+}
+
+declare global {
+  interface Window {
+    Razorpay: new (options: RazorpayOptions) => { open: () => void };
+  }
+}
 
 /**
  * Subscription modal
@@ -13,7 +35,6 @@ import { signIn, useSession } from "next-auth/react";
  *
  * NOTE: This component assumes `window.Razorpay` is available (include Razorpay script in _document or page).
  */
-
 export default function SubscriptionModal({
   open,
   onClose,
@@ -22,37 +43,37 @@ export default function SubscriptionModal({
   onClose: () => void;
 }) {
   const { data: session } = useSession();
-  const [plan, setPlan] = useState<"pro" | "enterprise">("pro");
-  const [billing, setBilling] = useState<"monthly" | "yearly">("monthly");
+  const [plan, setPlan] = useState<'pro' | 'enterprise'>('pro');
+  const [billing, setBilling] = useState<'monthly' | 'yearly'>('monthly');
   const [loading, setLoading] = useState(false);
 
   async function handleSubscribe() {
     if (!session) {
       // encourage login first
-      signIn(undefined, { callbackUrl: "/" });
+      signIn(undefined, { callbackUrl: '/' });
       return;
     }
 
     setLoading(true);
     try {
-      const res = await fetch("/api/subscribe", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+      const res = await fetch('/api/subscribe', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ plan, billing }),
       });
       const data = await res.json();
       if (data.orderId) {
         // Open Razorpay checkout
-        const options = {
+        const options: RazorpayOptions = {
           key: data.key,
           amount: data.amount,
           currency: data.currency,
           order_id: data.orderId,
-          handler: async function (response: any) {
+          handler: async function (response: RazorpayResponse) {
             // On success, confirm server-side
-            await fetch("/api/subscribe/confirm", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
+            await fetch('/api/subscribe/confirm', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
                 razorpay_order_id: response.razorpay_order_id,
                 razorpay_payment_id: response.razorpay_payment_id,
@@ -62,7 +83,7 @@ export default function SubscriptionModal({
               }),
             });
             onClose();
-            window.location.href = "/profile";
+            window.location.href = '/profile';
           },
           prefill: {
             name: session.user?.name,
@@ -70,15 +91,15 @@ export default function SubscriptionModal({
           },
         };
 
-        // @ts-ignore
+        // @ts-expect-error Razorpay is injected by script
         const rzp = new window.Razorpay(options);
         rzp.open();
       } else {
-        alert("Unable to create order.");
+        alert('Unable to create order.');
       }
     } catch (err) {
-      console.error("subscribe client error", err);
-      alert("Subscription failed.");
+      console.error('subscribe client error', err);
+      alert('Subscription failed.');
     } finally {
       setLoading(false);
     }
@@ -95,7 +116,7 @@ export default function SubscriptionModal({
           <label className="block text-sm text-gray-600">Plan</label>
           <select
             value={plan}
-            onChange={(e) => setPlan(e.target.value as any)}
+            onChange={(e) => setPlan(e.target.value as 'pro' | 'enterprise')}
             className="w-full border rounded p-2"
           >
             <option value="pro">Pro</option>
@@ -107,14 +128,18 @@ export default function SubscriptionModal({
           <label className="block text-sm text-gray-600">Billing</label>
           <div className="flex gap-2">
             <button
-              onClick={() => setBilling("monthly")}
-              className={`px-3 py-1 rounded ${billing === "monthly" ? "bg-blue-600 text-white" : "border"}`}
+              onClick={() => setBilling('monthly')}
+              className={`px-3 py-1 rounded ${
+                billing === 'monthly' ? 'bg-blue-600 text-white' : 'border'
+              }`}
             >
               Monthly
             </button>
             <button
-              onClick={() => setBilling("yearly")}
-              className={`px-3 py-1 rounded ${billing === "yearly" ? "bg-blue-600 text-white" : "border"}`}
+              onClick={() => setBilling('yearly')}
+              className={`px-3 py-1 rounded ${
+                billing === 'yearly' ? 'bg-blue-600 text-white' : 'border'
+              }`}
             >
               Yearly
             </button>
@@ -130,7 +155,7 @@ export default function SubscriptionModal({
             disabled={loading}
             className="px-3 py-1 bg-indigo-600 text-white rounded"
           >
-            {loading ? "Processing..." : "Subscribe"}
+            {loading ? 'Processing...' : 'Subscribe'}
           </button>
         </div>
       </div>

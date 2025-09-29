@@ -1,9 +1,8 @@
-import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/authOptions";
-import prisma from "@/lib/prisma";
-import { SessionUser } from "@/lib/types";
-import { use } from "react";
+import { NextResponse } from 'next/server';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/authOptions';
+import prisma from '@/lib/prisma';
+import { SessionUser } from '@/lib/types';
 
 /**
  * Returns the user's current subscription status.
@@ -11,12 +10,12 @@ import { use } from "react";
 export async function GET() {
   const session = await getServerSession(authOptions);
   if (!session) {
-    return new Response("Unauthorized", { status: 401 });
+    return new Response('Unauthorized', { status: 401 });
   }
 
   const sessionUser = session.user as SessionUser;
   if (!sessionUser || !sessionUser.email) {
-    return NextResponse.json({ plan: "free", status: "inactive" });
+    return NextResponse.json({ plan: 'free', status: 'inactive' });
   }
 
   // Get userId from session or fetch by email
@@ -28,22 +27,22 @@ export async function GET() {
     userId = savedUser?.id;
   }
   if (!userId) {
-    return NextResponse.json({ plan: "free", status: "inactive" });
+    return NextResponse.json({ plan: 'free', status: 'inactive' });
   }
 
   const subscription = await prisma.subscription.findFirst({
-    where: { userId, status: "active" },
-    orderBy: { createdAt: "desc" },
+    where: { userId, active: true },
+    orderBy: { createdAt: 'desc' },
   });
 
   if (!subscription) {
-    return NextResponse.json({ plan: "free", status: "inactive" });
+    return NextResponse.json({ plan: 'free', status: 'inactive' });
   }
 
   return NextResponse.json({
     plan: subscription.plan,
     billingCycle: subscription.billingCycle,
-    status: subscription.status,
+    status: subscription.active ? 'active' : 'inactive',
     validTill: subscription.endDate,
   });
 }

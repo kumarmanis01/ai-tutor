@@ -1,12 +1,12 @@
 // components/Navbar.tsx
-"use client";
+'use client';
 
-import Link from "next/link";
-import { useSession, signIn, signOut } from "next-auth/react";
-import { useState } from "react";
-import LoginModal from "./LoginModal";
-import Button from "@/components/UI/Button";
-import Avatar from "@/components/UI/Avatar";
+import Link from 'next/link';
+import { useSession, signOut } from 'next-auth/react';
+import { useState } from 'react';
+import LoginModal from './LoginModal';
+import Button from '@/components/UI/Button';
+import Avatar from '@/components/UI/Avatar';
 
 /**
  * Sticky top navigation bar. Always visible.
@@ -34,7 +34,7 @@ export default function Navbar() {
 
         {/* Auth controls */}
         <div>
-          {status === "loading" ? (
+          {status === 'loading' ? (
             <span className="text-sm text-gray-500">Loading...</span>
           ) : session ? (
             <div className="flex items-center gap-3">
@@ -54,7 +54,7 @@ export default function Navbar() {
               </Link>
               <Button
                 variant="outline"
-                onClick={() => signOut({ callbackUrl: "/" })}
+                onClick={() => signOut({ callbackUrl: '/' })}
                 aria-label="Logout"
               >
                 Logout
@@ -62,10 +62,7 @@ export default function Navbar() {
             </div>
           ) : (
             <>
-              <Button
-                onClick={() => setShowLoginModal(true)}
-                aria-label="Login"
-              >
+              <Button onClick={() => setShowLoginModal(true)} aria-label="Login">
                 Login
               </Button>
               <LoginModal

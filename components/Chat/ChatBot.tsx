@@ -1,11 +1,11 @@
-"use client";
+'use client';
 
-import { useEffect, useState } from "react";
-import { useSession } from "next-auth/react";
-import MessageBubble from "./MessageBubble";
-import Controls from "./Controls";
-import SubscriptionModal from "../SubscriptionModal";
-import LoginModal from "../LoginModal";
+import { useEffect, useState } from 'react';
+import { useSession } from 'next-auth/react';
+import MessageBubble from './MessageBubble';
+import Controls from './Controls';
+import SubscriptionModal from '../SubscriptionModal';
+import LoginModal from '../LoginModal';
 
 // Helper to base64 encode keys for privacy
 function encodeKey(str: string) {
@@ -15,7 +15,7 @@ function encodeKey(str: string) {
 // ChatMessage type for chat history
 interface ChatMessage {
   id: string;
-  role: "user" | "assistant";
+  role: 'user' | 'assistant';
   content: string;
 }
 
@@ -26,7 +26,7 @@ export default function ChatBot() {
   function getUserKey() {
     if (session?.user?.id) return encodeKey(session.user.id);
     if (session?.user?.email) return encodeKey(session.user.email);
-    return "guest";
+    return 'guest';
   }
   const userKey = getUserKey();
   const storageKey = `ai-tutor:chat:${userKey}`;
@@ -40,17 +40,16 @@ export default function ChatBot() {
     todaysCount: 0,
   });
   const [loading, setLoading] = useState(false);
-  const [showSubscriptionSubModal, setShowSubscriptionSubModal] =
-    useState(false);
+  const [showSubscriptionSubModal, setShowSubscriptionSubModal] = useState(false);
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [volume, setVolume] = useState(1); // 1 = max volume
 
   // Language state for written & spoken language
-  const [lang, setLang] = useState("English");
+  const [lang, setLang] = useState('English');
 
   // Fetch subscription status from backend
   async function fetchStatus() {
-    const res = await fetch("/api/subscription/status");
+    const res = await fetch('/api/subscription/status');
     const data = await res.json();
     setSubscription({
       isPremium: data.isPremium,
@@ -72,7 +71,6 @@ export default function ChatBot() {
         setMessages(JSON.parse(raw));
       }
     } catch {}
-    // eslint-disable-next-line
   }, [storageKey, session]);
 
   useEffect(() => {
@@ -95,33 +93,33 @@ export default function ChatBot() {
 
     setLoading(true);
     try {
-      const res = await fetch("/api/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+      const res = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         // Pass selected language to backend for correct written language
         body: JSON.stringify({ message, lang }),
       });
       const data = await res.json();
       if (data.error) {
-        if (data.error === "free_limit_reached") {
+        if (data.error === 'free_limit_reached') {
           setShowSubscriptionSubModal(true);
-        } else if (data.error === "profanity_detected") {
+        } else if (data.error === 'profanity_detected') {
           alert(
             data.message ||
               "I understand that you're frustrated, and I want to help. However, I must ask that we keep the conversation respectful and avoid using inappropriate language for me to assist you effectively",
           );
         } else {
-          alert(data.message || "Error asking question.");
+          alert(data.message || 'Error asking question.');
         }
       } else {
         const userMsg: ChatMessage = {
           id: `${Date.now()}-user`,
-          role: "user",
+          role: 'user',
           content: message,
         };
         const aiMsg: ChatMessage = {
           id: `${Date.now()}-ai`,
-          role: "assistant",
+          role: 'assistant',
           content: data.reply,
         };
         setMessages((prev) => [...prev, userMsg, aiMsg]);
