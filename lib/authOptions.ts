@@ -22,6 +22,9 @@ export const authOptions: NextAuthOptions = {
     strategy: 'jwt',
     maxAge: 30 * 24 * 60 * 60,
   },
+  pages: {
+    signIn: '/', // Redirect to root for sign-in
+  },
   secret: process.env.NEXTAUTH_SECRET,
   callbacks: {
     async jwt({ token, user }: { token: Record<string, unknown>; user?: User }) {

@@ -7,7 +7,8 @@ export default async function AdminPage() {
   const session = await getServerSession(authOptions);
   if (!session) {
     // Redirect to sign-in page if not authenticated
-    redirect('/api/auth/signin');
+    // redirect('/api/auth/signin');
+    redirect('/'); //redirect to root for sign-in
   }
 
   const sessionUser = session.user as SessionUser;
