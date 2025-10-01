@@ -3,11 +3,12 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "dev": "next dev --turbopack",
-    "build": "next build --turbopack",
+    "dev": "npm run lint && npm run type-check && next dev --turbopack",
+    "build": "npm run lint && npm run type-check && next build --turbopack",
     "start": "next start",
     "export": "next export",
-    "lint": "eslint",
+    "lint": "eslint . --ext .js,.jsx,.ts,.tsx",
+    "type-check": "tsc --noEmit",
     "format": "prettier --write ."
   },
   "dependencies": {
