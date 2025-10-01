@@ -9,20 +9,13 @@ export default function Providers({ children }: { children: React.ReactNode }) {
   return (
     <SessionProvider>
       <Script src="https://checkout.razorpay.com/v1/checkout.js" strategy="afterInteractive" />
-
+      <Navbar /> {/* Fixed, always on top */}
       <div className="flex flex-col min-h-screen">
-        {/* Sticky navbar */}
-        <div className="sticky top-0 z-20">
-          <Navbar />
-        </div>
+        {/* Main content area, with top padding to avoid being hidden by Navbar */}
+        <main className="flex-1 overflow-y-auto pt-16">{children}</main>
+        {/* Adjust pt-16 to match your Navbar height (16 * 4px = 64px) */}
 
-        {/* Main content area, scrollable if needed */}
-        <main className="flex-1 overflow-y-auto">{children}</main>
-
-        {/* Sticky footer */}
-        <div className="sticky bottom-0 z-20">
-          <Footer />
-        </div>
+        <Footer />
       </div>
     </SessionProvider>
   );

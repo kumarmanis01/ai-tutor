@@ -34,7 +34,7 @@ model User {
   emailVerified DateTime?
   image         String?
   parentEmail   String?
-  language       String?   // <--- Add this line
+  language      String? // <--- Add this line
   // Relations
   accounts      Account[]
   sessions      Session[]
@@ -46,8 +46,11 @@ model User {
   updatedAt     DateTime       @updatedAt
   Room          Room[]
   chatHistories ChatHistory[] // back-relation for ChatHistory
-  status UserStatus @default(active)
-  role UserRole @default(user)
+  status        UserStatus     @default(active)
+  role          UserRole       @default(user)
+  payments      Payment[]
+  auditLogs     AuditLog[]
+  apiUsages     ApiUsage[]
 }
 
 /**
@@ -92,7 +95,7 @@ model VerificationToken {
 model ChatHistory {
   id        String   @id @default(uuid())
   userId    String
-  messages  String   // JSON stringified array
+  messages  String // JSON stringified array
   createdAt DateTime @default(now())
   user      User     @relation(fields: [userId], references: [id])
 }
@@ -129,11 +132,11 @@ model Subscription {
   id           String   @id @default(cuid())
   userId       String
   user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  plan         String   // "free" | "pro" | "enterprise"
-  billingCycle String   // "monthly" | "annual"
+  plan         String // "free" | "pro" | "enterprise"
+  billingCycle String // "monthly" | "annual"
   startDate    DateTime
   endDate      DateTime
-  active       Boolean   @default(false)
+  active       Boolean  @default(false)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
@@ -183,8 +186,8 @@ model Payment {
   userId    String
   user      User     @relation(fields: [userId], references: [id])
   amount    Float
-  status    String   // e.g., "success", "failed"
-  provider  String?  // e.g., "razorpay", "stripe"
+  status    String // e.g., "success", "failed"
+  provider  String? // e.g., "razorpay", "stripe"
   createdAt DateTime @default(now())
 }
 
@@ -192,16 +195,16 @@ model AuditLog {
   id        String   @id @default(cuid())
   userId    String?
   user      User?    @relation(fields: [userId], references: [id])
-  action    String   // e.g., "ban_user", "update_subscription"
-  details   Json?    // optional: extra info
+  action    String // e.g., "ban_user", "update_subscription"
+  details   Json? // optional: extra info
   createdAt DateTime @default(now())
 }
 
 model ApiUsage {
-  id        String   @id @default(cuid())
-  userId    String?
-  user      User?    @relation(fields: [userId], references: [id])
-  endpoint  String
-  count     Int      @default(1)
-  lastUsed  DateTime @default(now())
+  id       String   @id @default(cuid())
+  userId   String?
+  user     User?    @relation(fields: [userId], references: [id])
+  endpoint String
+  count    Int      @default(1)
+  lastUsed DateTime @default(now())
 }
