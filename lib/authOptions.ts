@@ -11,6 +11,7 @@ interface SessionUser {
 }
 
 export const authOptions: NextAuthOptions = {
+  debug: true,
   adapter: PrismaAdapter(prisma),
   providers: [
     GoogleProvider({
