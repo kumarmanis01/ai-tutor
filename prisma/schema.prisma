@@ -8,6 +8,22 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// --- Enumd ---
+enum UserStatus {
+  active
+  banned
+  suspended
+}
+
+enum UserRole {
+  user
+  admin
+  moderator
+  support
+}
+
+// --- Models ---
+
 /**
  * Core user model (NextAuth compatible)
  */
@@ -30,6 +46,8 @@ model User {
   updatedAt     DateTime       @updatedAt
   Room          Room[]
   chatHistories ChatHistory[] // back-relation for ChatHistory
+  status UserStatus @default(active)
+  role UserRole @default(user)
 }
 
 /**
@@ -116,7 +134,6 @@ model Subscription {
   startDate    DateTime
   endDate      DateTime
   active       Boolean   @default(false)
-
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
@@ -159,4 +176,32 @@ model Message {
   content   String
   createdAt DateTime @default(now())
   aiMeta    Json? // optional AI metadata
+}
+
+model Payment {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  amount    Float
+  status    String   // e.g., "success", "failed"
+  provider  String?  // e.g., "razorpay", "stripe"
+  createdAt DateTime @default(now())
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id])
+  action    String   // e.g., "ban_user", "update_subscription"
+  details   Json?    // optional: extra info
+  createdAt DateTime @default(now())
+}
+
+model ApiUsage {
+  id        String   @id @default(cuid())
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id])
+  endpoint  String
+  count     Int      @default(1)
+  lastUsed  DateTime @default(now())
 }
