@@ -1,16 +1,9 @@
-// lib/auth.ts
 import { PrismaAdapter } from '@next-auth/prisma-adapter';
 import GoogleProvider from 'next-auth/providers/google';
 import EmailProvider from 'next-auth/providers/email';
-import type { NextAuthOptions, Session } from 'next-auth';
+import type { NextAuthOptions, Session, User } from 'next-auth';
 import { prisma } from '@/lib/prisma';
-
-interface SessionUser {
-  id?: string;
-  email?: string;
-  name?: string;
-  image?: string;
-}
+import type { SessionUser } from '@/lib/types';
 
 export const authOptions: NextAuthOptions = {
   adapter: PrismaAdapter(prisma),
@@ -26,9 +19,17 @@ export const authOptions: NextAuthOptions = {
   ],
   session: { strategy: 'jwt' },
   callbacks: {
-    async session({ session, token }: { session: Session; token: { sub?: string } }) {
-      if (token.sub && session.user) {
+    async jwt({ token, user }: { token: any; user?: User }) {
+      if (user) {
+        token.role = user.role;
+        token.sub = user.id;
+      }
+      return token;
+    },
+    async session({ session, token }: { session: Session; token: any }) {
+      if (session.user) {
         (session.user as SessionUser).id = token.sub;
+        (session.user as SessionUser).role = token.role;
       }
       return session;
     },
