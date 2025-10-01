@@ -1,13 +1,21 @@
 'use client';
 import { useEffect, useState } from 'react';
 
+interface AuditLog {
+  id: string;
+  user?: { email?: string };
+  action: string;
+  details?: object;
+  createdAt: string;
+}
+
 export default function AuditLogs() {
-  const [logs, setLogs] = useState([]);
+  const [logs, setLogs] = useState<AuditLog[]>([]);
 
   useEffect(() => {
     fetch('/api/admin/audit-logs')
       .then((res) => res.json())
-      .then(setLogs);
+      .then((data: AuditLog[]) => setLogs(data));
   }, []);
 
   return (
@@ -23,11 +31,11 @@ export default function AuditLogs() {
           </tr>
         </thead>
         <tbody>
-          {logs.map((log: any) => (
+          {logs.map((log) => (
             <tr key={log.id}>
               <td>{log.user?.email || 'System'}</td>
               <td>{log.action}</td>
-              <td>{JSON.stringify(log.details)}</td>
+              <td>{log.details ? JSON.stringify(log.details) : ''}</td>
               <td>{new Date(log.createdAt).toLocaleString()}</td>
             </tr>
           ))}

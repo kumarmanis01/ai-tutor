@@ -1,13 +1,21 @@
 'use client';
 import { useEffect, useState } from 'react';
 
-export default function ApiUsage() {
-  const [usage, setUsage] = useState([]);
+interface ApiUsage {
+  id: string;
+  user?: { email?: string };
+  endpoint: string;
+  count: number;
+  lastUsed: string;
+}
+
+export default function ApiUsagePage() {
+  const [usage, setUsage] = useState<ApiUsage[]>([]);
 
   useEffect(() => {
     fetch('/api/admin/api-usage')
       .then((res) => res.json())
-      .then(setUsage);
+      .then((data: ApiUsage[]) => setUsage(data));
   }, []);
 
   return (
@@ -23,7 +31,7 @@ export default function ApiUsage() {
           </tr>
         </thead>
         <tbody>
-          {usage.map((u: any) => (
+          {usage.map((u) => (
             <tr key={u.id}>
               <td>{u.user?.email || 'Anonymous'}</td>
               <td>{u.endpoint}</td>

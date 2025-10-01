@@ -1,28 +1,32 @@
 'use client';
 import { useEffect, useState } from 'react';
 
-export default function ApiUsageChart() {
-  const [data, setData] = useState([]);
+interface SignupChartRow {
+  period: string;
+  count: number;
+}
+
+export default function UserSignupsChart() {
+  const [data, setData] = useState<SignupChartRow[]>([]);
 
   useEffect(() => {
-    fetch('/api/admin/charts/api-usage')
+    fetch('/api/admin/charts/users')
       .then((res) => res.json())
-      .then(setData);
+      .then((data: SignupChartRow[]) => setData(data));
   }, []);
 
   return (
     <div className="max-w-4xl mx-auto p-8 pt-16">
-      <h1 className="text-2xl font-bold mb-4">API Usage Chart</h1>
-      {/* Replace this with a chart library for visualization */}
+      <h1 className="text-2xl font-bold mb-4">User Signups Chart</h1>
       <table className="w-full border">
         <thead>
           <tr>
             <th>Period</th>
-            <th>API Calls</th>
+            <th>Signups</th>
           </tr>
         </thead>
         <tbody>
-          {data.map((row: any) => (
+          {data.map((row) => (
             <tr key={row.period}>
               <td>{row.period}</td>
               <td>{row.count}</td>

@@ -1,13 +1,21 @@
 'use client';
 import { useEffect, useState } from 'react';
 
+interface Payment {
+  id: string;
+  user?: { email?: string };
+  amount: number;
+  provider?: string;
+  createdAt: string;
+}
+
 export default function FailedPayments() {
-  const [payments, setPayments] = useState([]);
+  const [payments, setPayments] = useState<Payment[]>([]);
 
   useEffect(() => {
     fetch('/api/admin/payments?status=failed')
       .then((res) => res.json())
-      .then(setPayments);
+      .then((data: Payment[]) => setPayments(data));
   }, []);
 
   return (
@@ -23,7 +31,7 @@ export default function FailedPayments() {
           </tr>
         </thead>
         <tbody>
-          {payments.map((p: any) => (
+          {payments.map((p) => (
             <tr key={p.id}>
               <td>{p.user?.email || 'Unknown'}</td>
               <td>${p.amount}</td>
