@@ -1,8 +1,14 @@
+'use client';
+
 import Link from 'next/link';
 import { useSession } from 'next-auth/react';
+import type { SessionUser } from '@/lib/types';
 
 export default function Footer() {
   const { data: session } = useSession();
+
+  // Type guard for SessionUser
+  const isAdmin = session && session.user && (session.user as SessionUser).role === 'admin';
 
   return (
     <footer className="w-full bg-gray-100 border-t mt-12">
@@ -26,7 +32,7 @@ export default function Footer() {
           <Link href="/terms" className="hover:text-blue-600">
             Terms of Service
           </Link>
-          {session?.user?.role === 'admin' && (
+          {isAdmin && (
             <Link href="/admin" className="hover:text-blue-600 font-semibold">
               Admin Dashboard
             </Link>

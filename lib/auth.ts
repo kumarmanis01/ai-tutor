@@ -20,9 +20,8 @@ export const authOptions: NextAuthOptions = {
   session: { strategy: 'jwt' },
   callbacks: {
     async jwt({ token, user }) {
-      // For debugging: see what is in token and user
       if (user) {
-        token.role = user.role;
+        token.role = (user as SessionUser).role;
         token.sub = user.id;
       }
       return token;
