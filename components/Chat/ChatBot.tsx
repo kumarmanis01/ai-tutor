@@ -5,7 +5,7 @@ import { useSession } from 'next-auth/react';
 import MessageBubble from './MessageBubble';
 import Controls from './Controls';
 import SubscriptionModal from '../SubscriptionModal';
-import LoginModal from '../LoginModal';
+import AuthModal from '../AuthModal';
 
 // Helper to base64 encode keys for privacy
 function encodeKey(str: string) {
@@ -50,7 +50,7 @@ export default function ChatBot() {
   });
   const [loading, setLoading] = useState(false);
   const [showSubscriptionSubModal, setShowSubscriptionSubModal] = useState(false);
-  const [showLoginModal, setShowLoginModal] = useState(false);
+  const [showAuthModal, setShowAuthModal] = useState(false);
   const [volume, setVolume] = useState(1); // 1 = max volume
 
   // Language state for written & spoken language
@@ -91,7 +91,7 @@ export default function ChatBot() {
   // Send message to backend, passing selected language
   async function handleSend(message: string) {
     if (!session) {
-      setShowLoginModal(true);
+      setShowAuthModal(true);
       return;
     }
 
@@ -172,9 +172,9 @@ export default function ChatBot() {
       />
 
       {/* Login Modal for unauthenticated users */}
-      <LoginModal
-        isOpen={showLoginModal}
-        onClose={() => setShowLoginModal(false)}
+      <AuthModal
+        isOpen={showAuthModal}
+        onClose={() => setShowAuthModal(false)}
         message="Please login to ask questions."
       />
 

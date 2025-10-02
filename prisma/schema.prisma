@@ -51,6 +51,8 @@ model User {
   payments      Payment[]
   auditLogs     AuditLog[]
   apiUsages     ApiUsage[]
+  passwordHash  String?  // Store the hash here
+  grade         String?   // Student grade option
 }
 
 /**

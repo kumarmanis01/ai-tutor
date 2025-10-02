@@ -4,7 +4,7 @@
 import Link from 'next/link';
 import { useSession, signOut } from 'next-auth/react';
 import { useState } from 'react';
-import LoginModal from './LoginModal';
+import AuthModal from './AuthModal';
 import Button from '@/components/UI/Button';
 import Avatar from '@/components/UI/Avatar';
 
@@ -15,7 +15,7 @@ import Avatar from '@/components/UI/Avatar';
  */
 export default function Navbar() {
   const { data: session, status } = useSession();
-  const [showLoginModal, setShowLoginModal] = useState(false);
+  const [showAuthModal, setShowAuthModal] = useState(false);
 
   return (
     <header className="fixed top-0 left-0 w-full bg-white shadow z-50">
@@ -62,12 +62,12 @@ export default function Navbar() {
             </div>
           ) : (
             <>
-              <Button onClick={() => setShowLoginModal(true)} aria-label="Login">
+              <Button onClick={() => setShowAuthModal(true)} aria-label="Login">
                 Login
               </Button>
-              <LoginModal
-                isOpen={showLoginModal}
-                onClose={() => setShowLoginModal(false)}
+              <AuthModal
+                isOpen={showAuthModal}
+                onClose={() => setShowAuthModal(false)}
                 message="Please login to continue."
               />
             </>
