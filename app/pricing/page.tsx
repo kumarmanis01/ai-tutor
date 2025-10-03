@@ -52,7 +52,7 @@ export default function PricingPage() {
         key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID!,
         amount: data.amount,
         currency: 'INR',
-        name: 'AI Tutor',
+        name: 'SpinzyAcademy',
         description: `${plan} Subscription (${billingCycle})`,
         order_id: data.orderId,
         handler: async function (response: unknown) {

@@ -1,7 +1,7 @@
-"use client";
+'use client';
 
-import Link from "next/link";
-import { signOut, useSession } from "next-auth/react";
+import Link from 'next/link';
+import { signOut, useSession } from 'next-auth/react';
 
 /**
  * TopBar Navigation
@@ -17,7 +17,7 @@ export default function TopBar() {
       <nav className="max-w-6xl mx-auto flex justify-between items-center px-6 py-3">
         {/* Left → Brand */}
         <Link href="/" className="text-xl font-bold text-blue-600">
-          AI Tutor
+          SpinzyAcademy
         </Link>
 
         {/* Middle → Navigation */}

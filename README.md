@@ -1,4 +1,4 @@
-# AI Tutor — Phase 2 (MVP)
+# SpinzyAcademy — Phase 2 (MVP)
 
 ## Quick start
 

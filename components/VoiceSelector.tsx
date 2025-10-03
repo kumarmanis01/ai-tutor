@@ -1,15 +1,15 @@
-"use client";
-import React, { useState } from "react";
+'use client';
+import React, { useState } from 'react';
 
-const voices = ["alloy", "verse", "bright"];
+const voices = ['alloy', 'verse', 'bright'];
 
 export default function VoiceSelector() {
-  const [voice, setVoice] = useState("alloy");
+  const [voice, setVoice] = useState('alloy');
 
   async function playVoice(text: string) {
-    const res = await fetch("/api/ai/voice", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
+    const res = await fetch('/api/ai/voice', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ text, voice }),
     });
     const blob = await res.blob();
@@ -32,7 +32,7 @@ export default function VoiceSelector() {
         ))}
       </select>
       <button
-        onClick={() => playVoice("Hello! I am your AI tutor.")}
+        onClick={() => playVoice('Hello! I am your SpinzyAcademy.')}
         className="px-3 py-1 bg-purple-600 text-white rounded"
       >
         🔊 Test

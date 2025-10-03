@@ -39,7 +39,7 @@ export default function BillingButton({ provider }: { provider: 'stripe' | 'razo
         key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID!,
         amount: order.amount,
         currency: order.currency,
-        name: 'AI Tutor',
+        name: 'SpinzyAcademy',
         description: 'Pro Subscription',
         order_id: order.id,
         handler: function (response: RazorpayResponse) {
