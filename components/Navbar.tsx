@@ -130,8 +130,14 @@ export default function Navbar() {
     <header className="fixed top-0 left-0 w-full bg-white dark:bg-gray-900 shadow z-50">
       <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
         {/* Brand */}
-        <Link href="/" className="text-lg font-bold text-blue-600 dark:text-yellow-300">
-          Spinzy Academy
+        <Link
+          href="/"
+          className="flex items-center gap-2 text-lg font-bold text-blue-600 dark:text-yellow-300"
+        >
+          <span className="w-8 h-8 flex items-center justify-center rounded-full bg-blue-600 dark:bg-yellow-300 text-white dark:text-blue-900 font-extrabold text-base">
+            SA
+          </span>
+          <span>Spinzy Academy</span>
         </Link>
 
         {/* Night/Day toggle */}
