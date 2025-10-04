@@ -61,7 +61,7 @@ export default function ProfilePage() {
   };
 
   return (
-    <div className="p-6 space-y-4">
+    <div className="p-6 space-y-4 text-gray-900 dark:text-gray-100">
       <h1 className="text-2xl font-bold">Profile</h1>
       <div>
         <Avatar
