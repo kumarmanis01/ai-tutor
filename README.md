@@ -1,4 +1,4 @@
-# SpinzyAcademy — Phase 2 (MVP)
+# Spinzy Academy — Phase 2 (MVP)
 
 ## Quick start
 

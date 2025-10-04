@@ -1,5 +1,5 @@
 /**
- * Guardrails: Prevents misuse of SpinzyAcademy.
+ * Guardrails: Prevents misuse of Spinzy Academy.
  * - Blocks profanity
  * - Prevents off-topic "dark buddy" misuse
  */

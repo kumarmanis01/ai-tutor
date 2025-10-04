@@ -32,7 +32,7 @@ export default function VoiceSelector() {
         ))}
       </select>
       <button
-        onClick={() => playVoice('Hello! I am your SpinzyAcademy.')}
+        onClick={() => playVoice('Hello! I am your AI Tutor.')}
         className="px-3 py-1 bg-purple-600 text-white rounded"
       >
         🔊 Test

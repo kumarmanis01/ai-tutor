@@ -14,20 +14,20 @@ export async function middleware(request: NextRequest) {
   }
 
   // Onboarding enforcement for authenticated users
-  const protectedPaths = ['/', '/dashboard', '/profile'];
-  const isProtected = protectedPaths.some(
-    (path) => pathname === path || pathname.startsWith(`${path}/`),
-  );
+  // const protectedPaths = ['/', '/dashboard', '/profile'];
+  // const isProtected = protectedPaths.some(
+  //   (path) => pathname === path || pathname.startsWith(`${path}/`),
+  // );
 
-  // Only redirect on GET requests to avoid interfering with POST (e.g., onboarding form submission)
-  if (isProtected && request.method === 'GET') {
-    const token = await getToken({ req: request, secret: process.env.NEXTAUTH_SECRET });
-    if (token && (!token.parentEmail || !token.name)) {
-      if (!pathname.startsWith('/onboarding')) {
-        return NextResponse.redirect(new URL('/onboarding', request.url));
-      }
-    }
-  }
+  // // Only redirect on GET requests to avoid interfering with POST (e.g., onboarding form submission)
+  // if (isProtected && request.method === 'GET') {
+  //   const token = await getToken({ req: request, secret: process.env.NEXTAUTH_SECRET });
+  //   if (token && (!token.parentEmail || !token.name)) {
+  //     if (!pathname.startsWith('/onboarding')) {
+  //       return NextResponse.redirect(new URL('/onboarding', request.url));
+  //     }
+  //   }
+  // }
 
   return NextResponse.next();
 }

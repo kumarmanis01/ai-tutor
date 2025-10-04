@@ -5,15 +5,15 @@ export default function AboutPage() {
     <div className="max-w-3xl mx-auto p-6">
       <h1 className="text-2xl font-bold mb-4">About Us</h1>
       <p className="mb-4">
-        <strong>SpinzyAcademy</strong> is dedicated to making learning accessible and engaging for
+        <strong>Spinzy Academy</strong> is dedicated to making learning accessible and engaging for
         everyone, in any language.
       </p>
       <p className="mb-4">
         Our mission is to empower learners worldwide by providing instant, AI-powered answers and
         explanations in your preferred language. Whether you’re a student, professional, or lifelong
-        learner, SpinzyAcademy is here to support your journey.
+        learner, Spinzy Academy is here to support your journey.
       </p>
-      <h2 className="text-xl font-semibold mt-6 mb-2">Why Choose SpinzyAcademy?</h2>
+      <h2 className="text-xl font-semibold mt-6 mb-2">Why Choose Spinzy Academy?</h2>
       <ul className="list-disc ml-6 mb-4">
         <li>Multilingual support for a global audience</li>
         <li>Instant, reliable answers powered by advanced AI</li>

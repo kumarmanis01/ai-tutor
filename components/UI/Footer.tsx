@@ -14,7 +14,7 @@ export default function Footer() {
     <footer className="w-full bg-gray-100 border-t mt-12">
       <div className="max-w-6xl mx-auto px-4 py-6 flex flex-col md:flex-row items-center justify-between gap-4">
         <div className="text-gray-600 text-sm">
-          &copy; {new Date().getFullYear()} SpinzyAcademy. All rights reserved.
+          &copy; {new Date().getFullYear()} Spinzy Academy. All rights reserved.
         </div>
         <nav className="flex gap-4 text-sm items-center">
           <Link href="/" className="hover:text-blue-600">

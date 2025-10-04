@@ -22,7 +22,7 @@ export default function Navbar() {
       <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
         {/* Brand */}
         <Link href="/" className="text-lg font-bold text-blue-600">
-          SpinzyAcademy
+          Spinzy Academy
         </Link>
 
         {/* Navigation links */}

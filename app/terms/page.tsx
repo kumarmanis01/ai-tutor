@@ -5,23 +5,23 @@ export default function TermsPage() {
     <div className="max-w-3xl mx-auto p-6">
       <h1 className="text-2xl font-bold mb-4">Terms &amp; Conditions</h1>
       <p className="mb-4">
-        By using SpinzyAcademy, you agree to the following terms and conditions. Please read them
+        By using Spinzy Academy, you agree to the following terms and conditions. Please read them
         carefully.
       </p>
       <h2 className="text-xl font-semibold mt-6 mb-2">Use of Service</h2>
       <ul className="list-disc ml-6 mb-4">
-        <li>SpinzyAcademy is for educational purposes only.</li>
+        <li>Spinzy Academy is for educational purposes only.</li>
         <li>You must not use the service for any unlawful or harmful activities.</li>
         <li>We reserve the right to suspend or terminate accounts that violate these terms.</li>
       </ul>
       <h2 className="text-xl font-semibold mt-6 mb-2">Intellectual Property</h2>
       <p className="mb-4">
-        All content, trademarks, and data on this site are the property of SpinzyAcademy or its
+        All content, trademarks, and data on this site are the property of Spinzy Academy or its
         licensors.
       </p>
       <h2 className="text-xl font-semibold mt-6 mb-2">Limitation of Liability</h2>
       <p className="mb-4">
-        SpinzyAcademy is provided &quot;as is&quot; without warranties of any kind. We are not
+        Spinzy Academy is provided &quot;as is&quot; without warranties of any kind. We are not
         liable for any damages arising from your use of the service.
       </p>
       <h2 className="text-xl font-semibold mt-6 mb-2">Changes to Terms</h2>
