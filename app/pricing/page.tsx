@@ -86,7 +86,7 @@ export default function PricingPage() {
   };
 
   return (
-    <div className="max-w-6xl mx-auto px-6 py-12">
+    <div className="max-w-6xl mx-auto px-6 py-12 text-gray-900 dark:text-gray-100">
       {/* Razorpay Script */}
       <Script src="https://checkout.razorpay.com/v1/checkout.js" />
 
@@ -135,7 +135,7 @@ export default function PricingPage() {
         </div>
 
         {/* Pro */}
-        <div className="border rounded-xl shadow p-6 text-center bg-blue-50">
+        <div className="border rounded-xl shadow p-6 text-center bg-blue-150">
           <h2 className="text-xl font-semibold">Pro</h2>
           <p className="mt-4 text-4xl font-bold">₹{proPrice}</p>
           <p className="text-gray-500">{billingCycle === 'monthly' ? 'per month' : 'per year'}</p>

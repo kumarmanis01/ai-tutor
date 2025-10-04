@@ -2,7 +2,7 @@
 
 export default function AboutPage() {
   return (
-    <div className="max-w-3xl mx-auto p-6">
+    <div className="max-w-3xl mx-auto p-6 text-gray-900 dark:text-gray-100">
       <h1 className="text-2xl font-bold mb-4">About Us</h1>
       <p className="mb-4">
         <strong>Spinzy Academy</strong> is dedicated to making learning accessible and engaging for

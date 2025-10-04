@@ -2,7 +2,7 @@
 
 export default function TermsPage() {
   return (
-    <div className="max-w-3xl mx-auto p-6">
+    <div className="max-w-3xl mx-auto p-6 text-gray-900 dark:text-gray-100">
       <h1 className="text-2xl font-bold mb-4">Terms &amp; Conditions</h1>
       <p className="mb-4">
         By using Spinzy Academy, you agree to the following terms and conditions. Please read them

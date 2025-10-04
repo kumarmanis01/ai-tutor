@@ -28,7 +28,6 @@
 
 import { useSession } from 'next-auth/react';
 import { useState } from 'react';
-import Link from 'next/link';
 import ChatBot from '@/components/Chat/ChatBot';
 import AuthModal from '@/components/AuthModal';
 
