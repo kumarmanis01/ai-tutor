@@ -35,5 +35,22 @@ export async function POST(req: NextRequest) {
     },
   });
 
+  try {
+    await prisma.auditLog.create({
+      data: {
+        userId: user.id,
+        action: 'signup',
+        details: {
+          email: user.email,
+          name: user.name,
+          grade: user.grade,
+          parentEmail: user.parentEmail,
+        },
+      },
+    });
+  } catch (err) {
+    console.error('Audit log failed:', err);
+  }
+
   return NextResponse.json({ ok: true });
 }
