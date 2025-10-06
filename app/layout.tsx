@@ -9,16 +9,6 @@ export const metadata = {
   description: 'Your Personal AI Tutor — Learn Anything, Anytime.',
 };
 
-// export default function RootLayout({ children }: { children: React.ReactNode }) {
-//   return (
-//     <html lang="en">
-//       <body className={inter.className}>
-//         <Providers>{children}</Providers>
-//       </body>
-//     </html>
-//   );
-// }
-
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className="h-full">
