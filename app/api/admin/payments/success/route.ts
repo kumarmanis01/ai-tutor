@@ -1,12 +1,11 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 
-// GET /api/admin/payments/success
-// Returns the 100 most recent successful payments
+// app/api/admin/payments/success/route.ts
 export async function GET() {
   const payments = await prisma.payment.findMany({
     where: { status: 'success' },
-    include: { user: { select: { email: true } }, subscription: true },
+    include: { user: { select: { email: true } } },
     orderBy: { createdAt: 'desc' },
     take: 100,
   });

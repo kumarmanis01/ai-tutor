@@ -1,9 +1,8 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 
-// GET /api/admin/charts/user-usage
-// Returns API usage grouped by user
 export async function GET() {
+  // Group API usage by user
   const usage = await prisma.apiUsage.groupBy({
     by: ['userId'],
     _sum: { count: true },
@@ -11,15 +10,17 @@ export async function GET() {
     take: 100,
   });
 
+  // Get user emails for display
   const users = await prisma.user.findMany({
-    where: { id: { in: usage.map((u) => u.userId!) } },
+    where: { id: { in: usage.map((u) => u.userId) } },
     select: { id: true, email: true },
   });
+
   const userMap = Object.fromEntries(users.map((u) => [u.id, u.email]));
 
   const data = usage.map((u) => ({
     userId: u.userId,
-    email: userMap[u.userId!] || 'Unknown',
+    email: userMap[u.userId] || 'Unknown',
     count: u._sum.count,
   }));
 

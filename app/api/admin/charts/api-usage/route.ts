@@ -1,19 +1,17 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 
-// GET /api/admin/charts/api-usage
-// Returns API usage grouped by day
 export async function GET() {
-  // Group by date (YYYY-MM-DD)
+  // Group API usage by day
   const usage = await prisma.apiUsage.groupBy({
-    by: ['lastUsed'],
+    by: ['date'], // assuming you have a 'date' field (YYYY-MM-DD)
     _sum: { count: true },
-    orderBy: { lastUsed: 'desc' },
+    orderBy: { date: 'desc' },
     take: 30,
   });
 
   const data = usage.map((u) => ({
-    period: u.lastUsed.toISOString().slice(0, 10),
+    period: u.date,
     count: u._sum.count,
   }));
 
