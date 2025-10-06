@@ -1,20 +1,27 @@
 'use client';
 import { useEffect, useState } from 'react';
-import { Payment } from '@prisma/client';
+
+interface Payment {
+  id: string;
+  user?: { email?: string };
+  amount: number;
+  provider?: string;
+  createdAt: string;
+}
 
 export default function SuccessfulPayments() {
   const [payments, setPayments] = useState<Payment[]>([]);
 
   useEffect(() => {
-    fetch('/api/admin/payments/success')
+    fetch('/api/admin/payments?status=success')
       .then((res) => res.json())
       .then((data: Payment[]) => setPayments(data));
   }, []);
 
   return (
-    <div className="max-w-4xl mx-auto p-8 pt-16 text-gray-900 dark:text-gray-100">
+    <div className="max-w-4xl mx-auto p-8 pt-16">
       <h1 className="text-2xl font-bold mb-4">Successful Payments</h1>
-      <table className="w-full border bg-white dark:bg-gray-800">
+      <table className="w-full border">
         <thead>
           <tr>
             <th>User</th>

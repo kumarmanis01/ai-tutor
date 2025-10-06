@@ -9,11 +9,3 @@ export interface SessionUser {
   password?: string; // Optional, not used for auth here
   // Add other custom fields if needed
 }
-
-export interface Payment {
-  id: string;
-  user?: { email?: string };
-  amount: number;
-  provider?: string;
-  createdAt: string;
-}

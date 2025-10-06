@@ -10,10 +10,11 @@ export default function ApiUsageChart() {
   const [data, setData] = useState<UsageChartRow[]>([]);
 
   useEffect(() => {
-    fetch('/api/admin/charts/users')
+    fetch('/api/admin/charts/api-usage')
       .then((res) => res.json())
-      .then((data) => setData(data));
+      .then((data: UsageChartRow[]) => setData(data));
   }, []);
+
   return (
     <div className="max-w-4xl mx-auto p-8 pt-16">
       <h1 className="text-2xl font-bold mb-4">API Usage Chart</h1>

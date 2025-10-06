@@ -9,8 +9,7 @@ const adminLinks = [
   { href: '/admin/api-usage', label: 'API Usage Stats' },
   { href: '/admin/payments/success', label: 'Successful Payments' },
   { href: '/admin/payments/failed', label: 'Failed Payments' },
-  { href: '/admin/charts/user-usage', label: 'User API Usage' },
-  { href: '/admin/charts/user-audit-logs', label: 'User Audit Logs' },
+  { href: '/admin/charts/users', label: 'User Signups Chart' },
   { href: '/admin/charts/api-usage', label: 'API Usage Chart' },
 ];
 
@@ -18,18 +17,16 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const pathname = usePathname();
 
   return (
-    <div className="flex min-h-screen pt-16 bg-gray-50 dark:bg-gray-900">
+    <div className="flex min-h-screen pt-16">
       {/* Sidebar */}
-      <aside className="w-64 bg-gray-100 dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 p-6">
-        <nav className="flex flex-col gap-2">
+      <aside className="w-64 bg-gray-100 border-r p-6">
+        <nav className="flex flex-col gap-4">
           {adminLinks.map((link) => (
             <Link
               key={link.href}
               href={link.href}
-              className={`py-2 px-3 rounded transition-colors ${
-                pathname === link.href
-                  ? 'bg-blue-200 dark:bg-blue-900 text-blue-900 dark:text-blue-100 font-semibold'
-                  : 'hover:bg-blue-100 dark:hover:bg-gray-700 text-gray-900 dark:text-gray-100'
+              className={`py-2 px-3 rounded hover:bg-blue-100 ${
+                pathname === link.href ? 'bg-blue-200 font-semibold' : ''
               }`}
             >
               {link.label}
@@ -38,9 +35,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         </nav>
       </aside>
       {/* Main content */}
-      <main className="flex-1 p-8 text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-900">
-        {children}
-      </main>
+      <main className="flex-1 p-8">{children}</main>
     </div>
   );
 }
