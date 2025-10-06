@@ -51,8 +51,8 @@ model User {
   payments      Payment[]
   auditLogs     AuditLog[]
   apiUsages     ApiUsage[]
-  passwordHash  String?  // Store the hash here
-  grade         String?   // Student grade option
+  passwordHash  String? // Store the hash here
+  grade         String? // Student grade option
 }
 
 /**
@@ -131,16 +131,17 @@ model Event {
  * Subscription model
  */
 model Subscription {
-  id           String   @id @default(cuid())
+  id           String    @id @default(cuid())
   userId       String
-  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   plan         String // "free" | "pro" | "enterprise"
   billingCycle String // "monthly" | "annual"
   startDate    DateTime
   endDate      DateTime
-  active       Boolean  @default(false)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  active       Boolean   @default(false)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  payments     Payment[]
 
   @@index([userId])
 }
@@ -184,13 +185,16 @@ model Message {
 }
 
 model Payment {
-  id        String   @id @default(cuid())
-  userId    String
-  user      User     @relation(fields: [userId], references: [id])
-  amount    Float
-  status    String // e.g., "success", "failed"
-  provider  String? // e.g., "razorpay", "stripe"
-  createdAt DateTime @default(now())
+  id             String        @id @default(cuid())
+  user           User          @relation(fields: [userId], references: [id])
+  userId         String
+  amount         Int
+  status         String
+  provider       String
+  createdAt      DateTime      @default(now())
+  metadata       Json? // <-- Add this for extensibility
+  subscription   Subscription? @relation(fields: [subscriptionId], references: [id])
+  subscriptionId String? // <-- Add this to link to Subscription
 }
 
 model AuditLog {
@@ -204,9 +208,10 @@ model AuditLog {
 
 model ApiUsage {
   id       String   @id @default(cuid())
-  userId   String?
   user     User?    @relation(fields: [userId], references: [id])
+  userId   String?
   endpoint String
-  count    Int      @default(1)
-  lastUsed DateTime @default(now())
+  count    Int
+  lastUsed DateTime
+  metadata Json? // <-- Add this for extensibility
 }

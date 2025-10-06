@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 
+// app/api/admin/payments/success/route.ts
 export async function GET() {
   const payments = await prisma.payment.findMany({
     where: { status: 'success' },

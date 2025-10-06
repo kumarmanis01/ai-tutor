@@ -43,7 +43,7 @@ export default function AdminUsers() {
   };
 
   return (
-    <div className="max-w-4xl mx-auto p-8 pt-20">
+    <div className="max-w-4xl mx-auto p-8 pt-20 text-gray-900 dark:text-gray-100">
       <h1 className="text-2xl font-bold mb-4">User Management</h1>
       <table className="w-full border">
         <thead>
