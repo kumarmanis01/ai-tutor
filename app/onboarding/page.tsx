@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { getCountries } from '@yusifaliyevpro/countries';
 import { SessionUser } from '@/lib/types';
+import Image from 'next/image';
 
 type CountryDropdownOption = { name: string; cca2: string; flag: string };
 
@@ -59,6 +60,7 @@ export default function OnboardingPage() {
         setSaving(false);
       }
     } catch (err) {
+      console.error(err);
       setError('Network error');
       setSaving(false);
     }
@@ -93,10 +95,12 @@ export default function OnboardingPage() {
               display: 'inline-block',
             }}
           >
-            <img
+            <Image
               src={`https://flagcdn.com/48x36/${selectedCountry.cca2.toLowerCase()}.png`}
               alt={selectedCountry.name + ' flag'}
-              style={{ width: '32px', height: '24px', objectFit: 'contain', display: 'block' }}
+              width={32}
+              height={24}
+              style={{ objectFit: 'contain', display: 'block' }}
             />
           </span>
         )}

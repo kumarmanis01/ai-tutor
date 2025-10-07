@@ -17,16 +17,18 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const pathname = usePathname();
 
   return (
-    <div className="flex min-h-screen pt-16">
+    <div className="flex min-h-screen pt-16 bg-gray-50 dark:bg-gray-900">
       {/* Sidebar */}
-      <aside className="w-64 bg-gray-100 border-r p-6">
+      <aside className="w-64 bg-gray-100 dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 p-6">
         <nav className="flex flex-col gap-4">
           {adminLinks.map((link) => (
             <Link
               key={link.href}
               href={link.href}
-              className={`py-2 px-3 rounded hover:bg-blue-100 ${
-                pathname === link.href ? 'bg-blue-200 font-semibold' : ''
+              className={`py-2 px-3 rounded hover:bg-blue-100 dark:hover:bg-blue-900 ${
+                pathname === link.href
+                  ? 'bg-blue-200 dark:bg-blue-700 font-semibold text-gray-900 dark:text-white'
+                  : 'text-gray-900 dark:text-gray-100'
               }`}
             >
               {link.label}
@@ -35,7 +37,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         </nav>
       </aside>
       {/* Main content */}
-      <main className="flex-1 p-8">{children}</main>
+      <main className="flex-1 p-8 text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-900 rounded-lg">
+        {children}
+      </main>
     </div>
   );
 }

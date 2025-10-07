@@ -2,7 +2,6 @@
 import { useEffect, useState } from 'react';
 import { useSession } from 'next-auth/react';
 import Avatar from '@/components/UI/Avatar';
-// import { SessionUser } from '@/lib/types';
 
 export default function ProfilePage() {
   const { data: session } = useSession();
@@ -11,13 +10,11 @@ export default function ProfilePage() {
     parentEmail: string;
     country: string;
     language: string;
-    lastChats: any[];
   }>({
     grade: '',
     parentEmail: '',
     country: '',
     language: '',
-    lastChats: [],
   });
 
   useEffect(() => {
@@ -30,7 +27,6 @@ export default function ProfilePage() {
           parentEmail: data.parentEmail || '',
           country: data.country || '',
           language: data.language || '',
-          lastChats: data.lastChats || [],
         });
       }
     }
@@ -76,20 +72,6 @@ export default function ProfilePage() {
           <span>{profile.language || <span className="text-gray-400">Not set</span>}</span>
         </div>
       </div>
-      {/* <div>
-        <h2 className="text-lg font-semibold mb-2">Recent Chats</h2>
-        {profile.lastChats.length === 0 ? (
-          <p className="text-gray-400">No recent chats.</p>
-        ) : (
-          <ul className="list-disc pl-5 space-y-1">
-            {profile.lastChats.map((chat, idx) => (
-              <li key={idx} className="text-sm text-gray-700 dark:text-gray-300">
-                {chat.title || 'Untitled chat'}
-              </li>
-            ))}
-          </ul>
-        )}
-      </div> */}
     </div>
   );
 }
