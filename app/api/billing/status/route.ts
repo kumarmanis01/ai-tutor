@@ -6,6 +6,15 @@ import { SessionUser } from '@/lib/types';
 
 /**
  * Returns the user's current subscription status.
+ * Purpose:
+Returns the current user's subscription status (plan, billing cycle, validity).
+How:
+Checks if the user is authenticated.
+Gets the user’s ID from the session or database.
+Finds the latest active subscription for the user.
+Returns plan, billing cycle, status, and validity date.
+Typical Response:
+{ plan: 'pro', billingCycle: 'monthly', status: 'active', validTill: '2025-12-31' }
  */
 export async function GET() {
   const session = await getServerSession(authOptions);

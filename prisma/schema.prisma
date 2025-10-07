@@ -185,13 +185,18 @@ model Message {
 }
 
 model Payment {
-  id        String   @id @default(cuid())
-  userId    String
-  user      User     @relation(fields: [userId], references: [id])
-  amount    Float
-  status    String // e.g., "success", "failed"
-  provider  String? // e.g., "razorpay", "stripe"
-  createdAt DateTime @default(now())
+  id                String   @id @default(cuid())
+  userId            String
+  user              User     @relation(fields: [userId], references: [id])
+  amount            Int
+  provider          String   // e.g. 'razorpay', 'stripe', etc.
+  status            String   // e.g. 'success', 'failed'
+  createdAt         DateTime @default(now())
+  transactionId     String?  // Generic transaction/payment ID from any gateway
+  orderId           String?  // Generic order/subscription ID from any gateway
+  plan              String?  // e.g. 'pro', 'basic'
+  billingCycle      String?  // e.g. 'monthly', 'yearly'
+  meta              Json?    // Store gateway-specific metadata if needed
 }
 
 model AuditLog {

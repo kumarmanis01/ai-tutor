@@ -22,6 +22,12 @@ type RazorpayOptions = {
   };
 };
 
+type RazorpayResponse = {
+  razorpay_order_id: string;
+  razorpay_payment_id: string;
+  razorpay_signature: string;
+};
+
 export default function PricingPage() {
   const { data: session } = useSession();
   const [billingCycle, setBillingCycle] = useState<'monthly' | 'annual'>('monthly');
@@ -56,11 +62,17 @@ export default function PricingPage() {
         description: `${plan} Subscription (${billingCycle})`,
         order_id: data.orderId,
         handler: async function (response: unknown) {
+          const respObj = response as RazorpayResponse;
           // verify payment on server
           await fetch('/api/billing/verify', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(response),
+            body: JSON.stringify({
+              ...respObj,
+              plan,
+              billingCycle,
+              amount: data.amount,
+            }),
           });
           alert('✅ Payment successful!');
           window.location.href = '/';

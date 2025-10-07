@@ -74,6 +74,7 @@ export default function SubscriptionModal({
                 razorpay_signature: response.razorpay_signature,
                 plan,
                 billing,
+                amount: data.amount,
               }),
             });
             onClose();

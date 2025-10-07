@@ -7,6 +7,17 @@ import { SessionUser } from '@/lib/types';
 /**
  * Creates a Razorpay order for the selected plan.
  * Requires user to be signed in.
+ * Purpose:
+ *  Creates a Razorpay order for a selected plan and billing cycle.
+ * How:
+ *  Checks if the user is authenticated.
+ *  Reads plan and billingCycle from the request body.
+ *  Calculates the amount (in paise) based on plan/cycle.
+ *  Calls Razorpay API to create an order.
+ *  Returns order ID, amount, and user email.
+ * Error Handling:
+ *  Returns a 400 error for invalid plans.
+
  */
 export async function POST(req: Request) {
   const session = await getServerSession(authOptions);

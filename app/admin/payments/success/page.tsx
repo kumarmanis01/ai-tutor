@@ -13,7 +13,7 @@ export default function SuccessfulPayments() {
   const [payments, setPayments] = useState<Payment[]>([]);
 
   useEffect(() => {
-    fetch('/api/admin/payments?status=success')
+    fetch('/api/admin/payments/success')
       .then((res) => res.json())
       .then((data: Payment[]) => setPayments(data));
   }, []);
