@@ -10,11 +10,19 @@ export default function ProfilePage() {
     parentEmail: string;
     country: string;
     language: string;
+    billingCycle?: string;
+    plan?: string;
+    role?: string;
+    memberSince?: string | null;
   }>({
     grade: '',
     parentEmail: '',
     country: '',
     language: '',
+    billingCycle: '',
+    plan: '',
+    role: '',
+    memberSince: null,
   });
 
   useEffect(() => {
@@ -27,6 +35,10 @@ export default function ProfilePage() {
           parentEmail: data.parentEmail || '',
           country: data.country || '',
           language: data.language || '',
+          billingCycle: data.billingCycle || '',
+          plan: data.plan || '',
+          role: data.role || '',
+          memberSince: data.memberSince || null,
         });
       }
     }
@@ -35,6 +47,8 @@ export default function ProfilePage() {
 
   if (!session) {
     return <div className="p-6">You are not signed in.</div>;
+  } else {
+    console.log(profile);
   }
 
   const fallback =
@@ -71,6 +85,22 @@ export default function ProfilePage() {
           <span className="font-semibold">Language:</span>
           <span>{profile.language || <span className="text-gray-400">Not set</span>}</span>
         </div>
+        <div className="flex justify-between items-center">
+          <span className="font-semibold">Plan:</span>
+          <span>{profile.plan || <span className="text-gray-400">Not set</span>}</span>
+        </div>
+        <div className="flex justify-between items-center">
+          <span className="font-semibold">Billing Cycle:</span>
+          <span>{profile.billingCycle || <span className="text-gray-400">Not set</span>}</span>
+        </div>
+        <div className="flex justify-between items-center">
+          <span className="font-semibold">Role:</span>
+          <span>{profile.role || <span className="text-gray-400">Not set</span>}</span>
+        </div>
+      </div>
+      <div className="text-center text-sm text-gray-500 dark:text-gray-400">
+        Member since{' '}
+        {profile.memberSince ? new Date(profile.memberSince).toLocaleDateString() : 'N/A'} <br />
       </div>
     </div>
   );

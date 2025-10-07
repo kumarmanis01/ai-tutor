@@ -14,23 +14,35 @@ export async function GET() {
   if (!sessionUser || !sessionUser.email) {
     return NextResponse.json({
       language: 'en',
-      lastChats: [],
       country: '',
       grade: '',
       parentEmail: '',
+      role: '',
+      memberSince: null,
+      plan: '',
+      billingCycle: '',
     });
   }
 
   const savedUser = await prisma.user.findUnique({
     where: { email: sessionUser.email },
-    include: { chats: { take: 10, orderBy: { createdAt: 'desc' } } },
+    include: {
+      chats: { take: 10, orderBy: { createdAt: 'desc' } },
+      subscriptions: true,
+    },
   });
+
+  // Find active subscription
+  const activeSub = savedUser?.subscriptions?.find((sub) => sub.active);
 
   return NextResponse.json({
     language: savedUser?.language ?? 'en',
-    lastChats: savedUser?.chats ?? [],
     country: savedUser?.country ?? '',
     grade: savedUser?.grade ?? '',
     parentEmail: savedUser?.parentEmail ?? '',
+    role: savedUser?.role ?? '',
+    memberSince: savedUser?.createdAt ?? null,
+    plan: activeSub?.plan ?? '',
+    billingCycle: activeSub?.billingCycle ?? '',
   });
 }
