@@ -6,10 +6,12 @@ import type { SessionUser } from '@/lib/types';
 type SignupBody = Pick<SessionUser, 'name' | 'email' | 'parentEmail' | 'grade'> & {
   profileImage?: string;
   password?: string;
+  country?: string;
 };
 
 export async function POST(req: NextRequest) {
-  const { name, email, parentEmail, profileImage, grade, password }: SignupBody = await req.json();
+  const { name, email, parentEmail, profileImage, grade, password, country }: SignupBody =
+    await req.json();
 
   // Check if user already exists
   const existing = await prisma.user.findUnique({ where: { email } });
@@ -20,7 +22,7 @@ export async function POST(req: NextRequest) {
   // Hash the password if provided
   let passwordHash: string | undefined = undefined;
   if (password) {
-    passwordHash = await bcrypt.hash(password, 10); // 10 salt rounds
+    passwordHash = await bcrypt.hash(password, 10);
   }
 
   // Create user
@@ -31,7 +33,8 @@ export async function POST(req: NextRequest) {
       parentEmail: parentEmail || null,
       image: profileImage || null,
       grade: grade || null,
-      passwordHash: passwordHash || null, // Store the hash, not the plain password
+      passwordHash: passwordHash || null,
+      country: country || null, // <-- Add country
     },
   });
 

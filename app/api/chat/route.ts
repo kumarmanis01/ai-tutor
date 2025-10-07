@@ -1,4 +1,3 @@
-// app/api/chat/route.ts
 /**
  * POST /api/chat
  * Body: { message: string, subject?: string }
@@ -8,6 +7,7 @@
  * - Free users: up to 3 questions/day
  * - Premium users: unlimited
  * - Saves chat to prisma.chat
+ * - Logs API usage to prisma.apiUsage
  */
 
 import { NextResponse } from 'next/server';
@@ -123,6 +123,13 @@ export async function POST(req: Request) {
       );
     }
 
+    // Check if user exists before saving chat
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    if (!user) {
+      console.error('User not found:', userId);
+      return NextResponse.json({ error: 'User not found' }, { status: 400 });
+    }
+
     // Save assistant reply
     await prisma.chat.create({
       data: {
@@ -131,6 +138,14 @@ export async function POST(req: Request) {
         content: aiReply,
         subject,
       },
+    });
+
+    // --- API USAGE LOGGING ---
+    // Log API usage for this user and endpoint
+    await prisma.apiUsage.upsert({
+      where: { userId_endpoint: { userId, endpoint: '/api/chat' } },
+      update: { count: { increment: 1 }, lastUsed: new Date() },
+      create: { userId, endpoint: '/api/chat', count: 1, lastUsed: new Date() },
     });
 
     return NextResponse.json({ reply: aiReply });

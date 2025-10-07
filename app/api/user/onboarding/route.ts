@@ -8,10 +8,10 @@ export async function POST(req: NextRequest) {
   if (!session?.user?.email) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
-  const { name, parentEmail } = await req.json();
+  const { name, parentEmail, country } = await req.json();
   await prisma.user.update({
     where: { email: session.user.email },
-    data: { name, parentEmail },
+    data: { name, parentEmail, country },
   });
   return NextResponse.json({ ok: true });
 }

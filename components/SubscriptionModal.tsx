@@ -50,7 +50,7 @@ export default function SubscriptionModal({
 
     setLoading(true);
     try {
-      const res = await fetch('/api/subscribe', {
+      const res = await fetch('/api/billing/checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ plan, billing }),
@@ -65,7 +65,7 @@ export default function SubscriptionModal({
           order_id: data.orderId,
           handler: async function (response: RazorpayResponse) {
             // On success, confirm server-side
-            await fetch('/api/subscribe/confirm', {
+            await fetch('/api/billing/verify', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({

@@ -1,17 +1,36 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
+import { NextResponse } from 'next/server';
+import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
-import prisma from '@/lib/prisma';
+import { prisma } from '@/lib/db';
+import { SessionUser } from '@/lib/types';
 
-export async function POST(req: NextRequest) {
+export async function GET() {
   const session = await getServerSession(authOptions);
-  if (!session?.user?.email) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  if (!session) {
+    return new Response('Unauthorized', { status: 401 });
   }
-  const { name, parentEmail, profileImage, grade } = await req.json();
-  await prisma.user.update({
-    where: { email: session.user.email },
-    data: { name, parentEmail, image: profileImage, grade },
+
+  const sessionUser = session.user as SessionUser;
+  if (!sessionUser || !sessionUser.email) {
+    return NextResponse.json({
+      language: 'en',
+      lastChats: [],
+      country: '',
+      grade: '',
+      parentEmail: '',
+    });
+  }
+
+  const savedUser = await prisma.user.findUnique({
+    where: { email: sessionUser.email },
+    include: { chats: { take: 10, orderBy: { createdAt: 'desc' } } },
   });
-  return NextResponse.json({ ok: true });
+
+  return NextResponse.json({
+    language: savedUser?.language ?? 'en',
+    lastChats: savedUser?.chats ?? [],
+    country: savedUser?.country ?? '',
+    grade: savedUser?.grade ?? '',
+    parentEmail: savedUser?.parentEmail ?? '',
+  });
 }

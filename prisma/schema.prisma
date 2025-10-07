@@ -34,7 +34,8 @@ model User {
   emailVerified DateTime?
   image         String?
   parentEmail   String?
-  language      String? // <--- Add this line
+  language      String?
+  country       String?
   // Relations
   accounts      Account[]
   sessions      Session[]
@@ -209,4 +210,6 @@ model ApiUsage {
   endpoint String
   count    Int      @default(1)
   lastUsed DateTime @default(now())
+
+  @@unique([userId, endpoint], name: "userId_endpoint")
 }

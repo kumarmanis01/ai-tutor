@@ -2,149 +2,94 @@
 import { useEffect, useState } from 'react';
 import { useSession } from 'next-auth/react';
 import Avatar from '@/components/UI/Avatar';
-import { SessionUser } from '@/lib/types';
+// import { SessionUser } from '@/lib/types';
 
 export default function ProfilePage() {
   const { data: session } = useSession();
-  const [subscription, setSubscription] = useState<{
-    isPremium: boolean;
-    plan?: string;
-  }>({ isPremium: false });
-
-  // Editable fields
-  const [grade, setGrade] = useState('');
-  const [parentEmail, setParentEmail] = useState('');
-  const [editing, setEditing] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [success, setSuccess] = useState(false);
-
-  useEffect(() => {
-    async function fetchStatus() {
-      const res = await fetch('/api/subscription/status');
-      const data = await res.json();
-      setSubscription({ isPremium: data.isPremium, plan: data.plan });
-    }
-    if (session) fetchStatus();
-  }, [session]);
+  const [profile, setProfile] = useState<{
+    grade: string;
+    parentEmail: string;
+    country: string;
+    language: string;
+    lastChats: any[];
+  }>({
+    grade: '',
+    parentEmail: '',
+    country: '',
+    language: '',
+    lastChats: [],
+  });
 
   useEffect(() => {
-    // Pre-fill editable fields from session if available
-    if (session?.user) {
-      setGrade((session.user as SessionUser).grade || '');
-      setParentEmail((session.user as SessionUser).parentEmail || '');
+    async function fetchProfile() {
+      const res = await fetch('/api/user/profile');
+      if (res.ok) {
+        const data = await res.json();
+        setProfile({
+          grade: data.grade || '',
+          parentEmail: data.parentEmail || '',
+          country: data.country || '',
+          language: data.language || '',
+          lastChats: data.lastChats || [],
+        });
+      }
     }
+    if (session) fetchProfile();
   }, [session]);
 
   if (!session) {
     return <div className="p-6">You are not signed in.</div>;
   }
 
-  // Compute fallback initials (first letter of name or email)
   const fallback =
     session.user?.name?.charAt(0).toUpperCase() ||
     session.user?.email?.charAt(0).toUpperCase() ||
     '?';
 
-  const handleSave = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setSaving(true);
-    setSuccess(false);
-    await fetch('/api/user/profile', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ grade, parentEmail }),
-    });
-    setSaving(false);
-    setSuccess(true);
-    setEditing(false);
-    window.location.reload();
-  };
-
   return (
-    <div className="p-6 space-y-4 text-gray-900 dark:text-gray-100">
-      <h1 className="text-2xl font-bold">Profile</h1>
-      <div>
+    <div className="max-w-lg mx-auto p-8 bg-white dark:bg-gray-900 rounded-xl shadow-md space-y-6 text-gray-900 dark:text-gray-100">
+      <div className="flex flex-col items-center space-y-2">
         <Avatar
           src={session.user?.image || undefined}
           alt={session.user?.name || session.user?.email || 'User avatar'}
           size={80}
           fallback={fallback}
-          className="mb-2"
         />
+        <h1 className="text-2xl font-bold">{session.user?.name}</h1>
+        <p className="text-gray-500 dark:text-gray-400">{session.user?.email}</p>
       </div>
-      <p>
-        <strong>Name:</strong> {session.user?.name}
-      </p>
-      <p>
-        <strong>Email:</strong> {session.user?.email}
-      </p>
-      <p>
-        <strong>Subscription:</strong>{' '}
-        {subscription.isPremium ? `Premium (${subscription.plan || 'pro'})` : 'Free'}
-      </p>
-      <form onSubmit={handleSave} className="space-y-2 max-w-xs">
-        <div>
-          <label className="block font-semibold">Grade:</label>
-          {editing ? (
-            <input
-              type="text"
-              value={grade}
-              onChange={(e) => setGrade(e.target.value)}
-              className="w-full px-2 py-1 border rounded"
-              placeholder="Grade"
-            />
-          ) : (
-            <span>{grade || <span className="text-gray-400">Not set</span>}</span>
-          )}
+      <div className="space-y-3 border border-gray-300 dark:border-gray-700 rounded-lg p-4">
+        <div className="flex justify-between items-center">
+          <span className="font-semibold">Country:</span>
+          <span>{profile.country || <span className="text-gray-400">Not set</span>}</span>
         </div>
-        <div>
-          <label className="block font-semibold">Parent Email:</label>
-          {editing ? (
-            <input
-              type="email"
-              value={parentEmail}
-              onChange={(e) => setParentEmail(e.target.value)}
-              className="w-full px-2 py-1 border rounded"
-              placeholder="Parent's email"
-            />
-          ) : (
-            <span>{parentEmail || <span className="text-gray-400">Not set</span>}</span>
-          )}
+        <div className="flex justify-between items-center">
+          <span className="font-semibold">Grade:</span>
+          <span>{profile.grade || <span className="text-gray-400">Not set</span>}</span>
         </div>
-        {editing ? (
-          <div className="flex gap-2">
-            <button
-              type="submit"
-              className="px-4 py-1 bg-blue-600 text-white rounded"
-              disabled={saving}
-            >
-              {saving ? 'Saving...' : 'Save'}
-            </button>
-            <button
-              type="button"
-              className="px-4 py-1 bg-gray-300 rounded"
-              onClick={() => {
-                setEditing(false);
-                setSuccess(false);
-                // Reset fields to session values
-                setGrade((session.user as SessionUser).grade || '');
-                setParentEmail((session.user as SessionUser).parentEmail || '');
-              }}
-            >
-              Cancel
-            </button>
-          </div>
+        <div className="flex justify-between items-center">
+          <span className="font-semibold">Parent Email:</span>
+          <span>{profile.parentEmail || <span className="text-gray-400">Not set</span>}</span>
+        </div>
+        <div className="flex justify-between items-center">
+          <span className="font-semibold">Language:</span>
+          <span>{profile.language || <span className="text-gray-400">Not set</span>}</span>
+        </div>
+      </div>
+      {/* <div>
+        <h2 className="text-lg font-semibold mb-2">Recent Chats</h2>
+        {profile.lastChats.length === 0 ? (
+          <p className="text-gray-400">No recent chats.</p>
         ) : (
-          <button
-            type="button"
-            className="px-4 py-1 bg-blue-600 text-white rounded"
-            onClick={() => setEditing(true)}
-          >
-            Edit
-          </button>
+          <ul className="list-disc pl-5 space-y-1">
+            {profile.lastChats.map((chat, idx) => (
+              <li key={idx} className="text-sm text-gray-700 dark:text-gray-300">
+                {chat.title || 'Untitled chat'}
+              </li>
+            ))}
+          </ul>
         )}
-        {success && <div className="text-green-600 text-sm">Profile updated!</div>}
-      </form>
+      </div> */}
     </div>
   );
 }

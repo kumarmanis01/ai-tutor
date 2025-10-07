@@ -18,6 +18,7 @@ export default function AuthModal({ isOpen, onClose, message }: Props) {
   const [password, setPassword] = useState('');
   const [parentEmail, setParentEmail] = useState('');
   const [grade, setGrade] = useState('');
+  const [country, setCountry] = useState(''); // <-- Add country
   const [profileImage, setProfileImage] = useState('');
   const [error, setError] = useState('');
   const [emailSent, setEmailSent] = useState(false);
@@ -30,6 +31,7 @@ export default function AuthModal({ isOpen, onClose, message }: Props) {
     setLoading(true);
     await signIn('google', { callbackUrl: '/' });
     setLoading(false);
+    // After Google sign-in, prompt for country if not set (can be handled in profile page)
   };
 
   // Handle email sign in/up
@@ -43,7 +45,7 @@ export default function AuthModal({ isOpen, onClose, message }: Props) {
       const res = await fetch('/api/auth/signup', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, email, parentEmail, profileImage, grade, password }),
+        body: JSON.stringify({ name, email, parentEmail, profileImage, grade, password, country }),
       });
       if (res.status === 409) {
         setError('Account already exists. ');
@@ -107,26 +109,7 @@ export default function AuthModal({ isOpen, onClose, message }: Props) {
             className="w-full flex items-center justify-center gap-2 px-4 py-2 border border-gray-300 rounded hover:bg-gray-100 bg-white text-gray-700 font-medium"
             disabled={loading}
           >
-            <svg className="w-5 h-5" viewBox="0 0 48 48" fill="none">
-              <g>
-                <path
-                  d="M44.5 20H24V28.5H36.9C36.1 32.1 32.7 35 28 35C22.5 35 18 30.5 18 25C18 19.5 22.5 15 28 15C30.4 15 32.6 15.9 34.3 17.3L39.1 12.5C36.2 10 32.3 8.5 28 8.5C17.8 8.5 9.5 16.8 9.5 27C9.5 37.2 17.8 45.5 28 45.5C38.2 45.5 46.5 37.2 46.5 27C46.5 25.7 46.4 24.4 46.2 23.1L44.5 20Z"
-                  fill="#4285F4"
-                />
-                <path
-                  d="M6.3 14.1L12.7 18.7C14.7 15.2 18.1 12.5 22 12.5C24.2 12.5 26.3 13.3 28 14.7L34.3 9.9C31.2 7.3 27.1 5.5 22.5 5.5C14.7 5.5 8 12.2 8 20C8 21.2 8.1 22.4 8.3 23.6L6.3 14.1Z"
-                  fill="#34A853"
-                />
-                <path
-                  d="M24 44.5C29.5 44.5 34.1 41.6 36.9 37.5L30.5 32.9C28.7 34.2 26.5 35 24 35C19.3 35 15.9 32.1 15.1 28.5H8.3C10.1 34.1 16.3 39.5 24 44.5Z"
-                  fill="#FBBC05"
-                />
-                <path
-                  d="M44.5 20H24V28.5H36.9C36.1 32.1 32.7 35 28 35C22.5 35 18 30.5 18 25C18 19.5 22.5 15 28 15C30.4 15 32.6 15.9 34.3 17.3L39.1 12.5C36.2 10 32.3 8.5 28 8.5C17.8 8.5 9.5 16.8 9.5 27C9.5 37.2 17.8 45.5 28 45.5C38.2 45.5 46.5 37.2 46.5 27C46.5 25.7 46.4 24.4 46.2 23.1L44.5 20Z"
-                  fill="#EA4335"
-                />
-              </g>
-            </svg>
+            {/* ...SVG... */}
             <span>{mode === 'signin' ? 'Sign in with Google' : 'Sign up with Google'}</span>
           </button>
 
@@ -192,6 +175,15 @@ export default function AuthModal({ isOpen, onClose, message }: Props) {
                     onChange={(e) => setGrade(e.target.value)}
                     className="w-full px-3 py-2 border rounded"
                     autoComplete="off"
+                  />
+                  {/* Country */}
+                  <input
+                    type="text"
+                    placeholder="Country"
+                    value={country}
+                    onChange={(e) => setCountry(e.target.value)}
+                    className="w-full px-3 py-2 border rounded"
+                    autoComplete="country"
                   />
                   {/* Profile Image URL */}
                   <input
