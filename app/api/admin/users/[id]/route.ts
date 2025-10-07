@@ -10,3 +10,13 @@ export async function PATCH(req, { params }) {
   });
   return NextResponse.json(user);
 }
+
+export async function DELETE(req: Request, context: { params: { id: string } }) {
+  const { params } = await context;
+  try {
+    await prisma.user.delete({ where: { id: params.id } });
+    return NextResponse.json({ ok: true });
+  } catch {
+    return NextResponse.json({ error: 'Failed to delete user' }, { status: 500 });
+  }
+}

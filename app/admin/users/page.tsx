@@ -12,6 +12,7 @@ export default function AdminUsers() {
   const [users, setUsers] = useState<UserRow[]>([]);
   const [editedUsers, setEditedUsers] = useState<{ [id: string]: Partial<UserRow> }>({});
   const [saving, setSaving] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   useEffect(() => {
     fetch('/api/admin/users')
@@ -40,6 +41,18 @@ export default function AdminUsers() {
     );
     setEditedUsers({});
     setSaving(false);
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!window.confirm('Are you sure you want to delete this user?')) return;
+    setDeletingId(id);
+    const res = await fetch(`/api/admin/users/${id}`, { method: 'DELETE' });
+    if (res.ok) {
+      setUsers((prev) => prev.filter((u) => u.id !== id));
+    } else {
+      alert('Failed to delete user.');
+    }
+    setDeletingId(null);
   };
 
   return (
@@ -76,7 +89,15 @@ export default function AdminUsers() {
                   <option value="support">support</option>
                 </select>
               </td>
-              <td>{/* Add more admin actions here */}</td>
+              <td>
+                <button
+                  className="px-2 py-1 bg-red-600 text-white rounded"
+                  disabled={deletingId === u.id}
+                  onClick={() => handleDelete(u.id)}
+                >
+                  {deletingId === u.id ? 'Deleting...' : 'Delete'}
+                </button>
+              </td>
             </tr>
           ))}
         </tbody>

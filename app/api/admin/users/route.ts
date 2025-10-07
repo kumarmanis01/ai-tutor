@@ -2,11 +2,15 @@ import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 
 export async function GET() {
-  const payments = await prisma.payment.findMany({
-    where: { status: 'success' },
-    include: { user: { select: { email: true } } },
+  const users = await prisma.user.findMany({
+    select: {
+      id: true,
+      email: true,
+      status: true,
+      role: true,
+    },
     orderBy: { createdAt: 'desc' },
     take: 100,
   });
-  return NextResponse.json(payments);
+  return NextResponse.json(users);
 }
