@@ -148,7 +148,8 @@ export default function ChatBot() {
     <div className="flex flex-col h-full">
       {/* Ribbon overlay if profile is incomplete */}
       <ProfileRibbon show={!!incompleteProfile} />
-      <div className="flex flex-col h-full">
+      {/* <div className="flex flex-col h-full"> */}
+      <div className="flex-1 overflow-y-auto p-4 space-y-2 border-2 border-blue-500 shadow-lg rounded-lg bg-white dark:bg-gray-900 dark:border-blue-300">
         <div className="flex-1 overflow-y-auto p-4 space-y-2">
           {messages.length === 0 && (
             <div className="text-gray-400 text-center mt-10">

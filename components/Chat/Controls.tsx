@@ -1,8 +1,8 @@
-"use client";
+'use client';
 
-import { useState } from "react";
-import LanguageSelector from "../LanguageSelector";
-import SpeechInput from "./SpeechInput";
+import { useState } from 'react';
+import LanguageSelector from '../LanguageSelector';
+import SpeechInput from './SpeechInput';
 
 export default function Controls({
   onSend,
@@ -25,20 +25,20 @@ export default function Controls({
   lang: string;
   setLang: (l: string) => void;
 }) {
-  const [input, setInput] = useState("");
-  const [speechError, setSpeechError] = useState<string>("");
+  const [input, setInput] = useState('');
+  const [speechError, setSpeechError] = useState<string>('');
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!input.trim()) return;
     onSend(input.trim());
-    setInput("");
+    setInput('');
   };
 
-  const remaining = isPremium ? "∞" : Math.max(0, 3 - todaysCount);
+  const remaining = isPremium ? '∞' : Math.max(0, 3 - todaysCount);
 
   return (
-    <div className="border-t p-3">
+    <div className="border-t p-3 dark:border-gray-700 bg-white dark:bg-gray-900">
       <form onSubmit={handleSubmit} className="flex items-center gap-2">
         <div className="mr-2">
           <LanguageSelector lang={lang} setLang={setLang} />
@@ -57,7 +57,7 @@ export default function Controls({
           aria-label="Send"
         >
           {loading ? (
-            "..."
+            '...'
           ) : (
             <svg
               xmlns="http://www.w3.org/2000/svg"
@@ -70,11 +70,9 @@ export default function Controls({
           )}
         </button>
       </form>
-      {speechError && (
-        <div className="text-xs text-red-500 mt-2">{speechError}</div>
-      )}
+      {speechError && <div className="text-xs text-red-500 mt-2">{speechError}</div>}
       <div className="flex items-center gap-2 mt-4 justify-end">
-        <label htmlFor="volume-bar" className="text-sm">
+        <label htmlFor="volume-bar" className="text-sm text-gray-700 dark:text-gray-200">
           Volume:
         </label>
         <input
@@ -87,21 +85,21 @@ export default function Controls({
           onChange={(e) => setVolume(Number(e.target.value))}
           className="w-32"
         />
-        <span className="text-xs text-gray-600">
+        <span className="text-xs text-gray-600 dark:text-gray-300">
           {Math.round(volume * 100)}%
         </span>
       </div>
-      <div className="text-xs text-gray-500 mt-1">
+      <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
         {isValidSession ? (
           isPremium ? (
-            <span className="text-emerald-600 font-semibold">
+            <span className="text-emerald-600 dark:text-emerald-400 font-semibold">
               Thank you for being a premium member! Enjoy unlimited questions 🎉
             </span>
           ) : (
             <span>Free tier: {remaining} / 3 left today</span>
           )
         ) : (
-          <span className="text-red-500">
+          <span className="text-red-500 dark:text-red-400">
             Session expired. Please log in again.
           </span>
         )}
