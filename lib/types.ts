@@ -6,7 +6,10 @@ export interface SessionUser {
   role?: string;
   parentEmail?: string | null;
   grade?: string | null;
-  password?: string; // Optional, not used for auth here
+  password?: string;
   country?: string | null;
-  // Add other custom fields if needed
+  plan?: string | null;
+  billingCycle?: string | null;
+  language?: string | null;
+  createdAt?: string | null;
 }

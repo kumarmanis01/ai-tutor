@@ -13,21 +13,22 @@ export async function GET() {
   const sessionUser = session.user as SessionUser;
   if (!sessionUser || !sessionUser.email) {
     return NextResponse.json({
-      language: 'en',
+      name: '',
+      email: '',
       country: '',
-      grade: '',
-      parentEmail: '',
+      language: 'en',
+      createdAt: null,
       role: '',
-      memberSince: null,
+      parentEmail: '',
       plan: '',
       billingCycle: '',
+      subscriptionEnd: null,
     });
   }
 
   const savedUser = await prisma.user.findUnique({
     where: { email: sessionUser.email },
     include: {
-      chats: { take: 10, orderBy: { createdAt: 'desc' } },
       subscriptions: true,
     },
   });
@@ -36,13 +37,15 @@ export async function GET() {
   const activeSub = savedUser?.subscriptions?.find((sub) => sub.active);
 
   return NextResponse.json({
-    language: savedUser?.language ?? 'en',
+    name: savedUser?.name ?? '',
+    email: savedUser?.email ?? '',
     country: savedUser?.country ?? '',
-    grade: savedUser?.grade ?? '',
-    parentEmail: savedUser?.parentEmail ?? '',
+    language: savedUser?.language ?? 'en',
+    createdAt: savedUser?.createdAt ?? null,
     role: savedUser?.role ?? '',
-    memberSince: savedUser?.createdAt ?? null,
+    parentEmail: savedUser?.parentEmail ?? '',
     plan: activeSub?.plan ?? '',
     billingCycle: activeSub?.billingCycle ?? '',
+    subscriptionEnd: activeSub?.endDate ?? null,
   });
 }

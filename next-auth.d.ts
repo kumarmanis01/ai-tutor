@@ -1,4 +1,3 @@
-// next-auth.d.ts
 import 'next-auth';
 
 declare module 'next-auth' {
@@ -12,9 +11,10 @@ declare module 'next-auth' {
       parentEmail?: string | null;
       grade?: string | null;
       country?: string | null;
+      plan?: string | null;
+      billingCycle?: string | null;
       language?: string | null;
       createdAt?: string | null;
-      // Add other custom fields as needed
     };
   }
 }

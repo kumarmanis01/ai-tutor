@@ -5,6 +5,12 @@ const nextConfig: NextConfig = {
   images: {
     // Add the allowed external image domain here
     domains: ['lh3.googleusercontent.com'],
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'flagcdn.com',
+      },
+    ],
   },
 };
 

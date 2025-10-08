@@ -2,53 +2,46 @@
 import { useEffect, useState } from 'react';
 import { useSession } from 'next-auth/react';
 import Avatar from '@/components/UI/Avatar';
+import OnboardingPage from '../onboarding/page';
+import { SessionUser } from '@/lib/types';
 
 export default function ProfilePage() {
   const { data: session } = useSession();
-  const [profile, setProfile] = useState<{
-    grade: string;
-    parentEmail: string;
-    country: string;
-    language: string;
-    billingCycle?: string;
-    plan?: string;
-    role?: string;
-    memberSince?: string | null;
-  }>({
-    grade: '',
-    parentEmail: '',
-    country: '',
-    language: '',
-    billingCycle: '',
-    plan: '',
-    role: '',
-    memberSince: null,
-  });
+  const [profile, setProfile] = useState<SessionUser | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [showOnboarding, setShowOnboarding] = useState(false);
 
   useEffect(() => {
     async function fetchProfile() {
       const res = await fetch('/api/user/profile');
       if (res.ok) {
         const data = await res.json();
-        setProfile({
-          grade: data.grade || '',
-          parentEmail: data.parentEmail || '',
-          country: data.country || '',
-          language: data.language || '',
-          billingCycle: data.billingCycle || '',
-          plan: data.plan || '',
-          role: data.role || '',
-          memberSince: data.memberSince || null,
-        });
+        setProfile(data);
       }
+      setLoading(false);
     }
     if (session) fetchProfile();
   }, [session]);
 
-  if (!session) {
-    return <div className="p-6">You are not signed in.</div>;
-  } else {
-    console.log(profile);
+  if (!session) return <div className="p-6">You are not signed in.</div>;
+  if (loading) return <div className="p-6">Loading...</div>;
+
+  if (showOnboarding) {
+    // Show onboarding UI as modal/overlay
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-40 z-50 flex items-center justify-center">
+        <div className="bg-white dark:bg-gray-900 rounded-lg shadow-lg p-6 max-w-lg w-full relative">
+          <button
+            className="absolute top-2 right-2 text-gray-500 dark:text-gray-300 text-xl"
+            onClick={() => setShowOnboarding(false)}
+            aria-label="Close"
+          >
+            ×
+          </button>
+          <OnboardingPage />
+        </div>
+      </div>
+    );
   }
 
   const fallback =
@@ -57,50 +50,65 @@ export default function ProfilePage() {
     '?';
 
   return (
-    <div className="max-w-lg mx-auto p-8 bg-white dark:bg-gray-900 rounded-xl shadow-md space-y-6 text-gray-900 dark:text-gray-100">
-      <div className="flex flex-col items-center space-y-2">
+    <div className="max-w-2xl mx-auto p-8 bg-white dark:bg-gray-900 rounded-xl shadow-lg text-gray-900 dark:text-gray-100">
+      {/* Profile Header */}
+      <div className="flex flex-col items-center mb-8">
         <Avatar
           src={session.user?.image || undefined}
           alt={session.user?.name || session.user?.email || 'User avatar'}
           size={80}
           fallback={fallback}
         />
-        <h1 className="text-2xl font-bold">{session.user?.name}</h1>
+        <h1 className="text-3xl font-bold mt-2">{session.user?.name}</h1>
         <p className="text-gray-500 dark:text-gray-400">{session.user?.email}</p>
+        <button
+          type="button"
+          className="mt-4 px-5 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+          onClick={() => setShowOnboarding(true)}
+        >
+          Update Profile
+        </button>
       </div>
-      <div className="space-y-3 border border-gray-300 dark:border-gray-700 rounded-lg p-4">
-        <div className="flex justify-between items-center">
-          <span className="font-semibold">Country:</span>
-          <span>{profile.country || <span className="text-gray-400">Not set</span>}</span>
+      {/* Profile Details */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+        {/* Account Info */}
+        <div className="bg-gray-50 dark:bg-gray-800 p-6 rounded-lg border border-gray-200 dark:border-gray-700 space-y-4 h-fit">
+          <div>
+            <span className="font-semibold">Plan:</span>{' '}
+            {profile?.plan || <span className="text-gray-400">Not set</span>}
+          </div>
+          <div>
+            <span className="font-semibold">Billing Cycle:</span>{' '}
+            {profile?.billingCycle || <span className="text-gray-400">Not set</span>}
+          </div>
+          <div>
+            <span className="font-semibold">Role:</span>{' '}
+            {profile?.role || <span className="text-gray-400">Not set</span>}
+          </div>
+          <div>
+            <span className="font-semibold">Member since:</span>{' '}
+            {profile?.createdAt ? new Date(profile.createdAt).toLocaleDateString() : 'N/A'}
+          </div>
         </div>
-        <div className="flex justify-between items-center">
-          <span className="font-semibold">Grade:</span>
-          <span>{profile.grade || <span className="text-gray-400">Not set</span>}</span>
+        {/* Personal Info */}
+        <div className="bg-gray-50 dark:bg-gray-800 p-6 rounded-lg border border-gray-200 dark:border-gray-700 space-y-4 h-fit">
+          <div>
+            <span className="font-semibold">Country:</span>{' '}
+            {profile?.country || <span className="text-gray-400">Not set</span>}
+          </div>
+          <div>
+            <span className="font-semibold">Grade:</span>{' '}
+            {profile?.grade || <span className="text-gray-400">Not set</span>}
+          </div>
+          <div>
+            <span className="font-semibold">Parent Email:</span>{' '}
+            {profile?.parentEmail || <span className="text-gray-400">Not set</span>}
+          </div>
+          <div>
+            <span className="font-semibold">Language:</span>{' '}
+            {profile?.language || <span className="text-gray-400">Not set</span>}
+          </div>
         </div>
-        <div className="flex justify-between items-center">
-          <span className="font-semibold">Parent Email:</span>
-          <span>{profile.parentEmail || <span className="text-gray-400">Not set</span>}</span>
-        </div>
-        <div className="flex justify-between items-center">
-          <span className="font-semibold">Language:</span>
-          <span>{profile.language || <span className="text-gray-400">Not set</span>}</span>
-        </div>
-        <div className="flex justify-between items-center">
-          <span className="font-semibold">Plan:</span>
-          <span>{profile.plan || <span className="text-gray-400">Not set</span>}</span>
-        </div>
-        <div className="flex justify-between items-center">
-          <span className="font-semibold">Billing Cycle:</span>
-          <span>{profile.billingCycle || <span className="text-gray-400">Not set</span>}</span>
-        </div>
-        <div className="flex justify-between items-center">
-          <span className="font-semibold">Role:</span>
-          <span>{profile.role || <span className="text-gray-400">Not set</span>}</span>
-        </div>
-      </div>
-      <div className="text-center text-sm text-gray-500 dark:text-gray-400">
-        Member since{' '}
-        {profile.memberSince ? new Date(profile.memberSince).toLocaleDateString() : 'N/A'} <br />
       </div>
     </div>
   );
