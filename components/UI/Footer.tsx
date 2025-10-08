@@ -11,7 +11,7 @@ export default function Footer() {
   const isAdmin = session && session.user && (session.user as SessionUser).role === 'admin';
 
   return (
-    <footer className="w-full bg-gray-100 border-t mt-12">
+    <footer className="w-full bg-gray-100 border-t mt-1">
       <div className="max-w-6xl mx-auto px-4 py-6 flex flex-col md:flex-row items-center justify-between gap-4">
         <div className="text-gray-600 text-sm">
           &copy; {new Date().getFullYear()} Spinzy Academy. All rights reserved.
