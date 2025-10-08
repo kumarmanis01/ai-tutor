@@ -6,6 +6,7 @@ import MessageBubble from './MessageBubble';
 import Controls from './Controls';
 import SubscriptionModal from '../SubscriptionModal';
 import AuthModal from '../AuthModal';
+import ProfileRibbon from '@/components/UI/ProfileRibbon';
 
 // Helper to base64 encode keys for privacy
 function encodeKey(str: string) {
@@ -27,6 +28,10 @@ function getUserId(user: { id?: string; email?: string | null }) {
 
 export default function ChatBot() {
   const { data: session } = useSession();
+
+  // Profile completeness check
+  const incompleteProfile =
+    session && (!session.user?.parentEmail || !session.user?.name || !session.user?.country);
 
   // Use a persistent user identifier for localStorage key (base64 encoded for privacy)
   function getUserKey() {
@@ -141,48 +146,52 @@ export default function ChatBot() {
 
   return (
     <div className="flex flex-col h-full">
-      <div className="flex-1 overflow-y-auto p-4 space-y-2">
-        {messages.length === 0 && (
-          <div className="text-gray-400 text-center mt-10">
-            Ask your first question to get started
-          </div>
-        )}
-        {messages.map((msg) => (
-          <MessageBubble
-            key={msg.id}
-            role={msg.role}
-            content={msg.content}
-            volume={volume}
-            lang={lang} // Pass lang prop for spoken language
-          />
-        ))}
+      {/* Ribbon overlay if profile is incomplete */}
+      <ProfileRibbon show={!!incompleteProfile} />
+      <div className="flex flex-col h-full">
+        <div className="flex-1 overflow-y-auto p-4 space-y-2">
+          {messages.length === 0 && (
+            <div className="text-gray-400 text-center mt-10">
+              Ask your first question to get started
+            </div>
+          )}
+          {messages.map((msg) => (
+            <MessageBubble
+              key={msg.id}
+              role={msg.role}
+              content={msg.content}
+              volume={volume}
+              lang={lang} // Pass lang prop for spoken language
+            />
+          ))}
+        </div>
+
+        {/* Controls with quota info and language selection */}
+        <Controls
+          onSend={handleSend}
+          loading={loading}
+          isPremium={subscription.isPremium}
+          isValidSession={!!session}
+          todaysCount={subscription.todaysCount}
+          volume={volume}
+          setVolume={setVolume}
+          lang={lang}
+          setLang={setLang}
+        />
+
+        {/* Login Modal for unauthenticated users */}
+        <AuthModal
+          isOpen={showAuthModal}
+          onClose={() => setShowAuthModal(false)}
+          message="Please login to ask questions."
+        />
+
+        {/* Subscription Modal */}
+        <SubscriptionModal
+          open={showSubscriptionSubModal}
+          onClose={() => setShowSubscriptionSubModal(false)}
+        />
       </div>
-
-      {/* Controls with quota info and language selection */}
-      <Controls
-        onSend={handleSend}
-        loading={loading}
-        isPremium={subscription.isPremium}
-        isValidSession={!!session}
-        todaysCount={subscription.todaysCount}
-        volume={volume}
-        setVolume={setVolume}
-        lang={lang}
-        setLang={setLang}
-      />
-
-      {/* Login Modal for unauthenticated users */}
-      <AuthModal
-        isOpen={showAuthModal}
-        onClose={() => setShowAuthModal(false)}
-        message="Please login to ask questions."
-      />
-
-      {/* Subscription Modal */}
-      <SubscriptionModal
-        open={showSubscriptionSubModal}
-        onClose={() => setShowSubscriptionSubModal(false)}
-      />
     </div>
   );
 }
