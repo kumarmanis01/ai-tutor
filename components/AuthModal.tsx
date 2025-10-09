@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { signIn } from 'next-auth/react';
 
-type Mode = 'signin' | 'signup';
+// type Mode = 'signin' | 'signup';
 
 interface Props {
   isOpen: boolean;
@@ -12,7 +12,7 @@ interface Props {
 }
 
 export default function AuthModal({ isOpen, onClose, message }: Props) {
-  const [mode, setMode] = useState<Mode>('signin');
+  // const [mode, setMode] = useState<Mode>('signin');
   // const [name, setName] = useState('');
   // const [email, setEmail] = useState('');
   // const [password, setPassword] = useState('');
@@ -34,63 +34,6 @@ export default function AuthModal({ isOpen, onClose, message }: Props) {
     // After Google sign-in, prompt for country if not set (can be handled in profile page)
   };
 
-  // Handle email sign in/up
-  // const handleEmail = async (e: React.FormEvent) => {
-  //   e.preventDefault();
-  //   setError('');
-  //   setLoading(true);
-
-  //   if (mode === 'signup') {
-  //     // Call your custom signup API to create user with extra fields
-  //     const res = await fetch('/api/auth/signup', {
-  //       method: 'POST',
-  //       headers: { 'Content-Type': 'application/json' },
-  //       body: JSON.stringify({ name, email, parentEmail, profileImage, grade, password, country }),
-  //     });
-  //     if (res.status === 409) {
-  //       setError('Account already exists. ');
-  //       setMode('signin');
-  //       setLoading(false);
-  //       return;
-  //     }
-  //     if (!res.ok) {
-  //       setError('Signup failed. Try again.');
-  //       setLoading(false);
-  //       return;
-  //     }
-  //     // After signup, send magic link for email verification/signin
-  //     const signInRes = await signIn('email', { email, redirect: false, callbackUrl: '/' });
-  //     if (signInRes?.ok) setEmailSent(true);
-  //     else setError('Failed to send sign-in link.');
-  //     setLoading(false);
-  //     return;
-  //   }
-
-  //   // Sign in mode with password
-  //   if (password) {
-  //     const res = await signIn('credentials', {
-  //       email,
-  //       password,
-  //       redirect: false,
-  //       callbackUrl: '/',
-  //     });
-  //     if (res?.ok) {
-  //       window.location.href = '/';
-  //       return;
-  //     } else {
-  //       setError('Invalid email or password.');
-  //       setLoading(false);
-  //       return;
-  //     }
-  //   }
-
-  //   // Fallback: magic link sign in
-  //   const res = await signIn('email', { email, redirect: false, callbackUrl: '/' });
-  //   if (res?.ok) setEmailSent(true);
-  //   else setError('No account found or failed to send sign-in link.');
-  //   setLoading(false);
-  // };
-
   return (
     <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-40 z-50">
       <div className="bg-white rounded-lg shadow-lg w-full max-w-sm p-6 relative">
@@ -100,7 +43,7 @@ export default function AuthModal({ isOpen, onClose, message }: Props) {
         >
           ✕
         </button>
-        <h2 className="text-lg font-semibold mb-2">{mode === 'signin' ? 'Sign In' : 'Sign Up'}</h2>
+        <h2 className="text-lg font-semibold mb-2">Continue with Google</h2>
         {message && <p className="text-sm text-gray-600 mb-4">{message}</p>}
         <div className="space-y-3">
           {/* Google */}
@@ -110,13 +53,70 @@ export default function AuthModal({ isOpen, onClose, message }: Props) {
             disabled={loading}
           >
             {/* ...SVG... */}
-            <span>{mode === 'signin' ? 'Sign in with Google' : 'Sign up with Google'}</span>
+            <span>Sign in with Google</span>
           </button>
         </div>
       </div>
     </div>
   );
 }
+// Handle email sign in/up
+// const handleEmail = async (e: React.FormEvent) => {
+//   e.preventDefault();
+//   setError('');
+//   setLoading(true);
+
+//   if (mode === 'signup') {
+//     // Call your custom signup API to create user with extra fields
+//     const res = await fetch('/api/auth/signup', {
+//       method: 'POST',
+//       headers: { 'Content-Type': 'application/json' },
+//       body: JSON.stringify({ name, email, parentEmail, profileImage, grade, password, country }),
+//     });
+//     if (res.status === 409) {
+//       setError('Account already exists. ');
+//       setMode('signin');
+//       setLoading(false);
+//       return;
+//     }
+//     if (!res.ok) {
+//       setError('Signup failed. Try again.');
+//       setLoading(false);
+//       return;
+//     }
+//     // After signup, send magic link for email verification/signin
+//     const signInRes = await signIn('email', { email, redirect: false, callbackUrl: '/' });
+//     if (signInRes?.ok) setEmailSent(true);
+//     else setError('Failed to send sign-in link.');
+//     setLoading(false);
+//     return;
+//   }
+
+//   // Sign in mode with password
+//   if (password) {
+//     const res = await signIn('credentials', {
+//       email,
+//       password,
+//       redirect: false,
+//       callbackUrl: '/',
+//     });
+//     if (res?.ok) {
+//       window.location.href = '/';
+//       return;
+//     } else {
+//       setError('Invalid email or password.');
+//       setLoading(false);
+//       return;
+//     }
+//   }
+
+//   // Fallback: magic link sign in
+//   const res = await signIn('email', { email, redirect: false, callbackUrl: '/' });
+//   if (res?.ok) setEmailSent(true);
+//   else setError('No account found or failed to send sign-in link.');
+//   setLoading(false);
+// };
+
 // return (
 //   <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-40 z-50">
 //     <div className="bg-white rounded-lg shadow-lg w-full max-w-sm p-6 relative">
