@@ -54,6 +54,7 @@ model User {
   apiUsages     ApiUsage[]
   passwordHash  String?  // Store the hash here
   grade         String?   // Student grade option
+  welcomeEmailSent  Boolean  @default(false)
 }
 
 /**

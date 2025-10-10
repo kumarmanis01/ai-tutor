@@ -34,7 +34,7 @@ export async function GET() {
   });
 
   // Find active subscription
-  const activeSub = savedUser?.subscriptions?.find((sub) => sub.active);
+  const activeSub = savedUser?.subscriptions?.find((sub: { active: boolean }) => sub.active);
 
   return NextResponse.json({
     name: savedUser?.name ?? '',

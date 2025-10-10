@@ -16,10 +16,14 @@ async function sendPaymentSuccessEmail(
   const transporter = nodemailer.createTransport({
     host: process.env.EMAIL_SERVER_HOST,
     port: Number(process.env.EMAIL_SERVER_PORT),
+    secure: true,
+    requireTLS: true,
+    tls: { ciphers: 'SSLv3' },
     auth: {
       user: process.env.EMAIL_SERVER_USER,
       pass: process.env.EMAIL_SERVER_PASSWORD,
     },
+    debug: true,
   });
 
   await transporter.sendMail({
@@ -27,13 +31,20 @@ async function sendPaymentSuccessEmail(
     to,
     subject: 'Payment Successful - Spinzy Academy',
     html: `
-      <h2>Thank you for your payment!</h2>
-      <p>Hi ${name || to},</p>
-      <p>Your payment for the <strong>${plan}</strong> plan (${billingCycle}) was successful.</p>
-      <p>Amount: ₹${amount / 100}</p>
-      <p>Your subscription is now active.</p>
-      <br/>
-      <p>Spinzy Academy Team</p>
+      <h2 style="color:#2d6cdf;">Thank You for Your Payment!</h2>
+      <p>Hi ${name},</p>
+      <p>We’re excited to confirm that your payment for the <strong>${plan}</strong> plan (${billingCycle}) has been received successfully.</p>
+      <p>
+        <strong>Amount Paid:</strong> ₹${amount}<br>
+        <strong>Plan:</strong> ${plan}<br>
+        <strong>Billing Cycle:</strong> ${billingCycle}
+      </p>
+      <p>Your subscription is now active. You can start enjoying all the features and benefits of Spinzy Academy right away!</p>
+      <hr>
+      <p>If you have any questions or need assistance, feel free to reply to this email or contact our support team.</p>
+      <br>
+      <p>Thank you for choosing Spinzy Academy.<br>
+      The Spinzy Academy Team</p>
     `,
   });
 }
@@ -123,7 +134,7 @@ export async function POST(req: Request) {
       sessionUser.name || '',
       String(plan),
       String(billingCycle),
-      amount,
+      amount / 100, // Convert paise to rupees
     );
   } catch (err) {
     console.error('Failed to send payment email:', err);
