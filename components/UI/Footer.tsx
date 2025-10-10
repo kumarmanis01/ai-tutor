@@ -27,14 +27,20 @@ export default function Footer() {
             About
           </Link>
           <Link href="/privacy" className="hover:text-blue-600">
-            Privacy Policy
+            Privacy
           </Link>
           <Link href="/terms" className="hover:text-blue-600">
-            Terms of Service
+            Terms
+          </Link>
+          <Link href="/contact-us" className="hover:text-blue-600">
+            Contact
+          </Link>
+          <Link href="/refund" className="hover:text-blue-600">
+            Refund
           </Link>
           {isAdmin && (
             <Link href="/admin" className="hover:text-blue-600 font-semibold">
-              Admin Dashboard
+              Admin
             </Link>
           )}
         </nav>
