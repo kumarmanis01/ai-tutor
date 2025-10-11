@@ -3,58 +3,68 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { razorpay } from '@/lib/payments';
 import { SessionUser } from '@/lib/types';
+import { logger } from '@/lib/logger';
+import { BILLING_MONTHLY, RAZORPAY_PLAN_IDS } from '../constants';
 
 /**
- * Creates a Razorpay order for the selected plan.
+ * Creates a Razorpay subscription for the selected plan.
  * Requires user to be signed in.
  * Purpose:
- *  Creates a Razorpay order for a selected plan and billing cycle.
+ *  Creates a Razorpay subscription for a selected plan and billing cycle.
  * How:
  *  Checks if the user is authenticated.
  *  Reads plan and billingCycle from the request body.
- *  Calculates the amount (in paise) based on plan/cycle.
- *  Calls Razorpay API to create an order.
- *  Returns order ID, amount, and user email.
+ *  Calls Razorpay API to create a subscription.
+ *  Returns subscription ID, plan details, and user email.
  * Error Handling:
  *  Returns a 400 error for invalid plans.
-
  */
+
 export async function POST(req: Request) {
+  logger.add('Billing checkout POST called.');
   const session = await getServerSession(authOptions);
   if (!session) {
+    logger.add('Unauthorized: No session found.');
     return new Response('Unauthorized', { status: 401 });
   }
 
   const user = session.user as SessionUser;
   if (!user || !user.email) {
+    logger.add('Not authenticated: No user or email found in session.');
     return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
   }
 
-  console.log('inside billing POST:');
+  logger.add('User authenticated: ' + JSON.stringify({ email: user.email }));
+
   const { plan, billingCycle } = await req.json();
+  logger.add('Received options from UI: ' + JSON.stringify({ plan, billingCycle }));
 
-  // Amounts in paise
-  const amount =
-    plan === 'pro'
-      ? billingCycle === 'monthly'
-        ? 29900 // ₹299
-        : 299900 // ₹2999
-      : 0;
-
-  if (amount === 0) {
-    return NextResponse.json({ error: 'Invalid plan' }, { status: 400 });
+  // Use constants for plan and billing cycle
+  const planId = RAZORPAY_PLAN_IDS[plan]?.[billingCycle];
+  if (!planId) {
+    logger.add('Invalid plan or billing cycle received: ' + JSON.stringify({ plan, billingCycle }));
+    return NextResponse.json({ error: 'Invalid plan or billing cycle' }, { status: 400 });
   }
 
-  const order = await razorpay.orders.create({
-    amount,
-    currency: 'INR',
-    receipt: `order_${Date.now()}`,
+  logger.add('Creating Razorpay subscription with planId: ' + planId);
+
+  const subscription = await razorpay.subscriptions.create({
+    plan_id: planId,
+    customer_notify: 1,
+    total_count: billingCycle === BILLING_MONTHLY ? 12 : 1, // Use constant for monthly
+    quantity: 1,
+    notes: {
+      email: user.email,
+      plan,
+      billingCycle,
+    },
   });
 
-  console.log('Razorpay order created:', order);
+  logger.add('Razorpay subscription created: ' + JSON.stringify(subscription));
   return NextResponse.json({
-    orderId: order.id,
-    amount,
+    subscriptionId: subscription.id,
+    plan,
+    billingCycle,
     email: user.email,
   });
 }

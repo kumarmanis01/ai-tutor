@@ -57,13 +57,18 @@ export async function POST(req: Request) {
   const sessionUser = session.user as SessionUser;
 
   const body = await req.json();
-  const { razorpay_order_id, razorpay_payment_id, razorpay_signature, plan, billingCycle, amount } =
-    body;
-
+  const {
+    razorpay_subscription_id,
+    razorpay_payment_id,
+    razorpay_signature,
+    plan,
+    billingCycle,
+    amount,
+  } = body;
   // Verify Razorpay signature
   const sign = crypto
     .createHmac('sha256', process.env.RAZORPAY_KEY_SECRET!)
-    .update(razorpay_order_id + '|' + razorpay_payment_id)
+    .update(razorpay_subscription_id + '|' + razorpay_payment_id)
     .digest('hex');
 
   if (sign !== razorpay_signature) {
@@ -76,7 +81,7 @@ export async function POST(req: Request) {
         status: 'failed',
         createdAt: new Date(),
         transactionId: razorpay_payment_id,
-        orderId: razorpay_order_id,
+        orderId: razorpay_subscription_id,
         plan: String(plan),
         billingCycle: String(billingCycle),
         meta: { signature: razorpay_signature },
@@ -94,7 +99,7 @@ export async function POST(req: Request) {
       status: 'success',
       createdAt: new Date(),
       transactionId: razorpay_payment_id,
-      orderId: razorpay_order_id,
+      orderId: razorpay_subscription_id,
       plan: String(plan),
       billingCycle: String(billingCycle),
       meta: { signature: razorpay_signature },

@@ -1,17 +1,22 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useSession, signIn } from 'next-auth/react';
-import Script from 'next/script';
+import { logger } from '@/lib/logger';
+import {
+  BILLING_MONTHLY,
+  BILLING_ANNUAL,
+  BILLING_PLAN_PRO,
+  PRICES,
+  RAZORPAY_PLAN_IDS,
+} from '@/app/api/billing/constants';
+import { getBillingPayload } from '../api/billing/utility';
 
-// Define a type for RazorpayOptions to avoid self-referencing error
 type RazorpayOptions = {
   key: string;
-  amount: number;
-  currency: string;
+  subscription_id: string;
   name: string;
   description: string;
-  order_id: string;
   handler: (response: unknown) => void;
   prefill: {
     name: string;
@@ -23,59 +28,126 @@ type RazorpayOptions = {
 };
 
 type RazorpayResponse = {
-  razorpay_order_id: string;
+  razorpay_subscription_id: string;
   razorpay_payment_id: string;
   razorpay_signature: string;
 };
 
 export default function PricingPage() {
   const { data: session } = useSession();
-  const [billingCycle, setBillingCycle] = useState<'monthly' | 'annual'>('monthly');
+  const [billingCycle, setBillingCycle] = useState<'monthly' | 'annual'>(BILLING_MONTHLY);
   const [loading, setLoading] = useState(false);
+  const [log, setLog] = useState<string[]>([]);
 
-  // Prices
-  const proPrice = billingCycle === 'monthly' ? 299 : 2999;
+  useEffect(() => {
+    // Subscribe to logger updates
+    const unsubscribe = logger.subscribe((entry) => {
+      setLog((prev) => [...prev, entry]);
+    });
+    return unsubscribe;
+  }, []);
 
-  // Razorpay checkout handler
-  const handleSubscribe = async (plan: string) => {
+  const proPrice =
+    billingCycle === BILLING_MONTHLY ? PRICES[BILLING_MONTHLY] : PRICES[BILLING_ANNUAL];
+
+  const handleSubscribe = async () => {
+    logger.add('Subscribe button clicked.', {
+      className: 'PricingPage',
+      methodName: 'handleSubscribe',
+    });
     if (!session) {
+      logger.add('No session found. Redirecting to sign in.', {
+        className: 'PricingPage',
+        methodName: 'handleSubscribe',
+      });
       signIn(undefined, { callbackUrl: '/pricing' });
       return;
     }
     try {
       setLoading(true);
 
+      logger.add(
+        `Sending request to /api/billing/checkout with plan: ${BILLING_PLAN_PRO}, billingCycle: ${billingCycle}`,
+        { className: 'PricingPage', methodName: 'handleSubscribe' },
+      );
+      logger.add(
+        `UI sending options: ${JSON.stringify({ plan: BILLING_PLAN_PRO, billingCycle })}`,
+        { className: 'PricingPage', methodName: 'handleSubscribe' },
+      );
+
       const res = await fetch('/api/billing/checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ plan, billingCycle }),
+        body: JSON.stringify(
+          getBillingPayload({ plan: BILLING_PLAN_PRO, billingCycle }, billingCycle, proPrice),
+        ),
       });
 
+      logger.add(`Received response from /api/billing/checkout. Status: ${res.status}`, {
+        className: 'PricingPage',
+        methodName: 'handleSubscribe',
+      });
       const data = await res.json();
-      if (!data.orderId) throw new Error('Failed to create order');
+      logger.add(`Response JSON: ${JSON.stringify(data)}`, {
+        className: 'PricingPage',
+        methodName: 'handleSubscribe',
+      });
 
+      if (!data.subscriptionId) {
+        logger.add('No subscriptionId in response. Throwing error.', {
+          className: 'PricingPage',
+          methodName: 'handleSubscribe',
+        });
+        throw new Error('Failed to create subscription');
+      }
+
+      logger.add('Preparing Razorpay options...', {
+        className: 'PricingPage',
+        methodName: 'handleSubscribe',
+      });
       const options: RazorpayOptions = {
         key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID!,
-        amount: data.amount,
-        currency: 'INR',
+        subscription_id: data.subscriptionId,
         name: 'Spinzy Academy',
-        description: `${plan} Subscription (${billingCycle})`,
-        order_id: data.orderId,
+        description: `${BILLING_PLAN_PRO} Subscription (${billingCycle})`,
         handler: async function (response: unknown) {
+          logger.add('Razorpay handler called. Response: ' + JSON.stringify(response), {
+            className: 'PricingPage',
+            methodName: 'RazorpayHandler',
+          });
           const respObj = response as RazorpayResponse;
-          // verify payment on server
-          await fetch('/api/billing/verify', {
+          logger.add('Sending verification request to /api/billing/verify...', {
+            className: 'PricingPage',
+            methodName: 'RazorpayHandler',
+          });
+          const verifyRes = await fetch('/api/billing/verify', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              ...respObj,
-              plan,
-              billingCycle,
-              amount: data.amount,
-            }),
+            body: JSON.stringify(getBillingPayload(respObj, billingCycle, proPrice)),
           });
-          alert('✅ Payment successful!');
-          window.location.href = '/';
+          logger.add(`Verification response status: ${verifyRes.status}`, {
+            className: 'PricingPage',
+            methodName: 'RazorpayHandler',
+          });
+          const verifyData = await verifyRes.json();
+          logger.add(`Verification response JSON: ${JSON.stringify(verifyData)}`, {
+            className: 'PricingPage',
+            methodName: 'RazorpayHandler',
+          });
+          if (verifyRes.ok) {
+            alert('✅ Subscription successful!');
+            logger.add('Subscription successful. Redirecting to home.', {
+              className: 'PricingPage',
+              methodName: 'RazorpayHandler',
+            });
+            window.location.href = '/';
+          } else {
+            alert('❌ Subscription verification failed');
+            logger.add('Subscription verification failed.', {
+              className: 'PricingPage',
+              methodName: 'RazorpayHandler',
+            });
+          }
         },
         prefill: {
           name: session.user?.name ?? 'User',
@@ -84,16 +156,38 @@ export default function PricingPage() {
         theme: { color: '#2563eb' },
       };
 
-      // Use the RazorpayOptions type in the cast to avoid self-reference
-      const rzp = new (
-        window as unknown as { Razorpay: new (options: RazorpayOptions) => { open: () => void } }
-      ).Razorpay(options);
-      rzp.open();
+      logger.add('Opening Razorpay checkout...', {
+        className: 'PricingPage',
+        methodName: 'handleSubscribe',
+      });
+      try {
+        const rzp = new (
+          window as unknown as { Razorpay: new (options: RazorpayOptions) => { open: () => void } }
+        ).Razorpay(options);
+        rzp.open();
+        logger.add('Razorpay checkout opened.', {
+          className: 'PricingPage',
+          methodName: 'handleSubscribe',
+        });
+      } catch (err) {
+        logger.add('Error opening Razorpay checkout: ' + (err as Error).message, {
+          className: 'PricingPage',
+          methodName: 'handleSubscribe',
+        });
+        throw err;
+      }
     } catch (err) {
-      console.error(err);
+      logger.add('Error in subscription flow: ' + (err as Error).message, {
+        className: 'PricingPage',
+        methodName: 'handleSubscribe',
+      });
       alert('❌ Subscription failed');
     } finally {
       setLoading(false);
+      logger.add('Subscription flow ended.', {
+        className: 'PricingPage',
+        methodName: 'handleSubscribe',
+      });
     }
   };
 
@@ -106,8 +200,8 @@ export default function PricingPage() {
       {/* Toggle */}
       <div className="flex justify-center items-center mb-10 gap-4">
         <span
-          className={`cursor-pointer ${billingCycle === 'monthly' ? 'font-bold' : 'text-gray-500'}`}
-          onClick={() => setBillingCycle('monthly')}
+          className={`cursor-pointer ${billingCycle === BILLING_MONTHLY ? 'font-bold' : 'text-gray-500'}`}
+          onClick={() => setBillingCycle(BILLING_MONTHLY)}
         >
           Monthly
         </span>
@@ -115,16 +209,18 @@ export default function PricingPage() {
           <input
             type="checkbox"
             className="sr-only peer"
-            checked={billingCycle === 'annual'}
-            onChange={() => setBillingCycle(billingCycle === 'monthly' ? 'annual' : 'monthly')}
+            checked={billingCycle === BILLING_ANNUAL}
+            onChange={() =>
+              setBillingCycle(billingCycle === BILLING_MONTHLY ? BILLING_ANNUAL : BILLING_MONTHLY)
+            }
           />
           <div className="relative w-11 h-6 bg-gray-200 rounded-full peer peer-checked:bg-blue-600">
             <div className="absolute top-0.5 left-[2px] w-5 h-5 bg-white rounded-full transition-transform peer-checked:translate-x-5"></div>
           </div>
         </label>
         <span
-          className={`cursor-pointer ${billingCycle === 'annual' ? 'font-bold' : 'text-gray-500'}`}
-          onClick={() => setBillingCycle('annual')}
+          className={`cursor-pointer ${billingCycle === BILLING_ANNUAL ? 'font-bold' : 'text-gray-500'}`}
+          onClick={() => setBillingCycle(BILLING_ANNUAL)}
         >
           Annual
         </span>
@@ -149,10 +245,12 @@ export default function PricingPage() {
         <div className="border rounded-xl shadow p-6 text-center bg-blue-150">
           <h2 className="text-xl font-semibold">Pro</h2>
           <p className="mt-4 text-4xl font-bold">₹{proPrice}</p>
-          <p className="text-gray-500">{billingCycle === 'monthly' ? 'per month' : 'per year'}</p>
+          <p className="text-gray-500">
+            {billingCycle === BILLING_MONTHLY ? 'per month' : 'per year'}
+          </p>
           <p className="mt-2">Unlimited questions</p>
           <button
-            onClick={() => handleSubscribe('pro')}
+            onClick={() => handleSubscribe()}
             disabled={loading}
             className="mt-6 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
           >
@@ -169,6 +267,16 @@ export default function PricingPage() {
             Contact Us
           </button>
         </div>
+      </div>
+
+      {/* Debug Log Output */}
+      <div className="mt-10 bg-gray-50 dark:bg-gray-800 rounded p-4 text-xs max-h-64 overflow-auto">
+        <h2 className="font-bold mb-2 text-blue-700 dark:text-yellow-300">Debug Log</h2>
+        <ul>
+          {log.map((entry, idx) => (
+            <li key={idx}>{entry}</li>
+          ))}
+        </ul>
       </div>
     </div>
   );
