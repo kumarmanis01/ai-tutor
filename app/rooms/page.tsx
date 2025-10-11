@@ -2,41 +2,220 @@
 import { useEffect, useState } from 'react';
 
 /**
- * Type for a study room.
+ * Type definitions for Room.
  */
 type Room = {
   id: string;
   name: string;
   subject?: string | null;
+  grade?: string | null;
+  isPrivate: boolean;
 };
+
+type UserRole = 'admin' | 'member';
 
 /**
  * RoomsPage component
- * Displays a list of available public study rooms.
- * Fetches room data from /api/rooms/list on mount.
+ * - Allows searching/filtering available rooms by subject or grade.
+ * - Shows public rooms with direct join option.
+ * - Shows private rooms with a request to join button.
+ * - Shows admin panel for admins.
+ * - Handles dark/light mode consistency.
  */
 export default function RoomsPage() {
   const [rooms, setRooms] = useState<Room[]>([]);
+  const [search, setSearch] = useState('');
+  const [grade, setGrade] = useState('');
+  const [subject, setSubject] = useState('');
+  const [requestingRoomId, setRequestingRoomId] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<'rooms' | 'admin'>('rooms');
+  const [userRole, setUserRole] = useState<UserRole>('member');
 
+  // Fetch all rooms and user role on mount
   useEffect(() => {
-    // Fetch the list of public rooms from the API
     fetch('/api/rooms/list')
       .then((res) => res.json())
       .then(setRooms);
+
+    // Fetch user profile to determine role
+    fetch('/api/user/profile')
+      .then((res) => res.json())
+      .then((data) => setUserRole(data.role === 'admin' ? 'admin' : 'member'));
   }, []);
 
+  // Filter rooms by search, grade, and subject
+  const filteredRooms = rooms.filter((room) => {
+    const matchesSearch =
+      room.name.toLowerCase().includes(search.toLowerCase()) ||
+      (room.subject && room.subject.toLowerCase().includes(search.toLowerCase()));
+    const matchesGrade = grade ? room.grade === grade : true;
+    const matchesSubject = subject ? room.subject === subject : true;
+    return matchesSearch && matchesGrade && matchesSubject;
+  });
+
+  // Handle join public room
+  const handleJoin = (roomId: string) => {
+    window.location.href = `/rooms/${roomId}`;
+  };
+
+  // Handle request to join private room
+  const handleRequestJoin = async (roomId: string) => {
+    setRequestingRoomId(roomId);
+    const res = await fetch('/api/rooms/request-join', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ roomId }),
+    });
+    setRequestingRoomId(null);
+    if (res.ok) {
+      alert('Request sent to room admin!');
+    } else {
+      alert('Unable to send request. Please try again.');
+    }
+  };
+
+  // Extract unique grades and subjects for filters
+  const grades = Array.from(new Set(rooms.map((room) => room.grade).filter(Boolean)));
+  const subjects = Array.from(new Set(rooms.map((room) => room.subject).filter(Boolean)));
+
   return (
-    <div>
-      <h2>Available Rooms</h2>
-      <ul>
-        {rooms.map((room) => (
-          <li key={room.id}>
-            <a href={`/rooms/${room.id}`}>
-              {room.name} ({room.subject})
-            </a>
-          </li>
-        ))}
-      </ul>
+    <div className="max-w-3xl mx-auto py-8 px-4">
+      <h2 className="text-2xl font-bold mb-6 text-indigo-700 dark:text-yellow-300">Classrooms</h2>
+
+      {/* Navigation Tabs */}
+      <div className="mb-6 flex gap-4">
+        <button
+          className={`px-4 py-2 rounded font-semibold ${
+            activeTab === 'rooms'
+              ? 'bg-indigo-600 text-white'
+              : 'bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-yellow-200'
+          }`}
+          onClick={() => setActiveTab('rooms')}
+        >
+          Available Rooms
+        </button>
+        {userRole === 'admin' && (
+          <button
+            className={`px-4 py-2 rounded font-semibold ${
+              activeTab === 'admin'
+                ? 'bg-indigo-600 text-white'
+                : 'bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-yellow-200'
+            }`}
+            onClick={() => setActiveTab('admin')}
+          >
+            Admin Panel
+          </button>
+        )}
+      </div>
+
+      {/* Rooms Tab */}
+      {activeTab === 'rooms' && (
+        <>
+          {/* Search and Filter */}
+          <div className="mb-6 flex flex-col md:flex-row gap-4">
+            <input
+              className="flex-1 px-3 py-2 rounded border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-yellow-200"
+              placeholder="Search by name or subject"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+            <select
+              className="px-3 py-2 rounded border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-yellow-200"
+              value={grade}
+              onChange={(e) => setGrade(e.target.value)}
+            >
+              <option value="">All Grades</option>
+              {grades.map((g) => (
+                <option key={g} value={g as string}>
+                  {g}
+                </option>
+              ))}
+            </select>
+            <select
+              className="px-3 py-2 rounded border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-yellow-200"
+              value={subject}
+              onChange={(e) => setSubject(e.target.value)}
+            >
+              <option value="">All Subjects</option>
+              {subjects.map((s) => (
+                <option key={s} value={s as string}>
+                  {s}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Room List */}
+          <div className="bg-white dark:bg-gray-900 p-4 rounded-lg shadow">
+            <h3 className="font-semibold text-lg mb-2 text-indigo-700 dark:text-yellow-200">
+              Available Rooms
+            </h3>
+            <ul>
+              {filteredRooms.length === 0 && (
+                <li className="text-gray-500 dark:text-gray-400">No rooms found.</li>
+              )}
+              {filteredRooms.map((room) => (
+                <li key={room.id} className="mb-3 flex items-center justify-between">
+                  <div>
+                    <span className="text-indigo-600 dark:text-yellow-300 font-medium">
+                      {room.name}
+                    </span>
+                    {room.subject && (
+                      <span className="ml-2 text-sm text-gray-500 dark:text-gray-400">
+                        ({room.subject})
+                      </span>
+                    )}
+                    {room.grade && (
+                      <span className="ml-2 text-sm text-gray-500 dark:text-gray-400">
+                        Grade: {room.grade}
+                      </span>
+                    )}
+                    {room.isPrivate && (
+                      <span className="ml-2 px-2 py-1 text-xs bg-gray-200 dark:bg-gray-700 rounded">
+                        Private
+                      </span>
+                    )}
+                  </div>
+                  {room.isPrivate ? (
+                    <button
+                      className="ml-4 px-3 py-1 bg-yellow-600 text-white rounded hover:bg-yellow-700 transition"
+                      onClick={() => handleRequestJoin(room.id)}
+                      disabled={requestingRoomId === room.id}
+                    >
+                      {requestingRoomId === room.id ? 'Requesting...' : 'Request to Join'}
+                    </button>
+                  ) : (
+                    <button
+                      className="ml-4 px-3 py-1 bg-indigo-600 text-white rounded hover:bg-indigo-700 transition"
+                      onClick={() => handleJoin(room.id)}
+                    >
+                      Join
+                    </button>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </div>
+        </>
+      )}
+
+      {/* Admin Panel Tab */}
+      {activeTab === 'admin' && userRole === 'admin' && (
+        <div className="bg-white dark:bg-gray-900 p-4 rounded-lg shadow">
+          <h3 className="font-semibold text-lg mb-2 text-indigo-700 dark:text-yellow-200">
+            Admin Panel
+          </h3>
+          {/* Example admin features: */}
+          <ul>
+            <li className="mb-2">View/manage rooms you created</li>
+            <li className="mb-2">Moderate members</li>
+            <li className="mb-2">Approve/reject join requests</li>
+            <li className="mb-2">Edit room details</li>
+            <li className="mb-2">Delete/archive rooms</li>
+          </ul>
+          {/* Replace above with actual admin UI as needed */}
+        </div>
+      )}
     </div>
   );
 }

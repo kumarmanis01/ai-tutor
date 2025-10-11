@@ -4,7 +4,6 @@ import Link from 'next/link';
 import { useSession, signOut } from 'next-auth/react';
 import { useState, useEffect } from 'react';
 import AuthModal from './AuthModal';
-import Button from '@/components/UI/Button';
 import Avatar from '@/components/UI/Avatar';
 
 /**
@@ -12,6 +11,7 @@ import Avatar from '@/components/UI/Avatar';
  * - Shows Sign in (when not authenticated) and Sign out (when authenticated).
  * - Shows Rooms link only if user is logged in and has an active paid subscription (not free).
  * - After sign in / sign out, user is redirected to the home page via callbackUrl.
+ * - Login/Logout buttons respect dark/light mode.
  */
 export default function Navbar() {
   const { data: session, status } = useSession();
@@ -61,6 +61,19 @@ export default function Navbar() {
   useEffect(() => {
     console.log('Navbar session status:', status, 'hasActiveSubscription:', hasActiveSubscription);
   }, [status, hasActiveSubscription]);
+
+  // Button styles for dark/light mode
+  const buttonClass =
+    'px-4 py-2 rounded font-semibold transition ' +
+    (darkMode
+      ? 'bg-yellow-300 text-blue-900 hover:bg-yellow-400'
+      : 'bg-indigo-600 text-white hover:bg-indigo-700');
+
+  const outlineButtonClass =
+    'px-4 py-2 rounded font-semibold border transition ' +
+    (darkMode
+      ? 'border-yellow-300 text-yellow-300 hover:bg-yellow-300 hover:text-blue-900'
+      : 'border-indigo-600 text-indigo-600 hover:bg-indigo-600 hover:text-white');
 
   return (
     <header className="fixed top-0 left-0 w-full bg-white dark:bg-gray-900 shadow z-50">
@@ -114,19 +127,23 @@ export default function Navbar() {
                   className="group-hover:ring-2 group-hover:ring-blue-400 transition"
                 />
               </Link>
-              <Button
-                variant="outline"
+              <button
+                className={outlineButtonClass}
                 onClick={() => signOut({ callbackUrl: '/' })}
                 aria-label="Logout"
               >
                 Logout
-              </Button>
+              </button>
             </div>
           ) : (
             <>
-              <Button onClick={() => setShowAuthModal(true)} aria-label="Login">
+              <button
+                className={buttonClass}
+                onClick={() => setShowAuthModal(true)}
+                aria-label="Login"
+              >
                 Login
-              </Button>
+              </button>
               <AuthModal
                 isOpen={showAuthModal}
                 onClose={() => setShowAuthModal(false)}
