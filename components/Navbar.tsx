@@ -10,12 +10,14 @@ import Avatar from '@/components/UI/Avatar';
 /**
  * Sticky top navigation bar. Always visible.
  * - Shows Sign in (when not authenticated) and Sign out (when authenticated).
+ * - Shows Rooms link only if user is logged in and has an active paid subscription (not free).
  * - After sign in / sign out, user is redirected to the home page via callbackUrl.
  */
 export default function Navbar() {
   const { data: session, status } = useSession();
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [darkMode, setDarkMode] = useState(false);
+  const [hasActiveSubscription, setHasActiveSubscription] = useState(false);
 
   // Sync dark mode with localStorage and <html> class
   useEffect(() => {
@@ -46,6 +48,20 @@ export default function Navbar() {
     });
   };
 
+  // Check for active paid subscription using API
+  useEffect(() => {
+    if (status === 'authenticated') {
+      fetch('/api/subscription/status')
+        .then((res) => res.json())
+        .then((data) => setHasActiveSubscription(data.isPremium));
+    }
+  }, [status]);
+
+  // Log session status and subscription status to console
+  useEffect(() => {
+    console.log('Navbar session status:', status, 'hasActiveSubscription:', hasActiveSubscription);
+  }, [status, hasActiveSubscription]);
+
   return (
     <header className="fixed top-0 left-0 w-full bg-white dark:bg-gray-900 shadow z-50">
       <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
@@ -68,6 +84,16 @@ export default function Navbar() {
         >
           {darkMode ? '🌙' : '☀️'}
         </button>
+
+        {/* Navigation Links */}
+        <nav className="flex gap-6 items-center">
+          {/* Show Rooms link only for logged-in users with active paid subscription */}
+          {status === 'authenticated' && hasActiveSubscription && (
+            <Link href="/rooms" className="font-bold text-indigo-600 dark:text-yellow-300">
+              Rooms
+            </Link>
+          )}
+        </nav>
 
         {/* Auth controls */}
         <div>

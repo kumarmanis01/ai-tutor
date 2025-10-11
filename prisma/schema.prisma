@@ -42,7 +42,7 @@ model User {
   chats         Chat[] // one-to-one chat history (user <> AI)
   subscriptions Subscription[]
   events        Event[] // analytics/events tied to user
-  participants  Participant[] // room participation (optional)
+  members       RoomMember[] // room participation (optional)
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
   Room          Room[]
@@ -153,36 +153,43 @@ model Subscription {
 model Room {
   id           String        @id @default(cuid())
   name         String
+  subject      String?       // NEW: subject/topic for the room
   description  String?
   isPrivate    Boolean       @default(false)
-  createdBy    String? // user id or null
+  createdBy    String?
   creator      User?         @relation(fields: [createdBy], references: [id])
-  participants Participant[]
+  members      RoomMember[]
   messages     Message[]
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
 }
 
-model Participant {
+model RoomMember {
   id       String   @id @default(cuid())
   room     Room     @relation(fields: [roomId], references: [id], onDelete: Cascade)
   roomId   String
-  userId   String? // null for guests
+  userId   String?
   user     User?    @relation(fields: [userId], references: [id])
   name     String?
+  role     String?  // NEW: "admin", "member", "guest"
   joinedAt DateTime @default(now())
+
+  @@index([roomId])
 }
 
 model Message {
   id        String   @id @default(cuid())
   room      Room     @relation(fields: [roomId], references: [id], onDelete: Cascade)
   roomId    String
-  senderId  String? // null for system/AI/guest
-  sender    String? // display name
+  senderId  String?
+  sender    String?
   role      String // "user" | "assistant" | "system"
+  type      String? // NEW: "text", "quiz", "announcement"
   content   String
   createdAt DateTime @default(now())
-  aiMeta    Json? // optional AI metadata
+  aiMeta    Json?
+
+  @@index([roomId])
 }
 
 model Payment {

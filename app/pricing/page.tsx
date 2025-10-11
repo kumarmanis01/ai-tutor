@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useSession, signIn } from 'next-auth/react';
 import { logger } from '@/lib/logger';
 import {
@@ -36,15 +36,15 @@ export default function PricingPage() {
   const { data: session } = useSession();
   const [billingCycle, setBillingCycle] = useState<'monthly' | 'annual'>(BILLING_MONTHLY);
   const [loading, setLoading] = useState(false);
-  const [log, setLog] = useState<string[]>([]);
+  // const [log, setLog] = useState<string[]>([]);
 
-  useEffect(() => {
-    // Subscribe to logger updates
-    const unsubscribe = logger.subscribe((entry) => {
-      setLog((prev) => [...prev, entry]);
-    });
-    return unsubscribe;
-  }, []);
+  // useEffect(() => {
+  //   // Subscribe to logger updates
+  //   const unsubscribe = logger.subscribe((entry) => {
+  //     setLog((prev) => [...prev, entry]);
+  //   });
+  //   return unsubscribe;
+  // }, []);
 
   const proPrice =
     billingCycle === BILLING_MONTHLY ? PRICES[BILLING_MONTHLY] : PRICES[BILLING_ANNUAL];

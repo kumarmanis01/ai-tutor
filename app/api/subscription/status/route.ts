@@ -1,8 +1,9 @@
 import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
-import { prisma } from '@/lib/db';
+// import { prisma } from '@/lib/db';
 import { SessionUser } from '@/lib/types';
+import { isPremiumUser } from '@/lib/subscription';
 
 export async function GET() {
   try {
@@ -14,7 +15,6 @@ export async function GET() {
     const sessionUser = session.user as SessionUser;
 
     if (!sessionUser || !sessionUser.id) {
-      // not authenticated — indicate guest
       return NextResponse.json({
         authenticated: false,
         isPremium: false,
@@ -24,37 +24,22 @@ export async function GET() {
 
     const userId = sessionUser.id;
 
-    // Check active subscription
-    const sub = await prisma.subscription.findFirst({
-      where: {
-        userId,
-        active: true,
-        endDate: { gte: new Date() },
-      },
-      orderBy: { createdAt: 'desc' },
-    });
+    // Use the central utility for premium check
+    const isPremium = await isPremiumUser(userId);
 
-    // Count today's question (chat messages) from Chat model
-    const startOfDay = new Date();
-    startOfDay.setHours(0, 0, 0, 0);
-
-    const todaysCount = await prisma.chat.count({
-      where: {
-        userId,
-        createdAt: { gte: startOfDay },
-      },
-    });
+    // // Count today's questions
+    // const todaysCount = await getTodaysQuestionCount(userId);
 
     console.log('Subscription status:', {
       userId,
-      isPremium: !!sub,
-      todaysCount,
+      isPremium,
+      // todaysCount,
     });
-    // Return status
+
     return NextResponse.json({
       authenticated: true,
-      isPremium: !!sub,
-      todaysCount,
+      isPremium,
+      // todaysCount,
     });
   } catch (err) {
     console.error('subscription status error', err);
