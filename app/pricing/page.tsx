@@ -269,14 +269,14 @@ export default function PricingPage() {
       </div>
 
       {/* Debug Log Output */}
-      <div className="mt-10 bg-gray-50 dark:bg-gray-800 rounded p-4 text-xs max-h-64 overflow-auto">
+      {/* <div className="mt-10 bg-gray-50 dark:bg-gray-800 rounded p-4 text-xs max-h-64 overflow-auto">
         <h2 className="font-bold mb-2 text-blue-700 dark:text-yellow-300">Debug Log</h2>
         <ul>
           {log.map((entry, idx) => (
             <li key={idx}>{entry}</li>
           ))}
         </ul>
-      </div>
+      </div> */}
     </div>
   );
 }
