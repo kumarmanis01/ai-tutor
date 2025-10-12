@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 
 /**
  * Type definitions for Room.
@@ -16,11 +17,13 @@ type UserRole = 'admin' | 'member';
 
 /**
  * RoomsPage component
+ * - Honors dark/light mode for all UI elements.
+ * - Shows links for admin actions and room navigation.
  * - Allows searching/filtering available rooms by subject or grade.
  * - Shows public rooms with direct join option.
  * - Shows private rooms with a request to join button.
  * - Shows admin panel for admins.
- * - Handles dark/light mode consistency.
+ * - Uses back button navigation for admin subpages.
  */
 export default function RoomsPage() {
   const [rooms, setRooms] = useState<Room[]>([]);
@@ -30,6 +33,9 @@ export default function RoomsPage() {
   const [requestingRoomId, setRequestingRoomId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'rooms' | 'admin'>('rooms');
   const [userRole, setUserRole] = useState<UserRole>('member');
+  const [adminAction, setAdminAction] = useState<
+    '' | 'manage' | 'moderate' | 'requests' | 'edit' | 'archive'
+  >('');
 
   // Fetch all rooms and user role on mount
   useEffect(() => {
@@ -53,11 +59,6 @@ export default function RoomsPage() {
     return matchesSearch && matchesGrade && matchesSubject;
   });
 
-  // Handle join public room
-  const handleJoin = (roomId: string) => {
-    window.location.href = `/rooms/${roomId}`;
-  };
-
   // Handle request to join private room
   const handleRequestJoin = async (roomId: string) => {
     setRequestingRoomId(roomId);
@@ -78,6 +79,150 @@ export default function RoomsPage() {
   const grades = Array.from(new Set(rooms.map((room) => room.grade).filter(Boolean)));
   const subjects = Array.from(new Set(rooms.map((room) => room.subject).filter(Boolean)));
 
+  // Admin subpage content
+  const renderAdminContent = () => {
+    switch (adminAction) {
+      case 'manage':
+        return (
+          <div>
+            <button
+              onClick={() => setAdminAction('')}
+              className="mb-4 flex items-center text-indigo-600 dark:text-yellow-300 hover:underline"
+            >
+              ← Back to Admin Panel
+            </button>
+            <h3 className="font-semibold text-lg mb-2 text-indigo-700 dark:text-yellow-200">
+              Manage My Rooms
+            </h3>
+            <p className="text-gray-700 dark:text-yellow-100">
+              Here you can view and manage rooms you created.
+            </p>
+            {/* Add manage rooms UI here */}
+          </div>
+        );
+      case 'moderate':
+        return (
+          <div>
+            <button
+              onClick={() => setAdminAction('')}
+              className="mb-4 flex items-center text-indigo-600 dark:text-yellow-300 hover:underline"
+            >
+              ← Back to Admin Panel
+            </button>
+            <h3 className="font-semibold text-lg mb-2 text-indigo-700 dark:text-yellow-200">
+              Moderate Members
+            </h3>
+            <p className="text-gray-700 dark:text-yellow-100">
+              Here you can add, remove, or change member roles.
+            </p>
+            {/* Add moderate members UI here */}
+          </div>
+        );
+      case 'requests':
+        return (
+          <div>
+            <button
+              onClick={() => setAdminAction('')}
+              className="mb-4 flex items-center text-indigo-600 dark:text-yellow-300 hover:underline"
+            >
+              ← Back to Admin Panel
+            </button>
+            <h3 className="font-semibold text-lg mb-2 text-indigo-700 dark:text-yellow-200">
+              Pending Requests
+            </h3>
+            <p className="text-gray-700 dark:text-yellow-100">
+              Here you can approve or reject join requests.
+            </p>
+            {/* Add pending requests UI here */}
+          </div>
+        );
+      case 'edit':
+        return (
+          <div>
+            <button
+              onClick={() => setAdminAction('')}
+              className="mb-4 flex items-center text-indigo-600 dark:text-yellow-300 hover:underline"
+            >
+              ← Back to Admin Panel
+            </button>
+            <h3 className="font-semibold text-lg mb-2 text-indigo-700 dark:text-yellow-200">
+              Edit Room
+            </h3>
+            <p className="text-gray-700 dark:text-yellow-100">Here you can edit room details.</p>
+            {/* Add edit room UI here */}
+          </div>
+        );
+      case 'archive':
+        return (
+          <div>
+            <button
+              onClick={() => setAdminAction('')}
+              className="mb-4 flex items-center text-indigo-600 dark:text-yellow-300 hover:underline"
+            >
+              ← Back to Admin Panel
+            </button>
+            <h3 className="font-semibold text-lg mb-2 text-indigo-700 dark:text-yellow-200">
+              Delete/Archive Rooms
+            </h3>
+            <p className="text-gray-700 dark:text-yellow-100">
+              Here you can delete or archive rooms.
+            </p>
+            {/* Add archive rooms UI here */}
+          </div>
+        );
+      default:
+        return (
+          <div>
+            <h3 className="font-semibold text-lg mb-2 text-indigo-700 dark:text-yellow-200">
+              Admin Panel
+            </h3>
+            <ul>
+              <li className="mb-2">
+                <button
+                  onClick={() => setAdminAction('manage')}
+                  className="text-indigo-600 dark:text-yellow-300 hover:underline"
+                >
+                  Manage My Rooms
+                </button>
+              </li>
+              <li className="mb-2">
+                <button
+                  onClick={() => setAdminAction('moderate')}
+                  className="text-indigo-600 dark:text-yellow-300 hover:underline"
+                >
+                  Moderate Members
+                </button>
+              </li>
+              <li className="mb-2">
+                <button
+                  onClick={() => setAdminAction('requests')}
+                  className="text-indigo-600 dark:text-yellow-300 hover:underline"
+                >
+                  Pending Requests
+                </button>
+              </li>
+              <li className="mb-2">
+                <button
+                  onClick={() => setAdminAction('edit')}
+                  className="text-indigo-600 dark:text-yellow-300 hover:underline"
+                >
+                  Edit Room
+                </button>
+              </li>
+              <li className="mb-2">
+                <button
+                  onClick={() => setAdminAction('archive')}
+                  className="text-indigo-600 dark:text-yellow-300 hover:underline"
+                >
+                  Delete/Archive Rooms
+                </button>
+              </li>
+            </ul>
+          </div>
+        );
+    }
+  };
+
   return (
     <div className="max-w-3xl mx-auto py-8 px-4">
       <h2 className="text-2xl font-bold mb-6 text-indigo-700 dark:text-yellow-300">Classrooms</h2>
@@ -85,18 +230,21 @@ export default function RoomsPage() {
       {/* Navigation Tabs */}
       <div className="mb-6 flex gap-4">
         <button
-          className={`px-4 py-2 rounded font-semibold ${
+          className={`px-4 py-2 rounded font-semibold transition ${
             activeTab === 'rooms'
               ? 'bg-indigo-600 text-white'
               : 'bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-yellow-200'
           }`}
-          onClick={() => setActiveTab('rooms')}
+          onClick={() => {
+            setActiveTab('rooms');
+            setAdminAction('');
+          }}
         >
           Available Rooms
         </button>
         {userRole === 'admin' && (
           <button
-            className={`px-4 py-2 rounded font-semibold ${
+            className={`px-4 py-2 rounded font-semibold transition ${
               activeTab === 'admin'
                 ? 'bg-indigo-600 text-white'
                 : 'bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-yellow-200'
@@ -157,9 +305,12 @@ export default function RoomsPage() {
               {filteredRooms.map((room) => (
                 <li key={room.id} className="mb-3 flex items-center justify-between">
                   <div>
-                    <span className="text-indigo-600 dark:text-yellow-300 font-medium">
+                    <Link
+                      href={`/rooms/${room.id}`}
+                      className="text-indigo-600 dark:text-yellow-300 font-medium hover:underline"
+                    >
                       {room.name}
-                    </span>
+                    </Link>
                     {room.subject && (
                       <span className="ml-2 text-sm text-gray-500 dark:text-gray-400">
                         ({room.subject})
@@ -185,12 +336,12 @@ export default function RoomsPage() {
                       {requestingRoomId === room.id ? 'Requesting...' : 'Request to Join'}
                     </button>
                   ) : (
-                    <button
+                    <Link
+                      href={`/rooms/${room.id}`}
                       className="ml-4 px-3 py-1 bg-indigo-600 text-white rounded hover:bg-indigo-700 transition"
-                      onClick={() => handleJoin(room.id)}
                     >
                       Join
-                    </button>
+                    </Link>
                   )}
                 </li>
               ))}
@@ -199,21 +350,10 @@ export default function RoomsPage() {
         </>
       )}
 
-      {/* Admin Panel Tab */}
+      {/* Admin Panel Tab with Back Button Navigation */}
       {activeTab === 'admin' && userRole === 'admin' && (
         <div className="bg-white dark:bg-gray-900 p-4 rounded-lg shadow">
-          <h3 className="font-semibold text-lg mb-2 text-indigo-700 dark:text-yellow-200">
-            Admin Panel
-          </h3>
-          {/* Example admin features: */}
-          <ul>
-            <li className="mb-2">View/manage rooms you created</li>
-            <li className="mb-2">Moderate members</li>
-            <li className="mb-2">Approve/reject join requests</li>
-            <li className="mb-2">Edit room details</li>
-            <li className="mb-2">Delete/archive rooms</li>
-          </ul>
-          {/* Replace above with actual admin UI as needed */}
+          {renderAdminContent()}
         </div>
       )}
     </div>
