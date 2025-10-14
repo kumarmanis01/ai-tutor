@@ -10,7 +10,6 @@ async function main() {
     data: {
       name: 'Dummy Study Room',
       subject: 'Mathematics',
-      grade: '10',
       isPrivate: false,
     },
   });

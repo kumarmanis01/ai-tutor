@@ -99,14 +99,14 @@ export default function Navbar() {
         </button>
 
         {/* Navigation Links */}
-        <nav className="flex gap-6 items-center">
-          {/* Show Rooms link only for logged-in users with active paid subscription */}
-          {status === 'authenticated' && hasActiveSubscription && (
+        {/* <nav className="flex gap-6 items-center"> */}
+        {/* Show Rooms link only for logged-in users with active paid subscription */}
+        {/* {status === 'authenticated' && hasActiveSubscription && (
             <Link href="/rooms" className="font-bold text-indigo-600 dark:text-yellow-300">
               Rooms
             </Link>
           )}
-        </nav>
+        </nav> */}
 
         {/* Auth controls */}
         <div>
