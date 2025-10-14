@@ -1,19 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-
-/**
- * Type definitions for Room.
- */
-type Room = {
-  id: string;
-  name: string;
-  subject?: string | null;
-  grade?: string | null;
-  isPrivate: boolean;
-};
-
-type UserRole = 'admin' | 'member';
+import { Room, UserRole, RoomMember } from '@/types/rooms';
 
 /**
  * RoomsPage component
@@ -34,8 +22,9 @@ export default function RoomsPage() {
   const [activeTab, setActiveTab] = useState<'rooms' | 'admin'>('rooms');
   const [userRole, setUserRole] = useState<UserRole>('member');
   const [adminAction, setAdminAction] = useState<
-    '' | 'manage' | 'moderate' | 'requests' | 'edit' | 'archive'
+    '' | 'manage' | 'moderate' | 'requests' | 'edit' | 'archive' | 'create'
   >('');
+  const [userId, setUserId] = useState<string | null>(null);
 
   // Fetch all rooms and user role on mount
   useEffect(() => {
@@ -43,10 +32,13 @@ export default function RoomsPage() {
       .then((res) => res.json())
       .then(setRooms);
 
-    // Fetch user profile to determine role
+    // Fetch user profile to determine role and userId
     fetch('/api/user/profile')
       .then((res) => res.json())
-      .then((data) => setUserRole(data.role === 'admin' ? 'admin' : 'member'));
+      .then((data) => {
+        setUserRole(data.role === 'admin' ? 'admin' : 'member');
+        setUserId(data.id);
+      });
   }, []);
 
   // Filter rooms by search, grade, and subject
@@ -58,6 +50,12 @@ export default function RoomsPage() {
     const matchesSubject = subject ? room.subject === subject : true;
     return matchesSearch && matchesGrade && matchesSubject;
   });
+
+  // Check if current user is a member of the room
+  const isMember = (room: Room) => {
+    if (!userId || !room.members) return false;
+    return room.members.some((member: RoomMember) => member.userId === userId);
+  };
 
   // Handle request to join private room
   const handleRequestJoin = async (roomId: string) => {
@@ -79,7 +77,7 @@ export default function RoomsPage() {
   const grades = Array.from(new Set(rooms.map((room) => room.grade).filter(Boolean)));
   const subjects = Array.from(new Set(rooms.map((room) => room.subject).filter(Boolean)));
 
-  // Admin subpage content
+  // Admin subpage content with correct links
   const renderAdminContent = () => {
     switch (adminAction) {
       case 'manage':
@@ -94,10 +92,26 @@ export default function RoomsPage() {
             <h3 className="font-semibold text-lg mb-2 text-indigo-700 dark:text-yellow-200">
               Manage My Rooms
             </h3>
-            <p className="text-gray-700 dark:text-yellow-100">
-              Here you can view and manage rooms you created.
-            </p>
-            {/* Add manage rooms UI here */}
+            <Link
+              href="/rooms/create"
+              className="text-indigo-600 dark:text-yellow-300 hover:underline"
+            >
+              + Create New Room
+            </Link>
+            <ul className="mt-4">
+              {rooms
+                .filter((room) => room.members?.some((m) => m.userId === userId))
+                .map((room) => (
+                  <li key={room.id} className="mb-2">
+                    <Link
+                      href={`/rooms/${room.id}`}
+                      className="text-indigo-600 dark:text-yellow-300 hover:underline"
+                    >
+                      {room.name}
+                    </Link>
+                  </li>
+                ))}
+            </ul>
           </div>
         );
       case 'moderate':
@@ -112,9 +126,20 @@ export default function RoomsPage() {
             <h3 className="font-semibold text-lg mb-2 text-indigo-700 dark:text-yellow-200">
               Moderate Members
             </h3>
-            <p className="text-gray-700 dark:text-yellow-100">
-              Here you can add, remove, or change member roles.
-            </p>
+            <ul className="mt-4">
+              {rooms
+                .filter((room) => room.members?.some((m) => m.userId === userId))
+                .map((room) => (
+                  <li key={room.id} className="mb-2">
+                    <Link
+                      href={`/rooms/${room.id}`}
+                      className="text-indigo-600 dark:text-yellow-300 hover:underline"
+                    >
+                      {room.name}
+                    </Link>
+                  </li>
+                ))}
+            </ul>
             {/* Add moderate members UI here */}
           </div>
         );
@@ -130,9 +155,6 @@ export default function RoomsPage() {
             <h3 className="font-semibold text-lg mb-2 text-indigo-700 dark:text-yellow-200">
               Pending Requests
             </h3>
-            <p className="text-gray-700 dark:text-yellow-100">
-              Here you can approve or reject join requests.
-            </p>
             {/* Add pending requests UI here */}
           </div>
         );
@@ -148,7 +170,20 @@ export default function RoomsPage() {
             <h3 className="font-semibold text-lg mb-2 text-indigo-700 dark:text-yellow-200">
               Edit Room
             </h3>
-            <p className="text-gray-700 dark:text-yellow-100">Here you can edit room details.</p>
+            <ul className="mt-4">
+              {rooms
+                .filter((room) => room.members?.some((m) => m.userId === userId))
+                .map((room) => (
+                  <li key={room.id} className="mb-2">
+                    <Link
+                      href={`/rooms/${room.id}`}
+                      className="text-indigo-600 dark:text-yellow-300 hover:underline"
+                    >
+                      {room.name}
+                    </Link>
+                  </li>
+                ))}
+            </ul>
             {/* Add edit room UI here */}
           </div>
         );
@@ -164,10 +199,41 @@ export default function RoomsPage() {
             <h3 className="font-semibold text-lg mb-2 text-indigo-700 dark:text-yellow-200">
               Delete/Archive Rooms
             </h3>
-            <p className="text-gray-700 dark:text-yellow-100">
-              Here you can delete or archive rooms.
-            </p>
+            <ul className="mt-4">
+              {rooms
+                .filter((room) => room.members?.some((m) => m.userId === userId))
+                .map((room) => (
+                  <li key={room.id} className="mb-2">
+                    <Link
+                      href={`/rooms/${room.id}`}
+                      className="text-indigo-600 dark:text-yellow-300 hover:underline"
+                    >
+                      {room.name}
+                    </Link>
+                  </li>
+                ))}
+            </ul>
             {/* Add archive rooms UI here */}
+          </div>
+        );
+      case 'create':
+        return (
+          <div>
+            <button
+              onClick={() => setAdminAction('')}
+              className="mb-4 flex items-center text-indigo-600 dark:text-yellow-300 hover:underline"
+            >
+              ← Back to Admin Panel
+            </button>
+            <h3 className="font-semibold text-lg mb-2 text-indigo-700 dark:text-yellow-200">
+              Create Room
+            </h3>
+            <Link
+              href="/rooms/create"
+              className="text-indigo-600 dark:text-yellow-300 hover:underline"
+            >
+              Go to Create Room Page
+            </Link>
           </div>
         );
       default:
@@ -216,6 +282,14 @@ export default function RoomsPage() {
                 >
                   Delete/Archive Rooms
                 </button>
+              </li>
+              <li className="mb-2">
+                <Link
+                  href="/rooms/create"
+                  className="text-indigo-600 dark:text-yellow-300 hover:underline"
+                >
+                  + Create New Room
+                </Link>
               </li>
             </ul>
           </div>
@@ -327,7 +401,14 @@ export default function RoomsPage() {
                       </span>
                     )}
                   </div>
-                  {room.isPrivate ? (
+                  {isMember(room) ? (
+                    <Link
+                      href={`/rooms/${room.id}`}
+                      className="ml-4 px-3 py-1 bg-indigo-600 text-white rounded hover:bg-indigo-700 transition"
+                    >
+                      Enter
+                    </Link>
+                  ) : room.isPrivate ? (
                     <button
                       className="ml-4 px-3 py-1 bg-yellow-600 text-white rounded hover:bg-yellow-700 transition"
                       onClick={() => handleRequestJoin(room.id)}
@@ -350,7 +431,7 @@ export default function RoomsPage() {
         </>
       )}
 
-      {/* Admin Panel Tab with Back Button Navigation */}
+      {/* Admin Panel Tab with Back Button Navigation and correct links */}
       {activeTab === 'admin' && userRole === 'admin' && (
         <div className="bg-white dark:bg-gray-900 p-4 rounded-lg shadow">
           {renderAdminContent()}

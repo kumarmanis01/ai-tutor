@@ -1,11 +1,13 @@
 'use client';
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 
 /**
  * CreateRoomPage component
  * - Allows admins to create a new study room by providing a name, subject, description, and privacy setting.
  * - On successful creation, redirects to the new room's page.
  * - Handles dark/light mode consistency.
+ * - Includes a back button to return to the admin panel.
  */
 export default function CreateRoomPage() {
   const [name, setName] = useState('');
@@ -15,6 +17,7 @@ export default function CreateRoomPage() {
   const [grade, setGrade] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const router = useRouter();
 
   // Handles room creation by sending a POST request to the API
   const handleCreate = async () => {
@@ -27,12 +30,20 @@ export default function CreateRoomPage() {
     });
     const data = await res.json();
     setLoading(false);
-    if (data.id) window.location.href = `/rooms/${data.id}`;
+    if (data.id) router.push(`/rooms/${data.id}`);
     else setError('Error creating room');
   };
 
   return (
     <div className="max-w-md mx-auto py-8 px-4">
+      {/* Back button to admin panel */}
+      {/* Use this in all admin child pages (e.g., create, moderate, etc.) */}
+      <button
+        onClick={() => router.push('/rooms?tab=admin')}
+        className="mb-4 flex items-center text-indigo-600 dark:text-yellow-300 hover:underline"
+      >
+        ← Back to Admin Panel
+      </button>
       <h2 className="text-2xl font-bold mb-6 text-indigo-700 dark:text-yellow-300">
         Create a Study Room
       </h2>
