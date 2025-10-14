@@ -6,27 +6,17 @@ import CredentialsProvider from 'next-auth/providers/credentials'; // Enables lo
 import type { NextAuthOptions } from 'next-auth';
 import { prisma } from '@/lib/prisma'; // Your Prisma database client
 import bcrypt from 'bcrypt'; // For password hashing
-import nodemailer from 'nodemailer'; // For sending emails
+import { getEmailTransporter } from '@/lib/mailer';
 
 // This function sends a welcome email to the user
 async function sendWelcomeEmail(to: string, name?: string) {
   // Set up the email transporter using your SMTP credentials
-  const transporter = nodemailer.createTransport({
-    host: process.env.EMAIL_SERVER_HOST,
-    port: Number(process.env.EMAIL_SERVER_PORT),
-    secure: true,
-    requireTLS: true,
-    tls: { ciphers: 'SSLv3' },
-    auth: {
-      user: process.env.EMAIL_SERVER_USER,
-      pass: process.env.EMAIL_SERVER_PASSWORD,
-    },
-  });
+  const transporter = getEmailTransporter();
 
   try {
     // Send the actual email
     const info = await transporter.sendMail({
-      from: process.env.EMAIL_FROM,
+      from: process.env.EMAIL_FROM_NOREPLY,
       to,
       subject: 'Welcome to Spinzy Academy!',
       html: `
@@ -91,7 +81,7 @@ export const authOptions: NextAuthOptions = {
     // Enable email login/signup
     EmailProvider({
       server: process.env.EMAIL_SERVER!,
-      from: process.env.EMAIL_FROM!,
+      from: process.env.EMAIL_FROM_NOREPLY!,
     }),
     // Enable login with email & password
     CredentialsProvider({
