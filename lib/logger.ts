@@ -1,41 +1,30 @@
 /**
  * Logger utility for capturing logs with optional class and method context.
- *
- * In production mode (NODE_ENV === 'production'), logger is a no-op:
- * - No logs are recorded, emitted, or stored.
- *
+ * Logging is enabled only if NEXT_PUBLIC_DEBUG_MODE === 'true'.
+ * In other cases, logger is a no-op.
  * Usage:
  *   logger.add('A log message', { className: 'MyClass', methodName: 'myMethod' });
- *   logger.subscribe((msg) => { ... }); // Reactively receive new log entries
- *   logger.getLogs(); // Retrieve all logs
+ *   logger.subscribe((msg) => { ... });
+ *   logger.getLogs();
+ *   logger.logRouteInfo(req, res, context); // log route request/response info
  */
 
 type LogCallback = (msg: string) => void;
 
-/**
- * Optional context for log entries.
- * - className: Name of the class or component generating the log.
- * - methodName: Name of the method or function generating the log.
- */
 interface LogContext {
   className?: string;
   methodName?: string;
 }
 
-const isDev = process.env.NODE_ENV !== 'production';
+// Logging is enabled only if NEXT_PUBLIC_DEBUG_MODE === 'true'
+const isDebug = process.env.NEXT_PUBLIC_DEBUG_MODE === 'true';
 
 class Logger {
   private logs: string[] = [];
   private subscribers: LogCallback[] = [];
 
-  /**
-   * Add a log entry.
-   * Only logs in development mode.
-   * @param msg - The log message.
-   * @param context - Optional context for class and method names.
-   */
   add(msg: string, context?: LogContext) {
-    if (!isDev) return;
+    if (!isDebug) return;
     const time = new Date().toLocaleTimeString();
     let prefix = `[${time}]`;
     if (context?.className) prefix += ` [${context.className}]`;
@@ -43,39 +32,63 @@ class Logger {
     const entry = `${prefix} ${msg}`;
     this.logs.push(entry);
     this.subscribers.forEach((cb) => cb(entry));
+    // Also log to console in debug mode
+    console.log(entry);
   }
 
-  /**
-   * Get all log entries.
-   * @returns Array of log strings.
-   */
   getLogs() {
-    return isDev ? [...this.logs] : [];
+    return isDebug ? [...this.logs] : [];
   }
 
-  /**
-   * Subscribe to log updates.
-   * @param cb - Callback to receive new log entries.
-   * @returns Unsubscribe function.
-   */
   subscribe(cb: LogCallback) {
-    if (!isDev) return () => {};
+    if (!isDebug) return () => {};
     this.subscribers.push(cb);
     this.logs.forEach((log) => cb(log));
     return () => {
       this.subscribers = this.subscribers.filter((sub) => sub !== cb);
     };
   }
+
+  /**
+   * Log route request/response info in debug mode.
+   * @param req - The request object.
+   * @param res - The response object (optional).
+   * @param context - Optional context for class and method names.
+   */
+  async logRouteInfo(req: Request, res?: Response, context?: LogContext) {
+    if (!isDebug) return;
+    try {
+      const url = req.url;
+      const method = typeof req.method === 'string' ? req.method : 'UNKNOWN';
+      this.add(`Route: ${method} ${url}`, context);
+
+      // Log request body (if available)
+      if (req.body) {
+        try {
+          const reqBody = await req.clone().text();
+          this.add(`Request Body: ${reqBody}`, context);
+        } catch {}
+      }
+
+      // Log response status and body (if available)
+      if (res) {
+        this.add(`Response Status: ${res.status}`, context);
+        try {
+          const resBody = await res.clone().text();
+          this.add(`Response Body: ${resBody}`, context);
+        } catch {}
+      }
+    } catch (err) {
+      this.add(`Logger error: ${err}`, context);
+    }
+  }
 }
 
-/**
- * Export a singleton logger instance.
- * In production, logger methods are no-ops.
- */
-export const logger = isDev
+export const logger = isDebug
   ? new Logger()
   : {
       add: () => {},
       getLogs: () => [],
       subscribe: () => () => {},
+      logRouteInfo: async () => {},
     };

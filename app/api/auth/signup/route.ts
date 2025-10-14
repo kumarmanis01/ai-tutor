@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import bcrypt from 'bcrypt';
 import type { SessionUser } from '@/lib/types';
+import { logger } from '@/lib/logger';
 
 type SignupBody = Pick<SessionUser, 'name' | 'email' | 'parentEmail' | 'grade'> & {
   profileImage?: string;
@@ -9,14 +10,21 @@ type SignupBody = Pick<SessionUser, 'name' | 'email' | 'parentEmail' | 'grade'> 
   country?: string;
 };
 
+const CLASS_NAME = 'AuthSignupRoute';
+
 export async function POST(req: NextRequest) {
+  const METHOD_NAME = 'POST';
+  await logger.logRouteInfo(req, undefined, { className: CLASS_NAME, methodName: METHOD_NAME });
+
   const { name, email, parentEmail, profileImage, grade, password, country }: SignupBody =
     await req.json();
 
   // Check if user already exists
   const existing = await prisma.user.findUnique({ where: { email } });
   if (existing) {
-    return NextResponse.json({ error: 'User exists' }, { status: 409 });
+    const response = NextResponse.json({ error: 'User exists' }, { status: 409 });
+    await logger.logRouteInfo(req, response, { className: CLASS_NAME, methodName: METHOD_NAME });
+    return response;
   }
 
   // Hash the password if provided
@@ -38,5 +46,7 @@ export async function POST(req: NextRequest) {
     },
   });
 
-  return NextResponse.json({ ok: true });
+  const response = NextResponse.json({ ok: true });
+  await logger.logRouteInfo(req, response, { className: CLASS_NAME, methodName: METHOD_NAME });
+  return response;
 }

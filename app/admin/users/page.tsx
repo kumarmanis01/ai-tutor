@@ -56,25 +56,30 @@ export default function AdminUsers() {
   };
 
   return (
-    <div className="max-w-4xl mx-auto p-8 pt-20">
-      <h1 className="text-2xl font-bold mb-4">User Management</h1>
-      <table className="w-full border">
+    <div className="max-w-4xl mx-auto p-8 pt-20 bg-white dark:bg-gray-900 min-h-screen transition-colors">
+      <h1 className="text-2xl font-bold mb-4 text-gray-900 dark:text-gray-100">User Management</h1>
+      <table className="w-full border border-gray-300 dark:border-gray-700">
         <thead>
           <tr>
-            <th>Email</th>
-            <th>Status</th>
-            <th>Role</th>
-            <th>Actions</th>
+            <th className="bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100">Email</th>
+            <th className="bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100">
+              Status
+            </th>
+            <th className="bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100">Role</th>
+            <th className="bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100">
+              Actions
+            </th>
           </tr>
         </thead>
         <tbody>
           {users.map((u) => (
-            <tr key={u.id}>
-              <td>{u.email}</td>
+            <tr key={u.id} className="border-t border-gray-200 dark:border-gray-700">
+              <td className="text-gray-900 dark:text-gray-100">{u.email}</td>
               <td>
                 <select
                   value={u.status}
                   onChange={(e) => handleEdit(u.id, 'status', e.target.value)}
+                  className="bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border border-gray-300 dark:border-gray-700 rounded px-2 py-1"
                 >
                   <option value="active">active</option>
                   <option value="banned">banned</option>
@@ -82,7 +87,11 @@ export default function AdminUsers() {
                 </select>
               </td>
               <td>
-                <select value={u.role} onChange={(e) => handleEdit(u.id, 'role', e.target.value)}>
+                <select
+                  value={u.role}
+                  onChange={(e) => handleEdit(u.id, 'role', e.target.value)}
+                  className="bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border border-gray-300 dark:border-gray-700 rounded px-2 py-1"
+                >
                   <option value="user">user</option>
                   <option value="admin">admin</option>
                   <option value="moderator">moderator</option>
@@ -91,7 +100,7 @@ export default function AdminUsers() {
               </td>
               <td>
                 <button
-                  className="px-2 py-1 bg-red-600 text-white rounded"
+                  className="px-2 py-1 bg-red-600 text-white rounded disabled:opacity-50"
                   disabled={deletingId === u.id}
                   onClick={() => handleDelete(u.id)}
                 >
