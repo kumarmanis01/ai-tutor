@@ -31,36 +31,8 @@ export default function AuthModal({ isOpen, onClose, message }: Props) {
     setLoading(true);
     await signIn('google', { callbackUrl: '/' });
     setLoading(false);
-    // After Google sign-in, prompt for country if not set (can be handled in profile page)
   };
 
-  //   return (
-  //     <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-40 z-50">
-  //       <div className="bg-white rounded-lg shadow-lg w-full max-w-sm p-6 relative">
-  //         <button
-  //           onClick={onClose}
-  //           className="absolute top-2 right-2 text-gray-500 hover:text-gray-700"
-  //         >
-  //           ✕
-  //         </button>
-  //         <h2 className="text-lg font-semibold mb-2">Continue with Google</h2>
-  //         {message && <p className="text-sm text-gray-600 mb-4">{message}</p>}
-  //         <div className="space-y-3">
-  //           {/* Google */}
-  //           <button
-  //             onClick={handleGoogle}
-  //             className="w-full flex items-center justify-center gap-2 px-4 py-2 border border-gray-300 rounded hover:bg-gray-100 bg-white text-gray-700 font-medium"
-  //             disabled={loading}
-  //           >
-  //             {/* ...SVG... */}
-  //             <span>Sign in with Google</span>
-  //           </button>
-  //         </div>
-  //       </div>
-  //     </div>
-  //   );
-  // }
-  // Handle email sign in/up
   const handleEmail = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
@@ -126,44 +98,28 @@ export default function AuthModal({ isOpen, onClose, message }: Props) {
         >
           ✕
         </button>
-        <h2 className="text-lg font-semibold mb-2">{mode === 'signin' ? 'Sign In' : 'Sign Up'}</h2>
-        {message && <p className="text-sm text-gray-600 mb-4">{message}</p>}
+        <h2
+          className="text-lg font-semibold text-center mb-2"
+          style={{
+            color: '#0a3180', // Differentiated color
+            letterSpacing: '0.5px',
+            fontFamily: 'Montserrat, Arial, sans-serif',
+            fontWeight: 700,
+          }}
+        >
+          {mode === 'signin' ? 'Sign In' : 'Sign Up'}
+        </h2>
+        {/* {message && <p className="text-sm text-gray-600 mb-4">{message}</p>} */}
         <div className="space-y-3">
-          {/* Google */}
-          <button
-            onClick={handleGoogle}
-            className="w-full flex items-center justify-center gap-2 px-4 py-2 border border-gray-300 rounded hover:bg-gray-100 bg-white text-gray-700 font-medium"
-            disabled={loading}
-          >
-            {/* ...SVG... */}
-            <span>{mode === 'signin' ? 'Sign in with Google' : 'Sign up with Google'}</span>
-          </button>
-          {/* Divider */}
-          <div className="relative flex items-center my-3">
-            <div className="flex-grow border-t border-gray-300"></div>
-            <span className="mx-2 text-gray-400 text-xs">or</span>
-            <div className="flex-grow border-t border-gray-300"></div>
-          </div>
-          Email Form
           {emailSent ? (
             <div className="text-green-600 text-sm">Check your email for a sign-in link.</div>
           ) : (
             <form onSubmit={handleEmail} className="space-y-2">
-              {/* Name */}
-              <input
-                type="text"
-                required={mode === 'signup'}
-                placeholder="Full Name"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                className="w-full px-3 py-2 border rounded"
-                autoComplete="name"
-              />
               {/* Email */}
               <input
                 type="email"
                 required
-                placeholder="Email"
+                placeholder="Email*"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 className="w-full px-3 py-2 border rounded"
@@ -173,7 +129,7 @@ export default function AuthModal({ isOpen, onClose, message }: Props) {
               <input
                 type="password"
                 required={mode === 'signup'}
-                placeholder="Password"
+                placeholder="Password*"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 className="w-full px-3 py-2 border rounded"
@@ -182,42 +138,52 @@ export default function AuthModal({ isOpen, onClose, message }: Props) {
               {/* Only show these fields on signup */}
               {mode === 'signup' && (
                 <>
-                  {/* Parent Email (optional) */}
+                  {/* Name */}
                   <input
+                    type="text"
+                    required={mode === 'signup'}
+                    placeholder="Full Name*"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    className="w-full px-3 py-2 border rounded"
+                    autoComplete="name"
+                  />
+                  {/* Parent Email (optional) */}
+                  {/* <input
                     type="email"
                     placeholder="Parent's Email (optional)"
                     value={parentEmail}
                     onChange={(e) => setParentEmail(e.target.value)}
                     className="w-full px-3 py-2 border rounded"
                     autoComplete="off"
-                  />
+                  /> */}
                   {/* Grade */}
-                  <input
+                  {/* <input
                     type="text"
                     placeholder="Grade"
                     value={grade}
                     onChange={(e) => setGrade(e.target.value)}
                     className="w-full px-3 py-2 border rounded"
                     autoComplete="off"
-                  />
+                  /> */}
                   {/* Country */}
-                  <input
+                  {/* <input
                     type="text"
                     placeholder="Country"
                     value={country}
                     onChange={(e) => setCountry(e.target.value)}
                     className="w-full px-3 py-2 border rounded"
                     autoComplete="country"
-                  />
+                  /> */}
                   {/* Profile Image URL */}
-                  <input
+                  {/* <input
                     type="url"
                     placeholder="Profile Image URL"
                     value={profileImage}
                     onChange={(e) => setProfileImage(e.target.value)}
                     className="w-full px-3 py-2 border rounded"
                     autoComplete="off"
-                  />
+                  /> */}
                 </>
               )}
 
@@ -226,11 +192,42 @@ export default function AuthModal({ isOpen, onClose, message }: Props) {
                 className="w-full px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
                 disabled={loading}
               >
-                {loading
-                  ? 'Processing...'
-                  : mode === 'signin'
-                    ? 'Sign In with Email'
-                    : 'Sign Up with Email'}
+                {loading ? 'Processing...' : 'continue'}
+              </button>
+              {/* Divider */}
+              <div className="relative flex items-center my-3">
+                <div className="flex-grow border-t border-gray-300"></div>
+                <span className="mx-2 text-gray-400 text-xs">or</span>
+                <div className="flex-grow border-t border-gray-300"></div>
+              </div>
+              {/* Google */}
+              <button
+                onClick={handleGoogle}
+                className="w-full flex items-center justify-center gap-2 px-4 py-2 border border-gray-300 rounded hover:bg-gray-100 bg-white text-gray-700 font-medium"
+                disabled={loading}
+              >
+                {/* ...SVG... */}
+                <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                  <g>
+                    <path
+                      d="M19.6 10.23c0-.68-.06-1.36-.18-2H10v3.79h5.41a4.63 4.63 0 01-2.01 3.04v2.52h3.24c1.9-1.75 2.96-4.33 2.96-7.35z"
+                      fill="#4285F4"
+                    />
+                    <path
+                      d="M10 20c2.7 0 4.97-.89 6.63-2.41l-3.24-2.52c-.9.6-2.05.96-3.39.96-2.6 0-4.8-1.76-5.59-4.13H1.08v2.59A10 10 0 0010 20z"
+                      fill="#34A853"
+                    />
+                    <path
+                      d="M4.41 12.9A5.99 5.99 0 014.07 10c0-.99.18-1.95.34-2.9V4.51H1.08A10 10 0 000 10c0 1.64.4 3.19 1.08 4.51l3.33-2.61z"
+                      fill="#FBBC05"
+                    />
+                    <path
+                      d="M10 3.96c1.47 0 2.78.51 3.81 1.51l2.85-2.85C14.97.89 12.7 0 10 0A10 10 0 001.08 4.51l3.33 2.59C5.2 5.72 7.4 3.96 10 3.96z"
+                      fill="#EA4335"
+                    />
+                  </g>
+                </svg>
+                <span>{mode === 'signin' ? 'Sign in with Google' : 'Sign up with Google'}</span>
               </button>
               {error && <div className="text-red-600 text-xs">{error}</div>}
             </form>
