@@ -16,10 +16,10 @@ export default function AuthModal({ isOpen, onClose, message }: Props) {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [parentEmail, setParentEmail] = useState('');
-  const [grade, setGrade] = useState('');
-  const [country, setCountry] = useState(''); // <-- Add country
-  const [profileImage, setProfileImage] = useState('');
+  // const [parentEmail, setParentEmail] = useState('');
+  // const [grade, setGrade] = useState('');
+  // const [country, setCountry] = useState(''); // <-- Add country
+  // const [profileImage, setProfileImage] = useState('');
   const [error, setError] = useState('');
   const [emailSent, setEmailSent] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -43,7 +43,7 @@ export default function AuthModal({ isOpen, onClose, message }: Props) {
       const res = await fetch('/api/auth/signup', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, email, parentEmail, profileImage, grade, password, country }),
+        body: JSON.stringify({ name, email, password }), //parentEmail, profileImage, grade, country
       });
       if (res.status === 409) {
         setError('Account already exists. ');

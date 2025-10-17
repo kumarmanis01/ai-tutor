@@ -36,15 +36,6 @@ export default function PricingPage() {
   const { data: session } = useSession();
   const [billingCycle, setBillingCycle] = useState<'monthly' | 'annual'>(BILLING_MONTHLY);
   const [loading, setLoading] = useState(false);
-  // const [log, setLog] = useState<string[]>([]);
-
-  // useEffect(() => {
-  //   // Subscribe to logger updates
-  //   const unsubscribe = logger.subscribe((entry) => {
-  //     setLog((prev) => [...prev, entry]);
-  //   });
-  //   return unsubscribe;
-  // }, []);
 
   const proPrice =
     billingCycle === BILLING_MONTHLY ? PRICES[BILLING_MONTHLY] : PRICES[BILLING_ANNUAL];
@@ -191,15 +182,23 @@ export default function PricingPage() {
   };
 
   return (
-    <div className="max-w-3xl mx-auto p-6 text-gray-900 dark:text-gray-100">
-      <h1 className="text-2xl font-bold text-center mb-4 text-blue-700 dark:text-yellow-300">
-        Pricing Plans
+    <div className="max-w-4xl mx-auto py-10 px-4 bg-white dark:bg-gray-950 transition-colors">
+      {/* Section Title & Subtitle */}
+      <h1 className="text-3xl font-bold text-center mb-2 text-blue-700 dark:text-yellow-300">
+        Choose the Plan That Fits Your Learning Journey
       </h1>
+      <p className="text-center text-gray-500 dark:text-gray-400 mb-8">
+        Start for free. Upgrade anytime for unlimited AI-powered tutoring.
+      </p>
 
-      {/* Toggle */}
+      {/* Billing Toggle */}
       <div className="flex justify-center items-center mb-10 gap-4">
         <span
-          className={`cursor-pointer ${billingCycle === BILLING_MONTHLY ? 'font-bold' : 'text-gray-500'}`}
+          className={`cursor-pointer px-3 py-1 rounded-full ${
+            billingCycle === BILLING_MONTHLY
+              ? 'bg-blue-600 text-white font-bold'
+              : 'text-gray-500 dark:text-gray-400'
+          }`}
           onClick={() => setBillingCycle(BILLING_MONTHLY)}
         >
           Monthly
@@ -213,70 +212,121 @@ export default function PricingPage() {
               setBillingCycle(billingCycle === BILLING_MONTHLY ? BILLING_ANNUAL : BILLING_MONTHLY)
             }
           />
-          <div className="relative w-11 h-6 bg-gray-200 rounded-full peer peer-checked:bg-blue-600">
-            <div className="absolute top-0.5 left-[2px] w-5 h-5 bg-white rounded-full transition-transform peer-checked:translate-x-5"></div>
+          <div className="relative w-14 h-8 bg-gray-200 dark:bg-gray-800 rounded-full peer peer-checked:bg-blue-600 transition">
+            <div className="absolute top-1 left-1 w-6 h-6 bg-white dark:bg-gray-900 rounded-full transition-transform peer-checked:translate-x-6"></div>
           </div>
         </label>
         <span
-          className={`cursor-pointer ${billingCycle === BILLING_ANNUAL ? 'font-bold' : 'text-gray-500'}`}
+          className={`cursor-pointer px-3 py-1 rounded-full ${
+            billingCycle === BILLING_ANNUAL
+              ? 'bg-blue-600 text-white font-bold'
+              : 'text-gray-500 dark:text-gray-400'
+          }`}
           onClick={() => setBillingCycle(BILLING_ANNUAL)}
         >
-          Annual
+          Yearly{' '}
+          <span className="ml-2 text-xs bg-yellow-200 dark:bg-yellow-700 text-yellow-800 dark:text-yellow-100 px-2 py-0.5 rounded">
+            Save 2 months
+          </span>
         </span>
       </div>
 
       {/* Pricing Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-        {/* Free */}
-        <div className="border rounded-xl shadow p-6 text-center">
-          <h2 className="text-xl font-semibold">Free</h2>
-          <p className="mt-4 text-4xl font-bold">₹0</p>
-          <p className="text-gray-500">3 questions per day</p>
+        {/* Free Plan */}
+        <div className="rounded-2xl shadow-lg bg-white dark:bg-gray-900 p-8 text-center border border-gray-200 dark:border-gray-800">
+          <div className="flex justify-center mb-2">
+            <span className="text-green-600 dark:text-green-400 text-2xl font-bold">🟢 Free</span>
+          </div>
+          <div className="text-gray-500 dark:text-gray-400 mb-4">Perfect for new learners</div>
+          <div className="text-4xl font-bold mb-2 text-gray-900 dark:text-yellow-200">₹0</div>
+          <div className="text-gray-500 dark:text-gray-400 mb-6">per month</div>
+          <ul className="text-sm text-gray-700 dark:text-gray-300 mb-6 space-y-2 text-left mx-auto max-w-xs">
+            <li>✅ 3 questions/day</li>
+            <li>✅ AI-powered text answers</li>
+            <li>✅ Multi-subject support</li>
+            <li>❌ No export or priority</li>
+          </ul>
           <button
-            className="mt-6 px-6 py-2 bg-gray-400 text-white rounded-lg cursor-not-allowed"
+            className={`w-full py-2 rounded-lg bg-gray-400 dark:bg-gray-700 text-white font-semibold cursor-not-allowed`}
             disabled
           >
-            Current
+            {session ? 'Current Plan' : 'Get Started'}
           </button>
         </div>
 
-        {/* Pro */}
-        <div className="border rounded-xl shadow p-6 text-center bg-blue-150">
-          <h2 className="text-xl font-semibold">Pro</h2>
-          <p className="mt-4 text-4xl font-bold">₹{proPrice}</p>
-          <p className="text-gray-500">
+        {/* Pro Plan */}
+        <div className="relative rounded-2xl shadow-lg bg-white dark:bg-gray-900 p-8 text-center border-2 border-blue-600 dark:border-blue-400 hover:shadow-xl transition">
+          {/* Most Popular Badge */}
+          <span className="absolute top-4 right-4 bg-yellow-300 dark:bg-yellow-700 text-yellow-900 dark:text-yellow-100 text-xs font-bold px-3 py-1 rounded-full shadow">
+            ⭐ Most Popular
+          </span>
+          <div className="flex justify-center mb-2">
+            <span className="text-blue-600 dark:text-blue-400 text-2xl font-bold">💎 Pro</span>
+          </div>
+          <div className="text-gray-500 dark:text-gray-400 mb-4">
+            Unlimited questions, detailed answers
+          </div>
+          <div className="text-4xl font-bold mb-2 text-gray-900 dark:text-yellow-200">
+            ₹{proPrice}
+          </div>
+          <div className="text-gray-500 dark:text-gray-400 mb-6">
             {billingCycle === BILLING_MONTHLY ? 'per month' : 'per year'}
-          </p>
-          <p className="mt-2">Unlimited questions</p>
+            {billingCycle === BILLING_ANNUAL && (
+              <span className="ml-2 text-xs bg-yellow-200 dark:bg-yellow-700 text-yellow-800 dark:text-yellow-100 px-2 py-0.5 rounded">
+                Save 2 months
+              </span>
+            )}
+          </div>
+          <ul className="text-sm text-gray-700 dark:text-gray-300 mb-6 space-y-2 text-left mx-auto max-w-xs">
+            <li>✅ Unlimited questions</li>
+            <li>✅ Detailed AI explanations</li>
+            <li>✅ Group Study</li>
+            <li>✅ Export to PDF</li>
+            <li>✅ Priority processing</li>
+            <li>✅ All subject access</li>
+          </ul>
           <button
-            onClick={() => handleSubscribe()}
+            className="w-full py-2 rounded-lg bg-blue-600 dark:bg-blue-700 text-white font-semibold hover:bg-blue-700 dark:hover:bg-blue-800 transition"
+            onClick={handleSubscribe}
             disabled={loading}
-            className="mt-6 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
           >
-            {loading ? 'Processing...' : 'Subscribe'}
+            {loading ? 'Processing...' : 'Subscribe Now'}
           </button>
         </div>
 
-        {/* Enterprise */}
-        <div className="border rounded-xl shadow p-6 text-center">
-          <h2 className="text-xl font-semibold">Enterprise</h2>
-          <p className="mt-4 text-4xl font-bold">Custom</p>
-          <p className="text-gray-500">Tailored plans for schools</p>
-          <button className="mt-6 px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">
+        {/* Enterprise Plan */}
+        <div className="rounded-2xl shadow-lg bg-white dark:bg-gray-900 p-8 text-center border border-gray-200 dark:border-gray-800">
+          <div className="flex justify-center mb-2">
+            <span className="text-gray-700 dark:text-yellow-200 text-2xl font-bold">
+              🏢 Enterprise
+            </span>
+          </div>
+          <div className="text-gray-500 dark:text-gray-400 mb-4">
+            For schools & training centers
+          </div>
+          <div className="text-4xl font-bold mb-2 text-gray-900 dark:text-yellow-200">Custom</div>
+          <div className="text-gray-500 dark:text-gray-400 mb-6">Contact for pricing</div>
+          <ul className="text-sm text-gray-700 dark:text-gray-300 mb-6 space-y-2 text-left mx-auto max-w-xs">
+            <li>✅ Unlimited access for teams</li>
+            <li>✅ Admin Dashboard</li>
+            <li>✅ Custom branding</li>
+            <li>✅ Progress reports</li>
+            <li>✅ API integration</li>
+          </ul>
+          <a
+            href="/contact?plan=enterprise"
+            className="w-full block py-2 rounded-lg bg-green-600 dark:bg-green-700 text-white font-semibold hover:bg-green-700 dark:hover:bg-green-800 transition"
+          >
             Contact Us
-          </button>
+          </a>
         </div>
       </div>
 
-      {/* Debug Log Output */}
-      {/* <div className="mt-10 bg-gray-50 dark:bg-gray-800 rounded p-4 text-xs max-h-64 overflow-auto">
-        <h2 className="font-bold mb-2 text-blue-700 dark:text-yellow-300">Debug Log</h2>
-        <ul>
-          {log.map((entry, idx) => (
-            <li key={idx}>{entry}</li>
-          ))}
-        </ul>
-      </div> */}
+      {/* Section Footer */}
+      <div className="mt-10 text-center text-gray-500 dark:text-gray-400 text-sm">
+        Upgrade anytime. Cancel anytime. Secure payments powered by Razorpay.
+      </div>
     </div>
   );
 }

@@ -14,8 +14,8 @@ export const PRICES = {
 // Razorpay plan IDs mapped using constants
 export const RAZORPAY_PLAN_IDS: Record<string, Record<string, string>> = {
   [BILLING_PLAN_PRO]: {
-    [BILLING_MONTHLY]: DEBUG_MODE ? 'plan_RLRti4O5LzEFl7' : 'plan_RLRti4O5LzEFl7', // Monthly plan ID
-    [BILLING_ANNUAL]: DEBUG_MODE ? 'plan_RLRuDKLpa2tmMK' : 'plan_RLRuDKLpa2tmMK', // Annual plan ID
+    [BILLING_MONTHLY]: DEBUG_MODE ? 'plan_RLRti4O5LzEFl7' : 'plan_RRj7b8PrZx9LXc', // Monthly plan ID
+    [BILLING_ANNUAL]: DEBUG_MODE ? 'plan_RLRuDKLpa2tmMK' : 'plan_RRj8qCcuBOAF98', // Annual plan ID
   },
   // Add other plans if needed
 };
