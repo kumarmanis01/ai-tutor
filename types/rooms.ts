@@ -3,7 +3,9 @@ export type Room = {
   name: string;
   subject?: string | null;
   grade?: string | null;
+  topic?: string | null; // <-- Type only
   isPrivate: boolean;
+  createdByAI: boolean; // <-- Type only
   members?: RoomMember[];
 };
 
@@ -11,6 +13,8 @@ export type RoomMember = {
   id: string;
   name?: string | null;
   userId?: string | null;
+  role?: 'admin' | 'member' | 'guest';
+  score?: number; // <-- Add this line
 };
 
 export type Message = {
