@@ -11,7 +11,7 @@ interface Props {
   message?: string;
 }
 
-export default function AuthModal({ isOpen, onClose, message }: Props) {
+export default function AuthModal({ isOpen, onClose }: Props) {
   const [mode, setMode] = useState<Mode>('signin');
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
