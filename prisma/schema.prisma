@@ -162,6 +162,9 @@ model Room {
   messages     Message[]
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
+  grade        String?
+  topic        String?      // Add this line
+  createdByAI  Boolean      @default(false) // Add this line
 }
 
 model RoomMember {
@@ -173,7 +176,7 @@ model RoomMember {
   name     String?
   role     String?  // NEW: "admin", "member", "guest"
   joinedAt DateTime @default(now())
-
+  score      Int?      // Add this line
   @@index([roomId])
 }
 

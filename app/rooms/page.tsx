@@ -7,7 +7,7 @@ import { Room, UserRole, RoomMember } from '@/types/rooms';
  * RoomsPage component
  * - Honors dark/light mode for all UI elements.
  * - Shows links for admin actions and room navigation.
- * - Allows searching/filtering available rooms by subject or grade.
+ * - Allows searching/filtering available rooms by subject, grade, or topic.
  * - Shows public rooms with direct join option.
  * - Shows private rooms with a request to join button.
  * - Shows admin panel for admins.
@@ -18,6 +18,7 @@ export default function RoomsPage() {
   const [search, setSearch] = useState('');
   const [grade, setGrade] = useState('');
   const [subject, setSubject] = useState('');
+  const [topic, setTopic] = useState('');
   const [requestingRoomId, setRequestingRoomId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'rooms' | 'admin'>('rooms');
   const [userRole, setUserRole] = useState<UserRole>('member');
@@ -25,6 +26,7 @@ export default function RoomsPage() {
     '' | 'manage' | 'moderate' | 'requests' | 'edit' | 'archive' | 'create'
   >('');
   const [userId, setUserId] = useState<string | null>(null);
+  const [requestingClassroom, setRequestingClassroom] = useState(false);
 
   // Fetch all rooms and user role on mount
   useEffect(() => {
@@ -41,14 +43,15 @@ export default function RoomsPage() {
       });
   }, []);
 
-  // Filter rooms by search, grade, and subject
+  // Filter rooms by search, grade, subject, and topic
   const filteredRooms = rooms.filter((room) => {
     const matchesSearch =
       room.name.toLowerCase().includes(search.toLowerCase()) ||
       (room.subject && room.subject.toLowerCase().includes(search.toLowerCase()));
     const matchesGrade = grade ? room.grade === grade : true;
     const matchesSubject = subject ? room.subject === subject : true;
-    return matchesSearch && matchesGrade && matchesSubject;
+    const matchesTopic = topic ? room.topic?.toLowerCase().includes(topic.toLowerCase()) : true;
+    return matchesSearch && matchesGrade && matchesSubject && matchesTopic;
   });
 
   // Check if current user is a member of the room
@@ -73,9 +76,30 @@ export default function RoomsPage() {
     }
   };
 
-  // Extract unique grades and subjects for filters
+  // Extract unique grades, subjects, and topics for filters
   const grades = Array.from(new Set(rooms.map((room) => room.grade).filter(Boolean)));
   const subjects = Array.from(new Set(rooms.map((room) => room.subject).filter(Boolean)));
+  const topics = Array.from(new Set(rooms.map((room) => room.topic).filter(Boolean)));
+
+  // Handle request classroom
+  const handleRequestClassroom = async () => {
+    setRequestingClassroom(true);
+    // Generate a consistent AI name based on filters
+    const prompt = `Create a classroom for grade "${grade || 'any'}", subject "${subject || 'any'}", topic "${topic || search || 'general'}".`;
+    const res = await fetch('/api/rooms/create-ai', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prompt }),
+    });
+    setRequestingClassroom(false);
+    if (res.ok) {
+      const data = await res.json();
+      alert(`Classroom "${data.name}" created!`);
+      setRooms((prev) => [...prev, data]);
+    } else {
+      alert('Unable to request classroom. Please try again.');
+    }
+  };
 
   // Admin subpage content with correct links
   const renderAdminContent = () => {
@@ -299,7 +323,7 @@ export default function RoomsPage() {
 
   return (
     <div className="max-w-3xl mx-auto py-8 px-4">
-      <h2 className="text-2xl font-bold mb-6 text-indigo-700 dark:text-yellow-300">Classrooms</h2>
+      <h2 className="text-2xl font-bold mb-6 text-indigo-700 dark:text-yellow-300">Rooms</h2>
 
       {/* Navigation Tabs */}
       <div className="mb-6 flex gap-4">
@@ -365,6 +389,25 @@ export default function RoomsPage() {
                 </option>
               ))}
             </select>
+            <input
+              className="flex-1 px-3 py-2 rounded border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-yellow-200"
+              placeholder="Search by topic"
+              value={topic}
+              onChange={(e) => setTopic(e.target.value)}
+            />
+          </div>
+
+          {/* Topic Suggestions */}
+          <div className="flex flex-wrap gap-2 mb-4">
+            {topics.map((t) => (
+              <button
+                key={t}
+                className="px-2 py-1 bg-indigo-100 dark:bg-indigo-900 text-indigo-700 dark:text-yellow-200 rounded"
+                onClick={() => setTopic(t as string)}
+              >
+                {t}
+              </button>
+            ))}
           </div>
 
           {/* Room List */}
@@ -374,7 +417,16 @@ export default function RoomsPage() {
             </h3>
             <ul>
               {filteredRooms.length === 0 && (
-                <li className="text-gray-500 dark:text-gray-400">No rooms found.</li>
+                <li className="text-gray-500 dark:text-gray-400 flex items-center gap-4">
+                  No rooms found.
+                  <button
+                    className="ml-4 px-3 py-1 bg-indigo-600 text-white rounded hover:bg-indigo-700 transition"
+                    onClick={handleRequestClassroom}
+                    disabled={requestingClassroom}
+                  >
+                    {requestingClassroom ? 'Requesting...' : 'Request Room'}
+                  </button>
+                </li>
               )}
               {filteredRooms.map((room) => (
                 <li key={room.id} className="mb-3 flex items-center justify-between">
@@ -393,6 +445,11 @@ export default function RoomsPage() {
                     {room.grade && (
                       <span className="ml-2 text-sm text-gray-500 dark:text-gray-400">
                         Grade: {room.grade}
+                      </span>
+                    )}
+                    {room.topic && (
+                      <span className="ml-2 text-sm text-gray-500 dark:text-gray-400">
+                        Topic: {room.topic}
                       </span>
                     )}
                     {room.isPrivate && (
