@@ -28,33 +28,40 @@ enum UserRole {
  * Core user model (NextAuth compatible)
  */
 model User {
-  id            String         @id @default(cuid())
-  name          String?
-  email         String?        @unique
-  emailVerified DateTime?
-  image         String?
-  parentEmail   String?
-  language      String?
-  country       String?
+  id               String         @id @default(cuid())
+  name             String?
+  email            String?        @unique
+  emailVerified    DateTime?
+  image            String?
+  parentEmail      String?
+  language         String?
+  country          String?
   // Relations
-  accounts      Account[]
-  sessions      Session[]
-  chats         Chat[] // one-to-one chat history (user <> AI)
-  subscriptions Subscription[]
-  events        Event[] // analytics/events tied to user
-  members       RoomMember[] // room participation (optional)
-  createdAt     DateTime       @default(now())
-  updatedAt     DateTime       @updatedAt
-  Room          Room[]
-  chatHistories ChatHistory[] // back-relation for ChatHistory
-  status        UserStatus     @default(active)
-  role          UserRole       @default(user)
-  payments      Payment[]
-  auditLogs     AuditLog[]
-  apiUsages     ApiUsage[]
-  passwordHash  String?  // Store the hash here
-  grade         String?   // Student grade option
-  welcomeEmailSent  Boolean  @default(false)
+  accounts         Account[]
+  sessions         Session[]
+  chats            Chat[] // one-to-one chat history (user <> AI)
+  subscriptions    Subscription[]
+  events           Event[] // analytics/events tied to user
+  members          RoomMember[] // room participation (optional)
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+  Room             Room[]
+  chatHistories    ChatHistory[] // back-relation for ChatHistory
+  status           UserStatus     @default(active)
+  role             UserRole       @default(user)
+  payments         Payment[]
+  auditLogs        AuditLog[]
+  apiUsages        ApiUsage[]
+  passwordHash     String? // Store the hash here
+  grade            String? // Student grade option
+  welcomeEmailSent Boolean        @default(false)
+
+  // Referral relations (added)
+  referralsCreated  Referral[] @relation("ReferralCreator")
+  redeemedReferrals Referral[] @relation("ReferralRedeemer")
+
+  // Badges
+  userBadges UserBadge[]
 }
 
 /**
@@ -144,6 +151,7 @@ model Subscription {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
   paymentId    String?
+
   @@index([userId])
 }
 
@@ -151,20 +159,20 @@ model Subscription {
  * Room / Participant / Message models for group study rooms (Phase 5)
  */
 model Room {
-  id           String        @id @default(cuid())
-  name         String
-  subject      String?       // NEW: subject/topic for the room
-  description  String?
-  isPrivate    Boolean       @default(false)
-  createdBy    String?
-  creator      User?         @relation(fields: [createdBy], references: [id])
-  members      RoomMember[]
-  messages     Message[]
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt
-  grade        String?
-  topic        String?      // Add this line
-  createdByAI  Boolean      @default(false) // Add this line
+  id          String       @id @default(cuid())
+  name        String
+  subject     String? // NEW: subject/topic for the room
+  description String?
+  isPrivate   Boolean      @default(false)
+  createdBy   String?
+  creator     User?        @relation(fields: [createdBy], references: [id])
+  members     RoomMember[]
+  messages    Message[]
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  grade       String?
+  topic       String? // Add this line
+  createdByAI Boolean      @default(false) // Add this line
 }
 
 model RoomMember {
@@ -174,9 +182,10 @@ model RoomMember {
   userId   String?
   user     User?    @relation(fields: [userId], references: [id])
   name     String?
-  role     String?  // NEW: "admin", "member", "guest"
+  role     String? // NEW: "admin", "member", "guest"
   joinedAt DateTime @default(now())
-  score      Int?      // Add this line
+  score    Int? // Add this line
+
   @@index([roomId])
 }
 
@@ -196,18 +205,18 @@ model Message {
 }
 
 model Payment {
-  id                String   @id @default(cuid())
-  userId            String
-  user              User     @relation(fields: [userId], references: [id])
-  amount            Int
-  provider          String   // e.g. 'razorpay', 'stripe', etc.
-  status            String   // e.g. 'success', 'failed'
-  createdAt         DateTime @default(now())
-  transactionId     String?  // Generic transaction/payment ID from any gateway
-  orderId           String?  // Generic order/subscription ID from any gateway
-  plan              String?  // e.g. 'pro', 'basic'
-  billingCycle      String?  // e.g. 'monthly', 'yearly'
-  meta              Json?    // Store gateway-specific metadata if needed
+  id            String   @id @default(cuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id])
+  amount        Int
+  provider      String // e.g. 'razorpay', 'stripe', etc.
+  status        String // e.g. 'success', 'failed'
+  createdAt     DateTime @default(now())
+  transactionId String? // Generic transaction/payment ID from any gateway
+  orderId       String? // Generic order/subscription ID from any gateway
+  plan          String? // e.g. 'pro', 'basic'
+  billingCycle  String? // e.g. 'monthly', 'yearly'
+  meta          Json? // Store gateway-specific metadata if needed
 }
 
 model AuditLog {
@@ -228,4 +237,38 @@ model ApiUsage {
   lastUsed DateTime @default(now())
 
   @@unique([userId, endpoint], name: "userId_endpoint")
+}
+
+model Referral {
+  id         String    @id @default(cuid())
+  code       String    @unique
+  createdBy  String
+  creator    User      @relation("ReferralCreator", fields: [createdBy], references: [id])
+  redeemedBy String?
+  redeemer   User?     @relation("ReferralRedeemer", fields: [redeemedBy], references: [id])
+  redeemedAt DateTime?
+  createdAt  DateTime  @default(now())
+  metadata   Json?
+}
+
+model Badge {
+  id          String      @id @default(cuid())
+  key         String      @unique
+  name        String
+  description String?
+  icon        String? // emoji or icon name
+  createdAt   DateTime    @default(now())
+  userBadges  UserBadge[]
+}
+
+model UserBadge {
+  id       String   @id @default(cuid())
+  userId   String
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  badgeId  String
+  badge    Badge    @relation(fields: [badgeId], references: [id], onDelete: Cascade)
+  earnedAt DateTime @default(now())
+  meta     Json?
+
+  @@unique([userId, badgeId])
 }
