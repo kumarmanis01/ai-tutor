@@ -4,6 +4,8 @@ import { useSession } from 'next-auth/react';
 import Avatar from '@/components/UI/Avatar';
 import OnboardingPage from '../onboarding/page';
 import { SessionUser } from '@/lib/types';
+import ProfileWidgets from '@/components/ProfileWidgets';
+import { extractBadges } from '@/lib/extractBadge';
 
 export default function ProfilePage() {
   const { data: session } = useSession();
@@ -11,16 +13,24 @@ export default function ProfilePage() {
   const [loading, setLoading] = useState(true);
   const [showOnboarding, setShowOnboarding] = useState(false);
 
+  const badges = extractBadges(profile);
+
   useEffect(() => {
     async function fetchProfile() {
-      const res = await fetch('/api/user/profile');
-      if (res.ok) {
-        const data = await res.json();
-        setProfile(data);
+      try {
+        const res = await fetch('/api/user/profile');
+        if (res.ok) {
+          const data = await res.json();
+          setProfile(data);
+        }
+      } catch {
+        // ignore fetch errors; profile remains null
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     }
     if (session) fetchProfile();
+    else setLoading(false);
   }, [session]);
 
   if (!session) return <div className="p-6">You are not signed in.</div>;
@@ -51,6 +61,9 @@ export default function ProfilePage() {
 
   return (
     <div className="max-w-2xl mx-auto p-8 bg-white dark:bg-gray-900 rounded-xl shadow-lg text-gray-900 dark:text-gray-100">
+      {/* client widgets: invite, badges, leaderboard, weekly challenge, and redeem-on-signin */}
+      <ProfileWidgets badges={badges} showLeaderboard showChallenge />
+
       {/* Profile Header */}
       <div className="flex flex-col items-center mb-8">
         <Avatar
@@ -69,6 +82,7 @@ export default function ProfilePage() {
           Update Profile
         </button>
       </div>
+
       {/* Profile Details */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
         {/* Account Info */}
@@ -90,6 +104,7 @@ export default function ProfilePage() {
             {profile?.createdAt ? new Date(profile.createdAt).toLocaleDateString() : 'N/A'}
           </div>
         </div>
+
         {/* Personal Info */}
         <div className="bg-gray-50 dark:bg-gray-800 p-6 rounded-lg border border-gray-200 dark:border-gray-700 space-y-4 h-fit">
           <div>

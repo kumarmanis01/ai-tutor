@@ -2,7 +2,9 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Room, UserRole, RoomMember } from '@/types/rooms';
-
+import Leaderboard from '@/components/Leaderboard';
+import WeeklyChallenge from '@/components/WeeklyChallenge';
+import InviteButton from '@/components/InviteButton';
 /**
  * RoomsPage component
  * - Honors dark/light mode for all UI elements.
@@ -322,9 +324,18 @@ export default function RoomsPage() {
   };
 
   return (
-    <div className="max-w-3xl mx-auto py-8 px-4">
+    <div className="min-h-screen max-w-3xl mx-auto py-8 px-4 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100">
       <h2 className="text-2xl font-bold mb-6 text-indigo-700 dark:text-yellow-300">Rooms</h2>
+      {/* ...existing rooms list / main content ... */}
 
+      <aside className="w-80 space-y-4">
+        {/* existing invite UI */}
+        <InviteButton />
+
+        {/* add leaderboard and weekly challenge */}
+        <Leaderboard />
+        <WeeklyChallenge />
+      </aside>
       {/* Navigation Tabs */}
       <div className="mb-6 flex gap-4">
         <button
