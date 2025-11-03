@@ -5,6 +5,7 @@ import { useState } from 'react';
 import ChatBot from '@/components/Chat/ChatBot';
 import AuthModal from '@/components/AuthModal';
 import FeatureHighlights from '@/components/FeatureHighlights';
+import Testimonials from '@/components/Testimonials';
 
 export default function HomePage() {
   const { data: session } = useSession();
@@ -23,30 +24,29 @@ export default function HomePage() {
   return (
     <main className="flex flex-col items-center justify-start min-h-screen bg-gray-50 dark:bg-gray-900">
       {/* Hero Section */}
-      <section className="w-full bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-500 text-white px-6 py-12 grid gap-10 md:grid-cols-2 items-start text-center">
-        <div className="space-y-8">
-          <h1 className="text-4xl md:text-6xl font-extrabold mb-6">
-            Learn Smarter with <span className="text-yellow-300">AI Tutor</span>
-          </h1>
-          <p className="text-lg md:text-2xl max-w-2xl mx-auto mb-8">
-            Your personal AI-powered tutor for school, tech, and beyond. Start free with 3 daily
-            questions – upgrade for unlimited learning.
-          </p>
-
-          <div className="flex justify-center gap-4">
-            <button
-              onClick={() => setShowAuthModal(true)}
-              className="px-6 py-3 rounded-lg bg-yellow-400 text-black font-semibold hover:bg-yellow-300 transition"
-            >
-              Ask Your First Question
-            </button>
-          </div>
-        </div>
-        <div>
-          <FeatureHighlights />
+      <section className="w-full bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-500 text-white py-20 px-6 text-center">
+        <h1 className="text-4xl md:text-6xl font-extrabold mb-6">
+          Learn Smarter with <span className="text-yellow-300">AI Tutor</span>
+        </h1>
+        <p className="text-lg md:text-2xl max-w-2xl mx-auto mb-8">
+          Your personal AI-powered tutor for school, tech, and beyond. Start free with 3 daily
+          questions – upgrade for unlimited learning.
+        </p>
+        <div className="flex justify-center gap-4">
+          <button
+            onClick={() => setShowAuthModal(true)}
+            className="px-6 py-3 rounded-lg bg-yellow-400 text-black font-semibold hover:bg-yellow-300 transition"
+          >
+            Ask Your First Question
+          </button>
         </div>
       </section>
-      {/* <FeatureHighlights /> */}
+      <section className="w-full max-w-4xl mx-auto px-6 py-10 text-center">
+        <FeatureHighlights />
+      </section>
+      <section className="w-full max-w-4xl mx-auto px-6 py-10 text-center">
+        <Testimonials />
+      </section>
       {/* Feature Highlights */}
       <section className="py-16 px-6 max-w-5xl mx-auto grid md:grid-cols-3 gap-10 text-center">
         <div className="p-6 bg-white dark:bg-gray-800 rounded-2xl shadow-md">
