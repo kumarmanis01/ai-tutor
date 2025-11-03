@@ -1,17 +1,18 @@
 'use client';
 import { useEffect, useRef } from 'react';
-import { useSearchParams } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 
 export default function AuthRedeemOnSignIn() {
-  const params = useSearchParams();
   const { status } = useSession();
   const calledRef = useRef(false);
 
   useEffect(() => {
     if (calledRef.current) return;
+    if (typeof window === 'undefined') return; // ensure client
     if (status !== 'authenticated') return; // wait until user is signed in
 
+    // read query params directly from window (avoid useSearchParams)
+    const params = new URLSearchParams(window.location.search);
     const paramRef = params.get('ref') ?? params.get('referral');
     const cookieMatch = document.cookie.match(/(?:^|; )referral=([^;]+)/);
     const cookieRef = cookieMatch ? decodeURIComponent(cookieMatch[1]) : null;
@@ -43,7 +44,7 @@ export default function AuthRedeemOnSignIn() {
         }
       }
     })();
-  }, [params, status]);
+  }, [status]);
 
   return null;
 }
