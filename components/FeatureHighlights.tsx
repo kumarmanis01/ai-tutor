@@ -45,6 +45,25 @@ export default function FeatureHighlights() {
             </div>
           </div>
         </li>
+        <li className="flex items-start space-x-3">
+          <span className="text-2xl">👪</span>
+          <div>
+            <div className="font-medium">Parental Dashboard</div>
+            <div className="text-sm text-gray-500">
+              Parents can monitor student progress (Pro/Enterprise).
+            </div>
+          </div>
+        </li>
+
+        <li className="flex items-start space-x-3">
+          <span className="text-2xl">🏫</span>
+          <div>
+            <div className="font-medium">Teacher Access</div>
+            <div className="text-sm text-gray-500">
+              Teachers can create group study rooms and manage classrooms (Enterprise).
+            </div>
+          </div>
+        </li>
       </ul>
 
       <div className="mt-6 border-t pt-4 text-medium text-gray-600 dark:text-gray-300 space-y-2">
