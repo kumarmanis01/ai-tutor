@@ -1,20 +1,49 @@
 'use client';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useSearchParams } from 'next/navigation';
+import { useSession } from 'next-auth/react';
 
 export default function AuthRedeemOnSignIn() {
   const params = useSearchParams();
+  const { status } = useSession();
+  const calledRef = useRef(false);
 
   useEffect(() => {
-    const ref = params.get('ref');
+    if (calledRef.current) return;
+    if (status !== 'authenticated') return; // wait until user is signed in
+
+    const paramRef = params.get('ref') ?? params.get('referral');
+    const cookieMatch = document.cookie.match(/(?:^|; )referral=([^;]+)/);
+    const cookieRef = cookieMatch ? decodeURIComponent(cookieMatch[1]) : null;
+    const ref = paramRef ?? cookieRef;
     if (!ref) return;
-    // call redeem API (user must be signed in already)
-    fetch('/api/referral/redeem', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ code: ref }),
-    }).catch(() => {});
-  }, [params]);
+
+    calledRef.current = true;
+
+    (async () => {
+      try {
+        await fetch('/api/referral/redeem', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ code: ref }),
+        });
+      } catch {
+        // ignore network errors
+      } finally {
+        // clear persisted cookie so we don't attempt to redeem again
+        document.cookie = 'referral=; path=/; max-age=0';
+        // remove ref param from URL to avoid reprocessing client-side
+        try {
+          const url = new URL(window.location.href);
+          url.searchParams.delete('ref');
+          url.searchParams.delete('referral');
+          window.history.replaceState({}, document.title, url.toString());
+        } catch {
+          // ignore
+        }
+      }
+    })();
+  }, [params, status]);
 
   return null;
 }

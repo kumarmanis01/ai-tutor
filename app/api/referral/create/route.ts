@@ -17,7 +17,7 @@ export async function POST() {
 
   const base =
     process.env.NEXT_PUBLIC_BASE_URL || process.env.NEXTAUTH_URL || 'http://localhost:3000';
-  const url = `${base}/signup?ref=${referral.code}`;
+  const url = `${base}/auth/signup?ref=${referral.code}`;
 
   return NextResponse.json({ code: referral.code, url });
 }

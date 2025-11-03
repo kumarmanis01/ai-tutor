@@ -11,6 +11,7 @@ const adminLinks = [
   { href: '/admin/payments/failed', label: 'Failed Payments' },
   { href: '/admin/charts/users', label: 'User Signups Chart' },
   { href: '/admin/charts/api-usage', label: 'API Usage Chart' },
+  { href: '/admin/challenge', label: 'Challenges' },
 ];
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {

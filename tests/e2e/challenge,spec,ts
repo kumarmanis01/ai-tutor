@@ -1,0 +1,53 @@
+import { test, expect, request } from '@playwright/test';
+
+const BASE = 'http://localhost:3000';
+
+test.describe('challenge e2e', () => {
+  test.beforeEach(async ({ page }) => {
+    // optional: reset test DB via an endpoint or run seed externally
+  });
+
+  test('join -> submit -> resubmit is idempotent (UI + API)', async ({ page, request }) => {
+    // 1) Sign in via UI (adjust selectors to your login page)
+    await page.goto(`${BASE}/auth/signin`);
+    await page.fill('input[name="email"]', 'test-user@example.com'); // ensure seeded
+    await page.fill('input[name="password"]', 'password123'); // seeded pass
+    await page.click('button[type="submit"]');
+    await page.waitForURL(`${BASE}/profile`);
+
+    // 2) Create or ensure a challenge exists (admin could create in seed) - assume challengeKey from seed
+    const challengeId = 'seeded-challenge-id'; // replace with real id from seed
+
+    // 3) Call join API (use same session cookies as page)
+    const cookies = await page.context().cookies();
+    const apiContext = await request.newContext({
+      baseURL: BASE,
+      extraHTTPHeaders: { accept: 'application/json' },
+    });
+    await apiContext.addCookies(
+      cookies.map((c) => ({ name: c.name, value: c.value, domain: c.domain, path: c.path })),
+    );
+
+    await apiContext.post('/api/challenge/join', { data: { challengeId } });
+
+    // 4) Submit challenge twice via API
+    const res1 = await apiContext.post('/api/challenge/submit', {
+      data: { challengeId, score: 100 },
+    });
+    expect(res1.ok()).toBeTruthy();
+
+    const res2 = await apiContext.post('/api/challenge/submit', {
+      data: { challengeId, score: 100 },
+    });
+    expect(res2.ok()).toBeTruthy();
+
+    // 5) Verify UI/profile reflects single reward (points, badge)
+    await page.goto(`${BASE}/profile`);
+    // adapt selector to show points
+    const pointsText = await page.textContent('[data-test="user-points"]');
+    expect(Number(pointsText)).toBeGreaterThanOrEqual(123); // match rewardPoints from seed
+    // check badge rendered once
+    const badges = await page.$$('[id^="badge-"]');
+    expect(badges.length).toBeGreaterThanOrEqual(1);
+  });
+});

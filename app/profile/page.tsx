@@ -1,11 +1,15 @@
+// ...existing code...
 'use client';
 import { useEffect, useState } from 'react';
+import dynamic from 'next/dynamic';
 import { useSession } from 'next-auth/react';
 import Avatar from '@/components/UI/Avatar';
-import OnboardingPage from '../onboarding/page';
 import { SessionUser } from '@/lib/types';
 import ProfileWidgets from '@/components/ProfileWidgets';
 import { extractBadges } from '@/lib/extractBadge';
+import AuthRedeemOnSignIn from '@/components/AuthRedeemOnSignIn';
+
+const OnboardingPage = dynamic(() => import('../onboarding/page'), { ssr: false });
 
 export default function ProfilePage() {
   const { data: session } = useSession();
@@ -16,28 +20,31 @@ export default function ProfilePage() {
   const badges = extractBadges(profile);
 
   useEffect(() => {
+    let mounted = true;
     async function fetchProfile() {
       try {
         const res = await fetch('/api/user/profile');
         if (res.ok) {
           const data = await res.json();
-          setProfile(data);
+          if (mounted) setProfile(data);
         }
       } catch {
         // ignore fetch errors; profile remains null
       } finally {
-        setLoading(false);
+        if (mounted) setLoading(false);
       }
     }
     if (session) fetchProfile();
     else setLoading(false);
+    return () => {
+      mounted = false;
+    };
   }, [session]);
 
   if (!session) return <div className="p-6">You are not signed in.</div>;
   if (loading) return <div className="p-6">Loading...</div>;
 
   if (showOnboarding) {
-    // Show onboarding UI as modal/overlay
     return (
       <div className="fixed inset-0 bg-black bg-opacity-40 z-50 flex items-center justify-center">
         <div className="bg-white dark:bg-gray-900 rounded-lg shadow-lg p-6 max-w-lg w-full relative">
@@ -48,6 +55,7 @@ export default function ProfilePage() {
           >
             ×
           </button>
+          {/* OnboardingPage is client-only via dynamic import */}
           <OnboardingPage />
         </div>
       </div>
@@ -61,7 +69,10 @@ export default function ProfilePage() {
 
   return (
     <div className="max-w-2xl mx-auto p-8 bg-white dark:bg-gray-900 rounded-xl shadow-lg text-gray-900 dark:text-gray-100">
-      {/* client widgets: invite, badges, leaderboard, weekly challenge, and redeem-on-signin */}
+      {/* global/client redeem handler (safe to mount even if also mounted in layout) */}
+      <AuthRedeemOnSignIn />
+
+      {/* client widgets: invite, badges, leaderboard, weekly challenge */}
       <ProfileWidgets badges={badges} showLeaderboard showChallenge />
 
       {/* Profile Header */}
