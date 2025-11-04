@@ -9,6 +9,8 @@ export default function Analytics() {
 
   useEffect(() => {
     const query = Object.fromEntries(searchParams?.entries?.() ?? []);
+    // log to console when tracking page views
+    console.log('[analytics] trackEvent called', { event: 'page_view', path: pathname, query });
     trackEvent('page_view', { path: pathname, query });
   }, [pathname, searchParams]);
 

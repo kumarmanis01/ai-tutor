@@ -1,4 +1,7 @@
 export async function trackEvent(event: string, data?: Record<string, unknown>) {
+  // Log to console when trackEvent is invoked
+  console.log('[analytics] trackEvent called', { event, data, ts: Date.now() });
+
   try {
     await fetch('/api/analytics/track', {
       method: 'POST',
