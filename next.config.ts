@@ -3,9 +3,15 @@ import type { NextConfig } from 'next';
 const nextConfig: NextConfig = {
   reactStrictMode: true,
   images: {
-    // Add the allowed external image domain here
-    domains: ['lh3.googleusercontent.com', 'i.pravatar.cc'],
     remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'lh3.googleusercontent.com',
+      },
+      {
+        protocol: 'https',
+        hostname: 'i.pravatar.cc',
+      },
       {
         protocol: 'https',
         hostname: 'flagcdn.com',
