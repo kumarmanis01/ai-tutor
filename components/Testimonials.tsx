@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
+import Image from 'next/image';
 
 const quotes = [
   {
@@ -51,12 +52,19 @@ export default function Testimonials() {
         className="flex flex-col md:flex-row items-start gap-4"
       >
         <div className="flex items-center gap-4 flex-1">
-          <img
-            src={quotes[index].img}
-            alt={`Photo of ${quotes[index].author}`}
-            className="w-20 h-20 rounded-full object-cover border-4 border-white dark:border-gray-900 shadow-inner"
+          <div
+            className="relative w-20 h-20 rounded-full overflow-hidden border-4 border-white dark:border-gray-900 shadow-inner"
             style={{ boxShadow: '0 6px 18px rgba(59,130,246,0.12)' }}
-          />
+          >
+            <Image
+              src={quotes[index].img}
+              alt={`Photo of ${quotes[index].author}`}
+              width={80}
+              height={80}
+              className="object-cover"
+              priority={false}
+            />
+          </div>
 
           <div className="flex-1">
             <blockquote className="text-gray-800 dark:text-gray-100 italic text-lg mb-2 leading-relaxed">
