@@ -28,7 +28,7 @@ export async function POST(req: Request) {
             userId: session.user.id,
             type: event,
             metadata,
-            // removed `timestamp` because it does not exist on your Prisma Event model
+            timestamp: new Date(ts ?? Date.now()),
           },
         });
         return NextResponse.json({ ok: true, eventId: created.id });

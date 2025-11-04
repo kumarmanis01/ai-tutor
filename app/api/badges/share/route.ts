@@ -26,6 +26,7 @@ export async function POST(req: Request) {
       userId: session.user.id,
       type: 'badge_shared',
       metadata: { badgeId },
+      timestamp: new Date(ts ?? Date.now()),
     },
   });
 

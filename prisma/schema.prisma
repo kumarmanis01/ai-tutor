@@ -135,7 +135,8 @@ model Event {
   user      User?    @relation(fields: [userId], references: [id])
   type      String // e.g., "question_sent", "login", "export_pdf"
   metadata  Json? // arbitrary JSON payload
-  createdAt DateTime @default(now())
+    timestamp DateTime @default(now()) // ADDED: explicit timestamp for analytics
+createdAt DateTime @default(now())
 }
 
 /**
