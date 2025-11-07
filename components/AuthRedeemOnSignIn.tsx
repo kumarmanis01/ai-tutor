@@ -1,50 +1,142 @@
 'use client';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, type ReactElement } from 'react';
 import { useSession } from 'next-auth/react';
 
-export default function AuthRedeemOnSignIn() {
-  const { status } = useSession();
-  const calledRef = useRef(false);
+type TrackFn = (event: string, props?: Record<string, unknown>) => void | Promise<void>;
+
+/**
+ * AuthRedeemOnSignIn
+ *
+ * Client-only component that:
+ * - Waits for the user session to become "authenticated".
+ * - Attempts a one-time referral redemption (reads ?ref or cookie "referral").
+ * - Uses AbortController with timeout to avoid hanging requests.
+ * - Attempts to record analytics via a dynamically imported, client-safe analytics module.
+ * - Ensures single execution with a ref to avoid duplicate network calls.
+ *
+ * Notes:
+ * - This file intentionally avoids importing any server-only modules at top-level.
+ * - The analytics module is loaded dynamically; runtime checks ensure we only call a real function.
+ * - No use of `any` — runtime-checked against Record<string, unknown>.
+ */
+export default function AuthRedeemOnSignIn(): ReactElement | null {
+  const { status, data: session } = useSession();
+  const attemptedRef = useRef(false);
 
   useEffect(() => {
-    if (calledRef.current) return;
-    if (typeof window === 'undefined') return; // ensure client
-    if (status !== 'authenticated') return; // wait until user is signed in
+    if (attemptedRef.current) return;
+    if (typeof window === 'undefined') return; // defensive; component is client-only
+    if (status !== 'authenticated') return;
 
-    // read query params directly from window (avoid useSearchParams)
+    // Determine referral code: query param "ref" or "referral", or cookie named "referral"
     const params = new URLSearchParams(window.location.search);
     const paramRef = params.get('ref') ?? params.get('referral');
     const cookieMatch = document.cookie.match(/(?:^|; )referral=([^;]+)/);
     const cookieRef = cookieMatch ? decodeURIComponent(cookieMatch[1]) : null;
-    const ref = paramRef ?? cookieRef;
-    if (!ref) return;
+    const referralCode = paramRef ?? cookieRef;
+    if (!referralCode) return;
 
-    calledRef.current = true;
+    attemptedRef.current = true;
+
+    const controller = new AbortController();
+    const TIMEOUT_MS = 10000;
+    const timeoutId = window.setTimeout(() => controller.abort(), TIMEOUT_MS);
 
     (async () => {
+      // Dynamically import analytics client. Use unknown & runtime guards (no `any`).
+      let track: TrackFn | undefined = undefined;
       try {
-        await fetch('/api/referral/redeem', {
+        const mod = (await import('@/lib/analyticsClient').catch(() => undefined)) as unknown;
+        if (mod && typeof (mod as Record<string, unknown>).trackEvent === 'function') {
+          track = (mod as Record<string, unknown>).trackEvent as TrackFn;
+        } else if (mod && typeof (mod as Record<string, unknown>).default === 'function') {
+          track = (mod as Record<string, unknown>).default as unknown as TrackFn;
+        } else if (
+          mod &&
+          typeof (mod as Record<string, unknown>).default === 'object' &&
+          (mod as Record<string, unknown>).default !== null &&
+          typeof ((mod as Record<string, unknown>).default as Record<string, unknown>)
+            .trackEvent === 'function'
+        ) {
+          track = ((mod as Record<string, unknown>).default as Record<string, unknown>)
+            .trackEvent as TrackFn;
+        }
+      } catch {
+        track = undefined; // best-effort analytics only
+      }
+
+      try {
+        // Analytics: attempt to record redemption start (non-blocking)
+        if (track) {
+          try {
+            void track('referral_redeem_attempt', {
+              code: referralCode,
+              userId: session?.user?.id ?? null,
+            });
+          } catch {
+            /* swallow analytics errors */
+          }
+        }
+
+        // Perform referral redeem request
+        const res = await fetch('/api/referral/redeem', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ code: ref }),
+          body: JSON.stringify({ code: referralCode }),
+          signal: controller.signal,
         });
-      } catch {
-        // ignore network errors
+
+        // Analytics: record result (best-effort)
+        if (track) {
+          try {
+            void track('referral_redeem_result', { code: referralCode, status: res.status });
+          } catch {
+            /* swallow */
+          }
+        }
+      } catch (err) {
+        // Handle abort vs other errors and optionally log analytics
+        const isAbort = (err as Error & { name?: string }).name === 'AbortError';
+        if (track) {
+          try {
+            void track('referral_redeem_result', {
+              code: referralCode,
+              status: isAbort ? 'timeout' : 'error',
+              detail: String(err),
+            });
+          } catch {
+            /* swallow */
+          }
+        }
       } finally {
-        // clear persisted cookie so we don't attempt to redeem again
-        document.cookie = 'referral=; path=/; max-age=0';
-        // remove ref param from URL to avoid reprocessing client-side
+        // cleanup timeout and abort controller
+        clearTimeout(timeoutId);
+
+        // Best-effort: clear referral cookie and remove query params so we don't retry
+        try {
+          document.cookie = 'referral=; path=/; max-age=0';
+        } catch {
+          /* ignore */
+        }
         try {
           const url = new URL(window.location.href);
           url.searchParams.delete('ref');
           url.searchParams.delete('referral');
           window.history.replaceState({}, document.title, url.toString());
         } catch {
-          // ignore
+          /* ignore */
         }
       }
     })();
-  }, [status]);
+
+    // Cleanup handler: abort pending request if the component unmounts
+    return () => {
+      clearTimeout(timeoutId);
+      controller.abort();
+    };
+    // Only re-run when authentication status or session object changes.
+    // attemptedRef prevents duplicate redemption attempts.
+  }, [status, session]);
 
   return null;
 }
