@@ -2,7 +2,6 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
-import { Prisma } from '@prisma/client';
 
 type Body = { challengeId?: string; score?: number };
 
@@ -38,7 +37,7 @@ export async function POST(req: Request) {
   if (!challenge) return NextResponse.json({ error: 'challenge not found' }, { status: 404 });
 
   try {
-    await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+    await prisma.$transaction(async (tx) => {
       if ((challenge.rewardPoints ?? 0) > 0) {
         await tx.user.update({
           where: { id: userId },
@@ -70,7 +69,7 @@ export async function POST(req: Request) {
       });
     });
   } catch (e: unknown) {
-    const err = e as Prisma.PrismaClientKnownRequestError;
+    const err = e as { code?: string };
     if (err?.code === 'P2002') return NextResponse.json({ ok: true }); // treat dup as idempotent
     throw e;
   }

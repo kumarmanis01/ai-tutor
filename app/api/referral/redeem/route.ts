@@ -3,7 +3,6 @@ import { prisma } from '@/lib/prisma';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { Prisma } from '@prisma/client';
-import { logger } from '@/lib/logger';
 
 type RequestBody = { code?: string };
 
@@ -83,14 +82,13 @@ export async function POST(req: Request) {
     const res = await doRedeem(userId, code);
     return NextResponse.json(res.body, { status: res.status });
   } catch (e: unknown) {
-    const err = e as Prisma.PrismaClientKnownRequestError;
+    const err = e as { code?: string };
     if (err?.code === 'P2028') {
       try {
         const res = await doRedeem(userId, code);
         return NextResponse.json(res.body, { status: res.status });
-      } catch (e2: unknown) {
-        // fallthrough to error handler below
-        logger.add(`Redeem retry failed: ${e2}`);
+      } catch {
+        // Handle nested error
       }
     }
     // unique-constraint treated as idempotent success elsewhere; return 500 for unexpected
