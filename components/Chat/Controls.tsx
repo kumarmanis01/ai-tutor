@@ -42,10 +42,14 @@ export default function Controls({
   const remaining = isPremium ? '∞' : Math.max(0, FREE_QUESTIONS_PER_DAY - todaysCount);
 
   // Ensure the message reflects when no free queries are left today
-  const freeTierMessage =
-    typeof remaining === 'number' && remaining > 0
-      ? `Free tier: ${remaining} / ${FREE_QUESTIONS_PER_DAY} left today`
-      : 'Free tier: No free queries left today';
+  const freeTierMessage = (
+    <div className="flex items-center gap-2">
+      <div className="text-sm text-gray-700 dark:text-gray-200">Free tier:</div>
+      <div className="text-xs text-gray-600 dark:text-gray-300">
+        {remaining} / {FREE_QUESTIONS_PER_DAY} left today
+      </div>
+    </div>
+  );
 
   return (
     <div className="border-t p-3 dark:border-gray-700 bg-white dark:bg-gray-900">
@@ -80,24 +84,26 @@ export default function Controls({
           )}
         </button>
       </form>
-      {speechError && <div className="text-xs text-red-500 mt-2">{speechError}</div>}
-      <div className="flex items-center gap-2 mt-4 justify-end">
-        <label htmlFor="volume-bar" className="text-sm text-gray-700 dark:text-gray-200">
-          Volume:
-        </label>
-        <input
-          id="volume-bar"
-          type="range"
-          min={0}
-          max={1}
-          step={0.01}
-          value={volume}
-          onChange={(e) => setVolume(Number(e.target.value))}
-          className="w-32"
-        />
-        <span className="text-xs text-gray-600 dark:text-gray-300">
-          {Math.round(volume * 100)}%
-        </span>
+      <div className="flex items-start justify-between mt-4">
+        <div>{speechError && <div className="text-xs text-red-500">{speechError}</div>}</div>
+        <div className="flex items-center gap-2">
+          <label htmlFor="volume-bar" className="text-sm text-gray-700 dark:text-gray-200">
+            Volume:
+          </label>
+          <input
+            id="volume-bar"
+            type="range"
+            min={0}
+            max={1}
+            step={0.01}
+            value={volume}
+            onChange={(e) => setVolume(Number(e.target.value))}
+            className="w-32"
+          />
+          <span className="text-xs text-gray-600 dark:text-gray-300">
+            {Math.round(volume * 100)}%
+          </span>
+        </div>
       </div>
       <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
         {isValidSession ? (

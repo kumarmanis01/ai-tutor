@@ -68,7 +68,7 @@ export default function ChatBot() {
     const data = await res.json();
     setSubscription({
       isPremium: data.isPremium,
-      todaysCount: data.todaysCount,
+      todaysCount: Number.isFinite(data.todaysCount) ? data.todaysCount : 0, // Default to 0 if invalid
     });
   }
 

@@ -23,6 +23,7 @@ export default function AuthModal({ isOpen, onClose }: Props) {
   const [error, setError] = useState('');
   const [emailSent, setEmailSent] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false); // State to toggle password visibility
 
   if (!isOpen) return null;
 
@@ -126,15 +127,24 @@ export default function AuthModal({ isOpen, onClose }: Props) {
                 autoComplete="email"
               />
               {/* Password */}
-              <input
-                type="password"
-                required={mode === 'signup'}
-                placeholder="Password*"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="w-full px-3 py-2 border rounded"
-                autoComplete={mode === 'signup' ? 'new-password' : 'current-password'}
-              />
+              <div className="relative">
+                <input
+                  type={showPassword ? 'text' : 'password'} // Toggle input type
+                  required={mode === 'signup'}
+                  placeholder="Password*"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="w-full px-3 py-2 border rounded"
+                  autoComplete={mode === 'signup' ? 'new-password' : 'current-password'}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-2 top-2 text-gray-500 hover:text-gray-700"
+                >
+                  {showPassword ? 'Hide' : 'Show'}
+                </button>
+              </div>
               {/* Only show these fields on signup */}
               {mode === 'signup' && (
                 <>
