@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react'; // Add useRef
 import { useSession } from 'next-auth/react';
 import MessageBubble from './MessageBubble';
 import Controls from './Controls';
@@ -28,6 +28,7 @@ function getUserId(user: { id?: string; email?: string | null }) {
 
 export default function ChatBot() {
   const { data: session } = useSession();
+  const messagesEndRef = useRef<HTMLDivElement>(null); // Reference for scrolling
 
   // Profile completeness check
   const incompleteProfile =
@@ -93,6 +94,15 @@ export default function ChatBot() {
     } catch {}
   }, [messages, storageKey]);
 
+  // Scroll to the bottom of the chat container
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  useEffect(() => {
+    scrollToBottom(); // Scroll whenever messages change
+  }, [messages]);
+
   // Send message to backend, passing selected language
   async function handleSend(message: string) {
     if (!session) {
@@ -107,11 +117,12 @@ export default function ChatBot() {
 
     setLoading(true);
     try {
+      const detailedMessage = `Explain in detail like a teacher to a student in class: ${message}`;
       const res = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         // Pass selected language to backend for correct written language
-        body: JSON.stringify({ message, lang }),
+        body: JSON.stringify({ message: detailedMessage, lang }),
       });
       const data = await res.json();
       if (data.error) {
@@ -137,7 +148,13 @@ export default function ChatBot() {
           content: data.reply,
         };
         setMessages((prev) => [...prev, userMsg, aiMsg]);
-        fetchStatus();
+
+        // Increment todaysCount locally and trigger re-render
+        setSubscription((prev) => ({
+          ...prev,
+          todaysCount: prev.todaysCount + 1,
+        }));
+        scrollToBottom(); // Ensure scrolling after adding messages
       }
     } finally {
       setLoading(false);
@@ -148,7 +165,6 @@ export default function ChatBot() {
     <div className="flex flex-col h-full">
       {/* Ribbon overlay if profile is incomplete */}
       <ProfileRibbon show={!!incompleteProfile} />
-      {/* <div className="flex flex-col h-full"> */}
       <div className="flex-1 overflow-y-auto p-4 space-y-2 border-2 border-blue-500 shadow-lg rounded-lg bg-white dark:bg-gray-900 dark:border-blue-300">
         <div className="flex-1 overflow-y-auto p-4 space-y-2">
           {messages.length === 0 && (
@@ -165,6 +181,7 @@ export default function ChatBot() {
               lang={lang} // Pass lang prop for spoken language
             />
           ))}
+          <div ref={messagesEndRef} /> {/* Scroll target */}
         </div>
 
         {/* Controls with quota info and language selection */}

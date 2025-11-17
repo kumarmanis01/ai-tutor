@@ -19,7 +19,7 @@ export default function Controls({
   loading: boolean;
   isPremium: boolean;
   isValidSession: boolean;
-  todaysCount: number;
+  todaysCount: number; // Ensure this is required and dynamically updated
   volume: number;
   setVolume: (v: number) => void;
   lang: string;
