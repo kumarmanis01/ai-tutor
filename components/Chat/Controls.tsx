@@ -35,7 +35,17 @@ export default function Controls({
     setInput('');
   };
 
-  const remaining = isPremium ? '∞' : Math.max(0, 3 - todaysCount);
+  // Define a constant for the number of free questions allowed per day
+  const FREE_QUESTIONS_PER_DAY = 3;
+
+  // Adjust remaining calculation to reflect used queries accurately
+  const remaining = isPremium ? '∞' : Math.max(0, FREE_QUESTIONS_PER_DAY - todaysCount);
+
+  // Ensure the message reflects when no free queries are left today
+  const freeTierMessage =
+    typeof remaining === 'number' && remaining > 0
+      ? `Free tier: ${remaining} / ${FREE_QUESTIONS_PER_DAY} left today`
+      : 'Free tier: No free queries left today';
 
   return (
     <div className="border-t p-3 dark:border-gray-700 bg-white dark:bg-gray-900">
@@ -96,7 +106,7 @@ export default function Controls({
               Thank you for being a premium member! Enjoy unlimited questions 🎉
             </span>
           ) : (
-            <span>Free tier: {remaining} / 3 left today</span>
+            <span>{freeTierMessage}</span>
           )
         ) : (
           <span className="text-red-500 dark:text-red-400">

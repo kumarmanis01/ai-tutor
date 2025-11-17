@@ -117,7 +117,10 @@ export default function ChatBot() {
 
     setLoading(true);
     try {
-      const detailedMessage = `Explain in detail like a teacher to a student in class: ${message}`;
+      // Modify the detailedMessage to request structured responses
+      const detailedMessage = `Explain in detail like a teacher to a student in class. Provide the answer in bullet points or numbered lists: ${message}`;
+
+      // Log the raw response from OpenAI to the console
       const res = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -125,6 +128,10 @@ export default function ChatBot() {
         body: JSON.stringify({ message: detailedMessage, lang }),
       });
       const data = await res.json();
+
+      // Log the raw response for debugging
+      console.log('Raw OpenAI Response:', data);
+
       if (data.error) {
         if (data.error === 'free_limit_reached') {
           setShowSubscriptionSubModal(true);
@@ -142,11 +149,14 @@ export default function ChatBot() {
           role: 'user',
           content: message,
         };
+
+        // Use the response from OpenAI as-is without additional formatting
         const aiMsg: ChatMessage = {
           id: `${Date.now()}-ai`,
           role: 'assistant',
-          content: data.reply,
+          content: data.reply, // Render the response exactly as returned by OpenAI
         };
+
         setMessages((prev) => [...prev, userMsg, aiMsg]);
 
         // Increment todaysCount locally and trigger re-render
