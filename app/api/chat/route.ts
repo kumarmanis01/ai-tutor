@@ -16,8 +16,10 @@ import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import { checkProfanity } from '@/lib/guardrails';
 import { SessionUser } from '@/lib/types';
+import { logApiUsage } from '@/utils/logApiUsage';
 
 export async function POST(req: Request) {
+  logApiUsage('/api/chat', 'POST');
   try {
     const session = await getServerSession(authOptions);
     if (!session) {
@@ -138,14 +140,6 @@ export async function POST(req: Request) {
         content: aiReply,
         subject,
       },
-    });
-
-    // --- API USAGE LOGGING ---
-    // Log API usage for this user and endpoint
-    await prisma.apiUsage.upsert({
-      where: { userId_endpoint: { userId, endpoint: '/api/chat' } },
-      update: { count: { increment: 1 }, lastUsed: new Date() },
-      create: { userId, endpoint: '/api/chat', count: 1, lastUsed: new Date() },
     });
 
     return NextResponse.json({ reply: aiReply });

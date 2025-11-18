@@ -2,9 +2,11 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
-import { Prisma } from '@prisma/client';
+import { logApiUsage } from '@/utils/logApiUsage';
 
 export async function POST(req: Request) {
+  logApiUsage('/api/analytics/track', 'POST');
+
   const body = await req.json().catch(() => ({}));
   const { event, data, ts } = body as { event?: string; data?: unknown; ts?: number };
 
@@ -20,14 +22,11 @@ export async function POST(req: Request) {
     const session = await getServerSession(authOptions);
     if (session?.user?.id) {
       try {
-        // best-effort: persist if Event model exists in your Prisma schema
-        // cast metadata to Prisma.InputJsonValue to satisfy Prisma types
-        const metadata = (data as Prisma.InputJsonValue) ?? {};
         const created = await prisma.event.create({
           data: {
             userId: session.user.id,
             type: event,
-            metadata,
+            metadata: data ?? {},
             timestamp: new Date(ts ?? Date.now()),
           },
         });
@@ -38,11 +37,9 @@ export async function POST(req: Request) {
         return NextResponse.json({ ok: true });
       }
     }
-
-    // anonymous event -> accepted
-    return NextResponse.json({ ok: true });
   } catch (err) {
-    console.error('[analytics] error:', err);
-    return NextResponse.json({ error: 'server_error', detail: String(err) }, { status: 500 });
+    console.error('[analytics] unexpected error:', err);
   }
+
+  return NextResponse.json({ ok: true });
 }

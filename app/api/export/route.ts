@@ -1,4 +1,5 @@
 // app/api/export/route.ts
+import { logApiUsage } from '@/utils/logApiUsage';
 import { NextResponse } from 'next/server';
 import { PDFDocument, StandardFonts } from 'pdf-lib';
 
@@ -8,6 +9,7 @@ import { PDFDocument, StandardFonts } from 'pdf-lib';
  * Returns: application/pdf or text/plain
  */
 export async function POST(req: Request) {
+  logApiUsage('/api/export', 'POST');
   try {
     const body = await req.json();
     const { title = 'chat_export', messages, format = 'pdf' } = body ?? {};

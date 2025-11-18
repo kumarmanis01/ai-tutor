@@ -1,6 +1,9 @@
 import { NextResponse } from 'next/server';
+import { logApiUsage } from '@/utils/logApiUsage';
 
 export async function GET() {
+  logApiUsage('/api/rooms/[roomId]/leaderboard', 'GET');
+
   // Dummy leaderboard data
   const leaderboard = [
     { userId: '1', username: 'Alice', score: 120 },

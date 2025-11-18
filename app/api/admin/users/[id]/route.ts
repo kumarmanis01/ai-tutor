@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
+import { logApiUsage } from '@/utils/logApiUsage';
 
 // @ts-expect-error Ignore type checking for params in this handler
 export async function PATCH(req, { params }) {
@@ -8,6 +9,7 @@ export async function PATCH(req, { params }) {
     where: { id: params.id },
     data,
   });
+  logApiUsage(`/api/admin/users/${params.id}`, 'PATCH');
   return NextResponse.json(user);
 }
 

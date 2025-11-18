@@ -232,13 +232,15 @@ model AuditLog {
 
 model ApiUsage {
   id       String   @id @default(cuid())
-  userId   String?
+  userId   String? // Nullable for unauthenticated users
   user     User?    @relation(fields: [userId], references: [id])
   endpoint String
-  count    Int      @default(1)
+  method   String // HTTP method (e.g., GET, POST)
+  count    Int      @default(1) // Optional: Remove if logging each call as a separate row
   lastUsed DateTime @default(now())
+  metadata Json? // Optional: Store additional details (e.g., request headers, response status)
 
-  @@unique([userId, endpoint], name: "userId_endpoint")
+  @@unique([userId, endpoint, method], name: "userId_endpoint_method") // Updated unique constraint
 }
 
 model Referral {

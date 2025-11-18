@@ -5,6 +5,7 @@ import { razorpay } from '@/lib/payments';
 import { SessionUser } from '@/lib/types';
 import { logger } from '@/lib/logger';
 import { BILLING_MONTHLY, RAZORPAY_PLAN_IDS } from '../constants';
+import { logApiUsage } from '@/utils/logApiUsage';
 
 /**
  * Creates a Razorpay subscription for the selected plan.
@@ -21,7 +22,7 @@ import { BILLING_MONTHLY, RAZORPAY_PLAN_IDS } from '../constants';
  */
 
 export async function POST(req: Request) {
-  logger.add('Billing checkout POST called.');
+  logApiUsage('/api/billing/checkout', 'POST');
   const session = await getServerSession(authOptions);
   if (!session) {
     logger.add('Unauthorized: No session found.');

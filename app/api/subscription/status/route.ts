@@ -4,8 +4,11 @@ import { authOptions } from '@/lib/auth';
 // import { prisma } from '@/lib/db';
 import { SessionUser } from '@/lib/types';
 import { isPremiumUser } from '@/lib/subscription';
+import { logApiUsage } from '@/utils/logApiUsage';
 
 export async function GET() {
+  logApiUsage('/api/subscription/status', 'GET');
+
   try {
     const session = await getServerSession(authOptions);
     if (!session) {

@@ -1,15 +1,17 @@
-import { NextResponse } from "next/server";
-import OpenAI from "openai";
+import { NextResponse } from 'next/server';
+import OpenAI from 'openai';
+import { logApiUsage } from '@/utils/logApiUsage';
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY! });
 
 export async function POST(req: Request) {
+  logApiUsage('/api/i18n/translate', 'POST');
   const { text, targetLang } = await req.json();
   const completion = await openai.chat.completions.create({
-    model: "gpt-4o-mini",
+    model: 'gpt-4o-mini',
     messages: [
-      { role: "system", content: `Translate to ${targetLang}.` },
-      { role: "user", content: text },
+      { role: 'system', content: `Translate to ${targetLang}.` },
+      { role: 'user', content: text },
     ],
   });
   return NextResponse.json({

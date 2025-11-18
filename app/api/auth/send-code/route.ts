@@ -2,10 +2,11 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { randomInt } from 'crypto';
 import { sendEmail } from '@/lib/mailer';
+import { logApiUsage } from '@/utils/logApiUsage';
 
 export async function POST(req: Request) {
   const { email } = await req.json();
-
+  logApiUsage('/api/auth/send-code', 'POST');
   if (!email || typeof email !== 'string') {
     return NextResponse.json({ error: 'Invalid email' }, { status: 400 });
   }

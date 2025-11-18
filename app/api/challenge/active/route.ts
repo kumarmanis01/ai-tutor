@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { logApiUsage } from '@/utils/logApiUsage';
 
 export async function GET() {
   const now = new Date();
@@ -7,5 +8,6 @@ export async function GET() {
     where: { startAt: { lte: now }, endAt: { gte: now } },
     include: { rewardBadge: true },
   });
+  logApiUsage('/api/challenge/active', 'GET');
   return NextResponse.json({ challenge });
 }

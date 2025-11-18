@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import prisma from '@/lib/prisma';
 import { SessionUser } from '@/lib/types';
+import { logApiUsage } from '@/utils/logApiUsage';
 
 /**
  * Returns the user's current subscription status.
@@ -17,6 +18,7 @@ Typical Response:
 { plan: 'pro', billingCycle: 'monthly', status: 'active', validTill: '2025-12-31' }
  */
 export async function GET() {
+  logApiUsage('/api/billing/status ', 'GET');
   const session = await getServerSession(authOptions);
   if (!session) {
     return new Response('Unauthorized', { status: 401 });

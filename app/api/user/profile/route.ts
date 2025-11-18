@@ -3,8 +3,10 @@ import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import { SessionUser } from '@/lib/types';
+import { logApiUsage } from '@/utils/logApiUsage';
 
 export async function GET() {
+  logApiUsage('/api/user/profile', 'GET');
   const session = await getServerSession(authOptions);
   if (!session) {
     return new Response('Unauthorized', { status: 401 });

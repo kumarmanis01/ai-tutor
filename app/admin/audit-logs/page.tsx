@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
+import AuditTrailViewer from '../../../components/AuditTrailViewer';
 
 interface AuditLog {
   id: string;
@@ -9,7 +10,7 @@ interface AuditLog {
   createdAt: string;
 }
 
-export default function AuditLogs() {
+const AuditLogsPage = () => {
   const [logs, setLogs] = useState<AuditLog[]>([]);
 
   useEffect(() => {
@@ -21,6 +22,7 @@ export default function AuditLogs() {
   return (
     <div className="max-w-4xl mx-auto p-8">
       <h1 className="text-2xl font-bold mb-4">Audit Logs</h1>
+      <AuditTrailViewer />
       <table className="w-full border">
         <thead>
           <tr>
@@ -43,4 +45,6 @@ export default function AuditLogs() {
       </table>
     </div>
   );
-}
+};
+
+export default AuditLogsPage;

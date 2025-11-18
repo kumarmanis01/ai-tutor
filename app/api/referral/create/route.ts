@@ -3,10 +3,12 @@ import { prisma } from '@/lib/prisma';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { customAlphabet } from 'nanoid';
+import { logApiUsage } from '@/utils/logApiUsage';
 
 const nano = customAlphabet('ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789', 8);
 
 export async function POST() {
+  logApiUsage('/api/referral/create', 'POST');
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 

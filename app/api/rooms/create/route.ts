@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
+import { logApiUsage } from '@/utils/logApiUsage';
 
 /**
  * API Route: Create a new study room (topic-based).
@@ -20,6 +21,8 @@ import { authOptions } from '@/lib/auth';
  * The creator is automatically added as an admin member.
  */
 export async function POST(req: Request) {
+  logApiUsage('/api/rooms/create', 'POST');
+
   // Authenticate user
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) {

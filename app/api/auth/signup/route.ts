@@ -3,6 +3,7 @@ import prisma from '@/lib/prisma';
 import bcrypt from 'bcrypt';
 import type { SessionUser } from '@/lib/types';
 import { logger } from '@/lib/logger';
+import { logApiUsage } from '@/utils/logApiUsage';
 
 type SignupBody = Pick<SessionUser, 'name' | 'email' | 'parentEmail' | 'grade'> & {
   profileImage?: string;
@@ -13,6 +14,7 @@ type SignupBody = Pick<SessionUser, 'name' | 'email' | 'parentEmail' | 'grade'> 
 const CLASS_NAME = 'AuthSignupRoute';
 
 export async function POST(req: NextRequest) {
+  logApiUsage('/api/auth/signup', 'POST');
   const METHOD_NAME = 'POST';
   await logger.logRouteInfo(req, undefined, { className: CLASS_NAME, methodName: METHOD_NAME });
 

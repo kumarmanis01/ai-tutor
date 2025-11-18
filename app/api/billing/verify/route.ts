@@ -5,6 +5,7 @@ import { authOptions } from '@/lib/auth';
 import prisma from '@/lib/prisma';
 import { SessionUser } from '@/lib/types';
 import nodemailer from 'nodemailer';
+import { logApiUsage } from '@/utils/logApiUsage';
 
 async function sendPaymentSuccessEmail(
   to: string,
@@ -50,6 +51,7 @@ async function sendPaymentSuccessEmail(
 }
 
 export async function POST(req: Request) {
+  logApiUsage('/api/billing/verify', 'POST');
   const session = await getServerSession(authOptions);
   if (!session || !session.user) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });

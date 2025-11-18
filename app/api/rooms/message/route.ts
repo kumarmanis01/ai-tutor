@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
+import { logApiUsage } from '@/utils/logApiUsage';
 
 /**
  * API Route: Send a message to a study room.
@@ -17,6 +18,8 @@ import { authOptions } from '@/lib/auth';
  * Returns the created message.
  */
 export async function POST(req: Request) {
+  logApiUsage('/api/rooms/message', 'POST');
+
   // Authenticate user
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) {

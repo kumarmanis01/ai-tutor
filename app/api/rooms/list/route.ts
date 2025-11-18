@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { logApiUsage } from '@/utils/logApiUsage';
 
 /**
  * API Route: List all public study rooms.
@@ -17,7 +18,7 @@ export async function GET() {
     where: { isPrivate: false },
     select: { id: true, name: true, subject: true },
   });
-
+  logApiUsage('/api/rooms/list', 'GET');
   // Return the list of rooms as JSON
   return NextResponse.json(rooms);
 }
