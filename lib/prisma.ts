@@ -1,9 +1,7 @@
-// lib/prisma.ts
 import { PrismaClient } from '@prisma/client';
 
 declare global {
   // Avoid multiple instances of PrismaClient in development
-  // (Hot reload can create many connections otherwise)
   var prisma: PrismaClient | undefined;
 }
 
@@ -17,5 +15,3 @@ export const prisma =
 if (process.env.NODE_ENV !== 'production') {
   global.prisma = prisma;
 }
-
-export default prisma;

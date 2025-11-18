@@ -103,6 +103,18 @@ async function main() {
   });
   console.log('Payment created for test user:', payment);
 
+  const anotherTestUser = await prisma.user.upsert({
+    where: { email: 'testuser@example.com' },
+    update: {},
+    create: {
+      id: 'test-user-id',
+      email: 'testuser@example.com',
+      name: 'Test User',
+      passwordHash: 'hashedpassword',
+    },
+  });
+  console.log('Created or updated test user:', anotherTestUser);
+
   // Log all users
   console.log('Fetching all users in the database...');
   const allUsers = await prisma.user.findMany({ select: { name: true, email: true } });
