@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
-// import { prisma } from '@/lib/db';
 import { SessionUser } from '@/lib/types';
 import { isPremiumUser } from '@/lib/subscription';
 import { logApiUsage } from '@/utils/logApiUsage';

@@ -1,9 +1,8 @@
 import { NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
+import { logApiUsage } from '@/utils/logApiUsage';
+import { logEvent } from '@/utils/logEvent';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
-import { Prisma } from '@prisma/client';
-import { logApiUsage } from '@/utils/logApiUsage';
 
 type RequestBody = {
   badgeId?: string;
@@ -12,31 +11,22 @@ type RequestBody = {
 
 export async function POST(req: Request) {
   logApiUsage('/api/badges/share', 'POST');
-  const session = await getServerSession(authOptions);
-  if (!session?.user?.id) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
 
   const raw = await req.json().catch(() => ({}) as unknown);
   const body = raw as RequestBody;
   const badgeId = typeof body.badgeId === 'string' ? body.badgeId : undefined;
-  const ts = typeof body.ts === 'number' ? body.ts : undefined;
 
   if (!badgeId) {
     return NextResponse.json({ error: 'badgeId required' }, { status: 400 });
   }
 
-  const timestamp = new Date(ts ?? Date.now());
+  const session = await getServerSession(authOptions);
+  if (!session || !session.user) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
 
   try {
-    await prisma.event.create({
-      data: {
-        userId: session.user.id,
-        type: 'badge_shared',
-        metadata: { badgeId } as unknown as Prisma.InputJsonValue,
-        timestamp,
-      },
-    });
+    await logEvent('badge_shared', { badgeId });
   } catch (err) {
     console.error('[badges/share] db write failed:', err);
     // non-blocking: return ok but log the error
