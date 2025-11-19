@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import prisma from '@/lib/prisma';
+import { prisma } from '@/lib/prisma';
 import { logApiUsage } from '@/utils/logApiUsage';
 
 // @ts-expect-error Ignore type checking for params in this handler

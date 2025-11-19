@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import prisma from '@/lib/prisma';
+import { prisma } from '@/lib/prisma';
 import bcrypt from 'bcrypt';
 import type { SessionUser } from '@/lib/types';
 import { logger } from '@/lib/logger';
