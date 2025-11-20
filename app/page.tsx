@@ -4,7 +4,6 @@ import { useSession } from 'next-auth/react';
 import { useState } from 'react';
 import ChatBot from '@/components/Chat/ChatBot';
 import AuthModal from '@/components/AuthModal';
-import FeatureHighlights from '@/components/FeatureHighlights';
 import Testimonials from '@/components/Testimonials';
 
 export default function HomePage() {
@@ -26,69 +25,71 @@ export default function HomePage() {
       {/* Hero Section */}
       <section className="w-full bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-500 text-white py-20 px-6 text-center">
         <h1 className="text-4xl md:text-6xl font-extrabold mb-6">
-          Learn Smarter with <span className="text-yellow-300">AI Tutor</span>
+          Empower Your Learning with <span className="text-yellow-300">AI Tutor</span>
         </h1>
         <p className="text-lg md:text-2xl max-w-2xl mx-auto mb-8">
-          Your personal AI-powered tutor for school, tech, and beyond. Start free with 3 daily
-          questions – upgrade for unlimited learning.
+          The perfect companion for learners of all ages to clarify concepts, nurture curiosity, and
+          access quality education from anywhere.
         </p>
         <div className="flex justify-center gap-4">
           <button
             onClick={() => setShowAuthModal(true)}
             className="px-6 py-3 rounded-lg bg-yellow-400 text-black font-semibold hover:bg-yellow-300 transition"
           >
-            Ask Your First Question
+            Start Learning Now
           </button>
         </div>
       </section>
-      <section className="w-full max-w-4xl mx-auto px-6 py-10 text-center">
-        <FeatureHighlights />
-      </section>
-      <section className="w-full max-w-4xl mx-auto px-6 py-10 text-center">
-        <Testimonials />
-      </section>
-      {/* Feature Highlights */}
+
+      {/* Why Choose AI Tutor */}
       <section className="py-16 px-6 max-w-5xl mx-auto grid md:grid-cols-3 gap-10 text-center">
         <div className="p-6 bg-white dark:bg-gray-800 rounded-2xl shadow-md">
           <h3 className="text-xl font-bold mb-3 text-indigo-600 dark:text-indigo-300">
-            🎓 Personalized Learning
+            🌍 Accessible Anywhere
           </h3>
           <p className="text-gray-600 dark:text-gray-300">
-            Ask questions across subjects – AI adapts to your level of knowledge.
+            Designed for learners in all locations, providing access to quality education at your
+            fingertips.
           </p>
         </div>
         <div className="p-6 bg-white dark:bg-gray-800 rounded-2xl shadow-md">
           <h3 className="text-xl font-bold mb-3 text-indigo-600 dark:text-indigo-300">
-            ⚡ Freemium Access
+            🎓 Concept Mastery
           </h3>
           <p className="text-gray-600 dark:text-gray-300">
-            Start free with 3 daily questions. Upgrade to Pro for unlimited queries.
+            Clarify doubts and strengthen understanding with personalized AI-driven explanations.
           </p>
         </div>
         <div className="p-6 bg-white dark:bg-gray-800 rounded-2xl shadow-md">
           <h3 className="text-xl font-bold mb-3 text-indigo-600 dark:text-indigo-300">
-            💳 Simple Pricing
+            🔍 Nurture Curiosity
           </h3>
           <p className="text-gray-600 dark:text-gray-300">
-            Flexible monthly & annual plans via Razorpay – cancel anytime.
+            Encourage curious minds to explore and learn beyond the classroom with engaging AI
+            interactions.
           </p>
         </div>
       </section>
 
-      {/* Embedded Tutor (if logged in) */}
+      {/* Testimonials */}
+      <section className="w-full max-w-4xl mx-auto px-6 py-10 text-center">
+        <Testimonials />
+      </section>
+
+      {/* Call to Action */}
       <section className="w-full max-w-4xl mx-auto px-6 py-10">
         <div className="p-10 bg-white dark:bg-gray-800 rounded-2xl shadow-md text-center">
           <h2 className="text-2xl font-bold mb-4 text-indigo-600 dark:text-indigo-300">
-            Try Spinzy Academy
+            Start Your Journey Today
           </h2>
           <p className="mb-6 text-gray-600 dark:text-gray-300">
-            Sign in to start asking your first 3 free questions today!
+            Join thousands of learners who are transforming their learning experience with AI Tutor.
           </p>
           <button
             onClick={() => setShowAuthModal(true)}
             className="px-6 py-3 rounded-lg bg-indigo-600 text-white font-semibold hover:bg-indigo-700 transition"
           >
-            Sign In to Start
+            Sign Up for Free
           </button>
         </div>
       </section>
