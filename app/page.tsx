@@ -68,67 +68,90 @@ export default function HomePage() {
       </section>
 
       {/* Problem Section */}
-      <section className="py-16 px-6 max-w-5xl mx-auto grid md:grid-cols-3 gap-10 text-center">
-        <div className="p-6 bg-white dark:bg-gray-800 rounded-2xl shadow-md">
-          <h3 className="text-xl font-bold mb-3 text-indigo-600 dark:text-indigo-300">
-            Homework Pressure
+      <section className="py-16 px-6 max-w-5xl mx-auto text-center">
+        <h2
+          className="p-6 rounded-xl transition-transform transform hover:scale-[1.01] shadow-lg
+                 bg-gradient-to-r from-white to-indigo-50 dark:from-gray-900 dark:to-indigo-900
+                 border border-indigo-100 dark:border-indigo-800"
+        >
+          <h3 className="text-xl font-semibold mb-4 text-gray-900 dark:text-gray-100">
+            Challenges Parents Face Today
           </h3>
-          <p className="text-gray-600 dark:text-gray-300">
-            Struggling to help your child with homework? Let AI Tutor simplify the process.
-          </p>
-        </div>
-        <div className="p-6 bg-white dark:bg-gray-800 rounded-2xl shadow-md">
-          <h3 className="text-xl font-bold mb-3 text-indigo-600 dark:text-indigo-300">
-            Difficulty Understanding Concepts
-          </h3>
-          <p className="text-gray-600 dark:text-gray-300">
-            AI Tutor provides clear, step-by-step explanations for better understanding.
-          </p>
-        </div>
-        <div className="p-6 bg-white dark:bg-gray-800 rounded-2xl shadow-md">
-          <h3 className="text-xl font-bold mb-3 text-indigo-600 dark:text-indigo-300">
-            Lack of Personalized Guidance
-          </h3>
-          <p className="text-gray-600 dark:text-gray-300">
-            Personalized learning tailored to your child’s needs with AI Tutor.
-          </p>
-        </div>
+          <div className="grid md:grid-cols-3 gap-10">
+            <div className="p-6 bg-white dark:bg-gray-800 rounded-2xl shadow-md">
+              <h3 className="text-xl font-bold mb-3 text-indigo-600 dark:text-indigo-300">
+                Homework Pressure
+              </h3>
+              <p className="text-gray-600 dark:text-gray-300">
+                Struggling to help your child with homework? Let AI Tutor simplify the process.
+              </p>
+            </div>
+            <div className="p-6 bg-white dark:bg-gray-800 rounded-2xl shadow-md">
+              <h3 className="text-xl font-bold mb-3 text-indigo-600 dark:text-indigo-300">
+                Difficulty Understanding Concepts
+              </h3>
+              <p className="text-gray-600 dark:text-gray-300">
+                AI Tutor provides clear, step-by-step explanations for better understanding.
+              </p>
+            </div>
+            <div className="p-6 bg-white dark:bg-gray-800 rounded-2xl shadow-md">
+              <h3 className="text-xl font-bold mb-3 text-indigo-600 dark:text-indigo-300">
+                Lack of Personalized Guidance
+              </h3>
+              <p className="text-gray-600 dark:text-gray-300">
+                Personalized learning tailored to your child’s needs with AI Tutor.
+              </p>
+            </div>
+          </div>
+        </h2>
       </section>
 
       {/* Feature Section */}
-      <section className="py-16 px-6 max-w-5xl mx-auto grid md:grid-cols-2 gap-10 text-center">
-        <div className="p-6 bg-white dark:bg-gray-800 rounded-2xl shadow-md">
-          <h3 className="text-xl font-bold mb-3 text-indigo-600 dark:text-indigo-300">
-            AI Homework Solver
-          </h3>
-          <p className="text-gray-600 dark:text-gray-300">
-            Get instant solutions to homework problems with detailed explanations.
-          </p>
-        </div>
-        <div className="p-6 bg-white dark:bg-gray-800 rounded-2xl shadow-md">
-          <h3 className="text-xl font-bold mb-3 text-indigo-600 dark:text-indigo-300">
-            AI Notes Maker
-          </h3>
-          <p className="text-gray-600 dark:text-gray-300">
-            Generate concise, easy-to-understand notes for any topic.
-          </p>
-        </div>
-        <div className="p-6 bg-white dark:bg-gray-800 rounded-2xl shadow-md">
-          <h3 className="text-xl font-bold mb-3 text-indigo-600 dark:text-indigo-300">
-            AI Exam Preparation Assistant
-          </h3>
-          <p className="text-gray-600 dark:text-gray-300">
-            Personalized quizzes and practice tests to ace exams.
-          </p>
-        </div>
-        <div className="p-6 bg-white dark:bg-gray-800 rounded-2xl shadow-md">
-          <h3 className="text-xl font-bold mb-3 text-indigo-600 dark:text-indigo-300">
-            AI Voice Tutor Mode
-          </h3>
-          <p className="text-gray-600 dark:text-gray-300">
-            Learn hands-free with voice-guided tutoring sessions.
-          </p>
-        </div>
+      <section className="py-16 px-6 max-w-5xl mx-auto text-center">
+        <h1
+          className="p-6 rounded-xl transition-transform transform hover:scale-[1.01] shadow-lg
+                 bg-gradient-to-r from-white to-indigo-50 dark:from-gray-900 dark:to-indigo-900
+                 border border-indigo-100 dark:border-indigo-800"
+        >
+          <h2 className="text-xl font-semibold mb-4 text-gray-900 dark:text-gray-100">
+            How AI Tutor Helps{' '}
+          </h2>
+
+          <div className="grid md:grid-cols-2 gap-10">
+            <div className="p-6 bg-white dark:bg-gray-800 rounded-2xl shadow-md">
+              <h3 className="text-xl font-bold mb-3 text-indigo-600 dark:text-indigo-300">
+                AI Homework Solver
+              </h3>
+              <p className="text-gray-600 dark:text-gray-300">
+                Get instant solutions to homework problems with detailed explanations.
+              </p>
+            </div>
+            <div className="p-6 bg-white dark:bg-gray-800 rounded-2xl shadow-md">
+              <h3 className="text-xl font-bold mb-3 text-indigo-600 dark:text-indigo-300">
+                AI Notes Maker
+              </h3>
+              <p className="text-gray-600 dark:text-gray-300">
+                Generate concise, easy-to-understand notes for any topic.
+              </p>
+            </div>
+            <div className="p-6 bg-white dark:bg-gray-800 rounded-2xl shadow-md">
+              <h3 className="text-xl font-bold mb-3 text-indigo-600 dark:text-indigo-300">
+                AI Exam Preparation Assistant
+              </h3>
+              <p className="text-gray-600 dark:text-gray-300">
+                Personalized quizzes and practice tests to ace exams.
+              </p>
+            </div>
+            <div className="p-6 bg-white dark:bg-gray-800 rounded-2xl shadow-md">
+              <h3 className="text-xl font-bold mb-3 text-indigo-600 dark:text-indigo-300">
+                AI Voice Tutor Mode
+              </h3>
+              <p className="text-gray-600 dark:text-gray-300">
+                Learn hands-free with voice-guided tutoring sessions.
+              </p>
+            </div>
+          </div>
+        </h1>
       </section>
 
       {/* Demo Section */}
