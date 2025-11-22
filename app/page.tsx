@@ -4,7 +4,7 @@ import { useSession } from 'next-auth/react';
 import { useState } from 'react';
 import ChatBot from '@/components/Chat/ChatBot';
 import AuthModal from '@/components/AuthModal';
-import ParentTestimonials from '@/components/ParentTestimonials';
+import Testimonials from '@/components/Testimonials';
 import { PRICES } from '@/app/api/billing/constants';
 
 export default function HomePage() {
@@ -31,10 +31,15 @@ export default function HomePage() {
   return (
     <main
       className="flex flex-col items-center justify-start min-h-screen bg-fixed bg-cover bg-center"
-      style={{ backgroundImage: 'url(/images/background.jpg)' }}
+      style={{
+        backgroundImage: 'url(/images/landing_page_bg.jpg)',
+        backgroundSize: 'center',
+        backgroundRepeat: 'no-repeat',
+        backgroundPosition: 'center',
+      }}
     >
       {/* Hero Section */}
-      <section className="w-full bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-500 text-white py-20 px-6 text-center">
+      <section className="w-full bg-gradient-to-r from-indigo-600/70 via-purple-600/70 to-pink-500/70 text-white py-20 px-6 text-center">
         <h1 className="text-4xl md:text-6xl font-extrabold mb-6">
           Empower Your Child’s Learning with <span className="text-yellow-300">AI Tutor</span>
         </h1>
@@ -128,69 +133,80 @@ export default function HomePage() {
 
       {/* Demo Section */}
       <section className="py-12 px-6 max-w-5xl mx-auto text-center" data-section="demo">
-        <h2 className="text-2xl font-bold mb-6 text-indigo-600 dark:text-indigo-300">
-          Watch a 30-Second Demo
-        </h2>
-        <div className="aspect-w-16 aspect-h-9">
-          <iframe
-            className="w-full h-full rounded-lg shadow-md"
-            src="https://www.youtube.com/embed/dQw4w9WgXcQ"
-            title="AI Tutor Demo Video"
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-            allowFullScreen
-          ></iframe>
-        </div>
-        <div className="mt-8">
-          <h3 className="text-xl font-semibold text-gray-600 dark:text-gray-300">
-            Explore the App
+        <h2
+          className="p-6 rounded-xl transition-transform transform hover:scale-[1.01] shadow-lg
+                 bg-gradient-to-r from-white to-indigo-50 dark:from-gray-900 dark:to-indigo-900
+                 border border-indigo-100 dark:border-indigo-800"
+        >
+          <h3 className="text-xl font-semibold mb-4 text-gray-900 dark:text-gray-100">
+            Watch a 30-Second Demo
           </h3>
-          <p className="text-gray-500 dark:text-gray-400">[Screenshot Carousel Placeholder]</p>
-        </div>
+
+          <div className="aspect-w-16 aspect-h-9">
+            <iframe
+              className="w-full h-full rounded-lg shadow-md"
+              src="https://www.youtube.com/embed/dQw4w9WgXcQ"
+              title="AI Tutor Demo Video"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              allowFullScreen
+            ></iframe>
+          </div>
+          <div className="mt-8">
+            <h3 className="text-xl font-semibold text-gray-600 dark:text-gray-300">
+              Explore the App
+            </h3>
+            <p className="text-gray-500 dark:text-gray-400">[Screenshot Carousel Placeholder]</p>
+          </div>
+        </h2>
       </section>
 
       {/* Social Proof Section */}
       <section className="py-12 px-6 max-w-5xl mx-auto text-center">
-        <h2 className="text-2xl font-bold mb-6 text-indigo-600 dark:text-indigo-300">
-          What Parents and Students Are Saying
-        </h2>
-        <ParentTestimonials />
+        <Testimonials />
       </section>
 
       {/* Pricing Section */}
       <section className="py-12 px-6 max-w-5xl mx-auto text-center">
-        <h2 className="text-2xl font-bold mb-6 text-indigo-600 dark:text-indigo-300">
-          Affordable Pricing Plans
+        {/* <h2 className="text-2xl font-bold mb-6 text-gray-800 dark:text-gray-100"> */}
+        <h2
+          className="p-6 rounded-xl transition-transform transform hover:scale-[1.01] shadow-lg
+                 bg-gradient-to-r from-white to-indigo-50 dark:from-gray-900 dark:to-indigo-900
+                 border border-indigo-100 dark:border-indigo-800"
+        >
+          <h3 className="text-xl font-semibold mb-4 text-gray-900 dark:text-gray-100">
+            Affordable Pricing Plans
+          </h3>
+          <div className="grid md:grid-cols-3 gap-6">
+            <div className="p-6 bg-white dark:bg-gray-800 rounded-lg shadow-md">
+              <h3 className="text-xl font-bold mb-4 text-gray-800 dark:text-gray-200">Free</h3>
+              <p className="text-2xl font-extrabold text-indigo-600 dark:text-indigo-300">
+                {formatPrice(PRICES.free)}
+              </p>
+            </div>
+            <div className="p-6 bg-white dark:bg-gray-800 rounded-lg shadow-md">
+              <h3 className="text-xl font-bold mb-4 text-gray-800 dark:text-gray-200">Monthly</h3>
+              <p className="text-2xl font-extrabold text-indigo-600 dark:text-indigo-300">
+                {formatPrice(PRICES.monthly)}
+              </p>
+            </div>
+            <div className="p-6 bg-white dark:bg-gray-800 rounded-lg shadow-md">
+              <h3 className="text-xl font-bold mb-4 text-gray-800 dark:text-gray-200">Annual</h3>
+              <p className="text-2xl font-extrabold text-indigo-600 dark:text-indigo-300">
+                {formatPrice(PRICES.annual)}
+              </p>
+            </div>
+          </div>
+          <div className="mt-4">
+            <span className="text-sm text-gray-500 dark:text-gray-400">
+              Includes a money-back guarantee*
+            </span>
+          </div>
         </h2>
-        <div className="grid md:grid-cols-3 gap-6">
-          <div className="p-6 bg-white dark:bg-gray-800 rounded-lg shadow-md">
-            <h3 className="text-xl font-bold mb-4 text-gray-800 dark:text-gray-200">Free</h3>
-            <p className="text-2xl font-extrabold text-indigo-600 dark:text-indigo-300">
-              {formatPrice(PRICES.free)}
-            </p>
-          </div>
-          <div className="p-6 bg-white dark:bg-gray-800 rounded-lg shadow-md">
-            <h3 className="text-xl font-bold mb-4 text-gray-800 dark:text-gray-200">Monthly</h3>
-            <p className="text-2xl font-extrabold text-indigo-600 dark:text-indigo-300">
-              {formatPrice(PRICES.monthly)}
-            </p>
-          </div>
-          <div className="p-6 bg-white dark:bg-gray-800 rounded-lg shadow-md">
-            <h3 className="text-xl font-bold mb-4 text-gray-800 dark:text-gray-200">Annual</h3>
-            <p className="text-2xl font-extrabold text-indigo-600 dark:text-indigo-300">
-              {formatPrice(PRICES.annual)}
-            </p>
-          </div>
-        </div>
-        <div className="mt-4">
-          <span className="text-sm text-gray-500 dark:text-gray-400">
-            Includes a money-back guarantee
-          </span>
-        </div>
       </section>
 
       {/* Final CTA Section */}
       <section className="py-12 px-6 max-w-5xl mx-auto text-center">
-        <h2 className="text-2xl font-bold mb-6 text-indigo-600 dark:text-indigo-300">
+        <h2 className="text-2xl font-bold mb-6 text-gray-800 dark:text-gray-100">
           Join 10,000+ Parents Transforming Learning
         </h2>
         <button
