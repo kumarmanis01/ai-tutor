@@ -23,7 +23,7 @@ const quotes = [
   },
 ];
 
-export default function Testimonials() {
+export default function StudentTestimonials() {
   const [index, setIndex] = useState(0);
 
   useEffect(() => {
@@ -33,13 +33,13 @@ export default function Testimonials() {
 
   return (
     <section
-      aria-labelledby="testimonials-heading"
+      aria-labelledby="StudentTestimonials-heading"
       className="p-6 rounded-xl transition-transform transform hover:scale-[1.01] shadow-lg
                  bg-gradient-to-r from-white to-indigo-50 dark:from-gray-900 dark:to-indigo-900
                  border border-indigo-100 dark:border-indigo-800"
     >
       <h3
-        id="testimonials-heading"
+        id="StudentTestimonials-heading"
         className="text-xl font-semibold mb-4 text-gray-900 dark:text-gray-100"
       >
         What students say about Spinzy Academy
@@ -48,7 +48,7 @@ export default function Testimonials() {
       <div
         role="group"
         aria-roledescription="carousel"
-        aria-label="Testimonials"
+        aria-label="StudentTestimonials"
         className="flex flex-col md:flex-row items-start gap-4"
       >
         <div className="flex items-center gap-4 flex-1">
