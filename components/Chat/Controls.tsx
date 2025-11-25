@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import LanguageSelector from '../LanguageSelector';
 import SpeechInput from './SpeechInput';
 
@@ -25,27 +25,6 @@ export default function Controls({
 }) {
   const [input, setInput] = useState('');
   const [speechError, setSpeechError] = useState<string>('');
-  const [remainingFreeQuestions, setRemainingFreeQuestions] = useState<number | null>(null);
-
-  useEffect(() => {
-    async function fetchFreeQuestions() {
-      if (!isPremium && isValidSession) {
-        try {
-          const response = await fetch('/api/free-questions');
-          const data = await response.json();
-          if (response.ok) {
-            setRemainingFreeQuestions(data.remaining);
-          } else {
-            console.error(data.error);
-          }
-        } catch (error) {
-          console.error('Failed to fetch remaining free questions:', error);
-        }
-      }
-    }
-
-    fetchFreeQuestions();
-  }, [isPremium, isValidSession]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -53,6 +32,8 @@ export default function Controls({
     onSend(input.trim());
     setInput('');
   };
+
+  const freeTierMessage = null; // Removed free tier message logic
 
   return (
     <div className="border-t p-3 dark:border-gray-700 bg-white dark:bg-gray-900">
@@ -115,11 +96,7 @@ export default function Controls({
               Thank you for being a premium member! Enjoy unlimited questions 🎉
             </span>
           ) : (
-            <span>
-              {remainingFreeQuestions !== null
-                ? `You have ${remainingFreeQuestions} free questions left for today.`
-                : 'Loading free question count...'}
-            </span>
+            <span>{freeTierMessage}</span>
           )
         ) : (
           <span className="text-red-500 dark:text-red-400">
