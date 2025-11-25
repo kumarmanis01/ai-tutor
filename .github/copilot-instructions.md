@@ -36,6 +36,7 @@ The project is structured as a monorepo with clear separation of concerns:
 ### Testing
 
 - End-to-end tests are located in `tests/e2e/`.
+- These tests validate critical user flows, such as authentication, chat functionality, and API integrations.
 - Run tests with:
   ```bash
   npm test
@@ -56,19 +57,23 @@ The project is structured as a monorepo with clear separation of concerns:
 - Components are colocated with their styles and tests.
 - Use TypeScript for type safety.
 - Follow the folder structure in `components/` for organization.
+- Communication between components often relies on `props`, as seen in `components/Chat/Controls.tsx`.
 
 ### API Design
 
 - APIs are defined in `app/api/`.
 - Use RESTful principles and ensure proper error handling.
+- Example: The `/api/free-questions` endpoint is used in `Controls.tsx` to fetch the remaining free questions for non-premium users. Handle errors gracefully and log them for debugging.
 
 ### State Management
 
 - Context API is used for global state management (e.g., `context/AuthProvider.tsx`).
+- Local state is managed using React hooks like `useState` and `useEffect` in components.
 
 ### Styling
 
 - Tailwind CSS is used for styling. Configuration is in `tailwind.config.js`.
+- Maintain consistent design patterns across components.
 
 ## Integration Points
 
@@ -76,6 +81,12 @@ The project is structured as a monorepo with clear separation of concerns:
 
 - Requires `OPENAI_API_KEY` in `.env.local`.
 - Used for AI-driven features in `lib/aiContext.ts`.
+
+### Speech and Multilingual Features
+
+- The `SpeechInput` component in `components/Chat/` handles microphone input and integrates with the speech-to-text engine.
+- The `LanguageSelector` component allows users to switch between supported languages dynamically.
+- Ensure proper error handling for speech-related features, as seen in `Controls.tsx`.
 
 ### Database
 
@@ -101,6 +112,7 @@ The project is structured as a monorepo with clear separation of concerns:
 1. Add the component in `components/`.
 2. Include styles in the same folder.
 3. Export the component for reuse.
+4. Example: The `Controls` component in `components/Chat/` demonstrates how to manage user input, API calls, and dynamic UI updates.
 
 ---
 
