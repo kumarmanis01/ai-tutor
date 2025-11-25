@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import LanguageSelector from '../LanguageSelector';
 import SpeechInput from './SpeechInput';
 
@@ -9,7 +9,6 @@ export default function Controls({
   loading,
   isPremium,
   isValidSession,
-  todaysCount,
   volume,
   setVolume,
   lang,
@@ -19,7 +18,6 @@ export default function Controls({
   loading: boolean;
   isPremium: boolean;
   isValidSession: boolean;
-  todaysCount: number; // Ensure this is required and dynamically updated
   volume: number;
   setVolume: (v: number) => void;
   lang: string;
@@ -27,6 +25,27 @@ export default function Controls({
 }) {
   const [input, setInput] = useState('');
   const [speechError, setSpeechError] = useState<string>('');
+  const [remainingFreeQuestions, setRemainingFreeQuestions] = useState<number | null>(null);
+
+  useEffect(() => {
+    async function fetchFreeQuestions() {
+      if (!isPremium && isValidSession) {
+        try {
+          const response = await fetch('/api/free-questions');
+          const data = await response.json();
+          if (response.ok) {
+            setRemainingFreeQuestions(data.remaining);
+          } else {
+            console.error(data.error);
+          }
+        } catch (error) {
+          console.error('Failed to fetch remaining free questions:', error);
+        }
+      }
+    }
+
+    fetchFreeQuestions();
+  }, [isPremium, isValidSession]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -34,22 +53,6 @@ export default function Controls({
     onSend(input.trim());
     setInput('');
   };
-
-  // Define a constant for the number of free questions allowed per day
-  const FREE_QUESTIONS_PER_DAY = 3;
-
-  // Adjust remaining calculation to reflect used queries accurately
-  const remaining = isPremium ? '∞' : Math.max(0, FREE_QUESTIONS_PER_DAY - todaysCount);
-
-  // Ensure the message reflects when no free queries are left today
-  const freeTierMessage = (
-    <div className="flex items-center gap-2">
-      <div className="text-sm text-gray-700 dark:text-gray-200">Free tier:</div>
-      <div className="text-xs text-gray-600 dark:text-gray-300">
-        {remaining} / {FREE_QUESTIONS_PER_DAY} left today
-      </div>
-    </div>
-  );
 
   return (
     <div className="border-t p-3 dark:border-gray-700 bg-white dark:bg-gray-900">
@@ -112,7 +115,11 @@ export default function Controls({
               Thank you for being a premium member! Enjoy unlimited questions 🎉
             </span>
           ) : (
-            <span>{freeTierMessage}</span>
+            <span>
+              {remainingFreeQuestions !== null
+                ? `You have ${remainingFreeQuestions} free questions left for today.`
+                : 'Loading free question count...'}
+            </span>
           )
         ) : (
           <span className="text-red-500 dark:text-red-400">

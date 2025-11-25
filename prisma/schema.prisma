@@ -54,6 +54,8 @@ model User {
   passwordHash     String? // Store the hash here
   grade            String? // Student grade option
   welcomeEmailSent Boolean        @default(false)
+  todaysFreeQuestionsCount Int      @default(3) // Tracks remaining free questions for the day
+  lastFreeQuestionsUpdate DateTime @default(now()) // Tracks the last update timestamp
 
   // Referral relations
   referralsCreated  Referral[] @relation("ReferralCreator")

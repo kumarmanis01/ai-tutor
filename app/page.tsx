@@ -80,9 +80,9 @@ export default function HomePage() {
                  bg-gradient-to-r from-white to-indigo-50 dark:from-gray-900 dark:to-indigo-900
                  border border-indigo-100 dark:border-indigo-800"
         >
-          <h3 className="text-xl font-semibold mb-4 text-gray-900 dark:text-gray-100">
+          <span className="text-xl font-semibold mb-4 text-gray-900 dark:text-gray-100">
             Challenges Parents Face Today
-          </h3>
+          </span>
           <div className="grid md:grid-cols-3 gap-10">
             <div className="p-6 bg-white dark:bg-gray-800 rounded-2xl shadow-md">
               <h3 className="text-xl font-bold mb-3 text-indigo-600 dark:text-indigo-300">
@@ -115,9 +115,9 @@ export default function HomePage() {
       {/* Feature Section */}
       <section className={sectionContainer}>
         <h1 className="p-6 rounded-xl transition-transform transform hover:scale-[1.01] shadow-lg bg-gradient-to-r from-white to-indigo-50 dark:from-gray-900 dark:to-indigo-900 border border-indigo-100 dark:border-indigo-800">
-          <h2 className="text-xl font-semibold mb-4 text-gray-900 dark:text-gray-100">
+          <span className="text-xl font-semibold mb-4 text-gray-900 dark:text-gray-100">
             How AI Tutor Helps
-          </h2>
+          </span>
           <div className="grid md:grid-cols-2 gap-10">
             <div className={cardStyle}>
               <h3 className={headingStyle}>AI Homework Solver</h3>
@@ -144,9 +144,9 @@ export default function HomePage() {
       {/* Demo Section */}
       <section className={sectionContainer} data-section="demo">
         <h2 className="p-6 rounded-xl transition-transform transform hover:scale-[1.01] shadow-lg bg-gradient-to-r from-white to-indigo-50 dark:from-gray-900 dark:to-indigo-900 border border-indigo-100 dark:border-indigo-800">
-          <h3 className="text-xl font-semibold mb-4 text-gray-900 dark:text-gray-100">
+          <span className="text-xl font-semibold mb-4 text-gray-900 dark:text-gray-100">
             Watch a 30-Second Demo
-          </h3>
+          </span>
 
           <div className="aspect-w-16 aspect-h-9">
             <iframe
@@ -179,9 +179,9 @@ export default function HomePage() {
                  bg-gradient-to-r from-white to-indigo-50 dark:from-gray-900 dark:to-indigo-900
                  border border-indigo-100 dark:border-indigo-800"
         >
-          <h3 className="text-xl font-semibold mb-4 text-gray-900 dark:text-gray-100">
+          <span className="text-xl font-semibold mb-4 text-gray-900 dark:text-gray-100">
             Affordable Pricing Plans
-          </h3>
+          </span>
           <div className="grid md:grid-cols-3 gap-6">
             <div className="p-6 bg-white dark:bg-gray-800 rounded-lg shadow-md">
               <h3 className="text-xl font-bold mb-4 text-gray-800 dark:text-gray-200">Free</h3>

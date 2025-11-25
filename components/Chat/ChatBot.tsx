@@ -7,6 +7,7 @@ import Controls from './Controls';
 import SubscriptionModal from '../SubscriptionModal';
 import AuthModal from '../AuthModal';
 import ProfileRibbon from '@/components/UI/ProfileRibbon';
+import { v4 as uuidv4 } from 'uuid'; // Import UUID library
 
 // Helper to base64 encode keys for privacy
 function encodeKey(str: string) {
@@ -49,10 +50,8 @@ export default function ChatBot() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [subscription, setSubscription] = useState<{
     isPremium: boolean;
-    todaysCount: number;
   }>({
     isPremium: false,
-    todaysCount: 0,
   });
   const [loading, setLoading] = useState(false);
   const [showSubscriptionSubModal, setShowSubscriptionSubModal] = useState(false);
@@ -68,7 +67,6 @@ export default function ChatBot() {
     const data = await res.json();
     setSubscription({
       isPremium: data.isPremium,
-      todaysCount: Number.isFinite(data.todaysCount) ? data.todaysCount : 0, // Default to 0 if invalid
     });
   }
 
@@ -110,11 +108,6 @@ export default function ChatBot() {
       return;
     }
 
-    if (!subscription.isPremium && subscription.todaysCount >= 3) {
-      setShowSubscriptionSubModal(true);
-      return;
-    }
-
     setLoading(true);
     try {
       // Modify the detailedMessage to request structured responses
@@ -145,25 +138,19 @@ export default function ChatBot() {
         }
       } else {
         const userMsg: ChatMessage = {
-          id: `${Date.now()}-user`,
+          id: `${uuidv4()}-user`,
           role: 'user',
           content: message,
         };
 
         // Use the response from OpenAI as-is without additional formatting
         const aiMsg: ChatMessage = {
-          id: `${Date.now()}-ai`,
+          id: `${uuidv4()}-ai`,
           role: 'assistant',
           content: data.reply, // Render the response exactly as returned by OpenAI
         };
 
         setMessages((prev) => [...prev, userMsg, aiMsg]);
-
-        // Increment todaysCount locally and trigger re-render
-        setSubscription((prev) => ({
-          ...prev,
-          todaysCount: prev.todaysCount + 1,
-        }));
         scrollToBottom(); // Ensure scrolling after adding messages
       }
     } finally {
@@ -200,7 +187,6 @@ export default function ChatBot() {
           loading={loading}
           isPremium={subscription.isPremium}
           isValidSession={!!session}
-          todaysCount={subscription.todaysCount}
           volume={volume}
           setVolume={setVolume}
           lang={lang}
