@@ -28,7 +28,11 @@ export default function PricingCard({
   const hasPrices = priceMonthly !== undefined || priceAnnual !== undefined;
   const displayPrice =
     billing === 'annual' ? (priceAnnual ?? priceMonthly) : (priceMonthly ?? priceAnnual);
-  const period = billing === 'annual' ? '/yr' : '/mo';
+  const period = billing === 'annual' ? 'per year' : 'per month';
+  const accentClass =
+    !selected && planKey === 'pro'
+      ? 'border-blue-500 dark:border-blue-700 ring-1 ring-blue-50 dark:ring-blue-900'
+      : '';
 
   return (
     <button
@@ -36,11 +40,11 @@ export default function PricingCard({
       onClick={onSelect}
       data-plan={planKey}
       aria-pressed={selected}
-      className={`w-full text-left p-4 rounded-lg transition-shadow border-2 focus:outline-none focus:ring-2 focus:ring-blue-400
+      className={`w-full text-left p-4 rounded-lg transition-shadow focus:outline-none focus:ring-2 focus:ring-blue-400
         ${
           selected
             ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white border-transparent shadow-lg'
-            : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100'
+            : `bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100 shadow-sm ${accentClass}`
         }
         ${compact ? 'p-3' : 'p-6'}`}
     >
@@ -51,7 +55,7 @@ export default function PricingCard({
           </div>
           {features.length > 0 && (
             <div
-              className={`text-xs mt-1 ${selected ? 'text-white/90' : 'text-gray-600 dark:text-gray-300'}`}
+              className={`text-xs mt-1 ${selected ? 'text-white/90' : 'text-gray-700 dark:text-gray-300'}`}
             >
               {compact
                 ? features.slice(0, 2).join(' • ')
@@ -68,7 +72,7 @@ export default function PricingCard({
               >
                 {displayPrice && displayPrice > 0 ? `₹${displayPrice}` : 'Free'}
               </div>
-              <div className="text-sm text-gray-600 dark:text-gray-300">{period}</div>
+              <div className="text-sm text-gray-700 dark:text-gray-300">{period}</div>
             </>
           ) : (
             <div

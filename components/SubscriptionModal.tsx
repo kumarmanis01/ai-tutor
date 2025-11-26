@@ -86,15 +86,17 @@ export default function SubscriptionModal({ open, onClose }: Props) {
       <div className="w-full max-w-2xl bg-white dark:bg-gray-900 p-6 rounded-lg shadow-2xl border border-gray-200 dark:border-gray-800">
         <div className="flex items-start justify-between">
           <div>
-            <h3 className="text-xl font-semibold mb-1">Choose your plan</h3>
-            <p className="text-sm text-gray-500 dark:text-gray-400">
+            <h3 className="text-xl font-semibold mb-1 text-gray-900 dark:text-gray-100">
+              Choose your plan
+            </h3>
+            <p className="text-sm text-gray-700 dark:text-gray-300">
               Start for free. Upgrade anytime for unlimited AI-powered tutoring.
             </p>
           </div>
           <button
             onClick={onClose}
             aria-label="Close"
-            className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
+            className="text-gray-600 hover:text-gray-800 dark:hover:text-gray-200"
           >
             <svg
               xmlns="http://www.w3.org/2000/svg"
@@ -140,7 +142,7 @@ export default function SubscriptionModal({ open, onClose }: Props) {
         </div>
 
         <div className="mt-4 flex items-center justify-between">
-          <div className="text-sm text-gray-600 dark:text-gray-300">Billing</div>
+          <div className="text-sm text-gray-700 dark:text-gray-300">Billing</div>
           <div className="flex gap-2">
             <button
               onClick={() => setBilling('monthly')}

@@ -221,12 +221,12 @@ export default function PricingPage() {
           className={`cursor-pointer px-3 py-1 rounded-full ${
             billingCycle === BILLING_ANNUAL
               ? 'bg-blue-600 text-white font-bold'
-              : 'text-gray-500 dark:text-gray-400'
+              : 'text-gray-700 dark:text-gray-400'
           }`}
           onClick={() => setBillingCycle(BILLING_ANNUAL)}
         >
           Yearly{' '}
-          <span className="ml-2 text-xs bg-yellow-200 dark:bg-yellow-700 text-yellow-800 dark:text-yellow-100 px-2 py-0.5 rounded">
+          <span className="ml-2 text-xs bg-yellow-100 dark:bg-yellow-700 text-yellow-800 dark:text-yellow-100 px-2 py-0.5 rounded">
             Save 2 months
           </span>
         </span>
