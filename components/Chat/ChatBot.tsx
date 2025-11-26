@@ -110,8 +110,46 @@ export default function ChatBot() {
 
     setLoading(true);
     try {
+      // First, attempt to decrement the user's free-question quota (server-side)
+      try {
+        const decRes = await fetch('/api/free-questions', { method: 'POST' });
+        if (!decRes.ok) {
+          const err = await decRes.json().catch(() => ({}));
+          if (err?.error === 'free_limit_reached') {
+            setShowSubscriptionSubModal(true);
+            return;
+          }
+          // Non-specific error — show a friendly message and abort
+          alert('Unable to decrement free question quota. Please try again later.');
+          return;
+        }
+
+        const decData = await decRes.json();
+        // Notify any listeners (Controls) about updated remaining count
+        try {
+          window.dispatchEvent(
+            new CustomEvent('freeQuestionsUpdated', { detail: { remaining: decData.remaining } }),
+          );
+        } catch {}
+      } catch (err) {
+        console.error('Error decrementing free-questions quota', err);
+        alert('Unable to verify question quota. Please try again later.');
+        return;
+      }
+
       // Modify the detailedMessage to request structured responses
-      const detailedMessage = `Explain in detail like a teacher to a student in class. Provide the answer in bullet points or numbered lists: ${message}`;
+      const detailedMessage = `You are a patient, encouraging teacher answering a student's question. Use clear, age-appropriate language and an inviting tone. Structure your response as follows:
+
+    1) Short answer summary (1-2 sentences): give the direct answer or main idea.
+    2) Step-by-step explanation: break down the reasoning or solution into numbered steps and explain why each step works.
+    3) Key concepts and definitions: list and briefly define any important terms the student should know.
+    4) Helpful analogy or real-world example: give one simple analogy to build intuition.
+    5) Common mistakes to avoid: list 2–3 likely pitfalls and how to avoid them.
+    6) Worked example (if applicable): show a solved example with each step annotated.
+    7) Practice problems: provide 1–2 short practice questions with brief hints (not full solutions).
+    8) Quick recap and next steps: a 1–2 sentence summary and a suggestion for what to study next.
+
+    Keep sentences short, avoid unnecessary jargon (or define it), use bullet points and numbered lists for clarity, and end by inviting the student to ask for clarification or more practice. Now answer the student's question exactly as requested: ${message}`; 
 
       // Log the raw response from OpenAI to the console
       const res = await fetch('/api/chat', {

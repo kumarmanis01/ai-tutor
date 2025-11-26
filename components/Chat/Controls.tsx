@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import LanguageSelector from '../LanguageSelector';
 import SpeechInput from './SpeechInput';
 
@@ -25,6 +25,40 @@ export default function Controls({
 }) {
   const [input, setInput] = useState('');
   const [speechError, setSpeechError] = useState<string>('');
+  const [remainingFreeQuestions, setRemainingFreeQuestions] = useState<number | null>(null);
+  const [dailyFreeLimit, setDailyFreeLimit] = useState<number>(3);
+
+  useEffect(() => {
+    async function fetchFreeQuestions() {
+      if (!isPremium && isValidSession) {
+        try {
+          const response = await fetch('/api/free-questions');
+          const data = await response.json();
+          if (response.ok) {
+            setRemainingFreeQuestions(typeof data.remaining === 'number' ? data.remaining : null);
+            if (typeof data.total === 'number') setDailyFreeLimit(data.total);
+          } else {
+            console.error(data.error);
+          }
+        } catch (error) {
+          console.error('Failed to fetch remaining free questions:', error);
+        }
+      }
+    }
+
+    fetchFreeQuestions();
+  }, [isPremium, isValidSession]);
+
+  // Listen for updates dispatched by ChatBot after a successful decrement
+  useEffect(() => {
+    function onUpdate(e: Event) {
+      const detail = (e as CustomEvent).detail as { remaining?: number | null } | undefined;
+      if (detail && typeof detail.remaining === 'number')
+        setRemainingFreeQuestions(detail.remaining);
+    }
+    window.addEventListener('freeQuestionsUpdated', onUpdate as EventListener);
+    return () => window.removeEventListener('freeQuestionsUpdated', onUpdate as EventListener);
+  }, []);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -33,7 +67,7 @@ export default function Controls({
     setInput('');
   };
 
-  const freeTierMessage = null; // Removed free tier message logic
+  // no-op placeholder for legacy message logic
 
   return (
     <div className="border-t p-3 dark:border-gray-700 bg-white dark:bg-gray-900">
@@ -68,8 +102,62 @@ export default function Controls({
           )}
         </button>
       </form>
-      <div className="flex items-start justify-between mt-4">
-        <div>{speechError && <div className="text-xs text-red-500">{speechError}</div>}</div>
+      <div className="flex items-center justify-between mt-4">
+        <div className="flex-1 pr-4">
+          {speechError && <div className="text-xs text-red-500 mb-1">{speechError}</div>}
+
+          {isValidSession ? (
+            isPremium ? (
+              <span className="text-emerald-600 dark:text-emerald-400 font-semibold text-sm">
+                Thank you for being a premium member! Enjoy unlimited questions 🎉
+              </span>
+            ) : (
+              <div className="flex flex-col">
+                <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">
+                  Free questions today
+                </div>
+                <div
+                  className="flex items-center gap-3"
+                  title="Free questions reset at 12:00 AM GMT"
+                  role="group"
+                  aria-label="Free questions today"
+                >
+                  <div
+                    className="text-sm font-medium text-gray-600 dark:text-gray-300"
+                    aria-live="polite"
+                  >
+                    {remainingFreeQuestions === null ? '—' : `${remainingFreeQuestions ?? 0}`}
+                  </div>
+
+                  <div
+                    className="w-32 h-2 bg-gray-200 dark:bg-gray-700 rounded overflow-hidden"
+                    aria-hidden
+                  >
+                    {(() => {
+                      const asked = dailyFreeLimit - (remainingFreeQuestions ?? dailyFreeLimit);
+                      const pct = Math.max(
+                        0,
+                        Math.min(100, (asked / Math.max(1, dailyFreeLimit)) * 100),
+                      );
+                      const colorClass =
+                        pct >= 80 ? 'bg-rose-500' : pct >= 50 ? 'bg-yellow-400' : 'bg-emerald-500';
+                      return <div className={`h-2 ${colorClass}`} style={{ width: `${pct}%` }} />;
+                    })()}
+                  </div>
+
+                  <div className="text-sm font-medium text-gray-600 dark:text-gray-300">
+                    {dailyFreeLimit}
+                  </div>
+                </div>
+              </div>
+            )
+          ) : (
+            <span className="text-red-500 dark:text-red-400 text-sm">
+              Session expired. Please log in again.
+            </span>
+          )}
+        </div>
+
         <div className="flex items-center gap-2">
           <label htmlFor="volume-bar" className="text-sm text-gray-700 dark:text-gray-200">
             Volume:
@@ -88,21 +176,6 @@ export default function Controls({
             {Math.round(volume * 100)}%
           </span>
         </div>
-      </div>
-      <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-        {isValidSession ? (
-          isPremium ? (
-            <span className="text-emerald-600 dark:text-emerald-400 font-semibold">
-              Thank you for being a premium member! Enjoy unlimited questions 🎉
-            </span>
-          ) : (
-            <span>{freeTierMessage}</span>
-          )
-        ) : (
-          <span className="text-red-500 dark:text-red-400">
-            Session expired. Please log in again.
-          </span>
-        )}
       </div>
     </div>
   );
