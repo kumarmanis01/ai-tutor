@@ -9,6 +9,7 @@ import {
   BILLING_PLAN_PRO,
   PRICES,
 } from '@/app/api/billing/constants';
+import PricingCard from '@/components/PricingCard';
 import { getBillingPayload } from '../api/billing/utility';
 
 type RazorpayOptions = {
@@ -233,94 +234,74 @@ export default function PricingPage() {
 
       {/* Pricing Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-        {/* Free Plan */}
-        <div className="rounded-2xl shadow-lg bg-white dark:bg-gray-900 p-8 text-center border border-gray-200 dark:border-gray-800">
-          <div className="flex justify-center mb-2">
-            <span className="text-green-600 dark:text-green-400 text-2xl font-bold">🟢 Free</span>
-          </div>
-          <div className="text-gray-500 dark:text-gray-400 mb-4">Perfect for new learners</div>
-          <div className="text-4xl font-bold mb-2 text-gray-900 dark:text-yellow-200">₹0</div>
-          <div className="text-gray-500 dark:text-gray-400 mb-6">per month</div>
-          <ul className="text-sm text-gray-700 dark:text-gray-300 mb-6 space-y-2 text-left mx-auto max-w-xs">
-            <li>✅ 3 questions/day</li>
-            <li>✅ AI-powered text answers</li>
-            <li>✅ Multi-subject support</li>
-            <li>❌ No export or priority</li>
-          </ul>
-          <button
-            className={`w-full py-2 rounded-lg bg-gray-400 dark:bg-gray-700 text-white font-semibold cursor-not-allowed`}
-            disabled
-          >
-            {session ? 'Current Plan' : 'Get Started'}
-          </button>
-        </div>
+        <PricingCard
+          planKey="free"
+          title="Free"
+          priceMonthly={PRICES[BILLING_MONTHLY]}
+          priceAnnual={PRICES[BILLING_ANNUAL]}
+          features={[
+            '3 questions/day',
+            'AI-powered text answers',
+            'Multi-subject support',
+            'No export or priority',
+          ]}
+          compact={false}
+          billing={billingCycle}
+          cta={
+            <button
+              className={`w-full py-2 rounded-lg bg-gray-400 dark:bg-gray-700 text-white font-semibold cursor-not-allowed`}
+              disabled
+            >
+              {session ? 'Current Plan' : 'Get Started'}
+            </button>
+          }
+        />
 
-        {/* Pro Plan */}
-        <div className="relative rounded-2xl shadow-lg bg-white dark:bg-gray-900 p-8 text-center border-2 border-blue-600 dark:border-blue-400 hover:shadow-xl transition">
-          {/* Most Popular Badge */}
-          <span className="absolute top-4 right-4 bg-yellow-300 dark:bg-yellow-700 text-yellow-900 dark:text-yellow-100 text-xs font-bold px-3 py-1 rounded-full shadow">
-            ⭐ Most Popular
-          </span>
-          <div className="flex justify-center mb-2">
-            <span className="text-blue-600 dark:text-blue-400 text-2xl font-bold">💎 Pro</span>
-          </div>
-          <div className="text-gray-500 dark:text-gray-400 mb-4">
-            Unlimited questions, detailed answers
-          </div>
-          <div className="text-4xl font-bold mb-2 text-gray-900 dark:text-yellow-200">
-            ₹{proPrice}
-          </div>
-          <div className="text-gray-500 dark:text-gray-400 mb-6">
-            {billingCycle === BILLING_MONTHLY ? 'per month' : 'per year'}
-            {billingCycle === BILLING_ANNUAL && (
-              <span className="ml-2 text-xs bg-yellow-200 dark:bg-yellow-700 text-yellow-800 dark:text-yellow-100 px-2 py-0.5 rounded">
-                Save 2 months
-              </span>
-            )}
-          </div>
-          <ul className="text-sm text-gray-700 dark:text-gray-300 mb-6 space-y-2 text-left mx-auto max-w-xs">
-            <li>✅ Unlimited questions</li>
-            <li>✅ Detailed AI explanations</li>
-            <li>✅ Group Study</li>
-            <li>✅ Export to PDF</li>
-            <li>✅ Priority processing</li>
-            <li>✅ All subject access</li>
-          </ul>
-          <button
-            className="w-full py-2 rounded-lg bg-blue-600 dark:bg-blue-700 text-white font-semibold hover:bg-blue-700 dark:hover:bg-blue-800 transition"
-            onClick={handleSubscribe}
-            disabled={loading}
-          >
-            {loading ? 'Processing...' : 'Subscribe Now'}
-          </button>
-        </div>
+        <PricingCard
+          planKey="pro"
+          title="Pro"
+          priceMonthly={PRICES[BILLING_MONTHLY]}
+          priceAnnual={PRICES[BILLING_ANNUAL]}
+          features={[
+            'Unlimited questions',
+            'Detailed AI explanations',
+            'Group Study',
+            'Export to PDF',
+            'Priority processing',
+          ]}
+          selected={true}
+          billing={billingCycle}
+          cta={
+            <button
+              className="w-full py-2 rounded-lg bg-blue-600 dark:bg-blue-700 text-white font-semibold hover:bg-blue-700 dark:hover:bg-blue-800 transition"
+              onClick={handleSubscribe}
+              disabled={loading}
+            >
+              {loading ? 'Processing...' : 'Subscribe Now'}
+            </button>
+          }
+        />
 
-        {/* Enterprise Plan */}
-        <div className="rounded-2xl shadow-lg bg-white dark:bg-gray-900 p-8 text-center border border-gray-200 dark:border-gray-800">
-          <div className="flex justify-center mb-2">
-            <span className="text-gray-700 dark:text-yellow-200 text-2xl font-bold">
-              🏢 Enterprise
-            </span>
-          </div>
-          <div className="text-gray-500 dark:text-gray-400 mb-4">
-            For schools & training centers
-          </div>
-          <div className="text-4xl font-bold mb-2 text-gray-900 dark:text-yellow-200">Custom</div>
-          <div className="text-gray-500 dark:text-gray-400 mb-6">Contact for pricing</div>
-          <ul className="text-sm text-gray-700 dark:text-gray-300 mb-6 space-y-2 text-left mx-auto max-w-xs">
-            <li>✅ Unlimited access for teams</li>
-            <li>✅ Admin Dashboard</li>
-            <li>✅ Custom branding</li>
-            <li>✅ Progress reports</li>
-            <li>✅ API integration</li>
-          </ul>
-          <a
-            href="/contact?plan=enterprise"
-            className="w-full block py-2 rounded-lg bg-green-600 dark:bg-green-700 text-white font-semibold hover:bg-green-700 dark:hover:bg-green-800 transition"
-          >
-            Contact Us
-          </a>
-        </div>
+        <PricingCard
+          planKey="enterprise"
+          title="Enterprise"
+          features={[
+            'Unlimited access for teams',
+            'Admin Dashboard',
+            'Custom branding',
+            'Progress reports',
+            'API integration',
+          ]}
+          billing={billingCycle}
+          cta={
+            <a
+              href="/contact?plan=enterprise"
+              className="w-full block py-2 rounded-lg bg-green-600 dark:bg-green-700 text-white font-semibold hover:bg-green-700 dark:hover:bg-green-800 transition text-center"
+            >
+              Contact Us
+            </a>
+          }
+        />
       </div>
 
       {/* Section Footer */}
