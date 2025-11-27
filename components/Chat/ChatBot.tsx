@@ -30,6 +30,7 @@ function getUserId(user: { id?: string; email?: string | null }) {
 
 export default function ChatBot() {
   const { data: session } = useSession();
+  const [mobileSubjectsOpen, setMobileSubjectsOpen] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement | null>(null);
 
@@ -284,28 +285,73 @@ export default function ChatBot() {
       <div className="flex-1 flex gap-4 min-h-0">
         <SubjectSidebar subject={subject} setSubject={setSubject} />
 
-        <div className="flex-1 flex flex-col min-h-0">
-          <ChatMessagesContainer
-            currentMessages={currentMessages}
-            messagesEndRef={messagesEndRef}
-            containerRef={messagesContainerRef}
-            volume={volume}
-            lang={resolvedLang}
-          />
+        <div className="flex-1 flex flex-col min-h-0 relative">
+          <div className="px-0 md:px-0">
+            {/* mobile hamburger for subjects */}
+            <div className="md:hidden mb-2">
+              <button
+                type="button"
+                aria-label="Open subjects"
+                className="p-2 rounded-md text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"
+                onClick={() => setMobileSubjectsOpen(true)}
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="h-6 w-6"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M4 6h16M4 12h16M4 18h16"
+                  />
+                </svg>
+              </button>
+            </div>
 
-          <StickyControls
-            onSend={handleSend}
-            loading={loading}
-            isPremium={subscription.isPremium}
-            isValidSession={!!session}
-            volume={volume}
-            setVolume={setVolume}
-            lang={lang}
-            setLang={setLang}
-            subject={subject}
-            setSubject={setSubject}
-            messagesContainerRef={messagesContainerRef}
-          />
+            <ChatMessagesContainer
+              currentMessages={currentMessages}
+              messagesEndRef={messagesEndRef}
+              containerRef={messagesContainerRef}
+              volume={volume}
+              lang={resolvedLang}
+            />
+
+            <StickyControls
+              onSend={handleSend}
+              loading={loading}
+              isPremium={subscription.isPremium}
+              isValidSession={!!session}
+              volume={volume}
+              setVolume={setVolume}
+              lang={lang}
+              setLang={setLang}
+              subject={subject}
+              setSubject={setSubject}
+              messagesContainerRef={messagesContainerRef}
+            />
+          </div>
+
+          {/* Mobile subjects drawer */}
+          {mobileSubjectsOpen && (
+            <div className="fixed inset-0 z-50">
+              <div
+                className="absolute inset-0 bg-black/40"
+                onClick={() => setMobileSubjectsOpen(false)}
+              />
+              <div className="absolute left-0 top-0 bottom-0 w-64 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 p-4">
+                <SubjectSidebar
+                  subject={subject}
+                  setSubject={setSubject}
+                  compact={false}
+                  onSelect={() => setMobileSubjectsOpen(false)}
+                />
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Login Modal for unauthenticated users */}

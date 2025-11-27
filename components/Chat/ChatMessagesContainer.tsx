@@ -25,24 +25,24 @@ export default function ChatMessagesContainer({
   return (
     <div
       ref={containerRef}
-      className="flex-1 overflow-y-auto p-4 space-y-2 border-2 border-gray-200 dark:border-gray-700 shadow-sm rounded-lg bg-white dark:bg-gray-900"
+      className="flex-1 flex flex-col overflow-y-auto p-4 space-y-2 border-2 border-gray-200 dark:border-gray-700 shadow-sm rounded-lg bg-white dark:bg-gray-900"
       style={{ minHeight: 0 }}
     >
-      {currentMessages.length === 0 && (
-        <div className="text-gray-400 text-center mt-10">
-          Ask your first question to get started
+      {currentMessages.length === 0 ? (
+        <div className="flex-1 flex items-center justify-center">
+          <div className="text-gray-400 text-center">Ask your first question to get started</div>
         </div>
+      ) : (
+        currentMessages.map((msg) => (
+          <MessageBubble
+            key={msg.id}
+            role={msg.role}
+            content={msg.content}
+            volume={volume}
+            lang={lang}
+          />
+        ))
       )}
-
-      {currentMessages.map((msg) => (
-        <MessageBubble
-          key={msg.id}
-          role={msg.role}
-          content={msg.content}
-          volume={volume}
-          lang={lang}
-        />
-      ))}
 
       <div ref={messagesEndRef} />
     </div>

@@ -6,10 +6,12 @@ export default function SubjectSidebar({
   subject,
   setSubject,
   compact = false,
+  onSelect,
 }: {
   subject: string;
   setSubject: (s: string) => void;
   compact?: boolean;
+  onSelect?: () => void;
 }) {
   const subjects = ['general', 'math', 'science', 'coding'];
 
@@ -19,7 +21,12 @@ export default function SubjectSidebar({
         {subjects.map((s) => (
           <button
             key={s}
-            onClick={() => setSubject(s)}
+            onClick={() => {
+              setSubject(s);
+              try {
+                onSelect?.();
+              } catch {}
+            }}
             className={`text-left px-3 py-2 rounded-md transition-colors hover:bg-gray-100 dark:hover:bg-gray-800 ${
               subject === s
                 ? 'bg-blue-50 dark:bg-blue-900 text-blue-700 dark:text-blue-200 font-semibold ring-1 ring-blue-200 dark:ring-blue-800'
