@@ -91,29 +91,10 @@ export async function POST(req: Request) {
     if (!premium) {
       const DAILY_FREE_LIMIT = Number(process.env.NEXT_PUBLIC_DAILY_FREE_LIMIT ?? 3);
 
-      function startOfTodayUTC(): Date {
-        const now = new Date();
-        return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
-      }
-
-      const start = startOfTodayUTC();
-      let resetPerformed = false;
-
+      // Atomic decrement using `todaysFreeQuestionsCount` only.
       const txResult = await prisma.$transaction(async (tx) => {
         const user = await tx.user.findUnique({ where: { id: userId } });
         if (!user) return { notFound: true } as const;
-
-        if (!user.lastFreeQuestionsUpdate || user.lastFreeQuestionsUpdate < start) {
-          await tx.user.update({
-            where: { id: userId },
-            data: {
-              todaysFreeQuestionsCount: DAILY_FREE_LIMIT,
-              lastFreeQuestionsUpdate: new Date(),
-            },
-          });
-          resetPerformed = true;
-          user.todaysFreeQuestionsCount = DAILY_FREE_LIMIT;
-        }
 
         if ((user.todaysFreeQuestionsCount ?? DAILY_FREE_LIMIT) <= 0) {
           return { limitReached: true } as const;
@@ -121,26 +102,15 @@ export async function POST(req: Request) {
 
         const updated = await tx.user.update({
           where: { id: userId },
-          data: { todaysFreeQuestionsCount: { decrement: 1 }, lastFreeQuestionsUpdate: new Date() },
+          data: { todaysFreeQuestionsCount: { decrement: 1 } },
         });
 
         return { updated } as const;
       });
 
-      if (resetPerformed) {
-        try {
-          await logApiUsage('/api/free-questions', 'RESET');
-        } catch (e) {
-          console.error('Failed to log free-questions reset (chat)', e);
-        }
-      }
-
       if ('notFound' in txResult) return NextResponse.json({ error: 'not_found' }, { status: 404 });
       if ('limitReached' in txResult)
-        return NextResponse.json(
-          { error: 'free_limit_reached', message: 'Free limit reached.' },
-          { status: 403 },
-        );
+        return NextResponse.json({ error: 'free_limit_reached', message: 'Free limit reached.' }, { status: 403 });
     }
 
     // Save user's question

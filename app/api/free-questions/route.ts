@@ -13,27 +13,11 @@ function startOfTodayUTC(): Date {
   return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
 }
 
-async function resetIfStale(userId: string) {
-  const start = startOfTodayUTC();
-  const user = await prisma.user.findUnique({ where: { id: userId } });
-  if (!user) return null;
-
-  if (!user.lastFreeQuestionsUpdate || user.lastFreeQuestionsUpdate < start) {
-    const updated = await prisma.user.update({
-      where: { id: userId },
-      data: { todaysFreeQuestionsCount: DAILY_FREE_LIMIT, lastFreeQuestionsUpdate: new Date() },
-    });
-    // Log that we performed a lazy reset for this user
-    try {
-      await logApiUsage('/api/free-questions', 'RESET');
-    } catch (e) {
-      console.error('Failed to log free-questions reset', e);
-    }
-    return updated;
-  }
-
-  return user;
-}
+// NOTE: `lastFreeQuestionsUpdate` column was removed from the schema.
+// The application no longer performs lazy UTC resets based on that timestamp.
+// We preserve the simple quota behavior: `todaysFreeQuestionsCount` is used
+// as the authoritative remaining count. If you need daily resets, implement
+// a separate scheduled job or a different mechanism.
 
 /**
  * GET: return remaining free questions for the authenticated user
@@ -53,12 +37,12 @@ export async function GET() {
       return NextResponse.json({ remaining: null, isPremium: true, total: DAILY_FREE_LIMIT });
     }
 
-    // lazy reset: if user's last update was before today's UTC start, reset their counter
-    const maybeUser = await resetIfStale(userId);
-    if (!maybeUser) return NextResponse.json({ error: 'not_found' }, { status: 404 });
+    // Read user's current remaining count; no automatic reset is performed here.
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    if (!user) return NextResponse.json({ error: 'not_found' }, { status: 404 });
 
     return NextResponse.json({
-      remaining: maybeUser.todaysFreeQuestionsCount ?? DAILY_FREE_LIMIT,
+      remaining: user.todaysFreeQuestionsCount ?? DAILY_FREE_LIMIT,
       isPremium: false,
       total: DAILY_FREE_LIMIT,
     });
@@ -83,23 +67,10 @@ export async function POST() {
       return NextResponse.json({ remaining: null, isPremium: true, total: DAILY_FREE_LIMIT });
     }
 
-    // lazy reset + atomic decrement using a transaction
-    const start = startOfTodayUTC();
-
-    let resetPerformed = false;
+    // Atomic decrement of user's remaining free questions
     const result = await prisma.$transaction(async (tx) => {
       const user = await tx.user.findUnique({ where: { id: userId } });
       if (!user) return { notFound: true } as const;
-
-      // reset if stale
-      if (!user.lastFreeQuestionsUpdate || user.lastFreeQuestionsUpdate < start) {
-        await tx.user.update({
-          where: { id: userId },
-          data: { todaysFreeQuestionsCount: DAILY_FREE_LIMIT, lastFreeQuestionsUpdate: new Date() },
-        });
-        resetPerformed = true;
-        user.todaysFreeQuestionsCount = DAILY_FREE_LIMIT;
-      }
 
       if ((user.todaysFreeQuestionsCount ?? DAILY_FREE_LIMIT) <= 0) {
         return { limitReached: true } as const;
@@ -107,20 +78,11 @@ export async function POST() {
 
       const updated = await tx.user.update({
         where: { id: userId },
-        data: { todaysFreeQuestionsCount: { decrement: 1 }, lastFreeQuestionsUpdate: new Date() },
+        data: { todaysFreeQuestionsCount: { decrement: 1 } },
       });
 
       return { updated } as const;
     });
-
-    // If we reset inside the POST transaction, log the reset for metrics
-    if (resetPerformed) {
-      try {
-        await logApiUsage('/api/free-questions', 'RESET');
-      } catch (e) {
-        console.error('Failed to log free-questions reset (POST)', e);
-      }
-    }
 
     if ('notFound' in result) return NextResponse.json({ error: 'not_found' }, { status: 404 });
     if ('limitReached' in result)
