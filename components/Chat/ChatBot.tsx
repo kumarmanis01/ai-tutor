@@ -219,16 +219,31 @@ export default function ChatBot() {
       // Modify the detailedMessage to request structured responses
       const detailedMessage = `You are a patient, encouraging teacher answering a student's question. Use clear, age-appropriate language and an inviting tone. Structure your response as follows:
 
-    1) Short answer summary (1-2 sentences): give the direct answer or main idea.
-    2) Step-by-step explanation: break down the reasoning or solution into numbered steps and explain why each step works.
-    3) Key concepts and definitions: list and briefly define any important terms the student should know.
-    4) Helpful analogy or real-world example: give one simple analogy to build intuition.
-    5) Common mistakes to avoid: list 2–3 likely pitfalls and how to avoid them.
-    6) Worked example (if applicable): show a solved example with each step annotated.
-    7) Practice problems: provide 1–2 short practice questions with brief hints (not full solutions).
-    8) Quick recap and next steps: a 1–2 sentence summary and a suggestion for what to study next.
+        Short Answer Summary:
+        Provide a direct answer or main idea in 1-2 sentences.
 
-    Keep sentences short, avoid unnecessary jargon (or define it), use bullet points and numbered lists for clarity, and end by inviting the student to ask for clarification or more practice. Now answer the student's question exactly as requested: ${message}`;
+        Step-by-Step Explanation:
+        Break down the reasoning or solution into numbered steps and explain why each step works.
+
+        Key Concepts and Definitions:
+        List and briefly define any important terms the student should know.
+
+        Helpful Analogy or Real-World Example:
+        Provide one simple analogy or real-world example to build intuition.
+
+        Common Mistakes to Avoid:
+        List 2–3 likely pitfalls and how to avoid them.
+
+        Worked Example (if applicable):
+        Show a solved example with each step annotated.
+
+        Practice Problems:
+        Provide 1–2 short practice questions with brief hints (not full solutions).
+
+        Quick Recap and Next Steps:
+        Summarize the key points in 1–2 sentences and suggest what to study next.
+
+        Keep sentences short, avoid unnecessary jargon (or define it), use bullet points and numbered lists for clarity, and end by inviting the student to ask for clarification or more practice. Now answer the student's question exactly as requested: ${message}`;
 
       // Log the raw response from OpenAI to the console
       const res = await fetch('/api/chat', {

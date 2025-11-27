@@ -45,8 +45,9 @@ export default function StickyControls({
         msgs.style.paddingBottom = padValue;
         try {
           // Ensure scrollIntoView keeps items above the fixed controls
-          // @ts-ignore
-          msgs.style.scrollPaddingBottom = padValue;
+          (
+            msgs.style as CSSStyleDeclaration & { scrollPaddingBottom?: string }
+          ).scrollPaddingBottom = padValue;
         } catch {}
 
         // For small screens keep controls full-width (left:0, width:100%) so popovers stay in viewport.

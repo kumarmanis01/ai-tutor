@@ -160,7 +160,7 @@ export default function SubscriptionModal({ open, onClose }: Props) {
         </div>
 
         <div className="mt-6 flex justify-end gap-3">
-          <button onClick={onClose} className="px-4 py-2 border rounded-md">
+          <button onClick={onClose} className="px-4 py-2 text-cyan-800 border rounded-md">
             Cancel
           </button>
           <button
