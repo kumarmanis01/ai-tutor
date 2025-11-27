@@ -1,13 +1,14 @@
 'use client';
 
-import { useEffect, useState, useRef } from 'react'; // Add useRef
+import { useEffect, useState, useRef, useMemo } from 'react';
 import { useSession } from 'next-auth/react';
-import MessageBubble from './MessageBubble';
-import Controls from './Controls';
+import ChatMessagesContainer from './ChatMessagesContainer';
+import StickyControls from './StickyControls';
 import SubscriptionModal from '../SubscriptionModal';
 import AuthModal from '../AuthModal';
 import ProfileRibbon from '@/components/UI/ProfileRibbon';
 import { v4 as uuidv4 } from 'uuid'; // Import UUID library
+import SubjectSidebar from './SubjectSidebar';
 
 // Helper to base64 encode keys for privacy
 function encodeKey(str: string) {
@@ -29,7 +30,8 @@ function getUserId(user: { id?: string; email?: string | null }) {
 
 export default function ChatBot() {
   const { data: session } = useSession();
-  const messagesEndRef = useRef<HTMLDivElement>(null); // Reference for scrolling
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messagesContainerRef = useRef<HTMLDivElement | null>(null);
 
   // Profile completeness check
   const incompleteProfile =
@@ -47,7 +49,9 @@ export default function ChatBot() {
   const userKey = getUserKey();
   const storageKey = `ai-tutor:chat:${userKey}`;
 
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  // per-subject messages stored client-side
+  const [messagesBySubject, setMessagesBySubject] = useState<Record<string, ChatMessage[]>>({});
+  const [subject, setSubject] = useState<string>('general');
   const [subscription, setSubscription] = useState<{
     isPremium: boolean;
   }>({
@@ -58,8 +62,65 @@ export default function ChatBot() {
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [volume, setVolume] = useState(1); // 1 = max volume
 
-  // Language state for written & spoken language
-  const [lang, setLang] = useState('English');
+  // Language state: 'auto' means follow browser locale; explicit values are saved
+  const [lang, setLang] = useState('auto');
+
+  // map browser locale to supported language names
+  function browserToSupported(tag?: string) {
+    if (!tag) return 'English';
+    const t = tag.toLowerCase();
+    if (t.startsWith('hi')) return 'Hindi';
+    if (t.startsWith('ta')) return 'Tamil';
+    if (t.startsWith('bn')) return 'Bengali';
+    if (t.startsWith('fr')) return 'French';
+    if (t.startsWith('es')) return 'Spanish';
+    return 'English';
+  }
+
+  // Initialize language: prefer server-stored (when logged in), else localStorage, else browser mapping
+  useEffect(() => {
+    async function initLang() {
+      try {
+        // If user is signed in, prefer server-stored language
+        if (session?.user?.id) {
+          try {
+            const res = await fetch('/api/user/language');
+            if (res.ok) {
+              const data = await res.json();
+              if (data?.language) {
+                setLang(data.language);
+                try {
+                  localStorage.setItem('ai-tutor:preferredLang', data.language);
+                } catch {}
+                return;
+              }
+            }
+          } catch {}
+        }
+
+        // Fallback to localStorage or browser mapping
+        try {
+          const pref = localStorage.getItem('ai-tutor:preferredLang');
+          if (pref) {
+            setLang(pref);
+            return;
+          }
+        } catch {}
+
+        setLang(
+          browserToSupported(typeof navigator !== 'undefined' ? navigator.language : undefined),
+        );
+      } catch {}
+    }
+
+    initLang();
+  }, [session]);
+
+  // Resolved language for components that need a concrete language (TTS, rendering)
+  const resolvedLang =
+    typeof window !== 'undefined' && lang === 'auto'
+      ? browserToSupported(navigator.language)
+      : lang;
 
   // Fetch subscription status from backend
   async function fetchStatus() {
@@ -73,33 +134,50 @@ export default function ChatBot() {
   useEffect(() => {
     fetchStatus();
     try {
-      let raw = localStorage.getItem(storageKey);
-      // Fallback: try old key if nothing found (for migration)
-      if (!raw && session?.user?.email) {
-        const oldKey = `ai-tutor:chat:${session.user.email}`;
-        raw = localStorage.getItem(oldKey);
-        if (raw) localStorage.setItem(storageKey, raw);
+      const subjects = ['general', 'math', 'science', 'coding'];
+      const map: Record<string, ChatMessage[]> = {};
+      for (const s of subjects) {
+        const key = `${storageKey}:subject:${s}`;
+        const raw = localStorage.getItem(key);
+        if (raw) map[s] = JSON.parse(raw);
       }
-      if (raw) {
-        setMessages(JSON.parse(raw));
+      // migrate old single storage into general if present
+      const oldRaw = localStorage.getItem(storageKey);
+      if (oldRaw && (!map['general'] || map['general'].length === 0)) {
+        try {
+          const parsed = JSON.parse(oldRaw) as ChatMessage[];
+          if (Array.isArray(parsed)) map['general'] = parsed;
+        } catch {}
       }
+      setMessagesBySubject(map);
     } catch {}
   }, [storageKey, session]);
 
+  // persist per-subject messages
   useEffect(() => {
     try {
-      localStorage.setItem(storageKey, JSON.stringify(messages));
+      for (const [s, msgs] of Object.entries(messagesBySubject)) {
+        localStorage.setItem(`${storageKey}:subject:${s}`, JSON.stringify(msgs));
+      }
     } catch {}
-  }, [messages, storageKey]);
+  }, [messagesBySubject, storageKey]);
 
   // Scroll to the bottom of the chat container
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
+  const currentMessages = useMemo(
+    () => messagesBySubject[subject] ?? [],
+    [messagesBySubject, subject],
+  );
   useEffect(() => {
-    scrollToBottom(); // Scroll whenever messages change
-  }, [messages]);
+    scrollToBottom(); // Scroll whenever messages for current subject change
+  }, [currentMessages]);
+
+  // Controls placement and safe-bottom-padding are now handled inside
+  // the `StickyControls` component. Keep this component focused on state and
+  // orchestration.
 
   // Send message to backend, passing selected language
   async function handleSend(message: string) {
@@ -149,14 +227,14 @@ export default function ChatBot() {
     7) Practice problems: provide 1–2 short practice questions with brief hints (not full solutions).
     8) Quick recap and next steps: a 1–2 sentence summary and a suggestion for what to study next.
 
-    Keep sentences short, avoid unnecessary jargon (or define it), use bullet points and numbered lists for clarity, and end by inviting the student to ask for clarification or more practice. Now answer the student's question exactly as requested: ${message}`; 
+    Keep sentences short, avoid unnecessary jargon (or define it), use bullet points and numbered lists for clarity, and end by inviting the student to ask for clarification or more practice. Now answer the student's question exactly as requested: ${message}`;
 
       // Log the raw response from OpenAI to the console
       const res = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        // Pass selected language to backend for correct written language
-        body: JSON.stringify({ message: detailedMessage, lang }),
+        // Pass selected language and subject to backend for correct context
+        body: JSON.stringify({ message: detailedMessage, lang, subject }),
       });
       const data = await res.json();
 
@@ -188,7 +266,10 @@ export default function ChatBot() {
           content: data.reply, // Render the response exactly as returned by OpenAI
         };
 
-        setMessages((prev) => [...prev, userMsg, aiMsg]);
+        setMessagesBySubject((prev) => {
+          const existing = prev[subject] ?? [];
+          return { ...prev, [subject]: [...existing, userMsg, aiMsg] };
+        });
         scrollToBottom(); // Ensure scrolling after adding messages
       }
     } finally {
@@ -197,39 +278,35 @@ export default function ChatBot() {
   }
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-screen">
       {/* Ribbon overlay if profile is incomplete */}
       <ProfileRibbon show={!!incompleteProfile} />
-      <div className="flex-1 overflow-y-auto p-4 space-y-2 border-2 border-blue-500 shadow-lg rounded-lg bg-white dark:bg-gray-900 dark:border-blue-300">
-        <div className="flex-1 overflow-y-auto p-4 space-y-2">
-          {messages.length === 0 && (
-            <div className="text-gray-400 text-center mt-10">
-              Ask your first question to get started
-            </div>
-          )}
-          {messages.map((msg) => (
-            <MessageBubble
-              key={msg.id}
-              role={msg.role}
-              content={msg.content}
-              volume={volume}
-              lang={lang} // Pass lang prop for spoken language
-            />
-          ))}
-          <div ref={messagesEndRef} /> {/* Scroll target */}
-        </div>
+      <div className="flex-1 flex gap-4 min-h-0">
+        <SubjectSidebar subject={subject} setSubject={setSubject} />
 
-        {/* Controls with quota info and language selection */}
-        <Controls
-          onSend={handleSend}
-          loading={loading}
-          isPremium={subscription.isPremium}
-          isValidSession={!!session}
-          volume={volume}
-          setVolume={setVolume}
-          lang={lang}
-          setLang={setLang}
-        />
+        <div className="flex-1 flex flex-col min-h-0">
+          <ChatMessagesContainer
+            currentMessages={currentMessages}
+            messagesEndRef={messagesEndRef}
+            containerRef={messagesContainerRef}
+            volume={volume}
+            lang={resolvedLang}
+          />
+
+          <StickyControls
+            onSend={handleSend}
+            loading={loading}
+            isPremium={subscription.isPremium}
+            isValidSession={!!session}
+            volume={volume}
+            setVolume={setVolume}
+            lang={lang}
+            setLang={setLang}
+            subject={subject}
+            setSubject={setSubject}
+            messagesContainerRef={messagesContainerRef}
+          />
+        </div>
 
         {/* Login Modal for unauthenticated users */}
         <AuthModal

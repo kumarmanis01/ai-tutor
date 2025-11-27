@@ -14,9 +14,12 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/db';
+import { subjectPrompts } from '@/lib/subjectEngines';
+import { isPremiumUser } from '@/lib/subscription';
 import { checkProfanity } from '@/lib/guardrails';
 import { SessionUser } from '@/lib/types';
 import { logApiUsage } from '@/utils/logApiUsage';
+import { parse as parseAcceptLanguage } from 'accept-language-parser';
 
 export async function POST(req: Request) {
   logApiUsage('/api/chat', 'POST');
@@ -34,7 +37,41 @@ export async function POST(req: Request) {
     }
 
     const body = await req.json();
-    const { message, subject = 'general' } = body;
+    const { message, subject = 'general', lang = 'auto' } = body;
+
+    function resolveAcceptLanguage(header?: string) {
+      if (!header) return 'English';
+      try {
+        const parsed = parseAcceptLanguage(header);
+        if (!parsed || parsed.length === 0) return 'English';
+        const primary = (parsed[0].code || 'en').toLowerCase();
+        if (primary.startsWith('hi')) return 'Hindi';
+        if (primary.startsWith('ta')) return 'Tamil';
+        if (primary.startsWith('bn')) return 'Bengali';
+        if (primary.startsWith('fr')) return 'French';
+        if (primary.startsWith('es')) return 'Spanish';
+        if (primary.startsWith('en')) return 'English';
+        return 'English';
+      } catch (e) {
+        console.error('Accept-Language parse error', e);
+        return 'English';
+      }
+    }
+
+    // Resolve language: if client sent 'auto', infer from Accept-Language header
+    const resolvedLang =
+      lang === 'auto'
+        ? resolveAcceptLanguage(req.headers.get('accept-language') ?? undefined)
+        : typeof lang === 'string'
+          ? lang
+          : 'English';
+
+    // Log which subject was requested for usage metrics
+    try {
+      await logApiUsage('/api/chat', `SUBJECT_${subject}`);
+    } catch (e) {
+      console.error('Failed to log subject usage', e);
+    }
 
     if (!message || typeof message !== 'string') {
       return NextResponse.json({ error: 'message_required' }, { status: 400 });
@@ -47,34 +84,63 @@ export async function POST(req: Request) {
 
     const userId = sessionUser.id as string;
 
-    // Check subscription active
-    const activeSub = await prisma.subscription.findFirst({
-      where: {
-        userId,
-        active: true,
-        endDate: { gte: new Date() },
-      },
-      orderBy: { createdAt: 'desc' },
-    });
+    // Check subscription active via helper
+    const premium = await isPremiumUser(userId);
 
-    // If not premium, count today's questions
-    if (!activeSub) {
-      const startOfDay = new Date();
-      startOfDay.setHours(0, 0, 0, 0);
+    // If not premium, perform lazy UTC reset + atomic decrement on user's free-questions
+    if (!premium) {
+      const DAILY_FREE_LIMIT = Number(process.env.NEXT_PUBLIC_DAILY_FREE_LIMIT ?? 3);
 
-      const todaysCount = await prisma.chat.count({
-        where: { userId, createdAt: { gte: startOfDay } },
+      function startOfTodayUTC(): Date {
+        const now = new Date();
+        return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+      }
+
+      const start = startOfTodayUTC();
+      let resetPerformed = false;
+
+      const txResult = await prisma.$transaction(async (tx) => {
+        const user = await tx.user.findUnique({ where: { id: userId } });
+        if (!user) return { notFound: true } as const;
+
+        if (!user.lastFreeQuestionsUpdate || user.lastFreeQuestionsUpdate < start) {
+          await tx.user.update({
+            where: { id: userId },
+            data: {
+              todaysFreeQuestionsCount: DAILY_FREE_LIMIT,
+              lastFreeQuestionsUpdate: new Date(),
+            },
+          });
+          resetPerformed = true;
+          user.todaysFreeQuestionsCount = DAILY_FREE_LIMIT;
+        }
+
+        if ((user.todaysFreeQuestionsCount ?? DAILY_FREE_LIMIT) <= 0) {
+          return { limitReached: true } as const;
+        }
+
+        const updated = await tx.user.update({
+          where: { id: userId },
+          data: { todaysFreeQuestionsCount: { decrement: 1 }, lastFreeQuestionsUpdate: new Date() },
+        });
+
+        return { updated } as const;
       });
 
-      if (todaysCount >= 3) {
-        return NextResponse.json(
-          {
-            error: 'free_limit_reached',
-            message: 'Free limit reached. Upgrade to continue.',
-          },
-          { status: 402 },
-        );
+      if (resetPerformed) {
+        try {
+          await logApiUsage('/api/free-questions', 'RESET');
+        } catch (e) {
+          console.error('Failed to log free-questions reset (chat)', e);
+        }
       }
+
+      if ('notFound' in txResult) return NextResponse.json({ error: 'not_found' }, { status: 404 });
+      if ('limitReached' in txResult)
+        return NextResponse.json(
+          { error: 'free_limit_reached', message: 'Free limit reached.' },
+          { status: 403 },
+        );
     }
 
     // Save user's question
@@ -82,9 +148,14 @@ export async function POST(req: Request) {
     if (!OPENAI_KEY) {
       return NextResponse.json({ error: 'Connection to Your AI Model broken' }, { status: 500 });
     }
-    // Prepare messages for AI
+    // Persist the user's question before sending to AI
+    await prisma.chat.create({ data: { userId, role: 'user', content: message, subject } });
+
+    // Prepare messages for AI - prefer curated subject prompts when available
+    const basePrompt = subjectPrompts[subject] ?? `You are a helpful ${subject} tutor.`;
+    const systemPrompt = `${basePrompt} Please respond in ${resolvedLang}.`;
     const messages = [
-      { role: 'system', content: `You are a helpful ${subject} tutor.` },
+      { role: 'system', content: systemPrompt },
       { role: 'user', content: message },
     ];
 

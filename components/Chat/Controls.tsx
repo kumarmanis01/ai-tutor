@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import LanguageSelector from '../LanguageSelector';
+import SubjectSelector from '@/components/SubjectSelector';
 import SpeechInput from './SpeechInput';
 
 export default function Controls({
@@ -13,6 +14,8 @@ export default function Controls({
   setVolume,
   lang,
   setLang,
+  subject,
+  setSubject,
 }: {
   onSend: (msg: string) => void;
   loading: boolean;
@@ -22,6 +25,8 @@ export default function Controls({
   setVolume: (v: number) => void;
   lang: string;
   setLang: (l: string) => void;
+  subject?: string;
+  setSubject?: (s: string) => void;
 }) {
   const [input, setInput] = useState('');
   const [speechError, setSpeechError] = useState<string>('');
@@ -49,6 +54,30 @@ export default function Controls({
     fetchFreeQuestions();
   }, [isPremium, isValidSession]);
 
+  // Resolve display language: if using 'auto', show browser-detected language
+  function mapBrowserToSupported(tag?: string) {
+    if (!tag) return 'English';
+    const t = tag.toLowerCase();
+    if (t.startsWith('hi')) return 'Hindi';
+    if (t.startsWith('ta')) return 'Tamil';
+    if (t.startsWith('bn')) return 'Bengali';
+    if (t.startsWith('fr')) return 'French';
+    if (t.startsWith('es')) return 'Spanish';
+    return 'English';
+  }
+
+  const displayLang =
+    lang === 'auto'
+      ? typeof navigator !== 'undefined'
+        ? mapBrowserToSupported(navigator.language)
+        : 'English'
+      : lang;
+  let langBadgeTitle = 'Selected language';
+  try {
+    const pref = localStorage.getItem('ai-tutor:preferredLang');
+    if (!pref || pref !== displayLang) langBadgeTitle = 'Using browser language';
+  } catch {}
+
   // Listen for updates dispatched by ChatBot after a successful decrement
   useEffect(() => {
     function onUpdate(e: Event) {
@@ -72,8 +101,19 @@ export default function Controls({
   return (
     <div className="border-t p-3 dark:border-gray-700 bg-white dark:bg-gray-900">
       <form onSubmit={handleSubmit} className="flex items-center gap-2">
-        <div className="mr-2">
-          <LanguageSelector lang={lang} setLang={setLang} />
+        <div className="mr-2 flex items-center gap-2">
+          <div className="flex items-center gap-2">
+            <LanguageSelector lang={lang} setLang={setLang} />
+            <span
+              title={langBadgeTitle}
+              className="text-xs bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 px-2 py-0.5 rounded"
+            >
+              {displayLang}
+            </span>
+          </div>
+          {typeof setSubject === 'function' && typeof subject === 'string' && (
+            <SubjectSelector subject={subject} setSubject={setSubject} />
+          )}
         </div>
         <SpeechInput
           value={input}
