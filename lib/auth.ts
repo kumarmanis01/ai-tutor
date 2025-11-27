@@ -80,8 +80,22 @@ export const authOptions: NextAuthOptions = {
     }),
     // Enable email login/signup
     EmailProvider({
-      server: process.env.EMAIL_SERVER!,
-      from: process.env.EMAIL_FROM_NOREPLY!,
+      // Use explicit SMTP object so NextAuth uses the same SMTP config
+      // as `lib/mailer.ts` (host/port/user/password). This avoids relying
+      // on a single `EMAIL_SERVER` URL and keeps configuration explicit.
+      server: {
+        host: process.env.EMAIL_SERVER_HOST,
+        port: Number(process.env.EMAIL_SERVER_PORT),
+        auth: {
+          user: process.env.EMAIL_SERVER_USER,
+          pass: process.env.EMAIL_SERVER_PASSWORD,
+        },
+        secure: true,
+      },
+      from:
+        process.env.EMAIL_FROM_NOREPLY ||
+        process.env.EMAIL_FROM ||
+        `"Spinzy Academy" <${process.env.EMAIL_SERVER_USER}>`,
     }),
     // Enable login with email & password
     CredentialsProvider({

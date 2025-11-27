@@ -28,7 +28,10 @@ async function sendPaymentSuccessEmail(
   });
 
   await transporter.sendMail({
-    from: process.env.EMAIL_FROM,
+    from:
+      process.env.EMAIL_FROM_NOREPLY ||
+      process.env.EMAIL_FROM ||
+      `"Spinzy Academy" <${process.env.EMAIL_SERVER_USER}>`,
     to,
     subject: 'Payment Successful - Spinzy Academy',
     html: `
