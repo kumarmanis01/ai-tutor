@@ -83,7 +83,7 @@ export default function LanguageSelector({
         aria-expanded={open}
         onClick={() => setOpen((v) => !v)}
         className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-300"
-        title="Language"
+        title="Choose Language"
       >
         <svg
           xmlns="http://www.w3.org/2000/svg"
