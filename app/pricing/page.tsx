@@ -237,8 +237,8 @@ export default function PricingPage() {
         <PricingCard
           planKey="free"
           title="Free"
-          priceMonthly={PRICES[BILLING_MONTHLY]}
-          priceAnnual={PRICES[BILLING_ANNUAL]}
+          priceMonthly={0}
+          priceAnnual={0}
           features={[
             '3 questions/day',
             'AI-powered text answers',
@@ -263,7 +263,7 @@ export default function PricingPage() {
           priceMonthly={PRICES[BILLING_MONTHLY]}
           priceAnnual={PRICES[BILLING_ANNUAL]}
           features={[
-            'Unlimited questions',
+            'Ask Unlimited questions',
             'Detailed AI explanations',
             'Group Study',
             'Export to PDF',
