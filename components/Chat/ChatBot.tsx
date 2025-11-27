@@ -279,14 +279,14 @@ export default function ChatBot() {
   }
 
   return (
-    <div className="flex flex-col h-screen">
+    <div className="flex-1 flex flex-col min-h-0">
       {/* Ribbon overlay if profile is incomplete */}
       <ProfileRibbon show={!!incompleteProfile} />
       <div className="flex-1 flex gap-4 min-h-0">
         <SubjectSidebar subject={subject} setSubject={setSubject} />
 
-        <div className="flex-1 flex flex-col min-h-0 relative">
-          <div className="flex-1 flex flex-col min-h-0 px-0 md:px-0">
+        <div id="chat-area-container" className="flex-1 flex flex-col min-h-0 relative">
+          <div id="chat-container" className="flex-1 flex flex-col min-h-0 px-0 md:px-0">
             {/* mobile hamburger for subjects */}
             <div className="md:hidden mb-2">
               <button
@@ -331,8 +331,8 @@ export default function ChatBot() {
               setLang={setLang}
               subject={subject}
               setSubject={setSubject}
-                messagesContainerRef={messagesContainerRef}
-                messagesCount={currentMessages.length}
+              messagesContainerRef={messagesContainerRef}
+              messagesCount={currentMessages.length}
             />
           </div>
 

@@ -27,7 +27,7 @@ export default function HomePage() {
   if (session) {
     return (
       <main className="flex flex-col items-center justify-start min-h-screen bg-gray-50 dark:bg-gray-900">
-        <section className="w-full max-w-4xl mx-auto px-6 py-10 flex-1">
+        <section className="w-full max-w-4xl mx-auto px-6 py-10 flex-1 min-h-0">
           <ChatBot />
         </section>
       </main>

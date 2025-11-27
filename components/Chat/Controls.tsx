@@ -100,13 +100,13 @@ export default function Controls({
 
   return (
     <div className="border-t p-3 dark:border-gray-700 bg-white dark:bg-gray-900">
-      <form onSubmit={handleSubmit} className="flex flex-col md:flex-row items-center gap-2">
-        <div className="w-full md:w-auto flex items-center gap-2 mb-2 md:mb-0">
+      <form onSubmit={handleSubmit} className="flex flex-row items-center gap-2">
+        <div className="flex items-center gap-2 mr-2 shrink-0">
           <div className="flex items-center gap-2">
             <LanguageSelector lang={lang} setLang={setLang} />
             <span
               title={langBadgeTitle}
-              className="text-xs bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 px-2 py-0.5 rounded"
+              className="hidden md:inline-block text-xs bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 px-2 py-0.5 rounded"
             >
               {displayLang}
             </span>
@@ -208,8 +208,8 @@ export default function Controls({
           )}
         </div>
 
-        <div className="hidden md:flex items-center gap-2">
-          <label htmlFor="volume-bar" className="text-sm text-gray-700 dark:text-gray-200">
+        <div className="flex items-center gap-2">
+          <label htmlFor="volume-bar" className="hidden sm:inline-block text-sm text-gray-700 dark:text-gray-200">
             Volume:
           </label>
           <input
@@ -220,9 +220,9 @@ export default function Controls({
             step={0.01}
             value={volume}
             onChange={(e) => setVolume(Number(e.target.value))}
-            className="w-32"
+            className="w-24 sm:w-32"
           />
-          <span className="text-xs text-gray-600 dark:text-gray-300">
+          <span className="hidden sm:inline-block text-xs text-gray-600 dark:text-gray-300">
             {Math.round(volume * 100)}%
           </span>
         </div>

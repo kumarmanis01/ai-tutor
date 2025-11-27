@@ -41,9 +41,13 @@ export default function StickyControls({
         const h = ctrls ? Math.ceil(ctrls.getBoundingClientRect().height) : 0;
         // Only add large bottom padding when there are messages; otherwise keep minimal padding
         const hasMessages = typeof messagesCount === 'number' ? messagesCount > 0 : true;
-        msgs.style.paddingBottom = hasMessages
-          ? `${Math.max(12, h + 12)}px`
-          : `12px`;
+        const padValue = hasMessages ? `${Math.max(12, h + 12)}px` : `12px`;
+        msgs.style.paddingBottom = padValue;
+        try {
+          // Ensure scrollIntoView keeps items above the fixed controls
+          // @ts-ignore
+          msgs.style.scrollPaddingBottom = padValue;
+        } catch {}
 
         // For small screens keep controls full-width (left:0, width:100%) so popovers stay in viewport.
         // For larger screens (md and up) align with messages container.
@@ -80,7 +84,7 @@ export default function StickyControls({
         ro?.disconnect();
       } catch {}
     };
-  }, [messagesContainerRef]);
+  }, [messagesContainerRef, messagesCount]);
 
   return (
     <div
