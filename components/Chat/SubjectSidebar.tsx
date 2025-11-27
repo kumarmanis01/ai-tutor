@@ -15,8 +15,12 @@ export default function SubjectSidebar({
 }) {
   const subjects = ['general', 'math', 'science', 'coding'];
 
+  // On small screens hide the sidebar and show via parent hamburger/drawer.
+  // When `compact` is true, keep it hidden regardless of viewport.
+  const asideClass = `w-44 pr-4 ${compact ? 'hidden' : 'hidden md:block'}`;
+
   return (
-    <aside className={`w-44 ${compact ? 'hidden' : 'block'} pr-4`} aria-label="Subjects">
+    <aside className={asideClass} aria-label="Subjects">
       <div className="flex flex-col gap-2 sticky top-4">
         {subjects.map((s) => (
           <button

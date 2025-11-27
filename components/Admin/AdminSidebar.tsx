@@ -18,8 +18,9 @@ const adminLinks = [
 export default function AdminSidebar() {
   const pathname = usePathname();
 
+  // Hide admin sidebar on small screens — admin navigation is accessible elsewhere if needed.
   return (
-    <aside className="w-64 bg-gray-100 dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 p-6">
+    <aside className="hidden md:block w-64 bg-gray-100 dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 p-6">
       <nav className="flex flex-col gap-4">
         {adminLinks.map((link) => (
           <Link
