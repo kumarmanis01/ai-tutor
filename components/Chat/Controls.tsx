@@ -208,8 +208,11 @@ export default function Controls({
           )}
         </div>
 
-        <div className="flex items-center gap-2">
-          <label htmlFor="volume-bar" className="hidden sm:inline-block text-sm text-gray-700 dark:text-gray-200">
+        <div className="hidden md:flex items-center gap-2">
+          <label
+            htmlFor="volume-bar"
+            className="hidden md:inline-block text-sm text-gray-700 dark:text-gray-200"
+          >
             Volume:
           </label>
           <input
@@ -220,9 +223,9 @@ export default function Controls({
             step={0.01}
             value={volume}
             onChange={(e) => setVolume(Number(e.target.value))}
-            className="w-24 sm:w-32"
+            className="w-32"
           />
-          <span className="hidden sm:inline-block text-xs text-gray-600 dark:text-gray-300">
+          <span className="hidden md:inline-block text-xs text-gray-600 dark:text-gray-300">
             {Math.round(volume * 100)}%
           </span>
         </div>
