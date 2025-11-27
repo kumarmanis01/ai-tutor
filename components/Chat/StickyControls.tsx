@@ -39,12 +39,19 @@ export default function StickyControls({
         const h = ctrls ? Math.ceil(ctrls.getBoundingClientRect().height) : 0;
         msgs.style.paddingBottom = `${Math.max(12, h + 12)}px`;
 
-        // Align the fixed controls to the messages container so they don't span the whole viewport
+        // For small screens keep controls full-width (left:0, width:100%) so popovers stay in viewport.
+        // For larger screens (md and up) align with messages container.
         try {
+          const isSmall = typeof window !== 'undefined' ? window.innerWidth < 768 : false;
           const msgsRect = msgs.getBoundingClientRect();
           if (ctrls) {
-            ctrls.style.left = `${Math.max(0, msgsRect.left)}px`;
-            ctrls.style.width = `${Math.max(0, msgsRect.width)}px`;
+            if (isSmall) {
+              ctrls.style.left = `0px`;
+              ctrls.style.width = `100%`;
+            } else {
+              ctrls.style.left = `${Math.max(0, msgsRect.left)}px`;
+              ctrls.style.width = `${Math.max(0, msgsRect.width)}px`;
+            }
           }
         } catch {}
       } catch {}

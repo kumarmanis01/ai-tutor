@@ -100,8 +100,8 @@ export default function Controls({
 
   return (
     <div className="border-t p-3 dark:border-gray-700 bg-white dark:bg-gray-900">
-      <form onSubmit={handleSubmit} className="flex items-center gap-2">
-        <div className="mr-2 flex items-center gap-2">
+      <form onSubmit={handleSubmit} className="flex flex-col md:flex-row items-center gap-2">
+        <div className="w-full md:w-auto flex items-center gap-2 mb-2 md:mb-0">
           <div className="flex items-center gap-2">
             <LanguageSelector lang={lang} setLang={setLang} />
             <span
@@ -111,39 +111,49 @@ export default function Controls({
               {displayLang}
             </span>
           </div>
+
+          {/* Hide subject selector on small screens; mobile will use hamburger/drawer */}
           {typeof setSubject === 'function' && typeof subject === 'string' && (
-            <SubjectSelector subject={subject} setSubject={setSubject} />
+            <div className="hidden md:block">
+              <SubjectSelector subject={subject} setSubject={setSubject} />
+            </div>
           )}
         </div>
-        <SpeechInput
-          value={input}
-          setValue={setInput}
-          lang={lang}
-          disabled={loading}
-          onError={setSpeechError}
-        />
-        <button
-          type="submit"
-          className="px-4 py-2 bg-blue-600 text-white rounded disabled:opacity-50 flex items-center justify-center"
-          disabled={loading}
-          aria-label="Send"
-        >
-          {loading ? (
-            '...'
-          ) : (
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 24 24"
-              fill="currentColor"
-              className="w-5 h-5"
-            >
-              <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" />
-            </svg>
-          )}
-        </button>
+
+        <div className="flex-1 min-w-0">
+          <SpeechInput
+            value={input}
+            setValue={setInput}
+            lang={lang}
+            disabled={loading}
+            onError={setSpeechError}
+          />
+        </div>
+
+        <div className="shrink-0">
+          <button
+            type="submit"
+            className="px-4 py-2 bg-blue-600 text-white rounded disabled:opacity-50 flex items-center justify-center"
+            disabled={loading}
+            aria-label="Send"
+          >
+            {loading ? (
+              '...'
+            ) : (
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="currentColor"
+                className="w-5 h-5"
+              >
+                <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" />
+              </svg>
+            )}
+          </button>
+        </div>
       </form>
-      <div className="flex items-center justify-between mt-4">
-        <div className="flex-1 pr-4">
+      <div className="flex flex-col md:flex-row items-start md:items-center justify-between mt-4 gap-3">
+        <div className="flex-1 pr-0 md:pr-4">
           {speechError && <div className="text-xs text-red-500 mb-1">{speechError}</div>}
 
           {isValidSession ? (
@@ -198,7 +208,7 @@ export default function Controls({
           )}
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="hidden md:flex items-center gap-2">
           <label htmlFor="volume-bar" className="text-sm text-gray-700 dark:text-gray-200">
             Volume:
           </label>

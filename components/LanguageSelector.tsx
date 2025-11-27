@@ -13,15 +13,34 @@ export default function LanguageSelector({
   const [open, setOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const btnRef = useRef<HTMLButtonElement | null>(null);
+  const menuRef = useRef<HTMLDivElement | null>(null);
+  const [alignLeft, setAlignLeft] = useState(false);
+  const [isSheet, setIsSheet] = useState(false);
 
   useEffect(() => {
     function onDoc(e: MouseEvent) {
       if (!btnRef.current) return;
-      if (e.target instanceof Node && btnRef.current.contains(e.target)) return;
+      // don't close when clicking the button or the menu itself
+      if (e.target instanceof Node) {
+        if (btnRef.current.contains(e.target)) return;
+        if (menuRef.current && menuRef.current.contains(e.target)) return;
+      }
       setOpen(false);
     }
     if (open) document.addEventListener('click', onDoc);
     return () => document.removeEventListener('click', onDoc);
+  }, [open]);
+
+  // recompute sheet mode on resize while open
+  useEffect(() => {
+    function onResize() {
+      try {
+        const small = typeof window !== 'undefined' && window.innerWidth < 640;
+        setIsSheet(small);
+      } catch {}
+    }
+    if (open) window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
   }, [open]);
 
   function handleSelect(value: string) {
@@ -81,7 +100,21 @@ export default function LanguageSelector({
         type="button"
         aria-haspopup="menu"
         aria-expanded={open}
-        onClick={() => setOpen((v) => !v)}
+        onClick={() => {
+          try {
+            const rect = btnRef.current?.getBoundingClientRect();
+            const small = typeof window !== 'undefined' && window.innerWidth < 640;
+            setIsSheet(small);
+            if (!small && rect && typeof window !== 'undefined') {
+              const spaceRight = window.innerWidth - rect.right;
+              const spaceLeft = rect.left;
+              // prefer right alignment, but if not enough space on right and sufficient on left, align left
+              if (spaceRight < 200 && spaceLeft >= 200) setAlignLeft(true);
+              else setAlignLeft(false);
+            }
+          } catch {}
+          setOpen((v) => !v);
+        }}
         className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-300"
         title="Choose Language"
       >
@@ -100,7 +133,14 @@ export default function LanguageSelector({
       </button>
 
       {open && (
-        <div className="absolute right-0 mt-2 w-40 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded shadow z-20">
+        <div
+          ref={menuRef}
+          className={
+            isSheet
+              ? 'fixed left-0 right-0 bottom-0 w-full bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 rounded-t-lg shadow z-50 p-2'
+              : `absolute ${alignLeft ? 'left-0' : 'right-0'} mt-2 w-40 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded shadow z-20`
+          }
+        >
           <button
             className={`w-full text-left px-3 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center justify-between ${lang === 'auto' ? 'font-semibold' : ''}`}
             onClick={() => handleSelect('auto')}
@@ -138,7 +178,13 @@ export default function LanguageSelector({
         </div>
       )}
       {error && (
-        <div className="absolute right-0 mt-1 w-52 bg-red-50 dark:bg-red-900/60 text-red-800 dark:text-red-200 border border-red-200 dark:border-red-700 rounded px-3 py-1 text-xs z-30">
+        <div
+          className={
+            isSheet
+              ? 'fixed left-4 right-4 bottom-16 w-auto bg-red-50 dark:bg-red-900/60 text-red-800 dark:text-red-200 border border-red-200 dark:border-red-700 rounded px-3 py-1 text-xs z-50'
+              : `absolute ${alignLeft ? 'left-0' : 'right-0'} mt-1 w-52 bg-red-50 dark:bg-red-900/60 text-red-800 dark:text-red-200 border border-red-200 dark:border-red-700 rounded px-3 py-1 text-xs z-30`
+          }
+        >
           {error}
         </div>
       )}
