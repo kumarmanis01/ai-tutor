@@ -286,7 +286,7 @@ export default function ChatBot() {
         <SubjectSidebar subject={subject} setSubject={setSubject} />
 
         <div className="flex-1 flex flex-col min-h-0 relative">
-          <div className="px-0 md:px-0">
+          <div className="flex-1 flex flex-col min-h-0 px-0 md:px-0">
             {/* mobile hamburger for subjects */}
             <div className="md:hidden mb-2">
               <button
@@ -331,7 +331,8 @@ export default function ChatBot() {
               setLang={setLang}
               subject={subject}
               setSubject={setSubject}
-              messagesContainerRef={messagesContainerRef}
+                messagesContainerRef={messagesContainerRef}
+                messagesCount={currentMessages.length}
             />
           </div>
 

@@ -15,6 +15,7 @@ export default function StickyControls({
   subject,
   setSubject,
   messagesContainerRef,
+  messagesCount,
 }: {
   onSend: (msg: string) => void;
   loading: boolean;
@@ -27,6 +28,7 @@ export default function StickyControls({
   subject?: string;
   setSubject?: (s: string) => void;
   messagesContainerRef: React.RefObject<HTMLDivElement | null>;
+  messagesCount?: number;
 }) {
   const controlsRef = useRef<HTMLDivElement | null>(null);
 
@@ -37,7 +39,11 @@ export default function StickyControls({
         const ctrls = controlsRef.current;
         if (!msgs) return;
         const h = ctrls ? Math.ceil(ctrls.getBoundingClientRect().height) : 0;
-        msgs.style.paddingBottom = `${Math.max(12, h + 12)}px`;
+        // Only add large bottom padding when there are messages; otherwise keep minimal padding
+        const hasMessages = typeof messagesCount === 'number' ? messagesCount > 0 : true;
+        msgs.style.paddingBottom = hasMessages
+          ? `${Math.max(12, h + 12)}px`
+          : `12px`;
 
         // For small screens keep controls full-width (left:0, width:100%) so popovers stay in viewport.
         // For larger screens (md and up) align with messages container.

@@ -17,7 +17,13 @@ export default function SubjectSidebar({
 
   // On small screens hide the sidebar and show via parent hamburger/drawer.
   // When `compact` is true, keep it hidden regardless of viewport.
-  const asideClass = `w-44 pr-4 ${compact ? 'hidden' : 'hidden md:block'}`;
+  // If `onSelect` is provided (drawer mode), always show so the parent drawer
+  // can render the sidebar content on small screens.
+  const asideClass = compact
+    ? 'w-44 pr-4 hidden'
+    : onSelect
+    ? 'w-64 pr-4 block'
+    : 'w-44 pr-4 hidden md:block';
 
   return (
     <aside className={asideClass} aria-label="Subjects">

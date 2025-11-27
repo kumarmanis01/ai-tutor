@@ -25,8 +25,8 @@ export default function ChatMessagesContainer({
   return (
     <div
       ref={containerRef}
-      className="flex-1 flex flex-col overflow-y-auto p-4 space-y-2 border-2 border-gray-200 dark:border-gray-700 shadow-sm rounded-lg bg-white dark:bg-gray-900"
-      style={{ minHeight: 0 }}
+      className="flex-1 h-full flex flex-col overflow-y-auto p-4 space-y-2 border-2 border-gray-200 dark:border-gray-700 shadow-sm rounded-lg bg-white dark:bg-gray-900"
+      style={{ minHeight: 0, height: '100%' }}
     >
       {currentMessages.length === 0 ? (
         <div className="flex-1 flex items-center justify-center">
