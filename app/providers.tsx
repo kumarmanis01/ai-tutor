@@ -4,6 +4,7 @@ import { SessionProvider, useSession } from 'next-auth/react';
 import Script from 'next/script';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/UI/Footer';
+import ThemeProvider from '@/components/UI/ThemeProvider';
 
 function AuthAwareLayout({ children }: { children: React.ReactNode }) {
   const { data: session } = useSession();
@@ -26,7 +27,9 @@ function AuthAwareLayout({ children }: { children: React.ReactNode }) {
 export default function Providers({ children }: { children: React.ReactNode }) {
   return (
     <SessionProvider>
-      <AuthAwareLayout>{children}</AuthAwareLayout>
+      <ThemeProvider>
+        <AuthAwareLayout>{children}</AuthAwareLayout>
+      </ThemeProvider>
     </SessionProvider>
   );
 }

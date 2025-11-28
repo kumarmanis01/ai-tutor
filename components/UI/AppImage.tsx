@@ -36,6 +36,8 @@ function AppImage({
   fallbackSrc = '/assets/images/no_image.png',
   ...props
 }: AppImageProps) {
+  // Capture and remove any legacy onLoadingComplete prop from forwarded props
+  const { onLoadingComplete, ...restProps } = props as Record<string, any>;
   const [imageSrc, setImageSrc] = useState(src);
   const [isLoading, setIsLoading] = useState(true);
   const [hasError, setHasError] = useState(false);
@@ -73,18 +75,28 @@ function AppImage({
           className={`relative ${className}`}
           style={{ width: width || '100%', height: height || '100%' }}
         >
-          {/* Using native <img> for external URLs: next/image cannot handle all external domains by default. */}
+          {/* Using next/image for external URLs but mapping onLoad handler (replaces deprecated onLoadingComplete) */}
           <Image
             src={imageSrc}
             alt={alt || ''}
             className={`${commonClassName} absolute inset-0 w-full h-full object-cover`}
             onError={handleError}
-            onLoadingComplete={handleLoad}
+            onLoad={(e) => {
+              // next/image provides a SyntheticEvent; call our handler
+              handleLoad();
+              if (typeof onLoadingComplete === 'function') {
+                try {
+                  onLoadingComplete(e.currentTarget as HTMLImageElement);
+                } catch {
+                  // swallow legacy handler errors
+                }
+              }
+            }}
             onClick={onClick}
             fill
             sizes={sizes || '100vw'}
             style={imgStyle}
-            {...props}
+            {...restProps}
           />
         </div>
       );
@@ -96,12 +108,21 @@ function AppImage({
         alt={alt || ''}
         className={commonClassName}
         onError={handleError}
-        onLoadingComplete={handleLoad}
+        onLoad={(e) => {
+          handleLoad();
+          if (typeof onLoadingComplete === 'function') {
+            try {
+              onLoadingComplete(e.currentTarget as HTMLImageElement);
+            } catch {
+              /* ignore */
+            }
+          }
+        }}
         onClick={onClick}
         unoptimized
         width={width || 400}
         height={height || 300}
-        {...props}
+        {...restProps}
       />
     );
   }
@@ -117,9 +138,18 @@ function AppImage({
     blurDataURL,
     unoptimized: true,
     onError: handleError,
-    onLoad: handleLoad,
+    onLoad: (e: any) => {
+      handleLoad();
+      if (typeof onLoadingComplete === 'function') {
+        try {
+          onLoadingComplete(e.currentTarget as HTMLImageElement);
+        } catch {
+          /* ignore */
+        }
+      }
+    },
     onClick,
-    ...props,
+    ...restProps,
   };
 
   // Avoid duplicate `alt` prop when spreading imageProps — create a copy without alt

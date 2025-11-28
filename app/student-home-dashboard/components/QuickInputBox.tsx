@@ -25,7 +25,7 @@ const QuickInputBox: React.FC<QuickInputBoxProps> = () => {
   };
 
   return (
-    <div className="bg-white rounded-lg shadow-card p-4 border border-border">
+    <div className="bg-card rounded-lg shadow-card p-4 border border-border">
       {/* Input Options */}
       <div className="grid grid-cols-3 gap-3 mb-4">
         {/* Photo Upload */}
@@ -79,9 +79,9 @@ const QuickInputBox: React.FC<QuickInputBoxProps> = () => {
       </div>
 
       {/* Ask Button */}
-      <button
-        onClick={handleAskQuestion}
-        className="w-full bg-primary hover:bg-accent text-primary-foreground font-semibold py-3 rounded-lg transition-colors shadow-cta"
+        <button
+          onClick={handleAskQuestion}
+          className="w-full bg-primary hover:bg-accent text-primary-foreground font-semibold py-3 rounded-lg transition-colors shadow-cta"
       >
         Ask AI Tutor / पूछें
       </button>

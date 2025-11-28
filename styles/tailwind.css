@@ -55,6 +55,38 @@
   --radius: 0.5rem;
 }
 
+/* Dark theme overrides - toggled by adding `class="dark"` to <html> or <body> */
+.dark {
+  --color-background: #0b1220; /* near-black */
+  --color-foreground: #e6eef8; /* very light text */
+
+  --color-card: #0f1724;
+  --color-card-foreground: #e6eef8;
+  --color-popover: #071025;
+  --color-popover-foreground: #e6eef8;
+
+  --color-muted: #071025;
+  --color-muted-foreground: #9aa6b2;
+
+  --color-border: #122031;
+  --color-input: #122831;
+  --color-ring: rgba(37,99,235,0.18);
+
+  --color-primary: #2563eb; /* keep primary bright in dark */
+  --color-primary-foreground: #ffffff;
+  --color-secondary: #1e293b;
+  --color-secondary-foreground: #e6eef8;
+  --color-accent: #7c3aed;
+  --color-accent-foreground: #ffffff;
+
+  --color-success: #16a34a;
+  --color-warning: #f59e0b;
+  --color-error: #ef4444;
+
+  --font-headline: 'Poppins', sans-serif;
+  --font-body: 'Inter', sans-serif;
+}
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;

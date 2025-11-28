@@ -94,7 +94,7 @@ const HeroSection = ({ onDemoClick }: HeroSectionProps) => {
           </div>
 
           <div className="relative">
-            <div className="relative rounded-2xl overflow-hidden shadow-2xl border-8 border-white">
+            <div className="relative rounded-2xl overflow-hidden shadow-2xl border-8 border-border bg-card">
               <AppImage
                 src="https://images.unsplash.com/photo-1547567667-1aa64e6f58dc"
                 alt="Indian student girl in school uniform smiling while using smartphone for learning, sitting at study desk with books"
@@ -104,7 +104,7 @@ const HeroSection = ({ onDemoClick }: HeroSectionProps) => {
               <div className="absolute inset-0 bg-gradient-to-t from-secondary/20 to-transparent" />
             </div>
 
-            <div className="absolute -bottom-6 -left-6 bg-white rounded-xl shadow-xl p-4 border border-border max-w-[200px]">
+            <div className="absolute -bottom-6 -left-6 bg-card rounded-xl shadow-xl p-4 border border-border max-w-[200px]">
               <div className="flex items-center gap-3">
                 <div className="w-12 h-12 bg-success/10 rounded-full flex items-center justify-center">
                   <Icon name="AcademicCapIcon" size={24} variant="solid" className="text-success" />
@@ -116,7 +116,7 @@ const HeroSection = ({ onDemoClick }: HeroSectionProps) => {
               </div>
             </div>
 
-            <div className="absolute -top-6 -right-6 bg-white rounded-xl shadow-xl p-4 border border-border max-w-[180px]">
+            <div className="absolute -top-6 -right-6 bg-card rounded-xl shadow-xl p-4 border border-border max-w-[180px]">
               <div className="flex items-center gap-3">
                 <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center">
                   <Icon

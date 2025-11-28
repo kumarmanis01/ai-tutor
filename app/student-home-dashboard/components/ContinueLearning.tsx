@@ -50,7 +50,7 @@ const ContinueLearning: React.FC<ContinueLearningProps> = () => {
         {learningItems.map((item) => (
           <div
             key={item.id}
-            className="bg-white rounded-lg shadow-card p-4 border border-border hover:shadow-md transition-shadow"
+            className="bg-card rounded-lg shadow-card p-4 border border-border hover:shadow-md transition-shadow"
           >
             <div className="flex items-center gap-3">
               {/* Icon */}

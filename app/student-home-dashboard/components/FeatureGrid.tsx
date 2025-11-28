@@ -58,7 +58,7 @@ const FeatureGrid: React.FC<FeatureGridProps> = () => {
         {features.map((feature) => (
           <div
             key={feature.id}
-            className={`${feature.color} rounded-lg p-4 border hover:shadow-md transition-shadow cursor-pointer`}
+            className={`${feature.color} rounded-lg p-4 border border-border hover:shadow-md transition-shadow cursor-pointer bg-card`}
           >
             <div className="flex flex-col h-full">
               <div className="flex items-start justify-between mb-2">

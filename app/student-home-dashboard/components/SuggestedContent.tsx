@@ -60,7 +60,7 @@ const SuggestedContent: React.FC<SuggestedContentProps> = () => {
           {suggestions.map((card) => (
             <div
               key={card.id}
-              className={`flex-shrink-0 w-72 ${card.color} rounded-lg p-4 border hover:shadow-md transition-shadow cursor-pointer`}
+              className={`flex-shrink-0 w-72 ${card.color} rounded-lg p-4 border border-border hover:shadow-md transition-shadow cursor-pointer bg-card`}
             >
               <div className="flex items-start gap-3">
                 <div className="text-3xl flex-shrink-0">{card.icon}</div>
