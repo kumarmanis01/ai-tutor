@@ -128,6 +128,58 @@ export const authOptions: NextAuthOptions = {
         };
       },
     }),
+    /*
+      Phone OTP credentials provider (commented out)
+      ------------------------------------------------------------------
+      This provider previously allowed NextAuth to accept phone+OTP via
+      `signIn('phone-credentials', { phone, code })`. The project has moved
+      to a REST-based verify flow where `/api/auth/verify-otp` performs
+      verification and sets the NextAuth session cookie directly.
+
+      Keeping the code here (commented) preserves the implementation for
+      future fallback or reference while preventing the provider from being
+      active. To re-enable, remove the comment markers and ensure the
+      database migration adding `phone` to `User` has been applied.
+    
+    CredentialsProvider({
+      id: 'phone-credentials',
+      name: 'Phone (OTP)',
+      credentials: {
+        phone: { label: 'Phone', type: 'text' },
+        code: { label: 'OTP', type: 'text' },
+      },
+      async authorize(credentials) {
+        if (!credentials?.phone || !credentials?.code) return null;
+        const phone = String(credentials.phone).replace(/\D/g, '');
+        const code = String(credentials.code).trim();
+
+        const secret = process.env.OTP_SECRET ?? 'fallback-secret';
+        const codeHash = crypto.createHash('sha256').update(`${code}${secret}`).digest('hex');
+
+        const record = await prisma.phoneOtp.findFirst({
+          where: { phone, codeHash, consumed: false, expiresAt: { gte: new Date() } },
+          orderBy: { createdAt: 'desc' },
+        });
+
+        if (!record) return null;
+
+        await prisma.phoneOtp.update({ where: { id: record.id }, data: { consumed: true } });
+
+        let user = await prisma.user.findFirst({ where: { phone } });
+        if (!user) {
+          user = await prisma.user.create({ data: { name: phone, phone } });
+        }
+
+        return {
+          id: user.id,
+          name: user.name,
+          email: user.email,
+          image: user.image,
+        } as any;
+      },
+    }),
+
+    */
   ],
   session: { strategy: 'jwt' }, // Use JWT for session management
   callbacks: {

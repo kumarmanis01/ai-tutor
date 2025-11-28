@@ -1,5 +1,6 @@
 import React from 'react';
 import '../styles/index.css';
+import Providers from './providers';
 
 export const viewport = {
   width: 'device-width',
@@ -20,9 +21,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
-      <body>
-        {children}
+    <html lang="en" className="h-full">
+      <body className="min-h-screen h-full">
+        <Providers>
+          {children}
+        </Providers>
 
         <script
           type="module"

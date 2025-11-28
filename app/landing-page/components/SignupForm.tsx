@@ -62,16 +62,49 @@ const SignupForm = () => {
     'Biology',
   ];
 
-  const handleSendOTP = () => {
-    if (formData.phone.length === 10) {
-      setOtpSent(true);
-      setCountdown(30);
+  const handleSendOTP = async () => {
+    if (formData.phone.length !== 10) return;
+    try {
+      const res = await fetch('/api/auth/send-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone: formData.phone }),
+      });
+      if (res.ok) {
+        setOtpSent(true);
+        setCountdown(30);
+      } else {
+        // handle error
+        const data = await res.json();
+        alert(data?.error || 'Failed to send OTP');
+      }
+    } catch (err) {
+      console.error('send otp error', err);
+      alert('Failed to send OTP');
     }
   };
 
-  const handleVerifyOTP = () => {
-    if (formData.otp === '123456') {
-      setStep(2);
+  const handleVerifyOTP = async () => {
+    if (formData.otp.length !== 6) return;
+    // Use REST verify endpoint. The server will set the NextAuth session cookie
+    // (next-auth.session-token) on successful verification, so no token handling
+    // is required here. We POST phone and code to `/api/auth/verify-otp`.
+    try {
+      const res = await fetch('/api/auth/verify-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone: formData.phone, code: formData.otp }),
+      });
+
+      if (res.ok) {
+        setStep(2);
+      } else {
+        const data = await res.json().catch(() => ({ error: 'Invalid or expired OTP' }));
+        alert(data?.error || 'Invalid or expired OTP');
+      }
+    } catch (err) {
+      console.error('verify otp error', err);
+      alert('Failed to verify OTP');
     }
   };
 
