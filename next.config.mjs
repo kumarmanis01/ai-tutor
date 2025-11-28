@@ -28,7 +28,7 @@ const nextConfig = {
     return [
       {
         source: '/',
-        destination: '/landing',
+        destination: '/landing-page',
         permanent: false,
       },
     ];

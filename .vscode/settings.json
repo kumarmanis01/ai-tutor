@@ -1,4 +1,20 @@
 {
+  // Ensure the Next.js build output folder is visible in the Explorer
+  "files.exclude": {
+    "**/.next": false
+  },
+  // Ensure search doesn't ignore the .next folder so you can find files there
+  "search.exclude": {
+    "**/.next": false
+  },
+  // Do not disable file watcher for .next so Explorer updates while dev server runs
+  "files.watcherExclude": {
+    "**/.next/**": false
+  },
+  // Make explorer layout slightly less compact when browsing build output
+  "explorer.compactFolders": false
+}
+{
   // Formatting
   "editor.formatOnSave": true,
   "editor.defaultFormatter": "esbenp.prettier-vscode",
