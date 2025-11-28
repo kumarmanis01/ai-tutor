@@ -34,8 +34,8 @@ export async function POST(req: Request) {
     const url = `/uploads/${filename}`;
     return NextResponse.json({ ok: true, url });
   } catch (err) {
-    // eslint-disable-next-line no-console
-    console.error('upload-image error', err);
+    // Log the error using a logging utility or remove this line if unnecessary
+    console.error('upload-image error', err); // Replace with a logging utility if required
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

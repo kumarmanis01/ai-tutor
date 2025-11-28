@@ -1,7 +1,9 @@
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
+import Image from 'next/image';
 import { startVoiceInput, uploadImage } from '@/lib/inputHandlers';
+import { Speech } from '@/lib/speech';
 
 interface QuickInputBoxProps {
   onReply?: (reply: string, userMessage?: string) => void;
@@ -27,7 +29,19 @@ const QuickInputBox: React.FC<QuickInputBoxProps> = ({ onReply, onError }) => {
     // Create a local preview thumbnail and add to list as uploading
     const objectUrl = URL.createObjectURL(file);
     const id = String(Date.now()) + '-' + Math.random().toString(36).slice(2, 9);
+    // Add a temporary object URL for immediate preview; we will replace with a data URL
     setImages((prev) => [...prev, { id, url: objectUrl, uploading: true }]);
+
+    // Also read the file as data URL so we can use Next/Image without the lint warning
+    const reader = new FileReader();
+    reader.onload = () => {
+      const dataUrl = String(reader.result || objectUrl);
+      setImages((prev) => prev.map((it) => (it.id === id ? { ...it, url: dataUrl, uploading: it.uploading } : it)));
+    };
+    reader.onerror = () => {
+      // keep objectUrl if reading fails
+    };
+    reader.readAsDataURL(file);
 
     try {
       const result = await uploadImage(file);
@@ -83,8 +97,9 @@ const QuickInputBox: React.FC<QuickInputBoxProps> = ({ onReply, onError }) => {
           setInterimTranscript(txt);
         },
         // final
-        (txt: string) => {
+        (txt: string, detectedLang?: string) => {
           setQuestionText(txt);
+          if (detectedLang) setDetectedLang(detectedLang);
           setInterimTranscript('');
           setIsListening(false);
           stopVoiceRef.current = null;
@@ -105,20 +120,21 @@ const QuickInputBox: React.FC<QuickInputBoxProps> = ({ onReply, onError }) => {
   };
 
   const [asking, setAsking] = useState(false);
+  const [detectedLang, setDetectedLang] = useState<string | undefined>(undefined);
   // Send a message to the server-side chat API and return the AI reply.
-  async function handleSend(message: string): Promise<{ ok: boolean; reply?: string; error?: string }> {
+  async function handleSend(message: string, language?: string): Promise<{ ok: boolean; reply?: string; error?: string; language?: string }> {
     try {
-      const res = await fetch('/api/chat', {
+      const res = await fetch('/api/ask', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message }),
+        body: JSON.stringify({ text: message, language }),
       });
       if (!res.ok) {
         const payload = await res.json().catch(() => ({}));
         return { ok: false, error: payload?.error || `status-${res.status}` };
       }
       const json = await res.json().catch(() => ({}));
-      return { ok: true, reply: json?.reply };
+      return { ok: true, reply: json?.reply, language: json?.language };
     } catch (err: any) {
       return { ok: false, error: err?.message || String(err) };
     }
@@ -128,7 +144,7 @@ const QuickInputBox: React.FC<QuickInputBoxProps> = ({ onReply, onError }) => {
     if (!questionText.trim() || asking) return;
     try {
       setAsking(true);
-      const res = await handleSend(questionText.trim());
+      const res = await handleSend(questionText.trim(), detectedLang);
       if (!res.ok) {
         console.error('Question send failed', res.error);
         onError?.(res.error || 'Failed to ask question');
@@ -136,7 +152,16 @@ const QuickInputBox: React.FC<QuickInputBoxProps> = ({ onReply, onError }) => {
       }
       // Send AI reply to parent for display
       console.log('AI reply:', res.reply);
-      if (res.reply) onReply?.(res.reply, questionText.trim());
+      if (res.reply) {
+        onReply?.(res.reply, questionText.trim());
+        // Auto-speak using detected language from response or recognition
+        try {
+          const langToUse = (res as any).language || detectedLang || 'en-US';
+          Speech.speak(res.reply, { lang: langToUse });
+        } catch {
+          // ignore TTS failures
+        }
+      }
       // Clear input after successful ask
       setQuestionText('');
       setInterimTranscript('');
@@ -213,7 +238,14 @@ const QuickInputBox: React.FC<QuickInputBoxProps> = ({ onReply, onError }) => {
         <div className="mb-3 flex gap-3 overflow-x-auto py-1">
           {images.map((it) => (
             <div key={it.id} className="relative w-24 h-24 rounded-md overflow-hidden border border-border bg-muted flex-shrink-0">
-              <img src={it.url} alt="thumb" className="w-full h-full object-cover" />
+              <Image
+                src={it.url}
+                alt="thumb"
+                width={96}
+                height={96}
+                className="w-full h-full object-cover"
+                unoptimized={it.url.startsWith('blob:') || it.url.startsWith('data:')}
+              />
               {it.uploading && (
                 <div className="absolute inset-0 bg-black/40 flex items-center justify-center text-xs text-white">Uploading</div>
               )}

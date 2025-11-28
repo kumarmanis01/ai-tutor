@@ -58,7 +58,11 @@ import { createSpeechController } from './speech';
  * Start voice input via the shared speech controller.
  * Returns a stop function (cleanup) or null if not supported.
  */
-export function startVoiceInput(onInterim: (text: string) => void, onFinal: (text: string) => void, onError?: (msg: string) => void) {
+export function startVoiceInput(
+  onInterim: (text: string) => void,
+  onFinal: (text: string, lang?: string) => void,
+  onError?: (msg: string) => void,
+) {
   const controller = createSpeechController({
     onInterim,
     onFinal,

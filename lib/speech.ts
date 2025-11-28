@@ -27,7 +27,7 @@ export type SpeechController = {
 export function createSpeechController(opts: {
   lang?: string;
   onInterim?: (text: string) => void;
-  onFinal?: (text: string) => void;
+  onFinal?: (text: string, detectedLang?: string) => void;
   onError?: (msg: string) => void;
 }): SpeechController | null {
   const { lang = 'en-US', onInterim, onFinal, onError } = opts;
@@ -48,16 +48,22 @@ export function createSpeechController(opts: {
   recognition.onresult = (event: SpeechRecognitionEvent) => {
     let final = '';
     let interim = '';
+    let detectedLang: string | undefined;
     for (let i = event.resultIndex; i < event.results.length; ++i) {
       const result: any = event.results[i];
+      const item = result[0];
+      // try to extract detected language from browser result if available
+      if (!detectedLang && item && (item.lang || item.language)) {
+        detectedLang = (item.lang || item.language) as string;
+      }
       if (result.isFinal) {
-        final += result[0].transcript;
+        final += item.transcript;
       } else {
-        interim += result[0].transcript;
+        interim += item.transcript;
       }
     }
     if (interim && onInterim) onInterim(interim);
-    if (final && onFinal) onFinal(final);
+    if (final && onFinal) onFinal(final, detectedLang || recognition.lang);
   };
 
   recognition.onerror = (e: SpeechRecognitionErrorEvent) => {
