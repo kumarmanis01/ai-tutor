@@ -2,13 +2,13 @@
 
 import { SessionProvider, useSession } from 'next-auth/react';
 import Script from 'next/script';
-import Navbar from '@/components/Navbar';
-import Footer from '@/components/UI/Footer';
+// import Navbar from '@/components/Navbar';
+// import Footer from '@/components/UI/Footer';
 import ThemeProvider from '@/components/UI/ThemeProvider';
 
 function AuthAwareLayout({ children }: { children: React.ReactNode }) {
-  const { data: session } = useSession();
-  const loggedIn = Boolean(session?.user);
+  // const { data: session } = useSession();
+  // const loggedIn = Boolean(session?.user);
 
   return (
     <>
