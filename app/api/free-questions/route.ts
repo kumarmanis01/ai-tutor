@@ -8,11 +8,6 @@ import { logApiUsage } from '@/utils/logApiUsage';
 
 const DAILY_FREE_LIMIT = Number(process.env.NEXT_PUBLIC_DAILY_FREE_LIMIT ?? 3);
 
-function startOfTodayUTC(): Date {
-  const now = new Date();
-  return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
-}
-
 // NOTE: `lastFreeQuestionsUpdate` column was removed from the schema.
 // The application no longer performs lazy UTC resets based on that timestamp.
 // We preserve the simple quota behavior: `todaysFreeQuestionsCount` is used
