@@ -74,13 +74,15 @@ function AppImage({
           style={{ width: width || '100%', height: height || '100%' }}
         >
           {/* Using native <img> for external URLs: next/image cannot handle all external domains by default. */}
-          <img
+          <Image
             src={imageSrc}
             alt={alt || ''}
             className={`${commonClassName} absolute inset-0 w-full h-full object-cover`}
             onError={handleError}
-            onLoad={handleLoad}
+            onLoadingComplete={handleLoad}
             onClick={onClick}
+            fill
+            sizes={sizes || '100vw'}
             style={imgStyle}
             {...props}
           />
@@ -89,14 +91,16 @@ function AppImage({
     }
 
     return (
-      <img
+      <Image
         src={imageSrc}
         alt={alt || ''}
         className={commonClassName}
         onError={handleError}
-        onLoad={handleLoad}
+        onLoadingComplete={handleLoad}
         onClick={onClick}
-        style={imgStyle}
+        unoptimized
+        width={width || 400}
+        height={height || 300}
         {...props}
       />
     );
