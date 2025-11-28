@@ -1,20 +1,70 @@
 'use client';
 
-import React, { useState, useRef } from 'react';
-import { startVoiceInput } from '@/lib/inputHandlers';
+import React, { useState, useRef, useEffect } from 'react';
+import { startVoiceInput, uploadImage } from '@/lib/inputHandlers';
 
-interface QuickInputBoxProps { [key: string]: unknown }
+interface QuickInputBoxProps {
+  onReply?: (reply: string, userMessage?: string) => void;
+  onError?: (err: string) => void;
+}
 
-const QuickInputBox: React.FC<QuickInputBoxProps> = () => {
+const QuickInputBox: React.FC<QuickInputBoxProps> = ({ onReply, onError }) => {
   const [questionText, setQuestionText] = useState('');
     const [isListening, setIsListening] = useState(false);
     const [interimTranscript, setInterimTranscript] = useState('');
     const stopVoiceRef = useRef<(() => void) | null>(null);
+    const fileInputRef = useRef<HTMLInputElement | null>(null);
+    const [images, setImages] = useState<{ id: string; url: string; uploading: boolean }[]>([]);
 
   const handlePhotoUpload = () => {
-    // Handle photo upload
-    console.log('Photo upload clicked');
+    // Open file picker
+    fileInputRef.current?.click();
   };
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    // Create a local preview thumbnail and add to list as uploading
+    const objectUrl = URL.createObjectURL(file);
+    const id = String(Date.now()) + '-' + Math.random().toString(36).slice(2, 9);
+    setImages((prev) => [...prev, { id, url: objectUrl, uploading: true }]);
+
+    try {
+      const result = await uploadImage(file);
+      if (!result.ok) {
+        console.error('upload failed', result.error);
+        onError?.(result.error || 'Upload failed');
+        // mark as not uploading but keep preview so user can retry/remove
+        setImages((prev) => prev.map((it) => (it.id === id ? { ...it, uploading: false } : it)));
+        return;
+      }
+
+      // Replace the object URL with the uploaded URL
+      setImages((prev) => prev.map((it) => (it.id === id ? { ...it, url: result.url, uploading: false } : it)));
+      // Set a helpful prompt if the input was empty
+      setQuestionText((prev) => prev || 'Describe the problem in the image...');
+      console.log('Uploaded image URL:', result.url);
+    } catch (err) {
+      console.error('Image upload error', err);
+      onError?.('Image upload failed');
+      setImages((prev) => prev.map((it) => (it.id === id ? { ...it, uploading: false } : it)));
+    } finally {
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
+  useEffect(() => {
+    return () => {
+      // Revoke any remaining blob object URLs
+      images.forEach((it) => {
+        try {
+          if (it.url && it.url.startsWith('blob:')) URL.revokeObjectURL(it.url);
+        } catch {
+          // ignore
+        }
+      });
+    };
+  }, [images]);
 
   const handleVoiceInput = () => {
       // Start voice input via shared handler
@@ -41,7 +91,7 @@ const QuickInputBox: React.FC<QuickInputBoxProps> = () => {
         },
         // error
         (msg: string) => {
-          alert(msg);
+          onError?.(msg);
           setIsListening(false);
           setInterimTranscript('');
           stopVoiceRef.current = null;
@@ -54,10 +104,44 @@ const QuickInputBox: React.FC<QuickInputBoxProps> = () => {
       }
   };
 
-  const handleAskQuestion = () => {
-    if (questionText.trim()) {
-      console.log('Asking question:', questionText);
-      // Process question
+  const [asking, setAsking] = useState(false);
+  // Send a message to the server-side chat API and return the AI reply.
+  async function handleSend(message: string): Promise<{ ok: boolean; reply?: string; error?: string }> {
+    try {
+      const res = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message }),
+      });
+      if (!res.ok) {
+        const payload = await res.json().catch(() => ({}));
+        return { ok: false, error: payload?.error || `status-${res.status}` };
+      }
+      const json = await res.json().catch(() => ({}));
+      return { ok: true, reply: json?.reply };
+    } catch (err: any) {
+      return { ok: false, error: err?.message || String(err) };
+    }
+  }
+
+  const handleAskQuestion = async () => {
+    if (!questionText.trim() || asking) return;
+    try {
+      setAsking(true);
+      const res = await handleSend(questionText.trim());
+      if (!res.ok) {
+        console.error('Question send failed', res.error);
+        onError?.(res.error || 'Failed to ask question');
+        return;
+      }
+      // Send AI reply to parent for display
+      console.log('AI reply:', res.reply);
+      if (res.reply) onReply?.(res.reply, questionText.trim());
+      // Clear input after successful ask
+      setQuestionText('');
+      setInterimTranscript('');
+    } finally {
+      setAsking(false);
     }
   };
 
@@ -114,6 +198,45 @@ const QuickInputBox: React.FC<QuickInputBoxProps> = () => {
           className="w-full px-4 py-3 border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-ring text-base"
         />
       </div>
+
+      {/* Hidden file input for photo upload */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={handleFileChange}
+      />
+
+      {/* Thumbnails */}
+      {images.length > 0 && (
+        <div className="mb-3 flex gap-3 overflow-x-auto py-1">
+          {images.map((it) => (
+            <div key={it.id} className="relative w-24 h-24 rounded-md overflow-hidden border border-border bg-muted flex-shrink-0">
+              <img src={it.url} alt="thumb" className="w-full h-full object-cover" />
+              {it.uploading && (
+                <div className="absolute inset-0 bg-black/40 flex items-center justify-center text-xs text-white">Uploading</div>
+              )}
+              <button
+                type="button"
+                onClick={() => {
+                  // revoke blob URL if needed
+                  try {
+                    if (it.url && it.url.startsWith('blob:')) URL.revokeObjectURL(it.url);
+                  } catch {
+                    // ignore
+                  }
+                  setImages((prev) => prev.filter((x) => x.id !== it.id));
+                }}
+                className="absolute -top-2 -right-2 bg-red-600 text-white rounded-full w-6 h-6 text-xs flex items-center justify-center shadow-md"
+                aria-label="Remove image"
+              >
+                ×
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* Ask Button */}
         <button

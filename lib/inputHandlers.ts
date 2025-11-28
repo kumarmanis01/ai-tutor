@@ -30,16 +30,19 @@ export async function uploadImage(file: File): Promise<UploadResult> {
  * Send a text question to the server for processing (stub).
  * Replace the fetch URL and payload with the real backend route.
  */
-export async function sendTextQuestion(text: string): Promise<{ ok: boolean; id?: string; error?: string }> {
+export async function sendTextQuestion(text: string): Promise<{ ok: boolean; reply?: string; error?: string }> {
   try {
-    const res = await fetch('/api/questions', {
+    const res = await fetch('/api/chat', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text }),
+      body: JSON.stringify({ message: text }),
     });
-    if (!res.ok) return { ok: false, error: `status-${res.status}` };
+    if (!res.ok) {
+      const payload = await res.json().catch(() => ({}));
+      return { ok: false, error: payload?.error || `status-${res.status}` };
+    }
     const json = await res.json().catch(() => ({}));
-    return { ok: true, id: json?.id };
+    return { ok: true, reply: json?.reply };
   } catch (err: any) {
     return { ok: false, error: err?.message || String(err) };
   }

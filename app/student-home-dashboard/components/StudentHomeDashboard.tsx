@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import TopBar from './TopBar';
 import QuickInputBox from './QuickInputBox';
+import ChatPanel from './ChatPanel';
 import ContinueLearning from './ContinueLearning';
 import SuggestedContent from './SuggestedContent';
 import FeatureGrid from './FeatureGrid';
@@ -18,6 +19,8 @@ const StudentHomeDashboard: React.FC<StudentHomeDashboardProps> = () => {
   // Mock student data - in real app, this would come from authentication context
   const studentName = 'Anay';
 
+  const [messages, setMessages] = useState<{ id: string; from: 'user' | 'ai'; text: string }[]>([]);
+
   return (
     <div className="min-h-screen bg-background flex flex-col">
       {/* Top Bar */}
@@ -26,8 +29,20 @@ const StudentHomeDashboard: React.FC<StudentHomeDashboardProps> = () => {
       {/* Main Content - Scrollable */}
       <main className="flex-1 overflow-y-auto pb-20">
         <div className="max-w-4xl mx-auto px-4 py-6 space-y-6">
+          {/* Chat Panel */}
+          <ChatPanel messages={messages} />
+
           {/* Quick Input Box */}
-          <QuickInputBox />
+          <QuickInputBox
+            onReply={(reply: string, userMessage?: string) => {
+              // push both user and ai messages to chat
+              setMessages((prev) => [
+                ...prev,
+                ...(userMessage ? [{ id: String(Date.now()) + '-u', from: 'user' as const, text: userMessage }] : []),
+                { id: String(Date.now()) + '-a', from: 'ai' as const, text: reply },
+              ]);
+            }}
+          />
 
           {/* Continue Learning Section */}
           <ContinueLearning />
