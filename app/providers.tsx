@@ -1,6 +1,6 @@
 'use client';
 
-import { SessionProvider, useSession } from 'next-auth/react';
+import { SessionProvider } from 'next-auth/react';
 import Script from 'next/script';
 // import Navbar from '@/components/Navbar';
 // import Footer from '@/components/UI/Footer';

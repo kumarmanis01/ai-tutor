@@ -1,3 +1,86 @@
+// Lightweight reusable speech recognition controller
+
+type SpeechRecognitionEvent = {
+  resultIndex: number;
+  // Use a permissive type for results to avoid coupling to DOM lib types
+  results: any;
+};
+
+type SpeechRecognitionErrorEvent = { error: string };
+
+type SpeechRecognitionType = {
+  lang: string;
+  interimResults: boolean;
+  maxAlternatives: number;
+  onresult: (event: SpeechRecognitionEvent) => void;
+  onerror: (event: SpeechRecognitionErrorEvent) => void;
+  onend: () => void;
+  start: () => void;
+  stop: () => void;
+};
+
+export type SpeechController = {
+  start: () => void;
+  stop: () => void;
+};
+
+export function createSpeechController(opts: {
+  lang?: string;
+  onInterim?: (text: string) => void;
+  onFinal?: (text: string) => void;
+  onError?: (msg: string) => void;
+}): SpeechController | null {
+  const { lang = 'en-US', onInterim, onFinal, onError } = opts;
+
+  const globalAny = window as any;
+  const SpeechRecognitionClass = globalAny.SpeechRecognition || globalAny.webkitSpeechRecognition;
+  if (!SpeechRecognitionClass) {
+    if (onError) onError('Speech recognition not supported in this browser');
+    return null;
+  }
+
+  // Create recognition instance and cast to our typed interface
+  const recognition = new (SpeechRecognitionClass as any)() as SpeechRecognitionType;
+  recognition.lang = lang;
+  recognition.interimResults = true;
+  recognition.maxAlternatives = 1;
+
+  recognition.onresult = (event: SpeechRecognitionEvent) => {
+    let final = '';
+    let interim = '';
+    for (let i = event.resultIndex; i < event.results.length; ++i) {
+      const result: any = event.results[i];
+      if (result.isFinal) {
+        final += result[0].transcript;
+      } else {
+        interim += result[0].transcript;
+      }
+    }
+    if (interim && onInterim) onInterim(interim);
+    if (final && onFinal) onFinal(final);
+  };
+
+  recognition.onerror = (e: SpeechRecognitionErrorEvent) => {
+    if (onError) {
+      if (e.error === 'not-allowed') {
+        onError('Microphone access denied');
+      } else if (e.error === 'no-speech') {
+        onError('No speech detected');
+      } else {
+        onError(`Speech error: ${e.error}`);
+      }
+    }
+  };
+
+  recognition.onend = () => {
+    // no-op; callers manage lifecycle
+  };
+
+  return {
+    start: () => recognition.start(),
+    stop: () => recognition.stop(),
+  };
+}
 // lib/speech.ts
 export type TTSOptions = {
   lang?: string;

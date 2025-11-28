@@ -1,11 +1,15 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
+import { startVoiceInput } from '@/lib/inputHandlers';
 
 interface QuickInputBoxProps { [key: string]: unknown }
 
 const QuickInputBox: React.FC<QuickInputBoxProps> = () => {
   const [questionText, setQuestionText] = useState('');
+    const [isListening, setIsListening] = useState(false);
+    const [interimTranscript, setInterimTranscript] = useState('');
+    const stopVoiceRef = useRef<(() => void) | null>(null);
 
   const handlePhotoUpload = () => {
     // Handle photo upload
@@ -13,8 +17,41 @@ const QuickInputBox: React.FC<QuickInputBoxProps> = () => {
   };
 
   const handleVoiceInput = () => {
-    // Handle voice input
-    console.log('Voice input clicked');
+      // Start voice input via shared handler
+      if (isListening) {
+        // stop
+        stopVoiceRef.current?.();
+        stopVoiceRef.current = null;
+        setIsListening(false);
+        setInterimTranscript('');
+        return;
+      }
+
+      const stop = startVoiceInput(
+        // interim
+        (txt: string) => {
+          setInterimTranscript(txt);
+        },
+        // final
+        (txt: string) => {
+          setQuestionText(txt);
+          setInterimTranscript('');
+          setIsListening(false);
+          stopVoiceRef.current = null;
+        },
+        // error
+        (msg: string) => {
+          alert(msg);
+          setIsListening(false);
+          setInterimTranscript('');
+          stopVoiceRef.current = null;
+        },
+      );
+
+      if (stop) {
+        stopVoiceRef.current = stop;
+        setIsListening(true);
+      }
   };
 
   const handleAskQuestion = () => {
@@ -71,9 +108,9 @@ const QuickInputBox: React.FC<QuickInputBoxProps> = () => {
         <input
           id="question-input"
           type="text"
-          value={questionText}
+          value={isListening && interimTranscript ? interimTranscript : questionText}
           onChange={(e) => setQuestionText(e.target.value)}
-          placeholder="Type your question... / अपना सवाल लिखें..."
+          placeholder={isListening ? 'Listening... Speak now' : 'Type your question... / अपना सवाल लिखें...'}
           className="w-full px-4 py-3 border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-ring text-base"
         />
       </div>
