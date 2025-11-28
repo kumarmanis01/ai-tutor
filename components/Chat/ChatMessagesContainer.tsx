@@ -17,8 +17,8 @@ export default function ChatMessagesContainer({
   lang,
 }: {
   currentMessages: ChatMessage[];
-  messagesEndRef: React.RefObject<HTMLDivElement | null>;
-  containerRef: React.RefObject<HTMLDivElement | null>;
+  messagesEndRef: React.RefObject<HTMLDivElement>;
+  containerRef: React.RefObject<HTMLDivElement>;
   volume: number;
   lang: string;
 }) {

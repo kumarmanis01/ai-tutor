@@ -1,0 +1,107 @@
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+Devanagari:wght@400;500&display=swap');
+
+/* CSS variables (defined before Tailwind layers so they are available at build/runtime) */
+:root {
+  /* Primary Colors */
+  --color-primary: #ff9933; /* orange-500 - Saffron orange for CTAs */
+  --color-primary-foreground: #ffffff; /* white */
+
+  /* Secondary Colors */
+  --color-secondary: #000080; /* blue-900 - Deep blue for trust */
+  --color-secondary-foreground: #ffffff; /* white */
+
+  /* Accent Colors */
+  --color-accent: #ff6600; /* orange-600 - Bright orange for urgency */
+  --color-accent-foreground: #ffffff; /* white */
+
+  /* Background Colors */
+  --color-background: #ffffff; /* white - Clean background */
+  --color-foreground: #1a1a1a; /* gray-900 - High contrast text */
+
+  /* Surface Colors */
+  --color-card: #ffffff; /* white */
+  --color-card-foreground: #1a1a1a; /* gray-900 */
+  --color-popover: #ffffff; /* white */
+  --color-popover-foreground: #1a1a1a; /* gray-900 */
+
+  /* Muted Colors */
+  --color-muted: #f8f9fa; /* gray-50 - Light gray for sections */
+  --color-muted-foreground: #666666; /* gray-600 - Medium gray text */
+
+  /* Utility Colors */
+  --color-border: #e5e7eb; /* gray-200 */
+  --color-input: #e5e7eb; /* gray-200 */
+  --color-ring: #ff9933; /* orange-500 - Focus ring */
+
+  /* Status Colors */
+  --color-success: #28a745; /* green-600 - Positive testimonials */
+  --color-success-foreground: #ffffff; /* white */
+  --color-warning: #ffc107; /* amber-400 - Limited offers */
+  --color-warning-foreground: #1a1a1a; /* gray-900 */
+  --color-error: #dc3545; /* red-600 - Form validation */
+  --color-error-foreground: #ffffff; /* white */
+  --color-destructive: #dc3545; /* red-600 */
+  --color-destructive-foreground: #ffffff; /* white */
+
+  /* Typography */
+  --font-headline: 'Poppins', sans-serif;
+  --font-body: 'Inter', sans-serif;
+  --font-cta: 'Poppins', sans-serif;
+  --font-accent: 'Noto Sans Devanagari', sans-serif;
+
+  /* Spacing */
+  --radius: 0.5rem;
+}
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Basic element defaults that use the variables directly (avoid @apply on classes that may not yet exist) */
+body {
+  background-color: var(--color-background);
+  color: var(--color-foreground);
+  font-family: var(--font-body);
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-family: var(--font-headline);
+}
+
+/* Small utility fallbacks so custom names referenced by components are always available */
+@layer utilities {
+  .bg-background {
+    background-color: var(--color-background);
+  }
+  .text-foreground {
+    color: var(--color-foreground);
+  }
+  .text-muted {
+    color: var(--color-muted);
+  }
+  .text-muted-foreground {
+    color: var(--color-muted-foreground);
+  }
+  .border-border {
+    border-color: var(--color-border) !important;
+  }
+  .border-input {
+    border-color: var(--color-input) !important;
+  }
+  .ring-ring {
+    box-shadow: 0 0 0 3px var(--color-ring);
+  }
+  .bg-primary {
+    background-color: var(--color-primary);
+  }
+  .text-primary {
+    color: var(--color-primary);
+  }
+}
