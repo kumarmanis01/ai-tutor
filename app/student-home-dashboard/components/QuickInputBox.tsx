@@ -121,20 +121,27 @@ const QuickInputBox: React.FC<QuickInputBoxProps> = ({ onReply, onError }) => {
 
   const [asking, setAsking] = useState(false);
   const [detectedLang, setDetectedLang] = useState<string | undefined>(undefined);
+  const [consentToShare, setConsentToShare] = useState(false);
   // Send a message to the server-side chat API and return the AI reply.
   async function handleSend(message: string, language?: string): Promise<{ ok: boolean; reply?: string; error?: string; language?: string }> {
     try {
+      // Include uploaded image URLs (only remote/http URLs) so server can incorporate them
+      const imageUrls = images
+        .filter((it) => it.url && (it.url.startsWith('http://') || it.url.startsWith('https://')) && !it.uploading)
+        .map((it) => it.url);
+
       const res = await fetch('/api/ask', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: message, language }),
+        body: JSON.stringify({ text: message, language, images: imageUrls, consentToShare }),
       });
       if (!res.ok) {
         const payload = await res.json().catch(() => ({}));
         return { ok: false, error: payload?.error || `status-${res.status}` };
       }
       const json = await res.json().catch(() => ({}));
-      return { ok: true, reply: json?.reply, language: json?.language };
+      // API returns { language, answer }
+      return { ok: true, reply: json?.answer ?? json?.reply, language: json?.language ?? json?.lang };
     } catch (err: any) {
       return { ok: false, error: err?.message || String(err) };
     }
@@ -152,6 +159,8 @@ const QuickInputBox: React.FC<QuickInputBoxProps> = ({ onReply, onError }) => {
       }
       // Send AI reply to parent for display
       console.log('AI reply:', res.reply);
+      // update detected language from response if provided
+      if (res.language) setDetectedLang(res.language);
       if (res.reply) {
         onReply?.(res.reply, questionText.trim());
         // Auto-speak using detected language from response or recognition
@@ -270,10 +279,27 @@ const QuickInputBox: React.FC<QuickInputBoxProps> = ({ onReply, onError }) => {
         </div>
       )}
 
+      {/* Consent to share images with third-party provider for analysis */}
+      {images.length > 0 && (
+        <div className="mb-3 flex items-center gap-2 text-sm">
+          <input
+            id="consent-share"
+            type="checkbox"
+            checked={consentToShare}
+            onChange={(e) => setConsentToShare(e.target.checked)}
+            className="w-4 h-4"
+          />
+          <label htmlFor="consent-share" className="text-sm">
+            I consent to upload this image to an external provider (OpenAI) for analysis. The image will be deleted within 24 hours. See our Privacy Policy.
+          </label>
+        </div>
+      )}
+
       {/* Ask Button */}
         <button
           onClick={handleAskQuestion}
           className="w-full bg-primary hover:bg-accent text-primary-foreground font-semibold py-3 rounded-lg transition-colors shadow-cta"
+          disabled={images.length > 0 && !consentToShare}
       >
         Ask AI Tutor / पूछें
       </button>

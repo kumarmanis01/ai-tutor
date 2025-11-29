@@ -6,21 +6,27 @@ export type UploadResult = { ok: true; url: string } | { ok: false; error?: stri
  */
 export async function uploadImage(file: File): Promise<UploadResult> {
   try {
-    const form = new FormData();
-    form.append('file', file);
+    // Request a presigned PUT URL from the server
+    const metaRes = await fetch('/api/s3-presign', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ filename: file.name, contentType: file.type }),
+    });
+    if (!metaRes.ok) {
+      const payload = await metaRes.json().catch(() => ({}));
+      return { ok: false, error: payload?.error || `presign-failed:${metaRes.status}` };
+    }
+    const meta = await metaRes.json().catch(() => null);
+    if (!meta || !meta.url) return { ok: false, error: 'no-presigned-url' };
 
-    const res = await fetch('/api/upload-image', { method: 'POST', body: form });
-    if (!res.ok) {
-      const payload = await res.json().catch(() => ({}));
-      return { ok: false, error: payload?.error || `upload-failed:${res.status}` };
+    // PUT the file to S3 using the presigned URL
+    const putRes = await fetch(meta.url, { method: 'PUT', headers: { 'Content-Type': file.type }, body: file });
+    if (!putRes.ok) {
+      return { ok: false, error: `s3-put-failed:${putRes.status}` };
     }
 
-    const data = await res.json().catch(() => null);
-    if (data && typeof data.url === 'string') {
-      return { ok: true, url: data.url };
-    }
-
-    return { ok: false, error: 'no-url-returned' };
+    // Return the public object URL (or object key if you prefer)
+    return { ok: true, url: meta.objectUrl || meta.url };
   } catch (err: any) {
     return { ok: false, error: err?.message || String(err) };
   }
