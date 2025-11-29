@@ -1,0 +1,12 @@
+{
+  "Rules": [
+    {
+      "ID": "expire-uploads-1day",
+      "Status": "Enabled",
+      "Prefix": "uploads/",
+      "Expiration": {
+        "Days": 1
+      }
+    }
+  ]
+}
