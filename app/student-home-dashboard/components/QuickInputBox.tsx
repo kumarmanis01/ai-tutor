@@ -3,6 +3,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import Image from 'next/image';
 import { startVoiceInput, uploadImage } from '@/lib/inputHandlers';
+import resizeImageFile from '@/lib/resizeImage';
 import { Speech } from '@/lib/speech';
 
 interface QuickInputBoxProps {
@@ -27,7 +28,14 @@ const QuickInputBox: React.FC<QuickInputBoxProps> = ({ onReply, onError }) => {
     const file = e.target.files?.[0];
     if (!file) return;
     // Create a local preview thumbnail and add to list as uploading
-    const objectUrl = URL.createObjectURL(file);
+    // Create a small preview using the resize helper for better thumbnails
+    let previewFile: File | Blob = file;
+    try {
+      previewFile = await resizeImageFile(file, { maxWidth: 800, maxHeight: 800, quality: 0.75, mimeType: 'image/jpeg' });
+    } catch {
+      previewFile = file;
+    }
+    const objectUrl = URL.createObjectURL(previewFile);
     const id = String(Date.now()) + '-' + Math.random().toString(36).slice(2, 9);
     // Add a temporary object URL for immediate preview; we will replace with a data URL
     setImages((prev) => [...prev, { id, url: objectUrl, uploading: true }]);
@@ -122,6 +130,50 @@ const QuickInputBox: React.FC<QuickInputBoxProps> = ({ onReply, onError }) => {
   const [asking, setAsking] = useState(false);
   const [detectedLang, setDetectedLang] = useState<string | undefined>(undefined);
   const [consentToShare, setConsentToShare] = useState(false);
+
+  const renderThumb = (it: { id: string; url: string; uploading: boolean }) => {
+    const isBlob = !!(it.url && (it.url.startsWith('blob:') || it.url.startsWith('data:')));
+    let disableOpt: boolean = isBlob;
+    try {
+      if (!disableOpt && it.url && (it.url.startsWith('http://') || it.url.startsWith('https://'))) {
+        const u = new URL(it.url);
+        if (u.hostname === 'ai-tutor-uploads-spinzyacademy-01.s3.eu-north-1.amazonaws.com') disableOpt = true;
+      }
+    } catch {
+      // ignore malformed URLs
+    }
+
+    return (
+      <div key={it.id} className="relative w-24 h-24 rounded-md overflow-hidden border border-border bg-muted flex-shrink-0">
+        <Image
+          src={it.url}
+          alt="thumb"
+          width={96}
+          height={96}
+          className="w-full h-full object-cover"
+          unoptimized={disableOpt}
+        />
+        {it.uploading && (
+          <div className="absolute inset-0 bg-black/40 flex items-center justify-center text-xs text-white">Uploading</div>
+        )}
+        <button
+          type="button"
+          onClick={() => {
+            try {
+              if (it.url && it.url.startsWith('blob:')) URL.revokeObjectURL(it.url);
+            } catch {
+              // ignore
+            }
+            setImages((prev) => prev.filter((x) => x.id !== it.id));
+          }}
+          className="absolute -top-2 -right-2 bg-red-600 text-white rounded-full w-6 h-6 text-xs flex items-center justify-center shadow-md"
+          aria-label="Remove image"
+        >
+          ×
+        </button>
+      </div>
+    );
+  };
   // Send a message to the server-side chat API and return the AI reply.
   async function handleSend(message: string, language?: string): Promise<{ ok: boolean; reply?: string; error?: string; language?: string }> {
     try {
@@ -245,37 +297,7 @@ const QuickInputBox: React.FC<QuickInputBoxProps> = ({ onReply, onError }) => {
       {/* Thumbnails */}
       {images.length > 0 && (
         <div className="mb-3 flex gap-3 overflow-x-auto py-1">
-          {images.map((it) => (
-            <div key={it.id} className="relative w-24 h-24 rounded-md overflow-hidden border border-border bg-muted flex-shrink-0">
-              <Image
-                src={it.url}
-                alt="thumb"
-                width={96}
-                height={96}
-                className="w-full h-full object-cover"
-                unoptimized={it.url.startsWith('blob:') || it.url.startsWith('data:')}
-              />
-              {it.uploading && (
-                <div className="absolute inset-0 bg-black/40 flex items-center justify-center text-xs text-white">Uploading</div>
-              )}
-              <button
-                type="button"
-                onClick={() => {
-                  // revoke blob URL if needed
-                  try {
-                    if (it.url && it.url.startsWith('blob:')) URL.revokeObjectURL(it.url);
-                  } catch {
-                    // ignore
-                  }
-                  setImages((prev) => prev.filter((x) => x.id !== it.id));
-                }}
-                className="absolute -top-2 -right-2 bg-red-600 text-white rounded-full w-6 h-6 text-xs flex items-center justify-center shadow-md"
-                aria-label="Remove image"
-              >
-                ×
-              </button>
-            </div>
-          ))}
+          {images.map((it) => renderThumb(it))}
         </div>
       )}
 
