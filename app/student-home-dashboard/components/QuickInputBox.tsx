@@ -7,7 +7,7 @@ import resizeImageFile from '@/lib/resizeImage';
 import { Speech } from '@/lib/speech';
 
 interface QuickInputBoxProps {
-  onReply?: (reply: string, userMessage?: string) => void;
+  onReply?: (reply: string, userMessage?: string, language?: string, suggestions?: string[]) => void;
   onError?: (err: string) => void;
 }
 
@@ -146,6 +146,10 @@ const QuickInputBox: React.FC<QuickInputBoxProps> = ({ onReply, onError }) => {
         return;
       }
 
+      // prefer browser locale when starting recognition so Hindi is recognized in Devanagari
+      const navLang = typeof navigator !== 'undefined' ? navigator.language || 'en-US' : 'en-US';
+      const langToUse = navLang.startsWith('hi') ? 'hi-IN' : navLang;
+
       const stop = startVoiceInput(
         // interim
         (txt: string) => {
@@ -166,6 +170,7 @@ const QuickInputBox: React.FC<QuickInputBoxProps> = ({ onReply, onError }) => {
           setInterimTranscript('');
           stopVoiceRef.current = null;
         },
+        langToUse,
       );
 
       if (stop) {
@@ -221,8 +226,8 @@ const QuickInputBox: React.FC<QuickInputBoxProps> = ({ onReply, onError }) => {
       </div>
     );
   };
-  // Send a message to the server-side chat API and return the AI reply.
-  async function handleSend(message: string, language?: string): Promise<{ ok: boolean; reply?: string; error?: string; language?: string }> {
+  // Send a message to the server-side chat API and return the AI reply and optional suggestions.
+  async function handleSend(message: string, language?: string): Promise<{ ok: boolean; reply?: string; error?: string; language?: string; suggestions?: string[] }> {
     try {
       // Include uploaded image URLs (only remote/http URLs) so server can incorporate them
       const imageUrls = images
@@ -239,8 +244,13 @@ const QuickInputBox: React.FC<QuickInputBoxProps> = ({ onReply, onError }) => {
         return { ok: false, error: payload?.error || `status-${res.status}` };
       }
       const json = await res.json().catch(() => ({}));
-      // API returns { language, answer }
-      return { ok: true, reply: json?.answer ?? json?.reply, language: json?.language ?? json?.lang };
+      // API returns { language, answer, suggestions }
+      return {
+        ok: true,
+        reply: json?.answer ?? json?.reply,
+        language: json?.language ?? json?.lang,
+        suggestions: Array.isArray(json?.suggestions) ? json.suggestions : undefined,
+      };
     } catch (err: any) {
       return { ok: false, error: err?.message || String(err) };
     }
@@ -261,7 +271,7 @@ const QuickInputBox: React.FC<QuickInputBoxProps> = ({ onReply, onError }) => {
       // update detected language from response if provided
       if (res.language) setDetectedLang(res.language);
       if (res.reply) {
-        onReply?.(res.reply, questionText.trim());
+        onReply?.(res.reply, questionText.trim(), res.language, res.suggestions);
         // Auto-speak using detected language from response or recognition
         try {
           const langToUse = (res as any).language || detectedLang || 'en-US';

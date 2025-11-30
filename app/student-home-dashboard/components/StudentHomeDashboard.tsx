@@ -19,7 +19,7 @@ const StudentHomeDashboard: React.FC<StudentHomeDashboardProps> = () => {
   // Mock student data - in real app, this would come from authentication context
   const studentName = 'Anay';
 
-  const [messages, setMessages] = useState<{ id: string; from: 'user' | 'ai'; text: string }[]>([]);
+  const [messages, setMessages] = useState<{ id: string; from: 'user' | 'ai'; text: string; language?: string; suggestions?: string[] }[]>([]);
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
@@ -34,12 +34,12 @@ const StudentHomeDashboard: React.FC<StudentHomeDashboardProps> = () => {
 
           {/* Quick Input Box */}
           <QuickInputBox
-            onReply={(reply: string, userMessage?: string) => {
-              // push both user and ai messages to chat
+            onReply={(reply: string, userMessage?: string, language?: string, suggestions?: string[]) => {
+              // push both user and ai messages to chat, include language and suggestions when available
               setMessages((prev) => [
                 ...prev,
                 ...(userMessage ? [{ id: String(Date.now()) + '-u', from: 'user' as const, text: userMessage }] : []),
-                { id: String(Date.now()) + '-a', from: 'ai' as const, text: reply },
+                { id: String(Date.now()) + '-a', from: 'ai' as const, text: reply, language, suggestions },
               ]);
             }}
           />

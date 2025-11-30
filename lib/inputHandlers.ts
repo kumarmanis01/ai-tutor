@@ -100,8 +100,10 @@ export function startVoiceInput(
   onInterim: (text: string) => void,
   onFinal: (text: string, lang?: string) => void,
   onError?: (msg: string) => void,
+  lang?: string,
 ) {
   const controller = createSpeechController({
+    lang,
     onInterim,
     onFinal,
     onError,
