@@ -171,6 +171,42 @@ export default function MessageBubble({ role, content, volume, lang, suggestions
       <div
         className={`max-w-[80%] px-3 py-2 rounded-lg ${bubbleClass} relative flex items-center gap-2 flex-col`}
       >
+        {/* Language badge */}
+        {lang && (
+          (() => {
+            try {
+              const t = String(lang).toLowerCase();
+              let emoji = '🏳️';
+              let title = lang;
+              if (t.startsWith('hi')) {
+                emoji = '🇮🇳';
+                title = 'Hindi';
+              } else if (t.startsWith('ta')) {
+                emoji = '🇮🇳';
+                title = 'Tamil';
+              } else if (t.startsWith('bn')) {
+                emoji = '🇧🇩';
+                title = 'Bengali';
+              } else if (t.startsWith('fr')) {
+                emoji = '🇫🇷';
+                title = 'French';
+              } else if (t.startsWith('es')) {
+                emoji = '🇪🇸';
+                title = 'Spanish';
+              } else if (t.startsWith('en')) {
+                emoji = '🇺🇸';
+                title = 'English';
+              }
+              return (
+                <div className="absolute top-1 right-2 bg-muted text-xs text-muted-foreground border border-border rounded-full px-2 py-0.5" title={title}>
+                  {emoji}
+                </div>
+              );
+            } catch {
+              return null;
+            }
+          })()
+        )}
         <div className="w-full prose prose-sm dark:prose-invert">
           <ReactMarkdown rehypePlugins={[rehypeSanitize]}>{content}</ReactMarkdown>
         </div>

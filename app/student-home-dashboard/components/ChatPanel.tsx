@@ -19,6 +19,18 @@ interface ChatPanelProps {
 const ChatPanel: React.FC<ChatPanelProps> = ({ messages }) => {
   const [playingId, setPlayingId] = useState<string | null>(null);
 
+  const mapLangToEmoji = (lang?: string) => {
+    if (!lang) return null;
+    const t = String(lang).toLowerCase();
+    if (t.startsWith('hi')) return { emoji: '🇮🇳', title: 'Hindi' };
+    if (t.startsWith('ta')) return { emoji: '🇮🇳', title: 'Tamil' };
+    if (t.startsWith('bn')) return { emoji: '🇧🇩', title: 'Bengali' };
+    if (t.startsWith('fr')) return { emoji: '🇫🇷', title: 'French' };
+    if (t.startsWith('es')) return { emoji: '🇪🇸', title: 'Spanish' };
+    if (t.startsWith('en')) return { emoji: '🇺🇸', title: 'English' };
+    return { emoji: '🏳️', title: lang };
+  };
+
   useEffect(() => {
     // Track suggestion shown events for analytics when messages change
     try {
@@ -57,7 +69,7 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ messages }) => {
         {messages.map((m) => (
           <div
             key={m.id}
-            className={`py-2 px-3 rounded-md max-w-[80%] ${m.from === "user" ? "ml-auto bg-primary text-primary-foreground" : "bg-card text-foreground"}`}
+            className={`py-2 px-3 rounded-md max-w-[80%] relative ${m.from === "user" ? "ml-auto bg-primary text-primary-foreground" : "bg-card text-foreground"}`}
           >
             <div className="flex items-start gap-2">
               <div className="flex-1 text-sm whitespace-pre-wrap">{m.text}</div>
@@ -78,6 +90,18 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ messages }) => {
                 </div>
               )}
             </div>
+
+            {/* Language badge */}
+            {m.from === 'ai' && m.language && (
+              (() => {
+                const v = mapLangToEmoji(m.language);
+                return (
+                  <div className="absolute -top-2 -right-2 bg-muted text-xs text-muted-foreground border border-border px-2 py-0.5 rounded-full" title={v?.title}>
+                    {v?.emoji}
+                  </div>
+                );
+              })()
+            )}
 
             {/* Render suggestions for AI replies */}
             {m.from === 'ai' && m.suggestions && m.suggestions.length > 0 && (

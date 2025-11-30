@@ -2,6 +2,7 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import Image from 'next/image';
+import LanguageSelector from '@/components/LanguageSelector';
 import { startVoiceInput, uploadImage } from '@/lib/inputHandlers';
 import resizeImageFile from '@/lib/resizeImage';
 import { Speech } from '@/lib/speech';
@@ -406,6 +407,53 @@ const QuickInputBox: React.FC<QuickInputBoxProps> = ({ onReply, onError }) => {
 
   const dismissDetection = () => setDetectionPrompt(null);
 
+  const [detectionFading, setDetectionFading] = useState(false);
+
+  // Auto-fade and dismiss detection toast: start fade at 7s, remove at 8s
+  useEffect(() => {
+    if (!detectionPrompt) {
+      setDetectionFading(false);
+      return;
+    }
+    setDetectionFading(false);
+    const fadeTimer = window.setTimeout(() => setDetectionFading(true), 7000);
+    const removeTimer = window.setTimeout(() => setDetectionPrompt(null), 8000);
+    return () => {
+      window.clearTimeout(fadeTimer);
+      window.clearTimeout(removeTimer);
+      setDetectionFading(false);
+    };
+  }, [detectionPrompt]);
+
+  // Map tag-style preferredLang -> LanguageSelector 'lang' prop (names like 'Hindi')
+  const mapTagToName = (tag: string) => {
+    try {
+      const t = String(tag || '').toLowerCase();
+      if (t === 'auto') return 'auto';
+      if (t.startsWith('hi')) return 'Hindi';
+      if (t.startsWith('ta')) return 'Tamil';
+      if (t.startsWith('bn')) return 'Bengali';
+      if (t.startsWith('fr')) return 'French';
+      if (t.startsWith('es')) return 'Spanish';
+      if (t.startsWith('en')) return 'English';
+    } catch {}
+    return 'English';
+  };
+
+  const mapNameToTag = (name: string) => {
+    try {
+      const n = String(name || '').toLowerCase();
+      if (n === 'auto') return 'auto';
+      if (n.startsWith('hin') || n === 'hindi') return 'hi-IN';
+      if (n.startsWith('tam') || n === 'tamil') return 'ta-IN';
+      if (n.startsWith('ben') || n === 'bengali') return 'bn-IN';
+      if (n.startsWith('fre') || n === 'french') return 'fr-FR';
+      if (n.startsWith('spa') || n === 'spanish') return 'es-ES';
+      if (n.startsWith('eng') || n === 'english') return 'en-US';
+    } catch {}
+    return 'en-US';
+  };
+
   return (
     <div className="bg-card rounded-lg shadow-card p-4 border border-border">
       {/* Input Options */}
@@ -454,25 +502,23 @@ const QuickInputBox: React.FC<QuickInputBoxProps> = ({ onReply, onError }) => {
           </button>
 
           {showLangMenu && (
-            <div className="absolute right-0 mt-2 w-44 bg-card border border-border rounded shadow-lg z-50 p-2">
-              {languageOptions.map((opt) => (
-                <button
-                  key={opt.value}
-                  onClick={() => {
-                    setPreferredLang(opt.value);
+            <div className="absolute right-0 mt-2 z-50">
+              <LanguageSelector
+                lang={mapTagToName(preferredLang)}
+                setLang={(name: string) => {
+                  try {
+                    const tag = mapNameToTag(name);
+                    setPreferredLang(tag);
                     try {
-                      localStorage.setItem('ai-tutor:preferredLang', opt.value);
+                      localStorage.setItem('ai-tutor:preferredLang', tag);
                     } catch {}
                     try {
-                      fetch('/api/user/language', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ language: opt.value }) }).catch(() => {});
+                      fetch('/api/user/language', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ language: tag }) }).catch(() => {});
                     } catch {}
-                    setShowLangMenu(false);
-                  }}
-                  className={`w-full text-left px-2 py-1 rounded hover:bg-primary/10 text-sm ${preferredLang === opt.value ? 'font-semibold' : ''}`}
-                >
-                  {opt.label}
-                </button>
-              ))}
+                  } catch {}
+                  setShowLangMenu(false);
+                }}
+              />
             </div>
           )}
         </div>
@@ -491,33 +537,72 @@ const QuickInputBox: React.FC<QuickInputBoxProps> = ({ onReply, onError }) => {
       </div>
 
       {/* Text Input */}
-      {/* Language selector (compact, mobile-friendly) */}
+      {/* Compact language selector (mobile-first). Quick toggle for Auto/Hindi/English + menu for more */}
       <div className="mb-3 flex items-center justify-between">
         <div className="text-sm text-muted-foreground">Language</div>
-        <select
-          aria-label="Preferred language"
-          value={preferredLang}
-          onChange={(e) => {
-            const v = e.target.value;
-            setPreferredLang(v);
-            try {
-              localStorage.setItem('ai-tutor:preferredLang', v);
-            } catch {}
-            try {
-              // best-effort persist to server (requires auth)
-              fetch('/api/user/language', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ language: v }) }).catch(() => {});
-            } catch {}
-          }}
-          className="text-sm rounded border px-2 py-1 bg-input"
-        >
-          <option value="auto">Auto (browser)</option>
-          <option value="hi-IN">Hindi (हिन्दी)</option>
-          <option value="en-US">English</option>
-          <option value="ta-IN">Tamil (தமிழ்)</option>
-          <option value="bn-IN">Bengali (বাংলা)</option>
-          <option value="fr-FR">French</option>
-          <option value="es-ES">Spanish</option>
-        </select>
+        <div className="flex items-center gap-2">
+          <div className="inline-flex rounded-md shadow-sm bg-card border border-border">
+            <button
+              type="button"
+              onClick={() => {
+                const v = 'auto';
+                setPreferredLang(v);
+                try {
+                  localStorage.setItem('ai-tutor:preferredLang', v);
+                } catch {}
+                try {
+                  fetch('/api/user/language', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ language: v }) }).catch(() => {});
+                } catch {}
+              }}
+              className={`px-2 py-1 text-xs ${preferredLang === 'auto' ? 'bg-primary text-primary-foreground font-semibold' : 'text-sm'}`}
+              title="Auto (browser)"
+            >
+              🌐 Auto
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                const v = 'hi-IN';
+                setPreferredLang(v);
+                try {
+                  localStorage.setItem('ai-tutor:preferredLang', v);
+                } catch {}
+                try {
+                  fetch('/api/user/language', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ language: v }) }).catch(() => {});
+                } catch {}
+              }}
+              className={`px-2 py-1 text-xs ${preferredLang === 'hi-IN' ? 'bg-primary text-primary-foreground font-semibold' : 'text-sm'}`}
+              title="हिन्दी (Hindi)"
+            >
+              🇮🇳 हिन्दी
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                const v = 'en-US';
+                setPreferredLang(v);
+                try {
+                  localStorage.setItem('ai-tutor:preferredLang', v);
+                } catch {}
+                try {
+                  fetch('/api/user/language', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ language: v }) }).catch(() => {});
+                } catch {}
+              }}
+              className={`px-2 py-1 text-xs ${preferredLang === 'en-US' ? 'bg-primary text-primary-foreground font-semibold' : 'text-sm'}`}
+              title="English"
+            >
+              🇺🇸 English
+            </button>
+          </div>
+          <button
+            type="button"
+            onClick={() => setShowLangMenu(true)}
+            className="px-2 py-1 text-xs rounded border border-border bg-card"
+            title="More languages"
+          >
+            ⋯
+          </button>
+        </div>
       </div>
       <div className="mb-3">
         <input
@@ -535,15 +620,23 @@ const QuickInputBox: React.FC<QuickInputBoxProps> = ({ onReply, onError }) => {
         <div className="mb-3 text-sm text-muted-foreground">{suggestionHint}</div>
       )}
 
-      {/* Detected language confirmation prompt */}
+      {/* Detected language toast: transient, appears near bottom-right */}
       {detectionPrompt && (
-        <div className="mb-3 p-3 border border-border rounded bg-muted flex items-center justify-between">
-          <div className="text-sm">
-            Detected {detectionPrompt.label} — switch to {detectionPrompt.label} for future replies?
+        <div
+          className={`fixed right-4 bottom-16 z-50 w-auto max-w-xs bg-card border border-border rounded px-3 py-2 shadow-lg flex items-center gap-3 transition-opacity duration-500 ${
+            detectionFading ? 'opacity-0' : 'opacity-100'
+          }`}
+          role="status"
+        >
+          <div className="flex-1">
+            <div className="text-sm">Detected <strong>{detectionPrompt.label}</strong>. Switch for future replies?</div>
+            <div className="mt-2 h-1 w-full bg-muted rounded overflow-hidden">
+              <div className="detection-toast-progress" />
+            </div>
           </div>
           <div className="flex items-center gap-2">
-            <button onClick={dismissDetection} className="px-3 py-1 text-sm rounded border border-border">Keep</button>
-            <button onClick={acceptDetection} className="px-3 py-1 text-sm rounded bg-primary text-primary-foreground">Switch</button>
+            <button onClick={dismissDetection} className="px-2 py-1 text-xs rounded border border-border">Keep</button>
+            <button onClick={acceptDetection} className="px-2 py-1 text-xs rounded bg-primary text-primary-foreground">Switch</button>
           </div>
         </div>
       )}

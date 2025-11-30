@@ -9,3 +9,23 @@
   padding: 8px 12px;
   border-radius: 14px;
 }
+
+/* Toast progress bar + fade keyframes */
+.detection-toast-progress {
+  height: 4px;
+  background: linear-gradient(90deg, rgba(59,130,246,0.9), rgba(16,185,129,0.9));
+  border-radius: 4px;
+  transform-origin: left;
+  animation: detection-progress 8s linear forwards;
+}
+
+@keyframes detection-progress {
+  from { transform: scaleX(1); opacity: 1; }
+  87% { transform: scaleX(0.15); opacity: 1; }
+  to { transform: scaleX(0); opacity: 0; }
+}
+
+@keyframes detection-fade {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
