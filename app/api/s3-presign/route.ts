@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { v4 as uuidv4 } from 'uuid';
+import { getPresignCredentials } from '../../../lib/awsSecrets';
 
 /*
   POST /api/s3-presign
@@ -14,7 +15,9 @@ import { v4 as uuidv4 } from 'uuid';
   - AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY
 */
 
-const s3 = new S3Client({ region: process.env.AWS_REGION });
+// NOTE: S3 client will be constructed per-request below so we can optionally
+// pull credentials from AWS Secrets Manager (server-only) and fall back to
+// environment-provided credentials when Secrets Manager is not configured.
 
 export async function POST(req: Request) {
   try {
@@ -33,6 +36,21 @@ export async function POST(req: Request) {
     }
 
     const key = `uploads/${userId ?? 'anon'}/${Date.now()}-${uuidv4()}-${filename}`;
+
+    // Build S3 client using secrets manager credentials if available
+    let s3: S3Client;
+    try {
+      const creds = await getPresignCredentials();
+      if (creds && creds.accessKeyId && creds.secretAccessKey) {
+        s3 = new S3Client({ region: process.env.AWS_REGION, credentials: { accessKeyId: creds.accessKeyId, secretAccessKey: creds.secretAccessKey } });
+      } else {
+        s3 = new S3Client({ region: process.env.AWS_REGION });
+      }
+    } catch (err) {
+      // Fallback to default client (environment or instance role)
+      console.error('Error building S3 client from Secrets Manager, falling back to env', err);
+      s3 = new S3Client({ region: process.env.AWS_REGION });
+    }
 
     const command = new PutObjectCommand({
       Bucket: bucket,

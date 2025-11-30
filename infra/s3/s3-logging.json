@@ -1,0 +1,6 @@
+{
+  "LoggingEnabled": {
+    "TargetBucket": "ai-tutor-logs-spinzyacademy-01",
+    "TargetPrefix": "logs/ai-tutor-uploads/"
+  }
+}

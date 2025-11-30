@@ -38,3 +38,11 @@ aws iam create-policy --policy-name ai-tutor-s3-presign-policy --policy-document
 ```
 
 See `setup-s3.ps1` for an interactive script.
+
+Secrets stored:
+- `ai-tutor/presign-user` in AWS Secrets Manager (region `eu-north-1`) contains the presign IAM user's access key JSON. Do NOT commit secrets to the repo; the file `infra/s3/newkey.json` was removed after storing the secret.
+
+Production notes:
+- Bucket encryption (SSE-S3) has been enabled for the uploads bucket.
+- Public access has been blocked for the uploads bucket.
+- Server access logging has been enabled (target bucket: `ai-tutor-logs-spinzyacademy-01`).
