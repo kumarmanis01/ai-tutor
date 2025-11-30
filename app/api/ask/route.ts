@@ -10,12 +10,14 @@ type Req = { text?: string; language?: string; images?: string[]; consentToShare
 
 const SYSTEM_PROMPT = `You are an AI assistant. Detect the user's language automatically based on the user's message.
 Always respond in the same language the user used.
-Return only valid JSON, with TWO keys:
+Return only valid JSON. The object MUST contain these keys:
 {
   "language": "<BCP-47 language code like 'hi' or 'mr-IN' or 'en'>",
-  "answer": "<the assistant's reply in the user's language>"
+  "answer": "<the assistant's reply in the user's language>",
+  // optional: an array of 2-5 short follow-up suggestions the user can click to continue the conversation
+  "suggestions": ["<short suggestion 1>", "<short suggestion 2>"]
 }
-Do not add any other text, explanation, or commentary outside the JSON object.
+Do not add any other text, explanation, or commentary outside the JSON object. If you cannot provide suggestions, return an empty array for 'suggestions'.
 `;
 
 export async function POST(req: Request) {
@@ -137,7 +139,7 @@ export async function POST(req: Request) {
           { role: 'system', content: systemPromptWithLang + imagesNote },
           { role: 'user', content: text },
         ],
-        temperature: 0.2,
+        temperature: 0.35,
         max_tokens: 800,
       }),
     });
@@ -181,6 +183,14 @@ export async function POST(req: Request) {
 
     const language = parsed.language || parsed.lang || undefined;
     const answer = parsed.answer || parsed.text || '';
+    let suggestions: string[] = [];
+    try {
+      if (Array.isArray(parsed.suggestions)) {
+        suggestions = parsed.suggestions.filter((s: any) => typeof s === 'string').slice(0, 5);
+      }
+    } catch {
+      suggestions = [];
+    }
 
     // Persist assistant reply when available
     if (sessionUserId) {
@@ -191,7 +201,7 @@ export async function POST(req: Request) {
       }
     }
 
-    return NextResponse.json({ language, answer });
+    return NextResponse.json({ language, answer, suggestions });
   } catch (err: any) {
     console.error('/api/ask error', err);
     return NextResponse.json({ error: err?.message || 'Unknown error' }, { status: 500 });

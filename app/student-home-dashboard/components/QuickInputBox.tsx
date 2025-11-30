@@ -75,6 +75,53 @@ const QuickInputBox: React.FC<QuickInputBoxProps> = ({ onReply, onError }) => {
     }
   };
 
+  // Listen for picked suggestions to populate the input (do not auto-submit)
+  useEffect(() => {
+    function onSuggestionPicked(e: Event) {
+      try {
+        const detail = (e as CustomEvent).detail as { suggestion: string } | undefined;
+        if (!detail) return;
+        const { suggestion } = detail;
+        setQuestionText(suggestion);
+        // show a small hint to the user that suggestion was inserted
+        setSuggestionHint(`Suggestion inserted: "${suggestion}" — press Ask to submit or edit`);
+        // clear previous timeout
+        try {
+          if (hintTimeoutRef.current) window.clearTimeout(hintTimeoutRef.current);
+        } catch {}
+        // clear hint after 10s if user doesn't act
+        hintTimeoutRef.current = window.setTimeout(() => setSuggestionHint(null), 10000);
+        // focus the input
+        try {
+          document.getElementById('question-input')?.focus();
+        } catch {}
+      } catch (err) {
+        console.error('QuickInputBox suggestion handler error', err);
+      }
+    }
+    window.addEventListener('chatSuggestionPicked', onSuggestionPicked as EventListener);
+    return () => window.removeEventListener('chatSuggestionPicked', onSuggestionPicked as EventListener);
+  }, []);
+
+  // Emit a typing event so the chat container can dismiss suggestions when user types
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setQuestionText(e.target.value);
+    try {
+      // clear hint when user starts typing
+      setSuggestionHint(null);
+      if (hintTimeoutRef.current) {
+        try {
+          window.clearTimeout(hintTimeoutRef.current);
+        } catch {}
+        hintTimeoutRef.current = null;
+      }
+      window.dispatchEvent(new CustomEvent('chatUserTyped'));
+    } catch {}
+  };
+
+  const [suggestionHint, setSuggestionHint] = useState<string | null>(null);
+  const hintTimeoutRef = useRef<number | null>(null);
+
   useEffect(() => {
     return () => {
       // Revoke any remaining blob object URLs
@@ -279,11 +326,16 @@ const QuickInputBox: React.FC<QuickInputBoxProps> = ({ onReply, onError }) => {
           id="question-input"
           type="text"
           value={isListening && interimTranscript ? interimTranscript : questionText}
-          onChange={(e) => setQuestionText(e.target.value)}
+            onChange={handleInputChange}
           placeholder={isListening ? 'Listening... Speak now' : 'Type your question... / अपना सवाल लिखें...'}
           className="w-full px-4 py-3 border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-ring text-base"
         />
       </div>
+
+      {/* Suggestion hint (appears when a suggestion is inserted) */}
+      {suggestionHint && (
+        <div className="mb-3 text-sm text-muted-foreground">{suggestionHint}</div>
+      )}
 
       {/* Hidden file input for photo upload */}
       <input

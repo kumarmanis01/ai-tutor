@@ -1,4 +1,6 @@
 import React, { useState, useRef, useEffect } from "react";
+import ReactMarkdown from 'react-markdown';
+import rehypeSanitize from 'rehype-sanitize';
 
 export type ChatMessage = {
   id: string;
@@ -11,6 +13,8 @@ type Props = {
   content: string;
   volume?: number;
   lang: string; // <-- Added
+  suggestions?: string[] | undefined;
+  messageId?: string;
 };
 
 // Speaker SVG icon
@@ -75,7 +79,9 @@ const languageVoiceMap: Record<
   // Add more language mappings as needed
 };
 
-export default function MessageBubble({ role, content, volume, lang }: Props) {
+import analyticsClient from '@/lib/analyticsClient';
+
+export default function MessageBubble({ role, content, volume, lang, suggestions, messageId }: Props) {
   const isUser = role === "user";
   const containerClass = isUser ? "justify-end" : "justify-start";
   const bubbleClass = isUser
@@ -102,6 +108,15 @@ export default function MessageBubble({ role, content, volume, lang }: Props) {
       };
     }
   }, []);
+
+  // Track when suggestions are shown (analytics)
+  useEffect(() => {
+    if (!isUser && suggestions && suggestions.length > 0) {
+      try {
+        analyticsClient.trackEvent('suggestion.shown', { messageId, count: suggestions.length });
+      } catch {}
+    }
+  }, [isUser, suggestions, messageId]);
 
   // Play message as speech
   const handleSpeak = () => {
@@ -154,9 +169,11 @@ export default function MessageBubble({ role, content, volume, lang }: Props) {
   return (
     <div className={`flex ${containerClass}`}>
       <div
-        className={`max-w-[80%] px-3 py-2 rounded-lg ${bubbleClass} relative flex items-center gap-2`}
+        className={`max-w-[80%] px-3 py-2 rounded-lg ${bubbleClass} relative flex items-center gap-2 flex-col`}
       >
-        <span>{content}</span>
+        <div className="w-full prose prose-sm dark:prose-invert">
+          <ReactMarkdown rehypePlugins={[rehypeSanitize]}>{content}</ReactMarkdown>
+        </div>
         <button
           onClick={isSpeaking ? handleStop : handleSpeak}
           aria-label={isSpeaking ? "Stop playback" : "Play message"}
@@ -166,6 +183,34 @@ export default function MessageBubble({ role, content, volume, lang }: Props) {
         >
           {isSpeaking ? <StopIcon /> : <SpeakerIcon />}
         </button>
+        {/* Render server-provided suggestions under assistant replies */}
+        {!isUser && suggestions && suggestions.length > 0 && (
+          <div className="mt-2 w-full">
+            <div className="text-xs text-muted-foreground mb-1">Try one of these:</div>
+            <div className="flex flex-wrap gap-2">
+              {suggestions.map((s, i) => (
+                <button
+                  key={i}
+                  type="button"
+                  onClick={() => {
+                    try {
+                      analyticsClient.trackEvent('suggestion.clicked', { suggestion: s, messageId });
+                    } catch {}
+                    // Emit an event to let other components (QuickInputBox/ChatBot) handle draft insertion
+                    try {
+                      window.dispatchEvent(
+                        new CustomEvent('chatSuggestionPicked', { detail: { messageId, suggestion: s } }),
+                      );
+                    } catch {}
+                  }}
+                  className="px-3 py-1 bg-white/10 border border-border rounded-full text-xs hover:bg-white/20"
+                >
+                  {s}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

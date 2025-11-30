@@ -123,7 +123,11 @@ export async function POST(req: Request) {
 
     // Prepare messages for AI - prefer curated subject prompts when available
     const basePrompt = subjectPrompts[subject] ?? `You are a helpful ${subject} tutor.`;
-    const systemPrompt = `${basePrompt} Please respond in ${resolvedLang}.`;
+    // Ask the model to return a structured JSON object with a markdown answer
+    const systemPrompt = `${basePrompt} Please respond in ${resolvedLang}.
+  Return ONLY valid JSON with a key named "answerMarkdown" whose value is a markdown-formatted string containing the assistant's reply (use headers, lists, and examples as appropriate). Also include an optional "language" field with the BCP-47 language code. Example:
+  {"language":"en","answerMarkdown":"# Short summary\nYour content here..."}
+  Do not return any other text outside the JSON object.`;
     const messages = [
       { role: 'system', content: systemPrompt },
       { role: 'user', content: message },
@@ -158,12 +162,30 @@ export async function POST(req: Request) {
       );
     }
 
-    const aiReply = data.choices?.[0]?.message?.content?.trim();
-    if (!aiReply) {
+    const aiRaw = data.choices?.[0]?.message?.content?.trim();
+    if (!aiRaw) {
       return NextResponse.json(
         { error: 'ai_no_response', message: 'AI did not return a response' },
         { status: 500 },
       );
+    }
+
+    // Attempt to parse JSON to get answerMarkdown; fall back to raw text
+    let answerMarkdown = aiRaw as string;
+    try {
+      const parsed = JSON.parse(String(aiRaw));
+      if (parsed && typeof parsed.answerMarkdown === 'string') {
+        answerMarkdown = parsed.answerMarkdown;
+      }
+    } catch {
+      // try to extract a JSON object from the text
+      const m = String(aiRaw).match(/\{[\s\S]*\}/);
+      if (m) {
+        try {
+          const parsed = JSON.parse(m[0]);
+          if (parsed && typeof parsed.answerMarkdown === 'string') answerMarkdown = parsed.answerMarkdown;
+        } catch {}
+      }
     }
 
     // Check if user exists before saving chat
@@ -173,17 +195,63 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'User not found' }, { status: 400 });
     }
 
-    // Save assistant reply
+    // Save assistant reply (store markdown or raw text)
     await prisma.chat.create({
       data: {
         userId,
         role: 'assistant',
-        content: aiReply,
+        content: answerMarkdown,
         subject,
       },
     });
 
-    return NextResponse.json({ reply: aiReply });
+    // Generate lightweight follow-up suggestions (best-effort)
+    let suggestions: string[] = [];
+    try {
+      const suggestPromptSystem = `You are a concise tutor. Given a user's question and an assistant answer, return ONLY a JSON array of 2-5 short follow-up suggestions (each 2-10 words) that the user can click to continue the conversation. Return the suggestions in the same language as the assistant answer.`;
+      const suggestPromptUser = `User question:\n${message}\n\nAssistant answer:\n${aiRaw}\n\nReturn a JSON array of short suggestion strings.`;
+
+      const sres = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${OPENAI_KEY}`,
+        },
+        body: JSON.stringify({
+          model: 'gpt-3.5-turbo',
+          messages: [
+            { role: 'system', content: suggestPromptSystem },
+            { role: 'user', content: suggestPromptUser },
+          ],
+          temperature: 0.5,
+          max_tokens: 120,
+        }),
+      });
+
+      if (sres.ok) {
+        const sdata = await sres.json().catch(() => null);
+        const scontent = sdata?.choices?.[0]?.message?.content;
+        if (scontent) {
+          try {
+            const parsed = JSON.parse(scontent);
+            if (Array.isArray(parsed)) suggestions = parsed.filter((s: any) => typeof s === 'string').slice(0, 5);
+          } catch {
+            // try to extract a JSON array from text
+            const m = String(scontent).match(/\[[\s\S]*\]/);
+            if (m) {
+              try {
+                const parsed = JSON.parse(m[0]);
+                if (Array.isArray(parsed)) suggestions = parsed.filter((s: any) => typeof s === 'string').slice(0, 5);
+              } catch {}
+            }
+          }
+        }
+      }
+    } catch (e) {
+      console.error('suggestions generation failed', e);
+    }
+
+    return NextResponse.json({ reply: answerMarkdown, suggestions });
   } catch (err) {
     console.error('chat route error', err);
     return NextResponse.json({ error: 'server_error' }, { status: 500 });

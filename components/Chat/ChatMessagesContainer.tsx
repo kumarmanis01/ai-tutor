@@ -40,6 +40,10 @@ export default function ChatMessagesContainer({
             content={msg.content}
             volume={volume}
             lang={lang}
+            // suggestions are optional and only shown for assistant messages
+            // The MessageBubble will handle rendering and emitting clicks
+            suggestions={(msg as any).suggestions}
+            messageId={msg.id}
           />
         ))
       )}

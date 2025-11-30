@@ -1,6 +1,7 @@
-'use client';
+ 'use client';
 
 import { useEffect, useState, useRef, useMemo } from 'react';
+import analyticsClient from '@/lib/analyticsClient';
 import { useSession } from 'next-auth/react';
 import ChatMessagesContainer from './ChatMessagesContainer';
 import StickyControls from './StickyControls';
@@ -20,6 +21,7 @@ interface ChatMessage {
   id: string;
   role: 'user' | 'assistant';
   content: string;
+  suggestions?: string[];
 }
 
 // Helper to get user id from session (supports custom SessionUser type)
@@ -280,6 +282,7 @@ export default function ChatBot() {
           id: `${uuidv4()}-ai`,
           role: 'assistant',
           content: data.reply, // Render the response exactly as returned by OpenAI
+          suggestions: Array.isArray(data.suggestions) ? data.suggestions : undefined,
         };
 
         setMessagesBySubject((prev) => {
@@ -292,6 +295,70 @@ export default function ChatBot() {
       setLoading(false);
     }
   }
+
+  // Keep a ref to the latest handleSend to avoid useEffect dependency churn
+  const handleSendRef = useRef<typeof handleSend>(() => Promise.resolve());
+  // update ref directly so we don't need a useEffect dependency on handleSend
+  handleSendRef.current = handleSend;
+
+  // Handle suggestion pick events emitted by MessageBubble (do not auto-submit)
+  useEffect(() => {
+    function onSuggestionPicked(e: Event) {
+      try {
+        const detail = (e as CustomEvent).detail as { messageId?: string; suggestion: string } | undefined;
+        if (!detail) return;
+        const { messageId, suggestion } = detail;
+        // Remove suggestions from the message (ephemeral)
+        setMessagesBySubject((prev) => {
+          const existing = prev[subject] ?? [];
+          const newMsgs = existing.map((m) => {
+            if (m.id === messageId) return { ...m, suggestions: undefined } as ChatMessage;
+            return m;
+          });
+          return { ...prev, [subject]: newMsgs };
+        });
+        // Track dismissed reason 'picked'
+        try {
+          analyticsClient.trackEvent('suggestion.dismissed', { messageId, reason: 'picked', suggestion });
+        } catch {}
+        // Do NOT auto-submit. QuickInputBox will listen for the same event to populate the input.
+      } catch (err) {
+        console.error('suggestion handler error', err);
+      }
+    }
+
+    function onUserTyped() {
+      try {
+        // When user types, dismiss any visible suggestions and record dismissal
+        setMessagesBySubject((prev) => {
+          const existing = prev[subject] ?? [];
+          let anyCleared = false;
+          const newMsgs = existing.map((m) => {
+            if (m.suggestions && m.suggestions.length > 0) {
+              anyCleared = true;
+              return { ...m, suggestions: undefined } as ChatMessage;
+            }
+            return m;
+          });
+            if (anyCleared) {
+              try {
+                analyticsClient.trackEvent('suggestion.dismissed', { reason: 'typed' });
+              } catch {}
+            }
+          return { ...prev, [subject]: newMsgs };
+        });
+      } catch (err) {
+        console.error('onUserTyped handler error', err);
+      }
+    }
+
+    window.addEventListener('chatSuggestionPicked', onSuggestionPicked as EventListener);
+    window.addEventListener('chatUserTyped', onUserTyped as EventListener);
+    return () => {
+      window.removeEventListener('chatSuggestionPicked', onSuggestionPicked as EventListener);
+      window.removeEventListener('chatUserTyped', onUserTyped as EventListener);
+    };
+  }, [subject]);
 
   return (
     <div className="flex-1 flex flex-col min-h-0">

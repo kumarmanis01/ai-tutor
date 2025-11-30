@@ -4,29 +4,61 @@ export type UploadResult = { ok: true; url: string } | { ok: false; error?: stri
  * Upload an image file to the server.
  * Calls the `/api/upload-image` endpoint and returns a structured result.
  */
+import resizeImageFile from './resizeImage';
+
 export async function uploadImage(file: File): Promise<UploadResult> {
   try {
-    // Request a presigned PUT URL from the server
-    const metaRes = await fetch('/api/s3-presign', {
+    // Primary: produce a compressed WebP (best size) when possible
+    let primaryFile: File = file;
+    try {
+      primaryFile = await resizeImageFile(file, { maxWidth: 1600, maxHeight: 1600, quality: 0.80, mimeType: 'image/webp' });
+    } catch (err) {
+      console.warn('Primary (webp) resize failed, falling back to original', err);
+      primaryFile = file;
+    }
+
+    // Request a presigned PUT URL for the primary image
+    const primaryRes = await fetch('/api/s3-presign', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ filename: file.name, contentType: file.type }),
+      body: JSON.stringify({ filename: primaryFile.name || file.name, contentType: primaryFile.type || file.type }),
     });
-    if (!metaRes.ok) {
-      const payload = await metaRes.json().catch(() => ({}));
-      return { ok: false, error: payload?.error || `presign-failed:${metaRes.status}` };
+    if (!primaryRes.ok) {
+      const payload = await primaryRes.json().catch(() => ({}));
+      return { ok: false, error: payload?.error || `presign-failed:${primaryRes.status}` };
     }
-    const meta = await metaRes.json().catch(() => null);
-    if (!meta || !meta.url) return { ok: false, error: 'no-presigned-url' };
+    const primaryMeta = await primaryRes.json().catch(() => null);
+    if (!primaryMeta || !primaryMeta.url) return { ok: false, error: 'no-presigned-url' };
 
-    // PUT the file to S3 using the presigned URL
-    const putRes = await fetch(meta.url, { method: 'PUT', headers: { 'Content-Type': file.type }, body: file });
-    if (!putRes.ok) {
-      return { ok: false, error: `s3-put-failed:${putRes.status}` };
+    // Upload primary (WebP or original)
+    const putPrimary = await fetch(primaryMeta.url, { method: 'PUT', headers: { 'Content-Type': primaryFile.type }, body: primaryFile });
+    if (!putPrimary.ok) {
+      return { ok: false, error: `s3-put-failed:${putPrimary.status}` };
     }
 
-    // Return the public object URL (or object key if you prefer)
-    return { ok: true, url: meta.objectUrl || meta.url };
+    const primaryUrl = primaryMeta.objectUrl || primaryMeta.url;
+
+    // Background: upload a small JPEG fallback for compatibility (do not block)
+    (async () => {
+      try {
+        const jpegFallback = await resizeImageFile(file, { maxWidth: 1600, maxHeight: 1600, quality: 0.78, mimeType: 'image/jpeg' });
+        // Request presign for fallback
+        const fallbackRes = await fetch('/api/s3-presign', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ filename: jpegFallback.name || `${file.name.replace(/\.[^.]+$/, '')}.jpg`, contentType: jpegFallback.type }),
+        });
+        if (!fallbackRes.ok) return;
+        const fallbackMeta = await fallbackRes.json().catch(() => null);
+        if (!fallbackMeta || !fallbackMeta.url) return;
+        await fetch(fallbackMeta.url, { method: 'PUT', headers: { 'Content-Type': jpegFallback.type }, body: jpegFallback });
+      } catch (e) {
+        // ignore background failures but log for debugging
+        console.warn('JPEG fallback upload failed', e);
+      }
+    })();
+
+    return { ok: true, url: primaryUrl };
   } catch (err: any) {
     return { ok: false, error: err?.message || String(err) };
   }
