@@ -16,6 +16,15 @@ const QuickInputBox: React.FC<QuickInputBoxProps> = ({ onReply, onError }) => {
     const [isListening, setIsListening] = useState(false);
     const [interimTranscript, setInterimTranscript] = useState('');
     const stopVoiceRef = useRef<(() => void) | null>(null);
+    const [preferredLang, setPreferredLang] = useState<string>(() => {
+      try {
+        return localStorage.getItem('ai-tutor:preferredLang') || 'auto';
+      } catch {
+        return 'auto';
+      }
+    });
+    const [showLangMenu, setShowLangMenu] = useState(false);
+    const [detectionPrompt, setDetectionPrompt] = useState<null | { lang: string; label: string }>(null);
     const fileInputRef = useRef<HTMLInputElement | null>(null);
     const [images, setImages] = useState<{ id: string; url: string; uploading: boolean }[]>([]);
 
@@ -135,6 +144,29 @@ const QuickInputBox: React.FC<QuickInputBoxProps> = ({ onReply, onError }) => {
     };
   }, [images]);
 
+  // Load persisted preferred language from server (if available) on mount
+  useEffect(() => {
+    let cancelled = false;
+    async function loadLang() {
+      try {
+        const res = await fetch('/api/user/language');
+        if (!res.ok) return;
+        const j = await res.json().catch(() => ({}));
+        const serverLang = j?.language;
+        if (!cancelled && serverLang && typeof serverLang === 'string') {
+          setPreferredLang(serverLang);
+          try {
+            localStorage.setItem('ai-tutor:preferredLang', serverLang);
+          } catch {}
+        }
+      } catch {}
+    }
+    loadLang();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   const handleVoiceInput = () => {
       // Start voice input via shared handler
       if (isListening) {
@@ -148,7 +180,8 @@ const QuickInputBox: React.FC<QuickInputBoxProps> = ({ onReply, onError }) => {
 
       // prefer browser locale when starting recognition so Hindi is recognized in Devanagari
       const navLang = typeof navigator !== 'undefined' ? navigator.language || 'en-US' : 'en-US';
-      const langToUse = navLang.startsWith('hi') ? 'hi-IN' : navLang;
+      const resolvedNav = navLang.startsWith('hi') ? 'hi-IN' : navLang;
+      const langToUse = preferredLang && preferredLang !== 'auto' ? preferredLang : resolvedNav;
 
       const stop = startVoiceInput(
         // interim
@@ -156,9 +189,47 @@ const QuickInputBox: React.FC<QuickInputBoxProps> = ({ onReply, onError }) => {
           setInterimTranscript(txt);
         },
         // final
-        (txt: string, detectedLang?: string) => {
-          setQuestionText(txt);
-          if (detectedLang) setDetectedLang(detectedLang);
+        async (txt: string, detectedLang?: string) => {
+          let finalText = txt;
+          try {
+            // If recognition suggests Hindi but result is romanized (Latin chars), try to transliterate to Devanagari
+            const looksLatin = /^[A-Za-z0-9\s,.'"()-]+$/.test(String(txt).trim());
+            if (detectedLang && String(detectedLang).toLowerCase().startsWith('hi') && looksLatin) {
+              try {
+                // Dynamic import so the package is optional. Recommend installing `sanscript` for better transliteration.
+                const sanscript = await import('sanscript');
+                if (sanscript && typeof sanscript.t === 'function') {
+                  // Try common roman schemes -> devanagari
+                  // Use 'iast' -> 'devanagari' as a best-effort, fall back to itrans if available
+                  try {
+                    finalText = sanscript.t(txt, 'iast', 'devanagari');
+                  } catch {
+                    try {
+                      finalText = sanscript.t(txt, 'itrans', 'devanagari');
+                    } catch {
+                      // leave finalText as-is
+                    }
+                  }
+                }
+              } catch {
+                // package not installed or failed; ignore and keep latin text
+              }
+            }
+          } catch {
+            // ignore
+          }
+
+          setQuestionText(finalText);
+          if (detectedLang) {
+            setDetectedLang(detectedLang);
+            // persist preferred language locally and server-side
+            try {
+              try {
+                localStorage.setItem('ai-tutor:preferredLang', detectedLang);
+              } catch {}
+              fetch('/api/user/language', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ language: detectedLang }) }).catch(() => {});
+            } catch {}
+          }
           setInterimTranscript('');
           setIsListening(false);
           stopVoiceRef.current = null;
@@ -178,6 +249,19 @@ const QuickInputBox: React.FC<QuickInputBoxProps> = ({ onReply, onError }) => {
         setIsListening(true);
       }
   };
+
+  // Toggle small language menu (used by speak button)
+  const toggleLangMenu = () => setShowLangMenu((s) => !s);
+
+  const languageOptions: { value: string; label: string }[] = [
+    { value: 'auto', label: 'Auto (browser)' },
+    { value: 'hi-IN', label: 'हिन्दी (Hindi)' },
+    { value: 'en-US', label: 'English' },
+    { value: 'ta-IN', label: 'தமிழ் (Tamil)' },
+    { value: 'bn-IN', label: 'বাংলা (Bengali)' },
+    { value: 'fr-FR', label: 'Français' },
+    { value: 'es-ES', label: 'Español' },
+  ];
 
   const [asking, setAsking] = useState(false);
   const [detectedLang, setDetectedLang] = useState<string | undefined>(undefined);
@@ -260,7 +344,8 @@ const QuickInputBox: React.FC<QuickInputBoxProps> = ({ onReply, onError }) => {
     if (!questionText.trim() || asking) return;
     try {
       setAsking(true);
-      const res = await handleSend(questionText.trim(), detectedLang);
+      const languageToSend = detectedLang ?? (preferredLang && preferredLang !== 'auto' ? preferredLang : undefined);
+      const res = await handleSend(questionText.trim(), languageToSend);
       if (!res.ok) {
         console.error('Question send failed', res.error);
         onError?.(res.error || 'Failed to ask question');
@@ -269,7 +354,25 @@ const QuickInputBox: React.FC<QuickInputBoxProps> = ({ onReply, onError }) => {
       // Send AI reply to parent for display
       console.log('AI reply:', res.reply);
       // update detected language from response if provided
-      if (res.language) setDetectedLang(res.language);
+      if (res.language) {
+        setDetectedLang(res.language);
+        try {
+          try {
+            localStorage.setItem('ai-tutor:preferredLang', res.language);
+          } catch {}
+          fetch('/api/user/language', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ language: res.language }) }).catch(() => {});
+        } catch {}
+        // If server detected a language different from user's preference, prompt to switch
+        try {
+          const normPreferred = (preferredLang || 'auto').toLowerCase();
+          const normDetected = String(res.language).toLowerCase();
+          if (normDetected && normPreferred !== normDetected) {
+            // find a label for the detected language
+            const match = languageOptions.find((o) => o.value.toLowerCase() === normDetected || o.value.toLowerCase().startsWith(normDetected.split('-')[0]));
+            setDetectionPrompt({ lang: res.language, label: match ? match.label : res.language });
+          }
+        } catch {}
+      }
       if (res.reply) {
         onReply?.(res.reply, questionText.trim(), res.language, res.suggestions);
         // Auto-speak using detected language from response or recognition
@@ -288,6 +391,21 @@ const QuickInputBox: React.FC<QuickInputBoxProps> = ({ onReply, onError }) => {
     }
   };
 
+  const acceptDetection = () => {
+    if (!detectionPrompt) return;
+    const v = detectionPrompt.lang;
+    setPreferredLang(v);
+    try {
+      localStorage.setItem('ai-tutor:preferredLang', v);
+    } catch {}
+    try {
+      fetch('/api/user/language', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ language: v }) }).catch(() => {});
+    } catch {}
+    setDetectionPrompt(null);
+  };
+
+  const dismissDetection = () => setDetectionPrompt(null);
+
   return (
     <div className="bg-card rounded-lg shadow-card p-4 border border-border">
       {/* Input Options */}
@@ -305,17 +423,59 @@ const QuickInputBox: React.FC<QuickInputBoxProps> = ({ onReply, onError }) => {
           <span className="text-xs text-muted-foreground mt-1">फोटो लें</span>
         </button>
 
-        {/* Voice Input */}
-        <button
-          onClick={handleVoiceInput}
-          className="flex flex-col items-center justify-center p-4 bg-muted rounded-lg hover:bg-primary/10 transition-colors border border-border"
-        >
-          <svg className="w-8 h-8 text-primary mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
-          </svg>
-          <span className="text-sm font-medium text-foreground">🎤 Speak</span>
-          <span className="text-xs text-muted-foreground mt-1">बोलें</span>
-        </button>
+        {/* Voice Input with compact language toggle (menu) */}
+        <div className="relative">
+          <button
+            onClick={handleVoiceInput}
+            className="flex flex-col items-center justify-center p-4 bg-muted rounded-lg hover:bg-primary/10 transition-colors border border-border w-full"
+            title="Speak (tap) — long-press or use the menu to change language"
+          >
+            <svg className="w-8 h-8 text-primary mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+            </svg>
+            <span className="text-sm font-medium text-foreground">🎤 Speak</span>
+            <span className="text-xs text-muted-foreground mt-1">बोलें</span>
+          </button>
+
+          {/* small menu toggle on the top-right of the Speak button */}
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              toggleLangMenu();
+            }}
+            aria-label="Change language"
+            className="absolute -top-1 -right-1 bg-card border border-border rounded-full p-1 shadow-sm"
+            title="Choose language for voice recognition and replies"
+          >
+            <svg width="16" height="16" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M6 8l4-4 4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+          </button>
+
+          {showLangMenu && (
+            <div className="absolute right-0 mt-2 w-44 bg-card border border-border rounded shadow-lg z-50 p-2">
+              {languageOptions.map((opt) => (
+                <button
+                  key={opt.value}
+                  onClick={() => {
+                    setPreferredLang(opt.value);
+                    try {
+                      localStorage.setItem('ai-tutor:preferredLang', opt.value);
+                    } catch {}
+                    try {
+                      fetch('/api/user/language', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ language: opt.value }) }).catch(() => {});
+                    } catch {}
+                    setShowLangMenu(false);
+                  }}
+                  className={`w-full text-left px-2 py-1 rounded hover:bg-primary/10 text-sm ${preferredLang === opt.value ? 'font-semibold' : ''}`}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
 
         {/* Type Question */}
         <button
@@ -331,6 +491,34 @@ const QuickInputBox: React.FC<QuickInputBoxProps> = ({ onReply, onError }) => {
       </div>
 
       {/* Text Input */}
+      {/* Language selector (compact, mobile-friendly) */}
+      <div className="mb-3 flex items-center justify-between">
+        <div className="text-sm text-muted-foreground">Language</div>
+        <select
+          aria-label="Preferred language"
+          value={preferredLang}
+          onChange={(e) => {
+            const v = e.target.value;
+            setPreferredLang(v);
+            try {
+              localStorage.setItem('ai-tutor:preferredLang', v);
+            } catch {}
+            try {
+              // best-effort persist to server (requires auth)
+              fetch('/api/user/language', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ language: v }) }).catch(() => {});
+            } catch {}
+          }}
+          className="text-sm rounded border px-2 py-1 bg-input"
+        >
+          <option value="auto">Auto (browser)</option>
+          <option value="hi-IN">Hindi (हिन्दी)</option>
+          <option value="en-US">English</option>
+          <option value="ta-IN">Tamil (தமிழ்)</option>
+          <option value="bn-IN">Bengali (বাংলা)</option>
+          <option value="fr-FR">French</option>
+          <option value="es-ES">Spanish</option>
+        </select>
+      </div>
       <div className="mb-3">
         <input
           id="question-input"
@@ -345,6 +533,19 @@ const QuickInputBox: React.FC<QuickInputBoxProps> = ({ onReply, onError }) => {
       {/* Suggestion hint (appears when a suggestion is inserted) */}
       {suggestionHint && (
         <div className="mb-3 text-sm text-muted-foreground">{suggestionHint}</div>
+      )}
+
+      {/* Detected language confirmation prompt */}
+      {detectionPrompt && (
+        <div className="mb-3 p-3 border border-border rounded bg-muted flex items-center justify-between">
+          <div className="text-sm">
+            Detected {detectionPrompt.label} — switch to {detectionPrompt.label} for future replies?
+          </div>
+          <div className="flex items-center gap-2">
+            <button onClick={dismissDetection} className="px-3 py-1 text-sm rounded border border-border">Keep</button>
+            <button onClick={acceptDetection} className="px-3 py-1 text-sm rounded bg-primary text-primary-foreground">Switch</button>
+          </div>
+        </div>
       )}
 
       {/* Hidden file input for photo upload */}
