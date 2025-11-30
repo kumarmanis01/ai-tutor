@@ -37,31 +37,81 @@ export async function POST(req: Request) {
 
     const key = `uploads/${userId ?? 'anon'}/${Date.now()}-${uuidv4()}-${filename}`;
 
-    // Build S3 client using secrets manager credentials if available
+    // Build S3 client using explicit env credentials if provided first (helps local dev),
+    // otherwise prefer credentials from our Secrets helper, and finally fall back
+    // to the default credential chain (IMDS, profile, environment, etc.).
     let s3: S3Client;
+    const region = process.env.AWS_REGION || process.env.AWS_DEFAULT_REGION || 'eu-north-1';
     try {
-      const creds = await getPresignCredentials();
-      if (creds && creds.accessKeyId && creds.secretAccessKey) {
-        s3 = new S3Client({ region: process.env.AWS_REGION, credentials: { accessKeyId: creds.accessKeyId, secretAccessKey: creds.secretAccessKey } });
+      const s3Opts: any = { region };
+
+      // Prefer explicit env credentials if set (useful for local workflows)
+      if (process.env.AWS_ACCESS_KEY_ID && process.env.AWS_SECRET_ACCESS_KEY) {
+        s3Opts.credentials = {
+          accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+          secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+          sessionToken: process.env.AWS_SESSION_TOKEN || undefined,
+        };
       } else {
-        s3 = new S3Client({ region: process.env.AWS_REGION });
+        // Try to load from Secrets Manager helper if available
+        try {
+          const creds = (await getPresignCredentials()) as any;
+          if (creds && creds.accessKeyId && creds.secretAccessKey) {
+            s3Opts.credentials = {
+              accessKeyId: creds.accessKeyId,
+              secretAccessKey: creds.secretAccessKey,
+              ...(creds.sessionToken ? { sessionToken: creds.sessionToken } : {}),
+            } as any;
+          }
+        } catch (innerErr) {
+          // ignore and continue to default provider chain
+          console.warn('getPresignCredentials failed, falling back to default credentials chain', innerErr);
+        }
       }
+
+      s3 = new S3Client(s3Opts);
     } catch (err) {
-      // Fallback to default client (environment or instance role)
-      console.error('Error building S3 client from Secrets Manager, falling back to env', err);
-      s3 = new S3Client({ region: process.env.AWS_REGION });
+      console.error('Error constructing S3 client', err);
+      return NextResponse.json({ error: 's3_client_init_failed' }, { status: 500 });
     }
 
-    const command = new PutObjectCommand({
-      Bucket: bucket,
-      Key: key,
-      ContentType: contentType,
-      ACL: 'private',
-    });
+    const command = new PutObjectCommand({ Bucket: bucket, Key: key, ContentType: contentType, ACL: 'private' });
 
-    const presignedUrl = await getSignedUrl(s3, command, { expiresIn: 60 * 5 });
+    // expiry can be configured via env (seconds), default 5 minutes
+    const expiresIn = Number(process.env.S3_PRESIGN_EXPIRES ?? process.env.NEXT_PUBLIC_S3_PRESIGN_EXPIRES ?? 300);
 
-    const objectUrl = `https://${bucket}.s3.${process.env.AWS_REGION}.amazonaws.com/${encodeURIComponent(key)}`;
+    let presignedUrl: string;
+    try {
+      presignedUrl = await getSignedUrl(s3, command, { expiresIn });
+    } catch (err) {
+      // Detect common credential errors and return a helpful message to developer
+      console.error('/api/s3-presign getSignedUrl error', err);
+      const anyErr: any = err || {};
+      const msg = (anyErr.message || '').toString().toLowerCase();
+      const name = (anyErr.name || '').toString().toLowerCase();
+      const isCredError =
+        name.includes('credential') ||
+        name.includes('credentialsprovidererror') ||
+        msg.includes('session has expired') ||
+        msg.includes('unable to locate credentials') ||
+        msg.includes('expired') ||
+        msg.includes('invalid access key id');
+
+      if (isCredError) {
+        return NextResponse.json(
+          {
+            error: 'aws_credentials',
+            message:
+              'AWS credentials error: your session may have expired or credentials are missing. For local dev run `aws sso login` (if using SSO) or set `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` env vars, or configure a valid `AWS_PROFILE`.',
+          },
+          { status: 401 },
+        );
+      }
+
+      return NextResponse.json({ error: 'presign_failed', message: 'Failed to create presigned URL' }, { status: 500 });
+    }
+
+    const objectUrl = `https://${bucket}.s3.${region}.amazonaws.com/${encodeURIComponent(key)}`;
 
     return NextResponse.json({ url: presignedUrl, key, objectUrl });
   } catch (e) {

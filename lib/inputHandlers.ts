@@ -1,4 +1,4 @@
-export type UploadResult = { ok: true; url: string } | { ok: false; error?: string };
+export type UploadResult = { ok: true; url: string } | { ok: false; error?: string; details?: string };
 
 /**
  * Upload an image file to the server.
@@ -25,7 +25,7 @@ export async function uploadImage(file: File): Promise<UploadResult> {
     });
     if (!primaryRes.ok) {
       const payload = await primaryRes.json().catch(() => ({}));
-      return { ok: false, error: payload?.error || `presign-failed:${primaryRes.status}` };
+      return { ok: false, error: payload?.error || `presign-failed:${primaryRes.status}`, details: payload?.message };
     }
     const primaryMeta = await primaryRes.json().catch(() => null);
     if (!primaryMeta || !primaryMeta.url) return { ok: false, error: 'no-presigned-url' };

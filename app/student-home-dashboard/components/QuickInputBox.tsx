@@ -64,8 +64,16 @@ const QuickInputBox: React.FC<QuickInputBoxProps> = ({ onReply, onError }) => {
     try {
       const result = await uploadImage(file);
       if (!result.ok) {
-        console.error('upload failed', result.error);
+        console.error('upload failed', result.error, result.details);
         onError?.(result.error || 'Upload failed');
+        // If the server returned an AWS credential-related error, surface a user-friendly toast
+        try {
+          const details = result.details || '';
+          if (result.error === 'aws_credentials' || (typeof details === 'string' && details.toLowerCase().includes('credential'))) {
+            setAwsCredentialError(details || 'AWS credentials invalid or expired. Run `aws sso login` or set `AWS_ACCESS_KEY_ID`/`AWS_SECRET_ACCESS_KEY` in your environment.');
+            setAwsCredentialVisible(true);
+          }
+        } catch {}
         // mark as not uploading but keep preview so user can retry/remove
         setImages((prev) => prev.map((it) => (it.id === id ? { ...it, uploading: false } : it)));
         return;
@@ -409,6 +417,10 @@ const QuickInputBox: React.FC<QuickInputBoxProps> = ({ onReply, onError }) => {
 
   const [detectionFading, setDetectionFading] = useState(false);
 
+  // AWS credential error toast state
+  const [awsCredentialError, setAwsCredentialError] = useState<string | null>(null);
+  const [awsCredentialVisible, setAwsCredentialVisible] = useState(false);
+
   // Auto-fade and dismiss detection toast: start fade at 7s, remove at 8s
   useEffect(() => {
     if (!detectionPrompt) {
@@ -618,6 +630,39 @@ const QuickInputBox: React.FC<QuickInputBoxProps> = ({ onReply, onError }) => {
       {/* Suggestion hint (appears when a suggestion is inserted) */}
       {suggestionHint && (
         <div className="mb-3 text-sm text-muted-foreground">{suggestionHint}</div>
+      )}
+
+      {/* AWS credential remediation toast (persistent until dismissed) */}
+      {awsCredentialVisible && awsCredentialError && (
+        <div className="fixed right-4 bottom-4 z-50 w-auto max-w-sm bg-red-50 border border-red-200 rounded px-3 py-3 shadow-lg flex flex-col gap-2">
+          <div className="text-sm text-red-900">Upload failed due to AWS credentials.</div>
+          <div className="text-xs text-red-800 whitespace-pre-wrap">{awsCredentialError}</div>
+          <div className="flex items-center gap-2 pt-2">
+            <button
+              type="button"
+              onClick={async () => {
+                try {
+                  await navigator.clipboard.writeText(awsCredentialError);
+                } catch {
+                  // ignore
+                }
+              }}
+              className="px-2 py-1 text-xs rounded border border-border bg-card"
+            >
+              Copy steps
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setAwsCredentialVisible(false);
+                setAwsCredentialError(null);
+              }}
+              className="px-2 py-1 text-xs rounded bg-red-600 text-white"
+            >
+              Dismiss
+            </button>
+          </div>
+        </div>
       )}
 
       {/* Detected language toast: transient, appears near bottom-right */}
