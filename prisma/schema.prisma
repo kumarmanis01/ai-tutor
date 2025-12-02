@@ -55,6 +55,8 @@ model User {
   apiUsages        ApiUsage[]
   passwordHash     String? // Store the hash here
   grade            String? // Student grade option
+  board            String? // Student board (CBSE/ICSE/State/Other)
+  subjects         Json?   // Student subjects preferences
   welcomeEmailSent Boolean        @default(false)
   todaysFreeQuestionsCount Int      @default(3) // Tracks remaining free questions for the day
 
