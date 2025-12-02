@@ -1,5 +1,5 @@
 export type SendSmsResult =
-  | { ok: true; provider: 'twilio' | 'dev'; id?: string }
+  | { ok: true; provider: 'msg91' | 'dev'; id?: string }
   | { ok: false; error: string };
 
 /**
@@ -23,41 +23,44 @@ export async function sendSms(phone: string, message: string): Promise<SendSmsRe
     return { ok: true, provider: 'dev' };
   }
 
-  // Production: try Twilio
-  const sid = process.env.TWILIO_SID;
-  const token = process.env.TWILIO_TOKEN;
-  const from = process.env.TWILIO_FROM;
-
-  if (!sid || !token || !from) {
-    return { ok: false, error: 'Twilio credentials (TWILIO_SID/TWILIO_TOKEN/TWILIO_FROM) not set' };
+  // Production: try MSG91 when configured
+  const MSG91_AUTH_KEY = process.env.MSG91_AUTH_KEY;
+  if (!MSG91_AUTH_KEY) {
+    return { ok: false, error: 'MSG91_AUTH_KEY not set in environment' };
   }
 
   try {
-    // Dynamic import so the package is only loaded in production when present.
-    // `twilio` is an optional runtime dependency; suppress TS module-not-found
-    // errors here because the import is guarded by runtime env checks.
-    // Use @ts-expect-error so linting rules prefer it over @ts-ignore
-    // @ts-expect-error - optional dependency, safe to import at runtime
-    const twilioMod = await import('twilio').catch((err) => {
-      throw new Error(`twilio-import-failed: ${err?.message || err}`);
+    // Use MSG91 send SMS endpoint. MSG91 has multiple APIs; here we call the control v2 sendsms endpoint
+    // with form-encoded params. Adjust if your MSG91 account requires a different endpoint or parameters.
+    const sender = process.env.MSG91_SENDER ?? 'MSGIND';
+    const country = process.env.MSG91_COUNTRY ?? '91';
+
+    const url = 'https://control.msg91.com/api/v2/sendsms';
+    const params = new URLSearchParams();
+    params.append('authkey', MSG91_AUTH_KEY);
+    params.append('mobiles', to);
+    params.append('message', message);
+    params.append('sender', sender);
+    params.append('route', process.env.MSG91_ROUTE ?? '4');
+    params.append('country', country);
+
+    const resp = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: params.toString(),
     });
 
-    const Twilio = (twilioMod as any).default || twilioMod;
-    const client = Twilio(sid, token);
+    const json = await resp.json().catch(() => ({}));
 
-    const msg = await client.messages.create({ body: message, from, to });
-
-    if (msg && msg.sid) {
-      return { ok: true, provider: 'twilio', id: msg.sid };
+    if (!resp.ok) {
+      console.error('[sendSms] MSG91 send failed', resp.status, json);
+      return { ok: false, error: `msg91-error: ${resp.status}` };
     }
 
-    return { ok: false, error: 'Twilio did not return a message SID' };
+    // MSG91 v2 usually returns { type: 'success', message: '...' } or an object with details.
+    return { ok: true, provider: 'msg91', id: (json as any)?.messageId || (json as any)?.message || undefined };
   } catch (err: any) {
-    // Log full error for debugging, but return a structured error
-    console.error('[sendSms] Twilio send error', err);
-    if (err && err.message) {
-      return { ok: false, error: `twilio-error: ${err.message}` };
-    }
-    return { ok: false, error: 'twilio-error: unknown' };
+    console.error('[sendSms] MSG91 send error', err);
+    return { ok: false, error: `msg91-error: ${err?.message || 'unknown'}` };
   }
 }

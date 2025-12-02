@@ -5,11 +5,11 @@ import StickyHeader from '@/components/StickyHeader';
 import HeroSection from './HeroSection';
 import TrustBar from './TrustBar';
 import ProblemSection from './ProblemSection';
-import SolutionShowcase from './SolutionShowcase';
+import OtpProviderForm from '@/components/Auth/OtpProviderForm';
 import TestimonialsSection from './TestimonialsSection';
 import PricingSection from './PricingSection';
 import FAQSection from './FAQSection';
-import SignupForm from './SignupForm';
+import SignupFormWidget from './SignupFormWidget';
 import FinalCTA from './FinalCTA';
 import Footer from './Footer';
 
@@ -28,11 +28,18 @@ const LandingPageInteractive = () => {
         <HeroSection onDemoClick={handleDemoClick} />
         <TrustBar />
         <ProblemSection />
-        <SolutionShowcase />
+        {/* Replaced SolutionShowcase with MSG91 OTP widget for testing */}
+        <div className="px-4 py-8">
+          <OtpProviderForm
+            widgetId="356b44674c70383033393134"
+            tokenAuth="{token}"
+            autoVerify={false}
+          />
+        </div>
         <TestimonialsSection />
         <PricingSection />
         <FAQSection />
-        <SignupForm />
+        <SignupFormWidget />
         <FinalCTA />
       </main>
       <Footer />
