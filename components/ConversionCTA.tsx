@@ -30,7 +30,7 @@ const ConversionCTA = ({ variant = 'hero', className = '', onClick }: Conversion
     if (onClick) {
       onClick();
     } else {
-      const element = document.querySelector('#signup-form');
+      const element = document.querySelector('#signup-form-widget');
       if (element) {
         element.scrollIntoView({ behavior: 'smooth', block: 'center' });
       }
