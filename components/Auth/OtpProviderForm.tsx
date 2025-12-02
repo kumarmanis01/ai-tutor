@@ -204,8 +204,13 @@ const OtpProviderForm = forwardRef<OtpProviderHandle, OtpProviderProps>(
 
     return (
       <div className="w-full max-w-lg mx-auto">
-        <label className="block text-sm font-medium text-foreground mb-2">Mobile number or email</label>
+        {/* <label className="block text-sm font-medium text-foreground mb-2">
+          Mobile number or email</label> */}
+          <label className="block font-body font-medium text-sm text-foreground mb-2">
+                  Mobile Number (मोबाइल नंबर)
+                </label>
         <div className="flex gap-2">
+          
           <input
             value={identifier}
             onChange={(e) => setIdentifier(e.target.value)}
@@ -225,8 +230,8 @@ const OtpProviderForm = forwardRef<OtpProviderHandle, OtpProviderProps>(
         </div>
 
         <p className="mt-2 text-xs text-muted-foreground">
-          This uses MSG91's OTP provider script. The widget will initialize and attempt to send an OTP to
-          the identifier above.
+          We will initialize and attempt to send an One Time Password (OTP) to
+          the number above.
         </p>
       </div>
     );

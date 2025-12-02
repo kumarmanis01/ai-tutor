@@ -149,17 +149,17 @@ const SignupFormWidget = () => {
           {step === 1 && (
             <div className="space-y-6">
               <div>
-                <label className="block font-body font-medium text-sm text-foreground mb-2">
+                {/* <label className="block font-body font-medium text-sm text-foreground mb-2">
                   Mobile Number (मोबाइल नंबर)
-                </label>
-                <div className="mb-3">
+                </label> */}
+                {/* <div className="mb-3">
                   <input
                     value={formData.phone}
                     onChange={(e) => setFormData((p) => ({ ...p, phone: e.target.value }))}
                     placeholder="Enter mobile number (widget will pre-fill this)"
                     className="w-full px-3 py-2 bg-background border-2 border-border rounded-lg focus:border-primary focus:outline-none"
                   />
-                </div>
+                </div> */}
                 <OtpProviderForm
                   widgetId="356b44674c70383033393134"
                   tokenAuth={widgetToken ?? '{token}'}
@@ -195,11 +195,13 @@ const SignupFormWidget = () => {
                   }}
                 />
                 {widgetError ? (
-                  <p className="mt-2 text-xs text-rose-500">Widget token unavailable: {widgetError}</p>
+                  console.warn('Widget error:', widgetError)
+                  // <p className="mt-2 text-xs text-rose-500">Widget token unavailable: {widgetError}</p>
                 ) : (
-                  <p className="mt-2 text-xs text-muted-foreground">
-                    Use the widget above to receive an OTP and continue the signup flow.
-                  </p>
+                  console.info('Found token Widget token:', widgetToken)
+                  // <p className="mt-2 text-xs text-muted-foreground">
+                  //   Use the widget above to receive an OTP and continue the signup flow.
+                  // </p>
                 )}
               </div>
             </div>
