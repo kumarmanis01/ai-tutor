@@ -85,8 +85,11 @@
     "rehype-sanitize": "^5.0.1",
     "sanscript": "^0.0.2",
     "swr": "^2.2.4",
+    
     "uuid": "^13.0.0"
   },
+  "optionalDependencies": {},
+  
   "devDependencies": {
     "@eslint/eslintrc": "^3",
     "@netlify/plugin-nextjs": "^5.11.1",
