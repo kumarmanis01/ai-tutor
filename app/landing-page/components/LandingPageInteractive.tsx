@@ -5,7 +5,6 @@ import StickyHeader from '@/components/StickyHeader';
 import HeroSection from './HeroSection';
 import TrustBar from './TrustBar';
 import ProblemSection from './ProblemSection';
-import OtpProviderForm from '@/components/Auth/OtpProviderForm';
 import TestimonialsSection from './TestimonialsSection';
 import PricingSection from './PricingSection';
 import FAQSection from './FAQSection';
@@ -28,14 +27,7 @@ const LandingPageInteractive = () => {
         <HeroSection onDemoClick={handleDemoClick} />
         <TrustBar />
         <ProblemSection />
-        {/* Replaced SolutionShowcase with MSG91 OTP widget for testing */}
-        <div className="px-4 py-8">
-          <OtpProviderForm
-            widgetId="356b44674c70383033393134"
-            tokenAuth="{token}"
-            autoVerify={false}
-          />
-        </div>
+        <SignupFormWidget />
         <TestimonialsSection />
         <PricingSection />
         <FAQSection />
