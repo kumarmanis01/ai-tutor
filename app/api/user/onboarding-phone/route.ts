@@ -20,13 +20,33 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json().catch(() => ({}));
-    console.info('/api/user/onboarding-phone body', body);
+    // Log the received payload from the signup form. We keep a masked log
+    // always, and optionally output the full raw payload for local debugging
+    // when DEBUG_ONBOARDING is set to '1'.
+    try {
+      const masked = { ...body } as any;
+      if (typeof masked.token === 'string') masked.token = `***${String(masked.token).slice(-8)}`;
+      if (typeof masked.phone === 'string') masked.phone = String(masked.phone).replace(/\d(?=\d{4})/g, '*');
+      console.info('/api/user/onboarding-phone received payload (masked):', masked);
+
+      const debugEnabled = String(process.env.DEBUG_ONBOARDING || '').toLowerCase() === '1' || String(process.env.DEBUG_ONBOARDING || '').toLowerCase() === 'true';
+      if (debugEnabled) {
+        // Developer explicitly requested full logging for debugging.
+        console.debug('/api/user/onboarding-phone received payload (RAW):', body);
+      }
+    } catch (logErr) {
+      console.warn('/api/user/onboarding-phone: failed to mask/log payload', logErr);
+      console.debug('/api/user/onboarding-phone raw payload fallback:', body);
+    }
     const name = typeof body.name === 'string' ? body.name.trim() : undefined;
     // accept either `grade` or `class_grade` from client; store as string
     const gradeRaw = (typeof body.class_grade === 'number' || typeof body.class_grade === 'string') ? body.class_grade : body.grade;
     const grade = gradeRaw !== undefined && gradeRaw !== null ? String(gradeRaw) : undefined;
     const board = typeof body.board === 'string' ? body.board : undefined;
-    const subjects = Array.isArray(body.subjects) ? body.subjects : undefined;
+    // Normalize subjects: ensure an array of non-empty strings or undefined
+    const subjects = Array.isArray(body.subjects)
+      ? (body.subjects as any[]).map((s) => (s == null ? '' : String(s))).filter((s) => s.length > 0)
+      : undefined;
     const preferredLanguage = typeof body.preferred_language === 'string' ? body.preferred_language : undefined;
     const token = typeof body.token === 'string' ? body.token : undefined;
     const rawPhone = typeof body.phone === 'string' ? body.phone.trim() : undefined;
@@ -34,6 +54,23 @@ export async function POST(req: NextRequest) {
 
     // If no session/cookie userId but a phone is present, upsert (create) user by phone
     if (!userId && phone) {
+      // Ensure DB schema has expected columns before attempting upsert. If the
+      // schema is out of sync (e.g., missing `board` column) Prisma upsert
+      // will throw P2022 when it tries to read/write model fields. Check for
+      // the `board` column and bail with a helpful error if missing.
+      try {
+        const boardCol: any = await prisma.$queryRaw`SELECT column_name FROM information_schema.columns WHERE table_name = 'User' AND column_name = 'board' LIMIT 1`;
+        if (!boardCol || (Array.isArray(boardCol) && boardCol.length === 0)) {
+          console.error('/api/user/onboarding-phone: missing User.board column in DB');
+          return NextResponse.json({
+            error: 'db_schema_mismatch',
+            message: 'Database schema is out of sync: column `User.board` is missing. Run `npx prisma migrate dev` to apply pending migrations.',
+          }, { status: 500 });
+        }
+      } catch (schemaCheckErr) {
+        console.warn('/api/user/onboarding-phone: failed to check DB schema for board column', schemaCheckErr);
+        // Fallthrough — we'll attempt the upsert and let Prisma report any errors.
+      }
       try {
         console.info('/api/user/onboarding-phone: upserting user by phone', { phone });
         const user = await prisma.user.upsert({
@@ -93,8 +130,22 @@ export async function POST(req: NextRequest) {
     if (token) updates.lastWidgetToken = token;
 
     console.info('/api/user/onboarding-phone userId and updates', { userId, updates });
-    const updatedUser = await prisma.user.update({ where: { id: userId }, data: updates });
-    console.info('/api/user/onboarding-phone updated user', { id: updatedUser.id, name: updatedUser.name, phone: updatedUser.phone });
+    let updatedUser;
+    try {
+      updatedUser = await prisma.user.update({ where: { id: userId }, data: updates });
+      console.info('/api/user/onboarding-phone updated user', { id: updatedUser.id, name: updatedUser.name, phone: updatedUser.phone });
+    } catch (updErr: any) {
+      // Catch common Prisma schema mismatch (P2022) and return a helpful error
+      if (updErr?.code === 'P2022') {
+        console.error('/api/user/onboarding-phone: prisma schema mismatch on update P2022', updErr.meta || updErr.message);
+        return NextResponse.json({
+          error: 'db_schema_mismatch',
+          message: 'Database schema is out of sync with Prisma schema: one or more columns (e.g. `User.board`) are missing. Run `npx prisma migrate dev` to apply pending migrations.',
+          details: updErr?.meta || String(updErr?.message),
+        }, { status: 500 });
+      }
+      throw updErr;
+    }
 
     // If the client provided a widget token, record it as an Event for audit/processing.
     try {
