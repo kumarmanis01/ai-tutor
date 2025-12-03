@@ -14,6 +14,7 @@ type OtpProviderProps = {
   widgetId: string;
   tokenAuth: string;
   identifier?: string;
+  onIdentifierChange?: (id: string) => void;
   exposeMethods?: boolean;
   autoVerify?: boolean;
   onSuccess?: (data: any) => void;
@@ -38,6 +39,7 @@ const OtpProviderForm = forwardRef<OtpProviderHandle, OtpProviderProps>(
     widgetId,
     tokenAuth,
     identifier: initialIdentifier,
+    onIdentifierChange,
     exposeMethods = false,
     autoVerify = true,
     onSuccess,
@@ -213,7 +215,16 @@ const OtpProviderForm = forwardRef<OtpProviderHandle, OtpProviderProps>(
           
           <input
             value={identifier}
-            onChange={(e) => setIdentifier(e.target.value)}
+            onChange={(e) => {
+              const v = e.target.value;
+              setIdentifier(v);
+              try {
+                onIdentifierChange?.(v);
+              } catch (e) {
+                // swallow any callback errors to avoid breaking the input
+                console.warn('onIdentifierChange callback errored', e);
+              }
+            }}
             placeholder={"Enter mobile number or email"}
             className="flex-1 px-3 py-2 border rounded-md"
           />

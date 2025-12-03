@@ -57,6 +57,7 @@ model User {
   grade            String? // Student grade option
   board            String? // Student board (CBSE/ICSE/State/Other)
   subjects         Json?   // Student subjects preferences
+  lastWidgetToken  String? // Last OTP widget token received for this user
   welcomeEmailSent Boolean        @default(false)
   todaysFreeQuestionsCount Int      @default(3) // Tracks remaining free questions for the day
 
