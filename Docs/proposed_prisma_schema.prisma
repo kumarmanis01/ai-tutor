@@ -66,16 +66,6 @@ model User {
   userBadges             UserBadge[]
   points                 Int                      @default(0)
   ChallengeParticipation ChallengeParticipation[]
-  // Relations for new student-centric models
-  studentQuestions       StudentQuestion[]
-  parentRelations        ParentStudent[] @relation("ParentRelations")
-  studentRelations       ParentStudent[] @relation("StudentRelations")
-  learningSessions       LearningSession[]
-  studentLearningProfile StudentLearningProfile?
-  studentStreaks         StudentStreak[]
-  testResults            TestResult[]
-  notes                  Note[]
-  bookmarks              Bookmark[]
 }
 
 model PhoneOtp {
@@ -356,7 +346,6 @@ model StudentQuestion {
   lastUpdatedAt      DateTime  @updatedAt
   attachments        QuestionAttachment[]
   answers            QuestionAnswer[]
-  flags              QuestionFlag[]
 
   @@index([studentId])
   @@index([status])
@@ -391,11 +380,11 @@ model QuestionFlag {
   id            String   @id @default(cuid())
   questionId    String
   question      StudentQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
-  flagType      String   // e.g., inappropriate_language, non_academic, external_help_seeking
-  severity      String   @default("low") // severity level: high, medium, low
+  flagType      String   // 'inappropriate_language', 'non_academic', 'external_help_seeking'
+  severity      String   @default('low') // 'high', 'medium', 'low'
   autoFlagged   Boolean  @default(false)
   reviewerNotes String?
-  status        String   @default("pending") // pending, resolved, dismissed
+  status        String   @default('pending') // 'pending'|'resolved'|'dismissed'
   flaggedBy     String?  // userId who flagged (or null for automated)
   flaggedAt     DateTime @default(now())
   resolvedAt    DateTime?
@@ -464,7 +453,6 @@ model TestResult {
   id         String   @id @default(cuid())
   testId     String
   studentId  String
-  student    User     @relation(fields: [studentId], references: [id], onDelete: Cascade)
   score      Float?
   rawResult  Json?
   startedAt  DateTime?
@@ -476,7 +464,6 @@ model TestResult {
 model Note {
   id         String   @id @default(cuid())
   studentId  String?
-  student    User?    @relation(fields: [studentId], references: [id], onDelete: Cascade)
   subject    String?
   title      String
   content    String   // markdown or text
@@ -489,7 +476,6 @@ model Note {
 model Bookmark {
   id        String @id @default(cuid())
   studentId String
-  student   User   @relation(fields: [studentId], references: [id], onDelete: Cascade)
   type      String // 'note'|'question'|'test' etc
   refId     String // id of the referenced item
   createdAt DateTime @default(now())
@@ -501,4 +487,3 @@ model Bookmark {
 // incrementally, add via migration after Phase 1.
 
 // End of proposed schema
-

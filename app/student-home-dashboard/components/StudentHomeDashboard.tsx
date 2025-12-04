@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import TopBar from './TopBar';
+import useCurrentUser from '@/hooks/useCurrentUser';
 import QuickInputBox from './QuickInputBox';
 import ChatPanel from './ChatPanel';
 import ContinueLearning from './ContinueLearning';
@@ -16,8 +17,8 @@ interface StudentHomeDashboardProps { [key: string]: unknown }
 const StudentHomeDashboard: React.FC<StudentHomeDashboardProps> = () => {
   const [activeTab, setActiveTab] = useState<'home' | 'tests' | 'notes' | 'profile'>('home');
   
-  // Mock student data - in real app, this would come from authentication context
-  const studentName = 'Anay';
+  const { data: profile, loading } = useCurrentUser();
+  const studentName = profile?.name ?? 'Student';
 
   const [messages, setMessages] = useState<{ id: string; from: 'user' | 'ai'; text: string; language?: string; suggestions?: string[] }[]>([]);
 

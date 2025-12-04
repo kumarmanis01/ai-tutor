@@ -76,6 +76,8 @@
     "nodemailer": "^7.0.11",
     "openai": "^5.23.1",
     "pdf-lib": "^1.17.1",
+    "pdf-parse": "^2.4.5",
+    "pdfjs-dist": "^5.4.449",
     "razorpay": "^2.9.6",
     "react": "18.2.0",
     "react-dom": "18.2.0",
@@ -85,11 +87,8 @@
     "rehype-sanitize": "^5.0.1",
     "sanscript": "^0.0.2",
     "swr": "^2.2.4",
-    
     "uuid": "^13.0.0"
   },
-  "optionalDependencies": {},
-  
   "devDependencies": {
     "@eslint/eslintrc": "^3",
     "@netlify/plugin-nextjs": "^5.11.1",
