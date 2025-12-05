@@ -18,26 +18,53 @@ const QuickInputBox: React.FC<QuickInputBoxProps> = ({ onReply, onError, initial
     const [isListening, setIsListening] = useState(false);
     const [interimTranscript, setInterimTranscript] = useState('');
     const stopVoiceRef = useRef<(() => void) | null>(null);
-    const [preferredLang, setPreferredLang] = useState<string>(() => {
-      try {
-        // prefer initial prop if provided via parent
-        // Note: access to `initialPreferredLang` isn't available in initializer, will sync on mount
-        return (typeof window !== 'undefined' && localStorage.getItem('ai-tutor:preferredLang')) || 'auto';
-      } catch {
-        return 'auto';
-      }
-    });
+    // Start with a deterministic server-safe value to avoid hydration mismatches.
+    // We'll load the user's saved preference (localStorage) or server value on mount.
+    const [preferredLang, setPreferredLang] = useState<string>('auto');
 
-    // Sync initial prop into state on mount / when it changes
+    // On client mount, prefer in-order: `initialPreferredLang` prop -> localStorage -> server
     useEffect(() => {
+      let cancelled = false;
       try {
         if (initialPreferredLang) {
           setPreferredLang(initialPreferredLang);
           try {
             localStorage.setItem('ai-tutor:preferredLang', initialPreferredLang);
           } catch {}
+          return;
         }
+
+        // Check localStorage first (fast, client-only)
+        try {
+          if (typeof window !== 'undefined') {
+            const stored = localStorage.getItem('ai-tutor:preferredLang');
+            if (stored) {
+              setPreferredLang(stored);
+              return;
+            }
+          }
+        } catch {}
+
+        // Fall back to server-provided persisted language
+        async function loadFromServer() {
+          try {
+            const res = await fetch('/api/user/language');
+            if (!res.ok) return;
+            const j = await res.json().catch(() => ({}));
+            const serverLang = j?.language;
+            if (!cancelled && serverLang && typeof serverLang === 'string') {
+              setPreferredLang(serverLang);
+              try {
+                localStorage.setItem('ai-tutor:preferredLang', serverLang);
+              } catch {}
+            }
+          } catch {}
+        }
+        loadFromServer();
       } catch {}
+      return () => {
+        cancelled = true;
+      };
     }, [initialPreferredLang]);
     const [showLangMenu, setShowLangMenu] = useState(false);
     const [detectionPrompt, setDetectionPrompt] = useState<null | { lang: string; label: string }>(null);
@@ -213,30 +240,7 @@ const QuickInputBox: React.FC<QuickInputBoxProps> = ({ onReply, onError, initial
     };
   }, [images]);
 
-  // Load persisted preferred language from server (if available) on mount
-  useEffect(() => {
-    let cancelled = false;
-    async function loadLang() {
-      try {
-        // If parent supplied an initial preferred language, prefer that and skip server fetch
-        if (initialPreferredLang) return;
-        const res = await fetch('/api/user/language');
-        if (!res.ok) return;
-        const j = await res.json().catch(() => ({}));
-        const serverLang = j?.language;
-        if (!cancelled && serverLang && typeof serverLang === 'string') {
-          setPreferredLang(serverLang);
-          try {
-            localStorage.setItem('ai-tutor:preferredLang', serverLang);
-          } catch {}
-        }
-      } catch {}
-    }
-    loadLang();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+  // (language loading handled in the mount effect above)
 
   const handleVoiceInput = () => {
       // Start voice input via shared handler
