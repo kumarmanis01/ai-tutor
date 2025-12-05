@@ -10,24 +10,84 @@ import { Speech } from '@/lib/speech';
 interface QuickInputBoxProps {
   onReply?: (reply: string, userMessage?: string, language?: string, suggestions?: string[]) => void;
   onError?: (err: string) => void;
+  initialPreferredLang?: string | null;
 }
 
-const QuickInputBox: React.FC<QuickInputBoxProps> = ({ onReply, onError }) => {
+const QuickInputBox: React.FC<QuickInputBoxProps> = ({ onReply, onError, initialPreferredLang = null }) => {
   const [questionText, setQuestionText] = useState('');
     const [isListening, setIsListening] = useState(false);
     const [interimTranscript, setInterimTranscript] = useState('');
     const stopVoiceRef = useRef<(() => void) | null>(null);
     const [preferredLang, setPreferredLang] = useState<string>(() => {
       try {
-        return localStorage.getItem('ai-tutor:preferredLang') || 'auto';
+        // prefer initial prop if provided via parent
+        // Note: access to `initialPreferredLang` isn't available in initializer, will sync on mount
+        return (typeof window !== 'undefined' && localStorage.getItem('ai-tutor:preferredLang')) || 'auto';
       } catch {
         return 'auto';
       }
     });
+
+    // Sync initial prop into state on mount / when it changes
+    useEffect(() => {
+      try {
+        if (initialPreferredLang) {
+          setPreferredLang(initialPreferredLang);
+          try {
+            localStorage.setItem('ai-tutor:preferredLang', initialPreferredLang);
+          } catch {}
+        }
+      } catch {}
+    }, [initialPreferredLang]);
     const [showLangMenu, setShowLangMenu] = useState(false);
     const [detectionPrompt, setDetectionPrompt] = useState<null | { lang: string; label: string }>(null);
     const fileInputRef = useRef<HTMLInputElement | null>(null);
     const [images, setImages] = useState<{ id: string; url: string; uploading: boolean }[]>([]);
+
+    const [favorites, setFavorites] = useState<string[]>([]);
+
+    useEffect(() => {
+      try {
+        const raw = localStorage.getItem('ai-tutor:langFavorites');
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (Array.isArray(parsed)) setFavorites(parsed);
+        }
+      } catch {}
+    }, []);
+
+    const toggleFavorite = (tag: string) => {
+      try {
+        setFavorites((prev) => {
+          let next: string[];
+          if (prev.includes(tag)) {
+            next = prev.filter((t) => t !== tag);
+          } else {
+            next = [tag, ...prev.filter((t) => t !== tag)].slice(0, 2);
+          }
+          try {
+            localStorage.setItem('ai-tutor:langFavorites', JSON.stringify(next));
+          } catch {}
+          return next;
+        });
+      } catch {}
+    };
+
+    const handleSelectorPick = (name: string) => {
+      try {
+        const tag = mapNameToTag(name);
+        setPreferredLang(tag);
+        try {
+          localStorage.setItem('ai-tutor:preferredLang', tag);
+        } catch {}
+        try {
+          fetch('/api/user/language', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ language: tag }) }).catch(() => {});
+        } catch {}
+      } catch {}
+      setShowLangMenu(false);
+    };
+
+    const favSelected = favorites.includes(preferredLang);
 
   const handlePhotoUpload = () => {
     // Open file picker
@@ -158,6 +218,8 @@ const QuickInputBox: React.FC<QuickInputBoxProps> = ({ onReply, onError }) => {
     let cancelled = false;
     async function loadLang() {
       try {
+        // If parent supplied an initial preferred language, prefer that and skip server fetch
+        if (initialPreferredLang) return;
         const res = await fetch('/api/user/language');
         if (!res.ok) return;
         const j = await res.json().catch(() => ({}));
@@ -549,73 +611,38 @@ const QuickInputBox: React.FC<QuickInputBoxProps> = ({ onReply, onError }) => {
       </div>
 
       {/* Text Input */}
-      {/* Compact language selector (mobile-first). Quick toggle for Auto/Hindi/English + menu for more */}
       <div className="mb-3 flex items-center justify-between">
         <div className="text-sm text-muted-foreground">Language</div>
         <div className="flex items-center gap-2">
-          <div className="inline-flex rounded-md shadow-sm bg-card border border-border">
+          <div className="inline-flex items-center gap-2">
             <button
               type="button"
-              onClick={() => {
-                const v = 'auto';
-                setPreferredLang(v);
-                try {
-                  localStorage.setItem('ai-tutor:preferredLang', v);
-                } catch {}
-                try {
-                  fetch('/api/user/language', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ language: v }) }).catch(() => {});
-                } catch {}
-              }}
-              className={`px-2 py-1 text-xs ${preferredLang === 'auto' ? 'bg-primary text-primary-foreground font-semibold' : 'text-sm'}`}
-              title="Auto (browser)"
+              onClick={() => setShowLangMenu(true)}
+              className="px-3 py-1 rounded border border-border text-sm bg-card flex items-center gap-2"
+              title="Select language"
             >
-              🌐 Auto
+              <span>{mapTagToName(preferredLang)}</span>
+              <svg className="w-3 h-3" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M6 8l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
             </button>
             <button
               type="button"
-              onClick={() => {
-                const v = 'hi-IN';
-                setPreferredLang(v);
-                try {
-                  localStorage.setItem('ai-tutor:preferredLang', v);
-                } catch {}
-                try {
-                  fetch('/api/user/language', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ language: v }) }).catch(() => {});
-                } catch {}
-              }}
-              className={`px-2 py-1 text-xs ${preferredLang === 'hi-IN' ? 'bg-primary text-primary-foreground font-semibold' : 'text-sm'}`}
-              title="हिन्दी (Hindi)"
+              aria-label="Favorite language"
+              onClick={() => toggleFavorite(preferredLang)}
+              className={`p-1 rounded ${favSelected ? 'text-yellow-400' : 'text-muted-foreground'}`}
+              title={favSelected ? 'Unfavorite' : 'Add to favorites'}
             >
-              🇮🇳 हिन्दी
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                const v = 'en-US';
-                setPreferredLang(v);
-                try {
-                  localStorage.setItem('ai-tutor:preferredLang', v);
-                } catch {}
-                try {
-                  fetch('/api/user/language', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ language: v }) }).catch(() => {});
-                } catch {}
-              }}
-              className={`px-2 py-1 text-xs ${preferredLang === 'en-US' ? 'bg-primary text-primary-foreground font-semibold' : 'text-sm'}`}
-              title="English"
-            >
-              🇺🇸 English
+              ★
             </button>
           </div>
-          <button
-            type="button"
-            onClick={() => setShowLangMenu(true)}
-            className="px-2 py-1 text-xs rounded border border-border bg-card"
-            title="More languages"
-          >
-            ⋯
-          </button>
         </div>
       </div>
+      {showLangMenu && (
+        <div className="absolute z-50">
+          <LanguageSelector lang={mapTagToName(preferredLang)} setLang={handleSelectorPick} />
+        </div>
+      )}
       <div className="mb-3">
         <input
           id="question-input"

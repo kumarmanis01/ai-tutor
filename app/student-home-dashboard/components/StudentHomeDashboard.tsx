@@ -56,6 +56,7 @@ const StudentHomeDashboard: React.FC<StudentHomeDashboardProps> = () => {
 
               {/* Quick Input Box */}
               <QuickInputBox
+                initialPreferredLang={profile?.language ?? (profile as any)?.preferred_language ?? (profile as any)?.preferredLanguage ?? null}
                 onReply={(reply: string, userMessage?: string, language?: string, suggestions?: string[]) => {
                   // push both user and ai messages to chat, include language and suggestions when available
                   setMessages((prev) => [
