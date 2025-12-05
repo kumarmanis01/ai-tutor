@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import TopBar from './TopBar';
 import useCurrentUser from '@/hooks/useCurrentUser';
+import LoadingSpinner from '@/components/UI/LoadingSpinner';
 import QuickInputBox from './QuickInputBox';
 import ChatPanel from './ChatPanel';
 import ContinueLearning from './ContinueLearning';
@@ -16,11 +17,17 @@ interface StudentHomeDashboardProps { [key: string]: unknown }
 
 const StudentHomeDashboard: React.FC<StudentHomeDashboardProps> = () => {
   const [activeTab, setActiveTab] = useState<'home' | 'tests' | 'notes' | 'profile'>('home');
-  
-  const { data: profile } = useCurrentUser();
+  const [messages, setMessages] = useState<{ id: string; from: 'user' | 'ai'; text: string; language?: string; suggestions?: string[] }[]>([]);
+  const { data: profile, loading } = useCurrentUser();
   const studentName = profile?.name ?? 'Student';
 
-  const [messages, setMessages] = useState<{ id: string; from: 'user' | 'ai'; text: string; language?: string; suggestions?: string[] }[]>([]);
+  if (loading && !profile) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <LoadingSpinner size={64} label="Loading your dashboard…" />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background flex flex-col">

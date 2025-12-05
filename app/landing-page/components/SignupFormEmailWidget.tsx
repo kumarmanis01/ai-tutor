@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { signIn, useSession } from 'next-auth/react';
 import Icon from '@/components/UI/AppIcon';
+import useCurrentUser from '@/hooks/useCurrentUser';
 
 interface FormData {
   phone: string;
@@ -68,6 +69,7 @@ const SignupFormWidget = () => {
   };
 
   const router = useRouter();
+  const { mutate: mutateCurrentUser } = useCurrentUser();
 
   const handleSubmit = async () => {
     try {
@@ -90,6 +92,13 @@ const SignupFormWidget = () => {
         alert(payload?.error || 'Failed to save profile');
         return;
       }
+      // Refresh canonical client-side user cache and attempt a session refresh
+      try {
+        mutateCurrentUser?.();
+      } catch {}
+      try {
+        await fetch('/api/user/refresh-session', { method: 'POST' });
+      } catch {}
       router.push('/student-home-dashboard');
     } catch (err) {
       console.error('onboarding submit error', err);

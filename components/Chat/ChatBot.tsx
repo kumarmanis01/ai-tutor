@@ -3,6 +3,7 @@
 import { useEffect, useState, useRef, useMemo } from 'react';
 import analyticsClient from '@/lib/analyticsClient';
 import { useSession } from 'next-auth/react';
+import useCurrentUser from '@/hooks/useCurrentUser';
 import ChatMessagesContainer from './ChatMessagesContainer';
 import StickyControls from './StickyControls';
 import SubscriptionModal from '../SubscriptionModal';
@@ -36,14 +37,17 @@ export default function ChatBot() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement | null>(null);
 
-  // Profile completeness check
+  // Profile completeness check (use canonical DB-backed user when available)
+  const { data: profile } = useCurrentUser();
   const incompleteProfile =
-    session && (!session.user?.parentEmail || !session.user?.name || !session.user?.country);
+    session && (!profile?.parentEmail || !profile?.name || !profile?.country);
 
   // Use a persistent user identifier for localStorage key (base64 encoded for privacy)
   function getUserKey() {
+    // Prefer canonical DB-backed user id/email when available
+    const preferred = profile?.id ? { id: profile.id, email: profile.email } : undefined;
+    if (preferred) return encodeKey(getUserId(preferred));
     if (session?.user) {
-      // Try to get id, else fallback to email, else guest
       const keySource = getUserId(session.user);
       return encodeKey(keySource);
     }
@@ -85,7 +89,8 @@ export default function ChatBot() {
     async function initLang() {
       try {
         // If user is signed in, prefer server-stored language
-        if (session?.user?.id) {
+        const currentUserId = profile?.id ?? session?.user?.id;
+        if (currentUserId) {
           try {
             const res = await fetch('/api/user/language');
             if (res.ok) {
@@ -117,7 +122,7 @@ export default function ChatBot() {
     }
 
     initLang();
-  }, [session]);
+  }, [session, profile?.id]);
 
   // Resolved language for components that need a concrete language (TTS, rendering)
   const resolvedLang =
