@@ -14,10 +14,21 @@ export default async function LandingPage() {
   try {
     const { user } = await getSessionUserWithSubscription();
     if (user) {
-      redirect('/profile');
+      // redirect authenticated users to the student dashboard
+      redirect('/student-home-dashboard');
     }
   } catch (e) {
-    // If session check fails, fall back to rendering landing page
+    // If this is Next.js' redirect control-flow we must rethrow it
+    // so Next can perform the redirect. Otherwise log and fall back
+    // to rendering the landing page.
+    try {
+      const maybe = e as any;
+      if (maybe && typeof maybe === 'object' && typeof maybe.digest === 'string' && maybe.digest.startsWith('NEXT_REDIRECT')) {
+        throw e;
+      }
+    } catch (rethrowErr) {
+      throw rethrowErr;
+    }
     console.warn('LandingPage: session check failed', e);
   }
 
