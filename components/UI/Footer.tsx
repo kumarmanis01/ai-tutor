@@ -2,13 +2,14 @@
 
 import Link from 'next/link';
 import { useSession } from 'next-auth/react';
-import type { SessionUser } from '@/lib/types';
+import useCurrentUser from '@/hooks/useCurrentUser';
 
 export default function Footer() {
   const { data: session } = useSession();
+  const { data: profile } = useCurrentUser();
 
-  // Type guard for SessionUser
-  const isAdmin = session && session.user && (session.user as SessionUser).role === 'admin';
+  // Prefer canonical profile role if available, otherwise fall back to session role.
+  const isAdmin = profile?.role === 'admin' || (!!session?.user && (session.user as any).role === 'admin');
 
   return (
     <footer className="w-full bg-gray-100 border-t mt-1">

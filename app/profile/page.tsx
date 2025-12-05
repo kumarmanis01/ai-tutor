@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import dynamic from 'next/dynamic';
 import { useSession } from 'next-auth/react';
 import Avatar from '@/components/UI/Avatar';
@@ -7,38 +7,16 @@ import type { User } from '@/lib/types';
 import ProfileWidgets from '@/components/ProfileWidgets';
 import { extractBadges } from '@/lib/extractBadge';
 import AuthRedeemOnSignIn from '@/components/AuthRedeemOnSignIn';
+import useCurrentUser from '@/hooks/useCurrentUser';
 
 const OnboardingPage = dynamic(() => import('../onboarding/page'), { ssr: false });
 
 export default function ProfilePage() {
   const { data: session } = useSession();
-  const [profile, setProfile] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { data: profile, loading } = useCurrentUser();
   const [showOnboarding, setShowOnboarding] = useState(false);
 
-  const badges = extractBadges(profile);
-
-  useEffect(() => {
-    let mounted = true;
-    async function fetchProfile() {
-      try {
-        const res = await fetch('/api/user/profile');
-        if (res.ok) {
-          const data = await res.json();
-          if (mounted) setProfile(data);
-        }
-      } catch {
-        // ignore fetch errors; profile remains null
-      } finally {
-        if (mounted) setLoading(false);
-      }
-    }
-    if (session) fetchProfile();
-    else setLoading(false);
-    return () => {
-      mounted = false;
-    };
-  }, [session]);
+  const badges = extractBadges(profile as User | null);
 
   if (!session) return <div className="p-6">You are not signed in.</div>;
   if (loading) return <div className="p-6">Loading...</div>;
@@ -61,6 +39,7 @@ export default function ProfilePage() {
   }
 
   const fallback =
+    profile?.name?.charAt(0).toUpperCase() ||
     session.user?.name?.charAt(0).toUpperCase() ||
     session.user?.email?.charAt(0).toUpperCase() ||
     '?';
@@ -76,13 +55,13 @@ export default function ProfilePage() {
           {/* Profile Header */}
           <div className="flex flex-col items-center mb-8">
             <Avatar
-              src={session.user?.image || undefined}
-              alt={session.user?.name || session.user?.email || 'User avatar'}
+              src={profile?.image ?? session.user?.image ?? undefined}
+              alt={profile?.name ?? session.user?.name ?? session.user?.email ?? 'User avatar'}
               size={80}
               fallback={fallback}
             />
-            <h1 className="text-3xl font-bold mt-2">{session.user?.name}</h1>
-            <p className="text-gray-500 dark:text-gray-400">{session.user?.email}</p>
+            <h1 className="text-3xl font-bold mt-2">{profile?.name ?? session.user?.name}</h1>
+            <p className="text-gray-500 dark:text-gray-400">{profile?.email ?? session.user?.email}</p>
             <button
               type="button"
               className="mt-4 px-5 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"

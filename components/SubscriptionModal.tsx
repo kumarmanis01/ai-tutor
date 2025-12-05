@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import { signIn, useSession } from 'next-auth/react';
+import useCurrentUser from '@/hooks/useCurrentUser';
 import PricingCard from '@/components/PricingCard';
 import { PRICES, BILLING_MONTHLY, BILLING_ANNUAL } from '@/app/api/billing/constants';
 import { getBillingPayload } from '@/app/api/billing/utility';
@@ -13,6 +14,8 @@ type Props = {
 
 export default function SubscriptionModal({ open, onClose }: Props) {
   const { data: session } = useSession();
+  // Prefer canonical user info when available
+  const { data: profile } = useCurrentUser();
   const [plan, setPlan] = useState<'pro' | 'enterprise'>('pro');
   const [billing, setBilling] = useState<'monthly' | 'annual'>('monthly');
   const [loading, setLoading] = useState(false);
@@ -55,8 +58,8 @@ export default function SubscriptionModal({ open, onClose }: Props) {
           window.location.href = '/profile';
         },
         prefill: {
-          name: session.user?.name ?? 'User',
-          email: session.user?.email ?? data.email ?? '',
+          name: profile?.name ?? session.user?.name ?? 'User',
+          email: profile?.email ?? session.user?.email ?? data.email ?? '',
         },
         theme: { color: '#2563eb' },
       };

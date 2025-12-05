@@ -1,6 +1,8 @@
 import React from 'react';
 import '../styles/index.css';
 import Providers from './providers';
+import { GlobalLoaderProvider } from '@/context/GlobalLoaderProvider';
+import AuthSessionLoader from '@/components/AuthSessionLoader';
 
 export const viewport = {
   width: 'device-width',
@@ -24,7 +26,10 @@ export default function RootLayout({
     <html lang="en" className="h-full">
       <body className="min-h-screen h-full">
         <Providers>
-          {children}
+          <GlobalLoaderProvider>
+            <AuthSessionLoader />
+            {children}
+          </GlobalLoaderProvider>
         </Providers>
 
         {/* <script

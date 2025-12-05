@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useSession, signOut } from 'next-auth/react';
 import { useState, useEffect } from 'react';
+import useCurrentUser from '@/hooks/useCurrentUser';
 import AuthModal from './AuthModal';
 import Avatar from '@/components/UI/Avatar';
 
@@ -15,6 +16,7 @@ import Avatar from '@/components/UI/Avatar';
  */
 export default function Navbar() {
   const { data: session, status } = useSession();
+  const { data: profile } = useCurrentUser();
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [darkMode, setDarkMode] = useState(false);
   const [hasActiveSubscription, setHasActiveSubscription] = useState(false);
@@ -116,11 +118,13 @@ export default function Navbar() {
             <div className="flex items-center gap-3">
               <Link href="/profile" className="group">
                 <Avatar
-                  src={session.user?.image || undefined}
+                  src={(profile?.image ?? session.user?.image) || undefined}
                   alt="User avatar"
                   size={32}
                   fallback={
-                    session.user?.name
+                    profile?.name
+                      ? profile.name.charAt(0).toUpperCase()
+                      : session.user?.name
                       ? session.user.name.charAt(0).toUpperCase()
                       : session.user?.email?.charAt(0).toUpperCase()
                   }

@@ -1,9 +1,9 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import TopBar from './TopBar';
 import useCurrentUser from '@/hooks/useCurrentUser';
-import LoadingSpinner from '@/components/UI/LoadingSpinner';
+import { useGlobalLoader } from '@/context/GlobalLoaderProvider';
 import QuickInputBox from './QuickInputBox';
 import ChatPanel from './ChatPanel';
 import ContinueLearning from './ContinueLearning';
@@ -20,12 +20,23 @@ const StudentHomeDashboard: React.FC<StudentHomeDashboardProps> = () => {
   const [messages, setMessages] = useState<{ id: string; from: 'user' | 'ai'; text: string; language?: string; suggestions?: string[] }[]>([]);
   const { data: profile, loading } = useCurrentUser();
   const studentName = profile?.name ?? 'Student';
+  const { startLoading, stopLoading } = useGlobalLoader();
 
-  if (loading && !profile) {
-    return (
-      <LoadingSpinner size={64} label="Loading your dashboard…" />
-    );
-  }
+  // Use global loader overlay while canonical profile is being fetched.
+  useEffect(() => {
+    if (loading && !profile) {
+      try {
+        startLoading('Loading your dashboard…');
+      } catch {}
+    } else {
+      try {
+        stopLoading();
+      } catch {}
+    }
+    return () => {
+      try { stopLoading(); } catch {}
+    };
+  }, [loading, profile, startLoading, stopLoading]);
 
   return (
     <div className="min-h-screen bg-background flex flex-col">

@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { signIn, useSession } from 'next-auth/react';
 import Icon from '@/components/UI/AppIcon';
 import useCurrentUser from '@/hooks/useCurrentUser';
+import { useGlobalLoader } from '@/context/GlobalLoaderProvider';
 
 interface FormData {
   phone: string;
@@ -70,8 +71,12 @@ const SignupFormWidget = () => {
 
   const router = useRouter();
   const { mutate: mutateCurrentUser } = useCurrentUser();
+  const { startLoading, stopLoading } = useGlobalLoader();
+  const [submitting, setSubmitting] = useState(false);
 
   const handleSubmit = async () => {
+    setSubmitting(true);
+    startLoading('Saving profile...');
     try {
       const res = await fetch('/api/user/onboarding', {
         method: 'POST',
@@ -103,6 +108,9 @@ const SignupFormWidget = () => {
     } catch (err) {
       console.error('onboarding submit error', err);
       alert('Failed to complete signup');
+    } finally {
+      setSubmitting(false);
+      stopLoading();
     }
   };
 
@@ -327,18 +335,18 @@ const SignupFormWidget = () => {
               </div>
 
               <div className="flex justify-end">
-                <button
-                  onClick={() => {
-                    if (!formData.name?.trim()) return alert('Name is required');
-                    if (!formData.childClass) return alert('Please select a class');
-                    // Prepare payload with phone and token
-                    handleSubmit();
-                  }}
-                  disabled={!formData.childClass || !formData.name?.trim()}
-                  className="px-6 py-2 bg-primary text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  Start Learning!
-                </button>
+                  <button
+                    onClick={() => {
+                      if (!formData.name?.trim()) return alert('Name is required');
+                      if (!formData.childClass) return alert('Please select a class');
+                      // Prepare payload with phone and token
+                      handleSubmit();
+                    }}
+                    disabled={submitting || !formData.childClass || !formData.name?.trim()}
+                    className="px-6 py-2 bg-primary text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {submitting ? 'Saving...' : 'Start Learning!'}
+                  </button>
               </div>
             </div>
           )}
