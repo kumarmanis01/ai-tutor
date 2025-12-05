@@ -66,7 +66,9 @@ const QuickInputBox: React.FC<QuickInputBoxProps> = ({ onReply, onError, initial
         cancelled = true;
       };
     }, [initialPreferredLang]);
-    const [showLangMenu, setShowLangMenu] = useState(false);
+    // Separate menu state so the Speak button menu and the Text-input menu do not conflict
+    const [showLangMenuVoice, setShowLangMenuVoice] = useState(false);
+    const [showLangMenuText, setShowLangMenuText] = useState(false);
     const [detectionPrompt, setDetectionPrompt] = useState<null | { lang: string; label: string }>(null);
     const fileInputRef = useRef<HTMLInputElement | null>(null);
     const [images, setImages] = useState<{ id: string; url: string; uploading: boolean }[]>([]);
@@ -111,7 +113,7 @@ const QuickInputBox: React.FC<QuickInputBoxProps> = ({ onReply, onError, initial
           fetch('/api/user/language', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ language: tag }) }).catch(() => {});
         } catch {}
       } catch {}
-      setShowLangMenu(false);
+      setShowLangMenuText(false);
     };
 
     const favSelected = favorites.includes(preferredLang);
@@ -326,7 +328,7 @@ const QuickInputBox: React.FC<QuickInputBoxProps> = ({ onReply, onError, initial
   };
 
   // Toggle small language menu (used by speak button)
-  const toggleLangMenu = () => setShowLangMenu((s) => !s);
+  const toggleLangMenuVoice = () => setShowLangMenuVoice((s) => !s);
 
   const languageOptions: { value: string; label: string }[] = [
     { value: 'auto', label: 'Auto (browser)' },
@@ -568,7 +570,7 @@ const QuickInputBox: React.FC<QuickInputBoxProps> = ({ onReply, onError, initial
             type="button"
             onClick={(e) => {
               e.stopPropagation();
-              toggleLangMenu();
+              toggleLangMenuVoice();
             }}
             aria-label="Change language"
             className="absolute -top-1 -right-1 bg-card border border-border rounded-full p-1 shadow-sm"
@@ -579,7 +581,7 @@ const QuickInputBox: React.FC<QuickInputBoxProps> = ({ onReply, onError, initial
             </svg>
           </button>
 
-          {showLangMenu && (
+          {showLangMenuVoice && (
             <div className="absolute right-0 mt-2 z-50">
               <LanguageSelector
                 lang={mapTagToName(preferredLang)}
@@ -594,7 +596,7 @@ const QuickInputBox: React.FC<QuickInputBoxProps> = ({ onReply, onError, initial
                       fetch('/api/user/language', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ language: tag }) }).catch(() => {});
                     } catch {}
                   } catch {}
-                  setShowLangMenu(false);
+                  setShowLangMenuVoice(false);
                 }}
               />
             </div>
@@ -621,7 +623,7 @@ const QuickInputBox: React.FC<QuickInputBoxProps> = ({ onReply, onError, initial
           <div className="inline-flex items-center gap-2">
             <button
               type="button"
-              onClick={() => setShowLangMenu(true)}
+              onClick={(e) => { e.stopPropagation(); setShowLangMenuText(true); }}
               className="px-3 py-1 rounded border border-border text-sm bg-card flex items-center gap-2"
               title="Select language"
             >
@@ -642,9 +644,9 @@ const QuickInputBox: React.FC<QuickInputBoxProps> = ({ onReply, onError, initial
           </div>
         </div>
       </div>
-      {showLangMenu && (
+      {showLangMenuText && (
         <div className="absolute z-50">
-          <LanguageSelector lang={mapTagToName(preferredLang)} setLang={handleSelectorPick} />
+          <LanguageSelector lang={mapTagToName(preferredLang)} setLang={(name: string) => { handleSelectorPick(name); setShowLangMenuText(false); }} />
         </div>
       )}
       <div className="mb-3">
