@@ -1,6 +1,5 @@
 import { prisma } from '@/lib/db';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
+import { getServerSessionForHandlers } from '@/lib/session';
 import { Prisma } from '@prisma/client';
 
 /**
@@ -14,7 +13,7 @@ export async function logEvent(
   metadata: Prisma.InputJsonValue = {}, // Ensure metadata matches Prisma's InputJsonValue type
 ): Promise<void> {
   try {
-    const session = await getServerSession(authOptions);
+    const session = await getServerSessionForHandlers();
     const userId = session?.user?.id;
 
     // Ensure userId exists in the User table

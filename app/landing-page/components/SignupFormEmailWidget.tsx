@@ -2,11 +2,12 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { signIn, useSession } from 'next-auth/react';
 import Icon from '@/components/UI/AppIcon';
-import OtpProviderForm from '@/components/Auth/OtpProviderForm';
 
 interface FormData {
   phone: string;
+  email?: string;
   otp: string;
   childClass: string;
   subjects: string[];
@@ -28,33 +29,23 @@ const SignupFormWidget = () => {
     board: undefined,
   });
 
-  const [widgetToken, setWidgetToken] = useState<string | null>(null);
-  const [widgetError, setWidgetError] = useState<string | null>(null);
+  const { data: session } = useSession();
+  const [signingWithGoogle, setSigningWithGoogle] = useState(false);
 
-  useEffect(() => {
-    // hydration not required for this component logic
-    // Fetch widget token from server endpoint
-    (async () => {
-      try {
-        const res = await fetch('/api/msg91/widget-token');
-        const json = await res.json().catch(() => ({}));
-        if (res.ok && json?.token) {
-          setWidgetToken(String(json.token));
-        } else {
-          setWidgetError(json?.message || 'Widget token not available');
-          console.warn('widget-token:', json);
-        }
-      } catch (e) {
-        setWidgetError(String(e));
-        console.warn('Error fetching widget token', e);
-      }
-    })();
-  }, []);
+  // NOTE: OTP/widget flow removed — keep `widgetToken` state only if needed later.
 
+  // When session becomes available (after Google / Email sign-in), auto-fill
+  // available profile fields and move to step 3 to collect grade/board/language.
   useEffect(() => {
-    if (widgetError) console.warn('[SignupFormWidget] Widget error:', widgetError);
-    if (widgetToken) console.info('[SignupFormWidget] Found widget token:', widgetToken);
-  }, [widgetError, widgetToken]);
+    if (!session?.user) return;
+    setFormData((p) => ({
+      ...p,
+      name: p.name || (session.user?.name ?? ''),
+      email: p.email || (session.user?.email ?? ''),
+    }));
+    // Advance to step 3 (collect class/board/subjects) using functional update
+    setStep((s) => (s < 3 ? 3 : s));
+  }, [session]);
 
   const subjects = [
     'Mathematics',
@@ -85,6 +76,7 @@ const SignupFormWidget = () => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           phone: formData.phone,
+          email: formData.email ?? null,
           name: formData.name,
           class_grade: Number(formData.childClass) || null,
           board: formData.board,
@@ -158,56 +150,59 @@ const SignupFormWidget = () => {
 
           {step === 1 && (
             <div className="space-y-6">
-                <OtpProviderForm
-                  widgetId="356b44674c70383033393134"
-                  tokenAuth={widgetToken ?? '{token}'}
-                  identifier={formData.phone}
-                  onIdentifierChange={(id) => setFormData((p) => ({ ...p, phone: id }))}
-                  autoVerify={false}
-                  onSuccess={(result) => {
-                    // result may be the structured { raw, token, phone } we now return
-                    console.info('[SignupFormWidget] otp onSuccess', result);
-                    // extract token: widget sometimes nests it under raw.message
-                    let token = result?.token;
-                    if (!token && result?.raw) {
-                      const raw = result.raw;
-                      if (typeof raw === 'string') token = raw;
-                      else if (raw?.message && typeof raw.message === 'string') token = raw.message;
-                    }
-                    // Extract phone if provider returned it; otherwise rely on identifier callback
-                    const phone = result?.phone ?? (result?.raw && (result?.raw?.identifier || result?.raw?.mobile || result?.raw?.phone));
-                    if (phone) setFormData((p) => ({ ...p, phone }));
-                    if (token) setFormData((p) => ({ ...p, token }));
-                    // If token exists and autoVerify is false, we can call verify here and log response
-                    if (token) {
-                      (async () => {
-                        try {
-                          console.info('[SignupFormWidget] verifying token from widget', { tokenSnippet: String(token).slice(-8) });
-                          const r = await fetch('/api/msg91/verify-access-token', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ accessToken: token }) });
-                          const j = await r.json().catch(() => ({}));
-                          console.info('[SignupFormWidget] verify response', { status: r.status, ok: r.ok, body: j });
-                          // If verify succeeded and returned phone or user info, update formData
-                          if (r.ok && j?.phone) setFormData((p) => ({ ...p, phone: j.phone }));
-                          if (r.ok && j?.token) setFormData((p) => ({ ...p, token: j.token }));
-                        } catch (e) {
-                          console.warn('[SignupFormWidget] verify call failed', e);
-                        }
-                      })();
-                    }
-
-                    setStep(2);
-                  }}
-                  onFailure={(err) => {
-                    console.warn('[SignupFormWidget] otp widget failure', err);
-                    alert('OTP widget failed: ' + String(err));
-                  }}
-                />
-                {widgetError ? (
-                  <div className="text-sm text-destructive">Widget error: {String(widgetError)}</div>
-                ) : widgetToken ? (
-                  <div className="text-sm text-muted-foreground">Verification widget ready</div>
+                <div className="space-y-4 text-center">
+                  <button
+                    onClick={() => {
+                      setSigningWithGoogle(true);
+                      // redirect to onboarding after Google sign-in so user can complete profile
+                      signIn('google', { callbackUrl: '/onboarding' });
+                    }}
+                    className="w-full inline-flex items-center justify-center gap-2 px-4 py-2 border border-gray-300 rounded hover:bg-gray-50 bg-white text-gray-700 font-medium"
+                  >
+                    <svg width="18" height="18" viewBox="0 0 20 20" fill="none">
+                      <g>
+                        <path d="M19.6 10.23c0-.68-.06-1.36-.18-2H10v3.79h5.41a4.63 4.63 0 01-2.01 3.04v2.52h3.24c1.9-1.75 2.96-4.33 2.96-7.35z" fill="#4285F4" />
+                        <path d="M10 20c2.7 0 4.97-.89 6.63-2.41l-3.24-2.52c-.9.6-2.05.96-3.39.96-2.6 0-4.8-1.76-5.59-4.13H1.08v2.59A10 10 0 0010 20z" fill="#34A853" />
+                        <path d="M4.41 12.9A5.99 5.99 0 014.07 10c0-.99.18-1.95.34-2.9V4.51H1.08A10 10 0 000 10c0 1.64.4 3.19 1.08 4.51l3.33-2.61z" fill="#FBBC05" />
+                        <path d="M10 3.96c1.47 0 2.78.51 3.81 1.51l2.85-2.85C14.97.89 12.7 0 10 0A10 10 0 001.08 4.51l3.33 2.59C5.2 5.72 7.4 3.96 10 3.96z" fill="#EA4335" />
+                      </g>
+                    </svg>
+                    Continue with Google
+                  </button>
+                  <div className="text-sm text-muted-foreground">or continue with phone verification</div>
+                </div>
+                {/* If user chose Google sign-in or session exists, show redirect/continue UI.
+                    Otherwise render a simple phone input and allow proceeding to details. */}
+                {!signingWithGoogle && !session ? (
+                  <div className="space-y-4">
+                    <div className="text-sm text-left">Enter your phone (optional) to help us personalize:</div>
+                    <input
+                      type="tel"
+                      value={formData.phone}
+                      onChange={(e) => setFormData((p) => ({ ...p, phone: e.target.value }))}
+                      placeholder="Phone (optional)"
+                      className="w-full px-4 py-2 border rounded"
+                    />
+                    <div className="flex items-center justify-center gap-3">
+                      <button
+                        onClick={() => setStep(2)}
+                        className="px-6 py-2 bg-primary text-white rounded-lg"
+                      >
+                        Continue
+                      </button>
+                      <div className="text-sm text-muted-foreground">or continue with Google</div>
+                    </div>
+                  </div>
                 ) : (
-                  <div className="text-sm text-muted-foreground">Loading verification widget…</div>
+                  <div className="py-6 text-center text-sm text-muted-foreground">
+                    {session ? (
+                      <>
+                        Signed in as <strong>{session.user?.email || session.user?.name}</strong>. Continuing setup…
+                      </>
+                    ) : (
+                      <>Redirecting to Google for sign-in…</>
+                    )}
+                  </div>
                 )}
             </div>
           )}

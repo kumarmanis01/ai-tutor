@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
+import { getServerSessionForHandlers } from '@/lib/session';
 import { prisma } from '@/lib/db';
 import { SessionUser } from '@/lib/types';
 import { logApiUsage } from '@/utils/logApiUsage';
@@ -11,7 +10,7 @@ import { logApiUsage } from '@/utils/logApiUsage';
  */
 export async function POST(req: Request) {
   logApiUsage('/api/save-chats', 'POST');
-  const session = await getServerSession(authOptions);
+  const session = await getServerSessionForHandlers();
   if (!session) {
     return new Response('Unauthorized', { status: 401 });
   }

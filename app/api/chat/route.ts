@@ -11,8 +11,7 @@
  */
 
 import { NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
+import { getServerSessionForHandlers } from '@/lib/session';
 import { prisma } from '@/lib/db';
 import { subjectPrompts } from '@/lib/subjectEngines';
 import { isPremiumUser } from '@/lib/subscription';
@@ -24,7 +23,7 @@ import { parse as parseAcceptLanguage } from 'accept-language-parser';
 export async function POST(req: Request) {
   logApiUsage('/api/chat', 'POST');
   try {
-    const session = await getServerSession(authOptions);
+    const session = await getServerSessionForHandlers();
     if (!session) {
       return new Response('Unauthorized', { status: 401 });
     }

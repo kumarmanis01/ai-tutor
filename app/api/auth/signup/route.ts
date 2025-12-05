@@ -1,11 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import bcrypt from 'bcrypt';
-import type { SessionUser } from '@/lib/types';
+// Use explicit request body type instead of depending on SessionUser shape
 import { logger } from '@/lib/logger';
 import { logApiUsage } from '@/utils/logApiUsage';
 
-type SignupBody = Pick<SessionUser, 'name' | 'email' | 'parentEmail' | 'grade'> & {
+type SignupBody = {
+  name?: string;
+  email?: string;
+  parentEmail?: string | null;
+  grade?: string | null;
   profileImage?: string;
   password?: string;
   country?: string;

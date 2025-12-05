@@ -5,6 +5,7 @@ import Script from 'next/script';
 // import Navbar from '@/components/Navbar';
 // import Footer from '@/components/UI/Footer';
 import ThemeProvider from '@/components/UI/ThemeProvider';
+import OnboardingModal from '@/components/OnboardingModal';
 
 function AuthAwareLayout({ children }: { children: React.ReactNode }) {
   // const { data: session } = useSession();
@@ -29,6 +30,7 @@ export default function Providers({ children }: { children: React.ReactNode }) {
     <SessionProvider>
       <ThemeProvider>
         <AuthAwareLayout>{children}</AuthAwareLayout>
+        <OnboardingModal />
       </ThemeProvider>
     </SessionProvider>
   );

@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
+import { getServerSessionForHandlers } from '@/lib/session';
 import { prisma } from '@/lib/db';
 import { logApiUsage } from '@/utils/logApiUsage';
 import { checkProfanity } from '@/lib/guardrails';
@@ -49,7 +48,7 @@ export async function POST(req: Request) {
     // Optional session: if present, we'll persist transcripts and can apply limits later
     let sessionUserId: string | undefined;
     try {
-      const session = await getServerSession(authOptions as any);
+      const session = await getServerSessionForHandlers();
       if (session && (session as any).user && (session as any).user.id) {
         sessionUserId = (session as any).user.id as string;
         // persist user's question (best-effort)

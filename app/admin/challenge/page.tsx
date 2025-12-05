@@ -1,5 +1,4 @@
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
+import { getServerSessionForHandlers } from '@/lib/session';
 import AdminCreateChallenge from '@/components/AdminCreateChallenge';
 import React from 'react';
 
@@ -8,7 +7,7 @@ type SessionUserWithRole = {
 } & Record<string, unknown>;
 
 export default async function Page() {
-  const session = await getServerSession(authOptions);
+  const session = await getServerSessionForHandlers();
   if (!session?.user) return <div className="p-6">Sign in as admin to manage challenges.</div>;
 
   const user = session.user as SessionUserWithRole;

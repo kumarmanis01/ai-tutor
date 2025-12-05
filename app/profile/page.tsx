@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import dynamic from 'next/dynamic';
 import { useSession } from 'next-auth/react';
 import Avatar from '@/components/UI/Avatar';
-import { SessionUser } from '@/lib/types';
+import type { User } from '@/lib/types';
 import ProfileWidgets from '@/components/ProfileWidgets';
 import { extractBadges } from '@/lib/extractBadge';
 import AuthRedeemOnSignIn from '@/components/AuthRedeemOnSignIn';
@@ -12,7 +12,7 @@ const OnboardingPage = dynamic(() => import('../onboarding/page'), { ssr: false 
 
 export default function ProfilePage() {
   const { data: session } = useSession();
-  const [profile, setProfile] = useState<SessionUser | null>(null);
+  const [profile, setProfile] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [showOnboarding, setShowOnboarding] = useState(false);
 

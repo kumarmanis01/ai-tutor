@@ -17,7 +17,7 @@ interface StudentHomeDashboardProps { [key: string]: unknown }
 const StudentHomeDashboard: React.FC<StudentHomeDashboardProps> = () => {
   const [activeTab, setActiveTab] = useState<'home' | 'tests' | 'notes' | 'profile'>('home');
   
-  const { data: profile, loading } = useCurrentUser();
+  const { data: profile } = useCurrentUser();
   const studentName = profile?.name ?? 'Student';
 
   const [messages, setMessages] = useState<{ id: string; from: 'user' | 'ai'; text: string; language?: string; suggestions?: string[] }[]>([]);

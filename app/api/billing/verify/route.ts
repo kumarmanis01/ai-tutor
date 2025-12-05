@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
 import crypto from 'crypto';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
+import { getServerSessionForHandlers } from '@/lib/session';
 import { prisma } from '@/lib/prisma';
 import { SessionUser } from '@/lib/types';
 import nodemailer from 'nodemailer';
@@ -55,7 +54,7 @@ async function sendPaymentSuccessEmail(
 
 export async function POST(req: Request) {
   logApiUsage('/api/billing/verify', 'POST');
-  const session = await getServerSession(authOptions);
+  const session = await getServerSessionForHandlers();
   if (!session || !session.user) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }

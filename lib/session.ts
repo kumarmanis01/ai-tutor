@@ -3,6 +3,21 @@ import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 
 /**
+ * Session utilities
+ *
+ * Guidelines:
+ * - For server-side handlers (API routes, server components) prefer using
+ *   `getServerSessionForHandlers()` exported below. This centralizes the
+ *   import of `authOptions` and makes it easy to change session behavior
+ *   in one place.
+ * - For client-side code (browser components), use `useSession()` from
+ *   `next-auth/react` or the app's `useCurrentUser()` hook which fetches
+ *   the canonical `User` via `/api/user/profile`.
+ * - Do NOT call `getServerSession()` directly from many files. Use the
+ *   helper so session acquisition remains consistent and maintainable.
+ */
+
+/**
  * Utility to get the current authenticated session user and subscription status.
  * Returns an object with user info, hasActiveSubscription, and subscription details.
  * Usage (in API routes):
@@ -34,4 +49,10 @@ export async function getSessionUserWithSubscription() {
   const hasActiveSubscription = !!subscription;
 
   return { user, hasActiveSubscription, subscription };
+}
+
+// Lightweight wrapper so other server handlers can use a single source
+// of truth for acquiring NextAuth session without importing authOptions
+export async function getServerSessionForHandlers() {
+  return getServerSession(authOptions);
 }

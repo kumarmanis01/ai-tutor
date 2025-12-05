@@ -1,8 +1,7 @@
 import { NextResponse } from 'next/server';
 import { logApiUsage } from '@/utils/logApiUsage';
 import { logEvent } from '@/utils/logEvent';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
+import { getServerSessionForHandlers } from '@/lib/session';
 
 type RequestBody = {
   badgeId?: string;
@@ -20,7 +19,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'badgeId required' }, { status: 400 });
   }
 
-  const session = await getServerSession(authOptions);
+  const session = await getServerSessionForHandlers();
   if (!session || !session.user) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }

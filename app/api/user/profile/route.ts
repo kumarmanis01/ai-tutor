@@ -1,13 +1,12 @@
 import { NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth/next';
-import { authOptions } from '@/lib/auth';
+import { getServerSessionForHandlers } from '@/lib/session';
 import { prisma } from '@/lib/db';
 import { SessionUser } from '@/lib/types';
 import { logApiUsage } from '@/utils/logApiUsage';
 
 export async function GET() {
   logApiUsage('/api/user/profile', 'GET');
-  const session = await getServerSession(authOptions);
+  const session = await getServerSessionForHandlers();
   if (!session) {
     return new Response('Unauthorized', { status: 401 });
   }
@@ -43,6 +42,10 @@ export async function GET() {
     email: savedUser?.email ?? '',
     country: savedUser?.country ?? '',
     language: savedUser?.language ?? 'en',
+    // include student-specific fields so clients can detect incomplete profiles
+    grade: savedUser?.grade ?? null,
+    board: savedUser?.board ?? null,
+    subjects: savedUser?.subjects ?? [],
     createdAt: savedUser?.createdAt ?? null,
     role: savedUser?.role ?? '',
     parentEmail: savedUser?.parentEmail ?? '',

@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
+import { getServerSessionForHandlers } from '@/lib/session';
 import { razorpay } from '@/lib/payments';
 import { SessionUser } from '@/lib/types';
 import { logger } from '@/lib/logger';
@@ -23,7 +22,7 @@ import { logApiUsage } from '@/utils/logApiUsage';
 
 export async function POST(req: Request) {
   logApiUsage('/api/billing/checkout', 'POST');
-  const session = await getServerSession(authOptions);
+  const session = await getServerSessionForHandlers();
   if (!session) {
     logger.add('Unauthorized: No session found.');
     return new Response('Unauthorized', { status: 401 });

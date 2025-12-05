@@ -1,10 +1,9 @@
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
+import { getServerSessionForHandlers } from '@/lib/session';
 import { SessionUser } from '@/lib/types';
 import { redirect } from 'next/navigation';
 
 export default async function AdminPage() {
-  const session = await getServerSession(authOptions);
+  const session = await getServerSessionForHandlers();
   if (!session) {
     // Redirect to sign-in page if not authenticated
     // redirect('/api/auth/signin');

@@ -1,13 +1,12 @@
 // Removed duplicate implementation
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth/next';
-import { authOptions } from '@/lib/auth';
+import { getServerSessionForHandlers } from '@/lib/session';
 import { prisma } from '@/lib/prisma';
 import { logApiUsage } from '@/utils/logApiUsage';
 
 export async function POST(req: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
+    const session = await getServerSessionForHandlers();
     logApiUsage('/api/user/onboarding-phone', 'POST', session?.user?.id);
     // We rely on a valid NextAuth session for authenticated flows. If the
     // client is not signed in yet but submitted a `phone` in the body, we

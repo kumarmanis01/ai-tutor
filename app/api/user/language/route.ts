@@ -1,12 +1,11 @@
 import { NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
+import { getServerSessionForHandlers } from '@/lib/session';
 import { prisma } from '@/lib/db';
 import { SessionUser } from '@/lib/types';
 
 export async function GET() {
   try {
-    const session = await getServerSession(authOptions);
+    const session = await getServerSessionForHandlers();
     if (!session) return NextResponse.json({ language: null });
     const user = session.user as SessionUser;
     if (!user?.id) return NextResponse.json({ language: null });
@@ -20,7 +19,7 @@ export async function GET() {
 
 export async function POST(req: Request) {
   try {
-    const session = await getServerSession(authOptions);
+    const session = await getServerSessionForHandlers();
     if (!session) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
     const user = session.user as SessionUser;
     if (!user?.id) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });

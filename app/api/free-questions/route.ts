@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
+import { getServerSessionForHandlers } from '@/lib/session';
 import { prisma } from '@/lib/prisma';
 import { SessionUser } from '@/lib/types';
 import { isPremiumUser } from '@/lib/subscription';
@@ -21,7 +20,7 @@ const DAILY_FREE_LIMIT = Number(process.env.NEXT_PUBLIC_DAILY_FREE_LIMIT ?? 3);
 export async function GET() {
   logApiUsage('/api/free-questions', 'GET');
   try {
-    const session = await getServerSession(authOptions);
+    const session = await getServerSessionForHandlers();
     if (!session) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
 
     const userId = (session.user as SessionUser)?.id;
@@ -50,7 +49,7 @@ export async function GET() {
 export async function POST() {
   logApiUsage('/api/free-questions', 'POST');
   try {
-    const session = await getServerSession(authOptions);
+    const session = await getServerSessionForHandlers();
     if (!session) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
 
     const userId = (session.user as SessionUser)?.id;

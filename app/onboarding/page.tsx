@@ -70,7 +70,8 @@ export default function OnboardingPage() {
       });
       const data = await res.json();
       if (res.ok) {
-        window.location.replace('/');
+        // After onboarding, take the user to the student dashboard
+        window.location.replace('/student-home-dashboard');
       } else {
         setError(data.error || 'Failed to save. Please try again.');
         setSaving(false);

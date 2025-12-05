@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
+import { getServerSessionForHandlers } from '@/lib/session';
 import { SessionUser } from '@/lib/types';
 import { isPremiumUser } from '@/lib/subscription';
 import { logApiUsage } from '@/utils/logApiUsage';
@@ -9,7 +8,7 @@ export async function GET() {
   logApiUsage('/api/subscription/status', 'GET');
 
   try {
-    const session = await getServerSession(authOptions);
+    const session = await getServerSessionForHandlers();
     if (!session) {
       return new Response('Unauthorized', { status: 401 });
     }

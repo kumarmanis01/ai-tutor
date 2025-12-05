@@ -8,7 +8,7 @@ import ProblemSection from './ProblemSection';
 import TestimonialsSection from './TestimonialsSection';
 import PricingSection from './PricingSection';
 import FAQSection from './FAQSection';
-import SignupFormWidget from './SignupFormWidget';
+import SignupFormEmailWidget from './SignupFormEmailWidget';
 import FinalCTA from './FinalCTA';
 import Footer from './Footer';
 
@@ -27,11 +27,11 @@ const LandingPageInteractive = () => {
         <HeroSection onDemoClick={handleDemoClick} />
         <TrustBar />
         <ProblemSection />
-        <SignupFormWidget />
+        <SignupFormEmailWidget />
         <TestimonialsSection />
         <PricingSection />
         <FAQSection />
-        <SignupFormWidget />
+        <SignupFormEmailWidget />
         <FinalCTA />
       </main>
       <Footer />

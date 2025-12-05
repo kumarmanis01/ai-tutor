@@ -113,18 +113,13 @@ export const authOptions: NextAuthOptions = {
         // Compare the entered password with the stored hash
         const isValid = await bcrypt.compare(credentials.password, user.passwordHash);
         if (!isValid) return null;
-        // Return user info for the session
+        // Return minimal identity for the session; full profile is fetched by the client
         return {
           id: user.id,
           name: user.name,
           email: user.email,
           image: user.image,
           role: user.role,
-          parentEmail: user.parentEmail,
-          grade: user.grade,
-          country: user.country,
-          language: user.language,
-          createdAt: user.createdAt ? user.createdAt.toISOString() : null,
         };
       },
     }),
@@ -185,6 +180,22 @@ export const authOptions: NextAuthOptions = {
   callbacks: {
     // This runs when a user signs in (login or signup)
     async signIn({ user }) {
+      try {
+        // Ensure a DB user record exists (create if missing). Use email as unique key.
+        if (user?.email) {
+          await prisma.user.upsert({
+            where: { email: user.email },
+            update: {},
+            create: {
+              email: user.email!,
+              name: user.name ?? undefined,
+              image: user.image ?? undefined,
+            },
+          });
+        }
+      } catch (err) {
+        console.warn('signIn upsert user failed', err);
+      }
       await maybeSendWelcomeEmail(user.email!, user.name ?? undefined).catch((err) =>
         console.error('Error in maybeSendWelcomeEmail:', err),
       );
@@ -207,36 +218,27 @@ export const authOptions: NextAuthOptions = {
     },
     // This shapes the JWT token with user info
     async jwt({ token, user }) {
+      // Only store minimal identity in the token to keep session small.
       if (user) {
-        console.log('JWT callback activated for user:', user.email!);
         token.id = user.id;
         token.name = user.name;
         token.email = user.email;
         token.image = user.image;
         if ('role' in user) token.role = user.role;
-        if ('parentEmail' in user) token.parentEmail = user.parentEmail;
-        if ('grade' in user) token.grade = user.grade;
-        if ('country' in user) token.country = user.country;
-        if ('language' in user) token.language = user.language;
-        if ('createdAt' in user) token.createdAt = user.createdAt;
       }
       return token;
     },
     // This shapes the session object sent to the client
     async session({ session, token }) {
       if (session.user) {
+        // Keep session.user minimal (SessionUser). Full profile is fetched via `/api/user/profile`.
         session.user.id = token.id as string;
         session.user.name = token.name as string;
         session.user.email = token.email as string;
         session.user.image = token.image as string;
         session.user.role = token.role as string;
-        session.user.parentEmail = token.parentEmail as string;
-        session.user.grade = token.grade as string;
-        session.user.country = token.country as string;
-        session.user.language = token.language as string;
-        session.user.createdAt = token.createdAt as string;
 
-        console.log('JWT callback activated for user:', session.user.email!);
+        console.log('session callback populated minimal session for:', session.user.email!);
         // Call the standalone method to handle welcome email logic
         await maybeSendWelcomeEmail(session.user.email!, session.user.name ?? undefined);
       }
