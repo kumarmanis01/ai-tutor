@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
+import { toast } from '@/lib/toast';
 
 interface UserRow {
   id: string;
@@ -50,7 +51,7 @@ export default function AdminUsers() {
     if (res.ok) {
       setUsers((prev) => prev.filter((u) => u.id !== id));
     } else {
-      alert('Failed to delete user.');
+      toast('Failed to delete user.');
     }
     setDeletingId(null);
   };

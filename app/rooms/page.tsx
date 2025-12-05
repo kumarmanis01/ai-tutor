@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
+import { toast } from '@/lib/toast';
 import Link from 'next/link';
 import { Room, UserRole, RoomMember } from '@/types/rooms';
 import Leaderboard from '@/components/Leaderboard';
@@ -72,9 +73,9 @@ export default function RoomsPage() {
     });
     setRequestingRoomId(null);
     if (res.ok) {
-      alert('Request sent to room admin!');
+      toast('Request sent to room admin!');
     } else {
-      alert('Unable to send request. Please try again.');
+      toast('Unable to send request. Please try again.');
     }
   };
 
@@ -96,10 +97,10 @@ export default function RoomsPage() {
     setRequestingClassroom(false);
     if (res.ok) {
       const data = await res.json();
-      alert(`Classroom "${data.name}" created!`);
+      toast(`Classroom "${data.name}" created!`);
       setRooms((prev) => [...prev, data]);
     } else {
-      alert('Unable to request classroom. Please try again.');
+      toast('Unable to request classroom. Please try again.');
     }
   };
 

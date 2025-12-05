@@ -1,6 +1,7 @@
 // components/ExportButtons.tsx
 "use client";
 import React, { useState } from "react";
+import { toast } from '@/lib/toast';
 
 /**
  * Props:
@@ -37,7 +38,7 @@ export default function ExportButtons({
       URL.revokeObjectURL(url);
     } catch (err) {
       console.error("export error", err);
-      alert("Export failed. Try again.");
+      toast("Export failed. Try again.");
     } finally {
       setLoading(false);
     }

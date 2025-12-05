@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
+import { toast } from '@/lib/toast';
 
 type Challenge = {
   id: string;
@@ -43,7 +44,7 @@ export default function WeeklyChallenge() {
       body: JSON.stringify({ challengeId: challenge.id, score: 100 }),
     });
     setLoading(false);
-    alert('✅ Challenge completed! Rewards applied.');
+    toast('✅ Challenge completed! Rewards applied.');
   };
 
   if (!challenge) return null;

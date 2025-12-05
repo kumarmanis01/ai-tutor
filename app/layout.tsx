@@ -3,6 +3,7 @@ import '../styles/index.css';
 import Providers from './providers';
 import { GlobalLoaderProvider } from '@/context/GlobalLoaderProvider';
 import AuthSessionLoader from '@/components/AuthSessionLoader';
+import ToastHost from '@/components/ToastHost';
 
 export const viewport = {
   width: 'device-width',
@@ -28,7 +29,8 @@ export default function RootLayout({
         <Providers>
           <GlobalLoaderProvider>
             <AuthSessionLoader />
-            {children}
+              {children}
+              <ToastHost />
           </GlobalLoaderProvider>
         </Providers>
 

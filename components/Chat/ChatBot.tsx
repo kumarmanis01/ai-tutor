@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useRef, useMemo } from 'react';
 import analyticsClient from '@/lib/analyticsClient';
+import { toast } from '@/lib/toast';
 import { useSession } from 'next-auth/react';
 import useCurrentUser from '@/hooks/useCurrentUser';
 import ChatMessagesContainer from './ChatMessagesContainer';
@@ -206,7 +207,7 @@ export default function ChatBot() {
             return;
           }
           // Non-specific error — show a friendly message and abort
-          alert('Unable to decrement free question quota. Please try again later.');
+          toast('Unable to decrement free question quota. Please try again later.');
           return;
         }
 
@@ -219,7 +220,7 @@ export default function ChatBot() {
         } catch {}
       } catch (err) {
         console.error('Error decrementing free-questions quota', err);
-        alert('Unable to verify question quota. Please try again later.');
+        toast('Unable to verify question quota. Please try again later.');
         return;
       }
 
@@ -268,12 +269,12 @@ export default function ChatBot() {
         if (data.error === 'free_limit_reached') {
           setShowSubscriptionSubModal(true);
         } else if (data.error === 'profanity_detected') {
-          alert(
+          toast(
             data.message ||
               "I understand that you're frustrated, and I want to help. However, I must ask that we keep the conversation respectful and avoid using inappropriate language for me to assist you effectively",
           );
         } else {
-          alert(data.message || 'Error asking question.');
+          toast(data.message || 'Error asking question.');
         }
       } else {
         const userMsg: ChatMessage = {

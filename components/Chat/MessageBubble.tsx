@@ -80,6 +80,7 @@ const languageVoiceMap: Record<
 };
 
 import analyticsClient from '@/lib/analyticsClient';
+import { toast } from '@/lib/toast';
 
 export default function MessageBubble({ role, content, volume, lang, suggestions, messageId }: Props) {
   const isUser = role === "user";
@@ -122,7 +123,7 @@ export default function MessageBubble({ role, content, volume, lang, suggestions
   const handleSpeak = () => {
     if (!content || !content.trim()) return;
     if (!window.speechSynthesis) {
-      alert("Speech synthesis is not supported in this browser.");
+      toast("Speech synthesis is not supported in this browser.");
       return;
     }
     window.speechSynthesis.cancel();
@@ -143,8 +144,8 @@ export default function MessageBubble({ role, content, volume, lang, suggestions
     }
     if (selectedVoice) {
       utter.voice = selectedVoice;
-    } else {
-      alert(
+      } else {
+      toast(
         `No voice found for language: ${langConfig.lang}. Please install a suitable voice or try a different browser.`,
       );
       setIsSpeaking(false);

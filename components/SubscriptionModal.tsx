@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import { toast } from '@/lib/toast';
 import { signIn, useSession } from 'next-auth/react';
 import useCurrentUser from '@/hooks/useCurrentUser';
 import PricingCard from '@/components/PricingCard';
@@ -38,7 +39,7 @@ export default function SubscriptionModal({ open, onClose }: Props) {
       });
       const data = await res.json();
       if (!data || !data.subscriptionId) {
-        alert('Unable to create subscription.');
+        toast('Unable to create subscription.');
         setLoading(false);
         return;
       }
@@ -70,13 +71,13 @@ export default function SubscriptionModal({ open, onClose }: Props) {
         if (!RazorpayCtor) throw new Error('Razorpay not available on window');
         const rzp = new RazorpayCtor(options);
         rzp.open();
-      } catch (err) {
+        } catch (err) {
         console.error('Error opening Razorpay:', err);
-        alert('Failed to open payment gateway.');
+        toast('Failed to open payment gateway.');
       }
     } catch (err) {
       console.error('subscribe client error', err);
-      alert('Subscription failed.');
+      toast('Subscription failed.');
     } finally {
       setLoading(false);
     }

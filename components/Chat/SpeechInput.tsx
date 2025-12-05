@@ -1,4 +1,5 @@
 import React, { useState, useRef } from 'react';
+import { toast } from '@/lib/toast';
 
 type SpeechRecognitionEvent = {
   resultIndex: number;
@@ -35,6 +36,7 @@ export default function SpeechInput({
 }) {
   const [isListening, setIsListening] = useState(false);
   const [interimTranscript, setInterimTranscript] = useState('');
+  // use global toast helper instead of local state
   const recognitionRef = useRef<SpeechRecognitionType | null>(null);
 
   // Mic SVG icon
@@ -96,6 +98,10 @@ export default function SpeechInput({
           'Speech recognition is not supported in this browser. Try Chrome or Edge, and check microphone permissions.',
         );
       }
+      // Dispatch a global toast
+      try {
+        toast('Speech recognition is not supported in this browser.');
+      } catch {}
       return;
     }
     // Use 'as any' to avoid TS2351 error and satisfy lint rules
@@ -148,6 +154,9 @@ export default function SpeechInput({
         message = `Speech recognition error: ${e.error}`;
       }
       if (onError) onError(message);
+      try {
+        toast(message);
+      } catch {}
     };
     recognition.onend = () => {
       setIsListening(false);
@@ -201,6 +210,8 @@ export default function SpeechInput({
           <StopIcon />
         </button>
       )}
+      {/* Toast: shows brief messages about speech availability/errors */}
+      {/* Note: toasts are handled by the global ToastHost component */}
     </div>
   );
 }

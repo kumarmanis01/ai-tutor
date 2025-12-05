@@ -1,5 +1,6 @@
 'use client';
 import React from 'react';
+import { toast } from '@/lib/toast';
 
 interface RazorpayResponse {
   razorpay_payment_id: string;
@@ -43,7 +44,7 @@ export default function BillingButton({ provider }: { provider: 'stripe' | 'razo
         description: 'Pro Subscription',
         order_id: order.id,
         handler: function (response: RazorpayResponse) {
-          alert('Payment successful: ' + response.razorpay_payment_id);
+          toast('Payment successful: ' + response.razorpay_payment_id);
         },
         prefill: { name: 'User', email: 'user@example.com' },
       };

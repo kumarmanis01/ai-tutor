@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { toast } from '@/lib/toast';
 import { useRouter } from 'next/navigation';
 import Icon from '@/components/UI/AppIcon';
 import OtpProviderForm from '@/components/Auth/OtpProviderForm';
@@ -95,13 +96,13 @@ const SignupFormWidget = () => {
       });
       if (!res.ok) {
         const payload = await res.json().catch(() => ({}));
-        alert(payload?.error || 'Failed to save profile');
+        toast(payload?.error || 'Failed to save profile');
         return;
       }
       router.push('/student-home-dashboard');
     } catch (err) {
       console.error('onboarding submit error', err);
-      alert('Failed to complete signup');
+      toast('Failed to complete signup');
     }
   };
 
@@ -199,7 +200,7 @@ const SignupFormWidget = () => {
                   }}
                   onFailure={(err) => {
                     console.warn('[SignupFormWidget] otp widget failure', err);
-                    alert('OTP widget failed: ' + String(err));
+                    toast('OTP widget failed: ' + String(err));
                   }}
                 />
                 {widgetError ? (
@@ -325,8 +326,8 @@ const SignupFormWidget = () => {
               <div className="flex justify-end">
                 <button
                   onClick={() => {
-                    if (!formData.name?.trim()) return alert('Name is required');
-                    if (!formData.childClass) return alert('Please select a class');
+                    if (!formData.name?.trim()) return toast('Name is required');
+                    if (!formData.childClass) return toast('Please select a class');
                     // Prepare payload with phone and token
                     handleSubmit();
                   }}

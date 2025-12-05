@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { toast } from '@/lib/toast';
 import { useSession, signIn } from 'next-auth/react';
 import { logger } from '@/lib/logger';
 import {
@@ -126,14 +127,14 @@ export default function PricingPage() {
             methodName: 'RazorpayHandler',
           });
           if (verifyRes.ok) {
-            alert('✅ Subscription successful!');
+            toast('✅ Subscription successful!');
             logger.add('Subscription successful. Redirecting to home.', {
               className: 'PricingPage',
               methodName: 'RazorpayHandler',
             });
             window.location.href = '/';
           } else {
-            alert('❌ Subscription verification failed');
+            toast('❌ Subscription verification failed');
             logger.add('Subscription verification failed.', {
               className: 'PricingPage',
               methodName: 'RazorpayHandler',
@@ -172,7 +173,7 @@ export default function PricingPage() {
         className: 'PricingPage',
         methodName: 'handleSubscribe',
       });
-      alert('❌ Subscription failed');
+      toast('❌ Subscription failed');
     } finally {
       setLoading(false);
       logger.add('Subscription flow ended.', {

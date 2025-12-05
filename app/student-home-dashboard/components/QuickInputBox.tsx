@@ -4,6 +4,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import Image from 'next/image';
 import LanguageSelector from '@/components/LanguageSelector';
 import { startVoiceInput, uploadImage } from '@/lib/inputHandlers';
+import { toast } from '@/lib/toast';
 import resizeImageFile from '@/lib/resizeImage';
 import { Speech } from '@/lib/speech';
 
@@ -314,6 +315,7 @@ const QuickInputBox: React.FC<QuickInputBoxProps> = ({ onReply, onError, initial
         // error
         (msg: string) => {
           onError?.(msg);
+          try { toast(msg); } catch {}
           setIsListening(false);
           setInterimTranscript('');
           stopVoiceRef.current = null;
@@ -324,6 +326,11 @@ const QuickInputBox: React.FC<QuickInputBoxProps> = ({ onReply, onError, initial
       if (stop) {
         stopVoiceRef.current = stop;
         setIsListening(true);
+      } else {
+        // startVoiceInput may return null when recognition isn't supported or permission denied
+        try {
+          toast('Voice input not available in this browser or microphone not accessible.');
+        } catch {}
       }
   };
 
