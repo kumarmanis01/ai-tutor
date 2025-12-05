@@ -23,9 +23,7 @@ const StudentHomeDashboard: React.FC<StudentHomeDashboardProps> = () => {
 
   if (loading && !profile) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <LoadingSpinner size={64} label="Loading your dashboard…" />
-      </div>
+      <LoadingSpinner size={64} label="Loading your dashboard…" />
     );
   }
 
