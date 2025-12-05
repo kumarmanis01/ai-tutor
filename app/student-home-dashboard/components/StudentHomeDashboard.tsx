@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import TopBar from './TopBar';
 import useCurrentUser from '@/hooks/useCurrentUser';
 import { useGlobalLoader } from '@/context/GlobalLoaderProvider';
+import ProfilePage from '@/app/profile/page';
 import QuickInputBox from './QuickInputBox';
 import ChatPanel from './ChatPanel';
 import ContinueLearning from './ContinueLearning';
@@ -46,35 +47,41 @@ const StudentHomeDashboard: React.FC<StudentHomeDashboardProps> = () => {
       {/* Main Content - Scrollable */}
       <main className="flex-1 overflow-y-auto pb-20">
         <div className="max-w-4xl mx-auto px-4 py-6 space-y-6">
-          {/* Chat Panel */}
-          <ChatPanel messages={messages} />
+          {activeTab === 'profile' ? (
+            <ProfilePage />
+          ) : (
+            <>
+              {/* Chat Panel */}
+              <ChatPanel messages={messages} />
 
-          {/* Quick Input Box */}
-          <QuickInputBox
-            onReply={(reply: string, userMessage?: string, language?: string, suggestions?: string[]) => {
-              // push both user and ai messages to chat, include language and suggestions when available
-              setMessages((prev) => [
-                ...prev,
-                ...(userMessage ? [{ id: String(Date.now()) + '-u', from: 'user' as const, text: userMessage }] : []),
-                { id: String(Date.now()) + '-a', from: 'ai' as const, text: reply, language, suggestions },
-              ]);
-            }}
-          />
+              {/* Quick Input Box */}
+              <QuickInputBox
+                onReply={(reply: string, userMessage?: string, language?: string, suggestions?: string[]) => {
+                  // push both user and ai messages to chat, include language and suggestions when available
+                  setMessages((prev) => [
+                    ...prev,
+                    ...(userMessage ? [{ id: String(Date.now()) + '-u', from: 'user' as const, text: userMessage }] : []),
+                    { id: String(Date.now()) + '-a', from: 'ai' as const, text: reply, language, suggestions },
+                  ]);
+                }}
+              />
 
-          {/* Continue Learning Section */}
-          <ContinueLearning />
+              {/* Continue Learning Section */}
+              <ContinueLearning />
 
-          {/* Suggested For You */}
-          <SuggestedContent />
+              {/* Suggested For You */}
+              <SuggestedContent />
 
-          {/* Feature Grid */}
-          <FeatureGrid />
+              {/* Feature Grid */}
+              <FeatureGrid />
 
-          {/* Study Goals / Streak Zone */}
-          <StudyGoals />
+              {/* Study Goals / Streak Zone */}
+              <StudyGoals />
 
-          {/* Parent Mode Card */}
-          <ParentModeCard />
+              {/* Parent Mode Card */}
+              <ParentModeCard />
+            </>
+          )}
         </div>
       </main>
 
