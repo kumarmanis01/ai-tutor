@@ -1,17 +1,28 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useSession } from 'next-auth/react';
 import { useGlobalLoader } from '@/context/GlobalLoaderProvider';
+import { logger } from '@/lib/logger';
 
 export default function AuthSessionLoader() {
-  const { status } = useSession();
+  const { status, data } = useSession();
   const { startLoading, stopLoading } = useGlobalLoader();
+  const startedRef = useRef(false);
 
   useEffect(() => {
-    if (status === 'loading') startLoading('Checking session…');
-    else stopLoading();
-  }, [status, startLoading, stopLoading]);
+    const hasSession = !!data;
+    logger.info(`AuthSessionLoader status: ${status} | hasSession=${hasSession}`);
+    if (status === 'loading') {
+      if (!startedRef.current) {
+        startedRef.current = true;
+        startLoading('Checking session…');
+      }
+    } else {
+      stopLoading();
+      startedRef.current = false;
+    }
+  }, [status, data, startLoading, stopLoading]);
 
   return null;
 }

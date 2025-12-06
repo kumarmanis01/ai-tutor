@@ -6,6 +6,7 @@ import PageLoader from '@/components/UI/PageLoader';
 type LoaderContextType = {
   startLoading: (label?: string) => void;
   stopLoading: () => void;
+  resetLoading: () => void;
   loading: boolean;
   label?: string | null;
 };
@@ -29,9 +30,15 @@ export function GlobalLoaderProvider({ children }: { children: React.ReactNode }
     });
   }, []);
 
+  const resetLoading = useCallback(() => {
+    setCount(0);
+    setLabel(undefined);
+  }, []);
+
   const value: LoaderContextType = {
     startLoading,
     stopLoading,
+    resetLoading,
     loading: count > 0,
     label,
   };
