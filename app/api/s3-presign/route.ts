@@ -4,6 +4,7 @@ import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { v4 as uuidv4 } from 'uuid';
 import { getPresignCredentials } from '../../../lib/awsSecrets';
+import { getServerSessionForHandlers } from '@/lib/session';
 
 /*
   POST /api/s3-presign
@@ -21,6 +22,10 @@ import { getPresignCredentials } from '../../../lib/awsSecrets';
 // environment-provided credentials when Secrets Manager is not configured.
 
 export async function POST(req: Request) {
+  const session = await getServerSessionForHandlers();
+  if (!session?.user?.id) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
   try {
     const body = await req.json().catch(() => ({}));
     const filename = String((body as any).filename || '').trim();

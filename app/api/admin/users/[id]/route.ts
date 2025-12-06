@@ -1,9 +1,14 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { logApiUsage } from '@/utils/logApiUsage';
+import { getServerSessionForHandlers } from '@/lib/session';
 
 // @ts-expect-error Ignore type checking for params in this handler
 export async function PATCH(req, { params }) {
+  const session = await getServerSessionForHandlers();
+  if (!session?.user?.id || session.user.role !== 'admin') {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  }
   const data = await req.json();
   const user = await prisma.user.update({
     where: { id: params.id },
@@ -14,6 +19,10 @@ export async function PATCH(req, { params }) {
 }
 
 export async function DELETE(req: Request, context: { params: Promise<{ id: string }> }) {
+  const session = await getServerSessionForHandlers();
+  if (!session?.user?.id || session.user.role !== 'admin') {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  }
   const { id } = await context.params;
   try {
     await prisma.user.delete({ where: { id } });

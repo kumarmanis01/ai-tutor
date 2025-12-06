@@ -3,8 +3,13 @@ import { NextResponse } from 'next/server';
 import { logApiUsage } from '@/utils/logApiUsage';
 import { logEvent } from '@/utils/logEvent';
 import { Prisma } from '@prisma/client';
+import { getServerSessionForHandlers } from '@/lib/session';
 
 export async function POST(req: Request) {
+  const session = await getServerSessionForHandlers();
+  if (!session?.user?.id) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
   logApiUsage('/api/analytics/track', 'POST');
 
   const body = await req.json().catch(() => ({}));

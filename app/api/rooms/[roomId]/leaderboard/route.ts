@@ -1,7 +1,12 @@
 import { NextResponse } from 'next/server';
 import { logApiUsage } from '@/utils/logApiUsage';
+import { getServerSessionForHandlers } from '@/lib/session';
 
 export async function GET() {
+  const session = await getServerSessionForHandlers();
+  if (!session?.user?.id) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
   logApiUsage('/api/rooms/[roomId]/leaderboard', 'GET');
 
   // Dummy leaderboard data

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { logApiUsage } from '@/utils/logApiUsage';
+import { getServerSessionForHandlers } from '@/lib/session';
 
 /**
  * API Route: List all public study rooms.
@@ -13,6 +14,10 @@ import { logApiUsage } from '@/utils/logApiUsage';
  * ]
  */
 export async function GET() {
+  const session = await getServerSessionForHandlers();
+  if (!session?.user?.id) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
   // Fetch all rooms that are not private
   const rooms = await prisma.room.findMany({
     where: { isPrivate: false },

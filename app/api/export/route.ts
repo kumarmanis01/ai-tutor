@@ -2,6 +2,7 @@ import { logger } from '@/lib/logger';
 // app/api/export/route.ts
 import { logApiUsage } from '@/utils/logApiUsage';
 import { NextResponse } from 'next/server';
+import { getServerSessionForHandlers } from '@/lib/session';
 import { PDFDocument, StandardFonts } from 'pdf-lib';
 
 /**
@@ -12,6 +13,10 @@ import { PDFDocument, StandardFonts } from 'pdf-lib';
 export async function POST(req: Request) {
   logApiUsage('/api/export', 'POST');
   try {
+    const session = await getServerSessionForHandlers();
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
     const body = await req.json();
     const { title = 'chat_export', messages, format = 'pdf' } = body ?? {};
 

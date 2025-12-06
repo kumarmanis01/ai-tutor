@@ -1,5 +1,6 @@
 import { logger } from '@/lib/logger';
 import { NextResponse } from 'next/server';
+import { getServerSessionForHandlers } from '@/lib/session';
 
 /*
   /api/image-caption
@@ -16,6 +17,10 @@ import { NextResponse } from 'next/server';
 type Req = { url?: string; consent?: boolean };
 
 export async function POST(req: Request) {
+  const session = await getServerSessionForHandlers();
+  if (!session?.user?.id) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
   try {
     const body: Req = await req.json().catch(() => ({}));
     const url = body.url;

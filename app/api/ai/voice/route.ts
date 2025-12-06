@@ -2,10 +2,15 @@ import { logger } from '@/lib/logger';
 import { logApiUsage } from '@/utils/logApiUsage';
 import { NextResponse } from 'next/server';
 import OpenAI from 'openai';
+import { getServerSessionForHandlers } from '@/lib/session';
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY! });
 
 export async function POST(req: Request) {
+  const session = await getServerSessionForHandlers();
+  if (!session?.user?.id) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
   try {
     logApiUsage('/api/ai/voice', 'POST');
     const { text, voice } = await req.json();
