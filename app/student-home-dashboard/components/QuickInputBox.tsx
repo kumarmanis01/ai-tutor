@@ -678,6 +678,16 @@ const QuickInputBox: React.FC<QuickInputBoxProps> = ({ onReply, onError, initial
           placeholder={isListening ? 'Listening... Speak now' : 'Type your question... / अपना सवाल लिखें...'}
           className="w-full px-4 py-3 border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-ring text-base"
         />
+        {asking && (
+          <div className="mt-2 text-sm text-muted-foreground flex items-center gap-2" aria-live="polite" aria-busy="true" role="status">
+            <span>Thinking</span>
+            <span className="inline-flex gap-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground/70 animate-bounce" style={{ animationDelay: '0ms' }} />
+              <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground/70 animate-bounce" style={{ animationDelay: '150ms' }} />
+              <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground/70 animate-bounce" style={{ animationDelay: '300ms' }} />
+            </span>
+          </div>
+        )}
       </div>
 
       {/* Suggestion hint (appears when a suggestion is inserted) */}
@@ -775,9 +785,9 @@ const QuickInputBox: React.FC<QuickInputBoxProps> = ({ onReply, onError, initial
         <button
           onClick={handleAskQuestion}
           className="w-full bg-primary hover:bg-accent text-primary-foreground font-semibold py-3 rounded-lg transition-colors shadow-cta"
-          disabled={images.length > 0 && !consentToShare}
+          disabled={asking || (images.length > 0 && !consentToShare)}
       >
-        Ask AI Tutor / पूछें
+        {asking ? 'Asking…' : 'Ask AI Tutor / पूछें'}
       </button>
     </div>
   );
