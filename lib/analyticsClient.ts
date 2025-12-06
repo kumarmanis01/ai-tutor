@@ -9,6 +9,8 @@
  * Keep this file free of server-only imports so it can be imported from client components.
  */
 
+import { logger } from '@/lib/logger';
+
 type EventPayload = {
   event: string;
   data?: Record<string, unknown> | null;
@@ -32,7 +34,11 @@ function nowTs() {
 
 function debugLog(...args: unknown[]) {
   if (process.env.NODE_ENV !== 'production') {
-    console.debug('[analyticsClient]', ...args);
+    try {
+      logger.debug(`[analyticsClient] ${args.map((a) => String(a)).join(' ')}`, { className: 'analyticsClient' });
+    } catch {
+      // silent fallback when logger fails
+    }
   }
 }
 

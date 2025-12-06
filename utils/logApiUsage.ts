@@ -1,4 +1,5 @@
 import { prisma } from '@/lib/db';
+import { logger } from '@/lib/logger';
 
 /**
  * Log API usage. Callers should pass `userId` when available to avoid
@@ -13,14 +14,14 @@ export async function logApiUsage(endpoint: string, method: string, userId?: str
       await prisma.apiUsage.create({
         data: { userId: null, endpoint, method, count: 1, lastUsed: new Date() },
       });
-      console.debug(`[logApiUsage] anonymous: ${endpoint} ${method}`);
+      logger.debug(`[logApiUsage] anonymous: ${endpoint} ${method}`, { className: 'logApiUsage' });
       return;
     }
 
     // Ensure the user exists before writing a FK'd row.
     const userExists = await prisma.user.findUnique({ where: { id: userId } });
     if (!userExists) {
-      console.warn(`[logApiUsage] userId=${userId} not found; logging as anonymous ${endpoint} ${method}`);
+      logger.warn(`[logApiUsage] userId=${userId} not found; logging as anonymous ${endpoint} ${method}`, { className: 'logApiUsage' });
       await prisma.apiUsage.create({ data: { userId: null, endpoint, method, count: 1, lastUsed: new Date() } });
       return;
     }
@@ -30,8 +31,8 @@ export async function logApiUsage(endpoint: string, method: string, userId?: str
       update: { count: { increment: 1 }, lastUsed: new Date() },
       create: { userId, endpoint, method, count: 1, lastUsed: new Date() },
     });
-    console.debug(`[logApiUsage] userId=${userId} ${endpoint} ${method}`);
+    logger.debug(`[logApiUsage] userId=${userId} ${endpoint} ${method}`, { className: 'logApiUsage' });
   } catch (error) {
-    console.error(`Failed to log API usage for endpoint: ${endpoint}, method: ${method}`, error);
+    logger.error(`Failed to log API usage for endpoint: ${endpoint}, method: ${method} - ${String(error)}`, { className: 'logApiUsage' });
   }
 }

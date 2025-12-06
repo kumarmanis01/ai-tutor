@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useSession, signOut } from 'next-auth/react';
 import { useState, useEffect } from 'react';
+import { logger } from '@/lib/logger';
 import useCurrentUser from '@/hooks/useCurrentUser';
 import AuthModal from './AuthModal';
 import Avatar from '@/components/UI/Avatar';
@@ -59,9 +60,15 @@ export default function Navbar() {
     }
   }, [status]);
 
-  // Log session status and subscription status to console
+  // Log session status and subscription status using logger
   useEffect(() => {
-    console.log('Navbar session status:', status, 'hasActiveSubscription:', hasActiveSubscription);
+    try {
+      logger.add(`Navbar session status: ${status}, hasActiveSubscription: ${String(
+        hasActiveSubscription,
+      )}`, { className: 'Navbar', methodName: 'statusEffect' });
+    } catch {
+      // fallback noop
+    }
   }, [status, hasActiveSubscription]);
 
   // Button styles for dark/light mode

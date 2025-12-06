@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { logger } from '@/lib/logger';
 import LandingPageInteractive from './components/LandingPageInteractive';
 import { getSessionUserWithSubscription } from '@/lib/session';
 import { redirect } from 'next/navigation';
@@ -29,7 +30,7 @@ export default async function LandingPage() {
     } catch (rethrowErr) {
       throw rethrowErr;
     }
-    console.warn('LandingPage: session check failed', e);
+    logger.warn('LandingPage: session check failed', { className: 'LandingPage', methodName: 'load', error: String(e as any) });
   }
 
   return <LandingPageInteractive />;

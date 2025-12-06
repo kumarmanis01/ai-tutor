@@ -49,3 +49,33 @@ You can check out [the Next.js GitHub repository](https://github.com/vercel/next
 The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
 
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+
+## Logging
+
+Spinzy Academy uses a centralized logger (`lib/logger.ts`) across server and client.
+
+- Server `LOG_LEVEL`: Controls server log verbosity. Allowed values: `error`, `warn`, `info`, `debug`. Default is `error`.
+- Client `NEXT_PUBLIC_DEBUG_MODE`: When `true`, client emits `info`/`debug` logs; when `false`, client still emits `error` logs to ensure visibility.
+
+Add these to your environment (recommended in `.env.local`):
+
+```bash
+# .env.local
+LOG_LEVEL=warn
+NEXT_PUBLIC_DEBUG_MODE=true
+```
+
+Use in code:
+
+```ts
+import { logger } from '@/lib/logger';
+
+logger.error('Failed to fetch profile', { userId });
+logger.warn('Fallback to default config');
+logger.info('User onboarded', { step: 'profile-complete' });
+logger.debug('Speech settings', { lang, micEnabled });
+```
+
+Notes:
+- Avoid `console.*`; route all logs through `logger`.
+- In production, prefer `LOG_LEVEL=error` and `NEXT_PUBLIC_DEBUG_MODE=false`.

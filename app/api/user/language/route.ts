@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 import { NextResponse } from 'next/server';
 import { getServerSessionForHandlers } from '@/lib/session';
 import { prisma } from '@/lib/db';
@@ -12,7 +13,7 @@ export async function GET() {
     const dbUser = await prisma.user.findUnique({ where: { id: user.id } });
     return NextResponse.json({ language: dbUser?.language ?? null });
   } catch (e) {
-    console.error('GET /api/user/language error', e);
+    logger.error('GET /api/user/language error', { className: 'api.user.language', methodName: 'GET', error: String(e) });
     return NextResponse.json({ language: null }, { status: 500 });
   }
 }
@@ -33,7 +34,7 @@ export async function POST(req: Request) {
     await prisma.user.update({ where: { id: user.id }, data: { language } });
     return NextResponse.json({ ok: true, language });
   } catch (e) {
-    console.error('POST /api/user/language error', e);
+    logger.error('POST /api/user/language error', { className: 'api.user.language', methodName: 'POST', error: String(e) });
     return NextResponse.json({ error: 'server_error' }, { status: 500 });
   }
 }

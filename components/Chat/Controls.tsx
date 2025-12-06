@@ -1,4 +1,5 @@
 'use client';
+import { logger } from '@/lib/logger';
 
 import { useState, useEffect } from 'react';
 import LanguageSelector from '../LanguageSelector';
@@ -43,10 +44,10 @@ export default function Controls({
             setRemainingFreeQuestions(typeof data.remaining === 'number' ? data.remaining : null);
             if (typeof data.total === 'number') setDailyFreeLimit(data.total);
           } else {
-            console.error(data.error);
+            logger.error('Failed to fetch remaining free questions', { className: 'Chat.Controls', methodName: 'fetchFreeQuestions', error: String(data.error) });
           }
         } catch (error) {
-          console.error('Failed to fetch remaining free questions:', error);
+          logger.error('Failed to fetch remaining free questions', { className: 'Chat.Controls', methodName: 'fetchFreeQuestions', error: String(error) });
         }
       }
     }

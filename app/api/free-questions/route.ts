@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 import { NextResponse } from 'next/server';
 import { getServerSessionForHandlers } from '@/lib/session';
 import { prisma } from '@/lib/prisma';
@@ -41,7 +42,7 @@ export async function GET() {
       total: DAILY_FREE_LIMIT,
     });
   } catch (err) {
-    console.error('free-questions GET error', err);
+    logger.error('free-questions GET error', { className: 'api.free-questions', methodName: 'GET', error: String(err) });
     return NextResponse.json({ error: 'server_error' }, { status: 500 });
   }
 }
@@ -87,7 +88,7 @@ export async function POST() {
       total: DAILY_FREE_LIMIT,
     });
   } catch (err) {
-    console.error('free-questions POST error', err);
+    logger.error('free-questions POST error', { className: 'api.free-questions', methodName: 'POST', error: String(err) });
     return NextResponse.json({ error: 'server_error' }, { status: 500 });
   }
 }

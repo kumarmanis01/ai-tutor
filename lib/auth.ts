@@ -7,6 +7,7 @@ import type { NextAuthOptions } from 'next-auth';
 import { prisma } from '@/lib/prisma'; // Your Prisma database client
 import bcrypt from 'bcrypt'; // For password hashing
 import { getEmailTransporter } from '@/lib/mailer';
+import { logger } from '@/lib/logger';
 
 // This function sends a welcome email to the user
 async function sendWelcomeEmail(to: string, name?: string) {
@@ -42,11 +43,11 @@ async function sendWelcomeEmail(to: string, name?: string) {
         </div>
       `,
     });
-    // Log success info to the server console
-    console.log('Welcome email sent:', info);
+    // Log success info
+    logger.add(`Welcome email sent: ${JSON.stringify(info)}`, { className: 'auth', methodName: 'sendWelcomeEmail' });
   } catch (error) {
-    // Log any errors to the server console
-    console.error('Failed to send welcome email:', error);
+    // Log any errors via logger
+    logger.error('Failed to send welcome email', { className: 'auth', methodName: 'sendWelcomeEmail', error: String(error) });
   }
 }
 
@@ -54,7 +55,7 @@ async function sendWelcomeEmail(to: string, name?: string) {
 async function maybeSendWelcomeEmail(email: string, name?: string) {
   // Fetch user from DB
   const dbUser = await prisma.user.findUnique({ where: { email } });
-  console.log('[maybeSendWelcomeEmail] Database user fetched:', dbUser);
+  logger.add(`[maybeSendWelcomeEmail] Database user fetched: ${JSON.stringify(dbUser)}`, { className: 'auth', methodName: 'maybeSendWelcomeEmail' });
   if (dbUser && !dbUser.welcomeEmailSent) {
     // Send welcome email
     await sendWelcomeEmail(email, name);
@@ -63,9 +64,9 @@ async function maybeSendWelcomeEmail(email: string, name?: string) {
       where: { email },
       data: { welcomeEmailSent: true },
     });
-    console.log('[maybeSendWelcomeEmail] Welcome email sent and flag updated for:', email);
+    logger.add(`[maybeSendWelcomeEmail] Welcome email sent and flag updated for: ${email}`, { className: 'auth', methodName: 'maybeSendWelcomeEmail' });
   } else {
-    console.log('[maybeSendWelcomeEmail] Welcome email already sent for:', email);
+    logger.add(`[maybeSendWelcomeEmail] Welcome email already sent for: ${email}`, { className: 'auth', methodName: 'maybeSendWelcomeEmail' });
   }
 }
 
@@ -194,10 +195,10 @@ export const authOptions: NextAuthOptions = {
           });
         }
       } catch (err) {
-        console.warn('signIn upsert user failed', err);
+        logger.warn('signIn upsert user failed', { className: 'auth', methodName: 'signIn', error: String(err) });
       }
       await maybeSendWelcomeEmail(user.email!, user.name ?? undefined).catch((err) =>
-        console.error('Error in maybeSendWelcomeEmail:', err),
+        logger.error(`Error in maybeSendWelcomeEmail: ${String(err)}`, { className: 'auth', methodName: 'signIn' }),
       );
       // console.log('signin callback activated with user:', user.email!);
       // // Best Practice: Use welcomeEmailSent flag to ensure email is sent only once
@@ -238,7 +239,7 @@ export const authOptions: NextAuthOptions = {
         session.user.image = token.image as string;
         session.user.role = token.role as string;
 
-        console.log('session callback populated minimal session for:', session.user.email!);
+        logger.add(`session callback populated minimal session for: ${session.user.email!}`, { className: 'auth', methodName: 'sessionCallback' });
         // Call the standalone method to handle welcome email logic
         await maybeSendWelcomeEmail(session.user.email!, session.user.name ?? undefined);
       }

@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 import { NextResponse } from 'next/server';
 
 /*
@@ -36,7 +37,7 @@ export async function POST(req: Request) {
         }
         return NextResponse.json({ caption: null });
       } catch (e) {
-        console.error('image-caption external call failed', e);
+        logger.error('image-caption external call failed', { className: 'api.image-caption', methodName: 'POST', error: String(e) });
         return NextResponse.json({ caption: null });
       }
     }
@@ -71,7 +72,7 @@ export async function POST(req: Request) {
       });
 
       if (!uploadRes.ok) {
-        console.error('OpenAI file upload failed', await uploadRes.text().catch(() => ''));
+        logger.error('OpenAI file upload failed', { className: 'api.image-caption', methodName: 'POST', body: await uploadRes.text().catch(() => '') });
         return NextResponse.json({ caption: null });
       }
 
@@ -111,7 +112,7 @@ export async function POST(req: Request) {
           }
         }
       } else {
-        console.error('OpenAI responses call failed', await responseRes.text().catch(() => ''));
+        logger.error('OpenAI responses call failed', { className: 'api.image-caption', methodName: 'POST', body: await responseRes.text().catch(() => '') });
       }
 
       // Attempt to delete uploaded file from OpenAI to limit retention (best-effort)
@@ -128,11 +129,11 @@ export async function POST(req: Request) {
 
       return NextResponse.json({ caption: caption ?? null });
     } catch (e) {
-      console.error('OpenAI captioning failed', e);
+      logger.error('OpenAI captioning failed', { className: 'api.image-caption', methodName: 'POST', error: String(e) });
       return NextResponse.json({ caption: null });
     }
   } catch (e) {
-    console.error('/api/image-caption error', e);
+    logger.error('/api/image-caption error', { className: 'api.image-caption', methodName: 'POST', error: String(e) });
     return NextResponse.json({ caption: null }, { status: 500 });
   }
 }

@@ -1,6 +1,7 @@
 import { prisma } from '@/lib/db';
 import { getServerSessionForHandlers } from '@/lib/session';
 import { Prisma } from '@prisma/client';
+import { logger } from '@/lib/logger';
 
 /**
  * Logs an event to the Event model.
@@ -18,7 +19,7 @@ export async function logEvent(
 
     // Ensure userId exists in the User table
     if (!userId) {
-      console.warn(`Skipping event logging due to missing userId.`);
+      logger.warn(`Skipping event logging due to missing userId.`, { className: 'logEvent', methodName: 'logEvent' });
       return;
     }
 
@@ -27,7 +28,7 @@ export async function logEvent(
     });
 
     if (!userExists) {
-      console.warn(`Skipping event logging: userId ${userId} does not exist.`);
+      logger.warn(`Skipping event logging: userId ${userId} does not exist.`, { className: 'logEvent', methodName: 'logEvent' });
       return;
     }
 
@@ -39,8 +40,9 @@ export async function logEvent(
         timestamp: new Date(),
       },
     });
-    console.log(`Event logged: type=${type}, userId=${userId}`);
+    // Log using central logger
+    logger.add(`Event logged: type=${type}, userId=${userId}`, { className: 'logEvent', methodName: 'logEvent' });
   } catch (error) {
-    console.error(`Failed to log event: type=${type}`, error);
+    logger.error(`Failed to log event: type=${type} - ${String(error)}`, { className: 'logEvent', methodName: 'logEvent' });
   }
 }

@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 /**
  * POST /api/chat
  * Body: { message: string, subject?: string }
@@ -52,7 +53,7 @@ export async function POST(req: Request) {
         if (primary.startsWith('en')) return 'English';
         return 'English';
       } catch (e) {
-        console.error('Accept-Language parse error', e);
+        logger.error('Accept-Language parse error', { className: 'api.chat', methodName: 'POST', error: String(e) });
         return 'English';
       }
     }
@@ -69,7 +70,7 @@ export async function POST(req: Request) {
     try {
       await logApiUsage('/api/chat', `SUBJECT_${subject}`);
     } catch (e) {
-      console.error('Failed to log subject usage', e);
+      logger.error('Failed to log subject usage', { className: 'api.chat', methodName: 'POST', error: String(e) });
     }
 
     if (!message || typeof message !== 'string') {
@@ -151,7 +152,7 @@ export async function POST(req: Request) {
     const data = await res.json();
 
     if (!res.ok) {
-      console.error('OpenAI API error:', data);
+      logger.error('OpenAI API error', { className: 'api.chat', methodName: 'POST', body: data });
       return NextResponse.json(
         {
           error: 'ai_service_error',
@@ -190,7 +191,7 @@ export async function POST(req: Request) {
     // Check if user exists before saving chat
     const user = await prisma.user.findUnique({ where: { id: userId } });
     if (!user) {
-      console.error('User not found:', userId);
+      logger.error('User not found', { className: 'api.chat', methodName: 'POST', userId });
       return NextResponse.json({ error: 'User not found' }, { status: 400 });
     }
 
@@ -247,12 +248,12 @@ export async function POST(req: Request) {
         }
       }
     } catch (e) {
-      console.error('suggestions generation failed', e);
+      logger.error('suggestions generation failed', { className: 'api.chat', methodName: 'POST', error: String(e) });
     }
 
     return NextResponse.json({ reply: answerMarkdown, suggestions });
   } catch (err) {
-    console.error('chat route error', err);
+    logger.error('chat route error', { className: 'api.chat', methodName: 'POST', error: String(err) });
     return NextResponse.json({ error: 'server_error' }, { status: 500 });
   }
 }

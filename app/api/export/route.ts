@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 // app/api/export/route.ts
 import { logApiUsage } from '@/utils/logApiUsage';
 import { NextResponse } from 'next/server';
@@ -72,7 +73,7 @@ export async function POST(req: Request) {
       },
     });
   } catch (err) {
-    console.error('export error:', err);
+    logger.error('export error', { className: 'api.export', methodName: 'GET', error: String(err) });
     return NextResponse.json({ error: 'server_error', detail: String(err) }, { status: 500 });
   }
 }

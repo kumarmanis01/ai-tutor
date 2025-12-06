@@ -1,4 +1,5 @@
  'use client';
+import { logger } from '@/lib/logger';
 
 import { useEffect, useState, useRef, useMemo } from 'react';
 import analyticsClient from '@/lib/analyticsClient';
@@ -219,7 +220,7 @@ export default function ChatBot() {
           );
         } catch {}
       } catch (err) {
-        console.error('Error decrementing free-questions quota', err);
+        logger.error('Error decrementing free-questions quota', { className: 'Chat.ChatBot', methodName: 'decrementQuota', error: String(err) });
         toast('Unable to verify question quota. Please try again later.');
         return;
       }
@@ -263,7 +264,7 @@ export default function ChatBot() {
       const data = await res.json();
 
       // Log the raw response for debugging
-      console.log('Raw OpenAI Response:', data);
+      logger.add(`Raw OpenAI Response: ${JSON.stringify(data)}`, { className: 'ChatBot', methodName: 'handleSend' });
 
       if (data.error) {
         if (data.error === 'free_limit_reached') {
@@ -329,7 +330,7 @@ export default function ChatBot() {
         } catch {}
         // Do NOT auto-submit. QuickInputBox will listen for the same event to populate the input.
       } catch (err) {
-        console.error('suggestion handler error', err);
+        logger.error('suggestion handler error', { className: 'Chat.ChatBot', methodName: 'suggestionHandler', error: String(err) });
       }
     }
 
@@ -354,7 +355,7 @@ export default function ChatBot() {
           return { ...prev, [subject]: newMsgs };
         });
       } catch (err) {
-        console.error('onUserTyped handler error', err);
+        logger.error('onUserTyped handler error', { className: 'Chat.ChatBot', methodName: 'onUserTyped', error: String(err) });
       }
     }
 

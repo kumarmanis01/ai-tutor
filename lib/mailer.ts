@@ -1,4 +1,5 @@
 import nodemailer from 'nodemailer';
+import { logger } from '@/lib/logger';
 
 export function getEmailTransporter() {
   return nodemailer.createTransport({
@@ -41,11 +42,11 @@ export async function sendEmail({
       html,
       text,
     });
-    // Log success info to the server console
-    console.log('Email sent:', info);
+    // Log success info using central logger
+    logger.add(`Email sent: ${JSON.stringify(info)}`, { className: 'mailer', methodName: 'sendEmail' });
   } catch (error) {
-    // Log any errors to the server console
-    console.error('Failed to send email:', error);
+    // Log any errors using central logger
+    logger.add(`Failed to send email: ${String(error)}`, { className: 'mailer', methodName: 'sendEmail' });
     throw error; // Re-throw to let caller handle it
   }
 }

@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 import { NextResponse } from 'next/server';
 import { getServerSessionForHandlers } from '@/lib/session';
 import { SessionUser } from '@/lib/types';
@@ -31,11 +32,7 @@ export async function GET() {
     // // Count today's questions
     // const todaysCount = await getTodaysQuestionCount(userId);
 
-    console.log('Subscription status:', {
-      userId,
-      isPremium,
-      // todaysCount,
-    });
+    logger.add(`Subscription status: userId=${userId}, isPremium=${String(isPremium)}`, { className: 'subscription', methodName: 'status' });
 
     return NextResponse.json({
       authenticated: true,
@@ -43,7 +40,7 @@ export async function GET() {
       // todaysCount,
     });
   } catch (err) {
-    console.error('subscription status error', err);
+    logger.error('subscription status error', { className: 'api.subscription.status', methodName: 'GET', error: String(err) });
     return NextResponse.json({ error: 'server_error' }, { status: 500 });
   }
 }

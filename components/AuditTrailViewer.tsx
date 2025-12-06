@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 import React, { useEffect, useState } from 'react';
 
 type AuditLog = {
@@ -18,10 +19,10 @@ const AuditTrailViewer = () => {
           const data: AuditLog[] = await response.json();
           setAuditLogs(data);
         } else {
-          console.error('Failed to fetch audit logs');
+          logger.error('Failed to fetch audit logs', { className: 'AuditTrailViewer', methodName: 'loadLogs' });
         }
       } catch (error) {
-        console.error('Error fetching audit logs:', error);
+        logger.error('Error fetching audit logs', { className: 'AuditTrailViewer', methodName: 'loadLogs', error: String(error) });
       }
     };
 

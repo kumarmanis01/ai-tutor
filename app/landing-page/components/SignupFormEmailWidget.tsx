@@ -7,6 +7,7 @@ import { signIn, useSession } from 'next-auth/react';
 import Icon from '@/components/UI/AppIcon';
 import useCurrentUser from '@/hooks/useCurrentUser';
 import { useGlobalLoader } from '@/context/GlobalLoaderProvider';
+import { logger } from '@/lib/logger';
 
 interface FormData {
   phone: string;
@@ -107,7 +108,7 @@ const SignupFormWidget = () => {
       } catch {}
       router.push('/student-home-dashboard');
     } catch (err) {
-      console.error('onboarding submit error', err);
+      logger.error('onboarding submit error', { className: 'SignupFormEmailWidget', methodName: 'handleSubmit', error: String(err) });
       toast('Failed to complete signup');
     } finally {
       setSubmitting(false);

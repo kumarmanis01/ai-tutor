@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 import { NextResponse } from 'next/server';
 
 type VerifyRequestBody = {
@@ -7,7 +8,7 @@ type VerifyRequestBody = {
 export async function POST(req: Request) {
   try {
     const body: VerifyRequestBody = await req.json().catch(() => ({}));
-    console.info('[verify-access-token] incoming body keys', Object.keys(body || {}));
+    logger.info('[verify-access-token] incoming body keys', { className: 'api.msg91.verify-access-token', methodName: 'POST', keys: Object.keys(body || {}) });
 
     const accessToken = body.accessToken;
     if (!accessToken) {
@@ -25,7 +26,7 @@ export async function POST(req: Request) {
       'access-token': accessToken,
     } as Record<string, unknown>;
 
-    console.info('[verify-access-token] calling provider', { url });
+    logger.info('[verify-access-token] calling provider', { className: 'api.msg91.verify-access-token', methodName: 'POST', url });
     const resp = await fetch(url, {
       method: 'POST',
       headers: {
@@ -36,10 +37,10 @@ export async function POST(req: Request) {
     });
 
     const json = await resp.json().catch(() => ({}));
-    console.info('[verify-access-token] provider response', { status: resp.status, ok: resp.ok, body: json });
+    logger.info('[verify-access-token] provider response', { className: 'api.msg91.verify-access-token', methodName: 'POST', status: resp.status, ok: resp.ok, body: json });
 
     if (!resp.ok) {
-      console.warn('[verify-access-token] provider returned error', { status: resp.status, body: json });
+      logger.warn('[verify-access-token] provider returned error', { className: 'api.msg91.verify-access-token', methodName: 'POST', status: resp.status, body: json });
       return NextResponse.json({ error: 'provider_error', details: json }, { status: resp.status });
     }
 
@@ -68,7 +69,7 @@ export async function POST(req: Request) {
         }
       }
 
-      console.info('[verify-access-token] extracted identifier', { found });
+      logger.info('[verify-access-token] extracted identifier', { className: 'api.msg91.verify-access-token', methodName: 'POST', found });
 
       // If we found a phone-like value, normalize digits and upsert a User.
       if (found) {
@@ -86,28 +87,28 @@ export async function POST(req: Request) {
             create: { phone },
           });
 
-          console.info('[verify-access-token] upserted user', { id: user.id, phone: user.phone });
+          logger.info('[verify-access-token] upserted user', { className: 'api.msg91.verify-access-token', methodName: 'POST', id: user.id, phone: user.phone });
 
           const res = NextResponse.json({ ok: true, data: json, userId: user.id, user });
           // Set a short-lived HttpOnly cookie to allow subsequent onboarding call
           const maxAge = 60 * 60 * 24 * 7; // 7 days
           const secureFlag = process.env.NODE_ENV === 'production' ? '; Secure' : '';
           const cookieValue = `onboard_user_id=${user.id}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${maxAge}${secureFlag}`;
-          console.info('[verify-access-token] setting cookie', { cookieSnippet: cookieValue.slice(0, 80) });
+          logger.info('[verify-access-token] setting cookie', { className: 'api.msg91.verify-access-token', methodName: 'POST', cookieSnippet: cookieValue.slice(0, 80) });
           res.headers.set('Set-Cookie', cookieValue);
           return res;
         } catch (e) {
-          console.warn('prisma upsert in verify-access-token failed', e);
+          logger.warn('prisma upsert in verify-access-token failed', { className: 'api.msg91.verify-access-token', methodName: 'POST', error: String(e) });
           // Continue to return provider response without cookie
         }
       }
     } catch (e) {
-      console.warn('extracting identifier from provider response failed', e);
+      logger.warn('extracting identifier from provider response failed', { className: 'api.msg91.verify-access-token', methodName: 'POST', error: String(e) });
     }
 
     return NextResponse.json({ ok: true, data: json });
   } catch (err) {
-    console.error('MSG91 verify-access-token error', err);
+    logger.error('MSG91 verify-access-token error', { className: 'api.msg91.verify-access-token', methodName: 'POST', error: String(err) });
     return NextResponse.json({ error: 'internal_server_error', message: 'Failed to verify access token' }, { status: 500 });
   }
 }

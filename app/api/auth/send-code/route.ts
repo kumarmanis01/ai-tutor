@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { randomInt } from 'crypto';
@@ -59,7 +60,7 @@ export async function POST(req: Request) {
       `,
     });
   } catch (err) {
-    console.error('Error sending email:', err);
+    logger.error('Error sending email', { className: 'api.auth.send-code', methodName: 'POST', error: String(err) });
     return NextResponse.json({ error: 'Failed to send email' }, { status: 500 });
   }
 

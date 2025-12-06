@@ -1,4 +1,5 @@
 'use client';
+import { logger } from '@/lib/logger';
 /**
  * Client-side analytics component
  *
@@ -36,7 +37,7 @@ export default function Analytics(): null {
 
     // Dev-only debug logging
     if (process.env.NODE_ENV !== 'production') {
-      console.debug('[analytics] page_view', { path: pathname, query });
+      logger.debug('[analytics] page_view', { className: 'Analytics', path: pathname, query });
     }
 
     // Fire-and-forget track call. Await so we can catch errors cleanly.
@@ -46,7 +47,7 @@ export default function Analytics(): null {
       } catch (err) {
         // Swallow errors to avoid breaking the app
 
-        console.error('[analytics] trackEvent failed', err);
+        logger.error('[analytics] trackEvent failed', { className: 'Analytics', error: String(err) });
       }
     })();
     // Depend on pathname and the stable searchKey string (not the SearchParams object)

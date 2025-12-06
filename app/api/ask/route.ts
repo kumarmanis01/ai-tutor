@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 import { NextResponse } from 'next/server';
 import { getServerSessionForHandlers } from '@/lib/session';
 import { prisma } from '@/lib/db';
@@ -26,7 +27,7 @@ export async function POST(req: Request) {
       await logApiUsage('/api/ask', 'POST');
     } catch (e) {
       // non-fatal
-      console.error('logApiUsage failed for /api/ask', e);
+      logger.error('logApiUsage failed for /api/ask', { className: 'api.ask', methodName: 'POST', error: String(e) });
     }
 
     const body: Req = await req.json().catch(() => ({}));
@@ -42,7 +43,7 @@ export async function POST(req: Request) {
       if (checkProfanity(text)) return NextResponse.json({ error: 'profanity_detected' }, { status: 400 });
     } catch (e) {
       // if guard check fails for any reason, continue but log
-      console.error('profanity guard error', e);
+      logger.error('profanity guard error', { className: 'api.ask', methodName: 'POST', error: String(e) });
     }
 
     // Optional session: if present, we'll persist transcripts and can apply limits later
@@ -56,12 +57,12 @@ export async function POST(req: Request) {
           await prisma.chat.create({ data: { userId: sessionUserId, role: 'user', content: text, subject: 'general' } });
         } catch (e) {
           // don't block on DB write
-          console.error('Failed to persist user question for /api/ask', e);
+          logger.error('Failed to persist user question for /api/ask', { className: 'api.ask', methodName: 'POST', error: String(e) });
         }
       }
     } catch (e) {
       // ignore session errors
-      console.error('session check failed for /api/ask', e);
+      logger.error('session check failed for /api/ask', { className: 'api.ask', methodName: 'POST', error: String(e) });
     }
 
     // Language normalization: prefer explicit language, else normalize Accept-Language header
@@ -76,7 +77,7 @@ export async function POST(req: Request) {
         // prefer region if available (e.g., mr-IN), else return language code
         return p.region ? `${p.code}-${p.region}` : p.code;
       } catch (e) {
-        console.error('Accept-Language parse error', e);
+        logger.error('Accept-Language parse error', { className: 'api.ask', methodName: 'POST', error: String(e) });
         return undefined;
       }
     }
@@ -112,7 +113,7 @@ export async function POST(req: Request) {
 
         captions = await Promise.all(captionPromises);
       } catch (e) {
-        console.error('Failed to fetch image captions', e);
+        logger.error('Failed to fetch image captions', { className: 'api.ask', methodName: 'POST', error: String(e) });
         captions = imagesFromClient.map(() => null);
       }
     }
@@ -174,7 +175,7 @@ export async function POST(req: Request) {
         try {
           await prisma.chat.create({ data: { userId: sessionUserId, role: 'assistant', content: String(content), subject: 'general' } });
         } catch (e) {
-          console.error('Failed to persist assistant reply for /api/ask (fallback)', e);
+          logger.error('Failed to persist assistant reply for /api/ask (fallback)', { className: 'api.ask', methodName: 'POST', error: String(e) });
         }
       }
       return NextResponse.json({ language: undefined, answer: String(content) });
@@ -196,13 +197,13 @@ export async function POST(req: Request) {
       try {
         await prisma.chat.create({ data: { userId: sessionUserId, role: 'assistant', content: answer, subject: 'general' } });
       } catch (e) {
-        console.error('Failed to persist assistant reply for /api/ask', e);
+        logger.error('Failed to persist assistant reply for /api/ask', { className: 'api.ask', methodName: 'POST', error: String(e) });
       }
     }
 
     return NextResponse.json({ language, answer, suggestions });
   } catch (err: any) {
-    console.error('/api/ask error', err);
+    logger.error('/api/ask error', { className: 'api.ask', methodName: 'POST', error: String(err) });
     return NextResponse.json({ error: err?.message || 'Unknown error' }, { status: 500 });
   }
 }

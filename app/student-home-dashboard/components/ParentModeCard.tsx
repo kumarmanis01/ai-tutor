@@ -1,12 +1,13 @@
 'use client';
 
 import React from 'react';
+import { logger } from '@/lib/logger';
 
 interface ParentModeCardProps { [key: string]: unknown }
 
 const ParentModeCard: React.FC<ParentModeCardProps> = () => {
   const handleParentModeClick = () => {
-    console.log('Switching to Parent Mode');
+    logger.add('Switching to Parent Mode', { className: 'ParentModeCard', methodName: 'handleParentModeClick' });
     // Navigate to parent dashboard
   };
 

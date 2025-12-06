@@ -2,6 +2,7 @@
 "use client";
 import React, { useState } from "react";
 import { toast } from '@/lib/toast';
+import { logger } from '@/lib/logger';
 
 /**
  * Props:
@@ -37,7 +38,7 @@ export default function ExportButtons({
       a.remove();
       URL.revokeObjectURL(url);
     } catch (err) {
-      console.error("export error", err);
+      logger.error(`export error: ${String(err)}`, { className: 'ExportButtons', methodName: 'download' });
       toast("Export failed. Try again.");
     } finally {
       setLoading(false);

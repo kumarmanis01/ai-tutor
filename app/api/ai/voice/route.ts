@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 import { logApiUsage } from '@/utils/logApiUsage';
 import { NextResponse } from 'next/server';
 import OpenAI from 'openai';
@@ -23,7 +24,7 @@ export async function POST(req: Request) {
       },
     });
   } catch (err) {
-    console.error(err);
+    logger.error('ai/voice route error', { className: 'api.ai.voice', methodName: 'POST', error: String(err) });
     return NextResponse.json({ error: 'voice_failed' }, { status: 500 });
   }
 }

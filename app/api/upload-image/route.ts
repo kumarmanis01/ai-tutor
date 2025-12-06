@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 import { NextResponse } from 'next/server';
 import fs from 'fs/promises';
 import path from 'path';
@@ -35,7 +36,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: true, url });
   } catch (err) {
     // Log the error using a logging utility or remove this line if unnecessary
-    console.error('upload-image error', err); // Replace with a logging utility if required
+    logger.error('upload-image error', { className: 'api.upload-image', methodName: 'POST', error: String(err) });
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

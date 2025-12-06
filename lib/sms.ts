@@ -12,6 +12,8 @@ export type SendSmsResult =
  * - The function returns a structured result instead of throwing when
  *   possible, but will re-throw internal unexpected errors.
  */
+import { logger } from '@/lib/logger';
+
 export async function sendSms(phone: string, message: string): Promise<SendSmsResult> {
   // Normalise phone as E.164 is recommended; here we assume caller
   // provides a valid phone string including country code (e.g. +91...).
@@ -19,7 +21,7 @@ export async function sendSms(phone: string, message: string): Promise<SendSmsRe
 
   // Development: just log and return ok
   if (process.env.NODE_ENV !== 'production') {
-    console.log(`[SMS DEV] Sending to ${to}: ${message}`);
+    logger.add(`[SMS DEV] Sending to ${to}: ${message}`, { className: 'sms', methodName: 'sendSms' });
     return { ok: true, provider: 'dev' };
   }
 
@@ -53,14 +55,14 @@ export async function sendSms(phone: string, message: string): Promise<SendSmsRe
     const json = await resp.json().catch(() => ({}));
 
     if (!resp.ok) {
-      console.error('[sendSms] MSG91 send failed', resp.status, json);
+      logger.add(`[sendSms] MSG91 send failed status=${resp.status} body=${JSON.stringify(json)}`, { className: 'sms', methodName: 'sendSms' });
       return { ok: false, error: `msg91-error: ${resp.status}` };
     }
 
     // MSG91 v2 usually returns { type: 'success', message: '...' } or an object with details.
     return { ok: true, provider: 'msg91', id: (json as any)?.messageId || (json as any)?.message || undefined };
   } catch (err: any) {
-    console.error('[sendSms] MSG91 send error', err);
+    logger.add(`[sendSms] MSG91 send error ${String(err)}`, { className: 'sms', methodName: 'sendSms' });
     return { ok: false, error: `msg91-error: ${err?.message || 'unknown'}` };
   }
 }

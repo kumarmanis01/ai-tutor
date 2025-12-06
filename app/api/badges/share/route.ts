@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 import { NextResponse } from 'next/server';
 import { logApiUsage } from '@/utils/logApiUsage';
 import { logEvent } from '@/utils/logEvent';
@@ -27,7 +28,7 @@ export async function POST(req: Request) {
   try {
     await logEvent('badge_shared', { badgeId });
   } catch (err) {
-    console.error('[badges/share] db write failed:', err);
+    logger.error('[badges/share] db write failed', { className: 'api.badges.share', methodName: 'POST', error: String(err) });
     // non-blocking: return ok but log the error
     return NextResponse.json({ ok: true, warning: 'db_write_failed' });
   }

@@ -21,6 +21,22 @@ const eslintConfig = [
     rules: {
       'react/no-unescaped-entities': 'off',
       '@typescript-eslint/no-explicit-any': 'off',
+      // Enforce routing logs through centralized logger
+      'no-console': ['error'],
+    },
+  },
+  // Allow console usage inside the logger implementation only
+  {
+    files: ['lib/logger.ts'],
+    rules: {
+      'no-console': 'off',
+    },
+  },
+  // Allow console in local utility scripts
+  {
+    files: ['scripts/**'],
+    rules: {
+      'no-console': 'off',
     },
   },
 ];

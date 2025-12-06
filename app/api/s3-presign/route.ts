@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 import { NextResponse } from 'next/server';
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
@@ -65,13 +66,13 @@ export async function POST(req: Request) {
           }
         } catch (innerErr) {
           // ignore and continue to default provider chain
-          console.warn('getPresignCredentials failed, falling back to default credentials chain', innerErr);
+          logger.warn('getPresignCredentials failed, falling back to default credentials chain', { className: 'api.s3-presign', methodName: 'POST', error: String(innerErr) });
         }
       }
 
       s3 = new S3Client(s3Opts);
     } catch (err) {
-      console.error('Error constructing S3 client', err);
+      logger.error('Error constructing S3 client', { className: 'api.s3-presign', methodName: 'POST', error: String(err) });
       return NextResponse.json({ error: 's3_client_init_failed' }, { status: 500 });
     }
 
@@ -85,7 +86,7 @@ export async function POST(req: Request) {
       presignedUrl = await getSignedUrl(s3, command, { expiresIn });
     } catch (err) {
       // Detect common credential errors and return a helpful message to developer
-      console.error('/api/s3-presign getSignedUrl error', err);
+      logger.error('/api/s3-presign getSignedUrl error', { className: 'api.s3-presign', methodName: 'POST', error: String(err) });
       const anyErr: any = err || {};
       const msg = (anyErr.message || '').toString().toLowerCase();
       const name = (anyErr.name || '').toString().toLowerCase();
@@ -115,7 +116,7 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ url: presignedUrl, key, objectUrl });
   } catch (e) {
-    console.error('/api/s3-presign error', e);
+    logger.error('/api/s3-presign error', { className: 'api.s3-presign', methodName: 'POST', error: String(e) });
     return NextResponse.json({ error: 'presign_failed' }, { status: 500 });
   }
 }

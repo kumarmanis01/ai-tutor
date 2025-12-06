@@ -5,6 +5,7 @@ import { toast } from '@/lib/toast';
 import { useRouter } from 'next/navigation';
 import Icon from '@/components/UI/AppIcon';
 import OtpProviderForm from '@/components/Auth/OtpProviderForm';
+import { logger } from '@/lib/logger';
 
 interface FormData {
   phone: string;
@@ -43,18 +44,18 @@ const SignupFormWidget = () => {
           setWidgetToken(String(json.token));
         } else {
           setWidgetError(json?.message || 'Widget token not available');
-          console.warn('widget-token:', json);
+          logger.warn('widget-token fetch returned unexpected payload', { className: 'SignupFormWidget', payload: json });
         }
       } catch (e) {
         setWidgetError(String(e));
-        console.warn('Error fetching widget token', e);
+        logger.warn('Error fetching widget token', { className: 'SignupFormWidget', error: String(e) });
       }
     })();
   }, []);
 
   useEffect(() => {
-    if (widgetError) console.warn('[SignupFormWidget] Widget error:', widgetError);
-    if (widgetToken) console.info('[SignupFormWidget] Found widget token:', widgetToken);
+    if (widgetError) logger.warn('[SignupFormWidget] Widget error', { className: 'SignupFormWidget', error: widgetError });
+    if (widgetToken) logger.info('[SignupFormWidget] Found widget token', { className: 'SignupFormWidget', tokenSnippet: String(widgetToken).slice(-8) });
   }, [widgetError, widgetToken]);
 
   const subjects = [
@@ -101,7 +102,7 @@ const SignupFormWidget = () => {
       }
       router.push('/student-home-dashboard');
     } catch (err) {
-      console.error('onboarding submit error', err);
+      logger.error('onboarding submit error', { className: 'SignupFormWidget', methodName: 'handleSubmit', error: String(err) });
       toast('Failed to complete signup');
     }
   };
@@ -167,7 +168,7 @@ const SignupFormWidget = () => {
                   autoVerify={false}
                   onSuccess={(result) => {
                     // result may be the structured { raw, token, phone } we now return
-                    console.info('[SignupFormWidget] otp onSuccess', result);
+                    logger.info('[SignupFormWidget] otp onSuccess', { className: 'SignupFormWidget', result });
                     // extract token: widget sometimes nests it under raw.message
                     let token = result?.token;
                     if (!token && result?.raw) {
@@ -183,15 +184,15 @@ const SignupFormWidget = () => {
                     if (token) {
                       (async () => {
                         try {
-                          console.info('[SignupFormWidget] verifying token from widget', { tokenSnippet: String(token).slice(-8) });
+                          logger.info('[SignupFormWidget] verifying token from widget', { className: 'SignupFormWidget', tokenSnippet: String(token).slice(-8) });
                           const r = await fetch('/api/msg91/verify-access-token', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ accessToken: token }) });
                           const j = await r.json().catch(() => ({}));
-                          console.info('[SignupFormWidget] verify response', { status: r.status, ok: r.ok, body: j });
+                          logger.info('[SignupFormWidget] verify response', { className: 'SignupFormWidget', status: r.status, ok: r.ok, body: j });
                           // If verify succeeded and returned phone or user info, update formData
                           if (r.ok && j?.phone) setFormData((p) => ({ ...p, phone: j.phone }));
                           if (r.ok && j?.token) setFormData((p) => ({ ...p, token: j.token }));
                         } catch (e) {
-                          console.warn('[SignupFormWidget] verify call failed', e);
+                          logger.warn('[SignupFormWidget] verify call failed', { className: 'SignupFormWidget', error: String(e) });
                         }
                       })();
                     }
@@ -199,7 +200,7 @@ const SignupFormWidget = () => {
                     setStep(2);
                   }}
                   onFailure={(err) => {
-                    console.warn('[SignupFormWidget] otp widget failure', err);
+                    logger.warn('[SignupFormWidget] otp widget failure', { className: 'SignupFormWidget', error: String(err) });
                     toast('OTP widget failed: ' + String(err));
                   }}
                 />

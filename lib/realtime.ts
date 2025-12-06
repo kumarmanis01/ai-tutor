@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 /**
  * Small realtime broadcaster:
  * - Provides in-memory pub/sub for SSE streams (development, single-instance)
@@ -40,7 +41,7 @@ export function publish(roomId: string, payload: RealtimePayload) {
     try {
       cb(payload);
     } catch (e) {
-      console.error('subscriber error', e);
+      logger.error(`subscriber error: ${String(e)}`, { className: 'realtime', methodName: 'publish' });
     }
   }
 }

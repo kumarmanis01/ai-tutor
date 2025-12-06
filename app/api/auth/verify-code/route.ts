@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { cookies } from 'next/headers';
@@ -44,7 +45,7 @@ export async function POST(req: Request) {
         html: `<p>Hello <b>${user.name}</b>, your account has been created successfully!</p>`,
       });
     } catch (err) {
-      console.error('Error sending welcome email:', err);
+      logger.error('Error sending welcome email', { className: 'api.auth.verify-code', methodName: 'POST', error: String(err) });
       // You may choose to ignore or handle this error
     }
   }

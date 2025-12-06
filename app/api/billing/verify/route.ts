@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 import { NextResponse } from 'next/server';
 import crypto from 'crypto';
 import { getServerSessionForHandlers } from '@/lib/session';
@@ -146,7 +147,7 @@ export async function POST(req: Request) {
       amount / 100, // Convert paise to rupees
     );
   } catch (err) {
-    console.error('Failed to send payment email:', err);
+    logger.error('Failed to send payment email', { className: 'api.billing.verify', methodName: 'POST', error: String(err) });
   }
 
   return NextResponse.json({ success: true });

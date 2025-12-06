@@ -1,4 +1,5 @@
 import { SecretsManagerClient, GetSecretValueCommand } from '@aws-sdk/client-secrets-manager';
+import { logger } from '@/lib/logger';
 
 const region = process.env.AWS_REGION || process.env.AWS_DEFAULT_REGION || 'us-east-1';
 const secretsManagerClient = new SecretsManagerClient({ region });
@@ -29,7 +30,7 @@ export async function getSecret(secretName: string): Promise<string | null> {
     try {
       return Buffer.from(bin).toString('utf8');
     } catch (error) {
-      console.error('[awsSecrets] Error decoding SecretBinary:', error);
+      logger.error(`[awsSecrets] Error decoding SecretBinary: ${String(error)}`, { className: 'awsSecrets', methodName: 'getSecret' });
       return null;
     }
     }
@@ -37,7 +38,7 @@ export async function getSecret(secretName: string): Promise<string | null> {
     return null;
   } catch (error) {
     // Non-fatal: log and return null
-    console.error('[awsSecrets] getSecret error:', error);
+    logger.error(`[awsSecrets] getSecret error: ${String(error)}`, { className: 'awsSecrets', methodName: 'getSecret' });
     return null;
   }
 }
@@ -53,7 +54,7 @@ export async function getJsonSecret<T = unknown>(secretName: string): Promise<T 
   try {
     return JSON.parse(raw) as T;
   } catch (err) {
-    console.error(`[awsSecrets] getJsonSecret parse error for ${secretName}:`, err);
+    logger.error(`[awsSecrets] getJsonSecret parse error for ${secretName}: ${String(err)}`, { className: 'awsSecrets', methodName: 'getJsonSecret' });
     return null;
   }
 }
@@ -80,7 +81,7 @@ export async function getPresignCredentials(): Promise<PresignCreds> {
       secretAccessKey: parsed.AWS_SECRET_ACCESS_KEY || parsed.secretAccessKey || parsed.secret_access_key,
     };
   } catch (err) {
-    console.error('[awsSecrets] getPresignCredentials parse error', err);
+    logger.error(`[awsSecrets] getPresignCredentials parse error: ${String(err)}`, { className: 'awsSecrets', methodName: 'getPresignCredentials' });
     return null;
   }
 }

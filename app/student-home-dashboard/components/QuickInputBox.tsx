@@ -5,6 +5,7 @@ import Image from 'next/image';
 import LanguageSelector from '@/components/LanguageSelector';
 import { startVoiceInput, uploadImage } from '@/lib/inputHandlers';
 import { toast } from '@/lib/toast';
+import { logger } from '@/lib/logger';
 import resizeImageFile from '@/lib/resizeImage';
 import { Speech } from '@/lib/speech';
 
@@ -154,7 +155,7 @@ const QuickInputBox: React.FC<QuickInputBoxProps> = ({ onReply, onError, initial
     try {
       const result = await uploadImage(file);
       if (!result.ok) {
-        console.error('upload failed', result.error, result.details);
+        logger.error('upload failed', { className: 'QuickInputBox', methodName: 'handleFileChange', error: result.error, details: result.details });
         onError?.(result.error || 'Upload failed');
         // If the server returned an AWS credential-related error, surface a user-friendly toast
         try {
@@ -173,9 +174,9 @@ const QuickInputBox: React.FC<QuickInputBoxProps> = ({ onReply, onError, initial
       setImages((prev) => prev.map((it) => (it.id === id ? { ...it, url: result.url, uploading: false } : it)));
       // Set a helpful prompt if the input was empty
       setQuestionText((prev) => prev || 'Describe the problem in the image...');
-      console.log('Uploaded image URL:', result.url);
+      logger.add(`Uploaded image URL: ${result.url}`, { className: 'QuickInputBox', methodName: 'handleFileChange' });
     } catch (err) {
-      console.error('Image upload error', err);
+      logger.error('Image upload error', { className: 'QuickInputBox', methodName: 'handleFileChange', error: String(err) });
       onError?.('Image upload failed');
       setImages((prev) => prev.map((it) => (it.id === id ? { ...it, uploading: false } : it)));
     } finally {
@@ -204,7 +205,7 @@ const QuickInputBox: React.FC<QuickInputBoxProps> = ({ onReply, onError, initial
           document.getElementById('question-input')?.focus();
         } catch {}
       } catch (err) {
-        console.error('QuickInputBox suggestion handler error', err);
+        logger.error('QuickInputBox suggestion handler error', { className: 'QuickInputBox', methodName: 'suggestionHandler', error: String(err) });
       }
     }
     window.addEventListener('chatSuggestionPicked', onSuggestionPicked as EventListener);
@@ -431,12 +432,12 @@ const QuickInputBox: React.FC<QuickInputBoxProps> = ({ onReply, onError, initial
       const languageToSend = detectedLang ?? (preferredLang && preferredLang !== 'auto' ? preferredLang : undefined);
       const res = await handleSend(questionText.trim(), languageToSend);
       if (!res.ok) {
-        console.error('Question send failed', res.error);
+        logger.error('Question send failed', { className: 'QuickInputBox', methodName: 'handleAskQuestion', error: res.error });
         onError?.(res.error || 'Failed to ask question');
         return;
       }
       // Send AI reply to parent for display
-      console.log('AI reply:', res.reply);
+      logger.add(`AI reply: ${String(res.reply)}`, { className: 'QuickInputBox', methodName: 'handleAsk' });
       // update detected language from response if provided
       if (res.language) {
         setDetectedLang(res.language);

@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 // Consolidated onboarding handler (merged onboarding-phone -> onboarding)
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSessionForHandlers } from '@/lib/session';
@@ -19,14 +20,14 @@ export async function POST(req: NextRequest) {
       const masked = { ...body } as any;
       if (typeof masked.token === 'string') masked.token = `***${String(masked.token).slice(-8)}`;
       if (typeof masked.phone === 'string') masked.phone = String(masked.phone).replace(/\d(?=\d{4})/g, '*');
-      console.info('/api/user/onboarding received payload (masked):', masked);
+      logger.info('/api/user/onboarding received payload (masked)', { className: 'api.user.onboarding', methodName: 'POST', masked });
       const debugEnabled = String(process.env.DEBUG_ONBOARDING || '').toLowerCase() === '1' || String(process.env.DEBUG_ONBOARDING || '').toLowerCase() === 'true';
       if (debugEnabled) {
-        console.debug('/api/user/onboarding received payload (RAW):', body);
+        logger.debug('/api/user/onboarding received payload (RAW)', { className: 'api.user.onboarding', methodName: 'POST', body });
       }
     } catch (logErr) {
-      console.warn('/api/user/onboarding: failed to mask/log payload', logErr);
-      console.debug('/api/user/onboarding raw payload fallback:', body);
+      logger.warn('/api/user/onboarding: failed to mask/log payload', { className: 'api.user.onboarding', methodName: 'POST', error: String(logErr) });
+      logger.debug('/api/user/onboarding raw payload fallback', { className: 'api.user.onboarding', methodName: 'POST', body });
     }
 
     const name = typeof body.name === 'string' ? body.name.trim() : undefined;
@@ -45,29 +46,29 @@ export async function POST(req: NextRequest) {
       try {
         const boardCol: any = await prisma.$queryRaw`SELECT column_name FROM information_schema.columns WHERE table_name = 'User' AND column_name = 'board' LIMIT 1`;
         if (!boardCol || (Array.isArray(boardCol) && boardCol.length === 0)) {
-          console.error('/api/user/onboarding: missing User.board column in DB');
+          logger.error('/api/user/onboarding: missing User.board column in DB', { className: 'api.user.onboarding', methodName: 'POST' });
           return NextResponse.json({
             error: 'db_schema_mismatch',
             message: 'Database schema is out of sync: column `User.board` is missing. Run `npx prisma migrate dev` to apply pending migrations.',
           }, { status: 500 });
         }
       } catch (schemaCheckErr) {
-        console.warn('/api/user/onboarding: failed to check DB schema for board column', schemaCheckErr);
+        logger.warn('/api/user/onboarding: failed to check DB schema for board column', { className: 'api.user.onboarding', methodName: 'POST', error: String(schemaCheckErr) });
       }
       try {
-        console.info('/api/user/onboarding: upserting user by phone', { phone });
+        logger.info('/api/user/onboarding: upserting user by phone', { className: 'api.user.onboarding', methodName: 'POST', phone });
         const user = await prisma.user.upsert({ where: { phone }, update: {}, create: { phone } });
         userId = user.id;
       } catch (e: any) {
         if (e?.code === 'P2022') {
-          console.error('/api/user/onboarding: prisma schema mismatch P2022', e.meta || e.message);
+          logger.error('/api/user/onboarding: prisma schema mismatch P2022', { className: 'api.user.onboarding', methodName: 'POST', error: String((e as any)?.meta || (e as any)?.message || e) });
           return NextResponse.json({
             error: 'db_schema_mismatch',
             message: 'Database schema is out of sync with Prisma schema: `User.phone` column missing. Run `npx prisma migrate dev` to apply pending migrations.',
             details: e?.meta || String(e?.message),
           }, { status: 500 });
         }
-        console.warn('/api/user/onboarding: upsert by phone failed, trying find/create', e);
+        logger.warn('/api/user/onboarding: upsert by phone failed, trying find/create', { className: 'api.user.onboarding', methodName: 'POST', error: String(e) });
         try {
           const existing = await prisma.user.findUnique({ where: { phone } });
           if (existing) userId = existing.id;
@@ -77,14 +78,14 @@ export async function POST(req: NextRequest) {
           }
         } catch (e2: any) {
           if (e2?.code === 'P2022') {
-            console.error('/api/user/onboarding: prisma schema mismatch on find/create P2022', e2.meta || e2.message);
+            logger.error('/api/user/onboarding: prisma schema mismatch on find/create P2022', { className: 'api.user.onboarding', methodName: 'POST', error: String((e2 as any)?.meta || (e2 as any)?.message || e2) });
             return NextResponse.json({
               error: 'db_schema_mismatch',
               message: 'Database schema is out of sync with Prisma schema: `User.phone` column missing. Run `npx prisma migrate dev` to apply pending migrations.',
               details: e2?.meta || String(e2?.message),
             }, { status: 500 });
           }
-          console.error('/api/user/onboarding: failed to ensure user by phone', e2);
+          logger.error('/api/user/onboarding: failed to ensure user by phone', { className: 'api.user.onboarding', methodName: 'POST', error: String(e2) });
         }
       }
     }
@@ -105,14 +106,14 @@ export async function POST(req: NextRequest) {
     if (preferredLanguage) updates.language = preferredLanguage;
     if (token) updates.lastWidgetToken = token;
 
-    console.info('/api/user/onboarding userId and updates', { userId, updates });
+    logger.info('/api/user/onboarding userId and updates', { className: 'api.user.onboarding', methodName: 'POST', userId, updates });
     let updatedUser;
     try {
       updatedUser = await prisma.user.update({ where: { id: userId }, data: updates });
-      console.info('/api/user/onboarding updated user', { id: updatedUser.id, name: updatedUser.name, phone: updatedUser.phone });
+      logger.info('/api/user/onboarding updated user', { className: 'api.user.onboarding', methodName: 'POST', id: updatedUser.id, name: updatedUser.name, phone: updatedUser.phone });
     } catch (updErr: any) {
       if (updErr?.code === 'P2022') {
-        console.error('/api/user/onboarding: prisma schema mismatch on update P2022', updErr.meta || updErr.message);
+        logger.error('/api/user/onboarding: prisma schema mismatch on update P2022', { className: 'api.user.onboarding', methodName: 'POST', error: String((updErr as any)?.meta || (updErr as any)?.message || updErr) });
         return NextResponse.json({
           error: 'db_schema_mismatch',
           message: 'Database schema is out of sync with Prisma schema: one or more columns (e.g. `User.board`) are missing. Run `npx prisma migrate dev` to apply pending migrations.',
@@ -127,12 +128,12 @@ export async function POST(req: NextRequest) {
         await prisma.event.create({ data: { userId: updatedUser.id, type: 'otp_widget_token', metadata: { token }, timestamp: new Date() } });
       }
     } catch (evErr) {
-      console.warn('/api/user/onboarding: failed to persist widget token as event', evErr);
+      logger.warn('/api/user/onboarding: failed to persist widget token as event', { className: 'api.user.onboarding', methodName: 'POST', error: String(evErr) });
     }
 
     return NextResponse.json({ ok: true, user: { id: updatedUser.id, name: updatedUser.name, phone: updatedUser.phone } });
   } catch (err) {
-    console.error('/api/user/onboarding error', err);
+    logger.error('/api/user/onboarding error', { className: 'api.user.onboarding', methodName: 'POST', error: String(err) });
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

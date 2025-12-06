@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 import { NextResponse } from 'next/server';
 import { getServerSessionForHandlers } from '@/lib/session';
 import { prisma } from '@/lib/db';
@@ -34,7 +35,7 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ success: true });
   } catch (err) {
-    console.error('SaveChats API error:', err);
+    logger.error('SaveChats API error', { className: 'api.save-chats', methodName: 'POST', error: String(err) });
     return NextResponse.json({ error: 'Failed to save chats' }, { status: 500 });
   }
 }

@@ -1,4 +1,5 @@
 "use client";
+import { logger } from '@/lib/logger';
 
 import React, { useState, useEffect } from "react";
 import { Speech } from '@/lib/speech';
@@ -50,7 +51,7 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ messages }) => {
       Speech.speak(m.text, { lang });
       setPlayingId(m.id);
     } catch (err) {
-      console.error('TTS play error', err);
+      logger.error('TTS play error', { className: 'ChatPanel', methodName: 'playTTS', error: String(err) });
     }
   };
 

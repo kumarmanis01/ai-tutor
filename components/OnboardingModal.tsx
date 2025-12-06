@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from 'react';
+import { logger } from '@/lib/logger';
 import { useSession } from 'next-auth/react';
 import useCurrentUser from '@/hooks/useCurrentUser';
 
@@ -39,7 +40,7 @@ export default function OnboardingModal() {
         const missing = !data.name || !data.language || !data.grade || !data.board;
         setOpen(Boolean(missing));
       } catch (e) {
-        console.warn('OnboardingModal: failed to load profile', e);
+        logger.warn(`OnboardingModal: failed to load profile: ${String(e)}`, { className: 'OnboardingModal', methodName: 'load' });
       } finally {
         setLoadingProfile(false);
       }
@@ -80,13 +81,13 @@ export default function OnboardingModal() {
         await mutate();
       } catch (mErr) {
         // ignore mutate errors — fallback to full redirect
-        console.warn('OnboardingModal: mutate failed', mErr);
+        logger.warn(`OnboardingModal: mutate failed: ${String(mErr)}`, { className: 'OnboardingModal', methodName: 'handleSave' });
       }
       setOpen(false);
       // Redirect to student home dashboard so user lands in the app after onboarding
       window.location.replace('/student-home-dashboard');
     } catch (err) {
-      console.error('onboarding save error', err);
+      logger.error(`onboarding save error: ${String(err)}`, { className: 'OnboardingModal', methodName: 'handleSave' });
       setError('Network error');
       setSaving(false);
     }

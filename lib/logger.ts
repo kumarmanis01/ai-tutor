@@ -14,17 +14,44 @@ type LogCallback = (msg: string) => void;
 interface LogContext {
   className?: string;
   methodName?: string;
+  [key: string]: unknown;
 }
 
-// Logging is enabled only if NEXT_PUBLIC_DEBUG_MODE === 'true'
+// Determine environment and logging levels
+const isClient = typeof window !== 'undefined';
 const isDebug = process.env.NEXT_PUBLIC_DEBUG_MODE === 'true';
+
+type Level = 'error' | 'warn' | 'info' | 'debug' | 'log';
+const levelWeight: Record<Level, number> = {
+  error: 40,
+  warn: 30,
+  info: 20,
+  debug: 10,
+  log: 20,
+};
+
+function parseLevel(s?: string | null): Level {
+  const v = String(s || '').toLowerCase();
+  if (v === 'error' || v === 'warn' || v === 'info' || v === 'debug' || v === 'log') return v as Level;
+  return 'error';
+}
+
+// Server log level via env; default to 'error' to preserve production visibility for errors
+const serverMinLevel = levelWeight[parseLevel(process.env.LOG_LEVEL)];
+// Client min level: allow error logs even when debug is off; otherwise gate by NEXT_PUBLIC_DEBUG_MODE
+const clientMinLevel = isDebug ? levelWeight.debug : levelWeight.error;
 
 class Logger {
   private logs: string[] = [];
   private subscribers: LogCallback[] = [];
 
+  private shouldLog(level: Level) {
+    const min = isClient ? clientMinLevel : serverMinLevel;
+    return levelWeight[level] >= min;
+  }
+
   add(msg: string, context?: LogContext) {
-    if (!isDebug) return;
+    if (!this.shouldLog('log')) return;
     const time = new Date().toLocaleTimeString();
     let prefix = `[${time}]`;
     if (context?.className) prefix += ` [${context.className}]`;
@@ -32,8 +59,28 @@ class Logger {
     const entry = `${prefix} ${msg}`;
     this.logs.push(entry);
     this.subscribers.forEach((cb) => cb(entry));
-    // Also log to console in debug mode
+    // Also log to console
     console.log(entry);
+  }
+
+  error(msg: string, context?: LogContext) {
+    if (!this.shouldLog('error')) return;
+    this.add(`[ERROR] ${msg}`, context);
+  }
+
+  warn(msg: string, context?: LogContext) {
+    if (!this.shouldLog('warn')) return;
+    this.add(`[WARN] ${msg}`, context);
+  }
+
+  info(msg: string, context?: LogContext) {
+    if (!this.shouldLog('info')) return;
+    this.add(`[INFO] ${msg}`, context);
+  }
+
+  debug(msg: string, context?: LogContext) {
+    if (!this.shouldLog('debug')) return;
+    this.add(`[DEBUG] ${msg}`, context);
   }
 
   getLogs() {
@@ -91,4 +138,11 @@ export const logger = isDebug
       getLogs: () => [],
       subscribe: () => () => {},
       logRouteInfo: async () => {},
+      // In non-debug mode, allow emitting error logs on client (level gating handled inside Logger when instantiated)
+      error: (msg: string, context?: LogContext) => {
+        if (isClient) console.error(`[ERROR] ${msg}`, context);
+      },
+      warn: () => {},
+      info: () => {},
+      debug: () => {},
     };

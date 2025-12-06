@@ -1,4 +1,5 @@
 'use client';
+import { logger } from '@/lib/logger';
 import { useState } from 'react';
 
 type CreateResponse = {
@@ -26,7 +27,7 @@ export default function InviteButton() {
           // ignore clipboard errors
         }
       } else {
-        console.warn('Unexpected response from /api/referral/create', data);
+        logger.warn('Unexpected response from /api/referral/create', { className: 'InviteButton', methodName: 'createReferral', data });
       }
     } finally {
       setLoading(false);

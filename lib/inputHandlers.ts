@@ -5,6 +5,7 @@ export type UploadResult = { ok: true; url: string } | { ok: false; error?: stri
  * Calls the `/api/upload-image` endpoint and returns a structured result.
  */
 import resizeImageFile from './resizeImage';
+import { logger } from '@/lib/logger';
 
 export async function uploadImage(file: File): Promise<UploadResult> {
   try {
@@ -13,7 +14,7 @@ export async function uploadImage(file: File): Promise<UploadResult> {
     try {
       primaryFile = await resizeImageFile(file, { maxWidth: 1600, maxHeight: 1600, quality: 0.80, mimeType: 'image/webp' });
     } catch (err) {
-      console.warn('Primary (webp) resize failed, falling back to original', err);
+      logger.warn('Primary (webp) resize failed, falling back to original', { className: 'inputHandlers', methodName: 'uploadImage', details: String(err) });
       primaryFile = file;
     }
 
@@ -54,7 +55,7 @@ export async function uploadImage(file: File): Promise<UploadResult> {
         await fetch(fallbackMeta.url, { method: 'PUT', headers: { 'Content-Type': jpegFallback.type }, body: jpegFallback });
       } catch (e) {
         // ignore background failures but log for debugging
-        console.warn('JPEG fallback upload failed', e);
+        logger.warn(`JPEG fallback upload failed: ${String(e)}`, { className: 'inputHandlers', methodName: 'uploadImage' });
       }
     })();
 

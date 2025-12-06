@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db'; // Ensure this path is correct
 import { logApiUsage } from '@/utils/logApiUsage';
@@ -7,12 +8,12 @@ export async function POST(request: NextRequest) {
     logApiUsage('/api/audit', 'POST');
     const auditData = await request.json();
 
-    // Log the audit data to the console (or save it to a database/logging service)
-    console.log('Audit Trail:', auditData);
+    // Log the audit data using central logger when available
+    logger.add(`Audit Trail: ${JSON.stringify(auditData)}`, { className: 'audit', methodName: 'POST' });
 
     return NextResponse.json({ message: 'Audit trail logged successfully' }, { status: 200 });
   } catch (error) {
-    console.error('Failed to log audit trail:', error);
+    logger.error('Failed to log audit trail', { className: 'api.audit', methodName: 'POST', error: String(error) });
     return NextResponse.json({ message: 'Failed to log audit trail' }, { status: 500 });
   }
 }
@@ -35,7 +36,7 @@ export async function GET() {
 
     return NextResponse.json(auditLogs, { status: 200 });
   } catch (error) {
-    console.error('Failed to fetch audit logs:', error);
+    logger.error('Failed to fetch audit logs', { className: 'api.audit', methodName: 'GET', error: String(error) });
     return NextResponse.json({ message: 'Failed to fetch audit logs' }, { status: 500 });
   }
 }

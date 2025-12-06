@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import { toast } from '@/lib/toast';
+import { logger } from '@/lib/logger';
 import { signIn, useSession } from 'next-auth/react';
 import useCurrentUser from '@/hooks/useCurrentUser';
 import PricingCard from '@/components/PricingCard';
@@ -72,11 +73,11 @@ export default function SubscriptionModal({ open, onClose }: Props) {
         const rzp = new RazorpayCtor(options);
         rzp.open();
         } catch (err) {
-        console.error('Error opening Razorpay:', err);
+        logger.error(`Error opening Razorpay: ${String(err)}`, { className: 'SubscriptionModal', methodName: 'handleSubscribe' });
         toast('Failed to open payment gateway.');
       }
     } catch (err) {
-      console.error('subscribe client error', err);
+      logger.error(`subscribe client error: ${String(err)}`, { className: 'SubscriptionModal', methodName: 'handleSubscribe' });
       toast('Subscription failed.');
     } finally {
       setLoading(false);

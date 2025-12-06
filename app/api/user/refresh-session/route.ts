@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 import { NextResponse } from 'next/server';
 import { getServerSessionForHandlers } from '@/lib/session';
 import { prisma } from '@/lib/prisma';
@@ -21,7 +22,7 @@ export async function POST() {
       role: dbUser.role ?? null,
     });
   } catch (err) {
-    console.error('POST /api/user/refresh-session error', err);
+    logger.error('POST /api/user/refresh-session error', { className: 'api.user.refresh-session', methodName: 'POST', error: String(err) });
     return NextResponse.json({ error: 'internal_error' }, { status: 500 });
   }
 }

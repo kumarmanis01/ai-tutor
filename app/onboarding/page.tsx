@@ -4,6 +4,7 @@ import { useSession } from 'next-auth/react';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { getCountries } from '@yusifaliyevpro/countries';
+import { logger } from '@/lib/logger';
 import Image from 'next/image';
 
 type CountryDropdownOption = { name: string; cca2: string; flag: string };
@@ -79,7 +80,7 @@ export default function OnboardingPage() {
     } catch (err) {
       setError('Network error');
       setSaving(false);
-      console.log(err);
+      logger.add(`Onboarding error: ${String(err)}`, { className: 'OnboardingPage', methodName: 'handleSubmit' });
     }
   };
 

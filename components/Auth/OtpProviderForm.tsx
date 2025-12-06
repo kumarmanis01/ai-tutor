@@ -9,6 +9,7 @@ import React, {
   useRef,
   useState,
 } from "react";
+import { logger } from '@/lib/logger';
 
 type OtpProviderProps = {
   widgetId: string;
@@ -89,7 +90,7 @@ const OtpProviderForm = forwardRef<OtpProviderHandle, OtpProviderProps>(
           }
 
           // Log the payload and extracted values for observability in the browser console
-          console.info('[OtpProvider] success payload', { raw: data, token, phone });
+          logger.info('[OtpProvider] success payload', { className: 'OtpProviderForm', methodName: 'success', raw: data, token, phone });
 
           // Return a structured object to the onSuccess handler so callers can rely on token/phone
           onSuccess?.({ raw: data, token, phone });
@@ -97,24 +98,24 @@ const OtpProviderForm = forwardRef<OtpProviderHandle, OtpProviderProps>(
           // If configured, attempt server-side verification of the widget token.
           if (autoVerify && token) {
             try {
-              console.info('[OtpProvider] autoVerify sending token to server', { tokenSnippet: String(token).slice(-8) });
+              logger.info('[OtpProvider] autoVerify sending token to server', { className: 'OtpProviderForm', methodName: 'success', tokenSnippet: String(token).slice(-8) });
               const resp = await fetch('/api/msg91/verify-access-token', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ accessToken: token }),
               });
               const json = await resp.json().catch(() => ({}));
-              console.info('[OtpProvider] verify response', { status: resp.status, ok: resp.ok, json });
+              logger.info('[OtpProvider] verify response', { className: 'OtpProviderForm', methodName: 'verify', status: resp.status, ok: resp.ok, json });
               if (!resp.ok) {
                 onFailure?.(json || new Error('verify failed'));
               }
             } catch (e) {
               // non-fatal; surface to onFailure
-              console.warn('auto verify failed', e);
+              logger.warn('auto verify failed', { className: 'OtpProviderForm', methodName: 'verify', error: String(e) });
               onFailure?.(e);
             }
           } else if (autoVerify && !token) {
-            console.warn('[OtpProvider] autoVerify enabled but token not found in payload', data);
+            logger.warn('[OtpProvider] autoVerify enabled but token not found in payload', { className: 'OtpProviderForm', methodName: 'success', raw: data });
           }
         } catch (e) {
           onFailure?.(e);
@@ -136,7 +137,7 @@ const OtpProviderForm = forwardRef<OtpProviderHandle, OtpProviderProps>(
           (window as any).initSendOTP(buildConfig());
           setLoaded(true);
         } catch (e) {
-          console.error("initSendOTP failed", e);
+          logger.error("initSendOTP failed", { className: 'OtpProviderForm', methodName: 'loadProvider', error: String(e) });
           onFailure?.(e);
         } finally {
           setLoading(false);
@@ -155,18 +156,18 @@ const OtpProviderForm = forwardRef<OtpProviderHandle, OtpProviderProps>(
             (window as any).initSendOTP(buildConfig());
             setLoaded(true);
           } else {
-            console.warn("OTP provider script loaded but initSendOTP not found");
+            logger.warn("OTP provider script loaded but initSendOTP not found", { className: 'OtpProviderForm', methodName: 'script.onload' });
             onFailure?.(new Error("initSendOTP not found after script load"));
           }
         } catch (e) {
-          console.error("initSendOTP call failed", e);
+          logger.error("initSendOTP call failed", { className: 'OtpProviderForm', methodName: 'script.onload', error: String(e) });
           onFailure?.(e);
         } finally {
           setLoading(false);
         }
       };
       script.onerror = (e) => {
-        console.error("Failed to load OTP provider script", e);
+        logger.error("Failed to load OTP provider script", { className: 'OtpProviderForm', methodName: 'script.onerror', error: String(e as any) });
         setLoading(false);
         onFailure?.(new Error("Failed to load OTP provider script"));
       };
@@ -222,7 +223,7 @@ const OtpProviderForm = forwardRef<OtpProviderHandle, OtpProviderProps>(
                 onIdentifierChange?.(v);
               } catch (e) {
                 // swallow any callback errors to avoid breaking the input
-                console.warn('onIdentifierChange callback errored', e);
+                logger.warn('onIdentifierChange callback errored', { className: 'OtpProviderForm', methodName: 'onIdentifierChange', error: String(e) });
               }
             }}
             placeholder={"Enter mobile number or email"}
