@@ -50,8 +50,8 @@ class Logger {
     return levelWeight[level] >= min;
   }
 
-  add(msg: string, context?: LogContext) {
-    if (!this.shouldLog('log')) return;
+  add(msg: string, context?: LogContext, level: Level = 'log') {
+    if (!this.shouldLog(level)) return;
     const time = new Date().toLocaleTimeString();
     let prefix = `[${time}]`;
     if (context?.className) prefix += ` [${context.className}]`;
@@ -59,28 +59,26 @@ class Logger {
     const entry = `${prefix} ${msg}`;
     this.logs.push(entry);
     this.subscribers.forEach((cb) => cb(entry));
-    // Also log to console
-    console.log(entry);
+    // Also log to console with appropriate level
+    if (level === 'error') console.error(entry);
+    else if (level === 'warn') console.warn(entry);
+    else console.log(entry);
   }
 
   error(msg: string, context?: LogContext) {
-    if (!this.shouldLog('error')) return;
-    this.add(`[ERROR] ${msg}`, context);
+    this.add(`[ERROR] ${msg}`, context, 'error');
   }
 
   warn(msg: string, context?: LogContext) {
-    if (!this.shouldLog('warn')) return;
-    this.add(`[WARN] ${msg}`, context);
+    this.add(`[WARN] ${msg}`, context, 'warn');
   }
 
   info(msg: string, context?: LogContext) {
-    if (!this.shouldLog('info')) return;
-    this.add(`[INFO] ${msg}`, context);
+    this.add(`[INFO] ${msg}`, context, 'info');
   }
 
   debug(msg: string, context?: LogContext) {
-    if (!this.shouldLog('debug')) return;
-    this.add(`[DEBUG] ${msg}`, context);
+    this.add(`[DEBUG] ${msg}`, context, 'debug');
   }
 
   getLogs() {
@@ -131,18 +129,5 @@ class Logger {
   }
 }
 
-export const logger = isDebug
-  ? new Logger()
-  : {
-      add: () => {},
-      getLogs: () => [],
-      subscribe: () => () => {},
-      logRouteInfo: async () => {},
-      // In non-debug mode, allow emitting error logs on client (level gating handled inside Logger when instantiated)
-      error: (msg: string, context?: LogContext) => {
-        if (isClient) console.error(`[ERROR] ${msg}`, context);
-      },
-      warn: () => {},
-      info: () => {},
-      debug: () => {},
-    };
+// Always instantiate the logger; level gating ensures appropriate output.
+export const logger = new Logger();
