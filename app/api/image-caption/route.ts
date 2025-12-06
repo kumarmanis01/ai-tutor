@@ -1,6 +1,6 @@
 import { logger } from '@/lib/logger';
 import { NextResponse } from 'next/server';
-import { getServerSessionForHandlers } from '@/lib/session';
+// No session required; gated by explicit user consent to avoid sending images without permission
 
 /*
   /api/image-caption
@@ -17,10 +17,6 @@ import { getServerSessionForHandlers } from '@/lib/session';
 type Req = { url?: string; consent?: boolean };
 
 export async function POST(req: Request) {
-  const session = await getServerSessionForHandlers();
-  if (!session?.user?.id) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
   try {
     const body: Req = await req.json().catch(() => ({}));
     const url = body.url;

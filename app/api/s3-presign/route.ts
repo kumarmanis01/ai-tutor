@@ -1,6 +1,6 @@
 import { logger } from '@/lib/logger';
 import { NextResponse } from 'next/server';
-import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
+import { S3Client, PutObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { v4 as uuidv4 } from 'uuid';
 import { getPresignCredentials } from '../../../lib/awsSecrets';
@@ -81,7 +81,8 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 's3_client_init_failed' }, { status: 500 });
     }
 
-    const command = new PutObjectCommand({ Bucket: bucket, Key: key, ContentType: contentType, ACL: 'private' });
+    // Do not include ACL in presign to avoid requiring x-amz-acl header on the browser PUT
+    const command = new PutObjectCommand({ Bucket: bucket, Key: key, ContentType: contentType });
 
     // expiry can be configured via env (seconds), default 5 minutes
     const expiresIn = Number(process.env.S3_PRESIGN_EXPIRES ?? process.env.NEXT_PUBLIC_S3_PRESIGN_EXPIRES ?? 300);
@@ -117,9 +118,18 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'presign_failed', message: 'Failed to create presigned URL' }, { status: 500 });
     }
 
+    // Also provide a short-lived presigned GET for immediate browser preview (object remains private)
+    let previewUrl: string | undefined;
+    try {
+      const getCmd = new GetObjectCommand({ Bucket: bucket, Key: key });
+      previewUrl = await getSignedUrl(s3, getCmd, { expiresIn: Math.min(expiresIn, 300) });
+    } catch (e) {
+      // ignore preview failures; client can use objectUrl if public policy allows
+    }
+
     const objectUrl = `https://${bucket}.s3.${region}.amazonaws.com/${encodeURIComponent(key)}`;
 
-    return NextResponse.json({ url: presignedUrl, key, objectUrl });
+    return NextResponse.json({ url: presignedUrl, key, objectUrl, previewUrl });
   } catch (e) {
     logger.error('/api/s3-presign error', { className: 'api.s3-presign', methodName: 'POST', error: String(e) });
     return NextResponse.json({ error: 'presign_failed' }, { status: 500 });

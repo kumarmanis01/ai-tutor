@@ -377,6 +377,9 @@ const QuickInputBox: React.FC<QuickInputBoxProps> = ({ onReply, onError, initial
         {it.uploading && (
           <div className="absolute inset-0 bg-black/40 flex items-center justify-center text-xs text-white">Uploading</div>
         )}
+        {!it.uploading && it.url && (it.url.startsWith('http://') || it.url.startsWith('https://')) && (
+          <div className="absolute bottom-1 right-1 bg-emerald-600 text-white text-[10px] px-1.5 py-0.5 rounded">Ready</div>
+        )}
         <button
           type="button"
           onClick={() => {
@@ -427,6 +430,15 @@ const QuickInputBox: React.FC<QuickInputBoxProps> = ({ onReply, onError, initial
 
   const handleAskQuestion = async () => {
     if (!questionText.trim() || asking) return;
+    // Guard: if user attached images but none are ready (still uploading or blob/data), delay ask
+    const hasAttached = images.length > 0;
+    const readyRemote = images.filter((it) => it.url && (it.url.startsWith('http://') || it.url.startsWith('https://')) && !it.uploading);
+    if (hasAttached && readyRemote.length === 0) {
+      try {
+        toast('Image is still uploading. Please wait a moment, then try Ask again.');
+      } catch {}
+      return;
+    }
     try {
       setAsking(true);
       const languageToSend = detectedLang ?? (preferredLang && preferredLang !== 'auto' ? preferredLang : undefined);

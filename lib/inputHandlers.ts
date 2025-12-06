@@ -37,7 +37,8 @@ export async function uploadImage(file: File): Promise<UploadResult> {
       return { ok: false, error: `s3-put-failed:${putPrimary.status}` };
     }
 
-    const primaryUrl = primaryMeta.objectUrl || primaryMeta.url;
+    // Prefer previewUrl for immediate browser display (private object), else objectUrl
+    const primaryUrl = primaryMeta.previewUrl || primaryMeta.objectUrl || primaryMeta.url;
 
     // Background: upload a small JPEG fallback for compatibility (do not block)
     (async () => {

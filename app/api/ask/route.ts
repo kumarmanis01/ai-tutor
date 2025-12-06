@@ -120,12 +120,24 @@ export async function POST(req: Request) {
 
     // If images were provided, include a short note in the system prompt so the model knows images exist.
     // Include available captions to give the model usable visual context.
-    const imagesNote =
-      imagesFromClient && imagesFromClient.length > 0
-        ? `\nAttached images:\n${imagesFromClient
-            .map((u, i) => `${i + 1}. ${u}${captions[i] ? ` — caption: ${captions[i]}` : ''}`)
-            .join('\n')}\n\nIf you cannot access these URLs, ask the user for a brief description of the image(s).`
-        : '';
+    // Build multimodal user content: include text plus image_url parts when consented
+    const userContentParts: any[] = [{ type: 'text', text }];
+    if (consentToShare && imagesFromClient && imagesFromClient.length > 0) {
+      for (let i = 0; i < imagesFromClient.length; i++) {
+        const url = imagesFromClient[i];
+        if (typeof url === 'string' && (url.startsWith('http://') || url.startsWith('https://'))) {
+          userContentParts.push({
+            type: 'image_url',
+            image_url: { url },
+          });
+          // If we have a caption, add it as an additional text hint next to the image
+          const cap = captions[i];
+          if (cap && typeof cap === 'string') {
+            userContentParts.push({ type: 'text', text: `(caption ${i + 1}): ${cap}` });
+          }
+        }
+      }
+    }
 
     const resp = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
@@ -136,8 +148,8 @@ export async function POST(req: Request) {
       body: JSON.stringify({
         model,
         messages: [
-          { role: 'system', content: systemPromptWithLang + imagesNote },
-          { role: 'user', content: text },
+          { role: 'system', content: systemPromptWithLang },
+          { role: 'user', content: userContentParts },
         ],
         temperature: 0.35,
         max_tokens: 800,
