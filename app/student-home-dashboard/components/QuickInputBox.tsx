@@ -184,7 +184,7 @@ const QuickInputBox: React.FC<QuickInputBoxProps> = ({ onReply, onError, initial
     }
   };
 
-  // Listen for picked suggestions to populate the input (do not auto-submit)
+  // Listen for picked suggestions to populate the input and auto-submit
   useEffect(() => {
     function onSuggestionPicked(e: Event) {
       try {
@@ -192,18 +192,18 @@ const QuickInputBox: React.FC<QuickInputBoxProps> = ({ onReply, onError, initial
         if (!detail) return;
         const { suggestion } = detail;
         setQuestionText(suggestion);
-        // show a small hint to the user that suggestion was inserted
-        setSuggestionHint(`Suggestion inserted: "${suggestion}" — press Ask to submit or edit`);
-        // clear previous timeout
-        try {
-          if (hintTimeoutRef.current) window.clearTimeout(hintTimeoutRef.current);
-        } catch {}
-        // clear hint after 10s if user doesn't act
-        hintTimeoutRef.current = window.setTimeout(() => setSuggestionHint(null), 10000);
-        // focus the input
-        try {
-          document.getElementById('question-input')?.focus();
-        } catch {}
+        // If images are attached but not yet remote-ready, avoid auto-submit
+        const hasAttached = images.length > 0;
+        const readyRemote = images.filter((it) => it.url && (it.url.startsWith('http://') || it.url.startsWith('https://')) && !it.uploading);
+        if (hasAttached && readyRemote.length === 0) {
+          try { toast('Image is still uploading. Please wait a moment.'); } catch {}
+          try { document.getElementById('question-input')?.focus(); } catch {}
+          return;
+        }
+        // Auto-submit the suggestion (defer to next tick so state updates apply)
+        setTimeout(() => {
+          handleAskQuestion();
+        }, 0);
       } catch (err) {
         logger.error('QuickInputBox suggestion handler error', { className: 'QuickInputBox', methodName: 'suggestionHandler', error: String(err) });
       }
@@ -441,6 +441,8 @@ const QuickInputBox: React.FC<QuickInputBoxProps> = ({ onReply, onError, initial
     }
     try {
       setAsking(true);
+      // Clear any suggestion hint once we submit
+      try { setSuggestionHint(null); } catch {}
       const languageToSend = detectedLang ?? (preferredLang && preferredLang !== 'auto' ? preferredLang : undefined);
       const res = await handleSend(questionText.trim(), languageToSend);
       if (!res.ok) {
@@ -483,6 +485,7 @@ const QuickInputBox: React.FC<QuickInputBoxProps> = ({ onReply, onError, initial
       // Clear input after successful ask
       setQuestionText('');
       setInterimTranscript('');
+      try { setSuggestionHint(null); } catch {}
     } finally {
       setAsking(false);
     }
