@@ -124,6 +124,7 @@ export async function POST(req: Request) {
       const getCmd = new GetObjectCommand({ Bucket: bucket, Key: key });
       previewUrl = await getSignedUrl(s3, getCmd, { expiresIn: Math.min(expiresIn, 300) });
     } catch (e) {
+      logger.warn('Failed to generate preview URL', { className: 'api.s3-presign', methodName: 'POST', error: String(e) });
       // ignore preview failures; client can use objectUrl if public policy allows
     }
 
