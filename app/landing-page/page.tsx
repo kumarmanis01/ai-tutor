@@ -2,7 +2,6 @@ import type { Metadata } from 'next';
 import { logger } from '@/lib/logger';
 import LandingPageInteractive from './components/LandingPageInteractive';
 import { getSessionUserWithSubscription } from '@/lib/session';
-import { redirect } from 'next/navigation';
 import React from 'react';
 
 function ClientReplace({ to }: { to: string }) {
