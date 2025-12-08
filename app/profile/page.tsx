@@ -3,6 +3,7 @@ import { useState } from 'react';
 import dynamic from 'next/dynamic';
 import { useSession } from 'next-auth/react';
 import Avatar from '@/components/UI/Avatar';
+import LogoutButton from '@/components/Auth/LogoutButton';
 import type { User } from '@/lib/types';
 import ProfileWidgets from '@/components/ProfileWidgets';
 import { extractBadges } from '@/lib/extractBadge';
@@ -69,6 +70,9 @@ export default function ProfilePage() {
             >
               Update Profile
             </button>
+            <div className="mt-3">
+              <LogoutButton />
+            </div>
           </div>
 
           {/* Profile Details */}

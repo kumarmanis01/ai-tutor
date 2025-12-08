@@ -3,6 +3,15 @@ import { logger } from '@/lib/logger';
 import LandingPageInteractive from './components/LandingPageInteractive';
 import { getSessionUserWithSubscription } from '@/lib/session';
 import { redirect } from 'next/navigation';
+import React from 'react';
+
+function ClientReplace({ to }: { to: string }) {
+  'use client';
+  React.useEffect(() => {
+    try { window.location.replace(to); } catch {}
+  }, [to]);
+  return null;
+}
 
 export const metadata: Metadata = {
   title: 'AI Tutor India - Affordable 24×7 Homework Help in Hindi & English',
@@ -15,8 +24,7 @@ export default async function LandingPage() {
   try {
     const { user } = await getSessionUserWithSubscription();
     if (user) {
-      // redirect authenticated users to the student dashboard
-      redirect('/student-home-dashboard');
+      return <ClientReplace to="/dashboard" />;
     }
   } catch (e) {
     // If this is Next.js' redirect control-flow we must rethrow it

@@ -85,7 +85,7 @@ export default function OnboardingModal() {
       }
       setOpen(false);
       // Redirect to student home dashboard so user lands in the app after onboarding
-      window.location.replace('/student-home-dashboard');
+      window.location.replace('/dashboard');
     } catch (err) {
       logger.error(`onboarding save error: ${String(err)}`, { className: 'OnboardingModal', methodName: 'handleSave' });
       setError('Network error');

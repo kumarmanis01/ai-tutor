@@ -6,7 +6,7 @@
 	- Persists user/assistant messages with `Chat.subject = conversationId` to group turns per topic.
 	- Loads recent history filtered by `userId` and `subject` for context-aware follow-ups.
 	- Returns `{ conversationId, topic }` so the client reuses the same ID across turns.
-- Client (`app/student-home-dashboard/components/QuickInputBox.tsx`):
+- Client (`app/dashboard/components/QuickInputBox.tsx`):
 	- Stores `conversationId` in component state.
 	- Sends it with `/api/ask` requests and updates it from the server response.
 - Database (`prisma/schema.prisma`):
