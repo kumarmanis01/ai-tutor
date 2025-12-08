@@ -1,6 +1,5 @@
 'use client';
 import { useState } from 'react';
-import dynamic from 'next/dynamic';
 import { useSession } from 'next-auth/react';
 import Avatar from '@/components/UI/Avatar';
 import LogoutButton from '@/components/Auth/LogoutButton';
@@ -9,8 +8,7 @@ import ProfileWidgets from '@/components/ProfileWidgets';
 import { extractBadges } from '@/lib/extractBadge';
 import AuthRedeemOnSignIn from '@/components/AuthRedeemOnSignIn';
 import useCurrentUser from '@/hooks/useCurrentUser';
-
-const OnboardingPage = dynamic(() => import('../onboarding/page'), { ssr: false });
+import OnboardingModal from '@/components/OnboardingModal';
 
 export default function ProfilePage() {
   const { data: session } = useSession();
@@ -23,20 +21,7 @@ export default function ProfilePage() {
   if (loading) return <div className="p-6">Loading...</div>;
 
   if (showOnboarding) {
-    return (
-      <div className="fixed inset-0 bg-black bg-opacity-40 z-50 flex items-center justify-center">
-        <div className="bg-white dark:bg-gray-900 rounded-lg shadow-lg p-6 max-w-lg w-full relative">
-          <button
-            className="absolute top-2 right-2 text-gray-500 dark:text-gray-300 text-xl"
-            onClick={() => setShowOnboarding(false)}
-            aria-label="Close"
-          >
-            ×
-          </button>
-          <OnboardingPage />
-        </div>
-      </div>
-    );
+    return <OnboardingModal />;
   }
 
   const fallback =

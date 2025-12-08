@@ -17,6 +17,16 @@ export default function OnboardingModal() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
+  // Prevent background scroll when modal is open
+  useEffect(() => {
+    if (!open) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, [open]);
+
   useEffect(() => {
     async function load() {
       // If no signed-in user/email, nothing to do
@@ -99,13 +109,23 @@ export default function OnboardingModal() {
   return (
     <div>
       {open && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6">
           <div className="absolute inset-0 bg-black/40" onClick={() => setOpen(false)} />
-          <form onSubmit={handleSave} className="relative bg-white rounded-lg shadow-lg p-6 w-full max-w-lg mx-4">
-            <h2 className="text-lg font-semibold mb-2">Complete your profile</h2>
-            <p className="text-sm text-muted-foreground mb-4">We need a few details to personalize learning.</p>
-            <input className="w-full px-3 py-2 border rounded mb-3" placeholder="Your name" value={name} onChange={(e) => setName(e.target.value)} />
-            <div className="mb-3">
+          <form
+            onSubmit={handleSave}
+            className="relative bg-white rounded-lg shadow-lg w-full max-w-full sm:max-w-md md:max-w-lg lg:max-w-xl mx-auto"
+            style={{ maxHeight: '90vh' }}
+          >
+            {/* Header: fixed at top */}
+            <div className="sticky top-0 z-10 bg-white px-5 pt-5 pb-3 border-b">
+              <h2 className="text-lg font-semibold">Complete your profile</h2>
+              <p className="text-sm text-muted-foreground">We need a few details to personalize learning.</p>
+            </div>
+
+            {/* Body: scrolls independently */}
+            <div className="px-5 py-4 overflow-y-auto" style={{ maxHeight: 'calc(90vh - 112px)' }}>
+              <input className="w-full px-3 py-2 border rounded mb-3" placeholder="Your name" value={name} onChange={(e) => setName(e.target.value)} />
+              <div className="mb-3">
               <label className="block text-sm mb-1">Class</label>
               <select value={childClass} onChange={(e) => setChildClass(e.target.value)} className="w-full px-3 py-2 border rounded">
                 <option value="">Select class</option>
@@ -142,8 +162,11 @@ export default function OnboardingModal() {
                 ))}
               </div>
             </div>
-            {error && <div className="text-sm text-red-600 mb-2">{error}</div>}
-            <div className="flex justify-end gap-3">
+              {error && <div className="text-sm text-red-600 mb-2">{error}</div>}
+            </div>
+
+            {/* Footer: fixed at bottom */}
+            <div className="sticky bottom-0 z-10 bg-white px-5 py-3 border-t flex justify-end gap-3">
               <button type="button" className="px-4 py-2 border rounded" onClick={() => setOpen(false)}>Cancel</button>
               <button type="submit" disabled={saving} className="px-4 py-2 bg-primary text-white rounded">{saving ? 'Saving...' : 'Save'}</button>
             </div>
