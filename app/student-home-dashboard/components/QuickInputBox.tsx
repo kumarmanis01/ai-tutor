@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useState, useRef, useEffect } from 'react';
+/* eslint-disable react-hooks/exhaustive-deps */
+import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import Image from 'next/image';
 import LanguageSelector from '@/components/LanguageSelector';
 import { startVoiceInput, uploadImage } from '@/lib/inputHandlers';
@@ -184,33 +185,7 @@ const QuickInputBox: React.FC<QuickInputBoxProps> = ({ onReply, onError, initial
     }
   };
 
-  // Listen for picked suggestions to populate the input and auto-submit
-  useEffect(() => {
-    function onSuggestionPicked(e: Event) {
-      try {
-        const detail = (e as CustomEvent).detail as { suggestion: string } | undefined;
-        if (!detail) return;
-        const { suggestion } = detail;
-        setQuestionText(suggestion);
-        // If images are attached but not yet remote-ready, avoid auto-submit
-        const hasAttached = images.length > 0;
-        const readyRemote = images.filter((it) => it.url && (it.url.startsWith('http://') || it.url.startsWith('https://')) && !it.uploading);
-        if (hasAttached && readyRemote.length === 0) {
-          try { toast('Image is still uploading. Please wait a moment.'); } catch {}
-          try { document.getElementById('question-input')?.focus(); } catch {}
-          return;
-        }
-        // Auto-submit the suggestion (defer to next tick so state updates apply)
-        setTimeout(() => {
-          handleAskQuestion();
-        }, 0);
-      } catch (err) {
-        logger.error('QuickInputBox suggestion handler error', { className: 'QuickInputBox', methodName: 'suggestionHandler', error: String(err) });
-      }
-    }
-    window.addEventListener('chatSuggestionPicked', onSuggestionPicked as EventListener);
-    return () => window.removeEventListener('chatSuggestionPicked', onSuggestionPicked as EventListener);
-  }, []);
+  
 
   // Emit a typing event so the chat container can dismiss suggestions when user types
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -338,7 +313,7 @@ const QuickInputBox: React.FC<QuickInputBoxProps> = ({ onReply, onError, initial
   // Toggle small language menu (used by speak button)
   const toggleLangMenuVoice = () => setShowLangMenuVoice((s) => !s);
 
-  const languageOptions: { value: string; label: string }[] = [
+  const languageOptions = useMemo<{ value: string; label: string }[]>(() => ([
     { value: 'auto', label: 'Auto (browser)' },
     { value: 'hi-IN', label: 'हिन्दी (Hindi)' },
     { value: 'en-US', label: 'English' },
@@ -346,11 +321,18 @@ const QuickInputBox: React.FC<QuickInputBoxProps> = ({ onReply, onError, initial
     { value: 'bn-IN', label: 'বাংলা (Bengali)' },
     { value: 'fr-FR', label: 'Français' },
     { value: 'es-ES', label: 'Español' },
-  ];
+  ]), []);
+
+  const languageOptionsRef = useRef(languageOptions);
+  useEffect(() => { languageOptionsRef.current = languageOptions; }, [languageOptions]);
+  const onErrorRef = useRef(onError);
+  useEffect(() => { onErrorRef.current = onError; }, [onError]);
 
   const [asking, setAsking] = useState(false);
   const [detectedLang, setDetectedLang] = useState<string | undefined>(undefined);
   const [consentToShare, setConsentToShare] = useState(false);
+  // Track conversation/topic id for threading context per chat panel
+  const [conversationId, setConversationId] = useState<string | null>(null);
 
   const renderThumb = (it: { id: string; url: string; uploading: boolean }) => {
     const isBlob = !!(it.url && (it.url.startsWith('blob:') || it.url.startsWith('data:')));
@@ -399,9 +381,8 @@ const QuickInputBox: React.FC<QuickInputBoxProps> = ({ onReply, onError, initial
     );
   };
   // Send a message to the server-side chat API and return the AI reply and optional suggestions.
-  async function handleSend(message: string, language?: string): Promise<{ ok: boolean; reply?: string; error?: string; language?: string; suggestions?: string[] }> {
+  const handleSend = useCallback(async (message: string, language?: string): Promise<{ ok: boolean; reply?: string; error?: string; language?: string; suggestions?: string[] }> => {
     try {
-      // Include uploaded image URLs (only remote/http URLs) so server can incorporate them
       const imageUrls = images
         .filter((it) => it.url && (it.url.startsWith('http://') || it.url.startsWith('https://')) && !it.uploading)
         .map((it) => it.url);
@@ -409,14 +390,17 @@ const QuickInputBox: React.FC<QuickInputBoxProps> = ({ onReply, onError, initial
       const res = await fetch('/api/ask', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: message, language, images: imageUrls, consentToShare }),
+        body: JSON.stringify({ text: message, language, images: imageUrls, consentToShare, conversationId: conversationId || undefined }),
       });
       if (!res.ok) {
         const payload = await res.json().catch(() => ({}));
         return { ok: false, error: payload?.error || `status-${res.status}` };
       }
       const json = await res.json().catch(() => ({}));
-      // API returns { language, answer, suggestions }
+      try {
+        const cid = json?.conversationId || json?.topic;
+        if (cid && typeof cid === 'string') setConversationId(cid);
+      } catch {}
       return {
         ok: true,
         reply: json?.answer ?? json?.reply,
@@ -426,9 +410,9 @@ const QuickInputBox: React.FC<QuickInputBoxProps> = ({ onReply, onError, initial
     } catch (err: any) {
       return { ok: false, error: err?.message || String(err) };
     }
-  }
+  }, [images, consentToShare, conversationId, languageOptions, onError]);
 
-  const handleAskQuestion = async () => {
+  const handleAskQuestion = useCallback(async () => {
     if (!questionText.trim() || asking) return;
     // Guard: if user attached images but none are ready (still uploading or blob/data), delay ask
     const hasAttached = images.length > 0;
@@ -447,7 +431,7 @@ const QuickInputBox: React.FC<QuickInputBoxProps> = ({ onReply, onError, initial
       const res = await handleSend(questionText.trim(), languageToSend);
       if (!res.ok) {
         logger.error('Question send failed', { className: 'QuickInputBox', methodName: 'handleAskQuestion', error: res.error });
-        onError?.(res.error || 'Failed to ask question');
+        onErrorRef.current?.(res.error || 'Failed to ask question');
         return;
       }
       // Send AI reply to parent for display
@@ -467,7 +451,7 @@ const QuickInputBox: React.FC<QuickInputBoxProps> = ({ onReply, onError, initial
           const normDetected = String(res.language).toLowerCase();
           if (normDetected && normPreferred !== normDetected) {
             // find a label for the detected language
-            const match = languageOptions.find((o) => o.value.toLowerCase() === normDetected || o.value.toLowerCase().startsWith(normDetected.split('-')[0]));
+            const match = languageOptionsRef.current.find((o) => o.value.toLowerCase() === normDetected || o.value.toLowerCase().startsWith(normDetected.split('-')[0]));
             setDetectionPrompt({ lang: res.language, label: match ? match.label : res.language });
           }
         } catch {}
@@ -489,7 +473,33 @@ const QuickInputBox: React.FC<QuickInputBoxProps> = ({ onReply, onError, initial
     } finally {
       setAsking(false);
     }
-  };
+  }, [questionText, asking, images, detectedLang, preferredLang, handleSend, onReply, setSuggestionHint, setDetectedLang, setAsking]);
+
+  // Listen for picked suggestions to populate the input and auto-submit
+  useEffect(() => {
+    function onSuggestionPicked(e: Event) {
+      try {
+        const detail = (e as CustomEvent).detail as { suggestion: string } | undefined;
+        if (!detail) return;
+        const { suggestion } = detail;
+        setQuestionText(suggestion);
+        const hasAttached = images.length > 0;
+        const readyRemote = images.filter((it) => it.url && (it.url.startsWith('http://') || it.url.startsWith('https://')) && !it.uploading);
+        if (hasAttached && readyRemote.length === 0) {
+          try { toast('Image is still uploading. Please wait a moment.'); } catch {}
+          try { document.getElementById('question-input')?.focus(); } catch {}
+          return;
+        }
+        setTimeout(() => {
+          handleAskQuestion();
+        }, 0);
+      } catch (err) {
+        logger.error('QuickInputBox suggestion handler error', { className: 'QuickInputBox', methodName: 'suggestionHandler', error: String(err) });
+      }
+    }
+    window.addEventListener('chatSuggestionPicked', onSuggestionPicked as EventListener);
+    return () => window.removeEventListener('chatSuggestionPicked', onSuggestionPicked as EventListener);
+  }, [images, handleAskQuestion]);
 
   const acceptDetection = () => {
     if (!detectionPrompt) return;

@@ -1,3 +1,37 @@
+## Conversation Threading (December 2025)
+
+- Overview: The chat now supports conversation threading via a `conversationId` (topic).
+- Server (`app/api/ask/route.ts`):
+	- Accepts `conversationId` in the request. Generates one if missing (`conv_<uuid-like>`).
+	- Persists user/assistant messages with `Chat.subject = conversationId` to group turns per topic.
+	- Loads recent history filtered by `userId` and `subject` for context-aware follow-ups.
+	- Returns `{ conversationId, topic }` so the client reuses the same ID across turns.
+- Client (`app/student-home-dashboard/components/QuickInputBox.tsx`):
+	- Stores `conversationId` in component state.
+	- Sends it with `/api/ask` requests and updates it from the server response.
+- Database (`prisma/schema.prisma`):
+	- Added indexes: `@@index([subject])` and `@@index([userId, subject])` on `Chat` for efficient per-topic queries.
+	- Apply with: `npx prisma migrate dev -n add-chat-topic-indexes`.
+
+### Scaling to Multiple Conversations
+- Use distinct `conversationId` values per chat/thread (tests, notes, topics, rooms).
+- No schema change required immediately; `Chat.subject` acts as the topic key.
+- Future migration can introduce a dedicated `Conversation` table and OpenAI Conversations/Responses API, keeping `conversationId` contract intact.
+
+### Suggestion Auto-Submit UX
+- Clicking a suggestion now auto-submits the query.
+- Guarded: Submission is blocked if images are still uploading; a toast is shown.
+- The “Suggestion inserted…” hint is cleared on submit.
+
+### Run & Verify
+1. Install deps: `npm install`
+2. Migrate DB indexes: `npx prisma migrate dev -n add-chat-topic-indexes`
+3. Start dev: `npm run dev`
+4. Open chat: ask a question, click a suggestion, then ask a follow-up — the assistant should retain context.
+
+### Notes
+- If `OPENAI_API_KEY` is missing, `/api/ask` returns an error.
+- Image analysis requires user consent and uses presigned uploads; ensure S3 CORS and env vars are set.
 # Spinzy Academy — Phase 2 (MVP)
 
 ## Quick start

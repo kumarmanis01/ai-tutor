@@ -6,7 +6,7 @@ import { logApiUsage } from '@/utils/logApiUsage';
 import { checkProfanity } from '@/lib/guardrails';
 import { parse as parseAcceptLanguage } from 'accept-language-parser';
 
-type Req = { text?: string; language?: string; images?: string[]; consentToShare?: boolean };
+type Req = { text?: string; language?: string; images?: string[]; consentToShare?: boolean; conversationId?: string };
 
 const SYSTEM_PROMPT = `You are an AI assistant. Detect the user's language automatically based on the user's message.
 Always respond in the same language the user used.
@@ -33,6 +33,18 @@ export async function POST(req: Request) {
     const body: Req = await req.json().catch(() => ({}));
     const text = body.text;
     if (!text) return NextResponse.json({ error: 'Missing text' }, { status: 400 });
+    // Minimal conversation support: accept or generate a conversationId and thread DB entries by it (use "topic" terminology)
+    let conversationId: string = body.conversationId || '';
+    let topicId: string = conversationId;
+    try {
+      if (!topicId) {
+        topicId = `conv_${crypto.randomUUID?.() || Math.random().toString(36).slice(2)}`;
+        conversationId = topicId;
+      }
+    } catch {
+      topicId = `conv_${Math.random().toString(36).slice(2)}`;
+      conversationId = topicId;
+    }
 
     const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
     const model = process.env.OPENAI_MODEL || 'gpt-4o-mini';
@@ -54,7 +66,8 @@ export async function POST(req: Request) {
         sessionUserId = (session as any).user.id as string;
         // persist user's question (best-effort)
         try {
-          await prisma.chat.create({ data: { userId: sessionUserId, role: 'user', content: text, subject: 'general' } });
+          // Store topicId in Chat.subject for grouping (schema uses 'subject')
+          await prisma.chat.create({ data: { userId: sessionUserId, role: 'user', content: text, subject: topicId } });
         } catch (e) {
           // don't block on DB write
           logger.error('Failed to persist user question for /api/ask', { className: 'api.ask', methodName: 'POST', error: String(e) });
@@ -185,7 +198,7 @@ export async function POST(req: Request) {
       // Persist assistant reply if session present (best-effort)
       if (sessionUserId) {
         try {
-          await prisma.chat.create({ data: { userId: sessionUserId, role: 'assistant', content: String(content), subject: 'general' } });
+          await prisma.chat.create({ data: { userId: sessionUserId, role: 'assistant', content: String(content), subject: topicId } });
         } catch (e) {
           logger.error('Failed to persist assistant reply for /api/ask (fallback)', { className: 'api.ask', methodName: 'POST', error: String(e) });
         }
@@ -207,13 +220,13 @@ export async function POST(req: Request) {
     // Persist assistant reply when available
     if (sessionUserId) {
       try {
-        await prisma.chat.create({ data: { userId: sessionUserId, role: 'assistant', content: answer, subject: 'general' } });
+        await prisma.chat.create({ data: { userId: sessionUserId, role: 'assistant', content: answer, subject: topicId } });
       } catch (e) {
         logger.error('Failed to persist assistant reply for /api/ask', { className: 'api.ask', methodName: 'POST', error: String(e) });
       }
     }
 
-    return NextResponse.json({ language, answer, suggestions });
+    return NextResponse.json({ language, answer, suggestions, conversationId: topicId, topic: topicId });
   } catch (err: any) {
     logger.error('/api/ask error', { className: 'api.ask', methodName: 'POST', error: String(err) });
     return NextResponse.json({ error: err?.message || 'Unknown error' }, { status: 500 });

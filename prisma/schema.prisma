@@ -144,6 +144,9 @@ model Chat {
   content   String // message content
   subject   String? // optional subject tag (math, science, coding)
   createdAt DateTime @default(now())
+
+  @@index([subject])
+  @@index([userId, subject])
 }
 
 model Event {
