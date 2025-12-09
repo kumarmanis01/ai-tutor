@@ -6,6 +6,7 @@ import useCurrentUser from '@/hooks/useCurrentUser';
 import { useGlobalLoader } from '@/context/GlobalLoaderProvider';
 import ProfilePage from '@/app/profile/page';
 import QuickInputBox from './QuickInputBox';
+import SubjectThreadList from './SubjectThreadList';
 import ChatPanel from './ChatPanel';
 import ContinueLearning from './ContinueLearning';
 import SuggestedContent from './SuggestedContent';
@@ -19,6 +20,8 @@ interface StudentHomeDashboardProps { [key: string]: unknown }
 const StudentHomeDashboard: React.FC<StudentHomeDashboardProps> = () => {
   const [activeTab, setActiveTab] = useState<'home' | 'tests' | 'notes' | 'profile'>('home');
   const [messages, setMessages] = useState<{ id: string; from: 'user' | 'ai'; text: string; language?: string; suggestions?: string[] }[]>([]);
+  const [subject, setSubject] = useState<string>('general');
+  const [conversationId, setConversationId] = useState<string | undefined>(undefined);
   const { data: profile, loading } = useCurrentUser();
   const studentName = profile?.name ?? 'Student';
   const { startLoading, stopLoading } = useGlobalLoader();
@@ -39,6 +42,38 @@ const StudentHomeDashboard: React.FC<StudentHomeDashboardProps> = () => {
     };
   }, [loading, profile, startLoading, stopLoading]);
 
+  // Load chat history per subject and optionally conversationId
+  useEffect(() => {
+    let cancelled = false;
+    async function loadHistory() {
+      try {
+        const url = `/api/chat/history?subject=${encodeURIComponent(subject)}${conversationId ? `&conversationId=${encodeURIComponent(conversationId)}` : ''}&limit=50`;
+        const res = await fetch(url);
+        if (!res.ok) return;
+        const data = await res.json().catch(() => null);
+        if (cancelled) return;
+        const serverMsgs = Array.isArray(data?.messages) ? data.messages : [];
+        const mapped = serverMsgs.map((m: any) => ({
+          id: String(m.id ?? `${Date.now()}-${Math.random()}`),
+          from: m.role === 'assistant' ? 'ai' : 'user',
+          text: String(m.content ?? ''),
+        }));
+        // Merge without dropping in-flight local messages; do not force-clear on empty
+        setMessages((prev) => {
+          if (mapped.length === 0) return prev; // keep local while server catches up
+          const byId = new Map<string, any>();
+          for (const p of prev) byId.set(p.id, p);
+          for (const m of mapped) byId.set(m.id, m);
+          return Array.from(byId.values());
+        });
+      } catch {
+        // ignore fetch errors; keep local state
+      }
+    }
+    loadHistory();
+    return () => { cancelled = true; };
+  }, [subject, conversationId]);
+
   return (
     <div className="min-h-screen bg-background flex flex-col">
       {/* Top Bar */}
@@ -51,6 +86,15 @@ const StudentHomeDashboard: React.FC<StudentHomeDashboardProps> = () => {
             <ProfilePage />
           ) : (
             <>
+              {/* Subject + Threads */}
+              <SubjectThreadList
+                subject={subject}
+                setSubject={(s) => { setSubject(s); setConversationId(undefined); setMessages([]); }}
+                onSelectThread={(cid) => setConversationId(cid)}
+                onNewThread={(s) => { setSubject(s); setConversationId(undefined); setMessages([]); }}
+                selectedConversationId={conversationId}
+              />
+
               {/* Chat Panel */}
               <ChatPanel messages={messages} />
 
@@ -65,6 +109,9 @@ const StudentHomeDashboard: React.FC<StudentHomeDashboardProps> = () => {
                     { id: String(Date.now()) + '-a', from: 'ai' as const, text: reply, language, suggestions },
                   ]);
                 }}
+                subject={subject}
+                conversationId={conversationId}
+                onConversationId={(cid?: string) => setConversationId(cid)}
               />
 
               {/* Continue Learning Section */}

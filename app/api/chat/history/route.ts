@@ -3,11 +3,12 @@ import { prisma } from '@/lib/db';
 import { getServerSessionForHandlers } from '@/lib/session';
 import { logger } from '@/lib/logger';
 
-// GET /api/chat/history?subject=general&limit=50
+// GET /api/chat/history?subject=general&conversationId=conv_x&limit=50
 export async function GET(req: Request) {
   try {
     const url = new URL(req.url);
     const subject = url.searchParams.get('subject') || 'general';
+    const conversationId = url.searchParams.get('conversationId') || undefined;
     const limit = Math.min(Math.max(Number(url.searchParams.get('limit') || 50), 1), 200);
 
     const session = await getServerSessionForHandlers();
@@ -15,7 +16,7 @@ export async function GET(req: Request) {
     if (!userId) return NextResponse.json({ error: 'login_required' }, { status: 401 });
 
     const rows = await prisma.chat.findMany({
-      where: { userId, subject },
+      where: { userId, subject, ...(conversationId ? { conversationId } : {}) },
       orderBy: { createdAt: 'asc' },
       take: limit,
     });
@@ -26,7 +27,7 @@ export async function GET(req: Request) {
       content: r.content,
     }));
 
-    return NextResponse.json({ subject, messages });
+    return NextResponse.json({ subject, conversationId, messages });
   } catch (e) {
     logger.error('GET /api/chat/history error', { className: 'api.chat.history', methodName: 'GET', error: String(e) });
     return NextResponse.json({ error: 'server_error' }, { status: 500 });

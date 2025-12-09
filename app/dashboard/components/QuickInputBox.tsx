@@ -14,9 +14,12 @@ interface QuickInputBoxProps {
   onReply?: (reply: string, userMessage?: string, language?: string, suggestions?: string[]) => void;
   onError?: (err: string) => void;
   initialPreferredLang?: string | null;
+  subject?: string;
+  conversationId?: string | undefined;
+  onConversationId?: (cid?: string) => void;
 }
 
-const QuickInputBox: React.FC<QuickInputBoxProps> = ({ onReply, onError, initialPreferredLang = null }) => {
+const QuickInputBox: React.FC<QuickInputBoxProps> = ({ onReply, onError, initialPreferredLang = null, subject, conversationId: conversationIdProp, onConversationId }) => {
   const [questionText, setQuestionText] = useState('');
     const [isListening, setIsListening] = useState(false);
     const [interimTranscript, setInterimTranscript] = useState('');
@@ -332,7 +335,8 @@ const QuickInputBox: React.FC<QuickInputBoxProps> = ({ onReply, onError, initial
   const [detectedLang, setDetectedLang] = useState<string | undefined>(undefined);
   const [consentToShare, setConsentToShare] = useState(false);
   // Track conversation/topic id for threading context per chat panel
-  const [conversationId, setConversationId] = useState<string | null>(null);
+  const [conversationId, setConversationId] = useState<string | null>(conversationIdProp ?? null);
+  useEffect(() => { setConversationId(conversationIdProp ?? null); }, [conversationIdProp]);
 
   const renderThumb = (it: { id: string; url: string; uploading: boolean }) => {
     const isBlob = !!(it.url && (it.url.startsWith('blob:') || it.url.startsWith('data:')));
@@ -398,7 +402,7 @@ const QuickInputBox: React.FC<QuickInputBoxProps> = ({ onReply, onError, initial
       const res = await fetch('/api/ask', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: message, language: languageHint, images: imageUrls, consentToShare, conversationId: cidToSend }),
+        body: JSON.stringify({ text: message, language: languageHint, images: imageUrls, consentToShare, conversationId: cidToSend, subject }),
       });
       if (!res.ok) {
         const payload = await res.json().catch(() => ({}));
@@ -407,7 +411,7 @@ const QuickInputBox: React.FC<QuickInputBoxProps> = ({ onReply, onError, initial
       const json = await res.json().catch(() => ({}));
       try {
         const cid = json?.conversationId || json?.topic;
-        if (cid && typeof cid === 'string') setConversationId(cid);
+        if (cid && typeof cid === 'string') { setConversationId(cid); try { onConversationId?.(cid); } catch {} }
       } catch {}
       // Normalize reply: if server mistakenly returned a JSON string, extract answer/suggestions
       let reply: string | undefined = json?.answer ?? json?.reply;
