@@ -69,14 +69,8 @@ const StudentHomeDashboard: React.FC<StudentHomeDashboardProps> = () => {
           from: m.role === 'assistant' ? 'ai' : 'user',
           text: String(m.content ?? ''),
         }));
-        // Merge without dropping in-flight local messages; do not force-clear on empty
-        setMessages((prev) => {
-          if (mapped.length === 0) return prev; // keep local while server catches up
-          const byId = new Map<string, any>();
-          for (const p of prev) byId.set(p.id, p);
-          for (const m of mapped) byId.set(m.id, m);
-          return Array.from(byId.values());
-        });
+        // Replace with canonical server history once available to avoid duplicates
+        setMessages((prev) => (mapped.length > 0 ? mapped : prev));
       } catch {
         // ignore fetch errors; keep local state
       }
