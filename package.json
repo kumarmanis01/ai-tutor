@@ -47,7 +47,8 @@
     "lint:fix": "next lint --fix",
     "format": "prettier --write \"src/**/*.{ts,tsx,css,md,json}\"",
     "serve": "next start",
-    "type-check": "tsc --noEmit"
+    "type-check": "tsc --noEmit",
+    "test": "npm run lint && npm run type-check"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.10.0",

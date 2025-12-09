@@ -7,88 +7,68 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// --- Enums ---
-enum UserStatus {
-  active
-  banned
-  suspended
-}
-
-enum UserRole {
-  user
-  admin
-  moderator
-  support
-}
-
-// --- Existing Models (kept unchanged from current schema) ---
 model User {
-  id               String         @id @default(cuid())
-  name             String?
-  email            String?        @unique
-  phone            String?        @unique
-  emailVerified    DateTime?
-  image            String?
-  parentEmail      String?
-  language         String?
-  country          String?
-  // Relations
-  accounts         Account[]
-  sessions         Session[]
-  chats            Chat[] // one-to-one chat history (user <> AI)
-  phoneOtps        PhoneOtp[]
-  subscriptions    Subscription[]
-  events           Event[] // analytics/events tied to user
-  members          RoomMember[] // room participation (optional)
-  createdAt        DateTime       @default(now())
-  updatedAt        DateTime       @updatedAt
-  Room             Room[]
-  chatHistories    ChatHistory[] // back-relation for ChatHistory
-  status           UserStatus     @default(active)
-  role             UserRole       @default(user)
-  payments         Payment[]
-  auditLogs        AuditLog[]
-  apiUsages        ApiUsage[]
-  passwordHash     String? // Store the hash here
-  grade            String? // Student grade option
-  board            String? // Student board (CBSE/ICSE/State/Other)
-  // Store subjects as a Postgres text array for typed access in Prisma
-  subjects         String[] @default([])   // Student subjects preferences
-  lastWidgetToken  String? // Last OTP widget token received for this user
-  welcomeEmailSent Boolean        @default(false)
-  todaysFreeQuestionsCount Int      @default(3) // Tracks remaining free questions for the day
-
-  // Referral relations
-  referralsCreated  Referral[] @relation("ReferralCreator")
-  redeemedReferrals Referral[] @relation("ReferralRedeemer")
-
-  // Badges
-  userBadges             UserBadge[]
-  points                 Int                      @default(0)
-  ChallengeParticipation ChallengeParticipation[]
-  // Relations for new student-centric models
-  studentQuestions       StudentQuestion[]
-  parentRelations        ParentStudent[] @relation("ParentRelations")
-  studentRelations       ParentStudent[] @relation("StudentRelations")
-  learningSessions       LearningSession[]
-  studentLearningProfile StudentLearningProfile?
-  studentStreaks         StudentStreak[]
-  testResults            TestResult[]
-  notes                  Note[]
-  bookmarks              Bookmark[]
+  id                       String                   @id @default(cuid())
+  name                     String?
+  email                    String?                  @unique
+  phone                    String?                  @unique
+  emailVerified            DateTime?
+  image                    String?
+  parentEmail              String?
+  language                 String?
+  country                  String?
+  createdAt                DateTime                 @default(now())
+  updatedAt                DateTime                 @updatedAt
+  status                   UserStatus               @default(active)
+  role                     UserRole                 @default(user)
+  passwordHash             String?
+  grade                    String?
+  board                    String?
+  subjects                 String[]                 @default([])
+  lastWidgetToken          String?
+  welcomeEmailSent         Boolean                  @default(false)
+  todaysFreeQuestionsCount Int                      @default(3)
+  points                   Int                      @default(0)
+  accounts                 Account[]
+  apiUsages                ApiUsage[]
+  auditLogs                AuditLog[]
+  bookmarks                Bookmark[]
+  ChallengeParticipation   ChallengeParticipation[]
+  chats                    Chat[]
+  chatHistories            ChatHistory[]
+  conversations            Conversation[]
+  events                   Event[]
+  learningSessions         LearningSession[]
+  notes                    Note[]
+  parentRelations          ParentStudent[]          @relation("ParentRelations")
+  studentRelations         ParentStudent[]          @relation("StudentRelations")
+  payments                 Payment[]
+  phoneOtps                PhoneOtp[]
+  referralsCreated         Referral[]               @relation("ReferralCreator")
+  redeemedReferrals        Referral[]               @relation("ReferralRedeemer")
+  Room                     Room[]
+  members                  RoomMember[]
+  sessions                 Session[]
+  studentLearningProfile   StudentLearningProfile?
+  studentQuestions         StudentQuestion[]
+  studentStreaks           StudentStreak[]
+  subscriptions            Subscription[]
+  testResults              TestResult[]
+  userBadges               UserBadge[]
 }
 
 model PhoneOtp {
-  id         String   @id @default(cuid())
-  phone      String
-  codeHash   String
-  createdAt  DateTime @default(now())
-  expiresAt  DateTime
-  attempts   Int      @default(0)
-  consumed   Boolean  @default(false)
-  ip         String? 
-  userId     String?  // optional relation if you want to link to User
-  user       User?    @relation(fields: [userId], references: [id])
+  id        String   @id @default(cuid())
+  phone     String
+  codeHash  String
+  createdAt DateTime @default(now())
+  expiresAt DateTime
+  attempts  Int      @default(0)
+  consumed  Boolean  @default(false)
+  ip        String?
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id])
+
   @@index([phone])
 }
 
@@ -105,8 +85,7 @@ model Account {
   scope             String?
   id_token          String?
   session_state     String?
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([provider, providerAccountId])
 }
@@ -116,8 +95,7 @@ model Session {
   sessionToken String   @unique
   userId       String
   expires      DateTime
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model VerificationToken {
@@ -131,46 +109,62 @@ model VerificationToken {
 model ChatHistory {
   id        String   @id @default(uuid())
   userId    String
-  messages  String // JSON stringified array
+  messages  String
   createdAt DateTime @default(now())
   user      User     @relation(fields: [userId], references: [id])
 }
 
 model Chat {
-  id        String   @id @default(cuid())
-  userId    String? // null if guest / anonymous
-  user      User?    @relation(fields: [userId], references: [id])
-  role      String // "user" | "assistant" | "system"
-  content   String // message content
-  subject   String? // optional subject tag (math, science, coding)
-  createdAt DateTime @default(now())
+  id             String        @id @default(cuid())
+  userId         String?
+  role           String
+  content        String
+  conversationId String?
+  subject        String?
+  createdAt      DateTime      @default(now())
+  conversation   Conversation? @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  user           User?         @relation(fields: [userId], references: [id])
 
+  @@index([conversationId])
+  @@index([userId, conversationId])
   @@index([subject])
   @@index([userId, subject])
 }
 
+model Conversation {
+  id        String   @id @default(cuid())
+  userId    String
+  title     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  chats     Chat[]
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
 model Event {
   id        String   @id @default(cuid())
-  userId    String? // optional: null for anonymous/guest events
-  user      User?    @relation(fields: [userId], references: [id])
-  type      String // e.g., "question_sent", "login", "export_pdf"
-  metadata  Json? // arbitrary JSON payload
-  timestamp DateTime @default(now()) // explicit event timestamp (client-provided ts can override)
+  userId    String?
+  type      String
+  metadata  Json?
+  timestamp DateTime @default(now())
   createdAt DateTime @default(now())
+  user      User?    @relation(fields: [userId], references: [id])
 }
 
 model Subscription {
   id           String   @id @default(cuid())
   userId       String
-  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  plan         String // "free" | "pro" | "enterprise"
-  billingCycle String // "monthly" | "annual"
+  plan         String
+  billingCycle String
   startDate    DateTime
   endDate      DateTime
   active       Boolean  @default(false)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
   paymentId    String?
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
 }
@@ -178,45 +172,45 @@ model Subscription {
 model Room {
   id          String       @id @default(cuid())
   name        String
-  subject     String? // subject/topic for the room
+  subject     String?
   description String?
   isPrivate   Boolean      @default(false)
   createdBy   String?
-  creator     User?        @relation(fields: [createdBy], references: [id])
-  members     RoomMember[]
-  messages    Message[]
   createdAt   DateTime     @default(now())
   updatedAt   DateTime     @updatedAt
   grade       String?
   topic       String?
   createdByAI Boolean      @default(false)
+  messages    Message[]
+  creator     User?        @relation(fields: [createdBy], references: [id])
+  members     RoomMember[]
 }
 
 model RoomMember {
   id       String   @id @default(cuid())
-  room     Room     @relation(fields: [roomId], references: [id], onDelete: Cascade)
   roomId   String
   userId   String?
-  user     User?    @relation(fields: [userId], references: [id])
   name     String?
-  role     String? // "admin", "member", "guest"
+  role     String?
   joinedAt DateTime @default(now())
   score    Int?
+  room     Room     @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  user     User?    @relation(fields: [userId], references: [id])
 
   @@index([roomId])
 }
 
 model Message {
   id        String   @id @default(cuid())
-  room      Room     @relation(fields: [roomId], references: [id], onDelete: Cascade)
   roomId    String
   senderId  String?
   sender    String?
-  role      String // "user" | "assistant" | "system"
-  type      String? // "text", "quiz", "announcement"
+  role      String
+  type      String?
   content   String
   createdAt DateTime @default(now())
   aiMeta    Json?
+  room      Room     @relation(fields: [roomId], references: [id], onDelete: Cascade)
 
   @@index([roomId])
 }
@@ -224,50 +218,50 @@ model Message {
 model Payment {
   id            String   @id @default(cuid())
   userId        String
-  user          User     @relation(fields: [userId], references: [id])
   amount        Int
-  provider      String // e.g. 'razorpay', 'stripe', etc.
-  status        String // e.g. 'success', 'failed'
+  provider      String
+  status        String
   createdAt     DateTime @default(now())
-  transactionId String? // Generic transaction/payment ID from any gateway
-  orderId       String? // Generic order/subscription ID from any gateway
-  plan          String? // e.g. 'pro', 'basic'
-  billingCycle  String? // e.g. 'monthly', 'yearly'
-  meta          Json? // Store gateway-specific metadata if needed
+  transactionId String?
+  orderId       String?
+  plan          String?
+  billingCycle  String?
+  meta          Json?
+  user          User     @relation(fields: [userId], references: [id])
 }
 
 model AuditLog {
   id        String   @id @default(cuid())
   userId    String?
-  user      User?    @relation(fields: [userId], references: [id])
-  action    String // e.g., "ban_user", "update_subscription"
-  details   Json? // optional: extra info
+  action    String
+  details   Json?
   createdAt DateTime @default(now())
+  user      User?    @relation(fields: [userId], references: [id])
 }
 
 model ApiUsage {
   id       String   @id @default(cuid())
-  userId   String? // Nullable for unauthenticated users
-  user     User?    @relation(fields: [userId], references: [id])
+  userId   String?
   endpoint String
-  method   String // HTTP method (e.g., GET, POST)
-  count    Int      @default(1) // Optional: Remove if logging each call as a separate row
+  method   String
+  count    Int      @default(1)
   lastUsed DateTime @default(now())
-  metadata Json? // Optional: Store additional details (e.g., request headers, response status)
+  metadata Json?
+  user     User?    @relation(fields: [userId], references: [id])
 
-  @@unique([userId, endpoint, method], name: "userId_endpoint_method") // Updated unique constraint
+  @@unique([userId, endpoint, method], name: "userId_endpoint_method")
 }
 
 model Referral {
   id         String    @id @default(cuid())
   code       String    @unique
   createdBy  String
-  creator    User      @relation("ReferralCreator", fields: [createdBy], references: [id])
   redeemedBy String?
-  redeemer   User?     @relation("ReferralRedeemer", fields: [redeemedBy], references: [id])
   redeemedAt DateTime?
   createdAt  DateTime  @default(now())
   metadata   Json?
+  creator    User      @relation("ReferralCreator", fields: [createdBy], references: [id])
+  redeemer   User?     @relation("ReferralRedeemer", fields: [redeemedBy], references: [id])
 }
 
 model Badge {
@@ -275,20 +269,20 @@ model Badge {
   key         String      @unique
   name        String
   description String?
-  icon        String? // emoji or icon name
+  icon        String?
   createdAt   DateTime    @default(now())
-  userBadges  UserBadge[]
   Challenge   Challenge[]
+  userBadges  UserBadge[]
 }
 
 model UserBadge {
   id       String   @id @default(cuid())
   userId   String
-  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   badgeId  String
-  badge    Badge    @relation(fields: [badgeId], references: [id], onDelete: Cascade)
   earnedAt DateTime @default(now())
   meta     Json?
+  badge    Badge    @relation(fields: [badgeId], references: [id], onDelete: Cascade)
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, badgeId])
 }
@@ -315,193 +309,199 @@ model Challenge {
   endAt          DateTime
   rewardPoints   Int                      @default(0)
   rewardBadgeId  String?
-  rewardBadge    Badge?                   @relation(fields: [rewardBadgeId], references: [id], onDelete: SetNull)
   createdAt      DateTime                 @default(now())
+  rewardBadge    Badge?                   @relation(fields: [rewardBadgeId], references: [id])
   participations ChallengeParticipation[]
 }
 
 model ChallengeParticipation {
   id            String    @id @default(cuid())
   challengeId   String
-  challenge     Challenge @relation(fields: [challengeId], references: [id], onDelete: Cascade)
   userId        String
-  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  status        String    @default("joined") // "joined" | "completed"
+  status        String    @default("joined")
   score         Int?
   submittedAt   DateTime?
   createdAt     DateTime  @default(now())
-  rewardApplied Boolean   @default(false) // prevent re-applying rewards
+  rewardApplied Boolean   @default(false)
+  challenge     Challenge @relation(fields: [challengeId], references: [id], onDelete: Cascade)
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([challengeId, userId])
 }
 
-// --- Proposed New Models (for Blueprint features) ---
-
-// Structured Q&A pipeline: questions, answers, attachments, and moderation flags
 model StudentQuestion {
-  id                 String    @id @default(cuid())
+  id                 String               @id @default(cuid())
   studentId          String
-  student            User      @relation(fields: [studentId], references: [id], onDelete: Cascade)
-  type               String    // 'photo' | 'text' | 'voice'
+  type               String
   subject            String?
   grade              String?
-  content            String?   // OCR text or typed text
-  status             String    @default("processing") // 'processing' | 'answered' | 'failed'
-  createdAt          DateTime  @default(now())
+  content            String?
+  status             String               @default("processing")
+  createdAt          DateTime             @default(now())
   answeredAt         DateTime?
   answerSummary      String?
-  answerStepsJson    Json?     // structured step-by-step answer
-  aiMetadata         Json?     // model, tokens, latencies
-  helpfulCount       Int       @default(0)
-  isFlagged          Boolean   @default(false)
+  answerStepsJson    Json?
+  aiMetadata         Json?
+  helpfulCount       Int                  @default(0)
+  isFlagged          Boolean              @default(false)
   contentSafetyScore Int?
-  processingAttempts Int?      @default(0)
-  lastUpdatedAt      DateTime  @updatedAt
-  attachments        QuestionAttachment[]
+  processingAttempts Int?                 @default(0)
+  lastUpdatedAt      DateTime             @updatedAt
   answers            QuestionAnswer[]
+  attachments        QuestionAttachment[]
   flags              QuestionFlag[]
+  student            User                 @relation(fields: [studentId], references: [id], onDelete: Cascade)
 
   @@index([studentId])
   @@index([status])
 }
 
 model QuestionAnswer {
-  id            String   @id @default(cuid())
-  questionId    String
-  question      StudentQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
-  responder     String?  // 'ai' | 'human' | optional user id
-  content       String   // full textual answer
-  contentJson   Json?    // structured (blocks, images, math)
-  createdAt     DateTime @default(now())
-  helpfulCount  Int      @default(0)
+  id           String          @id @default(cuid())
+  questionId   String
+  responder    String?
+  content      String
+  contentJson  Json?
+  createdAt    DateTime        @default(now())
+  helpfulCount Int             @default(0)
+  question     StudentQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
 }
 
 model QuestionAttachment {
-  id         String  @id @default(cuid())
-  questionId String? // optional: might attach to answer too
-  question   StudentQuestion? @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  id         String           @id @default(cuid())
+  questionId String?
   url        String
   mime       String?
   width      Int?
   height     Int?
   size       Int?
-  kind       String? // 'image' | 'audio' | 'ocr' | 'screenshot'
-  createdAt  DateTime @default(now())
+  kind       String?
+  createdAt  DateTime         @default(now())
+  question   StudentQuestion? @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
   @@index([questionId])
 }
 
 model QuestionFlag {
-  id            String   @id @default(cuid())
+  id            String          @id @default(cuid())
   questionId    String
-  question      StudentQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
-  flagType      String   // e.g., inappropriate_language, non_academic, external_help_seeking
-  severity      String   @default("low") // severity level: high, medium, low
-  autoFlagged   Boolean  @default(false)
+  flagType      String
+  severity      String          @default("low")
+  autoFlagged   Boolean         @default(false)
   reviewerNotes String?
-  status        String   @default("pending") // pending, resolved, dismissed
-  flaggedBy     String?  // userId who flagged (or null for automated)
-  flaggedAt     DateTime @default(now())
+  status        String          @default("pending")
+  flaggedBy     String?
+  flaggedAt     DateTime        @default(now())
   resolvedAt    DateTime?
+  question      StudentQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
 }
 
-// Parent <> Student relationship for RLS and parent dashboard
 model ParentStudent {
-  id        String @id @default(cuid())
+  id        String   @id @default(cuid())
   parentId  String
-  parent    User   @relation("ParentRelations", fields: [parentId], references: [id], onDelete: Cascade)
   studentId String
-  student   User   @relation("StudentRelations", fields: [studentId], references: [id], onDelete: Cascade)
   createdAt DateTime @default(now())
+  parent    User     @relation("ParentRelations", fields: [parentId], references: [id], onDelete: Cascade)
+  student   User     @relation("StudentRelations", fields: [studentId], references: [id], onDelete: Cascade)
+
   @@unique([parentId, studentId])
   @@index([studentId])
 }
 
-// Learning sessions, profile for recommendations, and streaks
 model LearningSession {
-  id          String   @id @default(cuid())
-  studentId   String
-  student     User     @relation(fields: [studentId], references: [id], onDelete: Cascade)
-  activityType String  // 'test'|'reading'|'practice'|'question' etc.
-  activityRef  String? // optional ref to test/question/note id
-  duration     Int?    // seconds
+  id           String    @id @default(cuid())
+  studentId    String
+  activityType String
+  activityRef  String?
+  duration     Int?
   meta         Json?
-  startedAt    DateTime @default(now())
+  startedAt    DateTime  @default(now())
   endedAt      DateTime?
-  createdAt    DateTime @default(now())
+  createdAt    DateTime  @default(now())
+  student      User      @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
   @@index([studentId])
 }
 
 model StudentLearningProfile {
-  id             String   @id @default(cuid())
-  studentId      String   @unique
-  student        User     @relation(fields: [studentId], references: [id], onDelete: Cascade)
-  weakSubjects   String[] @default([])
-  strengths      Json?
+  id              String   @id @default(cuid())
+  studentId       String   @unique
+  weakSubjects    String[] @default([])
+  strengths       Json?
   recommendations Json?
-  updatedAt      DateTime @updatedAt
+  updatedAt       DateTime @updatedAt
+  student         User     @relation(fields: [studentId], references: [id], onDelete: Cascade)
 }
 
 model StudentStreak {
-  id         String   @id @default(cuid())
+  id         String    @id @default(cuid())
   studentId  String
-  student    User     @relation(fields: [studentId], references: [id], onDelete: Cascade)
-  kind       String   // 'daily_study'|'question_streak'|'test_streak' etc
-  current    Int      @default(0)
-  best       Int      @default(0)
+  kind       String
+  current    Int       @default(0)
+  best       Int       @default(0)
   lastActive DateTime?
-  updatedAt  DateTime @updatedAt
+  updatedAt  DateTime  @updatedAt
+  student    User      @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
   @@index([studentId, kind])
 }
 
-// Practice tests, results, notes and bookmarks
 model PracticeTest {
-  id          String   @id @default(cuid())
-  title       String
-  subject     String?
-  grade       String?
-  questions   Json?    // serialized test blueprint (or normalize to TestQuestion)
-  createdAt   DateTime @default(now())
+  id        String   @id @default(cuid())
+  title     String
+  subject   String?
+  grade     String?
+  questions Json?
+  createdAt DateTime @default(now())
 }
 
 model TestResult {
-  id         String   @id @default(cuid())
+  id         String    @id @default(cuid())
   testId     String
   studentId  String
-  student    User     @relation(fields: [studentId], references: [id], onDelete: Cascade)
   score      Float?
   rawResult  Json?
   startedAt  DateTime?
   finishedAt DateTime?
-  createdAt  DateTime @default(now())
+  createdAt  DateTime  @default(now())
+  student    User      @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
   @@index([studentId])
 }
 
 model Note {
-  id         String   @id @default(cuid())
-  studentId  String?
-  student    User?    @relation(fields: [studentId], references: [id], onDelete: Cascade)
-  subject    String?
-  title      String
-  content    String   // markdown or text
+  id          String   @id @default(cuid())
+  studentId   String?
+  subject     String?
+  title       String
+  content     String
   contentJson Json?
-  isPublic   Boolean  @default(false)
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  isPublic    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  student     User?    @relation(fields: [studentId], references: [id], onDelete: Cascade)
 }
 
 model Bookmark {
-  id        String @id @default(cuid())
+  id        String   @id @default(cuid())
   studentId String
-  student   User   @relation(fields: [studentId], references: [id], onDelete: Cascade)
-  type      String // 'note'|'question'|'test' etc
-  refId     String // id of the referenced item
+  type      String
+  refId     String
   createdAt DateTime @default(now())
+  student   User     @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
   @@index([studentId, type])
 }
 
-// Optional denormalized counters on User (recommended, update via workers)
-// Note: These fields are provided here for clarity; if you prefer to add them
-// incrementally, add via migration after Phase 1.
+enum UserStatus {
+  active
+  banned
+  suspended
+}
 
-// End of proposed schema
-
+enum UserRole {
+  user
+  admin
+  moderator
+  support
+}

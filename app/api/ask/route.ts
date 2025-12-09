@@ -33,17 +33,14 @@ export async function POST(req: Request) {
     const body: Req = await req.json().catch(() => ({}));
     const text = body.text;
     if (!text) return NextResponse.json({ error: 'Missing text' }, { status: 400 });
-    // Minimal conversation support: accept or generate a conversationId and thread DB entries by it (use "topic" terminology)
+    // Conversation threading: accept or generate a conversationId and persist via Conversation + Chat relation
     let conversationId: string = body.conversationId || '';
-    let topicId: string = conversationId;
     try {
-      if (!topicId) {
-        topicId = `conv_${crypto.randomUUID?.() || Math.random().toString(36).slice(2)}`;
-        conversationId = topicId;
+      if (!conversationId) {
+        conversationId = `conv_${crypto.randomUUID?.() || Math.random().toString(36).slice(2)}`;
       }
     } catch {
-      topicId = `conv_${Math.random().toString(36).slice(2)}`;
-      conversationId = topicId;
+      conversationId = `conv_${Math.random().toString(36).slice(2)}`;
     }
 
     const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
@@ -66,8 +63,16 @@ export async function POST(req: Request) {
         sessionUserId = (session as any).user.id as string;
         // persist user's question (best-effort)
         try {
-          // Store topicId in Chat.subject for grouping (schema uses 'subject')
-          await prisma.chat.create({ data: { userId: sessionUserId, role: 'user', content: text, subject: topicId } });
+          // Ensure Conversation exists for this user + conversationId
+          try {
+            await prisma.conversation.upsert({
+              where: { id: conversationId },
+              update: {},
+              create: { id: conversationId, userId: sessionUserId },
+            });
+          } catch {}
+          // Persist user message linked to Conversation; also set legacy subject for back-compat
+          await prisma.chat.create({ data: { userId: sessionUserId, role: 'user', content: text, conversationId, subject: conversationId } });
         } catch (e) {
           // don't block on DB write
           logger.error('Failed to persist user question for /api/ask', { className: 'api.ask', methodName: 'POST', error: String(e) });
@@ -198,7 +203,7 @@ export async function POST(req: Request) {
       // Persist assistant reply if session present (best-effort)
       if (sessionUserId) {
         try {
-          await prisma.chat.create({ data: { userId: sessionUserId, role: 'assistant', content: String(content), subject: topicId } });
+          await prisma.chat.create({ data: { userId: sessionUserId, role: 'assistant', content: String(content), conversationId, subject: conversationId } });
         } catch (e) {
           logger.error('Failed to persist assistant reply for /api/ask (fallback)', { className: 'api.ask', methodName: 'POST', error: String(e) });
         }
@@ -220,13 +225,13 @@ export async function POST(req: Request) {
     // Persist assistant reply when available
     if (sessionUserId) {
       try {
-        await prisma.chat.create({ data: { userId: sessionUserId, role: 'assistant', content: answer, subject: topicId } });
+        await prisma.chat.create({ data: { userId: sessionUserId, role: 'assistant', content: answer, conversationId, subject: conversationId } });
       } catch (e) {
         logger.error('Failed to persist assistant reply for /api/ask', { className: 'api.ask', methodName: 'POST', error: String(e) });
       }
     }
 
-    return NextResponse.json({ language, answer, suggestions, conversationId: topicId, topic: topicId });
+    return NextResponse.json({ language, answer, suggestions, conversationId });
   } catch (err: any) {
     logger.error('/api/ask error', { className: 'api.ask', methodName: 'POST', error: String(err) });
     return NextResponse.json({ error: err?.message || 'Unknown error' }, { status: 500 });

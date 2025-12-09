@@ -387,10 +387,18 @@ const QuickInputBox: React.FC<QuickInputBoxProps> = ({ onReply, onError, initial
         .filter((it) => it.url && (it.url.startsWith('http://') || it.url.startsWith('https://')) && !it.uploading)
         .map((it) => it.url);
 
+      // Ensure a conversationId is present on first message so the server
+      // can thread messages consistently even if it chooses not to generate one.
+      let cidToSend = conversationId;
+      if (!cidToSend) {
+        cidToSend = `conv_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+        try { setConversationId(cidToSend); } catch {}
+      }
+
       const res = await fetch('/api/ask', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: message, language, images: imageUrls, consentToShare, conversationId: conversationId || undefined }),
+        body: JSON.stringify({ text: message, language, images: imageUrls, consentToShare, conversationId: cidToSend }),
       });
       if (!res.ok) {
         const payload = await res.json().catch(() => ({}));
