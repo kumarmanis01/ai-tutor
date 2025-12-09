@@ -173,8 +173,8 @@ const SignupFormWidget = () => {
                   <button
                     onClick={() => {
                       setSigningWithGoogle(true);
-                      // redirect to onboarding after Google sign-in so user can complete profile
-                      signIn('google', { callbackUrl: '/onboarding' });
+                      // redirect to home after Google sign-in; onboarding page removed
+                      signIn('google', { callbackUrl: '/dashboard' });
                     }}
                     className="w-full inline-flex items-center justify-center gap-2 px-4 py-2 border border-gray-300 rounded hover:bg-gray-50 bg-white text-gray-700 font-medium"
                   >

@@ -381,7 +381,7 @@ const QuickInputBox: React.FC<QuickInputBoxProps> = ({ onReply, onError, initial
     );
   };
   // Send a message to the server-side chat API and return the AI reply and optional suggestions.
-  const handleSend = useCallback(async (message: string, language?: string): Promise<{ ok: boolean; reply?: string; error?: string; language?: string; suggestions?: string[] }> => {
+  const handleSend = useCallback(async (message: string, languageHint?: string): Promise<{ ok: boolean; reply?: string; error?: string; language?: string; suggestions?: string[] }> => {
     try {
       const imageUrls = images
         .filter((it) => it.url && (it.url.startsWith('http://') || it.url.startsWith('https://')) && !it.uploading)
@@ -398,7 +398,7 @@ const QuickInputBox: React.FC<QuickInputBoxProps> = ({ onReply, onError, initial
       const res = await fetch('/api/ask', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: message, language, images: imageUrls, consentToShare, conversationId: cidToSend }),
+        body: JSON.stringify({ text: message, language: languageHint, images: imageUrls, consentToShare, conversationId: cidToSend }),
       });
       if (!res.ok) {
         const payload = await res.json().catch(() => ({}));
@@ -409,12 +409,23 @@ const QuickInputBox: React.FC<QuickInputBoxProps> = ({ onReply, onError, initial
         const cid = json?.conversationId || json?.topic;
         if (cid && typeof cid === 'string') setConversationId(cid);
       } catch {}
-      return {
-        ok: true,
-        reply: json?.answer ?? json?.reply,
-        language: json?.language ?? json?.lang,
-        suggestions: Array.isArray(json?.suggestions) ? json.suggestions : undefined,
-      };
+      // Normalize reply: if server mistakenly returned a JSON string, extract answer/suggestions
+      let reply: string | undefined = json?.answer ?? json?.reply;
+      let suggestions: string[] | undefined = Array.isArray(json?.suggestions) ? json.suggestions : undefined;
+      let language: string | undefined = json?.language ?? json?.lang;
+      try {
+        if (typeof reply === 'string' && reply.trim().startsWith('{')) {
+          const parsed = JSON.parse(reply);
+          if (parsed && typeof parsed === 'object') {
+            reply = parsed.answer || parsed.answerMarkdown || parsed.text || reply;
+            if (!language) language = parsed.language || parsed.lang;
+            if (!suggestions && Array.isArray(parsed.suggestions)) {
+              suggestions = parsed.suggestions.filter((s: any) => typeof s === 'string').slice(0, 5);
+            }
+          }
+        }
+      } catch {}
+      return { ok: true, reply, language, suggestions };
     } catch (err: any) {
       return { ok: false, error: err?.message || String(err) };
     }

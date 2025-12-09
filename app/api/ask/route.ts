@@ -157,21 +157,37 @@ export async function POST(req: Request) {
       }
     }
 
+    // Build conversation history for better context if a session exists
+    const priorMessages: { role: 'system' | 'user' | 'assistant'; content: any }[] = [];
+    try {
+      if (sessionUserId && conversationId) {
+        const history = await prisma.chat.findMany({
+          where: { userId: sessionUserId, conversationId },
+          orderBy: { createdAt: 'asc' },
+          take: 12,
+        });
+        for (const h of history) {
+          const role = h.role === 'assistant' ? 'assistant' : 'user';
+          priorMessages.push({ role, content: h.content });
+        }
+      }
+    } catch (e) {
+      logger.error('Failed to load conversation history', { className: 'api.ask', methodName: 'POST', error: String(e) });
+    }
+
+    const messagesToSend = [
+      { role: 'system', content: systemPromptWithLang },
+      ...priorMessages,
+      { role: 'user', content: userContentParts },
+    ];
+
     const resp = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${OPENAI_API_KEY}`,
       },
-      body: JSON.stringify({
-        model,
-        messages: [
-          { role: 'system', content: systemPromptWithLang },
-          { role: 'user', content: userContentParts },
-        ],
-        temperature: 0.35,
-        max_tokens: 800,
-      }),
+      body: JSON.stringify({ model, messages: messagesToSend, temperature: 0.35, max_tokens: 800 }),
     });
 
     if (!resp.ok) {
