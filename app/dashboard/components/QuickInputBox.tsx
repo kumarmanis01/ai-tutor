@@ -433,7 +433,7 @@ const QuickInputBox: React.FC<QuickInputBoxProps> = ({ onReply, onError, initial
     } catch (err: any) {
       return { ok: false, error: err?.message || String(err) };
     }
-  }, [images, consentToShare, conversationId, languageOptions, onError]);
+  }, [images, consentToShare, conversationId, languageOptions, onError, subject]);
 
   const handleAskQuestion = useCallback(async () => {
     if (!questionText.trim() || asking) return;

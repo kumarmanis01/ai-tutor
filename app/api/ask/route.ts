@@ -64,6 +64,16 @@ export async function POST(req: Request) {
         sessionUserId = (session as any).user.id as string;
         // persist user's question (best-effort)
         try {
+          // Auto-reconcile legacy conversations saved under wrong subject:
+          // If this conversation has existing rows with a different subject and none with the provided subject,
+          // reassign them to the provided subject once.
+          try {
+            const hasWrongSubject = await prisma.chat.findFirst({ where: { userId: sessionUserId, conversationId, NOT: { subject } } });
+            const hasCorrectSubject = await prisma.chat.findFirst({ where: { userId: sessionUserId, conversationId, subject } });
+            if (hasWrongSubject && !hasCorrectSubject) {
+              await prisma.chat.updateMany({ where: { userId: sessionUserId, conversationId }, data: { subject } });
+            }
+          } catch {}
           // Ensure Conversation exists for this user + conversationId
           try {
             await prisma.conversation.upsert({

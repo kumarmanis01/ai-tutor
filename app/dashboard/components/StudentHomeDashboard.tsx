@@ -47,6 +47,17 @@ const StudentHomeDashboard: React.FC<StudentHomeDashboardProps> = () => {
     let cancelled = false;
     async function loadHistory() {
       try {
+        // If no thread selected for this subject, try restoring last used thread from session
+        if (!conversationId) {
+          try {
+            const key = `spinzy:lastcid:${subject}`;
+            const raw = typeof window !== 'undefined' ? window.sessionStorage.getItem(key) : null;
+            const restored = raw ? String(raw) : '';
+            if (restored) {
+              setConversationId(restored);
+            }
+          } catch {}
+        }
         const url = `/api/chat/history?subject=${encodeURIComponent(subject)}${conversationId ? `&conversationId=${encodeURIComponent(conversationId)}` : ''}&limit=50`;
         const res = await fetch(url);
         if (!res.ok) return;
@@ -111,7 +122,12 @@ const StudentHomeDashboard: React.FC<StudentHomeDashboardProps> = () => {
                 }}
                 subject={subject}
                 conversationId={conversationId}
-                onConversationId={(cid?: string) => setConversationId(cid)}
+                onConversationId={(cid?: string) => {
+                  setConversationId(cid);
+                  try {
+                    if (cid) window.sessionStorage.setItem(`spinzy:lastcid:${subject}`, cid);
+                  } catch {}
+                }}
               />
 
               {/* Continue Learning Section */}
