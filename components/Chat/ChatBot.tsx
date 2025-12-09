@@ -151,7 +151,6 @@ export default function ChatBot() {
         const raw = localStorage.getItem(key);
         if (raw) map[s] = JSON.parse(raw);
       }
-      // migrate old single storage into general if present
       const oldRaw = localStorage.getItem(storageKey);
       if (oldRaw && (!map['general'] || map['general'].length === 0)) {
         try {
@@ -184,6 +183,30 @@ export default function ChatBot() {
   useEffect(() => {
     scrollToBottom(); // Scroll whenever messages for current subject change
   }, [currentMessages]);
+
+  // Load persisted chat history from server for the current subject
+  useEffect(() => {
+    async function loadServerHistory() {
+      try {
+        const res = await fetch(`/api/chat/history?subject=${encodeURIComponent(subject)}&limit=50`);
+        if (!res.ok) return;
+        const data = await res.json().catch(() => null);
+        const msgs: ChatMessage[] = Array.isArray(data?.messages)
+          ? data.messages.map((m: any) => ({ id: m.id || uuidv4(), role: m.role, content: m.content }))
+          : [];
+        setMessagesBySubject((prev) => {
+          const existing = prev[subject] ?? [];
+          // Merge without duplicates by id; prefer existing then append new ones not present
+          const existingIds = new Set(existing.map((m) => m.id));
+          const merged = [...existing];
+          for (const m of msgs) if (!existingIds.has(m.id)) merged.push(m);
+          return { ...prev, [subject]: merged };
+        });
+      } catch {}
+    }
+    // Only load when authenticated (session present)
+    if (session) loadServerHistory();
+  }, [subject, session]);
 
   // Controls placement and safe-bottom-padding are now handled inside
   // the `StickyControls` component. Keep this component focused on state and
