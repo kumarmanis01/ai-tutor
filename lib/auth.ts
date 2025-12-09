@@ -180,7 +180,7 @@ export const authOptions: NextAuthOptions = {
   session: { strategy: 'jwt' }, // Use JWT for session management
   callbacks: {
     // This runs when a user signs in (login or signup)
-    async signIn({ user }) {
+    async signIn({ user, account, profile }) {
       try {
         // Ensure a DB user record exists (create if missing). Use email as unique key.
         if (user?.email) {
@@ -193,6 +193,36 @@ export const authOptions: NextAuthOptions = {
               image: user.image ?? undefined,
             },
           });
+        }
+        // Proactively link Google OAuth to existing user by verified email to avoid OAuthAccountNotLinked.
+        if (account?.provider === 'google') {
+          const email = (profile as any)?.email ?? user?.email;
+          const verified = (profile as any)?.email_verified ?? true;
+          if (email && verified) {
+            const existing = await prisma.user.findUnique({ where: { email } });
+            if (existing) {
+              const hasGoogle = await prisma.account.findFirst({
+                where: { userId: existing.id, provider: 'google' },
+              });
+              if (!hasGoogle) {
+                await prisma.account.create({
+                  data: {
+                    userId: existing.id,
+                    provider: 'google',
+                    providerAccountId: String(account.providerAccountId),
+                    type: String(account.type),
+                    access_token: (account as any).access_token ?? undefined,
+                    refresh_token: (account as any).refresh_token ?? undefined,
+                    expires_at: (account as any).expires_at ?? undefined,
+                    token_type: (account as any).token_type ?? undefined,
+                    scope: (account as any).scope ?? undefined,
+                    id_token: (account as any).id_token ?? undefined,
+                    session_state: (account as any).session_state ?? undefined,
+                  },
+                });
+              }
+            }
+          }
         }
       } catch (err) {
         logger.warn('signIn upsert user failed', { className: 'auth', methodName: 'signIn', error: String(err) });

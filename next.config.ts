@@ -7,6 +7,15 @@ const nextConfig: NextConfig = {
       { source: '/landing-page', destination: '/' },
     ];
   },
+  async redirects() {
+    return [
+      {
+        source: '/onboarding',
+        destination: '/dashboard',
+        permanent: false,
+      },
+    ];
+  },
   images: {
     domains: [
       'lh3.googleusercontent.com',
