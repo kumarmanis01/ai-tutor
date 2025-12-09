@@ -48,7 +48,22 @@ export default function OnboardingModal() {
         // If any critical field missing, open modal
         // Require name, language, grade and board for a complete student profile
         const missing = !data.name || !data.language || !data.grade || !data.board;
-        setOpen(Boolean(missing));
+        if (missing) {
+          try {
+            const seen = typeof window !== 'undefined' ? window.sessionStorage.getItem('spinzy:onboarding_shown') : null;
+            if (!seen) {
+              setOpen(true);
+              try { window.sessionStorage.setItem('spinzy:onboarding_shown', '1'); } catch {}
+            } else {
+              setOpen(false);
+            }
+          } catch {
+            // sessionStorage may be unavailable; fall back to showing once now
+            setOpen(true);
+          }
+        } else {
+          setOpen(false);
+        }
       } catch (e) {
         logger.warn(`OnboardingModal: failed to load profile: ${String(e)}`, { className: 'OnboardingModal', methodName: 'load' });
       } finally {
