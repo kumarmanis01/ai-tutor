@@ -2,7 +2,7 @@
 
 import React, { createContext, useCallback, useContext, useMemo, useState } from 'react';
 import { logger } from '@/lib/logger';
-import { StubNotesService as _StubNotesService } from '../services/StubNotesService';
+// Using local StubNotesService below for development stubs
 
 export type NoteSubject = { name: string; meta: string };
 export type NoteEntry = { id: string; title: string };
@@ -124,7 +124,6 @@ export function NotesProvider({ children, service }: { children: React.ReactNode
   return <Ctx.Provider value={api}>{children}</Ctx.Provider>;
 }
 
-void _StubNotesService;
 export function useNotes() {
   const ctx = useContext(Ctx);
   if (!ctx) throw new Error('useNotes must be used within NotesProvider');
