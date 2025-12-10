@@ -14,7 +14,8 @@ import FeatureGrid from './FeatureGrid';
 import StudyGoals from './StudyGoals';
 import ParentModeCard from './ParentModeCard';
 import BottomNavigation from './BottomNavigator';
-import TestHome from '@/components/Test/TestHome';
+import TestsTab from './Tests';
+import NotesTab from './Notes';
 
 interface StudentHomeDashboardProps { [key: string]: unknown }
 
@@ -91,7 +92,9 @@ const StudentHomeDashboard: React.FC<StudentHomeDashboardProps> = () => {
           {activeTab === 'profile' ? (
             <ProfilePage />
           ) : activeTab === 'tests' ? (
-            <TestHome subject={subject} grade={profile?.grade ?? undefined} board={profile?.board ?? undefined} />
+            <TestsTab subject={subject} grade={profile?.grade ?? undefined} board={profile?.board ?? undefined} />
+          ) : activeTab === 'notes' ? (
+            <NotesTab />
           ) : (
             <>
               {/* Subject + Threads */}
