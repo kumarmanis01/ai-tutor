@@ -1,6 +1,6 @@
 import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcrypt';
-import { logger } from '@/lib/logger';
+import { logger } from '../lib/logger';
 
 const prisma = new PrismaClient();
 
@@ -120,6 +120,53 @@ async function main() {
   logger.add('Fetching all users in the database...', { className: 'prisma/seed', methodName: 'report' });
   const allUsers = await prisma.user.findMany({ select: { name: true, email: true } });
   logger.add(`All users in the database: ${JSON.stringify(allUsers)}`, { className: 'prisma/seed', methodName: 'report' });
+
+  // Seed a small question bank for Quick Practice
+  logger.add('Seeding sample questions for Quick Practice...', { className: 'prisma/seed', methodName: 'questions' });
+  const existingQuestions = await prisma.question.count();
+  if (existingQuestions === 0) {
+    await prisma.question.createMany({
+      data: [
+        {
+          subject: 'Math',
+          chapter: 'Basic Algebra',
+          grade: '7',
+          board: 'CBSE',
+          type: 'mcq',
+          difficulty: 'easy',
+          prompt: 'What is the value of x in 2x + 4 = 10?',
+          choices: [{ key: '3', label: '3' }, { key: '4', label: '4' }, { key: '5', label: '5' }, { key: '6', label: '6' }],
+          correctAnswer: '3',
+          source: 'curated',
+        } as any,
+        {
+          subject: 'Science',
+          chapter: 'Acids & Bases',
+          grade: '7',
+          board: 'CBSE',
+          type: 'numeric',
+          difficulty: 'easy',
+          prompt: 'pH of neutral water at 25°C is?',
+          correctAnswer: '7',
+          source: 'curated',
+        } as any,
+        {
+          subject: 'English',
+          chapter: 'Grammar',
+          grade: '7',
+          board: 'CBSE',
+          type: 'short',
+          difficulty: 'easy',
+          prompt: 'Fill in the blank: She ____ to school every day.',
+          correctAnswer: 'goes',
+          source: 'curated',
+        } as any,
+      ],
+    });
+    logger.add('Sample questions seeded.', { className: 'prisma/seed', methodName: 'questions' });
+  } else {
+    logger.add(`Question bank already has ${existingQuestions} items.`, { className: 'prisma/seed', methodName: 'questions' });
+  }
 
   logger.add('Seeding process completed', { className: 'prisma/seed', methodName: 'main' });
 }

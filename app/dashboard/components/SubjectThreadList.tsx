@@ -57,7 +57,7 @@ export default function SubjectThreadList({ subjects = defaultSubjects, subject,
     } finally {
       setLoading(false);
     }
-  }, [onSelectThread, selectedConversationId, subject]);
+  }, [subject]);
 
   useEffect(() => { loadThreads(); }, [loadThreads]);
 

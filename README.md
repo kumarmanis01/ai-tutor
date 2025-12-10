@@ -49,6 +49,66 @@
 
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
+## Tests Module
+
+The Tests feature is modular and lives under `components/Test/` with server APIs under `app/api/tests/*`.
+
+- Components:
+	- `TestHome`: Composes the entire test journey (Quick Practice, Chapter Tests, Test History, Weekly Challenge) and is rendered inside the Dashboard Tests tab and `/tests` page.
+	- `QuickPractice`, `ChapterTests`, `WeeklyChallenge`, `AttemptRunner`, `Scorecard`, `TestHistory` are small, reusable widgets.
+
+- APIs:
+	- `POST /api/tests/start` → creates a `TestResult` attempt and persists ordered `AttemptQuestion` rows.
+	- `GET /api/tests/questions?attemptId=...` → fetches ordered questions for an attempt.
+	- `POST /api/tests/submit` → auto-grades answers, stores `Answer` rows, returns a scorecard.
+	- `GET /api/tests/history` → recent attempts for the current user.
+	- `GET /api/tests/attempt/:id` → attempt details with per-question breakdown.
+
+- Prisma models:
+	- `Question` (bank), `AttemptQuestion` (per-attempt items), `Answer` (user response + score), and back-relation on `TestResult`.
+
+- Setup:
+```bash
+npx prisma generate
+npx prisma migrate dev -n add_test_models
+npm i -D ts-node typescript
+npx ts-node prisma/seed.ts
+```
+
+- Leaderboard:
+	- `/api/leaderboard?by=tests&grade=&board=&subject=&period=weekly|all` ranks by best attempt score with optional scope filters.
+
+Note: `lib/aiContext.ts` exports a stub `createAIClient()` used by test generation hooks; replace with your LLM provider for production.
+
+## Stable Prisma Migrations (Permanent)
+
+To avoid destructive resets and flaky shadow DB issues:
+
+- We configured `shadowDatabaseUrl` in `prisma/schema.prisma` to use a dedicated shadow DB via `SHADOW_DATABASE_URL`.
+- You can run local Postgres containers for both main and shadow:
+
+```bash
+docker compose up -d
+
+:: Windows CMD examples (set env where needed)
+set DATABASE_URL=postgresql://spinzy:spinzy@localhost:6543/spinzy
+set SHADOW_DATABASE_URL=postgresql://spinzy:spinzy@localhost:6544/spinzy_shadow
+
+npm run db:kill-node
+npm run db:generate
+npm run db:migrate
+```
+
+- For production, keep `DATABASE_URL` pointed at your managed Postgres and set `SHADOW_DATABASE_URL` to an isolated database (separate Neon branch/DB). Apply with:
+
+```bash
+npm run db:deploy
+```
+
+Tips:
+- If Windows locks Prisma DLLs, run `npm run db:kill-node` and retry.
+- Use `npm run db:reset:dev` only against local dev DB; never against production.
+
 ## Getting Started
 
 First, run the development server:
