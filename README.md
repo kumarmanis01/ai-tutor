@@ -147,6 +147,27 @@ npx prisma migrate deploy
 	- Keep production migrations minimal and idempotent (use `IF NOT EXISTS` for indexes where possible).
 	- Avoid full-schema “init” migrations on an already populated database.
 
+### Copilot Playbook: Resolving Failed Prisma Migrations
+- Context: A migration failed due to full-schema SQL on an already populated prod DB, causing `P3009` blocks.
+- Steps Copilot used to recover safely:
+	- Remove the erroneous full-schema init migration folder to prevent conflicts:
+		- `Remove-Item -Recurse -Force prisma\migrations\20251210_init`
+	- Edit the failed migration to be minimal and idempotent (indexes only):
+		- In `prisma/migrations/20251210075123_add_chat_topic_indexes/migration.sql` keep only:
+			- `CREATE INDEX IF NOT EXISTS "Chat_subject_idx" ON "Chat"("subject");`
+			- `CREATE INDEX IF NOT EXISTS "Chat_userId_subject_idx" ON "Chat"("userId", "subject");`
+	- Clear failed state, then mark applied:
+		- `npx prisma migrate resolve --rolled-back 20251210075123_add_chat_topic_indexes`
+		- `npx prisma migrate resolve --applied 20251210075123_add_chat_topic_indexes`
+	- Verify:
+		- `npx prisma migrate status`
+	- Deploy if any new migrations exist:
+		- `npx prisma migrate deploy`
+
+Tips:
+- Prefer `migrate diff` to generate targeted SQL (`--from-schema-datasource` → `--to-schema-datamodel --script`) for incremental, non-destructive changes.
+- For Windows CMD, escape `&` in URLs with `^` when setting `DATABASE_URL` inline.
+
 ## Getting Started
 
 First, run the development server:
