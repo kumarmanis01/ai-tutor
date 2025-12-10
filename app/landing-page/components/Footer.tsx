@@ -22,15 +22,15 @@ const Footer = () => {
     ],
     support: [
       { label: 'Help Center', href: '#' },
-      { label: 'Contact Us', href: 'tel:+911234567890' },
-      { label: 'WhatsApp Support', href: 'https://wa.me/911234567890' },
+      { label: 'Contact Us', href: 'tel:+918920754675' },
+      { label: 'WhatsApp Support', href: 'https://wa.me/918920754675' },
       { label: 'Email Support', href: 'mailto:support@aitutor.in' },
     ],
     legal: [
-      { label: 'Privacy Policy', href: '#' },
-      { label: 'Terms of Service', href: '#' },
-      { label: 'Refund Policy', href: '#' },
-      { label: 'Data Security', href: '#' },
+      { label: 'Privacy Policy', href: '/privacy' },
+      { label: 'Terms of Service', href: '/terms' },
+      { label: 'Refund Policy', href: '/refund' },
+      { label: 'Data Security', href: '/data-security' },
     ],
   };
 
