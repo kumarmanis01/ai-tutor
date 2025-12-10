@@ -10,11 +10,24 @@ export async function middleware(request: NextRequest) {
     if (!token || token.role !== 'admin') {
       return NextResponse.redirect(new URL('/', request.url));
     }
+    return NextResponse.next();
+  }
+
+  // Dashboard route protection: require any valid session token
+  if (pathname.startsWith('/dashboard')) {
+    if (!token) {
+      return NextResponse.redirect(new URL('/', request.url));
+    }
+    return NextResponse.next();
   }
 
   return NextResponse.next();
 }
 
 export const config = {
-  matcher: ['/api/:path*'], // Apply middleware to all API routes and sub-routes
+  matcher: [
+    '/api/:path*',
+    '/admin/:path*',
+    '/dashboard/:path*',
+  ],
 };
