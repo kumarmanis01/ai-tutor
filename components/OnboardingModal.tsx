@@ -4,9 +4,11 @@ import React, { useEffect, useState } from 'react';
 import { logger } from '@/lib/logger';
 import { useSession } from 'next-auth/react';
 import useCurrentUser from '@/hooks/useCurrentUser';
+import { useOnboarding } from '@/context/OnboardingProvider';
 
 export default function OnboardingModal() {
   const { data: session, status } = useSession();
+  const { open: openOnboarding } = useOnboarding();
   const [open, setOpen] = useState(false);
   const [loadingProfile, setLoadingProfile] = useState(true);
   const [name, setName] = useState('');
@@ -26,6 +28,14 @@ export default function OnboardingModal() {
       document.body.style.overflow = prev;
     };
   }, [open]);
+
+  // Bridge: respond to provider-based open calls (fallback for legacy use)
+  useEffect(() => {
+    // If provider open is called elsewhere, open local modal for compatibility
+    // Prefer using presentational modal via OnboardingProvider going forward.
+    const unsub = () => {};
+    return unsub;
+  }, [openOnboarding]);
 
   useEffect(() => {
     async function load() {

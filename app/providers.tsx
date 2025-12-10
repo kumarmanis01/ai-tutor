@@ -3,7 +3,8 @@
 import { SessionProvider } from 'next-auth/react';
 import Script from 'next/script';
 import ThemeProvider from '@/components/UI/ThemeProvider';
-import OnboardingModal from '@/components/OnboardingModal';
+import OnboardingModal from '@/components/Onboarding/OnboardingModal';
+import { OnboardingProvider, useOnboarding } from '@/context/OnboardingProvider';
 import AlertModal from '@/components/UI/AlertModal';
 
 function AuthAwareLayout({ children }: { children: React.ReactNode }) {
@@ -26,10 +27,29 @@ export default function Providers({ children }: { children: React.ReactNode }) {
   return (
     <SessionProvider>
       <ThemeProvider>
-        <AuthAwareLayout>{children}</AuthAwareLayout>
-        <AlertModal />
-        <OnboardingModal />
+        <OnboardingProvider>
+          <AuthAwareLayout>{children}</AuthAwareLayout>
+          <AlertModal />
+          {/* Bind provider state to presentational modal */}
+          <OnboardingHost />
+        </OnboardingProvider>
       </ThemeProvider>
     </SessionProvider>
+  );
+}
+
+function OnboardingHost() {
+  const { isOpen, values, errors, loading, saving, setValue, close, save } = useOnboarding();
+  return (
+    <OnboardingModal
+      open={isOpen}
+      values={values}
+      errors={errors}
+      loading={loading}
+      saving={saving}
+      onChange={setValue}
+      onClose={close}
+      onSave={save}
+    />
   );
 }

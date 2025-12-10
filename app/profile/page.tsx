@@ -1,5 +1,4 @@
 'use client';
-import { useState } from 'react';
 import { useSession } from 'next-auth/react';
 import Avatar from '@/components/UI/Avatar';
 import LogoutButton from '@/components/Auth/LogoutButton';
@@ -8,21 +7,19 @@ import ProfileWidgets from '@/components/ProfileWidgets';
 import { extractBadges } from '@/lib/extractBadge';
 import AuthRedeemOnSignIn from '@/components/AuthRedeemOnSignIn';
 import useCurrentUser from '@/hooks/useCurrentUser';
-import OnboardingModal from '@/components/OnboardingModal';
+import { useOnboarding } from '@/context/OnboardingProvider';
 
 export default function ProfilePage() {
   const { data: session } = useSession();
   const { data: profile, loading } = useCurrentUser();
-  const [showOnboarding, setShowOnboarding] = useState(false);
+  const { open } = useOnboarding();
 
   const badges = extractBadges(profile as User | null);
 
   if (!session) return <div className="p-6">You are not signed in.</div>;
   if (loading) return <div className="p-6">Loading...</div>;
 
-  if (showOnboarding) {
-    return <OnboardingModal />;
-  }
+  // Onboarding modal is mounted globally via providers; we just trigger it
 
   const fallback =
     profile?.name?.charAt(0).toUpperCase() ||
@@ -51,7 +48,7 @@ export default function ProfilePage() {
             <button
               type="button"
               className="mt-4 px-5 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-              onClick={() => setShowOnboarding(true)}
+              onClick={() => open({ force: true })}
             >
               Update Profile
             </button>
