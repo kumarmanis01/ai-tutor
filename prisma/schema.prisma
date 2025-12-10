@@ -467,6 +467,8 @@ model TestResult {
   createdAt  DateTime  @default(now())
   student    User      @relation(fields: [studentId], references: [id], onDelete: Cascade)
 
+  AttemptQuestions AttemptQuestion[]
+
   @@index([studentId])
 }
 
@@ -492,6 +494,55 @@ model Bookmark {
   student   User     @relation(fields: [studentId], references: [id], onDelete: Cascade)
 
   @@index([studentId, type])
+}
+
+// Question bank used by Tests feature
+model Question {
+  id            String   @id @default(cuid())
+  subject       String?
+  chapter       String?
+  grade         String?
+  board         String?
+  type          String
+  difficulty    String?
+  prompt        String
+  choices       Json?
+  correctAnswer String?
+  source        String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  attempts AttemptQuestion[]
+}
+
+// Per-attempt question ordering and results
+model AttemptQuestion {
+  id            String   @id @default(cuid())
+  testResultId  String
+  questionId    String
+  order         Int
+  timeSpent     Int?
+  result        String?
+  awardedPoints Int?
+
+  testResult TestResult @relation(fields: [testResultId], references: [id], onDelete: Cascade)
+  question   Question   @relation(fields: [questionId], references: [id])
+  answer     Answer?
+
+  @@index([testResultId])
+  @@index([questionId])
+}
+
+// Graded answer for an AttemptQuestion
+model Answer {
+  attemptQuestionId String  @unique
+  rawAnswer         String?
+  normalizedAnswer  String?
+  autoScore         Int?
+  reviewerScore     Int?
+  confidence        Float?
+
+  attemptQuestion AttemptQuestion @relation(fields: [attemptQuestionId], references: [id], onDelete: Cascade)
 }
 
 enum UserStatus {
