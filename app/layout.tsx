@@ -1,4 +1,5 @@
 import React from 'react';
+import dynamic from 'next/dynamic';
 import '../styles/index.css';
 import Providers from './providers';
 import { GlobalLoaderProvider } from '@/context/GlobalLoaderProvider';
@@ -29,6 +30,8 @@ export default function RootLayout({
         <Providers>
           <GlobalLoaderProvider>
             <AuthSessionLoader />
+            {/* Global modal host */}
+            <AppModalDynamic />
               {children}
               <ToastHost />
           </GlobalLoaderProvider>
@@ -44,6 +47,9 @@ export default function RootLayout({
     </html>
   );
 }
+
+// Client-only dynamic import to avoid SSR issues and lint violations
+const AppModalDynamic = dynamic(() => import('@/components/UI/AppModal'), { ssr: false });
 
 // import './globals.css';
 // import React from 'react';

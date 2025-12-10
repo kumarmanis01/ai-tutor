@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useMemo, useState } from 'react';
+import { showAlert } from '@/lib/alerts';
 import Scorecard from './Scorecard';
 
 /**
@@ -32,7 +33,7 @@ export default function AttemptRunner(props: { attemptId: string; initialQuestio
       if (!res.ok) throw new Error(json.error || 'Failed to submit');
       setScore(json);
     } catch (e: any) {
-      alert(e.message);
+      showAlert({ title: 'Error', message: e.message ?? 'Failed to submit', variant: 'error' });
     } finally {
       setSubmitting(false);
     }

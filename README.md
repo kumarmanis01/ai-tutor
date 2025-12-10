@@ -232,3 +232,10 @@ logger.debug('Speech settings', { lang, micEnabled });
 Notes:
 - Avoid `console.*`; route all logs through `logger`.
 - In production, prefer `LOG_LEVEL=error` and `NEXT_PUBLIC_DEBUG_MODE=false`.
+
+## Alerts (Unified Modal)
+- Use the unified alert system to show modal dialogs instead of `alert()`:
+	- Emit: `showAlert({ title: 'Heads up', message: 'Something happened', variant: 'warning' })`
+	- File: `lib/alerts.ts` (`showAlert`) and `components/UI/AlertModal.tsx` (listener + UI)
+	- Global: `AlertModal` is mounted in `app/providers.tsx`.
+- This replaces any usage of `window.dispatchEvent` with the named event `app-alert` and a typed payload.

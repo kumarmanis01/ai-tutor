@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from 'react';
+import { showAlert } from '@/lib/alerts';
 import AttemptRunner from './AttemptRunner';
 
 /**
@@ -27,7 +28,7 @@ export default function WeeklyChallenge() {
     });
     const json = await res.json();
     if (!res.ok) {
-      alert(json.error || 'Failed to start');
+      showAlert({ title: 'Error', message: json.error || 'Failed to start', variant: 'error' });
       return;
     }
     setAttemptId(json.attemptId);

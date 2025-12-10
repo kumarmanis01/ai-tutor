@@ -4,6 +4,7 @@ import { SessionProvider } from 'next-auth/react';
 import Script from 'next/script';
 import ThemeProvider from '@/components/UI/ThemeProvider';
 import OnboardingModal from '@/components/OnboardingModal';
+import AlertModal from '@/components/UI/AlertModal';
 
 function AuthAwareLayout({ children }: { children: React.ReactNode }) {
 
@@ -26,6 +27,7 @@ export default function Providers({ children }: { children: React.ReactNode }) {
     <SessionProvider>
       <ThemeProvider>
         <AuthAwareLayout>{children}</AuthAwareLayout>
+        <AlertModal />
         <OnboardingModal />
       </ThemeProvider>
     </SessionProvider>

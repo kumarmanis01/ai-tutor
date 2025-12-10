@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { Prisma } from '@prisma/client';
 import { getServerSessionForHandlers } from '@/lib/session';
 import { selectQuestions } from '@/lib/tests';
 
@@ -36,7 +37,7 @@ export async function POST(req: Request) {
       testId: 'quick-practice',
       studentId: user.id,
       score: null,
-      rawResult: null,
+      rawResult: Prisma.JsonNull,
       startedAt: new Date(),
     },
   });
