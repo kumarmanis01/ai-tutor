@@ -2,6 +2,7 @@
 
 import React, { createContext, useCallback, useContext, useMemo, useState } from 'react';
 import { logger } from '@/lib/logger';
+import { StubNotesService as _StubNotesService } from '../services/StubNotesService';
 
 export type NoteSubject = { name: string; meta: string };
 export type NoteEntry = { id: string; title: string };
@@ -42,6 +43,32 @@ class StubNotesService implements NotesService {
   }
 }
 
+// Prevent unused class warning when not injected
+void StubNotesService;
+
+export class HttpNotesService implements NotesService {
+  async fetchSubjects() {
+    const res = await fetch('/api/notes/subjects');
+    if (!res.ok) return [];
+    return (await res.json()).subjects ?? [];
+  }
+  async fetchBookmarked() {
+    const res = await fetch('/api/notes/bookmarked');
+    if (!res.ok) return [];
+    return (await res.json()).notes ?? [];
+  }
+  async fetchDownloaded() {
+    const res = await fetch('/api/notes/downloaded');
+    if (!res.ok) return [];
+    return (await res.json()).notes ?? [];
+  }
+  async fetchRecentlyAdded() {
+    const res = await fetch('/api/notes/recent');
+    if (!res.ok) return [];
+    return (await res.json()).notes ?? [];
+  }
+}
+
 export type NotesState = {
   query: string;
   subjects: NoteSubject[];
@@ -60,7 +87,7 @@ export type NotesAPI = NotesState & {
 const Ctx = createContext<NotesAPI | null>(null);
 
 export function NotesProvider({ children, service }: { children: React.ReactNode; service?: NotesService }) {
-  const svc = useMemo(() => service ?? new StubNotesService(), [service]);
+  const svc = useMemo(() => service ?? new HttpNotesService(), [service]);
   const [state, setState] = useState<NotesState>({ query: '', subjects: [], bookmarked: [], downloaded: [], recent: [], loading: false });
 
   const refresh = useCallback(async () => {
@@ -97,6 +124,7 @@ export function NotesProvider({ children, service }: { children: React.ReactNode
   return <Ctx.Provider value={api}>{children}</Ctx.Provider>;
 }
 
+void _StubNotesService;
 export function useNotes() {
   const ctx = useContext(Ctx);
   if (!ctx) throw new Error('useNotes must be used within NotesProvider');

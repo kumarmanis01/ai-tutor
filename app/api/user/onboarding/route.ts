@@ -109,6 +109,28 @@ export async function POST(req: NextRequest) {
     logger.info('/api/user/onboarding userId and updates', { className: 'api.user.onboarding', methodName: 'POST', userId, updates });
     let updatedUser;
     try {
+      // First, ensure the user exists; if not, try to resolve via email or phone
+      const existingById = await prisma.user.findUnique({ where: { id: userId } });
+      if (!existingById) {
+        const email = typeof (session?.user as any)?.email === 'string' ? (session!.user as any).email : undefined;
+        let resolvedUserId = userId;
+        if (email) {
+          const byEmail = await prisma.user.findUnique({ where: { email } }).catch(() => null);
+          if (byEmail) resolvedUserId = byEmail.id;
+        }
+        if (!resolvedUserId && phone) {
+          const byPhone = await prisma.user.findUnique({ where: { phone } }).catch(() => null);
+          if (byPhone) resolvedUserId = byPhone.id;
+        }
+        if (!resolvedUserId) {
+          // Create a minimal user record using available identifiers
+          const created = await prisma.user.create({ data: { name: name || undefined, phone: phone || undefined, email: email || undefined } });
+          resolvedUserId = created.id;
+          logger.warn('/api/user/onboarding: user not found by id; created new', { className: 'api.user.onboarding', methodName: 'POST', createdId: resolvedUserId });
+        }
+        userId = resolvedUserId;
+      }
+
       updatedUser = await prisma.user.update({ where: { id: userId }, data: updates });
       logger.info('/api/user/onboarding updated user', { className: 'api.user.onboarding', methodName: 'POST', id: updatedUser.id, name: updatedUser.name, phone: updatedUser.phone });
     } catch (updErr: any) {
@@ -119,6 +141,15 @@ export async function POST(req: NextRequest) {
           message: 'Database schema is out of sync with Prisma schema: one or more columns (e.g. `User.board`) are missing. Run `npx prisma migrate dev` to apply pending migrations.',
           details: updErr?.meta || String(updErr?.message),
         }, { status: 500 });
+      }
+      // Handle Neon sleep or admin termination gracefully
+      const msg = String(updErr?.message || updErr);
+      if (msg.includes('terminating connection due to administrator command') || msg.includes('E57P01')) {
+        logger.warn('/api/user/onboarding: database temporarily unavailable (Neon sleep)', { className: 'api.user.onboarding', methodName: 'POST' });
+        return new NextResponse(JSON.stringify({ error: 'db_unavailable', message: 'Database temporarily unavailable. Please retry.' }), {
+          status: 503,
+          headers: { 'Retry-After': '3', 'Content-Type': 'application/json' },
+        });
       }
       throw updErr;
     }

@@ -34,6 +34,29 @@ class StubTestsService implements TestsService {
   }
 }
 
+// Prevent unused class warning in lint when not injected
+void StubTestsService;
+
+export class HttpTestsService implements TestsService {
+  async fetchRecommended(subject: string, grade?: string, board?: string) {
+    const qs = new URLSearchParams({ subject, ...(grade ? { grade } : {}), ...(board ? { board } : {}) });
+    const res = await fetch(`/api/tests/recommended?${qs}`);
+    if (!res.ok) return [];
+    return (await res.json()).items ?? [];
+  }
+  async fetchUpcoming(subject: string, grade?: string, board?: string) {
+    const qs = new URLSearchParams({ subject, ...(grade ? { grade } : {}), ...(board ? { board } : {}) });
+    const res = await fetch(`/api/tests/upcoming?${qs}`);
+    if (!res.ok) return [];
+    return (await res.json()).items ?? [];
+  }
+  async fetchRecentResults() {
+    const res = await fetch('/api/tests/results/recent');
+    if (!res.ok) return [];
+    return (await res.json()).results ?? [];
+  }
+}
+
 export type TestsState = {
   items: TestItem[];
   upcoming: TestItem[];
@@ -48,7 +71,7 @@ export type TestsAPI = TestsState & {
 const Ctx = createContext<TestsAPI | null>(null);
 
 export function TestsProvider({ children, service }: { children: React.ReactNode; service?: TestsService }) {
-  const svc = useMemo(() => service ?? new StubTestsService(), [service]);
+  const svc = useMemo(() => service ?? new HttpTestsService(), [service]);
   const [state, setState] = useState<TestsState>({ items: [], upcoming: [], results: [], loading: false });
 
   const refresh = useCallback(async (subject: string, grade?: string, board?: string) => {

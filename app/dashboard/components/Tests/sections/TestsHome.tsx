@@ -5,17 +5,22 @@ import { TestsFilters } from './TestsFilters';
 import { TestsRecommended } from './TestsRecommended';
 import { TestsUpcoming } from './TestsUpcoming';
 import { TestsResults } from './TestsResults';
-import TestHome from '@/components/Test/TestHome';
+import { TestsBySubject } from './TestsBySubject';
+import { TestsCTAs } from './TestsCTAs';
+// Removed legacy TestHome fallback after sections parity
 
-export function TestsHome({ subject, grade, board }: { subject: string; grade?: string; board?: string }) {
+export function TestsHome(
+  { subject: _subject, grade: _grade, board: _board }: { subject: string; grade?: string; board?: string }
+) {
+  void _subject; void _grade; void _board;
   return (
     <div className="space-y-6">
       <TestsFilters />
+      <TestsCTAs />
       <TestsRecommended />
+      <TestsBySubject />
       <TestsUpcoming />
       <TestsResults />
-      {/* Fallback to existing TestHome while we extract remaining UI */}
-      <TestHome subject={subject} grade={grade} board={board} />
     </div>
   );
 }
