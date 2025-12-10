@@ -87,6 +87,8 @@ To avoid destructive resets and flaky shadow DB issues:
 - We configured `shadowDatabaseUrl` in `prisma/schema.prisma` to use a dedicated shadow DB via `SHADOW_DATABASE_URL`.
 - You can run local Postgres containers for both main and shadow:
 
+Important: The `localhost` URLs below are for local development only (planning and testing). Do not point production `DATABASE_URL` at localhost; use your managed Postgres (e.g., Neon) and run `npx prisma migrate deploy` there.
+
 ```bash
 docker compose up -d
 
@@ -99,7 +101,24 @@ npm run db:generate
 npm run db:migrate
 ```
 
-- For production, keep `DATABASE_URL` pointed at your managed Postgres and set `SHADOW_DATABASE_URL` to an isolated database (separate Neon branch/DB). Apply with:
+- For production, keep `DATABASE_URL` pointed at your managed Postgres and set `SHADOW_DATABASE_URL` to an isolated database (separate Neon branch/DB).
+
+Example Neon pooled URL (recommended):
+
+```bash
+# .env / Vercel environment
+DATABASE_URL=postgresql://<user>:<password>@<your-neon-host>/<db>?sslmode=require&pgbouncer=true
+```
+
+Windows CMD (escape ampersands with ^):
+
+```cmd
+set DATABASE_URL=postgresql://USER:PASSWORD@YOUR-NEON-HOST/DB?sslmode=require^&pgbouncer=true
+```
+
+Reminder: Never run `npm run db:reset:dev` or `npx prisma migrate dev` against production; only use `npm run db:deploy`.
+
+Apply with:
 
 ```bash
 npm run db:deploy
@@ -108,6 +127,25 @@ npm run db:deploy
 Tips:
 - If Windows locks Prisma DLLs, run `npm run db:kill-node` and retry.
 - Use `npm run db:reset:dev` only against local dev DB; never against production.
+
+### Migration Recovery (Production)
+- If a production migration fails and blocks deploys, use `migrate resolve` to recover the state, then re-deploy.
+- Example commands:
+
+```bash
+# Mark a failed migration as rolled back
+npx prisma migrate resolve --rolled-back <migration_name>
+
+# After fixing the migration file, mark it as applied
+npx prisma migrate resolve --applied <migration_name>
+
+# Deploy pending migrations
+npx prisma migrate deploy
+```
+
+- Notes:
+	- Keep production migrations minimal and idempotent (use `IF NOT EXISTS` for indexes where possible).
+	- Avoid full-schema “init” migrations on an already populated database.
 
 ## Getting Started
 
