@@ -29,33 +29,40 @@ export default function OnboardingModal({ open, values, errors = {}, saving, onC
           <p className="text-sm text-muted-foreground">We need a few details to personalize learning.</p>
         </div>
         <div className="px-5 py-4 overflow-y-auto" style={{ maxHeight: 'calc(90vh - 112px)' }}>
-          <input className="w-full px-3 py-2 border rounded mb-3" placeholder="Your name" value={values.name} onChange={(e) => onChange('name', e.target.value)} />
+          <label className="block text-sm mb-1">
+            Name <span className="text-red-600">*</span>
+          </label>
+          <input aria-invalid={!!errors.name} className={`w-full px-3 py-2 border rounded mb-1 ${errors.name ? 'border-red-500' : ''}`} placeholder="Your name" value={values.name} onChange={(e) => onChange('name', e.target.value)} />
+          {errors.name && <div className="text-xs text-red-600 mb-2">{errors.name}</div>}
           <div className="mb-3">
-            <label className="block text-sm mb-1">Class</label>
-            <select value={values.class_grade ?? ''} onChange={(e) => onChange('class_grade', e.target.value || null)} className="w-full px-3 py-2 border rounded">
+            <label className="block text-sm mb-1">Class <span className="text-red-600">*</span></label>
+            <select aria-invalid={!!errors.class_grade} value={values.class_grade ?? ''} onChange={(e) => onChange('class_grade', e.target.value || null)} className={`w-full px-3 py-2 border rounded ${errors.class_grade ? 'border-red-500' : ''}`}>
               <option value="">Select class</option>
               {Array.from({ length: 12 }, (_, i) => (
                 <option key={i} value={String(i + 1)}>{String(i + 1)}</option>
               ))}
             </select>
+            {errors.class_grade && <div className="text-xs text-red-600 mt-1">{errors.class_grade}</div>}
           </div>
           <div className="mb-3">
-            <label className="block text-sm mb-1">Board</label>
-            <select value={values.board ?? ''} onChange={(e) => onChange('board', e.target.value || null)} className="w-full px-3 py-2 border rounded">
+            <label className="block text-sm mb-1">Board <span className="text-red-600">*</span></label>
+            <select aria-invalid={!!errors.board} value={values.board ?? ''} onChange={(e) => onChange('board', e.target.value || null)} className={`w-full px-3 py-2 border rounded ${errors.board ? 'border-red-500' : ''}`}>
               <option value="">Select board</option>
               <option>CBSE</option>
               <option>ICSE</option>
               <option>State Board</option>
               <option>Other</option>
             </select>
+            {errors.board && <div className="text-xs text-red-600 mt-1">{errors.board}</div>}
           </div>
           <div className="mb-3">
-            <label className="block text-sm mb-1">Preferred language</label>
-            <select value={values.preferred_language ?? ''} onChange={(e) => onChange('preferred_language', e.target.value || null)} className="w-full px-3 py-2 border rounded">
+            <label className="block text-sm mb-1">Preferred language <span className="text-red-600">*</span></label>
+            <select aria-invalid={!!errors.preferred_language} value={values.preferred_language ?? ''} onChange={(e) => onChange('preferred_language', e.target.value || null)} className={`w-full px-3 py-2 border rounded ${errors.preferred_language ? 'border-red-500' : ''}`}>
               <option value="">Choose language</option>
               <option value="en">English</option>
               <option value="hi">हिंदी</option>
             </select>
+            {errors.preferred_language && <div className="text-xs text-red-600 mt-1">{errors.preferred_language}</div>}
           </div>
           <div className="mb-3">
             <label className="block text-sm mb-1">Subjects (optional)</label>

@@ -41,8 +41,18 @@ export class HttpOnboardingService implements OnboardingService {
       body: JSON.stringify(values),
     });
     if (!res.ok) {
-      const j = await res.json().catch(() => ({}));
-      throw new Error(j?.error || 'Failed to save profile');
+      let data: any = null;
+      try {
+        data = await res.json();
+      } catch {}
+      if (data && typeof data === 'object' && data.fieldErrors) {
+        throw {
+          code: data.error || 'validation_error',
+          message: data.message || 'Please correct the highlighted fields.',
+          fieldErrors: data.fieldErrors,
+        } as any;
+      }
+      throw new Error((data && (data.error || data.message)) || 'Failed to save profile');
     }
   }
 }

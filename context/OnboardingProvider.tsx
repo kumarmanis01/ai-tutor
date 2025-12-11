@@ -86,16 +86,35 @@ export function OnboardingProvider({ children, service }: { children: React.Reac
     setValues((v) => ({ ...v, [field]: value }));
   }, []);
 
+  function validate(v: OnboardingValues) {
+    const errs: Record<string, string> = {};
+    if (!v.name || !v.name.trim()) errs.name = 'Name is required';
+    if (!v.class_grade || String(v.class_grade).trim() === '') errs.class_grade = 'Class is required';
+    if (!v.board || String(v.board).trim() === '') errs.board = 'Board is required';
+    if (!v.preferred_language || String(v.preferred_language).trim() === '') errs.preferred_language = 'Preferred language is required';
+    return errs;
+  }
+
   const save = useCallback(async () => {
     setSaving(true);
     setErrors({});
     try {
-      await svc.saveProfile(values);
+      const v = { ...values };
+      const errs = validate(v);
+      if (Object.keys(errs).length) {
+        setErrors(errs);
+        throw new Error('Please fill all required fields.');
+      }
+      await svc.saveProfile(v);
       logger.info('onboarding.save', { hasSubjects: !!values.subjects?.length });
       setIsOpen(false);
       if (typeof window !== 'undefined') window.location.replace('/dashboard');
     } catch (e: any) {
-      setErrors({ _root: e?.message || 'Failed to save profile' });
+      if (e && typeof e === 'object' && e.fieldErrors && typeof e.fieldErrors === 'object') {
+        setErrors((prev) => ({ ...prev, ...e.fieldErrors, _root: e?.message || 'Failed to save profile' }));
+      } else {
+        setErrors((prev) => ({ ...prev, _root: e?.message || 'Failed to save profile' }));
+      }
       logger.warn('onboarding.save.error', { message: e?.message });
     } finally {
       setSaving(false);
