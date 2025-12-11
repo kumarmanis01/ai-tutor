@@ -14,6 +14,7 @@ export type ContinueActivity = {
 export function useContinueLearning() {
   const [activities, setActivities] = useState<ContinueActivity[]>([]);
   const [loading, setLoading] = useState(false);
+  const [updating, setUpdating] = useState(false);
 
   async function refresh() {
     setLoading(true);
@@ -41,7 +42,20 @@ export function useContinueLearning() {
     }
   }
 
+  async function updateProgress(sessionId: string, totalQuestions?: number, answeredCount?: number, currentQuestionIndex?: number) {
+    setUpdating(true);
+    try {
+      await fetch('/api/learning-sessions', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sessionId, totalQuestions, answeredCount, currentQuestionIndex })
+      });
+    } finally {
+      setUpdating(false);
+    }
+  }
+
   useEffect(() => { refresh(); }, []);
 
-  return { activities, loading, refresh, resumeActivity };
+  return { activities, loading, updating, refresh, resumeActivity, updateProgress };
 }

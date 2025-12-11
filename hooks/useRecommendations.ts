@@ -20,17 +20,33 @@ export function useRecommendations() {
 
   async function trackClick(id: string) {
     try {
-      await fetch('/api/dashboard/recommendations/track', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, event: 'clicked' }) });
+      await fetch('/api/dashboard/recommendations/track', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ contentId: id, event: 'clicked' }) });
     } catch {}
   }
 
   async function trackCompleted(id: string) {
     try {
-      await fetch('/api/dashboard/recommendations/track', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, event: 'completed' }) });
+      await fetch('/api/dashboard/recommendations/track', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ contentId: id, event: 'completed' }) });
     } catch {}
   }
 
   useEffect(() => { refresh(); }, []);
+
+  // Auto-track shown events once items are loaded
+  useEffect(() => {
+    if (!items || items.length === 0) return;
+    (async () => {
+      try {
+        await Promise.all(items.map((i) =>
+          fetch('/api/dashboard/recommendations/track', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ contentId: i.id, event: 'shown' })
+          })
+        ));
+      } catch {}
+    })();
+  }, [items]);
 
   return { items, loading, refresh, trackClick, trackCompleted };
 }
