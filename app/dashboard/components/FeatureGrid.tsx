@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import { useFeatureGrid } from '@/hooks/useFeatureGrid';
 
 interface Feature {
   id: string;
@@ -32,38 +33,9 @@ const FeatureGrid: React.FC<FeatureGridProps> = () => {
     {
       id: '3',
       icon: '📝',
-      title: 'Practice Tests',
-      subtitle: 'Auto-generate tests, instant score',
-      color: 'bg-green-50 border-green-200',
-    },
-    {
-      id: '4',
-      icon: '🎤',
-      title: 'Voice Tutor',
-      subtitle: 'Ask a doubt using voice',
-      badge: 'Beta',
-      color: 'bg-orange-50 border-orange-200',
-    },
-  ];
-
-  return (
-    <section className="space-y-4">
-      <h2 className="text-lg font-semibold text-foreground px-1">
-        Main Features
-        <span className="text-muted-foreground text-sm ml-2">/ मुख्य सुविधाएं</span>
-      </h2>
-
-      {/* 2x2 Grid */}
-      <div className="grid grid-cols-2 gap-3">
-        {features.map((feature) => (
-          <div
-            key={feature.id}
-            className={`${feature.color} rounded-lg p-4 border border-border hover:shadow-md transition-shadow cursor-pointer bg-card`}
-          >
-            <div className="flex flex-col h-full">
-              <div className="flex items-start justify-between mb-2">
-                <div className="text-3xl">{feature.icon}</div>
-                {feature.badge && (
+    const FeatureGrid: React.FC<FeatureGridProps> = () => {
+      const { tiles, loading } = useFeatureGrid();
+      const features = tiles.map(t => ({ id: t.key, title: t.title, subtitle: t.count ? `${t.count} items` : '', icon: '🧩', color: 'bg-indigo-50 border-indigo-200' }));
                   <span className="text-xs bg-primary px-2 py-1 rounded-full text-primary-foreground font-medium">
                     {feature.badge}
                   </span>
@@ -73,14 +45,9 @@ const FeatureGrid: React.FC<FeatureGridProps> = () => {
                 {feature.title}
               </h3>
               <p className="text-sm text-muted-foreground line-clamp-2 flex-1">
-                {feature.subtitle}
-              </p>
-            </div>
-          </div>
-        ))}
-      </div>
-    </section>
-  );
-};
-
-export default FeatureGrid;
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+            {loading ? (
+              <div className="text-sm text-muted-foreground">Loading features…</div>
+            ) : features.length === 0 ? (
+              <div className="p-3 border rounded">No features available</div>
+            ) : features.map((f) => (

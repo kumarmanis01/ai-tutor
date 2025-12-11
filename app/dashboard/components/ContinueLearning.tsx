@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import { useContinueLearning } from '@/hooks/useContinueLearning';
 
 interface LearningItem {
   id: string;
@@ -14,30 +15,14 @@ interface LearningItem {
 interface ContinueLearningProps { [key: string]: unknown }
 
 const ContinueLearning: React.FC<ContinueLearningProps> = () => {
-  const learningItems: LearningItem[] = [
-    {
-      id: '1',
-      title: 'Fractions',
-      subtitle: 'NCERT Class 6',
-      progress: 65,
-      actionText: 'Continue',
-      icon: '📐',
-    },
-    {
-      id: '2',
-      title: 'Photosynthesis Doubt',
-      subtitle: 'Science Chapter 7',
-      actionText: 'View Answer',
-      icon: '🌱',
-    },
-    {
-      id: '3',
-      title: 'Last Test: Algebra Basics',
-      subtitle: 'Score: 72% · Improve Now',
-      actionText: 'Review',
-      icon: '📝',
-    },
-  ];
+  const { activities, loading } = useContinueLearning();
+  const learningItems: LearningItem[] = (activities || []).map((a) => ({
+    id: a.id,
+    title: a.activityType,
+    subtitle: a.subject ?? 'General',
+    actionText: 'Resume',
+    icon: '🔄',
+  }));
 
   return (
     <section className="space-y-4">
@@ -47,7 +32,11 @@ const ContinueLearning: React.FC<ContinueLearningProps> = () => {
       </h2>
 
       <div className="space-y-3">
-        {learningItems.map((item) => (
+        {loading ? (
+          <div className="text-sm text-muted-foreground">Loading activities…</div>
+        ) : learningItems.length === 0 ? (
+          <div className="p-4 border rounded">No resumable activities yet</div>
+        ) : learningItems.map((item) => (
           <div
             key={item.id}
             className="bg-card rounded-lg shadow-card p-4 border border-border hover:shadow-md transition-shadow"

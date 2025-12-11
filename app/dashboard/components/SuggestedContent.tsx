@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import { useRecommendations } from '@/hooks/useRecommendations';
 
 interface SuggestedCard {
   id: string;
@@ -14,38 +15,14 @@ interface SuggestedCard {
 interface SuggestedContentProps { [key: string]: unknown }
 
 const SuggestedContent: React.FC<SuggestedContentProps> = () => {
-  const suggestions: SuggestedCard[] = [
-    {
-      id: '1',
-      icon: '📘',
-      title: 'NCERT Chapter Notes',
-      subtitle: 'Class 6 → Chapter 4 → Simple Equations',
-      color: 'bg-blue-50 border-blue-200',
-    },
-    {
-      id: '2',
-      icon: '📝',
-      title: 'Daily 10-Minute Practice',
-      subtitle: '8-10 auto-generated questions',
-      color: 'bg-green-50 border-green-200',
-    },
-    {
-      id: '3',
-      icon: '🎯',
-      title: 'Weak Areas Identified',
-      subtitle: 'Math: Fractions - 62% · Science: Circuit - 54%',
-      badge: 'Needs Work',
-      color: 'bg-amber-50 border-amber-200',
-    },
-    {
-      id: '4',
-      icon: '🔥',
-      title: "Today's Challenge",
-      subtitle: '5 mixed questions for streaks',
-      badge: 'Popular',
-      color: 'bg-orange-50 border-orange-200',
-    },
-  ];
+  const { items, loading, trackClick } = useRecommendations();
+  const suggestions: SuggestedCard[] = items.map((i) => ({
+    id: i.id,
+    icon: '✨',
+    title: i.title,
+    subtitle: i.subject,
+    color: 'bg-blue-50 border-blue-200',
+  }));
 
   return (
     <section className="space-y-4">
@@ -57,10 +34,15 @@ const SuggestedContent: React.FC<SuggestedContentProps> = () => {
       {/* Horizontal Scrollable Cards */}
       <div className="overflow-x-auto -mx-4 px-4">
         <div className="flex gap-3 pb-2">
-          {suggestions.map((card) => (
+          {loading ? (
+            <div className="text-sm text-muted-foreground">Loading suggestions…</div>
+          ) : suggestions.length === 0 ? (
+            <div className="p-3 border rounded">No suggestions right now</div>
+          ) : suggestions.map((card) => (
             <div
               key={card.id}
               className={`flex-shrink-0 w-72 ${card.color} rounded-lg p-4 border border-border hover:shadow-md transition-shadow cursor-pointer bg-card`}
+              onClick={() => trackClick(card.id)}
             >
               <div className="flex items-start gap-3">
                 <div className="text-3xl flex-shrink-0">{card.icon}</div>

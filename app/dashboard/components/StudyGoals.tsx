@@ -1,14 +1,17 @@
 'use client';
 
 import React from 'react';
+import { useStreaksAndGoals } from '@/hooks/useStreaksAndGoals';
 
 interface StudyGoalsProps { [key: string]: unknown }
 
 const StudyGoals: React.FC<StudyGoalsProps> = () => {
-  const todayGoalMinutes = 10;
-  const completedMinutes = 4;
+  const { streaks, loading } = useStreaksAndGoals();
+  const daily = streaks.find(s => s.kind === 'daily_study');
+  const streakDays = daily?.current ?? 0;
+  const todayGoalMinutes = 30;
+  const completedMinutes = Math.min(todayGoalMinutes, streakDays * 10);
   const progressPercentage = (completedMinutes / todayGoalMinutes) * 100;
-  const streakDays = 3;
 
   return (
     <section className="space-y-4">
@@ -48,7 +51,7 @@ const StudyGoals: React.FC<StudyGoalsProps> = () => {
             </div>
           </div>
           <div className="text-right">
-            <p className="text-2xl font-bold text-primary">{streakDays}</p>
+            <p className="text-2xl font-bold text-primary">{loading ? '…' : streakDays}</p>
             <p className="text-xs text-muted-foreground">days</p>
           </div>
         </div>
