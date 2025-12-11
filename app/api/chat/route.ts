@@ -13,7 +13,7 @@ import { logger } from '@/lib/logger';
 
 import { NextResponse } from 'next/server';
 import { getServerSessionForHandlers } from '@/lib/session';
-import { prisma } from '@/lib/db';
+import { prisma } from '@/lib/prisma';
 import { subjectPrompts } from '@/lib/subjectEngines';
 import { isPremiumUser } from '@/lib/subscription';
 import { checkProfanity } from '@/lib/guardrails';

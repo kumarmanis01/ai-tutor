@@ -69,6 +69,17 @@ export function OnboardingProvider({ children, service }: { children: React.Reac
     }
   }, [session, svc]);
 
+  // Auto-hydrate on fresh login to decide showing the modal
+  React.useEffect(() => {
+    if (session?.user?.email) {
+      // Only hydrate when not already open to avoid flicker
+      if (!isOpen) {
+        hydrate();
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session?.user?.email]);
+
   const open = useCallback(async () => {
     if (!values.name && !values.preferred_language && !values.class_grade && !values.board) {
       await hydrate();

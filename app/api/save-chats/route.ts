@@ -1,7 +1,7 @@
 import { logger } from '@/lib/logger';
 import { NextResponse } from 'next/server';
 import { getServerSessionForHandlers } from '@/lib/session';
-import { prisma } from '@/lib/db';
+import { prisma } from '@/lib/prisma';
 import { SessionUser } from '@/lib/types';
 import { logApiUsage } from '@/utils/logApiUsage';
 

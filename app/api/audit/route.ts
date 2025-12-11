@@ -1,6 +1,6 @@
 import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/db'; // Ensure this path is correct
+import { prisma } from '@/lib/prisma'; // Ensure this path is correct
 import { logApiUsage } from '@/utils/logApiUsage';
 
 export async function POST(request: NextRequest) {

@@ -1,6 +1,6 @@
 import { logger } from '@/lib/logger';
 import { NextResponse } from 'next/server';
-import { prisma } from '@/lib/db';
+import { prisma } from '@/lib/prisma';
 import { cookies } from 'next/headers';
 import { sendEmail } from '@/lib/mailer';
 import { logApiUsage } from '@/utils/logApiUsage';
