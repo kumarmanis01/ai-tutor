@@ -25,7 +25,19 @@ export function useContinueLearning() {
     }
   }
 
+  function resumeActivity(a: ContinueActivity) {
+    if (a.activityType === 'test') {
+      window.location.assign('/tests');
+    } else if (a.activityType === 'notes') {
+      window.location.assign('/notes');
+    } else if (a.activityType === 'practice') {
+      window.location.assign('/tests');
+    } else {
+      window.location.assign('/');
+    }
+  }
+
   useEffect(() => { refresh(); }, []);
 
-  return { activities, loading, refresh };
+  return { activities, loading, refresh, resumeActivity };
 }

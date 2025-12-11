@@ -15,7 +15,7 @@ interface LearningItem {
 interface ContinueLearningProps { [key: string]: unknown }
 
 const ContinueLearning: React.FC<ContinueLearningProps> = () => {
-  const { activities, loading } = useContinueLearning();
+  const { activities, loading, resumeActivity } = useContinueLearning();
   const learningItems: LearningItem[] = (activities || []).map((a) => ({
     id: a.id,
     title: a.activityType,
@@ -71,7 +71,7 @@ const ContinueLearning: React.FC<ContinueLearningProps> = () => {
               </div>
 
               {/* Action Button */}
-              <button className="px-4 py-2 bg-primary text-primary-foreground rounded-lg font-medium text-sm hover:bg-accent transition-colors flex-shrink-0">
+              <button className="px-4 py-2 bg-primary text-primary-foreground rounded-lg font-medium text-sm hover:bg-accent transition-colors flex-shrink-0" onClick={() => resumeActivity({ id: item.id, activityType: item.title })}>
                 {item.actionText}
               </button>
             </div>

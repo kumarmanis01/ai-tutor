@@ -19,10 +19,18 @@ export function useRecommendations() {
   }
 
   async function trackClick(id: string) {
-    try { /* placeholder for server tracking */ } catch {}
+    try {
+      await fetch('/api/dashboard/recommendations/track', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, event: 'clicked' }) });
+    } catch {}
+  }
+
+  async function trackCompleted(id: string) {
+    try {
+      await fetch('/api/dashboard/recommendations/track', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, event: 'completed' }) });
+    } catch {}
   }
 
   useEffect(() => { refresh(); }, []);
 
-  return { items, loading, refresh, trackClick };
+  return { items, loading, refresh, trackClick, trackCompleted };
 }

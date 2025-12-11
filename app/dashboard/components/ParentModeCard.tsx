@@ -2,10 +2,12 @@
 
 import React from 'react';
 import { logger } from '@/lib/logger';
+import { useParentMode } from '@/hooks/useParentMode';
 
 interface ParentModeCardProps { [key: string]: unknown }
 
 const ParentModeCard: React.FC<ParentModeCardProps> = () => {
+  const { data, loading } = useParentMode();
   const handleParentModeClick = () => {
     logger.add('Switching to Parent Mode', { className: 'ParentModeCard', methodName: 'handleParentModeClick' });
     // Navigate to parent dashboard
@@ -29,6 +31,9 @@ const ParentModeCard: React.FC<ParentModeCardProps> = () => {
               Parent Dashboard
               <span className="text-muted-foreground text-sm ml-2">/ अभिभावक डैशबोर्ड</span>
             </h3>
+            <p className="text-xs text-muted-foreground mb-2">
+              {loading ? 'Checking status…' : data.status === 'connected' ? 'Linked to a parent account' : 'Not linked yet'}
+            </p>
             <ul className="space-y-1">
               <li className="text-sm text-muted-foreground flex items-center gap-2">
                 <span className="text-success">✓</span>
