@@ -3,8 +3,9 @@ import { useEffect, useState } from 'react';
 
 export type ContinueActivity = {
   id: string;
-  activityType: string;
+  activityType: string; // 'test' | 'notes' | 'practice' | 'doubt_solving'
   subject?: string;
+  contentId?: string;
   startedAt?: string;
   endedAt?: string | null;
   meta?: any;
@@ -26,12 +27,15 @@ export function useContinueLearning() {
   }
 
   function resumeActivity(a: ContinueActivity) {
+    const id = a.contentId || a.id;
     if (a.activityType === 'test') {
-      window.location.assign('/tests');
+      window.location.assign(`/tests?resume=${encodeURIComponent(id)}`);
     } else if (a.activityType === 'notes') {
-      window.location.assign('/notes');
+      window.location.assign(`/notes?noteId=${encodeURIComponent(id)}`);
     } else if (a.activityType === 'practice') {
-      window.location.assign('/tests');
+      window.location.assign(`/tests?practice=${encodeURIComponent(id)}`);
+    } else if (a.activityType === 'doubt_solving') {
+      window.location.assign(`/rooms?resume=${encodeURIComponent(id)}`);
     } else {
       window.location.assign('/');
     }

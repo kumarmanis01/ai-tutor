@@ -411,18 +411,39 @@ model ParentStudent {
 }
 
 model LearningSession {
-  id           String    @id @default(cuid())
-  studentId    String
-  activityType String
-  activityRef  String?
-  duration     Int?
-  meta         Json?
-  startedAt    DateTime  @default(now())
-  endedAt      DateTime?
-  createdAt    DateTime  @default(now())
-  student      User      @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  id                   String        @id @default(cuid())
+  studentId            String
+  activityType         String
+  activityRef          String?
+  duration             Int?
+  meta                 Json?
+  startedAt            DateTime      @default(now())
+  endedAt              DateTime?
+  createdAt            DateTime      @default(now())
+  // Optional progress tracking fields
+  completionPercentage Int           @default(0)
+  isCompleted          Boolean       @default(false)
+  lastAccessed         DateTime      @default(now())
+  currentQuestionIndex Int?
+  sessionData          Json?
+  difficultyLevel      String?
+  estimatedTimeMinutes Int?
+  actualTimeSpent      Int           @default(0)
+  student              User          @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  resumePoints         ResumePoint[]
 
   @@index([studentId])
+}
+
+// Resume points for complex content to support deep resume
+model ResumePoint {
+  id              String          @id @default(cuid())
+  sessionId       String
+  contentPosition Json?
+  contextData     Json?
+  autoSavedData   Json?
+  createdAt       DateTime        @default(now())
+  session         LearningSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
 }
 
 model StudentLearningProfile {
@@ -474,16 +495,16 @@ model TestResult {
 }
 
 model Note {
-  id          String   @id @default(cuid())
+  id          String         @id @default(cuid())
   studentId   String?
   subject     String?
   title       String
   content     String
   contentJson Json?
-  isPublic    Boolean  @default(false)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  student     User?    @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  isPublic    Boolean        @default(false)
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+  student     User?          @relation(fields: [studentId], references: [id], onDelete: Cascade)
   downloads   NoteDownload[]
 }
 
@@ -532,7 +553,7 @@ model Question {
 
 // Per-attempt question ordering and results
 model AttemptQuestion {
-  id            String   @id @default(cuid())
+  id            String  @id @default(cuid())
   testResultId  String
   questionId    String
   order         Int

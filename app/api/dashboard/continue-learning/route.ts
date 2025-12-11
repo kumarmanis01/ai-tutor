@@ -15,7 +15,8 @@ export async function GET() {
     .map((s) => ({
       id: s.id,
       activityType: s.activityType,
-      subject: s.studentId ? undefined : undefined,
+      subject: undefined,
+      contentId: s.activityRef || undefined,
       startedAt: s.startedAt,
       endedAt: s.endedAt,
       meta: s.meta ?? null,
