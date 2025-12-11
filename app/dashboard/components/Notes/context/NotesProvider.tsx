@@ -81,7 +81,7 @@ export type NotesState = {
 export type NotesAPI = NotesState & {
   setQuery: (q: string) => void;
   refresh: () => Promise<void>;
-  trackDownloadClick: () => void;
+  recordDownload: (noteId: string) => Promise<void>;
 };
 
 const Ctx = createContext<NotesAPI | null>(null);
@@ -110,15 +110,20 @@ export function NotesProvider({ children, service }: { children: React.ReactNode
     logger.info('notes.search', { q });
   }, []);
 
-  const trackDownloadClick = useCallback(() => {
-    logger.info('notes.download.click');
+  const recordDownload = useCallback(async (noteId: string) => {
+    try {
+      await fetch('/api/notes/download', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ noteId }) });
+      logger.info('notes.download.recorded', { noteId });
+    } catch (e) {
+      logger.warn('notes.download.error', { message: String(e) });
+    }
   }, []);
 
   const api: NotesAPI = {
     ...state,
     setQuery,
     refresh,
-    trackDownloadClick,
+    recordDownload,
   };
 
   return <Ctx.Provider value={api}>{children}</Ctx.Provider>;

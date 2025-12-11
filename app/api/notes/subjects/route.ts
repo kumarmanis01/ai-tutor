@@ -11,9 +11,23 @@ export async function GET(req: NextRequest) {
     select: { subject: true },
     distinct: ['subject'],
   });
-  const subjects = (noteSubjects
+  let subjects = (noteSubjects
     .map((n) => n.subject || 'General')
     .filter((s, i, a) => a.indexOf(s) === i)
     .map((name) => ({ name, meta: '' })));
+
+  // Fallback to question bank subjects if no notes yet
+  if (subjects.length === 0) {
+    const questionSubjects = await prisma.question.findMany({
+      select: { subject: true },
+      distinct: ['subject'],
+      take: 20,
+      orderBy: { updatedAt: 'desc' },
+    });
+    subjects = questionSubjects
+      .map((q) => q.subject || 'General')
+      .filter((s, i, a) => a.indexOf(s) === i)
+      .map((name) => ({ name, meta: '' }));
+  }
   return NextResponse.json({ subjects });
 }

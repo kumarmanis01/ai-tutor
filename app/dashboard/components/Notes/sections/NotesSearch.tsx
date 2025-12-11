@@ -2,7 +2,7 @@ import React from 'react';
 import { useNotes } from '../context/NotesProvider';
 
 export function NotesSearch() {
-  const { query, setQuery, trackDownloadClick } = useNotes();
+  const { query, setQuery } = useNotes();
   return (
     <div className="flex items-center gap-2">
       <input
@@ -12,9 +12,6 @@ export function NotesSearch() {
         value={query}
         onChange={(e) => setQuery(e.target.value)}
       />
-      <button className="px-3 py-2 border rounded flex items-center gap-2" onClick={trackDownloadClick}>
-        <span>Download</span>
-      </button>
     </div>
   );
 }

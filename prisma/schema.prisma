@@ -56,6 +56,7 @@ model User {
   subscriptions            Subscription[]
   testResults              TestResult[]
   userBadges               UserBadge[]
+  noteDownloads            NoteDownload[]
 }
 
 model PhoneOtp {
@@ -483,6 +484,20 @@ model Note {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   student     User?    @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  downloads   NoteDownload[]
+}
+
+// Explicit tracking of note downloads per user
+model NoteDownload {
+  id        String   @id @default(cuid())
+  noteId    String
+  userId    String
+  createdAt DateTime @default(now())
+  note      Note     @relation(fields: [noteId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([noteId, userId])
 }
 
 model Bookmark {
