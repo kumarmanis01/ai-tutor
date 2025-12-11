@@ -144,6 +144,41 @@ export async function POST(req: NextRequest) {
       }
       // Handle Neon sleep or admin termination gracefully
       const msg = String(updErr?.message || updErr);
+      // Handle record-not-found gracefully (P2025)
+      if (updErr?.code === 'P2025' || msg.includes('No record was found for an update')) {
+        // Attempt a friendly recovery: create or resolve by phone/email, else return 404 with guidance
+        try {
+          const email = typeof (session?.user as any)?.email === 'string' ? (session!.user as any).email : undefined;
+          let fallbackUserId = userId;
+          if (!fallbackUserId && phone) {
+            const byPhone = await prisma.user.findUnique({ where: { phone } }).catch(() => null);
+            if (byPhone) fallbackUserId = byPhone.id;
+          }
+          if (!fallbackUserId && email) {
+            const byEmail = await prisma.user.findUnique({ where: { email } }).catch(() => null);
+            if (byEmail) fallbackUserId = byEmail.id;
+          }
+
+          if (!fallbackUserId) {
+            const created = await prisma.user.create({ data: { name: name || undefined, phone: phone || undefined, email: email || undefined, ...updates } });
+            updatedUser = created;
+            userId = created.id;
+            logger.info('/api/user/onboarding: created new user after P2025', { className: 'api.user.onboarding', methodName: 'POST', id: created.id });
+          } else {
+            updatedUser = await prisma.user.update({ where: { id: fallbackUserId }, data: updates });
+            userId = fallbackUserId;
+            logger.info('/api/user/onboarding: updated resolved user after P2025', { className: 'api.user.onboarding', methodName: 'POST', id: updatedUser.id });
+          }
+
+          return NextResponse.json({ ok: true, user: { id: updatedUser.id, name: updatedUser.name, phone: updatedUser.phone } });
+        } catch (recoverErr: any) {
+          logger.warn('/api/user/onboarding: failed to recover from P2025', { className: 'api.user.onboarding', methodName: 'POST', error: String(recoverErr?.message || recoverErr) });
+          return NextResponse.json({
+            error: 'user_not_found',
+            message: 'We could not find your user record to update. Please try again or re-login to refresh your session.',
+          }, { status: 404 });
+        }
+      }
       if (msg.includes('terminating connection due to administrator command') || msg.includes('E57P01')) {
         logger.warn('/api/user/onboarding: database temporarily unavailable (Neon sleep)', { className: 'api.user.onboarding', methodName: 'POST' });
         return new NextResponse(JSON.stringify({ error: 'db_unavailable', message: 'Database temporarily unavailable. Please retry.' }), {
@@ -165,6 +200,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: true, user: { id: updatedUser.id, name: updatedUser.name, phone: updatedUser.phone } });
   } catch (err) {
     logger.error('/api/user/onboarding error', { className: 'api.user.onboarding', methodName: 'POST', error: String(err) });
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    // Provide a clearer error message to avoid confusion for users
+    return NextResponse.json({ error: 'internal_error', message: 'Something went wrong while saving your details. Please try again.' }, { status: 500 });
   }
 }

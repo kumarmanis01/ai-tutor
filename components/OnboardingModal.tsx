@@ -163,9 +163,9 @@ export default function OnboardingModal() {
               <label className="block text-sm mb-1">Board</label>
               <select value={board} onChange={(e) => setBoard(e.target.value)} className="w-full px-3 py-2 border rounded">
                 <option value="">Select board</option>
-                <option>CBSE</option>
+                {/* <option>CBSE</option>
                 <option>ICSE</option>
-                <option>State Board</option>
+                <option>State Board</option> */}
                 <option>Other</option>
               </select>
             </div>
