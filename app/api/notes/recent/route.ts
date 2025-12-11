@@ -1,8 +1,8 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getServerSessionForHandlers } from '@/lib/session';
 
-export async function GET(req: NextRequest) {
+export async function GET() {
   const session = await getServerSessionForHandlers();
   if (!session?.user?.id) return NextResponse.json({ notes: [] });
   const notes = await prisma.note.findMany({

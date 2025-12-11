@@ -1,13 +1,13 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getServerSessionForHandlers } from '@/lib/session';
 
-export async function GET(req: NextRequest) {
+export async function GET(req: Request) {
   const session = await getServerSessionForHandlers();
   const { searchParams } = new URL(req.url);
   const subject = searchParams.get('subject') || undefined;
   const grade = searchParams.get('grade') || undefined;
-  const board = searchParams.get('board') || undefined;
+  // board parameter not used currently; omit to avoid lint warning
   if (!session?.user?.id) return NextResponse.json({ items: [] });
 
   // Use PracticeTest as upcoming items placeholder
