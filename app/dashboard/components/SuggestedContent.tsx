@@ -15,7 +15,7 @@ interface SuggestedCard {
 interface SuggestedContentProps { [key: string]: unknown }
 
 const SuggestedContent: React.FC<SuggestedContentProps> = () => {
-  const { items, loading, trackClick } = useRecommendations();
+  const { items, loading, trackClick, trackCompleted } = useRecommendations();
   const suggestions: SuggestedCard[] = items.map((i) => ({
     id: i.id,
     icon: '✨',
@@ -57,22 +57,20 @@ const SuggestedContent: React.FC<SuggestedContentProps> = () => {
                       </span>
                     )}
                   </div>
-                  <div className="mt-3 flex gap-2">
-                    <button className="px-3 py-2 bg-primary text-primary-foreground rounded" onClick={() => trackClick(card.id)}>Start</button>
-                    <button className="px-3 py-2 border rounded" onClick={() => console.log(`Mark Complete: ${card.id}`)}>Mark Complete</button>
-                  </div>
-                  </div>
                   <p className="text-sm text-muted-foreground line-clamp-2">
                     {card.subtitle}
                   </p>
+                  <div className="mt-3 flex gap-2">
+                    <button className="px-3 py-2 bg-primary text-primary-foreground rounded" onClick={() => trackClick(card.id)}>Start</button>
+                    <button className="px-3 py-2 border rounded" onClick={() => trackCompleted(card.id)}>Mark Complete</button>
+                  </div>
                 </div>
               </div>
             </div>
           ))}
         </div>
       </div>
-      </section>
-    );
+    </section>
   );
 };
 

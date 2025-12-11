@@ -9,54 +9,41 @@ datasource db {
 }
 
 model User {
-  id                       String                   @id @default(cuid())
-  name                     String?
-  email                    String?                  @unique
-  phone                    String?                  @unique
-  emailVerified            DateTime?
-  image                    String?
-  parentEmail              String?
-  language                 String?
-  country                  String?
-  createdAt                DateTime                 @default(now())
-  updatedAt                DateTime                 @updatedAt
-  status                   UserStatus               @default(active)
-  role                     UserRole                 @default(user)
-  passwordHash             String?
-  grade                    String?
-  board                    String?
-  subjects                 String[]                 @default([])
-  lastWidgetToken          String?
-  welcomeEmailSent         Boolean                  @default(false)
-  todaysFreeQuestionsCount Int                      @default(3)
-  points                   Int                      @default(0)
-  accounts                 Account[]
-  apiUsages                ApiUsage[]
-  auditLogs                AuditLog[]
-  bookmarks                Bookmark[]
-  ChallengeParticipation   ChallengeParticipation[]
-  chats                    Chat[]
-  chatHistories            ChatHistory[]
-  conversations            Conversation[]
-  events                   Event[]
-  learningSessions         LearningSession[]
-  notes                    Note[]
-  parentRelations          ParentStudent[]          @relation("ParentRelations")
-  studentRelations         ParentStudent[]          @relation("StudentRelations")
-  payments                 Payment[]
-  phoneOtps                PhoneOtp[]
-  referralsCreated         Referral[]               @relation("ReferralCreator")
-  redeemedReferrals        Referral[]               @relation("ReferralRedeemer")
-  Room                     Room[]
-  members                  RoomMember[]
-  sessions                 Session[]
-  studentLearningProfile   StudentLearningProfile?
-  studentQuestions         StudentQuestion[]
-  studentStreaks           StudentStreak[]
-  subscriptions            Subscription[]
-  testResults              TestResult[]
-  userBadges               UserBadge[]
-  noteDownloads            NoteDownload[]
+  id                      String                   @id @default(cuid())
+  name                    String?
+  email                   String?                  @unique
+  phone                   String?                  @unique
+  emailVerified           DateTime?
+  image                   String?
+  parentEmail             String?
+  chats                   Chat[]
+  chatHistories           ChatHistory[]
+  conversations           Conversation[]
+  events                  Event[]
+  learningSessions        LearningSession[]
+  notes                   Note[]
+  parentRelations         ParentStudent[]          @relation("ParentRelations")
+  studentRelations        ParentStudent[]          @relation("StudentRelations")
+  payments                Payment[]
+  phoneOtps               PhoneOtp[]
+  referralsCreated        Referral[]               @relation("ReferralCreator")
+  redeemedReferrals       Referral[]               @relation("ReferralRedeemer")
+  Room                    Room[]
+  members                 RoomMember[]
+  sessions                Session[]
+  studentLearningProfile  StudentLearningProfile?
+  studentQuestions        StudentQuestion[]
+  studentStreaks          StudentStreak[]
+  subscriptions           Subscription[]
+  testResults             TestResult[]
+  userBadges              UserBadge[]
+  noteDownloads           NoteDownload[]
+  accounts                Account[]
+  auditLogs               AuditLog[]
+  apiUsages               ApiUsage[]
+  challengeParticipations ChallengeParticipation[]
+  contentRecommendations  ContentRecommendation[]
+  bookmarks               Bookmark[]
 }
 
 model PhoneOtp {
@@ -444,6 +431,26 @@ model ResumePoint {
   autoSavedData   Json?
   createdAt       DateTime        @default(now())
   session         LearningSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+}
+
+model ContentRecommendation {
+  id           String    @id @default(cuid())
+  user         User      @relation(fields: [userId], references: [id])
+  userId       String
+  contentId    String
+  // Tracking flags
+  isShown      Boolean   @default(false)
+  isClicked    Boolean   @default(false)
+  isCompleted  Boolean   @default(false)
+  // Timestamps
+  firstShownAt DateTime?
+  lastShownAt  DateTime?
+  clickedAt    DateTime?
+  completedAt  DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@unique([userId, contentId])
 }
 
 model StudentLearningProfile {

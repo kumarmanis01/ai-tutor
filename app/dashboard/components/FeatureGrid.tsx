@@ -3,14 +3,7 @@
 import React from 'react';
 import { useFeatureGrid } from '@/hooks/useFeatureGrid';
 
-interface Feature {
-  id: string;
-  icon: string;
-  title: string;
-  subtitle: string;
-  badge?: string;
-  color: string;
-}
+// Removed unused Feature type to satisfy lint
 
 interface FeatureGridProps { [key: string]: unknown }
 
