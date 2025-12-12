@@ -1,2 +1,0 @@
--- Deprecated migration file moved to a later timestamp.
--- Intentionally left blank to avoid ordering conflicts.

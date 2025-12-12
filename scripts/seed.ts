@@ -1,6 +1,4 @@
 import { PrismaClient } from '@prisma/client';
-import bcrypt from 'bcrypt';
-import { logger } from '../lib/logger';
 
 const prisma = new PrismaClient();
 
@@ -26,10 +24,10 @@ async function main() {
     },
   ];
 
-  logger.add('Seeding process started...', { className: 'prisma/seed', methodName: 'main' });
+  console.log('Seeding process started...');
 
   // Log badge creation
-  logger.add('Creating or updating badges...', { className: 'prisma/seed', methodName: 'badges' });
+  console.log('Creating or updating badges...');
   for (const b of badges) {
     await prisma.badge.upsert({
       where: { key: b.key },
@@ -41,11 +39,11 @@ async function main() {
         icon: b.icon ?? null,
       },
     });
-    logger.add(`Badge processed: ${b.name}`, { className: 'prisma/seed', methodName: 'badges' });
+    console.log(`Badge processed: ${b.name}`);
   }
 
   // Log challenge creation
-  logger.add('Checking for existing weekly challenge...', { className: 'prisma/seed', methodName: 'weeklyChallenge' });
+  console.log('Checking for existing weekly challenge...');
   const now = new Date();
   const start = new Date(now);
   start.setUTCDate(now.getUTCDate() - 1);
@@ -54,7 +52,7 @@ async function main() {
 
   const existing = await prisma.challenge.findUnique({ where: { key: 'weekly_quiz_1' } });
   if (!existing) {
-    logger.add('No existing challenge found. Creating a new one...', { className: 'prisma/seed', methodName: 'weeklyChallenge' });
+    console.log('No existing challenge found. Creating a new one...');
     const rewardBadge = await prisma.badge.findUnique({ where: { key: 'challenge_winner' } });
     await prisma.challenge.create({
       data: {
@@ -67,30 +65,29 @@ async function main() {
         rewardBadgeId: rewardBadge?.id ?? null,
       },
     });
-    logger.add('Weekly challenge created.', { className: 'prisma/seed', methodName: 'weeklyChallenge' });
+    console.log('Weekly challenge created.');
   } else {
-    logger.add('Weekly challenge already exists.', { className: 'prisma/seed', methodName: 'weeklyChallenge' });
+    console.log('Weekly challenge already exists.');
   }
 
   // Log test user creation
-  logger.add('Attempting to create or update test user...', { className: 'prisma/seed', methodName: 'testUser' });
-  const hashedPassword = await bcrypt.hash('hashedpassword', 10); // Hash the password
+  console.log('Attempting to create or update test user...');
   const testUser = await prisma.user.upsert({
     where: { email: 'testuser@example.com' },
     update: {
-      passwordHash: hashedPassword, // Update the password if the user exists
+      passwordHash: 'hashedpassword', // Use a static hash for demo
     },
     create: {
       name: 'Test User',
       email: 'testuser@example.com',
       emailVerified: new Date(),
-      passwordHash: hashedPassword, // Use the hashed password
+      passwordHash: 'hashedpassword', // Use a static hash for demo
     },
   });
-  logger.add(`Test user created or updated: ${JSON.stringify(testUser)}`, { className: 'prisma/seed', methodName: 'testUser' });
+  console.log(`Test user created or updated: ${JSON.stringify(testUser)}`);
 
   // Log payment creation
-  logger.add('Attempting to create payment for test user...', { className: 'prisma/seed', methodName: 'payments' });
+  console.log('Attempting to create payment for test user...');
   const payment = await prisma.payment.create({
     data: {
       userId: testUser.id,
@@ -102,7 +99,7 @@ async function main() {
       billingCycle: 'monthly', // Set billing cycle to monthly
     },
   });
-  logger.add(`Payment created for test user: ${JSON.stringify(payment)}`, { className: 'prisma/seed', methodName: 'payments' });
+  console.log(`Payment created for test user: ${JSON.stringify(payment)}`);
 
   const anotherTestUser = await prisma.user.upsert({
     where: { email: 'testuser@example.com' },
@@ -114,15 +111,15 @@ async function main() {
       passwordHash: 'hashedpassword',
     },
   });
-  logger.add(`Created or updated test user: ${JSON.stringify(anotherTestUser)}`, { className: 'prisma/seed', methodName: 'testUser' });
+  console.log(`Created or updated test user: ${JSON.stringify(anotherTestUser)}`);
 
   // Log all users
-  logger.add('Fetching all users in the database...', { className: 'prisma/seed', methodName: 'report' });
+  console.log('Fetching all users in the database...');
   const allUsers = await prisma.user.findMany({ select: { name: true, email: true } });
-  logger.add(`All users in the database: ${JSON.stringify(allUsers)}`, { className: 'prisma/seed', methodName: 'report' });
+  console.log(`All users in the database: ${JSON.stringify(allUsers)}`);
 
   // Seed a small question bank for Quick Practice
-  logger.add('Seeding sample questions for Quick Practice...', { className: 'prisma/seed', methodName: 'questions' });
+  console.log('Seeding sample questions for Quick Practice...');
   const existingQuestions = await prisma.question.count();
   if (existingQuestions === 0) {
     await prisma.question.createMany({
@@ -163,17 +160,17 @@ async function main() {
         } as any,
       ],
     });
-    logger.add('Sample questions seeded.', { className: 'prisma/seed', methodName: 'questions' });
+    console.log('Sample questions seeded.');
   } else {
-    logger.add(`Question bank already has ${existingQuestions} items.`, { className: 'prisma/seed', methodName: 'questions' });
+    console.log(`Question bank already has ${existingQuestions} items.`);
   }
 
-  logger.add('Seeding process completed', { className: 'prisma/seed', methodName: 'main' });
+  console.log('Seeding process completed');
 }
 
 main()
   .catch((e) => {
-    logger.error(`Seed error: ${String(e)}`, { className: 'prisma/seed', methodName: 'main' });
+    console.error(`Seed error: ${String(e)}`);
     process.exitCode = 1;
   })
   .finally(async () => {

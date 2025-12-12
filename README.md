@@ -239,3 +239,115 @@ Notes:
 	- File: `lib/alerts.ts` (`showAlert`) and `components/UI/AlertModal.tsx` (listener + UI)
 	- Global: `AlertModal` is mounted in `app/providers.tsx`.
 - This replaces any usage of `window.dispatchEvent` with the named event `app-alert` and a typed payload.
+
+# Spinzy Academy: Setup, Migration, and Staging Guide
+
+## Local Development
+
+1. **Install dependencies:**
+   ```cmd
+   npm install
+   ```
+2. **Start the dev server:**
+   ```cmd
+   npm run dev
+   ```
+3. **Run type-check and lint:**
+   ```cmd
+   npm run type-check
+   npm run lint
+   ```
+
+## Database Migration Workflow
+
+### Safe Migration Principles
+- **Never use `prisma migrate reset` or `db push` on production.**
+- **Always use incremental migrations:**
+  ```cmd
+  npx prisma migrate dev --name <change>
+  ```
+- **Apply migrations to production with:**
+  ```cmd
+  npx prisma migrate deploy
+  ```
+- **Backup your production DB before applying migrations.**
+- **Test all migrations on staging before production.**
+
+### Staging Environment Setup
+
+1. **Create a separate Neon DB for staging.**
+   - Example: `DATABASE_URL_STAGING` in `.env.staging`
+2. **Configure your `.env.staging` file:**
+   ```env
+   DATABASE_URL="postgresql://<user>:<password>@<host>:<port>/<db>?schema=public"
+   NEXTAUTH_SECRET=your-staging-secret
+   # ...other staging secrets
+   ```
+3. **Switch to staging config in development:**
+   ```cmd
+   cp .env.staging .env
+   npm run dev
+   ```
+4. **Apply migrations to staging:**
+   ```cmd
+   npx prisma migrate deploy
+   ```
+5. **Seed staging DB:**
+   ```cmd
+   node prisma/seed.ts
+   ```
+6. **Test your app thoroughly on staging.**
+
+### Staging Environment Usage
+
+1. Fill in `.env.staging` with your staging DB connection string and secrets.
+2. To use staging locally:
+   ```cmd
+   cp .env.staging .env
+   npm install
+   npx prisma migrate deploy
+   node prisma/seed.ts
+   npm run dev
+   ```
+3. All migrations and seeds will now run against your staging DB.
+
+### Moving to Production
+
+1. **Create a separate Neon DB for production.**
+   - Example: `DATABASE_URL_PROD` in `.env.production`
+2. **Configure your `.env.production` file:**
+   ```env
+   DATABASE_URL="postgresql://<user>:<password>@<host>:<port>/<db>?schema=public"
+   NEXTAUTH_SECRET=your-prod-secret
+   # ...other prod secrets
+   ```
+3. **Switch to production config:**
+   ```cmd
+   cp .env.production .env
+   npm run build
+   npm start
+   ```
+4. **Apply migrations to production:**
+   ```cmd
+   npx prisma migrate deploy
+   ```
+5. **Seed production DB (if needed):**
+   ```cmd
+   node prisma/seed.ts
+   ```
+
+## Best Practices
+- **Never run destructive commands on production.**
+- **Always test migrations and seeds on staging first.**
+- **Keep `.env` files for each environment.**
+- **Automate backups before migration.**
+- **Review migration SQL for breaking changes.**
+
+## Troubleshooting
+- If you see drift or migration errors, resolve them on staging first.
+- For complex changes, write custom SQL migrations and test on staging.
+- Use `npx prisma migrate resolve --applied <migration_name>` to mark manual migrations as applied.
+
+---
+
+For questions, reach out to the Spinzy Academy team or check the Prisma docs: https://www.prisma.io/docs/

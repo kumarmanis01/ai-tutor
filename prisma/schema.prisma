@@ -17,7 +17,7 @@ model User {
   image                    String?
   parentEmail              String?
   // App-specific profile fields used across APIs
-  role                     String?
+  role                     UserRole                 @default(user)
   country                  String?
   language                 String?
   grade                    String?
@@ -464,6 +464,25 @@ model ContentRecommendation {
   updatedAt    DateTime  @updatedAt
 
   @@unique([userId, contentId])
+}
+
+// Catalog of recommendable learning content, filtered by board/grade/language/subject
+model ContentCatalog {
+  id          String   @id @default(cuid())
+  contentId   String   @unique
+  title       String
+  description String?
+  url         String?
+  type        String? // video|article|quiz|worksheet
+  subject     String
+  board       String
+  grade       String
+  language    String
+  difficulty  String? // easy|medium|hard
+  tags        String[] @default([])
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 }
 
 model StudentLearningProfile {
