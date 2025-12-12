@@ -47,19 +47,29 @@ export async function GET() {
   }
 }
 
-export async function POST() {
-  logApiUsage('/api/free-questions', 'POST');
+export async function POST(req: Request) {
+  const start = Date.now();
   try {
     const session = await getServerSessionForHandlers();
-    if (!session) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
+    let res: Response;
+    if (!session) {
+      res = NextResponse.json({ error: 'unauthorized' }, { status: 401 });
+      logger.logAPI(req, res, { className: 'FreeQuestionsAPI', methodName: 'POST' }, start);
+      return res;
+    }
 
     const userId = (session.user as SessionUser)?.id;
-    if (!userId) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
+    if (!userId) {
+      res = NextResponse.json({ error: 'unauthorized' }, { status: 401 });
+      logger.logAPI(req, res, { className: 'FreeQuestionsAPI', methodName: 'POST' }, start);
+      return res;
+    }
 
     const premium = await isPremiumUser(userId);
     if (premium) {
-      // Premium users don't consume the free quota
-      return NextResponse.json({ remaining: null, isPremium: true, total: DAILY_FREE_LIMIT });
+      res = NextResponse.json({ remaining: null, isPremium: true, total: DAILY_FREE_LIMIT });
+      logger.logAPI(req, res, { className: 'FreeQuestionsAPI', methodName: 'POST' }, start);
+      return res;
     }
 
     // Atomic decrement of user's remaining free questions
@@ -79,16 +89,27 @@ export async function POST() {
       return { updated } as const;
     });
 
-    if ('notFound' in result) return NextResponse.json({ error: 'not_found' }, { status: 404 });
-    if ('limitReached' in result)
-      return NextResponse.json({ error: 'free_limit_reached' }, { status: 403 });
+    if ('notFound' in result) {
+      res = NextResponse.json({ error: 'not_found' }, { status: 404 });
+      logger.logAPI(req, res, { className: 'FreeQuestionsAPI', methodName: 'POST' }, start);
+      return res;
+    }
+    if ('limitReached' in result) {
+      res = NextResponse.json({ error: 'free_limit_reached' }, { status: 403 });
+      logger.logAPI(req, res, { className: 'FreeQuestionsAPI', methodName: 'POST' }, start);
+      return res;
+    }
 
-    return NextResponse.json({
+    res = NextResponse.json({
       remaining: result.updated.todaysFreeQuestionsCount,
       total: DAILY_FREE_LIMIT,
     });
+    logger.logAPI(req, res, { className: 'FreeQuestionsAPI', methodName: 'POST' }, start);
+    return res;
   } catch (err) {
     logger.error('free-questions POST error', { className: 'api.free-questions', methodName: 'POST', error: String(err) });
-    return NextResponse.json({ error: 'server_error' }, { status: 500 });
+    const res = NextResponse.json({ error: 'server_error' }, { status: 500 });
+    logger.logAPI(req, res, { className: 'FreeQuestionsAPI', methodName: 'POST' }, start);
+    return res;
   }
 }

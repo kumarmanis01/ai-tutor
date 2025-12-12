@@ -3,12 +3,13 @@ import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSessionForHandlers } from '@/lib/session';
 import { prisma } from '@/lib/prisma';
-import { logApiUsage } from '@/utils/logApiUsage';
 
 export async function POST(req: NextRequest) {
+  const start = Date.now();
+  let res: Response;
   try {
     const session = await getServerSessionForHandlers();
-    logApiUsage('/api/user/onboarding', 'POST', session?.user?.id);
+    // logApiUsage('/api/user/onboarding', 'POST', session?.user?.id); // replaced by logger.logAPI
 
     let userId: string | undefined;
     if (session && session.user && session.user.id) {
@@ -45,7 +46,9 @@ export async function POST(req: NextRequest) {
     // Do not create users in onboarding. If there's no session user id, we will return 401 below.
 
     if (!userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      res = NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      logger.logAPI(req, res, { className: 'UserOnboardingAPI', methodName: 'POST' }, start);
+      return res;
     }
 
     // Enforce required fields for onboarding
@@ -55,7 +58,9 @@ export async function POST(req: NextRequest) {
     if (!board || String(board).trim() === '') fieldErrors.board = 'Board is required';
     if (!preferredLanguage || String(preferredLanguage).trim() === '') fieldErrors.preferred_language = 'Preferred language is required';
     if (Object.keys(fieldErrors).length) {
-      return NextResponse.json({ error: 'validation_error', fieldErrors }, { status: 400 });
+      res = NextResponse.json({ error: 'validation_error', fieldErrors }, { status: 400 });
+      logger.logAPI(req, res, { className: 'UserOnboardingAPI', methodName: 'POST' }, start);
+      return res;
     }
 
     const updates: any = {};
@@ -84,10 +89,12 @@ export async function POST(req: NextRequest) {
         }
         if (!resolvedUserId) {
           logger.warn('/api/user/onboarding: user not found (no create).', { className: 'api.user.onboarding', methodName: 'POST' });
-          return NextResponse.json({
+          res = NextResponse.json({
             error: 'user_not_found',
             message: 'Your account record is missing. Please sign out and sign in again to re-link your account.',
           }, { status: 404 });
+          logger.logAPI(req, res, { className: 'UserOnboardingAPI', methodName: 'POST' }, start);
+          return res;
         }
         userId = resolvedUserId as string;
       }
@@ -97,11 +104,13 @@ export async function POST(req: NextRequest) {
     } catch (updErr: any) {
       if (updErr?.code === 'P2022') {
         logger.error('/api/user/onboarding: prisma schema mismatch on update P2022', { className: 'api.user.onboarding', methodName: 'POST', error: String((updErr as any)?.meta || (updErr as any)?.message || updErr) });
-        return NextResponse.json({
+        res = NextResponse.json({
           error: 'db_schema_mismatch',
           message: 'Database schema is out of sync with Prisma schema: one or more columns (e.g. `User.board`) are missing. Run `npx prisma migrate dev` to apply pending migrations.',
           details: updErr?.meta || String(updErr?.message),
         }, { status: 500 });
+        logger.logAPI(req, res, { className: 'UserOnboardingAPI', methodName: 'POST' }, start);
+        return res;
       }
       // Handle Neon sleep or admin termination gracefully
       const msg = String(updErr?.message || updErr);
@@ -122,31 +131,39 @@ export async function POST(req: NextRequest) {
           }
 
           if (!fallbackUserId) {
-            return NextResponse.json({
+            res = NextResponse.json({
               error: 'user_not_found',
               message: 'We could not find your user record to update. Please re-login to refresh your session.',
             }, { status: 404 });
+            logger.logAPI(req, res, { className: 'UserOnboardingAPI', methodName: 'POST' }, start);
+            return res;
           }
 
           updatedUser = await prisma.user.update({ where: { id: fallbackUserId }, data: updates });
           userId = fallbackUserId;
           logger.info('/api/user/onboarding: updated resolved user after P2025', { className: 'api.user.onboarding', methodName: 'POST', id: updatedUser.id });
 
-          return NextResponse.json({ ok: true, user: { id: updatedUser.id, name: updatedUser.name, phone: updatedUser.phone } });
+          res = NextResponse.json({ ok: true, user: { id: updatedUser.id, name: updatedUser.name, phone: updatedUser.phone } });
+          logger.logAPI(req, res, { className: 'UserOnboardingAPI', methodName: 'POST' }, start);
+          return res;
         } catch (recoverErr: any) {
           logger.warn('/api/user/onboarding: failed to recover from P2025', { className: 'api.user.onboarding', methodName: 'POST', error: String(recoverErr?.message || recoverErr) });
-          return NextResponse.json({
+          res = NextResponse.json({
             error: 'user_not_found',
             message: 'We could not find your user record to update. Please try again or re-login to refresh your session.',
           }, { status: 404 });
+          logger.logAPI(req, res, { className: 'UserOnboardingAPI', methodName: 'POST' }, start);
+          return res;
         }
       }
       if (msg.includes('terminating connection due to administrator command') || msg.includes('E57P01')) {
         logger.warn('/api/user/onboarding: database temporarily unavailable (Neon sleep)', { className: 'api.user.onboarding', methodName: 'POST' });
-        return new NextResponse(JSON.stringify({ error: 'db_unavailable', message: 'Database temporarily unavailable. Please retry.' }), {
+        res = new NextResponse(JSON.stringify({ error: 'db_unavailable', message: 'Database temporarily unavailable. Please retry.' }), {
           status: 503,
           headers: { 'Retry-After': '3', 'Content-Type': 'application/json' },
         });
+        logger.logAPI(req, res, { className: 'UserOnboardingAPI', methodName: 'POST' }, start);
+        return res;
       }
       throw updErr;
     }
@@ -159,10 +176,14 @@ export async function POST(req: NextRequest) {
       logger.warn('/api/user/onboarding: failed to persist widget token as event', { className: 'api.user.onboarding', methodName: 'POST', error: String(evErr) });
     }
 
-    return NextResponse.json({ ok: true, user: { id: updatedUser.id, name: updatedUser.name, phone: updatedUser.phone } });
+    res = NextResponse.json({ ok: true, user: { id: updatedUser.id, name: updatedUser.name, phone: updatedUser.phone } });
+    logger.logAPI(req, res, { className: 'UserOnboardingAPI', methodName: 'POST' }, start);
+    return res;
   } catch (err) {
     logger.error('/api/user/onboarding error', { className: 'api.user.onboarding', methodName: 'POST', error: String(err) });
     // Provide a clearer error message to avoid confusion for users
-    return NextResponse.json({ error: 'internal_error', message: 'Something went wrong while saving your details. Please try again.' }, { status: 500 });
+    res = NextResponse.json({ error: 'internal_error', message: 'Something went wrong while saving your details. Please try again.' }, { status: 500 });
+    logger.logAPI(req, res, { className: 'UserOnboardingAPI', methodName: 'POST' }, start);
+    return res;
   }
 }

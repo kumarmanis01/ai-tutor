@@ -1,6 +1,5 @@
 import { logger } from '@/lib/logger';
 // app/api/export/route.ts
-import { logApiUsage } from '@/utils/logApiUsage';
 import { NextResponse } from 'next/server';
 import { getServerSessionForHandlers } from '@/lib/session';
 import { PDFDocument, StandardFonts } from 'pdf-lib';
@@ -11,29 +10,36 @@ import { PDFDocument, StandardFonts } from 'pdf-lib';
  * Returns: application/pdf or text/plain
  */
 export async function POST(req: Request) {
-  logApiUsage('/api/export', 'POST');
+  const start = Date.now();
   try {
     const session = await getServerSessionForHandlers();
+    let res: Response;
     if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      res = NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      logger.logAPI(req, res, { className: 'ExportAPI', methodName: 'POST' }, start);
+      return res;
     }
     const body = await req.json();
     const { title = 'chat_export', messages, format = 'pdf' } = body ?? {};
 
     if (!Array.isArray(messages) || messages.length === 0) {
-      return NextResponse.json({ error: 'no_messages' }, { status: 400 });
+      res = NextResponse.json({ error: 'no_messages' }, { status: 400 });
+      logger.logAPI(req, res, { className: 'ExportAPI', methodName: 'POST' }, start);
+      return res;
     }
 
     if (format === 'text') {
       // Concatenate simple text export
       const textLines = messages.map((m) => `${m.role === 'user' ? 'You' : 'Tutor'}: ${m.content}`);
       const txt = textLines.join('\n\n');
-      return new NextResponse(txt, {
+      res = new NextResponse(txt, {
         headers: {
           'Content-Type': 'text/plain; charset=utf-8',
           'Content-Disposition': `attachment; filename="${title}.txt"`,
         },
       });
+      logger.logAPI(req, res, { className: 'ExportAPI', methodName: 'POST' }, start);
+      return res;
     }
 
     // PDF generation using pdf-lib

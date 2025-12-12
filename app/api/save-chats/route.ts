@@ -3,23 +3,28 @@ import { NextResponse } from 'next/server';
 import { getServerSessionForHandlers } from '@/lib/session';
 import { prisma } from '@/lib/prisma';
 import { SessionUser } from '@/lib/types';
-import { logApiUsage } from '@/utils/logApiUsage';
 
 /**
  * Persists chat history for a logged-in user
  * Request: { messages: [{ role: "user"|"ai", content: string }] }
  */
 export async function POST(req: Request) {
-  logApiUsage('/api/save-chats', 'POST');
+  const start = Date.now();
+  // logApiUsage('/api/save-chats', 'POST');
   const session = await getServerSessionForHandlers();
+  let res: Response;
   if (!session) {
-    return new Response('Unauthorized', { status: 401 });
+    res = new Response('Unauthorized', { status: 401 });
+    logger.logAPI(req, res, { className: 'SaveChatsAPI', methodName: 'POST' }, start);
+    return res;
   }
 
   const sessionUser = session.user as SessionUser;
 
   if (!sessionUser || !sessionUser.email || !sessionUser.id) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    res = NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    logger.logAPI(req, res, { className: 'SaveChatsAPI', methodName: 'POST' }, start);
+    return res;
   }
 
   try {
@@ -33,9 +38,13 @@ export async function POST(req: Request) {
       },
     });
 
-    return NextResponse.json({ success: true });
+    res = NextResponse.json({ success: true });
+    logger.logAPI(req, res, { className: 'SaveChatsAPI', methodName: 'POST' }, start);
+    return res;
   } catch (err) {
     logger.error('SaveChats API error', { className: 'api.save-chats', methodName: 'POST', error: String(err) });
-    return NextResponse.json({ error: 'Failed to save chats' }, { status: 500 });
+    res = NextResponse.json({ error: 'Failed to save chats' }, { status: 500 });
+    logger.logAPI(req, res, { className: 'SaveChatsAPI', methodName: 'POST' }, start);
+    return res;
   }
 }

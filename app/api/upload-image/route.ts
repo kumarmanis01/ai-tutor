@@ -7,16 +7,22 @@ import path from 'path';
 export const runtime = 'nodejs';
 
 export async function POST(req: Request) {
+  const start = Date.now();
   const session = await getServerSessionForHandlers();
+  let res: Response;
   if (!session?.user?.id) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    res = NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    logger.logAPI(req, res, { className: 'UploadImageAPI', methodName: 'POST' }, start);
+    return res;
   }
   try {
     const formData = await req.formData();
     const file = formData.get('file') as File | null;
 
     if (!file) {
-      return NextResponse.json({ error: 'No file uploaded' }, { status: 400 });
+      res = NextResponse.json({ error: 'No file uploaded' }, { status: 400 });
+      logger.logAPI(req, res, { className: 'UploadImageAPI', methodName: 'POST' }, start);
+      return res;
     }
 
     const uploadDir = path.join(process.cwd(), 'public', 'uploads');
@@ -32,16 +38,21 @@ export async function POST(req: Request) {
 
     // Basic file size limit (10MB)
     if (buffer.length > 10 * 1024 * 1024) {
-      return NextResponse.json({ error: 'File too large' }, { status: 413 });
+      res = NextResponse.json({ error: 'File too large' }, { status: 413 });
+      logger.logAPI(req, res, { className: 'UploadImageAPI', methodName: 'POST' }, start);
+      return res;
     }
 
     await fs.writeFile(filePath, buffer);
 
     const url = `/uploads/${filename}`;
-    return NextResponse.json({ ok: true, url });
+    res = NextResponse.json({ ok: true, url });
+    logger.logAPI(req, res, { className: 'UploadImageAPI', methodName: 'POST' }, start);
+    return res;
   } catch (err) {
-    // Log the error using a logging utility or remove this line if unnecessary
     logger.error('upload-image error', { className: 'api.upload-image', methodName: 'POST', error: String(err) });
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    res = NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    logger.logAPI(req, res, { className: 'UploadImageAPI', methodName: 'POST' }, start);
+    return res;
   }
 }

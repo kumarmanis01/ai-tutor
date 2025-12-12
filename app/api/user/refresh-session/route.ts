@@ -3,26 +3,38 @@ import { NextResponse } from 'next/server';
 import { getServerSessionForHandlers } from '@/lib/session';
 import { prisma } from '@/lib/prisma';
 
-export async function POST() {
+export async function POST(req: Request) {
+  const start = Date.now();
+  let res: Response;
   try {
     const session = await getServerSessionForHandlers();
     if (!session || !session.user || !session.user.id) {
-      return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
+      res = NextResponse.json({ error: 'unauthorized' }, { status: 401 });
+      logger.logAPI(req, res, { className: 'UserRefreshSessionAPI', methodName: 'POST' }, start);
+      return res;
     }
 
     const dbUser = await prisma.user.findUnique({ where: { id: session.user.id } });
-    if (!dbUser) return NextResponse.json({ error: 'not_found' }, { status: 404 });
+    if (!dbUser) {
+      res = NextResponse.json({ error: 'not_found' }, { status: 404 });
+      logger.logAPI(req, res, { className: 'UserRefreshSessionAPI', methodName: 'POST' }, start);
+      return res;
+    }
 
     // Return minimal identity that mirrors the session's minimal shape.
-    return NextResponse.json({
+    res = NextResponse.json({
       id: dbUser.id,
       name: dbUser.name ?? null,
       email: dbUser.email ?? null,
       image: dbUser.image ?? null,
       role: dbUser.role ?? null,
     });
+    logger.logAPI(req, res, { className: 'UserRefreshSessionAPI', methodName: 'POST' }, start);
+    return res;
   } catch (err) {
     logger.error('POST /api/user/refresh-session error', { className: 'api.user.refresh-session', methodName: 'POST', error: String(err) });
-    return NextResponse.json({ error: 'internal_error' }, { status: 500 });
+    res = NextResponse.json({ error: 'internal_error' }, { status: 500 });
+    logger.logAPI(req, res, { className: 'UserRefreshSessionAPI', methodName: 'POST' }, start);
+    return res;
   }
 }

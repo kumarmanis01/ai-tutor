@@ -20,7 +20,7 @@ const CLASS_NAME = 'AuthSignupRoute';
 export async function POST(req: NextRequest) {
   logApiUsage('/api/auth/signup', 'POST');
   const METHOD_NAME = 'POST';
-  await logger.logRouteInfo(req, undefined, { className: CLASS_NAME, methodName: METHOD_NAME });
+  const start = Date.now();
 
   const { name, email, parentEmail, profileImage, grade, password, country }: SignupBody =
     await req.json();
@@ -29,7 +29,7 @@ export async function POST(req: NextRequest) {
   const existing = await prisma.user.findUnique({ where: { email } });
   if (existing) {
     const response = NextResponse.json({ error: 'User exists' }, { status: 409 });
-    await logger.logRouteInfo(req, response, { className: CLASS_NAME, methodName: METHOD_NAME });
+    logger.logAPI(req, response, { className: CLASS_NAME, methodName: METHOD_NAME }, start);
     return response;
   }
 
@@ -53,6 +53,6 @@ export async function POST(req: NextRequest) {
   });
 
   const response = NextResponse.json({ ok: true });
-  await logger.logRouteInfo(req, response, { className: CLASS_NAME, methodName: METHOD_NAME });
+  logger.logAPI(req, response, { className: CLASS_NAME, methodName: METHOD_NAME }, start);
   return response;
 }

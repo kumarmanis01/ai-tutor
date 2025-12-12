@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { Prisma } from '@prisma/client';
 import { getServerSessionForHandlers } from '@/lib/session';
 import { selectQuestions } from '@/lib/tests';
+import { logger } from '@/lib/logger';
 
 export const dynamic = 'force-dynamic';
 
@@ -12,9 +13,15 @@ export const dynamic = 'force-dynamic';
  * Starts a new quick practice attempt and returns attemptId + questions.
  */
 export async function POST(req: Request) {
+  const start = Date.now();
+  let res: Response;
   const session = await getServerSessionForHandlers();
   const user = session?.user;
-  if (!user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  if (!user?.id) {
+    res = NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    logger.logAPI(req, res, { className: 'TestsStartAPI', methodName: 'POST' }, start);
+    return res;
+  }
 
   const body = await req.json().catch(() => ({}));
   const {
@@ -29,7 +36,9 @@ export async function POST(req: Request) {
 
   const questions = await selectQuestions({ subject, grade, board, chapter, difficulty, type }, count);
   if (!questions.length) {
-    return NextResponse.json({ error: 'No questions available for selection' }, { status: 404 });
+    res = NextResponse.json({ error: 'No questions available for selection' }, { status: 404 });
+    logger.logAPI(req, res, { className: 'TestsStartAPI', methodName: 'POST' }, start);
+    return res;
   }
 
   const attempt = await prisma.testResult.create({
@@ -63,5 +72,7 @@ export async function POST(req: Request) {
     difficulty: q.difficulty ?? null,
   }));
 
-  return NextResponse.json({ attemptId: attempt.id, questions: payload });
+  res = NextResponse.json({ attemptId: attempt.id, questions: payload });
+  logger.logAPI(req, res, { className: 'TestsStartAPI', methodName: 'POST' }, start);
+  return res;
 }
