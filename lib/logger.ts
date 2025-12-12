@@ -95,37 +95,57 @@ class Logger {
   }
 
   /**
-   * Log route request/response info in debug mode.
-   * @param req - The request object.
-   * @param res - The response object (optional).
-   * @param context - Optional context for class and method names.
+   * Pretty-print API request and response for dev debugging, including turnaround time.
+   * Usage: logger.logAPI(req, res, context, startTime)
+   * @param req - The HTTP request object
+   * @param res - (Optional) The HTTP response object
+   * @param context - (Optional) Additional context
+   * @param startTime - (Optional) ms timestamp when request started
    */
-  async logRouteInfo(req: Request, res?: Response, context?: LogContext) {
-    if (!isDebug) return;
+  async logAPI(req: Request, res?: Response, context?: LogContext, startTime?: number) {
+    if (!isDebug || process.env.NODE_ENV === 'production') return;
     try {
       const url = req.url;
       const method = typeof req.method === 'string' ? req.method : 'UNKNOWN';
-      this.add(`Route: ${method} ${url}`, context);
-
-      // Log request body (if available)
+      let reqBody = '';
       if (req.body) {
         try {
-          const reqBody = await req.clone().text();
-          this.add(`Request Body: ${reqBody}`, context);
+          reqBody = await req.clone().text();
         } catch {}
       }
-
-      // Log response status and body (if available)
+      const resStatus = res?.status;
+      let resBody = '';
       if (res) {
-        this.add(`Response Status: ${res.status}`, context);
         try {
-          const resBody = await res.clone().text();
-          this.add(`Response Body: ${resBody}`, context);
+          resBody = await res.clone().text();
         } catch {}
       }
+      const endTime = Date.now();
+      const duration = startTime ? `${endTime - startTime}ms` : undefined;
+      // Pretty print
+      const logObj: any = {
+        route: { method, url },
+        request: reqBody ? safeJson(reqBody) : undefined,
+        response: res ? { status: resStatus, body: resBody ? safeJson(resBody) : undefined } : undefined,
+        ...(duration && { duration }),
+        ...(context && { context }),
+      };
+      // Remove undefined fields
+      Object.keys(logObj).forEach((k) => logObj[k] === undefined && delete logObj[k]);
+      // Print as pretty JSON
+      console.log('[API DEBUG]', JSON.stringify(logObj, null, 2));
     } catch (err) {
-      this.add(`Logger error: ${err}`, context);
+      this.add(`logAPI error: ${err}`, context, 'error');
     }
+  }
+}
+
+// Helper to pretty print JSON or fallback to string
+function safeJson(str: string) {
+  try {
+    return JSON.parse(str);
+  } catch {
+    return str;
   }
 }
 
