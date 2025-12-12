@@ -249,13 +249,19 @@ export const authOptions: NextAuthOptions = {
     },
     // This shapes the JWT token with user info
     async jwt({ token, user }) {
-      // Only store minimal identity in the token to keep session small.
+      // On sign-in, set role from user object
       if (user) {
         token.id = user.id;
         token.name = user.name;
         token.email = user.email;
         token.image = user.image;
         if ('role' in user) token.role = user.role;
+      } else if (token.email) {
+        // Always fetch latest role from DB for every request
+        const dbUser = await prisma.user.findUnique({ where: { email: token.email } });
+        if (dbUser) {
+          token.role = dbUser.role;
+        }
       }
       return token;
     },

@@ -23,7 +23,10 @@ export async function middleware(request: NextRequest) {
 
   // Admin route protection
   if (pathname.startsWith('/admin')) {
+    // eslint-disable-next-line no-console
+    console.log('[MIDDLEWARE DEBUG] Token:', token);
     if (!token || token.role !== 'admin') {
+      // Redirect unauthorized users to home page to avoid redirect loop
       return NextResponse.redirect(new URL('/', request.url));
     }
     return NextResponse.next();

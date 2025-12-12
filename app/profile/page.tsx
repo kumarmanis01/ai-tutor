@@ -1,5 +1,6 @@
 'use client';
 import { useSession } from 'next-auth/react';
+import { useRouter } from 'next/navigation';
 import Avatar from '@/components/UI/Avatar';
 import LogoutButton from '@/components/Auth/LogoutButton';
 import type { User } from '@/lib/types';
@@ -13,6 +14,8 @@ export default function ProfilePage() {
   const { data: session } = useSession();
   const { data: profile, loading } = useCurrentUser();
   const { open } = useOnboarding();
+
+  const router = useRouter();
 
   const badges = extractBadges(profile as User | null);
 
@@ -54,17 +57,16 @@ export default function ProfilePage() {
             </button>
             <div className="mt-3 flex gap-2 items-center">
               <LogoutButton />
-              {/* Show Admin button for admin users only */}
+              {/* Show Admin button for admin users only, use client-side navigation */}
               {(profile?.role === 'admin' || session.user?.role === 'admin') && (
-                <a
-                  href="/admin"
-                  target="_blank"
-                  rel="noopener noreferrer"
+                <button
+                  type="button"
+                  onClick={() => router.push('/admin')}
                   className="px-3 py-1 rounded-md bg-yellow-500 text-white hover:bg-yellow-600 transition-colors"
                   style={{ textDecoration: 'none' }}
                 >
                   Admin
-                </a>
+                </button>
               )}
             </div>
           </div>
