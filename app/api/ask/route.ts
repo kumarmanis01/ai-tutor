@@ -226,16 +226,18 @@ export async function POST(req: Request) {
     }
 
     if (!parsed) {
-      // As a fallback, return language as undefined and answer as raw content
+      // As a fallback, return a user-friendly message instead of raw JSON
+      const fallbackMsg =
+        'Sorry, I could not understand the AI response. Please try rephrasing your question or ask again.';
       // Persist assistant reply if session present (best-effort)
       if (sessionUserId) {
         try {
-          await prisma.chat.create({ data: { userId: sessionUserId, role: 'assistant', content: String(content), conversationId, subject } });
+          await prisma.chat.create({ data: { userId: sessionUserId, role: 'assistant', content: fallbackMsg, conversationId, subject } });
         } catch (e) {
           logger.error('Failed to persist assistant reply for /api/ask (fallback)', { className: 'api.ask', methodName: 'POST', error: String(e) });
         }
       }
-      return NextResponse.json({ language: undefined, answer: String(content) });
+      return NextResponse.json({ language: undefined, answer: fallbackMsg });
     }
 
     const language = parsed.language || parsed.lang || undefined;

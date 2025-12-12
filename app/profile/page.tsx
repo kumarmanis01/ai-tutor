@@ -52,8 +52,20 @@ export default function ProfilePage() {
             >
               Update Profile
             </button>
-            <div className="mt-3">
+            <div className="mt-3 flex gap-2 items-center">
               <LogoutButton />
+              {/* Show Admin button for admin users only */}
+              {(profile?.role === 'admin' || session.user?.role === 'admin') && (
+                <a
+                  href="/admin"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="px-3 py-1 rounded-md bg-yellow-500 text-white hover:bg-yellow-600 transition-colors"
+                  style={{ textDecoration: 'none' }}
+                >
+                  Admin
+                </a>
+              )}
             </div>
           </div>
 
