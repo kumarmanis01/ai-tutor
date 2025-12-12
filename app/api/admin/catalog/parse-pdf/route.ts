@@ -32,28 +32,33 @@ export async function POST(req: NextRequest) {
     const lines = text.split(/\r?\n/).map((l) => l.trim()).filter((l) => l.length > 0);
     const headingLike = lines.filter((l) => /^(chapter\s*\d+|[A-Z][A-Za-z0-9 ,:-]{5,})$/.test(l.replace(/\s+/g, ' '))); 
 
-    // Build simple items from headings
-    const items = headingLike.slice(0, 50).map((h, idx) => {
+    // Build hierarchical taxonomy structure (Board > Class > Subject > Chapter > Topic)
+    // For demo, assume headings are chapters/topics under a single subject/grade/board
+    const board = 'CBSE';
+    const grade = '6'; // eslint-disable-line @typescript-eslint/no-unused-vars
+    const subject = 'Mathematics';
+    const language = 'en';
+    const chapters = headingLike.slice(0, 50).map((h, idx) => {
       const slug = h.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
-      const tags = h.toLowerCase().split(/[^a-z0-9]+/).filter((t) => t.length > 2).slice(0, 5);
       return {
-        // Board/grade/subject/language should be set by admin after parse or via additional fields
-        board: '',
-        grade: '',
-        language: 'en',
-        subject: '',
-        contentId: `${slug}-${idx + 1}`,
-        title: h,
-        description: `Derived from PDF heading: ${h}`,
-        tags,
-        difficulty: idx < 5 ? 'easy' : idx < 15 ? 'medium' : 'hard',
-        type: 'article',
-        url: '',
-        active: true,
+        id: `chapter-${slug}`,
+        name: h,
+        slug,
+        order: idx + 1,
+        topics: [], // You can enhance this to extract topics if available
       };
     });
-
-    return NextResponse.json({ ok: true, count: items.length, items });
+    const taxonomy = {
+      board: { id: 'cbse', name: board, slug: 'cbse' },
+      class: { id: 'class-6', name: 'Class 6', slug: 'class-6', board_id: 'cbse' },
+      subject: { id: 'math', name: subject, slug: 'mathematics', class_id: 'class-6' },
+      chapters,
+      language,
+    };
+    // Print taxonomy JSON to the server console for inspection
+    // eslint-disable-next-line no-console
+    console.log('[PARSE-PDF TAXONOMY]', JSON.stringify(taxonomy, null, 2));
+    return NextResponse.json({ ok: true, message: 'Taxonomy printed to server console.' });
   } catch (e: any) {
     return NextResponse.json({ error: 'parse_failed', message: String(e?.message || e) }, { status: 500 });
   }

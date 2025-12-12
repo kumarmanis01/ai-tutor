@@ -69,16 +69,30 @@ export async function POST(req: NextRequest) {
     });
 
     const text = result.data?.text || "";
-    const items = extractHeadingsToItems(text).map((item) => ({
-      ...item,
-      board: defaults.board,
-      grade: defaults.grade,
-      subject: defaults.subject,
-      language: defaults.language || "en",
-      source: "image-ocr",
+    // Build hierarchical taxonomy structure (Board > Class > Subject > Chapter > Topic)
+    const board = String(defaults.board || 'CBSE');
+    const grade = String(defaults.grade || '6');
+    const subject = String(defaults.subject || 'Mathematics');
+    const language = String(defaults.language || 'en');
+    const headings = extractHeadingsToItems(text);
+    const chapters = headings.map((item, idx) => ({
+      id: `chapter-${item.title.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`,
+      name: item.title,
+      slug: item.title.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
+      order: idx + 1,
+      topics: [],
     }));
-
-    return NextResponse.json({ items }, { status: 200 });
+    const taxonomy = {
+      board: { id: board.toLowerCase(), name: board, slug: board.toLowerCase() },
+      class: { id: `class-${grade}`, name: `Class ${grade}`, slug: `class-${grade}`, board_id: board.toLowerCase() },
+      subject: { id: subject.toLowerCase(), name: subject, slug: subject.toLowerCase(), class_id: `class-${grade}` },
+      chapters,
+      language,
+    };
+    // Print taxonomy JSON to the server console for inspection
+    // eslint-disable-next-line no-console
+    console.log('[PARSE-IMAGE TAXONOMY]', JSON.stringify(taxonomy, null, 2));
+    return NextResponse.json({ ok: true, message: 'Taxonomy printed to server console.' }, { status: 200 });
   } catch (err: any) {
     return NextResponse.json({ error: err?.message || "Failed to parse image" }, { status: 500 });
   }

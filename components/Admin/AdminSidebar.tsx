@@ -13,6 +13,7 @@ const adminLinks = [
   { href: '/admin/charts/users', label: 'User Signups Chart' },
   { href: '/admin/charts/api-usage', label: 'API Usage Chart' },
   { href: '/admin/challenge', label: 'Challenges' },
+  { href: '/admin/catalog', label: 'Catalog (Syllabus/Content)' },
 ];
 
 export default function AdminSidebar() {
