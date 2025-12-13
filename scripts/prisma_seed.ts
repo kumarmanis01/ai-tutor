@@ -16,12 +16,9 @@ async function main() {
 
     for (let grade = 1; grade <= 12; grade++) {
       const cls = await prisma.classLevel.upsert({
-        where: {
-          boardId_grade: {
-            boardId: board.id,
-            grade,
+          where: {
+            id: /* provide the correct id here, e.g., generate or fetch it before upsert */ "", 
           },
-        },
         update: {},
         create: {
           grade,

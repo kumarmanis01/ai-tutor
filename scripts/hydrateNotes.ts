@@ -1,28 +1,39 @@
-import { prisma } from "../lib/prisma";
-import { callLLM } from "../lib/callLLM";
-import { notesPrompt } from "../lib/prompts";
+export async function hydrateNotes(topicId: string, language: "en" | "hi") {
+  const topic = await prisma.topicDef.findUnique({
+    where: { id: topicId },
+    include: { chapter: { include: { subject: { include: { class: { include: { board: true }}}}}}
+  })
 
-export async function hydrateNotes({ topicId, board, grade, subject, language }) {
-  const topic = await prisma.topicDef.findUnique({ where: { id: topicId } });
-  if (!topic) return;
+  const prompt = `
+Create detailed study notes in ${language}
+Topic: ${topic?.name}
+Grade: ${topic?.chapter.subject.class.grade}
+Board: ${topic?.chapter.subject.class.board.name}
 
-  const exists = await prisma.note.findFirst({
-    where: { title: topic.name, language },
-  });
-  if (exists) return;
+Return JSON:
+{ "title": "...", "sections": [...] }
+`
 
-  const data = await callLLM({
-    prompt: notesPrompt({ board, grade, subject, topic: topic.name, language }),
-    promptType: "notes",
-    board, grade, subject, topic: topic.name, language
-  });
+  const { content } = await callLLM({
+    prompt,
+    meta: {
+      promptType: "notes",
+      board: topic?.chapter.subject.class.board.name,
+      grade: topic?.chapter.subject.class.grade,
+      subject: topic?.chapter.subject.name,
+      topic: topic?.name,
+      language,
+      topicId
+    }
+  })
 
-  await prisma.note.create({
+  await prisma.topicNote.create({
     data: {
-      title: data.title,
-      content: data.content,
-      subject,
-      status: "draft",
-    },
-  });
+      topicId,
+      title: JSON.parse(content).title,
+      language,
+      contentJson: JSON.parse(content),
+      source: "ai"
+    }
+  })
 }

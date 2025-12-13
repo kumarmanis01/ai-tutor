@@ -1,28 +1,41 @@
-import { prisma } from "../lib/prisma";
-import { callLLM } from "../lib/callLLM";
-import { questionsPrompt } from "../lib/prompts";
+export async function hydrateQuestions(topicId: string, difficulty: string) {
+  const prompt = `
+Generate ${difficulty} questions for this topic.
+Return JSON:
+{
+  "title": "...",
+  "questions": [
+    { "type": "mcq", "question": "...", "options": [], "answer": "...", "marks": 1 }
+  ]
+}
+`
 
-export async function hydrateQuestions({ topicId, board, grade, subject, difficulty }) {
-  const topic = await prisma.topicDef.findUnique({ where: { id: topicId } });
+  const { content } = await callLLM({
+    prompt,
+    meta: { promptType: "questions", topicId }
+  })
 
-  const data = await callLLM({
-    prompt: questionsPrompt({ board, grade, subject, topic: topic.name, difficulty }),
-    promptType: "questions",
-    board, grade, subject, topic: topic.name
-  });
+  const parsed = JSON.parse(content)
 
-  for (const q of data.questions) {
-    await prisma.question.create({
+  const test = await prisma.generatedTest.create({
+    data: {
+      topicId,
+      title: parsed.title,
+      difficulty,
+      language: "en"
+    }
+  })
+
+  for (const q of parsed.questions) {
+    await prisma.generatedQuestion.create({
       data: {
-        board,
-        grade,
-        subject,
-        chapter: topic.chapterId,
-        prompt: q.prompt,
-        correctAnswer: q.answer,
-        difficulty,
-        status: "draft",
-      },
-    });
+        testId: test.id,
+        type: q.type,
+        question: q.question,
+        options: q.options,
+        answer: q.answer,
+        marks: q.marks
+      }
+    })
   }
 }

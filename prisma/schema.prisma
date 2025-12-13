@@ -634,7 +634,7 @@ enum UserRole {
 }
 
 /// ----------------------------------------------
-/// EDTECH ACADEMIC MODELS (SAFE, NO CONFLICTS)
+/// ACADEMIC STRUCTURE (CANONICAL)
 /// ----------------------------------------------
 
 model Board {
@@ -672,7 +672,8 @@ model ChapterDef {
   subjectId String
   subject   SubjectDef @relation(fields: [subjectId], references: [id])
   topics    TopicDef[]
-  version Int @default(1)
+  version   Int        @default(1)
+  status    String     @default("draft") // draft | approved
 }
 
 model TopicDef {
@@ -683,25 +684,25 @@ model TopicDef {
   chapterId String
   chapter   ChapterDef @relation(fields: [chapterId], references: [id])
 
-  notes         TopicNote[]
-  tests         GeneratedTest[]
-  aicontentLogs AIContentLog[]
+  notes TopicNote[]
+  tests GeneratedTest[]
+  logs  AIContentLog[]
 }
 
 /// ----------------------------------------------
-/// NOTES (Do NOT conflict with User Notes)
+/// AI GENERATED NOTES (SAFE)
 /// ----------------------------------------------
 model TopicNote {
-  id          String   @id @default(cuid())
-  topicId     String
-  topic       TopicDef @relation(fields: [topicId], references: [id])
-  title       String
-  language    String // "en" | "hi"
-  contentJson Json
-  source      String // "ai" | "manual"
-  createdAt   DateTime @default(now())
-  editedByTeacher Boolean @default(false)
+  id              String   @id @default(cuid())
+  topicId         String
+  topic           TopicDef @relation(fields: [topicId], references: [id])
+  title           String
+  language        String // en | hi
+  contentJson     Json
+  source          String // ai | teacher
+  editedByTeacher Boolean  @default(false)
   teacherNotes    String?
+  createdAt       DateTime @default(now())
 }
 
 /// ----------------------------------------------
@@ -712,14 +713,14 @@ model GeneratedTest {
   topicId    String
   topic      TopicDef            @relation(fields: [topicId], references: [id])
   title      String
-  difficulty String
+  difficulty String // easy | medium | hard
   language   String
   createdAt  DateTime            @default(now())
   questions  GeneratedQuestion[]
 }
 
 /// ----------------------------------------------
-/// AI GENERATED QUESTIONS (DO NOT CONFLICT)
+/// AI GENERATED QUESTIONS
 /// ----------------------------------------------
 model GeneratedQuestion {
   id       String        @id @default(cuid())
@@ -733,48 +734,40 @@ model GeneratedQuestion {
 }
 
 /// ----------------------------------------------
-/// AI CONTENT LOGGING (SAFE MODEL)
+/// AI CONTENT LOGGING (FINAL, FLEXIBLE)
 /// ----------------------------------------------
 model AIContentLog {
-  id            String   @id @default(cuid())
+  id String @id @default(cuid())
 
-  // Model info
-  model         String
-  promptType    String
+  model      String
+  promptType String
 
-  // Context
-  board         String?
-  grade         Int?
-  subject       String?
-  chapter       String?
-  topic         String?
-  language      String?
+  board    String?
+  grade    Int?
+  subject  String?
+  chapter  String?
+  topic    String?
+  language String?
 
-  // Token usage (raw)
-  tokensIn      Int?     // prompt tokens
-  tokensOut     Int?     // completion tokens
-  tokensUsed    Int?     // total (derived)
+  tokensIn   Int?
+  tokensOut  Int?
+  tokensUsed Int?
 
-  // Cost tracking
-  costUsd       Float?   // canonical
-  costCents     Int?     // optional legacy/finance use
+  costUsd   Float?
+  costCents Int?
 
-  // Status & error
-  success       Boolean  @default(true)
-  status        String?  // success | failed | partial
-  error         String?
+  success Boolean @default(true)
+  status  String?
+  error   String?
 
-  // Optional debugging (KEEP nullable)
-  requestBody   Json?
-  responseBody  Json?
+  requestBody  Json?
+  responseBody Json?
 
-  createdAt     DateTime @default(now())
+  topicId  String?
+  topicRef TopicDef? @relation(fields: [topicId], references: [id])
+
+  createdAt DateTime @default(now())
 
   @@index([promptType])
-  @@index([board, grade, subject])
   @@index([createdAt])
-  
-   topicRef     TopicDef? @relation(fields: [topicId], references: [id])
-   topicId      String?
 }
-
