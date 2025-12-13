@@ -1,4 +1,4 @@
-import { prisma } from "../lib/prisma"
+import { prisma } from "@/lib/prisma"
 
 export async function assembleTest(topicId: string) {
   const tests = await prisma.generatedTest.findMany({

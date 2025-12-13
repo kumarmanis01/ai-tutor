@@ -1,32 +1,100 @@
-export const syllabusPrompt = ({ board, grade, subject }: { board: string; grade: string; subject: string }) => `
-Generate syllabus for ${board} Class ${grade} ${subject}.
-Return JSON only:
+// src/hydrators/hydrationPrompts.ts
+
+type SyllabusPromptArgs = {
+  board: string;
+  grade: string;
+  subject: string;
+};
+
+type NotesPromptArgs = {
+  board: string;
+  grade: string;
+  subject: string;
+  topic: string;
+  language: "en" | "hi";
+};
+
+type QuestionsPromptArgs = {
+  board: string;
+  grade: string;
+  subject: string;
+  topic: string;
+  difficulty: "easy" | "medium" | "hard";
+};
+
+export const syllabusPrompt = ({
+  board,
+  grade,
+  subject,
+}: SyllabusPromptArgs) => `
+You are an expert ${board} curriculum designer.
+
+Generate the official syllabus for:
+Board: ${board}
+Class: ${grade}
+Subject: ${subject}
+
+Return JSON ONLY in this exact format:
 {
   "chapters": [
     {
-      "title": "",
-      "topics": ["", ""]
+      "title": "Chapter name",
+      "topics": ["Topic 1", "Topic 2"]
     }
   ]
 }
 `;
 
-export const notesPrompt = ({ board, grade, subject, topic, language }: { board: string; grade: string; subject: string; topic: string; language: string }) => `
-Explain "${topic}" for ${board} Class ${grade} ${subject}
+export const notesPrompt = ({
+  board,
+  grade,
+  subject,
+  topic,
+  language,
+}: NotesPromptArgs) => `
+You are an expert ${board} teacher.
+
+Explain the following topic for students:
+
+Board: ${board}
+Class: ${grade}
+Subject: ${subject}
+Topic: ${topic}
 Language: ${language}
-JSON only:
-{ "title": "", "content": "" }
+
+Return JSON ONLY:
+{
+  "title": "Short title",
+  "content": "Well-structured explanation"
+}
 `;
 
-export const questionsPrompt = ({ board, grade, subject, topic, difficulty }: { board: string; grade: string; subject: string; topic: string; difficulty: string }) => `
-// Silence unused var warning for subject if not used
-void subject;
-Generate 5 ${difficulty} questions for "${topic}"
-Board: ${board}, Class ${grade}
-JSON only:
+export const questionsPrompt = ({
+  board,
+  grade,
+  subject,
+  topic,
+  difficulty,
+}: QuestionsPromptArgs) => `
+You are an expert ${board} examiner.
+
+Generate questions based on the following context:
+
+Board: ${board}
+Class: ${grade}
+Subject: ${subject}
+Topic: ${topic}
+Difficulty: ${difficulty}
+
+Generate exactly 5 questions.
+
+Return JSON ONLY:
 {
   "questions": [
-    { "prompt": "", "answer": "" }
+    {
+      "prompt": "Question text",
+      "answer": "Correct answer"
+    }
   ]
 }
 `;

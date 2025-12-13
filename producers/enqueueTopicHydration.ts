@@ -1,21 +1,25 @@
-await contentQueue.add("notes-en", {
-  type: "NOTES",
-  payload: { topicId, language: "en" }
-})
+import { contentQueue } from "@/queues/contentQueue";
 
-await contentQueue.add("notes-hi", {
-  type: "NOTES",
-  payload: { topicId, language: "hi" }
-})
+export async function enqueueTopicHydration(topicId: string) {
+  await contentQueue.add("notes-en", {
+    type: "NOTES",
+    payload: { topicId, language: "en" }
+  })
 
-for (const diff of ["easy", "medium", "hard"]) {
-  await contentQueue.add(`q-${diff}`, {
-    type: "QUESTIONS",
-    payload: { topicId, difficulty: diff }
+  await contentQueue.add("notes-hi", {
+    type: "NOTES",
+    payload: { topicId, language: "hi" }
+  })
+
+  for (const d of ["easy", "medium", "hard"]) {
+    await contentQueue.add(`q-${d}`, {
+      type: "QUESTIONS",
+      payload: { topicId, difficulty: d }
+    })
+  }
+
+  await contentQueue.add("assemble", {
+    type: "ASSEMBLE_TEST",
+    payload: { topicId }
   })
 }
-
-await contentQueue.add("assemble", {
-  type: "ASSEMBLE_TEST",
-  payload: { topicId }
-})

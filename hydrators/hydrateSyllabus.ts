@@ -1,5 +1,5 @@
-import { prisma } from "../lib/prisma"
-import { callLLM } from "../lib/callLLM"
+import { prisma } from "@/lib/prisma"
+import { callLLM } from "@/lib/callLLM"
 
 export async function hydrateSyllabus(topic: {
   board: string

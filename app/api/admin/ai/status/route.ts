@@ -1,4 +1,45 @@
-// API route for AI status
-export async function GET(req) {
-  // ...implementation...
+// app/api/admin/ai/status/route.ts
+import { NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
+import { syllabusQueue, notesQueue, questionsQueue } from "@/queues/contentQueue";
+import { requireAdmin } from "@/lib/auth";
+
+export async function GET() {
+  await requireAdmin();
+
+  const [settings, logsToday, syllabusCount, notesCount, questionsCount] =
+    await Promise.all([
+      prisma.systemSetting.findUnique({
+        where: { key: "AI_PAUSED" },
+      }),
+      prisma.aIContentLog.aggregate({
+        where: {
+          createdAt: {
+            gte: new Date(new Date().setHours(0, 0, 0, 0)),
+          },
+        },
+        _sum: {
+          costUsd: true,
+          tokensIn: true,
+          tokensOut: true,
+        },
+      }),
+      syllabusQueue.getWaitingCount(),
+      notesQueue.getWaitingCount(),
+      questionsQueue.getWaitingCount(),
+    ]);
+
+  return NextResponse.json({
+    paused: settings?.value === "true",
+    queues: {
+      syllabus: syllabusCount,
+      notes: notesCount,
+      questions: questionsCount,
+    },
+    todayUsage: {
+      costUsd: logsToday._sum.costUsd || 0,
+      tokensIn: logsToday._sum.tokensIn || 0,
+      tokensOut: logsToday._sum.tokensOut || 0,
+    },
+  });
 }

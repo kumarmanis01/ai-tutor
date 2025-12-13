@@ -1,3 +1,6 @@
+import { callLLM } from "@/lib/callLLM";
+import { prisma } from "@/lib/prisma";
+
 export async function hydrateQuestions(topicId: string, difficulty: string) {
   const prompt = `
 Generate ${difficulty} questions for this topic.

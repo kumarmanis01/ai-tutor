@@ -1,3 +1,4 @@
+// src/lib/auth.ts
 // Import necessary libraries and providers for authentication
 import { PrismaAdapter } from '@next-auth/prisma-adapter'; // Connects NextAuth to your database
 import GoogleProvider from 'next-auth/providers/google'; // Enables Google login/signup
@@ -8,6 +9,17 @@ import { prisma } from '@/lib/prisma'; // Your Prisma database client
 import bcrypt from 'bcrypt'; // For password hashing
 import { getEmailTransporter } from '@/lib/mailer';
 import { logger } from '@/lib/logger';
+import { getServerSession } from "next-auth";
+
+export async function requireAdmin() {
+  const session = await getServerSession(authOptions);
+
+  if (!session || session.user.role !== "admin") {
+    throw new Error("Unauthorized");
+  }
+
+  return session;
+}
 
 // This function sends a welcome email to the user
 async function sendWelcomeEmail(to: string, name?: string) {

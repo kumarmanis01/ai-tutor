@@ -1,8 +1,25 @@
+import { prisma } from "../lib/db";
+import { callLLM } from "@/lib/callLLM";
+
 export async function hydrateNotes(topicId: string, language: "en" | "hi") {
   const topic = await prisma.topicDef.findUnique({
     where: { id: topicId },
-    include: { chapter: { include: { subject: { include: { class: { include: { board: true }}}}}}
-  })
+    include: {
+      chapter: {
+        include: {
+          subject: {
+            include: {
+              class: {
+                include: {
+                  board: true
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  });
 
   const prompt = `
 Create detailed study notes in ${language}
@@ -12,7 +29,7 @@ Board: ${topic?.chapter.subject.class.board.name}
 
 Return JSON:
 { "title": "...", "sections": [...] }
-`
+`;
 
   const { content } = await callLLM({
     prompt,
@@ -25,7 +42,7 @@ Return JSON:
       language,
       topicId
     }
-  })
+  });
 
   await prisma.topicNote.create({
     data: {
@@ -35,5 +52,5 @@ Return JSON:
       contentJson: JSON.parse(content),
       source: "ai"
     }
-  })
+  });
 }
