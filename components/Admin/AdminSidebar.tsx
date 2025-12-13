@@ -14,6 +14,7 @@ const adminLinks = [
   { href: '/admin/charts/api-usage', label: 'API Usage Chart' },
   { href: '/admin/challenge', label: 'Challenges' },
   { href: '/admin/catalog', label: 'Catalog (Syllabus/Content)' },
+  { href: '/admin/content-approval', label: 'Content Approval' },
 ];
 
 export default function AdminSidebar() {

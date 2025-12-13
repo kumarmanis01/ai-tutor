@@ -51,6 +51,9 @@
     "clear-auth": "set CONFIRM=true && node -r ts-node/register scripts/clear-auth-tables.ts",
     "test": "npm run lint && npm run type-check"
   },
+  "prisma": {
+    "seed": "ts-node scripts/seed.ts"
+  },
   "dependencies": {
     "@auth/prisma-adapter": "^2.10.0",
     "@aws-sdk/client-s3": "^3.428.0",
@@ -68,19 +71,21 @@
     "aws-sdk": "^2.1692.0",
     "axios": "^1.12.2",
     "bcrypt": "^6.0.0",
+    "bullmq": "^5.66.0",
     "framer-motion": "^12.23.16",
+    "ioredis": "^5.8.2",
     "lucide-react": "^0.544.0",
+    "minimist": "^1.2.8",
     "nanoid": "^5.1.6",
     "next": "^14.2.33",
     "next-auth": "^4.24.11",
     "next-pwa": "^5.6.0",
     "node-fetch": "^3.3.2",
     "nodemailer": "^7.0.11",
-    "openai": "^5.23.1",
+    "openai": "^5.23.2",
     "pdf-lib": "^1.17.1",
     "pdf-parse": "^2.4.5",
     "pdfjs-dist": "^5.4.449",
-    "tesseract.js": "^4.1.1",
     "razorpay": "^2.9.6",
     "react": "18.2.0",
     "react-dom": "18.2.0",
@@ -90,6 +95,7 @@
     "rehype-sanitize": "^5.0.1",
     "sanscript": "^0.0.2",
     "swr": "^2.2.4",
+    "tesseract.js": "^4.1.1",
     "uuid": "^13.0.0"
   },
   "devDependencies": {
