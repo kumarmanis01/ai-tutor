@@ -1,48 +1,65 @@
 import { prisma } from "@/lib/prisma"
 import { callLLM } from "@/lib/callLLM"
+import { toSlug } from "@/lib/slug"
 
-export async function hydrateSyllabus(topic: {
+export async function hydrateSyllabus(input: {
   board: string
   grade: number
   subject: string
   chapterId: string
 }) {
+  const paused = await prisma.systemSetting.findUnique({
+    where: { key: "HYDRATION_PAUSED" }
+  })
+  if (paused?.value === true) return
+
   const prompt = `
 Generate syllabus topics for:
-Board: ${topic.board}
-Class: ${topic.grade}
-Subject: ${topic.subject}
+Board: ${input.board}
+Class: ${input.grade}
+Subject: ${input.subject}
 
-Return JSON:
-{ "topics": [{ "name": "...", "order": 1 }] }
+JSON only:
+{
+  "topics": [
+    { "name": "", "order": 1 }
+  ]
+}
 `
 
   const { content } = await callLLM({
     prompt,
     meta: {
       promptType: "syllabus",
-      board: topic.board,
-      grade: topic.grade,
-      subject: topic.subject
+      board: input.board,
+      grade: input.grade,
+      subject: input.subject
     }
   })
 
   const parsed = JSON.parse(content)
 
-  for (const t of parsed.topics) {
+  for (const topic of parsed.topics) {
+    const slug = toSlug(topic.name)
+
     await prisma.topicDef.upsert({
       where: {
-        slug_chapterId: {
-          slug: t.name.toLowerCase().replace(/\s+/g, "-"),
-          chapterId: topic.chapterId
+        chapterId_slug: {
+          chapterId: input.chapterId,
+          slug
         }
       },
-      update: {},
+      update: {
+        name: topic.name,
+        order: topic.order
+      },
       create: {
-        name: t.name,
-        slug: t.name.toLowerCase().replace(/\s+/g, "-"),
-        order: t.order,
-        chapterId: topic.chapterId
+        name: topic.name,
+        slug,
+        order: topic.order,
+        chapterId: input.chapterId,
+        status: "draft",
+        lifecycle: "active"
       }
     })
   }

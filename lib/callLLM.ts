@@ -53,7 +53,7 @@ export async function callLLM({ prompt, model = "gpt-4o-mini", meta }: CallLLMAr
         success: true,
         status: "success",
         requestBody: { prompt },
-        responseBody: response
+        responseBody: JSON.parse(JSON.stringify(response))
       }
     })
 

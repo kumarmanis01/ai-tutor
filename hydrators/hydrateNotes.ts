@@ -1,7 +1,11 @@
-import { prisma } from "../lib/db";
-import { callLLM } from "@/lib/callLLM";
+import { prisma } from "@/lib/prisma"
+import { callLLM } from "@/lib/callLLM"
+import { getNextVersion } from "@/lib/getNextVersion"
 
-export async function hydrateNotes(topicId: string, language: "en" | "hi") {
+export async function hydrateNotes(
+  topicId: string,
+  language: "en" | "hi"
+) {
   const topic = await prisma.topicDef.findUnique({
     where: { id: topicId },
     include: {
@@ -9,48 +13,64 @@ export async function hydrateNotes(topicId: string, language: "en" | "hi") {
         include: {
           subject: {
             include: {
-              class: {
-                include: {
-                  board: true
-                }
-              }
+              class: { include: { board: true } }
             }
           }
         }
       }
     }
-  });
+  })
+  if (!topic) throw new Error("Topic missing")
+
+  const approved = await prisma.topicNote.findFirst({
+    where: {
+      topicId,
+      language,
+      status: "approved"
+    }
+  })
+
+  const version = approved
+    ? await getNextVersion({ topicId, language, type: "note" })
+    : 1
 
   const prompt = `
-Create detailed study notes in ${language}
-Topic: ${topic?.name}
-Grade: ${topic?.chapter.subject.class.grade}
-Board: ${topic?.chapter.subject.class.board.name}
+Explain "${topic.name}"
+Board: ${topic.chapter.subject.class.board.name}
+Class: ${topic.chapter.subject.class.grade}
+Subject: ${topic.chapter.subject.name}
+Language: ${language}
 
-Return JSON:
-{ "title": "...", "sections": [...] }
-`;
+JSON only:
+{
+  "title": "",
+  "content": {}
+}
+`
 
   const { content } = await callLLM({
     prompt,
     meta: {
       promptType: "notes",
-      board: topic?.chapter.subject.class.board.name,
-      grade: topic?.chapter.subject.class.grade,
-      subject: topic?.chapter.subject.name,
-      topic: topic?.name,
-      language,
-      topicId
+      board: topic.chapter.subject.class.board.name,
+      grade: topic.chapter.subject.class.grade,
+      subject: topic.chapter.subject.name,
+      topic: topic.name,
+      language
     }
-  });
+  })
+
+  const parsed = JSON.parse(content)
 
   await prisma.topicNote.create({
     data: {
       topicId,
-      title: JSON.parse(content).title,
       language,
-      contentJson: JSON.parse(content),
-      source: "ai"
+      version,
+      title: parsed.title,
+      contentJson: parsed.content,
+      source: "ai",
+      status: "draft"
     }
-  });
+  })
 }

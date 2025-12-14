@@ -1,7 +1,6 @@
 import { Worker, Job } from "bullmq";
 import { redis } from "@/lib/redis";
 import { prisma } from "@/lib/prisma";
-
 import { hydrateNotes } from "@/hydrators/hydrateNotes";
 import { hydrateQuestions } from "@/hydrators/hydrateQuestions";
 import { assembleTest } from "@/hydrators/assembleTest";
@@ -40,8 +39,8 @@ export const contentWorker = new Worker(
       }
 
       case "QUESTIONS": {
-        const { topicId, difficulty } = payload;
-        return hydrateQuestions(topicId, difficulty);
+        const { topicId, difficulty, language } = payload;
+        return hydrateQuestions(topicId, difficulty, language);
       }
 
       case "ASSEMBLE_TEST": {
@@ -69,10 +68,8 @@ export const contentWorker = new Worker(
      * Retry policy (important)
      */
     settings: {
-      backoffStrategies: {
-        exponential(attemptsMade) {
-          return Math.min(60_000, 2 ** attemptsMade * 1000);
-        },
+      backoffStrategy: (attemptsMade: number) => {
+        return Math.min(60_000, 2 ** attemptsMade * 1000);
       },
     },
   }

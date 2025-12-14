@@ -1,21 +1,77 @@
-import { callLLM } from "@/lib/callLLM";
-import { prisma } from "@/lib/prisma";
+import { prisma } from "@/lib/prisma"
+import { callLLM } from "@/lib/callLLM"
+import { getNextVersion } from "@/lib/getNextVersion"
 
-export async function hydrateQuestions(topicId: string, difficulty: string) {
+export async function hydrateQuestions(
+  topicId: string,
+  difficulty: "easy" | "medium" | "hard",
+  language: "en" | "hi"
+) {
+  const topic = await prisma.topicDef.findUnique({
+    where: { id: topicId },
+    include: {
+      chapter: {
+        include: {
+          subject: {
+            include: {
+              class: { include: { board: true } }
+            }
+          }
+        }
+      }
+    }
+  })
+  if (!topic) throw new Error("Topic missing")
+
+  const approved = await prisma.generatedTest.findFirst({
+    where: {
+      topicId,
+      difficulty,
+      language,
+      status: "approved"
+    }
+  })
+
+  const version = approved
+    ? await getNextVersion({
+        topicId,
+        difficulty,
+        language,
+        type: "test"
+      })
+    : 1
+
   const prompt = `
-Generate ${difficulty} questions for this topic.
-Return JSON:
+Generate 5 ${difficulty} questions.
+Topic: ${topic.name}
+Board: ${topic.chapter.subject.class.board.name}
+Class: ${topic.chapter.subject.class.grade}
+Subject: ${topic.chapter.subject.name}
+Language: ${language}
+
+JSON only:
 {
-  "title": "...",
   "questions": [
-    { "type": "mcq", "question": "...", "options": [], "answer": "...", "marks": 1 }
+    {
+      "type": "mcq",
+      "question": "",
+      "options": [],
+      "answer": ""
+    }
   ]
 }
 `
 
   const { content } = await callLLM({
     prompt,
-    meta: { promptType: "questions", topicId }
+    meta: {
+      promptType: "questions",
+      board: topic.chapter.subject.class.board.name,
+      grade: topic.chapter.subject.class.grade,
+      subject: topic.chapter.subject.name,
+      topic: topic.name,
+      language
+    }
   })
 
   const parsed = JSON.parse(content)
@@ -23,9 +79,11 @@ Return JSON:
   const test = await prisma.generatedTest.create({
     data: {
       topicId,
-      title: parsed.title,
       difficulty,
-      language: "en"
+      language,
+      version,
+      title: `${topic.name} (${difficulty})`,
+      status: "draft"
     }
   })
 
@@ -36,8 +94,7 @@ Return JSON:
         type: q.type,
         question: q.question,
         options: q.options,
-        answer: q.answer,
-        marks: q.marks
+        answer: q.answer
       }
     })
   }

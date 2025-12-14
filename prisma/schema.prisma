@@ -57,6 +57,7 @@ model User {
   challengeParticipations  ChallengeParticipation[]
   contentRecommendations   ContentRecommendation[]
   bookmarks                Bookmark[]
+  approvalAudits           ApprovalAudit[]
 }
 
 model PhoneOtp {
@@ -633,203 +634,255 @@ enum UserRole {
   support
 }
 
-/// ----------------------------------------------
-/// ACADEMIC + AI + VERSIONING (CANONICAL)
-/// ----------------------------------------------
+////////////////////////////////////////////////////////
+// CORE ACADEMIC STRUCTURE
+////////////////////////////////////////////////////////
 
 model Board {
-  id        String   @id @default(cuid())
+  id        String           @id @default(cuid())
   name      String
-  slug      String   @unique
-
-  type      String   @default("national") // national | state | international
-  state     String?  // "UP", "MH", etc (only for state boards)
-  active    Boolean  @default(true)
-
+  slug      String           @unique
   classes   ClassLevel[]
-  createdAt DateTime @default(now())
+  lifecycle SoftDeleteStatus @default(active)
+  createdAt DateTime         @default(now())
 }
 
-
 model ClassLevel {
-  id       String   @id @default(cuid())
-  grade    Int
-  name     String
-  slug     String
-
-  boardId  String
-  board    Board    @relation(fields: [boardId], references: [id])
-
-  subjects SubjectDef[]
+  id        String       @id @default(cuid())
+  grade     Int
+  slug      String
+  boardId   String
+  board     Board        @relation(fields: [boardId], references: [id])
+  subjects  SubjectDef[]
+  createdAt DateTime     @default(now())
 
   @@unique([boardId, grade])
 }
 
-
 model SubjectDef {
-  id       String   @id @default(cuid())
-  name     String
-  slug     String
-
-  classId  String
-  class    ClassLevel @relation(fields: [classId], references: [id])
-
-  chapters ChapterDef[]
+  id        String       @id @default(cuid())
+  name      String
+  slug      String
+  classId   String
+  class     ClassLevel   @relation(fields: [classId], references: [id])
+  chapters  ChapterDef[]
+  createdAt DateTime     @default(now())
 
   @@unique([classId, slug])
 }
 
+enum ApprovalStatus {
+  draft
+  pending
+  approved
+  rejected
+  archived
+}
 
-/// ----------------------------------------------
-/// Chapter + Topic (WITH VERSIONING + APPROVAL)
-/// ----------------------------------------------
+enum SoftDeleteStatus {
+  active
+  deleted
+}
+
 model ChapterDef {
-  id        String   @id @default(cuid())
+  id        String           @id @default(cuid())
   name      String
   slug      String
   order     Int
-
+  version   Int              @default(1)
+  status    ApprovalStatus   @default(draft)
+  lifecycle SoftDeleteStatus @default(active)
   subjectId String
-  subject   SubjectDef @relation(fields: [subjectId], references: [id])
-
-  version   Int        @default(1)
-  status    String     @default("draft") // draft | approved
-  isActive  Boolean    @default(true)
-  parentId  String?    // for rollback lineage
+  subject   SubjectDef       @relation(fields: [subjectId], references: [id])
 
   topics    TopicDef[]
-
   createdAt DateTime   @default(now())
 
   @@unique([subjectId, slug, version])
 }
 
-
 model TopicDef {
-  id        String   @id @default(cuid())
-  name      String
-  slug      String
-  order     Int
+  id    String @id @default(cuid())
+  name  String
+  slug  String
+  order Int
 
   chapterId String
   chapter   ChapterDef @relation(fields: [chapterId], references: [id])
 
-  status    String     @default("draft") // draft | approved
-  isActive  Boolean    @default(true)
-  parentId  String?    // for rollback lineage
+  status    ApprovalStatus   @default(draft)
+  lifecycle SoftDeleteStatus @default(active)
+  parentId  String? // rollback lineage
 
-  notes     TopicNote[]
-  tests     GeneratedTest[]
-  logs      AIContentLog[]
+  notes TopicNote[]
+  tests GeneratedTest[]
+  logs  AIContentLog[]
 
-  createdAt DateTime   @default(now())
+  createdAt DateTime @default(now())
 
   @@unique([chapterId, slug])
 }
 
+////////////////////////////////////////////////////////
+// NOTES (ACADEMIC, NOT USER NOTES)
+////////////////////////////////////////////////////////
 
-/// ----------------------------------------------
-/// AI + TEACHER + ROLLBACK SAFE
-/// ----------------------------------------------
 model TopicNote {
-  id              String   @id @default(cuid())
+  id      String   @id @default(cuid())
+  topicId String
+  topic   TopicDef @relation(fields: [topicId], references: [id])
 
-  topicId         String
-  topic           TopicDef @relation(fields: [topicId], references: [id])
-
+  language        String // en | hi
+  version         Int              @default(1)
+  status          ApprovalStatus   @default(draft)
+  lifecycle       SoftDeleteStatus @default(active)
   title           String
-  language        String   // "en" | "hi"
   contentJson     Json
-
-  source          String   // ai | teacher
-  editedByTeacher Boolean  @default(false)
+  source          String // ai | teacher
+  editedByTeacher Boolean          @default(false)
   teacherNotes    String?
 
-  version         Int      @default(1)
-  isActive        Boolean  @default(true)
-  parentId        String?  // rollback lineage
-
-  createdAt       DateTime @default(now())
+  createdAt DateTime @default(now())
 
   @@unique([topicId, language, version])
 }
 
+////////////////////////////////////////////////////////
+// AI GENERATED TESTS & QUESTIONS
+////////////////////////////////////////////////////////
 
-/// ----------------------------------------------
-/// AI GENERATED TESTS + QUESTIONS
-/// ----------------------------------------------
 model GeneratedTest {
-  id         String   @id @default(cuid())
-
-  topicId    String
-  topic      TopicDef @relation(fields: [topicId], references: [id])
+  id      String   @id @default(cuid())
+  topicId String
+  topic   TopicDef @relation(fields: [topicId], references: [id])
 
   title      String
-  difficulty String   // easy | medium | hard | mixed
-  language   String
+  difficulty String // easy | medium | hard
+  language   String // en | hi
+  version    Int    @default(1)
 
-  questions  GeneratedQuestion[]
+  questions GeneratedQuestion[]
+  status    ApprovalStatus      @default(draft)
+  lifecycle SoftDeleteStatus    @default(active)
+  createdAt DateTime            @default(now())
 
-  createdAt  DateTime @default(now())
+  @@unique([topicId, difficulty, language, version])
 }
 
-
 model GeneratedQuestion {
-  id       String   @id @default(cuid())
+  id     String        @id @default(cuid())
+  testId String
+  test   GeneratedTest @relation(fields: [testId], references: [id])
 
-  testId   String
-  test     GeneratedTest @relation(fields: [testId], references: [id])
-
-  type     String   // mcq | short | long
+  type     String // mcq | short | long
   question String
   options  Json?
   answer   Json?
   marks    Int?
+
+  createdAt DateTime @default(now())
 }
 
+////////////////////////////////////////////////////////
+// AI CONTENT LOGGING (CANONICAL)
+////////////////////////////////////////////////////////
 
-/// ----------------------------------------------
-/// AI CONTENT LOG (MATCHES callLLM.ts PERFECTLY)
-/// ----------------------------------------------
 model AIContentLog {
-  id           String   @id @default(cuid())
+  id String @id @default(cuid())
 
-  model        String
-  promptType   String
+  model      String
+  promptType String
 
-  board        String?
-  grade        Int?
-  subject      String?
-  chapter      String?
-  topic        String?
-  language     String?
+  board    String?
+  grade    Int?
+  subject  String?
+  chapter  String?
+  topic    String?
+  language String?
 
-  tokensIn     Int?
-  tokensOut    Int?
-  tokensUsed   Int?
-
-  costUsd      Float?
-  costCents    Int?
-
-  success      Boolean  @default(true)
-  status       String?  // success | failed | partial
-  error        String?
+  tokensIn   Int?
+  tokensOut  Int?
+  tokensUsed Int?
+  costUsd    Float?
+  success    Boolean
+  status     String  @default("success") // success | failed | partial
+  error      String?
 
   requestBody  Json?
   responseBody Json?
 
-  topicId      String?
-  topicRef     TopicDef? @relation(fields: [topicId], references: [id])
+  topicId  String?
+  topicRef TopicDef? @relation(fields: [topicId], references: [id])
 
-  createdAt    DateTime @default(now())
+  createdAt DateTime @default(now())
 
   @@index([promptType])
+  @@index([board, grade, subject])
   @@index([createdAt])
 }
 
+////////////////////////////////////////////////////////
+// SYSTEM / ADMIN CONTROL
+////////////////////////////////////////////////////////
 
 model SystemSetting {
   key       String   @id
-  value     String
+  value     Json
   updatedAt DateTime @updatedAt
+}
+
+////////////////////////////////////////////////////////
+// QUEUE / HYDRATION TRACKING
+////////////////////////////////////////////////////////
+
+model HydrationJob {
+  id         String  @id @default(cuid())
+  jobType    String // syllabus | notes | questions | assemble
+  board      String?
+  grade      Int?
+  subject    String?
+  chapterId  String?
+  topicId    String?
+  language   String?
+  difficulty String?
+
+  status    String  @default("pending") // pending | running | failed | completed
+  attempts  Int     @default(0)
+  lastError String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([jobType, status])
+}
+
+////////////////////////////////////////////////////////
+// OPTIONAL: STUDENT PERSONALIZATION (SAFE EXTENSION)
+////////////////////////////////////////////////////////
+
+model StudentContentPreference {
+  id         String   @id @default(cuid())
+  studentId  String
+  subject    String?
+  difficulty String?
+  language   String?
+  createdAt  DateTime @default(now())
+
+  @@index([studentId])
+}
+
+////////////////////////////////////////////////////////
+// ApprovalAudit
+////////////////////////////////////////////////////////
+model ApprovalAudit {
+  id         String         @id @default(cuid())
+  entityType String // chapter | topic | note
+  entityId   String
+  fromStatus ApprovalStatus
+  toStatus   ApprovalStatus
+  actorId    String?
+  reason     String?
+  createdAt  DateTime       @default(now())
+
+  actor User? @relation(fields: [actorId], references: [id])
 }

@@ -21,8 +21,7 @@ async function main() {
           },
         update: {},
         create: {
-          grade,
-          name: `Class ${grade}`,
+          grade: grade,
           slug: `class-${grade}`,
           boardId: board.id,
         },

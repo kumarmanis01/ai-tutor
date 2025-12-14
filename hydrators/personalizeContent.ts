@@ -1,32 +1,17 @@
-import { prisma } from "../lib/prisma"
+import { prisma } from "@/lib/prisma"
 
 export async function personalizeContent(studentId: string) {
-  const profile = await prisma.studentLearningProfile.findUnique({
+  const prefs = await prisma.studentContentPreference.findFirst({
     where: { studentId }
   })
 
-  const weakTopics = profile?.weakSubjects || []
+  if (prefs) return
 
-  const recommendedTopics = await prisma.topicDef.findMany({
-    where: {
-      name: { in: weakTopics }
-    },
-    take: 5
+  await prisma.studentContentPreference.create({
+    data: {
+      studentId,
+      difficulty: "medium",
+      language: "en"
+    }
   })
-
-  for (const topic of recommendedTopics) {
-    await prisma.contentRecommendation.upsert({
-      where: {
-        userId_contentId: {
-          userId: studentId,
-          contentId: topic.id
-        }
-      },
-      update: {},
-      create: {
-        userId: studentId,
-        contentId: topic.id
-      }
-    })
-  }
 }

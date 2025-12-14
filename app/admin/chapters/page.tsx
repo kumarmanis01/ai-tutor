@@ -12,7 +12,7 @@ function StatusBadge({ status }: { status: string }) {
   return <span className={`px-2 py-1 rounded text-xs font-semibold ${color}`}>{status}</span>;
 }
 
-function ModerationActions({ topic, refresh }: { topic: any; refresh: () => void }) {
+function ModerationActions({ chapter, refresh }: { chapter: any; refresh: () => void }) {
   const [confirm, setConfirm] = useState<string | null>(null);
   const [audit, setAudit] = useState<any[]>([]);
   const [showAudit, setShowAudit] = useState(false);
@@ -23,7 +23,7 @@ function ModerationActions({ topic, refresh }: { topic: any; refresh: () => void
       setTimeout(() => setConfirm(null), 2000);
       return;
     }
-    const url = `/api/admin/topics/${topic.id}/${action}`;
+    const url = `/api/admin/chapters/${chapter.id}/${action}`;
     const method = "POST";
     let body: any = undefined;
     if (action === "reject") {
@@ -35,8 +35,8 @@ function ModerationActions({ topic, refresh }: { topic: any; refresh: () => void
   };
 
   const fetchAudit = async () => {
-    // Example: fetch audit logs for this topic
-    const res = await fetch(`/api/admin/audit-logs?entityType=topic&entityId=${topic.id}`);
+    // Example: fetch audit logs for this chapter
+    const res = await fetch(`/api/admin/audit-logs?entityType=chapter&entityId=${chapter.id}`);
     if (res.ok) setAudit(await res.json());
     setShowAudit(true);
   };
@@ -46,8 +46,6 @@ function ModerationActions({ topic, refresh }: { topic: any; refresh: () => void
       <div className="flex gap-2">
         <button className="text-green-600" onClick={() => handleAction("approve")}>{confirm === "approve" ? "Confirm Approve" : "Approve"}</button>
         <button className="text-red-600" onClick={() => handleAction("reject")}>{confirm === "reject" ? "Confirm Reject" : "Reject"}</button>
-        <button className="text-blue-600" onClick={() => handleAction("generate")}>{confirm === "generate" ? "Confirm Regenerate" : "Regenerate"}</button>
-        <button className="text-gray-600" onClick={() => handleAction("rollback")}>{confirm === "rollback" ? "Confirm Unpublish" : "Unpublish"}</button>
       </div>
       <button className="text-xs text-blue-600 underline" onClick={fetchAudit}>View Audit Log</button>
       {showAudit && (
@@ -69,28 +67,27 @@ function ModerationActions({ topic, refresh }: { topic: any; refresh: () => void
   );
 }
 
-// Admin topics page
-export default function TopicsPage() {
-  const [topics, setTopics] = useState<any[]>([]);
+export default function ChaptersPage() {
+  const [chapters, setChapters] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const fetchTopics = () => {
+  const fetchChapters = () => {
     setLoading(true);
-    fetch("/api/topics")
+    fetch("/api/chapters")
       .then((res) => res.json())
       .then((data) => {
-        setTopics(data);
+        setChapters(data);
         setLoading(false);
       });
   };
 
   useEffect(() => {
-    fetchTopics();
+    fetchChapters();
   }, []);
 
   return (
     <div className="p-6">
-      <h1 className="text-2xl font-bold mb-4">Topics</h1>
+      <h1 className="text-2xl font-bold mb-4">Chapters</h1>
       {loading ? (
         <div>Loading...</div>
       ) : (
@@ -99,20 +96,20 @@ export default function TopicsPage() {
             <tr>
               <th className="border px-4 py-2">Name</th>
               <th className="border px-4 py-2">Slug</th>
-              <th className="border px-4 py-2">Chapter</th>
+              <th className="border px-4 py-2">Subject</th>
               <th className="border px-4 py-2">Status</th>
               <th className="border px-4 py-2">Actions</th>
             </tr>
           </thead>
           <tbody>
-            {topics.map((topic) => (
-              <tr key={topic.id}>
-                <td className="border px-4 py-2">{topic.name}</td>
-                <td className="border px-4 py-2">{topic.slug}</td>
-                <td className="border px-4 py-2">{topic.chapterId}</td>
-                <td className="border px-4 py-2"><StatusBadge status={topic.status} /></td>
+            {chapters.map((chapter) => (
+              <tr key={chapter.id}>
+                <td className="border px-4 py-2">{chapter.name}</td>
+                <td className="border px-4 py-2">{chapter.slug}</td>
+                <td className="border px-4 py-2">{chapter.subjectId}</td>
+                <td className="border px-4 py-2"><StatusBadge status={chapter.status} /></td>
                 <td className="border px-4 py-2">
-                  <ModerationActions topic={topic} refresh={fetchTopics} />
+                  <ModerationActions chapter={chapter} refresh={fetchChapters} />
                 </td>
               </tr>
             ))}
