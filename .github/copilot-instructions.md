@@ -1,3 +1,322 @@
+# 🛡️ AI Content Engine – Copilot Guardrails
+
+> **Purpose**
+> Prevent architectural regressions, unsafe AI execution patterns, and UI anti-patterns.
+
+---
+
+## 1️⃣ GLOBAL COPILOT INSTRUCTION (MANDATORY)
+
+Create a file:
+
+📄 **`/docs/COPILOT_GUARDRAILS.md`**
+
+```md
+# AI Content Engine – Copilot Guardrails
+
+These rules are NON-NEGOTIABLE.
+
+Copilot MUST follow them when generating or modifying code related to:
+
+- AI Content Engine
+- Admin dashboards
+- Job execution
+- Content moderation
+- Prisma models for AI content
+
+Violations are considered bugs.
+
+---
+
+## CORE PRINCIPLES
+
+### 1. JOB-BASED EXECUTION ONLY
+
+- AI execution is always done via immutable JOBS
+- Jobs cannot be edited after creation
+- No synchronous AI calls from UI or API routes
+
+Allowed:
+
+- createJob()
+- retryJob()
+- cancelJob()
+
+Forbidden:
+
+- generateContent()
+- runAI()
+- direct LLM calls from UI/API
+
+---
+
+### 2. NO PER-JOB PAUSE / RESUME
+
+- Jobs are atomic
+- Pause/resume applies ONLY to engine-level scheduling
+- Running jobs must complete or fail naturally
+
+Forbidden:
+
+- pauseJob()
+- resumeJob()
+- partial execution state
+
+---
+
+### 3. NO STREAMING / PROGRESS TRACKING
+
+- No token streaming
+- No progress percentages
+- No step-by-step job updates
+
+Allowed:
+
+- status = queued | running | failed | completed
+
+---
+
+### 4. STATUS-DRIVEN UI ONLY
+
+UI behavior MUST be derived from job.status
+
+Allowed:
+
+- if status === "failed" → Retry
+- if status === "queued" → Cancel
+
+Forbidden:
+
+- manual overrides
+- hidden admin controls
+
+---
+
+### 5. SWR RULES (VERY IMPORTANT)
+
+- Use SWR for admin data
+- Never mix SWR with router.refresh()
+- Always revalidate using mutate()
+
+Forbidden:
+
+- router.refresh() in admin pages
+
+---
+
+### 6. ENUMS ONLY (NO STRINGS)
+
+The following must be Prisma enums:
+
+- JobStatus
+- JobType
+- ContentStatus
+- Language
+
+Forbidden:
+
+- string literals like "completed", "failed"
+
+---
+
+### 7. SOFT DELETES ONLY
+
+- Never hard delete AI content or jobs
+- Use deletedAt or isActive flags
+- Cancelled jobs remain in DB
+
+---
+
+### 8. AUDIT EVERYTHING
+
+Every admin action must:
+
+- Create an audit log
+- Include actor, action, entity, timestamp
+
+---
+
+### 9. NO MAGIC UI STATE
+
+UI must never:
+
+- Assume success
+- Hide failures
+- Retry silently
+
+Admins must see:
+
+- Errors
+- Logs
+- Status changes
+
+---
+
+### 10. FAILURE IS A FIRST-CLASS STATE
+
+Failure is expected.
+Retry must be explicit.
+
+Forbidden:
+
+- Auto-retry loops
+- Silent retries
+```
+
+---
+
+## 2️⃣ INLINE FILE-LEVEL GUARDRAIL (TOP COMMENT)
+
+Add this to **EVERY admin page / API route** related to AI:
+
+```ts
+/**
+ * AI CONTENT ENGINE NOTICE:
+ * - Job-based execution only
+ * - No per-job pause/resume
+ * - No streaming or progress tracking
+ * - All AI calls are atomic and retryable
+ * - Content requires admin approval
+ *
+ * ⚠️ DO NOT:
+ * - Call LLMs directly
+ * - Mutate jobs after creation
+ * - Add progress tracking
+ * - Use router.refresh() with SWR
+ */
+```
+
+Copilot reads comments first. This works.
+
+---
+
+## 3️⃣ PRISMA SCHEMA GUARDRAILS
+
+Add this comment at top of `schema.prisma`:
+
+```prisma
+/// ⚠️ AI CONTENT ENGINE RULES
+/// - JobStatus, JobType, ContentStatus MUST be enums
+/// - No string status fields
+/// - No cascading deletes for jobs or content
+/// - Soft deletes only
+```
+
+---
+
+## 4️⃣ TYPESCRIPT ENFORCEMENT (CRITICAL)
+
+Create:
+
+📄 **`/lib/ai-engine/types.ts`**
+
+```ts
+export type JobStatus = 'queued' | 'running' | 'failed' | 'completed' | 'cancelled';
+export type JobType =
+  | 'GENERATE_SYLLABUS'
+  | 'GENERATE_NOTES'
+  | 'GENERATE_TEST'
+  | 'GENERATE_QUESTIONS';
+
+export type EntityType = 'BOARD' | 'CLASS' | 'SUBJECT' | 'TOPIC';
+export type Language = 'English' | 'Hindi';
+```
+
+Then enforce usage everywhere:
+
+❌ Forbidden
+
+```ts
+status: 'done';
+```
+
+✅ Required
+
+```ts
+status: JobStatus.Completed;
+```
+
+---
+
+## 5️⃣ ESLINT / CODE REVIEW RULES (OPTIONAL BUT POWERFUL)
+
+Add to `.eslintrc.json`:
+
+```json
+{
+  "rules": {
+    "no-restricted-imports": [
+      "error",
+      {
+        "paths": [
+          {
+            "name": "next/navigation",
+            "importNames": ["useRouter"],
+            "message": "Do not use router.refresh() in admin pages. Use SWR mutate()."
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
+This **literally prevents regression**.
+
+---
+
+## 6️⃣ COPILOT PROMPT TO USE BEFORE GENERATION
+
+Paste this **before asking Copilot to generate code**:
+
+```md
+Follow the AI Content Engine Guardrails strictly.
+
+Constraints:
+
+- Job-based execution only
+- No streaming
+- No progress tracking
+- No per-job pause/resume
+- SWR mutate only (no router.refresh)
+- Enum-based statuses only
+- Soft deletes only
+- Audit logs required for admin actions
+
+If unsure, choose the safer, simpler design.
+```
+
+---
+
+## 7️⃣ ARCHITECTURAL INVARIANTS (FINAL SAFETY NET)
+
+These **must NEVER change**:
+
+| Invariant               | Reason              |
+| ----------------------- | ------------------- |
+| Jobs are immutable      | Prevent corruption  |
+| AI is async             | Prevent UI blocking |
+| Failure is expected     | Prevent hacks       |
+| Admin approval required | Trust boundary      |
+| No streaming            | Determinism         |
+| Retry > Resume          | Safety              |
+
+---
+
+## ✅ FINAL VERDICT
+
+With these guardrails:
+
+✔ Copilot cannot introduce unsafe patterns
+✔ Junior devs cannot break architecture
+✔ AI engine remains deterministic
+✔ Admin UX remains honest
+✔ Future scale is preserved
+
+This is **production-grade governance**.
+
+---
+
 # AI Coding Agent Instructions for Spinzy Academy
 
 Welcome to the Spinzy Academy codebase! This document provides essential guidelines for AI coding agents to be productive and aligned with the project's architecture, workflows, and conventions.
@@ -117,3 +436,21 @@ The project is structured as a monorepo with clear separation of concerns:
 ---
 
 For further questions, refer to the `README.md` or ask a team member.
+
+### Creating/ Updating code
+
+1. Always refer to this document before generating or modifying code.
+2. Follow the established project structure and conventions.
+3. Ensure all new code is well-documented and tested.
+4. Maintain consistency with existing code patterns.
+5. Use meaningful commit messages that reflect the changes made.
+6. Review code for adherence to project guidelines before merging.
+7. Keep dependencies up to date and avoid introducing unnecessary libraries.
+8. Prioritize performance and scalability in your implementations.
+9. Ensure accessibility standards are met in UI components.
+10. Always "Why" about the purpose of the code you are writing or modifying.
+11. When in doubt, consult with the team or refer to existing implementations for guidance.
+
+```
+
+```

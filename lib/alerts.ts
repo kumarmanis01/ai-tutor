@@ -1,3 +1,36 @@
+// Semantic alert helpers for admin UX
+export const alerts = {
+  info(message: string, title = "Info") {
+    showAlert({ title, message, variant: "info" });
+  },
+
+  success(message: string, title = "Success") {
+    showAlert({ title, message, variant: "success" });
+  },
+
+  warning(message: string, title = "Warning") {
+    showAlert({ title, message, variant: "warning" });
+  },
+
+  error(message: string, title = "Error") {
+    showAlert({ title, message, variant: "error" });
+  },
+
+  confirm(
+    message: string,
+    onConfirm: () => void,
+    title = "Confirm action",
+    confirmText = "Confirm"
+  ) {
+    showAlert({
+      title,
+      message,
+      variant: "warning",
+      confirmText,
+      onConfirm,
+    });
+  },
+};
 export type AlertPayload = {
   title?: string;
   message: string;
