@@ -1,6 +1,21 @@
+/**
+ * COPILOT RULES — callLLM
+ *
+ * - Only calls AI providers
+ * - No DB mutations except AIContentLog
+ * - Must log success and failure
+ * - Must not infer language/difficulty
+ * 
+ * Mandatory Rules
+ * import { LanguageCode } from "@prisma/client";
+ * 
+ * language: meta.language as LanguageCode | undefined
+
+ */
+
 import OpenAI from "openai"
 import { prisma } from "./prisma"
-
+import { normalizeLanguage } from "@/lib/normalize";
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
 
 type CallLLMArgs = {
@@ -44,7 +59,7 @@ export async function callLLM({ prompt, model = "gpt-4o-mini", meta }: CallLLMAr
         subject: meta.subject,
         chapter: meta.chapter,
         topic: meta.topic,
-        language: meta.language,
+        language: normalizeLanguage(meta.language),
         topicId: meta.topicId,
         tokensIn: usage?.prompt_tokens,
         tokensOut: usage?.completion_tokens,
@@ -70,7 +85,7 @@ export async function callLLM({ prompt, model = "gpt-4o-mini", meta }: CallLLMAr
         subject: meta.subject,
         chapter: meta.chapter,
         topic: meta.topic,
-        language: meta.language,
+        language: normalizeLanguage(meta.language),
         topicId: meta.topicId,
         success: false,
         status: "failed",

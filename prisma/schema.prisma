@@ -8,6 +8,63 @@ datasource db {
   shadowDatabaseUrl = env("SHADOW_DATABASE_URL")
 }
 
+////////////////////////////////////////////////////////
+// ENUMS (MOVED TO TOP)
+////////////////////////////////////////////////////////
+
+enum UserStatus {
+  active
+  banned
+  suspended
+}
+
+enum UserRole {
+  user
+  admin
+  moderator
+  support
+}
+
+enum ApprovalStatus {
+  draft
+  pending
+  approved
+  rejected
+  archived
+}
+
+enum SoftDeleteStatus {
+  active
+  deleted
+}
+
+enum LanguageCode {
+  en
+  hi
+}
+
+enum DifficultyLevel {
+  easy
+  medium
+  hard
+}
+
+enum JobStatus {
+  pending
+  running
+  failed
+  completed
+  cancelled
+}
+
+enum JobType {
+  syllabus
+  notes
+  questions
+  tests
+  assemble
+}
+
 model User {
   id                       String                   @id @default(cuid())
   name                     String?
@@ -19,7 +76,7 @@ model User {
   // App-specific profile fields used across APIs
   role                     UserRole                 @default(user)
   country                  String?
-  language                 String?
+  language                 LanguageCode
   grade                    String?
   board                    String?
   subjects                 String[]                 @default([])
@@ -412,25 +469,25 @@ model ParentStudent {
 }
 
 model LearningSession {
-  id                   String        @id @default(cuid())
+  id                   String          @id @default(cuid())
   studentId            String
   activityType         String
   activityRef          String?
   duration             Int?
   meta                 Json?
-  startedAt            DateTime      @default(now())
+  startedAt            DateTime        @default(now())
   endedAt              DateTime?
-  createdAt            DateTime      @default(now())
+  createdAt            DateTime        @default(now())
   // Optional progress tracking fields
-  completionPercentage Int           @default(0)
-  isCompleted          Boolean       @default(false)
-  lastAccessed         DateTime      @default(now())
+  completionPercentage Int             @default(0)
+  isCompleted          Boolean         @default(false)
+  lastAccessed         DateTime        @default(now())
   currentQuestionIndex Int?
   sessionData          Json?
-  difficultyLevel      String?
+  difficultyLevel      DifficultyLevel
   estimatedTimeMinutes Int?
-  actualTimeSpent      Int           @default(0)
-  student              User          @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  actualTimeSpent      Int             @default(0)
+  student              User            @relation(fields: [studentId], references: [id], onDelete: Cascade)
   resumePoints         ResumePoint[]
 
   @@index([studentId])
@@ -469,8 +526,8 @@ model ContentRecommendation {
 
 // Catalog of recommendable learning content, filtered by board/grade/language/subject
 model ContentCatalog {
-  id          String   @id @default(cuid())
-  contentId   String   @unique
+  id          String       @id @default(cuid())
+  contentId   String       @unique
   title       String
   description String?
   url         String?
@@ -478,12 +535,12 @@ model ContentCatalog {
   subject     String
   board       String
   grade       String
-  language    String
+  language    LanguageCode
   difficulty  String? // easy|medium|hard
-  tags        String[] @default([])
-  active      Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  tags        String[]     @default([])
+  active      Boolean      @default(true)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
 }
 
 model StudentLearningProfile {
@@ -621,18 +678,11 @@ model Answer {
   attemptQuestion AttemptQuestion @relation(fields: [attemptQuestionId], references: [id], onDelete: Cascade)
 }
 
-enum UserStatus {
-  active
-  banned
-  suspended
-}
-
-enum UserRole {
-  user
-  admin
-  moderator
-  support
-}
+///////////////////
+// /docs/SCHEMA_RULES.md — Copilot Guardrails (CRITICAL)
+// Create this file verbatim.
+// Copilot will obey it if it’s present./docs/Schema_Rules.md
+///////////////////
 
 ////////////////////////////////////////////////////////
 // CORE ACADEMIC STRUCTURE
@@ -656,7 +706,7 @@ model ClassLevel {
   subjects  SubjectDef[]
   createdAt DateTime     @default(now())
 
-  @@unique([boardId, grade])
+  @@unique([boardId, grade], name: "boardId_grade")
 }
 
 model SubjectDef {
@@ -668,20 +718,7 @@ model SubjectDef {
   chapters  ChapterDef[]
   createdAt DateTime     @default(now())
 
-  @@unique([classId, slug])
-}
-
-enum ApprovalStatus {
-  draft
-  pending
-  approved
-  rejected
-  archived
-}
-
-enum SoftDeleteStatus {
-  active
-  deleted
+  @@unique([classId, slug], name: "classId_slug")
 }
 
 model ChapterDef {
@@ -702,11 +739,10 @@ model ChapterDef {
 }
 
 model TopicDef {
-  id    String @id @default(cuid())
-  name  String
-  slug  String
-  order Int
-
+  id        String     @id @default(cuid())
+  name      String
+  slug      String
+  order     Int
   chapterId String
   chapter   ChapterDef @relation(fields: [chapterId], references: [id])
 
@@ -724,7 +760,7 @@ model TopicDef {
 }
 
 ////////////////////////////////////////////////////////
-// NOTES (ACADEMIC, NOT USER NOTES)
+// NOTES (ACADEMIC, VERSIONED, MODERATED)
 ////////////////////////////////////////////////////////
 
 model TopicNote {
@@ -732,7 +768,7 @@ model TopicNote {
   topicId String
   topic   TopicDef @relation(fields: [topicId], references: [id])
 
-  language        String // en | hi
+  language        LanguageCode
   version         Int              @default(1)
   status          ApprovalStatus   @default(draft)
   lifecycle       SoftDeleteStatus @default(active)
@@ -757,9 +793,9 @@ model GeneratedTest {
   topic   TopicDef @relation(fields: [topicId], references: [id])
 
   title      String
-  difficulty String // easy | medium | hard
-  language   String // en | hi
-  version    Int    @default(1)
+  difficulty DifficultyLevel
+  language   LanguageCode
+  version    Int             @default(1)
 
   questions GeneratedQuestion[]
   status    ApprovalStatus      @default(draft)
@@ -784,7 +820,7 @@ model GeneratedQuestion {
 }
 
 ////////////////////////////////////////////////////////
-// AI CONTENT LOGGING (CANONICAL)
+// AI CONTENT LOGGING (CANONICAL, IMMUTABLE)
 ////////////////////////////////////////////////////////
 
 model AIContentLog {
@@ -798,7 +834,7 @@ model AIContentLog {
   subject  String?
   chapter  String?
   topic    String?
-  language String?
+  language LanguageCode
 
   tokensIn   Int?
   tokensOut  Int?
@@ -832,22 +868,22 @@ model SystemSetting {
 }
 
 ////////////////////////////////////////////////////////
-// QUEUE / HYDRATION TRACKING
+// QUEUE / JOB ENGINE (AI CONTENT ENGINE)
 ////////////////////////////////////////////////////////
 
 model HydrationJob {
-  id         String  @id @default(cuid())
-  jobType    String // syllabus | notes | questions | assemble
+  id         String          @id @default(cuid())
+  jobType    JobType
   board      String?
   grade      Int?
   subject    String?
   chapterId  String?
   topicId    String?
-  language   String?
-  difficulty String?
+  language   LanguageCode
+  difficulty DifficultyLevel
 
-  status    String  @default("pending") // pending | running | failed | completed
-  attempts  Int     @default(0)
+  status    JobStatus @default(pending)
+  attempts  Int       @default(0)
   lastError String?
 
   createdAt DateTime @default(now())
@@ -857,26 +893,27 @@ model HydrationJob {
 }
 
 ////////////////////////////////////////////////////////
-// OPTIONAL: STUDENT PERSONALIZATION (SAFE EXTENSION)
+// STUDENT PERSONALIZATION (SAFE EXTENSION)
 ////////////////////////////////////////////////////////
 
 model StudentContentPreference {
-  id         String   @id @default(cuid())
+  id         String          @id @default(cuid())
   studentId  String
   subject    String?
-  difficulty String?
-  language   String?
-  createdAt  DateTime @default(now())
+  difficulty DifficultyLevel
+  language   LanguageCode
+  createdAt  DateTime        @default(now())
 
   @@index([studentId])
 }
 
 ////////////////////////////////////////////////////////
-// ApprovalAudit
+// APPROVAL AUDIT (MANDATORY)
 ////////////////////////////////////////////////////////
+
 model ApprovalAudit {
   id         String         @id @default(cuid())
-  entityType String // chapter | topic | note
+  entityType String // chapter | topic | note | test
   entityId   String
   fromStatus ApprovalStatus
   toStatus   ApprovalStatus
@@ -885,4 +922,7 @@ model ApprovalAudit {
   createdAt  DateTime       @default(now())
 
   actor User? @relation(fields: [actorId], references: [id])
+
+  @@index([entityType, entityId])
+  @@index([createdAt])
 }

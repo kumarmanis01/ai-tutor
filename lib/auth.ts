@@ -9,6 +9,7 @@ import { prisma } from '@/lib/prisma'; // Your Prisma database client
 import bcrypt from 'bcrypt'; // For password hashing
 import { getEmailTransporter } from '@/lib/mailer';
 import { logger } from '@/lib/logger';
+import { LanguageCode } from '@prisma/client';
 import { getServerSession } from "next-auth";
 
 export async function requireAdmin() {
@@ -175,7 +176,7 @@ export const authOptions: NextAuthOptions = {
 
         let user = await prisma.user.findFirst({ where: { phone } });
         if (!user) {
-          user = await prisma.user.create({ data: { name: phone, phone } });
+           user = await prisma.user.create({ data: { name: phone, phone, language: LanguageCode.en } });
         }
 
         return {
@@ -203,7 +204,8 @@ export const authOptions: NextAuthOptions = {
               email: user.email!,
               name: user.name ?? undefined,
               image: user.image ?? undefined,
-            },
+                language: LanguageCode.en,
+              },
           });
         }
         // Proactively link Google OAuth to existing user by verified email to avoid OAuthAccountNotLinked.

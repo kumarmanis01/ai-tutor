@@ -1,4 +1,25 @@
 // src/hydrators/hydrationPrompts.ts
+/**
+ * COPILOT RULES — HYDRATOR
+ *
+ * - Hydrators only enqueue jobs
+ * - No AI calls allowed here
+ * - Must be idempotent
+ * - Must check DB before enqueue
+ * - Never mutate existing content
+ * example
+ * await prisma.hydrationJob.upsert({
+ *  where: { jobType_unique },
+ *   update: {},
+ *   create: {
+ *     jobType: "notes",
+ *     topicId,
+ *     language,
+ *   },
+ * });
+ */
+
+import { normalizeDifficulty } from "../lib/normalize";
 
 type SyllabusPromptArgs = {
   board: string;
@@ -19,7 +40,7 @@ type QuestionsPromptArgs = {
   grade: string;
   subject: string;
   topic: string;
-  difficulty: "easy" | "medium" | "hard";
+  difficulty: ReturnType<typeof normalizeDifficulty>;
 };
 
 export const syllabusPrompt = ({

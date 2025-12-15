@@ -1,4 +1,5 @@
 import { logger } from '@/lib/logger';
+import { LanguageCode } from '@prisma/client';
 import { NextResponse } from 'next/server';
 
 type VerifyRequestBody = {
@@ -84,7 +85,7 @@ export async function POST(req: Request) {
           const user = await prisma.user.upsert({
             where: { phone },
             update: {},
-            create: { phone },
+            create: { phone, language: LanguageCode.en },
           });
 
           logger.info('[verify-access-token] upserted user', { className: 'api.msg91.verify-access-token', methodName: 'POST', id: user.id, phone: user.phone });

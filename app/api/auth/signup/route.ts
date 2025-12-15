@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { LanguageCode } from '@prisma/client';
 import bcrypt from 'bcrypt';
 // Use explicit request body type instead of depending on SessionUser shape
 import { logger } from '@/lib/logger';
@@ -49,6 +50,7 @@ export async function POST(req: NextRequest) {
       grade: grade || null,
       passwordHash: passwordHash || null,
       country: country || null, // <-- Add country
+      language: LanguageCode.en,
     },
   });
 

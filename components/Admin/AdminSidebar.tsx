@@ -1,10 +1,25 @@
 'use client';
 
+/**
+ * AI CONTENT ENGINE NOTICE:
+ * - Job-based execution only
+ * - No per-job pause/resume
+ * - No streaming or progress tracking
+ * - All AI calls are atomic and retryable
+ * - Content requires admin approval
+ *
+ * ⚠️ DO NOT:
+ * - Call LLMs directly
+ * - Mutate jobs after creation
+ * - Add progress tracking
+ * - Use router.refresh() with SWR
+ */
+
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import React from 'react';
 
-const adminLinks = [
+const aiAdminLinks = [
   { href: '/admin/ai-dashboard', label: 'Dashboard' },
   { href: '/admin/content-engine/control-panel', label: 'AI Generation' },
   { href: '/admin/content-engine/moderation', label: 'Moderation' },
@@ -13,15 +28,26 @@ const adminLinks = [
   { href: '/admin/content-engine/rollbacks', label: 'Rollbacks' },
 ];
 
+const generalAdminLinks = [
+  { href: '/admin/users', label: 'User Management' },
+  { href: '/admin/audit-logs', label: 'Audit Logs' },
+  { href: '/admin/api-usage', label: 'API Usage Stats' },
+  { href: '/admin/payments/success', label: 'Successful Payments' },
+  { href: '/admin/payments/failed', label: 'Failed Payments' },
+  { href: '/admin/charts/users', label: 'User Signups Chart' },
+  { href: '/admin/charts/api-usage', label: 'API Usage Chart' },
+  { href: '/admin/challenge', label: 'Challenges' },
+  { href: '/admin/catalog', label: 'Catalog (Syllabus/Content)' },
+  { href: '/admin/content-approval', label: 'Content Approval' },
+];
+
 function EnvironmentBadge() {
-  // You can enhance this to read from process.env or context
   return (
     <span className="bg-blue-100 text-blue-800 text-xs font-semibold px-2 py-1 rounded mr-2">AI EdTech</span>
   );
 }
 
 function AdminProfile() {
-  // Replace with real user info from context/session if available
   return (
     <div className="flex items-center gap-2">
       <span className="inline-block w-8 h-8 bg-gray-300 rounded-full" />
@@ -40,10 +66,27 @@ export default function AdminSidebar() {
         <EnvironmentBadge />
         <AdminProfile />
       </div>
-      {/* Navigation */}
+      {/* AI Control Tower Navigation */}
       <nav className="flex flex-col gap-2 mt-6 px-6">
         <div className="text-xs uppercase text-gray-500 font-semibold mb-2">AI Control Tower</div>
-        {adminLinks.map((link) => (
+        {aiAdminLinks.map((link) => (
+          <Link
+            key={link.href}
+            href={link.href}
+            className={`py-2 px-3 rounded hover:bg-blue-100 dark:hover:bg-blue-900 ${
+              pathname === link.href
+                ? 'bg-blue-200 dark:bg-blue-700 font-semibold text-gray-900 dark:text-white'
+                : 'text-gray-900 dark:text-gray-100'
+            }`}
+          >
+            {link.label}
+          </Link>
+        ))}
+      </nav>
+      {/* General Admin Navigation */}
+      <nav className="flex flex-col gap-2 mt-8 px-6">
+        <div className="text-xs uppercase text-gray-500 font-semibold mb-2">General Admin</div>
+        {generalAdminLinks.map((link) => (
           <Link
             key={link.href}
             href={link.href}

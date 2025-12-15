@@ -2,6 +2,7 @@
  * Simple session-based context memory for AI (client-only helpers)
  * - Stores last N messages in local/session storage
  * - Can be extended to Redis/DB for persistence
+ * 
  */
 const MAX_CONTEXT = 10;
 

@@ -1,6 +1,7 @@
 import { logger } from '@/lib/logger';
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { LanguageCode } from '@prisma/client';
 import { cookies } from 'next/headers';
 import { sendEmail } from '@/lib/mailer';
 import { logApiUsage } from '@/utils/logApiUsage';
@@ -34,7 +35,7 @@ export async function POST(req: Request) {
   let user = await prisma.user.findUnique({ where: { email: cleanEmail } });
   if (!user) {
     user = await prisma.user.create({
-      data: { email: cleanEmail, name: cleanEmail.split('@')[0] },
+      data: { email: cleanEmail, name: cleanEmail.split('@')[0], language: LanguageCode.en },
     });
     // Optionally, send welcome email using centralized mailer
     try {

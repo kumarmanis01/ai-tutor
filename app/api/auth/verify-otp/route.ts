@@ -2,6 +2,7 @@ import { logger } from '@/lib/logger';
 import { NextResponse } from 'next/server';
 import crypto from 'crypto';
 import { prisma } from '@/lib/prisma';
+import { LanguageCode } from '@prisma/client';
 import { encode } from 'next-auth/jwt';
 
 function hashOtp(otp: string) {
@@ -35,7 +36,7 @@ export async function POST(req: Request) {
     // find or create user by phone
     let user = await prisma.user.findFirst({ where: { phone } });
     if (!user) {
-      user = await prisma.user.create({ data: { name: phone, phone } });
+      user = await prisma.user.create({ data: { name: phone, phone, language: LanguageCode.en } });
     }
 
     // Create a NextAuth JWT and set it as the session cookie so client is signed in

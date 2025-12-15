@@ -1,4 +1,23 @@
+/**
+ * PRISMA RULE:
+ * - NEVER pass null into `where` clauses
+ * - Conditionally OMIT fields using spread
+ * - Do NOT redefine Prisma enums locally
+ * 
+ * REquired Pattern
+ * const last = await prisma.topicNote.findFirst({
+ *   where: {
+ *     topicId,
+ *     language: language ?? undefined,
+ *   },
+ *   orderBy: { version: "desc" },
+ * });
+ * 
+ * return (last?.version ?? 0) + 1;
+ */
+
 import { prisma } from "@/lib/prisma"
+import { normalizeLanguage, normalizeDifficulty } from "@/lib/normalize";
 
 export async function getNextVersion(params: {
   topicId: string
@@ -10,7 +29,7 @@ export async function getNextVersion(params: {
     const latest = await prisma.topicNote.findFirst({
       where: {
         topicId: params.topicId,
-        language: params.language
+        language: normalizeLanguage(params.language)
       },
       orderBy: { version: "desc" }
     })
@@ -20,8 +39,8 @@ export async function getNextVersion(params: {
   const latest = await prisma.generatedTest.findFirst({
     where: {
       topicId: params.topicId,
-      difficulty: params.difficulty,
-      language: params.language
+      difficulty: normalizeDifficulty(params.difficulty),
+      language: normalizeLanguage(params.language)
     },
     orderBy: { version: "desc" }
   })

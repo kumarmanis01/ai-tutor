@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, LanguageCode } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
@@ -25,6 +25,14 @@ async function main() {
   ];
 
   console.log('Seeding process started...');
+
+  // Ensure existing rows have a valid LanguageCode (avoid nulls after schema change)
+  try {
+    await prisma.$executeRaw`UPDATE "User" SET language = 'en' WHERE language IS NULL`;
+    console.log('Normalized existing users language to en where null');
+  } catch (e) {
+    console.warn('Could not normalize existing users language — continuing', String(e));
+  }
 
   // Log badge creation
   console.log('Creating or updating badges...');
@@ -82,6 +90,7 @@ async function main() {
       email: 'testuser@example.com',
       emailVerified: new Date(),
       passwordHash: 'hashedpassword', // Use a static hash for demo
+      language: LanguageCode.en,
     },
   });
   console.log(`Test user created or updated: ${JSON.stringify(testUser)}`);
@@ -109,6 +118,7 @@ async function main() {
       email: 'testuser@example.com',
       name: 'Test User',
       passwordHash: 'hashedpassword',
+      language: LanguageCode.en,
     },
   });
   console.log(`Created or updated test user: ${JSON.stringify(anotherTestUser)}`);

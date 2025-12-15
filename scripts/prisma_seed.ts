@@ -1,10 +1,36 @@
+/**
+ * SEED SCRIPT GUARDRails:
+ * - Script MUST be idempotent
+ * - Never use create() without checking existence
+ * - Always use upsert with compound unique keys
+ * - Seed scripts must be safe to rerun after crashes
+ * - Never overwrite existing academic data
+ * - Uses unique constraints, not IDs
+ * - Never overwrites approved / edited content
+ * - Safe after crashes / partial runs
+ */
+
 import { PrismaClient } from "@prisma/client";
 const prisma = new PrismaClient();
 
-async function main() {
-  const boards = ["CBSE", "ICSE", "IB"];
+const BOARDS = ["CBSE", "ICSE", "IB"];
+const SUBJECTS = [
+  "Mathematics",
+  "Science",
+  "English",
+  "Hindi",
+  "Sanskrit",
+  "Computer",
+  "EVS",
+  "Art",
+  "Physical Education",
+  "Music",
+  "General Knowledge",
+];
 
-  for (const boardName of boards) {
+async function main() {
+  for (const boardName of BOARDS) {
+      console.log(`\n=== Processing Board: ${boardName} ===`);
     const board = await prisma.board.upsert({
       where: { slug: boardName.toLowerCase() },
       update: {},
@@ -15,56 +41,91 @@ async function main() {
     });
 
     for (let grade = 1; grade <= 12; grade++) {
+        console.log(`  -- Class: ${grade}`);
       const cls = await prisma.classLevel.upsert({
-          where: {
-            id: /* provide the correct id here, e.g., generate or fetch it before upsert */ "", 
+        where: {
+          boardId_grade: {
+            boardId: board.id,
+            grade,
           },
+        },
         update: {},
         create: {
-          grade: grade,
+          grade,
           slug: `class-${grade}`,
           boardId: board.id,
         },
       });
 
-      const subjects = ["Mathematics", "Science", "English", "Hindi", "Sanskrit", "Computer", "EVS", "Art", "Physical Education", "Music", "General Knowledge"];
-
-      for (const subject of subjects) {
-        const subj = await prisma.subjectDef.create({
-          data: {
-            name: subject,
-            slug: subject.toLowerCase(),
+      for (const subjectName of SUBJECTS) {
+          console.log(`    >> Subject: ${subjectName}`);
+        await prisma.subjectDef.upsert({
+          where: {
+            classId_slug: {
+              classId: cls.id,
+              slug: subjectName.toLowerCase().replace(/\s+/g, "-"),
+            },
+          },
+          update: {},
+          create: {
+            name: subjectName,
+            slug: subjectName.toLowerCase().replace(/\s+/g, "-"),
             classId: cls.id,
           },
         });
 
-        for (let c = 1; c <= 5; c++) {
-          const chapter = await prisma.chapterDef.create({
-            data: {
-              name: `${subject} Chapter ${c}`,
-              slug: `${subject}-ch-${c}`.toLowerCase(),
-              order: c,
-              subjectId: subj.id,
-            },
-          });
+        // for (let c = 1; c <= 5; c++) {
+        //     console.log(`      :: Chapter: ${subjectName} Chapter ${c}`);
+        //   const chapterSlug = `chapter-${c}`;
 
-          for (let t = 1; t <= 4; t++) {
-            await prisma.topicDef.create({
-              data: {
-                name: `Topic ${t}`,
-                slug: `topic-${t}`,
-                order: t,
-                chapterId: chapter.id,
-              },
-            });
-          }
-        }
+        //   const chapter = await prisma.chapterDef.upsert({
+        //     where: {
+        //       subjectId_slug_version: {
+        //         subjectId: subject.id,
+        //         slug: chapterSlug,
+        //         version: 1,
+        //       },
+        //     },
+        //     update: {},
+        //     create: {
+        //       name: `${subjectName} Chapter ${c}`,
+        //       slug: chapterSlug,
+        //       order: c,
+        //       subjectId: subject.id,
+        //     },
+        //   });
+
+          // for (let t = 1; t <= 4; t++) {
+          //     console.log(`        .. Topic: Topic ${t}`);
+          //   const topicSlug = `topic-${t}`;
+
+          //   await prisma.topicDef.upsert({
+          //     where: {
+          //       chapterId_slug: {
+          //         chapterId: chapter.id,
+          //         slug: topicSlug,
+          //       },
+          //     },
+          //     update: {},
+          //     create: {
+          //       name: `Topic ${t}`,
+          //       slug: topicSlug,
+          //       order: t,
+          //       chapterId: chapter.id,
+          //     },
+          //   });
+          // }
       }
     }
   }
 }
 
 main()
-  .then(() => console.log("Academic seed completed"))
-  .catch(console.error)
-  .finally(() => prisma.$disconnect());
+  .then(() => console.log("✅ Academic seed completed safely"))
+  .catch((e) => {
+    console.error("❌ Seed failed", e);
+    process.exit(1);
+  })
+  .finally(async () => {
+    await prisma.$disconnect();
+  });

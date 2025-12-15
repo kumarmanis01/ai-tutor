@@ -1,3 +1,23 @@
+/**
+ * COPILOT RULES — HYDRATOR
+ *
+ * - Hydrators only enqueue jobs
+ * - No AI calls allowed here
+ * - Must be idempotent
+ * - Must check DB before enqueue
+ * - Never mutate existing content
+ * example
+ * await prisma.hydrationJob.upsert({
+ *  where: { jobType_unique },
+ *   update: {},
+ *   create: {
+ *     jobType: "notes",
+ *     topicId,
+ *     language,
+ *   },
+ * });
+ */
+
 import { prisma } from "@/lib/prisma"
 
 export async function assembleTest(topicId: string) {
