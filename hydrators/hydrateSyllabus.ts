@@ -18,69 +18,71 @@
  * });
  */
 
+import { normalizeDifficulty, normalizeLanguage } from "@/lib/normalize";
 import { prisma } from "@/lib/prisma"
-import { callLLM } from "@/lib/callLLM"
-import { toSlug } from "@/lib/slug"
+import { isSystemSettingEnabled } from "@/lib/systemSettings"
 
-export async function hydrateSyllabus(input: {
+/**
+ * COPILOT RULES — SYLLABUS HYDRATOR
+ *
+ * - Hydrators ONLY enqueue jobs
+ * - NO AI calls allowed
+ * - Must be idempotent
+ * - Must check DB before enqueue
+ * - Must never mutate existing content
+ * - Syllabus hydration is SUBJECT-scoped
+ */
+
+type HydrationResult =
+  | { created: true; jobId: string }
+  | { created: false; reason: string; jobId?: string }
+
+export async function enqueueSyllabusHydration(input: {
   board: string
   grade: number
   subject: string
-  chapterId: string
-}) {
-  const paused = await prisma.systemSetting.findUnique({
-    where: { key: "HYDRATION_PAUSED" }
+  subjectId: string
+  language?: string
+}): Promise<HydrationResult> {
+
+  // 1️⃣ Global pause guard (type-safe)
+
+  const paused = await prisma.systemSetting.findUnique({ where: { key: "HYDRATION_PAUSED" } })
+  if (isSystemSettingEnabled(paused?.value)) {
+    return { created: false, reason: "hydration_paused" }
+  }
+
+  // 2️⃣ Idempotency: if any active chapter exists for the subject, assume syllabus exists
+  const existingChapter = await prisma.chapterDef.findFirst({
+    where: { subjectId: input.subjectId, lifecycle: 'active' }
   })
-  if (paused?.value === true) return
+  if (existingChapter) return { created: false, reason: 'syllabus_exists' }
 
-  const prompt = `
-Generate syllabus topics for:
-Board: ${input.board}
-Class: ${input.grade}
-Subject: ${input.subject}
+  // 3️⃣ Prevent duplicate queued/running jobs for the same subject/board/grade
+  const existingJob = await prisma.hydrationJob.findFirst({
+    where: {
+      jobType: 'syllabus',
+      subject: input.subject,
+      grade: input.grade,
+      board: input.board,
+      status: { in: ['pending', 'running'] }
+    }
+  })
+  if (existingJob) return { created: false, reason: 'job_already_queued', jobId: existingJob.id }
 
-JSON only:
-{
-  "topics": [
-    { "name": "", "order": 1 }
-  ]
-}
-`
-
-  const { content } = await callLLM({
-    prompt,
-    meta: {
-      promptType: "syllabus",
+  // 4️⃣ Enqueue job (use string literals to match Prisma schema)
+  const job = await prisma.hydrationJob.create({
+    data: {
+      jobType: 'syllabus',
       board: input.board,
       grade: input.grade,
-      subject: input.subject
+      subject: input.subject,
+      language: normalizeLanguage(input.language) ?? 'en',
+      // `difficulty` is required by the Prisma model; use a neutral default for syllabus jobs
+      difficulty: normalizeDifficulty('medium'),
+      status: 'pending'
     }
   })
 
-  const parsed = JSON.parse(content)
-
-  for (const topic of parsed.topics) {
-    const slug = toSlug(topic.name)
-
-    await prisma.topicDef.upsert({
-      where: {
-        chapterId_slug: {
-          chapterId: input.chapterId,
-          slug
-        }
-      },
-      update: {
-        name: topic.name,
-        order: topic.order
-      },
-      create: {
-        name: topic.name,
-        slug,
-        order: topic.order,
-        chapterId: input.chapterId,
-        status: "draft",
-        lifecycle: "active"
-      }
-    })
-  }
+  return { created: true, jobId: job.id }
 }

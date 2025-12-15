@@ -85,3 +85,12 @@ This project uses a STRICTLY GUARDED academic + AI content schema.
 - `null` MUST NEVER be passed to Prisma `where`
 - Use conditional spread to omit fields
 - Local enum redefinitions are forbidden
+
+## Content Generation Rules
+
+- Topics and chapters MUST be created only via AI jobs.
+- UI MUST NOT allow manual topic creation.
+- Notes, tests, and questions MUST reference an existing TopicDef.
+- If no topics exist for a subject, UI must prompt to run SYLLABUS job.
+- Generation jobs are atomic and non-editable.
+- All generated entities start in DRAFT status.

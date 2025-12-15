@@ -1,6 +1,7 @@
 // app/api/admin/ai/status/route.ts
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { isSystemSettingEnabled } from "@/lib/systemSettings";
 import { syllabusQueue, notesQueue, questionsQueue } from "@/queues/contentQueue";
 import { requireAdmin } from "@/lib/auth";
 
@@ -9,9 +10,7 @@ export async function GET() {
 
   const [settings, logsToday, syllabusCount, notesCount, questionsCount] =
     await Promise.all([
-      prisma.systemSetting.findUnique({
-        where: { key: "AI_PAUSED" },
-      }),
+      prisma.systemSetting.findUnique({ where: { key: "AI_PAUSED" } }),
       prisma.aIContentLog.aggregate({
         where: {
           createdAt: {
@@ -30,7 +29,7 @@ export async function GET() {
     ]);
 
   return NextResponse.json({
-    paused: settings?.value === "true",
+    paused: isSystemSettingEnabled(settings?.value),
     queues: {
       syllabus: syllabusCount,
       notes: notesCount,

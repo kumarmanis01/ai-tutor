@@ -1,6 +1,7 @@
 import { Worker, Job } from "bullmq";
 import { redis } from "@/lib/redis";
 import { prisma } from "@/lib/prisma";
+import { isSystemSettingEnabled } from "@/lib/systemSettings";
 import { hydrateNotes } from "@/hydrators/hydrateNotes";
 import { hydrateQuestions } from "@/hydrators/hydrateQuestions";
 import { assembleTest } from "@/hydrators/assembleTest";
@@ -14,15 +15,8 @@ export const contentWorker = new Worker(
   "content-hydration",
   async (job: Job) => {
     // 1️⃣ GLOBAL PAUSE CHECK (NON-NEGOTIABLE)
-    const paused = await prisma.systemSetting.findUnique({
-      where: { key: "AI_PAUSED" },
-    });
-
-    if (paused?.value === "true") {
-      /**
-       * Throwing causes BullMQ to retry later.
-       * This is intentional.
-       */
+    const paused = await prisma.systemSetting.findUnique({ where: { key: "AI_PAUSED" } });
+    if (isSystemSettingEnabled(paused?.value)) {
       throw new Error("AI_PAUSED");
     }
 
