@@ -1,10 +1,8 @@
 import { logger } from '@/lib/logger';
 import { logApiUsage } from '@/utils/logApiUsage';
 import { NextResponse } from 'next/server';
-import OpenAI from 'openai';
+import { createSpeech } from '@/lib/callLLM';
 import { getServerSessionForHandlers } from '@/lib/session';
-
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY! });
 
 export async function POST(req: Request) {
   const session = await getServerSessionForHandlers();
@@ -14,14 +12,13 @@ export async function POST(req: Request) {
   try {
     logApiUsage('/api/ai/voice', 'POST');
     const { text, voice } = await req.json();
-
-    const mp3 = await openai.audio.speech.create({
+    const mp3 = await createSpeech({
       model: 'gpt-4o-mini-tts',
-      voice: voice || 'alloy', // "alloy" | "verse" | "bright" etc.
+      voice: voice || 'alloy',
       input: text,
     });
 
-    const buffer = Buffer.from(await mp3.arrayBuffer());
+    const buffer = Buffer.from(await mp3.arrayBuffer())
     return new NextResponse(buffer, {
       headers: {
         'Content-Type': 'audio/mpeg',
