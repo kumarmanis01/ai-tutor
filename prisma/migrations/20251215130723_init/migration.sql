@@ -4,6 +4,24 @@ CREATE TYPE "UserStatus" AS ENUM ('active', 'banned', 'suspended');
 -- CreateEnum
 CREATE TYPE "UserRole" AS ENUM ('user', 'admin', 'moderator', 'support');
 
+-- CreateEnum
+CREATE TYPE "ApprovalStatus" AS ENUM ('draft', 'pending', 'approved', 'rejected', 'archived');
+
+-- CreateEnum
+CREATE TYPE "SoftDeleteStatus" AS ENUM ('active', 'deleted');
+
+-- CreateEnum
+CREATE TYPE "LanguageCode" AS ENUM ('en', 'hi');
+
+-- CreateEnum
+CREATE TYPE "DifficultyLevel" AS ENUM ('easy', 'medium', 'hard');
+
+-- CreateEnum
+CREATE TYPE "JobStatus" AS ENUM ('pending', 'running', 'failed', 'completed', 'cancelled');
+
+-- CreateEnum
+CREATE TYPE "JobType" AS ENUM ('syllabus', 'notes', 'questions', 'tests', 'assemble');
+
 -- CreateTable
 CREATE TABLE "User" (
     "id" TEXT NOT NULL,
@@ -15,7 +33,7 @@ CREATE TABLE "User" (
     "parentEmail" TEXT,
     "role" "UserRole" NOT NULL DEFAULT 'user',
     "country" TEXT,
-    "language" TEXT,
+    "language" "LanguageCode" NOT NULL,
     "grade" TEXT,
     "board" TEXT,
     "subjects" TEXT[] DEFAULT ARRAY[]::TEXT[],
@@ -398,7 +416,7 @@ CREATE TABLE "LearningSession" (
     "lastAccessed" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "currentQuestionIndex" INTEGER,
     "sessionData" JSONB,
-    "difficultyLevel" TEXT,
+    "difficultyLevel" "DifficultyLevel" NOT NULL,
     "estimatedTimeMinutes" INTEGER,
     "actualTimeSpent" INTEGER NOT NULL DEFAULT 0,
 
@@ -446,7 +464,7 @@ CREATE TABLE "ContentCatalog" (
     "subject" TEXT NOT NULL,
     "board" TEXT NOT NULL,
     "grade" TEXT NOT NULL,
-    "language" TEXT NOT NULL,
+    "language" "LanguageCode" NOT NULL,
     "difficulty" TEXT,
     "tags" TEXT[] DEFAULT ARRAY[]::TEXT[],
     "active" BOOLEAN NOT NULL DEFAULT true,
@@ -590,6 +608,7 @@ CREATE TABLE "Board" (
     "id" TEXT NOT NULL,
     "name" TEXT NOT NULL,
     "slug" TEXT NOT NULL,
+    "lifecycle" "SoftDeleteStatus" NOT NULL DEFAULT 'active',
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "Board_pkey" PRIMARY KEY ("id")
@@ -599,9 +618,9 @@ CREATE TABLE "Board" (
 CREATE TABLE "ClassLevel" (
     "id" TEXT NOT NULL,
     "grade" INTEGER NOT NULL,
-    "name" TEXT NOT NULL,
     "slug" TEXT NOT NULL,
     "boardId" TEXT NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "ClassLevel_pkey" PRIMARY KEY ("id")
 );
@@ -612,6 +631,7 @@ CREATE TABLE "SubjectDef" (
     "name" TEXT NOT NULL,
     "slug" TEXT NOT NULL,
     "classId" TEXT NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "SubjectDef_pkey" PRIMARY KEY ("id")
 );
@@ -622,7 +642,11 @@ CREATE TABLE "ChapterDef" (
     "name" TEXT NOT NULL,
     "slug" TEXT NOT NULL,
     "order" INTEGER NOT NULL,
+    "version" INTEGER NOT NULL DEFAULT 1,
+    "status" "ApprovalStatus" NOT NULL DEFAULT 'draft',
+    "lifecycle" "SoftDeleteStatus" NOT NULL DEFAULT 'active',
     "subjectId" TEXT NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "ChapterDef_pkey" PRIMARY KEY ("id")
 );
@@ -634,6 +658,10 @@ CREATE TABLE "TopicDef" (
     "slug" TEXT NOT NULL,
     "order" INTEGER NOT NULL,
     "chapterId" TEXT NOT NULL,
+    "status" "ApprovalStatus" NOT NULL DEFAULT 'draft',
+    "lifecycle" "SoftDeleteStatus" NOT NULL DEFAULT 'active',
+    "parentId" TEXT,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "TopicDef_pkey" PRIMARY KEY ("id")
 );
@@ -642,10 +670,15 @@ CREATE TABLE "TopicDef" (
 CREATE TABLE "TopicNote" (
     "id" TEXT NOT NULL,
     "topicId" TEXT NOT NULL,
+    "language" "LanguageCode" NOT NULL,
+    "version" INTEGER NOT NULL DEFAULT 1,
+    "status" "ApprovalStatus" NOT NULL DEFAULT 'draft',
+    "lifecycle" "SoftDeleteStatus" NOT NULL DEFAULT 'active',
     "title" TEXT NOT NULL,
-    "language" TEXT NOT NULL,
     "contentJson" JSONB NOT NULL,
     "source" TEXT NOT NULL,
+    "editedByTeacher" BOOLEAN NOT NULL DEFAULT false,
+    "teacherNotes" TEXT,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "TopicNote_pkey" PRIMARY KEY ("id")
@@ -656,8 +689,11 @@ CREATE TABLE "GeneratedTest" (
     "id" TEXT NOT NULL,
     "topicId" TEXT NOT NULL,
     "title" TEXT NOT NULL,
-    "difficulty" TEXT NOT NULL,
-    "language" TEXT NOT NULL,
+    "difficulty" "DifficultyLevel" NOT NULL,
+    "language" "LanguageCode" NOT NULL,
+    "version" INTEGER NOT NULL DEFAULT 1,
+    "status" "ApprovalStatus" NOT NULL DEFAULT 'draft',
+    "lifecycle" "SoftDeleteStatus" NOT NULL DEFAULT 'active',
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "GeneratedTest_pkey" PRIMARY KEY ("id")
@@ -672,6 +708,7 @@ CREATE TABLE "GeneratedQuestion" (
     "options" JSONB,
     "answer" JSONB,
     "marks" INTEGER,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "GeneratedQuestion_pkey" PRIMARY KEY ("id")
 );
@@ -679,17 +716,83 @@ CREATE TABLE "GeneratedQuestion" (
 -- CreateTable
 CREATE TABLE "AIContentLog" (
     "id" TEXT NOT NULL,
-    "topicId" TEXT,
-    "model" TEXT,
-    "requestBody" JSONB,
-    "responseBody" JSONB,
+    "model" TEXT NOT NULL,
+    "promptType" TEXT NOT NULL,
+    "board" TEXT,
+    "grade" INTEGER,
+    "subject" TEXT,
+    "chapter" TEXT,
+    "topic" TEXT,
+    "language" "LanguageCode" NOT NULL,
     "tokensIn" INTEGER,
     "tokensOut" INTEGER,
-    "costCents" DOUBLE PRECISION,
-    "status" TEXT,
+    "tokensUsed" INTEGER,
+    "costUsd" DOUBLE PRECISION,
+    "success" BOOLEAN NOT NULL,
+    "status" TEXT NOT NULL DEFAULT 'success',
+    "error" TEXT,
+    "requestBody" JSONB,
+    "responseBody" JSONB,
+    "topicId" TEXT,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "AIContentLog_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "SystemSetting" (
+    "key" TEXT NOT NULL,
+    "value" JSONB NOT NULL,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "SystemSetting_pkey" PRIMARY KEY ("key")
+);
+
+-- CreateTable
+CREATE TABLE "HydrationJob" (
+    "id" TEXT NOT NULL,
+    "jobType" "JobType" NOT NULL,
+    "board" TEXT,
+    "grade" INTEGER,
+    "subject" TEXT,
+    "subjectId" TEXT,
+    "chapterId" TEXT,
+    "topicId" TEXT,
+    "language" "LanguageCode" NOT NULL,
+    "difficulty" "DifficultyLevel" NOT NULL,
+    "status" "JobStatus" NOT NULL DEFAULT 'pending',
+    "attempts" INTEGER NOT NULL DEFAULT 0,
+    "lastError" TEXT,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "HydrationJob_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "StudentContentPreference" (
+    "id" TEXT NOT NULL,
+    "studentId" TEXT NOT NULL,
+    "subject" TEXT,
+    "difficulty" "DifficultyLevel" NOT NULL,
+    "language" "LanguageCode" NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "StudentContentPreference_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "ApprovalAudit" (
+    "id" TEXT NOT NULL,
+    "entityType" TEXT NOT NULL,
+    "entityId" TEXT NOT NULL,
+    "fromStatus" "ApprovalStatus" NOT NULL,
+    "toStatus" "ApprovalStatus" NOT NULL,
+    "actorId" TEXT,
+    "reason" TEXT,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "ApprovalAudit_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateIndex
@@ -814,6 +917,45 @@ CREATE UNIQUE INDEX "Answer_attemptQuestionId_key" ON "Answer"("attemptQuestionI
 
 -- CreateIndex
 CREATE UNIQUE INDEX "Board_slug_key" ON "Board"("slug");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "ClassLevel_boardId_grade_key" ON "ClassLevel"("boardId", "grade");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "SubjectDef_classId_slug_key" ON "SubjectDef"("classId", "slug");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "ChapterDef_subjectId_slug_version_key" ON "ChapterDef"("subjectId", "slug", "version");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "TopicDef_chapterId_slug_key" ON "TopicDef"("chapterId", "slug");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "TopicNote_topicId_language_version_key" ON "TopicNote"("topicId", "language", "version");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "GeneratedTest_topicId_difficulty_language_version_key" ON "GeneratedTest"("topicId", "difficulty", "language", "version");
+
+-- CreateIndex
+CREATE INDEX "AIContentLog_promptType_idx" ON "AIContentLog"("promptType");
+
+-- CreateIndex
+CREATE INDEX "AIContentLog_board_grade_subject_idx" ON "AIContentLog"("board", "grade", "subject");
+
+-- CreateIndex
+CREATE INDEX "AIContentLog_createdAt_idx" ON "AIContentLog"("createdAt");
+
+-- CreateIndex
+CREATE INDEX "HydrationJob_jobType_status_idx" ON "HydrationJob"("jobType", "status");
+
+-- CreateIndex
+CREATE INDEX "StudentContentPreference_studentId_idx" ON "StudentContentPreference"("studentId");
+
+-- CreateIndex
+CREATE INDEX "ApprovalAudit_entityType_entityId_idx" ON "ApprovalAudit"("entityType", "entityId");
+
+-- CreateIndex
+CREATE INDEX "ApprovalAudit_createdAt_idx" ON "ApprovalAudit"("createdAt");
 
 -- AddForeignKey
 ALTER TABLE "PhoneOtp" ADD CONSTRAINT "PhoneOtp_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
@@ -964,3 +1106,6 @@ ALTER TABLE "GeneratedQuestion" ADD CONSTRAINT "GeneratedQuestion_testId_fkey" F
 
 -- AddForeignKey
 ALTER TABLE "AIContentLog" ADD CONSTRAINT "AIContentLog_topicId_fkey" FOREIGN KEY ("topicId") REFERENCES "TopicDef"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "ApprovalAudit" ADD CONSTRAINT "ApprovalAudit_actorId_fkey" FOREIGN KEY ("actorId") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
