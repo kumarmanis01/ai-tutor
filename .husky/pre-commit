@@ -1,0 +1,15 @@
+#!/usr/bin/env sh
+. "$(dirname "$0")/_/husky.sh"
+
+# Run custom ESLint rule tests then lint-staged
+echo "Running ESLint custom rule tests..."
+npm run test:eslint-rules || {
+  echo "Custom ESLint rule tests failed" && exit 1
+}
+
+echo "Running lint-staged..."
+npx --no-install lint-staged || {
+  echo "lint-staged failed" && exit 1
+}
+
+echo "Pre-commit checks passed"

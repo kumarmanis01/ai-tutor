@@ -5,6 +5,7 @@ import { isSystemSettingEnabled } from "@/lib/systemSettings";
 import { hydrateNotes } from "@/hydrators/hydrateNotes";
 import { hydrateQuestions } from "@/hydrators/hydrateQuestions";
 import { assembleTest } from "@/hydrators/assembleTest";
+import { handleSyllabusJob } from "@/workers/syllabusWorker";
 import { logger } from "@/lib/logger"; // Assumes you have a logger utility
 
 /**
@@ -21,7 +22,7 @@ export const contentWorker = new Worker(
     }
 
     const { type, payload } = job.data as {
-      type: "NOTES" | "QUESTIONS" | "ASSEMBLE_TEST";
+      type: "NOTES" | "QUESTIONS" | "ASSEMBLE_TEST" | "SYLLABUS";
       payload: any;
     };
 
@@ -35,6 +36,13 @@ export const contentWorker = new Worker(
       case "QUESTIONS": {
         const { topicId, difficulty, language } = payload;
         return hydrateQuestions(topicId, difficulty, language);
+      }
+
+      case "SYLLABUS": {
+        // payload should contain { jobId }
+        const { jobId } = payload || {}
+        if (!jobId) throw new Error("SYLLABUS job missing jobId")
+        return handleSyllabusJob(jobId)
       }
 
       case "ASSEMBLE_TEST": {

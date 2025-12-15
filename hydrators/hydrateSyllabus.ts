@@ -21,6 +21,8 @@
 import { normalizeDifficulty, normalizeLanguage } from "@/lib/normalize";
 import { prisma } from "@/lib/prisma"
 import { isSystemSettingEnabled } from "@/lib/systemSettings"
+import { contentQueue } from "@/queues/contentQueue"
+import { logger } from "@/lib/logger"
 
 /**
  * COPILOT RULES — SYLLABUS HYDRATOR
@@ -59,30 +61,40 @@ export async function enqueueSyllabusHydration(input: {
   if (existingChapter) return { created: false, reason: 'syllabus_exists' }
 
   // 3️⃣ Prevent duplicate queued/running jobs for the same subject/board/grade
-  const existingJob = await prisma.hydrationJob.findFirst({
-    where: {
-      jobType: 'syllabus',
-      subject: input.subject,
-      grade: input.grade,
-      board: input.board,
-      status: { in: ['pending', 'running'] }
-    }
-  })
+  const existingJobWhere: any = {
+    jobType: 'syllabus',
+    subjectId: input.subjectId,
+    grade: input.grade,
+    board: input.board,
+    status: { in: ['pending', 'running'] }
+  }
+  const existingJob = await prisma.hydrationJob.findFirst({ where: existingJobWhere })
   if (existingJob) return { created: false, reason: 'job_already_queued', jobId: existingJob.id }
 
   // 4️⃣ Enqueue job (use string literals to match Prisma schema)
-  const job = await prisma.hydrationJob.create({
-    data: {
-      jobType: 'syllabus',
-      board: input.board,
-      grade: input.grade,
-      subject: input.subject,
-      language: normalizeLanguage(input.language) ?? 'en',
-      // `difficulty` is required by the Prisma model; use a neutral default for syllabus jobs
-      difficulty: normalizeDifficulty('medium'),
-      status: 'pending'
-    }
-  })
+  const jobData: any = {
+    jobType: 'syllabus',
+    board: input.board,
+    grade: input.grade,
+    subjectId: input.subjectId,
+    language: normalizeLanguage(input.language) ?? 'en',
+    difficulty: normalizeDifficulty('medium'),
+    status: 'pending'
+  }
+  const job = await prisma.hydrationJob.create({ data: jobData })
+
+  // Enqueue a worker job to process this hydration row.
+  // Job payload is deliberately minimal: worker will re-load the HydrationJob by id.
+  try {
+    await contentQueue.add(`syllabus-${job.id}`, {
+      type: "SYLLABUS",
+      payload: { jobId: job.id }
+    })
+  } catch (err) {
+    // If enqueueing fails, keep the DB row but surface failure reason.
+    logger.error("Failed to enqueue syllabus hydration job", { error: err, jobId: job.id });
+    return { created: false, reason: 'enqueue_failed', jobId: job.id }
+  }
 
   return { created: true, jobId: job.id }
 }

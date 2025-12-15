@@ -454,3 +454,18 @@ For further questions, refer to the `README.md` or ask a team member.
 ```
 
 ```
+
+---
+
+## 8️⃣ LOGGING AND DOCUMENTATION INSTRUCTIONS
+
+- Always use the project's logger utility for all logging purposes.
+- Do NOT use `console.log`, `console.error`, or other console methods in production or development code.
+- Ensure all log messages are meaningful and follow the project's logging conventions.
+
+---
+
+## 9️⃣ REFERENCE DOCUMENTATION
+
+- Before generating or modifying any code, always read and consider the contents of `/docs/AI_CONTENT_INDEX.md`.
+- Ensure your implementation aligns with the documentation and requirements described in `/docs/AI_CONTENT_INDEX.md`.
