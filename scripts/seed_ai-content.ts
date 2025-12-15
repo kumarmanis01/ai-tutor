@@ -1,5 +1,12 @@
 /**
- * SEED SCRIPT GUARDRails:
+ * COPILOT:
+ * This seed script defines ONLY academic taxonomy.
+ * Do NOT add chapters, topics, notes, AI calls, or workers here.
+ * This file is deterministic and must remain idempotent.
+ */
+
+/**
+ * SEED SCRIPT GUARDRAILS:
  * - Script MUST be idempotent
  * - Never use create() without checking existence
  * - Always use upsert with compound unique keys
@@ -8,226 +15,643 @@
  * - Uses unique constraints, not IDs
  * - Never overwrites approved / edited content
  * - Safe after crashes / partial runs
- * - For Classes above 3 - 7, EVS will change to Science
- * - For Classes above 7 - 10, add Social Studies, remove EVS
  */
 
-import { PrismaClient } from "@prisma/client";
-const prisma = new PrismaClient();
 
-// Subject lists per board and grade
-const SUBJECTS_BY_BOARD: Record<string, Record<number, string[]>> = {
-  CBSE: {},
-  ICSE: {},
-  IB: {}, // You can fill IB as needed
-};
+/**
+ * CBSE Subjects by Class (1-12)
+ * 
+ * Class 1-2:
+ *   - English
+ *   - Hindi
+ *   - Mathematics
+ *   - Environmental Studies
+ *   - Art Education
+ *   - Health & Physical Education
+ *   - Computer Science
+ * 
+ * Class 3-5:
+ *   - English
+ *   - Hindi
+ *   - Mathematics
+ *   - Environmental Studies
+ *   - General Knowledge
+ *   - Art Education
+ *   - Health & Physical Education
+ *   - Computer Science
+ * 
+ * Class 6-8:
+ *   - English
+ *   - Hindi
+ *   - Mathematics
+ *   - Science
+ *   - Social Science
+ *   - Sanskrit / Urdu / Other Language (optional)
+ *   - Computer Science / IT (optional)
+ *   - Art Education
+ *   - Health & Physical Education
+ *   - Skill Modules (AI, Design Thinking, Financial Literacy, Coding, etc.) (optional)
+ * 
+ * Class 9-10:
+ *   - English
+ *   - Hindi / Language 2
+ *   - Mathematics
+ *   - Science (Physics, Chemistry, Biology)
+ *   - Social Science (History, Geography, Political Science, Economics)
+ *   - Computer Applications (optional)
+ *   - Art Education
+ *   - Physical Education
+ *   - Skill-based Electives (AI, Data Science, IT, Retail, etc.) (optional)
+ *   - Language 3 (optional)
+ * 
+ * Class 11-12 (Streams):
+ *   - Common: English
+ *   - Science Stream:
+ *       - Physics
+ *       - Chemistry
+ *       - Mathematics / Biology
+ *       - Computer Science / Biotechnology / Engineering Drawing (optional)
+ *   - Commerce Stream:
+ *       - Accountancy
+ *       - Business Studies
+ *       - Economics
+ *   - Humanities/Arts Stream:
+ *       - Political Science
+ *       - History
+ *       - Geography
+ *       - Psychology
+ *       - Sociology
+ *       - Philosophy
+ *       - Fine Arts
+ *       - Music
+ *   - Others (available as electives in any stream):
+ *       - Physical Education
+ *       - Home Science
+ *       - Informatics Practices
+ *       - Additional Languages
+ */
 
-// CBSE subject mapping
-for (let grade = 1; grade <= 12; grade++) {
-  if (grade <= 5) {
-    SUBJECTS_BY_BOARD.CBSE[grade] = [
-      "English",
-      "Hindi",
-      "Mathematics",
-      "Environmental Studies",
-      "General Knowledge",
-      "Art Education",
-      "Health & Physical Education",
-      "Computer Science",
-    ];
-  } else if (grade <= 8) {
-    SUBJECTS_BY_BOARD.CBSE[grade] = [
-      "English",
-      "Hindi",
-      "Mathematics",
-      "Science",
-      "Social Science",
-      "General Knowledge",
-      "Art Education",
-      "Health & Physical Education",
-      "Computer Science",
-    ];
-  } else if (grade <= 10) {
-    SUBJECTS_BY_BOARD.CBSE[grade] = [
-      "English",
-      "Hindi",
-      "Mathematics",
-      "Science",
-      "Social Science",
-      "Computer Applications",
-      "Art Education",
-      "Physical Education",
-    ];
-  } else {
-    // Streams for 11-12
-    SUBJECTS_BY_BOARD.CBSE[grade] = [
-      "English",
-      // Science Stream
-      "Physics",
-      "Chemistry",
-      "Mathematics",
-      "Biology",
-      "Computer Science",
-      "Biotechnology",
-      "Engineering Drawing",
-      // Commerce Stream
-      "Accountancy",
-      "Business Studies",
-      "Economics",
-      // Humanities/Other
-      "Political Science",
-      "History",
-      "Geography",
-      "Psychology",
-      "Sociology",
-      "Philosophy",
-      "Fine Arts",
-      "Music",
-      "Physical Education",
-      "Home Science",
-      "Informatics Practices",
-    ];
-  }
+
+/**
+ * ICSE Subjects by Class (1-12)
+ *
+ * Class 1-4:
+ *   - English
+ *   - Second Language (Hindi or regional)
+ *   - Mathematics
+ *   - Environmental Studies (EVS) / Science
+ *   - Social Studies (History, Civics, Geography)
+ *   - Computer Applications
+ *   - Art & Music
+ *   - Physical Education
+ *
+ * Class 5-7:
+ *   - English
+ *   - Second Language (Hindi or regional)
+ *   - Mathematics
+ *   - Science (often integrated or split into Physics, Chemistry, Biology)
+ *   - Social Studies (History, Civics, Geography)
+ *   - Computer Applications / Computer Science
+ *   - Arts Education / Health
+ *
+ * Class 8:
+ *   - English
+ *   - Second Language (Hindi or regional)
+ *   - Mathematics
+ *   - Science (Physics, Chemistry, Biology)
+ *   - Social Studies (History, Civics, Geography)
+ *   - Computer Applications
+ *   - Environmental Science
+ *   - Art / Moral Science / General Knowledge
+ *
+ * Class 9-10:
+ *   Group I (Compulsory):
+ *     - English
+ *     - Second Language (Indian or Foreign)
+ *     - History, Civics & Geography
+ *     - Mathematics
+ *     - Science (Physics, Chemistry, Biology)
+ *   Group II (Choose Any Two):
+ *     - Economics
+ *     - Commercial Studies
+ *     - Computer Applications
+ *     - Environmental Science
+ *     - Modern Foreign Languages
+ *     - Classical Languages
+ *   Group III (Choose Any One):
+ *     - Computer Applications
+ *     - Commercial Applications
+ *     - Economic Applications
+ *     - Art
+ *     - Home Science
+ *     - Yoga
+ *     - Physical Education
+ *     - Technical Drawing Applications
+ *
+ * Class 11-12 (ISC Streams):
+ *   Core & Compulsory:
+ *     - English
+ *     - Hindi or another Indian/Foreign Language
+ *   Science Stream:
+ *     - Physics
+ *     - Chemistry
+ *     - Mathematics
+ *     - Biology
+ *     - Computer Science
+ *     - Physical Education
+ *     - Biotechnology
+ *     - Environmental Science
+ *   Commerce Stream:
+ *     - Accountancy
+ *     - Economics
+ *     - Business Studies
+ *     - Mathematics
+ *     - Computer Science
+ *     - Physical Education
+ *     - Entrepreneurship
+ *   Arts/Humanities Stream:
+ *     - History
+ *     - Political Science
+ *     - Geography
+ *     - Sociology
+ *     - Psychology
+ *     - Sanskrit
+ *     - Fine Arts
+ *     - Music
+ *     - Legal Studies
+ *     - Mass Media
+ *     - Home Science
+ *     - Fashion Designing
+ *     - Hospitality Management
+ *     - Computer Science
+ *     - Physical Education
+ *     - Languages (Sanskrit, French, etc.)
+ *   Other Optional Subjects (across streams):
+ *     - Computer Science
+ *     - Physical Education
+ *     - Art (Indian or Western Music, Applied Art)
+ *     - Legal Studies
+ *     - Home Science
+ */
+
+/**
+ * Absolutely. Below is a **clear, beginner-friendly README explanation** you can paste **at the top of the file or as `scripts/README.seed_ai_content.md`**.
+
+This is written as if a **senior architect is onboarding a new engineer** who will touch this system months later.
+
+---
+
+# 📘 Academic Base Seed Script — README
+
+## What is this script?
+
+This script seeds the **academic foundation** of the AI Tutor system:
+
+```
+Board → Class → Subject
+```
+
+It creates the **minimum, stable, non-AI data** that everything else in the system depends on.
+
+This includes:
+
+* Education boards (CBSE, ICSE today; State Boards tomorrow)
+* Classes / Grades (1–12)
+* Subjects available in each class
+
+⚠️ **This script does NOT create chapters, topics, notes, tests, or AI content.**
+Those are created later by **AI-driven workers** after human approval.
+
+---
+
+## Why does this script exist?
+
+AI systems must never invent or mutate **academic structure** on their own.
+
+This script ensures:
+
+* A **fixed, authoritative academic taxonomy**
+* AI can only generate content **within approved structure**
+* The system remains **deterministic, auditable, and safe**
+
+Without this layer:
+
+* AI could hallucinate subjects
+* Data integrity would degrade over time
+* Approval workflows would become impossible
+
+---
+
+## What data does it seed?
+
+### 1️⃣ Boards
+
+Examples:
+
+* CBSE
+* ICSE
+  (Designed to support State Boards in the future)
+
+### 2️⃣ Classes (Grades)
+
+* Grades 1 through 12
+* Each grade is unique per board
+
+### 3️⃣ Subjects
+
+* Subjects vary by board and grade
+* Repeated subjects across grades are reused intentionally
+
+Example:
+
+```
+CBSE → Class 6 → Science
+ICSE → Class 9 → Physics, Chemistry, Biology
+```
+
+---
+
+## What this script deliberately does NOT do
+
+| ❌ Not Allowed          | Reason                             |
+| ---------------------- | ---------------------------------- |
+| Create chapters        | AI-generated, approval-gated       |
+| Create topics          | AI-generated, approval-gated       |
+| Call LLMs              | Seed scripts must be deterministic |
+| Overwrite data         | Protects human edits & approvals   |
+| Delete anything        | Safe after crashes                 |
+| Use `create()` blindly | Avoids duplication                 |
+
+---
+
+## Idempotency (Very Important)
+
+This script is **idempotent**.
+
+That means:
+
+* You can run it **multiple times**
+* It will **not duplicate data**
+* It will **not overwrite existing data**
+* It is safe after:
+
+  * Partial failures
+  * Crashes
+  * Schema resets
+
+### How is this achieved?
+
+* Uses **`upsert()` everywhere**
+* Relies on **unique constraints**, not IDs
+* Never updates existing rows
+
+Example:
+
+```ts
+@@unique([boardId, grade])
+@@unique([classId, slug])
+```
+
+These ensure correctness even if the script is re-run.
+
+---
+
+## Why are some classes missing subjects?
+
+You may notice patterns like:
+
+```ts
+{ grade: 1, subjects: [...] }
+{ grade: 2, subjects: [] }
+```
+
+This means:
+
+➡️ *“Class 2 has the same subjects as Class 1”*
+
+This avoids duplication and makes it easy to:
+
+* Change subject structure in one place
+* Keep grades consistent
+* Scale to new boards quickly
+
+---
+
+## How does this support AI safely?
+
+This script establishes **hard boundaries**:
+
+AI workers are only allowed to:
+
+* Read Board / Class / Subject IDs
+* Generate content *inside* that structure
+
+AI is **never allowed** to:
+
+* Invent new boards
+* Invent subjects
+* Mutate academic structure
+
+This enables:
+
+* Approval workflows
+* Versioning
+* Rollbacks
+* Curriculum audits
+
+---
+
+## How to extend this script tomorrow
+
+### ➕ Add a new board
+
+Add a new entry to `BOARDS`:
+
+```ts
+{
+  name: "Maharashtra State Board",
+  slug: "msb",
+  classes: [...]
+}
+```
+
+### ➕ Add or adjust subjects
+
+Modify the subject arrays for the relevant grade.
+
+⚠️ Do **not** delete or rename slugs casually — slugs are stable identifiers.
+
+---
+
+## Logging & Observability
+
+The script logs:
+
+* Each board created/found
+* Each class processed
+* Number of subjects per class
+
+This helps:
+
+* Debug failed runs
+* Understand what changed
+* Validate large curriculum imports
+
+---
+
+## Guardrails (Do Not Break These)
+
+🚫 Do NOT add AI calls
+🚫 Do NOT add chapters/topics
+🚫 Do NOT convert upsert to create
+🚫 Do NOT delete existing data
+
+If you violate these rules, you risk:
+
+* Corrupting production content
+* Breaking approvals
+* Allowing AI hallucinations
+
+---
+
+## In One Sentence
+
+> **This script creates the stable academic skeleton of the platform — everything else grows safely on top of it.**
+
+---
+
+ */
+import { PrismaClient } from "@prisma/client"
+
+const prisma = new PrismaClient()
+
+/**
+ * ---------------------------------------------------
+ * CURRICULUM DEFINITIONS (Board → Class → Subjects)
+ * ---------------------------------------------------
+ */
+
+type SubjectSeed = {
+  name: string
+  slug: string
 }
 
-// ICSE subject mapping
-for (let grade = 1; grade <= 8; grade++) {
-  SUBJECTS_BY_BOARD.ICSE[grade] = [
-    "English",
-    "Second Language",
-    "Mathematics",
-    "Environmental Studies",
-    "Computer Studies",
-    "Arts Education",
-  ];
-}
-for (let grade = 9; grade <= 10; grade++) {
-  SUBJECTS_BY_BOARD.ICSE[grade] = [
-    // Group I (Compulsory)
-    "English",
-    "Second Language",
-    "History, Civics & Geography",
-    // Group II (choose at least one, but we seed all common)
-    "Mathematics",
-    "Science",
-    "Economics",
-    "Commercial Studies",
-    "Environmental Science",
-    "Modern/Classical Language",
-    "Computer Applications",
-    // Group III (choose remaining, seed common)
-    "Art",
-    "Performing Arts",
-    "Home Science",
-    "Fashion Designing",
-    "Physical Education",
-    "Yoga",
-    "Technical Drawing",
-  ];
-}
-for (let grade = 11; grade <= 12; grade++) {
-  SUBJECTS_BY_BOARD.ICSE[grade] = [
-    // Science Stream
-    "English",
-    "Physics",
-    "Chemistry",
-    "Mathematics",
-    "Biology",
-    "Computer Science",
-    "Physical Education",
-    // Commerce Stream
-    "Accountancy",
-    "Economics",
-    "Business Studies",
-    // Humanities/Arts Stream
-    "History",
-    "Political Science",
-    "Geography",
-    "Sociology",
-    "Psychology",
-    "Sanskrit",
-    "Fine Arts",
-    "Music",
-  ];
+type ClassSeed = {
+  grade: number
+  subjects: SubjectSeed[]
 }
 
-// IB fallback (generic)
-for (let grade = 1; grade <= 12; grade++) {
-  SUBJECTS_BY_BOARD.IB[grade] = [
-    "English",
-    "Mathematics",
-    "Science",
-    "Social Studies",
-    "Second Language",
-    "Arts",
-    "Physical Education",
-    "Computer Science",
-  ];
+type BoardSeed = {
+  name: string
+  slug: string
+  classes: ClassSeed[]
 }
 
-const BOARDS = ["CBSE", "ICSE", "IB"];
+/**
+ * NOTE:
+ * - Subjects repeat across grades → we intentionally redefine
+ * - Empty subjects array means "same as previous grade"
+ */
 
-function getSubjects(board: string, grade: number): string[] {
-  return SUBJECTS_BY_BOARD[board]?.[grade] || [];
-}
+const BOARDS: BoardSeed[] = [
+  {
+    name: "CBSE",
+    slug: "cbse",
+    classes: [
+      {
+        grade: 1,
+        subjects: [
+          { name: "English", slug: "english" },
+          { name: "Hindi", slug: "hindi" },
+          { name: "Mathematics", slug: "mathematics" },
+          { name: "Environmental Studies", slug: "evs" },
+          { name: "Art Education", slug: "art-education" },
+          { name: "Health & Physical Education", slug: "physical-education" },
+          { name: "Computer Science", slug: "computer-science" },
+        ],
+      },
+      { grade: 2, subjects: [] },
+
+      {
+        grade: 3,
+        subjects: [
+          { name: "English", slug: "english" },
+          { name: "Hindi", slug: "hindi" },
+          { name: "Mathematics", slug: "mathematics" },
+          { name: "Environmental Studies", slug: "evs" },
+          { name: "General Knowledge", slug: "general-knowledge" },
+          { name: "Art Education", slug: "art-education" },
+          { name: "Health & Physical Education", slug: "physical-education" },
+          { name: "Computer Science", slug: "computer-science" },
+        ],
+      },
+      { grade: 4, subjects: [] },
+      { grade: 5, subjects: [] },
+
+      {
+        grade: 6,
+        subjects: [
+          { name: "English", slug: "english" },
+          { name: "Hindi", slug: "hindi" },
+          { name: "Mathematics", slug: "mathematics" },
+          { name: "Science", slug: "science" },
+          { name: "Social Science", slug: "social-science" },
+          { name: "Computer Science", slug: "computer-science" },
+        ],
+      },
+      { grade: 7, subjects: [] },
+      { grade: 8, subjects: [] },
+
+      {
+        grade: 9,
+        subjects: [
+          { name: "English", slug: "english" },
+          { name: "Mathematics", slug: "mathematics" },
+          { name: "Physics", slug: "physics" },
+          { name: "Chemistry", slug: "chemistry" },
+          { name: "Biology", slug: "biology" },
+          { name: "History", slug: "history" },
+          { name: "Geography", slug: "geography" },
+          { name: "Economics", slug: "economics" },
+          { name: "Computer Applications", slug: "computer-applications" },
+        ],
+      },
+      { grade: 10, subjects: [] },
+
+      {
+        grade: 11,
+        subjects: [
+          { name: "English", slug: "english" },
+          { name: "Physics", slug: "physics" },
+          { name: "Chemistry", slug: "chemistry" },
+          { name: "Mathematics", slug: "mathematics" },
+          { name: "Biology", slug: "biology" },
+          { name: "Accountancy", slug: "accountancy" },
+          { name: "Business Studies", slug: "business-studies" },
+          { name: "Economics", slug: "economics" },
+          { name: "History", slug: "history" },
+          { name: "Political Science", slug: "political-science" },
+        ],
+      },
+      { grade: 12, subjects: [] },
+    ],
+  },
+
+  {
+    name: "ICSE",
+    slug: "icse",
+    classes: [
+      {
+        grade: 1,
+        subjects: [
+          { name: "English", slug: "english" },
+          { name: "Second Language", slug: "second-language" },
+          { name: "Mathematics", slug: "mathematics" },
+          { name: "Environmental Studies", slug: "evs" },
+          { name: "Computer Applications", slug: "computer-applications" },
+          { name: "Art & Music", slug: "art-music" },
+          { name: "Physical Education", slug: "physical-education" },
+        ],
+      },
+      { grade: 2, subjects: [] },
+      { grade: 3, subjects: [] },
+      { grade: 4, subjects: [] },
+      { grade: 5, subjects: [] },
+
+      {
+        grade: 9,
+        subjects: [
+          { name: "English", slug: "english" },
+          { name: "Mathematics", slug: "mathematics" },
+          { name: "Physics", slug: "physics" },
+          { name: "Chemistry", slug: "chemistry" },
+          { name: "Biology", slug: "biology" },
+          { name: "History Civics & Geography", slug: "history-civics-geography" },
+          { name: "Computer Applications", slug: "computer-applications" },
+        ],
+      },
+      { grade: 10, subjects: [] },
+    ],
+  },
+]
+
+/**
+ * ---------------------------------------------------
+ * EXECUTION
+ * ---------------------------------------------------
+ */
 
 async function main() {
-  for (const boardName of BOARDS) {
-    console.log(`\n=== Processing Board: ${boardName} ===`);
+  console.log("🌱 Starting academic base seeding...\n")
+
+  for (const boardSeed of BOARDS) {
     const board = await prisma.board.upsert({
-      where: { slug: boardName.toLowerCase() },
+      where: { slug: boardSeed.slug },
       update: {},
       create: {
-        name: boardName,
-        slug: boardName.toLowerCase(),
+        name: boardSeed.name,
+        slug: boardSeed.slug,
       },
-    });
+    })
 
-    for (let grade = 1; grade <= 12; grade++) {
-      console.log(`  -- Class: ${grade}`);
-      const cls = await prisma.classLevel.upsert({
+    console.log(`📘 Board ready: ${board.name}`)
+
+    let previousSubjects: SubjectSeed[] = []
+
+    for (const classSeed of boardSeed.classes) {
+      const classLevel = await prisma.classLevel.upsert({
         where: {
           boardId_grade: {
             boardId: board.id,
-            grade,
+            grade: classSeed.grade,
           },
         },
         update: {},
         create: {
-          grade,
-          slug: `class-${grade}`,
           boardId: board.id,
+          grade: classSeed.grade,
+          slug: `class-${classSeed.grade}`,
         },
-      });
+      })
 
-      const subjects = getSubjects(boardName, grade);
-      for (const subjectName of subjects) {
-        console.log(`    >> Subject: ${subjectName}`);
+      const subjectsToSeed =
+        classSeed.subjects.length > 0 ? classSeed.subjects : previousSubjects
+
+      console.log(
+        `  🎓 Class ${classSeed.grade} → ${subjectsToSeed.length} subjects`
+      )
+
+      for (const subject of subjectsToSeed) {
         await prisma.subjectDef.upsert({
           where: {
             classId_slug: {
-              classId: cls.id,
-              slug: subjectName.toLowerCase().replace(/\s+/g, "-"),
+              classId: classLevel.id,
+              slug: subject.slug,
             },
           },
           update: {},
           create: {
-            name: subjectName,
-            slug: subjectName.toLowerCase().replace(/\s+/g, "-"),
-            classId: cls.id,
+            classId: classLevel.id,
+            name: subject.name,
+            slug: subject.slug,
           },
-        });
+        })
       }
+
+      previousSubjects = subjectsToSeed
     }
+
+    console.log("")
   }
+
+  console.log("✅ Academic base seeding completed successfully")
 }
 
 main()
-  .then(() => console.log("✅ Academic seed completed safely"))
-  .catch((e) => {
-    console.error("❌ Seed failed", e);
-    process.exit(1);
+  .catch((err) => {
+    console.error("❌ Seed failed", err)
+    process.exit(1)
   })
   .finally(async () => {
-    await prisma.$disconnect();
-  });
+    await prisma.$disconnect()
+  })
