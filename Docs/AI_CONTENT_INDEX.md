@@ -22,14 +22,14 @@ Use this as the single starting point for Copilot or any agent that needs to rea
 
 ## Architecture
 
-- **AI Content Engine Architecture:** [docs/AI Content Engine Architecture.md](docs/AI Content Engine Architecture.md)
+- **AI Content Engine Architecture:** [docs/Architecture.md](docs/Architecture.md)
 - **Queue architecture:** [docs/QUEUE_ARCHITECTURE.md](docs/QUEUE_ARCHITECTURE.md)
 - **AI execution pipeline:** [docs/AI_Execution_pipeline.md](docs/AI_Execution_pipeline.md)
 - **Job system doc:** [docs/jobs.md](docs/jobs.md)
 
 ## Environment Setup
 
-- **Environment configuration & setup:** [docs/ENVIRONMENT_SETUP.md](docs/ENVIRONMENT_SETUP.md) <!-- Add this file if it exists -->
+- **Environment configuration & setup:** [docs/ENVIRONMENT.md](docs/ENVIRONMENT.md) <!-- Add this file if it exists -->
 - **Session utilities:** [docs/SESSION.md](docs/SESSION.md)
 - **Database analysis:** [docs/AI_Tutor_DB_Analysis.md](docs/AI_Tutor_DB_Analysis.md)
 
