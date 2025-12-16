@@ -1,2 +1,0 @@
-# Ignore ESLint rule test fixtures so pre-commit lint doesn't block commits
-eslint-rules/tests/tmp/**

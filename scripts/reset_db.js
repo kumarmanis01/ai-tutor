@@ -25,7 +25,8 @@ function setPgPasswordFromUrl(dbUrl) {
     if (u.password) {
       process.env.PGPASSWORD = u.password;
     }
-  } catch (_) {
+  } catch (err) {
+    console.error('Warning: could not parse DATABASE_URL for password extraction:', err);
     // intentionally ignored — URL parsing may fail for non-standard strings
   }
 }

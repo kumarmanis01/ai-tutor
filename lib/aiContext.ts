@@ -37,22 +37,8 @@ export function createAIClient() {
       try {
         // Intentionally no external calls in stub. Log in dev for visibility.
         if (typeof process !== 'undefined' && process.env.NODE_ENV === 'development') {
-          // Use centralized logger for debug visibility
-          // Import logger lazily to avoid client bundling issues
-          try {
-            // Use dynamic import to avoid static require and client bundling issues
-            const mod = await import('./logger');
-            if (mod && mod.logger && typeof mod.logger.debug === 'function') {
-              mod.logger.debug('[createAIClient.stub] complete called with prompt length: ' + String(prompt?.length ?? 0));
-            }
-          } catch {
-            try {
-              const mod2 = await import('./logger.runtime');
-              if (mod2 && mod2.logger && typeof mod2.logger.debug === 'function') {
-                mod2.logger.debug('[createAIClient.stub] complete called with prompt length: ' + String(prompt?.length ?? 0));
-              }
-            } catch {}
-          }
+          // eslint-disable-next-line no-console
+          console.debug('[createAIClient.stub] complete called with prompt length:', prompt?.length ?? 0);
         }
       } catch {}
       return { text: '[]' } as { text: string };

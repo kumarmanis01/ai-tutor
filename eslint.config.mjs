@@ -37,7 +37,12 @@ const eslintConfig = [
   },
   // Allow console in local utility scripts
   {
-    files: ['scripts/**', 'bin/**', 'tools/**', 'scripts/**/*.js', 'scripts/**/*.ts', 'lib/*.runtime.js', 'lib/*.cjs'],
+    files: [
+      'scripts/**',
+      'lib/*.runtime.js',
+      '*.mjs',
+      'lib/*.cjs',
+    ],
     // Allow console usage and legacy require in scripts, CLIs and small tooling shims.
     // This preserves strict `no-console` for app code while permitting developer
     // scripts and runtime shims to use console.* for straightforward output.
@@ -64,7 +69,7 @@ const eslintConfig = [
 
 // Load local ESLint rules (CommonJS) and register the no-string-filters rule
 const require = createRequire(import.meta.url);
-const logger = { warn: (...args) => console.warn(...args) };
+// const logger = { warn: (...args) => console.warn(...args) };
 try {
   const noStringFiltersRule = require('./eslint-rules/no-string-filters.cjs');
   // Wrap the rule into a plugin shape expected by ESLint
@@ -75,7 +80,7 @@ try {
   });
 } catch (e) {
   // If local rule cannot be loaded, don't fail start; warn during lint runs
-  logger.warn('Could not load local ESLint rule ai-guards/no-string-filters:', e && e.message);
+  console.warn('Could not load local ESLint rule ai-guards/no-string-filters:', e && e.message);
 }
 
 export default eslintConfig;
