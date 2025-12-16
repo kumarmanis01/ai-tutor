@@ -1,6 +1,6 @@
 module.exports = {
-  plugins: { 'ai-arch': require('../../index.cjs') },
+  plugins: { 'ai-guards': require('../../index.cjs') },
   rules: {
-    'ai-arch/no-llm-outside-callLLM': 'error'
+    'ai-guards/no-import-time-redis': 'error'
   }
 }

@@ -26,5 +26,7 @@ module.exports = {
     // Optional — keep only if they enforce real checks
     // 'no-direct-llm': require('./no-direct-llm.cjs'),
     // 'require-copilot-lock': require('./require-copilot-lock.cjs'),
+    // Import-time Redis/Queue prevention
+    'no-import-time-redis': require('./no-import-time-redis.cjs'),
   },
 }
