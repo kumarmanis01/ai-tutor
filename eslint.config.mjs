@@ -72,15 +72,16 @@ const require = createRequire(import.meta.url);
 // const logger = { warn: (...args) => console.warn(...args) };
 try {
   const noStringFiltersRule = require('./eslint-rules/no-string-filters.cjs');
-  // Wrap the rule into a plugin shape expected by ESLint
-  const aiGuardsPlugin = { rules: { 'no-string-filters': noStringFiltersRule } };
+  const noImportTimeRedisRule = require('./eslint-rules/no-import-time-redis.cjs');
+  // Wrap the rules into a plugin shape expected by ESLint
+  const aiGuardsPlugin = { rules: { 'no-string-filters': noStringFiltersRule, 'no-import-time-redis': noImportTimeRedisRule } };
   eslintConfig.push({
     plugins: { 'ai-guards': aiGuardsPlugin },
-    rules: { 'ai-guards/no-string-filters': 'error' },
+    rules: { 'ai-guards/no-string-filters': 'error', 'ai-guards/no-import-time-redis': 'error' },
   });
 } catch (e) {
   // If local rule cannot be loaded, don't fail start; warn during lint runs
-  console.warn('Could not load local ESLint rule ai-guards/no-string-filters:', e && e.message);
+  console.warn('Could not load local ESLint ai-guards rules:', e && e.message);
 }
 
 export default eslintConfig;

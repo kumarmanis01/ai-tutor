@@ -1,5 +1,5 @@
 import { Worker, Job } from "bullmq";
-import { redis } from "@/lib/redis";
+import { getRedis } from "@/lib/redis";
 import { prisma } from "@/lib/prisma";
 import { isSystemSettingEnabled } from "@/lib/systemSettings";
 import { hydrateNotes } from "@/hydrators/hydrateNotes";
@@ -58,7 +58,7 @@ export const contentWorker = new Worker(
     }
   },
   {
-    connection: redis,
+    connection: getRedis(),
 
     /**
      * Keep concurrency low for AI + DB safety.

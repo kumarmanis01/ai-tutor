@@ -21,7 +21,7 @@
 import { normalizeDifficulty, normalizeLanguage } from "@/lib/normalize";
 import { prisma } from "@/lib/prisma"
 import { isSystemSettingEnabled } from "@/lib/systemSettings"
-import { contentQueue } from "@/queues/contentQueue"
+import { getContentQueue } from "@/queues/contentQueue"
 import { logger } from "@/lib/logger"
 import { resolveSubjectId } from "@/lib/resolveAcademicIds"
 
@@ -99,7 +99,8 @@ export async function enqueueSyllabusHydration(input: {
   // Enqueue a worker job to process this hydration row.
   // Job payload is deliberately minimal: worker will re-load the HydrationJob by id.
   try {
-    await contentQueue.add(`syllabus-${job.id}`, {
+    const q = getContentQueue();
+    await q.add(`syllabus-${job.id}`, {
       type: "SYLLABUS",
       payload: { jobId: job.id }
     })

@@ -1,34 +1,57 @@
 // src/queues/contentQueue.ts
-import { Queue } from "bullmq"
-import IORedis from "ioredis"
-import { redis } from "@/lib/redis";
-
+import { Queue } from "bullmq";
+import { getRedis } from "@/lib/redis";
 
 /**
- * Each queue represents ONE stage of AI generation.
- * Separation allows retries, pause/resume, and observability.
+ * Lazy-init factories for queues to avoid creating Redis/Queue instances at import time.
+ * Use `getSyllabusQueue()` etc. from API handlers or workers.
  */
 
-export const syllabusQueue = new Queue("syllabus-queue", {
-  connection: redis,
-});
+type QueuesMap = {
+  syllabus?: Queue;
+  notes?: Queue;
+  questions?: Queue;
+  content?: Queue;
+};
 
-export const notesQueue = new Queue("notes-queue", {
-  connection: redis,
-});
+const queues: QueuesMap = {};
 
-export const questionsQueue = new Queue("questions-queue", {
-  connection: redis,
-});
+function getConnection() {
+  return getRedis();
+}
 
-const connection = new IORedis(process.env.REDIS_URL!)
-
-export const contentQueue = new Queue("content-hydration", {
-  connection,
-  defaultJobOptions: {
-    attempts: 3,
-    backoff: { type: "exponential", delay: 5000 },
-    removeOnComplete: true,
-    removeOnFail: false
+export function getSyllabusQueue() {
+  if (!queues.syllabus) {
+    queues.syllabus = new Queue("syllabus-queue", { connection: getConnection() });
   }
-})
+  return queues.syllabus;
+}
+
+export function getNotesQueue() {
+  if (!queues.notes) {
+    queues.notes = new Queue("notes-queue", { connection: getConnection() });
+  }
+  return queues.notes;
+}
+
+export function getQuestionsQueue() {
+  if (!queues.questions) {
+    queues.questions = new Queue("questions-queue", { connection: getConnection() });
+  }
+  return queues.questions;
+}
+
+export function getContentQueue() {
+  if (!queues.content) {
+    queues.content = new Queue("content-hydration", {
+      connection: getConnection(),
+      defaultJobOptions: {
+        attempts: 3,
+        backoff: { type: "exponential", delay: 5000 },
+        removeOnComplete: true,
+        removeOnFail: false,
+      },
+    });
+  }
+  return queues.content;
+}

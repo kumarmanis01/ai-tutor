@@ -2,7 +2,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { isSystemSettingEnabled } from "@/lib/systemSettings";
-import { syllabusQueue, notesQueue, questionsQueue } from "@/queues/contentQueue";
+import { getSyllabusQueue, getNotesQueue, getQuestionsQueue } from "@/queues/contentQueue";
 import { requireAdmin } from "@/lib/auth";
 
 export async function GET() {
@@ -23,9 +23,9 @@ export async function GET() {
           tokensOut: true,
         },
       }),
-      syllabusQueue.getWaitingCount(),
-      notesQueue.getWaitingCount(),
-      questionsQueue.getWaitingCount(),
+      getSyllabusQueue().getWaitingCount(),
+      getNotesQueue().getWaitingCount(),
+      getQuestionsQueue().getWaitingCount(),
     ]);
 
   return NextResponse.json({
