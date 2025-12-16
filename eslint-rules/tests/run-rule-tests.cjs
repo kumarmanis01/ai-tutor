@@ -2,7 +2,8 @@ const fs = require('fs');
 const path = require('path');
 const { spawnSync, execSync } = require('child_process');
 
-console.log('Running ESLint custom rule CLI tests...');
+const { logger } = require('../../lib/logger');
+logger.info('Running ESLint custom rule CLI tests...');
 
 const tmpDir = path.join(__dirname, 'tmp');
 if (!fs.existsSync(tmpDir)) fs.mkdirSync(tmpDir);
@@ -25,7 +26,7 @@ fs.writeFileSync(path.join(fixtures, 'invalid.js'), "import OpenAI from 'openai'
 // Run eslint CLI against valid fixture (should pass)
 const eslintBin = path.join(process.cwd(), 'node_modules', '.bin', process.platform === 'win32' ? 'eslint.cmd' : 'eslint');
 if (!fs.existsSync(eslintBin)) {
-  console.error('Local eslint binary not found at', eslintBin);
+  logger.error('Local eslint binary not found at ' + eslintBin);
   process.exit(1);
 }
 
@@ -33,11 +34,11 @@ const validFile = path.join(fixtures, 'valid.js');
 try {
   const cmd = `"${eslintBin}" --config "${configPath}" "${validFile}" --ext .js,.ts,.tsx`;
   const out = execSync(cmd, { encoding: 'utf8' });
-  if (out) console.log(out);
+  if (out) logger.info(out);
 } catch (err) {
-  console.error('ESLint rule CLI tests failed: valid fixture reported errors');
-  if (err.stdout) console.log(err.stdout.toString());
-  if (err.stderr) console.error(err.stderr.toString());
+  logger.error('ESLint rule CLI tests failed: valid fixture reported errors');
+  if (err.stdout) logger.info(err.stdout.toString());
+  if (err.stderr) logger.error(err.stderr.toString());
   process.exit(err.status || 1);
 }
 
@@ -46,13 +47,13 @@ const invalidFile = path.join(fixtures, 'invalid.js');
 try {
   const cmd2 = `"${eslintBin}" --config "${configPath}" "${invalidFile}" --ext .js,.ts,.tsx`;
   execSync(cmd2, { encoding: 'utf8' });
-  console.error('ESLint rule CLI tests failed: invalid fixture did not report errors');
+  logger.error('ESLint rule CLI tests failed: invalid fixture did not report errors');
   process.exit(1);
 } catch (err) {
   // Expected: eslint should exit non-zero on the invalid file
-  if (err.stdout) console.log(err.stdout.toString());
-  if (err.stderr) console.error(err.stderr.toString());
+  if (err.stdout) logger.info(err.stdout.toString());
+  if (err.stderr) logger.error(err.stderr.toString());
 }
 
-console.log('ESLint rule CLI tests passed');
+logger.info('ESLint rule CLI tests passed');
 process.exit(0);

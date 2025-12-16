@@ -28,7 +28,7 @@ export default function SubjectThreadList({ subjects = defaultSubjects, subject,
   const loadThreads = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch(`/api/chat/conversations?subject=${encodeURIComponent(subject)}&limit=50`);
+      const res = await fetch(`/api/chat/conversations?subjectId=${encodeURIComponent(subject)}&limit=50`);
       const data = await res.json().catch(() => null);
       const list: Thread[] = Array.isArray(data?.threads) ? data.threads : [];
       setThreads(list);

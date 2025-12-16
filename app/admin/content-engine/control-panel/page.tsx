@@ -64,7 +64,26 @@ export default function GenerationControlPanel() {
 
   const handleChange = (e: React.ChangeEvent<HTMLSelectElement | HTMLInputElement>) => {
     const { name, value } = e.target;
-    setForm(f => ({ ...f, [name]: value }));
+    setForm(prev => {
+      const next = { ...prev, [name]: value };
+
+      if (name === "board") {
+        next.classLevel = "";
+        next.subject = "";
+        next.topic = "";
+      }
+
+      if (name === "classLevel") {
+        next.subject = "";
+        next.topic = "";
+      }
+
+      if (name === "subject") {
+        next.topic = "";
+      }
+
+      return next;
+    });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {

@@ -1,6 +1,7 @@
 import { dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { FlatCompat } from '@eslint/eslintrc';
+import { createRequire } from 'module';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -39,6 +40,15 @@ const eslintConfig = [
     files: ['scripts/**'],
     rules: {
       'no-console': 'off',
+      '@typescript-eslint/no-require-imports': 'off',
+    },
+  },
+  // Allow console and require in runtime logger and scripts
+  {
+    files: ['lib/logger.js'],
+    rules: {
+      'no-console': 'off',
+      '@typescript-eslint/no-require-imports': 'off',
     },
   },
   // AI architecture plugin is available in `eslint-rules/` for review.
@@ -48,10 +58,28 @@ const eslintConfig = [
     rules: {
       '@typescript-eslint/no-require-imports': 'off',
       'no-console': 'off',
-      '@typescript-eslint/no-unused-vars': 'off'
+      '@typescript-eslint/no-unused-vars': 'off',
+      // Turn off the ai-guards rule for the rule definitions themselves
+      'ai-guards/no-string-filters': 'off',
     }
   },
   // Plugin: AI pipeline guardrails removed
 ];
+
+// Load local ESLint rules (CommonJS) and register the no-string-filters rule
+const require = createRequire(import.meta.url);
+const { logger } = require('./lib/logger.runtime');
+  try {
+    const noStringFiltersRule = require('./eslint-rules/no-string-filters.cjs');
+    // Wrap the rule into a plugin shape expected by ESLint
+    const aiGuardsPlugin = { rules: { 'no-string-filters': noStringFiltersRule } };
+    eslintConfig.push({
+      plugins: { 'ai-guards': aiGuardsPlugin },
+      rules: { 'ai-guards/no-string-filters': 'error' },
+    });
+  } catch (e) {
+    // If local rule cannot be loaded, don't fail start; warn during lint runs
+    logger.warn('Could not load local ESLint rule ai-guards/no-string-filters:', e && e.message);
+  }
 
 export default eslintConfig;

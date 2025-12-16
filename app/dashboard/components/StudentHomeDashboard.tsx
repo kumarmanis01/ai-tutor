@@ -60,7 +60,7 @@ const StudentHomeDashboard: React.FC<StudentHomeDashboardProps> = () => {
             }
           } catch {}
         }
-        const url = `/api/chat/history?subject=${encodeURIComponent(subject)}${conversationId ? `&conversationId=${encodeURIComponent(conversationId)}` : ''}&limit=50`;
+        const url = `/api/chat/history?subjectId=${encodeURIComponent(subject)}${conversationId ? `&conversationId=${encodeURIComponent(conversationId)}` : ''}&limit=50`;
         const res = await fetch(url);
         if (!res.ok) return;
         const data = await res.json().catch(() => null);

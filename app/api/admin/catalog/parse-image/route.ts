@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import Tesseract from "tesseract.js";
+import { logger } from '@/lib/logger';
 
 // Simple heuristics to extract heading-like lines and map to catalog items
 function extractHeadingsToItems(text: string) {
@@ -89,10 +90,9 @@ export async function POST(req: NextRequest) {
       chapters,
       language,
     };
-    // Print taxonomy JSON to the server console for inspection
-    // eslint-disable-next-line no-console
-    console.log('[PARSE-IMAGE TAXONOMY]', JSON.stringify(taxonomy, null, 2));
-    return NextResponse.json({ ok: true, message: 'Taxonomy printed to server console.' }, { status: 200 });
+    // Log taxonomy JSON to the centralized logger for inspection
+    logger.info('[PARSE-IMAGE TAXONOMY] ' + JSON.stringify(taxonomy, null, 2));
+    return NextResponse.json({ ok: true, message: 'Taxonomy logged to server logger.' }, { status: 200 });
   } catch (err: any) {
     return NextResponse.json({ error: err?.message || "Failed to parse image" }, { status: 500 });
   }

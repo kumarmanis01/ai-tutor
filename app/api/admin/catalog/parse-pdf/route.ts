@@ -55,10 +55,9 @@ export async function POST(req: NextRequest) {
       chapters,
       language,
     };
-    // Print taxonomy JSON to the server console for inspection
-    // eslint-disable-next-line no-console
-    console.log('[PARSE-PDF TAXONOMY]', JSON.stringify(taxonomy, null, 2));
-    return NextResponse.json({ ok: true, message: 'Taxonomy printed to server console.' });
+    // Print taxonomy JSON to the dev logger for inspection
+    logger.info('[PARSE-PDF TAXONOMY] ' + JSON.stringify(taxonomy, null, 2));
+    return NextResponse.json({ ok: true, message: 'Taxonomy logged to server logger.' });
   } catch (e: any) {
     return NextResponse.json({ error: 'parse_failed', message: String(e?.message || e) }, { status: 500 });
   }

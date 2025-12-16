@@ -2,6 +2,8 @@ import fs from "fs";
 import path from "path";
 import readline from "readline";
 import { spawnSync } from "child_process";
+// Runtime logger for script output
+const { logger } = require('../lib/logger.runtime');
 
 /* ------------------ helpers ------------------ */
 
@@ -25,19 +27,19 @@ function setPgPasswordFromUrl(dbUrl) {
     if (u.password) {
       process.env.PGPASSWORD = u.password;
     }
-  } catch (_) {
+  } catch {
     // intentionally ignored — URL parsing may fail for non-standard strings
   }
 }
 
 function logStep(msg) {
-  console.log(`\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
-  console.log(`▶ ${msg}`);
-  console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+  logger.info(`\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+  logger.info(`▶ ${msg}`);
+  logger.info(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
 }
 
 function run(cmd, args, opts = {}) {
-  console.log(`$ ${cmd} ${args.join(" ")}`);
+  logger.info(`$ ${cmd} ${args.join(" ")}`);
   const res = spawnSync(cmd, args, {
     stdio: "inherit",
     shell: opts.shell ?? true,
@@ -57,14 +59,14 @@ async function confirmDangerousAction(dbUrl) {
     const allowFile = path.join(process.cwd(), ".allow_automation");
 
     if (!fs.existsSync(allowFile)) {
-      console.error("\n⚠️  FORCE_DROP requested but .allow_automation not found.");
-      console.error(
+      logger.error("\n⚠️  FORCE_DROP requested but .allow_automation not found.");
+      logger.error(
         "Create an empty .allow_automation file to allow automated destructive runs."
       );
       return false;
     }
 
-    console.log(
+    logger.info(
       "\n⚠️  FORCE_DROP / CI mode enabled and .allow_automation present — skipping confirmation"
     );
     return true;
@@ -72,10 +74,10 @@ async function confirmDangerousAction(dbUrl) {
 
   // Interactive confirmation
   const masked = dbUrl.replace(/:\/\/.*@/, "://***@");
-  console.log("\n⚠️  DANGER ZONE");
-  console.log("You are about to DROP and RECREATE the database schema.");
-  console.log("Database:", masked);
-  console.log("\nType EXACTLY:  DROP  to continue");
+  logger.warn("\n⚠️  DANGER ZONE");
+  logger.warn("You are about to DROP and RECREATE the database schema.");
+  logger.warn("Database: " + masked);
+  logger.warn("\nType EXACTLY:  DROP  to continue");
 
   const rl = readline.createInterface({
     input: process.stdin,
@@ -95,14 +97,14 @@ async function confirmDropMigrations(migrationsDir) {
   if (process.env.FORCE_DROP === "1" || process.env.CI === "true") {
     const allowFile = path.join(process.cwd(), ".allow_automation");
     if (fs.existsSync(allowFile)) {
-      console.log('\n⚠️  Automation allow file present — skipping migrations delete confirmation');
+      logger.info('\n⚠️  Automation allow file present — skipping migrations delete confirmation');
       return true;
     }
   }
 
-  console.log(`\n⚠️  About to DELETE Prisma migrations directory: ${migrationsDir}`);
-  console.log("This will permanently remove all migration files.\n");
-  console.log("Type EXACTLY: DROP_MIGRATIONS to continue (or press Enter to abort)");
+  logger.warn(`\n⚠️  About to DELETE Prisma migrations directory: ${migrationsDir}`);
+  logger.warn("This will permanently remove all migration files.\n");
+  logger.warn("Type EXACTLY: DROP_MIGRATIONS to continue (or press Enter to abort)");
 
   const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
   return new Promise((resolve) => {
@@ -122,7 +124,7 @@ async function confirmDropMigrations(migrationsDir) {
 
     const confirmed = await confirmDangerousAction(dbUrl);
     if (!confirmed) {
-      console.log("\n❌ Aborted. No changes were made.");
+      logger.info("\n❌ Aborted. No changes were made.");
       process.exit(0);
     }
 
@@ -146,17 +148,17 @@ async function confirmDropMigrations(migrationsDir) {
     if (fs.existsSync(migrationsDir)) {
       const ok = await confirmDropMigrations(migrationsDir);
       if (!ok) {
-        console.log("\n❌ Aborted migrations deletion. No changes were made.");
+        logger.info("\n❌ Aborted migrations deletion. No changes were made.");
         process.exit(0);
       }
       try {
         fs.rmSync(migrationsDir, { recursive: true, force: true });
-        console.log(`Removed ${migrationsDir}`);
+        logger.info(`Removed ${migrationsDir}`);
       } catch (e) {
-        console.warn(`Could not remove migrations dir: ${e}`);
+        logger.warn(`Could not remove migrations dir: ${e}`);
       }
     } else {
-      console.log("No existing migrations directory found");
+      logger.info("No existing migrations directory found");
     }
 
     // Create a fresh baseline migration (create-only) then deploy it
@@ -173,10 +175,10 @@ async function confirmDropMigrations(migrationsDir) {
     // Seeding should be performed separately to avoid accidental data inserts.
     logStep("Skipping seed execution — reset script only recreates schema and migrations");
 
-    console.log("\n✅ DATABASE RESET COMPLETE");
+    logger.info("\n✅ DATABASE RESET COMPLETE");
   } catch (err) {
-    console.error("\n❌ RESET FAILED");
-    console.error(err instanceof Error ? err.message : err);
+    logger.error("\n❌ RESET FAILED");
+    logger.error(err instanceof Error ? err.message : String(err));
     process.exit(1);
   }
 })();

@@ -19,6 +19,8 @@
 
 import { PrismaClient } from "@prisma/client"
 
+const { logger } = require('../lib/logger');
+
 const prisma = new PrismaClient()
 
 type SubjectSeed = {
@@ -154,10 +156,10 @@ const BOARDS: BoardSeed[] = [
 ]
 
 async function main() {
-  console.log("🌱 [START] Academic base seeding initiated...\n")
+  logger.info("🌱 [START] Academic base seeding initiated...\n")
 
   for (const boardSeed of BOARDS) {
-    console.log(`➡️  [STEP] Processing board: ${boardSeed.name} (${boardSeed.slug})`)
+    logger.info(`➡️  [STEP] Processing board: ${boardSeed.name} (${boardSeed.slug})`)
     const board = await prisma.board.upsert({
       where: { slug: boardSeed.slug },
       update: {},
@@ -166,11 +168,11 @@ async function main() {
         slug: boardSeed.slug,
       },
     })
-    console.log(`✅ [BOARD] Board upserted: ${board.name} (slug: ${board.slug})`)
+    logger.info(`✅ [BOARD] Board upserted: ${board.name} (slug: ${board.slug})`)
 
     // Normalize classes for this board: ensure grades 1..12, inherit subjects when
     // a grade has an empty array, dedupe subject slugs, and ignore duplicate grade entries.
-    console.log(`🔄 [STEP] Normalizing classes for board: ${board.name}`)
+    logger.info(`🔄 [STEP] Normalizing classes for board: ${board.name}`)
     const classMap = new Map<number, SubjectSeed[]>();
     for (const cs of boardSeed.classes) {
       if (!cs || typeof cs.grade !== 'number') continue;
@@ -197,7 +199,7 @@ async function main() {
     }
 
     for (const classSeed of normalizedClasses) {
-      console.log(
+      logger.info(
         `➡️  [STEP] Upserting class: Grade ${classSeed.grade} for board: ${board.name}`
       );
       const classLevel = await prisma.classLevel.upsert({
@@ -214,17 +216,17 @@ async function main() {
           slug: `class-${classSeed.grade}`,
         },
       });
-      console.log(
+      logger.info(
         `✅ [CLASS] Class upserted: Grade ${classSeed.grade} (slug: class-${classSeed.grade}) for board: ${board.name}`
       );
 
       const subjectsToSeed = classSeed.subjects;
-      console.log(
+      logger.info(
         `➡️  [STEP] Seeding ${subjectsToSeed.length} subjects for Grade ${classSeed.grade} (${board.name})`
       );
 
       for (const subject of subjectsToSeed) {
-        console.log(
+        logger.info(
           `   • [SUBJECT] Upserting subject: "${subject.name}" (slug: ${subject.slug}) for Grade ${classSeed.grade} (${board.name})`
         );
         await prisma.subjectDef.upsert({
@@ -243,21 +245,21 @@ async function main() {
         });
       }
       if (subjectsToSeed.length === 0) {
-        console.log(
+        logger.info(
           `   • [INFO] No new subjects for Grade ${classSeed.grade} (${board.name}), inheriting from previous grade`
         );
       }
     }
 
-    console.log(`\n✅ [DONE] Finished processing board: ${board.name}\n`);
+    logger.info(`\n✅ [DONE] Finished processing board: ${board.name}\n`);
   }
 
-  console.log("🎉 [COMPLETE] Academic base seeding completed successfully");
+  logger.info("🎉 [COMPLETE] Academic base seeding completed successfully");
 }
 
 main()
   .catch((err) => {
-    console.error("❌ [ERROR] Seed failed", err)
+    logger.error("❌ [ERROR] Seed failed", err)
     process.exit(1)
   })
   .finally(async () => {

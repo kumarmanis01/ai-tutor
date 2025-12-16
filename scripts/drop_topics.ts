@@ -12,25 +12,27 @@
 
 import { PrismaClient } from '@prisma/client';
 
+const { logger } = require('../lib/logger');
+
 const prisma = new PrismaClient();
 
 async function main() {
   const dryRun = process.argv.includes('--dry-run');
 
-  console.log(`Starting drop_topics script. dryRun=${dryRun}`);
+  logger.info(`Starting drop_topics script. dryRun=${dryRun}`);
 
   // Find all active topics (follow soft-delete guardrail)
   const toDelete = await prisma.topicDef.findMany({ where: { lifecycle: 'active' } });
 
-  console.log(`Found ${toDelete.length} active topics.`);
+  logger.info(`Found ${toDelete.length} active topics.`);
   if (toDelete.length === 0) {
-    console.log('Nothing to do. Exiting.');
+    logger.info('Nothing to do. Exiting.');
     return;
   }
 
   if (dryRun) {
     for (const t of toDelete) {
-      console.log(`DRY-RUN: would soft-delete TopicDef id=${t.id} name="${t.name}" chapterId=${t.chapterId}`);
+      logger.info(`DRY-RUN: would soft-delete TopicDef id=${t.id} name="${t.name}" chapterId=${t.chapterId}`);
     }
     return;
   }
@@ -53,19 +55,19 @@ async function main() {
         },
       });
 
-      console.log(`Soft-deleted topic ${t.id} (${t.name})`);
+      logger.info(`Soft-deleted topic ${t.id} (${t.name})`);
       success += 1;
     } catch (err) {
-      console.error(`Failed to soft-delete topic ${t.id}:`, err);
+      logger.error(`Failed to soft-delete topic ${t.id}: ${String(err)}`);
     }
   }
 
-  console.log(`Completed: soft-deleted ${success}/${toDelete.length} topics.`);
+  logger.info(`Completed: soft-deleted ${success}/${toDelete.length} topics.`);
 }
 
 main()
   .catch((e) => {
-    console.error('Script failed', e);
+    logger.error('Script failed', e);
     process.exit(1);
   })
   .finally(async () => {

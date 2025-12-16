@@ -4,6 +4,8 @@ import yargs from "yargs"
 import { Arguments } from "yargs"
 import { prisma } from "@/lib/prisma";
 
+const { logger } = require('../lib/logger');
+
 const argv = yargs(process.argv.slice(2))
   .option("fromTopic", { type: "string" })
   .parseSync() as Arguments<{ fromTopic?: string }>;
@@ -23,7 +25,7 @@ for (const topic of topics) {
     await hydrateQuestions(topic.id, "medium", "hi")
     await hydrateQuestions(topic.id, "hard", "hi")
   } catch (e) {
-    console.error("FAILED at topic:", topic.id, e)
+    logger.error("FAILED at topic:", topic.id, e)
     process.exit(1)
   }
 }
