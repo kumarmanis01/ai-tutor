@@ -37,7 +37,10 @@ const eslintConfig = [
   },
   // Allow console in local utility scripts
   {
-    files: ['scripts/**'],
+    files: ['scripts/**', 'bin/**', 'tools/**', 'scripts/**/*.js', 'scripts/**/*.ts', 'lib/*.runtime.js', 'lib/*.cjs'],
+    // Allow console usage and legacy require in scripts, CLIs and small tooling shims.
+    // This preserves strict `no-console` for app code while permitting developer
+    // scripts and runtime shims to use console.* for straightforward output.
     rules: {
       'no-console': 'off',
       '@typescript-eslint/no-require-imports': 'off',

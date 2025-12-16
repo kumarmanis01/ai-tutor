@@ -2,9 +2,6 @@ import fs from "fs";
 import path from "path";
 import readline from "readline";
 import { spawnSync } from "child_process";
-// Runtime logger for script output — load the TypeScript logger at runtime via jiti
-const jiti = require('jiti')(process.cwd());
-const { logger } = jiti('../lib/logger');
 
 /* ------------------ helpers ------------------ */
 
@@ -28,19 +25,19 @@ function setPgPasswordFromUrl(dbUrl) {
     if (u.password) {
       process.env.PGPASSWORD = u.password;
     }
-  } catch {
+  } catch (_) {
     // intentionally ignored — URL parsing may fail for non-standard strings
   }
 }
 
 function logStep(msg) {
-  logger.info(`\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
-  logger.info(`▶ ${msg}`);
-  logger.info(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+  console.log(`\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+  console.log(`▶ ${msg}`);
+  console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
 }
 
 function run(cmd, args, opts = {}) {
-  logger.info(`$ ${cmd} ${args.join(" ")}`);
+  console.log(`$ ${cmd} ${args.join(" ")}`);
   const res = spawnSync(cmd, args, {
     stdio: "inherit",
     shell: opts.shell ?? true,
@@ -60,14 +57,14 @@ async function confirmDangerousAction(dbUrl) {
     const allowFile = path.join(process.cwd(), ".allow_automation");
 
     if (!fs.existsSync(allowFile)) {
-      logger.error("\n⚠️  FORCE_DROP requested but .allow_automation not found.");
-      logger.error(
+      console.error("\n⚠️  FORCE_DROP requested but .allow_automation not found.");
+      console.error(
         "Create an empty .allow_automation file to allow automated destructive runs."
       );
       return false;
     }
 
-    logger.info(
+    console.log(
       "\n⚠️  FORCE_DROP / CI mode enabled and .allow_automation present — skipping confirmation"
     );
     return true;
@@ -75,10 +72,10 @@ async function confirmDangerousAction(dbUrl) {
 
   // Interactive confirmation
   const masked = dbUrl.replace(/:\/\/.*@/, "://***@");
-  logger.warn("\n⚠️  DANGER ZONE");
-  logger.warn("You are about to DROP and RECREATE the database schema.");
-  logger.warn("Database: " + masked);
-  logger.warn("\nType EXACTLY:  DROP  to continue");
+  console.log("\n⚠️  DANGER ZONE");
+  console.log("You are about to DROP and RECREATE the database schema.");
+  console.log("Database:", masked);
+  console.log("\nType EXACTLY:  DROP  to continue");
 
   const rl = readline.createInterface({
     input: process.stdin,
@@ -98,14 +95,14 @@ async function confirmDropMigrations(migrationsDir) {
   if (process.env.FORCE_DROP === "1" || process.env.CI === "true") {
     const allowFile = path.join(process.cwd(), ".allow_automation");
     if (fs.existsSync(allowFile)) {
-      logger.info('\n⚠️  Automation allow file present — skipping migrations delete confirmation');
+      console.log('\n⚠️  Automation allow file present — skipping migrations delete confirmation');
       return true;
     }
   }
 
-  logger.warn(`\n⚠️  About to DELETE Prisma migrations directory: ${migrationsDir}`);
-  logger.warn("This will permanently remove all migration files.\n");
-  logger.warn("Type EXACTLY: DROP_MIGRATIONS to continue (or press Enter to abort)");
+  console.log(`\n⚠️  About to DELETE Prisma migrations directory: ${migrationsDir}`);
+  console.log("This will permanently remove all migration files.\n");
+  console.log("Type EXACTLY: DROP_MIGRATIONS to continue (or press Enter to abort)");
 
   const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
   return new Promise((resolve) => {
@@ -125,7 +122,7 @@ async function confirmDropMigrations(migrationsDir) {
 
     const confirmed = await confirmDangerousAction(dbUrl);
     if (!confirmed) {
-      logger.info("\n❌ Aborted. No changes were made.");
+      console.log("\n❌ Aborted. No changes were made.");
       process.exit(0);
     }
 
@@ -149,17 +146,17 @@ async function confirmDropMigrations(migrationsDir) {
     if (fs.existsSync(migrationsDir)) {
       const ok = await confirmDropMigrations(migrationsDir);
       if (!ok) {
-        logger.info("\n❌ Aborted migrations deletion. No changes were made.");
+        console.log("\n❌ Aborted migrations deletion. No changes were made.");
         process.exit(0);
       }
       try {
         fs.rmSync(migrationsDir, { recursive: true, force: true });
-        logger.info(`Removed ${migrationsDir}`);
+        console.log(`Removed ${migrationsDir}`);
       } catch (e) {
-        logger.warn(`Could not remove migrations dir: ${e}`);
+        console.warn(`Could not remove migrations dir: ${e}`);
       }
     } else {
-      logger.info("No existing migrations directory found");
+      console.log("No existing migrations directory found");
     }
 
     // Create a fresh baseline migration (create-only) then deploy it
@@ -172,14 +169,31 @@ async function confirmDropMigrations(migrationsDir) {
     logStep("Generating Prisma client");
     run("npx", ["prisma", "generate"]);
 
-    // This reset script intentionally does NOT run any seed scripts.
-    // Seeding should be performed separately to avoid accidental data inserts.
-    logStep("Skipping seed execution — reset script only recreates schema and migrations");
+    // Look for several common seed filenames (prefer user-provided `seed-ai-content.ts`)
+    const seedCandidates = [
+      "seed-ai-content.ts",
 
-    logger.info("\n✅ DATABASE RESET COMPLETE");
+    ].map((n) => path.resolve(process.cwd(), "scripts", n));
+
+    const found = seedCandidates.find((p) => fs.existsSync(p));
+    if (found) {
+      const base = path.basename(found);
+      if (base.endsWith(".ts")) {
+        logStep(`Running TypeScript seed: ${base}`);
+        // Use node with ts-node register to avoid npx/ts-node path resolution issues on Windows
+        run("node", ["-r", "ts-node/register/transpile-only", found]);
+      } else {
+        logStep(`Running JavaScript seed: ${base}`);
+        run("node", [found]);
+      }
+    } else {
+      logStep("No seed script found (skipping). Checked: scripts/seed-ai-content.ts, scripts/seed_ai_content.ts, scripts/seed.js");
+    }
+
+    console.log("\n✅ DATABASE RESET COMPLETE");
   } catch (err) {
-    logger.error("\n❌ RESET FAILED");
-    logger.error(err instanceof Error ? err.message : String(err));
+    console.error("\n❌ RESET FAILED");
+    console.error(err instanceof Error ? err.message : err);
     process.exit(1);
   }
 })();
