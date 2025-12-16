@@ -5,7 +5,7 @@ import { spawnSync } from "child_process";
 
 /* ------------------ helpers ------------------ */
 
-function readDatabaseUrl(): string {
+function readDatabaseUrl() {
   const envPath = path.resolve(process.cwd(), ".env");
   if (!fs.existsSync(envPath)) throw new Error(".env file not found");
 
@@ -19,28 +19,24 @@ function readDatabaseUrl(): string {
   return url;
 }
 
-function setPgPasswordFromUrl(dbUrl: string): void {
+function setPgPasswordFromUrl(dbUrl) {
   try {
     const u = new URL(dbUrl);
     if (u.password) {
       process.env.PGPASSWORD = u.password;
     }
-  } catch {
+  } catch (_) {
     // intentionally ignored — URL parsing may fail for non-standard strings
   }
 }
 
-function logStep(msg: string): void {
+function logStep(msg) {
   console.log(`\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
   console.log(`▶ ${msg}`);
   console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
 }
 
-function run(
-  cmd: string,
-  args: string[],
-  opts: { shell?: boolean } = {}
-): void {
+function run(cmd, args, opts = {}) {
   console.log(`$ ${cmd} ${args.join(" ")}`);
   const res = spawnSync(cmd, args, {
     stdio: "inherit",
@@ -55,7 +51,7 @@ function run(
 
 /* ------------------ confirmation ------------------ */
 
-async function confirmDangerousAction(dbUrl: string): Promise<boolean> {
+async function confirmDangerousAction(dbUrl) {
   // CI / automation path
   if (process.env.FORCE_DROP === "1" || process.env.CI === "true") {
     const allowFile = path.join(process.cwd(), ".allow_automation");
@@ -94,6 +90,29 @@ async function confirmDangerousAction(dbUrl: string): Promise<boolean> {
   });
 }
 
+async function confirmDropMigrations(migrationsDir) {
+  // If automation consent already provided, skip interactive prompt
+  if (process.env.FORCE_DROP === "1" || process.env.CI === "true") {
+    const allowFile = path.join(process.cwd(), ".allow_automation");
+    if (fs.existsSync(allowFile)) {
+      console.log('\n⚠️  Automation allow file present — skipping migrations delete confirmation');
+      return true;
+    }
+  }
+
+  console.log(`\n⚠️  About to DELETE Prisma migrations directory: ${migrationsDir}`);
+  console.log("This will permanently remove all migration files.\n");
+  console.log("Type EXACTLY: DROP_MIGRATIONS to continue (or press Enter to abort)");
+
+  const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+  return new Promise((resolve) => {
+    rl.question("> ", (answer) => {
+      rl.close();
+      resolve(answer === "DROP_MIGRATIONS");
+    });
+  });
+}
+
 /* ------------------ main ------------------ */
 
 (async () => {
@@ -121,24 +140,38 @@ async function confirmDangerousAction(dbUrl: string): Promise<boolean> {
       { shell: false }
     );
 
+    // Remove existing migrations to create a fresh baseline
+    logStep("Removing existing Prisma migrations (interactive confirmation required)");
+    const migrationsDir = path.resolve(process.cwd(), "prisma", "migrations");
+    if (fs.existsSync(migrationsDir)) {
+      const ok = await confirmDropMigrations(migrationsDir);
+      if (!ok) {
+        console.log("\n❌ Aborted migrations deletion. No changes were made.");
+        process.exit(0);
+      }
+      try {
+        fs.rmSync(migrationsDir, { recursive: true, force: true });
+        console.log(`Removed ${migrationsDir}`);
+      } catch (e) {
+        console.warn(`Could not remove migrations dir: ${e}`);
+      }
+    } else {
+      console.log("No existing migrations directory found");
+    }
+
+    // Create a fresh baseline migration (create-only) then deploy it
+    logStep("Creating new baseline migration (create-only)");
+    run("npx", ["prisma", "migrate", "dev", "--name", "init", "--create-only"]);
+
     logStep("Applying Prisma migrations");
     run("npx", ["prisma", "migrate", "deploy"]);
 
     logStep("Generating Prisma client");
     run("npx", ["prisma", "generate"]);
 
-    const seedTs = path.resolve(process.cwd(), "scripts", "seed_ai_content.ts");
-    const seedJs = path.resolve(process.cwd(), "scripts", "seed.js");
-
-    if (fs.existsSync(seedTs)) {
-      logStep("Running TypeScript seed");
-      run("npx", ["ts-node", seedTs]);
-    } else if (fs.existsSync(seedJs)) {
-      logStep("Running JavaScript seed");
-      run("node", [seedJs]);
-    } else {
-      logStep("No seed script found (skipping)");
-    }
+    // This reset script intentionally does NOT run any seed scripts.
+    // Seeding should be performed separately to avoid accidental data inserts.
+    logStep("Skipping seed execution — reset script only recreates schema and migrations");
 
     console.log("\n✅ DATABASE RESET COMPLETE");
   } catch (err) {
