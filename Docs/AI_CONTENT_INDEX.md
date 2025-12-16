@@ -16,4 +16,4 @@ Use this as the single starting point for Copilot or any agent that needs to rea
 - Hydration rules: [Docs/Hydration_Rules.md](Docs/Hydration_Rules.md)
 
 - AI pipeline rules: [Docs/AI_PIPELINE_RULE.md](Docs/AI_PIPELINE_RULE.md)
-- Syllabus worker implementation: [Docs/syllabus_worker.md](Docs/syllabus_worker.md)
+- Queue architecture: [Docs/QUEUE_ARCHITECTURE.md](Docs/QUEUE_ARCHITECTURE.md)
