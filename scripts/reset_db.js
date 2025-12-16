@@ -169,26 +169,9 @@ async function confirmDropMigrations(migrationsDir) {
     logStep("Generating Prisma client");
     run("npx", ["prisma", "generate"]);
 
-    // Look for several common seed filenames (prefer user-provided `seed-ai-content.ts`)
-    const seedCandidates = [
-      "seed-ai-content.ts",
-
-    ].map((n) => path.resolve(process.cwd(), "scripts", n));
-
-    const found = seedCandidates.find((p) => fs.existsSync(p));
-    if (found) {
-      const base = path.basename(found);
-      if (base.endsWith(".ts")) {
-        logStep(`Running TypeScript seed: ${base}`);
-        // Use node with ts-node register to avoid npx/ts-node path resolution issues on Windows
-        run("node", ["-r", "ts-node/register/transpile-only", found]);
-      } else {
-        logStep(`Running JavaScript seed: ${base}`);
-        run("node", [found]);
-      }
-    } else {
-      logStep("No seed script found (skipping). Checked: scripts/seed-ai-content.ts, scripts/seed_ai_content.ts, scripts/seed.js");
-    }
+    // This reset script intentionally does NOT run any seed scripts.
+    // Seeding should be performed separately to avoid accidental data inserts.
+    logStep("Skipping seed execution — reset script only recreates schema and migrations");
 
     console.log("\n✅ DATABASE RESET COMPLETE");
   } catch (err) {
