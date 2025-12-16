@@ -3,8 +3,7 @@ import { hydrateQuestions } from "@/hydrators/hydrateQuestions"
 import yargs from "yargs"
 import { Arguments } from "yargs"
 import { prisma } from "@/lib/prisma";
-
-const { logger } = require('../lib/logger');
+import { logger } from "../lib/logger";
 
 const argv = yargs(process.argv.slice(2))
   .option("fromTopic", { type: "string" })

@@ -18,8 +18,7 @@
  */
 
 import { PrismaClient } from "@prisma/client"
-
-const { logger } = require('../lib/logger');
+import { logger } from "../lib/logger"
 
 const prisma = new PrismaClient()
 

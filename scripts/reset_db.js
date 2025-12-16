@@ -2,8 +2,9 @@ import fs from "fs";
 import path from "path";
 import readline from "readline";
 import { spawnSync } from "child_process";
-// Runtime logger for script output
-const { logger } = require('../lib/logger.runtime');
+// Runtime logger for script output — load the TypeScript logger at runtime via jiti
+const jiti = require('jiti')(process.cwd());
+const { logger } = jiti('../lib/logger');
 
 /* ------------------ helpers ------------------ */
 

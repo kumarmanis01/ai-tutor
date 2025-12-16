@@ -2,7 +2,11 @@ const fs = require('fs');
 const path = require('path');
 const { spawnSync, execSync } = require('child_process');
 
-const { logger } = require('../../lib/logger');
+const logger = {
+  info: (...args) => console.log(...args),
+  warn: (...args) => console.warn(...args),
+  error: (...args) => console.error(...args),
+};
 logger.info('Running ESLint custom rule CLI tests...');
 
 const tmpDir = path.join(__dirname, 'tmp');
