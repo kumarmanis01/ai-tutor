@@ -15,15 +15,15 @@ This document provides a high-level overview of the Spinzy Academy platform arch
 ```
 /prisma
   └─ schema.prisma
-/src
+/app
   ├─ lib/
   ├─ queues/
   ├─ workers/
   ├─ hydraters/
   ├─ producers/
   ├─ scripts/
-  ├─ app/api/
-  ├─ app/admin/
+  ├─ api/
+  ├─ admin/
   └─ ...
 ```
 
