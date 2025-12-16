@@ -1,4 +1,6 @@
 import { prisma } from '@/lib/prisma';
+import { logger } from '@/lib/logger';
+import { normalizeJobType } from '@/lib/normalize';
 
 export type SubmitJobInput = {
   jobType: unknown; // validated by callers; cast to Prisma enum at write-time
@@ -10,6 +12,10 @@ export type SubmitJobInput = {
 
 export async function submitJob(input: SubmitJobInput) {
   const { jobType, entityType, entityId, payload = {}, maxAttempts = 5 } = input;
+
+  // Normalize jobType via central utility so all callers use consistent mapping
+  const normalizedJobType = normalizeJobType(String(jobType));
+  logger.debug(`submitJob: received jobType=${String(jobType)}, normalized=${normalizedJobType}`);
 
   // Basic validation: ensure ID exists for the referenced entity
   let exists = false;
@@ -40,7 +46,7 @@ export async function submitJob(input: SubmitJobInput) {
   // Idempotency: return existing pending/running job if present
   const existing = await prisma.executionJob.findFirst({
     where: {
-      jobType: jobType as any,
+      jobType: normalizedJobType as any,
       entityType,
       entityId,
       status: { in: ['pending', 'running'] },
@@ -53,7 +59,7 @@ export async function submitJob(input: SubmitJobInput) {
 
   const job = await prisma.executionJob.create({
     data: {
-      jobType: jobType as any,
+      jobType: normalizedJobType as any,
       entityType,
       entityId,
       payload,
