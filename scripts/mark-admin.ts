@@ -1,5 +1,11 @@
 import { PrismaClient, UserRole } from '@prisma/client';
-import { logger } from '../lib/logger';
+
+// Lightweight logger fallback so this script can be executed with node
+// without importing project TypeScript modules.
+const logger = {
+  info: (...args: unknown[]) => console.log('[INFO]', ...args),
+  error: (...args: unknown[]) => console.error('[ERROR]', ...args),
+};
 
 const prisma = new PrismaClient();
 
