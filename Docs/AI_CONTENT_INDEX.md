@@ -17,3 +17,6 @@ Use this as the single starting point for Copilot or any agent that needs to rea
 
 - AI pipeline rules: [Docs/AI_PIPELINE_RULE.md](Docs/AI_PIPELINE_RULE.md)
 - Queue architecture: [Docs/QUEUE_ARCHITECTURE.md](Docs/QUEUE_ARCHITECTURE.md)
+- AI execution pipeline: [Docs/AI_Execution_pipeline.md](Docs/AI_Execution_pipeline.md)
+
+- Copilot guardrails (MANDATORY): [Docs/COPILOT_GUARDRAILS.md](Docs/COPILOT_GUARDRAILS.md)

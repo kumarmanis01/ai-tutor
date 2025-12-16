@@ -1,3 +1,8 @@
+/// ⚠️ AI CONTENT ENGINE RULES
+/// - JobStatus, JobType, ContentStatus MUST be enums
+/// - No string status fields
+/// - No cascading deletes for jobs or content
+/// - Soft deletes only
 generator client {
   provider = "prisma-client-js"
 }
@@ -63,6 +68,16 @@ enum JobType {
   questions
   tests
   assemble
+}
+
+enum EntityType {
+  BOARD
+  CLASS
+  SUBJECT
+  CHAPTER
+  TOPIC
+  NOTE
+  TEST
 }
 
 model User {
@@ -704,6 +719,7 @@ model ClassLevel {
   boardId   String
   board     Board        @relation(fields: [boardId], references: [id])
   subjects  SubjectDef[]
+  lifecycle SoftDeleteStatus @default(active)
   createdAt DateTime     @default(now())
 
   @@unique([boardId, grade], name: "boardId_grade")
@@ -716,6 +732,7 @@ model SubjectDef {
   classId   String
   class     ClassLevel   @relation(fields: [classId], references: [id])
   chapters  ChapterDef[]
+  lifecycle SoftDeleteStatus @default(active)
   createdAt DateTime     @default(now())
 
   @@unique([classId, slug], name: "classId_slug")
@@ -926,4 +943,26 @@ model ApprovalAudit {
 
   @@index([entityType, entityId])
   @@index([createdAt])
+}
+
+model ExecutionJob {
+  id           String   @id @default(cuid())
+  jobType      JobType
+  entityType   EntityType
+  entityId     String
+
+  payload      Json
+  status       JobStatus   // pending | running | retrying | failed | completed | cancelled
+  attempts     Int         @default(0)
+  maxAttempts  Int         @default(5)
+
+  nextRunAt    DateTime?
+  lastError    String?
+  lockedAt     DateTime?
+  lockedBy     String?
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([status, nextRunAt])
 }

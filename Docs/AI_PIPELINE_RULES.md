@@ -28,3 +28,13 @@
 - Use string literals for enums
 - Never cast Json to any
 - Never ignore lifecycle or status
+
+### COPILOT PIPELINE RULES
+
+- API routes must NOT implement retries, backoff, or execution logic
+- All execution must go through submitJob()
+- Workers are the only place where LLMs are called
+- Redis/Queue creation must be lazy
+- Jobs must be idempotent and resumable
+- Failures must be recorded, never swallowed
+- Cancellation must be respected before execution

@@ -1,10 +1,17 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { assertNoStringFilters } from "@/lib/guards/noStringFilters";
 import { logger } from "@/lib/logger";
 
 // GET all boards
-export async function GET() {
+export async function GET(req: Request) {
   try {
+    try {
+      assertNoStringFilters(req);
+    } catch (e) {
+      return NextResponse.json({ error: e instanceof Error ? e.message : String(e) }, { status: 400 });
+    }
+
     const boards = await prisma.board.findMany({ include: { classes: true } });
     return NextResponse.json(boards);
   } catch (err) {

@@ -19,7 +19,7 @@ export async function GET(req: Request) {
     }
 
     const subjects = await prisma.subjectDef.findMany({
-      where: { classId },
+      where: { classId, lifecycle: "active" },
       include: { chapters: true },
       orderBy: { name: "asc" },
     });
