@@ -39,4 +39,6 @@ Use this as the single starting point for Copilot or any agent that needs to rea
 - **AI Coding Agent Instructions:** [docs/AI_CODING_AGENT_INSTRUCTIONS.md](../docs/AI_CODING_AGENT_INSTRUCTIONS.md)
 - **Schema rules (must-follow):** [docs/Schema_Rules.md](docs/Schema_Rules.md)
 
+- **Copilot engine checklist:** [docs/COPILOT_ENGINE_CHECKLIST.md](docs/COPILOT_ENGINE_CHECKLIST.md)
+
 <!-- Add any new docs here as they are created -->
