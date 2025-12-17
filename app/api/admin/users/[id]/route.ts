@@ -25,7 +25,10 @@ export async function DELETE(req: Request, context: { params: Promise<{ id: stri
   }
   const { id } = await context.params;
   try {
-    await prisma.user.delete({ where: { id } });
+    await prisma.$transaction([
+      prisma.user.update({ where: { id }, data: { status: 'suspended' } }),
+      prisma.auditLog.create({ data: { userId: session.user.id, action: 'soft_delete_user', details: { userId: id }, createdAt: new Date() } })
+    ]);
     return NextResponse.json({ ok: true });
   } catch {
     return NextResponse.json({ error: 'Failed to delete user' }, { status: 500 });

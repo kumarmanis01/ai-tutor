@@ -15,18 +15,17 @@
 "use client";
 import React, { useState } from "react";
 import { alerts } from "@/lib/alerts";
-
-type JobStatus = "queued" | "running" | "failed" | "completed" | "cancelled";
+import { JobStatus as JobStatusConst } from '@/lib/ai-engine/types'
 // StatusBadge with JobStatus type and normalization
-function StatusBadge({ status }: { status: JobStatus }) {
+function StatusBadge({ status }: { status: string }) {
   let color = "bg-gray-200 text-gray-800";
-  if (status === "failed") color = "bg-red-100 text-red-800";
-  else if (status === "completed") color = "bg-green-100 text-green-800";
-  else if (status === "queued") color = "bg-yellow-100 text-yellow-800";
-  else if (status === "running") color = "bg-blue-100 text-blue-800";
-  else if (status === "cancelled") color = "bg-gray-300 text-gray-500";
+  if (status === JobStatusConst.Failed) color = "bg-red-100 text-red-800";
+  else if (status === JobStatusConst.Completed) color = "bg-green-100 text-green-800";
+  else if (status === JobStatusConst.Pending) color = "bg-yellow-100 text-yellow-800";
+  else if (status === JobStatusConst.Running) color = "bg-blue-100 text-blue-800";
+  else if (status === JobStatusConst.Cancelled) color = "bg-gray-300 text-gray-500";
   return (
-    <span className={`px-2 py-1 rounded text-xs font-semibold ${color}`}>{status.toUpperCase()}</span>
+    <span className={`px-2 py-1 rounded text-xs font-semibold ${color}`}>{String(status).toUpperCase()}</span>
   );
 }
 import useSWR from "swr";
@@ -60,8 +59,8 @@ export default function JobDetailPage() {
   };
 
   // Guardrail helpers for allowed actions
-  const canRetry: boolean = job.status === "failed";
-  const canCancel: boolean = job.status === "queued" || job.status === "failed";
+  const canRetry: boolean = job.status === JobStatusConst.Failed;
+  const canCancel: boolean = job.status === JobStatusConst.Pending || job.status === JobStatusConst.Failed;
 
   return (
     <div className="max-w-2xl mx-auto p-8">
@@ -78,7 +77,7 @@ export default function JobDetailPage() {
         <div className="mb-2"><span className="font-semibold">Updated:</span> {job.updatedAt ? new Date(job.updatedAt).toLocaleString() : "-"}</div>
         <div className="mb-2"><span className="font-semibold">Retries:</span> {job.retries}</div>
       </div>
-      {job.status === "failed" && job.error && (
+      {job.status === JobStatusConst.Failed && job.error && (
         <div className="bg-red-50 border border-red-200 rounded p-4 mb-6">
           <div className="font-semibold mb-1">Error Message</div>
           <div className="text-sm text-red-700 whitespace-pre-wrap">{job.error}</div>

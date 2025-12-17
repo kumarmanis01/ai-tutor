@@ -11,6 +11,7 @@
 import React, { useState } from "react";
 import useSWR from "swr";
 import { alerts } from "@/lib/alerts";
+import { JobStatus } from '@/lib/ai-engine/types'
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
@@ -18,7 +19,7 @@ function StatusBadge({ status }: { status: string }) {
   let color = "bg-gray-200 text-gray-800";
   switch (status) {
     case "running": color = "bg-green-100 text-green-800"; break;
-    case "queued": color = "bg-blue-100 text-blue-800"; break;
+    case "pending": color = "bg-blue-100 text-blue-800"; break;
     case "failed": color = "bg-red-100 text-red-800"; break;
     case "completed": color = "bg-gray-300 text-gray-900"; break;
     case "paused": color = "bg-yellow-100 text-yellow-800"; break;
@@ -95,7 +96,7 @@ export default function AIDashboard() {
       <div className="flex items-center gap-4 mb-2">
         <div className="font-semibold">Status:</div>
         <StatusBadge status={statusData?.status} />
-        {statusData?.status === "running" && (
+        {statusData?.status === JobStatus.Running && (
           <button
             className="ml-4 px-4 py-2 bg-yellow-500 text-white rounded disabled:opacity-50"
             onClick={handlePause}
@@ -165,7 +166,7 @@ export default function AIDashboard() {
                   <StatusBadge status={job.status} />
                 </td>
                 <td className="py-2 flex gap-2 flex-wrap">
-                  {job.status === "queued" && (
+                  {job.status === JobStatus.Pending && (
                     <button
                       className="px-2 py-1 bg-red-500 text-white rounded"
                       onClick={() => cancelJob(job.id)}
@@ -174,7 +175,7 @@ export default function AIDashboard() {
                       Cancel
                     </button>
                   )}
-                  {job.status === "failed" && (
+                  {job.status === JobStatus.Failed && (
                     <button
                       className="px-2 py-1 bg-blue-500 text-white rounded"
                       onClick={() => retryJob(job.id)}
@@ -183,7 +184,7 @@ export default function AIDashboard() {
                       Retry
                     </button>
                   )}
-                  {job.status === "completed" && (
+                  {job.status === JobStatus.Completed && (
                     <>
                       <a href={`/admin/content-engine/jobs/${job.id}`} className="px-2 py-1 bg-gray-500 text-white rounded">View</a>
                       {job.contentId && (

@@ -52,6 +52,8 @@
     "type-check": "tsc --noEmit",
     "clear-auth": "set CONFIRM=true && node -r ts-node/register scripts/clear-auth-tables.ts",
     "test": "npm run lint && npm run type-check"
+    ,
+    "test:integration": "node tests/integration/audit-log.test.js"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.10.0",

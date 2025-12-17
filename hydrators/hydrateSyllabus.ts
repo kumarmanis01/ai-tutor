@@ -20,6 +20,7 @@
 
 import { normalizeDifficulty, normalizeLanguage } from "@/lib/normalize";
 import { prisma } from "@/lib/prisma"
+import { JobStatus } from '@/lib/ai-engine/types'
 import { isSystemSettingEnabled } from "@/lib/systemSettings"
 import { getContentQueue } from "@/queues/contentQueue"
 import { logger } from "@/lib/logger"
@@ -73,7 +74,7 @@ export async function enqueueSyllabusHydration(input: {
     subjectId,
     grade: input.grade,
     board: input.board,
-    status: { in: ['pending', 'running'] }
+    status: { in: [JobStatus.Pending, JobStatus.Running] }
   }
   const existingJob = await prisma.hydrationJob.findFirst({ where: existingJobWhere })
   if (existingJob) return { created: false, reason: 'job_already_queued', jobId: existingJob.id }
@@ -86,7 +87,7 @@ export async function enqueueSyllabusHydration(input: {
     subjectId,
     language: normalizeLanguage(input.language) ?? 'en',
     difficulty: normalizeDifficulty('medium'),
-    status: 'pending'
+    status: JobStatus.Pending
   }
   // If Redis is not configured, avoid creating a DB job we can't enqueue.
   if (!process.env.REDIS_URL) {

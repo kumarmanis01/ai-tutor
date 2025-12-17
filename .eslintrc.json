@@ -17,6 +17,14 @@
             "name": "next/navigation",
             "importNames": ["useRouter"],
             "message": "Do not use router.refresh() in admin pages. Use SWR mutate()."
+          },
+          {
+            "name": "@/lib/prisma",
+            "message": "Do not import Prisma client directly in UI or admin pages. Use server API routes."
+          },
+          {
+            "name": "@/lib/callLLM",
+            "message": "Do not call LLMs from UI or API handlers directly. Use job-based workers and lib/callLLM only from workers."
           }
         ]
       }

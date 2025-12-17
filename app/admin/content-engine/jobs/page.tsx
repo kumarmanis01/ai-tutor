@@ -10,6 +10,7 @@
 
 import useSWR from 'swr';
 import { alerts } from '@/lib/alerts';
+import { JobStatus } from '@/lib/ai-engine/types'
 
 const fetcher = (url: string) => fetch(url).then(res => res.json());
 
@@ -57,7 +58,7 @@ export default function JobsIndexPage() {
                                 <td className="px-3 py-2 border">{job.status}</td>
                                 <td className="px-3 py-2 border">{new Date(job.createdAt).toLocaleString()}</td>
                                 <td className="px-3 py-2 border space-x-2">
-                                    {job.status === 'failed' && (
+                                    {job.status === JobStatus.Failed && (
                                         <button
                                             className="px-2 py-1 text-xs rounded bg-blue-600 text-white hover:bg-blue-700"
                                             onClick={() => handleAction(job.id, 'retry')}

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
+import { ApprovalStatus } from '@/lib/ai-engine/types'
 
 export async function POST(
   req: Request,
@@ -18,7 +19,7 @@ export async function POST(
     return NextResponse.json({ error: "Chapter not found" }, { status: 404 })
   }
 
-  if (chapter.status === "approved") {
+  if (chapter.status === ApprovalStatus.Approved) {
     return NextResponse.json({ message: "Already approved" })
   }
 
@@ -36,6 +37,7 @@ export async function POST(
         actorId: adminId,
       },
     }),
+    prisma.auditLog.create({ data: { userId: adminId, action: 'approve_chapter', details: { chapterId: params.id, fromStatus: chapter.status }, createdAt: new Date() } })
   ])
 
   return NextResponse.json({ success: true })

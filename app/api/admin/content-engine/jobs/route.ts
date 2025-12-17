@@ -16,12 +16,24 @@
 import { NextResponse } from 'next/server';
 import { submitJob } from '@/lib/execution-pipeline/submitJob';
 import { logger } from '@/lib/logger';
+import { prisma } from '@/lib/prisma';
 
 export async function POST(req: Request) {
   try {
     const body = await req.json();
 
-    const { jobType, entityType, entityId, payload, maxAttempts } = body;
+    logger.info('POST /api/admin/content-engine/jobs incoming', { body });
+    const { jobType, entityType, entityId, payload: bodyPayload, maxAttempts } = body;
+
+    // If callers send language/ids at top-level (legacy/UI), fold into payload
+    const payload = bodyPayload ?? {
+      language: body.language ?? undefined,
+      boardId: body.boardId ?? undefined,
+      classId: body.classId ?? undefined,
+      subjectId: body.subjectId ?? undefined,
+      chapterId: body.chapterId ?? undefined,
+      topicId: body.topicId ?? undefined,
+    };
 
     if (!jobType || !entityType || !entityId) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
@@ -32,6 +44,24 @@ export async function POST(req: Request) {
     return NextResponse.json({ jobId: result.jobId, existing: result.existing });
   } catch (err) {
     logger?.error?.('POST /api/admin/content-engine/jobs error', { err });
+    return NextResponse.json({ error: 'failed' }, { status: 500 });
+  }
+}
+
+// GET /api/admin/content-engine/jobs?limit=20
+export async function GET(req: Request) {
+  try {
+    const url = new URL(req.url);
+    const limit = Math.min(Number(url.searchParams.get('limit') || '20') || 20, 100);
+
+    const jobs = await prisma.executionJob.findMany({
+      orderBy: { createdAt: 'desc' },
+      take: limit,
+    });
+
+    return NextResponse.json({ jobs });
+  } catch (err) {
+    logger?.error?.('GET /api/admin/content-engine/jobs error', { err });
     return NextResponse.json({ error: 'failed' }, { status: 500 });
   }
 }

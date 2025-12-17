@@ -10,6 +10,7 @@
 
 import useSWR from 'swr';
 import { alerts } from '@/lib/alerts';
+import { JobStatus } from '@/lib/ai-engine/types'
 
 const fetcher = (url: string) => fetch(url).then(res => res.json());
 
@@ -57,7 +58,7 @@ export default function ModerationIndexPage() {
                                 <td className="px-3 py-2 border">{item.language || '-'}</td>
                                 <td className="px-3 py-2 border">{new Date(item.createdAt).toLocaleString()}</td>
                                 <td className="px-3 py-2 border space-x-2">
-                                    {item.status === 'pending' && (
+                                    {item.status === JobStatus.Pending && (
                                         <>
                                             <button
                                                 className="px-3 py-1 rounded bg-green-600 text-white text-xs hover:bg-green-700 transition"

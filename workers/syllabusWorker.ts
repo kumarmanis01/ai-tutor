@@ -12,11 +12,27 @@
  * - ApprovalStatus MUST remain draft
  */
 
+/**
+ * AI CONTENT ENGINE NOTICE:
+ * - Job-based execution only
+ * - No per-job pause/resume
+ * - No streaming or progress tracking
+ * - All AI calls are atomic and retryable
+ * - Content requires admin approval
+ *
+ * ⚠️ DO NOT:
+ * - Call LLMs directly
+ * - Mutate jobs after creation
+ * - Add progress tracking
+ * - Use router.refresh() with SWR
+ */
+
 import { prisma } from "@/lib/prisma"
 import { callLLM } from "@/lib/callLLM"
 import { toSlug } from "@/lib/slug"
 import { isSystemSettingEnabled } from "@/lib/systemSettings"
 import { logger } from "@/lib/logger"
+import { JobStatus, ApprovalStatus } from '@/lib/ai-engine/types'
 // Lightweight runtime validator for syllabus JSON (avoids adding zod dependency)
 function validateSyllabusShape(raw: any) {
   if (!raw || typeof raw !== 'object') return false
@@ -43,8 +59,8 @@ function validateSyllabusShape(raw: any) {
 export async function handleSyllabusJob(jobId: string) {
   // Atomically claim the job: pending -> running
   const claim = await prisma.hydrationJob.updateMany({
-    where: { id: jobId, status: 'pending' },
-    data: { status: 'running', attempts: { increment: 1 } }
+    where: { id: jobId, status: JobStatus.Pending },
+    data: { status: JobStatus.Running, attempts: { increment: 1 } }
   })
   if (claim.count === 0) {
     // already claimed or not pending
@@ -58,21 +74,21 @@ export async function handleSyllabusJob(jobId: string) {
   // Respect global pause flag — revert to pending and exit if paused
   const paused = await prisma.systemSetting.findUnique({ where: { key: "HYDRATION_PAUSED" } })
   if (isSystemSettingEnabled(paused?.value)) {
-    await prisma.hydrationJob.update({ where: { id: job.id }, data: { status: 'pending' } })
+    await prisma.hydrationJob.update({ where: { id: job.id }, data: { status: JobStatus.Pending } })
     return
   }
 
   // Ensure subjectId exists on job
   const subjectId = (job as any).subjectId || null
   if (!subjectId) {
-    await prisma.hydrationJob.update({ where: { id: job.id }, data: { status: 'failed', lastError: 'missing_subjectId' } })
+    await prisma.hydrationJob.update({ where: { id: job.id }, data: { status: JobStatus.Failed, lastError: 'missing_subjectId' } })
     return
   }
 
   // Re-check idempotency: if any active chapter exists for this subject, mark completed and return
   const existing = await prisma.chapterDef.findFirst({ where: { subjectId: subjectId as string, lifecycle: 'active' } })
   if (existing) {
-    await prisma.hydrationJob.update({ where: { id: job.id }, data: { status: 'completed' } })
+    await prisma.hydrationJob.update({ where: { id: job.id }, data: { status: JobStatus.Completed } })
     return
   }
 
@@ -120,7 +136,7 @@ JSON Schema:
   try {
     llmResponse = await callLLM({ prompt, meta: { promptType: 'syllabus', board, grade, subject: subjectName, language } })
   } catch (err: any) {
-    await prisma.hydrationJob.update({ where: { id: job.id }, data: { status: 'failed', lastError: err.message } })
+    await prisma.hydrationJob.update({ where: { id: job.id }, data: { status: JobStatus.Failed, lastError: err.message } })
     return
   }
 
@@ -135,7 +151,7 @@ JSON Schema:
     if (typeof logger !== "undefined") {
       logger.error("Failed to parse LLM output in handleSyllabusJob", { jobId: job.id, error: err });
     }
-    await prisma.hydrationJob.update({ where: { id: job.id }, data: { status: 'failed', lastError: 'invalid_llm_output' } })
+    await prisma.hydrationJob.update({ where: { id: job.id }, data: { status: JobStatus.Failed, lastError: 'invalid_llm_output' } })
     return
   }
 
@@ -161,7 +177,7 @@ JSON Schema:
             slug,
             order: ch.order ?? 0,
             subjectId: subjectId as string,
-            status: 'draft',
+            status: ApprovalStatus.Draft,
             lifecycle: 'active'
           }
         })
@@ -180,7 +196,7 @@ JSON Schema:
                 slug: tslug,
                 order: t.order ?? 0,
                 chapterId: chapter.id,
-                status: 'draft',
+                status: ApprovalStatus.Draft,
                 lifecycle: 'active'
               }
             })
@@ -189,12 +205,12 @@ JSON Schema:
       }
     })
   } catch (err: any) {
-    await prisma.hydrationJob.update({ where: { id: job.id }, data: { status: 'failed', lastError: err.message } })
+    await prisma.hydrationJob.update({ where: { id: job.id }, data: { status: JobStatus.Failed, lastError: err.message } })
     return
   }
 
   // Mark job completed
-  await prisma.hydrationJob.update({ where: { id: job.id }, data: { status: 'completed' } })
+  await prisma.hydrationJob.update({ where: { id: job.id }, data: { status: JobStatus.Completed } })
 }
 
 export default handleSyllabusJob

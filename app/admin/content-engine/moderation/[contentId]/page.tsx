@@ -11,6 +11,7 @@
 import React, { useState } from "react";
 import useSWR from "swr";
 import { useParams, useRouter } from "next/navigation";
+import { JobStatus, ApprovalStatus } from '@/lib/ai-engine/types'
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
@@ -33,9 +34,9 @@ export default function ContentReviewPage() {
   const status = content.status as ContentStatus;
 
   // Centralized allowed transitions
-  const canApprove = status === "pending";
-  const canReject = status === "pending";
-  const canRollback = status !== "pending";
+  const canApprove = status === JobStatus.Pending;
+  const canReject = status === JobStatus.Pending;
+  const canRollback = status !== JobStatus.Pending;
 
   /**
    * Moderation rules:
@@ -79,7 +80,7 @@ export default function ContentReviewPage() {
         <div className="mb-2"><span className="font-semibold">Topic:</span> {content.topicName || "-"}</div>
         <div className="mb-2 flex items-center gap-2"><span className="font-semibold">Language:</span> <span className="inline-block px-2 py-1 bg-slate-100 rounded text-xs">{content.language}</span></div>
         <div className="mb-2"><span className="font-semibold">Generated At:</span> {content.createdAt ? new Date(content.createdAt).toLocaleDateString() : "-"}</div>
-        <div className="mb-2"><span className="font-semibold">Status:</span> <span className={`px-2 py-1 rounded text-xs font-semibold ${status === "pending" ? "bg-yellow-100 text-yellow-800" : status === "approved" ? "bg-green-100 text-green-800" : status === "rejected" ? "bg-red-100 text-red-800" : "bg-gray-200 text-gray-800"}`}>{status}</span></div>
+        <div className="mb-2"><span className="font-semibold">Status:</span> <span className={`px-2 py-1 rounded text-xs font-semibold ${status === JobStatus.Pending ? "bg-yellow-100 text-yellow-800" : status === ApprovalStatus.Approved ? "bg-green-100 text-green-800" : status === ApprovalStatus.Rejected ? "bg-red-100 text-red-800" : "bg-gray-200 text-gray-800"}`}>{status}</span></div>
       </div>
       {/* Content Preview */}
       <div className="mb-6">
@@ -96,7 +97,7 @@ export default function ContentReviewPage() {
           value={comment}
           onChange={e => setComment(e.target.value)}
           rows={2}
-          disabled={loading || status !== "pending"}
+          disabled={loading || status !== JobStatus.Pending}
         />
         {actionError && <div className="text-red-600 text-sm mb-2">{actionError}</div>}
         <div className="flex gap-4 items-center">
@@ -126,7 +127,7 @@ export default function ContentReviewPage() {
           </div>
         </div>
       </div>
-      {status !== "pending" && (
+      {status !== JobStatus.Pending && (
         <div className="text-gray-500">This content has already been {status}.</div>
       )}
       <a

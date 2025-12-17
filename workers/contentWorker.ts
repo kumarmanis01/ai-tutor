@@ -1,3 +1,18 @@
+/**
+ * AI CONTENT ENGINE NOTICE:
+ * - Job-based execution only
+ * - No per-job pause/resume
+ * - No streaming or progress tracking
+ * - All AI calls are atomic and retryable
+ * - Content requires admin approval
+ *
+ * ⚠️ DO NOT:
+ * - Call LLMs directly
+ * - Mutate jobs after creation
+ * - Add progress tracking
+ * - Use router.refresh() with SWR
+ */
+
 import { Worker, Job } from "bullmq";
 import { getRedis } from "@/lib/redis";
 import { prisma } from "@/lib/prisma";

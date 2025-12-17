@@ -41,12 +41,32 @@ export default function HierarchyActions({ selection: propSelection }: Props) {
 
     setSubmitting(true);
     try {
-      const payload: any = { jobType, entityType, entityId };
-      if (selection?.language) payload.language = selection.language;
+      // Require language selection for content-generation actions
+      if (!selection?.language) {
+        alerts.warning('Please select a language before running this action.');
+        setSubmitting(false);
+        return;
+      }
 
-      const res = await fetch("/api/admin/content-engine/jobs", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+      const payload: any = {
+        jobType,
+        entityType,
+        entityId,
+        language: selection.language,
+        // include selected academic IDs for extra context
+        boardId: selection?.boardId ?? null,
+        classId: selection?.classId ?? null,
+        subjectId: selection?.subjectId ?? null,
+        chapterId: selection?.chapterId ?? null,
+        topicId: selection?.topicId ?? null,
+      };
+
+      // Log the outgoing payload for debugging (server will also validate)
+      logger.info('HierarchyActions: enqueueing job', { payload });
+
+      const res = await fetch('/api/admin/content-engine/jobs', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       });
       if (!res.ok) throw new Error("enqueue_failed");

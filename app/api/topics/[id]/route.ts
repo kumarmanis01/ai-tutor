@@ -13,6 +13,6 @@ export async function PUT(req: Request, { params }: any) {
 }
 
 export async function DELETE(req: Request, { params }: any) {
-  await prisma.topicDef.delete({ where: { id: params.id } });
+  await prisma.topicDef.update({ where: { id: params.id }, data: { lifecycle: 'deleted' } });
   return NextResponse.json({ success: true });
 }

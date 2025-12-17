@@ -13,6 +13,7 @@ export async function PUT(req: Request, { params }: any) {
 }
 
 export async function DELETE(req: Request, { params }: any) {
-  await prisma.generatedTest.delete({ where: { id: params.id } });
+  // Soft delete: mark lifecycle as deleted instead of hard delete
+  await prisma.generatedTest.update({ where: { id: params.id }, data: { lifecycle: 'deleted' } });
   return NextResponse.json({ success: true });
 }

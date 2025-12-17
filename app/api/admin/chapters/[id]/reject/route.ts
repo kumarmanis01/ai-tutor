@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
+import { getServerSessionForHandlers } from '@/lib/session';
 export async function POST(
   req: Request,
   { params }: { params: { id: string } }
@@ -11,6 +12,9 @@ export async function POST(
   })
 
   if (!chapter) return NextResponse.json({ error: "Not found" }, { status: 404 })
+
+  const session = await getServerSessionForHandlers();
+  const adminId = session?.user?.id ?? 'SYSTEM_ADMIN'
 
   await prisma.$transaction([
     prisma.chapterDef.update({
@@ -26,6 +30,7 @@ export async function POST(
         reason,
       },
     }),
+    prisma.auditLog.create({ data: { userId: adminId, action: 'reject_chapter', details: { chapterId: params.id, reason, fromStatus: chapter.status }, createdAt: new Date() } })
   ])
 
   return NextResponse.json({ success: true })

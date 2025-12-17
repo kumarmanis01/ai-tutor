@@ -1,4 +1,10 @@
 // src/queues/contentQueue.ts
+/**
+ * AI CONTENT ENGINE NOTICE:
+ * - Queue/Redis clients must be lazy-initialized, never at module import time.
+ * - Always use getter functions to create queues on demand.
+ * - Do not instantiate queues outside these functions.
+ */
 import { Queue } from "bullmq";
 import { getRedis } from "@/lib/redis";
 

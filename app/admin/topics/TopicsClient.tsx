@@ -1,14 +1,15 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { JobStatus, ApprovalStatus } from '@/lib/ai-engine/types'
 
 function StatusBadge({ status }: { status: string }) {
   const color =
-    status === "approved"
+    status === ApprovalStatus.Approved
       ? "bg-green-200 text-green-800"
-      : status === "pending"
+      : status === JobStatus.Pending
       ? "bg-yellow-200 text-yellow-800"
-      : status === "rejected"
+      : status === ApprovalStatus.Rejected
       ? "bg-red-200 text-red-800"
       : "bg-gray-200 text-gray-800";
   return <span className={`px-2 py-1 rounded text-xs font-semibold ${color}`}>{status}</span>;
