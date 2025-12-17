@@ -740,27 +740,27 @@ model Board {
 }
 
 model ClassLevel {
-  id        String       @id @default(cuid())
+  id        String           @id @default(cuid())
   grade     Int
   slug      String
   boardId   String
-  board     Board        @relation(fields: [boardId], references: [id])
+  board     Board            @relation(fields: [boardId], references: [id])
   subjects  SubjectDef[]
   lifecycle SoftDeleteStatus @default(active)
-  createdAt DateTime     @default(now())
+  createdAt DateTime         @default(now())
 
   @@unique([boardId, grade], name: "boardId_grade")
 }
 
 model SubjectDef {
-  id        String       @id @default(cuid())
+  id        String           @id @default(cuid())
   name      String
   slug      String
   classId   String
-  class     ClassLevel   @relation(fields: [classId], references: [id])
+  class     ClassLevel       @relation(fields: [classId], references: [id])
   chapters  ChapterDef[]
   lifecycle SoftDeleteStatus @default(active)
-  createdAt DateTime     @default(now())
+  createdAt DateTime         @default(now())
 
   @@unique([classId, slug], name: "classId_slug")
 }
@@ -973,23 +973,23 @@ model ApprovalAudit {
 }
 
 model ExecutionJob {
-  id           String   @id @default(cuid())
-  jobType      JobType
-  entityType   EntityType
-  entityId     String
+  id         String     @id @default(cuid())
+  jobType    JobType
+  entityType EntityType
+  entityId   String
 
-  payload      Json
-  status       JobStatus   // pending | running | retrying | failed | completed | cancelled
-  attempts     Int         @default(0)
-  maxAttempts  Int         @default(5)
+  payload     Json
+  status      JobStatus // pending | running | retrying | failed | completed | cancelled
+  attempts    Int       @default(0)
+  maxAttempts Int       @default(5)
 
-  nextRunAt    DateTime?
-  lastError    String?
-  lockedAt     DateTime?
-  lockedBy     String?
+  nextRunAt DateTime?
+  lastError String?
+  lockedAt  DateTime?
+  lockedBy  String?
 
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([status, nextRunAt])
 }

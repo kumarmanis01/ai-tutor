@@ -3,6 +3,7 @@ import { logger } from '@/lib/logger';
 import { normalizeJobType } from '@/lib/normalize';
 import { JobType } from '@prisma/client';
 import { JobStatus } from '@/lib/ai-engine/types';
+import { getContentQueue } from '@/queues/contentQueue';
 
 export type SubmitJobInput = {
   jobType: unknown; // validated by callers; cast to Prisma enum at write-time
@@ -122,5 +123,37 @@ export async function submitJob(input: SubmitJobInput) {
 
   logger.info(`submitJob: created ExecutionJob ${job.id} (${normalizedJobType})`);
 
+    // If Redis is configured, enqueue a worker job so workers can pick this up.
+    if (process.env.REDIS_URL) {
+      try {
+        const q = getContentQueue();
+        // Map prisma JobType -> worker type string
+        const mapping: Record<string, string> = {
+          syllabus: 'SYLLABUS',
+          notes: 'NOTES',
+          questions: 'QUESTIONS',
+          tests: 'ASSEMBLE_TEST',
+          assemble: 'ASSEMBLE_TEST',
+        };
+        const workerType = mapping[String(normalizedJobType)] || String(normalizedJobType).toUpperCase();
+        await q.add(`${workerType.toLowerCase()}-${job.id}`, { type: workerType, payload: { jobId: job.id, ...payload } });
+        logger.info('submitJob: enqueued to Redis queue', { queue: 'content-hydration', jobId: job.id, workerType });
+      } catch (err) {
+        logger.error('submitJob: failed to enqueue to Redis', { err, jobId: job.id });
+      }
+
+      // Auto-scale: if no running workers and auto-scale enabled, create a WorkerLifecycle STARTING row
+      try {
+        const runningCount = await prisma.workerLifecycle.count({ where: { status: 'RUNNING' } });
+        const auto = process.env.ORCHESTRATOR_AUTO_SCALE === '1' || process.env.ORCHESTRATOR_AUTO_SCALE === 'true';
+        if (auto && runningCount === 0) {
+          const lifecycleId = `wk-${Date.now().toString(36)}-${Math.random().toString(36).slice(2,8)}`;
+          await prisma.workerLifecycle.create({ data: { id: lifecycleId, type: 'content-hydration', status: 'STARTING', startedAt: new Date(), lastHeartbeatAt: new Date() } });
+          logger.info('submitJob: created WorkerLifecycle STARTING to request a worker', { lifecycleId, jobId: job.id });
+        }
+      } catch (err) {
+        logger.warn('submitJob: failed to create WorkerLifecycle for auto-scale', { err });
+      }
+    }
   return { jobId: job.id, existing: false };
 }

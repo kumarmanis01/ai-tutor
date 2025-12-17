@@ -42,3 +42,5 @@ Use this as the single starting point for Copilot or any agent that needs to rea
 - **Copilot engine checklist:** [docs/COPILOT_ENGINE_CHECKLIST.md](docs/COPILOT_ENGINE_CHECKLIST.md)
 
 <!-- Add any new docs here as they are created -->
+- **AI Content Enterprise Architecture Guardrails:** [docs/ai_content_enterprise_architecture_guardrails.md](docs/ai_content_enterprise_architecture_guardrails.md)
+- **AI Content Engine Production Architecture v1.0:** [docs/AI_Content_Engine_PRODUCTION_ARCHITECTURE_v1.0.md](docs/AI_Content_Engine_PRODUCTION_ARCHITECTURE_v1.0.md)

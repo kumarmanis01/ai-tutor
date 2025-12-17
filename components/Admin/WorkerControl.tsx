@@ -40,7 +40,7 @@ export default function WorkerControl() {
         stoppedAt: r.stoppedAt ?? null,
         lastHeartbeatAt: r.lastHeartbeatAt ?? null,
       })) : [])
-    } catch (err) {
+    } catch {
       // ignore
     }
   }
@@ -89,7 +89,7 @@ export default function WorkerControl() {
         await navigator.clipboard.writeText(text)
         fireToast('Copied to clipboard')
       }
-    } catch (err) {
+    } catch {
       fireToast('Unable to copy')
     }
   }

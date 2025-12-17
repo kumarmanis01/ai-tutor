@@ -1,3 +1,80 @@
+# HARD GUARDRAILS — Copilot Instructions
+
+Copilot MUST obey these rules when generating or modifying code related to the AI Content Engine.
+
+🔒 ABSOLUTE DO NOTs
+
+❌ DO NOT call LLMs from:
+
+- API routes
+- UI components
+- Server actions
+
+❌ DO NOT introduce:
+
+- String-based status fields
+- Cascading deletes for academic or AI content
+- In-memory job state
+- Module-scope Redis or Queue connections
+
+❌ DO NOT:
+
+- Mutate completed jobs
+- Retry jobs by editing existing rows
+- Create workers per job
+- Bypass moderation
+
+✅ REQUIRED PATTERNS
+Job Handling
+
+- Always create `ExecutionJob`
+- Always use enums for status
+- Always lock jobs atomically
+- Retry = new job
+
+Worker Rules
+
+- Lazy-initialize Redis/queues
+- Emit lifecycle events
+- Write audit logs
+- Gracefully drain on shutdown
+
+API Rules
+
+- Accept and return IDs only
+- Validate hierarchy existence
+- Never assume Redis availability
+- Write `AuditLog` for admin actions
+
+Content Rules
+
+- Version everything
+- Soft delete only
+- Approval required for visibility
+- Every AI call logs `AIContentLog`
+
+🧠 Mental Model Copilot Must Follow
+
+“This is an enterprise academic content system, not a chat app.”
+
+Deterministic
+
+Auditable
+
+Moderated
+
+Cost-aware
+
+Failure-tolerant
+
+📌 If Copilot Is Unsure
+
+Copilot MUST:
+
+- Ask for clarification
+- Default to safety
+- Prefer DB truth over queues
+- Prefer immutability over convenience
 # 🛡️ AI Content Engine – Copilot Guardrails
 
 > **Purpose**
