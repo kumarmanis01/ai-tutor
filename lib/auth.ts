@@ -22,6 +22,16 @@ export async function requireAdmin() {
   return session;
 }
 
+// Require admin or moderator role (defense-in-depth for admin APIs)
+export async function requireAdminOrModerator() {
+  const session = await getServerSession(authOptions);
+  const role = session?.user?.role ?? '';
+  if (!session || !session.user || !['admin', 'moderator'].includes(role)) {
+    throw new Error('Unauthorized');
+  }
+  return session;
+}
+
 // This function sends a welcome email to the user
 async function sendWelcomeEmail(to: string, name?: string) {
   // Set up the email transporter using your SMTP credentials

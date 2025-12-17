@@ -22,33 +22,49 @@ export async function POST(req: Request, { params }: { params: { id: string; act
     const job = await prisma.executionJob.findUnique({ where: { id } });
     if (!job) return NextResponse.json({ error: 'not_found' }, { status: 404 });
 
+    // Require authenticated admin/moderator session for actions (defense-in-depth)
+    const session = await getServerSessionForHandlers();
+    const role = session?.user?.role ?? null;
+    if (!role || (role !== 'admin' && role !== 'moderator')) {
+      return NextResponse.json({ error: 'forbidden' }, { status: 403 });
+    }
+
     if (action === 'cancel') {
       // Only allow cancelling pending jobs per guardrails
       if (job.status !== JobStatus.Pending) {
         return NextResponse.json({ error: 'cannot_cancel', message: 'Only pending jobs can be cancelled' }, { status: 400 });
       }
 
-      const session = await getServerSessionForHandlers();
       const adminId = session?.user?.id ?? null;
 
-      logger.info('cancel action requested by admin', { jobId: id, prevStatus: job.status });
+      logger.info('cancel action requested by admin', { jobId: id, prevStatus: job.status, actor: adminId });
       const updated = await prisma.executionJob.update({ where: { id }, data: { status: JobStatus.Cancelled, lastError: 'Cancelled by admin' } });
       logger.info('job status updated', { jobId: id, prevStatus: job.status, newStatus: updated.status });
+      try {
+        await prisma.jobExecutionLog.create({ data: { jobId: id, event: 'CANCELLED', prevStatus: job.status, newStatus: updated.status, message: 'Cancelled by admin', meta: { actor: adminId } } });
+      } catch (e) {
+        logger?.warn?.('admin.cancel: failed to write JobExecutionLog', { err: e, jobId: id });
+      }
       await prisma.auditLog.create({ data: { userId: adminId, action: 'cancel_job', details: { jobId: id, prevStatus: job.status }, createdAt: new Date() } });
       return NextResponse.json({ ok: true, job: updated });
     }
 
     if (action === 'retry') {
-      // Retry creates a new job (do not mutate old job). Allowed when previous job failed.
-      if (job.status !== JobStatus.Failed) {
-        return NextResponse.json({ error: 'cannot_retry', message: 'Only failed jobs can be retried' }, { status: 400 });
+      // Retry creates a new job (do not mutate old job). Allowed when previous job failed or cancelled.
+      if (job.status !== JobStatus.Failed && job.status !== JobStatus.Cancelled) {
+        return NextResponse.json({ error: 'cannot_retry', message: 'Only failed or cancelled jobs can be retried' }, { status: 400 });
       }
 
-      logger.info('retry action requested by admin', { originalJobId: id });
+      logger.info('retry action requested by admin', { originalJobId: id, actor: session?.user?.id ?? null });
       const result = await submitJob({ jobType: job.jobType as any, entityType: job.entityType as any, entityId: job.entityId, payload: job.payload ?? {}, maxAttempts: job.maxAttempts ?? 5 });
       logger.info('retry created new job', { originalJobId: id, newJobId: result.jobId, existing: result.existing });
 
-      const session = await getServerSessionForHandlers();
+      try {
+        await prisma.jobExecutionLog.create({ data: { jobId: id, event: 'RETRY', prevStatus: job.status, newStatus: 'retrying', meta: { newJobId: result.jobId, actor: session?.user?.id ?? null } } });
+      } catch (e) {
+        logger?.warn?.('admin.retry: failed to write JobExecutionLog', { err: e, jobId: id });
+      }
+
       const adminId = session?.user?.id ?? null;
       await prisma.auditLog.create({ data: { userId: adminId, action: 'retry_job', details: { originalJobId: id, newJobId: result.jobId }, createdAt: new Date() } });
 

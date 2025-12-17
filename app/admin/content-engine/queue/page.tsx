@@ -1,0 +1,23 @@
+import React from 'react';
+
+async function getQueue() {
+  const res = await fetch('/api/admin/content-engine/queue', { cache: 'no-store' });
+  if (!res.ok) return null;
+  return res.json();
+}
+
+export default async function QueuePage() {
+  const data = await getQueue();
+
+  return (
+    <div className="p-6">
+      <h1 className="text-2xl font-semibold mb-4">Content Engine — Queue</h1>
+      {!data && <div className="text-sm text-gray-500">Unable to fetch queue info.</div>}
+      {data && (
+        <div className="bg-white dark:bg-gray-900 rounded shadow p-4">
+          <pre className="text-sm whitespace-pre-wrap">{JSON.stringify(data, null, 2)}</pre>
+        </div>
+      )}
+    </div>
+  );
+}

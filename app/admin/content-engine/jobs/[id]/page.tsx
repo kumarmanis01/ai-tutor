@@ -1,117 +1,106 @@
-/**
- * AI CONTENT ENGINE NOTICE:
- * - Job-based execution only
- * - No per-job pause/resume
- * - No streaming or progress tracking
- * - All AI calls are atomic and retryable
- * - Content requires admin approval
- *
- * NOTE:
- * Jobs are atomic by design.
- * There is intentionally NO pause/resume per job.
- * Retry always creates a new execution attempt.
- */
-
 "use client";
-import React, { useState } from "react";
-import { alerts } from "@/lib/alerts";
-import { JobStatus as JobStatusConst } from '@/lib/ai-engine/types'
-// StatusBadge with JobStatus type and normalization
-function StatusBadge({ status }: { status: string }) {
-  let color = "bg-gray-200 text-gray-800";
-  if (status === JobStatusConst.Failed) color = "bg-red-100 text-red-800";
-  else if (status === JobStatusConst.Completed) color = "bg-green-100 text-green-800";
-  else if (status === JobStatusConst.Pending) color = "bg-yellow-100 text-yellow-800";
-  else if (status === JobStatusConst.Running) color = "bg-blue-100 text-blue-800";
-  else if (status === JobStatusConst.Cancelled) color = "bg-gray-300 text-gray-500";
-  return (
-    <span className={`px-2 py-1 rounded text-xs font-semibold ${color}`}>{String(status).toUpperCase()}</span>
-  );
-}
-import useSWR from "swr";
-import { useParams } from "next/navigation";
+
+import React, { useMemo, useState } from 'react';
+import useSWR from 'swr';
+import JobActions from '@/components/Admin/JobActions';
+import { JobStatus as JobStatusConst } from '@/lib/ai-engine/types';
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
+function StatusBadge({ status }: { status: string }) {
+  let color = 'bg-gray-200 text-gray-800';
+  if (status === JobStatusConst.Failed) color = 'bg-red-100 text-red-800';
+  else if (status === JobStatusConst.Completed) color = 'bg-green-100 text-green-800';
+  else if (status === JobStatusConst.Pending) color = 'bg-yellow-100 text-yellow-800';
+  else if (status === JobStatusConst.Running) color = 'bg-blue-100 text-blue-800';
+  else if (status === JobStatusConst.Cancelled) color = 'bg-gray-300 text-gray-500';
+  return <span className={`px-2 py-1 rounded text-xs font-semibold ${color}`}>{String(status).toUpperCase()}</span>;
+}
+
+import { useParams } from 'next/navigation';
+
 export default function JobDetailPage() {
   const params = useParams();
-//   const router = useRouter();
-  const { id } = params as { id: string };
-  const { data, mutate } = useSWR(id ? `/api/admin/content-engine/jobs/${id}` : null, fetcher);
-  const [loading, setLoading] = useState(false);
+  const id = params?.id as string | undefined;
+  const { data: jobRes, error: jobErr, mutate: mutateJob } = useSWR(id ? `/api/admin/content-engine/jobs/${id}` : null, fetcher);
+  const { data: timelineRes, mutate: mutateTimeline } = useSWR(id ? `/api/admin/content-engine/jobs/${id}/timeline` : null, fetcher);
+  const [errorsOnly, setErrorsOnly] = useState(false);
 
-  if (!data) return <div className="p-8">Loading...</div>;
-  const job = data.job;
+  const job = jobRes?.job;
 
-  const handleAction = async (action: "retry" | "cancel") => {
-    if (action === "cancel") {
-      if (!confirm("Cancel this job? This cannot be undone.")) return;
-    }
-    setLoading(true);
-    const res = await fetch(`/api/admin/content-engine/jobs/${id}/${action}`, { method: "POST" });
-    if (!res.ok) {
-      alerts.error("Action failed. Check audit logs.");
-      setLoading(false);
-      return;
-    }
-    await mutate();
-    setLoading(false);
-  };
+  const displayedLogs = useMemo(() => {
+    const logs = timelineRes?.logs ?? [];
+    if (!errorsOnly) return logs;
+    return logs.filter((l: any) => l.message || String(l.event).toUpperCase().includes('FAIL'));
+  }, [timelineRes, errorsOnly]);
 
-  // Guardrail helpers for allowed actions
-  const canRetry: boolean = job.status === JobStatusConst.Failed;
-  const canCancel: boolean = job.status === JobStatusConst.Pending || job.status === JobStatusConst.Failed;
+  if (jobErr) return <div className="p-6 text-red-600">Failed to load job.</div>;
+  if (!job) return <div className="p-6">Loading…</div>;
 
   return (
-    <div className="max-w-2xl mx-auto p-8">
-      <h1 className="text-2xl font-bold mb-4">Job Details</h1>
-      <div className="bg-white rounded shadow p-4 mb-6">
-        <div className="mb-2"><span className="font-semibold">Job ID:</span> {job.id}</div>
-        <div className="mb-2"><span className="font-semibold">Type:</span> {job.jobType}</div>
-        <div className="mb-2"><span className="font-semibold">Entity:</span> {job.entityType}{job.entityName ? ` → ${job.entityName}` : ""}</div>
-        <div className="mb-2"><span className="font-semibold">Board:</span> {job.board || "-"}</div>
-        <div className="mb-2"><span className="font-semibold">Class:</span> {job.classLevel || "-"}</div>
-        <div className="mb-2"><span className="font-semibold">Language:</span> {job.language || "-"}</div>
-        <div className="mb-2"><span className="font-semibold">Status:</span> <StatusBadge status={job.status} /></div>
-        <div className="mb-2"><span className="font-semibold">Created:</span> {job.createdAt ? new Date(job.createdAt).toLocaleString() : "-"}</div>
-        <div className="mb-2"><span className="font-semibold">Updated:</span> {job.updatedAt ? new Date(job.updatedAt).toLocaleString() : "-"}</div>
-        <div className="mb-2"><span className="font-semibold">Retries:</span> {job.retries}</div>
+    <div className="p-6 max-w-3xl mx-auto">
+      <div className="flex items-start justify-between mb-6">
+        <div>
+          <h1 className="text-2xl font-semibold">Job {job.id}</h1>
+          <div className="text-sm text-gray-600">{job.jobType} — {job.entityType} {job.entityName ? `→ ${job.entityName}` : ''}</div>
+        </div>
+        <div>
+          <JobActions jobId={job.id} status={job.status} onDone={() => { mutateJob(); mutateTimeline(); }} />
+        </div>
       </div>
+
+      <div className="grid grid-cols-2 gap-4 mb-6">
+        <div className="bg-white rounded shadow p-4">
+          <div className="text-xs text-gray-500">Status</div>
+          <div className="mt-2"><StatusBadge status={job.status} /></div>
+        </div>
+        <div className="bg-white rounded shadow p-4">
+          <div className="text-xs text-gray-500">Timestamps</div>
+          <div className="mt-2 text-sm">Created: {job.createdAt ? new Date(job.createdAt).toLocaleString() : '-'}</div>
+          <div className="mt-1 text-sm">Updated: {job.updatedAt ? new Date(job.updatedAt).toLocaleString() : '-'}</div>
+        </div>
+      </div>
+
       {job.status === JobStatusConst.Failed && job.error && (
         <div className="bg-red-50 border border-red-200 rounded p-4 mb-6">
           <div className="font-semibold mb-1">Error Message</div>
           <div className="text-sm text-red-700 whitespace-pre-wrap">{job.error}</div>
-          <div className="text-xs text-gray-500 mt-1">
-            This error was returned by the AI provider or validation layer.
-          </div>
+          <div className="text-xs text-gray-500 mt-1">This error was returned by the worker or provider.</div>
         </div>
       )}
-      <div className="flex gap-4">
-        {canRetry && (
-          <button
-            className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
-            onClick={() => handleAction("retry")}
-            disabled={loading}
-          >
-            Retry Job
-          </button>
-        )}
-        {canCancel && (
-          <button
-            className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 disabled:opacity-50"
-            onClick={() => handleAction("cancel")}
-            disabled={loading}
-          >
-            Cancel Job
-          </button>
-        )}
+
+      <div className="mb-2 flex items-center justify-between">
+        <h2 className="text-lg font-medium">Timeline</h2>
+        <div className="flex items-center gap-2">
+          <label className="text-sm">Errors only</label>
+          <input type="checkbox" checked={errorsOnly} onChange={(e) => setErrorsOnly(e.target.checked)} />
+        </div>
       </div>
-      <a
-        href={`/admin/content-engine/audit-logs?jobId=${job.id}`}
-        className="text-sm underline text-blue-600 mt-4 inline-block"
-      >
-        View audit trail →
-      </a>
+
+      <div className="bg-white rounded shadow p-4">
+        {displayedLogs.length === 0 && <div className="text-sm text-gray-500">No events yet.</div>}
+        <ol className="space-y-3">
+          {displayedLogs.map((l: any) => (
+            <li key={l.id} className="flex gap-3">
+              <div className="w-10 flex-none text-center">
+                <span className="text-lg">
+                  {String(l.event).toUpperCase().includes('FAILED') ? '❌' : String(l.event).toUpperCase().includes('RUNNING') ? '▶️' : String(l.event).toUpperCase().includes('COMPLETED') ? '✅' : '●'}
+                </span>
+              </div>
+              <div className="flex-1">
+                <div className="text-xs text-gray-500">{new Date(l.createdAt).toLocaleString()}</div>
+                <div className="font-medium">{l.event}</div>
+                {l.message && <div className="text-sm text-red-700 whitespace-pre-wrap">{l.message}</div>}
+                {l.meta && <pre className="text-xs mt-1 whitespace-pre-wrap bg-gray-50 p-2 rounded">{JSON.stringify(l.meta, null, 2)}</pre>}
+              </div>
+            </li>
+          ))}
+        </ol>
+      </div>
+
+      <div className="mt-6">
+        <a href={`/admin/content-engine/audit-logs?jobId=${job.id}`} className="text-sm underline text-blue-600">View audit trail →</a>
+      </div>
     </div>
   );
 }

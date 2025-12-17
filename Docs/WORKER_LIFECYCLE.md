@@ -1,3 +1,29 @@
+# Worker Lifecycle — Orchestrator Contract
+
+This document defines responsibilities and the contract for `WorkerLifecycle` management.
+
+Key points:
+
+- Ownership: only the orchestrator process (k8s controller, systemd unit, or a dedicated supervisor) MUST create, update, and retire `WorkerLifecycle` rows.
+- Immutability: workers should update their own `lastHeartbeatAt` and `status` fields while running. Jobs, API handlers, and other services MUST NOT create or mutate `WorkerLifecycle` rows.
+- Heartbeats: workers must periodically update `lastHeartbeatAt`. A watchdog process (or orchestrator) may mark stale entries as `FAILED` after a grace period.
+- Statuses: valid lifecycle statuses include `STARTING`, `RUNNING`, `DRAINING`, `STOPPED`, `FAILED`.
+- Audit: orchestrator changes to lifecycle state should also emit `AuditLog` entries for observability.
+
+Why this separation?
+
+- Clear responsibility boundaries prevent races between job submission and worker orchestration.
+- Enables simpler autoscaling decisions and safer rollouts (orchestrator can detect stale workers and trigger replacements).
+- Keeps `submitJob()` small, idempotent, and focused on job creation and enqueueing.
+
+Recommended patterns:
+
+- `submitJob()` MUST only create `ExecutionJob` rows and enqueue to Redis if available.
+- The orchestrator SHOULD create a `WorkerLifecycle` row before starting a worker process and set it to `STARTING`.
+- The worker process SHOULD upsert its lifecycle row on boot and flip to `RUNNING` once ready, then send regular heartbeats.
+- On graceful shutdown the worker SHOULD set status `DRAINING` then `STOPPED`.
+
+See also: `lib/execution-pipeline/submitjob.ts` (enforced behavior) and `workers/heartbeatWatchdog.ts` (example watchdog implementation).
 # Worker Lifecycle and Controller Model
 
 Overview

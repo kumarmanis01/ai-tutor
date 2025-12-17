@@ -990,6 +990,27 @@ model ExecutionJob {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  // Relation to execution logs
+  logs       JobExecutionLog[]
 
   @@index([status, nextRunAt])
+}
+
+// Event log for ExecutionJob lifecycle transitions. Immutable, append-only.
+model JobExecutionLog {
+  id         String    @id @default(cuid())
+  jobId      String
+  event      String    // CREATED | ENQUEUED | ENQUEUE_FAILED | RUNNING | COMPLETED | FAILED | CANCELLED | RETRY
+  prevStatus String?   
+  newStatus  String?
+  message    String?
+  meta       Json?
+
+  job        ExecutionJob @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  createdAt  DateTime  @default(now())
+
+  @@index([jobId])
+  @@index([event])
+  @@index([createdAt])
 }

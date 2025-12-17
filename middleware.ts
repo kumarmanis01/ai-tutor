@@ -21,10 +21,11 @@ export async function middleware(request: NextRequest) {
     }
   }
 
-  // Admin route protection
-  if (pathname.startsWith('/admin')) {
+  // Admin route protection (UI and API)
+  if (pathname.startsWith('/admin') || pathname.startsWith('/api/admin')) {
     logger.debug('[MIDDLEWARE DEBUG] Token: ' + String(token));
-    if (!token || token.role !== 'admin') {
+    const allowed = token && (token.role === 'admin' || token.role === 'moderator');
+    if (!allowed) {
       // Redirect unauthorized users to home page to avoid redirect loop
       return NextResponse.redirect(new URL('/', request.url));
     }

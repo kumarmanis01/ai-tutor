@@ -68,6 +68,14 @@ async function main() {
 
   const lifecycleId = await ensureLifecycleRow(lifecycleIdArg)
 
+  // Workers are allowed to call LLMs. Explicitly enable LLM calls only in
+  // worker runtime to enforce the AI safety boundary.
+  try {
+    process.env.ALLOW_LLM_CALLS = '1'
+  } catch {
+    /* ignore */
+  }
+
   // create worker
   const worker = new Worker(type === 'content-hydration' ? 'content-hydration' : type, async (job: Job) => {
     // Worker must claim job in DB first (Job Ownership Contract)

@@ -3,10 +3,10 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { isSystemSettingEnabled } from "@/lib/systemSettings";
 import { getSyllabusQueue, getNotesQueue, getQuestionsQueue } from "@/queues/contentQueue";
-import { requireAdmin } from "@/lib/auth";
+import { requireAdminOrModerator } from "@/lib/auth";
 
 export async function GET() {
-  await requireAdmin();
+  await requireAdminOrModerator();
 
   const [settings, logsToday, syllabusCount, notesCount, questionsCount] =
     await Promise.all([

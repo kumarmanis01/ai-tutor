@@ -14,16 +14,22 @@
 
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { requireAdmin } from '@/lib/auth'
+import { requireAdminOrModerator } from '@/lib/auth'
 
 export async function GET() {
-  await requireAdmin()
+  await requireAdminOrModerator()
   const workers = await prisma.workerLifecycle.findMany({ orderBy: { updatedAt: 'desc' }, take: 100 })
-  return NextResponse.json(workers)
+  // Include minimal health indicators for UI: lastHeartbeat age (ms)
+  const now = new Date();
+  const enriched = workers.map(w => ({
+    ...w,
+    lastHeartbeatAgeMs: w.lastHeartbeatAt ? now.getTime() - new Date(w.lastHeartbeatAt).getTime() : null,
+  }))
+  return NextResponse.json(enriched)
 }
 
 export async function POST(req: Request) {
-  const session = await requireAdmin()
+  const session = await requireAdminOrModerator()
   const body = await req.json().catch(() => ({} as any))
 
   const action = String(body.action || '').toLowerCase()

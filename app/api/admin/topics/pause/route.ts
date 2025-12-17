@@ -1,10 +1,10 @@
 // app/api/admin/topics/pause/route.ts
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { requireAdmin } from "@/lib/auth";
+import { requireAdminOrModerator } from "@/lib/auth";
 
 export async function POST() {
-  await requireAdmin();
+  await requireAdminOrModerator();
 
   await prisma.systemSetting.upsert({
     where: { key: "AI_PAUSED" },

@@ -3,17 +3,36 @@ import { prisma } from '@/lib/prisma'
 import { normalizeLanguage } from '@/lib/normalize'
 import { logger } from '@/lib/logger'
 
-const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
+// Safety: only allow calling LLMs from worker processes. Workers must set
+// `ALLOW_LLM_CALLS=1` in their environment (see worker/bootstrap.ts).
+function ensureWorkerAllowed() {
+  if (process.env.ALLOW_LLM_CALLS !== '1') {
+    throw new Error('LLM calls are restricted to worker processes. Set ALLOW_LLM_CALLS=1 in worker runtime.')
+  }
+}
+
+let client: any = null
+function getClient() {
+  if (!client) {
+    ensureWorkerAllowed()
+    client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
+  }
+  return client
+}
 
 export async function createChatCompletion(input: any) {
-  return client.chat.completions.create(input)
+  const c = getClient()
+  return c.chat.completions.create(input)
 }
 
 export async function createSpeech(input: any) {
-  return client.audio.speech.create(input)
+  const c = getClient()
+  return c.audio.speech.create(input)
 }
 
 export async function callLLM({ prompt, model = 'gpt-4o-mini', meta }: { prompt: string; model?: string; meta: any }) {
+  ensureWorkerAllowed()
+  const client = getClient()
   try {
     const response: any = await client.chat.completions.create({
       model,

@@ -24,6 +24,9 @@ const aiAdminLinks = [
   { href: '/admin/content-engine/control-panel', label: 'AI Generation' },
   { href: '/admin/content-engine/moderation', label: 'Moderation' },
   { href: '/admin/content-engine/jobs', label: 'Jobs' },
+  { href: '/admin/content-engine/workers', label: 'Workers' },
+  { href: '/admin/content-engine/queue', label: 'Queue' },
+  { href: '/admin/content-engine/redis', label: 'Redis' },
   { href: '/admin/content-engine/audit-logs', label: 'Audit Logs' },
   { href: '/admin/content-engine/rollbacks', label: 'Rollbacks' },
 ];

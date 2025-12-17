@@ -1,3 +1,8 @@
+/**
+ * Orchestrator responsibilities (see docs/WORKER_LIFECYCLE.md):
+ * - Only the orchestrator SHOULD create/update `WorkerLifecycle` rows
+ * - `submitJob()` is the canonical, idempotent job submission entrypoint and MUST NOT mutate worker lifecycle
+ */
 import { prisma } from '@/lib/prisma';
 import { logger } from '@/lib/logger';
 import { normalizeJobType } from '@/lib/normalize';
@@ -113,6 +118,12 @@ export async function submitJob(input: SubmitJobInput) {
       maxAttempts,
     },
   });
+  // Emit JobExecutionLog: CREATED
+  try {
+    await prisma.jobExecutionLog.create({ data: { jobId: job.id, event: 'CREATED', prevStatus: null, newStatus: 'pending', meta: { resolvedMeta: resolvedMeta } } });
+  } catch (e) {
+    logger?.warn?.('submitJob: failed to write JobExecutionLog CREATED', { err: e, jobId: job.id });
+  }
   // Audit the creation so admins can see intent in logs
   try {
     await prisma.auditLog.create({ data: { userId: null, action: 'create_job', details: { jobId: job.id, jobType: normalizedJobType, entityType, entityId }, createdAt: new Date() } });
@@ -138,22 +149,23 @@ export async function submitJob(input: SubmitJobInput) {
         const workerType = mapping[String(normalizedJobType)] || String(normalizedJobType).toUpperCase();
         await q.add(`${workerType.toLowerCase()}-${job.id}`, { type: workerType, payload: { jobId: job.id, ...payload } });
         logger.info('submitJob: enqueued to Redis queue', { queue: 'content-hydration', jobId: job.id, workerType });
-      } catch (err) {
-        logger.error('submitJob: failed to enqueue to Redis', { err, jobId: job.id });
-      }
-
-      // Auto-scale: if no running workers and auto-scale enabled, create a WorkerLifecycle STARTING row
-      try {
-        const runningCount = await prisma.workerLifecycle.count({ where: { status: 'RUNNING' } });
-        const auto = process.env.ORCHESTRATOR_AUTO_SCALE === '1' || process.env.ORCHESTRATOR_AUTO_SCALE === 'true';
-        if (auto && runningCount === 0) {
-          const lifecycleId = `wk-${Date.now().toString(36)}-${Math.random().toString(36).slice(2,8)}`;
-          await prisma.workerLifecycle.create({ data: { id: lifecycleId, type: 'content-hydration', status: 'STARTING', startedAt: new Date(), lastHeartbeatAt: new Date() } });
-          logger.info('submitJob: created WorkerLifecycle STARTING to request a worker', { lifecycleId, jobId: job.id });
+        try {
+          await prisma.jobExecutionLog.create({ data: { jobId: job.id, event: 'ENQUEUED', prevStatus: 'pending', newStatus: 'pending', meta: { queue: 'content-hydration', workerType } } });
+        } catch (e) {
+          logger?.warn?.('submitJob: failed to write JobExecutionLog ENQUEUED', { err: e, jobId: job.id });
         }
       } catch (err) {
-        logger.warn('submitJob: failed to create WorkerLifecycle for auto-scale', { err });
+        logger.error('submitJob: failed to enqueue to Redis', { err, jobId: job.id });
+        try {
+          await prisma.jobExecutionLog.create({ data: { jobId: job.id, event: 'ENQUEUE_FAILED', prevStatus: 'pending', newStatus: 'pending', message: String(err) } });
+        } catch (e) {
+          logger?.warn?.('submitJob: failed to write JobExecutionLog ENQUEUE_FAILED', { err: e, jobId: job.id });
+        }
       }
+
+      // NOTE: Orchestrator is responsible for creating WorkerLifecycle rows.
+      // submitJob MUST NOT create or mutate WorkerLifecycle entries — this keeps
+      // job submission and worker orchestration responsibilities separated.
     }
   return { jobId: job.id, existing: false };
 }

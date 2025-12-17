@@ -1,85 +1,160 @@
 "use client";
-/**
- * AI CONTENT ENGINE NOTICE:
- * - Job-based execution only
- * - No per-job pause/resume
- * - No streaming or progress tracking
- * - All AI calls are atomic and retryable
- * - Content requires admin approval
- */
 
+import React, { useMemo, useState } from 'react';
 import useSWR from 'swr';
-import { alerts } from '@/lib/alerts';
-import { JobStatus } from '@/lib/ai-engine/types'
+import Link from 'next/link';
 
-const fetcher = (url: string) => fetch(url).then(res => res.json());
+const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
 export default function JobsIndexPage() {
-    const { data, error, mutate } = useSWR('/api/admin/content-engine/jobs', fetcher);
+  const [status, setStatus] = useState<string | ''>('');
+  const [jobType, setJobType] = useState<string | ''>('');
+  const [entityType, setEntityType] = useState<string | ''>('');
+  const [q, setQ] = useState('');
+  const [limit, setLimit] = useState<number>(25);
+  const [cursor, setCursor] = useState<string | null>(null);
+  const [history, setHistory] = useState<string[]>([]);
 
-    if (error) return <div className="p-4 text-red-600">Failed to load jobs.</div>;
-    if (!data) return <div className="p-4">Loading...</div>;
+  const metaSWR = useSWR('/api/admin/content-engine/meta', fetcher);
+  const meta = metaSWR.data;
 
-    const handleAction = async (id: string, action: 'retry' | 'cancel') => {
-        try {
-            const res = await fetch(`/api/admin/content-engine/jobs/${id}/${action}`, { method: 'POST' });
-            if (!res.ok) throw new Error('Action failed');
-            alerts.success(`${action === 'retry' ? 'Retried' : 'Cancelled'} job successfully.`);
-            mutate();
-        } catch {
-            alerts.error('Failed to perform action.');
-        }
-    };
+  const query = useMemo(() => {
+    const params = new URLSearchParams();
+    if (status) params.set('status', status);
+    if (jobType) params.set('jobType', jobType);
+    if (entityType) params.set('entityType', entityType);
+    if (q) params.set('q', q);
+    if (limit) params.set('limit', String(limit));
+    if (cursor) params.set('cursor', cursor);
+    return '/api/admin/content-engine/jobs?' + params.toString();
+  }, [status, jobType, entityType, q, limit, cursor]);
 
-    return (
-        <div className="p-6">
-            <h1 className="text-2xl font-bold mb-4">Content Generation Jobs</h1>
-            <div className="overflow-x-auto">
-                <table className="min-w-full border text-sm">
-                    <thead>
-                        <tr className="bg-gray-100">
-                            <th className="px-3 py-2 border">Job Type</th>
-                            <th className="px-3 py-2 border">Entity</th>
-                            <th className="px-3 py-2 border">Language</th>
-                            <th className="px-3 py-2 border">Status</th>
-                            <th className="px-3 py-2 border">Created At</th>
-                            <th className="px-3 py-2 border">Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {data.jobs?.length === 0 && (
-                            <tr><td colSpan={6} className="text-center p-4">No jobs found.</td></tr>
-                        )}
-                        {data.jobs?.map((job: any) => (
-                            <tr key={job.id} className="border-b">
-                                <td className="px-3 py-2 border">{job.jobType}</td>
-                                <td className="px-3 py-2 border">{job.entityType}{job.entityName ? `: ${job.entityName}` : ''}</td>
-                                <td className="px-3 py-2 border">{job.language || '-'}</td>
-                                <td className="px-3 py-2 border">{job.status}</td>
-                                <td className="px-3 py-2 border">{new Date(job.createdAt).toLocaleString()}</td>
-                                <td className="px-3 py-2 border space-x-2">
-                                    {job.status === JobStatus.Failed && (
-                                        <button
-                                            className="px-2 py-1 text-xs rounded bg-blue-600 text-white hover:bg-blue-700"
-                                            onClick={() => handleAction(job.id, 'retry')}
-                                        >
-                                            Retry
-                                        </button>
-                                    )}
-                                    {job.status === 'queued' && (
-                                        <button
-                                            className="px-2 py-1 text-xs rounded bg-red-600 text-white hover:bg-red-700"
-                                            onClick={() => handleAction(job.id, 'cancel')}
-                                        >
-                                            Cancel
-                                        </button>
-                                    )}
-                                </td>
-                            </tr>
-                        ))}
-                    </tbody>
-                </table>
-            </div>
+  const { data, error, mutate } = useSWR(query, fetcher);
+
+  function applyFilters() {
+    setHistory([]);
+    setCursor(null);
+    mutate();
+  }
+
+  async function gotoNext() {
+    if (!data?.nextCursor) return;
+    setHistory((h) => [...h, cursor || '']);
+    setCursor(data.nextCursor);
+  }
+
+  function gotoPrev() {
+    const prev = history[history.length - 1] ?? null;
+    setHistory((h) => h.slice(0, Math.max(0, h.length - 1)));
+    setCursor(prev || null);
+  }
+
+  if (error) return <div className="p-4 text-red-600">Failed to load jobs.</div>;
+  if (!data) return <div className="p-4">Loading...</div>;
+
+  return (
+    <div className="p-6">
+      <h1 className="text-2xl font-bold mb-4">Content Generation Jobs</h1>
+
+      <div className="mb-4 flex gap-2 items-end">
+        <div>
+          <label className="text-xs">Status</label>
+          <select value={status} onChange={(e) => setStatus(e.target.value)} className="ml-2 border px-2 py-1">
+            <option value="">Any</option>
+            {meta?.statuses?.map((s: string) => (
+              <option key={s} value={s}>{s}</option>
+            ))}
+          </select>
         </div>
-    );
+
+        <div>
+          <label className="text-xs">Job Type</label>
+          <select value={jobType} onChange={(e) => setJobType(e.target.value)} className="ml-2 border px-2 py-1">
+            <option value="">Any</option>
+            {meta?.jobTypes?.map((jt: string) => (
+              <option key={jt} value={jt}>{jt}</option>
+            ))}
+          </select>
+        </div>
+
+        <div>
+          <label className="text-xs">Entity Type</label>
+          <select value={entityType} onChange={(e) => setEntityType(e.target.value)} className="ml-2 border px-2 py-1">
+            <option value="">Any</option>
+            {meta?.entityTypes?.map((et: string) => (
+              <option key={et} value={et}>{et}</option>
+            ))}
+          </select>
+        </div>
+
+        <div>
+          <label className="text-xs">Search</label>
+          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="job id or entity id" className="ml-2 border px-2 py-1" />
+        </div>
+
+        <div>
+          <label className="text-xs">Limit</label>
+          <select value={limit} onChange={(e) => setLimit(Number(e.target.value))} className="ml-2 border px-2 py-1">
+            <option value={10}>10</option>
+            <option value={25}>25</option>
+            <option value={50}>50</option>
+            <option value={100}>100</option>
+          </select>
+        </div>
+
+        <div>
+          <button className="px-3 py-1 bg-blue-600 text-white rounded" onClick={applyFilters}>Apply</button>
+        </div>
+      </div>
+
+      <div className="overflow-x-auto">
+        <table className="min-w-full border text-sm">
+          <thead>
+            <tr className="bg-gray-100">
+              <th className="px-3 py-2 border">ID</th>
+              <th className="px-3 py-2 border">Job Type</th>
+              <th className="px-3 py-2 border">Entity</th>
+              <th className="px-3 py-2 border">Status</th>
+              <th className="px-3 py-2 border">Created At</th>
+              <th className="px-3 py-2 border">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {data.jobs?.length === 0 && (
+              <tr>
+                <td colSpan={6} className="text-center p-4">
+                  No jobs found.
+                </td>
+              </tr>
+            )}
+            {data.jobs?.map((job: any) => (
+              <tr key={job.id} className="border-b">
+                <td className="px-3 py-2 border truncate max-w-xs">
+                  <Link href={`/admin/content-engine/jobs/${job.id}`} className="text-blue-600">
+                    {job.id}
+                  </Link>
+                </td>
+                <td className="px-3 py-2 border">{job.jobType}</td>
+                <td className="px-3 py-2 border">{job.entityType}{job.entityName ? `: ${job.entityName}` : ''}</td>
+                <td className="px-3 py-2 border">{job.status}</td>
+                <td className="px-3 py-2 border">{new Date(job.createdAt).toLocaleString()}</td>
+                <td className="px-3 py-2 border">
+                  <Link href={`/admin/content-engine/jobs/${job.id}`} className="text-sm text-blue-600">View</Link>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      <div className="mt-4 flex gap-2">
+        <button className="px-3 py-1 border rounded" onClick={gotoPrev} disabled={history.length === 0}>
+          Previous
+        </button>
+        <button className="px-3 py-1 bg-blue-600 text-white rounded" onClick={gotoNext} disabled={!data?.nextCursor}>
+          Next
+        </button>
+      </div>
+    </div>
+  );
 }

@@ -24,86 +24,115 @@ import { handleSyllabusJob } from "@/workers/syllabusWorker";
 import { logger } from "@/lib/logger"; // Assumes you have a logger utility
 
 /**
- * Single worker handling content hydration jobs.
- * Uses job.type routing for simplicity.
+ * Factory to start the content hydration worker.
+ * This avoids creating Redis/Worker instances at module-import time.
  */
-export const contentWorker = new Worker(
-  "content-hydration",
-  async (job: Job) => {
-    // 1️⃣ GLOBAL PAUSE CHECK (NON-NEGOTIABLE)
-    const paused = await prisma.systemSetting.findUnique({ where: { key: "AI_PAUSED" } });
-    if (isSystemSettingEnabled(paused?.value)) {
-      throw new Error("AI_PAUSED");
-    }
+export function startContentWorker(opts?: { concurrency?: number }) {
+  const concurrency = opts?.concurrency ?? 3;
 
-    const { type, payload } = job.data as {
-      type: "NOTES" | "QUESTIONS" | "ASSEMBLE_TEST" | "SYLLABUS";
-      payload: any;
-    };
-
-    // 2️⃣ ROUTE JOBS BY TYPE
-    switch (type) {
-      case "NOTES": {
-        const { topicId, language } = payload;
-        return hydrateNotes(topicId, language);
+  const worker = new Worker(
+    "content-hydration",
+    async (job: Job) => {
+      // 1️⃣ GLOBAL PAUSE CHECK (NON-NEGOTIABLE)
+      const paused = await prisma.systemSetting.findUnique({ where: { key: "AI_PAUSED" } });
+      if (isSystemSettingEnabled(paused?.value)) {
+        throw new Error("AI_PAUSED");
       }
 
-      case "QUESTIONS": {
-        const { topicId, difficulty, language } = payload;
-        return hydrateQuestions(topicId, difficulty, language);
+      // Mark ExecutionJob as RUNNING and emit JobExecutionLog if jobId present
+      try {
+        const jobId = job.data?.payload?.jobId ?? job.data?.payload?.job_id ?? null;
+        if (jobId) {
+          await prisma.executionJob.update({ where: { id: String(jobId) }, data: { status: 'running', lockedAt: new Date(), lockedBy: `worker:${process.pid}` } });
+          await prisma.jobExecutionLog.create({ data: { jobId: String(jobId), event: 'RUNNING', prevStatus: 'pending', newStatus: 'running', meta: { workerPid: process.pid } } });
+        }
+      } catch (e) {
+        logger?.warn?.('worker: failed to mark ExecutionJob RUNNING or create JobExecutionLog', { err: e });
       }
 
-      case "SYLLABUS": {
-        // payload should contain { jobId }
-        const { jobId } = payload || {}
-        if (!jobId) throw new Error("SYLLABUS job missing jobId")
-        return handleSyllabusJob(jobId)
+      const { type, payload } = job.data as {
+        type: "NOTES" | "QUESTIONS" | "ASSEMBLE_TEST" | "SYLLABUS";
+        payload: any;
+      };
+
+      // 2️⃣ ROUTE JOBS BY TYPE
+      switch (type) {
+        case "NOTES": {
+          const { topicId, language } = payload;
+          return hydrateNotes(topicId, language);
+        }
+
+        case "QUESTIONS": {
+          const { topicId, difficulty, language } = payload;
+          return hydrateQuestions(topicId, difficulty, language);
+        }
+
+        case "SYLLABUS": {
+          // payload should contain { jobId }
+          const { jobId } = payload || {}
+          if (!jobId) throw new Error("SYLLABUS job missing jobId")
+          return handleSyllabusJob(jobId)
+        }
+
+        case "ASSEMBLE_TEST": {
+          const { topicId } = payload;
+          return assembleTest(topicId);
+        }
+
+        default:
+          /**
+           * Unknown jobs should NOT retry.
+           */
+          throw new Error(`UNKNOWN_JOB_TYPE: ${type}`);
       }
-
-      case "ASSEMBLE_TEST": {
-        const { topicId } = payload;
-        return assembleTest(topicId);
-      }
-
-      default:
-        /**
-         * Unknown jobs should NOT retry.
-         */
-        throw new Error(`UNKNOWN_JOB_TYPE: ${type}`);
-    }
-  },
-  {
-    connection: getRedis(),
-
-    /**
-     * Keep concurrency low for AI + DB safety.
-     * You can raise later after cost monitoring.
-     */
-    concurrency: 3,
-
-    /**
-     * Retry policy (important)
-     */
-    settings: {
-      backoffStrategy: (attemptsMade: number) => {
-        return Math.min(60_000, 2 ** attemptsMade * 1000);
-      },
     },
-  }
-);
-
-/**
- * Optional: basic lifecycle logging
- */
-contentWorker.on("failed", (job, err) => {
-  logger.error(
-    `[WORKER FAILED] jobId=${job?.id} type=${job?.data?.type}`,
-    { error: err.message }
+    {
+      connection: getRedis(),
+      concurrency,
+      settings: {
+        backoffStrategy: (attemptsMade: number) => {
+          return Math.min(60_000, 2 ** attemptsMade * 1000);
+        },
+      },
+    }
   );
-});
 
-contentWorker.on("completed", job => {
-  logger.info(
-    `[WORKER COMPLETED] jobId=${job.id} type=${job.data?.type}`
-  );
-});
+  worker.on("failed", (job, err) => {
+    logger.error(
+      `[WORKER FAILED] jobId=${job?.id} type=${job?.data?.type}`,
+      { error: err?.message }
+    );
+    // If this job carried a ExecutionJob id, mark it failed and write a JobExecutionLog
+    (async () => {
+      try {
+        const jobId = job?.data?.payload?.jobId ?? null;
+        if (jobId) {
+          await prisma.executionJob.update({ where: { id: String(jobId) }, data: { status: 'failed', lastError: String(err?.message ?? err) } });
+          await prisma.jobExecutionLog.create({ data: { jobId: String(jobId), event: 'FAILED', prevStatus: 'running', newStatus: 'failed', message: String(err?.message ?? err) } });
+        }
+      } catch (e) {
+        logger?.warn?.('worker.failed: failed to mark executionJob failed or write JobExecutionLog', { err: e });
+      }
+    })();
+  });
+
+  worker.on("completed", job => {
+    logger.info(
+      `[WORKER COMPLETED] jobId=${job.id} type=${job.data?.type}`
+    );
+    // mark ExecutionJob completed and write JobExecutionLog if jobId present
+    (async () => {
+      try {
+        const jobId = job?.data?.payload?.jobId ?? null;
+        if (jobId) {
+          await prisma.executionJob.update({ where: { id: String(jobId) }, data: { status: 'completed' } });
+          await prisma.jobExecutionLog.create({ data: { jobId: String(jobId), event: 'COMPLETED', prevStatus: 'running', newStatus: 'completed' } });
+        }
+      } catch (e) {
+        logger?.warn?.('worker.completed: failed to mark executionJob completed or write JobExecutionLog', { err: e });
+      }
+    })();
+  });
+
+  return worker;
+}

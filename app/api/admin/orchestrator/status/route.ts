@@ -1,11 +1,11 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { requireAdmin } from '@/lib/auth'
+import { requireAdminOrModerator } from '@/lib/auth'
 import fs from 'fs'
 import path from 'path'
 
 export async function GET() {
-  await requireAdmin()
+  await requireAdminOrModerator()
   const ROOT = path.resolve(process.cwd())
   const STATUS_FILE = path.join(ROOT, 'tmp', 'orchestrator.status.json')
 
