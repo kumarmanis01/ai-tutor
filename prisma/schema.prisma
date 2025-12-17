@@ -80,6 +80,15 @@ enum EntityType {
   TEST
 }
 
+/// Worker lifecycle status (managed by controller)
+enum WorkerStatus {
+  STARTING
+  RUNNING
+  DRAINING
+  STOPPED
+  FAILED
+}
+
 model User {
   id                       String                   @id @default(cuid())
   name                     String?
@@ -242,6 +251,24 @@ model Subscription {
   user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
+}
+
+/// Worker lifecycle table — persistent source of truth for worker state
+model WorkerLifecycle {
+  id              String       @id @default(cuid())
+  type            String
+  host            String?
+  pid             Int?
+  status          WorkerStatus @default(STARTING)
+  startedAt       DateTime?
+  stoppedAt       DateTime?
+  lastHeartbeatAt DateTime?
+  meta            Json?
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  @@index([status])
+  @@index([lastHeartbeatAt])
 }
 
 model Room {
