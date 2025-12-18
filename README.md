@@ -199,6 +199,53 @@ You can check out [the Next.js GitHub repository](https://github.com/vercel/next
 
 ## Deploy on Vercel
 
+## Deployment / Required Environment Variables
+
+The evaluator and application require runtime environment variables in production. Add these to your Vercel project (Preview & Production) via the Vercel UI or CLI.
+
+Minimum required runtime vars for production:
+
+- `DATABASE_URL` — Postgres connection string used by the app and evaluator (e.g. `postgres://user:password@host:5432/dbname`).
+- `REDIS_URL` — Redis connection string used by BullMQ and workers (e.g. `rediss://user:pass@host:port`).
+- `NEXTAUTH_SECRET` — NextAuth secret used for session signing.
+- `OPENAI_API_KEY` — OpenAI API key (if used in production features).
+
+How to add (Vercel UI)
+- Project → Settings → Environment Variables → Add variable (key/value) and select Target (Preview/Production/Development).
+
+How to add (Vercel CLI)
+Install the Vercel CLI and run the following locally (you will be prompted for each value). Replace placeholder values with your real secrets.
+
+```bash
+# login first
+vercel login
+
+# Add DATABASE_URL
+vercel env add DATABASE_URL production
+vercel env add DATABASE_URL preview
+vercel env add DATABASE_URL development
+
+# Add REDIS_URL
+vercel env add REDIS_URL production
+vercel env add REDIS_URL preview
+vercel env add REDIS_URL development
+
+# Add NEXTAUTH_SECRET
+vercel env add NEXTAUTH_SECRET production
+vercel env add NEXTAUTH_SECRET preview
+vercel env add NEXTAUTH_SECRET development
+
+# Add OPENAI_API_KEY (if used)
+vercel env add OPENAI_API_KEY production
+vercel env add OPENAI_API_KEY preview
+vercel env add OPENAI_API_KEY development
+```
+
+Notes:
+- Do not commit secrets to the repository.
+- GitHub Actions CI uses its own environment and service containers; it does not automatically add runtime vars to Vercel.
+
+
 The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
 
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.

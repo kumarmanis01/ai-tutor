@@ -21,7 +21,8 @@ jobs:
           --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 5
 
     env:
-      DATABASE_URL: postgres://postgres:postgres@localhost:5432/testdb
+      # Use the service container hostname 'postgres' so Prisma picks it up inside Actions
+      DATABASE_URL: postgres://postgres:postgres@postgres:5432/ai_tutor_test
 
     steps:
       - name: Checkout
@@ -30,7 +31,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 18
+          node-version: '20.x'
           cache: 'npm'
 
       - name: Install deps
@@ -47,7 +48,11 @@ jobs:
         run: npx prisma generate
 
       - name: Apply migrations
-        run: npx prisma migrate deploy
+        env:
+          DATABASE_URL: ${{ env.DATABASE_URL }}
+        run: |
+          echo "Applying migrations against $DATABASE_URL"
+          npx prisma migrate deploy
 
       - name: Run evaluator integration tests
         run: npm run test:integration:evaluator
