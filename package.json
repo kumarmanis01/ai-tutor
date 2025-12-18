@@ -53,7 +53,7 @@
     "clear-auth": "set CONFIRM=true && node -r ts-node/register scripts/clear-auth-tables.ts",
     "test": "npm run lint && npm run type-check",
     "test:integration": "node tests/integration/audit-log.test.js",
-    "test:integration:evaluator": "node -r ts-node/register tests/integration/alert-evaluator.test.ts",
+    "test:integration:evaluator": "node -r ts-node/register/transpile-only tests/integration/alert-evaluator.test.ts",
     "orchestrator:start": "node -r ts-node/register worker/orchestrator.ts",
     "seed-db-ai-content-infra": "node -r ts-node/register scripts/seed-database.ts",
     "reset-db-ai-content-infra": "node -r ts-node/register scripts/reset-remote-db.ts",
