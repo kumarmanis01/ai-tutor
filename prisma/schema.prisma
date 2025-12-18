@@ -1070,3 +1070,19 @@ enum AlertSeverity {
   WARNING
   CRITICAL
 }
+
+/// Telemetry samples: flexible, time-bucketed numeric metrics for observability.
+model TelemetrySample {
+  id            String   @id @default(cuid())
+  key           String
+  timestamp     DateTime
+  value         Float
+  dimensions    Json?
+  dimensionHash String
+  meta          Json?
+  createdAt     DateTime @default(now())
+
+  @@index([key, timestamp])
+  @@index([timestamp])
+  @@unique([key, timestamp, dimensionHash])
+}

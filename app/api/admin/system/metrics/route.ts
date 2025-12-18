@@ -24,7 +24,7 @@ export async function GET(req: Request) {
       return NextResponse.json({ error: 'range_too_large' }, { status: 400 });
     }
 
-    const samples = await queryMetricSamples(from, to, interval);
+    const samples = await queryMetricSamples(from, to);
     if (!samples || samples.length === 0) {
       // fallback to live snapshot
       const h = await systemHealth();

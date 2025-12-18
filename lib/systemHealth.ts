@@ -37,7 +37,7 @@ export async function systemHealth(): Promise<SystemHealth> {
     await prisma.$queryRaw`SELECT 1`;
     dbLatencyMs = Date.now() - s;
     dbStatus = classifyLatency(dbLatencyMs);
-  } catch (e: any) {
+  } catch {
     dbStatus = 'unhealthy';
   }
 
@@ -50,21 +50,20 @@ export async function systemHealth(): Promise<SystemHealth> {
     await redis.ping();
     redisLatencyMs = Date.now() - s;
     redisStatus = classifyLatency(redisLatencyMs);
-  } catch (e: any) {
+  } catch {
     redisStatus = 'unhealthy';
   }
 
   // Workers
-  const workersRaw = await prisma.workerLifecycle.findMany({ where: { deletedAt: null } });
+  const workersRaw = await prisma.workerLifecycle.findMany();
   let running = 0,
     stale = 0,
     failed = 0;
   let lastHeartbeatAgeSec: number | undefined = undefined;
-  const nowDate = new Date();
   for (const w of workersRaw) {
     const hb = w.lastHeartbeatAt ? Math.floor((now - new Date(w.lastHeartbeatAt).getTime()) / 1000) : Infinity;
     if (hb !== Infinity) lastHeartbeatAgeSec = Math.max(lastHeartbeatAgeSec ?? 0, hb);
-    if (w.status === 'FAILED') failed++;
+    if (String(w.status).toLowerCase() === 'failed') failed++;
     else if (hb <= 30) running++;
     else if (hb > 60) stale++;
     else running++;
@@ -73,10 +72,10 @@ export async function systemHealth(): Promise<SystemHealth> {
   // Jobs
   const fiveMinAgo = new Date(Date.now() - 5 * 60 * 1000);
   const [pending, runningJobs, failedLast5m, stuckRunning] = await Promise.all([
-    prisma.executionJob.count({ where: { status: 'PENDING' } }),
-    prisma.executionJob.count({ where: { status: 'RUNNING' } }),
-    prisma.executionJob.count({ where: { status: 'FAILED', updatedAt: { gte: fiveMinAgo } } }),
-    prisma.executionJob.count({ where: { status: 'RUNNING', lockedAt: { lt: new Date(Date.now() - MAX_JOB_RUNTIME_MS) } } }),
+    prisma.executionJob.count({ where: { status: 'pending' } }),
+    prisma.executionJob.count({ where: { status: 'running' } }),
+    prisma.executionJob.count({ where: { status: 'failed', updatedAt: { gte: fiveMinAgo } } }),
+    prisma.executionJob.count({ where: { status: 'running', lockedAt: { lt: new Date(Date.now() - MAX_JOB_RUNTIME_MS) } } }),
   ]);
 
   // Queue (BullMQ)
@@ -92,7 +91,7 @@ export async function systemHealth(): Promise<SystemHealth> {
       const ts = (job.timestamp || job['timestamp'] || Date.now()) as number;
       oldestJobAgeSec = Math.floor((Date.now() - ts) / 1000);
     }
-  } catch (e) {
+  } catch {
     // keep defaults; Redis health above will reflect connectivity
   }
 

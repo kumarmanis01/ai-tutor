@@ -1,7 +1,7 @@
 "use client";
 import React from 'react';
 
-function toPath(points: Array<[number, number]>, width: number, height: number) {
+function toPath(points: Array<[number, number]>) {
   if (points.length === 0) return '';
   return points
     .map(([x, y], i) => `${i === 0 ? 'M' : 'L'} ${x.toFixed(2)} ${y.toFixed(2)}`)
@@ -18,7 +18,7 @@ export function Sparkline({ data, width = 220, height = 40, color = '#3b82f6' }:
     const y = height - ((v - min) / range) * height;
     return [x, y];
   });
-  const path = toPath(points, width, height);
+  const path = toPath(points);
   return (
     <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none">
       <path d={path} fill="none" stroke={color} strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" />
@@ -30,8 +30,7 @@ export default function MetricsCharts({ samples }: { samples: any[] }) {
   const queueDepth = samples.map((s) => s.queueDepth ?? (s.queue?.depth ?? 0));
   const dbLatency = samples.map((s) => s.dbLatencyMs ?? s.dependencies?.database?.latencyMs ?? 0);
   const redisLatency = samples.map((s) => s.redisLatencyMs ?? s.dependencies?.redis?.latencyMs ?? 0);
-  const running = samples.map((s) => s.workersRunning ?? s.workers?.running ?? 0);
-  const pending = samples.map((s) => s.jobsPending ?? s.jobs?.pending ?? 0);
+  // keep derived series minimal; unused series removed
 
   const last = samples[samples.length - 1] ?? {};
 

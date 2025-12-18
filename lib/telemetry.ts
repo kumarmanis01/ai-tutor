@@ -9,7 +9,7 @@ export async function sampleSystemHealth() {
   const health = await systemHealth();
 
   // Persist a compacted sample
-  await prisma.systemMetricSample.create({
+  await (prisma as any).systemMetricSample.create({
     data: {
       overall: health.overall,
       timestamp: new Date(health.timestamp),
@@ -29,8 +29,8 @@ export async function sampleSystemHealth() {
   });
 }
 
-export async function queryMetricSamples(from: Date, to: Date, intervalSec = 60) {
+export async function queryMetricSamples(from: Date, to: Date) {
   // Query samples within range; return as-is for now — aggregation can be done in the API layer
-  const rows = await prisma.systemMetricSample.findMany({ where: { timestamp: { gte: from, lte: to } }, orderBy: { timestamp: 'asc' } });
+  const rows = await (prisma as any).systemMetricSample.findMany({ where: { timestamp: { gte: from, lte: to } }, orderBy: { timestamp: 'asc' } });
   return rows;
 }
