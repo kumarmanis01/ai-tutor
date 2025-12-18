@@ -131,7 +131,7 @@ async function runOnce() {
     if (oldestJobAgeSec !== null) rowsToInsert.push({ id: crypto.randomUUID(), key: `queue.oldest_age_sec.value`, timestamp: bucketTs, value: oldestJobAgeSec, dimensions: null, meta: null, dimensionHash: dimHash({}) });
 
     // Alerts
-    const alertsActive = await (prisma as any).systemAlert.count({ where: { active: true } });
+    const alertsActive = await prisma.systemAlert.count({ where: { active: true } });
     rowsToInsert.push({ id: crypto.randomUUID(), key: `alerts.active.count`, timestamp: bucketTs, value: alertsActive, dimensions: null, meta: null, dimensionHash: dimHash({}) });
 
     // Insert rows idempotently

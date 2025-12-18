@@ -30,7 +30,7 @@ function dimHash(dim) {
   try {
     const s = stableStringify(dim ?? {});
     return crypto.createHash('sha1').update(s).digest('hex');
-  } catch (e) {
+  } catch {
     return crypto.createHash('sha1').update(String(dim ?? '')).digest('hex');
   }
 }

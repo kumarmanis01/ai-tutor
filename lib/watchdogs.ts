@@ -6,12 +6,12 @@ type AlertSpec = { type: string; severity: 'INFO' | 'WARNING' | 'CRITICAL'; mess
 
 async function emitOrUpdateAlert(spec: AlertSpec) {
   try {
-    const existing = await (prisma as any).systemAlert.findFirst({ where: { type: spec.type, active: true } });
+    const existing = await prisma.systemAlert.findFirst({ where: { type: spec.type as any, active: true } });
     if (existing) {
-      await (prisma as any).systemAlert.update({ where: { id: existing.id }, data: { lastSeen: new Date(), message: spec.message, payload: spec.payload } });
+      await prisma.systemAlert.update({ where: { id: existing.id }, data: { lastSeen: new Date(), message: spec.message, payload: spec.payload } });
       return;
     }
-    await (prisma as any).systemAlert.create({ data: { type: spec.type as any, severity: spec.severity as any, message: spec.message, payload: spec.payload ?? undefined, active: true } });
+    await prisma.systemAlert.create({ data: { type: spec.type as any, severity: spec.severity as any, message: spec.message, payload: spec.payload ?? undefined, active: true } });
   } catch (e) {
     logger?.error?.('emitOrUpdateAlert failed', { err: e, spec });
   }
@@ -19,9 +19,9 @@ async function emitOrUpdateAlert(spec: AlertSpec) {
 
 async function resolveAlert(type: string) {
   try {
-    const existing = await (prisma as any).systemAlert.findFirst({ where: { type, active: true } });
+    const existing = await prisma.systemAlert.findFirst({ where: { type: type as any, active: true } });
     if (!existing) return;
-    await (prisma as any).systemAlert.update({ where: { id: existing.id }, data: { active: false, resolvedAt: new Date() } });
+    await prisma.systemAlert.update({ where: { id: existing.id }, data: { active: false, resolvedAt: new Date() } });
   } catch (e) {
     logger?.error?.('resolveAlert failed', { err: e, type });
   }

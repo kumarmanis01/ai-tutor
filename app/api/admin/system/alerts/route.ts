@@ -15,7 +15,7 @@ export async function GET(req: Request) {
     const where: any = {};
     if (!includeResolved) where.active = true;
 
-    const alerts = await (prisma as any).systemAlert.findMany({ where });
+    const alerts = await prisma.systemAlert.findMany({ where });
 
     // Sort by severity desc (CRITICAL > WARNING > INFO) then lastSeen desc
     const severityRank: Record<string, number> = { CRITICAL: 3, WARNING: 2, INFO: 1 };

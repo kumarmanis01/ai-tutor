@@ -42,7 +42,7 @@ export async function GET(req: Request) {
       // return raw minute samples
       const where: any = { timestamp: { gte: from, lte: to } };
       if (keys.length > 0) where.key = { in: keys };
-      const rows = await (prisma as any).telemetrySample.findMany({ where, orderBy: { timestamp: 'asc' } });
+      const rows = await prisma.telemetrySample.findMany({ where, orderBy: { timestamp: 'asc' } });
 
       const series: Record<string, any> = {};
       for (const r of rows) {
