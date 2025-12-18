@@ -988,29 +988,85 @@ model ExecutionJob {
   lockedAt  DateTime?
   lockedBy  String?
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime          @default(now())
+  updatedAt DateTime          @updatedAt
   // Relation to execution logs
-  logs       JobExecutionLog[]
+  logs      JobExecutionLog[]
 
   @@index([status, nextRunAt])
 }
 
 // Event log for ExecutionJob lifecycle transitions. Immutable, append-only.
 model JobExecutionLog {
-  id         String    @id @default(cuid())
+  id         String  @id @default(cuid())
   jobId      String
-  event      String    // CREATED | ENQUEUED | ENQUEUE_FAILED | RUNNING | COMPLETED | FAILED | CANCELLED | RETRY
-  prevStatus String?   
+  event      String // CREATED | ENQUEUED | ENQUEUE_FAILED | RUNNING | COMPLETED | FAILED | CANCELLED | RETRY
+  prevStatus String?
   newStatus  String?
   message    String?
   meta       Json?
 
-  job        ExecutionJob @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  job ExecutionJob @relation(fields: [jobId], references: [id], onDelete: Cascade)
 
-  createdAt  DateTime  @default(now())
+  createdAt DateTime @default(now())
 
   @@index([jobId])
   @@index([event])
   @@index([createdAt])
+}
+
+/// System metrics samples for telemetry retention (sampled periodically)
+model SystemMetricSample {
+  id        String   @id @default(cuid())
+  timestamp DateTime @default(now())
+
+  overall String
+
+  dbLatencyMs    Int?
+  redisLatencyMs Int?
+
+  workersRunning Int @default(0)
+  workersStale   Int @default(0)
+  workersFailed  Int @default(0)
+
+  jobsPending      Int @default(0)
+  jobsRunning      Int @default(0)
+  jobsFailedLast5m Int @default(0)
+  jobsStuckRunning Int @default(0)
+
+  queueDepth        Int  @default(0)
+  queueOldestJobAge Int? // seconds
+
+  meta Json? // optional raw snapshot for debugging
+
+  @@index([timestamp])
+}
+
+model SystemAlert {
+  id         String        @id @default(cuid())
+  type       AlertType
+  severity   AlertSeverity
+  message    String
+  payload    Json?
+  active     Boolean       @default(true)
+  firstSeen  DateTime      @default(now())
+  lastSeen   DateTime      @updatedAt
+  resolvedAt DateTime?
+
+  @@index([type, active])
+}
+
+enum AlertType {
+  REDIS_DOWN
+  DB_DOWN
+  WORKER_STALE
+  WORKER_FAILED
+  JOB_STUCK
+  QUEUE_BACKLOG
+}
+
+enum AlertSeverity {
+  INFO
+  WARNING
+  CRITICAL
 }

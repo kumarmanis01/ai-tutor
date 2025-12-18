@@ -27,6 +27,7 @@ const aiAdminLinks = [
   { href: '/admin/content-engine/workers', label: 'Workers' },
   { href: '/admin/content-engine/queue', label: 'Queue' },
   { href: '/admin/content-engine/redis', label: 'Redis' },
+  { href: '/admin/system/metrics', label: 'System Metrics' },
   { href: '/admin/content-engine/audit-logs', label: 'Audit Logs' },
   { href: '/admin/content-engine/rollbacks', label: 'Rollbacks' },
 ];
