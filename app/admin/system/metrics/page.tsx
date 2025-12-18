@@ -1,7 +1,7 @@
 "use client";
-import React, { useMemo, useState } from 'react';
+import React, { useState } from 'react';
 import useSWR from 'swr';
-import MetricsCharts from '@/components/Admin/MetricsCharts';
+import TelemetryView from '@/components/Admin/TelemetryView';
 import AlertOverlay from '@/components/Admin/AlertOverlay';
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
@@ -13,15 +13,7 @@ export default function MetricsPage() {
   const isoFrom = from.toISOString();
   const isoTo = to.toISOString();
 
-  const { data, error } = useSWR(`/api/admin/system/metrics?from=${encodeURIComponent(isoFrom)}&to=${encodeURIComponent(isoTo)}&interval=60`, fetcher, { refreshInterval: 30000 });
-
-  const samples = useMemo(() => {
-    if (!data) return [];
-    // samples might be health snapshots or persisted rows
-    if (Array.isArray(data.samples)) return data.samples;
-    if (Array.isArray(data)) return data;
-    return [];
-  }, [data]);
+  const { data, error } = useSWR(`/api/admin/system/telemetry?from=${encodeURIComponent(isoFrom)}&to=${encodeURIComponent(isoTo)}&keys=queue.depth.value,queue.oldest_age_sec.value,workers.running.count,workers.stale.count,jobs.running.count,jobs.failed.count,alerts.active.count&bucket=auto`, fetcher, { refreshInterval: 30000 });
 
   return (
     <div className="p-6 max-w-6xl mx-auto">
@@ -41,21 +33,7 @@ export default function MetricsPage() {
       {error && <div className="text-red-600">Failed to load metrics.</div>}
       {!data && <div>Loading metrics…</div>}
 
-      {samples.length > 0 && (
-        <div className="space-y-4">
-          <div className="bg-white rounded shadow p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="text-xs text-gray-500">Overall</div>
-                <div className="text-lg font-semibold">{samples[samples.length - 1].overall ?? samples[samples.length - 1].overall}</div>
-              </div>
-              <div className="text-sm text-gray-500">Last sample: {new Date(samples[samples.length - 1].timestamp || samples[samples.length - 1].timestamp).toLocaleString()}</div>
-            </div>
-          </div>
-
-          <MetricsCharts samples={samples} />
-        </div>
-      )}
+      <TelemetryView fromIso={isoFrom} toIso={isoTo} />
     </div>
   );
 }

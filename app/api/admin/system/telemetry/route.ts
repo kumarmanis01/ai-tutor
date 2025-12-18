@@ -21,7 +21,22 @@ export async function GET(req: Request) {
     const bucketParam = (url.searchParams.get('bucket') || 'auto').toLowerCase();
 
     const rangeMs = to.getTime() - from.getTime();
-    const bucket = bucketParam === 'minute' || bucketParam === 'hour' ? bucketParam : rangeMs <= 1000 * 60 * 60 * 24 ? 'minute' : 'hour';
+    const MAX_MINUTE_RANGE_MS = 1000 * 60 * 60 * 24; // 24 hours
+    const MAX_HOUR_RANGE_MS = 1000 * 60 * 60 * 24 * 90; // 90 days
+
+    // Auto-select bucket: prefer minute for short ranges, otherwise hour.
+    let bucket = bucketParam === 'minute' || bucketParam === 'hour' ? bucketParam : rangeMs <= MAX_MINUTE_RANGE_MS ? 'minute' : 'hour';
+
+    // Defensive guard: if minute requested but range too large, switch to hour
+    if (bucket === 'minute' && rangeMs > MAX_MINUTE_RANGE_MS) {
+      bucket = 'hour';
+    }
+    // Reject overly large hour-range requests
+    if (bucket === 'hour' && rangeMs > MAX_HOUR_RANGE_MS) {
+      return NextResponse.json({ error: 'range_too_large_for_hour_bucket' }, { status: 400 });
+    }
+
+    const responseMeta: any = { requestedBucket: bucketParam, effectiveBucket: bucket };
 
     if (bucket === 'minute') {
       // return raw minute samples
@@ -36,7 +51,7 @@ export async function GET(req: Request) {
         series[seriesKey].points.push({ ts: r.timestamp.toISOString(), value: r.value });
       }
 
-      return NextResponse.json({ range: { from: from.toISOString(), to: to.toISOString(), bucket: 'minute' }, series });
+      return NextResponse.json({ range: { from: from.toISOString(), to: to.toISOString(), bucket: 'minute' }, series, meta: responseMeta });
     }
 
     // bucket === 'hour' -> aggregate by hour on the DB side
@@ -61,7 +76,7 @@ export async function GET(req: Request) {
       series[seriesKey].points.push({ ts: new Date(r.bucket_ts).toISOString(), value: Number(r.value) });
     }
 
-    return NextResponse.json({ range: { from: from.toISOString(), to: to.toISOString(), bucket: 'hour' }, series });
+    return NextResponse.json({ range: { from: from.toISOString(), to: to.toISOString(), bucket: 'hour' }, series, meta: responseMeta });
   } catch (err: any) {
     return NextResponse.json({ error: String(err?.message ?? err) }, { status: 500 });
   }
