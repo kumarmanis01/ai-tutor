@@ -1,0 +1,56 @@
+name: CI Health Check
+
+on:
+  schedule:
+    # Run hourly to monitor the last 24 hours
+    - cron: '0 * * * *'
+  workflow_dispatch: {}
+
+jobs:
+  report:
+    name: CI health (last 24h)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check workflow runs and create/update issue
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const since = new Date(Date.now() - 24*60*60*1000).toISOString();
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+
+            const resp = await github.rest.actions.listWorkflowRunsForRepo({
+              owner,
+              repo,
+              branch: 'master',
+              per_page: 100,
+              created: `>=${since}`,
+            });
+
+            const runs = (resp.data.workflow_runs || []).filter(r => r.status === 'completed' && r.conclusion !== 'success');
+
+            if (runs.length === 0) {
+              core.info(`CI Health: all green in the past 24h (${since} -> now)`);
+              // Close existing open ci-health issue if present
+              const openIssues = await github.rest.issues.listForRepo({ owner, repo, state: 'open', labels: 'ci-health' });
+              if ((openIssues.data || []).length > 0) {
+                const issue = openIssues.data[0];
+                await github.rest.issues.createComment({ owner, repo, issue_number: issue.number, body: `CI Health: all green for the past 24 hours (${new Date().toISOString()}). Closing.` });
+                await github.rest.issues.update({ owner, repo, issue_number: issue.number, state: 'closed' });
+              }
+              return;
+            }
+
+            let body = `CI Health Alert — ${runs.length} failing/non-successful run(s) in the past 24 hours\n\n`;
+            for (const r of runs) {
+              body += `- **${r.name}** — conclusion: ${r.conclusion} — [View run](${r.html_url})\n`;
+            }
+
+            // Reuse an existing open ci-health issue if present
+            const issues = await github.rest.issues.listForRepo({ owner, repo, state: 'open', labels: 'ci-health' });
+            if ((issues.data || []).length > 0) {
+              const issue = issues.data[0];
+              await github.rest.issues.createComment({ owner, repo, issue_number: issue.number, body });
+            } else {
+              await github.rest.issues.create({ owner, repo, title: `CI Health Alert: ${runs.length} failing runs (last 24h)`, body, labels: ['ci-health'] });
+            }
