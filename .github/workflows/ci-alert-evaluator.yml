@@ -72,6 +72,15 @@ jobs:
       - name: Generate Prisma client
         run: npx prisma generate
 
+      - name: Prepare DB role and test database
+        run: |
+          # Create a role and test database if they don't exist so migrations can run reliably in CI
+          PORT=${{ job.services.postgres.ports[5432] }}
+          export PGPASSWORD=postgres
+          echo "Creating role 'root' and database 'ai_tutor_test' if they do not exist"
+          psql -h 127.0.0.1 -p $PORT -U postgres -tc "SELECT 1 FROM pg_roles WHERE rolname='root'" | grep -q 1 || psql -h 127.0.0.1 -p $PORT -U postgres -c "CREATE ROLE root LOGIN;"
+          psql -h 127.0.0.1 -p $PORT -U postgres -tc "SELECT 1 FROM pg_database WHERE datname='ai_tutor_test'" | grep -q 1 || psql -h 127.0.0.1 -p $PORT -U postgres -c "CREATE DATABASE ai_tutor_test OWNER root;"
+
       - name: Apply migrations
         env:
           DATABASE_URL: ${{ env.DATABASE_URL }}
