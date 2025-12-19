@@ -2,8 +2,8 @@ name: CI Health Check
 
 on:
   schedule:
-    # Run hourly to monitor the last 24 hours
-    - cron: '0 * * * *'
+    # Run daily at 08:30 IST (03:00 UTC)
+    - cron: '0 3 * * *'
   workflow_dispatch: {}
 
 jobs:
