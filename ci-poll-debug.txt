@@ -1,0 +1,175 @@
+﻿**********************
+Windows PowerShell transcript start
+Start time: 20251219133144
+Username: SPINZY-DIGITAL\Spinzy Diagnostics
+RunAs User: SPINZY-DIGITAL\Spinzy Diagnostics
+Configuration Name: 
+Machine: SPINZY-DIGITAL (Microsoft Windows NT 10.0.26200.0)
+Host Application: C:\WINDOWS\System32\WindowsPowerShell\v1.0\powershell.exe -ExecutionPolicy Bypass -File .\scripts\poll-run.ps1
+Process ID: 21644
+PSVersion: 5.1.26100.7462
+PSEdition: Desktop
+PSCompatibleVersions: 1.0, 2.0, 3.0, 4.0, 5.0, 5.1.26100.7462
+BuildVersion: 10.0.26100.7462
+CLRVersion: 4.0.30319.42000
+WSManStackVersion: 3.0
+PSRemotingProtocolVersion: 2.3
+SerializationVersion: 1.1.0.1
+**********************
+Transcript started, output file is .\ci-poll-debug.txt
+Paste GitHub PAT when prompted (input will be hidden):
+Validating token...
+Authenticated as: kumarmanis01
+Fetching latest run for branch ci/alert-evaluator-node20...
+Run: 20363223822 status=completed url=https://github.com/kumarmanis01/ai-tutor/actions/runs/20363223822
+Run 20363223822 status=completed conclusion=success updated_at=2025-12-19T07:37:15Z
+Downloading logs for run 20363223822
+Showing Wait/Postgres debug logs (if present):
+=== C:\Users\Spinzy Diagnostics\Desktop\ai-tutor\run-20363223822-logs\Integration Tests (Alert Evaluator)\6_Wait for Postgres.txt ===
+2025-12-19T07:36:47.7513340Z ##[group]Run sudo apt-get update && sudo apt-get install -y postgresql-client
+2025-12-19T07:36:47.7513907Z [36;1msudo apt-get update && sudo apt-get install -y postgresql-client[0m
+2025-12-19T07:36:47.7514648Z [36;1m# Use the Actions-provided mapped port and localhost so the runner can reach the service[0m
+2025-12-19T07:36:47.7515052Z [36;1mPORT=5432[0m
+2025-12-19T07:36:47.7515287Z [36;1mecho "Using mapped Postgres port: $PORT"[0m
+2025-12-19T07:36:47.7515667Z [36;1m# Export DATABASE_URL for later steps via GITHUB_ENV (safe at runtime)[0m
+2025-12-19T07:36:47.7516379Z [36;1mecho "DATABASE_URL=***127.0.0.1:$PORT/ai_tutor_test" >> $GITHUB_ENV[0m
+2025-12-19T07:36:47.7516794Z [36;1muntil pg_isready -h 127.0.0.1 -p $PORT -U postgres; do[0m
+2025-12-19T07:36:47.7517178Z [36;1m  echo "Waiting for Postgres on 127.0.0.1:$PORT..."; sleep 1;[0m
+2025-12-19T07:36:47.7517477Z [36;1mdone[0m
+2025-12-19T07:36:47.7551383Z shell: /usr/bin/bash -e {0}
+2025-12-19T07:36:47.7551873Z ##[endgroup]
+2025-12-19T07:36:47.8835992Z Get:1 file:/etc/apt/apt-mirrors.txt Mirrorlist [144 B]
+2025-12-19T07:36:47.9590180Z Hit:2 http://azure.archive.ubuntu.com/ubuntu noble InRelease
+2025-12-19T07:36:47.9655743Z Hit:6 https://packages.microsoft.com/repos/azure-cli noble InRelease
+2025-12-19T07:36:47.9658434Z Get:7 https://packages.microsoft.com/ubuntu/24.04/prod noble InRelease [3600 B]
+2025-12-19T07:36:47.9705899Z Get:3 http://azure.archive.ubuntu.com/ubuntu noble-updates InRelease [126 kB]
+2025-12-19T07:36:47.9840599Z Get:4 http://azure.archive.ubuntu.com/ubuntu noble-backports InRelease [126 kB]
+2025-12-19T07:36:47.9924093Z Get:5 http://azure.archive.ubuntu.com/ubuntu noble-security InRelease [126 kB]
+2025-12-19T07:36:48.2103360Z Get:8 https://packages.microsoft.com/ubuntu/24.04/prod noble/main arm64 Packages [57.9 kB]
+2025-12-19T07:36:48.2313527Z Get:9 https://packages.microsoft.com/ubuntu/24.04/prod noble/main armhf Packages [11.4 kB]
+2025-12-19T07:36:48.2373981Z Get:10 https://packages.microsoft.com/ubuntu/24.04/prod noble/main amd64 Packages [76.3 kB]
+2025-12-19T07:36:48.2903639Z Get:11 http://azure.archive.ubuntu.com/ubuntu noble-updates/main amd64 Packages [1685 kB]
+2025-12-19T07:36:48.3160012Z Get:12 http://azure.archive.ubuntu.com/ubuntu noble-updates/main Translation-en [311 kB]
+2025-12-19T07:36:48.3198576Z Get:13 http://azure.archive.ubuntu.com/ubuntu noble-updates/main amd64 Components [175 kB]
+2025-12-19T07:36:48.3263041Z Get:14 http://azure.archive.ubuntu.com/ubuntu noble-updates/main amd64 c-n-f Metadata [15.8 kB]
+2025-12-19T07:36:48.3303634Z Get:15 http://azure.archive.ubuntu.com/ubuntu noble-updates/universe amd64 Packages [1507 kB]
+2025-12-19T07:36:48.3443736Z Get:16 http://azure.archive.ubuntu.com/ubuntu noble-updates/universe Translation-en [306 kB]
+2025-12-19T07:36:48.3513053Z Get:17 http://azure.archive.ubuntu.com/ubuntu noble-updates/universe amd64 Components [378 kB]
+2025-12-19T07:36:48.3577036Z Get:18 http://azure.archive.ubuntu.com/ubuntu noble-updates/universe amd64 c-n-f Metadata [31.4 kB]
+2025-12-19T07:36:48.3589471Z Get:19 http://azure.archive.ubuntu.com/ubuntu noble-updates/restricted amd64 Packages [2414 kB]
+2025-12-19T07:36:48.3933618Z Get:20 http://azure.archive.ubuntu.com/ubuntu noble-updates/restricted Translation-en [550 kB]
+2025-12-19T07:36:48.4458663Z Get:21 http://azure.archive.ubuntu.com/ubuntu noble-updates/restricted amd64 Components [212 B]
+2025-12-19T07:36:48.4471003Z Get:22 http://azure.archive.ubuntu.com/ubuntu noble-updates/restricted amd64 c-n-f Metadata [516 B]
+2025-12-19T07:36:48.4513665Z Get:23 http://azure.archive.ubuntu.com/ubuntu noble-updates/multiverse amd64 Packages [30.4 kB]
+2025-12-19T07:36:48.4516018Z Get:24 http://azure.archive.ubuntu.com/ubuntu noble-updates/multiverse Translation-en [6048 B]
+2025-12-19T07:36:48.4525769Z Get:25 http://azure.archive.ubuntu.com/ubuntu noble-updates/multiverse amd64 Components [940 B]
+2025-12-19T07:36:48.4538268Z Get:26 http://azure.archive.ubuntu.com/ubuntu noble-updates/multiverse amd64 c-n-f Metadata [488 B]
+2025-12-19T07:36:48.4579262Z Get:27 http://azure.archive.ubuntu.com/ubuntu noble-backports/main amd64 Packages [64.0 kB]
+2025-12-19T07:36:48.4588479Z Get:28 http://azure.archive.ubuntu.com/ubuntu noble-backports/main amd64 Components [7296 B]
+2025-12-19T07:36:48.4607204Z Get:29 http://azure.archive.ubuntu.com/ubuntu noble-backports/main amd64 c-n-f Metadata [368 B]
+2025-12-19T07:36:48.4616972Z Get:30 http://azure.archive.ubuntu.com/ubuntu noble-backports/universe amd64 Packages [34.3 kB]
+2025-12-19T07:36:48.4648180Z Get:31 http://azure.archive.ubuntu.com/ubuntu noble-backports/universe Translation-en [17.9 kB]
+2025-12-19T07:36:48.4656271Z Get:32 http://azure.archive.ubuntu.com/ubuntu noble-backports/universe amd64 Components [10.5 kB]
+2025-12-19T07:36:48.4663875Z Get:33 http://azure.archive.ubuntu.com/ubuntu noble-backports/universe amd64 c-n-f Metadata [1444 B]
+2025-12-19T07:36:48.4670977Z Get:34 http://azure.archive.ubuntu.com/ubuntu noble-backports/restricted amd64 Components [216 B]
+2025-12-19T07:36:48.5116757Z Get:35 http://azure.archive.ubuntu.com/ubuntu noble-backports/multiverse amd64 Components [212 B]
+2025-12-19T07:36:48.5609178Z Get:36 http://azure.archive.ubuntu.com/ubuntu noble-security/main Translation-en [225 kB]
+2025-12-19T07:36:48.5621324Z Get:37 http://azure.archive.ubuntu.com/ubuntu noble-security/main amd64 Components [21.5 kB]
+2025-12-19T07:36:48.5657984Z Get:38 http://azure.archive.ubuntu.com/ubuntu noble-security/main amd64 c-n-f Metadata [9504 B]
+2025-12-19T07:36:48.5663081Z Get:39 http://azure.archive.ubuntu.com/ubuntu noble-security/universe amd64 Components [71.5 kB]
+2025-12-19T07:36:48.5681467Z Get:40 http://azure.archive.ubuntu.com/ubuntu noble-security/restricted amd64 Components [212 B]
+2025-12-19T07:36:48.5706615Z Get:41 http://azure.archive.ubuntu.com/ubuntu noble-security/multiverse amd64 Components [212 B]
+2025-12-19T07:36:56.9501104Z Fetched 8403 kB in 1s (5690 kB/s)
+2025-12-19T07:36:57.6891332Z Reading package lists...
+2025-12-19T07:36:57.7224506Z Reading package lists...
+2025-12-19T07:36:57.8945787Z Building dependency tree...
+2025-12-19T07:36:57.8953587Z Reading state information...
+2025-12-19T07:36:58.0684598Z The following NEW packages will be installed:
+2025-12-19T07:36:58.0687368Z   postgresql-client
+2025-12-19T07:36:58.0865088Z 0 upgraded, 1 newly installed, 0 to remove and 68 not upgraded.
+2025-12-19T07:36:58.0868762Z Need to get 11.6 kB of archives.
+2025-12-19T07:36:58.0869494Z After this operation, 17.4 kB of additional disk space will be used.
+2025-12-19T07:36:58.0870304Z Get:1 file:/etc/apt/apt-mirrors.txt Mirrorlist [144 B]
+2025-12-19T07:36:58.1060678Z Get:2 http://azure.archive.ubuntu.com/ubuntu noble-updates/main amd64 postgresql-client all 16+257build1.1 [11.6 kB]
+2025-12-19T07:36:58.3694404Z Fetched 11.6 kB in 0s (380 kB/s)
+2025-12-19T07:36:58.4165023Z Selecting previously unselected package postgresql-client.
+2025-12-19T07:36:58.4457963Z (Reading database ...
+2025-12-19T07:36:58.4458420Z (Reading database ... 5%
+2025-12-19T07:36:58.4459261Z (Reading database ... 10%
+2025-12-19T07:36:58.4459672Z (Reading database ... 15%
+2025-12-19T07:36:58.4460085Z (Reading database ... 20%
+2025-12-19T07:36:58.4460604Z (Reading database ... 25%
+2025-12-19T07:36:58.4460992Z (Reading database ... 30%
+2025-12-19T07:36:58.4461414Z (Reading database ... 35%
+2025-12-19T07:36:58.4462074Z (Reading database ... 40%
+2025-12-19T07:36:58.4462491Z (Reading database ... 45%
+2025-12-19T07:36:58.4462783Z (Reading database ... 50%
+2025-12-19T07:36:58.5019524Z (Reading database ... 55%
+2025-12-19T07:36:58.7730365Z (Reading database ... 60%
+2025-12-19T07:36:58.9120499Z (Reading database ... 65%
+2025-12-19T07:36:58.9955693Z (Reading database ... 70%
+2025-12-19T07:36:59.1294763Z (Reading database ... 75%
+2025-12-19T07:36:59.5268293Z (Reading database ... 80%
+2025-12-19T07:37:00.0398380Z (Reading database ... 85%
+2025-12-19T07:37:00.5929457Z (Reading database ... 90%
+2025-12-19T07:37:01.0380279Z (Reading database ... 95%
+2025-12-19T07:37:01.0382712Z (Reading database ... 100%
+2025-12-19T07:37:01.0383972Z (Reading database ... 217374 files and directories currently installed.)
+2025-12-19T07:37:01.0431423Z Preparing to unpack .../postgresql-client_16+257build1.1_all.deb ...
+2025-12-19T07:37:01.0455605Z Unpacking postgresql-client (16+257build1.1) ...
+2025-12-19T07:37:01.0873375Z Setting up postgresql-client (16+257build1.1) ...
+2025-12-19T07:37:02.2193183Z
+2025-12-19T07:37:02.2195468Z Running kernel seems to be up-to-date.
+2025-12-19T07:37:02.2195866Z
+2025-12-19T07:37:02.2196445Z No services need to be restarted.
+2025-12-19T07:37:02.2196852Z
+2025-12-19T07:37:02.2197291Z No containers need to be restarted.
+2025-12-19T07:37:02.2197614Z
+2025-12-19T07:37:02.2198101Z No user sessions are running outdated binaries.
+2025-12-19T07:37:02.2198467Z
+2025-12-19T07:37:02.2199154Z No VM guests are running outdated hypervisor (qemu) binaries on this host.
+2025-12-19T07:37:03.2294417Z Using mapped Postgres port: 5432
+2025-12-19T07:37:03.2869786Z 127.0.0.1:5432 - accepting connections
+=== C:\Users\Spinzy Diagnostics\Desktop\ai-tutor\run-20363223822-logs\Integration Tests (Alert Evaluator)\7_Debug Postgres connection (temporary).txt ===
+2025-12-19T07:37:03.2920892Z ##[group]Run echo "--- pg_isready verbose (localhost:mapped-port) ---"
+2025-12-19T07:37:03.2921401Z [36;1mecho "--- pg_isready verbose (localhost:mapped-port) ---"[0m
+2025-12-19T07:37:03.2922001Z [36;1mPORT=5432[0m
+2025-12-19T07:37:03.2922289Z [36;1mpg_isready -h 127.0.0.1 -p $PORT -U postgres || true[0m
+2025-12-19T07:37:03.2922635Z [36;1mecho "--- psql version ---"[0m
+2025-12-19T07:37:03.2922884Z [36;1mpsql --version || true[0m
+2025-12-19T07:37:03.2923187Z [36;1mecho "--- try listing databases (localhost:mapped-port) ---"[0m
+2025-12-19T07:37:03.2923635Z [36;1mPGPASSWORD=postgres psql -h 127.0.0.1 -p $PORT -U postgres -c "\l" || true[0m
+2025-12-19T07:37:03.2924062Z [36;1mecho "--- DNS / host resolution (service hostname) ---"[0m
+2025-12-19T07:37:03.2924396Z [36;1mif command -v getent >/dev/null 2>&1; then[0m
+2025-12-19T07:37:03.2924679Z [36;1m  getent hosts postgres || true[0m
+2025-12-19T07:37:03.2924916Z [36;1melse[0m
+2025-12-19T07:37:03.2925103Z [36;1m  nslookup postgres || true[0m
+2025-12-19T07:37:03.2925358Z [36;1mfi[0m
+2025-12-19T07:37:03.2925567Z [36;1mecho "--- docker ps (service candidates) ---"[0m
+2025-12-19T07:37:03.2925993Z [36;1mdocker ps --filter ancestor=postgres --format '{{.ID}} {{.Image}} {{.Status}}' || true[0m
+2025-12-19T07:37:03.2959268Z shell: /usr/bin/bash -e {0}
+2025-12-19T07:37:03.2959507Z env:
+2025-12-19T07:37:03.2959997Z   DATABASE_URL: ***127.0.0.1:5432/ai_tutor_test
+2025-12-19T07:37:03.2960256Z ##[endgroup]
+2025-12-19T07:37:03.3013550Z --- pg_isready verbose (localhost:mapped-port) ---
+2025-12-19T07:37:03.3317393Z 127.0.0.1:5432 - accepting connections
+2025-12-19T07:37:03.3319931Z --- psql version ---
+2025-12-19T07:37:03.4027478Z psql (PostgreSQL) 16.11 (Ubuntu 16.11-1.pgdg24.04+1)
+2025-12-19T07:37:03.4034135Z --- try listing databases (localhost:mapped-port) ---
+2025-12-19T07:37:03.4453484Z                                                       List of databases
+2025-12-19T07:37:03.4454536Z    Name    |  Owner   | Encoding | Locale Provider |  Collate   |   Ctype    | ICU Locale | ICU Rules |   Access privileges
+2025-12-19T07:37:03.4455767Z -----------+----------+----------+-----------------+------------+------------+------------+-----------+-----------------------
+2025-12-19T07:37:03.4456727Z  postgres  | postgres | UTF8     | libc            | en_US.utf8 | en_US.utf8 |            |           |
+2025-12-19T07:37:03.4457783Z  template0 | postgres | UTF8     | libc            | en_US.utf8 | en_US.utf8 |            |           | =c/postgres          +
+2025-12-19T07:37:03.4458668Z            |          |          |                 |            |            |            |           | postgres=CTc/postgres
+2025-12-19T07:37:03.4459503Z  template1 | postgres | UTF8     | libc            | en_US.utf8 | en_US.utf8 |            |           | =c/postgres          +
+2025-12-19T07:37:03.4460381Z            |          |          |                 |            |            |            |           | postgres=CTc/postgres
+2025-12-19T07:37:03.4461158Z  testdb    | postgres | UTF8     | libc            | en_US.utf8 | en_US.utf8 |            |           |
+2025-12-19T07:37:03.4461920Z (4 rows)
+2025-12-19T07:37:03.4462069Z
+2025-12-19T07:37:03.4470702Z --- DNS / host resolution (service hostname) ---
+2025-12-19T07:37:03.4553137Z --- docker ps (service candidates) ---
+**********************
+Windows PowerShell transcript end
+End time: 20251219133208
+**********************
