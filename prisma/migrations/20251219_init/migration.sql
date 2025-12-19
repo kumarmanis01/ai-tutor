@@ -1,4 +1,4 @@
-﻿-- CreateEnum
+-- CreateEnum
 CREATE TYPE "UserStatus" AS ENUM ('active', 'banned', 'suspended');
 
 -- CreateEnum
