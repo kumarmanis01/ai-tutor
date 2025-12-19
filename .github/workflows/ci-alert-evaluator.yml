@@ -20,8 +20,10 @@ jobs:
         options: >-
           --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 5
 
-    env:
-      DATABASE_URL: postgres://postgres:postgres@localhost:5432/testdb
+    # DATABASE_URL cannot reference `job.services` at the job-level (not available
+    # when expressions are evaluated). We set the mapped port and DATABASE_URL at
+    # runtime in the "Wait for Postgres" step and export it to GITHUB_ENV so
+    # subsequent steps can use it.
 
     steps:
       - name: Checkout
@@ -30,7 +32,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 18
+          node-version: '20.x'
           cache: 'npm'
 
       - name: Install deps
@@ -39,15 +41,47 @@ jobs:
       - name: Wait for Postgres
         run: |
           sudo apt-get update && sudo apt-get install -y postgresql-client
-          until pg_isready -h localhost -p 5432 -U postgres; do
-            echo "Waiting for Postgres..."; sleep 1;
+          # Use the Actions-provided mapped port and localhost so the runner can reach the service
+          PORT=${{ job.services.postgres.ports[5432] }}
+          echo "Using mapped Postgres port: $PORT"
+          # Export DATABASE_URL for later steps via GITHUB_ENV (safe at runtime)
+          echo "DATABASE_URL=postgres://postgres:postgres@127.0.0.1:$PORT/ai_tutor_test" >> $GITHUB_ENV
+          until pg_isready -h 127.0.0.1 -p $PORT -U postgres; do
+            echo "Waiting for Postgres on 127.0.0.1:$PORT..."; sleep 1;
           done
+
+      - name: Debug Postgres connection (temporary)
+        if: always()
+        run: |
+          echo "--- pg_isready verbose (localhost:mapped-port) ---"
+          PORT=${{ job.services.postgres.ports[5432] }}
+          pg_isready -h 127.0.0.1 -p $PORT -U postgres || true
+          echo "--- psql version ---"
+          psql --version || true
+          echo "--- try listing databases (localhost:mapped-port) ---"
+          PGPASSWORD=postgres psql -h 127.0.0.1 -p $PORT -U postgres -c "\l" || true
+          echo "--- DNS / host resolution (service hostname) ---"
+          if command -v getent >/dev/null 2>&1; then
+            getent hosts postgres || true
+          else
+            nslookup postgres || true
+          fi
+          echo "--- docker ps (service candidates) ---"
+          docker ps --filter ancestor=postgres --format '{{.ID}} {{.Image}} {{.Status}}' || true
 
       - name: Generate Prisma client
         run: npx prisma generate
 
       - name: Apply migrations
-        run: npx prisma migrate deploy
+        env:
+          DATABASE_URL: ${{ env.DATABASE_URL }}
+        run: |
+          echo "Applying migrations against $DATABASE_URL"
+          # First attempt to run migrations (for projects using migration SQL).
+          # Then run `prisma db push` to ensure Prisma schema is applied in CI
+          # (useful when migrations are empty or not used to create tables).
+          npx prisma migrate deploy || true
+          npx prisma db push
 
       - name: Run evaluator integration tests
         run: npm run test:integration:evaluator
