@@ -1,3 +1,4 @@
+jobs:
 name: Deploy Prisma Migrations
 
 on:
@@ -14,35 +15,16 @@ jobs:
       - name: Use Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '18'
+          node-version: '20.x'
 
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Run Prisma migrations (deploy)
+      - name: Ensure DATABASE_URL is provided
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
-        run: npx prisma migrate deploy --schema=prisma/schema.prisma
-name: Deploy Prisma Migrations
-
-on:
-  workflow_dispatch: {}
-  push:
-    branches:
-      - master
-
-jobs:
-  deploy-migrations:
-    name: Deploy migrations to production DB
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Use Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '18'
+        run: |
+          if [ -z "$DATABASE_URL" ]; then
+            echo "::error::DATABASE_URL secret is not set. This workflow requires DATABASE_URL to run.";
+            exit 1;
+          fi
 
       - name: Install dependencies
         run: npm ci
