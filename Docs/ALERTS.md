@@ -1,0 +1,49 @@
+**Alerting — Phase 5(D)**
+
+Overview
+- Provides pluggable sinks: Slack, Email, Webhook.
+- Severity-aware routing and default configuration.
+- In-memory rate-limiter and deduper with Redis hooks recommended for production.
+
+Files
+- `lib/alerts/types.ts` — shared types and interfaces.
+- `lib/alerts/sinks/slack.ts` — Slack webhook sink.
+- `lib/alerts/sinks/webhook.ts` — generic webhook sink.
+- `lib/alerts/sinks/email.ts` — pluggable email sink (expects a sendMail fn).
+- `lib/alerts/rateLimiter.ts` — in-memory rate limiter (replace with Redis in prod).
+- `lib/alerts/dedupe.ts` — in-memory deduper (replace with Redis SET + EXPIRE in prod).
+- `lib/alerts/router.ts` — router that applies routing, rate-limiting, dedupe, and dispatch.
+
+Usage example
+
+```ts
+import { AlertRouter } from '../lib/alerts/router';
+import { SlackSink } from '../lib/alerts/sinks/slack';
+import { WebhookSink } from '../lib/alerts/sinks/webhook';
+import { EmailSink } from '../lib/alerts/sinks/email';
+import { InMemoryRateLimiter } from '../lib/alerts/rateLimiter';
+import { InMemoryDeduper } from '../lib/alerts/dedupe';
+
+const router = new AlertRouter({
+  sinks: [
+    new SlackSink({ webhookUrl: process.env.SLACK_WEBHOOK! }),
+    new WebhookSink({ url: process.env.PAGER_WEBHOOK! }),
+    new EmailSink({ to: 'ops@example.com', sendMail: async (opts) => { /* call nodemailer */ } }),
+  ],
+  routing: {
+    info: ['slack'],
+    warning: ['slack'],
+    error: ['slack', 'email'],
+    critical: ['slack', 'email', 'webhook'],
+  },
+  rateLimiter: new InMemoryRateLimiter(5, 0.2),
+  deduper: new InMemoryDeduper(60*10),
+});
+
+await router.route({ title: 'Test', message: 'Something happened', severity: 'error' });
+```
+
+Production notes
+- Replace `InMemoryRateLimiter` and `InMemoryDeduper` with Redis-backed implementations for horizontal safety.
+- For Slack: use official sign-secret verification for security when receiving events.
+- Add retries/backoff for sinks and circuit-breaker for flaky sinks.
