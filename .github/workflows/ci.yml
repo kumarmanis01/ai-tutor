@@ -15,7 +15,7 @@ jobs:
       - name: Use Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 18
+          node-version: '20.x'
       - name: Install
         run: npm ci
       - name: Lint
@@ -23,20 +23,7 @@ jobs:
       - name: Type-check
         run: npm run type-check
 
-  integration:
-    name: Integration Tests (conditional)
-    runs-on: ubuntu-latest
-    needs: lint-type
-    if: ${{ secrets.DATABASE_URL != '' }}
-    env:
-      DATABASE_URL: ${{ secrets.DATABASE_URL }}
-    steps:
-      - uses: actions/checkout@v4
-      - name: Use Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 18
-      - name: Install
-        run: npm ci
-      - name: Run integration tests
-        run: npm run test:integration
+# NOTE: Integration tests are handled in the dedicated
+# `ci-alert-evaluator.yml` workflow. We keep this CI workflow
+# minimal (lint + type-check) to reduce duplicate runs and
+# avoid conditional failures when secrets are not present.
