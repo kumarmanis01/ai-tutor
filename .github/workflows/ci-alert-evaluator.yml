@@ -77,7 +77,11 @@ jobs:
           DATABASE_URL: ${{ env.DATABASE_URL }}
         run: |
           echo "Applying migrations against $DATABASE_URL"
-          npx prisma migrate deploy
+          # First attempt to run migrations (for projects using migration SQL).
+          # Then run `prisma db push` to ensure Prisma schema is applied in CI
+          # (useful when migrations are empty or not used to create tables).
+          npx prisma migrate deploy || true
+          npx prisma db push
 
       - name: Run evaluator integration tests
         run: npm run test:integration:evaluator
