@@ -46,6 +46,24 @@ jobs:
             echo "Waiting for Postgres on host 'postgres'..."; sleep 1;
           done
 
+      - name: Debug Postgres connection (temporary)
+        if: always()
+        run: |
+          echo "--- pg_isready verbose ---"
+          pg_isready -h postgres -p 5432 -U postgres -d postgres -v || true
+          echo "--- psql version ---"
+          psql --version || true
+          echo "--- try listing databases ---"
+          PGPASSWORD=postgres psql -h postgres -U postgres -c "\l" || true
+          echo "--- DNS / host resolution ---"
+          if command -v getent >/dev/null 2>&1; then
+            getent hosts postgres || true
+          else
+            nslookup postgres || true
+          fi
+          echo "--- docker ps (service candidates) ---"
+          docker ps --filter ancestor=postgres --format '{{.ID}} {{.Image}} {{.Status}}' || true
+
       - name: Generate Prisma client
         run: npx prisma generate
 
