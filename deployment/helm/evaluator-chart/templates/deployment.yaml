@@ -19,12 +19,65 @@ spec:
           env:
             - name: NODE_ENV
               value: "production"
+{{- if .Values.secrets.secretName }}
             - name: DATABASE_URL
-              value: {{ default "" .Values.env.DATABASE_URL }}
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.secrets.secretName | quote }}
+                  key: DATABASE_URL
             - name: PUSHGATEWAY_URL
-              value: {{ default "" .Values.env.PUSHGATEWAY_URL }}
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.secrets.secretName | quote }}
+                  key: PUSHGATEWAY_URL
             - name: REDIS_URL
-              value: {{ default "" .Values.env.REDIS_URL }}
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.secrets.secretName | quote }}
+                  key: REDIS_URL
+            - name: OPS_EMAIL
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.secrets.secretName | quote }}
+                  key: OPS_EMAIL
+            - name: SMTP_HOST
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.secrets.secretName | quote }}
+                  key: SMTP_HOST
+            - name: SMTP_PORT
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.secrets.secretName | quote }}
+                  key: SMTP_PORT
+            - name: SMTP_USER
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.secrets.secretName | quote }}
+                  key: SMTP_USER
+            - name: SMTP_PASS
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.secrets.secretName | quote }}
+                  key: SMTP_PASS
+{{- else }}
+            - name: DATABASE_URL
+              value: {{ default "" .Values.env.DATABASE_URL | quote }}
+            - name: PUSHGATEWAY_URL
+              value: {{ default "" .Values.env.PUSHGATEWAY_URL | quote }}
+            - name: REDIS_URL
+              value: {{ default "" .Values.env.REDIS_URL | quote }}
+            - name: OPS_EMAIL
+              value: {{ default "" .Values.env.OPS_EMAIL | quote }}
+            - name: SMTP_HOST
+              value: {{ default "" .Values.env.SMTP_HOST | quote }}
+            - name: SMTP_PORT
+              value: {{ default "" .Values.env.SMTP_PORT | quote }}
+            - name: SMTP_USER
+              value: {{ default "" .Values.env.SMTP_USER | quote }}
+            - name: SMTP_PASS
+              value: {{ default "" .Values.env.SMTP_PASS | quote }}
+{{- end }}
           ports:
             - containerPort: {{ .Values.service.port }}
               name: metrics
