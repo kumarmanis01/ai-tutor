@@ -54,6 +54,8 @@
     "test": "npm run lint && npm run type-check",
     "test:integration": "node tests/integration/audit-log.test.js",
     "test:integration:evaluator": "node -r ts-node/register/transpile-only tests/integration/alert-evaluator.test.ts",
+    "test:integration:dry-run": "node tests/integration/alert-evaluator-dry-run.test.js",
+    "test:integration:all": "npm run test:integration:evaluator && npm run test:integration:dry-run",
     "test:unit": "jest --runInBand",
     "orchestrator:start": "node -r ts-node/register worker/orchestrator.ts",
     "seed-db-ai-content-infra": "node -r ts-node/register scripts/seed-database.ts",

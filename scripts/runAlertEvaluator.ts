@@ -1,5 +1,7 @@
 import { PrismaClient, Prisma } from '@prisma/client';
 import evaluateAlerts from '../lib/alertEvaluator';
+import { AlertRouter } from '../lib/alerts/router';
+import { DryRunSink } from '../lib/alerts/sinks/dryRun';
 
 const prisma = new PrismaClient();
 
@@ -24,8 +26,41 @@ async function runOnce() {
 
   // Delegate core logic to the reusable evaluator and log decisions consistently.
   const results = await evaluateAlerts(prisma, { dryRun: DRY_RUN, now: t0 });
+
+  // Map evaluator results to AlertRouter payloads and route non-OKs.
+  const severityMap = (d: string) => {
+    if (d === 'CRITICAL') return 'critical';
+    if (d === 'WARNING') return 'warning';
+    if (d === 'ERROR') return 'error';
+    return 'info';
+  };
+
   for (const r of results) {
-    logDecision({ ...r, dryRun: DRY_RUN });
+    try {
+      if (r.decision && r.decision !== 'OK') {
+        const alert = {
+          title: `Alert: ${r.rule}`,
+          message: `${r.rule} → ${r.decision}`,
+          severity: severityMap(String(r.decision)),
+          meta: { inputs: r.inputs },
+          timestamp: t0.toISOString(),
+        } as any;
+
+        // Route via the router (dry-run sink will simply log)
+        if ((global as any).alertRouter instanceof AlertRouter) {
+          const res = await (global as any).alertRouter.route(alert);
+          logDecision({ ...r, dryRun: DRY_RUN, routed: res });
+        } else {
+          // fallback: just log decision
+          logDecision({ ...r, dryRun: DRY_RUN, routed: 'no-router' });
+        }
+      } else {
+        logDecision({ ...r, dryRun: DRY_RUN });
+      }
+    } catch (e) {
+      console.error('routing-error', String(e));
+      logDecision({ ...r, dryRun: DRY_RUN, routingError: String(e) });
+    }
   }
   return true;
 
@@ -56,6 +91,15 @@ async function main() {
   } catch (e) {
     console.error('Fatal: cannot connect to DB', String(e));
     process.exit(1);
+  }
+
+  // Instantiate a local AlertRouter for dry-run testing. This uses the
+  // DryRun sink which only logs alerts so no external notifications are sent.
+  try {
+    const router = new AlertRouter({ sinks: [new DryRunSink()] });
+    (global as any).alertRouter = router;
+  } catch (e) {
+    console.error('alert-router-init-failed', String(e));
   }
 
   async function singleRun() {
