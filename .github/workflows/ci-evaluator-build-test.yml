@@ -2,8 +2,6 @@ name: CI - Evaluator Build & Dry-run Integration
 
 on:
   pull_request:
-  push:
-    branches: [ ci/evaluator-integration-scripts, master ]
 
 jobs:
   build-and-test:
@@ -47,10 +45,19 @@ jobs:
       - name: Bundle evaluator (esbuild)
         run: npx esbuild scripts/runAlertEvaluator.ts --bundle --platform=node --target=node20 --outfile=build/runAlertEvaluator.js --external:@prisma/client --external:prom-client --external:ioredis --sourcemap
 
+      - name: Upload bundle artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: evaluator-bundle
+          path: build/runAlertEvaluator.js
+
       - name: Run dry-run integration
         env:
-          DATABASE_URL: postgres://test:pass@127.0.0.1:${{ job.services.postgres.ports[5432] }}/ai_tutor_test
+          # Prefer an explicit secret DATABASE_URL if provided; otherwise use the service
+          DATABASE_URL: ${{ secrets.DATABASE_URL || format('postgres://test:pass@127.0.0.1:{0}/ai_tutor_test', job.services.postgres.ports[5432]) }}
           RUN_ONCE: '1'
           EVALUATOR_DRY_RUN: '1'
+          # Optional Pushgateway URL from secrets if set
+          PUSHGATEWAY_URL: ${{ secrets.PUSHGATEWAY_URL || '' }}
         run: |
           node build/runAlertEvaluator.js
