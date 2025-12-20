@@ -1,16 +1,16 @@
 import { PrismaClient, Prisma } from '@prisma/client';
 let evaluateAlerts: any;
-import { AlertRouter } from '../lib/alerts/router';
-import { DryRunSink } from '../lib/alerts/sinks/dryRun';
-import { SlackSink } from '../lib/alerts/sinks/slack';
-import { WebhookSink } from '../lib/alerts/sinks/webhook';
-import { EmailSink } from '../lib/alerts/sinks/email';
-import { InMemoryRateLimiter } from '../lib/alerts/rateLimiter';
-import { InMemoryDeduper } from '../lib/alerts/dedupe';
-import { RedisRateLimiter } from '../lib/alerts/redisRateLimiter';
-import { RedisDeduper } from '../lib/alerts/redisDeduper';
-import { SinkWrapper } from '../lib/alerts/sinkWrapper';
-import { sendEmail } from '../lib/mailer';
+let AlertRouter: any;
+let DryRunSink: any;
+let SlackSink: any;
+let WebhookSink: any;
+let EmailSink: any;
+let InMemoryRateLimiter: any;
+let InMemoryDeduper: any;
+let RedisRateLimiter: any;
+let RedisDeduper: any;
+let SinkWrapper: any;
+let sendEmail: any;
 
 const prisma = new PrismaClient();
 import http from 'http';
@@ -110,6 +110,39 @@ async function main() {
     evaluateAlerts = mod && (mod.default || mod.evaluateAlerts) ? (mod.default || mod.evaluateAlerts) : mod;
   } catch (e) {
     console.error('Failed to import alertEvaluator dynamically', String(e));
+    process.exit(1);
+  }
+
+  // Dynamically load alerting infra modules so this script can run under
+  // different node/ts-node loader modes without ESM resolution failures.
+  try {
+    const [mRouter, mDry, mSlack, mWebhook, mEmail, mInMemRL, mInMemDed, mRedisRL, mRedisDed, mSinkWrap, mMailer] = await Promise.all([
+      import('../lib/alerts/router'),
+      import('../lib/alerts/sinks/dryRun'),
+      import('../lib/alerts/sinks/slack'),
+      import('../lib/alerts/sinks/webhook'),
+      import('../lib/alerts/sinks/email'),
+      import('../lib/alerts/rateLimiter'),
+      import('../lib/alerts/dedupe'),
+      import('../lib/alerts/redisRateLimiter'),
+      import('../lib/alerts/redisDeduper'),
+      import('../lib/alerts/sinkWrapper'),
+      import('../lib/mailer'),
+    ]);
+
+    AlertRouter = mRouter && (mRouter.AlertRouter || mRouter.default) ? (mRouter.AlertRouter || mRouter.default) : mRouter;
+    DryRunSink = mDry && (mDry.DryRunSink || mDry.default) ? (mDry.DryRunSink || mDry.default) : mDry;
+    SlackSink = mSlack && (mSlack.SlackSink || mSlack.default) ? (mSlack.SlackSink || mSlack.default) : mSlack;
+    WebhookSink = mWebhook && (mWebhook.WebhookSink || mWebhook.default) ? (mWebhook.WebhookSink || mWebhook.default) : mWebhook;
+    EmailSink = mEmail && (mEmail.EmailSink || mEmail.default) ? (mEmail.EmailSink || mEmail.default) : mEmail;
+    InMemoryRateLimiter = mInMemRL && (mInMemRL.InMemoryRateLimiter || mInMemRL.default) ? (mInMemRL.InMemoryRateLimiter || mInMemRL.default) : mInMemRL;
+    InMemoryDeduper = mInMemDed && (mInMemDed.InMemoryDeduper || mInMemDed.default) ? (mInMemDed.InMemoryDeduper || mInMemDed.default) : mInMemDed;
+    RedisRateLimiter = mRedisRL && (mRedisRL.RedisRateLimiter || mRedisRL.default) ? (mRedisRL.RedisRateLimiter || mRedisRL.default) : mRedisRL;
+    RedisDeduper = mRedisDed && (mRedisDed.RedisDeduper || mRedisDed.default) ? (mRedisDed.RedisDeduper || mRedisDed.default) : mRedisDed;
+    SinkWrapper = mSinkWrap && (mSinkWrap.SinkWrapper || mSinkWrap.default) ? (mSinkWrap.SinkWrapper || mSinkWrap.default) : mSinkWrap;
+    sendEmail = mMailer && (mMailer.sendEmail || mMailer.default) ? (mMailer.sendEmail || mMailer.default) : mMailer;
+  } catch (e) {
+    console.error('Failed to dynamically import alerting modules', String(e));
     process.exit(1);
   }
 
