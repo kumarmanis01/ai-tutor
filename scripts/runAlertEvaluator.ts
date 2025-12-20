@@ -1,5 +1,5 @@
 import { PrismaClient, Prisma } from '@prisma/client';
-import evaluateAlerts from '../lib/alertEvaluator';
+let evaluateAlerts: any;
 import { AlertRouter } from '../lib/alerts/router';
 import { DryRunSink } from '../lib/alerts/sinks/dryRun';
 import { SlackSink } from '../lib/alerts/sinks/slack';
@@ -100,6 +100,16 @@ async function main() {
     await prisma.$connect();
   } catch (e) {
     console.error('Fatal: cannot connect to DB', String(e));
+    process.exit(1);
+  }
+
+  // Dynamically import evaluator to avoid ESM resolution issues when running
+  // under different Node/ts-node invocation modes (register vs ESM loader).
+  try {
+    const mod = await import('../lib/alertEvaluator');
+    evaluateAlerts = mod && (mod.default || mod.evaluateAlerts) ? (mod.default || mod.evaluateAlerts) : mod;
+  } catch (e) {
+    console.error('Failed to import alertEvaluator dynamically', String(e));
     process.exit(1);
   }
 
