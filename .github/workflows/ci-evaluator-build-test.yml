@@ -2,6 +2,16 @@ name: CI - Evaluator Build & Dry-run Integration
 
 on:
   pull_request:
+  workflow_dispatch:
+    inputs:
+      evaluator_dry_run:
+        description: 'Set to 1 to run in dry-run mode, 0 to perform real sinks'
+        required: false
+        default: '1'
+      run_once:
+        description: 'Set to 1 to run evaluator once then exit'
+        required: false
+        default: '1'
 
 jobs:
   build-and-test:
@@ -51,12 +61,20 @@ jobs:
           name: evaluator-bundle
           path: build/runAlertEvaluator.js
 
-      - name: Run dry-run integration
+      - name: Run evaluator integration
         env:
           # Prefer an explicit secret DATABASE_URL if provided; otherwise use the service
           DATABASE_URL: ${{ secrets.DATABASE_URL || format('postgres://test:pass@127.0.0.1:{0}/ai_tutor_test', job.services.postgres.ports[5432]) }}
-          RUN_ONCE: '1'
-          EVALUATOR_DRY_RUN: '1'
+          # Allow manual override from workflow_dispatch inputs; default to dry-run for PRs
+          EVALUATOR_DRY_RUN: ${{ github.event.inputs.evaluator_dry_run || '1' }}
+          RUN_ONCE: ${{ github.event.inputs.run_once || '1' }}
+          # Optional secrets used for real sinks (set in repository secrets for staging):
+          OPS_EMAIL: ${{ secrets.OPS_EMAIL || '' }}
+          SMTP_HOST: ${{ secrets.SMTP_HOST || '' }}
+          SMTP_PORT: ${{ secrets.SMTP_PORT || '' }}
+          SMTP_USER: ${{ secrets.SMTP_USER || '' }}
+          SMTP_PASS: ${{ secrets.SMTP_PASS || '' }}
+          REDIS_URL: ${{ secrets.REDIS_URL || '' }}
           # Optional Pushgateway URL from secrets if set
           PUSHGATEWAY_URL: ${{ secrets.PUSHGATEWAY_URL || '' }}
         run: |
