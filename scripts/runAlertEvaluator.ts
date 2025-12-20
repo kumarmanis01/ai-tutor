@@ -13,6 +13,7 @@ import { SinkWrapper } from '../lib/alerts/sinkWrapper';
 import { sendEmail } from '../lib/mailer';
 
 const prisma = new PrismaClient();
+import http from 'http';
 
 const LOCK_KEY = Number(process.env.EVALUATOR_PG_LOCK_KEY || '987654321');
 const INTERVAL_SEC = Number(process.env.EVALUATOR_INTERVAL_SEC || '60');
