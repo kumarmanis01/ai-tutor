@@ -1,0 +1,13 @@
+replicaCount: 1
+image:
+  repository: ghcr.io/YOUR_ORG/ai-tutor-evaluator
+  tag: latest
+  pullPolicy: IfNotPresent
+service:
+  type: ClusterIP
+  port: 9188
+resources: {}
+env:
+  DATABASE_URL: ""
+  PUSHGATEWAY_URL: ""
+  REDIS_URL: ""
