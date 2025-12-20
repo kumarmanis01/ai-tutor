@@ -1,0 +1,17 @@
+[Unit]
+Description=Alert Evaluator Service
+After=network.target
+
+[Service]
+Type=simple
+User=node
+WorkingDirectory=/srv/ai-tutor
+Environment=NODE_ENV=production
+# Point to your built bundle
+ExecStart=/usr/bin/node /srv/ai-tutor/build/runAlertEvaluator.js
+Restart=on-failure
+RestartSec=5
+LimitNOFILE=4096
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,2 @@
+evaluator: node build/runAlertEvaluator.js
+metrics: node build/runMetricsServer.js # optional standalone metrics server
