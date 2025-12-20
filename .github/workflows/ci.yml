@@ -22,7 +22,6 @@ jobs:
         run: npm run lint
       - name: Type-check
         run: npm run type-check
-
 # NOTE: Integration tests are handled in the dedicated
 # `ci-alert-evaluator.yml` workflow. We keep this CI workflow
 # minimal (lint + type-check) to reduce duplicate runs and

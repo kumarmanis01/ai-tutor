@@ -1,0 +1,31 @@
+import type { Deduper } from './types';
+import Redis from 'ioredis';
+
+/**
+ * Redis-backed deduper using SET NX + EX semantics.
+ * - `isDuplicate` checks existence.
+ * - `touch` sets the key with TTL.
+ */
+export class RedisDeduper implements Deduper {
+  private client: Redis.Redis;
+  constructor(private opts?: { client?: Redis.Redis; ttlSeconds?: number }) {
+    this.client = opts?.client ?? new Redis(process.env.REDIS_URL);
+    this.ttlSeconds = opts?.ttlSeconds ?? 60 * 10;
+  }
+
+  ttlSeconds: number;
+
+  async isDuplicate(key: string): Promise<boolean> {
+    const rkey = `alerter:dedupe:${key}`;
+    const exists = await this.client.exists(rkey);
+    return exists === 1;
+  }
+
+  async touch(key: string): Promise<void> {
+    const rkey = `alerter:dedupe:${key}`;
+    // set with TTL (overwrite existing TTL)
+    await this.client.set(rkey, '1', 'EX', this.ttlSeconds);
+  }
+}
+
+export default RedisDeduper;

@@ -50,25 +50,6 @@ jobs:
             echo "Waiting for Postgres on 127.0.0.1:$PORT..."; sleep 1;
           done
 
-      - name: Debug Postgres connection (temporary)
-        if: always()
-        run: |
-          echo "--- pg_isready verbose (localhost:mapped-port) ---"
-          PORT=${{ job.services.postgres.ports[5432] }}
-          pg_isready -h 127.0.0.1 -p $PORT -U postgres || true
-          echo "--- psql version ---"
-          psql --version || true
-          echo "--- try listing databases (localhost:mapped-port) ---"
-          PGPASSWORD=postgres psql -h 127.0.0.1 -p $PORT -U postgres -c "\l" || true
-          echo "--- DNS / host resolution (service hostname) ---"
-          if command -v getent >/dev/null 2>&1; then
-            getent hosts postgres || true
-          else
-            nslookup postgres || true
-          fi
-          echo "--- docker ps (service candidates) ---"
-          docker ps --filter ancestor=postgres --format '{{.ID}} {{.Image}} {{.Status}}' || true
-
       - name: Generate Prisma client
         run: npx prisma generate
 
