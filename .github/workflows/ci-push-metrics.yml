@@ -1,0 +1,45 @@
+name: CI - Push Metrics to Staging Pushgateway
+
+on:
+  workflow_run:
+    workflows: ["CI - Alert Evaluator"]
+    types: [completed]
+
+jobs:
+  push-metrics:
+    if: ${{ github.event.workflow_run.conclusion == 'success' && secrets.STAGING_PUSHGATEWAY_URL }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+
+      - name: Install deps
+        run: npm ci
+
+      - name: Start metrics server (background)
+        run: |
+          METRICS_PORT=9187 npm run metrics:server &
+          echo $! > metrics.pid
+
+      - name: Wait for metrics endpoint
+        run: |
+          for i in {1..30}; do
+            if curl -sSf http://127.0.0.1:9187/metrics >/dev/null; then echo ok; break; fi
+            sleep 1
+          done
+
+      - name: Push to staging Pushgateway
+        env:
+          PUSHGATEWAY_URL: ${{ secrets.STAGING_PUSHGATEWAY_URL }}
+        run: |
+          node -e "require('./lib/alerts/pushgateway').pushMetricsOnce().catch(e=>{console.error(e); process.exit(2)})"
+
+      - name: Stop metrics server
+        run: |
+          pid=$(cat metrics.pid || true)
+          if [ -n "$pid" ]; then kill $pid || true; fi
