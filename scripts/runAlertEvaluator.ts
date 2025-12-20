@@ -2,6 +2,15 @@ import { PrismaClient, Prisma } from '@prisma/client';
 import evaluateAlerts from '../lib/alertEvaluator';
 import { AlertRouter } from '../lib/alerts/router';
 import { DryRunSink } from '../lib/alerts/sinks/dryRun';
+import { SlackSink } from '../lib/alerts/sinks/slack';
+import { WebhookSink } from '../lib/alerts/sinks/webhook';
+import { EmailSink } from '../lib/alerts/sinks/email';
+import { InMemoryRateLimiter } from '../lib/alerts/rateLimiter';
+import { InMemoryDeduper } from '../lib/alerts/dedupe';
+import { RedisRateLimiter } from '../lib/alerts/redisRateLimiter';
+import { RedisDeduper } from '../lib/alerts/redisDeduper';
+import { SinkWrapper } from '../lib/alerts/sinkWrapper';
+import { sendEmail } from '../lib/mailer';
 
 const prisma = new PrismaClient();
 
@@ -93,11 +102,41 @@ async function main() {
     process.exit(1);
   }
 
-  // Instantiate a local AlertRouter for dry-run testing. This uses the
-  // DryRun sink which only logs alerts so no external notifications are sent.
+  // Build sinks and supporting components based on environment.
   try {
-    const router = new AlertRouter({ sinks: [new DryRunSink()] });
+    const sinks: any[] = [];
+
+    const enableRealSinks = !DRY_RUN && (process.env.SLACK_WEBHOOK || process.env.PAGER_WEBHOOK || process.env.OPS_EMAIL);
+
+    if (enableRealSinks) {
+      if (process.env.SLACK_WEBHOOK) {
+        sinks.push(new SinkWrapper(new SlackSink({ webhookUrl: process.env.SLACK_WEBHOOK!, channel: process.env.SLACK_CHANNEL, username: process.env.SLACK_USERNAME }), { retries: 3, backoffMs: 200 }));
+      }
+      if (process.env.PAGER_WEBHOOK) {
+        sinks.push(new SinkWrapper(new WebhookSink({ url: process.env.PAGER_WEBHOOK! }), { retries: 2, backoffMs: 200 }));
+      }
+      if (process.env.OPS_EMAIL) {
+        sinks.push(new SinkWrapper(new EmailSink({ to: process.env.OPS_EMAIL!, sendMail: sendEmail }), { retries: 1, backoffMs: 300 }));
+      }
+    }
+
+    // Fallback to dry-run sink when no real sinks are configured.
+    if (sinks.length === 0) sinks.push(new DryRunSink());
+
+    // Rate limiter / deduper selection (prefer Redis when available)
+    let rateLimiter: any;
+    let deduper: any;
+    if (process.env.REDIS_URL) {
+      rateLimiter = new RedisRateLimiter({ capacity: Number(process.env.ALERT_RL_CAPACITY) || 10, windowSeconds: Number(process.env.ALERT_RL_WINDOW) || 60 });
+      deduper = new RedisDeduper({ ttlSeconds: Number(process.env.ALERT_DEDUPE_TTL) || 60 * 10 });
+    } else {
+      rateLimiter = new InMemoryRateLimiter(Number(process.env.ALERT_RL_CAPACITY) || 5, Number(process.env.ALERT_RL_REFILL) || 0.2);
+      deduper = new InMemoryDeduper(Number(process.env.ALERT_DEDUPE_TTL) || 60 * 10);
+    }
+
+    const router = new AlertRouter({ sinks, rateLimiter, deduper });
     (global as any).alertRouter = router;
+    console.log(JSON.stringify({ event: 'alert_router_initialized', sinks: sinks.map((s: any) => s.name), dryRun: DRY_RUN }));
   } catch (e) {
     console.error('alert-router-init-failed', String(e));
   }
@@ -140,9 +179,71 @@ async function main() {
   }
 
   console.log(JSON.stringify({ event: 'evaluator_starting', interval_sec: INTERVAL_SEC, max_ms: MAX_MS, dryRun: DRY_RUN }));
+
+  // Graceful shutdown handling
+  let shuttingDown = false;
+  let currentRun: Promise<void> | null = null;
+
+  async function shutdown(reason = 'signal') {
+    if (shuttingDown) return;
+    shuttingDown = true;
+    console.log(JSON.stringify({ event: 'shutdown_start', reason }));
+
+    // wait for current run to finish with timeout
+    const waitMs = Number(process.env.SHUTDOWN_TIMEOUT_MS || 10000);
+    if (currentRun) {
+      try {
+        await Promise.race([currentRun, new Promise((_, rej) => setTimeout(() => rej(new Error('shutdown-timeout')), waitMs))]);
+      } catch (e) {
+        console.error('shutdown: wait current run error', String(e));
+      }
+    }
+
+    // flush metrics if available and attempt to push to Pushgateway
+    try {
+      const { metricsOutput } = await import('../lib/alerts/metrics');
+      const m = await metricsOutput();
+      console.log(JSON.stringify({ event: 'metrics_snapshot', metrics: m }));
+      const { pushMetricsOnce } = await import('../lib/alerts/pushgateway');
+      if (typeof pushMetricsOnce === 'function') await pushMetricsOnce();
+    } catch (e) {
+      // ignore
+    }
+
+    // attempt to disconnect redis-backed components if present on global router
+    try {
+      const router = (global as any).alertRouter;
+      if (router) {
+        const rl = (router as any).opts?.rateLimiter ?? (router as any).rateLimiter ?? (router as any).opts?.rateLimiter;
+        const dd = (router as any).opts?.deduper ?? (router as any).deduper ?? (router as any).opts?.deduper;
+        if (rl && typeof rl.disconnect === 'function') {
+          await rl.disconnect().catch(() => {});
+        }
+        if (dd && typeof dd.disconnect === 'function') {
+          await dd.disconnect().catch(() => {});
+        }
+      }
+    } catch (e) {
+      // ignore
+    }
+
+    try {
+      await prisma.$disconnect();
+    } catch (e) {
+      // ignore
+    }
+
+    console.log(JSON.stringify({ event: 'shutdown_complete' }));
+    process.exit(0);
+  }
+
+  process.on('SIGINT', () => shutdown('SIGINT'));
+  process.on('SIGTERM', () => shutdown('SIGTERM'));
+  process.on('uncaughtException', (err) => { console.error('uncaughtException', String(err)); shutdown('uncaughtException'); });
+
   // Run immediately then schedule
-  await singleRun();
-  setInterval(singleRun, INTERVAL_SEC * 1000);
+  currentRun = (async () => { await singleRun(); currentRun = null; })();
+  setInterval(() => { currentRun = (async () => { await singleRun(); currentRun = null; })(); }, INTERVAL_SEC * 1000);
 }
 
 main().catch((e) => { console.error(e); process.exit(1); });
