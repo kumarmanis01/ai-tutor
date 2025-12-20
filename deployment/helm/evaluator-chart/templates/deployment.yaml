@@ -60,23 +60,28 @@ spec:
                 secretKeyRef:
                   name: {{ .Values.secrets.secretName | quote }}
                   key: SMTP_PASS
+            - name: SMTP_FROM
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.secrets.secretName | quote }}
+                  key: SMTP_FROM
 {{- else }}
             - name: DATABASE_URL
-              value: {{ default "" .Values.env.DATABASE_URL | quote }}
+              value: {{ default .Values.env.DATABASE_URL (env "DATABASE_URL") | quote }}
             - name: PUSHGATEWAY_URL
-              value: {{ default "" .Values.env.PUSHGATEWAY_URL | quote }}
+              value: {{ default .Values.env.PUSHGATEWAY_URL (env "PUSHGATEWAY_URL") | quote }}
             - name: REDIS_URL
-              value: {{ default "" .Values.env.REDIS_URL | quote }}
+              value: {{ coalesce (env "REDIS_URL") (env "UPSTASH_REDIS_REST_URL") .Values.env.REDIS_URL | quote }}
             - name: OPS_EMAIL
-              value: {{ default "" .Values.env.OPS_EMAIL | quote }}
+              value: {{ default .Values.env.OPS_EMAIL (env "OPS_EMAIL") | quote }}
             - name: SMTP_HOST
-              value: {{ default "" .Values.env.SMTP_HOST | quote }}
+              value: {{ default .Values.env.SMTP_HOST (env "SMTP_HOST") | quote }}
             - name: SMTP_PORT
-              value: {{ default "" .Values.env.SMTP_PORT | quote }}
+              value: {{ default .Values.env.SMTP_PORT (env "SMTP_PORT") | quote }}
             - name: SMTP_USER
-              value: {{ default "" .Values.env.SMTP_USER | quote }}
+              value: {{ default .Values.env.SMTP_USER (env "SMTP_USER") | quote }}
             - name: SMTP_PASS
-              value: {{ default "" .Values.env.SMTP_PASS | quote }}
+              value: {{ default .Values.env.SMTP_PASS (env "SMTP_PASS") | quote }}
 {{- end }}
           ports:
             - containerPort: {{ .Values.service.port }}
