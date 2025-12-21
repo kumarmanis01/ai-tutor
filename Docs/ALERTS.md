@@ -73,7 +73,12 @@ Running the evaluator in dry-run mode
 $env:DATABASE_URL = "postgres://user:pass@localhost:5432/testdb"
 $env:RUN_ONCE = "1"
 $env:EVALUATOR_DRY_RUN = "1"
-node -r ts-node/register/transpile-only scripts/runAlertEvaluator.ts
+node build/runAlertEvaluator.js
+
+Deployment and metrics
+- See `docs/evaluator_deploy_snippets.md` for systemd / Procfile / Helm examples.
+- A Next.js route is added at `/api/metrics` to expose Prometheus metrics via `prom-client` (preferred for single-app deployments).
+- Alternatively the evaluator can run a standalone metrics server (`scripts/metricsServer.ts`) and push to a Pushgateway; configure `PUSHGATEWAY_URL` to enable push on graceful shutdown.
 ```
 
 - CI: The repository includes an integration test `tests/integration/alert-evaluator-dry-run.test.js` which runs the evaluator in single-run dry-run mode. Ensure your CI job provides `DATABASE_URL`.

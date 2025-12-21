@@ -1,10 +1,11 @@
 import type { AlertSink, AlertPayload, SinkResult } from './types';
-import CircuitBreaker from './circuitBreaker';
+import CircuitBreaker, { CircuitBreakerOptions } from './circuitBreaker';
+import { sinkSuccess, sinkFailures, circuitOpen } from './metrics';
 
 export interface SinkWrapperOptions {
   retries?: number;
   backoffMs?: number; // base backoff (exponential)
-  circuitBreakerOptions?: Parameters<typeof CircuitBreaker>[0];
+  circuitBreakerOptions?: CircuitBreakerOptions;
 }
 
 export class SinkWrapper implements AlertSink {
@@ -28,6 +29,7 @@ export class SinkWrapper implements AlertSink {
 
   async send(a: AlertPayload): Promise<SinkResult> {
     if (!this.cb.canRequest()) {
+      circuitOpen.inc({ sink: this.name }, 1);
       return { success: false, details: 'circuit-open' };
     }
 
@@ -37,8 +39,10 @@ export class SinkWrapper implements AlertSink {
         const res = await this.sink.send(a);
         if (res && res.success) {
           this.cb.onSuccess();
+          sinkSuccess.inc({ sink: this.name }, 1);
         } else {
           this.cb.onFailure();
+          sinkFailures.inc({ sink: this.name }, 1);
         }
         return res;
       } catch (err) {

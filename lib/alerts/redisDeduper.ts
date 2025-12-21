@@ -7,9 +7,9 @@ import Redis from 'ioredis';
  * - `touch` sets the key with TTL.
  */
 export class RedisDeduper implements Deduper {
-  private client: Redis.Redis;
-  constructor(private opts?: { client?: Redis.Redis; ttlSeconds?: number }) {
-    this.client = opts?.client ?? new Redis(process.env.REDIS_URL);
+  private client: Redis;
+  constructor(private opts?: { client?: Redis; ttlSeconds?: number }) {
+    this.client = opts?.client ?? (process.env.REDIS_URL ? new Redis(process.env.REDIS_URL) : new Redis());
     this.ttlSeconds = opts?.ttlSeconds ?? 60 * 10;
   }
 
@@ -25,6 +25,18 @@ export class RedisDeduper implements Deduper {
     const rkey = `alerter:dedupe:${key}`;
     // set with TTL (overwrite existing TTL)
     await this.client.set(rkey, '1', 'EX', this.ttlSeconds);
+  }
+
+  async disconnect(): Promise<void> {
+    try {
+      if (this.client && typeof this.client.disconnect === 'function') {
+        this.client.disconnect();
+      } else if (this.client && typeof this.client.quit === 'function') {
+        await this.client.quit();
+      }
+    } catch (e) {
+      // swallow
+    }
   }
 }
 

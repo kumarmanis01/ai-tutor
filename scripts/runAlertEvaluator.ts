@@ -130,17 +130,17 @@ async function main() {
       import('../lib/mailer'),
     ]);
 
-    AlertRouter = mRouter && (mRouter.AlertRouter || mRouter.default) ? (mRouter.AlertRouter || mRouter.default) : mRouter;
-    DryRunSink = mDry && (mDry.DryRunSink || mDry.default) ? (mDry.DryRunSink || mDry.default) : mDry;
-    SlackSink = mSlack && (mSlack.SlackSink || mSlack.default) ? (mSlack.SlackSink || mSlack.default) : mSlack;
-    WebhookSink = mWebhook && (mWebhook.WebhookSink || mWebhook.default) ? (mWebhook.WebhookSink || mWebhook.default) : mWebhook;
-    EmailSink = mEmail && (mEmail.EmailSink || mEmail.default) ? (mEmail.EmailSink || mEmail.default) : mEmail;
-    InMemoryRateLimiter = mInMemRL && (mInMemRL.InMemoryRateLimiter || mInMemRL.default) ? (mInMemRL.InMemoryRateLimiter || mInMemRL.default) : mInMemRL;
-    InMemoryDeduper = mInMemDed && (mInMemDed.InMemoryDeduper || mInMemDed.default) ? (mInMemDed.InMemoryDeduper || mInMemDed.default) : mInMemDed;
-    RedisRateLimiter = mRedisRL && (mRedisRL.RedisRateLimiter || mRedisRL.default) ? (mRedisRL.RedisRateLimiter || mRedisRL.default) : mRedisRL;
-    RedisDeduper = mRedisDed && (mRedisDed.RedisDeduper || mRedisDed.default) ? (mRedisDed.RedisDeduper || mRedisDed.default) : mRedisDed;
-    SinkWrapper = mSinkWrap && (mSinkWrap.SinkWrapper || mSinkWrap.default) ? (mSinkWrap.SinkWrapper || mSinkWrap.default) : mSinkWrap;
-    sendEmail = mMailer && (mMailer.sendEmail || mMailer.default) ? (mMailer.sendEmail || mMailer.default) : mMailer;
+    AlertRouter = (mRouter as any).AlertRouter ?? (mRouter as any).default ?? (mRouter as any);
+    DryRunSink = (mDry as any).DryRunSink ?? (mDry as any).default ?? (mDry as any);
+    SlackSink = (mSlack as any).SlackSink ?? (mSlack as any).default ?? (mSlack as any);
+    WebhookSink = (mWebhook as any).WebhookSink ?? (mWebhook as any).default ?? (mWebhook as any);
+    EmailSink = (mEmail as any).EmailSink ?? (mEmail as any).default ?? (mEmail as any);
+    InMemoryRateLimiter = (mInMemRL as any).InMemoryRateLimiter ?? (mInMemRL as any).default ?? (mInMemRL as any);
+    InMemoryDeduper = (mInMemDed as any).InMemoryDeduper ?? (mInMemDed as any).default ?? (mInMemDed as any);
+    RedisRateLimiter = (mRedisRL as any).RedisRateLimiter ?? (mRedisRL as any).default ?? (mRedisRL as any);
+    RedisDeduper = (mRedisDed as any).RedisDeduper ?? (mRedisDed as any).default ?? (mRedisDed as any);
+    SinkWrapper = (mSinkWrap as any).SinkWrapper ?? (mSinkWrap as any).default ?? (mSinkWrap as any);
+    sendEmail = (mMailer as any).sendEmail ?? (mMailer as any).default ?? (mMailer as any);
   } catch (e) {
     console.error('Failed to dynamically import alerting modules', String(e));
     process.exit(1);

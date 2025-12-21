@@ -2,7 +2,7 @@ name: CI - Push Metrics to Staging Pushgateway
 
 on:
   workflow_run:
-    workflows: ["CI - Evaluator Build & Dry-run Integration"]
+    workflows: ['CI - Evaluator Build & Dry-run Integration']
     types: [completed]
 
 jobs:

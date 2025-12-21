@@ -28,33 +28,48 @@ if (-not (Get-Command gh -ErrorAction SilentlyContinue)) {
     exit 1
 }
 
-function Get-EnvVal($key) {
+function Get-EnvValByKeys($keys) {
     foreach ($f in @('.env.local', '.env')) {
         if (Test-Path $f) {
-            $line = Select-String -Path $f -Pattern "^$key=" -SimpleMatch -Quiet:$false -AllMatches | Select-Object -First 1
-            if ($line) {
-                $parts = $line -split '=', 2
-                $v = $parts[1].Trim()
-                if ($v.StartsWith('"') -and $v.EndsWith('"')) { $v = $v.Trim('"') }
-                if ($v.StartsWith("'") -and $v.EndsWith("'")) { $v = $v.Trim("'") }
-                return $v
+            foreach ($k in $keys) {
+                $pattern = "^$k="
+                $line = Select-String -Path $f -Pattern $pattern | Select-Object -First 1
+                if ($line) {
+                    $parts = $line -split '=',2
+                    $v = $parts[1].Trim()
+                    if ($v.StartsWith('"') -and $v.EndsWith('"')) { $v = $v.Trim('"') }
+                    if ($v.StartsWith("'") -and $v.EndsWith("'")) { $v = $v.Trim("'") }
+                    return $v
+                }
             }
         }
     }
     return $null
 }
 
-$secrets = @('DATABASE_URL', 'REDIS_URL', 'OPS_EMAIL', 'SMTP_HOST', 'SMTP_PORT', 'SMTP_USER', 'SMTP_PASS', 'SMTP_FROM', 'PUSHGATEWAY_URL')
-foreach ($s in $secrets) {
-    $val = Get-EnvVal $s
+$mapping = @{
+    'DATABASE_URL' = @('DATABASE_URL')
+    'REDIS_URL'     = @('REDIS_URL','UPSTASH_REDIS_REST_URL')
+    'OPS_EMAIL'     = @('OPS_EMAIL','EMAIL_FROM','EMAIL_SERVER_USER')
+    'SMTP_HOST'     = @('SMTP_HOST','EMAIL_SERVER_HOST')
+    'SMTP_PORT'     = @('SMTP_PORT','EMAIL_SERVER_PORT')
+    'SMTP_USER'     = @('SMTP_USER','EMAIL_SERVER_USER')
+    'SMTP_PASS'     = @('SMTP_PASS','EMAIL_SERVER_PASSWORD')
+    'SMTP_FROM'     = @('SMTP_FROM','EMAIL_FROM')
+    'PUSHGATEWAY_URL' = @('PUSHGATEWAY_URL')
+}
+
+foreach ($s in $mapping.Keys) {
+    $keys = $mapping[$s]
+    $val = Get-EnvValByKeys $keys
     if ($val) {
-        Write-Host "Setting secret $s"
-        $p = Start-Process -FilePath gh -ArgumentList 'secret', 'set', $s, '-R', $Repo, '-b', '-' -NoNewWindow -PassThru -RedirectStandardInput 'PIPE' -Wait
-        $p.StandardInput.Write($val)
-        $p.StandardInput.Close()
-    }
-    else {
-        Write-Host "Skipping $s (not found)"
+        Write-Host "Setting secret $s (from $($keys -join ','))"
+        $bytes = [System.Text.Encoding]::UTF8.GetBytes($val)
+        $base64 = [Convert]::ToBase64String($bytes)
+        # Use piping to supply the secret value to gh
+        $val | gh secret set $s -R $Repo -b -
+    } else {
+        Write-Host "Skipping $s (not found among: $($keys -join ', '))"
     }
 }
 

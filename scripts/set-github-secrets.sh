@@ -26,36 +26,48 @@ fi
 
 echo "Reading required vars from .env and .env.local (if present)"
 
-get_var(){
-  key="$1"
-  # search .env.local then .env for the key
-  for f in .env.local .env; do
-    if [ -f "$f" ]; then
-      # extract first matching line KEY=VALUE
-      line=$(grep -m1 "^${key}=" "$f" || true)
-      if [ -n "$line" ]; then
-        v=${line#*=}
-        v=${v#"}
-        v=${v%"}
-        v=${v#\'}
-        v=${v%\'}
-        echo "$v"
-        return
+get_var_any(){
+  # Accepts a list of candidate keys and returns the first found value from .env.local or .env
+  for candidate in "$@"; do
+    for f in .env.local .env; do
+      if [ -f "$f" ]; then
+        line=$(grep -m1 "^${candidate}=" "$f" || true)
+        if [ -n "$line" ]; then
+          v=${line#*=}
+          v=${v#"}
+          v=${v%"}
+          v=${v#\'}
+          v=${v%\'}
+          echo "$v"
+          return 0
+        fi
       fi
-    fi
+    done
   done
-  echo ""
+  return 1
 }
 
-SECRETS=(DATABASE_URL REDIS_URL OPS_EMAIL SMTP_HOST SMTP_PORT SMTP_USER SMTP_PASS SMTP_FROM PUSHGATEWAY_URL)
+declare -A MAP
+MAP=(
+  [DATABASE_URL]="DATABASE_URL"
+  [REDIS_URL]="REDIS_URL UPSTASH_REDIS_REST_URL"
+  [OPS_EMAIL]="OPS_EMAIL EMAIL_FROM EMAIL_SERVER_USER"
+  [SMTP_HOST]="SMTP_HOST EMAIL_SERVER_HOST"
+  [SMTP_PORT]="SMTP_PORT EMAIL_SERVER_PORT"
+  [SMTP_USER]="SMTP_USER EMAIL_SERVER_USER"
+  [SMTP_PASS]="SMTP_PASS EMAIL_SERVER_PASSWORD"
+  [SMTP_FROM]="SMTP_FROM EMAIL_FROM"
+  [PUSHGATEWAY_URL]="PUSHGATEWAY_URL"
+)
 
-for name in "${SECRETS[@]}"; do
-  value=$(get_var "$name")
+for name in "${!MAP[@]}"; do
+  set -- ${MAP[$name]}
+  value=$(get_var_any "$@" || true)
   if [ -n "$value" ]; then
-    echo "Setting secret $name"
+    echo "Setting secret $name (from candidates: ${MAP[$name]})"
     echo -n "$value" | gh secret set "$name" -R "$REPO" -b -
   else
-    echo "Skipping $name (not found in .env or .env.local)"
+    echo "Skipping $name (not found among: ${MAP[$name]})"
   fi
 done
 

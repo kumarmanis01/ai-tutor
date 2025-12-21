@@ -17,7 +17,7 @@ class FlakySink implements AlertSink {
 
 class AlwaysFailSink implements AlertSink {
   name = 'always';
-  async send() { throw new Error('boom'); }
+  async send(_a: AlertPayload): Promise<import('../../lib/alerts/types').SinkResult> { throw new Error('boom'); }
 }
 
 describe('SinkWrapper', () => {
