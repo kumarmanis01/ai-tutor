@@ -60,10 +60,50 @@ export async function getLatestApprovedSyllabus(title: string): Promise<Syllabus
   }
 }
 
+/**
+ * Ensure a syllabus is mutable (not APPROVED). Throws if immutable.
+ */
+async function ensureMutable(id: string) {
+  const s = await prisma.syllabus.findUnique({ where: { id } });
+  if (!s) throw new Error('Syllabus not found');
+  if (s.status === 'APPROVED') throw new Error('Syllabus is approved and immutable');
+  return s;
+}
+
+/**
+ * Update a syllabus row if it's not approved. Returns the updated record.
+ */
+export async function updateSyllabus(id: string, data: Partial<{ title: string; version: string; json: Prisma.InputJsonValue; status?: SyllabusStatus }>): Promise<SyllabusRecord> {
+  try {
+    await ensureMutable(id);
+    const updated = await prisma.syllabus.update({ where: { id }, data: data as any });
+    return updated;
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    throw new Error(`updateSyllabus failed: ${msg}`);
+  }
+}
+
+/**
+ * Delete a syllabus row unless it's approved.
+ */
+export async function deleteSyllabus(id: string): Promise<void> {
+  try {
+    await ensureMutable(id);
+    await prisma.syllabus.delete({ where: { id } });
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    throw new Error(`deleteSyllabus failed: ${msg}`);
+  }
+}
+
+
 const store = {
   createSyllabus,
   listSyllabi,
   getLatestApprovedSyllabus,
+  updateSyllabus,
+  deleteSyllabus,
 };
 
 export default store;

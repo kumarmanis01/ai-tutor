@@ -63,10 +63,41 @@ export default function AdminSyllabiPage() {
             <h3>JSON Preview</h3>
             {selected ? (
               <div>
-                <div style={{ marginBottom: 8, color: '#666' }}>
-                  <strong>Title:</strong> {selected.title} &nbsp; | &nbsp;
-                  <strong>Version:</strong> {selected.version} &nbsp; | &nbsp;
-                  <strong>Status:</strong> {selected.status}
+                <div style={{ marginBottom: 8, color: '#666', display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <div>
+                    <strong>Title:</strong> {selected.title} &nbsp; | &nbsp;
+                    <strong>Version:</strong> {selected.version}
+                  </div>
+                  <div>
+                    <strong>Status:</strong>{' '}
+                    <span style={{ padding: '4px 8px', borderRadius: 6, background: selected.status === 'APPROVED' ? '#d1fae5' : '#f0f5ff', color: selected.status === 'APPROVED' ? '#065f46' : '#1e3a8a' }}>
+                      {selected.status}
+                    </span>
+                  </div>
+                  <div style={{ marginLeft: 'auto' }}>
+                    <button
+                      onClick={async () => {
+                        if (!selected) return;
+                        try {
+                          const res = await fetch(`/api/admin/syllabus/${selected.id}/approve`, { method: 'POST' });
+                          if (!res.ok) {
+                            const err = await res.json().catch(() => ({}));
+                            alert(`Approve failed: ${err?.error ?? res.statusText}`);
+                            return;
+                          }
+                          const updated = await res.json();
+                          // Update local state with updated record
+                          setSyllabi((prev) => prev.map(p => p.id === updated.id ? updated : p));
+                        } catch (e) {
+                          alert(String(e));
+                        }
+                      }}
+                      disabled={selected.status === 'APPROVED'}
+                      style={{ padding: '6px 10px', borderRadius: 6, cursor: selected.status === 'APPROVED' ? 'not-allowed' : 'pointer' }}
+                    >
+                      Approve
+                    </button>
+                  </div>
                 </div>
                 <pre
                   style={{
