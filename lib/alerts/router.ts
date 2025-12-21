@@ -16,8 +16,8 @@ export class AlertRouter {
   }
 
   private selectSinks(severity: string) {
-    const names = (this.opts.routing && this.opts.routing[severity as any]) ?? this.opts.sinks.map(s => s.name);
-    return names.map(n => this.sinksByName.get(n)).filter(Boolean) as AlertSink[];
+    const names: string[] = (this.opts.routing && (this.opts.routing as any)[severity]) ?? this.opts.sinks.map(s => s.name);
+    return names.map((n: string) => this.sinksByName.get(n)).filter(Boolean) as AlertSink[];
   }
 
   private dedupeKey(alert: AlertPayload) {

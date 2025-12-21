@@ -4,7 +4,7 @@ import CircuitBreaker from './circuitBreaker';
 export interface SinkWrapperOptions {
   retries?: number;
   backoffMs?: number; // base backoff (exponential)
-  circuitBreakerOptions?: Parameters<typeof CircuitBreaker>[0];
+  circuitBreakerOptions?: ConstructorParameters<typeof CircuitBreaker>[0];
 }
 
 export class SinkWrapper implements AlertSink {

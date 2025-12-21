@@ -7,9 +7,9 @@ import Redis from 'ioredis';
  * - `touch` sets the key with TTL.
  */
 export class RedisDeduper implements Deduper {
-  private client: Redis.Redis;
-  constructor(private opts?: { client?: Redis.Redis; ttlSeconds?: number }) {
-    this.client = opts?.client ?? new Redis(process.env.REDIS_URL);
+  private client: Redis;
+  constructor(private opts?: { client?: Redis; ttlSeconds?: number }) {
+    this.client = opts?.client ?? new Redis(process.env.REDIS_URL ?? '');
     this.ttlSeconds = opts?.ttlSeconds ?? 60 * 10;
   }
 

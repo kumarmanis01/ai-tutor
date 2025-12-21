@@ -70,6 +70,13 @@ enum JobType {
   assemble
 }
 
+// Syllabus persistence status for Phase 6
+enum SyllabusStatus {
+  DRAFT
+  APPROVED
+  ARCHIVED
+}
+
 enum EntityType {
   BOARD
   CLASS
@@ -397,9 +404,20 @@ model BadgeShare {
   metadata    Json?
   timestamp   DateTime @default(now())
   createdAt   DateTime @default(now())
-
   @@index([badgeId])
   @@index([recipientId])
+}
+
+/// Persisted syllabus artifacts generated/approved in Phase 6
+model Syllabus {
+  id        String         @id @default(cuid())
+  title     String
+  version   String
+  status    SyllabusStatus @default(DRAFT)
+  json      Json
+  createdAt DateTime       @default(now())
+
+  @@index([status])
 }
 
 model Challenge {
