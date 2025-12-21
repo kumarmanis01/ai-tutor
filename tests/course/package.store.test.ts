@@ -5,9 +5,32 @@ const makePkg = () => ({
   id: 'pkg1',
   syllabusId: 's1',
   version: 1,
-  title: 'T',
+  title: 'Course Title',
   description: 'd',
-  modules: [],
+  modules: [
+    {
+      moduleId: 'm1',
+      title: 'Module One',
+      lessons: [
+        {
+          id: 'l1',
+          syllabusId: 's1',
+          moduleId: 'm1',
+          lessonIndex: 1,
+          title: 'Lesson One',
+          durationMinutes: 10,
+          objectives: ['o'],
+          explanation: { overview: 'overview'.repeat(10), concepts: [{ title: 'c1', explanation: 'This concept explanation is long enough to satisfy the schema minimum length requirement.' }] },
+          keyTakeaways: ['t1','t2'],
+          practice: { prompt: 'p'.repeat(30), expectedOutcome: 'o'.repeat(30) },
+          metadata: { level: 'beginner' }
+        }
+      ],
+      quizzes: [
+        { lessonId: 'l1', questions: [{ question: 'What is X?', options: ['A','B','C','D'], correctIndex: 0, explanation: 'This explanation is sufficiently long.' }] }
+      ]
+    }
+  ],
   createdAt: new Date().toISOString(),
   frozen: true
 })

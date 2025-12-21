@@ -108,3 +108,89 @@ export async function getCoursePackagesBySyllabus(
 1. cannot insert duplicate version
 2. json matches schema
 3. version increments correctly
+
+🟦 Phase 8.2 — Publish APIs (Read-only)
+🎯 Objective
+
+Expose published courses safely.
+
+🌐 API Routes
+📄 /api/courses/route.ts
+GET /api/courses
+
+
+Returns:
+
+[
+  {
+    "syllabusId": "abc",
+    "latestVersion": 3,
+    "title": "Intro to AI"
+  }
+]
+
+📄 /api/courses/[syllabusId]/route.ts
+GET /api/courses/:syllabusId
+
+
+Returns:
+
+{
+  "syllabusId": "abc",
+  "versions": [3,2,1]
+}
+
+📄 /api/courses/[syllabusId]/[version]/route.ts
+
+🟦 Phase 8.3 — Admin UI (Read-only)
+🎯 Objective
+
+Allow admins to see what’s published.
+
+🖥️ UI Pages
+- /admin/courses
+  - List syllabi
+  - Show latest version
+  - Status badge
+
+- /admin/courses/[syllabusId]
+  - Versions list
+  - CreatedAt timestamps (if available)
+  - View JSON button
+
+- /admin/courses/[syllabusId]/[version]
+  - Pretty JSON viewer
+  - Download JSON
+
+🟦 Phase 8.4 — Safety & Guarantees
+🔒 Hard Rules to Enforce
+
+Rule	Where
+Approved-only content	Builder (7.6)
+Insert-only persistence	Store
+Immutable JSON	DB + code
+Versioned publishing	DB constraint
+No mutation APIs	Routes
+Audit preserved	Phase 7
+
+🧪 Final Validation Checklist
+
+Before moving to Phase 9:
+
+- CoursePackage schema validated
+- Multiple versions stored safely
+- APIs return correct data
+- No write routes exposed
+- Admin UI reflects DB truth
+- Tests pass
+- CI green
+
+🚀 What Comes After Phase 8
+Phase 9 — Delivery
+
+- Learner UI
+- LMS export
+- PDF / Markdown
+- Personalization
+- Monetization
+
