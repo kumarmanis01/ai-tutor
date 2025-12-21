@@ -238,18 +238,39 @@ Zod enforces:
 1. 4 options
 2. correctIndex ∈ [0–3]
 
-🟦 Phase 7.4 — Projects / Assignments
+🟦 Phase 7.4 — Projects / Assignments Generator
 
-Purpose:
+🎯 Purpose (Copilot must understand this)
 
-- Practical application
-- Capstone readiness
+Projects are:
 
-Schema includes:
+- Practical application of multiple lessons
 
-- Problem statement
-- Constraints
-- Evaluation rubric
+- NOT quizzes
+
+- NOT free-form text
+
+- Evaluated via a clear rubric
+
+Projects must be:
+
+- Deterministic
+
+- Schema-validated
+
+- Reviewable
+
+- Regeneratable
+
+🧱 Phase 7.4 — Data Model
+Conceptual Structure
+Course
+ └─ Module
+   └─ Project / Assignment
+     ├─ Problem Statement
+     ├─ Constraints
+     ├─ Deliverables
+     ├─ Evaluation Rubric
 
 🟦 Phase 7.5 — Approval Workflow
 
