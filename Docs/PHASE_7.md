@@ -147,3 +147,155 @@ export const LessonSchema = z.object({
   })
 })
 ```
+
+🟦 Phase 7.2 — Lesson Generator (Controlled AI)
+🎯 Goal
+
+Generate lessons per module from an approved syllabus.
+
+Generator Contract
+
+📄 lib/content/lesson/generator.ts
+
+```ts
+generateLessons({
+  syllabusId,
+  moduleId,
+  moduleTitle,
+  learningObjectives,
+  lessonCount
+}) → Lesson[]
+```
+
+AI Prompt Rules
+
+- JSON only
+
+- One lesson per response OR batched
+
+- No markdown
+
+- No explanations outside JSON
+
+Prompt Builder
+
+📄 lib/content/lesson/prompt.ts
+
+```ts
+export function buildLessonPrompt(input) {
+  return `
+You are generating structured course lessons.
+
+Rules:
+- Output ONLY valid JSON
+- Match the provided schema exactly
+- Do not add extra fields
+- Depth must match professional education quality
+
+Input:
+${JSON.stringify(input, null, 2)}
+
+Return an array of Lesson objects.
+`
+}
+```
+
+Generator Logic
+
+📄 generator.ts
+
+```ts
+const raw = await llm.generate(prompt)
+const parsed = JSON.parse(raw)
+const lessons = parsed.map(validateLesson)
+return lessons
+```
+
+Notes:
+- Do not implement generation logic yet — this section is the contract and prompt guidance only.
+
+🟦 Phase 7.3 — Quiz Generator
+
+🎯 Goal
+
+Generate MCQs per lesson.
+
+Quiz Schema (Simple & Safe)
+
+```ts
+export interface Quiz {
+  lessonId: string
+  questions: {
+    question: string
+    options: string[]
+    correctIndex: number
+    explanation: string
+  }[]
+}
+```
+
+Zod enforces:
+1. 4 options
+2. correctIndex ∈ [0–3]
+
+🟦 Phase 7.4 — Projects / Assignments
+
+Purpose:
+
+- Practical application
+- Capstone readiness
+
+Schema includes:
+
+- Problem statement
+- Constraints
+- Evaluation rubric
+
+🟦 Phase 7.5 — Approval Workflow
+
+Same pattern as syllabus:
+
+- DRAFT
+- APPROVED
+- ARCHIVED
+
+Only approved content can be published.
+
+🟦 Phase 7.6 — Course Packaging
+
+Assemble:
+
+Course
+ ├─ Syllabus
+ ├─ Lessons
+ ├─ Quizzes
+ └─ Projects
+
+No AI here — pure composition.
+
+🧠 Why This Prevents Rework & Tech Debt
+Risk	How Phase 7 avoids it
+AI hallucinations	Schema + validation
+Content drift	Versioning
+Inconsistent quality	Fixed prompt contracts
+Unreviewable output	Approval gates
+Cost explosions	Deterministic generation
+
+**Phase 7 Summary**
+
+- **Goal:** Transform an APPROVED syllabus into validated, versioned, reviewable content (lessons, quizzes, projects) while preventing hallucination, drift, and inconsistent quality.
+- **Completed so far:**
+  - Formalized Phase 7 design and sub-phases (7.1–7.3)
+  - Implemented `Lesson` types and Zod schema (`lib/content/lesson/types.ts`, `schema.ts`) with unit tests
+  - Added lesson generator contract, prompt builder, mock LLM adapter, and unit tests (no generation logic that writes data)
+  - Implemented Quiz types and Zod schema (`lib/content/quiz/schema.ts`) with generator contract and tests
+
+- **Pending / Next:**
+  - Implement Project / Assignment schema and generators (7.4)
+  - Implement approval workflow for generated content (7.5) including audit logs and `approvedBy` metadata
+  - Course packaging logic (7.6) and UI/CLI to assemble and publish packages
+  - Integration tests connecting Phase 6 approved syllabus → Phase 7 generators
+
+This summary reflects the Phase 7 contract-focused deliverables: schema, prompt contracts, generator contracts, and test harnesses. Implementation of persistent storage and publishing is intentionally deferred until approval workflow and auditability are finalized.
+
+
