@@ -408,6 +408,28 @@ model BadgeShare {
   @@index([recipientId])
 }
 
+/// Course package persistence for Phase 8
+enum CoursePackageStatus {
+  PUBLISHED
+  ARCHIVED
+}
+
+model CoursePackage {
+  id         String               @id @default(cuid())
+  syllabusId String
+  version    Int
+
+  status     CoursePackageStatus  @default(PUBLISHED)
+
+  /// Frozen JSON blob (validated before insert)
+  json       Json
+
+  createdAt  DateTime             @default(now())
+
+  @@unique([syllabusId, version])
+  @@index([syllabusId])
+}
+/// Persisted syllabus artifacts generated/approved in Phase 6
 /// Persisted syllabus artifacts generated/approved in Phase 6
 model Syllabus {
   id        String         @id @default(cuid())
