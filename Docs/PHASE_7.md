@@ -294,6 +294,15 @@ Notes:
 - Every approval action must create an `AuditLog` entry that includes actor, timestamp, entity id, and a brief rationale.
 - The UI and API MUST only surface `APPROVED` content to end-users; drafts are visible only to reviewers and admins.
 
+Design Rules (Copilot must obey)
+
+- Lessons, Quizzes, Projects start as `DRAFT`.
+- Only `APPROVED` content can be published.
+- Approved content is immutable.
+- Approval requires: `approver`, `timestamp`, and an optional `note`.
+- All approval actions are audited (create `AuditLog` entries including actor, timestamp, entity id, and rationale).
+
+
 
 🟦 Phase 7.6 — Course Packaging
 
