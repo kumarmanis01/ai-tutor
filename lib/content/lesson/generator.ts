@@ -1,5 +1,7 @@
 import buildLessonPrompt from './prompt'
 import { validateLesson } from './schema'
+import { ApprovalMetadata } from '../approval/types'
+import { assertEditable, assertPublishable } from '../approval/guard'
 
 export type GenerateLessonsInput = {
   syllabusId: string
@@ -44,3 +46,13 @@ export async function generateLessons(input: GenerateLessonsInput, llm: LLM): Pr
 }
 
 export default generateLessons
+
+export function ensureLessonEditable(meta?: ApprovalMetadata) {
+  if (!meta) return
+  assertEditable(meta.status)
+}
+
+export function ensureLessonPublishable(meta?: ApprovalMetadata) {
+  if (!meta) return
+  assertPublishable(meta.status)
+}

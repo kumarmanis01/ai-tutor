@@ -1,20 +1,21 @@
-import buildQuizPrompt from './prompt'
-import { validateQuiz } from './schema'
+import buildProjectPrompt from './prompt'
+import { validateProjectAssignment } from './schema'
 import { ApprovalMetadata } from '../approval/types'
 import { assertEditable, assertPublishable } from '../approval/guard'
 
-export type LessonForQuiz = {
-  lessonId: string
-  title: string
-  objectives: string[]
+export type ProjectInput = {
+  syllabusId: string
+  moduleId: string
+  moduleTitle: string
+  learningObjectives: string[]
 }
 
 export type LLM = { generate(prompt: string): Promise<string> | string }
 
-export async function generateQuizFromLesson(lesson: LessonForQuiz, llm: LLM) {
+export async function generateProject(input: ProjectInput, llm: LLM) {
   if (!llm || typeof llm.generate !== 'function') throw new Error('LLM adapter required')
 
-  const prompt = buildQuizPrompt(lesson)
+  const prompt = buildProjectPrompt(input)
   const raw = await llm.generate(prompt)
 
   let parsed: unknown
@@ -25,20 +26,20 @@ export async function generateQuizFromLesson(lesson: LessonForQuiz, llm: LLM) {
   }
 
   try {
-    return validateQuiz(parsed)
+    return validateProjectAssignment(parsed)
   } catch (err) {
-    throw new Error(`Quiz validation failed: ${err}`)
+    throw new Error(`Project validation failed: ${err}`)
   }
 }
 
-export default generateQuizFromLesson
+export default generateProject
 
-export function ensureQuizEditable(meta?: ApprovalMetadata) {
+export function ensureProjectEditable(meta?: ApprovalMetadata) {
   if (!meta) return
   assertEditable(meta.status)
 }
 
-export function ensureQuizPublishable(meta?: ApprovalMetadata) {
+export function ensureProjectPublishable(meta?: ApprovalMetadata) {
   if (!meta) return
   assertPublishable(meta.status)
 }
