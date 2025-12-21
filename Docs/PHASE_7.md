@@ -272,15 +272,28 @@ Course
      ├─ Deliverables
      ├─ Evaluation Rubric
 
-🟦 Phase 7.5 — Approval Workflow
+🔷 Phase 7.5 — Content Approval Workflow (Critical Gate)
 
-Same pattern as syllabus:
+🎯 Purpose (Very Important)
 
-- DRAFT
-- APPROVED
-- ARCHIVED
+Phase 7.5 is the safety gate.
 
-Only approved content can be published.
+Nothing becomes:
+1. Publishable
+2. Persistent
+3. Visible to users
+
+Unless it is:
+1. Explicitly approved
+2. Audited
+3. Immutable after approval
+
+Notes:
+- Approval is an explicit admin action that records `approvedBy`, `approvedAt`, and an immutable snapshot of the content JSON.
+- All attempts to modify an `APPROVED` artifact must be rejected; retries should create new draft artifacts instead.
+- Every approval action must create an `AuditLog` entry that includes actor, timestamp, entity id, and a brief rationale.
+- The UI and API MUST only surface `APPROVED` content to end-users; drafts are visible only to reviewers and admins.
+
 
 🟦 Phase 7.6 — Course Packaging
 
