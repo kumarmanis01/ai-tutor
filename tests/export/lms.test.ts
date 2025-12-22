@@ -28,9 +28,24 @@ describe('LMS exporter', () => {
     }
     ;(global as any).__TEST_PRISMA__ = mockPrisma
     ;(global as any).__TEST_SESSION__ = { user: { id: 'u1' } }
-    const route = await import('../../app/api/learn/courses/[courseid]/export/lms/route')
+    const route = await import('../../app/api/learn/courses/[courseId]/export/lms/route')
     const res = await route.GET(new Request('http://localhost') as any, { params: { courseId: 'c1' } } as any)
     expect(res.status).toBe(200)
     expect(mockPrisma.auditLog.create).toHaveBeenCalled()
+  })
+
+  it('cannot access LMS export for different tenant', async () => {
+    const mockPrisma: any = {
+      coursePackage: { findFirst: jest.fn().mockResolvedValue({ id: 'pkg1', json: { title: 'T' } }) },
+      product: { findFirst: jest.fn().mockResolvedValue({ id: 'prod1', courseId: 'c1', tenantId: 'tenantX', active: true }) },
+      purchase: { findFirst: jest.fn().mockResolvedValue(null) },
+      enrollment: { findFirst: jest.fn().mockResolvedValue(null) },
+      auditLog: { create: jest.fn() }
+    }
+    ;(global as any).__TEST_PRISMA__ = mockPrisma
+    ;(global as any).__TEST_SESSION__ = { user: { id: 'u1', tenantId: 'tenantY' } }
+    const route = await import('../../app/api/learn/courses/[courseId]/export/lms/route')
+    const res = await route.GET(new Request('http://localhost') as any, { params: { courseId: 'c1' } } as any)
+    expect(res.status).toBe(403)
   })
 })

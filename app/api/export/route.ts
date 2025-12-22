@@ -44,7 +44,7 @@ export async function POST(req: Request) {
         const db = (global as any).__TEST_PRISMA__ ?? (await import('@/lib/prisma')).prisma
         const { logAuditEvent } = await import('@/lib/audit/log')
         logAuditEvent(db, { actorId: session.user.id, action: 'export_text', entityType: 'CHAT_EXPORT', entityId: null, metadata: { title } })
-      } catch (e) {
+      } catch {
         // swallow
       }
       return res;
@@ -99,7 +99,7 @@ export async function POST(req: Request) {
       const db = (global as any).__TEST_PRISMA__ ?? (await import('@/lib/prisma')).prisma
       const { logAuditEvent } = await import('@/lib/audit/log')
       logAuditEvent(db, { actorId: session.user.id, action: 'export_pdf', entityType: 'CHAT_EXPORT', entityId: null, metadata: { title } })
-    } catch (e) {
+    } catch {
       // swallow
     }
 

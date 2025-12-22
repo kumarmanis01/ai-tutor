@@ -26,4 +26,6 @@ export function clearRateLimit() {
   buckets.clear()
 }
 
-export default { allowRequest, clearRateLimit }
+const rateLimit = { allowRequest, clearRateLimit }
+
+export default rateLimit

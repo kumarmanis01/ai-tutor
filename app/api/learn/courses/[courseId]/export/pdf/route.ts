@@ -1,3 +1,5 @@
+
+
 export async function GET(req: Request, { params }: { params: { courseId: string } }) {
   const { courseId } = params
   const db = (global as any).__TEST_PRISMA__ ?? (await import('@/lib/prisma')).prisma
@@ -12,6 +14,7 @@ export async function GET(req: Request, { params }: { params: { courseId: string
   const { hasLearnerAccess } = await import('../../../../../../../lib/guards/access')
   const allowed = await hasLearnerAccess(db, userId, courseId, session?.user?.tenantId ?? null)
   if (!allowed) return new Response(JSON.stringify({ error: 'Forbidden' }), { status: 403, headers: { 'Content-Type': 'application/json' } })
+
   // Validate CoursePackage size to avoid expensive exports
   try {
     const { validatePackageSize } = await import('../../../../../../../lib/safety/validatePackageSize')
@@ -32,23 +35,23 @@ export async function GET(req: Request, { params }: { params: { courseId: string
       return new Response(JSON.stringify({ error: 'rate_limited' }), { status: 429, headers: { 'Content-Type': 'application/json', 'Retry-After': String(retryAfter) } })
     }
   } catch {
-    // non-fatal: continue if limiter fails
+    // continue if limiter fails
   }
 
-  const { exportCourseToLMS } = await import('@/lib/exporters/lms')
-  const buf = exportCourseToLMS(row.json)
-  const body = Uint8Array.from(buf)
-  const title = (row.json as any)?.title ?? courseId
-  const slug = String(title).toLowerCase().replace(/[^a-z0-9]+/g, '-')
+  const { exportCourseToPDF } = await import('@/lib/exporters/pdf')
+  const buf = await exportCourseToPDF(row.json)
   // Audit the export download (non-blocking)
   try {
     const { logAuditEvent } = await import('@/lib/audit/log')
-    logAuditEvent(db, { actorId: userId ?? null, action: 'export_lms', entityType: 'COURSE', entityId: courseId, metadata: { courseId, packageId: row.id, tenantId: (row as any)?.tenantId ?? null } })
+    logAuditEvent(db, { actorId: userId ?? null, action: 'export_pdf', entityType: 'COURSE', entityId: courseId, metadata: { courseId, packageId: row.id, tenantId: (row as any)?.tenantId ?? null } })
   } catch {
     // swallow
   }
 
-  return new Response(body, { status: 200, headers: { 'Content-Type': 'application/zip', 'Content-Disposition': `attachment; filename=\"${slug}.zip\"` } })
+  const body = Uint8Array.from(buf)
+  const title = (row.json as any)?.title ?? courseId
+  const slug = String(title).toLowerCase().replace(/[^a-z0-9]+/g, '-')
+  return new Response(body, { status: 200, headers: { 'Content-Type': 'application/pdf', 'Content-Disposition': `attachment; filename="${slug}.pdf"` } })
 }
 
 export default GET

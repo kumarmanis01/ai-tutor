@@ -9,16 +9,16 @@ export async function POST(req: Request) {
 
   const session = await getServerSessionForHandlers()
   const userId = session?.user?.id
+  const sessionTenant = session?.user?.tenantId ?? null
   if (!userId || !productId) return NextResponse.json({ error: 'Missing fields or unauthorized' }, { status: 400 })
 
   const prod = await db.product.findUnique({ where: { id: productId } })
   if (!prod) return NextResponse.json({ error: 'Product not found' }, { status: 404 })
 
-  // Tenant scoping: if product is tenant-scoped require matching tenantId in body
-  const tenantIdFromBody = body.tenantId ?? null
+  // Enforce session tenant matches product.tenantId
   if (prod.tenantId) {
-    if (!tenantIdFromBody || String(prod.tenantId) !== String(tenantIdFromBody)) {
-      return NextResponse.json({ error: 'Invalid tenant' }, { status: 403 })
+    if (!sessionTenant || String(prod.tenantId) !== String(sessionTenant)) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
   }
 

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { getServerSessionForHandlers } from '@/lib/session'
+import { logAuditEvent } from '@/lib/audit/log'
 
 export async function POST(req: Request) {
   const db = (global as any).__TEST_PRISMA__ ?? (await import('@/lib/prisma')).prisma
@@ -21,12 +22,8 @@ export async function POST(req: Request) {
   }
 
   const created = await db.enrollment.create({ data: { userId, courseId } })
-  // Audit the enrollment
-  try {
-    await db.auditLog.create({ data: { userId, action: 'enrollment_create', details: { enrollmentId: created.id, courseId }, createdAt: new Date() } })
-  } catch (e) {
-    // non-fatal
-  }
+  // Audit the enrollment (non-blocking)
+  logAuditEvent(db, { actorId: userId, action: 'enrollment_create', entityType: 'COURSE', entityId: courseId, metadata: { enrollmentId: created.id, courseId } })
 
   return NextResponse.json({ ok: true, enrollment: created }, { status: 201 })
 }

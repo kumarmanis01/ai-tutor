@@ -15,7 +15,7 @@ export async function GET(_req: Request, { params }: { params: { courseId: strin
 
   if (!row) return NextResponse.json({ error: 'Not found' }, { status: 404 })
   const { hasLearnerAccess } = await import('../../../../../lib/guards/access')
-  const allowed = await hasLearnerAccess(db, userId, courseId)
+  const allowed = await hasLearnerAccess(db, userId, courseId, session?.user?.tenantId ?? null)
   if (!allowed) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   return NextResponse.json(row.json)

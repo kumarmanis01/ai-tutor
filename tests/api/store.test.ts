@@ -31,4 +31,12 @@ describe('store APIs', () => {
     expect(mockPrisma.purchase.create).toHaveBeenCalled()
     expect(mockPrisma.auditLog.create).toHaveBeenCalled()
   })
+
+  test('cannot purchase product from another tenant', async () => {
+    ;(mockPrisma.product.findUnique as jest.Mock).mockResolvedValue({ id: 'p2', courseId: 'c2', tenantId: 'tenantA' })
+    ;(global as any).__TEST_SESSION__ = { user: { id: 'u2', tenantId: 'tenantB' } }
+    const req = new Request('http://localhost', { method: 'POST', body: JSON.stringify({ productId: 'p2' }), headers: { 'Content-Type': 'application/json' } })
+    const res = await purchase.POST(req as any)
+    expect(res.status).toBe(403)
+  })
 })

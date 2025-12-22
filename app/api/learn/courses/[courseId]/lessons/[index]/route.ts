@@ -12,14 +12,14 @@ export async function GET(req: Request, { params }: { params: { courseId: string
   const userId = session?.user?.id ?? null
 
   const row = await db.coursePackage.findFirst({
-    where: { syllabusId: courseId, status: 'PUBLISHED' },
-    orderBy: { version: 'desc' }
+     where: { syllabusId: courseId, status: 'PUBLISHED' },
+     orderBy: { version: 'desc' }
   })
 
   if (!row) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
-  const { hasLearnerAccess } = await import('../../../../../../../lib/guards/access')
-  const allowed = await hasLearnerAccess(db, userId, courseId)
+    const { hasLearnerAccess } = await import('../../../../../../../lib/guards/access')
+    const allowed = await hasLearnerAccess(db, userId, courseId, session?.user?.tenantId ?? null)
   if (!allowed) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   const pkg = row.json as any
