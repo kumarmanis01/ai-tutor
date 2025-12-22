@@ -18,7 +18,7 @@ describe('Analytics job integration — suggestions + audit idempotency', () => 
     const createdSuggestions: any[] = []
     const mockDb: any = {
       analyticsSignal: {
-        findMany: jest.fn().mockImplementation(async ({ where }: any) => {
+        findMany: jest.fn().mockImplementation(async () => {
           // Always return a single new signal to be processed
           return [
             { id: 'sig-1', type: 'LOW_COMPLETION', courseId: 'course-1', targetId: 'lesson-1', metadata: {}, createdAt: new Date().toISOString() }
