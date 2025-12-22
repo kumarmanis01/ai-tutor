@@ -70,6 +70,18 @@ enum JobType {
   assemble
 }
 
+enum SignalType {
+  LOW_COMPLETION_RATE
+  LOW_QUIZ_PASS_RATE
+  HIGH_REFUND_RATE
+}
+
+enum SignalSeverity {
+  INFO
+  WARNING
+  CRITICAL
+}
+
 // Syllabus persistence status for Phase 6
 enum SyllabusStatus {
   DRAFT
@@ -244,6 +256,48 @@ model Event {
   user      User?    @relation(fields: [userId], references: [id])
 }
 
+/// Analytics events collected from learners (Phase 10)
+model AnalyticsEvent {
+  id         String   @id @default(cuid())
+  eventType  String
+  userId     String?
+  courseId   String?
+  lessonIdx  Int?
+  metadata   Json
+  createdAt  DateTime @default(now())
+
+  @@index([eventType, createdAt])
+  @@index([courseId])
+}
+
+/// Daily aggregated analytics metrics for courses
+model AnalyticsDailyAggregate {
+  id                String   @id @default(cuid())
+  courseId          String
+  day               DateTime
+  totalViews        Int      @default(0)
+  totalCompletions  Int      @default(0)
+  avgTimePerLesson  Float?
+  completionRate    Float?   
+  createdAt         DateTime @default(now())
+
+  @@unique([courseId, day])
+}
+
+/// Rule-based intelligence signals derived from analytics
+model AnalyticsSignal {
+  id         String         @id @default(cuid())
+  courseId   String?
+  type       SignalType
+  severity   SignalSeverity @default(INFO)
+  metadata   Json?
+  createdAt  DateTime       @default(now())
+  resolvedAt DateTime?
+
+  @@index([courseId])
+  @@index([type])
+}
+
 model Subscription {
   id           String   @id @default(cuid())
   userId       String
@@ -276,6 +330,16 @@ model WorkerLifecycle {
 
   @@index([status])
   @@index([lastHeartbeatAt])
+}
+
+/// JobLock table used to prevent overlapping job executions
+model JobLock {
+  jobName     String   @id
+  lockedUntil DateTime
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([lockedUntil])
 }
 
 model Room {

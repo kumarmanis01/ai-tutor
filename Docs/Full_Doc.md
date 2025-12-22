@@ -1292,3 +1292,319 @@ You will now have:
 ✅ Zero tech debt added
 
 This makes Phase 10 safe, measurable, and trustworthy.
+
+
+# 🧱 PART A — HELM / K8s PLAN FOR LEARNER SERVICES
+
+## 🎯 Objective
+Deploy learner-facing services in Kubernetes for:
+- Read-only content delivery
+- Scalable progress tracking (write-only progress APIs)
+- Monetization safety
+- Observability readiness for Phase 10
+
+## 🧩 Services to Deploy
+
+| Service     | Responsibility |
+|-------------|----------------|
+| learner-api | Phase 9 APIs (learn, progress, store) — stateless, horizontally scaled |
+| admin-api   | Existing admin APIs (deployed separately) |
+| evaluator   | Alerting/worker (Phase 5) |
+| postgres    | External (Neon / RDS) |
+| redis       | External (Upstash / ElastiCache) |
+| pushgateway | Metrics bridge (Phase 10) |
+
+## 📦 Helm Chart Structure
+```
+helm/
+└── ai-platform/
+  ├── Chart.yaml
+  ├── values.yaml
+  ├── values-staging.yaml
+  ├── values-prod.yaml
+  ├── templates/
+  │   ├── learner-api.deployment.yaml
+  │   ├── learner-api.service.yaml
+  │   ├── learner-api.hpa.yaml
+  │   ├── evaluator.deployment.yaml
+  │   ├── secrets.yaml
+  │   ├── configmap.yaml
+  │   └── serviceaccount.yaml
+```
+
+## 🔐 Secrets Strategy (Critical)
+- NO secrets in values files.
+- Create secrets from an env file and reference by name in values.
+
+Create secret:
+```bash
+kubectl create secret generic ai-platform-secrets \
+  --from-env-file=.env.production
+```
+
+Helm values reference:
+```yaml
+secrets:
+  secretName: ai-platform-secrets
+```
+
+## 🚀 learner-api Deployment (Key Design)
+- Stateless, horizontally scalable
+- Read-only content APIs; write-only progress APIs
+- Default replicas: 2 (HPA min 2 / max 10)
+- Env from secrets: DATABASE_URL, REDIS_URL, NODE_ENV, TENANT_MODE=enabled
+
+Resource defaults (values.yaml):
+```yaml
+replicaCount: 2
+resources:
+  requests:
+  cpu: 100m
+  memory: 256Mi
+  limits:
+  cpu: 500m
+  memory: 512Mi
+env:
+  - DATABASE_URL
+  - REDIS_URL
+  - NODE_ENV
+  - TENANT_MODE=enabled
+```
+
+## 📈 Autoscaling (HPA)
+```yaml
+hpa:
+  minReplicas: 2
+  maxReplicas: 10
+  metrics:
+  - type: Resource
+    resource:
+    name: cpu
+    target:
+      type: Utilization
+      averageUtilization: 70
+```
+
+## 🔍 Observability Hooks (Phase 10 Ready)
+- Expose `/metrics` endpoint (Prometheus)
+- Push to Pushgateway when scraping is not feasible
+Suggested metrics:
+- lesson_views_total
+- lesson_completed_total
+- course_enrollments_total
+- purchase_completed_total
+
+## 🧠 Deployment Flow (Recommended)
+1. Build image (GitHub Actions)
+2. Push to GHCR
+3. Helm upgrade/install:
+```bash
+helm upgrade --install ai-platform ./helm/ai-platform \
+  -f values-staging.yaml \
+  --set image.tag=$GIT_SHA
+```
+
+## ✅ Quick validation
+- `helm lint ./helm/ai-platform`
+- `helm template ./helm/ai-platform -f values-staging.yaml`
+
+## ⚠️ Risks & Recommendations
+- Ensure managed Postgres & Redis provisioned before install
+- NO secrets committed; secure .env.production
+- Prefer Prometheus pull (scrape) where possible; use Pushgateway only when necessary
+- Add readiness/liveness probes to learner-api
+- Include RBAC / NetworkPolicy templates for production
+- Tune resource requests/limits to real load
+- CI: run helm lint/template on PRs touching helm/**
+
+---
+
+##  — SUMMARY OF CHANGES (Phase 10A)
+- Objective: Deploy learner-facing services in K8s for safe, observable delivery
+- Services: learner-api (stateless), admin-api (separate), evaluator, external postgres/redis, pushgateway
+- Helm: created `ai-platform` chart with values and templates (deployment, service, HPA, evaluator, serviceaccount, configmap, secrets)
+- Secrets: use k8s secret from env file; chart reads by secret name
+- Autoscaling: CPU-based HPA (70% target), min 2 / max 10
+- Observability: `/metrics` + Pushgateway metrics list
+- CI: added helm lint/template validation on PRs
+
+# PHASE 10 — Analytics, Insights & Intelligence
+
+## 🎯 Goal
+Turn learner activity into:
+- Actionable insights
+- Funnel metrics
+- Course quality signals
+- Monetization intelligence  
+Do this WITHOUT touching content or generation logic.
+
+## 🔒 Core Rule
+Phase 10 observes only. It must never modify:
+- CoursePackage
+- Lessons
+- Quizzes
+- Projects
+
+## 🧩 Architecture
+Learner Events → Event Collector → Analytics Store → Dashboards / Reports
+
+## 📊 What We Measure
+
+### Learner Engagement
+- lesson_viewed  
+- lesson_completed  
+- quiz_attempted  
+- quiz_passed
+
+### Funnel Metrics
+- course_view → enroll → complete  
+- purchase → enroll → completion
+
+### Quality Signals
+- drop-off per lesson  
+- quiz failure rate  
+- time spent per lesson
+
+## 🧱 Data Model (NEW)
+
+```prisma
+model AnalyticsEvent {
+    id         String   @id @default(cuid())
+    eventType  String
+    userId     String?
+    courseId   String?
+    lessonIdx  Int?
+    metadata   Json
+    createdAt  DateTime @default(now())
+
+    @@index([eventType, createdAt])
+    @@index([courseId])
+}
+```
+
+(Consider converting `eventType` to an enum in a controlled migration.)
+
+---
+
+## Phase 10.1 — Event Ingestion
+Create a write-only, batched ingestion endpoint.
+
+- Add AnalyticsEvent Prisma model
+- POST /api/analytics/event
+    - Accept batched events
+    - Validate eventType against enum
+    - Fire-and-forget design (write-only)
+- Rules: No reads, no business logic
+- Add unit tests
+
+## Phase 10.2 — Client Event Emitters
+Client-side emitters for:
+- lesson_viewed
+- lesson_completed
+- quiz_attempted
+- quiz_passed
+
+Requirements:
+- Debounced
+- Non-blocking
+- POST → /api/analytics/event
+- No UI changes
+
+## Phase 10.3 — Aggregation Jobs
+Nightly aggregation jobs to compute:
+- lesson completion rate
+- average time per lesson
+- course completion %
+
+Store results in an `AnalyticsDailyAggregate` model. Implement as idempotent, testable job (no UI).
+
+## Phase 10.4 — Admin Analytics APIs
+Read-only admin endpoints (aggregated data only):
+- GET /api/admin/analytics/course/[courseId]
+- GET /api/admin/analytics/funnel/[courseId]
+
+Rules:
+- Return only aggregated data (no raw events)
+- Admin-only access
+- Add tests
+
+## Phase 10.5 — Analytics Dashboard UI
+Admin dashboard pages (read-only):
+- Course analytics overview
+- Lesson drop-off chart
+- Funnel visualization
+
+Requirements:
+- Use Phase 10.4 APIs
+- Simple chart library
+- No write actions or exports yet
+
+## Phase 10.6 — Intelligence Signals (Non-AI)
+Rule-based signals saved to `AnalyticsSignal`:
+- High drop-off lesson
+- Low quiz pass rate
+- High refund rate (approximate until explicit refunds available)
+
+No AI suggestions yet. Add unit tests.
+
+---
+
+## ✅ Outcomes (Phase 10 Completed)
+- Full analytics pipeline (ingest → aggregate → surface)
+- Monetization insights decoupled from content
+- Course quality signals persisted
+- Enterprise observability in place
+- AI-ready intelligence layer (non-generative signals)
+
+## 🚧 Pending / Recommended
+- Schedule nightly aggregator and signals worker (cron/orchestrator)
+- Add admin read API for AnalyticsSignal and surface alerts in dashboard
+- Replace purchase→enrollment refund heuristic with explicit refunds
+- Convert eventType → enum via controlled migration
+- Add retention/pruning for raw AnalyticsEvent
+- Add job observability, retries, and audit logs
+- Extend per-lesson aggregates for accurate drop-off metrics
+- Improve admin UX (time-range, course picker, pagination, drilldowns)
+
+## Suggestions / Next Steps (prioritized)
+1. Add admin read API for AnalyticsSignal (high impact).  
+2. Schedule nightly aggregator + signals worker + monitoring (operational critical).  
+3. Implement retention policy and DB indexes for scaling.  
+4. Replace refund heuristic and convert eventType to enum safely.  
+5. Iterate dashboard to use per-lesson aggregates.
+
+---
+
+## 🚦 What Comes After Phase 10 (Preview)
+
+| Phase | Focus                         |
+|-------|-------------------------------|
+| 11    | Personalization (non-generative) |
+| 12    | AI Tutor (safe, scoped)       |
+| 13    | Marketplace & creators        |
+| 14    | Adaptive learning             |
+
+## 🔥 Final Advice
+- Content is immutable. Analytics is observational. Monetization is decoupled. AI is boxed and audited.  
+- Do not let shortcuts compromise the architecture.
+
+---
+
+## SUMMARY OF IMPLEMENTATION
+
+**Intention:** Build a read-only, observational analytics pipeline to collect learner events, aggregate metrics for admins, and produce rule-based intelligence signals — without modifying content or generation logic.
+
+**Achieved:**
+- Event ingestion endpoint (batched, validated, write-only) with tests.
+- Debounced, non-blocking client emitters.
+- Nightly-style aggregator that upserts into `AnalyticsDailyAggregate` with tests.
+- Admin read-only aggregated APIs with admin guard and tests.
+- Server-rendered admin dashboard with overview, drop-off approximation, funnel visualization, and simple chart components.
+- `AnalyticsSignal` model and rule-based signal generation (low completion, low quiz pass, high refund approximation) with tests.
+- Tests updated to use test DB/session injection pattern for reliability.
+
+**Next operational tasks:**
+- Wire aggregator and signals into scheduler/cron.
+- Expose admin APIs for signals.
+- Implement retention, improve refund metric fidelity, and convert eventType to enum in a migration.
+

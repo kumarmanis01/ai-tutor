@@ -16,6 +16,7 @@ import fs from 'fs'
 import { prisma } from '@/lib/prisma'
 import { startMetricsServer, incJobsSpawned } from './metrics-server'
 import { createJobForWorker } from './k8s-adapter'
+import { runAnalyticsJobs } from '@/src/jobs/analyticsJobs'
 
 const POLL_MS = Number(process.env.ORCHESTRATOR_POLL_MS || 3000)
 const WORKER_CMD = process.execPath // node executable
@@ -126,6 +127,37 @@ async function main() {
 
   // start metrics server in both modes
   try { startMetricsServer() } catch (e) { console.error('failed to start metrics server', e) }
+
+  // Optional: schedule daily analytics job (disabled by default)
+  try {
+    const enabled = process.env.ORCHESTRATOR_ENABLE_ANALYTICS === '1' || process.env.ORCHESTRATOR_ENABLE_ANALYTICS === 'true'
+    if (enabled) {
+      const hour = Number(process.env.ORCHESTRATOR_ANALYTICS_HOUR || '3') // UTC hour to run
+      const scheduleDaily = async () => {
+        try {
+          console.log('[orchestrator] starting scheduled analytics job')
+          const res = await runAnalyticsJobs()
+          console.log(JSON.stringify({ job: 'analytics', status: res.success ? 'SUCCESS' : 'FAILED', durationMs: res.durationMs, error: res.error ?? null }))
+        } catch (e) {
+          console.error('[orchestrator] scheduled analytics job failed', e)
+        }
+      }
+
+      // compute milliseconds until next hour:minute (hour:00 UTC)
+      const now = new Date()
+      const next = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), hour, 0, 0, 0))
+      if (next.getTime() <= now.getTime()) next.setUTCDate(next.getUTCDate() + 1)
+      const firstDelay = next.getTime() - now.getTime()
+      console.log(`[orchestrator] analytics job scheduled at hour=${hour} UTC; first run in ${Math.round(firstDelay/1000)}s`)
+      setTimeout(() => {
+        // run first then set interval every 24h
+        void scheduleDaily()
+        setInterval(() => { void scheduleDaily() }, 24 * 60 * 60 * 1000)
+      }, firstDelay)
+    }
+  } catch (e) {
+    console.error('[orchestrator] failed to schedule analytics job', e)
+  }
 
   if (!K8S_MODE) {
     setInterval(async () => {
