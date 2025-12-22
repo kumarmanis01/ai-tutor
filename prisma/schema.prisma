@@ -1126,3 +1126,61 @@ model TelemetrySample {
   @@index([timestamp])
   @@unique([key, timestamp, dimensionHash])
 }
+
+// Phase 9 — Progress tracking models (safe writable models)
+model Enrollment {
+  id        String   @id @default(cuid())
+  userId    String
+  courseId  String
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([courseId])
+}
+
+model LessonProgress {
+  id         String   @id @default(cuid())
+  userId     String
+  courseId   String
+  lessonIdx  Int
+  completed  Boolean
+  updatedAt  DateTime @updatedAt
+
+  @@unique([userId, courseId, lessonIdx])
+  @@index([userId])
+  @@index([courseId])
+}
+
+// Phase 9.5 — Multi-tenant monetization models
+model Tenant {
+  id   String @id @default(cuid())
+  name String
+  products Product[]
+}
+
+model Product {
+  id         String @id @default(cuid())
+  tenantId   String
+  courseId   String
+  priceCents Int
+  currency   String
+  active     Boolean @default(true)
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+  purchases Purchase[]
+
+  @@index([tenantId])
+  @@index([courseId])
+}
+
+model Purchase {
+  id        String   @id @default(cuid())
+  userId    String
+  productId String
+  createdAt DateTime @default(now())
+
+  product Product @relation(fields: [productId], references: [id])
+
+  @@index([userId])
+  @@index([productId])
+}

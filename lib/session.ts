@@ -54,5 +54,7 @@ export async function getSessionUserWithSubscription() {
 // Lightweight wrapper so other server handlers can use a single source
 // of truth for acquiring NextAuth session without importing authOptions
 export async function getServerSessionForHandlers() {
+  // In tests we allow injecting a fake session via global.__TEST_SESSION__
+  if ((global as any).__TEST_SESSION__) return (global as any).__TEST_SESSION__
   return getServerSession(authOptions);
 }

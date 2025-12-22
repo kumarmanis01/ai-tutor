@@ -1,0 +1,1002 @@
+# Phase 6 — AI Syllabus & Curriculum Engine
+
+## 1️⃣ Phase 6 Design Document
+
+Purpose: Build the AI Syllabus Engine — the brain that converts a learning intent into a structured, reviewable, versioned syllabus.
+
+What Phase 6 builds
+- A deterministic syllabus generator that turns high-level inputs into a structured JSON syllabus.
+- Human-reviewable and versioned artifacts that are safe to approve before content generation.
+
+This phase answers: “What should the learner learn, in what order, and to what depth?” — it maps the curriculum, it does not create lesson content.
+
+### Why Phase 6 exists
+Most AI content systems fail because they:
+
+- Jump directly to content generation
+- Produce verbose but unstructured lessons
+- Cannot guarantee coverage, progression, or outcomes
+
+Phase 6 introduces:
+
+- Deterministic structure
+- Pedagogical sequencing
+- Human-reviewable outputs
+- AI controllability
+
+### What Phase 6 deliberately excludes
+
+- Video generation
+- Slides
+- Quizzes (detailed assessments)
+- Infra scaling / production Kubernetes
+- LMS integrations
+
+Those belong to later phases (7–9).
+
+### Core goals of Phase 6
+
+Goal — Meaning
+- **Structured output:** JSON syllabus, not prose
+- **Deterministic:** Same input → similar structure
+- **Reviewable:** Humans can approve / edit
+- **Versioned:** Syllabus is immutable once approved
+- **AI-agnostic:** Works with GPT, Claude, etc.
+
+## 2️⃣ Phase 6 Inputs → Outputs
+
+Inputs
+- Course title
+- Target audience
+- Skill level
+- Time budget
+- Teaching style
+- Constraints (exam-focused, project-based, practical, etc.)
+
+Outputs
+- Course syllabus JSON
+- Modules
+- Lessons
+- Learning objectives per lesson
+- Prerequisites
+- Estimated effort per lesson/module
+- Assessment hooks (placeholders)
+
+## 3️⃣ Outcomes at end of Phase 6
+
+By the end of Phase 6 you will have:
+
+- ✅ A formal syllabus schema (JSON schema)
+- ✅ A syllabus generator prompt contract (clear inputs/outputs)
+- ✅ An approved syllabus artifact (versioned)
+- ✅ Confidence that content generation (Phase 7) will not drift or omit scope
+
+Only after these outcomes are satisfied do we move to Phase 7.
+
+## 4️⃣ Implementation Notes (practical)
+
+- **Schema:** Define a JSON Schema for `Syllabus` with `modules[]`, `lessons[]`, `objectives[]`, `prerequisites`, `estimates`, and `metadata` (version, createdBy, createdAt).
+- **Prompt contract:** Single canonical prompt template for syllabus generation. Include explicit instructions about output structure, length limits, and failure modes.
+- **Determinism:** Use sampling temperature low (0.0–0.3) and a deterministic post-processor that validates/normalizes the AI output against the JSON Schema.
+- **Review flow:** Produce a `draft` artifact stored in DB (or filesystem) with a review URL and version id. After approval, mark `approved` and make the syllabus immutable.
+- **Tests:** Unit tests for the prompt→schema validation; integration tests that run a dry-run with a fixed seed or deterministic mock LLM.
+
+## 5️⃣ Developer Tasks (milestones)
+
+1. Define `Syllabus` JSON Schema and store it at `schemas/syllabus.schema.json`.
+2. Add `lib/syllabusGenerator.ts` with a function `generateSyllabus(input): Promise<SyllabusDraft>` that calls the LLM and validates output.
+3. Add prompt templates under `prompts/syllabus/` with examples.
+4. Add integration tests in `tests/phase6/` using a deterministic LLM mock.
+5. Add a minimal UI or CLI to view and approve a draft syllabus (can be simple JSON viewer).
+
+## 6️⃣ Running & Validation (local-first)
+
+- Keep the infra frozen: do not unblock on EKS. Use Docker Compose or local processes to run services.
+- CI should run `npm test`, `helm lint`, and `helm template` to validate packaging.
+- To validate prompts without external LLM costs, provide a `mock-llm` mode that returns deterministic canned responses.
+
+## 7️⃣ Acceptance Criteria
+
+The Phase 6 deliverable is accepted when:
+
+1. There is a valid `Syllabus` JSON Schema.
+2. The `generateSyllabus()` function produces schema-compliant drafts for a variety of inputs (unit tests pass).
+3. A human reviewer can inspect and approve a syllabus draft via CLI or UI.
+4. The approved syllabus is stored with an immutable version id and metadata.
+
+## 8️⃣ Next Steps (Phase 7 preview)
+
+- After approval of the syllabus, Phase 7 will generate lesson content and assessments according to the approved syllabus.
+- Phase 7 will also add content moderation, richer prompt chains, and content chunking for downstream features.
+
+---
+
+Place this file at `docs/PHASE_6.md` and use it as the north star for team work on the Syllabus Engine.
+
+
+# Phase 7 — AI Content Generation Engine (Lessons, Quizzes, Projects)
+
+Principle:
+Phase 7 generates content, but never structure.
+All structure comes from Phase 6 (Approved Syllabus).
+
+🎯 Phase 7 Goal (What & Why)
+What we want to achieve
+
+Transform an APPROVED syllabus into:
+
+- Structured lessons
+- Knowledge checks (MCQs)
+- Practical assignments / projects
+
+All content must be:
+
+- Schema-validated
+- Versioned
+- Reviewable
+- Regeneratable
+
+Why this phase exists
+
+To prevent:
+
+- Hallucinated lesson structures
+- Inconsistent depth
+- Non-reviewable AI output
+- Content drift over time
+
+🧠 Phase 7 Core Rules (Non-Negotiable)
+
+- No syllabus → no content
+- Only APPROVED syllabus can generate content
+- Each content type has its own schema
+- AI outputs JSON only
+- All content is persisted & versioned
+- Approval gate before publishing
+
+🧱 Phase 7 Sub-Phases (Execution Order)
+Phase 7
+ ├─ 7.1 Lesson Schema
+ ├─ 7.2 Lesson Generator
+ ├─ 7.3 Quiz Schema + Generator
+ ├─ 7.4 Project / Assignment Generator
+ ├─ 7.5 Content Approval Workflow
+ └─ 7.6 Content Packaging (Course View)
+
+Each sub-phase is independently testable.
+
+🟦 Phase 7.1 — Lesson Schema (FOUNDATION)
+🎯 Goal
+
+Define what a lesson is — before generating any content.
+
+Lesson Schema Design
+
+Conceptual model
+
+Course
+ └─ Module
+     └─ Lesson
+         ├─ Explanation
+         ├─ Examples
+         ├─ Key Takeaways
+         ├─ Practice Prompt
+
+TypeScript Types
+
+📄 lib/content/lesson/types.ts
+
+```ts
+export interface Lesson {
+  id: string
+  syllabusId: string
+  moduleId: string
+  lessonIndex: number
+
+  title: string
+  durationMinutes: number
+
+  objectives: string[]
+
+  explanation: {
+    overview: string
+    concepts: {
+      title: string
+      explanation: string
+      example?: string
+    }[]
+  }
+
+  keyTakeaways: string[]
+
+  practice: {
+    prompt: string
+    expectedOutcome: string
+  }
+
+  metadata: {
+    level: "beginner" | "intermediate" | "advanced"
+    prerequisites?: string[]
+  }
+}
+```
+
+Zod Schema
+
+📄 lib/content/lesson/schema.ts
+
+```ts
+import { z } from "zod"
+
+export const LessonSchema = z.object({
+  id: z.string(),
+  syllabusId: z.string(),
+  moduleId: z.string(),
+  lessonIndex: z.number().int(),
+
+  title: z.string().min(5),
+  durationMinutes: z.number().int().min(5),
+
+  objectives: z.array(z.string()).min(1),
+
+  explanation: z.object({
+    overview: z.string().min(50),
+    concepts: z.array(
+      z.object({
+        title: z.string(),
+        explanation: z.string().min(50),
+        example: z.string().optional()
+      })
+    ).min(1)
+  }),
+
+  keyTakeaways: z.array(z.string()).min(2),
+
+  practice: z.object({
+    prompt: z.string().min(30),
+    expectedOutcome: z.string().min(30)
+  }),
+
+  metadata: z.object({
+    level: z.enum(["beginner", "intermediate", "advanced"]),
+    prerequisites: z.array(z.string()).optional()
+  })
+})
+```
+
+🟦 Phase 7.2 — Lesson Generator (Controlled AI)
+🎯 Goal
+
+Generate lessons per module from an approved syllabus.
+
+Generator Contract
+
+📄 lib/content/lesson/generator.ts
+
+```ts
+generateLessons({
+  syllabusId,
+  moduleId,
+  moduleTitle,
+  learningObjectives,
+  lessonCount
+}) → Lesson[]
+```
+
+AI Prompt Rules
+
+- JSON only
+
+- One lesson per response OR batched
+
+- No markdown
+
+- No explanations outside JSON
+
+Prompt Builder
+
+📄 lib/content/lesson/prompt.ts
+
+```ts
+export function buildLessonPrompt(input) {
+  return `
+You are generating structured course lessons.
+
+Rules:
+- Output ONLY valid JSON
+- Match the provided schema exactly
+- Do not add extra fields
+- Depth must match professional education quality
+
+Input:
+${JSON.stringify(input, null, 2)}
+
+Return an array of Lesson objects.
+`
+}
+```
+
+Generator Logic
+
+📄 generator.ts
+
+```ts
+const raw = await llm.generate(prompt)
+const parsed = JSON.parse(raw)
+const lessons = parsed.map(validateLesson)
+return lessons
+```
+
+Notes:
+- Do not implement generation logic yet — this section is the contract and prompt guidance only.
+
+🟦 Phase 7.3 — Quiz Generator
+
+🎯 Goal
+
+Generate MCQs per lesson.
+
+Quiz Schema (Simple & Safe)
+
+```ts
+export interface Quiz {
+  lessonId: string
+  questions: {
+    question: string
+    options: string[]
+    correctIndex: number
+    explanation: string
+  }[]
+}
+```
+
+Zod enforces:
+1. 4 options
+2. correctIndex ∈ [0–3]
+
+🟦 Phase 7.4 — Projects / Assignments Generator
+
+🎯 Purpose (Copilot must understand this)
+
+Projects are:
+
+- Practical application of multiple lessons
+
+- NOT quizzes
+
+- NOT free-form text
+
+- Evaluated via a clear rubric
+
+Projects must be:
+
+- Deterministic
+
+- Schema-validated
+
+- Reviewable
+
+- Regeneratable
+
+🧱 Phase 7.4 — Data Model
+Conceptual Structure
+Course
+ └─ Module
+   └─ Project / Assignment
+     ├─ Problem Statement
+     ├─ Constraints
+     ├─ Deliverables
+     ├─ Evaluation Rubric
+
+🔷 Phase 7.5 — Content Approval Workflow (Critical Gate)
+
+🎯 Purpose (Very Important)
+
+Phase 7.5 is the safety gate.
+
+Nothing becomes:
+1. Publishable
+2. Persistent
+3. Visible to users
+
+Unless it is:
+1. Explicitly approved
+2. Audited
+3. Immutable after approval
+
+Notes:
+- Approval is an explicit admin action that records `approvedBy`, `approvedAt`, and an immutable snapshot of the content JSON.
+- All attempts to modify an `APPROVED` artifact must be rejected; retries should create new draft artifacts instead.
+- Every approval action must create an `AuditLog` entry that includes actor, timestamp, entity id, and a brief rationale.
+- The UI and API MUST only surface `APPROVED` content to end-users; drafts are visible only to reviewers and admins.
+
+Design Rules (Copilot must obey)
+
+- Lessons, Quizzes, Projects start as `DRAFT`.
+- Only `APPROVED` content can be published.
+- Approved content is immutable.
+- Approval requires: `approver`, `timestamp`, and an optional `note`.
+- All approval actions are audited (create `AuditLog` entries including actor, timestamp, entity id, and rationale).
+
+
+
+🟦 Phase 7.6 — Course Packaging
+
+Assemble:
+
+Course
+ ├─ Syllabus
+ ├─ Lessons
+ ├─ Quizzes
+ └─ Projects
+
+No AI here — pure composition.
+
+🧠 Why This Prevents Rework & Tech Debt
+Risk	How Phase 7 avoids it
+AI hallucinations	Schema + validation
+Content drift	Versioning
+Inconsistent quality	Fixed prompt contracts
+Unreviewable output	Approval gates
+Cost explosions	Deterministic generation
+
+**Phase 7 Summary**
+
+- **Goal:** Transform an APPROVED syllabus into validated, versioned, reviewable content (lessons, quizzes, projects) while preventing hallucination, drift, and inconsistent quality.
+- **Completed so far:**
+  - Formalized Phase 7 design and sub-phases (7.1–7.3)
+  - Implemented `Lesson` types and Zod schema (`lib/content/lesson/types.ts`, `schema.ts`) with unit tests
+  - Added lesson generator contract, prompt builder, mock LLM adapter, and unit tests (no generation logic that writes data)
+  - Implemented Quiz types and Zod schema (`lib/content/quiz/schema.ts`) with generator contract and tests
+
+- **Pending / Next:**
+  - Implement Project / Assignment schema and generators (7.4)
+  - Implement approval workflow for generated content (7.5) including audit logs and `approvedBy` metadata
+  - Course packaging logic (7.6) and UI/CLI to assemble and publish packages
+  - Integration tests connecting Phase 6 approved syllabus → Phase 7 generators
+
+This summary reflects the Phase 7 contract-focused deliverables: schema, prompt contracts, generator contracts, and test harnesses. Implementation of persistent storage and publishing is intentionally deferred until approval workflow and auditability are finalized.
+
+🔷 Where You Are Now (State Check)
+
+You currently have:
+
+✅ Approved syllabus (Phase 6)
+✅ Lesson / Quiz / Project generators with strict schemas (7.1–7.4)
+✅ Approval workflow with immutability + audit (7.5)
+
+What you do NOT have yet (by design):
+
+- No packaging
+- No publishing
+- No learner-facing output
+- No persistence coupling
+
+This is correct.
+
+🔶 What Comes Next (High-Level Roadmap)
+Phase	Purpose
+7.6	Course Packaging (assemble approved content)
+8.0	Persistence + Versioning
+8.1	Publish API (read-only, immutable)
+8.2	Regeneration + diffing
+9.0	Delivery (UI, LMS, exports)
+
+We now proceed one irreversible phase at a time.
+
+🟣 Phase 7.6 — Course Packaging (NEXT)
+🎯 Objective
+
+Create a publishable course package that:
+
+- Pulls only APPROVED content
+
+- Freezes versions
+
+- Is deterministic
+
+- Is schema-validated
+
+- Is immutable once built
+
+No AI here. No generation. Only assembly.
+
+🧱 Conceptual Model
+Approved Syllabus
+ + Approved Lessons
+ + Approved Quizzes
+ + Approved Projects
+ --------------------------------
+ → CoursePackage (versioned, frozen)
+
+
+🟦 PHASE 8 — Persistence, Publishing & Versioning
+
+Phase theme:
+“Once approved, content becomes immutable, versioned, and safely consumable.”
+
+🔑 Why Phase 8 Exists
+
+Until now:
+
+1. Everything was generated, validated, approved
+2. Nothing was persisted as a publishable artifact
+3. Nothing was publicly readable
+
+Phase 8 introduces:
+
+1. Permanent storage
+2. Versioned publishing
+3. Read-only APIs
+4. Admin UI for visibility
+5. Zero mutation guarantees
+
+🎯 Phase 8 Goals (Outcomes)
+
+By the end of Phase 8, you will have:
+
+✅ Immutable, versioned Course Packages stored in DB
+✅ Read-only Publish APIs
+✅ Admin UI to browse published courses & versions
+✅ Strong guarantees:
+
+1. Approved-only
+2. No overwrites
+3. No drift
+4. No accidental edits
+
+❌ Still no learner UX (that’s Phase 9)
+
+🧱 Phase 8 Architecture Overview
+Approved Syllabus + Content
+        ↓
+CoursePackage (built in Phase 7.6)
+        ↓
+Persisted (Phase 8.1)
+        ↓
+Published (Phase 8.2)
+        ↓
+Read-only APIs + Admin UI
+
+🟦 Phase 8.1 — Persistence Layer
+🎯 Objective
+
+Persist CoursePackage safely and immutably.
+
+🧬 Prisma Schema (REQUIRED)
+📄 schema.prisma
+enum CoursePackageStatus {
+  PUBLISHED
+  ARCHIVED
+}
+
+model CoursePackage {
+  id            String   @id @default(cuid())
+  syllabusId    String
+  version       Int
+
+  status        CoursePackageStatus @default(PUBLISHED)
+
+  /// Frozen JSON blob (validated before insert)
+  json          Json
+
+  createdAt     DateTime @default(now())
+
+  @@unique([syllabusId, version])
+  @@index([syllabusId])
+}
+
+🔒 Rules
+1. json is immutable
+2. No UPDATEs allowed (only INSERT)
+3. New version = new row
+
+🧠 Persistence Helper
+📁 lib/course/package/store.ts
+export async function saveCoursePackage(
+  prisma,
+  pkg: CoursePackage
+) {
+  return prisma.coursePackage.create({
+    data: {
+      syllabusId: pkg.syllabusId,
+      version: pkg.version,
+      json: pkg,
+    }
+  })
+}
+
+export async function getCoursePackagesBySyllabus(
+  prisma,
+  syllabusId: string
+) {
+  return prisma.coursePackage.findMany({
+    where: { syllabusId },
+    orderBy: { version: 'desc' }
+  })
+}
+
+🧪 Tests (Required)
+1. cannot insert duplicate version
+2. json matches schema
+3. version increments correctly
+
+🟦 Phase 8.2 — Publish APIs (Read-only)
+🎯 Objective
+
+Expose published courses safely.
+
+🌐 API Routes
+📄 /api/courses/route.ts
+GET /api/courses
+
+
+Returns:
+
+[
+  {
+    "syllabusId": "abc",
+    "latestVersion": 3,
+    "title": "Intro to AI"
+  }
+]
+
+📄 /api/courses/[syllabusId]/route.ts
+GET /api/courses/:syllabusId
+
+
+Returns:
+
+{
+  "syllabusId": "abc",
+  "versions": [3,2,1]
+}
+
+📄 /api/courses/[syllabusId]/[version]/route.ts
+
+🟦 Phase 8.3 — Admin UI (Read-only)
+🎯 Objective
+
+Allow admins to see what’s published.
+
+🖥️ UI Pages
+- /admin/courses
+  - List syllabi
+  - Show latest version
+  - Status badge
+
+- /admin/courses/[syllabusId]
+  - Versions list
+  - CreatedAt timestamps (if available)
+  - View JSON button
+
+- /admin/courses/[syllabusId]/[version]
+  - Pretty JSON viewer
+  - Download JSON
+
+🟦 Phase 8.4 — Safety & Guarantees
+🔒 Hard Rules to Enforce
+
+Rule	Where
+Approved-only content	Builder (7.6)
+Insert-only persistence	Store
+Immutable JSON	DB + code
+Versioned publishing	DB constraint
+No mutation APIs	Routes
+Audit preserved	Phase 7
+
+🧪 Final Validation Checklist
+
+Before moving to Phase 9:
+
+- CoursePackage schema validated
+- Multiple versions stored safely
+- APIs return correct data
+- No write routes exposed
+- Admin UI reflects DB truth
+- Tests pass
+- CI green
+
+🚀 What Comes After Phase 8
+Phase 9 — Delivery
+
+- Learner UI
+- LMS export
+- PDF / Markdown
+- Personalization
+- Monetization
+
+
+```markdown
+📘 PHASE 9 — DELIVERY, CONSUMPTION & MONETIZATION
+
+Phase 9 converts published CoursePackages into a real product learners can consume, pay for, and complete — without mutating content.
+
+1️⃣ Phase 9 Design Document
+🎯 Phase 9 Goal
+
+Turn immutable published CoursePackages into:
+
+- A learner experience
+
+- A progress-tracked system
+
+- A monetizable, multi-tenant product
+
+With export formats (PDF / LMS)
+
+🔒 Core Non-Negotiable Guarantees
+
+Phase 9 MUST NOT:
+
+- Modify CoursePackage JSON
+
+- Regenerate AI content
+
+- Bypass approval/publish gates
+
+- Mix author/admin flows with learner flows
+
+Phase 9 ONLY READS from Phase 8.
+
+🧩 Phase 9 High-Level Architecture
+CoursePackage (immutable)
+        ↓
+Read-only Delivery APIs
+        ↓
+Learner Player UI
+        ↓
+Progress + Entitlements (new models)
+        ↓
+Exporters (PDF / LMS)
+
+📦 Phase 9 Sub-Phases
+Sub-Phase	Purpose
+9.1	Learner content delivery APIs
+9.2	Course Player UI
+9.3	Progress tracking
+9.4	PDF / LMS Exporters
+9.5	Multi-tenant monetization
+9.6	Access control & safety
+
+```
+
+🔹 PHASE 9.1 — Learner Read APIs (FOUNDATION)
+🎯 Outcome
+
+Expose published courses safely for learners.
+
+APIs
+
+List available courses
+
+Fetch full course
+
+Fetch lesson by index
+
+🧠 Copilot Prompt — Phase 9.1
+Create Phase 9.1 learner delivery APIs.
+
+Requirements:
+- Read-only APIs only
+- Source: CoursePackage (published only)
+- No admin logic
+- No writes
+
+Routes:
+GET /api/learn/courses
+→ list published courses (id, title, version)
+
+GET /api/learn/courses/[courseId]
+→ full CoursePackage JSON
+
+GET /api/learn/courses/[courseId]/lessons/[index]
+→ single lesson object
+
+Rules:
+- Reject non-PUBLISHED packages
+- No mutations
+- Use Prisma client
+- Add basic Jest tests
+
+Do not add auth yet.
+
+
+✅ Stop when APIs + tests pass.
+
+🎯 Outcome
+
+A learner can read and navigate a course.
+Create a learner Course Player UI.
+
+Pages:
+
+/learn → list courses
+/learn/[courseId] → course overview
+/learn/[courseId]/lesson/[index] → lesson reader
+Requirements:
+
+Read-only
+Use Phase 9.1 APIs
+Render lesson content cleanly (title, objectives, content blocks)
+Navigation: Previous / Next
+No progress tracking yet
+Constraints:
+
+No admin components
+No writes
+Mobile-friendly layout
+Add minimal styling, no design system needed.
+
+🔹 PHASE 9.3 — Progress Tracking (SAFE WRITES)
+🎯 Outcome
+
+Track learner progress without touching content.
+
+Prisma Models (NEW — SAFE)
+model Enrollment {
+  id        String   @id @default(cuid())
+  userId    String
+  courseId  String
+  createdAt DateTime @default(now())
+}
+
+model LessonProgress {
+  id         String   @id @default(cuid())
+  userId     String
+  courseId   String
+  lessonIdx  Int
+  completed  Boolean
+  updatedAt  DateTime @updatedAt
+
+  @@unique([userId, courseId, lessonIdx])
+}
+
+🧠 Prompt - Phase 9.3
+Implement learner progress tracking.
+
+Tasks:
+- Add Enrollment and LessonProgress Prisma models
+- Create APIs:
+  POST /api/learn/enroll
+  POST /api/learn/progress
+  GET  /api/learn/progress/[courseId]
+
+Rules:
+- Progress writes only
+- CoursePackage remains immutable
+- Require enrollment before progress writes
+
+Add unit tests for:
+- enrollment
+- marking lesson complete
+- reading progress
+
+🔹 PHASE 9.4 — PDF & LMS Exporters
+🎯 Outcome
+
+Allow offline / institutional usage.
+
+Export Targets
+Export	Format
+PDF	Printable course
+LMS	SCORM-like ZIP (JSON + HTML)
+
+🧠 Prompt - Phase 9.4 (PDF)
+Create a PDF exporter for CoursePackage.
+
+Requirements:
+- Input: published CoursePackage JSON
+- Output: PDF
+- One lesson per section
+- Include title, objectives, content
+
+Tech:
+- Node PDF library (pdfkit or equivalent)
+- No DB writes
+
+Expose function:
+exportCourseToPDF(coursePackage): Buffer
+
+Add basic test (snapshot size > 0).
+
+🧠 Prompt - Phase 9.4 (LMS)
+Create an LMS exporter.
+
+Requirements:
+- Input: CoursePackage JSON
+- Output: ZIP
+  - index.html
+  - lessons/*.html
+  - manifest.json
+
+Rules:
+- No mutations
+- Deterministic output
+- No LMS auth logic
+
+Expose function:
+exportCourseToLMS(coursePackage): Buffer
+
+🔹 PHASE 9.5 — Multi-Tenant Monetization
+🎯 Outcome
+
+Sell courses without forking content.
+
+Prisma Models (NEW)
+model Tenant {
+  id   String @id @default(cuid())
+  name String
+}
+
+model Product {
+  id        String @id @default(cuid())
+  tenantId  String
+  courseId  String
+  priceCents Int
+  currency  String
+  active    Boolean
+}
+
+model Purchase {
+  id        String @id @default(cuid())
+  userId    String
+  productId String
+  createdAt DateTime @default(now())
+}
+
+🧠 Copilot Prompt — Phase 9.5
+Implement multi-tenant monetization.
+
+Tasks:
+- Add Tenant, Product, Purchase models
+- APIs:
+  GET /api/store/products
+  POST /api/store/purchase
+- Enforce:
+  - purchase required before enrollment
+  - tenant isolation
+
+Rules:
+- No content duplication
+- Product references courseId only
+- Purchases grant access, not content ownership
+
+Add tests for:
+- access gating
+- tenant isolation
+
+🔹 PHASE 9.6 — Access Control & Safety
+🎯 Outcome
+
+Prevent leaks and misuse.
+
+🧠  Prompt — Phase 9.6
+Add access guards.
+
+Rules:
+- Learner APIs require purchase OR enrollment
+- Admin APIs unchanged
+- CoursePackage JSON never modified
+
+Add middleware:
+- requireEnrollment
+- requirePurchase (if monetized)
+
+Add tests for unauthorized access.
+
+3️⃣ What You Get at End of Phase 9
+
+✅ Learner platform
+✅ Progress tracking
+✅ Monetization
+✅ Exports (PDF/LMS)
+✅ Zero content drift
+✅ Enterprise-safe architecture
+
+🚦 What Comes After Phase 9 (Preview Only)
+Phase	Focus
+10	Analytics & insights
+11	Personalization
+12	Marketplace
+13	AI tutoring layer

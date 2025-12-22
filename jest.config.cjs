@@ -6,6 +6,9 @@ module.exports = {
   testMatch: ['**/tests/**/*.test.ts'],
   testPathIgnorePatterns: ['/tests/integration/'],
   moduleFileExtensions: ['ts', 'js', 'json', 'node'],
+  moduleNameMapper: {
+    '^@/(.*)$': '<rootDir>/$1'
+  },
   globals: {
     'ts-jest': {
       tsconfig: 'tsconfig.json',
