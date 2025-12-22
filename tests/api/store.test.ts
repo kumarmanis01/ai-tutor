@@ -1,6 +1,7 @@
 const mockPrisma: any = {
   product: { findMany: jest.fn(), findUnique: jest.fn() },
-  purchase: { create: jest.fn() }
+  purchase: { create: jest.fn() },
+  auditLog: { create: jest.fn() }
 }
 ;(global as any).__TEST_PRISMA__ = mockPrisma
 
@@ -28,5 +29,6 @@ describe('store APIs', () => {
     const data = await res.json()
     expect(data.ok).toBe(true)
     expect(mockPrisma.purchase.create).toHaveBeenCalled()
+    expect(mockPrisma.auditLog.create).toHaveBeenCalled()
   })
 })

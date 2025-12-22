@@ -5,7 +5,8 @@ const mockPrisma: any = {
   enrollment: { create: jest.fn(), findFirst: jest.fn() },
   lessonProgress: { upsert: jest.fn(), findMany: jest.fn() },
   product: { findFirst: jest.fn() },
-  purchase: { findFirst: jest.fn() }
+  purchase: { findFirst: jest.fn() },
+  auditLog: { create: jest.fn() }
 }
 ;(global as any).__TEST_PRISMA__ = mockPrisma
 
@@ -26,6 +27,7 @@ describe('progress APIs', () => {
     const data = await res.json()
     expect(data.ok).toBe(true)
     expect(mockPrisma.enrollment.create).toHaveBeenCalled()
+    expect(mockPrisma.auditLog.create).toHaveBeenCalled()
   })
 
   test('POST /api/learn/progress upserts progress when enrolled', async () => {

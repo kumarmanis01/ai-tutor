@@ -21,6 +21,13 @@ export async function POST(req: Request) {
   }
 
   const created = await db.enrollment.create({ data: { userId, courseId } })
+  // Audit the enrollment
+  try {
+    await db.auditLog.create({ data: { userId, action: 'enrollment_create', details: { enrollmentId: created.id, courseId }, createdAt: new Date() } })
+  } catch (e) {
+    // non-fatal
+  }
+
   return NextResponse.json({ ok: true, enrollment: created }, { status: 201 })
 }
 

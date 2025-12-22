@@ -17,4 +17,20 @@ describe('LMS exporter', () => {
     // manifest should contain course title
     expect(s).toContain('Test Course')
   })
+  
+  it('LMS export endpoint writes audit log', async () => {
+    const mockPrisma: any = {
+      coursePackage: { findFirst: jest.fn().mockResolvedValue({ id: 'pkg1', json: { title: 'T' } }) },
+      product: { findFirst: jest.fn().mockResolvedValue(null) },
+      purchase: { findFirst: jest.fn().mockResolvedValue(null) },
+      enrollment: { findFirst: jest.fn().mockResolvedValue(null) },
+      auditLog: { create: jest.fn() }
+    }
+    ;(global as any).__TEST_PRISMA__ = mockPrisma
+    ;(global as any).__TEST_SESSION__ = { user: { id: 'u1' } }
+    const route = await import('../../app/api/learn/courses/[courseid]/export/lms/route')
+    const res = await route.GET(new Request('http://localhost') as any, { params: { courseId: 'c1' } } as any)
+    expect(res.status).toBe(200)
+    expect(mockPrisma.auditLog.create).toHaveBeenCalled()
+  })
 })

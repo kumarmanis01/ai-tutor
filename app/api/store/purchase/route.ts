@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { getServerSessionForHandlers } from '@/lib/session'
+import { logAuditEvent } from '@/lib/audit/log'
 
 export async function POST(req: Request) {
   const db = (global as any).__TEST_PRISMA__ ?? (await import('@/lib/prisma')).prisma
@@ -13,8 +14,20 @@ export async function POST(req: Request) {
   const prod = await db.product.findUnique({ where: { id: productId } })
   if (!prod) return NextResponse.json({ error: 'Product not found' }, { status: 404 })
 
+  // Tenant scoping: if product is tenant-scoped require matching tenantId in body
+  const tenantIdFromBody = body.tenantId ?? null
+  if (prod.tenantId) {
+    if (!tenantIdFromBody || String(prod.tenantId) !== String(tenantIdFromBody)) {
+      return NextResponse.json({ error: 'Invalid tenant' }, { status: 403 })
+    }
+  }
+
   // Create purchase record
   const created = await db.purchase.create({ data: { userId, productId } })
+
+  // Audit the purchase (non-blocking)
+  logAuditEvent(db, { actorId: userId, action: 'purchase_create', entityType: 'PRODUCT', entityId: productId, metadata: { purchaseId: created.id, productId, tenantId: prod?.tenantId ?? null } })
+
   return NextResponse.json({ ok: true, purchase: created }, { status: 201 })
 }
 
