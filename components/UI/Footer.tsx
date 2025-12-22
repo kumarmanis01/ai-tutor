@@ -7,9 +7,14 @@ import useCurrentUser from '@/hooks/useCurrentUser';
 export default function Footer() {
   const { data: session } = useSession();
   const { data: profile } = useCurrentUser();
+  const sess = session as unknown as import('@/lib/types/auth').AppSession | null;
 
   // Prefer canonical profile role if available, otherwise fall back to session role.
-  const isAdmin = profile?.role === 'admin' || (!!session?.user && (session.user as any).role === 'admin');
+  const isAdmin = (() => {
+    const profRole = (profile as any)?.role;
+    const sessRole = sess?.user?.role;
+    return profRole === 'admin' || sessRole === 'admin';
+  })();
 
   return (
     <footer className="w-full bg-gray-100 border-t mt-1">

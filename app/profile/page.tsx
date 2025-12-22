@@ -12,6 +12,7 @@ import { useOnboarding } from '@/context/OnboardingProvider';
 
 export default function ProfilePage() {
   const { data: session } = useSession();
+  const sess = session as unknown as import('@/lib/types/auth').AppSession | null;
   const { data: profile, loading } = useCurrentUser();
   const { open } = useOnboarding();
 
@@ -26,9 +27,15 @@ export default function ProfilePage() {
 
   const fallback =
     profile?.name?.charAt(0).toUpperCase() ||
-    session.user?.name?.charAt(0).toUpperCase() ||
-    session.user?.email?.charAt(0).toUpperCase() ||
+    session?.user?.name?.charAt(0).toUpperCase() ||
+    session?.user?.email?.charAt(0).toUpperCase() ||
     '?';
+
+  const isAdmin = (() => {
+    const profRole = (profile as any)?.role;
+    const sessRole = sess?.user?.role;
+    return profRole === 'admin' || sessRole === 'admin';
+  })();
 
   return (
     <div className="max-w-4xl mx-auto p-8 bg-white dark:bg-gray-900 rounded-xl shadow-lg text-gray-900 dark:text-gray-100">
@@ -41,13 +48,13 @@ export default function ProfilePage() {
           {/* Profile Header */}
           <div className="flex flex-col items-center mb-8">
             <Avatar
-              src={profile?.image ?? session.user?.image ?? undefined}
-              alt={profile?.name ?? session.user?.name ?? session.user?.email ?? 'User avatar'}
+              src={profile?.image ?? session?.user?.image ?? undefined}
+                alt={profile?.name ?? session?.user?.name ?? session?.user?.email ?? 'User avatar'}
               size={80}
               fallback={fallback}
             />
-            <h1 className="text-3xl font-bold mt-2">{profile?.name ?? session.user?.name}</h1>
-            <p className="text-gray-500 dark:text-gray-400">{profile?.email ?? session.user?.email}</p>
+            <h1 className="text-3xl font-bold mt-2">{profile?.name ?? session?.user?.name}</h1>
+            <p className="text-gray-500 dark:text-gray-400">{profile?.email ?? session?.user?.email}</p>
             <button
               type="button"
               className="mt-4 px-5 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
@@ -58,7 +65,7 @@ export default function ProfilePage() {
             <div className="mt-3 flex gap-2 items-center">
               <LogoutButton />
               {/* Show Admin button for admin users only, use client-side navigation */}
-              {(profile?.role === 'admin' || session.user?.role === 'admin') && (
+              {isAdmin && (
                 <button
                   type="button"
                   onClick={() => router.push('/admin')}

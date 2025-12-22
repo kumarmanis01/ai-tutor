@@ -1,6 +1,6 @@
-import runAnalyticsJobs from '@/src/jobs/analyticsJobs'
+import runAnalyticsJobs from '@/jobs/analyticsJobs'
 
-jest.mock('@/src/jobs/jobLock', () => ({
+jest.mock('@/jobs/jobLock', () => ({
   acquireJobLock: jest.fn(),
   releaseJobLock: jest.fn(),
 }))
@@ -22,7 +22,7 @@ jest.mock('@/lib/prisma', () => ({
   prisma: { auditLog: { create: jest.fn() } },
 }))
 
-import { acquireJobLock, releaseJobLock } from '@/src/jobs/jobLock'
+import { acquireJobLock, releaseJobLock } from '@/jobs/jobLock'
 import * as agg from '@/workers/analyticsAggregator'
 import * as signals from '@/workers/generateSignals'
 import logAudit from '@/lib/audit/log'

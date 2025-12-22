@@ -1,4 +1,5 @@
-import { getServerSession } from 'next-auth';
+import { getServerSession } from 'next-auth/next';
+import type { AppSession } from '@/lib/types/auth';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 
@@ -25,7 +26,7 @@ import { prisma } from '@/lib/prisma';
  *   if (!user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
  */
 export async function getSessionUserWithSubscription() {
-  const session = await getServerSession(authOptions);
+  const session = (await getServerSession(authOptions)) as AppSession | null;
   const user = session?.user ?? null;
 
   if (!user?.id) {

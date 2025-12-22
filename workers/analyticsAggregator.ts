@@ -64,3 +64,6 @@ export async function aggregateDay(date: Date) {
 }
 
 export default aggregateDay
+
+// Backwards-compatible named export used by some tests and job runners
+export const runForAllCourses = aggregateDay

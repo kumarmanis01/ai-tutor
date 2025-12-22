@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useRef, type ReactElement } from 'react';
 import { useSession } from 'next-auth/react';
+import type { AppSession } from '@/lib/types/auth';
 
 type TrackFn = (event: string, props?: Record<string, unknown>) => void | Promise<void>;
 
@@ -69,9 +70,10 @@ export default function AuthRedeemOnSignIn(): ReactElement | null {
         // Analytics: attempt to record redemption start (non-blocking)
         if (track) {
           try {
+            const s = session as unknown as AppSession | null
             void track('referral_redeem_attempt', {
               code: referralCode,
-              userId: session?.user?.id ?? null,
+              userId: s?.user?.id ?? null,
             });
           } catch {
             /* swallow analytics errors */

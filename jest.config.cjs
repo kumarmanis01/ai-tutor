@@ -7,8 +7,12 @@ module.exports = {
   testPathIgnorePatterns: ['/tests/integration/'],
   moduleFileExtensions: ['ts', 'js', 'json', 'node'],
   moduleNameMapper: {
-    '^@/(.*)$': '<rootDir>/$1'
+    // map @/lib/... to the repo root lib/ folder, and everything else to src/
+    '^@/(lib/.*)$': '<rootDir>/$1',
+    '^@/(workers/.*)$': '<rootDir>/$1',
+    '^@/(.*)$': '<rootDir>/src/$1'
   },
+  moduleDirectories: ['node_modules', '<rootDir>'],
   globals: {
     'ts-jest': {
       tsconfig: 'tsconfig.json',

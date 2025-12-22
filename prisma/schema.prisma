@@ -298,6 +298,51 @@ model AnalyticsSignal {
   @@index([type])
 }
 
+// Phase 11 — Content suggestions produced by the Insight Engine
+enum SuggestionScope {
+  COURSE
+  MODULE
+  LESSON
+  QUIZ
+}
+
+enum SuggestionType {
+  LOW_COMPLETION
+  HIGH_RETRY
+  DROP_OFF
+  LOW_ENGAGEMENT
+  CONTENT_CLARITY
+}
+
+enum SuggestionSeverity {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+enum SuggestionStatus {
+  OPEN
+  ACCEPTED
+  DISMISSED
+}
+
+model ContentSuggestion {
+  id            String   @id @default(cuid())
+  courseId      String
+  scope         SuggestionScope
+  targetId      String
+  type          SuggestionType
+  severity      SuggestionSeverity
+  message       String
+  evidenceJson  Json
+  sourceSignalId String?
+  status        SuggestionStatus @default(OPEN)
+  createdAt     DateTime @default(now())
+
+  @@index([courseId])
+  @@unique([sourceSignalId, type, targetId])
+}
+
 model Subscription {
   id           String   @id @default(cuid())
   userId       String
