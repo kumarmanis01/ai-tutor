@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "ai-platform.fullname" . }}-config
+data:
+  # Application configuration that is safe to keep in config
+  LOG_LEVEL: "info"

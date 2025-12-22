@@ -1,0 +1,43 @@
+image:
+  repository: ghcr.io/your-org/ai-tutor/learner-api
+  tag: latest
+  pullPolicy: IfNotPresent
+
+replicaCount: 2
+
+service:
+  type: ClusterIP
+  port: 3000
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
+
+env:
+  NODE_ENV: production
+  TENANT_MODE: enabled
+
+secrets:
+  secretName: ai-platform-secrets
+
+postgres:
+  enabled: false
+  externalUrl: ""
+
+redis:
+  enabled: false
+  externalUrl: ""
+
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 70
+
+metrics:
+  enabled: true
+  pushgatewayUrl: ""
