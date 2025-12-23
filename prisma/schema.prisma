@@ -326,6 +326,21 @@ enum SuggestionStatus {
   DISMISSED
 }
 
+/// Phase 12 — Regeneration job lifecycle and targets
+enum RegenerationJobStatus {
+  PENDING
+  RUNNING
+  COMPLETED
+  FAILED
+}
+
+enum RegenerationTargetType {
+  LESSON
+  QUIZ
+  PROJECT
+  MODULE
+}
+
 model ContentSuggestion {
   id            String   @id @default(cuid())
   courseId      String
@@ -341,6 +356,38 @@ model ContentSuggestion {
 
   @@index([courseId])
   @@unique([sourceSignalId, type, targetId])
+}
+
+/// Phase 12 — Regeneration jobs created from ACCEPTED ContentSuggestion
+model RegenerationJob {
+  id              String                 @id @default(cuid())
+  suggestionId    String
+  targetType      RegenerationTargetType
+  targetId        String
+  instructionJson Json
+  status          RegenerationJobStatus  @default(PENDING)
+  outputRef       Json?
+  errorJson       Json?
+  createdBy       String
+  createdAt       DateTime               @default(now())
+  updatedAt       DateTime               @updatedAt
+  outputs         RegenerationOutput[]
+
+  @@unique([suggestionId, targetType, targetId])
+}
+
+/// Persisted outputs created by regeneration jobs. Immutable.
+model RegenerationOutput {
+  id        String   @id @default(cuid())
+  jobId     String   @unique
+  targetType RegenerationTargetType
+  targetId  String
+  contentJson Json
+  createdAt DateTime @default(now())
+
+  job RegenerationJob @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  @@index([targetId])
 }
 
 model Subscription {

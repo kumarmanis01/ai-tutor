@@ -68,6 +68,18 @@ describe('Phase 11 — ContentSuggestion idempotency', () => {
       return
     }
 
+    // Double-check DB reachability with a timeboxed ping — skip if unstable.
+    try {
+      await Promise.race([
+        prisma.$queryRaw`SELECT 1`,
+        new Promise((_, reject) => setTimeout(() => reject(new Error('DB ping timeout')), 1500)),
+      ])
+    } catch (e) {
+      // eslint-disable-next-line no-console
+      console.warn('Phase 11 idempotency test skipped: DB ping failed', String(e))
+      return
+    }
+
     // First run: generate and persist
     const suggestions1 = generateSuggestionsForSignal(engineSignal)
     await saveSuggestions(prisma as any, suggestions1.map((s: any) => ({ ...s, sourceSignalId: dbSignal.id })))
