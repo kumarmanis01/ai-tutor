@@ -1,4 +1,5 @@
 import { prisma } from '@/lib/prisma'
+import net from 'net'
 import generateSuggestionsForSignal from '@/insights/engine'
 import { saveSuggestions } from '@/insights/store'
 
@@ -10,7 +11,22 @@ describe('Phase 11 — Job-style suggestion processing idempotency', () => {
       return
     }
     try {
-      await prisma.$queryRaw`SELECT 1`
+      // quick TCP probe to DB host to fail fast if DB server unreachable
+      const pingDb = (urlStr: string, timeout = 500) => new Promise<void>((resolve, reject) => {
+        try {
+          const u = new URL(urlStr)
+          const host = u.hostname
+          const port = Number(u.port) || 5432
+          const socket = net.createConnection({ host, port })
+          const onError = (err: any) => { socket.destroy(); reject(err) }
+          const onTimeout = () => { socket.destroy(); reject(new Error('DB ping timeout')) }
+          socket.setTimeout(timeout)
+          socket.once('connect', () => { socket.destroy(); resolve() })
+          socket.once('error', onError)
+          socket.once('timeout', onTimeout)
+        } catch (e) { reject(e) }
+      })
+      await pingDb(process.env.DATABASE_URL)
     } catch {
       SKIP = true
       return

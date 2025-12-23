@@ -1,4 +1,5 @@
 import { prisma } from '@/lib/prisma'
+import net from 'net'
 import generateSuggestionsForSignal from '@/insights/engine'
 import { saveSuggestions } from '@/insights/store'
 
@@ -13,8 +14,22 @@ describe('Phase 11 — ContentSuggestion idempotency', () => {
       return
     }
     try {
-      // Try a lightweight query to confirm DB is reachable
-      await prisma.$queryRaw`SELECT 1`
+      // quick TCP probe to DB host to fail fast if DB server unreachable
+      const pingDb = (urlStr: string, timeout = 500) => new Promise<void>((resolve, reject) => {
+        try {
+          const u = new URL(urlStr)
+          const host = u.hostname
+          const port = Number(u.port) || 5432
+          const socket = net.createConnection({ host, port })
+          const onError = (err: any) => { socket.destroy(); reject(err) }
+          const onTimeout = () => { socket.destroy(); reject(new Error('DB ping timeout')) }
+          socket.setTimeout(timeout)
+          socket.once('connect', () => { socket.destroy(); resolve() })
+          socket.once('error', onError)
+          socket.once('timeout', onTimeout)
+        } catch (e) { reject(e) }
+      })
+      await pingDb(process.env.DATABASE_URL)
     } catch (e) {
       // eslint-disable-next-line no-console
       console.warn('Skipping Phase 11 idempotency test: DB not reachable', String(e))
@@ -37,6 +52,12 @@ describe('Phase 11 — ContentSuggestion idempotency', () => {
   })
 
   it('creates exactly one suggestion per signal across repeated runs and audits once', async () => {
+    if (SKIP_TEST) {
+      // eslint-disable-next-line no-console
+      console.warn('Phase 11 idempotency test skipped (DB not available)')
+      return
+    }
+
     // 1) Seed one AnalyticsSignal (use a valid DB enum value)
     const dbSignal = await prisma.analyticsSignal.create({
       data: {

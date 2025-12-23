@@ -24,15 +24,16 @@ function sleep(ms: number) {
  * Returns the claimed job object or null if claim failed
  */
 export async function claimJob(jobId: string) {
-  // Use a single atomic UPDATE ... RETURNING query to claim the job.
-  // This avoids relying on Prisma's updateMany typing for fields like `lockedAt`.
+  // Atomically claim the job inside a transaction: PENDING -> RUNNING and set lockedAt
   try {
-    const updated = await prisma.regenerationJob.updateMany({ where: { id: jobId, status: 'PENDING' }, data: { status: 'RUNNING' } })
-    if ((updated as any).count === 0) return null
-    const job = await prisma.regenerationJob.findUnique({ where: { id: jobId } })
-    return job
+    return await prisma.$transaction(async (tx) => {
+      const updated = await tx.regenerationJob.updateMany({ where: { id: jobId, status: 'PENDING' }, data: { status: 'RUNNING', lockedAt: new Date() as any } as any })
+      if ((updated as any).count === 0) return null
+      const job = await tx.regenerationJob.findUnique({ where: { id: jobId } })
+      return job
+    })
   } catch (err) {
-    try { logger?.warn?.('claimJob: updateMany failed', { err }) } catch {}
+    try { logger?.warn?.('claimJob: transaction failed', { err }) } catch {}
     return null
   }
 }
@@ -46,7 +47,7 @@ export async function claimJob(jobId: string) {
  */
 export async function processNextJob() {
   // find oldest pending job
-  const pending = await prisma.regenerationJob.findFirst({ where: { status: 'PENDING' }, orderBy: { createdAt: 'asc' } })
+  const pending = await prisma.regenerationJob.findFirst({ where: { status: 'PENDING' }, orderBy: { createdAt: 'asc' }, select: { id: true } })
   if (!pending) return null
 
   const claimed = await claimJob(pending.id)
@@ -86,9 +87,8 @@ export async function processNextJob() {
 
     // Atomically write outputRef and mark COMPLETED only if status is still RUNNING.
     try {
-      const jobNow = await prisma.regenerationJob.findUnique({ where: { id: claimed.id } })
-      if (jobNow && jobNow.status === 'RUNNING') {
-        await prisma.regenerationJob.update({ where: { id: claimed.id }, data: { status: 'COMPLETED', outputRef } })
+      const updated = await prisma.regenerationJob.updateMany({ where: { id: claimed.id, status: 'RUNNING' }, data: { status: 'COMPLETED', outputRef } as any })
+      if ((updated as any).count > 0) {
         try { logAuditEvent(prisma as any, { action: AuditEvents.REGEN_JOB_COMPLETED, entityId: claimed.id, metadata: { jobId: claimed.id, status: 'COMPLETED', outputRef } }) } catch {}
       }
     } catch {

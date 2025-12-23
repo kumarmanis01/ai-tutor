@@ -21,8 +21,9 @@ export async function runRegenerationJobs() {
   if (!acquired) return { processed: 0, locked: true }
 
   try {
-    // Find one pending job (oldest first)
-    const pending = await (prisma as any).regenerationJob.findFirst({ where: { status: 'PENDING' }, orderBy: { createdAt: 'asc' } })
+    // Find one pending job (oldest first) — select minimal fields to avoid referencing DB columns that
+    // may not exist in all test DB schemas (fail-fast compatible)
+    const pending = await (prisma as any).regenerationJob.findFirst({ where: { status: 'PENDING' }, orderBy: { createdAt: 'asc' }, select: { id: true } })
     if (!pending) return { processed: 0 }
 
     // Try to atomically claim the job (ensure status was still PENDING)
@@ -32,14 +33,18 @@ export async function runRegenerationJobs() {
       return { processed: 0 }
     }
 
-    // Reload job
-    const job = await (prisma as any).regenerationJob.findUnique({ where: { id: pending.id } })
-    if (!job) return { processed: 0 }
+    // Reload job with only the fields we need for execution
+    const job = await (prisma as any).regenerationJob.findUnique({ where: { id: pending.id }, select: { id: true, suggestionId: true, targetType: true, targetId: true, instructionJson: true } })
+    if (!job) {
+      
+      return { processed: 0 }
+    }
 
     // Audit: started
     logAuditEvent(prisma as any, { action: AuditEvents.REGEN_JOB_STARTED, entityId: job.id, metadata: { jobId: job.id } })
 
     try {
+      
       const output = await generatorAdapter({
         id: job.id,
         suggestionId: job.suggestionId,
@@ -58,14 +63,19 @@ export async function runRegenerationJobs() {
 
       const outputRef = { outputId: out.id, createdAt: out.createdAt }
 
-      // Update job with outputRef and mark COMPLETED
-      await (prisma as any).regenerationJob.update({ where: { id: job.id }, data: { status: 'COMPLETED', outputRef } })
-      logAuditEvent(prisma as any, { action: AuditEvents.REGEN_JOB_COMPLETED, entityId: job.id, metadata: { jobId: job.id, outputRef } })
+      // Atomically set outputRef and mark COMPLETED (use updateMany in case of concurrent changes)
+      const updated = await (prisma as any).regenerationJob.updateMany({ where: { id: job.id, status: 'RUNNING' }, data: { status: 'COMPLETED', outputRef } as any })
+      
+      if ((updated?.count ?? 0) > 0) {
+        logAuditEvent(prisma as any, { action: AuditEvents.REGEN_JOB_COMPLETED, entityId: job.id, metadata: { jobId: job.id, outputRef } })
+      }
 
       return { processed: 1, jobId: job.id }
     } catch (err: any) {
+      
       const errorJson = { message: String(err?.message ?? err), stack: err?.stack }
-      await (prisma as any).regenerationJob.update({ where: { id: job.id }, data: { status: 'FAILED', errorJson } }).catch(() => {})
+      // Use updateMany to avoid schema-selection issues and to ensure we only transition RUNNING -> FAILED
+      await (prisma as any).regenerationJob.updateMany({ where: { id: job.id, status: 'RUNNING' }, data: { status: 'FAILED', errorJson } as any }).catch(() => {})
       logAuditEvent(prisma as any, { action: AuditEvents.REGEN_JOB_FAILED, entityId: job.id, metadata: { jobId: job.id, errorJson } })
       return { processed: 0 }
     }

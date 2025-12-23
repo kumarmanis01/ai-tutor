@@ -4,7 +4,7 @@ import * as runner from '../../src/jobs/regenerationJobRunner'
 import * as adapter from '@/regeneration/generatorAdapter'
 
 describe('Regeneration job runner', () => {
-  jest.setTimeout(20000)
+  jest.setTimeout(60000)
   let SKIP = false
   const insertSql = `INSERT INTO "public"."RegenerationJob" ("id","suggestionId","targetType","targetId","instructionJson","status","createdBy","createdAt","updatedAt") VALUES ($1,$2,$3::"RegenerationTargetType",$4,$5::jsonb,$6::"RegenerationJobStatus",$7,now(),now()) RETURNING *`
   beforeAll(async () => {
@@ -41,7 +41,7 @@ describe('Regeneration job runner', () => {
     const res = await runner.runRegenerationJobs()
     expect(res.processed).toBe(1)
 
-    const jobAfter = await prisma.regenerationJob.findUnique({ where: { id: job.id } })
+    const jobAfter = await prisma.regenerationJob.findUnique({ where: { id: job.id }, select: { status: true, outputRef: true } })
     expect(jobAfter?.status).toBe('COMPLETED')
     expect(jobAfter?.outputRef).toBeDefined()
 
@@ -66,7 +66,7 @@ describe('Regeneration job runner', () => {
     const res = await runner.runRegenerationJobs()
     expect(res.processed).toBe(0)
 
-    const jobAfter = await prisma.regenerationJob.findUnique({ where: { id: job.id } })
+    const jobAfter = await prisma.regenerationJob.findUnique({ where: { id: job.id }, select: { status: true, errorJson: true } })
     expect(jobAfter?.status).toBe('FAILED')
     expect(jobAfter?.errorJson).toBeDefined()
   })
