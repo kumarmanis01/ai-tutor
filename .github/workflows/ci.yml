@@ -18,6 +18,18 @@ jobs:
           node-version: '20.x'
       - name: Install
         run: npm ci
+      - name: Apply Prisma migrations (if DATABASE_URL set)
+        if: env.DATABASE_URL != ''
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          echo "DATABASE_URL is set — applying migrations"
+          npx prisma migrate deploy
+          npx prisma generate
+      - name: Apply Prisma migrations (skip notice)
+        if: env.DATABASE_URL == ''
+        run: |
+          echo "DATABASE_URL not set — skipping prisma migrate. Ensure CI sets DATABASE_URL for DB-backed integration tests."
       - name: Lint
         run: npm run lint
       - name: Type-check

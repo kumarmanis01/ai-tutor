@@ -341,6 +341,20 @@ enum RegenerationTargetType {
   MODULE
 }
 
+enum RetryIntentStatus {
+  PENDING
+  CONSUMED
+  REJECTED
+}
+
+enum RetryReasonCode {
+  TRANSIENT_FAILURE
+  BAD_INPUT
+  IMPROVED_PROMPT
+  INFRA_ERROR
+  OTHER
+}
+
 model ContentSuggestion {
   id            String   @id @default(cuid())
   courseId      String
@@ -369,6 +383,9 @@ model RegenerationJob {
   outputRef       Json?
   errorJson       Json?
   lockedAt        DateTime?
+  // Phase 14 lineage fields (insert-only)
+  retryOfJobId    String?
+  retryIntentId   String?                @unique
   completedAt     DateTime?
   createdBy       String
   createdAt       DateTime               @default(now())
@@ -376,6 +393,20 @@ model RegenerationJob {
   outputs         RegenerationOutput[]
 
   @@unique([suggestionId, targetType, targetId])
+}
+
+model RetryIntent {
+  id              String              @id @default(cuid())
+  sourceJobId     String
+  sourceOutputRef String?
+  reasonCode      RetryReasonCode
+  reasonText      String
+  approvedBy      String
+  approvedAt      DateTime?
+  status          RetryIntentStatus   @default(PENDING)
+  createdAt       DateTime            @default(now())
+
+  @@index([sourceJobId])
 }
 
 /// Persisted outputs created by regeneration jobs. Immutable.

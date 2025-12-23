@@ -6,7 +6,7 @@ import * as adapter from '@/regeneration/generatorAdapter'
 describe('Regeneration worker (DB-backed, mocked generator)', () => {
   jest.setTimeout(20000)
   let SKIP = false
-  const insertSql = `INSERT INTO "public"."RegenerationJob" ("id","suggestionId","targetType","targetId","instructionJson","status","createdBy","createdAt","updatedAt") VALUES ($1,$2,$3::"RegenerationTargetType",$4,$5::jsonb,$6::"RegenerationJobStatus",$7,now(),now()) RETURNING *`
+  
 
   beforeAll(async () => {
     if (!process.env.DATABASE_URL) { SKIP = true; return }
@@ -26,8 +26,15 @@ describe('Regeneration worker (DB-backed, mocked generator)', () => {
   it('1) PENDING job is claimed and completed', async () => {
     if (SKIP) return
     const id = `job-${Date.now()}-${Math.random().toString(36).slice(2,6)}`
-    const rows: any = await (prisma as any).$queryRawUnsafe(insertSql, id, `s-${id}`, 'LESSON', `t-${id}`, JSON.stringify({ foo: 'bar' }), 'PENDING', 'tester')
-    const job = Array.isArray(rows) ? rows[0] : rows
+    const job = await prisma.regenerationJob.create({ data: {
+      id,
+      suggestionId: `s-${id}`,
+      targetType: 'LESSON',
+      targetId: `t-${id}`,
+      instructionJson: { foo: 'bar' } as any,
+      status: 'PENDING',
+      createdBy: 'tester'
+    }})
 
     // mock adapter to return output
     if ((adapter as any).default && (adapter as any).default.mockResolvedValue) {
@@ -56,8 +63,15 @@ describe('Regeneration worker (DB-backed, mocked generator)', () => {
   it('2) COMPLETED job is skipped', async () => {
     if (SKIP) return
     const id = `job-${Date.now()}-${Math.random().toString(36).slice(2,6)}`
-    const rows: any = await (prisma as any).$queryRawUnsafe(insertSql, id, `s-${id}`, 'LESSON', `t-${id}`, JSON.stringify({}), 'COMPLETED', 'tester')
-    const job = Array.isArray(rows) ? rows[0] : rows
+    const job = await prisma.regenerationJob.create({ data: {
+      id,
+      suggestionId: `s-${id}`,
+      targetType: 'LESSON',
+      targetId: `t-${id}`,
+      instructionJson: {} as any,
+      status: 'COMPLETED',
+      createdBy: 'tester'
+    }})
 
       await worker.processNextJob()
     // nothing should change for this job
@@ -70,8 +84,15 @@ describe('Regeneration worker (DB-backed, mocked generator)', () => {
   it('3) FAILED job is skipped', async () => {
     if (SKIP) return
     const id = `job-${Date.now()}-${Math.random().toString(36).slice(2,6)}`
-    const rows: any = await (prisma as any).$queryRawUnsafe(insertSql, id, `s-${id}`, 'LESSON', `t-${id}`, JSON.stringify({}), 'FAILED', 'tester')
-    const job = Array.isArray(rows) ? rows[0] : rows
+    const job = await prisma.regenerationJob.create({ data: {
+      id,
+      suggestionId: `s-${id}`,
+      targetType: 'LESSON',
+      targetId: `t-${id}`,
+      instructionJson: {} as any,
+      status: 'FAILED',
+      createdBy: 'tester'
+    }})
 
       await worker.processNextJob()
     const refreshed = await prisma.regenerationJob.findUnique({ where: { id: job.id } })
@@ -83,8 +104,15 @@ describe('Regeneration worker (DB-backed, mocked generator)', () => {
   it('4) Double execution prevented', async () => {
     if (SKIP) return
     const id = `job-${Date.now()}-${Math.random().toString(36).slice(2,6)}`
-    const rows: any = await (prisma as any).$queryRawUnsafe(insertSql, id, `s-${id}`, 'LESSON', `t-${id}`, JSON.stringify({}), 'PENDING', 'tester')
-    const job = Array.isArray(rows) ? rows[0] : rows
+    const job = await prisma.regenerationJob.create({ data: {
+      id,
+      suggestionId: `s-${id}`,
+      targetType: 'LESSON',
+      targetId: `t-${id}`,
+      instructionJson: {} as any,
+      status: 'PENDING',
+      createdBy: 'tester'
+    }})
 
     // Mock adapter to return quickly
     if ((adapter as any).default && (adapter as any).default.mockResolvedValue) {
@@ -104,8 +132,15 @@ describe('Regeneration worker (DB-backed, mocked generator)', () => {
   it('5) Output written once', async () => {
     if (SKIP) return
     const id = `job-${Date.now()}-${Math.random().toString(36).slice(2,6)}`
-    const rows: any = await (prisma as any).$queryRawUnsafe(insertSql, id, `s-${id}`, 'LESSON', `t-${id}`, JSON.stringify({}), 'PENDING', 'tester')
-    const job = Array.isArray(rows) ? rows[0] : rows
+    const job = await prisma.regenerationJob.create({ data: {
+      id,
+      suggestionId: `s-${id}`,
+      targetType: 'LESSON',
+      targetId: `t-${id}`,
+      instructionJson: {} as any,
+      status: 'PENDING',
+      createdBy: 'tester'
+    }})
 
     if ((adapter as any).default && (adapter as any).default.mockResolvedValue) {
       (adapter as any).default.mockResolvedValue({ validated: true, outputJson: { content: 'once' } })
@@ -135,8 +170,15 @@ describe('Regeneration worker (DB-backed, mocked generator)', () => {
     }
 
     const id = `job-${Date.now()}-${Math.random().toString(36).slice(2,6)}`
-    const rows: any = await (prisma as any).$queryRawUnsafe(insertSql, id, `s-${id}`, 'LESSON', `t-${id}`, JSON.stringify({}), 'PENDING', 'tester')
-    const job = Array.isArray(rows) ? rows[0] : rows
+    const job = await prisma.regenerationJob.create({ data: {
+      id,
+      suggestionId: `s-${id}`,
+      targetType: 'LESSON',
+      targetId: `t-${id}`,
+      instructionJson: {} as any,
+      status: 'PENDING',
+      createdBy: 'tester'
+    }})
 
     await worker.processNextJob()
 
