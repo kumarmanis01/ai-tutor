@@ -285,3 +285,53 @@ You may declare Phase 13 complete only when:
 ✅ Outputs are immutable
 ✅ Audit trail is complete
 ✅ Tests enforce invariants
+
+# Detailed summary of Phase 13 implementation
+## What was intended
+
+Introduce an isolated, headless execution plane (worker-only) that materializes RegenerationJob → immutable RegenerationOutput.
+Enforce control-plane ≠ execution-plane: admin UI / API can only trigger jobs (PENDING), never run generators.
+Exactly-once semantics via atomic claim (PENDING → RUNNING with lockedAt), deterministically run generator, persist immutable output, write outputRef once, mark COMPLETED or FAILED.
+Emit non-blocking audit events at lifecycle points: REGEN_JOB_LOCKED, REGEN_JOB_STARTED, REGEN_JOB_COMPLETED, REGEN_JOB_FAILED.
+Provide a strict RegenerationExecutor interface for generators, and comprehensive unit + DB-backed tests enforcing invariants.
+
+## What was completed
+executor.ts: added strict RegenerationExecutor interface and ExecutionResult types (generator contract).
+regenerationWorker.ts: implemented worker with:
+processNextJob() and claimJob() using transactional/atomic semantics (PENDING → RUNNING, set lockedAt).
+Generator invocation handshake (via adapter), persisting immutable RegenerationOutput, deterministic outputRef.
+Atomic finalization using guarded updateMany (only transition RUNNING → COMPLETED/FAILED).
+Non-blocking audit calls (logAuditEvent) at LOCKED / STARTED / COMPLETED / FAILED.
+Safe error handling: write errorJson and mark FAILED; no retries, no partial streaming.
+regenerationJobRunner.ts: aligned runner semantics with worker (advisory lock-style, guarded updates).
+
+## Tests added/updated:
+Unit tests for claim semantics, process flow, execution success/failure behavior, audit emission (mocks).
+DB-backed integration tests with quick DB-reachability checks (fail-fast if DATABASE_URL unreachable).
+Adjusted Phase 11/12 tests to avoid schema-coupling (explicit select) and to increase reliability/timeouts.
+CI/dev hygiene:
+Ran prisma generate as needed; resolved "@prisma/client not initialized" issues.
+Fixed TypeScript/lint issues (removed debug console statements, corrected mock shapes).
+Full verification completed: ESLint, tsc and Jest passed (final run reported green).
+
+## What is pending
+Production object storage integration (S3 / blob) for outputs — current implementation supports deterministic local storage options; S3 integration is optional/left to be chosen.
+Formal PR/merge step and review (branching/commit polish, changelog/PR description).
+Optional: broaden E2E tests that exercise real generators + real object storage to validate full production flow (currently generator implementations are mocked in tests).
+Optional hardening: operational telemetry for worker (metrics, backoff behavior, visibility dashboards) beyond audit logs.
+If your production DB schema differs (e.g., fields like lockedAt missing), ensure migrations are applied in target environments — some tests were made resilient, but production migration must be validated.
+
+## Suggestions
+Integrate production object storage (S3/Blob) for outputs now — implement a deterministic path strategy and a small adapter behind an interface used by the worker; add integration tests that point at a test bucket.
+Open a focused PR containing:
+Summary of invariants (link Phase_13.md), changed files, tests added, and verification results.
+Migration notes (ensure lockedAt, outputRef, errorJson fields present).
+Add light observability:
+Worker metrics (jobs processed, failures, claim latency) exported to your metrics system.
+Alerts for repeated failures or claim saturation.
+Add a short-runbook in docs describing worker lifecycle, how to restart safely, and how to inspect audit logs for a job.
+If you want, I can:
+Create the PR with a concise description and commit history.
+Implement the S3 output adapter + tests.
+Add basic Prometheus metrics hooks and a runbook doc.
+Would you like me to open the PR now or implement S3 output storage next?
