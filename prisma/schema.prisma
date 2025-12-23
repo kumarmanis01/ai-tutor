@@ -368,6 +368,8 @@ model RegenerationJob {
   status          RegenerationJobStatus  @default(PENDING)
   outputRef       Json?
   errorJson       Json?
+  lockedAt        DateTime?
+  completedAt     DateTime?
   createdBy       String
   createdAt       DateTime               @default(now())
   updatedAt       DateTime               @updatedAt
