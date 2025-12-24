@@ -50,6 +50,11 @@ describe('learn APIs', () => {
     ;(mockPrisma.product.findFirst as jest.Mock).mockResolvedValue(null)
     ;(global as any).__TEST_SESSION__ = { user: { id: 'u1' } }
 
+    // Simulate a PublishedOutput pointing to a RegenerationOutput so learners
+    // receive promoted content only.
+    ;(mockPrisma.publishedOutput = { findUnique: jest.fn().mockResolvedValue({ outputRef: 'o1' }) })
+    ;(mockPrisma.regenerationOutput = { findUnique: jest.fn().mockResolvedValue({ id: 'o1', contentJson: { id: 'l2', title: 'L2 promoted' } }) })
+
     const res = await lesson.GET(new Request('http://localhost') as any, { params: { courseId: 'c1', index: '2' } } as any)
     const data = await res.json()
     expect(data.id).toBe('l2')

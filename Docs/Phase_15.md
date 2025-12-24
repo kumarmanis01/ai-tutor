@@ -115,6 +115,8 @@ Sub-Phase	Purpose
 15.4	Admin UI
 15.5	Learner read guards
 15.6	Audit & tests
+
+
 🤖 COPILOT PROMPTS (RUN IN ORDER)
 
 ⚠️ IMPORTANT
@@ -122,8 +124,6 @@ Run one prompt at a time
 Commit after each sub-phase
 
 ### 🧩 15.1 — Prisma Schema & Migration
-Copilot Prompt
-
 Copilot Prompt — Phase 15.1
 
 Add Prisma schema for Phase 15 output promotion.

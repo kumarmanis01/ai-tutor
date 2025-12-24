@@ -23,10 +23,40 @@ CREATE TYPE "JobStatus" AS ENUM ('pending', 'running', 'failed', 'completed', 'c
 CREATE TYPE "JobType" AS ENUM ('syllabus', 'notes', 'questions', 'tests', 'assemble');
 
 -- CreateEnum
+CREATE TYPE "SignalType" AS ENUM ('LOW_COMPLETION_RATE', 'LOW_QUIZ_PASS_RATE', 'HIGH_REFUND_RATE');
+
+-- CreateEnum
+CREATE TYPE "SignalSeverity" AS ENUM ('INFO', 'WARNING', 'CRITICAL');
+
+-- CreateEnum
+CREATE TYPE "SyllabusStatus" AS ENUM ('DRAFT', 'APPROVED', 'ARCHIVED');
+
+-- CreateEnum
 CREATE TYPE "EntityType" AS ENUM ('BOARD', 'CLASS', 'SUBJECT', 'CHAPTER', 'TOPIC', 'NOTE', 'TEST');
 
 -- CreateEnum
 CREATE TYPE "WorkerStatus" AS ENUM ('STARTING', 'RUNNING', 'DRAINING', 'STOPPED', 'FAILED');
+
+-- CreateEnum
+CREATE TYPE "SuggestionScope" AS ENUM ('COURSE', 'MODULE', 'LESSON', 'QUIZ');
+
+-- CreateEnum
+CREATE TYPE "SuggestionType" AS ENUM ('LOW_COMPLETION', 'HIGH_RETRY', 'DROP_OFF', 'LOW_ENGAGEMENT', 'CONTENT_CLARITY');
+
+-- CreateEnum
+CREATE TYPE "SuggestionSeverity" AS ENUM ('LOW', 'MEDIUM', 'HIGH');
+
+-- CreateEnum
+CREATE TYPE "SuggestionStatus" AS ENUM ('OPEN', 'ACCEPTED', 'DISMISSED');
+
+-- CreateEnum
+CREATE TYPE "RegenerationJobStatus" AS ENUM ('PENDING', 'RUNNING', 'COMPLETED', 'FAILED');
+
+-- CreateEnum
+CREATE TYPE "RegenerationTargetType" AS ENUM ('LESSON', 'QUIZ', 'PROJECT', 'MODULE');
+
+-- CreateEnum
+CREATE TYPE "CoursePackageStatus" AS ENUM ('PUBLISHED', 'ARCHIVED');
 
 -- CreateEnum
 CREATE TYPE "AlertType" AS ENUM ('REDIS_DOWN', 'DB_DOWN', 'WORKER_STALE', 'WORKER_FAILED', 'JOB_STUCK', 'QUEUE_BACKLOG');
@@ -156,6 +186,96 @@ CREATE TABLE "Event" (
 );
 
 -- CreateTable
+CREATE TABLE "AnalyticsEvent" (
+    "id" TEXT NOT NULL,
+    "eventType" TEXT NOT NULL,
+    "userId" TEXT,
+    "courseId" TEXT,
+    "lessonIdx" INTEGER,
+    "metadata" JSONB NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "AnalyticsEvent_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "AnalyticsDailyAggregate" (
+    "id" TEXT NOT NULL,
+    "courseId" TEXT NOT NULL,
+    "day" TIMESTAMP(3) NOT NULL,
+    "totalViews" INTEGER NOT NULL DEFAULT 0,
+    "totalCompletions" INTEGER NOT NULL DEFAULT 0,
+    "avgTimePerLesson" DOUBLE PRECISION,
+    "completionRate" DOUBLE PRECISION,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "AnalyticsDailyAggregate_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "AnalyticsSignal" (
+    "id" TEXT NOT NULL,
+    "courseId" TEXT,
+    "type" "SignalType" NOT NULL,
+    "severity" "SignalSeverity" NOT NULL DEFAULT 'INFO',
+    "metadata" JSONB,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "resolvedAt" TIMESTAMP(3),
+
+    CONSTRAINT "AnalyticsSignal_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "ContentSuggestion" (
+    "id" TEXT NOT NULL,
+    "courseId" TEXT NOT NULL,
+    "scope" "SuggestionScope" NOT NULL,
+    "targetId" TEXT NOT NULL,
+    "type" "SuggestionType" NOT NULL,
+    "severity" "SuggestionSeverity" NOT NULL,
+    "message" TEXT NOT NULL,
+    "evidenceJson" JSONB NOT NULL,
+    "status" "SuggestionStatus" NOT NULL DEFAULT 'OPEN',
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "sourceSignalId" TEXT,
+
+    CONSTRAINT "ContentSuggestion_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "RegenerationJob" (
+    "id" TEXT NOT NULL,
+    "suggestionId" TEXT NOT NULL,
+    "targetType" "RegenerationTargetType" NOT NULL,
+    "targetId" TEXT NOT NULL,
+    "instructionJson" JSONB NOT NULL,
+    "status" "RegenerationJobStatus" NOT NULL DEFAULT 'PENDING',
+    "outputRef" JSONB,
+    "errorJson" JSONB,
+    "createdBy" TEXT NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+    "lockedAt" TIMESTAMP(6),
+    "completedAt" TIMESTAMP(6),
+    "retryOfJobId" TEXT,
+    "retryIntentId" TEXT,
+
+    CONSTRAINT "RegenerationJob_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "RegenerationOutput" (
+    "id" TEXT NOT NULL,
+    "jobId" TEXT NOT NULL,
+    "targetType" "RegenerationTargetType" NOT NULL,
+    "targetId" TEXT NOT NULL,
+    "contentJson" JSONB NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "RegenerationOutput_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
 CREATE TABLE "Subscription" (
     "id" TEXT NOT NULL,
     "userId" TEXT NOT NULL,
@@ -186,6 +306,16 @@ CREATE TABLE "WorkerLifecycle" (
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
     CONSTRAINT "WorkerLifecycle_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "JobLock" (
+    "jobName" TEXT NOT NULL,
+    "lockedUntil" TIMESTAMP(3) NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "JobLock_pkey" PRIMARY KEY ("jobName")
 );
 
 -- CreateTable
@@ -321,6 +451,30 @@ CREATE TABLE "BadgeShare" (
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "BadgeShare_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "CoursePackage" (
+    "id" TEXT NOT NULL,
+    "syllabusId" TEXT NOT NULL,
+    "version" INTEGER NOT NULL,
+    "status" "CoursePackageStatus" NOT NULL DEFAULT 'PUBLISHED',
+    "json" JSONB NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "CoursePackage_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "Syllabus" (
+    "id" TEXT NOT NULL,
+    "title" TEXT NOT NULL,
+    "version" TEXT NOT NULL,
+    "status" "SyllabusStatus" NOT NULL DEFAULT 'DRAFT',
+    "json" JSONB NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "Syllabus_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
@@ -910,6 +1064,58 @@ CREATE TABLE "TelemetrySample" (
     CONSTRAINT "TelemetrySample_pkey" PRIMARY KEY ("id")
 );
 
+-- CreateTable
+CREATE TABLE "Enrollment" (
+    "id" TEXT NOT NULL,
+    "userId" TEXT NOT NULL,
+    "courseId" TEXT NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "Enrollment_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "LessonProgress" (
+    "id" TEXT NOT NULL,
+    "userId" TEXT NOT NULL,
+    "courseId" TEXT NOT NULL,
+    "lessonIdx" INTEGER NOT NULL,
+    "completed" BOOLEAN NOT NULL,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "LessonProgress_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "Tenant" (
+    "id" TEXT NOT NULL,
+    "name" TEXT NOT NULL,
+
+    CONSTRAINT "Tenant_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "Product" (
+    "id" TEXT NOT NULL,
+    "tenantId" TEXT NOT NULL,
+    "courseId" TEXT NOT NULL,
+    "priceCents" INTEGER NOT NULL,
+    "currency" TEXT NOT NULL,
+    "active" BOOLEAN NOT NULL DEFAULT true,
+
+    CONSTRAINT "Product_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "Purchase" (
+    "id" TEXT NOT NULL,
+    "userId" TEXT NOT NULL,
+    "productId" TEXT NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "Purchase_pkey" PRIMARY KEY ("id")
+);
+
 -- CreateIndex
 CREATE UNIQUE INDEX "User_email_key" ON "User"("email");
 
@@ -947,6 +1153,51 @@ CREATE INDEX "Chat_userId_subject_idx" ON "Chat"("userId", "subject");
 CREATE INDEX "Conversation_userId_idx" ON "Conversation"("userId");
 
 -- CreateIndex
+CREATE INDEX "AnalyticsEvent_eventType_createdAt_idx" ON "AnalyticsEvent"("eventType", "createdAt");
+
+-- CreateIndex
+CREATE INDEX "AnalyticsEvent_courseId_idx" ON "AnalyticsEvent"("courseId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "AnalyticsDailyAggregate_courseId_day_key" ON "AnalyticsDailyAggregate"("courseId", "day");
+
+-- CreateIndex
+CREATE INDEX "AnalyticsSignal_courseId_idx" ON "AnalyticsSignal"("courseId");
+
+-- CreateIndex
+CREATE INDEX "AnalyticsSignal_type_idx" ON "AnalyticsSignal"("type");
+
+-- CreateIndex
+CREATE INDEX "ContentSuggestion_courseId_idx" ON "ContentSuggestion"("courseId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "ContentSuggestion_sourceSignalId_type_targetId_key" ON "ContentSuggestion"("sourceSignalId", "type", "targetId");
+
+-- CreateIndex
+CREATE INDEX "idx_regenerationjob_lockedAt" ON "RegenerationJob"("lockedAt");
+
+-- CreateIndex
+CREATE INDEX "idx_regenerationjob_status" ON "RegenerationJob"("status");
+
+-- CreateIndex
+CREATE INDEX "idx_regenerationjob_suggestionId" ON "RegenerationJob"("suggestionId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "RegenerationJob_suggestionId_targetType_targetId_key" ON "RegenerationJob"("suggestionId", "targetType", "targetId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "regenerationjob_unique_suggestion_target" ON "RegenerationJob"("suggestionId", "targetType", "targetId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "RegenerationOutput_jobId_key" ON "RegenerationOutput"("jobId");
+
+-- CreateIndex
+CREATE INDEX "RegenerationOutput_targetId_idx" ON "RegenerationOutput"("targetId");
+
+-- CreateIndex
+CREATE INDEX "idx_regenerationoutput_targetId" ON "RegenerationOutput"("targetId");
+
+-- CreateIndex
 CREATE INDEX "Subscription_userId_idx" ON "Subscription"("userId");
 
 -- CreateIndex
@@ -954,6 +1205,9 @@ CREATE INDEX "WorkerLifecycle_status_idx" ON "WorkerLifecycle"("status");
 
 -- CreateIndex
 CREATE INDEX "WorkerLifecycle_lastHeartbeatAt_idx" ON "WorkerLifecycle"("lastHeartbeatAt");
+
+-- CreateIndex
+CREATE INDEX "JobLock_lockedUntil_idx" ON "JobLock"("lockedUntil");
 
 -- CreateIndex
 CREATE INDEX "RoomMember_roomId_idx" ON "RoomMember"("roomId");
@@ -978,6 +1232,15 @@ CREATE INDEX "BadgeShare_badgeId_idx" ON "BadgeShare"("badgeId");
 
 -- CreateIndex
 CREATE INDEX "BadgeShare_recipientId_idx" ON "BadgeShare"("recipientId");
+
+-- CreateIndex
+CREATE INDEX "CoursePackage_syllabusId_idx" ON "CoursePackage"("syllabusId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "CoursePackage_syllabusId_version_key" ON "CoursePackage"("syllabusId", "version");
+
+-- CreateIndex
+CREATE INDEX "Syllabus_status_idx" ON "Syllabus"("status");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "Challenge_key_key" ON "Challenge"("key");
@@ -1105,6 +1368,33 @@ CREATE INDEX "TelemetrySample_timestamp_idx" ON "TelemetrySample"("timestamp");
 -- CreateIndex
 CREATE UNIQUE INDEX "TelemetrySample_key_timestamp_dimensionHash_key" ON "TelemetrySample"("key", "timestamp", "dimensionHash");
 
+-- CreateIndex
+CREATE INDEX "Enrollment_userId_idx" ON "Enrollment"("userId");
+
+-- CreateIndex
+CREATE INDEX "Enrollment_courseId_idx" ON "Enrollment"("courseId");
+
+-- CreateIndex
+CREATE INDEX "LessonProgress_userId_idx" ON "LessonProgress"("userId");
+
+-- CreateIndex
+CREATE INDEX "LessonProgress_courseId_idx" ON "LessonProgress"("courseId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "LessonProgress_userId_courseId_lessonIdx_key" ON "LessonProgress"("userId", "courseId", "lessonIdx");
+
+-- CreateIndex
+CREATE INDEX "Product_tenantId_idx" ON "Product"("tenantId");
+
+-- CreateIndex
+CREATE INDEX "Product_courseId_idx" ON "Product"("courseId");
+
+-- CreateIndex
+CREATE INDEX "Purchase_userId_idx" ON "Purchase"("userId");
+
+-- CreateIndex
+CREATE INDEX "Purchase_productId_idx" ON "Purchase"("productId");
+
 -- AddForeignKey
 ALTER TABLE "PhoneOtp" ADD CONSTRAINT "PhoneOtp_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
@@ -1128,6 +1418,9 @@ ALTER TABLE "Conversation" ADD CONSTRAINT "Conversation_userId_fkey" FOREIGN KEY
 
 -- AddForeignKey
 ALTER TABLE "Event" ADD CONSTRAINT "Event_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "RegenerationOutput" ADD CONSTRAINT "RegenerationOutput_jobId_fkey" FOREIGN KEY ("jobId") REFERENCES "RegenerationJob"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "Subscription" ADD CONSTRAINT "Subscription_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
@@ -1223,10 +1516,10 @@ ALTER TABLE "NoteDownload" ADD CONSTRAINT "NoteDownload_userId_fkey" FOREIGN KEY
 ALTER TABLE "Bookmark" ADD CONSTRAINT "Bookmark_studentId_fkey" FOREIGN KEY ("studentId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "AttemptQuestion" ADD CONSTRAINT "AttemptQuestion_testResultId_fkey" FOREIGN KEY ("testResultId") REFERENCES "TestResult"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "AttemptQuestion" ADD CONSTRAINT "AttemptQuestion_questionId_fkey" FOREIGN KEY ("questionId") REFERENCES "Question"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "AttemptQuestion" ADD CONSTRAINT "AttemptQuestion_questionId_fkey" FOREIGN KEY ("questionId") REFERENCES "Question"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "AttemptQuestion" ADD CONSTRAINT "AttemptQuestion_testResultId_fkey" FOREIGN KEY ("testResultId") REFERENCES "TestResult"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "Answer" ADD CONSTRAINT "Answer_attemptQuestionId_fkey" FOREIGN KEY ("attemptQuestionId") REFERENCES "AttemptQuestion"("id") ON DELETE CASCADE ON UPDATE CASCADE;
@@ -1261,3 +1554,8 @@ ALTER TABLE "ApprovalAudit" ADD CONSTRAINT "ApprovalAudit_actorId_fkey" FOREIGN 
 -- AddForeignKey
 ALTER TABLE "JobExecutionLog" ADD CONSTRAINT "JobExecutionLog_jobId_fkey" FOREIGN KEY ("jobId") REFERENCES "ExecutionJob"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
+-- AddForeignKey
+ALTER TABLE "Product" ADD CONSTRAINT "Product_tenantId_fkey" FOREIGN KEY ("tenantId") REFERENCES "Tenant"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Purchase" ADD CONSTRAINT "Purchase_productId_fkey" FOREIGN KEY ("productId") REFERENCES "Product"("id") ON DELETE RESTRICT ON UPDATE CASCADE;

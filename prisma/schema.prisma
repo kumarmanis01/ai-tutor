@@ -1,8 +1,3 @@
-/// ⚠️ AI CONTENT ENGINE RULES
-/// - JobStatus, JobType, ContentStatus MUST be enums
-/// - No string status fields
-/// - No cascading deletes for jobs or content
-/// - Soft deletes only
 generator client {
   provider = "prisma-client-js"
 }
@@ -13,101 +8,6 @@ datasource db {
   shadowDatabaseUrl = env("SHADOW_DATABASE_URL")
 }
 
-////////////////////////////////////////////////////////
-// ENUMS (MOVED TO TOP)
-////////////////////////////////////////////////////////
-
-enum UserStatus {
-  active
-  banned
-  suspended
-}
-
-enum UserRole {
-  user
-  admin
-  moderator
-  support
-}
-
-enum ApprovalStatus {
-  draft
-  pending
-  approved
-  rejected
-  archived
-}
-
-enum SoftDeleteStatus {
-  active
-  deleted
-}
-
-enum LanguageCode {
-  en
-  hi
-}
-
-enum DifficultyLevel {
-  easy
-  medium
-  hard
-}
-
-enum JobStatus {
-  pending
-  running
-  failed
-  completed
-  cancelled
-}
-
-enum JobType {
-  syllabus
-  notes
-  questions
-  tests
-  assemble
-}
-
-enum SignalType {
-  LOW_COMPLETION_RATE
-  LOW_QUIZ_PASS_RATE
-  HIGH_REFUND_RATE
-}
-
-enum SignalSeverity {
-  INFO
-  WARNING
-  CRITICAL
-}
-
-// Syllabus persistence status for Phase 6
-enum SyllabusStatus {
-  DRAFT
-  APPROVED
-  ARCHIVED
-}
-
-enum EntityType {
-  BOARD
-  CLASS
-  SUBJECT
-  CHAPTER
-  TOPIC
-  NOTE
-  TEST
-}
-
-/// Worker lifecycle status (managed by controller)
-enum WorkerStatus {
-  STARTING
-  RUNNING
-  DRAINING
-  STOPPED
-  FAILED
-}
-
 model User {
   id                       String                   @id @default(cuid())
   name                     String?
@@ -116,7 +16,6 @@ model User {
   emailVerified            DateTime?
   image                    String?
   parentEmail              String?
-  // App-specific profile fields used across APIs
   role                     UserRole                 @default(user)
   country                  String?
   language                 LanguageCode
@@ -129,12 +28,20 @@ model User {
   todaysFreeQuestionsCount Int                      @default(3)
   status                   String?
   createdAt                DateTime                 @default(now())
+  accounts                 Account[]
+  apiUsages                ApiUsage[]
+  approvalAudits           ApprovalAudit[]
+  auditLogs                AuditLog[]
+  bookmarks                Bookmark[]
+  challengeParticipations  ChallengeParticipation[]
   chats                    Chat[]
   chatHistories            ChatHistory[]
+  contentRecommendations   ContentRecommendation[]
   conversations            Conversation[]
   events                   Event[]
   learningSessions         LearningSession[]
   notes                    Note[]
+  noteDownloads            NoteDownload[]
   parentRelations          ParentStudent[]          @relation("ParentRelations")
   studentRelations         ParentStudent[]          @relation("StudentRelations")
   payments                 Payment[]
@@ -150,14 +57,6 @@ model User {
   subscriptions            Subscription[]
   testResults              TestResult[]
   userBadges               UserBadge[]
-  noteDownloads            NoteDownload[]
-  accounts                 Account[]
-  auditLogs                AuditLog[]
-  apiUsages                ApiUsage[]
-  challengeParticipations  ChallengeParticipation[]
-  contentRecommendations   ContentRecommendation[]
-  bookmarks                Bookmark[]
-  approvalAudits           ApprovalAudit[]
 }
 
 model PhoneOtp {
@@ -258,13 +157,13 @@ model Event {
 
 /// Analytics events collected from learners (Phase 10)
 model AnalyticsEvent {
-  id         String   @id @default(cuid())
-  eventType  String
-  userId     String?
-  courseId   String?
-  lessonIdx  Int?
-  metadata   Json
-  createdAt  DateTime @default(now())
+  id        String   @id @default(cuid())
+  eventType String
+  userId    String?
+  courseId  String?
+  lessonIdx Int?
+  metadata  Json
+  createdAt DateTime @default(now())
 
   @@index([eventType, createdAt])
   @@index([courseId])
@@ -272,14 +171,14 @@ model AnalyticsEvent {
 
 /// Daily aggregated analytics metrics for courses
 model AnalyticsDailyAggregate {
-  id                String   @id @default(cuid())
-  courseId          String
-  day               DateTime
-  totalViews        Int      @default(0)
-  totalCompletions  Int      @default(0)
-  avgTimePerLesson  Float?
-  completionRate    Float?   
-  createdAt         DateTime @default(now())
+  id               String   @id @default(cuid())
+  courseId         String
+  day              DateTime
+  totalViews       Int      @default(0)
+  totalCompletions Int      @default(0)
+  avgTimePerLesson Float?
+  completionRate   Float?
+  createdAt        DateTime @default(now())
 
   @@unique([courseId, day])
 }
@@ -298,78 +197,21 @@ model AnalyticsSignal {
   @@index([type])
 }
 
-// Phase 11 — Content suggestions produced by the Insight Engine
-enum SuggestionScope {
-  COURSE
-  MODULE
-  LESSON
-  QUIZ
-}
-
-enum SuggestionType {
-  LOW_COMPLETION
-  HIGH_RETRY
-  DROP_OFF
-  LOW_ENGAGEMENT
-  CONTENT_CLARITY
-}
-
-enum SuggestionSeverity {
-  LOW
-  MEDIUM
-  HIGH
-}
-
-enum SuggestionStatus {
-  OPEN
-  ACCEPTED
-  DISMISSED
-}
-
-/// Phase 12 — Regeneration job lifecycle and targets
-enum RegenerationJobStatus {
-  PENDING
-  RUNNING
-  COMPLETED
-  FAILED
-}
-
-enum RegenerationTargetType {
-  LESSON
-  QUIZ
-  PROJECT
-  MODULE
-}
-
-enum RetryIntentStatus {
-  PENDING
-  CONSUMED
-  REJECTED
-}
-
-enum RetryReasonCode {
-  TRANSIENT_FAILURE
-  BAD_INPUT
-  IMPROVED_PROMPT
-  INFRA_ERROR
-  OTHER
-}
-
 model ContentSuggestion {
-  id            String   @id @default(cuid())
-  courseId      String
-  scope         SuggestionScope
-  targetId      String
-  type          SuggestionType
-  severity      SuggestionSeverity
-  message       String
-  evidenceJson  Json
+  id             String             @id @default(cuid())
+  courseId       String
+  scope          SuggestionScope
+  targetId       String
+  type           SuggestionType
+  severity       SuggestionSeverity
+  message        String
+  evidenceJson   Json
+  status         SuggestionStatus   @default(OPEN)
+  createdAt      DateTime           @default(now())
   sourceSignalId String?
-  status        SuggestionStatus @default(OPEN)
-  createdAt     DateTime @default(now())
 
-  @@index([courseId])
   @@unique([sourceSignalId, type, targetId])
+  @@index([courseId])
 }
 
 /// Phase 12 — Regeneration jobs created from ACCEPTED ContentSuggestion
@@ -382,45 +224,34 @@ model RegenerationJob {
   status          RegenerationJobStatus  @default(PENDING)
   outputRef       Json?
   errorJson       Json?
-  lockedAt        DateTime?
-  // Phase 14 lineage fields (insert-only)
-  retryOfJobId    String?
-  retryIntentId   String?                @unique
-  completedAt     DateTime?
   createdBy       String
   createdAt       DateTime               @default(now())
   updatedAt       DateTime               @updatedAt
-  outputs         RegenerationOutput[]
+  lockedAt        DateTime?              @db.Timestamp(6)
+  completedAt     DateTime?              @db.Timestamp(6)
+  retryOfJobId    String?
+  retryIntentId   String?
+  outputs         RegenerationOutput?
 
   @@unique([suggestionId, targetType, targetId])
-}
-
-model RetryIntent {
-  id              String              @id @default(cuid())
-  sourceJobId     String
-  sourceOutputRef String?
-  reasonCode      RetryReasonCode
-  reasonText      String
-  approvedBy      String
-  approvedAt      DateTime?
-  status          RetryIntentStatus   @default(PENDING)
-  createdAt       DateTime            @default(now())
-
-  @@index([sourceJobId])
+  @@unique([suggestionId, targetType, targetId], map: "regenerationjob_unique_suggestion_target")
+  @@index([lockedAt], map: "idx_regenerationjob_lockedAt")
+  @@index([status], map: "idx_regenerationjob_status")
+  @@index([suggestionId], map: "idx_regenerationjob_suggestionId")
 }
 
 /// Persisted outputs created by regeneration jobs. Immutable.
 model RegenerationOutput {
-  id        String   @id @default(cuid())
-  jobId     String   @unique
-  targetType RegenerationTargetType
-  targetId  String
+  id          String                 @id @default(cuid())
+  jobId       String                 @unique
+  targetType  RegenerationTargetType
+  targetId    String
   contentJson Json
-  createdAt DateTime @default(now())
-
-  job RegenerationJob @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  createdAt   DateTime               @default(now())
+  job         RegenerationJob        @relation(fields: [jobId], references: [id], onDelete: Cascade)
 
   @@index([targetId])
+  @@index([targetId], map: "idx_regenerationoutput_targetId")
 }
 
 model Subscription {
@@ -593,31 +424,24 @@ model BadgeShare {
   metadata    Json?
   timestamp   DateTime @default(now())
   createdAt   DateTime @default(now())
+
   @@index([badgeId])
   @@index([recipientId])
 }
 
-/// Course package persistence for Phase 8
-enum CoursePackageStatus {
-  PUBLISHED
-  ARCHIVED
-}
-
 model CoursePackage {
-  id         String               @id @default(cuid())
+  id         String              @id @default(cuid())
   syllabusId String
   version    Int
-
-  status     CoursePackageStatus  @default(PUBLISHED)
-
+  status     CoursePackageStatus @default(PUBLISHED)
   /// Frozen JSON blob (validated before insert)
   json       Json
-
-  createdAt  DateTime             @default(now())
+  createdAt  DateTime            @default(now())
 
   @@unique([syllabusId, version])
   @@index([syllabusId])
 }
+
 /// Persisted syllabus artifacts generated/approved in Phase 6
 /// Persisted syllabus artifacts generated/approved in Phase 6
 model Syllabus {
@@ -749,7 +573,6 @@ model LearningSession {
   startedAt            DateTime        @default(now())
   endedAt              DateTime?
   createdAt            DateTime        @default(now())
-  // Optional progress tracking fields
   completionPercentage Int             @default(0)
   isCompleted          Boolean         @default(false)
   lastAccessed         DateTime        @default(now())
@@ -764,7 +587,6 @@ model LearningSession {
   @@index([studentId])
 }
 
-// Resume points for complex content to support deep resume
 model ResumePoint {
   id              String          @id @default(cuid())
   sessionId       String
@@ -777,37 +599,34 @@ model ResumePoint {
 
 model ContentRecommendation {
   id           String    @id @default(cuid())
-  user         User      @relation(fields: [userId], references: [id])
   userId       String
   contentId    String
-  // Tracking flags
   isShown      Boolean   @default(false)
   isClicked    Boolean   @default(false)
   isCompleted  Boolean   @default(false)
-  // Timestamps
   firstShownAt DateTime?
   lastShownAt  DateTime?
   clickedAt    DateTime?
   completedAt  DateTime?
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
+  user         User      @relation(fields: [userId], references: [id])
 
   @@unique([userId, contentId])
 }
 
-// Catalog of recommendable learning content, filtered by board/grade/language/subject
 model ContentCatalog {
   id          String       @id @default(cuid())
   contentId   String       @unique
   title       String
   description String?
   url         String?
-  type        String? // video|article|quiz|worksheet
+  type        String?
   subject     String
   board       String
   grade       String
   language    LanguageCode
-  difficulty  String? // easy|medium|hard
+  difficulty  String?
   tags        String[]     @default([])
   active      Boolean      @default(true)
   createdAt   DateTime     @default(now())
@@ -847,17 +666,16 @@ model PracticeTest {
 }
 
 model TestResult {
-  id         String    @id @default(cuid())
-  testId     String
-  studentId  String
-  score      Float?
-  rawResult  Json?
-  startedAt  DateTime?
-  finishedAt DateTime?
-  createdAt  DateTime  @default(now())
-  student    User      @relation(fields: [studentId], references: [id], onDelete: Cascade)
-
+  id               String            @id @default(cuid())
+  testId           String
+  studentId        String
+  score            Float?
+  rawResult        Json?
+  startedAt        DateTime?
+  finishedAt       DateTime?
+  createdAt        DateTime          @default(now())
   AttemptQuestions AttemptQuestion[]
+  student          User              @relation(fields: [studentId], references: [id], onDelete: Cascade)
 
   @@index([studentId])
 }
@@ -876,7 +694,6 @@ model Note {
   downloads   NoteDownload[]
 }
 
-// Explicit tracking of note downloads per user
 model NoteDownload {
   id        String   @id @default(cuid())
   noteId    String
@@ -900,9 +717,8 @@ model Bookmark {
   @@index([studentId, type])
 }
 
-// Question bank used by Tests feature
 model Question {
-  id            String   @id @default(cuid())
+  id            String            @id @default(cuid())
   subject       String?
   chapter       String?
   grade         String?
@@ -913,59 +729,44 @@ model Question {
   choices       Json?
   correctAnswer String?
   source        String?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-
-  attempts AttemptQuestion[]
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+  attempts      AttemptQuestion[]
 }
 
-// Per-attempt question ordering and results
 model AttemptQuestion {
-  id            String  @id @default(cuid())
+  id            String     @id @default(cuid())
   testResultId  String
   questionId    String
   order         Int
   timeSpent     Int?
   result        String?
   awardedPoints Int?
-
-  testResult TestResult @relation(fields: [testResultId], references: [id], onDelete: Cascade)
-  question   Question   @relation(fields: [questionId], references: [id])
-  answer     Answer?
+  answer        Answer?
+  question      Question   @relation(fields: [questionId], references: [id])
+  testResult    TestResult @relation(fields: [testResultId], references: [id], onDelete: Cascade)
 
   @@index([testResultId])
   @@index([questionId])
 }
 
-// Graded answer for an AttemptQuestion
 model Answer {
-  attemptQuestionId String  @unique
+  attemptQuestionId String          @unique
   rawAnswer         String?
   normalizedAnswer  String?
   autoScore         Int?
   reviewerScore     Int?
   confidence        Float?
-
-  attemptQuestion AttemptQuestion @relation(fields: [attemptQuestionId], references: [id], onDelete: Cascade)
+  attemptQuestion   AttemptQuestion @relation(fields: [attemptQuestionId], references: [id], onDelete: Cascade)
 }
-
-///////////////////
-// /docs/SCHEMA_RULES.md — Copilot Guardrails (CRITICAL)
-// Create this file verbatim.
-// Copilot will obey it if it’s present./docs/Schema_Rules.md
-///////////////////
-
-////////////////////////////////////////////////////////
-// CORE ACADEMIC STRUCTURE
-////////////////////////////////////////////////////////
 
 model Board {
   id        String           @id @default(cuid())
   name      String
   slug      String           @unique
-  classes   ClassLevel[]
   lifecycle SoftDeleteStatus @default(active)
   createdAt DateTime         @default(now())
+  classes   ClassLevel[]
 }
 
 model ClassLevel {
@@ -973,10 +774,10 @@ model ClassLevel {
   grade     Int
   slug      String
   boardId   String
-  board     Board            @relation(fields: [boardId], references: [id])
-  subjects  SubjectDef[]
   lifecycle SoftDeleteStatus @default(active)
   createdAt DateTime         @default(now())
+  board     Board            @relation(fields: [boardId], references: [id])
+  subjects  SubjectDef[]
 
   @@unique([boardId, grade], name: "boardId_grade")
 }
@@ -986,10 +787,10 @@ model SubjectDef {
   name      String
   slug      String
   classId   String
-  class     ClassLevel       @relation(fields: [classId], references: [id])
-  chapters  ChapterDef[]
   lifecycle SoftDeleteStatus @default(active)
   createdAt DateTime         @default(now())
+  chapters  ChapterDef[]
+  class     ClassLevel       @relation(fields: [classId], references: [id])
 
   @@unique([classId, slug], name: "classId_slug")
 }
@@ -1003,146 +804,110 @@ model ChapterDef {
   status    ApprovalStatus   @default(draft)
   lifecycle SoftDeleteStatus @default(active)
   subjectId String
+  createdAt DateTime         @default(now())
   subject   SubjectDef       @relation(fields: [subjectId], references: [id])
-
   topics    TopicDef[]
-  createdAt DateTime   @default(now())
 
   @@unique([subjectId, slug, version])
 }
 
 model TopicDef {
-  id        String     @id @default(cuid())
+  id        String           @id @default(cuid())
   name      String
   slug      String
   order     Int
   chapterId String
-  chapter   ChapterDef @relation(fields: [chapterId], references: [id])
-
   status    ApprovalStatus   @default(draft)
   lifecycle SoftDeleteStatus @default(active)
-  parentId  String? // rollback lineage
-
-  notes TopicNote[]
-  tests GeneratedTest[]
-  logs  AIContentLog[]
-
-  createdAt DateTime @default(now())
+  parentId  String?
+  createdAt DateTime         @default(now())
+  logs      AIContentLog[]
+  tests     GeneratedTest[]
+  chapter   ChapterDef       @relation(fields: [chapterId], references: [id])
+  notes     TopicNote[]
 
   @@unique([chapterId, slug])
 }
 
-////////////////////////////////////////////////////////
-// NOTES (ACADEMIC, VERSIONED, MODERATED)
-////////////////////////////////////////////////////////
-
 model TopicNote {
-  id      String   @id @default(cuid())
-  topicId String
-  topic   TopicDef @relation(fields: [topicId], references: [id])
-
+  id              String           @id @default(cuid())
+  topicId         String
   language        LanguageCode
   version         Int              @default(1)
   status          ApprovalStatus   @default(draft)
   lifecycle       SoftDeleteStatus @default(active)
   title           String
   contentJson     Json
-  source          String // ai | teacher
+  source          String
   editedByTeacher Boolean          @default(false)
   teacherNotes    String?
-
-  createdAt DateTime @default(now())
+  createdAt       DateTime         @default(now())
+  topic           TopicDef         @relation(fields: [topicId], references: [id])
 
   @@unique([topicId, language, version])
 }
 
-////////////////////////////////////////////////////////
-// AI GENERATED TESTS & QUESTIONS
-////////////////////////////////////////////////////////
-
 model GeneratedTest {
-  id      String   @id @default(cuid())
-  topicId String
-  topic   TopicDef @relation(fields: [topicId], references: [id])
-
+  id         String              @id @default(cuid())
+  topicId    String
   title      String
   difficulty DifficultyLevel
   language   LanguageCode
-  version    Int             @default(1)
-
-  questions GeneratedQuestion[]
-  status    ApprovalStatus      @default(draft)
-  lifecycle SoftDeleteStatus    @default(active)
-  createdAt DateTime            @default(now())
+  version    Int                 @default(1)
+  status     ApprovalStatus      @default(draft)
+  lifecycle  SoftDeleteStatus    @default(active)
+  createdAt  DateTime            @default(now())
+  questions  GeneratedQuestion[]
+  topic      TopicDef            @relation(fields: [topicId], references: [id])
 
   @@unique([topicId, difficulty, language, version])
 }
 
 model GeneratedQuestion {
-  id     String        @id @default(cuid())
-  testId String
-  test   GeneratedTest @relation(fields: [testId], references: [id])
-
-  type     String // mcq | short | long
-  question String
-  options  Json?
-  answer   Json?
-  marks    Int?
-
-  createdAt DateTime @default(now())
+  id        String        @id @default(cuid())
+  testId    String
+  type      String
+  question  String
+  options   Json?
+  answer    Json?
+  marks     Int?
+  createdAt DateTime      @default(now())
+  test      GeneratedTest @relation(fields: [testId], references: [id])
 }
 
-////////////////////////////////////////////////////////
-// AI CONTENT LOGGING (CANONICAL, IMMUTABLE)
-////////////////////////////////////////////////////////
-
 model AIContentLog {
-  id String @id @default(cuid())
-
-  model      String
-  promptType String
-
-  board    String?
-  grade    Int?
-  subject  String?
-  chapter  String?
-  topic    String?
-  language LanguageCode
-
-  tokensIn   Int?
-  tokensOut  Int?
-  tokensUsed Int?
-  costUsd    Float?
-  success    Boolean
-  status     String  @default("success") // success | failed | partial
-  error      String?
-
+  id           String       @id @default(cuid())
+  model        String
+  promptType   String
+  board        String?
+  grade        Int?
+  subject      String?
+  chapter      String?
+  topic        String?
+  language     LanguageCode
+  tokensIn     Int?
+  tokensOut    Int?
+  tokensUsed   Int?
+  costUsd      Float?
+  success      Boolean
+  status       String       @default("success")
+  error        String?
   requestBody  Json?
   responseBody Json?
-
-  topicId  String?
-  topicRef TopicDef? @relation(fields: [topicId], references: [id])
-
-  createdAt DateTime @default(now())
+  topicId      String?
+  createdAt    DateTime     @default(now())
+  topicRef     TopicDef?    @relation(fields: [topicId], references: [id])
 
   @@index([promptType])
   @@index([board, grade, subject])
   @@index([createdAt])
 }
 
-////////////////////////////////////////////////////////
-// SYSTEM / ADMIN CONTROL
-////////////////////////////////////////////////////////
-
 model SystemSetting {
   key       String   @id
   value     Json
   updatedAt DateTime @updatedAt
 }
-
-////////////////////////////////////////////////////////
-// QUEUE / JOB ENGINE (AI CONTENT ENGINE)
-////////////////////////////////////////////////////////
 
 model HydrationJob {
   id         String          @id @default(cuid())
@@ -1155,20 +920,14 @@ model HydrationJob {
   topicId    String?
   language   LanguageCode
   difficulty DifficultyLevel
-
-  status    JobStatus @default(pending)
-  attempts  Int       @default(0)
-  lastError String?
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  status     JobStatus       @default(pending)
+  attempts   Int             @default(0)
+  lastError  String?
+  createdAt  DateTime        @default(now())
+  updatedAt  DateTime        @updatedAt
 
   @@index([jobType, status])
 }
-
-////////////////////////////////////////////////////////
-// STUDENT PERSONALIZATION (SAFE EXTENSION)
-////////////////////////////////////////////////////////
 
 model StudentContentPreference {
   id         String          @id @default(cuid())
@@ -1181,63 +940,51 @@ model StudentContentPreference {
   @@index([studentId])
 }
 
-////////////////////////////////////////////////////////
-// APPROVAL AUDIT (MANDATORY)
-////////////////////////////////////////////////////////
-
 model ApprovalAudit {
   id         String         @id @default(cuid())
-  entityType String // chapter | topic | note | test
+  entityType String
   entityId   String
   fromStatus ApprovalStatus
   toStatus   ApprovalStatus
   actorId    String?
   reason     String?
   createdAt  DateTime       @default(now())
-
-  actor User? @relation(fields: [actorId], references: [id])
+  actor      User?          @relation(fields: [actorId], references: [id])
 
   @@index([entityType, entityId])
   @@index([createdAt])
 }
 
 model ExecutionJob {
-  id         String     @id @default(cuid())
-  jobType    JobType
-  entityType EntityType
-  entityId   String
-
+  id          String            @id @default(cuid())
+  jobType     JobType
+  entityType  EntityType
+  entityId    String
   payload     Json
-  status      JobStatus // pending | running | retrying | failed | completed | cancelled
-  attempts    Int       @default(0)
-  maxAttempts Int       @default(5)
-
-  nextRunAt DateTime?
-  lastError String?
-  lockedAt  DateTime?
-  lockedBy  String?
-
-  createdAt DateTime          @default(now())
-  updatedAt DateTime          @updatedAt
-  // Relation to execution logs
-  logs      JobExecutionLog[]
+  status      JobStatus
+  attempts    Int               @default(0)
+  maxAttempts Int               @default(5)
+  nextRunAt   DateTime?
+  lastError   String?
+  lockedAt    DateTime?
+  lockedBy    String?
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+  logs        JobExecutionLog[]
 
   @@index([status, nextRunAt])
 }
 
-// Event log for ExecutionJob lifecycle transitions. Immutable, append-only.
 model JobExecutionLog {
-  id         String  @id @default(cuid())
+  id         String       @id @default(cuid())
   jobId      String
-  event      String // CREATED | ENQUEUED | ENQUEUE_FAILED | RUNNING | COMPLETED | FAILED | CANCELLED | RETRY
+  event      String
   prevStatus String?
   newStatus  String?
   message    String?
   meta       Json?
-
-  job ExecutionJob @relation(fields: [jobId], references: [id], onDelete: Cascade)
-
-  createdAt DateTime @default(now())
+  createdAt  DateTime     @default(now())
+  job        ExecutionJob @relation(fields: [jobId], references: [id], onDelete: Cascade)
 
   @@index([jobId])
   @@index([event])
@@ -1246,27 +993,21 @@ model JobExecutionLog {
 
 /// System metrics samples for telemetry retention (sampled periodically)
 model SystemMetricSample {
-  id        String   @id @default(cuid())
-  timestamp DateTime @default(now())
-
-  overall String
-
-  dbLatencyMs    Int?
-  redisLatencyMs Int?
-
-  workersRunning Int @default(0)
-  workersStale   Int @default(0)
-  workersFailed  Int @default(0)
-
-  jobsPending      Int @default(0)
-  jobsRunning      Int @default(0)
-  jobsFailedLast5m Int @default(0)
-  jobsStuckRunning Int @default(0)
-
-  queueDepth        Int  @default(0)
-  queueOldestJobAge Int? // seconds
-
-  meta Json? // optional raw snapshot for debugging
+  id                String   @id @default(cuid())
+  timestamp         DateTime @default(now())
+  overall           String
+  dbLatencyMs       Int?
+  redisLatencyMs    Int?
+  workersRunning    Int      @default(0)
+  workersStale      Int      @default(0)
+  workersFailed     Int      @default(0)
+  jobsPending       Int      @default(0)
+  jobsRunning       Int      @default(0)
+  jobsFailedLast5m  Int      @default(0)
+  jobsStuckRunning  Int      @default(0)
+  queueDepth        Int      @default(0)
+  queueOldestJobAge Int?
+  meta              Json?
 
   @@index([timestamp])
 }
@@ -1285,6 +1026,219 @@ model SystemAlert {
   @@index([type, active])
 }
 
+/// Telemetry samples: flexible, time-bucketed numeric metrics for observability.
+model TelemetrySample {
+  id            String   @id @default(cuid())
+  key           String
+  timestamp     DateTime
+  value         Float
+  dimensions    Json?
+  dimensionHash String
+  meta          Json?
+  createdAt     DateTime @default(now())
+
+  @@unique([key, timestamp, dimensionHash])
+  @@index([key, timestamp])
+  @@index([timestamp])
+}
+
+model Enrollment {
+  id        String   @id @default(cuid())
+  userId    String
+  courseId  String
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([courseId])
+}
+
+model LessonProgress {
+  id        String   @id @default(cuid())
+  userId    String
+  courseId  String
+  lessonIdx Int
+  completed Boolean
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, courseId, lessonIdx])
+  @@index([userId])
+  @@index([courseId])
+}
+
+model Tenant {
+  id       String    @id @default(cuid())
+  name     String
+  products Product[]
+}
+
+model Product {
+  id         String     @id @default(cuid())
+  tenantId   String
+  courseId   String
+  priceCents Int
+  currency   String
+  active     Boolean    @default(true)
+  tenant     Tenant     @relation(fields: [tenantId], references: [id])
+  purchases  Purchase[]
+
+  @@index([tenantId])
+  @@index([courseId])
+}
+
+model Purchase {
+  id        String   @id @default(cuid())
+  userId    String
+  productId String
+  createdAt DateTime @default(now())
+  product   Product  @relation(fields: [productId], references: [id])
+
+  @@index([userId])
+  @@index([productId])
+}
+
+/// ⚠️ AI CONTENT ENGINE RULES
+/// - JobStatus, JobType, ContentStatus MUST be enums
+/// - No string status fields
+/// - No cascading deletes for jobs or content
+/// - Soft deletes only
+enum UserStatus {
+  active
+  banned
+  suspended
+}
+
+enum UserRole {
+  user
+  admin
+  moderator
+  support
+}
+
+enum ApprovalStatus {
+  draft
+  pending
+  approved
+  rejected
+  archived
+}
+
+enum SoftDeleteStatus {
+  active
+  deleted
+}
+
+enum LanguageCode {
+  en
+  hi
+}
+
+enum DifficultyLevel {
+  easy
+  medium
+  hard
+}
+
+enum JobStatus {
+  pending
+  running
+  failed
+  completed
+  cancelled
+}
+
+enum JobType {
+  syllabus
+  notes
+  questions
+  tests
+  assemble
+}
+
+enum SignalType {
+  LOW_COMPLETION_RATE
+  LOW_QUIZ_PASS_RATE
+  HIGH_REFUND_RATE
+}
+
+enum SignalSeverity {
+  INFO
+  WARNING
+  CRITICAL
+}
+
+enum SyllabusStatus {
+  DRAFT
+  APPROVED
+  ARCHIVED
+}
+
+enum EntityType {
+  BOARD
+  CLASS
+  SUBJECT
+  CHAPTER
+  TOPIC
+  NOTE
+  TEST
+}
+
+/// Worker lifecycle status (managed by controller)
+enum WorkerStatus {
+  STARTING
+  RUNNING
+  DRAINING
+  STOPPED
+  FAILED
+}
+
+enum SuggestionScope {
+  COURSE
+  MODULE
+  LESSON
+  QUIZ
+}
+
+enum SuggestionType {
+  LOW_COMPLETION
+  HIGH_RETRY
+  DROP_OFF
+  LOW_ENGAGEMENT
+  CONTENT_CLARITY
+}
+
+enum SuggestionSeverity {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+enum SuggestionStatus {
+  OPEN
+  ACCEPTED
+  DISMISSED
+}
+
+/// Phase 12 — Regeneration job lifecycle and targets
+enum RegenerationJobStatus {
+  PENDING
+  RUNNING
+  COMPLETED
+  FAILED
+}
+
+enum RegenerationTargetType {
+  LESSON
+  QUIZ
+  PROJECT
+  MODULE
+}
+
+/// Course package persistence for Phase 8
+enum CoursePackageStatus {
+  PUBLISHED
+  ARCHIVED
+}
+
 enum AlertType {
   REDIS_DOWN
   DB_DOWN
@@ -1300,76 +1254,73 @@ enum AlertSeverity {
   CRITICAL
 }
 
-/// Telemetry samples: flexible, time-bucketed numeric metrics for observability.
-model TelemetrySample {
-  id            String   @id @default(cuid())
-  key           String
-  timestamp     DateTime
-  value         Float
-  dimensions    Json?
-  dimensionHash String
-  meta          Json?
-  createdAt     DateTime @default(now())
-
-  @@index([key, timestamp])
-  @@index([timestamp])
-  @@unique([key, timestamp, dimensionHash])
+/// Phase 14 — RetryIntent enums & model
+enum RetryIntentStatus {
+  PENDING
+  CONSUMED
+  REJECTED
 }
 
-// Phase 9 — Progress tracking models (safe writable models)
-model Enrollment {
-  id        String   @id @default(cuid())
-  userId    String
-  courseId  String
-  createdAt DateTime @default(now())
-
-  @@index([userId])
-  @@index([courseId])
+enum RetryReasonCode {
+  TRANSIENT_FAILURE
+  BAD_INPUT
+  IMPROVED_PROMPT
+  INFRA_ERROR
+  OTHER
 }
 
-model LessonProgress {
-  id         String   @id @default(cuid())
-  userId     String
-  courseId   String
-  lessonIdx  Int
-  completed  Boolean
-  updatedAt  DateTime @updatedAt
+model RetryIntent {
+  id              String             @id @default(cuid())
+  sourceJobId     String
+  sourceOutputRef Json?
+  reasonCode      RetryReasonCode
+  reasonText      String
+  approvedBy      String?
+  approvedAt      DateTime?
+  status          RetryIntentStatus  @default(PENDING)
+  createdAt       DateTime           @default(now())
 
-  @@unique([userId, courseId, lessonIdx])
-  @@index([userId])
-  @@index([courseId])
+  @@index([sourceJobId], name: "idx_retryintent_sourceJobId")
 }
 
-// Phase 9.5 — Multi-tenant monetization models
-model Tenant {
-  id   String @id @default(cuid())
-  name String
-  products Product[]
+/// Phase 15 — Promotion models & enums
+enum PromotionStatus {
+  PENDING
+  APPROVED
+  REJECTED
 }
 
-model Product {
-  id         String @id @default(cuid())
-  tenantId   String
-  courseId   String
-  priceCents Int
-  currency   String
-  active     Boolean @default(true)
-
-  tenant Tenant @relation(fields: [tenantId], references: [id])
-  purchases Purchase[]
-
-  @@index([tenantId])
-  @@index([courseId])
+enum PublishScope {
+  COURSE
+  MODULE
+  LESSON
 }
 
-model Purchase {
-  id        String   @id @default(cuid())
-  userId    String
-  productId String
-  createdAt DateTime @default(now())
+model PromotionCandidate {
+  id              String           @id @default(cuid())
+  scope           PublishScope
+  scopeRefId      String
+  regenerationJobId String
+  outputRef       String
+  status          PromotionStatus  @default(PENDING)
+  createdBy       String
+  createdAt       DateTime         @default(now())
+  reviewedBy      String?
+  reviewedAt      DateTime?
+  reviewNotes     Json?
 
-  product Product @relation(fields: [productId], references: [id])
+  @@index([scope, scopeRefId], name: "idx_promotioncandidate_scope_ref")
+  @@unique([scope, scopeRefId, outputRef], name: "promotioncandidate_unique_scope_ref_output")
+}
 
-  @@index([userId])
-  @@index([productId])
+model PublishedOutput {
+  id         String      @id @default(cuid())
+  scope      PublishScope
+  scopeRefId String
+  outputRef  String
+  promotedBy String
+  promotedAt DateTime    @default(now())
+
+  @@unique([scope, scopeRefId], name: "publishedoutput_unique_scope_ref")
+  @@index([scope, scopeRefId], name: "idx_publishedoutput_scope")
 }

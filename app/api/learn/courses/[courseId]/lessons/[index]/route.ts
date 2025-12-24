@@ -38,7 +38,19 @@ export async function GET(req: Request, { params }: { params: { courseId: string
 
   if (!found) return NextResponse.json({ error: 'Lesson not found' }, { status: 404 })
 
-  return NextResponse.json(found)
+  // Learners must only see the promoted PublishedOutput. If none exists,
+  // return 404 (not published).
+  try {
+    const { resolvePublishedOutputForScope } = await import('../../../../../../../lib/promotion/reader')
+    const scopeRefIdCandidate = found.id ?? `${courseId}:${found.lessonIndex ?? idx}`
+    const resolved = await resolvePublishedOutputForScope(db, 'LESSON', scopeRefIdCandidate)
+    if (resolved && resolved.output && resolved.output.contentJson) {
+      return NextResponse.json(resolved.output.contentJson)
+    }
+    return NextResponse.json({ error: 'Lesson not published' }, { status: 404 })
+  } catch {
+    return NextResponse.json({ error: 'Lesson not published' }, { status: 404 })
+  }
 }
 
 export default GET
