@@ -52,10 +52,11 @@
     "type-check": "tsc --noEmit",
     "clear-auth": "set CONFIRM=true && node -r ts-node/register scripts/clear-auth-tables.ts",
     "test": "npm run lint && npm run type-check",
+    "health-check": "node scripts/health-check.js",
     "test:integration": "node tests/integration/audit-log.test.js",
     "test:integration:evaluator": "node -r ts-node/register/transpile-only tests/integration/alert-evaluator.test.ts",
     "test:unit": "jest --runInBand",
-    "orchestrator:start": "node -r ts-node/register worker/orchestrator.ts",
+    "orchestrator:start": "ts-node -r tsconfig-paths/register worker/orchestrator.ts",
     "seed-db-ai-content-infra": "node -r ts-node/register scripts/seed-database.ts",
     "reset-db-ai-content-infra": "node -r ts-node/register scripts/reset-remote-db.ts",
     "seed-and-reset-db-ai-content-infra": "npm run seed-db-ai-content-infra && npm run reset-db-ai-content-infra"
@@ -106,6 +107,9 @@
     "uuid": "^13.0.0",
     "yargs": "^18.0.0",
     "zod": "^3.25.76"
+  },
+  "dependencies": {
+    "prom-client": "^14.0.0"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",

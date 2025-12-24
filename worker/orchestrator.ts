@@ -1,4 +1,8 @@
 #!/usr/bin/env node
+/* Load local env for developer runs (dotfiles) */
+import dotenv from 'dotenv'
+dotenv.config({ path: '.env.local' })
+/* eslint-disable @typescript-eslint/no-require-imports */
 /* eslint-disable no-console */
 /**
  * Simple local orchestrator:
@@ -9,14 +13,17 @@
  * - listens for lifecycle state changes (DRAINING/STOPPED) and signals the child
  */
 
-import { spawn, ChildProcessWithoutNullStreams } from 'child_process'
+const { spawn } = require('child_process')
+type ChildProcessWithoutNullStreams = any
 import path from 'path'
 import os from 'os'
 import fs from 'fs'
-import { prisma } from '@/lib/prisma'
-import { startMetricsServer, incJobsSpawned } from './metrics-server'
-import { createJobForWorker } from './k8s-adapter'
-import { runAnalyticsJobs } from '@/src/jobs/analyticsJobs'
+const { prisma } = require('../lib/prisma')
+const { startMetricsServer, incJobsSpawned } = require('./metrics-server')
+const { createJobForWorker } = require('./k8s-adapter')
+const { runAnalyticsJobs } = require('../src/jobs/analyticsJobs')
+// Register job definitions for orchestrator/worker processes only
+require('../lib/jobs/registerJobs')
 
 const POLL_MS = Number(process.env.ORCHESTRATOR_POLL_MS || 3000)
 const WORKER_CMD = process.execPath // node executable
@@ -61,7 +68,7 @@ async function pollAndSpawn() {
       await prisma.auditLog.create({ data: { userId: null, action: 'WORKER_SPAWN', details: { workerId: r.id, pid: proc.pid } } })
       incJobsSpawned()
 
-      proc.on('exit', async (code, signal) => {
+      proc.on('exit', async (code: any, signal: any) => {
         children.delete(r.id)
         try {
           if (code === 0) {
