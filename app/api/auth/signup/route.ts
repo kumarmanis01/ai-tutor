@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { LanguageCode } from '@prisma/client';
-import bcrypt from 'bcrypt';
+import bcrypt from 'bcryptjs';
 // Use explicit request body type instead of depending on SessionUser shape
 import { logger } from '@/lib/logger';
 import { logApiUsage } from '@/utils/logApiUsage';
