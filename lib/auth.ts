@@ -5,7 +5,7 @@ import GoogleProvider from 'next-auth/providers/google'; // Enables Google login
 import EmailProvider from 'next-auth/providers/email'; // Enables email login/signup
 import CredentialsProvider from 'next-auth/providers/credentials'; // Enables login with email & password
 import { prisma } from '@/lib/prisma'; // Your Prisma database client
-import bcrypt from 'bcrypt'; // For password hashing
+import bcrypt from 'bcryptjs'; // For password hashing (pure JS build for Vercel)
 import { getEmailTransporter } from '@/lib/mailer';
 import { logger } from '@/lib/logger';
 import { LanguageCode } from '@prisma/client';
