@@ -17,12 +17,16 @@ jobs:
         with:
           node-version: '20.x'
 
-      - name: Ensure DATABASE_URL is provided
+      - name: Ensure DATABASE_URL is provided and valid
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
         run: |
           if [ -z "$DATABASE_URL" ]; then
             echo "::error::DATABASE_URL secret is not set. This workflow requires DATABASE_URL to run.";
+            exit 1;
+          fi
+          if [[ "${DATABASE_URL}" != postgresql://* && "${DATABASE_URL}" != postgres://* ]]; then
+            echo "::error::DATABASE_URL secret does not look like a Postgres URL. Please set a valid DATABASE_URL.";
             exit 1;
           fi
 
@@ -32,4 +36,5 @@ jobs:
       - name: Run Prisma migrations (deploy)
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
-        run: npx prisma migrate deploy --schema=prisma/schema.prisma
+        run: |
+          npx prisma migrate deploy --schema=prisma/schema.prisma

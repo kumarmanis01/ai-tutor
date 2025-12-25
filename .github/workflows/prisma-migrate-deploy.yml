@@ -17,10 +17,19 @@ jobs:
           node-version: 18
       - name: Install dependencies
         run: npm ci
-      - name: Run Prisma Migrate Deploy
+      - name: Run Prisma Migrate Deploy (guarded)
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
         run: |
+          echo "Validating DATABASE_URL before running migrations"
+          if [ -z "${DATABASE_URL}" ]; then
+            echo "DATABASE_URL secret is not set — skipping migrations"
+            exit 0
+          fi
+          if [[ "${DATABASE_URL}" != postgresql://* && "${DATABASE_URL}" != postgres://* ]]; then
+            echo "DATABASE_URL does not appear to be Postgres — skipping migrations"
+            exit 0
+          fi
           npx prisma migrate deploy
           npx prisma generate
       - name: Run smoke tests

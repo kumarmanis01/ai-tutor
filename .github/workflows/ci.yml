@@ -18,12 +18,21 @@ jobs:
           node-version: '20.x'
       - name: Install
         run: npm ci
-      - name: Apply Prisma migrations (if DATABASE_URL set)
-        if: github.event_name == 'push' && env.DATABASE_URL != ''
+      - name: Apply Prisma migrations (if DATABASE_URL valid)
+        if: github.event_name == 'push'
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
         run: |
-          echo "DATABASE_URL is set — applying migrations (push only)"
+          echo "Checking DATABASE_URL before running migrations"
+          if [ -z "${DATABASE_URL}" ]; then
+            echo "DATABASE_URL not set — skipping prisma migrate"
+            exit 0
+          fi
+          if [[ "${DATABASE_URL}" != postgresql://* && "${DATABASE_URL}" != postgres://* ]]; then
+            echo "DATABASE_URL does not appear to be a Postgres URL — skipping prisma migrate"
+            exit 0
+          fi
+          echo "DATABASE_URL looks valid — applying migrations"
           npx prisma migrate deploy
           npx prisma generate
       - name: Apply Prisma migrations (skip notice)
