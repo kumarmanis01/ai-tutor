@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { assertNoStringFilters } from '@/lib/guards/noStringFilters';
 import { logger } from '@/lib/logger';
+import type { Prisma } from '@prisma/client';
 
 /**
  * GET /api/hierarchy
@@ -32,9 +33,9 @@ export async function GET(req: Request) {
       ? { chapters: { where: { lifecycle: "active" }, orderBy: { order: "asc" }, include: topicsInclude } }
       : undefined;
 
-    const subjectsInclude: any = { where: { lifecycle: "active" }, orderBy: { name: "asc" }, include: chaptersInclude };
+    const subjectsInclude = { where: { lifecycle: "active" }, orderBy: { name: "asc" }, include: chaptersInclude };
 
-    const classesInclude: any = { where: { lifecycle: "active" }, orderBy: { grade: "asc" }, include: { subjects: subjectsInclude } };
+    const classesInclude = { where: { lifecycle: "active" }, orderBy: { grade: "asc" }, include: { subjects: subjectsInclude } };
 
     const boards = await prisma.board.findMany({
       where: {
@@ -42,7 +43,7 @@ export async function GET(req: Request) {
         ...(boardId ? { id: boardId } : {}),
       },
       orderBy: { name: "asc" },
-      include: { classes: classesInclude },
+      include: { classes: classesInclude } as Prisma.BoardInclude,
     });
     return NextResponse.json({ boards });
   } catch (err) {

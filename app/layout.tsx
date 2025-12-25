@@ -1,6 +1,4 @@
 import React from 'react';
-// Register jobs at server startup (Phase 16 bootstrap import)
-import '@/lib/jobs/registerJobs';
 import dynamic from 'next/dynamic';
 import '../styles/index.css';
 import Providers from './providers';

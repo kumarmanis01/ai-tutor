@@ -40,7 +40,7 @@ export async function generateSyllabus(
   // 2) Validate the raw output against the strict Zod schema
   try {
     const parsed = validateSyllabusJson(raw);
-    return parsed;
+    return parsed as CourseSyllabus;
   } catch (err) {
     if (err instanceof ZodError) {
       const msgs = err.errors.map((e) => `${e.path.join('.')} ${e.message}`);

@@ -23,20 +23,20 @@ function StatusBadge({ status }: { status: string }) {
   return <span className={`px-2 py-1 rounded text-xs font-semibold ${color}`}>{status}</span>
 }
 
-type Props = { params: { jobId: string } }
+type Props = { params: { id: string } }
 
 export default async function Page({ params }: Props) {
   await requireAdminOrModerator()
 
-  const { jobId } = params
-  const res = await fetch(`/api/admin/retry-intents?jobId=${encodeURIComponent(jobId)}`, { cache: 'no-store' })
+  const { id } = params
+  const res = await fetch(`/api/admin/retry-intents?jobId=${encodeURIComponent(id)}`, { cache: 'no-store' })
   if (!res.ok) throw new Error('Failed to load retry intents')
   const payload = await res.json()
   const intents: IntentRow[] = Array.isArray(payload?.intents) ? payload.intents : []
 
   return (
     <div className="p-6">
-      <h1 className="text-2xl font-bold mb-4">Retry Intents for Job {jobId}</h1>
+      <h1 className="text-2xl font-bold mb-4">Retry Intents for Job {id}</h1>
       <div className="overflow-auto">
         <table className="min-w-full border">
           <thead>
