@@ -21,10 +21,19 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Run Prisma Migrate Deploy
+      - name: Run Prisma Migrate Deploy (guarded)
         env:
           DATABASE_URL: ${{ secrets.STAGING_DATABASE_URL }}
-        run: npx prisma migrate deploy --schema prisma/schema.prisma
+        run: |
+          if [ -z "${DATABASE_URL}" ]; then
+            echo "STAGING_DATABASE_URL not set — skipping migrations"
+            exit 0
+          fi
+          if [[ "${DATABASE_URL}" != postgresql://* && "${DATABASE_URL}" != postgres://* ]]; then
+            echo "STAGING_DATABASE_URL does not appear to be Postgres — skipping migrations"
+            exit 0
+          fi
+          npx prisma migrate deploy --schema prisma/schema.prisma
 
       - name: Notify
         run: echo "Migrations deployed to staging via push to staging"
