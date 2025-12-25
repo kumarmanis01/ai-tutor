@@ -19,11 +19,11 @@ jobs:
       - name: Install
         run: npm ci
       - name: Apply Prisma migrations (if DATABASE_URL set)
-        if: env.DATABASE_URL != ''
+        if: github.event_name == 'push' && env.DATABASE_URL != ''
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
         run: |
-          echo "DATABASE_URL is set — applying migrations"
+          echo "DATABASE_URL is set — applying migrations (push only)"
           npx prisma migrate deploy
           npx prisma generate
       - name: Apply Prisma migrations (skip notice)
