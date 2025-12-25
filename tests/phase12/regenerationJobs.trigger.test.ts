@@ -1,4 +1,4 @@
-import { POST } from '../../app/api/admin/regeneration-jobs/[jobId]/trigger/route'
+import { POST } from '../../app/api/admin/regeneration-jobs/[id]/trigger/route'
 import { requireAdminOrModerator } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { AuditEvents } from '@/lib/audit/events'

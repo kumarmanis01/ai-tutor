@@ -1,6 +1,6 @@
 import fs from 'fs'
 import path from 'path'
-import * as route from '../../app/api/admin/regeneration-jobs/[jobId]/trigger/route'
+import * as route from '../../app/api/admin/regeneration-jobs/[id]/trigger/route'
 import { requireAdminOrModerator } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 
@@ -72,7 +72,7 @@ test('unsupported HTTP methods return 405', async () => {
 })
 
 test('trigger route does not import or call generators', async () => {
-  const file = fs.readFileSync(path.join(__dirname, '../../app/api/admin/regeneration-jobs/[jobId]/trigger/route.ts'), 'utf8')
+  const file = fs.readFileSync(path.join(__dirname, '../../app/api/admin/regeneration-jobs/[id]/trigger/route.ts'), 'utf8')
   expect(file).not.toMatch(/generatorAdapter|generate|generator/)
 })
 
