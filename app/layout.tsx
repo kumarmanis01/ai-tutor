@@ -5,6 +5,7 @@ import Providers from './providers';
 import { GlobalLoaderProvider } from '@/context/GlobalLoaderProvider';
 import AuthSessionLoader from '@/components/AuthSessionLoader';
 import ToastHost from '@/components/ToastHost';
+// Job registrations moved to worker/orchestrator to avoid running jobs in web process
 
 export const viewport = {
   width: 'device-width',

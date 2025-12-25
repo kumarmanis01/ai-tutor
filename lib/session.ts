@@ -1,4 +1,5 @@
-import { getServerSession } from 'next-auth';
+import { getServerSession } from 'next-auth/next';
+import type { AppSession } from '@/lib/types/auth';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 
@@ -25,7 +26,7 @@ import { prisma } from '@/lib/prisma';
  *   if (!user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
  */
 export async function getSessionUserWithSubscription() {
-  const session = await getServerSession(authOptions);
+  const session = (await getServerSession(authOptions)) as AppSession | null;
   const user = session?.user ?? null;
 
   if (!user?.id) {
@@ -54,5 +55,7 @@ export async function getSessionUserWithSubscription() {
 // Lightweight wrapper so other server handlers can use a single source
 // of truth for acquiring NextAuth session without importing authOptions
 export async function getServerSessionForHandlers() {
+  // In tests we allow injecting a fake session via global.__TEST_SESSION__
+  if ((global as any).__TEST_SESSION__) return (global as any).__TEST_SESSION__
   return getServerSession(authOptions);
 }

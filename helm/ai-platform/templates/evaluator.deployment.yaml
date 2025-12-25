@@ -1,0 +1,36 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "ai-platform.fullname" . }}-evaluator
+  labels:
+    app: {{ include "ai-platform.name" . }}
+    component: evaluator
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: {{ include "ai-platform.name" . }}
+      component: evaluator
+  template:
+    metadata:
+      labels:
+        app: {{ include "ai-platform.name" . }}
+        component: evaluator
+    spec:
+      serviceAccountName: {{ include "ai-platform.fullname" . }}-sa
+      containers:
+        - name: evaluator
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          command: ["node", "worker/evaluator.js"]
+          env:
+            - name: NODE_ENV
+              value: "{{ .Values.env.NODE_ENV }}"
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.secrets.secretName }}
+                  key: DATABASE_URL
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi

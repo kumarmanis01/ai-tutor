@@ -1,0 +1,4 @@
+
+> ai-tutor-india@0.1.0 orchestrator:start
+> node -r ts-node/register -r tsconfig-paths/register worker/orchestrator.ts
+

@@ -6,9 +6,17 @@ module.exports = {
   testMatch: ['**/tests/**/*.test.ts'],
   testPathIgnorePatterns: ['/tests/integration/'],
   moduleFileExtensions: ['ts', 'js', 'json', 'node'],
+  moduleNameMapper: {
+    // map @/lib/... to the repo root lib/ folder, and everything else to src/
+    '^@/(lib/.*)$': '<rootDir>/$1',
+    '^@/(workers/.*)$': '<rootDir>/$1',
+    '^@/(.*)$': '<rootDir>/src/$1'
+  },
+  moduleDirectories: ['node_modules', '<rootDir>'],
   globals: {
     'ts-jest': {
       tsconfig: 'tsconfig.json',
     },
   },
+  setupFilesAfterEnv: ['<rootDir>/tests/setup/prismaEnsureColumns.ts'],
 };

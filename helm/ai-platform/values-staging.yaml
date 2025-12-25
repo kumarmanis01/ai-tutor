@@ -1,0 +1,21 @@
+image:
+  tag: "staging"
+
+replicaCount: 2
+
+resources:
+  requests:
+    cpu: 150m
+    memory: 384Mi
+  limits:
+    cpu: 700m
+    memory: 768Mi
+
+postgres:
+  externalUrl: "postgres://user:pass@staging-postgres:5432/db"
+
+redis:
+  externalUrl: "redis://staging-redis:6379"
+
+metrics:
+  pushgatewayUrl: "https://pushgateway.staging.example"

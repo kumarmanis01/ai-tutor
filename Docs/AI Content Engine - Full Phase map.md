@@ -1,4 +1,4 @@
-AI CONTENT ENGINE — FULL PHASE MAP
+# AI CONTENT ENGINE — FULL PHASE MAP
 
 This is a closed-loop system:
 
@@ -6,343 +6,271 @@ Observe → Decide → Generate → Distribute → Learn → Improve
 
 You are currently finishing Phase 5.
 
-PHASE 0 — PRINCIPLES & CONSTRAINTS (already implicitly done)
+---
+
+## PHASE 0 — PRINCIPLES & CONSTRAINTS (already implicitly done)
 
 Goal: Ensure the engine doesn’t collapse under complexity.
 
-Deterministic where possible
-
-Observable everywhere
-
-Idempotent actions
-
-Human-override at every stage
-
-Cost-bounded generation
-
-Artifacts
-
-Alert philosophy
-
-Telemetry standards
-
-Retry / dedupe / rate-limit rules
+- Deterministic where possible
+- Observable everywhere
+- Idempotent actions
+- Human-override at every stage
+- Cost-bounded generation
+- Artifacts
+- Alert philosophy
+- Telemetry standards
+- Retry / dedupe / rate-limit rules
 
 ✅ You unknowingly nailed this already.
 
-PHASE 1 — CONTENT DOMAIN & IDENTITY
+---
+
+## PHASE 1 — CONTENT DOMAIN & IDENTITY
 
 Goal: Define what kind of intelligence this engine produces.
 
 Outputs
-
-Domain definition (e.g. AI tutoring, dev education, finance, health)
-
-Tone + persona (teacher, guide, coach, examiner)
-
-Target learner profile (beginner → advanced)
+- Domain definition (e.g. AI tutoring, dev education, finance, health)
+- Tone + persona (teacher, guide, coach, examiner)
+- Target learner profile (beginner → advanced)
 
 Data
+- Subject taxonomy
+- Skill ladders
+- Difficulty gradients
 
-Subject taxonomy
+Example artifacts:
+- domain.json
+- persona.md
+- learner_levels.ts
 
-Skill ladders
+---
 
-Difficulty gradients
-
-📦 Example artifacts:
-
-domain.json
-
-persona.md
-
-learner_levels.ts
-
-PHASE 2 — KNOWLEDGE GRAPH & CONCEPT MODEL
+## PHASE 2 — KNOWLEDGE GRAPH & CONCEPT MODEL
 
 Goal: Convert “subjects” into a machine-navigable structure.
 
-Core Objects
+Core objects:
+- Concept
+- Dependency
+- Learning objective
+- Assessment signal
 
-Concept
+Example structure:
+- JavaScript
+  - Variables
+  - Functions
+    - Closures
+  - Async Programming
 
-Dependency
+Artifacts:
+- Concept
+- Prerequisite
+- LearningObjective
 
-Learning objective
+Stored in DB or graph-like tables.
 
-Assessment signal
+---
 
-Example
-JavaScript
- ├── Variables
- ├── Functions
- │    └── Closures
- └── Async Programming
-
-Artifacts
-
-Concept
-
-Prerequisite
-
-LearningObjective
-
-📦 Stored in DB or graph-like tables
-
-PHASE 3 — SYLLABUS GENERATION ENGINE (this is where you’re headed)
+## PHASE 3 — SYLLABUS GENERATION ENGINE (this is where you’re headed)
 
 Goal: Generate adaptive syllabi per user or cohort.
 
-Inputs
+Inputs:
+- Domain graph
+- User goal
+- Time budget
+- Skill level
 
-Domain graph
+Outputs:
+- Ordered syllabus
+- Milestones
+- Assessment points
 
-User goal
+Engine logic:
+- Topological sort of concepts
+- Difficulty pacing
+- Optional enrichment branches
 
-Time budget
-
-Skill level
-
-Outputs
-
-Ordered syllabus
-
-Milestones
-
-Assessment points
-
-Engine Logic
-
-Topological sort of concepts
-
-Difficulty pacing
-
-Optional enrichment branches
-
-📦 Example:
-
+Example output:
+```json
 {
   "week": 3,
   "concepts": ["Closures", "Scope"],
   "outcome": "Explain and apply closures"
 }
+```
 
-PHASE 4 — CONTENT GENERATION ENGINE
+---
+
+## PHASE 4 — CONTENT GENERATION ENGINE
 
 Goal: Produce actual learning material.
 
-Content Types
+Content types:
+- Lessons
+- Examples
+- Analogies
+- Exercises
+- Quizzes
+- Projects
 
-Lessons
+Key design:
+- Content is structured, not raw text
+- Generated with rubrics
 
-Examples
+Example output object:
+```ts
+type Lesson = {
+  explanation: string;
+  examples: string[];
+  commonMistakes: string[];
+  practice: Array<{ prompt: string; solution?: string }>;
+};
+```
 
-Analogies
+Regenerable at any time.
 
-Exercises
+---
 
-Quizzes
-
-Projects
-
-Key Design
-
-Content is structured, not raw text
-
-Generated with rubrics
-
-📦 Example output object:
-
-Lesson {
-  explanation
-  examples[]
-  commonMistakes[]
-  practice[]
-}
-
-
-🔁 Regenerable at any time
-
-PHASE 5 — OBSERVABILITY, SAFETY & ALERTING (CURRENT PHASE)
+## PHASE 5 — OBSERVABILITY, SAFETY & ALERTING (CURRENT PHASE)
 
 Goal: Make the engine safe to scale.
 
 5(A) Telemetry
-
-Queue depth
-
-Job age
-
-Failures
-
-Worker health
+- Queue depth
+- Job age
+- Failures
+- Worker health
 
 5(B) Sampler
-
-Minute-bucketed metrics
-
-Idempotent writes
+- Minute-bucketed metrics
+- Idempotent writes
 
 5(C) Alert Rules
-
-Queue backlog
-
-Stuck jobs
-
-Failure spikes
+- Queue backlog
+- Stuck jobs
+- Failure spikes
 
 5(D) Alert Router & Sinks
-
-Slack / Email / Webhook
-
-Rate-limit
-
-Deduplication
+- Slack / Email / Webhook
+- Rate-limit
+- Deduplication
 
 5(E) CI + Tests + Dry-run Evaluators
-
-Integration tests
-
-PG advisory locks
-
-Dry-run mode
+- Integration tests
+- PG advisory locks
+- Dry-run mode
 
 ✅ You are at the very end of Phase 5
 
-PHASE 6 — LEARNER INTERACTION LOOP
+---
+
+## PHASE 6 — LEARNER INTERACTION LOOP
 
 Goal: Turn content into learning signals.
 
-Signals Collected
+Signals collected:
+- Completion
+- Time spent
+- Quiz accuracy
+- Retry count
+- Drop-off points
 
-Completion
+Telemetry extension:
+- learning.event.completed
+- learning.quiz.failed
+- learning.retry.count
 
-Time spent
+Stored as learning telemetry.
 
-Quiz accuracy
+---
 
-Retry count
-
-Drop-off points
-
-Telemetry Extension
-
-learning.event.completed
-
-learning.quiz.failed
-
-learning.retry.count
-
-📦 Stored as learning telemetry
-
-PHASE 7 — ADAPTATION & PERSONALIZATION
+## PHASE 7 — ADAPTATION & PERSONALIZATION
 
 Goal: Make the engine responsive.
 
-Adjustments
+Adjustments:
+- Slow down pacing
+- Regenerate explanations
+- Insert remedial lessons
+- Skip mastered topics
 
-Slow down pacing
+Logic:
+- Rules first
+- ML later
 
-Regenerate explanations
+Example rule:
+- “If learner fails X twice → branch Y”
 
-Insert remedial lessons
+---
 
-Skip mastered topics
-
-Logic
-
-Rules first
-
-ML later
-
-📦 “If learner fails X twice → branch Y”
-
-PHASE 8 — CONTENT QUALITY FEEDBACK LOOP
+## PHASE 8 — CONTENT QUALITY FEEDBACK LOOP
 
 Goal: Improve the generator itself.
 
-Signals
+Signals:
+- Re-reads
+- Hint usage
+- Question frequency
+- Confusion markers
 
-Re-reads
+Actions:
+- Regenerate content
+- Improve prompt templates
+- Flag weak explanations
 
-Hint usage
+Artifact:
+- Content scoring system
 
-Question frequency
+---
 
-Confusion markers
-
-Actions
-
-Regenerate content
-
-Improve prompt templates
-
-Flag weak explanations
-
-📦 Content scoring system
-
-PHASE 9 — DISTRIBUTION ENGINE
+## PHASE 9 — DISTRIBUTION ENGINE
 
 Goal: Push content where learners are.
 
-Channels
+Channels:
+- Web app
+- Email drip
+- WhatsApp / Telegram
+- LMS export
+- API
 
-Web app
+Scheduling:
+- Time-zone aware
+- Attention-optimized
 
-Email drip
+---
 
-WhatsApp / Telegram
-
-LMS export
-
-API
-
-Scheduling
-
-Time-zone aware
-
-Attention-optimized
-
-PHASE 10 — MONETIZATION & ACCESS CONTROL
+## PHASE 10 — MONETIZATION & ACCESS CONTROL
 
 Goal: Sustain the engine.
 
-Models
+Models:
+- Subscription
+- Course bundles
+- Pay-per-assessment
+- Enterprise licensing
 
-Subscription
+Controls:
+- Feature gating
+- Rate caps
+- Premium content flags
 
-Course bundles
+---
 
-Pay-per-assessment
-
-Enterprise licensing
-
-Controls
-
-Feature gating
-
-Rate caps
-
-Premium content flags
-
-PHASE 11 — AUTONOMOUS OPTIMIZATION (ENDGAME)
+## PHASE 11 — AUTONOMOUS OPTIMIZATION (ENDGAME)
 
 Goal: Engine improves itself.
 
-Inputs
+Inputs:
+- Telemetry
+- Alerts
+- Learning outcomes
 
-Telemetry
-
-Alerts
-
-Learning outcomes
-
-Outputs
-
-Better syllabi
-
-Better prompts
-
-Better pacing
-
-Cost optimization
+Outputs:
+- Better syllabi
+- Better prompts
+- Better pacing
+- Cost optimization

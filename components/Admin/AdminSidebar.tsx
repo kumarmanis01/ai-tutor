@@ -31,6 +31,7 @@ const aiAdminLinks = [
   { href: '/admin/system/alerts', label: 'System Alerts' },
   { href: '/admin/content-engine/audit-logs', label: 'Audit Logs' },
   { href: '/admin/content-engine/rollbacks', label: 'Rollbacks' },
+  { href: '/admin/syllabi', label: 'Syllabi' },
 ];
 
 const generalAdminLinks = [

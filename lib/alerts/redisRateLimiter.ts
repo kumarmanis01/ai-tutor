@@ -7,15 +7,15 @@ import Redis from 'ioredis';
  * - Not as precise as a token-bucket, but is simple, horizontally safe and predictable.
  */
 export class RedisRateLimiter implements RateLimiter {
-  private client: Redis.Redis;
+  private client: Redis;
 
   /**
    * @param client Optional ioredis client. If omitted, a lazy client is created from `REDIS_URL`.
    * @param capacity Max events allowed per window.
    * @param windowSeconds Window length in seconds.
    */
-  constructor(private opts?: { client?: Redis.Redis; capacity?: number; windowSeconds?: number }) {
-    this.client = opts?.client ?? new Redis(process.env.REDIS_URL);
+  constructor(private opts?: { client?: Redis; capacity?: number; windowSeconds?: number }) {
+    this.client = opts?.client ?? new Redis(process.env.REDIS_URL ?? '');
     this.capacity = opts?.capacity ?? 5;
     this.windowSeconds = opts?.windowSeconds ?? 60;
   }
