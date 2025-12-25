@@ -2,11 +2,12 @@ name: Prisma Migrate Deploy
 
 on:
   push:
-    branches: [ main, master ]
+    branches: [main, master]
 
 jobs:
   migrate-deploy:
     runs-on: ubuntu-latest
+    environment: production
     permissions:
       contents: read
     steps:
