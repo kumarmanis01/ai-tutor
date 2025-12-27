@@ -1,0 +1,64 @@
+name: Deploy Evaluator to Staging
+
+on:
+  workflow_dispatch: {}
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up kubectl
+        uses: azure/setup-kubectl@v3
+        with:
+          version: '1.27.0'
+
+      - name: Set up Helm
+        uses: azure/setup-helm@v3
+
+      - name: Helm lint chart
+        run: helm lint deployment/helm/evaluator-chart
+
+      - name: Configure kubeconfig
+        env:
+          KUBE_CONFIG_DATA: ${{ secrets.KUBE_CONFIG_DATA }}
+        run: |
+          if [ -z "$KUBE_CONFIG_DATA" ]; then
+            echo "KUBE_CONFIG_DATA not set"; exit 1
+          fi
+          echo "$KUBE_CONFIG_DATA" | base64 --decode > kubeconfig
+          mkdir -p ~/.kube
+          export KUBECONFIG=$PWD/kubeconfig
+          echo "kubeconfig written"
+
+      - name: Create/Update evaluator secret in staging
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          REDIS_URL: ${{ secrets.REDIS_URL }}
+          OPS_EMAIL: ${{ secrets.OPS_EMAIL }}
+          SMTP_HOST: ${{ secrets.SMTP_HOST }}
+          SMTP_PORT: ${{ secrets.SMTP_PORT }}
+          SMTP_USER: ${{ secrets.SMTP_USER }}
+          SMTP_PASS: ${{ secrets.SMTP_PASS }}
+          SMTP_FROM: ${{ secrets.SMTP_FROM }}
+          PUSHGATEWAY_URL: ${{ secrets.PUSHGATEWAY_URL }}
+        run: |
+          kubectl create namespace staging --dry-run=client -o yaml | kubectl apply -f -
+          kubectl create secret generic evaluator-secrets-staging -n staging \
+            --from-literal=DATABASE_URL="${DATABASE_URL}" \
+            --from-literal=REDIS_URL="${REDIS_URL}" \
+            --from-literal=OPS_EMAIL="${OPS_EMAIL}" \
+            --from-literal=SMTP_HOST="${SMTP_HOST}" \
+            --from-literal=SMTP_PORT="${SMTP_PORT}" \
+            --from-literal=SMTP_USER="${SMTP_USER}" \
+            --from-literal=SMTP_PASS="${SMTP_PASS}" \
+            --from-literal=SMTP_FROM="${SMTP_FROM}" \
+            --from-literal=PUSHGATEWAY_URL="${PUSHGATEWAY_URL}" \
+            --dry-run=client -o yaml | kubectl apply -f -
+
+      - name: Deploy Helm chart
+        run: |
+          export KUBECONFIG=$PWD/kubeconfig
+          helm upgrade --install evaluator deployment/helm/evaluator-chart -n staging -f deployment/helm/evaluator-chart/values-staging.yaml
