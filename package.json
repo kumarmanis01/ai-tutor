@@ -41,7 +41,7 @@
   "scripts": {
     "dev": "npm run lint && npm run type-check && next dev",
     "prepare": "husky install",
-    "build": "npm run lint && npx prisma generate && npm run type-check && next build",
+    "build": "npm run lint && npx prisma generate && npm run type-check && npm run build:workers && next build",
     "start": "next start",
     "export": "next export",
     "lint": "eslint . --ext .js,.jsx,.ts,.tsx --max-warnings=0",
@@ -59,7 +59,8 @@
     "orchestrator:start": "ts-node -r tsconfig-paths/register worker/orchestrator.ts",
     "seed-db-ai-content-infra": "node -r ts-node/register scripts/seed-database.ts",
     "reset-db-ai-content-infra": "node -r ts-node/register scripts/reset-remote-db.ts",
-    "seed-and-reset-db-ai-content-infra": "npm run seed-db-ai-content-infra && npm run reset-db-ai-content-infra"
+    "seed-and-reset-db-ai-content-infra": "npm run seed-db-ai-content-infra && npm run reset-db-ai-content-infra",
+    "build:workers": "tsc -p tsconfig.workers.json && npx tsc-alias -p tsconfig.workers.json"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.10.0",
@@ -141,7 +142,8 @@
     "ts-node": "^10.9.2",
     "tsconfig-paths": "^4.2.0",
     "typescript": "^5.9.3",
-    "typescript-eslint": "^8.44.1"
+    "typescript-eslint": "^8.44.1",
+    "tsc-alias": "^1.8.0"
   },
   "lint-staged": {
     "**/*.{js,jsx,ts,tsx}": [
