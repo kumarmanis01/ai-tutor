@@ -10,6 +10,7 @@ export async function getRazorpay() {
   // dynamic import to satisfy ESLint's no-require-imports rule
   const RazorpayModule = await import('razorpay');
   const Razorpay = RazorpayModule?.default ?? RazorpayModule;
-  _razorpay = new Razorpay({ key_id, key_secret });
+  const RazorpayCtor: any = Razorpay as any;
+  _razorpay = new RazorpayCtor({ key_id, key_secret });
   return _razorpay;
 }
