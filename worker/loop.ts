@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /* eslint-disable no-console */
 import 'dotenv/config'
-import 'tsconfig-paths/register'
+import 'tsconfig-paths/register.js'
 import workerDefault, { startWorker } from '../workers/regenerationWorker'
 
 // prefer explicit startWorker export
