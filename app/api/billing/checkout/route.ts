@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getServerSessionForHandlers } from '@/lib/session';
-import { razorpay } from '@/lib/payments';
+import { getRazorpay } from '@/lib/payments';
 import { SessionUser } from '@/lib/types';
 import { logger } from '@/lib/logger';
 import { BILLING_MONTHLY, RAZORPAY_PLAN_IDS } from '../constants';
@@ -48,7 +48,15 @@ export async function POST(req: Request) {
 
   logger.add('Creating Razorpay subscription with planId: ' + planId);
 
-  const subscription = await razorpay.subscriptions.create({
+  let razorpayClient;
+  try {
+    razorpayClient = await getRazorpay();
+  } catch (err: any) {
+    logger.add('Billing configuration missing: ' + String(err));
+    return NextResponse.json({ error: 'Billing not configured' }, { status: 500 });
+  }
+
+  const subscription = await razorpayClient.subscriptions.create({
     plan_id: planId,
     customer_notify: 1,
     total_count: billingCycle === BILLING_MONTHLY ? 12 : 1, // Use constant for monthly
