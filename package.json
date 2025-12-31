@@ -60,7 +60,9 @@
     "seed-db-ai-content-infra": "node -r ts-node/register scripts/seed-database.ts",
     "reset-db-ai-content-infra": "node -r ts-node/register scripts/reset-remote-db.ts",
     "seed-and-reset-db-ai-content-infra": "npm run seed-db-ai-content-infra && npm run reset-db-ai-content-infra",
-    "build:workers": "tsc -p tsconfig.workers.json && npx tsc-alias -p tsconfig.workers.json"
+    "build:workers": "tsc -p tsconfig.workers.json && npx tsc-alias -p tsconfig.workers.json",
+    "dist:shim": "node scripts/create-dist-shims.js",
+    "dist:parse-shim": "node scripts/parse-and-shim.js --log logs/worker-error.log --root dist"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.10.0",
