@@ -20,7 +20,7 @@ function extractFileUrls(text){
   return Array.from(set)
 }
 
-function tryCreateShim(absMissingPath, root){
+function tryCreateShim(absMissingPath){
   const candidates = ['.js', '.mjs', '.cjs']
   for (const ext of candidates){
     const cand = absMissingPath + ext
