@@ -1,6 +1,7 @@
-/* eslint-disable no-console, @typescript-eslint/no-var-requires, @typescript-eslint/no-require-imports */
 require('ts-node/register/transpile-only');
 (async () => {
+  // allow legacy requires in this small helper
+  // eslint-disable-next-line @typescript-eslint/no-var-requires, @typescript-eslint/no-require-imports
   const { PrismaClient } = require('@prisma/client');
   const prisma = new PrismaClient();
   try {
@@ -12,6 +13,7 @@ require('ts-node/register/transpile-only');
     await prisma.$disconnect();
     process.exit(0);
   } catch (e) {
+    // eslint-disable-next-line no-console
     console.error('direct eval failed', e);
     try { await prisma.$disconnect(); } catch {
       // ignore
