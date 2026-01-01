@@ -1,0 +1,17 @@
+replicaCount: 1
+image:
+  repository: ghcr.io/YOUR_ORG/ai-tutor-evaluator
+  tag: latest
+  pullPolicy: IfNotPresent
+service:
+  type: ClusterIP
+  port: 9188
+resources: {}
+env:
+  DATABASE_URL: ""
+  PUSHGATEWAY_URL: ""
+  REDIS_URL: ""
+secrets:
+  # If set, the chart will source sensitive env vars from this secret's keys.
+  # Create a k8s Secret with keys: DATABASE_URL, REDIS_URL, OPS_EMAIL, SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, PUSHGATEWAY_URL
+  secretName: ""

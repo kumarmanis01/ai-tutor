@@ -1,0 +1,29 @@
+groups:
+- name: alert-evaluator.rules
+  rules:
+  - alert: AlertEvaluatorHighErrorRate
+    expr: rate(alert_evaluator_sink_failures_total[5m]) > 1
+    for: 2m
+    labels:
+      severity: critical
+    annotations:
+      summary: "Alert evaluator sink failures are high"
+      description: "alert evaluator sink failures over 5m > 1/sec. Investigate downstream sink availability."
+
+  - alert: AlertEvaluatorHighRuns
+    expr: rate(alert_evaluator_runs_total[5m]) > 0
+    for: 10m
+    labels:
+      severity: warning
+    annotations:
+      summary: "Alert evaluator running frequently"
+      description: "Alert evaluator is running. This may be expected, but review run frequency."
+
+  - alert: AlertEvaluatorPushgatewayMissing
+    expr: absent(pushgateway_up{job="alert-evaluator"})
+    for: 5m
+    labels:
+      severity: warning
+    annotations:
+      summary: "Pushgateway not reachable by Prometheus"
+      description: "Pushgateway metrics for alert-evaluator missing; check Pushgateway availability or network."

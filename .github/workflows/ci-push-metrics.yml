@@ -1,0 +1,35 @@
+name: CI - Push Metrics to Staging Pushgateway
+
+on:
+  workflow_run:
+    workflows: ['CI - Evaluator Build & Dry-run Integration']
+    types: [completed]
+
+jobs:
+  push-metrics:
+    if: ${{ github.event.workflow_run.conclusion == 'success' && secrets.STAGING_PUSHGATEWAY_URL }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Download evaluator bundle artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: evaluator-bundle
+
+      - name: Install runtime deps
+        run: npm ci --omit=dev
+
+      - name: Push to staging Pushgateway
+        env:
+          PUSHGATEWAY_URL: ${{ secrets.STAGING_PUSHGATEWAY_URL }}
+          RUN_ONCE: '1'
+          EVALUATOR_DRY_RUN: '1'
+        run: |
+          node build/runAlertEvaluator.js

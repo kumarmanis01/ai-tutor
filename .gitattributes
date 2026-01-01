@@ -1,0 +1,17 @@
+# Normalize line endings to LF for source files
+* text=auto eol=lf
+
+# Ensure shell scripts keep LF
+*.sh text eol=lf
+
+# JavaScript/TypeScript
+*.js text eol=lf
+*.ts text eol=lf
+*.tsx text eol=lf
+
+# Prevent binary files from being treated as text
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.zip binary

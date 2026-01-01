@@ -1,0 +1,113 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "evaluator.fullname" . }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app: {{ include "evaluator.name" . }}
+  template:
+    metadata:
+      labels:
+        app: {{ include "evaluator.name" . }}
+    spec:
+      containers:
+        - name: evaluator
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          env:
+            - name: NODE_ENV
+              value: "production"
+{{- if .Values.secrets.secretName }}
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.secrets.secretName | quote }}
+                  key: DATABASE_URL
+            - name: PUSHGATEWAY_URL
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.secrets.secretName | quote }}
+                  key: PUSHGATEWAY_URL
+            - name: REDIS_URL
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.secrets.secretName | quote }}
+                  key: REDIS_URL
+            - name: OPS_EMAIL
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.secrets.secretName | quote }}
+                  key: OPS_EMAIL
+            - name: SMTP_HOST
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.secrets.secretName | quote }}
+                  key: SMTP_HOST
+            - name: SMTP_PORT
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.secrets.secretName | quote }}
+                  key: SMTP_PORT
+            - name: SMTP_USER
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.secrets.secretName | quote }}
+                  key: SMTP_USER
+            - name: SMTP_PASS
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.secrets.secretName | quote }}
+                  key: SMTP_PASS
+            - name: SMTP_FROM
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.secrets.secretName | quote }}
+                  key: SMTP_FROM
+{{- else }}
+            - name: DATABASE_URL
+              value: {{ default .Values.env.DATABASE_URL (env "DATABASE_URL") | quote }}
+            - name: PUSHGATEWAY_URL
+              value: {{ default .Values.env.PUSHGATEWAY_URL (env "PUSHGATEWAY_URL") | quote }}
+            - name: REDIS_URL
+              value: {{ coalesce (env "REDIS_URL") (env "UPSTASH_REDIS_REST_URL") .Values.env.REDIS_URL | quote }}
+            - name: OPS_EMAIL
+              value: {{ default .Values.env.OPS_EMAIL (env "OPS_EMAIL") | quote }}
+            - name: SMTP_HOST
+              value: {{ default .Values.env.SMTP_HOST (env "SMTP_HOST") | quote }}
+            - name: SMTP_PORT
+              value: {{ default .Values.env.SMTP_PORT (env "SMTP_PORT") | quote }}
+            - name: SMTP_USER
+              value: {{ default .Values.env.SMTP_USER (env "SMTP_USER") | quote }}
+            - name: SMTP_PASS
+              value: {{ default .Values.env.SMTP_PASS (env "SMTP_PASS") | quote }}
+{{- end }}
+          ports:
+            - containerPort: {{ .Values.service.port }}
+              name: metrics
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: metrics
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: metrics
+            initialDelaySeconds: 10
+            periodSeconds: 30
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "evaluator.fullname" . }}-metrics
+spec:
+  selector:
+    app: {{ include "evaluator.name" . }}
+  ports:
+    - name: metrics
+      port: {{ .Values.service.port }}
+      targetPort: metrics
+  type: {{ .Values.service.type }}

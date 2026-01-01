@@ -38,6 +38,12 @@ jobs:
       - name: Install deps
         run: npm ci
 
+      - name: Set up Helm
+        uses: azure/setup-helm@v3
+
+      - name: Helm lint chart
+        run: helm lint deployment/helm/evaluator-chart
+
       - name: Wait for Postgres
         run: |
           sudo apt-get update && sudo apt-get install -y postgresql-client
@@ -73,3 +79,15 @@ jobs:
 
       - name: Run evaluator integration tests
         run: npm run test:integration:evaluator
+
+      - name: Run evaluator dry-run integration (optional)
+        if: secrets.ALLOW_EVALUATOR_DRY_RUN == '1'
+        run: npm run test:integration:dry-run
+
+      - name: Teardown test database (fast)
+        if: always()
+        run: |
+          PORT=${{ job.services.postgres.ports[5432] }}
+          export PGPASSWORD=postgres
+          echo "Dropping test database ai_tutor_test"
+          psql -h 127.0.0.1 -p $PORT -U postgres -c "DROP DATABASE IF EXISTS ai_tutor_test;" || true

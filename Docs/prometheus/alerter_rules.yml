@@ -1,0 +1,20 @@
+groups:
+  - name: alerter.rules
+    rules:
+      - alert: AlerterHighSinkFailures
+        expr: rate(alerter_sink_failures_total[5m]) > 0.1
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Alerter sink failures are high"
+          description: "{{ $value }} failures/sec over 5m for one or more sinks. Check sink endpoints and network."
+
+      - alert: AlerterCircuitOpen
+        expr: increase(alerter_circuit_open_total[10m]) > 0
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Alerter circuit(s) opened"
+          description: "One or more sink circuits opened in the last 10 minutes. Investigate sink availability."

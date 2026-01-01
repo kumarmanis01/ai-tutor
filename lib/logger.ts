@@ -44,6 +44,7 @@ const clientMinLevel = isDebug ? levelWeight.debug : levelWeight.error;
 class Logger {
   private logs: string[] = [];
   private subscribers: LogCallback[] = [];
+  private closed = false;
 
   private shouldLog(level: Level) {
     const min = isClient ? clientMinLevel : serverMinLevel;
@@ -51,6 +52,7 @@ class Logger {
   }
 
   add(msg: string, context?: LogContext, level: Level = 'log') {
+    if (this.closed) return;
     if (!this.shouldLog(level)) return;
     const time = new Date().toLocaleTimeString();
     let prefix = `[${time}]`;
@@ -87,11 +89,23 @@ class Logger {
 
   subscribe(cb: LogCallback) {
     if (!isDebug) return () => {};
+    if (this.closed) return () => {};
     this.subscribers.push(cb);
     this.logs.forEach((log) => cb(log));
     return () => {
       this.subscribers = this.subscribers.filter((sub) => sub !== cb);
     };
+  }
+
+  /**
+   * Close the logger and release subscribers. Call from tests teardown to
+   * ensure no further logging occurs after tests complete which can keep
+   * the Node process alive or cause "log after tests are done" warnings.
+   */
+  close() {
+    this.closed = true;
+    this.subscribers = [];
+    this.logs = [];
   }
 
   /**
@@ -103,6 +117,7 @@ class Logger {
    * @param startTime - (Optional) ms timestamp when request started
    */
   async logAPI(req: Request, res?: Response, context?: LogContext, startTime?: number) {
+    if (this.closed) return;
     if (!isDebug || process.env.NODE_ENV === 'production') return;
     try {
       const url = req.url;
