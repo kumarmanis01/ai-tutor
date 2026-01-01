@@ -6,7 +6,7 @@ afterAll(() => {
   try {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     if (typeof (logger as any).close === 'function') (logger as any).close()
-  } catch (err) {
+  } catch {
     // swallow — tests should not fail due to teardown cleanup
   }
 })
