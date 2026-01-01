@@ -272,7 +272,7 @@ async function main() {
 
     try {
       await prisma.$disconnect();
-    } catch (e) {
+    } catch {
       // ignore
     }
 

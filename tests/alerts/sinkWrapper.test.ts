@@ -7,6 +7,7 @@ class FlakySink implements AlertSink {
   failTimes: number;
   constructor(failTimes = 2) { this.failTimes = failTimes; }
   async send(_: AlertPayload) {
+    void _;
     this.calls += 1;
     if (this.calls <= this.failTimes) {
       throw new Error('network');
@@ -17,7 +18,7 @@ class FlakySink implements AlertSink {
 
 class AlwaysFailSink implements AlertSink {
   name = 'always';
-  async send(_: AlertPayload): Promise<SinkResult> { throw new Error('boom'); }
+  async send(_: AlertPayload): Promise<SinkResult> { void _; throw new Error('boom'); }
 }
 
 describe('SinkWrapper', () => {
