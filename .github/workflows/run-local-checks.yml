@@ -1,0 +1,63 @@
+name: Run Local Checks (Ad-hoc)
+
+on:
+  workflow_dispatch:
+    inputs:
+      run_integration:
+        description: 'Run DB-backed integration tests (true/false)'
+        required: false
+        default: 'false'
+
+jobs:
+  local-checks:
+    name: Local CI checks
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:14
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: ai_tutor_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 5
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+
+      - name: Install
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Type-check
+        run: npm run type-check
+
+      - name: Run ESLint custom rule tests
+        run: npm run test:eslint-rules
+
+      - name: Generate Prisma client
+        run: npx prisma generate
+
+      - name: Build
+        run: npm run build
+
+      - name: Run unit tests
+        run: npm test --silent
+
+      - name: Run integration tests (optional)
+        if: ${{ github.event.inputs.run_integration == 'true' }}
+        run: |
+          PORT=${{ job.services.postgres.ports[5432] }}
+          echo "DATABASE_URL=postgres://postgres:postgres@127.0.0.1:$PORT/ai_tutor_test" >> $GITHUB_ENV
+          until pg_isready -h 127.0.0.1 -p $PORT -U postgres; do echo "Waiting for Postgres..."; sleep 1; done
+          npm run test:integration
