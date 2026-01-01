@@ -18,5 +18,8 @@ module.exports = {
       tsconfig: 'tsconfig.json',
     },
   },
-  setupFilesAfterEnv: ['<rootDir>/tests/setup/prismaEnsureColumns.ts'],
+  setupFilesAfterEnv: ['<rootDir>/tests/setup/prismaEnsureColumns.ts', '<rootDir>/tests/setup/loggerTeardown.ts'],
+  // Force exit after tests to avoid intermittent open-handle failures in CI
+  // This is a pragmatic fix; ideally open handles should be tracked down.
+  forceExit: true,
 };
