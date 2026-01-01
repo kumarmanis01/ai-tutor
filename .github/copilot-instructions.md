@@ -58,15 +58,10 @@ Content Rules
 🧠 Mental Model Copilot Must Follow
 
 “This is an enterprise academic content system, not a chat app.”
-
 Deterministic
-
-Auditable
-
+Auditablc
 Moderated
-
 Cost-aware
-
 Failure-tolerant
 
 📌 If Copilot Is Unsure
@@ -549,3 +544,142 @@ For further questions, refer to the `README.md` or ask a team member.
 
 - Before generating or modifying any code, always read and consider the contents of `/docs/AI_CONTENT_INDEX.md`.
 - Ensure your implementation aligns with the documentation and requirements described in `/docs/AI_CONTENT_INDEX.md`.
+
+## UNIT TESTS & FILE-LEVEL OBJECTIVES
+
+- Any production code change MUST include a corresponding unit test change. Creating/altering a file without adding/updating its linked unit test is forbidden.
+- Test coverage target: 100%. Minimum acceptable: 95% project-wide. Critical engine modules (ai-engine, job handling, moderation) must maintain 100% coverage.
+- CI must fail on:
+  - Missing or outdated linked unit test for a changed file.
+  - Overall coverage below minimum thresholds.
+
+### File Header Requirement (MANDATORY)
+
+Every created or modified source file must contain a top-of-file objective header. Every edit MUST update this header to reflect the change.
+
+- Purpose: explain the single clear objective of the file (1–2 sentences).
+- Linked unit test: path to the test file that validates this file.
+- Copilot guardrails used: list the specific Copilot/guardrail docs followed to create this file.
+- Edit log: timestamp, author/actor id, brief change reason.
+
+Templates:
+
+- TypeScript / TSX / JS:
+
+  ```ts
+  /**
+   * FILE OBJECTIVE:
+   * - Short clear objective (one line).
+   *
+   * LINKED UNIT TEST:
+   * - tests/unit/path/to/file.spec.ts
+   *
+   * COPILOT INSTRUCTIONS FOLLOWED:
+   * - /docs/COPILOT_GUARDRAILS.md
+   * - .github/copilot-instructions.md
+   *
+   * EDIT LOG:
+   * - 2026-01-01T12:00:00Z | actor-id | created
+   */
+  ```
+
+- Prisma schema:
+
+  ```prisma
+  /// FILE OBJECTIVE:
+  /// - Short clear objective (one line).
+  ///
+  /// LINKED UNIT TEST:
+  /// - tests/unit/prisma/path/to/schema.spec.ts
+  ///
+  /// COPILOT INSTRUCTIONS FOLLOWED:
+  /// - /docs/COPILOT_GUARDRAILS.md
+  ///
+  /// EDIT LOG:
+  /// - 2026-01-01T12:00:00Z | actor-id | created
+  ```
+
+- Markdown / Docs:
+
+  ```md
+  <!--
+  FILE OBJECTIVE:
+  - Short clear objective (one line).
+
+  LINKED UNIT TEST:
+  - tests/unit/docs/path/to/doc.spec.ts
+
+  COPILOT INSTRUCTIONS FOLLOWED:
+  - /docs/COPILOT_GUARDRAILS.md
+
+  EDIT LOG:
+  - 2026-01-01T12:00:00Z | actor-id | created
+  -->
+  ```
+
+### Test Naming & Placement
+
+- Unit test filename should mirror the source file: e.g. src/foo/bar.ts → tests/unit/foo/bar.spec.ts (or .test.ts).
+- Tests must be placed under tests/unit and use the project's test runner and mocking conventions.
+- New features require both positive and negative-path tests and edge-case coverage.
+
+### Enforcement & Best Practices
+
+- When modifying behavior, prefer adding new tests and avoid mutating existing completed-job or immutable records in tests (follow guardrails).
+- Tests must assert audit logs, enum usage, soft-delete behavior, and that jobs are immutable where applicable.
+- Document in the file header which guardrail sections are especially relevant to the file (e.g., "Job Handling", "Audit Everything").
+
+---
+
+Violations are considered build-blocking. If unsure, stop and ask for clarification.
+
+## CI, PR & Pre-commit Enforcement
+
+Builds must pass lint, type-check, and unit tests (with coverage). All PRs must include detailed change information. Pre-commit hooks enforce the test coverage gate (configurable, default minimum 90%).
+
+Add the following examples to the repo to implement these rules.
+
+1. package.json scripts (add / adapt)
+   /\*\*
+
+- FILE OBJECTIVE:
+- - Canonical AI Content Engine guardrails referenced by Copilot and CI.
+-
+- LINKED UNIT TEST:
+- - tests/unit/docs/copilot_guardrails.spec.ts
+-
+- COPILOT INSTRUCTIONS FOLLOWED:
+- - .github/copilot-instructions.md
+- - /docs/COPILOT_GUARDRAILS.md
+-
+- EDIT LOG:
+- - 2026-01-01T00:00:00Z | architect | created
+    \*/
+
+# AI Content Engine – Copilot Guardrails
+
+Do you want me to replace $SELECTION_PLACEHOLDER$ with the full /docs/COPILOT_GUARDRAILS.md content (Markdown) or with a TypeScript file header/template? The repo is TypeScript-only; I will not add other file extensions.
+
+<!--
+FILE OBJECTIVE:
+- Enforce branch workflow: develop as the integration branch; all work in feature branches; master protected from direct pushes.
+LINKED UNIT TEST:
+- tests/unit/docs/branching_policy.spec.ts
+COPILOT INSTRUCTIONS FOLLOWED:
+- /docs/COPILOT_GUARDRAILS.md
+- .github/copilot-instructions.md
+EDIT LOG:
+- 2026-01-01T00:00:00Z | actor-id | added branching & push policy
+-->
+
+## BRANCHING & PUSH POLICY
+
+- Always branch off develop for any work:
+  - git checkout develop
+  - git pull origin develop
+  - git checkout -b feat/<short-description>
+- Open a pull request targeting develop for review and CI.
+- Never push directly to develop or master.
+- Protect master and develop with branch protections (require PR review, passing CI, status checks).
+- Merge to master only via an approved release PR/process.
+- If unsure, stop and ask repository admins before pushing.
