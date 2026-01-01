@@ -1,0 +1,61 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: alert-evaluator
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: alert-evaluator
+  template:
+    metadata:
+      labels:
+        app: alert-evaluator
+    spec:
+      containers:
+        - name: evaluator
+          image: "REPLACE_WITH_IMAGE:TAG"
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: NODE_ENV
+              value: "production"
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: evaluator-secrets
+                  key: DATABASE_URL
+            - name: PUSHGATEWAY_URL
+              valueFrom:
+                secretKeyRef:
+                  name: evaluator-secrets
+                  key: PUSHGATEWAY_URL
+          ports:
+            - containerPort: 9188
+              name: metrics
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: metrics
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: metrics
+            initialDelaySeconds: 10
+            periodSeconds: 30
+            failureThreshold: 3
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: alert-evaluator-metrics
+spec:
+  selector:
+    app: alert-evaluator
+  ports:
+    - name: metrics
+      port: 9188
+      targetPort: metrics
+  type: ClusterIP

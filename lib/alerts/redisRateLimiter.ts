@@ -15,7 +15,7 @@ export class RedisRateLimiter implements RateLimiter {
    * @param windowSeconds Window length in seconds.
    */
   constructor(private opts?: { client?: Redis; capacity?: number; windowSeconds?: number }) {
-    this.client = opts?.client ?? new Redis(process.env.REDIS_URL ?? '');
+    this.client = opts?.client ?? (process.env.REDIS_URL ? new Redis(process.env.REDIS_URL) : new Redis());
     this.capacity = opts?.capacity ?? 5;
     this.windowSeconds = opts?.windowSeconds ?? 60;
   }
@@ -31,6 +31,19 @@ export class RedisRateLimiter implements RateLimiter {
       await this.client.expire(rkey, this.windowSeconds);
     }
     return val <= this.capacity;
+  }
+
+  // Close the underlying redis client if we created one
+  async disconnect(): Promise<void> {
+    try {
+      if (this.client && typeof this.client.disconnect === 'function') {
+        this.client.disconnect();
+      } else if (this.client && typeof this.client.quit === 'function') {
+        await this.client.quit();
+      }
+    } catch (e) {
+      // swallow
+    }
   }
 }
 

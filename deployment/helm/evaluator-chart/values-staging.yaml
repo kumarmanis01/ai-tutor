@@ -1,0 +1,87 @@
+# Helm values for staging deployment of the Alert Evaluator
+# Prefer sourcing sensitive values from your local `.env` or `.env.local`.
+#
+# Usage options (choose one):
+# 1) Export env from files and run helm so templates can read them via `env`:
+#    export $(cat .env .env.local 2>/dev/null | sed 's/#.*//g' | xargs) && \
+#    helm upgrade --install evaluator deployment/helm/evaluator-chart -n staging -f deployment/helm/evaluator-chart/values-staging.yaml
+#
+# 2) Use envsubst to substitute placeholders (if you prefer not to export):
+#    envsubst < deployment/helm/evaluator-chart/values-staging.yaml | helm upgrade --install evaluator deployment/helm/evaluator-chart -n staging -f -
+#
+# Notes:
+# - The chart templates prefer process environment variables (from `.env` / `.env.local`) and fall back
+#   to values set in this file. To update runtime values, edit `.env` or `.env.local` and rerun the helm command;
+#   you do not need to edit this file for secret or connection changes.
+# - For CI, ensure the pipeline injects the same environment variables into the helm render step.
+
+# Fill secrets via your cluster secret mechanism (K8s Secret / SealedSecret / ExternalSecrets)
+
+image:
+  repository: ghcr.io/kumarmanis01/ai-tutor-evaluator
+  tag: "ci-${{ GITHUB_SHA }}" # replace with a concrete tag or image digest
+  pullPolicy: IfNotPresent
+
+secrets:
+  # Set to the Kubernetes Secret name that contains sensitive values.
+  # When using the deploy workflow, this will be created/updated as
+  # `evaluator-secrets-staging` automatically. You can override if needed.
+  secretName: evaluator-secrets-staging
+
+replicaCount: 1
+
+service:
+  type: ClusterIP
+  port: 8080
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
+
+env:
+  # Placeholders populated from process env via `envsubst` or by exporting `.env`/`.env.local`.
+  # Example: export $(cat .env .env.local 2>/dev/null | sed 's/#.*//g' | xargs)
+  DATABASE_URL: "${DATABASE_URL}"
+  # REDIS: supports either `REDIS_URL` or Upstash's `UPSTASH_REDIS_REST_URL`.
+  REDIS_URL: "${REDIS_URL}"
+  UPSTASH_REDIS_REST_URL: "${UPSTASH_REDIS_REST_URL}"
+  OPS_EMAIL: "${OPS_EMAIL}"
+  SMTP_HOST: "${SMTP_HOST}"
+  SMTP_PORT: "${SMTP_PORT}"
+  SMTP_USER: "${SMTP_USER}"
+  SMTP_PASS: "${SMTP_PASS}"
+  EVALUATOR_DRY_RUN: "${EVALUATOR_DRY_RUN:-0}"
+  RUN_ONCE: "${RUN_ONCE:-0}"
+  PUSHGATEWAY_URL: "${PUSHGATEWAY_URL}"
+
+livenessProbe:
+  httpGet:
+    path: /health
+    port: 8080
+  initialDelaySeconds: 10
+  periodSeconds: 10
+  timeoutSeconds: 3
+  failureThreshold: 3
+
+readinessProbe:
+  httpGet:
+    path: /ready
+    port: 8080
+  initialDelaySeconds: 5
+  periodSeconds: 10
+  timeoutSeconds: 3
+  failureThreshold: 3
+
+metrics:
+  enabled: false
+  # When you provision Pushgateway and prometheus scraping, enable metrics and set the serviceMonitor
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}

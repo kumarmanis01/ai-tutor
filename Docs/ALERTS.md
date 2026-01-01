@@ -13,6 +13,11 @@ Files
 - `lib/alerts/rateLimiter.ts` — in-memory rate limiter (replace with Redis in prod).
 - `lib/alerts/dedupe.ts` — in-memory deduper (replace with Redis SET + EXPIRE in prod).
 - `lib/alerts/router.ts` — router that applies routing, rate-limiting, dedupe, and dispatch.
+ - `lib/alerts/rateLimiter.ts` — in-memory rate limiter (replace with Redis in prod).
+ - `lib/alerts/dedupe.ts` — in-memory deduper (replace with Redis SET + EXPIRE in prod).
+ - `lib/alerts/redisRateLimiter.ts` — Redis-backed rate limiter implementation (recommended for prod).
+ - `lib/alerts/redisDeduper.ts` — Redis-backed deduper implementation (recommended for prod).
+ - `lib/alerts/router.ts` — router that applies routing, rate-limiting, dedupe, and dispatch.
 
 Usage example
 
@@ -45,5 +50,35 @@ await router.route({ title: 'Test', message: 'Something happened', severity: 'er
 
 Production notes
 - Replace `InMemoryRateLimiter` and `InMemoryDeduper` with Redis-backed implementations for horizontal safety.
+  You can use the provided classes:
+
+  ```ts
+  import { RedisRateLimiter } from '../lib/alerts/redisRateLimiter';
+  import { RedisDeduper } from '../lib/alerts/redisDeduper';
+
+  const rl = new RedisRateLimiter({ capacity: 10, windowSeconds: 60 });
+  const ded = new RedisDeduper({ ttlSeconds: 60 * 10 });
+  ```
+
 - For Slack: use official sign-secret verification for security when receiving events.
 - Add retries/backoff for sinks and circuit-breaker for flaky sinks.
+
+- Important: lazy-initialize Redis clients (the implementations do this by default when `REDIS_URL` is set), and provide a shared `ioredis` instance when possible to avoid connection explosion.
+
+Running the evaluator in dry-run mode
+- Local (requires `DATABASE_URL`):
+
+```powershell
+# Run once, dry-run mode (no external notifications)
+$env:DATABASE_URL = "postgres://user:pass@localhost:5432/testdb"
+$env:RUN_ONCE = "1"
+$env:EVALUATOR_DRY_RUN = "1"
+node build/runAlertEvaluator.js
+
+Deployment and metrics
+- See `docs/evaluator_deploy_snippets.md` for systemd / Procfile / Helm examples.
+- A Next.js route is added at `/api/metrics` to expose Prometheus metrics via `prom-client` (preferred for single-app deployments).
+- Alternatively the evaluator can run a standalone metrics server (`scripts/metricsServer.ts`) and push to a Pushgateway; configure `PUSHGATEWAY_URL` to enable push on graceful shutdown.
+```
+
+- CI: The repository includes an integration test `tests/integration/alert-evaluator-dry-run.test.js` which runs the evaluator in single-run dry-run mode. Ensure your CI job provides `DATABASE_URL`.

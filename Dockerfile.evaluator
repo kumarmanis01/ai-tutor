@@ -1,0 +1,12 @@
+FROM node:20-slim
+WORKDIR /usr/src/app
+
+# copy package manifest first to install runtime deps only
+COPY package.json package-lock.json ./
+RUN npm ci --omit=dev
+
+# copy built bundle (CI will generate it before docker build by default via context)
+COPY build/runAlertEvaluator.js ./build/runAlertEvaluator.js
+
+EXPOSE 9188
+CMD ["node", "build/runAlertEvaluator.js"]
