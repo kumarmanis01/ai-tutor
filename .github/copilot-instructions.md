@@ -640,7 +640,7 @@ Builds must pass lint, type-check, and unit tests (with coverage). All PRs must 
 Add the following examples to the repo to implement these rules.
 
 1. package.json scripts (add / adapt)
-   /\*\*
+  /**
 
 - FILE OBJECTIVE:
 - - Canonical AI Content Engine guardrails referenced by Copilot and CI.
@@ -654,7 +654,65 @@ Add the following examples to the repo to implement these rules.
 -
 - EDIT LOG:
 - - 2026-01-01T00:00:00Z | architect | created
-    \*/
+   */
+
+### Handling Merge Conflicts in PRs
+
+When a PR cannot be merged because of branch conflicts, follow these recommended, PowerShell-safe steps to resolve them locally and keep history clean.
+
+- **Preferred:** Rebase your feature branch onto `develop` and force-push the resolved branch.
+- **Alternative:** Create a merge commit from `develop` into your branch if you must preserve merge history.
+
+PowerShell-safe rebase & push (example):
+
+```powershell
+# Fetch latest from origin
+git fetch origin develop
+
+# Checkout your feature branch
+git checkout feat/my-feature
+
+# Rebase onto develop
+git rebase origin/develop
+
+# If there are conflicts, resolve them in your editor, then:
+git add <resolved-files>
+git rebase --continue
+
+# When rebase completes, run tests locally
+npm run test
+
+# Force-push the rebased branch (PowerShell safe)
+git push origin HEAD:ci/node20-upgrade --force-with-lease
+```
+
+PowerShell-safe merge & push (example):
+
+```powershell
+# Fetch and merge develop into your branch
+git fetch origin develop
+git checkout feat/my-feature
+git merge origin/develop
+
+# Resolve conflicts, then
+git add <resolved-files>
+git commit -m "fix: resolve merge conflicts with develop"
+
+# Run tests locally
+npm run test
+
+# Push the merge commit
+git push origin HEAD:ci/node20-upgrade
+```
+
+Guidance:
+
+- Always run `npm run lint` and `npm run type-check` after resolving conflicts.
+- Use `--force-with-lease` when pushing rebased branches to avoid overwriting others' work.
+- Prefer small, focused rebases to keep PRs easy to review.
+- If the branch is protected or reviewers prefer, open a new PR with the resolved branch and close the old one.
+
+Follow the repository's branch protection rules and CI status checks before merging.
 
 # AI Content Engine – Copilot Guardrails
 
@@ -672,6 +730,10 @@ EDIT LOG:
 - 2026-01-01T00:00:00Z | actor-id | added branching & push policy
 -->
 
+## CI & PR Guidance
+
+This section groups branch, push, and PR conflict guidance together for maintainers and contributors.
+
 ## BRANCHING & PUSH POLICY
 
 - Always branch off develop for a NEW FEATURE work:
@@ -683,7 +745,7 @@ EDIT LOG:
 - Protect master and develop with branch protections (require PR review, passing CI, status checks).
 - Merge to master only via an approved release PR/process.
 - If unsure, stop and ask repository admins before pushing.
- - If unsure, stop and ask repository admins before pushing.
+- If unsure, stop and ask repository admins before pushing.
 
 ## PowerShell Compatibility (CI-friendly commands)
 
