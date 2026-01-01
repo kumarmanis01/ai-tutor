@@ -4,19 +4,19 @@ import { PrismaAdapter } from '@next-auth/prisma-adapter'; // Connects NextAuth 
 import GoogleProvider from 'next-auth/providers/google'; // Enables Google login/signup
 import EmailProvider from 'next-auth/providers/email'; // Enables email login/signup
 import CredentialsProvider from 'next-auth/providers/credentials'; // Enables login with email & password
-import type { NextAuthOptions } from 'next-auth';
 import { prisma } from '@/lib/prisma'; // Your Prisma database client
-import bcrypt from 'bcrypt'; // For password hashing
+import bcrypt from 'bcryptjs'; // For password hashing (pure JS build for Vercel)
 import { getEmailTransporter } from '@/lib/mailer';
 import { logger } from '@/lib/logger';
 import { LanguageCode } from '@prisma/client';
-import { getServerSession } from "next-auth";
+import { getServerSession } from 'next-auth/next';
+import type { AppSession } from '@/lib/types/auth';
 
 export async function requireAdmin() {
-  const session = await getServerSession(authOptions);
+  const session = (await getServerSession(authOptions)) as AppSession | null;
 
-  if (!session || session.user.role !== "admin") {
-    throw new Error("Unauthorized");
+  if (!session || session.user?.role !== 'admin') {
+    throw new Error('Unauthorized');
   }
 
   return session;
@@ -24,7 +24,7 @@ export async function requireAdmin() {
 
 // Require admin or moderator role (defense-in-depth for admin APIs)
 export async function requireAdminOrModerator() {
-  const session = await getServerSession(authOptions);
+  const session = (await getServerSession(authOptions)) as AppSession | null;
   const role = session?.user?.role ?? '';
   if (!session || !session.user || !['admin', 'moderator'].includes(role)) {
     throw new Error('Unauthorized');
@@ -94,7 +94,7 @@ async function maybeSendWelcomeEmail(email: string, name?: string) {
 }
 
 // Main NextAuth configuration object
-export const authOptions: NextAuthOptions = {
+export const authOptions: any = {
   adapter: PrismaAdapter(prisma), // Connects NextAuth to your database
   providers: [
     // Enable Google login/signup
@@ -129,7 +129,7 @@ export const authOptions: NextAuthOptions = {
         password: { label: 'Password', type: 'password' },
       },
       // This function checks if the user's credentials are correct
-      async authorize(credentials) {
+      async authorize(credentials: any) {
         if (!credentials?.email || !credentials?.password) return null;
         // Find the user in the database
         const user = await prisma.user.findUnique({ where: { email: credentials.email } });
@@ -203,7 +203,7 @@ export const authOptions: NextAuthOptions = {
   session: { strategy: 'jwt' }, // Use JWT for session management
   callbacks: {
     // This runs when a user signs in (login or signup)
-    async signIn({ user, account, profile }) {
+    async signIn({ user, account, profile }: any) {
       try {
         // Ensure a DB user record exists (create if missing). Use email as unique key.
         if (user?.email) {
@@ -272,7 +272,7 @@ export const authOptions: NextAuthOptions = {
       return true;
     },
     // This shapes the JWT token with user info
-    async jwt({ token, user }) {
+    async jwt({ token, user }: any) {
       // On sign-in, set role from user object
       if (user) {
         token.id = user.id;
@@ -290,7 +290,7 @@ export const authOptions: NextAuthOptions = {
       return token;
     },
     // This shapes the session object sent to the client
-    async session({ session, token }) {
+    async session({ session, token }: any) {
       if (session.user) {
         // Keep session.user minimal (SessionUser). Full profile is fetched via `/api/user/profile`.
         session.user.id = token.id as string;

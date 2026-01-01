@@ -1,12 +1,13 @@
 import { SinkWrapper } from '../../lib/alerts/sinkWrapper';
-import type { AlertSink, AlertPayload } from '../../lib/alerts/types';
+import type { AlertSink, AlertPayload, SinkResult } from '../../lib/alerts/types';
 
 class FlakySink implements AlertSink {
   name = 'flaky';
   calls = 0;
   failTimes: number;
   constructor(failTimes = 2) { this.failTimes = failTimes; }
-  async send(a: AlertPayload) {
+  async send(_a: AlertPayload) {
+    void _a;
     this.calls += 1;
     if (this.calls <= this.failTimes) {
       throw new Error('network');

@@ -16,6 +16,12 @@ This document describes key developer workflows for working with the Spinzy Acad
 ## 3. Database Migrations
 
 - Apply migrations: `npx prisma migrate dev`
+  
+### CI / Production
+
+- In CI and production, run committed migrations with `npx prisma migrate deploy`.
+- Do NOT use `npx prisma migrate dev` in CI or production; `migrate dev` is for local development only.
+- CI workflows should run `npx prisma generate` then `npx prisma migrate deploy` before running tests or builds so the DB schema matches the repository migrations.
 
 ## 4. Adding Features
 

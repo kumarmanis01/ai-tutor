@@ -1,0 +1,21 @@
+image:
+  tag: "{{ .Values.image.tag | default "stable" }}"
+
+replicaCount: 3
+
+resources:
+  requests:
+    cpu: 250m
+    memory: 512Mi
+  limits:
+    cpu: 1000m
+    memory: 1024Mi
+
+postgres:
+  externalUrl: "${POSTGRES_URL}"
+
+redis:
+  externalUrl: "${REDIS_URL}"
+
+metrics:
+  pushgatewayUrl: "https://pushgateway.prod.example"

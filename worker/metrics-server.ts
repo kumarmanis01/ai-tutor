@@ -10,6 +10,8 @@ const register = client.register
 // Basic metrics
 const jobsSpawned = new client.Counter({ name: 'orchestrator_jobs_spawned_total', help: 'Total worker jobs spawned' })
 const workersRunning = new client.Gauge({ name: 'orchestrator_workers_running', help: 'Currently running workers' })
+// Counter for analytics job runs. Labels: status=SUCCESS|FAILED|SKIPPED
+const analyticsJobRuns = new client.Counter({ name: 'analytics_job_runs_total', help: 'Total analytics job runs', labelNames: ['status'] as const })
 
 export async function startMetricsServer(port = Number(process.env.ORCHESTRATOR_METRICS_PORT || 9090)) {
   const app = express()
@@ -45,3 +47,11 @@ export async function startMetricsServer(port = Number(process.env.ORCHESTRATOR_
 }
 
 export function incJobsSpawned() { jobsSpawned.inc() }
+export function incAnalyticsJobRun(status: 'SUCCESS' | 'FAILED' | 'SKIPPED') {
+  try {
+    analyticsJobRuns.labels(status).inc()
+  } catch (e) {
+    // metrics are best-effort; do not throw
+    console.warn('[metrics] failed to increment analyticsJobRuns', e)
+  }
+}

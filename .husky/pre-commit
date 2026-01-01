@@ -12,4 +12,9 @@ npx --no-install lint-staged || {
   echo "lint-staged failed" && exit 1
 }
 
+echo "Running unit tests..."
+npm run test:unit || {
+  echo "unit tests failed" && exit 1
+}
+
 echo "Pre-commit checks passed"

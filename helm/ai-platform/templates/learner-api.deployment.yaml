@@ -1,0 +1,48 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "ai-platform.fullname" . }}-learner-api
+  labels:
+    app: {{ include "ai-platform.name" . }}
+    chart: {{ .Chart.Name }}-{{ .Chart.Version }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app: {{ include "ai-platform.name" . }}
+      component: learner-api
+  template:
+    metadata:
+      labels:
+        app: {{ include "ai-platform.name" . }}
+        component: learner-api
+    spec:
+      serviceAccountName: {{ include "ai-platform.fullname" . }}-sa
+      containers:
+        - name: learner-api
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - containerPort: {{ .Values.service.port }}
+          env:
+            - name: NODE_ENV
+              value: "{{ .Values.env.NODE_ENV }}"
+            - name: TENANT_MODE
+              value: "{{ .Values.env.TENANT_MODE }}"
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.secrets.secretName }}
+                  key: DATABASE_URL
+            - name: REDIS_URL
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.secrets.secretName }}
+                  key: REDIS_URL
+          resources:
+            requests:
+              cpu: {{ .Values.resources.requests.cpu }}
+              memory: {{ .Values.resources.requests.memory }}
+            limits:
+              cpu: {{ .Values.resources.limits.cpu }}
+              memory: {{ .Values.resources.limits.memory }}
