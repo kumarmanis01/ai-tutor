@@ -15,7 +15,7 @@ export async function pushMetricsOnce(): Promise<void> {
         res();
       });
     });
-  } catch (e) {
+  } catch {
     // swallow — pushgateway is optional
   }
 }

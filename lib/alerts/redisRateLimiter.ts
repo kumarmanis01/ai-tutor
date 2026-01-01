@@ -41,7 +41,7 @@ export class RedisRateLimiter implements RateLimiter {
       } else if (this.client && typeof this.client.quit === 'function') {
         await this.client.quit();
       }
-    } catch (e) {
+    } catch {
       // swallow
     }
   }
