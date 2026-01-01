@@ -10,6 +10,10 @@ export class RedisDeduper implements Deduper {
   private client: Redis;
   constructor(private opts?: { client?: Redis; ttlSeconds?: number }) {
     this.client = opts?.client ?? (process.env.REDIS_URL ? new Redis(process.env.REDIS_URL) : new Redis());
+    if (this.client && typeof this.client.on === 'function') {
+      // swallow network errors when Redis is not available in dev/dry-run
+      this.client.on('error', () => { });
+    }
     this.ttlSeconds = opts?.ttlSeconds ?? 60 * 10;
   }
 

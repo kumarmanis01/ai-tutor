@@ -105,7 +105,7 @@ async function main() {
   // Dynamically import evaluator to avoid ESM resolution issues when running
   // under different Node/ts-node invocation modes (register vs ESM loader).
   try {
-    const mod = await import('../lib/alertEvaluator');
+    const mod = await import('../lib/alertEvaluator.js');
     evaluateAlerts = mod && (mod.default || mod.evaluateAlerts) ? (mod.default || mod.evaluateAlerts) : mod;
   } catch (e) {
     console.error('Failed to import alertEvaluator dynamically', String(e));
@@ -116,17 +116,17 @@ async function main() {
   // different node/ts-node loader modes without ESM resolution failures.
   try {
     const [mRouter, mDry, mSlack, mWebhook, mEmail, mInMemRL, mInMemDed, mRedisRL, mRedisDed, mSinkWrap, mMailer] = await Promise.all([
-      import('../lib/alerts/router'),
-      import('../lib/alerts/sinks/dryRun'),
-      import('../lib/alerts/sinks/slack'),
-      import('../lib/alerts/sinks/webhook'),
-      import('../lib/alerts/sinks/email'),
-      import('../lib/alerts/rateLimiter'),
-      import('../lib/alerts/dedupe'),
-      import('../lib/alerts/redisRateLimiter'),
-      import('../lib/alerts/redisDeduper'),
-      import('../lib/alerts/sinkWrapper'),
-      import('../lib/mailer'),
+      import('../lib/alerts/router.js'),
+      import('../lib/alerts/sinks/dryRun.js'),
+      import('../lib/alerts/sinks/slack.js'),
+      import('../lib/alerts/sinks/webhook.js'),
+      import('../lib/alerts/sinks/email.js'),
+      import('../lib/alerts/rateLimiter.js'),
+      import('../lib/alerts/dedupe.js'),
+      import('../lib/alerts/redisRateLimiter.js'),
+      import('../lib/alerts/redisDeduper.js'),
+      import('../lib/alerts/sinkWrapper.js'),
+      import('../lib/mailer.js'),
     ]);
 
     AlertRouter = (mRouter as any).AlertRouter ?? (mRouter as any).default ?? (mRouter as any);

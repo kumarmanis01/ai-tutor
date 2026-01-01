@@ -13,7 +13,7 @@ function walk(dir, cb){
   }
 }
 
-const importRe = /(from\s+|import\()(['"])(\.\.\/(?:src|lib|worker|workers|hydra)[^'"\)]+)(['"])/g
+const importRe = /(from\s+|import\()(['"])(\.\.?\/[^'"\)]+)(['"])/g
 
 let patched = 0
 walk(ROOT, (file) => {
