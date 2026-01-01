@@ -674,7 +674,7 @@ EDIT LOG:
 
 ## BRANCHING & PUSH POLICY
 
-- Always branch off develop for any work:
+- Always branch off develop for a NEW FEATURE work:
   - git checkout develop
   - git pull origin develop
   - git checkout -b feat/<short-description>
@@ -683,3 +683,12 @@ EDIT LOG:
 - Protect master and develop with branch protections (require PR review, passing CI, status checks).
 - Merge to master only via an approved release PR/process.
 - If unsure, stop and ask repository admins before pushing.
+
+<!--
+INSERTION CHOICE:
+- full-doc: Replace with the complete /docs/COPILOT_GUARDRAILS.md content (Markdown).
+- ts-header: Replace with a TypeScript file header/template to satisfy file-header/unit-test requirements.
+
+To proceed, reply with one line: INSERT: full-doc
+or INSERT: ts-header
+-->
