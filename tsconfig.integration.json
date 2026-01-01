@@ -1,0 +1,24 @@
+{
+  "compilerOptions": {
+    "target": "es2023",
+    "module": "nodenext",
+    "outDir": "dist-integration",
+    "rootDir": ".",
+    "moduleResolution": "nodenext",
+    "esModuleInterop": true,
+    "resolveJsonModule": true,
+    "allowJs": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "strict": false,
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./src/*", "./*"]
+    }
+  },
+  "include": [
+    "lib/alertEvaluator.ts",
+    "tests/integration/alert-evaluator.test.ts"
+  ],
+  "exclude": ["node_modules", "dist", "dist-integration"]
+}
