@@ -121,7 +121,7 @@
     "@eslint/eslintrc": "^3",
     "@netlify/plugin-nextjs": "^5.11.1",
     "@tailwindcss/postcss": "^4",
-    "@types/bcrypt": "^6.0.0",
+    "@types/bcryptjs": "^2.4.2",
     "@types/jest": "^29.5.2",
     "@types/node": "^20",
     "@types/react": "18.2.45",
