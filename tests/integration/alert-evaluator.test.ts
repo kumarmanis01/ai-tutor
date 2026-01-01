@@ -1,6 +1,6 @@
 ﻿/* eslint-disable */
 import { PrismaClient } from '@prisma/client';
-import evaluateAlerts from '../../lib/alertEvaluator';
+import evaluateAlerts from '../../lib/alertEvaluator.ts';
 
 (async function main() {
   if (!process.env.DATABASE_URL) {
