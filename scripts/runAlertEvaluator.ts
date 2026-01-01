@@ -13,7 +13,6 @@ let SinkWrapper: any;
 let sendEmail: any;
 
 const prisma = new PrismaClient();
-import http from 'http';
 
 const LOCK_KEY = Number(process.env.EVALUATOR_PG_LOCK_KEY || '987654321');
 const INTERVAL_SEC = Number(process.env.EVALUATOR_INTERVAL_SEC || '60');
@@ -181,8 +180,8 @@ async function main() {
     const router = new AlertRouter({ sinks, rateLimiter, deduper });
     (global as any).alertRouter = router;
     console.log(JSON.stringify({ event: 'alert_router_initialized', sinks: sinks.map((s: any) => s.name), dryRun: DRY_RUN }));
-  } catch (e) {
-    console.error('alert-router-init-failed', String(e));
+  } catch {
+    console.error('alert-router-init-failed');
   }
 
   async function singleRun() {
@@ -250,7 +249,7 @@ async function main() {
       console.log(JSON.stringify({ event: 'metrics_snapshot', metrics: m }));
       const { pushMetricsOnce } = await import('../lib/alerts/pushgateway');
       if (typeof pushMetricsOnce === 'function') await pushMetricsOnce();
-    } catch (e) {
+    } catch {
       // ignore
     }
 
@@ -267,7 +266,7 @@ async function main() {
           await dd.disconnect().catch(() => {});
         }
       }
-    } catch (e) {
+    } catch {
       // ignore
     }
 

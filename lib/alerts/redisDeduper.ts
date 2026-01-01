@@ -34,7 +34,7 @@ export class RedisDeduper implements Deduper {
       } else if (this.client && typeof this.client.quit === 'function') {
         await this.client.quit();
       }
-    } catch (e) {
+    } catch {
       // swallow
     }
   }
