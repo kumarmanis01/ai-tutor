@@ -55,7 +55,7 @@
     "test": "npm run lint && npm run type-check",
     "health-check": "node scripts/health-check.js",
     "test:integration": "node tests/integration/audit-log.test.js",
-    "test:integration:evaluator": "node --loader ts-node/esm tests/integration/alert-evaluator.test.ts",
+    "test:integration:evaluator": "node --trace-warnings --trace-deprecation --loader ts-node/esm tests/integration/alert-evaluator.test.ts",
     "test:unit": "jest --runInBand",
     "orchestrator:start": "ts-node -r tsconfig-paths/register worker/orchestrator.ts",
     "seed-db-ai-content-infra": "node -r ts-node/register scripts/seed-database.ts",
