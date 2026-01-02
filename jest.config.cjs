@@ -4,7 +4,7 @@ module.exports = {
   testEnvironment: 'node',
   // run only unit tests by default; integration tests are excluded
   testMatch: ['**/tests/**/*.test.ts'],
-  testPathIgnorePatterns: ['/tests/integration/'],
+  testPathIgnorePatterns: ['/tests/integration/', '\\.*\\.d\\.ts\\.test\\.ts$'],
   moduleFileExtensions: ['ts', 'js', 'json', 'node'],
   moduleNameMapper: {
     // map @/lib/... to the repo root lib/ folder, and everything else to src/
@@ -12,7 +12,7 @@ module.exports = {
     '^@/(producers/.*)$': '<rootDir>/$1',
     '^@/(queues/.*)$': '<rootDir>/$1',
     '^@/(workers/.*)$': '<rootDir>/$1',
-    '^@/(.*)$': '<rootDir>/src/$1'
+    '^@/(.*)$': '<rootDir>/$1'
   },
   moduleDirectories: ['node_modules', '<rootDir>'],
   globals: {
