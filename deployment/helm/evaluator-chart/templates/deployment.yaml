@@ -71,7 +71,7 @@ spec:
             - name: PUSHGATEWAY_URL
               value: {{ default .Values.env.PUSHGATEWAY_URL (env "PUSHGATEWAY_URL") | quote }}
             - name: REDIS_URL
-              value: {{ coalesce (env "REDIS_URL") (env "UPSTASH_REDIS_REST_URL") .Values.env.REDIS_URL | quote }}
+                value: {{ default .Values.env.REDIS_URL "" | quote }}
             - name: OPS_EMAIL
               value: {{ default .Values.env.OPS_EMAIL (env "OPS_EMAIL") | quote }}
             - name: SMTP_HOST
@@ -82,6 +82,8 @@ spec:
               value: {{ default .Values.env.SMTP_USER (env "SMTP_USER") | quote }}
             - name: SMTP_PASS
               value: {{ default .Values.env.SMTP_PASS (env "SMTP_PASS") | quote }}
+              - name: SMTP_FROM
+                value: {{ default .Values.env.SMTP_FROM "" | quote }}
 {{- end }}
           ports:
             - containerPort: {{ .Values.service.port }}
