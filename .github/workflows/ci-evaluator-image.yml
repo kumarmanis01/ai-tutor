@@ -46,6 +46,7 @@ jobs:
       - name: Build and push Docker image
         uses: docker/build-push-action@v4
         with:
+          context: .
           push: true
           tags: ghcr.io/${{ github.repository_owner }}/ai-tutor-evaluator:${{ github.sha }}
           file: Dockerfile.evaluator
