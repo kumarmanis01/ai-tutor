@@ -12,7 +12,8 @@ module.exports = {
     '^@/(producers/.*)$': '<rootDir>/$1',
     '^@/(queues/.*)$': '<rootDir>/$1',
     '^@/(workers/.*)$': '<rootDir>/$1',
-    '^@/(.*)$': '<rootDir>/$1'
+    // default: map `@/whatever` -> `src/whatever` to match source layout
+    '^@/(.*)$': '<rootDir>/src/$1'
   },
   moduleDirectories: ['node_modules', '<rootDir>'],
   globals: {

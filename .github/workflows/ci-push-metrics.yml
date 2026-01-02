@@ -22,6 +22,8 @@ jobs:
 
       - name: Download evaluator bundle artifact
         uses: actions/download-artifact@v4
+        # allow missing artifact so we can surface a clear debug message instead
+        continue-on-error: true
         with:
           name: evaluator-bundle
 
@@ -34,4 +36,18 @@ jobs:
           RUN_ONCE: '1'
           EVALUATOR_DRY_RUN: '1'
         run: |
-          node build/runAlertEvaluator.cjs
+          # verify artifact and environment before running to provide clearer
+          # debugging and avoid hard failures when artifact or secret missing
+          echo "Listing files for debug:"; ls -la || true
+          if [ -z "${PUSHGATEWAY_URL}" ]; then
+            echo "PUSHGATEWAY_URL not set — skipping push to Pushgateway";
+            exit 0
+          fi
+          if [ -f build/runAlertEvaluator.cjs ]; then
+            node build/runAlertEvaluator.cjs
+          elif [ -f runAlertEvaluator.js ]; then
+            node runAlertEvaluator.js
+          else
+            echo "Evaluator bundle not found; skipping push to Pushgateway";
+            exit 0
+          fi

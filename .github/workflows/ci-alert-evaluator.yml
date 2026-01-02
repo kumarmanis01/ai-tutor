@@ -71,15 +71,26 @@ jobs:
 
       - name: Wait for Postgres
         run: |
+          set -eux
           sudo apt-get update && sudo apt-get install -y postgresql-client
           # Use the Actions-provided mapped port and localhost so the runner can reach the service
           PORT=${{ job.services.postgres.ports[5432] }}
           echo "Using mapped Postgres port: $PORT"
           # Export DATABASE_URL for later steps via GITHUB_ENV (safe at runtime)
           echo "DATABASE_URL=postgres://postgres:postgres@127.0.0.1:$PORT/ai_tutor_test" >> $GITHUB_ENV
-          until pg_isready -h 127.0.0.1 -p $PORT -U postgres; do
-            echo "Waiting for Postgres on 127.0.0.1:$PORT..."; sleep 1;
+          # Give Postgres a bit longer to become available in CI runners
+          echo "Waiting for Postgres to become ready..."
+          n=0
+          until pg_isready -h 127.0.0.1 -p $PORT -U postgres || [ $n -ge 60 ]; do
+            echo "Waiting for Postgres on 127.0.0.1:$PORT... (attempt $n)"; sleep 1; n=$((n+1));
           done
+          if ! pg_isready -h 127.0.0.1 -p $PORT -U postgres; then
+            echo "Postgres did not become ready in time; printing diagnostics:";
+            ss -lntp || true
+            docker ps -a || true
+            exit 1
+          fi
+          echo "Postgres ready."
 
       - name: Generate Prisma client
         run: npx prisma generate
@@ -97,9 +108,9 @@ jobs:
         env:
           DATABASE_URL: ${{ env.DATABASE_URL }}
         run: |
+          set -eux
           echo "Applying migrations against $DATABASE_URL"
           # Run committed migrations in CI. We no longer fall back to `prisma db push`.
-          # If migrations are missing or fail, CI will fail and reviewers can inspect.
           npx prisma migrate deploy
 
       - name: Run evaluator integration tests
