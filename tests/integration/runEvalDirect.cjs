@@ -1,5 +1,5 @@
 ﻿// allow legacy requires in this small helper
-// eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-var-requires
+// eslint-disable-next-line @typescript-eslint/no-require-imports
 require('ts-node/register/transpile-only');
 
 (async () => {
