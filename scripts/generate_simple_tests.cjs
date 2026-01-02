@@ -51,7 +51,6 @@ for (const file of files) {
   if (!fs.existsSync(testDir)) fs.mkdirSync(testDir, { recursive: true });
 
   // strip .ts extension for module resolution in Jest/ts-jest
-  const importPath = '../../' + relPath.replace(/\.ts$/, '');
   const absPath = path.resolve(ROOT, relPath);
   const testContent = `import fs from 'fs';
 
@@ -65,7 +64,7 @@ describe('exists ${relPath}', () => {
 
   try {
     fs.writeFileSync(testPath, testContent, { flag: 'wx' });
-  } catch (e) {
+  } catch {
     // overwrite if exists
     fs.writeFileSync(testPath, testContent);
   }

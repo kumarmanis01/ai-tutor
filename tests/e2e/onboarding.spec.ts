@@ -1,8 +1,7 @@
 let playwrightAvailable = true;
 try {
-  // eslint-disable-next-line @typescript-eslint/no-require-imports,global-require
   require.resolve('@playwright/test');
-} catch (e) {
+} catch {
   playwrightAvailable = false;
 }
 
@@ -12,11 +11,11 @@ if (!playwrightAvailable) {
   // suite as intentionally skipped instead of failing due to zero tests.
   // eslint-disable-next-line no-console
   console.warn('Skipping E2E onboarding.spec.ts: @playwright/test not installed');
-  // eslint-disable-next-line no-undef
+   
   test.skip('skipped E2E onboarding: @playwright/test not installed', () => {});
 } else {
   // Import lazily so the file can be parsed when Playwright is absent.
-  // eslint-disable-next-line @typescript-eslint/no-var-requires,global-require
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
   const { test, expect } = require('@playwright/test');
 
   // Basic e2e check: open/close onboarding modal via Profile page trigger

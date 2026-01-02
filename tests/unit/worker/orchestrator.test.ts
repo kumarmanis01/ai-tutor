@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-require-imports */
 import { jest } from '@jest/globals'
 
 jest.mock('fs', () => ({ writeFileSync: jest.fn(), mkdirSync: jest.fn() }))

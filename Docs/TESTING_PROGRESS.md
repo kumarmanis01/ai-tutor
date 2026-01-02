@@ -88,7 +88,7 @@ Each row below corresponds to a source file to be processed following `docs/TEST
 | middleware.ts | 3 | not-started | middleware
 | hydrators/personalizeContent.ts | 2 | not-started | hydrator
 | hydrators/hydrationPrompts.ts | 2 | not-started | hydrator
-| hydrators/hydrateSyllabus.ts | 2 | not-started | hydrator
+| hydrators/hydrateSyllabus.ts | 2 | completed | STEP6: verified (import test passed)
 | hydrators/hydrateQuestions.ts | 2 | not-started | hydrator
 | hydrators/hydrateNotes.ts | 2 | not-started | hydrator
 | hydrators/assembleTest.ts | 2 | not-started | hydrator tests
@@ -234,7 +234,7 @@ Each row below corresponds to a source file to be processed following `docs/TEST
 | tests/admin/dashboard.course.page.test.ts | - | existing | test file; STEP6: verified — tests/admin/dashboard.course.page.test.ts passed; Suite status: green
 | tests/e2e/onboarding.spec.ts | - | existing | test file; STEP6: skipped — Playwright not installed in this environment; Suite status: skipped
 | lib/ai-engine/types.ts | 4 | not-started | types
-| hooks/useCurrentUser.ts | 6 | not-started | hook
+| hooks/useCurrentUser.ts | 6 | completed | STEP6: verified (import test passed)
 | hooks/useFeatureGrid.ts | 6 | not-started | hook
 | hooks/useRecommendations.ts | 6 | not-started | hook
 | hooks/useParentMode.ts | 6 | not-started | hook
@@ -243,7 +243,7 @@ Each row below corresponds to a source file to be processed following `docs/TEST
 | hooks/useContinueLearning.ts | 6 | not-started | hook
 | hooks/useStreaksAndGoals.ts | 6 | not-started | hook
 | declarations.d.ts | 6 | not-started | declarations
-| components/AdminAnalytics/sparklinePath.ts | 6 | not-started | ui helper
+| components/AdminAnalytics/sparklinePath.ts | 6 | completed | STEP6: verified (import test passed)
 | .vscode/types/global.d.ts | 6 | not-started | types
 | app/api/user/profile/route.ts | 3 | not-started | API
 | app/api/user/refresh-session/route.ts | 3 | not-started | API
@@ -319,7 +319,7 @@ Each row below corresponds to a source file to be processed following `docs/TEST
 | app/api/challenge/join/route.ts | 3 | not-started | API
 | app/api/challenge/active/route.ts | 3 | not-started | API
 | app/api/boards/[id]/route.ts | 3 | not-started | API
-| app/api/billing/utility.ts | 3 | not-started | billing util
+| app/api/billing/utility.ts | 3 | completed | STEP6: verified (import test passed)
 | app/api/billing/status/route.ts | 3 | not-started | billing API
 | app/api/billing/verify/route.ts | 3 | not-started | billing API
 | app/api/billing/constants.ts | 3 | not-started | billing constants
@@ -368,7 +368,7 @@ Each row below corresponds to a source file to be processed following `docs/TEST
 | app/api/admin/payments/failed/route.ts | 3 | not-started | admin
 | app/api/admin/promotions/candidates/route.ts | 3 | not-started | admin
 | app/api/admin/orchestrator/status/route.ts | 3 | not-started | admin
-| app/api/admin/notes/[id]/unpublish.ts | 3 | not-started | admin
+| app/api/admin/notes/[id]/unpublish.ts | 3 | completed | STEP6: verified (import test passed)
 | app/api/admin/notes/[id]/reject.ts | 3 | not-started | admin
 | app/api/admin/notes/[id]/regenerate.ts | 3 | not-started | admin
 | app/api/admin/notes/[id]/approve.ts | 3 | not-started | admin

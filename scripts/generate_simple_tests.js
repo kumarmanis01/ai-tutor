@@ -62,7 +62,7 @@ describe('auto-load ${relPath}', () => {
 
   try {
     fs.writeFileSync(testPath, testContent, { flag: 'wx' });
-  } catch (e) {
+  } catch {
     // overwrite if exists
     fs.writeFileSync(testPath, testContent);
   }

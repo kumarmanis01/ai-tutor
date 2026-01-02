@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-require-imports */
 describe('import app/api/admin/notes/[id]/regenerate.ts', () => {
   it('imports without throwing', () => {
     const path = require('path')
