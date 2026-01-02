@@ -50,53 +50,53 @@ Each row below corresponds to a source file to be processed following `docs/TEST
 | worker/bootstrap.ts | 2 | completed | worker bootstrap — STEP1: bootstrap sequence; STEP2: test cases: env validation, init order; STEP3-6: pending implement/test
 | utils/logApiUsage.ts | 1 | completed | api usage logger — STEP1: records API usage; STEP2: test cases: rate, payload; STEP3-6: pending implement/test
 | workers/analyticsAggregator.ts | 2 | completed | worker — STEP1: aggregates analytics; STEP2: test cases: aggregation correctness, edge buckets; STEP3: tests exist (tests/workers/analyticsAggregator.test.ts); STEP5: integrated into broader coverage; STEP6: verified — tests/workers/analyticsAggregator.test.ts passed; Suite status: green
-| types/shims-sanscript.d.ts | 6 | not-started | type shims (skip if appropriate)
-| types/shims-rehype-sanitize.d.ts | 6 | not-started | type shims
-| types/shims-react-markdown.d.ts | 6 | not-started | type shims
+| types/shims-sanscript.d.ts | 6 | in-progress | type shims (skip if appropriate) AUTOGEN-STUB 
+| types/shims-rehype-sanitize.d.ts | 6 | in-progress | type shims AUTOGEN-STUB 
+| types/shims-react-markdown.d.ts | 6 | in-progress | type shims AUTOGEN-STUB 
 | types/rooms.ts | 4 | completed | types — STEP1: type definitions; STEP2: no runtime tests required (type-only); STEP3-6: excluded (type-only)
 | types/prisma-shim.d.ts | 4 | completed | types — STEP1: type shim; STEP2: excluded (type-only)
 | types/next-shims.d.ts | 6 | completed | types — STEP1: type shim; STEP2: excluded (type-only)
-| types/custom-modules.d.ts | 6 | not-started | types
-| types/accept-language-parser.d.ts | 6 | not-started | types
+| types/custom-modules.d.ts | 6 | in-progress | types AUTOGEN-STUB 
+| types/accept-language-parser.d.ts | 6 | in-progress | types AUTOGEN-STUB 
 | scripts/drop_topics.ts | 3 | completed | scripts — STEP1: DB script; STEP2: test cases: idempotent behavior, safety checks; STEP3-6: pending implement/test
-| regeneration/executor.ts | 2 | not-started | regeneration
+| regeneration/executor.ts | 2 | in-progress | regeneration AUTOGEN-STUB 
 | src/jobs/regenerationJobRunner.ts | 2 | completed | job runner — STEP1: runs regeneration jobs; STEP2: test cases: run, error handling, metrics; STEP3-6: pending implement/test
 | src/jobs/jobLock.ts | 1 | completed | lock — STEP1: job locking; STEP2: test cases: locking/unlocking, collision; STEP3-6: pending implement/test
 | src/jobs/analyticsJobs.ts | 1 | completed | jobs — STEP1: analytics job definitions; STEP2: test cases: enqueue/dequeue correctness; STEP3-6: pending implement/test
 | src/regeneration/targetMap.ts | 2 | completed | regeneration — STEP1: mapping targets; STEP2: test cases: mapping correctness; STEP3-6: pending implement/test
 | src/regeneration/generatorAdapter.ts | 2 | completed | regeneration — STEP1: adapter interface; STEP2: test cases: adapter contract, error handling; STEP3-6: pending implement/test
 | scripts/seed-ai-content.ts | 3 | completed | scripts — STEP1: seed script; STEP2: test cases: idempotency, validation; STEP3-6: pending implement/test
-| scripts/sampleTelemetry.ts | 3 | not-started | scripts
-| scripts/sampleTelemetry.tmp.ts | 3 | not-started | scripts (temp)
-| scripts/sampleSystemHealth.ts | 3 | not-started | scripts
-| scripts/runRegenerationJobOneOff.ts | 3 | not-started | scripts
-| scripts/runAlertEvaluator.ts | 3 | not-started | scripts
-| scripts/metricsServer.ts | 3 | not-started | scripts
-| scripts/mark-admin.ts | 3 | not-started | scripts
-| scripts/hydrateAll.ts | 3 | not-started | scripts
-| scripts/clear-auth-tables.ts | 3 | not-started | scripts
-| scripts/runWatchdogs.ts | 3 | not-started | scripts
+| scripts/sampleTelemetry.ts | 3 | in-progress | scripts AUTOGEN-STUB 
+| scripts/sampleTelemetry.tmp.ts | 3 | in-progress | scripts (temp) AUTOGEN-STUB 
+| scripts/sampleSystemHealth.ts | 3 | in-progress | scripts AUTOGEN-STUB 
+| scripts/runRegenerationJobOneOff.ts | 3 | in-progress | scripts AUTOGEN-STUB 
+| scripts/runAlertEvaluator.ts | 3 | in-progress | scripts AUTOGEN-STUB 
+| scripts/metricsServer.ts | 3 | in-progress | scripts AUTOGEN-STUB 
+| scripts/mark-admin.ts | 3 | in-progress | scripts AUTOGEN-STUB 
+| scripts/hydrateAll.ts | 3 | in-progress | scripts AUTOGEN-STUB 
+| scripts/clear-auth-tables.ts | 3 | in-progress | scripts AUTOGEN-STUB 
+| scripts/runWatchdogs.ts | 3 | in-progress | scripts AUTOGEN-STUB 
 | src/insights/mappings.ts | 1 | completed | insights — STEP1: mappings; STEP2: unit cases: mapping transforms; STEP3-6: pending implement/test
 | src/insights/engine.ts | 1 | completed | insights — STEP1: engine logic; STEP2: unit cases: compute flows, edge cases; STEP3-6: pending implement/test
-| src/auth/adminGuard.ts | 3 | not-started | auth guard
-| src/insights/store.ts | 1 | not-started | insights store
-| queues/contentQueue.ts | 2 | not-started | queue
-| src/app/api/admin/suggestions/route.ts | 3 | not-started | admin API
-| src/app/api/admin/suggestions/[id]/dismiss/route.ts | 3 | not-started | admin API
-| src/app/api/admin/suggestions/[id]/accept/route.ts | 3 | not-started | admin API
-| producers/enqueueTopicHydration.ts | 2 | not-started | producers
-| producers/enqueueTestHydration.ts | 2 | not-started | producers
-| producers/enqueueNoteHydration.ts | 2 | not-started | producers
-| next.config.ts | 6 | not-started | config
-| next-auth.d.ts | 6 | not-started | types
-| middleware.ts | 3 | not-started | middleware
-| hydrators/personalizeContent.ts | 2 | not-started | hydrator
-| hydrators/hydrationPrompts.ts | 2 | not-started | hydrator
+| src/auth/adminGuard.ts | 3 | in-progress | auth guard AUTOGEN-STUB 
+| src/insights/store.ts | 1 | in-progress | insights store AUTOGEN-STUB 
+| queues/contentQueue.ts | 2 | in-progress | queue AUTOGEN-STUB 
+| src/app/api/admin/suggestions/route.ts | 3 | in-progress | admin API AUTOGEN-STUB 
+| src/app/api/admin/suggestions/[id]/dismiss/route.ts | 3 | in-progress | admin API AUTOGEN-STUB 
+| src/app/api/admin/suggestions/[id]/accept/route.ts | 3 | in-progress | admin API AUTOGEN-STUB 
+| producers/enqueueTopicHydration.ts | 2 | in-progress | producers AUTOGEN-STUB 
+| producers/enqueueTestHydration.ts | 2 | in-progress | producers AUTOGEN-STUB 
+| producers/enqueueNoteHydration.ts | 2 | in-progress | producers AUTOGEN-STUB 
+| next.config.ts | 6 | in-progress | config AUTOGEN-STUB 
+| next-auth.d.ts | 6 | in-progress | types AUTOGEN-STUB 
+| middleware.ts | 3 | in-progress | middleware AUTOGEN-STUB 
+| hydrators/personalizeContent.ts | 2 | in-progress | hydrator AUTOGEN-STUB 
+| hydrators/hydrationPrompts.ts | 2 | in-progress | hydrator AUTOGEN-STUB 
 | hydrators/hydrateSyllabus.ts | 2 | completed | STEP6: verified (import test passed)
-| hydrators/hydrateQuestions.ts | 2 | not-started | hydrator
-| hydrators/hydrateNotes.ts | 2 | not-started | hydrator
-| hydrators/assembleTest.ts | 2 | not-started | hydrator tests
-| src/insights/store.ts | 1 | not-started | insights store (duplicate entry)
+| hydrators/hydrateQuestions.ts | 2 | in-progress | hydrator AUTOGEN-STUB 
+| hydrators/hydrateNotes.ts | 2 | in-progress | hydrator AUTOGEN-STUB 
+| hydrators/assembleTest.ts | 2 | in-progress | hydrator tests AUTOGEN-STUB 
+| src/insights/store.ts | 1 | in-progress | insights store (duplicate entry) AUTOGEN-STUB 
 | tests/phase11/store.test.ts | - | existing | test file; STEP6: verified — tests/phase11/store.test.ts passed; Suite status: green
 | tests/phase11/mappings.test.ts | - | existing | test file; STEP6: verified — tests/phase11/mappings.test.ts passed; Suite status: green
 | tests/phase11/job.integration.test.ts | - | existing | test file; STEP6: verified — tests/phase11/job.integration.test.ts passed; Suite status: green
@@ -128,273 +128,273 @@ Each row below corresponds to a source file to be processed following `docs/TEST
 | tests/phase12/regenerationJobs.trigger.test.ts | - | existing | test; STEP6: verified — tests/phase12/regenerationJobs.trigger.test.ts passed; Suite status: green
 | tests/phase12/regenerationJobs.regressions.test.ts | - | existing | test; STEP6: verified — tests/phase12/regenerationJobs.regressions.test.ts passed; Suite status: green
 | tests/phase12/regenerationJobs.list.test.ts | - | existing | test; STEP6: verified — tests/phase12/regenerationJobs.list.test.ts passed; Suite status: green
-| lib/guardrails.ts | 1 | not-started | guardrails
-| lib/systemSettings.ts | 1 | not-started | system settings
-| lib/telemetry.ts | 1 | not-started | telemetry
-| lib/types.ts | 4 | not-started | types
-| lib/types/auth.ts | 4 | not-started | types
-| lib/types/content.ts | 4 | not-started | types
-| lib/alerts/types.ts | 1 | not-started | alert types
-| lib/alerts/sinkWrapper.ts | 1 | not-started | alerts
-| lib/alerts/router.ts | 1 | not-started | alerts
-| lib/alerts/redisRateLimiter.ts | 1 | not-started | alerts
-| lib/alerts/redisDeduper.ts | 1 | not-started | alerts
-| lib/alerts/rateLimiter.ts | 1 | not-started | alerts
-| lib/alerts/pushgateway.ts | 1 | not-started | alerts
-| lib/alerts/metrics.ts | 1 | not-started | alerts
-| lib/alerts/dedupe.ts | 1 | not-started | alerts
-| lib/alerts/circuitBreaker.ts | 1 | not-started | alerts
-| lib/watchdogs.ts | 1 | not-started | watchdogs
-| lib/tutorStyles.ts | 6 | not-started | UI styles
-| lib/toast.ts | 6 | not-started | UI helpers
+| lib/guardrails.ts | 1 | in-progress | guardrails AUTOGEN-STUB 
+| lib/systemSettings.ts | 1 | in-progress | system settings AUTOGEN-STUB 
+| lib/telemetry.ts | 1 | in-progress | telemetry AUTOGEN-STUB 
+| lib/types.ts | 4 | in-progress | types AUTOGEN-STUB 
+| lib/types/auth.ts | 4 | in-progress | types AUTOGEN-STUB 
+| lib/types/content.ts | 4 | in-progress | types AUTOGEN-STUB 
+| lib/alerts/types.ts | 1 | in-progress | alert types AUTOGEN-STUB 
+| lib/alerts/sinkWrapper.ts | 1 | in-progress | alerts AUTOGEN-STUB 
+| lib/alerts/router.ts | 1 | in-progress | alerts AUTOGEN-STUB 
+| lib/alerts/redisRateLimiter.ts | 1 | in-progress | alerts AUTOGEN-STUB 
+| lib/alerts/redisDeduper.ts | 1 | in-progress | alerts AUTOGEN-STUB 
+| lib/alerts/rateLimiter.ts | 1 | in-progress | alerts AUTOGEN-STUB 
+| lib/alerts/pushgateway.ts | 1 | in-progress | alerts AUTOGEN-STUB 
+| lib/alerts/metrics.ts | 1 | in-progress | alerts AUTOGEN-STUB 
+| lib/alerts/dedupe.ts | 1 | in-progress | alerts AUTOGEN-STUB 
+| lib/alerts/circuitBreaker.ts | 1 | in-progress | alerts AUTOGEN-STUB 
+| lib/watchdogs.ts | 1 | in-progress | watchdogs AUTOGEN-STUB 
+| lib/tutorStyles.ts | 6 | in-progress | UI styles AUTOGEN-STUB 
+| lib/toast.ts | 6 | in-progress | UI helpers AUTOGEN-STUB 
 | lib/tests.ts | - | existing | test helpers
-| lib/systemHealth.ts | 1 | not-started | system health
-| lib/syllabusGuardrails.ts | 1 | not-started | guardrails
-| lib/guards/noStringFilters.ts | 3 | not-started | guards
-| lib/worker/controller.ts | 2 | not-started | worker controller
-| lib/alerts/sinks/webhook.ts | 1 | not-started | alerts sink
-| lib/syllabus/prompt.ts | 2 | not-started | syllabus
-| lib/syllabus/types.ts | 2 | not-started | syllabus types
-| lib/syllabus/store.ts | 1 | not-started | store
-| lib/syllabus/schema.ts | 2 | not-started | schema
-| lib/syllabus/generator.ts | 2 | not-started | generator
-| lib/alerts/sinks/slack.ts | 1 | not-started | alerts sink
-| lib/alerts/sinks/email.ts | 1 | not-started | alerts sink
-| lib/alerts/sinks/dryRun.ts | 1 | not-started | alerts sink
-| lib/subscription.ts | 1 | not-started | subscription
-| lib/guards/access.ts | 3 | not-started | guards
-| lib/subjectEngines.ts | 2 | not-started | subject engines
-| lib/speech.ts | 6 | not-started | speech
-| lib/sms.ts | 1 | not-started | sms
-| lib/slug.ts | 1 | not-started | slug util
-| lib/session.ts | 3 | not-started | session
-| lib/resolveAcademicIds.ts | 2 | not-started | resolver
-| lib/resizeImage.ts | 6 | not-started | image util
-| lib/safety/validatePackageSize.ts | 1 | not-started | safety
-| lib/retryIntent/store.ts | 1 | not-started | store
-| lib/redis.ts | 1 | not-started | redis client
-| lib/realtime.ts | 2 | not-started | realtime
-| lib/razorpay.ts | 1 | not-started | payments
-| lib/rateLimit.ts | 1 | not-started | rate limiting
-| lib/rateLimit/exportLimiter.ts | 1 | not-started | rate limiting
-| lib/regeneration/retryService.ts | 2 | not-started | regeneration
+| lib/systemHealth.ts | 1 | in-progress | system health AUTOGEN-STUB 
+| lib/syllabusGuardrails.ts | 1 | in-progress | guardrails AUTOGEN-STUB 
+| lib/guards/noStringFilters.ts | 3 | in-progress | guards AUTOGEN-STUB 
+| lib/worker/controller.ts | 2 | in-progress | worker controller AUTOGEN-STUB 
+| lib/alerts/sinks/webhook.ts | 1 | in-progress | alerts sink AUTOGEN-STUB 
+| lib/syllabus/prompt.ts | 2 | in-progress | syllabus AUTOGEN-STUB 
+| lib/syllabus/types.ts | 2 | in-progress | syllabus types AUTOGEN-STUB 
+| lib/syllabus/store.ts | 1 | in-progress | store AUTOGEN-STUB 
+| lib/syllabus/schema.ts | 2 | in-progress | schema AUTOGEN-STUB 
+| lib/syllabus/generator.ts | 2 | in-progress | generator AUTOGEN-STUB 
+| lib/alerts/sinks/slack.ts | 1 | in-progress | alerts sink AUTOGEN-STUB 
+| lib/alerts/sinks/email.ts | 1 | in-progress | alerts sink AUTOGEN-STUB 
+| lib/alerts/sinks/dryRun.ts | 1 | in-progress | alerts sink AUTOGEN-STUB 
+| lib/subscription.ts | 1 | in-progress | subscription AUTOGEN-STUB 
+| lib/guards/access.ts | 3 | in-progress | guards AUTOGEN-STUB 
+| lib/subjectEngines.ts | 2 | in-progress | subject engines AUTOGEN-STUB 
+| lib/speech.ts | 6 | in-progress | speech AUTOGEN-STUB 
+| lib/sms.ts | 1 | in-progress | sms AUTOGEN-STUB 
+| lib/slug.ts | 1 | in-progress | slug util AUTOGEN-STUB 
+| lib/session.ts | 3 | in-progress | session AUTOGEN-STUB 
+| lib/resolveAcademicIds.ts | 2 | in-progress | resolver AUTOGEN-STUB 
+| lib/resizeImage.ts | 6 | in-progress | image util AUTOGEN-STUB 
+| lib/safety/validatePackageSize.ts | 1 | in-progress | safety AUTOGEN-STUB 
+| lib/retryIntent/store.ts | 1 | in-progress | store AUTOGEN-STUB 
+| lib/redis.ts | 1 | in-progress | redis client AUTOGEN-STUB 
+| lib/realtime.ts | 2 | in-progress | realtime AUTOGEN-STUB 
+| lib/razorpay.ts | 1 | in-progress | payments AUTOGEN-STUB 
+| lib/rateLimit.ts | 1 | in-progress | rate limiting AUTOGEN-STUB 
+| lib/rateLimit/exportLimiter.ts | 1 | in-progress | rate limiting AUTOGEN-STUB 
+| lib/regeneration/retryService.ts | 2 | in-progress | regeneration AUTOGEN-STUB 
 | lib/prisma.ts | 1 | completed | used by many tests
-| lib/payments.ts | 1 | not-started | payments
-| lib/onboardingService.ts | 1 | not-started | service
-| lib/onboarding.ts | 1 | not-started | onboarding
-| lib/normalize.ts | 4 | not-started | normalize
-| lib/mailer.ts | 1 | not-started | mailer
-| lib/logger.ts | 1 | not-started | logger
-| lib/promotion/store.ts | 1 | not-started | promotion store
-| lib/metrics/jobs.ts | 1 | not-started | metrics
-| lib/promotion/service.ts | 1 | not-started | promotion service
-| lib/promotion/reader.ts | 1 | not-started | promotion reader
-| lib/inputHandlers.ts | 4 | not-started | input handlers
-| lib/i18n.ts | 4 | not-started | i18n
-| lib/hydrationConstants.ts | 2 | not-started | constants
-| lib/getNextVersion.ts | 2 | not-started | versioning
-| lib/extractBadge.ts | 6 | not-started | badge extraction
-| lib/jobs/runner.ts | 2 | not-started | job runner
-| lib/jobs/retention.ts | 1 | not-started | retention
-| lib/jobs/registry.ts | 1 | not-started | registry
-| lib/execution-pipeline/submitJob.ts | 2 | not-started | pipeline
-| lib/exporters/pdf.ts | 6 | not-started | exporters
-| lib/exporters/lms.ts | 6 | not-started | exporters
-| lib/jobs/registerJobs.ts | 2 | not-started | register jobs
+| lib/payments.ts | 1 | in-progress | payments AUTOGEN-STUB 
+| lib/onboardingService.ts | 1 | in-progress | service AUTOGEN-STUB 
+| lib/onboarding.ts | 1 | in-progress | onboarding AUTOGEN-STUB 
+| lib/normalize.ts | 4 | in-progress | normalize AUTOGEN-STUB 
+| lib/mailer.ts | 1 | in-progress | mailer AUTOGEN-STUB 
+| lib/logger.ts | 1 | in-progress | logger AUTOGEN-STUB 
+| lib/promotion/store.ts | 1 | in-progress | promotion store AUTOGEN-STUB 
+| lib/metrics/jobs.ts | 1 | in-progress | metrics AUTOGEN-STUB 
+| lib/promotion/service.ts | 1 | in-progress | promotion service AUTOGEN-STUB 
+| lib/promotion/reader.ts | 1 | in-progress | promotion reader AUTOGEN-STUB 
+| lib/inputHandlers.ts | 4 | in-progress | input handlers AUTOGEN-STUB 
+| lib/i18n.ts | 4 | in-progress | i18n AUTOGEN-STUB 
+| lib/hydrationConstants.ts | 2 | in-progress | constants AUTOGEN-STUB 
+| lib/getNextVersion.ts | 2 | in-progress | versioning AUTOGEN-STUB 
+| lib/extractBadge.ts | 6 | in-progress | badge extraction AUTOGEN-STUB 
+| lib/jobs/runner.ts | 2 | in-progress | job runner AUTOGEN-STUB 
+| lib/jobs/retention.ts | 1 | in-progress | retention AUTOGEN-STUB 
+| lib/jobs/registry.ts | 1 | in-progress | registry AUTOGEN-STUB 
+| lib/execution-pipeline/submitJob.ts | 2 | in-progress | pipeline AUTOGEN-STUB 
+| lib/exporters/pdf.ts | 6 | in-progress | exporters AUTOGEN-STUB 
+| lib/exporters/lms.ts | 6 | in-progress | exporters AUTOGEN-STUB 
+| lib/jobs/registerJobs.ts | 2 | in-progress | register jobs AUTOGEN-STUB 
 | lib/db.ts | 1 | excluded | trivial re-export; covered indirectly by existing tests importing `lib/prisma`
-| lib/callLLM.ts | 2 | not-started | LLM caller
-| lib/course/package/types.ts | 4 | not-started | course types
-| lib/course/package/store.ts | 1 | not-started | course store
-| lib/course/package/schema.ts | 2 | not-started | schema
-| lib/course/package/builder.ts | 2 | not-started | builder
-| lib/content/project/types.ts | 4 | not-started | content types
-| lib/content/project/schema.ts | 2 | not-started | content schema
-| lib/content/project/prompt.ts | 2 | not-started | prompts
-| lib/content/quiz/types.ts | 4 | not-started | quiz types
-| lib/content/project/generator.ts | 2 | not-started | generator
-| lib/content/quiz/schema.ts | 2 | not-started | quiz schema
-| lib/content/quiz/prompt.ts | 2 | not-started | prompt
-| lib/content/quiz/generator.ts | 2 | not-started | generator
-| lib/bootstrap/validateEnvironment.ts | 1 | not-started | env validation
-| lib/content/lesson/types.ts | 4 | not-started | lesson types
-| lib/content/approval/audit.ts | 1 | not-started | audit
-| lib/content/lesson/schema.ts | 2 | not-started | schema
-| lib/content/lesson/prompt.ts | 2 | not-started | prompt
-| lib/content/lesson/mockLLM.ts | 2 | not-started | mock LLM
-| lib/content/lesson/generator.ts | 2 | not-started | generator
-| lib/content/approval/guard.ts | 3 | not-started | guard
-| lib/awsSecrets.ts | 1 | not-started | aws secrets
-| lib/auth.ts | 3 | not-started | auth helpers
-| lib/content/approval/types.ts | 4 | not-started | types
-| lib/content/approval/service.ts | 1 | not-started | service
-| lib/analyticsClient.ts | 1 | not-started | analytics client
+| lib/callLLM.ts | 2 | in-progress | LLM caller AUTOGEN-STUB 
+| lib/course/package/types.ts | 4 | in-progress | course types AUTOGEN-STUB 
+| lib/course/package/store.ts | 1 | in-progress | course store AUTOGEN-STUB 
+| lib/course/package/schema.ts | 2 | in-progress | schema AUTOGEN-STUB 
+| lib/course/package/builder.ts | 2 | in-progress | builder AUTOGEN-STUB 
+| lib/content/project/types.ts | 4 | in-progress | content types AUTOGEN-STUB 
+| lib/content/project/schema.ts | 2 | in-progress | content schema AUTOGEN-STUB 
+| lib/content/project/prompt.ts | 2 | in-progress | prompts AUTOGEN-STUB 
+| lib/content/quiz/types.ts | 4 | in-progress | quiz types AUTOGEN-STUB 
+| lib/content/project/generator.ts | 2 | in-progress | generator AUTOGEN-STUB 
+| lib/content/quiz/schema.ts | 2 | in-progress | quiz schema AUTOGEN-STUB 
+| lib/content/quiz/prompt.ts | 2 | in-progress | prompt AUTOGEN-STUB 
+| lib/content/quiz/generator.ts | 2 | in-progress | generator AUTOGEN-STUB 
+| lib/bootstrap/validateEnvironment.ts | 1 | in-progress | env validation AUTOGEN-STUB 
+| lib/content/lesson/types.ts | 4 | in-progress | lesson types AUTOGEN-STUB 
+| lib/content/approval/audit.ts | 1 | in-progress | audit AUTOGEN-STUB 
+| lib/content/lesson/schema.ts | 2 | in-progress | schema AUTOGEN-STUB 
+| lib/content/lesson/prompt.ts | 2 | in-progress | prompt AUTOGEN-STUB 
+| lib/content/lesson/mockLLM.ts | 2 | in-progress | mock LLM AUTOGEN-STUB 
+| lib/content/lesson/generator.ts | 2 | in-progress | generator AUTOGEN-STUB 
+| lib/content/approval/guard.ts | 3 | in-progress | guard AUTOGEN-STUB 
+| lib/awsSecrets.ts | 1 | in-progress | aws secrets AUTOGEN-STUB 
+| lib/auth.ts | 3 | in-progress | auth helpers AUTOGEN-STUB 
+| lib/content/approval/types.ts | 4 | in-progress | types AUTOGEN-STUB 
+| lib/content/approval/service.ts | 1 | in-progress | service AUTOGEN-STUB 
+| lib/analyticsClient.ts | 1 | in-progress | analytics client AUTOGEN-STUB 
 | lib/audit/log.ts | 1 | completed | tests added (tests/unit/lib/audit/log.spec.ts); STEP5: integrated into broader coverage
-| lib/audit/events.ts | 1 | not-started | audit events
-| lib/analytics/client.ts | 1 | not-started | analytics
-| lib/alerts.ts | 1 | not-started | alerts facade
-| lib/alertEvaluator.ts | 1 | not-started | evaluator
-| lib/aiContext.ts | 1 | not-started | ai context
+| lib/audit/events.ts | 1 | in-progress | audit events AUTOGEN-STUB 
+| lib/analytics/client.ts | 1 | in-progress | analytics AUTOGEN-STUB 
+| lib/alerts.ts | 1 | in-progress | alerts facade AUTOGEN-STUB 
+| lib/alertEvaluator.ts | 1 | in-progress | evaluator AUTOGEN-STUB 
+| lib/aiContext.ts | 1 | in-progress | ai context AUTOGEN-STUB 
 | tests/analytics/client.test.ts | - | existing | test file; STEP6: verified — tests/analytics/client.test.ts passed; Suite status: green
 | tests/admin/dashboard.course.page.test.ts | - | existing | test file; STEP6: verified — tests/admin/dashboard.course.page.test.ts passed; Suite status: green
 | tests/e2e/onboarding.spec.ts | - | existing | test file; STEP6: skipped — Playwright not installed in this environment; Suite status: skipped
-| lib/ai-engine/types.ts | 4 | not-started | types
+| lib/ai-engine/types.ts | 4 | in-progress | types AUTOGEN-STUB 
 | hooks/useCurrentUser.ts | 6 | completed | STEP6: verified (import test passed)
-| hooks/useFeatureGrid.ts | 6 | not-started | hook
-| hooks/useRecommendations.ts | 6 | not-started | hook
-| hooks/useParentMode.ts | 6 | not-started | hook
-| hooks/useLocalStorage.ts | 6 | not-started | hook
-| hooks/useLearningSessionProgress.ts | 6 | not-started | hook
-| hooks/useContinueLearning.ts | 6 | not-started | hook
-| hooks/useStreaksAndGoals.ts | 6 | not-started | hook
-| declarations.d.ts | 6 | not-started | declarations
+| hooks/useFeatureGrid.ts | 6 | in-progress | hook AUTOGEN-STUB 
+| hooks/useRecommendations.ts | 6 | in-progress | hook AUTOGEN-STUB 
+| hooks/useParentMode.ts | 6 | in-progress | hook AUTOGEN-STUB 
+| hooks/useLocalStorage.ts | 6 | in-progress | hook AUTOGEN-STUB 
+| hooks/useLearningSessionProgress.ts | 6 | in-progress | hook AUTOGEN-STUB 
+| hooks/useContinueLearning.ts | 6 | in-progress | hook AUTOGEN-STUB 
+| hooks/useStreaksAndGoals.ts | 6 | in-progress | hook AUTOGEN-STUB 
+| declarations.d.ts | 6 | in-progress | declarations AUTOGEN-STUB 
 | components/AdminAnalytics/sparklinePath.ts | 6 | completed | STEP6: verified (import test passed)
-| .vscode/types/global.d.ts | 6 | not-started | types
-| app/api/user/profile/route.ts | 3 | not-started | API
-| app/api/user/refresh-session/route.ts | 3 | not-started | API
-| app/api/user/onboarding/route.ts | 3 | not-started | API
-| app/api/upload-image/route.ts | 3 | not-started | API
-| app/api/user/language/route.ts | 3 | not-started | API
-| app/api/tests/upcoming/route.ts | 3 | not-started | API
-| app/api/tests/[id]/route.ts | 3 | not-started | API
-| app/api/tests/start/route.ts | 3 | not-started | API
-| app/api/tests/route.ts | 3 | not-started | API
-| app/api/topics/[id]/route.ts | 3 | not-started | API
-| app/api/tests/submit/route.ts | 3 | not-started | API
-| app/api/tests/recommended/route.ts | 3 | not-started | API
-| app/api/tests/results/recent/route.ts | 3 | not-started | API
-| app/api/tests/questions/route.ts | 3 | not-started | API
-| app/api/tests/history/route.ts | 3 | not-started | API
-| app/api/topics/route.ts | 3 | not-started | API
-| app/api/syllabus/route.ts | 3 | not-started | API
-| app/api/syllabus/[id]/route.ts | 3 | not-started | API
-| app/api/subjects/[id]/route.ts | 3 | not-started | API
-| app/api/subscription/status/route.ts | 3 | not-started | API
-| app/api/subjects/route.ts | 3 | not-started | API
-| app/api/store/purchase/route.ts | 3 | not-started | API
-| app/api/store/products/route.ts | 3 | not-started | API
-| app/api/save-chats/route.ts | 3 | not-started | API
-| app/api/s3-presign/route.ts | 3 | not-started | API
-| app/api/rooms/[roomId]/route.ts | 3 | not-started | API
-| app/api/rooms/[roomId]/quiz/route.ts | 3 | not-started | API
-| app/api/rooms/[roomId]/leaderboard/route.ts | 3 | not-started | API
-| app/api/rooms/[roomId]/assignment/route.ts | 3 | not-started | API
-| app/api/notes/download/route.ts | 3 | not-started | API
-| app/api/notes/[id]/route.ts | 3 | not-started | API
-| app/api/referral/stats/route.ts | 3 | not-started | API
-| app/api/notes/route.ts | 3 | not-started | API
-| app/api/msg91/widget-token/route.ts | 3 | not-started | API
-| app/api/msg91/verify-access-token/route.ts | 3 | not-started | API
-| app/api/notes/subjects/route.ts | 3 | not-started | API
-| app/api/notes/recent/route.ts | 3 | not-started | API
-| app/api/notes/downloaded/route.ts | 3 | not-started | API
-| app/api/notes/bookmarked/route.ts | 3 | not-started | API
-| app/api/image-caption/route.ts | 3 | not-started | API
-| app/api/leaderboard/route.ts | 3 | not-started | API
-| app/api/learning-sessions/route.ts | 3 | not-started | API
-| app/api/learn/enroll/route.ts | 3 | not-started | API
-| app/api/learn/progress/route.ts | 3 | not-started | API
-| app/api/learn/courses/route.ts | 3 | not-started | API
-| app/api/learn/courses/[courseId]/route.ts | 3 | not-started | API
-| app/api/learn/progress/[courseId]/route.ts | 3 | not-started | API
-| app/api/learn/courses/[courseId]/lessons/[index]/route.ts | 3 | not-started | API
-| app/api/learn/courses/[courseId]/export/lms/route.ts | 3 | not-started | API
-| app/api/learn/courses/[courseId]/export/pdf/route.ts | 3 | not-started | API
-| app/api/free-questions/route.ts | 3 | not-started | API
-| app/api/hierarchy/route.ts | 3 | not-started | API
-| app/api/export/route.ts | 3 | not-started | API
-| app/api/dashboard/streaks/route.ts | 3 | not-started | API
-| app/api/courses/route.ts | 3 | not-started | API
-| app/api/courses/[syllabusId]/[version]/route.ts | 3 | not-started | API
-| app/api/courses/[syllabusId]/route.ts | 3 | not-started | API
-| app/api/dashboard/recommendations/route.ts | 3 | not-started | API
-| app/api/dashboard/parent-mode/route.ts | 3 | not-started | API
-| app/api/dashboard/recommendations/track/route.ts | 3 | not-started | API
-| app/api/dashboard/feature-grid/route.ts | 3 | not-started | API
-| app/api/dashboard/continue-learning/route.ts | 3 | not-started | API
-| app/api/chat/route.ts | 3 | not-started | API
-| app/api/chat/history/route.ts | 3 | not-started | API
-| app/api/chat/reassign-subject/route.ts | 3 | not-started | API
-| app/api/chat/conversations/route.ts | 3 | not-started | API
-| app/api/classes/[id]/route.ts | 3 | not-started | API
-| app/api/classes/route.ts | 3 | not-started | API
-| app/api/chapters/[id]/route.ts | 3 | not-started | API
-| app/api/chapters/route.ts | 3 | not-started | API
-| app/api/challenge/submit/route.ts | 3 | not-started | API
-| app/api/challenge/join/route.ts | 3 | not-started | API
-| app/api/challenge/active/route.ts | 3 | not-started | API
-| app/api/boards/[id]/route.ts | 3 | not-started | API
+| .vscode/types/global.d.ts | 6 | in-progress | types AUTOGEN-STUB 
+| app/api/user/profile/route.ts | 3 | in-progress | API AUTOGEN-STUB 
+| app/api/user/refresh-session/route.ts | 3 | in-progress | API AUTOGEN-STUB 
+| app/api/user/onboarding/route.ts | 3 | in-progress | API AUTOGEN-STUB 
+| app/api/upload-image/route.ts | 3 | in-progress | API AUTOGEN-STUB 
+| app/api/user/language/route.ts | 3 | in-progress | API AUTOGEN-STUB 
+| app/api/tests/upcoming/route.ts | 3 | in-progress | API AUTOGEN-STUB 
+| app/api/tests/[id]/route.ts | 3 | in-progress | API AUTOGEN-STUB 
+| app/api/tests/start/route.ts | 3 | in-progress | API AUTOGEN-STUB 
+| app/api/tests/route.ts | 3 | in-progress | API AUTOGEN-STUB 
+| app/api/topics/[id]/route.ts | 3 | in-progress | API AUTOGEN-STUB 
+| app/api/tests/submit/route.ts | 3 | in-progress | API AUTOGEN-STUB 
+| app/api/tests/recommended/route.ts | 3 | in-progress | API AUTOGEN-STUB 
+| app/api/tests/results/recent/route.ts | 3 | in-progress | API AUTOGEN-STUB 
+| app/api/tests/questions/route.ts | 3 | in-progress | API AUTOGEN-STUB 
+| app/api/tests/history/route.ts | 3 | in-progress | API AUTOGEN-STUB 
+| app/api/topics/route.ts | 3 | in-progress | API AUTOGEN-STUB 
+| app/api/syllabus/route.ts | 3 | in-progress | API AUTOGEN-STUB 
+| app/api/syllabus/[id]/route.ts | 3 | in-progress | API AUTOGEN-STUB 
+| app/api/subjects/[id]/route.ts | 3 | in-progress | API AUTOGEN-STUB 
+| app/api/subscription/status/route.ts | 3 | in-progress | API AUTOGEN-STUB 
+| app/api/subjects/route.ts | 3 | in-progress | API AUTOGEN-STUB 
+| app/api/store/purchase/route.ts | 3 | in-progress | API AUTOGEN-STUB 
+| app/api/store/products/route.ts | 3 | in-progress | API AUTOGEN-STUB 
+| app/api/save-chats/route.ts | 3 | in-progress | API AUTOGEN-STUB 
+| app/api/s3-presign/route.ts | 3 | in-progress | API AUTOGEN-STUB 
+| app/api/rooms/[roomId]/route.ts | 3 | in-progress | API AUTOGEN-STUB 
+| app/api/rooms/[roomId]/quiz/route.ts | 3 | in-progress | API AUTOGEN-STUB 
+| app/api/rooms/[roomId]/leaderboard/route.ts | 3 | in-progress | API AUTOGEN-STUB 
+| app/api/rooms/[roomId]/assignment/route.ts | 3 | in-progress | API AUTOGEN-STUB 
+| app/api/notes/download/route.ts | 3 | in-progress | API AUTOGEN-STUB 
+| app/api/notes/[id]/route.ts | 3 | in-progress | API AUTOGEN-STUB 
+| app/api/referral/stats/route.ts | 3 | in-progress | API AUTOGEN-STUB 
+| app/api/notes/route.ts | 3 | in-progress | API AUTOGEN-STUB 
+| app/api/msg91/widget-token/route.ts | 3 | in-progress | API AUTOGEN-STUB 
+| app/api/msg91/verify-access-token/route.ts | 3 | in-progress | API AUTOGEN-STUB 
+| app/api/notes/subjects/route.ts | 3 | in-progress | API AUTOGEN-STUB 
+| app/api/notes/recent/route.ts | 3 | in-progress | API AUTOGEN-STUB 
+| app/api/notes/downloaded/route.ts | 3 | in-progress | API AUTOGEN-STUB 
+| app/api/notes/bookmarked/route.ts | 3 | in-progress | API AUTOGEN-STUB 
+| app/api/image-caption/route.ts | 3 | in-progress | API AUTOGEN-STUB 
+| app/api/leaderboard/route.ts | 3 | in-progress | API AUTOGEN-STUB 
+| app/api/learning-sessions/route.ts | 3 | in-progress | API AUTOGEN-STUB 
+| app/api/learn/enroll/route.ts | 3 | in-progress | API AUTOGEN-STUB 
+| app/api/learn/progress/route.ts | 3 | in-progress | API AUTOGEN-STUB 
+| app/api/learn/courses/route.ts | 3 | in-progress | API AUTOGEN-STUB 
+| app/api/learn/courses/[courseId]/route.ts | 3 | in-progress | API AUTOGEN-STUB 
+| app/api/learn/progress/[courseId]/route.ts | 3 | in-progress | API AUTOGEN-STUB 
+| app/api/learn/courses/[courseId]/lessons/[index]/route.ts | 3 | in-progress | API AUTOGEN-STUB 
+| app/api/learn/courses/[courseId]/export/lms/route.ts | 3 | in-progress | API AUTOGEN-STUB 
+| app/api/learn/courses/[courseId]/export/pdf/route.ts | 3 | in-progress | API AUTOGEN-STUB 
+| app/api/free-questions/route.ts | 3 | in-progress | API AUTOGEN-STUB 
+| app/api/hierarchy/route.ts | 3 | in-progress | API AUTOGEN-STUB 
+| app/api/export/route.ts | 3 | in-progress | API AUTOGEN-STUB 
+| app/api/dashboard/streaks/route.ts | 3 | in-progress | API AUTOGEN-STUB 
+| app/api/courses/route.ts | 3 | in-progress | API AUTOGEN-STUB 
+| app/api/courses/[syllabusId]/[version]/route.ts | 3 | in-progress | API AUTOGEN-STUB 
+| app/api/courses/[syllabusId]/route.ts | 3 | in-progress | API AUTOGEN-STUB 
+| app/api/dashboard/recommendations/route.ts | 3 | in-progress | API AUTOGEN-STUB 
+| app/api/dashboard/parent-mode/route.ts | 3 | in-progress | API AUTOGEN-STUB 
+| app/api/dashboard/recommendations/track/route.ts | 3 | in-progress | API AUTOGEN-STUB 
+| app/api/dashboard/feature-grid/route.ts | 3 | in-progress | API AUTOGEN-STUB 
+| app/api/dashboard/continue-learning/route.ts | 3 | in-progress | API AUTOGEN-STUB 
+| app/api/chat/route.ts | 3 | in-progress | API AUTOGEN-STUB 
+| app/api/chat/history/route.ts | 3 | in-progress | API AUTOGEN-STUB 
+| app/api/chat/reassign-subject/route.ts | 3 | in-progress | API AUTOGEN-STUB 
+| app/api/chat/conversations/route.ts | 3 | in-progress | API AUTOGEN-STUB 
+| app/api/classes/[id]/route.ts | 3 | in-progress | API AUTOGEN-STUB 
+| app/api/classes/route.ts | 3 | in-progress | API AUTOGEN-STUB 
+| app/api/chapters/[id]/route.ts | 3 | in-progress | API AUTOGEN-STUB 
+| app/api/chapters/route.ts | 3 | in-progress | API AUTOGEN-STUB 
+| app/api/challenge/submit/route.ts | 3 | in-progress | API AUTOGEN-STUB 
+| app/api/challenge/join/route.ts | 3 | in-progress | API AUTOGEN-STUB 
+| app/api/challenge/active/route.ts | 3 | in-progress | API AUTOGEN-STUB 
+| app/api/boards/[id]/route.ts | 3 | in-progress | API AUTOGEN-STUB 
 | app/api/billing/utility.ts | 3 | completed | STEP6: verified (import test passed)
-| app/api/billing/status/route.ts | 3 | not-started | billing API
-| app/api/billing/verify/route.ts | 3 | not-started | billing API
-| app/api/billing/constants.ts | 3 | not-started | billing constants
-| app/api/billing/checkout/route.ts | 3 | not-started | billing API
-| app/api/badges/share/route.ts | 3 | not-started | API
-| app/api/audit/route.ts | 3 | not-started | API
-| app/api/auth/[...nextauth]/route.ts | 3 | not-started | auth
-| app/api/auth/verify-otp/route.ts | 3 | not-started | auth
-| app/api/auth/verify-code/route.ts | 3 | not-started | auth
-| app/api/auth/signup/route.ts | 3 | not-started | auth
-| app/api/auth/send-otp/route.ts | 3 | not-started | auth
-| app/api/auth/send-code/route.ts | 3 | not-started | auth
-| app/api/ask/route.ts | 3 | not-started | API
-| app/api/analytics/track/route.ts | 3 | not-started | analytics
-| app/api/ai/voice/route.ts | 3 | not-started | AI voice
-| app/api/analytics/event/route.ts | 3 | not-started | analytics
-| app/api/admin/workers/route.ts | 3 | not-started | admin
-| app/api/admin/content/pending/route.ts | 3 | not-started | admin
-| app/api/admin/content/approve/route.ts | 3 | not-started | admin
-| app/api/admin/users/[id]/route.ts | 3 | not-started | admin
-| app/api/admin/topics/resume/route.ts | 3 | not-started | admin
-| app/api/admin/topics/[id]/generate/route.ts | 3 | not-started | admin
-| app/api/admin/topics/[id]/rollback/route.ts | 3 | not-started | admin
-| app/api/admin/topics/[id]/approve/route.ts | 3 | not-started | admin
-| app/api/admin/topics/pause/route.ts | 3 | not-started | admin
-| app/api/admin/users/route.ts | 3 | not-started | admin
-| app/api/admin/system/telemetry/route.ts | 3 | not-started | admin
-| app/api/admin/system/metrics/route.ts | 3 | not-started | admin
-| app/api/admin/system/alerts/route.ts | 3 | not-started | admin
-| app/api/admin/tests/[id]/unpublish.ts | 3 | not-started | admin
-| app/api/admin/tests/[id]/reject.ts | 3 | not-started | admin
-| app/api/admin/tests/[id]/regenerate.ts | 3 | not-started | admin
-| app/api/admin/tests/[id]/approve.ts | 3 | not-started | admin
-| app/api/admin/syllabi/route.ts | 3 | not-started | admin
-| app/api/admin/syllabus/[id]/approve/route.ts | 3 | not-started | admin
-| app/api/admin/retry-intents/route.ts | 3 | not-started | admin
-| app/api/admin/regeneration-jobs/route.ts | 3 | not-started | admin
-| app/api/admin/retry-intents/[id]/execute/route.ts | 3 | not-started | admin
-| app/api/admin/recommendations/seed/route.ts | 3 | not-started | admin
-| app/api/admin/regeneration-jobs/[id]/trigger/route.ts | 3 | not-started | admin
-| app/api/admin/purge-auth/route.ts | 3 | not-started | admin
-| app/api/admin/promotions/[id]/reject/route.ts | 3 | not-started | admin
-| app/api/admin/payments/success/route.ts | 3 | not-started | admin
-| app/api/admin/promotions/[id]/approve/route.ts | 3 | not-started | admin
-| app/api/admin/promotions/route.ts | 3 | not-started | admin
-| app/api/admin/payments/failed/route.ts | 3 | not-started | admin
-| app/api/admin/promotions/candidates/route.ts | 3 | not-started | admin
-| app/api/admin/orchestrator/status/route.ts | 3 | not-started | admin
+| app/api/billing/status/route.ts | 3 | in-progress | billing API AUTOGEN-STUB 
+| app/api/billing/verify/route.ts | 3 | in-progress | billing API AUTOGEN-STUB 
+| app/api/billing/constants.ts | 3 | in-progress | billing constants AUTOGEN-STUB 
+| app/api/billing/checkout/route.ts | 3 | in-progress | billing API AUTOGEN-STUB 
+| app/api/badges/share/route.ts | 3 | in-progress | API AUTOGEN-STUB 
+| app/api/audit/route.ts | 3 | in-progress | API AUTOGEN-STUB 
+| app/api/auth/[...nextauth]/route.ts | 3 | in-progress | auth AUTOGEN-STUB 
+| app/api/auth/verify-otp/route.ts | 3 | in-progress | auth AUTOGEN-STUB 
+| app/api/auth/verify-code/route.ts | 3 | in-progress | auth AUTOGEN-STUB 
+| app/api/auth/signup/route.ts | 3 | in-progress | auth AUTOGEN-STUB 
+| app/api/auth/send-otp/route.ts | 3 | in-progress | auth AUTOGEN-STUB 
+| app/api/auth/send-code/route.ts | 3 | in-progress | auth AUTOGEN-STUB 
+| app/api/ask/route.ts | 3 | in-progress | API AUTOGEN-STUB 
+| app/api/analytics/track/route.ts | 3 | in-progress | analytics AUTOGEN-STUB 
+| app/api/ai/voice/route.ts | 3 | in-progress | AI voice AUTOGEN-STUB 
+| app/api/analytics/event/route.ts | 3 | in-progress | analytics AUTOGEN-STUB 
+| app/api/admin/workers/route.ts | 3 | in-progress | admin AUTOGEN-STUB 
+| app/api/admin/content/pending/route.ts | 3 | in-progress | admin AUTOGEN-STUB 
+| app/api/admin/content/approve/route.ts | 3 | in-progress | admin AUTOGEN-STUB 
+| app/api/admin/users/[id]/route.ts | 3 | in-progress | admin AUTOGEN-STUB 
+| app/api/admin/topics/resume/route.ts | 3 | in-progress | admin AUTOGEN-STUB 
+| app/api/admin/topics/[id]/generate/route.ts | 3 | in-progress | admin AUTOGEN-STUB 
+| app/api/admin/topics/[id]/rollback/route.ts | 3 | in-progress | admin AUTOGEN-STUB 
+| app/api/admin/topics/[id]/approve/route.ts | 3 | in-progress | admin AUTOGEN-STUB 
+| app/api/admin/topics/pause/route.ts | 3 | in-progress | admin AUTOGEN-STUB 
+| app/api/admin/users/route.ts | 3 | in-progress | admin AUTOGEN-STUB 
+| app/api/admin/system/telemetry/route.ts | 3 | in-progress | admin AUTOGEN-STUB 
+| app/api/admin/system/metrics/route.ts | 3 | in-progress | admin AUTOGEN-STUB 
+| app/api/admin/system/alerts/route.ts | 3 | in-progress | admin AUTOGEN-STUB 
+| app/api/admin/tests/[id]/unpublish.ts | 3 | in-progress | admin AUTOGEN-STUB 
+| app/api/admin/tests/[id]/reject.ts | 3 | in-progress | admin AUTOGEN-STUB 
+| app/api/admin/tests/[id]/regenerate.ts | 3 | in-progress | admin AUTOGEN-STUB 
+| app/api/admin/tests/[id]/approve.ts | 3 | in-progress | admin AUTOGEN-STUB 
+| app/api/admin/syllabi/route.ts | 3 | in-progress | admin AUTOGEN-STUB 
+| app/api/admin/syllabus/[id]/approve/route.ts | 3 | in-progress | admin AUTOGEN-STUB 
+| app/api/admin/retry-intents/route.ts | 3 | in-progress | admin AUTOGEN-STUB 
+| app/api/admin/regeneration-jobs/route.ts | 3 | in-progress | admin AUTOGEN-STUB 
+| app/api/admin/retry-intents/[id]/execute/route.ts | 3 | in-progress | admin AUTOGEN-STUB 
+| app/api/admin/recommendations/seed/route.ts | 3 | in-progress | admin AUTOGEN-STUB 
+| app/api/admin/regeneration-jobs/[id]/trigger/route.ts | 3 | in-progress | admin AUTOGEN-STUB 
+| app/api/admin/purge-auth/route.ts | 3 | in-progress | admin AUTOGEN-STUB 
+| app/api/admin/promotions/[id]/reject/route.ts | 3 | in-progress | admin AUTOGEN-STUB 
+| app/api/admin/payments/success/route.ts | 3 | in-progress | admin AUTOGEN-STUB 
+| app/api/admin/promotions/[id]/approve/route.ts | 3 | in-progress | admin AUTOGEN-STUB 
+| app/api/admin/promotions/route.ts | 3 | in-progress | admin AUTOGEN-STUB 
+| app/api/admin/payments/failed/route.ts | 3 | in-progress | admin AUTOGEN-STUB 
+| app/api/admin/promotions/candidates/route.ts | 3 | in-progress | admin AUTOGEN-STUB 
+| app/api/admin/orchestrator/status/route.ts | 3 | in-progress | admin AUTOGEN-STUB 
 | app/api/admin/notes/[id]/unpublish.ts | 3 | completed | STEP6: verified (import test passed)
-| app/api/admin/notes/[id]/reject.ts | 3 | not-started | admin
-| app/api/admin/notes/[id]/regenerate.ts | 3 | not-started | admin
-| app/api/admin/notes/[id]/approve.ts | 3 | not-started | admin
-| app/api/admin/jobs/status/route.ts | 3 | not-started | admin
-| app/api/admin/content-engine/redis/route.ts | 3 | not-started | admin
-| app/api/admin/content-engine/meta/route.ts | 3 | not-started | admin
-| app/api/admin/content-engine/queue/route.ts | 3 | not-started | admin
-| app/api/admin/content-engine/jobs/route.ts | 3 | not-started | admin
-| app/api/admin/challenges/create/route.ts | 3 | not-started | admin
-| app/api/admin/chapters/[id]/reject/route.ts | 3 | not-started | admin
-| app/api/admin/chapters/[id]/approve/route.ts | 3 | not-started | admin
-| app/api/admin/audit-logs/route.ts | 3 | not-started | admin
-| app/api/admin/catalog/seed/route.ts | 3 | not-started | admin
-| app/api/admin/catalog/parse-pdf/route.ts | 3 | not-started | admin
-| app/api/admin/catalog/parse-image/route.ts | 3 | not-started | admin
-| app/api/admin/api-usage/route.ts | 3 | not-started | admin
-| app/api/admin/analytics/signals/route.ts | 3 | not-started | admin
-| app/api/admin/ai/status/route.ts | 3 | not-started | admin
-| app/api/admin/analytics/funnel/[courseId]/route.ts | 3 | not-started | admin
-| app/api/admin/analytics/course/[courseId]/route.ts | 3 | not-started | admin
-| app/api/image-caption/route.ts | 3 | not-started | API
-| app/api/leaderboard/route.ts | 3 | not-started | API
+| app/api/admin/notes/[id]/reject.ts | 3 | in-progress | admin AUTOGEN-STUB 
+| app/api/admin/notes/[id]/regenerate.ts | 3 | in-progress | admin AUTOGEN-STUB 
+| app/api/admin/notes/[id]/approve.ts | 3 | in-progress | admin AUTOGEN-STUB 
+| app/api/admin/jobs/status/route.ts | 3 | in-progress | admin AUTOGEN-STUB 
+| app/api/admin/content-engine/redis/route.ts | 3 | in-progress | admin AUTOGEN-STUB 
+| app/api/admin/content-engine/meta/route.ts | 3 | in-progress | admin AUTOGEN-STUB 
+| app/api/admin/content-engine/queue/route.ts | 3 | in-progress | admin AUTOGEN-STUB 
+| app/api/admin/content-engine/jobs/route.ts | 3 | in-progress | admin AUTOGEN-STUB 
+| app/api/admin/challenges/create/route.ts | 3 | in-progress | admin AUTOGEN-STUB 
+| app/api/admin/chapters/[id]/reject/route.ts | 3 | in-progress | admin AUTOGEN-STUB 
+| app/api/admin/chapters/[id]/approve/route.ts | 3 | in-progress | admin AUTOGEN-STUB 
+| app/api/admin/audit-logs/route.ts | 3 | in-progress | admin AUTOGEN-STUB 
+| app/api/admin/catalog/seed/route.ts | 3 | in-progress | admin AUTOGEN-STUB 
+| app/api/admin/catalog/parse-pdf/route.ts | 3 | in-progress | admin AUTOGEN-STUB 
+| app/api/admin/catalog/parse-image/route.ts | 3 | in-progress | admin AUTOGEN-STUB 
+| app/api/admin/api-usage/route.ts | 3 | in-progress | admin AUTOGEN-STUB 
+| app/api/admin/analytics/signals/route.ts | 3 | in-progress | admin AUTOGEN-STUB 
+| app/api/admin/ai/status/route.ts | 3 | in-progress | admin AUTOGEN-STUB 
+| app/api/admin/analytics/funnel/[courseId]/route.ts | 3 | in-progress | admin AUTOGEN-STUB 
+| app/api/admin/analytics/course/[courseId]/route.ts | 3 | in-progress | admin AUTOGEN-STUB 
+| app/api/image-caption/route.ts | 3 | in-progress | API AUTOGEN-STUB 
+| app/api/leaderboard/route.ts | 3 | in-progress | API AUTOGEN-STUB 
 
 > To start: I will pick the highest-priority untested file from this list and run STEP 1–6 for it continuously until all files are handled. Progress will be updated here as I go.
 
