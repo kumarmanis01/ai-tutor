@@ -53,9 +53,9 @@ Each row below corresponds to a source file to be processed following `docs/TEST
 | worker/bootstrap.ts | 2 | completed | worker bootstrap — STEP1: bootstrap sequence; STEP2: test cases: env validation, init order; STEP3-6: pending implement/test
 | utils/logApiUsage.ts | 1 | completed | api usage logger — STEP1: records API usage; STEP2: test cases: rate, payload; STEP3-6: pending implement/test
 | workers/analyticsAggregator.ts | 2 | completed | worker — STEP1: aggregates analytics; STEP2: test cases: aggregation correctness, edge buckets; STEP3: tests exist (tests/workers/analyticsAggregator.test.ts); STEP5: integrated into broader coverage; STEP6: verified — tests/workers/analyticsAggregator.test.ts passed; Suite status: green
-| types/shims-sanscript.d.ts | 3 | completed | STEP3: tests added (tests/unit/types\shims-sanscript.d.ts.test.ts); STEP4–6: pending CI verification 
-| types/shims-rehype-sanitize.d.ts | 3 | completed | STEP3: tests added (tests/unit/types\shims-rehype-sanitize.d.ts.test.ts); STEP4–6: pending CI verification 
-| types/shims-react-markdown.d.ts | 3 | completed | STEP3: tests added (tests/unit/types\shims-react-markdown.d.ts.test.ts); STEP4–6: pending CI verification 
+| types/shims-sanscript.d.ts | 3 | completed | STEP3: tests added (tests/unit/types\shims-sanscript.d.ts.test.ts); STEP4–6: verified — tests pass; Suite status: green
+| types/shims-rehype-sanitize.d.ts | 3 | completed | STEP3: tests added (tests/unit/types\shims-rehype-sanitize.d.ts.test.ts); STEP4–6: verified — tests pass; Suite status: green
+| types/shims-react-markdown.d.ts | 3 | completed | STEP3: tests added (tests/unit/types\shims-react-markdown.d.ts.test.ts); STEP4–6: verified — tests pass; Suite status: green
 | types/rooms.ts | 4 | completed | types — STEP1: type definitions; STEP2: no runtime tests required (type-only); STEP3-6: excluded (type-only)
 | types/prisma-shim.d.ts | 4 | completed | types — STEP1: type shim; STEP2: excluded (type-only)
 | types/next-shims.d.ts | 6 | completed | types — STEP1: type shim; STEP2: excluded (type-only)
