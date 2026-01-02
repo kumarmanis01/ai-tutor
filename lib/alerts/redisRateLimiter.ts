@@ -16,6 +16,10 @@ export class RedisRateLimiter implements RateLimiter {
    */
   constructor(private opts?: { client?: Redis; capacity?: number; windowSeconds?: number }) {
     this.client = opts?.client ?? (process.env.REDIS_URL ? new Redis(process.env.REDIS_URL) : new Redis());
+    if (this.client && typeof this.client.on === 'function') {
+      // swallow network errors when Redis is not available in dev/dry-run
+      this.client.on('error', () => { });
+    }
     this.capacity = opts?.capacity ?? 5;
     this.windowSeconds = opts?.windowSeconds ?? 60;
   }
@@ -42,6 +46,7 @@ export class RedisRateLimiter implements RateLimiter {
         await this.client.quit();
       }
     } catch {
+
       // swallow
     }
   }

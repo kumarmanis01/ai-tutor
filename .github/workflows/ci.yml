@@ -1,15 +1,19 @@
 name: CI
 
+# Workflow purpose: consolidated lint + type-check CI for PRs and pushes.
+# Owned by: engineering
 on:
   push:
-    branches: [main, master]
+    branches: [main, master, develop]
   pull_request:
-    branches: [main, master]
+    branches: [main, master, develop]
 
 jobs:
   lint-type:
     name: Lint & Type-check
     runs-on: ubuntu-latest
+    env:
+      HUSKY: '0'
     steps:
       - uses: actions/checkout@v4
       - name: Use Node.js
@@ -43,6 +47,8 @@ jobs:
         run: npm run lint
       - name: Type-check
         run: npm run type-check
+      - name: Run ESLint custom rule tests
+        run: npm run test:eslint-rules
 # NOTE: Integration tests are handled in the dedicated
 # `ci-alert-evaluator.yml` workflow. We keep this CI workflow
 # minimal (lint + type-check) to reduce duplicate runs and

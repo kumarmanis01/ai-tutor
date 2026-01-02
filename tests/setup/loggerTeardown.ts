@@ -4,8 +4,8 @@ import { logger } from '../../lib/logger'
 // that may run after Jest finishes and keep the process alive.
 afterAll(() => {
   try {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    if (typeof (logger as any).close === 'function') (logger as any).close()
+    const maybeClose = (logger as unknown as { close?: (...args: unknown[]) => unknown }).close
+    if (typeof maybeClose === 'function') maybeClose.call(logger)
   } catch {
     // swallow — tests should not fail due to teardown cleanup
   }

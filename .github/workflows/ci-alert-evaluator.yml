@@ -1,13 +1,27 @@
 name: CI - Alert Evaluator
 
+# Integration tests for Alert Evaluator. These tests are expensive (DB-backed).
+# To reduce noise we limit automatic runs: push to `develop`/`master`, and
+# pull requests only trigger when files under `tests/`, `lib/`, or `prisma/`
+# change. Manual `workflow_dispatch` is available for ad-hoc runs.
 on:
   push:
+    branches:
+      - develop
+      - master
   pull_request:
+    paths:
+      - 'tests/**'
+      - 'lib/**'
+      - 'prisma/**'
+  workflow_dispatch: {}
 
 jobs:
   integration:
     name: Integration Tests (Alert Evaluator)
     runs-on: ubuntu-latest
+    env:
+      HUSKY: '0'
     services:
       postgres:
         image: postgres:14
@@ -34,6 +48,17 @@ jobs:
         with:
           node-version: '20.x'
           cache: 'npm'
+
+      - name: Cache Node modules
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.npm
+            ~/.cache
+            node_modules
+          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-
 
       - name: Install deps
         run: npm ci
