@@ -33,6 +33,7 @@
   },
   "include": [
     "next-env.d.ts",
+    "declarations.d.ts",
     "types/**/*.d.ts",
     "lib/**/*.ts",
     "lib/**/*.tsx",

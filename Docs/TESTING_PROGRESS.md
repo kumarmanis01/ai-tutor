@@ -128,7 +128,7 @@ Each row below corresponds to a source file to be processed following `docs/TEST
 | tests/phase12/regenerationJobs.trigger.test.ts | - | existing | test; STEP6: verified — tests/phase12/regenerationJobs.trigger.test.ts passed; Suite status: green
 | tests/phase12/regenerationJobs.regressions.test.ts | - | existing | test; STEP6: verified — tests/phase12/regenerationJobs.regressions.test.ts passed; Suite status: green
 | tests/phase12/regenerationJobs.list.test.ts | - | existing | test; STEP6: verified — tests/phase12/regenerationJobs.list.test.ts passed; Suite status: green
-| lib/guardrails.ts | 1 | in-progress | guardrails AUTOGEN-STUB 
+| lib/guardrails.ts | 1 | completed | guardrails — STEP3: tests added (tests/unit/lib/guardrails.test.ts); STEP4: passed locally; STEP5: integrated into unit group; STEP6: verified — tests/unit/lib/guardrails.test.ts passed; Suite status: green
 | lib/systemSettings.ts | 1 | in-progress | system settings AUTOGEN-STUB 
 | lib/telemetry.ts | 1 | in-progress | telemetry AUTOGEN-STUB 
 | lib/types.ts | 4 | in-progress | types AUTOGEN-STUB 
