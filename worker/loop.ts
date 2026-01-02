@@ -22,4 +22,4 @@ try {
   console.error('Failed to start worker', err)
   process.exit(2)
 }
-  try {
+// End of entry script
