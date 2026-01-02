@@ -46,6 +46,15 @@ jobs:
       - name: Build project bundle
         run: npx esbuild scripts/runAlertEvaluator.ts --bundle --platform=node --target=node20 --outfile=build/runAlertEvaluator.js --external:@prisma/client --external:prom-client --external:ioredis
 
+      - name: Verify bundle artifact
+        run: |
+          echo "Listing build directory:"; ls -la build || true
+          if [ ! -f build/runAlertEvaluator.js ]; then
+            echo "ERROR: build/runAlertEvaluator.js not found. Ensure esbuild produced the bundle." >&2
+            exit 1
+          fi
+          echo "Bundle exists. Showing first 40 lines:"; head -n 40 build/runAlertEvaluator.js || true
+
       - name: Build and push Docker image
         uses: docker/build-push-action@v4
         with:
