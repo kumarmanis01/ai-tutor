@@ -12,6 +12,8 @@ jobs:
   local-checks:
     name: Local CI checks
     runs-on: ubuntu-latest
+    env:
+      HUSKY: '0'
     services:
       postgres:
         image: postgres:14

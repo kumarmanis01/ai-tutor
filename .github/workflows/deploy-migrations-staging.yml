@@ -6,6 +6,8 @@ on:
 jobs:
   deploy-migrations:
     runs-on: ubuntu-latest
+    env:
+      HUSKY: '0'
     environment: staging
     steps:
       - name: Checkout

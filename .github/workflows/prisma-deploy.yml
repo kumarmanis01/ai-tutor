@@ -7,6 +7,8 @@ jobs:
   deploy-migrations:
     name: Deploy migrations to production DB
     runs-on: ubuntu-latest
+    env:
+      HUSKY: '0'
     environment: production
     steps:
       - name: Checkout

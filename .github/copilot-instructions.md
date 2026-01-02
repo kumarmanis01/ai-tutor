@@ -19,6 +19,7 @@ EDIT LOG:
 Copilot MUST obey these rules when generating or modifying code related to the AI Content Engine.
 
 Quick summary:
+
 - Do not call LLMs from API routes, UI components or server actions.
 - Do not add string status fields for jobs; use enums.
 - Do not create module-scope Redis or Queue clients; lazy-init instead.
@@ -272,7 +273,7 @@ Builds must pass lint, type-check, and unit tests (with coverage). All PRs must 
 Add the following examples to the repo to implement these rules.
 
 1. package.json scripts (add / adapt)
-  /**
+   /\*\*
 
 - FILE OBJECTIVE:
 - - Canonical AI Content Engine guardrails referenced by Copilot and CI.
@@ -286,7 +287,7 @@ Add the following examples to the repo to implement these rules.
 -
 - EDIT LOG:
 - - 2026-01-01T00:00:00Z | architect | created
-   */
+    \*/
 
 ### Handling Merge Conflicts in PRs
 

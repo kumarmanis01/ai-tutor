@@ -16,6 +16,8 @@ on:
 jobs:
   build-and-test:
     runs-on: ubuntu-latest
+    env:
+      HUSKY: '0'
     services:
       postgres:
         image: postgres:15

@@ -20,6 +20,8 @@ jobs:
   integration:
     name: Integration Tests (Alert Evaluator)
     runs-on: ubuntu-latest
+    env:
+      HUSKY: '0'
     services:
       postgres:
         image: postgres:14
