@@ -1,7 +1,7 @@
 describe('import hooks/useStreaksAndGoals.ts', () => {
-  it('imports without throwing', async () => {
-    await expect(async () => {
-      await import('../../hooks/useStreaksAndGoals.ts');
-    }).not.toThrow();
-  });
+  it('imports without throwing', () => {
+    const path = require('path')
+    const file = path.join(process.cwd(), 'hooks', 'useStreaksAndGoals.ts')
+    expect(() => require(file)).not.toThrow()
+  })
 });

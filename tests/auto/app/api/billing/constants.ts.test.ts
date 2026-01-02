@@ -1,7 +1,7 @@
 describe('import app/api/billing/constants.ts', () => {
-  it('imports without throwing', async () => {
-    await expect(async () => {
-      await import('../../../../app/api/billing/constants.ts');
-    }).not.toThrow();
-  });
+  it('imports without throwing', () => {
+    const path = require('path')
+    const file = path.join(process.cwd(), 'app', 'api', 'billing', 'constants.ts')
+    expect(() => require(file)).not.toThrow()
+  })
 });

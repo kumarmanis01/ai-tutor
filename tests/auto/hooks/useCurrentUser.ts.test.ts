@@ -1,7 +1,7 @@
 describe('import hooks/useCurrentUser.ts', () => {
-  it('imports without throwing', async () => {
-    await expect(async () => {
-      await import('../../hooks/useCurrentUser.ts');
-    }).not.toThrow();
-  });
+  it('imports without throwing', () => {
+    const path = require('path')
+    const file = path.join(process.cwd(), 'hooks', 'useCurrentUser.ts')
+    expect(() => require(file)).not.toThrow()
+  })
 });

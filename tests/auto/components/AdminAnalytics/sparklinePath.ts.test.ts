@@ -1,7 +1,7 @@
 describe('import components/AdminAnalytics/sparklinePath.ts', () => {
-  it('imports without throwing', async () => {
-    await expect(async () => {
-      await import('../../../components/AdminAnalytics/sparklinePath.ts');
-    }).not.toThrow();
-  });
+  it('imports without throwing', () => {
+    const path = require('path')
+    const file = path.join(process.cwd(), 'components', 'AdminAnalytics', 'sparklinePath.ts')
+    expect(() => require(file)).not.toThrow()
+  })
 });

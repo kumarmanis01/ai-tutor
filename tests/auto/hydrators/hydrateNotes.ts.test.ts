@@ -1,7 +1,7 @@
 describe('import hydrators/hydrateNotes.ts', () => {
-  it('imports without throwing', async () => {
-    await expect(async () => {
-      await import('../../hydrators/hydrateNotes.ts');
-    }).not.toThrow();
-  });
+  it('imports without throwing', () => {
+    const path = require('path')
+    const file = path.join(process.cwd(), 'hydrators', 'hydrateNotes.ts')
+    expect(() => require(file)).not.toThrow()
+  })
 });
