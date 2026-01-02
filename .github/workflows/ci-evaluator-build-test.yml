@@ -71,14 +71,14 @@ jobs:
           DATABASE_URL: postgres://test:pass@127.0.0.1:${{ job.services.postgres.ports[5432] }}/ai_tutor_test
         run: npx prisma migrate deploy --preview-feature
 
-      - name: Bundle evaluator (esbuild)
-        run: npx esbuild scripts/runAlertEvaluator.ts --bundle --platform=node --target=node20 --outfile=build/runAlertEvaluator.js --external:@prisma/client --external:prom-client --external:ioredis --sourcemap
+      - name: Bundle evaluator (esbuild - CommonJS)
+        run: npx esbuild scripts/runAlertEvaluator.ts --bundle --platform=node --target=node20 --format=cjs --outfile=build/runAlertEvaluator.cjs --external:@prisma/client --external:prom-client --external:ioredis --sourcemap
 
       - name: Upload bundle artifact
         uses: actions/upload-artifact@v4
         with:
           name: evaluator-bundle
-          path: build/runAlertEvaluator.js
+          path: build/runAlertEvaluator.cjs
 
       - name: Run evaluator integration
         env:
@@ -97,4 +97,4 @@ jobs:
           # Optional Pushgateway URL from secrets if set
           PUSHGATEWAY_URL: ${{ secrets.PUSHGATEWAY_URL || '' }}
         run: |
-          node build/runAlertEvaluator.js
+          node build/runAlertEvaluator.cjs

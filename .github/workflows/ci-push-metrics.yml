@@ -34,4 +34,4 @@ jobs:
           RUN_ONCE: '1'
           EVALUATOR_DRY_RUN: '1'
         run: |
-          node build/runAlertEvaluator.js
+          node build/runAlertEvaluator.cjs

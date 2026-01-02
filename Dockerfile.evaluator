@@ -8,7 +8,7 @@ COPY package.json package-lock.json ./
 RUN HUSKY=0 NPM_CONFIG_IGNORE_SCRIPTS=true npm ci --omit=dev
 
 # copy built bundle (CI will generate it before docker build by default via context)
-COPY build/runAlertEvaluator.js ./build/runAlertEvaluator.js
+COPY build/runAlertEvaluator.cjs ./build/runAlertEvaluator.cjs
 
 EXPOSE 9188
-CMD ["node", "build/runAlertEvaluator.js"]
+CMD ["node", "build/runAlertEvaluator.cjs"]

@@ -59,17 +59,17 @@ jobs:
       - name: Generate Prisma client
         run: npx prisma generate
 
-      - name: Build project bundle
-        run: npx esbuild scripts/runAlertEvaluator.ts --bundle --platform=node --target=node20 --outfile=build/runAlertEvaluator.js --external:@prisma/client --external:prom-client --external:ioredis
+      - name: Build project bundle (CommonJS)
+        run: npx esbuild scripts/runAlertEvaluator.ts --bundle --platform=node --target=node20 --format=cjs --outfile=build/runAlertEvaluator.cjs --external:@prisma/client --external:prom-client --external:ioredis
 
       - name: Verify bundle artifact
         run: |
           echo "Listing build directory:"; ls -la build || true
-          if [ ! -f build/runAlertEvaluator.js ]; then
-            echo "ERROR: build/runAlertEvaluator.js not found. Ensure esbuild produced the bundle." >&2
+          if [ ! -f build/runAlertEvaluator.cjs ]; then
+            echo "ERROR: build/runAlertEvaluator.cjs not found. Ensure esbuild produced the bundle." >&2
             exit 1
           fi
-          echo "Bundle exists. Showing first 40 lines:"; head -n 40 build/runAlertEvaluator.js || true
+          echo "Bundle exists. Showing first 40 lines:"; head -n 40 build/runAlertEvaluator.cjs || true
 
       - name: Build and push Docker image
         uses: docker/build-push-action@v4
@@ -94,5 +94,5 @@ jobs:
         with:
           name: evaluator-image-info
           path: |
-            build/runAlertEvaluator.js
+            build/runAlertEvaluator.cjs
             image-info.txt
