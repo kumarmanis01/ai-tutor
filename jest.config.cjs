@@ -9,10 +9,13 @@ module.exports = {
   moduleNameMapper: {
     // map @/lib/... to the repo root lib/ folder, and everything else to src/
     '^@/(lib/.*)$': '<rootDir>/$1',
+    '^@/(utils/.*)$': '<rootDir>/$1',
+    '^@/(hydrators/.*)$': '<rootDir>/$1',
+    '^@/(hooks/.*)$': '<rootDir>/$1',
     '^@/(producers/.*)$': '<rootDir>/$1',
     '^@/(queues/.*)$': '<rootDir>/$1',
     '^@/(workers/.*)$': '<rootDir>/$1',
-    '^@/(.*)$': '<rootDir>/$1'
+    '^@/(.*)$': '<rootDir>/src/$1'
   },
   moduleDirectories: ['node_modules', '<rootDir>'],
   globals: {
