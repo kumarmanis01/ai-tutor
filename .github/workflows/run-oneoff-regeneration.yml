@@ -11,6 +11,8 @@ on:
 jobs:
   run-job:
     runs-on: ubuntu-latest
+    env:
+      HUSKY: '0'
     environment: production
     steps:
       - name: Checkout

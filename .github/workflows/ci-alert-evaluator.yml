@@ -20,6 +20,8 @@ jobs:
   integration:
     name: Integration Tests (Alert Evaluator)
     runs-on: ubuntu-latest
+    env:
+      HUSKY: '0'
     services:
       postgres:
         image: postgres:14
@@ -46,6 +48,17 @@ jobs:
         with:
           node-version: '20.x'
           cache: 'npm'
+
+      - name: Cache Node modules
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.npm
+            ~/.cache
+            node_modules
+          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-
 
       - name: Install deps
         run: npm ci
