@@ -36,6 +36,7 @@ Each row below corresponds to a source file to be processed following `docs/TEST
 - For bookkeeping, this means the tracker entries may be considered verified at STEP6 as of the timestamp above. To preserve per-row history and avoid extremely large diffs, I have added this verification note here rather than mass-editing every table row. If you want per-row `Status` column updates (mass replace `not-started` → `completed`), I can apply that in a follow-up patch.
 
 - STEP 5: A branch with these fixes was pushed and a PR was created: https://github.com/kumarmanis01/ai-tutor/pull/new/feat/tests/step5-convert-dts-ignore (target: `develop`).
+ - STEP 5: A branch with these fixes was pushed and a PR was created and merged: https://github.com/kumarmanis01/ai-tutor/pull/33 (merged to `develop`).
 
 | File | Priority | Status | Notes |
 |---|---:|---|---|
