@@ -1,7 +1,6 @@
 dist/
-<<<<<<< HEAD
->>>>>>> origin/develop
 .next/
 node_modules/
 build/
 .env
+
