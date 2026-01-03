@@ -1,0 +1,7 @@
+import fs from 'fs';
+import path from 'path';
+
+test('file exists: app/api/subscription/status/route.ts', () => {
+  const p = path.join(process.cwd(), 'app/api/subscription/status/route.ts');
+  expect(fs.existsSync(p)).toBe(true);
+});
