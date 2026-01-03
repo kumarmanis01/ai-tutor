@@ -2,6 +2,10 @@
 /* eslint-disable no-console */
 import 'dotenv/config'
 import 'tsconfig-paths/register'
+// Register scheduled jobs only in worker processes. This import has no runtime
+// export; it registers job definitions via side-effects. It MUST NOT be
+// imported by the web process.
+import '@/lib/jobs/registerJobs'
 import workerDefault, { startWorker } from '../workers/regenerationWorker'
 
 // prefer explicit startWorker export
