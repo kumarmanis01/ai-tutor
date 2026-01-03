@@ -10,6 +10,9 @@ module.exports = {
       env: {
         NODE_ENV: 'production'
       },
+      env_production: {
+        NODE_ENV: 'production'
+      },
       error_file: 'logs/web-error.log',
       out_file: 'logs/web-out.log',
       merge_logs: true,
@@ -23,6 +26,9 @@ module.exports = {
       autorestart: true,
       env_file: '.env.production',
       env: {
+        NODE_ENV: 'production'
+      },
+      env_production: {
         NODE_ENV: 'production'
       },
       error_file: 'logs/worker-error.log',
