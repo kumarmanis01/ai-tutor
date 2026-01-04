@@ -96,19 +96,23 @@ fi
 
 run_step "Load environment file" "set -a; . \"$ENV_PATH\" || true; set +a"
 
-run_step "Fetch and checkout $REF (with HTTPS fallback if SSH fetch fails)" "bash -lc '
+export LOG_FILE
+TS_FETCH=$(date +%s)
+TMP_SCRIPT="$REPO_PATH/tmp/fetch_checkout_$TS_FETCH.sh"
+cat > "$TMP_SCRIPT" <<'BASH'
+#!/usr/bin/env bash
 set -e
 # Attempt to fetch from origin (this may fail if origin uses an SSH URL without keys)
 if git fetch origin --tags >/dev/null 2>&1; then
   FETCH_REMOTE=origin
 else
-  echo "origin fetch failed; attempting HTTPS fallback" >> \"$LOG_FILE\"
+  echo "origin fetch failed; attempting HTTPS fallback" >> "$LOG_FILE"
   ORIG_URL=$(git config --get remote.origin.url || true)
-  if [[ \"$ORIG_URL\" =~ ^git@github.com:(.+) ]]; then
+  if [[ "$ORIG_URL" =~ ^git@github.com:(.+) ]]; then
     REPO_PATH_SUFFIX=${BASH_REMATCH[1]}
     BASE_HTTPS_URL="https://github.com/${REPO_PATH_SUFFIX}"
   else
-    BASE_HTTPS_URL=\"$ORIG_URL\"
+    BASE_HTTPS_URL="$ORIG_URL"
   fi
 
   # Prefer PAT-based HTTPS fetch if a PAT is provided in env
@@ -118,16 +122,13 @@ else
   if [ -z "$PAT_VAR" ] && [ -n "${GH_TOKEN:-}" ]; then PAT_VAR="GH_TOKEN"; fi
 
   if [ -n "$PAT_VAR" ]; then
-    # build HTTPS URL using token but avoid printing token into logs
-    run_sensitive_step "Add temporary HTTPS remote using PAT and fetch tags" "\
-      git remote remove tmp_fetch >/dev/null 2>&1 || true; \
-      git remote add tmp_fetch \"https://x-access-token:${!PAT_VAR}@github.com/${REPO_PATH_SUFFIX}\"; \
-      git -c http.sslVerify=true fetch tmp_fetch --tags"
+    # use temporary remote with token; do not echo token
+    git remote remove tmp_fetch >/dev/null 2>&1 || true
+    git remote add tmp_fetch "https://x-access-token:${!PAT_VAR}@github.com/${REPO_PATH_SUFFIX}" >/dev/null 2>&1 || true
+    git -c http.sslVerify=true fetch tmp_fetch --tags
     FETCH_REMOTE=tmp_fetch
-    # cleanup tmp_fetch remote after fetch to avoid leaving token in config
     git remote remove tmp_fetch >/dev/null 2>&1 || true
   else
-    # fallback to simple HTTPS fetch without PAT (public repo) or tmp_fetch from origin URL
     if [[ "$BASE_HTTPS_URL" =~ ^https?:// ]]; then
       git remote remove tmp_fetch >/dev/null 2>&1 || true
       git remote add tmp_fetch "$BASE_HTTPS_URL" >/dev/null 2>&1 || true
@@ -140,17 +141,20 @@ else
 fi
 
 # Decide checkout target: prefer branch (master/main) or explicit tag
-if [[ \"$REF\" == "master" || \"$REF\" == "main" ]]; then
-  git checkout -B deploy/prod \"${FETCH_REMOTE:-origin}/$REF\"
+if [[ "$REF" == "master" || "$REF" == "main" ]]; then
+  git checkout -B deploy/prod "${FETCH_REMOTE:-origin}/$REF"
 else
-  # Try to resolve as tag first
-  if git rev-parse --verify --quiet \"refs/tags/$REF\" >/dev/null 2>&1; then
-    git checkout -B deploy/prod \"refs/tags/$REF\"
+  if git rev-parse --verify --quiet "refs/tags/$REF" >/dev/null 2>&1; then
+    git checkout -B deploy/prod "refs/tags/$REF"
   else
-    git checkout -B deploy/prod \"${FETCH_REMOTE:-origin}/$REF\"
+    git checkout -B deploy/prod "${FETCH_REMOTE:-origin}/$REF"
   fi
 fi
-'"
+BASH
+
+chmod +x "$TMP_SCRIPT"
+run_step "Fetch and checkout $REF (with HTTPS fallback if SSH fetch fails)" "$TMP_SCRIPT"
+rm -f "$TMP_SCRIPT"
 
 # Stop previous PM2 processes (best effort)
 run_step_allow_fail "Stop all PM2 processes (best-effort)" "pm2 stop all || true"
