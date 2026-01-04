@@ -150,7 +150,7 @@ else
     git checkout -B deploy/prod \"${FETCH_REMOTE:-origin}/$REF\"
   fi
 fi
-'
+'"
 
 # Stop previous PM2 processes (best effort)
 run_step_allow_fail "Stop all PM2 processes (best-effort)" "pm2 stop all || true"
