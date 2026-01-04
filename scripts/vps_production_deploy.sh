@@ -9,7 +9,7 @@ set -uo pipefail
 IFS=$'\n\t'
 
 REPO_PATH=${1:-/home/gnosiva/apps/content-engine/ai-tutor}
-REF=${2:-origin/master}
+REF=${2:-master}
 ENV_PATH=${3:-$REPO_PATH/.env.production}
 
 TS=$(date +%Y%m%d-%H%M%S)
@@ -80,8 +80,37 @@ fi
 
 run_step "Load environment file" "set -a; . \"$ENV_PATH\" || true; set +a"
 
-run_step "Ensure git refs are available" "git fetch origin --tags"
-run_step "Checkout deploy branch from $REF" "git checkout -B deploy/prod \"$REF\""
+run_step "Fetch and checkout $REF (with HTTPS fallback if SSH fetch fails)" "bash -lc '
+set -e
+# Attempt to fetch from origin (this may fail if origin uses an SSH URL without keys)
+if git fetch origin --tags >/dev/null 2>&1; then
+  FETCH_REMOTE=origin
+else
+  echo "origin fetch failed; attempting HTTPS fallback" >> \"$LOG_FILE\"
+  ORIG_URL=$(git config --get remote.origin.url || true)
+  if [[ \"$ORIG_URL\" =~ ^git@github.com:(.+) ]]; then
+    HTTPS_URL=\"https://github.com/${BASH_REMATCH[1]}\"
+  else
+    HTTPS_URL=\"$ORIG_URL\"
+  fi
+  git remote remove tmp_fetch >/dev/null 2>&1 || true
+  git remote add tmp_fetch \"$HTTPS_URL\" >/dev/null 2>&1 || true
+  git fetch tmp_fetch --tags >/dev/null 2>&1
+  FETCH_REMOTE=tmp_fetch
+fi
+
+# Decide checkout target: prefer branch (master/main) or explicit tag
+if [[ \"$REF\" == "master" || \"$REF\" == "main" ]]; then
+  git checkout -B deploy/prod \"${FETCH_REMOTE:-origin}/$REF\"
+else
+  # Try to resolve as tag first
+  if git rev-parse --verify --quiet \"refs/tags/$REF\" >/dev/null 2>&1; then
+    git checkout -B deploy/prod \"refs/tags/$REF\"
+  else
+    git checkout -B deploy/prod \"${FETCH_REMOTE:-origin}/$REF\"
+  fi
+fi
+'
 
 # Stop previous PM2 processes (best effort)
 run_step_allow_fail "Stop all PM2 processes (best-effort)" "pm2 stop all || true"
