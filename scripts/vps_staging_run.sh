@@ -10,8 +10,8 @@ echo "=== AI-Tutor VPS Staging Dry-Run ==="
 echo "This script will guide you through Phase A: Build-only, Web-only start, create job, Worker-only start, and verifications."
 echo
 
-read -p "Repo path on VPS (default: /srv/ai-tutor): " REPO_PATH
-REPO_PATH=${REPO_PATH:-/srv/ai-tutor}
+read -p "Repo path on VPS (default: /home/gnosiva/apps/content-engine/ai-tutor): " REPO_PATH
+REPO_PATH=${REPO_PATH:-/home/gnosiva/apps/content-engine/ai-tutor}
 read -p "Path to .env.staging (absolute, default: $REPO_PATH/.env.staging): " ENV_PATH
 ENV_PATH=${ENV_PATH:-$REPO_PATH/.env.staging}
 read -p "Git ref to deploy (branch or tag, default: origin/master): " REF
@@ -20,8 +20,14 @@ REF=${REF:-origin/master}
 # Logging setup
 TS=$(date +%Y%m%d-%H%M%S)
 LOG_DIR="$REPO_PATH/tmp/staging_logs"
+# create logs with restrictive permissions
+umask 077
 mkdir -p "$LOG_DIR"
+chmod 700 "$LOG_DIR" || true
 LOG_FILE="$LOG_DIR/staging-$TS.log"
+touch "$LOG_FILE" && chmod 600 "$LOG_FILE" || true
+# restore default umask for other operations
+umask 022
 
 echo "Using:" | tee -a "$LOG_FILE"
 echo "  REPO_PATH= $REPO_PATH" | tee -a "$LOG_FILE"

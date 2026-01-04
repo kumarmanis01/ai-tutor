@@ -4,7 +4,7 @@ Short notes for the `scripts/` deploy helpers.
 
 - `vps_production_deploy.sh`: non-interactive production deploy. Creates timestamped logs under `tmp/deploy_logs/`. Usage:
 
-  ./scripts/vps_production_deploy.sh /srv/ai-tutor origin/master /srv/ai-tutor/.env.production
+  ./scripts/vps_production_deploy.sh /home/gnosiva/apps/content-engine/ai-tutor origin/master /home/gnosiva/apps/content-engine/ai-tutor/.env.production
 
 - `vps_staging_run.sh`: interactive staging dry-run. By default this script looks for `.env.staging` in the repo root (override with the 2nd arg). Creates logs under `tmp/staging_logs/`.
 

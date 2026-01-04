@@ -8,14 +8,20 @@
 set -uo pipefail
 IFS=$'\n\t'
 
-REPO_PATH=${1:-/srv/ai-tutor}
+REPO_PATH=${1:-/home/gnosiva/apps/content-engine/ai-tutor}
 REF=${2:-origin/master}
 ENV_PATH=${3:-$REPO_PATH/.env.production}
 
 TS=$(date +%Y%m%d-%H%M%S)
 LOG_DIR="$REPO_PATH/tmp/deploy_logs"
+# create logs with restrictive permissions
+umask 077
 mkdir -p "$LOG_DIR"
+chmod 700 "$LOG_DIR" || true
 LOG_FILE="$LOG_DIR/deploy-$TS.log"
+touch "$LOG_FILE" && chmod 600 "$LOG_FILE" || true
+# restore default umask for other operations
+umask 022
 
 echo "=== AI-Tutor VPS Production Deploy ===" | tee -a "$LOG_FILE"
 echo "Repo: $REPO_PATH" | tee -a "$LOG_FILE"
