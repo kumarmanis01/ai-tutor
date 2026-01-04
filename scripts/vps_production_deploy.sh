@@ -97,6 +97,7 @@ fi
 run_step "Load environment file" "set -a; . \"$ENV_PATH\" || true; set +a"
 
 export LOG_FILE
+export REF
 TS_FETCH=$(date +%s)
 TMP_SCRIPT="$REPO_PATH/tmp/fetch_checkout_$TS_FETCH.sh"
 cat > "$TMP_SCRIPT" <<'BASH'
