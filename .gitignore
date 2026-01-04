@@ -34,8 +34,10 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# env files (can opt-in for committing if needed)
+# env files (do not commit)
+# keep all env files ignored, including .env.production
 .env*
+.env.production
 
 # vercel
 .vercel
