@@ -64,6 +64,22 @@ run_step_allow_fail() {
   }
 }
 
+# run a command but avoid logging the command string (useful for secrets)
+run_sensitive_step() {
+  local desc="$1"
+  shift
+  local cmd="$*"
+  echo "---- [$(date '+%Y-%m-%d %H:%M:%S')] STEP (sensitive): $desc" | tee -a "$LOG_FILE"
+  # execute without writing the command to the log to avoid leaking secrets
+  bash -lc "$cmd" >> "$LOG_FILE" 2>&1
+  local rc=$?
+  if [ $rc -ne 0 ]; then
+    echo "---- STEP FAILED: $desc (exit $rc)" | tee -a "$LOG_FILE"
+    fail_and_exit $rc
+  fi
+  echo "---- STEP OK: $desc" | tee -a "$LOG_FILE"
+}
+
 trap 'echo "Interrupted" | tee -a "$LOG_FILE"; exit 130' INT TERM
 
 if [ ! -d "$REPO_PATH" ]; then
@@ -89,14 +105,38 @@ else
   echo "origin fetch failed; attempting HTTPS fallback" >> \"$LOG_FILE\"
   ORIG_URL=$(git config --get remote.origin.url || true)
   if [[ \"$ORIG_URL\" =~ ^git@github.com:(.+) ]]; then
-    HTTPS_URL=\"https://github.com/${BASH_REMATCH[1]}\"
+    REPO_PATH_SUFFIX=${BASH_REMATCH[1]}
+    BASE_HTTPS_URL="https://github.com/${REPO_PATH_SUFFIX}"
   else
-    HTTPS_URL=\"$ORIG_URL\"
+    BASE_HTTPS_URL=\"$ORIG_URL\"
   fi
-  git remote remove tmp_fetch >/dev/null 2>&1 || true
-  git remote add tmp_fetch \"$HTTPS_URL\" >/dev/null 2>&1 || true
-  git fetch tmp_fetch --tags >/dev/null 2>&1
-  FETCH_REMOTE=tmp_fetch
+
+  # Prefer PAT-based HTTPS fetch if a PAT is provided in env
+  PAT_VAR=""
+  if [ -n "${GITHUB_PAT:-}" ]; then PAT_VAR="GITHUB_PAT"; fi
+  if [ -z "$PAT_VAR" ] && [ -n "${GITHUB_TOKEN:-}" ]; then PAT_VAR="GITHUB_TOKEN"; fi
+  if [ -z "$PAT_VAR" ] && [ -n "${GH_TOKEN:-}" ]; then PAT_VAR="GH_TOKEN"; fi
+
+  if [ -n "$PAT_VAR" ]; then
+    # build HTTPS URL using token but avoid printing token into logs
+    run_sensitive_step "Add temporary HTTPS remote using PAT and fetch tags" "\
+      git remote remove tmp_fetch >/dev/null 2>&1 || true; \
+      git remote add tmp_fetch \"https://x-access-token:${!PAT_VAR}@github.com/${REPO_PATH_SUFFIX}\"; \
+      git -c http.sslVerify=true fetch tmp_fetch --tags"
+    FETCH_REMOTE=tmp_fetch
+    # cleanup tmp_fetch remote after fetch to avoid leaving token in config
+    git remote remove tmp_fetch >/dev/null 2>&1 || true
+  else
+    # fallback to simple HTTPS fetch without PAT (public repo) or tmp_fetch from origin URL
+    if [[ "$BASE_HTTPS_URL" =~ ^https?:// ]]; then
+      git remote remove tmp_fetch >/dev/null 2>&1 || true
+      git remote add tmp_fetch "$BASE_HTTPS_URL" >/dev/null 2>&1 || true
+      git fetch tmp_fetch --tags >/dev/null 2>&1 || true
+      FETCH_REMOTE=tmp_fetch
+    else
+      echo "No workable HTTPS fallback URL; continuing but fetch may be incomplete" >> "$LOG_FILE"
+    fi
+  fi
 fi
 
 # Decide checkout target: prefer branch (master/main) or explicit tag

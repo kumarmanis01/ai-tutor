@@ -44,6 +44,16 @@ fail_and_exit() {
   echo "" | tee -a "$LOG_FILE"
   echo "ERROR: Step failed (exit $code). Tail of log:" | tee -a "$LOG_FILE"
   tail -n 200 "$LOG_FILE" | sed 's/^/    /'
+ # Install and build
+ echo "\n-- Install dependencies (npm ci) --" | tee -a "$LOG_FILE"
+ read -p "Run 'npm ci'? (recommended) (y/N) " RUN_NPM_CI
+ echo "PROMPT: Run npm ci -> ${RUN_NPM_CI}" | tee -a "$LOG_FILE"
+ if [[ "${RUN_NPM_CI,,}" == "y" ]]; then
+   run_step "Install dependencies (npm ci)" "npm ci"
+ else
+   echo "Skipping npm ci as requested." | tee -a "$LOG_FILE";
+ fi
+
   echo "Full log: $LOG_FILE"
   exit "$code"
 }
