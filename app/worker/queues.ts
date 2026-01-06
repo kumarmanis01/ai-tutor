@@ -1,5 +1,5 @@
 import { Queue } from 'bullmq'
-import { getRedis } from '../lib/redis'
+import { getRedis } from '@/lib/redis'
 
 export const CONTENT_QUEUE = 'content-engine'
 

@@ -2,14 +2,28 @@
   "extends": "./tsconfig.json",
   "compilerOptions": {
     "outDir": "dist",
-    "rootDir": "app",
-    "module": "NodeNext",
-    "moduleResolution": "NodeNext",
+    "rootDir": ".",
+    "module": "ES2022",
+    "moduleResolution": "node",
     "target": "ES2022",
     "declaration": false,
     "sourceMap": false
   },
-  "include": ["app"]
+  "include": [
+    "app/worker",
+    "lib",
+    "queues",
+    "workers",
+    "producers",
+    "scripts",
+    "types"
+  ]
   ,
-  "exclude": ["node_modules",".next","dist","tests","public"]
+  "exclude": [
+    "node_modules",
+    ".next",
+    "dist",
+    "tests",
+    "public"
+  ]
 }
