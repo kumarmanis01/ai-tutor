@@ -399,3 +399,47 @@ INSERTION CHOICE:
 To proceed, reply with one line: INSERT: full-doc
 or INSERT: ts-header
 -->
+
+YOU MUST FOLLOW THESE RULES EXACTLY
+This is a production Node.js application deployed on a VPS with PM2.
+ABSOLUTE PROHIBITIONS
+
+❌ Never import or reference:
+dotenv
+dotenv/config
+ts-node
+ts-node/register
+tsconfig-paths
+tsconfig-paths/register
+❌ Never require dev-only tools at runtime
+❌ Never assume ts-node exists in production
+ENVIRONMENT LOADING RULE
+Environment variables are injected ONLY via:
+.env.production (PM2 env_file)
+Runtime code must assume process.env is already populated
+No environment-loading logic is allowed in production code
+TYPESCRIPT PATH RULE
+Path aliases MUST be resolved at build time only
+Use tsc-alias after tsc
+Runtime imports MUST be relative or resolved by Node.js
+WORKER RUNTIME RULE
+Workers run compiled JavaScript only from dist/
+Worker entrypoint MUST:
+Have zero side-effects
+Not depend on build tools
+Start polling immediately
+
+ENTRYPOINT RULE
+Each process has exactly ONE entry file
+
+Entry files:
+dist/server.js → web
+dist/worker/entry.js → worker
+
+VERIFICATION REQUIREMENT (MANDATORY)
+After any change, ensure:
+grep -R "dotenv" dist || echo OK
+grep -R "tsconfig-paths" dist || echo OK
+
+If any forbidden dependency appears in dist/, the solution is invalid.
+Do not proceed unless all constraints are satisfied.
