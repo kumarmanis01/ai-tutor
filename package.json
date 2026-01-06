@@ -68,6 +68,11 @@
     "postbuild": "node scripts/fix-dist-imports.cjs dist && node scripts/ensure-regeneration-shim.cjs ~\\ai-tutor || true",
     "dist:shim": "node scripts/create-dist-shims.cjs",
     "dist:parse-shim": "node scripts/parse-and-shim.cjs --log logs/worker-error.log --root dist"
+    ,
+    "start:worker": "node -r ts-node/register worker/loop.ts",
+    "start:worker:bootstrap": "node -r ts-node/register worker/bootstrap.ts",
+    "pm2:start-worker": "pm2 start ecosystem.config.cjs --only content-engine-worker --update-env",
+    "pm2:restart-worker": "pm2 restart content-engine-worker --update-env"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.10.0",
