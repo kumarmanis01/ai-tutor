@@ -1,5 +1,8 @@
 #!/usr/bin/env node
-import 'dotenv/config'
+// Load local env only in non-production runs. PM2 provides env via `env_file` in prod.
+if (process.env.NODE_ENV !== 'production') {
+  try { void import('dotenv/config') } catch {}
+}
 import { prisma } from '@/lib/prisma'
 import generatorAdapter from '@/regeneration/generatorAdapter'
 import { logAuditEvent } from '@/lib/audit/log'
