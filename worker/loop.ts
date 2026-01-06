@@ -1,7 +1,10 @@
 #!/usr/bin/env node
 /* eslint-disable no-console */
-import 'dotenv/config'
-import 'tsconfig-paths/register'
+// Load dotenv in non-production environments only. In production PM2
+// provides env via `env_file` and we must avoid loading dev helpers.
+if (process.env.NODE_ENV !== 'production') {
+  try { void import('dotenv/config') } catch {}
+}
 // Register scheduled jobs only in worker processes. This import has no runtime
 // export; it registers job definitions via side-effects. It MUST NOT be
 // imported by the web process.

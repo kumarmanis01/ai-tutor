@@ -1,7 +1,11 @@
 #!/usr/bin/env node
 /* Load local env for developer runs (dotfiles) */
 import dotenv from 'dotenv'
-dotenv.config({ path: '.env.local' })
+// Load local .env only in non-production environments to avoid polluting
+// production runtimes where PM2 provides env via `env_file`.
+if (process.env.NODE_ENV !== 'production') {
+  try { dotenv.config({ path: '.env.local' }) } catch {}
+}
 /* eslint-disable @typescript-eslint/no-require-imports */
 /* eslint-disable no-console */
 /**
