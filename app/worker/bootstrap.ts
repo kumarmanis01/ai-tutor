@@ -1,9 +1,11 @@
 import { startContentWorker } from './content.worker'
+import { logger } from '@/lib/logger'
 
 export async function bootstrapWorker() {
-  console.log('[worker] bootstrapping...')
+  logger.info('[worker] bootstrapping...')
 
   if (!process.env.REDIS_URL) {
+    logger.error('REDIS_URL is not set')
     throw new Error('REDIS_URL is not set')
   }
 
@@ -12,5 +14,5 @@ export async function bootstrapWorker() {
   // process can continue to run and PM2 can manage lifecycle.
   startContentWorker()
 
-  console.log('[worker] bootstrap complete')
+  logger.info('[worker] bootstrap complete')
 }
