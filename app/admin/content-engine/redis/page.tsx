@@ -1,7 +1,8 @@
 import React from 'react';
 
 async function getRedis() {
-  const res = await fetch('/api/admin/content-engine/redis', { cache: 'no-store' });
+  const base = process.env.NEXT_PUBLIC_BASE_URL || process.env.NEXTAUTH_URL || 'http://localhost:3000';
+  const res = await fetch(`${base}/api/admin/content-engine/redis`, { cache: 'no-store' });
   if (!res.ok) return null;
   return res.json();
 }
