@@ -10,4 +10,6 @@
     "sourceMap": false
   },
   "include": ["app"]
+  ,
+  "exclude": ["node_modules",".next","dist","tests","public"]
 }
