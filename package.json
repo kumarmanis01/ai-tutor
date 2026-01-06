@@ -42,7 +42,7 @@
   "scripts": {
     "dev": "npm run lint && npm run type-check && next dev",
     "prepare": "husky install",
-    "build": "tsc -p tsconfig.build.json && tsc-alias -p tsconfig.build.json && bash scripts/verify-dist.sh",
+    "build": "tsc -p tsconfig.build.json && tsc-alias -p tsconfig.build.json && node scripts/verify-dist.cjs",
     "build:prod": "npx prisma generate && npm run build:tsc && npm run build:workers && next build",
     "start": "next start",
     "export": "next export",

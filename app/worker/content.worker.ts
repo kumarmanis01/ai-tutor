@@ -1,5 +1,5 @@
 import { Worker } from 'bullmq'
-import { getRedis } from '../lib/redis'
+import { getRedis } from '@/lib/redis'
 import { CONTENT_QUEUE } from './queues'
 import { logger } from '@/lib/logger'
 
