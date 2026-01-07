@@ -1,0 +1,221 @@
+<!--
+FILE OBJECTIVE:
+- Provide a repository tree overview in Markdown, filtered by common ignore rules (.gitignore).
+
+LINKED UNIT TEST:
+- tests/unit/docs/repo_tree.spec.ts
+
+COPILOT INSTRUCTIONS FOLLOWED:
+- .github/copilot-instructions.md
+- /docs/COPILOT_GUARDRAILS.md
+
+EDIT LOG:
+- 2026-01-07T00:00:00Z | copilot-agent | generated REPO_TREE.md from repo listing
+-->
+
+# Repository tree (filtered)
+
+This file is a generated, hierarchical overview of the repository rooted at the workspace. It excludes common ignored paths such as `.git/`, `node_modules/`, `.next/`, `dist/`, and ephemeral env files (`.env*`, `*.tsbuildinfo`). For a full raw listing see `repo-tree.txt` in the repo root (generated earlier).
+
+Below is a concise, recursive view of the repository useful for navigation and quick orientation.
+
+- .env* (ignored files omitted from listing)
+- .eslintrc.json
+- README.md
+- WORKFLOWS.md
+- package.json
+- tsconfig.json
+- next.config.mjs
+- postcss.config.*
+- tailwind.config.js
+- declarations.d.ts
+- next-env.d.ts
+- next-auth.d.ts
+- middleware.ts
+- backups/
+  - backup-2025-12-15T130552427Z.sql
+- app/
+  - globals.css
+  - layout.tsx
+  - not-found.tsx
+  - page.tsx
+  - providers.tsx
+  - about/
+  - admin/
+  - api/
+  - auth/
+  - contact-us/
+  - context/
+  - dashboard/
+  - data-security/
+  - landing-page/
+  - pricing/
+  - privacy/
+  - profile/
+  - refund/
+  - rooms/
+  - terms/
+  - tests/
+  - worker/
+    - entry.ts
+    - bootstrap.ts
+    - content.worker.ts
+    - queues.ts
+- components/
+  - AdminCreateChallenge.tsx
+  - Analytics.tsx
+  - AuditLogTable.tsx
+  - AuditTrailViewer.tsx
+  - AuthModal.tsx
+  - AuthRedeemOnSignIn.tsx
+  - AuthSessionLoader.tsx
+  - BillingButton.tsx
+  - ConversionCTA.tsx
+  - DiagramCanvas.tsx
+  - ExportButtons.tsx
+  - FeatureHighlights.tsx
+  - InviteButton.tsx
+  - LanguageSelector.tsx
+  - Leaderboard.tsx
+  - Loader.tsx
+  - MobileMenu.tsx
+  - Navbar.tsx
+  - PricingCard.tsx
+  - ProfileWidgets.tsx
+  - RoomClient.tsx
+  - SetPasswordModal.tsx
+  - ShareBadge.tsx
+  - StickyHeader.tsx
+  - StudentTestimonials.tsx
+  - SubjectSelector.tsx
+  - SubscriptionModal.tsx
+  - Testimonials.tsx
+  - ToastHost.tsx
+  - TutorModeToggle.tsx
+  - VoiceSelector.tsx
+  - WaitlistForm.tsx
+  - WeeklyChallenge.tsx
+  - Admin/
+  - Auth/
+  - hierarchy/
+  - layout/
+  - Onboarding/
+  - Profile/
+  - Test/
+  - UI/
+- context/
+  - GlobalLoaderProvider.tsx
+  - OnboardingProvider.tsx
+- docs/
+  - Admin-ui-guidelines.md
+  - AI Content Engine Architecture.md
+  - AI_Admin_dashboard_architecture.md
+  - ai_content_engine_enterprise_architecture_guardrails.md
+  - AI_CONTENT_ENGINE_GUIDE.md
+  - AI_Content_Engine_PRODUCTION_ARCHITECTURE_v1.0.md
+  - AI_CONTENT_INDEX.md
+  - AI_EXECUTION_PIPELINE.md
+  - AI_PIPELINE_RULES.md
+  - AI_Tutor_DB_Analysis.md
+  - ARCHITECTURE.md
+  - COPILOT_AI_LOCK.md
+  - COPILOT_ENGINE_CHECKLIST.md
+  - COPILOT_GUARDRAILS.md
+  - DB_INDEX_STRATEGY.md
+  - ENVIRONMENT.md
+  - Hydration_Rules.md
+  - jobs.md
+  - previous_schema.prisma
+  - proposed_prisma_schema.prisma
+  - ...
+- eslint-rules/
+- hooks/
+- hydrators/
+- infra/
+- lib/
+- prisma/
+- producers/
+- prompts/
+- public/
+- queues/
+- scripts/
+  - generate_tests_from_tracker.cjs
+  - generate_simple_tests.js
+  - generate_simple_tests.cjs
+  - fix-dist-imports.js
+  - fix-dist-imports.cjs
+  - ensure-regeneration-shim.js
+  - ensure-regeneration-shim.cjs
+  - e2e_job_test.js
+  - create-dist-shims.js
+  - create-dist-shims.cjs
+  - convert_auto_to_imports.cjs
+  - convert-status-literals.js
+  - clear-job-lock.js
+  - clear-auth-tables.ts
+  - run-with-env.mjs
+  - run-analytics.js
+  - reset_db.js
+  - README.md
+  - queryTelemetry.cjs
+  - poll-run.ps1
+  - parse-and-shim.js
+  - parse-and-shim.cjs
+  - metricsServer.ts
+  - runAlertEvaluator.cjs
+  - mark-admin.ts
+  - hydrateAll.ts
+  - health-check.js
+  - vps_staging_run.sh
+  - vps_production_deploy.sh
+  - verify-dist.sh
+  - verify-dist.js
+  - verify-dist.cjs
+  - submit_test_job.js
+  - set-github-secrets.sh
+  - set-github-secrets.ps1
+  - set-evaluator-secrets.ps1
+  - seed-ai-content.ts
+  - sampleTelemetry.ts
+  - sampleTelemetry.tmp.ts
+  - sampleTelemetry.runner.cjs
+  - sampleSystemHealth.ts
+  - runWatchdogs.ts
+  - runRegenerationJobOneOff.ts
+  - runAlertEvaluator.wrapper.cjs
+  - runAlertEvaluator.ts
+- styles/
+- tests/
+- tmp/
+- types/
+- utils/
+- worker/
+  - entry.ts
+  - bootstrap.ts
+  - orchestrator.ts
+  - metrics-server.ts
+  - loop.ts
+  - k8s-adapter.ts
+  - lib/
+    - worker/
+      - controller.ts
+- workers/
+  - analyticsAggregator.ts
+  - contentWorker.ts
+  - syllabusWorker.ts
+  - regenerationWorker.ts
+  - heartbeatWatchdog.ts
+  - generateSignals.ts
+  - app/api/admin/workers/route.ts
+  - app/admin/workers/page.tsx
+  - app/admin/content-engine/workers/page.tsx
+
+---
+
+Notes:
+- This is a filtered, human-friendly tree focusing on source folders and important files. The repository contains additional nested files and build artifacts (some filtered out here) — review `repo-tree.txt` for the raw, unfiltered listing.
+- To regenerate an exhaustive, programmatically filtered tree, run a local script that parses `.gitignore` and `Get-ChildItem -Recurse` output, then updates this file.
+
+If you want, I can now:
+- Expand any specific folder into a fully recursive section (e.g., `app/`, `components/`, `docs/`).
+- Produce a fully exhaustive, .gitignore-filtered dump into `REPO_TREE_FULL.md` using the existing `repo-tree.txt` as source.
