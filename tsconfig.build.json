@@ -3,27 +3,45 @@
   "compilerOptions": {
     "outDir": "dist",
     "rootDir": ".",
+    "target": "ES2022",
     "module": "ES2022",
     "moduleResolution": "node",
-    "target": "ES2022",
+    "noEmitOnError": true,
     "declaration": false,
-    "sourceMap": false
+    "sourceMap": false,
+    "esModuleInterop": true,
+    "resolveJsonModule": true,
+    "baseUrl": ".",
+    "paths": {
+      "@/*": [
+        "src/*",
+        "./*"
+      ]
+    }
   },
+
   "include": [
-    "app/worker",
-    "lib",
-    "queues",
-    "workers",
-    "producers",
-    "scripts",
-    "types"
-  ]
-  ,
+    "app/worker/**/*.ts",
+    "workers/**/*.ts",
+    "queues/**/*.ts",
+    "lib/prisma.ts",
+    "lib/redis.ts",
+    "lib/logger.ts",
+    "lib/systemHealth.ts",
+    "producers/**/*.ts",
+    "types/**/*.d.ts",
+    "src/regeneration/**/*.ts"
+  ],
+
   "exclude": [
+    "scripts/**",
+    "app/**",
+    "pages/**",
+    ".next/**",
     "node_modules",
-    ".next",
     "dist",
     "tests",
-    "public"
+    "**/*.test.ts",
+    "**/*.spec.ts"
   ]
 }
