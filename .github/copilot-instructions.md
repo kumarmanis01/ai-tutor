@@ -443,3 +443,25 @@ grep -R "tsconfig-paths" dist || echo OK
 
 If any forbidden dependency appears in dist/, the solution is invalid.
 Do not proceed unless all constraints are satisfied.
+
+## PRODUCTION BUILD GUARDRAILS (STRICT)
+
+1. Only src/worker, src/lib, and src/queues may be compiled into dist.
+2. scripts/\*\* must NEVER be included in tsconfig.build.json.
+3. Any file importing dotenv, ts-node, or CLI helpers MUST live in scripts/.
+4. Do not weaken or bypass verify-dist.cjs — it is authoritative.
+5. PM2 may ONLY run compiled JS from dist/.
+6. If a forbidden dependency appears in dist, fix tsconfig scope, not the verifier.
+
+Acknowledge and follow these rules before making changes.
+
+## STRICT BUILD BOUNDARY RULES
+
+- tsconfig.json is for Next.js + IDE only (noEmit=true). Do not modify for runtime.
+- tsconfig.build.json is the ONLY file allowed to emit dist/.
+- scripts/\*\* MUST be excluded from tsconfig.build.json.
+- No dotenv, ts-node, or CLI helpers may appear in dist/.
+- If verify-dist fails, fix compiler scope — never relax the verifier.
+- PM2 must run only dist/worker/entry.js.
+
+Acknowledge before proceeding.
