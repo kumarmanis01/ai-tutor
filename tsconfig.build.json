@@ -1,5 +1,4 @@
 {
-  "extends": "./tsconfig.json",
   "compilerOptions": {
     "outDir": "dist",
     "rootDir": ".",
@@ -13,35 +12,23 @@
     "resolveJsonModule": true,
     "baseUrl": ".",
     "paths": {
-      "@/*": [
-        "src/*",
-        "./*"
-      ]
+      "@/*": ["./*"]
     }
   },
-
   "include": [
     "app/worker/**/*.ts",
-    "workers/**/*.ts",
-    "queues/**/*.ts",
-    "lib/prisma.ts",
-    "lib/redis.ts",
-    "lib/logger.ts",
-    "lib/systemHealth.ts",
-    "producers/**/*.ts",
-    "types/**/*.d.ts",
-    "src/regeneration/**/*.ts"
+    "lib/**/*.ts"
   ],
-
   "exclude": [
-    "scripts/**",
-    "app/**",
-    "pages/**",
-    ".next/**",
     "node_modules",
     "dist",
+    ".next",
     "tests",
     "**/*.test.ts",
-    "**/*.spec.ts"
+    "**/*.spec.ts",
+    "scripts/**",
+    "app/**/page.tsx",
+    "app/**/layout.tsx",
+    "app/**/route.ts"
   ]
 }
