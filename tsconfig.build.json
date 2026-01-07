@@ -6,6 +6,7 @@
     "module": "ES2022",
     "moduleResolution": "node",
     "noEmitOnError": true,
+    "skipLibCheck": true,
     "declaration": false,
     "sourceMap": false,
     "esModuleInterop": true,
@@ -17,7 +18,8 @@
   },
   "include": [
     "app/worker/**/*.ts",
-    "lib/**/*.ts"
+    "lib/logger.ts",
+    "lib/redis.ts"
   ],
   "exclude": [
     "node_modules",
