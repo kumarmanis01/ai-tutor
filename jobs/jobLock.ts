@@ -1,4 +1,4 @@
-import { prisma } from '../../lib/prisma';
+import { prisma } from '@/lib/prisma';
 
 type AcquireResult = { acquired: true } | { skipped: true; reason: string };
 

@@ -12,9 +12,11 @@
   "include": [
     "workers/**/*.ts",
     "worker/**/*.ts",
+    "jobs/**/*.ts",
     "lib/**/*.ts",
-    "scripts/**/*.ts",
-    "src/**/*.ts",
     "types/**/*.d.ts"
+  ],
+  "exclude": [
+    "scripts/**"
   ]
 }
