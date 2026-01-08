@@ -1,22 +1,20 @@
 {
-  "extends": "./tsconfig.json",
+  "extends": "./tsconfig.base.json",
   "compilerOptions": {
-    "noEmit": false,
     "outDir": "dist",
     "rootDir": ".",
-    "module": "es2022",
+    "module": "ES2022",
     "moduleResolution": "node",
-    "target": "ES2022",
-    "incremental": false
+    "target": "ES2022"
   },
   "include": [
-    "workers/**/*.ts",
-    "worker/**/*.ts",
-    "jobs/**/*.ts",
-    "lib/**/*.ts",
-    "types/**/*.d.ts"
+    "app/worker/**/*.ts"
   ],
   "exclude": [
-    "scripts/**"
+    "worker/**",
+    "scripts/**",
+    "tests/**",
+    "app/**",
+    "lib/**"
   ]
 }
