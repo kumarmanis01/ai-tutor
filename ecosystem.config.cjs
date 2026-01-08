@@ -20,7 +20,7 @@ module.exports = {
     },
     {
       name: 'content-engine-worker',
-      script: 'dist/worker/entry.js',
+      script: 'dist/app/worker/entry.js',
       instances: 1,
       autorestart: true,
       max_restarts: 10,
