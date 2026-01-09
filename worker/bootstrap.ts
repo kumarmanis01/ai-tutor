@@ -16,7 +16,7 @@ import { prisma } from '@/lib/prisma'
 import { hydrateNotes } from '@/hydrators/hydrateNotes'
 import { hydrateQuestions } from '@/hydrators/hydrateQuestions'
 import { assembleTest } from '@/hydrators/assembleTest'
-import { handleSyllabusJob } from '@/workers/syllabusWorker'
+import { handleSyllabusJob } from './index'
 import os from 'os'
 
 import minimist from 'minimist'

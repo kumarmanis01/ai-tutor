@@ -26,7 +26,7 @@ registerJob({
   timeoutMs: 30 * 60 * 1000,
   schedule: { type: 'interval', everySec: 60 * 30 },
   run: async () => {
-    const g = await import('@/workers/generateSignals')
+    const g = await import('@/worker/services/generateSignals')
     if (typeof g.generateSignalsForAllCourses === 'function') {
       await g.generateSignalsForAllCourses()
     }
@@ -65,7 +65,7 @@ registerJob({
   timeoutMs: 10 * 60 * 1000,
   schedule: { type: 'interval', everySec: 60 },
   run: async () => {
-    const worker = await import('@/workers/regenerationWorker')
+    const worker = await import('@/worker/processors/regenerationWorker')
     if (typeof worker.processNextJob === 'function') {
       // keep processing until no pending job or until timeout (worker's own logic will limit)
       while (true) {

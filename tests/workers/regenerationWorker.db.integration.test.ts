@@ -1,6 +1,6 @@
 jest.mock('@/regeneration/generatorAdapter')
 import { prisma } from '../../lib/prisma'
-import * as worker from '@/workers/regenerationWorker'
+import * as worker from '@/worker/processors/regenerationWorker'
 import * as adapter from '@/regeneration/generatorAdapter'
 
 describe('Regeneration worker (DB-backed, mocked generator)', () => {
