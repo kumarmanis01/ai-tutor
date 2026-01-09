@@ -4,17 +4,16 @@
     "noEmit": false,
     "outDir": "dist",
     "rootDir": ".",
-    "module": "es2022",
-    "moduleResolution": "node",
-    "target": "ES2022",
-    "incremental": false
+    "composite": false
   },
   "include": [
-    "workers/**/*.ts",
-    "worker/**/*.ts",
-    "lib/**/*.ts",
-    "scripts/**/*.ts",
-    "src/**/*.ts",
-    "types/**/*.d.ts"
+    "worker/**/*.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    "tests",
+    "scripts",
+    "worker/k8s-adapter.ts",
+    "worker/metrics-server.ts"
   ]
 }
