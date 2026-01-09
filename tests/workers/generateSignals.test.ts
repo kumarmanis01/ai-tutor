@@ -1,4 +1,4 @@
-import { generateSignalsForCourse } from '../../workers/generateSignals'
+import { generateSignalsForCourse } from '../../worker/services/generateSignals'
 
 describe('generateSignals worker', () => {
   it('creates low completion signal when completionRate low', async () => {

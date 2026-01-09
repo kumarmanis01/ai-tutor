@@ -6,7 +6,7 @@ module.exports = {
   meta: { type: 'problem', docs: { description: 'Disallow any types in AI pipeline' }, schema: [] },
   create(context) {
     const filename = context.getFilename() || ''
-    const relevant = filename.includes('/workers/') || filename.includes('/hydrators/') || filename.includes('lib/callLLM') || filename.includes('\\workers\\') || filename.includes('\\hydrators\\')
+    const relevant = filename.includes('/worker/') || filename.includes('/hydrators/') || filename.includes('lib/callLLM') || filename.includes('\\worker\\') || filename.includes('\\hydrators\\')
     if (!relevant) return {}
     return {
       TSAnyKeyword(node) {

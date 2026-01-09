@@ -6,7 +6,7 @@ module.exports = {
   meta: { type: 'problem', docs: { description: 'Require isSystemSettingEnabled helper' }, schema: [] },
   create(context) {
     const filename = context.getFilename() || ''
-    const relevant = filename.includes('/workers/') || filename.includes('/hydrators/') || filename.includes('\\workers\\') || filename.includes('\\hydrators\\')
+    const relevant = filename.includes('/worker/') || filename.includes('/hydrators/') || filename.includes('\\worker\\') || filename.includes('\\hydrators\\')
     if (!relevant) return {}
     return {
       MemberExpression(node) {

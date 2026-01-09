@@ -14,7 +14,7 @@ describe('analyticsAggregator', () => {
     ;(global as any).__TEST_PRISMA__ = mockPrisma
 
     // patch import of prisma used in worker to global mock
-    const worker = await import('../../workers/analyticsAggregator')
+    const worker = await import('../../worker/services/analyticsAggregator')
     const keys = await worker.aggregateDay(new Date())
     expect(mockPrisma.analyticsEvent.findMany).toHaveBeenCalled()
     expect(mockPrisma.analyticsDailyAggregate.upsert).toHaveBeenCalled()

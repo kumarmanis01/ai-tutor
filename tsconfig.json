@@ -36,8 +36,8 @@
     "types/**/*.d.ts",
     "lib/**/*.ts",
     "lib/**/*.tsx",
-    "workers/**/*.ts",
-    "workers/**/*.tsx",
+    "worker/**/*.ts",
+    "worker/**/*.tsx",
     "scripts/**/*.ts",
     ".next/types/**/*.ts"
   ],
