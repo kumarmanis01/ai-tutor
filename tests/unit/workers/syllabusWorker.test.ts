@@ -1,4 +1,4 @@
-import handleSyllabusJob from '../../../workers/syllabusWorker'
+import handleSyllabusJob from '../../../worker/services/syllabusWorker'
 
 jest.mock('@/lib/prisma', () => ({
   prisma: {

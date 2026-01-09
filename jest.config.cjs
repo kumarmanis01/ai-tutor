@@ -11,7 +11,7 @@ module.exports = {
     '^@/(lib/.*)$': '<rootDir>/$1',
     '^@/(producers/.*)$': '<rootDir>/$1',
     '^@/(queues/.*)$': '<rootDir>/$1',
-    '^@/(workers/.*)$': '<rootDir>/$1',
+    '^@/(worker/.*)$': '<rootDir>/$1',
     '^@/(.*)$': '<rootDir>/src/$1'
   },
   moduleDirectories: ['node_modules', '<rootDir>'],

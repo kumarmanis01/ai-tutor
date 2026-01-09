@@ -30,7 +30,7 @@ export async function runAnalyticsJobs(): Promise<{ success: boolean; durationMs
 
     // 1) Run analytics aggregation (preferred API: runForAllCourses)
     try {
-      const agg: any = await import('@/workers/analyticsAggregator')
+      const agg: any = await import('@/worker/services/analyticsAggregator')
         if (typeof agg.runForAllCourses === 'function') {
           await agg.runForAllCourses()
         } else {
@@ -49,7 +49,7 @@ export async function runAnalyticsJobs(): Promise<{ success: boolean; durationMs
 
     // 2) Generate rule-based signals for courses
     try {
-      const signals: any = await import('@/workers/generateSignals')
+      const signals: any = await import('@/worker/services/generateSignals')
       if (typeof signals.generateSignalsForAllCourses === 'function') {
         await signals.generateSignalsForAllCourses()
       } else {

@@ -1,5 +1,5 @@
 /* eslint-disable no-console */
-import express from 'express'
+const express: any = require('express')
 import client from 'prom-client'
 import { prisma } from '@/lib/prisma'
 import fs from 'fs'
