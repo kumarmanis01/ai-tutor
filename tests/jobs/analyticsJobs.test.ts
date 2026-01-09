@@ -5,11 +5,11 @@ jest.mock('@/jobs/jobLock', () => ({
   releaseJobLock: jest.fn(),
 }))
 
-jest.mock('@/workers/analyticsAggregator', () => ({
+jest.mock('@/worker/services/analyticsAggregator', () => ({
   runForAllCourses: jest.fn(),
 }))
 
-jest.mock('@/workers/generateSignals', () => ({
+jest.mock('@/worker/services/generateSignals', () => ({
   generateSignalsForAllCourses: jest.fn(),
 }))
 
@@ -23,8 +23,8 @@ jest.mock('@/lib/prisma', () => ({
 }))
 
 import { acquireJobLock, releaseJobLock } from '@/jobs/jobLock'
-import * as agg from '@/workers/analyticsAggregator'
-import * as signals from '@/workers/generateSignals'
+import * as agg from '@/worker/services/analyticsAggregator'
+import * as signals from '@/worker/services/generateSignals'
 import logAudit from '@/lib/audit/log'
 
 describe('runAnalyticsJobs', () => {

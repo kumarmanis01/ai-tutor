@@ -2,7 +2,7 @@
 jest.mock('@/lib/prisma', () => ({ prisma: { regenerationJob: { updateMany: jest.fn(), findUnique: jest.fn() }, $transaction: jest.fn() } }))
 
 import { prisma } from '@/lib/prisma'
-import { claimJob } from '@/workers/regenerationWorker'
+import { claimJob } from '@/worker/processors/regenerationWorker'
 
 beforeEach(() => {
   jest.clearAllMocks()
