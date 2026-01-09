@@ -5,8 +5,8 @@ jest.mock('@/src/jobs/jobLock', () => ({
   releaseJobLock: jest.fn(),
 }))
 
-jest.mock('@/workers/analyticsAggregator', () => ({ runForAllCourses: jest.fn() }))
-jest.mock('@/workers/generateSignals', () => ({ generateSignalsForAllCourses: jest.fn() }))
+jest.mock('@/worker/services/analyticsAggregator', () => ({ runForAllCourses: jest.fn() }))
+jest.mock('@/worker/services/generateSignals', () => ({ generateSignalsForAllCourses: jest.fn() }))
 
 describe('Analytics job integration — suggestions + audit idempotency', () => {
   beforeEach(() => {
