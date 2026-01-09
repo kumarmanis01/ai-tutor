@@ -2,7 +2,7 @@ jest.mock('@/lib/prisma', () => ({ prisma: { regenerationJob: { findFirst: jest.
 jest.mock('@/lib/audit/log', () => jest.fn())
 jest.mock('@/regeneration/generatorAdapter', () => jest.fn())
 
-import { processNextJob } from '@/workers/regenerationWorker'
+import { processNextJob } from '@/worker/processors/regenerationWorker'
 import { prisma } from '@/lib/prisma'
 import logAuditEvent from '@/lib/audit/log'
 import generatorAdapter from '@/regeneration/generatorAdapter'

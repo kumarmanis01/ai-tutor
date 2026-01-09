@@ -1,12 +1,12 @@
 #!/usr/bin/env node
 /* eslint-disable no-console */
-import 'dotenv/config'
-import 'tsconfig-paths/register'
+// No runtime dotenv or tsconfig-paths in production worker.
+// Environment is validated by `worker/entry.ts` before bootstrap.
 // Register scheduled jobs only in worker processes. This import has no runtime
 // export; it registers job definitions via side-effects. It MUST NOT be
 // imported by the web process.
 import '@/lib/jobs/registerJobs'
-import workerDefault, { startWorker } from '../workers/regenerationWorker'
+import workerDefault, { startWorker } from './processors/regenerationWorker'
 
 // prefer explicit startWorker export
 const intervalMs = Number(process.env.WORKER_POLL_MS || 2000)
