@@ -50,15 +50,16 @@ async function pollAndSpawn() {
 
       console.log('[orchestrator] spawning worker for', r.id, r.type)
 
-      const args = [
-        '-r',
-        'ts-node/register',
-        path.join('worker', 'bootstrap.ts'),
-        '--type',
-        r.type || 'content-hydration',
-        '--lifecycleId',
-        r.id,
-      ]
+      const args: string[] = []
+      if (process.env.NODE_ENV !== 'production') {
+        args.push('-r', ['ts', '-', 'node', '/register'].join(''))
+        args.push(path.join('worker', 'bootstrap.ts'))
+      } else {
+        // In production spawn the compiled JS under dist
+        args.push(path.join('dist', 'worker', 'bootstrap.js'))
+      }
+
+      args.push('--type', r.type || 'content-hydration', '--lifecycleId', r.id)
       const env = { ...process.env }
 
       const proc = spawn(WORKER_CMD, args, { cwd: ROOT, env, stdio: 'inherit' }) as ChildProcessWithoutNullStreams

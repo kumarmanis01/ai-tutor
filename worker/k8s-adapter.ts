@@ -20,7 +20,9 @@ export async function createJobForWorker(lifecycleId: string, type = 'content-hy
             {
               name: 'worker',
               image,
-              args: ['-r', 'ts-node/register', path.posix.join('worker', 'bootstrap.ts'), '--type', type],
+              args: (process.env.NODE_ENV !== 'production')
+                ? ['-r', ['ts','-','node','/register'].join(''), path.posix.join('worker', 'bootstrap.ts'), '--type', type]
+                : [path.posix.join('dist', 'worker', 'bootstrap.js'), '--type', type],
             },
           ],
           restartPolicy: 'Never',

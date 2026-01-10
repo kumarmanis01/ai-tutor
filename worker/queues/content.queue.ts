@@ -1,6 +1,7 @@
 import { Queue } from "bullmq";
-import { redisConnection } from "@/lib/redis";
 
 export const contentQueue = new Queue("content-queue", {
-  connection: redisConnection,
+  connection: {
+    url: process.env.REDIS_URL!,
+  },
 });

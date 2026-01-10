@@ -1,66 +1,71 @@
-#!/usr/bin/env node
+/* eslint-disable no-console */
 
-import { logger } from "@/lib/logger";
-
-/*
- Minimal worker entrypoint shim.
- - Verify required env vars (`DATABASE_URL`, `REDIS_URL`) on startup.
- - Reuse `validateEnvironment` helper if present (best-effort).
- - If validation passes, import `./bootstrap` to start the worker.
+/**
+ * Worker entrypoint.
+ *
+ * Responsibilities:
+ * - Load environment variables
+ * - Fail fast on misconfiguration
+ * - Start worker bootstrap
+ *
+ * This file is the ONLY place where dotenv/env loading happens.
  */
 
 (async () => {
+  let logger: any;
+
   try {
+    // Load env FIRST — nothing else should run before this
     const { loadEnv } = await import("@/lib/env");
     loadEnv();
 
+    // Logger is loaded AFTER env is available
+    ({ logger } = await import("@/lib/logger"));
+
+    // Hard guarantees (fail fast)
+    if (!process.env.DATABASE_URL) {
+      throw new Error("DATABASE_URL is not set");
+    }
+    if (!process.env.REDIS_URL) {
+      throw new Error("REDIS_URL is not set");
+    }
+
+    // Optional deep validation (best-effort, but fatal if present and fails)
+    try {
+      const mod = await import("@/lib/bootstrap/validateEnvironment");
+      const validateEnvironment =
+        (mod as any)?.validateEnvironment ?? (mod as any)?.default;
+
+      if (typeof validateEnvironment === "function") {
+        await validateEnvironment({ checkMigrations: false });
+      }
+    } catch (err) {
+      throw new Error(
+        `validateEnvironment failed: ${
+          err instanceof Error ? err.message : String(err)
+        }`
+      );
+    }
+
+    // Start worker runtime
     const { bootstrapWorker } = await import("./bootstrap");
     await bootstrapWorker();
   } catch (err) {
-    logger.error("[worker] fatal startup error", err);
+    try {
+      if (logger) {
+        logger.error("[worker] fatal startup error", err);
+      } else {
+        console.error("[worker] fatal startup error", err);
+      }
+    } catch {
+      // absolute last-resort logging
+      try {
+        process.stderr.write(
+          `[worker] fatal startup error: ${String(err)}\n`
+        );
+      } catch {}
+    }
+
     process.exit(1);
   }
 })();
-
-// ;(async () => {
-// 	const { logger } = await import('@/lib/logger')
-// 	const fatal = (msg: string, err?: any) => {
-// 		try {
-// 			logger.error(`FATAL: ${msg}`)
-// 			if (err) logger.error(String(err))
-// 		} catch {
-// 			// Fall back to stderr if logger fails during startup
-// 			try {
-// 				process.stderr.write(`FATAL: ${msg} ${err ? String(err) : ''}\n`)
-// 			} catch {}
-// 		}
-// 		// exit with non-zero to indicate process should not start
-// 		process.exit(1)
-// 	}
-
-// 	if (!process.env.DATABASE_URL) {
-// 		fatal('DATABASE_URL is not set')
-// 	}
-// 	if (!process.env.REDIS_URL) {
-// 		fatal('REDIS_URL is not set')
-// 	}
-
-// 	// If available, reuse the project's environment validator. This may attempt
-// 	// a Prisma connect; that's intentional to catch fatal DB problems early.
-// 	try {
-// 		const mod = await import('@/lib/bootstrap/validateEnvironment')
-// 		const validateEnvironment = (mod && (mod.validateEnvironment || mod.default)) as any
-// 		if (typeof validateEnvironment === 'function') {
-// 			await validateEnvironment({ checkMigrations: false })
-// 		}
-// 	} catch (err) {
-// 		// If the helper import or validation fails, treat it as fatal — worker
-// 		// should not start in a misconfigured environment.
-// 		fatal('validateEnvironment failed', err)
-// 	}
-
-// 	// All checks passed — start the worker bootstrap.
-// 	await import('./bootstrap')
-// })()
-
-// // Intentionally no exports — this file boots the worker as a side-effect.
