@@ -23,53 +23,51 @@
 
  */
 
-import { LanguageCode, DifficultyLevel, JobType } from "@prisma/client";
+import { LanguageCode, DifficultyLevel, JobType } from '@prisma/client'
 
 export function normalizeLanguage(lang?: string): LanguageCode {
-  if (!lang) return LanguageCode.en;
+  if (!lang) return LanguageCode.en
 
   switch (lang.toLowerCase()) {
-    case "hi":
-    case "hindi":
-      return LanguageCode.hi;
-    case "en":
-    case "english":
-      return LanguageCode.en;
+    case 'hi':
+    case 'hindi':
+      return LanguageCode.hi
+    case 'en':
+    case 'english':
+      return LanguageCode.en
     default:
-      return LanguageCode.en;
+      return LanguageCode.en
   }
 }
 
 export function normalizeDifficulty(diff?: string): DifficultyLevel {
-  if (!diff) return DifficultyLevel.medium;
+  if (!diff) return DifficultyLevel.medium
 
   switch (diff.toLowerCase()) {
-    case "easy":
-      return DifficultyLevel.easy;
-    case "hard":
-      return DifficultyLevel.hard;
-    case "medium":
-      return DifficultyLevel.medium;
+    case 'easy':
+      return DifficultyLevel.easy
+    case 'hard':
+      return DifficultyLevel.hard
+    case 'medium':
+      return DifficultyLevel.medium
     default:
-      return DifficultyLevel.medium;
+      return DifficultyLevel.medium
   }
 }
 
 export function normalizeJobType(jobType?: string): JobType {
-  if (!jobType) throw new Error("jobType is required");
+  if (!jobType) throw new Error('jobType is required')
 
-  const key = jobType.trim().toLowerCase();
+  const key = jobType.trim().toLowerCase()
 
-  // Common UI/legacy variants -> canonical Prisma JobType
-  if (key.includes("note")) return JobType.notes;
-  if (key.includes("question")) return JobType.questions;
-  if (key.includes("test") && !key.includes("contest")) return JobType.tests;
-  if (key.includes("sylla") || key === "syllabus") return JobType.syllabus;
-  if (key.includes("assemble")) return JobType.assemble;
+  if (key.includes('note')) return JobType.notes
+  if (key.includes('question')) return JobType.questions
+  if (key.includes('test') && !key.includes('contest')) return JobType.tests
+  if (key.includes('sylla') || key === 'syllabus') return JobType.syllabus
+  if (key.includes('assemble')) return JobType.assemble
 
-  // If the key matches a JobType value directly, return it
-  if ((Object.values(JobType) as string[]).includes(key)) return key as JobType;
+  // If the key matches a JobType value directly, coerce it
+  if ((Object.values(JobType) as string[]).includes(key)) return key as JobType
 
-  // Fallback: throw so callers must explicitly map unknown codes
-  throw new Error(`Unknown jobType: ${jobType}`);
+  throw new Error(`Unknown jobType: ${jobType}`)
 }

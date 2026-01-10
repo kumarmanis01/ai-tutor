@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /* eslint-disable no-console */
-// No runtime dotenv or tsconfig-paths in production worker.
+// No runtime env-file loader or tsconfig-paths in production worker.
 // Environment is validated by `worker/entry.ts` before bootstrap.
 // Register scheduled jobs only in worker processes. This import has no runtime
 // export; it registers job definitions via side-effects. It MUST NOT be

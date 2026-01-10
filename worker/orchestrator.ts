@@ -1,10 +1,8 @@
 #!/usr/bin/env node
-/* Load local env for developer runs (dotfiles) */
-import dotenv from 'dotenv'
-// Load local .env only in non-production environments to avoid polluting
-// production runtimes where PM2 provides env via `env_file`.
 if (process.env.NODE_ENV !== 'production') {
-  try { dotenv.config({ path: '.env.local' }) } catch {}
+  // For local runs, use `scripts/run-with-env.mjs` to load environment files.
+  // Intentionally do not call any env-file loader here to avoid bundling
+  // dev-only dependencies into production `dist/` artifacts.
 }
 /* eslint-disable @typescript-eslint/no-require-imports */
 /* eslint-disable no-console */

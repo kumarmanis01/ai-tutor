@@ -1,11 +1,11 @@
 import { Queue } from 'bullmq'
-import { getRedis } from '@/lib/redis'
+import { redisConnection } from '@/lib/redis'
 
 export const CONTENT_QUEUE = 'content-engine'
 
 export function createContentQueue() {
 	return new Queue(CONTENT_QUEUE, {
-		connection: getRedis(),
+		connection: redisConnection,
 		defaultJobOptions: {
 			attempts: 3,
 			backoff: {

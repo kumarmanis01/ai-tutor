@@ -1,5 +1,5 @@
 import { Worker, Job } from 'bullmq'
-import { getRedis } from '@/lib/redis'
+import { redisConnection } from '@/lib/redis'
 import { prisma } from '@/lib/prisma'
 import { isSystemSettingEnabled } from '@/lib/systemSettings'
 import { hydrateNotes } from '@/hydrators/hydrateNotes'
@@ -57,7 +57,7 @@ export function startContentWorker(opts?: { concurrency?: number }) {
       }
     },
     {
-      connection: getRedis(),
+      connection: redisConnection,
       concurrency,
       settings: {
         backoffStrategy: (attemptsMade: number) => Math.min(60_000, 2 ** attemptsMade * 1000),

@@ -6,7 +6,7 @@
  * - Do not instantiate queues outside these functions.
  */
 import { Queue } from "bullmq";
-import { getRedis } from "@/lib/redis";
+import { redisConnection } from "@/lib/redis";
 
 /**
  * Lazy-init factories for queues to avoid creating Redis/Queue instances at import time.
@@ -23,7 +23,7 @@ type QueuesMap = {
 const queues: QueuesMap = {};
 
 function getConnection() {
-  return getRedis();
+  return redisConnection;
 }
 
 export function getSyllabusQueue() {

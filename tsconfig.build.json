@@ -17,7 +17,7 @@
     }
   },
   "include": [
-    "app/worker/**/*.ts",
+    "worker/**/*.ts",
     "lib/logger.ts",
     "lib/redis.ts"
   ],
@@ -31,6 +31,7 @@
     "scripts/**",
     "app/**/page.tsx",
     "app/**/layout.tsx",
-    "app/**/route.ts"
+    "app/**/route.ts",
+    "worker/k8s-adapter.ts"
   ]
 }

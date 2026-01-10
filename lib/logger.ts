@@ -18,7 +18,8 @@ interface LogContext {
 }
 
 // Determine environment and logging levels
-const isClient = typeof window !== 'undefined';
+// Use `globalThis` to detect browser `window` without requiring DOM lib.
+const isClient = typeof (globalThis as any).window !== 'undefined';
 const isDebug = process.env.NEXT_PUBLIC_DEBUG_MODE === 'true';
 
 type Level = 'error' | 'warn' | 'info' | 'debug' | 'log';

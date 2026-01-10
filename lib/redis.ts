@@ -1,7 +1,15 @@
 // src/lib/redis.ts
 import IORedis from "ioredis";
+import type { ConnectionOptions } from 'bullmq';
 
 let _redis: IORedis | null = null;
+
+export const redisConnection: ConnectionOptions = {
+  // BullMQ accepts ioredis connection options; using URL is simplest.
+  // Consumers should pass `connection: redisConnection` to BullMQ APIs.
+  // allow passing url through ConnectionOptions when URL is used
+  url: process.env.REDIS_URL || undefined,
+};
 
 export function getRedis() {
   if (_redis) return _redis;
@@ -22,7 +30,7 @@ export function _resetRedisForTests() {
     } catch (e) {
       // Use the project's logger utility instead of console methods
       import("../lib/logger").then(({ logger }) => {
-      logger.error("Failed to disconnect Redis client during test reset", { error: e });
+        logger.error("Failed to disconnect Redis client during test reset", { error: e });
       });
     }
     _redis = null;

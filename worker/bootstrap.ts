@@ -11,7 +11,7 @@
  */
 
 import { Worker, Job } from 'bullmq'
-import { getRedis } from '@/lib/redis'
+import { redisConnection } from '@/lib/redis'
 import { prisma } from '@/lib/prisma'
 import { hydrateNotes } from '@/hydrators/hydrateNotes'
 import { hydrateQuestions } from '@/hydrators/hydrateQuestions'
@@ -81,7 +81,7 @@ async function main() {
     // Worker must claim job in DB first (Job Ownership Contract)
     // For hydration jobs, processors must be careful to re-check DB state.
     return processor(job)
-  }, { connection: getRedis(), concurrency })
+  }, { connection: redisConnection, concurrency })
 
   // mark running
   await prisma.workerLifecycle.update({ where: { id: lifecycleId }, data: { status: 'RUNNING', lastHeartbeatAt: new Date() } })

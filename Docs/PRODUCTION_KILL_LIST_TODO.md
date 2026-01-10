@@ -19,10 +19,9 @@ This file records the authoritative kill list for production workers and actiona
 to ensure `dist/` never contains forbidden artifacts.
 
 Scope (Non-Negotiable)
-- Production workers may ONLY live under: `app/worker/**`
+- Production workers may ONLY live under: `worker/**`
 
 Forbidden directories (must never appear in `dist`)
-- /worker
 - /workers
 - /scripts
 - /queues
