@@ -1,8 +1,9 @@
 import fs from 'fs';
+import path from 'path';
 
 describe('exists src/insights/engine.ts', () => {
   it('source file exists on disk', () => {
-    const p = "C:\\Users\\Spinzy Diagnostics\\Desktop\\ai-tutor\\src\\insights\\engine.ts";
+    const p = path.join(process.cwd(), 'src', 'insights', 'engine.ts');
     expect(fs.existsSync(p)).toBe(true);
   });
 });

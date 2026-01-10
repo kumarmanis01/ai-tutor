@@ -2,7 +2,7 @@
  * Environment loader.
  *
  * IMPORTANT:
- * - dotenv must NEVER be imported in production builds
+ * - dot-env must NEVER be imported in production builds
  * - Production relies on process.env injected by the platform (PM2, Docker, etc.)
  */
 import { createRequire } from 'module'

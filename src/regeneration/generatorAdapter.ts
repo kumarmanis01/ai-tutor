@@ -1,0 +1,1 @@
+export * from '../../regeneration/generatorAdapter'

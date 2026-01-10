@@ -8,7 +8,8 @@
  * - Fail fast if required env vars are missing.
  */
 
-import { logger } from "../lib/logger";
+// Avoid top-level ESM imports so compiled output is less likely to be forced
+// into a CommonJS wrapper when built. Use dynamic imports at runtime.
 
 (async () => {
   try {
@@ -48,8 +49,15 @@ import { logger } from "../lib/logger";
     const { bootstrapWorker } = await import("./bootstrap");
     await bootstrapWorker();
   } catch (err) {
+    // Use dynamic import for logger so we avoid top-level import emissions.
     try {
-      logger?.error("[worker] fatal startup error", err);
+      const mod = await import("../lib/logger").catch(() => ({}));
+      const logger = (mod as any)?.logger ?? (mod as any)?.default ?? null;
+      if (logger && typeof logger.error === 'function') {
+        logger.error("[worker] fatal startup error", err);
+      } else {
+        process.stderr.write(`[worker] fatal startup error: ${String(err)}\n`);
+      }
     } catch {
       try {
         process.stderr.write(`[worker] fatal startup error: ${String(err)}\n`);

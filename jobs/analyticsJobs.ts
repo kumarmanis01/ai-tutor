@@ -4,7 +4,7 @@
  * - Measures duration, logs errors, and returns structured result
  * - Does not import Prisma directly
  */
-import { acquireJobLock, releaseJobLock } from './jobLock'
+import { acquireJobLock, releaseJobLock } from '@/jobs/jobLock'
 import logAuditEvent from '@/lib/audit/log'
 import { prisma } from '@/lib/prisma'
 
