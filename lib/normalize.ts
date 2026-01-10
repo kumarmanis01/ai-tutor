@@ -23,7 +23,23 @@
 
  */
 
-import { LanguageCode, DifficultyLevel, JobType } from '@prisma/client'
+// Local replacements for Prisma enums. Some Prisma client setups export enums
+// differently; to avoid build breakage here we provide small enum-like constants
+// and matching TypeScript types. These mirror the values expected by the DB.
+export const LanguageCode = { en: 'en', hi: 'hi' } as const
+export type LanguageCode = typeof LanguageCode[keyof typeof LanguageCode]
+
+export const DifficultyLevel = { easy: 'easy', medium: 'medium', hard: 'hard' } as const
+export type DifficultyLevel = typeof DifficultyLevel[keyof typeof DifficultyLevel]
+
+export const JobType = {
+  notes: 'notes',
+  questions: 'questions',
+  tests: 'tests',
+  syllabus: 'syllabus',
+  assemble: 'assemble',
+} as const
+export type JobType = typeof JobType[keyof typeof JobType]
 
 export function normalizeLanguage(lang?: string): LanguageCode {
   if (!lang) return LanguageCode.en
