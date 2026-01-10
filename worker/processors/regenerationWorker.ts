@@ -1,8 +1,8 @@
-import { prisma } from '@/lib/prisma'
-import logAuditEvent from '@/lib/audit/log'
-import { AuditEvents } from '@/lib/audit/events'
-import generatorAdapter from '@/regeneration/generatorAdapter'
-import { logger } from '@/lib/logger'
+import { prisma } from '../../lib/prisma'
+import logAuditEvent from '../../lib/audit/log'
+import { AuditEvents } from '../../lib/audit/events'
+import generatorAdapter from '../../regeneration/generatorAdapter'
+import { logger } from '../../lib/logger'
 
 let _running = false
 let _stopRequested = false

@@ -16,11 +16,11 @@
 
   try {
     // Load env FIRST — nothing else should run before this
-    const { loadEnv } = await import("@/lib/env");
+    const { loadEnv } = await import("../lib/env");
     loadEnv();
 
     // Logger is loaded AFTER env is available
-    ({ logger } = await import("@/lib/logger"));
+    ({ logger } = await import("../lib/logger"));
 
     // Hard guarantees (fail fast)
     if (!process.env.DATABASE_URL) {
@@ -32,7 +32,7 @@
 
     // Optional deep validation (best-effort, but fatal if present and fails)
     try {
-      const mod = await import("@/lib/bootstrap/validateEnvironment");
+      const mod = await import("../lib/bootstrap/validateEnvironment");
       const validateEnvironment =
         (mod as any)?.validateEnvironment ?? (mod as any)?.default;
 

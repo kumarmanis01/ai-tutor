@@ -1,3 +1,18 @@
+/**
+ * FILE OBJECTIVE:
+ * - Start and manage a BullMQ worker lifecycle for content-hydration and related jobs.
+ *
+ * LINKED UNIT TEST:
+ * - tests/unit/worker/bootstrap.spec.ts
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/COPILOT_GUARDRAILS.md
+ * - .github/copilot-instructions.md
+ *
+ * EDIT LOG:
+ * - 2026-01-10T00:00:00Z | github-copilot | add Node types reference to fix "process" type error and update file header
+ */
+
 /* eslint-disable no-console */
 /**
  * Worker bootstrap: starts a BullMQ worker with lifecycle management.
@@ -11,12 +26,12 @@ import { Worker, Job } from "bullmq";
 import minimist from "minimist";
 import os from "os";
 
-import { redisConnection } from "@/lib/redis";
-import { prisma } from "@/lib/prisma";
+import { redisConnection } from "../lib/redis";
+import { prisma } from "../lib/prisma";
 
-import { hydrateNotes } from "@/hydrators/hydrateNotes";
-import { hydrateQuestions } from "@/hydrators/hydrateQuestions";
-import { assembleTest } from "@/hydrators/assembleTest";
+import { hydrateNotes } from "../hydrators/hydrateNotes";
+import { hydrateQuestions } from "../hydrators/hydrateQuestions";
+import { assembleTest } from "../hydrators/assembleTest";
 import { handleSyllabusJob } from "./index";
 
 const argv = minimist(process.argv.slice(2));

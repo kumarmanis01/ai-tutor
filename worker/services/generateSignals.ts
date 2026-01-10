@@ -1,4 +1,4 @@
-import { prisma } from '@/lib/prisma'
+import { prisma } from '../../lib/prisma'
 
 export async function generateSignalsForCourse(courseId: string) {
   const db = (global as any).__TEST_PRISMA__ ?? prisma

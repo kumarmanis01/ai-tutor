@@ -2,7 +2,7 @@
 // @ts-ignore: express types are optional in some worker build environments
 import express from 'express'
 import client from 'prom-client'
-import { prisma } from '@/lib/prisma'
+import { prisma } from '../lib/prisma'
 import fs from 'fs'
 import path from 'path'
 

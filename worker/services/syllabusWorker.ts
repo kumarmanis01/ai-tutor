@@ -1,9 +1,9 @@
-import { prisma } from "@/lib/prisma"
-import { callLLM } from "@/lib/callLLM"
-import { toSlug } from "@/lib/slug"
-import { isSystemSettingEnabled } from "@/lib/systemSettings"
-import { logger } from "@/lib/logger"
-import { JobStatus, ApprovalStatus } from '@/lib/ai-engine/types'
+import { prisma } from "../../lib/prisma"
+import { callLLM } from "../../lib/callLLM"
+import { toSlug } from "../../lib/slug"
+import { isSystemSettingEnabled } from "../../lib/systemSettings"
+import { logger } from "../../lib/logger"
+import { JobStatus, ApprovalStatus } from '../../lib/ai-engine/types'
 
 function validateSyllabusShape(raw: any) {
   if (!raw || typeof raw !== 'object') return false

@@ -1,4 +1,4 @@
-import { prisma } from '@/lib/prisma'
+import { prisma } from '../prisma'
 
 export async function createWorkerLifecycle(data: { id: string; type: string; host?: string; pid?: number; meta?: any }) {
   return prisma.workerLifecycle.create({
