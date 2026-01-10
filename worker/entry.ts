@@ -22,50 +22,67 @@
     // Logger is loaded AFTER env is available
     ({ logger } = await import("../lib/logger"));
 
-    // Hard guarantees (fail fast)
-    if (!process.env.DATABASE_URL) {
-      throw new Error("DATABASE_URL is not set");
-    }
-    if (!process.env.REDIS_URL) {
-      throw new Error("REDIS_URL is not set");
-    }
+    #!/usr/bin/env node
+    import { logger } from "../lib/logger";
 
-    // Optional deep validation (best-effort, but fatal if present and fails)
-    try {
-      const mod = await import("../lib/bootstrap/validateEnvironment");
-      const validateEnvironment =
-        (mod as any)?.validateEnvironment ?? (mod as any)?.default;
-
-      if (typeof validateEnvironment === "function") {
-        await validateEnvironment({ checkMigrations: false });
-      }
-    } catch (err) {
-      throw new Error(
-        `validateEnvironment failed: ${
-          err instanceof Error ? err.message : String(err)
-        }`
-      );
+    if (process.env.NODE_ENV !== 'production') {
+      // For local runs, use `scripts/run-with-env.mjs` to load environment files.
+      // Intentionally do not call any env-file loader here to avoid bundling
+      // dev-only dependencies into production `dist/` artifacts.
     }
 
-    // Start worker runtime
-    const { bootstrapWorker } = await import("./bootstrap");
-    await bootstrapWorker();
-  } catch (err) {
-    try {
-      if (logger) {
-        logger.error("[worker] fatal startup error", err);
-      } else {
-        console.error("[worker] fatal startup error", err);
-      }
-    } catch {
-      // absolute last-resort logging
+    /* eslint-disable @typescript-eslint/no-require-imports */
+    /* eslint-disable no-console */
+    /**
+     * Worker entrypoint.
+     *
+     * Responsibilities:
+     * - Fail fast on misconfiguration (do NOT load dotenv here)
+     * - Start worker bootstrap
+     *
+     * NOTE: This file MUST NOT load environment files. Environment injection
+     * is the responsibility of the process supervisor (PM2, systemd, k8s).
+     */
+
+    (async () => {
       try {
-        process.stderr.write(
-          `[worker] fatal startup error: ${String(err)}\n`
-        );
-      } catch {}
-    }
+        // Hard fail if env is missing — DO NOT load dotenv here
+        if (!process.env.DATABASE_URL) {
+          throw new Error("DATABASE_URL is not set");
+        }
+        if (!process.env.REDIS_URL) {
+          throw new Error("REDIS_URL is not set");
+        }
 
-    process.exit(1);
-  }
-})();
+        // Optional deep validation (best-effort, but fatal if present and fails)
+        try {
+          const mod = await import("../lib/bootstrap/validateEnvironment");
+          const validateEnvironment =
+            (mod as any)?.validateEnvironment ?? (mod as any)?.default;
+
+          if (typeof validateEnvironment === "function") {
+            await validateEnvironment({ checkMigrations: false });
+          }
+        } catch (err) {
+          throw new Error(
+            `validateEnvironment failed: ${
+              err instanceof Error ? err.message : String(err)
+            }`
+          );
+        }
+
+        // Start worker runtime
+        const { bootstrapWorker } = await import("./bootstrap");
+        await bootstrapWorker();
+      } catch (err) {
+        try {
+          logger?.error("[worker] fatal startup error", err);
+        } catch {
+          try {
+            process.stderr.write(`[worker] fatal startup error: ${String(err)}\n`);
+          } catch {}
+        }
+
+        process.exit(1);
+      }
+    })();
