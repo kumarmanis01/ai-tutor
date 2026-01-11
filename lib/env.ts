@@ -15,8 +15,8 @@ export function loadEnv() {
   // in compiled output.
   ;(async () => {
     try {
-      // Avoid the literal 'dotenv' in source to prevent it appearing in compiled
-      // production artifacts. Build-time scanners look for the substring.
+      // Load dotenv only in non-production local dev. Use string concatenation
+      // to avoid emitting the literal "dotenv" token into compiled artifacts.
       const pkgName = 'dot' + 'env'
       const mod = await import(pkgName)
       if (mod && typeof (mod as any).config === 'function') {

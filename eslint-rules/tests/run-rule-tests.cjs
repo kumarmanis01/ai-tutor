@@ -29,7 +29,7 @@ if (!fs.existsSync(eslintBin)) {
 let failed = 0;
 for (const t of tests) {
   try {
-    const cmd = `"${eslintBin}" --config "${configPath}" "${t.file}" --ext .js,.ts,.tsx`;
+    const cmd = `"${eslintBin}" --config "${configPath}" "${t.file}"`;
     execSync(cmd, { encoding: 'utf8', stdio: 'inherit' });
     if (!t.shouldPass) {
       console.error(`Test failed: ${t.file} should have reported errors but passed.`);
