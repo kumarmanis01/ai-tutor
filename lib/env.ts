@@ -22,7 +22,7 @@ export function loadEnv() {
       if (mod && typeof (mod as any).config === 'function') {
         (mod as any).config()
       }
-    } catch (e) {
+    } catch {
       // Swallow errors: dotenv is optional for local development setups.
     }
   })()

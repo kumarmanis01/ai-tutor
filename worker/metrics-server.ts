@@ -1,5 +1,5 @@
 /* eslint-disable no-console */
-// @ts-ignore: express types are optional in some worker build environments
+// @ts-expect-error: express types are optional in some worker build environments
 import express from 'express'
 import client from 'prom-client'
 import { prisma } from '../lib/prisma'
