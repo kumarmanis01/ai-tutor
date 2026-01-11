@@ -89,7 +89,8 @@ echo "PHASE 2 — Environment sanity check"
 run_cmd find "$PROJECT_ROOT" -maxdepth 2 -name ".env.production" -type f || true
 
 echo "Verify .env.production key vars"
-run_cmd grep -E "NODE_ENV|DATABASE_URL|REDIS_URL" "$PROJECT_ROOT/.env.production" || true
+# Run grep from project root so the simple relative command works as expected
+run_cmd sh -c "cd \"$PROJECT_ROOT\" && grep -E \"NODE_ENV|DATABASE_URL|REDIS_URL\" .env.production" || true
 
 echo "Confirm shell does not auto-load env (expected empty):"
 run_cmd sh -c 'echo \$REDIS_URL'
