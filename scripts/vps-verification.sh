@@ -15,7 +15,10 @@
 
 set -u
 
-ROOT_DIR="$(pwd)"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# Project root is the parent of the scripts directory
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+ROOT_DIR="$PROJECT_ROOT"
 SKIP_CONFIRM=false
 if [ "${1-}" = "--yes" ] || [ "${2-}" = "--yes" ]; then
   SKIP_CONFIRM=true
@@ -83,10 +86,10 @@ else
 fi
 
 echo "PHASE 2 — Environment sanity check"
-run_cmd find . -name ".env.production" -type f || true
+run_cmd find "$PROJECT_ROOT" -maxdepth 2 -name ".env.production" -type f || true
 
 echo "Verify .env.production key vars"
-run_cmd grep -E "NODE_ENV|DATABASE_URL|REDIS_URL" .env.production || true
+run_cmd grep -E "NODE_ENV|DATABASE_URL|REDIS_URL" "$PROJECT_ROOT/.env.production" || true
 
 echo "Confirm shell does not auto-load env (expected empty):"
 run_cmd sh -c 'echo \$REDIS_URL'
@@ -102,15 +105,15 @@ run_cmd npm run build || { echo "Build failed - stop and paste error output"; ex
 run_cmd sh -c 'grep -R "dotenv" dist || echo "✅ dotenv not present in dist"'
 
 echo "PHASE 4 — Dry-run worker"
-DB_URL=$(grep -m1 '^DATABASE_URL=' .env.production | cut -d= -f2- | sed 's/^"//;s/"$//') || DB_URL=""
-REDIS_URL_VAL=$(grep -m1 '^REDIS_URL=' .env.production | cut -d= -f2- | sed 's/^"//;s/"$//') || REDIS_URL_VAL=""
+DB_URL=$(grep -m1 '^DATABASE_URL=' "$PROJECT_ROOT/.env.production" | cut -d= -f2- | sed 's/^"//;s/"$//') || DB_URL=""
+REDIS_URL_VAL=$(grep -m1 '^REDIS_URL=' "$PROJECT_ROOT/.env.production" | cut -d= -f2- | sed 's/^"//;s/"$//') || REDIS_URL_VAL=""
 
 echo "Running worker: node dist/worker/entry.js with env vars from .env.production"
 run_cmd sh -c "NODE_ENV=production DATABASE_URL=\"$DB_URL\" REDIS_URL=\"$REDIS_URL_VAL\" node dist/worker/entry.js &"
 echo "Worker started in background for smoke-run (use Ctrl+C in manual run to stop)."
 
 echo "PHASE 5 — PM2 start the worker with env-file"
-run_cmd pm2 start dist/worker/entry.js --name content-engine-worker --env production --env-file .env.production || true
+run_cmd pm2 start dist/worker/entry.js --name content-engine-worker --env production --env-file "$PROJECT_ROOT/.env.production" || true
 
 run_cmd pm2 list
 
