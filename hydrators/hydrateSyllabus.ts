@@ -58,7 +58,10 @@ export async function enqueueSyllabusHydration(input: {
 
   // 2️⃣ Resolve subjectId (Phase 2): accept subjectId or subject string and resolve to canonical id
   const resolved = await resolveSubjectId({ board: input.board, grade: input.grade, subject: input.subject, subjectId: input.subjectId })
-  if (!resolved.success) return { created: false, reason: `resolve_${resolved.reason}` }
+  if (!resolved.success) {
+    const r = (resolved as any).reason ?? 'unknown'
+    return { created: false, reason: `resolve_${r}` }
+  }
 
   const subjectId = resolved.subjectId
 

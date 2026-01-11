@@ -3,6 +3,7 @@ module.exports = {
     {
       name: 'ai-tutor-web',
       script: 'npm',
+      cwd: __dirname,
       args: 'start',
       instances: 'max',
       exec_mode: 'cluster',
@@ -18,6 +19,7 @@ module.exports = {
     {
       name: 'content-engine-worker',
       script: 'dist/worker/entry.js',
+      cwd: __dirname,
       instances: 1,
       exec_mode: 'fork',
       autorestart: true,

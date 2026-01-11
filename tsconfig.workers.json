@@ -4,17 +4,16 @@
     "outDir": "dist/worker",
     "rootDir": ".",
     "composite": false,
-    "module": "NodeNext",
-    "moduleResolution": "NodeNext",
+    "module": "CommonJS",
+    "moduleResolution": "node",
     "target": "ES2022",
     "esModuleInterop": true,
     "resolveJsonModule": true,
-    "skipLibCheck": true
-  },
-  "compilerOptions": {
+    "skipLibCheck": true,
     "baseUrl": ".",
     "paths": {
-      "@/*": ["*"]
+      "@/*": ["src/*", "*"] ,
+      "@/worker/*": ["worker/*"]
     }
   },
   "include": [

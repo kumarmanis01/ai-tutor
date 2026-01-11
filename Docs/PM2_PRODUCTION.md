@@ -31,6 +31,10 @@ EDIT LOG:
   - Use `noeviction` eviction policy for job queues to avoid losing queued jobs.
   - Prefer `rediss://` (TLS) endpoints and confirm correct TLS port with provider.
 
+  Notes:
+  - If your provider exposes a plaintext port while you have a `rediss://` URL, verify with `openssl s_client` and `nc` from the deploy host. If the port is plaintext, use `redis://` and include the password in `REDIS_URL`.
+  - Managed providers often expose separate ports for TLS vs non-TLS — confirm the port in the provider console.
+
 - `Security`:
   - Do not enable `HUSKY` or install devDependencies on the production host. Use `npm ci --omit=dev`.
   - Ensure `.env.production` has correct, unquoted values and is readable only by the runtime user.
@@ -59,3 +63,30 @@ EDIT LOG:
   chmod +x scripts/pm2-start.sh
   sudo scripts/pm2-start.sh
   ```
+
+**Additional Deployment Notes**
+
+- PM2 `--env-file` is not supported in many PM2 versions. Use one of these patterns:
+  - Load `.env.production` into the shell (safely) and then `pm2 start` so PM2 inherits the env vars.
+    ```bash
+    # safe loader - avoids problems with special characters or background tokens
+    while IFS= read -r line; do
+      [[ -z "$line" || "$line" =~ ^[[:space:]]*# ]] && continue
+      export "$line"
+    done < .env.production
+
+    pm2 start dist/worker/entry.js --name content-engine-worker
+    pm2 restart content-engine-worker --update-env
+    ```
+  - Prefer starting via an `ecosystem` file (recommended) and use `pm2 start ecosystem.pm2.production.cjs --env production`.
+
+- Do NOT `source .env.production` directly if values contain `&` or unescaped shell characters — this can start background jobs or break the shell. Use the safe loader above or `dotenv/config` for ephemeral debug runs only.
+
+- Neon/managed Postgres SNI note: if `psql` fails with an SNI/endpoint error, append the endpoint identifier to the DB URL for the `psql` client, e.g. `?options=endpoint%3D<endpoint-id>` (the endpoint id is typically the first label of the host). This is required for older libpq clients.
+
+- Redis eviction: change the provider's `maxmemory-policy` to `noeviction` for production. If the provider UI disallows changes, contact support.
+
+- Operational checks to run after deploy:
+  - `pm2 logs content-engine-worker --lines 200` — confirm no Redis TLS/eviction errors.
+  - Verify heartbeats in DB: `SELECT id, status, lastHeartbeatAt FROM "WorkerLifecycle" ORDER BY updatedAt DESC LIMIT 10;`
+
