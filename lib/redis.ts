@@ -6,21 +6,33 @@ import type { ConnectionOptions } from 'bullmq';
 // on the package's exported type shape which can differ between CJS/ESM builds.
 let _redis: InstanceType<typeof IORedis> | null = null;
 
-export const redisConnection: ConnectionOptions = {
-  // BullMQ accepts ioredis connection options; using URL is simplest.
-  // Consumers should pass `connection: redisConnection` to BullMQ APIs.
-  // allow passing url through ConnectionOptions when URL is used
-  url: process.env.REDIS_URL || undefined,
-};
+// Build a connection object for BullMQ; include TLS options when requested.
+const _url = process.env.REDIS_URL || undefined
+const _tlsOpts: any = {}
+if (_url && (_url.startsWith('rediss://') || process.env.REDIS_USE_TLS === '1')) {
+  if (process.env.REDIS_TLS_SERVERNAME) _tlsOpts.servername = process.env.REDIS_TLS_SERVERNAME
+  if (process.env.REDIS_TLS_REJECT_UNAUTHORIZED === '0') _tlsOpts.rejectUnauthorized = false
+}
+
+export const redisConnection: ConnectionOptions = _url
+  ? ({ url: _url, tls: Object.keys(_tlsOpts).length ? _tlsOpts : undefined } as any)
+  : ({} as any)
 
 export function getRedis() {
   if (_redis) return _redis;
   if (!process.env.REDIS_URL) {
     throw new Error("REDIS_URL is not defined in environment variables");
   }
-  _redis = new IORedis(process.env.REDIS_URL, {
-    maxRetriesPerRequest: null, // REQUIRED for BullMQ
-  });
+  const url = process.env.REDIS_URL!
+  const opts: any = { maxRetriesPerRequest: null }
+  // Enable TLS options when using rediss:// or explicit env toggle
+  if (url.startsWith('rediss://') || process.env.REDIS_USE_TLS === '1') {
+    const tls: any = {}
+    if (process.env.REDIS_TLS_SERVERNAME) tls.servername = process.env.REDIS_TLS_SERVERNAME
+    if (process.env.REDIS_TLS_REJECT_UNAUTHORIZED === '0') tls.rejectUnauthorized = false
+    if (Object.keys(tls).length) opts.tls = tls
+  }
+  _redis = new IORedis(url, opts)
   return _redis;
 }
 
