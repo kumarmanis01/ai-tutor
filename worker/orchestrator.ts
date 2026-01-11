@@ -15,17 +15,17 @@ if (process.env.NODE_ENV !== 'production') {
  * - listens for lifecycle state changes (DRAINING/STOPPED) and signals the child
  */
 
-const { spawn } = require('child_process')
+import { spawn } from 'child_process'
 type ChildProcessWithoutNullStreams = any
 import path from 'path'
 import os from 'os'
 import fs from 'fs'
-const { prisma } = require('../lib/prisma')
-const { startMetricsServer, incJobsSpawned } = require('./metrics-server')
-const { createJobForWorker } = require('./k8s-adapter')
-const { runAnalyticsJobs } = require('../src/jobs/analyticsJobs')
+import { prisma } from '../lib/prisma.js'
+import { startMetricsServer, incJobsSpawned } from './metrics-server.js'
+import { createJobForWorker } from './k8s-adapter.js'
+import { runAnalyticsJobs } from '../src/jobs/analyticsJobs.js'
 // Register job definitions for orchestrator/worker processes only
-require('../lib/jobs/registerJobs')
+import '../lib/jobs/registerJobs.js'
 
 const POLL_MS = Number(process.env.ORCHESTRATOR_POLL_MS || 3000)
 const WORKER_CMD = process.execPath // node executable

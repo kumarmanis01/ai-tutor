@@ -1,12 +1,12 @@
 import { Worker, Job } from 'bullmq'
-import { redisConnection } from '../../lib/redis'
-import { prisma } from '../../lib/prisma'
-import { isSystemSettingEnabled } from '../../lib/systemSettings'
-import { hydrateNotes } from '../../hydrators/hydrateNotes'
-import { hydrateQuestions } from '../../hydrators/hydrateQuestions'
-import { assembleTest } from '../../hydrators/assembleTest'
-import { handleSyllabusJob } from '../services/syllabusWorker'
-import { logger } from '../../lib/logger'
+import { redisConnection } from '../../lib/redis.js'
+import { prisma } from '../../lib/prisma.js'
+import { isSystemSettingEnabled } from '../../lib/systemSettings.js'
+import { hydrateNotes } from '../../hydrators/hydrateNotes.js'
+import { hydrateQuestions } from '../../hydrators/hydrateQuestions.js'
+import { assembleTest } from '../../hydrators/assembleTest.js'
+import { handleSyllabusJob } from '../services/syllabusWorker.js'
+import { logger } from '../../lib/logger.js'
 
 export function startContentWorker(opts?: { concurrency?: number }) {
   const concurrency = opts?.concurrency ?? 3

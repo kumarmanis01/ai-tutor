@@ -23,7 +23,7 @@
 
     // Optional deep validation (best-effort, but fatal if present and fails)
     try {
-      const mod = await import("../lib/bootstrap/validateEnvironment");
+      const mod = await import("../lib/bootstrap/validateEnvironment.js");
       const validateEnvironment =
         (mod as any)?.validateEnvironment ?? (mod as any)?.default;
 
@@ -46,12 +46,12 @@
     }
 
     // Start worker runtime
-    const { bootstrapWorker } = await import("./bootstrap");
+    const { bootstrapWorker } = await import("./bootstrap.js");
     await bootstrapWorker();
   } catch (err) {
     // Use dynamic import for logger so we avoid top-level import emissions.
     try {
-      const mod = await import("../lib/logger").catch(() => ({}));
+      const mod = await import("../lib/logger.js").catch(() => ({}));
       const logger = (mod as any)?.logger ?? (mod as any)?.default ?? null;
       if (logger && typeof logger.error === 'function') {
         logger.error("[worker] fatal startup error", err);

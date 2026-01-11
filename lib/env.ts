@@ -5,23 +5,22 @@
  * - dot-env must NEVER be imported in production builds
  * - Production relies on process.env injected by the platform (PM2, Docker, etc.)
  */
-import { createRequire } from 'module'
-
 export function loadEnv() {
+  // Do not load .env in production - rely on process.env injected by PM2/Docker.
   if (process.env.NODE_ENV === 'production') return
 
-  // Try CommonJS `require` first (older tooling / CJS builds)
-  try {
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    if (typeof (global as any).require === 'function') {
-      ;(global as any).require('dotenv').config()
-      return
+  // Dynamically import dotenv at runtime in non-production environments.
+  // Use an async import wrapped in a non-blocking IIFE so callers may remain
+  // synchronous while still avoiding any static import or require emissions
+  // in compiled output.
+  ;(async () => {
+    try {
+      const mod = await import('dotenv')
+      if (mod && typeof (mod as any).config === 'function') {
+        (mod as any).config()
+      }
+    } catch (e) {
+      // Swallow errors: dotenv is optional for local development setups.
     }
-  } catch {}
-
-  // ESM runtime: create a require function from the Node 'module' builtin
-  try {
-    const req = createRequire(import.meta.url)
-    req('dotenv').config()
-  } catch {}
+  })()
 }

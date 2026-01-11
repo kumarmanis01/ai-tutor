@@ -1,4 +1,4 @@
-import { prisma as _prisma } from '../../lib/prisma'
+import { prisma as _prisma } from '../../lib/prisma.js'
 
 const getDb = () => (global as any).__TEST_PRISMA__ ?? _prisma
 
@@ -54,7 +54,7 @@ export async function aggregateDay(date: Date) {
     } catch (e) {
       // swallow to keep job resilient; log if logger present
       try {
-        const logger = (await import('../../lib/logger')).logger
+        const logger = (await import('../../lib/logger.js')).logger
         logger?.error?.('aggregateDay: failed to upsert aggregate', { error: (e as Error)?.message ?? String(e) })
       } catch {}
     }

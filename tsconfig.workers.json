@@ -1,12 +1,30 @@
 {
   "extends": "./tsconfig.base.json",
   "compilerOptions": {
-    "outDir": "dist",
+    "outDir": "dist/worker",
     "rootDir": ".",
-    "composite": false
+    "composite": false,
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "target": "ES2022",
+    "esModuleInterop": true,
+    "resolveJsonModule": true,
+    "skipLibCheck": true
+  },
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["*"]
+    }
   },
   "include": [
-    "worker/**/*.ts"
+    "worker/**/*.ts",
+    "lib/**/*.ts",
+    "regeneration/**/*.ts",
+    "hydrators/**/*.ts",
+    "jobs/**/*.ts",
+    "queues/**/*.ts",
+    "producers/**/*.ts"
   ],
   "exclude": [
     "node_modules",

@@ -26,13 +26,13 @@ import { Worker, Job } from "bullmq";
 import minimist from "minimist";
 import os from "os";
 
-import { redisConnection } from "../lib/redis";
-import { prisma } from "../lib/prisma";
+import { redisConnection } from "../lib/redis.js";
+import { prisma } from "../lib/prisma.js";
 
-import { hydrateNotes } from "../hydrators/hydrateNotes";
-import { hydrateQuestions } from "../hydrators/hydrateQuestions";
-import { assembleTest } from "../hydrators/assembleTest";
-import { handleSyllabusJob } from "./index";
+import { hydrateNotes } from "../hydrators/hydrateNotes.js";
+import { hydrateQuestions } from "../hydrators/hydrateQuestions.js";
+import { assembleTest } from "../hydrators/assembleTest.js";
+import { handleSyllabusJob } from "./index.js";
 
 const argv = minimist(process.argv.slice(2));
 

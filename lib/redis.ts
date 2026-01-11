@@ -2,7 +2,9 @@
 import IORedis from "ioredis";
 import type { ConnectionOptions } from 'bullmq';
 
-let _redis: IORedis | null = null;
+// Use InstanceType to capture the runtime Redis client type without relying
+// on the package's exported type shape which can differ between CJS/ESM builds.
+let _redis: InstanceType<typeof IORedis> | null = null;
 
 export const redisConnection: ConnectionOptions = {
   // BullMQ accepts ioredis connection options; using URL is simplest.
