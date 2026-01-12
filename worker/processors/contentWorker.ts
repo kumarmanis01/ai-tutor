@@ -14,6 +14,13 @@ export function startContentWorker(opts?: { concurrency?: number }) {
   const worker = new Worker(
     'content-hydration',
     async (job: Job) => {
+      if (process.env.WORKER_DEBUG === '1') {
+        try {
+          console.log(`[worker][DEBUG] received job id=${job.id} name=${job.name} data=${JSON.stringify(job.data)}`);
+        } catch (e) {
+          console.log('[worker][DEBUG] received job (failed to stringify)', e);
+        }
+      }
       const paused = await prisma.systemSetting.findUnique({ where: { key: 'AI_PAUSED' } })
       if (isSystemSettingEnabled(paused?.value)) {
         throw new Error('AI_PAUSED')
@@ -22,11 +29,13 @@ export function startContentWorker(opts?: { concurrency?: number }) {
       try {
         const jobId = job.data?.payload?.jobId ?? job.data?.payload?.job_id ?? null
         if (jobId) {
+          if (process.env.WORKER_DEBUG === '1') console.log(`[worker][DEBUG] marking ExecutionJob ${jobId} as running`)
           await prisma.executionJob.update({ where: { id: String(jobId) }, data: { status: 'running', lockedAt: new Date(), lockedBy: `worker:${process.pid}` } })
-          await prisma.jobExecutionLog.create({ data: { jobId: String(jobId), event: 'RUNNING', prevStatus: 'pending', newStatus: 'running', meta: { workerPid: process.pid } } })
+          await prisma.jobExecutionLog.create({ data: { jobId: jobId, event: 'RUNNING', prevStatus: 'pending', newStatus: 'running', meta: { workerPid: process.pid } } })
         }
       } catch (e) {
         logger?.warn?.('worker: failed to mark ExecutionJob RUNNING or create JobExecutionLog', { err: e })
+        if (process.env.WORKER_DEBUG === '1') console.error('[worker][DEBUG] failed to mark ExecutionJob RUNNING', e)
       }
 
       const { type, payload } = job.data as {

@@ -133,6 +133,19 @@ export async function bootstrapWorker() {
   process.env.ALLOW_LLM_CALLS = "1";
 
   const lifecycleId = await ensureLifecycleRow(lifecycleIdArg);
+  if (process.env.WORKER_DEBUG === '1') {
+    try {
+      const { getRedis } = await import('../lib/redis.js');
+      const r = getRedis();
+      const pong = await r.ping();
+      console.log(`[worker][DEBUG] Redis ping: ${String(pong)}`);
+    } catch (err) {
+      console.error('[worker][DEBUG] Redis ping failed', err);
+    }
+    console.log(`[worker][DEBUG] starting worker: type=${workerType} concurrency=${concurrency} lifecycleId=${lifecycleId}`);
+  } else {
+    console.log(`[worker] starting worker: type=${workerType}`);
+  }
 
   const worker = new Worker(
     workerType,
@@ -142,6 +155,20 @@ export async function bootstrapWorker() {
       concurrency,
     }
   );
+
+  // Debug events: active, stalled
+  if (process.env.WORKER_DEBUG === '1') {
+    worker.on('active', (job) => {
+      try {
+        console.log(`[worker][DEBUG] active job id=${job.id} name=${job.name} data=${JSON.stringify(job.data)}`);
+      } catch (e) {
+        console.log('[worker][DEBUG] active job (failed to stringify)', e);
+      }
+    });
+    worker.on('stalled', (jobId) => {
+      console.warn(`[worker][DEBUG] stalled job id=${jobId}`);
+    });
+  }
 
   await prisma.workerLifecycle.update({
     where: { id: lifecycleId },
