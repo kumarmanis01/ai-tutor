@@ -245,6 +245,19 @@ pm2 logs content-engine-worker --lines 200
 
 If you want, add these commands to your deployment automation (Ansible, scripts, CI) but keep `.env.production` populated by your provisioning or secret store (never check it into source control).
 
+Security checklist (enforced by scripts)
+
+- Ensure `.env.production` is present on the server and not committed into git. The repo includes `scripts/ensure-env-perms.sh` which will fail the deploy if the file is tracked in git.
+- Set secure permissions on the file so only the deploy user can read it:
+
+```bash
+chmod 600 .env.production
+chown <deploy-user>:<deploy-user> .env.production
+```
+
+- The `deploy-and-run.sh` script invokes `ensure-env-perms.sh` before any PM2 actions. Keep `.env.production` in your deployment secrets store and do not commit it.
+
+
 
 ## Deployment / Required Environment Variables
 

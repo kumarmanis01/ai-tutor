@@ -20,6 +20,34 @@
  * - `error_file` / `out_file`: dedicated log files for stderr/stdout to simplify
  *    debugging and log rotation.
  */
+const fs = require('fs')
+const path = require('path')
+
+function parseEnvFile(filePath) {
+  const out = {}
+  try {
+    const raw = fs.readFileSync(filePath, 'utf8')
+    for (const line of raw.split(/\r?\n/)) {
+      const trimmed = line.trim()
+      if (!trimmed || trimmed.startsWith('#')) continue
+      const idx = trimmed.indexOf('=')
+      if (idx === -1) continue
+      const key = trimmed.slice(0, idx)
+      let val = trimmed.slice(idx + 1)
+      if ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'"))) {
+        val = val.slice(1, -1)
+      }
+      out[key] = val
+    }
+  } catch (e) {
+    // ignore missing env file; PM2 may inject env differently on some hosts
+  }
+  return out
+}
+
+const envFilePath = path.resolve(__dirname, '.env.production')
+const PROD_ENV = parseEnvFile(envFilePath)
+
 module.exports = {
   apps: [
     {
@@ -39,9 +67,10 @@ module.exports = {
       env: {
         NODE_ENV: 'production'
       },
-      env_production: {
-        NODE_ENV: 'production'
-      },
+      env_production: Object.assign({ NODE_ENV: 'production' }, (PROD_ENV && {
+        REDIS_URL: PROD_ENV.REDIS_URL,
+        DATABASE_URL: PROD_ENV.DATABASE_URL
+      }) || {}),
       // WARNING: Do NOT store secrets (DATABASE_URL, REDIS_URL, API keys)
       // in this file. Keep secrets in `.env.production` on the server or a
       // secrets manager and use `env_file` or runtime injection.

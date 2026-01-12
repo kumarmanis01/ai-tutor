@@ -74,7 +74,9 @@
     "pm2:restart-worker": "pm2 restart content-engine-worker --update-env",
     "check-redis-keys": "node scripts/check-redis-keys.js",
     "verify:vps": "bash scripts/vps-verification.sh --auto",
-    "verify:dist": "node scripts/verify-dist.cjs"
+    "verify:dist": "node scripts/verify-dist.cjs",
+    "ensure:env": "bash scripts/ensure-env-perms.sh",
+    "ci:check-env": "node scripts/check-env-not-tracked.cjs"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.10.0",

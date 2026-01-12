@@ -58,6 +58,14 @@ for s in "${CHILD_SCRIPTS[@]}"; do
   fi
 done
 
+# verify env permissions and non-tracking
+if [ -f "${REPO_ROOT}/scripts/ensure-env-perms.sh" ]; then
+  echo "[deploy] checking .env.production permissions"
+  bash "${REPO_ROOT}/scripts/ensure-env-perms.sh"
+else
+  echo "[deploy] ensure-env-perms.sh missing; ensure .env.production exists and is chmod 600"
+fi
+
 # optional pm2 cleaning steps
 if [ "${CLEAN_FLAG}" -eq 1 ]; then
   echo "[deploy] cleaning pm2 processes: stop all, delete all, flush"
