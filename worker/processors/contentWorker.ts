@@ -57,9 +57,7 @@ export function startContentWorker(opts?: { concurrency?: number }) {
       }
     },
     {
-      connection: {
-        url: process.env.REDIS_URL!,
-      },
+      connection: redisConnection,
       concurrency,
       settings: {
         backoffStrategy: (attemptsMade: number) => Math.min(60_000, 2 ** attemptsMade * 1000),

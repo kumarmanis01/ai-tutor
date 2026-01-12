@@ -1,24 +1,29 @@
-import React from 'react';
-
-async function getQueue() {
-  const base = process.env.NEXT_PUBLIC_BASE_URL || process.env.NEXTAUTH_URL || 'http://localhost:3000';
-  const res = await fetch(`${base}/api/admin/content-engine/queue`, { cache: 'no-store' });
-  if (!res.ok) return null;
-  return res.json();
-}
+import React from 'react'
+import { getContentQueue } from '@/queues/contentQueue'
+import { requireAdminOrModerator } from '@/lib/auth'
+import { logger } from '@/lib/logger'
 
 export default async function QueuePage() {
-  const data = await getQueue();
+  try {
+    await requireAdminOrModerator()
+    const q = getContentQueue()
+    const counts = await q.getJobCounts()
 
-  return (
-    <div className="p-6">
-      <h1 className="text-2xl font-semibold mb-4">Content Engine — Queue</h1>
-      {!data && <div className="text-sm text-gray-500">Unable to fetch queue info.</div>}
-      {data && (
+    return (
+      <div className="p-6">
+        <h1 className="text-2xl font-semibold mb-4">Content Engine — Queue</h1>
         <div className="bg-white dark:bg-gray-900 rounded shadow p-4">
-          <pre className="text-sm whitespace-pre-wrap">{JSON.stringify(data, null, 2)}</pre>
+          <pre className="text-sm whitespace-pre-wrap">{JSON.stringify({ queue: 'content-hydration', counts }, null, 2)}</pre>
         </div>
-      )}
-    </div>
-  );
+      </div>
+    )
+  } catch (err) {
+    logger?.error?.('GET /admin/content-engine/queue page error', { err })
+    return (
+      <div className="p-6">
+        <h1 className="text-2xl font-semibold mb-4">Content Engine — Queue</h1>
+        <div className="text-sm text-gray-500">Unable to fetch queue info.</div>
+      </div>
+    )
+  }
 }
