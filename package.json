@@ -77,6 +77,8 @@
     "verify:dist": "node scripts/verify-dist.cjs",
     "ensure:env": "bash scripts/ensure-env-perms.sh",
     "ci:check-env": "node scripts/check-env-not-tracked.cjs"
+    ,"ci:prebuild": "npm run ci:check-env && npm run verify:dist",
+    "deploy:prep": "bash scripts/ensure-env-perms.sh && npm run verify:dist"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.10.0",
