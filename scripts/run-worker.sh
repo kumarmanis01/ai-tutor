@@ -14,9 +14,25 @@ if [ ! -f "$ENV_FILE" ]; then
 fi
 
 # Export variables from .env.production (ignore comments and empty lines)
-set -a
-# shellcheck disable=SC2046
-eval $(grep -v '^[[:space:]]*#' "$ENV_FILE" | sed -E 's/([[:alnum:]_]+)=(.*)/export \1="\2"/g')
-set +a
+while IFS= read -r line; do
+  # skip empty lines and comments
+  [[ -z "$line" ]] && continue
+  [[ "$line" =~ ^[[:space:]]*# ]] && continue
+
+  # split on first '=' to allow '=' inside values
+  IFS='=' read -r key rest <<< "$line"
+  # trim surrounding whitespace from key
+  key="$(echo "$key" | sed -E 's/^[[:space:]]+|[[:space:]]+$//g')"
+  # value is everything after the first '=' (preserve = in value)
+  value="${line#*=}"
+  # strip surrounding single/double quotes if present
+  if [[ "$value" =~ ^\".*\"$ ]] || [[ "$value" =~ ^\'.*\'$ ]]; then
+    value="${value:1:-1}"
+  fi
+
+  # export safely without eval
+  # Use declare -x to avoid word-splitting and ensure proper export
+  declare -x "$key"="$value"
+done < <(grep -v '^[[:space:]]*#' "$ENV_FILE" | sed '/^[[:space:]]*$/d')
 
 exec node dist/worker/entry.js
