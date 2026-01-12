@@ -60,14 +60,13 @@ module.exports = {
     },
     {
       // Content-engine worker
-      // Rationale: run the compiled worker entry directly. Worker runs should
-      // be forked as single instances by default to avoid duplicate job
-      // processing; horizontal scaling can be achieved by running multiple
-      // PM2 instances on different machines or explicitly configuring more
-      // instances here if needed (and ensuring job-claiming concurrency).
+      // Use a small bash wrapper which sources `.env.production` and then
+      // execs the compiled worker. This avoids relying on PM2's `env_file`
+      // behaviour which may vary across installations.
       name: 'content-engine-worker',
-      script: 'dist/worker/entry.js',
+      script: 'scripts/run-worker.sh',
       cwd: __dirname,
+      interpreter: '/bin/bash',
       exec_mode: 'fork',
       instances: 1,
       autorestart: true,
@@ -76,7 +75,6 @@ module.exports = {
       restart_delay: 5000,
       max_memory_restart: '256M',
       watch: false,
-      env_file: '.env.production',
       env: {
         NODE_ENV: 'production'
       },
