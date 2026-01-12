@@ -147,10 +147,10 @@ export async function submitJob(input: SubmitJobInput) {
           assemble: 'ASSEMBLE_TEST',
         };
         const workerType = mapping[String(normalizedJobType)] || String(normalizedJobType).toUpperCase();
-        await q.add(`${workerType.toLowerCase()}-${job.id}`, { type: workerType, payload: { jobId: job.id, ...payload } });
-        logger.info('submitJob: enqueued to Redis queue', { queue: 'content-hydration', jobId: job.id, workerType });
+        const bullJob = await q.add(`${workerType.toLowerCase()}-${job.id}`, { type: workerType, payload: { jobId: job.id, ...payload } });
+        logger.info('submitJob: enqueued to Redis queue', { queue: 'content-hydration', jobId: job.id, workerType, bullJobId: bullJob?.id });
         try {
-          await prisma.jobExecutionLog.create({ data: { jobId: job.id, event: 'ENQUEUED', prevStatus: 'pending', newStatus: 'pending', meta: { queue: 'content-hydration', workerType } } });
+          await prisma.jobExecutionLog.create({ data: { jobId: job.id, event: 'ENQUEUED', prevStatus: 'pending', newStatus: 'pending', meta: { queue: 'content-hydration', workerType, bullJobId: bullJob?.id } } });
         } catch (e) {
           logger?.warn?.('submitJob: failed to write JobExecutionLog ENQUEUED', { err: e, jobId: job.id });
         }
