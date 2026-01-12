@@ -42,6 +42,9 @@ module.exports = {
       env_production: {
         NODE_ENV: 'production'
       },
+      // WARNING: Do NOT store secrets (DATABASE_URL, REDIS_URL, API keys)
+      // in this file. Keep secrets in `.env.production` on the server or a
+      // secrets manager and use `env_file` or runtime injection.
       // Dedicated log files for the web process
       error_file: 'logs/ai-tutor-web-error.log',
       out_file: 'logs/ai-tutor-web-out.log',
@@ -50,6 +53,7 @@ module.exports = {
       // Health and restart policies
       autorestart: true,
       max_restarts: 10,
+      min_uptime: '5s',
       restart_delay: 5000,
       max_memory_restart: '512M',
       watch: false
@@ -68,11 +72,15 @@ module.exports = {
       instances: 1,
       autorestart: true,
       max_restarts: 10,
+      min_uptime: '5s',
       restart_delay: 5000,
       max_memory_restart: '256M',
       watch: false,
       env_file: '.env.production',
       env: {
+        NODE_ENV: 'production'
+      },
+      env_production: {
         NODE_ENV: 'production'
       },
       // Worker should also have dedicated logs for easier debugging/monitoring

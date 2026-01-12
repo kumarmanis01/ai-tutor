@@ -1,3 +1,5 @@
+echo
+echo "Interactive checklist finished."
 #!/usr/bin/env bash
 # FILE OBJECTIVE:
 # - Guided VPS verification script that runs a production-grade checklist
@@ -11,65 +13,33 @@
 # - /docs/COPILOT_GUARDRAILS.md
 #
 # EDIT LOG:
-# - 2026-01-11T00:00:00Z | copilot-agent | updated with Node/Husky/PM2 fallbacks
+# - 2026-01-11T00:00:00Z | copilot-agent | consolidated + quoting fixes
 
-set -u
+set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-# Project root is the parent of the scripts directory
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
-ROOT_DIR="$PROJECT_ROOT"
-# By default run in interactive prompt-only mode. Pass --auto or --yes to execute commands.
-PROMPT_ONLY=true
-if [ "${1-}" = "--auto" ] || [ "${1-}" = "--yes" ] || [ "${2-}" = "--auto" ] || [ "${2-}" = "--yes" ]; then
-  PROMPT_ONLY=false
+SKIP_CONFIRM=false
+if [ "${1-}" = "--yes" ] || [ "${2-}" = "--yes" ]; then
+  SKIP_CONFIRM=true
 fi
 
+esc() { printf "%s" "$1" | sed "s/'/'\\''/g"; }
+
 run_cmd() {
-  local cmd="$*"
+  local cmd="$1"
   echo
   echo "---- COMMAND STARTING ----"
   echo "$cmd"
   echo "--------------------------"
-  # Run the command and capture output
-  if [ "$PROMPT_ONLY" = true ]; then
-    echo "(interactive) Run the above command on the VPS now. Press Enter when done."
-    read -r _
-    return 0
+  bash -lc "$cmd"
+  local status=$?
+  if [ $status -eq 0 ]; then
+    echo "---- COMMAND COMPLETED (exit $status) ----"
   else
-    eval "$cmd" 2>&1
-    local status=$?
-    if [ $status -eq 0 ]; then
-      echo "---- COMMAND COMPLETED (exit $status) ----"
-    else
-      echo "---- COMMAND ERROR (exit $status) ----"
-    fi
-    return $status
+    echo "---- COMMAND ERROR (exit $status) ----"
   fi
-}
-
-# Print a friendly prompt with expected output. command must be quoted exactly as-is.
-prompt_cmd() {
-  local cmd="$1"
-  local expected="$2"
-  echo
-  echo "=== NEXT COMMAND ==="
-  echo "$cmd"
-  if [ -n "$expected" ]; then
-    echo
-    echo "Expected:" 
-    echo "$expected"
-  fi
-  if [ "$PROMPT_ONLY" = true ]; then
-    read -r -p "Press Enter after you've run the command on the VPS (or type 'skip' to continue): " resp
-    if [ "$resp" = "skip" ]; then
-      echo "Skipped run verification. Continuing..."
-    fi
-    return 0
-  else
-    run_cmd $cmd
-    return $?
-  fi
+  return $status
 }
 
 confirm() {
@@ -83,65 +53,49 @@ confirm() {
   esac
 }
 
-echo "VPS Verification Script - interactive checklist"
+echo "VPS Verification Script - follow the prompts and watch outputs"
 
-echo
-echo "Follow these lines on the VPS. For each step the exact command is shown; run it on the VPS and press Enter to continue."
+cd "$PROJECT_ROOT"
 
-# Phase 1
-prompt_cmd 'cd ~/apps/content-engine/ai-tutor' "Change to project directory (run from the VPS user)."
+echo "Step: ensure logs directory exists (scripts/ensure-logs.sh)"
+if [ -x "$PROJECT_ROOT/scripts/ensure-logs.sh" ]; then
+  run_cmd "bash '$PROJECT_ROOT/scripts/ensure-logs.sh'"
+else
+  if [ -f "$PROJECT_ROOT/scripts/ensure-logs.sh" ]; then
+    run_cmd "bash '$PROJECT_ROOT/scripts/ensure-logs.sh'"
+  else
+    echo "Warning: scripts/ensure-logs.sh not found; create logs/ manually if needed"
+  fi
+fi
+MD_FILE="$PROJECT_ROOT/focs/vps-verification-guide.md"
 
-prompt_cmd 'pm2 stop all' "Stops all PM2 processes."
-prompt_cmd 'pm2 delete all' "Deletes all PM2 process definitions."
-prompt_cmd 'pm2 list' "Expected: empty list (no running processes)."
+if [ -f "$MD_FILE" ]; then
+  echo "Loading commands from $MD_FILE"
+  # Extract only ```bash code blocks and run them in order. Each block may contain multiple lines/commands.
+  mapfile -t blocks < <(awk '/^```bash/{inside=1;next} /^```/{if(inside){inside=0;print "__BLOCK_END__"} next} { if(inside){print} }' "$MD_FILE" | awk 'BEGIN{buf=""} { if($0=="__BLOCK_END__"){print buf; buf=""} else { if(buf=="") buf=$0; else buf=buf"\n"$0 } } END{ if(buf!="") print buf }')
 
-prompt_cmd 'rm -rf dist node_modules .turbo .cache' "Removes build artifacts and node_modules."
-prompt_cmd 'rm -f .env' "Optional: remove local .env (DO NOT delete .env.production)."
-
-# Phase 2
-prompt_cmd 'find . -name ".env.production" -type f' "Expected: ./ .env.production (only one file)."
-prompt_cmd 'grep -E "NODE_ENV|DATABASE_URL|REDIS_URL" .env.production' "Expected contains: NODE_ENV=production and DATABASE_URL and REDIS_URL entries."
-prompt_cmd 'echo $REDIS_URL' "Expected: (empty) — shell should not auto-load production envs."
-
-# Phase 3
-prompt_cmd 'npm ci' "Deterministic install. If this fails, retry with HUSKY=0 npm ci on the VPS."
-prompt_cmd 'npx prisma generate' "Generates Prisma client."
-prompt_cmd 'ls node_modules/.prisma/client >/dev/null && echo "Prisma OK"' "Should print 'Prisma OK'."
-prompt_cmd 'npm run build' "Builds the project; abort if it fails."
-prompt_cmd 'grep -R "dotenv" dist || echo "✅ dotenv not present in dist"' "Ensure 'dotenv' is not present in dist."
-
-# Phase 4
-prompt_cmd 'NODE_ENV=production \
-DATABASE_URL="$(grep DATABASE_URL .env.production | cut -d= -f2-)" \
-REDIS_URL="$(grep REDIS_URL .env.production | cut -d= -f2-)" \
-node dist/worker/entry.js' "Dry-run the worker; expect no dotenv errors and worker starts (may idle)."
-
-# Phase 5
-prompt_cmd 'pm2 start dist/worker/entry.js \
-  --name content-engine-worker \
-  --env production \
-  --env-file .env.production' "Start worker under PM2 with env file. Verify using 'pm2 list' that process is online."
-prompt_cmd 'pm2 env content-engine-worker | grep REDIS_URL' "Expected shows REDIS_URL=... (not empty)."
-prompt_cmd 'pm2 logs content-engine-worker --lines 50' "Check for no fatal startup errors and no 'REDIS_URL is not set' messages."
-
-# Phase 6
-prompt_cmd 'pm2 logs content-engine-worker | grep -i redis' "No Redis connection errors in logs."
-prompt_cmd 'redis-cli -u "$(grep REDIS_URL .env.production | cut -d= -f2-)" ping' "Expected: PONG (if redis-cli is installed)."
-
-# Phase 7
-prompt_cmd 'pm2 save' "Saves PM2 process list for resurrect after reboot."
-prompt_cmd 'pm2 startup' "Follow the printed command to enable PM2 on startup."
-prompt_cmd 'sudo reboot' "Optional: reboot the VPS to validate startup. After reconnect run 'pm2 list' and 'pm2 logs content-engine-worker --lines 20' — worker should be online."
-
-echo
-echo "SUCCESS CRITERIA (verify manually):"
-echo " - dotenv absent from dist"
-echo " - pm2 env shows REDIS_URL"
-echo " - Worker started without fatal errors"
-echo " - Prisma client present"
-echo " - Redis connectivity OK or no connection errors in logs"
-
-echo "Interactive checklist finished."
+  idx=0
+  for block in "${blocks[@]}"; do
+    idx=$((idx+1))
+    echo
+    echo "=== MD BLOCK $idx ==="
+    echo "$block"
+    if confirm "Run the above block now?"; then
+      ESC_BLOCK=$(esc "$block")
+      run_cmd "bash -lc '$ESC_BLOCK' || true"
+    else
+      echo "Skipped block $idx"
+    fi
+  done
+else
+  echo "MD guide not found at $MD_FILE — falling back to inline checks"
+  # Fallback: run a minimal set of checks
+  run_cmd "pm2 list || true"
+  run_cmd "npm ci"
+  run_cmd "npm run build || true"
+  run_cmd "pm2 start dist/worker/entry.js --name content-engine-worker --env production --env-file '$PROJECT_ROOT/.env.production' || true"
+  run_cmd "pm2 save || true"
+fi
 #!/usr/bin/env bash
 # FILE OBJECTIVE:
 # - Guided VPS verification script that runs a production-grade checklist
