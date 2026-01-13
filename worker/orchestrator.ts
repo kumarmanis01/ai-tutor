@@ -18,11 +18,11 @@ if (process.env.NODE_ENV !== 'production') {
 import { spawn } from 'child_process'
 type ChildProcessWithoutNullStreams = any
 import path from 'path'
+import fs from 'fs'
 import os from 'os'
 import { prisma } from '@/lib/prisma.js'
 import { logger } from '@/lib/logger.js'
 import { startMetricsServer, incJobsSpawned } from './metrics-server'
-import { logger } from '@/lib/logger.js'
 import { createJobForWorker } from './k8s-adapter'
 import { runAnalyticsJobs } from '../jobs/analyticsJobs'
 // Register job definitions for orchestrator/worker processes only
