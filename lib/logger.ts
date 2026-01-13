@@ -88,11 +88,11 @@ class Logger {
   }
 
   getLogs() {
-    return isDebug ? [...this.logs] : [];
+    return (isDebug || isWorkerDebug) ? [...this.logs] : [];
   }
 
   subscribe(cb: LogCallback) {
-    if (!isDebug) return () => {};
+    if (!(isDebug || isWorkerDebug)) return () => {};
     if (this.closed) return () => {};
     this.subscribers.push(cb);
     this.logs.forEach((log) => cb(log));
