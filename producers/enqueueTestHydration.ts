@@ -1,7 +1,15 @@
+import { getContentQueue } from "@/queues/contentQueue";
 import { logger } from "@/lib/logger";
-// Simple stub for enqueueTestHydration
+
+const HYDRATION_DEBUG = process.env.HYDRATION_DEBUG === '1' || process.env.AI_CONTENT_DEBUG === '1'
+
+// Enqueue test hydration jobs
 export async function enqueueTestHydration(testId: string) {
-  // TODO: Implement actual queue logic
-  logger.add(`Enqueue test hydration for testId: ${testId}`);
-  return true;
+  const q = getContentQueue()
+  if (HYDRATION_DEBUG) console.log('[hydration][DEBUG] enqueueTestHydration called', { testId })
+
+  const job = await q.add(`test-${testId}`, { type: 'ASSEMBLE_TEST', payload: { testId } })
+  logger.info('enqueueTestHydration enqueued', { testId, jobId: job.id })
+  if (HYDRATION_DEBUG) console.log('[hydration][DEBUG] enqueued test job', { testId, jobId: job.id })
+  return job.id
 }

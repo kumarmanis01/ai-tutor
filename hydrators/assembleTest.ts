@@ -20,7 +20,11 @@
 
 import { prisma } from "@/lib/prisma"
 
+const HYDRATION_DEBUG = process.env.HYDRATION_DEBUG === '1' || process.env.AI_CONTENT_DEBUG === '1'
+
 export async function assembleTest(topicId: string) {
+  if (HYDRATION_DEBUG) console.log('[hydration][DEBUG] assembleTest called', { topicId })
+
   const drafts = await prisma.generatedTest.findMany({
     where: {
       topicId,

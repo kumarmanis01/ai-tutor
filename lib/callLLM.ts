@@ -33,6 +33,7 @@ export async function createSpeech(input: any) {
 export async function callLLM({ prompt, model = 'gpt-4o-mini', meta }: { prompt: string; model?: string; meta: any }) {
   ensureWorkerAllowed()
   const client = getClient()
+  const HYDRATION_DEBUG = process.env.HYDRATION_DEBUG === '1' || process.env.AI_CONTENT_DEBUG === '1'
   try {
     const response: any = await client.chat.completions.create({
       model,
@@ -42,6 +43,17 @@ export async function callLLM({ prompt, model = 'gpt-4o-mini', meta }: { prompt:
 
     const usage = response.usage
     const content = response.choices?.[0]?.message?.content ?? ''
+
+    if (HYDRATION_DEBUG) {
+      try {
+        // lightweight debug log: prompt length and sample of content
+        console.log('[ai][DEBUG] callLLM prompt length:', (prompt || '').length)
+        console.log('[ai][DEBUG] callLLM response length:', (content || '').length)
+        logger.info('callLLM debug', { promptLength: (prompt || '').length, responseLength: (content || '').length, meta })
+      } catch (e) {
+        // ignore logging errors
+      }
+    }
 
     const costUsd = ((usage?.prompt_tokens || 0) * 0.00000015) + ((usage?.completion_tokens || 0) * 0.0000006)
 

@@ -22,10 +22,14 @@ import { prisma } from "@/lib/prisma"
 import { callLLM } from "@/lib/callLLM"
 import { getNextVersion } from "@/lib/getNextVersion"
 
+const HYDRATION_DEBUG = process.env.HYDRATION_DEBUG === '1' || process.env.AI_CONTENT_DEBUG === '1'
+
 export async function hydrateNotes(
   topicId: string,
   language: "en" | "hi"
 ) {
+  if (HYDRATION_DEBUG) console.log('[hydration][DEBUG] hydrateNotes called', { topicId, language })
+
   const topic = await prisma.topicDef.findUnique({
     where: { id: topicId },
     include: {
@@ -79,6 +83,8 @@ JSON only:
       language
     }
   })
+
+  if (HYDRATION_DEBUG) console.log('[hydration][DEBUG] hydrateNotes LLM content length', content?.length)
 
   const parsed = JSON.parse(content)
 
