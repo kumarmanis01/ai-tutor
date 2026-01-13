@@ -1,4 +1,4 @@
-import { logger } from '../../lib/logger'
+import { logger } from '@/lib/logger'
 
 // Ensure logger is closed after all tests to avoid stray async logs
 // that may run after Jest finishes and keep the process alive.

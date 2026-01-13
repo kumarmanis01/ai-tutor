@@ -47,10 +47,10 @@ export async function callLLM({ prompt, model = 'gpt-4o-mini', meta }: { prompt:
     if (HYDRATION_DEBUG) {
       try {
         // lightweight debug log: prompt length and sample of content
-        console.log('[ai][DEBUG] callLLM prompt length:', (prompt || '').length)
-        console.log('[ai][DEBUG] callLLM response length:', (content || '').length)
+        logger.debug('[ai][DEBUG] callLLM prompt length', { promptLength: (prompt || '').length })
+        logger.debug('[ai][DEBUG] callLLM response length', { responseLength: (content || '').length })
         logger.info('callLLM debug', { promptLength: (prompt || '').length, responseLength: (content || '').length, meta })
-      } catch (e) {
+      } catch {
         // ignore logging errors
       }
     }

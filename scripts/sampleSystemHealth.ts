@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Simple sampling runner for system health. Can be run as a cron or long-running process.
-import { sampleSystemHealth } from '../lib/telemetry';
+import { sampleSystemHealth } from '@/lib/telemetry';
 
 async function runOnce() {
   try {

@@ -1,5 +1,5 @@
-import { generateSyllabus } from '../../lib/syllabus/generator';
-import { validateSyllabusJson } from '../../lib/syllabus/schema';
+import { generateSyllabus } from '@/lib/syllabus/generator';
+import { validateSyllabusJson } from '@/lib/syllabus/schema';
 
 describe('generateSyllabus', () => {
   afterEach(() => {

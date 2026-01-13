@@ -7,14 +7,11 @@ module.exports = {
   testPathIgnorePatterns: ['/tests/integration/'],
   moduleFileExtensions: ['ts', 'js', 'json', 'node'],
   moduleNameMapper: {
-    // map runtime .js imports that reference project-local lib/ files back to TS
-    // match imports like '../lib/foo.js' or 'lib/foo.js' and map to src/lib or lib TS files
-    '^(?:\.\./)*lib/(.*)\\.js$': '<rootDir>/lib/$1.ts',
-    // map @/lib/... to the repo root lib/ folder, and everything else to src/
-    '^@/(lib/.*)$': '<rootDir>/$1',
-    '^@/(producers/.*)$': '<rootDir>/$1',
-    '^@/(queues/.*)$': '<rootDir>/$1',
-    '^@/(worker/.*)$': '<rootDir>/$1',
+    // Avoid mapping generic relative ../lib/* patterns — they clash with node_modules internals.
+    // Map project `@/` aliases explicitly.
+    '^@/lib/(.*)\\.js$': '<rootDir>/lib/$1.ts',
+    '^@/lib/(.*)$': '<rootDir>/lib/$1',
+    '^@/(.*)\\.js$': '<rootDir>/src/$1.ts',
     '^@/(.*)$': ['<rootDir>/src/$1', '<rootDir>/$1']
   },
   moduleDirectories: ['node_modules', '<rootDir>'],

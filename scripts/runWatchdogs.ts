@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { runWatchdogs } from '../lib/watchdogs';
+import { runWatchdogs } from '@/lib/watchdogs';
 
 async function runOnce() {
   try {

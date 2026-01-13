@@ -1,4 +1,4 @@
-import makeRetryService from '../../lib/regeneration/retryService'
+import makeRetryService from '@/lib/regeneration/retryService'
 
 describe('Phase14 service invariants', () => {
   test('createRetryJobFromIntent creates a new job and does not modify original outputs', async () => {

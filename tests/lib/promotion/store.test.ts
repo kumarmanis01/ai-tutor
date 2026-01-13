@@ -1,4 +1,4 @@
-import makePromotionStore from '../../../lib/promotion/store'
+import makePromotionStore from '@/lib/promotion/store'
 
 describe('Promotion store', () => {
   const prisma: any = {

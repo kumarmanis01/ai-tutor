@@ -1,8 +1,8 @@
-import { prisma } from '../../lib/prisma.js'
-import logAuditEvent from '../../lib/audit/log.js'
-import { AuditEvents } from '../../lib/audit/events.js'
-import generatorAdapter from '../../regeneration/generatorAdapter.js'
-import { logger } from '../../lib/logger.js'
+import { prisma } from '@/lib/prisma.js'
+import logAuditEvent from '@/lib/audit/log.js'
+import { AuditEvents } from '@/lib/audit/events.js'
+import generatorAdapter from '@/regeneration/generatorAdapter.js'
+import { logger } from '@/lib/logger.js'
 
 let _running = false
 let _stopRequested = false
@@ -26,15 +26,13 @@ export async function claimJob(jobId: string) {
 export async function processNextJob() {
   const pending = await prisma.regenerationJob.findFirst({ where: { status: 'PENDING' }, orderBy: { createdAt: 'asc' }, select: { id: true } })
   if (process.env.NODE_ENV === 'test') {
-    // eslint-disable-next-line no-console
-    console.log('DEBUG: pending', pending)
+    logger.debug('regenerationWorker: pending', { pending })
   }
   if (!pending) return null
 
   const claimed = await claimJob(pending.id)
   if (process.env.NODE_ENV === 'test') {
-    // eslint-disable-next-line no-console
-    console.log('DEBUG: claimed', claimed)
+    logger.debug('regenerationWorker: claimed', { claimed })
   }
   if (!claimed) return null
 
@@ -43,8 +41,7 @@ export async function processNextJob() {
 
   try {
     if (process.env.NODE_ENV === 'test') {
-      // eslint-disable-next-line no-console
-      console.log('DEBUG: entering generatorAdapter')
+      logger.debug('regenerationWorker: entering generatorAdapter')
     }
     const output = await generatorAdapter({
       id: claimed.id,
@@ -54,13 +51,11 @@ export async function processNextJob() {
       instructionJson: (claimed as any).instructionJson,
     })
     if (process.env.NODE_ENV === 'test') {
-      // eslint-disable-next-line no-console
-      console.log('DEBUG: generator output', output)
+      logger.debug('regenerationWorker: generator output', { output })
     }
 
     if (process.env.NODE_ENV === 'test') {
-      // eslint-disable-next-line no-console
-      console.log('DEBUG: about to call prisma.regenerationOutput.create')
+      logger.debug('regenerationWorker: about to call prisma.regenerationOutput.create')
     }
     const out = await prisma.regenerationOutput.create({ data: {
       jobId: claimed.id,
@@ -69,8 +64,7 @@ export async function processNextJob() {
       contentJson: output.outputJson,
     } })
     if (process.env.NODE_ENV === 'test') {
-      // eslint-disable-next-line no-console
-      console.log('DEBUG: after prisma.regenerationOutput.create')
+      logger.debug('regenerationWorker: after prisma.regenerationOutput.create')
     }
 
     const outputRef = { outputId: out.id, createdAt: out.createdAt }
@@ -85,8 +79,7 @@ export async function processNextJob() {
     return { ...claimed, outputRef }
   } catch (err: any) {
     if (process.env.NODE_ENV === 'test') {
-      // eslint-disable-next-line no-console
-      console.log('DEBUG: generator error', String(err))
+      logger.debug('regenerationWorker: generator error', { error: String(err) })
     }
     const errorJson = { message: String(err?.message ?? err), stack: err?.stack }
     try { await prisma.regenerationJob.update({ where: { id: claimed.id }, data: { status: 'FAILED', errorJson } }) } catch {}

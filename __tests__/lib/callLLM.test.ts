@@ -1,4 +1,4 @@
-import { createChatCompletion } from '../../lib/callLLM'
+import { createChatCompletion } from '@/lib/callLLM'
 
 describe('callLLM guard', () => {
   test('createChatCompletion throws when ALLOW_LLM_CALLS not set', async () => {

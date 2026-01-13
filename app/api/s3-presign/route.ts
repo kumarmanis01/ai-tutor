@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server';
 import { S3Client, PutObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { v4 as uuidv4 } from 'uuid';
-import { getPresignCredentials } from '../../../lib/awsSecrets';
+import { getPresignCredentials } from '@/lib/awsSecrets';
 import { getServerSessionForHandlers } from '@/lib/session';
 
 /*

@@ -1,5 +1,5 @@
-import { generateProject } from '../../lib/content/project/generator'
-import { createMockLLM } from '../../lib/content/lesson/mockLLM'
+import { generateProject } from '@/lib/content/project/generator'
+import { createMockLLM } from '@/lib/content/lesson/mockLLM'
 
 const valid = {
   id: 'p1',

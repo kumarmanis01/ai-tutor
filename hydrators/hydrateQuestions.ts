@@ -22,6 +22,7 @@ import { prisma } from "@/lib/prisma"
 import { callLLM } from "@/lib/callLLM"
 import { getNextVersion } from "@/lib/getNextVersion"
 import { normalizeDifficulty, normalizeLanguage } from "@/lib/normalize"
+import { logger } from "@/lib/logger"
 
 const HYDRATION_DEBUG = process.env.HYDRATION_DEBUG === '1' || process.env.AI_CONTENT_DEBUG === '1'
 
@@ -30,7 +31,7 @@ export async function hydrateQuestions(
   difficulty: ReturnType<typeof normalizeDifficulty>,
   language: ReturnType<typeof normalizeLanguage>
 ) {
-  if (HYDRATION_DEBUG) console.log('[hydration][DEBUG] hydrateQuestions called', { topicId, difficulty, language })
+  if (HYDRATION_DEBUG) logger.debug('[hydration][DEBUG] hydrateQuestions called', { topicId, difficulty, language })
   const topic = await prisma.topicDef.findUnique({
     where: { id: topicId },
     include: {
@@ -98,7 +99,7 @@ JSON only:
     }
   })
 
-  if (HYDRATION_DEBUG) console.log('[hydration][DEBUG] hydrateQuestions LLM content length', content?.length)
+  if (HYDRATION_DEBUG) logger.debug('[hydration][DEBUG] hydrateQuestions LLM content length', { length: content?.length })
 
   const parsed = JSON.parse(content)
 

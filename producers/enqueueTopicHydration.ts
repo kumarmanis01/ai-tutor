@@ -5,7 +5,7 @@ const HYDRATION_DEBUG = process.env.HYDRATION_DEBUG === '1' || process.env.AI_CO
 
 export async function enqueueTopicHydration(topicId: string) {
   const q = getContentQueue();
-  if (HYDRATION_DEBUG) console.log('[hydration][DEBUG] enqueueTopicHydration called', { topicId })
+  if (HYDRATION_DEBUG) logger.debug('[hydration][DEBUG] enqueueTopicHydration called', { topicId })
 
   const jobs = []
   const job1 = await q.add("notes-en", { type: "NOTES", payload: { topicId, language: "en" } })
@@ -21,7 +21,7 @@ export async function enqueueTopicHydration(topicId: string) {
   const assembleJob = await q.add("assemble", { type: "ASSEMBLE_TEST", payload: { topicId } })
   jobs.push(assembleJob)
 
-  if (HYDRATION_DEBUG) console.log('[hydration][DEBUG] enqueued topic hydration jobs', { topicId, jobIds: jobs.map(j=>j.id) })
+  if (HYDRATION_DEBUG) logger.debug('[hydration][DEBUG] enqueued topic hydration jobs', { topicId, jobIds: jobs.map(j=>j.id) })
   logger.info('enqueueTopicHydration enqueued jobs', { topicId, jobCount: jobs.length, jobIds: jobs.map(j=>j.id) })
   return jobs.map(j=>j.id)
 }

@@ -1,4 +1,4 @@
-import makePromotionService from '../../../lib/promotion/service'
+import makePromotionService from '@/lib/promotion/service'
 
 describe('Promotion service', () => {
   const prisma: any = {

@@ -1,4 +1,4 @@
-import exportCourseToPDF from '../../lib/exporters/pdf'
+import exportCourseToPDF from '@/lib/exporters/pdf'
 
 test('exportCourseToPDF returns non-empty buffer', async () => {
   const pkg = {

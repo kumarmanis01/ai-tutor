@@ -1,5 +1,5 @@
 import http from 'http';
-import { metricsOutput } from '../lib/alerts/metrics';
+import { metricsOutput } from '@/lib/alerts/metrics';
 
 // health/readiness endpoints
 function healthResponse(res: any) {

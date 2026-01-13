@@ -1,4 +1,4 @@
-import makePromotionService from '../../lib/promotion/service'
+import makePromotionService from '@/lib/promotion/service'
 
 describe('Promotion invariants', () => {
   test('only one PublishedOutput per scope and reversal by replacement', async () => {

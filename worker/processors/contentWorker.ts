@@ -1,12 +1,12 @@
 import { Worker, Job } from 'bullmq'
-import { redisConnection } from '../../lib/redis.js'
-import { prisma } from '../../lib/prisma.js'
-import { isSystemSettingEnabled } from '../../lib/systemSettings.js'
+import { redisConnection } from '@/lib/redis.js'
+import { prisma } from '@/lib/prisma.js'
+import { isSystemSettingEnabled } from '@/lib/systemSettings.js'
 import { hydrateNotes } from '../../hydrators/hydrateNotes.js'
 import { hydrateQuestions } from '../../hydrators/hydrateQuestions.js'
 import { assembleTest } from '../../hydrators/assembleTest.js'
 import { handleSyllabusJob } from '../services/syllabusWorker.js'
-import { logger } from '../../lib/logger.js'
+import { logger } from '@/lib/logger.js'
 
 export function startContentWorker(opts?: { concurrency?: number }) {
   const concurrency = opts?.concurrency ?? 3
@@ -16,9 +16,9 @@ export function startContentWorker(opts?: { concurrency?: number }) {
     async (job: Job) => {
       if (process.env.WORKER_DEBUG === '1') {
         try {
-          console.log(`[worker][DEBUG] received job id=${job.id} name=${job.name} data=${JSON.stringify(job.data)}`);
+          logger.info(`[worker][DEBUG] received job id=${job.id} name=${job.name} data=${JSON.stringify(job.data)}`);
         } catch (e) {
-          console.log('[worker][DEBUG] received job (failed to stringify)', e);
+          logger.error('[worker][DEBUG] received job (failed to stringify)', { error: e });
         }
       }
       const paused = await prisma.systemSetting.findUnique({ where: { key: 'AI_PAUSED' } })
@@ -28,14 +28,14 @@ export function startContentWorker(opts?: { concurrency?: number }) {
 
       try {
         const jobId = job.data?.payload?.jobId ?? job.data?.payload?.job_id ?? null
-        if (jobId) {
-          if (process.env.WORKER_DEBUG === '1') console.log(`[worker][DEBUG] marking ExecutionJob ${jobId} as running`)
+          if (jobId) {
+          if (process.env.WORKER_DEBUG === '1') logger.debug(`[worker][DEBUG] marking ExecutionJob ${jobId} as running`)
           await prisma.executionJob.update({ where: { id: String(jobId) }, data: { status: 'running', lockedAt: new Date(), lockedBy: `worker:${process.pid}` } })
           await prisma.jobExecutionLog.create({ data: { jobId: jobId, event: 'RUNNING', prevStatus: 'pending', newStatus: 'running', meta: { workerPid: process.pid } } })
         }
       } catch (e) {
         logger?.warn?.('worker: failed to mark ExecutionJob RUNNING or create JobExecutionLog', { err: e })
-        if (process.env.WORKER_DEBUG === '1') console.error('[worker][DEBUG] failed to mark ExecutionJob RUNNING', e)
+        if (process.env.WORKER_DEBUG === '1') logger.error('[worker][DEBUG] failed to mark ExecutionJob RUNNING', { error: e })
       }
 
       const { type, payload } = job.data as {
@@ -75,8 +75,8 @@ export function startContentWorker(opts?: { concurrency?: number }) {
   )
 
   worker.on('failed', (job, err) => {
-    logger.error(`[WORKER FAILED] jobId=${job?.id} type=${job?.data?.type}`, { error: err?.message })
-    ;(async () => {
+    logger.error(`[WORKER FAILED] jobId=${job?.id} type=${job?.data?.type}`, { error: err?.message });
+    (async () => {
       try {
         const jobId = job?.data?.payload?.jobId ?? null
         if (jobId) {
@@ -90,8 +90,8 @@ export function startContentWorker(opts?: { concurrency?: number }) {
   })
 
   worker.on('completed', job => {
-    logger.info(`[WORKER COMPLETED] jobId=${job.id} type=${job.data?.type}`)
-    ;(async () => {
+    logger.info(`[WORKER COMPLETED] jobId=${job.id} type=${job.data?.type}`);
+    (async () => {
       try {
         const jobId = job?.data?.payload?.jobId ?? null
         if (jobId) {

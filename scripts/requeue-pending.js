@@ -7,10 +7,10 @@
  * Usage: REDIS_URL="redis://..." node scripts/requeue-pending.js [--limit N]
  */
 
-const fs = require('fs')
-const path = require('path')
-const { PrismaClient } = require('@prisma/client')
-const { Queue } = require('bullmq')
+import fs from 'fs'
+import path from 'path'
+import { PrismaClient } from '@prisma/client'
+import { Queue } from 'bullmq'
 
 function loadRedisUrl() {
   if (process.env.REDIS_URL) return process.env.REDIS_URL
@@ -60,9 +60,9 @@ async function main() {
 
       await prisma.jobExecutionLog.create({ data: { jobId: job.id, event: 'ENQUEUED', prevStatus: 'pending', newStatus: 'pending', meta: { queue: 'content-hydration', workerType, bullJobId: bullJob?.id } } })
       console.log('[requeue] enqueued', job.id, 'bullJobId=', bullJob?.id)
-    } catch (err) {
+      } catch (err) {
       console.error('[requeue] failed for', job.id, String(err))
-      try { await prisma.jobExecutionLog.create({ data: { jobId: job.id, event: 'ENQUEUE_FAILED', prevStatus: 'pending', newStatus: 'pending', message: String(err) } }) } catch (e) { /* ignore */ }
+      try { await prisma.jobExecutionLog.create({ data: { jobId: job.id, event: 'ENQUEUE_FAILED', prevStatus: 'pending', newStatus: 'pending', message: String(err) } }) } catch { /* ignore */ }
     }
   }
 

@@ -2,7 +2,8 @@
 // @ts-expect-error: express types are optional in some worker build environments
 import express from 'express'
 import client from 'prom-client'
-import { prisma } from '../lib/prisma'
+import { prisma } from '@/lib/prisma'
+import { logger } from '@/lib/logger'
 import fs from 'fs'
 import path from 'path'
 
@@ -44,15 +45,15 @@ export async function startMetricsServer(port = Number(process.env.ORCHESTRATOR_
     }
   })
 
-  app.listen(port, () => console.log(`[metrics] listening on ${port}`))
+  app.listen(port, () => logger.info(`[metrics] listening on ${port}`))
 }
 
 export function incJobsSpawned() { jobsSpawned.inc() }
 export function incAnalyticsJobRun(status: 'SUCCESS' | 'FAILED' | 'SKIPPED') {
   try {
     analyticsJobRuns.labels(status).inc()
-  } catch (e) {
+    } catch (e) {
     // metrics are best-effort; do not throw
-    console.warn('[metrics] failed to increment analyticsJobRuns', e)
+    logger.warn('[metrics] failed to increment analyticsJobRuns', e)
   }
 }

@@ -51,13 +51,13 @@ export async function enqueueSyllabusHydration(input: {
   language?: string
 }): Promise<HydrationResult> {
 
-  if (HYDRATION_DEBUG) console.log('[hydration][DEBUG] enqueueSyllabusHydration called', input)
+  if (HYDRATION_DEBUG) logger.debug('[hydration][DEBUG] enqueueSyllabusHydration called', input)
 
   // 1️⃣ Global pause guard (type-safe)
 
   const paused = await prisma.systemSetting.findUnique({ where: { key: "HYDRATION_PAUSED" } })
   if (isSystemSettingEnabled(paused?.value)) {
-    if (HYDRATION_DEBUG) console.log('[hydration][DEBUG] aborted: HYDRATION_PAUSED')
+    if (HYDRATION_DEBUG) logger.info('[hydration][DEBUG] aborted: HYDRATION_PAUSED')
     return { created: false, reason: "hydration_paused" }
   }
 
@@ -65,7 +65,7 @@ export async function enqueueSyllabusHydration(input: {
   const resolved = await resolveSubjectId({ board: input.board, grade: input.grade, subject: input.subject, subjectId: input.subjectId })
   if (!resolved.success) {
     const r = (resolved as any).reason ?? 'unknown'
-    if (HYDRATION_DEBUG) console.log('[hydration][DEBUG] aborted: resolve failure', r)
+    if (HYDRATION_DEBUG) logger.info('[hydration][DEBUG] aborted: resolve failure', { reason: r })
     return { created: false, reason: `resolve_${r}` }
   }
 
@@ -76,7 +76,7 @@ export async function enqueueSyllabusHydration(input: {
     where: { subjectId, lifecycle: 'active' }
   })
   if (existingChapter) {
-    if (HYDRATION_DEBUG) console.log('[hydration][DEBUG] aborted: syllabus_exists')
+    if (HYDRATION_DEBUG) logger.info('[hydration][DEBUG] aborted: syllabus_exists')
     return { created: false, reason: 'syllabus_exists' }
   }
 
@@ -90,7 +90,7 @@ export async function enqueueSyllabusHydration(input: {
   }
   const existingJob = await prisma.hydrationJob.findFirst({ where: existingJobWhere })
   if (existingJob) {
-    if (HYDRATION_DEBUG) console.log('[hydration][DEBUG] aborted: job_already_queued', { jobId: existingJob.id })
+    if (HYDRATION_DEBUG) logger.info('[hydration][DEBUG] aborted: job_already_queued', { jobId: existingJob.id })
     return { created: false, reason: 'job_already_queued', jobId: existingJob.id }
   }
 
@@ -107,12 +107,12 @@ export async function enqueueSyllabusHydration(input: {
   // If Redis is not configured, avoid creating a DB job we can't enqueue.
   if (!process.env.REDIS_URL) {
     logger.error('Redis not configured; cannot enqueue hydration job', { board: input.board, grade: input.grade, subjectId: input.subjectId })
-    if (HYDRATION_DEBUG) console.log('[hydration][DEBUG] aborted: redis_not_configured')
+    if (HYDRATION_DEBUG) logger.info('[hydration][DEBUG] aborted: redis_not_configured')
     return { created: false, reason: 'redis_not_configured' }
   }
 
   const job = await prisma.hydrationJob.create({ data: jobData })
-  if (HYDRATION_DEBUG) console.log('[hydration][DEBUG] created HydrationJob', { jobId: job.id })
+  if (HYDRATION_DEBUG) logger.debug('[hydration][DEBUG] created HydrationJob', { jobId: job.id })
 
   // Enqueue a worker job to process this hydration row.
   // Job payload is deliberately minimal: worker will re-load the HydrationJob by id.
@@ -122,7 +122,7 @@ export async function enqueueSyllabusHydration(input: {
       type: "SYLLABUS",
       payload: { jobId: job.id }
     })
-    if (HYDRATION_DEBUG) console.log('[hydration][DEBUG] enqueued Bull job for HydrationJob', { jobId: job.id })
+    if (HYDRATION_DEBUG) logger.debug('[hydration][DEBUG] enqueued Bull job for HydrationJob', { jobId: job.id })
   } catch (err) {
     // If enqueueing fails, keep the DB row but surface failure reason.
     logger.error("Failed to enqueue syllabus hydration job", { error: err, jobId: job.id });

@@ -11,7 +11,7 @@
  */
 
 import { PrismaClient } from '@prisma/client';
-import { logger } from '../lib/logger';
+import { logger } from '@/lib/logger';
 
 const prisma = new PrismaClient();
 

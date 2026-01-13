@@ -1,6 +1,6 @@
-import makeRetryService from '../../../lib/regeneration/retryService'
+import makeRetryService from '@/lib/regeneration/retryService'
 // makeRetryIntentStore is not used in these unit tests
-import * as audit from '../../../lib/audit/log'
+import * as audit from '@/lib/audit/log'
 
 describe('retryService', () => {
   const tx: any = {

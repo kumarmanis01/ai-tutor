@@ -28,6 +28,7 @@ import os from "os";
 
 import { redisConnection } from "../lib/redis.js";
 import { prisma } from "../lib/prisma.js";
+import { logger } from "../lib/logger.js"
 
 import { hydrateNotes } from "../hydrators/hydrateNotes.js";
 import { hydrateQuestions } from "../hydrators/hydrateQuestions.js";
@@ -138,13 +139,13 @@ export async function bootstrapWorker() {
       const { getRedis } = await import('../lib/redis.js');
       const r = getRedis();
       const pong = await r.ping();
-      console.log(`[worker][DEBUG] Redis ping: ${String(pong)}`);
+      logger.debug(`[worker][DEBUG] Redis ping: ${String(pong)}`);
     } catch (err) {
-      console.error('[worker][DEBUG] Redis ping failed', err);
+      logger.error('[worker][DEBUG] Redis ping failed', err);
     }
-    console.log(`[worker][DEBUG] starting worker: type=${workerType} concurrency=${concurrency} lifecycleId=${lifecycleId}`);
+    logger.debug(`[worker][DEBUG] starting worker: type=${workerType} concurrency=${concurrency} lifecycleId=${lifecycleId}`);
   } else {
-    console.log(`[worker] starting worker: type=${workerType}`);
+    logger.info(`[worker] starting worker: type=${workerType}`);
   }
 
   const worker = new Worker(
@@ -157,16 +158,16 @@ export async function bootstrapWorker() {
   );
 
   // Debug events: active, stalled
-  if (process.env.WORKER_DEBUG === '1') {
+    if (process.env.WORKER_DEBUG === '1') {
     worker.on('active', (job) => {
       try {
-        console.log(`[worker][DEBUG] active job id=${job.id} name=${job.name} data=${JSON.stringify(job.data)}`);
+        logger.debug(`[worker][DEBUG] active job id=${job.id} name=${job.name} data=${JSON.stringify(job.data)}`);
       } catch (e) {
-        console.log('[worker][DEBUG] active job (failed to stringify)', e);
+        logger.debug('[worker][DEBUG] active job (failed to stringify)', e);
       }
     });
     worker.on('stalled', (jobId) => {
-      console.warn(`[worker][DEBUG] stalled job id=${jobId}`);
+      logger.warn(`[worker][DEBUG] stalled job id=${jobId}`);
     });
   }
 
@@ -185,12 +186,12 @@ export async function bootstrapWorker() {
         data: { lastHeartbeatAt: new Date() },
       });
     } catch (err) {
-      console.error("[worker] heartbeat failed", err);
+      logger.error("[worker] heartbeat failed", err);
     }
   }, heartbeatIntervalMs);
 
   async function shutdown(drain = true) {
-    console.log("[worker] shutdown requested; drain =", drain);
+    logger.info("[worker] shutdown requested; drain =", { drain })
 
     try {
       await prisma.workerLifecycle.update({
@@ -218,7 +219,7 @@ export async function bootstrapWorker() {
 
       process.exit(0);
     } catch (err: any) {
-      console.error("[worker] shutdown error", err);
+      logger.error("[worker] shutdown error", err);
 
       await prisma.workerLifecycle.update({
         where: { id: lifecycleId },
@@ -237,11 +238,11 @@ export async function bootstrapWorker() {
   process.on("SIGTERM", () => shutdown(true));
 
   worker.on("failed", (job, err) => {
-    console.error("[WORKER FAILED]", job?.id, err?.message);
+    logger.error("[WORKER FAILED]", { jobId: job?.id, message: err?.message })
   });
 
   worker.on("completed", (job) => {
-    console.log("[WORKER COMPLETED]", job.id);
+    logger.info("[WORKER COMPLETED]", { jobId: job.id })
   });
 }
 

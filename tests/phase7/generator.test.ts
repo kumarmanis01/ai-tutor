@@ -1,5 +1,5 @@
-import { generateLessons } from '../../lib/content/lesson/generator'
-import { createMockLLM } from '../../lib/content/lesson/mockLLM'
+import { generateLessons } from '@/lib/content/lesson/generator'
+import { createMockLLM } from '@/lib/content/lesson/mockLLM'
 
 const validLesson = {
   id: 'lesson-1',

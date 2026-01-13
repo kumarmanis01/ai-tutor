@@ -1,4 +1,4 @@
-import { prisma as _prisma } from '../../lib/prisma.js'
+import { prisma as _prisma } from '@/lib/prisma.js'
 
 const getDb = () => (global as any).__TEST_PRISMA__ ?? _prisma
 
