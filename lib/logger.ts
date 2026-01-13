@@ -21,6 +21,8 @@ interface LogContext {
 // Use `globalThis` to detect browser `window` without requiring DOM lib.
 const isClient = typeof (globalThis as any).window !== 'undefined';
 const isDebug = process.env.NEXT_PUBLIC_DEBUG_MODE === 'true';
+// Worker-level debug override (useful for PM2/workers): set WORKER_DEBUG=1 to enable server debug logs
+const isWorkerDebug = process.env.WORKER_DEBUG === '1' || process.env.WORKER_DEBUG === 'true';
 
 type Level = 'error' | 'warn' | 'info' | 'debug' | 'log';
 const levelWeight: Record<Level, number> = {
@@ -38,7 +40,8 @@ function parseLevel(s?: string | null): Level {
 }
 
 // Server log level via env; default to 'error' to preserve production visibility for errors
-const serverMinLevel = levelWeight[parseLevel(process.env.LOG_LEVEL)];
+// If `WORKER_DEBUG` is set, force server-level logs to `debug` for very verbose job traces.
+const serverMinLevel = isWorkerDebug ? levelWeight.debug : levelWeight[parseLevel(process.env.LOG_LEVEL)];
 // Client min level: allow error logs even when debug is off; otherwise gate by NEXT_PUBLIC_DEBUG_MODE
 const clientMinLevel = isDebug ? levelWeight.debug : levelWeight.error;
 
