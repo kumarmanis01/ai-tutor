@@ -9,7 +9,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="${SCRIPT_DIR}"
 
-AUTO_FLAG=0
+AUTO_FLAG=1
 BRANCH=""
 CLEAN_FLAG=1
 KILL_FLAG=0
@@ -17,6 +17,7 @@ KILL_FLAG=0
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --auto) AUTO_FLAG=1; shift ;;
+    --no-auto) AUTO_FLAG=0; shift ;;
     --no-clean) CLEAN_FLAG=0; shift ;;
     --kill) KILL_FLAG=1; shift ;;
     --branch) BRANCH="$2"; shift 2 ;;
@@ -78,13 +79,14 @@ if [ "${CLEAN_FLAG}" -eq 1 ]; then
   fi
 fi
 
-# Run vps-verification (optional auto)
+# Run vps-verification (auto by default; pressing Enter -> yes)
 if [ -f "${SCRIPT_DIR}/vps-verification.sh" ]; then
-  echo "[deploy] running vps-verification"
+  echo "[deploy] running vps-verification (auto=${AUTO_FLAG})"
   if [ "${AUTO_FLAG}" -eq 1 ]; then
     "${SCRIPT_DIR}/vps-verification.sh" --auto
   else
-    "${SCRIPT_DIR}/vps-verification.sh"
+    # If interactive, default Enter to yes by piping a repeated yes
+    yes | "${SCRIPT_DIR}/vps-verification.sh"
   fi
 else
   echo "[deploy] warning: vps-verification.sh not found, skipping"
@@ -98,13 +100,21 @@ else
   echo "[deploy] verify-dist.sh not found, skipping"
 fi
 
-# Start/reload PM2 with the ecosystem config
+# Export env before starting PM2 so processes inherit .env.production
+if [ -f "${REPO_ROOT}/.env.production" ]; then
+  echo "[deploy] exporting .env.production into environment"
+  set -o allexport; source "${REPO_ROOT}/.env.production"; set +o allexport
+else
+  echo "[deploy] .env.production not found; ensure envs are set in PM2"
+fi
+
+# Start/reload PM2 with the ecosystem config (prefer start)
 if [ -f "${REPO_ROOT}/ecosystem.config.cjs" ]; then
-  echo "[deploy] starting/reloading PM2 ecosystem.config.cjs (env=production)"
-  pm2 start ecosystem.config.cjs --env production --update-env || pm2 reload ecosystem.config.cjs --env production --update-env || true
+  echo "[deploy] starting PM2 ecosystem.config.cjs (env=production)"
+  pm2 start ecosystem.config.cjs --env production --update-env || pm2.reload ecosystem.config.cjs --env production --update-env || true
 elif [ -f "${REPO_ROOT}/ecosystem.config.js" ]; then
-  echo "[deploy] starting/reloading PM2 ecosystem.config.js (env=production)"
-  pm2 start ecosystem.config.js --env production --update-env || pm2 reload ecosystem.config.js --env production --update-env || true
+  echo "[deploy] starting PM2 ecosystem.config.js (env=production)"
+  pm2 start ecosystem.config.js --env production --update-env || pm2.reload ecosystem.config.js --env production --update-env || true
 else
   echo "[deploy] no ecosystem.config.* found, skipping PM2 ecosystem start"
 fi
