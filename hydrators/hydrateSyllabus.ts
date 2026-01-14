@@ -40,7 +40,7 @@ const HYDRATION_DEBUG = process.env.HYDRATION_DEBUG === '1' || process.env.AI_CO
  */
 
 type HydrationResult =
-  | { created: true; jobId: string }
+  | { created: true; jobId: string; bullJobId?: string | number }
   | { created: false; reason: string; jobId?: string }
 
 export async function enqueueSyllabusHydration(input: {
@@ -118,16 +118,16 @@ export async function enqueueSyllabusHydration(input: {
   // Job payload is deliberately minimal: worker will re-load the HydrationJob by id.
   try {
     const q = getContentQueue();
-    await q.add(`syllabus-${job.id}`, {
+    const bullJob = await q.add(`syllabus-${job.id}`, {
       type: "SYLLABUS",
       payload: { jobId: job.id }
     })
-    if (HYDRATION_DEBUG) logger.debug('[hydration][DEBUG] enqueued Bull job for HydrationJob', { jobId: job.id })
+    if (HYDRATION_DEBUG) logger.debug('[hydration][DEBUG] enqueued Bull job for HydrationJob', { jobId: job.id, bullJobId: bullJob?.id })
+    // Return the bullJob id along with the HydrationJob id so callers can audit/link both rows
+    return { created: true, jobId: job.id, bullJobId: bullJob?.id }
   } catch (err) {
     // If enqueueing fails, keep the DB row but surface failure reason.
     logger.error("Failed to enqueue syllabus hydration job", { error: err, jobId: job.id });
     return { created: false, reason: 'enqueue_failed', jobId: job.id }
   }
-
-  return { created: true, jobId: job.id }
 }

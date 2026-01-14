@@ -1,6 +1,6 @@
 // The Kubernetes client is optional in many deployments. Silence TS if types
 // are not available in this environment and lazy-fail at runtime.
-// @ts-expect-error: types may not be available in all build environments
+// @ts-expect-error: kubernetes client may not be installed in all build environments
 import * as k8s from '@kubernetes/client-node'
 import path from 'path'
 

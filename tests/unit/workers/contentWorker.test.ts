@@ -1,8 +1,9 @@
 jest.mock('@/lib/prisma', () => ({
   prisma: {
     executionJob: { findUnique: jest.fn(), update: jest.fn() },
-    jobExecutionLog: { create: jest.fn() },
-    hydrationJob: { findUnique: jest.fn(), findFirst: jest.fn(), create: jest.fn() },
+    jobExecutionLog: { create: jest.fn().mockResolvedValue(null) },
+    hydrationJob: { findUnique: jest.fn(), findFirst: jest.fn(), create: jest.fn(), update: jest.fn().mockResolvedValue(null) },
+    chapterDef: { findFirst: jest.fn() },
     systemSetting: { findUnique: jest.fn() }
   }
 }))
@@ -20,6 +21,7 @@ jest.mock('bullmq', () => {
 })
 
 import { prisma } from '@/lib/prisma'
+import path from 'path'
 
 describe('contentWorker lifecycle', () => {
   beforeEach(() => {
@@ -43,11 +45,12 @@ describe('contentWorker lifecycle', () => {
       } as any
 
       ;(prisma.executionJob.findUnique as jest.Mock).mockResolvedValue({ id: 'exec-1', entityType: 'SUBJECT', entityId: 'sub-1', payload: {} })
-      ;(prisma.hydrationJob.findUnique as jest.Mock).mockResolvedValue(null)
+      ;(prisma.hydrationJob.findUnique as jest.Mock).mockResolvedValueOnce(null).mockResolvedValueOnce({ id: 'hyd-1', subjectId: 'sub-1' })
       ;(prisma.hydrationJob.findFirst as jest.Mock).mockResolvedValue(null)
-      ;(prisma.hydrationJob.create as jest.Mock).mockResolvedValue({ id: 'hyd-1' })
-      const svc = require(path.join(workerRoot, 'worker', 'services', 'syllabusWorker.js'))
-      ;(svc.handleSyllabusJob as jest.Mock).mockResolvedValue(true)
+      ;(prisma.hydrationJob.create as jest.Mock).mockResolvedValue({ id: 'hyd-1', subjectId: 'sub-1' })
+      ;(prisma.chapterDef.findFirst as jest.Mock).mockResolvedValue({ id: 'chap-1', subjectId: 'sub-1' })
+      const svc = await import('@/worker/services/syllabusWorker')
+      ;(svc as any).handleSyllabusJob.mockResolvedValue(true)
 
       await processContentJob(job)
 

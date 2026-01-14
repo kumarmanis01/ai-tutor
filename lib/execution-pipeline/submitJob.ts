@@ -9,6 +9,7 @@ import { normalizeJobType } from '@/lib/normalize';
 import { JobType } from '@prisma/client';
 import { JobStatus } from '@/lib/ai-engine/types';
 import { getContentQueue } from '@/queues/contentQueue';
+import { enqueueSyllabusHydration } from '@/hydrators/hydrateSyllabus';
 
 export type SubmitJobInput = {
   jobType: unknown; // validated by callers; cast to Prisma enum at write-time
@@ -137,22 +138,54 @@ export async function submitJob(input: SubmitJobInput) {
     // If Redis is configured, enqueue a worker job so workers can pick this up.
     if (process.env.REDIS_URL) {
       try {
-        const q = getContentQueue();
-        // Map prisma JobType -> worker type string
-        const mapping: Record<string, string> = {
-          syllabus: 'SYLLABUS',
-          notes: 'NOTES',
-          questions: 'QUESTIONS',
-          tests: 'ASSEMBLE_TEST',
-          assemble: 'ASSEMBLE_TEST',
-        };
-        const workerType = mapping[String(normalizedJobType)] || String(normalizedJobType).toUpperCase();
-        const bullJob = await q.add(`${workerType.toLowerCase()}-${job.id}`, { type: workerType, payload: { jobId: job.id, ...payload } });
-        logger.info('submitJob: enqueued to Redis queue', { queue: 'content-hydration', jobId: job.id, workerType, bullJobId: bullJob?.id });
-        try {
-          await prisma.jobExecutionLog.create({ data: { jobId: job.id, event: 'ENQUEUED', prevStatus: 'pending', newStatus: 'pending', meta: { queue: 'content-hydration', workerType, bullJobId: bullJob?.id } } });
-        } catch (e) {
-          logger?.warn?.('submitJob: failed to write JobExecutionLog ENQUEUED', { err: e, jobId: job.id });
+        // For syllabus jobs, use canonical hydrator which creates a HydrationJob
+        // and enqueues the Bull job. This enforces the hydration-first contract.
+        if (normalizedJobType === JobType.syllabus) {
+          const hydrateInput = {
+            board: resolvedMeta.board,
+            grade: resolvedMeta.classLevel,
+            subject: resolvedMeta.entityName,
+            subjectId: entityType === 'SUBJECT' ? entityId : '',
+            language: payload?.language,
+          }
+          const res = await enqueueSyllabusHydration(hydrateInput as any)
+          if (res.created) {
+            // Link ExecutionJob -> HydrationJob by embedding hydrationJobId into payload
+            try {
+              await prisma.executionJob.update({ where: { id: job.id }, data: { payload: { ...(payload || {}), hydrationJobId: res.jobId } } })
+            } catch (e) {
+              logger?.warn?.('submitJob: failed to update ExecutionJob payload with hydrationJobId', { err: e, jobId: job.id })
+            }
+            try {
+              await prisma.jobExecutionLog.create({ data: { jobId: job.id, event: 'ENQUEUED', prevStatus: 'pending', newStatus: 'pending', meta: { queue: 'content-hydration', workerType: 'SYLLABUS', bullJobId: (res as any).bullJobId ?? null, hydrationJobId: res.jobId } } });
+            } catch (e) {
+              logger?.warn?.('submitJob: failed to write JobExecutionLog ENQUEUED', { err: e, jobId: job.id });
+            }
+          } else {
+            const reason = (res as any)?.reason ?? 'unknown'
+            logger.info('submitJob: enqueueSyllabusHydration aborted', { reason, jobId: job.id })
+            try {
+              await prisma.jobExecutionLog.create({ data: { jobId: job.id, event: 'ENQUEUE_FAILED', prevStatus: 'pending', newStatus: 'pending', message: `hydrator:${reason}` } });
+            } catch { /* ignore */ }
+          }
+        } else {
+          const q = getContentQueue();
+          // Map prisma JobType -> worker type string
+          const mapping: Record<string, string> = {
+            syllabus: 'SYLLABUS',
+            notes: 'NOTES',
+            questions: 'QUESTIONS',
+            tests: 'ASSEMBLE_TEST',
+            assemble: 'ASSEMBLE_TEST',
+          };
+          const workerType = mapping[String(normalizedJobType)] || String(normalizedJobType).toUpperCase();
+          const bullJob = await q.add(`${workerType.toLowerCase()}-${job.id}`, { type: workerType, payload: { jobId: job.id, ...payload } });
+          logger.info('submitJob: enqueued to Redis queue', { queue: 'content-hydration', jobId: job.id, workerType, bullJobId: bullJob?.id });
+          try {
+            await prisma.jobExecutionLog.create({ data: { jobId: job.id, event: 'ENQUEUED', prevStatus: 'pending', newStatus: 'pending', meta: { queue: 'content-hydration', workerType, bullJobId: bullJob?.id } } });
+          } catch (e) {
+            logger?.warn?.('submitJob: failed to write JobExecutionLog ENQUEUED', { err: e, jobId: job.id });
+          }
         }
       } catch (err) {
         logger.error('submitJob: failed to enqueue to Redis', { err, jobId: job.id });

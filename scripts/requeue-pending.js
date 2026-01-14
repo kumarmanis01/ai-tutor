@@ -56,6 +56,39 @@ async function main() {
       const workerType = mapping[String(job.jobType)] || String(job.jobType).toUpperCase()
 
       console.log('[requeue] enqueueing', job.id, 'as', workerType)
+
+      // Special handling for syllabus jobs: create or reuse a HydrationJob
+      if (String(job.jobType) === 'syllabus') {
+        const payload = job.payload || {}
+        // Resolve common fields from payload; tolerate different shapes
+        const board = payload.board || payload.resolvedMeta?.board || null
+        const grade = payload.grade || payload.resolvedMeta?.grade || null
+        const subjectId = payload.subjectId || payload.resolvedMeta?.subjectId || payload.resolvedMeta?.subject?.id || null
+        const language = payload.language || payload.resolvedMeta?.language || 'en'
+
+        if (!subjectId || !board || !grade) {
+          // Fallback: include original ExecutionJob id in Bull payload so legacy worker can attempt
+          const bullJob = await q.add(`${workerType.toLowerCase()}-${job.id}`, { type: workerType, payload: { jobId: job.id, ...(job.payload || {}) } }, { jobId: job.id })
+          await prisma.jobExecutionLog.create({ data: { jobId: job.id, event: 'ENQUEUED', prevStatus: 'pending', newStatus: 'pending', meta: { queue: 'content-hydration', workerType, bullJobId: bullJob?.id } } })
+          console.log('[requeue] enqueued legacy payload for', job.id, 'bullJobId=', bullJob?.id)
+          continue
+        }
+
+        // Idempotent creation: check for existing pending/running HydrationJob
+        let hydration = await prisma.hydrationJob.findFirst({ where: { jobType: 'syllabus', subjectId, grade, board, status: { in: ['pending','running'] } } })
+        if (!hydration) {
+          hydration = await prisma.hydrationJob.create({ data: { jobType: 'syllabus', board, grade, subjectId, language, difficulty: 'medium', status: 'pending' } })
+          console.log('[requeue] created HydrationJob', hydration.id, 'for ExecutionJob', job.id)
+        } else {
+          console.log('[requeue] reusing existing HydrationJob', hydration.id, 'for ExecutionJob', job.id)
+        }
+
+        const bullJob = await q.add(`syllabus-${hydration.id}`, { type: 'SYLLABUS', payload: { jobId: hydration.id } }, { jobId: hydration.id })
+        await prisma.jobExecutionLog.create({ data: { jobId: job.id, event: 'ENQUEUED', prevStatus: 'pending', newStatus: 'pending', meta: { queue: 'content-hydration', workerType, bullJobId: bullJob?.id, hydrationJobId: hydration.id } } })
+        console.log('[requeue] enqueued HydrationJob', hydration.id, 'for ExecutionJob', job.id, 'bullJobId=', bullJob?.id)
+        continue
+      }
+
       const bullJob = await q.add(`${workerType.toLowerCase()}-${job.id}`, { type: workerType, payload: { jobId: job.id, ...(job.payload || {}) } }, { jobId: job.id })
 
       await prisma.jobExecutionLog.create({ data: { jobId: job.id, event: 'ENQUEUED', prevStatus: 'pending', newStatus: 'pending', meta: { queue: 'content-hydration', workerType, bullJobId: bullJob?.id } } })
