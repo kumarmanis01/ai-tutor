@@ -107,9 +107,12 @@ module.exports = {
       env: {
         NODE_ENV: 'production'
       },
-      env_production: {
-        NODE_ENV: 'production'
-      },
+      // Populate worker's production env from .env.production (same as web)
+      // This ensures PM2 knows about critical runtime secrets like REDIS_URL
+      env_production: Object.assign({ NODE_ENV: 'production' }, (PROD_ENV && {
+        REDIS_URL: PROD_ENV.REDIS_URL,
+        DATABASE_URL: PROD_ENV.DATABASE_URL
+      }) || {}),
       // Worker should also have dedicated logs for easier debugging/monitoring
       error_file: 'logs/content-engine-worker-error.log',
       out_file: 'logs/content-engine-worker-out.log'
