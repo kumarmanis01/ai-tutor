@@ -46,8 +46,7 @@ CHILD_SCRIPTS=(
   "${SCRIPT_DIR}/reset-logs.sh"
   "${SCRIPT_DIR}/vps-verification.sh"
   "${SCRIPT_DIR}/verify-dist.sh"
-  "${SCRIPT_DIR}/run-web.sh"
-  "${SCRIPT_DIR}/run-worker.sh"
+
 )
 
 for s in "${CHILD_SCRIPTS[@]}"; do
@@ -67,38 +66,41 @@ else
   echo "[deploy] ensure-env-perms.sh missing; ensure .env.production exists and is chmod 600"
 fi
 
-# optional pm2 cleaning steps
-if [ "${CLEAN_FLAG}" -eq 1 ]; then
-  echo "[deploy] cleaning pm2 processes: stop all, delete all, flush"
-  pm2 stop all || true
-  pm2 delete all || true
-  pm2 flush || true
-  if [ "${KILL_FLAG}" -eq 1 ]; then
-    echo "[deploy] killing pm2 daemon (you may need to restart it)"
-    pm2 kill || true
-  fi
+# Run log helpers first (ensure then reset)
+if [ -f "${SCRIPT_DIR}/ensure-logs.sh" ]; then
+  echo "[deploy] running ensure-logs.sh"
+  bash "${SCRIPT_DIR}/ensure-logs.sh" || true
+else
+  echo "[deploy] ensure-logs.sh not found; skipping"
 fi
 
-# Run vps-verification (auto by default; pressing Enter -> yes)
+if [ -f "${SCRIPT_DIR}/reset-logs.sh" ]; then
+  echo "[deploy] running reset-logs.sh"
+  bash "${SCRIPT_DIR}/reset-logs.sh" || true
+else
+  echo "[deploy] reset-logs.sh not found; skipping"
+fi
+
+# Run vps-verification once, non-interactive (default yes)
 if [ -f "${SCRIPT_DIR}/vps-verification.sh" ]; then
-  echo "[deploy] running vps-verification (auto=${AUTO_FLAG})"
-  if [ "${AUTO_FLAG}" -eq 1 ]; then
-    "${SCRIPT_DIR}/vps-verification.sh" --auto
-  else
-    # If interactive, default Enter to yes by piping a repeated yes
-    yes | "${SCRIPT_DIR}/vps-verification.sh"
-  fi
+  echo "[deploy] running vps-verification.sh (--yes)"
+  "${SCRIPT_DIR}/vps-verification.sh" --yes || true
 else
   echo "[deploy] warning: vps-verification.sh not found, skipping"
 fi
 
-# Run verify-dist if available
-if [ -f "${SCRIPT_DIR}/verify-dist.sh" ]; then
-  echo "[deploy] running verify-dist.sh"
-  "${SCRIPT_DIR}/verify-dist.sh"
-else
-  echo "[deploy] verify-dist.sh not found, skipping"
+# Reset PM2 (stop/delete/flush) so ecosystem starts cleanly
+echo "[deploy] resetting pm2 processes: stop all, delete all, flush"
+pm2 stop all || true
+pm2 delete all || true
+pm2 flush || true
+if [ "${KILL_FLAG}" -eq 1 ]; then
+  echo "[deploy] killing pm2 daemon (you may need to restart it)"
+  pm2 kill || true
 fi
+
+# NOTE: PM2 start and verify will run after we export .env.production below.
+# This keeps start/stop logic atomic and avoids duplicate starts.
 
 # Export env before starting PM2 so processes inherit .env.production
 if [ -f "${REPO_ROOT}/.env.production" ]; then
@@ -121,27 +123,9 @@ fi
 
 sleep 1
 
-# Ensure web and worker are running under PM2 and obey the ecosystem env
-# Start them via their wrapper scripts if PM2 does not already have them
-
-ensure_pm2_process() {
-  local name="$1"
-  local script="$2"
-  if pm2 id "${name}" >/dev/null 2>&1; then
-    echo "[deploy] pm2 process ${name} already exists"
-    pm2 restart "${name}" --update-env || true
-  else
-    if [ -f "${script}" ]; then
-      echo "[deploy] starting ${name} via ${script}"
-      pm2 start "${script}" --name "${name}" --interpreter /bin/bash --update-env
-    else
-      echo "[deploy] script ${script} missing; cannot start ${name}"
-    fi
-  fi
-}
-
-# names used in this repo (adjust if your ecosystem uses different names)
-ensure_pm2_process "ai-tutor-web" "${SCRIPT_DIR}/run-web.sh"
-ensure_pm2_process "content-engine-worker" "${SCRIPT_DIR}/run-worker.sh"
+# Ecosystem-managed PM2 processes are the canonical source of truth.
+# The previous wrapper fallback that started `run-web.sh` / `run-worker.sh`
+# caused duplicate starts and env drift. We intentionally removed it so the
+# deploy flow only relies on the ecosystem file and `--update-env`.
 
 echo "[deploy] done. Use 'pm2 list' and 'pm2 logs <name>' to inspect processes."
