@@ -46,7 +46,6 @@ CHILD_SCRIPTS=(
   "${SCRIPT_DIR}/reset-logs.sh"
   "${SCRIPT_DIR}/vps-verification.sh"
   "${SCRIPT_DIR}/verify-dist.sh"
-
 )
 
 for s in "${CHILD_SCRIPTS[@]}"; do

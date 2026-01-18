@@ -23,9 +23,13 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 SKIP_CONFIRM=false
-if [ "${1-}" = "--yes" ] || [ "${2-}" = "--yes" ]; then
-  SKIP_CONFIRM=true
-fi
+FAIL_ON_MISMATCH=false
+for a in "${@-}"; do
+  case "$a" in
+    --yes) SKIP_CONFIRM=true ;;
+    --fail-on-mismatch|--fail) FAIL_ON_MISMATCH=true ;;
+  esac
+done
 
 run_cmd() {
   local cmd="$*"
@@ -111,17 +115,23 @@ echo "PHASE 4 — Dry-run worker"
 DB_URL=$(grep -m1 '^DATABASE_URL=' "$PROJECT_ROOT/.env.production" | cut -d= -f2- | sed 's/^"//;s/"$//') || DB_URL=""
 REDIS_URL_VAL=$(grep -m1 '^REDIS_URL=' "$PROJECT_ROOT/.env.production" | cut -d= -f2- | sed 's/^"//;s/"$//') || REDIS_URL_VAL=""
 
-echo "Running worker: node dist/worker/entry.js with env vars from .env.production"
-run_cmd sh -c "NODE_ENV=production DATABASE_URL=\"$DB_URL\" REDIS_URL=\"$REDIS_URL_VAL\" node dist/worker/entry.js &"
-echo "Worker started in background for smoke-run (use Ctrl+C in manual run to stop)."
+echo "PHASE 5 — PM2 reset and start ecosystem"
+run_cmd pm2 stop all || true
+run_cmd pm2 delete all || true
+run_cmd pm2 kill || true
+run_cmd pm2 flush || true
 
-echo "PHASE 5 — PM2 start the worker with env-file"
-run_cmd pm2 start dist/worker/entry.js --name content-engine-worker --env production --env-file "$PROJECT_ROOT/.env.production" || true
+if [ -f "$PROJECT_ROOT/ecosystem.config.cjs" ]; then
+  run_cmd pm2 start "$PROJECT_ROOT/ecosystem.config.cjs" --env production --update-env || true
+elif [ -f "$PROJECT_ROOT/ecosystem.config.js" ]; then
+  run_cmd pm2 start "$PROJECT_ROOT/ecosystem.config.js" --env production --update-env || true
+else
+  echo "Ecosystem config not found; skipping pm2 ecosystem start"
+fi
 
-run_cmd pm2 list
+sleep 1
 
 echo "Verify PM2 env injection for processes (compare with .env.production)"
-# Read important keys from .env.production
 read_env_value() {
   local key="$1"
   awk -F= -v k="$key" '$1==k {sub(/^\"|\"$/, "", $2); print substr($0, index($0,$2))}' "$PROJECT_ROOT/.env.production" 2>/dev/null || true
@@ -130,10 +140,17 @@ read_env_value() {
 KEYS=(DATABASE_URL REDIS_URL APP_URL)
 PROCS=(ai-tutor-web content-engine-worker)
 
+# Counters for summary
+MATCH_COUNT=0
+MISMATCH_COUNT=0
+MISSING_COUNT=0
+UNHEALTHY_COUNT=0
+
 for proc in "${PROCS[@]}"; do
   id=$(pm2 id "$proc" 2>/dev/null || true)
   if [ -z "$id" ] || [ "$id" = "[PM2] Process name not found" ] || [ "$id" = "0" ]; then
     echo "PM2 process not found by name: $proc; skipping"
+    MISSING_COUNT=$((MISSING_COUNT+1))
     continue
   fi
   echo "Checking PM2 id=$id (proc=$proc)"
@@ -142,22 +159,54 @@ for proc in "${PROCS[@]}"; do
     pm2val=$(pm2 env "$id" | grep -E "^$key=" || true)
     if [ -z "$pm2val" ]; then
       echo "  $key: MISSING in PM2 env for id=$id"
+      MISMATCH_COUNT=$((MISMATCH_COUNT+1))
     else
-      # extract RHS
       pm2rhs=${pm2val#*=}
       if [ -n "$expected" ] && [ "$pm2rhs" = "$expected" ]; then
         echo "  $key: MATCH"
+        MATCH_COUNT=$((MATCH_COUNT+1))
       else
         echo "  $key: MISMATCH"
         echo "    .env.production: ${expected:-<empty>}"
         echo "    pm2 env: ${pm2rhs:-<empty>}"
+        MISMATCH_COUNT=$((MISMATCH_COUNT+1))
       fi
     fi
   done
+  # Check process health/status
+  status_line=$(pm2 show "$id" 2>/dev/null | grep -i "status" | head -n1 || true)
+  if [ -n "$status_line" ]; then
+    status=$(echo "$status_line" | awk -F: '{print $2}' | tr -d ' ' | tr '[:upper:]' '[:lower:]')
+    if [ "$status" != "online" ]; then
+      echo "  status: ${status_line#* }"
+      UNHEALTHY_COUNT=$((UNHEALTHY_COUNT+1))
+    else
+      echo "  status: online"
+    fi
+  else
+    echo "  status: unknown"
+    UNHEALTHY_COUNT=$((UNHEALTHY_COUNT+1))
+  fi
 done
 
-echo "Check worker logs (last 50 lines)"
-run_cmd pm2 logs content-engine-worker --lines 50 || true
+run_cmd pm2 list || true
+
+# Summary
+echo
+echo "PM2 verification summary:" 
+echo "  Matches: $MATCH_COUNT"
+echo "  Mismatches: $MISMATCH_COUNT"
+echo "  Missing processes: $MISSING_COUNT"
+echo "  Unhealthy processes: $UNHEALTHY_COUNT"
+
+if [ "$FAIL_ON_MISMATCH" = true ]; then
+  if [ $MISMATCH_COUNT -gt 0 ] || [ $UNHEALTHY_COUNT -gt 0 ] || [ $MISSING_COUNT -gt 0 ]; then
+    echo "One or more verification checks failed (mismatch/unhealthy/missing). Exiting non-zero because --fail-on-mismatch was set."
+    exit 2
+  fi
+fi
+
+exit 0
 
 echo "PHASE 6 — Redis connectivity check (logs + optional redis-cli ping)"
 run_cmd pm2 logs content-engine-worker | grep -i redis || true
