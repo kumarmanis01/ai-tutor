@@ -161,7 +161,7 @@ export async function processContentJob(job: Job) {
       await prisma.jobExecutionLog.create({ data: { jobId: String(executionJobId), event: 'COMPLETED', prevStatus: 'running', newStatus: 'completed', meta: { hydrationJobId, bullJobId: job.id } } }).catch(() => {})
     } else {
       try {
-        const linkedExec = await prisma.executionJob.findFirst({ where: { payload: { contains: { hydrationJobId } } } });
+        const linkedExec = await prisma.executionJob.findFirst({ where: { payload: { path: ['hydrationJobId'], equals: hydrationJobId } } });
         if (linkedExec) {
           await prisma.executionJob.update({ where: { id: linkedExec.id }, data: { status: 'completed', updatedAt: new Date() } })
           await prisma.jobExecutionLog.create({ data: { jobId: String(linkedExec.id), event: 'COMPLETED', prevStatus: 'running', newStatus: 'completed', meta: { hydrationJobId, bullJobId: job.id } } }).catch(() => {})
@@ -214,7 +214,7 @@ export function startContentWorker(opts?: { concurrency?: number }) {
         const possibleHydration = await prisma.hydrationJob.findUnique({ where: { id: String(incomingId) } })
         if (possibleHydration) {
           // Find ExecutionJob that links to this hydration id
-          const linkedExec = await prisma.executionJob.findFirst({ where: { payload: { contains: { hydrationJobId: possibleHydration.id } } } })
+          const linkedExec = await prisma.executionJob.findFirst({ where: { payload: { path: ['hydrationJobId'], equals: possibleHydration.id } } })
           if (linkedExec) {
             await prisma.executionJob.update({ where: { id: linkedExec.id }, data: { status: 'failed', lastError: String(err?.message ?? err) } })
             await prisma.jobExecutionLog.create({ data: { jobId: String(linkedExec.id), event: 'FAILED', prevStatus: 'running', newStatus: 'failed', message: String(err?.message ?? err), meta: { hydrationJobId: possibleHydration.id, bullJobId: job.id, error: String(err?.message ?? err) } } })
@@ -237,7 +237,7 @@ export function startContentWorker(opts?: { concurrency?: number }) {
 
       const possibleHydration = await prisma.hydrationJob.findUnique({ where: { id: String(incomingId) } })
       if (possibleHydration) {
-        const linkedExec = await prisma.executionJob.findFirst({ where: { payload: { contains: { hydrationJobId: possibleHydration.id } } } })
+        const linkedExec = await prisma.executionJob.findFirst({ where: { payload: { path: ['hydrationJobId'], equals: possibleHydration.id } } })
         if (linkedExec) {
           await prisma.executionJob.update({ where: { id: linkedExec.id }, data: { status: 'completed' } })
           await prisma.jobExecutionLog.create({ data: { jobId: String(linkedExec.id), event: 'COMPLETED', prevStatus: 'running', newStatus: 'completed', meta: { hydrationJobId: possibleHydration.id, bullJobId: job.id } } })
