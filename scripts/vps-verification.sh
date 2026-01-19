@@ -150,9 +150,24 @@ UNHEALTHY_COUNT=0
 for proc in "${PROCS[@]}"; do
   id=$(pm2 id "$proc" 2>/dev/null || true)
   if [ -z "$id" ] || [ "$id" = "[PM2] Process name not found" ] || [ "$id" = "0" ]; then
-    echo "PM2 process not found by name: $proc; skipping"
-    MISSING_COUNT=$((MISSING_COUNT+1))
-    continue
+    # Attempt fallback lookup by listing processes and matching name
+    echo "PM2 process not found by id for name: $proc — attempting fallback lookups"
+    # Try 'pm2 jlist' parse to find pm_id (best-effort). If this fails, we'll continue but provide manual commands.
+    fallback_id=$(pm2 jlist 2>/dev/null | sed -n "s/.*\"name\": \"$proc\".*/$proc/p" >/dev/null || true)
+    # If fallback not implemented or failed, advise manual checks
+    if [ -z "$fallback_id" ]; then
+      echo "  Could not auto-resolve PM2 id for process '$proc'."
+      echo "  Manual checks you can run:"
+      echo "    pm2 list"
+      echo "    pm2 show $proc"
+      echo "    pm2 logs $proc --lines 200"
+      echo "    pm2 env <id>   # once you have the numeric id from pm2 list or pm2 show"
+      MISSING_COUNT=$((MISSING_COUNT+1))
+      continue
+    else
+      id="$fallback_id"
+      echo "  resolved id=$id via fallback"
+    fi
   fi
   echo "Checking PM2 id=$id (proc=$proc)"
   for key in "${KEYS[@]}"; do

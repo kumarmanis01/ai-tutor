@@ -11,7 +11,7 @@ REPO_ROOT="${SCRIPT_DIR}"
 
 AUTO_FLAG=1
 BRANCH=""
-CLEAN_FLAG=1
+CLEAN_FLAG=0
 KILL_FLAG=0
 
 while [[ $# -gt 0 ]]; do
@@ -88,14 +88,18 @@ else
   echo "[deploy] warning: vps-verification.sh not found, skipping"
 fi
 
-# Reset PM2 (stop/delete/flush) so ecosystem starts cleanly
-echo "[deploy] resetting pm2 processes: stop all, delete all, flush"
-pm2 stop all || true
-pm2 delete all || true
-pm2 flush || true
-if [ "${KILL_FLAG}" -eq 1 ]; then
-  echo "[deploy] killing pm2 daemon (you may need to restart it)"
-  pm2 kill || true
+# Reset PM2 (stop/delete/flush) so ecosystem starts cleanly only when requested
+if [ "${CLEAN_FLAG}" -eq 1 ]; then
+  echo "[deploy] resetting pm2 processes: stop all, delete all, flush"
+  pm2 stop all || true
+  pm2 delete all || true
+  pm2 flush || true
+  if [ "${KILL_FLAG}" -eq 1 ]; then
+    echo "[deploy] killing pm2 daemon (you may need to restart it)"
+    pm2 kill || true
+  fi
+else
+  echo "[deploy] skipping PM2 reset (CLEAN_FLAG=0) — PM2 processes will be left running"
 fi
 
 # NOTE: PM2 start and verify will run after we export .env.production below.
