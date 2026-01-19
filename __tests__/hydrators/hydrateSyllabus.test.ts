@@ -20,7 +20,8 @@ describe('enqueueSyllabusHydration', () => {
   test('returns redis_not_configured when REDIS_URL missing', async () => {
     delete process.env.REDIS_URL
     const res = await enqueueSyllabusHydration({ board: 'CBSE', grade: 4, subject: 'Mathematics', subjectId: '' })
-    expect(res.created).toBe(false)
-    expect(res.reason).toBe('redis_not_configured')
+    // After change: HydrationJob is created even when REDIS is not configured
+    expect(res.created).toBe(true)
+    expect(res.jobId).toBe('job-1')
   })
 })

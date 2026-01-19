@@ -67,10 +67,15 @@ async function main() {
         const language = payload.language || payload.resolvedMeta?.language || 'en'
 
         if (!subjectId || !board || !grade) {
-          // Fallback: include original ExecutionJob id in Bull payload so legacy worker can attempt
-          const bullJob = await q.add(`${workerType.toLowerCase()}-${job.id}`, { type: workerType, payload: { jobId: job.id, ...(job.payload || {}) } }, { jobId: job.id })
-          await prisma.jobExecutionLog.create({ data: { jobId: job.id, event: 'ENQUEUED', prevStatus: 'pending', newStatus: 'pending', meta: { queue: 'content-hydration', workerType, bullJobId: bullJob?.id } } })
-          console.log('[requeue] enqueued legacy payload for', job.id, 'bullJobId=', bullJob?.id)
+          // Do NOT enqueue legacy ExecutionJob-only payloads anymore.
+          // These legacy-only enqueues create jobs that bypass the HydrationJob invariant
+          // and lead to missing syllabus data. Record a skip and surface for manual review.
+          console.warn('[requeue] skipping legacy enqueue for', job.id, 'missing subject/board/grade')
+          try {
+            await prisma.jobExecutionLog.create({ data: { jobId: job.id, event: 'REQUEUE_SKIPPED_MISSING_METADATA', prevStatus: 'pending', newStatus: 'pending', message: 'Missing subject/board/grade — manual review required', meta: { missingFields: { subjectId: !!subjectId, board: !!board, grade: !!grade }, originalPayload: job.payload || {} } } })
+          } catch (e) {
+            console.error('[requeue] failed to write skip log for', job.id, String(e))
+          }
           continue
         }
 

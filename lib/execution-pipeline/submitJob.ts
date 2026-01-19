@@ -135,40 +135,51 @@ export async function submitJob(input: SubmitJobInput) {
 
   logger.info(`submitJob: created ExecutionJob ${job.id} (${normalizedJobType})`);
 
-    // If Redis is configured, enqueue a worker job so workers can pick this up.
-    if (process.env.REDIS_URL) {
-      try {
-        // For syllabus jobs, use canonical hydrator which creates a HydrationJob
-        // and enqueues the Bull job. This enforces the hydration-first contract.
-        if (normalizedJobType === JobType.syllabus) {
-          const hydrateInput = {
-            board: resolvedMeta.board,
-            grade: resolvedMeta.classLevel,
-            subject: resolvedMeta.entityName,
-            subjectId: entityType === 'SUBJECT' ? entityId : '',
-            language: payload?.language,
+    // Enqueue behavior:
+    // - For syllabus jobs always invoke canonical hydrator which creates a
+    //   HydrationJob row and attempts to enqueue a Bull job when Redis is
+    //   available. This ensures the HydrationJob exists even when the web
+    //   process cannot reach Redis (requeue can handle later).
+    // - For other job types, enqueue only if Redis is configured.
+    try {
+      if (normalizedJobType === JobType.syllabus) {
+        const hydrateInput = {
+          board: resolvedMeta.board,
+          grade: resolvedMeta.classLevel,
+          subject: resolvedMeta.entityName,
+          subjectId: entityType === 'SUBJECT' ? entityId : '',
+          language: payload?.language,
+        }
+        // Diagnostic log: record resolved meta and hydrate input so we can
+        // trace why HydrationJobs may not be created in production.
+        try {
+          logger.info('submitJob: invoking enqueueSyllabusHydration', { jobId: job.id, resolvedMeta, hydrateInput, payload });
+        } catch {}
+        const res = await enqueueSyllabusHydration(hydrateInput as any)
+        try {
+          logger.info('submitJob: enqueueSyllabusHydration returned', { jobId: job.id, result: res });
+        } catch {}
+        if (res.created) {
+          // Link ExecutionJob -> HydrationJob by embedding hydrationJobId into payload
+          try {
+            await prisma.executionJob.update({ where: { id: job.id }, data: { payload: { ...(payload || {}), hydrationJobId: res.jobId } } })
+          } catch (e) {
+            logger?.warn?.('submitJob: failed to update ExecutionJob payload with hydrationJobId', { err: e, jobId: job.id })
           }
-          const res = await enqueueSyllabusHydration(hydrateInput as any)
-          if (res.created) {
-            // Link ExecutionJob -> HydrationJob by embedding hydrationJobId into payload
-            try {
-              await prisma.executionJob.update({ where: { id: job.id }, data: { payload: { ...(payload || {}), hydrationJobId: res.jobId } } })
-            } catch (e) {
-              logger?.warn?.('submitJob: failed to update ExecutionJob payload with hydrationJobId', { err: e, jobId: job.id })
-            }
-            try {
-              await prisma.jobExecutionLog.create({ data: { jobId: job.id, event: 'ENQUEUED', prevStatus: 'pending', newStatus: 'pending', meta: { queue: 'content-hydration', workerType: 'SYLLABUS', bullJobId: (res as any).bullJobId ?? null, hydrationJobId: res.jobId } } });
-            } catch (e) {
-              logger?.warn?.('submitJob: failed to write JobExecutionLog ENQUEUED', { err: e, jobId: job.id });
-            }
-          } else {
-            const reason = (res as any)?.reason ?? 'unknown'
-            logger.info('submitJob: enqueueSyllabusHydration aborted', { reason, jobId: job.id })
-            try {
-              await prisma.jobExecutionLog.create({ data: { jobId: job.id, event: 'ENQUEUE_FAILED', prevStatus: 'pending', newStatus: 'pending', message: `hydrator:${reason}` } });
-            } catch { /* ignore */ }
+          try {
+            await prisma.jobExecutionLog.create({ data: { jobId: job.id, event: 'ENQUEUED', prevStatus: 'pending', newStatus: 'pending', meta: { queue: 'content-hydration', workerType: 'SYLLABUS', bullJobId: (res as any).bullJobId ?? null, hydrationJobId: res.jobId } } });
+          } catch (e) {
+            logger?.warn?.('submitJob: failed to write JobExecutionLog ENQUEUED', { err: e, jobId: job.id });
           }
         } else {
+          const reason = (res as any)?.reason ?? 'unknown'
+          logger.info('submitJob: enqueueSyllabusHydration aborted', { reason, jobId: job.id, result: res })
+          try {
+            await prisma.jobExecutionLog.create({ data: { jobId: job.id, event: 'ENQUEUE_FAILED', prevStatus: 'pending', newStatus: 'pending', message: `hydrator:${reason}` } });
+          } catch { /* ignore */ }
+        }
+      } else {
+        if (process.env.REDIS_URL) {
           const q = getContentQueue();
           // Map prisma JobType -> worker type string
           const mapping: Record<string, string> = {
@@ -186,19 +197,21 @@ export async function submitJob(input: SubmitJobInput) {
           } catch (e) {
             logger?.warn?.('submitJob: failed to write JobExecutionLog ENQUEUED', { err: e, jobId: job.id });
           }
-        }
-      } catch (err) {
-        logger.error('submitJob: failed to enqueue to Redis', { err, jobId: job.id });
-        try {
-          await prisma.jobExecutionLog.create({ data: { jobId: job.id, event: 'ENQUEUE_FAILED', prevStatus: 'pending', newStatus: 'pending', message: String(err) } });
-        } catch (e) {
-          logger?.warn?.('submitJob: failed to write JobExecutionLog ENQUEUE_FAILED', { err: e, jobId: job.id });
+        } else {
+          logger.info('submitJob: REDIS not configured; skipping enqueue for non-syllabus job', { jobId: job.id })
         }
       }
-
-      // NOTE: Orchestrator is responsible for creating WorkerLifecycle rows.
-      // submitJob MUST NOT create or mutate WorkerLifecycle entries — this keeps
-      // job submission and worker orchestration responsibilities separated.
+    } catch (err) {
+      logger.error('submitJob: failed to enqueue to Redis', { err, jobId: job.id });
+      try {
+        await prisma.jobExecutionLog.create({ data: { jobId: job.id, event: 'ENQUEUE_FAILED', prevStatus: 'pending', newStatus: 'pending', message: String(err) } });
+      } catch (e) {
+        logger?.warn?.('submitJob: failed to write JobExecutionLog ENQUEUE_FAILED', { err: e, jobId: job.id });
+      }
     }
+
+    // NOTE: Orchestrator is responsible for creating WorkerLifecycle rows.
+    // submitJob MUST NOT create or mutate WorkerLifecycle entries — this keeps
+    // job submission and worker orchestration responsibilities separated.
   return { jobId: job.id, existing: false };
 }

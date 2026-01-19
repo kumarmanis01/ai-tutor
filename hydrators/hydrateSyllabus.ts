@@ -104,30 +104,32 @@ export async function enqueueSyllabusHydration(input: {
     difficulty: normalizeDifficulty('medium'),
     status: JobStatus.Pending
   }
-  // If Redis is not configured, avoid creating a DB job we can't enqueue.
-  if (!process.env.REDIS_URL) {
-    logger.error('Redis not configured; cannot enqueue hydration job', { board: input.board, grade: input.grade, subjectId: input.subjectId })
-    if (HYDRATION_DEBUG) logger.info('[hydration][DEBUG] aborted: redis_not_configured')
-    return { created: false, reason: 'redis_not_configured' }
-  }
-
+  // Create the HydrationJob row in DB regardless of Redis availability so
+  // the ExecutionJob -> HydrationJob contract is preserved. If Redis is
+  // configured we'll attempt to enqueue a Bull job immediately; otherwise
+  // the HydrationJob will exist and can be enqueued later via a requeue.
   const job = await prisma.hydrationJob.create({ data: jobData })
   if (HYDRATION_DEBUG) logger.debug('[hydration][DEBUG] created HydrationJob', { jobId: job.id })
 
   // Enqueue a worker job to process this hydration row.
   // Job payload is deliberately minimal: worker will re-load the HydrationJob by id.
   try {
-    const q = getContentQueue();
-    const bullJob = await q.add(`syllabus-${job.id}`, {
-      type: "SYLLABUS",
-      payload: { jobId: job.id }
-    })
-    if (HYDRATION_DEBUG) logger.debug('[hydration][DEBUG] enqueued Bull job for HydrationJob', { jobId: job.id, bullJobId: bullJob?.id })
-    // Return the bullJob id along with the HydrationJob id so callers can audit/link both rows
-    return { created: true, jobId: job.id, bullJobId: bullJob?.id }
+    if (process.env.REDIS_URL) {
+      const q = getContentQueue();
+      const bullJob = await q.add(`syllabus-${job.id}`, {
+        type: "SYLLABUS",
+        payload: { jobId: job.id }
+      })
+      if (HYDRATION_DEBUG) logger.debug('[hydration][DEBUG] enqueued Bull job for HydrationJob', { jobId: job.id, bullJobId: bullJob?.id })
+      // Return the bullJob id along with the HydrationJob id so callers can audit/link both rows
+      return { created: true, jobId: job.id, bullJobId: bullJob?.id }
+    }
+    // Redis not configured: HydrationJob created but not enqueued yet.
+    if (HYDRATION_DEBUG) logger.info('[hydration][DEBUG] created HydrationJob but not enqueued: redis_not_configured', { jobId: job.id })
+    return { created: true, jobId: job.id }
   } catch (err) {
     // If enqueueing fails, keep the DB row but surface failure reason.
     logger.error("Failed to enqueue syllabus hydration job", { error: err, jobId: job.id });
-    return { created: false, reason: 'enqueue_failed', jobId: job.id }
+    return { created: true, jobId: job.id, bullJobId: undefined }
   }
 }

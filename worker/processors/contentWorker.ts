@@ -153,10 +153,22 @@ export async function processContentJob(job: Job) {
     // Mark HydrationJob completed
     await prisma.hydrationJob.update({ where: { id: hydrationJobId }, data: { status: JobStatus.Completed } })
 
-    // If this run was triggered from an ExecutionJob, mark it completed too
+    // If this run was triggered from an ExecutionJob, mark it completed too.
+    // If we don't have an explicit ExecutionJob id in the payload, attempt
+    // to discover a linked ExecutionJob whose payload contains `hydrationJobId`.
     if (executionJobId) {
       await prisma.executionJob.update({ where: { id: String(executionJobId) }, data: { status: 'completed', updatedAt: new Date() } })
       await prisma.jobExecutionLog.create({ data: { jobId: String(executionJobId), event: 'COMPLETED', prevStatus: 'running', newStatus: 'completed', meta: { hydrationJobId, bullJobId: job.id } } }).catch(() => {})
+    } else {
+      try {
+        const linkedExec = await prisma.executionJob.findFirst({ where: { payload: { contains: { hydrationJobId } } } });
+        if (linkedExec) {
+          await prisma.executionJob.update({ where: { id: linkedExec.id }, data: { status: 'completed', updatedAt: new Date() } })
+          await prisma.jobExecutionLog.create({ data: { jobId: String(linkedExec.id), event: 'COMPLETED', prevStatus: 'running', newStatus: 'completed', meta: { hydrationJobId, bullJobId: job.id } } }).catch(() => {})
+        }
+      } catch (e) {
+        logger?.warn?.('worker: failed to mark linked ExecutionJob completed', { err: e, hydrationJobId })
+      }
     }
 
     return { success: true }
@@ -190,34 +202,54 @@ export function startContentWorker(opts?: { concurrency?: number }) {
     },
   })
 
-  worker.on('failed', (job, err) => {
+  worker.on('failed', async (job, err) => {
     logger.error(`[WORKER FAILED] jobId=${job?.id} type=${job?.data?.type}`, { error: err?.message });
-    (async () => {
-      try {
-        const executionJobId = job?.data?.payload?.executionJobId ?? job?.data?.payload?.jobId ?? null
-        if (executionJobId) {
-          await prisma.executionJob.update({ where: { id: String(executionJobId) }, data: { status: 'failed', lastError: String(err?.message ?? err) } })
-          await prisma.jobExecutionLog.create({ data: { jobId: String(executionJobId), event: 'FAILED', prevStatus: 'running', newStatus: 'failed', message: String(err?.message ?? err), meta: { bullJobId: job.id, error: String(err?.message ?? err) } } })
+    try {
+        // Attempt to resolve whether the job payload refers to a HydrationJob
+        // (preferred) or an ExecutionJob (legacy). If it's a HydrationJob, find
+        // any ExecutionJob that references it and mark that as failed.
+        const incomingId = job?.data?.payload?.executionJobId ?? job?.data?.payload?.jobId ?? null
+        if (!incomingId) return
+
+        const possibleHydration = await prisma.hydrationJob.findUnique({ where: { id: String(incomingId) } })
+        if (possibleHydration) {
+          // Find ExecutionJob that links to this hydration id
+          const linkedExec = await prisma.executionJob.findFirst({ where: { payload: { contains: { hydrationJobId: possibleHydration.id } } } })
+          if (linkedExec) {
+            await prisma.executionJob.update({ where: { id: linkedExec.id }, data: { status: 'failed', lastError: String(err?.message ?? err) } })
+            await prisma.jobExecutionLog.create({ data: { jobId: String(linkedExec.id), event: 'FAILED', prevStatus: 'running', newStatus: 'failed', message: String(err?.message ?? err), meta: { hydrationJobId: possibleHydration.id, bullJobId: job.id, error: String(err?.message ?? err) } } })
+          }
+        } else {
+          const executionJobId = String(incomingId)
+          await prisma.executionJob.update({ where: { id: executionJobId }, data: { status: 'failed', lastError: String(err?.message ?? err) } })
+          await prisma.jobExecutionLog.create({ data: { jobId: executionJobId, event: 'FAILED', prevStatus: 'running', newStatus: 'failed', message: String(err?.message ?? err), meta: { bullJobId: job.id, error: String(err?.message ?? err) } } })
         }
-      } catch (e) {
-        logger?.warn?.('worker.failed: failed to mark executionJob failed or write JobExecutionLog', { err: e })
-      }
-    })()
+    } catch (e) {
+      logger?.warn?.('worker.failed: failed to mark executionJob failed or write JobExecutionLog', { err: e })
+    }
   })
 
-  worker.on('completed', job => {
+  worker.on('completed', async (job) => {
     logger.info(`[WORKER COMPLETED] jobId=${job.id} type=${job.data?.type}`);
-    (async () => {
-      try {
-        const executionJobId = job?.data?.payload?.executionJobId ?? job?.data?.payload?.jobId ?? null
-        if (executionJobId) {
-          await prisma.executionJob.update({ where: { id: String(executionJobId) }, data: { status: 'completed' } })
-          await prisma.jobExecutionLog.create({ data: { jobId: String(executionJobId), event: 'COMPLETED', prevStatus: 'running', newStatus: 'completed', meta: { bullJobId: job.id } } })
+    try {
+      const incomingId = job?.data?.payload?.executionJobId ?? job?.data?.payload?.jobId ?? null
+      if (!incomingId) return
+
+      const possibleHydration = await prisma.hydrationJob.findUnique({ where: { id: String(incomingId) } })
+      if (possibleHydration) {
+        const linkedExec = await prisma.executionJob.findFirst({ where: { payload: { contains: { hydrationJobId: possibleHydration.id } } } })
+        if (linkedExec) {
+          await prisma.executionJob.update({ where: { id: linkedExec.id }, data: { status: 'completed' } })
+          await prisma.jobExecutionLog.create({ data: { jobId: String(linkedExec.id), event: 'COMPLETED', prevStatus: 'running', newStatus: 'completed', meta: { hydrationJobId: possibleHydration.id, bullJobId: job.id } } })
         }
-      } catch (e) {
-        logger?.warn?.('worker.completed: failed to mark executionJob completed or write JobExecutionLog', { err: e })
+      } else {
+        const executionJobId = String(incomingId)
+        await prisma.executionJob.update({ where: { id: executionJobId }, data: { status: 'completed' } })
+        await prisma.jobExecutionLog.create({ data: { jobId: executionJobId, event: 'COMPLETED', prevStatus: 'running', newStatus: 'completed', meta: { bullJobId: job.id } } })
       }
-    })()
+    } catch (e) {
+      logger?.warn?.('worker.completed: failed to mark executionJob completed or write JobExecutionLog', { err: e })
+    }
   })
 
   return worker
