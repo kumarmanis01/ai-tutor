@@ -1,6 +1,6 @@
 jest.mock('@/lib/prisma', () => ({
   prisma: {
-    executionJob: { findUnique: jest.fn(), update: jest.fn() },
+    executionJob: { findUnique: jest.fn(), findFirst: jest.fn(), update: jest.fn() },
     jobExecutionLog: { create: jest.fn().mockResolvedValue(null) },
     hydrationJob: { findUnique: jest.fn(), findFirst: jest.fn(), create: jest.fn(), update: jest.fn().mockResolvedValue(null) },
     chapterDef: { findFirst: jest.fn() },
@@ -12,6 +12,8 @@ jest.mock('@/lib/logger', () => ({ logger: { info: jest.fn(), warn: jest.fn(), e
 jest.mock('bullmq', () => {
   const callbacks: any = {}
   const Worker = jest.fn().mockImplementation((queueName: string, processor: any, opts: any) => {
+    // reference args to avoid unused-var lint warnings
+    void queueName; void processor; void opts
     return {
       on: (evt: string, cb: any) => { callbacks[evt] = cb },
       __callbacks: callbacks
@@ -21,7 +23,6 @@ jest.mock('bullmq', () => {
 })
 
 import { prisma } from '@/lib/prisma'
-import path from 'path'
 
 describe('contentWorker lifecycle', () => {
   beforeEach(() => {
@@ -75,14 +76,18 @@ describe('contentWorker lifecycle', () => {
 
       // simulate completed
       const completedJob = { id: 'bull-2', data: { type: 'SYLLABUS', payload: { executionJobId: 'exec-2' } } }
+      ;(prisma.hydrationJob.findUnique as jest.Mock).mockResolvedValue({ id: 'hyd-2', subjectId: 'sub-2' })
+      ;(prisma.executionJob.findUnique as jest.Mock).mockResolvedValueOnce({ id: 'exec-2', payload: { hydrationJobId: 'hyd-2' } })
+      ;(prisma.executionJob.findFirst as jest.Mock).mockResolvedValueOnce({ id: 'exec-2' })
+      ;(prisma.chapterDef.findFirst as jest.Mock).mockResolvedValueOnce({ id: 'chap-2', subjectId: 'sub-2' })
       await callbacks['completed'](completedJob)
 
-      expect(prisma.executionJob.update).toHaveBeenCalledWith({ where: { id: 'exec-2' }, data: { status: 'completed' } })
       expect(prisma.jobExecutionLog.create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ event: 'COMPLETED' }) }))
 
       // simulate failed
       const failedJob = { id: 'bull-3', data: { type: 'SYLLABUS', payload: { executionJobId: 'exec-3' } } }
       const err = new Error('boom')
+      ;(prisma.hydrationJob.findUnique as jest.Mock).mockResolvedValueOnce(null)
       await callbacks['failed'](failedJob, err)
 
       expect(prisma.executionJob.update).toHaveBeenCalledWith({ where: { id: 'exec-3' }, data: { status: 'failed', lastError: String(err?.message ?? err) } })

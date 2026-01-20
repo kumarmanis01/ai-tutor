@@ -6,6 +6,13 @@
     "plugin:@typescript-eslint/recommended",
     "plugin:prettier/recommended"
   ],
+  "overrides": [
+    {
+      "files": ["**/*.cjs"],
+      "rules": {
+        "@typescript-eslint/no-require-imports": "off"
+      }
+    },
   "parser": "@typescript-eslint/parser",
   "plugins": ["@typescript-eslint", "prettier", "local"],
   "rules": {
@@ -63,7 +70,6 @@
     "es6": true
   }
   ,
-  "overrides": [
     {
       "files": ["app/api/**/*.ts"],
       "plugins": ["local"],

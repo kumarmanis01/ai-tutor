@@ -5,7 +5,7 @@ try {
   execSync('git ls-files --error-unmatch .env.production', { stdio: 'ignore' })
   console.error('.env.production IS tracked in git. Remove it from the index and rotate secrets.')
   process.exit(2)
-} catch (e) {
+} catch {
   // git ls-files returns non-zero when not tracked — success
   process.exit(0)
 }

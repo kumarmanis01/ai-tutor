@@ -76,8 +76,8 @@
     "verify:vps": "bash scripts/vps-verification.sh --auto",
     "verify:dist": "node scripts/verify-dist.cjs",
     "ensure:env": "bash scripts/ensure-env-perms.sh",
-    "ci:check-env": "node scripts/check-env-not-tracked.cjs"
-    ,"ci:prebuild": "npm run ci:check-env && npm run verify:dist",
+    "ci:check-env": "node scripts/check-env-not-tracked.cjs",
+    "ci:prebuild": "npm run ci:check-env && npm run verify:dist",
     "deploy:prep": "bash scripts/ensure-env-perms.sh && npm run verify:dist"
   },
   "dependencies": {
@@ -128,12 +128,13 @@
     "yargs": "^18.0.0",
     "zod": "^3.25.76"
   },
-  
   "devDependencies": {
     "@eslint/eslintrc": "^3",
+    "@kubernetes/client-node": "^1.4.0",
     "@netlify/plugin-nextjs": "^5.11.1",
     "@tailwindcss/postcss": "^4",
     "@types/bcryptjs": "^2.4.2",
+    "@types/express": "^5.0.6",
     "@types/jest": "^29.5.2",
     "@types/node": "^20",
     "@types/react": "18.2.45",
@@ -147,6 +148,7 @@
     "eslint-config-next": "^15.2.4",
     "eslint-config-prettier": "^10.1.1",
     "eslint-plugin-prettier": "^5.2.6",
+    "express": "^5.2.1",
     "globals": "^16.4.0",
     "husky": "^8.0.0",
     "jest": "^29.7.0",

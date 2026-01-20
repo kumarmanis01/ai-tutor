@@ -35,5 +35,5 @@ export async function createJobForWorker(lifecycleId: string, type = 'content-hy
   }
 
   const namespace = process.env.WORKER_K8S_NAMESPACE || 'default'
-  return batchApi.createNamespacedJob(namespace, job as any)
+  return (batchApi as any).createNamespacedJob(namespace, job as any)
 }

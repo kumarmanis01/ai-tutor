@@ -30,7 +30,7 @@ function loadEnvFile(file) {
         if (!process.env[k]) process.env[k] = v;
       }
     });
-  } catch (err) {
+  } catch {
     // ignore
   }
 }
@@ -60,11 +60,11 @@ const prisma = new PrismaClient({ log: [] });
         `SELECT * FROM "ExecutionJob" WHERE payload::text ILIKE $1 ORDER BY "createdAt" DESC LIMIT 20`,
         `%${hydrationId}%`
       );
-    } catch (e) {
+    } catch {
       // fallback: try a generic findMany if the model supports it
       try {
         executions = await prisma.executionJob.findMany({ orderBy: { createdAt: 'desc' }, take: 20 });
-      } catch (e2) {
+      } catch {
         // give up
       }
     }
@@ -74,10 +74,10 @@ const prisma = new PrismaClient({ log: [] });
     let workerLifecycle = [];
     try {
       workerLifecycle = await prisma.$queryRawUnsafe(`SELECT * FROM \"WorkerLifecycle\" ORDER BY \"lastHeartbeat\" DESC LIMIT 20`);
-    } catch (e) {
+    } catch {
       try {
         workerLifecycle = await prisma.workerLifecycle.findMany({ orderBy: { lastHeartbeat: 'desc' }, take: 20 });
-      } catch (e2) {
+      } catch {
         // ignore
       }
     }
@@ -91,7 +91,7 @@ const prisma = new PrismaClient({ log: [] });
         console.log('\nHydrationJobAttempt(s):');
         console.log(JSON.stringify(attempts, null, 2));
       }
-    } catch (e) {
+    } catch {
       // ignore if table doesn't exist
     }
 
@@ -100,7 +100,7 @@ const prisma = new PrismaClient({ log: [] });
       const res = await prisma.$queryRawUnsafe(`SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' AND table_name ILIKE '%log%' LIMIT 50`);
       console.log('\nLog-like tables (sample):');
       console.log(JSON.stringify(res, null, 2));
-    } catch (e) {
+    } catch {
       // ignore
     }
 

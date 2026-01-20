@@ -20,33 +20,12 @@
  * - `error_file` / `out_file`: dedicated log files for stderr/stdout to simplify
  *    debugging and log rotation.
  */
-const fs = require('fs')
-const path = require('path')
-
-function parseEnvFile(filePath) {
-  const out = {}
-  try {
-    const raw = fs.readFileSync(filePath, 'utf8')
-    for (const line of raw.split(/\r?\n/)) {
-      const trimmed = line.trim()
-      if (!trimmed || trimmed.startsWith('#')) continue
-      const idx = trimmed.indexOf('=')
-      if (idx === -1) continue
-      const key = trimmed.slice(0, idx)
-      let val = trimmed.slice(idx + 1)
-      if ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'"))) {
-        val = val.slice(1, -1)
-      }
-      out[key] = val
-    }
-  } catch (e) {
-    // ignore missing env file; PM2 may inject env differently on some hosts
-  }
-  return out
+// Use environment variables provided by PM2 or the environment; avoid
+// importing fs/path here to keep this config simple and lint-friendly.
+const PROD_ENV = {
+  REDIS_URL: process.env.REDIS_URL,
+  DATABASE_URL: process.env.DATABASE_URL,
 }
-
-const envFilePath = path.resolve(__dirname, '.env.production')
-const PROD_ENV = parseEnvFile(envFilePath)
 
 module.exports = {
   apps: [

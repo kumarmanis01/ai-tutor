@@ -23,7 +23,6 @@ function parseEnvFile(filePath) {
 }
 
 async function main() {
-  const repoRoot = path.resolve(new URL(import.meta.url).pathname).split('/scripts/check-redis-keys.js')[0].replace(/^\//, '')
   const envFile = path.resolve(process.cwd(), '.env.production')
   const env = parseEnvFile(envFile)
   const redisUrl = process.env.REDIS_URL || env.REDIS_URL
@@ -58,7 +57,7 @@ async function main() {
         for await (const k of r.scanIterator({ MATCH: p })) {
           keys.push(k)
         }
-      } catch (e) {
+      } catch {
         // fallback to keys
       }
     }

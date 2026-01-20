@@ -14,7 +14,7 @@ function loadEnvFile(file) {
         if (!process.env[k]) process.env[k] = v;
       }
     });
-  } catch (err) {}
+  } catch {}
 }
 loadEnvFile(path.resolve(process.cwd(), '.env.production'));
 // Ensure Prisma/DEBUG logs are disabled for cleaner CLI output

@@ -174,9 +174,23 @@ export async function submitJob(input: SubmitJobInput) {
         } else {
           const reason = (res as any)?.reason ?? 'unknown'
           logger.info('submitJob: enqueueSyllabusHydration aborted', { reason, jobId: job.id, result: res })
+          // Record ENQUEUE_FAILED log
           try {
             await prisma.jobExecutionLog.create({ data: { jobId: job.id, event: 'ENQUEUE_FAILED', prevStatus: 'pending', newStatus: 'pending', message: `hydrator:${reason}` } });
           } catch { /* ignore */ }
+
+          // If the hydrator failed due to missing metadata or resolution issues,
+          // mark the ExecutionJob failed so UI does not remain stuck in PENDING.
+          if (String(reason).startsWith('resolve_') || reason === 'resolve_not_found' || reason === 'invalid_input') {
+            try {
+              await prisma.executionJob.update({ where: { id: job.id }, data: { status: 'failed', lastError: `hydrator:${reason}` } })
+              await prisma.jobExecutionLog.create({ data: { jobId: job.id, event: 'FAILED', prevStatus: 'pending', newStatus: 'failed', message: `hydrator:${reason}` } }).catch(() => {})
+            } catch (e) {
+              logger?.warn?.('submitJob: failed to mark ExecutionJob failed after hydrator abort', { err: e, jobId: job.id })
+            }
+            // Surface error to caller
+            throw new Error(`Hydrator aborted: ${reason}`)
+          }
         }
       } else {
         if (process.env.REDIS_URL) {

@@ -32,7 +32,7 @@ export async function processContentJob(job: Job) {
       try {
         const ex = await prisma.executionJob.findUnique({ where: { id: String(executionJobId) } })
         prevStatus = ex?.status ?? null
-      } catch (e) {
+      } catch {
         // ignore read errors, proceed to update
       }
 
@@ -50,9 +50,9 @@ export async function processContentJob(job: Job) {
         logger?.warn?.('worker: failed to create JobExecutionLog STARTED', { err: e, jobId: executionJobId })
       }
     }
-  } catch (e) {
-    logger?.warn?.('worker: failed during ExecutionJob START handling', { err: e })
-    if (process.env.WORKER_DEBUG === '1') logger.error('[worker][DEBUG] failed to mark ExecutionJob STARTED', { error: e })
+  } catch (err) {
+    logger?.warn?.('worker: failed during ExecutionJob START handling', { err: err })
+    if (process.env.WORKER_DEBUG === '1') logger.error('[worker][DEBUG] failed to mark ExecutionJob STARTED', { error: err })
   }
 
   // New contract: prefer HydrationJob-based payloads. The canonical Bull payload
@@ -235,17 +235,62 @@ export function startContentWorker(opts?: { concurrency?: number }) {
       const incomingId = job?.data?.payload?.executionJobId ?? job?.data?.payload?.jobId ?? null
       if (!incomingId) return
 
+      // Conservative completion: only mark ExecutionJob completed if we can
+      // verify that actual syllabus content was produced. This avoids the
+      // scenario where a legacy/incorrectly-enqueued Bull job causes the
+      // ExecutionJob to advance despite missing HydrationJob rows or data.
       const possibleHydration = await prisma.hydrationJob.findUnique({ where: { id: String(incomingId) } })
+      let resolvedHydrationId: string | null = null
+
       if (possibleHydration) {
-        const linkedExec = await prisma.executionJob.findFirst({ where: { payload: { path: ['hydrationJobId'], equals: possibleHydration.id } } })
-        if (linkedExec) {
-          await prisma.executionJob.update({ where: { id: linkedExec.id }, data: { status: 'completed' } })
-          await prisma.jobExecutionLog.create({ data: { jobId: String(linkedExec.id), event: 'COMPLETED', prevStatus: 'running', newStatus: 'completed', meta: { hydrationJobId: possibleHydration.id, bullJobId: job.id } } })
+        resolvedHydrationId = possibleHydration.id
+      } else {
+        // If payload was an ExecutionJob id, try to read its payload.hydrationJobId
+        const execRow = await prisma.executionJob.findUnique({ where: { id: String(incomingId) } })
+        if (execRow && execRow.payload && (execRow.payload as any).hydrationJobId) {
+          resolvedHydrationId = String((execRow.payload as any).hydrationJobId)
         }
+      }
+
+      if (!resolvedHydrationId) {
+        // No hydration linkage found; do not mark ExecutionJob completed.
+        // Record an audit log so operators can investigate missing HydrationJobs.
+        try {
+          await prisma.jobExecutionLog.create({ data: { jobId: String(incomingId), event: 'COMPLETION_SKIPPED', prevStatus: 'running', newStatus: 'running', message: 'missing_hydration_job', meta: { bullJobId: job.id } } })
+        } catch (e) {
+          logger?.warn?.('worker.completed: failed to write COMPLETION_SKIPPED log', { err: e, incomingId })
+        }
+        logger.warn('[worker][WARN] completion skipped: no HydrationJob linked', { incomingId, bullJobId: job.id })
+        return
+      }
+
+      // Verify that the hydration run produced at least one active chapter
+      const hydrateRow = await prisma.hydrationJob.findUnique({ where: { id: resolvedHydrationId } })
+      const subjectId = hydrateRow?.subjectId ?? null
+      if (!subjectId) {
+        // Missing subject linkage — treat as incomplete and log
+        await prisma.jobExecutionLog.create({ data: { jobId: String(incomingId), event: 'COMPLETION_SKIPPED', prevStatus: 'running', newStatus: 'running', message: 'hydration_missing_subject', meta: { hydrationJobId: resolvedHydrationId, bullJobId: job.id } } }).catch(() => {})
+        logger.warn('[worker][WARN] completion skipped: hydration missing subject', { hydrationJobId: resolvedHydrationId, bullJobId: job.id })
+        return
+      }
+
+      const chapter = await prisma.chapterDef.findFirst({ where: { subjectId: subjectId as string, lifecycle: 'active' } })
+      if (!chapter) {
+        // No generated content — do not advance ExecutionJob automatically.
+        await prisma.jobExecutionLog.create({ data: { jobId: String(incomingId), event: 'COMPLETION_SKIPPED', prevStatus: 'running', newStatus: 'running', message: 'no_generated_content', meta: { hydrationJobId: resolvedHydrationId, bullJobId: job.id } } }).catch(() => {})
+        logger.warn('[worker][WARN] completion skipped: no generated chapters', { hydrationJobId: resolvedHydrationId, bullJobId: job.id })
+        return
+      }
+
+      // Safe to mark ExecutionJob completed. Find linked ExecutionJob (if any)
+      const linkedExec = await prisma.executionJob.findFirst({ where: { payload: { path: ['hydrationJobId'], equals: resolvedHydrationId } } })
+      if (linkedExec) {
+        await prisma.executionJob.update({ where: { id: linkedExec.id }, data: { status: 'completed' } })
+        await prisma.jobExecutionLog.create({ data: { jobId: String(linkedExec.id), event: 'COMPLETED', prevStatus: 'running', newStatus: 'completed', meta: { hydrationJobId: resolvedHydrationId, bullJobId: job.id } } }).catch(() => {})
       } else {
         const executionJobId = String(incomingId)
         await prisma.executionJob.update({ where: { id: executionJobId }, data: { status: 'completed' } })
-        await prisma.jobExecutionLog.create({ data: { jobId: executionJobId, event: 'COMPLETED', prevStatus: 'running', newStatus: 'completed', meta: { bullJobId: job.id } } })
+        await prisma.jobExecutionLog.create({ data: { jobId: executionJobId, event: 'COMPLETED', prevStatus: 'running', newStatus: 'completed', meta: { bullJobId: job.id } } }).catch(() => {})
       }
     } catch (e) {
       logger?.warn?.('worker.completed: failed to mark executionJob completed or write JobExecutionLog', { err: e })
