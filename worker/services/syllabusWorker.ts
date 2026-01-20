@@ -25,6 +25,33 @@ function validateSyllabusShape(raw: any) {
   return true
 }
 
+function sanitizeLLMOutput(content: string): string {
+  if (!content || typeof content !== 'string') return content
+  let s = content.trim()
+
+  // Strip triple-backtick fences and optional language tag on the opening fence
+  if (s.startsWith('```')) {
+    const firstNewline = s.indexOf('\n')
+    if (firstNewline !== -1) s = s.slice(firstNewline + 1)
+    // remove trailing fence if present
+    const closingFence = s.lastIndexOf('```')
+    if (closingFence !== -1) s = s.slice(0, closingFence)
+    s = s.trim()
+  }
+
+  // Also handle content wrapped in single backticks or triple tildes
+  if (s.startsWith('`') && s.endsWith('`')) s = s.slice(1, -1).trim()
+  if (s.startsWith('~~~')) {
+    const firstNewline = s.indexOf('\n')
+    if (firstNewline !== -1) s = s.slice(firstNewline + 1)
+    const closing = s.lastIndexOf('~~~')
+    if (closing !== -1) s = s.slice(0, closing)
+    s = s.trim()
+  }
+
+  return s
+}
+
 export async function handleSyllabusJob(jobId: string) {
   const claim = await prisma.hydrationJob.updateMany({
     where: { id: jobId, status: JobStatus.Pending },
@@ -96,20 +123,44 @@ JSON Schema:
     llmResponse = await callLLM({ prompt, meta: { promptType: 'syllabus', board, grade, subject: subjectName, language } })
   } catch (err: any) {
     await prisma.hydrationJob.update({ where: { id: job.id }, data: { status: JobStatus.Failed, lastError: err.message } })
-    return
+    throw err
+  }
+  // Record that a response was received — attempt to attach to a linked ExecutionJob if present
+  let linkedExec: any = null
+  try {
+    linkedExec = await prisma.executionJob.findFirst({ where: { payload: { path: ['hydrationJobId'], equals: job.id } } })
+    if (linkedExec) {
+      await prisma.jobExecutionLog.create({ data: { jobId: String(linkedExec.id), event: 'RESPONSE_RECEIVED', prevStatus: linkedExec.status ?? null, newStatus: linkedExec.status ?? null, meta: { hydrationJobId: job.id } } }).catch(() => {})
+    }
+  } catch {
+    // ignore
   }
 
   let parsed: any
   try {
-    const raw = JSON.parse(llmResponse.content)
+    const sanitized = sanitizeLLMOutput(llmResponse.content)
+    const raw = JSON.parse(sanitized)
     if (!validateSyllabusShape(raw)) throw new Error('validation_failed')
     parsed = raw
   } catch (err: any) {
     if (typeof logger !== "undefined") {
       logger.error("Failed to parse LLM output in handleSyllabusJob", { jobId: job.id, error: err });
     }
+    // mark hydration job failed with parse error
     await prisma.hydrationJob.update({ where: { id: job.id }, data: { status: JobStatus.Failed, lastError: 'invalid_llm_output' } })
-    return
+
+    // if we discovered a linked ExecutionJob, mark it failed and write a PARSE_FAILED audit entry
+    if (linkedExec) {
+      try {
+        await prisma.executionJob.update({ where: { id: String(linkedExec.id) }, data: { status: 'failed', lastError: 'invalid_llm_output' } })
+        await prisma.jobExecutionLog.create({ data: { jobId: String(linkedExec.id), event: 'PARSE_FAILED', prevStatus: linkedExec.status ?? null, newStatus: 'failed', message: 'invalid_llm_output', meta: { hydrationJobId: job.id } } }).catch(() => {})
+      } catch {
+        // ignore
+      }
+    }
+
+    // Throw so the caller (contentWorker) treats this as a failed run and worker-level handlers run
+    throw new Error('invalid_llm_output')
   }
 
   parsed.chapters.sort((a: any, b: any) => (a.order ?? 0) - (b.order ?? 0))

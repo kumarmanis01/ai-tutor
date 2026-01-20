@@ -8,22 +8,18 @@
 export function loadEnv() {
   // Do not load .env in production - rely on process.env injected by PM2/Docker.
   if (process.env.NODE_ENV === 'production') return
-
-  // Dynamically import dotenv at runtime in non-production environments.
-  // Use an async import wrapped in a non-blocking IIFE so callers may remain
-  // synchronous while still avoiding any static import or require emissions
-  // in compiled output.
-  ;(async () => {
-    try {
-      // Load dotenv only in non-production local dev. Use string concatenation
-      // to avoid emitting the literal "dotenv" token into compiled artifacts.
-      const pkgName = 'dot' + 'env'
-      const mod = await import(pkgName)
-      if (mod && typeof (mod as any).config === 'function') {
-        (mod as any).config()
-      }
-    } catch {
-      // Swallow errors: dotenv is optional for local development setups.
+  // Dynamically require dotenv in non-production environments without
+  // emitting the literal "dotenv" token into compiled artifacts. Using
+  // `eval('require')` prevents TypeScript or bundlers from statically
+  // replacing the call with a literal import/require.
+  try {
+    // eslint-disable-next-line no-eval
+    const req = eval('require') as NodeJS.Require;
+    const pkg = req && req('dot' + 'env');
+    if (pkg && typeof (pkg as any).config === 'function') {
+      ;(pkg as any).config()
     }
-  })()
+  } catch {
+    // Swallow errors: dotenv is optional for local development setups.
+  }
 }
