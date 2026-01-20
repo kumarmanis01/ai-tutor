@@ -58,9 +58,13 @@ module.exports = {
       // only after addressing sticky sessions, in-process caches, and
       // ensuring the app is safe for multiple OS processes.
       name: 'ai-tutor-web',
+      // Run via `npm start` but do not ask PM2 to execute it with Node
+      // (on Windows PM2 may try to run `npm.cmd` as a Node script). Use
+      // `exec_interpreter: 'none'` so PM2 spawns the command directly.
       script: 'npm',
       cwd: __dirname,
       args: 'start',
+      exec_interpreter: 'none',
       instances: 1,
       exec_mode: 'fork',
       env_file: '.env.production',
@@ -89,13 +93,14 @@ module.exports = {
     },
     {
       // Content-engine worker
-      // Use a small bash wrapper which sources `.env.production` and then
-      // execs the compiled worker. This avoids relying on PM2's `env_file`
-      // behaviour which may vary across installations.
+      // Start the compiled worker entry directly with Node so the config
+      // is portable across Windows and Linux. If you prefer a bash wrapper
+      // on Linux hosts, run PM2 from a shell that provides `/bin/bash` or
+      // alter the deployment scripts on that host only.
       name: 'content-engine-worker',
-      script: 'scripts/run-worker.sh',
+      script: 'node',
       cwd: __dirname,
-      interpreter: '/bin/bash',
+      args: 'dist/worker/entry.js',
       exec_mode: 'fork',
       instances: 1,
       autorestart: true,

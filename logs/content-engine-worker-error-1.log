@@ -1,0 +1,420 @@
+[worker] fatal startup error Error [ERR_MODULE_NOT_FOUND]: Cannot find module 'C:\Users\Spinzy Diagnostics\Desktop\ai-tutor\dist\lib\env' imported from C:\Users\Spinzy Diagnostics\Desktop\ai-tutor\dist\worker\entry.js
+    at finalizeResolution (node:internal/modules/esm/resolve:283:11)
+    at moduleResolve (node:internal/modules/esm/resolve:952:10)
+    at defaultResolve (node:internal/modules/esm/resolve:1188:11)
+    at ModuleLoader.defaultResolve (node:internal/modules/esm/loader:708:12)
+    at #cachedDefaultResolve (node:internal/modules/esm/loader:657:25)
+    at ModuleLoader.resolve (node:internal/modules/esm/loader:640:38)
+    at ModuleLoader.getModuleJobForImport (node:internal/modules/esm/loader:264:38)
+    at ModuleLoader.import (node:internal/modules/esm/loader:605:34)
+    at defaultImportModuleDynamicallyForModule (node:internal/modules/esm/utils:221:31)
+    at importModuleDynamicallyCallback (node:internal/modules/esm/utils:260:12) {
+  code: 'ERR_MODULE_NOT_FOUND',
+  url: 'file:///C:/Users/Spinzy%20Diagnostics/Desktop/ai-tutor/dist/lib/env'
+}
+[worker] fatal startup error Error [ERR_MODULE_NOT_FOUND]: Cannot find module 'C:\Users\Spinzy Diagnostics\Desktop\ai-tutor\dist\lib\env' imported from C:\Users\Spinzy Diagnostics\Desktop\ai-tutor\dist\worker\entry.js
+    at finalizeResolution (node:internal/modules/esm/resolve:283:11)
+    at moduleResolve (node:internal/modules/esm/resolve:952:10)
+    at defaultResolve (node:internal/modules/esm/resolve:1188:11)
+    at ModuleLoader.defaultResolve (node:internal/modules/esm/loader:708:12)
+    at #cachedDefaultResolve (node:internal/modules/esm/loader:657:25)
+    at ModuleLoader.resolve (node:internal/modules/esm/loader:640:38)
+    at ModuleLoader.getModuleJobForImport (node:internal/modules/esm/loader:264:38)
+    at ModuleLoader.import (node:internal/modules/esm/loader:605:34)
+    at defaultImportModuleDynamicallyForModule (node:internal/modules/esm/utils:221:31)
+    at importModuleDynamicallyCallback (node:internal/modules/esm/utils:260:12) {
+  code: 'ERR_MODULE_NOT_FOUND',
+  url: 'file:///C:/Users/Spinzy%20Diagnostics/Desktop/ai-tutor/dist/lib/env'
+}
+[worker] fatal startup error Error [ERR_MODULE_NOT_FOUND]: Cannot find module 'C:\Users\Spinzy Diagnostics\Desktop\ai-tutor\dist\lib\env' imported from C:\Users\Spinzy Diagnostics\Desktop\ai-tutor\dist\worker\entry.js
+    at finalizeResolution (node:internal/modules/esm/resolve:283:11)
+    at moduleResolve (node:internal/modules/esm/resolve:952:10)
+    at defaultResolve (node:internal/modules/esm/resolve:1188:11)
+    at ModuleLoader.defaultResolve (node:internal/modules/esm/loader:708:12)
+    at #cachedDefaultResolve (node:internal/modules/esm/loader:657:25)
+    at ModuleLoader.resolve (node:internal/modules/esm/loader:640:38)
+    at ModuleLoader.getModuleJobForImport (node:internal/modules/esm/loader:264:38)
+    at ModuleLoader.import (node:internal/modules/esm/loader:605:34)
+    at defaultImportModuleDynamicallyForModule (node:internal/modules/esm/utils:221:31)
+    at importModuleDynamicallyCallback (node:internal/modules/esm/utils:260:12) {
+  code: 'ERR_MODULE_NOT_FOUND',
+  url: 'file:///C:/Users/Spinzy%20Diagnostics/Desktop/ai-tutor/dist/lib/env'
+}
+[worker] fatal startup error Error [ERR_MODULE_NOT_FOUND]: Cannot find module 'C:\Users\Spinzy Diagnostics\Desktop\ai-tutor\dist\lib\env' imported from C:\Users\Spinzy Diagnostics\Desktop\ai-tutor\dist\worker\entry.js
+    at finalizeResolution (node:internal/modules/esm/resolve:283:11)
+    at moduleResolve (node:internal/modules/esm/resolve:952:10)
+    at defaultResolve (node:internal/modules/esm/resolve:1188:11)
+    at ModuleLoader.defaultResolve (node:internal/modules/esm/loader:708:12)
+    at #cachedDefaultResolve (node:internal/modules/esm/loader:657:25)
+    at ModuleLoader.resolve (node:internal/modules/esm/loader:640:38)
+    at ModuleLoader.getModuleJobForImport (node:internal/modules/esm/loader:264:38)
+    at ModuleLoader.import (node:internal/modules/esm/loader:605:34)
+    at defaultImportModuleDynamicallyForModule (node:internal/modules/esm/utils:221:31)
+    at importModuleDynamicallyCallback (node:internal/modules/esm/utils:260:12) {
+  code: 'ERR_MODULE_NOT_FOUND',
+  url: 'file:///C:/Users/Spinzy%20Diagnostics/Desktop/ai-tutor/dist/lib/env'
+}
+[worker] fatal startup error Error [ERR_MODULE_NOT_FOUND]: Cannot find module 'C:\Users\Spinzy Diagnostics\Desktop\ai-tutor\dist\lib\env' imported from C:\Users\Spinzy Diagnostics\Desktop\ai-tutor\dist\worker\entry.js
+    at finalizeResolution (node:internal/modules/esm/resolve:283:11)
+    at moduleResolve (node:internal/modules/esm/resolve:952:10)
+    at defaultResolve (node:internal/modules/esm/resolve:1188:11)
+    at ModuleLoader.defaultResolve (node:internal/modules/esm/loader:708:12)
+    at #cachedDefaultResolve (node:internal/modules/esm/loader:657:25)
+    at ModuleLoader.resolve (node:internal/modules/esm/loader:640:38)
+    at ModuleLoader.getModuleJobForImport (node:internal/modules/esm/loader:264:38)
+    at ModuleLoader.import (node:internal/modules/esm/loader:605:34)
+    at defaultImportModuleDynamicallyForModule (node:internal/modules/esm/utils:221:31)
+    at importModuleDynamicallyCallback (node:internal/modules/esm/utils:260:12) {
+  code: 'ERR_MODULE_NOT_FOUND',
+  url: 'file:///C:/Users/Spinzy%20Diagnostics/Desktop/ai-tutor/dist/lib/env'
+}
+[worker] fatal startup error Error [ERR_MODULE_NOT_FOUND]: Cannot find module 'C:\Users\Spinzy Diagnostics\Desktop\ai-tutor\dist\lib\env' imported from C:\Users\Spinzy Diagnostics\Desktop\ai-tutor\dist\worker\entry.js
+    at finalizeResolution (node:internal/modules/esm/resolve:283:11)
+    at moduleResolve (node:internal/modules/esm/resolve:952:10)
+    at defaultResolve (node:internal/modules/esm/resolve:1188:11)
+    at ModuleLoader.defaultResolve (node:internal/modules/esm/loader:708:12)
+    at #cachedDefaultResolve (node:internal/modules/esm/loader:657:25)
+    at ModuleLoader.resolve (node:internal/modules/esm/loader:640:38)
+    at ModuleLoader.getModuleJobForImport (node:internal/modules/esm/loader:264:38)
+    at ModuleLoader.import (node:internal/modules/esm/loader:605:34)
+    at defaultImportModuleDynamicallyForModule (node:internal/modules/esm/utils:221:31)
+    at importModuleDynamicallyCallback (node:internal/modules/esm/utils:260:12) {
+  code: 'ERR_MODULE_NOT_FOUND',
+  url: 'file:///C:/Users/Spinzy%20Diagnostics/Desktop/ai-tutor/dist/lib/env'
+}
+[worker] fatal startup error Error [ERR_MODULE_NOT_FOUND]: Cannot find module 'C:\Users\Spinzy Diagnostics\Desktop\ai-tutor\dist\lib\env' imported from C:\Users\Spinzy Diagnostics\Desktop\ai-tutor\dist\worker\entry.js
+    at finalizeResolution (node:internal/modules/esm/resolve:283:11)
+    at moduleResolve (node:internal/modules/esm/resolve:952:10)
+    at defaultResolve (node:internal/modules/esm/resolve:1188:11)
+    at ModuleLoader.defaultResolve (node:internal/modules/esm/loader:708:12)
+    at #cachedDefaultResolve (node:internal/modules/esm/loader:657:25)
+    at ModuleLoader.resolve (node:internal/modules/esm/loader:640:38)
+    at ModuleLoader.getModuleJobForImport (node:internal/modules/esm/loader:264:38)
+    at ModuleLoader.import (node:internal/modules/esm/loader:605:34)
+    at defaultImportModuleDynamicallyForModule (node:internal/modules/esm/utils:221:31)
+    at importModuleDynamicallyCallback (node:internal/modules/esm/utils:260:12) {
+  code: 'ERR_MODULE_NOT_FOUND',
+  url: 'file:///C:/Users/Spinzy%20Diagnostics/Desktop/ai-tutor/dist/lib/env'
+}
+[worker] fatal startup error Error [ERR_MODULE_NOT_FOUND]: Cannot find module 'C:\Users\Spinzy Diagnostics\Desktop\ai-tutor\dist\lib\env' imported from C:\Users\Spinzy Diagnostics\Desktop\ai-tutor\dist\worker\entry.js
+    at finalizeResolution (node:internal/modules/esm/resolve:283:11)
+    at moduleResolve (node:internal/modules/esm/resolve:952:10)
+    at defaultResolve (node:internal/modules/esm/resolve:1188:11)
+    at ModuleLoader.defaultResolve (node:internal/modules/esm/loader:708:12)
+    at #cachedDefaultResolve (node:internal/modules/esm/loader:657:25)
+    at ModuleLoader.resolve (node:internal/modules/esm/loader:640:38)
+    at ModuleLoader.getModuleJobForImport (node:internal/modules/esm/loader:264:38)
+    at ModuleLoader.import (node:internal/modules/esm/loader:605:34)
+    at defaultImportModuleDynamicallyForModule (node:internal/modules/esm/utils:221:31)
+    at importModuleDynamicallyCallback (node:internal/modules/esm/utils:260:12) {
+  code: 'ERR_MODULE_NOT_FOUND',
+  url: 'file:///C:/Users/Spinzy%20Diagnostics/Desktop/ai-tutor/dist/lib/env'
+}
+[worker] fatal startup error Error [ERR_MODULE_NOT_FOUND]: Cannot find module 'C:\Users\Spinzy Diagnostics\Desktop\ai-tutor\dist\lib\env' imported from C:\Users\Spinzy Diagnostics\Desktop\ai-tutor\dist\worker\entry.js
+    at finalizeResolution (node:internal/modules/esm/resolve:283:11)
+    at moduleResolve (node:internal/modules/esm/resolve:952:10)
+    at defaultResolve (node:internal/modules/esm/resolve:1188:11)
+    at ModuleLoader.defaultResolve (node:internal/modules/esm/loader:708:12)
+    at #cachedDefaultResolve (node:internal/modules/esm/loader:657:25)
+    at ModuleLoader.resolve (node:internal/modules/esm/loader:640:38)
+    at ModuleLoader.getModuleJobForImport (node:internal/modules/esm/loader:264:38)
+    at ModuleLoader.import (node:internal/modules/esm/loader:605:34)
+    at defaultImportModuleDynamicallyForModule (node:internal/modules/esm/utils:221:31)
+    at importModuleDynamicallyCallback (node:internal/modules/esm/utils:260:12) {
+  code: 'ERR_MODULE_NOT_FOUND',
+  url: 'file:///C:/Users/Spinzy%20Diagnostics/Desktop/ai-tutor/dist/lib/env'
+}
+[worker] fatal startup error Error [ERR_MODULE_NOT_FOUND]: Cannot find module 'C:\Users\Spinzy Diagnostics\Desktop\ai-tutor\dist\lib\env' imported from C:\Users\Spinzy Diagnostics\Desktop\ai-tutor\dist\worker\entry.js
+    at finalizeResolution (node:internal/modules/esm/resolve:283:11)
+    at moduleResolve (node:internal/modules/esm/resolve:952:10)
+    at defaultResolve (node:internal/modules/esm/resolve:1188:11)
+    at ModuleLoader.defaultResolve (node:internal/modules/esm/loader:708:12)
+    at #cachedDefaultResolve (node:internal/modules/esm/loader:657:25)
+    at ModuleLoader.resolve (node:internal/modules/esm/loader:640:38)
+    at ModuleLoader.getModuleJobForImport (node:internal/modules/esm/loader:264:38)
+    at ModuleLoader.import (node:internal/modules/esm/loader:605:34)
+    at defaultImportModuleDynamicallyForModule (node:internal/modules/esm/utils:221:31)
+    at importModuleDynamicallyCallback (node:internal/modules/esm/utils:260:12) {
+  code: 'ERR_MODULE_NOT_FOUND',
+  url: 'file:///C:/Users/Spinzy%20Diagnostics/Desktop/ai-tutor/dist/lib/env'
+}
+[worker] fatal startup error Error [ERR_MODULE_NOT_FOUND]: Cannot find module 'C:\Users\Spinzy Diagnostics\Desktop\ai-tutor\dist\lib\env' imported from C:\Users\Spinzy Diagnostics\Desktop\ai-tutor\dist\worker\entry.js
+    at finalizeResolution (node:internal/modules/esm/resolve:283:11)
+    at moduleResolve (node:internal/modules/esm/resolve:952:10)
+    at defaultResolve (node:internal/modules/esm/resolve:1188:11)
+    at ModuleLoader.defaultResolve (node:internal/modules/esm/loader:708:12)
+    at #cachedDefaultResolve (node:internal/modules/esm/loader:657:25)
+    at ModuleLoader.resolve (node:internal/modules/esm/loader:640:38)
+    at ModuleLoader.getModuleJobForImport (node:internal/modules/esm/loader:264:38)
+    at ModuleLoader.import (node:internal/modules/esm/loader:605:34)
+    at defaultImportModuleDynamicallyForModule (node:internal/modules/esm/utils:221:31)
+    at importModuleDynamicallyCallback (node:internal/modules/esm/utils:260:12) {
+  code: 'ERR_MODULE_NOT_FOUND',
+  url: 'file:///C:/Users/Spinzy%20Diagnostics/Desktop/ai-tutor/dist/lib/env'
+}
+[worker] fatal startup error Error [ERR_MODULE_NOT_FOUND]: Cannot find module 'C:\Users\Spinzy Diagnostics\Desktop\ai-tutor\dist\lib\env' imported from C:\Users\Spinzy Diagnostics\Desktop\ai-tutor\dist\worker\entry.js
+    at finalizeResolution (node:internal/modules/esm/resolve:283:11)
+    at moduleResolve (node:internal/modules/esm/resolve:952:10)
+    at defaultResolve (node:internal/modules/esm/resolve:1188:11)
+    at ModuleLoader.defaultResolve (node:internal/modules/esm/loader:708:12)
+    at #cachedDefaultResolve (node:internal/modules/esm/loader:657:25)
+    at ModuleLoader.resolve (node:internal/modules/esm/loader:640:38)
+    at ModuleLoader.getModuleJobForImport (node:internal/modules/esm/loader:264:38)
+    at ModuleLoader.import (node:internal/modules/esm/loader:605:34)
+    at defaultImportModuleDynamicallyForModule (node:internal/modules/esm/utils:221:31)
+    at importModuleDynamicallyCallback (node:internal/modules/esm/utils:260:12) {
+  code: 'ERR_MODULE_NOT_FOUND',
+  url: 'file:///C:/Users/Spinzy%20Diagnostics/Desktop/ai-tutor/dist/lib/env'
+}
+[worker] fatal startup error Error [ERR_MODULE_NOT_FOUND]: Cannot find module 'C:\Users\Spinzy Diagnostics\Desktop\ai-tutor\dist\lib\env' imported from C:\Users\Spinzy Diagnostics\Desktop\ai-tutor\dist\worker\entry.js
+    at finalizeResolution (node:internal/modules/esm/resolve:283:11)
+    at moduleResolve (node:internal/modules/esm/resolve:952:10)
+    at defaultResolve (node:internal/modules/esm/resolve:1188:11)
+    at ModuleLoader.defaultResolve (node:internal/modules/esm/loader:708:12)
+    at #cachedDefaultResolve (node:internal/modules/esm/loader:657:25)
+    at ModuleLoader.resolve (node:internal/modules/esm/loader:640:38)
+    at ModuleLoader.getModuleJobForImport (node:internal/modules/esm/loader:264:38)
+    at ModuleLoader.import (node:internal/modules/esm/loader:605:34)
+    at defaultImportModuleDynamicallyForModule (node:internal/modules/esm/utils:221:31)
+    at importModuleDynamicallyCallback (node:internal/modules/esm/utils:260:12) {
+  code: 'ERR_MODULE_NOT_FOUND',
+  url: 'file:///C:/Users/Spinzy%20Diagnostics/Desktop/ai-tutor/dist/lib/env'
+}
+[worker] fatal startup error Error [ERR_MODULE_NOT_FOUND]: Cannot find module 'C:\Users\Spinzy Diagnostics\Desktop\ai-tutor\dist\lib\env' imported from C:\Users\Spinzy Diagnostics\Desktop\ai-tutor\dist\worker\entry.js
+    at finalizeResolution (node:internal/modules/esm/resolve:283:11)
+    at moduleResolve (node:internal/modules/esm/resolve:952:10)
+    at defaultResolve (node:internal/modules/esm/resolve:1188:11)
+    at ModuleLoader.defaultResolve (node:internal/modules/esm/loader:708:12)
+    at #cachedDefaultResolve (node:internal/modules/esm/loader:657:25)
+    at ModuleLoader.resolve (node:internal/modules/esm/loader:640:38)
+    at ModuleLoader.getModuleJobForImport (node:internal/modules/esm/loader:264:38)
+    at ModuleLoader.import (node:internal/modules/esm/loader:605:34)
+    at defaultImportModuleDynamicallyForModule (node:internal/modules/esm/utils:221:31)
+    at importModuleDynamicallyCallback (node:internal/modules/esm/utils:260:12) {
+  code: 'ERR_MODULE_NOT_FOUND',
+  url: 'file:///C:/Users/Spinzy%20Diagnostics/Desktop/ai-tutor/dist/lib/env'
+}
+[worker] fatal startup error Error [ERR_MODULE_NOT_FOUND]: Cannot find module 'C:\Users\Spinzy Diagnostics\Desktop\ai-tutor\dist\lib\env' imported from C:\Users\Spinzy Diagnostics\Desktop\ai-tutor\dist\worker\entry.js
+    at finalizeResolution (node:internal/modules/esm/resolve:283:11)
+    at moduleResolve (node:internal/modules/esm/resolve:952:10)
+    at defaultResolve (node:internal/modules/esm/resolve:1188:11)
+    at ModuleLoader.defaultResolve (node:internal/modules/esm/loader:708:12)
+    at #cachedDefaultResolve (node:internal/modules/esm/loader:657:25)
+    at ModuleLoader.resolve (node:internal/modules/esm/loader:640:38)
+    at ModuleLoader.getModuleJobForImport (node:internal/modules/esm/loader:264:38)
+    at ModuleLoader.import (node:internal/modules/esm/loader:605:34)
+    at defaultImportModuleDynamicallyForModule (node:internal/modules/esm/utils:221:31)
+    at importModuleDynamicallyCallback (node:internal/modules/esm/utils:260:12) {
+  code: 'ERR_MODULE_NOT_FOUND',
+  url: 'file:///C:/Users/Spinzy%20Diagnostics/Desktop/ai-tutor/dist/lib/env'
+}
+[worker] fatal startup error Error [ERR_MODULE_NOT_FOUND]: Cannot find module 'C:\Users\Spinzy Diagnostics\Desktop\ai-tutor\dist\lib\env' imported from C:\Users\Spinzy Diagnostics\Desktop\ai-tutor\dist\worker\entry.js
+    at finalizeResolution (node:internal/modules/esm/resolve:283:11)
+    at moduleResolve (node:internal/modules/esm/resolve:952:10)
+    at defaultResolve (node:internal/modules/esm/resolve:1188:11)
+    at ModuleLoader.defaultResolve (node:internal/modules/esm/loader:708:12)
+    at #cachedDefaultResolve (node:internal/modules/esm/loader:657:25)
+    at ModuleLoader.resolve (node:internal/modules/esm/loader:640:38)
+    at ModuleLoader.getModuleJobForImport (node:internal/modules/esm/loader:264:38)
+    at ModuleLoader.import (node:internal/modules/esm/loader:605:34)
+    at defaultImportModuleDynamicallyForModule (node:internal/modules/esm/utils:221:31)
+    at importModuleDynamicallyCallback (node:internal/modules/esm/utils:260:12) {
+  code: 'ERR_MODULE_NOT_FOUND',
+  url: 'file:///C:/Users/Spinzy%20Diagnostics/Desktop/ai-tutor/dist/lib/env'
+}
+[worker] fatal startup error Error [ERR_MODULE_NOT_FOUND]: Cannot find module 'C:\Users\Spinzy Diagnostics\Desktop\ai-tutor\dist\lib\env' imported from C:\Users\Spinzy Diagnostics\Desktop\ai-tutor\dist\worker\entry.js
+    at finalizeResolution (node:internal/modules/esm/resolve:283:11)
+    at moduleResolve (node:internal/modules/esm/resolve:952:10)
+    at defaultResolve (node:internal/modules/esm/resolve:1188:11)
+    at ModuleLoader.defaultResolve (node:internal/modules/esm/loader:708:12)
+    at #cachedDefaultResolve (node:internal/modules/esm/loader:657:25)
+    at ModuleLoader.resolve (node:internal/modules/esm/loader:640:38)
+    at ModuleLoader.getModuleJobForImport (node:internal/modules/esm/loader:264:38)
+    at ModuleLoader.import (node:internal/modules/esm/loader:605:34)
+    at defaultImportModuleDynamicallyForModule (node:internal/modules/esm/utils:221:31)
+    at importModuleDynamicallyCallback (node:internal/modules/esm/utils:260:12) {
+  code: 'ERR_MODULE_NOT_FOUND',
+  url: 'file:///C:/Users/Spinzy%20Diagnostics/Desktop/ai-tutor/dist/lib/env'
+}
+[worker] fatal startup error Error [ERR_MODULE_NOT_FOUND]: Cannot find module 'C:\Users\Spinzy Diagnostics\Desktop\ai-tutor\dist\lib\env' imported from C:\Users\Spinzy Diagnostics\Desktop\ai-tutor\dist\worker\entry.js
+    at finalizeResolution (node:internal/modules/esm/resolve:283:11)
+    at moduleResolve (node:internal/modules/esm/resolve:952:10)
+    at defaultResolve (node:internal/modules/esm/resolve:1188:11)
+    at ModuleLoader.defaultResolve (node:internal/modules/esm/loader:708:12)
+    at #cachedDefaultResolve (node:internal/modules/esm/loader:657:25)
+    at ModuleLoader.resolve (node:internal/modules/esm/loader:640:38)
+    at ModuleLoader.getModuleJobForImport (node:internal/modules/esm/loader:264:38)
+    at ModuleLoader.import (node:internal/modules/esm/loader:605:34)
+    at defaultImportModuleDynamicallyForModule (node:internal/modules/esm/utils:221:31)
+    at importModuleDynamicallyCallback (node:internal/modules/esm/utils:260:12) {
+  code: 'ERR_MODULE_NOT_FOUND',
+  url: 'file:///C:/Users/Spinzy%20Diagnostics/Desktop/ai-tutor/dist/lib/env'
+}
+[worker] fatal startup error Error [ERR_MODULE_NOT_FOUND]: Cannot find module 'C:\Users\Spinzy Diagnostics\Desktop\ai-tutor\dist\lib\env' imported from C:\Users\Spinzy Diagnostics\Desktop\ai-tutor\dist\worker\entry.js
+    at finalizeResolution (node:internal/modules/esm/resolve:283:11)
+    at moduleResolve (node:internal/modules/esm/resolve:952:10)
+    at defaultResolve (node:internal/modules/esm/resolve:1188:11)
+    at ModuleLoader.defaultResolve (node:internal/modules/esm/loader:708:12)
+    at #cachedDefaultResolve (node:internal/modules/esm/loader:657:25)
+    at ModuleLoader.resolve (node:internal/modules/esm/loader:640:38)
+    at ModuleLoader.getModuleJobForImport (node:internal/modules/esm/loader:264:38)
+    at ModuleLoader.import (node:internal/modules/esm/loader:605:34)
+    at defaultImportModuleDynamicallyForModule (node:internal/modules/esm/utils:221:31)
+    at importModuleDynamicallyCallback (node:internal/modules/esm/utils:260:12) {
+  code: 'ERR_MODULE_NOT_FOUND',
+  url: 'file:///C:/Users/Spinzy%20Diagnostics/Desktop/ai-tutor/dist/lib/env'
+}
+[worker] fatal startup error Error [ERR_MODULE_NOT_FOUND]: Cannot find module 'C:\Users\Spinzy Diagnostics\Desktop\ai-tutor\dist\lib\env' imported from C:\Users\Spinzy Diagnostics\Desktop\ai-tutor\dist\worker\entry.js
+    at finalizeResolution (node:internal/modules/esm/resolve:283:11)
+    at moduleResolve (node:internal/modules/esm/resolve:952:10)
+    at defaultResolve (node:internal/modules/esm/resolve:1188:11)
+    at ModuleLoader.defaultResolve (node:internal/modules/esm/loader:708:12)
+    at #cachedDefaultResolve (node:internal/modules/esm/loader:657:25)
+    at ModuleLoader.resolve (node:internal/modules/esm/loader:640:38)
+    at ModuleLoader.getModuleJobForImport (node:internal/modules/esm/loader:264:38)
+    at ModuleLoader.import (node:internal/modules/esm/loader:605:34)
+    at defaultImportModuleDynamicallyForModule (node:internal/modules/esm/utils:221:31)
+    at importModuleDynamicallyCallback (node:internal/modules/esm/utils:260:12) {
+  code: 'ERR_MODULE_NOT_FOUND',
+  url: 'file:///C:/Users/Spinzy%20Diagnostics/Desktop/ai-tutor/dist/lib/env'
+}
+[worker] fatal startup error Error [ERR_MODULE_NOT_FOUND]: Cannot find module 'C:\Users\Spinzy Diagnostics\Desktop\ai-tutor\dist\lib\env' imported from C:\Users\Spinzy Diagnostics\Desktop\ai-tutor\dist\worker\entry.js
+    at finalizeResolution (node:internal/modules/esm/resolve:283:11)
+    at moduleResolve (node:internal/modules/esm/resolve:952:10)
+    at defaultResolve (node:internal/modules/esm/resolve:1188:11)
+    at ModuleLoader.defaultResolve (node:internal/modules/esm/loader:708:12)
+    at #cachedDefaultResolve (node:internal/modules/esm/loader:657:25)
+    at ModuleLoader.resolve (node:internal/modules/esm/loader:640:38)
+    at ModuleLoader.getModuleJobForImport (node:internal/modules/esm/loader:264:38)
+    at ModuleLoader.import (node:internal/modules/esm/loader:605:34)
+    at defaultImportModuleDynamicallyForModule (node:internal/modules/esm/utils:221:31)
+    at importModuleDynamicallyCallback (node:internal/modules/esm/utils:260:12) {
+  code: 'ERR_MODULE_NOT_FOUND',
+  url: 'file:///C:/Users/Spinzy%20Diagnostics/Desktop/ai-tutor/dist/lib/env'
+}
+[worker] fatal startup error Error [ERR_MODULE_NOT_FOUND]: Cannot find module 'C:\Users\Spinzy Diagnostics\Desktop\ai-tutor\dist\lib\env' imported from C:\Users\Spinzy Diagnostics\Desktop\ai-tutor\dist\worker\entry.js
+    at finalizeResolution (node:internal/modules/esm/resolve:283:11)
+    at moduleResolve (node:internal/modules/esm/resolve:952:10)
+    at defaultResolve (node:internal/modules/esm/resolve:1188:11)
+    at ModuleLoader.defaultResolve (node:internal/modules/esm/loader:708:12)
+    at #cachedDefaultResolve (node:internal/modules/esm/loader:657:25)
+    at ModuleLoader.resolve (node:internal/modules/esm/loader:640:38)
+    at ModuleLoader.getModuleJobForImport (node:internal/modules/esm/loader:264:38)
+    at ModuleLoader.import (node:internal/modules/esm/loader:605:34)
+    at defaultImportModuleDynamicallyForModule (node:internal/modules/esm/utils:221:31)
+    at importModuleDynamicallyCallback (node:internal/modules/esm/utils:260:12) {
+  code: 'ERR_MODULE_NOT_FOUND',
+  url: 'file:///C:/Users/Spinzy%20Diagnostics/Desktop/ai-tutor/dist/lib/env'
+}
+[worker] fatal startup error Error [ERR_MODULE_NOT_FOUND]: Cannot find module 'C:\Users\Spinzy Diagnostics\Desktop\ai-tutor\dist\lib\env' imported from C:\Users\Spinzy Diagnostics\Desktop\ai-tutor\dist\worker\entry.js
+    at finalizeResolution (node:internal/modules/esm/resolve:283:11)
+    at moduleResolve (node:internal/modules/esm/resolve:952:10)
+    at defaultResolve (node:internal/modules/esm/resolve:1188:11)
+    at ModuleLoader.defaultResolve (node:internal/modules/esm/loader:708:12)
+    at #cachedDefaultResolve (node:internal/modules/esm/loader:657:25)
+    at ModuleLoader.resolve (node:internal/modules/esm/loader:640:38)
+    at ModuleLoader.getModuleJobForImport (node:internal/modules/esm/loader:264:38)
+    at ModuleLoader.import (node:internal/modules/esm/loader:605:34)
+    at defaultImportModuleDynamicallyForModule (node:internal/modules/esm/utils:221:31)
+    at importModuleDynamicallyCallback (node:internal/modules/esm/utils:260:12) {
+  code: 'ERR_MODULE_NOT_FOUND',
+  url: 'file:///C:/Users/Spinzy%20Diagnostics/Desktop/ai-tutor/dist/lib/env'
+}
+[worker] fatal startup error Error [ERR_MODULE_NOT_FOUND]: Cannot find module 'C:\Users\Spinzy Diagnostics\Desktop\ai-tutor\dist\lib\env' imported from C:\Users\Spinzy Diagnostics\Desktop\ai-tutor\dist\worker\entry.js
+    at finalizeResolution (node:internal/modules/esm/resolve:283:11)
+    at moduleResolve (node:internal/modules/esm/resolve:952:10)
+    at defaultResolve (node:internal/modules/esm/resolve:1188:11)
+    at ModuleLoader.defaultResolve (node:internal/modules/esm/loader:708:12)
+    at #cachedDefaultResolve (node:internal/modules/esm/loader:657:25)
+    at ModuleLoader.resolve (node:internal/modules/esm/loader:640:38)
+    at ModuleLoader.getModuleJobForImport (node:internal/modules/esm/loader:264:38)
+    at ModuleLoader.import (node:internal/modules/esm/loader:605:34)
+    at defaultImportModuleDynamicallyForModule (node:internal/modules/esm/utils:221:31)
+    at importModuleDynamicallyCallback (node:internal/modules/esm/utils:260:12) {
+  code: 'ERR_MODULE_NOT_FOUND',
+  url: 'file:///C:/Users/Spinzy%20Diagnostics/Desktop/ai-tutor/dist/lib/env'
+}
+[worker] fatal startup error Error [ERR_MODULE_NOT_FOUND]: Cannot find module 'C:\Users\Spinzy Diagnostics\Desktop\ai-tutor\dist\lib\env' imported from C:\Users\Spinzy Diagnostics\Desktop\ai-tutor\dist\worker\entry.js
+    at finalizeResolution (node:internal/modules/esm/resolve:283:11)
+    at moduleResolve (node:internal/modules/esm/resolve:952:10)
+    at defaultResolve (node:internal/modules/esm/resolve:1188:11)
+    at ModuleLoader.defaultResolve (node:internal/modules/esm/loader:708:12)
+    at #cachedDefaultResolve (node:internal/modules/esm/loader:657:25)
+    at ModuleLoader.resolve (node:internal/modules/esm/loader:640:38)
+    at ModuleLoader.getModuleJobForImport (node:internal/modules/esm/loader:264:38)
+    at ModuleLoader.import (node:internal/modules/esm/loader:605:34)
+    at defaultImportModuleDynamicallyForModule (node:internal/modules/esm/utils:221:31)
+    at importModuleDynamicallyCallback (node:internal/modules/esm/utils:260:12) {
+  code: 'ERR_MODULE_NOT_FOUND',
+  url: 'file:///C:/Users/Spinzy%20Diagnostics/Desktop/ai-tutor/dist/lib/env'
+}
+[worker] fatal startup error Error [ERR_MODULE_NOT_FOUND]: Cannot find module 'C:\Users\Spinzy Diagnostics\Desktop\ai-tutor\dist\lib\env' imported from C:\Users\Spinzy Diagnostics\Desktop\ai-tutor\dist\worker\entry.js
+    at finalizeResolution (node:internal/modules/esm/resolve:283:11)
+    at moduleResolve (node:internal/modules/esm/resolve:952:10)
+    at defaultResolve (node:internal/modules/esm/resolve:1188:11)
+    at ModuleLoader.defaultResolve (node:internal/modules/esm/loader:708:12)
+    at #cachedDefaultResolve (node:internal/modules/esm/loader:657:25)
+    at ModuleLoader.resolve (node:internal/modules/esm/loader:640:38)
+    at ModuleLoader.getModuleJobForImport (node:internal/modules/esm/loader:264:38)
+    at ModuleLoader.import (node:internal/modules/esm/loader:605:34)
+    at defaultImportModuleDynamicallyForModule (node:internal/modules/esm/utils:221:31)
+    at importModuleDynamicallyCallback (node:internal/modules/esm/utils:260:12) {
+  code: 'ERR_MODULE_NOT_FOUND',
+  url: 'file:///C:/Users/Spinzy%20Diagnostics/Desktop/ai-tutor/dist/lib/env'
+}
+[worker] fatal startup error Error [ERR_MODULE_NOT_FOUND]: Cannot find module 'C:\Users\Spinzy Diagnostics\Desktop\ai-tutor\dist\lib\env' imported from C:\Users\Spinzy Diagnostics\Desktop\ai-tutor\dist\worker\entry.js
+    at finalizeResolution (node:internal/modules/esm/resolve:283:11)
+    at moduleResolve (node:internal/modules/esm/resolve:952:10)
+    at defaultResolve (node:internal/modules/esm/resolve:1188:11)
+    at ModuleLoader.defaultResolve (node:internal/modules/esm/loader:708:12)
+    at #cachedDefaultResolve (node:internal/modules/esm/loader:657:25)
+    at ModuleLoader.resolve (node:internal/modules/esm/loader:640:38)
+    at ModuleLoader.getModuleJobForImport (node:internal/modules/esm/loader:264:38)
+    at ModuleLoader.import (node:internal/modules/esm/loader:605:34)
+    at defaultImportModuleDynamicallyForModule (node:internal/modules/esm/utils:221:31)
+    at importModuleDynamicallyCallback (node:internal/modules/esm/utils:260:12) {
+  code: 'ERR_MODULE_NOT_FOUND',
+  url: 'file:///C:/Users/Spinzy%20Diagnostics/Desktop/ai-tutor/dist/lib/env'
+}
+[worker] fatal startup error Error [ERR_MODULE_NOT_FOUND]: Cannot find module 'C:\Users\Spinzy Diagnostics\Desktop\ai-tutor\dist\lib\env' imported from C:\Users\Spinzy Diagnostics\Desktop\ai-tutor\dist\worker\entry.js
+    at finalizeResolution (node:internal/modules/esm/resolve:283:11)
+    at moduleResolve (node:internal/modules/esm/resolve:952:10)
+    at defaultResolve (node:internal/modules/esm/resolve:1188:11)
+    at ModuleLoader.defaultResolve (node:internal/modules/esm/loader:708:12)
+    at #cachedDefaultResolve (node:internal/modules/esm/loader:657:25)
+    at ModuleLoader.resolve (node:internal/modules/esm/loader:640:38)
+    at ModuleLoader.getModuleJobForImport (node:internal/modules/esm/loader:264:38)
+    at ModuleLoader.import (node:internal/modules/esm/loader:605:34)
+    at defaultImportModuleDynamicallyForModule (node:internal/modules/esm/utils:221:31)
+    at importModuleDynamicallyCallback (node:internal/modules/esm/utils:260:12) {
+  code: 'ERR_MODULE_NOT_FOUND',
+  url: 'file:///C:/Users/Spinzy%20Diagnostics/Desktop/ai-tutor/dist/lib/env'
+}
+[worker] fatal startup error Error [ERR_MODULE_NOT_FOUND]: Cannot find module 'C:\Users\Spinzy Diagnostics\Desktop\ai-tutor\dist\lib\env' imported from C:\Users\Spinzy Diagnostics\Desktop\ai-tutor\dist\worker\entry.js
+    at finalizeResolution (node:internal/modules/esm/resolve:283:11)
+    at moduleResolve (node:internal/modules/esm/resolve:952:10)
+    at defaultResolve (node:internal/modules/esm/resolve:1188:11)
+    at ModuleLoader.defaultResolve (node:internal/modules/esm/loader:708:12)
+    at #cachedDefaultResolve (node:internal/modules/esm/loader:657:25)
+    at ModuleLoader.resolve (node:internal/modules/esm/loader:640:38)
+    at ModuleLoader.getModuleJobForImport (node:internal/modules/esm/loader:264:38)
+    at ModuleLoader.import (node:internal/modules/esm/loader:605:34)
+    at defaultImportModuleDynamicallyForModule (node:internal/modules/esm/utils:221:31)
+    at importModuleDynamicallyCallback (node:internal/modules/esm/utils:260:12) {
+  code: 'ERR_MODULE_NOT_FOUND',
+  url: 'file:///C:/Users/Spinzy%20Diagnostics/Desktop/ai-tutor/dist/lib/env'
+}
+[worker] fatal startup error Error [ERR_MODULE_NOT_FOUND]: Cannot find module 'C:\Users\Spinzy Diagnostics\Desktop\ai-tutor\dist\lib\env' imported from C:\Users\Spinzy Diagnostics\Desktop\ai-tutor\dist\worker\entry.js
+    at finalizeResolution (node:internal/modules/esm/resolve:283:11)
+    at moduleResolve (node:internal/modules/esm/resolve:952:10)
+    at defaultResolve (node:internal/modules/esm/resolve:1188:11)
+    at ModuleLoader.defaultResolve (node:internal/modules/esm/loader:708:12)
+    at #cachedDefaultResolve (node:internal/modules/esm/loader:657:25)
+    at ModuleLoader.resolve (node:internal/modules/esm/loader:640:38)
+    at ModuleLoader.getModuleJobForImport (node:internal/modules/esm/loader:264:38)
+    at ModuleLoader.import (node:internal/modules/esm/loader:605:34)
+    at defaultImportModuleDynamicallyForModule (node:internal/modules/esm/utils:221:31)
+    at importModuleDynamicallyCallback (node:internal/modules/esm/utils:260:12) {
+  code: 'ERR_MODULE_NOT_FOUND',
+  url: 'file:///C:/Users/Spinzy%20Diagnostics/Desktop/ai-tutor/dist/lib/env'
+}
