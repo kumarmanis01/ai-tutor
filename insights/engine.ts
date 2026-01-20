@@ -10,3 +10,8 @@ export function generateSuggestionsForSignal(signal: AnalyticsSignal): ContentSu
 }
 
 export default generateSuggestionsForSignal
+
+// Ensure CommonJS consumers can require() this module and get the function
+// (helps tests that import the default via different transpilation settings)
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+;(module as any).exports = Object.assign(generateSuggestionsForSignal, { generateSuggestionsForSignal })
