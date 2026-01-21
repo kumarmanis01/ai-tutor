@@ -1,6 +1,18 @@
 #!/usr/bin/env sh
-# Wait for Postgres to become available and run Prisma migrations
-# Usage: ./scripts/run-migrate.sh
+<!--
+FILE OBJECTIVE:
+- Wait for Postgres to become available and run Prisma migrations during container startup.
+
+LINKED UNIT TEST:
+- tests/unit/scripts/run-migrate.spec.ts
+
+COPILOT INSTRUCTIONS FOLLOWED:
+- .github/copilot-instructions.md
+- /docs/COPILOT_GUARDRAILS.md
+
+EDIT LOG:
+- 2026-01-21T00:00:00Z | copilot-agent | created migration helper script with wait-and-deploy behaviour
+-->
 
 set -e
 

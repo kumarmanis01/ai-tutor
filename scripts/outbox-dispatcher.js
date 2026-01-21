@@ -1,4 +1,19 @@
 #!/usr/bin/env node
+/*
+FILE OBJECTIVE:
+- Poll the `Outbox` table and enqueue unsent messages to BullMQ `content-hydration` queue.
+
+LINKED UNIT TEST:
+- tests/unit/scripts/outbox-dispatcher.spec.ts
+
+COPILOT INSTRUCTIONS FOLLOWED:
+- .github/copilot-instructions.md
+- /docs/COPILOT_GUARDRAILS.md
+
+EDIT LOG:
+- 2026-01-21T00:00:00Z | copilot-agent | added header and documentation
+*/
+
 import { PrismaClient } from '@prisma/client'
 import { Queue } from 'bullmq'
 

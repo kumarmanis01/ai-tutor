@@ -1,3 +1,19 @@
+/*
+FILE OBJECTIVE:
+- Provide lightweight TypeScript shims for optional or generated modules so the
+  project can compile during image builds when those modules are not present.
+
+LINKED UNIT TEST:
+- tests/unit/docs/shims.spec.ts
+
+COPILOT INSTRUCTIONS FOLLOWED:
+- .github/copilot-instructions.md
+- /docs/COPILOT_GUARDRAILS.md
+
+EDIT LOG:
+- 2026-01-21T00:00:00Z | copilot-agent | created shims for @prisma/client, express, and k8s client
+*/
+
 // Project-local ambient module shims to avoid build-time failures when optional
 // dependencies or generated clients are not present in the build environment.
 
