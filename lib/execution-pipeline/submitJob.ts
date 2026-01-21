@@ -167,7 +167,10 @@ export async function submitJob(input: SubmitJobInput) {
             logger?.warn?.('submitJob: failed to update ExecutionJob payload with hydrationJobId', { err: e, jobId: job.id })
           }
           try {
-            await prisma.jobExecutionLog.create({ data: { jobId: job.id, event: 'ENQUEUED', prevStatus: 'pending', newStatus: 'pending', meta: { queue: 'content-hydration', workerType: 'SYLLABUS', bullJobId: (res as any).bullJobId ?? null, hydrationJobId: res.jobId } } });
+            const meta: any = { queue: 'content-hydration', workerType: 'SYLLABUS', hydrationJobId: res.jobId }
+            if ((res as any).bullJobId) meta.bullJobId = (res as any).bullJobId
+            if ((res as any).outboxId) meta.outboxId = (res as any).outboxId
+            await prisma.jobExecutionLog.create({ data: { jobId: job.id, event: 'ENQUEUED', prevStatus: 'pending', newStatus: 'pending', meta } });
           } catch (e) {
             logger?.warn?.('submitJob: failed to write JobExecutionLog ENQUEUED', { err: e, jobId: job.id });
           }

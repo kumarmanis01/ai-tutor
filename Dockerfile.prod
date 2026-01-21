@@ -1,0 +1,17 @@
+FROM node:20-alpine
+
+# Install build tools required by some native deps and prisma
+RUN apk add --no-cache python3 make g++ git
+
+WORKDIR /app
+
+# Copy project files
+COPY . /app
+
+# Install production deps and build
+# skip lifecycle scripts during install to avoid dev-only hooks like husky
+RUN npm ci --omit=dev --no-audit --ignore-scripts && npm run build:prod
+
+EXPOSE 3000
+
+CMD ["sh", "-c", "npm run start"]

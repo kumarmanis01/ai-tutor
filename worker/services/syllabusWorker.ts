@@ -206,13 +206,23 @@ JSON Schema:
           }
         }
       }
+
+      // After creating chapters/topics, mark hydration job completed and
+      // attempt to atomically mark any linked ExecutionJob completed.
+      await tx.hydrationJob.update({ where: { id: job.id }, data: { status: JobStatus.Completed, completedAt: new Date(), contentReady: true } })
+
+      // If an ExecutionJob references this hydration id, mark it completed
+      const linked = await tx.executionJob.findFirst({ where: { payload: { path: ['hydrationJobId'], equals: job.id } } })
+      if (linked) {
+        const prevStatus = linked.status ?? null
+        await tx.executionJob.update({ where: { id: linked.id }, data: { status: 'completed', updatedAt: new Date() } })
+        await tx.jobExecutionLog.create({ data: { jobId: linked.id, event: 'COMPLETED', prevStatus, newStatus: 'completed', meta: { hydrationJobId: job.id } } })
+      }
     })
   } catch (err: any) {
     await prisma.hydrationJob.update({ where: { id: job.id }, data: { status: JobStatus.Failed, lastError: err.message } })
     return
   }
-
-  await prisma.hydrationJob.update({ where: { id: job.id }, data: { status: JobStatus.Completed } })
 }
 
 export default handleSyllabusJob

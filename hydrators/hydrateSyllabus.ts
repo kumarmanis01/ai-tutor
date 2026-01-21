@@ -22,7 +22,6 @@ import { normalizeDifficulty, normalizeLanguage } from "@/lib/normalize";
 import { prisma } from "@/lib/prisma"
 import { JobStatus } from '@/lib/ai-engine/types'
 import { isSystemSettingEnabled } from "@/lib/systemSettings"
-import { getContentQueue } from "@/queues/contentQueue"
 import { logger } from "@/lib/logger"
 import { resolveSubjectId } from "@/lib/resolveAcademicIds"
 
@@ -41,6 +40,7 @@ const HYDRATION_DEBUG = process.env.HYDRATION_DEBUG === '1' || process.env.AI_CO
 
 type HydrationResult =
   | { created: true; jobId: string; bullJobId?: string | number }
+  | { created: true; jobId: string; bullJobId?: string | number; outboxId?: string }
   | { created: false; reason: string; jobId?: string }
 
 export async function enqueueSyllabusHydration(input: {
@@ -110,26 +110,16 @@ export async function enqueueSyllabusHydration(input: {
   // the HydrationJob will exist and can be enqueued later via a requeue.
   const job = await prisma.hydrationJob.create({ data: jobData })
   if (HYDRATION_DEBUG) logger.debug('[hydration][DEBUG] created HydrationJob', { jobId: job.id })
-
-  // Enqueue a worker job to process this hydration row.
-  // Job payload is deliberately minimal: worker will re-load the HydrationJob by id.
+  // Create an Outbox row so a separate dispatcher can reliably enqueue the
+  // Bull job only after the DB transaction has committed. This avoids races
+  // where an in-process enqueue occurs before the ExecutionJob payload is
+  // updated or before consumers can observe the HydrationJob row.
   try {
-    if (process.env.REDIS_URL) {
-      const q = getContentQueue();
-      const bullJob = await q.add(`syllabus-${job.id}`, {
-        type: "SYLLABUS",
-        payload: { jobId: job.id }
-      })
-      if (HYDRATION_DEBUG) logger.debug('[hydration][DEBUG] enqueued Bull job for HydrationJob', { jobId: job.id, bullJobId: bullJob?.id })
-      // Return the bullJob id along with the HydrationJob id so callers can audit/link both rows
-      return { created: true, jobId: job.id, bullJobId: bullJob?.id }
-    }
-    // Redis not configured: HydrationJob created but not enqueued yet.
-    if (HYDRATION_DEBUG) logger.info('[hydration][DEBUG] created HydrationJob but not enqueued: redis_not_configured', { jobId: job.id })
-    return { created: true, jobId: job.id }
+    const outbox = await prisma.outbox.create({ data: { queue: 'content-hydration', payload: { type: 'SYLLABUS', payload: { jobId: job.id } }, meta: { hydrationJobId: job.id } } })
+    if (HYDRATION_DEBUG) logger.debug('[hydration][DEBUG] created Outbox row for HydrationJob', { jobId: job.id, outboxId: outbox.id })
+    return { created: true, jobId: job.id, bullJobId: null, outboxId: outbox.id }
   } catch (err) {
-    // If enqueueing fails, keep the DB row but surface failure reason.
-    logger.error("Failed to enqueue syllabus hydration job", { error: err, jobId: job.id });
-    return { created: true, jobId: job.id, bullJobId: undefined }
+    logger.error('Failed to create outbox row for HydrationJob', { error: err, jobId: job.id })
+    return { created: true, jobId: job.id }
   }
 }

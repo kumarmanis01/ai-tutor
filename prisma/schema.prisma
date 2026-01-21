@@ -923,10 +923,25 @@ model HydrationJob {
   status     JobStatus       @default(pending)
   attempts   Int             @default(0)
   lastError  String?
+  completedAt DateTime?
+  contentReady Boolean       @default(false)
   createdAt  DateTime        @default(now())
   updatedAt  DateTime        @updatedAt
 
   @@index([jobType, status])
+}
+
+model Outbox {
+  id        String   @id @default(cuid())
+  queue     String
+  payload   Json
+  meta      Json?
+  sentAt    DateTime?
+  attempts  Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([queue, sentAt])
 }
 
 model StudentContentPreference {

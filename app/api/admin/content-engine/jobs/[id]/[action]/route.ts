@@ -11,6 +11,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { logger } from '@/lib/logger';
 import { submitJob } from '@/lib/execution-pipeline/submitJob';
+import { enqueueSyllabusHydration } from '@/hydrators/hydrateSyllabus';
 import { getServerSessionForHandlers } from '@/lib/session';
 import { JobStatus } from '@/lib/ai-engine/types';
 
@@ -69,6 +70,46 @@ export async function POST(req: Request, { params }: { params: { id: string; act
       await prisma.auditLog.create({ data: { userId: adminId, action: 'retry_job', details: { originalJobId: id, newJobId: result.jobId }, createdAt: new Date() } });
 
       return NextResponse.json({ jobId: result.jobId, existing: result.existing });
+    }
+
+    if (action === 'requeue') {
+      // Re-enqueue the hydrator/worker for this job. Prefer reusing an existing
+      // hydrationJob if present, otherwise create one via the hydrator helper.
+      if (job.status !== JobStatus.Failed) {
+        return NextResponse.json({ error: 'cannot_requeue', message: 'Only failed jobs can be requeued' }, { status: 400 });
+      }
+
+      logger.info('requeue action requested by admin', { originalJobId: id, actor: session?.user?.id ?? null });
+
+      // If the execution job payload already contains a hydrationJobId, create an outbox
+      // for the existing HydrationJob to enqueue it again. Otherwise attempt to create
+      // a new HydrationJob using the job payload (syllabus hydrator helper).
+      try {
+        const payload = (job.payload as any) ?? {};
+        if (payload.hydrationJobId) {
+          // Create an outbox entry for the existing hydration job so dispatcher will enqueue it
+          await prisma.outbox.create({ data: { queue: 'content-hydration', payload: { type: 'SYLLABUS', payload: { jobId: payload.hydrationJobId } }, meta: { hydrationJobId: payload.hydrationJobId } } });
+          await prisma.jobExecutionLog.create({ data: { jobId: id, event: 'REQUEUE', prevStatus: job.status, newStatus: job.status, meta: { hydrationJobId: payload.hydrationJobId, actor: session?.user?.id ?? null } } }).catch(()=>{});
+          await prisma.auditLog.create({ data: { userId: session?.user?.id ?? null, action: 'requeue_job', details: { jobId: id, hydrationJobId: payload.hydrationJobId }, createdAt: new Date() } });
+          return NextResponse.json({ ok: true, requeued: true });
+        }
+
+        // Try to create a new hydration job using hydrator helper
+        const board = payload.boardId ?? payload.board ?? null;
+        const grade = payload.classId ?? payload.grade ?? null;
+        const subject = payload.subject ?? null;
+        const subjectId = payload.subjectId ?? null;
+        const language = payload.language ?? null;
+
+        const res = await enqueueSyllabusHydration({ board, grade, subject, subjectId, language });
+        await prisma.jobExecutionLog.create({ data: { jobId: id, event: 'REQUEUE', prevStatus: job.status, newStatus: job.status, meta: { hydratorResult: res, actor: session?.user?.id ?? null } } }).catch(()=>{});
+        await prisma.auditLog.create({ data: { userId: session?.user?.id ?? null, action: 'requeue_job', details: { jobId: id, hydratorResult: res }, createdAt: new Date() } });
+
+        return NextResponse.json({ ok: true, requeued: true, result: res });
+      } catch (e) {
+        logger?.error?.('admin.requeue: failed', { err: e, jobId: id });
+        return NextResponse.json({ error: 'requeue_failed' }, { status: 500 });
+      }
     }
 
     return NextResponse.json({ error: 'unknown_action' }, { status: 400 });

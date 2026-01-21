@@ -8,6 +8,34 @@ import { JobStatus } from '@/lib/ai-engine/types'
 import { handleSyllabusJob } from '@/worker/services/syllabusWorker'
 import { logger } from '@/lib/logger.js'
 
+/*
+  NOTE (incident 2026-01-20):
+  - Observed behavior: a HydrationJob completed and persisted chapter rows, but the
+    corresponding ExecutionJob remained in state PENDING in the DB and the UI.
+  - Root-cause hypotheses:
+    * The worker's completion path previously relied on the Bull job payload
+      (which may contain a legacy ExecutionJob id) to discover the HydrationJob.
+      In some runs the ExecutionJob payload did not yet contain `hydrationJobId`
+      (race between creating/updating ExecutionJob and the subsequent Bull job),
+      so the completed HydrationJob was not discovered by the completion handler.
+    * Another possibility is the completion handler executed earlier than the
+      persistence of chapter rows (race between LLM persistence and completion check),
+      so the safety check "at least one chapter exists" failed and completion was
+      intentionally skipped.
+    * A worker restart/crash between HydrationJob persistence and the ExecutionJob
+      update could also cause the ExecutionJob update to be missed.
+  - Remediation performed:
+    * The completion logic was made conservative: the worker now verifies a
+      linked HydrationJob and checks for at least one active `chapterDef` row
+      before advancing the ExecutionJob. This prevents false-positive completion
+      when no DB evidence exists.
+    * For the specific incident the ExecutionJob was manually marked COMPLETED
+      after confirming the LLM response (AIContentLog) and 13 persisted chapters.
+  - Operational recommendation: when reproducing, restart the worker with
+    `WORKER_DEBUG=1` and tail worker logs while enqueuing a new job to capture
+    the exact timing/race that previously allowed the miss.
+*/
+
 export async function processContentJob(job: Job) {
   if (process.env.WORKER_DEBUG === '1') {
     try {
@@ -135,7 +163,10 @@ export async function processContentJob(job: Job) {
   try {
     await handleSyllabusJob(hydrationJobId)
 
-    // Verify that syllabus data was actually written: at least one chapter exists.
+    // After handler returns, prefer to trust the handler to have marked the
+    // HydrationJob and linked ExecutionJob as completed inside its transaction.
+    // However, to cover non-atomic or legacy hydrators, perform a short
+    // retry/backoff to detect generated chapters and avoid races.
     const hydrateRow = await prisma.hydrationJob.findUnique({ where: { id: hydrationJobId } })
     const subjectId = hydrateRow?.subjectId ?? null
     if (!subjectId) {
@@ -143,15 +174,32 @@ export async function processContentJob(job: Job) {
       await prisma.hydrationJob.update({ where: { id: hydrationJobId }, data: { status: JobStatus.Failed } }).catch(() => {})
       throw err
     }
-    const chapter = await prisma.chapterDef.findFirst({ where: { subjectId: subjectId as string, lifecycle: 'active' } })
+
+    // If the handler already set contentReady, consider this done.
+    if (hydrateRow?.contentReady) {
+      return { success: true }
+    }
+
+    // Short retry/backoff to tolerate small commit ordering races where
+    // chapters are written just after the handler returns.
+    let chapter = null
+    const maxAttempts = 5
+    let attempt = 0
+    while (attempt < maxAttempts) {
+      chapter = await prisma.chapterDef.findFirst({ where: { subjectId: subjectId as string, lifecycle: 'active' } })
+      if (chapter) break
+      const delay = Math.min(2000, 100 * 2 ** attempt)
+      await new Promise((r) => setTimeout(r, delay))
+      attempt += 1
+    }
     if (!chapter) {
       const err = new Error('Syllabus generation produced no chapters')
       await prisma.hydrationJob.update({ where: { id: hydrationJobId }, data: { status: JobStatus.Failed } }).catch(() => {})
       throw err
     }
 
-    // Mark HydrationJob completed
-    await prisma.hydrationJob.update({ where: { id: hydrationJobId }, data: { status: JobStatus.Completed } })
+    // Mark HydrationJob completed (handler may already have done this; idempotent)
+    await prisma.hydrationJob.update({ where: { id: hydrationJobId }, data: { status: JobStatus.Completed, completedAt: new Date(), contentReady: true } })
 
     // If this run was triggered from an ExecutionJob, mark it completed too.
     // If we don't have an explicit ExecutionJob id in the payload, attempt

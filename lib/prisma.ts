@@ -1,31 +1,37 @@
 
-import { PrismaClient } from '@prisma/client';
+/* eslint-disable @typescript-eslint/no-require-imports */
+/*
+ * Create a Prisma client if available. Use dynamic require so that
+ * production builds which do not have a generated `@prisma/client` at
+ * compile-time (for some CI/VPS workflows) do not hard-fail TS compilation.
+ */
+let PrismaClient: any = undefined
+try {
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const pkg = require('@prisma/client')
+  PrismaClient = pkg && pkg.PrismaClient ? pkg.PrismaClient : pkg?.default?.PrismaClient
+} catch {
+  PrismaClient = undefined
+}
 
 /* eslint-disable no-var */
 declare global {
-  // Avoid multiple instances of PrismaClient in development
-  var prisma: PrismaClient | undefined;
+  // Keep a global reference in dev to avoid multiple clients on HMR
+  // Use `any` to avoid type dependency on `@prisma/client` types.
+  var prisma: any | undefined;
 }
 /* eslint-enable no-var */
 
 export const prisma =
   global.prisma ||
-  new PrismaClient({
-    // Avoid noisy Prisma logs during `test` runs which can trigger Jest warnings
-    log: process.env.NODE_ENV === 'test' ? [] : ['query', 'info', 'warn', 'error'],
-  });
+  (PrismaClient ? new PrismaClient({ log: process.env.NODE_ENV === 'test' ? [] : ['query', 'info', 'warn', 'error'] }) : ({} as any));
 
-// In dev, store Prisma client globally so it's not re-created on hot reload
-if (process.env.NODE_ENV !== 'production') {
+if (process.env.NODE_ENV !== 'production' && PrismaClient) {
   global.prisma = prisma;
 }
 
-// Ensure Prisma disconnects when the process is exiting to avoid "Cannot log after tests are done" warnings
-process.on('exit', () => {
-  try {
-    // best-effort disconnect
-    void prisma.$disconnect()
-  } catch {
-    // swallow
-  }
-});
+if (PrismaClient) {
+  process.on('exit', () => {
+    try { void prisma.$disconnect() } catch {}
+  });
+}
