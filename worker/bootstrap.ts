@@ -11,6 +11,7 @@
  *
  * EDIT LOG:
  * - 2026-01-10T00:00:00Z | github-copilot | add Node types reference to fix "process" type error and update file header
+ * - 2026-01-22T03:05:00Z | copilot | Phase 4: Switch to new worker service handlers (notesWorker, questionsWorker, assembleWorker)
  */
 
 /* eslint-disable no-console */
@@ -30,10 +31,12 @@ import { redisConnection } from "../lib/redis.js";
 import { prisma } from "../lib/prisma.js";
 import { logger } from "../lib/logger.js"
 
-import { hydrateNotes } from "../hydrators/hydrateNotes.js";
-import { hydrateQuestions } from "../hydrators/hydrateQuestions.js";
-import { assembleTest } from "../hydrators/assembleTest.js";
+// Phase 4: Use new worker service handlers (not deprecated hydrators)
 import { handleSyllabusJob } from "./index.js";
+import { handleNotesJob } from "./services/notesWorker.js";
+import { handleQuestionsJob } from "./services/questionsWorker.js";
+import { handleAssembleJob } from "./services/assembleWorker.js";
+import { startOutboxDispatcher, stopOutboxDispatcher } from "./outboxDispatcher.js";
 
 const argv = minimist(process.argv.slice(2));
 
@@ -95,16 +98,20 @@ async function ensureLifecycleRow(providedId?: string) {
 async function processor(job: Job) {
   const { type, payload } = job.data as any;
 
+  // Phase 4: All job types now use worker service handlers that expect jobId
+  // This ensures LLM calls only happen in worker context, not hydrators
   switch (type) {
     case "NOTES":
-      return hydrateNotes(payload.topicId, payload.language);
+      if (!payload?.jobId) {
+        throw new Error("NOTES job missing jobId");
+      }
+      return handleNotesJob(payload.jobId);
 
     case "QUESTIONS":
-      return hydrateQuestions(
-        payload.topicId,
-        payload.difficulty,
-        payload.language
-      );
+      if (!payload?.jobId) {
+        throw new Error("QUESTIONS job missing jobId");
+      }
+      return handleQuestionsJob(payload.jobId);
 
     case "SYLLABUS":
       if (!payload?.jobId) {
@@ -113,7 +120,10 @@ async function processor(job: Job) {
       return handleSyllabusJob(payload.jobId);
 
     case "ASSEMBLE_TEST":
-      return assembleTest(payload.topicId);
+      if (!payload?.jobId) {
+        throw new Error("ASSEMBLE_TEST job missing jobId");
+      }
+      return handleAssembleJob(payload.jobId);
 
     default:
       throw new Error(`UNKNOWN_JOB_TYPE: ${type}`);
@@ -179,6 +189,10 @@ export async function bootstrapWorker() {
     },
   });
 
+  // Start the outbox dispatcher to poll for unsent jobs and enqueue them
+  // This runs alongside the BullMQ worker so jobs flow through the pipeline
+  startOutboxDispatcher();
+
   const heartbeat = setInterval(async () => {
     try {
       await prisma.workerLifecycle.update({
@@ -210,6 +224,7 @@ export async function bootstrapWorker() {
       }
 
       clearInterval(heartbeat);
+      await stopOutboxDispatcher();
       await worker.close();
 
       await prisma.workerLifecycle.update({

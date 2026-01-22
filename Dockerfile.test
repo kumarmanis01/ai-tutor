@@ -1,0 +1,14 @@
+FROM node:20-alpine
+
+WORKDIR /app
+
+# Copy repository into image (clean build context - no host node_modules interference)
+COPY . /app
+
+ENV NODE_ENV=development
+
+# Install dev dependencies needed for running tests
+RUN npm ci --include=dev --no-audit --no-fund
+
+# Default command runs the targeted test file; can be overridden by docker run
+CMD ["sh", "-c", "npx jest tests/flow/hydrationFlow.test.ts -i --runInBand"]

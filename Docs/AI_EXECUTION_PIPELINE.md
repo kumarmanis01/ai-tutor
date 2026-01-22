@@ -117,6 +117,7 @@ This is the only function allowed to create jobs.
 
 **Responsibilities:**
 
+- **Validate jobType/entityType combination** (Phase 1 validation)
 - Validate entity existence (by ID)
 - Enforce idempotency rules
 - Respect global pause flags
@@ -130,6 +131,166 @@ submitJob(input: {
   payload?: Json
 })
 ```
+
+---
+
+## JobType/EntityType Validation Matrix
+
+Each jobType is scoped to specific entityTypes. Invalid combinations are rejected at submission time with a clear error message.
+
+| jobType    | Valid entityTypes | Description |
+|------------|------------------|-------------|
+| `syllabus` | `SUBJECT`        | Creates chapters and topics for a subject (SUBJECT-scoped per Hydration_Rules.md) |
+| `notes`    | `TOPIC`          | Generates notes for a specific topic (TOPIC-scoped per Hydration_Rules.md) |
+| `questions`| `TOPIC`          | Generates questions for a specific topic (TOPIC-scoped per Hydration_Rules.md) |
+| `tests`    | `TOPIC`          | Generates test content for a specific topic |
+| `assemble` | `TOPIC`          | Assembles content for a specific topic |
+
+### Invalid Combination Examples
+
+These combinations will be rejected with descriptive errors:
+
+| jobType    | entityType | Result |
+|------------|-----------|--------|
+| `syllabus` | `CHAPTER` | ❌ Rejected: "jobType 'syllabus' requires entityType [SUBJECT], got 'CHAPTER'" |
+| `syllabus` | `TOPIC`   | ❌ Rejected: syllabus is SUBJECT-scoped only |
+| `notes`    | `SUBJECT` | ❌ Rejected: "jobType 'notes' requires entityType [TOPIC], got 'SUBJECT'" |
+| `notes`    | `CHAPTER` | ❌ Rejected: notes is TOPIC-scoped only |
+| `questions`| `CHAPTER` | ❌ Rejected: questions is TOPIC-scoped only |
+
+### Implementation Reference
+
+The validation matrix is defined in `lib/execution-pipeline/submitJob.ts`:
+
+```ts
+export const VALID_JOB_ENTITY_COMBINATIONS: Record<string, string[]> = {
+  syllabus: ['SUBJECT'],
+  notes: ['TOPIC'],
+  questions: ['TOPIC'],
+  tests: ['TOPIC'],
+  assemble: ['TOPIC'],
+};
+```
+
+Unit tests: `tests/lib/execution-pipeline/submitJob.test.ts`
+
+---
+
+## Job Routing (Phase 2)
+
+After validation, `submitJob()` routes each jobType to the appropriate hydrator enqueue function:
+
+| jobType    | Enqueue Function            | Worker Type    |
+|------------|----------------------------|----------------|
+| `syllabus` | `enqueueSyllabusHydration` | `SYLLABUS`     |
+| `notes`    | `enqueueNotesHydration`    | `NOTES`        |
+| `questions`| `enqueueQuestionsHydration`| `QUESTIONS`    |
+| `tests`    | `enqueueTestsHydration`    | `ASSEMBLE_TEST`|
+| `assemble` | `enqueueAssembleHydration` | `ASSEMBLE_TEST`|
+
+### Enqueue Function Contract
+
+All enqueue functions follow the same pattern:
+
+1. **Check global pause** (`HYDRATION_PAUSED` system setting)
+2. **Resolve entity** (validate topic/subject exists)
+3. **Check idempotency** (existing approved content, or queued job)
+4. **Create HydrationJob** (DB record)
+5. **Create Outbox row** (for reliable queue dispatch)
+
+Implementation: `lib/execution-pipeline/enqueueTopicHydration.ts`
+Unit tests: `tests/lib/execution-pipeline/enqueueTopicHydration.test.ts`
+
+---
+
+## Worker Processing (Phase 3)
+
+The content worker (`worker/processors/contentWorker.ts`) dispatches jobs to type-specific handlers:
+
+```ts
+const WORKER_HANDLERS: Record<string, (jobId: string) => Promise<void>> = {
+  SYLLABUS: handleSyllabusJob,
+  NOTES: handleNotesJob,
+  QUESTIONS: handleQuestionsJob,
+  ASSEMBLE_TEST: handleAssembleJob,
+};
+```
+
+### Worker Service Handlers
+
+| Worker Type    | Handler File                        | Creates                |
+|---------------|-------------------------------------|------------------------|
+| `SYLLABUS`    | `worker/services/syllabusWorker.ts` | ChapterDef, TopicDef   |
+| `NOTES`       | `worker/services/notesWorker.ts`    | TopicNote              |
+| `QUESTIONS`   | `worker/services/questionsWorker.ts`| GeneratedTest          |
+| `ASSEMBLE_TEST`| `worker/services/assembleWorker.ts`| Approves existing tests|
+
+### Handler Contract
+
+Each handler follows the same pattern:
+1. Atomically claim the HydrationJob
+2. Check global pause (`HYDRATION_PAUSED`)
+3. Load entity with full academic context
+4. Check idempotency (existing approved content)
+5. Call LLM (except ASSEMBLE_TEST)
+6. Persist content in transaction
+7. Mark HydrationJob + linked ExecutionJob completed
+
+Unit tests: `tests/worker/contentWorkerDispatch.test.ts`
+
+---
+
+## Hydrator Compliance (Phase 4)
+
+Per Copilot guardrails, hydrators must comply with strict rules:
+
+```
+COPILOT RULES — HYDRATOR:
+- Hydrators only enqueue jobs
+- No AI calls allowed here
+- Must be idempotent
+- Must check DB before enqueue
+- Never mutate existing content
+```
+
+### Deprecated Hydrators
+
+The following files have been refactored to compliance:
+
+| File | Before (Violation) | After (Compliant) |
+|------|-------------------|-------------------|
+| `hydrators/hydrateNotes.ts` | Called `callLLM()` directly | Delegates to `enqueueNotesHydration()` |
+| `hydrators/hydrateQuestions.ts` | Called `callLLM()` directly | Delegates to `enqueueQuestionsHydration()` |
+
+These are marked `@deprecated` and should be replaced with:
+- `submitJob({ jobType: 'notes', entityType: 'TOPIC', ... })`
+- `submitJob({ jobType: 'questions', entityType: 'TOPIC', ... })`
+
+### LLM Calls: Correct Location
+
+LLM calls are **only** permitted in worker service handlers:
+
+| Worker Service | Has LLM Calls | Reason |
+|----------------|---------------|--------|
+| `worker/services/notesWorker.ts` | ✅ Yes | Generates topic notes |
+| `worker/services/questionsWorker.ts` | ✅ Yes | Generates questions |
+| `worker/services/assembleWorker.ts` | ❌ No | Assemble is non-AI (approves drafts) |
+
+### Worker Bootstrap
+
+`worker/bootstrap.ts` has been updated to use the new worker handlers:
+
+```ts
+switch (type) {
+  case "NOTES":
+    return handleNotesJob(payload.jobId);      // ✅ Correct
+  case "QUESTIONS":
+    return handleQuestionsJob(payload.jobId);  // ✅ Correct
+  // NOT: hydrateNotes(payload.topicId, ...)   // ❌ Deprecated
+}
+```
+
+Unit tests: `tests/hydrators/hydratorCompliance.test.ts`
 
 ---
 

@@ -1,17 +1,36 @@
-FROM node:20-alpine
-
-# Install build tools required by some native deps and prisma
-RUN apk add --no-cache python3 make g++ git
-
+FROM node:20-alpine AS builder
 WORKDIR /app
 
-# Copy project files
-COPY . /app
+# Install build tools required by some native deps
+RUN apk add --no-cache python3 make g++ bash
 
-# Install production deps and build
-# skip lifecycle scripts during install to avoid dev-only hooks like husky
-RUN npm ci --omit=dev --no-audit --ignore-scripts && npm run build:prod
+# Copy package manifests first to leverage Docker cache for deps
+COPY package.json package-lock.json* ./
 
+# Install all deps (including dev) so Next.js build and tools are available
+# We will prune dev deps after build to keep the final image lean.
+RUN npm ci --no-audit --progress=false
+
+# Copy rest of the repo and build
+COPY . ./
+
+# Ensure shell scripts have LF endings (avoid CRLF parse issues)
+RUN if [ -f ./scripts/run-migrate.sh ]; then sed -i 's/\r$//' ./scripts/run-migrate.sh && chmod +x ./scripts/run-migrate.sh; fi
+
+# Build project (prisma generate, compile TS, run postbuild fixes, build workers)
+# Use the primary `build` script so `postbuild` runs and fixes import paths.
+RUN npm run build && npm run build:workers
+
+# Remove devDependencies to reduce runtime size
+RUN npm prune --production || true
+
+FROM node:20-alpine AS runner
+WORKDIR /app
+COPY --from=builder /app /app
+ENV NODE_ENV=production
+
+# Minimal runtime deps are already installed in /app/node_modules
 EXPOSE 3000
 
-CMD ["sh", "-c", "npm run start"]
+# Default command is no-op; docker-compose will override per-service
+CMD ["node", "dist/worker/entry.js"]

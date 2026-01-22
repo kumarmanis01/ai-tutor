@@ -49,13 +49,23 @@
     const { bootstrapWorker } = await import("./bootstrap.js");
     await bootstrapWorker();
   } catch (err) {
+    // Print full stack to stderr first to ensure visibility in container logs.
+    try {
+      if (err && (err as any).stack) {
+        process.stderr.write(`[worker] fatal startup error (stack): ${(err as any).stack}\n`);
+      } else {
+        process.stderr.write(`[worker] fatal startup error: ${String(err)}\n`);
+      }
+    } catch {}
+
     // Use dynamic import for logger so we avoid top-level import emissions.
     try {
       const mod = await import("../lib/logger.js").catch(() => ({}));
       const logger = (mod as any)?.logger ?? (mod as any)?.default ?? null;
       if (logger && typeof logger.error === 'function') {
-        logger.error("[worker] fatal startup error", err);
+        logger.error("[worker] fatal startup error");
       } else {
+        // Already printed stack above; still emit a compact message.
         process.stderr.write(`[worker] fatal startup error: ${String(err)}\n`);
       }
     } catch {

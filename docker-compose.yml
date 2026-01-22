@@ -37,7 +37,10 @@ services:
       retries: 5
 
   web:
-    image: node:20-alpine
+    build:
+      context: .
+      dockerfile: Dockerfile.prod
+    image: ai-tutor-web:prod
     working_dir: /app
     restart: unless-stopped
     env_file:
@@ -46,28 +49,30 @@ services:
       - HUSKY_SKIP_INSTALL=1
       - DATABASE_URL=postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-pass}@postgres:${POSTGRES_PORT:-5432}/${POSTGRES_DB:-ai_dev}
       - POSTGRES_HOST=postgres
-    volumes:
-      - ./:/app:cached
-      - /app/node_modules
     ports:
       - "3000:3000"
-    command: sh -c "npm ci --silent --no-audit --omit=dev --ignore-scripts --progress=false && npm run build && ./scripts/run-migrate.sh && npm run start"
+    command: sh -c "./scripts/run-migrate.sh && node ./node_modules/next/dist/bin/next build && npm run start"
     depends_on:
       - postgres
       - redis
+    healthcheck:
+      test: ["CMD", "node", "scripts/health-check.js"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   worker:
-    image: node:20-alpine
+    build:
+      context: .
+      dockerfile: Dockerfile.prod
+    image: ai-tutor-worker:prod
     working_dir: /app
     restart: unless-stopped
     env_file:
       - .env.production
     environment:
       - HUSKY_SKIP_INSTALL=1
-    volumes:
-      - ./:/app:cached
-      - /app/node_modules
-    command: sh -c "npm ci --silent --no-audit --omit=dev --ignore-scripts --progress=false && npm run build && node dist/worker/entry.js"
+    command: sh -c "node dist/worker/entry.js"
     depends_on:
       - postgres
       - redis

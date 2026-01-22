@@ -26,6 +26,10 @@ export async function middleware(request: NextRequest) {
     logger.debug('[MIDDLEWARE DEBUG] Token: ' + String(token));
     const allowed = token && (token.role === 'admin' || token.role === 'moderator');
     if (!allowed) {
+      // For API routes, return 403 JSON response instead of redirecting
+      if (pathname.startsWith('/api/admin')) {
+        return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+      }
       // Redirect unauthorized users to home page to avoid redirect loop
       return NextResponse.redirect(new URL('/', request.url));
     }

@@ -1,103 +1,61 @@
 /**
- * COPILOT RULES — HYDRATOR
+ * FILE OBJECTIVE:
+ * - DEPRECATED: Legacy entrypoint for notes hydration.
+ * - Now a thin wrapper that enqueues a job via submitJob() instead of calling LLM directly.
+ * - Per COPILOT RULES: Hydrators only enqueue jobs, NO AI calls allowed here.
  *
+ * LINKED UNIT TEST:
+ * - __tests__/hydrators/hydrateNotes.test.ts
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/COPILOT_GUARDRAILS.md
+ * - /docs/Hydration_Rules.md
+ *
+ * EDIT LOG:
+ * - 2026-01-22T03:00:00Z | copilot | Phase 4: Refactored to enqueue-only (removed direct LLM call)
+ *
+ * COPILOT RULES — HYDRATOR:
  * - Hydrators only enqueue jobs
  * - No AI calls allowed here
  * - Must be idempotent
  * - Must check DB before enqueue
  * - Never mutate existing content
- * example
- * await prisma.hydrationJob.upsert({
- *  where: { jobType_unique },
- *   update: {},
- *   create: {
- *     jobType: "notes",
- *     topicId,
- *     language,
- *   },
- * });
  */
 
-import { prisma } from "@/lib/prisma"
-import { callLLM } from "@/lib/callLLM"
-import { getNextVersion } from "@/lib/getNextVersion"
+import { enqueueNotesHydration } from "@/lib/execution-pipeline/enqueueTopicHydration"
 import { logger } from "@/lib/logger"
 
 const HYDRATION_DEBUG = process.env.HYDRATION_DEBUG === '1' || process.env.AI_CONTENT_DEBUG === '1'
 
+/**
+ * @deprecated Use `submitJob({ jobType: 'notes', entityType: 'TOPIC', entityId, payload: { language } })`
+ * or `enqueueNotesHydration({ topicId, language })` directly instead.
+ *
+ * This function now only enqueues a hydration job. The actual LLM call and persistence
+ * is handled by the worker (worker/services/notesWorker.ts).
+ */
 export async function hydrateNotes(
   topicId: string,
   language: "en" | "hi"
-) {
-  if (HYDRATION_DEBUG) logger.debug('[hydration][DEBUG] hydrateNotes called', { topicId, language })
+): Promise<{ enqueued: boolean; jobId?: string; reason?: string }> {
+  if (HYDRATION_DEBUG) logger.debug('[hydration][DEBUG] hydrateNotes called (deprecated wrapper)', { topicId, language })
 
-  const topic = await prisma.topicDef.findUnique({
-    where: { id: topicId },
-    include: {
-      chapter: {
-        include: {
-          subject: {
-            include: {
-              class: { include: { board: true } }
-            }
-          }
-        }
-      }
-    }
-  })
-  if (!topic) throw new Error("Topic missing")
+  // Delegate to the proper enqueue function
+  const result = await enqueueNotesHydration({ topicId, language })
 
-  const approved = await prisma.topicNote.findFirst({
-    where: {
-      topicId,
-      language,
-      status: "approved"
-    }
-  })
+  if (HYDRATION_DEBUG) {
+    logger.debug('[hydration][DEBUG] hydrateNotes enqueue result', { 
+      topicId, 
+      language, 
+      created: result.created,
+      jobId: result.jobId,
+      reason: result.created ? undefined : (result as any).reason
+    })
+  }
 
-  const version = approved
-    ? await getNextVersion({ topicId, language, type: "note" })
-    : 1
-
-  const prompt = `
-Explain "${topic.name}"
-Board: ${topic.chapter.subject.class.board.name}
-Class: ${topic.chapter.subject.class.grade}
-Subject: ${topic.chapter.subject.name}
-Language: ${language}
-
-JSON only:
-{
-  "title": "",
-  "content": {}
-}
-`
-
-  const { content } = await callLLM({
-    prompt,
-    meta: {
-      promptType: "notes",
-      board: topic.chapter.subject.class.board.name,
-      grade: topic.chapter.subject.class.grade,
-      subject: topic.chapter.subject.name,
-      topic: topic.name,
-      language
-    }
-  })
-
-  if (HYDRATION_DEBUG) logger.debug('[hydration][DEBUG] hydrateNotes LLM content length', { length: content?.length })
-
-  const parsed = JSON.parse(content)
-
-  await prisma.topicNote.create({
-    data: {
-      topicId,
-      language,
-      version,
-      title: parsed.title,
-      contentJson: parsed.content,
-      source: "ai",
-      status: "draft"
-    }
-  })
+  if (result.created) {
+    return { enqueued: true, jobId: result.jobId }
+  } else {
+    return { enqueued: false, reason: (result as any).reason, jobId: result.jobId }
+  }
 }

@@ -1,12 +1,42 @@
+/**
+ * FILE OBJECTIVE:
+ * - Content hydration worker processor that handles all job types (SYLLABUS, NOTES, QUESTIONS, ASSEMBLE_TEST).
+ * - Dispatches to appropriate worker service handlers based on job type.
+ *
+ * LINKED UNIT TEST:
+ * - tests/unit/worker/processors/contentWorker.test.ts
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/COPILOT_GUARDRAILS.md
+ * - /docs/AI_Execution_pipeline.md
+ *
+ * EDIT LOG:
+ * - 2026-01-20T00:00:00Z | unknown | Added syllabus-only processing
+ * - 2026-01-22T02:35:00Z | copilot | Phase 3: Generalized to handle all job types
+ */
+
 import { Worker, Job } from 'bullmq'
 import { redisConnection } from '@/lib/redis.js'
 import { prisma } from '@/lib/prisma.js'
 import { isSystemSettingEnabled } from '@/lib/systemSettings.js'
 import { JobStatus } from '@/lib/ai-engine/types'
-// NOTE: This worker is currently syllabus-only; other hydrators are not imported here to
-// avoid accidental module-scope side-effects.
+// Worker service handlers for different job types
 import { handleSyllabusJob } from '@/worker/services/syllabusWorker'
+import { handleNotesJob } from '@/worker/services/notesWorker'
+import { handleQuestionsJob } from '@/worker/services/questionsWorker'
+import { handleAssembleJob } from '@/worker/services/assembleWorker'
 import { logger } from '@/lib/logger.js'
+
+/**
+ * Supported worker types and their handlers.
+ * Maps Bull job data.type to the appropriate handler function.
+ */
+const WORKER_HANDLERS: Record<string, (jobId: string) => Promise<void>> = {
+  SYLLABUS: handleSyllabusJob,
+  NOTES: handleNotesJob,
+  QUESTIONS: handleQuestionsJob,
+  ASSEMBLE_TEST: handleAssembleJob,
+};
 
 /*
   NOTE (incident 2026-01-20):
@@ -152,7 +182,22 @@ export async function processContentJob(job: Job) {
   // At this point we have a hydrationJobId to process
   if (!hydrationJobId) throw new Error('Failed to resolve HydrationJob id')
 
-  // Mark HydrationJob RUNNING, then execute the canonical handler which will
+  // Determine the job type from Bull job data
+  const workerType = job.data?.type ?? 'SYLLABUS'; // Default to SYLLABUS for backward compatibility
+  const handler = WORKER_HANDLERS[workerType];
+
+  if (!handler) {
+    const err = new Error(`Unknown worker type: ${workerType}`);
+    logger.error('worker: unknown worker type', { workerType, hydrationJobId });
+    await prisma.hydrationJob.update({ where: { id: hydrationJobId }, data: { status: JobStatus.Failed, lastError: err.message } }).catch(() => {});
+    throw err;
+  }
+
+  if (process.env.WORKER_DEBUG === '1') {
+    logger.debug(`[worker][DEBUG] dispatching to handler`, { workerType, hydrationJobId });
+  }
+
+  // Mark HydrationJob RUNNING, then execute the appropriate handler which will
   // load the HydrationJob row and perform data persistence.
   try {
     await prisma.hydrationJob.update({ where: { id: hydrationJobId }, data: { status: JobStatus.Running } })
@@ -161,42 +206,65 @@ export async function processContentJob(job: Job) {
   }
 
   try {
-    await handleSyllabusJob(hydrationJobId)
+    // Dispatch to the appropriate handler based on worker type
+    await handler(hydrationJobId);
 
-    // After handler returns, prefer to trust the handler to have marked the
-    // HydrationJob and linked ExecutionJob as completed inside its transaction.
-    // However, to cover non-atomic or legacy hydrators, perform a short
-    // retry/backoff to detect generated chapters and avoid races.
+    // After handler returns, verify completion.
+    // Handlers are expected to mark HydrationJob and ExecutionJob as completed atomically.
+    // We perform a fallback verification for backward compatibility.
     const hydrateRow = await prisma.hydrationJob.findUnique({ where: { id: hydrationJobId } })
-    const subjectId = hydrateRow?.subjectId ?? null
-    if (!subjectId) {
-      const err = new Error('HydrationJob missing subjectId after processing')
-      await prisma.hydrationJob.update({ where: { id: hydrationJobId }, data: { status: JobStatus.Failed } }).catch(() => {})
-      throw err
-    }
 
     // If the handler already set contentReady, consider this done.
     if (hydrateRow?.contentReady) {
       return { success: true }
     }
 
-    // Short retry/backoff to tolerate small commit ordering races where
-    // chapters are written just after the handler returns.
-    let chapter = null
-    const maxAttempts = 5
-    let attempt = 0
-    while (attempt < maxAttempts) {
-      chapter = await prisma.chapterDef.findFirst({ where: { subjectId: subjectId as string, lifecycle: 'active' } })
-      if (chapter) break
-      const delay = Math.min(2000, 100 * 2 ** attempt)
-      await new Promise((r) => setTimeout(r, delay))
-      attempt += 1
+    // Type-specific completion verification
+    if (workerType === 'SYLLABUS') {
+      // For syllabus: verify at least one chapter was created
+      const subjectId = hydrateRow?.subjectId ?? null
+      if (!subjectId) {
+        const err = new Error('HydrationJob missing subjectId after processing')
+        await prisma.hydrationJob.update({ where: { id: hydrationJobId }, data: { status: JobStatus.Failed } }).catch(() => {})
+        throw err
+      }
+
+      // Short retry/backoff to tolerate small commit ordering races
+      let chapter = null
+      const maxAttempts = 5
+      let attempt = 0
+      while (attempt < maxAttempts) {
+        chapter = await prisma.chapterDef.findFirst({ where: { subjectId: subjectId as string, lifecycle: 'active' } })
+        if (chapter) break
+        const delay = Math.min(2000, 100 * 2 ** attempt)
+        await new Promise((r) => setTimeout(r, delay))
+        attempt += 1
+      }
+      if (!chapter) {
+        const err = new Error('Syllabus generation produced no chapters')
+        await prisma.hydrationJob.update({ where: { id: hydrationJobId }, data: { status: JobStatus.Failed } }).catch(() => {})
+        throw err
+      }
+    } else if (workerType === 'NOTES') {
+      // For notes: verify TopicNote was created
+      const topicId = hydrateRow?.topicId ?? null
+      if (topicId) {
+        const note = await prisma.topicNote.findFirst({ where: { topicId } })
+        if (!note) {
+          logger.warn('worker: notes handler completed but no TopicNote found', { hydrationJobId, topicId })
+        }
+      }
+    } else if (workerType === 'QUESTIONS') {
+      // For questions: verify GeneratedTest was created
+      const topicId = hydrateRow?.topicId ?? null
+      if (topicId) {
+        const test = await prisma.generatedTest.findFirst({ where: { topicId } })
+        if (!test) {
+          logger.warn('worker: questions handler completed but no GeneratedTest found', { hydrationJobId, topicId })
+        }
+      }
     }
-    if (!chapter) {
-      const err = new Error('Syllabus generation produced no chapters')
-      await prisma.hydrationJob.update({ where: { id: hydrationJobId }, data: { status: JobStatus.Failed } }).catch(() => {})
-      throw err
-    }
+    // ASSEMBLE_TEST doesn't create new content, just approves existing
 
     // Mark HydrationJob completed (handler may already have done this; idempotent)
     await prisma.hydrationJob.update({ where: { id: hydrationJobId }, data: { status: JobStatus.Completed, completedAt: new Date(), contentReady: true } })
@@ -206,13 +274,13 @@ export async function processContentJob(job: Job) {
     // to discover a linked ExecutionJob whose payload contains `hydrationJobId`.
     if (executionJobId) {
       await prisma.executionJob.update({ where: { id: String(executionJobId) }, data: { status: 'completed', updatedAt: new Date() } })
-      await prisma.jobExecutionLog.create({ data: { jobId: String(executionJobId), event: 'COMPLETED', prevStatus: 'running', newStatus: 'completed', meta: { hydrationJobId, bullJobId: job.id } } }).catch(() => {})
+      await prisma.jobExecutionLog.create({ data: { jobId: String(executionJobId), event: 'COMPLETED', prevStatus: 'running', newStatus: 'completed', meta: { hydrationJobId, bullJobId: job.id, workerType } } }).catch(() => {})
     } else {
       try {
         const linkedExec = await prisma.executionJob.findFirst({ where: { payload: { path: ['hydrationJobId'], equals: hydrationJobId } } });
         if (linkedExec) {
           await prisma.executionJob.update({ where: { id: linkedExec.id }, data: { status: 'completed', updatedAt: new Date() } })
-          await prisma.jobExecutionLog.create({ data: { jobId: String(linkedExec.id), event: 'COMPLETED', prevStatus: 'running', newStatus: 'completed', meta: { hydrationJobId, bullJobId: job.id } } }).catch(() => {})
+          await prisma.jobExecutionLog.create({ data: { jobId: String(linkedExec.id), event: 'COMPLETED', prevStatus: 'running', newStatus: 'completed', meta: { hydrationJobId, bullJobId: job.id, workerType } } }).catch(() => {})
         }
       } catch (e) {
         logger?.warn?.('worker: failed to mark linked ExecutionJob completed', { err: e, hydrationJobId })
