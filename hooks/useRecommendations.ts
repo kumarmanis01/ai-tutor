@@ -71,30 +71,22 @@ export function useRecommendations() {
     let url = '/dashboard';
     
     if (type === 'lesson' || type === 'chapter') {
-      // Navigate to learn page with course/chapter
-      const courseId = item.meta?.courseId || item.contentId?.replace('chapter:', '');
-      if (courseId) {
-        url = `/learn/${encodeURIComponent(String(courseId))}`;
-      } else {
-        url = '/learn';
-      }
+      // Navigate to learn page - just go to /learn to show courses list
+      // The courseId from recommendations may not match the coursePackage format
+      url = '/learn';
     } else if (type === 'test' || type === 'practice' || type === 'quiz') {
-      // Navigate to tests page with optional practice filter
-      if (type === 'practice' && item.chapter) {
-        url = `/tests?practice=${encodeURIComponent(item.chapter)}`;
-      } else if (item.meta?.testId) {
-        url = `/tests?resume=${encodeURIComponent(String(item.meta.testId))}`;
-      } else {
-        url = '/tests';
-      }
-    } else if (type === 'notes') {
-      // Navigate to notes page
-      const noteId = contentId.replace('note:', '');
-      url = `/notes?noteId=${encodeURIComponent(noteId)}`;
+      // Navigate to tests page
+      url = '/tests';
+    } else if (type === 'notes' || type === 'note') {
+      // Notes are accessed via dashboard Notes tab or learn page
+      // Since /notes doesn't exist, redirect to learn or dashboard
+      url = '/learn';
     } else if (type === 'video' || type === 'session') {
-      // Resume incomplete session
-      const sessionRef = item.meta?.sessionRef || contentId;
-      url = `/learn?resume=${encodeURIComponent(String(sessionRef))}`;
+      // Resume incomplete session - go to learn page
+      url = '/learn';
+    } else {
+      // Default: go to dashboard
+      url = '/dashboard';
     }
     
     // Use window.location for navigation (works with any state)

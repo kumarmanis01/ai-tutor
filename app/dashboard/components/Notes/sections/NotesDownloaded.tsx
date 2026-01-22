@@ -17,7 +17,8 @@ export function NotesDownloaded() {
   const { downloaded, loading } = useNotes();
   
   const openNote = useCallback((note: NoteEntry) => {
-    window.location.assign(`/learn?noteId=${encodeURIComponent(note.id)}`);
+    // Navigate to learn page since /notes doesn't exist
+    window.location.assign(`/learn`);
   }, []);
 
   return (

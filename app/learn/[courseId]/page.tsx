@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { headers } from 'next/headers'
 
 type Props = { params: { courseId: string } }
 
@@ -15,9 +16,33 @@ function flattenLessons(pkg: any) {
 
 export default async function Page({ params }: Props) {
   const { courseId } = params
-  const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL ?? ''}/api/learn/courses/${courseId}`, { cache: 'no-store' })
-  if (!res.ok) return (<div style={{ padding: 16 }}><h1>Course not found</h1></div>)
-  const pkg = await res.json()
+  
+  // Use relative URL with proper host header for server-side fetch
+  const headersList = headers()
+  const host = headersList.get('host') || 'localhost:3000'
+  const protocol = headersList.get('x-forwarded-proto') || 'http'
+  const baseUrl = `${protocol}://${host}`
+  
+  let pkg: any = null
+  try {
+    const res = await fetch(`${baseUrl}/api/learn/courses/${courseId}`, { cache: 'no-store' })
+    if (res.ok) {
+      pkg = await res.json()
+    }
+  } catch (e) {
+    // Silently fail
+  }
+  
+  if (!pkg) {
+    return (
+      <div style={{ padding: 16 }}>
+        <Link href="/learn" style={{ fontSize: 13, color: '#0070f3' }}>← Back to courses</Link>
+        <h1 style={{ marginTop: 8 }}>Course not found</h1>
+        <p style={{ color: '#666' }}>This course may not be available yet.</p>
+      </div>
+    )
+  }
+  
   const lessons = flattenLessons(pkg)
 
   return (

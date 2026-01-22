@@ -17,7 +17,8 @@ export function NotesBySubject() {
   const { subjects, loading } = useNotes();
   
   const navigateToSubject = useCallback((subject: NoteSubject) => {
-    window.location.assign(`/learn?subject=${encodeURIComponent(subject.name)}`);
+    // Navigate to learn page since /notes doesn't exist
+    window.location.assign(`/learn`);
   }, []);
 
   return (
