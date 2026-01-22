@@ -7,6 +7,7 @@
  * - tests/unit/hooks/useRecommendations.spec.ts
  *
  * EDIT LOG:
+ * - 2026-01-22 | copilot | added navigateToContent for content navigation
  * - 2026-01-22 | copilot | enhanced with score, chapter, difficulty fields
  */
 import { useEffect, useState, useCallback } from 'react';
@@ -56,6 +57,50 @@ export function useRecommendations() {
     } catch {}
   }, []);
 
+  /**
+   * Navigate to content based on recommendation type and metadata
+   */
+  const navigateToContent = useCallback((item: Recommendation) => {
+    const contentId = item.contentId || item.id;
+    const type = item.type?.toLowerCase() || '';
+    
+    // Track the click first
+    trackClick(contentId);
+    
+    // Determine navigation based on content type
+    let url = '/dashboard';
+    
+    if (type === 'lesson' || type === 'chapter') {
+      // Navigate to learn page with course/chapter
+      const courseId = item.meta?.courseId || item.contentId?.replace('chapter:', '');
+      if (courseId) {
+        url = `/learn/${encodeURIComponent(String(courseId))}`;
+      } else {
+        url = '/learn';
+      }
+    } else if (type === 'test' || type === 'practice' || type === 'quiz') {
+      // Navigate to tests page with optional practice filter
+      if (type === 'practice' && item.chapter) {
+        url = `/tests?practice=${encodeURIComponent(item.chapter)}`;
+      } else if (item.meta?.testId) {
+        url = `/tests?resume=${encodeURIComponent(String(item.meta.testId))}`;
+      } else {
+        url = '/tests';
+      }
+    } else if (type === 'notes') {
+      // Navigate to notes page
+      const noteId = contentId.replace('note:', '');
+      url = `/notes?noteId=${encodeURIComponent(noteId)}`;
+    } else if (type === 'video' || type === 'session') {
+      // Resume incomplete session
+      const sessionRef = item.meta?.sessionRef || contentId;
+      url = `/learn?resume=${encodeURIComponent(String(sessionRef))}`;
+    }
+    
+    // Use window.location for navigation (works with any state)
+    window.location.assign(url);
+  }, [trackClick]);
+
   const trackCompleted = useCallback(async (id: string) => {
     try {
       await fetch('/api/dashboard/recommendations/track', { 
@@ -100,6 +145,7 @@ export function useRecommendations() {
     refresh, 
     trackClick, 
     trackCompleted,
-    refreshProfile 
+    refreshProfile,
+    navigateToContent 
   };
 }

@@ -7,6 +7,7 @@
  * - tests/unit/app/dashboard/components/SuggestedContent.spec.ts
  *
  * EDIT LOG:
+ * - 2026-01-22 | copilot | added navigation on click with visual cue
  * - 2025-01-22 | copilot | simplified for mobile with compact cards
  */
 import React from 'react';
@@ -20,7 +21,7 @@ const typeEmoji: Record<string, string> = {
 };
 
 const SuggestedContent: React.FC = () => {
-  const { items, loading, trackClick } = useRecommendations();
+  const { items, loading, navigateToContent } = useRecommendations();
 
   if (loading) {
     return (
@@ -56,7 +57,7 @@ const SuggestedContent: React.FC = () => {
         return (
           <button
             key={item.id}
-            onClick={() => trackClick(item.id)}
+            onClick={() => navigateToContent(item)}
             className="flex-shrink-0 w-40 bg-card hover:bg-muted/50 rounded-lg p-3 text-left active:scale-95 transition-transform"
           >
             <div className="w-8 h-8 bg-primary/10 rounded-lg flex items-center justify-center text-base mb-2">
@@ -64,6 +65,12 @@ const SuggestedContent: React.FC = () => {
             </div>
             <p className="text-sm font-medium text-foreground truncate">{item.title}</p>
             <p className="text-xs text-muted-foreground truncate">{item.subject}</p>
+            <div className="flex items-center gap-1 mt-1">
+              <svg className="w-3 h-3 text-primary" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M8 5v14l11-7z" />
+              </svg>
+              <span className="text-xs text-primary">Start</span>
+            </div>
           </button>
         );
       })}
