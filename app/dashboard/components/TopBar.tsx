@@ -3,61 +3,121 @@
 import React from "react";
 import { useTheme } from '@/components/UI/ThemeProvider';
 
-
 interface TopBarProps {
   studentName: string;
 }
 
+// Helper to get greeting based on time of day
+const getGreeting = () => {
+  const hour = new Date().getHours();
+  if (hour < 12) return { text: 'Good Morning', emoji: '🌅' };
+  if (hour < 17) return { text: 'Good Afternoon', emoji: '☀️' };
+  if (hour < 21) return { text: 'Good Evening', emoji: '🌆' };
+  return { text: 'Good Night', emoji: '🌙' };
+};
+
+// Sun icon for light mode
+const SunIcon = () => (
+  <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <circle cx="12" cy="12" r="5" />
+    <line x1="12" y1="1" x2="12" y2="3" />
+    <line x1="12" y1="21" x2="12" y2="23" />
+    <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" />
+    <line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
+    <line x1="1" y1="12" x2="3" y2="12" />
+    <line x1="21" y1="12" x2="23" y2="12" />
+    <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" />
+    <line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
+  </svg>
+);
+
+// Moon icon for dark mode
+const MoonIcon = () => (
+  <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+  </svg>
+);
+
+// Bell icon for notifications
+const BellIcon = () => (
+  <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+    <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+  </svg>
+);
+
 const TopBar: React.FC<TopBarProps> = ({ studentName }) => {
   const { theme, toggle } = useTheme();
+  const greeting = getGreeting();
+  
   return (
-    <header className="sticky top-0 z-50 bg-card border-b border-border shadow-sm">
-      <div className="max-w-4xl mx-auto px-4 py-3 flex items-center justify-between">
-        {/* Left: Logo */}
-        <div className="flex items-center">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-              <span className="text-white font-bold text-sm">AI</span>
+    <header className="sticky top-0 z-50 bg-gradient-to-r from-card via-card to-card/95 dark:from-slate-900 dark:via-slate-900 dark:to-slate-800 border-b border-border/50 shadow-sm backdrop-blur-sm">
+      <div className="max-w-4xl mx-auto px-4 py-3">
+        <div className="flex items-center justify-between">
+          {/* Left: Logo with gradient */}
+          <div className="flex items-center gap-3">
+            <div className="relative group">
+              <div className="absolute inset-0 bg-gradient-to-br from-primary to-accent rounded-xl blur-sm opacity-50 group-hover:opacity-75 transition-opacity" />
+              <div className="relative w-10 h-10 bg-gradient-to-br from-primary to-accent rounded-xl flex items-center justify-center shadow-lg">
+                <span className="text-white font-bold text-sm">AI</span>
+              </div>
             </div>
-            <span className="font-semibold text-sm text-foreground hidden sm:inline">AI Tutor</span>
+            <div className="hidden sm:block">
+              <span className="font-bold text-foreground">Spinzy</span>
+              <span className="text-primary font-semibold ml-1">Academy</span>
+            </div>
+          </div>
+
+          {/* Center: Personalized Greeting */}
+          <div className="flex-1 text-center px-2">
+            <div className="inline-flex flex-col items-center">
+              <span className="text-xs text-muted-foreground hidden sm:inline">
+                {greeting.emoji} {greeting.text}
+              </span>
+              <h1 className="text-base sm:text-lg font-semibold text-foreground truncate max-w-[200px] sm:max-w-none">
+                Hi, {studentName}! 
+                <span className="inline-block ml-1 animate-wave">👋</span>
+              </h1>
+            </div>
+          </div>
+
+          {/* Right: Actions */}
+          <div className="flex items-center gap-2">
+            {/* Notifications */}
+            <button
+              className="relative w-9 h-9 rounded-full bg-muted/50 dark:bg-slate-800 flex items-center justify-center hover:bg-muted transition-all duration-200 hover:scale-105"
+              aria-label="Notifications"
+            >
+              <BellIcon />
+              {/* Notification dot */}
+              <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full animate-pulse" />
+            </button>
+
+            {/* Theme toggle */}
+            <button
+              onClick={toggle}
+              aria-label="Toggle theme"
+              className="w-9 h-9 rounded-full bg-muted/50 dark:bg-slate-800 flex items-center justify-center hover:bg-muted transition-all duration-200 hover:scale-105 text-foreground"
+            >
+              {theme === 'dark' ? <SunIcon /> : <MoonIcon />}
+            </button>
           </div>
         </div>
-
-        {/* Center: Greeting */}
-        <div className="flex-1 text-center">
-          <h1 className="text-base sm:text-lg font-semibold text-foreground">
-            Hi, {studentName}! 👋
-          </h1>
-        </div>
-
-        {/* Right: Theme toggle + Profile Icon */}
-        <div className="flex items-center gap-2">
-          <button
-            onClick={toggle}
-            aria-label="Toggle theme"
-            className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center hover:bg-primary/20 transition-colors"
-          >
-            {theme === 'dark' ? (
-              <svg className="w-5 h-5 text-primary" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
-                <path d="M21.64 13.65A9 9 0 1110.35 2.36 7 7 0 0021.64 13.65z" />
-              </svg>
-            ) : (
-              <svg className="w-5 h-5 text-primary" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
-                <path d="M12 4.5a1 1 0 011 1V7a1 1 0 11-2 0V5.5a1 1 0 011-1zM12 17a1 1 0 011 1v1.5a1 1 0 11-2 0V18a1 1 0 011-1zM4.5 12a1 1 0 011-1H7a1 1 0 110 2H5.5a1 1 0 01-1-1zM17 12a1 1 0 011-1h1.5a1 1 0 110 2H18a1 1 0 01-1-1zM6.22 6.22a1 1 0 011.41 0l1.06 1.06a1 1 0 11-1.41 1.41L6.22 7.63a1 1 0 010-1.41zM16.31 16.31a1 1 0 011.41 0l1.06 1.06a1 1 0 11-1.41 1.41l-1.06-1.06a1 1 0 010-1.41zM6.22 17.78a1 1 0 010-1.41l1.06-1.06a1 1 0 111.41 1.41L7.63 17.78a1 1 0 01-1.41 0zM16.31 7.69a1 1 0 010-1.41l1.06-1.06a1 1 0 111.41 1.41L17.72 7.69a1 1 0 01-1.41 0z" />
-              </svg>
-            )}
-          </button>
-
-          {/* <button
-            className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center hover:bg-primary/20 transition-colors"
-            aria-label="Profile Menu"
-          >
-            <svg className="w-5 h-5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-            </svg>
-          </button> */}
-        </div>
       </div>
+      
+      {/* Animated wave keyframes (inline style for simplicity) */}
+      <style jsx>{`
+        @keyframes wave {
+          0%, 100% { transform: rotate(0deg); }
+          25% { transform: rotate(20deg); }
+          75% { transform: rotate(-10deg); }
+        }
+        .animate-wave {
+          animation: wave 1.5s ease-in-out infinite;
+          display: inline-block;
+          transform-origin: 70% 70%;
+        }
+      `}</style>
     </header>
   );
 };
