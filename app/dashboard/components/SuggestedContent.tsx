@@ -72,5 +72,3 @@ const SuggestedContent: React.FC = () => {
 };
 
 export default SuggestedContent;
-
-export default SuggestedContent;
