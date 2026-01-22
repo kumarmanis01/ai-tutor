@@ -76,15 +76,16 @@ async function getFallbackRecommendations(userId: string) {
   const board = user?.board || '';
   const grade = user?.grade || '';
   const language = user?.language || 'en';
+  const hasSubjects = subjects && subjects.length > 0;
 
-  // Try catalog-backed recommendations
+  // Try catalog-backed recommendations first
   const catalog = await prisma.contentCatalog.findMany({
     where: {
       active: true,
       board,
       grade,
       language,
-      subject: subjects.length ? { in: subjects } : undefined,
+      ...(hasSubjects ? { subject: { in: subjects } } : {}),
     },
     take: 10,
     orderBy: { updatedAt: 'desc' },
@@ -93,11 +94,37 @@ async function getFallbackRecommendations(userId: string) {
   if (catalog.length > 0) {
     return catalog.map((c) => ({
       id: c.contentId,
-      type: c.type || 'article',
+      contentId: c.contentId,
+      type: c.type || 'lesson',
       subject: c.subject,
       title: c.title,
       reasoning: `Matched ${board} ${grade} ${language} ${c.subject}`,
       priority: 50,
+    }));
+  }
+
+  // Fallback to ChapterDef (lessons/chapters available in the system)
+  const chapters = await prisma.chapterDef.findMany({
+    where: {
+      lifecycle: 'active',
+      ...(hasSubjects ? { subject: { name: { in: subjects } } } : {})
+    },
+    take: 10,
+    include: { subject: { select: { id: true, name: true } } },
+    orderBy: { name: 'asc' }
+  });
+
+  if (chapters.length > 0) {
+    return chapters.map((c) => ({
+      id: c.id,
+      contentId: `chapter:${c.id}`,
+      type: 'chapter',
+      subject: c.subject?.name || 'General',
+      title: c.name,
+      chapter: c.slug,
+      reasoning: `Learn ${c.name} in ${c.subject?.name || 'your curriculum'}`,
+      priority: 60,
+      meta: { subjectId: c.subject?.id }
     }));
   }
 
@@ -108,12 +135,28 @@ async function getFallbackRecommendations(userId: string) {
     orderBy: { createdAt: 'desc' } 
   });
   
-  return (results || []).slice(0, 4).map((r) => ({
-    id: r.id,
-    type: 'practice',
-    subject: 'General',
-    title: `Practice based on recent test ${r.testId}`,
-    reasoning: 'Recent performance suggests targeted practice',
-    priority: 80,
-  }));
+  if (results.length > 0) {
+    return results.slice(0, 4).map((r) => ({
+      id: r.id,
+      contentId: r.id,
+      type: 'practice',
+      subject: 'General',
+      title: `Practice based on recent test`,
+      reasoning: 'Recent performance suggests targeted practice',
+      priority: 80,
+    }));
+  }
+
+  // Final fallback: return generic suggestions
+  return [
+    {
+      id: 'explore-1',
+      contentId: 'explore-1',
+      type: 'lesson',
+      subject: subjects[0] || 'Mathematics',
+      title: `Explore ${subjects[0] || 'Mathematics'}`,
+      reasoning: 'Start learning with recommended content',
+      priority: 40
+    }
+  ];
 }

@@ -223,6 +223,7 @@ export class RecommendationEngine {
     if (!this.signals) return [];
 
     const { board, grade, subjects, language } = this.signals;
+    const hasSubjects = subjects && subjects.length > 0;
     
     // Get content from multiple sources
     const [catalogItems, chapters, questions, notes] = await Promise.all([
@@ -232,7 +233,7 @@ export class RecommendationEngine {
           active: true,
           OR: [
             { board, grade },
-            { subject: subjects.length ? { in: subjects } : undefined },
+            hasSubjects ? { subject: { in: subjects } } : {},
             { language }
           ]
         },
@@ -240,11 +241,11 @@ export class RecommendationEngine {
         orderBy: { updatedAt: 'desc' }
       }),
       
-      // ChapterDef items (lessons/chapters)
+      // ChapterDef items (lessons/chapters) - always fetch some even if no subjects
       prisma.chapterDef.findMany({
         where: {
           lifecycle: 'active',
-          subject: { name: subjects.length ? { in: subjects } : undefined }
+          ...(hasSubjects ? { subject: { name: { in: subjects } } } : {})
         },
         take: 50,
         include: { subject: { select: { name: true, classId: true } } }
@@ -255,7 +256,7 @@ export class RecommendationEngine {
         where: {
           OR: [
             { board, grade },
-            { subject: subjects.length ? { in: subjects } : undefined }
+            hasSubjects ? { subject: { in: subjects } } : {}
           ]
         },
         take: 50,

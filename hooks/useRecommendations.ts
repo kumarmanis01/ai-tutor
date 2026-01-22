@@ -70,23 +70,29 @@ export function useRecommendations() {
     // Determine navigation based on content type
     let url = '/dashboard';
     
-    if (type === 'lesson' || type === 'chapter') {
-      // Navigate to learn page - just go to /learn to show courses list
-      // The courseId from recommendations may not match the coursePackage format
+    if (type === 'chapter') {
+      // Chapter recommendations have meta.subjectId - navigate to subject page
+      const subjectId = (item.meta as any)?.subjectId;
+      if (subjectId) {
+        url = `/learn/${subjectId}`;
+      } else {
+        url = '/learn';
+      }
+    } else if (type === 'lesson') {
+      // Lesson recommendations - go to learn page
       url = '/learn';
     } else if (type === 'test' || type === 'practice' || type === 'quiz') {
       // Navigate to tests page
       url = '/tests';
     } else if (type === 'notes' || type === 'note') {
       // Notes are accessed via dashboard Notes tab or learn page
-      // Since /notes doesn't exist, redirect to learn or dashboard
       url = '/learn';
     } else if (type === 'video' || type === 'session') {
       // Resume incomplete session - go to learn page
       url = '/learn';
     } else {
-      // Default: go to dashboard
-      url = '/dashboard';
+      // Default: go to learn page to show available subjects
+      url = '/learn';
     }
     
     // Use window.location for navigation (works with any state)
