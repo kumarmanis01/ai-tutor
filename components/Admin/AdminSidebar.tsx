@@ -22,6 +22,7 @@ import React from 'react';
 const aiAdminLinks = [
   { href: '/admin/ai-dashboard', label: 'Dashboard' },
   { href: '/admin/content-engine/control-panel', label: 'AI Generation' },
+  { href: '/admin/content-engine/hydrate-all', label: 'Hydrate All' },
   { href: '/admin/content-engine/moderation', label: 'Moderation' },
   { href: '/admin/content-engine/jobs', label: 'Jobs' },
   { href: '/admin/content-engine/workers', label: 'Workers' },

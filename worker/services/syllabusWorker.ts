@@ -1,9 +1,30 @@
+/**
+ * FILE OBJECTIVE:
+ * - Syllabus hydration worker that generates chapters and topics for a subject.
+ * - Supports cascadeAll flag to auto-queue notes, questions, and tests for all topics.
+ *
+ * LINKED UNIT TEST:
+ * - tests/unit/worker/services/syllabusWorker.test.ts
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/COPILOT_GUARDRAILS.md
+ * - /docs/AI_Execution_pipeline.md
+ *
+ * EDIT LOG:
+ * - 2026-01-22T07:45:00Z | copilot | Added cascadeAll support for full content hydration
+ */
+
 import { prisma } from '@/lib/prisma.js'
 import { callLLM } from '@/lib/callLLM.js'
 import { toSlug } from '@/lib/slug.js'
 import { isSystemSettingEnabled } from '@/lib/systemSettings.js'
 import { logger } from '@/lib/logger.js'
 import { JobStatus, ApprovalStatus } from '@/lib/ai-engine/types'
+import {
+  enqueueNotesHydration,
+  enqueueQuestionsHydration,
+  enqueueAssembleHydration,
+} from '@/lib/execution-pipeline/enqueueTopicHydration.js'
 
 function validateSyllabusShape(raw: any) {
   if (!raw || typeof raw !== 'object') return false
@@ -169,6 +190,9 @@ JSON Schema:
   }
 
   try {
+    // Track created topic IDs for cascading downstream jobs
+    const createdTopicIds: string[] = []
+
     await prisma.$transaction(async (tx) => {
       for (const ch of parsed.chapters) {
         const slug = toSlug(ch.title)
@@ -193,7 +217,7 @@ JSON Schema:
             const texists = await tx.topicDef.findFirst({ where: { chapterId: chapter.id, slug: tslug } })
             if (texists) continue
 
-            await tx.topicDef.create({
+            const topic = await tx.topicDef.create({
               data: {
                 name: t.title,
                 slug: tslug,
@@ -203,6 +227,7 @@ JSON Schema:
                 lifecycle: 'active'
               }
             })
+            createdTopicIds.push(topic.id)
           }
         }
       }
@@ -219,6 +244,55 @@ JSON Schema:
         await tx.jobExecutionLog.create({ data: { jobId: linked.id, event: 'COMPLETED', prevStatus, newStatus: 'completed', meta: { hydrationJobId: job.id } } })
       }
     })
+
+    // After transaction commits, check if cascadeAll flag is set and queue downstream jobs
+    // This is done outside the transaction to avoid holding locks during job enqueuing
+    const linkedExec2 = await prisma.executionJob.findFirst({ where: { payload: { path: ['hydrationJobId'], equals: job.id } } })
+    const payload = linkedExec2?.payload as { cascadeAll?: boolean; language?: string; difficulties?: string[] } | null
+
+    if (payload?.cascadeAll && createdTopicIds.length > 0) {
+      const lang = payload.language || language
+      const difficulties = payload.difficulties || ['easy', 'medium', 'hard']
+
+      logger.info('[syllabusWorker] cascadeAll enabled, queueing downstream jobs', {
+        jobId: job.id,
+        topicCount: createdTopicIds.length,
+        language: lang,
+        difficulties,
+      })
+
+      // Queue notes, questions, and assemble (tests) for each topic
+      for (const topicId of createdTopicIds) {
+        try {
+          // 1. Queue notes generation
+          await enqueueNotesHydration(topicId, { language: lang })
+          logger.debug('[syllabusWorker] queued notes job', { topicId, language: lang })
+
+          // 2. Queue questions for each difficulty
+          for (const diff of difficulties) {
+            await enqueueQuestionsHydration(topicId, { language: lang, difficulty: diff })
+            logger.debug('[syllabusWorker] queued questions job', { topicId, language: lang, difficulty: diff })
+          }
+
+          // 3. Queue test assembly for each difficulty
+          for (const diff of difficulties) {
+            await enqueueAssembleHydration(topicId, { language: lang, difficulty: diff })
+            logger.debug('[syllabusWorker] queued assemble job', { topicId, language: lang, difficulty: diff })
+          }
+        } catch (queueErr) {
+          // Log but don't fail the syllabus job - downstream jobs can be retried
+          logger.warn('[syllabusWorker] failed to queue downstream job', { topicId, error: queueErr })
+        }
+      }
+
+      logger.info('[syllabusWorker] cascadeAll downstream jobs queued', {
+        jobId: job.id,
+        topicsProcessed: createdTopicIds.length,
+        notesJobs: createdTopicIds.length,
+        questionsJobs: createdTopicIds.length * difficulties.length,
+        assembleJobs: createdTopicIds.length * difficulties.length,
+      })
+    }
   } catch (err: any) {
     await prisma.hydrationJob.update({ where: { id: job.id }, data: { status: JobStatus.Failed, lastError: err.message } })
     return
