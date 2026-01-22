@@ -1,15 +1,16 @@
 'use client';
 /**
  * FILE OBJECTIVE:
- * - Mobile-optimized feature grid with compact cards.
+ * - Mobile-optimized feature grid with compact cards and navigation.
  *
  * LINKED UNIT TEST:
  * - tests/unit/app/dashboard/components/FeatureGrid.spec.ts
  *
  * EDIT LOG:
+ * - 2026-01-22 | copilot | added navigation handlers for all feature tiles
  * - 2025-01-22 | copilot | simplified for mobile with compact grid
  */
-import React from 'react';
+import React, { useCallback } from 'react';
 import { useFeatureGrid } from '@/hooks/useFeatureGrid';
 
 const featureEmoji: Record<string, string> = {
@@ -21,8 +22,32 @@ const featureEmoji: Record<string, string> = {
   default: '⚡',
 };
 
+// Route mapping for feature tiles
+const featureRoutes: Record<string, string> = {
+  notes: '/dashboard?tab=notes',
+  tests: '/dashboard?tab=tests',
+  practice: '/tests',
+  doubts: '/dashboard',
+  video: '/learn',
+  quiz: '/tests',
+};
+
 const FeatureGrid: React.FC = () => {
   const { tiles, loading } = useFeatureGrid();
+
+  const navigateToFeature = useCallback((key: string) => {
+    let route = '/dashboard';
+    
+    // Check for matching route
+    for (const [routeKey, path] of Object.entries(featureRoutes)) {
+      if (key.toLowerCase().includes(routeKey)) {
+        route = path;
+        break;
+      }
+    }
+    
+    window.location.assign(route);
+  }, []);
 
   if (loading) {
     return (
@@ -59,6 +84,7 @@ const FeatureGrid: React.FC = () => {
       {tiles.slice(0, 6).map((t) => (
         <button
           key={t.key}
+          onClick={() => navigateToFeature(t.key)}
           className="bg-card hover:bg-muted/50 rounded-lg p-3 text-center active:scale-95 transition-transform"
         >
           <div className="text-2xl mb-1">{getEmoji(t.key)}</div>
