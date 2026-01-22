@@ -2,7 +2,7 @@
 
 /**
  * FILE OBJECTIVE:
- * - Admin page to view and approve/reject pending hydrated content (notes, tests).
+ * - Admin page to view and approve/reject pending hydrated content (syllabus, chapters, topics, notes, tests).
  *
  * LINKED UNIT TEST:
  * - tests/unit/app/admin/content-approval/page.test.tsx
@@ -13,17 +13,19 @@
  *
  * EDIT LOG:
  * - 2026-01-22T04:15:00Z | copilot | Rewrote with real API integration for content approval
+ * - 2026-01-22T06:55:00Z | copilot | Added support for all hydrated content types: syllabus, chapters, topics
  */
 
 import React, { useEffect, useState } from "react";
 
 interface PendingItem {
   id: string;
-  type: 'note' | 'test' | 'topic' | 'chapter';
+  type: 'syllabus' | 'chapter' | 'topic' | 'note' | 'test';
   label: string;
   status: string;
   createdAt: string;
   details: {
+    title?: string;
     topicName?: string;
     chapterName?: string;
     board?: string;
@@ -33,14 +35,20 @@ interface PendingItem {
     language?: string;
     questionCount?: number;
     version?: number;
+    order?: number;
   };
 }
 
 interface ContentSummary {
   totalPending: number;
+  syllabus: number;
+  chapters: number;
+  topics: number;
   notes: number;
   tests: number;
 }
+
+type FilterType = 'all' | 'syllabus' | 'chapter' | 'topic' | 'note' | 'test';
 
 type ActionState = {
   loading: boolean;
@@ -54,7 +62,7 @@ export default function AdminContentApprovalPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [actionStates, setActionStates] = useState<Record<string, ActionState>>({});
-  const [filter, setFilter] = useState<'all' | 'note' | 'test'>('all');
+  const [filter, setFilter] = useState<FilterType>('all');
 
   const fetchPendingContent = async () => {
     setLoading(true);
@@ -104,11 +112,19 @@ export default function AdminContentApprovalPage() {
 
       // Remove item from list on success
       setItems((prev) => prev.filter((i) => i.id !== item.id));
-      setSummary((prev) => prev ? {
-        ...prev,
-        totalPending: prev.totalPending - 1,
-        [item.type === 'note' ? 'notes' : 'tests']: (prev[item.type === 'note' ? 'notes' : 'tests'] || 1) - 1,
-      } : null);
+      setSummary((prev) => {
+        if (!prev) return null;
+        const typeKey = item.type === 'note' ? 'notes' 
+          : item.type === 'test' ? 'tests' 
+          : item.type === 'chapter' ? 'chapters'
+          : item.type === 'topic' ? 'topics'
+          : 'syllabus';
+        return {
+          ...prev,
+          totalPending: prev.totalPending - 1,
+          [typeKey]: Math.max(0, (prev[typeKey] || 1) - 1),
+        };
+      });
 
       setActionStates((prev) => ({
         ...prev,
@@ -139,10 +155,22 @@ export default function AdminContentApprovalPage() {
 
       {/* Summary Cards */}
       {summary && (
-        <div className="grid grid-cols-3 gap-4 mb-6">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-6">
           <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow">
             <div className="text-3xl font-bold text-blue-600">{summary.totalPending}</div>
             <div className="text-sm text-gray-500">Total Pending</div>
+          </div>
+          <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow">
+            <div className="text-3xl font-bold text-indigo-600">{summary.syllabus}</div>
+            <div className="text-sm text-gray-500">Syllabus</div>
+          </div>
+          <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow">
+            <div className="text-3xl font-bold text-cyan-600">{summary.chapters}</div>
+            <div className="text-sm text-gray-500">Chapters</div>
+          </div>
+          <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow">
+            <div className="text-3xl font-bold text-orange-600">{summary.topics}</div>
+            <div className="text-sm text-gray-500">Topics</div>
           </div>
           <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow">
             <div className="text-3xl font-bold text-green-600">{summary.notes}</div>
@@ -156,18 +184,25 @@ export default function AdminContentApprovalPage() {
       )}
 
       {/* Filter Tabs */}
-      <div className="flex gap-2 mb-4">
-        {(['all', 'note', 'test'] as const).map((f) => (
+      <div className="flex flex-wrap gap-2 mb-4">
+        {([
+          { key: 'all', label: 'All' },
+          { key: 'syllabus', label: 'Syllabus' },
+          { key: 'chapter', label: 'Chapters' },
+          { key: 'topic', label: 'Topics' },
+          { key: 'note', label: 'Notes' },
+          { key: 'test', label: 'Tests' },
+        ] as const).map(({ key, label }) => (
           <button
-            key={f}
-            onClick={() => setFilter(f)}
+            key={key}
+            onClick={() => setFilter(key)}
             className={`px-4 py-2 rounded ${
-              filter === f
+              filter === key
                 ? 'bg-blue-600 text-white'
                 : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300'
             }`}
           >
-            {f === 'all' ? 'All' : f === 'note' ? 'Notes' : 'Tests'}
+            {label}
           </button>
         ))}
       </div>
@@ -209,7 +244,13 @@ export default function AdminContentApprovalPage() {
                   <div className="flex items-center gap-2 mb-2">
                     <span
                       className={`px-2 py-1 text-xs font-semibold rounded ${
-                        item.type === 'note'
+                        item.type === 'syllabus'
+                          ? 'bg-indigo-100 text-indigo-800'
+                          : item.type === 'chapter'
+                          ? 'bg-cyan-100 text-cyan-800'
+                          : item.type === 'topic'
+                          ? 'bg-orange-100 text-orange-800'
+                          : item.type === 'note'
                           ? 'bg-green-100 text-green-800'
                           : item.type === 'test'
                           ? 'bg-purple-100 text-purple-800'
@@ -226,6 +267,11 @@ export default function AdminContentApprovalPage() {
                     {item.details.language && (
                       <span className="px-2 py-1 text-xs rounded bg-blue-100 text-blue-800">
                         {item.details.language}
+                      </span>
+                    )}
+                    {item.details.order !== undefined && (
+                      <span className="px-2 py-1 text-xs rounded bg-gray-100 text-gray-600">
+                        Order: {item.details.order}
                       </span>
                     )}
                   </div>
