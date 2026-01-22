@@ -11,6 +11,7 @@
  *
  * EDIT LOG:
  * - 2026-01-22T04:00:00Z | copilot | Created content-approval API for fetching pending content
+ * - 2026-01-22T06:30:00Z | copilot | Fixed relation chain: topic.chapter.subject.class.board (was incorrectly using syllabus)
  */
 
 import { NextResponse } from 'next/server';
@@ -47,6 +48,7 @@ export async function GET() {
     const pendingItems: PendingContentItem[] = [];
 
     // Fetch draft notes
+    // Relation chain: TopicNote -> topic (TopicDef) -> chapter (ChapterDef) -> subject (SubjectDef) -> class (ClassLevel) -> board (Board)
     const draftNotes = await prisma.topicNote.findMany({
       where: { status: 'draft', lifecycle: 'active' },
       include: {
@@ -56,11 +58,19 @@ export async function GET() {
             chapter: {
               select: {
                 name: true,
-                syllabus: {
+                subject: {
                   select: {
-                    board: true,
-                    grade: true,
-                    subject: true,
+                    name: true,
+                    class: {
+                      select: {
+                        grade: true,
+                        board: {
+                          select: {
+                            name: true,
+                          }
+                        }
+                      }
+                    }
                   }
                 }
               }
@@ -73,7 +83,8 @@ export async function GET() {
     });
 
     for (const note of draftNotes) {
-      const context = note.topic?.chapter?.syllabus;
+      const subjectDef = note.topic?.chapter?.subject;
+      const classLevel = subjectDef?.class;
       pendingItems.push({
         id: note.id,
         type: 'note',
@@ -84,9 +95,9 @@ export async function GET() {
           topicId: note.topicId,
           topicName: note.topic?.name,
           chapterName: note.topic?.chapter?.name,
-          board: context?.board,
-          grade: context?.grade,
-          subject: context?.subject,
+          board: classLevel?.board?.name,
+          grade: classLevel?.grade,
+          subject: subjectDef?.name,
           language: note.language,
           version: note.version,
         },
@@ -94,6 +105,7 @@ export async function GET() {
     }
 
     // Fetch draft tests
+    // Same relation chain as notes
     const draftTests = await prisma.generatedTest.findMany({
       where: { status: 'draft', lifecycle: 'active' },
       include: {
@@ -103,11 +115,19 @@ export async function GET() {
             chapter: {
               select: {
                 name: true,
-                syllabus: {
+                subject: {
                   select: {
-                    board: true,
-                    grade: true,
-                    subject: true,
+                    name: true,
+                    class: {
+                      select: {
+                        grade: true,
+                        board: {
+                          select: {
+                            name: true,
+                          }
+                        }
+                      }
+                    }
                   }
                 }
               }
@@ -123,7 +143,8 @@ export async function GET() {
     });
 
     for (const test of draftTests) {
-      const context = test.topic?.chapter?.syllabus;
+      const subjectDef = test.topic?.chapter?.subject;
+      const classLevel = subjectDef?.class;
       pendingItems.push({
         id: test.id,
         type: 'test',
@@ -134,9 +155,9 @@ export async function GET() {
           topicId: test.topicId,
           topicName: test.topic?.name,
           chapterName: test.topic?.chapter?.name,
-          board: context?.board,
-          grade: context?.grade,
-          subject: context?.subject,
+          board: classLevel?.board?.name,
+          grade: classLevel?.grade,
+          subject: subjectDef?.name,
           difficulty: test.difficulty,
           language: test.language,
           questionCount: test.questions.length,
