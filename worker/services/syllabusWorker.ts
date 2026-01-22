@@ -11,6 +11,7 @@
  * - /docs/AI_Execution_pipeline.md
  *
  * EDIT LOG:
+ * - 2026-01-22T13:15:00Z | copilot | Fixed enqueue function calls to use single-object input pattern
  * - 2026-01-22T07:45:00Z | copilot | Added cascadeAll support for full content hydration
  */
 
@@ -265,18 +266,18 @@ JSON Schema:
       for (const topicId of createdTopicIds) {
         try {
           // 1. Queue notes generation
-          await enqueueNotesHydration(topicId, { language: lang })
+          await enqueueNotesHydration({ topicId, language: lang })
           logger.debug('[syllabusWorker] queued notes job', { topicId, language: lang })
 
           // 2. Queue questions for each difficulty
           for (const diff of difficulties) {
-            await enqueueQuestionsHydration(topicId, { language: lang, difficulty: diff })
+            await enqueueQuestionsHydration({ topicId, language: lang, difficulty: diff })
             logger.debug('[syllabusWorker] queued questions job', { topicId, language: lang, difficulty: diff })
           }
 
           // 3. Queue test assembly for each difficulty
           for (const diff of difficulties) {
-            await enqueueAssembleHydration(topicId, { language: lang, difficulty: diff })
+            await enqueueAssembleHydration({ topicId, language: lang, difficulty: diff })
             logger.debug('[syllabusWorker] queued assemble job', { topicId, language: lang, difficulty: diff })
           }
         } catch (queueErr) {
