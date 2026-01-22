@@ -289,6 +289,64 @@ POST /api/admin/content-engine/jobs/{id}/retry
 * Pause Engine
 * Resume Engine
 
+### Moderation Queue (`/admin/content-engine/moderation`)
+
+* Lists pending draft content (notes and tests) awaiting approval
+* Displays:
+  * Content type (Note/Test)
+  * Topic and chapter context
+  * Status badge (pending/approved/rejected)
+  * Language
+  * Created date
+* Actions:
+  * Approve (updates status to `approved`)
+  * Reject (updates status to `rejected`)
+
+**API Endpoints:**
+```
+GET /api/admin/content-engine/moderation
+POST /api/admin/content-engine/moderation/{id}/{action}
+```
+
+### Rollbacks & History (`/admin/content-engine/rollbacks`)
+
+* Timeline view of content status changes
+* Displays:
+  * Action type (approve/reject/publish/rollback)
+  * Entity type (note/test)
+  * Timestamp
+  * User who performed the action
+* Used for audit trail and compliance tracking
+
+**API Endpoint:**
+```
+GET /api/admin/content-engine/rollbacks
+```
+
+---
+
+### Admin Sidebar Navigation Structure
+
+The admin sidebar is organized into 4 collapsible sections:
+
+1. **Content Generation**
+   - Job Dashboard
+   - Hydration Jobs
+   - Hydrate All
+
+2. **Content Management**
+   - Content Approval
+   - Moderation
+   - Rollbacks
+
+3. **System Monitoring**
+   - Error Logs
+   - Audit Trail
+
+4. **General Admin**
+   - User Management
+   - Dashboard
+
 ---
 
 ### Admin UI MUST NOT:
