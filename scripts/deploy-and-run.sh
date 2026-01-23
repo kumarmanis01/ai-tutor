@@ -7,7 +7,7 @@ set -euo pipefail
 # - --branch BRANCH : pull the named branch (defaults to current branch)
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO_ROOT="${SCRIPT_DIR}"
+REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 
 AUTO_FLAG=1
 BRANCH=""
