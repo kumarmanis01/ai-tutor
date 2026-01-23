@@ -13,6 +13,7 @@
  *
  * EDIT LOG:
  * - 2026-01-22T02:20:00Z | copilot | Phase 3: Created notes worker handler
+ * - 2026-01-23T10:00:00Z | copilot | Enhanced prompt with comprehensive schema (sections, keyTerms, practiceQuestions, etc.)
  */
 
 import { prisma } from '@/lib/prisma.js';
@@ -132,32 +133,94 @@ export async function handleNotesJob(jobId: string): Promise<void> {
     ? await getNextVersion({ topicId, language, type: 'note' })
     : 1;
 
-  const prompt = `You are an expert educator.
+  const studentAge = grade + 5; // Approximate age based on grade
 
-Generate comprehensive study notes for students on:
+  const prompt = `You are an expert ${board} educator creating study material for Class ${grade} students.
+
+Create comprehensive, engaging study notes for:
 Topic: ${topic.name}
+Subject: ${subjectName}
 Board: ${board}
 Grade: ${grade}
-Subject: ${subjectName}
 Language: ${language}
 
-Rules:
-- Output JSON ONLY
-- No explanations outside the JSON
-- Content should be age-appropriate and aligned to the curriculum
-- Include key concepts, definitions, and examples
-- Be concise but thorough
+AUDIENCE: ${grade}th grade students (age ~${studentAge} years)
+
+REQUIREMENTS:
+- Use simple, age-appropriate language
+- Include relatable real-world examples
+- Make abstract concepts concrete
+- Anticipate common student confusions
+- Align strictly to ${board} curriculum standards
+
+OUTPUT: JSON ONLY (no markdown, no explanations outside JSON)
 
 JSON Schema:
 {
-  "title": "string",
+  "title": "string - engaging title for the topic",
   "content": {
-    "summary": "string",
-    "keyPoints": ["string"],
-    "definitions": [{ "term": "string", "definition": "string" }],
-    "examples": ["string"]
+    "introduction": "string - hook that captures student interest (2-3 sentences)",
+    
+    "learningObjectives": [
+      "string - By the end of this lesson, you will be able to..."
+    ],
+    
+    "sections": [
+      {
+        "heading": "string - section title",
+        "explanation": "string - clear explanation (3-5 paragraphs)",
+        "keyTakeaway": "string - one sentence summary of this section",
+        "visualSuggestion": "string - describe a diagram/image that would help (optional)"
+      }
+    ],
+    
+    "keyTerms": [
+      {
+        "term": "string",
+        "definition": "string - simple definition",
+        "example": "string - usage in a sentence or context"
+      }
+    ],
+    
+    "realWorldExamples": [
+      {
+        "scenario": "string - relatable situation",
+        "connection": "string - how the topic applies here"
+      }
+    ],
+    
+    "practiceQuestions": [
+      {
+        "question": "string",
+        "type": "recall | understanding | application",
+        "hint": "string (optional)",
+        "answer": "string"
+      }
+    ],
+    
+    "commonMistakes": [
+      {
+        "mistake": "string - what students often get wrong",
+        "correction": "string - the correct understanding"
+      }
+    ],
+    
+    "summary": "string - 3-4 sentence recap of the entire topic",
+    
+    "funFact": "string - interesting fact related to the topic (optional)",
+    
+    "relatedTopics": ["string - topic names for further exploration"],
+    
+    "studyTips": ["string - how to remember or practice this topic"]
   }
 }
+
+QUALITY GUIDELINES:
+- Sections: 2-4 sections covering the topic comprehensively
+- Key Terms: 3-8 essential vocabulary words
+- Practice Questions: 3-5 questions across difficulty levels
+- Real World Examples: 2-3 relatable scenarios
+- Common Mistakes: 2-3 typical student errors
 `;
 
   let llmResponse: { content: string };

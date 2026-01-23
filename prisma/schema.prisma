@@ -57,6 +57,8 @@ model User {
   subscriptions            Subscription[]
   testResults              TestResult[]
   userBadges               UserBadge[]
+  generatedStudyContent    GeneratedStudyContent[]
+  studyBookmarks           StudentStudyBookmark[]
 }
 
 model PhoneOtp {
@@ -1338,4 +1340,68 @@ model PublishedOutput {
 
   @@unique([scope, scopeRefId], name: "publishedoutput_unique_scope_ref")
   @@index([scope, scopeRefId], name: "idx_publishedoutput_scope")
+}
+
+/// Phase 16 — On-Demand Student Generated Content
+/// Stores student-generated study material that can be reused by other students
+model GeneratedStudyContent {
+  id           String           @id @default(cuid())
+  
+  /// Content hash for deduplication (hash of topic+subject+grade+board+language)
+  contentHash  String           @unique
+  
+  /// The topic/question that was asked
+  topic        String
+  
+  /// Optional academic context
+  subject      String?
+  grade        Int?
+  board        String?
+  language     LanguageCode     @default(en)
+  
+  /// The generated content (same schema as enhanced TopicNote)
+  contentJson  Json
+  
+  /// Metadata
+  generatedBy  String           /// User ID who first generated this
+  model        String?          /// LLM model used (e.g., "gpt-4")
+  tokensUsed   Int?
+  
+  /// Usage tracking
+  viewCount    Int              @default(0)
+  helpfulCount Int              @default(0)
+  
+  /// Lifecycle
+  status       ApprovalStatus   @default(draft)
+  lifecycle    SoftDeleteStatus @default(active)
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+  
+  /// Relation to user
+  user         User             @relation(fields: [generatedBy], references: [id])
+  
+  @@index([topic], name: "idx_generated_study_content_topic")
+  @@index([subject, grade, board], name: "idx_generated_study_content_context")
+  @@index([generatedBy], name: "idx_generated_study_content_user")
+  @@index([createdAt], name: "idx_generated_study_content_created")
+}
+
+/// Tracks student's saved/bookmarked study content (both official and generated)
+model StudentStudyBookmark {
+  id          String   @id @default(cuid())
+  userId      String
+  
+  /// Reference to content - either TopicNote or GeneratedStudyContent
+  contentType String   /// "topic_note" or "generated"
+  contentId   String
+  
+  /// Optional notes by the student
+  personalNote String?
+  
+  createdAt   DateTime @default(now())
+  
+  user        User     @relation(fields: [userId], references: [id])
+  
+  @@unique([userId, contentType, contentId])
+  @@index([userId, createdAt])
 }
