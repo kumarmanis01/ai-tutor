@@ -23,7 +23,13 @@
 
     // Optional deep validation (best-effort, but fatal if present and fails)
     try {
-      const mod = await import("../lib/bootstrap/validateEnvironment.js");
+      // IMPORTANT: This path is for RUNTIME after compilation.
+      // worker/entry.ts compiles to dist/worker/worker/entry.js
+      // lib/bootstrap/validateEnvironment.ts compiles to dist/worker/lib/bootstrap/validateEnvironment.js
+      // So the correct runtime path from entry.js is ../lib/bootstrap/validateEnvironment.js
+      // We use a string literal with .js extension to avoid tsc-alias rewriting it.
+      const validateEnvPath = "../lib/bootstrap/validateEnvironment.js";
+      const mod = await import(validateEnvPath);
       const validateEnvironment =
         (mod as any)?.validateEnvironment ?? (mod as any)?.default;
 

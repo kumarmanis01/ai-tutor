@@ -66,7 +66,7 @@ module.exports = {
       // Content-engine worker
       // ─────────────────────────────────────────────────────────────────────
       name: 'content-engine-worker',
-      script: 'dist/worker/entry.js',
+      script: 'dist/worker/worker/entry.js',
       cwd: __dirname,
       interpreter: 'node',
       instances: 1,
