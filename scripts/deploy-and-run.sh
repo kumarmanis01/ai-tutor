@@ -54,6 +54,22 @@ else
   echo "[deploy] WARNING: .env.production not found at ${REPO_ROOT}/.env.production"
 fi
 
+# ─────────────────────────────────────────────────────────────────────────────
+# INSTALL DEPENDENCIES & BUILD
+# ─────────────────────────────────────────────────────────────────────────────
+echo "[deploy] installing production dependencies..."
+cd "${REPO_ROOT}"
+NODE_ENV=production npm ci --omit=dev || npm install --omit=dev
+
+echo "[deploy] generating Prisma client..."
+npx prisma generate
+
+echo "[deploy] building workers..."
+npm run build:workers
+
+echo "[deploy] building Next.js app..."
+npm run build || true
+
 echo "[deploy] making child scripts executable (if present)"
 CHILD_SCRIPTS=(
   "${SCRIPT_DIR}/ensure-logs.sh"
