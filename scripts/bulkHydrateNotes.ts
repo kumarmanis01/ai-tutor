@@ -49,16 +49,17 @@ async function main() {
   }
 
   // Group by subject for better logging
+  type TopicWithContext = typeof topicsWithoutNotes[number];
   const bySubject = topicsWithoutNotes.reduce((acc, topic) => {
     const subjectName = topic.chapter?.subject?.name || 'Unknown';
     if (!acc[subjectName]) acc[subjectName] = [];
     acc[subjectName].push(topic);
     return acc;
-  }, {} as Record<string, typeof topicsWithoutNotes>);
+  }, {} as Record<string, TopicWithContext[]>);
 
   console.log('📚 Topics by subject:');
-  for (const [subject, topics] of Object.entries(bySubject)) {
-    console.log(`  - ${subject}: ${topics.length} topics`);
+  for (const [subject, subjectTopics] of Object.entries(bySubject)) {
+    console.log(`  - ${subject}: ${(subjectTopics as TopicWithContext[]).length} topics`);
   }
   console.log('');
 
@@ -78,11 +79,14 @@ async function main() {
         console.log(`✅ Queued: ${topic.name} (${result.jobId})`);
         successCount++;
       } else {
-        console.log(`⏭️ Skipped: ${topic.name} - ${result.reason}`);
+        // TypeScript narrows to { created: false; reason: string; jobId?: string }
+        const skipReason = 'reason' in result ? result.reason : 'unknown';
+        console.log(`⏭️ Skipped: ${topic.name} - ${skipReason}`);
         skipCount++;
       }
-    } catch (err: any) {
-      console.error(`❌ Error: ${topic.name} - ${err.message}`);
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      console.error(`❌ Error: ${topic.name} - ${errorMessage}`);
       errorCount++;
     }
 

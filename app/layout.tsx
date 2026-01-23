@@ -1,4 +1,19 @@
-import React from 'react';
+/**
+ * FILE OBJECTIVE:
+ * - Root layout component for the Next.js application with providers, analytics, and global UI.
+ *
+ * LINKED UNIT TEST:
+ * - tests/unit/app/layout.spec.ts
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/COPILOT_GUARDRAILS.md
+ * - .github/copilot-instructions.md
+ *
+ * EDIT LOG:
+ * - 2025-01-XX | copilot | added GTM integration
+ */
+
+import React, { Suspense } from 'react';
 import dynamic from 'next/dynamic';
 import '../styles/index.css';
 import Providers from './providers';
@@ -6,6 +21,12 @@ import { GlobalLoaderProvider } from '@/context/GlobalLoaderProvider';
 import AuthSessionLoader from '@/components/AuthSessionLoader';
 import ToastHost from '@/components/ToastHost';
 // Job registrations moved to worker/orchestrator to avoid running jobs in web process
+
+// Client-only GTM component (uses usePathname/useSearchParams)
+const GoogleTagManagerDynamic = dynamic(
+  () => import('@/components/GoogleTagManager'),
+  { ssr: false }
+);
 
 export const viewport = {
   width: 'device-width',
@@ -31,6 +52,10 @@ export default function RootLayout({
         <Providers>
           <GlobalLoaderProvider>
             <AuthSessionLoader />
+            {/* Google Tag Manager for external analytics & conversion tracking */}
+            <Suspense fallback={null}>
+              <GoogleTagManagerDynamic />
+            </Suspense>
             {/* Global modal host */}
             <AppModalDynamic />
               {children}

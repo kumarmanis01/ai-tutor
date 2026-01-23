@@ -37,7 +37,7 @@ export default async function Page() {
     if (res.ok) {
       data = await res.json()
     }
-  } catch (e) {
+  } catch {
     // Silently fail - show empty courses list
   }
 

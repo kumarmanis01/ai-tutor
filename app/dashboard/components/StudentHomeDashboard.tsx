@@ -8,6 +8,7 @@
  * - tests/unit/app/dashboard/components/StudentHomeDashboard.spec.ts
  *
  * EDIT LOG:
+ * - 2025-01-XX | copilot | added test nudge prompt component
  * - 2025-01-22 | copilot | optimized for mobile-first with streamlined UX
  */
 import React, { useState, useEffect } from 'react';
@@ -26,6 +27,7 @@ import ParentModeCard from './ParentModeCard';
 import BottomNavigation from './BottomNavigator';
 import TestsTab from './Tests';
 import NotesTab from './Notes';
+import { TestNudgeFloating } from '@/components/TestNudgePrompt';
 
 interface StudentHomeDashboardProps { [key: string]: unknown }
 
@@ -172,6 +174,8 @@ const StudentHomeDashboard: React.FC<StudentHomeDashboardProps> = () => {
         </div>
       </main>
       <BottomNavigation activeTab={activeTab} onTabChange={setActiveTab} />
+      {/* Test nudge prompts - floating notification for encouraging tests */}
+      <TestNudgeFloating />
     </div>
   );
 };

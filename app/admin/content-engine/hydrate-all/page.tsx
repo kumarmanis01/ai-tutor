@@ -17,6 +17,7 @@
  */
 
 import React, { useEffect, useState } from 'react';
+import Link from 'next/link';
 
 interface Board {
   id: string;
@@ -395,12 +396,12 @@ export default function HydrateAllPage() {
         >
           {submitState.loading ? 'Submitting...' : '🚀 Start Full Hydration'}
         </button>
-        <a
+        <Link
           href="/admin/content-engine/jobs"
           className="text-blue-600 hover:underline"
         >
           View Jobs →
-        </a>
+        </Link>
       </div>
 
       {/* Status Messages */}
@@ -419,9 +420,9 @@ export default function HydrateAllPage() {
             </div>
           )}
           <div className="mt-2">
-            <a href="/admin/content-engine/jobs" className="underline">
+            <Link href="/admin/content-engine/jobs" className="underline">
               Track progress in Jobs →
-            </a>
+            </Link>
           </div>
         </div>
       )}

@@ -16,6 +16,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getServerSessionForHandlers } from '@/lib/session';
+import { logger } from '@/lib/logger';
 
 /**
  * GET /api/admin/content-engine/audit-logs
@@ -63,7 +64,7 @@ export async function GET() {
 
     return NextResponse.json({ logs: transformedLogs });
   } catch (error) {
-    console.error('Failed to fetch audit logs:', error);
+    logger.error('Failed to fetch audit logs', { className: 'audit-logs', methodName: 'GET', error: String(error) });
     return NextResponse.json({ error: 'Failed to fetch audit logs' }, { status: 500 });
   }
 }

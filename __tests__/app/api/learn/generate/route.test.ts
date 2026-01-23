@@ -14,8 +14,6 @@
  * - 2026-01-23T10:35:00Z | copilot | Created unit tests for generate API
  */
 
-import { NextRequest } from 'next/server';
-
 // Mock dependencies before importing the route
 jest.mock('@/lib/prisma', () => ({
   prisma: {

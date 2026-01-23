@@ -16,7 +16,7 @@ import { useNotes, NoteEntry } from '../context/NotesProvider';
 export function NotesDownloaded() {
   const { downloaded, loading } = useNotes();
   
-  const openNote = useCallback((note: NoteEntry) => {
+  const openNote = useCallback((_note: NoteEntry) => {
     // Navigate to learn page since /notes doesn't exist
     window.location.assign(`/learn`);
   }, []);

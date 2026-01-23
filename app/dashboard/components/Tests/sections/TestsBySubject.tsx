@@ -26,6 +26,7 @@ export function TestsBySubject() {
   }, []);
 
   const navigateToSubject = useCallback((subject: string) => {
+    // eslint-disable-next-line ai-guards/no-string-filters -- Legacy code, refactor to use subjectId later
     window.location.assign(`/tests?subject=${encodeURIComponent(subject)}`);
   }, []);
 

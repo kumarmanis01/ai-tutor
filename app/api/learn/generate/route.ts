@@ -407,7 +407,7 @@ export async function POST(req: Request) {
  * GET /api/learn/generate
  * Returns user's generation history and rate limit info
  */
-export async function GET(req: Request) {
+export async function GET(_req: Request) {
   const session = await getServerSessionForHandlers();
   if (!session?.user?.id) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });

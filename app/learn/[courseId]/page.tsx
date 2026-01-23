@@ -64,7 +64,7 @@ export default async function Page({ params }: Props) {
     if (res.ok) {
       pkg = await res.json()
     }
-  } catch (e) {
+  } catch {
     // Silently fail
   }
   

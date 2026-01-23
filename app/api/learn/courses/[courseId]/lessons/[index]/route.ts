@@ -270,7 +270,7 @@ export async function GET(req: Request, { params }: { params: { courseId: string
     if (topicsWithContent.length > 0) {
       // Combine all topic notes into a comprehensive lesson
       const allConcepts: { title: string; explanation: string; example?: string }[] = []
-      let overviewParts: string[] = []
+      const overviewParts: string[] = []
 
       for (const topic of topicsWithContent) {
         const note = topic.notes[0]

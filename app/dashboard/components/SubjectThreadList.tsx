@@ -58,7 +58,7 @@ export default function SubjectThreadList({ subjects = defaultSubjects, subject,
 
   useEffect(() => { loadThreads(); }, [loadThreads]);
 
-  const currentData = subjectData[subject] || subjectData.general;
+  const _currentData = subjectData[subject] || subjectData.general;
 
   return (
     <div className="space-y-2">

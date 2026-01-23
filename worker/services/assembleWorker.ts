@@ -13,6 +13,7 @@
  *
  * EDIT LOG:
  * - 2026-01-22T02:30:00Z | copilot | Phase 3: Created assemble worker handler
+ * - 2026-01-23T08:00:00Z | copilot | Fixed: Use GeneratedQuestion relation instead of questionsJson field
  */
 
 import { prisma } from '@/lib/prisma.js';
@@ -74,32 +75,35 @@ export async function handleAssembleJob(jobId: string): Promise<void> {
 
   try {
     await prisma.$transaction(async (tx) => {
-      // Find draft tests for this topic that match criteria
+      // Find draft tests for this topic that match criteria, include question count
       const draftTests = await tx.generatedTest.findMany({
         where: {
           topicId,
           language,
           difficulty,
           status: 'draft'
+        },
+        include: {
+          _count: {
+            select: { questions: true }
+          }
         }
       });
 
       let assembledCount = 0;
 
       for (const test of draftTests) {
-        // Check if test has enough questions
-        // questionsJson is an array of question objects
-        const questions = test.questionsJson as any[];
-        if (!questions || !Array.isArray(questions)) continue;
+        // Check if test has enough questions using the relation count
+        const questionCount = test._count.questions;
 
-        if (questions.length >= MIN_QUESTIONS_FOR_APPROVAL) {
+        if (questionCount >= MIN_QUESTIONS_FOR_APPROVAL) {
           // Auto-approve tests that meet threshold
           await tx.generatedTest.update({
             where: { id: test.id },
             data: { status: 'approved' }
           });
           assembledCount++;
-          logger.info('handleAssembleJob: approved test', { testId: test.id, questionCount: questions.length });
+          logger.info('handleAssembleJob: approved test', { testId: test.id, questionCount });
         }
       }
 

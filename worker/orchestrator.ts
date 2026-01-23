@@ -25,6 +25,7 @@ import { logger } from '@/lib/logger.js'
 import { startMetricsServer, incJobsSpawned } from './metrics-server'
 import { createJobForWorker } from './k8s-adapter'
 import { runAnalyticsJobs } from '../jobs/analyticsJobs'
+import { scheduleDailyFreeQuestionReset } from '../jobs/dailyFreeQuestionReset'
 // Register job definitions for orchestrator/worker processes only
 import '../lib/jobs/registerJobs'
 
@@ -168,6 +169,16 @@ async function main() {
     }
   } catch (e) {
     console.error('[orchestrator] failed to schedule analytics job', e)
+  }
+
+  // Schedule daily free question reset (runs at midnight UTC by default)
+  try {
+    const enableFreeQuestionReset = process.env.ORCHESTRATOR_ENABLE_FREE_RESET !== '0';
+    if (enableFreeQuestionReset) {
+      scheduleDailyFreeQuestionReset();
+    }
+  } catch (e) {
+    console.error('[orchestrator] failed to schedule daily free question reset', e);
   }
 
   if (!K8S_MODE) {

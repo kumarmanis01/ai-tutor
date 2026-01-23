@@ -15,7 +15,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getServerSessionForHandlers } from '@/lib/session';
-import { getRecommendationsForUser, updateLearningProfile } from '@/lib/recommendations/engine';
+import { getRecommendationsForUser } from '@/lib/recommendations/engine';
 import { logger } from '@/lib/logger';
 
 export const dynamic = 'force-dynamic';

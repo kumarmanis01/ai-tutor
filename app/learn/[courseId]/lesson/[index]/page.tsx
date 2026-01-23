@@ -63,7 +63,7 @@ export default async function Page({ params }: Props) {
     if (res.ok) {
       lesson = await res.json()
     }
-  } catch (e) {
+  } catch {
     // Silently fail
   }
   
@@ -86,7 +86,7 @@ export default async function Page({ params }: Props) {
     if (pkgRes.ok) {
       pkg = await pkgRes.json()
     }
-  } catch (e) {
+  } catch {
     // Silently fail
   }
   
