@@ -40,6 +40,20 @@ echo "[deploy] pulling branch ${BRANCH} (fast-forward only)..."
 git checkout "${BRANCH}"
 git pull --ff origin "${BRANCH}"
 
+# ─────────────────────────────────────────────────────────────────────────────
+# EARLY ENVIRONMENT EXPORT
+# Export .env.production immediately after git pull so all subsequent steps
+# (vps-verification, PM2, etc.) have access to DATABASE_URL, REDIS_URL, etc.
+# ─────────────────────────────────────────────────────────────────────────────
+if [ -f "${REPO_ROOT}/.env.production" ]; then
+  echo "[deploy] exporting .env.production into environment (early)"
+  set -o allexport; source "${REPO_ROOT}/.env.production"; set +o allexport
+  echo "[deploy] DATABASE_URL is set: $([ -n \"${DATABASE_URL:-}\" ] && echo 'YES' || echo 'NO')"
+  echo "[deploy] REDIS_URL is set: $([ -n \"${REDIS_URL:-}\" ] && echo 'YES' || echo 'NO')"
+else
+  echo "[deploy] WARNING: .env.production not found at ${REPO_ROOT}/.env.production"
+fi
+
 echo "[deploy] making child scripts executable (if present)"
 CHILD_SCRIPTS=(
   "${SCRIPT_DIR}/ensure-logs.sh"
@@ -88,47 +102,34 @@ else
   echo "[deploy] warning: vps-verification.sh not found, skipping"
 fi
 
-# Reset PM2 (stop/delete/flush) so ecosystem starts cleanly only when requested
-if [ "${CLEAN_FLAG}" -eq 1 ]; then
-  echo "[deploy] resetting pm2 processes: stop all, delete all, flush"
-  pm2 stop all || true
-  pm2 delete all || true
-  pm2 flush || true
-  if [ "${KILL_FLAG}" -eq 1 ]; then
-    echo "[deploy] killing pm2 daemon (you may need to restart it)"
-    pm2 kill || true
-  fi
-else
-  echo "[deploy] skipping PM2 reset (CLEAN_FLAG=0) — PM2 processes will be left running"
+# ─────────────────────────────────────────────────────────────────────────────
+# PM2 RESET & RESTART
+# Always delete and restart PM2 processes to ensure clean state with env vars
+# ─────────────────────────────────────────────────────────────────────────────
+echo "[deploy] resetting pm2 processes for clean start"
+pm2 delete all 2>/dev/null || true
+pm2 flush 2>/dev/null || true
+
+if [ "${KILL_FLAG}" -eq 1 ]; then
+  echo "[deploy] killing pm2 daemon (you may need to restart it)"
+  pm2 kill || true
 fi
 
-# NOTE: PM2 start and verify will run after we export .env.production below.
-# This keeps start/stop logic atomic and avoids duplicate starts.
-
-# Export env before starting PM2 so processes inherit .env.production
-if [ -f "${REPO_ROOT}/.env.production" ]; then
-  echo "[deploy] exporting .env.production into environment"
-  set -o allexport; source "${REPO_ROOT}/.env.production"; set +o allexport
-else
-  echo "[deploy] .env.production not found; ensure envs are set in PM2"
-fi
-
-# Start/reload PM2 with the ecosystem config (prefer start)
+# Start PM2 with the ecosystem config
+# Environment was already exported early in the script
 if [ -f "${REPO_ROOT}/ecosystem.config.cjs" ]; then
   echo "[deploy] starting PM2 ecosystem.config.cjs (env=production)"
-  pm2 start ecosystem.config.cjs --env production --update-env || pm2.reload ecosystem.config.cjs --env production --update-env || true
+  pm2 start ecosystem.config.cjs --env production --update-env || true
+  pm2 save || true
 elif [ -f "${REPO_ROOT}/ecosystem.config.js" ]; then
   echo "[deploy] starting PM2 ecosystem.config.js (env=production)"
-  pm2 start ecosystem.config.js --env production --update-env || pm2.reload ecosystem.config.js --env production --update-env || true
+  pm2 start ecosystem.config.js --env production --update-env || true
+  pm2 save || true
 else
   echo "[deploy] no ecosystem.config.* found, skipping PM2 ecosystem start"
 fi
 
-sleep 1
-
-# Ecosystem-managed PM2 processes are the canonical source of truth.
-# The previous wrapper fallback that started `run-web.sh` / `run-worker.sh`
-# caused duplicate starts and env drift. We intentionally removed it so the
-# deploy flow only relies on the ecosystem file and `--update-env`.
+sleep 2
+pm2 status
 
 echo "[deploy] done. Use 'pm2 list' and 'pm2 logs <name>' to inspect processes."
