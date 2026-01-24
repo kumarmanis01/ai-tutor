@@ -38,7 +38,7 @@ fi
 
 echo "[deploy] pulling branch ${BRANCH} (fast-forward only)..."
 git checkout "${BRANCH}"
-git pull --ff origin "${BRANCH}"
+git pull --ff-only origin "${BRANCH}"
 
 # ─────────────────────────────────────────────────────────────────────────────
 # EARLY ENVIRONMENT EXPORT
@@ -92,13 +92,62 @@ echo "[deploy] generating Prisma client..."
 npx prisma generate
 
 echo "[deploy] deploying Prisma migrations (will abort on failure)..."
-# Re-export to be safe, then deploy migrations. Exit on failure so we don't start services with missing tables.
+# Re-export to be safe
 set -o allexport; source "${REPO_ROOT}/.env.production"; set +o allexport
-if npx prisma migrate deploy --schema=prisma/schema.prisma; then
-  echo "[deploy] prisma migrate deploy: OK"
+
+# If a helper migration script exists, prefer it (it waits on the DB host/port).
+if [ -f "${REPO_ROOT}/scripts/run-migrate.sh" ]; then
+  echo "[deploy] running scripts/run-migrate.sh"
+  bash "${REPO_ROOT}/scripts/run-migrate.sh" || { echo "[deploy] ERROR: scripts/run-migrate.sh failed" >&2; exit 1; }
 else
-  echo "[deploy] ERROR: prisma migrate deploy failed. Aborting deployment." >&2
-  exit 1
+  # Fallback: try to wait for the DB host/port derived from DATABASE_URL before running migrate
+  wait_for_port() {
+    local host="$1"; local port="$2"; local timeout_seconds=${3:-60}
+    echo "[deploy] waiting for ${host}:${port} (timeout ${timeout_seconds}s)"
+    for i in $(seq 1 ${timeout_seconds}); do
+      if bash -c "</dev/tcp/${host}/${port}" >/dev/null 2>&1; then
+        echo "[deploy] ${host}:${port} reachable"
+        return 0
+      fi
+      sleep 1
+    done
+    return 1
+  }
+
+  if [ -n "${DATABASE_URL:-}" ]; then
+    # Use Python to robustly parse the URL (hostname and port may be absent)
+    db_host=$(python - <<'PY'
+from urllib.parse import urlparse
+import os
+u = urlparse(os.environ.get('DATABASE_URL',''))
+print(u.hostname or '')
+PY
+)
+    db_port=$(python - <<'PY'
+from urllib.parse import urlparse
+import os
+u = urlparse(os.environ.get('DATABASE_URL',''))
+print(u.port or '')
+PY
+)
+    if [ -n "$db_host" ] && [ -n "$db_port" ]; then
+      if ! wait_for_port "$db_host" "$db_port" 60; then
+        echo "[deploy] ERROR: timed out waiting for DB ${db_host}:${db_port}" >&2
+        exit 1
+      fi
+    else
+      echo "[deploy] WARN: couldn't parse host/port from DATABASE_URL; continuing to prisma migrate deploy"
+    fi
+  else
+    echo "[deploy] WARNING: DATABASE_URL not set; prisma migrate may fail"
+  fi
+
+  if npx prisma migrate deploy --schema=prisma/schema.prisma; then
+    echo "[deploy] prisma migrate deploy: OK"
+  else
+    echo "[deploy] ERROR: prisma migrate deploy failed. Aborting deployment." >&2
+    exit 1
+  fi
 fi
 
 echo "[deploy] building workers..."
@@ -123,6 +172,14 @@ for s in "${CHILD_SCRIPTS[@]}"; do
     echo "[deploy] skipped (not found): $s"
   fi
 done
+
+# Ensure worker wrapper is executable so PM2 can run it reliably
+if [ -f "${REPO_ROOT}/scripts/run-worker.sh" ]; then
+  chmod +x "${REPO_ROOT}/scripts/run-worker.sh" || true
+  echo "[deploy] ensured executable: ${REPO_ROOT}/scripts/run-worker.sh"
+else
+  echo "[deploy] warning: scripts/run-worker.sh not found; PM2 will run whatever ecosystem config references"
+fi
 
 # verify env permissions and non-tracking
 if [ -f "${REPO_ROOT}/scripts/ensure-env-perms.sh" ]; then
@@ -179,6 +236,10 @@ elif [ -f "${REPO_ROOT}/ecosystem.config.js" ]; then
   pm2 start ecosystem.config.js --env production --update-env || true
   pm2 save || true
 else
+  # Ensure the worker process picks up the freshly exported environment (wrapper relies on .env.production)
+  echo "[deploy] restarting worker to ensure wrapper-sourced env is active"
+  pm2 restart content-engine-worker --update-env || true
+  pm2 save || true
   echo "[deploy] no ecosystem.config.* found, skipping PM2 ecosystem start"
 fi
 
