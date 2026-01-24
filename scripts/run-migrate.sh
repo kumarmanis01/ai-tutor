@@ -13,12 +13,56 @@ set -e
 #
 # EDIT LOG:
 # - 2026-01-21T00:00:00Z | copilot-agent | created migration helper script with wait-and-deploy behaviour
+# - 2026-01-24T00:00:00Z | copilot-agent | parse DATABASE_URL for host/port when POSTGRES_HOST/PORT are not provided
 
 # Configurable via env
-DB_HOST=${POSTGRES_HOST:-localhost}
-DB_PORT=${POSTGRES_PORT:-5432}
 RETRIES=20
 SLEEP=3
+
+ROOT_DIR=$(cd "$(dirname "$0")/.." && pwd)
+ENV_FILE="$ROOT_DIR/.env.production"
+if [ -f "$ENV_FILE" ]; then
+  echo "[run-migrate] loading $ENV_FILE"
+  # export all variables for the script
+  set -o allexport; source "$ENV_FILE"; set +o allexport
+fi
+
+# Determine DB host/port: prefer explicit POSTGRES_HOST/POSTGRES_PORT,
+# otherwise try to parse from DATABASE_URL if present.
+if [ -n "$POSTGRES_HOST" ]; then
+  DB_HOST="$POSTGRES_HOST"
+else
+  DB_HOST="localhost"
+fi
+
+if [ -n "$POSTGRES_PORT" ]; then
+  DB_PORT="$POSTGRES_PORT"
+else
+  DB_PORT="5432"
+fi
+
+# If DB_HOST is still localhost and we have a DATABASE_URL, parse host and port
+if [ "$DB_HOST" = "localhost" ] && [ -n "$DATABASE_URL" ]; then
+  url_noscheme=${DATABASE_URL#*://}
+  after_at=${url_noscheme#*@}
+  hostport=${after_at%%/*}
+  case "$hostport" in
+    *:*)
+      parsed_host=${hostport%%:*}
+      parsed_port=${hostport#*:}
+      ;;
+    *)
+      parsed_host="$hostport"
+      parsed_port=""
+      ;;
+  esac
+  if [ -n "$parsed_host" ]; then
+    DB_HOST="$parsed_host"
+  fi
+  if [ -n "$parsed_port" ]; then
+    DB_PORT="$parsed_port"
+  fi
+fi
 
 echo "Waiting for Postgres at ${DB_HOST}:${DB_PORT}..."
 

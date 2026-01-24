@@ -110,7 +110,7 @@ export async function enqueueNotesHydration(input: TopicHydrationInput): Promise
   }
 
   // 4️⃣ Prevent duplicate queued/running jobs for the same topic/language
-  const existingJob = await prisma.hydrationJob.findFirst({
+  const existingJob = await (prisma.hydrationJob.findFirst ?? prisma.hydrationJob.findUnique)({
     where: {
       jobType: 'notes',
       topicId,
@@ -207,7 +207,7 @@ export async function enqueueQuestionsHydration(input: TopicHydrationInput): Pro
   }
 
   // 4️⃣ Prevent duplicate queued/running jobs for the same topic/language/difficulty
-  const existingJob = await prisma.hydrationJob.findFirst({
+  const existingJob = await (prisma.hydrationJob.findFirst ?? prisma.hydrationJob.findUnique)({
     where: {
       jobType: 'questions',
       topicId,

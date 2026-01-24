@@ -63,28 +63,29 @@ module.exports = {
     },
     {
       // ─────────────────────────────────────────────────────────────────────
-      // Content-engine worker
+      // Content-engine worker (wrapped)
+      // Use the `scripts/run-worker.sh` wrapper which sources `.env.production`
+      // and exports variables safely before starting the compiled worker.
+      // This avoids relying on PM2's env handling differences across versions.
       // ─────────────────────────────────────────────────────────────────────
       name: 'content-engine-worker',
-      script: 'dist/worker/worker/entry.js',
+      script: 'scripts/run-worker.sh',
       cwd: __dirname,
-      interpreter: 'node',
+      interpreter: 'bash',
       instances: 1,
       exec_mode: 'fork',
-      
-      // Environment - critical vars must be present or worker will fail fast
+
+      // Environment - keep NODE_ENV here; other critical vars are exported by the wrapper
       env: {
         NODE_ENV: 'production',
-        DATABASE_URL: process.env.DATABASE_URL,
-        REDIS_URL: process.env.REDIS_URL,
       },
-      
+
       // Logging
       error_file: 'logs/content-engine-worker-error.log',
       out_file: 'logs/content-engine-worker-out.log',
       merge_logs: true,
       time: true,
-      
+
       // Restart policies - worker should restart on crash but not loop forever
       autorestart: true,
       max_restarts: 10,

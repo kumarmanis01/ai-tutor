@@ -36,7 +36,7 @@ export async function GET(_req: Request, { params }: { params: { courseId: strin
   }
 
   // Fallback: Try SubjectDef by ID
-  const subject = await db.subjectDef.findUnique({
+  const subject = db.subjectDef ? await db.subjectDef.findUnique({
     where: { id: courseId },
     include: {
       chapters: {
@@ -50,7 +50,7 @@ export async function GET(_req: Request, { params }: { params: { courseId: strin
         }
       }
     }
-  })
+  }) : null
 
   if (subject) {
     // Transform to course-like structure with modules/lessons
@@ -74,7 +74,7 @@ export async function GET(_req: Request, { params }: { params: { courseId: strin
   }
 
   // Try finding subject by name (in case courseId is a name)
-  const subjectByName = await db.subjectDef.findFirst({
+  const subjectByName = db.subjectDef ? await db.subjectDef.findFirst({
     where: { 
       name: { equals: courseId, mode: 'insensitive' },
       chapters: { some: { lifecycle: 'active' } }
@@ -86,7 +86,7 @@ export async function GET(_req: Request, { params }: { params: { courseId: strin
         select: { id: true, name: true, slug: true }
       }
     }
-  })
+  }) : null
 
   if (subjectByName) {
     return NextResponse.json({

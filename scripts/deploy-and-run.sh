@@ -47,6 +47,33 @@ git pull --ff origin "${BRANCH}"
 # ─────────────────────────────────────────────────────────────────────────────
 if [ -f "${REPO_ROOT}/.env.production" ]; then
   echo "[deploy] exporting .env.production into environment (early)"
+  # Sanitize .env.production in-place to avoid shell-splitting on unescaped '&' or CRLF issues.
+  sanitize_env_file() {
+    local f="$1"
+    if [ ! -f "$f" ]; then
+      return 0
+    fi
+    echo "[deploy] sanitizing $f"
+    # Normalize line endings (prefer dos2unix when available)
+    if command -v dos2unix >/dev/null 2>&1; then
+      dos2unix "$f" || true
+    else
+      # remove CR char at line ends
+      sed -i 's/\r$//' "$f" || true
+    fi
+
+    # Ensure DATABASE_URL is single-quoted if not already quoted
+    perl -0777 -pe "s/^(DATABASE_URL=)(?!['\"])(.*)$/\$1'\$2'/m" -i "$f" || true
+    # Ensure REDIS_URL is single-quoted if not already quoted
+    perl -0777 -pe "s/^(REDIS_URL=)(?!['\"])(.*)$/\$1'\$2'/m" -i "$f" || true
+
+    # Print short debugging preview
+    grep -E "^DATABASE_URL=|^REDIS_URL=" "$f" || true
+  }
+
+  sanitize_env_file "${REPO_ROOT}/.env.production"
+
+  # Export into environment for rest of the script so child processes inherit
   set -o allexport; source "${REPO_ROOT}/.env.production"; set +o allexport
   echo "[deploy] DATABASE_URL is set: $([ -n \"${DATABASE_URL:-}\" ] && echo 'YES' || echo 'NO')"
   echo "[deploy] REDIS_URL is set: $([ -n \"${REDIS_URL:-}\" ] && echo 'YES' || echo 'NO')"
@@ -63,6 +90,16 @@ NODE_ENV=production npm ci --omit=dev || npm install --omit=dev
 
 echo "[deploy] generating Prisma client..."
 npx prisma generate
+
+echo "[deploy] deploying Prisma migrations (will abort on failure)..."
+# Re-export to be safe, then deploy migrations. Exit on failure so we don't start services with missing tables.
+set -o allexport; source "${REPO_ROOT}/.env.production"; set +o allexport
+if npx prisma migrate deploy --schema=prisma/schema.prisma; then
+  echo "[deploy] prisma migrate deploy: OK"
+else
+  echo "[deploy] ERROR: prisma migrate deploy failed. Aborting deployment." >&2
+  exit 1
+fi
 
 echo "[deploy] building workers..."
 npm run build:workers
