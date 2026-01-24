@@ -275,7 +275,26 @@ QUALITY GUIDELINES:
 
   // Persist notes
   try {
-    await prisma.$transaction(async (tx) => {
+    const runTxWithRetry = async (work: (tx: any) => Promise<any>, attempts = 3) => {
+      let lastErr: any = null;
+      for (let i = 0; i < attempts; i++) {
+        try {
+          return await prisma.$transaction(work);
+        } catch (err: any) {
+          lastErr = err;
+          const msg = String(err?.message || '');
+          if (/Transaction not found|Transaction API error/i.test(msg)) {
+            const backoff = (i + 1) * 500;
+            await new Promise((r) => setTimeout(r, backoff));
+            continue;
+          }
+          throw err;
+        }
+      }
+      throw lastErr;
+    };
+
+    await runTxWithRetry(async (tx) => {
       await tx.topicNote.create({
         data: {
           topicId,

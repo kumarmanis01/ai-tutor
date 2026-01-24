@@ -249,10 +249,29 @@ export async function handleQuestionsJob(jobId: string): Promise<void> {
 
     // Persist to database
     try {
-      const version = await getNextVersion({ topicId, difficulty, language, type: 'test' });
-      const testTitle = `${topic.name} - ${difficulty.charAt(0).toUpperCase() + difficulty.slice(1)} Quiz`;
+        const version = await getNextVersion({ topicId, difficulty, language, type: 'test' });
+        const testTitle = `${topic.name} - ${difficulty.charAt(0).toUpperCase() + difficulty.slice(1)} Quiz`;
 
-      const test = await prisma.$transaction(async (tx) => {
+        const runTxWithRetry = async (work: (tx: any) => Promise<any>, attempts = 3) => {
+          let lastErr: any = null;
+          for (let i = 0; i < attempts; i++) {
+            try {
+              return await prisma.$transaction(work);
+            } catch (err: any) {
+              lastErr = err;
+              const msg = String(err?.message || '');
+              if (/Transaction not found|Transaction API error/i.test(msg)) {
+                const backoff = (i + 1) * 500;
+                await new Promise((r) => setTimeout(r, backoff));
+                continue;
+              }
+              throw err;
+            }
+          }
+          throw lastErr;
+        };
+
+        const test = await runTxWithRetry(async (tx) => {
         const newTest = await tx.generatedTest.create({
           data: {
             topicId,
