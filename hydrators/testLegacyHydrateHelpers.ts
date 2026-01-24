@@ -2,7 +2,7 @@ import { callLLM } from '@/lib/callLLM'
 import { prisma } from '@/lib/prisma'
 
 export async function runLegacyNotesHydrate(topicId: string, language: string) {
-  const llmRes: any = await callLLM({})
+  const llmRes: any = await callLLM({ prompt: 'test', meta: {} })
   const parsed = llmRes?.content ? JSON.parse(llmRes.content) : null
   if (parsed) {
     await prisma.topicNote.create({ data: { topicId, language, title: parsed.title, contentJson: parsed.content } })
@@ -22,7 +22,7 @@ export async function runLegacyQuestionsHydrate(topicId: string, difficulty: str
   const g: any = global as any
   const recorded = g.__TEST_TOPIC_TITLES__ ? g.__TEST_TOPIC_TITLES__[topicId] : undefined
   const topic = await prisma.topicDef.findUnique({ where: { id: topicId } })
-  const llmRes: any = await callLLM({})
+  const llmRes: any = await callLLM({ prompt: 'test', meta: {} })
   const parsed = llmRes?.content ? JSON.parse(llmRes.content) : null
   const title = parsed?.title ?? recorded ?? (topic ? `${topic.name} - Generated Test` : undefined)
   if (parsed) {
