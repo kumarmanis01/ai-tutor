@@ -53,6 +53,7 @@
     "serve": "next start",
     "type-check": "tsc -p tsconfig.json --noEmit",
     "clear-auth": "set CONFIRM=true && node -r ts-node/register scripts/clear-auth-tables.ts",
+    "pretest": "npx prisma generate",
     "test": "npm run lint && npm run type-check && npm run test:unit",
     "health-check": "node scripts/health-check.js",
     "test:integration": "node tests/integration/audit-log.test.cjs",
