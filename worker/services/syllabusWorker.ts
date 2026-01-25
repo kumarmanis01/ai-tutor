@@ -98,7 +98,7 @@ export async function handleSyllabusJob(jobId: string) {
 
   const existing = await prisma.chapterDef.findFirst({ where: { subjectId: subjectId as string, lifecycle: 'active' } })
   if (existing) {
-    await prisma.hydrationJob.update({ where: { id: job.id }, data: { status: JobStatus.Completed } })
+    await prisma.hydrationJob.update({ where: { id: job.id }, data: { status: JobStatus.Completed, lastError: null } })
     return
   }
 
@@ -192,34 +192,34 @@ JSON Schema:
 
   try {
     // Track created topic IDs for cascading downstream jobs
-    const createdTopicIds: string[] = []
+    const createdTopicIds: string[] = [];
 
-    // Use a retry wrapper for transactions to handle transient Prisma transaction errors
+    // Retry wrapper for transactions
     const runTxWithRetry = async (work: (tx: any) => Promise<any>, attempts = 3) => {
-      let lastErr: any = null
+      let lastErr: any = null;
       for (let i = 0; i < attempts; i++) {
         try {
-          return await prisma.$transaction(work)
+          return await prisma.$transaction(work);
         } catch (err: any) {
-          lastErr = err
-          const msg = String(err?.message || '')
+          lastErr = err;
+          const msg = String(err?.message || '');
           if (/Transaction not found|Transaction API error/i.test(msg)) {
-            const backoff = (i + 1) * 500
-            await new Promise((r) => setTimeout(r, backoff))
-            continue
+            const backoff = (i + 1) * 500;
+            await new Promise((r) => setTimeout(r, backoff));
+            continue;
           }
-          throw err
+          throw err;
         }
       }
-      throw lastErr
-    }
+      throw lastErr;
+    };
 
-    await runTxWithRetry(async (tx) => {
-      for (const ch of parsed.chapters) {
-        const slug = toSlug(ch.title)
-
-        const exists = await tx.chapterDef.findFirst({ where: { subjectId: subjectId as string, slug } })
-        if (exists) continue
+    // Per-chapter transaction: create chapter and topics for each chapter
+    for (const ch of parsed.chapters) {
+      await runTxWithRetry(async (tx) => {
+        const slug = toSlug(ch.title);
+        const exists = await tx.chapterDef.findFirst({ where: { subjectId: subjectId as string, slug } });
+        if (exists) return;
 
         const chapter = await tx.chapterDef.create({
           data: {
@@ -228,15 +228,15 @@ JSON Schema:
             order: ch.order ?? 0,
             subjectId: subjectId as string,
             status: ApprovalStatus.Draft,
-            lifecycle: 'active'
-          }
-        })
+            lifecycle: 'active',
+          },
+        });
 
         if (Array.isArray(ch.topics)) {
           for (const t of ch.topics) {
-            const tslug = toSlug(t.title)
-            const texists = await tx.topicDef.findFirst({ where: { chapterId: chapter.id, slug: tslug } })
-            if (texists) continue
+            const tslug = toSlug(t.title);
+            const texists = await tx.topicDef.findFirst({ where: { chapterId: chapter.id, slug: tslug } });
+            if (texists) continue;
 
             const topic = await tx.topicDef.create({
               data: {
@@ -245,64 +245,59 @@ JSON Schema:
                 order: t.order ?? 0,
                 chapterId: chapter.id,
                 status: ApprovalStatus.Draft,
-                lifecycle: 'active'
-              }
-            })
-            createdTopicIds.push(topic.id)
+                lifecycle: 'active',
+              },
+            });
+            createdTopicIds.push(topic.id);
           }
         }
-      }
+      });
+    }
 
-      // After creating chapters/topics, mark hydration job completed and
-      // attempt to atomically mark any linked ExecutionJob completed.
-      await tx.hydrationJob.update({ where: { id: job.id }, data: { status: JobStatus.Completed, completedAt: new Date(), contentReady: true } })
-
-      // If an ExecutionJob references this hydration id, mark it completed
-      const linked = await tx.executionJob.findFirst({ where: { payload: { path: ['hydrationJobId'], equals: job.id } } })
+    // Final transaction: mark hydration job completed and update ExecutionJob if present
+    await runTxWithRetry(async (tx) => {
+      await tx.hydrationJob.update({ where: { id: job.id }, data: { status: JobStatus.Completed, completedAt: new Date(), contentReady: true } });
+      const linked = await tx.executionJob.findFirst({ where: { payload: { path: ['hydrationJobId'], equals: job.id } } });
       if (linked) {
-        const prevStatus = linked.status ?? null
-        await tx.executionJob.update({ where: { id: linked.id }, data: { status: 'completed', updatedAt: new Date() } })
-        await tx.jobExecutionLog.create({ data: { jobId: linked.id, event: 'COMPLETED', prevStatus, newStatus: 'completed', meta: { hydrationJobId: job.id } } })
+        const prevStatus = linked.status ?? null;
+        await tx.executionJob.update({ where: { id: linked.id }, data: { status: 'completed', updatedAt: new Date() } });
+        await tx.jobExecutionLog.create({ data: { jobId: linked.id, event: 'COMPLETED', prevStatus, newStatus: 'completed', meta: { hydrationJobId: job.id } } });
       }
-    })
+    });
 
     // After transaction commits, check if cascadeAll flag is set and queue downstream jobs
     // This is done outside the transaction to avoid holding locks during job enqueuing
-    const linkedExec2 = await prisma.executionJob.findFirst({ where: { payload: { path: ['hydrationJobId'], equals: job.id } } })
-    const payload = linkedExec2?.payload as { cascadeAll?: boolean; language?: string; difficulties?: string[] } | null
+    const linkedExec2 = await prisma.executionJob.findFirst({ where: { payload: { path: ['hydrationJobId'], equals: job.id } } });
+    const payload = linkedExec2?.payload as { cascadeAll?: boolean; language?: string; difficulties?: string[] } | null;
 
     if (payload?.cascadeAll && createdTopicIds.length > 0) {
-      const lang = payload.language || language
-      const difficulties = payload.difficulties || ['easy', 'medium', 'hard']
+      const lang = payload.language || language;
+      const difficulties = payload.difficulties || ['easy', 'medium', 'hard'];
 
       logger.info('[syllabusWorker] cascadeAll enabled, queueing downstream jobs', {
         jobId: job.id,
         topicCount: createdTopicIds.length,
         language: lang,
         difficulties,
-      })
+      });
 
       // Queue notes, questions, and assemble (tests) for each topic
       for (const topicId of createdTopicIds) {
         try {
-          // 1. Queue notes generation
-          await enqueueNotesHydration({ topicId, language: lang })
-          logger.debug('[syllabusWorker] queued notes job', { topicId, language: lang })
+          await enqueueNotesHydration({ topicId, language: lang });
+          logger.debug('[syllabusWorker] queued notes job', { topicId, language: lang });
 
-          // 2. Queue questions for each difficulty
           for (const diff of difficulties) {
-            await enqueueQuestionsHydration({ topicId, language: lang, difficulty: diff })
-            logger.debug('[syllabusWorker] queued questions job', { topicId, language: lang, difficulty: diff })
+            await enqueueQuestionsHydration({ topicId, language: lang, difficulty: diff });
+            logger.debug('[syllabusWorker] queued questions job', { topicId, language: lang, difficulty: diff });
           }
 
-          // 3. Queue test assembly for each difficulty
           for (const diff of difficulties) {
-            await enqueueAssembleHydration({ topicId, language: lang, difficulty: diff })
-            logger.debug('[syllabusWorker] queued assemble job', { topicId, language: lang, difficulty: diff })
+            await enqueueAssembleHydration({ topicId, language: lang, difficulty: diff });
+            logger.debug('[syllabusWorker] queued assemble job', { topicId, language: lang, difficulty: diff });
           }
         } catch (queueErr) {
-          // Log but don't fail the syllabus job - downstream jobs can be retried
-          logger.warn('[syllabusWorker] failed to queue downstream job', { topicId, error: queueErr })
+          logger.warn('[syllabusWorker] failed to queue downstream job', { topicId, error: queueErr });
         }
       }
 
@@ -312,11 +307,11 @@ JSON Schema:
         notesJobs: createdTopicIds.length,
         questionsJobs: createdTopicIds.length * difficulties.length,
         assembleJobs: createdTopicIds.length * difficulties.length,
-      })
+      });
     }
   } catch (err: any) {
-    await prisma.hydrationJob.update({ where: { id: job.id }, data: { status: JobStatus.Failed, lastError: err.message } })
-    return
+    await prisma.hydrationJob.update({ where: { id: job.id }, data: { status: JobStatus.Failed, lastError: err.message } });
+    return;
   }
 }
 
