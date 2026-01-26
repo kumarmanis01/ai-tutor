@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { requireAdminOrModerator } from '@/lib/auth';
 import { queryMetricSamples } from '@/lib/telemetry';
 import { systemHealth } from '@/lib/systemHealth';
+import { formatErrorForResponse } from '@/lib/errorResponse';
 
 function parseISO(q: string | null, fallback: Date) {
   if (!q) return fallback;

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { requireAdminOrModerator } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { Prisma } from '@prisma/client';
+import { formatErrorForResponse } from '@/lib/errorResponse';
 
 function parseISO(q: string | null, fallback: Date) {
   if (!q) return fallback;

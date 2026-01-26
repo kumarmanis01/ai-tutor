@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { requireAdminOrModerator } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
+import { formatErrorForResponse } from '@/lib/errorResponse';
 
 /**
  * Alerts are system-generated, read-only signals. They cannot be dismissed or modified via this API.

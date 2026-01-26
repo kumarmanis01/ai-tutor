@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { getRedis } from '@/lib/redis'
 import { logger } from '@/lib/logger'
 import { requireAdminOrModerator } from '@/lib/auth'
+import { formatErrorForResponse } from '@/lib/errorResponse'
 
 export async function GET() {
   try {
