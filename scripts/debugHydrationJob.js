@@ -14,7 +14,10 @@ if (!jobId && !outboxId) {
 
 async function main() {
   try {
-    const { prisma } = await import(path.join(process.cwd(), 'dist/lib/prisma.js'))
+    const { pathToFileURL } = await import('url')
+    const prismaModulePath = path.join(process.cwd(), 'dist/lib/prisma.js')
+    const prismaFileUrl = pathToFileURL(prismaModulePath).href
+    const { prisma } = await import(prismaFileUrl)
 
     if (jobId) {
       const hj = await prisma.hydrationJob.findUnique({ where: { id: jobId } })

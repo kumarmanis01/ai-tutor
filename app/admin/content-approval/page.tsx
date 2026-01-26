@@ -400,7 +400,7 @@ export default function AdminContentApprovalPage() {
   const [filter, setFilter] = useState<FilterType>(initialFilter);
   const [selectedItem, setSelectedItem] = useState<PendingItem | null>(null);
 
-  const fetchPendingContent = async () => {
+  const fetchPendingContent = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
@@ -421,11 +421,30 @@ export default function AdminContentApprovalPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     fetchPendingContent();
-  }, []);
+  }, [fetchPendingContent]);
+
+  // Poll the admin jobs/status endpoint periodically and refresh pending content
+  // when a linked HydrationJob reports contentReady or a job completed.
+  useEffect(() => {
+    const iv = setInterval(async () => {
+      try {
+        const res = await fetch('/api/admin/jobs/status', { credentials: 'include' });
+        if (!res.ok) return;
+        const d = await res.json();
+        const shouldRefresh = Array.isArray(d.jobs) && d.jobs.some((j: any) => j.contentReady === true || j.latestLog?.event === 'COMPLETED');
+        if (shouldRefresh) {
+          fetchPendingContent();
+        }
+      } catch {
+        // ignore polling errors
+      }
+    }, 5000);
+    return () => clearInterval(iv);
+  }, [fetchPendingContent]);
 
   const handleAction = useCallback(async (item: PendingItem, action: 'approve' | 'reject') => {
     setActionStates((prev) => ({
