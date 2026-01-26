@@ -16,8 +16,14 @@ set -e
 # - 2026-01-24T00:00:00Z | copilot-agent | parse DATABASE_URL for host/port when POSTGRES_HOST/PORT are not provided
 
 # Configurable via env
-RETRIES=20
-SLEEP=3
+RETRIES=${RETRIES:-10}
+SLEEP=${SLEEP:-5}
+
+# Log directory for migrate attempts
+ROOT_DIR=$(cd "$(dirname "$0")/.." && pwd)
+LOG_DIR="$ROOT_DIR/logs"
+mkdir -p "$LOG_DIR"
+MIGRATE_LOG="$LOG_DIR/migrate-$(date -u +%Y%m%dT%H%M%SZ).log"
 
 ROOT_DIR=$(cd "$(dirname "$0")/.." && pwd)
 ENV_FILE="$ROOT_DIR/.env.production"
@@ -83,13 +89,40 @@ if [ $i -ge $RETRIES ]; then
 fi
 
 echo "Running Prisma migrate deploy..."
-# Use npx to ensure local prisma binary is used
-npx prisma migrate deploy || {
-  echo "Prisma migrate deploy failed; printing schema and exiting"
-  echo "----- schema.prisma -----"
-  sed -n '1,200p' prisma/schema.prisma || true
-  exit 1
-}
+
+# Try running migrate with retry/backoff. If a lock (P1002) occurs, attempt to call
+# `pg_advisory_unlock_all()` via psql if available and retry.
+attempt=1
+while [ $attempt -le $RETRIES ]; do
+  echo "[run-migrate] attempt $attempt/$RETRIES: running prisma migrate deploy (logs: $MIGRATE_LOG)"
+  if npx prisma migrate deploy >>"$MIGRATE_LOG" 2>&1; then
+    echo "[run-migrate] prisma migrate deploy: OK"
+    echo "[run-migrate] full log: $MIGRATE_LOG"
+    break
+  else
+    echo "[run-migrate] prisma migrate failed on attempt $attempt (see $MIGRATE_LOG)"
+    # Print short tail for quick debugging
+    tail -n 80 "$MIGRATE_LOG" || true
+    # Attempt advisory unlock if psql is available and DATABASE_URL is set
+    if command -v psql >/dev/null 2>&1 && [ -n "$DATABASE_URL" ]; then
+      echo "[run-migrate] attempting pg_advisory_unlock_all() via psql"
+      # Run in a subshell to avoid leaking credentials; psql will parse DATABASE_URL
+      psql "$DATABASE_URL" -c "SELECT pg_advisory_unlock_all();" >>"$MIGRATE_LOG" 2>&1 || true
+    fi
+    attempt=$((attempt+1))
+    if [ $attempt -le $RETRIES ]; then
+      sleep_time=$((SLEEP * attempt))
+      echo "[run-migrate] sleeping ${sleep_time}s before retry"
+      sleep ${sleep_time}
+    else
+      echo "[run-migrate] exceeded max attempts ($RETRIES). Printing last 200 lines of migrate log:" >&2
+      tail -n 200 "$MIGRATE_LOG" >&2 || true
+      echo "----- schema.prisma -----"
+      sed -n '1,200p' prisma/schema.prisma || true
+      exit 1
+    fi
+  fi
+done
 
 echo "Prisma migrations applied"
 

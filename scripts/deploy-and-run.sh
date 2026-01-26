@@ -154,7 +154,36 @@ echo "[deploy] building workers..."
 npm run build:workers
 
 echo "[deploy] building Next.js app..."
-npm run build || true
+# Prepare logs directory and build log
+LOG_DIR="${REPO_ROOT}/logs"
+mkdir -p "${LOG_DIR}"
+BUILD_LOG="$LOG_DIR/deploy-build-$(date -u +%Y%m%dT%H%M%SZ).log"
+
+# Remove old Next.js build artifacts to ensure a clean production build
+if [ -d "${REPO_ROOT}/.next" ]; then
+  echo "[deploy] removing old .next directory to ensure clean build"
+  rm -rf "${REPO_ROOT}/.next" || true
+fi
+
+run_and_log() {
+  local cmd="$*"
+  echo "[deploy] running: $cmd"
+  # run and tee to build log
+  (set -o pipefail; $cmd) >>"$BUILD_LOG" 2>&1
+  return $?
+}
+
+# Prefer the production build script which runs `next build` (build:prod).
+if run_and_log npm run build:prod; then
+  echo "[deploy] npm run build:prod succeeded (logs: $BUILD_LOG)"
+elif run_and_log npm run build; then
+  echo "[deploy] npm run build succeeded (logs: $BUILD_LOG)"
+else
+  echo "[deploy] ERROR: Next.js build failed. Tail of build log:" >&2
+  tail -n 200 "$BUILD_LOG" >&2 || true
+  echo "[deploy] Full build log saved to: $BUILD_LOG" >&2
+  exit 1
+fi
 
 echo "[deploy] making child scripts executable (if present)"
 CHILD_SCRIPTS=(
