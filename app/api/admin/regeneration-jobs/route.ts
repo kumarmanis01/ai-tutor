@@ -52,7 +52,7 @@ export async function POST(req: Request) {
       await requireAdminOrModerator();
       logger.debug('regenerationJob.POST: requireAdminOrModerator OK')
     } catch (err: any) {
-      logger.warn('regenerationJob.POST: requireAdminOrModerator threw', { message: String(err?.message ?? err) })
+      logger.warn('regenerationJob.POST: requireAdminOrModerator threw', { message: err?.message ?? err })
       return new Response(JSON.stringify({ error: 'forbidden' }), { status: 403 });
     }
   } else {
@@ -115,9 +115,9 @@ export async function POST(req: Request) {
     return NextResponse.json({ job });
   } catch (err: any) {
     // Log the error to make integration test failures easier to diagnose in CI
-    try { logger.error('regenerationJob.create error', { err: err && (err.stack ? err.stack : String(err)) } as any) } catch {}
+    try { logger.error('regenerationJob.create error', { err: err }) } catch {}
     // If the create failed due to unique constraint, return the existing job (idempotent)
-    const isUniqueConstraint = err?.code === 'P2002' || String(err).toLowerCase().includes('unique constraint failed')
+    const isUniqueConstraint = err?.code === 'P2002' || (err?.message ?? String(err ?? '')).toLowerCase().includes('unique constraint failed')
     if (isUniqueConstraint) {
       const existing = await (prisma as any).regenerationJob.findFirst({ where: { suggestionId: suggestion.id, targetType: targetType as any, targetId } });
       return NextResponse.json({ job: existing });

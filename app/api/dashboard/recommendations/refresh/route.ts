@@ -16,6 +16,7 @@ import { NextResponse } from 'next/server';
 import { getServerSessionForHandlers } from '@/lib/session';
 import { updateLearningProfile } from '@/lib/recommendations/engine';
 import { logger } from '@/lib/logger';
+import { formatErrorForResponse } from '@/lib/errorResponse';
 
 export const dynamic = 'force-dynamic';
 
@@ -37,10 +38,10 @@ export async function POST() {
     logger.info('recommendations.refresh', { userId });
     return NextResponse.json({ ok: true, message: 'Learning profile updated' });
   } catch (error) {
-    logger.error('recommendations.refresh.error', { 
-      userId, 
-      error: error instanceof Error ? error.message : String(error) 
+    logger.error('recommendations.refresh.error', {
+      userId,
+      error,
     });
-    return NextResponse.json({ error: 'Failed to update profile' }, { status: 500 });
+    return NextResponse.json({ error: formatErrorForResponse(error) }, { status: 500 });
   }
 }

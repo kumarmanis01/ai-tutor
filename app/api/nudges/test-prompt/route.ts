@@ -18,6 +18,7 @@ import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { logger } from '@/lib/logger';
+import { formatErrorForResponse } from '@/lib/errorResponse';
 import type { AppSession } from '@/lib/types/auth';
 
 const CLASS_NAME = 'TestNudgeAPI';
@@ -255,9 +256,9 @@ export async function GET(req: NextRequest) {
     logger.error('Failed to generate test nudges', {
       className: CLASS_NAME,
       methodName: METHOD_NAME,
-      error: String(error),
+      error,
     });
-    return NextResponse.json({ nudges: [], error: 'Failed to generate nudges' }, { status: 500 });
+    return NextResponse.json({ nudges: [], error: formatErrorForResponse(error) }, { status: 500 });
   }
 }
 
@@ -300,8 +301,8 @@ export async function POST(req: NextRequest) {
     logger.error('Failed to process nudge interaction', {
       className: CLASS_NAME,
       methodName: METHOD_NAME,
-      error: String(error),
+      error,
     });
-    return NextResponse.json({ error: 'Failed to process' }, { status: 500 });
+    return NextResponse.json({ error: formatErrorForResponse(error) }, { status: 500 });
   }
 }

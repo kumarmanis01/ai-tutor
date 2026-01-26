@@ -33,6 +33,6 @@ export async function GET(req: Request) {
 
     return NextResponse.json({ range: { from: from.toISOString(), to: to.toISOString(), intervalSec: interval }, samples });
   } catch (err: any) {
-    return NextResponse.json({ error: String(err?.message ?? err) }, { status: 500 });
+    return NextResponse.json({ error: formatErrorForResponse(err) }, { status: 500 });
   }
 }

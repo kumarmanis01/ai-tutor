@@ -1,4 +1,5 @@
 import { logger } from '@/lib/logger';
+import { formatErrorForResponse } from '@/lib/errorResponse';
 import { LanguageCode } from '@prisma/client';
 import { NextResponse } from 'next/server';
 
@@ -99,17 +100,17 @@ export async function POST(req: Request) {
           res.headers.set('Set-Cookie', cookieValue);
           return res;
         } catch (e) {
-          logger.warn('prisma upsert in verify-access-token failed', { className: 'api.msg91.verify-access-token', methodName: 'POST', error: String(e) });
+          logger.warn('prisma upsert in verify-access-token failed', { className: 'api.msg91.verify-access-token', methodName: 'POST', error: e });
           // Continue to return provider response without cookie
         }
       }
     } catch (e) {
-      logger.warn('extracting identifier from provider response failed', { className: 'api.msg91.verify-access-token', methodName: 'POST', error: String(e) });
+      logger.warn('extracting identifier from provider response failed', { className: 'api.msg91.verify-access-token', methodName: 'POST', error: e });
     }
 
     return NextResponse.json({ ok: true, data: json });
   } catch (err) {
-    logger.error('MSG91 verify-access-token error', { className: 'api.msg91.verify-access-token', methodName: 'POST', error: String(err) });
-    return NextResponse.json({ error: 'internal_server_error', message: 'Failed to verify access token' }, { status: 500 });
+    logger.error('MSG91 verify-access-token error', { className: 'api.msg91.verify-access-token', methodName: 'POST', error: err });
+    return NextResponse.json({ error: formatErrorForResponse(err), message: 'Failed to verify access token' }, { status: 500 });
   }
 }

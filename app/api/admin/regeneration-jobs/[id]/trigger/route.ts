@@ -48,7 +48,7 @@ async function handleTrigger(_req: Request, jobId?: string, actorId?: string | n
     if (result?.status === 409) return new Response(JSON.stringify({ error: 'conflict' }), { status: 409 })
     return new Response(JSON.stringify({ error: 'failed' }), { status: 500 })
   } catch (err: any) {
-    return new Response(JSON.stringify({ error: 'failed', detail: String(err?.message ?? err) }), { status: 500 })
+    return new Response(JSON.stringify({ error: 'failed', detail: formatErrorForResponse(err) }), { status: 500 })
   }
 }
 

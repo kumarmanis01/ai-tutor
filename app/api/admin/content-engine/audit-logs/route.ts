@@ -64,8 +64,8 @@ export async function GET() {
 
     return NextResponse.json({ logs: transformedLogs });
   } catch (error) {
-    logger.error('Failed to fetch audit logs', { className: 'audit-logs', methodName: 'GET', error: String(error) });
-    return NextResponse.json({ error: 'Failed to fetch audit logs' }, { status: 500 });
+      logger.error('Failed to fetch audit logs', { className: 'audit-logs', methodName: 'GET', error });
+      return NextResponse.json({ error: formatErrorForResponse(error) }, { status: 500 });
   }
 }
 

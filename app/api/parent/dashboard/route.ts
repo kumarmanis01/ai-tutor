@@ -18,6 +18,7 @@ import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { logger } from '@/lib/logger';
+import { formatErrorForResponse } from '@/lib/errorResponse';
 import type { AppSession } from '@/lib/types/auth';
 
 const CLASS_NAME = 'ParentDashboardAPI';
@@ -260,9 +261,9 @@ export async function GET(req: NextRequest) {
     logger.error('Failed to fetch parent dashboard', {
       className: CLASS_NAME,
       methodName: METHOD_NAME,
-      error: String(error),
+      error,
     });
-    return NextResponse.json({ error: 'Failed to fetch dashboard' }, { status: 500 });
+    return NextResponse.json({ error: formatErrorForResponse(error) }, { status: 500 });
   }
 }
 
@@ -339,9 +340,9 @@ export async function POST(req: NextRequest) {
     logger.error('Failed to link student', {
       className: CLASS_NAME,
       methodName: METHOD_NAME,
-      error: String(error),
+      error,
     });
-    return NextResponse.json({ error: 'Failed to link student' }, { status: 500 });
+    return NextResponse.json({ error: formatErrorForResponse(error) }, { status: 500 });
   }
 }
 
@@ -391,8 +392,8 @@ export async function DELETE(req: NextRequest) {
     logger.error('Failed to unlink student', {
       className: CLASS_NAME,
       methodName: METHOD_NAME,
-      error: String(error),
+      error,
     });
-    return NextResponse.json({ error: 'Failed to unlink student' }, { status: 500 });
+    return NextResponse.json({ error: formatErrorForResponse(error) }, { status: 500 });
   }
 }

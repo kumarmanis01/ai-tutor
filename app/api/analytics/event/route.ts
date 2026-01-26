@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server'
 
 const ALLOWED = new Set(['lesson_viewed', 'lesson_completed', 'quiz_attempted', 'quiz_passed'])
 
+import { formatErrorForResponse } from '@/lib/errorResponse';
+
 export async function POST(req: Request) {
   try {
     const body = await req.json()
@@ -40,7 +42,7 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ ok: true }, { status: 202 })
   } catch (err) {
-    return NextResponse.json({ error: 'bad_request', detail: String(err) }, { status: 400 })
+    return NextResponse.json({ error: 'bad_request', detail: formatErrorForResponse(err) }, { status: 400 })
   }
 }
 

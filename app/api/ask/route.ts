@@ -1,4 +1,5 @@
 import { logger } from '@/lib/logger';
+import { formatErrorForResponse } from '@/lib/errorResponse';
 import { NextResponse } from 'next/server';
 import { getServerSessionForHandlers } from '@/lib/session';
 import { prisma } from '@/lib/prisma';
@@ -27,7 +28,7 @@ export async function POST(req: Request) {
       await logApiUsage('/api/ask', 'POST');
     } catch (e) {
       // non-fatal
-      logger.error('logApiUsage failed for /api/ask', { className: 'api.ask', methodName: 'POST', error: String(e) });
+      logger.error('logApiUsage failed for /api/ask', { className: 'api.ask', methodName: 'POST', error: e });
     }
 
     const body: Req = await req.json().catch(() => ({}));
@@ -53,7 +54,7 @@ export async function POST(req: Request) {
       if (checkProfanity(text)) return NextResponse.json({ error: 'profanity_detected' }, { status: 400 });
     } catch (e) {
       // if guard check fails for any reason, continue but log
-      logger.error('profanity guard error', { className: 'api.ask', methodName: 'POST', error: String(e) });
+      logger.error('profanity guard error', { className: 'api.ask', methodName: 'POST', error: e });
     }
 
     // Optional session: if present, we'll persist transcripts and can apply limits later
@@ -84,14 +85,14 @@ export async function POST(req: Request) {
           } catch {}
           // Persist user message linked to Conversation; also set legacy subject for back-compat
           await prisma.chat.create({ data: { userId: sessionUserId, role: 'user', content: text, conversationId, subject } });
-        } catch (e) {
+          } catch (e) {
           // don't block on DB write
-          logger.error('Failed to persist user question for /api/ask', { className: 'api.ask', methodName: 'POST', error: String(e) });
+          logger.error('Failed to persist user question for /api/ask', { className: 'api.ask', methodName: 'POST', error: e });
         }
       }
     } catch (e) {
       // ignore session errors
-      logger.error('session check failed for /api/ask', { className: 'api.ask', methodName: 'POST', error: String(e) });
+      logger.error('session check failed for /api/ask', { className: 'api.ask', methodName: 'POST', error: e });
     }
 
     // Language normalization: prefer explicit language, else normalize Accept-Language header
@@ -106,7 +107,7 @@ export async function POST(req: Request) {
         // prefer region if available (e.g., mr-IN), else return language code
         return p.region ? `${p.code}-${p.region}` : p.code;
       } catch (e) {
-        logger.error('Accept-Language parse error', { className: 'api.ask', methodName: 'POST', error: String(e) });
+        logger.error('Accept-Language parse error', { className: 'api.ask', methodName: 'POST', error: e });
         return undefined;
       }
     }
@@ -142,7 +143,7 @@ export async function POST(req: Request) {
 
         captions = await Promise.all(captionPromises);
       } catch (e) {
-        logger.error('Failed to fetch image captions', { className: 'api.ask', methodName: 'POST', error: String(e) });
+        logger.error('Failed to fetch image captions', { className: 'api.ask', methodName: 'POST', error: e });
         captions = imagesFromClient.map(() => null);
       }
     }
@@ -183,7 +184,7 @@ export async function POST(req: Request) {
         }
       }
     } catch (e) {
-      logger.error('Failed to load conversation history', { className: 'api.ask', methodName: 'POST', error: String(e) });
+      logger.error('Failed to load conversation history', { className: 'api.ask', methodName: 'POST', error: e });
     }
 
     const messagesToSend = [
@@ -234,7 +235,7 @@ export async function POST(req: Request) {
         try {
           await prisma.chat.create({ data: { userId: sessionUserId, role: 'assistant', content: fallbackMsg, conversationId, subject } });
         } catch (e) {
-          logger.error('Failed to persist assistant reply for /api/ask (fallback)', { className: 'api.ask', methodName: 'POST', error: String(e) });
+          logger.error('Failed to persist assistant reply for /api/ask (fallback)', { className: 'api.ask', methodName: 'POST', error: e });
         }
       }
       return NextResponse.json({ language: undefined, answer: fallbackMsg });
@@ -256,13 +257,13 @@ export async function POST(req: Request) {
       try {
         await prisma.chat.create({ data: { userId: sessionUserId, role: 'assistant', content: answer, conversationId, subject } });
       } catch (e) {
-        logger.error('Failed to persist assistant reply for /api/ask', { className: 'api.ask', methodName: 'POST', error: String(e) });
+        logger.error('Failed to persist assistant reply for /api/ask', { className: 'api.ask', methodName: 'POST', error: e });
       }
     }
 
     return NextResponse.json({ language, answer, suggestions, conversationId });
   } catch (err: any) {
-    logger.error('/api/ask error', { className: 'api.ask', methodName: 'POST', error: String(err) });
-    return NextResponse.json({ error: err?.message || 'Unknown error' }, { status: 500 });
+    logger.error('/api/ask error', { className: 'api.ask', methodName: 'POST', error: err });
+    return NextResponse.json({ error: formatErrorForResponse(err) }, { status: 500 });
   }
 }

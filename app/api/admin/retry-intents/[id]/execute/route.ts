@@ -24,8 +24,8 @@ export async function POST(_req: Request, { params }: any) {
 
     return NextResponse.json({ job })
   } catch (err: any) {
-    if (String(err.message).includes('already executed')) return NextResponse.json({ error: 'already_executed' }, { status: 409 })
-    if (String(err.message).includes('consume failed') || String(err.message).includes('not found')) return NextResponse.json({ error: 'failed' }, { status: 400 })
+    if ((err?.message ?? '').includes('already executed')) return NextResponse.json({ error: 'already_executed' }, { status: 409 })
+    if ((err?.message ?? '').includes('consume failed') || (err?.message ?? '').includes('not found')) return NextResponse.json({ error: 'failed' }, { status: 400 })
     return NextResponse.json({ error: 'internal' }, { status: 500 })
   }
 }

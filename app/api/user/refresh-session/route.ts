@@ -1,4 +1,5 @@
 import { logger } from '@/lib/logger';
+import { formatErrorForResponse } from '@/lib/errorResponse';
 import { NextResponse } from 'next/server';
 import { getServerSessionForHandlers } from '@/lib/session';
 import { prisma } from '@/lib/prisma';
@@ -32,8 +33,8 @@ export async function POST(req: Request) {
     logger.logAPI(req, res, { className: 'UserRefreshSessionAPI', methodName: 'POST' }, start);
     return res;
   } catch (err) {
-    logger.error('POST /api/user/refresh-session error', { className: 'api.user.refresh-session', methodName: 'POST', error: String(err) });
-    res = NextResponse.json({ error: 'internal_error' }, { status: 500 });
+    logger.error('POST /api/user/refresh-session error', { className: 'api.user.refresh-session', methodName: 'POST', error: err });
+    res = NextResponse.json({ error: formatErrorForResponse(err) }, { status: 500 });
     logger.logAPI(req, res, { className: 'UserRefreshSessionAPI', methodName: 'POST' }, start);
     return res;
   }

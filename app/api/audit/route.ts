@@ -1,4 +1,5 @@
 import { logger } from '@/lib/logger';
+import { formatErrorForResponse } from '@/lib/errorResponse';
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma'; // Ensure this path is correct
 import { logApiUsage } from '@/utils/logApiUsage';
@@ -13,8 +14,8 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ message: 'Audit trail logged successfully' }, { status: 200 });
   } catch (error) {
-    logger.error('Failed to log audit trail', { className: 'api.audit', methodName: 'POST', error: String(error) });
-    return NextResponse.json({ message: 'Failed to log audit trail' }, { status: 500 });
+    logger.error('Failed to log audit trail', { className: 'api.audit', methodName: 'POST', error });
+    return NextResponse.json({ message: 'Failed to log audit trail', error: formatErrorForResponse(error) }, { status: 500 });
   }
 }
 
@@ -36,7 +37,7 @@ export async function GET() {
 
     return NextResponse.json(auditLogs, { status: 200 });
   } catch (error) {
-    logger.error('Failed to fetch audit logs', { className: 'api.audit', methodName: 'GET', error: String(error) });
-    return NextResponse.json({ message: 'Failed to fetch audit logs' }, { status: 500 });
+    logger.error('Failed to fetch audit logs', { className: 'api.audit', methodName: 'GET', error });
+    return NextResponse.json({ message: 'Failed to fetch audit logs', error: formatErrorForResponse(error) }, { status: 500 });
   }
 }

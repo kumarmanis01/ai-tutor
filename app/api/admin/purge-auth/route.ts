@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { formatErrorForResponse } from '@/lib/errorResponse';
 
 export async function POST(req: Request) {
   try {
@@ -17,6 +18,6 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ ok: true, deleted: { sessions: sessions.count, accounts: accounts.count } });
   } catch (e: any) {
-    return NextResponse.json({ ok: false, error: String(e?.message || e) }, { status: 500 });
+    return NextResponse.json({ ok: false, error: formatErrorForResponse(e) }, { status: 500 });
   }
 }

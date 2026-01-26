@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getServerSessionForHandlers } from '@/lib/session';
 import { logger } from '@/lib/logger';
+import { formatErrorForResponse } from '@/lib/errorResponse';
 
 // GET /api/chat/history?subject=general&conversationId=conv_x&limit=50
 export async function GET(req: Request) {
@@ -29,7 +30,7 @@ export async function GET(req: Request) {
 
     return NextResponse.json({ subject, conversationId, messages });
   } catch (e) {
-    logger.error('GET /api/chat/history error', { className: 'api.chat.history', methodName: 'GET', error: String(e) });
-    return NextResponse.json({ error: 'server_error' }, { status: 500 });
+    logger.error('GET /api/chat/history error', { className: 'api.chat.history', methodName: 'GET', error: e });
+    return NextResponse.json({ error: formatErrorForResponse(e) }, { status: 500 });
   }
 }

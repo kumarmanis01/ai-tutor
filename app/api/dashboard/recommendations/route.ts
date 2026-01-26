@@ -56,9 +56,9 @@ export async function GET() {
     logger.info('recommendations.get', { userId, count: items.length });
     return NextResponse.json({ items });
   } catch (error) {
-    logger.error('recommendations.get.error', { 
-      userId, 
-      error: error instanceof Error ? error.message : String(error) 
+    logger.error('recommendations.get.error', {
+      userId,
+      error,
     });
     
     // Graceful fallback on error

@@ -11,6 +11,7 @@ export async function GET() {
     return NextResponse.json({ ok: true, ping: pong })
   } catch (err) {
     logger?.error?.('GET /api/admin/content-engine/redis error', { err })
-    return NextResponse.json({ ok: false, error: String(err) }, { status: 500 })
+    logger.error('content-engine.redis failed', { error: err })
+    return NextResponse.json({ ok: false, error: formatErrorForResponse(err) }, { status: 500 })
   }
 }

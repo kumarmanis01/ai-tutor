@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getServerSessionForHandlers } from '@/lib/session';
 import { logger } from '@/lib/logger';
+import { formatErrorForResponse } from '@/lib/errorResponse';
 
 // POST /api/chat/reassign-subject
 // Body: { conversationId: string, subject: string }
@@ -24,7 +25,7 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ ok: true, updated: result.count, conversationId, subject });
   } catch (e) {
-    logger.error('POST /api/chat/reassign-subject error', { className: 'api.chat.reassignSubject', methodName: 'POST', error: String(e) });
-    return NextResponse.json({ error: 'server_error' }, { status: 500 });
+    logger.error('POST /api/chat/reassign-subject error', { className: 'api.chat.reassignSubject', methodName: 'POST', error: e });
+    return NextResponse.json({ error: formatErrorForResponse(e) }, { status: 500 });
   }
 }

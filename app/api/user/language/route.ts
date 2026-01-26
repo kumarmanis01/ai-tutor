@@ -14,7 +14,7 @@ export async function GET() {
     const dbUser = await prisma.user.findUnique({ where: { id: user.id } });
     return NextResponse.json({ language: dbUser?.language ?? null });
   } catch (e) {
-    logger.error('GET /api/user/language error', { className: 'api.user.language', methodName: 'GET', error: String(e) });
+    logger.error('GET /api/user/language error', { className: 'api.user.language', methodName: 'GET', error: e });
     return NextResponse.json({ language: null }, { status: 500 });
   }
 }
@@ -36,7 +36,7 @@ export async function POST(req: Request) {
     await prisma.user.update({ where: { id: user.id }, data: { language: langEnum } });
     return NextResponse.json({ ok: true, language: langEnum });
   } catch (e) {
-    logger.error('POST /api/user/language error', { className: 'api.user.language', methodName: 'POST', error: String(e) });
+    logger.error('POST /api/user/language error', { className: 'api.user.language', methodName: 'POST', error: e });
     return NextResponse.json({ error: 'server_error' }, { status: 500 });
   }
 }

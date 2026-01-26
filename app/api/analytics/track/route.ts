@@ -26,7 +26,7 @@ export async function POST(req: Request) {
     await logEvent(event, data ?? {});
     return NextResponse.json({ ok: true });
   } catch (err) {
-    logger.error('[analytics] unexpected error', { className: 'api.analytics.track', methodName: 'POST', error: String(err) });
+    logger.error('[analytics] unexpected error', { className: 'api.analytics.track', methodName: 'POST', error: err });
   }
 
   return NextResponse.json({ ok: true });

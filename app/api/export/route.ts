@@ -1,4 +1,5 @@
 import { logger } from '@/lib/logger';
+import { formatErrorForResponse } from '@/lib/errorResponse';
 // app/api/export/route.ts
 import { NextResponse } from 'next/server';
 import { getServerSessionForHandlers } from '@/lib/session';
@@ -110,7 +111,7 @@ export async function POST(req: Request) {
       },
     });
   } catch (err) {
-    logger.error('export error', { className: 'api.export', methodName: 'GET', error: String(err) });
-    return NextResponse.json({ error: 'server_error', detail: String(err) }, { status: 500 });
+    logger.error('export error', { className: 'api.export', methodName: 'GET', error: err });
+    return NextResponse.json({ error: 'server_error', detail: formatErrorForResponse(err) }, { status: 500 });
   }
 }

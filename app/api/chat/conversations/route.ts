@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getServerSessionForHandlers } from '@/lib/session';
 import { logger } from '@/lib/logger';
+import { formatErrorForResponse } from '@/lib/errorResponse';
 
 // GET /api/chat/conversations?subject=general&limit=50
 // Returns a list of conversation threads for the current user within a subject
@@ -54,7 +55,7 @@ export async function GET(req: Request) {
 
     return NextResponse.json({ subject, threads });
   } catch (e) {
-    logger.error('GET /api/chat/conversations error', { className: 'api.chat.conversations', methodName: 'GET', error: String(e) });
-    return NextResponse.json({ error: 'server_error' }, { status: 500 });
+    logger.error('GET /api/chat/conversations error', { className: 'api.chat.conversations', methodName: 'GET', error: e });
+    return NextResponse.json({ error: formatErrorForResponse(e) }, { status: 500 });
   }
 }

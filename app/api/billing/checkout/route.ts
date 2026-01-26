@@ -3,6 +3,7 @@ import { getServerSessionForHandlers } from '@/lib/session';
 import { getRazorpay } from '@/lib/payments';
 import { SessionUser } from '@/lib/types';
 import { logger } from '@/lib/logger';
+import { formatErrorForResponse } from '@/lib/errorResponse';
 import { BILLING_MONTHLY, RAZORPAY_PLAN_IDS } from '../constants';
 import { logApiUsage } from '@/utils/logApiUsage';
 
@@ -52,8 +53,8 @@ export async function POST(req: Request) {
   try {
     razorpayClient = await getRazorpay();
   } catch (err: any) {
-    logger.add('Billing configuration missing: ' + String(err));
-    return NextResponse.json({ error: 'Billing not configured' }, { status: 500 });
+    logger.error('Billing configuration missing', { error: err });
+    return NextResponse.json({ error: formatErrorForResponse(err) }, { status: 500 });
   }
 
   const subscription = await razorpayClient.subscriptions.create({

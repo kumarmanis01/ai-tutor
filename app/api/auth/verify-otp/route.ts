@@ -1,4 +1,5 @@
 import { logger } from '@/lib/logger';
+import { formatErrorForResponse } from '@/lib/errorResponse';
 import { NextResponse } from 'next/server';
 import crypto from 'crypto';
 import { prisma } from '@/lib/prisma';
@@ -58,7 +59,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: true, userId: user.id });
     }
   } catch (err) {
-    logger.error('verify-otp error', { className: 'api.auth.verify-otp', methodName: 'POST', error: String(err) });
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    logger.error('verify-otp error', { className: 'api.auth.verify-otp', methodName: 'POST', error: err });
+    return NextResponse.json({ error: formatErrorForResponse(err) }, { status: 500 });
   }
 }

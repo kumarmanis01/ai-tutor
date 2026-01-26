@@ -29,7 +29,7 @@ export async function POST(req: Request) {
 
     await new Promise<void>((resolve, reject) => {
       exec(cmd, (err, stdout, stderr) => {
-        if (err) return reject(new Error(stderr || String(err)));
+        if (err) return reject(new Error(stderr || (err?.message ?? String(err))));
         resolve();
       });
     });

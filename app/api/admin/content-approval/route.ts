@@ -20,6 +20,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getServerSessionForHandlers } from '@/lib/session';
 import { logger } from '@/lib/logger';
+import { formatErrorForResponse } from '@/lib/errorResponse';
 
 interface PendingContentItem {
   id: string;
@@ -309,7 +310,9 @@ export async function GET() {
 
     return NextResponse.json({ items: pendingItems, summary });
   } catch (error) {
+    // log full error with stack
     logger.error('Failed to fetch pending content', { error });
-    return NextResponse.json({ error: 'Failed to fetch pending content' }, { status: 500 });
+    const payload = formatErrorForResponse(error);
+    return NextResponse.json({ error: payload }, { status: 500 });
   }
 }

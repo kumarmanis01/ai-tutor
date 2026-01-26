@@ -40,9 +40,9 @@ export async function POST(req: Request) {
   
   // Update learning profile asynchronously (non-blocking)
   updateLearningProfile(user.id).catch((err) => {
-    logger.error('TestsSubmitAPI.updateLearningProfile', { 
-      userId: user.id, 
-      error: err instanceof Error ? err.message : String(err) 
+    logger.error('TestsSubmitAPI.updateLearningProfile', {
+      userId: user.id,
+      error: err,
     });
   });
   

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { assertNoStringFilters } from "@/lib/guards/noStringFilters";
 import { logger } from "@/lib/logger";
+import { formatErrorForResponse } from '@/lib/errorResponse';
 
 export async function GET(req: Request) {
   try {
@@ -10,10 +11,10 @@ export async function GET(req: Request) {
     } catch (e) {
       // Log the error using the project's logger utility
       logger.error("Invalid string filters in chapters GET request", {
-        error: e instanceof Error ? e.message : String(e),
+        error: e,
         req,
       });
-      return NextResponse.json({ error: e instanceof Error ? e.message : String(e) }, { status: 400 });
+      return NextResponse.json({ error: formatErrorForResponse(e) }, { status: 400 });
     }
 
     const chapters = await prisma.chapterDef.findMany({ include: { topics: true } });
@@ -21,10 +22,10 @@ export async function GET(req: Request) {
   } catch (error) {
     // Log the error using the project's logger utility
     logger.error("Failed to fetch chapters", {
-      error: error instanceof Error ? error.message : String(error),
+      error,
       req,
     });
-    return NextResponse.json({ error: 'internal' }, { status: 500 });
+    return NextResponse.json({ error: formatErrorForResponse(error) }, { status: 500 });
   }
 }
 

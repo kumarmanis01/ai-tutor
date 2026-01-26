@@ -19,6 +19,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import prisma from '@/lib/prisma';
 import { logger } from '@/lib/logger';
+import { formatErrorForResponse } from '@/lib/errorResponse';
 
 type ContentType = 'syllabus' | 'chapter' | 'topic' | 'note' | 'test';
 
@@ -254,7 +255,9 @@ export async function GET(
 
     return NextResponse.json(result);
   } catch (error) {
-    logger.error('Error fetching content detail', { error: String(error) });
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    // Log full error with stack for diagnostics
+    logger.error('Error fetching content detail', { error });
+    const payload = formatErrorForResponse(error);
+    return NextResponse.json({ error: payload }, { status: 500 });
   }
 }

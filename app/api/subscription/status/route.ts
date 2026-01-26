@@ -1,4 +1,5 @@
 import { logger } from '@/lib/logger';
+import { formatErrorForResponse } from '@/lib/errorResponse';
 import { NextResponse } from 'next/server';
 import { getServerSessionForHandlers } from '@/lib/session';
 import { SessionUser } from '@/lib/types';
@@ -40,7 +41,7 @@ export async function GET() {
       // todaysCount,
     });
   } catch (err) {
-    logger.error('subscription status error', { className: 'api.subscription.status', methodName: 'GET', error: String(err) });
-    return NextResponse.json({ error: 'server_error' }, { status: 500 });
+    logger.error('subscription status error', { className: 'api.subscription.status', methodName: 'GET', error: err });
+    return NextResponse.json({ error: formatErrorForResponse(err) }, { status: 500 });
   }
 }

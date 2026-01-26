@@ -1,4 +1,5 @@
 import { logger } from '@/lib/logger';
+import { formatErrorForResponse } from '@/lib/errorResponse';
 import { logApiUsage } from '@/utils/logApiUsage';
 import { NextResponse } from 'next/server';
 import { createSpeech } from '@/lib/callLLM';
@@ -26,7 +27,7 @@ export async function POST(req: Request) {
       },
     });
   } catch (err) {
-    logger.error('ai/voice route error', { className: 'api.ai.voice', methodName: 'POST', error: String(err) });
-    return NextResponse.json({ error: 'voice_failed' }, { status: 500 });
+    logger.error('ai/voice route error', { className: 'api.ai.voice', methodName: 'POST', error: err });
+    return NextResponse.json({ error: formatErrorForResponse(err) }, { status: 500 });
   }
 }
