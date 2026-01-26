@@ -20,7 +20,7 @@
  * - 2026-01-22T06:55:00Z | copilot | Added support for all hydrated content types: syllabus, chapters, topics
  */
 
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback, useRef } from "react";
 import { useSearchParams } from "next/navigation";
 
 interface PendingItem {
@@ -399,6 +399,7 @@ export default function AdminContentApprovalPage() {
   const [actionStates, setActionStates] = useState<Record<string, ActionState>>({});
   const [filter, setFilter] = useState<FilterType>(initialFilter);
   const [selectedItem, setSelectedItem] = useState<PendingItem | null>(null);
+  const lastRefreshRef = useRef<number>(0);
 
   const fetchPendingContent = useCallback(async () => {
     setLoading(true);
@@ -436,7 +437,10 @@ export default function AdminContentApprovalPage() {
         if (!res.ok) return;
         const d = await res.json();
         const shouldRefresh = Array.isArray(d.jobs) && d.jobs.some((j: any) => j.contentReady === true || j.latestLog?.event === 'COMPLETED');
-        if (shouldRefresh) {
+        const now = Date.now();
+        // Apply a short cooldown to avoid repeated refreshes when jobs transition quickly.
+        if (shouldRefresh && now - (lastRefreshRef.current || 0) > 10000) {
+          lastRefreshRef.current = now;
           fetchPendingContent();
         }
       } catch {
