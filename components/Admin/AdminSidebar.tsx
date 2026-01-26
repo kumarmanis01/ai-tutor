@@ -136,6 +136,7 @@ const contentGenerationLinks: NavItem[] = [
 
 const contentManagementLinks: NavItem[] = [
   { href: '/admin/content-approval', label: 'Content Review', icon: 'CheckCircle', badge: 'Unified', badgeColor: 'bg-blue-500' },
+  { href: '/admin/content-central', label: 'Content Central', icon: 'Folder' },
   { href: '/admin/content-engine/rollbacks', label: 'Rollbacks', icon: 'Rewind' },
   { href: '/admin/syllabi', label: 'Syllabi', icon: 'Book' },
   { href: '/admin/catalog', label: 'Content Catalog', icon: 'Folder' },
