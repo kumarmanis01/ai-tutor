@@ -44,6 +44,8 @@ export async function callLLM({ prompt, model = 'gpt-4o-mini', meta }: { prompt:
     const usage = response.usage
     const content = response.choices?.[0]?.message?.content ?? ''
 
+    const WORKER_DEBUG = process.env.WORKER_DEBUG === '1'
+
     if (HYDRATION_DEBUG) {
       try {
         // lightweight debug log: prompt length and sample of content
@@ -52,6 +54,22 @@ export async function callLLM({ prompt, model = 'gpt-4o-mini', meta }: { prompt:
         logger.info('callLLM debug', { promptLength: (prompt || '').length, responseLength: (content || '').length, meta })
       } catch {
         // ignore logging errors
+      }
+    }
+
+    // When workers run with WORKER_DEBUG=1, print the full JSON response (raw + parsed)
+    if (WORKER_DEBUG) {
+      try {
+        let parsed: any = null
+        try {
+          parsed = JSON.parse(content)
+        } catch {
+          // not JSON — leave parsed as null
+        }
+        logger.info('WORKER_DEBUG: LLM response (raw + parsed)', { raw: content, parsed, meta })
+      } catch (e) {
+        // Ensure debug logging never breaks LLM flow
+        logger.warn('WORKER_DEBUG: failed to log LLM response', { error: String(e) })
       }
     }
 
