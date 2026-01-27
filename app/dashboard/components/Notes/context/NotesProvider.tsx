@@ -71,6 +71,13 @@ export class HttpNotesService implements NotesService {
 
 export type NotesState = {
   query: string;
+  filters?: {
+    language?: string | null;
+    board?: string | null;
+    grade?: string | null;
+    subject?: string | null;
+    topic?: string | null;
+  };
   subjects: NoteSubject[];
   bookmarked: NoteEntry[];
   downloaded: NoteEntry[];
@@ -80,6 +87,7 @@ export type NotesState = {
 
 export type NotesAPI = NotesState & {
   setQuery: (q: string) => void;
+  setFilters: (f: Partial<NonNullable<NotesState['filters']>>) => void;
   refresh: () => Promise<void>;
   recordDownload: (noteId: string) => Promise<void>;
 };
@@ -88,7 +96,7 @@ const Ctx = createContext<NotesAPI | null>(null);
 
 export function NotesProvider({ children, service }: { children: React.ReactNode; service?: NotesService }) {
   const svc = useMemo(() => service ?? new HttpNotesService(), [service]);
-  const [state, setState] = useState<NotesState>({ query: '', subjects: [], bookmarked: [], downloaded: [], recent: [], loading: false });
+  const [state, setState] = useState<NotesState>({ query: '', filters: undefined, subjects: [], bookmarked: [], downloaded: [], recent: [], loading: false });
 
   const refresh = useCallback(async () => {
     setState((s) => ({ ...s, loading: true }));
@@ -110,6 +118,11 @@ export function NotesProvider({ children, service }: { children: React.ReactNode
     logger.info('notes.search', { q });
   }, []);
 
+  const setFilters = useCallback((f: Partial<NonNullable<NotesState['filters']>>) => {
+    setState((s) => ({ ...s, filters: { ...(s.filters || {}), ...f } }));
+    logger.info('notes.filters.updated', { f });
+  }, []);
+
   const recordDownload = useCallback(async (noteId: string) => {
     try {
       await fetch('/api/notes/download', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ noteId }) });
@@ -122,6 +135,7 @@ export function NotesProvider({ children, service }: { children: React.ReactNode
   const api: NotesAPI = {
     ...state,
     setQuery,
+    setFilters,
     refresh,
     recordDownload,
   };

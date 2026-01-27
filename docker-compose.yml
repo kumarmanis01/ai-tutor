@@ -56,7 +56,9 @@ services:
       - postgres
       - redis
     healthcheck:
-      test: ["CMD", "node", "scripts/health-check.js"]
+      # Simpler local healthcheck: require successful HTTP 200 from root
+      # Avoids relying on protected admin endpoints or metrics during local dev
+      test: ["CMD-SHELL", "curl -f http://127.0.0.1:3000/ || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 5

@@ -10,7 +10,7 @@ function TestsContent({ subject, grade, board }: { subject: string; grade?: stri
   React.useEffect(() => { refresh(subject, grade, board); }, [refresh, subject, grade, board]);
   return (
     <div className="space-y-6 px-3 sm:px-4 py-4">
-      <TestsHeader />
+      <TestsHeader subject={subject} grade={grade} board={board} />
       <TestsHome subject={subject} grade={grade} board={board} />
     </div>
   );

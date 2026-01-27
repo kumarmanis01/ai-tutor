@@ -30,6 +30,9 @@ COPY --from=builder /app /app
 ENV NODE_ENV=production
 
 # Minimal runtime deps are already installed in /app/node_modules
+# Install curl so healthchecks using HTTP requests work in minimal runtime
+RUN apk add --no-cache curl
+
 EXPOSE 3000
 
 # Default command is no-op; docker-compose will override per-service

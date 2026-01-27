@@ -60,19 +60,32 @@ export function useRecommendations() {
   /**
    * Navigate to content based on recommendation type and metadata
    */
-  const navigateToContent = useCallback((item: Recommendation) => {
+  const navigateToContent = useCallback(async (item: Recommendation) => {
     const contentId = item.contentId || item.id;
     const type = item.type?.toLowerCase() || '';
-    
-    // Track the click first
-    trackClick(contentId);
-    
+
+    // Track the click first (await so tracking is submitted before navigation)
+    try { await trackClick(contentId); } catch {}
+
     // Determine navigation based on content type
     let url = '/dashboard';
-    
+
     if (type === 'chapter') {
       // Chapter recommendations have meta.subjectId - navigate to subject page
-      const subjectId = (item.meta as any)?.subjectId;
+      let subjectId = (item.meta as any)?.subjectId;
+
+      // If subjectId not present, try resolving chapter -> subject via API
+      if (!subjectId && typeof contentId === 'string' && contentId.startsWith('chapter:')) {
+        const chapterId = contentId.split(':')[1];
+        try {
+          const res = await fetch(`/api/chapters/${chapterId}`);
+          if (res.ok) {
+            const chapter = await res.json().catch(() => null);
+            subjectId = chapter?.subjectId;
+          }
+        } catch {}
+      }
+
       if (subjectId) {
         url = `/learn/${subjectId}`;
       } else {

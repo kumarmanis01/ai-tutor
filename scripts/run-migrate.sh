@@ -29,8 +29,12 @@ ROOT_DIR=$(cd "$(dirname "$0")/.." && pwd)
 ENV_FILE="$ROOT_DIR/.env.production"
 if [ -f "$ENV_FILE" ]; then
   echo "[run-migrate] loading $ENV_FILE"
-  # export all variables for the script
-  set -o allexport; source "$ENV_FILE"; set +o allexport
+  # export all variables for the script (POSIX-friendly)
+  # normalize line endings in the env file (may have CRLF on Windows hosts)
+  sed -i 's/\r$//' "$ENV_FILE" || true
+  set -a
+  . "$ENV_FILE"
+  set +a
 fi
 
 # Determine DB host/port: prefer explicit POSTGRES_HOST/POSTGRES_PORT,
