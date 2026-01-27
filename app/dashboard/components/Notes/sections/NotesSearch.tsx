@@ -5,7 +5,7 @@ export function NotesSearch() {
   const { setQuery, setFilters, subjects, refresh } = useNotes();
   const { data: profile } = useCurrentUser();
   const [topics, setTopics] = useState<string[]>([]);
-  const [selectedSubject, setSelectedSubject] = useState<string>('');
+  const [_selectedSubject, setSelectedSubject] = useState<string>('');
   const [selectedTopic, setSelectedTopic] = useState<string>('');
 
   useEffect(() => {

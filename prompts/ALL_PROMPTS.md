@@ -181,10 +181,24 @@ JSON Schema:
 ---
 
 ## Notes & Next Steps
-- These are the main prompt sources for syllabus, notes, lessons, and questions.
-- If you want, I can:
   - Extract exact prompt strings into separate numbered files for editing.
   - Create a PR that centralizes and documents each prompt with versioning and test cases.
   - Run a quick lint to identify any dynamic values not safely escaped.
 
-Tell me which next step you prefer (extract, centralize into src/prompts, or open a PR with edits).
+This repository centralizes prompt templates under the `prompts/` folder.
+
+New files (created):
+- `prompts/base_context.md` - canonical base context template
+- `prompts/chapters.md` - chapter generation prompt (JSON output)
+- `prompts/topics.md` - topic generation prompt (JSON output)
+- `prompts/notes.md` - notes generation prompt (Markdown output)
+- `prompts/questions.easy.md` - easy question generation prompt (JSON output)
+- `prompts/questions.medium.md` - medium question generation prompt (JSON output)
+- `prompts/questions.hard.md` - hard question generation prompt (JSON output)
+- `prompts/quality_control.md` - quality control/review prompt
+- `prompts/additional_examples.md` - prompt for adding examples
+- `prompts/prompt_config.json` - recommended temps and max tokens
+
+Next steps:
+- Update generation code to read these files and substitute placeholders.
+- Run a smoke generation for one topic to validate outputs.

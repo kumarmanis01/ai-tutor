@@ -20,6 +20,8 @@
 
 import { prisma } from '@/lib/prisma.js';
 import { callLLM } from '@/lib/callLLM.js';
+import fs from 'fs';
+import path from 'path';
 import { isSystemSettingEnabled } from '@/lib/systemSettings.js';
 import { logger } from '@/lib/logger.js';
 import { JobStatus, ApprovalStatus } from '@/lib/ai-engine/types';
@@ -117,11 +119,39 @@ JSON Schema:
 `;
 
   try {
-    const llmResponse = await callLLM({
-      prompt,
-      meta: { promptType: 'questions', board, grade, subject: subjectName, topic: topic.name, language, difficulty }
-    });
+    // Attempt to load an external prompt template for this difficulty
+    let llmResponse: { content: string };
+    try {
+      const promptsDir = path.join(process.cwd(), 'prompts');
+      const fileName = `questions.${difficulty}.md`;
+      const templatePath = path.join(promptsDir, fileName);
+      let template = '';
+      if (fs.existsSync(templatePath)) {
+        template = fs.readFileSync(templatePath, 'utf8');
+      }
 
+      const basePath = path.join(promptsDir, 'base_context.md');
+      const base = fs.existsSync(basePath) ? fs.readFileSync(basePath, 'utf8') + '\n' : '';
+
+      const rendered = (base + template)
+        .replace(/{chapter_title}/g, topic.chapter?.name || '')
+        .replace(/{topic_title}/g, topic.name)
+        .replace(/{subject}/g, subjectName)
+        .replace(/{grade}/g, String(grade))
+        .replace(/{board}/g, board)
+        .replace(/{language}/g, language);
+
+      llmResponse = await callLLM({
+        prompt: rendered || prompt,
+        meta: { promptType: 'questions', board, grade, subject: subjectName, topic: topic.name, language, difficulty }
+      });
+    } catch {
+      // fallback to inline prompt
+      llmResponse = await callLLM({
+        prompt,
+        meta: { promptType: 'questions', board, grade, subject: subjectName, topic: topic.name, language, difficulty }
+      });
+    }
     const sanitized = sanitizeLLMOutput(llmResponse.content);
     const raw = JSON.parse(sanitized);
     if (!validateQuestionsShape(raw)) {

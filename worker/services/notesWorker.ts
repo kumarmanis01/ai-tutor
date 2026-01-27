@@ -18,6 +18,8 @@
 
 import { prisma } from '@/lib/prisma.js';
 import { callLLM } from '@/lib/callLLM.js';
+import fs from 'fs';
+import path from 'path';
 import { isSystemSettingEnabled } from '@/lib/systemSettings.js';
 import { logger } from '@/lib/logger.js';
 import { JobStatus, ApprovalStatus } from '@/lib/ai-engine/types';
@@ -135,93 +137,28 @@ export async function handleNotesJob(jobId: string): Promise<void> {
 
   const studentAge = grade + 5; // Approximate age based on grade
 
-  const prompt = `You are an expert ${board} educator creating study material for Class ${grade} students.
-
-Create comprehensive, engaging study notes for:
-Topic: ${topic.name}
-Subject: ${subjectName}
-Board: ${board}
-Grade: ${grade}
-Language: ${language}
-
-AUDIENCE: ${grade}th grade students (age ~${studentAge} years)
-
-REQUIREMENTS:
-- Use simple, age-appropriate language
-- Include relatable real-world examples
-- Make abstract concepts concrete
-- Anticipate common student confusions
-- Align strictly to ${board} curriculum standards
-
-OUTPUT: JSON ONLY (no markdown, no explanations outside JSON)
-
-JSON Schema:
-{
-  "title": "string - engaging title for the topic",
-  "content": {
-    "introduction": "string - hook that captures student interest (2-3 sentences)",
-    
-    "learningObjectives": [
-      "string - By the end of this lesson, you will be able to..."
-    ],
-    
-    "sections": [
-      {
-        "heading": "string - section title",
-        "explanation": "string - clear explanation (3-5 paragraphs)",
-        "keyTakeaway": "string - one sentence summary of this section",
-        "visualSuggestion": "string - describe a diagram/image that would help (optional)"
-      }
-    ],
-    
-    "keyTerms": [
-      {
-        "term": "string",
-        "definition": "string - simple definition",
-        "example": "string - usage in a sentence or context"
-      }
-    ],
-    
-    "realWorldExamples": [
-      {
-        "scenario": "string - relatable situation",
-        "connection": "string - how the topic applies here"
-      }
-    ],
-    
-    "practiceQuestions": [
-      {
-        "question": "string",
-        "type": "recall | understanding | application",
-        "hint": "string (optional)",
-        "answer": "string"
-      }
-    ],
-    
-    "commonMistakes": [
-      {
-        "mistake": "string - what students often get wrong",
-        "correction": "string - the correct understanding"
-      }
-    ],
-    
-    "summary": "string - 3-4 sentence recap of the entire topic",
-    
-    "funFact": "string - interesting fact related to the topic (optional)",
-    
-    "relatedTopics": ["string - topic names for further exploration"],
-    
-    "studyTips": ["string - how to remember or practice this topic"]
+  // Load prompt template from prompts/notes.md and replace placeholders
+  const promptsDir = path.join(process.cwd(), 'prompts');
+  const basePath = path.join(promptsDir, 'base_context.md');
+  const notesTemplatePath = path.join(promptsDir, 'notes.md');
+  let promptTemplate = '';
+  try {
+    const base = fs.existsSync(basePath) ? fs.readFileSync(basePath, 'utf8') + '\n' : '';
+    const tmpl = fs.readFileSync(notesTemplatePath, 'utf8');
+    promptTemplate = base + tmpl;
+  } catch (err: any) {
+    logger.warn('handleNotesJob: failed to load prompt template, falling back to inline prompt', { err: String(err?.message || '') });
+    // fallback to previous inline prompt if template missing
+    promptTemplate = `You are an expert ${board} educator creating study material for Class ${grade} students.\n\nCreate comprehensive, engaging study notes for:\nTopic: ${topic.name}\nSubject: ${subjectName}\nBoard: ${board}\nGrade: ${grade}\nLanguage: ${language}\n\nAUDIENCE: ${grade}th grade students (age ~${studentAge} years)\n\nREQUIREMENTS:\n- Use simple, age-appropriate language\n- Include relatable real-world examples\n- Make abstract concepts concrete\n- Anticipate common student confusions\n- Align strictly to ${board} curriculum standards\n\nOUTPUT: JSON ONLY (no markdown, no explanations outside JSON)\n`;
   }
-}
 
-QUALITY GUIDELINES:
-- Sections: 2-4 sections covering the topic comprehensively
-- Key Terms: 3-8 essential vocabulary words
-- Practice Questions: 3-5 questions across difficulty levels
-- Real World Examples: 2-3 relatable scenarios
-- Common Mistakes: 2-3 typical student errors
-`;
+  const prompt = promptTemplate
+    .replace(/{chapter_title}/g, topic.chapter?.name || '')
+    .replace(/{topic_title}/g, topic.name)
+    .replace(/{subject}/g, subjectName)
+    .replace(/{grade}/g, String(grade))
+    .replace(/{board}/g, board)
+    .replace(/{language}/g, language);
 
   let llmResponse: { content: string };
   try {

@@ -17,6 +17,8 @@
 
 import { prisma } from '@/lib/prisma.js'
 import { callLLM } from '@/lib/callLLM.js'
+import fs from 'fs'
+import path from 'path'
 import { toSlug } from '@/lib/slug.js'
 import { isSystemSettingEnabled } from '@/lib/systemSettings.js'
 import { logger } from '@/lib/logger.js'
@@ -108,40 +110,23 @@ export async function handleSyllabusJob(jobId: string) {
   const subjectName = subjectRow?.name || job.subject || ''
   const language = job.language || 'en'
 
-  const prompt = `You are an expert curriculum designer.
-
-Generate an academic syllabus strictly aligned to:
-Board: ${board}
-Grade: ${grade}
-Subject: ${subjectName}
-Language: ${language}
-
-Rules:
-- Output JSON ONLY
-- No explanations
-- Chapters must be ordered
-- Topics must be ordered
-- Topics must be concise, age-appropriate, and non-overlapping
-- Do NOT include assessments or activities
-- Do NOT include subtopics
-- Do NOT invent extra subjects
-
-JSON Schema:
-{
-  "chapters": [
-    {
-      "title": "string",
-      "order": number,
-      "topics": [
-        { "title": "string", "order": number }
-      ]
-    }
-  ]
-}
-`
-
+  // Load a syllabus prompt template if available
+  const promptsDir = path.join(process.cwd(), 'prompts')
+  const templatePath = path.join(promptsDir, 'syllabus_worker_prompt.md')
   let llmResponse: { content: string }
   try {
+    let prompt = ''
+    if (fs.existsSync(templatePath)) {
+      prompt = fs.readFileSync(templatePath, 'utf8')
+        .replace(/{{board}}/g, board)
+        .replace(/{{grade}}/g, String(grade))
+        .replace(/{{subject}}/g, subjectName)
+        .replace(/{{language}}/g, language)
+    } else {
+      // fallback to inline prompt if template missing
+      prompt = `You are an expert curriculum designer.\n\nGenerate an academic syllabus strictly aligned to:\nBoard: ${board}\nGrade: ${grade}\nSubject: ${subjectName}\nLanguage: ${language}\n\nRules:\n- Output JSON ONLY\n- No explanations\n- Chapters must be ordered\n- Topics must be ordered\n- Topics must be concise, age-appropriate, and non-overlapping\n- Do NOT include assessments or activities\n- Do NOT include subtopics\n- Do NOT invent extra subjects\n\nJSON Schema:\n{\n  "chapters": [\n    {\n      "title": "string",\n      "order": number,\n      "topics": [\n        { "title": "string", "order": number }\n      ]\n    }\n  ]\n}\n`
+    }
+
     llmResponse = await callLLM({ prompt, meta: { promptType: 'syllabus', board, grade, subject: subjectName, language } })
   } catch (err: any) {
     await prisma.hydrationJob.update({ where: { id: job.id }, data: { status: JobStatus.Failed, lastError: err.message } })
