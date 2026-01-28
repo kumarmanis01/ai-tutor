@@ -86,6 +86,12 @@ export async function callLLM({ prompt, model = 'gpt-4o-mini', meta }: { prompt:
     const costUsd = ((usage?.prompt_tokens || 0) * 0.00000015) + ((usage?.completion_tokens || 0) * 0.0000006)
 
     try {
+      const respBody: any = JSON.parse(JSON.stringify(response));
+      if (AI_CONTENT_DEBUG) {
+        // persist raw text for post-mortem debugging
+        respBody._rawText = content;
+      }
+
       await prisma.aIContentLog.create({
         data: {
           model,
@@ -104,7 +110,7 @@ export async function callLLM({ prompt, model = 'gpt-4o-mini', meta }: { prompt:
           success: true,
           status: 'success',
           requestBody: { prompt },
-          responseBody: JSON.parse(JSON.stringify(response)),
+          responseBody: respBody,
         },
       })
     } catch (e) {
