@@ -29,6 +29,8 @@ export async function POST(req: Request) {
   }
 
   try {
+    // Allow tests to inject a mock prisma via global.__TEST_PRISMA__
+    const db = (global as any).__TEST_PRISMA__ ?? prisma
     const { type, id, action = 'approve', reason } = await req.json();
     
     if (!type || !id) {
@@ -53,41 +55,59 @@ export async function POST(req: Request) {
     // Update the content status
     switch (type) {
       case 'syllabus':
-        await prisma.syllabus.update({
+        await db.syllabus.update({
           where: { id },
           data: { status: newStatus as 'DRAFT' | 'APPROVED' | 'ARCHIVED' },
         });
         break;
       case 'chapter':
-        await prisma.chapterDef.update({
+        await db.chapterDef.update({
           where: { id },
           data: { status: newStatus as 'draft' | 'approved' | 'rejected' },
         });
         break;
       case 'topic':
-        await prisma.topicDef.update({
+        await db.topicDef.update({
           where: { id },
           data: { status: newStatus as 'draft' | 'approved' | 'rejected' },
         });
         break;
       case 'note':
-        await prisma.topicNote.update({
+        await db.topicNote.update({
           where: { id },
           data: { status: newStatus as 'draft' | 'approved' | 'rejected' },
         });
         break;
       case 'test':
-        await prisma.generatedTest.update({
+        await db.generatedTest.update({
           where: { id },
           data: { status: newStatus as 'draft' | 'approved' | 'rejected' },
         });
         break;
     }
 
-    // Create audit log entry
-    await prisma.auditLog.create({
+    // Resolve the canonical DB user id for auditing. If the session identity
+    // doesn't map to a DB user, write a NULL userId to avoid foreign-key errors.
+    let auditUserId: string | null = null;
+    try {
+      if (session.user?.id) {
+        const byId = await db.user.findUnique({ where: { id: session.user.id } });
+        if (byId) auditUserId = byId.id;
+      }
+      if (!auditUserId && session.user?.email) {
+        const byEmail = await db.user.findUnique({ where: { email: session.user.email } });
+        if (byEmail) auditUserId = byEmail.id;
+      }
+    } catch (e) {
+      // If DB lookup fails for any reason, fall back to null — do not block
+      // the approval flow because of auditing lookup problems.
+      auditUserId = null;
+    }
+
+    // Create audit log entry (userId may be null)
+    await db.auditLog.create({
       data: {
-        userId: session.user.id,
+        userId: auditUserId,
         action: `${action}_${type}`,
         details: {
           entityType: type,

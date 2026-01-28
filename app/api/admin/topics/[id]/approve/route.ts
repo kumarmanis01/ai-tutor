@@ -7,7 +7,20 @@ export async function POST(
   { params }: { params: { id: string } }
 ) {
   const session = await getServerSessionForHandlers();
-  const adminId = session?.user?.id ?? 'SYSTEM_ADMIN'
+  // Resolve DB user id for audit; fall back to null when not resolvable.
+  let adminId: string | null = null;
+  try {
+    if (session?.user?.id) {
+      const byId = await prisma.user.findUnique({ where: { id: session.user.id } });
+      if (byId) adminId = byId.id;
+    }
+    if (!adminId && session?.user?.email) {
+      const byEmail = await prisma.user.findUnique({ where: { email: session.user.email } });
+      if (byEmail) adminId = byEmail.id;
+    }
+  } catch (e) {
+    adminId = null;
+  }
 
   const topic = await prisma.topicDef.findUnique({ where: { id: params.id } })
   if (!topic) return Response.json({ error: 'Not found' }, { status: 404 })
