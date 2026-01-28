@@ -9,7 +9,7 @@ export const metadata: Metadata = {
 };
 
 export default async function StudentHomeDashboardPage() {
-  const session = await requireActiveSession('/dashboard');
+  const session = await requireActiveSession();
   if (!session) {
     // Redirect to root if no active session found
     redirect(`/`);

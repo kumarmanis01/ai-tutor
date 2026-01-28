@@ -113,7 +113,7 @@ function validateQuestionsShapeWithReport(raw: any, subjectName?: string) {
         if (!('direct_answer' in q.answer) && !('final_answer' in q.answer)) { qReport.ok = false; qReport.issues.push('science-missing-direct_answer'); }
         if (!q.answer.scientific_explanation && !q.answer.explanation) { qReport.ok = false; qReport.issues.push('science-missing-explanation'); }
       }
-    } catch (e) {
+    } catch {
       qReport.ok = false; qReport.issues.push('subject-validation-exception');
     }
 
@@ -128,7 +128,7 @@ function validateQuestionsShapeWithReport(raw: any, subjectName?: string) {
 /**
  * Sanitizes LLM output by stripping code fences.
  */
-function sanitizeLLMOutput(content: string): string {
+function _sanitizeLLMOutput(content: string): string {
   if (!content || typeof content !== 'string') return content;
   let s = content.trim();
 
@@ -239,11 +239,11 @@ JSON Schema:
     let raw: any;
     try {
       raw = parseLlmJson(llmResponse.content);
-    } catch (err) {
+    } catch (err: any) {
       logger.error('generateQuestionsForDifficulty: failed to parse LLM JSON', { difficulty, topic: topic.name, error: String(err) });
       return null;
     }
-    // return raw; validation will be performed in the caller where job context is available
+
     return raw;
   } catch (err: any) {
     logger.error('generateQuestionsForDifficulty: failed', { difficulty, topic: topic.name, error: err.message });
@@ -373,7 +373,7 @@ export async function handleQuestionsJob(jobId: string): Promise<void> {
             results.push({ difficulty, testId: null, questionCount: 0 });
             continue;
           }
-        } catch (e) {
+        } catch {
           // If validation threw, treat as failure for this difficulty
           logger.error('handleQuestionsJob: validation exception', { jobId, difficulty, error: String(e?.message || e) });
           results.push({ difficulty, testId: null, questionCount: 0 });

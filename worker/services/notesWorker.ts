@@ -96,7 +96,7 @@ function validateNotesShapeWithReport(raw: any) {
 /**
  * Sanitizes LLM output by stripping code fences.
  */
-function sanitizeLLMOutput(content: string): string {
+function _sanitizeLLMOutput(content: string): string {
   if (!content || typeof content !== 'string') return content;
   let s = content.trim();
 
@@ -119,7 +119,7 @@ function sanitizeLLMOutput(content: string): string {
  * Attempt to extract JSON text from an arbitrary LLM output.
  * Tries fenced ```json blocks first, then any fenced block, then the first '{'..'}' span.
  */
-function extractJsonFromText(text: string): string | null {
+function _extractJsonFromText(text: string): string | null {
   if (!text || typeof text !== 'string') return null;
   const t = text.trim();
   // fenced json block

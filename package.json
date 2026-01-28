@@ -41,6 +41,7 @@
   },
   "scripts": {
     "dev": "npm run lint && npm run type-check && next dev",
+    "dev:fast": "next dev",
     "prepare": "node -e \"if(process.env.NODE_ENV !== 'production') { require('child_process').execSync('npx husky install', {stdio: 'inherit'}) }\"",
     "build": "npx prisma generate && tsc -p tsconfig.build.json && npx tsc-alias -p tsconfig.build.json && node scripts/verify-dist.cjs",
     "build:prod": "npx prisma generate && npm run build:tsc && npm run build:workers && next build",

@@ -2,20 +2,21 @@
 
 import React, { createContext, useCallback, useContext, useMemo, useState } from 'react';
 import { logger } from '@/lib/logger';
+import useCurrentUser from '@/hooks/useCurrentUser';
 // Using local StubNotesService below for development stubs
 
 export type NoteSubject = { name: string; meta: string };
 export type NoteEntry = { id: string; title: string };
 
 export interface NotesService {
-  fetchSubjects(): Promise<NoteSubject[]>;
+  fetchSubjects(classId?: string): Promise<NoteSubject[]>;
   fetchBookmarked(): Promise<NoteEntry[]>;
   fetchDownloaded(): Promise<NoteEntry[]>;
   fetchRecentlyAdded(): Promise<NoteEntry[]>;
 }
 
 class StubNotesService implements NotesService {
-  async fetchSubjects() {
+  async fetchSubjects(_classId?: string) {
     return [
       { name: 'Mathematics', meta: '24 chapters' },
       { name: 'Science', meta: '18 chapters' },
@@ -47,8 +48,9 @@ class StubNotesService implements NotesService {
 void StubNotesService;
 
 export class HttpNotesService implements NotesService {
-  async fetchSubjects() {
-    const res = await fetch('/api/notes/subjects');
+  async fetchSubjects(classId?: string) {
+    const url = '/api/notes/subjects' + (classId ? `?classId=${encodeURIComponent(classId)}` : '');
+    const res = await fetch(url);
     if (!res.ok) return [];
     return (await res.json()).subjects ?? [];
   }
@@ -96,13 +98,15 @@ const Ctx = createContext<NotesAPI | null>(null);
 
 export function NotesProvider({ children, service }: { children: React.ReactNode; service?: NotesService }) {
   const svc = useMemo(() => service ?? new HttpNotesService(), [service]);
+  const { data: profile } = useCurrentUser();
   const [state, setState] = useState<NotesState>({ query: '', filters: undefined, subjects: [], bookmarked: [], downloaded: [], recent: [], loading: false });
 
   const refresh = useCallback(async () => {
     setState((s) => ({ ...s, loading: true }));
     try {
+      const classId = profile?.grade ? String(profile.grade) : undefined;
       const [subjects, bookmarked, downloaded, recent] = await Promise.all([
-        svc.fetchSubjects(), svc.fetchBookmarked(), svc.fetchDownloaded(), svc.fetchRecentlyAdded(),
+        svc.fetchSubjects(classId), svc.fetchBookmarked(), svc.fetchDownloaded(), svc.fetchRecentlyAdded(),
       ]);
       setState((s) => ({ ...s, subjects, bookmarked, downloaded, recent }));
       logger.info('notes.refresh');
@@ -111,7 +115,7 @@ export function NotesProvider({ children, service }: { children: React.ReactNode
     } finally {
       setState((s) => ({ ...s, loading: false }));
     }
-  }, [svc]);
+  }, [svc, profile?.grade]);
 
   const setQuery = useCallback((q: string) => {
     setState((s) => ({ ...s, query: q }));

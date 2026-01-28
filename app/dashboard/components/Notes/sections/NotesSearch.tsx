@@ -16,8 +16,10 @@ export function NotesSearch() {
     // populate filters from profile on mount/login
     if (profile) {
       setFilters({ language: profile.language ?? null, board: profile.board ?? null, grade: profile.grade ? String(profile.grade) : null });
+      // refresh subjects and lists when profile becomes available
+      refresh().catch(() => {});
     }
-  }, [profile, setFilters]);
+  }, [profile, setFilters, refresh]);
 
   const subjectNames = (subjects || []).map((s) => s.name);
 

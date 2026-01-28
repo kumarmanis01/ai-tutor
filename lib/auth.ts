@@ -35,7 +35,7 @@ export async function requireAdminOrModerator() {
 
 // Require an active session for server-side pages. If no valid session or
 // matching DB user is found, callers can redirect the client to sign-in.
-export async function requireActiveSession(redirectTo = '/dashboard') {
+export async function requireActiveSession() {
   const session = (await getServerSession(authOptions)) as AppSession | null;
   if (!session || !session.user?.email) {
     return null;

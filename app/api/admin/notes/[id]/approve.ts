@@ -16,7 +16,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
       const byEmail = await prisma.user.findUnique({ where: { email: session.user.email } });
       if (byEmail) adminId = byEmail.id;
     }
-  } catch (e) {
+  } catch {
     adminId = null;
   }
 

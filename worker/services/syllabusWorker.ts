@@ -50,7 +50,7 @@ function validateSyllabusShape(raw: any) {
   return true
 }
 
-function sanitizeLLMOutput(content: string): string {
+function _sanitizeLLMOutput(content: string): string {
   if (!content || typeof content !== 'string') return content
   let s = content.trim()
 
