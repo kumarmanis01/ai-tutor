@@ -1,31 +1,36 @@
+/**
+ * FILE OBJECTIVE:
+ * - Provide a singleton PrismaClient for the application, with fallback stub for safer errors.
+ *
+ * LINKED UNIT TEST:
+ * - tests/unit/lib/prisma.spec.ts
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/COPILOT_GUARDRAILS.md
+ * - .github/copilot-instructions.md
+ *
+ * EDIT LOG:
+ * - 2026-01-24T12:00:00Z | copilot | replace ESM createRequire logic with universal PrismaClient singleton to support Jest/CJS
+ */
 
 import { PrismaClient } from '@prisma/client';
 
 /* eslint-disable no-var */
 declare global {
-  // Avoid multiple instances of PrismaClient in development
-  var prisma: PrismaClient | undefined;
+  // Prevent multiple instances of PrismaClient in development due to HMR
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  var prisma: any | undefined;
 }
 /* eslint-enable no-var */
 
-export const prisma =
-  global.prisma ||
-  new PrismaClient({
-    // Avoid noisy Prisma logs during `test` runs which can trigger Jest warnings
-    log: process.env.NODE_ENV === 'test' ? [] : ['query', 'info', 'warn', 'error'],
-  });
+const client = global.prisma ?? new PrismaClient({
+  log: process.env.NODE_ENV === 'test' ? [] : ['query', 'info', 'warn', 'error'],
+});
 
-// In dev, store Prisma client globally so it's not re-created on hot reload
-if (process.env.NODE_ENV !== 'production') {
-  global.prisma = prisma;
-}
+if (process.env.NODE_ENV !== 'production') global.prisma = client;
 
-// Ensure Prisma disconnects when the process is exiting to avoid "Cannot log after tests are done" warnings
+export const prisma = client;
+
 process.on('exit', () => {
-  try {
-    // best-effort disconnect
-    void prisma.$disconnect()
-  } catch {
-    // swallow
-  }
+  try { void prisma.$disconnect(); } catch {}
 });

@@ -1,7 +1,7 @@
 jest.mock('@/lib/audit/log', () => ({ logAuditEvent: jest.fn() }))
 
-import makePromotionStore from '../../../lib/promotion/store'
-import makePromotionService from '../../../lib/promotion/service'
+import makePromotionStore from '@/lib/promotion/store'
+import makePromotionService from '@/lib/promotion/service'
 import { logAuditEvent } from '@/lib/audit/log'
 
 describe('Promotion audit events', () => {

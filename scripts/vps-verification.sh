@@ -3,6 +3,9 @@ echo "Interactive checklist finished."
 #!/usr/bin/env bash
 # FILE OBJECTIVE:
 # - Guided VPS verification script that runs a production-grade checklist
+#!/usr/bin/env bash
+# FILE OBJECTIVE:
+# - Guided VPS verification script that runs a production-grade checklist
 #   and prints start/completed/error feedback for each step.
 #
 # LINKED UNIT TEST:
@@ -20,107 +23,13 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 SKIP_CONFIRM=false
-if [ "${1-}" = "--yes" ] || [ "${2-}" = "--yes" ]; then
-  SKIP_CONFIRM=true
-fi
-
-esc() { printf "%s" "$1" | sed "s/'/'\\''/g"; }
-
-run_cmd() {
-  local cmd="$1"
-  echo
-  echo "---- COMMAND STARTING ----"
-  echo "$cmd"
-  echo "--------------------------"
-  bash -lc "$cmd"
-  local status=$?
-  if [ $status -eq 0 ]; then
-    echo "---- COMMAND COMPLETED (exit $status) ----"
-  else
-    echo "---- COMMAND ERROR (exit $status) ----"
-  fi
-  return $status
-}
-
-confirm() {
-  if [ "$SKIP_CONFIRM" = true ]; then
-    return 0
-  fi
-  read -r -p "$1 [y/N]: " resp
-  case "$resp" in
-    [yY][eE][sS]|[yY]) return 0 ;;
-    *) return 1 ;;
+FAIL_ON_MISMATCH=false
+for a in "${@-}"; do
+  case "$a" in
+    --yes) SKIP_CONFIRM=true ;;
+    --fail-on-mismatch|--fail) FAIL_ON_MISMATCH=true ;;
   esac
-}
-
-echo "VPS Verification Script - follow the prompts and watch outputs"
-
-cd "$PROJECT_ROOT"
-
-echo "Step: ensure logs directory exists (scripts/ensure-logs.sh)"
-if [ -x "$PROJECT_ROOT/scripts/ensure-logs.sh" ]; then
-  run_cmd "bash '$PROJECT_ROOT/scripts/ensure-logs.sh'"
-else
-  if [ -f "$PROJECT_ROOT/scripts/ensure-logs.sh" ]; then
-    run_cmd "bash '$PROJECT_ROOT/scripts/ensure-logs.sh'"
-  else
-    echo "Warning: scripts/ensure-logs.sh not found; create logs/ manually if needed"
-  fi
-fi
-MD_FILE="$PROJECT_ROOT/focs/vps-verification-guide.md"
-
-if [ -f "$MD_FILE" ]; then
-  echo "Loading commands from $MD_FILE"
-  # Extract only ```bash code blocks and run them in order. Each block may contain multiple lines/commands.
-  mapfile -t blocks < <(awk '/^```bash/{inside=1;next} /^```/{if(inside){inside=0;print "__BLOCK_END__"} next} { if(inside){print} }' "$MD_FILE" | awk 'BEGIN{buf=""} { if($0=="__BLOCK_END__"){print buf; buf=""} else { if(buf=="") buf=$0; else buf=buf"\n"$0 } } END{ if(buf!="") print buf }')
-
-  idx=0
-  for block in "${blocks[@]}"; do
-    idx=$((idx+1))
-    echo
-    echo "=== MD BLOCK $idx ==="
-    echo "$block"
-    if confirm "Run the above block now?"; then
-      ESC_BLOCK=$(esc "$block")
-      run_cmd "bash -lc '$ESC_BLOCK' || true"
-    else
-      echo "Skipped block $idx"
-    fi
-  done
-else
-  echo "MD guide not found at $MD_FILE — falling back to inline checks"
-  # Fallback: run a minimal set of checks
-  run_cmd "pm2 list || true"
-  run_cmd "npm ci"
-  run_cmd "npm run build || true"
-  run_cmd "pm2 start dist/worker/entry.js --name content-engine-worker --env production --env-file '$PROJECT_ROOT/.env.production' || true"
-  run_cmd "pm2 save || true"
-fi
-#!/usr/bin/env bash
-# FILE OBJECTIVE:
-# - Guided VPS verification script that runs a production-grade checklist
-#   and prints start/completed/error feedback for each step.
-#
-# LINKED UNIT TEST:
-# - tests/unit/docs/vps_verification.spec.ts
-#
-# COPILOT INSTRUCTIONS FOLLOWED:
-# - .github/copilot-instructions.md
-# - /docs/COPILOT_GUARDRAILS.md
-#
-# EDIT LOG:
-# - 2026-01-11T00:00:00Z | copilot-agent | created
-
-set -u
-
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-# Project root is the parent of the scripts directory
-PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
-ROOT_DIR="$PROJECT_ROOT"
-SKIP_CONFIRM=false
-if [ "${1-}" = "--yes" ] || [ "${2-}" = "--yes" ]; then
-  SKIP_CONFIRM=true
-fi
+done
 
 run_cmd() {
   local cmd="$*"
@@ -153,7 +62,7 @@ confirm() {
 echo "VPS Verification Script - follow the prompts and watch outputs"
 
 echo "PHASE 1 — Clean slate"
-cd "$ROOT_DIR"
+cd "$PROJECT_ROOT"
 
 if confirm "Stop and delete all PM2 processes (pm2 stop all && pm2 delete all)? This is destructive."; then
   run_cmd pm2 stop all
@@ -187,9 +96,8 @@ echo "PHASE 2 — Environment sanity check"
 run_cmd find "$PROJECT_ROOT" -maxdepth 2 -name ".env.production" -type f || true
 
 echo "Verify .env.production key vars"
-# Run grep from project root so the simple relative command works as expected
-# Use single-quoted sh -c with embedded double-quotes so the pattern is preserved
-run_cmd sh -c 'cd "'"$PROJECT_ROOT"'" && grep -E "NODE_ENV|DATABASE_URL|REDIS_URL" .env.production' || true
+# Change: run the grep inside the project directory in one eval'able command string.
+run_cmd "cd \"$PROJECT_ROOT\" && grep -E 'NODE_ENV|DATABASE_URL|REDIS_URL' .env.production" || true
 
 echo "Confirm shell does not auto-load env (expected empty):"
 run_cmd sh -c 'echo \$REDIS_URL'
@@ -208,20 +116,113 @@ echo "PHASE 4 — Dry-run worker"
 DB_URL=$(grep -m1 '^DATABASE_URL=' "$PROJECT_ROOT/.env.production" | cut -d= -f2- | sed 's/^"//;s/"$//') || DB_URL=""
 REDIS_URL_VAL=$(grep -m1 '^REDIS_URL=' "$PROJECT_ROOT/.env.production" | cut -d= -f2- | sed 's/^"//;s/"$//') || REDIS_URL_VAL=""
 
-echo "Running worker: node dist/worker/entry.js with env vars from .env.production"
-run_cmd sh -c "NODE_ENV=production DATABASE_URL=\"$DB_URL\" REDIS_URL=\"$REDIS_URL_VAL\" node dist/worker/entry.js &"
-echo "Worker started in background for smoke-run (use Ctrl+C in manual run to stop)."
+echo "PHASE 5 — PM2 reset and start ecosystem"
+run_cmd pm2 stop all || true
+run_cmd pm2 delete all || true
+run_cmd pm2 kill || true
+run_cmd pm2 flush || true
 
-echo "PHASE 5 — PM2 start the worker with env-file"
-run_cmd pm2 start dist/worker/entry.js --name content-engine-worker --env production --env-file "$PROJECT_ROOT/.env.production" || true
+if [ -f "$PROJECT_ROOT/ecosystem.config.cjs" ]; then
+  run_cmd pm2 start "$PROJECT_ROOT/ecosystem.config.cjs" --env production --update-env || true
+elif [ -f "$PROJECT_ROOT/ecosystem.config.js" ]; then
+  run_cmd pm2 start "$PROJECT_ROOT/ecosystem.config.js" --env production --update-env || true
+else
+  echo "Ecosystem config not found; skipping pm2 ecosystem start"
+fi
 
-run_cmd pm2 list
+sleep 1
 
-echo "Verify PM2 env injection for worker"
-run_cmd pm2 env content-engine-worker | grep REDIS_URL || true
+echo "Verify PM2 env injection for processes (compare with .env.production)"
+read_env_value() {
+  local key="$1"
+  awk -F= -v k="$key" '$1==k {sub(/^\"|\"$/, "", $2); print substr($0, index($0,$2))}' "$PROJECT_ROOT/.env.production" 2>/dev/null || true
+}
 
-echo "Check worker logs (last 50 lines)"
-run_cmd pm2 logs content-engine-worker --lines 50 || true
+KEYS=(DATABASE_URL REDIS_URL APP_URL)
+PROCS=(ai-tutor-web content-engine-worker)
+
+# Counters for summary
+MATCH_COUNT=0
+MISMATCH_COUNT=0
+MISSING_COUNT=0
+UNHEALTHY_COUNT=0
+
+for proc in "${PROCS[@]}"; do
+  id=$(pm2 id "$proc" 2>/dev/null || true)
+  if [ -z "$id" ] || [ "$id" = "[PM2] Process name not found" ] || [ "$id" = "0" ]; then
+    # Attempt fallback lookup by listing processes and matching name
+    echo "PM2 process not found by id for name: $proc — attempting fallback lookups"
+    # Try 'pm2 jlist' parse to find pm_id (best-effort). If this fails, we'll continue but provide manual commands.
+    fallback_id=$(pm2 jlist 2>/dev/null | sed -n "s/.*\"name\": \"$proc\".*/$proc/p" >/dev/null || true)
+    # If fallback not implemented or failed, advise manual checks
+    if [ -z "$fallback_id" ]; then
+      echo "  Could not auto-resolve PM2 id for process '$proc'."
+      echo "  Manual checks you can run:"
+      echo "    pm2 list"
+      echo "    pm2 show $proc"
+      echo "    pm2 logs $proc --lines 200"
+      echo "    pm2 env <id>   # once you have the numeric id from pm2 list or pm2 show"
+      MISSING_COUNT=$((MISSING_COUNT+1))
+      continue
+    else
+      id="$fallback_id"
+      echo "  resolved id=$id via fallback"
+    fi
+  fi
+  echo "Checking PM2 id=$id (proc=$proc)"
+  for key in "${KEYS[@]}"; do
+    expected=$(read_env_value "$key" | sed 's/^\s*//;s/\s*$//')
+    pm2val=$(pm2 env "$id" | grep -E "^$key=" || true)
+    if [ -z "$pm2val" ]; then
+      echo "  $key: MISSING in PM2 env for id=$id"
+      MISMATCH_COUNT=$((MISMATCH_COUNT+1))
+    else
+      pm2rhs=${pm2val#*=}
+      if [ -n "$expected" ] && [ "$pm2rhs" = "$expected" ]; then
+        echo "  $key: MATCH"
+        MATCH_COUNT=$((MATCH_COUNT+1))
+      else
+        echo "  $key: MISMATCH"
+        echo "    .env.production: ${expected:-<empty>}"
+        echo "    pm2 env: ${pm2rhs:-<empty>}"
+        MISMATCH_COUNT=$((MISMATCH_COUNT+1))
+      fi
+    fi
+  done
+  # Check process health/status
+  status_line=$(pm2 show "$id" 2>/dev/null | grep -i "status" | head -n1 || true)
+  if [ -n "$status_line" ]; then
+    status=$(echo "$status_line" | awk -F: '{print $2}' | tr -d ' ' | tr '[:upper:]' '[:lower:]')
+    if [ "$status" != "online" ]; then
+      echo "  status: ${status_line#* }"
+      UNHEALTHY_COUNT=$((UNHEALTHY_COUNT+1))
+    else
+      echo "  status: online"
+    fi
+  else
+    echo "  status: unknown"
+    UNHEALTHY_COUNT=$((UNHEALTHY_COUNT+1))
+  fi
+done
+
+run_cmd pm2 list || true
+
+# Summary
+echo
+echo "PM2 verification summary:" 
+echo "  Matches: $MATCH_COUNT"
+echo "  Mismatches: $MISMATCH_COUNT"
+echo "  Missing processes: $MISSING_COUNT"
+echo "  Unhealthy processes: $UNHEALTHY_COUNT"
+
+if [ "$FAIL_ON_MISMATCH" = true ]; then
+  if [ $MISMATCH_COUNT -gt 0 ] || [ $UNHEALTHY_COUNT -gt 0 ] || [ $MISSING_COUNT -gt 0 ]; then
+    echo "One or more verification checks failed (mismatch/unhealthy/missing). Exiting non-zero because --fail-on-mismatch was set."
+    exit 2
+  fi
+fi
+
+exit 0
 
 echo "PHASE 6 — Redis connectivity check (logs + optional redis-cli ping)"
 run_cmd pm2 logs content-engine-worker | grep -i redis || true
@@ -246,3 +247,4 @@ echo " - Prisma client present"
 echo " - Redis connectivity OK or no connection errors in logs"
 
 echo "Script finished"
+

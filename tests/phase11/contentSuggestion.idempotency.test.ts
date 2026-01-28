@@ -1,6 +1,6 @@
 import { prisma } from '@/lib/prisma'
 import net from 'net'
-import generateSuggestionsForSignal from '@/insights/engine'
+import { generateSuggestionsForSignal } from '@/insights/engine'
 import { saveSuggestions } from '@/insights/store'
 
 describe('Phase 11 — ContentSuggestion idempotency', () => {

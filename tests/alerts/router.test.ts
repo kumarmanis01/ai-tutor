@@ -1,9 +1,9 @@
-import { AlertRouter } from '../../lib/alerts/router';
-import { SlackSink } from '../../lib/alerts/sinks/slack';
-import { WebhookSink } from '../../lib/alerts/sinks/webhook';
-import { EmailSink } from '../../lib/alerts/sinks/email';
-import { InMemoryRateLimiter } from '../../lib/alerts/rateLimiter';
-import { InMemoryDeduper } from '../../lib/alerts/dedupe';
+import { AlertRouter } from '@/lib/alerts/router';
+import { SlackSink } from '@/lib/alerts/sinks/slack';
+import { WebhookSink } from '@/lib/alerts/sinks/webhook';
+import { EmailSink } from '@/lib/alerts/sinks/email';
+import { InMemoryRateLimiter } from '@/lib/alerts/rateLimiter';
+import { InMemoryDeduper } from '@/lib/alerts/dedupe';
 
 describe('AlertRouter', () => {
   const makeMockSlack = (name = 'slack') => {

@@ -199,6 +199,66 @@ You can check out [the Next.js GitHub repository](https://github.com/vercel/next
 
 ## Deploy on Vercel
 
+## VPS Deploy & Run (PM2)
+
+Quick helper steps for deploying on a VPS using the repository `scripts/deploy-and-run.sh` wrapper.
+
+1. Ensure `.env.production` is present on the VPS in the repo root (do NOT commit secrets).
+2. Make scripts executable:
+
+```bash
+chmod +x scripts/deploy-and-run.sh scripts/run-web.sh scripts/run-worker.sh scripts/ensure-logs.sh scripts/reset-logs.sh
+```
+
+3. Run the deploy-and-run script (recommended):
+
+```bash
+# default: performs vps-verification (auto), pm2 cleanup, pulls branch, starts ecosystem
+./scripts/deploy-and-run.sh --auto --branch feat/worker-production-setup
+
+# skip pm2 cleanup
+./scripts/deploy-and-run.sh --no-clean --branch feat/worker-production-setup
+
+# perform pm2 cleanup and kill pm2 daemon
+./scripts/deploy-and-run.sh --kill --branch feat/worker-production-setup
+```
+
+4. Useful npm helpers (from repo root):
+
+```bash
+# Run vps verification (non-interactive)
+npm run verify:vps
+
+# Verify dist artifacts
+npm run verify:dist
+
+# Check Redis/Bull keys (uses .env.production or environment REDIS_URL)
+npm run check-redis-keys
+```
+
+5. Inspect PM2 logs if anything crashes:
+
+```bash
+pm2 logs ai-tutor-web --lines 200
+pm2 logs content-engine-worker --lines 200
+```
+
+If you want, add these commands to your deployment automation (Ansible, scripts, CI) but keep `.env.production` populated by your provisioning or secret store (never check it into source control).
+
+Security checklist (enforced by scripts)
+
+- Ensure `.env.production` is present on the server and not committed into git. The repo includes `scripts/ensure-env-perms.sh` which will fail the deploy if the file is tracked in git.
+- Set secure permissions on the file so only the deploy user can read it:
+
+```bash
+chmod 600 .env.production
+chown <deploy-user>:<deploy-user> .env.production
+```
+
+- The `deploy-and-run.sh` script invokes `ensure-env-perms.sh` before any PM2 actions. Keep `.env.production` in your deployment secrets store and do not commit it.
+
+
+
 ## Deployment / Required Environment Variables
 
 The evaluator and application require runtime environment variables in production. Add these to your Vercel project (Preview & Production) via the Vercel UI or CLI.

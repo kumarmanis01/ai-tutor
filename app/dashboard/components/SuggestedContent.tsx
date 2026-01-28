@@ -1,76 +1,80 @@
 'use client';
-
+/**
+ * FILE OBJECTIVE:
+ * - Mobile-optimized suggested content with compact horizontal scroll.
+ *
+ * LINKED UNIT TEST:
+ * - tests/unit/app/dashboard/components/SuggestedContent.spec.ts
+ *
+ * EDIT LOG:
+ * - 2026-01-22 | copilot | added navigation on click with visual cue
+ * - 2025-01-22 | copilot | simplified for mobile with compact cards
+ */
 import React from 'react';
 import { useRecommendations } from '@/hooks/useRecommendations';
 
-interface SuggestedCard {
-  id: string;
-  icon: string;
-  title: string;
-  subtitle: string;
-  badge?: string;
-  color: string;
-}
+const typeEmoji: Record<string, string> = {
+  notes: '📖',
+  test: '📝',
+  quiz: '❓',
+  default: '✨',
+};
 
-interface SuggestedContentProps { [key: string]: unknown }
+const SuggestedContent: React.FC = () => {
+  const { items, loading, navigateToContent } = useRecommendations();
 
-const SuggestedContent: React.FC<SuggestedContentProps> = () => {
-  const { items, loading, trackClick, trackCompleted } = useRecommendations();
-  const suggestions: SuggestedCard[] = items.map((i) => ({
-    id: i.id,
-    icon: '✨',
-    title: i.title,
-    subtitle: i.subject,
-    color: 'bg-blue-50 border-blue-200',
-  }));
+  if (loading) {
+    return (
+      <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide -mx-3 px-3">
+        {[1, 2, 3].map((i) => (
+          <div key={i} className="flex-shrink-0 w-40 bg-card rounded-lg p-3 animate-pulse">
+            <div className="w-8 h-8 bg-muted rounded-lg mb-2" />
+            <div className="h-3 bg-muted rounded w-3/4 mb-1" />
+            <div className="h-2 bg-muted rounded w-1/2" />
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  if (!items.length) {
+    return (
+      <div className="bg-muted/30 rounded-lg p-4 text-center">
+        <p className="text-sm text-muted-foreground">No suggestions yet</p>
+      </div>
+    );
+  }
 
   return (
-    <section className="space-y-4">
-      <h2 className="text-lg font-semibold text-foreground px-1">
-        Suggested For You
-        <span className="text-muted-foreground text-sm ml-2">/ आपके लिए</span>
-      </h2>
-
-      {/* Horizontal Scrollable Cards */}
-      <div className="overflow-x-auto -mx-4 px-4">
-        <div className="flex gap-3 pb-2">
-          {loading ? (
-            <div className="text-sm text-muted-foreground">Loading suggestions…</div>
-          ) : suggestions.length === 0 ? (
-            <div className="p-3 border rounded">No suggestions right now</div>
-          ) : suggestions.map((card) => (
-            <div
-              key={card.id}
-              className={`flex-shrink-0 w-72 ${card.color} rounded-lg p-4 border border-border hover:shadow-md transition-shadow cursor-pointer bg-card`}
-              onClick={() => trackClick(card.id)}
-            >
-              <div className="flex items-start gap-3">
-                <div className="text-3xl flex-shrink-0">{card.icon}</div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-start justify-between mb-1">
-                    <h3 className="font-semibold text-foreground text-base">
-                      {card.title}
-                    </h3>
-                    {card.badge && (
-                      <span className="text-xs bg-primary/20 text-primary px-2 py-1 rounded-full font-medium ml-2 flex-shrink-0">
-                        {card.badge}
-                      </span>
-                    )}
-                  </div>
-                  <p className="text-sm text-muted-foreground line-clamp-2">
-                    {card.subtitle}
-                  </p>
-                  <div className="mt-3 flex gap-2">
-                    <button className="px-3 py-2 bg-primary text-primary-foreground rounded" onClick={() => trackClick(card.id)}>Start</button>
-                    <button className="px-3 py-2 border rounded" onClick={() => trackCompleted(card.id)}>Mark Complete</button>
-                  </div>
-                </div>
-              </div>
+    <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide -mx-3 px-3">
+      {items.slice(0, 5).map((item) => {
+        const type = item.title.toLowerCase().includes('note') ? 'notes' 
+          : item.title.toLowerCase().includes('test') ? 'test' 
+          : item.title.toLowerCase().includes('quiz') ? 'quiz' 
+          : 'default';
+        const emoji = typeEmoji[type];
+        
+        return (
+          <button
+            key={item.id}
+            onClick={() => navigateToContent(item)}
+            className="flex-shrink-0 w-40 bg-card hover:bg-muted/50 rounded-lg p-3 text-left active:scale-95 transition-transform"
+          >
+            <div className="w-8 h-8 bg-primary/10 rounded-lg flex items-center justify-center text-base mb-2">
+              {emoji}
             </div>
-          ))}
-        </div>
-      </div>
-    </section>
+            <p className="text-sm font-medium text-foreground truncate">{item.title}</p>
+            <p className="text-xs text-muted-foreground truncate">{item.subject}</p>
+            <div className="flex items-center gap-1 mt-1">
+              <svg className="w-3 h-3 text-primary" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M8 5v14l11-7z" />
+              </svg>
+              <span className="text-xs text-primary">Start</span>
+            </div>
+          </button>
+        );
+      })}
+    </div>
   );
 };
 

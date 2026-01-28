@@ -18,11 +18,11 @@ export async function POST(req: Request) {
       try { logAuditEvent(prisma as any, { action: 'PROMOTION_CANDIDATE_CREATED', entityId: created.id, actorId: session.user.id, metadata: { scope, scopeRefId } }) } catch {}
       return NextResponse.json({ candidate: created })
     } catch (err: any) {
-      if (String(err.message).includes('unique') || String(err.message).includes('already exists')) return NextResponse.json({ error: 'already_exists' }, { status: 409 })
+      if ((err?.message ?? '').includes('unique') || (err?.message ?? '').includes('already exists')) return NextResponse.json({ error: 'already_exists' }, { status: 409 })
       throw err
     }
   } catch (err: any) {
-    if (String(err?.message).includes('Unauthorized')) return NextResponse.json({ error: 'forbidden' }, { status: 403 })
+    if ((err?.message ?? '').includes('Unauthorized')) return NextResponse.json({ error: 'forbidden' }, { status: 403 })
     return NextResponse.json({ error: 'internal' }, { status: 500 })
   }
 }

@@ -46,7 +46,7 @@ export async function POST(req: Request) {
         html: `<p>Hello <b>${user.name}</b>, your account has been created successfully!</p>`,
       });
     } catch (err) {
-      logger.error('Error sending welcome email', { className: 'api.auth.verify-code', methodName: 'POST', error: String(err) });
+      logger.error('Error sending welcome email', { className: 'api.auth.verify-code', methodName: 'POST', error: err });
       // You may choose to ignore or handle this error
     }
   }

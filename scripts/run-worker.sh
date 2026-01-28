@@ -35,4 +35,16 @@ while IFS= read -r line; do
   declare -x "$key"="$value"
 done < <(grep -v '^[[:space:]]*#' "$ENV_FILE" | sed '/^[[:space:]]*$/d')
 
-exec node dist/worker/entry.js
+# Determine compiled entry path (some build setups output to dist/worker/worker/entry.js)
+if [ -f "$ROOT_DIR/dist/worker/worker/entry.js" ]; then
+  ENTRY="$ROOT_DIR/dist/worker/worker/entry.js"
+elif [ -f "$ROOT_DIR/dist/worker/entry.js" ]; then
+  ENTRY="$ROOT_DIR/dist/worker/entry.js"
+else
+  echo "ERROR: compiled worker entry not found in dist/worker" >&2
+  ls -la "$ROOT_DIR/dist/worker" || true
+  exit 3
+fi
+
+echo "[run-worker] starting node $ENTRY"
+exec node "$ENTRY"

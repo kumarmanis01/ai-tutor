@@ -1,7 +1,13 @@
+import { getContentQueue } from "@/queues/contentQueue";
 import { logger } from "@/lib/logger";
-// Simple stub for enqueueNoteHydration
+
+const HYDRATION_DEBUG = process.env.HYDRATION_DEBUG === '1' || process.env.AI_CONTENT_DEBUG === '1'
+
 export async function enqueueNoteHydration(noteId: string) {
-  // TODO: Implement actual queue logic
-  logger.add(`Enqueue note hydration for noteId: ${noteId}`);
-  return true;
+  const q = getContentQueue()
+  if (HYDRATION_DEBUG) logger.debug('[hydration][DEBUG] enqueueNoteHydration called', { noteId })
+  const job = await q.add(`note-${noteId}`, { type: 'NOTES', payload: { topicId: noteId, language: 'en' } })
+  logger.info('enqueueNoteHydration enqueued', { noteId, jobId: job.id })
+  if (HYDRATION_DEBUG) logger.debug('[hydration][DEBUG] enqueued note job', { noteId, jobId: job.id })
+  return job.id
 }

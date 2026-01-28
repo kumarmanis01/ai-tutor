@@ -1,3 +1,8 @@
+#!/usr/bin/env bash
+. "$(dirname "$0")/_/husky.sh"
+
+# Prevent accidental commit of .env.production
+bash scripts/prevent-env-commit.sh
 #!/usr/bin/env sh
 . "$(dirname "$0")/_/husky.sh"
 

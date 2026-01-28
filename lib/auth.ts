@@ -2,6 +2,7 @@
 // Import necessary libraries and providers for authentication
 import { PrismaAdapter } from '@next-auth/prisma-adapter'; // Connects NextAuth to your database
 import GoogleProvider from 'next-auth/providers/google'; // Enables Google login/signup
+import FacebookProvider from 'next-auth/providers/facebook'; // Enables Meta (Facebook) login/signup
 import EmailProvider from 'next-auth/providers/email'; // Enables email login/signup
 import CredentialsProvider from 'next-auth/providers/credentials'; // Enables login with email & password
 import { prisma } from '@/lib/prisma'; // Your Prisma database client
@@ -101,6 +102,11 @@ export const authOptions: any = {
     GoogleProvider({
       clientId: process.env.GOOGLE_CLIENT_ID!,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+    }),
+    // Enable Meta (Facebook) login/signup
+    FacebookProvider({
+      clientId: process.env.FACEBOOK_CLIENT_ID!,
+      clientSecret: process.env.FACEBOOK_CLIENT_SECRET!,
     }),
     // Enable email login/signup
     EmailProvider({
@@ -242,6 +248,34 @@ export const authOptions: any = {
                     scope: (account as any).scope ?? undefined,
                     id_token: (account as any).id_token ?? undefined,
                     session_state: (account as any).session_state ?? undefined,
+                  },
+                });
+              }
+            }
+          }
+        }
+        // Proactively link Facebook OAuth to existing user by email to avoid OAuthAccountNotLinked.
+        if (account?.provider === 'facebook') {
+          const email = (profile as any)?.email ?? user?.email;
+          // Facebook may not always verify emails, so we trust the email if present
+          if (email) {
+            const existing = await prisma.user.findUnique({ where: { email } });
+            if (existing) {
+              const hasFacebook = await prisma.account.findFirst({
+                where: { userId: existing.id, provider: 'facebook' },
+              });
+              if (!hasFacebook) {
+                await prisma.account.create({
+                  data: {
+                    userId: existing.id,
+                    provider: 'facebook',
+                    providerAccountId: String(account.providerAccountId),
+                    type: String(account.type),
+                    access_token: (account as any).access_token ?? undefined,
+                    refresh_token: (account as any).refresh_token ?? undefined,
+                    expires_at: (account as any).expires_at ?? undefined,
+                    token_type: (account as any).token_type ?? undefined,
+                    scope: (account as any).scope ?? undefined,
                   },
                 });
               }

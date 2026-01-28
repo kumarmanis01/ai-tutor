@@ -1,4 +1,5 @@
 import { logger } from '@/lib/logger';
+import { formatErrorForResponse } from '@/lib/errorResponse';
 import { NextResponse } from 'next/server';
 import { getServerSessionForHandlers } from '@/lib/session';
 import fs from 'fs/promises';
@@ -50,8 +51,8 @@ export async function POST(req: Request) {
     logger.logAPI(req, res, { className: 'UploadImageAPI', methodName: 'POST' }, start);
     return res;
   } catch (err) {
-    logger.error('upload-image error', { className: 'api.upload-image', methodName: 'POST', error: String(err) });
-    res = NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    logger.error('upload-image error', { className: 'api.upload-image', methodName: 'POST', error: err });
+    res = NextResponse.json({ error: formatErrorForResponse(err) }, { status: 500 });
     logger.logAPI(req, res, { className: 'UploadImageAPI', methodName: 'POST' }, start);
     return res;
   }

@@ -22,6 +22,8 @@ jobs:
           node-version: '20.x'
       - name: Install
         run: npm ci
+      - name: Run CI prebuild checks
+        run: npm run ci:prebuild
       - name: Apply Prisma migrations (if DATABASE_URL valid)
         if: github.event_name == 'push'
         env:

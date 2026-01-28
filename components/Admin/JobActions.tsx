@@ -14,7 +14,7 @@ export default function JobActions({ jobId, status, onDone }: Props) {
   const canRetry = ['FAILED', 'CANCELLED'].includes(st);
   const canCancel = st === 'PENDING' || st === 'RUNNING';
 
-  async function performAction(action: 'retry' | 'cancel') {
+  async function performAction(action: 'retry' | 'cancel' | 'requeue') {
     setError(null);
     setLoading(true);
     try {
@@ -41,12 +41,15 @@ export default function JobActions({ jobId, status, onDone }: Props) {
     }
   }
 
-  function confirmAndRun(action: 'retry' | 'cancel') {
+  function confirmAndRun(action: 'retry' | 'cancel' | 'requeue') {
     const messages: Record<typeof action, string> = {
       retry: 'This will create a new execution job attempt. Continue? This is an append-only operation.',
       cancel: 'This will cancel the job. This operation cannot be undone. Are you sure?',
+      requeue: 'This will re-enqueue the hydrator/worker for this job. Continue?',
     };
-    alerts.confirm(messages[action], () => performAction(action), action === 'cancel' ? 'Confirm cancel' : 'Confirm retry', action === 'cancel' ? 'Cancel job' : 'Retry job');
+    const confirmLabel = action === 'cancel' ? 'Confirm cancel' : action === 'requeue' ? 'Confirm requeue' : 'Confirm retry';
+    const primary = action === 'cancel' ? 'Cancel job' : action === 'requeue' ? 'Requeue job' : 'Retry job';
+    alerts.confirm(messages[action], () => performAction(action), confirmLabel, primary);
   }
 
   return (
@@ -54,6 +57,13 @@ export default function JobActions({ jobId, status, onDone }: Props) {
       {canRetry && (
         <button className="px-3 py-1 bg-green-600 text-white rounded disabled:opacity-50" onClick={() => confirmAndRun('retry')} disabled={loading}>
           {loading ? 'Working…' : 'Retry'}
+        </button>
+      )}
+
+      {/* Requeue: for failed jobs, allow re-enqueueing the hydrator/worker */}
+      {st === 'FAILED' && (
+        <button className="px-3 py-1 bg-yellow-600 text-white rounded disabled:opacity-50" onClick={() => confirmAndRun('requeue')} disabled={loading}>
+          {loading ? 'Working…' : 'Requeue'}
         </button>
       )}
 

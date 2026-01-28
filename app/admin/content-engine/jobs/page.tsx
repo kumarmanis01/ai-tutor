@@ -3,6 +3,7 @@
 import React, { useMemo, useState } from 'react';
 import useSWR from 'swr';
 import Link from 'next/link';
+import JobActions from '@/components/Admin/JobActions';
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
@@ -139,7 +140,10 @@ export default function JobsIndexPage() {
                 <td className="px-3 py-2 border">{job.status}</td>
                 <td className="px-3 py-2 border">{new Date(job.createdAt).toLocaleString()}</td>
                 <td className="px-3 py-2 border">
-                  <Link href={`/admin/content-engine/jobs/${job.id}`} className="text-sm text-blue-600">View</Link>
+                  <div className="flex items-center gap-2">
+                    <Link href={`/admin/content-engine/jobs/${job.id}`} className="text-sm text-blue-600">View</Link>
+                    <JobActions jobId={job.id} status={job.status} onDone={() => mutate()} />
+                  </div>
                 </td>
               </tr>
             ))}

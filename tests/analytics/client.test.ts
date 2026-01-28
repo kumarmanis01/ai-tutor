@@ -1,4 +1,4 @@
-import * as client from '../../lib/analytics/client'
+import * as client from '@/lib/analytics/client'
 
 describe('client analytics emitter', () => {
   beforeEach(() => {

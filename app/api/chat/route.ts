@@ -1,4 +1,5 @@
 import { logger } from '@/lib/logger';
+import { formatErrorForResponse } from '@/lib/errorResponse';
 /**
  * POST /api/chat
  * Body: { message: string, subject?: string }
@@ -53,7 +54,7 @@ export async function POST(req: Request) {
         if (primary.startsWith('en')) return 'English';
         return 'English';
       } catch (e) {
-        logger.error('Accept-Language parse error', { className: 'api.chat', methodName: 'POST', error: String(e) });
+        logger.error('Accept-Language parse error', { className: 'api.chat', methodName: 'POST', error: e });
         return 'English';
       }
     }
@@ -70,7 +71,7 @@ export async function POST(req: Request) {
     try {
       await logApiUsage('/api/chat', `SUBJECT_${subject}`);
     } catch (e) {
-      logger.error('Failed to log subject usage', { className: 'api.chat', methodName: 'POST', error: String(e) });
+      logger.error('Failed to log subject usage', { className: 'api.chat', methodName: 'POST', error: e });
     }
 
     if (!message || typeof message !== 'string') {
@@ -248,12 +249,12 @@ export async function POST(req: Request) {
         }
       }
     } catch (e) {
-      logger.error('suggestions generation failed', { className: 'api.chat', methodName: 'POST', error: String(e) });
+      logger.error('suggestions generation failed', { className: 'api.chat', methodName: 'POST', error: e });
     }
 
     return NextResponse.json({ reply: answerMarkdown, suggestions });
   } catch (err) {
-    logger.error('chat route error', { className: 'api.chat', methodName: 'POST', error: String(err) });
-    return NextResponse.json({ error: 'server_error' }, { status: 500 });
+    logger.error('chat route error', { className: 'api.chat', methodName: 'POST', error: err });
+    return NextResponse.json({ error: formatErrorForResponse(err) }, { status: 500 });
   }
 }

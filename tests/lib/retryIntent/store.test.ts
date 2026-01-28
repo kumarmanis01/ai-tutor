@@ -1,4 +1,4 @@
-import makeRetryIntentStore from '../../../lib/retryIntent/store'
+import makeRetryIntentStore from '@/lib/retryIntent/store'
 
 describe('RetryIntent store', () => {
   const prisma: any = {

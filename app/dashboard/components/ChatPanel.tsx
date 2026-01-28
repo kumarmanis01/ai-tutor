@@ -1,7 +1,18 @@
 "use client";
+/**
+ * FILE OBJECTIVE:
+ * - Responsive chat message display with clean bubbles.
+ *   Compact on mobile, expanded on desktop with larger chat area.
+ *
+ * LINKED UNIT TEST:
+ * - tests/unit/app/dashboard/components/ChatPanel.spec.ts
+ *
+ * EDIT LOG:
+ * - 2025-01-23 | copilot | made responsive - larger chat area on desktop
+ * - 2025-01-22 | copilot | simplified for mobile-first with cleaner message bubbles
+ */
 import { logger } from '@/lib/logger';
-
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Speech } from '@/lib/speech';
 import analyticsClient from '@/lib/analyticsClient';
 
@@ -19,27 +30,18 @@ interface ChatPanelProps {
 
 const ChatPanel: React.FC<ChatPanelProps> = ({ messages }) => {
   const [playingId, setPlayingId] = useState<string | null>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
 
-  const mapLangToEmoji = (lang?: string) => {
-    if (!lang) return null;
-    const t = String(lang).toLowerCase();
-    if (t.startsWith('hi')) return { emoji: '🇮🇳', title: 'Hindi' };
-    if (t.startsWith('ta')) return { emoji: '🇮🇳', title: 'Tamil' };
-    if (t.startsWith('bn')) return { emoji: '🇧🇩', title: 'Bengali' };
-    if (t.startsWith('fr')) return { emoji: '🇫🇷', title: 'French' };
-    if (t.startsWith('es')) return { emoji: '🇪🇸', title: 'Spanish' };
-    if (t.startsWith('en')) return { emoji: '🇺🇸', title: 'English' };
-    return { emoji: '🏳️', title: lang };
-  };
+  // Auto-scroll to bottom
+  useEffect(() => {
+    if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+  }, [messages]);
 
   useEffect(() => {
-    // Track suggestion shown events for analytics when messages change
     try {
       messages.forEach((m) => {
-        if (m.from === 'ai' && m.suggestions && m.suggestions.length > 0) {
-          try {
-            analyticsClient.trackEvent('suggestion.shown', { messageId: m.id, count: m.suggestions.length });
-          } catch {}
+        if (m.from === 'ai' && m.suggestions?.length) {
+          try { analyticsClient.trackEvent('suggestion.shown', { messageId: m.id, count: m.suggestions.length }); } catch {}
         }
       });
     } catch {}
@@ -47,90 +49,86 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ messages }) => {
 
   const handlePlay = (m: ChatMessage) => {
     try {
-      const lang = m.language || 'en-US';
-      Speech.speak(m.text, { lang });
+      Speech.speak(m.text, { lang: m.language || 'en-US' });
       setPlayingId(m.id);
     } catch (err) {
-      logger.error('TTS play error', { className: 'ChatPanel', methodName: 'playTTS', error: String(err) });
+      logger.error('TTS error', { error: String(err) });
     }
   };
 
   const handleStop = () => {
-    try {
-      Speech.stop();
-    } catch {}
+    try { Speech.stop(); } catch {}
     setPlayingId(null);
   };
+
+  // Empty state
+  if (messages.length === 0) {
+    return (
+      <div className="bg-muted/30 dark:bg-slate-800/30 rounded-xl p-6 lg:p-10 text-center">
+        <div className="text-3xl lg:text-5xl mb-2 lg:mb-4">💬</div>
+        <p className="text-sm lg:text-base text-muted-foreground">Ask anything to start learning!</p>
+        <p className="text-xs lg:text-sm text-muted-foreground mt-1">कुछ भी पूछें!</p>
+      </div>
+    );
+  }
+
   return (
-    <div className="bg-background/50 border border-border rounded-lg p-3 max-w-4xl mx-auto mb-4">
-      <div className="space-y-3">
-        {messages.length === 0 && (
-          <p className="text-sm text-muted-foreground">Ask the AI tutor a question — replies appear here.</p>
-        )}
-        {messages.map((m) => (
-          <div
-            key={m.id}
-            className={`py-2 px-3 rounded-md max-w-[80%] relative ${m.from === "user" ? "ml-auto bg-primary text-primary-foreground" : "bg-card text-foreground"}`}
-          >
-            <div className="flex items-start gap-2">
-              <div className="flex-1 text-sm whitespace-pre-wrap">{m.text}</div>
-              {m.from === 'ai' && (
-                <div className="ml-2">
-                  <button
-                    onClick={() => (playingId === m.id ? handleStop() : handlePlay(m))}
-                    aria-label={playingId === m.id ? 'Stop playback' : 'Play message'}
-                    title={playingId === m.id ? 'Stop playback' : 'Play message'}
-                    className="text-sm text-muted-foreground p-1"
-                  >
-                    {playingId === m.id ? (
-                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="6" y="6" width="12" height="12" rx="2" fill="currentColor" /></svg>
-                    ) : (
-                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M5 9v6h4l5 4V5L9 9H5z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                    )}
-                  </button>
+    <div className="bg-muted/20 dark:bg-slate-800/20 rounded-xl p-3 lg:p-4">
+      <div ref={scrollRef} className="space-y-3 lg:space-y-4 max-h-72 lg:max-h-[500px] xl:max-h-[600px] overflow-y-auto">
+        {messages.map((m) => {
+          const isUser = m.from === "user";
+          const isPlaying = playingId === m.id;
+          
+          return (
+            <div key={m.id} className={`flex ${isUser ? 'justify-end' : 'justify-start'}`}>
+              <div className={`max-w-[85%] lg:max-w-[75%] ${isUser ? 'order-1' : ''}`}>
+                {/* Message bubble */}
+                <div className={`px-3 py-2 lg:px-4 lg:py-3 rounded-2xl text-sm lg:text-base ${
+                  isUser
+                    ? 'bg-primary text-primary-foreground rounded-br-md'
+                    : 'bg-card dark:bg-slate-700 text-foreground rounded-bl-md border border-border/30'
+                }`}>
+                  <p className="whitespace-pre-wrap leading-relaxed">{m.text}</p>
                 </div>
-              )}
-            </div>
-
-            {/* Language badge */}
-            {m.from === 'ai' && m.language && (
-              (() => {
-                const v = mapLangToEmoji(m.language);
-                return (
-                  <div className="absolute -top-2 -right-2 bg-muted text-xs text-muted-foreground border border-border px-2 py-0.5 rounded-full" title={v?.title}>
-                    {v?.emoji}
-                  </div>
-                );
-              })()
-            )}
-
-            {/* Render suggestions for AI replies */}
-            {m.from === 'ai' && m.suggestions && m.suggestions.length > 0 && (
-              <div className="mt-2 w-full">
-                <div className="text-xs text-muted-foreground mb-1">Try one of these:</div>
-                <div className="flex flex-wrap gap-2">
-                  {m.suggestions.map((s, i) => (
+                
+                {/* AI controls */}
+                {!isUser && (
+                  <div className="flex items-center gap-2 mt-1.5 lg:mt-2 px-1">
                     <button
-                      key={i}
-                      type="button"
-                      onClick={() => {
-                        try {
-                          analyticsClient.trackEvent('suggestion.clicked', { suggestion: s, messageId: m.id });
-                        } catch {}
-                        try {
-                          window.dispatchEvent(new CustomEvent('chatSuggestionPicked', { detail: { messageId: m.id, suggestion: s } }));
-                        } catch {}
-                      }}
-                      className="px-3 py-1 bg-white/10 border border-border rounded-full text-xs hover:bg-white/20"
+                      onClick={() => isPlaying ? handleStop() : handlePlay(m)}
+                      className={`p-1 lg:p-1.5 rounded-md text-xs lg:text-sm ${isPlaying ? 'text-red-500' : 'text-muted-foreground hover:text-foreground'}`}
                     >
-                      {s}
+                      {isPlaying ? '⏹' : '🔊'}
                     </button>
-                  ))}
-                </div>
+                    {m.language && (
+                      <span className="text-[10px] lg:text-xs text-muted-foreground">
+                        {m.language.startsWith('hi') ? '🇮🇳' : '🇺🇸'}
+                      </span>
+                    )}
+                  </div>
+                )}
+                
+                {/* Suggestions */}
+                {!isUser && m.suggestions?.length ? (
+                  <div className="flex flex-wrap gap-1.5 lg:gap-2 mt-2 lg:mt-3">
+                    {m.suggestions.map((s, i) => (
+                      <button
+                        key={i}
+                        onClick={() => {
+                          try { analyticsClient.trackEvent('suggestion.clicked', { suggestion: s }); } catch {}
+                          try { window.dispatchEvent(new CustomEvent('chatSuggestionPicked', { detail: { suggestion: s } })); } catch {}
+                        }}
+                        className="px-2.5 py-1 lg:px-3 lg:py-1.5 bg-primary/10 hover:bg-primary/20 text-primary rounded-full text-xs lg:text-sm active:scale-95 transition-all"
+                      >
+                        {s}
+                      </button>
+                    ))}
+                  </div>
+                ) : null}
               </div>
-            )}
-          </div>
-        ))}
+            </div>
+          );
+        })}
       </div>
     </div>
   );

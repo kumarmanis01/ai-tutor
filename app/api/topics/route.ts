@@ -2,13 +2,14 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { assertNoStringFilters } from "@/lib/guards/noStringFilters";
 import { logger } from "@/lib/logger";
+import { formatErrorForResponse } from '@/lib/errorResponse';
 
 export async function GET(req: Request) {
   try {
     try {
       assertNoStringFilters(req);
     } catch (e) {
-      return NextResponse.json({ error: e instanceof Error ? e.message : String(e) }, { status: 400 });
+      return NextResponse.json({ error: formatErrorForResponse(e) }, { status: 400 });
     }
 
     const { searchParams } = new URL(req.url);
@@ -31,8 +32,8 @@ export async function GET(req: Request) {
 
     return NextResponse.json(topics);
   } catch (err) {
-    logger.error(`/api/topics error: ${String(err)}`);
-    return NextResponse.json({ error: "internal" }, { status: 500 });
+    logger.error('/api/topics error', { error: err });
+    return NextResponse.json({ error: formatErrorForResponse(err) }, { status: 500 });
   }
 }
 
@@ -42,7 +43,7 @@ export async function POST(req: Request) {
     const topic = await prisma.topicDef.create({ data });
     return NextResponse.json(topic);
   } catch (err) {
-    logger.error(`/api/topics POST error: ${String(err)}`);
-    return NextResponse.json({ error: "internal" }, { status: 500 });
+    logger.error('/api/topics POST error', { error: err });
+    return NextResponse.json({ error: formatErrorForResponse(err) }, { status: 500 });
   }
 }

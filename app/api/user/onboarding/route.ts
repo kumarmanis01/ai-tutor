@@ -1,4 +1,5 @@
 import { logger } from '@/lib/logger';
+import { formatErrorForResponse } from '@/lib/errorResponse';
 // Consolidated onboarding handler (merged onboarding-phone -> onboarding)
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSessionForHandlers } from '@/lib/session';
@@ -27,7 +28,7 @@ export async function POST(req: NextRequest) {
         logger.debug('/api/user/onboarding received payload (RAW)', { className: 'api.user.onboarding', methodName: 'POST', body });
       }
     } catch (logErr) {
-      logger.warn('/api/user/onboarding: failed to mask/log payload', { className: 'api.user.onboarding', methodName: 'POST', error: String(logErr) });
+      logger.warn('/api/user/onboarding: failed to mask/log payload', { className: 'api.user.onboarding', methodName: 'POST', error: logErr });
       logger.debug('/api/user/onboarding raw payload fallback', { className: 'api.user.onboarding', methodName: 'POST', body });
     }
 
@@ -103,7 +104,7 @@ export async function POST(req: NextRequest) {
       logger.info('/api/user/onboarding updated user', { className: 'api.user.onboarding', methodName: 'POST', id: updatedUser.id, name: updatedUser.name, phone: updatedUser.phone });
     } catch (updErr: any) {
       if (updErr?.code === 'P2022') {
-        logger.error('/api/user/onboarding: prisma schema mismatch on update P2022', { className: 'api.user.onboarding', methodName: 'POST', error: String((updErr as any)?.meta || (updErr as any)?.message || updErr) });
+        logger.error('/api/user/onboarding: prisma schema mismatch on update P2022', { className: 'api.user.onboarding', methodName: 'POST', error: updErr });
         res = NextResponse.json({
           error: 'db_schema_mismatch',
           message: 'Database schema is out of sync with Prisma schema: one or more columns (e.g. `User.board`) are missing. Run `npx prisma migrate dev` to apply pending migrations.',
@@ -147,7 +148,7 @@ export async function POST(req: NextRequest) {
           logger.logAPI(req, res, { className: 'UserOnboardingAPI', methodName: 'POST' }, start);
           return res;
         } catch (recoverErr: any) {
-          logger.warn('/api/user/onboarding: failed to recover from P2025', { className: 'api.user.onboarding', methodName: 'POST', error: String(recoverErr?.message || recoverErr) });
+          logger.warn('/api/user/onboarding: failed to recover from P2025', { className: 'api.user.onboarding', methodName: 'POST', error: recoverErr });
           res = NextResponse.json({
             error: 'user_not_found',
             message: 'We could not find your user record to update. Please try again or re-login to refresh your session.',
@@ -173,16 +174,16 @@ export async function POST(req: NextRequest) {
         await prisma.event.create({ data: { userId: updatedUser.id, type: 'otp_widget_token', metadata: { token }, timestamp: new Date() } });
       }
     } catch (evErr) {
-      logger.warn('/api/user/onboarding: failed to persist widget token as event', { className: 'api.user.onboarding', methodName: 'POST', error: String(evErr) });
+      logger.warn('/api/user/onboarding: failed to persist widget token as event', { className: 'api.user.onboarding', methodName: 'POST', error: evErr });
     }
 
     res = NextResponse.json({ ok: true, user: { id: updatedUser.id, name: updatedUser.name, phone: updatedUser.phone } });
     logger.logAPI(req, res, { className: 'UserOnboardingAPI', methodName: 'POST' }, start);
     return res;
   } catch (err) {
-    logger.error('/api/user/onboarding error', { className: 'api.user.onboarding', methodName: 'POST', error: String(err) });
+    logger.error('/api/user/onboarding error', { className: 'api.user.onboarding', methodName: 'POST', error: err });
     // Provide a clearer error message to avoid confusion for users
-    res = NextResponse.json({ error: 'internal_error', message: 'Something went wrong while saving your details. Please try again.' }, { status: 500 });
+    res = NextResponse.json({ error: formatErrorForResponse(err), message: 'Something went wrong while saving your details. Please try again.' }, { status: 500 });
     logger.logAPI(req, res, { className: 'UserOnboardingAPI', methodName: 'POST' }, start);
     return res;
   }

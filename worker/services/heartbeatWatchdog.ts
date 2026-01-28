@@ -1,5 +1,5 @@
-import { prisma } from '../../lib/prisma.js';
-import { logger } from '../../lib/logger.js';
+import { prisma } from '@/lib/prisma.js';
+import { logger } from '@/lib/logger.js';
 
 export function startWorkerLifecycleWatchdog(opts?: { intervalMs?: number; staleAfterMs?: number }) {
   const intervalMs = opts?.intervalMs ?? 30_000;

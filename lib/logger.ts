@@ -21,6 +21,8 @@ interface LogContext {
 // Use `globalThis` to detect browser `window` without requiring DOM lib.
 const isClient = typeof (globalThis as any).window !== 'undefined';
 const isDebug = process.env.NEXT_PUBLIC_DEBUG_MODE === 'true';
+// Worker-level debug override (useful for PM2/workers): set WORKER_DEBUG=1 to enable server debug logs
+const isWorkerDebug = process.env.WORKER_DEBUG === '1' || process.env.WORKER_DEBUG === 'true';
 
 type Level = 'error' | 'warn' | 'info' | 'debug' | 'log';
 const levelWeight: Record<Level, number> = {
@@ -38,7 +40,8 @@ function parseLevel(s?: string | null): Level {
 }
 
 // Server log level via env; default to 'error' to preserve production visibility for errors
-const serverMinLevel = levelWeight[parseLevel(process.env.LOG_LEVEL)];
+// If `WORKER_DEBUG` is set, force server-level logs to `debug` for very verbose job traces.
+const serverMinLevel = isWorkerDebug ? levelWeight.debug : levelWeight[parseLevel(process.env.LOG_LEVEL)];
 // Client min level: allow error logs even when debug is off; otherwise gate by NEXT_PUBLIC_DEBUG_MODE
 const clientMinLevel = isDebug ? levelWeight.debug : levelWeight.error;
 
@@ -59,7 +62,9 @@ class Logger {
     let prefix = `[${time}]`;
     if (context?.className) prefix += ` [${context.className}]`;
     if (context?.methodName) prefix += ` [${context.methodName}]`;
-    const entry = `${prefix} ${msg}`;
+    // Serialize additional context (including Error objects) into the log entry
+    const ctxString = context ? ` ${safeSerializeContext(context)}` : '';
+    const entry = `${prefix} ${msg}${ctxString}`;
     this.logs.push(entry);
     this.subscribers.forEach((cb) => cb(entry));
     // Also log to console with appropriate level
@@ -85,11 +90,11 @@ class Logger {
   }
 
   getLogs() {
-    return isDebug ? [...this.logs] : [];
+    return (isDebug || isWorkerDebug) ? [...this.logs] : [];
   }
 
   subscribe(cb: LogCallback) {
-    if (!isDebug) return () => {};
+    if (!(isDebug || isWorkerDebug)) return () => {};
     if (this.closed) return () => {};
     this.subscribers.push(cb);
     this.logs.forEach((log) => cb(log));
@@ -152,6 +157,35 @@ class Logger {
       console.log('[API DEBUG]', JSON.stringify(logObj, null, 2));
     } catch (err) {
       this.add(`logAPI error: ${err}`, context, 'error');
+    }
+  }
+}
+
+// Serialize context safely, expanding Error objects to include name/message/stack
+function safeSerializeContext(ctx: LogContext) {
+  try {
+    const replacer = (_key: string, value: any) => {
+      if (value instanceof Error) {
+        return { name: value.name, message: value.message, stack: value.stack };
+      }
+      // Avoid serializing huge objects like request/response bodies; fall back to string
+      if (typeof value === 'object' && value !== null) {
+        try {
+          // Attempt shallow clone of simple objects to avoid circular refs
+          return value;
+        } catch {
+          return String(value);
+        }
+      }
+      return value;
+    };
+
+    return JSON.stringify(ctx, replacer, 2);
+  } catch {
+    try {
+      return String(ctx);
+    } catch {
+      return '{unserializable_context}';
     }
   }
 }

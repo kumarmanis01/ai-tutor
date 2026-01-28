@@ -1,0 +1,44 @@
+# Dependencies are installed fresh in the container
+node_modules
+npm-debug.log
+yarn-error.log
+
+# Build outputs
+.next
+dist
+out
+build
+
+# Development files
+*.log
+*.md
+!README.md
+.git
+.gitignore
+.env*
+!.env.production
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+
+# Tests
+__tests__
+tests
+coverage
+*.test.ts
+*.spec.ts
+jest.config.*
+
+# Docs
+docs
+focs
+
+# Other
+tmp
+logs
+*.sql
+backup-*
+ci-poll-debug.txt

@@ -49,7 +49,10 @@ describe('handleSyllabusJob', () => {
     // Mock transaction - call callback with a tx mock that tracks created records
     const tx = {
       chapterDef: { findFirst: jest.fn().mockResolvedValue(null), create: jest.fn().mockResolvedValue({ id: 'chap-1' }) },
-      topicDef: { findFirst: jest.fn().mockResolvedValue(null), create: jest.fn().mockResolvedValue({ id: 'topic-1' }) }
+      topicDef: { findFirst: jest.fn().mockResolvedValue(null), create: jest.fn().mockResolvedValue({ id: 'topic-1' }) },
+      hydrationJob: { update: jest.fn().mockResolvedValue({}) },
+      executionJob: { findFirst: jest.fn().mockResolvedValue({ id: 'exec-1', status: 'pending' }), update: jest.fn().mockResolvedValue({}), },
+      jobExecutionLog: { create: jest.fn().mockResolvedValue({}) }
     }
     ;(prisma.$transaction as jest.Mock).mockImplementation(async (cb: any) => cb(tx))
 
@@ -57,6 +60,8 @@ describe('handleSyllabusJob', () => {
 
     expect(tx.chapterDef.create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ name: 'Numbers' }) }))
     expect(tx.topicDef.create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ name: 'Integers' }) }))
-    expect(prisma.hydrationJob.update).toHaveBeenCalledWith({ where: { id: 'job-2' }, data: { status: expect.anything() } })
+    expect(tx.hydrationJob.update).toHaveBeenCalledWith({ where: { id: 'job-2' }, data: { status: expect.anything(), completedAt: expect.anything(), contentReady: true } })
+    expect(tx.executionJob.update).toHaveBeenCalledWith({ where: { id: 'exec-1' }, data: { status: 'completed', updatedAt: expect.anything() } })
+    expect(tx.jobExecutionLog.create).toHaveBeenCalled()
   })
 })

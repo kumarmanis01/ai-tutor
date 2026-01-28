@@ -1,67 +1,87 @@
 'use client';
-
+/**
+ * FILE OBJECTIVE:
+ * - Mobile-optimized study goals, streak display, and progress metrics.
+ *
+ * LINKED UNIT TEST:
+ * - tests/unit/app/dashboard/components/StudyGoals.spec.ts
+ *
+ * EDIT LOG:
+ * - 2026-01-22 | copilot | enhanced with real progress metrics (tests, score, sessions)
+ * - 2025-01-22 | copilot | simplified for mobile with compact streak
+ */
 import React from 'react';
 import { useStreaksAndGoals } from '@/hooks/useStreaksAndGoals';
 
-interface StudyGoalsProps { [key: string]: unknown }
-
-const StudyGoals: React.FC<StudyGoalsProps> = () => {
-  const { streaks, loading } = useStreaksAndGoals();
+const StudyGoals: React.FC = () => {
+  const { streaks, progress, loading } = useStreaksAndGoals();
   const daily = streaks.find(s => s.kind === 'daily_study');
   const streakDays = daily?.current ?? 0;
-  const todayGoalMinutes = 30;
-  const completedMinutes = Math.min(todayGoalMinutes, streakDays * 10);
-  const progressPercentage = (completedMinutes / todayGoalMinutes) * 100;
+  
+  // Use actual progress data
+  const weeklyProgress = progress.weeklyProgress;
+  const testsCompleted = progress.testsCompleted;
+  const averageScore = progress.averageScore;
 
-  return (
-    <section className="space-y-4">
-      <h2 className="text-lg font-semibold text-foreground px-1">
-        Study Goals & Streak
-        <span className="text-muted-foreground text-sm ml-2">/ लक्ष्य</span>
-      </h2>
-
-      <div className="bg-gradient-to-br from-primary/10 to-accent/10 rounded-lg p-5 border border-primary/20">
-        {/* Today's Goal */}
-        <div className="mb-4">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-base font-semibold text-foreground">
-              Today's Study Goal
-            </span>
-            <span className="text-sm font-medium text-primary">
-              {completedMinutes}/{todayGoalMinutes} mins
-            </span>
-          </div>
-          
-          {/* Progress Bar */}
-          <div className="w-full bg-white/50 rounded-full h-3 overflow-hidden">
-            <div
-              className="bg-gradient-to-r from-primary to-accent h-3 rounded-full transition-all duration-500"
-              style={{ width: `${progressPercentage}%` }}
-            />
-          </div>
-        </div>
-
-        {/* Streak */}
-        <div className="flex items-center justify-between bg-white/50 rounded-lg p-3 mb-3">
-          <div className="flex items-center gap-2">
-            <span className="text-2xl">🔥</span>
-            <div>
-              <p className="text-sm font-semibold text-foreground">Study Streak</p>
-              <p className="text-xs text-muted-foreground">Keep it going!</p>
+  if (loading) {
+    return (
+      <div className="space-y-4">
+        <div className="bg-card rounded-lg p-4 animate-pulse">
+          <div className="flex items-center gap-4">
+            <div className="w-14 h-14 bg-muted rounded-full" />
+            <div className="flex-1 space-y-2">
+              <div className="h-4 bg-muted rounded w-1/2" />
+              <div className="h-3 bg-muted rounded w-3/4" />
             </div>
           </div>
-          <div className="text-right">
-            <p className="text-2xl font-bold text-primary">{loading ? '…' : streakDays}</p>
-            <p className="text-xs text-muted-foreground">days</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-3">
+      {/* Streak Card */}
+      <div className="bg-gradient-to-r from-orange-500/10 to-amber-500/10 rounded-lg p-4 border border-orange-500/20">
+        <div className="flex items-center gap-4">
+          <div className="w-14 h-14 bg-gradient-to-br from-orange-500 to-amber-500 rounded-full flex items-center justify-center text-white shadow-lg">
+            <span className="text-2xl">🔥</span>
+          </div>
+          
+          <div className="flex-1">
+            <div className="flex items-baseline gap-1">
+              <span className="text-2xl font-bold text-foreground">{streakDays}</span>
+              <span className="text-sm text-muted-foreground">day streak</span>
+            </div>
+            <div className="flex items-center gap-2 mt-1">
+              <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
+                <div 
+                  className="h-full bg-gradient-to-r from-orange-500 to-amber-500 rounded-full transition-all"
+                  style={{ width: `${weeklyProgress}%` }}
+                />
+              </div>
+              <span className="text-xs text-muted-foreground">{weeklyProgress}%</span>
+            </div>
           </div>
         </div>
-
-        {/* Motivational Text */}
-        <p className="text-sm text-center text-foreground font-medium">
-          Great! Just {todayGoalMinutes - completedMinutes} minutes left for full progress 💪
-        </p>
       </div>
-    </section>
+
+      {/* Progress Stats Grid */}
+      <div className="grid grid-cols-3 gap-2">
+        <div className="bg-card rounded-lg p-3 text-center border">
+          <div className="text-2xl font-bold text-primary">{testsCompleted}</div>
+          <div className="text-xs text-muted-foreground">Tests</div>
+        </div>
+        <div className="bg-card rounded-lg p-3 text-center border">
+          <div className="text-2xl font-bold text-green-600">{averageScore}%</div>
+          <div className="text-xs text-muted-foreground">Avg Score</div>
+        </div>
+        <div className="bg-card rounded-lg p-3 text-center border">
+          <div className="text-2xl font-bold text-purple-600">{progress.totalSessions}</div>
+          <div className="text-xs text-muted-foreground">Sessions</div>
+        </div>
+      </div>
+    </div>
   );
 };
 

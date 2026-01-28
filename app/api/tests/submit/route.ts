@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getServerSessionForHandlers } from '@/lib/session';
 import { applyGrading, SubmitPayload } from '@/lib/tests';
+import { updateLearningProfile } from '@/lib/recommendations/engine';
 import { logger } from '@/lib/logger';
 
 export const dynamic = 'force-dynamic';
@@ -36,6 +37,15 @@ export async function POST(req: Request) {
   }
 
   const result = await applyGrading(attempt, payload);
+  
+  // Update learning profile asynchronously (non-blocking)
+  updateLearningProfile(user.id).catch((err) => {
+    logger.error('TestsSubmitAPI.updateLearningProfile', {
+      userId: user.id,
+      error: err,
+    });
+  });
+  
   res = NextResponse.json({ attemptId: attempt.id, ...result });
   logger.logAPI(req, res, { className: 'TestsSubmitAPI', methodName: 'POST' }, start);
   return res;

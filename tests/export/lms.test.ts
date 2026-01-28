@@ -1,4 +1,4 @@
-import { exportCourseToLMS } from '../../lib/exporters/lms'
+import { exportCourseToLMS } from '@/lib/exporters/lms'
 
 describe('LMS exporter', () => {
   it('creates a zip with index, lessons and manifest', () => {

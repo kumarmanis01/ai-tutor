@@ -1,5 +1,5 @@
-import buildCoursePackage from '../../lib/course/package/builder'
-import { approveContent, resetApprovalStore } from '../../lib/content/approval/service'
+import buildCoursePackage from '@/lib/course/package/builder'
+import { approveContent, resetApprovalStore } from '@/lib/content/approval/service'
 
 beforeEach(() => {
   resetApprovalStore()

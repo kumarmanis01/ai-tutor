@@ -16,11 +16,11 @@ export async function POST(req: Request, { params }: any) {
       const upd = await service.rejectCandidate(id, session.user.id, notes)
       return NextResponse.json({ candidate: upd })
     } catch (err: any) {
-      if (String(err.message).includes('cannot reject approved')) return NextResponse.json({ error: 'cannot_reject' }, { status: 400 })
+      if ((err?.message ?? '').includes('cannot reject approved')) return NextResponse.json({ error: 'cannot_reject' }, { status: 400 })
       return NextResponse.json({ error: 'failed' }, { status: 400 })
     }
   } catch (err: any) {
-    if (String(err?.message).includes('Unauthorized')) return NextResponse.json({ error: 'forbidden' }, { status: 403 })
+    if ((err?.message ?? '').includes('Unauthorized')) return NextResponse.json({ error: 'forbidden' }, { status: 403 })
     return NextResponse.json({ error: 'internal' }, { status: 500 })
   }
 }

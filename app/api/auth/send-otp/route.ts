@@ -1,8 +1,25 @@
+/**
+ * FILE OBJECTIVE:
+ * - Send OTP codes via SMS for phone-based authentication.
+ *
+ * LINKED UNIT TEST:
+ * - tests/unit/app/api/auth/send-otp/route.spec.ts
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/COPILOT_GUARDRAILS.md
+ * - .github/copilot-instructions.md
+ *
+ * EDIT LOG:
+ * - 2025-01-XX | copilot | enhanced with Redis-based rate limiting
+ */
+
 import { logger } from '@/lib/logger';
-import { NextResponse } from 'next/server';
+import { formatErrorForResponse } from '@/lib/errorResponse';
+import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'crypto';
 import { prisma } from '@/lib/prisma';
 import { sendSms } from '@/lib/sms';
+import { checkAuthRateLimit, createRateLimitResponse } from '@/lib/middleware/authRateLimit';
 
 const OTP_EXPIRY_SECONDS = Number(process.env.OTP_EXPIRY_SECONDS ?? 300);
 
@@ -14,7 +31,7 @@ function hashOtp(otp: string) {
   return crypto.createHash('sha256').update(`${otp}${secret}`).digest('hex');
 }
 
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
     const rawPhone = String(body.phone || '');
@@ -23,7 +40,13 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Invalid phone' }, { status: 400 });
     }
 
-    // Simple rate limit: max 5 active OTPs in last 15 minutes
+    // Apply Redis-based rate limiting (in addition to DB check below)
+    const rateLimitResult = await checkAuthRateLimit(req, 'sendCode', phone);
+    if (!rateLimitResult.allowed) {
+      return createRateLimitResponse(rateLimitResult);
+    }
+
+    // Simple rate limit: max 5 active OTPs in last 15 minutes (DB-based backup)
     const recentCount = await prisma.phoneOtp.count({
       where: {
         phone,
@@ -47,7 +70,7 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ ok: true });
   } catch (err) {
-    logger.error('send-otp error', { className: 'api.auth.send-otp', methodName: 'POST', error: String(err) });
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    logger.error('send-otp error', { className: 'api.auth.send-otp', methodName: 'POST', error: err });
+    return NextResponse.json({ error: formatErrorForResponse(err) }, { status: 500 });
   }
 }

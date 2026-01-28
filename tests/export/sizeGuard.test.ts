@@ -1,4 +1,4 @@
-import { clearExportRateLimits } from '../../lib/rateLimit/exportLimiter'
+import { clearExportRateLimits } from '@/lib/rateLimit/exportLimiter'
 
 describe('CoursePackage size guard for exports', () => {
   beforeEach(() => {

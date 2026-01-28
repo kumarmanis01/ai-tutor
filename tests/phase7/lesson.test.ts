@@ -1,4 +1,4 @@
-import { validateLesson } from '../../lib/content/lesson/schema'
+import { validateLesson } from '@/lib/content/lesson/schema'
 
 describe('Lesson schema validation', () => {
   const validLesson = {

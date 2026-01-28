@@ -1,43 +1,101 @@
 'use client';
-
-import React from 'react';
+/**
+ * FILE OBJECTIVE:
+ * - Responsive feature grid with compact cards and navigation.
+ *   3 columns on mobile, 2 columns in sidebar context.
+ *
+ * LINKED UNIT TEST:
+ * - tests/unit/app/dashboard/components/FeatureGrid.spec.ts
+ *
+ * EDIT LOG:
+ * - 2025-01-23 | copilot | made responsive - 3 cols mobile, 2 cols in sidebar
+ * - 2026-01-22 | copilot | added navigation handlers for all feature tiles
+ * - 2025-01-22 | copilot | simplified for mobile with compact grid
+ */
+import React, { useCallback } from 'react';
 import { useFeatureGrid } from '@/hooks/useFeatureGrid';
 
-// Removed unused Feature type to satisfy lint
+const featureEmoji: Record<string, string> = {
+  practice: '✅',
+  notes: '📖',
+  doubts: '❓',
+  video: '🎬',
+  quiz: '🎯',
+  default: '⚡',
+};
 
-interface FeatureGridProps { [key: string]: unknown }
+// Route mapping for feature tiles
+const featureRoutes: Record<string, string> = {
+  notes: '/dashboard?tab=notes',
+  tests: '/dashboard?tab=tests',
+  practice: '/tests',
+  doubts: '/dashboard',
+  video: '/learn',
+  quiz: '/tests',
+};
 
-const FeatureGrid: React.FC<FeatureGridProps> = () => {
+const FeatureGrid: React.FC = () => {
   const { tiles, loading } = useFeatureGrid();
-  const features = tiles.map((t) => ({ id: t.key, icon: '🧩', title: t.title, subtitle: t.count ? `${t.count} items` : '', color: 'bg-indigo-50 border-indigo-200' }));
-  return (
-    <section className="space-y-4">
-      <h2 className="text-lg font-semibold text-foreground px-1">
-        Main Features
-        <span className="text-muted-foreground text-sm ml-2">/ मुख्य सुविधाएं</span>
-      </h2>
 
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-        {loading ? (
-          <div className="text-sm text-muted-foreground">Loading features…</div>
-        ) : features.length === 0 ? (
-          <div className="p-3 border rounded">No features available</div>
-        ) : (
-          features.map((feature) => (
-            <div key={feature.id} className={`p-4 border rounded bg-card ${feature.color}`}>
-              <div className="flex items-center gap-3">
-                <span className="text-2xl">{feature.icon}</span>
-                <div>
-                  <div className="font-medium">{feature.title}</div>
-                  <div className="text-xs text-muted-foreground">{feature.subtitle}</div>
-                </div>
-              </div>
-            </div>
-          ))
-        )}
+  const navigateToFeature = useCallback((key: string) => {
+    let route = '/dashboard';
+    
+    // Check for matching route
+    for (const [routeKey, path] of Object.entries(featureRoutes)) {
+      if (key.toLowerCase().includes(routeKey)) {
+        route = path;
+        break;
+      }
+    }
+    
+    window.location.assign(route);
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="grid grid-cols-3 lg:grid-cols-2 gap-2 lg:gap-3">
+        {[1, 2, 3].map((i) => (
+          <div key={i} className="bg-card rounded-lg p-3 lg:p-4 animate-pulse">
+            <div className="w-8 h-8 lg:w-10 lg:h-10 bg-muted rounded-lg mx-auto mb-2" />
+            <div className="h-3 bg-muted rounded w-2/3 mx-auto" />
+          </div>
+        ))}
       </div>
-    </section>
+    );
+  }
+
+  const getEmoji = (key: string) => {
+    if (key.includes('practice') || key.includes('test')) return featureEmoji.practice;
+    if (key.includes('note')) return featureEmoji.notes;
+    if (key.includes('doubt') || key.includes('ask')) return featureEmoji.doubts;
+    if (key.includes('video')) return featureEmoji.video;
+    if (key.includes('quiz')) return featureEmoji.quiz;
+    return featureEmoji.default;
+  };
+
+  if (!tiles.length) {
+    return (
+      <div className="bg-muted/30 rounded-lg p-4 text-center">
+        <p className="text-sm text-muted-foreground">No features available</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="grid grid-cols-3 lg:grid-cols-2 gap-2 lg:gap-3">
+      {tiles.slice(0, 6).map((t) => (
+        <button
+          key={t.key}
+          onClick={() => navigateToFeature(t.key)}
+          className="bg-card hover:bg-muted/50 rounded-lg p-3 lg:p-4 text-center active:scale-95 transition-transform"
+        >
+          <div className="text-2xl lg:text-3xl mb-1 lg:mb-2">{getEmoji(t.key)}</div>
+          <p className="text-xs lg:text-sm font-medium text-foreground truncate">{t.title}</p>
+          {t.count ? <p className="text-[10px] lg:text-xs text-muted-foreground">{t.count}</p> : null}
+        </button>
+      ))}
+    </div>
   );
-}
+};
 
 export default FeatureGrid;

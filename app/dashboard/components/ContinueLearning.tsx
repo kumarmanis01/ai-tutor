@@ -1,84 +1,77 @@
 'use client';
-
+/**
+ * FILE OBJECTIVE:
+ * - Mobile-optimized continue learning section with compact activity cards.
+ *
+ * LINKED UNIT TEST:
+ * - tests/unit/app/dashboard/components/ContinueLearning.spec.ts
+ *
+ * EDIT LOG:
+ * - 2025-01-22 | copilot | simplified for mobile with compact cards
+ */
 import React from 'react';
 import { useContinueLearning } from '@/hooks/useContinueLearning';
 
-interface LearningItem {
-  id: string;
-  title: string;
-  subtitle: string;
-  progress?: number;
-  actionText: string;
-  icon: string;
-}
+const typeEmoji: Record<string, string> = {
+  notes: '📖',
+  test: '📝',
+  quiz: '❓',
+  default: '📚',
+};
 
-interface ContinueLearningProps { [key: string]: unknown }
-
-const ContinueLearning: React.FC<ContinueLearningProps> = () => {
+const ContinueLearning: React.FC = () => {
   const { activities, loading, resumeActivity } = useContinueLearning();
-  const learningItems: LearningItem[] = (activities || []).map((a) => ({
-    id: a.id,
-    title: a.activityType,
-    subtitle: a.subject ?? 'General',
-    actionText: 'Resume',
-    icon: '🔄',
-  }));
 
-  return (
-    <section className="space-y-4">
-      <h2 className="text-lg font-semibold text-foreground px-1">
-        Continue Learning
-        <span className="text-muted-foreground text-sm ml-2">/ सीखते रहें</span>
-      </h2>
-
-      <div className="space-y-3">
-        {loading ? (
-          <div className="text-sm text-muted-foreground">Loading activities…</div>
-        ) : learningItems.length === 0 ? (
-          <div className="p-4 border rounded">No resumable activities yet</div>
-        ) : learningItems.map((item) => (
-          <div
-            key={item.id}
-            className="bg-card rounded-lg shadow-card p-4 border border-border hover:shadow-md transition-shadow"
-          >
+  if (loading) {
+    return (
+      <div className="space-y-2">
+        {[1, 2].map((i) => (
+          <div key={i} className="bg-card rounded-lg p-3 animate-pulse">
             <div className="flex items-center gap-3">
-              {/* Icon */}
-              <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center text-2xl flex-shrink-0">
-                {item.icon}
+              <div className="w-10 h-10 bg-muted rounded-lg" />
+              <div className="flex-1 space-y-2">
+                <div className="h-3 bg-muted rounded w-3/4" />
+                <div className="h-2 bg-muted rounded w-1/2" />
               </div>
-
-              {/* Content */}
-              <div className="flex-1 min-w-0">
-                <h3 className="font-semibold text-foreground text-base truncate">
-                  {item.title}
-                </h3>
-                <p className="text-sm text-muted-foreground truncate">
-                  {item.subtitle}
-                </p>
-                {item.progress && (
-                  <div className="mt-2">
-                    <div className="w-full bg-muted rounded-full h-2">
-                      <div
-                        className="bg-success h-2 rounded-full transition-all"
-                        style={{ width: `${item.progress}%` }}
-                      />
-                    </div>
-                    <span className="text-xs text-muted-foreground mt-1 inline-block">
-                      {item.progress}% complete
-                    </span>
-                  </div>
-                )}
-              </div>
-
-              {/* Action Button */}
-              <button className="px-4 py-2 bg-primary text-primary-foreground rounded-lg font-medium text-sm hover:bg-accent transition-colors flex-shrink-0" onClick={() => resumeActivity({ id: item.id, activityType: item.title })}>
-                {item.actionText}
-              </button>
             </div>
           </div>
         ))}
       </div>
-    </section>
+    );
+  }
+
+  if (!activities?.length) {
+    return (
+      <div className="bg-muted/30 rounded-lg p-4 text-center">
+        <p className="text-sm text-muted-foreground">No activities to resume</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-2">
+      {activities.slice(0, 3).map((a) => {
+        const emoji = typeEmoji[a.activityType.toLowerCase()] || typeEmoji.default;
+        return (
+          <button
+            key={a.id}
+            onClick={() => resumeActivity(a)}
+            className="w-full flex items-center gap-3 bg-card hover:bg-muted/50 rounded-lg p-3 text-left active:scale-[0.98] transition-transform"
+          >
+            <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center text-lg">
+              {emoji}
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium text-foreground truncate">{a.activityType}</p>
+              <p className="text-xs text-muted-foreground truncate">{a.subject || 'General'}</p>
+            </div>
+            <svg className="w-4 h-4 text-muted-foreground" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M8 5v14l11-7z" />
+            </svg>
+          </button>
+        );
+      })}
+    </div>
   );
 };
 

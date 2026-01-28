@@ -1,5 +1,5 @@
-import { SinkWrapper } from '../../lib/alerts/sinkWrapper';
-import type { AlertSink, AlertPayload, SinkResult } from '../../lib/alerts/types';
+import { SinkWrapper } from '@/lib/alerts/sinkWrapper';
+import type { AlertSink, AlertPayload, SinkResult } from '@/lib/alerts/types';
 
 class FlakySink implements AlertSink {
   name = 'flaky';

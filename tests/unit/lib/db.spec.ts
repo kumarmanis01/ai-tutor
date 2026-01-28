@@ -13,8 +13,8 @@
  * - 2026-01-02T12:20:00Z | copilot | created
  */
 
-import { prisma as dbPrisma } from '../../../lib/db';
-import { prisma as directPrisma } from '../../../lib/prisma';
+import { prisma as dbPrisma } from '@/lib/db';
+import { prisma as directPrisma } from '@/lib/prisma';
 
 describe('lib/db', () => {
   it('re-exports the same prisma instance as lib/prisma', () => {

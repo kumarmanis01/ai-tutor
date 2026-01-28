@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { formatErrorForResponse } from '@/lib/errorResponse'
 import { requireAdminOrModerator } from '@/lib/auth'
 import fs from 'fs'
 import path from 'path'
@@ -13,7 +14,7 @@ export async function GET() {
   try {
     if (fs.existsSync(STATUS_FILE)) orchestrator = JSON.parse(fs.readFileSync(STATUS_FILE, 'utf8'))
   } catch (e) {
-    orchestrator = { error: String(e) }
+    orchestrator = { error: formatErrorForResponse(e) }
   }
 
   const counts = await prisma.workerLifecycle.groupBy({ by: ['status'], _count: { status: true } })

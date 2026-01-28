@@ -1,5 +1,5 @@
 jest.mock('@/regeneration/generatorAdapter')
-import { prisma } from '../../lib/prisma'
+import { prisma } from '@/lib/prisma'
 import * as runner from '../../src/jobs/regenerationJobRunner'
 import * as adapter from '@/regeneration/generatorAdapter'
 

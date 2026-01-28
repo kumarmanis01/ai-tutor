@@ -1,87 +1,52 @@
 "use client";
+
 /**
- * AI CONTENT ENGINE NOTICE:
- * - Job-based execution only
- * - No per-job pause/resume
- * - No streaming or progress tracking
- * - All AI calls are atomic and retryable
- * - Content requires admin approval
+ * FILE OBJECTIVE:
+ * - DEPRECATED: This page now redirects to the unified /admin/content-approval page.
+ * - All content review (syllabus, chapters, topics, notes, tests) is consolidated in one place.
+ *
+ * LINKED UNIT TEST:
+ * - tests/unit/app/admin/content-engine/moderation/page.test.tsx
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/COPILOT_GUARDRAILS.md
+ * - .github/copilot-instructions.md
+ *
+ * EDIT LOG:
+ * - 2025-01-24T00:00:00Z | copilot | Deprecated page with redirect to unified content-approval
+ * - 2025-01-23T00:00:00Z | copilot | Made rows clickable with content preview and detail panel
+ * - 2025-01-22T08:20:00Z | copilot | Refactored UI with professional styling, status badges, and empty state
  */
 
-import useSWR from 'swr';
-import { alerts } from '@/lib/alerts';
-import { JobStatus } from '@/lib/ai-engine/types'
+import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 
-const fetcher = (url: string) => fetch(url).then(res => res.json());
+/**
+ * @deprecated This page has been consolidated into /admin/content-approval
+ * Keeping this file for backwards compatibility - it redirects to the unified page.
+ */
+export default function ModerationPageRedirect() {
+  const router = useRouter();
 
-export default function ModerationIndexPage() {
-    const { data, error, mutate } = useSWR('/api/admin/content-engine/moderation', fetcher);
+  useEffect(() => {
+    // Redirect to the unified content approval page with notes filter pre-selected
+    router.replace('/admin/content-approval?filter=note');
+  }, [router]);
 
-    if (error) return <div className="p-4 text-red-600">Failed to load moderation queue.</div>;
-    if (!data) return <div className="p-4">Loading...</div>;
-
-    const handleAction = async (id: string, action: 'approve' | 'reject') => {
-        try {
-            const res = await fetch(`/api/admin/content-engine/moderation/${id}/${action}`, { method: 'POST' });
-            if (!res.ok) throw new Error('Action failed');
-            alerts.success(`${action === 'approve' ? 'Approved' : 'Rejected'} content successfully.`);
-            mutate();
-        } catch {
-            alerts.error('Failed to perform action.');
-        }
-    };
-
-    return (
-        <div className="p-6">
-            <h1 className="text-2xl font-bold mb-4">Content Moderation</h1>
-            <div className="overflow-x-auto">
-                <table className="min-w-full border text-sm">
-                    <thead>
-                        <tr className="bg-gray-100">
-                            <th className="px-3 py-2 border">Content ID</th>
-                            <th className="px-3 py-2 border">Type</th>
-                            <th className="px-3 py-2 border">Status</th>
-                            <th className="px-3 py-2 border">Language</th>
-                            <th className="px-3 py-2 border">Created At</th>
-                            <th className="px-3 py-2 border">Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {data.contents?.length === 0 && (
-                            <tr><td colSpan={6} className="text-center p-4">No content pending moderation.</td></tr>
-                        )}
-                        {data.contents?.map((item: any) => (
-                            <tr key={item.id} className="border-b">
-                                <td className="px-3 py-2 border">{item.id}</td>
-                                <td className="px-3 py-2 border">{item.type}</td>
-                                <td className="px-3 py-2 border">{item.status}</td>
-                                <td className="px-3 py-2 border">{item.language || '-'}</td>
-                                <td className="px-3 py-2 border">{new Date(item.createdAt).toLocaleString()}</td>
-                                <td className="px-3 py-2 border space-x-2">
-                                    {item.status === JobStatus.Pending && (
-                                        <>
-                                            <button
-                                                className="px-3 py-1 rounded bg-green-600 text-white text-xs hover:bg-green-700 transition"
-                                                onClick={() => handleAction(item.id, 'approve')}
-                                                type="button"
-                                            >
-                                                Approve
-                                            </button>
-                                            <button
-                                                className="px-3 py-1 rounded bg-red-600 text-white text-xs hover:bg-red-700 transition"
-                                                onClick={() => handleAction(item.id, 'reject')}
-                                                type="button"
-                                            >
-                                                Reject
-                                            </button>
-                                        </>
-                                    )}
-                                </td>
-                            </tr>
-                        ))}
-                    </tbody>
-                </table>
-            </div>
+  return (
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
+      <div className="text-center">
+        <div className="w-16 h-16 mx-auto mb-4 bg-indigo-100 dark:bg-indigo-900/50 rounded-full flex items-center justify-center animate-pulse">
+          <svg className="w-8 h-8 text-indigo-600 dark:text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+          </svg>
         </div>
-    );
+        <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">Redirecting...</h2>
+        <p className="text-sm text-gray-500 dark:text-gray-400">
+          Content moderation has moved to the unified{' '}
+          <a href="/admin/content-approval" className="text-indigo-600 hover:underline">Content Review</a> page.
+        </p>
+      </div>
+    </div>
+  );
 }

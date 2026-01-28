@@ -147,7 +147,7 @@ export async function POST(req: Request) {
       amount / 100, // Convert paise to rupees
     );
   } catch (err) {
-    logger.error('Failed to send payment email', { className: 'api.billing.verify', methodName: 'POST', error: String(err) });
+    logger.error('Failed to send payment email', { className: 'api.billing.verify', methodName: 'POST', error: err });
   }
 
   return NextResponse.json({ success: true });

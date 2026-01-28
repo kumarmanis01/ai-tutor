@@ -1,89 +1,98 @@
 /**
+ * FILE OBJECTIVE:
+ * - PM2 ecosystem configuration for production deployment of ai-tutor web and worker.
+ *
+ * LINKED UNIT TEST:
+ * - tests/unit/ecosystem.config.spec.ts
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/COPILOT_GUARDRAILS.md
+ * - .github/copilot-instructions.md
+ *
+ * EDIT LOG:
+ * - 2026-01-23T06:30:00Z | copilot-agent | simplified env handling for reliable prod deployment
+ */
+
+/**
  * PM2 ecosystem configuration - Production
  *
- * Purpose: supervise the web process (Next.js production server) and the
- * content-engine worker. Keep configuration conservative for production:
- * - use `npm start` (Next.js `next start`) for the web process so the standard
- *   build/start lifecycle is preserved and environment bootstrapping is
- *   consistent with developer expectations.
- * - keep worker process pointed at the compiled worker entry in `dist/worker`.
- *
- * Notes on key options (documented inline for maintainers):
- * - `script` / `args`: what PM2 runs. We prefer `npm start` for web so Next.js
- *    start semantics are used. Workers run compiled JS directly.
- * - `exec_mode`: `fork` keeps a single OS process under PM2; `cluster` lets PM2
- *    spawn multiple OS workers. Use `cluster` only when the app is explicitly
- *    designed for multi-process operation and you understand session/caching
- *    implications.
- * - `instances`: number of instances to run; `'max'` starts one per CPU core.
- * - `env_file`: path to environment file loaded by PM2 before starting process.
- * - `error_file` / `out_file`: dedicated log files for stderr/stdout to simplify
- *    debugging and log rotation.
+ * IMPORTANT: Environment variables (DATABASE_URL, REDIS_URL, etc.) must be
+ * exported into the shell BEFORE running `pm2 start ecosystem.config.cjs`.
+ * 
+ * The deploy script (scripts/deploy-and-run.sh) handles this by running:
+ *   set -o allexport; source .env.production; set +o allexport
+ * 
+ * PM2 will then inherit these variables when started with --update-env.
  */
+
 module.exports = {
   apps: [
     {
+      // ─────────────────────────────────────────────────────────────────────
       // Web process (Next.js)
-      // Rationale: use `npm start` so PM2 invokes the same entry (`next start`)
-      // that developers expect in production. We use `fork` with a single
-      // instance to keep behavior predictable; change to `cluster` + `max`
-      // only after addressing sticky sessions, in-process caches, and
-      // ensuring the app is safe for multiple OS processes.
+      // ─────────────────────────────────────────────────────────────────────
       name: 'ai-tutor-web',
       script: 'npm',
       cwd: __dirname,
       args: 'start',
+      interpreter: 'none',  // Don't use node to run npm
       instances: 1,
       exec_mode: 'fork',
-      env_file: '.env.production',
+      
+      // Environment - NODE_ENV is always production; other vars inherited from shell
       env: {
-        NODE_ENV: 'production'
+        NODE_ENV: 'production',
+        // These will be populated from the shell environment when PM2 starts
+        DATABASE_URL: process.env.DATABASE_URL,
+        REDIS_URL: process.env.REDIS_URL,
       },
-      env_production: {
-        NODE_ENV: 'production'
-      },
-      // WARNING: Do NOT store secrets (DATABASE_URL, REDIS_URL, API keys)
-      // in this file. Keep secrets in `.env.production` on the server or a
-      // secrets manager and use `env_file` or runtime injection.
-      // Dedicated log files for the web process
+      
+      // Logging
       error_file: 'logs/ai-tutor-web-error.log',
       out_file: 'logs/ai-tutor-web-out.log',
       merge_logs: true,
       time: true,
-      // Health and restart policies
+      
+      // Restart policies
       autorestart: true,
       max_restarts: 10,
-      min_uptime: '5s',
-      restart_delay: 5000,
+      min_uptime: '10s',
+      restart_delay: 3000,
       max_memory_restart: '512M',
-      watch: false
+      watch: false,
     },
     {
-      // Content-engine worker
-      // Use a small bash wrapper which sources `.env.production` and then
-      // execs the compiled worker. This avoids relying on PM2's `env_file`
-      // behaviour which may vary across installations.
+      // ─────────────────────────────────────────────────────────────────────
+      // Content-engine worker (wrapped)
+      // Use the `scripts/run-worker.sh` wrapper which sources `.env.production`
+      // and exports variables safely before starting the compiled worker.
+      // This avoids relying on PM2's env handling differences across versions.
+      // ─────────────────────────────────────────────────────────────────────
       name: 'content-engine-worker',
       script: 'scripts/run-worker.sh',
       cwd: __dirname,
-      interpreter: '/bin/bash',
-      exec_mode: 'fork',
+      interpreter: 'bash',
       instances: 1,
+      exec_mode: 'fork',
+
+      // Environment - keep NODE_ENV here; other critical vars are exported by the wrapper
+      env: {
+        NODE_ENV: 'production',
+      },
+
+      // Logging
+      error_file: 'logs/content-engine-worker-error.log',
+      out_file: 'logs/content-engine-worker-out.log',
+      merge_logs: true,
+      time: true,
+
+      // Restart policies - worker should restart on crash but not loop forever
       autorestart: true,
       max_restarts: 10,
-      min_uptime: '5s',
-      restart_delay: 5000,
+      min_uptime: '10s',
+      restart_delay: 3000,
       max_memory_restart: '256M',
       watch: false,
-      env: {
-        NODE_ENV: 'production'
-      },
-      env_production: {
-        NODE_ENV: 'production'
-      },
-      // Worker should also have dedicated logs for easier debugging/monitoring
-      error_file: 'logs/content-engine-worker-error.log',
-      out_file: 'logs/content-engine-worker-out.log'
-    }
-  ]
+    },
+  ],
 };

@@ -33,6 +33,7 @@ export async function createSpeech(input: any) {
 export async function callLLM({ prompt, model = 'gpt-4o-mini', meta }: { prompt: string; model?: string; meta: any }) {
   ensureWorkerAllowed()
   const client = getClient()
+  const HYDRATION_DEBUG = process.env.HYDRATION_DEBUG === '1' || process.env.AI_CONTENT_DEBUG === '1'
   try {
     const response: any = await client.chat.completions.create({
       model,
@@ -42,6 +43,35 @@ export async function callLLM({ prompt, model = 'gpt-4o-mini', meta }: { prompt:
 
     const usage = response.usage
     const content = response.choices?.[0]?.message?.content ?? ''
+
+    const WORKER_DEBUG = process.env.WORKER_DEBUG === '1'
+
+    if (HYDRATION_DEBUG) {
+      try {
+        // lightweight debug log: prompt length and sample of content
+        logger.debug('[ai][DEBUG] callLLM prompt length', { promptLength: (prompt || '').length })
+        logger.debug('[ai][DEBUG] callLLM response length', { responseLength: (content || '').length })
+        logger.info('callLLM debug', { promptLength: (prompt || '').length, responseLength: (content || '').length, meta })
+      } catch {
+        // ignore logging errors
+      }
+    }
+
+    // When workers run with WORKER_DEBUG=1, print the full JSON response (raw + parsed)
+    if (WORKER_DEBUG) {
+      try {
+        let parsed: any = null
+        try {
+          parsed = JSON.parse(content)
+        } catch {
+          // not JSON — leave parsed as null
+        }
+        logger.info('WORKER_DEBUG: LLM response (raw + parsed)', { raw: content, parsed, meta })
+      } catch (e) {
+        // Ensure debug logging never breaks LLM flow
+        logger.warn('WORKER_DEBUG: failed to log LLM response', { error: String(e) })
+      }
+    }
 
     const costUsd = ((usage?.prompt_tokens || 0) * 0.00000015) + ((usage?.completion_tokens || 0) * 0.0000006)
 

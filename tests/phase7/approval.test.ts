@@ -1,7 +1,7 @@
-import { approveContent, archiveContent, getApprovalMetadata, resetApprovalStore } from '../../lib/content/approval/service'
-import { approvalAuditLogs, clearAuditLogs } from '../../lib/content/approval/audit'
-import { assertEditable, assertPublishable } from '../../lib/content/approval/guard'
-import { ensureLessonEditable } from '../../lib/content/lesson/generator'
+import { approveContent, archiveContent, getApprovalMetadata, resetApprovalStore } from '@/lib/content/approval/service'
+import { approvalAuditLogs, clearAuditLogs } from '@/lib/content/approval/audit'
+import { assertEditable, assertPublishable } from '@/lib/content/approval/guard'
+import { ensureLessonEditable } from '@/lib/content/lesson/generator'
 
 beforeEach(() => {
   resetApprovalStore()

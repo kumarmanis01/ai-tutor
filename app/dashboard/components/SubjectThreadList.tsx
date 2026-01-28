@@ -1,4 +1,16 @@
 "use client";
+/**
+ * FILE OBJECTIVE:
+ * - Responsive subject selector with horizontal scroll and compact thread list.
+ *   Compact chips on mobile, larger on desktop.
+ *
+ * LINKED UNIT TEST:
+ * - tests/unit/app/dashboard/components/SubjectThreadList.spec.ts
+ *
+ * EDIT LOG:
+ * - 2025-01-23 | copilot | made responsive with larger chips on desktop
+ * - 2025-01-22 | copilot | optimized for mobile with horizontal scroll subjects
+ */
 import React, { useCallback, useEffect, useState } from 'react';
 
 type Thread = {
@@ -18,40 +30,27 @@ interface SubjectThreadListProps {
   selectedConversationId?: string;
 }
 
+// Compact subject data
+const subjectData: Record<string, { icon: string; color: string }> = {
+  general: { icon: '💬', color: 'bg-slate-500' },
+  math: { icon: '🔢', color: 'bg-blue-500' },
+  science: { icon: '🔬', color: 'bg-emerald-500' },
+  coding: { icon: '💻', color: 'bg-purple-500' },
+};
+
 const defaultSubjects = ['general', 'math', 'science', 'coding'];
 
 export default function SubjectThreadList({ subjects = defaultSubjects, subject, setSubject, onSelectThread, onNewThread, selectedConversationId }: SubjectThreadListProps) {
   const [threads, setThreads] = useState<Thread[]>([]);
   const [loading, setLoading] = useState(false);
-  const [unreads, setUnreads] = useState<Record<string, number>>({});
+  const [showThreads, setShowThreads] = useState(false);
 
   const loadThreads = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch(`/api/chat/conversations?subjectId=${encodeURIComponent(subject)}&limit=50`);
+      const res = await fetch(`/api/chat/conversations?subjectId=${encodeURIComponent(subject)}&limit=20`);
       const data = await res.json().catch(() => null);
-      const list: Thread[] = Array.isArray(data?.threads) ? data.threads : [];
-      setThreads(list);
-      // Compute unread counts from sessionStorage seen counts
-      try {
-        const next: Record<string, number> = {};
-        for (const t of list) {
-          const key = `spinzy:seen:${subject}:${t.conversationId}`;
-          let seenCount = 0;
-          try {
-            const raw = window.sessionStorage.getItem(key);
-            if (raw) {
-              const parsed = JSON.parse(raw);
-              if (parsed && typeof parsed.seenCount === 'number') seenCount = parsed.seenCount;
-            }
-          } catch {}
-          const unread = Math.max((t.count || 0) - (seenCount || 0), 0);
-          if (unread > 0) next[t.conversationId] = unread;
-        }
-        setUnreads(next);
-      } catch {}
-
-      // Do not auto-select; user will pick a thread explicitly
+      setThreads(Array.isArray(data?.threads) ? data.threads : []);
     } catch {
       setThreads([]);
     } finally {
@@ -61,77 +60,92 @@ export default function SubjectThreadList({ subjects = defaultSubjects, subject,
 
   useEffect(() => { loadThreads(); }, [loadThreads]);
 
-  const selectThread = (t: Thread) => {
-    try {
-      // Mark seen for this thread in session
-      const key = `spinzy:seen:${subject}:${t.conversationId}`;
-      try {
-        window.sessionStorage.setItem(key, JSON.stringify({ seenCount: t.count || 0, seenAt: new Date().toISOString() }));
-      } catch {}
-      setUnreads((prev) => {
-        const next = { ...prev };
-        delete next[t.conversationId];
-        return next;
-      });
-    } catch {}
-    onSelectThread(t.conversationId);
-  };
+  const _currentData = subjectData[subject] || subjectData.general;
 
   return (
-    <div className="bg-card border border-border rounded-lg p-3 mb-4">
-      {/* Subject chips */}
-      <div className="flex flex-wrap gap-2 mb-3">
-        {subjects.map((s) => (
-          <button
-            key={s}
-            type="button"
-            onClick={() => setSubject(s)}
-            className={`px-3 py-1 rounded-full border text-xs ${subject === s ? 'bg-primary text-white border-primary' : 'bg-muted text-foreground border-border'}`}
-          >
-            {s === 'general' ? 'General' : s.charAt(0).toUpperCase() + s.slice(1)}
-          </button>
-        ))}
-        <div className="ml-auto">
-          <button
-            type="button"
-            onClick={() => onNewThread(subject)}
-            className="px-3 py-1 rounded-md bg-primary text-primary-foreground text-xs"
-            title="Start new chat"
-          >
-            New Chat
-          </button>
-        </div>
+    <div className="space-y-2 lg:space-y-3">
+      {/* Subject chips - horizontal scroll on mobile, wrap on desktop */}
+      <div className="flex items-center gap-2 lg:gap-3 overflow-x-auto lg:overflow-visible lg:flex-wrap pb-1 -mx-1 px-1 scrollbar-hide">
+        {subjects.map((s) => {
+          const data = subjectData[s] || subjectData.general;
+          const isActive = subject === s;
+          return (
+            <button
+              key={s}
+              onClick={() => { setSubject(s); setShowThreads(false); }}
+              className={`flex items-center gap-1.5 lg:gap-2 px-3 py-1.5 lg:px-4 lg:py-2 rounded-full text-xs lg:text-sm font-medium whitespace-nowrap transition-all flex-shrink-0 lg:flex-shrink ${
+                isActive
+                  ? `${data.color} text-white shadow-md`
+                  : 'bg-muted/60 dark:bg-slate-800 text-foreground active:scale-95 hover:bg-muted'
+              }`}
+            >
+              <span className="lg:text-base">{data.icon}</span>
+              <span>{s.charAt(0).toUpperCase() + s.slice(1)}</span>
+            </button>
+          );
+        })}
+        
+        {/* New chat button */}
+        <button
+          onClick={() => onNewThread(subject)}
+          className="flex items-center gap-1 lg:gap-1.5 px-3 py-1.5 lg:px-4 lg:py-2 rounded-full text-xs lg:text-sm font-medium bg-primary text-primary-foreground whitespace-nowrap flex-shrink-0 active:scale-95 hover:bg-primary/90 transition-colors"
+        >
+          <svg className="w-3.5 h-3.5 lg:w-4 lg:h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+            <path d="M12 4v16m8-8H4" />
+          </svg>
+          New
+        </button>
       </div>
 
-      {/* Thread list */}
-      <div className="space-y-2">
-        {loading && <div className="text-xs text-muted-foreground">Loading threads…</div>}
-        {!loading && threads.length === 0 && (
-          <div className="text-xs text-muted-foreground">No threads yet. Start a new chat.</div>
-        )}
-        {threads.map((t) => (
-          <button
-            key={t.conversationId}
-            type="button"
-            onClick={() => selectThread(t)}
-            className={`w-full text-left bg-background border border-border rounded-md px-3 py-2 hover:bg-background/60 ${selectedConversationId === t.conversationId ? 'ring-1 ring-primary' : ''}`}
-            title={t.lastMessage}
-          >
-            <div className="flex items-center justify-between">
-              <div className="text-sm font-medium truncate">{t.lastMessage || 'Conversation'}</div>
-              <div className="flex items-center gap-2">
-                {unreads[t.conversationId] ? (
-                  <span className="text-[10px] bg-primary text-primary-foreground rounded-full px-1.5 py-0.5" title="Unread messages">
-                    {unreads[t.conversationId]}
+      {/* Thread toggle */}
+      {threads.length > 0 && (
+        <button
+          onClick={() => setShowThreads(!showThreads)}
+          className="w-full flex items-center justify-between px-3 py-2 lg:px-4 lg:py-2.5 rounded-lg bg-muted/40 dark:bg-slate-800/50 text-xs lg:text-sm active:bg-muted/60 hover:bg-muted/50 transition-colors"
+        >
+          <span className="text-muted-foreground">
+            {loading ? 'Loading...' : `${threads.length} recent chat${threads.length !== 1 ? 's' : ''}`}
+          </span>
+          <svg className={`w-4 h-4 lg:w-5 lg:h-5 text-muted-foreground transition-transform ${showThreads ? 'rotate-180' : ''}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M19 9l-7 7-7-7" />
+          </svg>
+        </button>
+      )}
+
+      {/* Thread list - collapsible */}
+      {showThreads && (
+        <div className="space-y-1 lg:space-y-2 max-h-40 lg:max-h-60 overflow-y-auto">
+          {threads.map((t) => {
+            const isSelected = selectedConversationId === t.conversationId;
+            const preview = t.lastMessage?.slice(0, 50) + (t.lastMessage?.length > 50 ? '…' : '');
+            return (
+              <button
+                key={t.conversationId}
+                onClick={() => { onSelectThread(t.conversationId); setShowThreads(false); }}
+                className={`w-full text-left px-3 py-2 lg:px-4 lg:py-3 rounded-lg text-xs lg:text-sm transition-colors ${
+                  isSelected
+                    ? 'bg-primary/10 border border-primary/30'
+                    : 'bg-card hover:bg-muted/50 active:bg-muted'
+                }`}
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <span className={`truncate ${isSelected ? 'text-primary font-medium' : 'text-foreground'}`}>
+                    {preview || 'Empty chat'}
                   </span>
-                ) : null}
-                <div className="text-[10px] text-muted-foreground">{t.count} msgs</div>
-              </div>
-            </div>
-            <div className="text-[11px] text-muted-foreground mt-0.5">{new Date(t.updatedAt).toLocaleString()}</div>
-          </button>
-        ))}
-      </div>
+                  <span className="text-muted-foreground text-[10px] lg:text-xs flex-shrink-0">
+                    {t.count} msg
+                  </span>
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      )}
+      
+      <style jsx>{`
+        .scrollbar-hide::-webkit-scrollbar { display: none; }
+        .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+      `}</style>
     </div>
   );
 }

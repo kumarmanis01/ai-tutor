@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { requireAdminOrModerator } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { Prisma } from '@prisma/client';
+import { formatErrorForResponse } from '@/lib/errorResponse';
 
 function parseISO(q: string | null, fallback: Date) {
   if (!q) return fallback;
@@ -78,6 +79,6 @@ export async function GET(req: Request) {
 
     return NextResponse.json({ range: { from: from.toISOString(), to: to.toISOString(), bucket: 'hour' }, series, meta: responseMeta });
   } catch (err: any) {
-    return NextResponse.json({ error: String(err?.message ?? err) }, { status: 500 });
+    return NextResponse.json({ error: formatErrorForResponse(err) }, { status: 500 });
   }
 }

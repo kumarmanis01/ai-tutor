@@ -1,5 +1,5 @@
-import { generateQuizFromLesson } from '../../lib/content/quiz/generator'
-import { createMockLLM } from '../../lib/content/lesson/mockLLM'
+import { generateQuizFromLesson } from '@/lib/content/quiz/generator'
+import { createMockLLM } from '@/lib/content/lesson/mockLLM'
 
 const lesson = { lessonId: 'l1', title: 'T', objectives: ['o1'] }
 

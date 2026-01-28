@@ -1,4 +1,5 @@
 import { logger } from '@/lib/logger';
+import { formatErrorForResponse } from '@/lib/errorResponse';
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { randomInt } from 'crypto';
@@ -60,8 +61,8 @@ export async function POST(req: Request) {
       `,
     });
   } catch (err) {
-    logger.error('Error sending email', { className: 'api.auth.send-code', methodName: 'POST', error: String(err) });
-    return NextResponse.json({ error: 'Failed to send email' }, { status: 500 });
+    logger.error('Error sending email', { className: 'api.auth.send-code', methodName: 'POST', error: err });
+    return NextResponse.json({ error: formatErrorForResponse(err) }, { status: 500 });
   }
 
   return NextResponse.json({ success: true });

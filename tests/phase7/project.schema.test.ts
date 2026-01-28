@@ -1,4 +1,4 @@
-import { validateProjectAssignment } from '../../lib/content/project/schema'
+import { validateProjectAssignment } from '@/lib/content/project/schema'
 
 const valid = {
   id: 'p1',

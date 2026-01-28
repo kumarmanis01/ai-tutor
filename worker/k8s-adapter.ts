@@ -1,12 +1,21 @@
-// The Kubernetes client is optional in many deployments. Silence TS if types
-// are not available in this environment and lazy-fail at runtime.
-// @ts-expect-error
-import * as k8s from '@kubernetes/client-node'
+/* eslint-disable @typescript-eslint/no-require-imports */
+// The Kubernetes client is optional in many deployments. Lazily require it
+// so builds on environments without the module installed do not fail.
 import path from 'path'
 
-const kc = new k8s.KubeConfig()
-try { kc.loadFromDefault() } catch { /* best-effort; will throw when used if not configured */ }
-const batchApi = kc.makeApiClient(k8s.BatchV1Api)
+let k8s: any = null
+try {
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  k8s = require('@kubernetes/client-node')
+} catch {
+  k8s = null
+}
+
+const kc = k8s ? new k8s.KubeConfig() : null
+if (kc) {
+  try { kc.loadFromDefault() } catch { /* best-effort; will throw when used if not configured */ }
+}
+const batchApi = kc ? kc.makeApiClient(k8s.BatchV1Api) : null
 
 export async function createJobForWorker(lifecycleId: string, type = 'content-hydration') {
   const image = process.env.WORKER_CONTAINER_IMAGE
@@ -36,5 +45,6 @@ export async function createJobForWorker(lifecycleId: string, type = 'content-hy
   }
 
   const namespace = process.env.WORKER_K8S_NAMESPACE || 'default'
-  return batchApi.createNamespacedJob(namespace, job as any)
+  if (!batchApi) throw new Error('kubernetes client not available')
+  return (batchApi as any).createNamespacedJob(namespace, job as any)
 }

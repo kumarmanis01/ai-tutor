@@ -12,6 +12,7 @@ import {
 } from '@/app/api/billing/constants';
 import PricingCard from '@/components/PricingCard';
 import { getBillingPayload } from '../api/billing/utility';
+import { trackPurchase, trackSubscriptionStart } from '@/components/GoogleTagManager';
 
 type RazorpayOptions = {
   key: string;
@@ -57,6 +58,9 @@ export default function PricingPage() {
     }
     try {
       setLoading(true);
+
+      // Track subscription start for GTM conversion funnel
+      trackSubscriptionStart(`${BILLING_PLAN_PRO}_${billingCycle}`, proPrice);
 
       logger.add(
         `Sending request to /api/billing/checkout with plan: ${BILLING_PLAN_PRO}, billingCycle: ${billingCycle}`,
@@ -127,6 +131,19 @@ export default function PricingPage() {
             methodName: 'RazorpayHandler',
           });
           if (verifyRes.ok) {
+            // Track successful purchase conversion for GTM
+            trackPurchase({
+              transactionId: respObj.razorpay_payment_id,
+              value: proPrice,
+              currency: 'INR',
+              items: [{
+                id: `${BILLING_PLAN_PRO}_${billingCycle}`,
+                name: `${BILLING_PLAN_PRO} Plan (${billingCycle})`,
+                price: proPrice,
+                quantity: 1,
+              }],
+            });
+            
             toast('✅ Subscription successful!');
             logger.add('Subscription successful. Redirecting to home.', {
               className: 'PricingPage',

@@ -1,67 +1,44 @@
 'use client';
-
+/**
+ * FILE OBJECTIVE:
+ * - Mobile-optimized parent mode link card.
+ *
+ * LINKED UNIT TEST:
+ * - tests/unit/app/dashboard/components/ParentModeCard.spec.ts
+ *
+ * EDIT LOG:
+ * - 2025-01-22 | copilot | simplified for mobile with compact design
+ */
 import React from 'react';
 import { logger } from '@/lib/logger';
 import { useParentMode } from '@/hooks/useParentMode';
 
-interface ParentModeCardProps { [key: string]: unknown }
-
-const ParentModeCard: React.FC<ParentModeCardProps> = () => {
+const ParentModeCard: React.FC = () => {
   const { data, loading } = useParentMode();
-  const handleParentModeClick = () => {
-    logger.add('Switching to Parent Mode', { className: 'ParentModeCard', methodName: 'handleParentModeClick' });
-    // Navigate to parent dashboard
+  const isConnected = data.status === 'connected';
+  
+  const handleClick = () => {
+    logger.add('Parent Mode clicked', { className: 'ParentModeCard' });
   };
 
   return (
-    <section>
-      <div 
-        onClick={handleParentModeClick}
-        className="bg-white rounded-lg p-4 border border-border hover:shadow-md transition-shadow cursor-pointer"
-      >
-        <div className="flex items-center gap-4">
-          {/* Icon */}
-          <div className="w-12 h-12 bg-secondary/10 rounded-lg flex items-center justify-center text-2xl flex-shrink-0">
-            👨‍👩‍👧
-          </div>
-
-          {/* Content */}
-          <div className="flex-1 min-w-0">
-            <h3 className="font-semibold text-foreground text-base mb-1">
-              Parent Dashboard
-              <span className="text-muted-foreground text-sm ml-2">/ अभिभावक डैशबोर्ड</span>
-            </h3>
-            <p className="text-xs text-muted-foreground mb-2">
-              {loading ? 'Checking status…' : data.status === 'connected' ? 'Linked to a parent account' : 'Not linked yet'}
-            </p>
-            <ul className="space-y-1">
-              <li className="text-sm text-muted-foreground flex items-center gap-2">
-                <span className="text-success">✓</span>
-                Track progress
-              </li>
-              <li className="text-sm text-muted-foreground flex items-center gap-2">
-                <span className="text-success">✓</span>
-                Weekly report
-              </li>
-              <li className="text-sm text-muted-foreground flex items-center gap-2">
-                <span className="text-success">✓</span>
-                Safe learning environment
-              </li>
-            </ul>
-          </div>
-
-          {/* Arrow */}
-          <svg 
-            className="w-6 h-6 text-muted-foreground flex-shrink-0" 
-            fill="none" 
-            stroke="currentColor" 
-            viewBox="0 0 24 24"
-          >
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-          </svg>
-        </div>
+    <button
+      onClick={handleClick}
+      className="w-full flex items-center gap-3 bg-gradient-to-r from-amber-500/10 to-orange-500/10 rounded-lg p-3 border border-amber-500/20 active:scale-[0.98] transition-transform"
+    >
+      <div className="w-10 h-10 bg-gradient-to-br from-amber-500 to-orange-500 rounded-lg flex items-center justify-center text-lg">
+        👨‍👩‍👧
       </div>
-    </section>
+      <div className="flex-1 text-left">
+        <p className="text-sm font-medium text-foreground">Parent Dashboard</p>
+        <p className="text-xs text-muted-foreground">
+          {loading ? 'Checking...' : isConnected ? '✅ Connected' : 'Link parent account'}
+        </p>
+      </div>
+      <svg className="w-4 h-4 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+        <path d="M9 5l7 7-7 7" />
+      </svg>
+    </button>
   );
 };
 

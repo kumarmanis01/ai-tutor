@@ -159,6 +159,87 @@ For further questions, refer to the `README.md` or ask a team member.
 10. Always "Why" about the purpose of the code you are writing or modifying.
 11. When in doubt, consult with the team or refer to existing implementations for guidance.
 
+---
+
+## MANDATORY DOCUMENTATION & TESTING REQUIREMENTS
+
+These requirements are **non-negotiable** for every code change, regardless of size.
+
+### 1️⃣ Document All Changes
+
+- **Every change, however minor, MUST be documented** in the file's EDIT LOG header.
+- Include: timestamp (ISO 8601), actor/author, brief description of change.
+- If no EDIT LOG exists, create one following the file header template.
+
+### 2️⃣ Create/Update Corresponding Unit Tests
+
+- **Every production code change MUST have a corresponding unit test change.**
+- New files require new test files in `tests/unit/` mirroring the source path.
+- Modified behavior requires updated or new test cases.
+- Test files must cover:
+  - Happy path (expected behavior)
+  - Error/edge cases
+  - Boundary conditions where applicable
+
+### 3️⃣ All Files Must Have Documentation Headers
+
+Every source file MUST contain a top-of-file documentation header. Templates:
+
+**TypeScript / TSX / JavaScript:**
+
+```ts
+/**
+ * FILE OBJECTIVE:
+ * - Clear, concise description of the file's purpose (1-2 sentences).
+ *
+ * LINKED UNIT TEST:
+ * - tests/unit/path/to/file.spec.ts
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/COPILOT_GUARDRAILS.md
+ * - .github/copilot-instructions.md
+ *
+ * EDIT LOG:
+ * - YYYY-MM-DDTHH:mm:ssZ | author | description of change
+ */
+```
+
+**Prisma Schema:**
+
+```prisma
+/// FILE OBJECTIVE:
+/// - Clear description of schema purpose.
+///
+/// LINKED UNIT TEST:
+/// - tests/unit/prisma/schema.spec.ts
+///
+/// EDIT LOG:
+/// - YYYY-MM-DDTHH:mm:ssZ | author | description of change
+```
+
+**Markdown / Documentation:**
+
+```md
+<!--
+FILE OBJECTIVE:
+- Clear description of document purpose.
+
+LINKED UNIT TEST:
+- tests/unit/docs/filename.spec.ts (if applicable)
+
+EDIT LOG:
+- YYYY-MM-DDTHH:mm:ssZ | author | description of change
+-->
+```
+
+### Enforcement
+
+- CI will fail if:
+  - A changed file lacks a documentation header
+  - A changed file has no corresponding test update
+  - EDIT LOG is not updated with the change
+- These are build-blocking violations.
+
 ```
 
 ```
