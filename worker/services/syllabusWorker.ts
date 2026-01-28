@@ -17,6 +17,7 @@
 
 import { prisma } from '@/lib/prisma.js'
 import { callLLM } from '@/lib/callLLM.js'
+import { parseLlmJson } from '@/lib/llm/sanitizeJson'
 import fs from 'fs'
 import path from 'path'
 import { toSlug } from '@/lib/slug.js'
@@ -145,14 +146,11 @@ export async function handleSyllabusJob(jobId: string) {
 
   let parsed: any
   try {
-    const sanitized = sanitizeLLMOutput(llmResponse.content)
-    const raw = JSON.parse(sanitized)
+    const raw = parseLlmJson(llmResponse.content)
     if (!validateSyllabusShape(raw)) throw new Error('validation_failed')
     parsed = raw
   } catch (err: any) {
-    if (typeof logger !== "undefined") {
-      logger.error("Failed to parse LLM output in handleSyllabusJob", { jobId: job.id, error: err });
-    }
+    logger.error("Failed to parse LLM output in handleSyllabusJob", { jobId: job.id, error: err });
     // mark hydration job failed with parse error
     await prisma.hydrationJob.update({ where: { id: job.id }, data: { status: JobStatus.Failed, lastError: 'invalid_llm_output' } })
 
@@ -164,10 +162,13 @@ export async function handleSyllabusJob(jobId: string) {
       } catch {
         // ignore
       }
+      // Preserve existing behavior for linked execution jobs: throw so callers/tests
+      // observe the parse failure.
+      throw new Error('invalid_llm_output');
     }
 
-    // Throw so the caller (contentWorker) treats this as a failed run and worker-level handlers run
-    throw new Error('invalid_llm_output')
+    // No linked execution job: return gracefully to avoid crashing the worker process
+    return;
   }
 
   parsed.chapters.sort((a: any, b: any) => (a.order ?? 0) - (b.order ?? 0))

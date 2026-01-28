@@ -57,6 +57,16 @@ export async function callLLM({ prompt, model = 'gpt-4o-mini', meta }: { prompt:
       }
     }
 
+    // When AI_CONTENT_DEBUG is enabled, log the raw LLM text response for post-mortem
+    const AI_CONTENT_DEBUG = process.env.AI_CONTENT_DEBUG === '1'
+    if (AI_CONTENT_DEBUG) {
+      try {
+        logger.info('AI_CONTENT_DEBUG: raw LLM content', { rawContent: content, meta })
+      } catch {
+        // ignore logging errors
+      }
+    }
+
     // When workers run with WORKER_DEBUG=1, print the full JSON response (raw + parsed)
     if (WORKER_DEBUG) {
       try {

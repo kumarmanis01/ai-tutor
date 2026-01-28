@@ -21,6 +21,7 @@ import { getServerSessionForHandlers } from '@/lib/session';
 import { callLLM } from '@/lib/callLLM';
 import { logger } from '@/lib/logger';
 import crypto from 'crypto';
+import { parseLlmJson } from '@/lib/llm/sanitizeJson'
 
 /**
  * Rate limits per user type (requests per day)
@@ -71,26 +72,6 @@ async function checkRateLimit(userId: string, userType: 'free' | 'premium' | 'ad
     remaining: Math.max(0, limit - usageCount),
     resetAt: tomorrow,
   };
-}
-
-/**
- * Sanitizes LLM output by stripping code fences.
- */
-function sanitizeLLMOutput(content: string): string {
-  if (!content || typeof content !== 'string') return content;
-  let s = content.trim();
-
-  if (s.startsWith('```')) {
-    const firstNewline = s.indexOf('\n');
-    if (firstNewline !== -1) s = s.slice(firstNewline + 1);
-    const closingFence = s.lastIndexOf('```');
-    if (closingFence !== -1) s = s.slice(0, closingFence);
-    s = s.trim();
-  }
-
-  if (s.startsWith('`') && s.endsWith('`')) s = s.slice(1, -1).trim();
-
-  return s;
 }
 
 /**
@@ -330,17 +311,13 @@ export async function POST(req: Request) {
     );
   }
 
-  // Parse and validate response
+  // Parse and validate response using shared parser
   let parsed: any;
   try {
-    const sanitized = sanitizeLLMOutput(llmResponse.content);
-    parsed = JSON.parse(sanitized);
-    
-    if (!parsed.title || !parsed.content) {
-      throw new Error('Invalid response structure');
-    }
+    parsed = parseLlmJson(llmResponse.content);
+    if (!parsed || !parsed.title || !parsed.content) throw new Error('Invalid response structure');
   } catch (err: any) {
-    logger.error('[generate] Failed to parse LLM response', { userId, topic, error: err.message });
+    logger.error('[generate] Failed to parse LLM response', { userId, topic, error: String(err) });
     return NextResponse.json(
       { error: 'Failed to process generated content. Please try again.', retryable: true },
       { status: 500 }

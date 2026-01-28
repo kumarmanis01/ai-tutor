@@ -20,6 +20,7 @@
 
 import { prisma } from '@/lib/prisma.js';
 import { callLLM } from '@/lib/callLLM.js';
+import { parseLlmJson } from '@/lib/llm/sanitizeJson'
 import fs from 'fs';
 import path from 'path';
 import { isSystemSettingEnabled } from '@/lib/systemSettings.js';
@@ -235,8 +236,13 @@ JSON Schema:
         meta: { promptType: 'questions', board, grade, subject: subjectName, topic: topic.name, language, difficulty }
       });
     }
-    const sanitized = sanitizeLLMOutput(llmResponse.content);
-    const raw = JSON.parse(sanitized);
+    let raw: any;
+    try {
+      raw = parseLlmJson(llmResponse.content);
+    } catch (err) {
+      logger.error('generateQuestionsForDifficulty: failed to parse LLM JSON', { difficulty, topic: topic.name, error: String(err) });
+      return null;
+    }
     // return raw; validation will be performed in the caller where job context is available
     return raw;
   } catch (err: any) {

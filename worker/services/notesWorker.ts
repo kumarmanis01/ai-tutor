@@ -18,6 +18,7 @@
 
 import { prisma } from '@/lib/prisma.js';
 import { callLLM } from '@/lib/callLLM.js';
+import { parseLlmJson } from '@/lib/llm/sanitizeJson';
 import fs from 'fs';
 import path from 'path';
 import { isSystemSettingEnabled } from '@/lib/systemSettings.js';
@@ -143,30 +144,19 @@ function extractJsonFromText(text: string): string | null {
  * Call LLM and try to parse JSON with a small retry on parse failure.
  * Returns parsed object or throws after retries.
  */
-async function callAndParseJSON(prompt: string, meta: any, attempts = 2): Promise<any> {
+async function callAndParseJSON(prompt: string, meta: any, attempts = 3): Promise<any> {
   let lastErr: any = null;
   let prevResponseText: string | null = null;
   for (let i = 0; i < attempts; i++) {
     const llmResponse = await callLLM({ prompt, meta });
-    const sanitized = sanitizeLLMOutput(llmResponse.content);
-    prevResponseText = sanitized;
-    // try direct parse first
+    const responseText = String(llmResponse.content ?? '');
+    prevResponseText = responseText;
     try {
-      const raw = JSON.parse(sanitized);
-      return raw;
-    } catch (e) {
-      // try extraction heuristics
-      const extracted = extractJsonFromText(sanitized);
-      if (extracted) {
-        try {
-          const raw2 = JSON.parse(extracted);
-          return raw2;
-        } catch (e2) {
-          lastErr = e2;
-        }
-      } else {
-        lastErr = e;
-      }
+      // Use shared parser which applies sanitization, extraction and repair heuristics
+      const parsed = parseLlmJson(responseText);
+      return parsed;
+    } catch (parseErr: any) {
+      lastErr = parseErr;
     }
 
     // If we have another attempt, re-prompt the model with stricter instructions including the previous output
@@ -295,7 +285,8 @@ export async function handleNotesJob(jobId: string): Promise<void> {
     parsed = await callAndParseJSON(prompt, meta, 2);
   } catch (err: any) {
     await prisma.hydrationJob.update({ where: { id: job.id }, data: { status: JobStatus.Failed, lastError: err?.message || 'llm_failed' } });
-    throw err;
+    logger.error('handleNotesJob: LLM parse failed, marking job failed', { jobId, error: err?.message || String(err) });
+    return;
   }
 
   // Log response received
@@ -328,14 +319,19 @@ export async function handleNotesJob(jobId: string): Promise<void> {
           await prisma.jobExecutionLog.create({
             data: { jobId: linkedExec.id, event: 'PARSE_FAILED', prevStatus: linkedExec.status, newStatus: 'failed', message: 'invalid_llm_output', meta: { hydrationJobId: job.id, report } }
           }).catch(() => {});
+          // Preserve existing behavior for linked execution jobs: throw so callers/tests
+          // observe the parse failure. The worker process should catch this at a
+          // higher level and continue running; keeping the throw maintains existing
+          // test expectations.
           throw new Error('invalid_llm_output');
         }
       } else {
         // If no linked exec, just throw on invalid
         if (!valid) {
-          logger.error('handleNotesJob: validation failed (no linked exec)', { jobId, report });
-          await prisma.hydrationJob.update({ where: { id: job.id }, data: { status: JobStatus.Failed, lastError: 'invalid_llm_output' } });
-          throw new Error('invalid_llm_output');
+            logger.error('handleNotesJob: validation failed (no linked exec)', { jobId, report });
+            await prisma.hydrationJob.update({ where: { id: job.id }, data: { status: JobStatus.Failed, lastError: 'invalid_llm_output' } });
+            // No linked execution job to report to; stop processing and return.
+            return;
         }
       }
     } catch (err: any) { if (err?.message === 'invalid_llm_output') throw err; /* ignore other logging failures */ }
