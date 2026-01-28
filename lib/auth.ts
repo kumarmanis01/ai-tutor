@@ -33,6 +33,24 @@ export async function requireAdminOrModerator() {
   return session;
 }
 
+// Require an active session for server-side pages. If no valid session or
+// matching DB user is found, callers can redirect the client to sign-in.
+export async function requireActiveSession(redirectTo = '/dashboard') {
+  const session = (await getServerSession(authOptions)) as AppSession | null;
+  if (!session || !session.user?.email) {
+    return null;
+  }
+
+  try {
+    const dbUser = await prisma.user.findUnique({ where: { email: session.user.email } });
+    if (!dbUser) return null;
+    return session;
+  } catch (err) {
+    logger.warn('requireActiveSession failed to verify DB user', { className: 'auth', methodName: 'requireActiveSession', error: String(err) });
+    return null;
+  }
+}
+
 // This function sends a welcome email to the user
 async function sendWelcomeEmail(to: string, name?: string) {
   // Set up the email transporter using your SMTP credentials
