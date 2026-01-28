@@ -57,6 +57,16 @@ export async function callLLM({ prompt, model = 'gpt-4o-mini', meta }: { prompt:
       }
     }
 
+    // When AI_CONTENT_DEBUG is enabled, log the raw LLM text response for post-mortem
+    const AI_CONTENT_DEBUG = process.env.AI_CONTENT_DEBUG === '1'
+    if (AI_CONTENT_DEBUG) {
+      try {
+        logger.info('AI_CONTENT_DEBUG: raw LLM content', { rawContent: content, meta })
+      } catch {
+        // ignore logging errors
+      }
+    }
+
     // When workers run with WORKER_DEBUG=1, print the full JSON response (raw + parsed)
     if (WORKER_DEBUG) {
       try {
@@ -76,6 +86,12 @@ export async function callLLM({ prompt, model = 'gpt-4o-mini', meta }: { prompt:
     const costUsd = ((usage?.prompt_tokens || 0) * 0.00000015) + ((usage?.completion_tokens || 0) * 0.0000006)
 
     try {
+      const respBody: any = JSON.parse(JSON.stringify(response));
+      if (AI_CONTENT_DEBUG) {
+        // persist raw text for post-mortem debugging
+        respBody._rawText = content;
+      }
+
       await prisma.aIContentLog.create({
         data: {
           model,
@@ -94,7 +110,7 @@ export async function callLLM({ prompt, model = 'gpt-4o-mini', meta }: { prompt:
           success: true,
           status: 'success',
           requestBody: { prompt },
-          responseBody: JSON.parse(JSON.stringify(response)),
+          responseBody: respBody,
         },
       })
     } catch (e) {

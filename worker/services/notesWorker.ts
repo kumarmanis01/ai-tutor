@@ -18,6 +18,7 @@
 
 import { prisma } from '@/lib/prisma.js';
 import { callLLM } from '@/lib/callLLM.js';
+import { parseLlmJson } from '@/lib/llm/sanitizeJson';
 import fs from 'fs';
 import path from 'path';
 import { isSystemSettingEnabled } from '@/lib/systemSettings.js';
@@ -32,7 +33,64 @@ function validateNotesShape(raw: any): boolean {
   if (!raw || typeof raw !== 'object') return false;
   if (!raw.title || typeof raw.title !== 'string') return false;
   if (!raw.content || typeof raw.content !== 'object') return false;
+  // content should contain either sections (array) or paragraphs
+  const content = raw.content;
+  if (Array.isArray(content.sections)) {
+    if (content.sections.length === 0) return false;
+    for (const s of content.sections) {
+      if (!s.heading || typeof s.heading !== 'string') return false;
+      if (!s.body || typeof s.body !== 'string') return false;
+    }
+  } else if (Array.isArray(content.paragraphs)) {
+    if (content.paragraphs.length === 0) return false;
+    for (const p of content.paragraphs) {
+      if (typeof p !== 'string' || p.trim().length === 0) return false;
+    }
+  } else {
+    // accept content with 'explanation' string
+    if (!content.explanation || typeof content.explanation !== 'string') return false;
+  }
+
+  // require teacher-style elements where applicable
+  if (!raw.audience || typeof raw.audience !== 'string') return false;
   return true;
+}
+
+// Exported for unit testing
+export { validateNotesShape, validateNotesShapeWithReport };
+
+/**
+ * Validate notes shape and produce a structured validation report.
+ * Returns { valid: boolean, report: { issues: string[], details: {} } }
+ */
+function validateNotesShapeWithReport(raw: any) {
+  const report: any = { issues: [], details: {} };
+  if (!raw || typeof raw !== 'object') { report.issues.push('response-not-object'); return { valid: false, report }; }
+  if (!raw.title || typeof raw.title !== 'string') { report.issues.push('missing-title'); }
+  if (!raw.content || typeof raw.content !== 'object') { report.issues.push('missing-content'); }
+
+  if (raw.content) {
+    const content = raw.content;
+    if (Array.isArray(content.sections)) {
+      if (content.sections.length === 0) report.issues.push('sections-empty');
+      content.sections.forEach((s: any, idx: number) => {
+        if (!s.heading || typeof s.heading !== 'string') report.issues.push(`section-${idx}-missing-heading`);
+        if (!s.body || typeof s.body !== 'string' || s.body.trim().length === 0) report.issues.push(`section-${idx}-missing-body`);
+      });
+    } else if (Array.isArray(content.paragraphs)) {
+      if (content.paragraphs.length === 0) report.issues.push('paragraphs-empty');
+      content.paragraphs.forEach((p: any, idx: number) => {
+        if (typeof p !== 'string' || p.trim().length === 0) report.issues.push(`paragraph-${idx}-empty`);
+      });
+    } else {
+      if (!content.explanation || typeof content.explanation !== 'string') report.issues.push('missing-explanation');
+    }
+  }
+
+  if (!raw.audience || typeof raw.audience !== 'string') report.issues.push('missing-audience');
+
+  const valid = report.issues.length === 0;
+  return { valid, report };
 }
 
 /**
@@ -55,6 +113,66 @@ function sanitizeLLMOutput(content: string): string {
   if (s.startsWith('`') && s.endsWith('`')) s = s.slice(1, -1).trim();
 
   return s;
+}
+
+/**
+ * Attempt to extract JSON text from an arbitrary LLM output.
+ * Tries fenced ```json blocks first, then any fenced block, then the first '{'..'}' span.
+ */
+function extractJsonFromText(text: string): string | null {
+  if (!text || typeof text !== 'string') return null;
+  const t = text.trim();
+  // fenced json block
+  const jsonFence = /```json\s*([\s\S]*?)```/i.exec(t);
+  if (jsonFence && jsonFence[1]) return jsonFence[1].trim();
+
+  // any fenced block
+  const anyFence = /```[\s\S]*?\n([\s\S]*?)```/.exec(t);
+  if (anyFence && anyFence[1]) return anyFence[1].trim();
+
+  // attempt to find first { and last }
+  const first = t.indexOf('{');
+  const last = t.lastIndexOf('}');
+  if (first !== -1 && last !== -1 && last > first) {
+    return t.slice(first, last + 1).trim();
+  }
+
+  return null;
+}
+
+/**
+ * Call LLM and try to parse JSON with a small retry on parse failure.
+ * Returns parsed object or throws after retries.
+ */
+async function callAndParseJSON(prompt: string, meta: any, attempts = 3): Promise<any> {
+  let lastErr: any = null;
+  let prevResponseText: string | null = null;
+  for (let i = 0; i < attempts; i++) {
+    const llmResponse = await callLLM({ prompt, meta });
+    const responseText = String(llmResponse.content ?? '');
+    prevResponseText = responseText;
+    try {
+      // Use shared parser which applies sanitization, extraction and repair heuristics
+      const parsed = parseLlmJson(responseText);
+      return parsed;
+    } catch (parseErr: any) {
+      lastErr = parseErr;
+    }
+
+    // If we have another attempt, re-prompt the model with stricter instructions including the previous output
+    if (i + 1 < attempts) {
+      const retryPrompt = `${prompt}\n\nRESPONSE CORRECTION: The previous response did not parse as JSON. Return ONLY a valid JSON object matching the required schema. Do NOT include markdown, commentary, or any surrounding text. Here is the previous response for reference:\n\n${prevResponseText}`;
+      // lower temperature / stricter settings can be controlled via meta if supported
+      meta = { ...(meta || {}), retry: i + 1 };
+      try {
+        // loop will call LLM again
+        prompt = retryPrompt;
+      } catch (err) {
+        lastErr = err;
+      }
+    }
+  }
+  throw lastErr || new Error('failed_parse');
 }
 
 /**
@@ -160,15 +278,15 @@ export async function handleNotesJob(jobId: string): Promise<void> {
     .replace(/{board}/g, board)
     .replace(/{language}/g, language);
 
-  let llmResponse: { content: string };
+  // Call LLM and attempt to parse JSON with retries/extraction heuristics
+  let parsed: any;
   try {
-    llmResponse = await callLLM({
-      prompt,
-      meta: { promptType: 'notes', board, grade, subject: subjectName, topic: topic.name, language }
-    });
+    const meta = { promptType: 'notes', board, grade, subject: subjectName, topic: topic.name, language };
+    parsed = await callAndParseJSON(prompt, meta, 2);
   } catch (err: any) {
-    await prisma.hydrationJob.update({ where: { id: job.id }, data: { status: JobStatus.Failed, lastError: err.message } });
-    throw err;
+    await prisma.hydrationJob.update({ where: { id: job.id }, data: { status: JobStatus.Failed, lastError: err?.message || 'llm_failed' } });
+    logger.error('handleNotesJob: LLM parse failed, marking job failed', { jobId, error: err?.message || String(err) });
+    return;
   }
 
   // Log response received
@@ -183,31 +301,42 @@ export async function handleNotesJob(jobId: string): Promise<void> {
     }
   } catch { /* ignore */ }
 
-  // Parse and validate
-  let parsed: any;
+  // Validate parsed shape and persist a structured validation report
   try {
-    const sanitized = sanitizeLLMOutput(llmResponse.content);
-    const raw = JSON.parse(sanitized);
-    if (!validateNotesShape(raw)) throw new Error('validation_failed');
-    parsed = raw;
-  } catch (err: any) {
-    logger.error('handleNotesJob: failed to parse LLM output', { jobId, error: err });
-    await prisma.hydrationJob.update({ where: { id: job.id }, data: { status: JobStatus.Failed, lastError: 'invalid_llm_output' } });
-
-    // Mark linked ExecutionJob failed
+    const { valid, report } = validateNotesShapeWithReport(parsed);
     try {
       const linkedExec = await prisma.executionJob.findFirst({
         where: { payload: { path: ['hydrationJobId'], equals: job.id } }
       });
       if (linkedExec) {
-        await prisma.executionJob.update({ where: { id: linkedExec.id }, data: { status: 'failed', lastError: 'invalid_llm_output' } });
         await prisma.jobExecutionLog.create({
-          data: { jobId: linkedExec.id, event: 'PARSE_FAILED', prevStatus: linkedExec.status, newStatus: 'failed', message: 'invalid_llm_output', meta: { hydrationJobId: job.id } }
+          data: { jobId: linkedExec.id, event: 'VALIDATION_REPORT', prevStatus: linkedExec.status, newStatus: linkedExec.status, meta: { hydrationJobId: job.id, report } }
         }).catch(() => {});
+        if (!valid) {
+          logger.error('handleNotesJob: failed to validate parsed LLM output', { jobId, error: report });
+          await prisma.hydrationJob.update({ where: { id: job.id }, data: { status: JobStatus.Failed, lastError: 'invalid_llm_output' } });
+          await prisma.executionJob.update({ where: { id: linkedExec.id }, data: { status: 'failed', lastError: 'invalid_llm_output' } }).catch(() => {});
+          await prisma.jobExecutionLog.create({
+            data: { jobId: linkedExec.id, event: 'PARSE_FAILED', prevStatus: linkedExec.status, newStatus: 'failed', message: 'invalid_llm_output', meta: { hydrationJobId: job.id, report } }
+          }).catch(() => {});
+          // Preserve existing behavior for linked execution jobs: throw so callers/tests
+          // observe the parse failure. The worker process should catch this at a
+          // higher level and continue running; keeping the throw maintains existing
+          // test expectations.
+          throw new Error('invalid_llm_output');
+        }
+      } else {
+        // If no linked exec, just throw on invalid
+        if (!valid) {
+            logger.error('handleNotesJob: validation failed (no linked exec)', { jobId, report });
+            await prisma.hydrationJob.update({ where: { id: job.id }, data: { status: JobStatus.Failed, lastError: 'invalid_llm_output' } });
+            // No linked execution job to report to; stop processing and return.
+            return;
+        }
       }
-    } catch { /* ignore */ }
-
-    throw new Error('invalid_llm_output');
+    } catch (err: any) { if (err?.message === 'invalid_llm_output') throw err; /* ignore other logging failures */ }
+  } catch (err: any) {
+    throw err;
   }
 
   // Persist notes

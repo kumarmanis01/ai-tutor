@@ -20,6 +20,7 @@
 
 import { prisma } from '@/lib/prisma.js';
 import { callLLM } from '@/lib/callLLM.js';
+import { parseLlmJson } from '@/lib/llm/sanitizeJson'
 import fs from 'fs';
 import path from 'path';
 import { isSystemSettingEnabled } from '@/lib/systemSettings.js';
@@ -34,15 +35,94 @@ type DifficultyLevel = typeof DIFFICULTY_LEVELS[number];
 /**
  * Validates the shape of the LLM response for questions.
  */
-function validateQuestionsShape(raw: any): boolean {
+function validateQuestionsShape(raw: any, subjectName?: string): boolean {
   if (!raw || typeof raw !== 'object') return false;
   if (!Array.isArray(raw.questions)) return false;
   for (const q of raw.questions) {
     if (!q || typeof q !== 'object') return false;
     if (!q.question || typeof q.question !== 'string') return false;
     if (!q.type || typeof q.type !== 'string') return false;
+    // MCQ must have options
+    if (q.type === 'mcq') {
+      if (!Array.isArray(q.options) || q.options.length < 2) return false;
+    }
+    // answer must exist and not be null
+    if (q.answer === null || typeof q.answer === 'undefined') return false;
+
+    // Subject-specific stricter checks
+    try {
+      const subjectLower = (subjectName || '').toLowerCase();
+      if (subjectLower.includes('math') || subjectLower.includes('mathematics')) {
+        // For math, answer should be an object with solution_steps and final_answer
+        if (typeof q.answer !== 'object') return false;
+        if (!Array.isArray(q.answer.solution_steps) || q.answer.solution_steps.length === 0) return false;
+        if (!q.answer.final_answer) return false;
+      }
+      if (subjectLower.includes('science')) {
+        if (typeof q.answer !== 'object') return false;
+        if (!q.answer.direct_answer) return false;
+        if (!q.answer.scientific_explanation) return false;
+      }
+    } catch {
+      // fallback: ensure answer has substantial content
+      if (typeof q.answer === 'string' && q.answer.trim().length < 10) return false;
+    }
   }
   return true;
+}
+
+// Exported for unit testing
+export { validateQuestionsShape, validateQuestionsShapeWithReport };
+
+/**
+ * Validate questions and produce a structured report.
+ * Returns { valid: boolean, report: { questionReports: [], summary: { total, validCount, issues } } }
+ */
+function validateQuestionsShapeWithReport(raw: any, subjectName?: string) {
+  const report: any = { questionReports: [], summary: { total: 0, validCount: 0, issues: [] } };
+  if (!raw || typeof raw !== 'object') {
+    report.summary.issues.push('response-not-object');
+    return { valid: false, report };
+  }
+  if (!Array.isArray(raw.questions)) {
+    report.summary.issues.push('questions-not-array');
+    return { valid: false, report };
+  }
+  report.summary.total = raw.questions.length;
+  const subjectLower = (subjectName || '').toLowerCase();
+
+  for (let idx = 0; idx < raw.questions.length; idx++) {
+    const q = raw.questions[idx];
+    const qReport: any = { index: idx, ok: true, issues: [] };
+    if (!q || typeof q !== 'object') { qReport.ok = false; qReport.issues.push('question-not-object'); }
+    if (!q.question || typeof q.question !== 'string') { qReport.ok = false; qReport.issues.push('missing-question-text'); }
+    if (!q.type || typeof q.type !== 'string') { qReport.ok = false; qReport.issues.push('missing-type'); }
+    if (q.type === 'mcq') {
+      if (!Array.isArray(q.options) || q.options.length < 2) { qReport.ok = false; qReport.issues.push('mcq-options-invalid'); }
+    }
+    if (q.answer === null || typeof q.answer === 'undefined') { qReport.ok = false; qReport.issues.push('missing-answer'); }
+
+    try {
+      if (subjectLower.includes('math') || subjectLower.includes('mathematics')) {
+        if (typeof q.answer !== 'object') { qReport.ok = false; qReport.issues.push('math-answer-not-object'); }
+        if (!Array.isArray(q.answer.solution_steps) || q.answer.solution_steps.length === 0) { qReport.ok = false; qReport.issues.push('math-missing-solution_steps'); }
+        if (!('final_answer' in q.answer)) { qReport.ok = false; qReport.issues.push('math-missing-final_answer'); }
+      }
+      if (subjectLower.includes('science')) {
+        if (typeof q.answer !== 'object') { qReport.ok = false; qReport.issues.push('science-answer-not-object'); }
+        if (!('direct_answer' in q.answer) && !('final_answer' in q.answer)) { qReport.ok = false; qReport.issues.push('science-missing-direct_answer'); }
+        if (!q.answer.scientific_explanation && !q.answer.explanation) { qReport.ok = false; qReport.issues.push('science-missing-explanation'); }
+      }
+    } catch (e) {
+      qReport.ok = false; qReport.issues.push('subject-validation-exception');
+    }
+
+    if (qReport.ok) report.summary.validCount += 1; else report.summary.issues.push({ index: idx, issues: qReport.issues });
+    report.questionReports.push(qReport);
+  }
+
+  const valid = report.summary.validCount === report.summary.total && report.summary.issues.length === 0;
+  return { valid, report };
 }
 
 /**
@@ -118,6 +198,7 @@ JSON Schema:
 }
 `;
 
+
   try {
     // Attempt to load an external prompt template for this difficulty
     let llmResponse: { content: string };
@@ -134,30 +215,35 @@ JSON Schema:
       const base = fs.existsSync(basePath) ? fs.readFileSync(basePath, 'utf8') + '\n' : '';
 
       const rendered = (base + template)
-        .replace(/{chapter_title}/g, topic.chapter?.name || '')
+        .replace(/{chapter_title}/g, '')
         .replace(/{topic_title}/g, topic.name)
         .replace(/{subject}/g, subjectName)
         .replace(/{grade}/g, String(grade))
         .replace(/{board}/g, board)
         .replace(/{language}/g, language);
 
+      // final rendered prompt (base_context.md contains mandatory requirements and tone)
+      const finalPrompt = (rendered || prompt);
+
       llmResponse = await callLLM({
-        prompt: rendered || prompt,
+        prompt: finalPrompt,
         meta: { promptType: 'questions', board, grade, subject: subjectName, topic: topic.name, language, difficulty }
       });
     } catch {
-      // fallback to inline prompt
+      // fallback to inline prompt (base_context.md now contains mandatory requirements and tone)
       llmResponse = await callLLM({
-        prompt,
+        prompt: prompt,
         meta: { promptType: 'questions', board, grade, subject: subjectName, topic: topic.name, language, difficulty }
       });
     }
-    const sanitized = sanitizeLLMOutput(llmResponse.content);
-    const raw = JSON.parse(sanitized);
-    if (!validateQuestionsShape(raw)) {
-      logger.warn('generateQuestionsForDifficulty: validation failed', { difficulty, topic: topic.name });
+    let raw: any;
+    try {
+      raw = parseLlmJson(llmResponse.content);
+    } catch (err) {
+      logger.error('generateQuestionsForDifficulty: failed to parse LLM JSON', { difficulty, topic: topic.name, error: String(err) });
       return null;
     }
+    // return raw; validation will be performed in the caller where job context is available
     return raw;
   } catch (err: any) {
     logger.error('generateQuestionsForDifficulty: failed', { difficulty, topic: topic.name, error: err.message });
@@ -274,6 +360,25 @@ export async function handleQuestionsJob(jobId: string): Promise<void> {
         await prisma.jobExecutionLog.create({
           data: { jobId: linkedExec.id, event: 'RESPONSE_RECEIVED', prevStatus: linkedExec.status, newStatus: linkedExec.status, meta: { hydrationJobId: job.id, difficulty } }
         }).catch(() => {});
+
+        // Validate and persist structured validation report
+        try {
+          const { valid, report } = validateQuestionsShapeWithReport(parsed, subjectName);
+          await prisma.jobExecutionLog.create({
+            data: { jobId: linkedExec.id, event: 'VALIDATION_REPORT', prevStatus: linkedExec.status, newStatus: linkedExec.status, meta: { hydrationJobId: job.id, difficulty, report } }
+          }).catch(() => {});
+
+          if (!valid) {
+            logger.warn('handleQuestionsJob: validation failed for LLM output', { jobId, difficulty, topic: topic.name });
+            results.push({ difficulty, testId: null, questionCount: 0 });
+            continue;
+          }
+        } catch (e) {
+          // If validation threw, treat as failure for this difficulty
+          logger.error('handleQuestionsJob: validation exception', { jobId, difficulty, error: String(e?.message || e) });
+          results.push({ difficulty, testId: null, questionCount: 0 });
+          continue;
+        }
       }
     } catch { /* ignore */ }
 
