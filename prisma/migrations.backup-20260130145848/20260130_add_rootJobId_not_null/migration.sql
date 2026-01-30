@@ -1,0 +1,3 @@
+-- Deprecated migration: initial migration was updated to include `rootJobId NOT NULL`.
+-- This file is retained for history but should not be applied.
+-- If you maintain a migration history workflow, remove this directory or merge changes into your canonical migration set.

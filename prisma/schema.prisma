@@ -920,10 +920,14 @@ model HydrationJob {
   subjectId  String?
   chapterId  String?
   topicId    String?
+  parentJobId String?
+  rootJobId   String
   language   LanguageCode
   difficulty DifficultyLevel
   status     JobStatus       @default(pending)
   attempts   Int             @default(0)
+  maxAttempts Int?           @default(3)
+  lockedAt   DateTime?
   lastError  String?
   completedAt DateTime?
   contentReady Boolean       @default(false)
@@ -931,6 +935,9 @@ model HydrationJob {
   updatedAt  DateTime        @updatedAt
 
   @@index([jobType, status])
+  @@index([parentJobId])
+  @@index([rootJobId])
+  @@index([lockedAt])
 }
 
 model Outbox {

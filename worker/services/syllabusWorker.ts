@@ -24,11 +24,7 @@ import { toSlug } from '@/lib/slug.js'
 import { isSystemSettingEnabled } from '@/lib/systemSettings.js'
 import { logger } from '@/lib/logger.js'
 import { JobStatus, ApprovalStatus } from '@/lib/ai-engine/types'
-import {
-  enqueueNotesHydration,
-  enqueueQuestionsHydration,
-  enqueueAssembleHydration,
-} from '@/lib/execution-pipeline/enqueueTopicHydration.js'
+// Per spec, workers must not enqueue child hydration jobs; orchestrator/reconciler handles downstream job creation.
 
 function validateSyllabusShape(raw: any) {
   if (!raw || typeof raw !== 'object') return false
@@ -80,7 +76,7 @@ function _sanitizeLLMOutput(content: string): string {
 export async function handleSyllabusJob(jobId: string) {
   const claim = await prisma.hydrationJob.updateMany({
     where: { id: jobId, status: JobStatus.Pending },
-    data: { status: JobStatus.Running, attempts: { increment: 1 } }
+    data: { status: JobStatus.Running, attempts: { increment: 1 }, lockedAt: new Date() }
   })
   if (claim.count === 0) return
 
@@ -95,7 +91,9 @@ export async function handleSyllabusJob(jobId: string) {
 
   const subjectId = (job as any).subjectId || null
   if (!subjectId) {
-    await prisma.hydrationJob.update({ where: { id: job.id }, data: { status: JobStatus.Failed, lastError: 'missing_subjectId' } })
+    const { formatLastError, FailureCode } = await import('@/lib/failureCodes');
+    const le = formatLastError(FailureCode.DEPENDENCY_MISSING, 'missing_subjectId');
+    await prisma.hydrationJob.update({ where: { id: job.id }, data: { status: JobStatus.Failed, lastError: le } })
     return
   }
 
@@ -114,7 +112,8 @@ export async function handleSyllabusJob(jobId: string) {
   // Load a syllabus prompt template if available
   const promptsDir = path.join(process.cwd(), 'prompts')
   const templatePath = path.join(promptsDir, 'syllabus_worker_prompt.md')
-  let llmResponse: { content: string }
+  // llmResult holds the LLM response and is used below
+  let llmResult: any = null
   try {
     let prompt = ''
     if (fs.existsSync(templatePath)) {
@@ -128,9 +127,16 @@ export async function handleSyllabusJob(jobId: string) {
       prompt = `You are an expert curriculum designer.\n\nGenerate an academic syllabus strictly aligned to:\nBoard: ${board}\nGrade: ${grade}\nSubject: ${subjectName}\nLanguage: ${language}\n\nRules:\n- Output JSON ONLY\n- No explanations\n- Chapters must be ordered\n- Topics must be ordered\n- Topics must be concise, age-appropriate, and non-overlapping\n- Do NOT include assessments or activities\n- Do NOT include subtopics\n- Do NOT invent extra subjects\n\nJSON Schema:\n{\n  "chapters": [\n    {\n      "title": "string",\n      "order": number,\n      "topics": [\n        { "title": "string", "order": number }\n      ]\n    }\n  ]\n}\n`
     }
 
-    llmResponse = await callLLM({ prompt, meta: { promptType: 'syllabus', board, grade, subject: subjectName, language } })
+    llmResult = await callLLM({
+      prompt,
+      meta: { promptType: 'syllabus', board, grade, subject: subjectName, language, useRag: true, hydrationJobId: job.id, suppressLog: true },
+      timeoutMs: Number(process.env.SYLLABUS_LLM_TIMEOUT_MS || 20_000)
+    })
   } catch (err: any) {
-    await prisma.hydrationJob.update({ where: { id: job.id }, data: { status: JobStatus.Failed, lastError: err.message } })
+    const { formatLastError, inferFailureCodeFromMessage } = await import('@/lib/failureCodes');
+    const code = inferFailureCodeFromMessage(err?.message || '');
+    const le = formatLastError(code, String(err?.message || 'llm_call_failed'));
+    await prisma.hydrationJob.update({ where: { id: job.id }, data: { status: JobStatus.Failed, lastError: le } })
     throw err
   }
   // Record that a response was received — attempt to attach to a linked ExecutionJob if present
@@ -146,24 +152,26 @@ export async function handleSyllabusJob(jobId: string) {
 
   let parsed: any
   try {
-    const raw = parseLlmJson(llmResponse.content)
+    const raw = parseLlmJson(llmResult.content)
     if (!validateSyllabusShape(raw)) throw new Error('validation_failed')
     parsed = raw
   } catch (err: any) {
     logger.error("Failed to parse LLM output in handleSyllabusJob", { jobId: job.id, error: err });
     // mark hydration job failed with parse error
-    await prisma.hydrationJob.update({ where: { id: job.id }, data: { status: JobStatus.Failed, lastError: 'invalid_llm_output' } })
+    const { formatLastError, FailureCode } = await import('@/lib/failureCodes');
+    const le = formatLastError(FailureCode.PARSE_FAILED, 'invalid_llm_output');
+    await prisma.hydrationJob.update({ where: { id: job.id }, data: { status: JobStatus.Failed, lastError: le } })
 
     // if we discovered a linked ExecutionJob, mark it failed and write a PARSE_FAILED audit entry
     if (linkedExec) {
       try {
-        await prisma.executionJob.update({ where: { id: String(linkedExec.id) }, data: { status: 'failed', lastError: 'invalid_llm_output' } })
-        await prisma.jobExecutionLog.create({ data: { jobId: String(linkedExec.id), event: 'PARSE_FAILED', prevStatus: linkedExec.status ?? null, newStatus: 'failed', message: 'invalid_llm_output', meta: { hydrationJobId: job.id } } }).catch(() => {})
+        // Do NOT mutate ExecutionJob state from workers. Emit an audit log only.
+        await prisma.jobExecutionLog.create({ data: { jobId: String(linkedExec.id), event: 'PARSE_FAILED', prevStatus: linkedExec.status ?? null, newStatus: linkedExec.status ?? null, message: le, meta: { hydrationJobId: job.id } } }).catch(() => {});
       } catch {
-        // ignore
+        // ignore logging failures
       }
-      // Preserve existing behavior for linked execution jobs: throw so callers/tests
-      // observe the parse failure.
+      // Persist failure AIContentLog outside transaction since we suppressed auto-logging
+      try { await prisma.aIContentLog.create({ data: { model: llmResult?.model || null, promptType: 'syllabus', language: job.language || 'en', success: false, status: 'failed', error: le, requestBody: { jobId: job.id }, responseBody: { raw: llmResult?.content }, hydrationJobId: job.id } }) } catch {}
       throw new Error('invalid_llm_output');
     }
 
@@ -200,12 +208,13 @@ export async function handleSyllabusJob(jobId: string) {
       throw lastErr;
     };
 
-    // Per-chapter transaction: create chapter and topics for each chapter
-    for (const ch of parsed.chapters) {
-      await runTxWithRetry(async (tx) => {
+    // Single transaction for creating chapters/topics, persisting AIContentLog, and marking hydration job completed
+    await runTxWithRetry(async (tx) => {
+      // Create chapters and topics atomically
+      for (const ch of parsed.chapters) {
         const slug = toSlug(ch.title);
         const exists = await tx.chapterDef.findFirst({ where: { subjectId: subjectId as string, slug } });
-        if (exists) return;
+        if (exists) continue;
 
         const chapter = await tx.chapterDef.create({
           data: {
@@ -237,66 +246,52 @@ export async function handleSyllabusJob(jobId: string) {
             createdTopicIds.push(topic.id);
           }
         }
-      });
-    }
+      }
 
-    // Final transaction: mark hydration job completed and update ExecutionJob if present
-    await runTxWithRetry(async (tx) => {
+      // Persist AIContentLog inside the same transaction to ensure atomicity
+      if (typeof tx.aIContentLog?.create === 'function') {
+        await tx.aIContentLog.create({ data: {
+          model: llmResult?.model || 'llm',
+          promptType: 'syllabus',
+          board,
+          grade,
+          subject: subjectName,
+          language: job.language || 'en',
+          topicId: null,
+          hydrationJobId: job.id,
+          tokensIn: llmResult?.usage?.prompt_tokens ?? null,
+          tokensOut: llmResult?.usage?.completion_tokens ?? null,
+          tokensUsed: llmResult?.usage?.total_tokens ?? null,
+          costUsd: llmResult?.costUsd ?? null,
+          latencyMs: llmResult?.latencyMs ?? null,
+          success: true,
+          status: 'success',
+          requestBody: { prompt },
+          responseBody: { raw: llmResult?.content }
+        } });
+      }
+
+      // Mark hydration job completed and update linked ExecutionJob atomically
       await tx.hydrationJob.update({ where: { id: job.id }, data: { status: JobStatus.Completed, completedAt: new Date(), contentReady: true } });
       const linked = await tx.executionJob.findFirst({ where: { payload: { path: ['hydrationJobId'], equals: job.id } } });
       if (linked) {
         const prevStatus = linked.status ?? null;
-        await tx.executionJob.update({ where: { id: linked.id }, data: { status: 'completed', updatedAt: new Date() } });
-        await tx.jobExecutionLog.create({ data: { jobId: linked.id, event: 'COMPLETED', prevStatus, newStatus: 'completed', meta: { hydrationJobId: job.id } } });
+        // Do NOT update ExecutionJob state from workers; emit audit log only.
+        await tx.jobExecutionLog.create({ data: { jobId: linked.id, event: 'COMPLETED', prevStatus, newStatus: prevStatus, meta: { hydrationJobId: job.id } } });
       }
     });
 
-    // After transaction commits, check if cascadeAll flag is set and queue downstream jobs
-    // This is done outside the transaction to avoid holding locks during job enqueuing
-    const linkedExec2 = await prisma.executionJob.findFirst({ where: { payload: { path: ['hydrationJobId'], equals: job.id } } });
-    const payload = linkedExec2?.payload as { cascadeAll?: boolean; language?: string; difficulties?: string[] } | null;
-
-    if (payload?.cascadeAll && createdTopicIds.length > 0) {
-      const lang = payload.language || language;
-      const difficulties = payload.difficulties || ['easy', 'medium', 'hard'];
-
-      logger.info('[syllabusWorker] cascadeAll enabled, queueing downstream jobs', {
-        jobId: job.id,
-        topicCount: createdTopicIds.length,
-        language: lang,
-        difficulties,
-      });
-
-      // Queue notes, questions, and assemble (tests) for each topic
-      for (const topicId of createdTopicIds) {
-        try {
-          await enqueueNotesHydration({ topicId, language: lang });
-          logger.debug('[syllabusWorker] queued notes job', { topicId, language: lang });
-
-          for (const diff of difficulties) {
-            await enqueueQuestionsHydration({ topicId, language: lang, difficulty: diff });
-            logger.debug('[syllabusWorker] queued questions job', { topicId, language: lang, difficulty: diff });
-          }
-
-          for (const diff of difficulties) {
-            await enqueueAssembleHydration({ topicId, language: lang, difficulty: diff });
-            logger.debug('[syllabusWorker] queued assemble job', { topicId, language: lang, difficulty: diff });
-          }
-        } catch (queueErr) {
-          logger.warn('[syllabusWorker] failed to queue downstream job', { topicId, error: queueErr });
-        }
-      }
-
-      logger.info('[syllabusWorker] cascadeAll downstream jobs queued', {
-        jobId: job.id,
-        topicsProcessed: createdTopicIds.length,
-        notesJobs: createdTopicIds.length,
-        questionsJobs: createdTopicIds.length * difficulties.length,
-        assembleJobs: createdTopicIds.length * difficulties.length,
-      });
-    }
+    // NOTE: Per spec, workers must NOT enqueue downstream child HydrationJobs.
+    // Downstream job creation should be performed by the orchestrator/reconciler.
   } catch (err: any) {
-    await prisma.hydrationJob.update({ where: { id: job.id }, data: { status: JobStatus.Failed, lastError: err.message } });
+    try {
+      const { formatLastError, inferFailureCodeFromMessage } = await import('@/lib/failureCodes');
+      const code = inferFailureCodeFromMessage(String(err?.message ?? ''));
+      const le = formatLastError(code, String(err?.message ?? err));
+      await prisma.hydrationJob.update({ where: { id: job.id }, data: { status: JobStatus.Failed, lastError: le } });
+    } catch {
+      await prisma.hydrationJob.update({ where: { id: job.id }, data: { status: JobStatus.Failed, lastError: String(err?.message ?? err) } });
+    }
     return;
   }
 }

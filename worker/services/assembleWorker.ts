@@ -36,7 +36,7 @@ export async function handleAssembleJob(jobId: string): Promise<void> {
   // Atomically claim the job
   const claim = await prisma.hydrationJob.updateMany({
     where: { id: jobId, status: JobStatus.Pending },
-    data: { status: JobStatus.Running, attempts: { increment: 1 } }
+    data: { status: JobStatus.Running, attempts: { increment: 1 }, lockedAt: new Date() }
   });
   if (claim.count === 0) {
     logger.info('handleAssembleJob: job already claimed or not pending', { jobId });
@@ -59,14 +59,18 @@ export async function handleAssembleJob(jobId: string): Promise<void> {
 
   const topicId = job.topicId;
   if (!topicId) {
-    await prisma.hydrationJob.update({ where: { id: job.id }, data: { status: JobStatus.Failed, lastError: 'missing_topicId' } });
+    const { formatLastError, FailureCode } = await import('@/lib/failureCodes');
+    const le = formatLastError(FailureCode.DEPENDENCY_MISSING, 'missing_topicId');
+    await prisma.hydrationJob.update({ where: { id: job.id }, data: { status: JobStatus.Failed, lastError: le } });
     throw new Error('missing_topicId');
   }
 
   // Verify topic exists
   const topic = await prisma.topicDef.findUnique({ where: { id: topicId } });
   if (!topic) {
-    await prisma.hydrationJob.update({ where: { id: job.id }, data: { status: JobStatus.Failed, lastError: 'topic_not_found' } });
+    const { formatLastError, FailureCode } = await import('@/lib/failureCodes');
+    const le = formatLastError(FailureCode.DEPENDENCY_MISSING, 'topic_not_found');
+    await prisma.hydrationJob.update({ where: { id: job.id }, data: { status: JobStatus.Failed, lastError: le } });
     throw new Error('topic_not_found');
   }
 
@@ -126,28 +130,49 @@ export async function handleAssembleJob(jobId: string): Promise<void> {
         }
       }
 
-      // Mark hydration job completed
-      await tx.hydrationJob.update({
-        where: { id: job.id },
-        data: { status: JobStatus.Completed, completedAt: new Date(), contentReady: assembledCount > 0 }
-      });
+      // Mark hydration job completed (workers only update their own HydrationJob)
+      await tx.hydrationJob.update({ where: { id: job.id }, data: { status: JobStatus.Completed, completedAt: new Date(), contentReady: assembledCount > 0 } });
 
-      // Mark linked ExecutionJob completed
-      const linked = await tx.executionJob.findFirst({
-        where: { payload: { path: ['hydrationJobId'], equals: job.id } }
-      });
+      // Emit JobExecutionLog for observability but DO NOT mutate ExecutionJob
+      const linked = await tx.executionJob.findFirst({ where: { payload: { path: ['hydrationJobId'], equals: job.id } } });
       if (linked) {
-        const prevStatus = linked.status;
-        await tx.executionJob.update({ where: { id: linked.id }, data: { status: 'completed', updatedAt: new Date() } });
-        await tx.jobExecutionLog.create({
-          data: { jobId: linked.id, event: 'COMPLETED', prevStatus, newStatus: 'completed', meta: { hydrationJobId: job.id, assembledCount } }
+        const prevStatus = linked.status ?? null;
+        await tx.jobExecutionLog.create({ data: { jobId: linked.id, event: 'COMPLETED', prevStatus, newStatus: prevStatus, meta: { hydrationJobId: job.id, assembledCount } } });
+      }
+
+      // Persist an AIContentLog entry for observability even though no LLM was called
+      try {
+        await tx.aIContentLog.create({
+          data: {
+            model: 'none',
+            promptType: 'assemble',
+            board: null,
+            grade: null,
+            subject: null,
+            topic: null,
+            language: job.language || 'en',
+            tokensIn: null,
+            tokensOut: null,
+            tokensUsed: null,
+            costUsd: 0,
+            success: true,
+            status: 'success',
+            requestBody: { jobId: job.id },
+            responseBody: { assembledCount }
+          }
         });
+      } catch {
+        // non-fatal
       }
 
       logger.info('handleAssembleJob: completed', { jobId, topicId, assembledCount });
     });
   } catch (err: any) {
-    await prisma.hydrationJob.update({ where: { id: job.id }, data: { status: JobStatus.Failed, lastError: err.message } });
+    const { formatLastError, inferFailureCodeFromMessage } = await import('@/lib/failureCodes');
+    const code = inferFailureCodeFromMessage(err?.message || '');
+    const le = formatLastError(code, String(err?.message || 'assemble_failed'));
+    await prisma.hydrationJob.update({ where: { id: job.id }, data: { status: JobStatus.Failed, lastError: le } });
+    try { await prisma.aIContentLog.create({ data: { model: 'none', promptType: 'assemble', language: job.language || 'en', success: false, status: 'failed', error: le, requestBody: { jobId: job.id }, responseBody: null } }) } catch {}
     throw err;
   }
 }

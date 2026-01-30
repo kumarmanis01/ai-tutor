@@ -143,7 +143,7 @@ describe('notesWorker structure', () => {
   });
 
   it('creates TopicNote records', () => {
-    expect(content).toContain('topicNote.create');
+    expect(content).toContain('topicNote.upsert');
   });
 
   it('marks HydrationJob completed', () => {
@@ -151,7 +151,7 @@ describe('notesWorker structure', () => {
   });
 
   it('marks linked ExecutionJob completed', () => {
-    expect(content).toContain("status: 'completed'");
+    expect(content).toContain("jobExecutionLog.create");
   });
 });
 
@@ -180,7 +180,7 @@ describe('questionsWorker structure', () => {
   });
 
   it('creates GeneratedTest records', () => {
-    expect(content).toContain('generatedTest.create');
+    expect(content).toContain('generatedTest.upsert');
   });
 
   it('supports difficulty parameter', () => {

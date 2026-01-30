@@ -14,6 +14,7 @@ import { submitJob } from '@/lib/execution-pipeline/submitJob';
 import { enqueueSyllabusHydration } from '@/hydrators/hydrateSyllabus';
 import { getServerSessionForHandlers } from '@/lib/session';
 import { JobStatus } from '@/lib/ai-engine/types';
+import { formatLastError, FailureCode } from '@/lib/failureCodes';
 
 export async function POST(req: Request, { params }: { params: { id: string; action: string } }) {
   try {
@@ -39,10 +40,11 @@ export async function POST(req: Request, { params }: { params: { id: string; act
       const adminId = session?.user?.id ?? null;
 
       logger.info('cancel action requested by admin', { jobId: id, prevStatus: job.status, actor: adminId });
-      const updated = await prisma.executionJob.update({ where: { id }, data: { status: JobStatus.Cancelled, lastError: 'Cancelled by admin' } });
+      const le = formatLastError(FailureCode.DB_WRITE_FAILED, 'cancelled_by_admin');
+      const updated = await prisma.executionJob.update({ where: { id }, data: { status: JobStatus.Cancelled, lastError: le } });
       logger.info('job status updated', { jobId: id, prevStatus: job.status, newStatus: updated.status });
       try {
-        await prisma.jobExecutionLog.create({ data: { jobId: id, event: 'CANCELLED', prevStatus: job.status, newStatus: updated.status, message: 'Cancelled by admin', meta: { actor: adminId } } });
+        await prisma.jobExecutionLog.create({ data: { jobId: id, event: 'CANCELLED', prevStatus: job.status, newStatus: updated.status, message: le, meta: { actor: adminId } } });
       } catch (e) {
         logger?.warn?.('admin.cancel: failed to write JobExecutionLog', { err: e, jobId: id });
       }

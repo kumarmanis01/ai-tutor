@@ -33,7 +33,8 @@ describe('handleSyllabusJob', () => {
 
     await handleSyllabusJob('job-1')
 
-    expect(prisma.hydrationJob.update).toHaveBeenCalledWith({ where: { id: 'job-1' }, data: { status: expect.anything(), lastError: 'missing_subjectId' } })
+    // lastError should follow structured pattern like "<ERROR_CODE>::<short message>"
+    expect(prisma.hydrationJob.update).toHaveBeenCalledWith({ where: { id: 'job-1' }, data: { status: expect.anything(), lastError: expect.stringMatching(/^[A-Z0-9_]+::.+/) } })
   })
 
   test('happy path creates chapters and topics and marks job completed', async () => {
@@ -61,7 +62,7 @@ describe('handleSyllabusJob', () => {
     expect(tx.chapterDef.create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ name: 'Numbers' }) }))
     expect(tx.topicDef.create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ name: 'Integers' }) }))
     expect(tx.hydrationJob.update).toHaveBeenCalledWith({ where: { id: 'job-2' }, data: { status: expect.anything(), completedAt: expect.anything(), contentReady: true } })
-    expect(tx.executionJob.update).toHaveBeenCalledWith({ where: { id: 'exec-1' }, data: { status: 'completed', updatedAt: expect.anything() } })
+    expect(tx.executionJob.update).not.toHaveBeenCalled()
     expect(tx.jobExecutionLog.create).toHaveBeenCalled()
   })
 })

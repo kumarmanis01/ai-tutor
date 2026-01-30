@@ -11,6 +11,7 @@ import fs from 'fs'
 import path from 'path'
 import { PrismaClient } from '@prisma/client'
 import { Queue } from 'bullmq'
+import { randomUUID } from 'crypto'
 
 function loadRedisUrl() {
   if (process.env.REDIS_URL) return process.env.REDIS_URL
@@ -82,7 +83,8 @@ async function main() {
         // Idempotent creation: check for existing pending/running HydrationJob
         let hydration = await prisma.hydrationJob.findFirst({ where: { jobType: 'syllabus', subjectId, grade, board, status: { in: ['pending','running'] } } })
         if (!hydration) {
-          hydration = await prisma.hydrationJob.create({ data: { jobType: 'syllabus', board, grade, subjectId, language, difficulty: 'medium', status: 'pending' } })
+          const generatedId = randomUUID()
+          hydration = await prisma.hydrationJob.create({ data: { id: generatedId, rootJobId: generatedId, jobType: 'syllabus', board, grade, subjectId, language, difficulty: 'medium', status: 'pending' } })
           console.log('[requeue] created HydrationJob', hydration.id, 'for ExecutionJob', job.id)
         } else {
           console.log('[requeue] reusing existing HydrationJob', hydration.id, 'for ExecutionJob', job.id)

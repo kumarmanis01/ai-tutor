@@ -90,8 +90,9 @@ describe('contentWorker lifecycle', () => {
       ;(prisma.hydrationJob.findUnique as jest.Mock).mockResolvedValueOnce(null)
       await callbacks['failed'](failedJob, err)
 
-      expect(prisma.executionJob.update).toHaveBeenCalledWith({ where: { id: 'exec-3' }, data: { status: 'failed', lastError: String(err?.message ?? err) } })
-      expect(prisma.jobExecutionLog.create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ event: 'FAILED' }) }))
+      // Workers should NOT mutate ExecutionJob state; they must emit FAILED audit logs instead
+      expect(prisma.executionJob.update).not.toHaveBeenCalled()
+      expect(prisma.jobExecutionLog.create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ event: 'FAILED', jobId: 'exec-3' }) }))
     })
   })
 })

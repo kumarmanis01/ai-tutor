@@ -24,7 +24,8 @@ const { PrismaClient } = require('@prisma/client');
     // 2) Create executionJob (pending) and cancel it -> auditLog
     const pendingJob = await prisma.executionJob.create({ data: { jobType: 'notes', entityType: 'TOPIC', entityId: topic.id, payload: {}, status: 'pending', maxAttempts: 3 } });
     await prisma.$transaction([
-      prisma.executionJob.update({ where: { id: pendingJob.id }, data: { status: 'cancelled', lastError: 'Cancelled by test' } }),
+      // Use structured lastError for audit consistency in tests
+      prisma.executionJob.update({ where: { id: pendingJob.id }, data: { status: 'cancelled', lastError: 'TEST_CANCELLED::Cancelled by test' } }),
       prisma.auditLog.create({ data: { userId: null, action: 'cancel_job', details: { jobId: pendingJob.id, prevStatus: 'pending' }, createdAt: new Date() } })
     ]);
     const cancelLogs = await prisma.auditLog.findMany({ where: { action: 'cancel_job', details: { path: ['jobId'], equals: pendingJob.id } } });
