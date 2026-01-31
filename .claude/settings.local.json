@@ -1,0 +1,22 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm run type-check:*)",
+      "Bash(npm run lint)",
+      "Bash(npm run lint:*)",
+      "Bash(powershell -Command:*)",
+      "Bash(lsof:*)",
+      "Bash(netstat:*)",
+      "Bash(npm run dev:fast:*)",
+      "Bash(export DATABASE_URL=\"postgresql://neondb_owner:npg_vhBb2taDM9NA@ep-mute-river-adsh4wmy-pooler.c-2.us-east-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require\")",
+      "Bash(npx prisma generate)",
+      "Bash(grep:*)",
+      "Bash(npx tsc:*)",
+      "Bash(npx next lint:*)",
+      "Bash(npx prettier:*)",
+      "Bash(npx jest:*)",
+      "Bash(npx eslint:*)",
+      "Bash(findstr:*)"
+    ]
+  }
+}

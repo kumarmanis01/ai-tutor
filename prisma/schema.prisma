@@ -912,25 +912,44 @@ model SystemSetting {
 }
 
 model HydrationJob {
-  id         String          @id @default(cuid())
-  jobType    JobType
-  board      String?
-  grade      Int?
-  subject    String?
-  subjectId  String?
-  chapterId  String?
-  topicId    String?
-  parentJobId String?
-  rootJobId   String
-  language   LanguageCode
-  difficulty DifficultyLevel
-  status     JobStatus       @default(pending)
-  attempts   Int             @default(0)
-  maxAttempts Int?           @default(3)
-  lockedAt   DateTime?
-  lastError  String?
-  completedAt DateTime?
-  contentReady Boolean       @default(false)
+  id              String          @id @default(cuid())
+  jobType         JobType
+  board           String?
+  grade           Int?
+  subject         String?
+  subjectId       String?
+  chapterId       String?
+  topicId         String?
+  parentJobId     String?
+  rootJobId       String?
+  hierarchyLevel  Int             @default(0)
+  language        LanguageCode
+  difficulty      DifficultyLevel
+  status          JobStatus       @default(pending)
+  attempts        Int             @default(0)
+  maxAttempts     Int?            @default(3)
+  lockedAt        DateTime?
+  lastError       String?
+  completedAt     DateTime?
+  contentReady    Boolean         @default(false)
+  inputParams     Json?
+  traceId         String?
+
+  // Progress tracking (updated by reconciler)
+  chaptersExpected   Int          @default(0)
+  chaptersCompleted  Int          @default(0)
+  topicsExpected     Int          @default(0)
+  topicsCompleted    Int          @default(0)
+  notesExpected      Int          @default(0)
+  notesCompleted     Int          @default(0)
+  questionsExpected  Int          @default(0)
+  questionsCompleted Int          @default(0)
+
+  // Cost tracking
+  estimatedCostUsd      Float?
+  actualCostUsd         Float?    @default(0)
+  estimatedDurationMins Int?
+
   createdAt  DateTime        @default(now())
   updatedAt  DateTime        @updatedAt
 
@@ -938,6 +957,7 @@ model HydrationJob {
   @@index([parentJobId])
   @@index([rootJobId])
   @@index([lockedAt])
+  @@index([hierarchyLevel])
 }
 
 model Outbox {

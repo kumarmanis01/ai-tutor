@@ -208,13 +208,13 @@ export async function handleSyllabusJob(jobId: string) {
       throw lastErr;
     };
 
-    // Single transaction for creating chapters/topics, persisting AIContentLog, and marking hydration job completed
-    await runTxWithRetry(async (tx) => {
-      // Create chapters and topics atomically
-      for (const ch of parsed.chapters) {
+    // To avoid long-lived interactive transactions (which can fail under certain DB poolers),
+    // perform per-chapter transactions and a short final transaction for logging/completion.
+    for (const ch of parsed.chapters) {
+      await runTxWithRetry(async (tx) => {
         const slug = toSlug(ch.title);
         const exists = await tx.chapterDef.findFirst({ where: { subjectId: subjectId as string, slug } });
-        if (exists) continue;
+        if (exists) return;
 
         const chapter = await tx.chapterDef.create({
           data: {
@@ -246,9 +246,11 @@ export async function handleSyllabusJob(jobId: string) {
             createdTopicIds.push(topic.id);
           }
         }
-      }
+      });
+    }
 
-      // Persist AIContentLog inside the same transaction to ensure atomicity
+    // Short final transaction: persist AIContentLog and mark hydration job completed.
+    await runTxWithRetry(async (tx) => {
       if (typeof tx.aIContentLog?.create === 'function') {
         await tx.aIContentLog.create({ data: {
           model: llmResult?.model || 'llm',
@@ -271,12 +273,10 @@ export async function handleSyllabusJob(jobId: string) {
         } });
       }
 
-      // Mark hydration job completed and update linked ExecutionJob atomically
       await tx.hydrationJob.update({ where: { id: job.id }, data: { status: JobStatus.Completed, completedAt: new Date(), contentReady: true } });
       const linked = await tx.executionJob.findFirst({ where: { payload: { path: ['hydrationJobId'], equals: job.id } } });
       if (linked) {
         const prevStatus = linked.status ?? null;
-        // Do NOT update ExecutionJob state from workers; emit audit log only.
         await tx.jobExecutionLog.create({ data: { jobId: linked.id, event: 'COMPLETED', prevStatus, newStatus: prevStatus, meta: { hydrationJobId: job.id } } });
       }
     });

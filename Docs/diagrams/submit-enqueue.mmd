@@ -1,0 +1,21 @@
+sequenceDiagram
+    participant UI as Frontend Admin UI
+    participant API as API Server
+    participant DB as Postgres
+    participant Outbox as Outbox Table
+    participant Dispatcher as Outbox Dispatcher
+    participant Queue as Redis/BullMQ
+
+    UI->>API: POST /api/hydrateAll (scope, user, traceId)
+    API->>DB: BEGIN TRANSACTION
+    DB-->>API: txStarted
+    API->>DB: INSERT INTO hydration_jobs (root, status=Pending, createdBy, meta)
+    API->>DB: INSERT INTO outbox (payload, kind, jobId)
+    DB->>API: COMMIT
+    API-->>UI: 202 Accepted { rootJobId }
+    loop Dispatcher polls
+      Dispatcher->>DB: SELECT * FROM outbox WHERE sentAt IS NULL FOR UPDATE SKIP LOCKED LIMIT N
+      DB-->>Dispatcher: rows
+      Dispatcher->>Queue: enqueue(payload)
+      Dispatcher->>DB: UPDATE outbox SET sentAt=now(), attempts=attempts+1 WHERE id IN (...)
+    end

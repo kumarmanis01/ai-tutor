@@ -1,0 +1,48 @@
+# Dependencies
+node_modules/
+.pnp/
+.yarn/
+
+# Build outputs
+dist/
+build/
+out/
+.next/
+
+# Cache
+.cache/
+.turbo/
+.eslintcache
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Test coverage
+coverage/
+
+# Prisma
+prisma/migrations/*
+!prisma/migrations/.gitkeep
+
+# Large files
+*.mp4
+*.mov
+*.avi
+*.zip
+*.tar.gz
