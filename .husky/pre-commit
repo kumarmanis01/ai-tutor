@@ -3,8 +3,6 @@
 
 # Prevent accidental commit of .env.production
 bash scripts/prevent-env-commit.sh
-#!/usr/bin/env sh
-. "$(dirname "$0")/_/husky.sh"
 
 # Allow CI/operators to bypass hooks by setting SKIP_HOOKS=1
 if [ "${SKIP_HOOKS:-0}" = "1" ] || [ "${HUSKY_SKIP_HOOKS:-0}" = "1" ]; then
@@ -12,20 +10,23 @@ if [ "${SKIP_HOOKS:-0}" = "1" ] || [ "${HUSKY_SKIP_HOOKS:-0}" = "1" ]; then
   exit 0;
 fi
 
-# Run custom ESLint rule tests then lint-staged
+echo "Running pre-commit runner (logs via project logger)..."
 echo "Running ESLint custom rule tests..."
-npm run test:eslint-rules || {
-  echo "Custom ESLint rule tests failed" && exit 1
-}
+npm run test:eslint-rules || { echo "Custom ESLint rule tests failed" && exit 1; }
 
 echo "Running lint-staged..."
-npx --no-install lint-staged || {
-  echo "lint-staged failed" && exit 1
-}
+npx --no-install lint-staged || { echo "lint-staged failed" && exit 1; }
+
+echo "Running lint..."
+npm run lint || { echo "lint failed" && exit 1; }
+
+echo "Running type-check..."
+npm run type-check || { echo "type-check failed" && exit 1; }
+
+echo "Running build..."
+npm run build || { echo "build failed" && exit 1; }
 
 echo "Running unit tests..."
-npm run test:unit || {
-  echo "unit tests failed" && exit 1
-}
+npm run test:unit || { echo "unit tests failed" && exit 1; }
 
 echo "Pre-commit checks passed"
