@@ -3,7 +3,6 @@
 import React, { createContext, useCallback, useContext, useMemo, useState } from 'react';
 import { logger } from '@/lib/logger';
 import useCurrentUser from '@/hooks/useCurrentUser';
-// Using local StubNotesService below for development stubs
 
 export type NoteSubject = { name: string; meta: string };
 export type NoteEntry = { id: string; title: string };
@@ -14,38 +13,6 @@ export interface NotesService {
   fetchDownloaded(): Promise<NoteEntry[]>;
   fetchRecentlyAdded(): Promise<NoteEntry[]>;
 }
-
-class StubNotesService implements NotesService {
-  async fetchSubjects(_classId?: string) {
-    return [
-      { name: 'Mathematics', meta: '24 chapters' },
-      { name: 'Science', meta: '18 chapters' },
-      { name: 'English', meta: '12 chapters' },
-      { name: 'Social Studies', meta: '15 chapters' },
-    ];
-  }
-  async fetchBookmarked() {
-    return [
-      { id: 'b1', title: 'Triangles & Properties' },
-      { id: 'b2', title: 'Photosynthesis Process' },
-      { id: 'b3', title: 'Grammar Rules' },
-    ];
-  }
-  async fetchDownloaded() {
-    return [
-      { id: 'd1', title: 'Algebra Basics' },
-      { id: 'd2', title: 'Chemical Reactions' },
-    ];
-  }
-  async fetchRecentlyAdded() {
-    return [
-      { id: 'r1', title: 'Latest notes from your syllabus' },
-    ];
-  }
-}
-
-// Prevent unused class warning when not injected
-void StubNotesService;
 
 export class HttpNotesService implements NotesService {
   async fetchSubjects(classId?: string) {

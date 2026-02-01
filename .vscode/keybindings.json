@@ -1,0 +1,22 @@
+[
+  {
+    "key": "ctrl+shift+c",
+    "command": "claude.chat.open",
+    "when": "editorTextFocus"
+  },
+  {
+    "key": "ctrl+shift+e",
+    "command": "claude.explain",
+    "when": "editorHasSelection"
+  },
+  {
+    "key": "ctrl+shift+r",
+    "command": "claude.refactor",
+    "when": "editorHasSelection"
+  },
+  {
+    "key": "ctrl+shift+t",
+    "command": "claude.test.generate",
+    "when": "editorTextFocus"
+  }
+]

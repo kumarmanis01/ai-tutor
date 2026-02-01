@@ -74,10 +74,27 @@ services:
       - .env.production
     environment:
       - HUSKY_SKIP_INSTALL=1
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-pass}@postgres:${POSTGRES_PORT:-5432}/${POSTGRES_DB:-ai_dev}
     command: sh -c "node dist/worker/entry.js"
     depends_on:
       - postgres
       - redis
+
+  scheduler:
+    build:
+      context: .
+      dockerfile: Dockerfile.prod
+    image: ai-tutor-scheduler:prod
+    working_dir: /app
+    restart: unless-stopped
+    env_file:
+      - .env.production
+    environment:
+      - HUSKY_SKIP_INSTALL=1
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-pass}@postgres:${POSTGRES_PORT:-5432}/${POSTGRES_DB:-ai_dev}
+    command: sh -c "node dist/worker/scheduler.js"
+    depends_on:
+      - postgres
 
 volumes:
   postgres_data:

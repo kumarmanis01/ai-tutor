@@ -8,11 +8,12 @@
  * - tests/unit/app/dashboard/components/StudentHomeDashboard.spec.ts
  *
  * EDIT LOG:
+ * - 2026-02-01 | claude  | read URL tab param, pass onNavigate to FeatureGrid
  * - 2025-01-23 | copilot | refactored for responsive design - mobile + desktop viewports
  * - 2025-01-XX | copilot | added test nudge prompt component
  * - 2025-01-22 | copilot | optimized for mobile-first with streamlined UX
  */
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import TopBar from './TopBar';
 import useCurrentUser from '@/hooks/useCurrentUser';
 import { useGlobalLoader } from '@/context/GlobalLoaderProvider';
@@ -74,6 +75,21 @@ const StudentHomeDashboard: React.FC<StudentHomeDashboardProps> = () => {
   const { data: profile, loading } = useCurrentUser();
   const studentName = profile?.name ?? 'Student';
   const { startLoading, stopLoading } = useGlobalLoader();
+
+  // Read tab from URL search params (e.g. /dashboard?tab=notes&noteId=xxx)
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const params = new URLSearchParams(window.location.search);
+    const tab = params.get('tab');
+    if (tab === 'tests' || tab === 'notes' || tab === 'profile') {
+      setActiveTab(tab);
+    }
+  }, []);
+
+  // Callback for in-page tab navigation (used by FeatureGrid)
+  const navigateToTab = useCallback((tab: 'home' | 'tests' | 'notes' | 'profile') => {
+    setActiveTab(tab);
+  }, []);
 
   // Use global loader overlay while canonical profile is being fetched.
   useEffect(() => {
@@ -172,7 +188,7 @@ const StudentHomeDashboard: React.FC<StudentHomeDashboardProps> = () => {
             </CollapsibleSection>
 
             <CollapsibleSection title="⚡ Quick Access" defaultOpen={false}>
-              <FeatureGrid />
+              <FeatureGrid onNavigate={navigateToTab} />
               <div className="mt-4">
                 <ParentModeCard />
               </div>
@@ -211,7 +227,7 @@ const StudentHomeDashboard: React.FC<StudentHomeDashboardProps> = () => {
             <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
               <span>⚡</span> Quick Access
             </h3>
-            <FeatureGrid />
+            <FeatureGrid onNavigate={navigateToTab} />
             <div className="mt-4">
               <ParentModeCard />
             </div>
