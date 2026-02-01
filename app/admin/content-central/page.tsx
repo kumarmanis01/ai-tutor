@@ -71,7 +71,7 @@ export default function AdminContentCentralPage() {
                   <div className="flex items-center justify-between">
                     <div>
                       <div className="font-medium">{item.label}</div>
-                      <div className="text-xs text-gray-500">{item.type} • {item.metadata?.subjectName || item.details?.subject}</div>
+                      <div className="text-xs text-gray-500">{item.type} • {item.metadata?.subjectName || item.metadata?.subject || item.details?.subject}</div>
                     </div>
                     <div className="text-sm text-gray-400">{new Date(item.createdAt || item.metadata?.createdAt || item.updatedAt || Date.now()).toLocaleString()}</div>
                   </div>
@@ -116,13 +116,111 @@ export default function AdminContentCentralPage() {
                 <div>
                   <div className="mb-4">
                     <div className="text-lg font-semibold">{previewDetail.title || previewDetail.label || 'Preview'}</div>
-                    <div className="text-sm text-gray-500">{previewDetail.type || ''} • {previewDetail.metadata?.subjectName || previewDetail.details?.subject}</div>
+                    <div className="text-sm text-gray-500">
+                      {previewDetail.type || ''}
+                      {(previewDetail.metadata?.subjectName || previewDetail.metadata?.subject || previewDetail.details?.subject) &&
+                        ` • ${previewDetail.metadata?.subjectName || previewDetail.metadata?.subject || previewDetail.details?.subject}`}
+                    </div>
+                    {previewDetail.metadata?.status && (
+                      <span className={`inline-block mt-1 text-xs px-2 py-0.5 rounded ${previewDetail.metadata.status === 'approved' ? 'bg-green-100 text-green-800' : previewDetail.metadata.status === 'draft' ? 'bg-yellow-100 text-yellow-800' : 'bg-gray-100 text-gray-600'}`}>
+                        {previewDetail.metadata.status}
+                      </span>
+                    )}
                   </div>
 
-                  {/* Render content similar to student view */}
+                  {/* Metadata info for all types */}
+                  {previewDetail.metadata && (
+                    <div className="mb-4 text-sm text-gray-600 dark:text-gray-400 space-y-1">
+                      {previewDetail.metadata.chapterName && <div><span className="font-medium">Chapter:</span> {previewDetail.metadata.chapterName}</div>}
+                      {previewDetail.metadata.topicName && <div><span className="font-medium">Topic:</span> {previewDetail.metadata.topicName}</div>}
+                      {previewDetail.metadata.order != null && <div><span className="font-medium">Order:</span> {previewDetail.metadata.order}</div>}
+                      {previewDetail.metadata.language && <div><span className="font-medium">Language:</span> {previewDetail.metadata.language}</div>}
+                      {previewDetail.metadata.difficulty && <div><span className="font-medium">Difficulty:</span> {previewDetail.metadata.difficulty}</div>}
+                      {previewDetail.metadata.version != null && <div><span className="font-medium">Version:</span> {previewDetail.metadata.version}</div>}
+                    </div>
+                  )}
+
+                  {/* Topic: show notes and tests lists */}
+                  {previewDetail.type === 'topic' && previewDetail.metadata && (
+                    <div className="space-y-4">
+                      <div className="flex gap-4 text-sm">
+                        <div className="bg-blue-50 dark:bg-blue-900/30 px-3 py-2 rounded">
+                          <span className="font-semibold text-blue-700 dark:text-blue-300">{previewDetail.metadata.noteCount ?? 0}</span> Notes
+                        </div>
+                        <div className="bg-purple-50 dark:bg-purple-900/30 px-3 py-2 rounded">
+                          <span className="font-semibold text-purple-700 dark:text-purple-300">{previewDetail.metadata.testCount ?? 0}</span> Tests
+                        </div>
+                      </div>
+                      {previewDetail.metadata.notes?.length > 0 && (
+                        <div>
+                          <h4 className="font-medium text-sm mb-2">Notes</h4>
+                          <ul className="space-y-1">
+                            {previewDetail.metadata.notes.map((n: any) => (
+                              <li key={n.id} className="text-sm p-2 bg-gray-50 dark:bg-gray-800 rounded flex justify-between">
+                                <span>{n.language} (v{n.version})</span>
+                                <span className={`text-xs px-2 py-0.5 rounded ${n.status === 'approved' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>{n.status}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                      {previewDetail.metadata.tests?.length > 0 && (
+                        <div>
+                          <h4 className="font-medium text-sm mb-2">Tests</h4>
+                          <ul className="space-y-1">
+                            {previewDetail.metadata.tests.map((t: any) => (
+                              <li key={t.id} className="text-sm p-2 bg-gray-50 dark:bg-gray-800 rounded flex justify-between">
+                                <span>{t.difficulty} • {t.language}</span>
+                                <span className={`text-xs px-2 py-0.5 rounded ${t.status === 'approved' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>{t.status}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Chapter: show topics list */}
+                  {previewDetail.type === 'chapter' && previewDetail.topics?.length > 0 && (
+                    <div>
+                      <h4 className="font-medium text-sm mb-2">Topics ({previewDetail.metadata?.topicCount ?? previewDetail.topics.length})</h4>
+                      <ul className="space-y-1">
+                        {previewDetail.topics.map((t: any) => (
+                          <li key={t.id} className="text-sm p-2 bg-gray-50 dark:bg-gray-800 rounded">
+                            {t.order}. {t.name}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
+                  {/* Syllabus: show chapters list */}
+                  {previewDetail.type === 'syllabus' && previewDetail.chapters?.length > 0 && (
+                    <div>
+                      <h4 className="font-medium text-sm mb-2">Chapters ({previewDetail.metadata?.chapterCount ?? previewDetail.chapters.length})</h4>
+                      <ul className="space-y-1">
+                        {previewDetail.chapters.map((c: any) => (
+                          <li key={c.id} className="text-sm p-2 bg-gray-50 dark:bg-gray-800 rounded">
+                            {c.order}. {c.name}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
+                  {/* Note: render contentJson sections */}
                   {previewDetail.contentJson ? (
                     typeof previewDetail.contentJson === 'string' ? (
                       <div className="prose dark:prose-invert max-w-none" dangerouslySetInnerHTML={{ __html: previewDetail.contentJson }} />
+                    ) : previewDetail.contentJson.sections ? (
+                      <div className="space-y-4">
+                        {previewDetail.contentJson.sections.map((s: any, i: number) => (
+                          <div key={i}>
+                            <h4 className="font-semibold text-base mb-1">{s.heading}</h4>
+                            <p className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap">{s.content}</p>
+                          </div>
+                        ))}
+                      </div>
                     ) : (
                       <pre className="text-sm bg-white dark:bg-gray-900 p-4 rounded overflow-x-auto whitespace-pre-wrap">{JSON.stringify(previewDetail.contentJson, null, 2)}</pre>
                     )
@@ -139,11 +237,22 @@ export default function AdminContentCentralPage() {
                             <span className="flex-shrink-0 w-8 h-8 bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 rounded-full flex items-center justify-center font-semibold text-sm">{idx+1}</span>
                             <div className="flex-1">
                               <p className="font-medium mb-2">{q.question}</p>
-                              {q.options && q.options.map((opt: string, i: number) => (
-                                <div key={i} className={`p-2 rounded border ${Array.isArray(q.answer) ? (q.answer.includes(opt) ? 'bg-green-50 border-green-300' : 'bg-white border-gray-200') : (q.answer === opt ? 'bg-green-50 border-green-300' : 'bg-white border-gray-200')}`}>
-                                  <span className="font-medium mr-2">{String.fromCharCode(65+i)}.</span>{opt}
-                                </div>
-                              ))}
+                              {q.options && typeof q.options === 'object' && !Array.isArray(q.options) ? (
+                                Object.entries(q.options).map(([key, val]: [string, any]) => (
+                                  <div key={key} className={`p-2 rounded border mb-1 ${q.answer?.correct === key ? 'bg-green-50 border-green-300' : 'bg-white dark:bg-gray-900 border-gray-200'}`}>
+                                    <span className="font-medium mr-2">{key}.</span>{String(val)}
+                                  </div>
+                                ))
+                              ) : q.options && Array.isArray(q.options) ? (
+                                q.options.map((opt: string, i: number) => (
+                                  <div key={i} className={`p-2 rounded border mb-1 ${Array.isArray(q.answer) ? (q.answer.includes(opt) ? 'bg-green-50 border-green-300' : 'bg-white border-gray-200') : (q.answer === opt ? 'bg-green-50 border-green-300' : 'bg-white border-gray-200')}`}>
+                                    <span className="font-medium mr-2">{String.fromCharCode(65+i)}.</span>{opt}
+                                  </div>
+                                ))
+                              ) : null}
+                              {q.answer?.explanation && (
+                                <div className="mt-2 text-sm text-gray-500 italic">{q.answer.explanation}</div>
+                              )}
                             </div>
                           </div>
                         </div>

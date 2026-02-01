@@ -231,6 +231,68 @@ async function findOrCreateSubject(
 }
 
 // ============================================
+// GET Handler - List Root Jobs
+// ============================================
+
+export async function GET(request: NextRequest) {
+  try {
+    const session = await getServerSession(authOptions);
+    if (!session?.user || session.user.role !== 'admin') {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
+    const url = new URL(request.url);
+    const status = url.searchParams.get('status');
+
+    const where: any = { rootJobId: null };
+    if (status && status !== 'all') {
+      where.status = status;
+    }
+
+    const jobs = await prisma.hydrationJob.findMany({
+      where,
+      orderBy: { createdAt: 'desc' },
+      take: 50,
+    });
+
+    const jobSummaries = jobs.map((job) => {
+      const chaptersExp = job.chaptersExpected || 0;
+      const topicsExp = job.topicsExpected || 0;
+      const notesExp = job.notesExpected || 0;
+      const questionsExp = job.questionsExpected || 0;
+      const chaptersComp = job.chaptersCompleted || 0;
+      const topicsComp = job.topicsCompleted || 0;
+      const notesComp = job.notesCompleted || 0;
+      const questionsComp = job.questionsCompleted || 0;
+
+      const totalExp = chaptersExp + topicsExp + notesExp + questionsExp;
+      const totalComp = chaptersComp + topicsComp + notesComp + questionsComp;
+      const overall = totalExp > 0 ? Math.round((totalComp / totalExp) * 100) : 0;
+
+      return {
+        id: job.id,
+        status: job.status,
+        metadata: {
+          board: job.board || 'unknown',
+          grade: job.grade || 0,
+          subject: job.subject || 'unknown',
+          language: job.language || 'en',
+        },
+        createdAt: job.createdAt.toISOString(),
+        completedAt: job.completedAt?.toISOString() || null,
+        progress: { overall },
+        cost: { actual: job.actualCostUsd || null },
+      };
+    });
+
+    return NextResponse.json({ jobs: jobSummaries });
+  } catch (error: any) {
+    logger.error('Failed to list HydrateAll jobs', { error: error.message });
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  }
+}
+
+// ============================================
 // POST Handler
 // ============================================
 

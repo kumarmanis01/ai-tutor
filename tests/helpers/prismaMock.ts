@@ -42,6 +42,8 @@ export const prismaMock = {
   generatedQuestion: mockModel(),
   auditLog: mockModel(),
   user: mockModel(),
+  systemSetting: mockModel(),
+  syllabus: mockModel(),
   $transaction: jest.fn().mockName('$transaction'),
   $executeRaw: jest.fn().mockName('$executeRaw'),
 };

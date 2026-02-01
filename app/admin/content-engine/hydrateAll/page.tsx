@@ -93,15 +93,7 @@ export default function HydrateAllPage() {
 
         {activeTab === 'monitor' && (
           <div className="p-6">
-            {selectedJobId ? (
-              <ProgressDashboard jobId={selectedJobId} />
-            ) : (
-              <div className="text-center py-12">
-                <p className="text-gray-500">
-                  No job selected. Submit a new job or select from history.
-                </p>
-              </div>
-            )}
+            <MonitorTab selectedJobId={selectedJobId} onSelectJob={setSelectedJobId} />
           </div>
         )}
 
@@ -124,6 +116,72 @@ export default function HydrateAllPage() {
 }
 
 /**
+ * Monitor tab: shows a job picker + progress dashboard for the selected job
+ */
+function MonitorTab({
+  selectedJobId,
+  onSelectJob,
+}: {
+  selectedJobId: string | null;
+  onSelectJob: (id: string) => void;
+}) {
+  const [jobs, setJobs] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetch('/api/admin/hydrateAll')
+      .then((r) => r.json())
+      .then((data) => {
+        const list = data.jobs || [];
+        setJobs(list);
+        // Auto-select the most recent running job, or the most recent job
+        if (!selectedJobId && list.length > 0) {
+          const running = list.find((j: any) => j.status === 'running');
+          onSelectJob(running ? running.id : list[0].id);
+        }
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  if (loading) {
+    return <div className="text-center py-8 text-gray-500">Loading jobs...</div>;
+  }
+
+  if (jobs.length === 0) {
+    return (
+      <div className="text-center py-12 text-gray-500">
+        No jobs found. Submit a new job first.
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      {/* Job Selector */}
+      <div className="mb-4 flex items-center gap-3">
+        <label className="text-sm font-medium text-gray-700">Select Job:</label>
+        <select
+          value={selectedJobId || ''}
+          onChange={(e) => onSelectJob(e.target.value)}
+          className="flex-1 max-w-md rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm py-2 px-3 border"
+        >
+          {jobs.map((j: any) => (
+            <option key={j.id} value={j.id}>
+              {j.metadata.subject} Gr.{j.metadata.grade} ({j.metadata.board}) — {j.status} — {j.progress.overall}% — {j.id.slice(0, 10)}...
+            </option>
+          ))}
+        </select>
+      </div>
+
+      {/* Progress Dashboard */}
+      {selectedJobId && <ProgressDashboard jobId={selectedJobId} />}
+    </div>
+  );
+}
+
+/**
  * Quick statistics component
  */
 function QuickStats() {
@@ -138,7 +196,9 @@ function QuickStats() {
     // Fetch stats from API
     fetch('/api/admin/hydrateAll/stats')
       .then((res) => res.json())
-      .then((data) => setStats(data))
+      .then((data) => {
+        if (data && typeof data.totalJobs === 'number') setStats(data);
+      })
       .catch(() => { /* stats fetch is best-effort; failures are silently ignored */ });
   }, []);
 
@@ -147,7 +207,7 @@ function QuickStats() {
       <StatCard title="Total Jobs" value={stats.totalJobs} icon="📊" />
       <StatCard title="Running Now" value={stats.runningJobs} icon="⚙️" highlight />
       <StatCard title="Completed Today" value={stats.completedToday} icon="✅" />
-      <StatCard title="Cost Today" value={`$${stats.totalCostToday.toFixed(2)}`} icon="💰" />
+      <StatCard title="Cost Today" value={`$${(stats.totalCostToday ?? 0).toFixed(2)}`} icon="💰" />
     </div>
   );
 }
