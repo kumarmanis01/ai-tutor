@@ -12,31 +12,6 @@ export interface TestsService {
   fetchRecentResults(): Promise<TestResult[]>;
 }
 
-class StubTestsService implements TestsService {
-  async fetchRecommended(subject: string) {
-    return [
-      { id: 't1', title: 'Algebra Practice Set', subject },
-      { id: 't2', title: 'Geometry Basics Quiz', subject },
-      { id: 't3', title: 'Science Chapter Test', subject },
-    ];
-  }
-  async fetchUpcoming(subject: string) {
-    return [
-      { id: 'u1', title: 'Upcoming: Fractions Drill', subject },
-      { id: 'u2', title: 'Upcoming: Plant Cells Quiz', subject },
-    ];
-  }
-  async fetchRecentResults() {
-    return [
-      { id: 'r1', title: 'Algebra Practice Set', score: 82, date: new Date().toISOString() },
-      { id: 'r2', title: 'Geometry Basics Quiz', score: 75, date: new Date().toISOString() },
-    ];
-  }
-}
-
-// Prevent unused class warning in lint when not injected
-void StubTestsService;
-
 export class HttpTestsService implements TestsService {
   async fetchRecommended(subject: string, grade?: string, board?: string) {
     const qs = new URLSearchParams({ subject, ...(grade ? { grade } : {}), ...(board ? { board } : {}) });

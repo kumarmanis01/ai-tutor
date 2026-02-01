@@ -21,7 +21,10 @@
       "Bash(npx ts-node:*)",
       "Bash(npx tsx:*)",
       "Bash(node:*)",
-      "Bash(status \")"
+      "Bash(status \")",
+      "Bash(docker compose:*)",
+      "Bash(npm test:*)",
+      "Bash(git add:*)"
     ]
   }
 }

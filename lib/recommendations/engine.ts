@@ -54,21 +54,29 @@ interface UserSignals {
     activeHours: number[];
     typeCounts: Record<string, number>;
   };
+  engagementByType: Record<string, {
+    shown: number;
+    clicked: number;
+    completed: number;
+    ignored: number;
+  }>;
 }
 
 /**
  * Score weights for different recommendation signals
  */
 const SCORE_WEIGHTS = {
-  PROFILE_MATCH: 30,           // Matches user's board/grade/subjects
-  WEAK_SUBJECT_BOOST: 25,      // Content in subjects user struggles with
-  LOW_SCORE_CHAPTER: 20,       // Chapters where user scored poorly
-  RECENT_TOPIC_RELEVANCE: 15,  // Related to recently studied topics
-  INCOMPLETE_SESSION: 35,      // Resume incomplete learning
-  DIFFICULTY_MATCH: 10,        // Matches preferred difficulty
-  FRESHNESS: 5,                // Newer content gets slight boost
-  ENGAGEMENT_HISTORY: 10,      // Based on past engagement patterns
-  PEER_POPULARITY: 5,          // Popular among similar users
+  PROFILE_MATCH: 30,              // Matches user's board/grade/subjects
+  WEAK_SUBJECT_BOOST: 25,         // Content in subjects user struggles with
+  LOW_SCORE_CHAPTER: 20,          // Chapters where user scored poorly
+  RECENT_TOPIC_RELEVANCE: 15,     // Related to recently studied topics
+  INCOMPLETE_SESSION: 35,         // Resume incomplete learning
+  DIFFICULTY_MATCH: 10,           // Matches preferred difficulty
+  FRESHNESS: 5,                   // Newer content gets slight boost
+  ENGAGEMENT_HISTORY: 10,         // Based on past engagement patterns
+  PEER_POPULARITY: 5,             // Popular among similar users
+  POSITIVE_ENGAGEMENT_BOOST: 15,  // High engagement with similar content type
+  NEGATIVE_ENGAGEMENT_PENALTY: -20, // Frequently ignored content type
 };
 
 /**
@@ -118,8 +126,8 @@ export class RecommendationEngine {
    * Gather all user signals for recommendation scoring
    */
   private async gatherUserSignals(): Promise<UserSignals> {
-    const [user, profile, testResults, sessions, completedRecs] = await Promise.all([
-      prisma.user.findUnique({ 
+    const [user, profile, testResults, sessions, completedRecs, engagementHistory] = await Promise.all([
+      prisma.user.findUnique({
         where: { id: this.userId },
         select: { board: true, grade: true, language: true, subjects: true }
       }),
@@ -158,6 +166,17 @@ export class RecommendationEngine {
       prisma.contentRecommendation.findMany({
         where: { userId: this.userId, isCompleted: true },
         select: { contentId: true }
+      }),
+      // NEW: Get engagement history for feedback loop
+      prisma.contentRecommendation.findMany({
+        where: { userId: this.userId },
+        select: {
+          contentId: true,
+          isShown: true,
+          isClicked: true,
+          isCompleted: true,
+          isIgnored: true,
+        }
       })
     ]);
 
@@ -210,13 +229,27 @@ export class RecommendationEngine {
     const activeHours = [...new Set(sessionHours)].slice(0, 5) as number[];
 
     // Build set of completed content IDs for exclusion
-    const completedContentIds = new Set(completedRecs.map(r => r.contentId));
+    const completedContentIds = new Set<string>(completedRecs.map(r => String(r.contentId)));
 
     // Count engagement by activity type for ENGAGEMENT_HISTORY scoring
     const typeCounts: Record<string, number> = {};
     for (const s of sessions) {
       const t = s.activityType?.toLowerCase() || 'other';
       typeCounts[t] = (typeCounts[t] || 0) + 1;
+    }
+
+    // NEW: Calculate engagement metrics by content type for feedback loop
+    const engagementByType: Record<string, { shown: number; clicked: number; completed: number; ignored: number }> = {};
+    for (const rec of engagementHistory) {
+      // Extract content type from contentId (format: "type:id" or just "id")
+      const type = rec.contentId.includes(':') ? rec.contentId.split(':')[0] : 'catalog';
+      if (!engagementByType[type]) {
+        engagementByType[type] = { shown: 0, clicked: 0, completed: 0, ignored: 0 };
+      }
+      if (rec.isShown) engagementByType[type].shown++;
+      if (rec.isClicked) engagementByType[type].clicked++;
+      if (rec.isCompleted) engagementByType[type].completed++;
+      if (rec.isIgnored) engagementByType[type].ignored++;
     }
 
     return {
@@ -235,7 +268,8 @@ export class RecommendationEngine {
         averageSessionDuration,
         activeHours,
         typeCounts
-      }
+      },
+      engagementByType
     };
   }
 
@@ -550,6 +584,34 @@ export class RecommendationEngine {
     if (typeCounts[candidateActivityType] && typeCounts[candidateActivityType] >= 3) {
       score += SCORE_WEIGHTS.ENGAGEMENT_HISTORY;
       reasons.push('Matches your learning preferences');
+    }
+
+    // 11. NEW: Engagement-based feedback loop adjustments
+    const candidateSource = candidate.source;
+    const engagement = this.signals.engagementByType[candidateSource];
+
+    if (engagement && engagement.shown > 0) {
+      const clickThroughRate = engagement.clicked / engagement.shown;
+      const completionRate = engagement.completed / engagement.shown;
+      const ignoreRate = engagement.ignored / engagement.shown;
+
+      // Boost if high engagement with this content type
+      if (engagement.shown >= 5 && clickThroughRate > 0.5) {
+        score += SCORE_WEIGHTS.POSITIVE_ENGAGEMENT_BOOST;
+        reasons.push('You engage well with this content type');
+      }
+
+      // Boost if high completion rate
+      if (engagement.clicked >= 3 && completionRate > 0.6) {
+        score += Math.round(SCORE_WEIGHTS.POSITIVE_ENGAGEMENT_BOOST * 0.5);
+        reasons.push('High completion rate for this type');
+      }
+
+      // Penalize if frequently ignored
+      if (engagement.shown >= 5 && ignoreRate > 0.3) {
+        score += SCORE_WEIGHTS.NEGATIVE_ENGAGEMENT_PENALTY;
+        // Don't add negative reason to avoid discouraging users
+      }
     }
 
     // Ensure minimum reasoning
