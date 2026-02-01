@@ -27,7 +27,8 @@ MIGRATE_LOG="$LOG_DIR/migrate-$(date -u +%Y%m%dT%H%M%SZ).log"
 
 ROOT_DIR=$(cd "$(dirname "$0")/.." && pwd)
 ENV_FILE="$ROOT_DIR/.env.production"
-if [ -f "$ENV_FILE" ]; then
+# Only load .env.production if DATABASE_URL is not already set (e.g., by docker-compose)
+if [ -f "$ENV_FILE" ] && [ -z "$DATABASE_URL" ]; then
   echo "[run-migrate] loading $ENV_FILE"
   # export all variables for the script (POSIX-friendly)
   # normalize line endings in the env file (may have CRLF on Windows hosts)

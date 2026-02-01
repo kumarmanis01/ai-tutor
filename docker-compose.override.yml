@@ -1,0 +1,18 @@
+version: '3.8'
+
+services:
+  web:
+    environment:
+      - DATABASE_URL=postgresql://postgres:pass@postgres:5432/ai_dev
+      - REDIS_URL=redis://redis:6379
+      - UPSTASH_REDIS_REST_URL=
+  worker:
+    environment:
+      - DATABASE_URL=postgresql://postgres:pass@postgres:5432/ai_dev
+      - REDIS_URL=redis://redis:6379
+      - UPSTASH_REDIS_REST_URL=
+  scheduler:
+    environment:
+      - DATABASE_URL=postgresql://postgres:pass@postgres:5432/ai_dev
+      - REDIS_URL=redis://redis:6379
+      - UPSTASH_REDIS_REST_URL=

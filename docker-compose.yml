@@ -43,12 +43,13 @@ services:
     image: ai-tutor-web:prod
     working_dir: /app
     restart: unless-stopped
-    env_file:
-      - .env.production
     environment:
       - HUSKY_SKIP_INSTALL=1
       - DATABASE_URL=postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-pass}@postgres:${POSTGRES_PORT:-5432}/${POSTGRES_DB:-ai_dev}
       - POSTGRES_HOST=postgres
+      - REDIS_URL=redis://redis:6379
+    env_file:
+      - .env.production
     ports:
       - "3000:3000"
     command: sh -c "./scripts/run-migrate.sh && node ./node_modules/next/dist/bin/next build && npm run start"
