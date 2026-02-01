@@ -7,6 +7,7 @@
  * - tests/unit/hooks/useRecommendations.spec.ts
  *
  * EDIT LOG:
+ * - 2026-02-01 | claude  | navigate notes/tests to dashboard tabs with content ID
  * - 2026-01-22 | copilot | added navigateToContent for content navigation
  * - 2026-01-22 | copilot | enhanced with score, chapter, difficulty fields
  */
@@ -95,11 +96,17 @@ export function useRecommendations() {
       // Lesson recommendations - go to learn page
       url = '/learn';
     } else if (type === 'test' || type === 'practice' || type === 'quiz') {
-      // Navigate to tests page
-      url = '/tests';
+      // Navigate to tests tab in dashboard with optional content ID
+      const testContentId = contentId.startsWith('generatedTest:') ? contentId.split(':')[1] : '';
+      url = testContentId
+        ? `/dashboard?tab=tests&testId=${encodeURIComponent(testContentId)}`
+        : '/dashboard?tab=tests';
     } else if (type === 'notes' || type === 'note') {
-      // Notes are accessed via dashboard Notes tab or learn page
-      url = '/learn';
+      // Navigate to notes tab in dashboard with optional note ID
+      const noteContentId = contentId.startsWith('topicNote:') ? contentId.split(':')[1] : '';
+      url = noteContentId
+        ? `/dashboard?tab=notes&noteId=${encodeURIComponent(noteContentId)}`
+        : '/dashboard?tab=notes';
     } else if (type === 'video' || type === 'session') {
       // Resume incomplete session - go to learn page
       url = '/learn';
