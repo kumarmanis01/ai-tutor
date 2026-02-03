@@ -422,26 +422,263 @@ describe('HydrateAll End-to-End Integration Test', () => {
   );
 
   it('should handle validation failures and retry', async () => {
-    // TODO: Test validation failure scenario
-    // 1. Create job with invalid content
-    // 2. Verify job marked as failed
-    // 3. Verify retry attempt
-    console.log('Validation failure test: TODO');
+    const { validateOrThrow } = await import('@/lib/aiOutputValidator');
+
+    // 1. Create job with invalid (placeholder) content
+    const failJob = await prisma.hydrationJob.create({
+      data: {
+        jobType: 'notes',
+        subjectId: testSubjectId,
+        language: 'en' as LanguageCode,
+        difficulty: 'medium' as DifficultyLevel,
+        status: JobStatus.running,
+        attempts: 1,
+        maxAttempts: 3,
+      },
+    });
+
+    const placeholderContent = {
+      title: 'Incomplete Notes',
+      content: {
+        sections: [
+          {
+            heading: 'Overview',
+            body: 'This topic will be discussed in the next class. Students will learn more about this concept in upcoming sessions.',
+          },
+        ],
+      },
+      audience: 'Grade 10 students',
+    };
+
+    // 2. Verify validation fails with placeholder error and mark job failed
+    let validationFailed = false;
+    try {
+      validateOrThrow(placeholderContent, {
+        jobType: 'notes',
+        language: 'en',
+        subject: 'Test Subject',
+        topic: 'Test Topic',
+        grade: 10,
+      });
+    } catch (err: any) {
+      validationFailed = true;
+      expect(err.type).toBe('PLACEHOLDER_CONTENT');
+      await prisma.hydrationJob.update({
+        where: { id: failJob.id },
+        data: { status: JobStatus.failed, lastError: `VALIDATION_FAILED::${err.type}` },
+      });
+    }
+    expect(validationFailed).toBe(true);
+
+    const dbFailedJob = await prisma.hydrationJob.findUnique({ where: { id: failJob.id } });
+    expect(dbFailedJob?.status).toBe(JobStatus.failed);
+    expect(dbFailedJob?.lastError).toContain('PLACEHOLDER_CONTENT');
+
+    // 3. Retry with valid content
+    await prisma.hydrationJob.update({
+      where: { id: failJob.id },
+      data: { status: JobStatus.running, attempts: 2 },
+    });
+
+    const validContent = {
+      title: 'Photosynthesis - Complete Notes',
+      content: {
+        sections: [
+          {
+            heading: 'What is Photosynthesis?',
+            body: 'Photosynthesis is the biological process by which green plants convert light energy into chemical energy stored in glucose molecules. This process takes place in the chloroplasts of plant cells.',
+          },
+        ],
+      },
+      audience: 'Grade 10 students',
+    };
+
+    const retryResult = validateOrThrow(validContent, {
+      jobType: 'notes', language: 'en', subject: 'Test Subject', topic: 'Test Topic', grade: 10,
+    });
+    expect(retryResult).toBe(true);
+
+    await prisma.hydrationJob.update({
+      where: { id: failJob.id },
+      data: { status: JobStatus.completed, lastError: null, contentReady: true },
+    });
+
+    const completedJob = await prisma.hydrationJob.findUnique({ where: { id: failJob.id } });
+    expect(completedJob?.status).toBe(JobStatus.completed);
+    expect(completedJob?.contentReady).toBe(true);
+
+    await prisma.hydrationJob.delete({ where: { id: failJob.id } });
   });
 
   it('should handle concurrent job submissions', async () => {
-    // TODO: Test concurrent submissions
     // 1. Submit 3 jobs simultaneously
-    // 2. Verify no race conditions
-    // 3. Verify all jobs complete
-    console.log('Concurrent jobs test: TODO');
+    const [job1, job2, job3] = await Promise.all([
+      prisma.hydrationJob.create({
+        data: {
+          jobType: 'notes',
+          subjectId: testSubjectId,
+          language: 'en' as LanguageCode,
+          difficulty: 'easy' as DifficultyLevel,
+          status: JobStatus.pending,
+          attempts: 0,
+          maxAttempts: 3,
+          inputParams: { concurrent: true, index: 1 },
+        },
+      }),
+      prisma.hydrationJob.create({
+        data: {
+          jobType: 'notes',
+          subjectId: testSubjectId,
+          language: 'en' as LanguageCode,
+          difficulty: 'medium' as DifficultyLevel,
+          status: JobStatus.pending,
+          attempts: 0,
+          maxAttempts: 3,
+          inputParams: { concurrent: true, index: 2 },
+        },
+      }),
+      prisma.hydrationJob.create({
+        data: {
+          jobType: 'notes',
+          subjectId: testSubjectId,
+          language: 'en' as LanguageCode,
+          difficulty: 'hard' as DifficultyLevel,
+          status: JobStatus.pending,
+          attempts: 0,
+          maxAttempts: 3,
+          inputParams: { concurrent: true, index: 3 },
+        },
+      }),
+    ]);
+
+    // 2. Verify no race conditions - all jobs exist with distinct IDs
+    const jobIds = [job1.id, job2.id, job3.id];
+    expect(new Set(jobIds).size).toBe(3);
+
+    // Simulate concurrent claim attempts (atomic updateMany)
+    const claims = await Promise.all(
+      jobIds.map((id) =>
+        prisma.hydrationJob.updateMany({
+          where: { id, status: JobStatus.pending },
+          data: { status: JobStatus.running, attempts: { increment: 1 } },
+        })
+      )
+    );
+
+    // Each claim should succeed exactly once
+    expect(claims[0].count).toBe(1);
+    expect(claims[1].count).toBe(1);
+    expect(claims[2].count).toBe(1);
+
+    // 3. Verify all jobs can complete independently
+    await Promise.all(
+      jobIds.map((id) =>
+        prisma.hydrationJob.update({
+          where: { id },
+          data: { status: JobStatus.completed, completedAt: new Date(), contentReady: true },
+        })
+      )
+    );
+
+    const completedJobs = await prisma.hydrationJob.findMany({
+      where: { id: { in: jobIds } },
+    });
+
+    expect(completedJobs).toHaveLength(3);
+    completedJobs.forEach((j) => {
+      expect(j.status).toBe(JobStatus.completed);
+      expect(j.contentReady).toBe(true);
+    });
+
+    // Cleanup
+    await prisma.hydrationJob.deleteMany({ where: { id: { in: jobIds } } });
   });
 
   it('should ensure all questions have complete answers', async () => {
-    // TODO: Test answer completeness validation
-    // 1. Generate questions
-    // 2. Verify all have correctAnswer field
-    // 3. Verify answers have required fields (explanation, steps, etc.)
-    console.log('Answer completeness test: TODO');
+    const { validateOrThrow } = await import('@/lib/aiOutputValidator');
+
+    // 1. Create a test with questions
+    const topics = await prisma.topicDef.findMany({
+      where: { chapter: { subjectId: testSubjectId } },
+      take: 1,
+    });
+
+    // If we don't have topics from the cascade test, create one
+    let topicId: string;
+    let createdTopic = false;
+    if (topics.length === 0) {
+      const chapter = await prisma.chapterDef.findFirst({ where: { subjectId: testSubjectId } });
+      if (!chapter) {
+        console.log('No chapters found, skipping answer completeness test');
+        return;
+      }
+      const topic = await prisma.topicDef.create({
+        data: {
+          chapterId: chapter.id,
+          name: 'Answer Test Topic',
+          slug: `answer-test-topic-${Date.now()}`,
+          order: 99,
+          status: 'draft',
+        },
+      });
+      topicId = topic.id;
+      createdTopic = true;
+    } else {
+      topicId = topics[0].id;
+    }
+
+    // 2. Verify questions with complete answers pass validation
+    const completeQuestions = {
+      difficulty: 'medium',
+      questions: [
+        {
+          type: 'mcq',
+          question: 'What is the chemical formula for water?',
+          options: ['H2O', 'CO2', 'NaCl', 'O2'],
+          answer: 'H2O',
+          explanation: 'Water consists of two hydrogen atoms bonded to one oxygen atom, giving it the molecular formula H2O.',
+        },
+        {
+          type: 'short_answer',
+          question: 'Explain the process of evaporation.',
+          answer: 'Evaporation is the process where liquid water changes to water vapor at the surface.',
+          explanation: 'When water molecules at the surface gain enough kinetic energy, they escape into the air as vapor. This occurs at temperatures below boiling point.',
+        },
+      ],
+    };
+
+    const result = validateOrThrow(completeQuestions, {
+      jobType: 'questions',
+      language: 'en',
+      difficulty: 'medium',
+      subject: 'Science',
+      topic: 'Water Cycle',
+    });
+    expect(result).toBe(true);
+
+    // 3. Verify questions with missing explanations fail validation
+    const incompleteQuestions = {
+      questions: [
+        {
+          type: 'mcq',
+          question: 'What is H2O?',
+          options: ['Water', 'Oxygen', 'Hydrogen', 'Carbon'],
+          answer: 'Water',
+          explanation: '', // Empty explanation should fail
+        },
+      ],
+    };
+
+    expect(() =>
+      validateOrThrow(incompleteQuestions, {
+        jobType: 'questions',
+        language: 'en',
+      })
+    ).toThrow();
+
+    // Cleanup
+    if (createdTopic) {
+      await prisma.topicDef.delete({ where: { id: topicId } }).catch(() => {});
+    }
   });
 });
