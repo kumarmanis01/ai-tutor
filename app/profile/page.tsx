@@ -1,4 +1,16 @@
 'use client';
+/**
+ * FILE OBJECTIVE:
+ * - User profile page displaying account info, academic preferences, and widgets.
+ * - Shows cascading academic info: Language → Board → Grade → Subjects.
+ *
+ * LINKED UNIT TEST:
+ * - tests/unit/app/profile/page.spec.ts
+ *
+ * EDIT LOG:
+ * - 2026-02-03 | claude | added academic preferences section with cascading info
+ */
+
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import Avatar from '@/components/UI/Avatar';
@@ -9,6 +21,7 @@ import { extractBadges } from '@/lib/extractBadge';
 import AuthRedeemOnSignIn from '@/components/AuthRedeemOnSignIn';
 import useCurrentUser from '@/hooks/useCurrentUser';
 import { useOnboarding } from '@/context/OnboardingProvider';
+import { LANGUAGES, DIFFICULTY_LEVELS } from '@/components/CascadingFilters';
 
 export default function ProfilePage() {
   const { data: session } = useSession();
@@ -100,21 +113,44 @@ export default function ProfilePage() {
             </div>
 
             <div className="bg-gray-50 dark:bg-gray-800 p-6 rounded-lg border border-gray-200 dark:border-gray-700 space-y-4">
+              <h3 className="font-semibold text-lg mb-3">Academic Preferences</h3>
+              <div>
+                <span className="font-semibold">Language:</span>{' '}
+                {profile?.language ? (
+                  LANGUAGES.find(l => l.code === profile.language)?.name || profile.language
+                ) : (
+                  <span className="text-gray-400">Not set</span>
+                )}
+              </div>
+              <div>
+                <span className="font-semibold">Board:</span>{' '}
+                {profile?.board || <span className="text-gray-400">Not set</span>}
+              </div>
+              <div>
+                <span className="font-semibold">Grade:</span>{' '}
+                {profile?.grade ? `Class ${profile.grade}` : <span className="text-gray-400">Not set</span>}
+              </div>
+              <div>
+                <span className="font-semibold">Subjects:</span>{' '}
+                {profile?.subjects && profile.subjects.length > 0 ? (
+                  <span className="inline-flex flex-wrap gap-1 mt-1">
+                    {profile.subjects.map((s: string) => (
+                      <span key={s} className="px-2 py-0.5 bg-primary/10 text-primary rounded text-sm">
+                        {s}
+                      </span>
+                    ))}
+                  </span>
+                ) : (
+                  <span className="text-gray-400">Not set</span>
+                )}
+              </div>
               <div>
                 <span className="font-semibold">Country:</span>{' '}
                 {profile?.country || <span className="text-gray-400">Not set</span>}
               </div>
               <div>
-                <span className="font-semibold">Grade:</span>{' '}
-                {profile?.grade || <span className="text-gray-400">Not set</span>}
-              </div>
-              <div>
                 <span className="font-semibold">Parent Email:</span>{' '}
                 {profile?.parentEmail || <span className="text-gray-400">Not set</span>}
-              </div>
-              <div>
-                <span className="font-semibold">Language:</span>{' '}
-                {profile?.language || <span className="text-gray-400">Not set</span>}
               </div>
             </div>
           </div>

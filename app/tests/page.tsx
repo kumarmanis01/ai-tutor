@@ -1,21 +1,17 @@
-import QuickPractice from '@/components/Test/QuickPractice';
-import ChapterTests from '@/components/Test/ChapterTests';
-import WeeklyChallenge from '@/components/Test/WeeklyChallenge';
-import TestHistory from '@/components/Test/TestHistory';
-
 /**
- * /tests page
+ * FILE OBJECTIVE:
+ * - Tests page for practice tests with dynamic subject/grade/board filtering.
  *
- * Modular Test tab composed from small components following project conventions.
- * This page can later be embedded inside dashboard tabs.
+ * LINKED UNIT TEST:
+ * - tests/unit/app/tests/page.spec.ts
+ *
+ * EDIT LOG:
+ * - 2026-02-03 | claude | refactored to use client component with user profile
  */
+
+import TestsPageClient from './TestsPageClient';
+
 export default function TestsPage() {
-  return (
-    <div className="max-w-3xl mx-auto px-4 py-6 space-y-6">
-      <QuickPractice subject="Math" questionCount={8} />
-      <ChapterTests subject="Math" />
-      <TestHistory />
-      <WeeklyChallenge />
-    </div>
-  );
+  return <TestsPageClient />;
 }
+

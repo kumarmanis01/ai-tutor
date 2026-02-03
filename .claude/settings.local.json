@@ -24,7 +24,14 @@
       "Bash(status \")",
       "Bash(docker compose:*)",
       "Bash(npm test:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(docker system prune:*)",
+      "Bash(timeout 10 tail:*)",
+      "Bash(git reset:*)",
+      "Bash(set DATABASE_URL=postgresql://postgres:pass@localhost:5432/ai_dev)",
+      "Bash(powershell -NoProfile -ExecutionPolicy Bypass -File - <<'SCRIPT'\nSet-Location \"d:\\\\projects\\\\ai-tutor\"\n$env:DATABASE_URL = \"postgresql://postgres:pass@localhost:5432/ai_dev\"\nnpx prisma migrate deploy\nSCRIPT)",
+      "Bash(docker-compose stop:*)",
+      "Bash(docker-compose build:*)"
     ]
   }
 }

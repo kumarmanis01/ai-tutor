@@ -16,6 +16,7 @@
 
 import { useState, useEffect } from 'react';
 import { LanguageCode, DifficultyLevel } from '@prisma/client';
+import SubjectSelect from '@/components/SubjectSelect';
 
 interface TriggerFormProps {
   onJobCreated: (jobId: string) => void;
@@ -64,6 +65,11 @@ export default function TriggerForm({ onJobCreated }: TriggerFormProps) {
   const [estimates, setEstimates] = useState<Estimates | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Reset subject when board or grade changes (subjects depend on both)
+  useEffect(() => {
+    setFormData((prev) => ({ ...prev, subjectCode: '' }));
+  }, [formData.boardCode, formData.grade]);
 
   // Update estimates when form changes
   useEffect(() => {
@@ -201,20 +207,16 @@ export default function TriggerForm({ onJobCreated }: TriggerFormProps) {
           </select>
         </div>
 
-        {/* Subject */}
+        {/* Subject (DB-driven) */}
         <div>
           <label className="block text-sm font-medium text-gray-700">Subject</label>
-          <select
+          <SubjectSelect
+            boardSlug={formData.boardCode}
+            gradeNum={formData.grade}
             value={formData.subjectCode}
-            onChange={(e) => setFormData({ ...formData, subjectCode: e.target.value })}
+            onChange={(slug) => setFormData({ ...formData, subjectCode: slug })}
             className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-          >
-            <option value="MATH">Mathematics</option>
-            <option value="SCIENCE">Science</option>
-            <option value="ENGLISH">English</option>
-            <option value="SOCIAL">Social Studies</option>
-            <option value="HINDI">Hindi</option>
-          </select>
+          />
         </div>
       </div>
 

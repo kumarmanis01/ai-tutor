@@ -16,9 +16,11 @@ import { useNotes, NoteSubject } from '../context/NotesProvider';
 export function NotesBySubject() {
   const { subjects, loading } = useNotes();
   
-  const navigateToSubject = useCallback((_subject: NoteSubject) => {
-    // Navigate to learn page since /notes doesn't exist
-    window.location.assign(`/learn`);
+  const navigateToSubject = useCallback((subject: NoteSubject) => {
+    const params = new URLSearchParams();
+    params.set('subject', subject.name);
+    params.set('type', 'notes');
+    window.location.assign(`/learn?${params.toString()}`);
   }, []);
 
   return (
