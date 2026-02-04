@@ -11,7 +11,9 @@
 
 import { prisma } from './prisma';
 import { logger } from './logger';
-import type { DailyTaskType, DailyTaskStatus } from '@prisma/client';
+// Types match Prisma enums — defined inline to avoid build dependency on prisma generate
+type DailyTaskType = 'learn' | 'practice' | 'revise' | 'fix_gap' | 'confidence';
+type DailyTaskStatus = 'pending' | 'completed' | 'skipped' | 'expired';
 
 export interface DailyTaskResult {
   id: string;

@@ -235,117 +235,55 @@ function getTopicSuggestions(subject: string, grade: Grade): string[] {
 /**
  * Get safe response for off-topic questions
  */
-export function getOffTopicResponse(grade: Grade, subject?: string): SafeResponse {
+export function getOffTopicResponse(grade: Grade, subject?: string): string {
   const gradeBand = getGradeBand(grade);
   const message = selectTemplate(OFF_TOPIC_REDIRECTS[gradeBand]);
-  
-  return {
-    message,
-    suggestedActions: [
-      'Ask about a topic from your current subject',
-      'Try a practice question',
-      'Request an explanation of a concept',
-    ],
-    shouldRetry: true,
-    alternativeTopics: subject ? getTopicSuggestions(subject, grade) : undefined,
-    category: SafeResponseCategory.OFF_TOPIC_REDIRECT,
-  };
+  return message;
 }
 
 /**
  * Get safe response for unsafe content
  */
-export function getUnsafeContentResponse(grade: Grade): SafeResponse {
+export function getUnsafeContentResponse(grade: Grade): string {
   const gradeBand = getGradeBand(grade);
   const message = selectTemplate(UNSAFE_BLOCKS[gradeBand]);
-  
-  return {
-    message,
-    suggestedActions: [
-      'Ask about your school subjects',
-      'Request help with understanding a concept',
-    ],
-    shouldRetry: true,
-    category: SafeResponseCategory.UNSAFE_BLOCK,
-  };
+  return message;
 }
 
 /**
  * Get safe response for homework dumps
  */
-export function getHomeworkRedirectResponse(grade: Grade, subject?: string): SafeResponse {
+export function getHomeworkRedirectResponse(grade: Grade, subject?: string): string {
   const gradeBand = getGradeBand(grade);
   const message = selectTemplate(HOMEWORK_REDIRECTS[gradeBand]);
-  
-  return {
-    message,
-    suggestedActions: [
-      'Point out the specific part you find confusing',
-      'Ask about the concept being tested',
-      'Request step-by-step guidance for one problem',
-    ],
-    shouldRetry: true,
-    alternativeTopics: subject ? getTopicSuggestions(subject, grade) : undefined,
-    category: SafeResponseCategory.HOMEWORK_REDIRECT,
-  };
+  return message;
 }
 
 /**
  * Get safe response for technical errors
  */
-export function getTechnicalErrorResponse(grade: Grade): SafeResponse {
+export function getTechnicalErrorResponse(grade: Grade): string {
   const gradeBand = getGradeBand(grade);
   const message = selectTemplate(TECHNICAL_ERRORS[gradeBand]);
-  
-  return {
-    message,
-    suggestedActions: [
-      'Try asking your question again',
-      'Rephrase your question',
-      'Try a different question',
-    ],
-    shouldRetry: true,
-    category: SafeResponseCategory.TECHNICAL_ERROR,
-  };
+  return message;
 }
 
 /**
  * Get safe response for uncertain AI responses
  */
-export function getUncertaintyResponse(grade: Grade, subject?: string): SafeResponse {
+export function getUncertaintyResponse(grade: Grade, subject?: string): string {
   const gradeBand = getGradeBand(grade);
   const message = selectTemplate(UNCERTAINTY_FALLBACKS[gradeBand]);
-  
-  return {
-    message,
-    suggestedActions: [
-      'Rephrase your question with more context',
-      'Ask about a related foundational concept',
-      'Consult your textbook or teacher for verification',
-    ],
-    shouldRetry: true,
-    alternativeTopics: subject ? getTopicSuggestions(subject, grade) : undefined,
-    category: SafeResponseCategory.UNCERTAINTY,
-  };
+  return message;
 }
 
 /**
  * Get encouragement response for struggling students
  */
-export function getEncouragementResponse(grade: Grade): SafeResponse {
+export function getEncouragementResponse(grade: Grade): string {
   const gradeBand = getGradeBand(grade);
   const message = selectTemplate(ENCOURAGEMENT_RESPONSES[gradeBand]);
-  
-  return {
-    message,
-    suggestedActions: [
-      'Take it one step at a time',
-      'Try breaking the problem into smaller parts',
-      'Ask about the specific part that\'s confusing',
-    ],
-    shouldRetry: true,
-    category: SafeResponseCategory.ENCOURAGEMENT,
-  };
+  return message;
 }
 
 /**
@@ -356,19 +294,25 @@ export function getSafeResponseForIntent(
   grade: Grade,
   subject?: string
 ): SafeResponse {
+  const wrap = (message: string, category: SafeResponseCategory): SafeResponse => ({
+    message,
+    suggestedActions: [],
+    shouldRetry: intent !== StudentIntentCategory.UNSAFE,
+    category,
+  });
+
   switch (intent) {
     case StudentIntentCategory.OFF_TOPIC:
-      return getOffTopicResponse(grade, subject);
-    
+      return wrap(getOffTopicResponse(grade, subject), SafeResponseCategory.OFF_TOPIC_REDIRECT);
+
     case StudentIntentCategory.UNSAFE:
-      return getUnsafeContentResponse(grade);
-    
+      return wrap(getUnsafeContentResponse(grade), SafeResponseCategory.UNSAFE_BLOCK);
+
     case StudentIntentCategory.HOMEWORK_DUMP:
-      return getHomeworkRedirectResponse(grade, subject);
-    
+      return wrap(getHomeworkRedirectResponse(grade, subject), SafeResponseCategory.HOMEWORK_REDIRECT);
+
     default:
-      // For other intents that need fallback, use encouragement
-      return getEncouragementResponse(grade);
+      return wrap(getEncouragementResponse(grade), SafeResponseCategory.UNCERTAINTY);
   }
 }
 

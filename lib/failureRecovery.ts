@@ -12,7 +12,8 @@
 
 import { prisma } from './prisma';
 import { logger } from './logger';
-import type { RecoveryNudgeType } from '@prisma/client';
+// Type matches Prisma enum — defined inline to avoid build dependency on prisma generate
+type RecoveryNudgeType = 'gentle_nudge' | 'easy_task' | 'fresh_start';
 
 const THRESHOLDS: { days: number; nudgeType: RecoveryNudgeType }[] = [
   { days: 14, nudgeType: 'fresh_start' },

@@ -1,6 +1,8 @@
 import { prisma } from '@/lib/prisma';
 import type { Question, TestResult } from '@prisma/client';
-import { MasteryLevel } from '@prisma/client';
+// Type matches Prisma enum — defined inline to avoid build dependency on prisma generate
+const MasteryLevel = { beginner: 'beginner', intermediate: 'intermediate', advanced: 'advanced', expert: 'expert' } as const;
+type MasteryLevel = (typeof MasteryLevel)[keyof typeof MasteryLevel];
 import { createAIClient } from '@/lib/aiContext';
 import { logger } from '@/lib/logger';
 

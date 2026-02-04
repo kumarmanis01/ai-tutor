@@ -33,8 +33,6 @@ export {
   // Functions
   getGradeBand,
   calculateDifficultyAdjustment,
-  getNextDifficulty,
-  canIncreaseDifficulty,
   canDecreaseDifficulty,
   getDifficultyDisplayName,
 } from './difficultyTuning';

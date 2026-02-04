@@ -67,3 +67,17 @@ export {
   projectAnnualCosts,
   runAllExamples,
 } from './examples';
+
+// ============================================================================
+// UNIT ECONOMICS SIMULATOR
+// ============================================================================
+
+export {
+  simulateUnitEconomics,
+  simulateBaseline,
+  simulateWorstCase,
+  simulateScale,
+  checkTokenGovernorCompliance,
+  type UnitEconomicsInput,
+  type UnitEconomicsOutput,
+} from './unitEconomics';

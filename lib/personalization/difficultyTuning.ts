@@ -730,8 +730,6 @@ export function calculateDifficultyAdjustment(
     ),
     confidence,
     contributingFactors: factors,
-    // Backwards-compatible alias used in some tests
-    adjustment: direction,
   };
 }
 

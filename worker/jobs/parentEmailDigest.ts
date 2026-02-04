@@ -5,11 +5,13 @@
  *
  * EDIT LOG:
  * - 2026-02-04 | claude | created parent email digest job
+ * - 2026-02-04 | claude | integrated WhatsApp delivery alongside email
  */
 
 import { prisma } from '../../lib/prisma.js';
 import { logger } from '../../lib/logger.js';
 import { sendEmail } from '../../lib/mailer.js';
+import { sendWhatsAppMessage, buildWeeklyWhatsAppMessage } from '../../lib/whatsapp.js';
 
 /**
  * Send weekly email digest to all parents with active student links
@@ -19,7 +21,7 @@ export async function sendParentDigests(): Promise<number> {
   const parentLinks = await prisma.parentStudent.findMany({
     where: { status: 'active' },
     include: {
-      parent: { select: { id: true, email: true, name: true } },
+      parent: { select: { id: true, email: true, name: true, phone: true, language: true } },
       student: { select: { id: true, name: true, grade: true, board: true } },
     },
   });
@@ -28,6 +30,8 @@ export async function sendParentDigests(): Promise<number> {
   const parentMap: Record<string, {
     email: string;
     name: string;
+    phone: string | null;
+    language: string;
     children: { id: string; name: string; grade: string | null; board: string | null }[];
   }> = {};
 
@@ -37,6 +41,8 @@ export async function sendParentDigests(): Promise<number> {
       parentMap[link.parent.id] = {
         email: link.parent.email,
         name: link.parent.name || 'Parent',
+        phone: link.parent.phone || null,
+        language: link.parent.language || 'en',
         children: [],
       };
     }
@@ -118,6 +124,39 @@ export async function sendParentDigests(): Promise<number> {
 
       sentCount++;
       logger.info('parentEmailDigest: sent', { parentId, childCount: parent.children.length });
+
+      // WhatsApp delivery (fire-and-forget, non-blocking)
+      if (parent.phone && parent.children.length > 0) {
+        const firstChild = parent.children[0];
+        const waSummary = await prisma.weeklyStudentSummary.findUnique({
+          where: { studentId_weekStart: { studentId: firstChild.id, weekStart: monday } },
+        });
+
+        // Derive improved/struggling from mastery data
+        const waStrengths = await prisma.studentTopicMastery.findMany({
+          where: { studentId: firstChild.id, masteryLevel: { in: ['advanced', 'expert'] }, updatedAt: { gte: monday } },
+          take: 1,
+          select: { subject: true },
+        });
+        const waFlags = await prisma.attentionFlag.findMany({
+          where: { studentId: firstChild.id, resolved: false },
+          take: 1,
+          select: { subject: true },
+        });
+
+        const whatsappMsg = buildWeeklyWhatsAppMessage(
+          parent.name,
+          firstChild.name,
+          waSummary?.sessionsCount ?? 0,
+          waStrengths[0]?.subject ?? null,
+          waFlags[0]?.subject ?? null,
+          parent.language,
+        );
+
+        sendWhatsAppMessage(parent.phone, whatsappMsg, parentId).catch((err) => {
+          logger.warn('parentEmailDigest: whatsapp failed', { parentId, error: String(err) });
+        });
+      }
     } catch (err) {
       logger.error('parentEmailDigest: failed for parent', {
         parentId,
