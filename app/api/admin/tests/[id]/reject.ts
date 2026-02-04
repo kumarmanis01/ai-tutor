@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { logger } from "@/lib/logger";
 import { getServerSessionForHandlers } from '@/lib/session';
 import { ApprovalStatus } from '@/lib/ai-engine/types';
+import { enqueueQuestionsHydration } from '@/lib/execution-pipeline/enqueueTopicHydration';
 
 export async function POST(req: Request, { params }: { params: { id: string } }) {
   const { reason } = await req.json();
@@ -32,5 +33,16 @@ export async function POST(req: Request, { params }: { params: { id: string } })
     prisma.auditLog.create({ data: { userId: adminId, action: 'reject_test', details: { testId: params.id, reason, fromStatus: test.status }, createdAt: new Date() } })
   ]);
 
-  return NextResponse.json({ rejected: true });
+  // Auto-regenerate: enqueue a new questions hydration job for this topic
+  if (test.topicId) {
+    enqueueQuestionsHydration({ topicId: test.topicId, language: String(test.language), difficulty: String(test.difficulty) })
+      .then((result) => {
+        logger.info('reject_test: auto-regeneration enqueued', { testId: params.id, topicId: test.topicId, ...result });
+      })
+      .catch((err) => {
+        logger.error('reject_test: auto-regeneration failed', { testId: params.id, error: String(err) });
+      });
+  }
+
+  return NextResponse.json({ rejected: true, regenerationQueued: !!test.topicId });
 }

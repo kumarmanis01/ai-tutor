@@ -332,11 +332,13 @@ export const authOptions: any = {
         token.email = user.email;
         token.image = user.image;
         if ('role' in user) token.role = user.role;
+        token.onboardingComplete = !!((user as any).grade && (user as any).board);
       } else if (token.email) {
         // Always fetch latest role from DB for every request
         const dbUser = await prisma.user.findUnique({ where: { email: token.email } });
         if (dbUser) {
           token.role = dbUser.role;
+          token.onboardingComplete = !!(dbUser.grade && dbUser.board);
         }
       }
       return token;
@@ -350,6 +352,7 @@ export const authOptions: any = {
         session.user.email = token.email as string;
         session.user.image = token.image as string;
         session.user.role = token.role as string;
+        session.user.onboardingComplete = (token.onboardingComplete as boolean) ?? false;
 
         logger.add(`session callback populated minimal session for: ${session.user.email!}`, { className: 'auth', methodName: 'sessionCallback' });
         // Call the standalone method to handle welcome email logic

@@ -442,7 +442,7 @@ export async function handleQuestionsJob(jobId: string): Promise<void> {
             }
 
             for (const q of item.parsed.questions) {
-              await tx.generatedQuestion.create({ data: { testId: upserted.id, type: q.type, question: q.question, options: q.options ?? null, answer: q.answer ?? null, marks: q.marks ?? null, sourceJobId: job.id } });
+              await tx.generatedQuestion.create({ data: { testId: upserted.id, type: q.type, question: q.question, options: q.options ?? null, answer: q.answer ?? null, explanation: q.explanation ?? null, marks: q.marks ?? null, sourceJobId: job.id } });
             }
 
             if (typeof tx.aIContentLog?.create === 'function') {

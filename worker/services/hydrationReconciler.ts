@@ -395,10 +395,13 @@ export class HydrationReconciler {
       // Create Outbox entry for transactional queueing
       await tx.outbox.create({
         data: {
-          queue: 'hydration',
+          queue: 'content-hydration',
           payload: {
-            jobId: childJob.id,
-            jobType,
+            type: String(jobType).toUpperCase(),
+            payload: { jobId: childJob.id },
+          },
+          meta: {
+            hydrationJobId: childJob.id,
             entityId,
             entityType,
             level,

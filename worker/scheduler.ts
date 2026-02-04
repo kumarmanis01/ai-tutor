@@ -17,9 +17,12 @@
 
 import { logger } from '../lib/logger.js';
 import { markIgnoredRecommendations, cleanupOldIgnoredRecommendations } from './jobs/markIgnoredRecommendations.js';
+import { aggregateWeeklySummaries } from './jobs/weeklyParentSummary.js';
+import { sendParentDigests } from './jobs/parentEmailDigest.js';
 
 const MARK_IGNORED_INTERVAL_MS = 24 * 60 * 60 * 1000; // 24 hours
 const CLEANUP_INTERVAL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
+const WEEKLY_INTERVAL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
 
 /**
  * Calculate milliseconds until next scheduled time (2 AM UTC)
@@ -74,6 +77,47 @@ async function runCleanupJob() {
 }
 
 /**
+ * Run weekly parent summary aggregation then email digests
+ */
+async function runWeeklyParentJob() {
+  try {
+    logger.info('scheduler.weeklyParentSummary.starting');
+    const count = await aggregateWeeklySummaries();
+    logger.info('scheduler.weeklyParentSummary.completed', { count });
+
+    // Send digests after aggregation completes
+    logger.info('scheduler.parentEmailDigest.starting');
+    const sent = await sendParentDigests();
+    logger.info('scheduler.parentEmailDigest.completed', { sent });
+  } catch (error) {
+    logger.error('scheduler.weeklyParentJob.error', {
+      error: error instanceof Error ? error.message : String(error)
+    });
+  }
+
+  // Schedule next run in 7 days
+  setTimeout(runWeeklyParentJob, WEEKLY_INTERVAL_MS);
+}
+
+/**
+ * Calculate ms until next target day+hour (e.g. Sunday 4 AM UTC)
+ */
+function msUntilNextWeeklyRun(targetDay: number, targetHour: number): number {
+  const now = new Date();
+  const next = new Date();
+  next.setUTCHours(targetHour, 0, 0, 0);
+
+  const currentDay = now.getUTCDay();
+  let daysUntil = targetDay - currentDay;
+  if (daysUntil < 0 || (daysUntil === 0 && next <= now)) {
+    daysUntil += 7;
+  }
+  next.setUTCDate(now.getUTCDate() + daysUntil);
+
+  return next.getTime() - now.getTime();
+}
+
+/**
  * Start the scheduler
  */
 export async function startScheduler() {
@@ -87,15 +131,18 @@ export async function startScheduler() {
   // Calculate time until first run (2 AM UTC)
   const delayMarkIgnored = msUntilNextRun(2);
   const delayCleanup = msUntilNextRun(3); // 3 AM UTC for cleanup
+  const delayWeeklyParent = msUntilNextWeeklyRun(0, 4); // Sunday 4 AM UTC
 
   logger.info('scheduler.scheduled', {
     markIgnoredFirstRun: new Date(Date.now() + delayMarkIgnored).toISOString(),
-    cleanupFirstRun: new Date(Date.now() + delayCleanup).toISOString()
+    cleanupFirstRun: new Date(Date.now() + delayCleanup).toISOString(),
+    weeklyParentFirstRun: new Date(Date.now() + delayWeeklyParent).toISOString(),
   });
 
   // Schedule first runs
   setTimeout(runMarkIgnoredJob, delayMarkIgnored);
   setTimeout(runCleanupJob, delayCleanup);
+  setTimeout(runWeeklyParentJob, delayWeeklyParent);
 
   logger.info('scheduler.started');
 }

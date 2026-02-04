@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getServerSessionForHandlers } from '@/lib/session';
-import { applyGrading, SubmitPayload } from '@/lib/tests';
+import { applyGrading, SubmitPayload, updateTopicMastery } from '@/lib/tests';
 import { updateLearningProfile } from '@/lib/recommendations/engine';
 import { logger } from '@/lib/logger';
 
@@ -38,6 +38,15 @@ export async function POST(req: Request) {
 
   const result = await applyGrading(attempt, payload);
   
+  // Update topic mastery asynchronously (non-blocking)
+  updateTopicMastery(user.id, attempt.id).catch((err) => {
+    logger.error('TestsSubmitAPI.updateTopicMastery', {
+      userId: user.id,
+      attemptId: attempt.id,
+      error: err,
+    });
+  });
+
   // Update learning profile asynchronously (non-blocking)
   updateLearningProfile(user.id).catch((err) => {
     logger.error('TestsSubmitAPI.updateLearningProfile', {

@@ -2,11 +2,13 @@ import { prisma } from './prisma';
 
 /**
  * Check if a user has an active premium subscription.
- * Returns true if the user has a paid plan, is active, and within the subscription period.
+ * Also checks if user is covered by a parent's family plan.
  */
 export async function isPremiumUser(userId: string): Promise<boolean> {
   const now = new Date();
-  const sub = await prisma.subscription.findFirst({
+
+  // Direct subscription
+  const directSub = await prisma.subscription.findFirst({
     where: {
       userId,
       active: true,
@@ -15,7 +17,28 @@ export async function isPremiumUser(userId: string): Promise<boolean> {
       endDate: { gte: now },
     },
   });
-  return !!sub;
+  if (directSub) return true;
+
+  // Check if covered by parent's family plan
+  const parentLinks = await prisma.parentStudent.findMany({
+    where: { studentId: userId, status: 'active' },
+    select: { parentId: true },
+  });
+
+  for (const link of parentLinks) {
+    const familySub = await prisma.subscription.findFirst({
+      where: {
+        userId: link.parentId,
+        active: true,
+        plan: 'family',
+        startDate: { lte: now },
+        endDate: { gte: now },
+      },
+    });
+    if (familySub) return true;
+  }
+
+  return false;
 }
 
 /**

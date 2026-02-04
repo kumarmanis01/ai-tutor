@@ -21,7 +21,7 @@ import { JobStatus, LanguageCode, DifficultyLevel } from '@prisma/client';
 
 // Test configuration
 const TEST_TIMEOUT = 5 * 60 * 1000; // 5 minutes
-const POLL_INTERVAL = 5000; // 5 seconds
+const _POLL_INTERVAL = 5000; // 5 seconds (prefixed to indicate intentionally unused)
 
 describe('HydrateAll End-to-End Integration Test', () => {
   let rootJobId: string;
@@ -113,10 +113,13 @@ describe('HydrateAll End-to-End Integration Test', () => {
 
         await tx.outbox.create({
           data: {
-            queue: 'hydration',
+            queue: 'content-hydration',
             payload: {
-              jobId: job.id,
-              jobType: 'syllabus',
+              type: 'SYLLABUS',
+              payload: { jobId: job.id },
+            },
+            meta: {
+              hydrationJobId: job.id,
               subjectId: testSubjectId,
             },
           },

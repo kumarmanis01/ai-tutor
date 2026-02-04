@@ -18,6 +18,7 @@ import { LANGUAGES } from '@/components/CascadingFilters';
 
 type Props = {
   open: boolean;
+  required?: boolean;
   values: {
     name: string;
     class_grade: string | null;
@@ -33,7 +34,7 @@ type Props = {
   onSave: () => void;
 };
 
-export default function OnboardingModal({ open, values, errors = {}, saving, onChange, onClose, onSave }: Props) {
+export default function OnboardingModal({ open, required, values, errors = {}, saving, onChange, onClose, onSave }: Props) {
   // Single hierarchy fetch with session caching
   const { loading: hierarchyLoading, helpers } = useAcademicHierarchy();
   
@@ -76,7 +77,7 @@ export default function OnboardingModal({ open, values, errors = {}, saving, onC
   
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6">
-      <div className="absolute inset-0 bg-black/40" onClick={onClose} />
+      <div className="absolute inset-0 bg-black/40" onClick={required ? undefined : onClose} />
       <form onSubmit={(e) => { e.preventDefault(); onSave(); }} className="relative bg-white rounded-lg shadow-lg w-full max-w-full sm:max-w-md md:max-w-lg lg:max-w-xl mx-auto" style={{ maxHeight: '90vh' }}>
         <div className="sticky top-0 z-10 bg-white px-5 pt-5 pb-3 border-b">
           <h2 className="text-lg font-semibold">Complete your profile</h2>
@@ -188,7 +189,7 @@ export default function OnboardingModal({ open, values, errors = {}, saving, onC
           {errors._root && <div className="text-sm text-red-600 mb-2">{errors._root}</div>}
         </div>
         <div className="sticky bottom-0 z-10 bg-white px-5 py-3 border-t flex justify-end gap-3">
-          <button type="button" className="px-4 py-2 border rounded" onClick={onClose}>Cancel</button>
+          {!required && <button type="button" className="px-4 py-2 border rounded" onClick={onClose}>Cancel</button>}
           <button type="submit" disabled={!!saving} className="px-4 py-2 bg-primary text-white rounded">{saving ? 'Saving...' : 'Save'}</button>
         </div>
       </form>

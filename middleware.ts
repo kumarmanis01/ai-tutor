@@ -43,6 +43,13 @@ export async function middleware(request: NextRequest) {
       if (!token) {
         return NextResponse.redirect(new URL('/', request.url));
       }
+
+      // Enforce onboarding completion: redirect to /dashboard with onboarding flag
+      // if user hasn't set board + grade. Allow /profile so they can complete onboarding.
+      if (!token.onboardingComplete && !pathname.startsWith('/profile') && !pathname.startsWith('/dashboard') && !pathname.startsWith('/parent')) {
+        return NextResponse.redirect(new URL('/dashboard?onboarding=1', request.url));
+      }
+
       return NextResponse.next();
     }
   }

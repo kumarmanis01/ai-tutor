@@ -13,6 +13,7 @@ type State = {
 };
 
 type API = {
+  isRequired: boolean;
   open: (opts?: { force?: boolean }) => Promise<void> | void;
   close: () => void;
   setValue: (field: keyof OnboardingValues, value: any) => void;
@@ -55,11 +56,9 @@ export function OnboardingProvider({ children, service }: { children: React.Reac
         });
         logger.info('onboarding.hydrate', { hasProfile: true });
         const complete = !!profile.name && !!profile.language && !!profile.grade && !!profile.board;
-        const seen = typeof window !== 'undefined' ? window.sessionStorage.getItem('spinzy:onboarding_shown') : null;
-        if (!complete && !seen) {
+        if (!complete) {
           setIsOpen(true);
           logger.info('onboarding.open.auto', { reason: 'incomplete-profile' });
-          try { window.sessionStorage.setItem('spinzy:onboarding_shown', '1'); } catch {}
         }
       }
     } catch (e) {
@@ -88,10 +87,14 @@ export function OnboardingProvider({ children, service }: { children: React.Reac
     logger.info('onboarding.open.manual');
   }, [hydrate, values]);
 
+  // Profile is required (non-dismissable) when board or grade is missing
+  const isRequired = !!session?.user && (!values.board || !values.class_grade);
+
   const close = useCallback(() => {
+    if (isRequired) return; // Cannot dismiss when onboarding is required
     setIsOpen(false);
     logger.info('onboarding.close');
-  }, []);
+  }, [isRequired]);
 
   const setValue = useCallback((field: keyof OnboardingValues, value: any) => {
     setValues((v) => ({ ...v, [field]: value }));
@@ -134,6 +137,7 @@ export function OnboardingProvider({ children, service }: { children: React.Reac
 
   const api: API = {
     isOpen,
+    isRequired,
     loading,
     saving,
     values,

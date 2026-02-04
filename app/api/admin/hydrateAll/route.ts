@@ -400,14 +400,15 @@ export async function POST(request: NextRequest) {
       // Create Outbox entry for transactional queueing
       await tx.outbox.create({
         data: {
-          queue: 'hydration',
+          queue: 'content-hydration',
           payload: {
-            jobId: rootJob.id,
-            jobType: JobType.syllabus,
-            subjectId: subject.id,
-            traceId,
+            type: 'SYLLABUS',
+            payload: { jobId: rootJob.id },
           },
           meta: {
+            hydrationJobId: rootJob.id,
+            subjectId: subject.id,
+            traceId,
             language,
             boardCode,
             grade,

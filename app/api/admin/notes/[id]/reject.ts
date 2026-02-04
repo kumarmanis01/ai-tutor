@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { logger } from "@/lib/logger";
 import { getServerSessionForHandlers } from '@/lib/session';
 import { ApprovalStatus } from '@/lib/ai-engine/types';
+import { enqueueNotesHydration } from '@/lib/execution-pipeline/enqueueTopicHydration';
 
 export async function POST(req: Request, { params }: { params: { id: string } }) {
   const { reason } = await req.json();
@@ -32,5 +33,16 @@ export async function POST(req: Request, { params }: { params: { id: string } })
     prisma.auditLog.create({ data: { userId: adminId, action: 'reject_note', details: { noteId: params.id, reason, fromStatus: note.status }, createdAt: new Date() } })
   ]);
 
-  return NextResponse.json({ rejected: true });
+  // Auto-regenerate: enqueue a new notes hydration job for this topic
+  if (note.topicId) {
+    enqueueNotesHydration({ topicId: note.topicId, language: String(note.language) })
+      .then((result) => {
+        logger.info('reject_note: auto-regeneration enqueued', { noteId: params.id, topicId: note.topicId, ...result });
+      })
+      .catch((err) => {
+        logger.error('reject_note: auto-regeneration failed', { noteId: params.id, error: String(err) });
+      });
+  }
+
+  return NextResponse.json({ rejected: true, regenerationQueued: !!note.topicId });
 }

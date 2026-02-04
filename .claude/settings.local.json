@@ -31,7 +31,15 @@
       "Bash(set DATABASE_URL=postgresql://postgres:pass@localhost:5432/ai_dev)",
       "Bash(powershell -NoProfile -ExecutionPolicy Bypass -File - <<'SCRIPT'\nSet-Location \"d:\\\\projects\\\\ai-tutor\"\n$env:DATABASE_URL = \"postgresql://postgres:pass@localhost:5432/ai_dev\"\nnpx prisma migrate deploy\nSCRIPT)",
       "Bash(docker-compose stop:*)",
-      "Bash(docker-compose build:*)"
+      "Bash(docker-compose build:*)",
+      "Bash(set \"NODE_OPTIONS=--max-old-space-size=4096\")",
+      "Bash(docker-compose ps)",
+      "Bash(docker ps -a --format \"table {{.Names}}\\\\t{{.Status}}\\\\t{{.Ports}}\")",
+      "Bash(docker-compose up -d postgres redis)",
+      "Bash(docker-compose up:*)",
+      "Bash(timeout 10 docker-compose logs:*)",
+      "Bash(docker exec:*)",
+      "Bash(powershell -NoProfile -ExecutionPolicy Bypass -Command \"$env:DATABASE_URL=''postgresql://postgres:pass@localhost:5432/ai_dev''; Set-Location ''d:\\\\projects\\\\ai-tutor''; npx prisma migrate dev --create-only --name add_explanation_to_generated_question 2>&1\")"
     ]
   }
 }
