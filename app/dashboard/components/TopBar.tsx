@@ -8,16 +8,18 @@
  * - tests/unit/app/dashboard/components/TopBar.spec.ts
  *
  * EDIT LOG:
+ * - 2026-02-04 | claude | updated for new 5-tab IA (added doubts)
  * - 2025-01-23 | copilot | made responsive for desktop with larger spacing
  * - 2025-01-22 | copilot | optimized for mobile-first with compact design
  */
 import React from "react";
 import { useTheme } from '@/components/UI/ThemeProvider';
+import type { TabId } from './BottomNavigator';
 
 interface TopBarProps {
   studentName: string;
-  activeTab?: 'home' | 'tests' | 'notes' | 'profile';
-  onTabChange?: (tab: 'home' | 'tests' | 'notes' | 'profile') => void;
+  activeTab?: TabId;
+  onTabChange?: (tab: TabId) => void;
 }
 
 // Helper to get greeting based on time of day
@@ -34,10 +36,11 @@ const TopBar: React.FC<TopBarProps> = ({ studentName, activeTab = 'home', onTabC
   const greeting = getGreeting();
   const firstName = studentName.split(' ')[0];
 
-  const tabs: { key: 'home' | 'tests' | 'notes' | 'profile'; label: string }[] = [
+  const tabs: { key: TabId; label: string }[] = [
     { key: 'home', label: 'Home' },
-    { key: 'tests', label: 'Tests' },
     { key: 'notes', label: 'Notes' },
+    { key: 'tests', label: 'Practice' },
+    { key: 'doubts', label: 'Doubts' },
     { key: 'profile', label: 'Profile' },
   ];
   

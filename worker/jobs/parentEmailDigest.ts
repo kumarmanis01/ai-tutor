@@ -80,7 +80,30 @@ export async function sendParentDigests(): Promise<number> {
           take: 5,
         });
 
-        childSections.push(buildChildSection(child, summary, flags, readiness));
+        // Fetch last week's summary for improvement trend
+        const lastWeekMonday = new Date(monday);
+        lastWeekMonday.setUTCDate(lastWeekMonday.getUTCDate() - 7);
+        const lastWeekSummary = await prisma.weeklyStudentSummary.findUnique({
+          where: { studentId_weekStart: { studentId: child.id, weekStart: lastWeekMonday } },
+        });
+
+        // Fetch newly mastered topics this week (strengths unlocked)
+        const newStrengths = await prisma.studentTopicMastery.findMany({
+          where: {
+            studentId: child.id,
+            masteryLevel: { in: ['advanced', 'expert'] },
+            updatedAt: { gte: monday },
+          },
+          take: 5,
+        });
+
+        // Fetch streak data
+        const streak = await prisma.studentStreak.findFirst({
+          where: { studentId: child.id, kind: 'daily' },
+        });
+
+        const trustSignals = buildTrustSignals(summary, lastWeekSummary, newStrengths, streak, flags);
+        childSections.push(buildChildSection(child, summary, flags, readiness, trustSignals));
       }
 
       const html = buildDigestHtml(parent.name, childSections);
@@ -107,11 +130,65 @@ export async function sendParentDigests(): Promise<number> {
   return sentCount;
 }
 
+interface TrustSignals {
+  improvementTrend: string | null;
+  strengthsUnlocked: string[];
+  streakDays: number;
+  suggestedAction: string;
+}
+
+function buildTrustSignals(
+  summary: any | null,
+  lastWeek: any | null,
+  newStrengths: { subject: string; chapter: string }[],
+  streak: { current: number } | null,
+  flags: any[],
+): TrustSignals {
+  // Improvement trend
+  let improvementTrend: string | null = null;
+  if (summary && lastWeek) {
+    const scoreDiff = (summary.averageScore ?? 0) - (lastWeek.averageScore ?? 0);
+    const minutesDiff = (summary.totalMinutes ?? 0) - (lastWeek.totalMinutes ?? 0);
+    if (scoreDiff > 5) {
+      improvementTrend = `Score improved by ${Math.round(scoreDiff)}% compared to last week`;
+    } else if (minutesDiff > 30) {
+      improvementTrend = `${minutesDiff} more minutes of study time than last week`;
+    } else if (summary.topicsCovered > (lastWeek.topicsCovered ?? 0)) {
+      improvementTrend = `Covered ${summary.topicsCovered - lastWeek.topicsCovered} more topics than last week`;
+    }
+  } else if (summary && !lastWeek) {
+    improvementTrend = 'First tracked week — great start!';
+  }
+
+  // Strengths unlocked
+  const strengthsUnlocked = newStrengths.map(
+    (s) => `${s.subject} / ${s.chapter}`,
+  );
+
+  // Suggested action
+  let suggestedAction = 'Keep encouraging regular study — consistency is key!';
+  if (flags.length > 0) {
+    suggestedAction = 'Ask about the topics flagged above — a quick chat can help build confidence.';
+  } else if (strengthsUnlocked.length > 0) {
+    suggestedAction = `Celebrate the new strengths unlocked this week! Positive recognition boosts motivation.`;
+  } else if (streak && streak.current >= 5) {
+    suggestedAction = `${streak.current}-day streak! A small reward for consistency can reinforce the habit.`;
+  }
+
+  return {
+    improvementTrend,
+    strengthsUnlocked,
+    streakDays: streak?.current ?? 0,
+    suggestedAction,
+  };
+}
+
 function buildChildSection(
   child: { name: string; grade: string | null; board: string | null },
   summary: any | null,
   flags: any[],
   readiness: any[],
+  trustSignals?: TrustSignals,
 ): string {
   const gradeLabel = child.grade ? `Class ${child.grade}` : '';
   const boardLabel = child.board || '';
@@ -178,11 +255,66 @@ function buildChildSection(
     `;
   }
 
+  // Trust signals section
+  let trustHtml = '';
+  if (trustSignals) {
+    const parts: string[] = [];
+
+    // Improvement trend
+    if (trustSignals.improvementTrend) {
+      parts.push(`
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+          <span style="font-size:18px;">📈</span>
+          <span style="color:#16A34A;font-weight:500;">${trustSignals.improvementTrend}</span>
+        </div>
+      `);
+    }
+
+    // Streak
+    if (trustSignals.streakDays > 0) {
+      parts.push(`
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+          <span style="font-size:18px;">🔥</span>
+          <span style="color:#D97706;font-weight:500;">${trustSignals.streakDays}-day learning streak!</span>
+        </div>
+      `);
+    }
+
+    // Strengths unlocked
+    if (trustSignals.strengthsUnlocked.length > 0) {
+      const items = trustSignals.strengthsUnlocked
+        .map((s) => `<li style="margin:2px 0;color:#16A34A;">${s}</li>`)
+        .join('');
+      parts.push(`
+        <div style="margin-bottom:8px;">
+          <span style="font-size:14px;font-weight:500;">✨ New strengths unlocked:</span>
+          <ul style="margin:4px 0 0 16px;padding:0;">${items}</ul>
+        </div>
+      `);
+    }
+
+    // Suggested parent action
+    parts.push(`
+      <div style="margin-top:8px;padding:10px;background:#EEF2FF;border-radius:8px;border-left:3px solid #4F46E5;">
+        <span style="font-size:13px;color:#4F46E5;font-weight:600;">💡 Tip for you:</span>
+        <p style="margin:4px 0 0;font-size:13px;color:#4338CA;">${trustSignals.suggestedAction}</p>
+      </div>
+    `);
+
+    trustHtml = `
+      <div style="margin-top:12px;padding:12px;background:#F0FDF4;border-radius:8px;">
+        <strong style="color:#166534;margin-bottom:8px;display:block;">This Week's Highlights</strong>
+        ${parts.join('')}
+      </div>
+    `;
+  }
+
   return `
     <div style="border:1px solid #E5E7EB;border-radius:12px;padding:16px;margin-bottom:16px;">
       <h3 style="margin:0 0 4px 0;color:#1F2937;">${child.name}</h3>
       ${subtitle ? `<p style="margin:0 0 12px 0;color:#6B7280;font-size:14px;">${subtitle}</p>` : ''}
       ${statsHtml}
+      ${trustHtml}
       ${flagsHtml}
       ${readinessHtml}
     </div>

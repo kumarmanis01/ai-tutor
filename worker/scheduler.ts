@@ -19,10 +19,13 @@ import { logger } from '../lib/logger.js';
 import { markIgnoredRecommendations, cleanupOldIgnoredRecommendations } from './jobs/markIgnoredRecommendations.js';
 import { aggregateWeeklySummaries } from './jobs/weeklyParentSummary.js';
 import { sendParentDigests } from './jobs/parentEmailDigest.js';
+import { runRecoveryCheck } from '../lib/failureRecovery.js';
+import { expireStaleTasks } from '../lib/dailyHabit.js';
 
 const MARK_IGNORED_INTERVAL_MS = 24 * 60 * 60 * 1000; // 24 hours
 const CLEANUP_INTERVAL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
 const WEEKLY_INTERVAL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
+const DAILY_MAINTENANCE_INTERVAL_MS = 24 * 60 * 60 * 1000; // 24 hours
 
 /**
  * Calculate milliseconds until next scheduled time (2 AM UTC)
@@ -100,6 +103,30 @@ async function runWeeklyParentJob() {
 }
 
 /**
+ * Run daily maintenance: expire stale tasks + recovery check
+ */
+async function runDailyMaintenanceJob() {
+  try {
+    logger.info('scheduler.dailyMaintenance.starting');
+
+    // Expire yesterday's pending daily tasks
+    const expired = await expireStaleTasks();
+    logger.info('scheduler.dailyMaintenance.tasksExpired', { expired });
+
+    // Run failure recovery check
+    const recoveryEvents = await runRecoveryCheck();
+    logger.info('scheduler.dailyMaintenance.recoveryCheck', { recoveryEvents });
+  } catch (error) {
+    logger.error('scheduler.dailyMaintenance.error', {
+      error: error instanceof Error ? error.message : String(error),
+    });
+  }
+
+  // Schedule next run in 24 hours
+  setTimeout(runDailyMaintenanceJob, DAILY_MAINTENANCE_INTERVAL_MS);
+}
+
+/**
  * Calculate ms until next target day+hour (e.g. Sunday 4 AM UTC)
  */
 function msUntilNextWeeklyRun(targetDay: number, targetHour: number): number {
@@ -132,14 +159,17 @@ export async function startScheduler() {
   const delayMarkIgnored = msUntilNextRun(2);
   const delayCleanup = msUntilNextRun(3); // 3 AM UTC for cleanup
   const delayWeeklyParent = msUntilNextWeeklyRun(0, 4); // Sunday 4 AM UTC
+  const delayDailyMaintenance = msUntilNextRun(1); // 1 AM UTC for task expiry + recovery
 
   logger.info('scheduler.scheduled', {
+    dailyMaintenanceFirstRun: new Date(Date.now() + delayDailyMaintenance).toISOString(),
     markIgnoredFirstRun: new Date(Date.now() + delayMarkIgnored).toISOString(),
     cleanupFirstRun: new Date(Date.now() + delayCleanup).toISOString(),
     weeklyParentFirstRun: new Date(Date.now() + delayWeeklyParent).toISOString(),
   });
 
   // Schedule first runs
+  setTimeout(runDailyMaintenanceJob, delayDailyMaintenance);
   setTimeout(runMarkIgnoredJob, delayMarkIgnored);
   setTimeout(runCleanupJob, delayCleanup);
   setTimeout(runWeeklyParentJob, delayWeeklyParent);

@@ -1,16 +1,17 @@
 'use client';
 /**
  * FILE OBJECTIVE:
- * - Responsive student dashboard with chat-centric design, efficient navigation,
- *   and progressive disclosure of features. Mobile-first with desktop sidebar layout.
+ * - Responsive student dashboard with "Zero Cognitive Overload" design principle.
+ * - Refactored IA: Home, Notes, Practice/Tests, Doubts, Profile (per PRD).
+ * - Mobile-first with desktop sidebar layout.
  *
  * LINKED UNIT TEST:
  * - tests/unit/app/dashboard/components/StudentHomeDashboard.spec.ts
  *
  * EDIT LOG:
- * - 2026-02-01 | claude  | read URL tab param, pass onNavigate to FeatureGrid
+ * - 2026-02-04 | claude | major refactor per PRD - new IA, HomeTab, DoubtsTab
+ * - 2026-02-01 | claude | read URL tab param, pass onNavigate to FeatureGrid
  * - 2025-01-23 | copilot | refactored for responsive design - mobile + desktop viewports
- * - 2025-01-XX | copilot | added test nudge prompt component
  * - 2025-01-22 | copilot | optimized for mobile-first with streamlined UX
  */
 import React, { useState, useEffect, useCallback } from 'react';
@@ -21,54 +22,17 @@ import ProfilePage from '@/app/profile/page';
 import QuickInputBox from './QuickInputBox';
 import SubjectThreadList from './SubjectThreadList';
 import ChatPanel from './ChatPanel';
-import ContinueLearning from './ContinueLearning';
-import SuggestedContent from './SuggestedContent';
-import FeatureGrid from './FeatureGrid';
-import StudyGoals from './StudyGoals';
-import ParentModeCard from './ParentModeCard';
-import BottomNavigation from './BottomNavigator';
+import BottomNavigation, { type TabId } from './BottomNavigator';
 import TestsTab from './Tests';
 import NotesTab from './Notes';
+import { HomeTab } from './home';
+import { DoubtsTab } from './doubts';
 import { TestNudgeFloating } from '@/components/TestNudgePrompt';
 
 interface StudentHomeDashboardProps { [key: string]: unknown }
 
-// Collapsible section for discovery content - auto-expands on desktop
-const CollapsibleSection = ({ title, children, defaultOpen = false }: { title: string; children: React.ReactNode; defaultOpen?: boolean }) => {
-  const [isOpen, setIsOpen] = useState(defaultOpen);
-  const [isDesktop, setIsDesktop] = useState(false);
-
-  // Detect desktop viewport for auto-expand behavior
-  useEffect(() => {
-    const checkDesktop = () => setIsDesktop(window.innerWidth >= 1024);
-    checkDesktop();
-    window.addEventListener('resize', checkDesktop);
-    return () => window.removeEventListener('resize', checkDesktop);
-  }, []);
-
-  // Auto-expand on desktop
-  const effectiveOpen = isDesktop || isOpen;
-
-  return (
-    <div className="border-t border-border/30 pt-3 lg:border-0 lg:pt-0">
-      <button 
-        onClick={() => setIsOpen(!isOpen)}
-        className="w-full flex items-center justify-between py-2 text-sm font-medium text-muted-foreground active:bg-muted/30 rounded-lg px-2 -mx-2 lg:hidden"
-      >
-        <span>{title}</span>
-        <svg className={`w-4 h-4 transition-transform ${isOpen ? 'rotate-180' : ''}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-          <path d="M19 9l-7 7-7-7" />
-        </svg>
-      </button>
-      {/* Desktop: always show title as header */}
-      <h3 className="hidden lg:block text-sm font-semibold text-foreground mb-3">{title}</h3>
-      {effectiveOpen && <div className="mt-3 lg:mt-0 space-y-4">{children}</div>}
-    </div>
-  );
-};
-
 const StudentHomeDashboard: React.FC<StudentHomeDashboardProps> = () => {
-  const [activeTab, setActiveTab] = useState<'home' | 'tests' | 'notes' | 'profile'>('home');
+  const [activeTab, setActiveTab] = useState<TabId>('home');
   const [messages, setMessages] = useState<{ id: string; from: 'user' | 'ai'; text: string; language?: string; suggestions?: string[] }[]>([]);
   const [subject, setSubject] = useState<string>('general');
   const [conversationId, setConversationId] = useState<string | undefined>(undefined);
@@ -81,24 +45,24 @@ const StudentHomeDashboard: React.FC<StudentHomeDashboardProps> = () => {
     if (typeof window === 'undefined') return;
     const params = new URLSearchParams(window.location.search);
     const tab = params.get('tab');
-    if (tab === 'tests' || tab === 'notes' || tab === 'profile') {
+    if (tab === 'tests' || tab === 'notes' || tab === 'profile' || tab === 'doubts') {
       setActiveTab(tab);
     }
   }, []);
 
-  // Callback for in-page tab navigation (used by FeatureGrid)
-  const navigateToTab = useCallback((tab: 'home' | 'tests' | 'notes' | 'profile') => {
+  // Callback for in-page tab navigation
+  const navigateToTab = useCallback((tab: TabId) => {
     setActiveTab(tab);
   }, []);
 
   // Use global loader overlay while canonical profile is being fetched.
   useEffect(() => {
     if (loading && !profile) {
-      try { startLoading('Loading…'); } catch {}
+      try { startLoading('Loading…'); } catch { /* ignore */ }
     } else {
-      try { stopLoading(); } catch {}
+      try { stopLoading(); } catch { /* ignore */ }
     }
-    return () => { try { stopLoading(); } catch {} };
+    return () => { try { stopLoading(); } catch { /* ignore */ } };
   }, [loading, profile, startLoading, stopLoading]);
 
   // Load chat history per subject and optionally conversationId
@@ -137,99 +101,116 @@ const StudentHomeDashboard: React.FC<StudentHomeDashboardProps> = () => {
     if (activeTab === 'profile') return <ProfilePage />;
     if (activeTab === 'tests') return <TestsTab subject={subject} grade={profile?.grade ?? undefined} board={profile?.board ?? undefined} />;
     if (activeTab === 'notes') return <NotesTab />;
+    if (activeTab === 'doubts') return (
+      <DoubtsTab
+        onAskQuestion={(question, questionSubject) => {
+          // When user asks a question from Doubts tab, switch to home (chat) and send
+          setSubject(questionSubject || 'general');
+          setActiveTab('home');
+          // Add user message to chat
+          setMessages((prev) => [
+            ...prev,
+            { id: String(Date.now()) + '-u', from: 'user' as const, text: question }
+          ]);
+        }}
+      />
+    );
 
-    // Home/Chat tab - responsive design: chat-focused on mobile, sidebar layout on desktop
+    // Home tab - New design per PRD with HomeTab component and chat access
     return (
       <div className="lg:flex lg:gap-6 xl:gap-8">
-        {/* Main Chat Column */}
+        {/* Main Content Column */}
         <div className="flex-1 space-y-4 min-w-0">
-          {/* Subject selector - compact horizontal scroll */}
-          <SubjectThreadList
-            subject={subject}
-            setSubject={(s) => { setSubject(s); setConversationId(undefined); setMessages([]); }}
-            onSelectThread={(cid) => setConversationId(cid)}
-            onNewThread={(s) => { setSubject(s); setConversationId(undefined); setMessages([]); }}
-            selectedConversationId={conversationId}
-          />
-
-          {/* Chat Panel - main focus area */}
-          <ChatPanel messages={messages} />
-
-          {/* Quick Input - always visible and accessible */}
-          <QuickInputBox
-            initialPreferredLang={profile?.language ?? (profile as any)?.preferred_language ?? (profile as any)?.preferredLanguage ?? null}
-            onReply={(reply: string, userMessage?: string, language?: string, suggestions?: string[]) => {
-              setMessages((prev) => [
-                ...prev,
-                ...(userMessage ? [{ id: String(Date.now()) + '-u', from: 'user' as const, text: userMessage }] : []),
-                { id: String(Date.now()) + '-a', from: 'ai' as const, text: reply, language, suggestions },
-              ]);
+          {/* HomeTab - Primary landing view */}
+          <HomeTab
+            onStartLearning={(topicId) => {
+              // Navigate to notes or initiate learning
+              setActiveTab('notes');
             }}
-            subject={subject}
-            conversationId={conversationId}
-            onConversationId={(cid?: string) => {
-              setConversationId(cid);
-              try { if (cid) window.sessionStorage.setItem(`spinzy:lastcid:${subject}`, cid); } catch {}
+            onContinueActivity={(activityId, type) => {
+              // Resume activity based on type
+              if (type === 'note') setActiveTab('notes');
+              else if (type === 'test' || type === 'practice') setActiveTab('tests');
+              else setActiveTab('home');
             }}
           />
 
-          {/* Discovery Section - Collapsible on mobile, visible on desktop (shown inline on mobile) */}
-          <div className="lg:hidden space-y-2">
-            <CollapsibleSection title="📚 Continue Learning" defaultOpen={false}>
-              <ContinueLearning />
-            </CollapsibleSection>
+          {/* Quick Chat Access - Collapsed by default on home */}
+          <details className="group">
+            <summary className="cursor-pointer list-none flex items-center justify-between p-4 bg-card dark:bg-slate-800/50 rounded-xl border border-border/30">
+              <span className="flex items-center gap-2 text-sm font-medium text-foreground">
+                💬 Need to ask something quick?
+              </span>
+              <svg className="w-5 h-5 text-muted-foreground group-open:rotate-180 transition-transform" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M19 9l-7 7-7-7" />
+              </svg>
+            </summary>
+            <div className="mt-3 space-y-4">
+              {/* Subject selector - compact horizontal scroll */}
+              <SubjectThreadList
+                subject={subject}
+                setSubject={(s) => { setSubject(s); setConversationId(undefined); setMessages([]); }}
+                onSelectThread={(cid) => setConversationId(cid)}
+                onNewThread={(s) => { setSubject(s); setConversationId(undefined); setMessages([]); }}
+                selectedConversationId={conversationId}
+              />
 
-            <CollapsibleSection title="💡 Suggested For You" defaultOpen={false}>
-              <SuggestedContent />
-            </CollapsibleSection>
+              {/* Chat Panel */}
+              <ChatPanel messages={messages} />
 
-            <CollapsibleSection title="🔥 Your Progress" defaultOpen={false}>
-              <StudyGoals />
-            </CollapsibleSection>
-
-            <CollapsibleSection title="⚡ Quick Access" defaultOpen={false}>
-              <FeatureGrid onNavigate={navigateToTab} />
-              <div className="mt-4">
-                <ParentModeCard />
-              </div>
-            </CollapsibleSection>
-          </div>
+              {/* Quick Input */}
+              <QuickInputBox
+                initialPreferredLang={profile?.language ?? (profile as any)?.preferred_language ?? (profile as any)?.preferredLanguage ?? null}
+                onReply={(reply: string, userMessage?: string, language?: string, suggestions?: string[]) => {
+                  setMessages((prev) => [
+                    ...prev,
+                    ...(userMessage ? [{ id: String(Date.now()) + '-u', from: 'user' as const, text: userMessage }] : []),
+                    { id: String(Date.now()) + '-a', from: 'ai' as const, text: reply, language, suggestions },
+                  ]);
+                }}
+                subject={subject}
+                conversationId={conversationId}
+                onConversationId={(cid?: string) => {
+                  setConversationId(cid);
+                  try { if (cid) window.sessionStorage.setItem(`spinzy:lastcid:${subject}`, cid); } catch { /* ignore */ }
+                }}
+              />
+            </div>
+          </details>
         </div>
 
-        {/* Desktop Sidebar - Right side content */}
+        {/* Desktop Sidebar - Shows quick navigation and chat */}
         <aside className="hidden lg:block w-80 xl:w-96 flex-shrink-0 space-y-6">
-          {/* Study Goals Card */}
+          {/* Chat Card for Desktop */}
           <div className="bg-card dark:bg-slate-800/50 rounded-xl p-4 border border-border/30">
             <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
-              <span>🔥</span> Your Progress
+              <span>💬</span> Quick Chat
             </h3>
-            <StudyGoals />
-          </div>
-
-          {/* Continue Learning Card */}
-          <div className="bg-card dark:bg-slate-800/50 rounded-xl p-4 border border-border/30">
-            <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
-              <span>📚</span> Continue Learning
-            </h3>
-            <ContinueLearning />
-          </div>
-
-          {/* Suggested Content Card */}
-          <div className="bg-card dark:bg-slate-800/50 rounded-xl p-4 border border-border/30">
-            <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
-              <span>💡</span> Suggested For You
-            </h3>
-            <SuggestedContent />
-          </div>
-
-          {/* Quick Access Card */}
-          <div className="bg-card dark:bg-slate-800/50 rounded-xl p-4 border border-border/30">
-            <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
-              <span>⚡</span> Quick Access
-            </h3>
-            <FeatureGrid onNavigate={navigateToTab} />
-            <div className="mt-4">
-              <ParentModeCard />
+            <SubjectThreadList
+              subject={subject}
+              setSubject={(s) => { setSubject(s); setConversationId(undefined); setMessages([]); }}
+              onSelectThread={(cid) => setConversationId(cid)}
+              onNewThread={(s) => { setSubject(s); setConversationId(undefined); setMessages([]); }}
+              selectedConversationId={conversationId}
+            />
+            <div className="mt-3">
+              <ChatPanel messages={messages} />
+              <QuickInputBox
+                initialPreferredLang={profile?.language ?? (profile as any)?.preferred_language ?? (profile as any)?.preferredLanguage ?? null}
+                onReply={(reply: string, userMessage?: string, language?: string, suggestions?: string[]) => {
+                  setMessages((prev) => [
+                    ...prev,
+                    ...(userMessage ? [{ id: String(Date.now()) + '-u', from: 'user' as const, text: userMessage }] : []),
+                    { id: String(Date.now()) + '-a', from: 'ai' as const, text: reply, language, suggestions },
+                  ]);
+                }}
+                subject={subject}
+                conversationId={conversationId}
+                onConversationId={(cid?: string) => {
+                  setConversationId(cid);
+                  try { if (cid) window.sessionStorage.setItem(`spinzy:lastcid:${subject}`, cid); } catch { /* ignore */ }
+                }}
+              />
             </div>
           </div>
         </aside>

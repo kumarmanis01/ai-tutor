@@ -72,8 +72,8 @@ export async function callLLM({ prompt, model, meta, timeoutMs }: { prompt: stri
 
   // Model selection rules
   // - Small models for topics/structure/syllabus
-  // - Medium models for notes
-  // - Large models for questions only
+  // - Medium models for notes, doubts (chat), practice questions
+  // - Large models for complex question generation only
   // - Never use large models for orchestration/pipeline logic
   const promptType = meta?.promptType || 'general'
   const envSmall = process.env.MODEL_SMALL || 'gpt-4o-mini'
@@ -83,7 +83,7 @@ export async function callLLM({ prompt, model, meta, timeoutMs }: { prompt: stri
 
   const selectedModel = model || ((): string => {
     if (['topics', 'structure', 'syllabus'].includes(promptType)) return envSmall
-    if (['notes'].includes(promptType)) return envMedium
+    if (['notes', 'doubts', 'practice'].includes(promptType)) return envMedium
     if (['questions'].includes(promptType)) return envLarge
     return envDefault
   })()
@@ -225,7 +225,7 @@ export async function batchCallLLM(calls: Array<{ prompt: string; meta: any }>, 
   // If model not provided, pick via same selection rules as callLLM
   const resolvedModel = model || ((): string => {
     if (['topics', 'structure', 'syllabus'].includes(promptType)) return process.env.MODEL_SMALL || 'gpt-4o-mini'
-    if (['notes'].includes(promptType)) return process.env.MODEL_MEDIUM || 'gpt-4o'
+    if (['notes', 'doubts', 'practice'].includes(promptType)) return process.env.MODEL_MEDIUM || 'gpt-4o'
     if (['questions'].includes(promptType)) return process.env.MODEL_LARGE || 'gpt-4o-large'
     return process.env.MODEL_DEFAULT || (process.env.MODEL_SMALL || 'gpt-4o-mini')
   })()
