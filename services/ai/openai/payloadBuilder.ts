@@ -547,6 +547,16 @@ function validateNotesResponse(response: unknown): boolean {
     }
   }
   
+  // Ensure learning_objectives has at least 2 items
+  if (!Array.isArray(obj.learning_objectives) || (obj.learning_objectives as any[]).length < 2) {
+    throw new Error('Missing required field in notes response: learning_objectives');
+  }
+
+  // Ensure key_concepts is a non-empty array (tests expect empty array to be invalid)
+  if (!Array.isArray(obj.key_concepts) || (obj.key_concepts as any[]).length === 0) {
+    throw new Error('Missing required field in notes response: key_concepts');
+  }
+  
   return true;
 }
 

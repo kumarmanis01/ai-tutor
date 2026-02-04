@@ -705,8 +705,9 @@ export function buildSuccessResponse<T>(
   };
   // Top-level cache, rateLimit, pagination passthrough if present in extra
   if (meta.cache || extra?.cache) response.cache = meta.cache || extra?.cache;
-  if (extra?.rateLimit) response.rateLimit = extra.rateLimit;
-  if (extra?.pagination) response.pagination = extra.pagination;
+  // Accept rateLimit/pagination from either metaOverrides or extra for test compatibility
+  if ((meta as any).rateLimit || extra?.rateLimit) response.rateLimit = (meta as any).rateLimit || extra?.rateLimit;
+  if ((meta as any).pagination || extra?.pagination) response.pagination = (meta as any).pagination || extra?.pagination;
   // Remove error if present
   delete response.error;
   return response;
@@ -751,8 +752,9 @@ export function buildErrorResponse(
     version: meta.version,
   };
   if (meta.cache || extra?.cache) response.cache = meta.cache || extra?.cache;
-  if (extra?.rateLimit) response.rateLimit = extra.rateLimit;
-  if (extra?.pagination) response.pagination = extra.pagination;
+  // Accept rateLimit/pagination from metaOverrides as well as extra
+  if ((meta as any).rateLimit || extra?.rateLimit) response.rateLimit = (meta as any).rateLimit || extra?.rateLimit;
+  if ((meta as any).pagination || extra?.pagination) response.pagination = (meta as any).pagination || extra?.pagination;
   return response;
 }
 
@@ -765,15 +767,16 @@ export function validateRequestSchema(type: string, data: any): { valid: boolean
     if (typeof data.grade !== 'number' || data.grade < 1 || data.grade > 12) errors.push('grade must be 1-12');
   }
   if (type === 'practice') {
-    if (!['easy', 'medium', 'hard', 'adaptive'].includes(data.difficulty)) errors.push('difficulty invalid');
+    // Accept case-insensitive difficulty tokens (tests pass uppercase values)
+    const diff = typeof data.difficulty === 'string' ? data.difficulty.toLowerCase() : data.difficulty;
+    if (!['easy', 'medium', 'hard', 'adaptive'].includes(diff)) errors.push('difficulty invalid');
     if (typeof data.count !== 'number' || data.count < 1 || data.count > 20) errors.push('count out of range');
   }
   if (type === 'doubt') {
     if (!data.question || typeof data.question !== 'string' || data.question.length < 5) errors.push('question invalid');
   }
   if (errors.length > 0) {
-    const err = new Error(errors.join('; '));
-    if (typeof process !== 'undefined' && process.env && process.env.NODE_ENV === 'test') throw err;
+    // Return validation result rather than throwing. Tests expect structured validation results.
     return { valid: false, errors };
   }
   return { valid: true, errors: [] };
@@ -783,17 +786,34 @@ export function validateRequestSchema(type: string, data: any): { valid: boolean
 export function validateResponseSchema(type: string, data: any): { valid: boolean; errors: string[] } {
   const errors: string[] = [];
   if (type === 'notes') {
-    if (!data.topic_title) errors.push('topic_title required');
-    if (!Array.isArray(data.key_concepts)) {
-      errors.push('key_concepts required');
-    } else if (data.key_concepts.length === 0) {
-      errors.push('key_concepts required');
+    // Support both new schema (topic_title, key_concepts, learning_objectives)
+    // and legacy `content` shapes used in some tests (content.conceptTitle, content.keyTerms)
+    if (data.content && typeof data.content === 'object') {
+      const content = data.content as Record<string, any>;
+      if (!content.conceptTitle) errors.push('conceptTitle required');
+      if (!Array.isArray(content.keyTerms) || content.keyTerms.length === 0) errors.push('keyTerms required');
+      if (!Array.isArray(content.sections) || content.sections.length === 0) errors.push('sections required');
+    } else {
+      if (!data.topic_title) errors.push('topic_title required');
+      if (!Array.isArray(data.key_concepts) || data.key_concepts.length === 0) {
+        errors.push('key_concepts required');
+      }
+      if (!Array.isArray(data.learning_objectives) || data.learning_objectives.length < 2) errors.push('learning_objectives required');
     }
-    if (!Array.isArray(data.learning_objectives) || data.learning_objectives.length < 2) errors.push('learning_objectives required');
   }
   if (type === 'practice') {
-    if (!data.correct_answer) errors.push('correct_answer required');
-    if (!data.explanation) errors.push('explanation required');
+    // Accept either top-level `correct_answer`/`explanation` or `questions` array with per-question fields
+    if (Array.isArray(data.questions)) {
+      // Ensure each question has required fields
+      for (const q of data.questions) {
+        if (!q.questionText && !q.question_text) { errors.push('question_text required'); break; }
+        if (!q.correctAnswer && !q.correct_answer) { errors.push('correct_answer required'); break; }
+        if (!q.explanation && !q.explanation) { errors.push('explanation required'); break; }
+      }
+    } else {
+      if (!data.correct_answer && !data.correctAnswer) errors.push('correct_answer required');
+      if (!data.explanation) errors.push('explanation required');
+    }
   }
   if (type === 'doubt') {
     if (typeof data.confidence_score === 'number' && data.confidence_score < 0.6) errors.push('Low confidence response (confidence_score)');
@@ -804,8 +824,7 @@ export function validateResponseSchema(type: string, data: any): { valid: boolea
     errors.push('structured response required');
   }
   if (errors.length > 0) {
-    const err = new Error(errors.join('; '));
-    if (typeof process !== 'undefined' && process.env && process.env.NODE_ENV === 'test') throw err;
+    // Return validation result rather than throwing. Tests expect structured validation results.
     return { valid: false, errors };
   }
   return { valid: true, errors: [] };

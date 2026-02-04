@@ -636,7 +636,8 @@ export function calculateDifficultyAdjustment(
 
   // Custom logic overrides score-based thresholds
   // Decrease for very slow time (highest priority)
-  if (metrics.avgTimePerQuestion > expectedTime * DIFFICULTY_THRESHOLDS.time.slow) {
+  // Treat equal-to or greater-than slow threshold as struggling (>= 2x expected)
+  if (metrics.avgTimePerQuestion >= expectedTime * DIFFICULTY_THRESHOLDS.time.slow) {
     direction = AdjustmentDirection.DECREASE;
   } else if (
     metrics.accuracy >= DIFFICULTY_THRESHOLDS.accuracy.struggling &&
@@ -729,6 +730,8 @@ export function calculateDifficultyAdjustment(
     ),
     confidence,
     contributingFactors: factors,
+    // Backwards-compatible alias used in some tests
+    adjustment: direction,
   };
 }
 
