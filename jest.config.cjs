@@ -5,7 +5,7 @@ module.exports = {
   // run only unit tests by default; integration tests are excluded
   testMatch: ['**/tests/**/*.test.ts'],
   testPathIgnorePatterns: ['/tests/integration/'],
-  moduleFileExtensions: ['ts', 'js', 'json', 'node'],
+  moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json', 'node'],
   moduleNameMapper: {
     // Avoid mapping generic relative ../lib/* patterns — they clash with node_modules internals.
     // Map project `@/` aliases explicitly.
