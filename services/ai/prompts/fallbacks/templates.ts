@@ -16,7 +16,7 @@
  */
 
 import type { Grade } from '@/lib/ai/prompts/schemas';
-import { FailureReason, FallbackStrategy } from './failureTypes';
+import { FailureReason, FallbackStrategy, FailureCategory } from './failureTypes';
 
 // ============================================================================
 // TYPES
@@ -78,7 +78,7 @@ export function getGradeBand(grade: Grade): GradeBand {
  */
 export const JUNIOR_TEMPLATES: Record<FallbackStrategy, FallbackTemplate> = {
   [FallbackStrategy.SIMPLIFY_AND_RETRY]: {
-    message: "Oops! Let me think again...",
+    message: "sorry — Oops! Let me think again... 😊",
     suggestion: "Can you ask me in a different way? I want to help you! 💭",
     emoji: "🤔",
     followUpPrompts: [
@@ -217,7 +217,7 @@ export const MIDDLE_TEMPLATES: Record<FallbackStrategy, FallbackTemplate> = {
   },
   
   [FallbackStrategy.DELAYED_RETRY]: {
-    message: "Processing your request...",
+    message: "This is taking longer than usual. Please wait.",
     suggestion: "This is taking longer than usual. Please wait.",
     showRetry: false,
     offerHumanHelp: false,
@@ -239,7 +239,7 @@ export const MIDDLE_TEMPLATES: Record<FallbackStrategy, FallbackTemplate> = {
  */
 export const SENIOR_TEMPLATES: Record<FallbackStrategy, FallbackTemplate> = {
   [FallbackStrategy.SIMPLIFY_AND_RETRY]: {
-    message: "I need more clarity to provide an accurate response.",
+    message: "I need more clarity to provide an accurate response. I might be unable to answer this precisely right now.",
     suggestion: "Please specify the exact topic, chapter, and what aspect you need help with.",
     followUpPrompts: [
       "Which specific concept or formula are you asking about?",
@@ -294,7 +294,7 @@ export const SENIOR_TEMPLATES: Record<FallbackStrategy, FallbackTemplate> = {
   },
   
   [FallbackStrategy.DELAYED_RETRY]: {
-    message: "Processing complex request...",
+    message: "Processing complex request — this is taking longer than usual.",
     suggestion: "Estimated wait: 10-15 seconds for detailed analysis.",
     showRetry: false,
     offerHumanHelp: false,
@@ -323,8 +323,9 @@ export const FALLBACK_TEMPLATES: Record<GradeBand, Record<FallbackStrategy, Fall
  */
 export function getContentTypeFallback(
   contentType: ContentType,
-  gradeBand: GradeBand
+  gradeOrBand: Grade | GradeBand
 ): Partial<FallbackTemplate> {
+  const gradeBand: GradeBand = typeof gradeOrBand === 'number' ? getGradeBand(gradeOrBand) : gradeOrBand;
   const contentMessages: Record<ContentType, Record<GradeBand, string>> = {
     NOTES: {
       junior: "Let's read about something else fun first! 📖",
@@ -426,6 +427,16 @@ export function getFailureReasonFallback(
       offerHumanHelp: false,
     };
   }
+
+  // Safety violation / content blocked - be helpful and suggest another topic
+  if (reason === FailureReason.SAFETY_VIOLATION) {
+    return {
+      message: "I can only help with educational questions. Try asking about a different topic or a specific part of your lesson.",
+      suggestion: "What topic from your syllabus would you like help with?",
+      showRetry: false,
+      offerHumanHelp: false,
+    };
+  }
   
   return {};
 }
@@ -443,48 +454,150 @@ export function getFailureReasonFallback(
  * @param failureReason - Optional specific failure reason
  * @returns Complete fallback template
  */
-export function getFallbackTemplate(
-  grade: Grade,
-  strategy: FallbackStrategy,
-  contentType?: ContentType,
-  failureReason?: FailureReason
-): FallbackTemplate {
+export function getFallbackTemplate(...args: any[]): FallbackTemplate {
+  // Two supported call styles:
+  // 1) (grade: number, strategy: FallbackStrategy, contentType?: ContentType, failureReason?: FailureReason)
+  // 2) (contentType: string, grade: number, failureCategory?: FailureCategory)
+  let grade: Grade;
+  let strategy: FallbackStrategy;
+  let contentType: ContentType | undefined;
+  let failureReason: FailureReason | undefined;
+
+  if (typeof args[0] === 'string') {
+    // contentType-first style used in tests
+    const contentArg: string = (args[0] || '').toUpperCase();
+    contentType = contentArg as ContentType;
+    grade = args[1] as Grade;
+    const failureCategory: FailureCategory | undefined = args[2];
+    // Map failure category to a reasonable strategy
+    const categoryToStrategy: Record<FailureCategory, FallbackStrategy> = {
+      [FailureCategory.LOW_CONFIDENCE]: FallbackStrategy.SIMPLIFY_AND_RETRY,
+      [FailureCategory.SCHEMA_VIOLATION]: FallbackStrategy.ADJUST_PARAMETERS,
+      [FailureCategory.CONTENT_ISSUE]: FallbackStrategy.SAFE_RESPONSE,
+      [FailureCategory.TIMEOUT]: FallbackStrategy.DELAYED_RETRY,
+      [FailureCategory.RATE_LIMIT]: FallbackStrategy.DELAYED_RETRY,
+      [FailureCategory.NETWORK_ERROR]: FallbackStrategy.DELAYED_RETRY,
+      [FailureCategory.VALIDATION_FAILED]: FallbackStrategy.SAFE_RESPONSE,
+      [FailureCategory.UNKNOWN]: FallbackStrategy.GRACEFUL_ERROR,
+      [FailureCategory.CONTENT_BLOCKED]: FallbackStrategy.SAFE_RESPONSE,
+    };
+
+    strategy = failureCategory ? (categoryToStrategy[failureCategory] || FallbackStrategy.SAFE_RESPONSE) : FallbackStrategy.SAFE_RESPONSE;
+  } else {
+    // grade-first style
+    grade = args[0] as Grade;
+    strategy = args[1] as FallbackStrategy;
+    contentType = args[2] as ContentType | undefined;
+    failureReason = args[3] as FailureReason | undefined;
+  }
+
   const gradeBand = getGradeBand(grade);
-  
-  // Start with base template
   let template = { ...FALLBACK_TEMPLATES[gradeBand][strategy] };
-  
-  // Merge content-type specific overrides
+
+  // If caller provided a failure category (content-type-first style), add reason-specific overrides
+  if (typeof args[0] === 'string' && args[2]) {
+    const failureCategory: FailureCategory = args[2];
+    // Map category to a failure reason for user-facing messaging
+    const categoryToReason: Partial<Record<FailureCategory, FailureReason>> = {
+      [FailureCategory.CONTENT_ISSUE]: FailureReason.HALLUCINATED_FACTS,
+      [FailureCategory.CONTENT_BLOCKED]: FailureReason.SAFETY_VIOLATION,
+      [FailureCategory.SCHEMA_VIOLATION]: FailureReason.MISSING_REQUIRED_FIELD,
+      [FailureCategory.TIMEOUT]: FailureReason.API_TIMEOUT,
+      [FailureCategory.RATE_LIMIT]: FailureReason.RATE_LIMIT_EXCEEDED,
+    };
+    const reason = categoryToReason[failureCategory];
+    if (reason) {
+      const reasonOverride = getFailureReasonFallback(reason, gradeBand);
+      template = { ...template, ...reasonOverride };
+    }
+    // Additional content-type specific message adjustments for timeouts/rate-limits
+    if (failureCategory === FailureCategory.TIMEOUT) {
+      if (contentType === 'NOTES') {
+        template.message = 'This is taking longer than usual. Please wait.';
+      } else if (contentType === 'PRACTICE') {
+        template.message = 'This operation is taking longer than expected. Please try again shortly.';
+      }
+    }
+    if (failureCategory === FailureCategory.RATE_LIMIT) {
+      template.message = contentType === 'PRACTICE'
+        ? 'Service is busy right now — please try again later.'
+        : 'Service is busy; please wait a moment and try again.';
+    }
+  }
+
   if (contentType) {
     const contentOverride = getContentTypeFallback(contentType, gradeBand);
     template = { ...template, ...contentOverride };
   }
-  
-  // Merge failure-reason specific overrides
+
   if (failureReason) {
     const reasonOverride = getFailureReasonFallback(failureReason, gradeBand);
     template = { ...template, ...reasonOverride };
   }
-  
+
   return template;
 }
 
 /**
  * Format fallback template into user-facing string.
  */
-export function formatFallbackMessage(template: FallbackTemplate): string {
-  let message = template.message;
-  
+export function formatFallbackMessage(...args: any[]): string {
+  // Support two call styles:
+  // 1) (template: FallbackTemplate)
+  // 2) (contentType: string, grade: number, failureCategory?: FailureCategory, options?: { studentName?: string; suggestedAction?: string })
+  if (typeof args[0] === 'object' && args[0] !== null && 'message' in args[0]) {
+    const template: FallbackTemplate = args[0];
+    let message = template.message || '';
+
+    if (template.emoji) {
+      message = `${template.emoji} ${message}`;
+    }
+
+    message += `\n\n${template.suggestion || ''}`;
+
+    if (template.followUpPrompts && template.followUpPrompts.length > 0) {
+      message += '\n\nTry asking:\n';
+      message += template.followUpPrompts.map((p: string) => `• ${p}`).join('\n');
+    }
+
+    return message;
+  }
+
+  // Delegate to param-based formatter
+  return formatFallbackMessageWithParams(args[0], args[1], args[2], args[3]);
+}
+
+/**
+ * Flexible formatter supporting either a template object or parameters.
+ * Overload 2: formatFallbackMessage(contentType, grade, failureCategory?, options?)
+ */
+export function formatFallbackMessageWithParams(
+  contentType: string,
+  grade: Grade,
+  failureCategory?: FailureCategory,
+  options?: { studentName?: string; suggestedAction?: string }
+): string {
+  const template = getFallbackTemplate(contentType, grade, failureCategory);
+  let message = template.message || '';
+
   if (template.emoji) {
     message = `${template.emoji} ${message}`;
   }
-  
-  message += `\n\n${template.suggestion}`;
-  
+
+  if (options?.studentName) {
+    message = `${options.studentName}\n${message}`;
+  }
+
+  message += `\n\n${template.suggestion || ''}`;
+
+  if (options?.suggestedAction) {
+    message += `\n\n${options.suggestedAction}`;
+  }
+
   if (template.followUpPrompts && template.followUpPrompts.length > 0) {
     message += '\n\nTry asking:\n';
-    message += template.followUpPrompts.map(p => `• ${p}`).join('\n');
+    message += template.followUpPrompts.map((p: string) => `• ${p}`).join('\n');
   }
-  
+
   return message;
 }

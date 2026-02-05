@@ -10,23 +10,22 @@ if [ "${SKIP_HOOKS:-0}" = "1" ] || [ "${HUSKY_SKIP_HOOKS:-0}" = "1" ]; then
   exit 0;
 fi
 
-echo "Running pre-commit runner (logs via project logger)..."
+echo "Running lightweight local pre-commit checks (CI will run full pipeline)..."
+
+# Run only the quick ESLint rule tests (fast)
 echo "Running ESLint custom rule tests..."
 npm run test:eslint-rules || { echo "Custom ESLint rule tests failed" && exit 1; }
 
-echo "Running lint-staged..."
+# Run lint-staged to lint/fix staged files
+echo "Running lint-staged for staged files..."
 npx --no-install lint-staged || { echo "lint-staged failed" && exit 1; }
 
-echo "Running lint..."
-npm run lint || { echo "lint failed" && exit 1; }
+# Run lightweight related unit tests for staged files (don't run full suite locally)
+if [ -x "./scripts/precommit-local-tests.sh" ]; then
+  echo "Running local related tests for staged files..."
+  bash ./scripts/precommit-local-tests.sh || { echo "related tests failed" && exit 1; }
+else
+  echo "Local pre-commit helper not found; skipping related tests."
+fi
 
-echo "Running type-check..."
-npm run type-check || { echo "type-check failed" && exit 1; }
-
-echo "Running build..."
-npm run build || { echo "build failed" && exit 1; }
-
-echo "Running unit tests..."
-npm run test:unit || { echo "unit tests failed" && exit 1; }
-
-echo "Pre-commit checks passed"
+echo "Local pre-commit checks completed. Full checks run on CI." 

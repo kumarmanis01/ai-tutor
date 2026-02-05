@@ -105,7 +105,7 @@ describe('Failure Classification', () => {
       const result = classifyFailure(failure);
       
       expect(result.category).toBe(FailureCategory.CONTENT_ISSUE);
-      expect(result.reason).toBe(FailureReason.HALLUCINATION);
+      expect(result.reason).toBe(FailureReason.HALLUCINATED_FACTS);
     });
     
     it('should classify inappropriate content as CONTENT_ISSUE', () => {
@@ -185,7 +185,7 @@ describe('Retry Decision Logic', () => {
       });
       
       expect(decision.shouldRetry).toBe(true);
-      expect(decision.strategy).toBe(FallbackStrategy.RETRY_SIMPLER_PROMPT);
+      expect(decision.strategy).toBe(FallbackStrategy.SIMPLIFY_AND_RETRY);
     });
     
     it('should recommend fallback after max retries', () => {
@@ -197,7 +197,7 @@ describe('Retry Decision Logic', () => {
       });
       
       expect(decision.shouldRetry).toBe(false);
-      expect(decision.strategy).toBe(FallbackStrategy.STATIC_FALLBACK);
+      expect(decision.strategy).toBe(FallbackStrategy.SAFE_RESPONSE);
     });
     
     it('should never retry CONTENT_BLOCKED failures', () => {
@@ -258,7 +258,7 @@ describe('Retry Decision Logic', () => {
         grade: 6,
       });
       
-      expect(decision.strategy).toBe(FallbackStrategy.RETRY_SIMPLER_PROMPT);
+      expect(decision.strategy).toBe(FallbackStrategy.SIMPLIFY_AND_RETRY);
     });
     
     it('should suggest schema repair for SCHEMA_VIOLATION', () => {
@@ -269,7 +269,7 @@ describe('Retry Decision Logic', () => {
         grade: 7,
       });
       
-      expect(decision.strategy).toBe(FallbackStrategy.RETRY_WITH_EXAMPLES);
+      expect(decision.strategy).toBe(FallbackStrategy.ADJUST_PARAMETERS);
     });
     
     it('should suggest exponential backoff for RATE_LIMIT', () => {
@@ -280,7 +280,7 @@ describe('Retry Decision Logic', () => {
         grade: 5,
       });
       
-      expect(decision.strategy).toBe(FallbackStrategy.WAIT_AND_RETRY);
+      expect(decision.strategy).toBe(FallbackStrategy.DELAYED_RETRY);
       expect(decision.waitTime).toBeGreaterThan(0);
     });
   });

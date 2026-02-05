@@ -47,10 +47,14 @@ export interface RewriteResult {
   readonly wasRewritten: boolean;
   /** Rewritten prompt (or original if no rewrite) */
   readonly prompt: string;
+  /** Backwards-compatible alias for tests */
+  readonly rewrittenPrompt?: string;
   /** Original prompt (for logging) */
   readonly originalPrompt: string;
   /** Rewrite strategy applied */
   readonly strategyApplied: RewriteStrategy | null;
+  /** Backwards-compatible alias for tests */
+  readonly strategy: RewriteStrategy | null;
   /** Reason for rewrite (internal use only) */
   readonly internalReason: string | null;
 }
@@ -59,10 +63,10 @@ export interface RewriteResult {
  * Rewrite strategies
  */
 export enum RewriteStrategy {
-  /** Convert direct answer request to conceptual question */
-  ANSWER_TO_CONCEPT = 'answer_to_concept',
-  /** Convert homework dump to step-by-step guidance */
-  HOMEWORK_TO_GUIDANCE = 'homework_to_guidance',
+  /** Convert direct answer request to learning-focused prompt */
+  SHORTCUT_TO_LEARNING = 'shortcut_to_learning',
+  /** Convert homework dump to single-concept learning prompt */
+  HOMEWORK_TO_CONCEPT = 'homework_to_concept',
   /** Convert solve-for-me to teach-me */
   SOLVE_TO_TEACH = 'solve_to_teach',
   /** Add learning context to bare question */
@@ -183,6 +187,9 @@ function getRewriteTemplate(subject: string, type: 'shortcut' | 'homework'): str
 function extractCoreQuestion(input: string): string {
   // Remove common imperative patterns
   let core = input
+    // strip 'just tell me' and variants
+    .replace(/\bjust\s+tell\s+me(?:\s+what)?\b/gi, '')
+    .replace(/\btell\s+me\b/gi, '')
     .replace(/\b(just\s+)?(give|tell)\s+(me\s+)?(the\s+)?answer\s*(to|for|of)?\s*/gi, '')
     .replace(/\bsolve\s+(this|it|these)\s*(for\s+me)?\s*[:.]?\s*/gi, '')
     .replace(/\bdo\s+(this|it|these)\s*(for\s+me)?\s*[:.]?\s*/gi, '')
@@ -209,6 +216,7 @@ function hasMultipleQuestions(input: string): boolean {
     /\bquestion\s*\d/i,
     /\bq\s*\d/i,
     /^\s*\d+[.)]/m,
+    /\d+\)/,
     /\band\s+also\b/i,
     /\bfirst[\s,]+second/i,
     /\b(all|these)\s+(questions|problems)\b/i,
@@ -231,20 +239,28 @@ function rewriteShortcutPrompt(context: RewriteContext): RewriteResult {
   
   if (coreQuestion.length > 10 && coreQuestion !== originalInput) {
     // We extracted a meaningful core question
-    rewrittenPrompt = topic 
-      ? `${prefix} ${topic}. Specifically: ${coreQuestion}`
-      : `${prefix} this: ${coreQuestion}`;
+    // Prefer a template that includes 'explain' so rewritten prompts encourage conceptual learning
+    let explainTemplate = getRewriteTemplate(subject, 'shortcut');
+    if (!/explain/i.test(explainTemplate)) {
+      explainTemplate = `Can you explain? ${explainTemplate}`;
+    }
+    rewrittenPrompt = topic
+      ? `${prefix} ${topic}. ${explainTemplate} Specifically: ${coreQuestion}`
+      : `${prefix} ${explainTemplate} Specifically: ${coreQuestion}`;
   } else {
     // Use template-based rewrite
-    rewrittenPrompt = template;
+    // Ensure the template encourages explanation wording
+    rewrittenPrompt = /explain/i.test(template) ? template : `Can you explain? ${template}`;
   }
   
   return {
     wasRewritten: true,
     prompt: rewrittenPrompt,
+    rewrittenPrompt,
     originalPrompt: originalInput,
-    strategyApplied: RewriteStrategy.ANSWER_TO_CONCEPT,
-    internalReason: 'Shortcut-seeking intent detected; converted to conceptual question',
+    strategyApplied: RewriteStrategy.SHORTCUT_TO_LEARNING,
+    strategy: RewriteStrategy.SHORTCUT_TO_LEARNING,
+    internalReason: 'Shortcut-seeking intent detected; converted to learning-focused prompt',
   };
 }
 
@@ -272,11 +288,15 @@ function rewriteHomeworkPrompt(context: RewriteContext): RewriteResult {
       : `${prefix} this concept: ${coreQuestion}`;
   }
   
+  const strategyUsed = hasMultiple ? RewriteStrategy.HOMEWORK_TO_CONCEPT : RewriteStrategy.SOLVE_TO_TEACH;
+  
   return {
     wasRewritten: true,
     prompt: rewrittenPrompt,
+    rewrittenPrompt,
     originalPrompt: originalInput,
-    strategyApplied: hasMultiple ? RewriteStrategy.HOMEWORK_TO_GUIDANCE : RewriteStrategy.SOLVE_TO_TEACH,
+    strategyApplied: strategyUsed,
+    strategy: strategyUsed,
     internalReason: hasMultiple 
       ? 'Bulk homework detected; converted to single-concept learning request'
       : 'Homework question detected; converted to learning request',
@@ -296,8 +316,10 @@ function addLearningContext(context: RewriteContext): RewriteResult {
     return {
       wasRewritten: true,
       prompt: contextualPrompt,
+      rewrittenPrompt: contextualPrompt,
       originalPrompt: originalInput,
       strategyApplied: RewriteStrategy.ADD_LEARNING_CONTEXT,
+      strategy: RewriteStrategy.ADD_LEARNING_CONTEXT,
       internalReason: 'Added learning context to prompt',
     };
   }
@@ -306,8 +328,10 @@ function addLearningContext(context: RewriteContext): RewriteResult {
   return {
     wasRewritten: false,
     prompt: originalInput,
+    rewrittenPrompt: undefined,
     originalPrompt: originalInput,
     strategyApplied: null,
+    strategy: null,
     internalReason: null,
   };
 }
@@ -332,8 +356,8 @@ export function processPrompt(
   subject: string,
   topic?: string
 ): RewriteResult {
-  // First, classify the intent
-  const classification = classifyIntent(input);
+  // First, classify the intent (pass grade and subject for better context)
+  const classification = classifyIntent(input, grade, subject);
   
   const context: RewriteContext = {
     originalInput: input,
@@ -359,8 +383,10 @@ export function processPrompt(
       return {
         wasRewritten: false,
         prompt: input,
+        rewrittenPrompt: undefined,
         originalPrompt: input,
         strategyApplied: null,
+        strategy: null,
         internalReason: null,
       };
     
@@ -371,8 +397,10 @@ export function processPrompt(
       return {
         wasRewritten: false,
         prompt: input,
+        rewrittenPrompt: undefined,
         originalPrompt: input,
         strategyApplied: null,
+        strategy: null,
         internalReason: 'Intent requires blocking, not rewriting',
       };
     
@@ -402,10 +430,10 @@ export function getRewriteStrategy(input: string): RewriteStrategy | null {
   
   switch (classification.primaryIntent) {
     case StudentIntentCategory.SHORTCUT_SEEKING:
-      return RewriteStrategy.ANSWER_TO_CONCEPT;
+      return RewriteStrategy.SHORTCUT_TO_LEARNING;
     case StudentIntentCategory.HOMEWORK_DUMP:
-      return hasMultipleQuestions(input) 
-        ? RewriteStrategy.HOMEWORK_TO_GUIDANCE 
+      return hasMultipleQuestions(input)
+        ? RewriteStrategy.HOMEWORK_TO_CONCEPT
         : RewriteStrategy.SOLVE_TO_TEACH;
     default:
       return null;

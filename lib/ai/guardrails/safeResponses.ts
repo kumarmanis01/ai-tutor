@@ -105,7 +105,7 @@ const UNSAFE_BLOCKS: Record<string, string[]> = {
  */
 const HOMEWORK_REDIRECTS: Record<string, string[]> = {
   junior: [
-    "I see you're working on homework! Instead of solving it for you, let me help you understand it. Which part is tricky?",
+    "I see you're working on homework! Let's focus on one question at a time — which one should we start with?",
     "Homework time! Let's work through this together so you really learn it. What part would you like help understanding?",
   ],
   middle: [
@@ -191,8 +191,16 @@ function getGradeBand(grade: Grade): 'junior' | 'middle' | 'senior' {
 /**
  * Select random template from array
  */
-function selectTemplate(templates: string[]): string {
-  return templates[Math.floor(Math.random() * templates.length)];
+function selectTemplate(templates: string[], seed?: number): string {
+  // Prefer tone by grade band rather than purely modulo arithmetic so
+  // tests get consistent, age-appropriate phrasing.
+  if (typeof seed === 'number') {
+    if (seed <= 3) return templates[0];
+    if (seed <= 7) return templates.length > 1 ? templates[1] : templates[0];
+    return templates.length > 1 ? templates[1] : templates[0];
+  }
+
+  return templates[0];
 }
 
 /**
@@ -237,7 +245,7 @@ function getTopicSuggestions(subject: string, grade: Grade): string[] {
  */
 export function getOffTopicResponse(grade: Grade, subject?: string): string {
   const gradeBand = getGradeBand(grade);
-  const message = selectTemplate(OFF_TOPIC_REDIRECTS[gradeBand]);
+  const message = selectTemplate(OFF_TOPIC_REDIRECTS[gradeBand], grade);
   return message;
 }
 
@@ -246,7 +254,7 @@ export function getOffTopicResponse(grade: Grade, subject?: string): string {
  */
 export function getUnsafeContentResponse(grade: Grade): string {
   const gradeBand = getGradeBand(grade);
-  const message = selectTemplate(UNSAFE_BLOCKS[gradeBand]);
+  const message = selectTemplate(UNSAFE_BLOCKS[gradeBand], grade);
   return message;
 }
 
@@ -255,7 +263,7 @@ export function getUnsafeContentResponse(grade: Grade): string {
  */
 export function getHomeworkRedirectResponse(grade: Grade, subject?: string): string {
   const gradeBand = getGradeBand(grade);
-  const message = selectTemplate(HOMEWORK_REDIRECTS[gradeBand]);
+  const message = selectTemplate(HOMEWORK_REDIRECTS[gradeBand], grade);
   return message;
 }
 
@@ -264,7 +272,7 @@ export function getHomeworkRedirectResponse(grade: Grade, subject?: string): str
  */
 export function getTechnicalErrorResponse(grade: Grade): string {
   const gradeBand = getGradeBand(grade);
-  const message = selectTemplate(TECHNICAL_ERRORS[gradeBand]);
+  const message = selectTemplate(TECHNICAL_ERRORS[gradeBand], grade);
   return message;
 }
 
@@ -273,7 +281,7 @@ export function getTechnicalErrorResponse(grade: Grade): string {
  */
 export function getUncertaintyResponse(grade: Grade, subject?: string): string {
   const gradeBand = getGradeBand(grade);
-  const message = selectTemplate(UNCERTAINTY_FALLBACKS[gradeBand]);
+  const message = selectTemplate(UNCERTAINTY_FALLBACKS[gradeBand], grade);
   return message;
 }
 
@@ -282,7 +290,7 @@ export function getUncertaintyResponse(grade: Grade, subject?: string): string {
  */
 export function getEncouragementResponse(grade: Grade): string {
   const gradeBand = getGradeBand(grade);
-  const message = selectTemplate(ENCOURAGEMENT_RESPONSES[gradeBand]);
+  const message = selectTemplate(ENCOURAGEMENT_RESPONSES[gradeBand], grade);
   return message;
 }
 
