@@ -153,6 +153,26 @@ export function OnboardingProvider({ children, service }: { children: React.Reac
 
 export function useOnboarding() {
   const ctx = useContext(Ctx);
-  if (!ctx) throw new Error('useOnboarding must be used within OnboardingProvider');
+  
+  // During SSG/SSR, context might be null - return safe defaults
+  if (!ctx) {
+    // Check if we're in a browser environment
+    if (typeof window === 'undefined') {
+      return {
+        isOpen: false,
+        loading: false,
+        saving: false,
+        values: defaultValues,
+        errors: {},
+        isRequired: false,
+        open: () => {},
+        close: () => {},
+        setValue: () => {},
+        save: async () => {},
+      };
+    }
+    throw new Error('useOnboarding must be used within OnboardingProvider');
+  }
+  
   return ctx;
 }

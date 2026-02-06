@@ -18,6 +18,14 @@ import { withSentryConfig } from '@sentry/nextjs';
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
+  // Force server-side rendering only, no static generation
+  experimental: {
+    esmExternals: false,
+  },
+  // Disable static optimization
+  generateBuildId: async () => {
+    return 'build-' + Date.now()
+  },
   async rewrites() {
     return [
       { source: '/landing-page', destination: '/' },
