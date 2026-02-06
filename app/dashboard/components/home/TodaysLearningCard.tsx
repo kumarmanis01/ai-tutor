@@ -32,7 +32,7 @@ const TASK_TYPE_CONFIG: Record<string, { label: string; color: string; icon: str
 
 export function TodaysLearningCard({ onStartLearning }: TodaysLearningCardProps) {
   const router = useRouter();
-  const { task, loading, completeTask, skipTask } = useDailyTask();
+  const { task, loading, _completeTask, skipTask } = useDailyTask();
 
   if (loading) {
     return (

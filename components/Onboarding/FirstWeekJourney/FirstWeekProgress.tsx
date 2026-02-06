@@ -18,7 +18,7 @@
 
 import React, { useState, useCallback } from 'react';
 import type { FirstWeekProgressProps, DayUIConfig } from './types';
-import { FIRST_WEEK_STRINGS, DAY_THEMES } from './types';
+import { FIRST_WEEK_STRINGS, _DAY_THEMES } from './types';
 import { DayProgressCard } from './DayProgressCard';
 import { StreakCelebration } from './StreakCelebration';
 import { ParentMessagePreview } from './ParentMessagePreview';
@@ -88,7 +88,7 @@ function isParentMessageDay(dayNumber: number): dayNumber is 1 | 4 | 7 {
  * ```
  */
 export function FirstWeekProgress({
-  studentId,
+  _studentId,
   currentDay,
   days,
   streakCount,
@@ -98,7 +98,7 @@ export function FirstWeekProgress({
   className = '',
 }: FirstWeekProgressProps): React.JSX.Element {
   const [celebrationVisible, setCelebrationVisible] = useState(showCelebration);
-  const [celebrationDay, setCelebrationDay] = useState(currentDay);
+  const [, _setCelebrationDay] = useState(currentDay);
   const strings = FIRST_WEEK_STRINGS[language];
 
   const handleDismissCelebration = useCallback(() => {

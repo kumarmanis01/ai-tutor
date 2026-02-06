@@ -492,7 +492,7 @@ function buildTitle(taskType: DailyTaskType, topic: TopicPick | null): string {
   }
 }
 
-function buildDescription(taskType: DailyTaskType, topic: TopicPick | null): string {
+function buildDescription(taskType: DailyTaskType, _topic: TopicPick | null): string {
   switch (taskType) {
     case 'learn':
       return 'Discover something new today. Read through the notes and try a few questions to get started.';

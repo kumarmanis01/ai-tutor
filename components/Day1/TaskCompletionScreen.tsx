@@ -38,7 +38,7 @@ import {
  * - Student exits feeling light, not judged
  */
 export function TaskCompletionScreen({
-  studentName,
+  _studentName,
   onClose,
   language,
 }: TaskCompletionScreenProps): React.ReactElement {

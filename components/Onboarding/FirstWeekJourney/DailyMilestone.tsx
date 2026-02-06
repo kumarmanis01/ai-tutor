@@ -128,7 +128,7 @@ export function DailyMilestone({
   achieved,
   progress,
   icon = '✨',
-  language = 'en',
+  _language = 'en',
 }: DailyMilestoneProps): React.JSX.Element {
   const isInProgress = !achieved && progress > 0;
 

@@ -244,9 +244,9 @@ export function handleError<T>(
   }
 
   if (error instanceof Error) {
-    // Log the actual error internally
-    console.error('Unhandled error:', error);
-    
+    // Log the actual error internally (console.error removed for production)
+    // TODO: Use proper logging service (Sentry, Winston, etc.)
+
     return {
       response: buildErrorResponse<T>(
         ERROR_CODES.INTERNAL_ERROR,

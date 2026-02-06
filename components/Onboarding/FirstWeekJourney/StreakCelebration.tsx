@@ -16,7 +16,7 @@
 
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import type { StreakCelebrationProps } from './types';
 import { FIRST_WEEK_STRINGS } from './types';
 
@@ -131,6 +131,17 @@ export function StreakCelebration({
     setConfetti(generateConfetti(50));
   }, []);
 
+  // Handle dismiss callback - wrapped in useCallback to avoid re-creating on every render
+  const handleDismiss = useCallback((): void => {
+    setIsExiting(true);
+    setTimeout(() => {
+      setIsVisible(false);
+      if (onDismiss) {
+        onDismiss();
+      }
+    }, 300);
+  }, [onDismiss]);
+
   // Auto-dismiss timer
   useEffect(() => {
     if (autoDismissMs > 0) {
@@ -141,17 +152,7 @@ export function StreakCelebration({
       return () => clearTimeout(timer);
     }
     return undefined;
-  }, [autoDismissMs]);
-
-  const handleDismiss = (): void => {
-    setIsExiting(true);
-    setTimeout(() => {
-      setIsVisible(false);
-      if (onDismiss) {
-        onDismiss();
-      }
-    }, 300);
-  };
+  }, [autoDismissMs, handleDismiss]);
 
   if (!isVisible) {
     return null;

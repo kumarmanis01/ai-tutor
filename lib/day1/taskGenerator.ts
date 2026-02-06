@@ -254,7 +254,7 @@ function getQuestions(subject: Day1Subject, difficulty: number, count: number): 
  * - No trick questions
  */
 export function generateDay1Task(options: Day1TaskOptions): Day1Task {
-  const { studentName, grade, subject, language } = options;
+  const { studentName: _studentName, grade, subject, language } = options;
   
   // Calculate difficulty (MUST be grade - 2 or lower)
   const difficulty = calculateDay1Difficulty(grade);

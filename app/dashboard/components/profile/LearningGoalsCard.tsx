@@ -72,7 +72,7 @@ export function LearningGoalsCard({ onGoalsUpdated }: LearningGoalsCardProps) {
       });
       onGoalsUpdated?.(dailyGoal, weeklyGoal);
       setIsEditing(false);
-    } catch (error) {
+    } catch {
       // Silently handle error - child-safe, no scary messages
     } finally {
       setIsSaving(false);

@@ -53,7 +53,7 @@ try {
   });
 
   enabled = true;
-} catch (_err) {
+} catch {
   // prom-client not installed or not available — fall back to no-op
   enabled = false;
 }
@@ -66,28 +66,28 @@ export function incrementCreated(target = 'unknown') {
   if (!enabled) return;
   try {
     createdCounter.inc({ target }, 1);
-  } catch (_e) { /* metric emission is best-effort */ }
+  } catch { /* metric emission is best-effort */ }
 }
 
 export function incrementClaimed(target = 'unknown') {
   if (!enabled) return;
   try {
     claimedCounter.inc({ target }, 1);
-  } catch (_e) { /* metric emission is best-effort */ }
+  } catch { /* metric emission is best-effort */ }
 }
 
 export function incrementCompleted(target = 'unknown') {
   if (!enabled) return;
   try {
     completedCounter.inc({ target }, 1);
-  } catch (_e) { /* metric emission is best-effort */ }
+  } catch { /* metric emission is best-effort */ }
 }
 
 export function incrementFailed(target = 'unknown') {
   if (!enabled) return;
   try {
     failedCounter.inc({ target }, 1);
-  } catch (_e) { /* metric emission is best-effort */ }
+  } catch { /* metric emission is best-effort */ }
 }
 
 // Start a timer for a particular target; returns a function to call to observe duration
@@ -96,13 +96,13 @@ export function startTimer(target = 'unknown'): Timer {
   try {
     const end = durationHistogram.startTimer({ target });
     return end as Timer;
-  } catch (_e) {
+  } catch {
     return noopTimer();
   }
 }
 
 // Export a small API for tests or integration
-export default {
+const hydrateMetricsAPI = {
   isEnabled,
   incrementCreated,
   incrementClaimed,
@@ -110,3 +110,5 @@ export default {
   incrementFailed,
   startTimer,
 };
+
+export default hydrateMetricsAPI;

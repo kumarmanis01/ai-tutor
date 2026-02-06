@@ -397,7 +397,7 @@ export function getFallbackBehavior(type: KillSwitchType): FallbackBehavior | nu
  * Log AI response metadata (no PII)
  */
 export function logAIResponse(metadata: {
-  responseId: string;
+  _responseId: string;
   contentType: string;
   tokenCount: number;
   responseLength: number;
@@ -408,7 +408,7 @@ export function logAIResponse(metadata: {
 }): void {
   // In production, send to monitoring service
   // For now, just validate and store
-  const { responseId, tokenCount, responseLength } = metadata;
+  const { tokenCount, responseLength } = metadata;
   
   // Check for token spike
   checkMetric(MetricType.TOKEN_USAGE, tokenCount);

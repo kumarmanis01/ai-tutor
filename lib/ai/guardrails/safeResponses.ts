@@ -206,7 +206,7 @@ function selectTemplate(templates: string[], seed?: number): string {
 /**
  * Get subject-specific topic suggestions
  */
-function getTopicSuggestions(subject: string, grade: Grade): string[] {
+function _getTopicSuggestions(subject: string, grade: Grade): string[] {
   const suggestions: Record<string, Record<string, string[]>> = {
     Mathematics: {
       junior: ['counting', 'shapes', 'addition', 'subtraction'],
@@ -243,7 +243,7 @@ function getTopicSuggestions(subject: string, grade: Grade): string[] {
 /**
  * Get safe response for off-topic questions
  */
-export function getOffTopicResponse(grade: Grade, subject?: string): string {
+export function getOffTopicResponse(grade: Grade, _subject?: string): string {
   const gradeBand = getGradeBand(grade);
   const message = selectTemplate(OFF_TOPIC_REDIRECTS[gradeBand], grade);
   return message;
@@ -261,7 +261,7 @@ export function getUnsafeContentResponse(grade: Grade): string {
 /**
  * Get safe response for homework dumps
  */
-export function getHomeworkRedirectResponse(grade: Grade, subject?: string): string {
+export function getHomeworkRedirectResponse(grade: Grade, _subject?: string): string {
   const gradeBand = getGradeBand(grade);
   const message = selectTemplate(HOMEWORK_REDIRECTS[gradeBand], grade);
   return message;
@@ -279,7 +279,7 @@ export function getTechnicalErrorResponse(grade: Grade): string {
 /**
  * Get safe response for uncertain AI responses
  */
-export function getUncertaintyResponse(grade: Grade, subject?: string): string {
+export function getUncertaintyResponse(grade: Grade, _subject?: string): string {
   const gradeBand = getGradeBand(grade);
   const message = selectTemplate(UNCERTAINTY_FALLBACKS[gradeBand], grade);
   return message;

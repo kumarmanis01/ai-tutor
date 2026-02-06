@@ -456,7 +456,7 @@ export function isContentSafe(content: string, grade?: number, subject?: string,
     const check = checkForHallucinations(content, ctx);
     // If the detector recommends blocking or risk is medium+ consider it unsafe
     if (check.shouldBlock || check.riskScore >= 0.5 || check.issues.length > 0) return false;
-  } catch (_e) {
+  } catch {
     // If the detector fails for any reason, err on the side of cautious true (do not block here)
   }
 

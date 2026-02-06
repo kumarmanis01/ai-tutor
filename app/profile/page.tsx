@@ -21,7 +21,7 @@ import { extractBadges } from '@/lib/extractBadge';
 import AuthRedeemOnSignIn from '@/components/AuthRedeemOnSignIn';
 import useCurrentUser from '@/hooks/useCurrentUser';
 import { useOnboarding } from '@/context/OnboardingProvider';
-import { LANGUAGES, DIFFICULTY_LEVELS } from '@/components/CascadingFilters';
+import { LANGUAGES, _DIFFICULTY_LEVELS } from '@/components/CascadingFilters';
 
 export default function ProfilePage() {
   const { data: session } = useSession();

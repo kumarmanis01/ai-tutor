@@ -51,7 +51,7 @@ const StudentHomeDashboard: React.FC<StudentHomeDashboardProps> = () => {
   }, []);
 
   // Callback for in-page tab navigation
-  const navigateToTab = useCallback((tab: TabId) => {
+  const _navigateToTab = useCallback((tab: TabId) => {
     setActiveTab(tab);
   }, []);
 
@@ -123,7 +123,7 @@ const StudentHomeDashboard: React.FC<StudentHomeDashboardProps> = () => {
         <div className="flex-1 space-y-4 min-w-0">
           {/* HomeTab - Primary landing view */}
           <HomeTab
-            onStartLearning={(topicId) => {
+            onStartLearning={(_topicId) => {
               // Navigate to notes or initiate learning
               setActiveTab('notes');
             }}

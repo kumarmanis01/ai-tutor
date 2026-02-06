@@ -51,7 +51,7 @@ export default function JobsTable({ onSelectJob }: JobsTableProps) {
       const response = await fetch(`/api/admin/hydrateAll?${params}`);
       const data = await response.json();
       setJobs(data.jobs || []);
-    } catch (_err) {
+    } catch {
       // Failed to fetch jobs - silently fail
     } finally {
       setLoading(false);

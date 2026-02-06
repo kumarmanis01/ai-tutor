@@ -374,7 +374,7 @@ export function variablesToStyleObject(
   
   for (const [key, value] of Object.entries(variables)) {
     // Convert CSS variable format to camelCase
-    const camelKey = key.replace(/^--/, '').replace(/-([a-z])/g, (_, c) => c.toUpperCase());
+    const _camelKey = key.replace(/^--/, '').replace(/-([a-z])/g, (_, c) => c.toUpperCase());
     style[key] = value; // Keep original CSS variable format for style prop
   }
   
