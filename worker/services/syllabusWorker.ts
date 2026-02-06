@@ -114,8 +114,11 @@ export async function handleSyllabusJob(jobId: string) {
   const templatePath = path.join(promptsDir, 'syllabus_worker_prompt.md')
   // llmResult holds the LLM response and is used below
   let llmResult: any = null
+  // Ensure `prompt` is declared in outer scope so it is available later when
+  // persisting AI logs or performing transactions. Previously it was declared
+  // inside the try block which caused a ReferenceError when referenced below.
+  let prompt = ''
   try {
-    let prompt = ''
     if (fs.existsSync(templatePath)) {
       prompt = fs.readFileSync(templatePath, 'utf8')
         .replace(/{{board}}/g, board)

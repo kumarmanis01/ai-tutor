@@ -295,26 +295,26 @@ function NavSection({ title, items, pathname, defaultExpanded = true }: NavSecti
             const isActive = pathname === item.href || pathname.startsWith(item.href + '/');
 
             return (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-150 ${
-                  isActive
-                    ? 'bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-md shadow-blue-500/25'
-                    : 'text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700/50'
-                }`}
-              >
-                <span className={isActive ? 'text-white' : 'text-gray-500 dark:text-gray-400'}>
-                  <IconComponent />
-                </span>
-                <span className="flex-1">{item.label}</span>
-                {item.badge && (
-                  <span
-                    className={`text-xs px-2 py-0.5 rounded-full text-white ${item.badgeColor || 'bg-blue-500'}`}
-                  >
-                    {item.badge}
+              <Link key={item.href} href={item.href} legacyBehavior>
+                <a
+                  className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-150 ${
+                    isActive
+                      ? 'bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-md shadow-blue-500/25'
+                      : 'text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700/50'
+                  }`}
+                >
+                  <span className={isActive ? 'text-white' : 'text-gray-500 dark:text-gray-400'}>
+                    <IconComponent />
                   </span>
-                )}
+                  <span className="flex-1">{item.label}</span>
+                  {item.badge && (
+                    <span
+                      className={`text-xs px-2 py-0.5 rounded-full text-white ${item.badgeColor || 'bg-blue-500'}`}
+                    >
+                      {item.badge}
+                    </span>
+                  )}
+                </a>
               </Link>
             );
           })}

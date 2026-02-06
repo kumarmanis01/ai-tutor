@@ -19,15 +19,10 @@ COPY . ./
 # Ensure shell scripts have LF endings (avoid CRLF parse issues)
 RUN if [ -f ./scripts/run-migrate.sh ]; then sed -i 's/\r$//' ./scripts/run-migrate.sh && chmod +x ./scripts/run-migrate.sh; fi
 
-# Build project:
-# 1. prisma generate - generate Prisma client
-# 2. build:tsc - compile TypeScript to dist
-# 3. build:workers - compile worker code
-# 4. next build - create .next production build
-RUN npm run build && npm run build:workers && npx next build
-
-# Remove devDependencies to reduce runtime size
-RUN npm prune --production || true
+# Note: defer the JS/Next build to container start so the build can reach
+# dependent services (Postgres/Redis) during startup. This avoids build-time
+# failures when Docker cannot reach service hostnames. The builder stage still
+# performs `npm ci` so `node_modules` (including dev deps) are available.
 
 FROM node:20-alpine AS runner
 WORKDIR /app
@@ -36,12 +31,14 @@ ENV NODE_ENV=production
 
 # Minimal runtime deps are already installed in /app/node_modules
 # Install curl for healthchecks, netcat for port checking, postgresql-client for migrations
-RUN apk add --no-cache curl netcat-openbsd postgresql-client
+RUN apk add --no-cache curl netcat-openbsd postgresql-client redis
 
 EXPOSE 3000
 # Add a small entrypoint to route to the correct service at runtime
 COPY ./scripts/docker-entrypoint.sh /app/docker-entrypoint.sh
 RUN chmod +x /app/docker-entrypoint.sh || true
-ENTRYPOINT ["/bin/sh", "/app/docker-entrypoint.sh"]
+COPY ./scripts/entrypoint.sh /app/scripts/entrypoint.sh
+RUN chmod +x /app/scripts/entrypoint.sh || true
+ENTRYPOINT ["/bin/sh", "/app/scripts/entrypoint.sh"]
 
 CMD ["web"]
