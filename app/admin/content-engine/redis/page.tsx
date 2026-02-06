@@ -3,6 +3,8 @@ import { getRedis } from '@/lib/redis'
 import { requireAdminOrModerator } from '@/lib/auth'
 import { logger } from '@/lib/logger'
 
+export const dynamic = 'force-dynamic'
+
 export default async function RedisPage() {
   try {
     await requireAdminOrModerator()

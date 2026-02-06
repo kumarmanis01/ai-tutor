@@ -3,6 +3,8 @@ import { getContentQueue } from '@/queues/contentQueue'
 import { requireAdminOrModerator } from '@/lib/auth'
 import { logger } from '@/lib/logger'
 
+export const dynamic = 'force-dynamic'
+
 export default async function QueuePage() {
   try {
     await requireAdminOrModerator()
