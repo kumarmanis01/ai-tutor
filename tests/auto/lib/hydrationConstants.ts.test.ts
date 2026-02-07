@@ -1,8 +1,9 @@
-import fs from 'fs';
+import fs from 'fs'
+import path from 'path'
 
 describe('exists lib/hydrationConstants.ts', () => {
   it('source file exists on disk', () => {
-    const p = "C:\\Users\\Spinzy Diagnostics\\Desktop\\ai-tutor\\lib\\hydrationConstants.ts";
-    expect(fs.existsSync(p)).toBe(true);
-  });
-});
+    const p = path.join(process.cwd(), 'lib', 'hydrationConstants.ts')
+    expect(fs.existsSync(p)).toBe(true)
+  })
+})
