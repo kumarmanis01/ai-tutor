@@ -8,6 +8,8 @@ yarn-error.log
 dist
 out
 build
+# Exception: Allow the evaluator script bundle for Dockerfile.evaluator
+!build/runAlertEvaluator.cjs
 
 # Development files
 *.log
