@@ -1,5 +1,19 @@
-# This Dockerfile sets up the environment for the evaluator
-# ... (rest of the Dockerfile here)
+FROM node:20-slim
+WORKDIR /usr/src/app
 
-COPY scripts/runAlertEvaluator.cjs ./build/runAlertEvaluator.cjs
-# ... (rest of the Dockerfile here)
+# Copy package files
+COPY package.json package-lock.json ./
+
+# Install production dependencies only
+# Prevent lifecycle scripts (e.g., husky prepare) from running during image build
+RUN HUSKY=0 NPM_CONFIG_IGNORE_SCRIPTS=true npm ci --omit=dev
+
+# Copy the pre-built evaluator script from CI
+# The workflow creates build/runAlertEvaluator.cjs before building the Docker image
+COPY build/runAlertEvaluator.cjs ./build/runAlertEvaluator.cjs
+
+# Expose Prometheus metrics port
+EXPOSE 9188
+
+# Run the alert evaluator
+CMD ["node", "build/runAlertEvaluator.cjs"]
