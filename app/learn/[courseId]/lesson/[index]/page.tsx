@@ -18,6 +18,8 @@ import Link from 'next/link'
 import { headers } from 'next/headers'
 import LessonViewClient, { LessonData } from '@/components/Learn/LessonViewClient'
 
+export const dynamic = 'force-dynamic'
+
 type Props = { params: { courseId: string; index: string } }
 
 interface CoursePackage {

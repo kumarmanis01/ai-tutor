@@ -9,7 +9,7 @@ import { prisma } from '@/lib/prisma'; // Your Prisma database client
 import bcrypt from 'bcryptjs'; // For password hashing (pure JS build for Vercel)
 import { getEmailTransporter } from '@/lib/mailer';
 import { logger } from '@/lib/logger';
-import { LanguageCode } from '@prisma/client';
+import { LanguageCode } from '@/lib/normalize';
 import { getServerSession } from 'next-auth/next';
 import type { AppSession } from '@/lib/types/auth';
 

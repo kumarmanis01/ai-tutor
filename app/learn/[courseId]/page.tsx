@@ -19,6 +19,8 @@ import Link from 'next/link'
 import { headers } from 'next/headers'
 import LessonListClient, { Lesson } from '@/components/Learn/LessonListClient'
 
+export const dynamic = 'force-dynamic'
+
 type Props = { params: { courseId: string } }
 
 interface CourseData {

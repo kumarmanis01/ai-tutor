@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic'
+
 /**
  * FILE OBJECTIVE:
  * - API endpoint to fetch questions/tests for a given topic.
@@ -8,6 +10,7 @@
  *
  * EDIT LOG:
  * - 2026-02-03 | claude | created for cascading filters
+ * - 2026-02-07 | copilot | added force-dynamic to prevent static render error
  */
 
 import { NextResponse } from 'next/server';

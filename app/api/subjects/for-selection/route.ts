@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic'
+
 /**
  * FILE OBJECTIVE:
  * - Lightweight endpoint to fetch subjects for a given board + grade combination.
@@ -6,6 +8,7 @@
  *
  * EDIT LOG:
  * - 2026-02-03 | claude | created shared subject selection endpoint
+ * - 2026-02-07 | copilot | added force-dynamic to prevent static render error
  */
 
 import { NextResponse } from 'next/server';

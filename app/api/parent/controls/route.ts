@@ -1,9 +1,12 @@
+export const dynamic = 'force-dynamic'
+
 /**
  * FILE OBJECTIVE:
  * - Parent controls API: manage screen time, subject toggles, focus mode per child.
  *
  * EDIT LOG:
  * - 2026-02-04 | claude | created parent controls API
+ * - 2026-02-07 | copilot | added force-dynamic to prevent static render error
  */
 
 import { NextRequest, NextResponse } from 'next/server';

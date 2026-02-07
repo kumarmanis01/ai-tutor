@@ -22,8 +22,7 @@
  */
 import { prisma } from '@/lib/prisma';
 import { logger } from '@/lib/logger';
-import { normalizeJobType } from '@/lib/normalize';
-import { JobType } from '@prisma/client';
+import { normalizeJobType, JobType } from '@/lib/normalize';
 import { JobStatus } from '@/lib/ai-engine/types';
 import { formatLastError, inferFailureCodeFromMessage } from '@/lib/failureCodes';
 import { isSystemSettingEnabled } from '@/lib/systemSettings';

@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic'
+
 import React from 'react'
 import { getRedis } from '@/lib/redis'
 import { requireAdminOrModerator } from '@/lib/auth'

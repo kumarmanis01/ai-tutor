@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic'
+
 import React from 'react'
 import { getContentQueue } from '@/queues/contentQueue'
 import { requireAdminOrModerator } from '@/lib/auth'

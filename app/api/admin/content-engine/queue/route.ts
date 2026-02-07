@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic'
+
 import { NextResponse } from 'next/server'
 import { getContentQueue } from '@/queues/contentQueue'
 import { logger } from '@/lib/logger'

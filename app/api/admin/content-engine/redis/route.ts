@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic'
+
 import { NextResponse } from 'next/server'
 import { getRedis } from '@/lib/redis'
 import { logger } from '@/lib/logger'

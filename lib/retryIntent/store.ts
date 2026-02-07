@@ -4,7 +4,7 @@ import { logAuditEvent } from '../audit/log'
 export type CreateRetryIntentInput = {
   sourceJobId: string
   sourceOutputRef?: any
-  reasonCode: Prisma.JsonValue | string
+  reasonCode: any
   reasonText: string
   approvedBy: string
   approvedAt?: Date

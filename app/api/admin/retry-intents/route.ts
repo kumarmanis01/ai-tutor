@@ -4,6 +4,8 @@ import { requireAdminOrModerator } from '@/lib/auth'
 import makeRetryIntentStore from '@/lib/retryIntent/store'
 import { logAuditEvent } from '@/lib/audit/log'
 
+export const dynamic = 'force-dynamic'
+
 export async function GET(request: Request) {
   try {
     await requireAdminOrModerator()

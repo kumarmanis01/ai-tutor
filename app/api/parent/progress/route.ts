@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic'
+
 /**
  * FILE OBJECTIVE:
  * - Returns subject-level progress, weak topics (attention flags), and readiness
@@ -5,6 +7,7 @@
  *
  * EDIT LOG:
  * - 2026-02-04 | claude | created parent progress API
+ * - 2026-02-07 | copilot | added force-dynamic to prevent static render error
  */
 
 import { NextRequest, NextResponse } from 'next/server';

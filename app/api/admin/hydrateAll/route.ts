@@ -25,6 +25,8 @@ import { logger } from '@/lib/logger';
 import { nanoid } from 'nanoid';
 import { incrementCreated } from '@/lib/metrics/hydrateMetrics';
 
+export const dynamic = 'force-dynamic'
+
 // ============================================
 // Request/Response Types
 // ============================================
