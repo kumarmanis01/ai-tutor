@@ -1,14 +1,19 @@
 FROM node:20-slim
 WORKDIR /usr/src/app
 
-# copy package manifest first to install runtime deps only
+# Copy package files
 COPY package.json package-lock.json ./
-# Prevent lifecycle scripts (e.g., husky prepare) from running during image
-# production installs where devDependencies are omitted and husky is not present.
+
+# Install production dependencies only
+# Prevent lifecycle scripts (e.g., husky prepare) from running during image build
 RUN HUSKY=0 NPM_CONFIG_IGNORE_SCRIPTS=true npm ci --omit=dev
 
-# copy built bundle (CI will generate it before docker build by default via context)
+# Copy the pre-built evaluator script from CI
+# The workflow creates build/runAlertEvaluator.cjs before building the Docker image
 COPY build/runAlertEvaluator.cjs ./build/runAlertEvaluator.cjs
 
+# Expose Prometheus metrics port
 EXPOSE 9188
+
+# Run the alert evaluator
 CMD ["node", "build/runAlertEvaluator.cjs"]
