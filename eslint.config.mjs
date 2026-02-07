@@ -53,6 +53,14 @@ const eslintConfig = [
       '@typescript-eslint/no-require-imports': 'off',
     },
   },
+  // Allow console and require in test files
+  {
+    files: ['tests/**/*.ts', 'tests/**/*.tsx'],
+    rules: {
+      'no-console': 'off',
+      '@typescript-eslint/no-require-imports': 'off',
+    },
+  },
   // (removed lib/logger.js override — logger is provided by `lib/logger.ts`)
   // AI architecture plugin is available in `eslint-rules/` for review.
   // Allow commonjs requires and console usage inside eslint-rules (tests and helpers)

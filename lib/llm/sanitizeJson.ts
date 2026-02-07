@@ -71,18 +71,18 @@ export function parseLlmJson(text: string): any {
   // Try direct parse
   try {
     return JSON.parse(sanitized);
-  } catch (e) {
+  } catch {
     // Try extracting a JSON-like span
     const span = extractJsonSpan(sanitized);
     if (span) {
       try {
         return JSON.parse(span);
-      } catch (e2) {
+      } catch {
         // attempt to repair common escape issues
         const repaired = repairCommonEscapes(span).replace(/\r/g, '\\r').replace(/\n/g, '\\n');
         try {
           return JSON.parse(repaired);
-        } catch (e3) {
+        } catch {
           // last resort: attempt to remove control characters
           const stripped = repaired.replace(/\u0000-\u001F/g, '');
           return JSON.parse(stripped);
@@ -94,4 +94,5 @@ export function parseLlmJson(text: string): any {
   throw new Error('parse_error');
 }
 
-export default { sanitizeTextForJson, extractJsonSpan, parseLlmJson };
+const llmSanitizer = { sanitizeTextForJson, extractJsonSpan, parseLlmJson };
+export default llmSanitizer;

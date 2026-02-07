@@ -8,7 +8,6 @@ import { OnboardingProvider, useOnboarding } from '@/context/OnboardingProvider'
 import AlertModal from '@/components/UI/AlertModal';
 
 function AuthAwareLayout({ children }: { children: React.ReactNode }) {
-
   return (
     <>
       <Script src="https://checkout.razorpay.com/v1/checkout.js" strategy="afterInteractive" />
@@ -39,10 +38,11 @@ export default function Providers({ children }: { children: React.ReactNode }) {
 }
 
 function OnboardingHost() {
-  const { isOpen, values, errors, loading, saving, setValue, close, save } = useOnboarding();
+  const { isOpen, isRequired, values, errors, loading, saving, setValue, close, save } = useOnboarding();
   return (
     <OnboardingModal
       open={isOpen}
+      required={isRequired}
       values={values}
       errors={errors}
       loading={loading}

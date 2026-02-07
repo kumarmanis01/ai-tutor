@@ -1,8 +1,9 @@
 import fs from 'fs';
+import path from 'path';
 
 describe('exists producers/enqueueNoteHydration.ts', () => {
   it('source file exists on disk', () => {
-    const p = "C:\\Users\\Spinzy Diagnostics\\Desktop\\ai-tutor\\producers\\enqueueNoteHydration.ts";
+    const p = path.join(process.cwd(), 'producers/enqueueNoteHydration.ts');
     expect(fs.existsSync(p)).toBe(true);
   });
 });

@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(set -a)",
+      "Bash(source .env.local)",
+      "Bash(set +a)",
+      "Bash(npx prisma migrate dev:*)"
+    ]
+  }
+}

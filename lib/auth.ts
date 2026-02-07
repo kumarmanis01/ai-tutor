@@ -9,7 +9,7 @@ import { prisma } from '@/lib/prisma'; // Your Prisma database client
 import bcrypt from 'bcryptjs'; // For password hashing (pure JS build for Vercel)
 import { getEmailTransporter } from '@/lib/mailer';
 import { logger } from '@/lib/logger';
-import { LanguageCode } from '@prisma/client';
+import { LanguageCode } from '@/lib/normalize';
 import { getServerSession } from 'next-auth/next';
 import type { AppSession } from '@/lib/types/auth';
 
@@ -31,6 +31,24 @@ export async function requireAdminOrModerator() {
     throw new Error('Unauthorized');
   }
   return session;
+}
+
+// Require an active session for server-side pages. If no valid session or
+// matching DB user is found, callers can redirect the client to sign-in.
+export async function requireActiveSession() {
+  const session = (await getServerSession(authOptions)) as AppSession | null;
+  if (!session || !session.user?.email) {
+    return null;
+  }
+
+  try {
+    const dbUser = await prisma.user.findUnique({ where: { email: session.user.email } });
+    if (!dbUser) return null;
+    return session;
+  } catch (err) {
+    logger.warn('requireActiveSession failed to verify DB user', { className: 'auth', methodName: 'requireActiveSession', error: String(err) });
+    return null;
+  }
 }
 
 // This function sends a welcome email to the user
@@ -314,11 +332,13 @@ export const authOptions: any = {
         token.email = user.email;
         token.image = user.image;
         if ('role' in user) token.role = user.role;
+        token.onboardingComplete = !!((user as any).grade && (user as any).board);
       } else if (token.email) {
         // Always fetch latest role from DB for every request
         const dbUser = await prisma.user.findUnique({ where: { email: token.email } });
         if (dbUser) {
           token.role = dbUser.role;
+          token.onboardingComplete = !!(dbUser.grade && dbUser.board);
         }
       }
       return token;
@@ -332,6 +352,7 @@ export const authOptions: any = {
         session.user.email = token.email as string;
         session.user.image = token.image as string;
         session.user.role = token.role as string;
+        session.user.onboardingComplete = (token.onboardingComplete as boolean) ?? false;
 
         logger.add(`session callback populated minimal session for: ${session.user.email!}`, { className: 'auth', methodName: 'sessionCallback' });
         // Call the standalone method to handle welcome email logic

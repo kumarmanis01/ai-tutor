@@ -116,10 +116,28 @@ export async function POST(req: Request) {
       maxAttempts: 3,
     });
 
-    // Create audit log entry
+    // Resolve the canonical DB user id for auditing. If the session identity
+    // doesn't map to a DB user, write a NULL userId to avoid foreign-key errors.
+    let auditUserId: string | null = null;
+    try {
+      if (session.user?.id) {
+        const byId = await prisma.user.findUnique({ where: { id: session.user.id } });
+        if (byId) auditUserId = byId.id;
+      }
+      if (!auditUserId && session.user?.email) {
+        const byEmail = await prisma.user.findUnique({ where: { email: session.user.email } });
+        if (byEmail) auditUserId = byEmail.id;
+      }
+    } catch {
+      // If DB lookup fails for any reason, fall back to null — do not block
+      // the hydrate-all flow because of auditing lookup problems.
+      auditUserId = null;
+    }
+
+    // Create audit log entry (userId may be null)
     await prisma.auditLog.create({
       data: {
-        userId: session.user.id,
+        userId: auditUserId,
         action: 'hydrate_all_initiated',
         details: {
           boardId,

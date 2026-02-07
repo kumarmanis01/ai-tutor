@@ -4,3 +4,5 @@ declare module '*.json' {
 }
 
 declare module 'nodemailer';
+
+declare module '@sentry/nextjs';

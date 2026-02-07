@@ -24,6 +24,7 @@ import { JobStatus } from '@/lib/ai-engine/types'
 import { isSystemSettingEnabled } from "@/lib/systemSettings"
 import { logger } from "@/lib/logger"
 import { resolveSubjectId } from "@/lib/resolveAcademicIds"
+import { randomUUID } from 'crypto'
 
 const HYDRATION_DEBUG = process.env.HYDRATION_DEBUG === '1' || process.env.AI_CONTENT_DEBUG === '1'
 
@@ -94,8 +95,13 @@ export async function enqueueSyllabusHydration(input: {
     return { created: false, reason: 'job_already_queued', jobId: existingJob.id }
   }
 
-  // 4️⃣ Enqueue job (use string literals to match Prisma schema)
+  // 4️⃣ Enqueue job (use string literals to match Prisma schema).
+  // Generate an id and set rootJobId atomically at create time to ensure
+  // the DB invariant `rootJobId IS NOT NULL` is preserved.
+  const jobId = randomUUID()
   const jobData: any = {
+    id: jobId,
+    rootJobId: jobId,
     jobType: 'syllabus',
     board: input.board,
     grade: input.grade,

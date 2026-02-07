@@ -1,10 +1,9 @@
 import React from 'react'
 import { requireAdminOrModerator } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+export const dynamic = 'force-dynamic'
 import ReadOnlyJsonViewer from '@/components/UI/ReadOnlyJsonViewer'
-import dynamic from 'next/dynamic'
-
-const ApproveRejectButtons = dynamic(() => import('../ApproveRejectButtons'), { ssr: false })
+import ApproveRejectButtonsClient from '@/components/ClientOnly/ApproveRejectButtonsClient'
 
 type Props = { params: { id: string } }
 
@@ -25,7 +24,7 @@ export default async function PromotionDetail({ params }: Props) {
       <ReadOnlyJsonViewer data={candidate.outputRef} collapsedByDefault={false} />
 
       <div className="mt-4">
-        <ApproveRejectButtons candidate={candidate} />
+        <ApproveRejectButtonsClient candidate={candidate} />
       </div>
     </div>
   )

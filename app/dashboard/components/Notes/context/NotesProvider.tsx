@@ -1,53 +1,62 @@
+/**
+ * FILE OBJECTIVE:
+ * - Provides Notes tab state and API for fetching subjects, bookmarks, downloads, recent notes.
+ * - Uses session-cached hierarchy API for subject filtering.
+ *
+ * LINKED UNIT TEST:
+ * - tests/unit/app/dashboard/components/Notes/context/NotesProvider.spec.ts
+ *
+ * EDIT LOG:
+ * - 2026-02-03 | claude | fixed auto-refresh on profile load for subject dropdown
+ * - 2026-02-03 | claude | refactored to use session-cached hierarchy API
+ */
+
 "use client";
 
-import React, { createContext, useCallback, useContext, useMemo, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { logger } from '@/lib/logger';
-// Using local StubNotesService below for development stubs
+import useCurrentUser from '@/hooks/useCurrentUser';
+import type { AcademicHierarchyResponse, HierarchySubject } from '@/hooks/useAcademicHierarchy';
 
 export type NoteSubject = { name: string; meta: string };
 export type NoteEntry = { id: string; title: string };
 
+// Cache for hierarchy data (session-level)
+let hierarchyCache: AcademicHierarchyResponse | null = null;
+
 export interface NotesService {
-  fetchSubjects(): Promise<NoteSubject[]>;
+  fetchSubjects(boardSlug?: string, gradeNum?: string): Promise<NoteSubject[]>;
   fetchBookmarked(): Promise<NoteEntry[]>;
   fetchDownloaded(): Promise<NoteEntry[]>;
   fetchRecentlyAdded(): Promise<NoteEntry[]>;
 }
 
-class StubNotesService implements NotesService {
-  async fetchSubjects() {
-    return [
-      { name: 'Mathematics', meta: '24 chapters' },
-      { name: 'Science', meta: '18 chapters' },
-      { name: 'English', meta: '12 chapters' },
-      { name: 'Social Studies', meta: '15 chapters' },
-    ];
-  }
-  async fetchBookmarked() {
-    return [
-      { id: 'b1', title: 'Triangles & Properties' },
-      { id: 'b2', title: 'Photosynthesis Process' },
-      { id: 'b3', title: 'Grammar Rules' },
-    ];
-  }
-  async fetchDownloaded() {
-    return [
-      { id: 'd1', title: 'Algebra Basics' },
-      { id: 'd2', title: 'Chemical Reactions' },
-    ];
-  }
-  async fetchRecentlyAdded() {
-    return [
-      { id: 'r1', title: 'Latest notes from your syllabus' },
-    ];
-  }
-}
-
-// Prevent unused class warning when not injected
-void StubNotesService;
-
 export class HttpNotesService implements NotesService {
-  async fetchSubjects() {
+  async fetchSubjects(boardSlug?: string, gradeNum?: string) {
+    // Use cached hierarchy when board + grade are known
+    if (boardSlug && gradeNum) {
+      // Fetch hierarchy if not cached
+      if (!hierarchyCache) {
+        const res = await fetch('/api/academic-hierarchy');
+        if (res.ok) {
+          hierarchyCache = await res.json();
+        }
+      }
+      
+      if (hierarchyCache) {
+        const board = hierarchyCache.boards.find(
+          (b) => b.slug.toLowerCase() === boardSlug.toLowerCase() || b.id === boardSlug
+        );
+        const cls = board?.classes.find((c) => c.grade === parseInt(gradeNum, 10));
+        const subjects = cls?.subjects ?? [];
+        return subjects.map((s: HierarchySubject) => ({
+          name: s.name,
+          meta: '',
+        }));
+      }
+    }
+    
+    // Fallback: existing notes/subjects endpoint without classId
     const res = await fetch('/api/notes/subjects');
     if (!res.ok) return [];
     return (await res.json()).subjects ?? [];
@@ -96,22 +105,46 @@ const Ctx = createContext<NotesAPI | null>(null);
 
 export function NotesProvider({ children, service }: { children: React.ReactNode; service?: NotesService }) {
   const svc = useMemo(() => service ?? new HttpNotesService(), [service]);
+  const { data: profile, loading: profileLoading } = useCurrentUser();
   const [state, setState] = useState<NotesState>({ query: '', filters: undefined, subjects: [], bookmarked: [], downloaded: [], recent: [], loading: false });
+  
+  // Track previous profile values to detect changes
+  const prevProfileRef = useRef<{ board: string | null; grade: number | null }>({ board: null, grade: null });
+  const hasFetchedRef = useRef(false);
 
   const refresh = useCallback(async () => {
     setState((s) => ({ ...s, loading: true }));
     try {
+      const boardSlug = profile?.board ? String(profile.board) : undefined;
+      const gradeNum = profile?.grade ? String(profile.grade) : undefined;
       const [subjects, bookmarked, downloaded, recent] = await Promise.all([
-        svc.fetchSubjects(), svc.fetchBookmarked(), svc.fetchDownloaded(), svc.fetchRecentlyAdded(),
+        svc.fetchSubjects(boardSlug, gradeNum), svc.fetchBookmarked(), svc.fetchDownloaded(), svc.fetchRecentlyAdded(),
       ]);
       setState((s) => ({ ...s, subjects, bookmarked, downloaded, recent }));
-      logger.info('notes.refresh');
+      logger.info('notes.refresh', { boardSlug, gradeNum, subjectCount: subjects.length });
     } catch (e) {
       logger.warn('notes.refresh.error', { message: String(e) });
     } finally {
       setState((s) => ({ ...s, loading: false }));
     }
-  }, [svc]);
+  }, [svc, profile?.board, profile?.grade]);
+
+  // Auto-refresh when profile loads or changes
+  useEffect(() => {
+    // Skip if profile is still loading
+    if (profileLoading) return;
+    
+    const currentBoard = profile?.board ?? null;
+    const currentGrade = profile?.grade ?? null;
+    const prev = prevProfileRef.current;
+    
+    // Fetch if: first time after profile load, or profile values changed
+    if (!hasFetchedRef.current || prev.board !== currentBoard || prev.grade !== currentGrade) {
+      hasFetchedRef.current = true;
+      prevProfileRef.current = { board: currentBoard, grade: currentGrade };
+      refresh();
+    }
+  }, [profileLoading, profile?.board, profile?.grade, refresh]);
 
   const setQuery = useCallback((q: string) => {
     setState((s) => ({ ...s, query: q }));

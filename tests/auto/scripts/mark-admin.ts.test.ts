@@ -1,8 +1,9 @@
 import fs from 'fs';
+import path from 'path';
 
 describe('exists scripts/mark-admin.ts', () => {
   it('source file exists on disk', () => {
-    const p = "C:\\Users\\Spinzy Diagnostics\\Desktop\\ai-tutor\\scripts\\mark-admin.ts";
+    const p = path.join(process.cwd(), 'scripts/mark-admin.ts');
     expect(fs.existsSync(p)).toBe(true);
   });
 });

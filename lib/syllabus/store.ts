@@ -1,22 +1,22 @@
 import { prisma } from '../prisma';
-import type { Syllabus, SyllabusStatus, Prisma } from '@prisma/client';
 
-// Reusable types
+// Reusable types (use lightweight types to avoid relying on named Prisma exports
+// during the worker build; these are compatible with the generated client at runtime)
 export type CreateSyllabusInput = {
   title: string;
   version: string;
-  status: SyllabusStatus;
-  json: Prisma.InputJsonValue;
+  status: string;
+  json: any;
 };
 
-export type SyllabusRecord = Syllabus;
+export type SyllabusRecord = any;
 
 /**
  * Persist a new Syllabus row.
  */
 export async function createSyllabus(input: CreateSyllabusInput): Promise<SyllabusRecord> {
   try {
-    const created = await prisma.syllabus.create({ data: { ...input, json: input.json as unknown as Prisma.InputJsonValue } });
+    const created = await prisma.syllabus.create({ data: { ...input, json: input.json } });
     return created;
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err);
@@ -27,7 +27,7 @@ export async function createSyllabus(input: CreateSyllabusInput): Promise<Syllab
 /**
  * List syllabi with optional filters, ordered by `createdAt` DESC.
  */
-export async function listSyllabi(filter?: { status?: SyllabusStatus; title?: string }): Promise<SyllabusRecord[]> {
+export async function listSyllabi(filter?: { status?: string; title?: string }): Promise<SyllabusRecord[]> {
   try {
     const where: any = {};
     if (filter?.status) where.status = filter.status;
@@ -50,7 +50,7 @@ export async function listSyllabi(filter?: { status?: SyllabusStatus; title?: st
 export async function getLatestApprovedSyllabus(title: string): Promise<SyllabusRecord | null> {
   try {
     const row = await prisma.syllabus.findFirst({
-      where: { title, status: 'APPROVED' as SyllabusStatus },
+      where: { title, status: 'APPROVED' },
       orderBy: { createdAt: 'desc' },
     });
     return row;
@@ -73,7 +73,7 @@ async function ensureMutable(id: string) {
 /**
  * Update a syllabus row if it's not approved. Returns the updated record.
  */
-export async function updateSyllabus(id: string, data: Partial<{ title: string; version: string; json: Prisma.InputJsonValue; status?: SyllabusStatus }>): Promise<SyllabusRecord> {
+export async function updateSyllabus(id: string, data: Partial<{ title: string; version: string; json: any; status?: string }>): Promise<SyllabusRecord> {
   try {
     await ensureMutable(id);
     const updated = await prisma.syllabus.update({ where: { id }, data: data as any });

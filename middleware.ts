@@ -21,32 +21,42 @@ export async function middleware(request: NextRequest) {
     }
   }
 
-  // Admin route protection (UI and API)
+  // Centralized protected prefixes
+  const protectedUiPrefixes = ['/dashboard', '/profile', '/rooms', '/parent', '/learn'];
+
+  // Admin route protection (UI and API) - requires role
   if (pathname.startsWith('/admin') || pathname.startsWith('/api/admin')) {
     logger.debug('[MIDDLEWARE DEBUG] Token: ' + String(token));
     const allowed = token && (token.role === 'admin' || token.role === 'moderator');
     if (!allowed) {
-      // For API routes, return 403 JSON response instead of redirecting
       if (pathname.startsWith('/api/admin')) {
         return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
       }
-      // Redirect unauthorized users to home page to avoid redirect loop
       return NextResponse.redirect(new URL('/', request.url));
     }
     return NextResponse.next();
   }
 
-  // Dashboard route protection: require any valid session token
-  if (pathname.startsWith('/dashboard')) {
-    if (!token) {
-      return NextResponse.redirect(new URL('/', request.url));
+  // Generic UI protection for other prefixes: redirect to root if no valid token
+  for (const prefix of protectedUiPrefixes) {
+    if (pathname.startsWith(prefix)) {
+      if (!token) {
+        return NextResponse.redirect(new URL('/', request.url));
+      }
+
+      // Enforce onboarding completion: redirect to /dashboard with onboarding flag
+      // if user hasn't set board + grade. Allow /profile so they can complete onboarding.
+      if (!token.onboardingComplete && !pathname.startsWith('/profile') && !pathname.startsWith('/dashboard') && !pathname.startsWith('/parent')) {
+        return NextResponse.redirect(new URL('/dashboard?onboarding=1', request.url));
+      }
+
+      return NextResponse.next();
     }
-    return NextResponse.next();
   }
 
   return NextResponse.next();
 }
 
 export const config = {
-  matcher: ['/api/:path*', '/admin/:path*', '/dashboard/:path*'],
+  matcher: ['/api/:path*', '/admin/:path*', '/dashboard/:path*', '/profile/:path*', '/rooms/:path*', '/parent/:path*', '/learn/:path*'],
 };

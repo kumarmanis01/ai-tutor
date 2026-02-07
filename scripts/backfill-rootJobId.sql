@@ -1,0 +1,3 @@
+-- Deprecated backfill script: initial migration now includes rootJobId and NOT NULL enforcement.
+-- This file retained for historical reasons but is no longer required.
+-- If you previously executed an incremental migration flow, remove this file.

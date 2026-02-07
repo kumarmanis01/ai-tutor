@@ -10,5 +10,9 @@ ENV NODE_ENV=development
 # Install dev dependencies needed for running tests
 RUN npm ci --include=dev --no-audit --no-fund
 
-# Default command runs the targeted test file; can be overridden by docker run
-CMD ["sh", "-c", "npx jest tests/flow/hydrationFlow.test.ts -i --runInBand"]
+# Generate Prisma client
+RUN npx prisma generate
+
+# Default command runs the HydrateAll validation tests; can be overridden by docker run
+# Use docker-compose.test.yml for full container-based validation with postgres + redis
+CMD ["sh", "-c", "npx jest tests/integration/hydrateAll-validation.test.ts --runInBand --forceExit"]

@@ -16,9 +16,12 @@ import { useNotes, NoteEntry } from '../context/NotesProvider';
 export function NotesRecentlyAdded() {
   const { recent, loading } = useNotes();
   
-  const openNote = useCallback((_note: NoteEntry) => {
-    // Navigate to learn page since /notes doesn't exist
-    window.location.assign(`/learn`);
+  const openNote = useCallback((note: NoteEntry) => {
+    // Navigate to learn page with note ID and type for proper context
+    const params = new URLSearchParams();
+    params.set('noteId', note.id);
+    params.set('type', 'note');
+    window.location.assign(`/learn?${params.toString()}`);
   }, []);
 
   return (

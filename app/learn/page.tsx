@@ -16,6 +16,8 @@
 import Link from 'next/link'
 import { headers } from 'next/headers'
 
+export const dynamic = 'force-dynamic'
+
 interface CourseItem {
   courseId: string;
   title?: string;

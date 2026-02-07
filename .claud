@@ -1,0 +1,27 @@
+{
+  "name": "K12-EdTech-Platform",
+  "version": "1.0.0",
+  "description": "AI-powered K-12 educational content generation platform",
+  "context": {
+    "techStack": {
+      "backend": ["Node.js", "TypeScript", "Express", "Prisma", "PostgreSQL"],
+      "queue": ["BullMQ", "Redis"],
+      "ai": ["OpenAI GPT-4"],
+      "frontend": ["React", "TypeScript", "TailwindCSS"],
+      "deployment": ["Docker", "Kubernetes"],
+      "monitoring": ["Prometheus", "Grafana", "OpenTelemetry"]
+    },
+    "keyPatterns": [
+      "Outbox pattern for job creation",
+      "Atomic claims with FOR UPDATE SKIP LOCKED",
+      "Short transactions only",
+      "Reconciler-driven orchestration",
+      "Validation pipeline"
+    ],
+    "documentation": [
+      "docs/HYDRATEALL_FINAL_ARCHITECTURE.md",
+      "docs/hydrateAll-architecture.md",
+      "prisma/schema.prisma"
+    ]
+  }
+}

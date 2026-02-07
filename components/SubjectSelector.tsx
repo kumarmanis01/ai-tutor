@@ -1,5 +1,18 @@
-"use client";
-import React from "react";
+/**
+ * FILE OBJECTIVE:
+ * - Legacy subject selector wrapper. New code should use SubjectSelect directly.
+ * - Kept for backward compatibility with existing imports.
+ *
+ * EDIT LOG:
+ * - 2026-02-03 | claude | rewrote to delegate to SubjectSelect with user profile
+ * - 2026-01-22 | copilot | initial hardcoded selector
+ */
+
+'use client';
+
+import React from 'react';
+import SubjectSelect from '@/components/SubjectSelect';
+import useCurrentUser from '@/hooks/useCurrentUser';
 
 export default function SubjectSelector({
   subject,
@@ -8,16 +21,17 @@ export default function SubjectSelector({
   subject: string;
   setSubject: (s: string) => void;
 }) {
+  const { data: profile } = useCurrentUser();
+
   return (
-    <select
+    <SubjectSelect
+      boardSlug={profile?.board ?? null}
+      gradeNum={profile?.grade ?? null}
       value={subject}
-      onChange={(e) => setSubject(e.target.value)}
+      onChange={setSubject}
+      showAll
+      allLabel="All Subjects"
       className="border rounded p-2"
-    >
-      <option value="general">General</option>
-      <option value="math">Math</option>
-      <option value="science">Science</option>
-      <option value="coding">Coding</option>
-    </select>
+    />
   );
 }

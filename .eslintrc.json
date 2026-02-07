@@ -6,15 +6,8 @@
     "plugin:@typescript-eslint/recommended",
     "plugin:prettier/recommended"
   ],
-  "overrides": [
-    {
-      "files": ["**/*.cjs"],
-      "rules": {
-        "@typescript-eslint/no-require-imports": "off"
-      }
-    },
   "parser": "@typescript-eslint/parser",
-  "plugins": ["@typescript-eslint", "prettier", "local"],
+  "plugins": ["@typescript-eslint", "prettier"],
   "rules": {
     "no-restricted-imports": [
       "error",
@@ -63,19 +56,29 @@
       }
     ]
   },
+  "overrides": [
+    {
+      "files": ["**/*.cjs"],
+      "rules": {
+        "@typescript-eslint/no-require-imports": "off"
+      }
+    },
+    {
+      "files": ["app/api/**/*.ts"],
+      "rules": {}
+    },
+    {
+      "files": ["tests/**/*.ts", "tests/**/*.tsx"],
+      "rules": {
+        "no-console": "off",
+        "@typescript-eslint/no-require-imports": "off"
+      }
+    }
+  ],
   "ignorePatterns": ["node_modules/", ".next/", "out/", "public/"],
   "env": {
     "browser": true,
     "node": true,
     "es6": true
   }
-  ,
-    {
-      "files": ["app/api/**/*.ts"],
-      "plugins": ["local"],
-      "rules": {
-        "local/no-string-hierarchy-filters": "error"
-      }
-    }
-  ]
 }

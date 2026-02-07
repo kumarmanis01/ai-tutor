@@ -155,18 +155,34 @@ function ContentDetailPanel({
       case 'note':
         return (
           <div className="space-y-4">
+            {detail.metadata && (
+              <div className="text-sm text-gray-600 dark:text-gray-400 space-y-1">
+                {detail.metadata.topicName && <div><span className="font-medium">Topic:</span> {String(detail.metadata.topicName)}</div>}
+                {detail.metadata.chapterName && <div><span className="font-medium">Chapter:</span> {String(detail.metadata.chapterName)}</div>}
+                {(detail.metadata.subjectName || detail.metadata.subject) && <div><span className="font-medium">Subject:</span> {String(detail.metadata.subjectName || detail.metadata.subject)}</div>}
+                {detail.metadata.language && <div><span className="font-medium">Language:</span> {String(detail.metadata.language)}</div>}
+                {detail.metadata.version != null && <div><span className="font-medium">Version:</span> {String(detail.metadata.version)}</div>}
+              </div>
+            )}
             <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg">
               <h4 className="font-semibold mb-2">Note Content</h4>
               {detail.contentJson ? (
-                <div className="prose dark:prose-invert max-w-none">
-                  {typeof detail.contentJson === 'string' ? (
-                    <div dangerouslySetInnerHTML={{ __html: detail.contentJson }} />
-                  ) : (
-                    <pre className="text-sm bg-white dark:bg-gray-900 p-4 rounded overflow-x-auto whitespace-pre-wrap">
-                      {JSON.stringify(detail.contentJson, null, 2)}
-                    </pre>
-                  )}
-                </div>
+                typeof detail.contentJson === 'string' ? (
+                  <div className="prose dark:prose-invert max-w-none" dangerouslySetInnerHTML={{ __html: detail.contentJson }} />
+                ) : (detail.contentJson as any).sections ? (
+                  <div className="space-y-4">
+                    {((detail.contentJson as any).sections as Array<{heading: string; content: string}>).map((s, i) => (
+                      <div key={i}>
+                        <h5 className="font-semibold text-base mb-1">{s.heading}</h5>
+                        <p className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap">{s.content}</p>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <pre className="text-sm bg-white dark:bg-gray-900 p-4 rounded overflow-x-auto whitespace-pre-wrap">
+                    {JSON.stringify(detail.contentJson, null, 2)}
+                  </pre>
+                )
               ) : detail.content ? (
                 <div className="prose dark:prose-invert max-w-none whitespace-pre-wrap">
                   {detail.content}
@@ -200,14 +216,29 @@ function ContentDetailPanel({
                       )}
                     </div>
                     <p className="font-medium mb-3">{q.question}</p>
-                    {q.options && Array.isArray(q.options) && (
+                    {q.options && typeof q.options === 'object' && !Array.isArray(q.options) ? (
+                      <div className="space-y-2 mb-3">
+                        {Object.entries(q.options).map(([key, val]) => (
+                          <div
+                            key={key}
+                            className={`p-2 rounded border ${
+                              (q.answer as any)?.correct === key
+                                ? 'bg-green-50 dark:bg-green-900/30 border-green-300 dark:border-green-700'
+                                : 'bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700'
+                            }`}
+                          >
+                            <span className="font-medium mr-2">{key}.</span>
+                            {String(val)}
+                          </div>
+                        ))}
+                      </div>
+                    ) : q.options && Array.isArray(q.options) ? (
                       <div className="space-y-2 mb-3">
                         {q.options.map((opt, i) => (
                           <div
                             key={i}
                             className={`p-2 rounded border ${
-                              (Array.isArray(q.answer) ? q.answer.includes(opt) : q.answer === opt) ||
-                              (Array.isArray(q.answer) ? q.answer.includes(String(i)) : q.answer === String(i))
+                              (Array.isArray(q.answer) ? q.answer.includes(opt) : q.answer === opt)
                                 ? 'bg-green-50 dark:bg-green-900/30 border-green-300 dark:border-green-700'
                                 : 'bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700'
                             }`}
@@ -217,10 +248,12 @@ function ContentDetailPanel({
                           </div>
                         ))}
                       </div>
-                    )}
+                    ) : null}
                     <div className="text-sm text-gray-600 dark:text-gray-400">
                       <span className="font-medium">Answer:</span>{' '}
-                      {Array.isArray(q.answer) ? q.answer.join(', ') : String(q.answer)}
+                      {typeof q.answer === 'object' && q.answer !== null && 'correct' in (q.answer as any)
+                        ? `${(q.answer as any).correct}${(q.answer as any).explanation ? ` — ${(q.answer as any).explanation}` : ''}`
+                        : Array.isArray(q.answer) ? q.answer.join(', ') : String(q.answer)}
                     </div>
                   </div>
                 </div>
@@ -262,14 +295,47 @@ function ContentDetailPanel({
       case 'topic':
         return (
           <div className="space-y-4">
-            <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg">
-              <h4 className="font-semibold mb-2">Topic Details</h4>
-              {detail.metadata && (
-                <pre className="text-sm bg-white dark:bg-gray-900 p-4 rounded overflow-x-auto">
-                  {JSON.stringify(detail.metadata, null, 2)}
-                </pre>
-              )}
+            {detail.metadata && (
+              <div className="text-sm text-gray-600 dark:text-gray-400 space-y-1 mb-3">
+                {detail.metadata.chapterName && <div><span className="font-medium">Chapter:</span> {String(detail.metadata.chapterName)}</div>}
+                {(detail.metadata.subjectName || detail.metadata.subject) && <div><span className="font-medium">Subject:</span> {String(detail.metadata.subjectName || detail.metadata.subject)}</div>}
+                {detail.metadata.order != null && <div><span className="font-medium">Order:</span> {String(detail.metadata.order)}</div>}
+              </div>
+            )}
+            <div className="flex gap-4 text-sm">
+              <div className="bg-blue-50 dark:bg-blue-900/30 px-3 py-2 rounded">
+                <span className="font-semibold text-blue-700 dark:text-blue-300">{(detail.metadata as any)?.noteCount ?? 0}</span> Notes
+              </div>
+              <div className="bg-purple-50 dark:bg-purple-900/30 px-3 py-2 rounded">
+                <span className="font-semibold text-purple-700 dark:text-purple-300">{(detail.metadata as any)?.testCount ?? 0}</span> Tests
+              </div>
             </div>
+            {(detail.metadata as any)?.notes?.length > 0 && (
+              <div>
+                <h4 className="font-medium text-sm mb-2">Notes</h4>
+                <ul className="space-y-1">
+                  {((detail.metadata as any).notes as Array<{id: string; language: string; version: number; status: string}>).map((n) => (
+                    <li key={n.id} className="text-sm p-2 bg-gray-50 dark:bg-gray-800 rounded flex justify-between">
+                      <span>{n.language} (v{n.version})</span>
+                      <span className={`text-xs px-2 py-0.5 rounded ${n.status === 'approved' ? 'bg-green-100 text-green-800' : n.status === 'draft' ? 'bg-yellow-100 text-yellow-800' : 'bg-gray-100 text-gray-600'}`}>{n.status}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            {(detail.metadata as any)?.tests?.length > 0 && (
+              <div>
+                <h4 className="font-medium text-sm mb-2">Tests</h4>
+                <ul className="space-y-1">
+                  {((detail.metadata as any).tests as Array<{id: string; difficulty: string; language: string; status: string}>).map((t) => (
+                    <li key={t.id} className="text-sm p-2 bg-gray-50 dark:bg-gray-800 rounded flex justify-between">
+                      <span>{t.difficulty} / {t.language}</span>
+                      <span className={`text-xs px-2 py-0.5 rounded ${t.status === 'approved' ? 'bg-green-100 text-green-800' : t.status === 'draft' ? 'bg-yellow-100 text-yellow-800' : 'bg-gray-100 text-gray-600'}`}>{t.status}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
           </div>
         );
 

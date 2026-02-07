@@ -1,0 +1,67 @@
+version: '3.8'
+
+# Docker Compose for running HydrateAll validation tests in containers.
+# Usage:
+#   docker compose -f docker-compose.test.yml up --build --abort-on-container-exit
+#
+# This spins up postgres + redis containers, runs Prisma migrations,
+# then executes the HydrateAll validation and e2e integration tests.
+
+services:
+  postgres-test:
+    image: postgres:15-alpine
+    restart: "no"
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: testpass
+      POSTGRES_DB: ai_test
+    tmpfs:
+      - /var/lib/postgresql/data
+    ports:
+      - "5433:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  redis-test:
+    image: redis:7-alpine
+    restart: "no"
+    command: ["redis-server", "--save", "", "--appendonly", "no"]
+    tmpfs:
+      - /data
+    ports:
+      - "6380:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "-h", "127.0.0.1", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  test-runner:
+    build:
+      context: .
+      dockerfile: Dockerfile.test
+    restart: "no"
+    environment:
+      NODE_ENV: test
+      DATABASE_URL: postgresql://postgres:testpass@postgres-test:5432/ai_test
+      REDIS_URL: redis://redis-test:6379
+      ALLOW_LLM_CALLS: "0"
+      HYDRATION_PAUSED: "false"
+    depends_on:
+      postgres-test:
+        condition: service_healthy
+      redis-test:
+        condition: service_healthy
+    command: >
+      sh -c "
+        echo '--- Running Prisma migrations ---' &&
+        npx prisma db push --skip-generate --accept-data-loss 2>&1 || true &&
+        echo '--- Running HydrateAll validation tests ---' &&
+        npx jest tests/integration/hydrateAll-validation.test.ts --runInBand --forceExit --no-cache &&
+        echo '--- Running HydrateAll e2e tests ---' &&
+        npx jest tests/integration/hydrateAll-e2e.test.ts --runInBand --forceExit --no-cache &&
+        echo '--- All validation tests passed ---'
+      "

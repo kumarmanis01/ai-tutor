@@ -22,9 +22,10 @@
  */
 import { prisma } from '@/lib/prisma';
 import { logger } from '@/lib/logger';
-import { normalizeJobType } from '@/lib/normalize';
-import { JobType } from '@prisma/client';
+import { normalizeJobType, JobType } from '@/lib/normalize';
 import { JobStatus } from '@/lib/ai-engine/types';
+import { formatLastError, inferFailureCodeFromMessage } from '@/lib/failureCodes';
+import { isSystemSettingEnabled } from '@/lib/systemSettings';
 import { enqueueSyllabusHydration } from '@/hydrators/hydrateSyllabus';
 import {
   enqueueNotesHydration,
@@ -88,6 +89,17 @@ export async function submitJob(input: SubmitJobInput) {
   const normalizedJobType = normalizeJobType(String(jobType));
   logger.debug(`submitJob: received jobType=${String(jobType)}, normalized=${normalizedJobType}`);
   logger.info(`submitJob: enqueue request`, { jobType: normalizedJobType, entityType, entityId, payload });
+
+  // Admin kill-switches: global and per-job-type disables
+  const globalDisabled = await prisma.systemSetting.findUnique({ where: { key: 'HYDRATION_DISABLED' } });
+  if (isSystemSettingEnabled(globalDisabled?.value)) {
+    throw new Error('HYDRATION_DISABLED');
+  }
+  const perKey = `HYDRATION_DISABLED_${String(normalizedJobType).toUpperCase()}`;
+  const perDisabled = await prisma.systemSetting.findUnique({ where: { key: perKey } });
+  if (isSystemSettingEnabled(perDisabled?.value)) {
+    throw new Error(`HYDRATION_DISABLED_${String(normalizedJobType).toUpperCase()}`);
+  }
 
   // ──────────────────────────────────────────────────────────────────────────
   // PHASE 1: Validate jobType/entityType combination BEFORE any DB lookups
@@ -276,8 +288,10 @@ export async function submitJob(input: SubmitJobInput) {
           // mark the ExecutionJob failed so UI does not remain stuck in PENDING.
           if (String(reason).startsWith('resolve_') || reason === 'resolve_not_found' || reason === 'invalid_input') {
             try {
-              await prisma.executionJob.update({ where: { id: job.id }, data: { status: 'failed', lastError: `hydrator:${reason}` } })
-              await prisma.jobExecutionLog.create({ data: { jobId: job.id, event: 'FAILED', prevStatus: 'pending', newStatus: 'failed', message: `hydrator:${reason}` } }).catch(() => {})
+              const code = inferFailureCodeFromMessage(String(reason));
+              const le = formatLastError(code, `hydrator:${reason}`);
+              await prisma.executionJob.update({ where: { id: job.id }, data: { status: 'failed', lastError: le } })
+              await prisma.jobExecutionLog.create({ data: { jobId: job.id, event: 'FAILED', prevStatus: 'pending', newStatus: 'failed', message: le } }).catch(() => {})
             } catch (e) {
               logger?.warn?.('submitJob: failed to mark ExecutionJob failed after hydrator abort', { err: e, jobId: job.id })
             }
@@ -357,10 +371,10 @@ export async function submitJob(input: SubmitJobInput) {
           // mark the ExecutionJob failed so UI does not remain stuck in PENDING.
           if (String(reason).startsWith('resolve_') || reason === 'resolve_not_found' || reason === 'invalid_input') {
             try {
-              await prisma.executionJob.update({ where: { id: job.id }, data: { status: 'failed', lastError: `hydrator:${reason}` } });
-              await prisma.jobExecutionLog.create({
-                data: { jobId: job.id, event: 'FAILED', prevStatus: 'pending', newStatus: 'failed', message: `hydrator:${reason}` }
-              }).catch(() => {});
+              const code = inferFailureCodeFromMessage(String(reason));
+              const le = formatLastError(code, `hydrator:${reason}`);
+              await prisma.executionJob.update({ where: { id: job.id }, data: { status: 'failed', lastError: le } });
+              await prisma.jobExecutionLog.create({ data: { jobId: job.id, event: 'FAILED', prevStatus: 'pending', newStatus: 'failed', message: le } }).catch(() => {});
             } catch (e) {
               logger?.warn?.('submitJob: failed to mark ExecutionJob failed after hydrator abort', { err: e, jobId: job.id });
             }

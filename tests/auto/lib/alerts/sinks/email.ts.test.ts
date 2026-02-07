@@ -1,8 +1,9 @@
 import fs from 'fs';
+import path from 'path';
 
 describe('exists lib/alerts/sinks/email.ts', () => {
   it('source file exists on disk', () => {
-    const p = "C:\\Users\\Spinzy Diagnostics\\Desktop\\ai-tutor\\lib\\alerts\\sinks\\email.ts";
+    const p = path.join(process.cwd(), 'lib/alerts/sinks/email.ts');
     expect(fs.existsSync(p)).toBe(true);
   });
 });

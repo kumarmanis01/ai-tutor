@@ -1,6 +1,7 @@
 /**
  * FILE OBJECTIVE:
  * - Display a single course/subject with its chapters/lessons.
+ *   Server component that fetches data and renders LessonListClient.
  *
  * LINKED UNIT TEST:
  * - tests/unit/app/learn/courseId/page.spec.ts
@@ -12,19 +13,15 @@
  * EDIT LOG:
  * - 2026-01-22 | copilot | enhanced to display subjects with chapters from SubjectDef
  * - 2026-01-22 | copilot | fixed server-side fetch with headers() for base URL
+ * - 2026-02-04 | claude | integrated LessonListClient for progress tracking, auth required
  */
 import Link from 'next/link'
 import { headers } from 'next/headers'
+import LessonListClient, { Lesson } from '@/components/Learn/LessonListClient'
+
+export const dynamic = 'force-dynamic'
 
 type Props = { params: { courseId: string } }
-
-interface Lesson {
-  id: string;
-  lessonIndex?: number;
-  title: string;
-  slug?: string;
-  objectives?: string[];
-}
 
 interface CourseData {
   type?: 'subject' | 'course';
@@ -87,62 +84,12 @@ export default async function Page({ params }: Props) {
   const isSubject = pkg.type === 'subject'
 
   return (
-    <div style={{ padding: 16, maxWidth: 600, margin: '0 auto' }}>
-      <Link href="/learn" style={{ fontSize: 14, color: '#0070f3', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-        ← Back to courses
-      </Link>
-      <h1 style={{ fontSize: 24, fontWeight: 600, marginTop: 12 }}>{pkg.title ?? courseId}</h1>
-      {pkg.description && <p style={{ color: '#666', marginTop: 8 }}>{pkg.description}</p>}
-
-      <h2 style={{ fontSize: 18, fontWeight: 600, marginTop: 24, marginBottom: 12 }}>
-        {isSubject ? '📚 Chapters' : '📖 Lessons'}
-      </h2>
-      
-      {lessons.length === 0 ? (
-        <div style={{ textAlign: 'center', padding: '20px', background: '#f9f9f9', borderRadius: 8 }}>
-          <p style={{ color: '#666' }}>No content available yet.</p>
-        </div>
-      ) : (
-        <ul style={{ listStyle: 'none', padding: 0 }}>
-          {lessons.map((l: Lesson, i: number) => (
-            <li key={l.id ?? i} style={{ marginBottom: 8 }}>
-              <Link 
-                href={`/learn/${courseId}/lesson/${l.lessonIndex ?? i}`} 
-                style={{ 
-                  textDecoration: 'none', 
-                  color: 'inherit',
-                  display: 'block',
-                  padding: 16,
-                  background: '#fff',
-                  borderRadius: 10,
-                  boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
-                  transition: 'box-shadow 0.2s'
-                }}
-              >
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <div>
-                    <div style={{ fontWeight: 600, fontSize: 15 }}>{l.title}</div>
-                    {Array.isArray(l.objectives) && l.objectives.length > 0 && (
-                      <div style={{ fontSize: 13, color: '#666', marginTop: 4 }}>
-                        {l.objectives.slice(0, 2).join(' · ')}
-                      </div>
-                    )}
-                  </div>
-                  <div style={{ 
-                    fontSize: 13, 
-                    color: '#0070f3',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 4
-                  }}>
-                    Start →
-                  </div>
-                </div>
-              </Link>
-            </li>
-          ))}
-        </ul>
-      )}
-    </div>
+    <LessonListClient
+      courseId={courseId}
+      courseTitle={pkg.title ?? courseId}
+      courseDescription={pkg.description}
+      lessons={lessons}
+      isSubject={isSubject}
+    />
   )
 }

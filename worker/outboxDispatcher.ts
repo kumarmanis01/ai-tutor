@@ -49,7 +49,12 @@ async function dispatchBatch(): Promise<number> {
 
   for (const row of rows) {
     try {
-      const payload = row.payload as { type: string; payload: { jobId?: string } };
+      const payload = row.payload as { type?: string; payload?: { jobId?: string } };
+      if (!payload?.type) {
+        logger.error('[outbox-dispatcher] skipping row with missing payload.type', { outboxId: row.id, payload });
+        await prisma.outbox.update({ where: { id: row.id }, data: { sentAt: new Date(), attempts: row.attempts + 1 } }).catch(() => {});
+        continue;
+      }
       const jobName = `${payload.type.toLowerCase()}-${payload.payload?.jobId ?? row.id}`;
 
       // Add to Bull queue

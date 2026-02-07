@@ -54,11 +54,14 @@ model User {
   studentLearningProfile   StudentLearningProfile?
   studentQuestions         StudentQuestion[]
   studentStreaks           StudentStreak[]
+  studentTopicMastery      StudentTopicMastery[]
   subscriptions            Subscription[]
   testResults              TestResult[]
   userBadges               UserBadge[]
   generatedStudyContent    GeneratedStudyContent[]
   studyBookmarks           StudentStudyBookmark[]
+  dailyTasks               DailyTask[]
+  recoveryEvents           RecoveryEvent[]
 }
 
 model PhoneOtp {
@@ -259,17 +262,35 @@ model RegenerationOutput {
 model Subscription {
   id           String   @id @default(cuid())
   userId       String
-  plan         String
-  billingCycle String
+  plan         String   /// individual, family
+  billingCycle String   /// monthly, annual
   startDate    DateTime
   endDate      DateTime
   active       Boolean  @default(false)
+  childSlots   Int      @default(1) /// number of child accounts included
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
   paymentId    String?
   user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
+}
+
+/// Parent-defined controls per child: screen time, subject toggles, focus mode
+model ParentChildControl {
+  id                String   @id @default(cuid())
+  parentId          String
+  studentId         String
+  dailyTimeLimitMin Int?     /// null = unlimited
+  allowedSubjects   String[] @default([]) /// empty = all subjects allowed
+  focusMode         String   @default("balanced") /// balanced, exam_prep, concept_focus
+  studyHoursStart   String?  /// e.g. "09:00" (24h format)
+  studyHoursEnd     String?  /// e.g. "21:00"
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@unique([parentId, studentId])
+  @@index([studentId])
 }
 
 /// Worker lifecycle table — persistent source of truth for worker state
@@ -554,14 +575,87 @@ model QuestionFlag {
 }
 
 model ParentStudent {
-  id        String   @id @default(cuid())
-  parentId  String
-  studentId String
-  createdAt DateTime @default(now())
-  parent    User     @relation("ParentRelations", fields: [parentId], references: [id], onDelete: Cascade)
-  student   User     @relation("StudentRelations", fields: [studentId], references: [id], onDelete: Cascade)
+  id         String            @id @default(cuid())
+  parentId   String
+  studentId  String
+  status     ParentLinkStatus  @default(active)
+  inviteCode String?           @unique
+  createdAt  DateTime          @default(now())
+  parent     User              @relation("ParentRelations", fields: [parentId], references: [id], onDelete: Cascade)
+  student    User              @relation("StudentRelations", fields: [studentId], references: [id], onDelete: Cascade)
 
   @@unique([parentId, studentId])
+  @@index([studentId])
+  @@index([inviteCode])
+}
+
+/// Pre-aggregated weekly snapshot of a student's activity for parent view
+model WeeklyStudentSummary {
+  id                 String   @id @default(cuid())
+  studentId          String
+  weekStart          DateTime /// Monday 00:00 UTC
+  topicsCovered      Int      @default(0)
+  testsTaken         Int      @default(0)
+  averageScore       Float    @default(0)
+  totalMinutes       Int      @default(0)
+  sessionsCount      Int      @default(0)
+  subjectsActive     String[] @default([])
+  createdAt          DateTime @default(now())
+
+  @@unique([studentId, weekStart])
+  @@index([studentId])
+}
+
+/// Per-subject progress for a student (aggregated from topic mastery)
+model SubjectProgressSummary {
+  id                 String   @id @default(cuid())
+  studentId          String
+  subject            String
+  board              String
+  totalTopics        Int      @default(0)
+  topicsCovered      Int      @default(0)
+  averageMastery     Float    @default(0)
+  strongTopics       Int      @default(0)
+  weakTopics         Int      @default(0)
+  updatedAt          DateTime @updatedAt
+
+  @@unique([studentId, subject])
+  @@index([studentId])
+}
+
+/// Flags topics where student mastery is below threshold
+model AttentionFlag {
+  id           String       @id @default(cuid())
+  studentId    String
+  topicId      String
+  subject      String
+  chapter      String
+  masteryLevel MasteryLevel
+  accuracy     Float
+  reason       String       /// e.g. "low_mastery", "declining_accuracy"
+  resolved     Boolean      @default(false)
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  @@unique([studentId, topicId])
+  @@index([studentId, resolved])
+}
+
+/// Per-subject exam readiness based on topic coverage + mastery
+model ReadinessStatus {
+  id              String   @id @default(cuid())
+  studentId       String
+  subject         String
+  board           String
+  topicsCovered   Int      @default(0)
+  totalTopics     Int      @default(0)
+  coveragePercent Float    @default(0)
+  avgMastery      Float    @default(0)
+  readinessScore  Float    @default(0) /// 0-100 composite score
+  readinessLabel  String   @default("not_started") /// not_started, needs_work, on_track, ready
+  updatedAt       DateTime @updatedAt
+
+  @@unique([studentId, subject])
   @@index([studentId])
 }
 
@@ -606,15 +700,18 @@ model ContentRecommendation {
   isShown      Boolean   @default(false)
   isClicked    Boolean   @default(false)
   isCompleted  Boolean   @default(false)
+  isIgnored    Boolean   @default(false)
   firstShownAt DateTime?
   lastShownAt  DateTime?
   clickedAt    DateTime?
   completedAt  DateTime?
+  ignoredAt    DateTime?
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
   user         User      @relation(fields: [userId], references: [id])
 
   @@unique([userId, contentId])
+  @@index([userId, isIgnored])
 }
 
 model ContentCatalog {
@@ -656,6 +753,25 @@ model StudentStreak {
   student    User      @relation(fields: [studentId], references: [id], onDelete: Cascade)
 
   @@index([studentId, kind])
+}
+
+model StudentTopicMastery {
+  id                  String        @id @default(cuid())
+  studentId           String
+  topicId             String
+  subject             String
+  chapter             String
+  masteryLevel        MasteryLevel  @default(beginner)
+  accuracy            Float         @default(0)
+  questionsAttempted  Int           @default(0)
+  lastAttemptedAt     DateTime?
+  createdAt           DateTime      @default(now())
+  updatedAt           DateTime      @updatedAt
+  student             User          @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([studentId, topicId])
+  @@index([studentId, masteryLevel])
+  @@index([subject, chapter])
 }
 
 model PracticeTest {
@@ -866,15 +982,17 @@ model GeneratedTest {
 }
 
 model GeneratedQuestion {
-  id        String        @id @default(cuid())
-  testId    String
-  type      String
-  question  String
-  options   Json?
-  answer    Json?
-  marks     Int?
-  createdAt DateTime      @default(now())
-  test      GeneratedTest @relation(fields: [testId], references: [id])
+  id          String        @id @default(cuid())
+  testId      String
+  type        String
+  question    String
+  options     Json?
+  answer      Json?
+  explanation String?
+  marks       Int?
+  sourceJobId String?
+  createdAt   DateTime      @default(now())
+  test        GeneratedTest @relation(fields: [testId], references: [id])
 }
 
 model AIContentLog {
@@ -912,25 +1030,52 @@ model SystemSetting {
 }
 
 model HydrationJob {
-  id         String          @id @default(cuid())
-  jobType    JobType
-  board      String?
-  grade      Int?
-  subject    String?
-  subjectId  String?
-  chapterId  String?
-  topicId    String?
-  language   LanguageCode
-  difficulty DifficultyLevel
-  status     JobStatus       @default(pending)
-  attempts   Int             @default(0)
-  lastError  String?
-  completedAt DateTime?
-  contentReady Boolean       @default(false)
+  id              String          @id @default(cuid())
+  jobType         JobType
+  board           String?
+  grade           Int?
+  subject         String?
+  subjectId       String?
+  chapterId       String?
+  topicId         String?
+  parentJobId     String?
+  rootJobId       String?
+  hierarchyLevel  Int             @default(0)
+  language        LanguageCode
+  difficulty      DifficultyLevel
+  status          JobStatus       @default(pending)
+  attempts        Int             @default(0)
+  maxAttempts     Int?            @default(3)
+  lockedAt        DateTime?
+  lastError       String?
+  completedAt     DateTime?
+  contentReady    Boolean         @default(false)
+  inputParams     Json?
+  traceId         String?
+
+  // Progress tracking (updated by reconciler)
+  chaptersExpected   Int          @default(0)
+  chaptersCompleted  Int          @default(0)
+  topicsExpected     Int          @default(0)
+  topicsCompleted    Int          @default(0)
+  notesExpected      Int          @default(0)
+  notesCompleted     Int          @default(0)
+  questionsExpected  Int          @default(0)
+  questionsCompleted Int          @default(0)
+
+  // Cost tracking
+  estimatedCostUsd      Float?
+  actualCostUsd         Float?    @default(0)
+  estimatedDurationMins Int?
+
   createdAt  DateTime        @default(now())
   updatedAt  DateTime        @updatedAt
 
   @@index([jobType, status])
+  @@index([parentJobId])
+  @@index([rootJobId])
+  @@index([lockedAt])
+  @@index([hierarchyLevel])
 }
 
 model Outbox {
@@ -1126,6 +1271,7 @@ enum UserStatus {
 
 enum UserRole {
   user
+  parent
   admin
   moderator
   support
@@ -1153,6 +1299,40 @@ enum DifficultyLevel {
   easy
   medium
   hard
+}
+
+enum MasteryLevel {
+  beginner
+  intermediate
+  advanced
+  expert
+}
+
+enum ParentLinkStatus {
+  pending
+  active
+  revoked
+}
+
+enum DailyTaskType {
+  learn
+  practice
+  revise
+  fix_gap
+  confidence
+}
+
+enum DailyTaskStatus {
+  pending
+  completed
+  skipped
+  expired
+}
+
+enum RecoveryNudgeType {
+  gentle_nudge   /// 3 days inactive
+  easy_task      /// 7 days inactive
+  fresh_start    /// 14+ days inactive
 }
 
 enum JobStatus {
@@ -1404,4 +1584,48 @@ model StudentStudyBookmark {
   
   @@unique([userId, contentType, contentId])
   @@index([userId, createdAt])
+}
+
+/// Daily Habit Engine: one personalized task per student per day
+model DailyTask {
+  id                String          @id @default(cuid())
+  studentId         String
+  date              DateTime        /// calendar date (UTC midnight)
+  taskType          DailyTaskType
+  title             String          /// student-facing headline, e.g. "Practice fractions"
+  description       String?         /// short explanation of what to do
+  topicId           String?         /// optional link to curriculum topic
+  subject           String?
+  chapter           String?
+  steps             Json?           /// structured sub-steps [{label, done}]
+  estimatedTimeMin  Int             @default(15)
+  status            DailyTaskStatus @default(pending)
+  completedAt       DateTime?
+  skippedAt         DateTime?
+  motivationMessage String?         /// encouraging copy shown on completion
+  isRecoveryTask    Boolean         @default(false) /// true if generated by FRS
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+  student           User            @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([studentId, date])
+  @@index([studentId, status])
+  @@index([date])
+}
+
+/// Failure Recovery System: tracks re-engagement events after inactivity
+model RecoveryEvent {
+  id            String            @id @default(cuid())
+  studentId     String
+  inactiveDays  Int               /// days since last activity when event triggered
+  nudgeType     RecoveryNudgeType
+  dailyTaskId   String?           /// optional link to the recovery task generated
+  sentAt        DateTime          @default(now())
+  respondedAt   DateTime?         /// when student returned
+  dismissed     Boolean           @default(false)
+  createdAt     DateTime          @default(now())
+  student       User              @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@index([studentId, createdAt])
+  @@index([nudgeType])
 }

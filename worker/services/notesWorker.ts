@@ -19,6 +19,7 @@
 import { prisma } from '@/lib/prisma.js';
 import { callLLM } from '@/lib/callLLM.js';
 import { parseLlmJson } from '@/lib/llm/sanitizeJson';
+import { validateOrThrow } from '@/lib/aiOutputValidator';
 import fs from 'fs';
 import path from 'path';
 import { isSystemSettingEnabled } from '@/lib/systemSettings.js';
@@ -96,7 +97,7 @@ function validateNotesShapeWithReport(raw: any) {
 /**
  * Sanitizes LLM output by stripping code fences.
  */
-function sanitizeLLMOutput(content: string): string {
+function _sanitizeLLMOutput(content: string): string {
   if (!content || typeof content !== 'string') return content;
   let s = content.trim();
 
@@ -119,7 +120,7 @@ function sanitizeLLMOutput(content: string): string {
  * Attempt to extract JSON text from an arbitrary LLM output.
  * Tries fenced ```json blocks first, then any fenced block, then the first '{'..'}' span.
  */
-function extractJsonFromText(text: string): string | null {
+function _extractJsonFromText(text: string): string | null {
   if (!text || typeof text !== 'string') return null;
   const t = text.trim();
   // fenced json block
@@ -144,17 +145,20 @@ function extractJsonFromText(text: string): string | null {
  * Call LLM and try to parse JSON with a small retry on parse failure.
  * Returns parsed object or throws after retries.
  */
-async function callAndParseJSON(prompt: string, meta: any, attempts = 3): Promise<any> {
+async function callAndParseJSON(prompt: string, meta: any, attempts = 3): Promise<{ parsed: any; llmResult: any }> {
   let lastErr: any = null;
   let prevResponseText: string | null = null;
   for (let i = 0; i < attempts; i++) {
-    const llmResponse = await callLLM({ prompt, meta });
+    // Ensure RAG-lite context is used for content generation and bind to hydrationJob when provided
+    const timeoutMs = Number(process.env.NOTES_LLM_TIMEOUT_MS || 30_000);
+    const callMeta = { ...(meta || {}), useRag: true, hydrationJobId: meta?.hydrationJobId || meta?.jobId || null, suppressLog: true };
+    const llmResponse = await callLLM({ prompt, meta: callMeta, timeoutMs });
     const responseText = String(llmResponse.content ?? '');
     prevResponseText = responseText;
     try {
       // Use shared parser which applies sanitization, extraction and repair heuristics
       const parsed = parseLlmJson(responseText);
-      return parsed;
+      return { parsed, llmResult: llmResponse };
     } catch (parseErr: any) {
       lastErr = parseErr;
     }
@@ -185,7 +189,7 @@ export async function handleNotesJob(jobId: string): Promise<void> {
   // Atomically claim the job
   const claim = await prisma.hydrationJob.updateMany({
     where: { id: jobId, status: JobStatus.Pending },
-    data: { status: JobStatus.Running, attempts: { increment: 1 } }
+    data: { status: JobStatus.Running, attempts: { increment: 1 }, lockedAt: new Date() }
   });
   if (claim.count === 0) {
     logger.info('handleNotesJob: job already claimed or not pending', { jobId });
@@ -208,7 +212,10 @@ export async function handleNotesJob(jobId: string): Promise<void> {
 
   const topicId = job.topicId;
   if (!topicId) {
-    await prisma.hydrationJob.update({ where: { id: job.id }, data: { status: JobStatus.Failed, lastError: 'missing_topicId' } });
+    const { formatLastError, FailureCode } = await import('@/lib/failureCodes');
+    const le = formatLastError(FailureCode.DEPENDENCY_MISSING, 'missing_topicId');
+    await prisma.hydrationJob.update({ where: { id: job.id }, data: { status: JobStatus.Failed, lastError: le } });
+    try { await prisma.aIContentLog.create({ data: { model: 'none', promptType: 'notes', language: job.language || 'en', success: false, status: 'failed', error: le, requestBody: { jobId }, responseBody: null } }) } catch {};
     throw new Error('missing_topicId');
   }
 
@@ -229,7 +236,10 @@ export async function handleNotesJob(jobId: string): Promise<void> {
   });
 
   if (!topic) {
-    await prisma.hydrationJob.update({ where: { id: job.id }, data: { status: JobStatus.Failed, lastError: 'topic_not_found' } });
+    const { formatLastError, FailureCode } = await import('@/lib/failureCodes');
+    const le = formatLastError(FailureCode.DEPENDENCY_MISSING, 'topic_not_found');
+    await prisma.hydrationJob.update({ where: { id: job.id }, data: { status: JobStatus.Failed, lastError: le } });
+    try { await prisma.aIContentLog.create({ data: { model: 'none', promptType: 'notes', language: job.language || 'en', success: false, status: 'failed', error: le, requestBody: { jobId }, responseBody: null } }) } catch {};
     throw new Error('topic_not_found');
   }
 
@@ -239,6 +249,7 @@ export async function handleNotesJob(jobId: string): Promise<void> {
   });
   if (existingApproved) {
     await prisma.hydrationJob.update({ where: { id: job.id }, data: { status: JobStatus.Completed, contentReady: true } });
+    try { await prisma.aIContentLog.create({ data: { model: 'none', promptType: 'notes', language: job.language || 'en', success: true, status: 'success', requestBody: { jobId }, responseBody: { reason: 'content_exists' } } }) } catch {}
     logger.info('handleNotesJob: approved notes already exist', { jobId, topicId });
     return;
   }
@@ -280,11 +291,25 @@ export async function handleNotesJob(jobId: string): Promise<void> {
 
   // Call LLM and attempt to parse JSON with retries/extraction heuristics
   let parsed: any;
+  let llmResult: any = null;
   try {
     const meta = { promptType: 'notes', board, grade, subject: subjectName, topic: topic.name, language };
-    parsed = await callAndParseJSON(prompt, meta, 2);
+    const res = await callAndParseJSON(prompt, meta, 2);
+    parsed = res.parsed;
+    llmResult = res.llmResult;
   } catch (err: any) {
-    await prisma.hydrationJob.update({ where: { id: job.id }, data: { status: JobStatus.Failed, lastError: err?.message || 'llm_failed' } });
+    // Persist failure AIContentLog outside transaction
+    try {
+      const { formatLastError, inferFailureCodeFromMessage } = await import('@/lib/failureCodes');
+      const raw = String(err?.message ?? 'llm_failed');
+      const code = inferFailureCodeFromMessage(raw);
+      const le = formatLastError(code, raw);
+      await prisma.aIContentLog.create({ data: { model: null, promptType: 'notes', language: job.language || 'en', success: false, status: 'failed', error: le, requestBody: { jobId: job.id }, responseBody: null, hydrationJobId: job.id } });
+      try { await prisma.hydrationJob.update({ where: { id: job.id }, data: { status: JobStatus.Failed, lastError: le } }); } catch {}
+    } catch {
+      try { await prisma.aIContentLog.create({ data: { model: null, promptType: 'notes', language: job.language || 'en', success: false, status: 'failed', error: String(err?.message ?? 'llm_failed'), requestBody: { jobId: job.id }, responseBody: null, hydrationJobId: job.id } }); } catch {}
+      try { await prisma.hydrationJob.update({ where: { id: job.id }, data: { status: JobStatus.Failed, lastError: String(err?.message ?? 'llm_failed') } }); } catch {}
+    }
     logger.error('handleNotesJob: LLM parse failed, marking job failed', { jobId, error: err?.message || String(err) });
     return;
   }
@@ -301,42 +326,34 @@ export async function handleNotesJob(jobId: string): Promise<void> {
     }
   } catch { /* ignore */ }
 
-  // Validate parsed shape and persist a structured validation report
+  // Strict validation: may throw typed errors. On failure we must fail the HydrationJob and persist AIContentLog, then rethrow.
   try {
-    const { valid, report } = validateNotesShapeWithReport(parsed);
+    validateOrThrow(parsed, { jobType: 'notes', language, subject: subjectName, topic: topic.name, grade, difficulty: job.difficulty });
+    // Log a validation-passed event for observability
     try {
-      const linkedExec = await prisma.executionJob.findFirst({
-        where: { payload: { path: ['hydrationJobId'], equals: job.id } }
-      });
+      const linkedExec = await prisma.executionJob.findFirst({ where: { payload: { path: ['hydrationJobId'], equals: job.id } } });
       if (linkedExec) {
-        await prisma.jobExecutionLog.create({
-          data: { jobId: linkedExec.id, event: 'VALIDATION_REPORT', prevStatus: linkedExec.status, newStatus: linkedExec.status, meta: { hydrationJobId: job.id, report } }
-        }).catch(() => {});
-        if (!valid) {
-          logger.error('handleNotesJob: failed to validate parsed LLM output', { jobId, error: report });
-          await prisma.hydrationJob.update({ where: { id: job.id }, data: { status: JobStatus.Failed, lastError: 'invalid_llm_output' } });
-          await prisma.executionJob.update({ where: { id: linkedExec.id }, data: { status: 'failed', lastError: 'invalid_llm_output' } }).catch(() => {});
-          await prisma.jobExecutionLog.create({
-            data: { jobId: linkedExec.id, event: 'PARSE_FAILED', prevStatus: linkedExec.status, newStatus: 'failed', message: 'invalid_llm_output', meta: { hydrationJobId: job.id, report } }
-          }).catch(() => {});
-          // Preserve existing behavior for linked execution jobs: throw so callers/tests
-          // observe the parse failure. The worker process should catch this at a
-          // higher level and continue running; keeping the throw maintains existing
-          // test expectations.
-          throw new Error('invalid_llm_output');
-        }
-      } else {
-        // If no linked exec, just throw on invalid
-        if (!valid) {
-            logger.error('handleNotesJob: validation failed (no linked exec)', { jobId, report });
-            await prisma.hydrationJob.update({ where: { id: job.id }, data: { status: JobStatus.Failed, lastError: 'invalid_llm_output' } });
-            // No linked execution job to report to; stop processing and return.
-            return;
-        }
+        await prisma.jobExecutionLog.create({ data: { jobId: linkedExec.id, event: 'VALIDATION_PASSED', prevStatus: linkedExec.status, newStatus: linkedExec.status, meta: { hydrationJobId: job.id } } }).catch(() => {});
       }
-    } catch (err: any) { if (err?.message === 'invalid_llm_output') throw err; /* ignore other logging failures */ }
-  } catch (err: any) {
-    throw err;
+    } catch { /* non-fatal */ }
+  } catch (vErr: any) {
+    // Failure contract: mark HydrationJob failed, persist AIContentLog, emit jobExecutionLog, then rethrow
+    const reason = vErr?.type || vErr?.message || 'validation_failed'
+    const { formatLastError, FailureCode } = await import('@/lib/failureCodes');
+    const le = formatLastError(FailureCode.VALIDATION_FAILED, String(reason));
+    try {
+      await prisma.hydrationJob.update({ where: { id: job.id }, data: { status: JobStatus.Failed, lastError: le } });
+    } catch {}
+    try {
+      const linkedExec = await prisma.executionJob.findFirst({ where: { payload: { path: ['hydrationJobId'], equals: job.id } } });
+      if (linkedExec) {
+        await prisma.jobExecutionLog.create({ data: { jobId: linkedExec.id, event: 'VALIDATION_FAILED', prevStatus: linkedExec.status, newStatus: linkedExec.status, message: le, meta: { hydrationJobId: job.id, error: vErr?.details || null } } }).catch(() => {});
+      }
+    } catch {}
+    try {
+      await prisma.aIContentLog.create({ data: { model: 'llm', promptType: 'notes', language: job.language || 'en', success: false, status: 'failed', error: le, requestBody: { jobId: job.id }, responseBody: parsed } });
+    } catch {}
+    throw vErr;
   }
 
   // Persist notes
@@ -361,39 +378,80 @@ export async function handleNotesJob(jobId: string): Promise<void> {
     };
 
     await runTxWithRetry(async (tx) => {
-      await tx.topicNote.create({
-        data: {
+      // Idempotent write: upsert by topicId+language+version (unique)
+      await tx.topicNote.upsert({
+        where: { topicId_language_version: { topicId, language, version } },
+        update: {
+          title: parsed.title,
+          contentJson: { ...parsed.content, sourceJobId: job.id },
+          source: 'ai',
+          status: ApprovalStatus.Draft
+        },
+        create: {
           topicId,
           language,
           version,
           title: parsed.title,
-          contentJson: parsed.content,
+          contentJson: { ...parsed.content, sourceJobId: job.id },
           source: 'ai',
           status: ApprovalStatus.Draft
         }
       });
 
-      // Mark hydration job completed
+      // Persist AIContentLog inside the transaction (success path)
+      try {
+        await tx.aIContentLog.create({ data: {
+          model: llmResult?.model || 'llm',
+          promptType: 'notes',
+          board,
+          grade,
+          subject: subjectName,
+          chapter: topic.chapter?.name || null,
+          topic: topic.name,
+          language: job.language || 'en',
+          topicId: topicId,
+          hydrationJobId: job.id,
+          tokensIn: llmResult?.usage?.prompt_tokens ?? null,
+          tokensOut: llmResult?.usage?.completion_tokens ?? null,
+          tokensUsed: llmResult?.usage?.total_tokens ?? null,
+          costUsd: llmResult?.costUsd ?? null,
+          latencyMs: llmResult?.latencyMs ?? null,
+          success: true,
+          status: 'success',
+          requestBody: { prompt },
+          responseBody: { raw: llmResult?.content }
+        } });
+      } catch (e) {
+        throw e;
+      }
+
+      // Mark hydration job completed (workers only update their own HydrationJob)
       await tx.hydrationJob.update({
         where: { id: job.id },
         data: { status: JobStatus.Completed, completedAt: new Date(), contentReady: true }
       });
 
-      // Mark linked ExecutionJob completed
-      const linked = await tx.executionJob.findFirst({
-        where: { payload: { path: ['hydrationJobId'], equals: job.id } }
-      });
+      // Emit JobExecutionLog entries for observability but DO NOT mutate ExecutionJob
+      const linked = await tx.executionJob.findFirst({ where: { payload: { path: ['hydrationJobId'], equals: job.id } } });
       if (linked) {
-        const prevStatus = linked.status;
-        await tx.executionJob.update({ where: { id: linked.id }, data: { status: 'completed', updatedAt: new Date() } });
-        await tx.jobExecutionLog.create({
-          data: { jobId: linked.id, event: 'COMPLETED', prevStatus, newStatus: 'completed', meta: { hydrationJobId: job.id } }
-        });
+        const prevStatus = linked.status ?? null;
+        await tx.jobExecutionLog.create({ data: { jobId: linked.id, event: 'COMPLETED', prevStatus, newStatus: prevStatus, meta: { hydrationJobId: job.id, sourceJobId: job.id } } });
       }
     });
     logger.info('handleNotesJob: completed successfully', { jobId, topicId });
   } catch (err: any) {
-    await prisma.hydrationJob.update({ where: { id: job.id }, data: { status: JobStatus.Failed, lastError: err.message } });
+    // Failure path: persist failure AIContentLog outside transaction, then mark hydration job failed
+    try {
+      await prisma.aIContentLog.create({ data: { model: llmResult?.model || 'llm', promptType: 'notes', language: job.language || 'en', success: false, status: 'failed', error: String(err.message || err), requestBody: { prompt }, responseBody: { raw: llmResult?.content } } });
+    } catch {}
+    try {
+      const { formatLastError, inferFailureCodeFromMessage } = await import('@/lib/failureCodes');
+      const code = inferFailureCodeFromMessage(String(err?.message ?? ''));
+      const le = formatLastError(code, String(err?.message ?? err));
+      await prisma.hydrationJob.update({ where: { id: job.id }, data: { status: JobStatus.Failed, lastError: le, attempts: { increment: 0 } } });
+    } catch {
+      await prisma.hydrationJob.update({ where: { id: job.id }, data: { status: JobStatus.Failed, lastError: String(err?.message ?? err), attempts: { increment: 0 } } });
+    }
     throw err;
   }
 }

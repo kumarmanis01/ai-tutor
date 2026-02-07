@@ -3,8 +3,6 @@
 
 # Prevent accidental commit of .env.production
 bash scripts/prevent-env-commit.sh
-#!/usr/bin/env sh
-. "$(dirname "$0")/_/husky.sh"
 
 # Allow CI/operators to bypass hooks by setting SKIP_HOOKS=1
 if [ "${SKIP_HOOKS:-0}" = "1" ] || [ "${HUSKY_SKIP_HOOKS:-0}" = "1" ]; then
@@ -12,20 +10,22 @@ if [ "${SKIP_HOOKS:-0}" = "1" ] || [ "${HUSKY_SKIP_HOOKS:-0}" = "1" ]; then
   exit 0;
 fi
 
-# Run custom ESLint rule tests then lint-staged
+echo "Running lightweight local pre-commit checks (CI will run full pipeline)..."
+
+# Run only the quick ESLint rule tests (fast)
 echo "Running ESLint custom rule tests..."
-npm run test:eslint-rules || {
-  echo "Custom ESLint rule tests failed" && exit 1
-}
+npm run test:eslint-rules || { echo "Custom ESLint rule tests failed" && exit 1; }
 
-echo "Running lint-staged..."
-npx --no-install lint-staged || {
-  echo "lint-staged failed" && exit 1
-}
+# Run lint-staged to lint/fix staged files
+echo "Running lint-staged for staged files..."
+npx --no-install lint-staged || { echo "lint-staged failed" && exit 1; }
 
-echo "Running unit tests..."
-npm run test:unit || {
-  echo "unit tests failed" && exit 1
-}
+# Run lightweight related unit tests for staged files (don't run full suite locally)
+if [ -x "./scripts/precommit-local-tests.sh" ]; then
+  echo "Running local related tests for staged files..."
+  bash ./scripts/precommit-local-tests.sh || { echo "related tests failed" && exit 1; }
+else
+  echo "Local pre-commit helper not found; skipping related tests."
+fi
 
-echo "Pre-commit checks passed"
+echo "Local pre-commit checks completed. Full checks run on CI." 

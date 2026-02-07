@@ -138,6 +138,58 @@ export default function AIDashboard() {
           <div className="text-2xl font-bold">{summary?.completedToday ?? "-"}</div>
         </div>
       </div>
+      {/* HydrateAll Pipeline & Content Stats */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+        <div className="bg-white rounded shadow p-4">
+          <div className="flex items-center justify-between mb-3">
+            <div className="font-semibold">HydrateAll Pipeline</div>
+            <a href="/admin/content-engine/hydrateAll" className="text-xs text-blue-600 underline">Open Pipeline →</a>
+          </div>
+          <div className="grid grid-cols-2 gap-3 text-sm">
+            <div className="bg-blue-50 rounded p-2 text-center">
+              <div className="text-gray-500">Pending</div>
+              <div className="text-lg font-bold text-blue-700">{summary?.hydration?.pending ?? "-"}</div>
+            </div>
+            <div className="bg-green-50 rounded p-2 text-center">
+              <div className="text-gray-500">Running</div>
+              <div className="text-lg font-bold text-green-700">{summary?.hydration?.running ?? "-"}</div>
+            </div>
+            <div className="bg-gray-50 rounded p-2 text-center">
+              <div className="text-gray-500">Completed</div>
+              <div className="text-lg font-bold text-gray-700">{summary?.hydration?.completed ?? "-"}</div>
+            </div>
+            <div className="bg-red-50 rounded p-2 text-center">
+              <div className="text-gray-500">Failed</div>
+              <div className="text-lg font-bold text-red-700">{summary?.hydration?.failed ?? "-"}</div>
+            </div>
+          </div>
+        </div>
+        <div className="bg-white rounded shadow p-4">
+          <div className="flex items-center justify-between mb-3">
+            <div className="font-semibold">Generated Content</div>
+            <a href="/admin/content-central" className="text-xs text-blue-600 underline">Content Central →</a>
+          </div>
+          <div className="grid grid-cols-2 gap-3 text-sm">
+            <div className="bg-indigo-50 rounded p-2 text-center">
+              <div className="text-gray-500">Chapters</div>
+              <div className="text-lg font-bold text-indigo-700">{summary?.content?.chapters ?? "-"}</div>
+            </div>
+            <div className="bg-purple-50 rounded p-2 text-center">
+              <div className="text-gray-500">Topics</div>
+              <div className="text-lg font-bold text-purple-700">{summary?.content?.topics ?? "-"}</div>
+            </div>
+            <div className="bg-teal-50 rounded p-2 text-center">
+              <div className="text-gray-500">Notes</div>
+              <div className="text-lg font-bold text-teal-700">{summary?.content?.notes ?? "-"}</div>
+            </div>
+            <div className="bg-amber-50 rounded p-2 text-center">
+              <div className="text-gray-500">Questions</div>
+              <div className="text-lg font-bold text-amber-700">{summary?.content?.questions ?? "-"}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* Recent Jobs Table */}
       <div className="bg-white rounded shadow p-4">
         <div className="font-semibold mb-2">Recent Jobs</div>

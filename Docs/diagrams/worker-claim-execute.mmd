@@ -1,0 +1,21 @@
+sequenceDiagram
+    participant Queue as Redis/BullMQ
+    participant Worker as Worker
+    participant DB as Postgres
+    participant AI as AI/API
+
+    Queue->>Worker: jobPayload (hydrationJobId, scope, traceId)
+    Worker->>DB: UPDATE hydration_jobs SET status='Claimed', lockedAt=now(), attempts=attempts+1 WHERE id=$id AND status IN ('Pending')
+    alt claim success
+      DB-->>Worker: rows=1
+      Worker->>DB: BEGIN; INSERT jobExecutionLog (start); UPDATE hydration_jobs SET status='Running'; COMMIT
+      Worker->>AI: request generation (async)
+      AI-->>Worker: generated content
+      loop per-child
+        Worker->>DB: BEGIN; INSERT chapter/topic row; COMMIT
+      end
+      Worker->>DB: BEGIN; INSERT aIContentLog; UPDATE hydration_jobs SET status='Completed', finishedAt=now(); INSERT jobExecutionLog (summary); COMMIT
+    else claim failed
+      DB-->>Worker: rows=0
+      Worker-->>Queue: ack (skip)
+    end

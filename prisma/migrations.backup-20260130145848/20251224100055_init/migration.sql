@@ -943,16 +943,28 @@ CREATE TABLE "HydrationJob" (
     "subjectId" TEXT,
     "chapterId" TEXT,
     "topicId" TEXT,
+    "parentJobId" TEXT,
+    "rootJobId" TEXT NOT NULL,
     "language" "LanguageCode" NOT NULL,
     "difficulty" "DifficultyLevel" NOT NULL,
     "status" "JobStatus" NOT NULL DEFAULT 'pending',
     "attempts" INTEGER NOT NULL DEFAULT 0,
+    "maxAttempts" INTEGER DEFAULT 3,
+    "lockedAt" TIMESTAMP(6),
     "lastError" TEXT,
+    "completedAt" TIMESTAMP(6),
+    "contentReady" BOOLEAN NOT NULL DEFAULT false,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
     CONSTRAINT "HydrationJob_pkey" PRIMARY KEY ("id")
 );
+
+-- Indexes for HydrationJob to support queries by status, parent and root relationships and locking
+CREATE INDEX IF NOT EXISTS "idx_hydrationjob_jobtype_status" ON "HydrationJob" ("jobType", "status");
+CREATE INDEX IF NOT EXISTS "idx_hydrationjob_parentJobId" ON "HydrationJob" ("parentJobId");
+CREATE INDEX IF NOT EXISTS "idx_hydrationjob_rootJobId" ON "HydrationJob" ("rootJobId");
+CREATE INDEX IF NOT EXISTS "idx_hydrationjob_lockedAt" ON "HydrationJob" ("lockedAt");
 
 -- CreateTable
 CREATE TABLE "StudentContentPreference" (

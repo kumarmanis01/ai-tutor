@@ -1,6 +1,10 @@
 import { prisma } from '@/lib/prisma';
 import type { Question, TestResult } from '@prisma/client';
+// Type matches Prisma enum — defined inline to avoid build dependency on prisma generate
+const MasteryLevel = { beginner: 'beginner', intermediate: 'intermediate', advanced: 'advanced', expert: 'expert' } as const;
+type MasteryLevel = (typeof MasteryLevel)[keyof typeof MasteryLevel];
 import { createAIClient } from '@/lib/aiContext';
+import { logger } from '@/lib/logger';
 
 /**
  * Normalizes textual answers for comparison.
@@ -125,6 +129,13 @@ export type GradedResult = {
   partial: boolean;
   autoScore: number;
   awardedPoints: number;
+  // MVP: Include question details for instant feedback
+  questionText?: string;
+  userAnswer?: string;
+  correctAnswer?: string;
+  explanation?: string;
+  type?: string;
+  choices?: Array<{ key: string; label: string }>;
 };
 
 /**
@@ -190,6 +201,25 @@ export async function applyGrading(attempt: TestResult, payload: SubmitPayload) 
     totalPoints += 1;
     const g = gradeSingle(aq.question, ans?.answer);
     earnedPoints += g.awardedPoints;
+    
+    // Parse choices for MCQ questions
+    let parsedChoices: Array<{ key: string; label: string }> | undefined;
+    if (aq.question.type?.toLowerCase() === 'mcq' && aq.question.choices) {
+      try {
+        const raw = typeof aq.question.choices === 'string' 
+          ? JSON.parse(aq.question.choices) 
+          : aq.question.choices;
+        if (Array.isArray(raw)) {
+          parsedChoices = raw.map((c: any) => ({
+            key: String(c.key ?? c.id ?? ''),
+            label: String(c.label ?? c.text ?? c.value ?? ''),
+          }));
+        }
+      } catch {
+        // Skip invalid choices
+      }
+    }
+    
     graded.push({
       attemptQuestionId: aq.id,
       questionId: aq.questionId,
@@ -197,6 +227,13 @@ export async function applyGrading(attempt: TestResult, payload: SubmitPayload) 
       partial: g.partial,
       autoScore: g.autoScore,
       awardedPoints: g.awardedPoints,
+      // MVP: Include question details for instant feedback
+      questionText: aq.question.prompt ?? undefined,
+      userAnswer: ans?.answer ?? undefined,
+      correctAnswer: aq.question.correctAnswer ?? undefined,
+      explanation: (aq.question as any).explanation ?? undefined,
+      type: aq.question.type?.toLowerCase() as 'mcq' | 'short_answer' | 'numeric' | undefined,
+      choices: parsedChoices,
     });
 
     await prisma.answer.upsert({
@@ -240,4 +277,72 @@ export async function applyGrading(attempt: TestResult, payload: SubmitPayload) 
   });
 
   return { totalPoints, earnedPoints, scorePercent, graded };
+}
+
+/**
+ * Update StudentTopicMastery records after a test submission.
+ * Groups graded questions by subject+chapter and upserts mastery with rolling accuracy.
+ */
+export async function updateTopicMastery(studentId: string, attemptId: string): Promise<void> {
+  const attemptQuestions = await prisma.attemptQuestion.findMany({
+    where: { testResultId: attemptId },
+    include: { question: true, answer: true },
+  });
+
+  if (!attemptQuestions.length) return;
+
+  // Group results by subject + chapter
+  const groups: Record<string, { correct: number; total: number; subject: string; chapter: string }> = {};
+  for (const aq of attemptQuestions) {
+    const subject = aq.question.subject || 'unknown';
+    const chapter = aq.question.chapter || 'unknown';
+    const key = `${subject}::${chapter}`;
+    if (!groups[key]) groups[key] = { correct: 0, total: 0, subject, chapter };
+    groups[key].total++;
+    if (aq.answer?.autoScore != null && aq.answer.autoScore > 0) {
+      groups[key].correct++;
+    }
+  }
+
+  for (const [topicId, stats] of Object.entries(groups)) {
+    const newAccuracy = stats.total > 0 ? stats.correct / stats.total : 0;
+
+    const existing = await prisma.studentTopicMastery.findUnique({
+      where: { studentId_topicId: { studentId, topicId } },
+    });
+
+    const prevAttempted = existing?.questionsAttempted ?? 0;
+    const prevAccuracy = existing?.accuracy ?? 0;
+    const totalAttempted = prevAttempted + stats.total;
+    const rollingAccuracy = totalAttempted > 0
+      ? ((prevAccuracy * prevAttempted) + (newAccuracy * stats.total)) / totalAttempted
+      : newAccuracy;
+
+    let masteryLevel: MasteryLevel = MasteryLevel.beginner;
+    if (rollingAccuracy >= 0.9 && totalAttempted >= 20) masteryLevel = MasteryLevel.expert;
+    else if (rollingAccuracy >= 0.75 && totalAttempted >= 10) masteryLevel = MasteryLevel.advanced;
+    else if (rollingAccuracy >= 0.5 && totalAttempted >= 5) masteryLevel = MasteryLevel.intermediate;
+
+    await prisma.studentTopicMastery.upsert({
+      where: { studentId_topicId: { studentId, topicId } },
+      update: {
+        accuracy: rollingAccuracy,
+        questionsAttempted: totalAttempted,
+        masteryLevel,
+        lastAttemptedAt: new Date(),
+      },
+      create: {
+        studentId,
+        topicId,
+        subject: stats.subject,
+        chapter: stats.chapter,
+        accuracy: newAccuracy,
+        questionsAttempted: stats.total,
+        masteryLevel,
+        lastAttemptedAt: new Date(),
+      },
+    });
+
+    logger.info('updateTopicMastery', { studentId, topicId, rollingAccuracy, totalAttempted, masteryLevel });
+  }
 }

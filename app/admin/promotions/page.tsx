@@ -1,6 +1,7 @@
 import React from 'react'
 import { requireAdminOrModerator } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+export const dynamic = 'force-dynamic'
 import Link from 'next/link'
 
 export default async function PromotionsList() {

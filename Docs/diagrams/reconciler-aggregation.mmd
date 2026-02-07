@@ -1,0 +1,14 @@
+sequenceDiagram
+    participant Reconciler
+    participant DB as Postgres
+
+    loop periodically
+      Reconciler->>DB: SELECT root jobs needing reconciliation FOR UPDATE SKIP LOCKED
+      DB-->>Reconciler: rows
+      Reconciler->>DB: SELECT COUNT(*) FILTER(status='Completed'), COUNT(*) FILTER(status='Failed') FROM hydration_jobs WHERE rootJobId = $rootId
+      alt all children terminal
+        Reconciler->>DB: UPDATE hydration_jobs SET status=Completed WHERE id=$rootId
+      else partial
+        Reconciler-->>DB: no-op (or create missing children)
+      end
+    end

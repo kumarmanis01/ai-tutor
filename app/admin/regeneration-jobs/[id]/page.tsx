@@ -1,5 +1,7 @@
 import React from 'react'
 import { prisma } from '@/lib/prisma'
+
+export const dynamic = 'force-dynamic'
 import TriggerJobButton from '../TriggerJobButton'
 import ReadOnlyJsonViewer from '@/components/UI/ReadOnlyJsonViewer'
 import Link from 'next/link'

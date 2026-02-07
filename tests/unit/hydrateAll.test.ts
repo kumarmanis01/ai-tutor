@@ -26,9 +26,9 @@ describe('runHydrateAll', () => {
     mockedPrisma.subjectDef.findMany.mockResolvedValue(subjects);
     mockedPrisma.topicDef.findMany.mockResolvedValue(topics);
 
-    const syllabusMod = require('@/hydrators/hydrateSyllabus');
-    const notesMod = require('@/hydrators/hydrateNotes');
-    const qMod = require('@/hydrators/hydrateQuestions');
+    const syllabusMod = await import('@/hydrators/hydrateSyllabus');
+    const notesMod = await import('@/hydrators/hydrateNotes');
+    const qMod = await import('@/hydrators/hydrateQuestions');
 
     await runHydrateAll({});
 

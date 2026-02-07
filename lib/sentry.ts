@@ -124,7 +124,7 @@ export function addBreadcrumb(
   message: string,
   category: string,
   data?: Record<string, unknown>,
-  level: Sentry.SeverityLevel = 'info'
+  level: ErrorSeverity = 'info'
 ): void {
   if (process.env.NODE_ENV !== 'production') return;
 
@@ -144,7 +144,7 @@ export function startTransaction(
   name: string,
   op: string,
   data?: Record<string, unknown>
-): Sentry.Span | undefined {
+): any {
   if (process.env.NODE_ENV !== 'production' || !process.env.NEXT_PUBLIC_SENTRY_DSN) {
     return undefined;
   }

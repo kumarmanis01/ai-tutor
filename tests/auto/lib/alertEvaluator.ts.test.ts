@@ -1,8 +1,9 @@
 import fs from 'fs';
+import path from 'path';
 
 describe('exists lib/alertEvaluator.ts', () => {
   it('source file exists on disk', () => {
-    const p = "C:\\Users\\Spinzy Diagnostics\\Desktop\\ai-tutor\\lib\\alertEvaluator.ts";
+    const p = path.join(process.cwd(), 'lib/alertEvaluator.ts');
     expect(fs.existsSync(p)).toBe(true);
   });
 });

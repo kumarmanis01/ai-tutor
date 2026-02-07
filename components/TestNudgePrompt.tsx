@@ -226,12 +226,12 @@ export default function TestNudgePrompt({
                   bg-white text-gray-900
                   font-semibold text-sm text-center
                   rounded-lg
-                  hover:bg-gray-100 
+                  hover:bg-gray-100
                   transition-colors
                   shadow-md
                 "
               >
-                Take Test Now →
+                Try It Out →
               </Link>
             </div>
 

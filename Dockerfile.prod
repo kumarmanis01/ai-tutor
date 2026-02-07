@@ -2,14 +2,16 @@ FROM node:20-alpine AS builder
 WORKDIR /app
 
 # Install build tools required by some native deps
-RUN apk add --no-cache python3 make g++ bash
+# Use --no-cache and specific mirror for faster downloads
+RUN apk add --no-cache --repository=https://dl-cdn.alpinelinux.org/alpine/v3.19/main \
+    python3 make g++ bash
 
 # Copy package manifests first to leverage Docker cache for deps
 COPY package.json package-lock.json* ./
 
 # Install all deps (including dev) so Next.js build and tools are available
 # We will prune dev deps after build to keep the final image lean.
-RUN npm ci --no-audit --progress=false
+RUN npm ci --no-audit --progress=false --prefer-offline
 
 # Copy rest of the repo and build
 COPY . ./
@@ -17,12 +19,10 @@ COPY . ./
 # Ensure shell scripts have LF endings (avoid CRLF parse issues)
 RUN if [ -f ./scripts/run-migrate.sh ]; then sed -i 's/\r$//' ./scripts/run-migrate.sh && chmod +x ./scripts/run-migrate.sh; fi
 
-# Build project (prisma generate, compile TS, run postbuild fixes, build workers)
-# Use the primary `build` script so `postbuild` runs and fixes import paths.
-RUN npm run build && npm run build:workers
-
-# Remove devDependencies to reduce runtime size
-RUN npm prune --production || true
+# Note: defer the JS/Next build to container start so the build can reach
+# dependent services (Postgres/Redis) during startup. This avoids build-time
+# failures when Docker cannot reach service hostnames. The builder stage still
+# performs `npm ci` so `node_modules` (including dev deps) are available.
 
 FROM node:20-alpine AS runner
 WORKDIR /app
@@ -30,10 +30,15 @@ COPY --from=builder /app /app
 ENV NODE_ENV=production
 
 # Minimal runtime deps are already installed in /app/node_modules
-# Install curl so healthchecks using HTTP requests work in minimal runtime
-RUN apk add --no-cache curl
+# Install curl for healthchecks, netcat for port checking, postgresql-client for migrations
+RUN apk add --no-cache curl netcat-openbsd postgresql-client redis
 
 EXPOSE 3000
+# Add a small entrypoint to route to the correct service at runtime
+COPY ./scripts/docker-entrypoint.sh /app/docker-entrypoint.sh
+RUN chmod +x /app/docker-entrypoint.sh || true
+COPY ./scripts/entrypoint.sh /app/scripts/entrypoint.sh
+RUN chmod +x /app/scripts/entrypoint.sh || true
+ENTRYPOINT ["/bin/sh", "/app/scripts/entrypoint.sh"]
 
-# Default command is no-op; docker-compose will override per-service
-CMD ["node", "dist/worker/entry.js"]
+CMD ["web"]

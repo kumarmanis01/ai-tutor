@@ -1,6 +1,7 @@
 /**
  * FILE OBJECTIVE:
- * - Display a single lesson/chapter content with navigation.
+ * - Display a single lesson/chapter content with navigation and progress tracking.
+ *   Server component that fetches data and renders LessonViewClient.
  *
  * LINKED UNIT TEST:
  * - tests/unit/app/learn/courseId/lesson/index/page.spec.ts
@@ -11,32 +12,24 @@
  *
  * EDIT LOG:
  * - 2026-01-22 | copilot | fixed server-side fetch with headers() for base URL
+ * - 2026-02-04 | claude | integrated LessonViewClient for progress tracking, auth required
  */
 import Link from 'next/link'
 import { headers } from 'next/headers'
+import LessonViewClient, { LessonData } from '@/components/Learn/LessonViewClient'
+
+export const dynamic = 'force-dynamic'
 
 type Props = { params: { courseId: string; index: string } }
 
-interface Lesson {
-  id?: string;
-  lessonIndex?: number;
-  title: string;
-  slug?: string;
-  objectives?: string[];
-  explanation?: {
-    overview?: string;
-    concepts?: Array<{ title: string; explanation: string }>;
-  };
-}
-
 interface CoursePackage {
   modules?: Array<{
-    lessons?: Lesson[];
+    lessons?: LessonData[];
   }>;
 }
 
-function flattenLessons(pkg: CoursePackage | null): Lesson[] {
-  const lessons: Lesson[] = []
+function flattenLessons(pkg: CoursePackage | null): LessonData[] {
+  const lessons: LessonData[] = []
   if (!pkg || !Array.isArray(pkg.modules)) return lessons
   for (const m of pkg.modules) {
     if (Array.isArray(m.lessons)) {
@@ -55,7 +48,7 @@ export default async function Page({ params }: Props) {
   const protocol = headersList.get('x-forwarded-proto') || 'http'
   const baseUrl = `${protocol}://${host}`
   
-  let lesson: Lesson | null = null
+  let lesson: LessonData | null = null
   let pkg: CoursePackage | null = null
   
   try {
@@ -91,53 +84,19 @@ export default async function Page({ params }: Props) {
   }
   
   const lessons = flattenLessons(pkg)
-  const idx = lessons.findIndex((l: Lesson) => Number(l.lessonIndex) === Number(index) || (l.id && l.id === lesson?.id))
+  const idx = lessons.findIndex((l) => Number(l.lessonIndex) === Number(index) || (l.id && l.id === lesson?.id))
 
   const prev = idx > 0 ? lessons[idx - 1] : null
   const next = idx >= 0 && idx < lessons.length - 1 ? lessons[idx + 1] : null
 
   return (
-    <div style={{ padding: 16, maxWidth: 600, margin: '0 auto' }}>
-      <Link href={`/learn/${courseId}`} style={{ fontSize: 14, color: '#0070f3' }}>← Back to course</Link>
-      <h1 style={{ fontSize: 24, fontWeight: 600, marginTop: 12 }}>{lesson.title}</h1>
-      
-      {Array.isArray(lesson.objectives) && lesson.objectives.length > 0 && (
-        <div style={{ marginTop: 16, padding: 16, background: '#f0f7ff', borderRadius: 8 }}>
-          <div style={{ fontWeight: 600, marginBottom: 8 }}>📚 Learning Objectives</div>
-          <ul style={{ paddingLeft: 20, margin: 0 }}>
-            {lesson.objectives.map((o: string, i: number) => <li key={i} style={{ color: '#444', marginBottom: 4 }}>{o}</li>)}
-          </ul>
-        </div>
-      )}
-
-      <div style={{ marginTop: 20 }}>
-        {lesson.explanation?.overview && (
-          <p style={{ lineHeight: 1.7, fontSize: 15 }}>{lesson.explanation.overview}</p>
-        )}
-        {Array.isArray(lesson.explanation?.concepts) && lesson.explanation.concepts.length > 0 && (
-          <div style={{ marginTop: 16 }}>
-            {lesson.explanation.concepts.map((c, i: number) => (
-              <div key={i} style={{ marginBottom: 16, padding: 16, background: '#fff', borderRadius: 8, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
-                <div style={{ fontWeight: 600, marginBottom: 8 }}>{c.title}</div>
-                <div style={{ color: '#333', lineHeight: 1.6 }}>{c.explanation}</div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-
-      <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 24 }}>
-        {prev ? (
-          <Link href={`/learn/${courseId}/lesson/${prev.lessonIndex ?? lessons.indexOf(prev)}`} style={{ padding: '10px 16px', background: '#f0f0f0', borderRadius: 8, textDecoration: 'none', color: '#333' }}>
-            ← Previous
-          </Link>
-        ) : <div />}
-        {next ? (
-          <Link href={`/learn/${courseId}/lesson/${next.lessonIndex ?? lessons.indexOf(next)}`} style={{ padding: '10px 16px', background: '#0070f3', color: '#fff', borderRadius: 8, textDecoration: 'none' }}>
-            Next →
-          </Link>
-        ) : <div />}
-      </div>
-    </div>
+    <LessonViewClient
+      courseId={courseId}
+      lessonIndex={index}
+      lesson={lesson}
+      prev={prev ? { lessonIndex: prev.lessonIndex, id: prev.id } : null}
+      next={next ? { lessonIndex: next.lessonIndex, id: next.id } : null}
+      totalLessons={lessons.length}
+    />
   )
 }

@@ -149,8 +149,8 @@ export async function GET(req: NextRequest) {
 
           nudges.push({
             type: 'lessons_completed',
-            title: '📝 Time for a Quick Test!',
-            message: `You've completed ${courseLessons.length} lessons in ${courseName}. Take a quick test to reinforce your learning!`,
+            title: '📝 Ready to check your progress?',
+            message: `You've covered ${courseLessons.length} lessons in ${courseName}. A quick practice round can help it stick!`,
             topicId: String(courseId),
             topicName: courseName,
             subjectName,
@@ -181,8 +181,8 @@ export async function GET(req: NextRequest) {
         if (!hasTest) {
           nudges.push({
             type: 'topic_mastery',
-            title: '🏆 Topic Complete!',
-            message: `Congratulations! You've finished all lessons in ${enrollment.course?.title}. Test your mastery with a comprehensive quiz!`,
+            title: '🏆 You finished the whole topic!',
+            message: `Amazing — you've gone through all lessons in ${enrollment.course?.title}. Want to see how much you remember?`,
             topicId: String(courseId),
             topicName: enrollment.course?.title,
             subjectName: enrollment.course?.subject?.name,
@@ -201,8 +201,8 @@ export async function GET(req: NextRequest) {
       if (lessonProgress.length > 0) {
         nudges.push({
           type: 'weekly_review',
-          title: '🔄 Weekly Review Time',
-          message: "It's been a while since your last test. A quick review will help reinforce what you've learned!",
+          title: '🔄 Quick refresh?',
+          message: "A little revision goes a long way. Try a quick round to keep things fresh!",
           priority: 'medium',
           actionUrl: '/tests?type=review',
           dismissable: true,
@@ -219,8 +219,8 @@ export async function GET(req: NextRequest) {
       if (daysSinceActivity >= NUDGE_CONFIG.IDLE_DAYS_THRESHOLD) {
         nudges.push({
           type: 'idle_return',
-          title: '👋 Welcome Back!',
-          message: `We missed you! Take a quick test to refresh your memory before continuing your learning journey.`,
+          title: '👋 Hey, welcome back!',
+          message: `Good to see you! How about a quick warm-up to get back in the groove?`,
           priority: 'medium',
           actionUrl: '/tests?type=refresh',
           dismissable: true,

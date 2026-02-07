@@ -2,23 +2,32 @@
 /**
  * FILE OBJECTIVE:
  * - Mobile-optimized suggested content with compact horizontal scroll.
+ *   Uses item.type directly for proper emoji/badge display.
  *
  * LINKED UNIT TEST:
  * - tests/unit/app/dashboard/components/SuggestedContent.spec.ts
  *
  * EDIT LOG:
+ * - 2026-02-01 | claude  | use item.type for emoji, add test/notes action labels
  * - 2026-01-22 | copilot | added navigation on click with visual cue
  * - 2025-01-22 | copilot | simplified for mobile with compact cards
  */
 import React from 'react';
 import { useRecommendations } from '@/hooks/useRecommendations';
 
-const typeEmoji: Record<string, string> = {
-  notes: '📖',
-  test: '📝',
-  quiz: '❓',
-  default: '✨',
+const TYPE_DISPLAY: Record<string, { emoji: string; action: string }> = {
+  notes: { emoji: '📖', action: 'Read' },
+  test: { emoji: '📝', action: 'Take Test' },
+  quiz: { emoji: '❓', action: 'Start Quiz' },
+  practice: { emoji: '🎯', action: 'Practice' },
+  chapter: { emoji: '📚', action: 'Study' },
+  lesson: { emoji: '✨', action: 'Start' },
+  video: { emoji: '🎬', action: 'Watch' },
 };
+
+function getTypeDisplay(type: string) {
+  return TYPE_DISPLAY[type?.toLowerCase()] || { emoji: '✨', action: 'Start' };
+}
 
 const SuggestedContent: React.FC = () => {
   const { items, loading, navigateToContent } = useRecommendations();
@@ -47,13 +56,9 @@ const SuggestedContent: React.FC = () => {
 
   return (
     <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide -mx-3 px-3">
-      {items.slice(0, 5).map((item) => {
-        const type = item.title.toLowerCase().includes('note') ? 'notes' 
-          : item.title.toLowerCase().includes('test') ? 'test' 
-          : item.title.toLowerCase().includes('quiz') ? 'quiz' 
-          : 'default';
-        const emoji = typeEmoji[type];
-        
+      {items.slice(0, 6).map((item) => {
+        const display = getTypeDisplay(item.type);
+
         return (
           <button
             key={item.id}
@@ -61,7 +66,7 @@ const SuggestedContent: React.FC = () => {
             className="flex-shrink-0 w-40 bg-card hover:bg-muted/50 rounded-lg p-3 text-left active:scale-95 transition-transform"
           >
             <div className="w-8 h-8 bg-primary/10 rounded-lg flex items-center justify-center text-base mb-2">
-              {emoji}
+              {display.emoji}
             </div>
             <p className="text-sm font-medium text-foreground truncate">{item.title}</p>
             <p className="text-xs text-muted-foreground truncate">{item.subject}</p>
@@ -69,7 +74,7 @@ const SuggestedContent: React.FC = () => {
               <svg className="w-3 h-3 text-primary" viewBox="0 0 24 24" fill="currentColor">
                 <path d="M8 5v14l11-7z" />
               </svg>
-              <span className="text-xs text-primary">Start</span>
+              <span className="text-xs text-primary">{display.action}</span>
             </div>
           </button>
         );

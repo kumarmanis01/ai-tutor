@@ -98,7 +98,7 @@ export async function POST(req: Request) {
         const byEmail = await db.user.findUnique({ where: { email: session.user.email } });
         if (byEmail) auditUserId = byEmail.id;
       }
-    } catch (e) {
+    } catch {
       // If DB lookup fails for any reason, fall back to null — do not block
       // the approval flow because of auditing lookup problems.
       auditUserId = null;

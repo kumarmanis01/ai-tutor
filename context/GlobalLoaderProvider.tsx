@@ -53,6 +53,21 @@ export function GlobalLoaderProvider({ children }: { children: React.ReactNode }
 
 export function useGlobalLoader() {
   const ctx = useContext(GlobalLoaderContext);
-  if (!ctx) throw new Error('useGlobalLoader must be used within GlobalLoaderProvider');
+  
+  // During SSG/SSR, context might be null - return safe defaults
+  if (!ctx) {
+    // Check if we're in a browser environment
+    if (typeof window === 'undefined') {
+      return {
+        startLoading: () => {},
+        stopLoading: () => {},
+        resetLoading: () => {},
+        loading: false,
+        label: undefined,
+      };
+    }
+    throw new Error('useGlobalLoader must be used within GlobalLoaderProvider');
+  }
+  
   return ctx;
 }

@@ -11,6 +11,7 @@ const mockPrisma = {
   systemSetting: { findUnique: jest.fn().mockResolvedValue(null) },
   topicDef: { findUnique: jest.fn().mockResolvedValue({ id: 'topic1', name: 'Topic', chapter: { name: 'Chapter', subject: { name: 'Mathematics', class: { grade: 6, board: { name: 'CBSE' } } } } }) },
   topicNote: { findFirst: jest.fn().mockResolvedValue(null), create: jest.fn().mockResolvedValue({}) },
+  aIContentLog: { create: jest.fn().mockResolvedValue({}) },
   $transaction: jest.fn().mockImplementation(async (work: any) => work(mockPrisma)),
   executionJob: { findFirst: jest.fn().mockResolvedValue({ id: 'exec1', payload: { hydrationJobId: 'job1' }, status: 'pending' }), update: jest.fn().mockResolvedValue({}) },
   jobExecutionLog: { create: jest.fn().mockResolvedValue({}) }
@@ -26,16 +27,18 @@ describe('handleNotesJob validation behavior', () => {
     jest.clearAllMocks();
   });
 
-  test('invalid parsed notes cause VALIDATION_REPORT and PARSE_FAILED logs and job fails', async () => {
-    await expect(handleNotesJob('job1')).rejects.toThrow(/invalid_llm_output/);
+  test('invalid parsed notes cause validation failure, job fails, and AIContentLog persisted', async () => {
+    await expect(handleNotesJob('job1')).rejects.toThrow();
 
-    // VALIDATION_REPORT should be created
+    // VALIDATION_FAILED should be created
     const calls = (prisma as any).jobExecutionLog.create.mock.calls;
     const events = calls.map((c: any) => c[0]?.data?.event).filter(Boolean);
-    expect(events).toContain('VALIDATION_REPORT');
-    expect(events).toContain('PARSE_FAILED');
+    expect(events).toContain('VALIDATION_FAILED');
 
     // hydrationJob updated to failed
     expect((prisma as any).hydrationJob.update).toHaveBeenCalled();
+
+    // AI content log must be persisted with failure mark
+    expect((prisma as any).aIContentLog.create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ success: false, status: 'failed' }) }));
   });
 });

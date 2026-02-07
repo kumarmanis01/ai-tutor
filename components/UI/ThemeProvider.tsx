@@ -42,7 +42,20 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
 export const useTheme = () => {
   const ctx = useContext(ThemeContext);
-  if (!ctx) throw new Error('useTheme must be used within ThemeProvider');
+  
+  // During SSG/SSR, context might be null - return safe defaults
+  if (!ctx) {
+    // Check if we're in a browser environment
+    if (typeof window === 'undefined') {
+      return {
+        theme: 'light' as const,
+        setTheme: () => {},
+        toggle: () => {},
+      };
+    }
+    throw new Error('useTheme must be used within ThemeProvider');
+  }
+  
   return ctx;
 };
 

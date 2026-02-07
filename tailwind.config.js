@@ -13,17 +13,14 @@
 // };
 
 /** @type {import('tailwindcss').Config} */
-module.exports = {
-  darkMode: 'class', // <-- Add this line!
+const config = {
+  darkMode: 'class',
   content: ['./app/**/*.{js,ts,jsx,tsx}', './components/**/*.{js,ts,jsx,tsx}'],
   theme: {
     extend: {
       colors: {
-        // Keep existing custom tokens
         userBubble: '#DCF8C6', // light green
         aiBubble: '#F1F0F0', // light gray
-        // Map semantic color names to CSS variables so classes like
-        // `bg-background`, `text-foreground`, `bg-primary` work without rebuild
         background: 'var(--color-background)',
         foreground: 'var(--color-foreground)',
         muted: 'var(--color-muted)',
@@ -51,4 +48,6 @@ module.exports = {
     },
   },
   plugins: [],
-};
+}
+
+export default config

@@ -76,9 +76,9 @@ export async function GET(req: NextRequest) {
 
     const parentId = session.user.id;
 
-    // Get all linked students
+    // Get all linked students (active links only)
     const parentRelations = await prisma.parentStudent.findMany({
-      where: { parentId },
+      where: { parentId, status: 'active' },
       include: {
         student: {
           select: {
@@ -269,7 +269,8 @@ export async function GET(req: NextRequest) {
 
 /**
  * POST /api/parent/dashboard
- * Link a student to parent account using invite code
+ * Link a student to parent account via email or invite code.
+ * Delegates to /api/parent/link logic but kept for backward compatibility.
  */
 export async function POST(req: NextRequest) {
   const start = Date.now();
@@ -290,41 +291,57 @@ export async function POST(req: NextRequest) {
 
     const parentId = session.user.id;
 
-    // Find student by email
-    let student;
-    if (studentEmail) {
-      student = await prisma.user.findUnique({
-        where: { email: studentEmail },
+    // Handle invite code linking
+    if (inviteCode) {
+      const pendingLink = await prisma.parentStudent.findUnique({ where: { inviteCode } });
+      if (!pendingLink || pendingLink.status !== 'pending') {
+        return NextResponse.json({ error: 'Invalid or expired invite code' }, { status: 404 });
+      }
+      if (pendingLink.studentId === parentId) {
+        return NextResponse.json({ error: 'Cannot link to yourself' }, { status: 400 });
+      }
+      await prisma.parentStudent.update({
+        where: { id: pendingLink.id },
+        data: { parentId, status: 'active', inviteCode: null },
       });
+      const response = NextResponse.json({ ok: true, studentId: pendingLink.studentId });
+      logger.logAPI(req, response, { className: CLASS_NAME, methodName: METHOD_NAME }, start);
+      return response;
     }
-    // TODO: Implement invite code lookup
-    // else if (inviteCode) { ... }
 
+    // Handle email linking
+    const student = await prisma.user.findUnique({ where: { email: studentEmail } });
     if (!student) {
       return NextResponse.json({ error: 'Student not found' }, { status: 404 });
     }
+    if (student.id === parentId) {
+      return NextResponse.json({ error: 'Cannot link to yourself' }, { status: 400 });
+    }
 
-    // Check if already linked
-    const existingRelation = await prisma.parentStudent.findUnique({
-      where: {
-        parentId_studentId: {
-          parentId,
-          studentId: student.id,
-        },
-      },
+    const existing = await prisma.parentStudent.findUnique({
+      where: { parentId_studentId: { parentId, studentId: student.id } },
     });
 
-    if (existingRelation) {
+    if (existing && existing.status === 'active') {
       return NextResponse.json({ error: 'Already linked to this student' }, { status: 409 });
     }
 
-    // Create link
-    await prisma.parentStudent.create({
-      data: {
-        parentId,
-        studentId: student.id,
-      },
-    });
+    if (existing && existing.status === 'revoked') {
+      await prisma.parentStudent.update({
+        where: { id: existing.id },
+        data: { status: 'active' },
+      });
+    } else {
+      await prisma.parentStudent.create({
+        data: { parentId, studentId: student.id, status: 'active' },
+      });
+    }
+
+    // Promote role to parent if currently user
+    const parentUser = await prisma.user.findUnique({ where: { id: parentId }, select: { role: true } });
+    if (parentUser?.role === 'user') {
+      await prisma.user.update({ where: { id: parentId }, data: { role: 'parent' } });
+    }
 
     logger.info('Parent-student link created', {
       className: CLASS_NAME,
@@ -369,16 +386,12 @@ export async function DELETE(req: NextRequest) {
 
     const parentId = session.user.id;
 
-    await prisma.parentStudent.delete({
-      where: {
-        parentId_studentId: {
-          parentId,
-          studentId,
-        },
-      },
+    await prisma.parentStudent.updateMany({
+      where: { parentId, studentId },
+      data: { status: 'revoked' },
     });
 
-    logger.info('Parent-student link removed', {
+    logger.info('Parent-student link revoked', {
       className: CLASS_NAME,
       methodName: METHOD_NAME,
       parentId,

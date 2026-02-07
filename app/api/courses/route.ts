@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server'
 
+export const dynamic = 'force-dynamic';
+
 export async function GET() {
   const db = (global as any).__TEST_PRISMA__ ?? (await import('../../../lib/prisma')).prisma
   // Fetch all published packages ordered by syllabusId asc, version desc

@@ -20,19 +20,13 @@
  * fetches `/api/hierarchy` and provides actions for content generation.
  */
 
-import React from "react";
-import dynamic from "next/dynamic";
-
-// Load the client component dynamically to keep this page a server component
-// while still running the workspace on the client.
-const HierarchyWorkspace = dynamic(() => import("@/components/hierarchy/HierarchyWorkspace"), {
-  ssr: false,
-});
+import React from 'react';
+import HierarchyWorkspaceClient from '@/components/ClientOnly/HierarchyWorkspaceClient';
 
 export default function ControlPanelHierarchyPage() {
   return (
     <main className="p-6">
-      <HierarchyWorkspace />
+      <HierarchyWorkspaceClient />
     </main>
   );
 }

@@ -16,6 +16,7 @@
  */
 
 import { prisma } from '@/lib/prisma';
+import { randomUUID } from 'crypto';
 import { JobStatus } from '@/lib/ai-engine/types';
 import { isSystemSettingEnabled } from '@/lib/systemSettings';
 import { logger } from '@/lib/logger';
@@ -136,7 +137,8 @@ export async function enqueueNotesHydration(input: TopicHydrationInput): Promise
     chapterId: topic.chapter.id,
     status: JobStatus.Pending
   };
-  const job = await prisma.hydrationJob.create({ data: jobData });
+  const generatedId = randomUUID();
+  const job = await prisma.hydrationJob.create({ data: { id: generatedId, rootJobId: generatedId, ...jobData } });
   if (HYDRATION_DEBUG) logger.debug('[hydration][DEBUG] created HydrationJob for notes', { jobId: job.id });
 
   // 6️⃣ Create Outbox row for reliable enqueue
@@ -234,7 +236,8 @@ export async function enqueueQuestionsHydration(input: TopicHydrationInput): Pro
     chapterId: topic.chapter.id,
     status: JobStatus.Pending
   };
-  const job = await prisma.hydrationJob.create({ data: jobData });
+  const generatedId = randomUUID();
+  const job = await prisma.hydrationJob.create({ data: { id: generatedId, rootJobId: generatedId, ...jobData } });
   if (HYDRATION_DEBUG) logger.debug('[hydration][DEBUG] created HydrationJob for questions', { jobId: job.id });
 
   // 6️⃣ Create Outbox row for reliable enqueue
@@ -319,7 +322,8 @@ export async function enqueueTestsHydration(input: TopicHydrationInput): Promise
     chapterId: topic.chapter.id,
     status: JobStatus.Pending
   };
-  const job = await prisma.hydrationJob.create({ data: jobData });
+  const generatedId = randomUUID();
+  const job = await prisma.hydrationJob.create({ data: { id: generatedId, rootJobId: generatedId, ...jobData } });
   if (HYDRATION_DEBUG) logger.debug('[hydration][DEBUG] created HydrationJob for tests', { jobId: job.id });
 
   // 5️⃣ Create Outbox row for reliable enqueue

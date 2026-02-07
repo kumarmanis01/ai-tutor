@@ -463,7 +463,7 @@ This section groups branch, push, and PR conflict guidance together for maintain
 
 ## PowerShell Compatibility (CI-friendly commands)
 
-- **Avoid Bash-only idioms:** Do not include Bash-only tokens like `|| true` or `; true` in cross-platform commands or scripts. PowerShell will attempt to execute `true` as a program and error with "The term 'true' is not recognized...".
+- **Avoid Bash-only idioms:** Do not include Bash-only tokens like `|| true` or `; true` in cross-platform commands or scripts. PowerShell will attempt to execute `true` as a program and error with "The term 'true' is not recognized..."
 - **Use `--no-verify` for commits when you must skip hooks:**
   - `git commit --no-verify -m "message"`
 - **PowerShell-safe one-line (no Bash `true`):**
@@ -546,3 +546,145 @@ Acknowledge and follow these rules before making changes.
 - PM2 must run only dist/worker/entry.js.
 
 Acknowledge before proceeding.
+
+---
+
+## 🚨 AI CONTENT ENGINE — MANDATORY RULES
+
+These rules are **absolute requirements** for all AI-related code in the K-12 educational platform.
+
+### Rule 1: Always Prioritize Correctness Over Creativity
+
+> **"AI output that is factually incorrect is worse than no output at all."**
+
+- Never generate creative or speculative answers for educational content.
+- All AI responses must be grounded in curriculum-approved knowledge.
+- When uncertain, return a safe fallback or escalate to human review.
+- Use the hallucination detector (`lib/ai/guardrails/hallucinationDetector.ts`) for all AI responses.
+
+### Rule 2: Enforce Schema-First AI Integrations
+
+> **"No AI integration without a schema."**
+
+- All prompts MUST be defined in `lib/ai/prompts/` with TypeScript schemas.
+- Use Zod for runtime validation of all AI inputs and outputs.
+- No ad-hoc string interpolation for prompts.
+- Reference: `lib/ai/prompts/schemas.ts` for canonical types.
+
+### Rule 3: Never Store Raw AI Text in Database
+
+> **"AI output is ephemeral until validated."**
+
+- Raw LLM responses must NOT be stored directly in the database.
+- All AI content must pass through:
+  1. Hallucination detection (`lib/ai/guardrails/hallucinationDetector.ts`)
+  2. Content safety check (`safeResponses.ts`)
+  3. Schema validation
+- Only validated, structured data may be persisted.
+
+### Rule 4: Guardrails Are Mandatory, Not Optional
+
+> **"Every AI interaction must be guarded."**
+
+Required guardrail stack for student-facing AI:
+
+1. **Intent Classification** (`lib/ai/guardrails/intentClassifier.ts`)
+   - Detect homework dumps, shortcut-seeking, off-topic, unsafe content
+2. **Prompt Rewriting** (`lib/ai/guardrails/promptRewriter.ts`)
+   - Transform problematic intents to learning-focused prompts
+3. **Hallucination Detection** (`lib/ai/guardrails/hallucinationDetector.ts`)
+   - Check for false certainty, factual claims, complexity mismatches
+4. **Safe Responses** (`lib/ai/guardrails/safeResponses.ts`)
+   - Grade-appropriate fallback templates
+
+### Rule 5: Difficulty Tuning Must Be Deterministic
+
+> **"No black-box difficulty adjustment."**
+
+- Use `lib/personalization/difficultyTuning.ts` for all difficulty calculations.
+- Calculations must be fully auditable with logged reasoning.
+- No ML models for difficulty—rule-based only.
+- Always respect grade-level guardrails (junior protection).
+
+### Rule 6: Age-Based UI Is Configuration-Driven
+
+> **"UI behavior driven by config, not conditionals."**
+
+- Use `components/ui/variants/` for all age-based UI decisions.
+- Never use `if (grade <= 3)` conditionals in components.
+- Instead, use:
+  - `useUIVariant()` hook for configuration
+  - `<ForJunior>`, `<ForMiddle>`, `<ForSenior>` components
+  - `isFeatureEnabled()` for feature flags
+- Reference grade bands: junior (1-3), middle (4-7), senior (8-12).
+
+### Rule 7: API Contracts Must Follow Standards
+
+> **"Consistent APIs enable consistent experiences."**
+
+- All student-facing APIs use schemas from `lib/api/student/schemas.ts`.
+- Use `buildSuccessResponse()` and `buildErrorResponse()` for all responses.
+- No AI-generated text in API responses—only structured data.
+- Respect rate limits and cache TTLs defined in `lib/api/student/endpoints.ts`.
+
+---
+
+## AI Module Reference
+
+| Module | Path | Purpose |
+|--------|------|---------|
+| Prompt Schemas | `lib/ai/prompts/schemas.ts` | Canonical types for AI prompts |
+| Intent Classifier | `lib/ai/guardrails/intentClassifier.ts` | Detect student intent |
+| Prompt Rewriter | `lib/ai/guardrails/promptRewriter.ts` | Transform problematic prompts |
+| Hallucination Detector | `lib/ai/guardrails/hallucinationDetector.ts` | Detect false content |
+| Safe Responses | `lib/ai/guardrails/safeResponses.ts` | Grade-appropriate fallbacks |
+| Difficulty Tuning | `lib/personalization/difficultyTuning.ts` | Deterministic difficulty |
+| UI Variants | `components/ui/variants/` | Age-based UI configuration |
+| API Schemas | `lib/api/student/schemas.ts` | Student dashboard APIs |
+
+---
+
+## AI Copilot Checklist
+
+Before committing any AI-related code, verify:
+
+- [ ] Prompt defined in `lib/ai/prompts/` with Zod schema
+- [ ] Intent classification applied to user input
+- [ ] Hallucination detection on AI output
+- [ ] Safe fallback for all error paths
+- [ ] Difficulty calculations are deterministic and logged
+- [ ] UI uses variant configuration, not grade conditionals
+- [ ] API responses use standard schemas and error handling
+- [ ] Unit tests cover happy path, error cases, and edge cases
+
+---
+
+## SCHOOL & TEACHER AGNOSTICITY ENFORCEMENT
+
+You must assume:
+- No schools will integrate
+- No teachers will participate
+- No live classes will be run
+- No human intervention is available
+
+Every feature, API, flow, or UI must:
+- Work fully autonomously
+- Be usable by a student alone
+- Require zero scheduling or coordination
+- Function offline-first where possible
+
+When proposing solutions:
+- Prefer AI automation over human workflows
+- Prefer async over real-time
+- Prefer mastery-based progression over grade-based
+
+If a design introduces:
+- Teacher dashboards
+- School onboarding
+- Timetable syncing
+- Live interactions
+
+You must explicitly flag it as a violation and suggest an alternative.
+
+Your job is to help build a product that makes children self-reliant,
+not dependent on institutions.
