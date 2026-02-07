@@ -1,8 +1,9 @@
 import fs from 'fs';
+import path from 'path';
 
 describe('exists lib/exporters/lms.ts', () => {
   it('source file exists on disk', () => {
-    const p = "C:\\Users\\Spinzy Diagnostics\\Desktop\\ai-tutor\\lib\\exporters\\lms.ts";
+    const p = path.join(process.cwd(), 'lib/exporters/lms.ts');
     expect(fs.existsSync(p)).toBe(true);
   });
 });
