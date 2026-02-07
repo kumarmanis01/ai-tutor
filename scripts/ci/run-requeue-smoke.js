@@ -6,8 +6,8 @@ async function main() {
   const prisma = new PrismaClient()
 
   // Create two ExecutionJobs: one missing metadata (should be skipped), one complete (should create HydrationJob)
-  const missing = await prisma.executionJob.create({ data: { jobType: 'syllabus', status: 'pending', payload: {} } })
-  const complete = await prisma.executionJob.create({ data: { jobType: 'syllabus', status: 'pending', payload: { board: 'CBSE', grade: '5', subjectId: 'math', language: 'en' } } })
+  const missing = await prisma.executionJob.create({ data: { jobType: 'syllabus', entityType: 'SUBJECT', entityId: 'test-subject-1', status: 'pending', payload: {} } })
+  const complete = await prisma.executionJob.create({ data: { jobType: 'syllabus', entityType: 'SUBJECT', entityId: 'test-subject-2', status: 'pending', payload: { board: 'CBSE', grade: '5', subjectId: 'math', language: 'en' } } })
 
   console.log('[smoke] created jobs', { missing: missing.id, complete: complete.id })
 
