@@ -81,6 +81,8 @@ jobs:
           push: ${{ github.event_name == 'push' }}
           tags: ghcr.io/${{ github.repository_owner }}/ai-tutor-evaluator:${{ github.sha }}
           file: Dockerfile.evaluator
+          # Load the image to local Docker daemon for PRs so it's available
+          load: ${{ github.event_name == 'pull_request' }}
           build-args: |
             NODE_ENV=production
 
