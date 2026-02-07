@@ -14,7 +14,8 @@
  */
 
 import React, { Suspense } from 'react';
-import dynamic from 'next/dynamic';
+import GoogleTagManagerClient from '@/components/ClientOnly/GoogleTagManagerClient';
+import AppModalClient from '@/components/ClientOnly/AppModalClient';
 import '../styles/index.css';
 import Providers from './providers';
 import { GlobalLoaderProvider } from '@/context/GlobalLoaderProvider';
@@ -22,11 +23,6 @@ import AuthSessionLoader from '@/components/AuthSessionLoader';
 import ToastHost from '@/components/ToastHost';
 // Job registrations moved to worker/orchestrator to avoid running jobs in web process
 
-// Client-only GTM component (uses usePathname/useSearchParams)
-const GoogleTagManagerDynamic = dynamic(
-  () => import('@/components/GoogleTagManager'),
-  { ssr: false }
-);
 
 export const viewport = {
   width: 'device-width',
@@ -54,10 +50,10 @@ export default function RootLayout({
             <AuthSessionLoader />
             {/* Google Tag Manager for external analytics & conversion tracking */}
             <Suspense fallback={null}>
-              <GoogleTagManagerDynamic />
+              <GoogleTagManagerClient />
             </Suspense>
             {/* Global modal host */}
-            <AppModalDynamic />
+            <AppModalClient />
               {children}
               <ToastHost />
           </GlobalLoaderProvider>
@@ -74,8 +70,7 @@ export default function RootLayout({
   );
 }
 
-// Client-only dynamic import to avoid SSR issues and lint violations
-const AppModalDynamic = dynamic(() => import('@/components/UI/AppModal'), { ssr: false });
+// AppModalClient is a client wrapper placed below to mount the modal host
 
 // import './globals.css';
 // import React from 'react';
