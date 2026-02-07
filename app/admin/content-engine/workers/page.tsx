@@ -1,6 +1,8 @@
 import { prisma } from '@/lib/prisma';
 import WorkersTable from '@/components/Admin/WorkersTable';
 
+export const dynamic = 'force-dynamic';
+
 export default async function WorkersPage() {
   const workers = await prisma.workerLifecycle.findMany({ orderBy: { lastHeartbeatAt: 'desc' }, take: 100 });
 

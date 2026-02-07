@@ -1,10 +1,11 @@
 import React from 'react'
 import { requireAdminOrModerator } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+export const dynamic = 'force-dynamic'
 import ReadOnlyJsonViewer from '@/components/UI/ReadOnlyJsonViewer'
-import dynamic from 'next/dynamic'
+import nextDynamic from 'next/dynamic'
 
-const ApproveRejectButtons = dynamic(() => import('../ApproveRejectButtons'), { ssr: false })
+const ApproveRejectButtons = nextDynamic(() => import('../ApproveRejectButtons'), { ssr: false })
 
 type Props = { params: { id: string } }
 
