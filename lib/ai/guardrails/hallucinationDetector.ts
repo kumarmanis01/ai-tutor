@@ -297,13 +297,13 @@ export function checkForHallucinations(
   for (const { pattern, minGrade } of COMPLEX_LANGUAGE_PATTERNS) {
     if (context.grade < minGrade && pattern.test(content)) {
       const match = content.match(pattern);
-      issues.push({
-        type: HallucinationIssueType.LANGUAGE_COMPLEXITY,
-        severity: 0.6,
-        description: `Content uses terminology typically introduced in Grade ${minGrade}+`,
-        excerpt: match?.[0],
-        suggestion: 'Use simpler language appropriate for the student\'s grade level',
-      });
+        issues.push({
+          type: HallucinationIssueType.COMPLEXITY_MISMATCH,
+          severity: 0.6,
+          description: `Content uses terminology typically introduced in Grade ${minGrade}+`,
+          excerpt: match?.[0],
+          suggestion: 'Use simpler language appropriate for the student\'s grade level',
+        });
     }
   }
   
@@ -311,7 +311,7 @@ export function checkForHallucinations(
   const avgSentenceLength = calculateAvgSentenceLength(content);
   if (avgSentenceLength > gradeExpectations.maxSentenceLength * 1.5) {
     issues.push({
-      type: HallucinationIssueType.LANGUAGE_COMPLEXITY,
+      type: HallucinationIssueType.COMPLEXITY_MISMATCH,
       severity: 0.4,
       description: `Average sentence length (${Math.round(avgSentenceLength)} words) exceeds grade-appropriate level`,
       suggestion: 'Break down long sentences into shorter, clearer statements',
