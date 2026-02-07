@@ -1,8 +1,9 @@
 import fs from 'fs';
+import path from 'path';
 
 describe('exists lib/alerts/metrics.ts', () => {
   it('source file exists on disk', () => {
-    const p = "C:\\Users\\Spinzy Diagnostics\\Desktop\\ai-tutor\\lib\\alerts\\metrics.ts";
+    const p = path.join(process.cwd(), 'lib/alerts/metrics.ts');
     expect(fs.existsSync(p)).toBe(true);
   });
 });

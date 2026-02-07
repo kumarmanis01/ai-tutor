@@ -8,6 +8,8 @@ yarn-error.log
 dist
 out
 build
+# Exception: allow runAlertEvaluator.cjs for evaluator image
+!build/runAlertEvaluator.cjs
 
 # Development files
 *.log

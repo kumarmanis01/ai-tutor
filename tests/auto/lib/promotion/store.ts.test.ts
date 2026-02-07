@@ -1,8 +1,9 @@
 import fs from 'fs';
+import path from 'path';
 
 describe('exists lib/promotion/store.ts', () => {
   it('source file exists on disk', () => {
-    const p = "C:\\Users\\Spinzy Diagnostics\\Desktop\\ai-tutor\\lib\\promotion\\store.ts";
+    const p = path.join(process.cwd(), 'lib/promotion/store.ts');
     expect(fs.existsSync(p)).toBe(true);
   });
 });

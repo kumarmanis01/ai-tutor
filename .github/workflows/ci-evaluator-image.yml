@@ -59,17 +59,20 @@ jobs:
       - name: Generate Prisma client
         run: npx prisma generate
 
-      - name: Build project bundle (CommonJS)
-        run: npx esbuild scripts/runAlertEvaluator.ts --bundle --platform=node --target=node20 --format=cjs --outfile=build/runAlertEvaluator.cjs --external:@prisma/client --external:prom-client --external:ioredis
+      - name: Copy evaluator script to build directory
+        run: |
+          mkdir -p build
+          cp scripts/runAlertEvaluator.cjs build/runAlertEvaluator.cjs
+          echo "Copied runAlertEvaluator.cjs to build directory"
 
       - name: Verify bundle artifact
         run: |
-          echo "Listing build directory:"; ls -la build || true
+          echo "Listing build directory:"; ls -la build
           if [ ! -f build/runAlertEvaluator.cjs ]; then
-            echo "ERROR: build/runAlertEvaluator.cjs not found. Ensure esbuild produced the bundle." >&2
+            echo "ERROR: build/runAlertEvaluator.cjs not found." >&2
             exit 1
           fi
-          echo "Bundle exists. Showing first 40 lines:"; head -n 40 build/runAlertEvaluator.cjs || true
+          echo "Bundle exists. Showing first 40 lines:"; head -n 40 build/runAlertEvaluator.cjs
 
       - name: Build and push Docker image
         uses: docker/build-push-action@v4
@@ -78,6 +81,8 @@ jobs:
           push: ${{ github.event_name == 'push' }}
           tags: ghcr.io/${{ github.repository_owner }}/ai-tutor-evaluator:${{ github.sha }}
           file: Dockerfile.evaluator
+          # Load the image to local Docker daemon for PRs so it's available
+          load: ${{ github.event_name == 'pull_request' }}
           build-args: |
             NODE_ENV=production
 

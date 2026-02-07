@@ -1,8 +1,9 @@
 import fs from 'fs';
+import path from 'path';
 
 describe('exists lib/alerts/rateLimiter.ts', () => {
   it('source file exists on disk', () => {
-    const p = "C:\\Users\\Spinzy Diagnostics\\Desktop\\ai-tutor\\lib\\alerts\\rateLimiter.ts";
+    const p = path.join(process.cwd(), 'lib/alerts/rateLimiter.ts');
     expect(fs.existsSync(p)).toBe(true);
   });
 });
