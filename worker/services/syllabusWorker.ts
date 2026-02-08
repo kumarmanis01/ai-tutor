@@ -174,7 +174,7 @@ export async function handleSyllabusJob(jobId: string) {
         // ignore logging failures
       }
       // Persist failure AIContentLog outside transaction since we suppressed auto-logging
-      try { await prisma.aIContentLog.create({ data: { model: llmResult?.model || null, promptType: 'syllabus', language: job.language || 'en', success: false, status: 'failed', error: le, requestBody: { jobId: job.id }, responseBody: { raw: llmResult?.content }, hydrationJobId: job.id } }) } catch {}
+      try { await prisma.aIContentLog.create({ data: { model: llmResult?.model || 'none', promptType: 'syllabus', language: job.language || 'en', success: false, status: 'failed', error: le, requestBody: { jobId: job.id }, responseBody: { raw: llmResult?.content } } }) } catch {}
       throw new Error('invalid_llm_output');
     }
 
@@ -262,13 +262,10 @@ export async function handleSyllabusJob(jobId: string) {
           grade,
           subject: subjectName,
           language: job.language || 'en',
-          topicId: null,
-          hydrationJobId: job.id,
           tokensIn: llmResult?.usage?.prompt_tokens ?? null,
           tokensOut: llmResult?.usage?.completion_tokens ?? null,
           tokensUsed: llmResult?.usage?.total_tokens ?? null,
           costUsd: llmResult?.costUsd ?? null,
-          latencyMs: llmResult?.latencyMs ?? null,
           success: true,
           status: 'success',
           requestBody: { prompt },

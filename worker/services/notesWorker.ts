@@ -304,10 +304,10 @@ export async function handleNotesJob(jobId: string): Promise<void> {
       const raw = String(err?.message ?? 'llm_failed');
       const code = inferFailureCodeFromMessage(raw);
       const le = formatLastError(code, raw);
-      await prisma.aIContentLog.create({ data: { model: null, promptType: 'notes', language: job.language || 'en', success: false, status: 'failed', error: le, requestBody: { jobId: job.id }, responseBody: null, hydrationJobId: job.id } });
+      await prisma.aIContentLog.create({ data: { model: 'none', promptType: 'notes', language: job.language || 'en', success: false, status: 'failed', error: le, requestBody: { jobId: job.id }, responseBody: null } });
       try { await prisma.hydrationJob.update({ where: { id: job.id }, data: { status: JobStatus.Failed, lastError: le } }); } catch {}
     } catch {
-      try { await prisma.aIContentLog.create({ data: { model: null, promptType: 'notes', language: job.language || 'en', success: false, status: 'failed', error: String(err?.message ?? 'llm_failed'), requestBody: { jobId: job.id }, responseBody: null, hydrationJobId: job.id } }); } catch {}
+      try { await prisma.aIContentLog.create({ data: { model: 'none', promptType: 'notes', language: job.language || 'en', success: false, status: 'failed', error: String(err?.message ?? 'llm_failed'), requestBody: { jobId: job.id }, responseBody: null } }); } catch {}
       try { await prisma.hydrationJob.update({ where: { id: job.id }, data: { status: JobStatus.Failed, lastError: String(err?.message ?? 'llm_failed') } }); } catch {}
     }
     logger.error('handleNotesJob: LLM parse failed, marking job failed', { jobId, error: err?.message || String(err) });
@@ -409,13 +409,11 @@ export async function handleNotesJob(jobId: string): Promise<void> {
           chapter: topic.chapter?.name || null,
           topic: topic.name,
           language: job.language || 'en',
-          topicId: topicId,
-          hydrationJobId: job.id,
+          ...(topicId ? { topicRef: { connect: { id: topicId } } } : {}),
           tokensIn: llmResult?.usage?.prompt_tokens ?? null,
           tokensOut: llmResult?.usage?.completion_tokens ?? null,
           tokensUsed: llmResult?.usage?.total_tokens ?? null,
           costUsd: llmResult?.costUsd ?? null,
-          latencyMs: llmResult?.latencyMs ?? null,
           success: true,
           status: 'success',
           requestBody: { prompt },

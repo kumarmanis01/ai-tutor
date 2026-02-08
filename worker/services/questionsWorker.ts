@@ -359,7 +359,7 @@ export async function handleQuestionsJob(jobId: string): Promise<void> {
     if (!parsed) {
       logger.warn('handleQuestionsJob: failed to generate for difficulty', { jobId, difficulty });
       // Persist failure AIContentLog outside transaction for this difficulty
-      try { await prisma.aIContentLog.create({ data: { model: llmResult?.model || null, promptType: 'questions', language, success: false, status: 'failed', error: 'llm_parse_failed', requestBody: { jobId, difficulty }, responseBody: { raw: llmResult?.content }, hydrationJobId: job.id } }) } catch {}
+      try { await prisma.aIContentLog.create({ data: { model: llmResult?.model || 'none', promptType: 'questions', language, success: false, status: 'failed', error: 'llm_parse_failed', requestBody: { jobId, difficulty }, responseBody: { raw: llmResult?.content } } }) } catch {}
       results.push({ difficulty, testId: null, questionCount: 0 });
       continue;
     }
@@ -454,13 +454,11 @@ export async function handleQuestionsJob(jobId: string): Promise<void> {
                 subject: subjectName,
                 topic: topic.name,
                 language,
-                topicId,
-                hydrationJobId: job.id,
+                ...(topicId ? { topicRef: { connect: { id: topicId } } } : {}),
                 tokensIn: item.llmResult?.usage?.prompt_tokens ?? null,
                 tokensOut: item.llmResult?.usage?.completion_tokens ?? null,
                 tokensUsed: item.llmResult?.usage?.total_tokens ?? null,
                 costUsd: item.llmResult?.costUsd ?? null,
-                latencyMs: item.llmResult?.latencyMs ?? null,
                 success: true,
                 status: 'success',
                 requestBody: { difficulty: item.difficulty },
@@ -562,7 +560,7 @@ async function markJobFailed(jobId: string, error: string): Promise<void> {
 
   // Persist AIContentLog for observability when failure happens without LLM
   try {
-    await prisma.aIContentLog.create({ data: { model: 'none', promptType: 'questions', language: null, success: false, status: 'failed', error: lastError, requestBody: { jobId }, responseBody: null } });
+    await prisma.aIContentLog.create({ data: { model: 'none', promptType: 'questions', language: 'en', success: false, status: 'failed', error: lastError, requestBody: { jobId }, responseBody: null } });
   } catch {}
 }
 

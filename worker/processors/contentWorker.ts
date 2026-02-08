@@ -304,7 +304,7 @@ export async function processContentJob(job: Job) {
       const le = formatLastError(code, String(err?.message ?? err));
       await prisma.hydrationJob.update({ where: { id: hydrationJobId }, data: { status: JobStatus.Failed, lastError: le, lockedAt: null } })
       try {
-        await prisma.aIContentLog.create({ data: { model: 'none', promptType: 'dispatcher', language: null, success: false, status: 'failed', error: le, requestBody: job.data?.payload ?? null, responseBody: { error: String(err?.message ?? err) }, hydrationJobId } });
+        await prisma.aIContentLog.create({ data: { model: 'none', promptType: 'dispatcher', language: 'en', success: false, status: 'failed', error: le, requestBody: job.data?.payload ?? null, responseBody: { error: String(err?.message ?? err) } } });
       } catch {}
     } catch (e) {
       logger?.warn?.('worker: failed to mark HydrationJob FAILED', { err: e, hydrationJobId })
