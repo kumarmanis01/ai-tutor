@@ -21,7 +21,9 @@ import { aggregateWeeklySummaries } from './jobs/weeklyParentSummary.js';
 import { sendParentDigests } from './jobs/parentEmailDigest.js';
 import { runRecoveryCheck } from '../lib/failureRecovery.js';
 import { expireStaleTasks } from '../lib/dailyHabit.js';
+import { hydrationReconciler } from './services/hydrationReconciler.js';
 
+const HYDRATION_RECONCILER_INTERVAL_MS = 2 * 60 * 1000; // 2 minutes
 const MARK_IGNORED_INTERVAL_MS = 24 * 60 * 60 * 1000; // 24 hours
 const CLEANUP_INTERVAL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
 const WEEKLY_INTERVAL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
@@ -103,6 +105,24 @@ async function runWeeklyParentJob() {
 }
 
 /**
+ * Run the hydration reconciler and schedule next run
+ */
+async function runHydrationReconciler() {
+  try {
+    logger.info('scheduler.hydrationReconciler.starting');
+    await hydrationReconciler.reconcile();
+    logger.info('scheduler.hydrationReconciler.completed');
+  } catch (error) {
+    logger.error('scheduler.hydrationReconciler.error', {
+      error: error instanceof Error ? error.message : String(error)
+    });
+  }
+
+  // Schedule next run in 2 minutes
+  setTimeout(runHydrationReconciler, HYDRATION_RECONCILER_INTERVAL_MS);
+}
+
+/**
  * Run daily maintenance: expire stale tasks + recovery check
  */
 async function runDailyMaintenanceJob() {
@@ -162,13 +182,17 @@ export async function startScheduler() {
   const delayDailyMaintenance = msUntilNextRun(1); // 1 AM UTC for task expiry + recovery
 
   logger.info('scheduler.scheduled', {
+    hydrationReconcilerInterval: '2 minutes (starts immediately)',
     dailyMaintenanceFirstRun: new Date(Date.now() + delayDailyMaintenance).toISOString(),
     markIgnoredFirstRun: new Date(Date.now() + delayMarkIgnored).toISOString(),
     cleanupFirstRun: new Date(Date.now() + delayCleanup).toISOString(),
     weeklyParentFirstRun: new Date(Date.now() + delayWeeklyParent).toISOString(),
   });
 
-  // Schedule first runs
+  // Hydration reconciler: run immediately then every 2 minutes
+  runHydrationReconciler();
+
+  // Schedule first runs for other jobs
   setTimeout(runDailyMaintenanceJob, delayDailyMaintenance);
   setTimeout(runMarkIgnoredJob, delayMarkIgnored);
   setTimeout(runCleanupJob, delayCleanup);
