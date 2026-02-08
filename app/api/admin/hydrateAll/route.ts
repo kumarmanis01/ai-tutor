@@ -427,9 +427,25 @@ export async function POST(request: NextRequest) {
     incrementCreated('subject');
 
     // 9. Create Audit Log
+    // Resolve the canonical DB user id for auditing. If the session identity
+    // doesn't map to a DB user, write a NULL userId to avoid foreign-key errors.
+    let auditUserId: string | null = null;
+    try {
+      if (session.user?.id) {
+        const byId = await prisma.user.findUnique({ where: { id: session.user.id } });
+        if (byId) auditUserId = byId.id;
+      }
+      if (!auditUserId && session.user?.email) {
+        const byEmail = await prisma.user.findUnique({ where: { email: session.user.email } });
+        if (byEmail) auditUserId = byEmail.id;
+      }
+    } catch {
+      auditUserId = null;
+    }
+
     await prisma.auditLog.create({
       data: {
-        userId: session.user.id,
+        userId: auditUserId,
         action: 'HYDRATEALL_SUBMIT',
         details: {
           rootJobId: result.id,
