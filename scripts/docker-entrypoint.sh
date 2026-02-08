@@ -13,12 +13,12 @@ case "$SERVICE" in
     exec npx next start -p ${PORT:-3000}
     ;;
   worker)
-    echo "Starting worker: node dist/worker/entry.js"
-    exec node dist/worker/entry.js
+    echo "Starting worker: node dist/worker/worker/entry.js"
+    exec node dist/worker/worker/entry.js
     ;;
   scheduler)
-    echo "Starting scheduler: node dist/worker/scheduler.js"
-    exec node dist/worker/scheduler.js
+    echo "Starting scheduler: node dist/worker/worker/scheduler.js"
+    exec node dist/worker/worker/scheduler.js
     ;;
   *)
     echo "No SERVICE specified, defaulting to Next.js start"

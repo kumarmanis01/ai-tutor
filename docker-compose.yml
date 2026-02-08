@@ -42,6 +42,7 @@ services:
     working_dir: /app
     restart: unless-stopped
     environment:
+      - NODE_ENV=production
       - HUSKY_SKIP_INSTALL=1
       - SERVICE=web
     env_file:
@@ -69,6 +70,7 @@ services:
       - .env.production
       - .env.local
     environment:
+      - NODE_ENV=production
       - HUSKY_SKIP_INSTALL=1
       - SERVICE=worker
     depends_on:
@@ -86,6 +88,7 @@ services:
       - .env.production
       - .env.local
     environment:
+      - NODE_ENV=production
       - HUSKY_SKIP_INSTALL=1
       - SERVICE=scheduler
     depends_on:

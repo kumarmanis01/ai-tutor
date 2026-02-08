@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getToken } from 'next-auth/jwt';
 import { logger } from '@/lib/logger';
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const token = await getToken({ req: request, secret: process.env.NEXTAUTH_SECRET });
 
@@ -26,7 +26,7 @@ export async function middleware(request: NextRequest) {
 
   // Admin route protection (UI and API) - requires role
   if (pathname.startsWith('/admin') || pathname.startsWith('/api/admin')) {
-    logger.debug('[MIDDLEWARE DEBUG] Token: ' + String(token));
+    logger.debug('[PROXY DEBUG] Token: ' + String(token));
     const allowed = token && (token.role === 'admin' || token.role === 'moderator');
     if (!allowed) {
       if (pathname.startsWith('/api/admin')) {
@@ -44,8 +44,6 @@ export async function middleware(request: NextRequest) {
         return NextResponse.redirect(new URL('/', request.url));
       }
 
-      // Enforce onboarding completion: redirect to /dashboard with onboarding flag
-      // if user hasn't set board + grade. Allow /profile so they can complete onboarding.
       if (!token.onboardingComplete && !pathname.startsWith('/profile') && !pathname.startsWith('/dashboard') && !pathname.startsWith('/parent')) {
         return NextResponse.redirect(new URL('/dashboard?onboarding=1', request.url));
       }

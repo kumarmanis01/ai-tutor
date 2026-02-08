@@ -40,7 +40,8 @@
       "Bash(timeout 10 docker-compose logs:*)",
       "Bash(docker exec:*)",
       "Bash(powershell -NoProfile -ExecutionPolicy Bypass -Command \"$env:DATABASE_URL=''postgresql://postgres:pass@localhost:5432/ai_dev''; Set-Location ''d:\\\\projects\\\\ai-tutor''; npx prisma migrate dev --create-only --name add_explanation_to_generated_question 2>&1\")",
-      "Bash(tree:*)"
+      "Bash(tree:*)",
+      "Bash(npm install:*)"
     ]
   }
 }
