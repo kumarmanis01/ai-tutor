@@ -61,7 +61,7 @@ describe('handleSyllabusJob', () => {
 
     expect(tx.chapterDef.create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ name: 'Numbers' }) }))
     expect(tx.topicDef.create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ name: 'Integers' }) }))
-    expect(tx.hydrationJob.update).toHaveBeenCalledWith({ where: { id: 'job-2' }, data: { status: expect.anything(), completedAt: expect.anything(), contentReady: true } })
+    expect(tx.hydrationJob.update).toHaveBeenCalledWith({ where: { id: 'job-2' }, data: { status: 'running', contentReady: true } })
     expect(tx.executionJob.update).not.toHaveBeenCalled()
     expect(tx.jobExecutionLog.create).toHaveBeenCalled()
   })

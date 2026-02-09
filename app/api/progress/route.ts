@@ -63,8 +63,8 @@ export async function GET(req: NextRequest) {
     accuracy: p.accuracy,
     questionsAttempted: p.questionsAttempted,
     lastAttemptedAt: p.lastAttemptedAt?.toISOString(),
-    isCompleted: p.masteryLevel === 'MASTERED' || p.masteryLevel === 'PROFICIENT',
-    isStarted: p.questionsAttempted > 0 || p.masteryLevel !== 'NOVICE',
+    isCompleted: p.masteryLevel === 'expert' || p.masteryLevel === 'advanced',
+    isStarted: p.questionsAttempted > 0 || p.masteryLevel !== 'beginner',
   }));
 
   res = NextResponse.json({ progress: result });
@@ -111,7 +111,7 @@ export async function POST(req: NextRequest) {
         topicId,
         subject: subject || null,
         chapter: chapter || null,
-        masteryLevel: 'NOVICE',
+        masteryLevel: 'beginner',
         accuracy: 0,
         questionsAttempted: 0,
         lastAttemptedAt: new Date(),
@@ -122,8 +122,8 @@ export async function POST(req: NextRequest) {
     const updateData: any = { lastAttemptedAt: new Date() };
     
     // If action is 'complete', mark as proficient if not already mastered
-    if (action === 'complete' && mastery.masteryLevel !== 'MASTERED') {
-      updateData.masteryLevel = 'PROFICIENT';
+    if (action === 'complete' && mastery.masteryLevel !== 'expert') {
+      updateData.masteryLevel = 'advanced';
     }
     
     mastery = await prisma.studentTopicMastery.update({
@@ -140,7 +140,7 @@ export async function POST(req: NextRequest) {
       accuracy: mastery.accuracy,
       questionsAttempted: mastery.questionsAttempted,
       lastAttemptedAt: mastery.lastAttemptedAt?.toISOString(),
-      isCompleted: mastery.masteryLevel === 'MASTERED' || mastery.masteryLevel === 'PROFICIENT',
+      isCompleted: mastery.masteryLevel === 'expert' || mastery.masteryLevel === 'advanced',
     },
   });
   
