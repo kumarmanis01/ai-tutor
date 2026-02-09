@@ -512,7 +512,7 @@ export const hydrationReconciler = new HydrationReconciler();
 // Standalone Execution (for cron/scheduler)
 // ============================================
 
-if (require.main === module) {
+if (import.meta.url === `file://${process.argv[1]}`) {
   logger.info('Running hydration reconciler (standalone mode)');
 
   hydrationReconciler
