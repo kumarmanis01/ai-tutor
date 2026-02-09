@@ -76,132 +76,48 @@ export async function GET(req: NextRequest) {
     const userId = session.user.id;
     const nudges: TestNudge[] = [];
 
-    // Get user's recent learning activity
-    const [lessonProgress, recentTestAttempts, userEnrollments] = await Promise.all([
-      // Get lesson progress from last 7 days
+    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+
+    // Get user's recent activity from models that actually exist in the schema
+    const [lessonProgress, recentTestResults] = await Promise.all([
       prisma.lessonProgress.findMany({
         where: {
           userId,
           completed: true,
-          updatedAt: {
-            gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
-          },
+          updatedAt: { gte: sevenDaysAgo },
         },
         orderBy: { updatedAt: 'desc' },
       }),
-      // Get recent test attempts
-      prisma.testAttempt.findMany({
+      prisma.testResult.findMany({
         where: {
-          userId,
-          createdAt: {
-            gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
-          },
-        },
-        include: {
-          test: {
-            include: {
-              topic: true,
-            },
-          },
+          studentId: userId,
+          createdAt: { gte: sevenDaysAgo },
         },
         orderBy: { createdAt: 'desc' },
       }),
-      // Get user's enrollments to understand their subjects
-      prisma.enrollment.findMany({
-        where: { userId },
-        include: {
-          course: {
-            include: {
-              subject: true,
-            },
-          },
-        },
-      }),
-
     ]);
 
-    // Calculate nudge triggers
-
-    // 1. Lessons completed nudge
-    type LessonProgressItem = typeof lessonProgress[number];
-    type TestAttemptItem = typeof recentTestAttempts[number];
-    type EnrollmentItem = typeof userEnrollments[number];
-
-    const lessonsWithoutTest = lessonProgress.filter((lp: LessonProgressItem) => {
-      // Check if there's no test attempt for this lesson's course
-      const hasRecentTest = recentTestAttempts.some(
-        (ta: TestAttemptItem) => ta.test?.topic?.courseId === lp.courseId
-      );
-      return !hasRecentTest;
-    });
-
+    // 1. Lessons completed without testing nudge
+    const lessonsWithoutTest = lessonProgress.filter(() => recentTestResults.length === 0);
     if (lessonsWithoutTest.length >= NUDGE_CONFIG.LESSONS_BEFORE_TEST) {
-      // Group by course
-      const courseIds = [...new Set(lessonsWithoutTest.map((lp: LessonProgressItem) => lp.courseId))];
-      
-      for (const courseId of courseIds) {
-        const courseLessons = lessonsWithoutTest.filter((lp: LessonProgressItem) => lp.courseId === courseId);
-        if (courseLessons.length >= NUDGE_CONFIG.LESSONS_BEFORE_TEST) {
-          // Find course details
-          const enrollment = userEnrollments.find((e: EnrollmentItem) => e.courseId === courseId);
-          const courseName = enrollment?.course?.title || 'your course';
-          const subjectName = enrollment?.course?.subject?.name || 'this subject';
-
-          nudges.push({
-            type: 'lessons_completed',
-            title: '📝 Ready to check your progress?',
-            message: `You've covered ${courseLessons.length} lessons in ${courseName}. A quick practice round can help it stick!`,
-            topicId: String(courseId),
-            topicName: courseName,
-            subjectName,
-            priority: 'high',
-            actionUrl: `/tests?courseId=${courseId}`,
-            dismissable: true,
-            metadata: {
-              lessonsCompleted: courseLessons.length,
-            },
-          });
-        }
-      }
+      nudges.push({
+        type: 'lessons_completed',
+        title: 'Ready to check your progress?',
+        message: `You've covered ${lessonsWithoutTest.length} lessons recently. A quick practice round can help it stick!`,
+        priority: 'high',
+        actionUrl: '/tests',
+        dismissable: true,
+        metadata: { lessonsCompleted: lessonsWithoutTest.length },
+      });
     }
 
-    // 2. Topic mastery nudge - when all lessons in a topic are complete
-    for (const enrollment of userEnrollments) {
-      const courseId = enrollment.courseId;
-      const totalLessons = enrollment.course?.totalLessons || 0;
-      const completedLessons = lessonProgress.filter(
-        (lp: LessonProgressItem) => lp.courseId === courseId && lp.completed
-      ).length;
-
-      // If user completed all lessons but hasn't taken a test
-      if (totalLessons > 0 && completedLessons >= totalLessons) {
-        const hasTest = recentTestAttempts.some(
-          (ta: TestAttemptItem) => ta.test?.topic?.courseId === courseId
-        );
-        if (!hasTest) {
-          nudges.push({
-            type: 'topic_mastery',
-            title: '🏆 You finished the whole topic!',
-            message: `Amazing — you've gone through all lessons in ${enrollment.course?.title}. Want to see how much you remember?`,
-            topicId: String(courseId),
-            topicName: enrollment.course?.title,
-            subjectName: enrollment.course?.subject?.name,
-            priority: 'high',
-            actionUrl: `/tests?courseId=${courseId}&type=mastery`,
-            dismissable: true,
-          });
-        }
-      }
-    }
-
-    // 3. Weekly review nudge
-    const lastTest = recentTestAttempts[0];
+    // 2. Weekly review nudge — no test in last 5 days
+    const lastTest = recentTestResults[0];
     if (!lastTest || Date.now() - new Date(lastTest.createdAt).getTime() > 5 * 24 * 60 * 60 * 1000) {
-      // No test in last 5 days
       if (lessonProgress.length > 0) {
         nudges.push({
           type: 'weekly_review',
-          title: '🔄 Quick refresh?',
+          title: 'Quick refresh?',
           message: "A little revision goes a long way. Try a quick round to keep things fresh!",
           priority: 'medium',
           actionUrl: '/tests?type=review',
@@ -210,7 +126,7 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    // 4. Idle return nudge
+    // 3. Idle return nudge
     const lastActivity = lessonProgress[0]?.updatedAt;
     if (lastActivity) {
       const daysSinceActivity = Math.floor(
@@ -219,14 +135,12 @@ export async function GET(req: NextRequest) {
       if (daysSinceActivity >= NUDGE_CONFIG.IDLE_DAYS_THRESHOLD) {
         nudges.push({
           type: 'idle_return',
-          title: '👋 Hey, welcome back!',
-          message: `Good to see you! How about a quick warm-up to get back in the groove?`,
+          title: 'Hey, welcome back!',
+          message: 'Good to see you! How about a quick warm-up to get back in the groove?',
           priority: 'medium',
           actionUrl: '/tests?type=refresh',
           dismissable: true,
-          metadata: {
-            daysSinceActivity,
-          },
+          metadata: { daysSinceActivity },
         });
       }
     }

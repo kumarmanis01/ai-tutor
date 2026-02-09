@@ -362,7 +362,7 @@ async function pickTopic(
             id: { notIn: [...masteredTopicIds] },
             chapter: {
               subject: {
-                classLevel: {
+                class: {
                   board: { slug: user.board },
                   grade: parseInt(user.grade, 10),
                 },
@@ -378,7 +378,7 @@ async function pickTopic(
               },
             },
           },
-          orderBy: { sortOrder: 'asc' },
+          orderBy: { order: 'asc' },
         });
 
         if (newTopic) {

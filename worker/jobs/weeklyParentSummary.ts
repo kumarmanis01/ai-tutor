@@ -167,7 +167,7 @@ async function refreshSubjectProgress(studentId: string) {
       where: {
         chapter: {
           subject: {
-            classLevel: {
+            class: {
               board: { slug: student.board },
               grade: parseInt(student.grade, 10),
             },
