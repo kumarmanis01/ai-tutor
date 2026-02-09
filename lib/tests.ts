@@ -28,7 +28,7 @@ export type QuestionFilters = {
 
 /**
  * Selects questions from the bank using simple weighted filters.
- * Falls back to broad subject filters if narrow result is small.
+ * Falls back to GeneratedQuestion (hydration pipeline) if the Question table is empty.
  */
 export async function selectQuestions(filters: QuestionFilters, count: number): Promise<Question[]> {
   const where = {
@@ -55,6 +55,11 @@ export async function selectQuestions(filters: QuestionFilters, count: number): 
     });
   }
 
+  // Fallback: bridge from GeneratedQuestion (hydration pipeline) into Question table
+  if (pool.length < count) {
+    pool = await syncFromGeneratedQuestions(filters, count * 3);
+  }
+
   // Simple sampling without replacement
   const selected: Question[] = [];
   const indices = new Set<number>();
@@ -67,6 +72,82 @@ export async function selectQuestions(filters: QuestionFilters, count: number): 
   }
 
   return selected;
+}
+
+/**
+ * Query GeneratedQuestion via the topic/chapter/subject hierarchy,
+ * upsert into the Question table (so AttemptQuestion FK works), and return them.
+ */
+async function syncFromGeneratedQuestions(filters: QuestionFilters, take: number): Promise<Question[]> {
+  const subjectFilter: Record<string, unknown> = {};
+  if (filters.subject) subjectFilter.name = { equals: filters.subject, mode: 'insensitive' };
+  if (filters.board) subjectFilter.board = { slug: { equals: filters.board, mode: 'insensitive' } };
+  if (filters.grade) subjectFilter.grade = Number(filters.grade);
+
+  const testWhere: Record<string, unknown> = {
+    lifecycle: 'active',
+    topic: {
+      lifecycle: 'active',
+      chapter: {
+        lifecycle: 'active',
+        ...(filters.chapter ? { name: { equals: filters.chapter, mode: 'insensitive' } } : {}),
+        subject: Object.keys(subjectFilter).length > 0 ? subjectFilter : undefined,
+      },
+    },
+  };
+  if (filters.difficulty) testWhere.difficulty = filters.difficulty;
+
+  const rows = await prisma.generatedQuestion.findMany({
+    where: { test: testWhere },
+    include: {
+      test: {
+        select: {
+          difficulty: true,
+          topic: {
+            select: {
+              name: true,
+              chapter: { select: { name: true, subject: { select: { name: true, grade: true, board: { select: { slug: true } } } } } },
+            },
+          },
+        },
+      },
+    },
+    take,
+  });
+
+  if (rows.length === 0) return [];
+
+  // Upsert into Question table so AttemptQuestion FK constraints work
+  const ids: string[] = [];
+  for (const gq of rows) {
+    const ch = gq.test.topic?.chapter;
+    const sub = ch?.subject;
+    const correctAnswer = typeof gq.answer === 'string' ? gq.answer : JSON.stringify(gq.answer);
+
+    await prisma.question.upsert({
+      where: { id: gq.id },
+      update: {},
+      create: {
+        id: gq.id,
+        type: gq.type || 'mcq',
+        prompt: gq.question,
+        choices: gq.options ?? undefined,
+        correctAnswer,
+        difficulty: gq.test.difficulty ?? null,
+        subject: sub?.name ?? null,
+        chapter: ch?.name ?? null,
+        grade: sub?.grade != null ? String(sub.grade) : null,
+        board: sub?.board?.slug ?? null,
+        source: 'generated',
+      },
+    });
+    ids.push(gq.id);
+  }
+
+  return prisma.question.findMany({
+    where: { id: { in: ids } },
+    take,
+  });
 }
 
 /**
