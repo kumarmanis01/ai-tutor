@@ -20,7 +20,7 @@ export interface TopicProgress {
   topicId: string;
   subject?: string;
   chapter?: string;
-  masteryLevel: 'NOVICE' | 'BEGINNER' | 'INTERMEDIATE' | 'PROFICIENT' | 'MASTERED';
+  masteryLevel: 'beginner' | 'intermediate' | 'advanced' | 'expert';
   accuracy: number;
   questionsAttempted: number;
   lastAttemptedAt?: string;

@@ -25,7 +25,7 @@ describe('useTopicProgress', () => {
       topicId: 'topic-1',
       subject: 'Math',
       chapter: 'Algebra',
-      masteryLevel: 'PROFICIENT',
+      masteryLevel: 'advanced',
       accuracy: 85,
       questionsAttempted: 10,
       lastAttemptedAt: '2024-01-15T10:00:00Z',
@@ -36,7 +36,7 @@ describe('useTopicProgress', () => {
       topicId: 'topic-2',
       subject: 'Math',
       chapter: 'Algebra',
-      masteryLevel: 'BEGINNER',
+      masteryLevel: 'beginner',
       accuracy: 40,
       questionsAttempted: 3,
       lastAttemptedAt: '2024-01-14T10:00:00Z',
@@ -139,7 +139,7 @@ describe('useTopicProgress', () => {
           Promise.resolve({
             mastery: {
               topicId: 'topic-3',
-              masteryLevel: 'NOVICE',
+              masteryLevel: 'beginner',
               accuracy: 0,
               questionsAttempted: 0,
               isCompleted: false,
@@ -169,7 +169,7 @@ describe('useTopicProgress', () => {
     it('updates local state after recording view', async () => {
       const newMastery: TopicProgress = {
         topicId: 'topic-3',
-        masteryLevel: 'NOVICE',
+        masteryLevel: 'beginner',
         accuracy: 0,
         questionsAttempted: 0,
         isCompleted: false,
@@ -199,7 +199,7 @@ describe('useTopicProgress', () => {
           Promise.resolve({
             mastery: {
               topicId: 'topic-1',
-              masteryLevel: 'PROFICIENT',
+              masteryLevel: 'advanced',
               isCompleted: true,
             },
           }),
