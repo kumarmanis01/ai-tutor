@@ -156,7 +156,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
           createdAt: true,
         },
         orderBy: { createdAt: 'asc' },
-        take: 50, // Limit to avoid large payloads
+        take: 500, // Must accommodate topics × difficulties (e.g. 40 topics × 3 = 120 questions + 40 notes)
       });
     }
 
