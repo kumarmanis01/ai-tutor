@@ -379,11 +379,13 @@ export async function handleNotesJob(jobId: string): Promise<void> {
 
     await runTxWithRetry(async (tx) => {
       // Idempotent write: upsert by topicId+language+version (unique)
+      // Store the full LLM response (notes, worked_examples, key_terms, etc.) as contentJson
+      const contentJson = { ...parsed, sourceJobId: job.id };
       await tx.topicNote.upsert({
         where: { topicId_language_version: { topicId, language, version } },
         update: {
           title: parsed.title,
-          contentJson: { ...parsed.content, sourceJobId: job.id },
+          contentJson,
           source: 'ai',
           status: ApprovalStatus.Draft
         },
@@ -392,7 +394,7 @@ export async function handleNotesJob(jobId: string): Promise<void> {
           language,
           version,
           title: parsed.title,
-          contentJson: { ...parsed.content, sourceJobId: job.id },
+          contentJson,
           source: 'ai',
           status: ApprovalStatus.Draft
         }

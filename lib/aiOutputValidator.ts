@@ -9,14 +9,15 @@ export class ContextMismatchError extends ValidationError { constructor(message:
 const ajv = new Ajv({ allErrors: true } as any)
 
 // Basic schemas for job types
+// Must match the JSON schema requested in prompts/notes.md
 const notesSchema = {
   type: 'object',
   properties: {
     title: { type: 'string' },
-    content: { type: 'object' },
-    audience: { type: 'string' }
+    notes: { type: 'string' },
+    summary: { type: 'string' },
   },
-  required: ['title', 'content', 'audience']
+  required: ['title', 'notes']
 }
 
 const questionsSchema = {
@@ -95,21 +96,10 @@ export function validateOrThrow(parsed: any, ctx: { jobType: string, language?: 
 
   // Semantic checks (simple heuristics)
   if (ctx.jobType === 'notes') {
-    // require sections or paragraphs with minimum length
-    const content = parsed.content || {}
-    if (Array.isArray(content.sections)) {
-      if (content.sections.length === 0) throw new SemanticWeaknessError('notes_no_sections')
-      for (const s of content.sections) {
-        if (!s.body || String(s.body).trim().length < 50) throw new SemanticWeaknessError('section_too_short', { heading: s.heading })
-      }
-    } else if (Array.isArray(content.paragraphs)) {
-      if (content.paragraphs.length === 0) throw new SemanticWeaknessError('notes_paragraphs_empty')
-      for (const p of content.paragraphs) {
-        if (String(p).trim().length < 80) throw new SemanticWeaknessError('paragraph_too_short')
-      }
-    } else {
-      // fallback: require explanation length
-      if (!content.explanation || String(content.explanation).trim().length < 100) throw new SemanticWeaknessError('notes_explanation_too_short')
+    // The LLM returns `notes` as a string (per prompts/notes.md schema)
+    const notesText = parsed.notes || ''
+    if (typeof notesText === 'string' && notesText.trim().length < 100) {
+      throw new SemanticWeaknessError('notes_too_short')
     }
   }
 
