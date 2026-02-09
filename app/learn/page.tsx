@@ -28,7 +28,7 @@ interface CourseItem {
 
 export default async function Page() {
   // Use relative URL with proper host header for server-side fetch
-  const headersList = headers()
+  const headersList = await headers()
   const host = headersList.get('host') || 'localhost:3000'
   const protocol = headersList.get('x-forwarded-proto') || 'http'
   const baseUrl = `${protocol}://${host}`

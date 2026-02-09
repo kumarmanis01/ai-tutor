@@ -20,7 +20,7 @@ import LessonViewClient, { LessonData } from '@/components/Learn/LessonViewClien
 
 export const dynamic = 'force-dynamic'
 
-type Props = { params: { courseId: string; index: string } }
+type Props = { params: Promise<{ courseId: string; index: string }> }
 
 interface CoursePackage {
   modules?: Array<{
@@ -40,10 +40,10 @@ function flattenLessons(pkg: CoursePackage | null): LessonData[] {
 }
 
 export default async function Page({ params }: Props) {
-  const { courseId, index } = params
-  
+  const { courseId, index } = await params
+
   // Use headers() for server-side fetch
-  const headersList = headers()
+  const headersList = await headers()
   const host = headersList.get('host') || 'localhost:3000'
   const protocol = headersList.get('x-forwarded-proto') || 'http'
   const baseUrl = `${protocol}://${host}`

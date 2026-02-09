@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server'
 import { getServerSessionForHandlers } from '@/lib/session'
 
-export async function GET(_req: Request, { params }: { params: { courseId: string } }) {
-  const { courseId } = params
+export async function GET(_req: Request, { params }: { params: Promise<{ courseId: string }> }) {
+  const { courseId } = await params
   const session = await getServerSessionForHandlers()
   const userId = session?.user?.id
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
