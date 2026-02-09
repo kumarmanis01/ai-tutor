@@ -161,27 +161,22 @@ export class HydrationReconciler {
       subject: rootJob.subject,
     });
 
-    // Check Level 1: Chapters (syllabus generation)
-    const level1Complete = await this.isLevelComplete(rootJob.id, 1);
-    if (level1Complete) {
-      await this.createLevel2Jobs(rootJob); // Topic generation jobs
+    // Level 1 (Syllabus): The root job IS the syllabus.
+    // The syllabus worker sets contentReady=true when chapters/topics are created.
+    // Once ready, create Level 2 (notes per topic).
+    if (rootJob.contentReady) {
+      await this.createLevel2Jobs(rootJob); // Notes per topic
     }
 
-    // Check Level 2: Topics
+    // Level 2 (Notes): Once all topic notes are done, create Level 3 (questions).
     const level2Complete = await this.isLevelComplete(rootJob.id, 2);
     if (level2Complete) {
-      await this.createLevel3Jobs(rootJob); // Note generation jobs
+      await this.createLevel3Jobs(rootJob); // Questions per topic × difficulty
     }
 
-    // Check Level 3: Notes
+    // Level 3 (Questions): Once all questions are done, finalize the root job.
     const level3Complete = await this.isLevelComplete(rootJob.id, 3);
     if (level3Complete) {
-      await this.createLevel4Jobs(rootJob); // Question generation jobs
-    }
-
-    // Check Level 4: Questions
-    const level4Complete = await this.isLevelComplete(rootJob.id, 4);
-    if (level4Complete) {
       await this.finalizeRootJob(rootJob);
     }
 
@@ -221,15 +216,11 @@ export class HydrationReconciler {
   // ============================================
 
   /**
-   * Level 2: Create topic generation jobs for each chapter
+   * Level 2: Create note generation jobs for each topic
    */
   private async createLevel2Jobs(rootJob: any): Promise<void> {
-    // Check if Level 2 jobs already created
     const existingLevel2 = await prisma.hydrationJob.count({
-      where: {
-        rootJobId: rootJob.id,
-        hierarchyLevel: 2,
-      },
+      where: { rootJobId: rootJob.id, hierarchyLevel: 2 },
     });
 
     if (existingLevel2 > 0) {
@@ -237,7 +228,6 @@ export class HydrationReconciler {
       return;
     }
 
-    // Get all chapters created by Level 1
     const subjectId = rootJob.subjectId;
     if (!subjectId) {
       logger.warn('No subjectId on root job, cannot create Level 2 jobs', {
@@ -246,24 +236,25 @@ export class HydrationReconciler {
       return;
     }
 
-    const chapters = await prisma.chapterDef.findMany({
+    // Get all topics created by the syllabus worker
+    const topics = await prisma.topicDef.findMany({
       where: {
-        subjectId,
+        chapter: { subjectId },
         lifecycle: 'active',
       },
+      include: { chapter: { select: { id: true } } },
       orderBy: { order: 'asc' },
     });
 
-    logger.info(`Creating ${chapters.length} Level 2 jobs (topics) for root job ${rootJob.id}`);
+    logger.info(`Creating ${topics.length} Level 2 jobs (notes) for root job ${rootJob.id}`);
 
-    // Create a job for each chapter
-    for (const chapter of chapters) {
+    for (const topic of topics) {
       await this.createChildJob({
         rootJobId: rootJob.id,
         level: 2,
-        jobType: JobType.notes, // Generate topics/notes
-        entityId: chapter.id,
-        entityType: 'CHAPTER',
+        jobType: JobType.notes,
+        topicId: topic.id,
+        chapterId: topic.chapter.id,
         language: rootJob.language,
         difficulty: rootJob.difficulty,
       });
@@ -271,7 +262,7 @@ export class HydrationReconciler {
   }
 
   /**
-   * Level 3: Create note generation jobs for each topic
+   * Level 3: Create question generation jobs for each topic × difficulty
    */
   private async createLevel3Jobs(rootJob: any): Promise<void> {
     const existingLevel3 = await prisma.hydrationJob.count({
@@ -283,56 +274,14 @@ export class HydrationReconciler {
       return;
     }
 
-    // Get all topics created by Level 2
     const topics = await prisma.topicDef.findMany({
       where: {
-        chapter: {
-          subjectId: rootJob.subjectId,
-        },
+        chapter: { subjectId: rootJob.subjectId },
         lifecycle: 'active',
       },
-      orderBy: { order: 'asc' },
+      include: { chapter: { select: { id: true } } },
     });
 
-    logger.info(`Creating ${topics.length} Level 3 jobs (notes) for root job ${rootJob.id}`);
-
-    for (const topic of topics) {
-      await this.createChildJob({
-        rootJobId: rootJob.id,
-        level: 3,
-        jobType: JobType.notes,
-        entityId: topic.id,
-        entityType: 'TOPIC',
-        language: rootJob.language,
-        difficulty: rootJob.difficulty,
-      });
-    }
-  }
-
-  /**
-   * Level 4: Create question generation jobs for each topic/difficulty combo
-   */
-  private async createLevel4Jobs(rootJob: any): Promise<void> {
-    const existingLevel4 = await prisma.hydrationJob.count({
-      where: { rootJobId: rootJob.id, hierarchyLevel: 4 },
-    });
-
-    if (existingLevel4 > 0) {
-      logger.debug('Level 4 jobs already created', { rootJobId: rootJob.id });
-      return;
-    }
-
-    // Get all topics
-    const topics = await prisma.topicDef.findMany({
-      where: {
-        chapter: {
-          subjectId: rootJob.subjectId,
-        },
-        lifecycle: 'active',
-      },
-    });
-
-    // Get difficulties from input params
     const inputParams = rootJob.inputParams || {};
     const difficulties: DifficultyLevel[] = inputParams.options?.difficulties || [
       'easy',
@@ -341,17 +290,16 @@ export class HydrationReconciler {
     ];
 
     const totalJobs = topics.length * difficulties.length;
-    logger.info(`Creating ${totalJobs} Level 4 jobs (questions) for root job ${rootJob.id}`);
+    logger.info(`Creating ${totalJobs} Level 3 jobs (questions) for root job ${rootJob.id}`);
 
-    // Create job for each topic × difficulty combination
     for (const topic of topics) {
       for (const difficulty of difficulties) {
         await this.createChildJob({
           rootJobId: rootJob.id,
-          level: 4,
+          level: 3,
           jobType: JobType.questions,
-          entityId: topic.id,
-          entityType: 'TOPIC',
+          topicId: topic.id,
+          chapterId: topic.chapter.id,
           language: rootJob.language,
           difficulty,
         });
@@ -366,28 +314,31 @@ export class HydrationReconciler {
     rootJobId: string;
     level: number;
     jobType: JobType;
-    entityId: string;
-    entityType: string;
+    topicId: string;
+    chapterId: string;
     language: any;
     difficulty: DifficultyLevel;
   }): Promise<void> {
-    const { rootJobId, level, jobType, entityId, entityType, language, difficulty } = params;
+    const { rootJobId, level, jobType, topicId, chapterId, language, difficulty } = params;
 
     await prisma.$transaction(async (tx) => {
-      // Create HydrationJob
+      // Create HydrationJob with topicId/chapterId columns populated
+      // so workers can read them directly (e.g. job.topicId)
       const childJob = await tx.hydrationJob.create({
         data: {
           rootJobId,
           hierarchyLevel: level,
           jobType,
+          topicId,
+          chapterId,
           language,
           difficulty,
           status: JobStatus.Pending,
           attempts: 0,
           maxAttempts: 3,
           inputParams: {
-            entityId,
-            entityType,
+            topicId,
+            chapterId,
           },
         },
       });
@@ -402,8 +353,8 @@ export class HydrationReconciler {
           },
           meta: {
             hydrationJobId: childJob.id,
-            entityId,
-            entityType,
+            topicId,
+            chapterId,
             level,
           },
         },

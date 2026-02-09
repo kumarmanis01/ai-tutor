@@ -273,11 +273,13 @@ export async function handleSyllabusJob(jobId: string) {
         } });
       }
 
-      await tx.hydrationJob.update({ where: { id: job.id }, data: { status: JobStatus.Completed, completedAt: new Date(), contentReady: true } });
+      // Keep root job as Running so the reconciler can drive child levels.
+      // The reconciler's finalizeRootJob() will mark it Completed when all levels are done.
+      await tx.hydrationJob.update({ where: { id: job.id }, data: { status: JobStatus.Running, contentReady: true } });
       const linked = await tx.executionJob.findFirst({ where: { payload: { path: ['hydrationJobId'], equals: job.id } } });
       if (linked) {
         const prevStatus = linked.status ?? null;
-        await tx.jobExecutionLog.create({ data: { jobId: linked.id, event: 'COMPLETED', prevStatus, newStatus: prevStatus, meta: { hydrationJobId: job.id } } });
+        await tx.jobExecutionLog.create({ data: { jobId: linked.id, event: 'SYLLABUS_READY', prevStatus, newStatus: prevStatus, meta: { hydrationJobId: job.id } } });
       }
     });
 
