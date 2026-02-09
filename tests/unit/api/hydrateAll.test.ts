@@ -158,6 +158,7 @@ describe('GET /api/admin/hydrateAll/:jobId', () => {
 
     prismaMock.hydrationJob.findUnique.mockResolvedValue(mockJob);
     prismaMock.hydrationJob.findMany.mockResolvedValue([]);
+    prismaMock.hydrationJob.groupBy.mockResolvedValue([]);
 
     const { GET } = await import('@/app/api/admin/hydrateAll/[jobId]/route');
     const request = new Request('http://localhost:3000/api/admin/hydrateAll/job123');
@@ -198,9 +199,10 @@ describe('GET /api/admin/hydrateAll/:jobId', () => {
     };
 
     prismaMock.hydrationJob.findUnique.mockResolvedValue(mockJob);
-    prismaMock.hydrationJob.findMany.mockResolvedValue([
-      { id: 'child-1', jobType: 'syllabus', status: 'completed', createdAt: new Date() },
-      { id: 'child-2', jobType: 'notes', status: 'completed', createdAt: new Date() },
+    prismaMock.hydrationJob.findMany.mockResolvedValue([]);
+    prismaMock.hydrationJob.groupBy.mockResolvedValue([
+      { jobType: 'syllabus', status: 'completed', _count: 1 },
+      { jobType: 'notes', status: 'completed', _count: 1 },
     ]);
 
     const { GET } = await import('@/app/api/admin/hydrateAll/[jobId]/route');
@@ -208,8 +210,9 @@ describe('GET /api/admin/hydrateAll/:jobId', () => {
     const response = await GET(request as any, { params: { jobId: 'root-job' } });
     const data = await response.json();
 
-    expect(data.childJobs).toHaveLength(2);
-    expect(data.childJobs[0].jobType).toBe('syllabus');
+    expect(data.childJobSummary).toBeDefined();
+    expect(data.childJobSummary.syllabus).toEqual({ completed: 1 });
+    expect(data.childJobSummary.notes).toEqual({ completed: 1 });
   });
 });
 
