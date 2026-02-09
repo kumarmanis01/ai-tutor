@@ -57,10 +57,11 @@ interface JobProgress {
     message: string | null;
     createdAt: string;
   }>;
-  childJobs?: Array<{
+  childJobSummary?: Record<string, Record<string, number>>;
+  failedJobs?: Array<{
     id: string;
     jobType: string;
-    status: string;
+    lastError: string | null;
     createdAt: string;
   }>;
 }
@@ -298,43 +299,39 @@ export default function ProgressDashboard({ jobId }: ProgressDashboardProps) {
         )}
       </div>
 
-      {/* Child Jobs (if any) */}
-      {jobProgress.childJobs && jobProgress.childJobs.length > 0 && (
+      {/* Child Jobs Summary */}
+      {jobProgress.childJobSummary && Object.keys(jobProgress.childJobSummary).length > 0 && (
         <div className="bg-white border rounded-lg p-4">
-          <h3 className="text-sm font-semibold text-gray-700 mb-3">
-            🔗 Child Jobs ({jobProgress.childJobs.length})
-          </h3>
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead>
-                <tr>
-                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">
-                    Type
-                  </th>
-                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">
-                    Status
-                  </th>
-                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">
-                    Created
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-200">
-                {jobProgress.childJobs.map((child) => (
-                  <tr key={child.id} className="hover:bg-gray-50">
-                    <td className="px-3 py-2 text-sm text-gray-900">{child.jobType}</td>
-                    <td className="px-3 py-2 text-sm">
-                      <StatusBadge status={child.status} size="sm" />
-                    </td>
-                    <td className="px-3 py-2 text-sm text-gray-500">
-                      {formatDateTime(child.createdAt)}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <h3 className="text-sm font-semibold text-gray-700 mb-3">Child Jobs</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {Object.entries(jobProgress.childJobSummary).map(([jobType, statuses]) => {
+              const total = Object.values(statuses).reduce((a, b) => a + b, 0);
+              return (
+                <div key={jobType} className="border rounded-md p-3">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm font-medium text-gray-900 capitalize">{jobType}</span>
+                    <span className="text-xs text-gray-500">{total} total</span>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {Object.entries(statuses).map(([status, count]) => (
+                      <span key={status} className="text-xs">
+                        <StatusBadge status={status} size="sm" /> {count}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </div>
+      )}
+
+      {/* Failed Jobs with Retry */}
+      {jobProgress.failedJobs && jobProgress.failedJobs.length > 0 && (
+        <FailedJobsPanel
+          failedJobs={jobProgress.failedJobs}
+          onRetrySuccess={fetchProgress}
+        />
       )}
     </div>
   );
@@ -425,6 +422,83 @@ function LevelProgressCard({
         ></div>
       </div>
       <p className="mt-1 text-xs text-gray-500">{percentage}% complete</p>
+    </div>
+  );
+}
+
+function FailedJobsPanel({
+  failedJobs,
+  onRetrySuccess,
+}: {
+  failedJobs: Array<{ id: string; jobType: string; lastError: string | null; createdAt: string }>;
+  onRetrySuccess: () => void;
+}) {
+  const [retrying, setRetrying] = useState<Record<string, boolean>>({});
+  const [retryingAll, setRetryingAll] = useState(false);
+
+  const retryJob = async (jobId: string) => {
+    setRetrying((prev) => ({ ...prev, [jobId]: true }));
+    try {
+      const res = await fetch(`/api/admin/hydrateAll/${jobId}/retry`, { method: 'POST' });
+      if (!res.ok) {
+        const data = await res.json();
+        alert(data.error || 'Retry failed');
+      } else {
+        onRetrySuccess();
+      }
+    } catch {
+      alert('Network error');
+    } finally {
+      setRetrying((prev) => ({ ...prev, [jobId]: false }));
+    }
+  };
+
+  const retryAll = async () => {
+    setRetryingAll(true);
+    for (const job of failedJobs) {
+      await retryJob(job.id);
+    }
+    setRetryingAll(false);
+  };
+
+  return (
+    <div className="bg-white border border-red-200 rounded-lg p-4">
+      <div className="flex items-center justify-between mb-3">
+        <h3 className="text-sm font-semibold text-red-700">
+          Failed Jobs ({failedJobs.length})
+        </h3>
+        <button
+          onClick={retryAll}
+          disabled={retryingAll}
+          className="px-3 py-1 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700 disabled:opacity-50"
+        >
+          {retryingAll ? 'Retrying...' : 'Retry All Failed'}
+        </button>
+      </div>
+      <div className="space-y-2">
+        {failedJobs.map((job) => (
+          <div key={job.id} className="flex items-start justify-between border rounded-md p-3 bg-red-50">
+            <div className="flex-1 min-w-0 mr-3">
+              <div className="flex items-center space-x-2">
+                <span className="text-sm font-medium text-gray-900 capitalize">{job.jobType}</span>
+                <span className="text-xs text-gray-400 font-mono">{job.id.slice(0, 10)}...</span>
+              </div>
+              {job.lastError && (
+                <p className="mt-1 text-xs text-red-600 truncate" title={job.lastError}>
+                  {job.lastError}
+                </p>
+              )}
+            </div>
+            <button
+              onClick={() => retryJob(job.id)}
+              disabled={retrying[job.id]}
+              className="px-3 py-1 text-xs font-medium text-red-700 bg-white border border-red-300 rounded-md hover:bg-red-100 disabled:opacity-50 shrink-0"
+            >
+              {retrying[job.id] ? 'Retrying...' : 'Retry'}
+            </button>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
