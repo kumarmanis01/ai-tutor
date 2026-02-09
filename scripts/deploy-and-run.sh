@@ -106,8 +106,8 @@ fi
 # ─────────────────────────────────────────────────────────────────────────────
 step "5/11 — Clean old build artifacts"
 rm -rf "${REPO_ROOT}/.next" || true
-rm -rf "${REPO_ROOT}/dist/worker" || true
-echo "Removed .next/ and dist/worker/"
+rm -rf "${REPO_ROOT}/dist" || true
+echo "Removed .next/ and dist/"
 
 # ─────────────────────────────────────────────────────────────────────────────
 # 6. BUILD
