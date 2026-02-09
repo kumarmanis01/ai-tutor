@@ -15,6 +15,7 @@
  */
 import Link from 'next/link'
 import { headers } from 'next/headers'
+import { redirect } from 'next/navigation'
 
 export const dynamic = 'force-dynamic'
 
@@ -26,13 +27,20 @@ interface CourseItem {
   type: 'course' | 'subject';
 }
 
-export default async function Page() {
+type Props = {
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+}
+
+export default async function Page({ searchParams }: Props) {
+  const params = await searchParams
+  const subjectFilter = typeof params.subject === 'string' ? params.subject : undefined
+
   // Use relative URL with proper host header for server-side fetch
   const headersList = await headers()
   const host = headersList.get('host') || 'localhost:3000'
   const protocol = headersList.get('x-forwarded-proto') || 'http'
   const baseUrl = `${protocol}://${host}`
-  
+
   let data: CourseItem[] = []
   try {
     const res = await fetch(`${baseUrl}/api/learn/courses`, { cache: 'no-store' })
@@ -41,6 +49,17 @@ export default async function Page() {
     }
   } catch {
     // Silently fail - show empty courses list
+  }
+
+  // If a subject filter was passed (e.g. from dashboard notes tab), redirect
+  // to that subject's course page directly.
+  if (subjectFilter && data.length > 0) {
+    const match = data.find(
+      (c) => c.title?.toLowerCase() === subjectFilter.toLowerCase()
+    )
+    if (match) {
+      redirect(`/learn/${match.courseId}`)
+    }
   }
 
   return (
