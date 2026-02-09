@@ -60,14 +60,25 @@ export async function selectQuestions(filters: QuestionFilters, count: number): 
     pool = await syncFromGeneratedQuestions(filters, count * 3);
   }
 
+  // Deduplicate by prompt text to avoid showing the same question twice
+  const seen = new Set<string>();
+  const deduped: Question[] = [];
+  for (const q of pool) {
+    const key = (q.prompt ?? '').trim().toLowerCase();
+    if (!seen.has(key)) {
+      seen.add(key);
+      deduped.push(q);
+    }
+  }
+
   // Simple sampling without replacement
   const selected: Question[] = [];
   const indices = new Set<number>();
-  while (selected.length < Math.min(count, pool.length)) {
-    const idx = Math.floor(Math.random() * pool.length);
+  while (selected.length < Math.min(count, deduped.length)) {
+    const idx = Math.floor(Math.random() * deduped.length);
     if (!indices.has(idx)) {
       indices.add(idx);
-      selected.push(pool[idx]);
+      selected.push(deduped[idx]);
     }
   }
 
@@ -82,10 +93,12 @@ async function syncFromGeneratedQuestions(filters: QuestionFilters, take: number
   const subjectFilter: Record<string, unknown> = {};
   if (filters.subject) subjectFilter.name = { equals: filters.subject, mode: 'insensitive' };
   // grade and board live on ClassLevel / Board, not SubjectDef
-  const classFilter: Record<string, unknown> = {};
-  if (filters.board) classFilter.board = { slug: { equals: filters.board, mode: 'insensitive' } };
-  if (filters.grade) classFilter.grade = Number(filters.grade);
-  if (Object.keys(classFilter).length > 0) subjectFilter.class = classFilter;
+  if (filters.board || filters.grade) {
+    const classFilter: Record<string, unknown> = {};
+    if (filters.board) classFilter.board = { slug: { equals: filters.board, mode: 'insensitive' } };
+    if (filters.grade) classFilter.grade = Number(filters.grade);
+    subjectFilter.class = classFilter;
+  }
 
   const testWhere: Record<string, unknown> = {
     lifecycle: 'active',
@@ -98,7 +111,11 @@ async function syncFromGeneratedQuestions(filters: QuestionFilters, take: number
       },
     },
   };
-  if (filters.difficulty) testWhere.difficulty = filters.difficulty;
+  // Only pass difficulty if it's a valid DifficultyLevel enum value
+  const validDifficulties = ['easy', 'medium', 'hard'];
+  if (filters.difficulty && validDifficulties.includes(filters.difficulty)) {
+    testWhere.difficulty = filters.difficulty;
+  }
 
   const rows = await prisma.generatedQuestion.findMany({
     where: { test: testWhere },
@@ -301,13 +318,13 @@ export async function applyGrading(attempt: TestResult, payload: SubmitPayload) 
     totalPoints += 1;
     const g = gradeSingle(aq.question, ans?.answer);
     earnedPoints += g.awardedPoints;
-    
+
     // Parse choices for MCQ questions
     let parsedChoices: Array<{ key: string; label: string }> | undefined;
     if (aq.question.type?.toLowerCase() === 'mcq' && aq.question.choices) {
       try {
-        const raw = typeof aq.question.choices === 'string' 
-          ? JSON.parse(aq.question.choices) 
+        const raw = typeof aq.question.choices === 'string'
+          ? JSON.parse(aq.question.choices)
           : aq.question.choices;
         if (Array.isArray(raw)) {
           parsedChoices = raw.map((c: any) => ({
@@ -319,7 +336,7 @@ export async function applyGrading(attempt: TestResult, payload: SubmitPayload) 
         // Skip invalid choices
       }
     }
-    
+
     graded.push({
       attemptQuestionId: aq.id,
       questionId: aq.questionId,
