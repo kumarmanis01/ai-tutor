@@ -16,15 +16,8 @@ if ! command -v pm2 >/dev/null 2>&1; then
   sudo npm install -g pm2@latest
 fi
 
-# Prefer an explicit production ecosystem file if present
-ECOSYSTEM_PROD=ecosystem.pm2.production.cjs
-if [ -f "$ECOSYSTEM_PROD" ]; then
-  echo "[pm2-start] Starting apps with $ECOSYSTEM_PROD"
-  pm2 start "$ECOSYSTEM_PROD" --env production --update-env
-else
-  echo "[pm2-start] Starting apps with ecosystem.config.cjs"
-  pm2 start ecosystem.config.cjs --env production --update-env
-fi
+echo "[pm2-start] Starting apps with ecosystem.config.cjs"
+pm2 start ecosystem.config.cjs --env production --update-env
 
 echo "[pm2-start] Saving process list"
 pm2 save

@@ -124,8 +124,6 @@ run_cmd pm2 flush || true
 
 if [ -f "$PROJECT_ROOT/ecosystem.config.cjs" ]; then
   run_cmd pm2 start "$PROJECT_ROOT/ecosystem.config.cjs" --env production --update-env || true
-elif [ -f "$PROJECT_ROOT/ecosystem.config.js" ]; then
-  run_cmd pm2 start "$PROJECT_ROOT/ecosystem.config.js" --env production --update-env || true
 else
   echo "Ecosystem config not found; skipping pm2 ecosystem start"
 fi

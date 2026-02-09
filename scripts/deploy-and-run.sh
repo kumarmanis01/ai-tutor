@@ -260,10 +260,6 @@ if [ -f "${REPO_ROOT}/ecosystem.config.cjs" ]; then
   echo "[deploy] starting PM2 ecosystem.config.cjs (env=production)"
   pm2 start ecosystem.config.cjs --env production --update-env || true
   pm2 save || true
-elif [ -f "${REPO_ROOT}/ecosystem.config.js" ]; then
-  echo "[deploy] starting PM2 ecosystem.config.js (env=production)"
-  pm2 start ecosystem.config.js --env production --update-env || true
-  pm2 save || true
 else
   # Ensure the worker process picks up the freshly exported environment (wrapper relies on .env.production)
   echo "[deploy] restarting worker to ensure wrapper-sourced env is active"

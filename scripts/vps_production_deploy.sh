@@ -171,10 +171,8 @@ run_step "Build Next.js (production)" "npm run build"
 # Choose PM2 ecosystem file: prefer .cjs then .js
 if [ -f ecosystem.config.cjs ]; then
   EC_FILE=ecosystem.config.cjs
-elif [ -f ecosystem.config.js ]; then
-  EC_FILE=ecosystem.config.js
 else
-  echo "No PM2 ecosystem config found (ecosystem.config.cjs/js). Aborting." | tee -a "$LOG_FILE"
+  echo "No PM2 ecosystem config found (ecosystem.config.cjs). Aborting." | tee -a "$LOG_FILE"
   exit 4
 fi
 

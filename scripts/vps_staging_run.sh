@@ -191,11 +191,7 @@ echo "\n-- START Web only (PM2) --" | tee -a "$LOG_FILE"
 read -p "Start web process only now? (y/N) " START_WEB
 echo "PROMPT: Start web -> ${START_WEB}" | tee -a "$LOG_FILE"
 if [[ "${START_WEB,,}" == "y" ]]; then
-  if [ -f ecosystem.config.cjs ]; then
-    EC_FILE=ecosystem.config.cjs
-  else
-    EC_FILE=ecosystem.config.js
-  fi
+  EC_FILE=ecosystem.config.cjs
   run_step "Start web process via PM2 ($EC_FILE)" "pm2 start \"$EC_FILE\" --only ai-tutor-web"
   echo "Web started. Tail logs with: pm2 logs ai-tutor-web --lines 200" | tee -a "$LOG_FILE"
   echo "Open web UI or run: curl -I http://localhost:3000" | tee -a "$LOG_FILE"
@@ -221,11 +217,7 @@ echo "\n-- START Worker only (PM2) --" | tee -a "$LOG_FILE"
 read -p "Start worker now? (y/N) " START_WORKER
 echo "PROMPT: Start worker -> ${START_WORKER}" | tee -a "$LOG_FILE"
 if [[ "${START_WORKER,,}" == "y" ]]; then
-  if [ -f ecosystem.config.cjs ]; then
-    EC_FILE=ecosystem.config.cjs
-  else
-    EC_FILE=ecosystem.config.js
-  fi
+  EC_FILE=ecosystem.config.cjs
   run_step "Start worker process via PM2 ($EC_FILE)" "pm2 start \"$EC_FILE\" --only content-engine-worker"
   echo "Worker started. Tail logs with: pm2 logs content-engine-worker --lines 200" | tee -a "$LOG_FILE"
   echo "Allow a minute or two for job processing." | tee -a "$LOG_FILE"
