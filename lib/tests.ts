@@ -81,8 +81,11 @@ export async function selectQuestions(filters: QuestionFilters, count: number): 
 async function syncFromGeneratedQuestions(filters: QuestionFilters, take: number): Promise<Question[]> {
   const subjectFilter: Record<string, unknown> = {};
   if (filters.subject) subjectFilter.name = { equals: filters.subject, mode: 'insensitive' };
-  if (filters.board) subjectFilter.board = { slug: { equals: filters.board, mode: 'insensitive' } };
-  if (filters.grade) subjectFilter.grade = Number(filters.grade);
+  // grade and board live on ClassLevel / Board, not SubjectDef
+  const classFilter: Record<string, unknown> = {};
+  if (filters.board) classFilter.board = { slug: { equals: filters.board, mode: 'insensitive' } };
+  if (filters.grade) classFilter.grade = Number(filters.grade);
+  if (Object.keys(classFilter).length > 0) subjectFilter.class = classFilter;
 
   const testWhere: Record<string, unknown> = {
     lifecycle: 'active',
@@ -106,7 +109,22 @@ async function syncFromGeneratedQuestions(filters: QuestionFilters, take: number
           topic: {
             select: {
               name: true,
-              chapter: { select: { name: true, subject: { select: { name: true, grade: true, board: { select: { slug: true } } } } } },
+              chapter: {
+                select: {
+                  name: true,
+                  subject: {
+                    select: {
+                      name: true,
+                      class: {
+                        select: {
+                          grade: true,
+                          board: { select: { slug: true } },
+                        },
+                      },
+                    },
+                  },
+                },
+              },
             },
           },
         },
@@ -122,6 +140,7 @@ async function syncFromGeneratedQuestions(filters: QuestionFilters, take: number
   for (const gq of rows) {
     const ch = gq.test.topic?.chapter;
     const sub = ch?.subject;
+    const cls = (sub as any)?.class;
     const correctAnswer = typeof gq.answer === 'string' ? gq.answer : JSON.stringify(gq.answer);
 
     await prisma.question.upsert({
@@ -136,8 +155,8 @@ async function syncFromGeneratedQuestions(filters: QuestionFilters, take: number
         difficulty: gq.test.difficulty ?? null,
         subject: sub?.name ?? null,
         chapter: ch?.name ?? null,
-        grade: sub?.grade != null ? String(sub.grade) : null,
-        board: sub?.board?.slug ?? null,
+        grade: cls?.grade != null ? String(cls.grade) : null,
+        board: cls?.board?.slug ?? null,
         source: 'generated',
       },
     });
