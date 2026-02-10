@@ -1,13 +1,11 @@
 "use client";
 
 import React from 'react';
-import { TestsFilters } from './TestsFilters';
 import { TestsRecommended } from './TestsRecommended';
 import { TestsUpcoming } from './TestsUpcoming';
 import { TestsResults } from './TestsResults';
 import { TestsBySubject } from './TestsBySubject';
 import { TestsCTAs } from './TestsCTAs';
-// Removed legacy TestHome fallback after sections parity
 
 export function TestsHome(
   { subject: _subject, grade: _grade, board: _board }: { subject: string; grade?: string; board?: string }
@@ -15,7 +13,6 @@ export function TestsHome(
   void _subject; void _grade; void _board;
   return (
     <div className="space-y-6">
-      <TestsFilters />
       <TestsCTAs />
       <TestsRecommended />
       <TestsBySubject />

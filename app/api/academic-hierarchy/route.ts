@@ -18,7 +18,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { logger } from '@/lib/logger';
-import { LanguageCode, DifficultyLevel, SoftDeleteStatus, ApprovalStatus } from '@prisma/client';
+import { LanguageCode, DifficultyLevel, SoftDeleteStatus } from '@prisma/client';
 
 /**
  * Board with its classes/grades
@@ -112,14 +112,12 @@ export async function GET() {
                 chapters: {
                   where: {
                     lifecycle: SoftDeleteStatus.active,
-                    status: ApprovalStatus.approved,
                   },
                   orderBy: { order: 'asc' },
                   include: {
                     topics: {
                       where: {
                         lifecycle: SoftDeleteStatus.active,
-                        status: ApprovalStatus.approved,
                       },
                       orderBy: { order: 'asc' },
                       select: {

@@ -92,7 +92,6 @@ export async function selectQuestions(filters: QuestionFilters, count: number): 
 async function syncFromGeneratedQuestions(filters: QuestionFilters, take: number): Promise<Question[]> {
   const subjectFilter: Record<string, unknown> = {};
   if (filters.subject) subjectFilter.name = { equals: filters.subject, mode: 'insensitive' };
-  // grade and board live on ClassLevel / Board, not SubjectDef
   if (filters.board || filters.grade) {
     const classFilter: Record<string, unknown> = {};
     if (filters.board) classFilter.board = { slug: { equals: filters.board, mode: 'insensitive' } };
@@ -126,22 +125,7 @@ async function syncFromGeneratedQuestions(filters: QuestionFilters, take: number
           topic: {
             select: {
               name: true,
-              chapter: {
-                select: {
-                  name: true,
-                  subject: {
-                    select: {
-                      name: true,
-                      class: {
-                        select: {
-                          grade: true,
-                          board: { select: { slug: true } },
-                        },
-                      },
-                    },
-                  },
-                },
-              },
+              chapter: { select: { name: true, subject: { select: { name: true, class: { select: { grade: true, board: { select: { slug: true } } } } } } } },
             },
           },
         },
@@ -157,7 +141,7 @@ async function syncFromGeneratedQuestions(filters: QuestionFilters, take: number
   for (const gq of rows) {
     const ch = gq.test.topic?.chapter;
     const sub = ch?.subject;
-    const cls = (sub as any)?.class;
+    const cls = sub?.class;
     const correctAnswer = typeof gq.answer === 'string' ? gq.answer : JSON.stringify(gq.answer);
 
     await prisma.question.upsert({
@@ -318,13 +302,13 @@ export async function applyGrading(attempt: TestResult, payload: SubmitPayload) 
     totalPoints += 1;
     const g = gradeSingle(aq.question, ans?.answer);
     earnedPoints += g.awardedPoints;
-
+    
     // Parse choices for MCQ questions
     let parsedChoices: Array<{ key: string; label: string }> | undefined;
     if (aq.question.type?.toLowerCase() === 'mcq' && aq.question.choices) {
       try {
-        const raw = typeof aq.question.choices === 'string'
-          ? JSON.parse(aq.question.choices)
+        const raw = typeof aq.question.choices === 'string' 
+          ? JSON.parse(aq.question.choices) 
           : aq.question.choices;
         if (Array.isArray(raw)) {
           parsedChoices = raw.map((c: any) => ({
@@ -336,7 +320,7 @@ export async function applyGrading(attempt: TestResult, payload: SubmitPayload) 
         // Skip invalid choices
       }
     }
-
+    
     graded.push({
       attemptQuestionId: aq.id,
       questionId: aq.questionId,
