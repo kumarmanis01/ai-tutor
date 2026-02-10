@@ -478,7 +478,6 @@ export const hydrationReconciler = new HydrationReconciler();
 // Standalone Execution (for cron/scheduler)
 // ============================================
 
-// Standalone detection: process.argv[1] check is CJS-compatible (works in Jest & ESM)
 if (process.argv[1]?.includes('hydrationReconciler')) {
   logger.info('Running hydration reconciler (standalone mode)');
 

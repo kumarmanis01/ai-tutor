@@ -23,18 +23,18 @@ export async function POST(req: Request) {
     return res;
   }
 
-  try {
-    const body = await req.json().catch(() => ({}));
-    const {
-      subject,
-      grade,
-      board,
-      chapter,
-      difficulty,
-      type,
-      count = 10,
-    } = body ?? {};
+  const body = await req.json().catch(() => ({}));
+  const {
+    subject,
+    grade,
+    board,
+    chapter,
+    difficulty,
+    type,
+    count = 10,
+  } = body ?? {};
 
+  try {
     const questions = await selectQuestions({ subject, grade, board, chapter, difficulty, type }, count);
     if (!questions.length) {
       res = NextResponse.json({ error: 'No questions available for selection' }, { status: 404 });
@@ -76,9 +76,12 @@ export async function POST(req: Request) {
     res = NextResponse.json({ attemptId: attempt.id, questions: payload });
     logger.logAPI(req, res, { className: 'TestsStartAPI', methodName: 'POST' }, start);
     return res;
-  } catch (error: any) {
-    logger.error('TestsStartAPI POST failed', { error: error.message, stack: error.stack });
-    res = NextResponse.json({ error: error.message || 'Internal server error' }, { status: 500 });
+  } catch (err: any) {
+    logger.error('TestsStartAPI POST error', { error: err?.message });
+    res = NextResponse.json(
+      { error: 'Failed to start test. Please try again later.' },
+      { status: 500 },
+    );
     logger.logAPI(req, res, { className: 'TestsStartAPI', methodName: 'POST' }, start);
     return res;
   }

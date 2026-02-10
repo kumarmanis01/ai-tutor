@@ -60,14 +60,25 @@ export async function selectQuestions(filters: QuestionFilters, count: number): 
     pool = await syncFromGeneratedQuestions(filters, count * 3);
   }
 
+  // Deduplicate by prompt text to avoid showing the same question twice
+  const seen = new Set<string>();
+  const deduped: Question[] = [];
+  for (const q of pool) {
+    const key = (q.prompt ?? '').trim().toLowerCase();
+    if (!seen.has(key)) {
+      seen.add(key);
+      deduped.push(q);
+    }
+  }
+
   // Simple sampling without replacement
   const selected: Question[] = [];
   const indices = new Set<number>();
-  while (selected.length < Math.min(count, pool.length)) {
-    const idx = Math.floor(Math.random() * pool.length);
+  while (selected.length < Math.min(count, deduped.length)) {
+    const idx = Math.floor(Math.random() * deduped.length);
     if (!indices.has(idx)) {
       indices.add(idx);
-      selected.push(pool[idx]);
+      selected.push(deduped[idx]);
     }
   }
 
@@ -81,11 +92,12 @@ export async function selectQuestions(filters: QuestionFilters, count: number): 
 async function syncFromGeneratedQuestions(filters: QuestionFilters, take: number): Promise<Question[]> {
   const subjectFilter: Record<string, unknown> = {};
   if (filters.subject) subjectFilter.name = { equals: filters.subject, mode: 'insensitive' };
-  // grade and board live on ClassLevel / Board, not SubjectDef
-  const classFilter: Record<string, unknown> = {};
-  if (filters.board) classFilter.board = { slug: { equals: filters.board, mode: 'insensitive' } };
-  if (filters.grade) classFilter.grade = Number(filters.grade);
-  if (Object.keys(classFilter).length > 0) subjectFilter.class = classFilter;
+  if (filters.board || filters.grade) {
+    const classFilter: Record<string, unknown> = {};
+    if (filters.board) classFilter.board = { slug: { equals: filters.board, mode: 'insensitive' } };
+    if (filters.grade) classFilter.grade = Number(filters.grade);
+    subjectFilter.class = classFilter;
+  }
 
   const testWhere: Record<string, unknown> = {
     lifecycle: 'active',
@@ -98,7 +110,11 @@ async function syncFromGeneratedQuestions(filters: QuestionFilters, take: number
       },
     },
   };
-  if (filters.difficulty) testWhere.difficulty = filters.difficulty;
+  // Only pass difficulty if it's a valid DifficultyLevel enum value
+  const validDifficulties = ['easy', 'medium', 'hard'];
+  if (filters.difficulty && validDifficulties.includes(filters.difficulty)) {
+    testWhere.difficulty = filters.difficulty;
+  }
 
   const rows = await prisma.generatedQuestion.findMany({
     where: { test: testWhere },
@@ -109,22 +125,7 @@ async function syncFromGeneratedQuestions(filters: QuestionFilters, take: number
           topic: {
             select: {
               name: true,
-              chapter: {
-                select: {
-                  name: true,
-                  subject: {
-                    select: {
-                      name: true,
-                      class: {
-                        select: {
-                          grade: true,
-                          board: { select: { slug: true } },
-                        },
-                      },
-                    },
-                  },
-                },
-              },
+              chapter: { select: { name: true, subject: { select: { name: true, class: { select: { grade: true, board: { select: { slug: true } } } } } } } },
             },
           },
         },
@@ -140,7 +141,7 @@ async function syncFromGeneratedQuestions(filters: QuestionFilters, take: number
   for (const gq of rows) {
     const ch = gq.test.topic?.chapter;
     const sub = ch?.subject;
-    const cls = (sub as any)?.class;
+    const cls = sub?.class;
     const correctAnswer = typeof gq.answer === 'string' ? gq.answer : JSON.stringify(gq.answer);
 
     await prisma.question.upsert({

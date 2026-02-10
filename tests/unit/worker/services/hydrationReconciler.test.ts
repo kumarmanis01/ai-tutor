@@ -106,9 +106,9 @@ describe('HydrationReconciler - Child Job Creation', () => {
     };
 
     const topics = [
-      { id: 'topic1', order: 1, chapter: { id: 'ch1' } },
-      { id: 'topic2', order: 2, chapter: { id: 'ch1' } },
-      { id: 'topic3', order: 3, chapter: { id: 'ch2' } },
+      { id: 'tp1', order: 1, chapter: { id: 'ch1' } },
+      { id: 'tp2', order: 2, chapter: { id: 'ch1' } },
+      { id: 'tp3', order: 3, chapter: { id: 'ch2' } },
     ];
 
     prismaMock.hydrationJob.count.mockResolvedValue(0); // No existing Level 2 jobs
