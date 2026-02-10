@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { getServerSessionForHandlers } from '@/lib/session';
 import { applyGrading, SubmitPayload, updateTopicMastery } from '@/lib/tests';
 import { updateLearningProfile } from '@/lib/recommendations/engine';
+import { adjustDifficultyAfterTest } from '@/lib/personalization/adaptDifficulty';
 import { logger } from '@/lib/logger';
 
 export const dynamic = 'force-dynamic';
@@ -51,6 +52,15 @@ export async function POST(req: Request) {
   updateLearningProfile(user.id).catch((err) => {
     logger.error('TestsSubmitAPI.updateLearningProfile', {
       userId: user.id,
+      error: err,
+    });
+  });
+
+  // Adjust difficulty based on performance (non-blocking)
+  adjustDifficultyAfterTest(user.id, attempt, result).catch((err) => {
+    logger.error('TestsSubmitAPI.adjustDifficulty', {
+      userId: user.id,
+      attemptId: attempt.id,
       error: err,
     });
   });
