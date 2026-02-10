@@ -145,7 +145,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     }
 
     // 3. Fetch Child Job summary + failed jobs (if this is a root job)
-    let childJobSummary: Record<string, Record<string, number>> = {};
+    const childJobSummary: Record<string, Record<string, number>> = {};
     let failedJobs: any[] = [];
     if (!job.rootJobId) {
       // Summary: group by jobType × status

@@ -41,7 +41,7 @@ export default function Scorecard(props: { result: ScorecardResult }) {
   const r = props.result ?? {};
   const [showDetails, setShowDetails] = useState(true);
 
-  const graded = r.graded ?? [];
+  const graded = useMemo(() => r.graded ?? [], [r.graded]);
   const correctCount = graded.filter((g) => g.correct).length;
   const partialCount = graded.filter((g) => g.partial && !g.correct).length;
   const wrongCount = graded.length - correctCount - partialCount;
