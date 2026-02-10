@@ -105,21 +105,21 @@ describe('HydrationReconciler - Child Job Creation', () => {
       difficulty: 'medium',
     };
 
-    const chapters = [
-      { id: 'ch1', order: 1 },
-      { id: 'ch2', order: 2 },
-      { id: 'ch3', order: 3 },
+    const topics = [
+      { id: 'topic1', order: 1, chapter: { id: 'ch1' } },
+      { id: 'topic2', order: 2, chapter: { id: 'ch1' } },
+      { id: 'topic3', order: 3, chapter: { id: 'ch2' } },
     ];
 
     prismaMock.hydrationJob.count.mockResolvedValue(0); // No existing Level 2 jobs
     prismaMock.hydrationJob.create.mockResolvedValue({ id: 'child-job' });
     prismaMock.outbox.create.mockResolvedValue({ id: 'outbox-entry' });
-    prismaMock.chapterDef.findMany.mockResolvedValue(chapters);
+    prismaMock.topicDef.findMany.mockResolvedValue(topics);
     prismaMock.$transaction.mockImplementation(async (callback: any) => await callback(prismaMock));
 
     await (reconciler as any).createLevel2Jobs(rootJob);
 
-    // Should create 3 child jobs (one per chapter)
+    // Should create 3 child jobs (one per topic)
     expect(prismaMock.$transaction).toHaveBeenCalledTimes(3);
   });
 
@@ -130,7 +130,7 @@ describe('HydrationReconciler - Child Job Creation', () => {
 
     await (reconciler as any).createLevel2Jobs(rootJob);
 
-    expect(prismaMock.chapterDef.findMany).not.toHaveBeenCalled();
+    expect(prismaMock.topicDef.findMany).not.toHaveBeenCalled();
   });
 
   it('should create child job with Outbox pattern', async () => {

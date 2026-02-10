@@ -23,56 +23,63 @@ export async function POST(req: Request) {
     return res;
   }
 
-  const body = await req.json().catch(() => ({}));
-  const {
-    subject,
-    grade,
-    board,
-    chapter,
-    difficulty,
-    type,
-    count = 10,
-  } = body ?? {};
+  try {
+    const body = await req.json().catch(() => ({}));
+    const {
+      subject,
+      grade,
+      board,
+      chapter,
+      difficulty,
+      type,
+      count = 10,
+    } = body ?? {};
 
-  const questions = await selectQuestions({ subject, grade, board, chapter, difficulty, type }, count);
-  if (!questions.length) {
-    res = NextResponse.json({ error: 'No questions available for selection' }, { status: 404 });
+    const questions = await selectQuestions({ subject, grade, board, chapter, difficulty, type }, count);
+    if (!questions.length) {
+      res = NextResponse.json({ error: 'No questions available for selection' }, { status: 404 });
+      logger.logAPI(req, res, { className: 'TestsStartAPI', methodName: 'POST' }, start);
+      return res;
+    }
+
+    const attempt = await prisma.testResult.create({
+      data: {
+        testId: 'quick-practice',
+        studentId: user.id,
+        score: null,
+        rawResult: Prisma.JsonNull,
+        startedAt: new Date(),
+      },
+    });
+
+    // Persist AttemptQuestion rows
+    await prisma.$transaction(
+      questions.map((q, idx) =>
+        prisma.attemptQuestion.create({
+          data: {
+            testResultId: attempt.id,
+            questionId: q.id,
+            order: idx + 1,
+          },
+        }),
+      ),
+    );
+
+    const payload = questions.map((q) => ({
+      id: q.id,
+      type: q.type,
+      prompt: q.prompt,
+      choices: q.choices ?? null,
+      difficulty: q.difficulty ?? null,
+    }));
+
+    res = NextResponse.json({ attemptId: attempt.id, questions: payload });
+    logger.logAPI(req, res, { className: 'TestsStartAPI', methodName: 'POST' }, start);
+    return res;
+  } catch (error: any) {
+    logger.error('TestsStartAPI POST failed', { error: error.message, stack: error.stack });
+    res = NextResponse.json({ error: error.message || 'Internal server error' }, { status: 500 });
     logger.logAPI(req, res, { className: 'TestsStartAPI', methodName: 'POST' }, start);
     return res;
   }
-
-  const attempt = await prisma.testResult.create({
-    data: {
-      testId: 'quick-practice',
-      studentId: user.id,
-      score: null,
-      rawResult: Prisma.JsonNull,
-      startedAt: new Date(),
-    },
-  });
-
-  // Persist AttemptQuestion rows
-  await prisma.$transaction(
-    questions.map((q, idx) =>
-      prisma.attemptQuestion.create({
-        data: {
-          testResultId: attempt.id,
-          questionId: q.id,
-          order: idx + 1,
-        },
-      }),
-    ),
-  );
-
-  const payload = questions.map((q) => ({
-    id: q.id,
-    type: q.type,
-    prompt: q.prompt,
-    choices: q.choices ?? null,
-    difficulty: q.difficulty ?? null,
-  }));
-
-  res = NextResponse.json({ attemptId: attempt.id, questions: payload });
-  logger.logAPI(req, res, { className: 'TestsStartAPI', methodName: 'POST' }, start);
-  return res;
 }

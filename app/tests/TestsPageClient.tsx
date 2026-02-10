@@ -15,6 +15,7 @@
 
 import React, { useState, useEffect } from 'react';
 import useCurrentUser from '@/hooks/useCurrentUser';
+import { useAcademicHierarchy } from '@/hooks/useAcademicHierarchy';
 import CascadingFilters, {
   CascadingFilterState,
   createEmptyFilterState,
@@ -28,6 +29,7 @@ import TestHistory from '@/components/Test/TestHistory';
 
 export default function TestsPageClient() {
   const { data: profile, loading: profileLoading } = useCurrentUser();
+  const { helpers } = useAcademicHierarchy();
   const [filters, setFilters] = useState<CascadingFilterState>(createEmptyFilterState());
 
   // Initialize filters from user profile when loaded
@@ -126,6 +128,7 @@ export default function TestsPageClient() {
         subject={filters.subjectSlug || undefined}
         grade={filters.gradeNum ? String(filters.gradeNum) : undefined}
         board={filters.boardSlug ?? undefined}
+        chapters={helpers.getChaptersForSubject(filters.subjectId).map(c => ({ id: c.id, name: c.name }))}
       />
       <TestHistory />
       <WeeklyChallenge />

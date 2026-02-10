@@ -377,6 +377,16 @@ export class HydrationReconciler {
 
     if (!subjectId) return;
 
+    // --- Expected counts (from child jobs) ---
+    const notesExpected = await prisma.hydrationJob.count({
+      where: { rootJobId, hierarchyLevel: 2 },
+    });
+
+    const questionsExpected = await prisma.hydrationJob.count({
+      where: { rootJobId, hierarchyLevel: 3 },
+    });
+
+    // --- Completed counts (actual content rows) ---
     const chaptersCompleted = await prisma.chapterDef.count({
       where: { subjectId, lifecycle: 'active' },
     });
@@ -388,12 +398,13 @@ export class HydrationReconciler {
       },
     });
 
+    // Count all generated notes, not just approved ones.
+    // Progress tracks generation, not admin approval.
     const notesCompleted = await prisma.topicNote.count({
       where: {
         topic: {
           chapter: { subjectId },
         },
-        status: 'approved',
       },
     });
 
@@ -407,10 +418,14 @@ export class HydrationReconciler {
       },
     });
 
-    // Update root job
+    // Update root job with both expected and completed counts
     await prisma.hydrationJob.update({
       where: { id: rootJobId },
       data: {
+        chaptersExpected: chaptersCompleted, // chapters are created atomically by syllabus
+        topicsExpected: topicsCompleted,     // topics are created atomically by syllabus
+        notesExpected,
+        questionsExpected,
         chaptersCompleted,
         topicsCompleted,
         notesCompleted,
@@ -463,7 +478,8 @@ export const hydrationReconciler = new HydrationReconciler();
 // Standalone Execution (for cron/scheduler)
 // ============================================
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+// Standalone detection: process.argv[1] check is CJS-compatible (works in Jest & ESM)
+if (process.argv[1]?.includes('hydrationReconciler')) {
   logger.info('Running hydration reconciler (standalone mode)');
 
   hydrationReconciler

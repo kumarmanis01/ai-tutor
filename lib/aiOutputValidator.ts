@@ -43,15 +43,16 @@ const questionsSchema = {
 const validateNotes = ajv.compile(notesSchema as any)
 const validateQuestions = ajv.compile(questionsSchema as any)
 
+// Only flag patterns that clearly indicate stub/placeholder content, not legitimate
+// educational phrases like "Introduction to Carbon Compounds" or "students will learn".
 const PLACEHOLDER_PATTERNS = [
-  /will be discussed/i,
-  /to be covered/i,
-  /introduction to/i,
-  /basic overview/i,
-  /coming soon/i,
+  /content coming soon/i,
   /interactive content coming soon/i,
-  /students will learn/i,
-  /this topic covers/i
+  /to be added later/i,
+  /placeholder/i,
+  /lorem ipsum/i,
+  /\[insert .+\]/i,
+  /TBD/,
 ]
 
 function scanForPlaceholders(obj: any): string | null {

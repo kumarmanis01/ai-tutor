@@ -61,10 +61,11 @@ interface JobProgressResponse {
     message: string | null;
     createdAt: string;
   }>;
-  childJobs?: Array<{
+  childJobSummary?: Record<string, Record<string, number>>; // { notes: { completed: 39, failed: 1 }, questions: { running: 5 } }
+  failedJobs?: Array<{
     id: string;
     jobType: string;
-    status: string;
+    lastError: string | null;
     createdAt: string;
   }>;
 }
@@ -143,20 +144,32 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       return NextResponse.json({ error: 'Job not found' }, { status: 404 });
     }
 
-    // 3. Fetch Child Jobs (if this is a root job)
-    let childJobs: any[] = [];
+    // 3. Fetch Child Job summary + failed jobs (if this is a root job)
+    let childJobSummary: Record<string, Record<string, number>> = {};
+    let failedJobs: any[] = [];
     if (!job.rootJobId) {
-      // This is a root job
-      childJobs = await prisma.hydrationJob.findMany({
+      // Summary: group by jobType × status
+      const grouped = await prisma.hydrationJob.groupBy({
+        by: ['jobType', 'status'],
         where: { rootJobId: job.id },
+        _count: true,
+      });
+      for (const row of grouped) {
+        const type = row.jobType || 'unknown';
+        if (!childJobSummary[type]) childJobSummary[type] = {};
+        childJobSummary[type][row.status] = row._count;
+      }
+
+      // Only fetch failed jobs (the actionable ones)
+      failedJobs = await prisma.hydrationJob.findMany({
+        where: { rootJobId: job.id, status: 'failed' },
         select: {
           id: true,
           jobType: true,
-          status: true,
+          lastError: true,
           createdAt: true,
         },
         orderBy: { createdAt: 'asc' },
-        take: 50, // Limit to avoid large payloads
       });
     }
 
@@ -218,12 +231,15 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       recentLogs: [],
     };
 
-    // Add child jobs if this is a root job
-    if (childJobs.length > 0) {
-      response.childJobs = childJobs.map((child) => ({
+    // Add child job summary + failed jobs if this is a root job
+    if (Object.keys(childJobSummary).length > 0) {
+      response.childJobSummary = childJobSummary;
+    }
+    if (failedJobs.length > 0) {
+      response.failedJobs = failedJobs.map((child: any) => ({
         id: child.id,
         jobType: child.jobType,
-        status: child.status,
+        lastError: child.lastError,
         createdAt: child.createdAt.toISOString(),
       }));
     }

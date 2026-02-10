@@ -15,8 +15,8 @@
 import { NextResponse } from 'next/server'
 import { getServerSessionForHandlers } from '@/lib/session'
 
-export async function GET(_req: Request, { params }: { params: { courseId: string } }) {
-  const { courseId } = params
+export async function GET(_req: Request, { params }: { params: Promise<{ courseId: string }> }) {
+  const { courseId } = await params
   const db = (global as any).__TEST_PRISMA__ ?? (await import('@/lib/prisma')).prisma
 
   const session = await getServerSessionForHandlers()

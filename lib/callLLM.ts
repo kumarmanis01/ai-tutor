@@ -78,7 +78,7 @@ export async function callLLM({ prompt, model, meta, timeoutMs }: { prompt: stri
   const promptType = meta?.promptType || 'general'
   const envSmall = process.env.MODEL_SMALL || 'gpt-4o-mini'
   const envMedium = process.env.MODEL_MEDIUM || 'gpt-4o'
-  const envLarge = process.env.MODEL_LARGE || 'gpt-4o-large'
+  const envLarge = process.env.MODEL_LARGE || 'gpt-4o'
   const envDefault = process.env.MODEL_DEFAULT || envSmall
 
   const selectedModel = model || ((): string => {
@@ -226,11 +226,11 @@ export async function batchCallLLM(calls: Array<{ prompt: string; meta: any }>, 
   const resolvedModel = model || ((): string => {
     if (['topics', 'structure', 'syllabus'].includes(promptType)) return process.env.MODEL_SMALL || 'gpt-4o-mini'
     if (['notes', 'doubts', 'practice'].includes(promptType)) return process.env.MODEL_MEDIUM || 'gpt-4o'
-    if (['questions'].includes(promptType)) return process.env.MODEL_LARGE || 'gpt-4o-large'
+    if (['questions'].includes(promptType)) return process.env.MODEL_LARGE || 'gpt-4o'
     return process.env.MODEL_DEFAULT || (process.env.MODEL_SMALL || 'gpt-4o-mini')
   })()
   // Enforce no-large-for-orchestration
-  if (['orchestration', 'workflow', 'reconciler'].includes(promptType) && resolvedModel === (process.env.MODEL_LARGE || 'gpt-4o-large')) {
+  if (['orchestration', 'workflow', 'reconciler'].includes(promptType) && resolvedModel === (process.env.MODEL_LARGE || 'gpt-4o')) {
     throw new Error('forbidden_model_for_orchestration')
   }
   const timeoutMs = opts?.timeoutMs
