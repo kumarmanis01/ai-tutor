@@ -18,6 +18,7 @@
 
 import React from 'react';
 import { StudentGreeting } from './StudentGreeting';
+import { WelcomeBanner } from './WelcomeBanner';
 import { RecoveryBanner } from './RecoveryBanner';
 import { TodaysLearningCard } from './TodaysLearningCard';
 import { ContinueWhereLeftOff } from './ContinueWhereLeftOff';
@@ -44,6 +45,9 @@ export function HomeTab({ onStartLearning, onContinueActivity }: HomeTabProps) {
     <div className="space-y-6 pb-24 px-4 sm:px-6">
       {/* Greeting Section */}
       <StudentGreeting />
+
+      {/* Welcome Banner - Shows once for new students after onboarding */}
+      <WelcomeBanner />
 
       {/* Recovery Banner - Shows when student returns after inactivity */}
       <RecoveryBanner />

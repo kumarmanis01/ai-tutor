@@ -56,16 +56,19 @@ export async function POST(req: Request) {
     });
   });
 
-  // Adjust difficulty based on performance (non-blocking)
-  adjustDifficultyAfterTest(user.id, attempt, result).catch((err) => {
+  // Adjust difficulty based on performance (awaited so we can include feedback)
+  let difficultyFeedback = null;
+  try {
+    difficultyFeedback = await adjustDifficultyAfterTest(user.id, attempt, result);
+  } catch (err) {
     logger.error('TestsSubmitAPI.adjustDifficulty', {
       userId: user.id,
       attemptId: attempt.id,
       error: err,
     });
-  });
-  
-  res = NextResponse.json({ attemptId: attempt.id, ...result });
+  }
+
+  res = NextResponse.json({ attemptId: attempt.id, ...result, difficultyFeedback });
   logger.logAPI(req, res, { className: 'TestsSubmitAPI', methodName: 'POST' }, start);
   return res;
 }

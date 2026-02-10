@@ -101,20 +101,7 @@ const StudentHomeDashboard: React.FC<StudentHomeDashboardProps> = () => {
     if (activeTab === 'profile') return <ProfilePage />;
     if (activeTab === 'tests') return <TestsTab subject={subject} grade={profile?.grade ?? undefined} board={profile?.board ?? undefined} />;
     if (activeTab === 'notes') return <NotesTab />;
-    if (activeTab === 'doubts') return (
-      <DoubtsTab
-        onAskQuestion={(question, questionSubject) => {
-          // When user asks a question from Doubts tab, switch to home (chat) and send
-          setSubject(questionSubject || 'general');
-          setActiveTab('home');
-          // Add user message to chat
-          setMessages((prev) => [
-            ...prev,
-            { id: String(Date.now()) + '-u', from: 'user' as const, text: question }
-          ]);
-        }}
-      />
-    );
+    if (activeTab === 'doubts') return <DoubtsTab />;
 
     // Home tab - New design per PRD with HomeTab component and chat access
     return (

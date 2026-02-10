@@ -36,23 +36,31 @@ interface TestAttempt {
   studentId: string;
 }
 
+export interface DifficultyFeedback {
+  changed: boolean;
+  newDifficulty: string;
+  humanReason: string;
+  direction: 'up' | 'down' | 'same';
+}
+
 /**
  * Called after test grading to adjust the student's preferred difficulty
  * using the deterministic difficulty tuning engine.
+ * Returns feedback for the UI to display.
  */
 export async function adjustDifficultyAfterTest(
   userId: string,
   attempt: TestAttempt,
   result: GradingResult,
-): Promise<void> {
+): Promise<DifficultyFeedback | null> {
   const user = await prisma.user.findUnique({
     where: { id: userId },
     select: { grade: true, subjects: true },
   });
-  if (!user?.grade) return;
+  if (!user?.grade) return null;
 
   const gradeNum = parseInt(String(user.grade), 10);
-  if (isNaN(gradeNum) || gradeNum < 1 || gradeNum > 12) return;
+  if (isNaN(gradeNum) || gradeNum < 1 || gradeNum > 12) return null;
 
   // Get the subject from the test questions
   const aq = await prisma.attemptQuestion.findFirst({
@@ -108,9 +116,17 @@ export async function adjustDifficultyAfterTest(
     humanReason: adjustment.humanReason,
   });
 
-  if (!adjustment.changed) return;
-
+  const directionLabel = adjustment.direction > 0 ? 'up' : adjustment.direction < 0 ? 'down' : 'same';
   const newPrismaDifficulty = ENGINE_TO_PRISMA[adjustment.newDifficulty] ?? 'medium';
+
+  if (!adjustment.changed) {
+    return {
+      changed: false,
+      newDifficulty: newPrismaDifficulty,
+      humanReason: adjustment.humanReason,
+      direction: directionLabel as 'up' | 'down' | 'same',
+    };
+  }
 
   if (pref) {
     await prisma.studentContentPreference.update({
@@ -127,4 +143,11 @@ export async function adjustDifficultyAfterTest(
       },
     });
   }
+
+  return {
+    changed: true,
+    newDifficulty: newPrismaDifficulty,
+    humanReason: adjustment.humanReason,
+    direction: directionLabel as 'up' | 'down' | 'same',
+  };
 }
