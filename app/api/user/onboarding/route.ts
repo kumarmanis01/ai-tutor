@@ -4,6 +4,7 @@ import { formatErrorForResponse } from '@/lib/errorResponse';
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSessionForHandlers } from '@/lib/session';
 import { prisma } from '@/lib/prisma';
+import { getDailyTask } from '@/lib/dailyHabit';
 
 export async function POST(req: NextRequest) {
   const start = Date.now();
@@ -62,6 +63,33 @@ export async function POST(req: NextRequest) {
       res = NextResponse.json({ error: 'validation_error', fieldErrors }, { status: 400 });
       logger.logAPI(req, res, { className: 'UserOnboardingAPI', methodName: 'POST' }, start);
       return res;
+    }
+
+    // Server-side validation: verify subjects exist for the selected board+grade
+    if (subjects && subjects.length > 0 && board && grade) {
+      try {
+        const validSubjects = await prisma.subjectDef.findMany({
+          where: {
+            class: {
+              board: { slug: { equals: board, mode: 'insensitive' } },
+              grade: Number(grade),
+            },
+            lifecycle: 'active',
+          },
+          select: { name: true },
+        });
+        const validNames = new Set(validSubjects.map((s) => s.name.toLowerCase()));
+        const invalid = subjects.filter((s) => !validNames.has(s.toLowerCase()));
+        if (invalid.length > 0) {
+          fieldErrors.subjects = `Invalid subjects for ${board} grade ${grade}: ${invalid.join(', ')}`;
+          res = NextResponse.json({ error: 'validation_error', fieldErrors }, { status: 400 });
+          logger.logAPI(req, res, { className: 'UserOnboardingAPI', methodName: 'POST' }, start);
+          return res;
+        }
+      } catch (valErr) {
+        // Non-blocking: if validation query fails, log and continue
+        logger.warn('/api/user/onboarding: subject validation query failed', { className: 'api.user.onboarding', methodName: 'POST', error: valErr });
+      }
     }
 
     const updates: any = {};
@@ -176,6 +204,11 @@ export async function POST(req: NextRequest) {
     } catch (evErr) {
       logger.warn('/api/user/onboarding: failed to persist widget token as event', { className: 'api.user.onboarding', methodName: 'POST', error: evErr });
     }
+
+    // Trigger initial learning path generation (non-blocking)
+    getDailyTask(updatedUser.id).catch((err) => {
+      logger.warn('/api/user/onboarding: failed to seed initial daily task', { className: 'api.user.onboarding', methodName: 'POST', error: err });
+    });
 
     res = NextResponse.json({ ok: true, user: { id: updatedUser.id, name: updatedUser.name, phone: updatedUser.phone } });
     logger.logAPI(req, res, { className: 'UserOnboardingAPI', methodName: 'POST' }, start);

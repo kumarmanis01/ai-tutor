@@ -44,11 +44,14 @@ interface EnhancedNoteContent {
  * and new enhanced schema (introduction/sections/keyTerms/etc)
  */
 function transformNoteToLesson(
-  noteContent: { title?: string; content?: EnhancedNoteContent },
+  noteContent: { title?: string; content?: EnhancedNoteContent } & Partial<EnhancedNoteContent>,
   chapterName: string,
   topicName: string
 ) {
-  const content = noteContent?.content || {}
+  // Support both wrapped { content: { summary, sections, ... } } and flat { summary, sections, ... }
+  const content: EnhancedNoteContent = noteContent?.content && typeof noteContent.content === 'object'
+    ? noteContent.content
+    : (noteContent as EnhancedNoteContent) ?? {}
   
   // Detect if using new enhanced schema (has 'sections' or 'introduction')
   const isEnhancedSchema = !!(content.sections || content.introduction)

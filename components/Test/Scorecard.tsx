@@ -1,21 +1,6 @@
-/**
- * FILE OBJECTIVE:
- * - Display test results with instant feedback including explanations for each question.
- *
- * LINKED UNIT TEST:
- * - tests/unit/components/Test/Scorecard.spec.ts
- *
- * COPILOT INSTRUCTIONS FOLLOWED:
- * - /docs/COPILOT_GUARDRAILS.md
- * - .github/copilot-instructions.md
- *
- * EDIT LOG:
- * - 2026-02-04 | claude | enhanced with QuestionFeedback and explanations for MVP
- */
-
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import QuestionFeedback from './QuestionFeedback';
 
 interface GradedQuestion {
@@ -31,35 +16,65 @@ interface GradedQuestion {
   choices?: Array<{ key: string; label: string }>;
 }
 
+interface DifficultyFeedback {
+  changed: boolean;
+  newDifficulty: string;
+  humanReason: string;
+  direction: 'up' | 'down' | 'same';
+}
+
 interface ScorecardResult {
   scorePercent?: number;
   earnedPoints?: number;
   totalPoints?: number;
   graded?: GradedQuestion[];
+  difficultyFeedback?: DifficultyFeedback | null;
 }
 
 /**
  * Scorecard
  *
  * Displays summary of grading results returned by `/api/tests/submit`.
- * Now includes instant feedback with explanations for each question.
+ * Includes difficulty adjustment feedback and skill gap analysis.
  */
 export default function Scorecard(props: { result: ScorecardResult }) {
   const r = props.result ?? {};
   const [showDetails, setShowDetails] = useState(true);
-  
-  const graded = r.graded ?? [];
+
+  const graded = useMemo(() => r.graded ?? [], [r.graded]);
   const correctCount = graded.filter((g) => g.correct).length;
   const partialCount = graded.filter((g) => g.partial && !g.correct).length;
   const wrongCount = graded.length - correctCount - partialCount;
 
-  // Calculate performance message
   const scorePercent = r.scorePercent ?? 0;
-  const performanceMessage = scorePercent >= 80 
-    ? '🎉 Excellent work!' 
-    : scorePercent >= 60 
-    ? '👍 Good job! Keep practicing.' 
-    : '💪 Keep learning! Review the explanations below.';
+  const performanceMessage = scorePercent >= 80
+    ? 'Excellent work!'
+    : scorePercent >= 60
+    ? 'Good job! Keep practicing.'
+    : 'Keep learning! Review the explanations below.';
+
+  // Skill gap analysis: group wrong answers by question text patterns
+  const skillGaps = useMemo(() => {
+    const wrong = graded.filter((g) => !g.correct && !g.partial);
+    if (wrong.length === 0) return [];
+
+    // Deduplicate topics from wrong answers
+    const topics = new Map<string, number>();
+    for (const q of wrong) {
+      const text = (q.questionText ?? '').toLowerCase();
+      // Extract likely topic keywords (first few meaningful words)
+      const words = text.replace(/[^a-z\s]/g, '').split(/\s+/).filter((w) => w.length > 3).slice(0, 3);
+      const topicKey = words.join(' ') || 'general concepts';
+      topics.set(topicKey, (topics.get(topicKey) ?? 0) + 1);
+    }
+
+    return Array.from(topics.entries())
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 3)
+      .map(([topic, count]) => ({ topic, count }));
+  }, [graded]);
+
+  const diffFeedback = r.difficultyFeedback;
 
   return (
     <div className="mt-4 space-y-4">
@@ -70,7 +85,7 @@ export default function Scorecard(props: { result: ScorecardResult }) {
           <h3 className="text-xl font-bold">Test Complete!</h3>
           <p className="text-indigo-100 mt-1">{performanceMessage}</p>
         </div>
-        
+
         {/* Score Details */}
         <div className="p-6">
           <div className="flex items-center justify-center gap-8">
@@ -88,7 +103,7 @@ export default function Scorecard(props: { result: ScorecardResult }) {
               <div className="text-sm text-gray-500 dark:text-gray-400">Points</div>
             </div>
           </div>
-          
+
           {/* Quick Stats */}
           <div className="mt-4 flex justify-center gap-6 text-sm">
             <div className="flex items-center gap-1.5">
@@ -108,6 +123,54 @@ export default function Scorecard(props: { result: ScorecardResult }) {
           </div>
         </div>
       </div>
+
+      {/* Difficulty Adjustment Feedback */}
+      {diffFeedback && (
+        <div className={`rounded-lg border px-4 py-3 ${
+          diffFeedback.direction === 'up'
+            ? 'border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-900/20'
+            : diffFeedback.direction === 'down'
+            ? 'border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-900/20'
+            : 'border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-900/20'
+        }`}>
+          <div className="flex items-center gap-2">
+            <span className="text-lg">
+              {diffFeedback.direction === 'up' ? '\u2B06\uFE0F' : diffFeedback.direction === 'down' ? '\u2B07\uFE0F' : '\u2796'}
+            </span>
+            <div>
+              <p className="text-sm font-medium text-gray-900 dark:text-white">
+                {diffFeedback.changed
+                  ? `Difficulty adjusted to ${diffFeedback.newDifficulty}`
+                  : `Staying at ${diffFeedback.newDifficulty} difficulty`}
+              </p>
+              <p className="text-xs text-gray-600 dark:text-gray-400 mt-0.5">
+                {diffFeedback.humanReason}
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Skill Gap Analysis */}
+      {skillGaps.length > 0 && (
+        <div className="rounded-lg border border-orange-200 dark:border-orange-800 bg-orange-50 dark:bg-orange-900/20 px-4 py-3">
+          <h4 className="text-sm font-semibold text-gray-900 dark:text-white mb-2">
+            Areas to improve
+          </h4>
+          <ul className="space-y-1">
+            {skillGaps.map((gap, i) => (
+              <li key={i} className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+                <span className="w-1.5 h-1.5 rounded-full bg-orange-400 flex-shrink-0"></span>
+                <span className="capitalize">{gap.topic}</span>
+                <span className="text-xs text-gray-500">({gap.count} {gap.count === 1 ? 'question' : 'questions'} missed)</span>
+              </li>
+            ))}
+          </ul>
+          <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+            Try reviewing these topics in your notes before your next practice.
+          </p>
+        </div>
+      )}
 
       {/* Question Breakdown Toggle */}
       <button

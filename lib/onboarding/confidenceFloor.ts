@@ -16,7 +16,7 @@
  * - 2026-02-04 | claude | created confidence floor system
  */
 
-import type { Grade } from '@/lib/ai/prompts/schemas';
+import type { Grade as _Grade } from '@/lib/ai/prompts/schemas';
 
 // ============================================================================
 // TYPES & ENUMS

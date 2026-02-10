@@ -64,7 +64,20 @@ export function WeeklyProgressSnapshot() {
       </div>
 
       {/* Stats Grid - Encouraging metrics, no ranks */}
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-3 gap-3">
+        {/* Topics Completed */}
+        <div className="bg-gradient-to-br from-green-500/10 to-green-500/5 rounded-lg p-3 border border-green-500/10">
+          <div className="flex items-center gap-2 mb-1">
+            <span className="text-sm text-muted-foreground">Topics</span>
+          </div>
+          <div className="flex items-baseline gap-1">
+            <span className="text-2xl font-bold text-foreground">
+              {progress?.topicsCompleted ?? 0}
+            </span>
+            <span className="text-sm text-muted-foreground">done</span>
+          </div>
+        </div>
+
         {/* Sessions */}
         <div className="bg-gradient-to-br from-blue-500/10 to-blue-500/5 rounded-lg p-3 border border-blue-500/10">
           <div className="flex items-center gap-2 mb-1">

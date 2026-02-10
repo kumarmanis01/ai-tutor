@@ -46,6 +46,8 @@ export async function GET() {
       weeklySessionsCount,
       subjectsFromTests,
       subjectsFromSessions,
+      topicsCompleted,
+      topicsStarted,
     ] = await Promise.all([
       // Test results for score calculation
       prisma.testResult.findMany({
@@ -74,6 +76,17 @@ export async function GET() {
         where: { studentId: userId },
         select: { activityType: true },
         distinct: ['activityType'],
+      }),
+      // Topics marked complete (advanced or expert)
+      prisma.studentTopicMastery.count({
+        where: {
+          studentId: userId,
+          masteryLevel: { in: ['advanced', 'expert'] },
+        },
+      }),
+      // Topics started (any mastery record)
+      prisma.studentTopicMastery.count({
+        where: { studentId: userId },
       }),
     ]);
 
@@ -106,6 +119,8 @@ export async function GET() {
       weeklyProgress,
       weeklyGoalMinutes: 120,
       weeklyTestsGoal: 5,
+      topicsCompleted,
+      topicsStarted,
     });
   } catch (error) {
     logger.error('Error fetching progress:', error);

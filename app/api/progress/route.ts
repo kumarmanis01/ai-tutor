@@ -64,7 +64,7 @@ export async function GET(req: NextRequest) {
     questionsAttempted: p.questionsAttempted,
     lastAttemptedAt: p.lastAttemptedAt?.toISOString(),
     isCompleted: p.masteryLevel === 'expert' || p.masteryLevel === 'advanced',
-    isStarted: p.questionsAttempted > 0 || p.masteryLevel !== 'beginner',
+    isStarted: true, // record exists → user has interacted with this topic
   }));
 
   res = NextResponse.json({ progress: result });
@@ -111,7 +111,7 @@ export async function POST(req: NextRequest) {
         topicId,
         subject: subject || null,
         chapter: chapter || null,
-        masteryLevel: 'beginner',
+        masteryLevel: action === 'complete' ? 'advanced' : 'beginner',
         accuracy: 0,
         questionsAttempted: 0,
         lastAttemptedAt: new Date(),

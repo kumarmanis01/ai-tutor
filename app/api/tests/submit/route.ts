@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { getServerSessionForHandlers } from '@/lib/session';
 import { applyGrading, SubmitPayload, updateTopicMastery } from '@/lib/tests';
 import { updateLearningProfile } from '@/lib/recommendations/engine';
+import { adjustDifficultyAfterTest } from '@/lib/personalization/adaptDifficulty';
 import { logger } from '@/lib/logger';
 
 export const dynamic = 'force-dynamic';
@@ -54,8 +55,20 @@ export async function POST(req: Request) {
       error: err,
     });
   });
-  
-  res = NextResponse.json({ attemptId: attempt.id, ...result });
+
+  // Adjust difficulty based on performance (awaited so we can include feedback)
+  let difficultyFeedback = null;
+  try {
+    difficultyFeedback = await adjustDifficultyAfterTest(user.id, attempt, result);
+  } catch (err) {
+    logger.error('TestsSubmitAPI.adjustDifficulty', {
+      userId: user.id,
+      attemptId: attempt.id,
+      error: err,
+    });
+  }
+
+  res = NextResponse.json({ attemptId: attempt.id, ...result, difficultyFeedback });
   logger.logAPI(req, res, { className: 'TestsSubmitAPI', methodName: 'POST' }, start);
   return res;
 }
