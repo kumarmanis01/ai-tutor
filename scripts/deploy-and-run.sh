@@ -8,6 +8,7 @@ set -euo pipefail
 #   ./scripts/deploy-and-run.sh                  # deploy current branch
 #   ./scripts/deploy-and-run.sh --branch main    # deploy specific branch
 #   ./scripts/deploy-and-run.sh --kill            # kill PM2 daemon first
+#   ./scripts/deploy-and-run.sh --seed            # also run seed scripts + Prisma Studio
 #
 # Flow:
 #   1. Git pull (fast-forward only)
@@ -20,7 +21,9 @@ set -euo pipefail
 #   8. Ensure logs, perms, script executability
 #   9. PM2 stop → delete → start all 3 processes
 #  10. PM2 save + startup (systemd persistence)
-#  11. Health check
+#  11. Seed scripts (--seed): mark-admin, seed-ai-content, seed-ai-data
+#  12. Prisma Studio (--seed): launched in background for data validation
+#  13. Health check
 # =============================================================================
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -28,16 +31,23 @@ REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 
 BRANCH=""
 KILL_FLAG=0
+SEED_FLAG=0
+ADMIN_EMAIL="manish.mcaipu@gmail.com"
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --kill)          KILL_FLAG=1; shift ;;
+    --seed)          SEED_FLAG=1; shift ;;
+    --admin-email)   ADMIN_EMAIL="$2"; shift 2 ;;
+    --admin-email=*) ADMIN_EMAIL="${1#*=}"; shift ;;
     --branch)        BRANCH="$2"; shift 2 ;;
     --branch=*)      BRANCH="${1#*=}"; shift ;;
     -h|--help)
-      echo "Usage: $0 [--branch BRANCH] [--kill]"
-      echo "  --branch BRANCH   checkout and pull this branch (default: current)"
-      echo "  --kill             kill PM2 daemon before restarting"
+      echo "Usage: $0 [--branch BRANCH] [--kill] [--seed] [--admin-email EMAIL]"
+      echo "  --branch BRANCH       checkout and pull this branch (default: current)"
+      echo "  --kill                 kill PM2 daemon before restarting"
+      echo "  --seed                 run seed scripts + Prisma Studio after deploy"
+      echo "  --admin-email EMAIL    email for mark-admin (default: manish.mcaipu@gmail.com)"
       exit 0 ;;
     *) echo "Unknown arg: $1"; exit 1 ;;
   esac
@@ -206,9 +216,45 @@ pm2 set pm2-logrotate:retain 14 2>/dev/null || true
 sudo pm2 startup systemd -u "$(whoami)" --hp "$HOME" 2>/dev/null || true
 
 # ─────────────────────────────────────────────────────────────────────────────
-# 11. HEALTH CHECK
+# 11. SEED SCRIPTS (optional, --seed flag)
 # ─────────────────────────────────────────────────────────────────────────────
-step "11/11 — Health check"
+if [ "${SEED_FLAG}" -eq 1 ]; then
+  step "11/13 — Seed scripts (mark-admin + seed-ai-content + seed-ai-data)"
+
+  # 11a. Mark admin user
+  if [ -f "${SCRIPT_DIR}/mark-admin.cjs" ]; then
+    echo "  Running mark-admin for ${ADMIN_EMAIL} ..."
+    node "${SCRIPT_DIR}/mark-admin.cjs" "${ADMIN_EMAIL}" || echo "  WARN: mark-admin failed (user may not exist yet)"
+  fi
+
+  # 11b. Seed academic taxonomy (boards, classes, subjects)
+  if [ -f "${SCRIPT_DIR}/seed-ai-content.cjs" ]; then
+    echo "  Running seed-ai-content ..."
+    node "${SCRIPT_DIR}/seed-ai-content.cjs"
+  fi
+
+  # 11c. Seed dummy AI-generated content (chapters, topics, notes, questions)
+  if [ -f "${SCRIPT_DIR}/seed-ai-data.cjs" ]; then
+    echo "  Running seed-ai-data ..."
+    node "${SCRIPT_DIR}/seed-ai-data.cjs"
+  fi
+
+  # ───────────────────────────────────────────────────────────────────────────
+  # 12. PRISMA STUDIO (optional, background)
+  # ───────────────────────────────────────────────────────────────────────────
+  step "12/13 — Prisma Studio (background on port 5555)"
+  npx prisma studio --port 5555 &
+  PRISMA_STUDIO_PID=$!
+  echo "  Prisma Studio started (PID ${PRISMA_STUDIO_PID}) → http://localhost:5555"
+else
+  echo
+  echo "  (skipping seed scripts — pass --seed to enable)"
+fi
+
+# ─────────────────────────────────────────────────────────────────────────────
+# 13. HEALTH CHECK
+# ─────────────────────────────────────────────────────────────────────────────
+step "13/13 — Health check"
 echo "Waiting 5s for processes to stabilize..."
 sleep 5
 
@@ -242,3 +288,10 @@ echo "  pm2 logs ai-tutor-web --lines 50"
 echo "  pm2 logs content-engine-worker --lines 50"
 echo "  pm2 logs ai-tutor-scheduler --lines 50"
 echo "  pm2 monit"
+if [ "${SEED_FLAG}" -eq 1 ]; then
+  echo ""
+  echo "Seed & data tools:"
+  echo "  Prisma Studio  → http://localhost:5555"
+  echo "  Re-seed data   → node scripts/seed-ai-data.cjs"
+  echo "  Mark admin     → node scripts/mark-admin.cjs <email>"
+fi

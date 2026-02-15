@@ -73,6 +73,7 @@
     "render:diagrams": "npx @mermaid-js/mermaid-cli -i docs/diagrams/submit-enqueue.mmd -o docs/diagrams/submit-enqueue.png && npx @mermaid-js/mermaid-cli -i docs/diagrams/worker-claim-execute.mmd -o docs/diagrams/worker-claim-execute.png && npx @mermaid-js/mermaid-cli -i docs/diagrams/reconciler-aggregation.mmd -o docs/diagrams/reconciler-aggregation.png",
     "test:unit": "cross-env NODE_OPTIONS=--max-old-space-size=4096 jest --runInBand",
     "orchestrator:start": "ts-node -r tsconfig-paths/register worker/orchestrator.ts",
+    "seed-ai-data": "node scripts/seed-ai-data.cjs",
     "seed-db-ai-content-infra": "node -r ts-node/register scripts/seed-database.ts",
     "reset-db-ai-content-infra": "node -r ts-node/register scripts/reset-remote-db.ts",
     "seed-and-reset-db-ai-content-infra": "npm run seed-db-ai-content-infra && npm run reset-db-ai-content-infra",
