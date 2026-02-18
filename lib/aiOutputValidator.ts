@@ -1,4 +1,6 @@
 import Ajv from 'ajv'
+import { ZodError } from 'zod'
+import zodSchemas from './ai/prompts/schemas'
 
 export class ValidationError extends Error { public type: string; public details?: any; constructor(type: string, message: string, details?: any) { super(message); this.name = 'ValidationError'; this.type = type; this.details = details } }
 export class SchemaInvalidError extends ValidationError { constructor(message: string, details?: any) { super('SCHEMA_INVALID', message, details) } }
@@ -8,40 +10,20 @@ export class ContextMismatchError extends ValidationError { constructor(message:
 
 const ajv = new Ajv({ allErrors: true } as any)
 
-// Basic schemas for job types
-// Must match the JSON schema requested in prompts/notes.md
-const notesSchema = {
+// Keep lightweight AJV validators as fallback for older prompt shapes
+const legacyNotesSchema = {
   type: 'object',
-  properties: {
-    title: { type: 'string' },
-    notes: { type: 'string' },
-    summary: { type: 'string' },
-  },
+  properties: { title: { type: 'string' }, notes: { type: 'string' }, summary: { type: 'string' } },
   required: ['title', 'notes']
 }
-
-const questionsSchema = {
+const legacyQuestionsSchema = {
   type: 'object',
-  properties: {
-    difficulty: { type: 'string' },
-    questions: {
-      type: 'array',
-      items: {
-        type: 'object',
-        properties: {
-          question: { type: 'string' },
-          answer: { type: 'string' },
-          explanation: { type: 'string' }
-        },
-        required: ['question', 'answer']
-      }
-    }
-  },
+  properties: { difficulty: { type: 'string' }, questions: { type: 'array' } },
   required: ['questions']
 }
 
-const validateNotes = ajv.compile(notesSchema as any)
-const validateQuestions = ajv.compile(questionsSchema as any)
+const validateLegacyNotes = ajv.compile(legacyNotesSchema as any)
+const validateLegacyQuestions = ajv.compile(legacyQuestionsSchema as any)
 
 // Only flag patterns that clearly indicate stub/placeholder content, not legitimate
 // educational phrases like "Introduction to Carbon Compounds" or "students will learn".
@@ -78,17 +60,37 @@ function scanForPlaceholders(obj: any): string | null {
 
 export function validateOrThrow(parsed: any, ctx: { jobType: string, language?: string, difficulty?: string, subject?: string, topic?: string, grade?: number }) {
   if (!parsed) throw new SchemaInvalidError('empty_response')
-
-  // Schema validation
-  if (ctx.jobType === 'notes') {
-    const ok = validateNotes(parsed)
-    if (!ok) throw new SchemaInvalidError('notes_schema_invalid', validateNotes.errors)
-  } else if (ctx.jobType === 'questions' || ctx.jobType === 'tests' || ctx.jobType === 'assemble') {
-    const ok = validateQuestions(parsed)
-    if (!ok) throw new SchemaInvalidError('questions_schema_invalid', validateQuestions.errors)
-  } else {
-    // unknown job types: fail safe
-    throw new SchemaInvalidError('jobtype_unknown')
+  // Schema validation: prefer Zod strict schemas for new prompt types
+  try {
+    if (ctx.jobType === 'notes') {
+      zodSchemas.NoteSchema.parse(parsed)
+    } else if (ctx.jobType === 'questions' || ctx.jobType === 'tests') {
+      zodSchemas.QuestionsSchema.parse(parsed)
+    } else if (ctx.jobType === 'bilingual') {
+      zodSchemas.BilingualNotesSchema.parse(parsed)
+    } else if (ctx.jobType === 'syllabus') {
+      zodSchemas.SyllabusSchema.parse(parsed)
+    } else if (ctx.jobType === 'chapters') {
+      zodSchemas.ChaptersArraySchema.parse(parsed)
+    } else if (ctx.jobType === 'assemble') {
+      zodSchemas.AssembleSchema.parse(parsed)
+    } else {
+      // Fallback to legacy Ajv validators for older flows
+      if (ctx.jobType === 'notes') {
+        const ok = validateLegacyNotes(parsed)
+        if (!ok) throw new SchemaInvalidError('notes_schema_invalid', validateLegacyNotes.errors)
+      } else if (ctx.jobType === 'questions' || ctx.jobType === 'tests' || ctx.jobType === 'assemble') {
+        const ok = validateLegacyQuestions(parsed)
+        if (!ok) throw new SchemaInvalidError('questions_schema_invalid', validateLegacyQuestions.errors)
+      } else {
+        throw new SchemaInvalidError('jobtype_unknown')
+      }
+    }
+  } catch (zErr: any) {
+    if (zErr instanceof ZodError) {
+      throw new SchemaInvalidError('zod_schema_invalid', zErr.errors)
+    }
+    throw zErr
   }
 
   // Placeholder detection

@@ -70,22 +70,41 @@ export function NotesFiltered() {
       ) : (
         <div className="space-y-2">
           {notes.map((note) => (
-            <button
+            <div
               key={note.id}
-              onClick={() => handleNoteClick(note.id)}
-              className="w-full flex items-center justify-between px-3 py-3 border rounded hover:bg-muted/50 active:scale-[0.98] transition-all text-left"
+              className="w-full flex items-center justify-between px-3 py-3 border rounded hover:bg-muted/50 active:scale-[0.98] transition-all"
             >
-              <div className="flex items-center gap-3">
+              <button
+                onClick={() => handleNoteClick(note.id)}
+                className="flex-1 text-left flex items-center gap-3"
+                aria-label={`Open note ${note.title}`}
+              >
                 <span className="text-lg">📝</span>
                 <div>
                   <span className="font-medium">{note.title}</span>
                   <div className="text-xs text-muted-foreground mt-0.5">
-                    {note.language === 'en' ? 'English' : 'Hindi'} • v{note.version}
+                    {note.language === 'en' ? 'English' : 'Hindi'}{note.version ? ` • v${note.version}` : ''}
                   </div>
                 </div>
+              </button>
+
+              {/* Practice CTA - navigates to Practice/tests page using topicId when available */}
+              <div className="ml-3 flex-shrink-0">
+                <button
+                  onClick={() => {
+                    const topicId = (note as any).topicId || (note as any).topic || '';
+                    const params = new URLSearchParams();
+                    if (topicId) params.set('topicId', topicId);
+                    // Prefer standalone practice page for full practice experience
+                    window.location.assign(`/tests?${params.toString()}`);
+                  }}
+                  className="px-3 py-2 bg-primary/10 hover:bg-primary/20 text-primary text-sm font-medium rounded-md"
+                  aria-label={`Practice for ${note.title}`}
+                >
+                  Practice →
+                </button>
               </div>
-              <span className="text-primary">→</span>
-            </button>
+            </div>
           ))}
         </div>
       )}

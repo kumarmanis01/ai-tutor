@@ -124,6 +124,14 @@ export function TodaysLearningCard({ onStartLearning }: TodaysLearningCardProps)
     if (onStartLearning && task.topicId) {
       onStartLearning(task.topicId);
     }
+    // If the task is a practice task, route to the Practice/tests page for topic-specific practice
+    if (task.taskType === 'practice' || (task as any).hasPractice) {
+      const topicId = task.topicId ?? (task as any).topicId ?? '';
+      const params = topicId ? `?topicId=${encodeURIComponent(topicId)}` : '';
+      router.push(`/tests${params}`);
+      return;
+    }
+
     if (task.topicId) {
       router.push(`/learn/${task.topicId}`);
     }

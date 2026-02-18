@@ -33,15 +33,31 @@ export function NotesRecentlyAdded() {
       ) : (
         <div className="space-y-2">
           {recent.map((n) => (
-            <button 
-              key={n.id} 
-              onClick={() => openNote(n)}
-              className="w-full px-3 py-2 border rounded text-left flex items-center gap-2 hover:bg-muted/50 active:scale-[0.98] transition-transform"
-            >
-              <span className="text-lg">🆕</span>
-              <span className="flex-1 truncate text-sm">{n.title}</span>
-              <span className="text-primary">→</span>
-            </button>
+            <div key={n.id} className="w-full flex items-center gap-2 px-1">
+              <button
+                onClick={() => openNote(n)}
+                className="flex-1 px-3 py-2 border rounded text-left flex items-center gap-2 hover:bg-muted/50 active:scale-[0.98] transition-transform"
+                aria-label={`Open recent note ${n.title}`}
+              >
+                <span className="text-lg">🆕</span>
+                <span className="flex-1 truncate text-sm">{n.title}</span>
+              </button>
+
+              <div className="flex-shrink-0">
+                <button
+                  onClick={() => {
+                    const topicId = (n as any).topicId || (n as any).topic || '';
+                    const params = new URLSearchParams();
+                    if (topicId) params.set('topicId', topicId);
+                    window.location.assign(`/tests?${params.toString()}`);
+                  }}
+                  className="px-3 py-2 bg-primary/10 hover:bg-primary/20 text-primary text-sm font-medium rounded-md"
+                  aria-label={`Practice for ${n.title}`}
+                >
+                  Practice →
+                </button>
+              </div>
+            </div>
           ))}
         </div>
       )}

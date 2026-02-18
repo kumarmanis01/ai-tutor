@@ -1014,12 +1014,14 @@ model AIContentLog {
   requestBody  Json?
   responseBody Json?
   topicId      String?
+  schemaHash   String?      // prompt/schema fingerprint for idempotency
   createdAt    DateTime     @default(now())
   topicRef     TopicDef?    @relation(fields: [topicId], references: [id])
 
   @@index([promptType])
   @@index([board, grade, subject])
   @@index([createdAt])
+  @@index([promptType, schemaHash])
 }
 
 model SystemSetting {
