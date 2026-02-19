@@ -5,6 +5,7 @@ import Script from 'next/script';
 import ThemeProvider from '@/components/UI/ThemeProvider';
 import OnboardingModal from '@/components/Onboarding/OnboardingModal';
 import { OnboardingProvider, useOnboarding } from '@/context/OnboardingProvider';
+import { usePathname } from 'next/navigation';
 import AlertModal from '@/components/UI/AlertModal';
 
 function AuthAwareLayout({ children }: { children: React.ReactNode }) {
@@ -30,7 +31,7 @@ export default function Providers({ children }: { children: React.ReactNode }) {
           <AuthAwareLayout>{children}</AuthAwareLayout>
           <AlertModal />
           {/* Bind provider state to presentational modal */}
-          <OnboardingHost />
+          <ConditionalOnboardingHost />
         </OnboardingProvider>
       </ThemeProvider>
     </SessionProvider>
@@ -52,4 +53,14 @@ function OnboardingHost() {
       onSave={save}
     />
   );
+}
+
+function ConditionalOnboardingHost() {
+  // Only mount the onboarding modal host on dashboard routes to keep
+  // the public landing page session-agnostic and avoid showing the
+  // onboarding modal to unauthenticated visitors.
+  const pathname = usePathname();
+  const show = typeof pathname === 'string' && pathname.startsWith('/dashboard');
+  if (!show) return null;
+  return <OnboardingHost />;
 }

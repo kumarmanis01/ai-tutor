@@ -17,7 +17,15 @@ export function loadEnv() {
     const req = eval('require') as NodeJS.Require;
     const pkg = req && req('dot' + 'env');
     if (pkg && typeof (pkg as any).config === 'function') {
-      ;(pkg as any).config()
+      try {
+        // Prefer .env when present for local development
+        const p = req('path')
+        const localPath = p.resolve(process.cwd(), '.env')
+        ;(pkg as any).config({ path: localPath })
+      } catch (e) {
+        // Fallback to default behavior
+        ;(pkg as any).config()
+      }
     }
   } catch {
     // Swallow errors: dotenv is optional for local development setups.

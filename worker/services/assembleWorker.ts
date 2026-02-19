@@ -19,6 +19,8 @@
 import { prisma } from '@/lib/prisma.js';
 import { isSystemSettingEnabled } from '@/lib/systemSettings.js';
 import { logger } from '@/lib/logger.js';
+import { renderTemplate } from '@/prompts';
+import { createStartedAIContentLog } from '@/lib/ai/aiContentLogHelper';
 import { JobStatus } from '@/lib/ai-engine/types';
 
 const MIN_QUESTIONS_FOR_APPROVAL = 5;
@@ -77,7 +79,16 @@ export async function handleAssembleJob(jobId: string): Promise<void> {
   const difficulty = job.difficulty || 'medium';
   const language = job.language || 'en';
 
+  // Persist initial AIContentLog for observability (no LLM, but log job start)
+  let aiLog: any = null;
   try {
+    aiLog = await createStartedAIContentLog(prisma, {
+      model: 'none',
+      promptType: 'assemble',
+      language,
+      requestBody: { jobId: job.id },
+      renderer: { schemaHash: null, version: null }
+    });
     const runTxWithRetry = async (work: (tx: any) => Promise<any>, attempts = 3) => {
       let lastErr: any = null;
       for (let i = 0; i < attempts; i++) {
@@ -140,29 +151,13 @@ export async function handleAssembleJob(jobId: string): Promise<void> {
         await tx.jobExecutionLog.create({ data: { jobId: linked.id, event: 'COMPLETED', prevStatus, newStatus: prevStatus, meta: { hydrationJobId: job.id, assembledCount } } });
       }
 
-      // Persist an AIContentLog entry for observability even though no LLM was called
-      try {
-        await tx.aIContentLog.create({
-          data: {
-            model: 'none',
-            promptType: 'assemble',
-            board: null,
-            grade: null,
-            subject: null,
-            topic: null,
-            language: job.language || 'en',
-            tokensIn: null,
-            tokensOut: null,
-            tokensUsed: null,
-            costUsd: 0,
-            success: true,
-            status: 'success',
-            requestBody: { jobId: job.id },
-            responseBody: { assembledCount }
-          }
-        });
-      } catch {
-        // non-fatal
+      // Update AIContentLog as success
+      if (aiLog?.id) {
+        await tx.aIContentLog.update({ where: { id: aiLog.id }, data: {
+          success: true,
+          status: 'success',
+          responseBody: { assembledCount }
+        } });
       }
 
       logger.info('handleAssembleJob: completed', { jobId, topicId, assembledCount });

@@ -1,3 +1,62 @@
+import { z } from 'zod'
+
+export const NoteSchema = z.object({
+  title: z.string(),
+  concept: z.string(),
+  explanation: z.string(),
+  example: z.string(),
+  keyPoints: z.array(z.string()).min(3).max(6),
+  commonMistakes: z.array(z.string()).max(4)
+})
+
+export const QuestionsItemSchema = z.object({
+  question: z.string(),
+  type: z.string(),
+  options: z.array(z.string()).optional(),
+  answer: z.any(),
+  explanation: z.string().optional(),
+  solutionSteps: z.array(z.string()).optional()
+})
+
+export const QuestionsSchema = z.object({
+  questions: z.array(QuestionsItemSchema).min(1)
+})
+
+export const BilingualNotesSchema = z.object({
+  en: NoteSchema.optional(),
+  hi: NoteSchema.optional()
+})
+
+export const TopicSchema = z.object({ title: z.string(), order: z.number() })
+export const ChapterSchema = z.object({ title: z.string(), order: z.number(), topics: z.array(TopicSchema) })
+export const SyllabusSchema = z.object({ chapters: z.array(ChapterSchema) })
+
+export const ChaptersArraySchema = z.array(z.object({
+  title: z.string(),
+  order: z.number(),
+  summary: z.string(),
+  topics: z.array(TopicSchema).min(3).max(8)
+}))
+
+export const AssembleSchema = z.object({
+  topic: z.string(),
+  grade: z.number(),
+  version: z.string(),
+  content: z.any(),
+  metadata: z.object({ createdBy: z.string().nullable(), createdAt: z.string() })
+})
+
+export type Note = z.infer<typeof NoteSchema>
+export type Questions = z.infer<typeof QuestionsSchema>
+
+export default {
+  NoteSchema,
+  QuestionsSchema,
+  BilingualNotesSchema,
+  SyllabusSchema,
+  ChaptersArraySchema,
+  AssembleSchema
+}
 /**
  * FILE OBJECTIVE:
  * - TypeScript contracts for schema-first prompt architecture.

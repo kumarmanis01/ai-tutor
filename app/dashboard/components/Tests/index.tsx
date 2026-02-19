@@ -13,7 +13,7 @@
 
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { TestsHeader } from './sections/TestsHeader';
 import { TestsHome } from './sections/TestsHome';
 import { TestsProvider, useTests } from './context/TestsProvider';
@@ -86,8 +86,45 @@ function TestsFiltered() {
 function TestsContent({ subject, grade, board }: { subject: string; grade?: string; board?: string }) {
   const { refresh } = useTests();
   React.useEffect(() => { refresh(subject, grade, board); }, [refresh, subject, grade, board]);
+
+  // If the user navigated from Notes, Notes CTA sets `topicId` in query string.
+  // Surface a small unobtrusive banner to indicate this cross-app transition.
+  const [fromNotesTopic, setFromNotesTopic] = useState<string | null>(null);
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const t = params.get('topicId') || params.get('topic');
+      if (t) setFromNotesTopic(t);
+    } catch {
+      /* ignore */
+    }
+  }, []);
+
+  const dismissBanner = () => {
+    setFromNotesTopic(null);
+    if (typeof window !== 'undefined') {
+      try {
+        const url = new URL(window.location.href);
+        url.searchParams.delete('topicId');
+        url.searchParams.delete('topic');
+        window.history.replaceState({}, '', url.toString());
+      } catch {
+        /* ignore */
+      }
+    }
+  };
   return (
     <div className="space-y-6 px-3 sm:px-4 py-4">
+      {fromNotesTopic && (
+        <div className="flex items-center justify-between bg-primary/10 text-primary rounded-md p-2">
+          <div className="flex items-center gap-2 text-sm">
+            <span className="text-lg">🔁</span>
+            <span>Continuing practice from Notes</span>
+          </div>
+          <button onClick={dismissBanner} className="text-sm px-2 py-1 hover:bg-primary/20 rounded">Dismiss</button>
+        </div>
+      )}
       <TestsHeader subject={subject} grade={grade} board={board} />
       <TestsFiltered />
       <TestsHome subject={subject} grade={grade} board={board} />

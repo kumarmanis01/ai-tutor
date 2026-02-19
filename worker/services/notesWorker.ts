@@ -22,6 +22,7 @@ import { parseLlmJson } from '@/lib/llm/sanitizeJson';
 import { validateOrThrow } from '@/lib/aiOutputValidator';
 import fs from 'fs';
 import path from 'path';
+import { renderTemplate } from '@/prompts'
 import { isSystemSettingEnabled } from '@/lib/systemSettings.js';
 import { logger } from '@/lib/logger.js';
 import { JobStatus, ApprovalStatus } from '@/lib/ai-engine/types';
@@ -259,41 +260,38 @@ export async function handleNotesJob(jobId: string): Promise<void> {
   const subjectName = topic.chapter.subject.name;
   const language = job.language || 'en';
 
-  // Calculate version
-  const version = existingApproved
-    ? await getNextVersion({ topicId, language, type: 'note' })
-    : 1;
-
   const studentAge = grade + 5; // Approximate age based on grade
 
-  // Load prompt template from prompts/notes.md and replace placeholders
-  const promptsDir = path.join(process.cwd(), 'prompts');
-  const basePath = path.join(promptsDir, 'base_context.md');
-  const notesTemplatePath = path.join(promptsDir, 'notes.md');
-  let promptTemplate = '';
-  try {
-    const base = fs.existsSync(basePath) ? fs.readFileSync(basePath, 'utf8') + '\n' : '';
-    const tmpl = fs.readFileSync(notesTemplatePath, 'utf8');
-    promptTemplate = base + tmpl;
-  } catch (err: any) {
-    logger.warn('handleNotesJob: failed to load prompt template, falling back to inline prompt', { err: String(err?.message || '') });
-    // fallback to previous inline prompt if template missing
-    promptTemplate = `You are an expert ${board} educator creating study material for Class ${grade} students.\n\nCreate comprehensive, engaging study notes for:\nTopic: ${topic.name}\nSubject: ${subjectName}\nBoard: ${board}\nGrade: ${grade}\nLanguage: ${language}\n\nAUDIENCE: ${grade}th grade students (age ~${studentAge} years)\n\nREQUIREMENTS:\n- Use simple, age-appropriate language\n- Include relatable real-world examples\n- Make abstract concepts concrete\n- Anticipate common student confusions\n- Align strictly to ${board} curriculum standards\n\nOUTPUT: JSON ONLY (no markdown, no explanations outside JSON)\n`;
-  }
+  // Use centralized prompt renderer to produce deterministic prompt and schema fingerprint
+  const rendered = renderTemplate('topic-notes', { topicName: topic.name, grade, maxWords: 400, language: language as any });
+  const prompt = rendered.prompt
 
-  const prompt = promptTemplate
-    .replace(/{chapter_title}/g, topic.chapter?.name || '')
-    .replace(/{topic_title}/g, topic.name)
-    .replace(/{subject}/g, subjectName)
-    .replace(/{grade}/g, String(grade))
-    .replace(/{board}/g, board)
-    .replace(/{language}/g, language);
+  // Use renderer fingerprint as idempotent version when available
+  const version = rendered?.schemaHash ?? (existingApproved ? await getNextVersion({ topicId, language, type: 'note' }) : 1);
+
+  // Persist initial AIContentLog with schemaHash and version for observability before calling LLM
+  try {
+    await prisma.aIContentLog.create({ data: {
+      model: 'pending',
+      promptType: 'notes',
+      board,
+      grade,
+      subject: subjectName,
+      chapter: topic.chapter?.name || null,
+      topic: topic.name,
+      language,
+      success: false,
+      status: 'started',
+      requestBody: { jobId: job.id, renderer: { schemaHash: rendered.schemaHash, version: rendered.version } },
+      responseBody: null
+    } });
+  } catch {}
 
   // Call LLM and attempt to parse JSON with retries/extraction heuristics
   let parsed: any;
   let llmResult: any = null;
   try {
-    const meta = { promptType: 'notes', board, grade, subject: subjectName, topic: topic.name, language };
+    const meta = { promptType: 'notes', board, grade, subject: subjectName, topic: topic.name, language, schemaHash: rendered.schemaHash, promptVersion: rendered.version };
     const res = await callAndParseJSON(prompt, meta, 2);
     parsed = res.parsed;
     llmResult = res.llmResult;

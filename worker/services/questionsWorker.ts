@@ -21,6 +21,7 @@
 import { prisma } from '@/lib/prisma.js';
 import { callLLM } from '@/lib/callLLM.js';
 import { parseLlmJson } from '@/lib/llm/sanitizeJson'
+import { renderTemplate } from '@/prompts'
 import fs from 'fs';
 import path from 'path';
 import { isSystemSettingEnabled } from '@/lib/systemSettings.js';
@@ -200,37 +201,35 @@ JSON Schema:
 `;
 
 
-  try {
-    // Attempt to load an external prompt template for this difficulty
-    let llmResponse: { content: string };
     try {
-      const promptsDir = path.join(process.cwd(), 'prompts');
-      const fileName = `questions.${difficulty}.md`;
-      const templatePath = path.join(promptsDir, fileName);
-      let template = '';
-      if (fs.existsSync(templatePath)) {
-        template = fs.readFileSync(templatePath, 'utf8');
-      }
+      // Use centralized prompt renderer to produce deterministic prompt and schema fingerprint
+      const rendered = renderTemplate('topic-questions', { topicName: topic.name, grade, count: 5, language: language as any });
 
-      const basePath = path.join(promptsDir, 'base_context.md');
-      const base = fs.existsSync(basePath) ? fs.readFileSync(basePath, 'utf8') + '\n' : '';
+      // Persist initial AIContentLog with schemaHash and version for observability before calling LLM
+      try {
+        await prisma.aIContentLog.create({ data: {
+          model: 'pending',
+          promptType: 'questions',
+          board,
+          grade,
+          subject: subjectName,
+          topic: topic.name,
+          language,
+          success: false,
+          status: 'started',
+          requestBody: { jobId, difficulty, renderer: { schemaHash: rendered.schemaHash, version: rendered.version } },
+          responseBody: null
+        } });
+      } catch {}
 
-      const rendered = (base + template)
-        .replace(/{chapter_title}/g, '')
-        .replace(/{topic_title}/g, topic.name)
-        .replace(/{subject}/g, subjectName)
-        .replace(/{grade}/g, String(grade))
-        .replace(/{board}/g, board)
-        .replace(/{language}/g, language);
-
-      // final rendered prompt (base_context.md contains mandatory requirements and tone)
-      const finalPrompt = (rendered || prompt);
-
-      llmResponse = await callLLM({
-        prompt: finalPrompt,
-        meta: { promptType: 'questions', board, grade, subject: subjectName, topic: topic.name, language, difficulty, useRag: true, hydrationJobId: jobId, topicId: topic?.id, suppressLog: true },
+      // call LLM with rendered prompt
+      let llmResponseLocal = await callLLM({
+        prompt: rendered.prompt,
+        meta: { promptType: 'questions', board, grade, subject: subjectName, topic: topic.name, language, difficulty, useRag: true, hydrationJobId: jobId, topicId: topic?.id, suppressLog: true, schemaHash: rendered.schemaHash, promptVersion: rendered.version },
         timeoutMs: Number(process.env.QUESTIONS_LLM_TIMEOUT_MS || 30_000)
       });
+
+      var llmResponse = llmResponseLocal as any;
     } catch {
       // fallback to inline prompt (base_context.md now contains mandatory requirements and tone)
       llmResponse = await callLLM({
@@ -242,17 +241,15 @@ JSON Schema:
     let raw: any;
     try {
       raw = parseLlmJson(llmResponse.content);
-    } catch (err: any) {
+    } catch (err) {
       logger.error('generateQuestionsForDifficulty: failed to parse LLM JSON', { difficulty, topic: topic.name, error: String(err) });
       return { parsed: null, llmResult: llmResponse };
     }
 
+
     return { parsed: raw, llmResult: llmResponse };
-  } catch (err: any) {
-    logger.error('generateQuestionsForDifficulty: failed', { difficulty, topic: topic.name, error: err.message });
-    return null;
+
   }
-}
 
 /**
  * Worker handler for QUESTIONS hydration jobs.
@@ -395,9 +392,14 @@ export async function handleQuestionsJob(jobId: string): Promise<void> {
       const allParsed = difficultyResults.filter((d: any) => d.parsed).map((d: any) => ({ difficulty: d.difficulty, parsed: d.parsed, llmResult: d.llmResult }));
 
       if (allParsed.length > 0) {
-        // compute versions for each difficulty
+        // compute versions for each difficulty — prefer renderer schemaHash for idempotency
         for (const item of allParsed) {
-          (item as any).version = await getNextVersion({ topicId, difficulty: item.difficulty, language, type: 'test' });
+          const candidate = item.llmResult?.meta?.schemaHash || item.llmResult?.schemaHash || null;
+          if (candidate) {
+            (item as any).version = String(candidate);
+          } else {
+            (item as any).version = await getNextVersion({ topicId, difficulty: item.difficulty, language, type: 'test' });
+          }
         }
 
         const runTxWithRetry = async (work: (tx: any) => Promise<any>, attempts = 3) => {
@@ -405,7 +407,7 @@ export async function handleQuestionsJob(jobId: string): Promise<void> {
           for (let i = 0; i < attempts; i++) {
             try {
               return await prisma.$transaction(work);
-            } catch (err: any) {
+            } catch (err) {
               lastErr = err;
               const msg = String(err?.message || '');
               if (/Transaction not found|Transaction API error/i.test(msg)) {
@@ -488,8 +490,8 @@ export async function handleQuestionsJob(jobId: string): Promise<void> {
           results.push({ difficulty: 'unknown' as any, testId: id, questionCount: 0 });
         }
       }
-    } catch (err: any) {
-      logger.error('handleQuestionsJob: failed to persist tests atomically', { jobId, error: err.message });
+      } catch (err) {
+      logger.error('handleQuestionsJob: failed to persist tests atomically', { jobId, error: (err as any)?.message ?? String(err) });
       // mark failure
       await markJobFailed(job.id, 'persistence_failed');
       throw err;

@@ -41,6 +41,8 @@ async function prepareRetrievalContext(meta: any, charLimit = 2000) {
 // Safety: only allow calling LLMs from worker processes. Workers must set
 // `ALLOW_LLM_CALLS=1` in their environment (see worker/bootstrap.ts).
 function ensureWorkerAllowed() {
+  // Allow mock mode anywhere for fast dev/hydration testing
+  if (process.env.LLM_MODE === 'mock') return
   if (process.env.ALLOW_LLM_CALLS !== '1') {
     throw new Error('LLM calls are restricted to worker processes. Set ALLOW_LLM_CALLS=1 in worker runtime.')
   }
@@ -48,6 +50,13 @@ function ensureWorkerAllowed() {
 
 let client: any = null
 function getClient() {
+  if (process.env.LLM_MODE === 'mock') {
+    // Return a minimal dummy client shape used by callers, but real calls are short-circuited.
+    return {
+      chat: { completions: { create: async () => ({ choices: [{ message: { content: '{}' } }], usage: {} }) } },
+      audio: { speech: { create: async () => ({}) } }
+    }
+  }
   if (!client) {
     ensureWorkerAllowed()
     client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
@@ -56,16 +65,36 @@ function getClient() {
 }
 
 export async function createChatCompletion(input: any) {
+  if (process.env.LLM_MODE === 'mock') {
+    return { choices: [{ message: { content: JSON.stringify({ mock: true, input }) } }], usage: {} }
+  }
   const c = getClient()
   return c.chat.completions.create(input)
 }
 
 export async function createSpeech(input: any) {
+  if (process.env.LLM_MODE === 'mock') {
+    return { mock: true }
+  }
   const c = getClient()
   return c.audio.speech.create(input)
 }
 
 export async function callLLM({ prompt, model, meta, timeoutMs }: { prompt: string; model?: string; meta: any; timeoutMs?: number }) {
+  // Fast dev: return deterministic mock response when enabled before any DB/HTTP calls
+  if (process.env.LLM_MODE === 'mock') {
+    const topic = meta?.topic || meta?.topicName || (prompt && prompt.slice(0, 40)) || 'mock-topic'
+    const mockObj = {
+      title: topic,
+      concept: `Concept of ${topic}`,
+      explanation: `Explanation for ${topic}`,
+      example: `Example of ${topic}`,
+      keyPoints: ['Point A', 'Point B'],
+      commonMistakes: ['Mistake A']
+    }
+    const content = JSON.stringify(mockObj)
+    return { content, usage: {}, costUsd: 0, latencyMs: 0, model: 'mock' }
+  }
   ensureWorkerAllowed()
   const client = getClient()
   const HYDRATION_DEBUG = process.env.HYDRATION_DEBUG === '1' || process.env.AI_CONTENT_DEBUG === '1'

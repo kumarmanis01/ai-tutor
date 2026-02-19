@@ -236,7 +236,17 @@ if [ "${SEED_FLAG}" -eq 1 ]; then
   # 11c. Seed dummy AI-generated content (chapters, topics, notes, questions)
   if [ -f "${SCRIPT_DIR}/seed-ai-data.cjs" ]; then
     echo "  Running seed-ai-data ..."
-    node "${SCRIPT_DIR}/seed-ai-data.cjs"
+    # Try Node first; if it fails (Windows or env issues), attempt a PowerShell fallback.
+    if node "${SCRIPT_DIR}/seed-ai-data.cjs"; then
+      :
+    else
+      echo "  WARN: node execution failed — attempting PowerShell fallback"
+      if command -v powershell >/dev/null 2>&1; then
+        powershell -Command "node '${SCRIPT_DIR.replace("'","'\\''")}/seed-ai-data.cjs'" || echo "  ERROR: PowerShell fallback failed"
+      else
+        echo "  ERROR: PowerShell not available; seed-ai-data failed"
+      fi
+    fi
   fi
 
   # ───────────────────────────────────────────────────────────────────────────

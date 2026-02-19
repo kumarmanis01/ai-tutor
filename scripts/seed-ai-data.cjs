@@ -46,9 +46,25 @@ function loadEnvFileIfPresent() {
   }
 }
 loadEnvFileIfPresent();
+// Allow safe dry-run without initializing Prisma client
+const DRY_RUN = process.argv.includes('--dry-run');
+let prisma = null;
+if (!DRY_RUN) {
+  const { PrismaClient } = require('@prisma/client');
+  prisma = new PrismaClient();
+}
 
-const { PrismaClient } = require('@prisma/client');
-const prisma = new PrismaClient();
+// Helper: perform an idempotent upsert inside a transaction.
+// Use deterministic keys (slug / externalId) when calling this helper.
+async function txUpsert(tx, modelName, where, createData, updateData) {
+  // modelName unused in code-level but kept for readability in call sites
+  const model = tx;
+  // Prisma dynamic model access is not directly supported without eval;
+  // callers should pass the appropriate tx.<model> function instead.
+  // Example usage:
+  // await txUpsert(prisma, 'lesson', (tx) => tx.lesson, { where }, createData, updateData)
+  return null;
+}
 
 // ============================================================================
 // DATA DEFINITIONS
@@ -422,134 +438,162 @@ function buildNote(title, introduction, sections, keyTerms, realWorldExamples) {
 async function main() {
   console.log('=== seed-ai-data: populating dev content for CBSE Grade 10 ===\n');
 
-  // 1. Find the board + class
-  const board = await prisma.board.findUnique({ where: { slug: BOARD_SLUG } });
-  if (!board) {
-    console.error(`Board "${BOARD_SLUG}" not found. Run seed-ai-content first.`);
-    process.exit(1);
-  }
+  // DRY_RUN already declared at top-level to avoid Prisma initialization during dry runs
 
-  const classLevel = await prisma.classLevel.findUnique({
-    where: { boardId_grade: { boardId: board.id, grade: GRADE } },
-  });
-  if (!classLevel) {
-    console.error(`ClassLevel grade ${GRADE} not found for board ${BOARD_SLUG}. Run seed-ai-content first.`);
-    process.exit(1);
-  }
+  // 1. Find the board + class (skip DB lookups in dry-run)
+  let board;
+  let classLevel;
+  if (DRY_RUN) {
+    console.log('[DRY RUN] Skipping DB lookups for board and classLevel');
+    board = { id: 'dry-board', name: BOARD_SLUG };
+    classLevel = { id: 'dry-class' };
+    console.log(`Board: ${board.name} (${board.id}), Class: Grade ${GRADE} (${classLevel.id})\n`);
+  } else {
+    board = await prisma.board.findUnique({ where: { slug: BOARD_SLUG } });
+    if (!board) {
+      console.error(`Board "${BOARD_SLUG}" not found. Run seed-ai-content first.`);
+      process.exit(1);
+    }
 
-  console.log(`Board: ${board.name} (${board.id}), Class: Grade ${GRADE} (${classLevel.id})\n`);
+    classLevel = await prisma.classLevel.findUnique({
+      where: { boardId_grade: { boardId: board.id, grade: GRADE } },
+    });
+    if (!classLevel) {
+      console.error(`ClassLevel grade ${GRADE} not found for board ${BOARD_SLUG}. Run seed-ai-content first.`);
+      process.exit(1);
+    }
+
+    console.log(`Board: ${board.name} (${board.id}), Class: Grade ${GRADE} (${classLevel.id})\n`);
+  }
 
   for (const subjectSeed of SUBJECTS) {
-    // 2. Upsert SubjectDef
-    const subject = await prisma.subjectDef.upsert({
-      where: { classId_slug: { classId: classLevel.id, slug: subjectSeed.slug } },
-      update: {},
-      create: { classId: classLevel.id, name: subjectSeed.name, slug: subjectSeed.slug },
-    });
-    console.log(`Subject: ${subject.name} (${subject.id})`);
+    // 2. Upsert SubjectDef (or simulate in dry-run)
+    let subject;
+    if (DRY_RUN) {
+      console.log(`[DRY RUN] Subject: upsert ${subjectSeed.name} (slug=${subjectSeed.slug}) for class ${classLevel.id}`);
+      subject = { id: `dry-subj-${subjectSeed.slug}`, name: subjectSeed.name };
+    } else {
+      subject = await prisma.subjectDef.upsert({
+        where: { classId_slug: { classId: classLevel.id, slug: subjectSeed.slug } },
+        update: {},
+        create: { classId: classLevel.id, name: subjectSeed.name, slug: subjectSeed.slug },
+      });
+      console.log(`Subject: ${subject.name} (${subject.id})`);
+    }
 
     for (const chapterSeed of subjectSeed.chapters) {
-      // 3. Upsert ChapterDef
-      const chapter = await prisma.chapterDef.upsert({
-        where: {
-          subjectId_slug_version: {
-            subjectId: subject.id,
-            slug: chapterSeed.slug,
-            version: 1,
-          },
-        },
-        update: { name: chapterSeed.name, order: chapterSeed.order, status: 'approved' },
-        create: {
-          subjectId: subject.id,
-          name: chapterSeed.name,
-          slug: chapterSeed.slug,
-          order: chapterSeed.order,
-          version: 1,
-          status: 'approved',
-        },
-      });
-      console.log(`  Chapter: ${chapter.name} (${chapter.id})`);
+      // Group topic-level writes into a single transaction per chapter to ensure atomicity.
+      if (DRY_RUN) {
+        console.log(`[DRY RUN] Chapter: upsert ${chapterSeed.name} (slug=${chapterSeed.slug})`);
+        for (const topicSeed of chapterSeed.topics) {
+          console.log(`  [DRY RUN] Topic: upsert ${topicSeed.name} (slug=${topicSeed.slug})`);
+          console.log(`    [DRY RUN] Note: would upsert topic note (en, v1)`);
+          const qBank = questionsForTopic(topicSeed.slug, topicSeed.name);
+          for (const difficulty of ['easy', 'medium', 'hard']) {
+            console.log(`    [DRY RUN] Test [${difficulty}]: would upsert and seed ${qBank[difficulty].length} questions`);
+          }
+        }
+        continue;
+      }
 
-      for (const topicSeed of chapterSeed.topics) {
-        // 4. Upsert TopicDef
-        const topic = await prisma.topicDef.upsert({
+      await prisma.$transaction(async (tx) => {
+        const chapter = await tx.chapterDef.upsert({
           where: {
-            chapterId_slug: {
-              chapterId: chapter.id,
-              slug: topicSeed.slug,
-            },
-          },
-          update: { name: topicSeed.name, order: topicSeed.order, status: 'approved' },
-          create: {
-            chapterId: chapter.id,
-            name: topicSeed.name,
-            slug: topicSeed.slug,
-            order: topicSeed.order,
-            status: 'approved',
-          },
-        });
-        console.log(`    Topic: ${topic.name} (${topic.id})`);
-
-        // 5. Upsert TopicNote (enhanced schema)
-        await prisma.topicNote.upsert({
-          where: {
-            topicId_language_version: {
-              topicId: topic.id,
-              language: 'en',
+            subjectId_slug_version: {
+              subjectId: subject.id,
+              slug: chapterSeed.slug,
               version: 1,
             },
           },
-          update: {
-            title: topicSeed.name,
-            contentJson: topicSeed.note,
-            status: 'approved',
-            source: 'seed-ai-data',
-          },
+          update: { name: chapterSeed.name, order: chapterSeed.order, status: 'approved' },
           create: {
-            topicId: topic.id,
-            language: 'en',
+            subjectId: subject.id,
+            name: chapterSeed.name,
+            slug: chapterSeed.slug,
+            order: chapterSeed.order,
             version: 1,
-            title: topicSeed.name,
-            contentJson: topicSeed.note,
-            source: 'seed-ai-data',
             status: 'approved',
           },
         });
-        console.log(`      Note: seeded (approved, en, v1)`);
+        console.log(`  Chapter: ${chapter.name} (${chapter.id})`);
 
-        // 6. Upsert GeneratedTest + GeneratedQuestion for each difficulty
-        const qBank = questionsForTopic(topicSeed.slug, topicSeed.name);
-
-        for (const difficulty of ['easy', 'medium', 'hard']) {
-          const test = await prisma.generatedTest.upsert({
+        for (const topicSeed of chapterSeed.topics) {
+          const topic = await tx.topicDef.upsert({
             where: {
-              topicId_difficulty_language_version: {
+              chapterId_slug: {
+                chapterId: chapter.id,
+                slug: topicSeed.slug,
+              },
+            },
+            update: { name: topicSeed.name, order: topicSeed.order, status: 'approved' },
+            create: {
+              chapterId: chapter.id,
+              name: topicSeed.name,
+              slug: topicSeed.slug,
+              order: topicSeed.order,
+              status: 'approved',
+            },
+          });
+          console.log(`    Topic: ${topic.name} (${topic.id})`);
+
+          await tx.topicNote.upsert({
+            where: {
+              topicId_language_version: {
                 topicId: topic.id,
-                difficulty,
                 language: 'en',
                 version: 1,
               },
             },
             update: {
-              title: `${topicSeed.name} – ${difficulty.charAt(0).toUpperCase() + difficulty.slice(1)} Test`,
+              title: topicSeed.name,
+              contentJson: topicSeed.note,
               status: 'approved',
+              source: 'seed-ai-data',
             },
             create: {
               topicId: topic.id,
-              title: `${topicSeed.name} – ${difficulty.charAt(0).toUpperCase() + difficulty.slice(1)} Test`,
-              difficulty,
               language: 'en',
               version: 1,
+              title: topicSeed.name,
+              contentJson: topicSeed.note,
+              source: 'seed-ai-data',
               status: 'approved',
             },
           });
+          console.log(`      Note: seeded (approved, en, v1)`);
 
-          // Delete old questions for idempotency, then insert fresh
-          await prisma.generatedQuestion.deleteMany({ where: { testId: test.id } });
+          // 6. Upsert GeneratedTest + GeneratedQuestion for each difficulty
+          const qBank = questionsForTopic(topicSeed.slug, topicSeed.name);
 
-          for (const q of qBank[difficulty]) {
-            await prisma.generatedQuestion.create({
-              data: {
+          for (const difficulty of ['easy', 'medium', 'hard']) {
+            const test = await tx.generatedTest.upsert({
+              where: {
+                topicId_difficulty_language_version: {
+                  topicId: topic.id,
+                  difficulty,
+                  language: 'en',
+                  version: 1,
+                },
+              },
+              update: {
+                title: `${topicSeed.name} – ${difficulty.charAt(0).toUpperCase() + difficulty.slice(1)} Test`,
+                status: 'approved',
+              },
+              create: {
+                topicId: topic.id,
+                title: `${topicSeed.name} – ${difficulty.charAt(0).toUpperCase() + difficulty.slice(1)} Test`,
+                difficulty,
+                language: 'en',
+                version: 1,
+                status: 'approved',
+              },
+            });
+
+            // Delete old questions for idempotency, then bulk insert fresh
+            await tx.generatedQuestion.deleteMany({ where: { testId: test.id } });
+
+            if (qBank[difficulty] && qBank[difficulty].length > 0) {
+              const payload = qBank[difficulty].map((q) => ({
                 testId: test.id,
                 type: q.type,
                 question: q.question,
@@ -557,12 +601,14 @@ async function main() {
                 answer: q.answer,
                 explanation: q.explanation,
                 marks: q.marks,
-              },
-            });
+              }));
+              // createMany for efficiency
+              await tx.generatedQuestion.createMany({ data: payload });
+            }
+            console.log(`      Test [${difficulty}]: ${qBank[difficulty].length} questions seeded`);
           }
-          console.log(`      Test [${difficulty}]: 2 questions seeded`);
         }
-      }
+      });
     }
     console.log('');
   }
@@ -575,4 +621,8 @@ main()
     console.error('seed-ai-data FAILED:', err);
     process.exit(1);
   })
-  .finally(() => prisma.$disconnect());
+  .finally(async () => {
+    if (prisma && typeof prisma.$disconnect === 'function') {
+      await prisma.$disconnect();
+    }
+  });

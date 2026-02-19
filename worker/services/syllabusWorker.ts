@@ -18,8 +18,9 @@
 import { prisma } from '@/lib/prisma.js'
 import { callLLM } from '@/lib/callLLM.js'
 import { parseLlmJson } from '@/lib/llm/sanitizeJson'
-import fs from 'fs'
-import path from 'path'
+import { renderTemplate } from '@/prompts'
+import { createStartedAIContentLog } from '@/lib/ai/aiContentLogHelper'
+import { validateOrThrow } from '@/lib/aiOutputValidator'
 import { toSlug } from '@/lib/slug.js'
 import { isSystemSettingEnabled } from '@/lib/systemSettings.js'
 import { logger } from '@/lib/logger.js'
@@ -111,33 +112,30 @@ export async function handleSyllabusJob(jobId: string) {
   const subjectName = subjectRow?.name || job.subject || ''
   const language = job.language || 'en'
 
-  // Load a syllabus prompt template if available
-  const promptsDir = path.join(process.cwd(), 'prompts')
-  const templatePath = path.join(promptsDir, 'syllabus_worker_prompt.md')
-  // llmResult holds the LLM response and is used below
+  // Use prompt renderer for deterministic prompt and schemaHash
+  const rendered = renderTemplate('syllabus', { board, grade, subject: subjectName, language })
+  const prompt = rendered.prompt
+  // Persist initial AIContentLog with schemaHash/version before LLM call
+  let aiLog: any = null
   let llmResult: any = null
-  // Ensure `prompt` is declared in outer scope so it is available later when
-  // persisting AI logs or performing transactions. Previously it was declared
-  // inside the try block which caused a ReferenceError when referenced below.
-  let prompt = ''
   try {
-    if (fs.existsSync(templatePath)) {
-      prompt = fs.readFileSync(templatePath, 'utf8')
-        .replace(/{{board}}/g, board)
-        .replace(/{{grade}}/g, String(grade))
-        .replace(/{{subject}}/g, subjectName)
-        .replace(/{{language}}/g, language)
-    } else {
-      // fallback to inline prompt if template missing
-      prompt = `You are an expert curriculum designer.\n\nGenerate an academic syllabus strictly aligned to:\nBoard: ${board}\nGrade: ${grade}\nSubject: ${subjectName}\nLanguage: ${language}\n\nRules:\n- Output JSON ONLY\n- No explanations\n- Chapters must be ordered\n- Topics must be ordered\n- Topics must be concise, age-appropriate, and non-overlapping\n- Do NOT include assessments or activities\n- Do NOT include subtopics\n- Do NOT invent extra subjects\n\nJSON Schema:\n{\n  "chapters": [\n    {\n      "title": "string",\n      "order": number,\n      "topics": [\n        { "title": "string", "order": number }\n      ]\n    }\n  ]\n}\n`
-    }
-
+    aiLog = await createStartedAIContentLog(prisma, {
+      model: 'pending',
+      promptType: 'syllabus',
+      board,
+      grade,
+      subject: subjectName,
+      language,
+      requestBody: { jobId: job.id },
+      renderer: { schemaHash: rendered.schemaHash, version: rendered.version }
+    })
+    // LLM call
     llmResult = await callLLM({
       prompt,
-      meta: { promptType: 'syllabus', board, grade, subject: subjectName, language, useRag: true, hydrationJobId: job.id, suppressLog: true },
+      meta: { promptType: 'syllabus', board, grade, subject: subjectName, language, schemaHash: rendered.schemaHash, promptVersion: rendered.version, useRag: true, hydrationJobId: job.id, suppressLog: true },
       timeoutMs: Number(process.env.SYLLABUS_LLM_TIMEOUT_MS || 20_000)
     })
-  } catch (err: any) {
+  } catch (err) {
     const { formatLastError, inferFailureCodeFromMessage } = await import('@/lib/failureCodes');
     const code = inferFailureCodeFromMessage(err?.message || '');
     const le = formatLastError(code, String(err?.message || 'llm_call_failed'));
@@ -158,15 +156,19 @@ export async function handleSyllabusJob(jobId: string) {
   let parsed: any
   try {
     const raw = parseLlmJson(llmResult.content)
-    if (!validateSyllabusShape(raw)) throw new Error('validation_failed')
+    // Strict Zod validation
+    validateOrThrow(raw, { jobType: 'syllabus', language, grade, subject: subjectName })
     parsed = raw
-  } catch (err: any) {
+  } catch (err) {
     logger.error("Failed to parse LLM output in handleSyllabusJob", { jobId: job.id, error: err });
     // mark hydration job failed with parse error
     const { formatLastError, FailureCode } = await import('@/lib/failureCodes');
     const le = formatLastError(FailureCode.PARSE_FAILED, 'invalid_llm_output');
     await prisma.hydrationJob.update({ where: { id: job.id }, data: { status: JobStatus.Failed, lastError: le } })
-
+    // Persist failure AIContentLog
+      if (aiLog?.id) {
+      try { await prisma.aIContentLog.update({ where: { id: aiLog.id }, data: { success: false, status: 'failed', error: le, responseBody: { raw: llmResult?.content } } }) } catch {}
+    }
     // if we discovered a linked ExecutionJob, mark it failed and write a PARSE_FAILED audit entry
     if (linkedExec) {
       try {
@@ -175,11 +177,8 @@ export async function handleSyllabusJob(jobId: string) {
       } catch {
         // ignore logging failures
       }
-      // Persist failure AIContentLog outside transaction since we suppressed auto-logging
-      try { await prisma.aIContentLog.create({ data: { model: llmResult?.model || 'none', promptType: 'syllabus', language: job.language || 'en', success: false, status: 'failed', error: le, requestBody: { jobId: job.id }, responseBody: { raw: llmResult?.content } } }) } catch {}
       throw new Error('invalid_llm_output');
     }
-
     // No linked execution job: return gracefully to avoid crashing the worker process
     return;
   }
@@ -256,23 +255,18 @@ export async function handleSyllabusJob(jobId: string) {
 
     // Short final transaction: persist AIContentLog and mark hydration job completed.
     await runTxWithRetry(async (tx) => {
-      if (typeof tx.aIContentLog?.create === 'function') {
-        await tx.aIContentLog.create({ data: {
+      // Update AIContentLog as success
+      if (aiLog?.id) {
+        await tx.aIContentLog.update({ where: { id: aiLog.id }, data: {
           model: llmResult?.model || 'llm',
-          promptType: 'syllabus',
-          board,
-          grade,
-          subject: subjectName,
-          language: job.language || 'en',
           tokensIn: llmResult?.usage?.prompt_tokens ?? null,
           tokensOut: llmResult?.usage?.completion_tokens ?? null,
           tokensUsed: llmResult?.usage?.total_tokens ?? null,
           costUsd: llmResult?.costUsd ?? null,
           success: true,
           status: 'success',
-          requestBody: { prompt },
           responseBody: { raw: llmResult?.content }
-        } });
+        } })
       }
 
       // Keep root job as Running so the reconciler can drive child levels.
