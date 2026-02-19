@@ -41,7 +41,7 @@ Output JSON Schema (RETURN ONLY valid JSON array):
 Validation Constraints:
 - Return ONLY a JSON array with exactly ${params.chapterCount} chapter objects.
 - Orders must be sequential and start at 1.
-- If unable to produce, return an empty array `[]`.
+- If unable to produce, return an empty array '[]'.
 
 Strict Output Instruction: Return ONLY valid JSON that exactly matches the schema above.`
 }

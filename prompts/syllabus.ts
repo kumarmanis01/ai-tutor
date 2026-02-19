@@ -44,7 +44,8 @@ Output JSON Schema (RETURN ONLY valid JSON):
 Validation Constraints:
 - Return EXACTLY the JSON object matching the schema above. No markdown, no commentary, no extra fields.
 - Chapter and topic orders must be sequential starting at 1.
-- If unable to produce, return `{ "chapters": [] }`.
+// If unable to produce, return the empty-syllabus object as a JSON string.
+- If unable to produce, return '{ "chapters": [] }'.
 
 Strict Output Instruction: Return ONLY valid JSON matching the schema above, nothing else.`
 }

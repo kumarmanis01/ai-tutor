@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
-import { getSessionUserWithSubscription } from '@/lib/session';
+import { requireActiveSession } from '@/lib/auth';
 import LandingPageInteractive from '@/app/landing-page/components/LandingPageInteractive';
 
 export const metadata: Metadata = {
@@ -10,8 +10,8 @@ export const metadata: Metadata = {
 };
 
 export default async function HomePage() {
-  const { user } = await getSessionUserWithSubscription();
-  if (user) {
+  const session = await requireActiveSession();
+  if (session) {
     redirect('/dashboard');
   }
   return <LandingPageInteractive />;

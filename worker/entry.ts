@@ -10,6 +10,7 @@
 
 // Avoid top-level ESM imports so compiled output is less likely to be forced
 // into a CommonJS wrapper when built. Use dynamic imports at runtime.
+import 'dotenv/config'
 
 (async () => {
   try {

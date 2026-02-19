@@ -45,7 +45,7 @@ Notes Schema (for each "en" and "hi"):
 Validation Constraints:
 - Return ONLY a single JSON object with exactly two keys: "en" and "hi".
 - Each language value must match the notes schema above and respect word limits.
-- If unable to produce valid content for a language, set that language value to `{}`.
+- If unable to produce valid content for a language, set that language value to '{}' (an empty object).
 
 Strict Output Instruction: Return ONLY valid JSON with top-level keys "en" and "hi" matching the schema; nothing else.`
 }

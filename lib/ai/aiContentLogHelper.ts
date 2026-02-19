@@ -1,6 +1,5 @@
-import { PrismaClient, Prisma } from '@/lib/prisma.js'
-
-type PrismaLike = PrismaClient | any
+// lightweight helper: accept either a Prisma client-like object or any test stub
+type PrismaLike = any
 
 export async function createStartedAIContentLog(db: PrismaLike, params: {
   model?: string

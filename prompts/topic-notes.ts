@@ -50,7 +50,7 @@ Validation Constraints:
 - Arrays: JSON arrays of plain strings only; respect min/max counts.
 - Be deterministic: do not randomize ordering or phrasing styles.
 - Do not invent external citations or metadata.
-- If unable to produce valid output, return `{}` (an empty JSON object).
+- If unable to produce valid output, return '{}' (an empty JSON object).
 
 Strict Output Instruction: Return ONLY valid JSON that exactly matches the schema above, nothing else.`
 }

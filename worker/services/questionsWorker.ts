@@ -241,17 +241,15 @@ JSON Schema:
     let raw: any;
     try {
       raw = parseLlmJson(llmResponse.content);
-    } catch (err: any) {
+    } catch (err) {
       logger.error('generateQuestionsForDifficulty: failed to parse LLM JSON', { difficulty, topic: topic.name, error: String(err) });
       return { parsed: null, llmResult: llmResponse };
     }
 
+
     return { parsed: raw, llmResult: llmResponse };
-  } catch (err: any) {
-    logger.error('generateQuestionsForDifficulty: failed', { difficulty, topic: topic.name, error: err.message });
-    return null;
+
   }
-}
 
 /**
  * Worker handler for QUESTIONS hydration jobs.
@@ -409,7 +407,7 @@ export async function handleQuestionsJob(jobId: string): Promise<void> {
           for (let i = 0; i < attempts; i++) {
             try {
               return await prisma.$transaction(work);
-            } catch (err: any) {
+            } catch (err) {
               lastErr = err;
               const msg = String(err?.message || '');
               if (/Transaction not found|Transaction API error/i.test(msg)) {
@@ -492,8 +490,8 @@ export async function handleQuestionsJob(jobId: string): Promise<void> {
           results.push({ difficulty: 'unknown' as any, testId: id, questionCount: 0 });
         }
       }
-    } catch (err: any) {
-      logger.error('handleQuestionsJob: failed to persist tests atomically', { jobId, error: err.message });
+      } catch (err) {
+      logger.error('handleQuestionsJob: failed to persist tests atomically', { jobId, error: (err as any)?.message ?? String(err) });
       // mark failure
       await markJobFailed(job.id, 'persistence_failed');
       throw err;

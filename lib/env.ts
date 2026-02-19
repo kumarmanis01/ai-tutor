@@ -18,9 +18,9 @@ export function loadEnv() {
     const pkg = req && req('dot' + 'env');
     if (pkg && typeof (pkg as any).config === 'function') {
       try {
-        // Prefer .env.local when present for local development
+        // Prefer .env when present for local development
         const p = req('path')
-        const localPath = p.resolve(process.cwd(), '.env.local')
+        const localPath = p.resolve(process.cwd(), '.env')
         ;(pkg as any).config({ path: localPath })
       } catch (e) {
         // Fallback to default behavior

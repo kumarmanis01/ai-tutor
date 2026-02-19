@@ -29,9 +29,9 @@ Constraints:
 - Produce exactly ${params.count} questions (no extras).
 - Each item: clear, unambiguous, age-appropriate; avoid trick wording.
 - Options: exactly 4 strings per question.
-- `correctOptionIndex`: integer 0-3 pointing to the correct option.
-- `difficulty`: "easy" | "medium" | "hard".
-- `explanation`: concise (<=80 words). `solutionSteps`: 1-6 ordered steps, each <=30 words.
+- 'correctOptionIndex': integer 0-3 pointing to the correct option.
+- 'difficulty': "easy" | "medium" | "hard".
+- 'explanation': concise (<=80 words). 'solutionSteps': 1-6 ordered steps, each <=30 words.
 - Distractors: plausible and distinct; tie at least one distractor to a common mistake. Do NOT randomize ordering.
 
 Output JSON Schema (RETURN ONLY valid JSON array with exactly ${params.count} entries):
@@ -49,7 +49,7 @@ Output JSON Schema (RETURN ONLY valid JSON array with exactly ${params.count} en
 Validation Constraints:
 - Return ONLY the JSON array described above. No markdown, no commentary, no extra fields.
 - Respect field sizes and counts strictly. Use plain text only.
-- If unable to generate valid output, return `[]` (empty array).
+-- If unable to generate valid output, return '[]' (empty array).
 
 Strict Output Instruction: Return ONLY valid JSON that exactly matches the schema above, nothing else.`
 }

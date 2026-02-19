@@ -117,6 +117,7 @@ export async function handleSyllabusJob(jobId: string) {
   const prompt = rendered.prompt
   // Persist initial AIContentLog with schemaHash/version before LLM call
   let aiLog: any = null
+  let llmResult: any = null
   try {
     aiLog = await createStartedAIContentLog(prisma, {
       model: 'pending',
@@ -134,7 +135,7 @@ export async function handleSyllabusJob(jobId: string) {
       meta: { promptType: 'syllabus', board, grade, subject: subjectName, language, schemaHash: rendered.schemaHash, promptVersion: rendered.version, useRag: true, hydrationJobId: job.id, suppressLog: true },
       timeoutMs: Number(process.env.SYLLABUS_LLM_TIMEOUT_MS || 20_000)
     })
-  } catch (err: any) {
+  } catch (err) {
     const { formatLastError, inferFailureCodeFromMessage } = await import('@/lib/failureCodes');
     const code = inferFailureCodeFromMessage(err?.message || '');
     const le = formatLastError(code, String(err?.message || 'llm_call_failed'));
@@ -156,16 +157,16 @@ export async function handleSyllabusJob(jobId: string) {
   try {
     const raw = parseLlmJson(llmResult.content)
     // Strict Zod validation
-    validateOrThrow(raw, { jobType: 'syllabus', language, board, grade, subject: subjectName })
+    validateOrThrow(raw, { jobType: 'syllabus', language, grade, subject: subjectName })
     parsed = raw
-  } catch (err: any) {
+  } catch (err) {
     logger.error("Failed to parse LLM output in handleSyllabusJob", { jobId: job.id, error: err });
     // mark hydration job failed with parse error
     const { formatLastError, FailureCode } = await import('@/lib/failureCodes');
     const le = formatLastError(FailureCode.PARSE_FAILED, 'invalid_llm_output');
     await prisma.hydrationJob.update({ where: { id: job.id }, data: { status: JobStatus.Failed, lastError: le } })
     // Persist failure AIContentLog
-    if (aiLog?.id) {
+      if (aiLog?.id) {
       try { await prisma.aIContentLog.update({ where: { id: aiLog.id }, data: { success: false, status: 'failed', error: le, responseBody: { raw: llmResult?.content } } }) } catch {}
     }
     // if we discovered a linked ExecutionJob, mark it failed and write a PARSE_FAILED audit entry
