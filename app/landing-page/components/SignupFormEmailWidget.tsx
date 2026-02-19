@@ -47,8 +47,8 @@ const SignupFormWidget = () => {
       name: p.name || (session.user?.name ?? ''),
       email: p.email || (session.user?.email ?? ''),
     }));
-    // Advance to step 3 (collect class/board/subjects) using functional update
-    setStep((s) => (s < 3 ? 3 : s));
+    // Advance to step 2 (collect basic details) using functional update
+    setStep((s) => (s < 2 ? 2 : s));
   }, [session]);
 
   const subjects = [
@@ -244,11 +244,14 @@ const SignupFormWidget = () => {
               <div className="mt-4">
                 <div className="flex items-center justify-center gap-3">
                   <button
-                    onClick={() => setStep(3)}
+                    onClick={() => {
+                      if (!formData.name?.trim()) return toast('Name is required');
+                      handleSubmit();
+                    }}
                     disabled={!formData.name?.trim()}
                     className="px-6 py-2 bg-primary text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    Continue
+                    Start Learning
                   </button>
                   <div className="text-sm text-muted-foreground">Phone: {formData.phone || 'not provided'}</div>
                 </div>
@@ -256,102 +259,7 @@ const SignupFormWidget = () => {
             </div>
           )}
 
-          {step === 3 && (
-            <div className="space-y-6">
-              <div className="text-lg font-semibold">📚 Hey {formData.name || ''}, tell us about your studies</div>
-              <div>
-                <label className="block font-body font-medium text-sm text-foreground mb-2">Which class are you in?</label>
-                <div className="flex flex-wrap gap-2">
-                  {Array.from({ length: 12 }, (_, i) => String(i + 1)).map((num) => (
-                    <button
-                      key={num}
-                      onClick={() => setFormData((p) => ({ ...p, childClass: num }))}
-                      className={`px-3 py-2 rounded-lg border-2 ${formData.childClass === num ? 'border-primary bg-primary/10 text-primary' : 'border-border bg-background'}`}
-                    >
-                      {num}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div>
-                <label className="block font-body font-medium text-sm text-foreground mb-2">Which board?</label>
-                <div className="space-y-2">
-                  {['CBSE', 'ICSE', 'State Board', 'Other'].map((b) => (
-                    <label key={b} className="flex items-center gap-3">
-                      <input
-                        type="radio"
-                        name="board"
-                        checked={formData.board === b}
-                        onChange={() => setFormData((p) => ({ ...p, board: b }))}
-                      />
-                      <span>{b}</span>
-                    </label>
-                  ))}
-                </div>
-              </div>
-
-              <div>
-                <label className="block font-body font-medium text-sm text-foreground mb-2">Preferred language</label>
-                <select
-                  value={formData.preferredLanguage ?? ''}
-                  onChange={(e) => setFormData((p) => ({ ...p, preferredLanguage: e.target.value }))}
-                  className="w-full px-3 py-2 border rounded-md"
-                >
-                  <option value="">Select language</option>
-                  <option value="en">English</option>
-                  <option value="hi">हिंदी</option>
-                </select>
-              </div>
-
-              <div className="flex justify-end">
-                <button
-                  onClick={() => setStep(4)}
-                  disabled={!formData.childClass || !formData.board}
-                  className="px-4 py-2 bg-primary text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  Next Step
-                </button>
-              </div>
-            </div>
-          )}
-
-          {step === 4 && (
-            <div className="space-y-6">
-              <div className="text-lg font-semibold">🎯 What subjects do you need help with?</div>
-              <div className="text-sm text-muted-foreground">Select all that apply:</div>
-              <div className="grid grid-cols-2 gap-3">
-                {subjects.map((subject) => (
-                  <button
-                    key={subject}
-                    onClick={() => handleSubjectToggle(subject)}
-                    className={`px-4 py-2 rounded-lg border-2 transition-all font-body text-sm ${
-                      formData.subjects.includes(subject)
-                        ? 'border-primary bg-primary/10 text-primary'
-                        : 'border-border bg-background text-foreground hover:border-primary/30'
-                    }`}
-                  >
-                    {formData.subjects.includes(subject) ? '☑️ ' : '☐ '} {subject}
-                  </button>
-                ))}
-              </div>
-
-              <div className="flex justify-end">
-                  <button
-                    onClick={() => {
-                      if (!formData.name?.trim()) return toast('Name is required');
-                      if (!formData.childClass) return toast('Please select a class');
-                      // Prepare payload with phone and token
-                      handleSubmit();
-                    }}
-                    disabled={submitting || !formData.childClass || !formData.name?.trim()}
-                    className="px-6 py-2 bg-primary text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    {submitting ? 'Saving...' : 'Start Learning!'}
-                  </button>
-              </div>
-            </div>
-          )}
+          
 
           <div className="mt-6 pt-6 border-t border-border">
             <div className="flex items-center justify-center gap-4 text-xs text-muted-foreground">
