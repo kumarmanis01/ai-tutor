@@ -31,24 +31,22 @@ export default async function StudentHomeDashboardPage() {
     redirect(`/`);
   }
 
-  // Fetch required home data in parallel (server-side)
+  // Fetch required home data in parallel (server-side). Keep responses opaque
+  // and do not compute rule engine logic in the UI.
   const [nextAction, todayGoal, learningSnapshot, dailyPlan] = (await Promise.all([
     fetchJson('/api/home/next-action'),
     fetchJson('/api/home/today-goal'),
     fetchJson('/api/home/learning-snapshot'),
-    fetchJson('/api/home/daily-plan'),
+    fetchJson('/api/home/daily-plan?date=today'),
   ])) as [any, any, any, any];
-
-  // Ensure minimal shape for nextAction: presence of ruleId and reasonLabel.
-  // Do not implement business logic or transformations here.
-  const safeNextAction = nextAction && nextAction.ruleId && nextAction.reasonLabel ? nextAction : null;
 
   return (
     <main className="max-w-5xl mx-auto px-4 py-8">
       <div className="space-y-6">
         {/* 1. NextActionCard */}
         <section aria-labelledby="next-action-heading">
-          {safeNextAction ? <NextActionCard {...safeNextAction} /> : <NextActionCard topic="" />}
+          {/* Pass nextAction through as-is; NextActionCard will render an empty state when data is null/absent. */}
+          {nextAction ? <NextActionCard {...nextAction} /> : <NextActionCard topic="" />}
         </section>
 
         {/* 2. TodayGoal */}

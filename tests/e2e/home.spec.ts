@@ -1,5 +1,8 @@
 import { test, expect } from '@playwright/test';
 
+// Use local dev server as base URL
+test.use({ baseURL: process.env.PLAYWRIGHT_BASE_URL ?? 'http://localhost:3000' });
+
 // Helper to stub the four home APIs with provided payloads
 async function stubHomeApis(page, { nextAction = null, todayGoal = {}, learningSnapshot = {}, dailyPlan = {} } = {}) {
   await page.route('**/api/home/next-action', (route) => route.fulfill({

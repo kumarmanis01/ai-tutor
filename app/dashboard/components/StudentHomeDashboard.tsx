@@ -19,9 +19,7 @@ import TopBar from './TopBar';
 import useCurrentUser from '@/hooks/useCurrentUser';
 import { useGlobalLoader } from '@/context/GlobalLoaderProvider';
 import ProfilePage from '@/app/profile/page';
-import QuickInputBox from './QuickInputBox';
-import SubjectThreadList from './SubjectThreadList';
-import ChatPanel from './ChatPanel';
+// Quick chat removed from Home view per curriculum-first requirement
 import BottomNavigation, { type TabId } from './BottomNavigator';
 import TestsTab from './Tests';
 import NotesTab from './Notes';
@@ -33,9 +31,7 @@ interface StudentHomeDashboardProps { [key: string]: unknown }
 
 const StudentHomeDashboard: React.FC<StudentHomeDashboardProps> = () => {
   const [activeTab, setActiveTab] = useState<TabId>('home');
-  const [messages, setMessages] = useState<{ id: string; from: 'user' | 'ai'; text: string; language?: string; suggestions?: string[] }[]>([]);
-  const [subject, setSubject] = useState<string>('general');
-  const [conversationId, setConversationId] = useState<string | undefined>(undefined);
+  // Chat state removed for Home — chat remains available in dedicated areas
   const { data: profile, loading } = useCurrentUser();
   const studentName = profile?.name ?? 'Student';
   const { startLoading, stopLoading } = useGlobalLoader();
@@ -65,36 +61,7 @@ const StudentHomeDashboard: React.FC<StudentHomeDashboardProps> = () => {
     return () => { try { stopLoading(); } catch { /* ignore */ } };
   }, [loading, profile, startLoading, stopLoading]);
 
-  // Load chat history per subject and optionally conversationId
-  useEffect(() => {
-    let cancelled = false;
-    async function loadHistory() {
-      try {
-        if (!conversationId) {
-          try {
-            const key = `spinzy:lastcid:${subject}`;
-            const raw = typeof window !== 'undefined' ? window.sessionStorage.getItem(key) : null;
-            const restored = raw ? String(raw) : '';
-            if (restored) setConversationId(restored);
-          } catch {}
-        }
-        const url = `/api/chat/history?subjectId=${encodeURIComponent(subject)}${conversationId ? `&conversationId=${encodeURIComponent(conversationId)}` : ''}&limit=50`;
-        const res = await fetch(url);
-        if (!res.ok) return;
-        const data = await res.json().catch(() => null);
-        if (cancelled) return;
-        const serverMsgs = Array.isArray(data?.messages) ? data.messages : [];
-        const mapped = serverMsgs.map((m: any) => ({
-          id: String(m.id ?? `${Date.now()}-${Math.random()}`),
-          from: m.role === 'assistant' ? 'ai' : 'user',
-          text: String(m.content ?? ''),
-        }));
-        setMessages((prev) => (mapped.length > 0 ? mapped : prev));
-      } catch {}
-    }
-    loadHistory();
-    return () => { cancelled = true; };
-  }, [subject, conversationId]);
+  // Chat-related effects intentionally omitted from Home
 
   // Tab content renderer
   const renderTabContent = () => {
@@ -122,85 +89,10 @@ const StudentHomeDashboard: React.FC<StudentHomeDashboardProps> = () => {
             }}
           />
 
-          {/* Quick Chat Access - Collapsed by default on home */}
-          <details className="group">
-            <summary className="cursor-pointer list-none flex items-center justify-between p-4 bg-card dark:bg-slate-800/50 rounded-xl border border-border/30">
-              <span className="flex items-center gap-2 text-sm font-medium text-foreground">
-                💬 Need to ask something quick?
-              </span>
-              <svg className="w-5 h-5 text-muted-foreground group-open:rotate-180 transition-transform" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M19 9l-7 7-7-7" />
-              </svg>
-            </summary>
-            <div className="mt-3 space-y-4">
-              {/* Subject selector - compact horizontal scroll */}
-              <SubjectThreadList
-                subject={subject}
-                setSubject={(s) => { setSubject(s); setConversationId(undefined); setMessages([]); }}
-                onSelectThread={(cid) => setConversationId(cid)}
-                onNewThread={(s) => { setSubject(s); setConversationId(undefined); setMessages([]); }}
-                selectedConversationId={conversationId}
-              />
-
-              {/* Chat Panel */}
-              <ChatPanel messages={messages} />
-
-              {/* Quick Input */}
-              <QuickInputBox
-                initialPreferredLang={profile?.language ?? (profile as any)?.preferred_language ?? (profile as any)?.preferredLanguage ?? null}
-                onReply={(reply: string, userMessage?: string, language?: string, suggestions?: string[]) => {
-                  setMessages((prev) => [
-                    ...prev,
-                    ...(userMessage ? [{ id: String(Date.now()) + '-u', from: 'user' as const, text: userMessage }] : []),
-                    { id: String(Date.now()) + '-a', from: 'ai' as const, text: reply, language, suggestions },
-                  ]);
-                }}
-                subject={subject}
-                conversationId={conversationId}
-                onConversationId={(cid?: string) => {
-                  setConversationId(cid);
-                  try { if (cid) window.sessionStorage.setItem(`spinzy:lastcid:${subject}`, cid); } catch { /* ignore */ }
-                }}
-              />
-            </div>
-          </details>
+          {/* Quick Chat removed from Home to reduce distractions */}
         </div>
 
-        {/* Desktop Sidebar - Shows quick navigation and chat */}
-        <aside className="hidden lg:block w-80 xl:w-96 flex-shrink-0 space-y-6">
-          {/* Chat Card for Desktop */}
-          <div className="bg-card dark:bg-slate-800/50 rounded-xl p-4 border border-border/30">
-            <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
-              <span>💬</span> Quick Chat
-            </h3>
-            <SubjectThreadList
-              subject={subject}
-              setSubject={(s) => { setSubject(s); setConversationId(undefined); setMessages([]); }}
-              onSelectThread={(cid) => setConversationId(cid)}
-              onNewThread={(s) => { setSubject(s); setConversationId(undefined); setMessages([]); }}
-              selectedConversationId={conversationId}
-            />
-            <div className="mt-3">
-              <ChatPanel messages={messages} />
-              <QuickInputBox
-                initialPreferredLang={profile?.language ?? (profile as any)?.preferred_language ?? (profile as any)?.preferredLanguage ?? null}
-                onReply={(reply: string, userMessage?: string, language?: string, suggestions?: string[]) => {
-                  setMessages((prev) => [
-                    ...prev,
-                    ...(userMessage ? [{ id: String(Date.now()) + '-u', from: 'user' as const, text: userMessage }] : []),
-                    { id: String(Date.now()) + '-a', from: 'ai' as const, text: reply, language, suggestions },
-                  ]);
-                }}
-                subject={subject}
-                conversationId={conversationId}
-                onConversationId={(cid?: string) => {
-                  setConversationId(cid);
-                  try { if (cid) window.sessionStorage.setItem(`spinzy:lastcid:${subject}`, cid); } catch { /* ignore */ }
-                }}
-              />
-            </div>
-          </div>
-        </aside>
+        {/* Desktop Quick Chat removed from Home; chat remains in its dedicated sections */}
 
         {/* Bottom spacing for nav */}
         <div className="h-20 lg:h-0" />

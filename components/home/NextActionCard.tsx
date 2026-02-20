@@ -79,7 +79,17 @@ export default function NextActionCard(props: NextActionCardProps) {
         }`}
         aria-label={ctaText}
       >
-        {isSubmitting ? 'Updating…' : ctaText}
+        {isSubmitting ? (
+          <span className="inline-flex items-center gap-2">
+            <svg className="w-4 h-4 animate-spin text-white" viewBox="0 0 24 24" fill="none" aria-hidden>
+              <circle cx="12" cy="12" r="10" stroke="rgba(255,255,255,0.3)" strokeWidth="4" />
+              <path d="M22 12a10 10 0 00-10-10" stroke="white" strokeWidth="4" strokeLinecap="round" />
+            </svg>
+            <span>Updating…</span>
+          </span>
+        ) : (
+          ctaText
+        )}
       </button>
 
       <div className="flex-1">
