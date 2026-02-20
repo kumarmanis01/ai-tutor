@@ -68,14 +68,14 @@ export default function NextActionCard(props: NextActionCardProps) {
   }
 
   return (
-    <article className="bg-white rounded-lg shadow p-4 flex flex-col md:flex-row md:items-center gap-4">
+    <article className="max-w-4xl mx-auto bg-white rounded-lg border p-6 flex flex-col md:flex-row md:items-center gap-6 mb-8">
       {/* Primary CTA must be first focusable element in the DOM; visually placed last via order */}
       <button
         type="button"
         onClick={handleComplete}
         disabled={isSubmitting || !action}
-        className={`order-last md:order-none w-full md:w-auto text-white font-semibold py-3 px-4 rounded focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
-          action && !isSubmitting ? 'bg-indigo-600 hover:bg-indigo-700' : 'bg-gray-300 cursor-default'
+        className={`order-last md:order-none w-full md:w-44 text-white font-semibold py-4 px-6 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
+          action && !isSubmitting ? 'bg-indigo-700 hover:bg-indigo-800' : 'bg-gray-200 cursor-default text-gray-600'
         }`}
         aria-label={ctaText}
       >
@@ -95,7 +95,7 @@ export default function NextActionCard(props: NextActionCardProps) {
       <div className="flex-1">
         <div className="text-xs text-gray-500">Do this next</div>
 
-        <div className="mt-2 flex items-center justify-between gap-4">
+        <div className="mt-3 flex items-center justify-between gap-6">
           <div className="min-w-0">
             <div className="text-sm text-gray-600 truncate">
               {action?.subject}
@@ -103,7 +103,7 @@ export default function NextActionCard(props: NextActionCardProps) {
               {action?.chapter}
             </div>
 
-            <h2 className="text-xl font-semibold leading-tight truncate mt-1">{action?.topic ?? '—'}</h2>
+            <h2 className="text-2xl md:text-3xl font-semibold leading-tight truncate mt-1">{action?.topic ?? '—'}</h2>
 
             <div className="mt-2 text-sm text-gray-500">
               {typeof action?.stepIndex === 'number' && typeof action?.stepTotal === 'number' ? (
@@ -115,8 +115,8 @@ export default function NextActionCard(props: NextActionCardProps) {
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 flex items-center justify-center">
+          <div className="flex items-center gap-4">
+            <div className="w-14 h-14 flex items-center justify-center">
               <svg width="48" height="48" viewBox="0 0 48 48" aria-hidden>
                 <circle cx="24" cy="24" r="18" stroke="#e5e7eb" strokeWidth="4" fill="none" />
                 <circle

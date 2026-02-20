@@ -12,14 +12,14 @@ export default function TodayGoal({ targetMinutes, completedMinutes, streakDays 
   const pct = safeTarget === 0 ? 0 : Math.min(100, Math.round((safeCompleted / safeTarget) * 100));
 
   return (
-    <section className="bg-white rounded-lg shadow p-4" aria-labelledby="today-goal-heading">
+    <section className="max-w-4xl mx-auto bg-white rounded-lg border p-6 mb-8" aria-labelledby="today-goal-heading">
       <h3 id="today-goal-heading" className="text-lg font-semibold">
         {`Today's goal — ${safeTarget} min`}
       </h3>
 
-      <div className="mt-3">
+      <div className="mt-4">
         <div
-          className="w-full h-3 bg-gray-200 rounded overflow-hidden"
+          className="w-full h-3 bg-gray-100 rounded overflow-hidden"
           role="progressbar"
           aria-valuemin={0}
           aria-valuemax={safeTarget}

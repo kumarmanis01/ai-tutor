@@ -26,7 +26,7 @@ export default function LearningPathSnapshot({ subjects }: LearningPathSnapshotP
   const list = Array.isArray(subjects) ? subjects.slice(0, 4) : [];
 
   return (
-    <section className="bg-white rounded-lg shadow p-4" aria-labelledby="learning-path-heading">
+    <section className="max-w-4xl mx-auto bg-white rounded-lg border p-6 mb-8" aria-labelledby="learning-path-heading">
       <div className="flex items-center justify-between">
         <h3 id="learning-path-heading" className="text-lg font-semibold">
           Learning Path

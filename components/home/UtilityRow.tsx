@@ -7,7 +7,7 @@ export interface UtilityRowProps {
 export default function UtilityRow({ unresolvedCount = 0 }: UtilityRowProps) {
   return (
     <nav
-      className="bg-white rounded-lg shadow p-3"
+      className="max-w-4xl mx-auto bg-white rounded-lg border p-3 mb-8"
       aria-label="Utility links"
     >
       <ul className="flex items-center gap-4" role="list">

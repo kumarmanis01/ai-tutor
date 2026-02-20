@@ -20,7 +20,7 @@ export default function TodaysPlan({ slots }: TodaysPlanProps) {
   const count = Array.isArray(slots) ? slots.length : 0;
 
   return (
-    <section className="bg-white rounded-lg shadow p-4" aria-labelledby="todays-plan-heading">
+    <section className="max-w-4xl mx-auto bg-white rounded-lg border p-6 mb-8" aria-labelledby="todays-plan-heading">
       <div className="flex items-center justify-between">
         <h3 id="todays-plan-heading" className="text-lg font-semibold">
           Today's Plan
@@ -66,7 +66,7 @@ export default function TodaysPlan({ slots }: TodaysPlanProps) {
               <div className="flex items-center gap-2">
                 <button
                   type="button"
-                  className="text-sm bg-indigo-600 text-white px-3 py-1 rounded focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                  className="text-sm bg-indigo-700 text-white px-3 py-1 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-400"
                   aria-label={`Start ${s.topicTitle}`}
                 >
                   Start

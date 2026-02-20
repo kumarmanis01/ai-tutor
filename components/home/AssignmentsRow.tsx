@@ -14,7 +14,7 @@ export interface AssignmentsRowProps {
 
 export default function AssignmentsRow({ assignments }: AssignmentsRowProps) {
   return (
-    <section className="bg-white rounded-lg shadow p-4" aria-labelledby="assignments-row-heading">
+    <section className="max-w-4xl mx-auto bg-white rounded-lg border p-6 mb-8" aria-labelledby="assignments-row-heading">
       <div className="flex items-center justify-between">
         <h3 id="assignments-row-heading" className="text-lg font-semibold">
           Assignments
