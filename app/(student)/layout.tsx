@@ -1,20 +1,52 @@
-import React from 'react';
-import StudentTopBar from './dashboard/components/TopBar';
+import React, { Suspense } from 'react';
+import GoogleTagManagerClient from '@/components/ClientOnly/GoogleTagManagerClient';
+import AppModalClient from '@/components/ClientOnly/AppModalClient';
+import Providers from '@/app/providers';
+import { GlobalLoaderProvider } from '@/context/GlobalLoaderProvider';
+import AuthSessionLoader from '@/components/AuthSessionLoader';
+import ToastHost from '@/components/ToastHost';
+import StudentNav from './StudentNav';
+import { requireActiveSession } from '@/lib/auth';
+import { redirect } from 'next/navigation';
+import '@/styles/index.css';
+
+export const viewport = {
+  width: 'device-width',
+  initialScale: 1,
+};
 
 /**
- * Student shell layout
- * - Wraps all authenticated student routes (/dashboard/*, /rooms/*)
- * - Renders the student TopBar (greeting, theme toggle, tab navigation)
+ * Student shell root layout
+ * - Owns the HTML document for all authenticated student routes
+ *   (/dashboard/*, /rooms/*, /profile, /parent, /learn/*)
+ * - Fetches session server-side; redirects to / if unauthenticated
+ * - Renders StudentNav — the persistent student navigation bar
  * - Must NOT render the public Navbar
- *
- * Note: dashboard/layout.tsx provides the page-level <main> container.
- *       This layout provides the persistent top navigation only.
  */
-export default function StudentLayout({ children }: { children: React.ReactNode }) {
+export default async function StudentLayout({ children }: { children: React.ReactNode }) {
+  const session = await requireActiveSession();
+  if (!session) redirect('/');
+
+  const studentName = (session.user as { name?: string })?.name ?? '';
+
   return (
-    <div className="min-h-screen">
-      <StudentTopBar studentName="" />
-      {children}
-    </div>
+    <html lang="en" className="h-full">
+      <body className="min-h-screen h-full">
+        <Providers>
+          <GlobalLoaderProvider>
+            <AuthSessionLoader />
+            <Suspense fallback={null}>
+              <GoogleTagManagerClient />
+            </Suspense>
+            <AppModalClient />
+            <StudentNav studentName={studentName} />
+            <div className="pt-14">
+              {children}
+            </div>
+            <ToastHost />
+          </GlobalLoaderProvider>
+        </Providers>
+      </body>
+    </html>
   );
 }

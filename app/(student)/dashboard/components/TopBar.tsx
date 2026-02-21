@@ -13,14 +13,26 @@
  * - 2025-01-22 | copilot | optimized for mobile-first with compact design
  */
 import React from "react";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useTheme } from '@/components/UI/ThemeProvider';
 import type { TabId } from './BottomNavigator';
 
 interface TopBarProps {
   studentName: string;
+  /** @deprecated Active state is now derived from usePathname */
   activeTab?: TabId;
+  /** @deprecated Navigation uses Next.js Link; this callback is no longer called */
   onTabChange?: (tab: TabId) => void;
 }
+
+const TAB_HREFS: Record<TabId, string> = {
+  home: '/dashboard',
+  notes: '/dashboard/notes',
+  tests: '/dashboard/tests',
+  doubts: '/dashboard/doubts',
+  profile: '/dashboard/profile',
+};
 
 // Helper to get greeting based on time of day
 const getGreeting = () => {
@@ -31,10 +43,14 @@ const getGreeting = () => {
   return { text: 'Night', emoji: '🌙', hi: 'शुभ रात्रि' };
 };
 
-const TopBar: React.FC<TopBarProps> = ({ studentName, activeTab = 'home', onTabChange }) => {
+const TopBar: React.FC<TopBarProps> = ({ studentName }) => {
   const { theme, toggle } = useTheme();
+  const pathname = usePathname();
   const greeting = getGreeting();
   const firstName = studentName.split(' ')[0];
+
+  const isActive = (key: TabId) =>
+    key === 'home' ? pathname === '/dashboard' : pathname.startsWith(TAB_HREFS[key]);
 
   const tabs: { key: TabId; label: string }[] = [
     { key: 'home', label: 'Home' },
@@ -104,17 +120,17 @@ const TopBar: React.FC<TopBarProps> = ({ studentName, activeTab = 'home', onTabC
             {/* Desktop-only: Navigation tabs */}
             <nav className="hidden lg:flex items-center gap-1 ml-4 bg-muted/40 dark:bg-slate-800/60 rounded-full p-1">
               {tabs.map((tab) => (
-                <button
+                <Link
                   key={tab.key}
-                  onClick={() => onTabChange?.(tab.key)}
+                  href={TAB_HREFS[tab.key]}
                   className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors ${
-                    activeTab === tab.key
+                    isActive(tab.key)
                       ? 'bg-primary text-primary-foreground'
                       : 'text-muted-foreground hover:text-foreground hover:bg-muted/60'
                   }`}
                 >
                   {tab.label}
-                </button>
+                </Link>
               ))}
             </nav>
           </div>
