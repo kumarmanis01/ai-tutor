@@ -17,7 +17,7 @@
 'use client';
 
 import React, { useState, useCallback } from 'react';
-import useStreaksAndGoals from '@/hooks/useStreaksAndGoals';
+import { useStreaksAndGoals } from '@/hooks/useStreaksAndGoals';
 
 /** Preset goal options for easy selection */
 const DAILY_GOAL_OPTIONS = [
