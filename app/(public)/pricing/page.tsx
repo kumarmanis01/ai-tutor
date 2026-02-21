@@ -11,7 +11,7 @@ import {
   PRICES,
 } from '@/app/api/billing/constants';
 import PricingCard from '@/components/PricingCard';
-import { getBillingPayload } from '../api/billing/utility';
+import { getBillingPayload } from '@/app/api/billing/utility';
 import { trackPurchase, trackSubscriptionStart } from '@/components/GoogleTagManager';
 
 type RazorpayOptions = {
