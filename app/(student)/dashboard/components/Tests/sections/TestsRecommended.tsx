@@ -23,13 +23,14 @@ export function TestsRecommended() {
     window.location.assign(`/tests?${params.toString()}`);
   }, []);
 
+  // Hide entirely when no items — no empty placeholder
+  if (!loading && items.length === 0) return null;
+
   return (
     <div className="space-y-2">
       <h2 className="text-sm font-semibold">Recommended</h2>
       {loading ? (
         <div className="text-sm text-muted-foreground">Loading…</div>
-      ) : items.length === 0 ? (
-        <div className="text-sm text-muted-foreground">No recommended tests yet</div>
       ) : (
         <div className="space-y-2">
           {items.map((t) => (
