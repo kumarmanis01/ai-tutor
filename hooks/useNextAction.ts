@@ -22,6 +22,7 @@ export type RuleId =
 
 export interface NextAction {
   topicId: string | null;
+  topicName: string | null;
   subject: string | null;
   chapter: string | null;
   ruleId: RuleId;

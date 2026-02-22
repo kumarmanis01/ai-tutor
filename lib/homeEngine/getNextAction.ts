@@ -16,6 +16,7 @@
  *
  * EDIT LOG:
  * - 2026-02-21 | claude | created deterministic tutor engine per architectural spec
+ * - 2026-02-21 | claude | added topicName enrichment via shared enrichTopic helper
  */
 
 import { prisma } from '@/lib/prisma';
@@ -34,6 +35,8 @@ export type RuleId =
 
 export interface NextAction {
   topicId: string | null;
+  /** Canonical topic name from TopicDef. Null if topic not found in curriculum. */
+  topicName: string | null;
   subject: string | null;
   chapter: string | null;
   ruleId: RuleId;
@@ -85,6 +88,43 @@ function utcMidnightToday(): Date {
   return d;
 }
 
+// ─── Enrichment helper ────────────────────────────────────────────────────────
+
+interface TopicEnrichment {
+  topicName: string | null;
+  subject: string | null;
+  chapter: string | null;
+}
+
+/**
+ * Single-query enrichment: fetches TopicDef with chapter→subject join.
+ * Returns canonical names from the curriculum. Falls back to the provided
+ * defaults when the topicId is absent or the record is not found.
+ */
+async function enrichTopic(
+  topicId: string | null,
+  fallback: TopicEnrichment
+): Promise<TopicEnrichment> {
+  if (!topicId) return { topicName: null, ...fallback };
+
+  const topic = await prisma.topicDef.findUnique({
+    where: { id: topicId },
+    include: {
+      chapter: {
+        include: { subject: true },
+      },
+    },
+  });
+
+  if (!topic) return { topicName: null, ...fallback };
+
+  return {
+    topicName: topic.name,
+    chapter: topic.chapter.name,
+    subject: topic.chapter.subject.name,
+  };
+}
+
 // ─── Priority sub-functions ───────────────────────────────────────────────────
 
 /**
@@ -105,10 +145,17 @@ async function p1_resumeSession(studentId: string): Promise<NextAction | null> {
   if (!session) return null;
 
   const meta = safeObj(session.meta);
-  return {
-    topicId: strOrNull(session.activityRef) ?? strOrNull(meta.topicId) ?? null,
+  const topicId = strOrNull(session.activityRef) ?? strOrNull(meta.topicId) ?? null;
+  const enriched = await enrichTopic(topicId, {
+    topicName: null,
     subject: strOrNull(meta.subject) ?? strOrNull(meta.subjectName) ?? null,
     chapter: strOrNull(meta.chapter) ?? strOrNull(meta.chapterName) ?? null,
+  });
+  return {
+    topicId,
+    topicName: enriched.topicName,
+    subject: enriched.subject,
+    chapter: enriched.chapter,
     ruleId: 'resume_session',
     reasonLabel: 'Resume where you left off',
     actionType: sessionToAction(session.activityType),
@@ -142,10 +189,16 @@ async function p2_dailyTask(studentId: string): Promise<NextAction | null> {
   });
   if (!task) return null;
 
-  return {
-    topicId: task.topicId ?? null,
+  const enriched = await enrichTopic(task.topicId ?? null, {
+    topicName: null,
     subject: task.subject ?? null,
     chapter: task.chapter ?? null,
+  });
+  return {
+    topicId: task.topicId ?? null,
+    topicName: enriched.topicName,
+    subject: enriched.subject,
+    chapter: enriched.chapter,
     ruleId: 'daily_task',
     reasonLabel: task.description ?? "Today's learning task",
     actionType: dailyTaskToAction(task.taskType),
@@ -171,12 +224,18 @@ async function p3_attentionFlag(studentId: string): Promise<NextAction | null> {
   });
   if (!flag) return null;
 
-  return {
-    topicId: flag.topicId,
+  const enriched = await enrichTopic(flag.topicId, {
+    topicName: null,
     subject: flag.subject,
     chapter: flag.chapter,
+  });
+  return {
+    topicId: flag.topicId,
+    topicName: enriched.topicName,
+    subject: enriched.subject,
+    chapter: enriched.chapter,
     ruleId: 'low_mastery',
-    reasonLabel: `Revise ${flag.subject} – ${flag.chapter}`,
+    reasonLabel: `Revise ${enriched.subject ?? flag.subject} – ${enriched.chapter ?? flag.chapter}`,
     actionType: 'practice',
     masteryLevel: flag.masteryLevel,
     accuracy: flag.accuracy,
@@ -201,12 +260,18 @@ async function p4_lowAccuracy(studentId: string): Promise<NextAction | null> {
   });
   if (!weak) return null;
 
-  return {
-    topicId: weak.topicId,
+  const enriched = await enrichTopic(weak.topicId, {
+    topicName: null,
     subject: weak.subject,
     chapter: weak.chapter,
+  });
+  return {
+    topicId: weak.topicId,
+    topicName: enriched.topicName,
+    subject: enriched.subject,
+    chapter: enriched.chapter,
     ruleId: 'low_accuracy',
-    reasonLabel: `Practice ${weak.subject} – ${weak.chapter}`,
+    reasonLabel: `Practice ${enriched.subject ?? weak.subject} – ${enriched.chapter ?? weak.chapter}`,
     actionType: 'practice',
     masteryLevel: weak.masteryLevel,
     accuracy: weak.accuracy,
@@ -278,6 +343,7 @@ async function p5_nextNewTopic(studentId: string): Promise<NextAction | null> {
 
   return {
     topicId: nextTopic.id,
+    topicName: nextTopic.name,
     subject: nextTopic.chapter.subject.name,
     chapter: nextTopic.chapter.name,
     ruleId: 'next_new_topic',
