@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { signOut, useSession } from 'next-auth/react';
+import { useSession } from 'next-auth/react';
 
 /**
  * TopBar Navigation
@@ -36,12 +36,12 @@ export default function TopBar() {
         {/* Right → Auth buttons */}
         <div>
           {session ? (
-            <button
-              onClick={() => signOut()}
+            <Link
+              href="/logout"
               className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600"
             >
               Logout
-            </button>
+            </Link>
           ) : (
             <Link
               href="/auth/signin"
