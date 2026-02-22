@@ -1,26 +1,21 @@
 'use client';
 /**
  * FILE OBJECTIVE:
- * - Displays the student's current recommended learning topic.
- * - Shows subject, chapter, topic, difficulty, estimated time with a CTA to /learn/[topicId].
- * - If no recommendation exists, shows a "Start Your Learning Path" CTA to /dashboard.
+ * - Displays the student's current recommended learning topic (notes only).
+ * - Renders only when actionType === "notes". Returns null for practice actions.
+ * - CTA → /learn/[topicId]
  *
  * EDIT LOG:
  * - 2026-02-21 | claude | created per refactor spec
+ * - 2026-02-21 | claude | wired to useNextAction (deterministic engine)
  */
 import Link from 'next/link';
-import { useLearningRecommendation } from '@/hooks/useLearningRecommendation';
-
-const DIFFICULTY_LABEL: Record<string, string> = {
-  easy: 'Easy',
-  medium: 'Medium',
-  hard: 'Hard',
-};
+import { useNextAction } from '@/hooks/useNextAction';
 
 export default function ContinueLearningCard() {
-  const { currentTopic, progressPercent, loading } = useLearningRecommendation();
+  const { action, isLoading } = useNextAction();
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="bg-card border border-border rounded-lg p-5 animate-pulse">
         <div className="h-4 bg-muted rounded w-40 mb-3" />
@@ -30,22 +25,8 @@ export default function ContinueLearningCard() {
     );
   }
 
-  if (!currentTopic) {
-    return (
-      <div className="bg-card border border-border rounded-lg p-5">
-        <p className="text-sm text-muted-foreground mb-1">No active recommendation</p>
-        <h2 className="text-base font-semibold text-foreground mb-3">Start Your Learning Path</h2>
-        <Link
-          href="/dashboard"
-          className="inline-block text-sm font-medium text-primary hover:underline"
-        >
-          Go to Dashboard &rarr;
-        </Link>
-      </div>
-    );
-  }
-
-  const { subjectId, chapterId, topicId, difficulty, estimatedTime } = currentTopic;
+  // Only render for notes actions
+  if (!action || action.actionType !== 'notes') return null;
 
   return (
     <div className="bg-card border border-border rounded-lg p-5">
@@ -54,40 +35,43 @@ export default function ContinueLearningCard() {
       </p>
 
       <div className="space-y-1 mb-4">
-        {subjectId && (
+        {action.subject && (
           <p className="text-sm text-muted-foreground">
             <span className="font-medium text-foreground">Subject:</span>{' '}
-            <span className="capitalize">{subjectId}</span>
+            <span className="capitalize">{action.subject}</span>
           </p>
         )}
-        {chapterId && (
+        {action.chapter && (
           <p className="text-sm text-muted-foreground">
             <span className="font-medium text-foreground">Chapter:</span>{' '}
-            <span className="capitalize">{chapterId}</span>
+            <span className="capitalize">{action.chapter}</span>
           </p>
         )}
-        <p className="text-base font-semibold text-foreground capitalize">{topicId}</p>
+        <p className="text-base font-semibold text-foreground capitalize">
+          {action.topicId}
+        </p>
       </div>
 
       <div className="flex items-center gap-4 text-sm text-muted-foreground mb-4">
-        <span>
-          Difficulty:{' '}
-          <span className="font-medium text-foreground">{DIFFICULTY_LABEL[difficulty]}</span>
-        </span>
-        <span>
-          Est. time:{' '}
-          <span className="font-medium text-foreground">{estimatedTime} min</span>
-        </span>
-        {progressPercent > 0 && (
+        {action.estimatedTimeMin && (
           <span>
-            Progress:{' '}
-            <span className="font-medium text-foreground">{progressPercent}%</span>
+            Est. time:{' '}
+            <span className="font-medium text-foreground">{action.estimatedTimeMin} min</span>
           </span>
         )}
+        {typeof action.accuracy === 'number' && action.accuracy > 0 && (
+          <span>
+            Accuracy:{' '}
+            <span className="font-medium text-foreground">
+              {Math.round(action.accuracy * 100)}%
+            </span>
+          </span>
+        )}
+        <span className="text-xs text-muted-foreground italic">{action.reasonLabel}</span>
       </div>
 
       <Link
-        href={`/learn/${encodeURIComponent(topicId)}`}
+        href={`/learn/${encodeURIComponent(action.topicId ?? '')}`}
         className="inline-block px-4 py-2 bg-primary text-primary-foreground text-sm font-medium rounded hover:bg-primary/90 transition-colors"
       >
         Open Notes &rarr;
