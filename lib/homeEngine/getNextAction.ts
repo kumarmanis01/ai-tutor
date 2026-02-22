@@ -19,7 +19,7 @@
  * - 2026-02-21 | claude | added topicName enrichment via shared enrichTopic helper
  */
 
-import { prisma } from '@/lib/prisma';
+import { prisma } from '../prisma';
 import { MasteryLevel } from '@prisma/client';
 
 // ─── Public types ────────────────────────────────────────────────────────────
