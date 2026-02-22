@@ -38,15 +38,18 @@ export async function POST(req: Request) {
   }
 
   const result = await applyGrading(attempt, payload);
-  
-  // Update topic mastery asynchronously (non-blocking)
-  updateTopicMastery(user.id, attempt.id).catch((err) => {
+
+  // Update topic mastery synchronously so the next call to /api/home/next-action
+  // always reflects the latest accuracy and resolved AttentionFlags.
+  try {
+    await updateTopicMastery(user.id, attempt.id);
+  } catch (err) {
     logger.error('TestsSubmitAPI.updateTopicMastery', {
       userId: user.id,
       attemptId: attempt.id,
       error: err,
     });
-  });
+  }
 
   // Update learning profile asynchronously (non-blocking)
   updateLearningProfile(user.id).catch((err) => {

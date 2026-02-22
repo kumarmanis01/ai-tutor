@@ -111,24 +111,19 @@ export async function POST(req: NextRequest) {
         topicId,
         subject: subject || null,
         chapter: chapter || null,
-        masteryLevel: action === 'complete' ? 'advanced' : 'beginner',
+        // Always start at beginner — accuracy is only updated via practice (updateTopicMastery).
+        masteryLevel: 'beginner',
         accuracy: 0,
         questionsAttempted: 0,
         lastAttemptedAt: new Date(),
       },
     });
   } else {
-    // Update last attempted timestamp
-    const updateData: any = { lastAttemptedAt: new Date() };
-    
-    // If action is 'complete', mark as proficient if not already mastered
-    if (action === 'complete' && mastery.masteryLevel !== 'expert') {
-      updateData.masteryLevel = 'advanced';
-    }
-    
+    // Only update the timestamp; mastery level and accuracy are owned by the
+    // practice grading pipeline (updateTopicMastery) — never inflate them here.
     mastery = await prisma.studentTopicMastery.update({
       where: { id: mastery.id },
-      data: updateData,
+      data: { lastAttemptedAt: new Date() },
     });
   }
 

@@ -383,6 +383,8 @@ export async function applyGrading(attempt: TestResult, payload: SubmitPayload) 
 /**
  * Update StudentTopicMastery records after a test submission.
  * Groups graded questions by subject+chapter and upserts mastery with rolling accuracy.
+ * Each topic update is wrapped in a prisma.$transaction to ensure atomic read-modify-write.
+ * Resolves AttentionFlag when accuracy reaches >= 0.6.
  */
 export async function updateTopicMastery(studentId: string, attemptId: string): Promise<void> {
   const attemptQuestions = await prisma.attemptQuestion.findMany({
@@ -408,42 +410,55 @@ export async function updateTopicMastery(studentId: string, attemptId: string): 
   for (const [topicId, stats] of Object.entries(groups)) {
     const newAccuracy = stats.total > 0 ? stats.correct / stats.total : 0;
 
-    const existing = await prisma.studentTopicMastery.findUnique({
-      where: { studentId_topicId: { studentId, topicId } },
+    await prisma.$transaction(async (tx) => {
+      const existing = await tx.studentTopicMastery.findUnique({
+        where: { studentId_topicId: { studentId, topicId } },
+      });
+
+      const prevAttempted = existing?.questionsAttempted ?? 0;
+      const prevAccuracy = existing?.accuracy ?? 0;
+      const totalAttempted = prevAttempted + stats.total;
+      const rollingAccuracy =
+        totalAttempted > 0
+          ? (prevAccuracy * prevAttempted + newAccuracy * stats.total) / totalAttempted
+          : newAccuracy;
+
+      let masteryLevel: MasteryLevel = MasteryLevel.beginner;
+      if (rollingAccuracy >= 0.9 && totalAttempted >= 20) masteryLevel = MasteryLevel.expert;
+      else if (rollingAccuracy >= 0.75 && totalAttempted >= 10) masteryLevel = MasteryLevel.advanced;
+      else if (rollingAccuracy >= 0.5 && totalAttempted >= 5) masteryLevel = MasteryLevel.intermediate;
+
+      await tx.studentTopicMastery.upsert({
+        where: { studentId_topicId: { studentId, topicId } },
+        update: {
+          accuracy: rollingAccuracy,
+          questionsAttempted: totalAttempted,
+          masteryLevel,
+          lastAttemptedAt: new Date(),
+        },
+        create: {
+          studentId,
+          topicId,
+          subject: stats.subject,
+          chapter: stats.chapter,
+          accuracy: newAccuracy,
+          questionsAttempted: stats.total,
+          masteryLevel,
+          lastAttemptedAt: new Date(),
+        },
+      });
+
+      // Resolve any open AttentionFlag once accuracy clears the threshold.
+      // HomeEngine P3 short-circuits on unresolved flags; resolving here ensures
+      // the next call to /api/home/next-action reflects the updated mastery.
+      if (rollingAccuracy >= 0.6) {
+        await tx.attentionFlag.updateMany({
+          where: { studentId, topicId, resolved: false },
+          data: { resolved: true },
+        });
+      }
+
+      logger.info('mastery.updated', { studentId, topicId, newAccuracy: rollingAccuracy });
     });
-
-    const prevAttempted = existing?.questionsAttempted ?? 0;
-    const prevAccuracy = existing?.accuracy ?? 0;
-    const totalAttempted = prevAttempted + stats.total;
-    const rollingAccuracy = totalAttempted > 0
-      ? ((prevAccuracy * prevAttempted) + (newAccuracy * stats.total)) / totalAttempted
-      : newAccuracy;
-
-    let masteryLevel: MasteryLevel = MasteryLevel.beginner;
-    if (rollingAccuracy >= 0.9 && totalAttempted >= 20) masteryLevel = MasteryLevel.expert;
-    else if (rollingAccuracy >= 0.75 && totalAttempted >= 10) masteryLevel = MasteryLevel.advanced;
-    else if (rollingAccuracy >= 0.5 && totalAttempted >= 5) masteryLevel = MasteryLevel.intermediate;
-
-    await prisma.studentTopicMastery.upsert({
-      where: { studentId_topicId: { studentId, topicId } },
-      update: {
-        accuracy: rollingAccuracy,
-        questionsAttempted: totalAttempted,
-        masteryLevel,
-        lastAttemptedAt: new Date(),
-      },
-      create: {
-        studentId,
-        topicId,
-        subject: stats.subject,
-        chapter: stats.chapter,
-        accuracy: newAccuracy,
-        questionsAttempted: stats.total,
-        masteryLevel,
-        lastAttemptedAt: new Date(),
-      },
-    });
-
-    logger.info('updateTopicMastery', { studentId, topicId, rollingAccuracy, totalAttempted, masteryLevel });
   }
 }
