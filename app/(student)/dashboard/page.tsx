@@ -43,10 +43,22 @@ export default async function StudentHomeDashboardPage() {
   return (
     <main className="max-w-5xl mx-auto px-4 py-8">
       <div className="space-y-6">
-        {/* 1. NextActionCard */}
+        {/* 1. NextActionCard — map API shape { action } to component props */}
         <section aria-labelledby="next-action-heading">
-          {/* Pass nextAction through as-is; NextActionCard will render an empty state when data is null/absent. */}
-          {nextAction ? <NextActionCard {...nextAction} /> : <NextActionCard topic="" />}
+          {nextAction?.action ? (
+            <NextActionCard
+              topic={nextAction.action.topicId ?? ''}
+              subject={nextAction.action.subject ?? undefined}
+              chapter={nextAction.action.chapter ?? undefined}
+              actionType={nextAction.action.actionType}
+              ruleId={nextAction.action.ruleId}
+              reasonLabel={nextAction.action.reasonLabel}
+              masteryLevel={nextAction.action.masteryLevel}
+              estMinutes={nextAction.action.estimatedTimeMin}
+            />
+          ) : (
+            <NextActionCard topic="" />
+          )}
         </section>
 
         {/* 2. TodayGoal */}
