@@ -4,6 +4,7 @@ import { getServerSessionForHandlers } from '@/lib/session';
 import { applyGrading, SubmitPayload, updateTopicMastery } from '@/lib/tests';
 import { updateLearningProfile } from '@/lib/recommendations/engine';
 import { adjustDifficultyAfterTest } from '@/lib/personalization/adaptDifficulty';
+import { getNextAction } from '@/lib/homeEngine/getNextAction';
 import { logger } from '@/lib/logger';
 
 export const dynamic = 'force-dynamic';
@@ -50,6 +51,34 @@ export async function POST(req: Request) {
       error: err,
     });
   }
+
+  // Derive topicId for logging: GeneratedTest carries the canonical TopicDef ID.
+  let topicId: string | null = null;
+  try {
+    const gt = await prisma.generatedTest.findUnique({
+      where: { id: attempt.testId },
+      select: { topicId: true },
+    });
+    topicId = gt?.topicId ?? null;
+  } catch {
+    // non-fatal — test may not be a GeneratedTest
+  }
+
+  // Compute next rule after mastery update for audit logging.
+  let nextRule: string | null = null;
+  try {
+    const nextAction = await getNextAction(user.id);
+    nextRule = nextAction?.ruleId ?? null;
+  } catch {
+    // non-fatal
+  }
+
+  logger.info('practice.completed', {
+    studentId: user.id,
+    topicId,
+    accuracy: result.scorePercent / 100,
+    nextRule,
+  });
 
   // Update learning profile asynchronously (non-blocking)
   updateLearningProfile(user.id).catch((err) => {
