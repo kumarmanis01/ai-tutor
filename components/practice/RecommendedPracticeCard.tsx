@@ -2,19 +2,20 @@
 /**
  * FILE OBJECTIVE:
  * - Shows the recommended practice topic with a one-click CTA.
- * - No filter selection required. Uses usePracticeRecommendation hook.
+ * - Renders only when actionType === "practice". Returns null otherwise.
+ * - CTA → /practice/start?topicId=X
  *
  * EDIT LOG:
  * - 2026-02-21 | claude | created per refactor spec
+ * - 2026-02-21 | claude | wired to useNextAction (deterministic engine)
  */
 import Link from 'next/link';
-import { usePracticeRecommendation } from '@/hooks/usePracticeRecommendation';
+import { useNextAction } from '@/hooks/useNextAction';
 
 export default function RecommendedPracticeCard() {
-  const { recommendedTopicId, difficulty, lastAccuracy, questionCount, loading } =
-    usePracticeRecommendation();
+  const { action, isLoading } = useNextAction();
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="bg-card border border-border rounded-lg p-5 animate-pulse">
         <div className="h-4 bg-muted rounded w-40 mb-3" />
@@ -24,21 +25,10 @@ export default function RecommendedPracticeCard() {
     );
   }
 
-  if (!recommendedTopicId) {
-    return (
-      <div className="bg-card border border-border rounded-lg p-5">
-        <p className="text-sm text-muted-foreground mb-1">No recommendation available</p>
-        <Link
-          href="/dashboard"
-          className="text-sm font-medium text-primary hover:underline"
-        >
-          Complete a topic to get a recommendation &rarr;
-        </Link>
-      </div>
-    );
-  }
+  // Only render for practice actions
+  if (!action || action.actionType !== 'practice') return null;
 
-  const href = `/practice/start?topicId=${encodeURIComponent(recommendedTopicId)}&difficulty=${encodeURIComponent(difficulty)}`;
+  const href = `/practice/start?topicId=${encodeURIComponent(action.topicId ?? '')}`;
 
   return (
     <div className="bg-card border border-border rounded-lg p-5">
@@ -47,23 +37,32 @@ export default function RecommendedPracticeCard() {
       </p>
 
       <div className="space-y-1 mb-4">
-        <p className="text-base font-semibold text-foreground capitalize">{recommendedTopicId}</p>
+        {action.subject && (
+          <p className="text-sm text-muted-foreground capitalize">{action.subject}</p>
+        )}
+        {action.chapter && (
+          <p className="text-sm text-muted-foreground capitalize">{action.chapter}</p>
+        )}
+        <p className="text-base font-semibold text-foreground capitalize">
+          {action.topicId}
+        </p>
         <div className="flex items-center gap-4 text-sm text-muted-foreground">
-          <span>
-            Difficulty:{' '}
-            <span className="font-medium text-foreground capitalize">{difficulty}</span>
-          </span>
-          <span>
-            Questions:{' '}
-            <span className="font-medium text-foreground">{questionCount}</span>
-          </span>
-          {lastAccuracy !== null && (
+          {action.masteryLevel && (
             <span>
-              Last accuracy:{' '}
-              <span className="font-medium text-foreground">{lastAccuracy}%</span>
+              Mastery:{' '}
+              <span className="font-medium text-foreground capitalize">{action.masteryLevel}</span>
+            </span>
+          )}
+          {typeof action.accuracy === 'number' && (
+            <span>
+              Accuracy:{' '}
+              <span className="font-medium text-foreground">
+                {Math.round(action.accuracy * 100)}%
+              </span>
             </span>
           )}
         </div>
+        <p className="text-xs text-muted-foreground italic">{action.reasonLabel}</p>
       </div>
 
       <Link
