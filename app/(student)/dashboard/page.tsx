@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
 import { requireActiveSession } from '@/lib/auth';
+import { getNextAction } from '@/lib/homeEngine/getNextAction';
 
 import NextActionCard from '@/components/home/NextActionCard';
 import TodayGoal from '@/components/home/TodayGoal';
@@ -8,6 +9,8 @@ import LearningPathSnapshot from '@/components/home/LearningPathSnapshot';
 import TodaysPlan from '@/components/home/TodaysPlan';
 import AssignmentsRow from '@/components/home/AssignmentsRow';
 import UtilityRow from '@/components/home/UtilityRow';
+
+export const dynamic = 'force-dynamic';
 
 export const metadata: Metadata = {
   title: 'AI Tutor - Student Dashboard | Your Learning Hub',
@@ -31,17 +34,16 @@ export default async function StudentHomeDashboardPage() {
     redirect(`/`);
   }
 
-  // Fetch required home data in parallel (server-side). Keep responses opaque
-  // and do not compute rule engine logic in the UI.
-  const [nextAction, todayGoal, learningSnapshot, dailyPlan] = (await Promise.all([
-    fetchJson('/api/home/next-action'),
+  const userId = session.user.id;
+
+  // Call engine directly (avoids cookie-forwarding issue with server-side fetch).
+  // Remaining endpoints still use fetchJson — they do not require auth.
+  const [heroAction, todayGoal, learningSnapshot, dailyPlan] = (await Promise.all([
+    getNextAction(userId),
     fetchJson('/api/home/today-goal'),
     fetchJson('/api/home/learning-snapshot'),
     fetchJson('/api/home/daily-plan?date=today'),
   ])) as [any, any, any, any];
-
-  // Derive hero title and CTA href from deterministic engine output
-  const heroAction = nextAction?.action ?? null;
 
   function deriveTitle(ruleId: string | undefined, topicName: string | null | undefined): string {
     const name = topicName ?? '';
@@ -71,7 +73,7 @@ export default async function StudentHomeDashboardPage() {
   return (
     <main className="max-w-5xl mx-auto px-4 py-8">
       <div className="space-y-6">
-        {/* 1. NextActionCard — map API shape { action } to component props */}
+        {/* 1. NextActionCard — map engine output directly to component props */}
         <section aria-labelledby="next-action-heading">
           {heroAction ? (
             <NextActionCard
