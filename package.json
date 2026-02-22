@@ -74,6 +74,8 @@
     "test:unit": "cross-env NODE_OPTIONS=--max-old-space-size=4096 jest --runInBand",
     "orchestrator:start": "ts-node -r tsconfig-paths/register worker/orchestrator.ts",
     "seed-ai-data": "node scripts/seed-ai-data.cjs",
+    "seed:ui": "tsx scripts/seed-ui-test-data.ts",
+    "seed:multi": "tsx scripts/seed-multi-ui-test-data.ts",
     "seed-db-ai-content-infra": "node -r ts-node/register scripts/seed-database.ts",
     "reset-db-ai-content-infra": "node -r ts-node/register scripts/reset-remote-db.ts",
     "seed-and-reset-db-ai-content-infra": "npm run seed-db-ai-content-infra && npm run reset-db-ai-content-infra",
