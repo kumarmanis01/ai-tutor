@@ -9,6 +9,8 @@ import TodaysPlan from '@/components/home/TodaysPlan';
 import AssignmentsRow from '@/components/home/AssignmentsRow';
 import UtilityRow from '@/components/home/UtilityRow';
 
+export const dynamic = 'force-dynamic';
+
 export const metadata: Metadata = {
   title: 'AI Tutor - Student Dashboard | Your Learning Hub',
   description:
