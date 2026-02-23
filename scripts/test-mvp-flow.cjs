@@ -4,12 +4,18 @@
  * Deterministic end-to-end MVP flow validation.
  * Makes real HTTP calls to /api/home/next-action and /api/home/complete-action
  * using forged (but cryptographically valid) NextAuth JWT session cookies.
- * Prisma is used only for DB setup, practice simulation, and cleanup.
+ * The ONLY source of engine rule logic is lib/homeEngine/getNextAction.ts,
+ * invoked via the HTTP API layer. This script never reimplements engine
+ * queries or mastery threshold derivations.
  *
- * Three scenarios:
+ * Prisma is used only for DB fixture setup, practice-state simulation,
+ * and cleanup.
+ *
+ * Four scenarios:
  *   1. FRESH  — no mastery, no sessions → next_new_topic
  *   2. WEAK   — mastery accuracy=0.3 + AttentionFlag → low_mastery
  *   3. ACTIVE — open LearningSession → resume_session
+ *   4. MULTI  — 5 topics sequentially: lesson → practice → next topic (no regression)
  *
  * For each scenario:
  *   a) Setup DB state via Prisma
@@ -26,6 +32,7 @@
  *
  * Usage:
  *   node scripts/test-mvp-flow.cjs
+ *   node scripts/test-mvp-flow.cjs --dry-run
  *   BASE_URL=http://localhost:3001 node scripts/test-mvp-flow.cjs
  *
  * Exit codes: 0 = all pass, 1 = any failure or fatal error.
@@ -35,6 +42,9 @@
 
 const fs   = require('fs');
 const path = require('path');
+
+// ── CLI flags ────────────────────────────────────────────────────────────────
+const DRY_RUN = process.argv.includes('--dry-run');
 
 // ── Env loader ────────────────────────────────────────────────────────────────
 function loadEnv() {
@@ -174,22 +184,18 @@ async function ensureUser(email, board, grade) {
 }
 
 /**
- * Mirrors updateTopicMastery in lib/tests.ts — used for practice simulation
- * (calling /api/tests/submit requires a full GeneratedTest + TestResult stack;
- * for the flow-transition assertion we write mastery directly).
+ * Simulate a practice session completing with a given accuracy.
+ * Writes only the DB columns the engine actually checks (accuracy,
+ * questionsAttempted, AttentionFlag.resolved). masteryLevel is set to
+ * 'beginner' — the engine's P1-P5 rules never inspect it; the real
+ * derivation lives exclusively in lib/tests.ts:updateTopicMastery().
  */
 async function simulatePracticeComplete(studentId, topicId, subject, chapter, accuracy) {
-  const questionsAttempted = 10;
-  let masteryLevel = 'beginner';
-  if      (accuracy >= 0.9 && questionsAttempted >= 20) masteryLevel = 'expert';
-  else if (accuracy >= 0.75 && questionsAttempted >= 10) masteryLevel = 'advanced';
-  else if (accuracy >= 0.5  && questionsAttempted >= 5)  masteryLevel = 'intermediate';
-
   await prisma.$transaction(async (tx) => {
     await tx.studentTopicMastery.upsert({
       where:  { studentId_topicId: { studentId, topicId } },
-      update: { accuracy, masteryLevel, questionsAttempted, lastAttemptedAt: new Date() },
-      create: { studentId, topicId, subject, chapter, masteryLevel, accuracy, questionsAttempted, lastAttemptedAt: new Date() },
+      update: { accuracy, questionsAttempted: 10, lastAttemptedAt: new Date() },
+      create: { studentId, topicId, subject, chapter, masteryLevel: 'beginner', accuracy, questionsAttempted: 10, lastAttemptedAt: new Date() },
     });
     if (accuracy >= 0.6) {
       await tx.attentionFlag.updateMany({
@@ -367,12 +373,101 @@ async function testActiveStudent(topic) {
   return userId;
 }
 
+// ── Scenario 4: MULTI-TOPIC SEQUENTIAL PROGRESSION ──────────────────────────
+async function testMultiTopicSequential(topics) {
+  console.log('\n━━━ Scenario 4: MULTI-TOPIC SEQUENTIAL PROGRESSION ━━━');
+
+  // Use the first topic to derive board/grade for user creation
+  const firstTopic = topics[0];
+  const boardSlug = firstTopic.chapter.subject.class.board.slug;
+  const grade     = firstTopic.chapter.subject.class.grade;
+
+  const user   = await ensureUser('test-mvp-multi@mvp-test.local', boardSlug, grade);
+  const userId = user.id;
+  await clearUserData(userId);
+
+  const cookie = await createSessionCookie(userId, user.email, 'Multi Student');
+
+  const completedTopicIds = [];
+
+  for (let i = 0; i < topics.length; i++) {
+    const t = topics[i];
+    const topicId     = t.id;
+    const subject     = t.chapter.subject.name;
+    const chapterName = t.chapter.name;
+    const label       = `MULTI[${i + 1}/${topics.length}]`;
+
+    console.log(`\n  ── Topic ${i + 1}: "${t.name}" ──`);
+
+    // a) Assert engine recommends next_new_topic pointing at this topic
+    const r1 = await apiGet('/api/home/next-action', cookie);
+    assert(`${label} rule = next_new_topic`, r1.body?.action?.ruleId, 'next_new_topic');
+    assert(`${label} topicId matches`, r1.body?.action?.topicId, topicId);
+
+    // Verify no previously completed topic reappears
+    if (completedTopicIds.length > 0) {
+      const currentTopicId = r1.body?.action?.topicId;
+      const isRegression = completedTopicIds.includes(currentTopicId);
+      assertOk(`${label} no regression to old topic`, !isRegression,
+        isRegression ? `regressed to ${currentTopicId}` : 'ok');
+    }
+
+    // b) Simulate lesson completion
+    const r2 = await apiPost('/api/home/complete-action', cookie, {
+      topicId, subject, chapter: chapterName,
+    });
+    assert(`${label} complete-action status`, r2.status, 200);
+
+    // c) Assert rule transitions to low_accuracy for this topic
+    assert(`${label} post-lesson rule = low_accuracy`, r2.body?.nextAction?.ruleId, 'low_accuracy');
+
+    // d) Simulate practice with accuracy 0.75 (above P4 threshold of 0.6)
+    await simulatePracticeComplete(userId, topicId, subject, chapterName, 0.75);
+    completedTopicIds.push(topicId);
+
+    // e) After practice, engine should NOT point back to this topic
+    const r3 = await apiGet('/api/home/next-action', cookie);
+    assertNot(`${label} no oscillation back to low_accuracy`, r3.body?.action?.ruleId, 'low_accuracy');
+
+    // If not the last topic, the next action should be next_new_topic for a different topic
+    if (i < topics.length - 1) {
+      assert(`${label} advances to next_new_topic`, r3.body?.action?.ruleId, 'next_new_topic');
+      assertNot(`${label} next topic is different`, r3.body?.action?.topicId, topicId);
+    }
+  }
+
+  // Final assertion: after all 5 topics, engine should point to the 6th topic
+  const rFinal = await apiGet('/api/home/next-action', cookie);
+  assert('MULTI final rule = next_new_topic (6th topic)', rFinal.body?.action?.ruleId, 'next_new_topic');
+  // The 6th topic must not be any of the 5 completed topics
+  const finalTopicId = rFinal.body?.action?.topicId;
+  const isRepeat = completedTopicIds.includes(finalTopicId);
+  assertOk('MULTI 6th topic is new', !isRepeat && !!finalTopicId,
+    isRepeat ? `repeated ${finalTopicId}` : `topicId=${finalTopicId}`);
+
+  console.log('\n  ┌─────────────────────────────────────────────────────┐');
+  console.log('  │     MULTI-TOPIC SEQUENTIAL TEST PASSED              │');
+  console.log('  └─────────────────────────────────────────────────────┘');
+
+  return userId;
+}
+
 // ── Main ──────────────────────────────────────────────────────────────────────
 async function main() {
   console.log('═'.repeat(62));
   console.log('  test-mvp-flow.cjs — HTTP end-to-end MVP flow validation');
-  console.log(`  Server: ${BASE_URL}`);
+  console.log(`  Server: ${BASE_URL}${DRY_RUN ? '  [DRY RUN]' : ''}`);
   console.log('═'.repeat(62));
+
+  if (DRY_RUN) {
+    console.log('\n[dry-run] Would execute 4 scenarios:');
+    console.log('  1. FRESH  — no mastery, no sessions → next_new_topic');
+    console.log('  2. WEAK   — mastery accuracy=0.3 + AttentionFlag → low_mastery');
+    console.log('  3. ACTIVE — open LearningSession → resume_session');
+    console.log('  4. MULTI  — 5 topics sequentially: lesson → practice → next topic');
+    console.log('\n[dry-run] No DB writes, no HTTP calls. Exiting.');
+    process.exit(0);
+  }
 
   if (!NEXTAUTH_SECRET) {
     console.error('\n[FATAL] NEXTAUTH_SECRET is not set. Cannot forge session cookies.');
@@ -391,28 +486,37 @@ async function main() {
     process.exit(1);
   }
 
-  // Find an active topic to use across all scenarios
-  const topic = await prisma.topicDef.findFirst({
-    where: { lifecycle: 'active' },
-    include: {
-      chapter: {
-        include: {
-          subject: { include: { class: { include: { board: true } } } },
-        },
+  // Find active topics for all scenarios (need ≥6 for Scenario 4 + final assertion)
+  const topicInclude = {
+    chapter: {
+      include: {
+        subject: { include: { class: { include: { board: true } } } },
       },
     },
+  };
+  const allTopics = await prisma.topicDef.findMany({
+    where: { lifecycle: 'active' },
+    include: topicInclude,
     orderBy: [{ chapter: { order: 'asc' } }, { order: 'asc' }],
+    take: 10,
   });
 
-  if (!topic) {
+  if (allTopics.length === 0) {
     console.error('\n[FATAL] No active TopicDef found. Run "npm run seed-ai-data" first.');
     process.exit(1);
   }
 
+  const topic = allTopics[0];
   console.log(`\nUsing topic : "${topic.name}" (${topic.id})`);
   console.log(`  Chapter   : ${topic.chapter.name}`);
   console.log(`  Subject   : ${topic.chapter.subject.name}`);
   console.log(`  Board     : ${topic.chapter.subject.class.board.slug}  Grade: ${topic.chapter.subject.class.grade}`);
+
+  if (allTopics.length < 6) {
+    console.warn(`\n[WARN] Only ${allTopics.length} active topics found. Scenario 4 needs ≥6. Skipping Scenario 4.`);
+  } else {
+    console.log(`  Topics    : ${allTopics.length} active topics available for Scenario 4`);
+  }
 
   const userIds = [];
 
@@ -420,6 +524,11 @@ async function main() {
     userIds.push(await testFreshStudent(topic));
     userIds.push(await testWeakStudent(topic));
     userIds.push(await testActiveStudent(topic));
+
+    // Scenario 4: needs ≥6 topics (5 to complete + 1 to verify as 6th)
+    if (allTopics.length >= 6) {
+      userIds.push(await testMultiTopicSequential(allTopics.slice(0, 5)));
+    }
   } finally {
     console.log('\n── cleanup ──────────────────────────────────────────────────');
     for (const id of userIds.filter(Boolean)) {
