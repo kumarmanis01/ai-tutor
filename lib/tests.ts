@@ -450,17 +450,39 @@ export async function updateTopicMastery(studentId: string, attemptId: string): 
         },
       });
 
-      // Resolve any open AttentionFlag once accuracy clears the threshold.
-      // HomeEngine P3 short-circuits on unresolved flags; resolving here ensures
-      // the next call to /api/home/next-action reflects the updated mastery.
-      if (rollingAccuracy >= 0.6) {
+      // Bidirectional AttentionFlag sync — aligned with engine P4 threshold (accuracy < 0.6).
+      // Low accuracy: upsert flag as unresolved (creates if missing, re-opens if resolved).
+      // High accuracy: resolve any open flag.  Both branches keep accuracy on the flag current.
+      // HomeEngine P3 short-circuits on unresolved flags, so this must stay in-sync every session.
+      const resolvedState = rollingAccuracy >= 0.6;
+      if (rollingAccuracy < 0.6) {
+        await tx.attentionFlag.upsert({
+          where: { studentId_topicId: { studentId, topicId } },
+          create: {
+            studentId,
+            topicId,
+            subject: stats.subject,
+            chapter: stats.chapter,
+            reason: 'low_mastery',
+            masteryLevel,
+            accuracy: rollingAccuracy,
+            resolved: false,
+          },
+          update: {
+            resolved: false,
+            accuracy: rollingAccuracy,
+            masteryLevel,
+          },
+        });
+      } else {
         await tx.attentionFlag.updateMany({
           where: { studentId, topicId, resolved: false },
-          data: { resolved: true },
+          data: { resolved: true, accuracy: rollingAccuracy },
         });
       }
 
       logger.info('mastery.updated', { studentId, topicId, newAccuracy: rollingAccuracy });
+      logger.info('attention.flag.sync', { studentId, topicId, rollingAccuracy, resolvedState });
     });
   }
 }
