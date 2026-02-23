@@ -21,6 +21,7 @@
 
 import { prisma } from '@/lib/prisma';
 import type { MasteryLevel } from '@prisma/client';
+import { getOrderedTopicsForStudent } from './getOrderedTopicsForStudent';
 
 // ─── Public types ────────────────────────────────────────────────────────────
 
@@ -280,65 +281,25 @@ async function p4_lowAccuracy(studentId: string): Promise<NextAction | null> {
 
 /**
  * P5 — First unattempted TopicDef in the student's curriculum.
- * Scopes to the student's board + grade + subjects.
- * Returns null if curriculum context is unknown.
+ * Delegates the curriculum query to getOrderedTopicsForStudent — the shared
+ * function that applies identical board + grade + subject + lifecycle filters.
+ * Returns null if curriculum context is unknown or all topics are attempted.
  */
 async function p5_nextNewTopic(studentId: string): Promise<NextAction | null> {
-  // Fetch student curriculum context and already-attempted topic IDs in parallel
-  const [user, attempted] = await Promise.all([
-    prisma.user.findUnique({
-      where: { id: studentId },
-      select: { board: true, grade: true, subjects: true },
-    }),
+  // Run the curriculum fetch and the attempted-IDs fetch in parallel.
+  const [orderedTopics, attempted] = await Promise.all([
+    getOrderedTopicsForStudent(studentId),
     prisma.studentTopicMastery.findMany({
       where: { studentId },
       select: { topicId: true },
     }),
   ]);
 
-  const grade = user?.grade ? parseInt(String(user.grade), 10) : NaN;
-  if (!user?.board || isNaN(grade)) return null; // cannot determine curriculum position
+  // getOrderedTopicsForStudent returns [] when board/grade is missing.
+  if (orderedTopics.length === 0) return null;
 
-  const attemptedIds = attempted.map((a) => a.topicId);
-
-  // Narrow to the student's enrolled subjects if specified
-  const subjectNameFilter =
-    Array.isArray(user.subjects) && (user.subjects as string[]).length > 0
-      ? { name: { in: user.subjects as string[] } }
-      : {};
-
-  const nextTopic = await prisma.topicDef.findFirst({
-    where: {
-      lifecycle: 'active',
-      // Exclude already-attempted topics
-      ...(attemptedIds.length > 0 ? { id: { notIn: attemptedIds } } : {}),
-      chapter: {
-        lifecycle: 'active',
-        subject: {
-          lifecycle: 'active',
-          ...subjectNameFilter,
-          class: {
-            lifecycle: 'active',
-            grade,
-            board: {
-              lifecycle: 'active',
-              slug: { equals: user.board, mode: 'insensitive' },
-            },
-          },
-        },
-      },
-    },
-    orderBy: [
-      { chapter: { order: 'asc' } },
-      { order: 'asc' },
-    ],
-    include: {
-      chapter: {
-        include: { subject: true },
-      },
-    },
-  });
-
+  const attemptedIds = new Set(attempted.map((a) => a.topicId));
+  const nextTopic = orderedTopics.find((t) => !attemptedIds.has(t.id));
   if (!nextTopic) return null;
 
   return {

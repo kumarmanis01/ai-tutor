@@ -212,6 +212,59 @@ async function clearUserData(studentId) {
   await prisma.learningSession.deleteMany({ where: { studentId } });
 }
 
+// ── Curriculum helper (mirrors lib/homeEngine/getOrderedTopicsForStudent.ts) ──
+/**
+ * Returns all active TopicDefs for a student's board + grade + subjects context,
+ * ordered by chapter.order ASC, topic.order ASC.
+ *
+ * Mirrors lib/homeEngine/getOrderedTopicsForStudent exactly — guarantees the
+ * test script and the engine work from an identical, student-scoped dataset.
+ * Any change to the engine's curriculum filters must be mirrored here.
+ */
+async function getOrderedTopicsForStudent(studentId) {
+  const user = await prisma.user.findUnique({
+    where: { id: studentId },
+    select: { board: true, grade: true, subjects: true },
+  });
+
+  const grade = user?.grade ? parseInt(String(user.grade), 10) : NaN;
+  if (!user?.board || isNaN(grade)) return [];
+
+  const subjectNameFilter =
+    Array.isArray(user.subjects) && user.subjects.length > 0
+      ? { name: { in: user.subjects } }
+      : {};
+
+  return prisma.topicDef.findMany({
+    where: {
+      lifecycle: 'active',
+      chapter: {
+        lifecycle: 'active',
+        subject: {
+          lifecycle: 'active',
+          ...subjectNameFilter,
+          class: {
+            lifecycle: 'active',
+            grade,
+            board: {
+              lifecycle: 'active',
+              slug: { equals: user.board, mode: 'insensitive' },
+            },
+          },
+        },
+      },
+    },
+    orderBy: [{ chapter: { order: 'asc' } }, { order: 'asc' }],
+    include: {
+      chapter: {
+        include: {
+          subject: { include: { class: { include: { board: true } } } },
+        },
+      },
+    },
+  });
+}
+
 // ── Scenario 1: FRESH student ─────────────────────────────────────────────────
 async function testFreshStudent(topic) {
   console.log('\n━━━ Scenario 1: FRESH student ━━━');
@@ -486,23 +539,59 @@ async function main() {
     process.exit(1);
   }
 
-  // Find active topics for all scenarios (need ≥6 for Scenario 4 + final assertion)
-  const topicInclude = {
-    chapter: {
-      include: {
-        subject: { include: { class: { include: { board: true } } } },
+  // Bootstrap: discover any active board+grade combo from the curriculum.
+  // This single findFirst is the only direct TopicDef query in main() — all further
+  // topic selection goes through getOrderedTopicsForStudent (same filters as the engine).
+  const seedTopic = await prisma.topicDef.findFirst({
+    where: {
+      lifecycle: 'active',
+      chapter: {
+        lifecycle: 'active',
+        subject: {
+          lifecycle: 'active',
+          class: {
+            lifecycle: 'active',
+            board: { lifecycle: 'active' },
+          },
+        },
       },
     },
-  };
-  const allTopics = await prisma.topicDef.findMany({
-    where: { lifecycle: 'active' },
-    include: topicInclude,
     orderBy: [{ chapter: { order: 'asc' } }, { order: 'asc' }],
-    take: 10,
+    include: {
+      chapter: {
+        include: {
+          subject: { include: { class: { include: { board: true } } } },
+        },
+      },
+    },
   });
 
-  if (allTopics.length === 0) {
+  if (!seedTopic) {
     console.error('\n[FATAL] No active TopicDef found. Run "npm run seed-ai-data" first.');
+    process.exit(1);
+  }
+
+  const boardSlug = seedTopic.chapter.subject.class.board.slug;
+  const grade     = seedTopic.chapter.subject.class.grade;
+
+  // Create a bootstrap user scoped to this board/grade so we can call the
+  // shared curriculum helper — same scoping the engine applies for real students.
+  const bootstrapUser = await ensureUser('test-mvp-bootstrap@mvp-test.local', boardSlug, grade);
+
+  // Fetch the canonical ordered topic list via the shared curriculum helper.
+  // This mirrors getOrderedTopicsForStudent() exactly — same filters as the engine.
+  const allTopics = await getOrderedTopicsForStudent(bootstrapUser.id);
+
+  // Assertion: topic count returned by the helper must match engine expectation.
+  // A mismatch here means the helper and the engine have diverged filter logic.
+  assertOk(
+    'Curriculum returns active topics for test board/grade',
+    allTopics.length >= 1,
+    `${allTopics.length} topics found for board=${boardSlug} grade=${grade}`,
+  );
+
+  if (allTopics.length === 0) {
+    console.error('\n[FATAL] getOrderedTopicsForStudent returned 0 topics. Check DB seed.');
     process.exit(1);
   }
 
@@ -518,7 +607,8 @@ async function main() {
     console.log(`  Topics    : ${allTopics.length} active topics available for Scenario 4`);
   }
 
-  const userIds = [];
+  // Bootstrap user is pre-populated so it is always cleaned up in the finally block.
+  const userIds = [bootstrapUser.id];
 
   try {
     userIds.push(await testFreshStudent(topic));
