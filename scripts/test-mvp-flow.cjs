@@ -17,7 +17,7 @@
  *   3. ACTIVE   — open LearningSession → resume_session
  *   4. MULTI    — 5 topics sequentially: lesson → practice → next topic (no regression)
  *   5. PIPELINE — full HTTP: next-action → complete-action → submit → next-action
- *                 verifies updateTopicMastery + AttentionFlag sync without direct STM writes
+ *                 verifies updateTopicMastery uses canonical TopicDef.id (not subject::chapter)
  *
  * For each scenario:
  *   a) Setup DB state via Prisma
@@ -520,12 +520,13 @@ async function testMultiTopicSequential(topics) {
  *   a) GET  /api/home/next-action          → next_new_topic   (no mastery at all)
  *   b) POST /api/home/complete-action      → low_accuracy     (STM seeded at accuracy=0)
  *   c) POST /api/tests/submit (correct)    → 200, graded, updateTopicMastery runs
- *   d) GET  /api/home/next-action          → low_accuracy     (ruleId changed from step a)
+ *   d) GET  /api/home/next-action          → engine advanced past low_accuracy
  *
  * Assertions:
- *   • updateTopicMastery wrote STM["subject::chapter"] with accuracy ≥ 0.6
- *   • No unresolved AttentionFlag exists for the subject::chapter mastery key
- *   • ruleId changed from next_new_topic → low_accuracy  (engine advanced correctly)
+ *   • updateTopicMastery resolved canonical TopicDef.id via GeneratedTest
+ *   • STM[topicId] accuracy updated to ≥ 0.6 (same record complete-action seeded)
+ *   • No unresolved AttentionFlag for the canonical topicId
+ *   • Engine P4 clears — ruleId no longer low_accuracy after submit
  *   • No HTTP 500 errors at any step
  *
  * Returns { userId, genTestId, questionId } for caller-managed cleanup.
@@ -540,10 +541,6 @@ async function testFullHttpPipeline(topic) {
   const chapterName = chapter.name;
   const boardSlug   = chapter.subject.class.board.slug;
   const grade       = chapter.subject.class.grade;
-
-  // updateTopicMastery groups by "${subject}::${chapter}" — this is the mastery key
-  // written to StudentTopicMastery and AttentionFlag by the submit pipeline.
-  const masteryKey = `${subject}::${chapterName}`;
 
   const user   = await ensureUser('test-mvp-pipeline@mvp-test.local', boardSlug, grade);
   const userId = user.id;
@@ -608,7 +605,6 @@ async function testFullHttpPipeline(topic) {
   assert('PIPELINE [a] HTTP status',           r1.status,               200);
   assertNot('PIPELINE [a] no 500',             r1.status,               500);
   assert('PIPELINE [a] rule = next_new_topic', r1.body?.action?.ruleId, 'next_new_topic');
-  const ruleAfterA = r1.body?.action?.ruleId;
 
   // ── b) POST /api/home/complete-action → seeds STM[topicId, accuracy=0] ───────
   // complete-action upserts StudentTopicMastery with accuracy=0 (first lesson done).
@@ -622,7 +618,8 @@ async function testFullHttpPipeline(topic) {
 
   // ── c) POST /api/tests/submit with correct answer ─────────────────────────────
   // submit → applyGrading → updateTopicMastery(userId, attemptId).
-  // updateTopicMastery groups by subject::chapter, upserts STM, syncs AttentionFlag.
+  // updateTopicMastery resolves canonical TopicDef.id from GeneratedTest.topicId
+  // and UPDATES the same STM record complete-action seeded (accuracy 0 → 1.0).
   const r3 = await apiPost('/api/tests/submit', cookie, {
     attemptId: attempt.id,
     answers:   [{ questionId: question.id, answer: 'A', timeSpent: 10 }],
@@ -636,13 +633,14 @@ async function testFullHttpPipeline(topic) {
   );
 
   // ── Verify: updateTopicMastery was triggered ──────────────────────────────────
-  // updateTopicMastery uses "${subject}::${chapter}" as the topicId key in STM.
-  // With 1/1 correct, rollingAccuracy=1.0 → masteryLevel=beginner (total<5 threshold).
+  // updateTopicMastery now resolves the canonical TopicDef.id via GeneratedTest,
+  // so it updates the SAME STM[topicId] record that complete-action seeded.
+  // With 1/1 correct, accuracy updates from 0 → 1.0 (rolling average: (0*0 + 1) / 1).
   const mastery = await prisma.studentTopicMastery.findFirst({
-    where: { studentId: userId, topicId: masteryKey },
+    where: { studentId: userId, topicId },
   });
   assertOk(
-    'PIPELINE updateTopicMastery — STM record written for subject::chapter',
+    'PIPELINE updateTopicMastery — STM record updated for canonical topicId',
     !!mastery,
     mastery ? `accuracy=${mastery.accuracy}` : 'NOT FOUND',
   );
@@ -652,34 +650,36 @@ async function testFullHttpPipeline(topic) {
     `accuracy=${mastery?.accuracy}`,
   );
 
-  // ── Verify: AttentionFlag synced ─────────────────────────────────────────────
-  // accuracy=1.0 ≥ 0.6 → updateTopicMastery calls attentionFlag.updateMany (no-op
-  // since no prior flag exists for this key). No unresolved flag should remain.
-  const openFlag = await prisma.attentionFlag.findFirst({
-    where: { studentId: userId, topicId: masteryKey, resolved: false },
+  // ── Verify: no composite "subject::chapter" STM key leaked ────────────────────
+  const staleComposite = await prisma.studentTopicMastery.findFirst({
+    where: { studentId: userId, topicId: { contains: '::' } },
   });
   assertOk(
-    'PIPELINE AttentionFlag synced — no open flag for subject::chapter key',
+    'PIPELINE no composite :: mastery key written',
+    staleComposite === null,
+    staleComposite ? `leaked topicId=${staleComposite.topicId}` : 'ok',
+  );
+
+  // ── Verify: AttentionFlag synced ─────────────────────────────────────────────
+  // accuracy=1.0 ≥ 0.6 → updateTopicMastery resolves open flags for this topicId.
+  const openFlag = await prisma.attentionFlag.findFirst({
+    where: { studentId: userId, topicId, resolved: false },
+  });
+  assertOk(
+    'PIPELINE AttentionFlag synced — no open flag for canonical topicId',
     openFlag === null,
     openFlag ? `unexpected flag id=${openFlag.id}` : 'ok',
   );
 
-  // ── d) GET /api/home/next-action → engine advances correctly ─────────────────
-  // complete-action wrote STM[actual topicId, accuracy=0] in step (b).
-  // submit wrote STM["subject::chapter", accuracy=1.0] — a DIFFERENT key.
-  // P4 still finds STM[actual topicId, accuracy=0] → ruleId = low_accuracy.
-  // Key assertion: ruleId changed from next_new_topic (step a) → low_accuracy.
+  // ── d) GET /api/home/next-action → engine advances past low_accuracy ─────────
+  // submit updated STM[topicId] accuracy from 0 → 1.0 (same canonical key).
+  // P4 no longer matches (accuracy ≥ 0.6) → engine advances to next topic (P5).
   const r4 = await apiGet('/api/home/next-action', cookie);
   assert('PIPELINE [d] HTTP status', r4.status, 200);
   assertNot('PIPELINE [d] no 500',   r4.status, 500);
   const ruleAfterD = r4.body?.action?.ruleId;
   assertNot(
-    'PIPELINE [d] ruleId changed from initial next_new_topic',
-    ruleAfterD,
-    ruleAfterA,
-  );
-  assert(
-    'PIPELINE [d] engine correctly surfaces low_accuracy (STM[topicId] still at accuracy=0)',
+    'PIPELINE [d] engine advanced — no longer low_accuracy',
     ruleAfterD,
     'low_accuracy',
   );
