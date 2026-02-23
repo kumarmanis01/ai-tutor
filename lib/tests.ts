@@ -408,8 +408,6 @@ export async function updateTopicMastery(studentId: string, attemptId: string): 
   }
 
   for (const [topicId, stats] of Object.entries(groups)) {
-    const newAccuracy = stats.total > 0 ? stats.correct / stats.total : 0;
-
     await prisma.$transaction(async (tx) => {
       const existing = await tx.studentTopicMastery.findUnique({
         where: { studentId_topicId: { studentId, topicId } },
@@ -418,15 +416,19 @@ export async function updateTopicMastery(studentId: string, attemptId: string): 
       const prevAttempted = existing?.questionsAttempted ?? 0;
       const prevAccuracy = existing?.accuracy ?? 0;
       const totalAttempted = prevAttempted + stats.total;
+      // Weighted cumulative accuracy: use stats.correct (integer) directly
+      // to avoid precision loss from an intermediate divide-then-multiply.
       const rollingAccuracy =
         totalAttempted > 0
-          ? (prevAccuracy * prevAttempted + newAccuracy * stats.total) / totalAttempted
-          : newAccuracy;
+          ? (prevAccuracy * prevAttempted + stats.correct) / totalAttempted
+          : stats.total > 0 ? stats.correct / stats.total : 0;
 
       let masteryLevel: MasteryLevel = MasteryLevel.beginner;
       if (rollingAccuracy >= 0.9 && totalAttempted >= 20) masteryLevel = MasteryLevel.expert;
       else if (rollingAccuracy >= 0.75 && totalAttempted >= 10) masteryLevel = MasteryLevel.advanced;
       else if (rollingAccuracy >= 0.5 && totalAttempted >= 5) masteryLevel = MasteryLevel.intermediate;
+
+      const firstSessionAccuracy = stats.total > 0 ? stats.correct / stats.total : 0;
 
       await tx.studentTopicMastery.upsert({
         where: { studentId_topicId: { studentId, topicId } },
@@ -441,7 +443,7 @@ export async function updateTopicMastery(studentId: string, attemptId: string): 
           topicId,
           subject: stats.subject,
           chapter: stats.chapter,
-          accuracy: newAccuracy,
+          accuracy: firstSessionAccuracy,
           questionsAttempted: stats.total,
           masteryLevel,
           lastAttemptedAt: new Date(),
