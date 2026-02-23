@@ -52,21 +52,27 @@ export async function POST(req: Request) {
     if (sessionId) {
       const ls = await tx.learningSession.findFirst({
         where: { id: sessionId, studentId: userId },
-        select: { id: true, isCompleted: true, startedAt: true },
+        select: { id: true, isCompleted: true, startedAt: true, endedAt: true },
       });
-      if (ls && !ls.isCompleted) {
-        const now = new Date();
-        const elapsedMinutes = Math.max(1, Math.floor((now.getTime() - ls.startedAt.getTime()) / 60000));
-        await tx.learningSession.update({
-          where: { id: ls.id },
-          data: {
-            isCompleted: true,
-            completionPercentage: 100,
-            lastAccessed: now,
-            endedAt: now,
-            actualTimeSpent: elapsedMinutes,
-          },
-        });
+      if (ls) {
+        if (ls.endedAt) {
+          // Session already finalized — do not overwrite endedAt or actualTimeSpent.
+          logger.info('session.completed', { sessionId, minutesWritten: 0, idempotent: true });
+        } else if (!ls.isCompleted) {
+          const now = new Date();
+          const elapsedMinutes = Math.max(1, Math.floor((now.getTime() - ls.startedAt.getTime()) / 60000));
+          await tx.learningSession.update({
+            where: { id: ls.id },
+            data: {
+              isCompleted: true,
+              completionPercentage: 100,
+              lastAccessed: now,
+              endedAt: now,
+              actualTimeSpent: elapsedMinutes,
+            },
+          });
+          logger.info('session.completed', { sessionId, minutesWritten: elapsedMinutes, idempotent: false });
+        }
       }
     }
 
