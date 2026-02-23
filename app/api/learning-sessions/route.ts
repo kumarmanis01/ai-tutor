@@ -34,13 +34,24 @@ export async function PATCH(req: NextRequest) {
       isCompleted = completionPercentage >= 100;
     }
 
+    // When session transitions to completed, compute actualTimeSpent from server timestamps.
+    const wasCompleted = ls.isCompleted ?? false;
+    const now = new Date();
+    const completionData: Record<string, unknown> = {};
+    if (isCompleted && !wasCompleted) {
+      const elapsedMinutes = Math.max(1, Math.floor((now.getTime() - ls.startedAt.getTime()) / 60000));
+      completionData.endedAt = now;
+      completionData.actualTimeSpent = elapsedMinutes;
+    }
+
     const updated = await prisma.learningSession.update({
       where: { id: sessionId },
       data: {
         completionPercentage,
         isCompleted,
-        lastAccessed: new Date(),
+        lastAccessed: now,
         ...(typeof currentQuestionIndex === "number" ? { currentQuestionIndex } : {}),
+        ...completionData,
       },
     });
 

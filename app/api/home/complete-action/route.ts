@@ -48,15 +48,24 @@ export async function POST(req: Request) {
 
   await prisma.$transaction(async (tx) => {
     // 1. Mark LearningSession complete when resuming an existing session.
+    //    Compute actualTimeSpent from server timestamps (startedAt → now).
     if (sessionId) {
       const ls = await tx.learningSession.findFirst({
         where: { id: sessionId, studentId: userId },
-        select: { id: true, isCompleted: true },
+        select: { id: true, isCompleted: true, startedAt: true },
       });
       if (ls && !ls.isCompleted) {
+        const now = new Date();
+        const elapsedMinutes = Math.max(1, Math.floor((now.getTime() - ls.startedAt.getTime()) / 60000));
         await tx.learningSession.update({
           where: { id: ls.id },
-          data: { isCompleted: true, completionPercentage: 100, lastAccessed: new Date() },
+          data: {
+            isCompleted: true,
+            completionPercentage: 100,
+            lastAccessed: now,
+            endedAt: now,
+            actualTimeSpent: elapsedMinutes,
+          },
         });
       }
     }
