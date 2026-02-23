@@ -116,7 +116,8 @@ export async function GET() {
           subjectAttemptedTopics++;
           sumAccuracy += m.accuracy;
           subjectSumAccuracy += m.accuracy;
-          if (m.masteryLevel === 'advanced' || m.masteryLevel === 'expert') {
+          // Use accuracy >= 0.6 — aligned with engine P4 threshold.
+          if (m.accuracy >= 0.6) {
             completedTopics++;
             subjectMasteredCount++;
           }

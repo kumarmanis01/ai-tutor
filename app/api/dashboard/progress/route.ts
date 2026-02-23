@@ -77,11 +77,11 @@ export async function GET() {
         select: { activityType: true },
         distinct: ['activityType'],
       }),
-      // Topics marked complete (advanced or expert)
+      // Topics considered complete — aligned with engine P4 threshold (accuracy >= 0.6)
       prisma.studentTopicMastery.count({
         where: {
           studentId: userId,
-          masteryLevel: { in: ['advanced', 'expert'] },
+          accuracy: { gte: 0.6 },
         },
       }),
       // Topics started (any mastery record)

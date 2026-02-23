@@ -426,7 +426,7 @@ export async function updateTopicMastery(studentId: string, attemptId: string): 
       let masteryLevel: MasteryLevel = MasteryLevel.beginner;
       if (rollingAccuracy >= 0.9 && totalAttempted >= 20) masteryLevel = MasteryLevel.expert;
       else if (rollingAccuracy >= 0.75 && totalAttempted >= 10) masteryLevel = MasteryLevel.advanced;
-      else if (rollingAccuracy >= 0.5 && totalAttempted >= 5) masteryLevel = MasteryLevel.intermediate;
+      else if (rollingAccuracy >= 0.6 && totalAttempted >= 5) masteryLevel = MasteryLevel.intermediate;
 
       const firstSessionAccuracy = stats.total > 0 ? stats.correct / stats.total : 0;
 

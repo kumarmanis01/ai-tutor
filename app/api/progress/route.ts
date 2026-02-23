@@ -63,7 +63,7 @@ export async function GET(req: NextRequest) {
     accuracy: p.accuracy,
     questionsAttempted: p.questionsAttempted,
     lastAttemptedAt: p.lastAttemptedAt?.toISOString(),
-    isCompleted: p.masteryLevel === 'expert' || p.masteryLevel === 'advanced',
+    isCompleted: p.accuracy >= 0.6,
     isStarted: true, // record exists → user has interacted with this topic
   }));
 
@@ -135,7 +135,7 @@ export async function POST(req: NextRequest) {
       accuracy: mastery.accuracy,
       questionsAttempted: mastery.questionsAttempted,
       lastAttemptedAt: mastery.lastAttemptedAt?.toISOString(),
-      isCompleted: mastery.masteryLevel === 'expert' || mastery.masteryLevel === 'advanced',
+      isCompleted: mastery.accuracy >= 0.6,
     },
   });
   

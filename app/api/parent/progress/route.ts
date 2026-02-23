@@ -176,10 +176,11 @@ export async function GET(req: NextRequest) {
       subj.totalMastery += masteryValue;
       subj.count++;
 
-      if (m.masteryLevel === 'advanced' || m.masteryLevel === 'expert') {
+      // Aligned with engine P4 threshold: accuracy >= 0.6 = completed
+      if (m.accuracy >= 0.6) {
         subj.strong++;
       }
-      if (m.masteryLevel === 'beginner' && m.questionsAttempted >= 3) {
+      if (m.accuracy < 0.6 && m.questionsAttempted >= 3) {
         subj.weak++;
         attentionItems.push({
           topicId: m.topicId,
