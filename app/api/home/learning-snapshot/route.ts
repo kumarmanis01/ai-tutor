@@ -21,6 +21,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getServerSessionForHandlers } from '@/lib/session';
+import { LOW_ACCURACY_THRESHOLD, MASTERY_LEVELS } from '@/lib/constants/mastery';
 
 export const dynamic = 'force-dynamic';
 
@@ -116,8 +117,8 @@ export async function GET() {
           subjectAttemptedTopics++;
           sumAccuracy += m.accuracy;
           subjectSumAccuracy += m.accuracy;
-          // Use accuracy >= 0.6 — aligned with engine P4 threshold.
-          if (m.accuracy >= 0.6) {
+          // Use accuracy >= LOW_ACCURACY_THRESHOLD — aligned with engine P4 threshold.
+          if (m.accuracy >= LOW_ACCURACY_THRESHOLD) {
             completedTopics++;
             subjectMasteredCount++;
           }
@@ -145,7 +146,7 @@ export async function GET() {
     let mastery: 'weak' | 'improving' | 'strong' = 'weak';
     if (subjectAttemptedTopics > 0) {
       const avg = subjectSumAccuracy / subjectAttemptedTopics;
-      if (avg >= 0.75) mastery = 'strong';
+      if (avg >= MASTERY_LEVELS.advanced.minAccuracy) mastery = 'strong';
       else if (avg >= 0.5) mastery = 'improving';
     }
 

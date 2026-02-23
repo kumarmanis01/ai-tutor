@@ -22,6 +22,7 @@
 import { prisma } from '@/lib/prisma';
 import type { MasteryLevel } from '@prisma/client';
 import { getOrderedTopicsForStudent } from './getOrderedTopicsForStudent';
+import { LOW_ACCURACY_THRESHOLD } from '../constants/mastery';
 
 // ─── Public types ────────────────────────────────────────────────────────────
 
@@ -133,6 +134,7 @@ async function enrichTopic(
  * Pulls subject/chapter/topicId from the session's meta JSON.
  */
 async function p1_resumeSession(studentId: string): Promise<NextAction | null> {
+  // Only consider sessions with topicId present and valid activityType
   const session = await prisma.learningSession.findFirst({
     where: { studentId, isCompleted: false },
     orderBy: { lastAccessed: 'desc' },
@@ -147,6 +149,11 @@ async function p1_resumeSession(studentId: string): Promise<NextAction | null> {
 
   const meta = safeObj(session.meta);
   const topicId = strOrNull(session.activityRef) ?? strOrNull(meta.topicId) ?? null;
+  // Defensive: skip sessions without topicId
+  if (!topicId) return null;
+  // Defensive: only allow lesson/practice activityType
+  const allowedTypes = ['lesson', 'practice'];
+  if (!allowedTypes.includes(session.activityType)) return null;
   const enriched = await enrichTopic(topicId, {
     topicName: null,
     subject: strOrNull(meta.subject) ?? strOrNull(meta.subjectName) ?? null,
@@ -212,7 +219,12 @@ async function p2_dailyTask(studentId: string): Promise<NextAction | null> {
  * These flags are written by the analytics pipeline when mastery drops.
  */
 async function p3_attentionFlag(studentId: string): Promise<NextAction | null> {
-  const flag = await prisma.attentionFlag.findFirst({
+  // Enforce curriculum scope: only consider flags for topics in student's curriculum
+  const orderedTopics = await getOrderedTopicsForStudent(studentId);
+  if (!orderedTopics.length) return null;
+  const allowedTopicIds = new Set(orderedTopics.map(t => t.id));
+  // Find all unresolved flags, filter in-memory to allowed topics, then pick lowest accuracy
+  const flags = await prisma.attentionFlag.findMany({
     where: { studentId, resolved: false },
     orderBy: { accuracy: 'asc' },
     select: {
@@ -223,6 +235,7 @@ async function p3_attentionFlag(studentId: string): Promise<NextAction | null> {
       accuracy: true,
     },
   });
+  const flag = flags.find(f => f.topicId && allowedTopicIds.has(f.topicId));
   if (!flag) return null;
 
   const enriched = await enrichTopic(flag.topicId, {
@@ -248,8 +261,13 @@ async function p3_attentionFlag(studentId: string): Promise<NextAction | null> {
  * Catches cases where AttentionFlags haven't been written yet.
  */
 async function p4_lowAccuracy(studentId: string): Promise<NextAction | null> {
-  const weak = await prisma.studentTopicMastery.findFirst({
-    where: { studentId, accuracy: { lt: 0.6 } },
+  // Enforce curriculum scope: only consider mastery for topics in student's curriculum
+  const orderedTopics = await getOrderedTopicsForStudent(studentId);
+  if (!orderedTopics.length) return null;
+  const allowedTopicIds = new Set(orderedTopics.map(t => t.id));
+  // Use centralized threshold
+  const weaks = await prisma.studentTopicMastery.findMany({
+    where: { studentId, accuracy: { lt: LOW_ACCURACY_THRESHOLD } },
     orderBy: { accuracy: 'asc' },
     select: {
       topicId: true,
@@ -259,6 +277,7 @@ async function p4_lowAccuracy(studentId: string): Promise<NextAction | null> {
       accuracy: true,
     },
   });
+  const weak = weaks.find(w => w.topicId && allowedTopicIds.has(w.topicId));
   if (!weak) return null;
 
   const enriched = await enrichTopic(weak.topicId, {

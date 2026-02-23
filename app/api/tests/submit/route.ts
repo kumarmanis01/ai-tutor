@@ -38,6 +38,27 @@ export async function POST(req: Request) {
     return res;
   }
 
+
+  // Guard: If a LearningSession exists for this topic and is open, mark complete before grading
+  if (attempt.sessionId) {
+    const session = await prisma.learningSession.findFirst({ where: { id: attempt.sessionId, isCompleted: false } });
+    if (session) {
+      const now = new Date();
+      const elapsedMinutes = Math.max(1, Math.floor((now.getTime() - session.startedAt.getTime()) / 60000));
+      await prisma.learningSession.update({
+        where: { id: session.id },
+        data: {
+          isCompleted: true,
+          completionPercentage: 100,
+          lastAccessed: now,
+          endedAt: now,
+          actualTimeSpent: elapsedMinutes,
+        },
+      });
+      logger.info('session.auto-completed.on-submit', { sessionId: session.id });
+    }
+  }
+
   const result = await applyGrading(attempt, payload);
 
   // Update topic mastery synchronously so the next call to /api/home/next-action

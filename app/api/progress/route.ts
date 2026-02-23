@@ -18,6 +18,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getServerSessionForHandlers } from '@/lib/session';
 import { logger } from '@/lib/logger';
+import { LOW_ACCURACY_THRESHOLD } from '@/lib/constants/mastery';
 
 export const dynamic = 'force-dynamic';
 
@@ -63,7 +64,7 @@ export async function GET(req: NextRequest) {
     accuracy: p.accuracy,
     questionsAttempted: p.questionsAttempted,
     lastAttemptedAt: p.lastAttemptedAt?.toISOString(),
-    isCompleted: p.accuracy >= 0.6,
+    isCompleted: p.accuracy >= LOW_ACCURACY_THRESHOLD,
     isStarted: true, // record exists → user has interacted with this topic
   }));
 
@@ -135,7 +136,7 @@ export async function POST(req: NextRequest) {
       accuracy: mastery.accuracy,
       questionsAttempted: mastery.questionsAttempted,
       lastAttemptedAt: mastery.lastAttemptedAt?.toISOString(),
-      isCompleted: mastery.accuracy >= 0.6,
+      isCompleted: mastery.accuracy >= LOW_ACCURACY_THRESHOLD,
     },
   });
   

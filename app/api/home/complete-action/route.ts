@@ -52,9 +52,10 @@ export async function POST(req: Request) {
     if (sessionId) {
       const ls = await tx.learningSession.findFirst({
         where: { id: sessionId, studentId: userId },
-        select: { id: true, isCompleted: true, startedAt: true, endedAt: true },
+        select: { id: true, isCompleted: true, startedAt: true, endedAt: true, activityRef: true },
       });
       if (ls) {
+        if (!ls.activityRef) throw new Error('Invalid session without topicId');
         if (ls.endedAt) {
           // Session already finalized — do not overwrite endedAt or actualTimeSpent.
           logger.info('session.completed', { sessionId, minutesWritten: 0, idempotent: true });

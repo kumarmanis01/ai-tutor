@@ -177,10 +177,10 @@ export async function GET(req: NextRequest) {
       subj.count++;
 
       // Aligned with engine P4 threshold: accuracy >= 0.6 = completed
-      if (m.accuracy >= 0.6) {
+        if (m.accuracy >= LOW_ACCURACY_THRESHOLD) {
         subj.strong++;
       }
-      if (m.accuracy < 0.6 && m.questionsAttempted >= 3) {
+        if (m.accuracy < LOW_ACCURACY_THRESHOLD && m.questionsAttempted >= 3) {
         subj.weak++;
         attentionItems.push({
           topicId: m.topicId,
@@ -235,7 +235,7 @@ export async function GET(req: NextRequest) {
     // Build readiness indicators
     const readiness: ReadinessItem[] = subjectProgress.map((sp) => {
       const coverageWeight = 0.4;
-      const masteryWeight = 0.6;
+      const masteryWeight = LOW_ACCURACY_THRESHOLD;
       const coverageScore = sp.coveragePercent;
       const masteryScore = (sp.averageMastery / 4) * 100; // 4 = max mastery (expert)
       const readinessScore = Math.round(coverageWeight * coverageScore + masteryWeight * masteryScore);
