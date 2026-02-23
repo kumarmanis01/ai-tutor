@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import logger from '../lib/logger';
 /* eslint-disable no-console */
 // No runtime env-file loader or tsconfig-paths in production worker.
 // Environment is validated by `worker/entry.ts` before bootstrap.
@@ -19,11 +20,11 @@ try {
   } else if (workerDefault && typeof (workerDefault as any).startWorker === 'function') {
     ;(workerDefault as any).startWorker({ intervalMs })
   } else {
-    console.error('No worker start function found; exiting')
+    logger.error('No worker start function found; exiting')
     process.exit(2)
   }
 } catch (err: any) {
-  console.error('Failed to start worker', err)
+  logger.error('Failed to start worker', err)
   process.exit(2)
 }
 // End of entry script

@@ -306,10 +306,10 @@ export const authOptions: any = {
       await maybeSendWelcomeEmail(user.email!, user.name ?? undefined).catch((err) =>
         logger.error(`Error in maybeSendWelcomeEmail: ${String(err)}`, { className: 'auth', methodName: 'signIn' }),
       );
-      // console.log('signin callback activated with user:', user.email!);
+      // logger.info('signin callback activated with user:', user.email!);
       // // Best Practice: Use welcomeEmailSent flag to ensure email is sent only once
       // const dbUser = await prisma.user.findUnique({ where: { email: user.email! } });
-      // console.log('Database user fetched:', dbUser);
+      // logger.info('Database user fetched:', dbUser);
       // if (dbUser && !dbUser.welcomeEmailSent) {
       //   // Send welcome email and set the flag
       //   await sendWelcomeEmail(user.email!, user.name ?? undefined);
@@ -317,9 +317,9 @@ export const authOptions: any = {
       //     where: { email: user.email! },
       //     data: { welcomeEmailSent: true },
       //   });
-      //   console.log('Welcome email sent and flag updated for:', user.email);
+      //   logger.info('Welcome email sent and flag updated for:', user.email);
       // } else {
-      //   console.log('Welcome email already sent for:', user.email);
+      //   logger.info('Welcome email already sent for:', user.email);
       // }
       return true;
     },

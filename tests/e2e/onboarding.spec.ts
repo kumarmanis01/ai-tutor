@@ -1,3 +1,4 @@
+const logger = require('../../lib/logger');
 let playwrightAvailable = true;
 try {
   require.resolve('@playwright/test');
@@ -10,7 +11,7 @@ if (!playwrightAvailable) {
   // This keeps CI/dev runs stable when E2E tooling isn't present while marking the
   // suite as intentionally skipped instead of failing due to zero tests.
   // eslint-disable-next-line no-console
-  console.warn('Skipping E2E onboarding.spec.ts: @playwright/test not installed');
+  logger.warn('Skipping E2E onboarding.spec.ts: @playwright/test not installed');
    
   test.skip('skipped E2E onboarding: @playwright/test not installed', () => {});
 } else {

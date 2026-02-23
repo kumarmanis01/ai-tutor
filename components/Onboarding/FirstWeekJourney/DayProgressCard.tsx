@@ -1,3 +1,4 @@
+import logger from '../../../lib/logger';
 /**
  * FILE OBJECTIVE:
  * - Day progress card component showing individual day status in first-week journey.
@@ -112,7 +113,7 @@ function ProgressBar({
  *     totalTasks: 3
  *   }}
  *   isActive={false}
- *   onClick={() => console.log("Day clicked")}
+ *   onClick={() => logger.info("Day clicked")}
  *   language="en"
  * />
  * ```
