@@ -154,7 +154,7 @@ class Logger {
       // Remove undefined fields
       Object.keys(logObj).forEach((k) => logObj[k] === undefined && delete logObj[k]);
       // Print as pretty JSON
-      console.log('[API DEBUG]', JSON.stringify(logObj, null, 2));
+      this.add(JSON.stringify(logObj, null, 2), context, 'debug');
     } catch (err) {
       this.add(`logAPI error: ${err}`, context, 'error');
     }
