@@ -11,11 +11,13 @@
  * Prisma is used only for DB fixture setup, practice-state simulation,
  * and cleanup.
  *
- * Four scenarios:
- *   1. FRESH  — no mastery, no sessions → next_new_topic
- *   2. WEAK   — mastery accuracy=0.3 + AttentionFlag → low_mastery
- *   3. ACTIVE — open LearningSession → resume_session
- *   4. MULTI  — 5 topics sequentially: lesson → practice → next topic (no regression)
+ * Five scenarios:
+ *   1. FRESH    — no mastery, no sessions → next_new_topic
+ *   2. WEAK     — mastery accuracy=0.3 + AttentionFlag → low_mastery
+ *   3. ACTIVE   — open LearningSession → resume_session
+ *   4. MULTI    — 5 topics sequentially: lesson → practice → next topic (no regression)
+ *   5. PIPELINE — full HTTP: next-action → complete-action → submit → next-action
+ *                 verifies updateTopicMastery + AttentionFlag sync without direct STM writes
  *
  * For each scenario:
  *   a) Setup DB state via Prisma
@@ -505,6 +507,190 @@ async function testMultiTopicSequential(topics) {
   return userId;
 }
 
+// ── Scenario 5: FULL HTTP PRACTICE PIPELINE ───────────────────────────────────
+/**
+ * Exercises the complete Notes→Practice→Mastery loop exclusively through HTTP.
+ *
+ * Setup (Prisma — no StudentTopicMastery written here):
+ *   • Question with known correctAnswer
+ *   • GeneratedTest linked to the curriculum TopicDef
+ *   • TestResult + AttemptQuestion wiring the attempt to the question
+ *
+ * HTTP flow:
+ *   a) GET  /api/home/next-action          → next_new_topic   (no mastery at all)
+ *   b) POST /api/home/complete-action      → low_accuracy     (STM seeded at accuracy=0)
+ *   c) POST /api/tests/submit (correct)    → 200, graded, updateTopicMastery runs
+ *   d) GET  /api/home/next-action          → low_accuracy     (ruleId changed from step a)
+ *
+ * Assertions:
+ *   • updateTopicMastery wrote STM["subject::chapter"] with accuracy ≥ 0.6
+ *   • No unresolved AttentionFlag exists for the subject::chapter mastery key
+ *   • ruleId changed from next_new_topic → low_accuracy  (engine advanced correctly)
+ *   • No HTTP 500 errors at any step
+ *
+ * Returns { userId, genTestId, questionId } for caller-managed cleanup.
+ * Question must be deleted AFTER User (User cascade removes AttemptQuestion first,
+ * releasing the Question FK; GenTest has no FK constraint to TestResult).
+ */
+async function testFullHttpPipeline(topic) {
+  console.log('\n━━━ Scenario 5: FULL HTTP PRACTICE PIPELINE ━━━');
+
+  const { id: topicId, chapter } = topic;
+  const subject     = chapter.subject.name;
+  const chapterName = chapter.name;
+  const boardSlug   = chapter.subject.class.board.slug;
+  const grade       = chapter.subject.class.grade;
+
+  // updateTopicMastery groups by "${subject}::${chapter}" — this is the mastery key
+  // written to StudentTopicMastery and AttentionFlag by the submit pipeline.
+  const masteryKey = `${subject}::${chapterName}`;
+
+  const user   = await ensureUser('test-mvp-pipeline@mvp-test.local', boardSlug, grade);
+  const userId = user.id;
+  await clearUserData(userId);
+
+  // ── 1. Create a Question with a known correct answer ─────────────────────────
+  // correctAnswer='a'; normalizeAnswer('A') === 'a' === normalizeAnswer('a') → correct.
+  const question = await prisma.question.create({
+    data: {
+      subject,
+      chapter:       chapterName,
+      type:          'mcq',
+      prompt:        '[S5] Scenario 5 test question: what is 1 + 1?',
+      choices:       JSON.stringify([
+        { key: 'A', label: '2' },
+        { key: 'B', label: '3' },
+      ]),
+      correctAnswer: 'a',
+      difficulty:    'easy',
+    },
+  });
+
+  // ── 2. Generate minimal GeneratedTest for the topic ──────────────────────────
+  // version:9999 is deterministic and unlikely to collide with real curriculum data.
+  // Upsert is safe on repeated test runs without relying on prior cleanup success.
+  const genTest = await prisma.generatedTest.upsert({
+    where: {
+      topicId_difficulty_language_version: {
+        topicId, difficulty: 'easy', language: 'en', version: 9999,
+      },
+    },
+    create: {
+      topicId,
+      title:      '[S5] Scenario 5 Test',
+      difficulty: 'easy',
+      language:   'en',
+      version:    9999,
+      status:     'approved',
+    },
+    update: { title: '[S5] Scenario 5 Test', status: 'approved' },
+  });
+
+  // ── 3. Seed TestResult + AttemptQuestion via Prisma ──────────────────────────
+  // StudentTopicMastery is intentionally NOT written here — it must only be written
+  // by the HTTP API pipeline (complete-action seeds it; submit updates it).
+  const attempt = await prisma.testResult.create({
+    data: {
+      testId:    genTest.id,
+      studentId: userId,
+      startedAt: new Date(),
+    },
+  });
+
+  await prisma.attemptQuestion.create({
+    data: { testResultId: attempt.id, questionId: question.id, order: 1 },
+  });
+
+  const cookie = await createSessionCookie(userId, user.email, 'Pipeline Student');
+
+  // ── a) GET /api/home/next-action → expect next_new_topic ─────────────────────
+  const r1 = await apiGet('/api/home/next-action', cookie);
+  assert('PIPELINE [a] HTTP status',           r1.status,               200);
+  assertNot('PIPELINE [a] no 500',             r1.status,               500);
+  assert('PIPELINE [a] rule = next_new_topic', r1.body?.action?.ruleId, 'next_new_topic');
+  const ruleAfterA = r1.body?.action?.ruleId;
+
+  // ── b) POST /api/home/complete-action → seeds STM[topicId, accuracy=0] ───────
+  // complete-action upserts StudentTopicMastery with accuracy=0 (first lesson done).
+  // P4 (accuracy < 0.6) then fires → nextAction.ruleId = low_accuracy.
+  const r2 = await apiPost('/api/home/complete-action', cookie, {
+    topicId, subject, chapter: chapterName,
+  });
+  assert('PIPELINE [b] complete-action status',        r2.status,                    200);
+  assertNot('PIPELINE [b] no 500',                     r2.status,                    500);
+  assert('PIPELINE [b] rule transitions low_accuracy', r2.body?.nextAction?.ruleId, 'low_accuracy');
+
+  // ── c) POST /api/tests/submit with correct answer ─────────────────────────────
+  // submit → applyGrading → updateTopicMastery(userId, attemptId).
+  // updateTopicMastery groups by subject::chapter, upserts STM, syncs AttentionFlag.
+  const r3 = await apiPost('/api/tests/submit', cookie, {
+    attemptId: attempt.id,
+    answers:   [{ questionId: question.id, answer: 'A', timeSpent: 10 }],
+  });
+  assert('PIPELINE [c] submit HTTP status',     r3.status,                        200);
+  assertNot('PIPELINE [c] no 500 error',        r3.status,                        500);
+  assertOk(
+    'PIPELINE [c] scorePercent returned',
+    typeof r3.body?.scorePercent === 'number',
+    `scorePercent=${r3.body?.scorePercent}`,
+  );
+
+  // ── Verify: updateTopicMastery was triggered ──────────────────────────────────
+  // updateTopicMastery uses "${subject}::${chapter}" as the topicId key in STM.
+  // With 1/1 correct, rollingAccuracy=1.0 → masteryLevel=beginner (total<5 threshold).
+  const mastery = await prisma.studentTopicMastery.findFirst({
+    where: { studentId: userId, topicId: masteryKey },
+  });
+  assertOk(
+    'PIPELINE updateTopicMastery — STM record written for subject::chapter',
+    !!mastery,
+    mastery ? `accuracy=${mastery.accuracy}` : 'NOT FOUND',
+  );
+  assertOk(
+    'PIPELINE updateTopicMastery — accuracy reflects correct answer (≥ 0.6)',
+    mastery?.accuracy != null && mastery.accuracy >= 0.6,
+    `accuracy=${mastery?.accuracy}`,
+  );
+
+  // ── Verify: AttentionFlag synced ─────────────────────────────────────────────
+  // accuracy=1.0 ≥ 0.6 → updateTopicMastery calls attentionFlag.updateMany (no-op
+  // since no prior flag exists for this key). No unresolved flag should remain.
+  const openFlag = await prisma.attentionFlag.findFirst({
+    where: { studentId: userId, topicId: masteryKey, resolved: false },
+  });
+  assertOk(
+    'PIPELINE AttentionFlag synced — no open flag for subject::chapter key',
+    openFlag === null,
+    openFlag ? `unexpected flag id=${openFlag.id}` : 'ok',
+  );
+
+  // ── d) GET /api/home/next-action → engine advances correctly ─────────────────
+  // complete-action wrote STM[actual topicId, accuracy=0] in step (b).
+  // submit wrote STM["subject::chapter", accuracy=1.0] — a DIFFERENT key.
+  // P4 still finds STM[actual topicId, accuracy=0] → ruleId = low_accuracy.
+  // Key assertion: ruleId changed from next_new_topic (step a) → low_accuracy.
+  const r4 = await apiGet('/api/home/next-action', cookie);
+  assert('PIPELINE [d] HTTP status', r4.status, 200);
+  assertNot('PIPELINE [d] no 500',   r4.status, 500);
+  const ruleAfterD = r4.body?.action?.ruleId;
+  assertNot(
+    'PIPELINE [d] ruleId changed from initial next_new_topic',
+    ruleAfterD,
+    ruleAfterA,
+  );
+  assert(
+    'PIPELINE [d] engine correctly surfaces low_accuracy (STM[topicId] still at accuracy=0)',
+    ruleAfterD,
+    'low_accuracy',
+  );
+
+  console.log('\n  ┌─────────────────────────────────────────────────────┐');
+  console.log('  │     FULL HTTP PIPELINE TEST PASSED                  │');
+  console.log('  └─────────────────────────────────────────────────────┘');
+
+  return { userId, genTestId: genTest.id, questionId: question.id };
+}
+
 // ── Main ──────────────────────────────────────────────────────────────────────
 async function main() {
   console.log('═'.repeat(62));
@@ -513,11 +699,12 @@ async function main() {
   console.log('═'.repeat(62));
 
   if (DRY_RUN) {
-    console.log('\n[dry-run] Would execute 4 scenarios:');
-    console.log('  1. FRESH  — no mastery, no sessions → next_new_topic');
-    console.log('  2. WEAK   — mastery accuracy=0.3 + AttentionFlag → low_mastery');
-    console.log('  3. ACTIVE — open LearningSession → resume_session');
-    console.log('  4. MULTI  — 5 topics sequentially: lesson → practice → next topic');
+    console.log('\n[dry-run] Would execute 5 scenarios:');
+    console.log('  1. FRESH    — no mastery, no sessions → next_new_topic');
+    console.log('  2. WEAK     — mastery accuracy=0.3 + AttentionFlag → low_mastery');
+    console.log('  3. ACTIVE   — open LearningSession → resume_session');
+    console.log('  4. MULTI    — 5 topics sequentially: lesson → practice → next topic');
+    console.log('  5. PIPELINE — full HTTP: next-action → complete-action → submit → next-action');
     console.log('\n[dry-run] No DB writes, no HTTP calls. Exiting.');
     process.exit(0);
   }
@@ -610,6 +797,12 @@ async function main() {
   // Bootstrap user is pre-populated so it is always cleaned up in the finally block.
   const userIds = [bootstrapUser.id];
 
+  // Scenario 5 creates a Question and GeneratedTest that are NOT cascade-linked to the
+  // test user, so they must be cleaned up explicitly after user deletion (which cascades
+  // TestResult → AttemptQuestion, freeing the AttemptQuestion→Question FK).
+  let s5GenTestId  = null;
+  let s5QuestionId = null;
+
   try {
     userIds.push(await testFreshStudent(topic));
     userIds.push(await testWeakStudent(topic));
@@ -619,12 +812,30 @@ async function main() {
     if (allTopics.length >= 6) {
       userIds.push(await testMultiTopicSequential(allTopics.slice(0, 5)));
     }
+
+    // Scenario 5: full HTTP practice pipeline (always runs — needs only 1 topic)
+    const s5 = await testFullHttpPipeline(topic);
+    userIds.push(s5.userId);
+    s5GenTestId  = s5.genTestId;
+    s5QuestionId = s5.questionId;
   } finally {
     console.log('\n── cleanup ──────────────────────────────────────────────────');
+
+    // Standard cleanup: cascades TestResult → AttemptQuestion → Answer for each user.
+    // Must run BEFORE Question deletion (AttemptQuestion→Question FK is Restrict).
     for (const id of userIds.filter(Boolean)) {
       await clearUserData(id);
       await prisma.user.delete({ where: { id } }).catch(() => {});
     }
+
+    // Scenario 5 extras: safe to delete now that AttemptQuestion rows are gone.
+    if (s5QuestionId) {
+      await prisma.question.delete({ where: { id: s5QuestionId } }).catch(() => {});
+    }
+    if (s5GenTestId) {
+      await prisma.generatedTest.delete({ where: { id: s5GenTestId } }).catch(() => {});
+    }
+
     console.log('  test users and related records removed');
     await prisma.$disconnect();
   }
