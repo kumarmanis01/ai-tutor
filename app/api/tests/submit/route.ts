@@ -88,7 +88,8 @@ export async function POST(req: Request) {
   // Compute next rule after mastery update for audit logging.
   let nextRule: string | null = null;
   try {
-    const nextAction = await getNextAction(user.id);
+    const nextActionResult = await getNextAction(user.id);
+    const nextAction = nextActionResult && typeof nextActionResult === 'object' && 'action' in nextActionResult ? nextActionResult.action : (nextActionResult as any);
     nextRule = nextAction?.ruleId ?? null;
   } catch {
     // non-fatal

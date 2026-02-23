@@ -388,15 +388,32 @@ async function testActiveStudent(topic) {
   const userId = user.id;
   await clearUserData(userId);
 
-  // Seed: an open LearningSession
+  // Seed: an open LearningSession that must be in the student's curriculum.
+  // Use the canonical curriculum helper to pick a valid topic for this student.
+  const orderedTopics = await getOrderedTopicsForStudent(userId);
+  if (!orderedTopics || orderedTopics.length === 0) {
+    throw new Error('No ordered topics found for ACTIVE scenario — run seed data first');
+  }
+  const allowedTopicIds = new Set(orderedTopics.map((t) => t.id));
+  const sessionTopic = orderedTopics[0];
+
   const sess = await prisma.learningSession.create({
     data: {
-      studentId: userId, activityType: 'notes', activityRef: topicId,
-      difficultyLevel: 'medium', isCompleted: false, completionPercentage: 30,
-      meta: { topicId, subject, chapter: chapterName },
+      studentId: userId,
+      activityType: 'lesson',
+      activityRef: sessionTopic.id,
+      difficultyLevel: 'medium',
+      isCompleted: false,
+      completionPercentage: 0,
+      startedAt: new Date(),
+      endedAt: null,
+      meta: { topicId: sessionTopic.id, subject: sessionTopic.chapter.subject.name, chapter: sessionTopic.chapter.name },
       lastAccessed: new Date(),
     },
   });
+
+  // Assert the seeded session topic is part of the student's curriculum
+  assert('ACTIVE session topic in curriculum', allowedTopicIds.has(sess.activityRef), true);
 
   const cookie = await createSessionCookie(userId, user.email, 'Active Student');
 

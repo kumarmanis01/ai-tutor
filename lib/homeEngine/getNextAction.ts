@@ -23,17 +23,25 @@ import { prisma } from '@/lib/prisma';
 import type { MasteryLevel } from '@prisma/client';
 import { getOrderedTopicsForStudent } from './getOrderedTopicsForStudent';
 import { LOW_ACCURACY_THRESHOLD } from '../constants/mastery';
+import { randomUUID } from 'crypto';
+import { logger } from '@/lib/logger';
+
+// In-memory recent decision store used to detect possible engine loops in dev.
+// Maps studentId -> array of serialized decisions (`ruleId:topicId`), capped at 5.
+const recentDecisions: Map<string, string[]> = new Map();
+const RECENT_DECISIONS_CAP = 5;
 
 // ─── Public types ────────────────────────────────────────────────────────────
 
-export type ActionType = 'notes' | 'practice';
+export type ActionType = 'notes' | 'practice' | 'revision';
 
 export type RuleId =
   | 'resume_session'
   | 'daily_task'
   | 'low_mastery'
   | 'low_accuracy'
-  | 'next_new_topic';
+  | 'next_new_topic'
+  | 'all_topics_complete';
 
 export interface NextAction {
   topicId: string | null;
@@ -341,12 +349,74 @@ async function p5_nextNewTopic(studentId: string): Promise<NextAction | null> {
  * Returns null only if the student has no curriculum context (missing board/grade)
  * and has completed all reachable topics.
  */
-export async function getNextAction(studentId: string): Promise<NextAction | null> {
-  return (
+export type GetNextActionReturn = NextAction | null | { action: NextAction | null; traceId: string };
+
+export async function getNextAction(studentId: string): Promise<GetNextActionReturn> {
+  const traceId = randomUUID();
+
+  // Evaluate priorities in order — preserve short-circuiting behaviour.
+  let action =
     (await p1_resumeSession(studentId)) ??
     (await p2_dailyTask(studentId)) ??
     (await p3_attentionFlag(studentId)) ??
     (await p4_lowAccuracy(studentId)) ??
-    (await p5_nextNewTopic(studentId))
-  );
+    (await p5_nextNewTopic(studentId)) ??
+    null;
+
+  // Fallback: if the student has a curriculum but all topics are attempted,
+  // return a stable revision action so the UI can render a friendly CTA.
+  // This replaces a raw `null` so callers always get an actionable suggestion.
+  if (!action) {
+    action = {
+      topicId: null,
+      topicName: null,
+      subject: null,
+      chapter: null,
+      ruleId: 'all_topics_complete',
+      reasonLabel: 'All topics completed — try a revision test',
+      actionType: 'revision',
+      estimatedTimeMin: 20,
+    };
+  }
+
+  // Log decision for observability (no PII beyond studentId).
+  try {
+    logger.info('engine.decision', {
+      traceId,
+      studentId,
+      ruleId: action?.ruleId ?? null,
+      actionType: action?.actionType ?? null,
+      topicId: action?.topicId ?? null,
+      reasonLabel: action?.reasonLabel ?? null,
+    });
+  } catch (err) {
+    // Swallow logging errors — engine result should not fail on logger problems.
+  }
+
+  // Loop detection: track recent decisions per student and warn if the same
+  // (ruleId, topicId) repeats RECENT_DECISIONS_CAP times consecutively.
+  try {
+    const key = `${action?.ruleId ?? 'null'}:${action?.topicId ?? 'null'}`;
+    const arr = recentDecisions.get(studentId) ?? [];
+    arr.push(key);
+    // keep only the last RECENT_DECISIONS_CAP entries
+    if (arr.length > RECENT_DECISIONS_CAP) arr.splice(0, arr.length - RECENT_DECISIONS_CAP);
+    recentDecisions.set(studentId, arr);
+
+    if (arr.length === RECENT_DECISIONS_CAP) {
+      const allSame = arr.every((v) => v === arr[0]);
+      if (allSame && arr[0] !== 'null:null') {
+        const [ruleId, topicId] = arr[0].split(':');
+        logger.warn('engine.loop.detected', { studentId, ruleId, topicId });
+      }
+    }
+  } catch (err) {
+    // ignore loop-detection failures
+  }
+
+  if (process.env.NODE_ENV !== 'production') {
+    return { action, traceId };
+  }
+
+  return action;
 }

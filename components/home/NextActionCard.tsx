@@ -70,27 +70,37 @@ export default function NextActionCard(props: NextActionCardProps) {
   return (
     <article className="max-w-4xl mx-auto bg-white rounded-lg border p-6 flex flex-col md:flex-row md:items-center gap-6 mb-8">
       {/* Primary CTA must be first focusable element in the DOM; visually placed last via order */}
-      <button
-        type="button"
-        onClick={handleComplete}
-        disabled={isSubmitting || !action}
-        className={`order-last md:order-none w-full md:w-44 text-white font-semibold py-4 px-6 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
-          action && !isSubmitting ? 'bg-indigo-700 hover:bg-indigo-800' : 'bg-gray-200 cursor-default text-gray-600'
-        }`}
-        aria-label={ctaText}
-      >
-        {isSubmitting ? (
-          <span className="inline-flex items-center gap-2">
-            <svg className="w-4 h-4 animate-spin text-white" viewBox="0 0 24 24" fill="none" aria-hidden>
-              <circle cx="12" cy="12" r="10" stroke="rgba(255,255,255,0.3)" strokeWidth="4" />
-              <path d="M22 12a10 10 0 00-10-10" stroke="white" strokeWidth="4" strokeLinecap="round" />
-            </svg>
-            <span>Updating…</span>
-          </span>
-        ) : (
-          ctaText
-        )}
-      </button>
+      {action?.ruleId === 'all_topics_complete' ? (
+        <a
+          href="/dashboard/tests"
+          className={`order-last md:order-none w-full md:w-44 text-white font-semibold py-4 px-6 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-emerald-600 hover:bg-emerald-700`}
+          aria-label="Revise weak areas"
+        >
+          Revise weak areas
+        </a>
+      ) : (
+        <button
+          type="button"
+          onClick={handleComplete}
+          disabled={isSubmitting || !action}
+          className={`order-last md:order-none w-full md:w-44 text-white font-semibold py-4 px-6 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
+            action && !isSubmitting ? 'bg-indigo-700 hover:bg-indigo-800' : 'bg-gray-200 cursor-default text-gray-600'
+          }`}
+          aria-label={ctaText}
+        >
+          {isSubmitting ? (
+            <span className="inline-flex items-center gap-2">
+              <svg className="w-4 h-4 animate-spin text-white" viewBox="0 0 24 24" fill="none" aria-hidden>
+                <circle cx="12" cy="12" r="10" stroke="rgba(255,255,255,0.3)" strokeWidth="4" />
+                <path d="M22 12a10 10 0 00-10-10" stroke="white" strokeWidth="4" strokeLinecap="round" />
+              </svg>
+              <span>Updating…</span>
+            </span>
+          ) : (
+            ctaText
+          )}
+        </button>
+      )}
 
       <div className="flex-1">
         <div className="text-xs text-gray-500">Do this next</div>

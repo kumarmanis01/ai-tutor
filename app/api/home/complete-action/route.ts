@@ -99,7 +99,9 @@ export async function POST(req: Request) {
   });
 
   // 3. Compute the next recommended action — reflects updated mastery state.
-  const nextAction = await getNextAction(userId);
+  const nextActionResult = await getNextAction(userId);
+  const nextAction = nextActionResult && typeof nextActionResult === 'object' && 'action' in nextActionResult ? nextActionResult.action : (nextActionResult as any);
+  const traceId = nextActionResult && typeof nextActionResult === 'object' && 'traceId' in nextActionResult ? (nextActionResult as any).traceId : undefined;
 
   logger.info('lesson.completed.transition', {
     studentId: userId,
@@ -107,5 +109,5 @@ export async function POST(req: Request) {
     nextRule: nextAction?.ruleId ?? null,
   });
 
-  return NextResponse.json({ nextAction });
+  return NextResponse.json(traceId ? { nextAction, traceId } : { nextAction });
 }

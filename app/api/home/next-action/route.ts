@@ -29,8 +29,10 @@ export async function GET() {
   }
 
   try {
-    const action = await getNextAction(userId);
-    return NextResponse.json({ action });
+    const result = await getNextAction(userId);
+    const action = result && typeof result === 'object' && 'action' in result ? result.action : (result as any);
+    const traceId = result && typeof result === 'object' && 'traceId' in result ? (result as any).traceId : undefined;
+    return NextResponse.json(traceId ? { action, traceId } : { action });
   } catch (error) {
     logger.error('home.next-action.error', { userId, error });
     // Fail-safe: return null action rather than 500
