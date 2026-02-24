@@ -19,19 +19,29 @@
  * - 2026-02-21 | claude | added topicName enrichment via shared enrichTopic helper
  */
 
-import { prisma } from '../prisma';
-import { MasteryLevel } from '@prisma/client';
+import { prisma } from '@/lib/prisma';
+import type { MasteryLevel } from '@prisma/client';
+import { getOrderedTopicsForStudent, type OrderedTopic } from './getOrderedTopicsForStudent';
+import { LOW_ACCURACY_THRESHOLD } from '../constants/mastery';
+import { randomUUID } from 'crypto';
+import { logger } from '@/lib/logger';
+
+// In-memory recent decision store used to detect possible engine loops in dev.
+// Maps studentId -> array of serialized decisions (`ruleId:topicId`), capped at 5.
+const recentDecisions: Map<string, string[]> = new Map();
+const RECENT_DECISIONS_CAP = 5;
 
 // ─── Public types ────────────────────────────────────────────────────────────
 
-export type ActionType = 'notes' | 'practice';
+export type ActionType = 'notes' | 'practice' | 'revision';
 
 export type RuleId =
   | 'resume_session'
   | 'daily_task'
   | 'low_mastery'
   | 'low_accuracy'
-  | 'next_new_topic';
+  | 'next_new_topic'
+  | 'all_topics_complete';
 
 export interface NextAction {
   topicId: string | null;
@@ -132,6 +142,7 @@ async function enrichTopic(
  * Pulls subject/chapter/topicId from the session's meta JSON.
  */
 async function p1_resumeSession(studentId: string): Promise<NextAction | null> {
+  // Only consider sessions with topicId present and valid activityType
   const session = await prisma.learningSession.findFirst({
     where: { studentId, isCompleted: false },
     orderBy: { lastAccessed: 'desc' },
@@ -146,6 +157,11 @@ async function p1_resumeSession(studentId: string): Promise<NextAction | null> {
 
   const meta = safeObj(session.meta);
   const topicId = strOrNull(session.activityRef) ?? strOrNull(meta.topicId) ?? null;
+  // Defensive: skip sessions without topicId
+  if (!topicId) return null;
+  // Defensive: only allow lesson/practice activityType
+  const allowedTypes = ['lesson', 'practice'];
+  if (!allowedTypes.includes(session.activityType)) return null;
   const enriched = await enrichTopic(topicId, {
     topicName: null,
     subject: strOrNull(meta.subject) ?? strOrNull(meta.subjectName) ?? null,
@@ -209,10 +225,14 @@ async function p2_dailyTask(studentId: string): Promise<NextAction | null> {
 /**
  * P3 — Unresolved AttentionFlag, sorted by lowest accuracy first.
  * These flags are written by the analytics pipeline when mastery drops.
+ * Scoped to the student's active curriculum: only topicIds in allowedTopicIds
+ * are considered, preventing stale or cross-grade flags from surfacing.
  */
-async function p3_attentionFlag(studentId: string): Promise<NextAction | null> {
+async function p3_attentionFlag(studentId: string, allowedTopicIds: Set<string>): Promise<NextAction | null> {
+  if (allowedTopicIds.size === 0) return null;
+  // Push the curriculum scope filter to the DB via IN clause — no in-memory fan-out.
   const flag = await prisma.attentionFlag.findFirst({
-    where: { studentId, resolved: false },
+    where: { studentId, resolved: false, topicId: { in: [...allowedTopicIds] } },
     orderBy: { accuracy: 'asc' },
     select: {
       topicId: true,
@@ -243,12 +263,16 @@ async function p3_attentionFlag(studentId: string): Promise<NextAction | null> {
 }
 
 /**
- * P4 — StudentTopicMastery with accuracy below 0.6, worst first.
+ * P4 — StudentTopicMastery with accuracy below threshold, worst first.
  * Catches cases where AttentionFlags haven't been written yet.
+ * Scoped to the student's active curriculum: only topicIds in allowedTopicIds
+ * are considered, preventing stale or cross-grade mastery rows from surfacing.
  */
-async function p4_lowAccuracy(studentId: string): Promise<NextAction | null> {
+async function p4_lowAccuracy(studentId: string, allowedTopicIds: Set<string>): Promise<NextAction | null> {
+  if (allowedTopicIds.size === 0) return null;
+  // Push the curriculum scope filter to the DB via IN clause — no in-memory fan-out.
   const weak = await prisma.studentTopicMastery.findFirst({
-    where: { studentId, accuracy: { lt: 0.6 } },
+    where: { studentId, accuracy: { lt: LOW_ACCURACY_THRESHOLD }, topicId: { in: [...allowedTopicIds] } },
     orderBy: { accuracy: 'asc' },
     select: {
       topicId: true,
@@ -280,65 +304,21 @@ async function p4_lowAccuracy(studentId: string): Promise<NextAction | null> {
 
 /**
  * P5 — First unattempted TopicDef in the student's curriculum.
- * Scopes to the student's board + grade + subjects.
- * Returns null if curriculum context is unknown.
+ * Accepts pre-fetched orderedTopics (from getOrderedTopicsForStudent) — the
+ * caller already fetched this for P3/P4, so no duplicate curriculum query.
+ * Returns null if curriculum context is unknown or all topics are attempted.
  */
-async function p5_nextNewTopic(studentId: string): Promise<NextAction | null> {
-  // Fetch student curriculum context and already-attempted topic IDs in parallel
-  const [user, attempted] = await Promise.all([
-    prisma.user.findUnique({
-      where: { id: studentId },
-      select: { board: true, grade: true, subjects: true },
-    }),
-    prisma.studentTopicMastery.findMany({
-      where: { studentId },
-      select: { topicId: true },
-    }),
-  ]);
+async function p5_nextNewTopic(studentId: string, orderedTopics: OrderedTopic[]): Promise<NextAction | null> {
+  // getOrderedTopicsForStudent returns [] when board/grade is missing.
+  if (orderedTopics.length === 0) return null;
 
-  const grade = user?.grade ? parseInt(String(user.grade), 10) : NaN;
-  if (!user?.board || isNaN(grade)) return null; // cannot determine curriculum position
-
-  const attemptedIds = attempted.map((a) => a.topicId);
-
-  // Narrow to the student's enrolled subjects if specified
-  const subjectNameFilter =
-    Array.isArray(user.subjects) && (user.subjects as string[]).length > 0
-      ? { name: { in: user.subjects as string[] } }
-      : {};
-
-  const nextTopic = await prisma.topicDef.findFirst({
-    where: {
-      lifecycle: 'active',
-      // Exclude already-attempted topics
-      ...(attemptedIds.length > 0 ? { id: { notIn: attemptedIds } } : {}),
-      chapter: {
-        lifecycle: 'active',
-        subject: {
-          lifecycle: 'active',
-          ...subjectNameFilter,
-          class: {
-            lifecycle: 'active',
-            grade,
-            board: {
-              lifecycle: 'active',
-              slug: { equals: user.board, mode: 'insensitive' },
-            },
-          },
-        },
-      },
-    },
-    orderBy: [
-      { chapter: { order: 'asc' } },
-      { order: 'asc' },
-    ],
-    include: {
-      chapter: {
-        include: { subject: true },
-      },
-    },
+  const attempted = await prisma.studentTopicMastery.findMany({
+    where: { studentId },
+    select: { topicId: true },
   });
 
+  const attemptedIds = new Set(attempted.map((a) => a.topicId));
+  const nextTopic = orderedTopics.find((t) => !attemptedIds.has(t.id));
   if (!nextTopic) return null;
 
   return {
@@ -361,12 +341,85 @@ async function p5_nextNewTopic(studentId: string): Promise<NextAction | null> {
  * Returns null only if the student has no curriculum context (missing board/grade)
  * and has completed all reachable topics.
  */
-export async function getNextAction(studentId: string): Promise<NextAction | null> {
-  return (
-    (await p1_resumeSession(studentId)) ??
-    (await p2_dailyTask(studentId)) ??
-    (await p3_attentionFlag(studentId)) ??
-    (await p4_lowAccuracy(studentId)) ??
-    (await p5_nextNewTopic(studentId))
-  );
+export type GetNextActionReturn = NextAction | null | { action: NextAction | null; traceId: string };
+
+export async function getNextAction(studentId: string): Promise<GetNextActionReturn> {
+  const traceId = randomUUID();
+
+  // P1 and P2 are independent of curriculum context — run them first.
+  // Only fetch the curriculum (P3/P4/P5) when neither P1 nor P2 matched,
+  // avoiding a redundant getOrderedTopicsForStudent query on common paths.
+  const p1OrP2 = (await p1_resumeSession(studentId)) ?? (await p2_dailyTask(studentId));
+
+  let action: NextAction | null;
+  if (p1OrP2) {
+    action = p1OrP2;
+  } else {
+    // Fetch curriculum ONCE — shared by P3, P4, and P5 to avoid duplicate queries.
+    const orderedTopics = await getOrderedTopicsForStudent(studentId);
+    const allowedTopicIds = new Set(orderedTopics.map((t) => t.id));
+
+    action =
+      (await p3_attentionFlag(studentId, allowedTopicIds)) ??
+      (await p4_lowAccuracy(studentId, allowedTopicIds)) ??
+      (await p5_nextNewTopic(studentId, orderedTopics)) ??
+      null;
+  }
+
+  // Fallback: if the student has a curriculum but all topics are attempted,
+  // return a stable revision action so the UI can render a friendly CTA.
+  // This replaces a raw `null` so callers always get an actionable suggestion.
+  if (!action) {
+    action = {
+      topicId: null,
+      topicName: null,
+      subject: null,
+      chapter: null,
+      ruleId: 'all_topics_complete',
+      reasonLabel: 'All topics completed — try a revision test',
+      actionType: 'revision',
+      estimatedTimeMin: 20,
+    };
+  }
+
+  // Log decision for observability (no PII beyond studentId).
+  try {
+    logger.info('engine.decision', {
+      traceId,
+      studentId,
+      ruleId: action?.ruleId ?? null,
+      actionType: action?.actionType ?? null,
+      topicId: action?.topicId ?? null,
+      reasonLabel: action?.reasonLabel ?? null,
+    });
+  } catch (err) {
+    // Swallow logging errors — engine result should not fail on logger problems.
+  }
+
+  // Loop detection: track recent decisions per student and warn if the same
+  // (ruleId, topicId) repeats RECENT_DECISIONS_CAP times consecutively.
+  try {
+    const key = `${action?.ruleId ?? 'null'}:${action?.topicId ?? 'null'}`;
+    const arr = recentDecisions.get(studentId) ?? [];
+    arr.push(key);
+    // keep only the last RECENT_DECISIONS_CAP entries
+    if (arr.length > RECENT_DECISIONS_CAP) arr.splice(0, arr.length - RECENT_DECISIONS_CAP);
+    recentDecisions.set(studentId, arr);
+
+    if (arr.length === RECENT_DECISIONS_CAP) {
+      const allSame = arr.every((v) => v === arr[0]);
+      if (allSame && arr[0] !== 'null:null') {
+        const [ruleId, topicId] = arr[0].split(':');
+        logger.warn('engine.loop.detected', { studentId, ruleId, topicId });
+      }
+    }
+  } catch (err) {
+    // ignore loop-detection failures
+  }
+
+  if (process.env.NODE_ENV !== 'production') {
+    return { action, traceId };
+  }
+
+  return action;
 }

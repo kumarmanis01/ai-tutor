@@ -4,6 +4,7 @@ import { getServerSessionForHandlers } from '@/lib/session';
 import { applyGrading, SubmitPayload, updateTopicMastery } from '@/lib/tests';
 import { updateLearningProfile } from '@/lib/recommendations/engine';
 import { adjustDifficultyAfterTest } from '@/lib/personalization/adaptDifficulty';
+import { getNextAction } from '@/lib/homeEngine/getNextAction';
 import { logger } from '@/lib/logger';
 
 export const dynamic = 'force-dynamic';
@@ -37,15 +38,68 @@ export async function POST(req: Request) {
     return res;
   }
 
+
+  // Guard: If a LearningSession exists for this topic and is open, mark complete before grading
+  if (attempt.sessionId) {
+    const session = await prisma.learningSession.findFirst({ where: { id: attempt.sessionId, isCompleted: false } });
+    if (session) {
+      const now = new Date();
+      const elapsedMinutes = Math.max(1, Math.floor((now.getTime() - session.startedAt.getTime()) / 60000));
+      await prisma.learningSession.update({
+        where: { id: session.id },
+        data: {
+          isCompleted: true,
+          completionPercentage: 100,
+          lastAccessed: now,
+          endedAt: now,
+          actualTimeSpent: elapsedMinutes,
+        },
+      });
+      logger.info('session.auto-completed.on-submit', { sessionId: session.id });
+    }
+  }
+
   const result = await applyGrading(attempt, payload);
-  
-  // Update topic mastery asynchronously (non-blocking)
-  updateTopicMastery(user.id, attempt.id).catch((err) => {
+
+  // Update topic mastery synchronously so the next call to /api/home/next-action
+  // always reflects the latest accuracy and resolved AttentionFlags.
+  try {
+    await updateTopicMastery(user.id, attempt.id);
+  } catch (err) {
     logger.error('TestsSubmitAPI.updateTopicMastery', {
       userId: user.id,
       attemptId: attempt.id,
       error: err,
     });
+  }
+
+  // Derive topicId for logging: GeneratedTest carries the canonical TopicDef ID.
+  let topicId: string | null = null;
+  try {
+    const gt = await prisma.generatedTest.findUnique({
+      where: { id: attempt.testId },
+      select: { topicId: true },
+    });
+    topicId = gt?.topicId ?? null;
+  } catch {
+    // non-fatal — test may not be a GeneratedTest
+  }
+
+  // Compute next rule after mastery update for audit logging.
+  let nextRule: string | null = null;
+  try {
+    const nextActionResult = await getNextAction(user.id);
+    const nextAction = nextActionResult && typeof nextActionResult === 'object' && 'action' in nextActionResult ? nextActionResult.action : (nextActionResult as any);
+    nextRule = nextAction?.ruleId ?? null;
+  } catch {
+    // non-fatal
+  }
+
+  logger.info('practice.completed', {
+    studentId: user.id,
+    topicId,
+    accuracy: result.scorePercent / 100,
+    nextRule,
   });
 
   // Update learning profile asynchronously (non-blocking)

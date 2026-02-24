@@ -382,7 +382,14 @@ export async function applyGrading(attempt: TestResult, payload: SubmitPayload) 
 
 /**
  * Update StudentTopicMastery records after a test submission.
- * Groups graded questions by subject+chapter and upserts mastery with rolling accuracy.
+ *
+ * Resolves the canonical TopicDef.id via TestResult → GeneratedTest.topicId
+ * so mastery records use the same UUID the engine's P4/P5 rules query.
+ * For quick-practice attempts (no GeneratedTest), falls back to resolving
+ * each Question's subject+chapter to a TopicDef via the curriculum hierarchy.
+ *
+ * Each topic update is wrapped in a prisma.$transaction to ensure atomic
+ * read-modify-write.  Resolves AttentionFlag when accuracy reaches >= 0.6.
  */
 export async function updateTopicMastery(studentId: string, attemptId: string): Promise<void> {
   const attemptQuestions = await prisma.attemptQuestion.findMany({
@@ -392,58 +399,195 @@ export async function updateTopicMastery(studentId: string, attemptId: string): 
 
   if (!attemptQuestions.length) return;
 
-  // Group results by subject + chapter
+  // ── Resolve canonical TopicDef.id from TestResult → GeneratedTest ─────────
+  // GeneratedTest.topicId is the authoritative curriculum reference.
+  // For quick-practice attempts (testId = 'quick-practice'), there is no
+  // GeneratedTest — fall back to resolving via Question subject+chapter.
+  const testResult = await prisma.testResult.findUnique({
+    where: { id: attemptId },
+    select: { testId: true },
+  });
+
+  let canonicalTopicId: string | null = null;
+  let topicSubject: string | null = null;
+  let topicChapter: string | null = null;
+
+  if (testResult?.testId) {
+    const gt = await prisma.generatedTest.findUnique({
+      where: { id: testResult.testId },
+      select: {
+        topicId: true,
+        topic: {
+          select: {
+            chapter: {
+              select: {
+                name: true,
+                subject: { select: { name: true } },
+              },
+            },
+          },
+        },
+      },
+    });
+    if (gt) {
+      canonicalTopicId = gt.topicId;
+      topicSubject = gt.topic.chapter.subject.name;
+      topicChapter = gt.topic.chapter.name;
+    }
+  }
+
+  // ── Build per-topic stats keyed by canonical TopicDef.id ──────────────────
+  // When canonical topicId is known (GeneratedTest path), all questions in the
+  // attempt belong to that single topic — aggregate under one key.
+  // When unknown (quick-practice), group by subject+chapter and resolve each
+  // group to a TopicDef.id via the curriculum hierarchy.
   const groups: Record<string, { correct: number; total: number; subject: string; chapter: string }> = {};
-  for (const aq of attemptQuestions) {
-    const subject = aq.question.subject || 'unknown';
-    const chapter = aq.question.chapter || 'unknown';
-    const key = `${subject}::${chapter}`;
-    if (!groups[key]) groups[key] = { correct: 0, total: 0, subject, chapter };
-    groups[key].total++;
-    if (aq.answer?.autoScore != null && aq.answer.autoScore > 0) {
-      groups[key].correct++;
+
+  if (canonicalTopicId) {
+    // GeneratedTest path — single canonical topic for all questions.
+    const subject = topicSubject || attemptQuestions[0]?.question.subject || 'unknown';
+    const chapter = topicChapter || attemptQuestions[0]?.question.chapter || 'unknown';
+    groups[canonicalTopicId] = { correct: 0, total: 0, subject, chapter };
+    for (const aq of attemptQuestions) {
+      groups[canonicalTopicId].total++;
+      if (aq.answer?.autoScore != null && aq.answer.autoScore > 0) {
+        groups[canonicalTopicId].correct++;
+      }
+    }
+  } else {
+    // Quick-practice fallback: group by subject+chapter, resolve to TopicDef.id.
+    const tempGroups: Record<string, { correct: number; total: number; subject: string; chapter: string }> = {};
+    for (const aq of attemptQuestions) {
+      const subject = aq.question.subject || 'unknown';
+      const chapter = aq.question.chapter || 'unknown';
+      const key = `${subject}::${chapter}`;
+      if (!tempGroups[key]) tempGroups[key] = { correct: 0, total: 0, subject, chapter };
+      tempGroups[key].total++;
+      if (aq.answer?.autoScore != null && aq.answer.autoScore > 0) {
+        tempGroups[key].correct++;
+      }
+    }
+
+    for (const [, stats] of Object.entries(tempGroups)) {
+      const topicDef = await prisma.topicDef.findFirst({
+        where: {
+          lifecycle: 'active',
+          chapter: {
+            lifecycle: 'active',
+            name: { equals: stats.chapter, mode: 'insensitive' },
+            subject: {
+              lifecycle: 'active',
+              name: { equals: stats.subject, mode: 'insensitive' },
+            },
+          },
+        },
+        orderBy: { order: 'asc' },
+        select: { id: true },
+      });
+
+      if (topicDef) {
+        // Merge if another question group resolved to the same TopicDef.
+        if (groups[topicDef.id]) {
+          groups[topicDef.id].correct += stats.correct;
+          groups[topicDef.id].total += stats.total;
+        } else {
+          groups[topicDef.id] = stats;
+        }
+      } else {
+        logger.warn('updateTopicMastery.skipOrphan', {
+          studentId,
+          attemptId,
+          subject: stats.subject,
+          chapter: stats.chapter,
+          reason: 'No matching TopicDef found — skipping mastery write',
+        });
+      }
     }
   }
 
   for (const [topicId, stats] of Object.entries(groups)) {
-    const newAccuracy = stats.total > 0 ? stats.correct / stats.total : 0;
+    // Defensive guard: never write composite "subject::chapter" keys to STM.
+    if (topicId.includes('::')) {
+      throw new Error(
+        `Invalid mastery key format: topicId="${topicId}" contains "::". Expected canonical TopicDef UUID.`,
+      );
+    }
 
-    const existing = await prisma.studentTopicMastery.findUnique({
-      where: { studentId_topicId: { studentId, topicId } },
+    await prisma.$transaction(async (tx) => {
+      const existing = await tx.studentTopicMastery.findUnique({
+        where: { studentId_topicId: { studentId, topicId } },
+      });
+
+      const prevAttempted = existing?.questionsAttempted ?? 0;
+      const prevAccuracy = existing?.accuracy ?? 0;
+      const totalAttempted = prevAttempted + stats.total;
+      // Weighted cumulative accuracy: use stats.correct (integer) directly
+      // to avoid precision loss from an intermediate divide-then-multiply.
+      const rollingAccuracy =
+        totalAttempted > 0
+          ? (prevAccuracy * prevAttempted + stats.correct) / totalAttempted
+          : stats.total > 0 ? stats.correct / stats.total : 0;
+
+      let masteryLevel: MasteryLevel = MasteryLevel.beginner;
+      if (rollingAccuracy >= 0.9 && totalAttempted >= 20) masteryLevel = MasteryLevel.expert;
+      else if (rollingAccuracy >= 0.75 && totalAttempted >= 10) masteryLevel = MasteryLevel.advanced;
+      else if (rollingAccuracy >= 0.6 && totalAttempted >= 5) masteryLevel = MasteryLevel.intermediate;
+
+      const firstSessionAccuracy = stats.total > 0 ? stats.correct / stats.total : 0;
+
+      await tx.studentTopicMastery.upsert({
+        where: { studentId_topicId: { studentId, topicId } },
+        update: {
+          accuracy: rollingAccuracy,
+          questionsAttempted: totalAttempted,
+          masteryLevel,
+          lastAttemptedAt: new Date(),
+        },
+        create: {
+          studentId,
+          topicId,
+          subject: stats.subject,
+          chapter: stats.chapter,
+          accuracy: firstSessionAccuracy,
+          questionsAttempted: stats.total,
+          masteryLevel,
+          lastAttemptedAt: new Date(),
+        },
+      });
+
+      // Bidirectional AttentionFlag sync — aligned with engine P4 threshold (accuracy < 0.6).
+      // Low accuracy: upsert flag as unresolved (creates if missing, re-opens if resolved).
+      // High accuracy: resolve any open flag.  Both branches keep accuracy on the flag current.
+      // HomeEngine P3 short-circuits on unresolved flags, so this must stay in-sync every session.
+      const resolvedState = rollingAccuracy >= 0.6;
+      if (rollingAccuracy < 0.6) {
+        await tx.attentionFlag.upsert({
+          where: { studentId_topicId: { studentId, topicId } },
+          create: {
+            studentId,
+            topicId,
+            subject: stats.subject,
+            chapter: stats.chapter,
+            reason: 'low_mastery',
+            masteryLevel,
+            accuracy: rollingAccuracy,
+            resolved: false,
+          },
+          update: {
+            resolved: false,
+            accuracy: rollingAccuracy,
+            masteryLevel,
+          },
+        });
+      } else {
+        await tx.attentionFlag.updateMany({
+          where: { studentId, topicId, resolved: false },
+          data: { resolved: true, accuracy: rollingAccuracy },
+        });
+      }
+
+      logger.info('mastery.updated', { studentId, topicId, newAccuracy: rollingAccuracy });
+      logger.info('attention.flag.sync', { studentId, topicId, rollingAccuracy, resolvedState });
     });
-
-    const prevAttempted = existing?.questionsAttempted ?? 0;
-    const prevAccuracy = existing?.accuracy ?? 0;
-    const totalAttempted = prevAttempted + stats.total;
-    const rollingAccuracy = totalAttempted > 0
-      ? ((prevAccuracy * prevAttempted) + (newAccuracy * stats.total)) / totalAttempted
-      : newAccuracy;
-
-    let masteryLevel: MasteryLevel = MasteryLevel.beginner;
-    if (rollingAccuracy >= 0.9 && totalAttempted >= 20) masteryLevel = MasteryLevel.expert;
-    else if (rollingAccuracy >= 0.75 && totalAttempted >= 10) masteryLevel = MasteryLevel.advanced;
-    else if (rollingAccuracy >= 0.5 && totalAttempted >= 5) masteryLevel = MasteryLevel.intermediate;
-
-    await prisma.studentTopicMastery.upsert({
-      where: { studentId_topicId: { studentId, topicId } },
-      update: {
-        accuracy: rollingAccuracy,
-        questionsAttempted: totalAttempted,
-        masteryLevel,
-        lastAttemptedAt: new Date(),
-      },
-      create: {
-        studentId,
-        topicId,
-        subject: stats.subject,
-        chapter: stats.chapter,
-        accuracy: newAccuracy,
-        questionsAttempted: stats.total,
-        masteryLevel,
-        lastAttemptedAt: new Date(),
-      },
-    });
-
-    logger.info('updateTopicMastery', { studentId, topicId, rollingAccuracy, totalAttempted, masteryLevel });
   }
 }

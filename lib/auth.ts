@@ -306,10 +306,38 @@ export const authOptions: any = {
       await maybeSendWelcomeEmail(user.email!, user.name ?? undefined).catch((err) =>
         logger.error(`Error in maybeSendWelcomeEmail: ${String(err)}`, { className: 'auth', methodName: 'signIn' }),
       );
-      // console.log('signin callback activated with user:', user.email!);
+      // logger.info('signin callback activated with user:', user.email!);
+      // Login guard: detect curriculum (board/grade) changes compared to previous login
+      try {
+        if (user?.email) {
+          const dbUser = await prisma.user.findUnique({ where: { email: user.email } });
+          if (dbUser?.id) {
+            // Fetch the most recent two login audit entries (if any)
+            const recentLogins = await prisma.auditLog.findMany({
+              where: { userId: dbUser.id, action: 'student.login' },
+              orderBy: { createdAt: 'desc' },
+              take: 2,
+            });
+            const previous = recentLogins.length > 1 ? recentLogins[1] : null;
+            const prevBoard = previous?.details?.board ?? null;
+            const prevGrade = previous?.details?.grade ?? null;
+            const curBoard = dbUser.board ?? null;
+            const curGrade = dbUser.grade ?? null;
+            if (previous && (prevBoard !== curBoard || prevGrade !== curGrade)) {
+              // Curriculum changed since previous login — log the event for audit/alerting
+              logger.info('student.curriculum.changed', { studentId: dbUser.id });
+            }
+            // Always record this login with current curriculum snapshot
+            await prisma.auditLog.create({ data: { userId: dbUser.id, action: 'student.login', details: { board: curBoard, grade: curGrade } } });
+          }
+        }
+      } catch (err) {
+        // Non-fatal: don't block sign-in on logging errors
+        logger.warn('signIn login-audit failed', { className: 'auth', methodName: 'signIn', error: String(err) });
+      }
       // // Best Practice: Use welcomeEmailSent flag to ensure email is sent only once
       // const dbUser = await prisma.user.findUnique({ where: { email: user.email! } });
-      // console.log('Database user fetched:', dbUser);
+      // logger.info('Database user fetched:', dbUser);
       // if (dbUser && !dbUser.welcomeEmailSent) {
       //   // Send welcome email and set the flag
       //   await sendWelcomeEmail(user.email!, user.name ?? undefined);
@@ -317,9 +345,9 @@ export const authOptions: any = {
       //     where: { email: user.email! },
       //     data: { welcomeEmailSent: true },
       //   });
-      //   console.log('Welcome email sent and flag updated for:', user.email);
+      //   logger.info('Welcome email sent and flag updated for:', user.email);
       // } else {
-      //   console.log('Welcome email already sent for:', user.email);
+      //   logger.info('Welcome email already sent for:', user.email);
       // }
       return true;
     },

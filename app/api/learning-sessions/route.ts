@@ -25,6 +25,13 @@ export async function PATCH(req: NextRequest) {
       return NextResponse.json({ error: "Session not found" }, { status: 404 });
     }
 
+    // Idempotency guard: endedAt and actualTimeSpent are written exactly once.
+    // A second call for an already-finalised session returns the existing record unchanged.
+    if (ls.endedAt) {
+      logger.info("session.completed", { sessionId, minutesWritten: 0, idempotent: true });
+      return NextResponse.json({ ok: true, session: ls });
+    }
+
     // Compute derived fields
     let completionPercentage = ls.completionPercentage ?? 0;
     let isCompleted = ls.isCompleted ?? false;
@@ -34,17 +41,33 @@ export async function PATCH(req: NextRequest) {
       isCompleted = completionPercentage >= 100;
     }
 
+    // When session transitions false→true, compute actualTimeSpent from server timestamps.
+    // endedAt early-return above guarantees we never reach this block for an already-ended session.
+    const wasCompleted = ls.isCompleted ?? false;
+    const now = new Date();
+    const completionData: Record<string, unknown> = {};
+    let minutesWritten: number | null = null;
+    if (isCompleted && !wasCompleted) {
+      minutesWritten = Math.max(1, Math.floor((now.getTime() - ls.startedAt.getTime()) / 60000));
+      completionData.endedAt = now;
+      completionData.actualTimeSpent = minutesWritten;
+    }
+
     const updated = await prisma.learningSession.update({
       where: { id: sessionId },
       data: {
         completionPercentage,
         isCompleted,
-        lastAccessed: new Date(),
+        lastAccessed: now,
         ...(typeof currentQuestionIndex === "number" ? { currentQuestionIndex } : {}),
+        ...completionData,
       },
     });
 
     logger.info("learningSession.updated", { sessionId, completionPercentage, isCompleted });
+    if (minutesWritten !== null) {
+      logger.info("session.completed", { sessionId, minutesWritten, idempotent: false });
+    }
     return NextResponse.json({ ok: true, session: updated });
   } catch (err: any) {
     logger.error("learningSession.update.error", { error: err?.message });

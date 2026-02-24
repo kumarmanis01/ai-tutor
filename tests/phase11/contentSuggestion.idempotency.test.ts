@@ -1,3 +1,4 @@
+import logger from '../../lib/logger';
 import { prisma } from '@/lib/prisma'
 import net from 'net'
 import { generateSuggestionsForSignal } from '@/insights/engine'
@@ -9,7 +10,7 @@ describe('Phase 11 — ContentSuggestion idempotency', () => {
     // If DATABASE_URL is not set or DB unreachable, skip the test gracefully.
     if (!process.env.DATABASE_URL) {
       // eslint-disable-next-line no-console
-      console.warn('Skipping Phase 11 idempotency test: DATABASE_URL not set')
+      logger.warn('Skipping Phase 11 idempotency test: DATABASE_URL not set')
       SKIP_TEST = true
       return
     }
@@ -32,7 +33,7 @@ describe('Phase 11 — ContentSuggestion idempotency', () => {
       await pingDb(process.env.DATABASE_URL)
     } catch (e) {
       // eslint-disable-next-line no-console
-      console.warn('Skipping Phase 11 idempotency test: DB not reachable', String(e))
+      logger.warn('Skipping Phase 11 idempotency test: DB not reachable', String(e))
       SKIP_TEST = true
       return
     }
@@ -54,7 +55,7 @@ describe('Phase 11 — ContentSuggestion idempotency', () => {
   it('creates exactly one suggestion per signal across repeated runs and audits once', async () => {
     if (SKIP_TEST) {
       // eslint-disable-next-line no-console
-      console.warn('Phase 11 idempotency test skipped (DB not available)')
+      logger.warn('Phase 11 idempotency test skipped (DB not available)')
       return
     }
 
@@ -85,7 +86,7 @@ describe('Phase 11 — ContentSuggestion idempotency', () => {
 
     if (SKIP_TEST) {
       // eslint-disable-next-line no-console
-      console.warn('Phase 11 idempotency test skipped (DB not available)')
+      logger.warn('Phase 11 idempotency test skipped (DB not available)')
       return
     }
 
@@ -97,7 +98,7 @@ describe('Phase 11 — ContentSuggestion idempotency', () => {
       ])
     } catch (e) {
       // eslint-disable-next-line no-console
-      console.warn('Phase 11 idempotency test skipped: DB ping failed', String(e))
+      logger.warn('Phase 11 idempotency test skipped: DB ping failed', String(e))
       return
     }
 

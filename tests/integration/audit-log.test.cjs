@@ -1,9 +1,10 @@
+const logger = require('../../lib/logger');
 /* eslint-disable */
 const { PrismaClient } = require('@prisma/client');
 
 (async function main() {
   if (!process.env.DATABASE_URL) {
-    console.log('Skipping integration test: DATABASE_URL not set');
+    logger.info('Skipping integration test: DATABASE_URL not set');
     process.exit(0);
   }
 
@@ -46,7 +47,7 @@ const { PrismaClient } = require('@prisma/client');
     const softDeleteLogs = await prisma.auditLog.findMany({ where: { action: 'soft_delete_chapter', details: { path: ['chapterId'], equals: ids.chapterId } } });
     if (softDeleteLogs.length === 0) throw new Error('Audit log not created for soft_delete_chapter');
 
-    console.log('Integration tests passed: approve/cancel/retry/soft-delete audits created');
+    logger.info('Integration tests passed: approve/cancel/retry/soft-delete audits created');
 
     // cleanup created rows
     await prisma.auditLog.deleteMany({ where: { action: { in: ['approve_topic','cancel_job','retry_job','soft_delete_chapter'] } } }).catch(()=>{});
@@ -58,7 +59,7 @@ const { PrismaClient } = require('@prisma/client');
     await prisma.board.delete({ where: { id: ids.boardId } }).catch(()=>{});
     process.exit(0);
   } catch (err) {
-    console.error('Integration test failed', err);
+    logger.error('Integration test failed', err);
     process.exit(2);
   } finally {
     await prisma.$disconnect();

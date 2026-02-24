@@ -18,6 +18,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getServerSessionForHandlers } from '@/lib/session';
 import { logger } from '@/lib/logger';
+import { LOW_ACCURACY_THRESHOLD } from '@/lib/constants/mastery';
 
 export const dynamic = 'force-dynamic';
 
@@ -63,7 +64,7 @@ export async function GET(req: NextRequest) {
     accuracy: p.accuracy,
     questionsAttempted: p.questionsAttempted,
     lastAttemptedAt: p.lastAttemptedAt?.toISOString(),
-    isCompleted: p.masteryLevel === 'expert' || p.masteryLevel === 'advanced',
+    isCompleted: p.accuracy >= LOW_ACCURACY_THRESHOLD,
     isStarted: true, // record exists → user has interacted with this topic
   }));
 
@@ -111,24 +112,19 @@ export async function POST(req: NextRequest) {
         topicId,
         subject: subject || null,
         chapter: chapter || null,
-        masteryLevel: action === 'complete' ? 'advanced' : 'beginner',
+        // Always start at beginner — accuracy is only updated via practice (updateTopicMastery).
+        masteryLevel: 'beginner',
         accuracy: 0,
         questionsAttempted: 0,
         lastAttemptedAt: new Date(),
       },
     });
   } else {
-    // Update last attempted timestamp
-    const updateData: any = { lastAttemptedAt: new Date() };
-    
-    // If action is 'complete', mark as proficient if not already mastered
-    if (action === 'complete' && mastery.masteryLevel !== 'expert') {
-      updateData.masteryLevel = 'advanced';
-    }
-    
+    // Only update the timestamp; mastery level and accuracy are owned by the
+    // practice grading pipeline (updateTopicMastery) — never inflate them here.
     mastery = await prisma.studentTopicMastery.update({
       where: { id: mastery.id },
-      data: updateData,
+      data: { lastAttemptedAt: new Date() },
     });
   }
 
@@ -140,7 +136,7 @@ export async function POST(req: NextRequest) {
       accuracy: mastery.accuracy,
       questionsAttempted: mastery.questionsAttempted,
       lastAttemptedAt: mastery.lastAttemptedAt?.toISOString(),
-      isCompleted: mastery.masteryLevel === 'expert' || mastery.masteryLevel === 'advanced',
+      isCompleted: mastery.accuracy >= LOW_ACCURACY_THRESHOLD,
     },
   });
   
