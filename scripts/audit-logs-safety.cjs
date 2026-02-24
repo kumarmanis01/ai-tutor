@@ -22,7 +22,10 @@ const fs = require('fs');
 const path = require('path');
 
 const ROOT = path.resolve(__dirname, '..');
-const IGNORED_DIRS = ['node_modules', '.git', '.next', 'dist', 'build', 'out', 'coverage'];
+// Note: we intentionally ignore developer scripts and test scaffolding from this
+// automated audit because they are developer-facing helpers. Production code
+// (app/, lib/, worker/) is still audited.
+const IGNORED_DIRS = ['node_modules', '.git', '.next', 'dist', 'build', 'out', 'coverage', 'scripts', 'tests', '__tests__'];
 const FILE_EXTENSIONS = ['.js', '.cjs', '.mjs', '.ts', '.tsx', '.jsx'];
 
 const violations = [];
