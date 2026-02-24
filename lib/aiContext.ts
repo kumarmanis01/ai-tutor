@@ -1,3 +1,5 @@
+import logger from "./logger";
+
 /**
  * Simple session-based context memory for AI (client-only helpers)
  * - Stores last N messages in local/session storage
@@ -38,7 +40,7 @@ export function createAIClient() {
         // Intentionally no external calls in stub. Log in dev for visibility.
         if (typeof process !== 'undefined' && process.env.NODE_ENV === 'development') {
           // eslint-disable-next-line no-console
-          console.debug('[createAIClient.stub] complete called with prompt length:', prompt?.length ?? 0);
+          logger.debug('[createAIClient.stub] complete called with prompt length:', { promptLength: prompt?.length ?? 0 })
         }
       } catch {}
       return { text: '[]' } as { text: string };

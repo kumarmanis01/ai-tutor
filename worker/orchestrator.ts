@@ -100,7 +100,7 @@ async function watchForDrains() {
       const entry = children.get(r.id)
       if (entry) {
         logger.info('[orchestrator] sending SIGINT to', { id: r.id })
-        try { entry.proc.kill('SIGINT') } catch (e) { console.error(e) }
+        try { entry.proc.kill('SIGINT') } catch (e) { logger.error(e) }
       }
     }
   } catch (err) {
@@ -123,7 +123,7 @@ async function main() {
 
   // write initial status
   const status = { pid: process.pid, startedAt: new Date().toISOString(), lastHeartbeat: new Date().toISOString(), host: os.hostname(), mode: K8S_MODE ? 'k8s' : 'local' }
-  try { fs.writeFileSync(STATUS_FILE, JSON.stringify(status, null, 2)) } catch (err) { console.error('failed to write status file', err) }
+  try { fs.writeFileSync(STATUS_FILE, JSON.stringify(status, null, 2)) } catch (err) { logger.error('failed to write status file', err) }
 
   logger.info('[orchestrator] starting', { pollMs: POLL_MS, mode: K8S_MODE ? 'k8s' : 'local' })
 
@@ -133,7 +133,7 @@ async function main() {
       const s = { ...status, lastHeartbeat: new Date().toISOString() }
       fs.writeFileSync(STATUS_FILE, JSON.stringify(s, null, 2))
     } catch (err) {
-      console.error('failed to update status file', err)
+      logger.error('failed to update status file', err)
     }
   }, Math.max(2000, POLL_MS))
 
@@ -168,7 +168,7 @@ async function main() {
       }, firstDelay)
     }
   } catch (e) {
-    console.error('[orchestrator] failed to schedule analytics job', e)
+    logger.error('[orchestrator] failed to schedule analytics job', e)
   }
 
   // Schedule daily free question reset (runs at midnight UTC by default)
@@ -178,7 +178,7 @@ async function main() {
       scheduleDailyFreeQuestionReset();
     }
   } catch (e) {
-    console.error('[orchestrator] failed to schedule daily free question reset', e);
+    logger.error('[orchestrator] failed to schedule daily free question reset', e);
   }
 
   if (!K8S_MODE) {
@@ -198,7 +198,7 @@ async function main() {
         if (Array.isArray(res) && res.length > 0) return !!res[0].acquired
         if (res && typeof res.acquired !== 'undefined') return !!res.acquired
       } catch (err) {
-        console.error('advisory lock check failed', err)
+        logger.error('advisory lock check failed', err)
       }
       return false
     }
@@ -229,7 +229,7 @@ async function main() {
 }
 
 if (require.main === module) {
-  main().catch((err) => { console.error(err); process.exit(2) })
+  main().catch((err) => { logger.error(err); process.exit(2) })
 }
 
 export { main }

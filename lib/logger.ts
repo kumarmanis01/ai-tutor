@@ -1,4 +1,99 @@
 /**
+ * Lightweight structured logger for ai-tutor
+ * - Emits JSON objects: { timestamp, level, event, context }
+ * - Respects environment: debug only in development; info in production; warn/error always
+ * - Sanitizes sensitive fields: JWTs, session tokens, emails, raw answers
+ */
+
+type LogLevel = 'debug' | 'info' | 'warn' | 'error';
+
+const ENV = process.env.NODE_ENV || 'development';
+
+function now() {
+  return new Date().toISOString();
+}
+
+// Basic sanitizers
+function sanitizeValue(v: any) {
+  if (v == null) return v;
+  if (typeof v === 'string') {
+    // redact JWT-looking strings (three segments separated by dots, length heuristics)
+    if (/^[A-Za-z0-9-_]+\.[A-Za-z0-9-_]+\.[A-Za-z0-9-_]+$/.test(v)) return '[REDACTED_JWT]';
+    // redact session token cookie names/values
+    if (/session-token|session|next-auth|__Secure-next-auth/i.test(v)) return '[REDACTED_SESSION]';
+    // redact emails
+    if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)) return '[REDACTED_EMAIL]';
+    // redact raw answers or fields named rawAnswer or answer-like content
+    if (/\b(answer|rawanswer|raw_answer)\b/i.test(v)) return '[REDACTED_ANSWER]';
+    return v;
+  }
+  if (Array.isArray(v)) return v.map(sanitizeValue);
+  if (typeof v === 'object') return sanitizeObject(v);
+  return v;
+}
+
+function sanitizeObject(obj: any) {
+  if (!obj) return obj;
+  const out: any = Array.isArray(obj) ? [] : {};
+  for (const k of Object.keys(obj)) {
+    const lk = k.toLowerCase();
+    const val = obj[k];
+    if (lk.includes('token') || lk.includes('jwt') || lk.includes('session') || lk.includes('password') || lk.includes('secret') ) {
+      out[k] = '[REDACTED]';
+      continue;
+    }
+    if (lk.includes('email')) {
+      out[k] = '[REDACTED_EMAIL]';
+      continue;
+    }
+    if (lk.includes('answer') || lk.includes('rawanswer') || lk.includes('raw_answer')) {
+      out[k] = '[REDACTED_ANSWER]';
+      continue;
+    }
+    out[k] = sanitizeValue(val);
+  }
+  return out;
+}
+
+function shouldLog(level: LogLevel) {
+  if (level === 'debug') return ENV === 'development';
+  if (level === 'info') return ENV === 'production' || ENV === 'development';
+  return true; // warn/error always
+}
+
+function output(level: LogLevel, event: string, context?: any) {
+  if (!shouldLog(level)) return;
+  const payload = {
+    timestamp: now(),
+    level,
+    event,
+    context: sanitizeObject(context || {}),
+  };
+  // Use stdout for info/debug, stderr for warn/error
+  const line = JSON.stringify(payload);
+  if (level === 'warn' || level === 'error') {
+    console.error(line);
+  } else {
+    console.log(line);
+  }
+}
+
+export function debug(event: string, context?: any) {
+  output('debug', event, context);
+}
+
+export function info(event: string, context?: any) {
+  output('info', event, context);
+}
+
+export function warn(event: string, context?: any) {
+  output('warn', event, context);
+}
+
+export function error(event: string, context?: any) {
+  output('error', event, context);
+}
+/**
  * Logger utility for capturing logs with optional class and method context.
  * Logging is enabled only if NEXT_PUBLIC_DEBUG_MODE === 'true'.
  * In other cases, logger is a no-op.
@@ -67,10 +162,20 @@ class Logger {
     const entry = `${prefix} ${msg}${ctxString}`;
     this.logs.push(entry);
     this.subscribers.forEach((cb) => cb(entry));
-    // Also log to console with appropriate level
-    if (level === 'error') console.error(entry);
-    else if (level === 'warn') console.warn(entry);
-    else console.log(entry);
+    // Emit structured log using output() defined above
+    const mapLevel: Record<Level, LogLevel> = {
+      error: 'error',
+      warn: 'warn',
+      info: 'info',
+      debug: 'debug',
+      log: 'info',
+    };
+    try {
+      output(mapLevel[level] as LogLevel, msg, { ...context });
+    } catch (e) {
+      // fallback to console.error if structured output fails
+      try { console.error(entry); } catch {}
+    }
   }
 
   error(msg: string, context?: LogContext) {
@@ -129,7 +234,7 @@ class Logger {
       const url = req.url;
       const method = typeof req.method === 'string' ? req.method : 'UNKNOWN';
       let reqBody = '';
-      if (req.body) {
+      if ((req as any).body) {
         try {
           reqBody = await req.clone().text();
         } catch {}
@@ -144,17 +249,48 @@ class Logger {
       const endTime = Date.now();
       const duration = startTime ? `${endTime - startTime}ms` : undefined;
       // Pretty print
+      // Avoid logging raw request/response bodies. Log only metadata (keys, hasBody, size).
+      const requestInfo: any = reqBody
+        ? (() => {
+            try {
+              const parsed = safeJson(reqBody);
+              if (parsed && typeof parsed === 'object') {
+                return { keys: Object.keys(parsed), hasBody: true, size: JSON.stringify(parsed).length };
+              }
+              return { hasBody: true, size: String(reqBody).length };
+            } catch {
+              return { hasBody: true, size: String(reqBody).length };
+            }
+          })()
+        : { hasBody: false };
+
+      const responseInfo: any = res && resBody
+        ? (() => {
+            try {
+              const parsed = safeJson(resBody);
+              if (parsed && typeof parsed === 'object') {
+                return { status: resStatus, keys: Object.keys(parsed), size: JSON.stringify(parsed).length };
+              }
+              return { status: resStatus, hasBody: true, size: String(resBody).length };
+            } catch {
+              return { status: resStatus, hasBody: true, size: String(resBody).length };
+            }
+          })()
+        : res
+        ? { status: resStatus, hasBody: false }
+        : undefined;
+
       const logObj: any = {
         route: { method, url },
-        request: reqBody ? safeJson(reqBody) : undefined,
-        response: res ? { status: resStatus, body: resBody ? safeJson(resBody) : undefined } : undefined,
+        request: requestInfo,
+        response: responseInfo,
         ...(duration && { duration }),
         ...(context && { context }),
       };
       // Remove undefined fields
       Object.keys(logObj).forEach((k) => logObj[k] === undefined && delete logObj[k]);
       // Print as pretty JSON
-      console.log('[API DEBUG]', JSON.stringify(logObj, null, 2));
+      this.add(JSON.stringify(logObj, null, 2), context, 'debug');
     } catch (err) {
       this.add(`logAPI error: ${err}`, context, 'error');
     }
@@ -201,3 +337,6 @@ function safeJson(str: string) {
 
 // Always instantiate the logger; level gating ensures appropriate output.
 export const logger = new Logger();
+
+// Default export for backward compatibility: the logger instance
+export default logger;

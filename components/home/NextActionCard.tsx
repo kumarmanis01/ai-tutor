@@ -1,16 +1,11 @@
 "use client";
 
 import React, { useState } from 'react';
-import Link from 'next/link';
 
 export interface NextActionCardProps {
   subject?: string;
   chapter?: string;
   topic: string;
-  /** Formatted hero title e.g. "Resume: Quadratic Equations". Overrides topic display. */
-  title?: string;
-  /** Navigation URL for the primary CTA (notes or practice route). */
-  ctaHref?: string;
   stepIndex?: number;
   stepTotal?: number;
   estMinutes?: number;
@@ -74,14 +69,15 @@ export default function NextActionCard(props: NextActionCardProps) {
 
   return (
     <article className="max-w-4xl mx-auto bg-white rounded-lg border p-6 flex flex-col md:flex-row md:items-center gap-6 mb-8">
-      {/* Primary CTA — navigation Link when ctaHref provided, complete button otherwise */}
-      {props.ctaHref ? (
-        <Link
-          href={props.ctaHref}
-          className="order-last md:order-none w-full md:w-44 text-center text-white font-semibold py-4 px-6 rounded-md bg-indigo-700 hover:bg-indigo-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+      {/* Primary CTA must be first focusable element in the DOM; visually placed last via order */}
+      {action?.ruleId === 'all_topics_complete' ? (
+        <a
+          href="/dashboard/tests"
+          className={`order-last md:order-none w-full md:w-44 text-white font-semibold py-4 px-6 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-emerald-600 hover:bg-emerald-700`}
+          aria-label="Revise weak areas"
         >
-          {ctaText}
-        </Link>
+          Revise weak areas
+        </a>
       ) : (
         <button
           type="button"
@@ -106,7 +102,6 @@ export default function NextActionCard(props: NextActionCardProps) {
         </button>
       )}
 
-
       <div className="flex-1">
         <div className="text-xs text-gray-500">Do this next</div>
 
@@ -118,9 +113,7 @@ export default function NextActionCard(props: NextActionCardProps) {
               {action?.chapter}
             </div>
 
-            <h2 className="text-2xl md:text-3xl font-semibold leading-tight truncate mt-1">
-              {props.title ?? action?.topic ?? '—'}
-            </h2>
+            <h2 className="text-2xl md:text-3xl font-semibold leading-tight truncate mt-1">{action?.topic ?? '—'}</h2>
 
             <div className="mt-2 text-sm text-gray-500">
               {typeof action?.stepIndex === 'number' && typeof action?.stepTotal === 'number' ? (

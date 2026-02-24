@@ -2,15 +2,16 @@
 /**
  * FILE OBJECTIVE:
  * - User profile page displaying account info, academic preferences, and widgets.
- * - Shows cascading academic info: Language → Board → Grade → Subjects.
+ * - Shows cascading academic info: Language -> Board -> Grade -> Subjects.
+ * - Links to Learning Goals sub-page.
  *
  * LINKED UNIT TEST:
  * - tests/unit/app/profile/page.spec.ts
  *
  * EDIT LOG:
  * - 2026-02-03 | claude | added academic preferences section with cascading info
+ * - 2026-02-21 | claude | restored original profile page; linked to learning-goals sub-route
  */
-
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import Avatar from '@/components/UI/Avatar';
@@ -22,21 +23,18 @@ import AuthRedeemOnSignIn from '@/components/AuthRedeemOnSignIn';
 import useCurrentUser from '@/hooks/useCurrentUser';
 import { useOnboarding } from '@/context/OnboardingProvider';
 import { LANGUAGES, _DIFFICULTY_LEVELS } from '@/components/CascadingFilters';
+import Link from 'next/link';
 
 export default function ProfilePage() {
   const { data: session } = useSession();
   const sess = session as unknown as import('@/lib/types/auth').AppSession | null;
   const { data: profile, loading } = useCurrentUser();
   const { open } = useOnboarding();
-
   const router = useRouter();
-
   const badges = extractBadges(profile as User | null);
 
   if (!session) return <div className="p-6">You are not signed in.</div>;
   if (loading) return <div className="p-6">Loading...</div>;
-
-  // Onboarding modal is mounted globally via providers; we just trigger it
 
   const fallback =
     profile?.name?.charAt(0).toUpperCase() ||
@@ -77,7 +75,6 @@ export default function ProfilePage() {
             </button>
             <div className="mt-3 flex gap-2 items-center">
               <LogoutButton />
-              {/* Show Admin button for admin users only, use client-side navigation */}
               {isAdmin && (
                 <button
                   type="button"
@@ -89,6 +86,23 @@ export default function ProfilePage() {
                 </button>
               )}
             </div>
+          </div>
+
+          {/* Learning Goals Link */}
+          <div className="mb-6">
+            <Link
+              href="/dashboard/profile/learning-goals"
+              className="flex items-center justify-between w-full p-4 bg-primary/5 hover:bg-primary/10 border border-primary/20 rounded-lg transition-colors group"
+            >
+              <div className="flex items-center gap-3">
+                <span className="text-2xl">🎯</span>
+                <div>
+                  <p className="font-semibold text-foreground">My Learning Goals</p>
+                  <p className="text-sm text-muted-foreground">Set daily & weekly study targets</p>
+                </div>
+              </div>
+              <span className="text-muted-foreground group-hover:text-primary transition-colors text-xl">&rarr;</span>
+            </Link>
           </div>
 
           {/* Profile Details */}

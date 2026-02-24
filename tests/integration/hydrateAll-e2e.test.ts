@@ -1,3 +1,4 @@
+import logger from '../../lib/logger';
 /**
  * INTEGRATION TEST: HydrateAll End-to-End Flow
  *
@@ -83,7 +84,7 @@ describe('HydrateAll End-to-End Integration Test', () => {
       // STEP 1: Submit HydrateAll Job
       // ==================================
 
-      console.log('Step 1: Submitting HydrateAll job...');
+      logger.info('Step 1: Submitting HydrateAll job...');
 
       const rootJob = await prisma.$transaction(async (tx) => {
         const job = await tx.hydrationJob.create({
@@ -129,13 +130,13 @@ describe('HydrateAll End-to-End Integration Test', () => {
       });
 
       rootJobId = rootJob.id;
-      console.log(`Root job created: ${rootJobId}`);
+      logger.info(`Root job created: ${rootJobId}`);
 
       // ==================================
       // STEP 2: Simulate Syllabus Worker
       // ==================================
 
-      console.log('Step 2: Simulating syllabus worker execution...');
+      logger.info('Step 2: Simulating syllabus worker execution...');
 
       // Create 3 test chapters
       const chapters = await Promise.all([
@@ -168,7 +169,7 @@ describe('HydrateAll End-to-End Integration Test', () => {
         }),
       ]);
 
-      console.log(`Created ${chapters.length} chapters`);
+      logger.info(`Created ${chapters.length} chapters`);
 
       // Mark syllabus job as completed (normally done by worker)
       await prisma.hydrationJob.update({
@@ -180,7 +181,7 @@ describe('HydrateAll End-to-End Integration Test', () => {
       // STEP 3: Run Reconciler (Level 1→2)
       // ==================================
 
-      console.log('Step 3: Running reconciler to create Level 2 jobs...');
+      logger.info('Step 3: Running reconciler to create Level 2 jobs...');
       await hydrationReconciler.reconcile();
 
       // Verify Level 2 jobs created (one per chapter)
@@ -189,13 +190,13 @@ describe('HydrateAll End-to-End Integration Test', () => {
       });
 
       expect(level2Jobs).toHaveLength(3);
-      console.log(`Created ${level2Jobs.length} Level 2 jobs`);
+      logger.info(`Created ${level2Jobs.length} Level 2 jobs`);
 
       // ==================================
       // STEP 4: Simulate Topic Creation
       // ==================================
 
-      console.log('Step 4: Simulating topic creation...');
+      logger.info('Step 4: Simulating topic creation...');
 
       // Create 3 topics per chapter
       for (const chapter of chapters) {
@@ -237,7 +238,7 @@ describe('HydrateAll End-to-End Integration Test', () => {
       });
 
       expect(topics).toHaveLength(9);
-      console.log(`Created ${topics.length} topics`);
+      logger.info(`Created ${topics.length} topics`);
 
       // Mark Level 2 jobs as completed
       await prisma.hydrationJob.updateMany({
@@ -249,7 +250,7 @@ describe('HydrateAll End-to-End Integration Test', () => {
       // STEP 5: Run Reconciler (Level 2→3)
       // ==================================
 
-      console.log('Step 5: Running reconciler to create Level 3 jobs...');
+      logger.info('Step 5: Running reconciler to create Level 3 jobs...');
       await hydrationReconciler.reconcile();
 
       const level3Jobs = await prisma.hydrationJob.findMany({
@@ -257,13 +258,13 @@ describe('HydrateAll End-to-End Integration Test', () => {
       });
 
       expect(level3Jobs).toHaveLength(9); // One per topic
-      console.log(`Created ${level3Jobs.length} Level 3 jobs`);
+      logger.info(`Created ${level3Jobs.length} Level 3 jobs`);
 
       // ==================================
       // STEP 6: Simulate Note Generation
       // ==================================
 
-      console.log('Step 6: Simulating note generation...');
+      logger.info('Step 6: Simulating note generation...');
 
       for (const topic of topics) {
         await prisma.topicNote.create({
@@ -296,7 +297,7 @@ describe('HydrateAll End-to-End Integration Test', () => {
       // STEP 7: Run Reconciler (Level 3→4)
       // ==================================
 
-      console.log('Step 7: Running reconciler to create Level 4 jobs...');
+      logger.info('Step 7: Running reconciler to create Level 4 jobs...');
       await hydrationReconciler.reconcile();
 
       const level4Jobs = await prisma.hydrationJob.findMany({
@@ -305,13 +306,13 @@ describe('HydrateAll End-to-End Integration Test', () => {
 
       // 9 topics × 3 difficulties = 27 jobs
       expect(level4Jobs).toHaveLength(27);
-      console.log(`Created ${level4Jobs.length} Level 4 jobs`);
+      logger.info(`Created ${level4Jobs.length} Level 4 jobs`);
 
       // ==================================
       // STEP 8: Simulate Question Generation
       // ==================================
 
-      console.log('Step 8: Simulating question generation...');
+      logger.info('Step 8: Simulating question generation...');
 
       for (const topic of topics) {
         // Create test for each difficulty
@@ -359,14 +360,14 @@ describe('HydrateAll End-to-End Integration Test', () => {
       // STEP 9: Final Reconciliation
       // ==================================
 
-      console.log('Step 9: Running final reconciliation...');
+      logger.info('Step 9: Running final reconciliation...');
       await hydrationReconciler.reconcile();
 
       // ==================================
       // STEP 10: Verify Final State
       // ==================================
 
-      console.log('Step 10: Verifying final state...');
+      logger.info('Step 10: Verifying final state...');
 
       // Check root job status
       const finalRootJob = await prisma.hydrationJob.findUnique({
@@ -415,11 +416,11 @@ describe('HydrateAll End-to-End Integration Test', () => {
       expect(finalNotes).toBe(9);
       expect(finalQuestions).toBe(27);
 
-      console.log('✅ HydrateAll E2E test completed successfully!');
-      console.log(`  - Chapters: ${finalChapters}`);
-      console.log(`  - Topics: ${finalTopics}`);
-      console.log(`  - Notes: ${finalNotes}`);
-      console.log(`  - Questions: ${finalQuestions}`);
+      logger.info('✅ HydrateAll E2E test completed successfully!');
+      logger.info(`  - Chapters: ${finalChapters}`);
+      logger.info(`  - Topics: ${finalTopics}`);
+      logger.info(`  - Notes: ${finalNotes}`);
+      logger.info(`  - Questions: ${finalQuestions}`);
     },
     TEST_TIMEOUT
   );
@@ -612,7 +613,7 @@ describe('HydrateAll End-to-End Integration Test', () => {
     if (topics.length === 0) {
       const chapter = await prisma.chapterDef.findFirst({ where: { subjectId: testSubjectId } });
       if (!chapter) {
-        console.log('No chapters found, skipping answer completeness test');
+        logger.info('No chapters found, skipping answer completeness test');
         return;
       }
       const topic = await prisma.topicDef.create({
