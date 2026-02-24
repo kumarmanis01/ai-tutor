@@ -21,7 +21,7 @@
 
 import { prisma } from '@/lib/prisma';
 import type { MasteryLevel } from '@prisma/client';
-import { getOrderedTopicsForStudent } from './getOrderedTopicsForStudent';
+import { getOrderedTopicsForStudent, type OrderedTopic } from './getOrderedTopicsForStudent';
 import { LOW_ACCURACY_THRESHOLD } from '../constants/mastery';
 import { randomUUID } from 'crypto';
 import { logger } from '@/lib/logger';
@@ -225,15 +225,14 @@ async function p2_dailyTask(studentId: string): Promise<NextAction | null> {
 /**
  * P3 — Unresolved AttentionFlag, sorted by lowest accuracy first.
  * These flags are written by the analytics pipeline when mastery drops.
+ * Scoped to the student's active curriculum: only topicIds in allowedTopicIds
+ * are considered, preventing stale or cross-grade flags from surfacing.
  */
-async function p3_attentionFlag(studentId: string): Promise<NextAction | null> {
-  // Enforce curriculum scope: only consider flags for topics in student's curriculum
-  const orderedTopics = await getOrderedTopicsForStudent(studentId);
-  if (!orderedTopics.length) return null;
-  const allowedTopicIds = new Set(orderedTopics.map(t => t.id));
-  // Find all unresolved flags, filter in-memory to allowed topics, then pick lowest accuracy
-  const flags = await prisma.attentionFlag.findMany({
-    where: { studentId, resolved: false },
+async function p3_attentionFlag(studentId: string, allowedTopicIds: Set<string>): Promise<NextAction | null> {
+  if (allowedTopicIds.size === 0) return null;
+  // Push the curriculum scope filter to the DB via IN clause — no in-memory fan-out.
+  const flag = await prisma.attentionFlag.findFirst({
+    where: { studentId, resolved: false, topicId: { in: [...allowedTopicIds] } },
     orderBy: { accuracy: 'asc' },
     select: {
       topicId: true,
@@ -243,7 +242,6 @@ async function p3_attentionFlag(studentId: string): Promise<NextAction | null> {
       accuracy: true,
     },
   });
-  const flag = flags.find(f => f.topicId && allowedTopicIds.has(f.topicId));
   if (!flag) return null;
 
   const enriched = await enrichTopic(flag.topicId, {
@@ -265,17 +263,16 @@ async function p3_attentionFlag(studentId: string): Promise<NextAction | null> {
 }
 
 /**
- * P4 — StudentTopicMastery with accuracy below 0.6, worst first.
+ * P4 — StudentTopicMastery with accuracy below threshold, worst first.
  * Catches cases where AttentionFlags haven't been written yet.
+ * Scoped to the student's active curriculum: only topicIds in allowedTopicIds
+ * are considered, preventing stale or cross-grade mastery rows from surfacing.
  */
-async function p4_lowAccuracy(studentId: string): Promise<NextAction | null> {
-  // Enforce curriculum scope: only consider mastery for topics in student's curriculum
-  const orderedTopics = await getOrderedTopicsForStudent(studentId);
-  if (!orderedTopics.length) return null;
-  const allowedTopicIds = new Set(orderedTopics.map(t => t.id));
-  // Use centralized threshold
-  const weaks = await prisma.studentTopicMastery.findMany({
-    where: { studentId, accuracy: { lt: LOW_ACCURACY_THRESHOLD } },
+async function p4_lowAccuracy(studentId: string, allowedTopicIds: Set<string>): Promise<NextAction | null> {
+  if (allowedTopicIds.size === 0) return null;
+  // Push the curriculum scope filter to the DB via IN clause — no in-memory fan-out.
+  const weak = await prisma.studentTopicMastery.findFirst({
+    where: { studentId, accuracy: { lt: LOW_ACCURACY_THRESHOLD }, topicId: { in: [...allowedTopicIds] } },
     orderBy: { accuracy: 'asc' },
     select: {
       topicId: true,
@@ -285,7 +282,6 @@ async function p4_lowAccuracy(studentId: string): Promise<NextAction | null> {
       accuracy: true,
     },
   });
-  const weak = weaks.find(w => w.topicId && allowedTopicIds.has(w.topicId));
   if (!weak) return null;
 
   const enriched = await enrichTopic(weak.topicId, {
@@ -308,22 +304,18 @@ async function p4_lowAccuracy(studentId: string): Promise<NextAction | null> {
 
 /**
  * P5 — First unattempted TopicDef in the student's curriculum.
- * Delegates the curriculum query to getOrderedTopicsForStudent — the shared
- * function that applies identical board + grade + subject + lifecycle filters.
+ * Accepts pre-fetched orderedTopics (from getOrderedTopicsForStudent) — the
+ * caller already fetched this for P3/P4, so no duplicate curriculum query.
  * Returns null if curriculum context is unknown or all topics are attempted.
  */
-async function p5_nextNewTopic(studentId: string): Promise<NextAction | null> {
-  // Run the curriculum fetch and the attempted-IDs fetch in parallel.
-  const [orderedTopics, attempted] = await Promise.all([
-    getOrderedTopicsForStudent(studentId),
-    prisma.studentTopicMastery.findMany({
-      where: { studentId },
-      select: { topicId: true },
-    }),
-  ]);
-
+async function p5_nextNewTopic(studentId: string, orderedTopics: OrderedTopic[]): Promise<NextAction | null> {
   // getOrderedTopicsForStudent returns [] when board/grade is missing.
   if (orderedTopics.length === 0) return null;
+
+  const attempted = await prisma.studentTopicMastery.findMany({
+    where: { studentId },
+    select: { topicId: true },
+  });
 
   const attemptedIds = new Set(attempted.map((a) => a.topicId));
   const nextTopic = orderedTopics.find((t) => !attemptedIds.has(t.id));
@@ -354,14 +346,25 @@ export type GetNextActionReturn = NextAction | null | { action: NextAction | nul
 export async function getNextAction(studentId: string): Promise<GetNextActionReturn> {
   const traceId = randomUUID();
 
-  // Evaluate priorities in order — preserve short-circuiting behaviour.
-  let action =
-    (await p1_resumeSession(studentId)) ??
-    (await p2_dailyTask(studentId)) ??
-    (await p3_attentionFlag(studentId)) ??
-    (await p4_lowAccuracy(studentId)) ??
-    (await p5_nextNewTopic(studentId)) ??
-    null;
+  // P1 and P2 are independent of curriculum context — run them first.
+  // Only fetch the curriculum (P3/P4/P5) when neither P1 nor P2 matched,
+  // avoiding a redundant getOrderedTopicsForStudent query on common paths.
+  const p1OrP2 = (await p1_resumeSession(studentId)) ?? (await p2_dailyTask(studentId));
+
+  let action: NextAction | null;
+  if (p1OrP2) {
+    action = p1OrP2;
+  } else {
+    // Fetch curriculum ONCE — shared by P3, P4, and P5 to avoid duplicate queries.
+    const orderedTopics = await getOrderedTopicsForStudent(studentId);
+    const allowedTopicIds = new Set(orderedTopics.map((t) => t.id));
+
+    action =
+      (await p3_attentionFlag(studentId, allowedTopicIds)) ??
+      (await p4_lowAccuracy(studentId, allowedTopicIds)) ??
+      (await p5_nextNewTopic(studentId, orderedTopics)) ??
+      null;
+  }
 
   // Fallback: if the student has a curriculum but all topics are attempted,
   // return a stable revision action so the UI can render a friendly CTA.
