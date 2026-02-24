@@ -72,9 +72,9 @@ function output(level: LogLevel, event: string, context?: any) {
   // Use stdout for info/debug, stderr for warn/error
   const line = JSON.stringify(payload);
   if (level === 'warn' || level === 'error') {
-    process.stderr.write(line + '\n');
+    console.error(line);
   } else {
-    process.stdout.write(line + '\n');
+    console.log(line);
   }
 }
 
@@ -173,8 +173,8 @@ class Logger {
     try {
       output(mapLevel[level] as LogLevel, msg, { ...context });
     } catch (e) {
-      // fallback to stderr if structured output fails
-      try { process.stderr.write(`${entry}\n`); } catch {}
+      // fallback to console.error if structured output fails
+      try { console.error(entry); } catch {}
     }
   }
 
