@@ -234,7 +234,7 @@ class Logger {
       const url = req.url;
       const method = typeof req.method === 'string' ? req.method : 'UNKNOWN';
       let reqBody = '';
-      if (req.body) {
+      if ((req as any).body) {
         try {
           reqBody = await req.clone().text();
         } catch {}
@@ -249,10 +249,41 @@ class Logger {
       const endTime = Date.now();
       const duration = startTime ? `${endTime - startTime}ms` : undefined;
       // Pretty print
+      // Avoid logging raw request/response bodies. Log only metadata (keys, hasBody, size).
+      const requestInfo: any = reqBody
+        ? (() => {
+            try {
+              const parsed = safeJson(reqBody);
+              if (parsed && typeof parsed === 'object') {
+                return { keys: Object.keys(parsed), hasBody: true, size: JSON.stringify(parsed).length };
+              }
+              return { hasBody: true, size: String(reqBody).length };
+            } catch {
+              return { hasBody: true, size: String(reqBody).length };
+            }
+          })()
+        : { hasBody: false };
+
+      const responseInfo: any = res && resBody
+        ? (() => {
+            try {
+              const parsed = safeJson(resBody);
+              if (parsed && typeof parsed === 'object') {
+                return { status: resStatus, keys: Object.keys(parsed), size: JSON.stringify(parsed).length };
+              }
+              return { status: resStatus, hasBody: true, size: String(resBody).length };
+            } catch {
+              return { status: resStatus, hasBody: true, size: String(resBody).length };
+            }
+          })()
+        : res
+        ? { status: resStatus, hasBody: false }
+        : undefined;
+
       const logObj: any = {
         route: { method, url },
-        request: reqBody ? safeJson(reqBody) : undefined,
-        response: res ? { status: resStatus, body: resBody ? safeJson(resBody) : undefined } : undefined,
+        request: requestInfo,
+        response: responseInfo,
         ...(duration && { duration }),
         ...(context && { context }),
       };
