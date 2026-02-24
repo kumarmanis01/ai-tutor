@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+require('./bootstrap-env.cjs');
 /**
  * scripts/expand-seed-curriculum.cjs
  *
@@ -64,9 +65,10 @@ const prisma = new PrismaClient();
       const chapters = [];
       for (let c = 1; c <= CHAPTERS_PER_SUBJECT; c++) {
         const chapSlug = `subject-${s}-chapter-${c}`;
-        let chapter = await prisma.chapterDef.findFirst({ where: { classId: classLevel.id, slug: chapSlug } });
+        // chapters are scoped to a subject (use subjectId)
+        let chapter = await prisma.chapterDef.findFirst({ where: { subjectId: subject.id, slug: chapSlug } });
         if (!chapter) {
-          chapter = await prisma.chapterDef.create({ data: { name: `Chapter ${c}`, slug: chapSlug, order: c, classId: classLevel.id } });
+          chapter = await prisma.chapterDef.create({ data: { name: `Chapter ${c}`, slug: chapSlug, order: c, subjectId: subject.id } });
           console.log('Created chapter:', chapSlug);
         } else {
           console.log('Chapter exists:', chapSlug);

@@ -1,3 +1,4 @@
+require('./bootstrap-env.cjs');
 /**
  * scripts/test-mvp-flow.cjs
  *

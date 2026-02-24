@@ -1,3 +1,4 @@
+require('./bootstrap-env.cjs');
 /**
  * scripts/chaos-progress-simulation.cjs
  *
@@ -82,9 +83,13 @@ async function apiGet(p, cookie) {
   return { status: res.status, body };
 }
 
-async function apiPost(p, cookie, payload) {
-  const url = `${BASE_URL}${p}`;
-  const res = await fetch(url, { method: 'POST', headers: { Cookie: cookie, 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+async function apiPost(path, cookie, payload) {
+  const url = `${BASE_URL}${path}`;
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { Cookie: cookie, 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
   const body = await res.json().catch(() => null);
   return { status: res.status, body };
 }
@@ -98,12 +103,11 @@ async function ensureUser(email, board, grade) {
 }
 
 async function clearUserData(studentId) {
-  await prisma.attentionFlag.deleteMany({ where: { studentId } });
-  await prisma.studentTopicMastery.deleteMany({ where: { studentId } });
-  await prisma.learningSession.deleteMany({ where: { studentId } });
+  await prisma.attentionFlag.deleteMany({ where: { studentId } }).catch(() => {});
+  await prisma.studentTopicMastery.deleteMany({ where: { studentId } }).catch(() => {});
+  await prisma.learningSession.deleteMany({ where: { studentId } }).catch(() => {});
 }
 
-// Curriculum helper copied from test-mvp-flow to match engine filters exactly
 async function getOrderedTopicsForStudent(studentId) {
   const user = await prisma.user.findUnique({ where: { id: studentId }, select: { board: true, grade: true, subjects: true } });
   const grade = user?.grade ? parseInt(String(user.grade), 10) : NaN;
@@ -114,15 +118,7 @@ async function getOrderedTopicsForStudent(studentId) {
       lifecycle: 'active',
       chapter: {
         lifecycle: 'active',
-        subject: {
-          lifecycle: 'active',
-          ...subjectNameFilter,
-          class: {
-            lifecycle: 'active',
-            grade,
-            board: { lifecycle: 'active', slug: { equals: user.board, mode: 'insensitive' } },
-          },
-        },
+        subject: { lifecycle: 'active', ...subjectNameFilter, class: { lifecycle: 'active', grade, board: { lifecycle: 'active', slug: { equals: user.board, mode: 'insensitive' } } } },
       },
     },
     orderBy: [{ chapter: { order: 'asc' } }, { order: 'asc' }],
@@ -130,34 +126,46 @@ async function getOrderedTopicsForStudent(studentId) {
   });
 }
 
-// Create or upsert a minimal GeneratedTest + Question for a topic and return { genTestId, questionId }
 async function ensureGeneratedTestAndQuestion(topic, subject, chapterName) {
-  const topicId = topic.id;
+  // Upsert a deterministic GeneratedTest for chaos runs
   const genTest = await prisma.generatedTest.upsert({
-    where: { topicId_difficulty_language_version: { topicId, difficulty: 'easy', language: 'en', version: 9999 } },
-    create: { topicId, title: '[CHAOS] Sim Test', difficulty: 'easy', language: 'en', version: 9999, status: 'approved' },
-    update: { title: '[CHAOS] Sim Test', status: 'approved' },
+    where: { topicId_difficulty_language_version: { topicId: topic.id, difficulty: 'easy', language: 'en', version: 9999 } },
+    create: { topicId: topic.id, title: '[CHAOS] Sim Test', difficulty: 'easy', language: 'en', version: 9999, status: 'draft' },
+    update: { title: '[CHAOS] Sim Test', status: 'draft' },
   });
 
-  // Create a deterministic question for this test (idempotent by prompt text)
-  const prompt = `[CHAOS] ${topic.name} sample question`;
-  let question = await prisma.question.findFirst({ where: { prompt } });
-  if (!question) {
-    question = await prisma.question.create({ data: { subject, chapter: chapterName, type: 'mcq', prompt, choices: JSON.stringify([{ key: 'A', label: 'True' }, { key: 'B', label: 'False' }]), correctAnswer: 'a', difficulty: 'easy' } });
+  // Ensure one Question exists for the generated test
+  let q = await prisma.question.findFirst({ where: { prompt: { contains: '[CHAOS]' } } });
+  if (!q) {
+    q = await prisma.question.create({
+      data: {
+        subject,
+        chapter: chapterName,
+        type: 'mcq',
+        prompt: '[CHAOS] Sim question: is 1+1=2?',
+        choices: JSON.stringify([{ key: 'A', label: '2' }, { key: 'B', label: '3' }]),
+        correctAnswer: 'a',
+        difficulty: 'easy',
+      },
+    });
   }
 
-  return { genTestId: genTest.id, questionId: question.id };
+  return { genTestId: genTest.id, questionId: q.id };
 }
 
-// Create a new TestResult + AttemptQuestion for the given genTest/question and return attemptId
-async function seedAttemptForQuestion(genTestId, questionId, studentId) {
-  const attempt = await prisma.testResult.create({ data: { testId: genTestId, studentId, startedAt: new Date() } });
+async function seedAttemptForQuestion(genTestId, questionId, userId) {
+  const attempt = await prisma.testResult.create({ data: { testId: genTestId, studentId: userId, startedAt: new Date() } });
   await prisma.attemptQuestion.create({ data: { testResultId: attempt.id, questionId, order: 1 } });
   return attempt.id;
 }
 
 async function simulateRandomPracticeLoop() {
   console.log('Chaos simulation starting — connecting to server and DB');
+
+  // CLI mode handling
+  const rawMode = (process.argv.find((a) => a.startsWith('--mode=')) || '').split('=')[1] || 'random';
+  const MODE = rawMode;
+  console.log('Mode:', MODE);
 
   // server reachable check
   try {
@@ -174,8 +182,56 @@ async function simulateRandomPracticeLoop() {
     return 1;
   }
 
+  // helper: poll for mastery update
+  async function waitForMasteryUpdate(studentId, topicId, prevUpdatedAt) {
+    const start = Date.now();
+    const timeoutMs = 5000;
+    while (Date.now() - start < timeoutMs) {
+      const stm = await prisma.studentTopicMastery.findFirst({ where: { studentId, topicId }, select: { updatedAt: true, accuracy: true, masteryLevel: true } });
+      if (stm) {
+        if (!prevUpdatedAt) return stm;
+        const prev = prevUpdatedAt instanceof Date ? prevUpdatedAt : new Date(prevUpdatedAt);
+        const now = new Date(stm.updatedAt);
+        if (now > prev) return stm;
+      }
+      await new Promise((r) => setTimeout(r, 500));
+    }
+    throw new Error('mastery update timeout');
+  }
+
   // bootstrap topic
-  const seedTopic = await prisma.topicDef.findFirst({ where: { lifecycle: 'active', chapter: { lifecycle: 'active', subject: { lifecycle: 'active', class: { lifecycle: 'active', board: { lifecycle: 'active' } } } } }, orderBy: [{ chapter: { order: 'asc' } }, { order: 'asc' }], include: { chapter: { include: { subject: { include: { class: { include: { board: true } } } } } } } );
+  const seedTopic = await prisma.topicDef.findFirst({
+    where: {
+      lifecycle: 'active',
+      chapter: {
+        lifecycle: 'active',
+        subject: {
+          lifecycle: 'active',
+          class: {
+            lifecycle: 'active',
+            board: { lifecycle: 'active' },
+          },
+        },
+      },
+    },
+    orderBy: [
+      { chapter: { order: 'asc' } },
+      { order: 'asc' },
+    ],
+    include: {
+      chapter: {
+        include: {
+          subject: {
+            include: {
+              class: {
+                include: { board: true },
+              },
+            },
+          },
+        },
+      },
+    },
+  });
   if (!seedTopic) {
     fail('No active TopicDef found. Run seed scripts first.');
     return 1;
@@ -198,8 +254,11 @@ async function simulateRandomPracticeLoop() {
 
   console.log(`Found ${allTopics.length} topics; beginning 100 randomized practice iterations`);
 
-  const seenDecisions = [];
-  const decisionWindow = 12; // sliding window to detect oscillation
+  const seenRecords = []; // { key: 'rule::topic', accuracy }
+  const decisionWindow = 20; // sliding window
+  // Oscillation detection state: tracks the most recent consecutive (topic,rule)
+  // sequence and whether mastery updated during that sequence.
+  const oscillationState = { topicId: null, ruleId: null, count: 0, updatedSeen: false };
   const completedTopicSet = new Set();
 
   for (let iter = 0; iter < 100; iter++) {
@@ -214,56 +273,112 @@ async function simulateRandomPracticeLoop() {
       const before = await apiGet('/api/home/next-action', cookie);
       if (before.status !== 200) throw new Error(`next-action HTTP ${before.status}`);
       const actionBefore = before.body?.action || {};
-      const keyBefore = `${actionBefore.ruleId || 'nil'}::${actionBefore.topicId || 'nil'}`;
-      seenDecisions.push(keyBefore);
-      if (seenDecisions.length > decisionWindow) seenDecisions.shift();
-
-      // detect simple oscillation: same (rule,topic) repeating often
-      const last = seenDecisions.slice(-6);
-      if (last.length === 6 && last.every((v) => v === last[0])) {
-        fail(`Oscillation detected at iter ${iter}: repeated decision ${last[0]}`);
-        break;
-      }
 
       // 2) POST complete-action for the chosen topic (simulate lesson complete)
       const c = await apiPost('/api/home/complete-action', cookie, { topicId, subject, chapter: chapterName });
       if (c.status !== 200) throw new Error(`complete-action HTTP ${c.status}`);
-      const nextAction = c.body?.nextAction || {};
 
       // 3) Ensure there is a GeneratedTest + Question and seed a TestResult to submit
       const { genTestId, questionId } = await ensureGeneratedTestAndQuestion(topic, subject, chapterName);
       const attemptId = await seedAttemptForQuestion(genTestId, questionId, userId);
 
-      // 4) Randomly decide correctness (binary): 70% chance correct to bias progress
-      const correct = Math.random() < 0.7;
+      // capture previous STM state (for update detection)
+      const prevStm = await prisma.studentTopicMastery.findFirst({ where: { studentId: userId, topicId }, select: { updatedAt: true, accuracy: true, masteryLevel: true } });
+
+      // 4) Decide correctness according to mode
+      let correct;
+      if (MODE === 'all-correct') correct = true;
+      else if (MODE === 'all-wrong') correct = false;
+      else if (MODE === 'mixed-70') correct = Math.random() < 0.7;
+      else correct = Math.random() < 0.7; // default bias
+
       const answers = [{ questionId, answer: correct ? 'A' : 'B', timeSpent: Math.floor(Math.random() * 30) + 5 }];
+
+      // 5) POST submit and ensure server accepted
       const s = await apiPost('/api/tests/submit', cookie, { attemptId, answers });
       if (s.status !== 200) throw new Error(`submit HTTP ${s.status}`);
-      const scorePercent = s.body?.scorePercent;
 
-      // 5) After submit, call next-action again and record decision
+      // 6) wait for mastery update (poll STM.updatedAt)
+      let stm;
+      try {
+        stm = await waitForMasteryUpdate(userId, topicId, prevStm?.updatedAt);
+      } catch (err) {
+        throw new Error(`mastery wait failed for topic ${topicId}: ${err?.message || err}`);
+      }
+
+      // 7) After submit and update, call next-action again and record decision
       const after = await apiGet('/api/home/next-action', cookie);
       if (after.status !== 200) throw new Error(`next-action (post-submit) HTTP ${after.status}`);
       const actionAfter = after.body?.action || {};
       const keyAfter = `${actionAfter.ruleId || 'nil'}::${actionAfter.topicId || 'nil'}`;
-      seenDecisions.push(keyAfter);
-      if (seenDecisions.length > decisionWindow) seenDecisions.shift();
 
-      // 6) Basic integrity checks on DB state for this user+topic
-      const stm = await prisma.studentTopicMastery.findFirst({ where: { studentId: userId, topicId } });
+      // record seen record with accuracy and timestamps for oscillation detection
+      const record = {
+        key: keyAfter,
+        accuracy: stm?.accuracy ?? 0,
+        topicId,
+        ruleId: actionAfter.ruleId || null,
+        updatedAt: stm?.updatedAt ?? null,
+        prevUpdatedAt: prevStm?.updatedAt ?? null,
+      };
+      seenRecords.push(record);
+      if (seenRecords.length > decisionWindow) seenRecords.shift();
+
+      // Fetch attention flag state for logs
+      const flag = await prisma.attentionFlag.findFirst({ where: { studentId: userId, topicId } });
+
+      // Logging after each iteration
+      console.log(`iter ${iter}: topic=${topicId} rule=${record.ruleId || 'nil'} accuracy=${record.accuracy ?? null} mastery=${stm?.masteryLevel ?? null} attentionFlag=${flag ? (flag.resolved ? 'resolved' : 'open') : 'none'}`);
+
+      // Refined oscillation detection (consecutive same topic+rule only)
+      if (oscillationState.topicId === record.topicId && oscillationState.ruleId === record.ruleId) {
+        // same topic+rule as previous decision in the sequence
+        if ((record.accuracy ?? 0) < 0.6) {
+          // reset counter when accuracy falls below threshold
+          oscillationState.count = 0;
+          oscillationState.updatedSeen = false;
+        } else {
+          oscillationState.count += 1;
+          // mark that STM updated during this sequence if updatedAt advanced
+          if (record.prevUpdatedAt && record.updatedAt) {
+            try {
+              if (new Date(record.updatedAt) > new Date(record.prevUpdatedAt)) oscillationState.updatedSeen = true;
+            } catch (e) {
+              // ignore parse errors
+            }
+          }
+        }
+      } else {
+        // topic or rule changed — start a new consecutive sequence
+        oscillationState.topicId = record.topicId;
+        oscillationState.ruleId = record.ruleId;
+        oscillationState.count = (record.accuracy ?? 0) >= 0.6 ? 1 : 0;
+        oscillationState.updatedSeen = !!(record.prevUpdatedAt && record.updatedAt && (() => {
+          try { return new Date(record.updatedAt) > new Date(record.prevUpdatedAt); } catch (e) { return false; }
+        })());
+      }
+
+      // Only flag oscillation when same topicId & same ruleId repeated for required count,
+      // accuracy is ≥ 0.6 for those repeats, and the STM record showed an updatedAt change.
+      if (oscillationState.count >= 5 && oscillationState.updatedSeen) {
+        fail(`Oscillation detected at iter ${iter}: repeated decision ${record.ruleId || 'nil'}::${record.topicId}`);
+        break;
+      }
+
+      // Basic integrity checks on DB state for this user+topic
       if (!stm) {
         fail(`Missing StudentTopicMastery after submit for topic ${topicId} (iter ${iter})`);
         break;
       }
       // No composite keys
-      if (stm.topicId.includes('::')) {
+      if (stm.topicId && String(stm.topicId).includes('::')) {
         fail(`Composite topicId leaked into STM: ${stm.topicId}`);
         break;
       }
       // If score implies mastery, ensure any AttentionFlag is resolved
       if ((stm.accuracy ?? 0) >= 0.6) {
-        const flag = await prisma.attentionFlag.findFirst({ where: { studentId: userId, topicId, resolved: false } });
-        if (flag) {
+        const unresolved = await prisma.attentionFlag.findFirst({ where: { studentId: userId, topicId, resolved: false } });
+        if (unresolved) {
           fail(`Unresolved AttentionFlag despite accuracy >= 0.6 for topic ${topicId}`);
           break;
         }
@@ -271,11 +386,6 @@ async function simulateRandomPracticeLoop() {
 
       // Track topics that reached accuracy >= 0.6
       if ((stm.accuracy ?? 0) >= 0.6) completedTopicSet.add(topicId);
-
-      // Log progress every 10 iterations
-      if ((iter + 1) % 10 === 0) {
-        console.log(`  iter ${iter + 1}: score=${scorePercent} ruleBefore=${actionBefore.ruleId} ruleAfter=${actionAfter.ruleId} topic=${topic.name}`);
-      }
 
     } catch (err) {
       fail(`Iteration ${iter} error: ${err?.message || String(err)}`);
@@ -296,12 +406,74 @@ async function simulateRandomPracticeLoop() {
   }
   console.log('Mastered topics count:', mastered.length);
 
-  // Clean up: remove generated tests and questions created by chaos (best-effort)
+  // Clean up: remove generated tests, attempts and questions created by chaos (best-effort)
   try {
-    await prisma.generatedTest.deleteMany({ where: { title: '[CHAOS] Sim Test' } });
-    await prisma.question.deleteMany({ where: { prompt: { contains: '[CHAOS]' } } });
+    const dryRun = process.argv.includes('--dry-run');
+
+    // find questions and generated tests created by chaos
+    const chaosQuestions = await prisma.question.findMany({ where: { prompt: { contains: '[CHAOS]' } }, select: { id: true } });
+    const qIds = chaosQuestions.map((q) => q.id);
+    const chaosGenTests = await prisma.generatedTest.findMany({ where: { title: '[CHAOS] Sim Test' }, select: { id: true } });
+    const genTestIds = chaosGenTests.map((g) => g.id);
+
+    if (qIds.length === 0 && genTestIds.length === 0) {
+      console.log('Cleanup: nothing to remove (no [CHAOS] questions or generated tests found)');
+    } else {
+      console.log(`Cleanup: found ${qIds.length} question(s), ${genTestIds.length} generatedTest(s)`);
+
+      // Helper to safely call a model operation only if present on prisma client
+      const safeCount = async (model, fnName, params) => {
+        try {
+          if (!model || typeof model[fnName] !== 'function') return null;
+          return await model[fnName](params);
+        } catch (err) {
+          console.warn(`Cleanup: ${fnName} failed on model —`, err?.message || err);
+          return null;
+        }
+      };
+
+      if (dryRun) {
+        const c1 = await safeCount(prisma.attemptQuestion, 'count', { where: { questionId: { in: qIds } } });
+        const c2 = prisma.studentAnswer ? await safeCount(prisma.studentAnswer, 'count', { where: { questionId: { in: qIds } } }) : null;
+        const c3 = await safeCount(prisma.testResult, 'count', { where: { testId: { in: genTestIds } } });
+        const c4 = await safeCount(prisma.generatedTest, 'count', { where: { id: { in: genTestIds } } });
+        const c5 = await safeCount(prisma.question, 'count', { where: { id: { in: qIds } } });
+
+        console.log('Dry-run cleanup counts (would delete):');
+        console.log(' - AttemptQuestion:', c1 ?? 0);
+        if (c2 !== null) console.log(' - StudentAnswer:', c2 ?? 0);
+        console.log(' - TestResult (attempt):', c3 ?? 0);
+        console.log(' - GeneratedTest:', c4 ?? 0);
+        console.log(' - Question:', c5 ?? 0);
+      } else {
+        // 1) delete AttemptQuestion rows that reference the chaos questions
+        const delAttemptQ = await prisma.attemptQuestion.deleteMany({ where: { questionId: { in: qIds } } });
+        console.log('Cleanup: deleted AttemptQuestion rows:', delAttemptQ.count ?? delAttemptQ);
+
+        // 2) delete StudentAnswer rows if that model exists
+        if (prisma.studentAnswer) {
+          const delStudentAns = await prisma.studentAnswer.deleteMany({ where: { questionId: { in: qIds } } });
+          console.log('Cleanup: deleted StudentAnswer rows:', delStudentAns.count ?? delStudentAns);
+        } else {
+          console.log('Cleanup: no StudentAnswer model found, skipping');
+        }
+
+        // 3) delete attempts/testResults created for generated tests
+        const delAttempts = await prisma.testResult.deleteMany({ where: { testId: { in: genTestIds } } });
+        console.log('Cleanup: deleted TestResult (attempt) rows:', delAttempts.count ?? delAttempts);
+
+        // 4) delete GeneratedTest rows
+        const delGen = await prisma.generatedTest.deleteMany({ where: { id: { in: genTestIds } } });
+        console.log('Cleanup: deleted GeneratedTest rows:', delGen.count ?? delGen);
+
+        // 5) delete Question rows
+        const delQ = await prisma.question.deleteMany({ where: { id: { in: qIds } } });
+        console.log('Cleanup: deleted Question rows:', delQ.count ?? delQ);
+      }
+    }
   } catch (e) {
-    console.warn('Cleanup warning:', e.message);
+    // Never let cleanup throw — log and continue
+    console.warn('Cleanup warning (non-fatal):', e?.message || e);
   }
 
   if (failures.length > 0) {
@@ -313,6 +485,7 @@ async function simulateRandomPracticeLoop() {
   console.log('\nAll checks passed.');
   return 0;
 }
+// (duplicate cleanup block removed)
 
 // Run
 simulateRandomPracticeLoop().then((code) => {

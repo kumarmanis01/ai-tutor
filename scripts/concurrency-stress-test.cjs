@@ -20,8 +20,45 @@
  *   node scripts/concurrency-stress-test.cjs
  *   BASE_URL=http://localhost:3000 NEXTAUTH_SECRET=... node scripts/concurrency-stress-test.cjs
  */
-
 'use strict';
+
+// Default test envs (use provided values when running locally)
+process.env.NEXTAUTH_SECRET = process.env.NEXTAUTH_SECRET || 'spinzy academy secret';
+process.env.NEXTAUTH_URL = process.env.NEXTAUTH_URL || 'http://localhost:3000';
+process.env.REDIS_URL = process.env.REDIS_URL || 'redis://127.0.0.1:6379';
+process.env.DATABASE_URL = process.env.DATABASE_URL || 'postgresql://postgres:spinzyacademy@localhost:5432/spinzy_dev';
+
+// Load project env and validations (centralised bootstrap)
+require('./bootstrap-env.cjs');
+
+// Normalize REDIS reachability for local test runs: if REDIS_URL hostname
+// is a Docker service name like 'redis' that doesn't resolve on host, fall
+// back to localhost to avoid unhandled DNS errors during tests.
+try {
+  const dns = require('dns');
+  const { URL } = require('url');
+  const red = process.env.REDIS_URL;
+  if (red) {
+    try {
+      const parsed = new URL(red);
+      const host = parsed.hostname;
+      dns.lookup(host, (err) => {
+        if (err && err.code === 'ENOTFOUND') {
+          console.warn(`Redis host '${host}' not resolvable — falling back to 127.0.0.1`);
+          try {
+            const fallback = `redis://127.0.0.1:${parsed.port || 6379}`;
+            process.env.REDIS_URL = fallback;
+            console.warn(`Set REDIS_URL=${fallback} for this run`);
+          } catch (_) {}
+        }
+      });
+    } catch (e) {
+      // ignore malformed URL
+    }
+  }
+} catch (e) {
+  // dns unavailable — ignore
+}
 
 const fs = require('fs');
 const path = require('path');
@@ -30,8 +67,16 @@ const { spawnSync } = require('child_process');
 // Config
 const BASE_URL = (process.env.BASE_URL || process.env.NEXTAUTH_URL || 'http://localhost:3000').replace(/\/$/, '');
 const NEXTAUTH_SECRET = process.env.NEXTAUTH_SECRET;
-const USER_COUNT = 20;
-const ACTIONS_PER_USER = 25;
+function getCliArg(name) {
+  const eq = process.argv.find((a) => a.startsWith(name + '='));
+  if (eq) return eq.split('=')[1];
+  const idx = process.argv.indexOf(name);
+  if (idx !== -1 && process.argv.length > idx + 1) return process.argv[idx + 1];
+  return undefined;
+}
+
+const USER_COUNT = parseInt(getCliArg('--users') || process.env.USER_COUNT || '20', 10) || 20;
+const ACTIONS_PER_USER = parseInt(getCliArg('--actions') || process.env.ACTIONS_PER_USER || '25', 10) || 25;
 const EMAIL_PREFIX = `concurrency-test-${Date.now()}`;
 
 // Globals for stats
@@ -201,10 +246,19 @@ async function scanForSTMCompositeKeys() {
   try { IORedis = require('ioredis'); } catch (e) { return { error: 'ioredis not installed' }; }
   const redisUrl = process.env.REDIS_URL;
   if (!redisUrl) return { error: 'REDIS_URL missing' };
-  const r = new IORedis(redisUrl, { maxRetriesPerRequest: null });
+  // Use lazyConnect and attach an error handler to avoid unhandled ioredis errors
+  const r = new IORedis(redisUrl, { maxRetriesPerRequest: null, lazyConnect: true });
   const patterns = ['stm:*:composite', 'stm:composite:*', 'stm:*:composites'];
   const found = [];
+  r.on('error', (err) => {
+    found.push({ error: err && err.message ? err.message : String(err) });
+  });
   try {
+    try {
+      await r.connect();
+    } catch (connErr) {
+      return { error: 'redis connection failed: ' + (connErr && connErr.message ? connErr.message : String(connErr)) };
+    }
     for (const p of patterns) {
       let cursor = '0';
       do {
