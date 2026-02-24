@@ -35,35 +35,35 @@ function main() {
   console.log("\n🚦 MASTER BRANCH VALIDATION STARTED\n");
 
   // 1️⃣ TypeScript Check
-//   runStep(
-//     "TypeScript Type Check",
-//     "npx",
-//     ["tsc", "--noEmit", "-p", "tsconfig.build.json"]
-//   );
+  runStep(
+    "TypeScript Type Check",
+    "npx",
+    ["tsc", "--noEmit", "-p", "tsconfig.build.json"]
+  );
 
   // 2️⃣ Next.js Production Build
-//   runStep("Next.js Production Build", "npm", ["run", "build"]);
+  runStep("Next.js Production Build", "npm", ["run", "build"]);
 
   // 3️⃣ Prisma Validate
-//   runStep("Prisma Validate", "npx", ["prisma", "validate"]);
-//   runStep("Prisma Generate", "npx", ["prisma", "generate"]);
+  runStep("Prisma Validate", "npx", ["prisma", "validate"]);
+  runStep("Prisma Generate", "npx", ["prisma", "generate"]);
 
   // 4️⃣ Deterministic Engine Scenarios
-//   runStep("MVP Flow Test", "node", ["scripts/test-mvp-flow.cjs"]);
+  runStep("MVP Flow Test", "node", ["scripts/test-mvp-flow.cjs"]);
 
   // 5️⃣ Chaos Simulation (safe dry-run)
-//   runStep(
-//     "Chaos Simulation (mixed-70 dry-run)",
-//     "node",
-//     ["scripts/chaos-progress-simulation.cjs", "--mode=mixed-70", "--dry-run"]
-//   );
+  runStep(
+    "Chaos Simulation (mixed-70 dry-run)",
+    "node",
+    ["scripts/chaos-progress-simulation.cjs", "--mode=mixed-70", "--dry-run"]
+  );
 
   // 6️⃣ Concurrency Stress Test (50 users)
-//   runStep(
-//     "Concurrency Stress Test (50 users)",
-//     "node",
-//     ["scripts/concurrency-stress-test.cjs", "--mode=mixed-70", "--users=50"]
-//   );
+  runStep(
+    "Concurrency Stress Test (50 users)",
+    "node",
+    ["scripts/concurrency-stress-test.cjs", "--mode=mixed-70", "--users=50"]
+  );
 
   // 7️⃣ Logging Safety Audit
   runStep(
