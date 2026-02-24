@@ -1,3 +1,11 @@
+/// FILE OBJECTIVE:
+/// - Prisma schema defining application models for the project.
+///
+/// LINKED UNIT TEST:
+/// - tests/unit/prisma/schema.spec.ts
+///
+/// EDIT LOG:
+/// - 2026-02-21T00:00:00Z | copilot | added student learning profile fields
 generator client {
   provider = "prisma-client-js"
 }
@@ -737,6 +745,9 @@ model StudentLearningProfile {
   weakSubjects    String[] @default([])
   strengths       Json?
   recommendations Json?
+  /// User-configurable study targets
+  dailyTargetMin  Int?
+  studyDaysPerWeek Int?
   updatedAt       DateTime @updatedAt
   student         User     @relation(fields: [studentId], references: [id], onDelete: Cascade)
 }
