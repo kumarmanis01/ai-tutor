@@ -80,6 +80,12 @@ const AVG_CHAPTERS_PER_SUBJECT = 12;
 const AVG_TOPICS_PER_CHAPTER = 5;
 const NOTES_PER_TOPIC = 1;
 
+// Safety caps for controlled generation (used in LLM_SAFE_MODE or non-production)
+const MAX_TOPICS_SAFE = 2;
+const MAX_QUESTIONS_PER_TOPIC_SAFE = 3;
+const MAX_CHAPTERS_SAFE = 2;
+const MAX_TOPICS_PER_CHAPTER_SAFE = 2;
+
 // ============================================
 // Helper Functions
 // ============================================
@@ -340,6 +346,39 @@ export async function POST(request: NextRequest) {
     // 5. Calculate Estimates
     const estimates = calculateEstimates(options);
 
+    // Safety mode: force small caps during testing to avoid runaway generation
+    const isDev = process.env.NODE_ENV !== 'production';
+    const isSafeMode = (process.env.LLM_SAFE_MODE === 'true') || isDev;
+
+    // Determine generation limits (chapters, topics per chapter, questions per topic)
+    const requestedQuestionsPerDifficulty = options?.questionsPerDifficulty ?? 10;
+    const difficultiesLength = options?.difficulties?.length ?? 3;
+
+    // In normal mode questions are computed as difficultiesLength * questionsPerDifficulty
+    const questionsPerTopicDefault = difficultiesLength * requestedQuestionsPerDifficulty;
+
+    // Safe-mode overrides: enforce small, deterministic caps
+    const chaptersLimit = isSafeMode ? Math.min(estimates.totalChapters, MAX_CHAPTERS_SAFE) : estimates.totalChapters;
+    const topicsPerChapterUsed = isSafeMode ? Math.min(AVG_TOPICS_PER_CHAPTER, MAX_TOPICS_PER_CHAPTER_SAFE) : AVG_TOPICS_PER_CHAPTER;
+    const adjustedEstimatedTopics = chaptersLimit * topicsPerChapterUsed;
+
+    const questionsPerTopicUsed = isSafeMode ? MAX_QUESTIONS_PER_TOPIC_SAFE : questionsPerTopicDefault;
+
+    const adjustedEstimatedNotes = options?.generateNotes === false ? 0 : adjustedEstimatedTopics * NOTES_PER_TOPIC;
+    const adjustedEstimatedQuestions = options?.generateQuestions === false
+      ? 0
+      : adjustedEstimatedTopics * questionsPerTopicUsed;
+
+    if (isSafeMode) {
+      logger.info('HydrateAll running in SAFE MODE, applying generation caps', {
+        traceId,
+        chaptersLimit,
+        topicsPerChapter: topicsPerChapterUsed,
+        topicsLimit: adjustedEstimatedTopics,
+        questionsPerTopic: questionsPerTopicUsed,
+      });
+    }
+
     // 6. Check for Dry Run
     if (options?.dryRun) {
       logger.info('Dry run - not creating job', { traceId, estimates });
@@ -376,11 +415,11 @@ export async function POST(request: NextRequest) {
           // Progress tracking (will be updated by reconciler)
           chaptersExpected: estimates.totalChapters,
           chaptersCompleted: 0,
-          topicsExpected: estimates.estimatedTopics,
+          topicsExpected: adjustedEstimatedTopics,
           topicsCompleted: 0,
-          notesExpected: estimates.estimatedNotes,
+          notesExpected: adjustedEstimatedNotes,
           notesCompleted: 0,
-          questionsExpected: estimates.estimatedQuestions,
+          questionsExpected: adjustedEstimatedQuestions,
           questionsCompleted: 0,
           // Cost tracking
           estimatedCostUsd: estimates.estimatedCostUsd,
@@ -395,6 +434,11 @@ export async function POST(request: NextRequest) {
             subjectId: subject.id,
             options,
             traceId,
+            generationLimits: {
+              safeMode: isSafeMode,
+              topicsLimit: adjustedEstimatedTopics,
+              questionsPerTopic: questionsPerTopicUsed,
+            },
           },
         },
       });
@@ -416,6 +460,11 @@ export async function POST(request: NextRequest) {
             grade,
             subjectCode,
             userId: session.user.id,
+            generationLimits: {
+              safeMode: isSafeMode,
+              topicsLimit: adjustedEstimatedTopics,
+              questionsPerTopic: questionsPerTopicUsed,
+            },
           },
         },
       });

@@ -50,6 +50,10 @@ const concurrency = Number(
   argv.concurrency || process.env.WORKER_CONCURRENCY || 2
 );
 
+// If running in LLM safe mode, force a single concurrency to avoid parallel LLM calls
+const isSafeMode = String(process.env.LLM_SAFE_MODE || "").toLowerCase() === "true";
+const effectiveConcurrency = isSafeMode ? 1 : concurrency;
+
 const heartbeatIntervalMs = Number(
   process.env.WORKER_HEARTBEAT_MS || 10_000
 );
@@ -153,9 +157,9 @@ export async function bootstrapWorker() {
     } catch (err) {
       logger.error('[worker][DEBUG] Redis ping failed', err);
     }
-    logger.debug(`[worker][DEBUG] starting worker: type=${workerType} concurrency=${concurrency} lifecycleId=${lifecycleId}`);
+    logger.debug(`[worker][DEBUG] starting worker: type=${workerType} concurrency=${effectiveConcurrency} lifecycleId=${lifecycleId} safeMode=${String(isSafeMode)}`);
   } else {
-    logger.info(`[worker] starting worker: type=${workerType}`);
+    logger.info(`[worker] starting worker: type=${workerType} concurrency=${effectiveConcurrency}${isSafeMode? ' (LLM_SAFE_MODE)' : ''}`);
   }
 
   const worker = new Worker(
@@ -163,7 +167,7 @@ export async function bootstrapWorker() {
     async (job: Job) => processor(job),
     {
       connection: redisConnection,
-      concurrency,
+      concurrency: effectiveConcurrency,
     }
   );
 
