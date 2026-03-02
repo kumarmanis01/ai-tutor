@@ -46,6 +46,11 @@ interface Estimates {
   estimatedDurationMins: number;
 }
 
+// Validation-run hard caps (mirrored from server — UI enforces these client-side as a guard)
+const VALIDATION_CAP_CHAPTERS = 2;
+const VALIDATION_CAP_TOPICS_PER_CHAPTER = 2;
+const VALIDATION_CAP_QUESTIONS_PER_DIFFICULTY = 2;
+
 export default function TriggerForm({ onJobCreated }: TriggerFormProps) {
   const [formData, setFormData] = useState<FormData>({
     language: 'en',
@@ -56,7 +61,8 @@ export default function TriggerForm({ onJobCreated }: TriggerFormProps) {
       generateNotes: true,
       generateQuestions: true,
       difficulties: ['easy', 'medium', 'hard'],
-      questionsPerDifficulty: 10,
+      // Default to validation cap — server will enforce regardless
+      questionsPerDifficulty: VALIDATION_CAP_QUESTIONS_PER_DIFFICULTY,
       skipValidation: false,
       dryRun: false,
     },
@@ -123,11 +129,21 @@ export default function TriggerForm({ onJobCreated }: TriggerFormProps) {
     setIsSubmitting(true);
     setError(null);
 
+    // Client-side guard: enforce validation caps before sending to server
+    const cappedOptions = {
+      ...formData.options,
+      questionsPerDifficulty: Math.min(
+        formData.options.questionsPerDifficulty,
+        VALIDATION_CAP_QUESTIONS_PER_DIFFICULTY
+      ),
+    };
+    const cappedPayload = { ...formData, options: cappedOptions };
+
     try {
       const response = await fetch('/api/admin/hydrateAll', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData),
+        body: JSON.stringify(cappedPayload),
       });
 
       const data = await response.json();
@@ -136,7 +152,7 @@ export default function TriggerForm({ onJobCreated }: TriggerFormProps) {
         throw new Error(data.error || 'Failed to submit job');
       }
 
-      if (formData.options.dryRun) {
+      if (cappedPayload.options.dryRun) {
         alert(`Dry Run Complete!\n\nEstimates:\n${JSON.stringify(data.estimates, null, 2)}`);
       } else {
         onJobCreated(data.rootJobId);
@@ -150,6 +166,26 @@ export default function TriggerForm({ onJobCreated }: TriggerFormProps) {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
+      {/* Validation Mode Banner */}
+      <div className="rounded-md bg-amber-50 border border-amber-300 p-4">
+        <div className="flex items-start">
+          <span className="text-amber-500 text-lg mr-2">⚠️</span>
+          <div>
+            <h3 className="text-sm font-semibold text-amber-800">VALIDATION MODE ACTIVE</h3>
+            <p className="mt-1 text-sm text-amber-700">
+              Generation is hard-capped for controlled validation. Server enforces these limits
+              regardless of UI inputs:
+            </p>
+            <ul className="mt-1 text-sm text-amber-700 list-disc ml-4">
+              <li>Max <strong>{VALIDATION_CAP_CHAPTERS} chapters</strong></li>
+              <li>Max <strong>{VALIDATION_CAP_TOPICS_PER_CHAPTER} topics per chapter</strong></li>
+              <li>Max <strong>{VALIDATION_CAP_QUESTIONS_PER_DIFFICULTY} questions per difficulty</strong></li>
+              <li>Expected max output: <strong>24 questions total</strong> (2×2×3×2)</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
       {/* Error Alert */}
       {error && (
         <div className="rounded-md bg-red-50 p-4">
@@ -292,23 +328,29 @@ export default function TriggerForm({ onJobCreated }: TriggerFormProps) {
             {/* Questions per difficulty */}
             <div className="mt-2">
               <label className="block text-sm font-medium text-gray-700">
-                Questions per Difficulty
+                Questions per Difficulty{' '}
+                <span className="text-xs text-amber-600 font-normal">
+                  (max {VALIDATION_CAP_QUESTIONS_PER_DIFFICULTY} — validation cap)
+                </span>
               </label>
               <input
                 type="number"
                 min="1"
-                max="50"
+                max={VALIDATION_CAP_QUESTIONS_PER_DIFFICULTY}
                 value={formData.options.questionsPerDifficulty}
                 onChange={(e) =>
                   setFormData({
                     ...formData,
                     options: {
                       ...formData.options,
-                      questionsPerDifficulty: parseInt(e.target.value, 10),
+                      questionsPerDifficulty: Math.min(
+                        parseInt(e.target.value, 10) || 1,
+                        VALIDATION_CAP_QUESTIONS_PER_DIFFICULTY
+                      ),
                     },
                   })
                 }
-                className="mt-1 block w-32 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                className="mt-1 block w-32 rounded-md border-amber-300 shadow-sm focus:border-amber-500 focus:ring-amber-500"
               />
             </div>
           </div>

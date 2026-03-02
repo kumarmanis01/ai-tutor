@@ -188,6 +188,28 @@ export async function handleSyllabusJob(jobId: string) {
     if (Array.isArray(ch.topics)) ch.topics.sort((x: any, y: any) => (x.order ?? 0) - (y.order ?? 0))
   }
 
+  // ── Validation cap: limit chapters to avoid runaway generation ──
+  // Priority: job inputParams > VALIDATION_CAP_CHAPTERS env > 0 (no cap)
+  const jobCaps = (job.inputParams as any)?.generationLimits;
+  const capChapters = jobCaps?.chaptersLimit
+    ?? Number(process.env.VALIDATION_CAP_CHAPTERS || 0);
+  if (capChapters > 0 && parsed.chapters.length > capChapters) {
+    logger.warn('[VALIDATION_CAP] syllabusWorker: capping chapters', {
+      jobId: job.id,
+      llmReturnedChapters: parsed.chapters.length,
+      cappedTo: capChapters,
+    });
+    parsed.chapters = parsed.chapters.slice(0, capChapters);
+  }
+  logger.info('[VALIDATION] syllabusWorker: chapterCount', {
+    jobId: job.id,
+    chapterCount: parsed.chapters.length,
+    topicCounts: parsed.chapters.map((ch: any) => ({
+      chapter: ch.title,
+      topicCount: Array.isArray(ch.topics) ? ch.topics.length : 0,
+    })),
+  });
+
   try {
     // Track created topic IDs for cascading downstream jobs
     const createdTopicIds: string[] = [];

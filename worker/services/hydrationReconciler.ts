@@ -216,7 +216,7 @@ export class HydrationReconciler {
   // ============================================
 
   /**
-   * Level 2: Create note generation jobs for each topic
+   * Level 2: Create note generation jobs for each topic (capped per chapter in validation runs)
    */
   private async createLevel2Jobs(rootJob: any): Promise<void> {
     const existingLevel2 = await prisma.hydrationJob.count({
@@ -246,9 +246,40 @@ export class HydrationReconciler {
       orderBy: { order: 'asc' },
     });
 
-    logger.info(`Creating ${topics.length} Level 2 jobs (notes) for root job ${rootJob.id}`);
+    // ── Validation cap: limit topics per chapter ──
+    const genLimits = (rootJob.inputParams as any)?.generationLimits;
+    const topicsPerChapterCap: number = genLimits?.topicsPerChapterLimit
+      ?? Number(process.env.VALIDATION_CAP_TOPICS_PER_CHAPTER || 0);
 
-    for (const topic of topics) {
+    let cappedTopics = topics;
+    if (topicsPerChapterCap > 0) {
+      const topicsByChapter = new Map<string, typeof topics>();
+      for (const t of topics) {
+        const arr = topicsByChapter.get(t.chapter.id) || [];
+        arr.push(t);
+        topicsByChapter.set(t.chapter.id, arr);
+      }
+      cappedTopics = [];
+      for (const [chapterId, chTopics] of topicsByChapter) {
+        if (chTopics.length > topicsPerChapterCap) {
+          logger.warn('[VALIDATION_CAP] reconciler: capping topics for chapter (Level 2)', {
+            rootJobId: rootJob.id,
+            chapterId,
+            available: chTopics.length,
+            cappedTo: topicsPerChapterCap,
+          });
+        }
+        cappedTopics.push(...chTopics.slice(0, topicsPerChapterCap));
+      }
+    }
+
+    logger.info(`[VALIDATION] Creating ${cappedTopics.length} Level 2 jobs (notes) for root job ${rootJob.id}`, {
+      rootJobId: rootJob.id,
+      topicCountGenerated: cappedTopics.length,
+      topicsPerChapterCap,
+    });
+
+    for (const topic of cappedTopics) {
       await this.createChildJob({
         rootJobId: rootJob.id,
         level: 2,
@@ -262,7 +293,7 @@ export class HydrationReconciler {
   }
 
   /**
-   * Level 3: Create question generation jobs for each topic × difficulty
+   * Level 3: Create question generation jobs for each topic × difficulty (capped per chapter in validation runs)
    */
   private async createLevel3Jobs(rootJob: any): Promise<void> {
     const existingLevel3 = await prisma.hydrationJob.count({
@@ -289,10 +320,43 @@ export class HydrationReconciler {
       'hard',
     ];
 
-    const totalJobs = topics.length * difficulties.length;
-    logger.info(`Creating ${totalJobs} Level 3 jobs (questions) for root job ${rootJob.id}`);
+    // ── Validation cap: limit topics per chapter (same cap as Level 2) ──
+    const genLimits = inputParams.generationLimits;
+    const topicsPerChapterCap: number = genLimits?.topicsPerChapterLimit
+      ?? Number(process.env.VALIDATION_CAP_TOPICS_PER_CHAPTER || 0);
 
-    for (const topic of topics) {
+    let cappedTopics = topics;
+    if (topicsPerChapterCap > 0) {
+      const topicsByChapter = new Map<string, typeof topics>();
+      for (const t of topics) {
+        const arr = topicsByChapter.get(t.chapter.id) || [];
+        arr.push(t);
+        topicsByChapter.set(t.chapter.id, arr);
+      }
+      cappedTopics = [];
+      for (const [chapterId, chTopics] of topicsByChapter) {
+        if (chTopics.length > topicsPerChapterCap) {
+          logger.warn('[VALIDATION_CAP] reconciler: capping topics for chapter (Level 3)', {
+            rootJobId: rootJob.id,
+            chapterId,
+            available: chTopics.length,
+            cappedTo: topicsPerChapterCap,
+          });
+        }
+        cappedTopics.push(...chTopics.slice(0, topicsPerChapterCap));
+      }
+    }
+
+    const totalJobs = cappedTopics.length * difficulties.length;
+    logger.info(`[VALIDATION] Creating ${totalJobs} Level 3 jobs (questions) for root job ${rootJob.id}`, {
+      rootJobId: rootJob.id,
+      topicCount: cappedTopics.length,
+      difficulties,
+      topicsPerChapterCap,
+      questionsPerDifficulty: genLimits?.questionsPerDifficulty ?? 'uncapped',
+    });
+
+    for (const topic of cappedTopics) {
       for (const difficulty of difficulties) {
         await this.createChildJob({
           rootJobId: rootJob.id,
@@ -302,6 +366,7 @@ export class HydrationReconciler {
           chapterId: topic.chapter.id,
           language: rootJob.language,
           difficulty,
+          questionsPerDifficulty: genLimits?.questionsPerDifficulty,
         });
       }
     }
@@ -318,8 +383,9 @@ export class HydrationReconciler {
     chapterId: string;
     language: any;
     difficulty: DifficultyLevel;
+    questionsPerDifficulty?: number;
   }): Promise<void> {
-    const { rootJobId, level, jobType, topicId, chapterId, language, difficulty } = params;
+    const { rootJobId, level, jobType, topicId, chapterId, language, difficulty, questionsPerDifficulty } = params;
 
     await prisma.$transaction(async (tx) => {
       // Create HydrationJob with topicId/chapterId columns populated
@@ -339,6 +405,8 @@ export class HydrationReconciler {
           inputParams: {
             topicId,
             chapterId,
+            // Pass validation cap so the questions worker can respect it
+            ...(questionsPerDifficulty != null ? { questionsPerDifficulty } : {}),
           },
         },
       });
@@ -465,6 +533,41 @@ export class HydrationReconciler {
       status: finalStatus,
       failedChildren,
     });
+
+    // ── Validation Summary Log ──
+    // Aggregate actual content counts for a final audit record
+    try {
+      const subjectId = rootJob.subjectId;
+      const [chapters, topics, notes, questions, llmLogs] = await Promise.all([
+        prisma.chapterDef.count({ where: { subjectId, lifecycle: 'active' } }),
+        prisma.topicDef.count({ where: { chapter: { subjectId }, lifecycle: 'active' } }),
+        prisma.topicNote.count({ where: { topic: { chapter: { subjectId } } } }),
+        prisma.generatedQuestion.count({ where: { test: { topic: { chapter: { subjectId } } } } }),
+        prisma.aIContentLog.findMany({
+          where: { subject: rootJob.subject },
+          select: { tokensUsed: true, success: true },
+        }),
+      ]);
+
+      const totalLLMCalls = llmLogs.length;
+      const tokensUsed = llmLogs.reduce((sum, l) => sum + (l.tokensUsed ?? 0), 0);
+
+      logger.info('GENERATION VALIDATION SUMMARY', {
+        rootJobId: rootJob.id,
+        status: finalStatus,
+        summary: {
+          chapters,
+          topics,
+          notes,
+          questions,
+          llmCalls: totalLLMCalls,
+          tokensUsed,
+          failedChildren,
+        },
+      });
+    } catch (summaryErr: any) {
+      logger.warn('Failed to compute validation summary', { rootJobId: rootJob.id, error: summaryErr?.message });
+    }
   }
 }
 

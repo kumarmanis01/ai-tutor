@@ -34,6 +34,20 @@ const DIFFICULTY_LEVELS = ['easy', 'medium', 'hard'] as const;
 type DifficultyLevel = typeof DIFFICULTY_LEVELS[number];
 
 /**
+ * Returns the validated question count per difficulty level.
+ * Reads from VALIDATION_CAP_QUESTIONS_PER_DIFFICULTY env, defaulting to 2 when LLM_MODE=real.
+ * Accepts an optional job-level override (passed by reconciler).
+ */
+function getValidationQuestionCount(jobOverride?: number): number {
+  if (jobOverride != null && Number.isFinite(jobOverride) && jobOverride > 0) return jobOverride;
+  const envCap = Number(process.env.VALIDATION_CAP_QUESTIONS_PER_DIFFICULTY || 0);
+  if (envCap > 0) return envCap;
+  // Default: 2 when running a real LLM validation run, 5 otherwise
+  if (process.env.LLM_MODE === 'real') return 2;
+  return 5;
+}
+
+/**
  * Validates the shape of the LLM response for questions.
  */
 function validateQuestionsShape(raw: any, subjectName?: string): boolean {
@@ -159,8 +173,12 @@ async function generateQuestionsForDifficulty(
   grade: number,
   subjectName: string,
   language: string,
-  jobId?: string
+  jobId?: string,
+  questionsCount?: number
 ): Promise<{ parsed: any; llmResult: any } | null> {
+  // Resolve validated question count — enforces validation cap
+  const count = getValidationQuestionCount(questionsCount);
+
   const difficultyDescriptions: Record<DifficultyLevel, string> = {
     easy: 'basic recall and simple understanding questions suitable for beginners',
     medium: 'application and comprehension questions requiring moderate thinking',
@@ -169,7 +187,7 @@ async function generateQuestionsForDifficulty(
 
   const prompt = `You are an expert educator and assessment designer.
 
-Generate 5 ${difficulty.toUpperCase()} level questions for students on:
+Generate ${count} ${difficulty.toUpperCase()} level questions for students on:
 Topic: ${topic.name}
 Board: ${board}
 Grade: ${grade}
@@ -203,7 +221,7 @@ JSON Schema:
 
     try {
       // Use centralized prompt renderer to produce deterministic prompt and schema fingerprint
-      const rendered = renderTemplate('topic-questions', { topicName: topic.name, grade, count: 5, language: language as any });
+      const rendered = renderTemplate('topic-questions', { topicName: topic.name, grade, count, language: language as any });
 
       // Persist initial AIContentLog with schemaHash and version for observability before calling LLM
       try {
@@ -325,9 +343,28 @@ export async function handleQuestionsJob(jobId: string): Promise<void> {
     }).catch(() => {});
   }
 
+  // Read per-difficulty question count from job inputParams (set by reconciler) or fall back to env/default
+  const jobQuestionsPerDifficulty = (job.inputParams as any)?.questionsPerDifficulty;
+  const resolvedQuestionsCount = getValidationQuestionCount(
+    typeof jobQuestionsPerDifficulty === 'number' ? jobQuestionsPerDifficulty : undefined
+  );
+
+  logger.info('[VALIDATION] handleQuestionsJob: starting generation', {
+    jobId,
+    topicId,
+    board,
+    grade,
+    subject: subjectName,
+    difficulties: [...DIFFICULTY_LEVELS],
+    questionsPerDifficulty: resolvedQuestionsCount,
+  });
+
   // Generate questions for all difficulty levels
   const results: { difficulty: DifficultyLevel; testId: string | null; questionCount: number }[] = [];
   const createdTestIds: string[] = [];
+  let totalLLMCalls = 0;
+  let totalTokensUsed = 0;
+  const sessionStart = Date.now();
 
   // Generate questions for all difficulties in parallel (independent leaf tasks)
   const difficultyPromises = DIFFICULTY_LEVELS.map((difficulty) => (async () => {
@@ -335,7 +372,7 @@ export async function handleQuestionsJob(jobId: string): Promise<void> {
     const existingApproved = await prisma.generatedTest.findFirst({ where: { topicId, language, difficulty, status: 'approved' } });
     if (existingApproved) return { difficulty, existingApproved, parsed: null };
 
-    const gen = await generateQuestionsForDifficulty(difficulty, topic, board, grade, subjectName, language, job.id);
+    const gen = await generateQuestionsForDifficulty(difficulty, topic, board, grade, subjectName, language, job.id, resolvedQuestionsCount);
     return { difficulty, existingApproved: null, parsed: gen?.parsed ?? null, llmResult: gen?.llmResult ?? null };
   })());
 
@@ -353,13 +390,44 @@ export async function handleQuestionsJob(jobId: string): Promise<void> {
       continue;
     }
 
+    // Track LLM call metrics
+    if (llmResult) {
+      totalLLMCalls += 1;
+      totalTokensUsed += llmResult?.usage?.total_tokens ?? 0;
+    }
+
     if (!parsed) {
-      logger.warn('handleQuestionsJob: failed to generate for difficulty', { jobId, difficulty });
+      logger.warn('[VALIDATION_DEFENSIVE] handleQuestionsJob: LLM response malformed or parse failed', {
+        jobId,
+        difficulty,
+        topicId,
+        rawContentLength: llmResult?.content?.length ?? 0,
+      });
       // Persist failure AIContentLog outside transaction for this difficulty
       try { await prisma.aIContentLog.create({ data: { model: llmResult?.model || 'none', promptType: 'questions', language, success: false, status: 'failed', error: 'llm_parse_failed', requestBody: { jobId, difficulty }, responseBody: { raw: llmResult?.content } } }) } catch {}
       results.push({ difficulty, testId: null, questionCount: 0 });
       continue;
     }
+
+    // Guard: warn if LLM returned more questions than the cap
+    const returnedCount = Array.isArray(parsed?.questions) ? parsed.questions.length : 0;
+    if (returnedCount > resolvedQuestionsCount) {
+      logger.warn('[VALIDATION_CAP] questionsWorker: LLM returned more questions than cap — trimming', {
+        jobId,
+        difficulty,
+        topicId,
+        llmReturned: returnedCount,
+        cappedTo: resolvedQuestionsCount,
+      });
+      parsed.questions = parsed.questions.slice(0, resolvedQuestionsCount);
+    }
+
+    logger.info('[VALIDATION] questionsWorker: questionCountByDifficulty', {
+      jobId,
+      difficulty,
+      topicId,
+      questionCount: parsed.questions?.length ?? 0,
+    });
 
     // Log response received
     const linkedExec = await prisma.executionJob.findFirst({ where: { payload: { path: ['hydrationJobId'], equals: job.id } } }).catch(() => null);
@@ -380,7 +448,14 @@ export async function handleQuestionsJob(jobId: string): Promise<void> {
         (await import('@/lib/aiOutputValidator')).validateOrThrow(parsed, { jobType: 'questions', language, difficulty, subject: subjectName, topic: topic.name });
       } catch (vErr: any) {
         // Failure contract: mark job failed, persist AIContentLog via helper, then rethrow to abort
-        const reason = vErr?.type || vErr?.message || 'validation_failed'
+        const reason = vErr?.type || vErr?.message || 'validation_failed';
+        logger.error('[VALIDATION_DEFENSIVE] handleQuestionsJob: JSON/schema validation failed', {
+          jobId,
+          difficulty,
+          topicId,
+          reason,
+          details: vErr?.details ?? null,
+        });
         await markJobFailed(job.id, String(reason));
         throw vErr;
       }
@@ -491,7 +566,11 @@ export async function handleQuestionsJob(jobId: string): Promise<void> {
         }
       }
       } catch (err) {
-      logger.error('handleQuestionsJob: failed to persist tests atomically', { jobId, error: (err as any)?.message ?? String(err) });
+      logger.error('[VALIDATION_DEFENSIVE] handleQuestionsJob: DB write failed during test persistence', {
+        jobId,
+        topicId,
+        error: (err as any)?.message ?? String(err),
+      });
       // mark failure
       await markJobFailed(job.id, 'persistence_failed');
       throw err;
@@ -528,12 +607,29 @@ export async function handleQuestionsJob(jobId: string): Promise<void> {
     }
   } catch { /* ignore */ }
 
-  logger.info('handleQuestionsJob: completed successfully', { 
-    jobId, 
-    topicId, 
-    successfulDifficulties: successfulCount, 
-    totalQuestions,
-    testIds: createdTestIds 
+  const executionDurationMs = Date.now() - sessionStart;
+
+  // ── Structured session log (per-topic generation summary) ──
+  logger.info('[VALIDATION] handleQuestionsJob: session summary', {
+    jobId,
+    topicId,
+    board,
+    grade,
+    subject: subjectName,
+    chapterCountGenerated: 1,       // each questions job covers one topic (within a chapter)
+    topicCountGenerated: 1,
+    questionsGeneratedByDifficulty: Object.fromEntries(
+      DIFFICULTY_LEVELS.map((d) => [
+        d,
+        resolvedQuestionsCount,     // cap applied; actual count is the resolved target
+      ])
+    ),
+    totalQuestionsGenerated: successfulCount > 0 ? resolvedQuestionsCount * DIFFICULTY_LEVELS.length : 0,
+    totalLLMCallsMade: totalLLMCalls,
+    estimatedTokensUsed: totalTokensUsed,
+    executionDurationMs,
+    successfulDifficulties: successfulCount,
+    testIds: createdTestIds,
   });
 }
 
