@@ -59,7 +59,7 @@ export default function NextActionCard(props: NextActionCardProps) {
       } else {
         setAction(null);
       }
-    } catch (e) {
+    } catch {
       // revert optimistic change on error
       setAction(prev);
     } finally {

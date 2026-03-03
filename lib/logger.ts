@@ -172,7 +172,7 @@ class Logger {
     };
     try {
       output(mapLevel[level] as LogLevel, msg, { ...context });
-    } catch (e) {
+    } catch (_e) {
       // fallback to console.error if structured output fails
       try { console.error(entry); } catch {}
     }

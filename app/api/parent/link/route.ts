@@ -1,10 +1,16 @@
 /**
  * FILE OBJECTIVE:
- * - Manage parent-student linking: generate invite codes, link via code, unlink.
+ * - Manage parent-student linking:
+ *   - Student generates an invite code (preferred path) with expiry.
+ *   - Parent redeems invite code to link.
+ *   - Optional email-linking is allowed only when the student has explicitly set `parentEmail`.
  *
  * EDIT LOG:
  * - 2026-02-04 | claude | created parent link management API
+ * - 2026-03-03 | gpt | migrate to ParentInvite + harden privacy
  */
+
+export const dynamic = 'force-dynamic';
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
@@ -13,23 +19,21 @@ import { prisma } from '@/lib/prisma';
 import { logger } from '@/lib/logger';
 import { formatErrorForResponse } from '@/lib/errorResponse';
 import type { AppSession } from '@/lib/types/auth';
-import { randomBytes } from 'crypto';
+import {
+  createOrReuseParentInviteForStudent,
+  linkParentToStudentByEmail,
+  redeemParentInviteAndLink,
+  PARENT_INVITE_TTL_DAYS,
+} from '@/lib/parent/inviteService';
 
 const CLASS_NAME = 'ParentLinkAPI';
 
 /**
- * Generate a short alphanumeric invite code
- */
-function generateInviteCode(): string {
-  return randomBytes(4).toString('hex').toUpperCase(); // 8-char hex code
-}
-
-/**
  * POST /api/parent/link
  * Two modes:
- *   1. { action: "generate" } — student generates an invite code for their parent
- *   2. { action: "link", inviteCode: "ABCD1234" } — parent links using invite code
- *   3. { action: "link", studentEmail: "x@y.com" } — parent links using email (existing)
+ *   1. { action: "generate" } — student generates an invite code for their parent (preferred)
+ *   2. { action: "link", inviteCode: "ABCD1234" } — parent links using invite code (preferred)
+ *   3. { action: "link", studentEmail: "x@y.com" } — parent links using email (only if student.parentEmail matches)
  */
 export async function POST(req: NextRequest) {
   const start = Date.now();
@@ -47,7 +51,7 @@ export async function POST(req: NextRequest) {
     if (action === 'generate') {
       return handleGenerateCode(session.user.id, req, start);
     } else if (action === 'link') {
-      return handleLink(session.user.id, body, req, start);
+      return handleLink(session.user.id, session.user.email ?? null, body, req, start);
     } else {
       return NextResponse.json({ error: 'Invalid action. Use "generate" or "link".' }, { status: 400 });
     }
@@ -61,44 +65,20 @@ export async function POST(req: NextRequest) {
  * Student generates an invite code that a parent can use to link
  */
 async function handleGenerateCode(studentId: string, req: NextRequest, start: number) {
-  // Check if student already has a pending invite code
-  const existing = await prisma.parentStudent.findFirst({
-    where: {
-      studentId,
-      inviteCode: { not: null },
-      status: 'pending',
-    },
-  });
+  const invite = await createOrReuseParentInviteForStudent({ prisma, studentId });
 
-  if (existing?.inviteCode) {
-    const response = NextResponse.json({ inviteCode: existing.inviteCode });
-    logger.logAPI(req, response, { className: CLASS_NAME, methodName: 'handleGenerateCode' }, start);
-    return response;
-  }
+  await prisma.auditLog
+    .create({
+      data: {
+        userId: studentId,
+        action: 'student_generate_parent_invite',
+        details: { studentId, expiresAt: invite.expiresAt },
+      },
+    })
+    .catch(() => {});
 
-  // Generate a unique code and create a pending link placeholder
-  let code = generateInviteCode();
-  let attempts = 0;
-  while (attempts < 5) {
-    const conflict = await prisma.parentStudent.findUnique({ where: { inviteCode: code } });
-    if (!conflict) break;
-    code = generateInviteCode();
-    attempts++;
-  }
-
-  // Create a pending record with no parent yet (parentId = studentId as placeholder)
-  // We'll update parentId when a parent claims the code
-  await prisma.parentStudent.create({
-    data: {
-      parentId: studentId, // temporary self-link, updated when parent claims
-      studentId,
-      inviteCode: code,
-      status: 'pending',
-    },
-  });
-
-  logger.info('Invite code generated', { className: CLASS_NAME, studentId, code });
-  const response = NextResponse.json({ inviteCode: code });
+  logger.info('Invite code generated', { className: CLASS_NAME, studentId });
+  const response = NextResponse.json({ inviteCode: invite.code, expiresAt: invite.expiresAt });
   logger.logAPI(req, response, { className: CLASS_NAME, methodName: 'handleGenerateCode' }, start);
   return response;
 }
@@ -106,114 +86,101 @@ async function handleGenerateCode(studentId: string, req: NextRequest, start: nu
 /**
  * Parent links to a student via invite code or email
  */
-async function handleLink(parentId: string, body: any, req: NextRequest, start: number) {
+async function handleLink(parentId: string, parentEmail: string | null, body: any, req: NextRequest, start: number) {
   const { inviteCode, studentEmail } = body;
 
   if (!inviteCode && !studentEmail) {
     return NextResponse.json({ error: 'inviteCode or studentEmail required' }, { status: 400 });
   }
 
-  let studentId: string;
-
   if (inviteCode) {
-    // Find pending link by invite code
-    const pendingLink = await prisma.parentStudent.findUnique({
-      where: { inviteCode },
-    });
+    try {
+      const result = await redeemParentInviteAndLink({ prisma, parentId, parentEmail, code: inviteCode });
+      const response = NextResponse.json({ ok: true, studentId: result.studentId, status: result.status });
+      logger.logAPI(req, response, { className: CLASS_NAME, methodName: 'handleLink' }, start);
+      return response;
+    } catch (err) {
+      // Backward compatibility: allow redeeming legacy invite codes stored on ParentStudent.inviteCode,
+      // but enforce TTL from createdAt to keep it time-limited.
+      const now = new Date();
+      const ttlMs = PARENT_INVITE_TTL_DAYS * 24 * 60 * 60 * 1000;
 
-    if (!pendingLink || pendingLink.status !== 'pending') {
-      return NextResponse.json({ error: 'Invalid or expired invite code' }, { status: 404 });
+      const legacy = await prisma.parentStudent.findUnique({
+        where: { inviteCode: String(inviteCode).trim().toUpperCase() },
+        select: { id: true, studentId: true, parentId: true, status: true, createdAt: true },
+      });
+
+      const legacyValid =
+        legacy &&
+        legacy.status === 'pending' &&
+        now.getTime() - legacy.createdAt.getTime() <= ttlMs &&
+        legacy.studentId !== parentId;
+
+      if (!legacyValid) {
+        const msg = (err as any)?.message || 'Invalid or expired invite code';
+        const response = NextResponse.json({ error: msg }, { status: 404 });
+        logger.logAPI(req, response, { className: CLASS_NAME, methodName: 'handleLink' }, start);
+        return response;
+      }
+
+      // If parent already linked, consume legacy code without creating duplicates.
+      const existing = await prisma.parentStudent.findUnique({
+        where: { parentId_studentId: { parentId, studentId: legacy.studentId } },
+        select: { id: true, status: true },
+      });
+
+      if (existing?.status === 'active') {
+        await prisma.parentStudent.update({ where: { id: legacy.id }, data: { inviteCode: null, status: 'revoked' } }).catch(() => {});
+        const response = NextResponse.json({ ok: true, studentId: legacy.studentId, status: 'already_linked' });
+        logger.logAPI(req, response, { className: CLASS_NAME, methodName: 'handleLink' }, start);
+        return response;
+      }
+
+      if (existing?.status === 'revoked') {
+        // Reactivate the legacy record as the canonical link and remove the placeholder.
+        await prisma.parentStudent.update({
+          where: { id: legacy.id },
+          data: { parentId, status: 'active', inviteCode: null },
+        });
+        await prisma.parentStudent
+          .delete({ where: { id: existing.id } })
+          .catch(() => {});
+      } else if (!existing) {
+        // No existing link yet — convert the legacy placeholder into the real link.
+        await prisma.parentStudent.update({
+          where: { id: legacy.id },
+          data: { parentId, status: 'active', inviteCode: null },
+        });
+      }
+
+      await prisma.auditLog
+        .create({
+          data: {
+            userId: parentId,
+            action: 'parent_link_student',
+            details: { parentId, studentId: legacy.studentId, method: 'invite_code_legacy', status: 'linked' },
+          },
+        })
+        .catch(() => {});
+
+      const response = NextResponse.json({ ok: true, studentId: legacy.studentId, status: 'linked' });
+      logger.logAPI(req, response, { className: CLASS_NAME, methodName: 'handleLink' }, start);
+      return response;
     }
-
-    // Prevent self-linking
-    if (pendingLink.studentId === parentId) {
-      return NextResponse.json({ error: 'Cannot link to yourself' }, { status: 400 });
-    }
-
-    studentId = pendingLink.studentId;
-
-    // Check if parent already linked to this student
-    const existingActive = await prisma.parentStudent.findFirst({
-      where: {
-        parentId,
-        studentId,
-        status: 'active',
-      },
-    });
-
-    if (existingActive) {
-      return NextResponse.json({ error: 'Already linked to this student' }, { status: 409 });
-    }
-
-    // Update the pending record: assign parent, activate, clear code
-    await prisma.parentStudent.update({
-      where: { id: pendingLink.id },
-      data: {
-        parentId,
-        status: 'active',
-        inviteCode: null, // consumed
-      },
-    });
-
-    logger.info('Parent linked via invite code', { className: CLASS_NAME, parentId, studentId });
   } else {
-    // Find student by email
-    const student = await prisma.user.findUnique({ where: { email: studentEmail } });
-    if (!student) {
-      return NextResponse.json({ error: 'Student not found' }, { status: 404 });
+    try {
+      const result = await linkParentToStudentByEmail({ prisma, parentId, parentEmail, studentEmail });
+      const response = NextResponse.json({ ok: true, studentId: result.studentId, status: result.status });
+      logger.logAPI(req, response, { className: CLASS_NAME, methodName: 'handleLink' }, start);
+      return response;
+    } catch (err) {
+      const msg = (err as any)?.message || 'Failed to link student';
+      const status = msg.includes('not found') ? 404 : msg.includes('Already') ? 409 : 403;
+      const response = NextResponse.json({ error: msg }, { status });
+      logger.logAPI(req, response, { className: CLASS_NAME, methodName: 'handleLink' }, start);
+      return response;
     }
-
-    if (student.id === parentId) {
-      return NextResponse.json({ error: 'Cannot link to yourself' }, { status: 400 });
-    }
-
-    studentId = student.id;
-
-    // Check existing
-    const existing = await prisma.parentStudent.findUnique({
-      where: { parentId_studentId: { parentId, studentId } },
-    });
-
-    if (existing && existing.status === 'active') {
-      return NextResponse.json({ error: 'Already linked to this student' }, { status: 409 });
-    }
-
-    if (existing && existing.status === 'revoked') {
-      // Reactivate
-      await prisma.parentStudent.update({
-        where: { id: existing.id },
-        data: { status: 'active' },
-      });
-    } else {
-      await prisma.parentStudent.create({
-        data: { parentId, studentId, status: 'active' },
-      });
-    }
-
-    logger.info('Parent linked via email', { className: CLASS_NAME, parentId, studentId });
   }
-
-  // Update parent's role to "parent" if not already admin/moderator
-  const parentUser = await prisma.user.findUnique({ where: { id: parentId }, select: { role: true } });
-  if (parentUser && parentUser.role === 'user') {
-    await prisma.user.update({
-      where: { id: parentId },
-      data: { role: 'parent' },
-    });
-  }
-
-  // Audit log
-  await prisma.auditLog.create({
-    data: {
-      userId: parentId,
-      action: 'parent_link_student',
-      details: { parentId, studentId, method: inviteCode ? 'invite_code' : 'email' },
-    },
-  }).catch((err) => logger.warn('audit log failed', { error: String(err) }));
-
-  const response = NextResponse.json({ ok: true, studentId });
-  logger.logAPI(req, response, { className: CLASS_NAME, methodName: 'handleLink' }, start);
-  return response;
 }
 
 /**

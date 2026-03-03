@@ -1,4 +1,3 @@
-import logger from '../../../lib/logger';
 /**
  * FILE OBJECTIVE:
  * - Day progress card component showing individual day status in first-week journey.

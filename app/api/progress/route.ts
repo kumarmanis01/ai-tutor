@@ -98,7 +98,7 @@ export async function POST(req: NextRequest) {
     return res;
   }
 
-  const { topicId, subject, chapter, action = 'view' } = body;
+  const { topicId, subject, chapter } = body;
 
   // Find or create the mastery record
   let mastery = await prisma.studentTopicMastery.findFirst({

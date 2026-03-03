@@ -80,11 +80,6 @@ const AVG_CHAPTERS_PER_SUBJECT = 12;
 const AVG_TOPICS_PER_CHAPTER = 5;
 const NOTES_PER_TOPIC = 1;
 
-// Safety caps for controlled generation (used in LLM_SAFE_MODE or non-production)
-const MAX_TOPICS_SAFE = 2;
-const MAX_CHAPTERS_SAFE = 2;
-const MAX_TOPICS_PER_CHAPTER_SAFE = 2;
-
 // Validation run hard caps — enforced when LLM_MODE=real or LLM_SAFE_MODE=true
 // Total max: 2 chapters × 2 topics × 3 difficulties × 2 questions = 24 questions
 const VALIDATION_CAP_CHAPTERS = 2;

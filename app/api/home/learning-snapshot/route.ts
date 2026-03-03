@@ -109,13 +109,13 @@ export async function GET() {
     const chapterSnapshots = sub.chapters.map((ch) => {
       const topicCount = ch.topics.length;
       let completedTopics = 0;
-      let sumAccuracy = 0;
+      let _sumAccuracy = 0;
 
       for (const topic of ch.topics) {
         const m = masteryByTopicId.get(topic.id);
         if (m) {
           subjectAttemptedTopics++;
-          sumAccuracy += m.accuracy;
+          _sumAccuracy += m.accuracy;
           subjectSumAccuracy += m.accuracy;
           // Use accuracy >= LOW_ACCURACY_THRESHOLD — aligned with engine P4 threshold.
           if (m.accuracy >= LOW_ACCURACY_THRESHOLD) {

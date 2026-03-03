@@ -49,14 +49,16 @@ export const AssembleSchema = z.object({
 export type Note = z.infer<typeof NoteSchema>
 export type Questions = z.infer<typeof QuestionsSchema>
 
-export default {
+const PromptSchemas = {
   NoteSchema,
   QuestionsSchema,
   BilingualNotesSchema,
   SyllabusSchema,
   ChaptersArraySchema,
-  AssembleSchema
+  AssembleSchema,
 }
+
+export default PromptSchemas
 /**
  * FILE OBJECTIVE:
  * - TypeScript contracts for schema-first prompt architecture.

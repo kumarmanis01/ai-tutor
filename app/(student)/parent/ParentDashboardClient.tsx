@@ -16,37 +16,94 @@ import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { logger } from '@/lib/logger';
 import { toast } from '@/lib/toast';
+import {
+  ResponsiveContainer,
+  ComposedChart,
+  Area,
+  Bar,
+  Line,
+  XAxis,
+  YAxis,
+  Tooltip,
+  CartesianGrid,
+  PieChart,
+  Pie,
+  Cell,
+  Legend,
+  RadarChart,
+  PolarGrid,
+  PolarAngleAxis,
+  PolarRadiusAxis,
+  Radar,
+} from 'recharts';
 
 const CLASS_NAME = 'ParentDashboardClient';
 
-// ─── Types ─────────────────────────────────────────────────────────────
+// ─── Types (API v2) ────────────────────────────────────────────────────
 
-interface StudentStats {
-  totalLessonsCompleted: number;
-  totalTestsTaken: number;
-  averageTestScore: number;
-  totalLearningMinutes: number;
-  sessionsThisWeek: number;
-  lastActiveAt?: string;
-}
+type WeeklyPoint = {
+  weekStart: string;
+  topicsCovered: number;
+  testsTaken: number;
+  averageScore: number;
+  totalMinutes: number;
+  sessionsCount: number;
+  subjectsActive: string[];
+};
 
-interface StudentProgress {
+type SubjectSummary = {
+  subject: string;
+  totalTopics: number;
+  topicsCovered: number;
+  coveragePercent: number;
+  averageMastery: number;
+  strongTopics: number;
+  weakTopics: number;
+  updatedAt: string;
+};
+
+type ReadinessSummary = {
+  subject: string;
+  coveragePercent: number;
+  avgMastery: number;
+  readinessScore: number;
+  readinessLabel: string;
+  updatedAt: string;
+};
+
+type MasteryDistribution = {
+  masteryLevel: string;
+  count: number;
+};
+
+type AttentionBySubject = {
+  subject: string;
+  count: number;
+};
+
+type StudentDashboard = {
   studentId: string;
   studentName: string;
   studentImage?: string;
   grade?: string;
   board?: string;
   subjects: string[];
-  stats: StudentStats;
-  recentActivity: { type: string; description: string; timestamp: string }[];
-  weeklyProgress: { date: string; lessonsCompleted: number; testsTaken: number; minutesLearned: number }[];
-}
+  lastActiveAt?: string | null;
+  attentionOpenCount: number;
+  attentionBySubject: AttentionBySubject[];
+  weekly: WeeklyPoint[];
+  subjectProgress: SubjectSummary[];
+  readiness: ReadinessSummary[];
+  masteryDistribution: MasteryDistribution[];
+};
 
-interface DashboardData {
+type DashboardData = {
+  ok: true;
   isParent: boolean;
-  students: StudentProgress[];
   totalStudents: number;
-}
+  generatedAt: string;
+  students: StudentDashboard[];
+};
 
 interface SubjectProgressData {
   subject: string;
@@ -142,6 +199,34 @@ function friendlyReadinessLabel(label: string): string {
   }
 }
 
+function readinessPillColor(label: string): string {
+  switch (label) {
+    case 'ready': return 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300';
+    case 'on_track': return 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300';
+    case 'needs_work': return 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300';
+    default: return 'bg-gray-100 text-gray-700 dark:bg-slate-700 dark:text-gray-200';
+  }
+}
+
+function clamp(n: number, min: number, max: number) {
+  return Math.max(min, Math.min(max, n));
+}
+
+const PIE_COLORS: Record<string, string> = {
+  beginner: '#ef4444',
+  intermediate: '#f59e0b',
+  advanced: '#3b82f6',
+  expert: '#10b981',
+};
+
+function masteryLabel(level: string) {
+  if (level === 'beginner') return 'Beginner';
+  if (level === 'intermediate') return 'Intermediate';
+  if (level === 'advanced') return 'Advanced';
+  if (level === 'expert') return 'Expert';
+  return level;
+}
+
 // ─── Readiness Badge ───────────────────────────────────────────────────
 
 function ReadinessBadge({ item }: { item: ReadinessItem }) {
@@ -195,7 +280,7 @@ function AttentionFlagItem({ flag }: { flag: AttentionItem }) {
   );
 }
 
-// ─── Subject Progress Card ─────────────────────────────────────────────
+// ─── Subject Progress Card (drill-down) ────────────────────────────────
 
 function SubjectProgressCard({ subject }: { subject: SubjectProgressData }) {
   const [expanded, setExpanded] = useState(false);
@@ -372,120 +457,113 @@ function StudentDetailPanel({ studentId, onClose }: { studentId: string; onClose
   );
 }
 
-// ─── Student Card ──────────────────────────────────────────────────────
+// ─── Charts ─────────────────────────────────────────────────────────────
 
-function StudentCard({ student, onViewDetail }: { student: StudentProgress; onViewDetail: () => void }) {
-  const [expanded, setExpanded] = useState(false);
+function WeeklyTrendChart({ weekly }: { weekly: WeeklyPoint[] }) {
+  const data = [...weekly]
+    .sort((a, b) => new Date(a.weekStart).getTime() - new Date(b.weekStart).getTime())
+    .map((w) => ({
+      week: new Date(w.weekStart).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }),
+      minutes: w.totalMinutes,
+      topics: w.topicsCovered,
+      tests: w.testsTaken,
+      score: clamp(Math.round(w.averageScore), 0, 100),
+    }));
+
+  if (data.length === 0) {
+    return <div className="text-sm text-gray-500 dark:text-gray-400">No weekly data yet.</div>;
+  }
 
   return (
-    <div className="bg-white dark:bg-slate-800 rounded-xl shadow-lg overflow-hidden">
-      {/* Header */}
-      <div className="p-4 border-b border-gray-100 dark:border-slate-700">
-        <div className="flex items-center space-x-4">
-          <div className="relative w-14 h-14 rounded-full bg-gradient-to-br from-purple-400 to-indigo-500 flex items-center justify-center text-white text-xl font-bold shadow-md overflow-hidden">
-            {student.studentImage ? (
-              <Image src={student.studentImage} alt={student.studentName} fill className="object-cover" sizes="56px" />
-            ) : (
-              student.studentName.charAt(0).toUpperCase()
-            )}
-          </div>
-          <div className="flex-1">
-            <h3 className="font-bold text-lg text-gray-900 dark:text-white">{student.studentName}</h3>
-            <div className="flex items-center space-x-2 text-sm text-gray-500 dark:text-gray-400">
-              {student.grade && <span>Class {student.grade}</span>}
-              {student.board && <span>• {student.board}</span>}
-            </div>
-            {student.stats.lastActiveAt && (
-              <p className="text-xs text-gray-400 mt-1">
-                Last active: {formatDate(student.stats.lastActiveAt)}
-              </p>
-            )}
-          </div>
-          <button
-            onClick={onViewDetail}
-            className="px-3 py-1.5 text-sm bg-indigo-50 text-indigo-600 rounded-lg hover:bg-indigo-100 transition-colors dark:bg-indigo-900/20 dark:text-indigo-400"
-          >
-            Details
-          </button>
-        </div>
-      </div>
+    <div className="h-64">
+      <ResponsiveContainer width="100%" height="100%">
+        <ComposedChart data={data} margin={{ top: 10, right: 18, left: 0, bottom: 0 }}>
+          <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
+          <XAxis dataKey="week" tick={{ fontSize: 12 }} />
+          <YAxis yAxisId="left" tick={{ fontSize: 12 }} />
+          <YAxis yAxisId="right" orientation="right" domain={[0, 100]} tick={{ fontSize: 12 }} />
+          <Tooltip />
+          <Legend />
+          <Area yAxisId="left" type="monotone" dataKey="minutes" name="Study minutes" stroke="#6366f1" fill="#6366f1" fillOpacity={0.18} />
+          <Bar yAxisId="left" dataKey="topics" name="Topics attempted" fill="#a78bfa" radius={[6, 6, 0, 0]} />
+          <Line yAxisId="right" type="monotone" dataKey="score" name="Avg score" stroke="#10b981" strokeWidth={2} dot={false} />
+        </ComposedChart>
+      </ResponsiveContainer>
+    </div>
+  );
+}
 
-      {/* Stats Grid */}
-      <div className="grid grid-cols-2 gap-4 p-4">
-        <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-3 text-center">
-          <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">{student.stats.totalLessonsCompleted}</p>
-          <p className="text-xs text-gray-500 dark:text-gray-400">Lessons</p>
-        </div>
-        <div className="bg-green-50 dark:bg-green-900/20 rounded-lg p-3 text-center">
-          <p className="text-2xl font-bold text-green-600 dark:text-green-400">{student.stats.totalTestsTaken}</p>
-          <p className="text-xs text-gray-500 dark:text-gray-400">Tests</p>
-        </div>
-        <div className="bg-purple-50 dark:bg-purple-900/20 rounded-lg p-3 text-center">
-          <p className="text-2xl font-bold text-purple-600 dark:text-purple-400">{student.stats.averageTestScore}%</p>
-          <p className="text-xs text-gray-500 dark:text-gray-400">Avg Score</p>
-        </div>
-        <div className="bg-orange-50 dark:bg-orange-900/20 rounded-lg p-3 text-center">
-          <p className="text-2xl font-bold text-orange-600 dark:text-orange-400">{formatDuration(student.stats.totalLearningMinutes)}</p>
-          <p className="text-xs text-gray-500 dark:text-gray-400">Study Time</p>
-        </div>
-      </div>
+function SubjectRadar({ subjects }: { subjects: SubjectSummary[] }) {
+  const data = subjects.map((s) => ({
+    subject: s.subject,
+    coverage: clamp(s.coveragePercent, 0, 100),
+    mastery: clamp(Math.round((s.averageMastery / 4) * 100), 0, 100),
+  }));
 
-      {/* Subjects */}
-      {student.subjects.length > 0 && (
-        <div className="px-4 pb-3">
-          <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">Subjects:</p>
-          <div className="flex flex-wrap gap-1">
-            {student.subjects.map((subject, idx) => (
-              <span key={idx} className="px-2 py-0.5 bg-gray-100 dark:bg-slate-700 rounded-full text-xs text-gray-700 dark:text-gray-300">
-                {subject}
-              </span>
+  if (data.length === 0) {
+    return <div className="text-sm text-gray-500 dark:text-gray-400">No subject progress yet.</div>;
+  }
+
+  return (
+    <div className="h-72">
+      <ResponsiveContainer width="100%" height="100%">
+        <RadarChart data={data}>
+          <PolarGrid />
+          <PolarAngleAxis dataKey="subject" tick={{ fontSize: 12 }} />
+          <PolarRadiusAxis angle={30} domain={[0, 100]} tick={{ fontSize: 11 }} />
+          <Radar name="Coverage %" dataKey="coverage" stroke="#6366f1" fill="#6366f1" fillOpacity={0.16} />
+          <Radar name="Mastery %" dataKey="mastery" stroke="#10b981" fill="#10b981" fillOpacity={0.10} />
+          <Legend />
+          <Tooltip />
+        </RadarChart>
+      </ResponsiveContainer>
+    </div>
+  );
+}
+
+function MasteryPie({ distribution }: { distribution: MasteryDistribution[] }) {
+  const data = distribution
+    .filter((d) => d.count > 0)
+    .map((d) => ({ name: masteryLabel(d.masteryLevel), value: d.count, level: d.masteryLevel }));
+
+  if (data.length === 0) {
+    return <div className="text-sm text-gray-500 dark:text-gray-400">No mastery data yet.</div>;
+  }
+
+  return (
+    <div className="h-64">
+      <ResponsiveContainer width="100%" height="100%">
+        <PieChart>
+          <Pie data={data} dataKey="value" nameKey="name" innerRadius={55} outerRadius={85} paddingAngle={2}>
+            {data.map((entry) => (
+              <Cell key={entry.level} fill={PIE_COLORS[entry.level] || '#94a3b8'} />
             ))}
-          </div>
-        </div>
-      )}
+          </Pie>
+          <Tooltip />
+          <Legend />
+        </PieChart>
+      </ResponsiveContainer>
+    </div>
+  );
+}
 
-      {/* Expand/Collapse Recent Activity */}
-      <button
-        onClick={() => setExpanded(!expanded)}
-        className="w-full py-2 text-sm text-center text-indigo-600 dark:text-indigo-400 hover:bg-gray-50 dark:hover:bg-slate-700/50 transition-colors"
-      >
-        {expanded ? '\u25B2 Show Less' : '\u25BC Recent Activity'}
-      </button>
+function AttentionBar({ items }: { items: AttentionBySubject[] }) {
+  const data = items.map((i) => ({ subject: i.subject, count: i.count }));
+  if (data.length === 0) {
+    return <div className="text-sm text-gray-500 dark:text-gray-400">No attention flags right now.</div>;
+  }
 
-      {expanded && student.recentActivity.length > 0 && (
-        <div className="px-4 pb-4 border-t border-gray-100 dark:border-slate-700">
-          <div className="pt-3 space-y-2">
-            {student.recentActivity.slice(0, 5).map((activity, idx) => (
-              <div key={idx} className="flex items-center justify-between text-sm">
-                <span className="text-gray-700 dark:text-gray-300 truncate flex-1">{activity.description}</span>
-                <span className="text-gray-400 text-xs ml-2">{formatDate(activity.timestamp)}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Weekly Progress Mini Chart */}
-      {student.weeklyProgress.length > 0 && (
-        <div className="px-4 pb-4">
-          <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">This Week:</p>
-          <div className="flex items-end justify-between h-12 space-x-1">
-            {student.weeklyProgress.map((day, idx) => {
-              const maxVal = Math.max(...student.weeklyProgress.map(d => d.lessonsCompleted + d.testsTaken), 1);
-              const height = ((day.lessonsCompleted + day.testsTaken) / maxVal) * 100;
-              return (
-                <div key={idx} className="flex-1 flex flex-col items-center">
-                  <div
-                    className="w-full bg-indigo-400 dark:bg-indigo-500 rounded-t"
-                    style={{ height: `${Math.max(height, 4)}%` }}
-                  />
-                  <span className="text-[10px] text-gray-400 mt-1">{new Date(day.date).toLocaleDateString('en', { weekday: 'narrow' })}</span>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
+  return (
+    <div className="h-56">
+      <ResponsiveContainer width="100%" height="100%">
+        <ComposedChart data={data} margin={{ top: 8, right: 10, left: 0, bottom: 0 }}>
+          <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
+          <XAxis dataKey="subject" tick={{ fontSize: 12 }} interval={0} angle={-10} height={42} />
+          <YAxis tick={{ fontSize: 12 }} allowDecimals={false} />
+          <Tooltip />
+          <Bar dataKey="count" name="Topics needing support" fill="#f59e0b" radius={[8, 8, 0, 0]} />
+        </ComposedChart>
+      </ResponsiveContainer>
     </div>
   );
 }
@@ -562,7 +640,7 @@ function LinkStudentForm({ onSuccess }: { onSuccess: () => void }) {
       {mode === 'email' ? (
         <>
           <p className="text-sm text-gray-500 dark:text-gray-400 mb-3">
-            Enter your child's email address to view their learning progress.
+            Email linking works only if your child has added your email under <span className="font-medium">Profile → Parent Email</span>.
           </p>
           <div className="flex space-x-2">
             <input
@@ -584,7 +662,7 @@ function LinkStudentForm({ onSuccess }: { onSuccess: () => void }) {
       ) : (
         <>
           <p className="text-sm text-gray-500 dark:text-gray-400 mb-3">
-            Ask your child to generate an invite code from their profile, then enter it here.
+            Ask your child to generate an invite code from their Profile (Parent Access), then enter it here.
           </p>
           <div className="flex space-x-2">
             <input
@@ -617,7 +695,8 @@ export default function ParentDashboardClient() {
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [selectedStudentId, setSelectedStudentId] = useState<string | null>(null);
+  const [activeStudentId, setActiveStudentId] = useState<string | null>(null);
+  const [drilldownStudentId, setDrilldownStudentId] = useState<string | null>(null);
 
   const fetchData = useCallback(async () => {
     try {
@@ -642,6 +721,12 @@ export default function ParentDashboardClient() {
     }
   }, [status, fetchData, router]);
 
+  useEffect(() => {
+    if (!activeStudentId && data?.students?.length) {
+      setActiveStudentId(data.students[0].studentId);
+    }
+  }, [data, activeStudentId]);
+
   if (status === 'loading' || loading) {
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-slate-900 flex items-center justify-center">
@@ -663,11 +748,19 @@ export default function ParentDashboardClient() {
     );
   }
 
+  const selected = data?.students?.find((s) => s.studentId === activeStudentId) ?? null;
+  const latestWeek = selected?.weekly?.[0] ?? null;
+  const topReadiness =
+    (selected?.readiness ?? [])
+      .slice()
+      .sort((a, b) => b.readinessScore - a.readinessScore)
+      .slice(0, 3);
+
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-slate-900">
       {/* Header */}
       <header className="bg-white dark:bg-slate-800 shadow-sm">
-        <div className="max-w-4xl mx-auto px-4 py-4">
+        <div className="max-w-6xl mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Parent Dashboard</h1>
@@ -686,57 +779,177 @@ export default function ParentDashboardClient() {
       </header>
 
       {/* Main Content */}
-      <main className="max-w-4xl mx-auto px-4 py-6 space-y-6">
-        {/* Summary Stats */}
+      <main className="max-w-6xl mx-auto px-4 py-6 space-y-6">
+        {/* Link Student Form */}
+        <LinkStudentForm onSuccess={fetchData} />
+
+        {data && data.students.length === 0 && (
+          <div className="text-center py-12 bg-white dark:bg-slate-800 rounded-2xl shadow-lg">
+            <div className="text-6xl mb-4">&#128104;&#8205;&#128105;&#8205;&#128103;&#8205;&#128102;</div>
+            <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">No Students Linked</h3>
+            <p className="text-gray-500 dark:text-gray-400 max-w-xl mx-auto">
+              Link your child's account to start monitoring progress. For the most secure option, use an invite code generated from your child's Profile.
+            </p>
+          </div>
+        )}
+
         {data && data.students.length > 0 && (
-          <div className="bg-gradient-to-r from-indigo-500 to-purple-600 rounded-xl p-4 text-white">
-            <div className="flex items-center justify-between">
+          <div className="bg-gradient-to-r from-indigo-600 via-purple-600 to-fuchsia-600 rounded-2xl p-5 text-white shadow-lg">
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
               <div>
-                <p className="text-sm opacity-80">Total Children</p>
-                <p className="text-3xl font-bold">{data.totalStudents}</p>
+                <div className="text-sm opacity-90">Linked children</div>
+                <div className="text-3xl font-bold">{data.totalStudents}</div>
+                <div className="text-xs opacity-90 mt-1">Updated {new Date(data.generatedAt).toLocaleString()}</div>
               </div>
-              <div className="text-right">
-                <p className="text-sm opacity-80">Sessions This Week</p>
-                <p className="text-3xl font-bold">
-                  {data.students.reduce((sum, s) => sum + s.stats.sessionsThisWeek, 0)}
-                </p>
+              <div className="flex flex-wrap gap-2">
+                {data.students.map((s) => (
+                  <button
+                    key={s.studentId}
+                    onClick={() => setActiveStudentId(s.studentId)}
+                    className={`px-3 py-2 rounded-xl text-sm font-medium transition-colors ${
+                      activeStudentId === s.studentId
+                        ? 'bg-white/20 ring-1 ring-white/30'
+                        : 'bg-white/10 hover:bg-white/15'
+                    }`}
+                  >
+                    {s.studentName}
+                  </button>
+                ))}
               </div>
             </div>
           </div>
         )}
 
-        {/* Link Student Form */}
-        <LinkStudentForm onSuccess={fetchData} />
+        {selected && (
+          <section className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            {/* Left: Profile + stats */}
+            <div className="lg:col-span-4 space-y-6">
+              <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-lg overflow-hidden">
+                <div className="p-5 border-b border-gray-100 dark:border-slate-700">
+                  <div className="flex items-center gap-4">
+                    <div className="relative w-14 h-14 rounded-full bg-gradient-to-br from-purple-400 to-indigo-500 flex items-center justify-center text-white text-xl font-bold shadow-md overflow-hidden">
+                      {selected.studentImage ? (
+                        <Image src={selected.studentImage} alt={selected.studentName} fill className="object-cover" sizes="56px" />
+                      ) : (
+                        selected.studentName.charAt(0).toUpperCase()
+                      )}
+                    </div>
+                    <div className="flex-1">
+                      <div className="text-lg font-bold text-gray-900 dark:text-white">{selected.studentName}</div>
+                      <div className="text-sm text-gray-500 dark:text-gray-400">
+                        {selected.grade ? `Class ${selected.grade}` : 'Class —'} {selected.board ? `• ${selected.board}` : ''}
+                      </div>
+                      <div className="text-xs text-gray-400 mt-1">
+                        Last active: {selected.lastActiveAt ? formatDate(selected.lastActiveAt) : '—'}
+                      </div>
+                    </div>
+                  </div>
+                </div>
 
-        {/* Student Detail Panel */}
-        {selectedStudentId && (
-          <StudentDetailPanel
-            studentId={selectedStudentId}
-            onClose={() => setSelectedStudentId(null)}
-          />
+                <div className="p-5 grid grid-cols-2 gap-3">
+                  <div className="rounded-xl bg-indigo-50 dark:bg-indigo-900/20 p-3">
+                    <div className="text-xs text-gray-500 dark:text-gray-400">Study time (12w)</div>
+                    <div className="text-2xl font-bold text-indigo-700 dark:text-indigo-300">
+                      {formatDuration((selected.weekly ?? []).reduce((sum, w) => sum + (w.totalMinutes ?? 0), 0))}
+                    </div>
+                  </div>
+                  <div className="rounded-xl bg-emerald-50 dark:bg-emerald-900/20 p-3">
+                    <div className="text-xs text-gray-500 dark:text-gray-400">Tests (12w)</div>
+                    <div className="text-2xl font-bold text-emerald-700 dark:text-emerald-300">
+                      {(selected.weekly ?? []).reduce((sum, w) => sum + (w.testsTaken ?? 0), 0)}
+                    </div>
+                  </div>
+                  <div className="rounded-xl bg-amber-50 dark:bg-amber-900/20 p-3">
+                    <div className="text-xs text-gray-500 dark:text-gray-400">Avg score (latest)</div>
+                    <div className="text-2xl font-bold text-amber-700 dark:text-amber-300">
+                      {latestWeek ? `${clamp(Math.round(latestWeek.averageScore), 0, 100)}%` : '—'}
+                    </div>
+                  </div>
+                  <div className="rounded-xl bg-rose-50 dark:bg-rose-900/20 p-3">
+                    <div className="text-xs text-gray-500 dark:text-gray-400">Needs attention</div>
+                    <div className="text-2xl font-bold text-rose-700 dark:text-rose-300">
+                      {selected.attentionOpenCount}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="px-5 pb-5">
+                  <div className="flex items-center justify-between">
+                    <div className="text-sm font-semibold text-gray-900 dark:text-white">Top readiness</div>
+                  </div>
+                  <div className="mt-3 grid grid-cols-1 gap-2">
+                    {topReadiness.length === 0 ? (
+                      <div className="text-sm text-gray-500 dark:text-gray-400">No readiness data yet.</div>
+                    ) : (
+                      topReadiness.map((r) => (
+                        <div key={r.subject} className="flex items-center justify-between rounded-xl border border-gray-100 dark:border-slate-700 p-3">
+                          <div className="text-sm font-medium text-gray-900 dark:text-white capitalize">{r.subject}</div>
+                          <div className="flex items-center gap-2">
+                            <span className={`text-xs px-2 py-1 rounded-full ${readinessPillColor(r.readinessLabel)}`}>
+                              {friendlyReadinessLabel(r.readinessLabel)}
+                            </span>
+                            <span className="text-sm font-bold text-gray-700 dark:text-gray-200">{r.readinessScore}%</span>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+
+              </div>
+
+              <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-lg p-5">
+                <div className="flex items-center justify-between">
+                  <div className="text-sm font-semibold text-gray-900 dark:text-white">Deep dive</div>
+                </div>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
+                  View subject drill-down, weak topics, and readiness details.
+                </p>
+                <button
+                  onClick={() => setDrilldownStudentId(selected.studentId)}
+                  className="mt-3 w-full px-4 py-2 rounded-xl bg-indigo-600 text-white hover:bg-indigo-700 transition-colors"
+                >
+                  Open detailed view
+                </button>
+              </div>
+            </div>
+
+            {/* Right: charts */}
+            <div className="lg:col-span-8 space-y-6">
+              <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-lg p-5">
+                <div className="flex items-center justify-between mb-3">
+                  <div>
+                    <div className="text-sm font-semibold text-gray-900 dark:text-white">Weekly trend</div>
+                    <div className="text-xs text-gray-500 dark:text-gray-400">Minutes, topics attempted, and average score</div>
+                  </div>
+                </div>
+                <WeeklyTrendChart weekly={selected.weekly} />
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-lg p-5">
+                  <div className="text-sm font-semibold text-gray-900 dark:text-white mb-3">Subject coverage & mastery</div>
+                  <SubjectRadar subjects={selected.subjectProgress} />
+                </div>
+                <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-lg p-5">
+                  <div className="text-sm font-semibold text-gray-900 dark:text-white mb-3">Mastery distribution</div>
+                  <MasteryPie distribution={selected.masteryDistribution} />
+                </div>
+              </div>
+
+              <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-lg p-5">
+                <div className="text-sm font-semibold text-gray-900 dark:text-white mb-3">Needs attention by subject</div>
+                <AttentionBar items={selected.attentionBySubject} />
+              </div>
+            </div>
+          </section>
         )}
 
-        {/* Students List */}
-        {data && data.students.length > 0 ? (
-          <div className="space-y-4">
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Your Children</h2>
-            {data.students.map((student) => (
-              <StudentCard
-                key={student.studentId}
-                student={student}
-                onViewDetail={() => setSelectedStudentId(
-                  selectedStudentId === student.studentId ? null : student.studentId
-                )}
-              />
-            ))}
-          </div>
-        ) : (
-          <div className="text-center py-12">
-            <div className="text-6xl mb-4">&#128104;&#8205;&#128105;&#8205;&#128103;&#8205;&#128102;</div>
-            <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">No Students Linked</h3>
-            <p className="text-gray-500 dark:text-gray-400">
-              Link your child's account above to start monitoring their progress.
-            </p>
+        {/* Student Detail Panel (drill-down) */}
+        {drilldownStudentId && (
+          <div className="mt-6">
+            {/* Keep existing drill-down panel for now (uses /api/parent/progress) */}
+            <StudentDetailPanel studentId={drilldownStudentId} onClose={() => setDrilldownStudentId(null)} />
           </div>
         )}
       </main>

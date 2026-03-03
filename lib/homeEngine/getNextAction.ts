@@ -20,7 +20,6 @@
  */
 
 import { prisma } from '@/lib/prisma';
-import type { MasteryLevel } from '@prisma/client';
 import { getOrderedTopicsForStudent, type OrderedTopic } from './getOrderedTopicsForStudent';
 import { LOW_ACCURACY_THRESHOLD } from '../constants/mastery';
 import { randomUUID } from 'crypto';
@@ -52,7 +51,7 @@ export interface NextAction {
   ruleId: RuleId;
   reasonLabel: string;
   actionType: ActionType;
-  masteryLevel?: MasteryLevel;
+  masteryLevel?: 'beginner' | 'intermediate' | 'advanced' | 'expert';
   accuracy?: number;
   /** Present only for resume_session — used to build /practice/session/[id] URL */
   sessionId?: string;
@@ -360,8 +359,8 @@ export async function getNextAction(studentId: string): Promise<GetNextActionRet
     const allowedTopicIds = new Set(orderedTopics.map((t) => t.id));
 
     action =
-      (await p3_attentionFlag(studentId, allowedTopicIds)) ??
-      (await p4_lowAccuracy(studentId, allowedTopicIds)) ??
+      (await p3_attentionFlag(studentId, allowedTopicIds as Set<string>)) ??
+      (await p4_lowAccuracy(studentId, allowedTopicIds as Set<string>)) ??
       (await p5_nextNewTopic(studentId, orderedTopics)) ??
       null;
   }
@@ -393,7 +392,12 @@ export async function getNextAction(studentId: string): Promise<GetNextActionRet
       reasonLabel: action?.reasonLabel ?? null,
     });
   } catch (err) {
-    // Swallow logging errors — engine result should not fail on logger problems.
+    // Log but do not fail the engine on logger problems.
+    logger.warn('engine.decision.log_failed', {
+      traceId,
+      studentId,
+      error: String(err),
+    });
   }
 
   // Loop detection: track recent decisions per student and warn if the same
@@ -414,7 +418,11 @@ export async function getNextAction(studentId: string): Promise<GetNextActionRet
       }
     }
   } catch (err) {
-    // ignore loop-detection failures
+    logger.warn('engine.loop_detection_failed', {
+      traceId,
+      studentId,
+      error: String(err),
+    });
   }
 
   if (process.env.NODE_ENV !== 'production') {
