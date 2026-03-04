@@ -73,8 +73,54 @@ function output(level: LogLevel, event: string, context?: any) {
   const line = JSON.stringify(payload);
   if (level === 'warn' || level === 'error') {
     console.error(line);
+    try {
+      writeToFile('error', line);
+    } catch {}
   } else {
     console.log(line);
+    try {
+      writeToFile('out', line);
+    } catch {}
+  }
+}
+
+// Minimal file transport: append logs to files under <repo-root>/logs/
+function writeToFile(kind: 'out' | 'error', line: string) {
+  // Avoid running in browser (client bundles) and during test runs
+  if (typeof window !== 'undefined') return;
+  if (process.env.NODE_ENV === 'test') return; // do not write files during CI/unit tests
+
+  // Allow opt-out via LOG_TO_FILE=0|false
+  const logToFile = String(process.env.LOG_TO_FILE ?? '').toLowerCase();
+  if (logToFile === '0' || logToFile === 'false') return;
+
+  // Avoid file logging during tests unless explicitly enabled
+  if (process.env.NODE_ENV === 'test') return;
+
+  // Optional kill-switch: LOG_TO_FILE=0 / false disables file logging
+  const logFlag = process.env.LOG_TO_FILE;
+  if (logFlag && logFlag !== '1' && logFlag.toLowerCase() !== 'true') return;
+
+  // Lazy-require fs/path to avoid bundlers statically including node libs
+  // and to remain safe when code is executed in browser envs during tests.
+  // eslint-disable-next-line @typescript-eslint/no-implied-eval
+  const req: any = eval('require');
+  const fs: typeof import('fs') = req('fs');
+  const path: typeof import('path') = req('path');
+
+  try {
+    const repoRoot = process.cwd();
+    const logsDir = path.join(repoRoot, 'logs');
+    if (!fs.existsSync(logsDir)) fs.mkdirSync(logsDir, { recursive: true });
+
+    // Determine service name: prefer SERVICE env, fallback to package name or generic 'app'
+    const svc = process.env.SERVICE || process.env.npm_package_name || 'app';
+    const filename = path.join(logsDir, `${svc}-${kind}.log`);
+    const ts = new Date().toISOString();
+    fs.appendFileSync(filename, ts + ' ' + line + '\n');
+  } catch (err) {
+    // swallow file errors to avoid crashing the process during logging
+    try { console.error('logger writeToFile error', String(err)); } catch {}
   }
 }
 
@@ -172,7 +218,7 @@ class Logger {
     };
     try {
       output(mapLevel[level] as LogLevel, msg, { ...context });
-    } catch (_e) {
+    } catch {
       // fallback to console.error if structured output fails
       try { console.error(entry); } catch {}
     }
