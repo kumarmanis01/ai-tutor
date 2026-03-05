@@ -1,4 +1,5 @@
 import { spawn } from 'child_process';
+import fs from 'fs';
 import path from 'path';
 import dotenv from 'dotenv';
 
@@ -22,9 +23,20 @@ function tsxBin(): string {
 type Child = ReturnType<typeof spawn>;
 
 function spawnTsx(args: string[], name: string): Child {
-  const child = spawn(tsxBin(), args, {
+  const bin = tsxBin();
+  if (!fs.existsSync(bin)) {
+    // eslint-disable-next-line no-console
+    console.error(`[dev-supervisor] Cannot find tsx binary at ${bin}`);
+    // eslint-disable-next-line no-console
+    console.error('[dev-supervisor] Run `npm i` to install dev dependencies.');
+    process.exit(1);
+  }
+
+  // On Windows, spawning a .cmd directly can throw EINVAL unless invoked through a shell.
+  const child = spawn(bin, args, {
     stdio: 'inherit',
     env: process.env,
+    shell: process.platform === 'win32',
   });
 
   child.on('exit', (code, signal) => {

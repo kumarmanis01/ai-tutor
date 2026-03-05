@@ -22,6 +22,8 @@ import { sendParentDigests } from './jobs/parentEmailDigest.js';
 import { runRecoveryCheck } from '../lib/failureRecovery.js';
 import { expireStaleTasks } from '../lib/dailyHabit.js';
 import { hydrationReconciler } from './services/hydrationReconciler.js';
+import path from 'path';
+import { fileURLToPath } from 'url';
 
 const HYDRATION_RECONCILER_INTERVAL_MS = 2 * 60 * 1000; // 2 minutes
 const MARK_IGNORED_INTERVAL_MS = 24 * 60 * 60 * 1000; // 24 hours
@@ -213,7 +215,17 @@ process.on('SIGINT', shutdown);
 process.on('SIGTERM', shutdown);
 
 // If running directly (not imported)
-if (import.meta.url === `file://${process.argv[1]}`) {
+const isDirectRun = (() => {
+  try {
+    const selfPath = fileURLToPath(import.meta.url);
+    const entryArg = process.argv[1] ? path.resolve(process.argv[1]) : '';
+    return entryArg.length > 0 && path.resolve(selfPath) === entryArg;
+  } catch {
+    return false;
+  }
+})();
+
+if (isDirectRun) {
   startScheduler().catch((error) => {
     logger.error('scheduler.fatal', {
       error: error instanceof Error ? error.message : String(error)
