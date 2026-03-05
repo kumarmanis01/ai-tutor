@@ -22,6 +22,7 @@ The implementation follows your battle-tested architectural patterns:
 - **Atomic claims** using FOR UPDATE SKIP LOCKED
 - **Short transactions** (never hold locks during AI calls)
 - **Reconciler-driven orchestration** (not worker-driven)
+- **Content versioning**: When a new notes or questions job is created for a subject/chapter/topic that already has approved content, the worker does **not** skip or stall; it generates new content and persists it as the **next version** (v1, v2, v3…) via `getNextVersion()`. This aligns with append-only, versioned AI content (see `Docs/AI_PIPELINE_RULES.md`).
 
 ---
 

@@ -22,8 +22,8 @@ import { prisma } from '@/lib/prisma.js';
 import { callLLM } from '@/lib/callLLM.js';
 import { parseLlmJson } from '@/lib/llm/sanitizeJson'
 import { renderTemplate } from '@/prompts'
-import fs from 'fs';
-import path from 'path';
+import _fs from 'fs';
+import _path from 'path';
 import { isSystemSettingEnabled } from '@/lib/systemSettings.js';
 import { logger } from '@/lib/logger.js';
 import { JobStatus, ApprovalStatus } from '@/lib/ai-engine/types';
@@ -241,13 +241,12 @@ JSON Schema:
       } catch {}
 
       // call LLM with rendered prompt
-      let llmResponseLocal = await callLLM({
+      const llmResponseLocal = await callLLM({
         prompt: rendered.prompt,
         meta: { promptType: 'questions', board, grade, subject: subjectName, topic: topic.name, language, difficulty, useRag: true, hydrationJobId: jobId, topicId: topic?.id, suppressLog: true, schemaHash: rendered.schemaHash, promptVersion: rendered.version },
         timeoutMs: Number(process.env.QUESTIONS_LLM_TIMEOUT_MS || 30_000)
       });
-
-      var llmResponse = llmResponseLocal as any;
+      llmResponse = llmResponseLocal as any;
     } catch {
       // fallback to inline prompt (base_context.md now contains mandatory requirements and tone)
       llmResponse = await callLLM({
@@ -366,29 +365,24 @@ export async function handleQuestionsJob(jobId: string): Promise<void> {
   let totalTokensUsed = 0;
   const sessionStart = Date.now();
 
-  // Generate questions for all difficulties in parallel (independent leaf tasks)
+  // Generate questions for all difficulties in parallel (independent leaf tasks).
+  // Versioning: we always generate and persist a new version (getNextVersion); we do not skip when
+  // approved questions already exist for this topic+language+difficulty.
   const difficultyPromises = DIFFICULTY_LEVELS.map((difficulty) => (async () => {
-    // Check for existing approved questions (idempotency)
     const existingApproved = await prisma.generatedTest.findFirst({ where: { topicId, language, difficulty, status: 'approved' } });
-    if (existingApproved) return { difficulty, existingApproved, parsed: null };
-
+    if (existingApproved) {
+      logger.info('handleQuestionsJob: existing approved questions found — generating new version', { jobId, topicId, difficulty });
+    }
     const gen = await generateQuestionsForDifficulty(difficulty, topic, board, grade, subjectName, language, job.id, resolvedQuestionsCount);
-    return { difficulty, existingApproved: null, parsed: gen?.parsed ?? null, llmResult: gen?.llmResult ?? null };
+    return { difficulty, existingApproved: existingApproved ?? null, parsed: gen?.parsed ?? null, llmResult: gen?.llmResult ?? null };
   })());
 
   const difficultyResults = await Promise.all(difficultyPromises);
 
   for (const dr of difficultyResults) {
     const difficulty = dr.difficulty as DifficultyLevel;
-    const existingApproved = dr.existingApproved;
     const parsed = dr.parsed;
     const llmResult = (dr as any).llmResult;
-
-    if (existingApproved) {
-      logger.info('handleQuestionsJob: approved questions already exist', { jobId, topicId, difficulty });
-      results.push({ difficulty, testId: existingApproved.id, questionCount: 0 });
-      continue;
-    }
 
     // Track LLM call metrics
     if (llmResult) {
@@ -467,14 +461,9 @@ export async function handleQuestionsJob(jobId: string): Promise<void> {
       const allParsed = difficultyResults.filter((d: any) => d.parsed).map((d: any) => ({ difficulty: d.difficulty, parsed: d.parsed, llmResult: d.llmResult }));
 
       if (allParsed.length > 0) {
-        // compute versions for each difficulty — prefer renderer schemaHash for idempotency
+        // Versioning: always use next integer version so new jobs create v1, v2, v3... (never overwrite).
         for (const item of allParsed) {
-          const candidate = item.llmResult?.meta?.schemaHash || item.llmResult?.schemaHash || null;
-          if (candidate) {
-            (item as any).version = String(candidate);
-          } else {
-            (item as any).version = await getNextVersion({ topicId, difficulty: item.difficulty, language, type: 'test' });
-          }
+          (item as any).version = await getNextVersion({ topicId, difficulty: item.difficulty, language, type: 'test' });
         }
 
         const runTxWithRetry = async (work: (tx: any) => Promise<any>, attempts = 3) => {
