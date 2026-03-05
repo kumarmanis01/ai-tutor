@@ -99,9 +99,33 @@ export function validateOrThrow(parsed: any, ctx: { jobType: string, language?: 
 
   // Semantic checks (simple heuristics)
   if (ctx.jobType === 'notes') {
-    // The LLM returns `notes` as a string (per prompts/notes.md schema)
-    const notesText = parsed.notes || ''
-    if (typeof notesText === 'string' && notesText.trim().length < 100) {
+    // Support both legacy `notes` field and the new schema-first NoteSchema
+    let notesText = ''
+
+    // Legacy shape: single `notes` string
+    if (typeof parsed.notes === 'string') {
+      notesText += ` ${parsed.notes}`
+    }
+
+    // New schema-first shape (see lib/ai/prompts/schemas.ts: NoteSchema)
+    if (typeof parsed.explanation === 'string') {
+      notesText += ` ${parsed.explanation}`
+    }
+    if (typeof parsed.concept === 'string') {
+      notesText += ` ${parsed.concept}`
+    }
+    if (typeof parsed.example === 'string') {
+      notesText += ` ${parsed.example}`
+    }
+    if (Array.isArray(parsed.keyPoints)) {
+      notesText += ` ${parsed.keyPoints.join(' ')}`
+    }
+    if (Array.isArray(parsed.commonMistakes)) {
+      notesText += ` ${parsed.commonMistakes.join(' ')}`
+    }
+
+    // Require a minimum amount of real content to avoid stubby notes
+    if (typeof notesText === 'string' && notesText.trim().length < 200) {
       throw new SemanticWeaknessError('notes_too_short')
     }
   }
