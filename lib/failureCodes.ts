@@ -30,7 +30,9 @@ export function inferFailureCodeFromMessage(msg: string): FailureCode {
   if (m.includes('timeout')) return FailureCode.LLM_TIMEOUT;
   if (m.includes('rate limit') || m.includes('rate_limit')) return FailureCode.LLM_RATE_LIMIT;
   if (m.includes('parse') || m.includes('invalid json') || m.includes('failed_parse')) return FailureCode.PARSE_FAILED;
-  if (m.includes('validation') || m.includes('validation_failed')) return FailureCode.VALIDATION_FAILED;
+  if (m.includes('validation') || m.includes('validation_failed') || m.includes('schema_invalid') || m.includes('schema')) {
+    return FailureCode.VALIDATION_FAILED;
+  }
   if (m.includes('missing') || m.includes('not_found') || m.includes('not found')) return FailureCode.DEPENDENCY_MISSING;
   if (m.includes('lock') || m.includes('concurrent')) return FailureCode.LOCK_FAILED;
   // default

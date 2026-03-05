@@ -87,7 +87,7 @@ function validateQuestionsShape(raw: any, subjectName?: string): boolean {
 }
 
 // Exported for unit testing
-export { validateQuestionsShape, validateQuestionsShapeWithReport };
+export { validateQuestionsShape, validateQuestionsShapeWithReport, normalizeQuestionsOutput };
 
 /**
  * Validate questions and produce a structured report.
@@ -138,6 +138,119 @@ function validateQuestionsShapeWithReport(raw: any, subjectName?: string) {
 
   const valid = report.summary.validCount === report.summary.total && report.summary.issues.length === 0;
   return { valid, report };
+}
+
+/**
+ * Normalizes raw LLM question output into the shape expected by QuestionsSchema.
+ *
+ * Handles:
+ * 1. Bare array → { questions: [...] }
+ * 2. Options as keyed object → ordered string array
+ * 3. Field-name aliases (correct_answer, answer, correct, correctAnswer) → answer
+ *    and correctOptionIndex → resolved answer string
+ * 4. Difficulty casing (Easy/EASY → easy)
+ * 5. Missing explanation → default stub
+ * 6. Trimming question text
+ * 7. Missing type → inferred from options presence
+ */
+function normalizeQuestionsOutput(raw: any, difficulty?: string): any {
+  if (raw == null) return raw;
+
+  let data = raw;
+
+  // Rule 1: bare array → wrapped object
+  if (Array.isArray(data)) {
+    data = { questions: data };
+  }
+
+  if (!data || typeof data !== 'object' || !Array.isArray(data.questions)) {
+    return data;
+  }
+
+  const rawShape = {
+    topLevelKeys: Object.keys(data),
+    questionCount: data.questions.length,
+    sampleFields: data.questions[0] ? Object.keys(data.questions[0]) : [],
+  };
+
+  const ANSWER_ALIASES: Record<string, boolean> = {
+    correct_answer: true,
+    correctAnswer: true,
+    correct: true,
+    answer: true,
+  };
+
+  data.questions = data.questions.map((q: any) => {
+    if (!q || typeof q !== 'object') return q;
+    const out: any = { ...q };
+
+    // Rule 6: trim question text
+    if (typeof out.question === 'string') {
+      out.question = out.question.trim();
+    }
+
+    // Rule 2: options as keyed object → string array
+    if (out.options && !Array.isArray(out.options) && typeof out.options === 'object') {
+      const sorted = Object.keys(out.options).sort();
+      out.options = sorted.map((k: string) => String(out.options[k]));
+    }
+
+    // Rule 3: resolve answer from aliases + correctOptionIndex
+    if (out.answer === undefined || out.answer === null) {
+      for (const alias of Object.keys(ANSWER_ALIASES)) {
+        if (alias !== 'answer' && out[alias] !== undefined && out[alias] !== null) {
+          out.answer = out[alias];
+          delete out[alias];
+          break;
+        }
+      }
+    }
+    // correctOptionIndex → pick the option string as the answer
+    if ((out.answer === undefined || out.answer === null) && typeof out.correctOptionIndex === 'number' && Array.isArray(out.options)) {
+      const idx = out.correctOptionIndex;
+      if (idx >= 0 && idx < out.options.length) {
+        out.answer = out.options[idx];
+      }
+    }
+    // If answer still missing but correctOptionIndex exists as the only "answer" source, keep it as-is
+    if (out.answer === undefined || out.answer === null) {
+      if (out.correctOptionIndex !== undefined) {
+        out.answer = String(out.correctOptionIndex);
+      }
+    }
+
+    // Rule 7: infer type from structure when missing
+    if (!out.type || typeof out.type !== 'string') {
+      out.type = Array.isArray(out.options) && out.options.length >= 2 ? 'mcq' : 'short_answer';
+    }
+
+    // Rule 4: normalize difficulty casing
+    if (typeof out.difficulty === 'string') {
+      out.difficulty = out.difficulty.toLowerCase();
+    }
+
+    // Rule 5: default explanation stub
+    if (!out.explanation || (typeof out.explanation === 'string' && out.explanation.trim().length === 0)) {
+      out.explanation = 'Explanation not provided.';
+    }
+
+    return out;
+  });
+
+  // Attach top-level difficulty if provided and not already present
+  if (difficulty && !data.difficulty) {
+    data.difficulty = difficulty.toLowerCase();
+  }
+
+  const normalizedShape = {
+    topLevelKeys: Object.keys(data),
+    questionCount: data.questions.length,
+    sampleFields: data.questions[0] ? Object.keys(data.questions[0]) : [],
+  };
+
+  logger.info('[QUESTION_NORMALIZATION]', { rawShape, normalizedShape });
+
+  return data;
 }
 
 /**
@@ -264,6 +377,17 @@ JSON Schema:
       return { parsed: null, llmResult: llmResponse };
     }
 
+    // Run full normalization layer before validation to handle LLM output variations
+    raw = normalizeQuestionsOutput(raw, difficulty);
+
+    if (!raw || !Array.isArray(raw.questions)) {
+      logger.warn('[VALIDATION_DEFENSIVE] generateQuestionsForDifficulty: questions field is not an array after normalization', {
+        difficulty,
+        topic: topic.name,
+        keys: raw && typeof raw === 'object' ? Object.keys(raw) : null,
+      });
+      return { parsed: null, llmResult: llmResponse };
+    }
 
     return { parsed: raw, llmResult: llmResponse };
 
@@ -424,36 +548,54 @@ export async function handleQuestionsJob(jobId: string): Promise<void> {
       questionCount: parsed.questions?.length ?? 0,
     });
 
-    // Log response received
+    // Log response received (if linked ExecutionJob exists) and run strict validation
     const linkedExec = await prisma.executionJob.findFirst({ where: { payload: { path: ['hydrationJobId'], equals: job.id } } }).catch(() => null);
     if (linkedExec) {
       await prisma.jobExecutionLog.create({
         data: { jobId: linkedExec.id, event: 'RESPONSE_RECEIVED', prevStatus: linkedExec.status, newStatus: linkedExec.status, meta: { hydrationJobId: job.id, difficulty } }
       }).catch(() => {});
+    }
 
-      // Strict validation: any validation failure must fail the whole HydrationJob
+    // Strict validation: any validation failure must fail the whole HydrationJob, even when there is no linked ExecutionJob.
+    try {
+      // Emit validation report for observability when we have an execution job to attach it to
       try {
-        // Emit validation report for observability
-        try {
-          const { report } = validateQuestionsShapeWithReport(parsed, subjectName);
-          await prisma.jobExecutionLog.create({ data: { jobId: linkedExec.id, event: 'VALIDATION_REPORT', prevStatus: linkedExec.status, newStatus: linkedExec.status, meta: { hydrationJobId: job.id, difficulty, report } } }).catch(() => {});
-        } catch {}
-
-        // Centralized validator - will throw typed errors on failure
-        (await import('@/lib/aiOutputValidator')).validateOrThrow(parsed, { jobType: 'questions', language, difficulty, subject: subjectName, topic: topic.name });
-      } catch (vErr: any) {
-        // Failure contract: mark job failed, persist AIContentLog via helper, then rethrow to abort
-        const reason = vErr?.type || vErr?.message || 'validation_failed';
-        logger.error('[VALIDATION_DEFENSIVE] handleQuestionsJob: JSON/schema validation failed', {
-          jobId,
-          difficulty,
-          topicId,
-          reason,
-          details: vErr?.details ?? null,
-        });
-        await markJobFailed(job.id, String(reason));
-        throw vErr;
+        const { report } = validateQuestionsShapeWithReport(parsed, subjectName);
+        if (linkedExec) {
+          await prisma.jobExecutionLog.create({
+            data: {
+              jobId: linkedExec.id,
+              event: 'VALIDATION_REPORT',
+              prevStatus: linkedExec.status,
+              newStatus: linkedExec.status,
+              meta: { hydrationJobId: job.id, difficulty, report },
+            },
+          }).catch(() => {});
+        }
+      } catch {
+        // non-fatal; validationWithReport is best-effort
       }
+
+      // Centralized validator - will throw typed errors on failure
+      (await import('@/lib/aiOutputValidator')).validateOrThrow(parsed, {
+        jobType: 'questions',
+        language,
+        difficulty,
+        subject: subjectName,
+        topic: topic.name,
+      });
+    } catch (vErr: any) {
+      // Failure contract: mark job failed, persist AIContentLog via helper, then rethrow to abort
+      const reason = vErr?.type || vErr?.message || 'validation_failed';
+      logger.error('[VALIDATION_DEFENSIVE] handleQuestionsJob: JSON/schema validation failed', {
+        jobId,
+        difficulty,
+        topicId,
+        reason,
+        details: vErr?.details ?? null,
+      });
+      await markJobFailed(job.id, String(reason));
+      throw vErr;
     }
 
     // Persist all generated tests and questions atomically in a single transaction
@@ -508,7 +650,12 @@ export async function handleQuestionsJob(jobId: string): Promise<void> {
               await tx.generatedQuestion.deleteMany({ where: { testId: upserted.id, sourceJobId: job.id } });
             }
 
-            for (const q of item.parsed.questions) {
+            // Defensive guard: questions must be an array before we attempt to persist
+            if (!Array.isArray(item.parsed?.questions)) {
+              throw new Error('validation_failed_questions_not_array');
+            }
+
+            for (const q of item.parsed.questions as any[]) {
               await tx.generatedQuestion.create({ data: { testId: upserted.id, type: q.type, question: q.question, options: q.options ?? null, answer: q.answer ?? null, explanation: q.explanation ?? null, marks: q.marks ?? null, sourceJobId: job.id } });
             }
 
