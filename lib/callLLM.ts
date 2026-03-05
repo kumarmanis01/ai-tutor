@@ -80,7 +80,21 @@ export async function createSpeech(input: any) {
   return c.audio.speech.create(input)
 }
 
-export async function callLLM({ prompt, model, meta, timeoutMs }: { prompt: string; model?: string; meta: any; timeoutMs?: number }) {
+type CallLLMArgs = { prompt: string; model?: string; meta: any; timeoutMs?: number };
+
+function isRetryableLLMError(err: any): boolean {
+  const msg = String(err?.message ?? err ?? '').toLowerCase();
+  if (!msg) return false;
+  if (msg.includes('llm_timeout')) return true;
+  if (msg.includes('timeout')) return true;
+  if (msg.includes('etimedout')) return true;
+  if (msg.includes('econnreset')) return true;
+  if (msg.includes('rate limit') || msg.includes('rate_limit')) return true;
+  if (msg.includes('temporarily unavailable') || msg.includes('try again')) return true;
+  return false;
+}
+
+export async function callLLM({ prompt, model, meta, timeoutMs }: CallLLMArgs) {
   // Fast dev: return deterministic mock response when enabled before any DB/HTTP calls
   if (process.env.LLM_MODE === 'mock') {
     const topic = meta?.topic || meta?.topicName || (prompt && prompt.slice(0, 40)) || 'mock-topic'
@@ -141,20 +155,30 @@ export async function callLLM({ prompt, model, meta, timeoutMs }: { prompt: stri
   const WORKER_DEBUG = process.env.WORKER_DEBUG === '1'
 
   const start = Date.now()
-  const effectiveTimeout = timeoutMs ?? Number(process.env.LLM_CALL_TIMEOUT_MS || 20_000)
+  const baseTimeout = timeoutMs ?? Number(process.env.LLM_CALL_TIMEOUT_MS || 45_000) // increased default
+  const maxAttempts = Number(process.env.LLM_RETRY_MAX_ATTEMPTS || 3)
+  const baseDelayMs = Number(process.env.LLM_RETRY_BASE_DELAY_MS || 2000)
 
-  try {
-    // Promise.race to enforce timeout (note: underlying request not aborted)
-    const response: any = await Promise.race([
-      client.chat.completions.create({ model: selectedModel, messages: [{ role: 'user', content: prompt }], temperature: 0.0 }),
-      new Promise((_, rej) => setTimeout(() => rej(new Error('llm_timeout')), effectiveTimeout))
-    ])
+  let attempt = 0;
+  let lastError: any = null;
 
-    const latencyMs = Date.now() - start
-    const usage = response.usage
-    const content = response.choices?.[0]?.message?.content ?? ''
+  while (attempt < maxAttempts) {
+    attempt += 1;
+    const attemptStart = Date.now();
+    const effectiveTimeout = baseTimeout;
 
-    if (HYDRATION_DEBUG) {
+    try {
+      // Promise.race to enforce timeout (note: underlying request not aborted)
+      const response: any = await Promise.race([
+        client.chat.completions.create({ model: selectedModel, messages: [{ role: 'user', content: prompt }], temperature: 0.0 }),
+        new Promise((_, rej) => setTimeout(() => rej(new Error('llm_timeout')), effectiveTimeout))
+      ])
+
+      const latencyMs = Date.now() - start
+      const usage = response.usage
+      const content = response.choices?.[0]?.message?.content ?? ''
+
+      if (HYDRATION_DEBUG) {
       try {
         logger.debug('[ai][DEBUG] callLLM prompt length', { promptLength: (prompt || '').length })
         logger.debug('[ai][DEBUG] callLLM response length', { responseLength: (content || '').length })
@@ -162,12 +186,12 @@ export async function callLLM({ prompt, model, meta, timeoutMs }: { prompt: stri
       } catch {}
     }
 
-    const AI_CONTENT_DEBUG = process.env.AI_CONTENT_DEBUG === '1'
-    if (AI_CONTENT_DEBUG) {
+      const AI_CONTENT_DEBUG = process.env.AI_CONTENT_DEBUG === '1'
+      if (AI_CONTENT_DEBUG) {
       try { logger.info('AI_CONTENT_DEBUG: raw LLM content', { rawContent: content, meta }) } catch {}
     }
 
-    if (WORKER_DEBUG) {
+      if (WORKER_DEBUG) {
       try {
         let parsed: any = null
         try { parsed = JSON.parse(content) } catch {}
@@ -175,17 +199,55 @@ export async function callLLM({ prompt, model, meta, timeoutMs }: { prompt: stri
       } catch (e) { logger.warn('WORKER_DEBUG: failed to log LLM response', { error: String(e) }) }
     }
 
-    const costUsd = ((usage?.prompt_tokens || 0) * 0.00000015) + ((usage?.completion_tokens || 0) * 0.0000006)
+      const costUsd = ((usage?.prompt_tokens || 0) * 0.00000015) + ((usage?.completion_tokens || 0) * 0.0000006)
 
-    try {
-      const respBody: any = JSON.parse(JSON.stringify(response));
-      if (AI_CONTENT_DEBUG) respBody._rawText = content;
+      try {
+        const respBody: any = JSON.parse(JSON.stringify(response));
+        if (AI_CONTENT_DEBUG) respBody._rawText = content;
 
-      // Allow callers to suppress auto-logging and instead persist AIContentLog inside their transaction
-      const suppressLog = !!meta?.suppressLog;
-      if (!suppressLog) {
-        await prisma.aIContentLog.create({
-          data: {
+        // Allow callers to suppress auto-logging and instead persist AIContentLog inside their transaction
+        const suppressLog = !!meta?.suppressLog;
+        if (!suppressLog) {
+          await prisma.aIContentLog.create({
+            data: {
+              model: selectedModel,
+              promptType: promptType,
+              board: meta?.board,
+              grade: meta?.grade,
+              subject: meta?.subject,
+              chapter: meta?.chapter,
+              topic: meta?.topic,
+              language: normalizeLanguage(meta?.language),
+              topicId: meta?.topicId,
+              hydrationJobId: meta?.hydrationJobId || meta?.jobId || null,
+              tokensIn: usage?.prompt_tokens,
+              tokensOut: usage?.completion_tokens,
+              tokensUsed: usage?.total_tokens,
+              costUsd,
+              latencyMs,
+              success: true,
+              status: 'success',
+              requestBody: { prompt },
+              responseBody: respBody,
+            },
+          })
+        }
+        // Attach model and attempt to result for callers
+        return { content, usage, costUsd, latencyMs, model: selectedModel, attempt }
+      } catch (e) { logger.error('Failed to write AIContentLog', { error: String(e) }) }
+
+      return { content, usage, costUsd, latencyMs, model: selectedModel, attempt }
+    } catch (error: any) {
+      lastError = error;
+      const latencyMs = Date.now() - attemptStart;
+
+      const retryable = isRetryableLLMError(error);
+      const isLastAttempt = attempt >= maxAttempts;
+
+      // Persist failure logs outside caller transactions unless caller opted to handle logging
+      try {
+        if (!meta?.suppressLog) {
+          await prisma.aIContentLog.create({ data: {
             model: selectedModel,
             promptType: promptType,
             board: meta?.board,
@@ -196,48 +258,30 @@ export async function callLLM({ prompt, model, meta, timeoutMs }: { prompt: stri
             language: normalizeLanguage(meta?.language),
             topicId: meta?.topicId,
             hydrationJobId: meta?.hydrationJobId || meta?.jobId || null,
-            tokensIn: usage?.prompt_tokens,
-            tokensOut: usage?.completion_tokens,
-            tokensUsed: usage?.total_tokens,
-            costUsd,
+            success: false,
+            status: 'failed',
+            error: error?.message ?? String(error),
             latencyMs,
-            success: true,
-            status: 'success',
-            requestBody: { prompt },
-            responseBody: respBody,
-          },
-        })
-      }
-      // Attach model to result for callers to persist in-transaction if they suppressed logging
-      return { content, usage, costUsd, latencyMs, model: selectedModel }
-    } catch (e) { logger.error('Failed to write AIContentLog', { error: String(e) }) }
+          } })
+        }
+      } catch (e) { logger.error('Failed to write AIContentLog on error path', { error: String(e) }) }
 
-    return { content, usage, costUsd, latencyMs, model: selectedModel }
-  } catch (error: any) {
-    const latencyMs = Date.now() - start
-    try {
-      // Persist failure logs outside caller transactions unless caller opted to handle logging
-      if (!meta?.suppressLog) {
-        await prisma.aIContentLog.create({ data: {
-          model: selectedModel,
-          promptType: promptType,
-          board: meta?.board,
-          grade: meta?.grade,
-          subject: meta?.subject,
-          chapter: meta?.chapter,
-          topic: meta?.topic,
-          language: normalizeLanguage(meta?.language),
-          topicId: meta?.topicId,
-          hydrationJobId: meta?.hydrationJobId || meta?.jobId || null,
-          success: false,
-          status: 'failed',
-          error: error?.message ?? String(error),
-          latencyMs
-        } })
+      if (!retryable || isLastAttempt) {
+        throw error;
       }
-    } catch (e) { logger.error('Failed to write AIContentLog on error path', { error: String(e) }) }
-    throw error
+
+      // Backoff before next attempt (exponential with cap)
+      const delay = Math.min(baseDelayMs * Math.pow(2, attempt - 1), 30_000);
+      try {
+        await new Promise((resolve) => setTimeout(resolve, delay));
+      } catch {
+        // ignore sleep errors
+      }
+    }
   }
+
+  // If we exited loop without returning, throw last error
+  throw lastError ?? new Error('llm_call_failed');
 }
 
 /**
