@@ -1,20 +1,28 @@
 "use client";
 
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import useSWR from 'swr';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import JobActions from '@/components/Admin/JobActions';
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
 export default function JobsIndexPage() {
-  const [status, setStatus] = useState<string | ''>('');
+  const searchParams = useSearchParams();
+  const statusFromUrl = searchParams?.get('status') ?? '';
+  const [status, setStatus] = useState<string | ''>(statusFromUrl);
   const [jobType, setJobType] = useState<string | ''>('');
   const [entityType, setEntityType] = useState<string | ''>('');
   const [q, setQ] = useState('');
   const [limit, setLimit] = useState<number>(25);
   const [cursor, setCursor] = useState<string | null>(null);
   const [history, setHistory] = useState<string[]>([]);
+
+  // Keep status in sync with URL so deep links like ?status=failed work
+  useEffect(() => {
+    if (statusFromUrl && status !== statusFromUrl) setStatus(statusFromUrl);
+  }, [statusFromUrl]);
 
   const metaSWR = useSWR('/api/admin/content-engine/meta', fetcher);
   const meta = metaSWR.data;
