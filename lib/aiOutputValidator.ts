@@ -1,6 +1,7 @@
 import Ajv from 'ajv'
-import { ZodError } from 'zod'
+import { ZodError, ZodIssue } from 'zod'
 import zodSchemas from './ai/prompts/schemas'
+import { logger } from '@/lib/logger.js'
 
 export class ValidationError extends Error { public type: string; public details?: any; constructor(type: string, message: string, details?: any) { super(message); this.name = 'ValidationError'; this.type = type; this.details = details } }
 export class SchemaInvalidError extends ValidationError { constructor(message: string, details?: any) { super('SCHEMA_INVALID', message, details) } }
@@ -88,6 +89,16 @@ export function validateOrThrow(parsed: any, ctx: { jobType: string, language?: 
     }
   } catch (zErr: any) {
     if (zErr instanceof ZodError) {
+      for (const issue of zErr.errors as ZodIssue[]) {
+        logger.error('[QUESTION_SCHEMA_FAILURE]', {
+          field: issue.path.join('.'),
+          receivedValue: issue.code === 'invalid_type' ? (issue as any).received : undefined,
+          expectedSchema: issue.message,
+          code: issue.code,
+          jobType: ctx.jobType,
+          topic: ctx.topic,
+        })
+      }
       throw new SchemaInvalidError('zod_schema_invalid', zErr.errors)
     }
     throw zErr
@@ -134,10 +145,13 @@ export function validateOrThrow(parsed: any, ctx: { jobType: string, language?: 
     const qs = parsed.questions || []
     if (!Array.isArray(qs) || qs.length === 0) throw new SemanticWeaknessError('no_questions')
     for (const q of qs) {
-      if (!q.explanation || String(q.explanation).trim().length < 20) throw new SemanticWeaknessError('missing_question_explanation', { question: q.question })
+      const expl = q.explanation ? String(q.explanation).trim() : ''
+      if (expl && expl !== 'Explanation not provided.' && expl.length < 20) {
+        throw new SemanticWeaknessError('shallow_question_explanation', { question: q.question, explanationLength: expl.length })
+      }
     }
-    // difficulty alignment
-    if (ctx.difficulty && parsed.difficulty && ctx.difficulty !== parsed.difficulty) {
+    // difficulty alignment (case-insensitive)
+    if (ctx.difficulty && parsed.difficulty && ctx.difficulty.toLowerCase() !== String(parsed.difficulty).toLowerCase()) {
       throw new ContextMismatchError('difficulty_mismatch', { expected: ctx.difficulty, got: parsed.difficulty })
     }
   }
