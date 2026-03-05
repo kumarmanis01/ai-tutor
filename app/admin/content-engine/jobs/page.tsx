@@ -22,7 +22,7 @@ export default function JobsIndexPage() {
   // Keep status in sync with URL so deep links like ?status=failed work
   useEffect(() => {
     if (statusFromUrl && status !== statusFromUrl) setStatus(statusFromUrl);
-  }, [statusFromUrl]);
+  }, [statusFromUrl, status]);
 
   const metaSWR = useSWR('/api/admin/content-engine/meta', fetcher);
   const meta = metaSWR.data;

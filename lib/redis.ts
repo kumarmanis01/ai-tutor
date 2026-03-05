@@ -24,7 +24,23 @@ export function getRedis() {
     throw new Error("REDIS_URL is not defined in environment variables");
   }
   const url = process.env.REDIS_URL!
-  const opts: any = { maxRetriesPerRequest: null }
+  // Single, shared client with conservative retry/reconnect settings so that
+  // transient Memurai/Redis issues do not crash workers or web handlers.
+  const opts: any = {
+    maxRetriesPerRequest: null,
+    retryStrategy(times: number) {
+      // Exponential-ish backoff up to 30s
+      const delay = Math.min(1000 * Math.pow(2, times), 30_000);
+      return delay;
+    },
+    reconnectOnError(err: Error) {
+      const msg = err?.message || '';
+      // Reconnect on READONLY (failover) and connection reset style errors
+      if (/READONLY/i.test(msg)) return true;
+      if (/ECONNRESET|EPIPE|ETIMEDOUT|connection.*closed/i.test(msg)) return true;
+      return false;
+    },
+  }
   // Enable TLS options when using rediss:// or explicit env toggle
   if (url.startsWith('rediss://') || process.env.REDIS_USE_TLS === '1') {
     const tls: any = {}
@@ -32,7 +48,25 @@ export function getRedis() {
     if (process.env.REDIS_TLS_REJECT_UNAUTHORIZED === '0') tls.rejectUnauthorized = false
     if (Object.keys(tls).length) opts.tls = tls
   }
-  _redis = new IORedis(url, opts)
+  const client = new IORedis(url, opts);
+
+  // Attach lightweight logging for connection-level issues; avoid circular
+  // imports by using a dynamic import of the logger module.
+  client.on('error', (err: any) => {
+    import('../lib/logger')
+      .then(({ error }) => {
+        try {
+          error('redis.client_error', { message: String(err?.message ?? err) });
+        } catch {
+          // ignore secondary logging failures
+        }
+      })
+      .catch(() => {
+        // logger may not be available in some runtimes; ignore
+      });
+  });
+
+  _redis = client;
   return _redis;
 }
 

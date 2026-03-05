@@ -3,14 +3,22 @@
 /* eslint-disable @typescript-eslint/no-require-imports */
 /**
  * Worker entrypoint (production-friendly)
- * - MUST NOT load dotenv or any env-file loader here.
+ * - For local runs, we load .env once to match `npm run dev` / `npm run build`.
+ * - In production, environment is injected by the process manager (no .env file required).
  * - Use relative imports only (no @/ aliases).
  * - Fail fast if required env vars are missing.
  */
 
 // Avoid top-level ESM imports so compiled output is less likely to be forced
 // into a CommonJS wrapper when built. Use dynamic imports at runtime.
-import 'dotenv/config'
+import dotenv from 'dotenv';
+import path from 'path';
+
+// Local/CI only: ensure DATABASE_URL and REDIS_URL match the .env file.
+if (process.env.NODE_ENV !== 'production') {
+  const envPath = path.resolve(process.cwd(), '.env');
+  dotenv.config({ path: envPath });
+}
 
 (async () => {
   try {

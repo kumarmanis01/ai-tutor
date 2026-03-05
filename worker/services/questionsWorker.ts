@@ -219,6 +219,7 @@ JSON Schema:
 `;
 
 
+    let llmResponse: any;
     try {
       // Use centralized prompt renderer to produce deterministic prompt and schema fingerprint
       const rendered = renderTemplate('topic-questions', { topicName: topic.name, grade, count, language: language as any });
