@@ -12,6 +12,7 @@ import AssignmentsRow from '@/components/home/AssignmentsRow';
 import UtilityRow from '@/components/home/UtilityRow';
 import PerformanceSnapshot from '@/components/home/PerformanceSnapshot';
 import StudyStreakCard from '@/components/home/StudyStreakCard';
+import WeakTopicsCard from '@/components/home/WeakTopicsCard';
 
 export const dynamic = 'force-dynamic';
 
@@ -38,14 +39,15 @@ export default async function StudentHomeDashboardPage() {
   }
 
   // Fetch all home data in parallel — server-side, no stale cache.
-  const [nextAction, todayGoal, learningSnapshot, dailyPlan, perfSnapshot, streakData] = (await Promise.all([
+  const [nextAction, todayGoal, learningSnapshot, dailyPlan, perfSnapshot, streakData, weakTopicsData] = (await Promise.all([
     fetchJson('/api/home/next-action'),
     fetchJson('/api/home/today-goal'),
     fetchJson('/api/home/learning-snapshot'),
     fetchJson('/api/home/daily-plan'),
     fetchJson('/api/home/performance-snapshot'),
     fetchJson('/api/student/streak'),
-  ])) as [any, any, any, any, any, any];
+    fetchJson('/api/student/weak-topics'),
+  ])) as [any, any, any, any, any, any, any];
 
   return (
     <main className="max-w-5xl mx-auto px-4 py-8">
@@ -87,7 +89,12 @@ export default async function StudentHomeDashboardPage() {
           <LearningPathSnapshot subjects={learningSnapshot?.subjects ?? []} />
         </section>
 
-        {/* 4. Performance Snapshot — last 5 practice results */}
+        {/* 4. Weak Topics */}
+        <section aria-labelledby="weak-topics-heading">
+          <WeakTopicsCard topics={weakTopicsData?.topics ?? []} />
+        </section>
+
+        {/* 4b. Performance Snapshot — last 5 practice results */}
         <section aria-labelledby="perf-snapshot-heading">
           <PerformanceSnapshot
             recentResults={perfSnapshot?.recentResults ?? []}

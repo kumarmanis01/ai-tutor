@@ -52,3 +52,37 @@ export async function getWeakTopicIds(studentId: string): Promise<Set<string>> {
   const topics = await getWeakTopics(studentId);
   return new Set(topics.map((t) => t.topicId));
 }
+
+export interface WeakTopicWithName extends WeakTopic {
+  topicName: string;
+}
+
+/**
+ * Returns up to 5 weak topics (mastery < 0.4) with their display names.
+ * No practiceCount gate — used for the dashboard WeakTopicsCard.
+ */
+export async function getWeakTopicsWithNames(studentId: string): Promise<WeakTopicWithName[]> {
+  const rows = await prisma.studentTopicProgress.findMany({
+    where: {
+      studentId,
+      mastery: { lt: MASTERY_THRESHOLD },
+    },
+    select: {
+      topicId: true,
+      mastery: true,
+      practiceCount: true,
+      lastStudiedAt: true,
+      topic: { select: { name: true } },
+    },
+    orderBy: { mastery: 'asc' },
+    take: 5,
+  });
+
+  return rows.map((r) => ({
+    topicId: r.topicId,
+    mastery: r.mastery,
+    practiceCount: r.practiceCount,
+    lastStudiedAt: r.lastStudiedAt,
+    topicName: r.topic.name,
+  }));
+}
