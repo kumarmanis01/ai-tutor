@@ -11,6 +11,7 @@ import TodaysPlan from '@/components/home/TodaysPlan';
 import AssignmentsRow from '@/components/home/AssignmentsRow';
 import UtilityRow from '@/components/home/UtilityRow';
 import PerformanceSnapshot from '@/components/home/PerformanceSnapshot';
+import StudyStreakCard from '@/components/home/StudyStreakCard';
 
 export const dynamic = 'force-dynamic';
 
@@ -37,13 +38,14 @@ export default async function StudentHomeDashboardPage() {
   }
 
   // Fetch all home data in parallel — server-side, no stale cache.
-  const [nextAction, todayGoal, learningSnapshot, dailyPlan, perfSnapshot] = (await Promise.all([
+  const [nextAction, todayGoal, learningSnapshot, dailyPlan, perfSnapshot, streakData] = (await Promise.all([
     fetchJson('/api/home/next-action'),
     fetchJson('/api/home/today-goal'),
     fetchJson('/api/home/learning-snapshot'),
     fetchJson('/api/home/daily-plan'),
     fetchJson('/api/home/performance-snapshot'),
-  ])) as [any, any, any, any, any];
+    fetchJson('/api/student/streak'),
+  ])) as [any, any, any, any, any, any];
 
   return (
     <main className="max-w-5xl mx-auto px-4 py-8">
@@ -69,6 +71,14 @@ export default async function StudentHomeDashboardPage() {
             targetMinutes={todayGoal?.targetMinutes ?? DEFAULT_GOAL_MIN}
             completedMinutes={todayGoal?.completedMinutes ?? 0}
             streakDays={todayGoal?.streakDays ?? 0}
+          />
+        </section>
+
+        {/* 2b. Study Streak */}
+        <section aria-labelledby="study-streak-heading">
+          <StudyStreakCard
+            currentStreak={streakData?.currentStreak ?? 0}
+            longestStreak={streakData?.longestStreak ?? 0}
           />
         </section>
 
