@@ -1,8 +1,9 @@
 "use client";
 
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
+import TopicCompletionModal from "@/components/dashboard/TopicCompletionModal";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -136,6 +137,8 @@ export default function SessionPage() {
   const [loading, setLoading] = useState(true);
   const [advancing, setAdvancing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showCelebration, setShowCelebration] = useState(false);
+  const celebrationFiredRef = useRef(false);
 
   const applyResponse = useCallback((data: {
     session: SessionData;
@@ -164,6 +167,14 @@ export default function SessionPage() {
   useEffect(() => {
     fetchSession();
   }, [fetchSession]);
+
+  // Show celebration modal exactly once when session reaches COMPLETE
+  useEffect(() => {
+    if (session?.state === "COMPLETE" && !celebrationFiredRef.current) {
+      celebrationFiredRef.current = true;
+      setShowCelebration(true);
+    }
+  }, [session?.state]);
 
   const handleNext = useCallback(async () => {
     if (advancing || !session) return;
@@ -262,6 +273,15 @@ export default function SessionPage() {
           );
         })}
       </div>
+
+      {/* Topic completion celebration modal */}
+      {showCelebration && session && (
+        <TopicCompletionModal
+          topicName={session.topicName}
+          topicId={session.topicId}
+          onClose={() => setShowCelebration(false)}
+        />
+      )}
 
       {/* Phase Content Card */}
       <div className="bg-white rounded-lg border p-8 mb-6">
