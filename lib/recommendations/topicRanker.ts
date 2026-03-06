@@ -11,6 +11,7 @@
 
 import { prisma } from '@/lib/prisma';
 import { logger } from '@/lib/logger';
+import { computeMomentumScore } from '@/lib/learning/momentumScore';
 
 // ─── Feature Flag ────────────────────────────────────────────────────────────
 
@@ -55,6 +56,8 @@ const WEIGHTS = {
   PREREQUISITE_PENALTY: -15,
   /** Small boost for topics in weak subjects */
   WEAK_SUBJECT_BOOST: 15,
+  /** Boost scaled by learning momentum (0–1 engagement intensity) */
+  MOMENTUM_BOOST: 20,
   /** Base score so every topic starts positive */
   BASE: 10,
 } as const;
@@ -151,6 +154,9 @@ async function rankTopics(studentId: string): Promise<ScoredTopic[]> {
 
   if (curriculumTopics.length === 0) return [];
 
+  // ── Compute momentum score (student-wide, not per-topic) ──────────────
+  const momentum = await computeMomentumScore(studentId);
+
   // ── Build lookup maps ──────────────────────────────────────────────────
   type TopicProgress = (typeof allProgress)[number];
   const progressByTopic = new Map<string, TopicProgress>(allProgress.map((p) => [p.topicId, p]));
@@ -244,6 +250,13 @@ async function rankTopics(studentId: string): Promise<ScoredTopic[]> {
     if (weakSubjects.has(topic.chapter.subject.name)) {
       signals.weakSubjectBoost = WEIGHTS.WEAK_SUBJECT_BOOST;
       score += WEIGHTS.WEAK_SUBJECT_BOOST;
+    }
+
+    // 7. Momentum boost — rewards consistent engagement
+    if (momentum.score > 0) {
+      const boost = Math.round(WEIGHTS.MOMENTUM_BOOST * momentum.score);
+      signals.momentumBoost = boost;
+      score += boost;
     }
 
     scored.push({
