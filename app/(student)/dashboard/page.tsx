@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation';
 import { requireActiveSession } from '@/lib/auth';
 
 import TodaysLessonCard from '@/components/dashboard/TodaysLessonCard';
+import WeeklyProgress from '@/components/dashboard/WeeklyProgress';
 import NextActionCard from '@/components/home/NextActionCard';
 import ResumeSessionCard from '@/components/home/ResumeSessionCard';
 import TutorRecommendationCard from '@/components/home/TutorRecommendationCard';
@@ -67,6 +68,11 @@ export default async function StudentHomeDashboardPage() {
         {/* 0b. Resume active session — self-fetching, hides when no session */}
         <section aria-labelledby="resume-session-heading">
           <ResumeSessionCard />
+        </section>
+
+        {/* 0c. Weekly progress — self-fetching metrics card */}
+        <section aria-labelledby="weekly-progress-heading">
+          <WeeklyProgress />
         </section>
 
         {/* 1. NextActionCard */}
