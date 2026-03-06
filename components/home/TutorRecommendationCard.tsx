@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
-import Link from "next/link";
+import React, { useEffect, useState, useCallback } from "react";
+import { useRouter } from "next/navigation";
 
 interface TopicData {
   topicId: string;
@@ -11,8 +11,10 @@ interface TopicData {
 }
 
 export default function TutorRecommendationCard() {
+  const router = useRouter();
   const [topic, setTopic] = useState<TopicData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [starting, setStarting] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -29,6 +31,26 @@ export default function TutorRecommendationCard() {
       cancelled = true;
     };
   }, []);
+
+  const handleStartSession = useCallback(async () => {
+    if (!topic || starting) return;
+    setStarting(true);
+    try {
+      const res = await fetch("/api/session/start", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ topicId: topic.topicId }),
+      });
+      if (!res.ok) throw new Error("Failed to start session");
+      const data = await res.json();
+      const sessionId = data?.session?.sessionId;
+      if (sessionId) {
+        router.push(`/session/${sessionId}`);
+      }
+    } catch {
+      setStarting(false);
+    }
+  }, [topic, starting, router]);
 
   if (loading) {
     return (
@@ -53,70 +75,51 @@ export default function TutorRecommendationCard() {
 
       <h3 className="text-xl font-semibold mt-2">{topic.chapter}</h3>
 
-      <p className="text-sm text-gray-500 mt-1">
-        {topic.subject}
-      </p>
+      <p className="text-sm text-gray-500 mt-1">{topic.subject}</p>
 
       <p className="text-xs text-gray-400 mt-1 italic">{topic.reason}</p>
 
-      <div className="flex flex-wrap gap-3 mt-5">
-        <Link
-          href={`/learn?topicId=${topic.topicId}`}
-          className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+      <div className="mt-5">
+        <button
+          type="button"
+          onClick={handleStartSession}
+          disabled={starting}
+          className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          <BookIcon />
-          Start Learning
-        </Link>
-
-        <Link
-          href={`/practice/start?topicId=${topic.topicId}`}
-          className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-indigo-700 bg-indigo-50 rounded-md hover:bg-indigo-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-        >
-          <PracticeIcon />
-          Practice
-        </Link>
-
-        <Link
-          href={`/learn?topicId=${topic.topicId}&tab=notes`}
-          className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-400"
-        >
-          <NotesIcon />
-          View Notes
-        </Link>
+          {starting ? (
+            <>
+              <Spinner />
+              Starting…
+            </>
+          ) : (
+            <>
+              <PlayIcon />
+              Start Learning
+            </>
+          )}
+        </button>
       </div>
     </article>
   );
 }
 
-function BookIcon() {
-  return (
-    <svg className="w-4 h-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden>
-      <path d="M10.394 2.08a1 1 0 00-.788 0l-7 3a1 1 0 000 1.84L5.25 8.051a.999.999 0 01.356-.257l4-1.714a1 1 0 11.788 1.838L7.667 9.088l1.94.831a1 1 0 00.787 0l7-3a1 1 0 000-1.838l-7-3zM3.31 9.397L5 10.12v4.102a8.969 8.969 0 00-1.05-.174 1 1 0 01-.89-.89 11.115 11.115 0 01.25-3.762zM9.3 16.573A9.026 9.026 0 007 14.935v-3.957l1.818.78a3 3 0 002.364 0l5.508-2.361a11.026 11.026 0 01.25 3.762 1 1 0 01-.89.89 8.968 8.968 0 00-5.35 2.524 1 1 0 01-1.4 0z" />
-    </svg>
-  );
-}
-
-function PracticeIcon() {
+function PlayIcon() {
   return (
     <svg className="w-4 h-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden>
       <path
         fillRule="evenodd"
-        d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-8.707l-3-3a1 1 0 00-1.414 1.414L10.586 9H7a1 1 0 100 2h3.586l-1.293 1.293a1 1 0 101.414 1.414l3-3a1 1 0 000-1.414z"
+        d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z"
         clipRule="evenodd"
       />
     </svg>
   );
 }
 
-function NotesIcon() {
+function Spinner() {
   return (
-    <svg className="w-4 h-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden>
-      <path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z" />
-      <path
-        fillRule="evenodd"
-        d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm3 4a1 1 0 000 2h.01a1 1 0 100-2H7zm3 0a1 1 0 000 2h3a1 1 0 100-2h-3zm-3 4a1 1 0 100 2h.01a1 1 0 100-2H7zm3 0a1 1 0 100 2h3a1 1 0 100-2h-3z"
-        clipRule="evenodd"
-      />
+    <svg className="w-4 h-4 animate-spin" viewBox="0 0 24 24" fill="none" aria-hidden>
+      <circle cx="12" cy="12" r="10" stroke="rgba(255,255,255,0.3)" strokeWidth="4" />
+      <path d="M22 12a10 10 0 00-10-10" stroke="white" strokeWidth="4" strokeLinecap="round" />
     </svg>
   );
 }

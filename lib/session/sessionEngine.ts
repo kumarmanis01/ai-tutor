@@ -63,6 +63,7 @@ interface PhaseContent {
 /**
  * Start a new structured session for a topic.
  * If an incomplete session already exists for this student+topic, resume it.
+ * Also creates a bridged LearningSession so recommendation signals fire.
  */
 export async function startSession(
   studentId: string,
@@ -83,6 +84,11 @@ export async function startSession(
   });
 
   if (existing) {
+    // Touch the bridged LearningSession's lastAccessed so recency signals stay fresh
+    await touchBridgedLearningSession(existing.id).catch((err) =>
+      logger.warn('[SESSION_BRIDGE_TOUCH_FAILED]', { sessionId: existing.id, error: err }),
+    );
+
     logger.info('[SESSION_RESUMED]', {
       studentId,
       sessionId: existing.id,
@@ -105,6 +111,11 @@ export async function startSession(
       },
     },
   });
+
+  // Bridge: create a LearningSession so the recommendation engine picks up signals
+  await createBridgedLearningSession(studentId, topicId, session.id).catch((err) =>
+    logger.error('[SESSION_BRIDGE_CREATE_FAILED]', { sessionId: session.id, error: err }),
+  );
 
   logger.info('[SESSION_STARTED]', {
     studentId,
@@ -173,6 +184,16 @@ export async function advanceSession(
     to: next,
   });
 
+  // Bridge: if session just completed, mark the LearningSession too
+  if (isComplete) {
+    await completeBridgedLearningSession(sessionId).catch((err) =>
+      logger.error('[SESSION_BRIDGE_COMPLETE_FAILED]', { sessionId, error: err }),
+    );
+  } else {
+    // Update lastAccessed on each phase advance
+    await touchBridgedLearningSession(sessionId).catch(() => {});
+  }
+
   // Auto-generate homework when entering HOMEWORK phase
   let homeworkId: string | null = null;
   if (next === 'HOMEWORK') {
@@ -235,6 +256,11 @@ export async function completeSession(
       },
     },
   });
+
+  // Bridge: complete the paired LearningSession
+  await completeBridgedLearningSession(sessionId).catch((err) =>
+    logger.error('[SESSION_BRIDGE_COMPLETE_FAILED]', { sessionId, error: err }),
+  );
 
   logger.info('[SESSION_COMPLETED]', {
     studentId,
@@ -312,6 +338,82 @@ function toSessionView(s: SessionWithTopic): SessionView {
     completedAt: s.completedAt?.toISOString() ?? null,
     homeworkId: null,
   };
+}
+
+// ─── LearningSession Bridge ──────────────────────────────────────────────────
+// Keeps the canonical LearningSession table in sync so recommendation engine,
+// topic ranker, and "continue learning" signals all work transparently.
+
+const BRIDGE_ACTIVITY_TYPE = 'structured_session';
+
+async function createBridgedLearningSession(
+  studentId: string,
+  topicId: string,
+  structuredSessionId: string,
+): Promise<void> {
+  await prisma.learningSession.create({
+    data: {
+      studentId,
+      activityType: BRIDGE_ACTIVITY_TYPE,
+      activityRef: `topic:${topicId}`,
+      difficultyLevel: 'medium',
+      isCompleted: false,
+      completionPercentage: 0,
+      meta: { topicId, structuredSessionId, source: 'structured_session' },
+    },
+  });
+
+  logger.info('[SESSION_BRIDGE_CREATED]', { studentId, topicId, structuredSessionId });
+}
+
+async function completeBridgedLearningSession(structuredSessionId: string): Promise<void> {
+  // Find the paired LearningSession via meta.structuredSessionId
+  const ls = await prisma.learningSession.findFirst({
+    where: {
+      activityType: BRIDGE_ACTIVITY_TYPE,
+      meta: { path: ['structuredSessionId'], equals: structuredSessionId },
+      isCompleted: false,
+    },
+  });
+
+  if (!ls) return;
+
+  const now = new Date();
+  const elapsedMinutes = Math.max(1, Math.floor((now.getTime() - ls.startedAt.getTime()) / 60000));
+
+  await prisma.learningSession.update({
+    where: { id: ls.id },
+    data: {
+      isCompleted: true,
+      completionPercentage: 100,
+      lastAccessed: now,
+      endedAt: now,
+      actualTimeSpent: elapsedMinutes,
+    },
+  });
+
+  logger.info('[SESSION_BRIDGE_COMPLETED]', {
+    learningSessionId: ls.id,
+    structuredSessionId,
+    actualTimeSpent: elapsedMinutes,
+  });
+}
+
+async function touchBridgedLearningSession(structuredSessionId: string): Promise<void> {
+  const ls = await prisma.learningSession.findFirst({
+    where: {
+      activityType: BRIDGE_ACTIVITY_TYPE,
+      meta: { path: ['structuredSessionId'], equals: structuredSessionId },
+      isCompleted: false,
+    },
+  });
+
+  if (!ls) return;
+
+  await prisma.learningSession.update({
+    where: { id: ls.id },
+    data: { lastAccessed: new Date() },
+  });
 }
 
 export class SessionError extends Error {

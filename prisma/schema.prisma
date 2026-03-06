@@ -857,9 +857,24 @@ model HomeworkAssignment {
   topic     TopicDef          @relation(fields: [topicId], references: [id])
   session   StructuredSession? @relation(fields: [sessionId], references: [id])
 
+  answers   HomeworkAnswer[]
+
   @@index([studentId, status])
   @@index([topicId])
   @@index([sessionId])
+}
+
+model HomeworkAnswer {
+  id            String             @id @default(cuid())
+  assignmentId  String
+  questionId    String
+  studentAnswer Json
+  isCorrect     Boolean?
+  createdAt     DateTime           @default(now())
+  assignment    HomeworkAssignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+
+  @@unique([assignmentId, questionId])
+  @@index([assignmentId])
 }
 
 enum HomeworkStatus {
