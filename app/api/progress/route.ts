@@ -19,6 +19,7 @@ import { prisma } from '@/lib/prisma';
 import { getServerSessionForHandlers } from '@/lib/session';
 import { logger } from '@/lib/logger';
 import { LOW_ACCURACY_THRESHOLD } from '@/lib/constants/mastery';
+import { updateStudentTopicProgress } from '@/lib/learning/updateTopicProgress';
 
 export const dynamic = 'force-dynamic';
 
@@ -130,18 +131,13 @@ export async function POST(req: NextRequest) {
 
   // Track lastStudiedAt on StudentTopicProgress (notes view / topic interaction)
   try {
-    await prisma.studentTopicProgress.upsert({
-      where: { studentId_topicId: { studentId: user.id, topicId } },
-      update: { lastStudiedAt: new Date() },
-      create: {
-        studentId: user.id,
-        topicId,
-        mastery: 0,
-        practiceCount: 0,
-        lastStudiedAt: new Date(),
-      },
+    await updateStudentTopicProgress({
+      studentId: user.id,
+      topicId,
+      correctAnswers: 0,
+      totalAnswers: 0,
+      activityType: 'STUDY',
     });
-    logger.info('[TOPIC_PROGRESS_STUDIED]', { studentId: user.id, topicId });
   } catch (err) {
     logger.error('ProgressAPI.updateTopicProgress', { userId: user.id, topicId, error: err });
   }

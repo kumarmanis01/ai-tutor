@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getServerSessionForHandlers } from '@/lib/session';
 import { normalizeAnswer } from '@/lib/tests';
-import { updateStudentTopicProgress } from '@/lib/tests';
+import { updateStudentTopicProgress } from '@/lib/learning/updateTopicProgress';
 import { logger } from '@/lib/logger';
 import type { HomeworkQuestion } from '@/lib/session/homework';
 
@@ -119,14 +119,14 @@ export async function POST(req: Request) {
   });
 
   // ── Step 5: Update topic mastery ───────────────────────────────────────
-  const wrongCount = totalCount - correctCount;
   try {
-    await updateStudentTopicProgress(
-      user.id,
-      assignment.topicId,
-      correctCount,
-      wrongCount,
-    );
+    await updateStudentTopicProgress({
+      studentId: user.id,
+      topicId: assignment.topicId,
+      correctAnswers: correctCount,
+      totalAnswers: totalCount,
+      activityType: 'HOMEWORK',
+    });
   } catch (err) {
     logger.error('[HOMEWORK_PROGRESS_UPDATE_FAILED]', {
       userId: user.id,

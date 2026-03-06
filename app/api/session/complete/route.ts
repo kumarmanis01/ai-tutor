@@ -7,7 +7,7 @@ import {
   SessionError,
 } from '@/lib/session/sessionEngine';
 import { resolvePhaseContent } from '@/lib/session/getPhaseContent';
-import { updateStudentTopicProgress } from '@/lib/tests';
+import { updateStudentTopicProgress } from '@/lib/learning/updateTopicProgress';
 import { logger } from '@/lib/logger';
 
 export const dynamic = 'force-dynamic';
@@ -50,7 +50,13 @@ export async function POST(req: Request) {
 
     // Touch lastStudiedAt so the topic ranker picks up the recency signal
     try {
-      await updateStudentTopicProgress(user.id, view.topicId, 0, 0);
+      await updateStudentTopicProgress({
+        studentId: user.id,
+        topicId: view.topicId,
+        correctAnswers: 0,
+        totalAnswers: 0,
+        activityType: 'STUDY',
+      });
     } catch (err) {
       logger.error('SessionCompleteAPI.progressUpdate', { userId: user.id, error: err });
     }

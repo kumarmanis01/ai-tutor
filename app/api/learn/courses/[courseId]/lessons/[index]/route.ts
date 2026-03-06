@@ -17,6 +17,7 @@
 import { NextResponse } from 'next/server'
 import { getServerSessionForHandlers } from '@/lib/session'
 import { logger } from '@/lib/logger'
+import { updateStudentTopicProgress } from '@/lib/learning/updateTopicProgress'
 
 /**
  * Enhanced content type for new schema
@@ -294,10 +295,12 @@ export async function GET(req: Request, { params }: { params: Promise<{ courseId
         const topicIds = topicsWithContent.map((t: { id: string }) => t.id)
         Promise.all(
           topicIds.map((tid: string) =>
-            db.studentTopicProgress.upsert({
-              where: { studentId_topicId: { studentId: userId, topicId: tid } },
-              update: { lastStudiedAt: new Date() },
-              create: { studentId: userId, topicId: tid, mastery: 0, practiceCount: 0, lastStudiedAt: new Date() },
+            updateStudentTopicProgress({
+              studentId: userId,
+              topicId: tid,
+              correctAnswers: 0,
+              totalAnswers: 0,
+              activityType: 'STUDY',
             })
           )
         ).catch((err: unknown) => logger.error('lesson.trackStudy', { userId, error: err }))
