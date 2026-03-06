@@ -10,7 +10,7 @@
 
 import { prisma } from '@/lib/prisma';
 import { logger } from '@/lib/logger';
-import type { SessionPhase } from '@prisma/client';
+type SessionPhase = 'EXPLANATION' | 'PRACTICE' | 'TEST' | 'HOMEWORK' | 'COMPLETE';
 
 // ─── Return Types ────────────────────────────────────────────────────────────
 

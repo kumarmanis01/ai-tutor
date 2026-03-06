@@ -11,7 +11,7 @@ import { prisma } from '@/lib/prisma';
 import { logger } from '@/lib/logger';
 import { generateHomework } from '@/lib/session/homework';
 import { transitionSessionPhase, InvalidTransitionError } from '@/lib/session/transitionSessionPhase';
-import type { SessionPhase } from '@prisma/client';
+type SessionPhase = 'EXPLANATION' | 'PRACTICE' | 'TEST' | 'HOMEWORK' | 'COMPLETE';
 
 // ─── State Machine ───────────────────────────────────────────────────────────
 

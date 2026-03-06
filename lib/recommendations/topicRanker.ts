@@ -152,7 +152,8 @@ async function rankTopics(studentId: string): Promise<ScoredTopic[]> {
   if (curriculumTopics.length === 0) return [];
 
   // ── Build lookup maps ──────────────────────────────────────────────────
-  const progressByTopic = new Map(allProgress.map((p) => [p.topicId, p]));
+  type TopicProgress = (typeof allProgress)[number];
+  const progressByTopic = new Map<string, TopicProgress>(allProgress.map((p) => [p.topicId, p]));
 
   const incompleteTopicIds = new Set<string>();
   for (const s of recentSessions) {
@@ -181,7 +182,7 @@ async function rankTopics(studentId: string): Promise<ScoredTopic[]> {
 
   // ── Build ordered ID list for prerequisite lookups ─────────────────────
   const orderedIds = curriculumTopics.map((t) => t.id);
-  const indexById = new Map(orderedIds.map((id, i) => [id, i]));
+  const indexById = new Map<string, number>(orderedIds.map((id, i) => [id, i]));
 
   // ── Score each topic ───────────────────────────────────────────────────
   const now = Date.now();

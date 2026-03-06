@@ -79,8 +79,8 @@ export async function GET() {
 async function getFallbackRecommendations(userId: string) {
   const user = await prisma.user.findUnique({ where: { id: userId } });
   const subjects = (user?.subjects || []) as string[];
-  const board = user?.board || '';
-  const grade = user?.grade || '';
+  const _board = user?.board || '';
+  const _grade = user?.grade || '';
   const hasSubjects = subjects && subjects.length > 0;
   const items: any[] = [];
 

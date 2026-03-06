@@ -67,7 +67,8 @@ export async function generateHomework(
 
 async function gatherQuestions(topicId: string): Promise<HomeworkQuestion[]> {
   // Strategy 1: promoted Question bank (topicId FK)
-  const bankQuestions = await prisma.question.findMany({
+  type BankQuestion = { id: string; type: string; prompt: string; choices: unknown; correctAnswer: string | null; difficulty: string | null };
+  const bankQuestions: BankQuestion[] = await prisma.question.findMany({
     where: { topicId },
     take: MAX_QUESTIONS * 2,
     orderBy: { createdAt: 'desc' },
@@ -84,7 +85,7 @@ async function gatherQuestions(topicId: string): Promise<HomeworkQuestion[]> {
   if (bankQuestions.length >= MIN_QUESTIONS) {
     return shuffle(bankQuestions)
       .slice(0, MAX_QUESTIONS)
-      .map((q) => ({
+      .map((q): HomeworkQuestion => ({
         id: q.id,
         type: q.type,
         prompt: q.prompt,

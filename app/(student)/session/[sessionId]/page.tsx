@@ -283,7 +283,7 @@ export default function SessionPage() {
             <PhaseContentRenderer
               content={content}
               homework={homework}
-              sessionState={session.state}
+
               router={router}
             />
 
@@ -350,12 +350,10 @@ function CompletionView({ phase }: { phase: PhaseData }) {
 function PhaseContentRenderer({
   content,
   homework,
-  sessionState,
   router,
 }: {
   content: ContentData | null;
   homework: HomeworkData | null;
-  sessionState: string;
   router: ReturnType<typeof useRouter>;
 }) {
   if (!content) return <p className="text-gray-400 italic">Loading content...</p>;
