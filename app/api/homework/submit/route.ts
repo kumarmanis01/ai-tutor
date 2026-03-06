@@ -157,7 +157,7 @@ export async function POST(req: Request) {
     topicId: assignment.topicId,
     source: 'homework',
     correctCount,
-    wrongCount,
+    wrongCount: totalCount - correctCount,
   });
 
   // ── Response ───────────────────────────────────────────────────────────
