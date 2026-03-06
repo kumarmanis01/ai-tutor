@@ -64,6 +64,7 @@ model User {
   studentTopicMastery      StudentTopicMastery[]
   studentTopicProgress     StudentTopicProgress[]
   structuredSessions       StructuredSession[]
+  homeworkAssignments      HomeworkAssignment[]
   subscriptions            Subscription[]
   testResults              TestResult[]
   userBadges               UserBadge[]
@@ -833,11 +834,39 @@ model StructuredSession {
   startedAt   DateTime     @default(now())
   completedAt DateTime?
   meta        Json?
-  student     User         @relation(fields: [studentId], references: [id], onDelete: Cascade)
-  topic       TopicDef     @relation(fields: [topicId], references: [id])
+  student     User                @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  topic       TopicDef            @relation(fields: [topicId], references: [id])
+  homework    HomeworkAssignment[]
 
   @@index([studentId, state])
   @@index([topicId])
+}
+
+model HomeworkAssignment {
+  id        String            @id @default(cuid())
+  studentId String
+  topicId   String
+  sessionId String?
+  questions Json
+  status    HomeworkStatus    @default(PENDING)
+  dueDate   DateTime
+  score     Float?
+  createdAt DateTime          @default(now())
+  updatedAt DateTime          @updatedAt
+  student   User              @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  topic     TopicDef          @relation(fields: [topicId], references: [id])
+  session   StructuredSession? @relation(fields: [sessionId], references: [id])
+
+  @@index([studentId, status])
+  @@index([topicId])
+  @@index([sessionId])
+}
+
+enum HomeworkStatus {
+  PENDING
+  IN_PROGRESS
+  SUBMITTED
+  GRADED
 }
 
 enum SessionPhase {
@@ -1024,6 +1053,7 @@ model TopicDef {
   questions            Question[]
   progress             StudentTopicProgress[]
   structuredSessions   StructuredSession[]
+  homework             HomeworkAssignment[]
 
   @@unique([chapterId, slug])
 }

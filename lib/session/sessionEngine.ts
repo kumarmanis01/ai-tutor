@@ -9,6 +9,7 @@
 
 import { prisma } from '@/lib/prisma';
 import { logger } from '@/lib/logger';
+import { generateHomework } from '@/lib/session/homework';
 import type { SessionPhase } from '@prisma/client';
 
 // ─── State Machine ───────────────────────────────────────────────────────────
@@ -48,6 +49,7 @@ export interface SessionView {
   totalPhases: number;
   startedAt: string;
   completedAt: string | null;
+  homeworkId: string | null;
 }
 
 interface PhaseContent {
@@ -171,7 +173,20 @@ export async function advanceSession(
     to: next,
   });
 
-  return toSessionView(updated);
+  // Auto-generate homework when entering HOMEWORK phase
+  let homeworkId: string | null = null;
+  if (next === 'HOMEWORK') {
+    try {
+      const hw = await generateHomework(studentId, updated.topicId, sessionId);
+      homeworkId = hw.id;
+    } catch (err) {
+      logger.warn('[SESSION_HOMEWORK_SKIP]', { sessionId, error: err });
+    }
+  }
+
+  const view = toSessionView(updated);
+  view.homeworkId = homeworkId;
+  return view;
 }
 
 /**
@@ -292,9 +307,10 @@ function toSessionView(s: SessionWithTopic): SessionView {
     chapter: s.topic.chapter.name,
     state: s.state,
     phaseIndex: PHASE_INDEX.get(s.state) ?? 0,
-    totalPhases: PHASE_ORDER.length - 1, // exclude COMPLETE from count
+    totalPhases: PHASE_ORDER.length - 1,
     startedAt: s.startedAt.toISOString(),
     completedAt: s.completedAt?.toISOString() ?? null,
+    homeworkId: null,
   };
 }
 
