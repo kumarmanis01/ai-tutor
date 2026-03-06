@@ -33,6 +33,7 @@
     "app/**/page.tsx",
     "app/**/layout.tsx",
     "app/**/route.ts",
-    "worker/k8s-adapter.ts"
+    "worker/k8s-adapter.ts",
+    "worker/dev-entry.ts"
   ]
 }
