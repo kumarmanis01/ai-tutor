@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useEffect, useState, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import useCurrentUser from '@/hooks/useCurrentUser';
 import { useAcademicHierarchy } from '@/hooks/useAcademicHierarchy';
 import type { HierarchySubject, HierarchyChapter, HierarchyTopic } from '@/hooks/useAcademicHierarchy';
@@ -45,6 +45,7 @@ const PHASE_LABELS: Record<string, string> = {
 
 export default function NotesTab() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { data: profile } = useCurrentUser();
   const { helpers, loading: hierarchyLoading } = useAcademicHierarchy();
 
@@ -57,6 +58,10 @@ export default function NotesTab() {
   const [note, setNote] = useState<TopicNoteData | null>(null);
   const [noteLoading, setNoteLoading] = useState(false);
   const [noteError, setNoteError] = useState<string | null>(null);
+
+  // Capture URL params once at mount so the ref stays stable
+  const initialTopicId = useRef(searchParams.get('topicId'));
+  const initialTopicName = useRef(searchParams.get('topicName') ?? '');
 
   // ── Fetch overview data ───────────────────────────────────────────────
   useEffect(() => {
@@ -110,11 +115,24 @@ export default function NotesTab() {
       });
   }, []);
 
+  // Auto-open a topic when landing with ?topicId= (e.g. from TopicCompletionModal)
+  useEffect(() => {
+    if (initialTopicId.current) {
+      selectTopic(initialTopicId.current, initialTopicName.current);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectTopic]);
+
   const clearSelection = useCallback(() => {
     setSelectedTopicId(null);
     setSelectedTopicName('');
     setNote(null);
     setNoteError(null);
+    // Remove the topicId param from the URL without a full navigation
+    const url = new URL(window.location.href);
+    url.searchParams.delete('topicId');
+    url.searchParams.delete('topicName');
+    window.history.replaceState(null, '', url.toString());
   }, []);
 
   // ── Hierarchy data ────────────────────────────────────────────────────
