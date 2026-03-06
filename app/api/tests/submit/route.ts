@@ -7,6 +7,7 @@ import { updateLearningProfile } from '@/lib/recommendations/engine';
 import { adjustDifficultyAfterTest } from '@/lib/personalization/adaptDifficulty';
 import { getNextAction } from '@/lib/homeEngine/getNextAction';
 import { logger } from '@/lib/logger';
+import { recordSessionEvents } from '@/lib/session/sessionEvents';
 
 export const dynamic = 'force-dynamic';
 
@@ -140,6 +141,31 @@ export async function POST(req: Request) {
       attemptId: attempt.id,
       error: err,
     });
+  }
+
+  // Record QUESTION_ANSWERED session events when inside a structured session
+  if (topicId) {
+    try {
+      const structuredSession = await prisma.structuredSession.findFirst({
+        where: { studentId: user.id, topicId, state: { not: 'COMPLETE' } },
+        select: { id: true },
+      });
+      if (structuredSession) {
+        const events = result.graded.map((g) => ({
+          sessionId: structuredSession.id,
+          eventType: 'QUESTION_ANSWERED' as const,
+          metadata: {
+            studentId: user.id,
+            questionId: g.questionId,
+            isCorrect: g.correct,
+            source: 'test',
+          },
+        }));
+        recordSessionEvents(events);
+      }
+    } catch {
+      // non-fatal
+    }
   }
 
   res = NextResponse.json({ attemptId: attempt.id, ...result, difficultyFeedback });

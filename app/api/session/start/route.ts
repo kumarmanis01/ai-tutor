@@ -8,6 +8,7 @@ import {
 } from '@/lib/session/sessionEngine';
 import { resolvePhaseContent } from '@/lib/session/getPhaseContent';
 import { logger } from '@/lib/logger';
+import { recordSessionEvent } from '@/lib/session/sessionEvents';
 
 export const dynamic = 'force-dynamic';
 
@@ -47,6 +48,13 @@ export async function POST(req: Request) {
     const view = await startSession(user.id, body.topicId);
     const phase = getPhaseContent(view.state);
     const content = await resolvePhaseContent(view.state, view.topicId, view.sessionId, user.id);
+
+    recordSessionEvent({
+      sessionId: view.sessionId,
+      eventType: 'SESSION_STARTED',
+      metadata: { studentId: user.id, topicId: body.topicId, phase: view.state },
+    });
+
     res = NextResponse.json({ session: view, phase, content });
   } catch (err) {
     if (err instanceof SessionError) {

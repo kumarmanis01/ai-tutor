@@ -11,7 +11,14 @@
 
 import { prisma } from '@/lib/prisma';
 import { logger } from '@/lib/logger';
+import { getRedis } from '@/lib/redis';
 import { computeMomentumScore } from '@/lib/learning/momentumScore';
+import { getWeakTopicIds } from '@/lib/learning/getWeakTopics';
+
+// ─── Cache ───────────────────────────────────────────────────────────────────
+
+const CACHE_PREFIX = 'topic-ranker:';
+const CACHE_TTL_SECONDS = 5 * 60;
 
 // ─── Feature Flag ────────────────────────────────────────────────────────────
 
@@ -24,6 +31,7 @@ export function isTopicRecommendationEnabled(): boolean {
 
 export interface TopicRecommendation {
   topicId: string;
+  topicTitle: string;
   subject: string;
   chapter: string;
   reason: string;
@@ -44,7 +52,7 @@ interface ScoredTopic {
 // ─── Score Weights ───────────────────────────────────────────────────────────
 
 const WEIGHTS = {
-  /** Topics where mastery < 0.4 and practiceCount > 0 (student struggled) */
+  /** Topics where mastery < 0.4 and practiceCount > 5 (student struggled) */
   WEAK_TOPIC_BOOST: 40,
   /** The next un-started topic in curriculum order */
   CURRICULUM_NEXT_BOOST: 30,
@@ -70,6 +78,8 @@ const RECENCY_HOURS = 24;
 
 /**
  * Returns the single best next topic for a student to study.
+ * Results are cached in Redis for 5 minutes to avoid repeated heavy
+ * computation on every dashboard load.
  * Returns null when the feature flag is off or no eligible topics exist.
  */
 export async function getNextTopicRecommendation(
@@ -77,6 +87,24 @@ export async function getNextTopicRecommendation(
 ): Promise<TopicRecommendation | null> {
   if (!isTopicRecommendationEnabled()) return null;
 
+  const cacheKey = `${CACHE_PREFIX}${studentId}`;
+
+  // ── Try cache ───────────────────────────────────────────────────────────
+  try {
+    const redis = getRedis();
+    const cached = await redis.get(cacheKey);
+    if (cached) {
+      logger.debug('[TOPIC_RANKER_CACHE] hit', { studentId, cacheKey });
+      return JSON.parse(cached) as TopicRecommendation;
+    }
+  } catch (err) {
+    logger.warn('[TOPIC_RANKER_CACHE] read error, falling back to compute', {
+      studentId,
+      error: String(err),
+    });
+  }
+
+  // ── Cache miss — compute ────────────────────────────────────────────────
   const scored = await rankTopics(studentId);
   if (scored.length === 0) return null;
 
@@ -89,12 +117,45 @@ export async function getNextTopicRecommendation(
     signals: best.signals,
   });
 
-  return {
+  const recommendation: TopicRecommendation = {
     topicId: best.topicId,
+    topicTitle: best.topicName,
     subject: best.subjectName,
     chapter: best.chapterName,
     reason: pickReason(best),
   };
+
+  // ── Store in cache ──────────────────────────────────────────────────────
+  try {
+    const redis = getRedis();
+    await redis.set(cacheKey, JSON.stringify(recommendation), 'EX', CACHE_TTL_SECONDS);
+    logger.debug('[TOPIC_RANKER_CACHE] stored', { studentId, cacheKey, ttl: CACHE_TTL_SECONDS });
+  } catch (err) {
+    logger.warn('[TOPIC_RANKER_CACHE] write error', {
+      studentId,
+      error: String(err),
+    });
+  }
+
+  return recommendation;
+}
+
+/**
+ * Invalidate the cached recommendation for a student.
+ * Call after events that change ranking signals (e.g. session completion,
+ * practice submission, mastery update).
+ */
+export async function invalidateTopicRankerCache(studentId: string): Promise<void> {
+  try {
+    const redis = getRedis();
+    await redis.del(`${CACHE_PREFIX}${studentId}`);
+    logger.debug('[TOPIC_RANKER_CACHE] invalidated', { studentId });
+  } catch (err) {
+    logger.warn('[TOPIC_RANKER_CACHE] invalidation error', {
+      studentId,
+      error: String(err),
+    });
+  }
 }
 
 // ─── Core Algorithm ──────────────────────────────────────────────────────────
@@ -154,8 +215,11 @@ async function rankTopics(studentId: string): Promise<ScoredTopic[]> {
 
   if (curriculumTopics.length === 0) return [];
 
-  // ── Compute momentum score (student-wide, not per-topic) ──────────────
-  const momentum = await computeMomentumScore(studentId);
+  // ── Compute student-wide signals in parallel ──────────────────────────
+  const [momentum, weakTopicIdSet] = await Promise.all([
+    computeMomentumScore(studentId),
+    getWeakTopicIds(studentId),
+  ]);
 
   // ── Build lookup maps ──────────────────────────────────────────────────
   type TopicProgress = (typeof allProgress)[number];
@@ -205,8 +269,8 @@ async function rankTopics(studentId: string): Promise<ScoredTopic[]> {
 
     let score = WEIGHTS.BASE;
 
-    // 1. Weak topic boost
-    if (mastery < MASTERY_THRESHOLD_WEAK && practiceCount > 0) {
+    // 1. Weak topic boost (mastery < 0.4 AND practiceCount > 5)
+    if (weakTopicIdSet.has(topic.id)) {
       signals.weakTopicBoost = WEIGHTS.WEAK_TOPIC_BOOST;
       score += WEIGHTS.WEAK_TOPIC_BOOST;
     }

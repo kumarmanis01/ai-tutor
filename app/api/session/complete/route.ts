@@ -9,6 +9,7 @@ import {
 import { resolvePhaseContent } from '@/lib/session/getPhaseContent';
 import { updateStudentTopicProgress } from '@/lib/learning/updateTopicProgress';
 import { logger } from '@/lib/logger';
+import { recordSessionEvent } from '@/lib/session/sessionEvents';
 
 export const dynamic = 'force-dynamic';
 
@@ -62,6 +63,13 @@ export async function POST(req: Request) {
     }
 
     const content = await resolvePhaseContent(view.state, view.topicId, view.sessionId, user.id);
+
+    recordSessionEvent({
+      sessionId: view.sessionId,
+      eventType: 'SESSION_COMPLETED',
+      metadata: { studentId: user.id, topicId: view.topicId },
+    });
+
     res = NextResponse.json({ session: view, phase, content });
   } catch (err) {
     if (err instanceof SessionError) {

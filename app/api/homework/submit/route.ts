@@ -4,6 +4,7 @@ import { getServerSessionForHandlers } from '@/lib/session';
 import { normalizeAnswer } from '@/lib/tests';
 import { updateStudentTopicProgress } from '@/lib/learning/updateTopicProgress';
 import { logger } from '@/lib/logger';
+import { recordSessionEvent, recordSessionEvents } from '@/lib/session/sessionEvents';
 import type { HomeworkQuestion } from '@/lib/session/homework';
 
 export const dynamic = 'force-dynamic';
@@ -159,6 +160,33 @@ export async function POST(req: Request) {
     correctCount,
     wrongCount: totalCount - correctCount,
   });
+
+  if (assignment.sessionId) {
+    recordSessionEvent({
+      sessionId: assignment.sessionId,
+      eventType: 'HOMEWORK_SUBMITTED',
+      metadata: {
+        studentId: user.id,
+        assignmentId: assignment.id,
+        topicId: assignment.topicId,
+        score,
+        totalQuestions: totalCount,
+        correctAnswers: correctCount,
+      },
+    });
+
+    const questionEvents = gradedAnswers.map((ga) => ({
+      sessionId: assignment.sessionId!,
+      eventType: 'QUESTION_ANSWERED' as const,
+      metadata: {
+        studentId: user.id,
+        questionId: ga.questionId,
+        isCorrect: ga.isCorrect,
+        source: 'homework',
+      },
+    }));
+    recordSessionEvents(questionEvents);
+  }
 
   // ── Response ───────────────────────────────────────────────────────────
   res = NextResponse.json({

@@ -837,6 +837,7 @@ model StructuredSession {
   student     User                @relation(fields: [studentId], references: [id], onDelete: Cascade)
   topic       TopicDef            @relation(fields: [topicId], references: [id])
   homework    HomeworkAssignment[]
+  events      SessionEvent[]
 
   @@index([studentId, state])
   @@index([topicId])
@@ -891,6 +892,28 @@ enum SessionPhase {
   TEST
   HOMEWORK
   COMPLETE
+}
+
+enum SessionEventType {
+  SESSION_STARTED
+  PHASE_STARTED
+  QUESTION_ANSWERED
+  HOMEWORK_SUBMITTED
+  SESSION_COMPLETED
+}
+
+model SessionEvent {
+  id        String           @id @default(cuid())
+  sessionId String
+  eventType SessionEventType
+  timestamp DateTime         @default(now())
+  metadata  Json?
+
+  session StructuredSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId])
+  @@index([eventType])
+  @@index([sessionId, eventType])
 }
 
 model PracticeTest {
