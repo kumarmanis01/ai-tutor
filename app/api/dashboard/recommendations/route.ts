@@ -68,95 +68,166 @@ export async function GET() {
 }
 
 /**
- * Fallback recommendations when engine fails or returns empty
+ * Fallback recommendations when engine fails or returns empty.
+ * Priority order:
+ *   1. Topic with incomplete session
+ *   2. Weak mastery topic (low-accuracy chapter → first topic)
+ *   3. Next topic in chapter sequence
+ *   4. First topic in syllabus
+ * Every item includes meta.topicId / meta.chapterId / meta.subjectId.
  */
 async function getFallbackRecommendations(userId: string) {
   const user = await prisma.user.findUnique({ where: { id: userId } });
   const subjects = (user?.subjects || []) as string[];
   const board = user?.board || '';
   const grade = user?.grade || '';
-  const language = user?.language || 'en';
   const hasSubjects = subjects && subjects.length > 0;
+  const items: any[] = [];
 
-  // Try catalog-backed recommendations first
-  const catalog = await prisma.contentCatalog.findMany({
-    where: {
-      active: true,
-      board,
-      grade,
-      language,
-      ...(hasSubjects ? { subject: { in: subjects } } : {}),
-    },
-    take: 10,
-    orderBy: { updatedAt: 'desc' },
+  // 1. Incomplete session → resume topic
+  const incompleteSession = await prisma.learningSession.findFirst({
+    where: { studentId: userId, isCompleted: false },
+    orderBy: { lastAccessed: 'desc' },
+    select: { activityRef: true, activityType: true, meta: true },
   });
 
-  if (catalog.length > 0) {
-    return catalog.map((c) => ({
-      id: c.contentId,
-      contentId: c.contentId,
-      type: c.type || 'lesson',
-      subject: c.subject,
-      title: c.title,
-      reasoning: `Matched ${board} ${grade} ${language} ${c.subject}`,
-      priority: 50,
-    }));
+  if (incompleteSession) {
+    const meta = (incompleteSession.meta && typeof incompleteSession.meta === 'object')
+      ? incompleteSession.meta as Record<string, unknown>
+      : {};
+    const topicId = (meta.topicId as string) || incompleteSession.activityRef || null;
+    if (topicId) {
+      const topic = await prisma.topicDef.findUnique({
+        where: { id: topicId },
+        include: { chapter: { include: { subject: true } } },
+      }).catch(() => null);
+      items.push({
+        id: `resume:${topicId}`,
+        contentId: `topic:${topicId}`,
+        type: incompleteSession.activityType === 'practice' ? 'practice' : 'notes',
+        subject: topic?.chapter?.subject?.name || (meta.subject as string) || 'General',
+        title: topic ? `Continue: ${topic.name}` : 'Continue where you left off',
+        reasoning: 'Resume your incomplete session',
+        priority: 100,
+        meta: {
+          topicId,
+          chapterId: topic?.chapter?.id,
+          chapterName: topic?.chapter?.name,
+          subjectId: topic?.chapter?.subject?.id,
+          subjectName: topic?.chapter?.subject?.name,
+        },
+      });
+    }
   }
 
-  // Fallback to ChapterDef (lessons/chapters available in the system)
+  // 2. Weak mastery topic via low-score test results
+  const weakResults = await prisma.testResult.findMany({
+    where: { studentId: userId },
+    orderBy: { createdAt: 'desc' },
+    take: 10,
+    select: { score: true, totalMarks: true, testId: true },
+  });
+  const weakTestIds = weakResults
+    .filter(r => r.totalMarks && r.totalMarks > 0 && (r.score ?? 0) / r.totalMarks < 0.6)
+    .map(r => r.testId)
+    .filter(Boolean);
+
+  if (weakTestIds.length > 0) {
+    const weakTest = await prisma.generatedTest.findFirst({
+      where: { id: { in: weakTestIds as string[] } },
+      include: { topic: { include: { chapter: { include: { subject: true } } } } },
+    }).catch(() => null);
+    if (weakTest?.topic) {
+      items.push({
+        id: `weak:${weakTest.topic.id}`,
+        contentId: `practice:${weakTest.topic.id}`,
+        type: 'practice',
+        subject: weakTest.topic.chapter?.subject?.name || 'General',
+        title: `Strengthen: ${weakTest.topic.name}`,
+        reasoning: 'Review recommended based on test performance',
+        priority: 90,
+        meta: {
+          topicId: weakTest.topic.id,
+          topicName: weakTest.topic.name,
+          chapterId: weakTest.topic.chapter?.id,
+          chapterName: weakTest.topic.chapter?.name,
+          subjectId: weakTest.topic.chapter?.subject?.id,
+          subjectName: weakTest.topic.chapter?.subject?.name,
+        },
+      });
+    }
+  }
+
+  // 3. Next topic in chapter — first uncompleted topic per chapter
   const chapters = await prisma.chapterDef.findMany({
     where: {
       lifecycle: 'active',
-      ...(hasSubjects ? { subject: { name: { in: subjects } } } : {})
+      ...(hasSubjects ? { subject: { name: { in: subjects } } } : {}),
     },
     take: 10,
-    include: { subject: { select: { id: true, name: true } } },
-    orderBy: { name: 'asc' }
+    include: {
+      subject: { select: { id: true, name: true } },
+      topics: { select: { id: true, name: true }, orderBy: { order: 'asc' }, take: 1 },
+    },
+    orderBy: { order: 'asc' },
   });
 
-  if (chapters.length > 0) {
-    return chapters.map((c) => ({
-      id: c.id,
-      contentId: `chapter:${c.id}`,
-      type: 'chapter',
-      subject: c.subject?.name || 'General',
-      title: c.name,
-      chapter: c.slug,
-      reasoning: `Learn ${c.name} in ${c.subject?.name || 'your curriculum'}`,
-      priority: 60,
-      meta: { subjectId: c.subject?.id }
-    }));
-  }
-
-  // Last resort: recent test-based suggestions
-  const results = await prisma.testResult.findMany({ 
-    where: { studentId: userId }, 
-    take: 10, 
-    orderBy: { createdAt: 'desc' } 
-  });
-  
-  if (results.length > 0) {
-    return results.slice(0, 4).map((r) => ({
-      id: r.id,
-      contentId: r.id,
-      type: 'practice',
-      subject: 'General',
-      title: `Practice based on recent test`,
-      reasoning: 'Recent performance suggests targeted practice',
-      priority: 80,
-    }));
-  }
-
-  // Final fallback: return generic suggestions
-  return [
-    {
-      id: 'explore-1',
-      contentId: 'explore-1',
+  for (const c of chapters) {
+    if (items.length >= 10) break;
+    const topic = c.topics?.[0];
+    items.push({
+      id: topic?.id || c.id,
+      contentId: topic ? `lesson:${topic.id}` : `lesson:${c.id}`,
       type: 'lesson',
-      subject: subjects[0] || 'Mathematics',
-      title: `Explore ${subjects[0] || 'Mathematics'}`,
+      subject: c.subject?.name || 'General',
+      title: topic ? `Learn: ${topic.name}` : c.name,
+      chapter: c.slug,
+      reasoning: `Next topic in ${c.name} — ${c.subject?.name || 'your curriculum'}`,
+      priority: 60,
+      meta: {
+        topicId: topic?.id || null,
+        topicName: topic?.name || null,
+        chapterId: c.id,
+        chapterName: c.name,
+        subjectId: c.subject?.id || null,
+        subjectName: c.subject?.name || null,
+      },
+    });
+  }
+
+  // 4. First topic in syllabus (absolute fallback for brand-new users)
+  if (items.length === 0) {
+    const firstChapter = await prisma.chapterDef.findFirst({
+      where: {
+        lifecycle: 'active',
+        ...(hasSubjects ? { subject: { name: { in: subjects } } } : {}),
+      },
+      orderBy: { order: 'asc' },
+      include: {
+        subject: { select: { id: true, name: true } },
+        topics: { select: { id: true, name: true }, orderBy: { order: 'asc' }, take: 1 },
+      },
+    });
+
+    const firstTopic = firstChapter?.topics?.[0];
+    items.push({
+      id: firstTopic?.id || 'explore-1',
+      contentId: firstTopic ? `lesson:${firstTopic.id}` : 'explore-1',
+      type: 'lesson' as const,
+      subject: firstChapter?.subject?.name || subjects[0] || 'Mathematics',
+      title: firstTopic ? `Start: ${firstTopic.name}` : `Explore ${subjects[0] || 'Mathematics'}`,
       reasoning: 'Start learning with recommended content',
-      priority: 40
-    }
-  ];
+      priority: 40,
+      meta: {
+        topicId: firstTopic?.id || null,
+        topicName: firstTopic?.name || null,
+        chapterId: firstChapter?.id || null,
+        chapterName: firstChapter?.name || null,
+        subjectId: firstChapter?.subject?.id || null,
+        subjectName: firstChapter?.subject?.name || null,
+      },
+    });
+  }
+
+  return items;
 }
