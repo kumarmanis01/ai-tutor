@@ -63,6 +63,7 @@ model User {
   studentStreaks           StudentStreak[]
   studentTopicMastery      StudentTopicMastery[]
   studentTopicProgress     StudentTopicProgress[]
+  structuredSessions       StructuredSession[]
   subscriptions            Subscription[]
   testResults              TestResult[]
   userBadges               UserBadge[]
@@ -824,6 +825,29 @@ model StudentTopicProgress {
   @@index([topicId])
 }
 
+model StructuredSession {
+  id          String       @id @default(cuid())
+  studentId   String
+  topicId     String
+  state       SessionPhase @default(EXPLANATION)
+  startedAt   DateTime     @default(now())
+  completedAt DateTime?
+  meta        Json?
+  student     User         @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  topic       TopicDef     @relation(fields: [topicId], references: [id])
+
+  @@index([studentId, state])
+  @@index([topicId])
+}
+
+enum SessionPhase {
+  EXPLANATION
+  PRACTICE
+  TEST
+  HOMEWORK
+  COMPLETE
+}
+
 model PracticeTest {
   id        String   @id @default(cuid())
   title     String
@@ -995,10 +1019,11 @@ model TopicDef {
   createdAt DateTime         @default(now())
   logs      AIContentLog[]
   tests     GeneratedTest[]
-  chapter   ChapterDef       @relation(fields: [chapterId], references: [id])
-  notes     TopicNote[]
-  questions Question[]
-  progress  StudentTopicProgress[]
+  chapter              ChapterDef             @relation(fields: [chapterId], references: [id])
+  notes                TopicNote[]
+  questions            Question[]
+  progress             StudentTopicProgress[]
+  structuredSessions   StructuredSession[]
 
   @@unique([chapterId, slug])
 }
