@@ -597,3 +597,50 @@ export async function updateTopicMastery(studentId: string, attemptId: string): 
     });
   }
 }
+
+/**
+ * Updates StudentTopicProgress with a simple +0.1 / -0.05 mastery model.
+ * Called after grading — receives per-question results for the attempt.
+ */
+export async function updateStudentTopicProgress(
+  studentId: string,
+  topicId: string,
+  correctCount: number,
+  wrongCount: number,
+): Promise<void> {
+  if (!topicId) return;
+
+  const existing = await prisma.studentTopicProgress.findUnique({
+    where: { studentId_topicId: { studentId, topicId } },
+  });
+
+  const prevMastery = existing?.mastery ?? 0;
+  const delta = correctCount * 0.1 + wrongCount * -0.05;
+  const newMastery = Math.max(0, Math.min(1, prevMastery + delta));
+  const newPracticeCount = (existing?.practiceCount ?? 0) + correctCount + wrongCount;
+
+  await prisma.studentTopicProgress.upsert({
+    where: { studentId_topicId: { studentId, topicId } },
+    update: {
+      mastery: newMastery,
+      practiceCount: newPracticeCount,
+      lastStudiedAt: new Date(),
+    },
+    create: {
+      studentId,
+      topicId,
+      mastery: newMastery,
+      practiceCount: newPracticeCount,
+      lastStudiedAt: new Date(),
+    },
+  });
+
+  logger.info('[TOPIC_PROGRESS_UPDATED]', {
+    studentId,
+    topicId,
+    prevMastery,
+    newMastery,
+    delta,
+    practiceCount: newPracticeCount,
+  });
+}

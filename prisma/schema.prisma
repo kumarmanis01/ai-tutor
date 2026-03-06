@@ -62,6 +62,7 @@ model User {
   studentQuestions         StudentQuestion[]
   studentStreaks           StudentStreak[]
   studentTopicMastery      StudentTopicMastery[]
+  studentTopicProgress     StudentTopicProgress[]
   subscriptions            Subscription[]
   testResults              TestResult[]
   userBadges               UserBadge[]
@@ -807,6 +808,22 @@ model StudentTopicMastery {
   @@index([subject, chapter])
 }
 
+model StudentTopicProgress {
+  id            String   @id @default(cuid())
+  studentId     String
+  topicId       String
+  mastery       Float    @default(0)
+  practiceCount Int      @default(0)
+  lastStudiedAt DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  student       User     @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  topic         TopicDef @relation(fields: [topicId], references: [id])
+
+  @@unique([studentId, topicId])
+  @@index([studentId, mastery])
+  @@index([topicId])
+}
+
 model PracticeTest {
   id        String   @id @default(cuid())
   title     String
@@ -981,6 +998,7 @@ model TopicDef {
   chapter   ChapterDef       @relation(fields: [chapterId], references: [id])
   notes     TopicNote[]
   questions Question[]
+  progress  StudentTopicProgress[]
 
   @@unique([chapterId, slug])
 }

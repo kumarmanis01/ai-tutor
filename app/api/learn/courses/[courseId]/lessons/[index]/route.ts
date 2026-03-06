@@ -16,6 +16,7 @@
  */
 import { NextResponse } from 'next/server'
 import { getServerSessionForHandlers } from '@/lib/session'
+import { logger } from '@/lib/logger'
 
 /**
  * Enhanced content type for new schema
@@ -286,6 +287,20 @@ export async function GET(req: Request, { params }: { params: Promise<{ courseId
           overviewParts.push(transformed.overview)
           allConcepts.push(...transformed.concepts)
         }
+      }
+
+      // Non-blocking: update lastStudiedAt for each topic the student is viewing
+      if (userId) {
+        const topicIds = topicsWithContent.map((t: { id: string }) => t.id)
+        Promise.all(
+          topicIds.map((tid: string) =>
+            db.studentTopicProgress.upsert({
+              where: { studentId_topicId: { studentId: userId, topicId: tid } },
+              update: { lastStudiedAt: new Date() },
+              create: { studentId: userId, topicId: tid, mastery: 0, practiceCount: 0, lastStudiedAt: new Date() },
+            })
+          )
+        ).catch((err: unknown) => logger.error('lesson.trackStudy', { userId, error: err }))
       }
 
       return NextResponse.json({

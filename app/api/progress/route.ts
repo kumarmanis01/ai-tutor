@@ -128,6 +128,24 @@ export async function POST(req: NextRequest) {
     });
   }
 
+  // Track lastStudiedAt on StudentTopicProgress (notes view / topic interaction)
+  try {
+    await prisma.studentTopicProgress.upsert({
+      where: { studentId_topicId: { studentId: user.id, topicId } },
+      update: { lastStudiedAt: new Date() },
+      create: {
+        studentId: user.id,
+        topicId,
+        mastery: 0,
+        practiceCount: 0,
+        lastStudiedAt: new Date(),
+      },
+    });
+    logger.info('[TOPIC_PROGRESS_STUDIED]', { studentId: user.id, topicId });
+  } catch (err) {
+    logger.error('ProgressAPI.updateTopicProgress', { userId: user.id, topicId, error: err });
+  }
+
   res = NextResponse.json({
     success: true,
     mastery: {

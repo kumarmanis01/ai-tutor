@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getServerSessionForHandlers } from '@/lib/session';
-import { applyGrading, SubmitPayload, updateTopicMastery } from '@/lib/tests';
+import { applyGrading, SubmitPayload, updateTopicMastery, updateStudentTopicProgress } from '@/lib/tests';
 import { updateLearningProfile } from '@/lib/recommendations/engine';
 import { adjustDifficultyAfterTest } from '@/lib/personalization/adaptDifficulty';
 import { getNextAction } from '@/lib/homeEngine/getNextAction';
@@ -83,6 +83,21 @@ export async function POST(req: Request) {
     topicId = gt?.topicId ?? null;
   } catch {
     // non-fatal — test may not be a GeneratedTest
+  }
+
+  // Update lightweight topic progress (+0.1 correct, -0.05 wrong)
+  if (topicId) {
+    try {
+      const correctCount = result.graded.filter((g) => g.correct).length;
+      const wrongCount = result.graded.length - correctCount;
+      await updateStudentTopicProgress(user.id, topicId, correctCount, wrongCount);
+    } catch (err) {
+      logger.error('TestsSubmitAPI.updateStudentTopicProgress', {
+        userId: user.id,
+        topicId,
+        error: err,
+      });
+    }
   }
 
   // Compute next rule after mastery update for audit logging.
