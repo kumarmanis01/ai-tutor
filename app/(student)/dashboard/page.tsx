@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation';
 import { requireActiveSession } from '@/lib/auth';
 
 import NextActionCard from '@/components/home/NextActionCard';
+import TutorRecommendationCard from '@/components/home/TutorRecommendationCard';
 import TodayGoal from '@/components/home/TodayGoal';
 import LearningPathSnapshot from '@/components/home/LearningPathSnapshot';
 import TodaysPlan from '@/components/home/TodaysPlan';
@@ -49,6 +50,11 @@ export default async function StudentHomeDashboardPage() {
         {/* 1. NextActionCard */}
         <section aria-labelledby="next-action-heading">
           {nextAction ? <NextActionCard {...nextAction} /> : <NextActionCard topic="" />}
+        </section>
+
+        {/* 1b. Tutor Recommendation — runs in parallel, self-fetching */}
+        <section aria-labelledby="tutor-recommendation-heading">
+          <TutorRecommendationCard />
         </section>
 
         {/* 2. TodayGoal */}
