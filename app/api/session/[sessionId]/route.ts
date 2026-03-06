@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getServerSessionForHandlers } from '@/lib/session';
 import { getPhaseContent, isSessionEngineEnabled } from '@/lib/session/sessionEngine';
+import { resolvePhaseContent } from '@/lib/session/getPhaseContent';
 import { logger } from '@/lib/logger';
 import type { SessionPhase } from '@prisma/client';
 
@@ -61,8 +62,15 @@ export async function GET(
     return res;
   }
 
-  const phase = getPhaseContent(session.state as SessionPhase);
+  const phaseInfo = getPhaseContent(session.state as SessionPhase);
   const homework = session.homework?.[0] ?? null;
+
+  const content = await resolvePhaseContent(
+    session.state as SessionPhase,
+    session.topicId,
+    session.id,
+    user.id,
+  );
 
   res = NextResponse.json({
     session: {
@@ -75,7 +83,8 @@ export async function GET(
       startedAt: session.startedAt.toISOString(),
       completedAt: session.completedAt?.toISOString() ?? null,
     },
-    phase,
+    phase: phaseInfo,
+    content,
     homework: homework
       ? {
           id: homework.id,

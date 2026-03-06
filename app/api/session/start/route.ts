@@ -6,6 +6,7 @@ import {
   isSessionEngineEnabled,
   SessionError,
 } from '@/lib/session/sessionEngine';
+import { resolvePhaseContent } from '@/lib/session/getPhaseContent';
 import { logger } from '@/lib/logger';
 
 export const dynamic = 'force-dynamic';
@@ -45,7 +46,8 @@ export async function POST(req: Request) {
   try {
     const view = await startSession(user.id, body.topicId);
     const phase = getPhaseContent(view.state);
-    res = NextResponse.json({ session: view, phase });
+    const content = await resolvePhaseContent(view.state, view.topicId, view.sessionId, user.id);
+    res = NextResponse.json({ session: view, phase, content });
   } catch (err) {
     if (err instanceof SessionError) {
       res = NextResponse.json({ error: err.message }, { status: err.status });

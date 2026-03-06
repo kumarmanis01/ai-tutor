@@ -6,6 +6,7 @@ import {
   isSessionEngineEnabled,
   SessionError,
 } from '@/lib/session/sessionEngine';
+import { resolvePhaseContent } from '@/lib/session/getPhaseContent';
 import { updateStudentTopicProgress } from '@/lib/tests';
 import { logger } from '@/lib/logger';
 
@@ -54,7 +55,8 @@ export async function POST(req: Request) {
       logger.error('SessionCompleteAPI.progressUpdate', { userId: user.id, error: err });
     }
 
-    res = NextResponse.json({ session: view, phase });
+    const content = await resolvePhaseContent(view.state, view.topicId, view.sessionId, user.id);
+    res = NextResponse.json({ session: view, phase, content });
   } catch (err) {
     if (err instanceof SessionError) {
       res = NextResponse.json({ error: err.message }, { status: err.status });
