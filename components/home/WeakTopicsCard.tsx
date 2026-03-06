@@ -8,6 +8,7 @@
  */
 import React from 'react';
 import Link from 'next/link';
+import EmptyState from '@/components/dashboard/EmptyState';
 
 export interface WeakTopic {
   topicId: string;
@@ -20,10 +21,6 @@ export interface WeakTopicsCardProps {
 }
 
 export default function WeakTopicsCard({ topics }: WeakTopicsCardProps) {
-  if (topics.length === 0) {
-    return null;
-  }
-
   return (
     <section
       className="bg-white rounded-lg border p-6"
@@ -33,6 +30,13 @@ export default function WeakTopicsCard({ topics }: WeakTopicsCardProps) {
         Weak Topics
       </h3>
 
+      {topics.length === 0 ? (
+        <EmptyState
+          preset="topics"
+          title="All caught up!"
+          subtitle="No weak topics right now. Keep practising to maintain your progress."
+        />
+      ) : (
       <ul className="space-y-3">
         {topics.map((topic) => (
           <li
@@ -49,6 +53,7 @@ export default function WeakTopicsCard({ topics }: WeakTopicsCardProps) {
           </li>
         ))}
       </ul>
+      )}
     </section>
   );
 }

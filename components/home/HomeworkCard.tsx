@@ -8,6 +8,7 @@
  */
 import React from 'react';
 import Link from 'next/link';
+import EmptyState from '@/components/dashboard/EmptyState';
 
 export interface HomeworkItem {
   id: string;
@@ -35,10 +36,6 @@ function dueDateLabel(dueDateIso: string): string {
 }
 
 export default function HomeworkCard({ items }: HomeworkCardProps) {
-  if (items.length === 0) {
-    return null;
-  }
-
   return (
     <section
       className="bg-white rounded-lg border p-6"
@@ -48,6 +45,13 @@ export default function HomeworkCard({ items }: HomeworkCardProps) {
         Assignments
       </h3>
 
+      {items.length === 0 ? (
+        <EmptyState
+          preset="homework"
+          title="No homework yet"
+          subtitle="Completed lessons may generate homework. Check back after your next session."
+        />
+      ) : (
       <ul className="space-y-3">
         {items.map((item) => (
           <li key={item.id} className="flex items-center justify-between gap-4">
@@ -66,6 +70,7 @@ export default function HomeworkCard({ items }: HomeworkCardProps) {
           </li>
         ))}
       </ul>
+      )}
     </section>
   );
 }
