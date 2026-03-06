@@ -1,5 +1,5 @@
 import { randomBytes } from 'crypto';
-import type { PrismaClient } from '@prisma/client';
+import type { PrismaClient, Prisma } from '@prisma/client';
 import { logger } from '@/lib/logger';
 
 export const PARENT_INVITE_TTL_DAYS = 7;
@@ -230,7 +230,7 @@ export async function linkParentToStudentByEmail(params: {
   return { studentId: student.id, status: 'linked' };
 }
 
-async function ensureParentRole(prisma: PrismaClient, parentId: string) {
+async function ensureParentRole(prisma: Prisma.TransactionClient, parentId: string) {
   try {
     const parent = await prisma.user.findUnique({ where: { id: parentId }, select: { role: true } });
     if (parent?.role === 'user') {
