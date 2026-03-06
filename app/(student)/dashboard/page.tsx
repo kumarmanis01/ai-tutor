@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
 import { requireActiveSession } from '@/lib/auth';
 
+import TodaysLessonCard from '@/components/dashboard/TodaysLessonCard';
 import NextActionCard from '@/components/home/NextActionCard';
 import ResumeSessionCard from '@/components/home/ResumeSessionCard';
 import TutorRecommendationCard from '@/components/home/TutorRecommendationCard';
@@ -58,7 +59,12 @@ export default async function StudentHomeDashboardPage() {
   return (
     <main className="max-w-5xl mx-auto px-4 py-8">
       <div className="space-y-6">
-        {/* 0. Resume active session — self-fetching, hides when no session */}
+        {/* 0. Today's Lesson hero card — tutor-guided, hides when no recommendation */}
+        <section aria-labelledby="todays-lesson-heading">
+          <TodaysLessonCard />
+        </section>
+
+        {/* 0b. Resume active session — self-fetching, hides when no session */}
         <section aria-labelledby="resume-session-heading">
           <ResumeSessionCard />
         </section>
