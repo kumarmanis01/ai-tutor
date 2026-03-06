@@ -67,10 +67,63 @@ export async function PATCH(req: NextRequest) {
     logger.info("learningSession.updated", { sessionId, completionPercentage, isCompleted });
     if (minutesWritten !== null) {
       logger.info("session.completed", { sessionId, minutesWritten, idempotent: false });
+      // Update daily study streak when session first completes
+      await updateDailyStreak(session.user.id, now).catch((err) =>
+        logger.error("streak.update.error", { error: err?.message })
+      );
     }
     return NextResponse.json({ ok: true, session: updated });
   } catch (err: any) {
     logger.error("learningSession.update.error", { error: err?.message });
     return NextResponse.json({ error: "Server error" }, { status: 500 });
+  }
+}
+
+/**
+ * Upserts the "daily" StudentStreak for a student.
+ * - If lastActive was yesterday  → increment currentStreak
+ * - If lastActive was before yesterday → reset currentStreak to 1
+ * - If lastActive is today → no change (already counted)
+ * - Updates longestStreak (best) when currentStreak exceeds it.
+ */
+async function updateDailyStreak(studentId: string, now: Date): Promise<void> {
+  const todayStart = new Date(now);
+  todayStart.setHours(0, 0, 0, 0);
+
+  const yesterdayStart = new Date(todayStart);
+  yesterdayStart.setDate(yesterdayStart.getDate() - 1);
+
+  const existing = await prisma.studentStreak.findFirst({
+    where: { studentId, kind: 'daily' },
+  });
+
+  if (existing) {
+    const lastActive = existing.lastActive;
+
+    // Already counted today — skip update
+    if (lastActive && lastActive >= todayStart) {
+      return;
+    }
+
+    let newCurrent: number;
+    if (lastActive && lastActive >= yesterdayStart) {
+      // Last study was yesterday → extend streak
+      newCurrent = existing.current + 1;
+    } else {
+      // Gap of more than one day → reset
+      newCurrent = 1;
+    }
+
+    const newBest = Math.max(existing.best, newCurrent);
+
+    await prisma.studentStreak.update({
+      where: { id: existing.id },
+      data: { current: newCurrent, best: newBest, lastActive: now },
+    });
+  } else {
+    // First ever streak record
+    await prisma.studentStreak.create({
+      data: { studentId, kind: 'daily', current: 1, best: 1, lastActive: now },
+    });
   }
 }

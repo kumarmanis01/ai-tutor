@@ -1,4 +1,5 @@
 import React from 'react';
+import EmptyState from '@/components/dashboard/EmptyState';
 
 export type Assignment = {
   id: string | number;
@@ -44,7 +45,13 @@ export default function AssignmentsRow({ assignments }: AssignmentsRowProps) {
             </li>
           ))
         ) : (
-          <li className="py-2 text-sm text-gray-500">No assignments</li>
+          <li>
+            <EmptyState
+              preset="assignments"
+              title="No assignments yet"
+              subtitle="Assignments from your sessions will show up here."
+            />
+          </li>
         )}
       </ul>
     </section>

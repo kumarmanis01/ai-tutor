@@ -10,6 +10,7 @@
  */
 
 import React from 'react';
+import EmptyState from '@/components/dashboard/EmptyState';
 
 export type PracticeResult = {
   topicName: string;
@@ -64,7 +65,12 @@ export default function PerformanceSnapshot({
       </div>
 
       {results.length === 0 ? (
-        <p className="text-sm text-gray-500">No practice results yet. Complete a practice session to see your performance.</p>
+        <EmptyState
+          preset="practice"
+          title="Start your first lesson"
+          subtitle="Complete a practice session and your results will appear here."
+          action={{ label: "Start practising", href: "/practice/start" }}
+        />
       ) : (
         <>
           {/* Results table */}

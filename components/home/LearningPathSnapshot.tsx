@@ -1,4 +1,5 @@
 import React from 'react';
+import EmptyState from '@/components/dashboard/EmptyState';
 
 export type ChapterSnapshot = {
   chapterId: string;
@@ -117,7 +118,13 @@ export default function LearningPathSnapshot({ subjects }: LearningPathSnapshotP
         })}
 
         {list.length === 0 && (
-          <li className="text-sm text-gray-500">No curriculum data available</li>
+          <li>
+            <EmptyState
+              preset="curriculum"
+              title="Preparing your learning plan"
+              subtitle="Your curriculum will appear here once your course is set up."
+            />
+          </li>
         )}
       </ul>
     </section>

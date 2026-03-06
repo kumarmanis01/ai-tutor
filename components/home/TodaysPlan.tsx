@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from 'react';
+import EmptyState from '@/components/dashboard/EmptyState';
 
 export type PlanSlot = {
   slotId: string | number;
@@ -75,7 +76,13 @@ export default function TodaysPlan({ slots }: TodaysPlanProps) {
             </li>
           ))
         ) : (
-          <li className="text-sm text-gray-500">No items scheduled for today</li>
+          <li>
+            <EmptyState
+              preset="plan"
+              title="Preparing your learning plan"
+              subtitle="Your daily schedule will appear here once your plan is ready."
+            />
+          </li>
         )}
       </ul>
     </section>
