@@ -436,6 +436,17 @@ function FailedJobsPanel({
   const [retrying, setRetrying] = useState<Record<string, boolean>>({});
   const [retryingAll, setRetryingAll] = useState(false);
 
+  const parsedReason = (lastError: string | null) => {
+    if (!lastError) return null;
+    const lower = lastError.toLowerCase();
+    if (lower.includes('llm_timeout')) return 'LLM request timed out – likely provider or network slowness.';
+    if (lower.includes('prompt_too_large')) return 'Prompt exceeded maximum allowed size. Check topic content limits.';
+    if (lower.includes('validation_failed') || lower.includes('semantic_weakness')) {
+      return 'Output failed schema/semantic validation – review content and prompts.';
+    }
+    return null;
+  };
+
   const retryJob = async (jobId: string) => {
     setRetrying((prev) => ({ ...prev, [jobId]: true }));
     try {
@@ -455,7 +466,10 @@ function FailedJobsPanel({
 
   const retryAll = async () => {
     setRetryingAll(true);
-    for (const job of failedJobs) {
+    // Prefer retrying only timeout-like failures when possible
+    const timeouts = failedJobs.filter((j) => (j.lastError || '').toLowerCase().includes('llm_timeout'));
+    const target = timeouts.length > 0 ? timeouts : failedJobs;
+    for (const job of target) {
       await retryJob(job.id);
     }
     setRetryingAll(false);
@@ -464,9 +478,14 @@ function FailedJobsPanel({
   return (
     <div className="bg-white border border-red-200 rounded-lg p-4">
       <div className="flex items-center justify-between mb-3">
-        <h3 className="text-sm font-semibold text-red-700">
-          Failed Jobs ({failedJobs.length})
-        </h3>
+        <div>
+          <h3 className="text-sm font-semibold text-red-700">
+            Failed Jobs ({failedJobs.length})
+          </h3>
+          <p className="text-xs text-gray-500 mt-1">
+            Timeout and transient failures can usually be retried safely; validation failures may require prompt/schema changes.
+          </p>
+        </div>
         <button
           onClick={retryAll}
           disabled={retryingAll}
@@ -484,9 +503,16 @@ function FailedJobsPanel({
                 <span className="text-xs text-gray-400 font-mono">{job.id.slice(0, 10)}...</span>
               </div>
               {job.lastError && (
-                <p className="mt-1 text-xs text-red-600 truncate" title={job.lastError}>
-                  {job.lastError}
-                </p>
+                <>
+                  <p className="mt-1 text-xs text-red-600 truncate" title={job.lastError}>
+                    {job.lastError}
+                  </p>
+                  {parsedReason(job.lastError) && (
+                    <p className="mt-1 text-[11px] text-gray-700">
+                      {parsedReason(job.lastError)}
+                    </p>
+                  )}
+                </>
               )}
             </div>
             <button

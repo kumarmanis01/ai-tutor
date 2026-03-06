@@ -22,6 +22,7 @@ export type QuestionFilters = {
   grade?: string;
   board?: string;
   chapter?: string;
+  topicId?: string;
   difficulty?: string;
   type?: string;
 };
@@ -122,8 +123,10 @@ async function syncFromGeneratedQuestions(filters: QuestionFilters, take: number
       test: {
         select: {
           difficulty: true,
+          topicId: true,
           topic: {
             select: {
+              id: true,
               name: true,
               chapter: { select: { name: true, subject: { select: { name: true, class: { select: { grade: true, board: { select: { slug: true } } } } } } } },
             },
@@ -144,9 +147,10 @@ async function syncFromGeneratedQuestions(filters: QuestionFilters, take: number
     const cls = sub?.class;
     const correctAnswer = typeof gq.answer === 'string' ? gq.answer : JSON.stringify(gq.answer);
 
+    const topicId = gq.test.topicId || gq.test.topic?.id || null;
     await prisma.question.upsert({
       where: { id: gq.id },
-      update: {},
+      update: { topicId },
       create: {
         id: gq.id,
         type: gq.type || 'mcq',
@@ -158,6 +162,7 @@ async function syncFromGeneratedQuestions(filters: QuestionFilters, take: number
         chapter: ch?.name ?? null,
         grade: cls?.grade != null ? String(cls.grade) : null,
         board: cls?.board?.slug ?? null,
+        topicId,
         source: 'generated',
       },
     });
@@ -195,6 +200,7 @@ export async function generateQuestionsAI(filters: QuestionFilters, count: numbe
           chapter: filters.chapter ?? null,
           grade: filters.grade ?? null,
           board: filters.board ?? null,
+          topicId: filters.topicId ?? null,
           type: String(it.type ?? filters.type ?? 'mcq'),
           difficulty: String(it.difficulty ?? filters.difficulty ?? 'medium'),
           prompt: String(it.prompt ?? ''),
@@ -591,3 +597,9 @@ export async function updateTopicMastery(studentId: string, attemptId: string): 
     });
   }
 }
+
+/**
+ * @deprecated Use `updateStudentTopicProgress` from `@/lib/learning/updateTopicProgress` instead.
+ * This stub re-exports for backward compatibility during migration.
+ */
+export { updateStudentTopicProgress } from '@/lib/learning/updateTopicProgress';

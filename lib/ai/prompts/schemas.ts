@@ -12,9 +12,10 @@ export const NoteSchema = z.object({
 export const QuestionsItemSchema = z.object({
   question: z.string(),
   type: z.string(),
-  options: z.array(z.string()).optional(),
+  options: z.array(z.string()).min(3).max(5).optional(),
   answer: z.any(),
   explanation: z.string().optional(),
+  difficulty: z.string().transform(v => v.toLowerCase()).pipe(z.enum(['easy', 'medium', 'hard'])).optional(),
   solutionSteps: z.array(z.string()).optional()
 })
 
@@ -49,14 +50,16 @@ export const AssembleSchema = z.object({
 export type Note = z.infer<typeof NoteSchema>
 export type Questions = z.infer<typeof QuestionsSchema>
 
-export default {
+const PromptSchemas = {
   NoteSchema,
   QuestionsSchema,
   BilingualNotesSchema,
   SyllabusSchema,
   ChaptersArraySchema,
-  AssembleSchema
+  AssembleSchema,
 }
+
+export default PromptSchemas
 /**
  * FILE OBJECTIVE:
  * - TypeScript contracts for schema-first prompt architecture.

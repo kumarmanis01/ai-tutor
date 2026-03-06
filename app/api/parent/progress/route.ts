@@ -20,6 +20,10 @@ import type { AppSession } from '@/lib/types/auth';
 
 const CLASS_NAME = 'ParentProgressAPI';
 
+// Accuracy threshold from the home engine: accuracy >= 0.6 is treated as "strong"
+// for parent-facing aggregates and readiness scoring.
+const LOW_ACCURACY_THRESHOLD = 0.6;
+
 interface SubjectProgress {
   subject: string;
   totalTopics: number;

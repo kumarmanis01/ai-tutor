@@ -78,6 +78,11 @@ function output(level: LogLevel, event: string, context?: any) {
   }
 }
 
+// NOTE: file-backed logging was intentionally removed from this module to
+// remain compatible with Next.js Edge runtime and Turbopack static analysis.
+// Server-side file transport can be added in a separate, Node-only module
+// that attaches to `logger.subscribe()` during Node process startup (worker/PM2).
+
 export function debug(event: string, context?: any) {
   output('debug', event, context);
 }
@@ -172,7 +177,7 @@ class Logger {
     };
     try {
       output(mapLevel[level] as LogLevel, msg, { ...context });
-    } catch (e) {
+    } catch {
       // fallback to console.error if structured output fails
       try { console.error(entry); } catch {}
     }

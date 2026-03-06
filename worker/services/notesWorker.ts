@@ -20,8 +20,8 @@ import { prisma } from '@/lib/prisma.js';
 import { callLLM } from '@/lib/callLLM.js';
 import { parseLlmJson } from '@/lib/llm/sanitizeJson';
 import { validateOrThrow } from '@/lib/aiOutputValidator';
-import fs from 'fs';
-import path from 'path';
+import _fs from 'fs';
+import _path from 'path';
 import { renderTemplate } from '@/prompts'
 import { isSystemSettingEnabled } from '@/lib/systemSettings.js';
 import { logger } from '@/lib/logger.js';
@@ -244,15 +244,13 @@ export async function handleNotesJob(jobId: string): Promise<void> {
     throw new Error('topic_not_found');
   }
 
-  // Check for existing approved notes (idempotency)
+  // Versioning: when approved notes already exist for this topic+language, we still generate and persist
+  // as a new version (don't skip). getNextVersion() returns the next version number (1, 2, 3, ...).
   const existingApproved = await prisma.topicNote.findFirst({
     where: { topicId, language: job.language, status: 'approved' }
   });
   if (existingApproved) {
-    await prisma.hydrationJob.update({ where: { id: job.id }, data: { status: JobStatus.Completed, contentReady: true } });
-    try { await prisma.aIContentLog.create({ data: { model: 'none', promptType: 'notes', language: job.language || 'en', success: true, status: 'success', requestBody: { jobId }, responseBody: { reason: 'content_exists' } } }) } catch {}
-    logger.info('handleNotesJob: approved notes already exist', { jobId, topicId });
-    return;
+    logger.info('handleNotesJob: existing approved notes found — generating new version', { jobId, topicId });
   }
 
   const board = topic.chapter.subject.class.board.name;
@@ -260,14 +258,14 @@ export async function handleNotesJob(jobId: string): Promise<void> {
   const subjectName = topic.chapter.subject.name;
   const language = job.language || 'en';
 
-  const studentAge = grade + 5; // Approximate age based on grade
+  const _studentAge = grade + 5; // Approximate age based on grade (unused by design)
 
   // Use centralized prompt renderer to produce deterministic prompt and schema fingerprint
   const rendered = renderTemplate('topic-notes', { topicName: topic.name, grade, maxWords: 400, language: language as any });
   const prompt = rendered.prompt
 
-  // Use renderer fingerprint as idempotent version when available
-  const version = rendered?.schemaHash ?? (existingApproved ? await getNextVersion({ topicId, language, type: 'note' }) : 1);
+  // Always use next version number so new jobs create v1, v2, v3... (versioned content, never overwrite).
+  const version = await getNextVersion({ topicId, language, type: 'note' });
 
   // Persist initial AIContentLog with schemaHash and version for observability before calling LLM
   try {

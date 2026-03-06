@@ -1,6 +1,7 @@
 /**
  * FILE OBJECTIVE:
  * - API endpoint for parent dashboard to view linked students' progress and activity.
+ * - Read-optimized: uses weekly/subject/readiness/attention summary tables + safe rollups.
  *
  * LINKED UNIT TEST:
  * - tests/unit/app/api/parent/dashboard/route.spec.ts
@@ -11,7 +12,10 @@
  *
  * EDIT LOG:
  * - 2025-01-XX | copilot | created parent dashboard API
+ * - 2026-03-03 | gpt | refactor to use summary tables + caching
  */
+
+export const dynamic = 'force-dynamic';
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
@@ -20,44 +24,84 @@ import { prisma } from '@/lib/prisma';
 import { logger } from '@/lib/logger';
 import { formatErrorForResponse } from '@/lib/errorResponse';
 import type { AppSession } from '@/lib/types/auth';
+import { getRedis } from '@/lib/redis';
 
 const CLASS_NAME = 'ParentDashboardAPI';
 
-/**
- * Student progress summary for parent view
- */
-interface StudentProgressSummary {
+type WeeklyPoint = {
+  weekStart: string;
+  topicsCovered: number;
+  testsTaken: number;
+  averageScore: number;
+  totalMinutes: number;
+  sessionsCount: number;
+  subjectsActive: string[];
+};
+
+type SubjectSummary = {
+  subject: string;
+  totalTopics: number;
+  topicsCovered: number;
+  coveragePercent: number;
+  averageMastery: number;
+  strongTopics: number;
+  weakTopics: number;
+  updatedAt: string;
+};
+
+type ReadinessSummary = {
+  subject: string;
+  coveragePercent: number;
+  avgMastery: number;
+  readinessScore: number;
+  readinessLabel: string;
+  updatedAt: string;
+};
+
+type MasteryDistribution = {
+  masteryLevel: string;
+  count: number;
+};
+
+type AttentionBySubject = {
+  subject: string;
+  count: number;
+};
+
+type StudentDashboard = {
   studentId: string;
   studentName: string;
   studentImage?: string;
   grade?: string;
   board?: string;
   subjects: string[];
-  stats: {
-    totalLessonsCompleted: number;
-    totalTestsTaken: number;
-    averageTestScore: number;
-    totalLearningMinutes: number;
-    sessionsThisWeek: number;
-    lastActiveAt?: string;
-  };
-  recentActivity: {
-    type: string;
-    description: string;
-    timestamp: string;
-  }[];
-  weeklyProgress: {
-    date: string;
-    lessonsCompleted: number;
-    testsTaken: number;
-    minutesLearned: number;
-  }[];
-}
+  lastActiveAt?: string | null;
+  attentionOpenCount: number;
+  attentionBySubject: AttentionBySubject[];
+  weekly: WeeklyPoint[];
+  subjectProgress: SubjectSummary[];
+  readiness: ReadinessSummary[];
+  masteryDistribution: MasteryDistribution[];
+};
 
-interface ParentDashboardResponse {
+type ParentDashboardResponse = {
+  ok: true;
   isParent: boolean;
-  students: StudentProgressSummary[];
   totalStudents: number;
+  generatedAt: string;
+  students: StudentDashboard[];
+};
+
+const CACHE_TTL_SECONDS = 60;
+
+function mondayUtcWeeksAgo(weeks: number): Date {
+  const now = new Date();
+  const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 0, 0, 0, 0));
+  const day = d.getUTCDay(); // 0..6 (Sun..Sat)
+  const diffToMonday = day === 0 ? 6 : day - 1;
+  d.setUTCDate(d.getUTCDate() - diffToMonday);
+  d.setUTCDate(d.getUTCDate() - weeks * 7);
+  return d;
 }
 
 /**
@@ -75,6 +119,21 @@ export async function GET(req: NextRequest) {
     }
 
     const parentId = session.user.id;
+    const cacheKey = `parent:dashboard:v2:${parentId}`;
+
+    // Cache is best-effort; fall back to live query when Redis is unavailable.
+    try {
+      const redis = getRedis();
+      const cached = await redis.get(cacheKey);
+      if (cached) {
+        const parsed = JSON.parse(cached) as ParentDashboardResponse;
+        const response = NextResponse.json(parsed);
+        logger.logAPI(req, response, { className: CLASS_NAME, methodName: METHOD_NAME, cache: 'hit' }, start);
+        return response;
+      }
+    } catch {
+      // ignore cache errors
+    }
 
     // Get all linked students (active links only)
     const parentRelations = await prisma.parentStudent.findMany({
@@ -94,157 +153,159 @@ export async function GET(req: NextRequest) {
     });
 
     if (parentRelations.length === 0) {
-      const response = NextResponse.json({
-        isParent: false,
+      const empty: ParentDashboardResponse = {
+        ok: true,
+        isParent: session.user.role === 'parent',
         students: [],
         totalStudents: 0,
-      });
+        generatedAt: new Date().toISOString(),
+      };
+      const response = NextResponse.json(empty);
       logger.logAPI(req, response, { className: CLASS_NAME, methodName: METHOD_NAME }, start);
       return response;
     }
 
     const studentIds = parentRelations.map((r) => r.studentId);
 
-    // Fetch all student data in parallel
+    const since = mondayUtcWeeksAgo(12);
+
     const [
-      lessonProgressByStudent,
-      testAttemptsByStudent,
-      learningSessionsByStudent,
+      weeklyRows,
+      subjectRows,
+      readinessRows,
+      attentionCounts,
+      masteryCounts,
+      lastActiveRows,
     ] = await Promise.all([
-      // Lesson progress
-      prisma.lessonProgress.groupBy({
-        by: ['userId'],
-        where: {
-          userId: { in: studentIds },
-          completed: true,
-        },
+      prisma.weeklyStudentSummary.findMany({
+        where: { studentId: { in: studentIds }, weekStart: { gte: since } },
+        orderBy: [{ studentId: 'asc' }, { weekStart: 'desc' }],
+      }),
+      prisma.subjectProgressSummary.findMany({
+        where: { studentId: { in: studentIds } },
+        orderBy: [{ studentId: 'asc' }, { subject: 'asc' }],
+      }),
+      prisma.readinessStatus.findMany({
+        where: { studentId: { in: studentIds } },
+        orderBy: [{ studentId: 'asc' }, { subject: 'asc' }],
+      }),
+      prisma.attentionFlag.groupBy({
+        by: ['studentId', 'subject'],
+        where: { studentId: { in: studentIds }, resolved: false },
         _count: { id: true },
       }),
-      // Test attempts with scores
-      prisma.testAttempt.findMany({
-        where: {
-          userId: { in: studentIds },
-        },
-        select: {
-          userId: true,
-          score: true,
-          totalQuestions: true,
-          createdAt: true,
-        },
-        orderBy: { createdAt: 'desc' },
+      prisma.studentTopicMastery.groupBy({
+        by: ['studentId', 'masteryLevel'],
+        where: { studentId: { in: studentIds } },
+        _count: { id: true },
       }),
-      // Learning sessions
-      prisma.learningSession.findMany({
-        where: {
-          studentId: { in: studentIds },
-        },
-        select: {
-          studentId: true,
-          duration: true,
-          activityType: true,
-          activityRef: true,
-          startedAt: true,
-          createdAt: true,
-        },
-        orderBy: { startedAt: 'desc' },
+      prisma.learningSession.groupBy({
+        by: ['studentId'],
+        where: { studentId: { in: studentIds } },
+        _max: { startedAt: true },
       }),
     ]);
 
-    // Build progress summary for each student
-    const students: StudentProgressSummary[] = await Promise.all(
-      parentRelations.map(async (relation) => {
-        const student = relation.student;
-        const studentId = student.id;
+    const weeklyByStudent = new Map<string, WeeklyPoint[]>();
+    for (const row of weeklyRows) {
+      const arr = weeklyByStudent.get(row.studentId) ?? [];
+      arr.push({
+        weekStart: row.weekStart.toISOString(),
+        topicsCovered: row.topicsCovered ?? 0,
+        testsTaken: row.testsTaken ?? 0,
+        averageScore: row.averageScore ?? 0,
+        totalMinutes: row.totalMinutes ?? 0,
+        sessionsCount: row.sessionsCount ?? 0,
+        subjectsActive: Array.isArray(row.subjectsActive) ? (row.subjectsActive as string[]) : [],
+      });
+      weeklyByStudent.set(row.studentId, arr);
+    }
 
-        // Calculate stats
-        const lessonCount = lessonProgressByStudent.find((l) => l.userId === studentId)?._count?.id || 0;
-        const testAttempts = testAttemptsByStudent.filter((t) => t.userId === studentId);
-        const sessions = learningSessionsByStudent.filter((s) => s.studentId === studentId);
+    const subjectByStudent = new Map<string, SubjectSummary[]>();
+    for (const row of subjectRows) {
+      const arr = subjectByStudent.get(row.studentId) ?? [];
+      const coveragePercent = row.totalTopics > 0 ? Math.round((row.topicsCovered / row.totalTopics) * 100) : 0;
+      arr.push({
+        subject: row.subject,
+        totalTopics: row.totalTopics,
+        topicsCovered: row.topicsCovered,
+        coveragePercent,
+        averageMastery: Math.round((row.averageMastery ?? 0) * 100) / 100,
+        strongTopics: row.strongTopics,
+        weakTopics: row.weakTopics,
+        updatedAt: row.updatedAt.toISOString(),
+      });
+      subjectByStudent.set(row.studentId, arr);
+    }
 
-        const averageScore = testAttempts.length > 0
-          ? testAttempts.reduce((sum, t) => sum + (t.score || 0) / (t.totalQuestions || 1) * 100, 0) / testAttempts.length
-          : 0;
+    const readinessByStudent = new Map<string, ReadinessSummary[]>();
+    for (const row of readinessRows) {
+      const arr = readinessByStudent.get(row.studentId) ?? [];
+      arr.push({
+        subject: row.subject,
+        coveragePercent: row.coveragePercent,
+        avgMastery: Math.round((row.avgMastery ?? 0) * 100) / 100,
+        readinessScore: row.readinessScore,
+        readinessLabel: row.readinessLabel,
+        updatedAt: row.updatedAt.toISOString(),
+      });
+      readinessByStudent.set(row.studentId, arr);
+    }
 
-        const totalMinutes = sessions.reduce((sum, s) => sum + (s.duration || 0), 0);
+    const attentionByStudent = new Map<string, AttentionBySubject[]>();
+    const attentionTotalByStudent = new Map<string, number>();
+    for (const row of attentionCounts) {
+      const arr = attentionByStudent.get(row.studentId) ?? [];
+      const count = (row as any)?._count?.id ?? 0;
+      arr.push({ subject: row.subject, count });
+      attentionByStudent.set(row.studentId, arr);
+      attentionTotalByStudent.set(row.studentId, (attentionTotalByStudent.get(row.studentId) ?? 0) + count);
+    }
 
-        const oneWeekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
-        const sessionsThisWeek = sessions.filter((s) => new Date(s.startedAt) >= oneWeekAgo).length;
+    const masteryByStudent = new Map<string, MasteryDistribution[]>();
+    for (const row of masteryCounts) {
+      const arr = masteryByStudent.get(row.studentId) ?? [];
+      const count = (row as any)?._count?.id ?? 0;
+      arr.push({ masteryLevel: row.masteryLevel, count });
+      masteryByStudent.set(row.studentId, arr);
+    }
 
-        const lastSession = sessions[0];
-        const lastActiveAt = lastSession?.startedAt?.toISOString();
+    const lastActiveByStudent = new Map<string, string | null>();
+    for (const row of lastActiveRows) {
+      lastActiveByStudent.set(row.studentId, row._max.startedAt ? row._max.startedAt.toISOString() : null);
+    }
 
-        // Get recent activity (last 10 items)
-        const recentActivity = sessions.slice(0, 10).map((s) => ({
-          type: s.activityType,
-          description: `${s.activityType} activity${s.activityRef ? `: ${s.activityRef}` : ''}`,
-          timestamp: s.startedAt.toISOString(),
-        }));
+    const students: StudentDashboard[] = parentRelations.map((rel) => {
+      const s = rel.student;
+      const weekly = weeklyByStudent.get(s.id) ?? [];
+      const subjectProgress = subjectByStudent.get(s.id) ?? [];
+      const readiness = readinessByStudent.get(s.id) ?? [];
+      const attentionBySubject = (attentionByStudent.get(s.id) ?? []).sort((a, b) => b.count - a.count);
+      const masteryDistribution = masteryByStudent.get(s.id) ?? [];
 
-        // Calculate weekly progress for chart
-        const weeklyProgress: StudentProgressSummary['weeklyProgress'] = [];
-        for (let i = 6; i >= 0; i--) {
-          const date = new Date();
-          date.setDate(date.getDate() - i);
-          const dateStr = date.toISOString().split('T')[0];
-          const dayStart = new Date(dateStr);
-          const dayEnd = new Date(dayStart);
-          dayEnd.setDate(dayEnd.getDate() + 1);
+      return {
+        studentId: s.id,
+        studentName: s.name || 'Student',
+        studentImage: s.image || undefined,
+        grade: s.grade || undefined,
+        board: s.board || undefined,
+        subjects: Array.isArray(s.subjects) ? (s.subjects as string[]) : [],
+        lastActiveAt: lastActiveByStudent.get(s.id) ?? null,
+        attentionOpenCount: attentionTotalByStudent.get(s.id) ?? 0,
+        attentionBySubject,
+        weekly,
+        subjectProgress,
+        readiness,
+        masteryDistribution,
+      };
+    });
 
-          const dayLessons = await prisma.lessonProgress.count({
-            where: {
-              userId: studentId,
-              completed: true,
-              updatedAt: {
-                gte: dayStart,
-                lt: dayEnd,
-              },
-            },
-          });
-
-          const dayTests = testAttempts.filter((t) => {
-            const created = new Date(t.createdAt);
-            return created >= dayStart && created < dayEnd;
-          }).length;
-
-          const daySessions = sessions.filter((s) => {
-            const started = new Date(s.startedAt);
-            return started >= dayStart && started < dayEnd;
-          });
-          const dayMinutes = daySessions.reduce((sum, s) => sum + (s.duration || 0), 0);
-
-          weeklyProgress.push({
-            date: dateStr,
-            lessonsCompleted: dayLessons,
-            testsTaken: dayTests,
-            minutesLearned: dayMinutes,
-          });
-        }
-
-        return {
-          studentId,
-          studentName: student.name || 'Student',
-          studentImage: student.image || undefined,
-          grade: student.grade || undefined,
-          board: student.board || undefined,
-          subjects: student.subjects || [],
-          stats: {
-            totalLessonsCompleted: lessonCount,
-            totalTestsTaken: testAttempts.length,
-            averageTestScore: Math.round(averageScore),
-            totalLearningMinutes: totalMinutes,
-            sessionsThisWeek,
-            lastActiveAt,
-          },
-          recentActivity,
-          weeklyProgress,
-        };
-      })
-    );
-
-    const response: ParentDashboardResponse = {
+    const payload: ParentDashboardResponse = {
+      ok: true,
       isParent: true,
       students,
       totalStudents: students.length,
+      generatedAt: new Date().toISOString(),
     };
 
     logger.info('Parent dashboard data fetched', {
@@ -254,8 +315,16 @@ export async function GET(req: NextRequest) {
       studentCount: students.length,
     });
 
-    const jsonResponse = NextResponse.json(response);
-    logger.logAPI(req, jsonResponse, { className: CLASS_NAME, methodName: METHOD_NAME }, start);
+    // Best-effort cache set
+    try {
+      const redis = getRedis();
+      await redis.set(cacheKey, JSON.stringify(payload), 'EX', CACHE_TTL_SECONDS);
+    } catch {
+      // ignore cache errors
+    }
+
+    const jsonResponse = NextResponse.json(payload);
+    logger.logAPI(req, jsonResponse, { className: CLASS_NAME, methodName: METHOD_NAME, cache: 'miss' }, start);
     return jsonResponse;
   } catch (error) {
     logger.error('Failed to fetch parent dashboard', {
@@ -267,146 +336,4 @@ export async function GET(req: NextRequest) {
   }
 }
 
-/**
- * POST /api/parent/dashboard
- * Link a student to parent account via email or invite code.
- * Delegates to /api/parent/link logic but kept for backward compatibility.
- */
-export async function POST(req: NextRequest) {
-  const start = Date.now();
-  const METHOD_NAME = 'POST';
-
-  try {
-    const session = (await getServerSession(authOptions)) as AppSession | null;
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const body = await req.json();
-    const { studentEmail, inviteCode } = body;
-
-    if (!studentEmail && !inviteCode) {
-      return NextResponse.json({ error: 'studentEmail or inviteCode required' }, { status: 400 });
-    }
-
-    const parentId = session.user.id;
-
-    // Handle invite code linking
-    if (inviteCode) {
-      const pendingLink = await prisma.parentStudent.findUnique({ where: { inviteCode } });
-      if (!pendingLink || pendingLink.status !== 'pending') {
-        return NextResponse.json({ error: 'Invalid or expired invite code' }, { status: 404 });
-      }
-      if (pendingLink.studentId === parentId) {
-        return NextResponse.json({ error: 'Cannot link to yourself' }, { status: 400 });
-      }
-      await prisma.parentStudent.update({
-        where: { id: pendingLink.id },
-        data: { parentId, status: 'active', inviteCode: null },
-      });
-      const response = NextResponse.json({ ok: true, studentId: pendingLink.studentId });
-      logger.logAPI(req, response, { className: CLASS_NAME, methodName: METHOD_NAME }, start);
-      return response;
-    }
-
-    // Handle email linking
-    const student = await prisma.user.findUnique({ where: { email: studentEmail } });
-    if (!student) {
-      return NextResponse.json({ error: 'Student not found' }, { status: 404 });
-    }
-    if (student.id === parentId) {
-      return NextResponse.json({ error: 'Cannot link to yourself' }, { status: 400 });
-    }
-
-    const existing = await prisma.parentStudent.findUnique({
-      where: { parentId_studentId: { parentId, studentId: student.id } },
-    });
-
-    if (existing && existing.status === 'active') {
-      return NextResponse.json({ error: 'Already linked to this student' }, { status: 409 });
-    }
-
-    if (existing && existing.status === 'revoked') {
-      await prisma.parentStudent.update({
-        where: { id: existing.id },
-        data: { status: 'active' },
-      });
-    } else {
-      await prisma.parentStudent.create({
-        data: { parentId, studentId: student.id, status: 'active' },
-      });
-    }
-
-    // Promote role to parent if currently user
-    const parentUser = await prisma.user.findUnique({ where: { id: parentId }, select: { role: true } });
-    if (parentUser?.role === 'user') {
-      await prisma.user.update({ where: { id: parentId }, data: { role: 'parent' } });
-    }
-
-    logger.info('Parent-student link created', {
-      className: CLASS_NAME,
-      methodName: METHOD_NAME,
-      parentId,
-      studentId: student.id,
-    });
-
-    const response = NextResponse.json({ ok: true, studentId: student.id });
-    logger.logAPI(req, response, { className: CLASS_NAME, methodName: METHOD_NAME }, start);
-    return response;
-  } catch (error) {
-    logger.error('Failed to link student', {
-      className: CLASS_NAME,
-      methodName: METHOD_NAME,
-      error,
-    });
-    return NextResponse.json({ error: formatErrorForResponse(error) }, { status: 500 });
-  }
-}
-
-/**
- * DELETE /api/parent/dashboard
- * Unlink a student from parent account
- */
-export async function DELETE(req: NextRequest) {
-  const start = Date.now();
-  const METHOD_NAME = 'DELETE';
-
-  try {
-    const session = (await getServerSession(authOptions)) as AppSession | null;
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const { searchParams } = new URL(req.url);
-    const studentId = searchParams.get('studentId');
-
-    if (!studentId) {
-      return NextResponse.json({ error: 'studentId required' }, { status: 400 });
-    }
-
-    const parentId = session.user.id;
-
-    await prisma.parentStudent.updateMany({
-      where: { parentId, studentId },
-      data: { status: 'revoked' },
-    });
-
-    logger.info('Parent-student link revoked', {
-      className: CLASS_NAME,
-      methodName: METHOD_NAME,
-      parentId,
-      studentId,
-    });
-
-    const response = NextResponse.json({ ok: true });
-    logger.logAPI(req, response, { className: CLASS_NAME, methodName: METHOD_NAME }, start);
-    return response;
-  } catch (error) {
-    logger.error('Failed to unlink student', {
-      className: CLASS_NAME,
-      methodName: METHOD_NAME,
-      error,
-    });
-    return NextResponse.json({ error: formatErrorForResponse(error) }, { status: 500 });
-  }
-}
+// POST/DELETE linking actions intentionally live at /api/parent/link for clarity and auditing.

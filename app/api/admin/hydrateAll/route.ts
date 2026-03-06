@@ -80,6 +80,12 @@ const AVG_CHAPTERS_PER_SUBJECT = 12;
 const AVG_TOPICS_PER_CHAPTER = 5;
 const NOTES_PER_TOPIC = 1;
 
+// Validation run hard caps — enforced when LLM_MODE=real or LLM_SAFE_MODE=true
+// Total max: 2 chapters × 2 topics × 3 difficulties × 2 questions = 24 questions
+const VALIDATION_CAP_CHAPTERS = 2;
+const VALIDATION_CAP_TOPICS_PER_CHAPTER = 2;
+const VALIDATION_CAP_QUESTIONS_PER_DIFFICULTY = 2;
+
 // ============================================
 // Helper Functions
 // ============================================
@@ -340,6 +346,65 @@ export async function POST(request: NextRequest) {
     // 5. Calculate Estimates
     const estimates = calculateEstimates(options);
 
+    // Validation run is active when LLM_MODE=real (controlled validation) OR LLM_SAFE_MODE=true OR dev env
+    const isDev = process.env.NODE_ENV !== 'production';
+    const isValidationRun = (process.env.LLM_MODE === 'real') || (process.env.LLM_SAFE_MODE === 'true') || isDev;
+    const isSafeMode = isValidationRun; // alias kept for compatibility
+
+    // Determine generation limits (chapters, topics per chapter, questions per topic/difficulty)
+    const requestedQuestionsPerDifficulty = options?.questionsPerDifficulty ?? 10;
+    const difficultiesLength = options?.difficulties?.length ?? 3;
+
+    // In normal mode questions are computed as difficultiesLength * questionsPerDifficulty
+    const questionsPerTopicDefault = difficultiesLength * requestedQuestionsPerDifficulty;
+
+    // Validation-run overrides: enforce strict deterministic caps
+    // Hard caps: 2 chapters × 2 topics/chapter × 3 difficulties × 2 questions = 24 max
+    const chaptersLimit = isValidationRun
+      ? Math.min(estimates.totalChapters, VALIDATION_CAP_CHAPTERS)
+      : estimates.totalChapters;
+    const topicsPerChapterUsed = isValidationRun
+      ? Math.min(AVG_TOPICS_PER_CHAPTER, VALIDATION_CAP_TOPICS_PER_CHAPTER)
+      : AVG_TOPICS_PER_CHAPTER;
+    const adjustedEstimatedTopics = chaptersLimit * topicsPerChapterUsed;
+
+    // questionsPerDifficulty cap — stored separately so workers can enforce per-LLM-call
+    const questionsPerDifficultyUsed = isValidationRun
+      ? VALIDATION_CAP_QUESTIONS_PER_DIFFICULTY
+      : requestedQuestionsPerDifficulty;
+    const questionsPerTopicUsed = isValidationRun
+      ? VALIDATION_CAP_QUESTIONS_PER_DIFFICULTY * difficultiesLength
+      : questionsPerTopicDefault;
+
+    const adjustedEstimatedNotes = options?.generateNotes === false ? 0 : adjustedEstimatedTopics * NOTES_PER_TOPIC;
+    const adjustedEstimatedQuestions = options?.generateQuestions === false
+      ? 0
+      : adjustedEstimatedTopics * questionsPerTopicUsed;
+
+    if (isValidationRun) {
+      logger.info('[VALIDATION_RUN] Applying generation caps', {
+        traceId,
+        trigger: process.env.LLM_MODE === 'real' ? 'LLM_MODE=real' : isDev ? 'NODE_ENV!=production' : 'LLM_SAFE_MODE=true',
+        caps: {
+          chaptersLimit,
+          topicsPerChapterLimit: topicsPerChapterUsed,
+          topicsTotal: adjustedEstimatedTopics,
+          questionsPerDifficulty: questionsPerDifficultyUsed,
+          questionsPerTopic: questionsPerTopicUsed,
+          expectedTotalQuestions: adjustedEstimatedQuestions,
+        },
+      });
+    }
+
+    // Guard: warn if requested counts exceed caps
+    if (isValidationRun && requestedQuestionsPerDifficulty > VALIDATION_CAP_QUESTIONS_PER_DIFFICULTY) {
+      logger.warn('[VALIDATION_CAP] questionsPerDifficulty exceeds cap — enforcing cap', {
+        traceId,
+        requested: requestedQuestionsPerDifficulty,
+        enforced: VALIDATION_CAP_QUESTIONS_PER_DIFFICULTY,
+      });
+    }
+
     // 6. Check for Dry Run
     if (options?.dryRun) {
       logger.info('Dry run - not creating job', { traceId, estimates });
@@ -376,11 +441,11 @@ export async function POST(request: NextRequest) {
           // Progress tracking (will be updated by reconciler)
           chaptersExpected: estimates.totalChapters,
           chaptersCompleted: 0,
-          topicsExpected: estimates.estimatedTopics,
+          topicsExpected: adjustedEstimatedTopics,
           topicsCompleted: 0,
-          notesExpected: estimates.estimatedNotes,
+          notesExpected: adjustedEstimatedNotes,
           notesCompleted: 0,
-          questionsExpected: estimates.estimatedQuestions,
+          questionsExpected: adjustedEstimatedQuestions,
           questionsCompleted: 0,
           // Cost tracking
           estimatedCostUsd: estimates.estimatedCostUsd,
@@ -395,6 +460,15 @@ export async function POST(request: NextRequest) {
             subjectId: subject.id,
             options,
             traceId,
+            generationLimits: {
+              validationRun: isValidationRun,
+              safeMode: isSafeMode,
+              chaptersLimit,
+              topicsPerChapterLimit: topicsPerChapterUsed,
+              topicsLimit: adjustedEstimatedTopics,
+              questionsPerDifficulty: questionsPerDifficultyUsed,
+              questionsPerTopic: questionsPerTopicUsed,
+            },
           },
         },
       });
@@ -416,6 +490,15 @@ export async function POST(request: NextRequest) {
             grade,
             subjectCode,
             userId: session.user.id,
+            generationLimits: {
+              validationRun: isValidationRun,
+              safeMode: isSafeMode,
+              chaptersLimit,
+              topicsPerChapterLimit: topicsPerChapterUsed,
+              topicsLimit: adjustedEstimatedTopics,
+              questionsPerDifficulty: questionsPerDifficultyUsed,
+              questionsPerTopic: questionsPerTopicUsed,
+            },
           },
         },
       });
@@ -459,10 +542,18 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    // 10. Return Response
-    logger.info('HydrateAll job created successfully', {
+    // 10. Return Response — log validation session summary
+    logger.info('[VALIDATION_RUN] HydrateAll job created', {
       traceId,
       rootJobId: result.id,
+      validationRun: isValidationRun,
+      caps: isValidationRun ? {
+        chaptersLimit,
+        topicsPerChapterLimit: topicsPerChapterUsed,
+        topicsTotal: adjustedEstimatedTopics,
+        questionsPerDifficulty: questionsPerDifficultyUsed,
+        maxTotalQuestions: adjustedEstimatedQuestions,
+      } : null,
       estimates,
     });
 

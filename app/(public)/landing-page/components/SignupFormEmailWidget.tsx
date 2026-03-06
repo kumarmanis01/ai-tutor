@@ -51,30 +51,10 @@ const SignupFormWidget = () => {
     setStep((s) => (s < 2 ? 2 : s));
   }, [session]);
 
-  const subjects = [
-    'Mathematics',
-    'Science',
-    'Social Studies',
-    'English',
-    'Hindi',
-    'Physics',
-    'Chemistry',
-    'Biology',
-  ];
-
-  const handleSubjectToggle = (subject: string) => {
-    setFormData((prev) => ({
-      ...prev,
-      subjects: prev.subjects.includes(subject)
-        ? prev.subjects.filter((s) => s !== subject)
-        : [...prev.subjects, subject],
-    }));
-  };
-
   const router = useRouter();
   const { mutate: mutateCurrentUser } = useCurrentUser();
   const { startLoading, stopLoading } = useGlobalLoader();
-  const [submitting, setSubmitting] = useState(false);
+  const [_submitting, setSubmitting] = useState(false);
 
   const handleSubmit = async () => {
     setSubmitting(true);

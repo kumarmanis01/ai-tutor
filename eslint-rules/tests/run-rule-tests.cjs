@@ -1,5 +1,16 @@
-const logger = require('../../lib/logger');
-#!/usr/bin/env node
+// ESLint rule tests runner (Windows-safe)
+let logger;
+try {
+  logger = require('../../lib/logger');
+} catch (_err) {
+  // When running under Node for lightweight tests, the TypeScript `lib/logger.ts`
+  // may not be compiled to JS. Provide a minimal console-based fallback so the
+  // rule tests can run in isolation on developer machines.
+  logger = {
+    error: (m) => console.error(m),
+    info: (m) => console.log(m),
+  };
+}
 const fs = require('fs');
 const path = require('path');
 const { execSync } = require('child_process');

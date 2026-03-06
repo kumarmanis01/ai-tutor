@@ -22,8 +22,8 @@ import { prisma } from '@/lib/prisma.js';
 import { callLLM } from '@/lib/callLLM.js';
 import { parseLlmJson } from '@/lib/llm/sanitizeJson'
 import { renderTemplate } from '@/prompts'
-import fs from 'fs';
-import path from 'path';
+import _fs from 'fs';
+import _path from 'path';
 import { isSystemSettingEnabled } from '@/lib/systemSettings.js';
 import { logger } from '@/lib/logger.js';
 import { JobStatus, ApprovalStatus } from '@/lib/ai-engine/types';
@@ -32,6 +32,27 @@ import { getNextVersion } from '@/lib/getNextVersion';
 /** All difficulty levels to generate */
 const DIFFICULTY_LEVELS = ['easy', 'medium', 'hard'] as const;
 type DifficultyLevel = typeof DIFFICULTY_LEVELS[number];
+
+/**
+ * Returns the validated question count per difficulty level.
+ * Reads from VALIDATION_CAP_QUESTIONS_PER_DIFFICULTY env, defaulting to 2 when LLM_MODE=real.
+ * Applies this value as a HARD CAP even when a higher per-job override is provided by the reconciler.
+ */
+function getValidationQuestionCount(jobOverride?: number): number {
+  const envCap = Number(process.env.VALIDATION_CAP_QUESTIONS_PER_DIFFICULTY || 0);
+  const baseCap =
+    envCap > 0
+      ? envCap
+      : process.env.LLM_MODE === 'real'
+      ? 2
+      : 5;
+
+  if (jobOverride != null && Number.isFinite(jobOverride) && jobOverride > 0) {
+    return Math.min(jobOverride, baseCap);
+  }
+
+  return baseCap;
+}
 
 /**
  * Validates the shape of the LLM response for questions.
@@ -73,7 +94,7 @@ function validateQuestionsShape(raw: any, subjectName?: string): boolean {
 }
 
 // Exported for unit testing
-export { validateQuestionsShape, validateQuestionsShapeWithReport };
+export { validateQuestionsShape, validateQuestionsShapeWithReport, normalizeQuestionsOutput };
 
 /**
  * Validate questions and produce a structured report.
@@ -127,6 +148,119 @@ function validateQuestionsShapeWithReport(raw: any, subjectName?: string) {
 }
 
 /**
+ * Normalizes raw LLM question output into the shape expected by QuestionsSchema.
+ *
+ * Handles:
+ * 1. Bare array → { questions: [...] }
+ * 2. Options as keyed object → ordered string array
+ * 3. Field-name aliases (correct_answer, answer, correct, correctAnswer) → answer
+ *    and correctOptionIndex → resolved answer string
+ * 4. Difficulty casing (Easy/EASY → easy)
+ * 5. Missing explanation → default stub
+ * 6. Trimming question text
+ * 7. Missing type → inferred from options presence
+ */
+function normalizeQuestionsOutput(raw: any, difficulty?: string): any {
+  if (raw == null) return raw;
+
+  let data = raw;
+
+  // Rule 1: bare array → wrapped object
+  if (Array.isArray(data)) {
+    data = { questions: data };
+  }
+
+  if (!data || typeof data !== 'object' || !Array.isArray(data.questions)) {
+    return data;
+  }
+
+  const rawShape = {
+    topLevelKeys: Object.keys(data),
+    questionCount: data.questions.length,
+    sampleFields: data.questions[0] ? Object.keys(data.questions[0]) : [],
+  };
+
+  const ANSWER_ALIASES: Record<string, boolean> = {
+    correct_answer: true,
+    correctAnswer: true,
+    correct: true,
+    answer: true,
+  };
+
+  data.questions = data.questions.map((q: any) => {
+    if (!q || typeof q !== 'object') return q;
+    const out: any = { ...q };
+
+    // Rule 6: trim question text
+    if (typeof out.question === 'string') {
+      out.question = out.question.trim();
+    }
+
+    // Rule 2: options as keyed object → string array
+    if (out.options && !Array.isArray(out.options) && typeof out.options === 'object') {
+      const sorted = Object.keys(out.options).sort();
+      out.options = sorted.map((k: string) => String(out.options[k]));
+    }
+
+    // Rule 3: resolve answer from aliases + correctOptionIndex
+    if (out.answer === undefined || out.answer === null) {
+      for (const alias of Object.keys(ANSWER_ALIASES)) {
+        if (alias !== 'answer' && out[alias] !== undefined && out[alias] !== null) {
+          out.answer = out[alias];
+          delete out[alias];
+          break;
+        }
+      }
+    }
+    // correctOptionIndex → pick the option string as the answer
+    if ((out.answer === undefined || out.answer === null) && typeof out.correctOptionIndex === 'number' && Array.isArray(out.options)) {
+      const idx = out.correctOptionIndex;
+      if (idx >= 0 && idx < out.options.length) {
+        out.answer = out.options[idx];
+      }
+    }
+    // If answer still missing but correctOptionIndex exists as the only "answer" source, keep it as-is
+    if (out.answer === undefined || out.answer === null) {
+      if (out.correctOptionIndex !== undefined) {
+        out.answer = String(out.correctOptionIndex);
+      }
+    }
+
+    // Rule 7: infer type from structure when missing
+    if (!out.type || typeof out.type !== 'string') {
+      out.type = Array.isArray(out.options) && out.options.length >= 2 ? 'mcq' : 'short_answer';
+    }
+
+    // Rule 4: normalize difficulty casing
+    if (typeof out.difficulty === 'string') {
+      out.difficulty = out.difficulty.toLowerCase();
+    }
+
+    // Rule 5: default explanation stub
+    if (!out.explanation || (typeof out.explanation === 'string' && out.explanation.trim().length === 0)) {
+      out.explanation = 'Explanation not provided.';
+    }
+
+    return out;
+  });
+
+  // Attach top-level difficulty if provided and not already present
+  if (difficulty && !data.difficulty) {
+    data.difficulty = difficulty.toLowerCase();
+  }
+
+  const normalizedShape = {
+    topLevelKeys: Object.keys(data),
+    questionCount: data.questions.length,
+    sampleFields: data.questions[0] ? Object.keys(data.questions[0]) : [],
+  };
+
+  logger.info('[QUESTION_NORMALIZATION]', { rawShape, normalizedShape });
+
+  return data;
+}
+
+/**
  * Sanitizes LLM output by stripping code fences.
  */
 function _sanitizeLLMOutput(content: string): string {
@@ -159,8 +293,12 @@ async function generateQuestionsForDifficulty(
   grade: number,
   subjectName: string,
   language: string,
-  jobId?: string
+  jobId?: string,
+  questionsCount?: number
 ): Promise<{ parsed: any; llmResult: any } | null> {
+  // Resolve validated question count — enforces validation cap
+  const count = getValidationQuestionCount(questionsCount);
+
   const difficultyDescriptions: Record<DifficultyLevel, string> = {
     easy: 'basic recall and simple understanding questions suitable for beginners',
     medium: 'application and comprehension questions requiring moderate thinking',
@@ -169,41 +307,56 @@ async function generateQuestionsForDifficulty(
 
   const prompt = `You are an expert educator and assessment designer.
 
-Generate 5 ${difficulty.toUpperCase()} level questions for students on:
+Generate exactly ${count} ${difficulty.toUpperCase()} level questions for students.
+
 Topic: ${topic.name}
 Board: ${board}
 Grade: ${grade}
 Subject: ${subjectName}
 Language: ${language}
+Difficulty: ${difficulty} — ${difficultyDescriptions[difficulty]}
 
-Difficulty Description: ${difficultyDescriptions[difficulty]}
+STRICT RULES:
+1. Return ONLY valid JSON. No markdown, no backticks, no commentary.
+2. "options" MUST be an array of 4 strings.
+3. "correctAnswer" MUST be exactly one of the strings in "options".
+4. "difficulty" MUST be one of: "easy", "medium", "hard".
+5. "explanation" is a concise reason why the answer is correct.
+6. Questions must be age-appropriate and curriculum-aligned.
 
-Rules:
-- Output JSON ONLY
-- No explanations outside the JSON
-- Questions should be age-appropriate and curriculum-aligned
-- Include a mix of MCQ and short answer questions
-- Provide correct answers for each question
-- For ${difficulty} level: ${difficultyDescriptions[difficulty]}
-
-JSON Schema:
+Required JSON format:
 {
   "questions": [
     {
-      "type": "mcq" | "short_answer",
       "question": "string",
-      "options": ["string"] (for MCQ only, 4 options),
-      "answer": "string",
-      "explanation": "string"
+      "options": ["A", "B", "C", "D"],
+      "correctAnswer": "A",
+      "explanation": "string",
+      "difficulty": "easy"
     }
   ]
 }
-`;
+
+Example (grade 8 Science):
+{
+  "questions": [
+    {
+      "question": "What is the SI unit of force?",
+      "options": ["Newton", "Joule", "Watt", "Pascal"],
+      "correctAnswer": "Newton",
+      "explanation": "Force is measured in Newtons (N), named after Sir Isaac Newton.",
+      "difficulty": "easy"
+    }
+  ]
+}
+
+Return ONLY the JSON object with exactly ${count} questions. No other text.`;
 
 
+    let llmResponse: any;
     try {
       // Use centralized prompt renderer to produce deterministic prompt and schema fingerprint
-      const rendered = renderTemplate('topic-questions', { topicName: topic.name, grade, count: 5, language: language as any });
+      const rendered = renderTemplate('topic-questions', { topicName: topic.name, grade, count, language: language as any });
 
       // Persist initial AIContentLog with schemaHash and version for observability before calling LLM
       try {
@@ -223,13 +376,12 @@ JSON Schema:
       } catch {}
 
       // call LLM with rendered prompt
-      let llmResponseLocal = await callLLM({
+      const llmResponseLocal = await callLLM({
         prompt: rendered.prompt,
         meta: { promptType: 'questions', board, grade, subject: subjectName, topic: topic.name, language, difficulty, useRag: true, hydrationJobId: jobId, topicId: topic?.id, suppressLog: true, schemaHash: rendered.schemaHash, promptVersion: rendered.version },
         timeoutMs: Number(process.env.QUESTIONS_LLM_TIMEOUT_MS || 30_000)
       });
-
-      var llmResponse = llmResponseLocal as any;
+      llmResponse = llmResponseLocal as any;
     } catch {
       // fallback to inline prompt (base_context.md now contains mandatory requirements and tone)
       llmResponse = await callLLM({
@@ -246,6 +398,17 @@ JSON Schema:
       return { parsed: null, llmResult: llmResponse };
     }
 
+    // Run full normalization layer before validation to handle LLM output variations
+    raw = normalizeQuestionsOutput(raw, difficulty);
+
+    if (!raw || !Array.isArray(raw.questions)) {
+      logger.warn('[VALIDATION_DEFENSIVE] generateQuestionsForDifficulty: questions field is not an array after normalization', {
+        difficulty,
+        topic: topic.name,
+        keys: raw && typeof raw === 'object' ? Object.keys(raw) : null,
+      });
+      return { parsed: null, llmResult: llmResponse };
+    }
 
     return { parsed: raw, llmResult: llmResponse };
 
@@ -325,193 +488,266 @@ export async function handleQuestionsJob(jobId: string): Promise<void> {
     }).catch(() => {});
   }
 
+  // Read per-difficulty question count from job inputParams (set by reconciler) or fall back to env/default
+  const jobQuestionsPerDifficulty = (job.inputParams as any)?.questionsPerDifficulty;
+  const resolvedQuestionsCount = getValidationQuestionCount(
+    typeof jobQuestionsPerDifficulty === 'number' ? jobQuestionsPerDifficulty : undefined
+  );
+
+  logger.info('[VALIDATION] handleQuestionsJob: starting generation', {
+    jobId,
+    topicId,
+    board,
+    grade,
+    subject: subjectName,
+    difficulties: [...DIFFICULTY_LEVELS],
+    questionsPerDifficulty: resolvedQuestionsCount,
+  });
+
   // Generate questions for all difficulty levels
   const results: { difficulty: DifficultyLevel; testId: string | null; questionCount: number }[] = [];
   const createdTestIds: string[] = [];
+  let totalLLMCalls = 0;
+  let totalTokensUsed = 0;
+  const sessionStart = Date.now();
 
-  // Generate questions for all difficulties in parallel (independent leaf tasks)
+  // Generate questions for all difficulties in parallel (independent leaf tasks).
+  // Versioning: we always generate and persist a new version (getNextVersion); we do not skip when
+  // approved questions already exist for this topic+language+difficulty.
   const difficultyPromises = DIFFICULTY_LEVELS.map((difficulty) => (async () => {
-    // Check for existing approved questions (idempotency)
     const existingApproved = await prisma.generatedTest.findFirst({ where: { topicId, language, difficulty, status: 'approved' } });
-    if (existingApproved) return { difficulty, existingApproved, parsed: null };
-
-    const gen = await generateQuestionsForDifficulty(difficulty, topic, board, grade, subjectName, language, job.id);
-    return { difficulty, existingApproved: null, parsed: gen?.parsed ?? null, llmResult: gen?.llmResult ?? null };
+    if (existingApproved) {
+      logger.info('handleQuestionsJob: existing approved questions found — generating new version', { jobId, topicId, difficulty });
+    }
+    const gen = await generateQuestionsForDifficulty(difficulty, topic, board, grade, subjectName, language, job.id, resolvedQuestionsCount);
+    return { difficulty, existingApproved: existingApproved ?? null, parsed: gen?.parsed ?? null, llmResult: gen?.llmResult ?? null };
   })());
 
   const difficultyResults = await Promise.all(difficultyPromises);
 
+  let questionsCompleted = 0;
+  let questionsFailed = 0;
+  const validatedDifficulties: { difficulty: DifficultyLevel; parsed: any; llmResult: any }[] = [];
+
   for (const dr of difficultyResults) {
     const difficulty = dr.difficulty as DifficultyLevel;
-    const existingApproved = dr.existingApproved;
     const parsed = dr.parsed;
     const llmResult = (dr as any).llmResult;
 
-    if (existingApproved) {
-      logger.info('handleQuestionsJob: approved questions already exist', { jobId, topicId, difficulty });
-      results.push({ difficulty, testId: existingApproved.id, questionCount: 0 });
-      continue;
+    // Track LLM call metrics
+    if (llmResult) {
+      totalLLMCalls += 1;
+      totalTokensUsed += llmResult?.usage?.total_tokens ?? 0;
     }
 
     if (!parsed) {
-      logger.warn('handleQuestionsJob: failed to generate for difficulty', { jobId, difficulty });
-      // Persist failure AIContentLog outside transaction for this difficulty
+      logger.error('[QUESTION_GENERATION_FAILURE]', {
+        topic: topic.name,
+        difficulty,
+        errorCode: 'llm_parse_failed',
+        validationErrors: null,
+        jobId,
+        topicId,
+        rawContentLength: llmResult?.content?.length ?? 0,
+      });
       try { await prisma.aIContentLog.create({ data: { model: llmResult?.model || 'none', promptType: 'questions', language, success: false, status: 'failed', error: 'llm_parse_failed', requestBody: { jobId, difficulty }, responseBody: { raw: llmResult?.content } } }) } catch {}
+      questionsFailed++;
       results.push({ difficulty, testId: null, questionCount: 0 });
       continue;
     }
 
-    // Log response received
+    // Guard: warn if LLM returned more questions than the cap
+    const returnedCount = Array.isArray(parsed?.questions) ? parsed.questions.length : 0;
+    if (returnedCount > resolvedQuestionsCount) {
+      logger.warn('[VALIDATION_CAP] questionsWorker: LLM returned more questions than cap — trimming', {
+        jobId,
+        difficulty,
+        topicId,
+        llmReturned: returnedCount,
+        cappedTo: resolvedQuestionsCount,
+      });
+      parsed.questions = parsed.questions.slice(0, resolvedQuestionsCount);
+    }
+
+    logger.info('[VALIDATION] questionsWorker: questionCountByDifficulty', {
+      jobId,
+      difficulty,
+      topicId,
+      questionCount: parsed.questions?.length ?? 0,
+    });
+
+    // Log response received (if linked ExecutionJob exists)
     const linkedExec = await prisma.executionJob.findFirst({ where: { payload: { path: ['hydrationJobId'], equals: job.id } } }).catch(() => null);
     if (linkedExec) {
       await prisma.jobExecutionLog.create({
         data: { jobId: linkedExec.id, event: 'RESPONSE_RECEIVED', prevStatus: linkedExec.status, newStatus: linkedExec.status, meta: { hydrationJobId: job.id, difficulty } }
       }).catch(() => {});
-
-      // Strict validation: any validation failure must fail the whole HydrationJob
-      try {
-        // Emit validation report for observability
-        try {
-          const { report } = validateQuestionsShapeWithReport(parsed, subjectName);
-          await prisma.jobExecutionLog.create({ data: { jobId: linkedExec.id, event: 'VALIDATION_REPORT', prevStatus: linkedExec.status, newStatus: linkedExec.status, meta: { hydrationJobId: job.id, difficulty, report } } }).catch(() => {});
-        } catch {}
-
-        // Centralized validator - will throw typed errors on failure
-        (await import('@/lib/aiOutputValidator')).validateOrThrow(parsed, { jobType: 'questions', language, difficulty, subject: subjectName, topic: topic.name });
-      } catch (vErr: any) {
-        // Failure contract: mark job failed, persist AIContentLog via helper, then rethrow to abort
-        const reason = vErr?.type || vErr?.message || 'validation_failed'
-        await markJobFailed(job.id, String(reason));
-        throw vErr;
-      }
     }
 
-    // Persist all generated tests and questions atomically in a single transaction
+    // Per-difficulty validation — failures are isolated and do NOT abort remaining difficulties
     try {
-      // Gather parsed items from difficultyResults
-      const allParsed = difficultyResults.filter((d: any) => d.parsed).map((d: any) => ({ difficulty: d.difficulty, parsed: d.parsed, llmResult: d.llmResult }));
-
-      if (allParsed.length > 0) {
-        // compute versions for each difficulty — prefer renderer schemaHash for idempotency
-        for (const item of allParsed) {
-          const candidate = item.llmResult?.meta?.schemaHash || item.llmResult?.schemaHash || null;
-          if (candidate) {
-            (item as any).version = String(candidate);
-          } else {
-            (item as any).version = await getNextVersion({ topicId, difficulty: item.difficulty, language, type: 'test' });
-          }
+      try {
+        const { report } = validateQuestionsShapeWithReport(parsed, subjectName);
+        if (linkedExec) {
+          await prisma.jobExecutionLog.create({
+            data: {
+              jobId: linkedExec.id,
+              event: 'VALIDATION_REPORT',
+              prevStatus: linkedExec.status,
+              newStatus: linkedExec.status,
+              meta: { hydrationJobId: job.id, difficulty, report },
+            },
+          }).catch(() => {});
         }
-
-        const runTxWithRetry = async (work: (tx: any) => Promise<any>, attempts = 3) => {
-          let lastErr: any = null;
-          for (let i = 0; i < attempts; i++) {
-            try {
-              return await prisma.$transaction(work);
-            } catch (err) {
-              lastErr = err;
-              const msg = String(err?.message || '');
-              if (/Transaction not found|Transaction API error/i.test(msg)) {
-                const backoff = (i + 1) * 500;
-                await new Promise((r) => setTimeout(r, backoff));
-                continue;
-              }
-              throw err;
-            }
-          }
-          throw lastErr;
-        };
-
-        const persisted = await runTxWithRetry(async (tx) => {
-          const created: string[] = [];
-          for (const item of allParsed) {
-            const difficulty = item.difficulty as DifficultyLevel;
-            const version = (item as any).version;
-            const testTitle = `${topic.name} - ${difficulty.charAt(0).toUpperCase() + difficulty.slice(1)} Quiz`;
-
-            let upserted: any;
-            if (typeof tx.generatedTest.upsert === 'function') {
-              upserted = await tx.generatedTest.upsert({
-                where: { topicId_difficulty_language_version: { topicId, difficulty, language, version } },
-                update: { title: testTitle, status: ApprovalStatus.Draft },
-                create: { topicId, title: testTitle, language, difficulty, version, status: ApprovalStatus.Draft }
-              });
-            } else {
-              upserted = await tx.generatedTest.create({ data: { topicId, title: testTitle, language, difficulty, version, status: ApprovalStatus.Draft } });
-            }
-
-            if (typeof tx.generatedQuestion.deleteMany === 'function') {
-              await tx.generatedQuestion.deleteMany({ where: { testId: upserted.id, sourceJobId: job.id } });
-            }
-
-            for (const q of item.parsed.questions) {
-              await tx.generatedQuestion.create({ data: { testId: upserted.id, type: q.type, question: q.question, options: q.options ?? null, answer: q.answer ?? null, explanation: q.explanation ?? null, marks: q.marks ?? null, sourceJobId: job.id } });
-            }
-
-            if (typeof tx.aIContentLog?.create === 'function') {
-              await tx.aIContentLog.create({ data: {
-                model: item.llmResult?.model || 'llm',
-                promptType: 'questions',
-                board,
-                grade,
-                subject: subjectName,
-                topic: topic.name,
-                language,
-                ...(topicId ? { topicRef: { connect: { id: topicId } } } : {}),
-                tokensIn: item.llmResult?.usage?.prompt_tokens ?? null,
-                tokensOut: item.llmResult?.usage?.completion_tokens ?? null,
-                tokensUsed: item.llmResult?.usage?.total_tokens ?? null,
-                costUsd: item.llmResult?.costUsd ?? null,
-                success: true,
-                status: 'success',
-                requestBody: { difficulty: item.difficulty },
-                responseBody: { raw: item.llmResult?.content }
-              } });
-            }
-
-            created.push(upserted.id);
-          }
-
-          // Mark hydration job completed inside the same transaction
-          await tx.hydrationJob.update({ where: { id: job.id }, data: { status: JobStatus.Completed, completedAt: new Date(), contentReady: true } });
-
-          // Emit JobExecutionLog for any linked ExecutionJob
-          const linked = await tx.executionJob.findFirst({ where: { payload: { path: ['hydrationJobId'], equals: job.id } } });
-          if (linked) {
-            const prevStatus = linked.status ?? null;
-            await tx.jobExecutionLog.create({ data: { jobId: linked.id, event: 'COMPLETED', prevStatus, newStatus: 'completed', meta: { hydrationJobId: job.id, testIds: created } } });
-          }
-
-          return created;
-        });
-
-        // record created ids and results
-        for (const id of persisted) {
-          createdTestIds.push(id);
-          results.push({ difficulty: 'unknown' as any, testId: id, questionCount: 0 });
-        }
+      } catch {
+        // non-fatal; validationWithReport is best-effort
       }
-      } catch (err) {
-      logger.error('handleQuestionsJob: failed to persist tests atomically', { jobId, error: (err as any)?.message ?? String(err) });
-      // mark failure
-      await markJobFailed(job.id, 'persistence_failed');
-      throw err;
+
+      (await import('@/lib/aiOutputValidator')).validateOrThrow(parsed, {
+        jobType: 'questions',
+        language,
+        difficulty,
+        subject: subjectName,
+        topic: topic.name,
+      });
+
+      questionsCompleted++;
+      validatedDifficulties.push({ difficulty, parsed, llmResult });
+    } catch (vErr: any) {
+      const errorCode = vErr?.type || vErr?.message || 'validation_failed';
+      logger.error('[QUESTION_GENERATION_FAILURE]', {
+        topic: topic.name,
+        difficulty,
+        errorCode,
+        validationErrors: vErr?.details ?? null,
+        jobId,
+        topicId,
+      });
+      try { await prisma.aIContentLog.create({ data: { model: llmResult?.model || 'none', promptType: 'questions', language, success: false, status: 'failed', error: String(errorCode), requestBody: { jobId, difficulty }, responseBody: { raw: llmResult?.content } } }) } catch {}
+      questionsFailed++;
+      results.push({ difficulty, testId: null, questionCount: 0 });
     }
   }
 
-  // Determine overall success
-  const successfulCount = results.filter(r => r.testId !== null).length;
-  const totalQuestions = results.reduce((sum, r) => sum + r.questionCount, 0);
-
-  if (successfulCount === 0) {
+  // Only fail the root job if ALL difficulties failed
+  if (validatedDifficulties.length === 0) {
+    logger.error('[QUESTION_GENERATION_FAILURE] all difficulties failed for topic', {
+      topic: topic.name,
+      jobId,
+      topicId,
+      questionsFailed,
+      questionsCompleted,
+    });
     await markJobFailed(job.id, 'all_difficulties_failed');
     throw new Error('all_difficulties_failed');
   }
 
-  // Mark job completed (workers only update their own HydrationJob)
-  await prisma.hydrationJob.update({
-    where: { id: job.id },
-    data: { status: JobStatus.Completed, completedAt: new Date(), contentReady: true }
-  });
+  // Persist only the validated difficulties atomically
+  try {
+    for (const item of validatedDifficulties) {
+      (item as any).version = await getNextVersion({ topicId, difficulty: item.difficulty, language, type: 'test' });
+    }
+
+    const runTxWithRetry = async (work: (tx: any) => Promise<any>, attempts = 3) => {
+      let lastErr: any = null;
+      for (let i = 0; i < attempts; i++) {
+        try {
+          return await prisma.$transaction(work);
+        } catch (err) {
+          lastErr = err;
+          const msg = String(err?.message || '');
+          if (/Transaction not found|Transaction API error/i.test(msg)) {
+            const backoff = (i + 1) * 500;
+            await new Promise((r) => setTimeout(r, backoff));
+            continue;
+          }
+          throw err;
+        }
+      }
+      throw lastErr;
+    };
+
+    const persisted = await runTxWithRetry(async (tx) => {
+      const created: string[] = [];
+      for (const item of validatedDifficulties) {
+        const difficulty = item.difficulty as DifficultyLevel;
+        const version = (item as any).version;
+        const testTitle = `${topic.name} - ${difficulty.charAt(0).toUpperCase() + difficulty.slice(1)} Quiz`;
+
+        let upserted: any;
+        if (typeof tx.generatedTest.upsert === 'function') {
+          upserted = await tx.generatedTest.upsert({
+            where: { topicId_difficulty_language_version: { topicId, difficulty, language, version } },
+            update: { title: testTitle, status: ApprovalStatus.Draft },
+            create: { topicId, title: testTitle, language, difficulty, version, status: ApprovalStatus.Draft }
+          });
+        } else {
+          upserted = await tx.generatedTest.create({ data: { topicId, title: testTitle, language, difficulty, version, status: ApprovalStatus.Draft } });
+        }
+
+        if (typeof tx.generatedQuestion.deleteMany === 'function') {
+          await tx.generatedQuestion.deleteMany({ where: { testId: upserted.id, sourceJobId: job.id } });
+        }
+
+        if (!Array.isArray(item.parsed?.questions)) {
+          throw new Error('validation_failed_questions_not_array');
+        }
+
+        for (const q of item.parsed.questions as any[]) {
+          await tx.generatedQuestion.create({ data: { testId: upserted.id, type: q.type, question: q.question, options: q.options ?? null, answer: q.answer ?? null, explanation: q.explanation ?? null, marks: q.marks ?? null, sourceJobId: job.id } });
+        }
+
+        if (typeof tx.aIContentLog?.create === 'function') {
+          await tx.aIContentLog.create({ data: {
+            model: item.llmResult?.model || 'llm',
+            promptType: 'questions',
+            board,
+            grade,
+            subject: subjectName,
+            topic: topic.name,
+            language,
+            ...(topicId ? { topicRef: { connect: { id: topicId } } } : {}),
+            tokensIn: item.llmResult?.usage?.prompt_tokens ?? null,
+            tokensOut: item.llmResult?.usage?.completion_tokens ?? null,
+            tokensUsed: item.llmResult?.usage?.total_tokens ?? null,
+            costUsd: item.llmResult?.costUsd ?? null,
+            success: true,
+            status: 'success',
+            requestBody: { difficulty: item.difficulty },
+            responseBody: { raw: item.llmResult?.content }
+          } });
+        }
+
+        created.push(upserted.id);
+        results.push({ difficulty, testId: upserted.id, questionCount: item.parsed.questions.length });
+      }
+
+      await tx.hydrationJob.update({ where: { id: job.id }, data: { status: JobStatus.Completed, completedAt: new Date(), contentReady: true } });
+
+      const linked = await tx.executionJob.findFirst({ where: { payload: { path: ['hydrationJobId'], equals: job.id } } });
+      if (linked) {
+        const prevStatus = linked.status ?? null;
+        await tx.jobExecutionLog.create({ data: { jobId: linked.id, event: 'COMPLETED', prevStatus, newStatus: 'completed', meta: { hydrationJobId: job.id, testIds: created } } });
+      }
+
+      return created;
+    });
+
+    for (const id of persisted) {
+      createdTestIds.push(id);
+    }
+  } catch (err) {
+    logger.error('[VALIDATION_DEFENSIVE] handleQuestionsJob: DB write failed during test persistence', {
+      jobId,
+      topicId,
+      error: (err as any)?.message ?? String(err),
+    });
+    await markJobFailed(job.id, 'persistence_failed');
+    throw err;
+  }
+
+  const successfulCount = validatedDifficulties.length;
+  const totalQuestions = results.reduce((sum, r) => sum + r.questionCount, 0);
 
   // Emit JobExecutionLog for observability but DO NOT mutate ExecutionJob
   try {
@@ -523,17 +759,31 @@ export async function handleQuestionsJob(jobId: string): Promise<void> {
         event: 'COMPLETED',
         prevStatus,
         newStatus: prevStatus,
-        meta: { hydrationJobId: job.id, testIds: createdTestIds, results, totalQuestions, successfulDifficulties: successfulCount }
+        meta: { hydrationJobId: job.id, testIds: createdTestIds, results, totalQuestions, successfulDifficulties: successfulCount, questionsFailed, questionsCompleted }
       }}).catch(() => {});
     }
   } catch { /* ignore */ }
 
-  logger.info('handleQuestionsJob: completed successfully', { 
-    jobId, 
-    topicId, 
-    successfulDifficulties: successfulCount, 
-    totalQuestions,
-    testIds: createdTestIds 
+  const executionDurationMs = Date.now() - sessionStart;
+
+  logger.info('[VALIDATION] handleQuestionsJob: session summary', {
+    jobId,
+    topicId,
+    board,
+    grade,
+    subject: subjectName,
+    questionsCompleted,
+    questionsFailed,
+    questionsGeneratedByDifficulty: Object.fromEntries(
+      validatedDifficulties.map((d) => [d.difficulty, d.parsed?.questions?.length ?? 0])
+    ),
+    totalQuestionsGenerated: totalQuestions,
+    totalLLMCallsMade: totalLLMCalls,
+    estimatedTokensUsed: totalTokensUsed,
+    executionDurationMs,
+    successfulDifficulties: successfulCount,
+    failedDifficulties: questionsFailed,
+    testIds: createdTestIds,
   });
 }
 

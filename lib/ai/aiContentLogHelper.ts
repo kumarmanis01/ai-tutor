@@ -66,4 +66,6 @@ export async function finalizeAIContentLog(db: PrismaLike, id: string, updates: 
   return db.aIContentLog.update({ where: { id }, data })
 }
 
-export default { createStartedAIContentLog, finalizeAIContentLog }
+const aiContentLogHelper = { createStartedAIContentLog, finalizeAIContentLog }
+
+export default aiContentLogHelper

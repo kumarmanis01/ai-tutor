@@ -24,6 +24,7 @@ import useCurrentUser from '@/hooks/useCurrentUser';
 import { useOnboarding } from '@/context/OnboardingProvider';
 import { LANGUAGES, _DIFFICULTY_LEVELS } from '@/components/CascadingFilters';
 import Link from 'next/link';
+import ParentAccessCard from '@/components/Profile/ParentAccessCard';
 
 export default function ProfilePage() {
   const { data: session } = useSession();
@@ -167,6 +168,8 @@ export default function ProfilePage() {
                 {profile?.parentEmail || <span className="text-gray-400">Not set</span>}
               </div>
             </div>
+
+            <ParentAccessCard />
           </div>
         </main>
 

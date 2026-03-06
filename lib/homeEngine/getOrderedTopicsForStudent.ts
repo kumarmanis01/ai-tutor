@@ -13,22 +13,6 @@
  */
 
 import { prisma } from '@/lib/prisma';
-import type { Prisma } from '@prisma/client';
-
-/** Full topic shape returned — includes the chapter → subject → class → board chain. */
-export type OrderedTopic = Prisma.TopicDefGetPayload<{
-  include: {
-    chapter: {
-      include: {
-        subject: {
-          include: {
-            class: { include: { board: true } };
-          };
-        };
-      };
-    };
-  };
-}>;
 
 /**
  * Returns all active TopicDefs visible to the student's curriculum context,
@@ -43,7 +27,7 @@ export type OrderedTopic = Prisma.TopicDefGetPayload<{
  * Returns [] when the student's profile is missing board or grade — the caller
  * should treat this as "curriculum context unknown, no action possible".
  */
-export async function getOrderedTopicsForStudent(studentId: string): Promise<OrderedTopic[]> {
+export async function getOrderedTopicsForStudent(studentId: string) {
   const user = await prisma.user.findUnique({
     where: { id: studentId },
     select: { board: true, grade: true, subjects: true },
@@ -93,3 +77,8 @@ export async function getOrderedTopicsForStudent(studentId: string): Promise<Ord
     },
   });
 }
+
+// Derive the exported `OrderedTopic` type AFTER the function to avoid a
+// circular type reference where the alias would refer to the function's
+// return type while the function's signature referenced the alias.
+export type OrderedTopic = Awaited<ReturnType<typeof getOrderedTopicsForStudent>>[number];

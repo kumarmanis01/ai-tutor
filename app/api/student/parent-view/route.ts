@@ -14,7 +14,7 @@ import { prisma } from '@/lib/prisma';
 import { logger } from '@/lib/logger';
 import { formatErrorForResponse } from '@/lib/errorResponse';
 import type { AppSession } from '@/lib/types/auth';
-import { randomBytes } from 'crypto';
+import { createOrReuseParentInviteForStudent } from '@/lib/parent/inviteService';
 
 const CLASS_NAME = 'StudentParentViewAPI';
 
@@ -42,9 +42,11 @@ export async function GET(req: NextRequest) {
     });
 
     // Get pending invite codes (not yet claimed)
-    const pendingInvites = await prisma.parentStudent.findMany({
-      where: { studentId, status: 'pending', inviteCode: { not: null } },
-      select: { inviteCode: true, createdAt: true },
+    const pendingInvites = await prisma.parentInvite.findMany({
+      where: { studentId, status: 'pending', expiresAt: { gt: new Date() } },
+      select: { code: true, createdAt: true, expiresAt: true },
+      orderBy: { createdAt: 'desc' },
+      take: 5,
     });
 
     // Get attention flags for this student (what parents see)
@@ -66,8 +68,9 @@ export async function GET(req: NextRequest) {
         email: l.parent.email ? maskEmail(l.parent.email) : null,
       })),
       pendingInvites: pendingInvites.map((p) => ({
-        code: p.inviteCode,
+        code: p.code,
         createdAt: p.createdAt.toISOString(),
+        expiresAt: p.expiresAt.toISOString(),
       })),
       parentCanSee: {
         attentionFlags,
@@ -99,37 +102,11 @@ export async function POST(req: NextRequest) {
 
     const studentId = session.user.id;
 
-    // Check for existing pending code
-    const existing = await prisma.parentStudent.findFirst({
-      where: { studentId, status: 'pending', inviteCode: { not: null } },
-    });
-
-    if (existing?.inviteCode) {
-      return NextResponse.json({ inviteCode: existing.inviteCode });
-    }
-
-    // Generate unique code
-    let code = randomBytes(4).toString('hex').toUpperCase();
-    let attempts = 0;
-    while (attempts < 5) {
-      const conflict = await prisma.parentStudent.findUnique({ where: { inviteCode: code } });
-      if (!conflict) break;
-      code = randomBytes(4).toString('hex').toUpperCase();
-      attempts++;
-    }
-
-    await prisma.parentStudent.create({
-      data: {
-        parentId: studentId, // temporary, updated when parent claims
-        studentId,
-        inviteCode: code,
-        status: 'pending',
-      },
-    });
+    const invite = await createOrReuseParentInviteForStudent({ prisma, studentId });
 
     logger.info('Student generated parent invite code', { className: CLASS_NAME, studentId });
 
-    const response = NextResponse.json({ inviteCode: code });
+    const response = NextResponse.json({ inviteCode: invite.code, expiresAt: invite.expiresAt });
     logger.logAPI(req, response, { className: CLASS_NAME, methodName: 'POST' }, start);
     return response;
   } catch (error) {

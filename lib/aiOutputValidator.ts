@@ -1,6 +1,7 @@
 import Ajv from 'ajv'
-import { ZodError } from 'zod'
+import { ZodError, ZodIssue } from 'zod'
 import zodSchemas from './ai/prompts/schemas'
+import { logger } from '@/lib/logger.js'
 
 export class ValidationError extends Error { public type: string; public details?: any; constructor(type: string, message: string, details?: any) { super(message); this.name = 'ValidationError'; this.type = type; this.details = details } }
 export class SchemaInvalidError extends ValidationError { constructor(message: string, details?: any) { super('SCHEMA_INVALID', message, details) } }
@@ -88,6 +89,16 @@ export function validateOrThrow(parsed: any, ctx: { jobType: string, language?: 
     }
   } catch (zErr: any) {
     if (zErr instanceof ZodError) {
+      for (const issue of zErr.errors as ZodIssue[]) {
+        logger.error('[QUESTION_SCHEMA_FAILURE]', {
+          field: issue.path.join('.'),
+          receivedValue: issue.code === 'invalid_type' ? (issue as any).received : undefined,
+          expectedSchema: issue.message,
+          code: issue.code,
+          jobType: ctx.jobType,
+          topic: ctx.topic,
+        })
+      }
       throw new SchemaInvalidError('zod_schema_invalid', zErr.errors)
     }
     throw zErr
@@ -99,9 +110,33 @@ export function validateOrThrow(parsed: any, ctx: { jobType: string, language?: 
 
   // Semantic checks (simple heuristics)
   if (ctx.jobType === 'notes') {
-    // The LLM returns `notes` as a string (per prompts/notes.md schema)
-    const notesText = parsed.notes || ''
-    if (typeof notesText === 'string' && notesText.trim().length < 100) {
+    // Support both legacy `notes` field and the new schema-first NoteSchema
+    let notesText = ''
+
+    // Legacy shape: single `notes` string
+    if (typeof parsed.notes === 'string') {
+      notesText += ` ${parsed.notes}`
+    }
+
+    // New schema-first shape (see lib/ai/prompts/schemas.ts: NoteSchema)
+    if (typeof parsed.explanation === 'string') {
+      notesText += ` ${parsed.explanation}`
+    }
+    if (typeof parsed.concept === 'string') {
+      notesText += ` ${parsed.concept}`
+    }
+    if (typeof parsed.example === 'string') {
+      notesText += ` ${parsed.example}`
+    }
+    if (Array.isArray(parsed.keyPoints)) {
+      notesText += ` ${parsed.keyPoints.join(' ')}`
+    }
+    if (Array.isArray(parsed.commonMistakes)) {
+      notesText += ` ${parsed.commonMistakes.join(' ')}`
+    }
+
+    // Require a minimum amount of real content to avoid stubby notes
+    if (typeof notesText === 'string' && notesText.trim().length < 200) {
       throw new SemanticWeaknessError('notes_too_short')
     }
   }
@@ -110,10 +145,13 @@ export function validateOrThrow(parsed: any, ctx: { jobType: string, language?: 
     const qs = parsed.questions || []
     if (!Array.isArray(qs) || qs.length === 0) throw new SemanticWeaknessError('no_questions')
     for (const q of qs) {
-      if (!q.explanation || String(q.explanation).trim().length < 20) throw new SemanticWeaknessError('missing_question_explanation', { question: q.question })
+      const expl = q.explanation ? String(q.explanation).trim() : ''
+      if (expl && expl !== 'Explanation not provided.' && expl.length < 20) {
+        throw new SemanticWeaknessError('shallow_question_explanation', { question: q.question, explanationLength: expl.length })
+      }
     }
-    // difficulty alignment
-    if (ctx.difficulty && parsed.difficulty && ctx.difficulty !== parsed.difficulty) {
+    // difficulty alignment (case-insensitive)
+    if (ctx.difficulty && parsed.difficulty && ctx.difficulty.toLowerCase() !== String(parsed.difficulty).toLowerCase()) {
       throw new ContextMismatchError('difficulty_mismatch', { expected: ctx.difficulty, got: parsed.difficulty })
     }
   }

@@ -19,6 +19,7 @@ import { prisma } from '@/lib/prisma';
 import { getServerSessionForHandlers } from '@/lib/session';
 import { logger } from '@/lib/logger';
 import { LOW_ACCURACY_THRESHOLD } from '@/lib/constants/mastery';
+import { updateStudentTopicProgress } from '@/lib/learning/updateTopicProgress';
 
 export const dynamic = 'force-dynamic';
 
@@ -98,7 +99,7 @@ export async function POST(req: NextRequest) {
     return res;
   }
 
-  const { topicId, subject, chapter, action = 'view' } = body;
+  const { topicId, subject, chapter } = body;
 
   // Find or create the mastery record
   let mastery = await prisma.studentTopicMastery.findFirst({
@@ -126,6 +127,19 @@ export async function POST(req: NextRequest) {
       where: { id: mastery.id },
       data: { lastAttemptedAt: new Date() },
     });
+  }
+
+  // Track lastStudiedAt on StudentTopicProgress (notes view / topic interaction)
+  try {
+    await updateStudentTopicProgress({
+      studentId: user.id,
+      topicId,
+      correctAnswers: 0,
+      totalAnswers: 0,
+      activityType: 'STUDY',
+    });
+  } catch (err) {
+    logger.error('ProgressAPI.updateTopicProgress', { userId: user.id, topicId, error: err });
   }
 
   res = NextResponse.json({

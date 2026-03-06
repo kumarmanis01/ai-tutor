@@ -40,6 +40,33 @@ This document provides a **comprehensive analysis** of your current schema and t
 
 ## 2. RECOMMENDED SCHEMA CHANGES
 
+### 2.0 EXECUTION VS HYDRATION JOBS — SINGLE SOURCE OF TRUTH
+
+Before diving into tables, it is important to be explicit about the two job primitives we use:
+
+- `ExecutionJob` — **generic executor**
+  - “Run this piece of work once, with retries.”
+  - Used across many features (regeneration, moderation, etc.).
+  - Has no notion of hierarchy, chapters, topics, or per-level progress.
+
+- `HydrationJob` — **HydrateAll orchestration source of truth**
+  - Represents the full cascade:
+    - Root (`syllabus`, `hierarchyLevel = 0`, `rootJobId = null`)
+    - Level 1/2/3 child jobs (chapters, notes, questions) with `rootJobId` and `hierarchyLevel`.
+  - Tracks domain-specific progress:
+    - `chaptersExpected/Completed`, `topicsExpected/Completed`, `notesExpected/Completed`, `questionsExpected/Completed`
+    - `contentReady`, `estimatedCostUsd/actualCostUsd`, `estimatedDurationMins`
+  - Is **the single source of truth** for HydrateAll state and progress.
+
+Key design decision:
+
+- HydrateAll **does not require** a corresponding `ExecutionJob` row for every `HydrationJob`.
+  - Root HydrateAll submissions go directly into `HydrationJob` and are orchestrated by the reconciler.
+  - `ExecutionJob` is only used when a HydrateAll operation is triggered via the generic executor or when a human action needs to appear on the global Jobs screen.
+- All observability and control for HydrateAll (progress, errors, retries) should be anchored on `HydrationJob`. `ExecutionJob` is an optional integration surface, not the primary record.
+
+This split keeps the execution pipeline reusable and lightweight, while allowing HydrateAll to model its hierarchy and progress in a domain-appropriate way.
+
 ### **2.1 MODELS TO ADD (New Tables)**
 
 #### **A. Curriculum Structure Models**

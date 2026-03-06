@@ -25,31 +25,40 @@ export function topicQuestionsPrompt(params: TopicQuestionsParams): string {
 
 Task: Generate exactly ${params.count} multiple-choice questions for topic "${params.topicName}" in ${params.language === 'hi' ? 'Hindi' : 'English'}.
 
-Constraints:
-- Produce exactly ${params.count} questions (no extras).
-- Each item: clear, unambiguous, age-appropriate; avoid trick wording.
-- Options: exactly 4 strings per question.
-- 'correctOptionIndex': integer 0-3 pointing to the correct option.
-- 'difficulty': "easy" | "medium" | "hard".
-- 'explanation': concise (<=80 words). 'solutionSteps': 1-6 ordered steps, each <=30 words.
-- Distractors: plausible and distinct; tie at least one distractor to a common mistake. Do NOT randomize ordering.
+STRICT RULES:
+1. Return ONLY valid JSON. No markdown, no backticks, no commentary.
+2. "options" MUST be an array of exactly 4 strings.
+3. "correctAnswer" MUST be exactly one of the strings in "options".
+4. "difficulty" MUST be one of: "easy", "medium", "hard".
+5. "explanation" MUST be a concise reason (<=80 words) why the answer is correct.
+6. Each question must be clear, unambiguous, and age-appropriate.
+7. Distractors must be plausible and distinct; tie at least one to a common mistake.
 
-Output JSON Schema (RETURN ONLY valid JSON array with exactly ${params.count} entries):
-[
-  {
-    "question": string,
-    "options": [string,string,string,string],
-    "correctOptionIndex": number,
-    "difficulty": "easy" | "medium" | "hard",
-    "explanation": string,
-    "solutionSteps": [string]
-  }
-]
+Required JSON format:
+{
+  "questions": [
+    {
+      "question": "string",
+      "options": ["A", "B", "C", "D"],
+      "correctAnswer": "A",
+      "explanation": "string",
+      "difficulty": "easy"
+    }
+  ]
+}
 
-Validation Constraints:
-- Return ONLY the JSON array described above. No markdown, no commentary, no extra fields.
-- Respect field sizes and counts strictly. Use plain text only.
--- If unable to generate valid output, return '[]' (empty array).
+Example (grade 8 Science):
+{
+  "questions": [
+    {
+      "question": "What is the SI unit of force?",
+      "options": ["Newton", "Joule", "Watt", "Pascal"],
+      "correctAnswer": "Newton",
+      "explanation": "Force is measured in Newtons (N), named after Sir Isaac Newton.",
+      "difficulty": "easy"
+    }
+  ]
+}
 
-Strict Output Instruction: Return ONLY valid JSON that exactly matches the schema above, nothing else.`
+Return ONLY the JSON object above with exactly ${params.count} questions. No other text.`
 }

@@ -22,7 +22,7 @@ export function loadEnv() {
         const p = req('path')
         const localPath = p.resolve(process.cwd(), '.env')
         ;(pkg as any).config({ path: localPath })
-      } catch (e) {
+      } catch {
         // Fallback to default behavior
         ;(pkg as any).config()
       }

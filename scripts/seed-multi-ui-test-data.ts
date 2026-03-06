@@ -1,4 +1,8 @@
-import { PrismaClient, MasteryLevel } from '@prisma/client'
+import { PrismaClient } from '@prisma/client'
+
+// Local alias for the MasteryLevel enum to avoid depending on a freshly
+// generated Prisma client during editor/type-check time.
+type MasteryLevel = 'beginner' | 'intermediate' | 'advanced' | 'expert'
 
 const prisma = new PrismaClient()
 
@@ -97,9 +101,35 @@ async function seedStudentWeak(userEmail: string, topicMap: Record<string, any[]
   const poly = topicMap['Algebra'].find((t: any) => t.slug === 'polynomials')
 
   // Mastery / practice attempts
-  await prisma.studentTopicMastery.upsert({ where: { studentId_topicId: { studentId: user.id, topicId: linear.id } }, update: { accuracy: 85, questionsAttempted: 10, masteryLevel: 'advanced' as MasteryLevel, lastAttemptedAt: daysAgo(2) }, create: { studentId: user.id, topicId: linear.id, subject: 'Math', chapter: 'Algebra', accuracy: 85, questionsAttempted: 10, masteryLevel: 'advanced' as MasteryLevel, lastAttemptedAt: daysAgo(2) } })
+  await prisma.studentTopicMastery.upsert({
+    where: { studentId_topicId: { studentId: user.id, topicId: linear.id } },
+    update: { accuracy: 85, questionsAttempted: 10, masteryLevel: 'advanced', lastAttemptedAt: daysAgo(2) },
+    create: {
+      studentId: user.id,
+      topicId: linear.id,
+      subject: 'Math',
+      chapter: 'Algebra',
+      accuracy: 85,
+      questionsAttempted: 10,
+      masteryLevel: 'advanced',
+      lastAttemptedAt: daysAgo(2),
+    },
+  })
 
-  await prisma.studentTopicMastery.upsert({ where: { studentId_topicId: { studentId: user.id, topicId: quad.id } }, update: { accuracy: 40, questionsAttempted: 5, masteryLevel: 'beginner' as MasteryLevel, lastAttemptedAt: new Date() }, create: { studentId: user.id, topicId: quad.id, subject: 'Math', chapter: 'Algebra', accuracy: 40, questionsAttempted: 5, masteryLevel: 'beginner' as MasteryLevel, lastAttemptedAt: new Date() } })
+  await prisma.studentTopicMastery.upsert({
+    where: { studentId_topicId: { studentId: user.id, topicId: quad.id } },
+    update: { accuracy: 40, questionsAttempted: 5, masteryLevel: 'beginner', lastAttemptedAt: new Date() },
+    create: {
+      studentId: user.id,
+      topicId: quad.id,
+      subject: 'Math',
+      chapter: 'Algebra',
+      accuracy: 40,
+      questionsAttempted: 5,
+      masteryLevel: 'beginner',
+      lastAttemptedAt: new Date(),
+    },
+  })
 
   // No science progress
 

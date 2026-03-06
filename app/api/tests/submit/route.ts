@@ -2,10 +2,12 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getServerSessionForHandlers } from '@/lib/session';
 import { applyGrading, SubmitPayload, updateTopicMastery } from '@/lib/tests';
+import { updateStudentTopicProgress } from '@/lib/learning/updateTopicProgress';
 import { updateLearningProfile } from '@/lib/recommendations/engine';
 import { adjustDifficultyAfterTest } from '@/lib/personalization/adaptDifficulty';
 import { getNextAction } from '@/lib/homeEngine/getNextAction';
 import { logger } from '@/lib/logger';
+import { recordSessionEvents } from '@/lib/session/sessionEvents';
 
 export const dynamic = 'force-dynamic';
 
@@ -85,6 +87,25 @@ export async function POST(req: Request) {
     // non-fatal — test may not be a GeneratedTest
   }
 
+  if (topicId) {
+    try {
+      const correctCount = result.graded.filter((g) => g.correct).length;
+      await updateStudentTopicProgress({
+        studentId: user.id,
+        topicId,
+        correctAnswers: correctCount,
+        totalAnswers: result.graded.length,
+        activityType: 'TEST',
+      });
+    } catch (err) {
+      logger.error('TestsSubmitAPI.updateStudentTopicProgress', {
+        userId: user.id,
+        topicId,
+        error: err,
+      });
+    }
+  }
+
   // Compute next rule after mastery update for audit logging.
   let nextRule: string | null = null;
   try {
@@ -120,6 +141,31 @@ export async function POST(req: Request) {
       attemptId: attempt.id,
       error: err,
     });
+  }
+
+  // Record QUESTION_ANSWERED session events when inside a structured session
+  if (topicId) {
+    try {
+      const structuredSession = await prisma.structuredSession.findFirst({
+        where: { studentId: user.id, topicId, state: { not: 'COMPLETE' } },
+        select: { id: true },
+      });
+      if (structuredSession) {
+        const events = result.graded.map((g) => ({
+          sessionId: structuredSession.id,
+          eventType: 'QUESTION_ANSWERED' as const,
+          metadata: {
+            studentId: user.id,
+            questionId: g.questionId,
+            isCorrect: g.correct,
+            source: 'test',
+          },
+        }));
+        recordSessionEvents(events);
+      }
+    } catch {
+      // non-fatal
+    }
   }
 
   res = NextResponse.json({ attemptId: attempt.id, ...result, difficultyFeedback });

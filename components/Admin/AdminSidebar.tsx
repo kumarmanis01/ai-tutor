@@ -217,15 +217,16 @@ interface NavItem {
   badgeColor?: string;
 }
 
-// Navigation sections
+// Navigation sections — organised by workflow; all hrefs must match app/admin route segments
 const contentGenerationLinks: NavItem[] = [
-  { href: '/admin/ai-dashboard', label: 'Dashboard', icon: 'Dashboard' },
+  { href: '/admin', label: 'Home', icon: 'Dashboard' },
+  { href: '/admin/ai-dashboard', label: 'AI Dashboard', icon: 'Chart' },
   { href: '/admin/content-engine/control-panel', label: 'AI Generation', icon: 'Generate' },
   {
     href: '/admin/content-engine/hydrateAll',
-    label: 'HydrateAll Pipeline',
+    label: 'Hydrate All',
     icon: 'Rocket',
-    badge: 'New',
+    badge: 'Pipeline',
     badgeColor: 'bg-green-500',
   },
 ];
@@ -244,19 +245,25 @@ const contentManagementLinks: NavItem[] = [
   { href: '/admin/catalog', label: 'Content Catalog', icon: 'Folder' },
 ];
 
+// Jobs, failure logs, retries — single place for execution and HydrateAll jobs + retry actions
+const jobsAndRetriesLinks: NavItem[] = [
+  { href: '/admin/content-engine/jobs', label: 'Execution Jobs', icon: 'Briefcase' },
+  { href: '/admin/content-engine/hydrateAll', label: 'Hydrate All Jobs', icon: 'Rocket' },
+  { href: '/admin/regeneration-jobs', label: 'Regeneration Jobs', icon: 'Rewind' },
+];
+
 const systemMonitoringLinks: NavItem[] = [
-  { href: '/admin/content-engine/jobs', label: 'Jobs', icon: 'Briefcase' },
   { href: '/admin/content-engine/workers', label: 'Workers', icon: 'Server' },
   { href: '/admin/content-engine/queue', label: 'Queue', icon: 'Queue' },
   { href: '/admin/content-engine/redis', label: 'Redis', icon: 'Database' },
   { href: '/admin/system/metrics', label: 'System Metrics', icon: 'Chart' },
   { href: '/admin/system/alerts', label: 'System Alerts', icon: 'Bell' },
-  { href: '/admin/content-engine/audit-logs', label: 'Audit Logs', icon: 'ClipboardList' },
+  { href: '/admin/content-engine/audit-logs', label: 'Engine Audit Logs', icon: 'ClipboardList' },
 ];
 
 const generalAdminLinks: NavItem[] = [
   { href: '/admin/users', label: 'User Management', icon: 'Users' },
-  { href: '/admin/audit-logs', label: 'Audit Logs', icon: 'ClipboardList' },
+  { href: '/admin/audit-logs', label: 'Platform Audit Logs', icon: 'ClipboardList' },
   { href: '/admin/api-usage', label: 'API Usage', icon: 'Chart' },
   { href: '/admin/payments/success', label: 'Payments', icon: 'CreditCard' },
   { href: '/admin/challenge', label: 'Challenges', icon: 'Trophy' },
@@ -295,26 +302,26 @@ function NavSection({ title, items, pathname, defaultExpanded = true }: NavSecti
             const isActive = pathname === item.href || pathname.startsWith(item.href + '/');
 
             return (
-              <Link key={item.href} href={item.href} legacyBehavior>
-                <a
-                  className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-150 ${
-                    isActive
-                      ? 'bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-md shadow-blue-500/25'
-                      : 'text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700/50'
-                  }`}
-                >
-                  <span className={isActive ? 'text-white' : 'text-gray-500 dark:text-gray-400'}>
-                    <IconComponent />
+              <Link
+                key={item.href}
+                href={item.href}
+                className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-150 ${
+                  isActive
+                    ? 'bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-md shadow-blue-500/25'
+                    : 'text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700/50'
+                }`}
+              >
+                <span className={isActive ? 'text-white' : 'text-gray-500 dark:text-gray-400'}>
+                  <IconComponent />
+                </span>
+                <span className="flex-1">{item.label}</span>
+                {item.badge && (
+                  <span
+                    className={`text-xs px-2 py-0.5 rounded-full text-white ${item.badgeColor || 'bg-blue-500'}`}
+                  >
+                    {item.badge}
                   </span>
-                  <span className="flex-1">{item.label}</span>
-                  {item.badge && (
-                    <span
-                      className={`text-xs px-2 py-0.5 rounded-full text-white ${item.badgeColor || 'bg-blue-500'}`}
-                    >
-                      {item.badge}
-                    </span>
-                  )}
-                </a>
+                )}
               </Link>
             );
           })}
@@ -384,6 +391,7 @@ export default function AdminSidebar() {
       <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-1">
         <NavSection title="Content Generation" items={contentGenerationLinks} pathname={pathname} />
         <NavSection title="Content Management" items={contentManagementLinks} pathname={pathname} />
+        <NavSection title="Jobs & Retries" items={jobsAndRetriesLinks} pathname={pathname} />
         <NavSection title="System Monitoring" items={systemMonitoringLinks} pathname={pathname} />
         <NavSection
           title="General Admin"

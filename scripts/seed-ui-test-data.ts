@@ -1,4 +1,4 @@
-import { PrismaClient, MasteryLevel } from '@prisma/client'
+import { PrismaClient } from '@prisma/client'
 
 const prisma = new PrismaClient()
 
@@ -119,20 +119,47 @@ export async function seed() {
 
   await prisma.studentTopicMastery.upsert({
     where: { studentId_topicId: { studentId: user.id, topicId: linear.id } },
-    update: { accuracy: 85, questionsAttempted: 10, masteryLevel: 'advanced' as MasteryLevel, lastAttemptedAt: daysAgo(2) },
-    create: { studentId: user.id, topicId: linear.id, subject: 'Math', chapter: 'Algebra', accuracy: 85, questionsAttempted: 10, masteryLevel: 'advanced' as MasteryLevel, lastAttemptedAt: daysAgo(2) },
+    update: { accuracy: 85, questionsAttempted: 10, masteryLevel: 'advanced', lastAttemptedAt: daysAgo(2) },
+    create: {
+      studentId: user.id,
+      topicId: linear.id,
+      subject: 'Math',
+      chapter: 'Algebra',
+      accuracy: 85,
+      questionsAttempted: 10,
+      masteryLevel: 'advanced',
+      lastAttemptedAt: daysAgo(2),
+    },
   })
 
   await prisma.studentTopicMastery.upsert({
     where: { studentId_topicId: { studentId: user.id, topicId: quadratic.id } },
-    update: { accuracy: 45, questionsAttempted: 4, masteryLevel: 'beginner' as MasteryLevel, lastAttemptedAt: new Date() },
-    create: { studentId: user.id, topicId: quadratic.id, subject: 'Math', chapter: 'Algebra', accuracy: 45, questionsAttempted: 4, masteryLevel: 'beginner' as MasteryLevel, lastAttemptedAt: new Date() },
+    update: { accuracy: 45, questionsAttempted: 4, masteryLevel: 'beginner', lastAttemptedAt: new Date() },
+    create: {
+      studentId: user.id,
+      topicId: quadratic.id,
+      subject: 'Math',
+      chapter: 'Algebra',
+      accuracy: 45,
+      questionsAttempted: 4,
+      masteryLevel: 'beginner',
+      lastAttemptedAt: new Date(),
+    },
   })
 
   await prisma.studentTopicMastery.upsert({
     where: { studentId_topicId: { studentId: user.id, topicId: polynomials.id } },
-    update: { accuracy: 0, questionsAttempted: 0, masteryLevel: 'beginner' as MasteryLevel, lastAttemptedAt: daysAgo(1) },
-    create: { studentId: user.id, topicId: polynomials.id, subject: 'Math', chapter: 'Algebra', accuracy: 0, questionsAttempted: 0, masteryLevel: 'beginner' as MasteryLevel, lastAttemptedAt: daysAgo(1) },
+    update: { accuracy: 0, questionsAttempted: 0, masteryLevel: 'beginner', lastAttemptedAt: daysAgo(1) },
+    create: {
+      studentId: user.id,
+      topicId: polynomials.id,
+      subject: 'Math',
+      chapter: 'Algebra',
+      accuracy: 0,
+      questionsAttempted: 0,
+      masteryLevel: 'beginner',
+      lastAttemptedAt: daysAgo(1),
+    },
   })
 
   // 5. Insert one in-progress LearningSession for Quadratic

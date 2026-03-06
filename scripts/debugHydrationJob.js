@@ -39,9 +39,16 @@ async function main() {
       console.log('\nOUTBOX ROW:\n', JSON.stringify(out, null, 2))
     }
 
-    // Last resort: recent outbox rows for same worker type
-    const recent = await prisma.outbox.findMany({ where: { workerType: 'SYLLABUS' }, orderBy: { createdAt: 'desc' }, take: 20 })
-    console.log('\nRECENT_OUTBOX_SYLLABUS (20): count=', recent.length)
+    // Last resort: recent outbox rows. Prefer rows linked to the hydration job (meta.hydrationJobId),
+    // otherwise fall back to recent entries for the `content-hydration` queue.
+    let recent = []
+    if (jobId) {
+      recent = await prisma.outbox.findMany({ where: { meta: { path: ['hydrationJobId'], equals: jobId } }, orderBy: { createdAt: 'desc' }, take: 20 })
+    }
+    if (!recent || recent.length === 0) {
+      recent = await prisma.outbox.findMany({ where: { queue: 'content-hydration' }, orderBy: { createdAt: 'desc' }, take: 20 })
+    }
+    console.log('\nRECENT_OUTBOX (20): count=', recent.length)
 
     await prisma.$disconnect()
   } catch (err) {
