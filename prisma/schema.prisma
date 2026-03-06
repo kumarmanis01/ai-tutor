@@ -874,6 +874,7 @@ model Question {
   chapter       String?
   grade         String?
   board         String?
+  topicId       String? /// canonical topic reference — backfilled for legacy rows
   type          String
   difficulty    String?
   prompt        String
@@ -882,7 +883,10 @@ model Question {
   source        String?
   createdAt     DateTime          @default(now())
   updatedAt     DateTime          @updatedAt
+  topic         TopicDef?         @relation(fields: [topicId], references: [id])
   attempts      AttemptQuestion[]
+
+  @@index([topicId])
 }
 
 model AttemptQuestion {
@@ -976,6 +980,7 @@ model TopicDef {
   tests     GeneratedTest[]
   chapter   ChapterDef       @relation(fields: [chapterId], references: [id])
   notes     TopicNote[]
+  questions Question[]
 
   @@unique([chapterId, slug])
 }

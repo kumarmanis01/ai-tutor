@@ -404,6 +404,16 @@ export class RecommendationEngine {
         },
         take: 50,
         orderBy: { updatedAt: 'desc' },
+        include: {
+          topic: {
+            select: {
+              id: true,
+              name: true,
+              chapterId: true,
+              chapter: { select: { id: true, name: true, subject: { select: { id: true, name: true } } } },
+            },
+          },
+        },
       }),
       prisma.note.findMany({
         where: {
@@ -518,19 +528,30 @@ export class RecommendationEngine {
     for (const [chapterKey, qs] of Object.entries(questionGroups)) {
       if (qs.length >= 3) {
         const firstQ = qs[0] as Record<string, any>;
+        const topicId = firstQ?.topicId || firstQ?.topic?.id || undefined;
+        const topicMeta = firstQ?.topic;
         candidates.push({
           id: `practice:${chapterKey}`,
-          contentId: `practice:${chapterKey}`,
+          contentId: topicId ? `practice:${topicId}` : `practice:${chapterKey}`,
           type: 'practice',
-          title: `Practice: ${chapterKey || 'Mixed Topics'}`,
-          subject: String(firstQ?.subject || ''),
+          title: `Practice: ${topicMeta?.name || chapterKey || 'Mixed Topics'}`,
+          subject: String(topicMeta?.chapter?.subject?.name || firstQ?.subject || ''),
           board: String(firstQ?.board || ''),
           grade: String(firstQ?.grade || ''),
           chapter: chapterKey || undefined,
           difficulty: firstQ?.difficulty ? String(firstQ.difficulty) : undefined,
           createdAt: new Date(),
           source: 'question',
-          meta: { questionCount: qs.length },
+          topicId,
+          meta: {
+            questionCount: qs.length,
+            topicId: topicId || null,
+            topicName: topicMeta?.name || null,
+            chapterId: topicMeta?.chapterId || null,
+            chapterName: topicMeta?.chapter?.name || null,
+            subjectId: topicMeta?.chapter?.subject?.id || null,
+            subjectName: topicMeta?.chapter?.subject?.name || null,
+          },
         });
       }
     }
