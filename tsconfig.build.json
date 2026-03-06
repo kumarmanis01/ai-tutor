@@ -34,6 +34,7 @@
     "app/**/layout.tsx",
     "app/**/route.ts",
     "worker/k8s-adapter.ts",
-    "worker/dev-entry.ts"
+    "worker/dev-entry.ts",
+    "worker/dev-supervisor.ts"
   ]
 }
