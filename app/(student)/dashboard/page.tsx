@@ -13,6 +13,7 @@ import UtilityRow from '@/components/home/UtilityRow';
 import PerformanceSnapshot from '@/components/home/PerformanceSnapshot';
 import StudyStreakCard from '@/components/home/StudyStreakCard';
 import WeakTopicsCard from '@/components/home/WeakTopicsCard';
+import HomeworkCard from '@/components/home/HomeworkCard';
 
 export const dynamic = 'force-dynamic';
 
@@ -39,7 +40,7 @@ export default async function StudentHomeDashboardPage() {
   }
 
   // Fetch all home data in parallel — server-side, no stale cache.
-  const [nextAction, todayGoal, learningSnapshot, dailyPlan, perfSnapshot, streakData, weakTopicsData] = (await Promise.all([
+  const [nextAction, todayGoal, learningSnapshot, dailyPlan, perfSnapshot, streakData, weakTopicsData, homeworkData] = (await Promise.all([
     fetchJson('/api/home/next-action'),
     fetchJson('/api/home/today-goal'),
     fetchJson('/api/home/learning-snapshot'),
@@ -47,7 +48,12 @@ export default async function StudentHomeDashboardPage() {
     fetchJson('/api/home/performance-snapshot'),
     fetchJson('/api/student/streak'),
     fetchJson('/api/student/weak-topics'),
-  ])) as [any, any, any, any, any, any, any];
+    fetchJson('/api/student/homework'),
+  ])) as [any, any, any, any, any, any, any, any];
+
+  const activeHomework = (homeworkData?.homework ?? []).filter(
+    (h: any) => h.status === 'PENDING' || h.status === 'OVERDUE'
+  );
 
   return (
     <main className="max-w-5xl mx-auto px-4 py-8">
@@ -89,7 +95,12 @@ export default async function StudentHomeDashboardPage() {
           <LearningPathSnapshot subjects={learningSnapshot?.subjects ?? []} />
         </section>
 
-        {/* 4. Weak Topics */}
+        {/* 4. Homework Assignments */}
+        <section aria-labelledby="homework-card-heading">
+          <HomeworkCard items={activeHomework} />
+        </section>
+
+        {/* 4b. Weak Topics */}
         <section aria-labelledby="weak-topics-heading">
           <WeakTopicsCard topics={weakTopicsData?.topics ?? []} />
         </section>
