@@ -882,6 +882,7 @@ enum HomeworkStatus {
   IN_PROGRESS
   SUBMITTED
   GRADED
+  OVERDUE
 }
 
 enum SessionPhase {
