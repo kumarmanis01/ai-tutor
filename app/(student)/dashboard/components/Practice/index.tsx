@@ -2,24 +2,31 @@
 
 /**
  * FILE OBJECTIVE:
- * - Simplified Practice page with 4 sections:
- *   1. Recommended Practice — from TopicRanker
- *   2. Weak Topics Practice — topics where mastery < 0.4
- *   3. Chapter Practice — select subject → chapter → topics
- *   4. Custom Test — advanced filters (collapsible)
+ * - Simplified Practice page with section-tab navigation (no filters).
+ * - Four sections, one visible at a time:
+ *     1. Recommended Practice (default) — from TopicRanker
+ *     2. Weak Topics Practice            — mastery < 0.4
+ *     3. Chapter Practice                — subject → chapter → topic drill-down
+ *     4. Custom Test                     — difficulty picker + hierarchy browser
+ * - Students can start practice in ≤ 2 clicks from any section.
  *
  * EDIT LOG:
- * - 2026-03-06 | claude | created simplified topic-first Practice layout
+ * - 2026-03-06 | Manish Kumar | replaced filter-heavy stacked layout with
+ *                              section-tab UI; removed CascadingFilters dependency
  */
 
 import React, { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import useCurrentUser from '@/hooks/useCurrentUser';
 import { useAcademicHierarchy } from '@/hooks/useAcademicHierarchy';
-import type { HierarchySubject, HierarchyChapter, HierarchyTopic } from '@/hooks/useAcademicHierarchy';
-import AdvancedPracticeFilters from '@/components/practice/AdvancedPracticeFilters';
+import type {
+  HierarchySubject,
+  HierarchyChapter,
+  HierarchyTopic,
+} from '@/hooks/useAcademicHierarchy';
 
-// ─── Types ──────────────────────────────────────────────────────────────────
+// ─── Types ───────────────────────────────────────────────────────────────────
 
 interface RecommendedTopic {
   topicId: string;
@@ -35,22 +42,40 @@ interface WeakTopicEntry {
   chapter: string;
   subject: string;
   mastery: number;
-  practiceCount: number;
 }
 
-interface PracticeOverview {
-  recommendedTopic: RecommendedTopic | null;
-  weakTopics: WeakTopicEntry[];
-}
+type SectionId = 'recommended' | 'weak' | 'chapter' | 'custom';
 
-// ─── Main Component ──────────────────────────────────────────────────────────
+const SECTIONS: { id: SectionId; label: string }[] = [
+  { id: 'recommended', label: 'Recommended' },
+  { id: 'weak',        label: 'Weak Topics' },
+  { id: 'chapter',     label: 'Chapter' },
+  { id: 'custom',      label: 'Custom Test' },
+];
+
+const DIFFICULTIES = [
+  { value: '',       label: 'Any' },
+  { value: 'easy',   label: 'Easy' },
+  { value: 'medium', label: 'Medium' },
+  { value: 'hard',   label: 'Hard' },
+];
+
+// ─── Main Component ───────────────────────────────────────────────────────────
 
 export default function PracticeTab() {
   const { data: profile } = useCurrentUser();
   const { helpers, loading: hierarchyLoading } = useAcademicHierarchy();
+  const router = useRouter();
 
-  const [overview, setOverview] = useState<PracticeOverview | null>(null);
+  const [activeSection, setActiveSection] = useState<SectionId>('recommended');
+  const [recommended, setRecommended] = useState<RecommendedTopic | null>(null);
+  const [weakTopics, setWeakTopics] = useState<WeakTopicEntry[]>([]);
   const [overviewLoading, setOverviewLoading] = useState(true);
+
+  // Custom Test state
+  const [customDifficulty, setCustomDifficulty] = useState('');
+  const [customTopicId, setCustomTopicId] = useState<string | null>(null);
+  const [customTopicName, setCustomTopicName] = useState('');
 
   useEffect(() => {
     let cancelled = false;
@@ -58,183 +83,252 @@ export default function PracticeTab() {
       .then((r) => r.json())
       .then((data) => {
         if (cancelled) return;
-        setOverview({
-          recommendedTopic: data?.recommendedTopic ?? null,
-          weakTopics: data?.weakTopics ?? [],
-        });
+        setRecommended(data?.recommendedTopic ?? null);
+        setWeakTopics(data?.weakTopics ?? []);
       })
       .catch(() => {
-        if (!cancelled) setOverview({ recommendedTopic: null, weakTopics: [] });
+        if (!cancelled) { setRecommended(null); setWeakTopics([]); }
       })
-      .finally(() => {
-        if (!cancelled) setOverviewLoading(false);
-      });
+      .finally(() => { if (!cancelled) setOverviewLoading(false); });
     return () => { cancelled = true; };
   }, []);
 
   const practiceHref = useCallback((topicId: string, difficulty?: string) => {
-    const params = new URLSearchParams({ topicId });
-    if (difficulty) params.set('difficulty', difficulty);
-    return `/practice/start?${params.toString()}`;
+    const p = new URLSearchParams({ topicId });
+    if (difficulty) p.set('difficulty', difficulty);
+    return `/practice/start?${p.toString()}`;
   }, []);
 
   const subjects = helpers.getSubjectsForGrade(profile?.board, profile?.grade);
 
+  const handleSelectCustomTopic = useCallback((topicId: string, topicName: string) => {
+    setCustomTopicId(topicId);
+    setCustomTopicName(topicName);
+  }, []);
+
+  function startCustomTest() {
+    if (!customTopicId) return;
+    router.push(practiceHref(customTopicId, customDifficulty || undefined));
+  }
+
+  // ─── Render ───────────────────────────────────────────────────────────────
+
   return (
-    <div className="space-y-8 px-3 sm:px-4 py-4">
-      <div className="space-y-1">
+    <div className="px-3 sm:px-4 py-4">
+      {/* Page header */}
+      <div className="mb-5 space-y-0.5">
         <h1 className="text-xl sm:text-2xl font-bold">Practice</h1>
-        <p className="text-sm text-gray-500">Choose a topic to practice</p>
+        <p className="text-sm text-gray-500">Start practice in 2 clicks</p>
       </div>
 
-      {/* Section 1: Recommended Practice */}
-      <section>
-        <SectionHeading title="Recommended Practice" accent="indigo" />
-        {overviewLoading ? (
-          <SectionSkeleton />
-        ) : overview?.recommendedTopic ? (
-          <div className="rounded-xl border border-indigo-100 bg-gradient-to-br from-indigo-50 to-white p-5 shadow-sm">
-            <p className="text-xs font-semibold uppercase tracking-wide text-indigo-600 mb-1">
-              {overview.recommendedTopic.reason}
-            </p>
-            <h3 className="text-lg font-bold text-gray-900">
-              {overview.recommendedTopic.topicTitle}
-            </h3>
-            <p className="text-sm text-gray-500 mt-0.5">
-              {overview.recommendedTopic.subject} &middot; {overview.recommendedTopic.chapter}
-            </p>
-            <Link
-              href={practiceHref(overview.recommendedTopic.topicId)}
-              className="inline-flex items-center gap-2 mt-4 px-4 py-2.5 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors"
-            >
-              <PlayIcon />
-              Start Practice
-            </Link>
-          </div>
-        ) : (
-          <div className="rounded-xl border border-gray-200 bg-gray-50 p-5 text-sm text-gray-500">
-            No recommendation right now. Browse by chapter or use custom filters below.
-          </div>
-        )}
-      </section>
+      {/* Section tab pills */}
+      <div
+        role="tablist"
+        aria-label="Practice sections"
+        className="flex gap-2 overflow-x-auto pb-1 mb-6 scrollbar-hide"
+      >
+        {SECTIONS.map((s) => (
+          <button
+            key={s.id}
+            role="tab"
+            type="button"
+            aria-selected={activeSection === s.id}
+            onClick={() => setActiveSection(s.id)}
+            className={[
+              'shrink-0 rounded-full px-4 py-1.5 text-sm font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500',
+              activeSection === s.id
+                ? 'bg-indigo-600 text-white shadow-sm'
+                : 'bg-gray-100 text-gray-600 hover:bg-gray-200',
+            ].join(' ')}
+          >
+            {s.label}
+          </button>
+        ))}
+      </div>
 
-      {/* Section 2: Weak Topics Practice */}
-      <section>
-        <SectionHeading title="Weak Topics Practice" accent="amber" />
-        {overviewLoading ? null : overview && overview.weakTopics.length > 0 ? (
-          <div className="grid gap-3 sm:grid-cols-2">
-            {overview.weakTopics.map((t) => (
+      {/* ── Section panels ─────────────────────────────────────────────────── */}
+
+      {/* 1. Recommended Practice */}
+      {activeSection === 'recommended' && (
+        <section aria-label="Recommended Practice">
+          {overviewLoading ? (
+            <RecommendedSkeleton />
+          ) : recommended ? (
+            <div className="rounded-2xl border border-indigo-100 bg-gradient-to-br from-indigo-50 via-white to-violet-50 p-6 shadow-sm">
+              <span className="inline-block rounded-full bg-indigo-100 px-3 py-0.5 text-xs font-semibold text-indigo-600 mb-3">
+                {recommended.reason}
+              </span>
+              <h2 className="text-xl font-bold text-gray-900 leading-snug">
+                {recommended.topicTitle}
+              </h2>
+              <p className="mt-1 text-sm text-gray-500">
+                {recommended.subject} &middot; {recommended.chapter}
+              </p>
               <Link
-                key={t.topicId}
-                href={practiceHref(t.topicId)}
-                className="text-left rounded-xl border border-amber-100 bg-gradient-to-br from-amber-50 to-white p-4 shadow-sm hover:shadow-md transition-shadow"
+                href={practiceHref(recommended.topicId)}
+                className="inline-flex items-center gap-2 mt-5 px-5 py-2.5 bg-indigo-600 text-white text-sm font-semibold rounded-xl hover:bg-indigo-700 transition-colors shadow-sm"
               >
-                <div className="flex items-center justify-between">
-                  <h3 className="text-base font-bold text-gray-900 truncate">
-                    {t.topicName}
-                  </h3>
-                  <MasteryBadge mastery={t.mastery} />
-                </div>
-                <p className="mt-0.5 text-xs text-gray-500">
-                  {t.subject} &middot; {t.chapter}
-                </p>
+                <PlayIcon />
+                Start Practice
               </Link>
-            ))}
+            </div>
+          ) : (
+            <EmptyState
+              message="No recommendation yet."
+              hint="Try Weak Topics or browse by Chapter."
+            />
+          )}
+        </section>
+      )}
+
+      {/* 2. Weak Topics Practice */}
+      {activeSection === 'weak' && (
+        <section aria-label="Weak Topics Practice">
+          {overviewLoading ? (
+            <CardGridSkeleton />
+          ) : weakTopics.length > 0 ? (
+            <div className="grid gap-3 sm:grid-cols-2">
+              {weakTopics.map((t) => (
+                <Link
+                  key={t.topicId}
+                  href={practiceHref(t.topicId)}
+                  className="block rounded-xl border border-amber-100 bg-gradient-to-br from-amber-50 to-white p-4 shadow-sm hover:shadow-md transition-shadow"
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <h3 className="text-base font-bold text-gray-900 leading-snug">
+                      {t.topicName}
+                    </h3>
+                    <MasteryBadge mastery={t.mastery} />
+                  </div>
+                  <p className="mt-1 text-xs text-gray-500">
+                    {t.subject} &middot; {t.chapter}
+                  </p>
+                </Link>
+              ))}
+            </div>
+          ) : (
+            <EmptyState
+              message="No weak topics found."
+              hint="Great job! Try Recommended Practice to keep improving."
+            />
+          )}
+        </section>
+      )}
+
+      {/* 3. Chapter Practice */}
+      {activeSection === 'chapter' && (
+        <section aria-label="Chapter Practice">
+          {hierarchyLoading ? (
+            <CardGridSkeleton />
+          ) : subjects.length === 0 ? (
+            <EmptyState message="No subjects found for your profile." />
+          ) : (
+            <div className="space-y-2">
+              {subjects.map((sub) => (
+                <SubjectAccordion
+                  key={sub.id}
+                  subject={sub}
+                  helpers={helpers}
+                  onSelectTopic={(id) => router.push(practiceHref(id))}
+                  actionLabel="Practice"
+                />
+              ))}
+            </div>
+          )}
+        </section>
+      )}
+
+      {/* 4. Custom Test */}
+      {activeSection === 'custom' && (
+        <section aria-label="Custom Test">
+          {/* Difficulty selector */}
+          <div className="mb-5">
+            <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-2">
+              Difficulty
+            </p>
+            <div className="flex gap-2 flex-wrap">
+              {DIFFICULTIES.map((d) => (
+                <button
+                  key={d.value}
+                  type="button"
+                  onClick={() => setCustomDifficulty(d.value)}
+                  className={[
+                    'rounded-full px-3 py-1 text-sm font-medium transition-colors',
+                    customDifficulty === d.value
+                      ? 'bg-indigo-600 text-white'
+                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200',
+                  ].join(' ')}
+                >
+                  {d.label}
+                </button>
+              ))}
+            </div>
           </div>
-        ) : (
-          <p className="text-sm text-gray-400">No weak topics. Keep up the good work!</p>
-        )}
-      </section>
 
-      {/* Section 3: Chapter Practice */}
-      <section>
-        <SectionHeading title="Chapter Practice" accent="gray" />
-        {hierarchyLoading ? (
-          <SectionSkeleton />
-        ) : subjects.length === 0 ? (
-          <p className="text-sm text-gray-400">No subjects found for your profile.</p>
-        ) : (
-          <div className="space-y-2">
-            {subjects.map((sub) => (
-              <ChapterPracticeAccordion
-                key={sub.id}
-                subject={sub}
-                helpers={helpers}
-                practiceHref={practiceHref}
-              />
-            ))}
+          {/* Topic selection */}
+          <div className="mb-5">
+            <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-2">
+              Select Topic
+            </p>
+            {hierarchyLoading ? (
+              <CardGridSkeleton />
+            ) : (
+              <div className="space-y-2">
+                {subjects.map((sub) => (
+                  <SubjectAccordion
+                    key={sub.id}
+                    subject={sub}
+                    helpers={helpers}
+                    onSelectTopic={handleSelectCustomTopic}
+                    actionLabel="Select"
+                    selectedTopicId={customTopicId ?? undefined}
+                  />
+                ))}
+              </div>
+            )}
           </div>
-        )}
-      </section>
 
-      {/* Section 4: Custom Test */}
-      <section>
-        <SectionHeading title="Custom Test" accent="gray" />
-        <AdvancedPracticeFilters />
-      </section>
+          {/* CTA bar — shown once a topic is selected */}
+          {customTopicId ? (
+            <div className="rounded-xl border border-indigo-100 bg-indigo-50 p-4 flex items-center justify-between gap-3">
+              <p className="text-sm text-gray-700 truncate">
+                <span className="font-semibold">{customTopicName}</span>
+                {customDifficulty && (
+                  <span className="ml-2 text-gray-500 capitalize">· {customDifficulty}</span>
+                )}
+              </p>
+              <button
+                type="button"
+                onClick={startCustomTest}
+                className="shrink-0 inline-flex items-center gap-1.5 px-4 py-2 bg-indigo-600 text-white text-sm font-semibold rounded-lg hover:bg-indigo-700 transition-colors"
+              >
+                <PlayIcon />
+                Start Test
+              </button>
+            </div>
+          ) : (
+            <p className="text-sm text-gray-400">Select a topic above to start your test.</p>
+          )}
+        </section>
+      )}
     </div>
   );
 }
 
-// ─── Sub-components ──────────────────────────────────────────────────────────
+// ─── Shared sub-components ────────────────────────────────────────────────────
 
-function SectionHeading({ title, accent }: { title: string; accent: string }) {
-  const colors: Record<string, string> = {
-    indigo: 'bg-indigo-500',
-    amber: 'bg-amber-500',
-    gray: 'bg-gray-400',
-  };
-  return (
-    <div className="flex items-center gap-2 mb-3">
-      <span
-        className={`inline-block w-2 h-2 rounded-full ${colors[accent] ?? 'bg-gray-400'}`}
-        aria-hidden
-      />
-      <h2 className="text-sm font-semibold uppercase tracking-wide text-gray-600">{title}</h2>
-    </div>
-  );
-}
-
-function MasteryBadge({ mastery }: { mastery: number }) {
-  const pct = Math.round(mastery * 100);
-  return (
-    <span className="shrink-0 inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700">
-      {pct}%
-    </span>
-  );
-}
-
-function SectionSkeleton() {
-  return (
-    <div className="space-y-3 animate-pulse">
-      <div className="h-4 w-32 bg-gray-200 rounded" />
-      <div className="h-24 bg-gray-100 rounded-xl" />
-    </div>
-  );
-}
-
-function PlayIcon() {
-  return (
-    <svg className="w-4 h-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden>
-      <path
-        fillRule="evenodd"
-        d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z"
-        clipRule="evenodd"
-      />
-    </svg>
-  );
-}
-
-// ─── Subject → Chapter → Topics accordion ─────────────────────────────────────
-
-function ChapterPracticeAccordion({
+function SubjectAccordion({
   subject,
   helpers,
-  practiceHref,
+  onSelectTopic,
+  actionLabel,
+  selectedTopicId,
 }: {
   subject: HierarchySubject;
   helpers: ReturnType<typeof useAcademicHierarchy>['helpers'];
-  practiceHref: (topicId: string) => string;
+  onSelectTopic: (topicId: string, topicName: string) => void;
+  actionLabel: string;
+  selectedTopicId?: string;
 }) {
   const [open, setOpen] = useState(false);
   const chapters = helpers.getChaptersForSubject(subject.id);
@@ -256,11 +350,13 @@ function ChapterPracticeAccordion({
             <p className="px-4 py-3 text-xs text-gray-400">No chapters found</p>
           ) : (
             chapters.map((ch) => (
-              <ChapterTopicsBlock
+              <ChapterBlock
                 key={ch.id}
                 chapter={ch}
                 helpers={helpers}
-                practiceHref={practiceHref}
+                onSelectTopic={onSelectTopic}
+                actionLabel={actionLabel}
+                selectedTopicId={selectedTopicId}
               />
             ))
           )}
@@ -270,14 +366,18 @@ function ChapterPracticeAccordion({
   );
 }
 
-function ChapterTopicsBlock({
+function ChapterBlock({
   chapter,
   helpers,
-  practiceHref,
+  onSelectTopic,
+  actionLabel,
+  selectedTopicId,
 }: {
   chapter: HierarchyChapter;
   helpers: ReturnType<typeof useAcademicHierarchy>['helpers'];
-  practiceHref: (topicId: string) => string;
+  onSelectTopic: (topicId: string, topicName: string) => void;
+  actionLabel: string;
+  selectedTopicId?: string;
 }) {
   const [open, setOpen] = useState(false);
   const topics: HierarchyTopic[] = helpers.getTopicsForChapter(chapter.id);
@@ -301,19 +401,84 @@ function ChapterTopicsBlock({
           {topics.length === 0 ? (
             <p className="text-xs text-gray-400 py-1">No topics found</p>
           ) : (
-            topics.map((t) => (
-              <Link
-                key={t.id}
-                href={practiceHref(t.id)}
-                className="block w-full text-left px-3 py-2 rounded-md text-sm text-gray-700 hover:bg-indigo-50 hover:text-indigo-700 transition-colors"
-              >
-                {t.name}
-              </Link>
-            ))
+            topics.map((t) => {
+              const isSelected = selectedTopicId === t.id;
+              return (
+                <button
+                  key={t.id}
+                  type="button"
+                  onClick={() => onSelectTopic(t.id, t.name)}
+                  className={[
+                    'w-full text-left flex items-center justify-between px-3 py-2 rounded-md text-sm transition-colors',
+                    isSelected
+                      ? 'bg-indigo-100 text-indigo-700 font-medium'
+                      : 'text-gray-700 hover:bg-indigo-50 hover:text-indigo-700',
+                  ].join(' ')}
+                >
+                  <span>{t.name}</span>
+                  {isSelected && <CheckIcon />}
+                </button>
+              );
+            })
           )}
         </div>
       )}
     </div>
+  );
+}
+
+function MasteryBadge({ mastery }: { mastery: number }) {
+  const pct = Math.round(mastery * 100);
+  return (
+    <span className="shrink-0 inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700">
+      {pct}%
+    </span>
+  );
+}
+
+function EmptyState({ message, hint }: { message: string; hint?: string }) {
+  return (
+    <div className="rounded-xl border border-gray-200 bg-gray-50 px-5 py-8 text-center">
+      <p className="text-sm font-medium text-gray-600">{message}</p>
+      {hint && <p className="mt-1 text-xs text-gray-400">{hint}</p>}
+    </div>
+  );
+}
+
+// ─── Skeletons ────────────────────────────────────────────────────────────────
+
+function RecommendedSkeleton() {
+  return (
+    <div className="rounded-2xl border border-indigo-100 p-6 animate-pulse space-y-3">
+      <div className="h-4 w-32 bg-indigo-100 rounded-full" />
+      <div className="h-6 w-56 bg-gray-200 rounded" />
+      <div className="h-4 w-40 bg-gray-100 rounded" />
+      <div className="h-9 w-36 bg-indigo-200 rounded-xl mt-2" />
+    </div>
+  );
+}
+
+function CardGridSkeleton() {
+  return (
+    <div className="grid gap-3 sm:grid-cols-2 animate-pulse">
+      {[0, 1, 2, 3].map((i) => (
+        <div key={i} className="h-20 bg-gray-100 rounded-xl" />
+      ))}
+    </div>
+  );
+}
+
+// ─── Icons ────────────────────────────────────────────────────────────────────
+
+function PlayIcon() {
+  return (
+    <svg className="w-4 h-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden>
+      <path
+        fillRule="evenodd"
+        d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z"
+        clipRule="evenodd"
+      />
+    </svg>
   );
 }
 
@@ -328,6 +493,18 @@ function ChevronIcon({ open }: { open: boolean }) {
       <path
         fillRule="evenodd"
         d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z"
+        clipRule="evenodd"
+      />
+    </svg>
+  );
+}
+
+function CheckIcon() {
+  return (
+    <svg className="w-4 h-4 text-indigo-600" viewBox="0 0 20 20" fill="currentColor" aria-hidden>
+      <path
+        fillRule="evenodd"
+        d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
         clipRule="evenodd"
       />
     </svg>
