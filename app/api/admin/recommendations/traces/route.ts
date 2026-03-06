@@ -1,9 +1,6 @@
 /**
  * FILE OBJECTIVE:
  * - Admin API endpoint to query RecommendationTrace records for observability.
- *
- * EDIT LOG:
- * - 2026-03-03 | claude | created recommendation trace API
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -21,12 +18,25 @@ export async function GET(req: NextRequest) {
   const url = new URL(req.url);
   const studentId = url.searchParams.get('studentId') || undefined;
   const entityType = url.searchParams.get('entityType') || undefined;
+  const topicId = url.searchParams.get('topicId') || undefined;
+  const dateFrom = url.searchParams.get('dateFrom') || undefined;
+  const dateTo = url.searchParams.get('dateTo') || undefined;
   const limit = Math.min(Number(url.searchParams.get('limit') || '100'), 200);
+
+  const createdAtFilter: Record<string, Date> = {};
+  if (dateFrom) createdAtFilter.gte = new Date(dateFrom);
+  if (dateTo) {
+    const end = new Date(dateTo);
+    end.setHours(23, 59, 59, 999);
+    createdAtFilter.lte = end;
+  }
 
   const traces = await prisma.recommendationTrace.findMany({
     where: {
       ...(studentId ? { studentId } : {}),
       ...(entityType ? { entityType } : {}),
+      ...(topicId ? { entityId: { contains: topicId } } : {}),
+      ...(Object.keys(createdAtFilter).length > 0 ? { createdAt: createdAtFilter } : {}),
     },
     orderBy: { createdAt: 'desc' },
     take: limit,
