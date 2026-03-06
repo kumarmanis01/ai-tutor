@@ -30,6 +30,8 @@
     "tests",
     "scripts",
     "worker/k8s-adapter.ts",
-    "worker/metrics-server.ts"
+    "worker/metrics-server.ts",
+    "worker/dev-entry.ts",
+    "worker/dev-supervisor.ts"
   ]
 }
