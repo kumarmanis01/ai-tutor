@@ -19,19 +19,12 @@ export default function StudyStreakCard({ currentStreak, longestStreak }: StudyS
       className="bg-white rounded-lg border p-6"
       aria-labelledby="study-streak-heading"
     >
-      <div className="flex items-center gap-2 mb-1">
-        <span aria-hidden="true" className="text-2xl">🔥</span>
-        <h3 id="study-streak-heading" className="text-lg font-semibold text-gray-900">
-          Study Streak
-        </h3>
-      </div>
-
-      <p className="text-4xl font-bold text-orange-500 mt-2">
-        {currentStreak} {currentStreak === 1 ? 'day' : 'days'}
-      </p>
+      <h3 id="study-streak-heading" className="text-lg font-semibold text-gray-900">
+        🔥 {currentStreak} {currentStreak === 1 ? 'Day' : 'Day'} Study Streak
+      </h3>
 
       <p className="mt-2 text-sm text-gray-500">
-        Keep learning every day to build strong concepts.
+        Keep learning daily to build strong habits.
       </p>
 
       {longestStreak > 0 && (
