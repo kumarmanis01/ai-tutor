@@ -10,6 +10,7 @@
 import { prisma } from '@/lib/prisma';
 import { logger } from '@/lib/logger';
 import { generateHomework } from '@/lib/session/homework';
+import { transitionSessionPhase, InvalidTransitionError } from '@/lib/session/transitionSessionPhase';
 import type { SessionPhase } from '@prisma/client';
 
 // ─── State Machine ───────────────────────────────────────────────────────────
@@ -128,12 +129,14 @@ export async function startSession(
 
 /**
  * Advance the session to the next phase.
+ * Uses `transitionSessionPhase` for validated, strict-order transitions.
  * Returns the updated session view. No-ops if already COMPLETE.
  */
 export async function advanceSession(
   studentId: string,
   sessionId: string,
 ): Promise<SessionView> {
+  // Look up current state to determine the next phase
   const session = await prisma.structuredSession.findFirst({
     where: { id: sessionId, studentId },
     include: {
@@ -157,14 +160,21 @@ export async function advanceSession(
   }
 
   const next = nextPhase(session.state);
-  const isComplete = next === 'COMPLETE';
 
-  const updated = await prisma.structuredSession.update({
+  // Validated transition — throws InvalidTransitionError on illegal moves
+  let transition;
+  try {
+    transition = await transitionSessionPhase(sessionId, next, studentId);
+  } catch (err) {
+    if (err instanceof InvalidTransitionError) {
+      throw new SessionError(err.message, err.status);
+    }
+    throw err;
+  }
+
+  // Re-fetch the full session with topic data after the transition
+  const updated = await prisma.structuredSession.findUniqueOrThrow({
     where: { id: sessionId },
-    data: {
-      state: next,
-      ...(isComplete ? { completedAt: new Date() } : {}),
-    },
     include: {
       topic: {
         select: {
@@ -177,20 +187,12 @@ export async function advanceSession(
     },
   });
 
-  logger.info('[SESSION_ADVANCED]', {
-    studentId,
-    sessionId,
-    from: session.state,
-    to: next,
-  });
-
   // Bridge: if session just completed, mark the LearningSession too
-  if (isComplete) {
+  if (transition.isComplete) {
     await completeBridgedLearningSession(sessionId).catch((err) =>
       logger.error('[SESSION_BRIDGE_COMPLETE_FAILED]', { sessionId, error: err }),
     );
   } else {
-    // Update lastAccessed on each phase advance
     await touchBridgedLearningSession(sessionId).catch(() => {});
   }
 
