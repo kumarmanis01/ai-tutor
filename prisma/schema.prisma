@@ -1655,6 +1655,21 @@ model DailyTask {
   @@index([date])
 }
 
+/// Recommendation observability: persists scoring decisions for admin debugging
+model RecommendationTrace {
+  id            String   @id @default(cuid())
+  studentId     String
+  entityType    String /// content type: lesson, practice, notes, test
+  entityId      String /// canonical contentId (e.g. notes:{topicId})
+  score         Float
+  signals       Json /// { signalsApplied, engagementBoost, resumeBoost, ... }
+  engineVersion String
+  createdAt     DateTime @default(now())
+
+  @@index([studentId, createdAt])
+  @@index([entityType])
+}
+
 /// Failure Recovery System: tracks re-engagement events after inactivity
 model RecoveryEvent {
   id           String            @id @default(cuid())

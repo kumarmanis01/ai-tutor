@@ -17,6 +17,8 @@
 
 import { prisma } from '@/lib/prisma';
 import { logger } from '@/lib/logger';
+import { persistRecommendationTraces, isTraceEnabled } from '@/lib/recommendations/trace';
+import type { RecommendationTraceInput } from '@/lib/recommendations/trace';
 
 // ─── Canonical Content Identity (Prompt 1) ───────────────────────────────────
 
@@ -153,6 +155,7 @@ const DIVERSITY_SLOTS: RecommendationItem['type'][] = ['lesson', 'practice', 'no
 export class RecommendationEngine {
   private userId: string;
   private signals: UserSignals | null = null;
+  private _signalCache = new Map<string, Record<string, unknown>>();
 
   constructor(userId: string) {
     this.userId = userId;
@@ -172,7 +175,20 @@ export class RecommendationEngine {
       });
 
       const scored = filtered.map(c => this.scoreCandidate(c));
-      return this.diversifyAndSort(scored, limit);
+      const result = this.diversifyAndSort(scored, limit);
+
+      if (isTraceEnabled()) {
+        const traces: RecommendationTraceInput[] = result.map(r => ({
+          studentId: this.userId,
+          entityType: r.type,
+          entityId: r.contentId,
+          score: r.score,
+          signals: this._signalCache.get(r.contentId) || { reasoning: r.reasoning },
+        }));
+        persistRecommendationTraces(traces).catch(() => {});
+      }
+
+      return result;
     } catch (error) {
       logger.error('RecommendationEngine.getRecommendations', {
         userId: this.userId,
@@ -611,19 +627,35 @@ export class RecommendationEngine {
     let engagementBoost = 0;
     let resumeBoost = 0;
 
+    let profileMatchBoost = 0;
+    let subjectMatchBoost = 0;
+    let weakSubjectBoost = 0;
+    let lowScoreBoost = 0;
+    let recentTopicBoost = 0;
+    let difficultyMatchBoost = 0;
+    let freshnessBoost = 0;
+    let practiceBoost = 0;
+    let typeFrequencyBoost = 0;
+    let engagementPositive = 0;
+    let engagementCompletion = 0;
+    let engagementPenalty = 0;
+
     // 1. Profile match
     if (candidate.board === this.signals.board && candidate.grade === this.signals.grade) {
-      score += SCORE_WEIGHTS.PROFILE_MATCH;
+      profileMatchBoost = SCORE_WEIGHTS.PROFILE_MATCH;
+      score += profileMatchBoost;
       reasons.push('Matches your board and grade');
       signalsApplied.push('profile_match');
     } else if (candidate.board === this.signals.board || candidate.grade === this.signals.grade) {
-      score += SCORE_WEIGHTS.PROFILE_MATCH * 0.5;
+      profileMatchBoost = SCORE_WEIGHTS.PROFILE_MATCH * 0.5;
+      score += profileMatchBoost;
       signalsApplied.push('profile_partial');
     }
 
     // 2. Subject relevance
     if (this.signals.subjects.includes(candidate.subject)) {
-      score += 15;
+      subjectMatchBoost = 15;
+      score += subjectMatchBoost;
       reasons.push(`In your ${candidate.subject} curriculum`);
       signalsApplied.push('subject_match');
     }
@@ -633,7 +665,8 @@ export class RecommendationEngine {
     const weakByTopic = candidateTopicId && this.signals.weakSubjectTopicIds.includes(candidateTopicId);
     const weakBySubject = this.signals.weakSubjects.includes(candidate.subject);
     if (weakByTopic || weakBySubject) {
-      score += SCORE_WEIGHTS.WEAK_SUBJECT_BOOST;
+      weakSubjectBoost = SCORE_WEIGHTS.WEAK_SUBJECT_BOOST;
+      score += weakSubjectBoost;
       reasons.push('Helps strengthen a weak area');
       signalsApplied.push(weakByTopic ? 'weak_topic' : 'weak_subject');
     }
@@ -642,19 +675,21 @@ export class RecommendationEngine {
     const lowByTopic = candidateTopicId && this.signals.lowScoreTopicIds.includes(candidateTopicId);
     const lowByChapter = candidate.chapter && this.signals.lowScoreChapters.includes(candidate.chapter);
     if (lowByTopic || lowByChapter) {
-      score += SCORE_WEIGHTS.LOW_SCORE_CHAPTER;
+      lowScoreBoost = SCORE_WEIGHTS.LOW_SCORE_CHAPTER;
+      score += lowScoreBoost;
       reasons.push('Review recommended based on test performance');
       signalsApplied.push(lowByTopic ? 'low_score_topic' : 'low_score_chapter');
     }
 
     // 5. Recent topic relevance (topic-first)
     if (candidateTopicId && this.signals.recentTopicIds.includes(candidateTopicId)) {
-      score += SCORE_WEIGHTS.RECENT_TOPIC_RELEVANCE;
+      recentTopicBoost = SCORE_WEIGHTS.RECENT_TOPIC_RELEVANCE;
+      score += recentTopicBoost;
       reasons.push('Related to your recent studies');
       signalsApplied.push('recent_topic');
     }
 
-    // 6. Resume incomplete session — +50, highest priority (Prompt 5)
+    // 6. Resume incomplete session — +50, highest priority
     if (candidateTopicId && this.signals.incompleteTopicIds.has(candidateTopicId)) {
       resumeBoost = SCORE_WEIGHTS.RESUME_SESSION;
       score += resumeBoost;
@@ -665,21 +700,24 @@ export class RecommendationEngine {
     // 7. Difficulty match
     const candidateDifficulty = candidate.difficulty?.toUpperCase() || 'MEDIUM';
     if (candidateDifficulty === this.signals.engagementPatterns.preferredDifficulty) {
-      score += SCORE_WEIGHTS.DIFFICULTY_MATCH;
+      difficultyMatchBoost = SCORE_WEIGHTS.DIFFICULTY_MATCH;
+      score += difficultyMatchBoost;
       signalsApplied.push('difficulty_match');
     }
 
     // 8. Freshness
     const daysSinceCreation = (Date.now() - candidate.createdAt.getTime()) / (1000 * 60 * 60 * 24);
     if (daysSinceCreation < 30) {
-      score += SCORE_WEIGHTS.FRESHNESS;
+      freshnessBoost = SCORE_WEIGHTS.FRESHNESS;
+      score += freshnessBoost;
       if (daysSinceCreation < 7) reasons.push('New content');
       signalsApplied.push('freshness');
     }
 
     // 9. Practice boost for struggling areas
     if (candidate.type === 'practice' && score > 30) {
-      score += 5;
+      practiceBoost = 5;
+      score += practiceBoost;
       signalsApplied.push('practice_boost');
     }
 
@@ -687,12 +725,13 @@ export class RecommendationEngine {
     const typeCounts = this.signals.engagementPatterns.typeCounts;
     const activityType = candidate.type === 'test' ? 'test' : candidate.type === 'notes' ? 'notes' : candidate.type;
     if (typeCounts[activityType] && typeCounts[activityType] >= 3) {
-      score += SCORE_WEIGHTS.ENGAGEMENT_HISTORY;
+      typeFrequencyBoost = SCORE_WEIGHTS.ENGAGEMENT_HISTORY;
+      score += typeFrequencyBoost;
       reasons.push('Matches your learning preferences');
       signalsApplied.push('type_frequency');
     }
 
-    // 11. Engagement feedback loop (Prompt 2 — mapped type)
+    // 11. Engagement feedback loop (mapped type)
     const mappedEngType = mapSourceToEngagementType(candidate.source);
     const engagement = this.signals.engagementByType[mappedEngType];
 
@@ -702,22 +741,23 @@ export class RecommendationEngine {
       const ignoreRate = engagement.ignored / engagement.shown;
 
       if (engagement.shown >= 5 && clickThroughRate > 0.5) {
-        const boost = SCORE_WEIGHTS.POSITIVE_ENGAGEMENT_BOOST;
-        engagementBoost += boost;
-        score += boost;
+        engagementPositive = SCORE_WEIGHTS.POSITIVE_ENGAGEMENT_BOOST;
+        engagementBoost += engagementPositive;
+        score += engagementPositive;
         reasons.push('You engage well with this content type');
         signalsApplied.push('engagement_positive');
       }
       if (engagement.clicked >= 3 && completionRate > 0.6) {
-        const boost = Math.round(SCORE_WEIGHTS.POSITIVE_ENGAGEMENT_BOOST * 0.5);
-        engagementBoost += boost;
-        score += boost;
+        engagementCompletion = Math.round(SCORE_WEIGHTS.POSITIVE_ENGAGEMENT_BOOST * 0.5);
+        engagementBoost += engagementCompletion;
+        score += engagementCompletion;
         reasons.push('High completion rate for this type');
         signalsApplied.push('engagement_completion');
       }
       if (engagement.shown >= 5 && ignoreRate > 0.3) {
-        engagementBoost += SCORE_WEIGHTS.NEGATIVE_ENGAGEMENT_PENALTY;
-        score += SCORE_WEIGHTS.NEGATIVE_ENGAGEMENT_PENALTY;
+        engagementPenalty = SCORE_WEIGHTS.NEGATIVE_ENGAGEMENT_PENALTY;
+        engagementBoost += engagementPenalty;
+        score += engagementPenalty;
         signalsApplied.push('engagement_negative');
       }
 
@@ -732,7 +772,28 @@ export class RecommendationEngine {
       reasons.push('Recommended for your learning journey');
     }
 
-    // Prompt 7 — observability
+    // Observability: structured log + signal cache for trace persistence
+    const signalBreakdown = {
+      profileMatchBoost,
+      subjectMatchBoost,
+      weakSubjectBoost,
+      lowScoreBoost,
+      recentTopicBoost,
+      resumeBoost,
+      difficultyMatchBoost,
+      freshnessBoost,
+      practiceBoost,
+      typeFrequencyBoost,
+      engagementPositive,
+      engagementCompletion,
+      engagementPenalty,
+      engagementBoost,
+      signalsApplied,
+      topicId: candidateTopicId || null,
+      chapterId: candidate.meta?.chapterId || null,
+      subjectId: candidate.meta?.subjectId || null,
+    };
+
     logger.debug('[RECOMMENDATION_DECISION]', {
       studentId: this.userId,
       candidateId: candidate.contentId,
@@ -742,6 +803,9 @@ export class RecommendationEngine {
       engagementBoost,
       resumeBoost,
     });
+
+    const nId = normalizeContentId(candidate);
+    this._signalCache.set(nId, signalBreakdown);
 
     return this.toRecommendationItem(candidate, score, reasons);
   }
