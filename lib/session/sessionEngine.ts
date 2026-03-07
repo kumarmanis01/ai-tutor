@@ -33,7 +33,7 @@
 
 import { prisma } from '@/lib/prisma';
 import { logger } from '@/lib/logger';
-import { generateHomework } from '@/lib/session/homework';
+import { generateHomework, type HomeworkResult } from '@/lib/session/homework';
 import { transitionSessionPhase, InvalidTransitionError } from '@/lib/session/transitionSessionPhase';
 import { updateStudentTopicProgress } from '@/lib/learning/updateTopicProgress';
 import { invalidateTopicRankerCache } from '@/lib/recommendations/topicRanker';
@@ -246,13 +246,27 @@ export async function advanceSession(
 
   if (next === 'HOMEWORK') {
     // Auto-generate homework on entry to HOMEWORK phase.
-    try {
-      const hw = await generateHomework(studentId, updated.topicId, sessionId);
+    // generateHomeworkWithRetry() guarantees a HomeworkAssignment row is
+    // created (stub if necessary) so resolvePhaseContent never returns
+    // PendingContent and the student is never permanently stuck here.
+    const hw = await generateHomeworkWithRetry(studentId, updated.topicId, sessionId);
+    if (hw) {
       homeworkId = hw.id;
-      logger.info('[SESSION_HOMEWORK_GENERATED]', { sessionId, homeworkId, studentId });
-    } catch (err) {
-      // Non-fatal: student still sees the homework phase, just without questions.
-      logger.warn('[SESSION_HOMEWORK_SKIP]', { sessionId, error: err });
+      if (hw.isStub) {
+        logger.warn('[SESSION_HOMEWORK_STUB]', {
+          sessionId,
+          homeworkId,
+          studentId,
+          note: 'Stub assignment created; no questions available.',
+        });
+      } else {
+        logger.info('[SESSION_HOMEWORK_GENERATED]', {
+          sessionId,
+          homeworkId,
+          studentId,
+          questionCount: hw.questionCount,
+        });
+      }
     }
   }
 
@@ -417,6 +431,88 @@ function toSessionView(s: SessionWithTopic): SessionView {
     completedAt: s.completedAt?.toISOString() ?? null,
     homeworkId: null, // overwritten by advanceSession when HOMEWORK is entered
   };
+}
+
+/** Delay between homework generation attempts (ms). */
+const HOMEWORK_RETRY_DELAY_MS = 1_000;
+
+/**
+ * Attempt homework generation with one retry on infrastructure failure.
+ *
+ * generateHomework() only throws for real infrastructure errors (DB write
+ * failure) — it handles "no questions" internally by creating a stub.
+ * This wrapper adds one retry after HOMEWORK_RETRY_DELAY_MS and, if that
+ * also fails, attempts a direct minimal stub creation as a last resort.
+ *
+ * Returns null only when the DB is completely unavailable (catastrophic).
+ * In that case the session will remain in HOMEWORK state with no assignment
+ * row — the only scenario where PendingContent could still appear.
+ */
+async function generateHomeworkWithRetry(
+  studentId: string,
+  topicId: string,
+  sessionId: string,
+): Promise<HomeworkResult | null> {
+  try {
+    return await generateHomework(studentId, topicId, sessionId);
+  } catch (firstErr) {
+    logger.warn('[SESSION_HOMEWORK_RETRY]', {
+      sessionId,
+      studentId,
+      topicId,
+      error: firstErr,
+      note: 'Retrying after delay.',
+    });
+  }
+
+  await new Promise<void>((resolve) => setTimeout(resolve, HOMEWORK_RETRY_DELAY_MS));
+
+  try {
+    return await generateHomework(studentId, topicId, sessionId);
+  } catch (secondErr) {
+    logger.error('[SESSION_HOMEWORK_RETRY_FAILED]', {
+      sessionId,
+      studentId,
+      topicId,
+      error: secondErr,
+      note: 'Both attempts failed. Attempting last-resort stub.',
+    });
+  }
+
+  // Last resort: write a minimal stub directly, bypassing homework.ts.
+  // This fires only when generateHomework() itself throws on DB write —
+  // i.e. the DB is degraded but not completely down.
+  try {
+    const dueDate = new Date();
+    dueDate.setDate(dueDate.getDate() + 2);
+    const stub = await prisma.homeworkAssignment.create({
+      data: {
+        studentId,
+        topicId,
+        sessionId,
+        questions: [],
+        status: 'PENDING',
+        dueDate,
+      },
+    });
+    logger.warn('[SESSION_HOMEWORK_LAST_RESORT_STUB]', {
+      sessionId,
+      studentId,
+      topicId,
+      homeworkId: stub.id,
+    });
+    return { id: stub.id, questionCount: 0, isStub: true };
+  } catch (stubErr) {
+    // DB is completely unavailable. Nothing more we can do.
+    logger.error('[SESSION_HOMEWORK_EXHAUSTED]', {
+      sessionId,
+      studentId,
+      topicId,
+      error: stubErr,
+      note: 'DB unavailable. Student may see PendingContent until DB recovers.',
+    });
+    return null;
+  }
 }
 
 /**
