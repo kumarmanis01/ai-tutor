@@ -213,6 +213,15 @@ async function main() {
 
   const getStudentId = (email: string) => students.find((s) => s.email === email)!.id;
 
+  // —— Scenario A: Fresh — ensure no sessions, homework, or progress (P5 next_new_topic)
+  const freshId = getStudentId('fresh@scenario.test');
+  await prisma.structuredSession.deleteMany({ where: { studentId: freshId } });
+  await prisma.learningSession.deleteMany({ where: { studentId: freshId } });
+  await prisma.studentTopicMastery.deleteMany({ where: { studentId: freshId } });
+  await prisma.studentTopicProgress.deleteMany({ where: { studentId: freshId } });
+  await prisma.attentionFlag.deleteMany({ where: { studentId: freshId } });
+  await prisma.homeworkAssignment.deleteMany({ where: { studentId: freshId } });
+
   // —— Scenario B: Mid-session — StructuredSession state PRACTICE → P1 resume_session
   const midsessionId = getStudentId('midsession@scenario.test');
   await prisma.structuredSession.deleteMany({ where: { studentId: midsessionId } });
@@ -300,9 +309,8 @@ async function main() {
   const dailyId = getStudentId('daily@scenario.test');
   const todayStart = utcMidnightToday();
   await prisma.dailyTask.deleteMany({ where: { studentId: dailyId } });
-  await prisma.dailyTask.upsert({
-    where: { studentId_date: { studentId: dailyId, date: todayStart } },
-    create: {
+  await prisma.dailyTask.create({
+    data: {
       studentId: dailyId,
       date: todayStart,
       taskType: 'practice',
@@ -314,7 +322,6 @@ async function main() {
       status: 'pending',
       estimatedTimeMin: 15,
     },
-    update: { status: 'pending' },
   });
 
   console.log('Created', topicIds.length, 'topics with notes and questions.');
