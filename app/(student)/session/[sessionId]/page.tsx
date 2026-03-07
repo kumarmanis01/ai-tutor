@@ -4,6 +4,14 @@
  * Session UI — renders the 6-phase learning flow:
  *   OVERVIEW → EXPLANATION → PRACTICE → TEST → HOMEWORK → COMPLETE
  *
+ * UX improvements (2026-03-07, Phase 2):
+ *   - SessionPhaseStepper extracted as a reusable component
+ *   - Practice: batch submit → show per-question feedback (correct/incorrect +
+ *     correct answer). No score shown during practice.
+ *   - Test: plain-language result card after submission; never blocking
+ *   - Explanation: reading time estimate + "I've understood this" CTA
+ *   - Homework: "Save & submit later" option; tutor-voiced framing
+ *
  * Architecture notes:
  *   - The page mounts by fetching GET /api/session/[sessionId].
  *   - "Next Step" calls POST /api/session/next (advanceSession in the engine).
@@ -15,12 +23,15 @@
  * EDIT LOG:
  *   2026-03-07 | Manish Kumar | add OVERVIEW phase card; use currentPhase
  *                               as canonical field; keep state alias for compat.
+ *   2026-03-07 | UX implementation | Phase 2 UX improvements (stepper, feedback,
+ *               plain-language test results, reading time, homework framing).
  */
 
 import React, { useEffect, useState, useCallback, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import TopicCompletionModal from "@/components/dashboard/TopicCompletionModal";
+import SessionPhaseStepper from "@/components/session/SessionPhaseStepper";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -38,9 +49,7 @@ interface SessionData {
   topicName: string;
   subject: string;
   chapter: string;
-  /** Canonical field (architecture spec). */
   currentPhase: SessionPhase;
-  /** Backward-compat alias — equals currentPhase. */
   state: SessionPhase;
   startedAt: string;
   completedAt: string | null;
@@ -156,17 +165,7 @@ type ContentData =
 
 // ─── Phase config ─────────────────────────────────────────────────────────────
 
-/** Displayable phases (excludes COMPLETE which is the terminal celebration). */
 const PHASES: SessionPhase[] = ["OVERVIEW", "EXPLANATION", "PRACTICE", "TEST", "HOMEWORK"];
-
-const PHASE_ICONS: Record<string, string> = {
-  OVERVIEW: "🗺️",
-  EXPLANATION: "📖",
-  PRACTICE: "✏️",
-  TEST: "📝",
-  HOMEWORK: "📋",
-  COMPLETE: "✅",
-};
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
@@ -185,7 +184,6 @@ export default function SessionPage() {
   const [showCelebration, setShowCelebration] = useState(false);
   const celebrationFiredRef = useRef(false);
 
-  /** Helper to apply any API response (start / next / complete / fetch). */
   const applyResponse = useCallback((data: {
     session: SessionData;
     phase: PhaseData;
@@ -210,11 +208,8 @@ export default function SessionPage() {
     }
   }, [sessionId, applyResponse]);
 
-  useEffect(() => {
-    fetchSession();
-  }, [fetchSession]);
+  useEffect(() => { fetchSession(); }, [fetchSession]);
 
-  // Show celebration modal exactly once when session reaches COMPLETE.
   useEffect(() => {
     const currentPhase = session?.currentPhase ?? session?.state;
     if (currentPhase === "COMPLETE" && !celebrationFiredRef.current) {
@@ -260,13 +255,13 @@ export default function SessionPage() {
   }, [advancing, session, applyResponse]);
 
   // ── Loading skeleton ───────────────────────────────────────────────────────
-
   if (loading) {
     return (
       <div className="max-w-3xl mx-auto px-4 py-12">
         <div className="animate-pulse space-y-4">
           <div className="h-6 w-48 bg-gray-200 rounded" />
           <div className="h-4 w-64 bg-gray-200 rounded" />
+          <div className="h-2 w-full bg-gray-100 rounded-full" />
           <div className="h-40 bg-gray-100 rounded-lg" />
         </div>
       </div>
@@ -287,45 +282,26 @@ export default function SessionPage() {
   const currentPhase: SessionPhase = session.currentPhase ?? session.state;
   const currentIdx = PHASES.indexOf(currentPhase);
   const isComplete = currentPhase === "COMPLETE";
-  // Last displayable phase before COMPLETE
   const isLastDisplayablePhase = currentIdx === PHASES.length - 1;
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-8">
       {/* Header */}
-      <div className="mb-6">
+      <div className="mb-4">
         <p className="text-sm text-gray-500">
-          {session.subject} &middot; {session.chapter}
+          {session.subject}{session.chapter ? ` · ${session.chapter}` : ""}
         </p>
-        <h1 className="text-2xl font-bold mt-1">{session.topicName}</h1>
+        <h1 className="text-2xl font-bold mt-0.5">{session.topicName}</h1>
       </div>
 
-      {/* Phase Progress Bar */}
-      <div className="flex items-center gap-1 mb-8">
-        {PHASES.map((p, i) => {
-          const done = i < currentIdx;
-          const active = i === currentIdx;
-          return (
-            <div key={p} className="flex-1 flex flex-col items-center gap-1">
-              <div
-                className={`w-full h-2 rounded-full transition-colors ${
-                  done ? "bg-indigo-600" : active ? "bg-indigo-400" : "bg-gray-200"
-                }`}
-              />
-              <span
-                className={`text-xs ${
-                  done || active ? "text-indigo-600 font-medium" : "text-gray-400"
-                }`}
-              >
-                {PHASE_ICONS[p]}{" "}
-                {p.charAt(0) + p.slice(1).toLowerCase()}
-              </span>
-            </div>
-          );
-        })}
-      </div>
+      {/* Phase Stepper */}
+      {!isComplete && (
+        <div className="mb-8">
+          <SessionPhaseStepper phases={PHASES} currentPhase={currentPhase} />
+        </div>
+      )}
 
-      {/* Topic completion celebration modal */}
+      {/* Topic completion modal */}
       {showCelebration && session && (
         <TopicCompletionModal
           topicName={session.topicName}
@@ -335,74 +311,72 @@ export default function SessionPage() {
       )}
 
       {/* Phase Content Card */}
-      <div className="bg-white rounded-lg border p-8 mb-6">
+      <div className="bg-white rounded-xl border shadow-sm p-6 sm:p-8 mb-6">
         {isComplete ? (
           <CompletionView phase={phase} />
         ) : (
           <>
-            <div className="flex items-center gap-3 mb-4">
-              <span className="text-3xl">{PHASE_ICONS[currentPhase]}</span>
-              <div>
-                <h2 className="text-xl font-semibold">{phase.label}</h2>
-                <p className="text-sm text-gray-500">
-                  Step {currentIdx + 1} of {PHASES.length}
-                </p>
-              </div>
+            <div className="mb-5">
+              <h2 className="text-lg font-semibold text-gray-900">{phase.label}</h2>
+              <p className="text-xs text-gray-400 mt-0.5">{phase.instruction}</p>
             </div>
 
-            {/* Resolved content */}
             <PhaseContentRenderer
               sessionId={sessionId}
               content={content}
               homework={homework}
               router={router}
+              onAdvance={handleNext}
               onTestSubmitted={() => setSession((s) => s ? { ...s } : null)}
             />
 
-            {/* Action Buttons */}
-            <div className="flex items-center gap-3 mt-8 pt-6 border-t">
-              <button
-                type="button"
-                onClick={handleNext}
-                disabled={advancing}
-                className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:opacity-50"
-              >
-                {advancing
-                  ? "Loading…"
-                  : currentPhase === "OVERVIEW"
-                  ? "Start Learning"
-                  : isLastDisplayablePhase
-                  ? "Finish"
-                  : "Next Step"}
-                {!advancing && (
-                  <svg className="w-4 h-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden>
-                    <path
-                      fillRule="evenodd"
-                      d="M10.293 3.293a1 1 0 011.414 0l6 6a1 1 0 010 1.414l-6 6a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-4.293-4.293a1 1 0 010-1.414z"
-                      clipRule="evenodd"
-                    />
-                  </svg>
-                )}
-              </button>
-
-              {/* "Skip to finish" is hidden on the OVERVIEW phase so students
-                  must at least acknowledge the overview before they can skip. */}
-              {currentPhase !== "OVERVIEW" && !isLastDisplayablePhase && (
+            {/* Footer actions — shown only for phases that don't own their CTA */}
+            {shouldShowFooterActions(currentPhase) && (
+              <div className="flex items-center gap-3 mt-8 pt-6 border-t">
                 <button
                   type="button"
-                  onClick={handleComplete}
+                  onClick={handleNext}
                   disabled={advancing}
-                  className="px-4 py-2.5 text-sm font-medium text-gray-600 hover:text-gray-800 focus:outline-none"
+                  className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-indigo-600 rounded-xl hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:opacity-50 active:scale-95 transition-transform"
                 >
-                  Skip to finish
+                  {advancing
+                    ? "Loading…"
+                    : currentPhase === "OVERVIEW"
+                    ? "Begin"
+                    : isLastDisplayablePhase
+                    ? "Finish"
+                    : "Next Step"}
+                  {!advancing && (
+                    <svg className="w-4 h-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden>
+                      <path fillRule="evenodd" d="M10.293 3.293a1 1 0 011.414 0l6 6a1 1 0 010 1.414l-6 6a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-4.293-4.293a1 1 0 010-1.414z" clipRule="evenodd" />
+                    </svg>
+                  )}
                 </button>
-              )}
-            </div>
+
+                {currentPhase !== "OVERVIEW" && !isLastDisplayablePhase && (
+                  <button
+                    type="button"
+                    onClick={handleComplete}
+                    disabled={advancing}
+                    className="px-4 py-2.5 text-sm text-gray-500 hover:text-gray-700 focus:outline-none"
+                  >
+                    Skip to finish
+                  </button>
+                )}
+              </div>
+            )}
           </>
         )}
       </div>
+
+      {error && <p className="text-sm text-red-500 text-center">{error}</p>}
     </div>
   );
+}
+
+/** OVERVIEW and EXPLANATION show footer buttons; other phases own their CTA. */
+function shouldShowFooterActions(phase: SessionPhase): boolean {
+  return phase === "OVERVIEW" || phase === "EXPLANATION";
 }
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
@@ -411,11 +385,11 @@ function CompletionView({ phase }: { phase: PhaseData }) {
   return (
     <div className="text-center py-8">
       <div className="text-5xl mb-4">🎉</div>
-      <h2 className="text-2xl font-bold text-gray-900">Topic Complete!</h2>
+      <h2 className="text-2xl font-bold text-gray-900">Topic Complete</h2>
       <p className="text-gray-500 mt-2">{phase.instruction}</p>
       <Link
         href="/dashboard"
-        className="inline-block mt-6 px-6 py-2.5 text-sm font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700"
+        className="inline-block mt-6 px-6 py-2.5 text-sm font-semibold text-white bg-indigo-600 rounded-xl hover:bg-indigo-700"
       >
         Back to Dashboard
       </Link>
@@ -428,26 +402,24 @@ function PhaseContentRenderer({
   content,
   homework,
   router,
+  onAdvance,
   onTestSubmitted,
 }: {
   sessionId: string;
   content: ContentData | null;
   homework: HomeworkData | null;
   router: ReturnType<typeof useRouter>;
+  onAdvance: () => void;
   onTestSubmitted?: () => void;
 }) {
-  if (!content) return <p className="text-gray-400 italic">Loading content...</p>;
+  if (!content) return <p className="text-gray-400 italic text-sm">Loading content...</p>;
 
   if (content.type === "pending") {
     return (
       <div className="flex items-center gap-3 bg-amber-50 border border-amber-200 rounded-lg p-4">
-        <svg className="w-5 h-5 text-amber-500 animate-spin" fill="none" viewBox="0 0 24 24">
+        <svg className="w-5 h-5 text-amber-500 animate-spin shrink-0" fill="none" viewBox="0 0 24 24">
           <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-          <path
-            className="opacity-75"
-            fill="currentColor"
-            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
-          />
+          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
         </svg>
         <p className="text-sm text-amber-800">{content.message}</p>
       </div>
@@ -455,26 +427,13 @@ function PhaseContentRenderer({
   }
 
   switch (content.type) {
-    case "overview":
-      return <OverviewView content={content} />;
-    case "explanation":
-      return <ExplanationView content={content} />;
-    case "practice":
-      return <PracticeView content={content} />;
-    case "test":
-      return (
-        <TestView
-          sessionId={sessionId}
-          content={content}
-          onTestSubmitted={onTestSubmitted}
-        />
-      );
-    case "homework":
-      return <HomeworkView content={content} homework={homework} router={router} />;
-    case "complete":
-      return null;
-    default:
-      return null;
+    case "overview":    return <OverviewView content={content} />;
+    case "explanation": return <ExplanationView content={content} onReady={onAdvance} />;
+    case "practice":    return <PracticeView sessionId={sessionId} content={content} onAdvance={onAdvance} />;
+    case "test":        return <TestView sessionId={sessionId} content={content} onAdvance={onAdvance} onTestSubmitted={onTestSubmitted} />;
+    case "homework":    return <HomeworkView content={content} homework={homework} router={router} onAdvance={onAdvance} />;
+    case "complete":    return null;
+    default:            return null;
   }
 }
 
@@ -483,32 +442,26 @@ function PhaseContentRenderer({
 function OverviewView({ content }: { content: OverviewContent }) {
   return (
     <div className="space-y-5">
-      {/* Subject / chapter breadcrumb */}
       <p className="text-xs text-gray-400 uppercase tracking-wide font-medium">
-        {content.subject} &rsaquo; {content.chapter}
+        {content.subject}{content.chapter ? ` › ${content.chapter}` : ""}
       </p>
 
-      {/* Summary */}
-      {content.summary && (
+      {content.summary ? (
         <p className="text-gray-700 leading-relaxed">{content.summary}</p>
-      )}
-
-      {!content.summary && (
+      ) : (
         <p className="text-gray-500 text-sm italic">
-          Get ready to dive into <span className="font-medium text-gray-700">{content.topicName}</span>.
+          Get ready to dive into{" "}
+          <span className="font-medium text-gray-700">{content.topicName}</span>.
         </p>
       )}
 
-      {/* Learning objectives */}
       {content.objectives.length > 0 && (
         <div className="bg-indigo-50 rounded-lg p-4">
-          <h4 className="text-sm font-semibold text-indigo-800 mb-2">
-            What you will learn
-          </h4>
-          <ul className="space-y-1">
+          <h4 className="text-sm font-semibold text-indigo-800 mb-2">What you will learn</h4>
+          <ul className="space-y-1.5">
             {content.objectives.map((obj, i) => (
               <li key={i} className="flex items-start gap-2 text-sm text-indigo-700">
-                <span className="mt-0.5 text-indigo-400">✓</span>
+                <span className="mt-0.5 text-indigo-400" aria-hidden>✓</span>
                 {obj}
               </li>
             ))}
@@ -516,7 +469,6 @@ function OverviewView({ content }: { content: OverviewContent }) {
         </div>
       )}
 
-      {/* Upcoming phases */}
       {content.upcomingPhases.length > 0 && (
         <div>
           <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
@@ -526,7 +478,7 @@ function OverviewView({ content }: { content: OverviewContent }) {
             {content.upcomingPhases.map((label, i) => (
               <span
                 key={i}
-                className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-gray-100 text-xs text-gray-600 font-medium"
+                className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-gray-100 text-xs text-gray-600 font-medium"
               >
                 <span className="text-gray-400">{i + 1}.</span> {label}
               </span>
@@ -540,72 +492,113 @@ function OverviewView({ content }: { content: OverviewContent }) {
 
 // ─── Explanation ──────────────────────────────────────────────────────────────
 
-function ExplanationView({ content }: { content: ExplanationContent }) {
+function ExplanationView({
+  content,
+  onReady,
+}: {
+  content: ExplanationContent;
+  onReady: () => void;
+}) {
   const json = unwrapNoteJson(content.contentJson);
+
+  // Estimate reading time at ~200 words/min
+  const wordCount = JSON.stringify(json).replace(/"[^"]*":/g, "").split(/\s+/).length;
+  const readingMin = Math.max(1, Math.round(wordCount / 200));
+
   return (
-    <div className="prose prose-indigo max-w-none">
-      <h3 className="text-lg font-semibold text-gray-900 mb-3">{content.title}</h3>
+    <div>
+      <div className="prose prose-indigo max-w-none">
+        <h3 className="text-lg font-semibold text-gray-900 mb-1">{content.title}</h3>
+        <p className="text-xs text-gray-400 mb-4">Reading time: about {readingMin} min</p>
 
-      {json.introduction && <p className="text-gray-700 leading-relaxed">{json.introduction}</p>}
-      {json.summary && !json.introduction && (
-        <p className="text-gray-700 leading-relaxed">{json.summary}</p>
-      )}
+        {json.introduction && (
+          <p className="text-gray-700 leading-relaxed">{json.introduction}</p>
+        )}
+        {json.summary && !json.introduction && (
+          <p className="text-gray-700 leading-relaxed">{json.summary}</p>
+        )}
 
-      {json.objectives && json.objectives.length > 0 && (
-        <div className="my-4 bg-indigo-50 rounded-lg p-4">
-          <h4 className="text-sm font-semibold text-indigo-800 mb-2">Learning Objectives</h4>
-          <ul className="list-disc list-inside space-y-1">
-            {json.objectives.map((o, i) => (
-              <li key={i} className="text-sm text-indigo-700">{o}</li>
-            ))}
-          </ul>
-        </div>
-      )}
-
-      {json.sections?.map((sec, i) => (
-        <div key={i} className="mt-5">
-          <h4 className="text-base font-semibold text-gray-800 mb-2">
-            {sec.title || sec.heading}
-          </h4>
-          {(sec.content || sec.body) && (
-            <p className="text-gray-600 whitespace-pre-line">{sec.content || sec.body}</p>
-          )}
-          {sec.points && sec.points.length > 0 && (
-            <ul className="list-disc list-inside mt-2 space-y-1">
-              {sec.points.map((pt, j) => (
-                <li key={j} className="text-gray-600 text-sm">{pt}</li>
+        {json.objectives && json.objectives.length > 0 && (
+          <div className="my-4 bg-indigo-50 rounded-lg p-4">
+            <h4 className="text-sm font-semibold text-indigo-800 mb-2">Learning Objectives</h4>
+            <ul className="list-disc list-inside space-y-1">
+              {json.objectives.map((o, i) => (
+                <li key={i} className="text-sm text-indigo-700">{o}</li>
               ))}
             </ul>
-          )}
-          {sec.subsections?.map((sub, k) => (
-            <div key={k} className="ml-4 mt-3">
-              <h5 className="text-sm font-medium text-gray-700">{sub.title || sub.heading}</h5>
-              {(sub.content || sub.body) && (
-                <p className="text-gray-500 text-sm mt-1 whitespace-pre-line">
-                  {sub.content || sub.body}
-                </p>
-              )}
-            </div>
-          ))}
-        </div>
-      ))}
+          </div>
+        )}
 
-      {json.keyPoints && json.keyPoints.length > 0 && (
-        <div className="mt-6 bg-green-50 rounded-lg p-4">
-          <h4 className="text-sm font-semibold text-green-800 mb-2">Key Points</h4>
-          <ul className="list-disc list-inside space-y-1">
-            {json.keyPoints.map((kp, i) => (
-              <li key={i} className="text-sm text-green-700">{kp}</li>
+        {json.sections?.map((sec, i) => (
+          <div key={i} className="mt-5">
+            <h4 className="text-base font-semibold text-gray-800 mb-2">
+              {sec.title || sec.heading}
+            </h4>
+            {(sec.content || sec.body) && (
+              <p className="text-gray-600 whitespace-pre-line">{sec.content || sec.body}</p>
+            )}
+            {sec.points && sec.points.length > 0 && (
+              <ul className="list-disc list-inside mt-2 space-y-1">
+                {sec.points.map((pt, j) => (
+                  <li key={j} className="text-gray-600 text-sm">{pt}</li>
+                ))}
+              </ul>
+            )}
+            {sec.subsections?.map((sub, k) => (
+              <div key={k} className="ml-4 mt-3">
+                <h5 className="text-sm font-medium text-gray-700">{sub.title || sub.heading}</h5>
+                {(sub.content || sub.body) && (
+                  <p className="text-gray-500 text-sm mt-1 whitespace-pre-line">
+                    {sub.content || sub.body}
+                  </p>
+                )}
+              </div>
             ))}
-          </ul>
-        </div>
-      )}
+          </div>
+        ))}
+
+        {json.keyPoints && json.keyPoints.length > 0 && (
+          <div className="mt-6 bg-green-50 rounded-lg p-4">
+            <h4 className="text-sm font-semibold text-green-800 mb-2">Key Points</h4>
+            <ul className="list-disc list-inside space-y-1">
+              {json.keyPoints.map((kp, i) => (
+                <li key={i} className="text-sm text-green-700">{kp}</li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </div>
+
+      {/* "I've understood this" CTA — explicit student confirmation */}
+      <div className="mt-8 pt-6 border-t flex items-center gap-3">
+        <button
+          type="button"
+          onClick={onReady}
+          className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-indigo-600 rounded-xl hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 active:scale-95 transition-transform"
+        >
+          I've understood this
+          <svg className="w-4 h-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden>
+            <path fillRule="evenodd" d="M10.293 3.293a1 1 0 011.414 0l6 6a1 1 0 010 1.414l-6 6a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-4.293-4.293a1 1 0 010-1.414z" clipRule="evenodd" />
+          </svg>
+        </button>
+        <button
+          type="button"
+          onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+          className="text-sm text-gray-400 hover:text-gray-600"
+        >
+          Read again
+        </button>
+      </div>
     </div>
   );
 }
 
 function unwrapNoteJson(raw: NoteJson): NoteJson {
-  if (raw?.content && typeof raw.content === "object" && ("sections" in raw.content || "summary" in raw.content)) {
+  if (
+    raw?.content &&
+    typeof raw.content === "object" &&
+    ("sections" in raw.content || "summary" in raw.content)
+  ) {
     return raw.content as NoteJson;
   }
   return raw;
@@ -613,47 +606,136 @@ function unwrapNoteJson(raw: NoteJson): NoteJson {
 
 // ─── Practice ─────────────────────────────────────────────────────────────────
 
-function PracticeView({ content }: { content: PracticeContent }) {
+interface PracticeResult {
+  questionId: string;
+  isCorrect: boolean;
+  correctAnswer: string | null;
+}
+
+function PracticeView({
+  sessionId,
+  content,
+  onAdvance,
+}: {
+  sessionId: string;
+  content: PracticeContent;
+  onAdvance: () => void;
+}) {
   const [answers, setAnswers] = useState<Record<string, string>>({});
-  const [submitted, setSubmitted] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [results, setResults] = useState<PracticeResult[] | null>(null);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   const handleSelect = (qId: string, val: string) => {
-    if (submitted) return;
+    if (results) return;
     setAnswers((prev) => ({ ...prev, [qId]: val }));
   };
 
+  const allAnswered =
+    content.questions.length > 0 &&
+    Object.keys(answers).length >= content.questions.length;
+
+  const handleSubmit = async () => {
+    if (submitting || results || !allAnswered) return;
+    setSubmitting(true);
+    setSubmitError(null);
+    try {
+      const res = await fetch(`/api/session/${sessionId}/practice/submit`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          answers: Object.entries(answers).map(([questionId, answer]) => ({
+            questionId,
+            answer,
+          })),
+        }),
+      });
+      if (!res.ok) {
+        const err = (await res.json().catch(() => ({}))) as { error?: string };
+        throw new Error(err.error ?? "Failed to submit");
+      }
+      const data = (await res.json()) as { results: PracticeResult[] };
+      setResults(data.results ?? []);
+    } catch (e) {
+      setSubmitError(e instanceof Error ? e.message : "Failed to submit");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const resultMap = new Map(results?.map((r) => [r.questionId, r]) ?? []);
+
   return (
     <div className="space-y-6">
-      <p className="text-gray-600 text-sm">
-        Answer the following {content.questions.length} question
-        {content.questions.length > 1 ? "s" : ""} to practice.
+      <p className="text-sm text-gray-500">
+        {results
+          ? "Here are your results. Review before continuing."
+          : `Answer all ${content.questions.length} question${content.questions.length > 1 ? "s" : ""}.`}
       </p>
 
       {content.questions.map((q, qi) => {
         const options = normalizeChoices(q.choices);
+        const result = resultMap.get(q.id);
+        const selectedAnswer = answers[q.id];
+
         return (
-          <div key={q.id} className="bg-gray-50 rounded-lg p-4">
-            <p className="font-medium text-gray-800 mb-3">
-              {qi + 1}. {q.prompt}
-            </p>
+          <div
+            key={q.id}
+            className={`rounded-xl p-4 border transition-colors ${
+              result
+                ? result.isCorrect
+                  ? "bg-green-50 border-green-200"
+                  : "bg-red-50 border-red-200"
+                : "bg-gray-50 border-gray-200"
+            }`}
+          >
+            <div className="flex items-start gap-2 mb-3">
+              <span className="text-sm font-semibold text-gray-500 shrink-0 mt-0.5">
+                {qi + 1}.
+              </span>
+              <p className="font-medium text-gray-800 text-sm leading-snug">{q.prompt}</p>
+              {result && (
+                <span
+                  className={`ml-auto shrink-0 text-base font-bold ${
+                    result.isCorrect ? "text-green-600" : "text-red-500"
+                  }`}
+                >
+                  {result.isCorrect ? "✓" : "✗"}
+                </span>
+              )}
+            </div>
+
             {q.difficulty && (
-              <span className="inline-block text-xs px-2 py-0.5 rounded-full bg-gray-200 text-gray-600 mb-2 capitalize">
+              <span className="inline-block text-xs px-2 py-0.5 rounded-full bg-gray-200 text-gray-500 mb-2 capitalize">
                 {q.difficulty}
               </span>
             )}
-            <div className="space-y-2 mt-1">
+
+            <div className="space-y-2">
               {options.map((opt, oi) => {
-                const selected = answers[q.id] === opt;
+                const isSelected = selectedAnswer === opt;
+                const isCorrectOpt =
+                  result?.correctAnswer === opt ||
+                  result?.correctAnswer === String.fromCharCode(65 + oi).toLowerCase();
+
+                const className = (() => {
+                  if (!result) {
+                    return isSelected
+                      ? "border-indigo-500 bg-indigo-50 text-indigo-800"
+                      : "border-gray-200 bg-white text-gray-700 hover:border-gray-300";
+                  }
+                  if (isCorrectOpt) return "border-green-500 bg-green-100 text-green-800 font-medium";
+                  if (isSelected && !result.isCorrect) return "border-red-400 bg-red-100 text-red-700";
+                  return "border-gray-200 bg-white text-gray-400";
+                })();
+
                 return (
                   <button
                     key={oi}
                     type="button"
                     onClick={() => handleSelect(q.id, opt)}
-                    className={`w-full text-left px-4 py-2.5 rounded-md border text-sm transition-colors ${
-                      selected
-                        ? "border-indigo-500 bg-indigo-50 text-indigo-800"
-                        : "border-gray-200 bg-white text-gray-700 hover:border-gray-300"
-                    }`}
+                    disabled={!!results}
+                    className={`w-full text-left px-4 py-2.5 rounded-lg border text-sm transition-colors disabled:cursor-default ${className}`}
                   >
                     <span className="font-medium mr-2">{String.fromCharCode(65 + oi)}.</span>
                     {opt}
@@ -661,56 +743,84 @@ function PracticeView({ content }: { content: PracticeContent }) {
                 );
               })}
             </div>
+
+            {result && !result.isCorrect && result.correctAnswer && (
+              <p className="mt-2 text-xs text-gray-500">
+                Correct answer:{" "}
+                <span className="font-medium text-green-700">{result.correctAnswer}</span>
+              </p>
+            )}
           </div>
         );
       })}
 
-      {!submitted && content.questions.length > 0 && (
-        <button
-          type="button"
-          onClick={() => setSubmitted(true)}
-          disabled={Object.keys(answers).length < content.questions.length}
-          className="px-5 py-2.5 text-sm font-medium text-white bg-green-600 rounded-md hover:bg-green-700 disabled:opacity-50"
-        >
-          Check Answers
-        </button>
-      )}
+      {submitError && <p className="text-sm text-red-500">{submitError}</p>}
 
-      {submitted && (
-        <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-          <p className="text-sm font-medium text-green-800">
-            {Object.keys(answers).length} answer{Object.keys(answers).length > 1 ? "s" : ""}{" "}
-            recorded. Move to the next step when ready.
-          </p>
-        </div>
-      )}
+      <div className="pt-2">
+        {!results ? (
+          <button
+            type="button"
+            onClick={handleSubmit}
+            disabled={submitting || !allAnswered}
+            className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-green-600 rounded-xl hover:bg-green-700 disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-green-500"
+          >
+            {submitting ? "Checking…" : "Check Answers"}
+          </button>
+        ) : (
+          <button
+            type="button"
+            onClick={onAdvance}
+            className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-indigo-600 rounded-xl hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 active:scale-95 transition-transform"
+          >
+            Continue to Test
+            <svg className="w-4 h-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden>
+              <path fillRule="evenodd" d="M10.293 3.293a1 1 0 011.414 0l6 6a1 1 0 010 1.414l-6 6a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-4.293-4.293a1 1 0 010-1.414z" clipRule="evenodd" />
+            </svg>
+          </button>
+        )}
+      </div>
     </div>
   );
 }
 
 // ─── Test ─────────────────────────────────────────────────────────────────────
 
+interface TestSubmitResult {
+  score: number;
+  correctAnswers: number;
+  totalAnswers: number;
+  results: { questionId: string; isCorrect: boolean; correctAnswer?: string }[];
+}
+
 function TestView({
   sessionId,
   content,
+  onAdvance,
   onTestSubmitted,
 }: {
   sessionId: string;
   content: TestContent;
+  onAdvance: () => void;
   onTestSubmitted?: () => void;
 }) {
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [testResult, setTestResult] = useState<TestSubmitResult | null>(null);
+  const [showReview, setShowReview] = useState(false);
 
   const handleSelect = (qId: string, val: string) => {
     if (submitted) return;
     setAnswers((prev) => ({ ...prev, [qId]: val }));
   };
 
+  const allAnswered =
+    content.questions.length > 0 &&
+    Object.keys(answers).length >= content.questions.length;
+
   const handleSubmit = async () => {
-    if (submitted || submitting || Object.keys(answers).length < content.questions.length) return;
+    if (submitted || submitting || !allAnswered) return;
     setSubmitting(true);
     setSubmitError(null);
     try {
@@ -725,9 +835,11 @@ function TestView({
         }),
       });
       if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
+        const err = (await res.json().catch(() => ({}))) as { error?: string };
         throw new Error(err.error ?? "Failed to submit test");
       }
+      const data = (await res.json()) as TestSubmitResult;
+      setTestResult(data);
       setSubmitted(true);
       onTestSubmitted?.();
     } catch (e) {
@@ -737,35 +849,132 @@ function TestView({
     }
   };
 
+  // ── Post-submit: plain-language result ─────────────────────────────────────
+  if (submitted && testResult) {
+    const { correctAnswers, totalAnswers } = testResult;
+    const pct = totalAnswers > 0 ? (correctAnswers / totalAnswers) * 100 : 0;
+    const message =
+      pct >= 80
+        ? "You've understood the core concept well."
+        : pct >= 60
+        ? "Good effort. A couple of areas need more practice."
+        : "This topic needs more attention. Your homework will help.";
+
+    const resultMap = new Map(testResult.results.map((r) => [r.questionId, r]));
+
+    return (
+      <div className="space-y-5">
+        {/* Plain-language result — no percentage, no grade */}
+        <div className="bg-indigo-50 border border-indigo-200 rounded-xl p-5 text-center">
+          <p className="text-2xl font-bold text-indigo-800">
+            {correctAnswers} of {totalAnswers} correct
+          </p>
+          <p className="mt-1 text-sm text-indigo-600">{message}</p>
+        </div>
+
+        {/* Review answers — optional, not forced */}
+        <button
+          type="button"
+          onClick={() => setShowReview((v) => !v)}
+          className="text-sm text-gray-500 hover:text-gray-700 underline"
+        >
+          {showReview ? "Hide answers" : "Review answers"}
+        </button>
+
+        {showReview && (
+          <div className="space-y-3">
+            {content.questions.map((q, qi) => {
+              const result = resultMap.get(q.id);
+              return (
+                <div
+                  key={q.id}
+                  className={`rounded-xl p-4 border text-sm ${
+                    result?.isCorrect
+                      ? "bg-green-50 border-green-200"
+                      : "bg-red-50 border-red-200"
+                  }`}
+                >
+                  <p className="font-medium text-gray-800 mb-1">
+                    {qi + 1}. {q.question}
+                    <span
+                      className={`ml-2 font-bold ${
+                        result?.isCorrect ? "text-green-600" : "text-red-500"
+                      }`}
+                    >
+                      {result?.isCorrect ? "✓" : "✗"}
+                    </span>
+                  </p>
+                  <p className="text-xs text-gray-500">
+                    Your answer:{" "}
+                    <span className="font-medium">{answers[q.id] ?? "—"}</span>
+                    {!result?.isCorrect && result?.correctAnswer && (
+                      <>
+                        {" "}
+                        · Correct:{" "}
+                        <span className="font-medium text-green-700">
+                          {result.correctAnswer}
+                        </span>
+                      </>
+                    )}
+                  </p>
+                  {q.explanation && (
+                    <p className="mt-2 text-xs text-gray-500 bg-white rounded p-2 border border-gray-100">
+                      {q.explanation}
+                    </p>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {/* Always-enabled continue — NEVER blocked by score */}
+        <button
+          type="button"
+          onClick={onAdvance}
+          className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-indigo-600 rounded-xl hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 active:scale-95 transition-transform"
+        >
+          Continue to Homework
+          <svg className="w-4 h-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden>
+            <path fillRule="evenodd" d="M10.293 3.293a1 1 0 011.414 0l6 6a1 1 0 010 1.414l-6 6a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-4.293-4.293a1 1 0 010-1.414z" clipRule="evenodd" />
+          </svg>
+        </button>
+      </div>
+    );
+  }
+
+  // ── Pre-submit: question list (no hints, no mid-test feedback) ─────────────
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <p className="text-gray-600 text-sm">
-          {content.title} &middot; {content.questions.length} question
-          {content.questions.length > 1 ? "s" : ""}
+      <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 text-sm text-amber-800">
+        <p className="font-medium mb-1">Quick Test</p>
+        <p>
+          {content.questions.length} question
+          {content.questions.length > 1 ? "s" : ""} &nbsp;·&nbsp; No hints &nbsp;·&nbsp; No time
+          limit
         </p>
-        <span className="text-xs px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700 capitalize">
-          {content.difficulty}
-        </span>
+        <p className="text-xs mt-1 text-amber-600">
+          Answers will be revealed after you submit.
+        </p>
       </div>
 
       {content.questions.map((q, qi) => {
         const options = normalizeChoices(q.options);
         return (
-          <div key={q.id} className="bg-gray-50 rounded-lg p-4">
-            <p className="font-medium text-gray-800 mb-3">
+          <div key={q.id} className="bg-gray-50 rounded-xl p-4 border border-gray-200">
+            <p className="font-medium text-gray-800 text-sm mb-3">
               {qi + 1}. {q.question}
             </p>
             <div className="space-y-2">
               {options.map((opt, oi) => {
-                const selected = answers[q.id] === opt;
+                const isSelected = answers[q.id] === opt;
                 return (
                   <button
                     key={oi}
                     type="button"
                     onClick={() => handleSelect(q.id, opt)}
-                    className={`w-full text-left px-4 py-2.5 rounded-md border text-sm transition-colors ${
-                      selected
+                    className={`w-full text-left px-4 py-2.5 rounded-lg border text-sm transition-colors ${
+                      isSelected
                         ? "border-indigo-500 bg-indigo-50 text-indigo-800"
                         : "border-gray-200 bg-white text-gray-700 hover:border-gray-300"
                     }`}
@@ -776,41 +985,20 @@ function TestView({
                 );
               })}
             </div>
-            {submitted && q.explanation && (
-              <p className="mt-3 text-sm text-gray-500 bg-white rounded p-2 border border-gray-100">
-                {q.explanation}
-              </p>
-            )}
           </div>
         );
       })}
 
-      {submitError && (
-        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-          <p className="text-sm font-medium text-red-800">{submitError}</p>
-        </div>
-      )}
+      {submitError && <p className="text-sm text-red-500">{submitError}</p>}
 
-      {!submitted && content.questions.length > 0 && (
-        <button
-          type="button"
-          onClick={handleSubmit}
-          disabled={
-            submitting || Object.keys(answers).length < content.questions.length
-          }
-          className="px-5 py-2.5 text-sm font-medium text-white bg-green-600 rounded-md hover:bg-green-700 disabled:opacity-50"
-        >
-          {submitting ? "Submitting…" : "Submit Test"}
-        </button>
-      )}
-
-      {submitted && (
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-          <p className="text-sm font-medium text-blue-800">
-            Test submitted. Review explanations above, then proceed to the next step.
-          </p>
-        </div>
-      )}
+      <button
+        type="button"
+        onClick={handleSubmit}
+        disabled={submitting || !allAnswered}
+        className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-green-600 rounded-xl hover:bg-green-700 disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-green-500"
+      >
+        {submitting ? "Submitting…" : "Submit Test"}
+      </button>
     </div>
   );
 }
@@ -821,59 +1009,90 @@ function HomeworkView({
   content,
   homework,
   router,
+  onAdvance,
 }: {
   content: HomeworkContent;
   homework: HomeworkData | null;
   router: ReturnType<typeof useRouter>;
+  onAdvance: () => void;
 }) {
   const hw = homework ?? content;
   const isGraded = hw.status === "GRADED";
+  const isSubmitted = hw.status === "SUBMITTED" || isGraded;
   const questions = Array.isArray(content.questions)
     ? (content.questions as { id: string; prompt?: string; question?: string }[])
     : [];
+  const dueDate = new Date(content.dueDate).toLocaleDateString("en-IN", {
+    day: "numeric",
+    month: "short",
+  });
 
   return (
-    <div className="space-y-4">
-      <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
-        <div className="flex items-center justify-between">
-          <p className="text-sm font-medium text-amber-800">
-            Homework &middot; Due {new Date(content.dueDate).toLocaleDateString()}
-          </p>
-          <span
-            className={`text-xs px-2 py-0.5 rounded-full ${
-              isGraded ? "bg-green-100 text-green-700" : "bg-amber-100 text-amber-700"
-            }`}
-          >
-            {hw.status}
-          </span>
-        </div>
+    <div className="space-y-5">
+      {/* Tutor-voiced framing */}
+      <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
+        <p className="text-sm font-medium text-amber-800">
+          Your tutor has assigned {questions.length} homework question
+          {questions.length !== 1 ? "s" : ""}.
+        </p>
+        <p className="text-xs text-amber-600 mt-1">Due {dueDate}</p>
         {isGraded && hw.score != null && (
-          <p className="text-sm text-green-700 mt-1">Score: {Math.round(hw.score * 100)}%</p>
+          <p className="text-xs text-green-700 mt-1 font-medium">
+            Score: {Math.round(hw.score * 100)}%
+          </p>
+        )}
+        {isSubmitted && (
+          <p className="text-xs text-green-700 mt-1">
+            Submitted. Your tutor will review it.
+          </p>
         )}
       </div>
 
+      {/* Question list (display only) */}
       {questions.length > 0 && (
-        <div>
-          <h4 className="text-sm font-semibold text-gray-700 mb-2">
-            {questions.length} Question{questions.length > 1 ? "s" : ""} Assigned
-          </h4>
-          <ul className="space-y-2">
-            {questions.map((q, i) => (
-              <li key={q.id || i} className="bg-gray-50 rounded p-3 text-sm text-gray-700">
-                {i + 1}. {q.prompt || q.question || "Question"}
-              </li>
-            ))}
-          </ul>
+        <ul className="space-y-2">
+          {questions.map((q, i) => (
+            <li
+              key={q.id || i}
+              className="bg-gray-50 rounded-lg px-4 py-3 text-sm text-gray-700 border border-gray-100"
+            >
+              {i + 1}. {q.prompt || q.question || "Question"}
+            </li>
+          ))}
+        </ul>
+      )}
+
+      {/* Actions */}
+      {!isSubmitted && content.assignmentId && (
+        <div className="flex flex-col sm:flex-row gap-3">
+          <button
+            type="button"
+            onClick={() => router.push(`/homework/${content.assignmentId}`)}
+            className="inline-flex items-center justify-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-amber-600 rounded-xl hover:bg-amber-700 focus:outline-none focus:ring-2 focus:ring-amber-500"
+          >
+            Submit Answers
+          </button>
+          {/* Save & Submit Later — first-class option per UX spec */}
+          <button
+            type="button"
+            onClick={onAdvance}
+            className="inline-flex items-center justify-center px-5 py-2.5 text-sm font-medium text-gray-600 bg-gray-100 rounded-xl hover:bg-gray-200 focus:outline-none"
+          >
+            Save &amp; Submit Later
+          </button>
         </div>
       )}
 
-      {!isGraded && content.assignmentId && (
+      {isSubmitted && (
         <button
           type="button"
-          onClick={() => router.push(`/homework/${content.assignmentId}`)}
-          className="px-5 py-2.5 text-sm font-medium text-white bg-amber-600 rounded-md hover:bg-amber-700"
+          onClick={onAdvance}
+          className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-indigo-600 rounded-xl hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
         >
-          Start Homework
+          Finish Session
+          <svg className="w-4 h-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden>
+            <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+          </svg>
         </button>
       )}
     </div>
@@ -882,7 +1101,9 @@ function HomeworkView({
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-function normalizeChoices(raw: string[] | Record<string, string> | null | unknown): string[] {
+function normalizeChoices(
+  raw: string[] | Record<string, string> | null | unknown,
+): string[] {
   if (!raw) return [];
   if (Array.isArray(raw)) return raw.map(String);
   if (typeof raw === "object") return Object.values(raw as Record<string, string>);
