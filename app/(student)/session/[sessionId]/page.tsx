@@ -113,6 +113,7 @@ interface PracticeQuestion {
   prompt: string;
   choices: string[] | Record<string, string> | null;
   difficulty: string | null;
+  hint?: string | null;
 }
 
 interface PracticeContent {
@@ -612,6 +613,21 @@ interface PracticeResult {
   correctAnswer: string | null;
 }
 
+/**
+ * PracticeView — per-question sequential flow
+ *
+ * Phase 1 (answering): shows one question at a time. Student selects an
+ * option and clicks "Submit Answer". The answer is recorded locally and the
+ * view advances to the next question. No feedback is shown yet. After the
+ * last question the batch is submitted to the API.
+ *
+ * Phase 2 (review): shows one result at a time with correct/incorrect
+ * indicator and the correct answer for wrong answers. "Next Question →"
+ * advances through each result. The final question shows "Continue to Test →".
+ *
+ * This matches the UX spec wireframe exactly without requiring per-question
+ * API calls — the batch endpoint is called once after all questions are answered.
+ */
 function PracticeView({
   sessionId,
   content,
@@ -621,22 +637,27 @@ function PracticeView({
   content: PracticeContent;
   onAdvance: () => void;
 }) {
-  const [answers, setAnswers] = useState<Record<string, string>>({});
-  const [submitting, setSubmitting] = useState(false);
+  const totalQ = content.questions.length;
+
+  // Phase 1: answering
+  const [currentIdx, setCurrentIdx] = useState(0);
+  const [selectedOption, setSelectedOption] = useState<string | null>(null);
+  const [committedAnswers, setCommittedAnswers] = useState<Record<string, string>>({});
+  const [hintOpen, setHintOpen] = useState(false);
+
+  // Phase 2: reviewing results
   const [results, setResults] = useState<PracticeResult[] | null>(null);
+  const [reviewIdx, setReviewIdx] = useState(0);
+  const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
-  const handleSelect = (qId: string, val: string) => {
-    if (results) return;
-    setAnswers((prev) => ({ ...prev, [qId]: val }));
-  };
+  const currentQ = content.questions[currentIdx];
+  const isAnsweringPhase = results === null && !submitting;
+  const isLoadingPhase = submitting;
+  const isReviewPhase = results !== null;
 
-  const allAnswered =
-    content.questions.length > 0 &&
-    Object.keys(answers).length >= content.questions.length;
-
-  const handleSubmit = async () => {
-    if (submitting || results || !allAnswered) return;
+  // ── Submit all answers after last question ──────────────────────────────────
+  const submitAllAnswers = async (finalAnswers: Record<string, string>) => {
     setSubmitting(true);
     setSubmitError(null);
     try {
@@ -644,7 +665,7 @@ function PracticeView({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          answers: Object.entries(answers).map(([questionId, answer]) => ({
+          answers: Object.entries(finalAnswers).map(([questionId, answer]) => ({
             questionId,
             answer,
           })),
@@ -656,6 +677,7 @@ function PracticeView({
       }
       const data = (await res.json()) as { results: PracticeResult[] };
       setResults(data.results ?? []);
+      setReviewIdx(0);
     } catch (e) {
       setSubmitError(e instanceof Error ? e.message : "Failed to submit");
     } finally {
@@ -663,110 +685,89 @@ function PracticeView({
     }
   };
 
-  const resultMap = new Map(results?.map((r) => [r.questionId, r]) ?? []);
+  // ── Commit current answer and advance ──────────────────────────────────────
+  const handleCommitAnswer = () => {
+    if (!selectedOption || !currentQ) return;
+    const updated = { ...committedAnswers, [currentQ.id]: selectedOption };
+    setCommittedAnswers(updated);
+    setSelectedOption(null);
+    setHintOpen(false);
 
-  return (
-    <div className="space-y-6">
-      <p className="text-sm text-gray-500">
-        {results
-          ? "Here are your results. Review before continuing."
-          : `Answer all ${content.questions.length} question${content.questions.length > 1 ? "s" : ""}.`}
-      </p>
+    if (currentIdx < totalQ - 1) {
+      setCurrentIdx((i) => i + 1);
+    } else {
+      submitAllAnswers(updated);
+    }
+  };
 
-      {content.questions.map((q, qi) => {
-        const options = normalizeChoices(q.choices);
-        const result = resultMap.get(q.id);
-        const selectedAnswer = answers[q.id];
+  // ── Loading state (batch API call in flight) ───────────────────────────────
+  if (isLoadingPhase) {
+    return (
+      <div className="flex flex-col items-center justify-center py-12 space-y-3">
+        <div className="w-8 h-8 border-2 border-indigo-400 border-t-transparent rounded-full animate-spin" />
+        <p className="text-sm text-gray-500">Checking your answers…</p>
+      </div>
+    );
+  }
 
-        return (
-          <div
-            key={q.id}
-            className={`rounded-xl p-4 border transition-colors ${
-              result
-                ? result.isCorrect
-                  ? "bg-green-50 border-green-200"
-                  : "bg-red-50 border-red-200"
-                : "bg-gray-50 border-gray-200"
-            }`}
-          >
-            <div className="flex items-start gap-2 mb-3">
-              <span className="text-sm font-semibold text-gray-500 shrink-0 mt-0.5">
-                {qi + 1}.
-              </span>
-              <p className="font-medium text-gray-800 text-sm leading-snug">{q.prompt}</p>
-              {result && (
-                <span
-                  className={`ml-auto shrink-0 text-base font-bold ${
-                    result.isCorrect ? "text-green-600" : "text-red-500"
-                  }`}
-                >
-                  {result.isCorrect ? "✓" : "✗"}
-                </span>
-              )}
-            </div>
+  // ── Review phase: one result at a time ────────────────────────────────────
+  if (isReviewPhase && results) {
+    const resultMap = new Map(results.map((r) => [r.questionId, r]));
+    const reviewQ = content.questions[reviewIdx];
+    const reviewResult = resultMap.get(reviewQ?.id ?? "");
+    const reviewOptions = normalizeChoices(reviewQ?.choices ?? null);
+    const committedAnswer = committedAnswers[reviewQ?.id ?? ""];
+    const isLast = reviewIdx === totalQ - 1;
 
-            {q.difficulty && (
-              <span className="inline-block text-xs px-2 py-0.5 rounded-full bg-gray-200 text-gray-500 mb-2 capitalize">
-                {q.difficulty}
-              </span>
-            )}
+    return (
+      <div className="space-y-5">
+        {/* Progress */}
+        <div className="flex items-center justify-between">
+          <p className="text-xs font-medium text-gray-400 uppercase tracking-wide">
+            Question {reviewIdx + 1} of {totalQ}
+          </p>
+          {reviewResult && (
+            <span className={`text-sm font-bold ${reviewResult.isCorrect ? "text-green-600" : "text-red-500"}`}>
+              {reviewResult.isCorrect ? "✓  Correct" : "✗  Not quite"}
+            </span>
+          )}
+        </div>
 
-            <div className="space-y-2">
-              {options.map((opt, oi) => {
-                const isSelected = selectedAnswer === opt;
-                const isCorrectOpt =
-                  result?.correctAnswer === opt ||
-                  result?.correctAnswer === String.fromCharCode(65 + oi).toLowerCase();
-
-                const className = (() => {
-                  if (!result) {
-                    return isSelected
-                      ? "border-indigo-500 bg-indigo-50 text-indigo-800"
-                      : "border-gray-200 bg-white text-gray-700 hover:border-gray-300";
-                  }
-                  if (isCorrectOpt) return "border-green-500 bg-green-100 text-green-800 font-medium";
-                  if (isSelected && !result.isCorrect) return "border-red-400 bg-red-100 text-red-700";
-                  return "border-gray-200 bg-white text-gray-400";
-                })();
-
-                return (
-                  <button
-                    key={oi}
-                    type="button"
-                    onClick={() => handleSelect(q.id, opt)}
-                    disabled={!!results}
-                    className={`w-full text-left px-4 py-2.5 rounded-lg border text-sm transition-colors disabled:cursor-default ${className}`}
-                  >
-                    <span className="font-medium mr-2">{String.fromCharCode(65 + oi)}.</span>
-                    {opt}
-                  </button>
-                );
-              })}
-            </div>
-
-            {result && !result.isCorrect && result.correctAnswer && (
-              <p className="mt-2 text-xs text-gray-500">
-                Correct answer:{" "}
-                <span className="font-medium text-green-700">{result.correctAnswer}</span>
-              </p>
-            )}
+        {/* Question + options (locked) */}
+        <div className={`rounded-xl p-4 border ${
+          reviewResult?.isCorrect ? "bg-green-50 border-green-200" : "bg-red-50 border-red-200"
+        }`}>
+          <p className="font-medium text-gray-800 text-sm leading-snug mb-3">{reviewQ?.prompt}</p>
+          <div className="space-y-2">
+            {reviewOptions.map((opt, oi) => {
+              const isChosen = committedAnswer === opt;
+              const isCorrectOpt =
+                reviewResult?.correctAnswer === opt ||
+                reviewResult?.correctAnswer === String.fromCharCode(65 + oi).toLowerCase();
+              const cls = (() => {
+                if (isCorrectOpt) return "border-green-500 bg-green-100 text-green-800 font-medium";
+                if (isChosen && !reviewResult?.isCorrect) return "border-red-400 bg-red-100 text-red-700";
+                return "border-gray-200 bg-white text-gray-400";
+              })();
+              return (
+                <div key={oi} className={`w-full px-4 py-2.5 rounded-lg border text-sm ${cls}`}>
+                  <span className="font-medium mr-2">{String.fromCharCode(65 + oi)}.</span>
+                  {opt}
+                </div>
+              );
+            })}
           </div>
-        );
-      })}
+          {reviewResult && !reviewResult.isCorrect && reviewResult.correctAnswer && (
+            <p className="mt-3 text-sm text-gray-600">
+              The correct answer is{" "}
+              <span className="font-semibold text-green-700">{reviewResult.correctAnswer}</span>
+            </p>
+          )}
+        </div>
 
-      {submitError && <p className="text-sm text-red-500">{submitError}</p>}
+        {submitError && <p className="text-sm text-red-500">{submitError}</p>}
 
-      <div className="pt-2">
-        {!results ? (
-          <button
-            type="button"
-            onClick={handleSubmit}
-            disabled={submitting || !allAnswered}
-            className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-green-600 rounded-xl hover:bg-green-700 disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-green-500"
-          >
-            {submitting ? "Checking…" : "Check Answers"}
-          </button>
-        ) : (
+        {isLast ? (
           <button
             type="button"
             onClick={onAdvance}
@@ -777,8 +778,96 @@ function PracticeView({
               <path fillRule="evenodd" d="M10.293 3.293a1 1 0 011.414 0l6 6a1 1 0 010 1.414l-6 6a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-4.293-4.293a1 1 0 010-1.414z" clipRule="evenodd" />
             </svg>
           </button>
+        ) : (
+          <button
+            type="button"
+            onClick={() => setReviewIdx((i) => i + 1)}
+            className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-gray-700 rounded-xl hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-500 active:scale-95 transition-transform"
+          >
+            Next Question
+            <svg className="w-4 h-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden>
+              <path fillRule="evenodd" d="M10.293 3.293a1 1 0 011.414 0l6 6a1 1 0 010 1.414l-6 6a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-4.293-4.293a1 1 0 010-1.414z" clipRule="evenodd" />
+            </svg>
+          </button>
         )}
       </div>
+    );
+  }
+
+  // ── Answering phase: one question at a time ───────────────────────────────
+  if (!currentQ) return null;
+  const options = normalizeChoices(currentQ.choices);
+
+  return (
+    <div className="space-y-5">
+      {/* Progress counter */}
+      <p className="text-xs font-medium text-gray-400 uppercase tracking-wide">
+        Question {currentIdx + 1} of {totalQ}
+      </p>
+
+      {/* Question card */}
+      <div className="rounded-xl border border-gray-200 bg-gray-50 p-4">
+        <p className="font-medium text-gray-800 text-sm leading-snug mb-4">{currentQ.prompt}</p>
+
+        {currentQ.difficulty && (
+          <span className="inline-block text-xs px-2 py-0.5 rounded-full bg-gray-200 text-gray-500 mb-3 capitalize">
+            {currentQ.difficulty}
+          </span>
+        )}
+
+        <div className="space-y-2">
+          {options.map((opt, oi) => {
+            const isSelected = selectedOption === opt;
+            return (
+              <button
+                key={oi}
+                type="button"
+                onClick={() => setSelectedOption(opt)}
+                className={`w-full text-left px-4 py-2.5 rounded-lg border text-sm transition-colors ${
+                  isSelected
+                    ? "border-indigo-500 bg-indigo-50 text-indigo-800"
+                    : "border-gray-200 bg-white text-gray-700 hover:border-gray-300"
+                }`}
+              >
+                <span className="font-medium mr-2">{String.fromCharCode(65 + oi)}.</span>
+                {opt}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Hint (only rendered if hint data exists on the question) */}
+      {currentQ.hint && (
+        <div>
+          <button
+            type="button"
+            onClick={() => setHintOpen((o) => !o)}
+            className="flex items-center gap-1.5 text-sm text-amber-600 hover:text-amber-700"
+          >
+            <svg className="w-4 h-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden>
+              <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+            </svg>
+            {hintOpen ? "Hide hint" : "Show hint"}
+          </button>
+          {hintOpen && (
+            <p className="mt-2 text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-4 py-3">
+              {currentQ.hint}
+            </p>
+          )}
+        </div>
+      )}
+
+      {submitError && <p className="text-sm text-red-500">{submitError}</p>}
+
+      <button
+        type="button"
+        onClick={handleCommitAnswer}
+        disabled={!selectedOption}
+        className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-green-600 rounded-xl hover:bg-green-700 disabled:opacity-40 focus:outline-none focus:ring-2 focus:ring-green-500 active:scale-95 transition-transform"
+      >
+        Submit Answer
+      </button>
     </div>
   );
 }
@@ -1038,7 +1127,13 @@ function HomeworkView({
         <p className="text-xs text-amber-600 mt-1">Due {dueDate}</p>
         {isGraded && hw.score != null && (
           <p className="text-xs text-green-700 mt-1 font-medium">
-            Score: {Math.round(hw.score * 100)}%
+            {hw.score >= 0.9
+              ? "Mastered"
+              : hw.score >= 0.75
+              ? "Understood"
+              : hw.score >= 0.5
+              ? "Getting there"
+              : "Needs more practice"}
           </p>
         )}
         {isSubmitted && (

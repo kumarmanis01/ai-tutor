@@ -186,10 +186,28 @@ export default async function StudentHomeDashboardPage() {
     : (nextActionResult as RawAction);
   const recommendation = rawAction?.topicId ? rawAction : null;
 
-  // ── Upcoming topics ─────────────────────────────────────────────────────
+  // ── Upcoming topics + "builds on" context ──────────────────────────────
   const masteredIdSet = new Set(masteredTopicIds.map((r) => r.topicId));
   const recTopicId = recommendation?.topicId;
   type OrderedTopic = { topicId?: string; id?: string; topicName?: string; name?: string; subject?: string };
+
+  // "Builds on" = the most recent mastered topic in curriculum order before the
+  // recommended topic. Used to give the student continuity context in StartState.
+  const buildsOnTopicName = (() => {
+    if (!recTopicId) return undefined;
+    const ordered = orderedTopics as OrderedTopic[];
+    const recIndex = ordered.findIndex((t) => (t.topicId ?? t.id) === recTopicId);
+    if (recIndex <= 0) return undefined;
+    // Walk backwards from the recommended topic to find the last mastered one
+    for (let i = recIndex - 1; i >= 0; i--) {
+      const id = ordered[i].topicId ?? ordered[i].id;
+      if (id && masteredIdSet.has(id)) {
+        return ordered[i].topicName ?? ordered[i].name ?? undefined;
+      }
+    }
+    return undefined;
+  })();
+
   const upcomingTopics = (orderedTopics as OrderedTopic[])
     .filter((t) => {
       const id = t.topicId ?? t.id;
@@ -246,6 +264,7 @@ export default async function StudentHomeDashboardPage() {
                 subject: recommendation.subject ?? '',
                 chapter: recommendation.chapter ?? undefined,
                 estimatedTimeMin: recommendation.estimatedTimeMin ?? 20,
+                buildsOnTopicName,
               }
             : null
         }

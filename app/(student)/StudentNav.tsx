@@ -11,8 +11,7 @@ interface StudentNavProps {
 
 const NAV_LINKS = [
   { href: '/dashboard', label: 'Home' },
-  { href: '/dashboard/notes', label: 'Notes' },
-  { href: '/dashboard/tests', label: 'Practice' },
+  { href: '/learn/learning-path', label: 'Learning Path' },
   { href: '/dashboard/doubts', label: 'Doubts' },
   { href: '/dashboard/profile', label: 'Profile' },
 ];
@@ -31,7 +30,7 @@ export default function StudentNav({ studentName }: StudentNavProps) {
   const isActive = (href: string) =>
     href === '/dashboard'
       ? pathname === '/dashboard'
-      : pathname.startsWith(href);
+      : pathname === href || pathname.startsWith(href + '/');
 
   const greeting = (() => {
     const hour = new Date().getHours();

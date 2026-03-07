@@ -53,6 +53,8 @@ interface RecommendationInfo {
   subject: string;
   chapter?: string;
   estimatedTimeMin: number;
+  /** Most recently mastered topic before this one — renders continuity sentence. */
+  buildsOnTopicName?: string;
 }
 
 interface HomeworkInfo {
@@ -192,6 +194,12 @@ function StartState({ recommendation }: { recommendation: RecommendationInfo }) 
       <h2 className="mt-1 text-2xl font-bold leading-tight text-white">
         {recommendation.topicTitle}
       </h2>
+
+      {recommendation.buildsOnTopicName && (
+        <p className="mt-1.5 text-sm text-violet-300">
+          This builds on {recommendation.buildsOnTopicName}, which you completed recently.
+        </p>
+      )}
 
       <div className="mt-3 flex flex-wrap gap-2">
         {['Explanation', 'Practice', 'Test'].map((step, i) => (
