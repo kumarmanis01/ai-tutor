@@ -5,11 +5,18 @@
  * - ZERO AI calls. Prisma only. Target latency: <150 ms.
  *
  * Priority order (short-circuits at first match):
- *   P1 – Resume unfinished LearningSession
- *   P2 – Pending DailyTask for today
- *   P3 – Unresolved AttentionFlag (lowest accuracy first)
- *   P4 – StudentTopicMastery with accuracy < 0.6 (lowest first)
- *   P5 – First unattempted TopicDef in the student's curriculum
+ *   LOCK – Active StructuredSession exists → must resume, never skip to P3–P5
+ *   P1   – Resume unfinished LearningSession (legacy fallback)
+ *   P2   – Pending DailyTask for today
+ *   P3   – Unresolved AttentionFlag (lowest accuracy first)
+ *   P4   – StudentTopicMastery with accuracy < 0.6 (lowest first)
+ *   P5   – First unattempted TopicDef in the student's curriculum
+ *
+ * Session Lock (LOCK rule):
+ *   If any StructuredSession exists with state NOT IN ('COMPLETE','EXPIRED'),
+ *   the engine immediately returns a resume action for that session.
+ *   P3–P5 are never evaluated while a live session exists, preventing the
+ *   engine from recommending a new topic while the student is mid-session.
  *
  * DO NOT modify the existing recommendation engine.
  * DO NOT change the Prisma schema.
@@ -17,6 +24,9 @@
  * EDIT LOG:
  * - 2026-02-21 | claude | created deterministic tutor engine per architectural spec
  * - 2026-02-21 | claude | added topicName enrichment via shared enrichTopic helper
+ * - 2026-03-07 | claude | added StructuredSession lock (LOCK rule) — prevents P3–P5
+ *                          from firing while a live session exists; adds resumePhase
+ *                          to NextAction so callers can deep-link to the correct phase
  */
 
 import { prisma } from '@/lib/prisma';
@@ -53,8 +63,14 @@ export interface NextAction {
   actionType: ActionType;
   masteryLevel?: 'beginner' | 'intermediate' | 'advanced' | 'expert';
   accuracy?: number;
-  /** Present only for resume_session — used to build /practice/session/[id] URL */
+  /** Present only for resume_session — used to build /session/[id] URL */
   sessionId?: string;
+  /**
+   * Present only when the session lock fires (active StructuredSession found).
+   * Tells the caller which phase the student was at so the UI can deep-link
+   * directly to that step rather than always starting at OVERVIEW.
+   */
+  resumePhase?: 'OVERVIEW' | 'EXPLANATION' | 'PRACTICE' | 'TEST' | 'HOMEWORK';
   /** Present only for daily_task — estimated minutes for the task */
   estimatedTimeMin?: number;
 }
@@ -137,8 +153,77 @@ async function enrichTopic(
 // ─── Priority sub-functions ───────────────────────────────────────────────────
 
 /**
+ * Maps a StructuredSession phase to the ActionType the student should continue with.
+ * OVERVIEW / EXPLANATION → the student is in the reading/learning stages → 'notes'
+ * PRACTICE / TEST / HOMEWORK → the student is in an active exercise stage → 'practice'
+ */
+function structuredPhaseToAction(
+  phase: 'OVERVIEW' | 'EXPLANATION' | 'PRACTICE' | 'TEST' | 'HOMEWORK',
+): ActionType {
+  if (phase === 'PRACTICE' || phase === 'TEST' || phase === 'HOMEWORK') return 'practice';
+  return 'notes';
+}
+
+/**
+ * SESSION LOCK — Check for any active StructuredSession.
+ *
+ * If a StructuredSession exists with state NOT IN ('COMPLETE', 'EXPIRED'),
+ * the engine MUST return a resume action for that session. P3–P5 are never
+ * evaluated while a live session is in flight.
+ *
+ * This prevents the engine from recommending a new topic while the student
+ * is mid-session (e.g., paused at PRACTICE and returning to the dashboard).
+ *
+ * Uses a compound index: @@index([studentId, state]) — O(log n) lookup.
+ */
+async function lock_activeStructuredSession(studentId: string): Promise<NextAction | null> {
+  const session = await prisma.structuredSession.findFirst({
+    where: {
+      studentId,
+      state: { notIn: ['COMPLETE', 'EXPIRED'] },
+    },
+    orderBy: { startedAt: 'desc' },
+    select: {
+      id: true,
+      topicId: true,
+      state: true,
+      topic: {
+        select: {
+          name: true,
+          chapter: {
+            select: {
+              name: true,
+              subject: { select: { name: true } },
+            },
+          },
+        },
+      },
+    },
+  });
+
+  if (!session) return null;
+
+  // State is one of OVERVIEW | EXPLANATION | PRACTICE | TEST | HOMEWORK at this point.
+  // The notIn filter above already excluded COMPLETE and EXPIRED.
+  const resumePhase = session.state as NextAction['resumePhase'];
+
+  return {
+    topicId: session.topicId,
+    topicName: session.topic.name,
+    subject: session.topic.chapter.subject.name,
+    chapter: session.topic.chapter.name,
+    ruleId: 'resume_session',
+    reasonLabel: 'Continue your current session',
+    actionType: structuredPhaseToAction(resumePhase!),
+    sessionId: session.id,
+    resumePhase,
+  };
+}
+
+/**
  * P1 — Resume the most recently accessed incomplete LearningSession.
  * Pulls subject/chapter/topicId from the session's meta JSON.
+ * LEGACY: only fires for students who pre-date the StructuredSession engine.
  */
 async function p1_resumeSession(studentId: string): Promise<NextAction | null> {
   // Only consider sessions with topicId present and valid activityType
@@ -345,15 +430,30 @@ export type GetNextActionReturn = NextAction | null | { action: NextAction | nul
 export async function getNextAction(studentId: string): Promise<GetNextActionReturn> {
   const traceId = randomUUID();
 
-  // P1 and P2 are independent of curriculum context — run them first.
-  // Only fetch the curriculum (P3/P4/P5) when neither P1 nor P2 matched,
-  // avoiding a redundant getOrderedTopicsForStudent query on common paths.
+  // ── SESSION LOCK ─────────────────────────────────────────────────────────────
+  // Check for any active StructuredSession BEFORE evaluating P1–P5.
+  // If one exists, the student must resume it — the engine never jumps to P3–P5
+  // (weak topics, new recommendations) while a live session is in flight.
+  // This is the primary resume path for all students using the new session engine.
+  const sessionLock = await lock_activeStructuredSession(studentId);
+  if (sessionLock) {
+    // Active session found — return resume action immediately.
+    // P1 (legacy LearningSession), P2 (DailyTask), P3–P5 are all skipped.
+    return finalise(sessionLock, traceId, studentId);
+  }
+
+  // ── LEGACY P1 + P2 ───────────────────────────────────────────────────────────
+  // No active StructuredSession. Check legacy LearningSession (P1) and DailyTask
+  // (P2). These only fire for students who pre-date the StructuredSession engine.
   const p1OrP2 = (await p1_resumeSession(studentId)) ?? (await p2_dailyTask(studentId));
 
   let action: NextAction | null;
   if (p1OrP2) {
     action = p1OrP2;
   } else {
+    // ── CURRICULUM RULES P3–P5 ─────────────────────────────────────────────────
+    // Guaranteed: no active session exists (lock was null, P1 was null).
+    // Safe to recommend a new/revision topic.
     // Fetch curriculum ONCE — shared by P3, P4, and P5 to avoid duplicate queries.
     const orderedTopics = await getOrderedTopicsForStudent(studentId);
     const allowedTopicIds = new Set(orderedTopics.map((t) => t.id));
@@ -381,32 +481,41 @@ export async function getNextAction(studentId: string): Promise<GetNextActionRet
     };
   }
 
+  return finalise(action, traceId, studentId);
+}
+
+// ─── Finalise helper ──────────────────────────────────────────────────────────
+
+/**
+ * Shared tail for every exit path in getNextAction.
+ * Handles logging, loop detection, and dev-mode trace wrapping.
+ * Extracted so the session lock fast-path can reuse it without duplication.
+ */
+function finalise(
+  action: NextAction,
+  traceId: string,
+  studentId: string,
+): GetNextActionReturn {
   // Log decision for observability (no PII beyond studentId).
   try {
     logger.info('engine.decision', {
       traceId,
       studentId,
-      ruleId: action?.ruleId ?? null,
-      actionType: action?.actionType ?? null,
-      topicId: action?.topicId ?? null,
-      reasonLabel: action?.reasonLabel ?? null,
+      ruleId: action.ruleId,
+      actionType: action.actionType,
+      topicId: action.topicId ?? null,
+      reasonLabel: action.reasonLabel,
+      resumePhase: action.resumePhase ?? null,
     });
   } catch (err) {
-    // Log but do not fail the engine on logger problems.
-    logger.warn('engine.decision.log_failed', {
-      traceId,
-      studentId,
-      error: String(err),
-    });
+    logger.warn('engine.decision.log_failed', { traceId, studentId, error: String(err) });
   }
 
-  // Loop detection: track recent decisions per student and warn if the same
-  // (ruleId, topicId) repeats RECENT_DECISIONS_CAP times consecutively.
+  // Loop detection: warn if the same (ruleId, topicId) repeats consecutively.
   try {
-    const key = `${action?.ruleId ?? 'null'}:${action?.topicId ?? 'null'}`;
+    const key = `${action.ruleId}:${action.topicId ?? 'null'}`;
     const arr = recentDecisions.get(studentId) ?? [];
     arr.push(key);
-    // keep only the last RECENT_DECISIONS_CAP entries
     if (arr.length > RECENT_DECISIONS_CAP) arr.splice(0, arr.length - RECENT_DECISIONS_CAP);
     recentDecisions.set(studentId, arr);
 
@@ -418,11 +527,7 @@ export async function getNextAction(studentId: string): Promise<GetNextActionRet
       }
     }
   } catch (err) {
-    logger.warn('engine.loop_detection_failed', {
-      traceId,
-      studentId,
-      error: String(err),
-    });
+    logger.warn('engine.loop_detection_failed', { traceId, studentId, error: String(err) });
   }
 
   if (process.env.NODE_ENV !== 'production') {
