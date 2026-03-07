@@ -47,33 +47,6 @@ function validateSyllabusShape(raw: any) {
   return true
 }
 
-function _sanitizeLLMOutput(content: string): string {
-  if (!content || typeof content !== 'string') return content
-  let s = content.trim()
-
-  // Strip triple-backtick fences and optional language tag on the opening fence
-  if (s.startsWith('```')) {
-    const firstNewline = s.indexOf('\n')
-    if (firstNewline !== -1) s = s.slice(firstNewline + 1)
-    // remove trailing fence if present
-    const closingFence = s.lastIndexOf('```')
-    if (closingFence !== -1) s = s.slice(0, closingFence)
-    s = s.trim()
-  }
-
-  // Also handle content wrapped in single backticks or triple tildes
-  if (s.startsWith('`') && s.endsWith('`')) s = s.slice(1, -1).trim()
-  if (s.startsWith('~~~')) {
-    const firstNewline = s.indexOf('\n')
-    if (firstNewline !== -1) s = s.slice(firstNewline + 1)
-    const closing = s.lastIndexOf('~~~')
-    if (closing !== -1) s = s.slice(0, closing)
-    s = s.trim()
-  }
-
-  return s
-}
-
 export async function handleSyllabusJob(jobId: string) {
   const claim = await prisma.hydrationJob.updateMany({
     where: { id: jobId, status: JobStatus.Pending },

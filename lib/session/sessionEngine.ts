@@ -33,10 +33,13 @@
 
 import { prisma } from '@/lib/prisma';
 import { logger } from '@/lib/logger';
+import { contentReadinessService } from '@/lib/session/contentReadinessService';
+import { contentHydrationTrigger } from '@/lib/session/contentHydrationTrigger';
 import { generateHomework, type HomeworkResult } from '@/lib/session/homework';
 import { transitionSessionPhase, InvalidTransitionError } from '@/lib/session/transitionSessionPhase';
+import { validatePhaseCompletion } from '@/lib/session/phaseCompletionValidator';
 import { updateStudentTopicProgress } from '@/lib/learning/updateTopicProgress';
-import { invalidateTopicRankerCache } from '@/lib/recommendations/topicRanker';
+import { emitSessionCompleted } from '@/lib/events/domainEvents';
 
 // ─── Phase Order ──────────────────────────────────────────────────────────────
 
@@ -52,7 +55,8 @@ export type SessionPhase =
   | 'PRACTICE'
   | 'TEST'
   | 'HOMEWORK'
-  | 'COMPLETE';
+  | 'COMPLETE'
+  | 'EXPIRED'; // GAP-05: terminal state for archived/stale sessions
 
 const PHASE_ORDER: SessionPhase[] = [
   'OVERVIEW',
@@ -65,6 +69,9 @@ const PHASE_ORDER: SessionPhase[] = [
 
 /** Phases shown in the progress bar (excludes COMPLETE which is a terminal state). */
 const DISPLAYABLE_PHASES = PHASE_ORDER.filter((p) => p !== 'COMPLETE');
+
+/** GAP-05: Sessions older than this are expired and archived. Default 48 hours. */
+const SESSION_EXPIRY_MS = Number(process.env.SESSION_EXPIRY_HOURS ?? 48) * 60 * 60 * 1000;
 
 const PHASE_INDEX = new Map(PHASE_ORDER.map((p, i) => [p, i]));
 
@@ -132,6 +139,51 @@ export interface PhaseContent {
   instruction: string;
 }
 
+/** Phases shown in the Overview "upcoming" list (after Overview, before Complete). */
+export const UPCOMING_PHASES_ORDER: readonly SessionPhase[] = ['EXPLANATION', 'PRACTICE', 'TEST', 'HOMEWORK'];
+
+/** ABSTRACTION-04: Canonical phase metadata. Single source of truth for labels and instructions. */
+export const PHASE_METADATA: Record<
+  SessionPhase,
+  { label: string; instruction: string; upcomingLabel: string | null }
+> = {
+  OVERVIEW: {
+    label: 'Overview',
+    instruction: 'Review the topic summary and learning objectives, then start when you are ready.',
+    upcomingLabel: null,
+  },
+  EXPLANATION: {
+    label: 'Learn',
+    instruction: 'Read through the topic explanation and key concepts.',
+    upcomingLabel: 'Learn',
+  },
+  PRACTICE: {
+    label: 'Practice',
+    instruction: 'Answer practice questions to reinforce what you learned.',
+    upcomingLabel: 'Practice',
+  },
+  TEST: {
+    label: 'Quick Test',
+    instruction: 'Take a short test to check your understanding.',
+    upcomingLabel: 'Quick Test',
+  },
+  HOMEWORK: {
+    label: 'Homework',
+    instruction: 'Complete the homework assignment for this topic.',
+    upcomingLabel: 'Homework',
+  },
+  COMPLETE: {
+    label: 'Complete',
+    instruction: 'You have completed this topic. Well done!',
+    upcomingLabel: null,
+  },
+  EXPIRED: {
+    label: 'Expired',
+    instruction: 'This session has expired. Start a new session to continue.',
+    upcomingLabel: null,
+  },
+};
+
 // ─── Public API ──────────────────────────────────────────────────────────────
 
 /**
@@ -147,26 +199,57 @@ export async function startSession(
   studentId: string,
   topicId: string,
 ): Promise<SessionView> {
-  // ── Resume existing session if one is in progress ───────────────────────
+  // ── Resume existing session if one is in progress (GAP-05: exclude EXPIRED) ──
   const existing = await prisma.structuredSession.findFirst({
-    where: { studentId, topicId, state: { not: 'COMPLETE' } },
+    where: { studentId, topicId, state: { notIn: ['COMPLETE', 'EXPIRED'] } },
     include: topicInclude,
   });
 
   if (existing) {
-    // Keep the bridged LearningSession's lastAccessed fresh.
-    touchBridgedLearningSession(existing.id).catch((err) =>
-      logger.warn('[SESSION_BRIDGE_TOUCH_FAILED]', { sessionId: existing.id, error: err }),
-    );
+    // GAP-05: If session is stale (>48h), archive it and create new session
+    const ageMs = Date.now() - existing.startedAt.getTime();
+    if (ageMs >= SESSION_EXPIRY_MS) {
+      await prisma.structuredSession.update({
+        where: { id: existing.id },
+        data: {
+          state: 'EXPIRED',
+          completedAt: new Date(),
+          meta: {
+            ...((existing.meta as object) ?? {}),
+            archivedAt: new Date().toISOString(),
+            archivedReason: 'session_expired',
+          },
+        },
+      });
+      logger.info('[GAP-05] Session archived (expired)', {
+        sessionId: existing.id,
+        topicId,
+        studentId,
+        ageHours: Math.round(ageMs / (60 * 60 * 1000)),
+      });
+      // Fall through to create new session below
+    } else {
+      // Fresh session — resume
+      touchBridgedLearningSession(existing.id).catch((err) =>
+        logger.warn('[SESSION_BRIDGE_TOUCH_FAILED]', { sessionId: existing.id, error: err }),
+      );
+      logger.info('[SESSION_RESUMED]', {
+        studentId,
+        sessionId: existing.id,
+        topicId,
+        currentPhase: existing.state,
+      });
+      return toSessionView(existing);
+    }
+  }
 
-    logger.info('[SESSION_RESUMED]', {
-      studentId,
-      sessionId: existing.id,
-      topicId,
-      currentPhase: existing.state,
-    });
+  // ── ABSTRACTION-01: Check content readiness before creating new session ──
+  const readiness = await contentReadinessService.isTopicReady(topicId);
 
-    return toSessionView(existing);
+  // ── GAP-03: When MISSING, trigger hydration fire-and-forget; do not block session start ──
+  if (readiness.status === 'MISSING') {
+    logger.info('[HYDRATION_TRIGGER] content MISSING, triggering HydrationJobs', { topicId, studentId });
+    contentHydrationTrigger.triggerForTopic(topicId);
   }
 
   // ── Create new session starting at OVERVIEW ─────────────────────────────
@@ -221,9 +304,27 @@ export async function advanceSession(
     return toSessionView(session);
   }
 
+  // GAP-05: Expired sessions cannot be advanced.
+  if (session.state === 'EXPIRED') {
+    throw new SessionError('Session has expired. Please start a new session.', 410);
+  }
+
   const next = nextPhase(session.state as SessionPhase);
 
+  // ABSTRACTION-02: Validate phase completion before transitioning.
+  const completion = await validatePhaseCompletion(
+    session.state as SessionPhase,
+    session,
+    sessionId,
+    studentId,
+  );
+  if (!completion.valid) {
+    throw new SessionError(completion.message ?? 'Phase completion requirements not met', 400);
+  }
+
   // Validated, guarded transition — throws InvalidTransitionError on illegal moves.
+  // On race lost (CAS count=0), transition returns raceLost: true; we reload and
+  // return current state without running phase side-effects (RISK-03).
   let transition;
   try {
     transition = await transitionSessionPhase(sessionId, next, studentId);
@@ -240,32 +341,68 @@ export async function advanceSession(
     include: topicInclude,
   });
 
+  // ── Race lost: return current state, skip side-effects ───────────────────
+  // Another request advanced first. The winner already ran homework generation,
+  // persistCompletionProgress, etc. We just return the reloaded view.
+  if (transition.raceLost) {
+    logger.info('[PHASE_TRANSITION_RACE_LOST]', {
+      sessionId,
+      studentId,
+      currentPhase: updated.state,
+      note: 'Returning current state; winner already applied side-effects.',
+    });
+    const view = toSessionView(updated);
+    if (updated.state === 'HOMEWORK') {
+      const existing = await prisma.homeworkAssignment.findFirst({
+        where: { sessionId },
+        select: { id: true },
+      });
+      view.homeworkId = existing?.id ?? null;
+    }
+    return view;
+  }
+
   // ── Phase-specific side-effects ─────────────────────────────────────────
 
   let homeworkId: string | null = null;
 
   if (next === 'HOMEWORK') {
-    // Auto-generate homework on entry to HOMEWORK phase.
-    // generateHomeworkWithRetry() guarantees a HomeworkAssignment row is
-    // created (stub if necessary) so resolvePhaseContent never returns
-    // PendingContent and the student is never permanently stuck here.
-    const hw = await generateHomeworkWithRetry(studentId, updated.topicId, sessionId);
-    if (hw) {
-      homeworkId = hw.id;
-      if (hw.isStub) {
-        logger.warn('[SESSION_HOMEWORK_STUB]', {
-          sessionId,
-          homeworkId,
-          studentId,
-          note: 'Stub assignment created; no questions available.',
-        });
-      } else {
-        logger.info('[SESSION_HOMEWORK_GENERATED]', {
-          sessionId,
-          homeworkId,
-          studentId,
-          questionCount: hw.questionCount,
-        });
+    // Prevent duplicate homework: another request may have won a prior race.
+    const existing = await prisma.homeworkAssignment.findFirst({
+      where: { sessionId },
+      select: { id: true },
+    });
+    if (existing) {
+      homeworkId = existing.id;
+      logger.info('[SESSION_HOMEWORK_EXISTS]', {
+        sessionId,
+        homeworkId,
+        studentId,
+        note: 'Reusing existing assignment; duplicate creation prevented.',
+      });
+    } else {
+      // Auto-generate homework on entry to HOMEWORK phase.
+      // generateHomeworkWithRetry() guarantees a HomeworkAssignment row is
+      // created (stub if necessary) so resolvePhaseContent never returns
+      // PendingContent and the student is never permanently stuck here.
+      const hw = await generateHomeworkWithRetry(studentId, updated.topicId, sessionId);
+      if (hw) {
+        homeworkId = hw.id;
+        if (hw.isStub) {
+          logger.warn('[SESSION_HOMEWORK_STUB]', {
+            sessionId,
+            homeworkId,
+            studentId,
+            note: 'Stub assignment created; no questions available.',
+          });
+        } else {
+          logger.info('[SESSION_HOMEWORK_GENERATED]', {
+            sessionId,
+            homeworkId,
+            studentId,
+            questionCount: hw.questionCount,
+          });
+        }
       }
     }
   }
@@ -280,6 +417,42 @@ export async function advanceSession(
 
   const view = toSessionView(updated);
   view.homeworkId = homeworkId;
+  return view;
+}
+
+/**
+ * Get session view by id (COUPLING-03).
+ *
+ * Returns the same SessionView format as startSession and advanceSession.
+ * Throws SessionError 404 when not found, 410 when expired (details.topicId for client redirect).
+ */
+export async function getSessionView(
+  studentId: string,
+  sessionId: string,
+): Promise<SessionView> {
+  const session = await prisma.structuredSession.findFirst({
+    where: { id: sessionId, studentId },
+    include: {
+      ...topicInclude,
+      homework: {
+        where: { studentId },
+        orderBy: { createdAt: 'desc' },
+        take: 1,
+        select: { id: true },
+      },
+    },
+  });
+
+  if (!session) {
+    throw new SessionError('Session not found', 404);
+  }
+
+  if (session.state === 'EXPIRED') {
+    throw new SessionError('Session expired', 410, { topicId: session.topicId });
+  }
+
+  const view = toSessionView(session);
+  view.homeworkId = (session as { homework?: { id: string }[] }).homework?.[0]?.id ?? null;
   return view;
 }
 
@@ -342,45 +515,8 @@ export async function completeSession(
  * Used by API routes to populate the `phase` envelope in responses.
  */
 export function getPhaseContent(phase: SessionPhase): PhaseContent {
-  switch (phase) {
-    case 'OVERVIEW':
-      return {
-        phase: 'OVERVIEW',
-        label: 'Overview',
-        instruction:
-          'Review the topic summary and learning objectives, then start when you are ready.',
-      };
-    case 'EXPLANATION':
-      return {
-        phase: 'EXPLANATION',
-        label: 'Learn',
-        instruction: 'Read through the topic explanation and key concepts.',
-      };
-    case 'PRACTICE':
-      return {
-        phase: 'PRACTICE',
-        label: 'Practice',
-        instruction: 'Answer practice questions to reinforce what you learned.',
-      };
-    case 'TEST':
-      return {
-        phase: 'TEST',
-        label: 'Quick Test',
-        instruction: 'Take a short test to check your understanding.',
-      };
-    case 'HOMEWORK':
-      return {
-        phase: 'HOMEWORK',
-        label: 'Homework',
-        instruction: 'Complete the homework assignment for this topic.',
-      };
-    case 'COMPLETE':
-      return {
-        phase: 'COMPLETE',
-        label: 'Complete',
-        instruction: 'You have completed this topic. Well done!',
-      };
-  }
+  const meta = PHASE_METADATA[phase];
+  return { phase, label: meta.label, instruction: meta.instruction };
 }
 
 // ─── Internal Helpers ─────────────────────────────────────────────────────────
@@ -537,11 +673,8 @@ function persistCompletionProgress(
     logger.error('[SESSION_PROGRESS_UPDATE_FAILED]', { studentId, topicId, sessionId, error: err }),
   );
 
-  // Invalidate cached recommendation so the next dashboard load reflects the
-  // completed topic (recency penalty) and may surface the next curriculum topic.
-  invalidateTopicRankerCache(studentId).catch((err) =>
-    logger.warn('[SESSION_RANKER_INVALIDATE_FAILED]', { studentId, error: err }),
-  );
+  // COUPLING-01: Emit domain event; TopicRanker listens and invalidates cache.
+  emitSessionCompleted({ studentId });
 
   completeBridgedLearningSession(sessionId).catch((err) =>
     logger.error('[SESSION_BRIDGE_COMPLETE_FAILED]', { sessionId, error: err }),
@@ -634,10 +767,13 @@ async function touchBridgedLearningSession(structuredSessionId: string): Promise
  */
 export class SessionError extends Error {
   readonly status: number;
+  /** Optional details for API responses (e.g. topicId for 410 SESSION_EXPIRED). */
+  readonly details?: Record<string, unknown>;
 
-  constructor(message: string, status: number) {
+  constructor(message: string, status: number, details?: Record<string, unknown>) {
     super(message);
     this.name = 'SessionError';
     this.status = status;
+    this.details = details;
   }
 }

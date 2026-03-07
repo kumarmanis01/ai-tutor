@@ -4,7 +4,7 @@ import React from 'react'
 import { getContentQueue } from '@/queues/contentQueue'
 import { requireAdminOrModerator } from '@/lib/auth'
 import { logger } from '@/lib/logger'
-
+import { CONTENT_HYDRATION_QUEUE } from '@/lib/queues/constants'
 
 export default async function QueuePage() {
   try {
@@ -16,7 +16,7 @@ export default async function QueuePage() {
       <div className="p-6">
         <h1 className="text-2xl font-semibold mb-4">Content Engine — Queue</h1>
         <div className="bg-white dark:bg-gray-900 rounded shadow p-4">
-          <pre className="text-sm whitespace-pre-wrap">{JSON.stringify({ queue: 'content-hydration', counts }, null, 2)}</pre>
+          <pre className="text-sm whitespace-pre-wrap">{JSON.stringify({ queue: CONTENT_HYDRATION_QUEUE, counts }, null, 2)}</pre>
         </div>
       </div>
     )

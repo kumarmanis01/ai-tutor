@@ -3,10 +3,17 @@
  *
  * EVERY system that updates topic mastery, practice count, or lastStudiedAt
  * MUST go through this module. Do not upsert StudentTopicProgress directly.
+ *
+ * Concurrency safety (RISK-02):
+ *   Uses atomic SQL (INSERT ... ON CONFLICT DO UPDATE) with
+ *   mastery = LEAST(1, GREATEST(0, mastery + delta)). No read-modify-write
+ *   race — two concurrent updates both apply correctly.
  */
 
+import { Prisma } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
 import { logger } from '@/lib/logger';
+import { randomUUID } from 'crypto';
 
 export type ActivityType = 'PRACTICE' | 'TEST' | 'HOMEWORK' | 'STUDY';
 
@@ -25,12 +32,11 @@ const PROGRESS_WEIGHTS: Record<ActivityType, number> = {
   STUDY: 0,
 };
 
-function clamp(min: number, max: number, value: number): number {
-  return Math.max(min, Math.min(max, value));
-}
-
 /**
  * Update mastery, practiceCount, and lastStudiedAt for a student-topic pair.
+ *
+ * Uses atomic SQL to prevent lost updates when two concurrent requests
+ * update the same student-topic row. mastery is clamped to [0, 1].
  *
  * - `activityType = "STUDY"` with `totalAnswers = 0` is a touch-only update
  *   (only refreshes lastStudiedAt without changing mastery).
@@ -46,28 +52,27 @@ export async function updateStudentTopicProgress(
   const weight = PROGRESS_WEIGHTS[activityType] ?? 0;
   const progressDelta = accuracy * weight;
 
-  const existing = await prisma.studentTopicProgress.findUnique({
-    where: { studentId_topicId: { studentId, topicId } },
+  const initialMastery = Math.max(0, Math.min(1, progressDelta));
+  const id = randomUUID();
+
+  await prisma.$transaction(async (tx) => {
+    await tx.$executeRaw(
+      Prisma.sql`
+        INSERT INTO "StudentTopicProgress" ("id", "studentId", "topicId", "mastery", "practiceCount", "lastStudiedAt", "updatedAt")
+        VALUES (${id}, ${studentId}, ${topicId}, ${initialMastery}, ${totalAnswers}, NOW(), NOW())
+        ON CONFLICT ("studentId", "topicId")
+        DO UPDATE SET
+          "mastery" = LEAST(1, GREATEST(0, "StudentTopicProgress"."mastery" + ${progressDelta})),
+          "practiceCount" = "StudentTopicProgress"."practiceCount" + ${totalAnswers},
+          "lastStudiedAt" = NOW(),
+          "updatedAt" = NOW()
+      `,
+    );
   });
 
-  const prevMastery = existing?.mastery ?? 0;
-  const newMastery = clamp(0, 1, prevMastery + progressDelta);
-  const newPracticeCount = (existing?.practiceCount ?? 0) + totalAnswers;
-
-  await prisma.studentTopicProgress.upsert({
+  const updated = await prisma.studentTopicProgress.findUnique({
     where: { studentId_topicId: { studentId, topicId } },
-    update: {
-      mastery: newMastery,
-      practiceCount: newPracticeCount,
-      lastStudiedAt: new Date(),
-    },
-    create: {
-      studentId,
-      topicId,
-      mastery: newMastery,
-      practiceCount: newPracticeCount,
-      lastStudiedAt: new Date(),
-    },
+    select: { mastery: true, practiceCount: true },
   });
 
   logger.info('[TOPIC_PROGRESS_UPDATED]', {
@@ -76,8 +81,7 @@ export async function updateStudentTopicProgress(
     activityType,
     accuracy: totalAnswers > 0 ? +(accuracy.toFixed(3)) : null,
     progressDelta: +(progressDelta.toFixed(4)),
-    prevMastery: +(prevMastery.toFixed(3)),
-    newMastery: +(newMastery.toFixed(3)),
-    practiceCount: newPracticeCount,
+    newMastery: updated ? +(updated.mastery.toFixed(3)) : null,
+    practiceCount: updated?.practiceCount ?? null,
   });
 }

@@ -19,7 +19,11 @@
 
 import { prisma } from '@/lib/prisma';
 import { logger } from '@/lib/logger';
-import type { SessionPhase } from '@/lib/session/sessionEngine';
+import {
+  type SessionPhase,
+  PHASE_METADATA,
+  UPCOMING_PHASES_ORDER,
+} from '@/lib/session/sessionEngine';
 
 // ─── Return Types ─────────────────────────────────────────────────────────────
 
@@ -94,15 +98,6 @@ export type PhaseContentData =
   | HomeworkContent
   | CompleteContent
   | PendingContent;
-
-// ─── Phase labels shown in the OVERVIEW upcoming-phases list ──────────────────
-
-const UPCOMING_PHASE_LABELS: Record<string, string> = {
-  EXPLANATION: 'Learn',
-  PRACTICE: 'Practice',
-  TEST: 'Quick Test',
-  HOMEWORK: 'Homework',
-};
 
 // ─── Public API ──────────────────────────────────────────────────────────────
 
@@ -197,7 +192,9 @@ async function resolveOverview(topicId: string): Promise<PhaseContentData> {
     }
   }
 
-  const upcomingPhases = Object.values(UPCOMING_PHASE_LABELS);
+  const upcomingPhases = UPCOMING_PHASES_ORDER.map(
+    (p) => PHASE_METADATA[p].upcomingLabel!,
+  );
 
   return {
     type: 'overview',

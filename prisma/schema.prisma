@@ -895,6 +895,8 @@ enum SessionPhase {
   TEST
   HOMEWORK
   COMPLETE
+  /// GAP-05: Session expired (stale > 48h); archived, not resumed.
+  EXPIRED
 }
 
 enum SessionEventType {
@@ -1245,6 +1247,22 @@ model Outbox {
   updatedAt DateTime  @updatedAt
 
   @@index([queue, sentAt])
+}
+
+/// Dead-letter table for outbox rows that exceed MAX_ATTEMPTS (RISK-04).
+model OutboxDeadLetter {
+  id                 String   @id @default(cuid())
+  originalOutboxId   String
+  queue              String
+  payload            Json
+  meta               Json?
+  attempts           Int      @default(0)
+  deadLetterReason   String
+  failedAt           DateTime @default(now())
+  createdAt          DateTime @default(now())
+
+  @@index([queue])
+  @@index([failedAt])
 }
 
 model StudentContentPreference {

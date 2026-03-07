@@ -261,28 +261,6 @@ function normalizeQuestionsOutput(raw: any, difficulty?: string): any {
 }
 
 /**
- * Sanitizes LLM output by stripping code fences.
- */
-function _sanitizeLLMOutput(content: string): string {
-  if (!content || typeof content !== 'string') return content;
-  let s = content.trim();
-
-  // Strip triple-backtick fences
-  if (s.startsWith('```')) {
-    const firstNewline = s.indexOf('\n');
-    if (firstNewline !== -1) s = s.slice(firstNewline + 1);
-    const closingFence = s.lastIndexOf('```');
-    if (closingFence !== -1) s = s.slice(0, closingFence);
-    s = s.trim();
-  }
-
-  // Handle single backticks
-  if (s.startsWith('`') && s.endsWith('`')) s = s.slice(1, -1).trim();
-
-  return s;
-}
-
-/**
  * Generate questions for a single difficulty level.
  * Returns the parsed questions array or null if failed.
  */
@@ -302,117 +280,81 @@ async function generateQuestionsForDifficulty(
   const difficultyDescriptions: Record<DifficultyLevel, string> = {
     easy: 'basic recall and simple understanding questions suitable for beginners',
     medium: 'application and comprehension questions requiring moderate thinking',
-    hard: 'analysis and evaluation questions that challenge advanced understanding'
+    hard: 'analysis and evaluation questions that challenge advanced understanding',
   };
 
-  const prompt = `You are an expert educator and assessment designer.
+  // COUPLING-04: Single canonical prompt source — renderTemplate only.
+  const rendered = renderTemplate('topic-questions', {
+    topicName: topic.name,
+    grade,
+    count,
+    language: language as 'en' | 'hi',
+    board,
+    subject: subjectName,
+    difficulty,
+    difficultyDescription: difficultyDescriptions[difficulty],
+  });
 
-Generate exactly ${count} ${difficulty.toUpperCase()} level questions for students.
-
-Topic: ${topic.name}
-Board: ${board}
-Grade: ${grade}
-Subject: ${subjectName}
-Language: ${language}
-Difficulty: ${difficulty} — ${difficultyDescriptions[difficulty]}
-
-STRICT RULES:
-1. Return ONLY valid JSON. No markdown, no backticks, no commentary.
-2. "options" MUST be an array of 4 strings.
-3. "correctAnswer" MUST be exactly one of the strings in "options".
-4. "difficulty" MUST be one of: "easy", "medium", "hard".
-5. "explanation" is a concise reason why the answer is correct.
-6. Questions must be age-appropriate and curriculum-aligned.
-
-Required JSON format:
-{
-  "questions": [
-    {
-      "question": "string",
-      "options": ["A", "B", "C", "D"],
-      "correctAnswer": "A",
-      "explanation": "string",
-      "difficulty": "easy"
-    }
-  ]
-}
-
-Example (grade 8 Science):
-{
-  "questions": [
-    {
-      "question": "What is the SI unit of force?",
-      "options": ["Newton", "Joule", "Watt", "Pascal"],
-      "correctAnswer": "Newton",
-      "explanation": "Force is measured in Newtons (N), named after Sir Isaac Newton.",
-      "difficulty": "easy"
-    }
-  ]
-}
-
-Return ONLY the JSON object with exactly ${count} questions. No other text.`;
-
-
-    let llmResponse: any;
-    try {
-      // Use centralized prompt renderer to produce deterministic prompt and schema fingerprint
-      const rendered = renderTemplate('topic-questions', { topicName: topic.name, grade, count, language: language as any });
-
-      // Persist initial AIContentLog with schemaHash and version for observability before calling LLM
-      try {
-        await prisma.aIContentLog.create({ data: {
-          model: 'pending',
-          promptType: 'questions',
-          board,
-          grade,
-          subject: subjectName,
-          topic: topic.name,
-          language,
-          success: false,
-          status: 'started',
-          requestBody: { jobId, difficulty, renderer: { schemaHash: rendered.schemaHash, version: rendered.version } },
-          responseBody: null
-        } });
-      } catch {}
-
-      // call LLM with rendered prompt
-      const llmResponseLocal = await callLLM({
-        prompt: rendered.prompt,
-        meta: { promptType: 'questions', board, grade, subject: subjectName, topic: topic.name, language, difficulty, useRag: true, hydrationJobId: jobId, topicId: topic?.id, suppressLog: true, schemaHash: rendered.schemaHash, promptVersion: rendered.version },
-        timeoutMs: Number(process.env.QUESTIONS_LLM_TIMEOUT_MS || 30_000)
-      });
-      llmResponse = llmResponseLocal as any;
-    } catch {
-      // fallback to inline prompt (base_context.md now contains mandatory requirements and tone)
-      llmResponse = await callLLM({
-        prompt: prompt,
-        meta: { promptType: 'questions', board, grade, subject: subjectName, topic: topic.name, language, difficulty, useRag: true, hydrationJobId: jobId, topicId: topic?.id, suppressLog: true },
-        timeoutMs: Number(process.env.QUESTIONS_LLM_TIMEOUT_MS || 30_000)
-      });
-    }
-    let raw: any;
-    try {
-      raw = parseLlmJson(llmResponse.content);
-    } catch (err) {
-      logger.error('generateQuestionsForDifficulty: failed to parse LLM JSON', { difficulty, topic: topic.name, error: String(err) });
-      return { parsed: null, llmResult: llmResponse };
-    }
-
-    // Run full normalization layer before validation to handle LLM output variations
-    raw = normalizeQuestionsOutput(raw, difficulty);
-
-    if (!raw || !Array.isArray(raw.questions)) {
-      logger.warn('[VALIDATION_DEFENSIVE] generateQuestionsForDifficulty: questions field is not an array after normalization', {
-        difficulty,
+  // Persist initial AIContentLog with schemaHash and version for observability before calling LLM
+  try {
+    await prisma.aIContentLog.create({
+      data: {
+        model: 'pending',
+        promptType: 'questions',
+        board,
+        grade,
+        subject: subjectName,
         topic: topic.name,
-        keys: raw && typeof raw === 'object' ? Object.keys(raw) : null,
-      });
-      return { parsed: null, llmResult: llmResponse };
-    }
+        language,
+        success: false,
+        status: 'started',
+        requestBody: { jobId, difficulty, renderer: { schemaHash: rendered.schemaHash, version: rendered.version } },
+        responseBody: null,
+      },
+    });
+  } catch {}
 
-    return { parsed: raw, llmResult: llmResponse };
+  const llmResponse = await callLLM({
+    prompt: rendered.prompt,
+    meta: {
+      promptType: 'questions',
+      board,
+      grade,
+      subject: subjectName,
+      topic: topic.name,
+      language,
+      difficulty,
+      useRag: true,
+      hydrationJobId: jobId,
+      topicId: topic?.id,
+      suppressLog: true,
+      schemaHash: rendered.schemaHash,
+      promptVersion: rendered.version,
+    },
+    timeoutMs: Number(process.env.QUESTIONS_LLM_TIMEOUT_MS || 30_000),
+  });
 
+  let raw: any;
+  try {
+    raw = parseLlmJson(llmResponse.content);
+  } catch (err) {
+    logger.error('generateQuestionsForDifficulty: failed to parse LLM JSON', { difficulty, topic: topic.name, error: String(err) });
+    return { parsed: null, llmResult: llmResponse };
   }
+
+  raw = normalizeQuestionsOutput(raw, difficulty);
+
+  if (!raw || !Array.isArray(raw.questions)) {
+    logger.warn('[VALIDATION_DEFENSIVE] generateQuestionsForDifficulty: questions field is not an array after normalization', {
+      difficulty,
+      topic: topic.name,
+      keys: raw && typeof raw === 'object' ? Object.keys(raw) : null,
+    });
+    return { parsed: null, llmResult: llmResponse };
+  }
+
+  return { parsed: raw, llmResult: llmResponse };
+}
 
 /**
  * Worker handler for QUESTIONS hydration jobs.
@@ -511,19 +453,29 @@ export async function handleQuestionsJob(jobId: string): Promise<void> {
   let totalTokensUsed = 0;
   const sessionStart = Date.now();
 
-  // Generate questions for all difficulties in parallel (independent leaf tasks).
-  // Versioning: we always generate and persist a new version (getNextVersion); we do not skip when
-  // approved questions already exist for this topic+language+difficulty.
-  const difficultyPromises = DIFFICULTY_LEVELS.map((difficulty) => (async () => {
+  // Generate questions for all difficulties.
+  // RISK-06: When LLM_SAFE_MODE=true, run sequentially to respect safe concurrency.
+  // Otherwise run in parallel (independent leaf tasks).
+  const isSafeMode = String(process.env.LLM_SAFE_MODE || '').toLowerCase() === 'true';
+
+  const runOneDifficulty = async (difficulty: DifficultyLevel) => {
     const existingApproved = await prisma.generatedTest.findFirst({ where: { topicId, language, difficulty, status: 'approved' } });
     if (existingApproved) {
       logger.info('handleQuestionsJob: existing approved questions found — generating new version', { jobId, topicId, difficulty });
     }
     const gen = await generateQuestionsForDifficulty(difficulty, topic, board, grade, subjectName, language, job.id, resolvedQuestionsCount);
     return { difficulty, existingApproved: existingApproved ?? null, parsed: gen?.parsed ?? null, llmResult: gen?.llmResult ?? null };
-  })());
+  };
 
-  const difficultyResults = await Promise.all(difficultyPromises);
+  const difficultyResults = isSafeMode
+    ? (await (async () => {
+        const out: Awaited<ReturnType<typeof runOneDifficulty>>[] = [];
+        for (const d of DIFFICULTY_LEVELS) {
+          out.push(await runOneDifficulty(d));
+        }
+        return out;
+      })())
+    : await Promise.all(DIFFICULTY_LEVELS.map((d) => runOneDifficulty(d)));
 
   let questionsCompleted = 0;
   let questionsFailed = 0;

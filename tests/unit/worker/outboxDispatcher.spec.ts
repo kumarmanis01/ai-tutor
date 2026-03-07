@@ -21,7 +21,12 @@ jest.mock('../../lib/prisma', () => ({
     outbox: {
       findMany: jest.fn(),
       update: jest.fn(),
+      delete: jest.fn().mockResolvedValue({}),
     },
+    outboxDeadLetter: {
+      create: jest.fn().mockResolvedValue({}),
+    },
+    $transaction: jest.fn((fn) => (Array.isArray(fn) ? Promise.all(fn.map((f: any) => f)) : fn())),
   },
 }));
 
@@ -33,6 +38,7 @@ jest.mock('../../lib/logger', () => ({
   logger: {
     info: jest.fn(),
     error: jest.fn(),
+    warn: jest.fn(),
   },
 }));
 
@@ -87,25 +93,79 @@ describe('outboxDispatcher', () => {
     it('increments attempts but does not mark sent on dispatch failure', async () => {
       const mockRow = {
         id: 'outbox-2',
+        queue: 'content-hydration',
         payload: { type: 'SYLLABUS', payload: { jobId: 'hyd-456' } },
+        meta: null,
         attempts: 1,
         createdAt: new Date(),
       };
 
       (prisma.outbox.findMany as jest.Mock).mockResolvedValue([mockRow]);
 
-      // First update (mark sent) should fail, second (increment attempts) should succeed
+      // prisma.update (mark sent) throws — we go to catch, increment attempts
       (prisma.outbox.update as jest.Mock)
         .mockRejectedValueOnce(new Error('Redis connection failed'))
         .mockResolvedValue({});
 
-      // Note: The actual Queue.add mock doesn't throw here, but the prisma update does
-      // This tests the error handling path indirectly
+      const count = await dispatchBatch();
+
+      expect(count).toBe(0);
+      expect(prisma.outbox.update).toHaveBeenCalledWith({
+        where: { id: 'outbox-2' },
+        data: { attempts: 2 },
+      });
+    });
+
+    it('moves to dead-letter when attempts >= MAX_ATTEMPTS', async () => {
+      const mockRow = {
+        id: 'outbox-dl',
+        queue: 'content-hydration',
+        payload: { type: 'SYLLABUS', payload: { jobId: 'hyd-789' } },
+        meta: null,
+        attempts: 10,
+        createdAt: new Date(),
+      };
+
+      (prisma.outbox.findMany as jest.Mock).mockResolvedValue([mockRow]);
+      (prisma.outboxDeadLetter.create as jest.Mock).mockResolvedValue({});
+      (prisma.outbox.delete as jest.Mock).mockResolvedValue({});
+      (prisma.$transaction as jest.Mock).mockImplementation((arg: unknown) =>
+        Array.isArray(arg) ? Promise.all(arg as Promise<unknown>[]) : (arg as () => Promise<unknown>)()
+      );
 
       const count = await dispatchBatch();
 
-      // Since Queue.add succeeds but update fails, it should still count as dispatched
-      expect(count).toBe(1);
+      expect(count).toBe(0);
+      expect(prisma.outboxDeadLetter.create).toHaveBeenCalled();
+      expect(prisma.outbox.delete).toHaveBeenCalledWith({ where: { id: 'outbox-dl' } });
+    });
+
+    it('moves invalid payload (missing type) to dead-letter', async () => {
+      const mockRow = {
+        id: 'outbox-invalid',
+        queue: 'content-hydration',
+        payload: { payload: { jobId: 'hyd-999' } },
+        meta: null,
+        attempts: 0,
+        createdAt: new Date(),
+      };
+
+      (prisma.outbox.findMany as jest.Mock).mockResolvedValue([mockRow]);
+      (prisma.outboxDeadLetter.create as jest.Mock).mockResolvedValue({});
+      (prisma.outbox.delete as jest.Mock).mockResolvedValue({});
+      (prisma.$transaction as jest.Mock).mockImplementation((arg: unknown) =>
+        Array.isArray(arg) ? Promise.all(arg as Promise<unknown>[]) : (arg as () => Promise<unknown>)()
+      );
+
+      const count = await dispatchBatch();
+
+      expect(count).toBe(0);
+      expect(prisma.outboxDeadLetter.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({
+          deadLetterReason: 'missing_payload_type',
+          originalOutboxId: 'outbox-invalid',
+        }),
+      });
     });
   });
 });

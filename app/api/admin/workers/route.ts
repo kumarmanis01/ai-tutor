@@ -15,6 +15,7 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { requireAdminOrModerator } from '@/lib/auth'
+import { CONTENT_HYDRATION_QUEUE } from '@/lib/queues/constants'
 
 export async function GET() {
   await requireAdminOrModerator()
@@ -35,7 +36,7 @@ export async function POST(req: Request) {
   const action = String(body.action || '').toLowerCase()
 
   if (action === 'start') {
-    const type = String(body.type || 'content-hydration')
+    const type = String(body.type || CONTENT_HYDRATION_QUEUE)
     if (!type || type.length === 0) return NextResponse.json({ error: 'type required' }, { status: 400 })
 
     const created = await prisma.workerLifecycle.create({

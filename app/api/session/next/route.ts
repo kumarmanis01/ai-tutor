@@ -1,3 +1,4 @@
+import '@/lib/events/sessionEventListeners'; // COUPLING-01: register SESSION_COMPLETED → TopicRanker invalidation
 import { NextResponse } from 'next/server';
 import { getServerSessionForHandlers } from '@/lib/session';
 import {
@@ -7,6 +8,7 @@ import {
   SessionError,
 } from '@/lib/session/sessionEngine';
 import { resolvePhaseContent } from '@/lib/session/getPhaseContent';
+import { markExplanationViewed } from '@/lib/session/phaseCompletionValidator';
 import { logger } from '@/lib/logger';
 import { recordSessionEvent } from '@/lib/session/sessionEvents';
 
@@ -70,6 +72,11 @@ export async function POST(req: Request) {
         topicId: view.topicId,
       },
     });
+
+    // ABSTRACTION-02: Mark explanation viewed when student advances to EXPLANATION and receives content.
+    if (view.currentPhase === 'EXPLANATION') {
+      markExplanationViewed(view.sessionId).catch(() => {});
+    }
 
     res = NextResponse.json({ session: view, phase, content });
   } catch (err) {

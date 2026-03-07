@@ -9,17 +9,12 @@
  * with `InvalidTransitionError` (HTTP 400). Attempting to transition an
  * already-COMPLETE session is rejected with HTTP 409.
  *
- * Concurrency safety:
- *   The DB update is NOT wrapped in a serialisable transaction because Prisma
- *   does not support advisory locks on a per-row basis without raw SQL. Instead
- *   the engine re-fetches the session state before calling this function; if
- *   two concurrent callers both see the same state and both call this function,
- *   the second `update` will silently succeed but will compute the wrong
- *   `phaseStartedAt`. This is acceptable — the engine's outer `findFirst →
- *   update → reload` pattern makes concurrent double-advances extremely
- *   unlikely in practice, and the worst outcome is a phase timestamp being
- *   slightly stale. If strict once-only semantics are required in the future,
- *   replace the `update` with a raw `UPDATE … WHERE state = $expected RETURNING`.
+ * Concurrency safety (RISK-03):
+ *   Uses updateMany with WHERE state = currentPhase (CAS guard). Only one
+ *   concurrent transition can succeed. When count === 0, reloads session state
+ *   and returns raceLost: true so the caller returns current state (no client
+ *   retry needed). Duplicate homework creation is prevented by checking for
+ *   existing assignment before generating.
  *
  * EDIT LOG:
  *   2026-03-07 | Manish Kumar | add OVERVIEW → EXPLANATION as first valid
@@ -66,6 +61,11 @@ export interface TransitionResult {
   phaseStartedAt: string;
   /** True when `currentPhase` is COMPLETE. */
   isComplete: boolean;
+  /**
+   * True when CAS lost the race (another request advanced first).
+   * Caller should reload session and return current state; skip phase side-effects.
+   */
+  raceLost?: boolean;
 }
 
 // ─── Public API ──────────────────────────────────────────────────────────────
@@ -128,8 +128,10 @@ export async function transitionSessionPhase(
   const phaseTimestamps = ((existingMeta.phaseTimestamps as Record<string, string>) ?? {});
   phaseTimestamps[nextPhase] = now.toISOString();
 
-  await prisma.structuredSession.update({
-    where: { id: sessionId },
+  // CAS guard: updateMany WHERE state = currentPhase ensures only one concurrent
+  // transition succeeds. The loser gets count === 0 and receives 409.
+  const { count } = await prisma.structuredSession.updateMany({
+    where: { id: sessionId, studentId, state: currentPhase },
     data: {
       state: nextPhase,
       ...(isComplete ? { completedAt: now } : {}),
@@ -140,6 +142,39 @@ export async function transitionSessionPhase(
       },
     },
   });
+
+  if (count === 0) {
+    // CAS lost: another request advanced first. Reload session state and return
+    // so the caller can respond with current state (no client retry needed).
+    const reloaded = await prisma.structuredSession.findFirst({
+      where: { id: sessionId, studentId },
+    });
+    if (!reloaded) {
+      const err = new Error('Session not found') as Error & { status: number };
+      err.status = 404;
+      throw err;
+    }
+    const reloadedPhase = reloaded.state as SessionPhase;
+    const meta = (reloaded.meta as Record<string, unknown>) ?? {};
+    const phaseStartedAt =
+      (meta.phaseStartedAt as string) ?? (meta.phaseTimestamps as Record<string, string>)?.[reloadedPhase] ?? new Date().toISOString();
+
+    logger.info('[PHASE_TRANSITION_RACE_LOST]', {
+      sessionId,
+      studentId,
+      requestedPhase: nextPhase,
+      actualPhase: reloadedPhase,
+    });
+
+    return {
+      sessionId,
+      previousPhase: currentPhase,
+      currentPhase: reloadedPhase,
+      phaseStartedAt,
+      isComplete: reloadedPhase === 'COMPLETE',
+      raceLost: true,
+    };
+  }
 
   logger.info('[PHASE_TRANSITION]', {
     sessionId,

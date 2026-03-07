@@ -352,9 +352,11 @@ export default function SessionPage() {
 
             {/* Resolved content */}
             <PhaseContentRenderer
+              sessionId={sessionId}
               content={content}
               homework={homework}
               router={router}
+              onTestSubmitted={() => setSession((s) => s ? { ...s } : null)}
             />
 
             {/* Action Buttons */}
@@ -422,13 +424,17 @@ function CompletionView({ phase }: { phase: PhaseData }) {
 }
 
 function PhaseContentRenderer({
+  sessionId,
   content,
   homework,
   router,
+  onTestSubmitted,
 }: {
+  sessionId: string;
   content: ContentData | null;
   homework: HomeworkData | null;
   router: ReturnType<typeof useRouter>;
+  onTestSubmitted?: () => void;
 }) {
   if (!content) return <p className="text-gray-400 italic">Loading content...</p>;
 
@@ -456,7 +462,13 @@ function PhaseContentRenderer({
     case "practice":
       return <PracticeView content={content} />;
     case "test":
-      return <TestView content={content} />;
+      return (
+        <TestView
+          sessionId={sessionId}
+          content={content}
+          onTestSubmitted={onTestSubmitted}
+        />
+      );
     case "homework":
       return <HomeworkView content={content} homework={homework} router={router} />;
     case "complete":
@@ -678,13 +690,51 @@ function PracticeView({ content }: { content: PracticeContent }) {
 
 // ─── Test ─────────────────────────────────────────────────────────────────────
 
-function TestView({ content }: { content: TestContent }) {
+function TestView({
+  sessionId,
+  content,
+  onTestSubmitted,
+}: {
+  sessionId: string;
+  content: TestContent;
+  onTestSubmitted?: () => void;
+}) {
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [submitted, setSubmitted] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   const handleSelect = (qId: string, val: string) => {
     if (submitted) return;
     setAnswers((prev) => ({ ...prev, [qId]: val }));
+  };
+
+  const handleSubmit = async () => {
+    if (submitted || submitting || Object.keys(answers).length < content.questions.length) return;
+    setSubmitting(true);
+    setSubmitError(null);
+    try {
+      const res = await fetch(`/api/session/${sessionId}/test/submit`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          answers: Object.entries(answers).map(([questionId, answer]) => ({
+            questionId,
+            answer,
+          })),
+        }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error ?? "Failed to submit test");
+      }
+      setSubmitted(true);
+      onTestSubmitted?.();
+    } catch (e) {
+      setSubmitError(e instanceof Error ? e.message : "Failed to submit test");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -735,14 +785,22 @@ function TestView({ content }: { content: TestContent }) {
         );
       })}
 
+      {submitError && (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+          <p className="text-sm font-medium text-red-800">{submitError}</p>
+        </div>
+      )}
+
       {!submitted && content.questions.length > 0 && (
         <button
           type="button"
-          onClick={() => setSubmitted(true)}
-          disabled={Object.keys(answers).length < content.questions.length}
+          onClick={handleSubmit}
+          disabled={
+            submitting || Object.keys(answers).length < content.questions.length
+          }
           className="px-5 py-2.5 text-sm font-medium text-white bg-green-600 rounded-md hover:bg-green-700 disabled:opacity-50"
         >
-          Submit Test
+          {submitting ? "Submitting…" : "Submit Test"}
         </button>
       )}
 

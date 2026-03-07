@@ -27,6 +27,7 @@ import { handleNotesJob } from '@/worker/services/notesWorker'
 import { handleQuestionsJob } from '@/worker/services/questionsWorker'
 import { handleAssembleJob } from '@/worker/services/assembleWorker'
 import { logger } from '@/lib/logger.js'
+import { CONTENT_HYDRATION_QUEUE } from '@/lib/queues/constants'
 
 /**
  * Supported worker types and their handlers.
@@ -330,7 +331,7 @@ export async function processContentJob(job: Job) {
 
 export function startContentWorker(opts?: { concurrency?: number }) {
   const concurrency = opts?.concurrency ?? 3
-  const worker = new Worker('content-hydration', (job: Job) => processContentJob(job), {
+  const worker = new Worker(CONTENT_HYDRATION_QUEUE, (job: Job) => processContentJob(job), {
     connection: redisConnection,
     concurrency,
     settings: {

@@ -29,6 +29,7 @@
  *                               Fixes RISK-01: permanent dead-end in HOMEWORK phase.
  */
 
+import { Prisma } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
 import { logger } from '@/lib/logger';
 
@@ -49,6 +50,23 @@ export interface HomeworkQuestion {
   correctAnswer: string | null;
   explanation: string | null;
   difficulty: string | null;
+}
+
+/**
+ * RISK-07: Validate and serialize HomeworkQuestion[] for Prisma Json field.
+ * Ensures each question has required fields and produces JSON-serializable output.
+ */
+function toHomeworkQuestionsJson(questions: HomeworkQuestion[]): Prisma.InputJsonValue {
+  const validated = questions.map((q) => ({
+    id: typeof q.id === 'string' ? q.id : String(q.id),
+    type: typeof q.type === 'string' ? q.type : 'mcq',
+    prompt: typeof q.prompt === 'string' ? q.prompt : '',
+    choices: q.choices ?? null,
+    correctAnswer: q.correctAnswer ?? null,
+    explanation: q.explanation ?? null,
+    difficulty: q.difficulty ?? null,
+  }));
+  return validated as Prisma.InputJsonValue;
 }
 
 /**
@@ -117,7 +135,7 @@ export async function generateHomework(
       studentId,
       topicId,
       sessionId: sessionId ?? null,
-      questions: questions as any,
+      questions: toHomeworkQuestionsJson(questions),
       status: 'PENDING',
       dueDate,
     },

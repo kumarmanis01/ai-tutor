@@ -96,53 +96,6 @@ function validateNotesShapeWithReport(raw: any) {
 }
 
 /**
- * Sanitizes LLM output by stripping code fences.
- */
-function _sanitizeLLMOutput(content: string): string {
-  if (!content || typeof content !== 'string') return content;
-  let s = content.trim();
-
-  // Strip triple-backtick fences
-  if (s.startsWith('```')) {
-    const firstNewline = s.indexOf('\n');
-    if (firstNewline !== -1) s = s.slice(firstNewline + 1);
-    const closingFence = s.lastIndexOf('```');
-    if (closingFence !== -1) s = s.slice(0, closingFence);
-    s = s.trim();
-  }
-
-  // Handle single backticks
-  if (s.startsWith('`') && s.endsWith('`')) s = s.slice(1, -1).trim();
-
-  return s;
-}
-
-/**
- * Attempt to extract JSON text from an arbitrary LLM output.
- * Tries fenced ```json blocks first, then any fenced block, then the first '{'..'}' span.
- */
-function _extractJsonFromText(text: string): string | null {
-  if (!text || typeof text !== 'string') return null;
-  const t = text.trim();
-  // fenced json block
-  const jsonFence = /```json\s*([\s\S]*?)```/i.exec(t);
-  if (jsonFence && jsonFence[1]) return jsonFence[1].trim();
-
-  // any fenced block
-  const anyFence = /```[\s\S]*?\n([\s\S]*?)```/.exec(t);
-  if (anyFence && anyFence[1]) return anyFence[1].trim();
-
-  // attempt to find first { and last }
-  const first = t.indexOf('{');
-  const last = t.lastIndexOf('}');
-  if (first !== -1 && last !== -1 && last > first) {
-    return t.slice(first, last + 1).trim();
-  }
-
-  return null;
-}
-
-/**
  * Call LLM and try to parse JSON with a small retry on parse failure.
  * Returns parsed object or throws after retries.
  */

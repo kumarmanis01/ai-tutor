@@ -180,6 +180,9 @@ async function buildGraph(): Promise<CurriculumGraphSnapshot> {
 
 // ─── Cache Helpers ────────────────────────────────────────────────────────────
 
+/** RISK-05: In-flight mutex — only one buildGraph at a time; others await. */
+let inFlightBuild: Promise<CurriculumGraphSnapshot> | null = null;
+
 async function loadFromCache(): Promise<CurriculumGraphSnapshot | null> {
   try {
     const redis = getRedis();
@@ -207,6 +210,9 @@ async function storeInCache(snapshot: CurriculumGraphSnapshot): Promise<void> {
 /**
  * Return the full curriculum graph snapshot, loading from Redis cache when
  * available and rebuilding from Prisma on a cache miss.
+ *
+ * RISK-05: In-flight mutex — if a build is already running, concurrent
+ * requests await the same result instead of triggering parallel builds.
  */
 export async function getCurriculumGraph(): Promise<CurriculumGraphSnapshot> {
   const cached = await loadFromCache();
@@ -215,9 +221,22 @@ export async function getCurriculumGraph(): Promise<CurriculumGraphSnapshot> {
     return cached;
   }
 
-  const snapshot = await buildGraph();
-  await storeInCache(snapshot);
-  return snapshot;
+  if (inFlightBuild) {
+    logger.debug('[CURRICULUM_GRAPH_CACHE] awaiting in-flight build');
+    return inFlightBuild;
+  }
+
+  inFlightBuild = (async () => {
+    try {
+      const snapshot = await buildGraph();
+      await storeInCache(snapshot);
+      return snapshot;
+    } finally {
+      inFlightBuild = null;
+    }
+  })();
+
+  return inFlightBuild;
 }
 
 /**
@@ -238,16 +257,45 @@ export async function getDependents(topicId: string): Promise<string[]> {
 }
 
 /**
+ * GAP-04: Get all transitive prerequisites for `topicId` via graph traversal.
+ * Returns the set of topic IDs that must be mastered before this topic
+ * (direct prerequisites plus their prerequisites, recursively).
+ */
+function getTransitivePrerequisites(
+  topicId: string,
+  graph: CurriculumGraphSnapshot,
+): Set<string> {
+  const result = new Set<string>();
+  const queue: string[] = [...(graph.prerequisites[topicId] ?? [])];
+  const visited = new Set<string>();
+
+  while (queue.length > 0) {
+    const id = queue.shift()!;
+    if (visited.has(id)) continue;
+    visited.add(id);
+    result.add(id);
+    const directPrereqs = graph.prerequisites[id] ?? [];
+    for (const p of directPrereqs) {
+      if (!visited.has(p)) queue.push(p);
+    }
+  }
+  return result;
+}
+
+/**
  * Check whether all prerequisites for `topicId` are satisfied by the
  * provided set of mastered topic IDs (mastery >= threshold).
+ *
+ * GAP-04: Uses transitive prerequisite check — deep prerequisite chains
+ * are respected (e.g. A→B→C means A requires both B and C).
  */
 export function arePrerequisitesMet(
   topicId: string,
   graph: CurriculumGraphSnapshot,
   masteredTopicIds: Set<string>,
 ): boolean {
-  const prereqs = graph.prerequisites[topicId] ?? [];
-  return prereqs.every((prereqId) => masteredTopicIds.has(prereqId));
+  const transitivePrereqs = getTransitivePrerequisites(topicId, graph);
+  return [...transitivePrereqs].every((prereqId) => masteredTopicIds.has(prereqId));
 }
 
 /**
