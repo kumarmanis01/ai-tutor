@@ -274,4 +274,34 @@ describe('getNextAction — P1 session resume', () => {
     // LearningSession query must be skipped entirely — sequential short-circuit
     expect(prisma.learningSession.findFirst).not.toHaveBeenCalled();
   });
+
+  it('returns StructuredSession even when LearningSession has a more recent lastAccessed', async () => {
+    // Simulates a student who has both:
+    //   - An older StructuredSession (PRACTICE, started 2 hours ago)
+    //   - A LearningSession accessed 5 minutes ago (would sort first by recency)
+    // The engine must prefer StructuredSession regardless of which is newer.
+    (prisma.structuredSession.findFirst as jest.Mock).mockResolvedValue({
+      ...makeStructuredSession('PRACTICE'),
+      id: 'ss-older',
+      // startedAt would be 2h ago — not exposed to the test, but the mock
+      // returns this session because the DB query orders by startedAt DESC
+      // with the COMPLETE/EXPIRED filter — this IS the most recent active one.
+    });
+    (prisma.learningSession.findFirst as jest.Mock).mockResolvedValue({
+      ...makeLegacySession(),
+      id: 'ls-newer',
+      // lastAccessed would be 5 minutes ago — more recent than the StructuredSession
+    });
+
+    const result = unwrap(await getNextAction(STUDENT_ID));
+
+    // Must return the StructuredSession, not the newer LearningSession
+    expect(result).toMatchObject({
+      ruleId: 'resume_session',
+      resumePhase: 'PRACTICE',
+      sessionId: 'ss-older',
+    });
+    // LearningSession must never be consulted
+    expect(prisma.learningSession.findFirst).not.toHaveBeenCalled();
+  });
 });
