@@ -1,11 +1,36 @@
 "use client";
 
+/**
+ * Session UI — renders the 6-phase learning flow:
+ *   OVERVIEW → EXPLANATION → PRACTICE → TEST → HOMEWORK → COMPLETE
+ *
+ * Architecture notes:
+ *   - The page mounts by fetching GET /api/session/[sessionId].
+ *   - "Next Step" calls POST /api/session/next (advanceSession in the engine).
+ *   - "Finish early" calls POST /api/session/complete (force-complete).
+ *   - All content is returned inline in the API responses so no extra fetches
+ *     are needed per phase.
+ *   - Session state is the source of truth — the UI never writes phase directly.
+ *
+ * EDIT LOG:
+ *   2026-03-07 | Manish Kumar | add OVERVIEW phase card; use currentPhase
+ *                               as canonical field; keep state alias for compat.
+ */
+
 import React, { useEffect, useState, useCallback, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import TopicCompletionModal from "@/components/dashboard/TopicCompletionModal";
 
-// ─── Types ───────────────────────────────────────────────────────────────────
+// ─── Types ────────────────────────────────────────────────────────────────────
+
+type SessionPhase =
+  | "OVERVIEW"
+  | "EXPLANATION"
+  | "PRACTICE"
+  | "TEST"
+  | "HOMEWORK"
+  | "COMPLETE";
 
 interface SessionData {
   sessionId: string;
@@ -13,13 +38,16 @@ interface SessionData {
   topicName: string;
   subject: string;
   chapter: string;
-  state: string;
+  /** Canonical field (architecture spec). */
+  currentPhase: SessionPhase;
+  /** Backward-compat alias — equals currentPhase. */
+  state: SessionPhase;
   startedAt: string;
   completedAt: string | null;
 }
 
 interface PhaseData {
-  phase: string;
+  phase: SessionPhase;
   label: string;
   instruction: string;
 }
@@ -29,6 +57,18 @@ interface HomeworkData {
   status: string;
   score: number | null;
   dueDate: string;
+}
+
+// ── Content types ─────────────────────────────────────────────────────────────
+
+interface OverviewContent {
+  type: "overview";
+  topicName: string;
+  subject: string;
+  chapter: string;
+  summary: string | null;
+  objectives: string[];
+  upcomingPhases: string[];
 }
 
 interface ExplanationContent {
@@ -106,6 +146,7 @@ interface CompleteContent {
 }
 
 type ContentData =
+  | OverviewContent
   | ExplanationContent
   | PracticeContent
   | TestContent
@@ -113,17 +154,21 @@ type ContentData =
   | PendingContent
   | CompleteContent;
 
-const PHASES = ["EXPLANATION", "PRACTICE", "TEST", "HOMEWORK", "COMPLETE"];
+// ─── Phase config ─────────────────────────────────────────────────────────────
+
+/** Displayable phases (excludes COMPLETE which is the terminal celebration). */
+const PHASES: SessionPhase[] = ["OVERVIEW", "EXPLANATION", "PRACTICE", "TEST", "HOMEWORK"];
 
 const PHASE_ICONS: Record<string, string> = {
-  EXPLANATION: "\u{1F4D6}",
-  PRACTICE: "\u{270F}\uFE0F",
-  TEST: "\u{1F4DD}",
-  HOMEWORK: "\u{1F4CB}",
-  COMPLETE: "\u{2705}",
+  OVERVIEW: "🗺️",
+  EXPLANATION: "📖",
+  PRACTICE: "✏️",
+  TEST: "📝",
+  HOMEWORK: "📋",
+  COMPLETE: "✅",
 };
 
-// ─── Main Page ───────────────────────────────────────────────────────────────
+// ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function SessionPage() {
   const params = useParams();
@@ -140,6 +185,7 @@ export default function SessionPage() {
   const [showCelebration, setShowCelebration] = useState(false);
   const celebrationFiredRef = useRef(false);
 
+  /** Helper to apply any API response (start / next / complete / fetch). */
   const applyResponse = useCallback((data: {
     session: SessionData;
     phase: PhaseData;
@@ -168,13 +214,14 @@ export default function SessionPage() {
     fetchSession();
   }, [fetchSession]);
 
-  // Show celebration modal exactly once when session reaches COMPLETE
+  // Show celebration modal exactly once when session reaches COMPLETE.
   useEffect(() => {
-    if (session?.state === "COMPLETE" && !celebrationFiredRef.current) {
+    const currentPhase = session?.currentPhase ?? session?.state;
+    if (currentPhase === "COMPLETE" && !celebrationFiredRef.current) {
       celebrationFiredRef.current = true;
       setShowCelebration(true);
     }
-  }, [session?.state]);
+  }, [session?.currentPhase, session?.state]);
 
   const handleNext = useCallback(async () => {
     if (advancing || !session) return;
@@ -212,7 +259,7 @@ export default function SessionPage() {
     }
   }, [advancing, session, applyResponse]);
 
-  // ── Loading skeleton ─────────────────────────────────────────────────────
+  // ── Loading skeleton ───────────────────────────────────────────────────────
 
   if (loading) {
     return (
@@ -237,8 +284,11 @@ export default function SessionPage() {
     );
   }
 
-  const currentIdx = PHASES.indexOf(session.state);
-  const isComplete = session.state === "COMPLETE";
+  const currentPhase: SessionPhase = session.currentPhase ?? session.state;
+  const currentIdx = PHASES.indexOf(currentPhase);
+  const isComplete = currentPhase === "COMPLETE";
+  // Last displayable phase before COMPLETE
+  const isLastDisplayablePhase = currentIdx === PHASES.length - 1;
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-8">
@@ -252,7 +302,7 @@ export default function SessionPage() {
 
       {/* Phase Progress Bar */}
       <div className="flex items-center gap-1 mb-8">
-        {PHASES.slice(0, -1).map((p, i) => {
+        {PHASES.map((p, i) => {
           const done = i < currentIdx;
           const active = i === currentIdx;
           return (
@@ -267,7 +317,8 @@ export default function SessionPage() {
                   done || active ? "text-indigo-600 font-medium" : "text-gray-400"
                 }`}
               >
-                {PHASE_ICONS[p]} {p.charAt(0) + p.slice(1).toLowerCase()}
+                {PHASE_ICONS[p]}{" "}
+                {p.charAt(0) + p.slice(1).toLowerCase()}
               </span>
             </div>
           );
@@ -290,11 +341,11 @@ export default function SessionPage() {
         ) : (
           <>
             <div className="flex items-center gap-3 mb-4">
-              <span className="text-3xl">{PHASE_ICONS[session.state]}</span>
+              <span className="text-3xl">{PHASE_ICONS[currentPhase]}</span>
               <div>
                 <h2 className="text-xl font-semibold">{phase.label}</h2>
                 <p className="text-sm text-gray-500">
-                  Step {currentIdx + 1} of {PHASES.length - 1}
+                  Step {currentIdx + 1} of {PHASES.length}
                 </p>
               </div>
             </div>
@@ -303,7 +354,6 @@ export default function SessionPage() {
             <PhaseContentRenderer
               content={content}
               homework={homework}
-
               router={router}
             />
 
@@ -316,8 +366,10 @@ export default function SessionPage() {
                 className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:opacity-50"
               >
                 {advancing
-                  ? "Loading\u2026"
-                  : currentIdx === PHASES.length - 2
+                  ? "Loading…"
+                  : currentPhase === "OVERVIEW"
+                  ? "Start Learning"
+                  : isLastDisplayablePhase
                   ? "Finish"
                   : "Next Step"}
                 {!advancing && (
@@ -331,7 +383,9 @@ export default function SessionPage() {
                 )}
               </button>
 
-              {currentIdx < PHASES.length - 2 && (
+              {/* "Skip to finish" is hidden on the OVERVIEW phase so students
+                  must at least acknowledge the overview before they can skip. */}
+              {currentPhase !== "OVERVIEW" && !isLastDisplayablePhase && (
                 <button
                   type="button"
                   onClick={handleComplete}
@@ -349,12 +403,12 @@ export default function SessionPage() {
   );
 }
 
-// ─── Sub-components ──────────────────────────────────────────────────────────
+// ─── Sub-components ───────────────────────────────────────────────────────────
 
 function CompletionView({ phase }: { phase: PhaseData }) {
   return (
     <div className="text-center py-8">
-      <div className="text-5xl mb-4">{"\u{1F389}"}</div>
+      <div className="text-5xl mb-4">🎉</div>
       <h2 className="text-2xl font-bold text-gray-900">Topic Complete!</h2>
       <p className="text-gray-500 mt-2">{phase.instruction}</p>
       <Link
@@ -395,6 +449,8 @@ function PhaseContentRenderer({
   }
 
   switch (content.type) {
+    case "overview":
+      return <OverviewView content={content} />;
     case "explanation":
       return <ExplanationView content={content} />;
     case "practice":
@@ -410,7 +466,67 @@ function PhaseContentRenderer({
   }
 }
 
-// ─── Explanation ─────────────────────────────────────────────────────────────
+// ─── Overview ─────────────────────────────────────────────────────────────────
+
+function OverviewView({ content }: { content: OverviewContent }) {
+  return (
+    <div className="space-y-5">
+      {/* Subject / chapter breadcrumb */}
+      <p className="text-xs text-gray-400 uppercase tracking-wide font-medium">
+        {content.subject} &rsaquo; {content.chapter}
+      </p>
+
+      {/* Summary */}
+      {content.summary && (
+        <p className="text-gray-700 leading-relaxed">{content.summary}</p>
+      )}
+
+      {!content.summary && (
+        <p className="text-gray-500 text-sm italic">
+          Get ready to dive into <span className="font-medium text-gray-700">{content.topicName}</span>.
+        </p>
+      )}
+
+      {/* Learning objectives */}
+      {content.objectives.length > 0 && (
+        <div className="bg-indigo-50 rounded-lg p-4">
+          <h4 className="text-sm font-semibold text-indigo-800 mb-2">
+            What you will learn
+          </h4>
+          <ul className="space-y-1">
+            {content.objectives.map((obj, i) => (
+              <li key={i} className="flex items-start gap-2 text-sm text-indigo-700">
+                <span className="mt-0.5 text-indigo-400">✓</span>
+                {obj}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {/* Upcoming phases */}
+      {content.upcomingPhases.length > 0 && (
+        <div>
+          <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
+            Session flow
+          </h4>
+          <div className="flex flex-wrap gap-2">
+            {content.upcomingPhases.map((label, i) => (
+              <span
+                key={i}
+                className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-gray-100 text-xs text-gray-600 font-medium"
+              >
+                <span className="text-gray-400">{i + 1}.</span> {label}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Explanation ──────────────────────────────────────────────────────────────
 
 function ExplanationView({ content }: { content: ExplanationContent }) {
   const json = unwrapNoteJson(content.contentJson);
@@ -483,7 +599,7 @@ function unwrapNoteJson(raw: NoteJson): NoteJson {
   return raw;
 }
 
-// ─── Practice ────────────────────────────────────────────────────────────────
+// ─── Practice ─────────────────────────────────────────────────────────────────
 
 function PracticeView({ content }: { content: PracticeContent }) {
   const [answers, setAnswers] = useState<Record<string, string>>({});
@@ -527,9 +643,7 @@ function PracticeView({ content }: { content: PracticeContent }) {
                         : "border-gray-200 bg-white text-gray-700 hover:border-gray-300"
                     }`}
                   >
-                    <span className="font-medium mr-2">
-                      {String.fromCharCode(65 + oi)}.
-                    </span>
+                    <span className="font-medium mr-2">{String.fromCharCode(65 + oi)}.</span>
                     {opt}
                   </button>
                 );
@@ -562,7 +676,7 @@ function PracticeView({ content }: { content: PracticeContent }) {
   );
 }
 
-// ─── Test ────────────────────────────────────────────────────────────────────
+// ─── Test ─────────────────────────────────────────────────────────────────────
 
 function TestView({ content }: { content: TestContent }) {
   const [answers, setAnswers] = useState<Record<string, string>>({});
@@ -606,9 +720,7 @@ function TestView({ content }: { content: TestContent }) {
                         : "border-gray-200 bg-white text-gray-700 hover:border-gray-300"
                     }`}
                   >
-                    <span className="font-medium mr-2">
-                      {String.fromCharCode(65 + oi)}.
-                    </span>
+                    <span className="font-medium mr-2">{String.fromCharCode(65 + oi)}.</span>
                     {opt}
                   </button>
                 );
@@ -645,7 +757,7 @@ function TestView({ content }: { content: TestContent }) {
   );
 }
 
-// ─── Homework ────────────────────────────────────────────────────────────────
+// ─── Homework ──────────────────────────────────────────────────────────────────
 
 function HomeworkView({
   content,
@@ -658,7 +770,9 @@ function HomeworkView({
 }) {
   const hw = homework ?? content;
   const isGraded = hw.status === "GRADED";
-  const questions = Array.isArray(content.questions) ? content.questions as { id: string; prompt?: string; question?: string }[] : [];
+  const questions = Array.isArray(content.questions)
+    ? (content.questions as { id: string; prompt?: string; question?: string }[])
+    : [];
 
   return (
     <div className="space-y-4">
@@ -669,18 +783,14 @@ function HomeworkView({
           </p>
           <span
             className={`text-xs px-2 py-0.5 rounded-full ${
-              isGraded
-                ? "bg-green-100 text-green-700"
-                : "bg-amber-100 text-amber-700"
+              isGraded ? "bg-green-100 text-green-700" : "bg-amber-100 text-amber-700"
             }`}
           >
             {hw.status}
           </span>
         </div>
         {isGraded && hw.score != null && (
-          <p className="text-sm text-green-700 mt-1">
-            Score: {Math.round(hw.score * 100)}%
-          </p>
+          <p className="text-sm text-green-700 mt-1">Score: {Math.round(hw.score * 100)}%</p>
         )}
       </div>
 
@@ -712,7 +822,7 @@ function HomeworkView({
   );
 }
 
-// ─── Helpers ─────────────────────────────────────────────────────────────────
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function normalizeChoices(raw: string[] | Record<string, string> | null | unknown): string[] {
   if (!raw) return [];

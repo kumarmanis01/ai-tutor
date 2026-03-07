@@ -17,13 +17,19 @@ export const dynamic = 'force-dynamic';
  * Body: { topicId: string }
  *
  * Creates (or resumes) a structured learning session for the topic.
+ * New sessions always begin at the OVERVIEW phase.
+ * If an in-progress session already exists for this student+topic it is
+ * resumed (idempotent — safe to call multiple times).
+ *
+ * Response:
+ *   { session: SessionView, phase: PhaseContent, content: PhaseContentData }
  */
 export async function POST(req: Request) {
   const start = Date.now();
   let res: Response;
 
-  const session = await getServerSessionForHandlers();
-  const user = session?.user;
+  const authSession = await getServerSessionForHandlers();
+  const user = authSession?.user;
 
   if (!user?.id) {
     res = NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -38,7 +44,7 @@ export async function POST(req: Request) {
   }
 
   const body = await req.json().catch(() => null);
-  if (!body?.topicId) {
+  if (!body?.topicId || typeof body.topicId !== 'string') {
     res = NextResponse.json({ error: 'topicId is required' }, { status: 400 });
     logger.logAPI(req, res, { className: 'SessionStartAPI', methodName: 'POST' }, start);
     return res;
@@ -46,13 +52,23 @@ export async function POST(req: Request) {
 
   try {
     const view = await startSession(user.id, body.topicId);
-    const phase = getPhaseContent(view.state);
-    const content = await resolvePhaseContent(view.state, view.topicId, view.sessionId, user.id);
+    const phase = getPhaseContent(view.currentPhase);
+    const content = await resolvePhaseContent(
+      view.currentPhase,
+      view.topicId,
+      view.sessionId,
+      user.id,
+    );
 
+    // New sessions emit SESSION_STARTED; resumed sessions emit SESSION_OVERVIEW_VIEWED.
     recordSessionEvent({
       sessionId: view.sessionId,
-      eventType: 'SESSION_STARTED',
-      metadata: { studentId: user.id, topicId: body.topicId, phase: view.state },
+      eventType: view.currentPhase === 'OVERVIEW' ? 'SESSION_STARTED' : 'SESSION_OVERVIEW_VIEWED',
+      metadata: {
+        studentId: user.id,
+        topicId: body.topicId,
+        currentPhase: view.currentPhase,
+      },
     });
 
     res = NextResponse.json({ session: view, phase, content });

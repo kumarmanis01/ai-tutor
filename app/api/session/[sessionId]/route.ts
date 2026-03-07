@@ -4,7 +4,7 @@ import { getServerSessionForHandlers } from '@/lib/session';
 import { getPhaseContent, isSessionEngineEnabled } from '@/lib/session/sessionEngine';
 import { resolvePhaseContent } from '@/lib/session/getPhaseContent';
 import { logger } from '@/lib/logger';
-import type { SessionPhase } from '@prisma/client';
+import type { SessionPhase } from '@/lib/session/sessionEngine';
 
 export const dynamic = 'force-dynamic';
 
@@ -12,6 +12,7 @@ export const dynamic = 'force-dynamic';
  * GET /api/session/[sessionId]
  *
  * Returns current session state, phase content, and topic metadata.
+ * Includes both `currentPhase` (canonical) and `state` (backward-compat alias).
  */
 export async function GET(
   req: Request,
@@ -62,11 +63,12 @@ export async function GET(
     return res;
   }
 
-  const phaseInfo = getPhaseContent(session.state as SessionPhase);
+  const currentPhase = session.state as SessionPhase;
+  const phaseInfo = getPhaseContent(currentPhase);
   const homework = session.homework?.[0] ?? null;
 
   const content = await resolvePhaseContent(
-    session.state as SessionPhase,
+    currentPhase,
     session.topicId,
     session.id,
     user.id,
@@ -75,11 +77,15 @@ export async function GET(
   res = NextResponse.json({
     session: {
       sessionId: session.id,
+      studentId: session.studentId,
       topicId: session.topicId,
       topicName: session.topic.name,
       subject: session.topic.chapter.subject.name,
       chapter: session.topic.chapter.name,
-      state: session.state,
+      /** Canonical phase field (architecture spec). */
+      currentPhase,
+      /** Backward-compatible alias. */
+      state: currentPhase,
       startedAt: session.startedAt.toISOString(),
       completedAt: session.completedAt?.toISOString() ?? null,
     },

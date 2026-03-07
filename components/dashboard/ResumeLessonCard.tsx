@@ -13,6 +13,7 @@ import { useRouter } from "next/navigation";
 import { useResumeSession } from "@/hooks/useResumeSession";
 
 const PHASE_LABELS: Record<string, string> = {
+  OVERVIEW: "Overview",
   EXPLANATION: "Explanation",
   PRACTICE: "Practice",
   TEST: "Test",

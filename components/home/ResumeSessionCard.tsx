@@ -14,6 +14,7 @@ interface ActiveSession {
 }
 
 const PHASE_LABELS: Record<string, string> = {
+  OVERVIEW: "Reviewing overview",
   EXPLANATION: "Reading notes",
   PRACTICE: "Practicing",
   TEST: "Taking a test",

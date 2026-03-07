@@ -7,7 +7,6 @@ import {
   SessionError,
 } from '@/lib/session/sessionEngine';
 import { resolvePhaseContent } from '@/lib/session/getPhaseContent';
-import { updateStudentTopicProgress } from '@/lib/learning/updateTopicProgress';
 import { logger } from '@/lib/logger';
 import { recordSessionEvent } from '@/lib/session/sessionEvents';
 
@@ -17,14 +16,20 @@ export const dynamic = 'force-dynamic';
  * POST /api/session/complete
  * Body: { sessionId: string }
  *
- * Marks the session as COMPLETE and updates topic progress.
+ * Force-completes the session regardless of current phase (e.g. "Finish early").
+ * Progress persistence (StudentTopicProgress touch + TopicRanker cache
+ * invalidation) is handled inside SessionEngine.completeSession() so this
+ * route stays thin.
+ *
+ * Response:
+ *   { session: SessionView, phase: PhaseContent, content: PhaseContentData }
  */
 export async function POST(req: Request) {
   const start = Date.now();
   let res: Response;
 
-  const session = await getServerSessionForHandlers();
-  const user = session?.user;
+  const authSession = await getServerSessionForHandlers();
+  const user = authSession?.user;
 
   if (!user?.id) {
     res = NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -39,30 +44,22 @@ export async function POST(req: Request) {
   }
 
   const body = await req.json().catch(() => null);
-  if (!body?.sessionId) {
+  if (!body?.sessionId || typeof body.sessionId !== 'string') {
     res = NextResponse.json({ error: 'sessionId is required' }, { status: 400 });
     logger.logAPI(req, res, { className: 'SessionCompleteAPI', methodName: 'POST' }, start);
     return res;
   }
 
   try {
+    // Engine handles state transition + progress persistence internally.
     const view = await completeSession(user.id, body.sessionId);
-    const phase = getPhaseContent(view.state);
-
-    // Touch lastStudiedAt so the topic ranker picks up the recency signal
-    try {
-      await updateStudentTopicProgress({
-        studentId: user.id,
-        topicId: view.topicId,
-        correctAnswers: 0,
-        totalAnswers: 0,
-        activityType: 'STUDY',
-      });
-    } catch (err) {
-      logger.error('SessionCompleteAPI.progressUpdate', { userId: user.id, error: err });
-    }
-
-    const content = await resolvePhaseContent(view.state, view.topicId, view.sessionId, user.id);
+    const phase = getPhaseContent(view.currentPhase);
+    const content = await resolvePhaseContent(
+      view.currentPhase,
+      view.topicId,
+      view.sessionId,
+      user.id,
+    );
 
     recordSessionEvent({
       sessionId: view.sessionId,
