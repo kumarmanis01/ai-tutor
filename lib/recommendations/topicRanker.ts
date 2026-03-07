@@ -31,6 +31,11 @@
  *                                  added preloadedOrderedTopics option; switched
  *                                  recency to StudentTopicProgress.lastStudiedAt;
  *                                  added FRONTIER_SIZE cap (50 topics)
+ * - 2026-03-07 | claude          | Phase 2: confirmed no LearningSession dependency
+ *                                  remains; incomplete-session detection is handled
+ *                                  exclusively by getNextAction P1 (StructuredSession
+ *                                  query) before rankTopics is ever called — so
+ *                                  rankTopics never runs while a session is active
  */
 
 import { prisma } from '@/lib/prisma';

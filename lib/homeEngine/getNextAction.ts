@@ -33,6 +33,10 @@
  *                          added GetNextActionOptions with preloadedOrderedTopics to
  *                          avoid duplicate curriculum fetch when caller already has it;
  *                          removed ENABLE_TOPIC_RECOMMENDATION feature flag
+ * - 2026-03-07 | claude | Phase 2: merged LOCK rule into P1 (StructuredSession-first
+ *                          with LearningSession legacy fallback); exported SessionPhase
+ *                          type; P1 now fully owns session resume for both engines;
+ *                          TopicRanker incomplete-session detection confirmed removed
  */
 
 import { prisma } from '@/lib/prisma';
@@ -59,6 +63,13 @@ export type RuleId =
   | 'next_new_topic'
   | 'all_topics_complete';
 
+/**
+ * The active phase of a StructuredSession.
+ * Maps directly to the SessionPhase enum values in the Prisma schema.
+ * Used in NextAction.resumePhase so callers can deep-link to the exact step.
+ */
+export type SessionPhase = 'OVERVIEW' | 'EXPLANATION' | 'PRACTICE' | 'TEST' | 'HOMEWORK';
+
 export interface NextAction {
   topicId: string | null;
   /** Canonical topic name from TopicDef. Null if topic not found in curriculum. */
@@ -73,11 +84,12 @@ export interface NextAction {
   /** Present only for resume_session — used to build /session/[id] URL */
   sessionId?: string;
   /**
-   * Present only when the session lock fires (active StructuredSession found).
+   * Present only when P1 resumes a StructuredSession (not a legacy LearningSession).
    * Tells the caller which phase the student was at so the UI can deep-link
    * directly to that step rather than always starting at OVERVIEW.
+   * Absent for legacy LearningSession resumes — those lack a structured phase.
    */
-  resumePhase?: 'OVERVIEW' | 'EXPLANATION' | 'PRACTICE' | 'TEST' | 'HOMEWORK';
+  resumePhase?: SessionPhase;
   /** Present only for daily_task — estimated minutes for the task */
   estimatedTimeMin?: number;
 }
@@ -201,27 +213,31 @@ async function enrichTopic(
  * OVERVIEW / EXPLANATION → the student is in the reading/learning stages → 'notes'
  * PRACTICE / TEST / HOMEWORK → the student is in an active exercise stage → 'practice'
  */
-function structuredPhaseToAction(
-  phase: 'OVERVIEW' | 'EXPLANATION' | 'PRACTICE' | 'TEST' | 'HOMEWORK',
-): ActionType {
+function structuredPhaseToAction(phase: SessionPhase): ActionType {
   if (phase === 'PRACTICE' || phase === 'TEST' || phase === 'HOMEWORK') return 'practice';
   return 'notes';
 }
 
 /**
- * SESSION LOCK — Check for any active StructuredSession.
+ * P1 — Resume the most recently active session.
  *
- * If a StructuredSession exists with state NOT IN ('COMPLETE', 'EXPIRED'),
- * the engine MUST return a resume action for that session. P3–P5 are never
- * evaluated while a live session is in flight.
+ * Priority within P1:
+ *   1a. StructuredSession (new engine) — checked first.
+ *       Excludes COMPLETE and EXPIRED states.
+ *       Returns resumePhase so callers can deep-link to the exact phase
+ *       (OVERVIEW → EXPLANATION → PRACTICE → TEST → HOMEWORK).
+ *   1b. LearningSession (legacy) — fallback for students on the old engine.
+ *       Only evaluated when no active StructuredSession exists.
+ *       Does NOT return resumePhase — legacy sessions have no structured phases.
  *
- * This prevents the engine from recommending a new topic while the student
- * is mid-session (e.g., paused at PRACTICE and returning to the dashboard).
+ * Short-circuits the engine: when P1 finds a session, P2–P5 are never evaluated.
+ * This prevents recommending a new topic while the student is mid-session.
  *
- * Uses a compound index: @@index([studentId, state]) — O(log n) lookup.
+ * Uses a compound index on StructuredSession: @@index([studentId, state]) — O(log n).
  */
-async function lock_activeStructuredSession(studentId: string): Promise<NextAction | null> {
-  const session = await prisma.structuredSession.findFirst({
+async function p1_resumeSession(studentId: string): Promise<NextAction | null> {
+  // ── 1a. StructuredSession — primary path for new-engine students ──────────
+  const structured = await prisma.structuredSession.findFirst({
     where: {
       studentId,
       state: { notIn: ['COMPLETE', 'EXPIRED'] },
@@ -245,33 +261,26 @@ async function lock_activeStructuredSession(studentId: string): Promise<NextActi
     },
   });
 
-  if (!session) return null;
+  if (structured) {
+    // state is guaranteed to be one of the SessionPhase values — COMPLETE and EXPIRED
+    // are excluded by the notIn filter above.
+    const resumePhase = structured.state as SessionPhase;
+    return {
+      topicId: structured.topicId,
+      topicName: structured.topic.name,
+      subject: structured.topic.chapter.subject.name,
+      chapter: structured.topic.chapter.name,
+      ruleId: 'resume_session',
+      reasonLabel: 'Continue your current session',
+      actionType: structuredPhaseToAction(resumePhase),
+      sessionId: structured.id,
+      resumePhase,
+    };
+  }
 
-  // State is one of OVERVIEW | EXPLANATION | PRACTICE | TEST | HOMEWORK at this point.
-  // The notIn filter above already excluded COMPLETE and EXPIRED.
-  const resumePhase = session.state as NextAction['resumePhase'];
-
-  return {
-    topicId: session.topicId,
-    topicName: session.topic.name,
-    subject: session.topic.chapter.subject.name,
-    chapter: session.topic.chapter.name,
-    ruleId: 'resume_session',
-    reasonLabel: 'Continue your current session',
-    actionType: structuredPhaseToAction(resumePhase!),
-    sessionId: session.id,
-    resumePhase,
-  };
-}
-
-/**
- * P1 — Resume the most recently accessed incomplete LearningSession.
- * Pulls subject/chapter/topicId from the session's meta JSON.
- * LEGACY: only fires for students who pre-date the StructuredSession engine.
- */
-async function p1_resumeSession(studentId: string): Promise<NextAction | null> {
-  // Only consider sessions with topicId present and valid activityType
-  const session = await prisma.learningSession.findFirst({
+  // ── 1b. LearningSession — legacy fallback for pre-StructuredSession students ─
+  // Only runs when no active StructuredSession was found above.
+  const legacy = await prisma.learningSession.findFirst({
     where: { studentId, isCompleted: false },
     orderBy: { lastAccessed: 'desc' },
     select: {
@@ -281,15 +290,16 @@ async function p1_resumeSession(studentId: string): Promise<NextAction | null> {
       meta: true,
     },
   });
-  if (!session) return null;
+  if (!legacy) return null;
 
-  const meta = safeObj(session.meta);
-  const topicId = strOrNull(session.activityRef) ?? strOrNull(meta.topicId) ?? null;
+  const meta = safeObj(legacy.meta);
+  const topicId = strOrNull(legacy.activityRef) ?? strOrNull(meta.topicId) ?? null;
   // Defensive: skip sessions without topicId
   if (!topicId) return null;
   // Defensive: only allow lesson/practice activityType
   const allowedTypes = ['lesson', 'practice'];
-  if (!allowedTypes.includes(session.activityType)) return null;
+  if (!allowedTypes.includes(legacy.activityType)) return null;
+
   const enriched = await enrichTopic(topicId, {
     topicName: null,
     subject: strOrNull(meta.subject) ?? strOrNull(meta.subjectName) ?? null,
@@ -302,8 +312,9 @@ async function p1_resumeSession(studentId: string): Promise<NextAction | null> {
     chapter: enriched.chapter,
     ruleId: 'resume_session',
     reasonLabel: 'Resume where you left off',
-    actionType: sessionToAction(session.activityType),
-    sessionId: session.id,
+    actionType: sessionToAction(legacy.activityType),
+    sessionId: legacy.id,
+    // No resumePhase for legacy sessions — they pre-date structured phases.
   };
 }
 
@@ -531,44 +542,33 @@ export async function getNextAction(
   };
   const returnTrace = options.returnTrace === true;
 
-  // ── SESSION LOCK ─────────────────────────────────────────────────────────────
-  // Check for any active StructuredSession BEFORE evaluating P1–P5.
-  // If one exists, the student must resume it — the engine never jumps to P3–P5
-  // (weak topics, new recommendations) while a live session is in flight.
-  // This is the primary resume path for all students using the new session engine.
-  trace.rulesEvaluated.push('LOCK');
-  const sessionLock = await lock_activeStructuredSession(studentId);
-  if (sessionLock) {
+  // ── P1 — Resume session ───────────────────────────────────────────────────────
+  // Checks StructuredSession first (new engine), then LearningSession (legacy).
+  // When P1 fires, P2–P5 are never evaluated — the student must finish the
+  // in-progress session before the engine recommends a new topic.
+  trace.rulesEvaluated.push('P1');
+  const p1 = await p1_resumeSession(studentId);
+  if (p1) {
     trace.matchedRule = 'resume_session';
     trace.finalDecision = 'resume_session';
-    return finalise(sessionLock, traceId, studentId, {
-      trace,
-      returnTrace,
-      startMs,
-    });
+    return finalise(p1, traceId, studentId, { trace, returnTrace, startMs });
   }
 
-  // ── LEGACY P1 + P2 ───────────────────────────────────────────────────────────
-  // No active StructuredSession. Check legacy LearningSession (P1) and DailyTask
-  // (P2). These only fire for students who pre-date the StructuredSession engine.
-  trace.rulesEvaluated.push('P1', 'P2');
-  const p1OrP2 = (await p1_resumeSession(studentId)) ?? (await p2_dailyTask(studentId));
+  // ── P2 — Today's pending DailyTask ────────────────────────────────────────────
+  trace.rulesEvaluated.push('P2');
+  const p2 = await p2_dailyTask(studentId);
 
   let action: NextAction | null;
-  if (p1OrP2) {
-    action = p1OrP2;
+  if (p2) {
+    action = p2;
     trace.matchedRule = action.ruleId;
     trace.finalDecision = action.ruleId;
-    return finalise(action, traceId, studentId, {
-      trace,
-      returnTrace,
-      startMs,
-    });
+    return finalise(action, traceId, studentId, { trace, returnTrace, startMs });
   }
 
   // ── CURRICULUM RULES P3–P5 ─────────────────────────────────────────────────
-  // Guaranteed: no active session exists (lock was null, P1 was null).
-  // Safe to recommend a new/revision topic.
+  // Guaranteed: no active session exists (P1 returned null) and no daily task.
+  // Safe to recommend a new or revision topic.
   //
   // Use preloaded topics when available (dashboard passes them to avoid a
   // duplicate curriculum fetch). Fall back to a fresh query otherwise.

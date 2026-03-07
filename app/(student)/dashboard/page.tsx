@@ -251,6 +251,7 @@ export default async function StudentHomeDashboardPage() {
                 sessionId: activeSession.id,
                 topicName: activeSession.topic?.name ?? '',
                 currentPhase: activeSession.state,
+                resumePhase: activeSession.state,
                 subject: activeSession.topic?.chapter?.subject?.name ?? '',
                 chapter: activeSession.topic?.chapter?.name ?? '',
               }

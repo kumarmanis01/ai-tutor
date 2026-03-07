@@ -45,6 +45,13 @@ interface SessionInfo {
   currentPhase: string;
   subject: string;
   chapter: string;
+  /**
+   * The exact StructuredSession phase the student is at.
+   * When present, the "Continue Session" button deep-links to that phase
+   * via ?phase= so the session page skips straight to the right step.
+   * Absent for legacy LearningSession resumes.
+   */
+  resumePhase?: string;
 }
 
 interface RecommendationInfo {
@@ -133,7 +140,13 @@ function ResumeState({ session }: { session: SessionInfo }) {
 
       <button
         type="button"
-        onClick={() => router.push(`/session/${session.sessionId}`)}
+        onClick={() => {
+          const phase = session.resumePhase ?? session.currentPhase;
+          const path = phase
+            ? `/session/${session.sessionId}?phase=${phase}`
+            : `/session/${session.sessionId}`;
+          router.push(path);
+        }}
         className="mt-4 inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 active:scale-95 transition-transform"
       >
         Continue Session
