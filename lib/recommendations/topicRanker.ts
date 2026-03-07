@@ -6,7 +6,8 @@
  * - Gated by ENABLE_TOPIC_RECOMMENDATION feature flag.
  *
  * EDIT LOG:
- * - 2026-03-06 | claude | created topic ranker with four scoring signals
+ * - 2026-03-06 | Manish Kumar | created topic ranker with four scoring signals
+ * - 2026-03-07 | Manish Kumar | use CurriculumGraph for prerequisite checks instead of ad-hoc index math
  */
 
 import { prisma } from '@/lib/prisma';
@@ -14,6 +15,10 @@ import { logger } from '@/lib/logger';
 import { getRedis } from '@/lib/redis';
 import { computeMomentumScore } from '@/lib/learning/momentumScore';
 import { getWeakTopicIds } from '@/lib/learning/getWeakTopics';
+import {
+  getCurriculumGraph,
+  arePrerequisitesMet,
+} from '@/lib/curriculum/curriculumGraph';
 
 // ─── Cache ───────────────────────────────────────────────────────────────────
 
@@ -161,7 +166,7 @@ export async function invalidateTopicRankerCache(studentId: string): Promise<voi
 // ─── Core Algorithm ──────────────────────────────────────────────────────────
 
 async function rankTopics(studentId: string): Promise<ScoredTopic[]> {
-  const [user, profile, allProgress, recentSessions] = await Promise.all([
+  const [user, profile, allProgress, recentSessions, graph] = await Promise.all([
     prisma.user.findUnique({
       where: { id: studentId },
       select: { subjects: true, grade: true, board: true },
@@ -185,6 +190,8 @@ async function rankTopics(studentId: string): Promise<ScoredTopic[]> {
         lastAccessed: true,
       },
     }),
+    // CurriculumGraph is Redis-cached; this is effectively free on warm paths
+    getCurriculumGraph(),
   ]);
 
   if (!user) return [];
@@ -192,26 +199,10 @@ async function rankTopics(studentId: string): Promise<ScoredTopic[]> {
   const userSubjects = (user.subjects ?? []) as string[];
   const weakSubjects = new Set((profile?.weakSubjects ?? []) as string[]);
 
-  // ── Fetch curriculum topics in order ────────────────────────────────────
-  const curriculumTopics = await prisma.topicDef.findMany({
-    where: {
-      lifecycle: 'active',
-      ...(userSubjects.length > 0
-        ? { chapter: { lifecycle: 'active', subject: { lifecycle: 'active', name: { in: userSubjects } } } }
-        : { chapter: { lifecycle: 'active', subject: { lifecycle: 'active' } } }),
-    },
-    include: {
-      chapter: {
-        select: {
-          id: true,
-          name: true,
-          order: true,
-          subject: { select: { id: true, name: true } },
-        },
-      },
-    },
-    orderBy: [{ chapter: { order: 'asc' } }, { order: 'asc' }],
-  });
+  // ── Filter curriculum topics to the student's subjects ───────────────
+  const curriculumTopics = userSubjects.length > 0
+    ? graph.topics.filter((t) => userSubjects.includes(t.subjectName))
+    : graph.topics;
 
   if (curriculumTopics.length === 0) return [];
 
@@ -224,6 +215,13 @@ async function rankTopics(studentId: string): Promise<ScoredTopic[]> {
   // ── Build lookup maps ──────────────────────────────────────────────────
   type TopicProgress = (typeof allProgress)[number];
   const progressByTopic = new Map<string, TopicProgress>(allProgress.map((p) => [p.topicId, p]));
+
+  // Build mastered set for prerequisite readiness checks (mastery >= 0.4)
+  const masteredTopicIds = new Set<string>(
+    allProgress
+      .filter((p) => p.mastery >= MASTERY_THRESHOLD_WEAK && p.practiceCount > 0)
+      .map((p) => p.topicId),
+  );
 
   const incompleteTopicIds = new Set<string>();
   for (const s of recentSessions) {
@@ -243,23 +241,19 @@ async function rankTopics(studentId: string): Promise<ScoredTopic[]> {
   // ── Find "curriculum frontier" — first un-started topic ────────────────
   let firstUnstartedId: string | null = null;
   for (const t of curriculumTopics) {
-    const prog = progressByTopic.get(t.id);
+    const prog = progressByTopic.get(t.topicId);
     if (!prog || prog.practiceCount === 0) {
-      firstUnstartedId = t.id;
+      firstUnstartedId = t.topicId;
       break;
     }
   }
-
-  // ── Build ordered ID list for prerequisite lookups ─────────────────────
-  const orderedIds = curriculumTopics.map((t) => t.id);
-  const indexById = new Map<string, number>(orderedIds.map((id, i) => [id, i]));
 
   // ── Score each topic ───────────────────────────────────────────────────
   const now = Date.now();
   const scored: ScoredTopic[] = [];
 
   for (const topic of curriculumTopics) {
-    const progress = progressByTopic.get(topic.id);
+    const progress = progressByTopic.get(topic.topicId);
     const mastery = progress?.mastery ?? 0;
     const practiceCount = progress?.practiceCount ?? 0;
     const signals: Record<string, number> = {};
@@ -270,25 +264,25 @@ async function rankTopics(studentId: string): Promise<ScoredTopic[]> {
     let score = WEIGHTS.BASE;
 
     // 1. Weak topic boost (mastery < 0.4 AND practiceCount > 5)
-    if (weakTopicIdSet.has(topic.id)) {
+    if (weakTopicIdSet.has(topic.topicId)) {
       signals.weakTopicBoost = WEIGHTS.WEAK_TOPIC_BOOST;
       score += WEIGHTS.WEAK_TOPIC_BOOST;
     }
 
     // 2. Curriculum-next boost
-    if (topic.id === firstUnstartedId) {
+    if (topic.topicId === firstUnstartedId) {
       signals.curriculumNextBoost = WEIGHTS.CURRICULUM_NEXT_BOOST;
       score += WEIGHTS.CURRICULUM_NEXT_BOOST;
     }
 
     // 3. Incomplete session boost
-    if (incompleteTopicIds.has(topic.id)) {
+    if (incompleteTopicIds.has(topic.topicId)) {
       signals.incompleteSessionBoost = WEIGHTS.INCOMPLETE_SESSION_BOOST;
       score += WEIGHTS.INCOMPLETE_SESSION_BOOST;
     }
 
     // 4. Recency penalty
-    const lastAccess = recentlyStudiedTopicIds.get(topic.id);
+    const lastAccess = recentlyStudiedTopicIds.get(topic.topicId);
     if (lastAccess) {
       const hoursAgo = (now - lastAccess.getTime()) / (1000 * 60 * 60);
       if (hoursAgo < RECENCY_HOURS) {
@@ -298,20 +292,15 @@ async function rankTopics(studentId: string): Promise<ScoredTopic[]> {
       }
     }
 
-    // 5. Prerequisite penalty
-    const myIndex = indexById.get(topic.id) ?? -1;
-    if (myIndex > 0) {
-      const prevId = orderedIds[myIndex - 1];
-      const prevProgress = progressByTopic.get(prevId);
-      const prevMastery = prevProgress?.mastery ?? 0;
-      if (prevMastery < MASTERY_THRESHOLD_WEAK && (prevProgress?.practiceCount ?? 0) > 0) {
-        signals.prerequisitePenalty = WEIGHTS.PREREQUISITE_PENALTY;
-        score += WEIGHTS.PREREQUISITE_PENALTY;
-      }
+    // 5. Prerequisite penalty — uses CurriculumGraph instead of raw index math
+    //    Penalise if any direct prerequisite has not reached the weak threshold
+    if (!arePrerequisitesMet(topic.topicId, graph, masteredTopicIds)) {
+      signals.prerequisitePenalty = WEIGHTS.PREREQUISITE_PENALTY;
+      score += WEIGHTS.PREREQUISITE_PENALTY;
     }
 
     // 6. Weak subject boost
-    if (weakSubjects.has(topic.chapter.subject.name)) {
+    if (weakSubjects.has(topic.subjectName)) {
       signals.weakSubjectBoost = WEIGHTS.WEAK_SUBJECT_BOOST;
       score += WEIGHTS.WEAK_SUBJECT_BOOST;
     }
@@ -324,12 +313,12 @@ async function rankTopics(studentId: string): Promise<ScoredTopic[]> {
     }
 
     scored.push({
-      topicId: topic.id,
-      topicName: topic.name,
-      chapterId: topic.chapter.id,
-      chapterName: topic.chapter.name,
-      subjectName: topic.chapter.subject.name,
-      curriculumOrder: topic.chapter.order * 1000 + topic.order,
+      topicId: topic.topicId,
+      topicName: topic.topicName,
+      chapterId: topic.chapterId,
+      chapterName: topic.chapterName,
+      subjectName: topic.subjectName,
+      curriculumOrder: topic.chapterOrder * 1000 + topic.topicOrder,
       score,
       signals,
     });
