@@ -27,11 +27,18 @@
  * - 2026-03-07 | claude | added StructuredSession lock (LOCK rule) — prevents P3–P5
  *                          from firing while a live session exists; adds resumePhase
  *                          to NextAction so callers can deep-link to the correct phase
+ * - 2026-03-07 | claude | Phase 1: replaced p5_nextNewTopic (simple first-unstarted
+ *                          selection) with p5_scoredTopic (full TopicRanker scoring);
+ *                          integrated rankTopics() from lib/recommendations/topicRanker;
+ *                          added GetNextActionOptions with preloadedOrderedTopics to
+ *                          avoid duplicate curriculum fetch when caller already has it;
+ *                          removed ENABLE_TOPIC_RECOMMENDATION feature flag
  */
 
 import { prisma } from '@/lib/prisma';
 import { getOrderedTopicsForStudent, type OrderedTopic } from './getOrderedTopicsForStudent';
 import { LOW_ACCURACY_THRESHOLD } from '../constants/mastery';
+import { rankTopics, type ScoredTopic } from '@/lib/recommendations/topicRanker';
 import { randomUUID } from 'crypto';
 import { logger } from '@/lib/logger';
 
@@ -73,6 +80,22 @@ export interface NextAction {
   resumePhase?: 'OVERVIEW' | 'EXPLANATION' | 'PRACTICE' | 'TEST' | 'HOMEWORK';
   /** Present only for daily_task — estimated minutes for the task */
   estimatedTimeMin?: number;
+}
+
+/**
+ * Options accepted by getNextAction.
+ * All fields are optional — the engine degrades gracefully to independent
+ * fetches when not provided.
+ */
+export interface GetNextActionOptions {
+  /**
+   * Pre-fetched ordered curriculum topics (from getOrderedTopicsForStudent).
+   * When provided, the engine uses them directly for P3/P4 scoping and P5
+   * scoring, eliminating a duplicate curriculum DB round-trip.
+   * The dashboard server component passes this since it already fetches the
+   * curriculum for the upcoming-topics list.
+   */
+  preloadedOrderedTopics?: OrderedTopic[];
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -387,33 +410,67 @@ async function p4_lowAccuracy(studentId: string, allowedTopicIds: Set<string>): 
 }
 
 /**
- * P5 — First unattempted TopicDef in the student's curriculum.
- * Accepts pre-fetched orderedTopics (from getOrderedTopicsForStudent) — the
- * caller already fetched this for P3/P4, so no duplicate curriculum query.
- * Returns null if curriculum context is unknown or all topics are attempted.
+ * P5 — Scored topic recommendation using TopicRanker signals.
+ *
+ * Replaces the old "first unattempted topic" selection with a full multi-signal
+ * scoring pass over the curriculum frontier (first FRONTIER_SIZE topics after
+ * the student's last mastered position).
+ *
+ * Signals applied (see lib/recommendations/topicRanker.ts for weights):
+ *   weakTopicBoost       — student has struggled here
+ *   curriculumNextBoost  — natural next topic in syllabus
+ *   recencyPenalty       — studied < 24 h ago
+ *   prerequisitePenalty  — prior topic not mastered
+ *   weakSubjectBoost     — flagged weak subject
+ *   momentumBoost        — scaled by engagement score
+ *
+ * @param studentId     - Student being recommended for.
+ * @param orderedTopics - Already-fetched curriculum (from getOrderedTopicsForStudent).
+ *                        Passed as preloaded to rankTopics to avoid a duplicate fetch.
  */
-async function p5_nextNewTopic(studentId: string, orderedTopics: OrderedTopic[]): Promise<NextAction | null> {
-  // getOrderedTopicsForStudent returns [] when board/grade is missing.
+async function p5_scoredTopic(
+  studentId: string,
+  orderedTopics: OrderedTopic[],
+): Promise<NextAction | null> {
   if (orderedTopics.length === 0) return null;
 
-  const attempted = await prisma.studentTopicMastery.findMany({
-    where: { studentId },
-    select: { topicId: true },
-  });
+  const scored = await rankTopics(studentId, { preloadedOrderedTopics: orderedTopics });
+  if (scored.length === 0) return null;
 
-  const attemptedIds = new Set(attempted.map((a) => a.topicId));
-  const nextTopic = orderedTopics.find((t) => !attemptedIds.has(t.id));
-  if (!nextTopic) return null;
+  const best = scored[0];
 
   return {
-    topicId: nextTopic.id,
-    topicName: nextTopic.name,
-    subject: nextTopic.chapter.subject.name,
-    chapter: nextTopic.chapter.name,
+    topicId: best.topicId,
+    topicName: best.topicName,
+    subject: best.subjectName,
+    chapter: best.chapterName,
     ruleId: 'next_new_topic',
-    reasonLabel: `Start ${nextTopic.chapter.subject.name} – ${nextTopic.chapter.name}`,
-    actionType: 'notes',
+    reasonLabel: p5ReasonLabel(best),
+    actionType: p5ActionType(best),
   };
+}
+
+/**
+ * Derive a human-readable reason label from the winning signals.
+ * Used as the subtitle on the dashboard Start card.
+ */
+function p5ReasonLabel(topic: ScoredTopic): string {
+  const s = topic.signals;
+  if (s.weakTopicBoost) return `Build confidence in ${topic.topicName}`;
+  if (s.curriculumNextBoost) return `Next up in your syllabus`;
+  if (s.weakSubjectBoost) return `${topic.subjectName} needs your attention`;
+  return `Continue with ${topic.topicName}`;
+}
+
+/**
+ * Derive ActionType from winning signals.
+ * First-time topics (curriculumNextBoost, no prior attempts) → 'notes'.
+ * Topics the student has already started → 'practice'.
+ */
+function p5ActionType(topic: ScoredTopic): ActionType {
+  if (topic.signals.weakTopicBoost) return 'practice';
+  if (topic.signals.curriculumNextBoost) return 'notes';
+  return 'practice';
 }
 
 // ─── Main export ──────────────────────────────────────────────────────────────
@@ -427,7 +484,20 @@ async function p5_nextNewTopic(studentId: string, orderedTopics: OrderedTopic[])
  */
 export type GetNextActionReturn = NextAction | null | { action: NextAction | null; traceId: string };
 
-export async function getNextAction(studentId: string): Promise<GetNextActionReturn> {
+/**
+ * Returns the single most important next action for the student.
+ * Short-circuits at the first matching priority — never runs all rules.
+ *
+ * @param studentId - The student to recommend for.
+ * @param options   - Optional preloaded data to avoid duplicate DB round-trips.
+ *
+ * Returns a `{ action, traceId }` object in development, or the `NextAction`
+ * directly in production (for API response size reasons).
+ */
+export async function getNextAction(
+  studentId: string,
+  options: GetNextActionOptions = {},
+): Promise<GetNextActionReturn> {
   const traceId = randomUUID();
 
   // ── SESSION LOCK ─────────────────────────────────────────────────────────────
@@ -454,14 +524,17 @@ export async function getNextAction(studentId: string): Promise<GetNextActionRet
     // ── CURRICULUM RULES P3–P5 ─────────────────────────────────────────────────
     // Guaranteed: no active session exists (lock was null, P1 was null).
     // Safe to recommend a new/revision topic.
-    // Fetch curriculum ONCE — shared by P3, P4, and P5 to avoid duplicate queries.
-    const orderedTopics = await getOrderedTopicsForStudent(studentId);
+    //
+    // Use preloaded topics when available (dashboard passes them to avoid a
+    // duplicate curriculum fetch). Fall back to a fresh query otherwise.
+    const orderedTopics =
+      options.preloadedOrderedTopics ?? (await getOrderedTopicsForStudent(studentId));
     const allowedTopicIds = new Set(orderedTopics.map((t) => t.id));
 
     action =
       (await p3_attentionFlag(studentId, allowedTopicIds as Set<string>)) ??
       (await p4_lowAccuracy(studentId, allowedTopicIds as Set<string>)) ??
-      (await p5_nextNewTopic(studentId, orderedTopics)) ??
+      (await p5_scoredTopic(studentId, orderedTopics)) ??
       null;
   }
 
