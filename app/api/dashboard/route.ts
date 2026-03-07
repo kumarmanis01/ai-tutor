@@ -54,7 +54,7 @@ function getISOWeekBoundaries() {
   return { monday, sunday };
 }
 
-export async function GET(req: Request) {
+export async function GET(_req: Request) {
   const start = Date.now();
 
   const authSession = await getServerSessionForHandlers();

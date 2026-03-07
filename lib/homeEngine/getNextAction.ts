@@ -96,6 +96,27 @@ export interface GetNextActionOptions {
    * curriculum for the upcoming-topics list.
    */
   preloadedOrderedTopics?: OrderedTopic[];
+  /**
+   * When true, the return value includes a trace object (rulesEvaluated,
+   * matchedRule, finalDecision, latencyMs) for admin observability.
+   * Used by GET /api/admin/recommendation-trace.
+   */
+  returnTrace?: boolean;
+}
+
+/**
+ * Trace output for next-action engine observability.
+ * Populated when options.returnTrace is true.
+ */
+export interface NextActionTrace {
+  /** Rule names evaluated in order (short-circuit: stops at first match). */
+  rulesEvaluated: string[];
+  /** The rule that produced the returned action. */
+  matchedRule: string;
+  /** Same as matchedRule; alias for compatibility. */
+  finalDecision: string;
+  /** Time taken for getNextAction in ms. */
+  latencyMs?: number;
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -482,7 +503,10 @@ function p5ActionType(topic: ScoredTopic): ActionType {
  * Returns null only if the student has no curriculum context (missing board/grade)
  * and has completed all reachable topics.
  */
-export type GetNextActionReturn = NextAction | null | { action: NextAction | null; traceId: string };
+export type GetNextActionReturn =
+  | NextAction
+  | null
+  | { action: NextAction | null; traceId: string; trace?: NextActionTrace };
 
 /**
  * Returns the single most important next action for the student.
@@ -499,44 +523,65 @@ export async function getNextAction(
   options: GetNextActionOptions = {},
 ): Promise<GetNextActionReturn> {
   const traceId = randomUUID();
+  const startMs = Date.now();
+  const trace: NextActionTrace = {
+    rulesEvaluated: [],
+    matchedRule: '',
+    finalDecision: '',
+  };
+  const returnTrace = options.returnTrace === true;
 
   // ── SESSION LOCK ─────────────────────────────────────────────────────────────
   // Check for any active StructuredSession BEFORE evaluating P1–P5.
   // If one exists, the student must resume it — the engine never jumps to P3–P5
   // (weak topics, new recommendations) while a live session is in flight.
   // This is the primary resume path for all students using the new session engine.
+  trace.rulesEvaluated.push('LOCK');
   const sessionLock = await lock_activeStructuredSession(studentId);
   if (sessionLock) {
-    // Active session found — return resume action immediately.
-    // P1 (legacy LearningSession), P2 (DailyTask), P3–P5 are all skipped.
-    return finalise(sessionLock, traceId, studentId);
+    trace.matchedRule = 'resume_session';
+    trace.finalDecision = 'resume_session';
+    return finalise(sessionLock, traceId, studentId, {
+      trace,
+      returnTrace,
+      startMs,
+    });
   }
 
   // ── LEGACY P1 + P2 ───────────────────────────────────────────────────────────
   // No active StructuredSession. Check legacy LearningSession (P1) and DailyTask
   // (P2). These only fire for students who pre-date the StructuredSession engine.
+  trace.rulesEvaluated.push('P1', 'P2');
   const p1OrP2 = (await p1_resumeSession(studentId)) ?? (await p2_dailyTask(studentId));
 
   let action: NextAction | null;
   if (p1OrP2) {
     action = p1OrP2;
-  } else {
-    // ── CURRICULUM RULES P3–P5 ─────────────────────────────────────────────────
-    // Guaranteed: no active session exists (lock was null, P1 was null).
-    // Safe to recommend a new/revision topic.
-    //
-    // Use preloaded topics when available (dashboard passes them to avoid a
-    // duplicate curriculum fetch). Fall back to a fresh query otherwise.
-    const orderedTopics =
-      options.preloadedOrderedTopics ?? (await getOrderedTopicsForStudent(studentId));
-    const allowedTopicIds = new Set(orderedTopics.map((t) => t.id));
-
-    action =
-      (await p3_attentionFlag(studentId, allowedTopicIds as Set<string>)) ??
-      (await p4_lowAccuracy(studentId, allowedTopicIds as Set<string>)) ??
-      (await p5_scoredTopic(studentId, orderedTopics)) ??
-      null;
+    trace.matchedRule = action.ruleId;
+    trace.finalDecision = action.ruleId;
+    return finalise(action, traceId, studentId, {
+      trace,
+      returnTrace,
+      startMs,
+    });
   }
+
+  // ── CURRICULUM RULES P3–P5 ─────────────────────────────────────────────────
+  // Guaranteed: no active session exists (lock was null, P1 was null).
+  // Safe to recommend a new/revision topic.
+  //
+  // Use preloaded topics when available (dashboard passes them to avoid a
+  // duplicate curriculum fetch). Fall back to a fresh query otherwise.
+  const orderedTopics =
+    options.preloadedOrderedTopics ?? (await getOrderedTopicsForStudent(studentId));
+  const allowedTopicIds = new Set(orderedTopics.map((t) => t.id));
+
+  trace.rulesEvaluated.push('P3', 'P4', 'P5');
+  action =
+    (await p3_attentionFlag(studentId, allowedTopicIds as Set<string>)) ??
+    (await p4_lowAccuracy(studentId, allowedTopicIds as Set<string>)) ??
+    (await p5_scoredTopic(studentId, orderedTopics)) ??
+    null;
 
   // Fallback: if the student has a curriculum but all topics are attempted,
   // return a stable revision action so the UI can render a friendly CTA.
@@ -553,11 +598,23 @@ export async function getNextAction(
       estimatedTimeMin: 20,
     };
   }
+  trace.matchedRule = action.ruleId;
+  trace.finalDecision = action.ruleId;
 
-  return finalise(action, traceId, studentId);
+  return finalise(action, traceId, studentId, {
+    trace,
+    returnTrace,
+    startMs,
+  });
 }
 
 // ─── Finalise helper ──────────────────────────────────────────────────────────
+
+interface FinaliseOptions {
+  trace?: NextActionTrace;
+  returnTrace?: boolean;
+  startMs?: number;
+}
 
 /**
  * Shared tail for every exit path in getNextAction.
@@ -568,7 +625,12 @@ function finalise(
   action: NextAction,
   traceId: string,
   studentId: string,
+  opts?: FinaliseOptions,
 ): GetNextActionReturn {
+  if (opts?.trace && opts.startMs !== undefined) {
+    opts.trace.latencyMs = Date.now() - opts.startMs;
+  }
+
   // Log decision for observability (no PII beyond studentId).
   try {
     logger.info('engine.decision', {
@@ -603,6 +665,9 @@ function finalise(
     logger.warn('engine.loop_detection_failed', { traceId, studentId, error: String(err) });
   }
 
+  if (opts?.returnTrace && opts.trace) {
+    return { action, traceId, trace: opts.trace };
+  }
   if (process.env.NODE_ENV !== 'production') {
     return { action, traceId };
   }

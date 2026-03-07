@@ -14,5 +14,5 @@ ALTER TYPE "SessionPhase" ADD VALUE IF NOT EXISTS 'OVERVIEW' BEFORE 'EXPLANATION
 -- 2. Extend SessionEventType with the new overview-viewed event
 ALTER TYPE "SessionEventType" ADD VALUE IF NOT EXISTS 'SESSION_OVERVIEW_VIEWED';
 
--- 3. Update the column default so new sessions start at OVERVIEW
-ALTER TABLE "StructuredSession" ALTER COLUMN "state" SET DEFAULT 'OVERVIEW';
+-- 3. Column default for new sessions is set in the next migration (20260307000001)
+--    because PostgreSQL does not allow using a newly added enum value in the same transaction.
