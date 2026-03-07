@@ -21,7 +21,7 @@ jest.mock('@/lib/prisma', () => ({
     homeworkAssignment: { findFirst: jest.fn() },
     structuredSession: { findFirst: jest.fn() },
     learningSession: { findFirst: jest.fn() },
-    studentTopicProgress: { findFirst: jest.fn() },
+    studentTopicProgress: { findFirst: jest.fn(), findMany: jest.fn() }, // P2/P3/P4 shared fetch
     topicDef: { findUnique: jest.fn(), findMany: jest.fn() },
     user: { findUnique: jest.fn() },
   },
@@ -102,6 +102,7 @@ beforeEach(() => {
   (prisma.structuredSession.findFirst as jest.Mock).mockResolvedValue(null);
   (prisma.learningSession.findFirst as jest.Mock).mockResolvedValue(null);
   (prisma.studentTopicProgress.findFirst as jest.Mock).mockResolvedValue(null);
+  (prisma.studentTopicProgress.findMany as jest.Mock).mockResolvedValue([]); // P2/P3/P4 shared fetch
   (prisma.topicDef.findUnique as jest.Mock).mockResolvedValue(null);
   (prisma.topicDef.findMany as jest.Mock).mockResolvedValue([]);
   (prisma.user.findUnique as jest.Mock).mockResolvedValue(null);

@@ -40,10 +40,17 @@
  *                          added 'homework' ActionType and assignmentId to NextAction;
  *                          added new RuleIds: homework_pending, weak_topic_urgent,
  *                          spaced_revision, inactive_return
+ * - 2026-03-07 | claude | Phase 4: replaced fixed 7-day spaced revision window with
+ *                          dynamic SPACED_REVISION_INTERVALS (3/7/14/30 days per band);
+ *                          P2+P3+P4 now share a single StudentTopicProgress findMany
+ *                          (ProgressRow[]) — eliminates 2 extra DB queries; p3 selects
+ *                          the most overdue topic (largest overdueDays); reasonLabel
+ *                          now includes "it's been N days" for actionable context
  */
 
 import { prisma } from '@/lib/prisma';
 import { getOrderedTopicsForStudent, type OrderedTopic } from './getOrderedTopicsForStudent';
+import { SPACED_REVISION_INTERVALS } from '../constants/mastery';
 import { rankTopics, type ScoredTopic } from '@/lib/recommendations/topicRanker';
 import { randomUUID } from 'crypto';
 import { logger } from '@/lib/logger';
@@ -195,6 +202,34 @@ async function enrichTopic(
     chapter: topic.chapter.name,
     subject: topic.chapter.subject.name,
   };
+}
+
+// ─── Shared progress row type (P2 / P3 / P4) ─────────────────────────────────
+
+/**
+ * A single row fetched from StudentTopicProgress for curriculum rules P2–P4.
+ * One findMany per getNextAction call supplies all three rules; no per-rule queries.
+ */
+interface ProgressRow {
+  topicId: string;
+  mastery: number;
+  practiceCount: number;
+  lastStudiedAt: Date;
+}
+
+/**
+ * Returns the spaced-repetition interval in days for a given mastery score.
+ * Bands are [min, max) — the last band implicitly covers mastery = 1.0.
+ * Returns null when mastery < 0.40 (those topics are owned by P2, not P3).
+ */
+function lookupSpacedInterval(mastery: number): number | null {
+  for (const band of SPACED_REVISION_INTERVALS) {
+    if (mastery >= band.min && mastery < band.max) return band.intervalDays;
+  }
+  // mastery exactly 1.0 — use the highest band (30 days)
+  const last = SPACED_REVISION_INTERVALS[SPACED_REVISION_INTERVALS.length - 1];
+  if (mastery >= last.min) return last.intervalDays;
+  return null; // mastery < 0.40 → P2 domain
 }
 
 // ─── Priority sub-functions ───────────────────────────────────────────────────
@@ -365,99 +400,95 @@ async function p1_resumeSession(studentId: string): Promise<NextAction | null> {
 /**
  * P2 — Weak topic (urgent).
  *
- * Fires when the student has practiced a topic meaningfully (practiceCount > 5)
- * but mastery remains critically low (< 0.4). Uses StudentTopicProgress as the
- * canonical source — same thresholds as getWeakTopics().
- * Scoped to the student's active curriculum (allowedTopicIds).
+ * Selects from pre-fetched progress rows (no DB call).
+ * Fires when the student has practiced meaningfully (practiceCount > 5)
+ * but mastery remains critically low (< 0.4).
+ * Returns the worst-mastery row first.
  */
-async function p2_weakTopicUrgent(studentId: string, allowedTopicIds: Set<string>): Promise<NextAction | null> {
-  if (allowedTopicIds.size === 0) return null;
+async function p2_weakTopicUrgent(rows: ProgressRow[]): Promise<NextAction | null> {
+  const best = rows
+    .filter((r) => r.mastery < 0.4 && r.practiceCount > 5)
+    .reduce<ProgressRow | null>((min, r) => (min === null || r.mastery < min.mastery ? r : min), null);
+  if (!best) return null;
 
-  const weak = await prisma.studentTopicProgress.findFirst({
-    where: {
-      studentId,
-      mastery: { lt: 0.4 },
-      practiceCount: { gt: 5 },
-      topicId: { in: [...allowedTopicIds] },
-    },
-    orderBy: { mastery: 'asc' }, // worst mastery first
-    select: { topicId: true, mastery: true },
-  });
-  if (!weak) return null;
-
-  const enriched = await enrichTopic(weak.topicId, { topicName: null, subject: null, chapter: null });
+  const enriched = await enrichTopic(best.topicId, { topicName: null, subject: null, chapter: null });
   return {
-    topicId: weak.topicId,
+    topicId: best.topicId,
     topicName: enriched.topicName,
     subject: enriched.subject,
     chapter: enriched.chapter,
     ruleId: 'weak_topic_urgent',
     reasonLabel: `Strengthen your understanding of ${enriched.topicName ?? 'this topic'}`,
     actionType: 'practice',
-    accuracy: weak.mastery,
+    accuracy: best.mastery,
   };
 }
 
 /**
- * P3 — Spaced revision.
+ * P3 — Spaced revision (dynamic interval).
  *
- * Fires when a partially-mastered topic (mastery 0.4–0.85) has not been
- * studied in 7+ days. Surfaces the most overdue topic first (oldest
- * lastStudiedAt) to enforce spaced-repetition intervals.
- * Scoped to the student's active curriculum (allowedTopicIds).
+ * Selects from pre-fetched progress rows (no DB call — reuses P2's fetch).
+ *
+ * Uses SPACED_REVISION_INTERVALS to derive a mastery-band interval:
+ *   0.40–0.60 → 3 days   |   0.60–0.75 → 7 days
+ *   0.75–0.90 → 14 days  |   0.90–1.00 → 30 days
+ *
+ * A topic is a candidate when daysSince >= intervalDays.
+ * Among candidates, the topic with the largest overdueDays wins.
+ * reasonLabel includes the exact days elapsed for student context.
  */
-async function p3_spacedRevision(studentId: string, allowedTopicIds: Set<string>): Promise<NextAction | null> {
-  if (allowedTopicIds.size === 0) return null;
+async function p3_spacedRevision(rows: ProgressRow[]): Promise<NextAction | null> {
+  const now = Date.now();
 
-  const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+  type Candidate = ProgressRow & { daysSince: number; overdueDays: number };
+  const candidates: Candidate[] = [];
 
-  const due = await prisma.studentTopicProgress.findFirst({
-    where: {
-      studentId,
-      mastery: { gte: 0.4, lt: 0.85 },
-      lastStudiedAt: { lt: sevenDaysAgo },
-      topicId: { in: [...allowedTopicIds] },
-    },
-    orderBy: { lastStudiedAt: 'asc' }, // most overdue first
-    select: { topicId: true, mastery: true },
-  });
-  if (!due) return null;
+  for (const row of rows) {
+    const intervalDays = lookupSpacedInterval(row.mastery);
+    if (intervalDays === null) continue; // mastery < 0.40 — P2's domain
+    const daysSince = (now - row.lastStudiedAt.getTime()) / (1000 * 60 * 60 * 24);
+    if (daysSince < intervalDays) continue; // not yet overdue
+    candidates.push({ ...row, daysSince, overdueDays: daysSince - intervalDays });
+  }
 
-  const enriched = await enrichTopic(due.topicId, { topicName: null, subject: null, chapter: null });
+  if (candidates.length === 0) return null;
+
+  // Most overdue first (largest overdueDays = studied longest ago relative to its interval)
+  const best = candidates.reduce((max, c) => (c.overdueDays > max.overdueDays ? c : max));
+  const days = Math.round(best.daysSince);
+
+  const enriched = await enrichTopic(best.topicId, { topicName: null, subject: null, chapter: null });
   return {
-    topicId: due.topicId,
+    topicId: best.topicId,
     topicName: enriched.topicName,
     subject: enriched.subject,
     chapter: enriched.chapter,
     ruleId: 'spaced_revision',
-    reasonLabel: `Time to revisit ${enriched.topicName ?? 'this topic'}`,
+    reasonLabel: `Time to revisit ${enriched.topicName ?? 'this topic'} — it's been ${days} days.`,
     actionType: 'revision',
-    accuracy: due.mastery,
+    accuracy: best.mastery,
   };
 }
 
 /**
  * P4 — Inactive return.
  *
- * Fires when the student has had no study activity (within their curriculum)
- * for 3+ consecutive days. Returns them to the topic they last studied,
- * giving a "welcome back" prompt before recommending something brand-new.
- * Scoped to the student's active curriculum (allowedTopicIds).
+ * Selects from pre-fetched progress rows (no DB call — reuses P2's fetch).
+ * Fires when the student's most recent curriculum study is 3+ days ago,
+ * surfacing their last topic as a "welcome back" prompt.
  */
-async function p4_inactiveReturn(studentId: string, allowedTopicIds: Set<string>): Promise<NextAction | null> {
-  if (allowedTopicIds.size === 0) return null;
+async function p4_inactiveReturn(rows: ProgressRow[]): Promise<NextAction | null> {
+  if (rows.length === 0) return null;
 
-  const threeDaysAgo = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000);
+  const threeDaysAgo = Date.now() - 3 * 24 * 60 * 60 * 1000;
 
-  // Find the most-recently studied allowed topic
-  const lastStudied = await prisma.studentTopicProgress.findFirst({
-    where: { studentId, topicId: { in: [...allowedTopicIds] } },
-    orderBy: { lastStudiedAt: 'desc' },
-    select: { topicId: true, mastery: true, lastStudiedAt: true },
-  });
+  // Most-recently studied topic across all curriculum rows
+  const lastStudied = rows.reduce((max, r) =>
+    r.lastStudiedAt.getTime() > max.lastStudiedAt.getTime() ? r : max,
+  );
 
-  // Student is active (studied within 3 days) or has no history → skip
-  if (!lastStudied || lastStudied.lastStudiedAt >= threeDaysAgo) return null;
+  // Student is active (studied within 3 days) or no history → skip
+  if (lastStudied.lastStudiedAt.getTime() >= threeDaysAgo) return null;
 
   const enriched = await enrichTopic(lastStudied.topicId, { topicName: null, subject: null, chapter: null });
   return {
@@ -606,29 +637,38 @@ export async function getNextAction(
     options.preloadedOrderedTopics ?? (await getOrderedTopicsForStudent(studentId));
   const allowedTopicIds = new Set(orderedTopics.map((t) => t.id));
 
+  // Single shared progress fetch for P2 + P3 + P4 — one round-trip covers all three rules.
+  // Scoped to the student's curriculum (allowedTopicIds) to exclude stale/cross-grade rows.
+  const progressRows: ProgressRow[] = allowedTopicIds.size > 0
+    ? await prisma.studentTopicProgress.findMany({
+        where: { studentId, topicId: { in: [...allowedTopicIds] } },
+        select: { topicId: true, mastery: true, practiceCount: true, lastStudiedAt: true },
+      })
+    : [];
+
   let action: NextAction | null;
 
-  // P2 — Weak topic (mastery < 0.4 AND practiceCount > 5)
+  // P2 — Weak topic: mastery < 0.4 AND practiceCount > 5 (in-memory filter on progressRows)
   trace.rulesEvaluated.push('P2');
-  action = await p2_weakTopicUrgent(studentId, allowedTopicIds as Set<string>);
+  action = await p2_weakTopicUrgent(progressRows);
   if (action) {
     trace.matchedRule = action.ruleId;
     trace.finalDecision = action.ruleId;
     return finalise(action, traceId, studentId, { trace, returnTrace, startMs });
   }
 
-  // P3 — Spaced revision (mastery 0.4–0.85, not studied in 7+ days)
+  // P3 — Spaced revision: dynamic interval per mastery band (in-memory, most overdue wins)
   trace.rulesEvaluated.push('P3');
-  action = await p3_spacedRevision(studentId, allowedTopicIds as Set<string>);
+  action = await p3_spacedRevision(progressRows);
   if (action) {
     trace.matchedRule = action.ruleId;
     trace.finalDecision = action.ruleId;
     return finalise(action, traceId, studentId, { trace, returnTrace, startMs });
   }
 
-  // P4 — Inactive return (no study activity in 3+ days)
+  // P4 — Inactive return: no study in 3+ days (in-memory, most recently studied topic)
   trace.rulesEvaluated.push('P4');
-  action = await p4_inactiveReturn(studentId, allowedTopicIds as Set<string>);
+  action = await p4_inactiveReturn(progressRows);
   if (action) {
     trace.matchedRule = action.ruleId;
     trace.finalDecision = action.ruleId;
