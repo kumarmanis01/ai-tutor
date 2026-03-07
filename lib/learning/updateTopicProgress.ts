@@ -8,6 +8,10 @@
  *   Uses atomic SQL (INSERT ... ON CONFLICT DO UPDATE) with
  *   mastery = LEAST(1, GREATEST(0, mastery + delta)). No read-modify-write
  *   race — two concurrent updates both apply correctly.
+ *
+ * Dual-write (Phase 3):
+ *   Both StudentTopicProgress and StudentTopicMastery are updated inside a
+ *   single Prisma transaction to keep them consistent.
  */
 
 import { Prisma } from '@prisma/client';
@@ -32,6 +36,14 @@ const PROGRESS_WEIGHTS: Record<ActivityType, number> = {
   STUDY: 0,
 };
 
+/** Derives a MasteryLevel string from an accuracy value. */
+function computeMasteryLevel(accuracy: number): 'beginner' | 'intermediate' | 'advanced' | 'expert' {
+  if (accuracy >= 0.9) return 'expert';
+  if (accuracy >= 0.75) return 'advanced';
+  if (accuracy >= 0.6) return 'intermediate';
+  return 'beginner';
+}
+
 /**
  * Update mastery, practiceCount, and lastStudiedAt for a student-topic pair.
  *
@@ -53,13 +65,31 @@ export async function updateStudentTopicProgress(
   const progressDelta = accuracy * weight;
 
   const initialMastery = Math.max(0, Math.min(1, progressDelta));
-  const id = randomUUID();
+  const progressId = randomUUID();
+  const masteryId = randomUUID();
+  const now = new Date();
 
+  // Fetch topic metadata needed for StudentTopicMastery subject/chapter on INSERT.
+  // One extra query per call; acceptable given the dual-write requirement.
+  const topicDef = await prisma.topicDef.findUnique({
+    where: { id: topicId },
+    select: {
+      chapter: {
+        select: { name: true, subject: { select: { name: true } } },
+      },
+    },
+  });
+  const chapterName = topicDef?.chapter.name ?? '';
+  const subjectName = topicDef?.chapter.subject.name ?? '';
+  const masteryLevel = computeMasteryLevel(accuracy);
+
+  // Single transaction: StudentTopicProgress (atomic SQL) + StudentTopicMastery (upsert).
   await prisma.$transaction(async (tx) => {
+    // 1. Atomic upsert on StudentTopicProgress — preserves concurrent-update safety.
     await tx.$executeRaw(
       Prisma.sql`
         INSERT INTO "StudentTopicProgress" ("id", "studentId", "topicId", "mastery", "practiceCount", "lastStudiedAt", "updatedAt")
-        VALUES (${id}, ${studentId}, ${topicId}, ${initialMastery}, ${totalAnswers}, NOW(), NOW())
+        VALUES (${progressId}, ${studentId}, ${topicId}, ${initialMastery}, ${totalAnswers}, NOW(), NOW())
         ON CONFLICT ("studentId", "topicId")
         DO UPDATE SET
           "mastery" = LEAST(1, GREATEST(0, "StudentTopicProgress"."mastery" + ${progressDelta})),
@@ -68,6 +98,29 @@ export async function updateStudentTopicProgress(
           "updatedAt" = NOW()
       `,
     );
+
+    // 2. Upsert StudentTopicMastery — keeps mastery table consistent with progress.
+    //    accuracy reflects this session's performance; questionsAttempted accumulates.
+    await tx.studentTopicMastery.upsert({
+      where: { studentId_topicId: { studentId, topicId } },
+      create: {
+        id: masteryId,
+        studentId,
+        topicId,
+        subject: subjectName,
+        chapter: chapterName,
+        masteryLevel,
+        accuracy,
+        questionsAttempted: totalAnswers,
+        lastAttemptedAt: now,
+      },
+      update: {
+        accuracy,
+        masteryLevel,
+        questionsAttempted: { increment: totalAnswers },
+        lastAttemptedAt: now,
+      },
+    });
   });
 
   const updated = await prisma.studentTopicProgress.findUnique({

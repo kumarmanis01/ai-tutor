@@ -18,8 +18,11 @@
 
 jest.mock('@/lib/prisma', () => ({
   prisma: {
+    homeworkAssignment: { findFirst: jest.fn() }, // P0 — must be mocked or P0 throws
     structuredSession: { findFirst: jest.fn() },
     learningSession: { findFirst: jest.fn() },
+    studentTopicProgress: { findFirst: jest.fn() }, // P2/P3/P4 — replaces attentionFlag/mastery
+    // Legacy mocks kept so existing test setup code compiles without changes.
     dailyTask: { findFirst: jest.fn() },
     attentionFlag: { findFirst: jest.fn() },
     studentTopicMastery: { findFirst: jest.fn() },
@@ -90,9 +93,11 @@ function makeLegacySession() {
 
 beforeEach(() => {
   jest.clearAllMocks();
-  // Default: no active session, no tasks, empty curriculum
+  // Default: no homework, no active session, no tasks, empty curriculum
+  (prisma.homeworkAssignment.findFirst as jest.Mock).mockResolvedValue(null); // P0 — no blocking HW
   (prisma.structuredSession.findFirst as jest.Mock).mockResolvedValue(null);
   (prisma.learningSession.findFirst as jest.Mock).mockResolvedValue(null);
+  (prisma.studentTopicProgress.findFirst as jest.Mock).mockResolvedValue(null); // P2/P3/P4
   (prisma.dailyTask.findFirst as jest.Mock).mockResolvedValue(null);
   (prisma.attentionFlag.findFirst as jest.Mock).mockResolvedValue(null);
   (prisma.studentTopicMastery.findFirst as jest.Mock).mockResolvedValue(null);

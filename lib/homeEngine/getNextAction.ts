@@ -5,18 +5,13 @@
  * - ZERO AI calls. Prisma only. Target latency: <150 ms.
  *
  * Priority order (short-circuits at first match):
- *   LOCK – Active StructuredSession exists → must resume, never skip to P3–P5
- *   P1   – Resume unfinished LearningSession (legacy fallback)
- *   P2   – Pending DailyTask for today
- *   P3   – Unresolved AttentionFlag (lowest accuracy first)
- *   P4   – StudentTopicMastery with accuracy < 0.6 (lowest first)
- *   P5   – First unattempted TopicDef in the student's curriculum
- *
- * Session Lock (LOCK rule):
- *   If any StructuredSession exists with state NOT IN ('COMPLETE','EXPIRED'),
- *   the engine immediately returns a resume action for that session.
- *   P3–P5 are never evaluated while a live session exists, preventing the
- *   engine from recommending a new topic while the student is mid-session.
+ *   P0   – Homework pending/overdue with dueDate <= NOW + 48h (hard block)
+ *   P1   – Resume active StructuredSession or LearningSession (legacy)
+ *   P2   – Weak topic: StudentTopicProgress mastery < 0.4 AND practiceCount > 5
+ *   P3   – Spaced revision: mastery 0.4–0.85, not studied in 7+ days
+ *   P4   – Inactive return: no study activity in 3+ days
+ *   P5   – Scored next topic via TopicRanker
+ *   P6   – All topics complete
  *
  * DO NOT modify the existing recommendation engine.
  * DO NOT change the Prisma schema.
@@ -37,11 +32,18 @@
  *                          with LearningSession legacy fallback); exported SessionPhase
  *                          type; P1 now fully owns session resume for both engines;
  *                          TopicRanker incomplete-session detection confirmed removed
+ * - 2026-03-07 | claude | Phase 3: added P0 homework_pending blocker (HomeworkAssignment
+ *                          PENDING/OVERDUE within 48h); replaced P2 daily_task with
+ *                          p2_weakTopicUrgent (StudentTopicProgress mastery<0.4 & count>5);
+ *                          replaced P3 attention_flag with p3_spacedRevision (7-day window);
+ *                          replaced P4 low_accuracy with p4_inactiveReturn (3-day inactivity);
+ *                          added 'homework' ActionType and assignmentId to NextAction;
+ *                          added new RuleIds: homework_pending, weak_topic_urgent,
+ *                          spaced_revision, inactive_return
  */
 
 import { prisma } from '@/lib/prisma';
 import { getOrderedTopicsForStudent, type OrderedTopic } from './getOrderedTopicsForStudent';
-import { LOW_ACCURACY_THRESHOLD } from '../constants/mastery';
 import { rankTopics, type ScoredTopic } from '@/lib/recommendations/topicRanker';
 import { randomUUID } from 'crypto';
 import { logger } from '@/lib/logger';
@@ -53,15 +55,20 @@ const RECENT_DECISIONS_CAP = 5;
 
 // ─── Public types ────────────────────────────────────────────────────────────
 
-export type ActionType = 'notes' | 'practice' | 'revision';
+export type ActionType = 'notes' | 'practice' | 'revision' | 'homework';
 
 export type RuleId =
+  | 'homework_pending'
   | 'resume_session'
+  | 'weak_topic_urgent'
+  | 'spaced_revision'
+  | 'inactive_return'
+  | 'next_new_topic'
+  | 'all_topics_complete'
+  // Legacy ruleIds kept for API backward-compatibility — no longer emitted.
   | 'daily_task'
   | 'low_mastery'
-  | 'low_accuracy'
-  | 'next_new_topic'
-  | 'all_topics_complete';
+  | 'low_accuracy';
 
 /**
  * The active phase of a StructuredSession.
@@ -92,6 +99,8 @@ export interface NextAction {
   resumePhase?: SessionPhase;
   /** Present only for daily_task — estimated minutes for the task */
   estimatedTimeMin?: number;
+  /** Present only for homework_pending — the HomeworkAssignment id to open */
+  assignmentId?: string;
 }
 
 /**
@@ -151,24 +160,6 @@ function sessionToAction(activityType: string): ActionType {
   return 'notes';
 }
 
-/**
- * Maps DailyTaskType → ActionType.
- * learn, revise → notes | practice, fix_gap, confidence → practice
- */
-function dailyTaskToAction(taskType: string): ActionType {
-  if (taskType === 'practice' || taskType === 'fix_gap' || taskType === 'confidence') {
-    return 'practice';
-  }
-  return 'notes';
-}
-
-/** Returns today's UTC midnight as a Date */
-function utcMidnightToday(): Date {
-  const d = new Date();
-  d.setUTCHours(0, 0, 0, 0);
-  return d;
-}
-
 // ─── Enrichment helper ────────────────────────────────────────────────────────
 
 interface TopicEnrichment {
@@ -207,6 +198,59 @@ async function enrichTopic(
 }
 
 // ─── Priority sub-functions ───────────────────────────────────────────────────
+
+/**
+ * P0 — Homework blocker (hard gate before all other rules).
+ *
+ * Fires when the student has a PENDING or OVERDUE HomeworkAssignment
+ * due within the next 48 hours. Short-circuits P1–P6 so the student
+ * cannot be recommended a new topic while homework is outstanding.
+ *
+ * Query: HomeworkAssignment WHERE studentId = X
+ *   AND status IN ('PENDING','OVERDUE')
+ *   AND dueDate <= NOW() + 48h
+ * ORDER BY dueDate ASC — most urgent first.
+ */
+async function p0_homeworkBlocker(studentId: string): Promise<NextAction | null> {
+  const cutoff = new Date(Date.now() + 48 * 60 * 60 * 1000);
+
+  const hw = await prisma.homeworkAssignment.findFirst({
+    where: {
+      studentId,
+      status: { in: ['PENDING', 'OVERDUE'] },
+      dueDate: { lte: cutoff },
+    },
+    orderBy: { dueDate: 'asc' },
+    select: {
+      id: true,
+      topicId: true,
+      topic: {
+        select: {
+          name: true,
+          chapter: {
+            select: {
+              name: true,
+              subject: { select: { name: true } },
+            },
+          },
+        },
+      },
+    },
+  });
+
+  if (!hw) return null;
+
+  return {
+    topicId: hw.topicId,
+    topicName: hw.topic.name,
+    subject: hw.topic.chapter.subject.name,
+    chapter: hw.topic.chapter.name,
+    ruleId: 'homework_pending',
+    reasonLabel: 'Complete your pending homework',
+    actionType: 'homework',
+    assignmentId: hw.id,
+  };
+}
 
 /**
  * Maps a StructuredSession phase to the ActionType the student should continue with.
@@ -319,125 +363,112 @@ async function p1_resumeSession(studentId: string): Promise<NextAction | null> {
 }
 
 /**
- * P2 — Today's pending DailyTask.
- * Uses UTC date window to match the stored calendar date.
+ * P2 — Weak topic (urgent).
+ *
+ * Fires when the student has practiced a topic meaningfully (practiceCount > 5)
+ * but mastery remains critically low (< 0.4). Uses StudentTopicProgress as the
+ * canonical source — same thresholds as getWeakTopics().
+ * Scoped to the student's active curriculum (allowedTopicIds).
  */
-async function p2_dailyTask(studentId: string): Promise<NextAction | null> {
-  const todayStart = utcMidnightToday();
-  const tomorrowStart = new Date(todayStart);
-  tomorrowStart.setUTCDate(tomorrowStart.getUTCDate() + 1);
+async function p2_weakTopicUrgent(studentId: string, allowedTopicIds: Set<string>): Promise<NextAction | null> {
+  if (allowedTopicIds.size === 0) return null;
 
-  const task = await prisma.dailyTask.findFirst({
+  const weak = await prisma.studentTopicProgress.findFirst({
     where: {
       studentId,
-      status: 'pending',
-      date: { gte: todayStart, lt: tomorrowStart },
+      mastery: { lt: 0.4 },
+      practiceCount: { gt: 5 },
+      topicId: { in: [...allowedTopicIds] },
     },
-    select: {
-      taskType: true,
-      topicId: true,
-      subject: true,
-      chapter: true,
-      description: true,
-      estimatedTimeMin: true,
-    },
-  });
-  if (!task) return null;
-
-  const enriched = await enrichTopic(task.topicId ?? null, {
-    topicName: null,
-    subject: task.subject ?? null,
-    chapter: task.chapter ?? null,
-  });
-  return {
-    topicId: task.topicId ?? null,
-    topicName: enriched.topicName,
-    subject: enriched.subject,
-    chapter: enriched.chapter,
-    ruleId: 'daily_task',
-    reasonLabel: task.description ?? "Today's learning task",
-    actionType: dailyTaskToAction(task.taskType),
-    estimatedTimeMin: task.estimatedTimeMin,
-  };
-}
-
-/**
- * P3 — Unresolved AttentionFlag, sorted by lowest accuracy first.
- * These flags are written by the analytics pipeline when mastery drops.
- * Scoped to the student's active curriculum: only topicIds in allowedTopicIds
- * are considered, preventing stale or cross-grade flags from surfacing.
- */
-async function p3_attentionFlag(studentId: string, allowedTopicIds: Set<string>): Promise<NextAction | null> {
-  if (allowedTopicIds.size === 0) return null;
-  // Push the curriculum scope filter to the DB via IN clause — no in-memory fan-out.
-  const flag = await prisma.attentionFlag.findFirst({
-    where: { studentId, resolved: false, topicId: { in: [...allowedTopicIds] } },
-    orderBy: { accuracy: 'asc' },
-    select: {
-      topicId: true,
-      subject: true,
-      chapter: true,
-      masteryLevel: true,
-      accuracy: true,
-    },
-  });
-  if (!flag) return null;
-
-  const enriched = await enrichTopic(flag.topicId, {
-    topicName: null,
-    subject: flag.subject,
-    chapter: flag.chapter,
-  });
-  return {
-    topicId: flag.topicId,
-    topicName: enriched.topicName,
-    subject: enriched.subject,
-    chapter: enriched.chapter,
-    ruleId: 'low_mastery',
-    reasonLabel: `Revise ${enriched.subject ?? flag.subject} – ${enriched.chapter ?? flag.chapter}`,
-    actionType: 'practice',
-    masteryLevel: flag.masteryLevel,
-    accuracy: flag.accuracy,
-  };
-}
-
-/**
- * P4 — StudentTopicMastery with accuracy below threshold, worst first.
- * Catches cases where AttentionFlags haven't been written yet.
- * Scoped to the student's active curriculum: only topicIds in allowedTopicIds
- * are considered, preventing stale or cross-grade mastery rows from surfacing.
- */
-async function p4_lowAccuracy(studentId: string, allowedTopicIds: Set<string>): Promise<NextAction | null> {
-  if (allowedTopicIds.size === 0) return null;
-  // Push the curriculum scope filter to the DB via IN clause — no in-memory fan-out.
-  const weak = await prisma.studentTopicMastery.findFirst({
-    where: { studentId, accuracy: { lt: LOW_ACCURACY_THRESHOLD }, topicId: { in: [...allowedTopicIds] } },
-    orderBy: { accuracy: 'asc' },
-    select: {
-      topicId: true,
-      subject: true,
-      chapter: true,
-      masteryLevel: true,
-      accuracy: true,
-    },
+    orderBy: { mastery: 'asc' }, // worst mastery first
+    select: { topicId: true, mastery: true },
   });
   if (!weak) return null;
 
-  const enriched = await enrichTopic(weak.topicId, {
-    topicName: null,
-    subject: weak.subject,
-    chapter: weak.chapter,
-  });
+  const enriched = await enrichTopic(weak.topicId, { topicName: null, subject: null, chapter: null });
   return {
     topicId: weak.topicId,
     topicName: enriched.topicName,
     subject: enriched.subject,
     chapter: enriched.chapter,
-    ruleId: 'low_accuracy',
-    reasonLabel: `Practice ${enriched.subject ?? weak.subject} – ${enriched.chapter ?? weak.chapter}`,
+    ruleId: 'weak_topic_urgent',
+    reasonLabel: `Strengthen your understanding of ${enriched.topicName ?? 'this topic'}`,
     actionType: 'practice',
-    masteryLevel: weak.masteryLevel,
-    accuracy: weak.accuracy,
+    accuracy: weak.mastery,
+  };
+}
+
+/**
+ * P3 — Spaced revision.
+ *
+ * Fires when a partially-mastered topic (mastery 0.4–0.85) has not been
+ * studied in 7+ days. Surfaces the most overdue topic first (oldest
+ * lastStudiedAt) to enforce spaced-repetition intervals.
+ * Scoped to the student's active curriculum (allowedTopicIds).
+ */
+async function p3_spacedRevision(studentId: string, allowedTopicIds: Set<string>): Promise<NextAction | null> {
+  if (allowedTopicIds.size === 0) return null;
+
+  const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+
+  const due = await prisma.studentTopicProgress.findFirst({
+    where: {
+      studentId,
+      mastery: { gte: 0.4, lt: 0.85 },
+      lastStudiedAt: { lt: sevenDaysAgo },
+      topicId: { in: [...allowedTopicIds] },
+    },
+    orderBy: { lastStudiedAt: 'asc' }, // most overdue first
+    select: { topicId: true, mastery: true },
+  });
+  if (!due) return null;
+
+  const enriched = await enrichTopic(due.topicId, { topicName: null, subject: null, chapter: null });
+  return {
+    topicId: due.topicId,
+    topicName: enriched.topicName,
+    subject: enriched.subject,
+    chapter: enriched.chapter,
+    ruleId: 'spaced_revision',
+    reasonLabel: `Time to revisit ${enriched.topicName ?? 'this topic'}`,
+    actionType: 'revision',
+    accuracy: due.mastery,
+  };
+}
+
+/**
+ * P4 — Inactive return.
+ *
+ * Fires when the student has had no study activity (within their curriculum)
+ * for 3+ consecutive days. Returns them to the topic they last studied,
+ * giving a "welcome back" prompt before recommending something brand-new.
+ * Scoped to the student's active curriculum (allowedTopicIds).
+ */
+async function p4_inactiveReturn(studentId: string, allowedTopicIds: Set<string>): Promise<NextAction | null> {
+  if (allowedTopicIds.size === 0) return null;
+
+  const threeDaysAgo = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000);
+
+  // Find the most-recently studied allowed topic
+  const lastStudied = await prisma.studentTopicProgress.findFirst({
+    where: { studentId, topicId: { in: [...allowedTopicIds] } },
+    orderBy: { lastStudiedAt: 'desc' },
+    select: { topicId: true, mastery: true, lastStudiedAt: true },
+  });
+
+  // Student is active (studied within 3 days) or has no history → skip
+  if (!lastStudied || lastStudied.lastStudiedAt >= threeDaysAgo) return null;
+
+  const enriched = await enrichTopic(lastStudied.topicId, { topicName: null, subject: null, chapter: null });
+  return {
+    topicId: lastStudied.topicId,
+    topicName: enriched.topicName,
+    subject: enriched.subject,
+    chapter: enriched.chapter,
+    ruleId: 'inactive_return',
+    reasonLabel: `Welcome back! Let's pick up where you left off`,
+    actionType: 'notes',
+    accuracy: lastStudied.mastery,
   };
 }
 
@@ -542,6 +573,17 @@ export async function getNextAction(
   };
   const returnTrace = options.returnTrace === true;
 
+  // ── P0 — Homework blocker (hard gate) ────────────────────────────────────────
+  // Fires before any other rule. A PENDING/OVERDUE assignment due within 48 h
+  // takes absolute priority — the student must complete it first.
+  trace.rulesEvaluated.push('P0');
+  const p0 = await p0_homeworkBlocker(studentId);
+  if (p0) {
+    trace.matchedRule = 'homework_pending';
+    trace.finalDecision = 'homework_pending';
+    return finalise(p0, traceId, studentId, { trace, returnTrace, startMs });
+  }
+
   // ── P1 — Resume session ───────────────────────────────────────────────────────
   // Checks StructuredSession first (new engine), then LearningSession (legacy).
   // When P1 fires, P2–P5 are never evaluated — the student must finish the
@@ -554,20 +596,8 @@ export async function getNextAction(
     return finalise(p1, traceId, studentId, { trace, returnTrace, startMs });
   }
 
-  // ── P2 — Today's pending DailyTask ────────────────────────────────────────────
-  trace.rulesEvaluated.push('P2');
-  const p2 = await p2_dailyTask(studentId);
-
-  let action: NextAction | null;
-  if (p2) {
-    action = p2;
-    trace.matchedRule = action.ruleId;
-    trace.finalDecision = action.ruleId;
-    return finalise(action, traceId, studentId, { trace, returnTrace, startMs });
-  }
-
-  // ── CURRICULUM RULES P3–P5 ─────────────────────────────────────────────────
-  // Guaranteed: no active session exists (P1 returned null) and no daily task.
+  // ── CURRICULUM RULES P2–P5 ─────────────────────────────────────────────────
+  // Guaranteed: no blocking homework (P0) and no active session (P1).
   // Safe to recommend a new or revision topic.
   //
   // Use preloaded topics when available (dashboard passes them to avoid a
@@ -576,12 +606,38 @@ export async function getNextAction(
     options.preloadedOrderedTopics ?? (await getOrderedTopicsForStudent(studentId));
   const allowedTopicIds = new Set(orderedTopics.map((t) => t.id));
 
-  trace.rulesEvaluated.push('P3', 'P4', 'P5');
-  action =
-    (await p3_attentionFlag(studentId, allowedTopicIds as Set<string>)) ??
-    (await p4_lowAccuracy(studentId, allowedTopicIds as Set<string>)) ??
-    (await p5_scoredTopic(studentId, orderedTopics)) ??
-    null;
+  let action: NextAction | null;
+
+  // P2 — Weak topic (mastery < 0.4 AND practiceCount > 5)
+  trace.rulesEvaluated.push('P2');
+  action = await p2_weakTopicUrgent(studentId, allowedTopicIds as Set<string>);
+  if (action) {
+    trace.matchedRule = action.ruleId;
+    trace.finalDecision = action.ruleId;
+    return finalise(action, traceId, studentId, { trace, returnTrace, startMs });
+  }
+
+  // P3 — Spaced revision (mastery 0.4–0.85, not studied in 7+ days)
+  trace.rulesEvaluated.push('P3');
+  action = await p3_spacedRevision(studentId, allowedTopicIds as Set<string>);
+  if (action) {
+    trace.matchedRule = action.ruleId;
+    trace.finalDecision = action.ruleId;
+    return finalise(action, traceId, studentId, { trace, returnTrace, startMs });
+  }
+
+  // P4 — Inactive return (no study activity in 3+ days)
+  trace.rulesEvaluated.push('P4');
+  action = await p4_inactiveReturn(studentId, allowedTopicIds as Set<string>);
+  if (action) {
+    trace.matchedRule = action.ruleId;
+    trace.finalDecision = action.ruleId;
+    return finalise(action, traceId, studentId, { trace, returnTrace, startMs });
+  }
+
+  // P5 — Scored next topic via TopicRanker
+  trace.rulesEvaluated.push('P5');
+  action = (await p5_scoredTopic(studentId, orderedTopics)) ?? null;
 
   // Fallback: if the student has a curriculum but all topics are attempted,
   // return a stable revision action so the UI can render a friendly CTA.

@@ -175,16 +175,22 @@ export default async function StudentHomeDashboardPage() {
     if (idx >= 0 && idx < 7) weekDays[idx].hasSession = true;
   }
 
-  // ── Primary action type ─────────────────────────────────────────────────
-  const oldestPendingHomework = pendingHomeworkRaw[0] ?? null;
-  const primaryType = oldestPendingHomework ? 'homework' : activeSession ? 'resume' : 'start';
-
   // ── Unwrap next action ──────────────────────────────────────────────────
-  type RawAction = { topicId?: string; topicName?: string | null; subject?: string | null; chapter?: string | null; estimatedTimeMin?: number } | null;
+  type RawAction = { ruleId?: string; topicId?: string; topicName?: string | null; subject?: string | null; chapter?: string | null; estimatedTimeMin?: number } | null;
   const rawAction: RawAction = nextActionResult && typeof nextActionResult === 'object' && 'action' in nextActionResult
     ? (nextActionResult as { action: RawAction }).action
     : (nextActionResult as RawAction);
   const recommendation = rawAction?.topicId ? rawAction : null;
+
+  // ── Primary action type — driven by engine ruleId ───────────────────────
+  // The engine is the single source of truth for what the student should do.
+  // P0 (homework_pending) → 'homework'; P1 (resume_session) → 'resume'; else → 'start'.
+  const oldestPendingHomework = pendingHomeworkRaw[0] ?? null;
+  const engineRuleId = rawAction?.ruleId;
+  const primaryType =
+    engineRuleId === 'homework_pending' ? 'homework'
+    : engineRuleId === 'resume_session' ? 'resume'
+    : 'start';
 
   // ── Upcoming topics + "builds on" context ──────────────────────────────
   const masteredIdSet = new Set(masteredTopicIds.map((r) => r.topicId));
