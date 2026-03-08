@@ -48,7 +48,7 @@ export default function TopicStatusRow({
   topicName,
   status,
   masteryLabel,
-  sessionId,
+  sessionId: _sessionId,
 }: TopicStatusRowProps) {
   const isActionable = status === 'in_progress' || status === 'needs_practice' || status === 'upcoming';
   const href = `/session/${topicId}`;
