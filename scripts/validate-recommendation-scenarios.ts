@@ -62,7 +62,9 @@ async function main() {
     where: { email: { in: SCENARIO_EMAILS.map((s) => s.email) } },
     select: { id: true, email: true },
   });
-  const byEmail = new Map(users.map((u) => [u.email, u.id]));
+  const byEmail = new Map<string, string>(
+    users.map((u) => [u.email!, u.id] as [string, string]),
+  );
 
   const missing = SCENARIO_EMAILS.filter((s) => !byEmail.has(s.email));
   if (missing.length) {

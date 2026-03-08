@@ -47,7 +47,6 @@ import {
   getCurriculumGraph,
   arePrerequisitesMet,
   type CurriculumTopic,
-  type CurriculumGraphSnapshot,
 } from '@/lib/curriculum/curriculumGraph';
 import type { OrderedTopic } from '@/lib/homeEngine/getOrderedTopicsForStudent';
 

@@ -652,7 +652,7 @@ function PracticeView({
   const [submitError, setSubmitError] = useState<string | null>(null);
 
   const currentQ = content.questions[currentIdx];
-  const isAnsweringPhase = results === null && !submitting;
+  const _isAnsweringPhase = results === null && !submitting;
   const isLoadingPhase = submitting;
   const isReviewPhase = results !== null;
 
