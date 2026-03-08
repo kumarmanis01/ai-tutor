@@ -22,17 +22,17 @@ export interface TodaysLearningCardProps {
   onStartLearning?: (topicId: string) => void;
 }
 
-const TASK_TYPE_CONFIG: Record<string, { label: string; color: string; icon: string }> = {
-  learn: { label: 'Learn', color: 'bg-indigo-500/15 text-indigo-600', icon: '📖' },
-  practice: { label: 'Practice', color: 'bg-green-500/15 text-green-600', icon: '🎯' },
-  revise: { label: 'Revise', color: 'bg-amber-500/15 text-amber-600', icon: '🔄' },
-  fix_gap: { label: 'Build Up', color: 'bg-orange-500/15 text-orange-600', icon: '💪' },
-  confidence: { label: 'Show Off', color: 'bg-pink-500/15 text-pink-600', icon: '⭐' },
+const TASK_TYPE_CONFIG: Record<string, { label: string; color: string; icon: string; cta: string }> = {
+  learn: { label: 'Learn', color: 'bg-indigo-500/15 text-indigo-600', icon: '📖', cta: 'Start New Topic' },
+  practice: { label: 'Practice', color: 'bg-green-500/15 text-green-600', icon: '🎯', cta: 'Practice Now' },
+  revise: { label: 'Revise', color: 'bg-amber-500/15 text-amber-600', icon: '🔄', cta: 'Quick Revision' },
+  fix_gap: { label: 'Build Up', color: 'bg-orange-500/15 text-orange-600', icon: '💪', cta: 'Strengthen Topic' },
+  confidence: { label: 'Show Off', color: 'bg-pink-500/15 text-pink-600', icon: '⭐', cta: 'Continue Session' },
 };
 
 export function TodaysLearningCard({ onStartLearning }: TodaysLearningCardProps) {
   const router = useRouter();
-  const { task, loading, _completeTask, skipTask } = useDailyTask();
+  const { task, loading, skipTask } = useDailyTask();
 
   if (loading) {
     return (
@@ -124,16 +124,22 @@ export function TodaysLearningCard({ onStartLearning }: TodaysLearningCardProps)
     if (onStartLearning && task.topicId) {
       onStartLearning(task.topicId);
     }
-    // If the task is a practice task, route to the Practice/tests page for topic-specific practice
+    // Practice-only tasks go directly to the tests page
     if (task.taskType === 'practice' || (task as any).hasPractice) {
-      const topicId = task.topicId ?? (task as any).topicId ?? '';
+      const topicId = task.topicId ?? '';
       const params = topicId ? `?topicId=${encodeURIComponent(topicId)}` : '';
       router.push(`/tests${params}`);
       return;
     }
 
+    // All other task types (learn, revise, fix_gap, confidence) enter the
+    // structured session container which manages the full 6-phase flow.
     if (task.topicId) {
-      router.push(`/learn/${task.topicId}`);
+      const params = new URLSearchParams();
+      if (task.description) params.set('reason', task.description);
+      if (task.estimatedTimeMin) params.set('time', String(task.estimatedTimeMin));
+      const qs = params.toString() ? `?${params.toString()}` : '';
+      router.push(`/session/${task.topicId}${qs}`);
     }
   };
 
@@ -197,25 +203,24 @@ export function TodaysLearningCard({ onStartLearning }: TodaysLearningCardProps)
         )}
       </div>
 
-      {/* Actions */}
-      <div className="flex gap-3">
-        <button
-          onClick={handleStart}
-          className="flex-1 py-4 px-6 bg-primary hover:bg-primary/90 text-primary-foreground font-semibold rounded-xl transition-colors flex items-center justify-center gap-2 shadow-lg shadow-primary/20"
-        >
-          <span>Start</span>
-          <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M5 12h14M12 5l7 7-7 7" />
-          </svg>
-        </button>
-        <button
-          onClick={skipTask}
-          className="py-4 px-4 bg-muted/50 hover:bg-muted text-muted-foreground font-medium rounded-xl transition-colors text-sm"
-          title="Skip for today"
-        >
-          Skip
-        </button>
-      </div>
+      {/* Primary CTA — context-aware label per task type */}
+      <button
+        onClick={handleStart}
+        className="w-full py-4 px-6 bg-primary hover:bg-primary/90 text-primary-foreground font-semibold rounded-xl transition-colors flex items-center justify-center gap-2 shadow-lg shadow-primary/20"
+      >
+        <span>{config.cta}</span>
+        <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <path d="M5 12h14M12 5l7 7-7 7" />
+        </svg>
+      </button>
+
+      {/* Skip — demoted to text link so the primary CTA is the only prominent action */}
+      <button
+        onClick={skipTask}
+        className="w-full py-2 text-xs text-muted-foreground hover:text-foreground transition-colors text-center"
+      >
+        Skip for today
+      </button>
     </div>
   );
 }
