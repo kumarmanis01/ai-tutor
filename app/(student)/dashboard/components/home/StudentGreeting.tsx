@@ -18,6 +18,7 @@
 
 import React, { useMemo } from 'react';
 import useCurrentUser from '@/hooks/useCurrentUser';
+import { useStreaksAndGoals } from '@/hooks/useStreaksAndGoals';
 
 /** Get time-appropriate greeting */
 function getGreeting(): string {
@@ -29,11 +30,15 @@ function getGreeting(): string {
 
 export function StudentGreeting() {
   const { data: profile, loading } = useCurrentUser();
-  
+  const { streaks } = useStreaksAndGoals();
+
   const greeting = useMemo(() => getGreeting(), []);
   const firstName = profile?.name?.split(' ')[0] || 'Student';
   const grade = profile?.grade;
   const board = profile?.board;
+
+  const dailyStreak = streaks?.find((s) => s.kind === 'daily' || s.kind === 'daily_study');
+  const streakDays = dailyStreak?.current ?? 0;
 
   if (loading) {
     return (
@@ -46,11 +51,18 @@ export function StudentGreeting() {
 
   return (
     <div className="mb-6">
-      {/* Main Greeting */}
-      <h1 className="text-2xl sm:text-3xl font-bold text-foreground">
-        {greeting}, <span className="text-primary">{firstName}</span> 👋
-      </h1>
-      
+      {/* Main Greeting + Streak badge */}
+      <div className="flex items-start justify-between gap-4">
+        <h1 className="text-2xl sm:text-3xl font-bold text-foreground">
+          {greeting}, <span className="text-primary">{firstName}</span> 👋
+        </h1>
+        {streakDays > 0 && (
+          <div className="flex-shrink-0 flex items-center gap-1 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 text-amber-700 dark:text-amber-400 px-3 py-1.5 rounded-full text-sm font-semibold">
+            🔥 {streakDays}d
+          </div>
+        )}
+      </div>
+
       {/* Grade & Board - Non-editable info */}
       {(grade || board) && (
         <div className="flex items-center gap-2 mt-2">

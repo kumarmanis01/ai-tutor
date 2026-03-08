@@ -17,7 +17,7 @@
 
 import React from 'react';
 import { useParams, useSearchParams } from 'next/navigation';
-import { SessionContainer } from '@/components/Session/SessionContainer';
+import { SessionContainer } from '@/components/session/SessionContainer';
 
 export default function SessionPage() {
   const params = useParams();
