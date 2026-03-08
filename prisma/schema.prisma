@@ -75,6 +75,10 @@ model User {
   recoveryEvents           RecoveryEvent[]
   parentInvitesSent        ParentInvite[]           @relation("ParentInvite_student")
   parentInvitesConsumed    ParentInvite[]           @relation("ParentInvite_consumedByParent")
+  /// IANA timezone for daily habit (e.g. Asia/Kolkata). Null => UTC.
+  timezone                 String?
+  studentEngagementStats   StudentEngagementStats?
+  engagementProcessedSessions EngagementProcessedSession[]
 }
 
 model PhoneOtp {
@@ -792,6 +796,32 @@ model StudentStreak {
   @@index([studentId, kind])
 }
 
+/// Daily habit engagement cache: streak, points, last active date. Authoritative source remains StructuredSession.completedAt.
+model StudentEngagementStats {
+  id                      String   @id @default(cuid())
+  studentId               String   @unique
+  currentStreak           Int      @default(0)
+  longestStreak           Int      @default(0)
+  lastActiveDate          DateTime? /// Calendar date (midnight UTC) of last day with ≥1 completed session
+  totalSessionsCompleted  Int      @default(0)
+  learningPoints          Int      @default(0)
+  updatedAt               DateTime @updatedAt
+  student                 User     @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@index([studentId])
+}
+
+/// Idempotency: session completions already processed for engagement (points + streak). One row per sessionId.
+model EngagementProcessedSession {
+  id         String   @id @default(cuid())
+  sessionId  String   @unique
+  studentId  String
+  processedAt DateTime @default(now())
+  student    User     @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@index([studentId])
+}
+
 model StudentTopicMastery {
   id                 String       @id @default(cuid())
   studentId          String
@@ -841,6 +871,7 @@ model StructuredSession {
   events      SessionEvent[]
 
   @@index([studentId, state])
+  @@index([studentId, completedAt])
   @@index([topicId])
 }
 

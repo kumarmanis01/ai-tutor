@@ -5,7 +5,7 @@
  * Producers emit events; consumers subscribe. No direct imports between layers.
  *
  * Events:
- *   SESSION_COMPLETED — { studentId: string }
+ *   SESSION_COMPLETED — { studentId: string, sessionId: string }
  */
 
 import { EventEmitter } from 'events';
@@ -14,7 +14,7 @@ import { logger } from '@/lib/logger';
 const bus = new EventEmitter();
 bus.setMaxListeners(20);
 
-export type SessionCompletedPayload = { studentId: string };
+export type SessionCompletedPayload = { studentId: string; sessionId: string };
 
 export const SESSION_COMPLETED = 'SESSION_COMPLETED';
 

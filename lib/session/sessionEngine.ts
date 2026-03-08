@@ -673,8 +673,8 @@ function persistCompletionProgress(
     logger.error('[SESSION_PROGRESS_UPDATE_FAILED]', { studentId, topicId, sessionId, error: err }),
   );
 
-  // COUPLING-01: Emit domain event; TopicRanker listens and invalidates cache.
-  emitSessionCompleted({ studentId });
+  // COUPLING-01: Emit domain event; TopicRanker and engagement listen.
+  emitSessionCompleted({ studentId, sessionId });
 
   completeBridgedLearningSession(sessionId).catch((err) =>
     logger.error('[SESSION_BRIDGE_COMPLETE_FAILED]', { sessionId, error: err }),
