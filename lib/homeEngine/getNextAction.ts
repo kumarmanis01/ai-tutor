@@ -46,6 +46,11 @@
  *                          (ProgressRow[]) — eliminates 2 extra DB queries; p3 selects
  *                          the most overdue topic (largest overdueDays); reasonLabel
  *                          now includes "it's been N days" for actionable context
+ * - 2026-03-08 | claude | Phase 6: RecommendationTrace observability — per-rule durationMs
+ *                          timing, topicScoringBreakdown from P5 ScoredTopics; fire-and-
+ *                          forget Redis write gated by ENABLE_REC_TRACE=1; p5_scoredTopic
+ *                          now returns { action, scoredTopics } so trace can capture the
+ *                          full ranked-topic signal table without an extra DB call
  */
 
 import { prisma } from '@/lib/prisma';
@@ -54,6 +59,12 @@ import { SPACED_REVISION_INTERVALS } from '../constants/mastery';
 import { rankTopics, type ScoredTopic } from '@/lib/recommendations/topicRanker';
 import { randomUUID } from 'crypto';
 import { logger } from '@/lib/logger';
+import {
+  isRecTraceEnabled,
+  persistRecTrace,
+  type RecommendationTrace,
+  type RuleEntry,
+} from './recommendationTrace';
 
 // In-memory recent decision store used to detect possible engine loops in dev.
 // Maps studentId -> array of serialized decisions (`ruleId:topicId`), capped at 5.
@@ -530,6 +541,10 @@ async function p4_inactiveReturn(rows: ProgressRow[]): Promise<NextAction | null
  *   weakSubjectBoost     — flagged weak subject
  *   momentumBoost        — scaled by engagement score
  *
+ * Returns both the recommended NextAction and the full scored list so the
+ * caller can attach the signal breakdown to the RecommendationTrace without
+ * an extra DB round-trip.
+ *
  * @param studentId     - Student being recommended for.
  * @param orderedTopics - Already-fetched curriculum (from getOrderedTopicsForStudent).
  *                        Passed as preloaded to rankTopics to avoid a duplicate fetch.
@@ -537,22 +552,25 @@ async function p4_inactiveReturn(rows: ProgressRow[]): Promise<NextAction | null
 async function p5_scoredTopic(
   studentId: string,
   orderedTopics: OrderedTopic[],
-): Promise<NextAction | null> {
-  if (orderedTopics.length === 0) return null;
+): Promise<{ action: NextAction | null; scoredTopics: ScoredTopic[] }> {
+  if (orderedTopics.length === 0) return { action: null, scoredTopics: [] };
 
   const scored = await rankTopics(studentId, { preloadedOrderedTopics: orderedTopics });
-  if (scored.length === 0) return null;
+  if (scored.length === 0) return { action: null, scoredTopics: scored };
 
   const best = scored[0];
 
   return {
-    topicId: best.topicId,
-    topicName: best.topicName,
-    subject: best.subjectName,
-    chapter: best.chapterName,
-    ruleId: 'next_new_topic',
-    reasonLabel: p5ReasonLabel(best),
-    actionType: p5ActionType(best),
+    action: {
+      topicId: best.topicId,
+      topicName: best.topicName,
+      subject: best.subjectName,
+      chapter: best.chapterName,
+      ruleId: 'next_new_topic',
+      reasonLabel: p5ReasonLabel(best),
+      actionType: p5ActionType(best),
+    },
+    scoredTopics: scored,
   };
 }
 
@@ -615,16 +633,22 @@ export async function getNextAction(
     finalDecision: '',
   };
   const returnTrace = options.returnTrace === true;
+  // Detailed per-rule entries for RecommendationTrace (Phase 6 observability).
+  const ruleEntries: RuleEntry[] = [];
+  // Scored topics from P5 — populated only when TopicRanker runs.
+  let scoredTopicsForTrace: ScoredTopic[] = [];
 
   // ── P0 — Homework blocker (hard gate) ────────────────────────────────────────
   // Fires before any other rule. A PENDING/OVERDUE assignment due within 48 h
   // takes absolute priority — the student must complete it first.
   trace.rulesEvaluated.push('P0');
+  const p0Start = Date.now();
   const p0 = await p0_homeworkBlocker(studentId);
+  ruleEntries.push({ ruleId: 'homework_pending', evaluated: true, matched: p0 !== null, durationMs: Date.now() - p0Start });
   if (p0) {
     trace.matchedRule = 'homework_pending';
     trace.finalDecision = 'homework_pending';
-    return finalise(p0, traceId, studentId, { trace, returnTrace, startMs });
+    return finalise(p0, traceId, studentId, { trace, returnTrace, startMs, ruleEntries });
   }
 
   // ── P1 — Resume session ───────────────────────────────────────────────────────
@@ -632,11 +656,13 @@ export async function getNextAction(
   // When P1 fires, P2–P5 are never evaluated — the student must finish the
   // in-progress session before the engine recommends a new topic.
   trace.rulesEvaluated.push('P1');
+  const p1Start = Date.now();
   const p1 = await p1_resumeSession(studentId);
+  ruleEntries.push({ ruleId: 'resume_session', evaluated: true, matched: p1 !== null, durationMs: Date.now() - p1Start });
   if (p1) {
     trace.matchedRule = 'resume_session';
     trace.finalDecision = 'resume_session';
-    return finalise(p1, traceId, studentId, { trace, returnTrace, startMs });
+    return finalise(p1, traceId, studentId, { trace, returnTrace, startMs, ruleEntries });
   }
 
   // ── CURRICULUM RULES P2–P5 ─────────────────────────────────────────────────
@@ -662,34 +688,44 @@ export async function getNextAction(
 
   // P2 — Weak topic: mastery < 0.4 AND practiceCount > 5 (in-memory filter on progressRows)
   trace.rulesEvaluated.push('P2');
+  const p2Start = Date.now();
   action = await p2_weakTopicUrgent(progressRows);
+  ruleEntries.push({ ruleId: 'weak_topic_urgent', evaluated: true, matched: action !== null, durationMs: Date.now() - p2Start });
   if (action) {
     trace.matchedRule = action.ruleId;
     trace.finalDecision = action.ruleId;
-    return finalise(action, traceId, studentId, { trace, returnTrace, startMs });
+    return finalise(action, traceId, studentId, { trace, returnTrace, startMs, ruleEntries });
   }
 
   // P3 — Spaced revision: dynamic interval per mastery band (in-memory, most overdue wins)
   trace.rulesEvaluated.push('P3');
+  const p3Start = Date.now();
   action = await p3_spacedRevision(progressRows);
+  ruleEntries.push({ ruleId: 'spaced_revision', evaluated: true, matched: action !== null, durationMs: Date.now() - p3Start });
   if (action) {
     trace.matchedRule = action.ruleId;
     trace.finalDecision = action.ruleId;
-    return finalise(action, traceId, studentId, { trace, returnTrace, startMs });
+    return finalise(action, traceId, studentId, { trace, returnTrace, startMs, ruleEntries });
   }
 
   // P4 — Inactive return: no study in 3+ days (in-memory, most recently studied topic)
   trace.rulesEvaluated.push('P4');
+  const p4Start = Date.now();
   action = await p4_inactiveReturn(progressRows);
+  ruleEntries.push({ ruleId: 'inactive_return', evaluated: true, matched: action !== null, durationMs: Date.now() - p4Start });
   if (action) {
     trace.matchedRule = action.ruleId;
     trace.finalDecision = action.ruleId;
-    return finalise(action, traceId, studentId, { trace, returnTrace, startMs });
+    return finalise(action, traceId, studentId, { trace, returnTrace, startMs, ruleEntries });
   }
 
   // P5 — Scored next topic via TopicRanker
   trace.rulesEvaluated.push('P5');
-  action = (await p5_scoredTopic(studentId, orderedTopics)) ?? null;
+  const p5Start = Date.now();
+  const p5Result = await p5_scoredTopic(studentId, orderedTopics);
+  action = p5Result.action;
+  scoredTopicsForTrace = p5Result.scoredTopics;
+  ruleEntries.push({ ruleId: 'next_new_topic', evaluated: true, matched: action !== null, durationMs: Date.now() - p5Start });
 
   // Fallback: if the student has a curriculum but all topics are attempted,
   // return a stable revision action so the UI can render a friendly CTA.
@@ -705,6 +741,7 @@ export async function getNextAction(
       actionType: 'revision',
       estimatedTimeMin: 20,
     };
+    ruleEntries.push({ ruleId: 'all_topics_complete', evaluated: true, matched: true, durationMs: 0 });
   }
   trace.matchedRule = action.ruleId;
   trace.finalDecision = action.ruleId;
@@ -713,6 +750,8 @@ export async function getNextAction(
     trace,
     returnTrace,
     startMs,
+    ruleEntries,
+    scoredTopics: scoredTopicsForTrace,
   });
 }
 
@@ -722,6 +761,10 @@ interface FinaliseOptions {
   trace?: NextActionTrace;
   returnTrace?: boolean;
   startMs?: number;
+  /** Per-rule timing entries for Phase 6 RecommendationTrace observability. */
+  ruleEntries?: RuleEntry[];
+  /** Full ranked-topic list from P5 (TopicRanker); absent when P0–P4 short-circuited. */
+  scoredTopics?: ScoredTopic[];
 }
 
 /**
@@ -771,6 +814,30 @@ function finalise(
     }
   } catch (err) {
     logger.warn('engine.loop_detection_failed', { traceId, studentId, error: String(err) });
+  }
+
+  // ── Phase 6: RecommendationTrace — fire-and-forget Redis write ───────────────
+  // Gated by ENABLE_REC_TRACE=1. Never awaited — must not block the response.
+  if (isRecTraceEnabled() && opts?.ruleEntries) {
+    const recTrace: RecommendationTrace = {
+      traceId,
+      studentId,
+      evaluatedAt: new Date(),
+      rules: opts.ruleEntries,
+      finalDecision: action,
+      ...(opts.scoredTopics && opts.scoredTopics.length > 0
+        ? {
+            topicScoringBreakdown: opts.scoredTopics.map((t) => ({
+              topicId: t.topicId,
+              topicName: t.topicName,
+              totalScore: t.score,
+              signals: t.signals,
+            })),
+          }
+        : {}),
+    };
+    // void = intentional fire-and-forget; errors logged inside persistRecTrace.
+    void persistRecTrace(recTrace);
   }
 
   if (opts?.returnTrace && opts.trace) {
