@@ -1,45 +1,74 @@
 /**
  * FILE OBJECTIVE:
- * - Route entry point for the Spinzy 6-phase learning session.
- * - Accepts topicId param and optional reasonLabel/estimatedTimeMin search params
- *   (passed by TodaysLearningCard from the recommendation engine).
- * - Renders SessionContainer which owns the full session lifecycle.
+ * - Unified entry point for /session/[id] URLs.
+ * - Accepts either a topicId (canonical) or a legacy sessionId.
+ *   If the param resolves to a StructuredSession, redirects permanently
+ *   to /session/[topicId] (the canonical form). Otherwise renders the
+ *   session for the given topicId directly.
  *
- * URL shape:
- *   /session/[topicId]
- *   /session/[topicId]?reason=It+has+been+9+days&time=8
+ * ARCHITECTURE:
+ * - Server component — resolves the param before any client JS runs.
+ * - Passes topicId, reasonLabel, estimatedTimeMin as props to SessionContainer
+ *   (a "use client" component) rather than using useParams/useSearchParams.
+ * - This replaces both the legacy [sessionId] redirect page and the
+ *   [topicId] client-only page, eliminating the ambiguous-route conflict.
+ *
+ * URL shapes:
+ *   /session/[topicId]                      — canonical
+ *   /session/[topicId]?reason=...&time=8    — with recommendation context
+ *   /session/[sessionId]                    — legacy: redirects to canonical
  *
  * EDIT LOG:
  * - 2026-03-08 | claude | created for Session Container Architecture
+ * - 2026-03-08 | claude | merged legacy [sessionId] redirect into unified page
+ *                          to resolve ambiguous-route build error
  */
 
-'use client';
-
-import React from 'react';
-import { useParams, useSearchParams } from 'next/navigation';
+import { redirect } from 'next/navigation';
+import { prisma } from '@/lib/prisma';
+import { getServerSessionForHandlers } from '@/lib/session';
 import { SessionContainer } from '@/components/session/SessionContainer';
 
-export default function SessionPage() {
-  const params = useParams();
-  const searchParams = useSearchParams();
+interface Props {
+  params: Promise<{ topicId: string }>;
+  searchParams: Promise<{ reason?: string; time?: string }>;
+}
 
-  const topicId = Array.isArray(params.topicId) ? params.topicId[0] : (params.topicId ?? '');
-  const reasonLabel = searchParams.get('reason');
-  const estimatedTimeMin = searchParams.get('time')
-    ? Number(searchParams.get('time'))
-    : undefined;
+export default async function SessionPage({ params, searchParams }: Props) {
+  const { topicId: id } = await params;
+  const { reason, time } = await searchParams;
 
-  if (!topicId) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <p className="text-sm text-muted-foreground">No topic specified.</p>
-      </div>
-    );
+  // ── Legacy sessionId redirect ─────────────────────────────────────────────
+  //
+  // If the id matches a StructuredSession, this is an old-style URL.
+  // Redirect permanently to the canonical /session/[topicId] form.
+  // Auth guard is applied first so unauthenticated users go to sign-in,
+  // not to a DB lookup.
+  const auth = await getServerSessionForHandlers();
+  if (!auth?.user?.id) {
+    redirect(`/auth/signin?callbackUrl=/session/${id}`);
   }
+
+  const session = await prisma.structuredSession.findUnique({
+    where: { id },
+    select: { topicId: true },
+  });
+
+  if (session) {
+    // Legacy sessionId — redirect to the canonical topicId URL
+    redirect(`/session/${session.topicId}`);
+  }
+
+  // ── Canonical topicId path ────────────────────────────────────────────────
+  //
+  // id is a topicId. Pass it directly to SessionContainer as a prop
+  // (no useParams/useSearchParams needed in the client component).
+  const reasonLabel = reason ?? null;
+  const estimatedTimeMin = time ? Number(time) : undefined;
 
   return (
     <SessionContainer
-      topicId={topicId}
+      topicId={id}
       reasonLabel={reasonLabel}
       estimatedTimeMin={estimatedTimeMin}
     />
