@@ -10,17 +10,18 @@
 import React from 'react';
 import { useRouter } from 'next/navigation';
 import type { HomeworkContent } from '@/lib/session/getPhaseContent';
-import { PHASE_UI_CONFIG } from '@/lib/session/phaseConfig';
 
 interface HomeworkPhaseProps {
   content: HomeworkContent;
-  onNext: () => void;
+  onReadyToProceed?: (ready: boolean) => void;
   loading?: boolean;
 }
 
-export function HomeworkPhase({ content, onNext, loading }: HomeworkPhaseProps) {
+export function HomeworkPhase({ content, onReadyToProceed, loading: _loading }: HomeworkPhaseProps) {
   const router = useRouter();
-  const config = PHASE_UI_CONFIG.HOMEWORK;
+  React.useEffect(() => {
+    onReadyToProceed?.(true);
+  }, [onReadyToProceed]);
   const isAlreadyDone = content.status === 'SUBMITTED';
   const questions = Array.isArray(content.questions) ? content.questions : [];
   const questionCount = questions.length || 5;
@@ -72,38 +73,15 @@ export function HomeworkPhase({ content, onNext, loading }: HomeworkPhaseProps) 
         </p>
       </div>
 
-      {!isAlreadyDone ? (
-        <div className="space-y-3">
-          <button
-            onClick={() => router.push(`/tests?homework=${content.assignmentId}`)}
-            className="w-full py-4 px-6 bg-primary hover:bg-primary/90 text-primary-foreground font-semibold rounded-xl transition-colors flex items-center justify-center gap-2 shadow-lg shadow-primary/20"
-          >
-            Start Homework Now
-          </button>
-          <button
-            onClick={onNext}
-            disabled={loading}
-            className="w-full py-3 px-6 bg-muted hover:bg-muted/80 text-muted-foreground font-medium rounded-xl transition-colors text-sm"
-          >
-            {loading ? <span className="animate-spin">⏳</span> : 'Complete Later'}
-          </button>
-        </div>
-      ) : (
+      {!isAlreadyDone && (
         <button
-          onClick={onNext}
-          disabled={loading}
-          className="w-full py-4 px-6 bg-primary hover:bg-primary/90 disabled:opacity-60 text-primary-foreground font-semibold rounded-xl transition-colors flex items-center justify-center gap-2 shadow-lg shadow-primary/20"
+          onClick={() => router.push(`/tests?homework=${content.assignmentId}`)}
+          className="w-full py-4 px-6 bg-muted hover:bg-muted/80 text-foreground font-semibold rounded-xl transition-colors flex items-center justify-center gap-2 border border-border"
         >
-          {loading ? <span className="animate-spin">⏳</span> : (
-            <>
-              <span>{config.ctaLabel}</span>
-              <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M5 12h14M12 5l7 7-7 7" />
-              </svg>
-            </>
-          )}
+          Start Homework Now
         </button>
       )}
+      {/* Primary CTA (Finish Session) is in SessionFooter */}
     </div>
   );
 }
