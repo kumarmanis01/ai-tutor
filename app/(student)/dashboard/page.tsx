@@ -37,6 +37,7 @@ import HomeworkPendingCard from '@/components/home/HomeworkPendingCard';
 import WeakTopicsSection from '@/components/home/WeakTopicsSection';
 import UpcomingTopicsList from '@/components/home/UpcomingTopicsList';
 import NudgeBanner from '@/components/home/NudgeBanner';
+import { EngagementSection } from '@/components/home/EngagementSection';
 
 export const dynamic = 'force-dynamic';
 
@@ -247,6 +248,9 @@ export default async function StudentHomeDashboardPage() {
   // ── Render ──────────────────────────────────────────────────────────────
   return (
     <main className="max-w-2xl mx-auto px-4 py-6 space-y-5">
+
+      {/* 0. Daily Learning Habit — today's goal (primary CTA), streak, weekly calendar */}
+      <EngagementSection nextTopicId={recommendation?.topicId ?? null} />
 
       {/* 1. Primary Action — single hero CTA, always visible */}
       <PrimaryActionCard
