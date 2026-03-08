@@ -16,28 +16,18 @@ import type { SubmitActionResult } from '@/lib/session/sessionActions';
 import { normaliseChoices } from '@/lib/session/sessionUtils';
 import { scoreBgColour } from '@/lib/session/sessionUtils';
 import { TutorTipPanel } from '@/components/session/TutorTipPanel';
-import { PHASE_UI_CONFIG } from '@/lib/session/phaseConfig';
 
 interface PracticePhaseProps {
   content: PracticeContent;
   topicName?: string;
   onSubmit: (answers: { questionId: string; answer: string }[]) => Promise<SubmitActionResult | null>;
-  onNext: () => void;
+  onReadyToProceed: (ready: boolean) => void;
   submitting?: boolean;
 }
 
 // ─── Results screen ───────────────────────────────────────────────────────────
 
-function ResultsScreen({
-  result,
-  onNext,
-  loading,
-}: {
-  result: SubmitActionResult;
-  onNext: () => void;
-  loading?: boolean;
-}) {
-  const config = PHASE_UI_CONFIG.PRACTICE;
+function ResultsScreen({ result }: { result: SubmitActionResult }) {
   const pct = result.percentage;
 
   return (
@@ -85,51 +75,51 @@ function ResultsScreen({
         ))}
       </div>
 
-      <div className="pt-2 border-t border-border/50">
-        <p className="text-xs text-muted-foreground mb-3">{config.completionNote}</p>
-        <button
-          onClick={onNext}
-          disabled={loading}
-          className="w-full py-4 px-6 bg-primary hover:bg-primary/90 disabled:opacity-60 text-primary-foreground font-semibold rounded-xl transition-colors flex items-center justify-center gap-2 shadow-lg shadow-primary/20"
-        >
-          {loading ? <span className="animate-spin">⏳</span> : (
-            <>
-              <span>{config.ctaLabel}</span>
-              <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M5 12h14M12 5l7 7-7 7" />
-              </svg>
-            </>
-          )}
-        </button>
-      </div>
+      {/* Primary CTA (Continue) is in SessionFooter */}
     </div>
   );
 }
 
 // ─── Main ─────────────────────────────────────────────────────────────────────
 
-export function PracticePhase({ content, topicName, onSubmit, onNext, submitting }: PracticePhaseProps) {
+const FEEDBACK_CORRECT = 'Great job!';
+const FEEDBACK_INCORRECT = 'Almost there — try again.';
+
+export function PracticePhase({ content, topicName: _topicName, onSubmit, onReadyToProceed, submitting: _submitting }: PracticePhaseProps) {
   const questions = content.questions;
   const [currentIndex, setCurrentIndex] = useState(0);
   const [answers, setAnswers] = useState<{ questionId: string; answer: string }[]>([]);
   const [result, setResult] = useState<SubmitActionResult | null>(null);
+  const [feedback, setFeedback] = useState<'correct' | 'incorrect' | null>(null);
+
+  React.useEffect(() => {
+    onReadyToProceed(!!result);
+  }, [result, onReadyToProceed]);
 
   const handleAnswer = useCallback(
     async (questionId: string, answer: string) => {
+      const question = questions[currentIndex];
+      const correctAnswer = (question as { correctAnswer?: string }).correctAnswer;
+      const isCorrect = correctAnswer !== undefined && correctAnswer === answer;
+      setFeedback(isCorrect ? 'correct' : 'incorrect');
+
       const newAnswers = [...answers, { questionId, answer }];
       setAnswers(newAnswers);
       if (currentIndex < questions.length - 1) {
-        setTimeout(() => setCurrentIndex((i) => i + 1), 500);
+        setTimeout(() => {
+          setFeedback(null);
+          setCurrentIndex((i) => i + 1);
+        }, 500);
       } else {
         const res = await onSubmit(newAnswers);
         if (res) setResult(res);
       }
     },
-    [answers, currentIndex, questions.length, onSubmit],
+    [answers, currentIndex, onSubmit, questions],
   );
 
   if (result) {
-    return <ResultsScreen result={result} onNext={onNext} loading={submitting} />;
+    return <ResultsScreen result={result} />;
   }
 
   if (questions.length === 0) {
@@ -145,9 +135,13 @@ export function PracticePhase({ content, topicName, onSubmit, onNext, submitting
   const selected = null; // selection state lives in handleAnswer flow
 
   return (
-    <div>
-      <TutorTipPanel phase="PRACTICE" topicName={topicName} />
-      <div className="max-w-2xl mx-auto px-4 pb-6">
+    <div className="grid grid-cols-1 md:grid-cols-[1fr,minmax(240px,280px)] gap-6 lg:gap-8 max-w-5xl mx-auto px-4 pb-6">
+      <main className="min-w-0">
+        <h1 className="text-2xl font-bold text-foreground mb-1">Practice Time</h1>
+        <p className="text-muted-foreground text-sm mb-6">
+          Let&apos;s solve a few questions together.
+        </p>
+
         <div className="flex items-center justify-between mb-4">
           <span className="text-sm font-medium text-muted-foreground">
             Question {currentIndex + 1} of {questions.length}
@@ -200,7 +194,22 @@ export function PracticePhase({ content, topicName, onSubmit, onNext, submitting
             className="w-full px-4 py-3 border border-border rounded-xl text-sm bg-background focus:outline-none focus:ring-2 focus:ring-primary/30"
           />
         )}
-      </div>
+
+        {feedback !== null && (
+          <p
+            className={`mt-4 py-3 px-4 rounded-xl text-sm font-medium ${
+              feedback === 'correct'
+                ? 'bg-green-500/10 text-green-700 dark:text-green-400 border border-green-500/20'
+                : 'bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/20'
+            }`}
+          >
+            {feedback === 'correct' ? FEEDBACK_CORRECT : FEEDBACK_INCORRECT}
+          </p>
+        )}
+      </main>
+      <aside className="order-first md:order-none md:sticky md:top-24 self-start">
+        <TutorTipPanel tipText="Don't worry if you make mistakes. Practice helps learning." />
+      </aside>
     </div>
   );
 }

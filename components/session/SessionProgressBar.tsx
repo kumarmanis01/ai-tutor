@@ -1,16 +1,16 @@
 'use client';
 /**
  * FILE OBJECTIVE:
- * - Segmented phase progress bar extracted from SessionHeader.
- * - "Step 3 of 5 — Practice" with filled/active/empty segments.
- * - Separated per architecture spec so SessionHeader stays thin.
+ * - Displays the 5 learning steps with clear completed / current / upcoming states.
+ * - Derives state from currentPhase and PHASE_ORDER; UI-only, no session logic changes.
  *
  * EDIT LOG:
  * - 2026-03-08 | claude | extracted from components/Session/SessionHeader.tsx
+ * - (date) | UX      | step list: ✔ completed, ● current, ○ upcoming
  */
 
 import React from 'react';
-import { PHASE_UI_CONFIG } from '@/lib/session/phaseConfig';
+import { PHASE_ORDER, PHASE_UI_CONFIG } from '@/lib/session/phaseConfig';
 import type { SessionPhaseClient } from '@/lib/session/phaseConfig';
 
 interface SessionProgressBarProps {
@@ -26,32 +26,42 @@ export function SessionProgressBar({
 }: SessionProgressBarProps) {
   if (currentPhase === 'COMPLETE' || currentPhase === 'EXPIRED') return null;
 
-  const config = PHASE_UI_CONFIG[currentPhase];
-  const stepLabel = `Step ${phaseIndex + 1} of ${totalPhases}`;
+  const steps = PHASE_ORDER.slice(0, totalPhases);
 
   return (
-    <div>
-      <div className="flex items-center justify-between mb-1.5">
-        <div className="flex items-center gap-1.5">
-          <span className="text-base">{config.icon}</span>
-          <span className="font-semibold text-sm text-foreground">{config.label}</span>
-        </div>
-        <span className="text-xs text-muted-foreground">{stepLabel}</span>
-      </div>
-      <div className="flex gap-1">
-        {Array.from({ length: totalPhases }).map((_, i) => (
-          <div
-            key={i}
-            className={`h-1.5 flex-1 rounded-full transition-all duration-300 ${
-              i < phaseIndex
-                ? 'bg-primary'
-                : i === phaseIndex
-                  ? 'bg-primary/60'
-                  : 'bg-muted'
-            }`}
-          />
-        ))}
-      </div>
+    <div className="space-y-1">
+      <p className="text-xs text-muted-foreground mb-2">
+        Step {phaseIndex + 1} of {totalPhases}
+      </p>
+      <ul className="flex flex-col gap-1.5" aria-label="Session progress">
+        {steps.map((phase, i) => {
+          const config = PHASE_UI_CONFIG[phase];
+          const isCompleted = i < phaseIndex;
+          const isCurrent = i === phaseIndex;
+          const isUpcoming = i > phaseIndex;
+
+          return (
+            <li
+              key={phase}
+              className={`flex items-center gap-2.5 text-sm ${
+                isCurrent
+                  ? 'text-foreground font-semibold'
+                  : isCompleted
+                    ? 'text-muted-foreground'
+                    : 'text-muted-foreground/70'
+              }`}
+              aria-current={isCurrent ? 'step' : undefined}
+            >
+              <span className="flex-shrink-0 w-5 text-center" aria-hidden>
+                {isCompleted && <span className="text-green-600">✔</span>}
+                {isCurrent && <span className="text-primary">●</span>}
+                {isUpcoming && <span className="text-muted-foreground/50">○</span>}
+              </span>
+              <span>{config.label}</span>
+            </li>
+          );
+        })}
+      </ul>
     </div>
   );
 }
