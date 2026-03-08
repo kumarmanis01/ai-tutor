@@ -232,6 +232,16 @@ function lookupSpacedInterval(mastery: number): number | null {
   return null; // mastery < 0.40 → P2 domain
 }
 
+/**
+ * Returns the number of elapsed whole calendar days between two Unix timestamps,
+ * normalized to UTC midnight. Prevents a topic studied at 23:50 from counting as
+ * "1 day ago" just 10 minutes later — spaced repetition intervals advance at day
+ * boundaries, not at the exact millisecond the student last studied.
+ */
+function floorDays(ms: number): number {
+  return Math.floor(ms / (1000 * 60 * 60 * 24));
+}
+
 // ─── Priority sub-functions ───────────────────────────────────────────────────
 
 /**
@@ -438,7 +448,7 @@ async function p2_weakTopicUrgent(rows: ProgressRow[]): Promise<NextAction | nul
  * reasonLabel includes the exact days elapsed for student context.
  */
 async function p3_spacedRevision(rows: ProgressRow[]): Promise<NextAction | null> {
-  const now = Date.now();
+  const todayOrdinal = floorDays(Date.now());
 
   type Candidate = ProgressRow & { daysSince: number; overdueDays: number };
   const candidates: Candidate[] = [];
@@ -446,7 +456,9 @@ async function p3_spacedRevision(rows: ProgressRow[]): Promise<NextAction | null
   for (const row of rows) {
     const intervalDays = lookupSpacedInterval(row.mastery);
     if (intervalDays === null) continue; // mastery < 0.40 — P2's domain
-    const daysSince = (now - row.lastStudiedAt.getTime()) / (1000 * 60 * 60 * 24);
+    // Normalize to calendar days so a student who studied at 23:50 isn't shown
+    // as "1 day ago" 10 minutes later — intervals advance at day boundaries.
+    const daysSince = todayOrdinal - floorDays(row.lastStudiedAt.getTime());
     if (daysSince < intervalDays) continue; // not yet overdue
     candidates.push({ ...row, daysSince, overdueDays: daysSince - intervalDays });
   }
@@ -455,7 +467,7 @@ async function p3_spacedRevision(rows: ProgressRow[]): Promise<NextAction | null
 
   // Most overdue first (largest overdueDays = studied longest ago relative to its interval)
   const best = candidates.reduce((max, c) => (c.overdueDays > max.overdueDays ? c : max));
-  const days = Math.round(best.daysSince);
+  const days = best.daysSince; // already a whole number (calendar-day ordinal diff)
 
   const enriched = await enrichTopic(best.topicId, { topicName: null, subject: null, chapter: null });
   return {

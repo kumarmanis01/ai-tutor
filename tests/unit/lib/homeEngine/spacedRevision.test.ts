@@ -306,4 +306,50 @@ describe('getNextAction — P3 spaced_revision dynamic intervals', () => {
     expect(prisma.studentTopicProgress.findMany).not.toHaveBeenCalled();
   });
 
+  // ── P1 (resume_session) always wins over P3 ──────────────────────────────────
+
+  it('P1 resume_session takes priority over P3 spaced_revision even when a topic is overdue', async () => {
+    // An in-progress structured session that P1 will resume
+    (prisma.structuredSession.findFirst as jest.Mock).mockResolvedValue({
+      id: 'ss-active',
+      topicId: 'topic-001',
+      state: 'PRACTICE',
+      topic: {
+        name: 'Fractions',
+        chapter: { name: 'Algebra', subject: { name: 'Mathematics' } },
+      },
+    });
+
+    // The same topic is also massively overdue for spaced revision
+    (prisma.studentTopicProgress.findMany as jest.Mock).mockResolvedValue([
+      { topicId: 'topic-001', mastery: 0.65, practiceCount: 6, lastStudiedAt: daysAgo(30) },
+    ]);
+
+    const result = unwrap(await getNextAction(STUDENT_ID));
+
+    // P1 must fire — P3 must never be reached
+    expect(result?.ruleId).toBe('resume_session');
+    expect(result?.ruleId).not.toBe('spaced_revision');
+  });
+
+  // ── Calendar-day normalization ────────────────────────────────────────────────
+
+  it('counts daysSince in whole calendar days, not elapsed milliseconds', async () => {
+    // Studied at 23:50 last night — raw ms diff ≈ 0.01 days, calendar diff = 1 day.
+    // With a 3-day interval (mastery 0.45), neither measurement triggers P3 (1 < 3).
+    // This test confirms the calendar-normalized path does NOT fire prematurely.
+    const studiedAt = new Date();
+    studiedAt.setDate(studiedAt.getDate() - 1);   // yesterday
+    studiedAt.setHours(23, 50, 0, 0);             // at 23:50
+
+    (prisma.studentTopicProgress.findMany as jest.Mock).mockResolvedValue([
+      { topicId: 'topic-001', mastery: 0.45, practiceCount: 3, lastStudiedAt: studiedAt },
+    ]);
+
+    const result = unwrap(await getNextAction(STUDENT_ID));
+
+    // 1 calendar day < 3-day interval → must not fire
+    expect(result?.ruleId).not.toBe('spaced_revision');
+  });
+
 });
