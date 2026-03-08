@@ -13,6 +13,8 @@
  *
  * EDIT LOG:
  * - 2026-03-08 | claude | Phase 6: created for Spinzy recommendation observability
+ * - 2026-03-08 | claude | added TRACE_SAMPLE_RATE (default 5%) to prevent Redis
+ *                          overload when ENABLE_REC_TRACE is left on in production
  */
 
 import type { NextAction } from './getNextAction';
@@ -70,7 +72,7 @@ export interface RecommendationTrace {
   finalDecision: NextAction;
 }
 
-// ─── Feature flag ─────────────────────────────────────────────────────────────
+// ─── Feature flag & sampling ──────────────────────────────────────────────────
 
 /**
  * Trace is opt-in: set ENABLE_REC_TRACE=1 in the environment.
@@ -79,6 +81,24 @@ export interface RecommendationTrace {
 export function isRecTraceEnabled(): boolean {
   return process.env.ENABLE_REC_TRACE === '1';
 }
+
+/**
+ * Fraction of qualifying requests that actually write a trace to Redis.
+ * Prevents Redis overload when ENABLE_REC_TRACE is accidentally left on
+ * in a high-traffic production environment.
+ *
+ * Default: 0.05 (5 % of requests).
+ * Override: set TRACE_SAMPLE_RATE=0.1 (or any value in [0, 1]) in the environment.
+ *
+ * Set to 1.0 to trace every request (fine for dev / short debugging sessions).
+ */
+export const TRACE_SAMPLE_RATE: number = (() => {
+  const raw = process.env.TRACE_SAMPLE_RATE;
+  if (raw === undefined) return 0.05;
+  const parsed = parseFloat(raw);
+  // Clamp to [0, 1] so a mis-set value never breaks the guard.
+  return Number.isFinite(parsed) ? Math.min(1, Math.max(0, parsed)) : 0.05;
+})();
 
 // ─── Redis constants ──────────────────────────────────────────────────────────
 

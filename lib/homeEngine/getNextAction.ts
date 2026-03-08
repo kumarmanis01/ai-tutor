@@ -62,9 +62,26 @@ import { logger } from '@/lib/logger';
 import {
   isRecTraceEnabled,
   persistRecTrace,
+  TRACE_SAMPLE_RATE,
   type RecommendationTrace,
   type RuleEntry,
 } from './recommendationTrace';
+
+/**
+ * Canonical ordered sequence of every rule ruleId in the P0→P6 ladder.
+ * Used by finalise() to pad un-evaluated rules with { evaluated: false }
+ * so the full ladder is always visible in a RecommendationTrace, making
+ * short-circuit behaviour explicit rather than implicit.
+ */
+const ALL_RULE_IDS: string[] = [
+  'homework_pending',   // P0
+  'resume_session',     // P1
+  'weak_topic_urgent',  // P2
+  'spaced_revision',    // P3
+  'inactive_return',    // P4
+  'next_new_topic',     // P5
+  'all_topics_complete',// P6 fallback
+];
 
 // In-memory recent decision store used to detect possible engine loops in dev.
 // Maps studentId -> array of serialized decisions (`ruleId:topicId`), capped at 5.
@@ -817,13 +834,30 @@ function finalise(
   }
 
   // ── Phase 6: RecommendationTrace — fire-and-forget Redis write ───────────────
-  // Gated by ENABLE_REC_TRACE=1. Never awaited — must not block the response.
-  if (isRecTraceEnabled() && opts?.ruleEntries) {
+  // Gated by ENABLE_REC_TRACE=1 AND a sampling roll (default 5 %).
+  // Never awaited — must not block the response.
+  if (isRecTraceEnabled() && opts?.ruleEntries && Math.random() < TRACE_SAMPLE_RATE) {
+    // Pad un-evaluated rules with { evaluated: false } so the full P0–P6 ladder
+    // is always visible in the trace, making short-circuit behaviour explicit.
+    const evaluatedIds = new Set(opts.ruleEntries.map((r) => r.ruleId));
+    const fullRules: RuleEntry[] = ALL_RULE_IDS.map((ruleId) => {
+      const existing = opts.ruleEntries!.find((r) => r.ruleId === ruleId);
+      if (existing) return existing;
+      // Rule was not reached — short-circuited by an earlier match.
+      return { ruleId, evaluated: false, matched: false, durationMs: 0 };
+    });
+    // Append any entries whose ruleId isn't in ALL_RULE_IDS (forward compat).
+    for (const entry of opts.ruleEntries) {
+      if (!evaluatedIds.has(entry.ruleId) || !ALL_RULE_IDS.includes(entry.ruleId)) {
+        fullRules.push(entry);
+      }
+    }
+
     const recTrace: RecommendationTrace = {
       traceId,
       studentId,
       evaluatedAt: new Date(),
-      rules: opts.ruleEntries,
+      rules: fullRules,
       finalDecision: action,
       ...(opts.scoredTopics && opts.scoredTopics.length > 0
         ? {
