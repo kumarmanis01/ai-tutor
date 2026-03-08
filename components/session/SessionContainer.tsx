@@ -19,7 +19,7 @@
  *                          (was components/Session/SessionContainer.tsx)
  */
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef, useCallback } from 'react';
 import { useSession } from '@/hooks/session/useSession';
 import { phaseRouter } from '@/lib/session/phaseRouter';
 import { SessionLayout } from './SessionLayout';
@@ -32,6 +32,16 @@ import type {
   HomeworkContent,
 } from '@/lib/session/getPhaseContent';
 import type { SessionPhaseClient } from '@/lib/session/phaseConfig';
+
+const FOOTER_LABELS: Record<SessionPhaseClient, string> = {
+  OVERVIEW: 'Start Learning',
+  EXPLANATION: 'Start Practice',
+  PRACTICE: 'Continue',
+  TEST: 'Submit Test',
+  HOMEWORK: 'Finish Session',
+  COMPLETE: 'Next',
+  EXPIRED: 'Next',
+};
 
 interface SessionContainerProps {
   topicId: string;
@@ -46,9 +56,43 @@ export function SessionContainer({ topicId, reasonLabel, estimatedTimeMin }: Ses
     startSession, advancePhase, submitPractice, submitTest,
   } = useSession();
 
+  const [phaseReadyToProceed, setPhaseReadyToProceed] = React.useState(false);
+  const [testAllAnswered, setTestAllAnswered] = React.useState(false);
+  const [testResultSet, setTestResultSet] = React.useState(false);
+  const testSubmitHandlerRef = useRef<(() => Promise<void>) | null>(null);
+
   useEffect(() => {
     startSession(topicId);
   }, [topicId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const currentPhaseKey = session?.currentPhase as SessionPhaseClient | undefined;
+  useEffect(() => {
+    if (currentPhaseKey == null) return;
+    setPhaseReadyToProceed(false);
+    setTestAllAnswered(false);
+    setTestResultSet(false);
+    testSubmitHandlerRef.current = null;
+    if (currentPhaseKey === 'OVERVIEW' || currentPhaseKey === 'EXPLANATION' || currentPhaseKey === 'HOMEWORK') {
+      setPhaseReadyToProceed(true);
+    }
+  }, [currentPhaseKey]);
+
+  const onReadyToProceed = useCallback((ready: boolean) => setPhaseReadyToProceed(ready), []);
+  const onTestStateChange = useCallback((allAnswered: boolean, resultSet: boolean) => {
+    setTestAllAnswered(allAnswered);
+    setTestResultSet(resultSet);
+  }, []);
+  const onRegisterTestSubmit = useCallback((handler: (() => Promise<void>) | null) => {
+    testSubmitHandlerRef.current = handler;
+  }, []);
+  const handleFooterCTA = useCallback(async () => {
+    const phase = session?.currentPhase as SessionPhaseClient | undefined;
+    if (phase === 'TEST' && !testResultSet && testSubmitHandlerRef.current) {
+      await testSubmitHandlerRef.current();
+      return;
+    }
+    advancePhase();
+  }, [session?.currentPhase, testResultSet, advancePhase]);
 
   // ── Loading ───────────────────────────────────────────────────────────────
   if (loading || (!session && !error)) {
@@ -133,15 +177,26 @@ export function SessionContainer({ topicId, reasonLabel, estimatedTimeMin }: Ses
 
   if (!PhaseComponent) return null;
 
-  // Build phase-specific props (content narrowing + callbacks)
   const phaseProps = buildPhaseProps(
     currentPhase, content, session.topicName,
     reasonLabel, estimatedTimeMin,
     advancePhase, submitPractice, submitTest, submitting,
+    onReadyToProceed, onTestStateChange, onRegisterTestSubmit,
   );
 
+  const footerLabel = currentPhase === 'TEST' && testResultSet ? 'Continue' : FOOTER_LABELS[currentPhase];
+  const footerDisabled = currentPhase === 'TEST' && !testResultSet ? !testAllAnswered : !phaseReadyToProceed;
+
+  const footer = {
+    nextLabel: footerLabel,
+    onNext: handleFooterCTA,
+    nextDisabled: footerDisabled,
+    loading: submitting,
+    showPrevious: false,
+  };
+
   return (
-    <SessionLayout session={session} phase={phase}>
+    <SessionLayout session={session} phase={phase} footer={footer}>
       <PhaseComponent {...phaseProps} />
     </SessionLayout>
   );
@@ -149,6 +204,7 @@ export function SessionContainer({ topicId, reasonLabel, estimatedTimeMin }: Ses
 
 // ─── Props builder ─────────────────────────────────────────────────────────
 // Keeps the render function clean; each phase gets exactly the props it needs.
+// Phases signal readiness via onReadyToProceed; footer in SessionLayout handles the CTA.
 
 function buildPhaseProps(
   phase: SessionPhaseClient,
@@ -160,33 +216,36 @@ function buildPhaseProps(
   submitPractice: (a: { questionId: string; answer: string }[]) => Promise<import('@/lib/session/sessionActions').SubmitActionResult | null>,
   submitTest: (a: { questionId: string; answer: string }[]) => Promise<import('@/lib/session/sessionActions').SubmitActionResult | null>,
   submitting: boolean,
+  onReadyToProceed: (ready: boolean) => void,
+  onTestStateChange: (allAnswered: boolean, resultSet: boolean) => void,
+  onRegisterTestSubmit: (handler: (() => Promise<void>) | null) => void,
 ): Record<string, unknown> {
   switch (phase) {
     case 'OVERVIEW':
       return {
         content: content as OverviewContent,
         reasonLabel, estimatedTimeMin,
-        onStart: advancePhase, loading: submitting,
+        onReadyToProceed, loading: submitting,
       };
     case 'EXPLANATION':
       return {
         content: content as ExplanationContent,
-        topicName, onNext: advancePhase, loading: submitting,
+        topicName, onReadyToProceed, loading: submitting,
       };
     case 'PRACTICE':
       return {
         content: content as PracticeContent,
-        topicName, onSubmit: submitPractice, onNext: advancePhase, submitting,
+        topicName, onSubmit: submitPractice, onReadyToProceed, submitting,
       };
     case 'TEST':
       return {
         content: content as TestContent,
-        topicName, onSubmit: submitTest, onNext: advancePhase, submitting,
+        topicName, onSubmit: submitTest, onReadyToProceed, onTestStateChange, onRegisterTestSubmit, submitting,
       };
     case 'HOMEWORK':
       return {
         content: content as HomeworkContent,
-        onNext: advancePhase, loading: submitting,
+        onReadyToProceed, loading: submitting,
       };
     default:
       return {};

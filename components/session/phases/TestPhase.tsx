@@ -15,22 +15,18 @@ import type { SubmitActionResult } from '@/lib/session/sessionActions';
 import { normaliseChoices, scoreBgColour } from '@/lib/session/sessionUtils';
 import { useTestQuestions } from '@/hooks/session/useTestQuestions';
 import { TutorTipPanel } from '@/components/session/TutorTipPanel';
-import { PHASE_UI_CONFIG } from '@/lib/session/phaseConfig';
 
 interface TestPhaseProps {
   content: TestContent;
   topicName?: string;
   onSubmit: (answers: { questionId: string; answer: string }[]) => Promise<SubmitActionResult | null>;
-  onNext: () => void;
+  onReadyToProceed: (ready: boolean) => void;
+  onTestStateChange: (allAnswered: boolean, resultSet: boolean) => void;
+  onRegisterTestSubmit: (handler: (() => Promise<void>) | null) => void;
   submitting?: boolean;
 }
 
-function TestResults({
-  result,
-  onNext,
-  loading,
-}: { result: SubmitActionResult; onNext: () => void; loading?: boolean }) {
-  const config = PHASE_UI_CONFIG.TEST;
+function TestResults({ result }: { result: SubmitActionResult }) {
   const pct = result.percentage;
 
   return (
@@ -92,41 +88,42 @@ function TestResults({
         ))}
       </div>
 
-      <div className="pt-2 border-t border-border/50">
-        <p className="text-xs text-muted-foreground mb-3">{config.completionNote}</p>
-        <button
-          onClick={onNext}
-          disabled={loading}
-          className="w-full py-4 px-6 bg-primary hover:bg-primary/90 disabled:opacity-60 text-primary-foreground font-semibold rounded-xl transition-colors flex items-center justify-center gap-2 shadow-lg shadow-primary/20"
-        >
-          {loading ? <span className="animate-spin">⏳</span> : (
-            <>
-              <span>{config.ctaLabel}</span>
-              <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M5 12h14M12 5l7 7-7 7" />
-              </svg>
-            </>
-          )}
-        </button>
-      </div>
+      {/* Primary CTA (Continue) is in SessionFooter */}
     </div>
   );
 }
 
-export function TestPhase({ content, topicName, onSubmit, onNext, submitting }: TestPhaseProps) {
+export function TestPhase({
+  content,
+  topicName: _topicName,
+  onSubmit,
+  onReadyToProceed: _onReadyToProceed,
+  onTestStateChange,
+  onRegisterTestSubmit,
+  submitting: _submitting,
+}: TestPhaseProps) {
   const { questions, isEmpty, answers, setAnswer, allAnswered } = useTestQuestions(content);
   const [result, setResult] = useState<SubmitActionResult | null>(null);
-  const [submittingLocal, setSubmittingLocal] = useState(false);
+  const [_submittingLocal, setSubmittingLocal] = useState(false);
 
-  const handleSubmit = async () => {
+  const handleSubmit = React.useCallback(async () => {
     setSubmittingLocal(true);
     const payload = Object.entries(answers).map(([questionId, answer]) => ({ questionId, answer: answer as string }));
     const res = await onSubmit(payload);
     if (res) setResult(res);
     setSubmittingLocal(false);
-  };
+  }, [answers, onSubmit]);
 
-  if (result) return <TestResults result={result} onNext={onNext} loading={submitting} />;
+  React.useEffect(() => {
+    onTestStateChange(allAnswered, !!result);
+  }, [allAnswered, result, onTestStateChange]);
+
+  React.useEffect(() => {
+    onRegisterTestSubmit(handleSubmit);
+    return () => onRegisterTestSubmit(null);
+  }, [handleSubmit, onRegisterTestSubmit]);
+
+  if (result) return <TestResults result={result} />;
 
   if (isEmpty) {
     return (
@@ -139,20 +136,12 @@ export function TestPhase({ content, topicName, onSubmit, onNext, submitting }: 
   const answeredCount = Object.keys(answers).length;
 
   return (
-    <div>
-      <TutorTipPanel phase="TEST" topicName={topicName} />
-      <div className="max-w-2xl mx-auto px-4 pb-6 space-y-6">
-        <div className="bg-amber-500/5 border border-amber-500/20 rounded-xl p-4">
-          <div className="flex items-start gap-3">
-            <span className="text-lg flex-shrink-0">📝</span>
-            <div>
-              <p className="font-semibold text-sm text-foreground mb-1">Quick Test</p>
-              <p className="text-xs text-muted-foreground">
-                {questions.length} questions · Try without hints · Answers shown after submitting
-              </p>
-            </div>
-          </div>
-        </div>
+    <div className="grid grid-cols-1 md:grid-cols-[1fr,minmax(240px,280px)] gap-6 lg:gap-8 max-w-5xl mx-auto px-4 pb-6">
+      <main className="min-w-0 space-y-6">
+        <h1 className="text-2xl font-bold text-foreground">Quick Test</h1>
+        <p className="text-muted-foreground text-sm mb-2">
+          Let&apos;s check what you&apos;ve learned.
+        </p>
 
         <div className="flex items-center justify-between text-sm">
           <span className="text-muted-foreground">{answeredCount} of {questions.length} answered</span>
@@ -170,7 +159,9 @@ export function TestPhase({ content, topicName, onSubmit, onNext, submitting }: 
 
             return (
               <div key={question.id} className="bg-card rounded-xl border p-4">
-                <p className="text-xs text-muted-foreground mb-2">Q{i + 1}</p>
+                <p className="text-sm font-medium text-muted-foreground mb-2">
+                  Question {i + 1} of {questions.length}
+                </p>
                 <p className="text-sm font-medium text-foreground mb-4 leading-relaxed">
                   {question.question}
                 </p>
@@ -207,19 +198,15 @@ export function TestPhase({ content, topicName, onSubmit, onNext, submitting }: 
           })}
         </div>
 
-        <button
-          onClick={handleSubmit}
-          disabled={!allAnswered || submittingLocal}
-          className="w-full py-4 px-6 bg-primary hover:bg-primary/90 disabled:opacity-50 text-primary-foreground font-semibold rounded-xl transition-colors flex items-center justify-center gap-2 shadow-lg shadow-primary/20"
-        >
-          {submittingLocal ? <span className="animate-spin">⏳</span> : 'Submit Test'}
-        </button>
         {!allAnswered && (
-          <p className="text-center text-xs text-muted-foreground">
-            Answer all {questions.length} questions to submit
+          <p className="text-center text-xs text-muted-foreground pt-2">
+            Answer all {questions.length} questions to submit (use the footer button)
           </p>
         )}
-      </div>
+      </main>
+      <aside className="order-first md:order-none md:sticky md:top-24 self-start">
+        <TutorTipPanel tipText="Answer all questions, then submit." />
+      </aside>
     </div>
   );
 }

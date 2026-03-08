@@ -6,6 +6,26 @@ export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const token = await getToken({ req: request, secret: process.env.NEXTAUTH_SECRET });
 
+  // Legacy /session/[sessionId] → redirect to /session/[topicId] (canonical route)
+  const sessionMatch = pathname.match(/^\/session\/([^/]+)$/);
+  if (sessionMatch) {
+    const segment = sessionMatch[1];
+    try {
+      const base = request.nextUrl.origin;
+      const res = await fetch(`${base}/api/session/lookup?id=${encodeURIComponent(segment)}`, {
+        headers: request.headers.get('cookie') ? { cookie: request.headers.get('cookie')! } : {},
+      });
+      if (res.ok) {
+        const body = await res.json();
+        if (body?.topicId && body.topicId !== segment) {
+          return NextResponse.redirect(new URL(`/session/${body.topicId}`, request.url), 307);
+        }
+      }
+    } catch {
+      // On lookup failure, continue so [topicId] page can handle or show error
+    }
+  }
+
   // Centralized API request logging (dev only)
   const isApiRoute = pathname.startsWith('/api/');
   const isDev = process.env.NODE_ENV !== 'production' && process.env.NEXT_PUBLIC_DEBUG_MODE === 'true';
@@ -22,7 +42,7 @@ export async function middleware(request: NextRequest) {
   }
 
   // Centralized protected prefixes
-  const protectedUiPrefixes = ['/dashboard', '/profile', '/rooms', '/parent', '/learn'];
+  const protectedUiPrefixes = ['/dashboard', '/profile', '/rooms', '/parent', '/learn', '/session'];
 
   // Admin route protection (UI and API) - requires role
   if (pathname.startsWith('/admin') || pathname.startsWith('/api/admin')) {
@@ -41,6 +61,9 @@ export async function middleware(request: NextRequest) {
   for (const prefix of protectedUiPrefixes) {
     if (pathname.startsWith(prefix)) {
       if (!token) {
+        if (prefix === '/session') {
+          return NextResponse.redirect(new URL(`/auth/signin?callbackUrl=${encodeURIComponent(pathname)}`, request.url));
+        }
         return NextResponse.redirect(new URL('/', request.url));
       }
 
@@ -56,5 +79,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/api/:path*', '/admin/:path*', '/dashboard/:path*', '/profile/:path*', '/rooms/:path*', '/parent/:path*', '/learn/:path*'],
+  matcher: ['/session/:path*', '/api/:path*', '/admin/:path*', '/dashboard/:path*', '/profile/:path*', '/rooms/:path*', '/parent/:path*', '/learn/:path*'],
 };
