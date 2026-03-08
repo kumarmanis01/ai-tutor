@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getServerSessionForHandlers } from '@/lib/session';
-import { getNextTopicRecommendation } from '@/lib/recommendations/topicRanker';
+import { getNextAction } from '@/lib/homeEngine/getNextAction';
 import { getWeakTopics } from '@/lib/learning/getWeakTopics';
 import { prisma } from '@/lib/prisma';
 import { logger } from '@/lib/logger';
@@ -11,7 +11,7 @@ export const dynamic = 'force-dynamic';
  * GET /api/practice/overview
  *
  * Returns topic-first data for the Practice page:
- *   - recommendedTopic: from TopicRanker (single best next topic)
+ *   - recommendedTopic: from the Home Tutor Engine (single best next topic)
  *   - weakTopics: topics with mastery < 0.4 and practiceCount > 5
  *
  * Used by the simplified Practice page (Recommended Practice + Weak Topics sections).
@@ -30,10 +30,23 @@ export async function GET(req: Request) {
   }
 
   try {
-    const [recommendedTopic, weakTopicRows] = await Promise.all([
-      getNextTopicRecommendation(user.id),
+    const [engineResult, weakTopicRows] = await Promise.all([
+      getNextAction(user.id),
       getWeakTopics(user.id),
     ]);
+
+    const action = engineResult && 'action' in engineResult ? engineResult.action : engineResult;
+
+    const recommendedTopic =
+      action && action.topicId
+        ? {
+            topicId: action.topicId,
+            topicName: action.topicName,
+            subject: action.subject,
+            chapter: action.chapter,
+            reason: action.reasonLabel,
+          }
+        : null;
 
     // Resolve names for weak topics
     const weakTopicIds = weakTopicRows.map((w) => w.topicId);

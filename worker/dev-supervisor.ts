@@ -2,6 +2,7 @@ import { spawn } from 'child_process';
 import fs from 'fs';
 import path from 'path';
 import dotenv from 'dotenv';
+import { CONTENT_HYDRATION_QUEUE } from '@/lib/queues/constants';
 
 // DEV SUPERVISOR
 // This starts all required worker-side processes for local HydrateAll:
@@ -57,7 +58,7 @@ function spawnTsx(args: string[], name: string): Child {
 
 const children: Child[] = [];
 
-children.push(spawnTsx(['worker/dev-entry.ts', '--type', 'content-hydration'], 'content-hydration-worker'));
+children.push(spawnTsx(['worker/dev-entry.ts', '--type', CONTENT_HYDRATION_QUEUE], 'content-hydration-worker'));
 children.push(spawnTsx(['worker/scheduler.ts'], 'scheduler'));
 
 function shutdown(signal: string) {

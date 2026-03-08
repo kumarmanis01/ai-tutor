@@ -1,3 +1,4 @@
+import '@/lib/events/sessionEventListeners'; // COUPLING-01: register SESSION_COMPLETED → TopicRanker invalidation
 import { NextResponse } from 'next/server';
 import { getServerSessionForHandlers } from '@/lib/session';
 import {
@@ -7,6 +8,7 @@ import {
   SessionError,
 } from '@/lib/session/sessionEngine';
 import { resolvePhaseContent } from '@/lib/session/getPhaseContent';
+import { markExplanationViewed } from '@/lib/session/phaseCompletionValidator';
 import { logger } from '@/lib/logger';
 import { recordSessionEvent } from '@/lib/session/sessionEvents';
 
@@ -16,14 +18,21 @@ export const dynamic = 'force-dynamic';
  * POST /api/session/next
  * Body: { sessionId: string }
  *
- * Advances the session to the next phase in the state machine.
+ * Advances the session to the next phase in the state machine:
+ *   OVERVIEW → EXPLANATION → PRACTICE → TEST → HOMEWORK → COMPLETE
+ *
+ * Concurrent calls for the same session are safe: the transition guard
+ * will reject the second call with 400 (stale state).
+ *
+ * Response:
+ *   { session: SessionView, phase: PhaseContent, content: PhaseContentData }
  */
 export async function POST(req: Request) {
   const start = Date.now();
   let res: Response;
 
-  const session = await getServerSessionForHandlers();
-  const user = session?.user;
+  const authSession = await getServerSessionForHandlers();
+  const user = authSession?.user;
 
   if (!user?.id) {
     res = NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -38,7 +47,7 @@ export async function POST(req: Request) {
   }
 
   const body = await req.json().catch(() => null);
-  if (!body?.sessionId) {
+  if (!body?.sessionId || typeof body.sessionId !== 'string') {
     res = NextResponse.json({ error: 'sessionId is required' }, { status: 400 });
     logger.logAPI(req, res, { className: 'SessionNextAPI', methodName: 'POST' }, start);
     return res;
@@ -46,14 +55,28 @@ export async function POST(req: Request) {
 
   try {
     const view = await advanceSession(user.id, body.sessionId);
-    const phase = getPhaseContent(view.state);
-    const content = await resolvePhaseContent(view.state, view.topicId, view.sessionId, user.id);
+    const phase = getPhaseContent(view.currentPhase);
+    const content = await resolvePhaseContent(
+      view.currentPhase,
+      view.topicId,
+      view.sessionId,
+      user.id,
+    );
 
     recordSessionEvent({
       sessionId: view.sessionId,
       eventType: 'PHASE_STARTED',
-      metadata: { studentId: user.id, phase: view.state, topicId: view.topicId },
+      metadata: {
+        studentId: user.id,
+        currentPhase: view.currentPhase,
+        topicId: view.topicId,
+      },
     });
+
+    // ABSTRACTION-02: Mark explanation viewed when student advances to EXPLANATION and receives content.
+    if (view.currentPhase === 'EXPLANATION') {
+      markExplanationViewed(view.sessionId).catch(() => {});
+    }
 
     res = NextResponse.json({ session: view, phase, content });
   } catch (err) {

@@ -48,7 +48,7 @@ export async function GET(req: Request) {
 
   const weekBegin = weekStart();
 
-  const [profile, topicsCompleted, sessionsThisWeek, subjectRows] = await Promise.all([
+  const [profile, topicsCompleted, sessionsThisWeek, _subjectRows] = await Promise.all([
     // Learning profile for weekly goal config
     prisma.studentLearningProfile.findUnique({
       where: { studentId: user.id },

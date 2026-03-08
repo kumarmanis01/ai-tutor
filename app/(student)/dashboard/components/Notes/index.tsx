@@ -185,7 +185,7 @@ export default function NotesTab() {
               <button
                 key={t.sessionId}
                 type="button"
-                onClick={() => router.push(`/session/${t.sessionId}`)}
+                onClick={() => router.push(`/session/${t.topicId}`)}
                 className="text-left rounded-xl border border-indigo-100 bg-gradient-to-br from-indigo-50 to-white p-4 shadow-sm hover:shadow-md transition-shadow"
               >
                 <p className="text-xs font-semibold uppercase tracking-wide text-indigo-600">

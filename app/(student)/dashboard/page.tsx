@@ -1,148 +1,333 @@
+/**
+ * Student Home Dashboard — Phase 1 UX Redesign
+ *
+ * Replaces the previous 14-section dashboard with a 5-section tutor-driven
+ * layout. A single consolidated fetch from /api/dashboard replaces 8 parallel
+ * fetches, reducing latency and simplifying the component tree.
+ *
+ * Section order (matches UX architecture blueprint):
+ *   1. PrimaryActionCard   — single hero CTA (resume / start / homework)
+ *   2. NudgeBanner         — optional in-app nudge, dismissable
+ *   3. WeeklyStudyStrip    — 7-day Mon–Sun activity dots + streak text
+ *   4. HomeworkPendingCard — pending homework (hidden when empty)
+ *   5. WeakTopicsSection   — up to 2 weak topics (hidden until 3+ sessions)
+ *   6. UpcomingTopicsList  — next 3 topics in curriculum + learning path link
+ *
+ * Rollback: git revert this file. No backend or DB changes required.
+ *
+ * EDIT LOG:
+ *   2026-03-07 | UX implementation | full redesign per UX architecture blueprint.
+ *               Previous 14-section layout preserved in git history.
+ */
+
 import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
 import { requireActiveSession } from '@/lib/auth';
+import { prisma } from '@/lib/prisma';
+import { getNextAction } from '@/lib/homeEngine/getNextAction';
+import { getWeakTopicsWithNames } from '@/lib/learning/getWeakTopics';
+import { getMasteryLabel } from '@/lib/learning/masteryLabel';
+import { getNudgeMessage } from '@/lib/dashboard/nudgeMessage';
+import { getOrderedTopicsForStudent } from '@/lib/homeEngine/getOrderedTopicsForStudent';
+import { isSessionEngineEnabled } from '@/lib/session/sessionEngine';
 
-import TodaysLessonCard from '@/components/dashboard/TodaysLessonCard';
-import WeeklyProgress from '@/components/dashboard/WeeklyProgress';
-import NextActionCard from '@/components/home/NextActionCard';
-import ResumeSessionCard from '@/components/home/ResumeSessionCard';
-import TutorRecommendationCard from '@/components/home/TutorRecommendationCard';
-import TodayGoal from '@/components/home/TodayGoal';
-import LearningPathSnapshot from '@/components/home/LearningPathSnapshot';
-import TodaysPlan from '@/components/home/TodaysPlan';
-import AssignmentsRow from '@/components/home/AssignmentsRow';
-import UtilityRow from '@/components/home/UtilityRow';
-import PerformanceSnapshot from '@/components/home/PerformanceSnapshot';
-import StudyStreakCard from '@/components/home/StudyStreakCard';
-import WeakTopicsCard from '@/components/home/WeakTopicsCard';
-import HomeworkCard from '@/components/home/HomeworkCard';
+import PrimaryActionCard from '@/components/home/PrimaryActionCard';
+import WeeklyStudyStrip from '@/components/home/WeeklyStudyStrip';
+import HomeworkPendingCard from '@/components/home/HomeworkPendingCard';
+import WeakTopicsSection from '@/components/home/WeakTopicsSection';
+import UpcomingTopicsList from '@/components/home/UpcomingTopicsList';
+import NudgeBanner from '@/components/home/NudgeBanner';
 
 export const dynamic = 'force-dynamic';
 
 export const metadata: Metadata = {
-  title: 'AI Tutor - Student Dashboard | Your Learning Hub',
-  description:
-    'Access personalized learning content, practice tasks, and track progress with a curriculum-first Home.',
+  title: 'Home | Spinzy AI Tutor',
+  description: 'Your AI tutor — ready when you are.',
 };
 
-async function fetchJson(url: string) {
-  try {
-    const res = await fetch(url, { cache: 'no-store' });
-    if (!res.ok) return null;
-    return await res.json();
-  } catch {
-    return null;
-  }
+// ── Week boundary helpers ─────────────────────────────────────────────────────
+
+const DAY_LABELS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+const DEFAULT_WEEKLY_GOAL = 3;
+
+function getISOWeekBoundaries() {
+  const now = new Date();
+  const dow = now.getUTCDay();
+  const distToMonday = dow === 0 ? 6 : dow - 1;
+  const monday = new Date(now);
+  monday.setUTCDate(now.getUTCDate() - distToMonday);
+  monday.setUTCHours(0, 0, 0, 0);
+  const sunday = new Date(monday);
+  sunday.setUTCDate(monday.getUTCDate() + 6);
+  sunday.setUTCHours(23, 59, 59, 999);
+  return { monday, sunday };
 }
 
+// ── Page ──────────────────────────────────────────────────────────────────────
+
 export default async function StudentHomeDashboardPage() {
-  const session = await requireActiveSession();
-  if (!session) {
-    redirect(`/`);
+  const authSession = await requireActiveSession();
+  if (!authSession) redirect('/');
+
+  const userId = (authSession.user as { id: string }).id;
+  const { monday, sunday } = getISOWeekBoundaries();
+
+  // ── Parallel data fetches ─────────────────────────────────────────────────
+  const [
+    activeSession,
+    pendingHomeworkRaw,
+    streakRow,
+    weeklySessionsRaw,
+    totalSessions,
+    learningProfile,
+    weakTopicsRaw,
+    nextActionResult,
+    orderedTopics,
+    lastSessionRow,
+    masteredTopicIds,
+  ] = await Promise.all([
+    // 1. Active in-progress session
+    isSessionEngineEnabled()
+      ? prisma.structuredSession.findFirst({
+          where: { studentId: userId, state: { notIn: ['COMPLETE', 'EXPIRED'] } },
+          select: {
+            id: true,
+            state: true,
+            topicId: true,
+            startedAt: true,
+            topic: {
+              select: {
+                name: true,
+                chapter: { select: { name: true, subject: { select: { name: true } } } },
+              },
+            },
+          },
+          orderBy: { startedAt: 'desc' },
+        })
+      : Promise.resolve(null),
+
+    // 2. Pending / overdue homework
+    prisma.homeworkAssignment.findMany({
+      where: { studentId: userId, status: { in: ['PENDING', 'OVERDUE'] } },
+      select: {
+        id: true,
+        status: true,
+        dueDate: true,
+        questions: true,
+        topic: { select: { name: true } },
+      },
+      orderBy: { dueDate: 'asc' },
+      take: 3,
+    }),
+
+    // 3. Streak
+    prisma.studentStreak.findFirst({
+      where: { studentId: userId, kind: 'daily' },
+      select: { current: true, best: true, lastActive: true },
+    }),
+
+    // 4. Sessions this week (for 7-day strip)
+    prisma.structuredSession.findMany({
+      where: { studentId: userId, startedAt: { gte: monday, lte: sunday } },
+      select: { startedAt: true },
+    }),
+
+    // 5. Total session count (for WeakTopicsSection gate)
+    prisma.structuredSession.count({ where: { studentId: userId } }),
+
+    // 6. Learning profile (weekly goal)
+    prisma.studentLearningProfile
+      .findFirst({ where: { studentId: userId }, select: { studyDaysPerWeek: true } })
+      .catch(() => null),
+
+    // 7. Weak topics (max 2 on dashboard)
+    getWeakTopicsWithNames(userId).catch(() => []),
+
+    // 8. Next topic recommendation
+    getNextAction(userId).catch(() => null),
+
+    // 9. Ordered curriculum topics for upcoming list
+    getOrderedTopicsForStudent(userId).catch(() => []),
+
+    // 10. Last session for nudge calculation
+    prisma.structuredSession.findFirst({
+      where: { studentId: userId },
+      select: { startedAt: true },
+      orderBy: { startedAt: 'desc' },
+    }),
+
+    // 11. Mastered topics (for filtering upcoming list)
+    prisma.studentTopicProgress.findMany({
+      where: { studentId: userId, mastery: { gte: 0.9 } },
+      select: { topicId: true },
+    }),
+  ]);
+
+  // ── Build weekly activity strip ─────────────────────────────────────────
+  const weekDays = Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(monday);
+    d.setUTCDate(monday.getUTCDate() + i);
+    return { date: d.toISOString().split('T')[0], dayLabel: DAY_LABELS[i], hasSession: false };
+  });
+  for (const s of weeklySessionsRaw) {
+    const dow = new Date(s.startedAt).getUTCDay();
+    const idx = dow === 0 ? 6 : dow - 1;
+    if (idx >= 0 && idx < 7) weekDays[idx].hasSession = true;
   }
 
-  // Fetch all home data in parallel — server-side, no stale cache.
-  const [nextAction, todayGoal, learningSnapshot, dailyPlan, perfSnapshot, streakData, weakTopicsData, homeworkData] = (await Promise.all([
-    fetchJson('/api/home/next-action'),
-    fetchJson('/api/home/today-goal'),
-    fetchJson('/api/home/learning-snapshot'),
-    fetchJson('/api/home/daily-plan'),
-    fetchJson('/api/home/performance-snapshot'),
-    fetchJson('/api/student/streak'),
-    fetchJson('/api/student/weak-topics'),
-    fetchJson('/api/student/homework'),
-  ])) as [any, any, any, any, any, any, any, any];
+  // ── Unwrap next action ──────────────────────────────────────────────────
+  type RawAction = { ruleId?: string; topicId?: string; topicName?: string | null; subject?: string | null; chapter?: string | null; estimatedTimeMin?: number } | null;
+  const rawAction: RawAction = nextActionResult && typeof nextActionResult === 'object' && 'action' in nextActionResult
+    ? (nextActionResult as { action: RawAction }).action
+    : (nextActionResult as RawAction);
+  const recommendation = rawAction?.topicId ? rawAction : null;
 
-  const activeHomework = (homeworkData?.homework ?? []).filter(
-    (h: any) => h.status === 'PENDING' || h.status === 'OVERDUE'
-  );
+  // ── Primary action type — driven by engine ruleId ───────────────────────
+  // The engine is the single source of truth for what the student should do.
+  // P0 (homework_pending) → 'homework'; P1 (resume_session) → 'resume'; else → 'start'.
+  const oldestPendingHomework = pendingHomeworkRaw[0] ?? null;
+  const engineRuleId = rawAction?.ruleId;
+  const primaryType =
+    engineRuleId === 'homework_pending' ? 'homework'
+    : engineRuleId === 'resume_session' ? 'resume'
+    : 'start';
 
+  // ── Upcoming topics + "builds on" context ──────────────────────────────
+  const masteredIdSet = new Set(masteredTopicIds.map((r) => r.topicId));
+  const recTopicId = recommendation?.topicId;
+  type OrderedTopic = { topicId?: string; id?: string; topicName?: string; name?: string; subject?: string };
+
+  // "Builds on" = the most recent mastered topic in curriculum order before the
+  // recommended topic. Used to give the student continuity context in StartState.
+  const buildsOnTopicName = (() => {
+    if (!recTopicId) return undefined;
+    const ordered = orderedTopics as OrderedTopic[];
+    const recIndex = ordered.findIndex((t) => (t.topicId ?? t.id) === recTopicId);
+    if (recIndex <= 0) return undefined;
+    // Walk backwards from the recommended topic to find the last mastered one
+    for (let i = recIndex - 1; i >= 0; i--) {
+      const id = ordered[i].topicId ?? ordered[i].id;
+      if (id && masteredIdSet.has(id)) {
+        return ordered[i].topicName ?? ordered[i].name ?? undefined;
+      }
+    }
+    return undefined;
+  })();
+
+  const upcomingTopics = (orderedTopics as OrderedTopic[])
+    .filter((t) => {
+      const id = t.topicId ?? t.id;
+      return id && id !== recTopicId && !masteredIdSet.has(id);
+    })
+    .slice(0, 3)
+    .map((t) => ({
+      topicId: t.topicId ?? t.id ?? '',
+      topicTitle: t.topicName ?? t.name ?? '',
+      subject: t.subject ?? '',
+    }));
+
+  // ── Nudge message ───────────────────────────────────────────────────────
+  const now = new Date();
+  const lastSessionDate = lastSessionRow?.startedAt ?? null;
+  const daysSince = lastSessionDate
+    ? Math.floor((now.getTime() - lastSessionDate.getTime()) / 86_400_000)
+    : 99;
+  const weeklyGoal = learningProfile?.studyDaysPerWeek ?? DEFAULT_WEEKLY_GOAL;
+  const dowNow = now.getUTCDay();
+  const daysLeft = dowNow === 0 ? 1 : 7 - dowNow + 1;
+
+  const nudgeMessage = getNudgeMessage({
+    daysSinceLastSession: daysSince,
+    pendingHomeworkCount: pendingHomeworkRaw.length,
+    sessionsThisWeek: weeklySessionsRaw.length,
+    weeklyGoalSessions: weeklyGoal,
+    daysLeftInWeek: daysLeft,
+  });
+
+  // ── Render ──────────────────────────────────────────────────────────────
   return (
-    <main className="max-w-5xl mx-auto px-4 py-8">
-      <div className="space-y-6">
-        {/* 0. Today's Lesson hero card — tutor-guided, hides when no recommendation */}
-        <section aria-labelledby="todays-lesson-heading">
-          <TodaysLessonCard />
-        </section>
+    <main className="max-w-2xl mx-auto px-4 py-6 space-y-5">
 
-        {/* 0b. Resume active session — self-fetching, hides when no session */}
-        <section aria-labelledby="resume-session-heading">
-          <ResumeSessionCard />
-        </section>
+      {/* 1. Primary Action — single hero CTA, always visible */}
+      <PrimaryActionCard
+        type={primaryType}
+        session={
+          activeSession
+            ? {
+                sessionId: activeSession.id,
+                topicName: activeSession.topic?.name ?? '',
+                currentPhase: activeSession.state,
+                resumePhase: activeSession.state,
+                subject: activeSession.topic?.chapter?.subject?.name ?? '',
+                chapter: activeSession.topic?.chapter?.name ?? '',
+              }
+            : null
+        }
+        recommendation={
+          recommendation
+            ? {
+                topicId: recommendation.topicId!,
+                topicTitle: recommendation.topicName ?? recommendation.topicId!,
+                subject: recommendation.subject ?? '',
+                chapter: recommendation.chapter ?? undefined,
+                estimatedTimeMin: recommendation.estimatedTimeMin ?? 20,
+                buildsOnTopicName,
+              }
+            : null
+        }
+        pendingHomework={
+          oldestPendingHomework
+            ? {
+                id: oldestPendingHomework.id,
+                topicName: oldestPendingHomework.topic?.name ?? '',
+                questionCount: Array.isArray(oldestPendingHomework.questions)
+                  ? (oldestPendingHomework.questions as unknown[]).length
+                  : 0,
+                dueDate: oldestPendingHomework.dueDate.toISOString(),
+                status: oldestPendingHomework.status as 'PENDING' | 'OVERDUE',
+              }
+            : null
+        }
+      />
 
-        {/* 0c. Weekly progress — self-fetching metrics card */}
-        <section aria-labelledby="weekly-progress-heading">
-          <WeeklyProgress />
-        </section>
+      {/* 2. Nudge Banner — dismissable, calm tone, optional */}
+      <NudgeBanner nudgeMessage={nudgeMessage} />
 
-        {/* 1. NextActionCard */}
-        <section aria-labelledby="next-action-heading">
-          {nextAction ? <NextActionCard {...nextAction} /> : <NextActionCard topic="" />}
-        </section>
+      {/* 3. Weekly Study Strip — 7-day Mon–Sun activity dots */}
+      <WeeklyStudyStrip
+        data={{
+          days: weekDays,
+          sessionCountThisWeek: weeklySessionsRaw.length,
+          currentStreak: streakRow?.current ?? 0,
+        }}
+      />
 
-        {/* 1b. Tutor Recommendation — runs in parallel, self-fetching */}
-        <section aria-labelledby="tutor-recommendation-heading">
-          <TutorRecommendationCard />
-        </section>
+      {/* 4. Homework Pending — hidden when empty */}
+      <HomeworkPendingCard
+        items={pendingHomeworkRaw.map((h) => ({
+          id: h.id,
+          topicName: h.topic?.name ?? '',
+          status: h.status as 'PENDING' | 'OVERDUE',
+          dueDate: h.dueDate.toISOString(),
+          questionCount: Array.isArray(h.questions)
+            ? (h.questions as unknown[]).length
+            : 0,
+        }))}
+      />
 
-        {/* 2. TodayGoal */}
-        <section aria-labelledby="today-goal-heading">
-          <TodayGoal
-            targetMinutes={todayGoal?.targetMinutes ?? DEFAULT_GOAL_MIN}
-            completedMinutes={todayGoal?.completedMinutes ?? 0}
-            streakDays={todayGoal?.streakDays ?? 0}
-          />
-        </section>
+      {/* 5. Weak Topics — hidden until 3+ sessions, max 2 cards */}
+      <WeakTopicsSection
+        topics={weakTopicsRaw.slice(0, 2).map((t) => ({
+          topicId: t.topicId,
+          topicName: t.topicName,
+          masteryLabel: getMasteryLabel(t.mastery),
+        }))}
+        sessionCount={totalSessions}
+      />
 
-        {/* 2b. Study Streak */}
-        <section aria-labelledby="study-streak-heading">
-          <StudyStreakCard
-            currentStreak={streakData?.currentStreak ?? 0}
-            longestStreak={streakData?.longestStreak ?? 0}
-          />
-        </section>
+      {/* 6. Upcoming Topics — simple list + learning path link */}
+      <UpcomingTopicsList topics={upcomingTopics} />
 
-        {/* 3. LearningPathSnapshot — real curriculum + mastery data */}
-        <section aria-labelledby="learning-snapshot-heading">
-          <LearningPathSnapshot subjects={learningSnapshot?.subjects ?? []} />
-        </section>
-
-        {/* 4. Homework Assignments */}
-        <section aria-labelledby="homework-card-heading">
-          <HomeworkCard items={activeHomework} />
-        </section>
-
-        {/* 4b. Weak Topics */}
-        <section aria-labelledby="weak-topics-heading">
-          <WeakTopicsCard topics={weakTopicsData?.topics ?? []} />
-        </section>
-
-        {/* 4b. Performance Snapshot — last 5 practice results */}
-        <section aria-labelledby="perf-snapshot-heading">
-          <PerformanceSnapshot
-            recentResults={perfSnapshot?.recentResults ?? []}
-            averageAccuracy={perfSnapshot?.averageAccuracy ?? 0}
-            weakestTopic={perfSnapshot?.weakestTopic ?? null}
-          />
-        </section>
-
-        {/* 5. TodaysPlan */}
-        <section aria-labelledby="todays-plan-heading">
-          <TodaysPlan slots={dailyPlan?.slots ?? []} />
-        </section>
-
-        {/* 6. AssignmentsRow */}
-        <section aria-labelledby="assignments-heading">
-          <AssignmentsRow assignments={dailyPlan?.assignments ?? []} />
-        </section>
-
-        {/* 7. UtilityRow */}
-        <section aria-labelledby="utility-heading">
-          <UtilityRow unresolvedCount={0} />
-        </section>
-      </div>
     </main>
   );
 }
-
-const DEFAULT_GOAL_MIN = 30;

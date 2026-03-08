@@ -56,7 +56,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       // Create Outbox entry so the dispatcher picks it up
       await tx.outbox.create({
         data: {
-          queue: 'content-hydration',
+          queue: CONTENT_HYDRATION_QUEUE,
           payload: {
             type: String(job.jobType).toUpperCase(),
             payload: { jobId },

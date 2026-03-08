@@ -1,5 +1,6 @@
 "use client"
 import React, { useEffect, useState } from 'react'
+import { CONTENT_HYDRATION_QUEUE } from '@/lib/queues/constants'
 
 type WorkerRow = {
   id: string
@@ -13,7 +14,7 @@ type WorkerRow = {
 }
 
 export default function WorkerControl() {
-  const [type, setType] = useState('content-hydration')
+  const [type, setType] = useState(CONTENT_HYDRATION_QUEUE)
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState<null | { lifecycleId: string; type: string }>(null)
   const [error, setError] = useState<string | null>(null)

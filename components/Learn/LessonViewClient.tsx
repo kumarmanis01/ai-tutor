@@ -11,6 +11,7 @@
  * - .github/copilot-instructions.md
  *
  * EDIT LOG:
+ * - 2026-03-08 | claude | replaced inline styles with Tailwind (Gap #17)
  * - 2026-02-04 | claude | created for MVP progress integration
  */
 
@@ -69,7 +70,7 @@ export default function LessonViewClient({
   const isLoading = status === 'loading';
 
   const topicId = lesson.id || `${courseId}-${lessonIndex}`;
-  
+
   const { recordView, markComplete, getTopicProgress } = useTopicProgress({
     topicId,
     autoFetch: isAuthenticated,
@@ -99,16 +100,16 @@ export default function LessonViewClient({
   // Show login prompt if not authenticated
   if (!isLoading && !isAuthenticated) {
     return (
-      <div style={{ padding: 16, maxWidth: 600, margin: '0 auto' }}>
-        <Link href={`/learn/${courseId}`} style={{ fontSize: 14, color: '#0070f3' }}>← Back to course</Link>
-        <h1 style={{ fontSize: 24, fontWeight: 600, marginTop: 12 }}>{lesson.title}</h1>
-        
+      <div className="p-4 max-w-2xl mx-auto">
+        <Link href={`/learn/${courseId}`} className="text-sm text-primary hover:underline">
+          ← Back to course
+        </Link>
+        <h1 className="text-2xl font-semibold mt-3 text-foreground">{lesson.title}</h1>
+
         <div className="mt-8 p-6 bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-indigo-900/20 dark:to-purple-900/20 rounded-xl border border-indigo-100 dark:border-indigo-800 text-center">
           <div className="text-4xl mb-4">🔐</div>
-          <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
-            Login Required
-          </h2>
-          <p className="text-gray-600 dark:text-gray-300 mb-4">
+          <h2 className="text-xl font-semibold text-foreground mb-2">Login Required</h2>
+          <p className="text-muted-foreground mb-4">
             Please sign in to view lesson content and track your learning progress.
           </p>
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
@@ -133,61 +134,64 @@ export default function LessonViewClient({
   // Loading state
   if (isLoading) {
     return (
-      <div style={{ padding: 16, maxWidth: 600, margin: '0 auto' }}>
-        <div className="animate-pulse">
-          <div className="h-4 w-24 bg-gray-200 rounded mb-4"></div>
-          <div className="h-8 w-64 bg-gray-200 rounded mb-4"></div>
-          <div className="h-32 w-full bg-gray-200 rounded"></div>
-        </div>
+      <div className="p-4 max-w-2xl mx-auto animate-pulse">
+        <div className="h-4 w-24 bg-muted rounded mb-4" />
+        <div className="h-8 w-64 bg-muted rounded mb-4" />
+        <div className="h-32 w-full bg-muted rounded" />
       </div>
     );
   }
 
   return (
-    <div style={{ padding: 16, maxWidth: 600, margin: '0 auto' }}>
-      <Link href={`/learn/${courseId}`} style={{ fontSize: 14, color: '#0070f3' }}>← Back to course</Link>
-      
-      {/* Header with progress */}
+    <div className="p-4 max-w-2xl mx-auto">
+      <Link href={`/learn/${courseId}`} className="text-sm text-primary hover:underline">
+        ← Back to course
+      </Link>
+
+      {/* Header with completion badge */}
       <div className="flex items-start justify-between mt-3">
-        <h1 style={{ fontSize: 24, fontWeight: 600 }}>{lesson.title}</h1>
+        <h1 className="text-2xl font-semibold text-foreground">{lesson.title}</h1>
         {isCompleted && (
           <span className="flex items-center gap-1 text-sm text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/30 px-2 py-1 rounded-full">
             <span>✓</span> Completed
           </span>
         )}
       </div>
-      
-      {/* Progress indicator */}
-      <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+
+      <p className="text-sm text-muted-foreground mt-1">
         Lesson {Number(lessonIndex) + 1} of {totalLessons}
       </p>
-      
+
+      {/* Learning objectives */}
       {Array.isArray(lesson.objectives) && lesson.objectives.length > 0 && (
-        <div style={{ marginTop: 16, padding: 16, background: '#f0f7ff', borderRadius: 8 }} className="dark:bg-blue-900/20">
-          <div style={{ fontWeight: 600, marginBottom: 8 }}>📚 Learning Objectives</div>
-          <ul style={{ paddingLeft: 20, margin: 0 }}>
-            {lesson.objectives.map((o, i) => <li key={i} style={{ color: '#444', marginBottom: 4 }} className="dark:text-gray-300">{o}</li>)}
+        <div className="mt-4 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+          <p className="font-semibold mb-2">📚 Learning Objectives</p>
+          <ul className="list-disc pl-5 space-y-1">
+            {lesson.objectives.map((o, i) => (
+              <li key={i} className="text-sm text-foreground/80 dark:text-foreground/70">{o}</li>
+            ))}
           </ul>
         </div>
       )}
 
-      <div style={{ marginTop: 20 }}>
+      {/* Content */}
+      <div className="mt-5 space-y-4">
         {lesson.explanation?.overview && (
-          <p style={{ lineHeight: 1.7, fontSize: 15 }}>{lesson.explanation.overview}</p>
+          <p className="leading-[1.7] text-[15px] text-foreground/90">{lesson.explanation.overview}</p>
         )}
         {Array.isArray(lesson.explanation?.concepts) && lesson.explanation.concepts.length > 0 && (
-          <div style={{ marginTop: 16 }}>
+          <div className="space-y-4">
             {lesson.explanation.concepts.map((c, i) => (
-              <div key={i} style={{ marginBottom: 16, padding: 16, background: '#fff', borderRadius: 8, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }} className="dark:bg-gray-800">
-                <div style={{ fontWeight: 600, marginBottom: 8 }}>{c.title}</div>
-                <div style={{ color: '#333', lineHeight: 1.6 }} className="dark:text-gray-300">{c.explanation}</div>
+              <div key={i} className="p-4 bg-card rounded-lg shadow-sm border">
+                <p className="font-semibold mb-2 text-foreground">{c.title}</p>
+                <p className="text-sm text-foreground/80 leading-relaxed">{c.explanation}</p>
               </div>
             ))}
           </div>
         )}
       </div>
 
-      {/* Mark Complete Button */}
+      {/* Mark Complete */}
       {!isCompleted && (
         <div className="mt-6">
           <button
@@ -210,28 +214,29 @@ export default function LessonViewClient({
         </div>
       )}
 
-      {/* Navigation */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 24 }}>
+      {/* Lesson Navigation */}
+      <div className="flex justify-between mt-6">
         {prev ? (
-          <Link 
-            href={`/learn/${courseId}/lesson/${prev.lessonIndex ?? 0}`} 
-            style={{ padding: '10px 16px', background: '#f0f0f0', borderRadius: 8, textDecoration: 'none', color: '#333' }}
-            className="dark:bg-gray-700 dark:text-gray-200"
+          <Link
+            href={`/learn/${courseId}/lesson/${prev.lessonIndex ?? 0}`}
+            className="px-4 py-2.5 bg-muted hover:bg-muted/80 text-foreground rounded-lg text-sm font-medium transition-colors"
           >
             ← Previous
           </Link>
-        ) : <div />}
+        ) : (
+          <div />
+        )}
         {next ? (
-          <Link 
-            href={`/learn/${courseId}/lesson/${next.lessonIndex ?? 0}`} 
-            style={{ padding: '10px 16px', background: '#0070f3', color: '#fff', borderRadius: 8, textDecoration: 'none' }}
+          <Link
+            href={`/learn/${courseId}/lesson/${next.lessonIndex ?? 0}`}
+            className="px-4 py-2.5 bg-primary hover:bg-primary/90 text-primary-foreground rounded-lg text-sm font-medium transition-colors"
           >
             Next →
           </Link>
         ) : (
-          <Link 
-            href={`/learn/${courseId}`} 
-            style={{ padding: '10px 16px', background: '#10b981', color: '#fff', borderRadius: 8, textDecoration: 'none' }}
+          <Link
+            href={`/learn/${courseId}`}
+            className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-sm font-medium transition-colors"
           >
             Back to Course ✓
           </Link>

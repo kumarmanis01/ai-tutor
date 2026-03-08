@@ -14,6 +14,7 @@ interface ActiveSession {
 }
 
 const PHASE_LABELS: Record<string, string> = {
+  OVERVIEW: "Reviewing overview",
   EXPLANATION: "Reading notes",
   PRACTICE: "Practicing",
   TEST: "Taking a test",
@@ -74,7 +75,7 @@ export default function ResumeSessionCard() {
 
         <button
           type="button"
-          onClick={() => router.push(`/session/${session.sessionId}`)}
+          onClick={() => router.push(`/session/${session.topicId}`)}
           className="shrink-0 inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-medium text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
         >
           <svg className="w-4 h-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">

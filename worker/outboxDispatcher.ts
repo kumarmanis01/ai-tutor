@@ -1,6 +1,7 @@
 /**
  * FILE OBJECTIVE:
  * - Poll the Outbox table and dispatch unsent messages to BullMQ content-hydration queue.
+ * - RISK-04: Move rows exceeding MAX_ATTEMPTS to OutboxDeadLetter to prevent infinite retry loops.
  *
  * LINKED UNIT TEST:
  * - tests/unit/worker/outboxDispatcher.spec.ts
@@ -11,14 +12,20 @@
  *
  * EDIT LOG:
  * - 2026-01-21T00:00:00Z | copilot-agent | created as worker-integrated outbox dispatcher
+ * - 2026-03-07T00:00:00Z | RISK-04 | dead-letter queue, MAX_ATTEMPTS, poll 5s
  */
 
 import { Queue } from 'bullmq';
 import { prisma } from '../lib/prisma.js';
 import { redisConnection } from '../lib/redis.js';
 import { logger } from '../lib/logger.js';
+import { CONTENT_HYDRATION_QUEUE } from '../lib/queues/constants.js';
 
-const POLL_INTERVAL_MS = Number(process.env.OUTBOX_POLL_MS || 1000);
+/** RISK-04: Max dispatch attempts before moving to dead-letter. Prevents infinite retry loops. */
+const MAX_ATTEMPTS = 10;
+
+/** RISK-04: Poll interval 5s (was 1s) to reduce load and allow transient failures to resolve. */
+const POLL_INTERVAL_MS = Number(process.env.OUTBOX_POLL_MS || 5000);
 const BATCH_SIZE = Number(process.env.OUTBOX_BATCH_SIZE || 10);
 
 let queue: Queue | null = null;
@@ -27,9 +34,43 @@ let intervalId: ReturnType<typeof setInterval> | null = null;
 
 function getQueue(): Queue {
   if (!queue) {
-    queue = new Queue('content-hydration', { connection: redisConnection });
+    queue = new Queue(CONTENT_HYDRATION_QUEUE, { connection: redisConnection });
   }
   return queue;
+}
+
+/**
+ * Move an outbox row to dead-letter table and delete from outbox.
+ * RISK-04: Prevents infinite retry loops.
+ */
+async function moveToDeadLetter(
+  row: { id: string; queue: string; payload: unknown; meta: unknown; attempts: number },
+  reason: string
+): Promise<void> {
+  const failedAt = new Date();
+  try {
+    await prisma.$transaction([
+      prisma.outboxDeadLetter.create({
+        data: {
+          originalOutboxId: row.id,
+          queue: row.queue,
+          payload: row.payload as object,
+          meta: (row.meta as object) ?? undefined,
+          attempts: row.attempts,
+          deadLetterReason: reason,
+          failedAt,
+        },
+      }),
+      prisma.outbox.delete({ where: { id: row.id } }),
+    ]);
+    logger.warn('[outbox-dispatcher] moved to dead-letter', {
+      outboxId: row.id,
+      reason,
+      attempts: row.attempts,
+    });
+  } catch (e) {
+    logger.error('[outbox-dispatcher] failed to move to dead-letter', { outboxId: row.id, error: e });
+  }
 }
 
 async function dispatchBatch(): Promise<number> {
@@ -48,11 +89,20 @@ async function dispatchBatch(): Promise<number> {
   const q = getQueue();
 
   for (const row of rows) {
+    // RISK-04: Exceeded max attempts — move to dead-letter, skip dispatch
+    if (row.attempts >= MAX_ATTEMPTS) {
+      await moveToDeadLetter(row, 'max_attempts_exceeded');
+      continue;
+    }
+
     try {
       const payload = row.payload as { type?: string; payload?: { jobId?: string } };
       if (!payload?.type) {
-        logger.error('[outbox-dispatcher] skipping row with missing payload.type', { outboxId: row.id, payload });
-        await prisma.outbox.update({ where: { id: row.id }, data: { sentAt: new Date(), attempts: row.attempts + 1 } }).catch(() => {});
+        logger.error('[outbox-dispatcher] invalid payload, moving to dead-letter', { outboxId: row.id, payload });
+        await moveToDeadLetter(
+          { ...row, attempts: row.attempts + 1 },
+          'missing_payload_type'
+        );
         continue;
       }
       const jobName = `${payload.type.toLowerCase()}-${payload.payload?.jobId ?? row.id}`;
@@ -70,11 +120,21 @@ async function dispatchBatch(): Promise<number> {
       dispatched++;
     } catch (err) {
       logger.error('[outbox-dispatcher] failed to dispatch row', { outboxId: row.id, error: err });
-      // Increment attempts but don't mark as sent
-      await prisma.outbox.update({
-        where: { id: row.id },
-        data: { attempts: row.attempts + 1 },
-      }).catch(() => {}); // Ignore secondary errors
+      const newAttempts = row.attempts + 1;
+
+      // RISK-04: Exceeded max attempts after this failure — move to dead-letter
+      if (newAttempts >= MAX_ATTEMPTS) {
+        const reason = err instanceof Error ? err.message : String(err);
+        await moveToDeadLetter(
+          { ...row, attempts: newAttempts },
+          `dispatch_failed: ${reason}`
+        );
+      } else {
+        await prisma.outbox.update({
+          where: { id: row.id },
+          data: { attempts: newAttempts },
+        }).catch(() => {});
+      }
     }
   }
 

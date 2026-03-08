@@ -10,6 +10,7 @@ import { logger } from '@/lib/logger';
 
 type SessionEventType =
   | 'SESSION_STARTED'
+  | 'SESSION_OVERVIEW_VIEWED'
   | 'PHASE_STARTED'
   | 'QUESTION_ANSWERED'
   | 'HOMEWORK_SUBMITTED'

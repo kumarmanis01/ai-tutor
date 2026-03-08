@@ -83,6 +83,7 @@ export {
 export {
   PRACTICE_OUTPUT_SCHEMA,
   buildPracticePrompt,
+  buildQuickTestPrompt,
   isValidPracticeResponse,
   generateQuestionIds,
 } from './practice';

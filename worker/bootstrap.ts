@@ -29,7 +29,8 @@ import os from "os";
 
 import { redisConnection } from "../lib/redis.js";
 import { prisma } from "../lib/prisma.js";
-import { logger } from "../lib/logger.js"
+import { logger } from "../lib/logger.js";
+import { CONTENT_HYDRATION_QUEUE } from "../lib/queues/constants.js";
 
 // Phase 4: Use new worker service handlers (not deprecated hydrators)
 import { handleSyllabusJob } from "./index.js";
@@ -41,7 +42,7 @@ import { startOutboxDispatcher, stopOutboxDispatcher } from "./outboxDispatcher.
 const argv = minimist(process.argv.slice(2));
 
 const workerType: string =
-  argv.type || process.env.WORKER_TYPE || "content-hydration";
+  argv.type || process.env.WORKER_TYPE || CONTENT_HYDRATION_QUEUE;
 
 const lifecycleIdArg: string | undefined =
   argv.lifecycleId || argv.lifecycleid || argv.lid;

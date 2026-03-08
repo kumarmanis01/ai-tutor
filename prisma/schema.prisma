@@ -6,6 +6,7 @@
 ///
 /// EDIT LOG:
 /// - 2026-02-21T00:00:00Z | copilot | added student learning profile fields
+/// - 2026-03-07T00:00:00Z | Manish Kumar | add OVERVIEW to SessionPhase; SESSION_OVERVIEW_VIEWED to SessionEventType
 generator client {
   provider = "prisma-client-js"
 }
@@ -830,7 +831,7 @@ model StructuredSession {
   id          String       @id @default(cuid())
   studentId   String
   topicId     String
-  state       SessionPhase @default(EXPLANATION)
+  state       SessionPhase @default(OVERVIEW)
   startedAt   DateTime     @default(now())
   completedAt DateTime?
   meta        Json?
@@ -887,15 +888,20 @@ enum HomeworkStatus {
 }
 
 enum SessionPhase {
+  /// Initial gate: student sees topic summary and objectives before diving in.
+  OVERVIEW
   EXPLANATION
   PRACTICE
   TEST
   HOMEWORK
   COMPLETE
+  /// GAP-05: Session expired (stale > 48h); archived, not resumed.
+  EXPIRED
 }
 
 enum SessionEventType {
   SESSION_STARTED
+  SESSION_OVERVIEW_VIEWED
   PHASE_STARTED
   QUESTION_ANSWERED
   HOMEWORK_SUBMITTED
@@ -1241,6 +1247,22 @@ model Outbox {
   updatedAt DateTime  @updatedAt
 
   @@index([queue, sentAt])
+}
+
+/// Dead-letter table for outbox rows that exceed MAX_ATTEMPTS (RISK-04).
+model OutboxDeadLetter {
+  id                 String   @id @default(cuid())
+  originalOutboxId   String
+  queue              String
+  payload            Json
+  meta               Json?
+  attempts           Int      @default(0)
+  deadLetterReason   String
+  failedAt           DateTime @default(now())
+  createdAt          DateTime @default(now())
+
+  @@index([queue])
+  @@index([failedAt])
 }
 
 model StudentContentPreference {

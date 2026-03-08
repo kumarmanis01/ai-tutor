@@ -2,6 +2,7 @@
 // The Kubernetes client is optional in many deployments. Lazily require it
 // so builds on environments without the module installed do not fail.
 import path from 'path'
+import { CONTENT_HYDRATION_QUEUE } from '@/lib/queues/constants'
 
 let k8s: any = null
 try {
@@ -17,7 +18,7 @@ if (kc) {
 }
 const batchApi = kc ? kc.makeApiClient(k8s.BatchV1Api) : null
 
-export async function createJobForWorker(lifecycleId: string, type = 'content-hydration') {
+export async function createJobForWorker(lifecycleId: string, type = CONTENT_HYDRATION_QUEUE) {
   const image = process.env.WORKER_CONTAINER_IMAGE
   if (!image) throw new Error('WORKER_CONTAINER_IMAGE not set')
 

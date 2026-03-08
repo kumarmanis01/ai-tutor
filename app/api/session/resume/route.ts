@@ -11,6 +11,9 @@ export const dynamic = 'force-dynamic';
  *
  * Returns the most recent in-progress StructuredSession for the
  * authenticated student, or `{ session: null }` if none exists.
+ *
+ * The `phase` field in the response uses the canonical `currentPhase`
+ * value so clients can display the correct resume label.
  */
 export async function GET(req: Request) {
   const start = Date.now();
@@ -62,7 +65,9 @@ export async function GET(req: Request) {
       topicName: active.topic.name,
       subject: active.topic.chapter.subject.name,
       chapter: active.topic.chapter.name,
+      /** Canonical phase field — used by ResumeSessionCard for the label. */
       phase: active.state,
+      currentPhase: active.state,
       startedAt: active.startedAt.toISOString(),
     },
   });

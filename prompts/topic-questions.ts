@@ -18,12 +18,31 @@ export type TopicQuestionsParams = {
   grade: number // 6-12
   count: number // exact number of questions required
   language?: 'en' | 'hi'
+  /** Board (e.g. CBSE). Optional context. */
+  board?: string
+  /** Subject name. Optional context. */
+  subject?: string
+  /** Difficulty level for this batch. When set, all questions must be this level. */
+  difficulty?: 'easy' | 'medium' | 'hard'
+  /** Human-readable description of the difficulty level. */
+  difficultyDescription?: string
 }
 
 export function topicQuestionsPrompt(params: TopicQuestionsParams): string {
+  const lang = params.language === 'hi' ? 'Hindi' : 'English'
+  const contextParts: string[] = []
+  if (params.board) contextParts.push(`Board: ${params.board}`)
+  if (params.subject) contextParts.push(`Subject: ${params.subject}`)
+  const contextLine = contextParts.length > 0 ? `\n${contextParts.join('\n')}` : ''
+
+  const difficultyLine =
+    params.difficulty && params.difficultyDescription
+      ? `\nDifficulty: ${params.difficulty} — ${params.difficultyDescription}. All ${params.count} questions MUST be ${params.difficulty} level.`
+      : ''
+
   return `Role: educational question writer for grade ${params.grade}.
 
-Task: Generate exactly ${params.count} multiple-choice questions for topic "${params.topicName}" in ${params.language === 'hi' ? 'Hindi' : 'English'}.
+Task: Generate exactly ${params.count} multiple-choice questions for topic "${params.topicName}" in ${lang}.${contextLine}${difficultyLine}
 
 STRICT RULES:
 1. Return ONLY valid JSON. No markdown, no backticks, no commentary.

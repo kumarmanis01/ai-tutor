@@ -19,7 +19,8 @@
  */
 
 import { normalizeDifficulty, normalizeLanguage } from "@/lib/normalize";
-import { prisma } from "@/lib/prisma"
+import { prisma } from "@/lib/prisma";
+import { CONTENT_HYDRATION_QUEUE } from '../lib/queues/constants';
 import { JobStatus } from '@/lib/ai-engine/types'
 import { isSystemSettingEnabled } from "@/lib/systemSettings"
 import { logger } from "@/lib/logger"
@@ -121,7 +122,7 @@ export async function enqueueSyllabusHydration(input: {
   // where an in-process enqueue occurs before the ExecutionJob payload is
   // updated or before consumers can observe the HydrationJob row.
   try {
-    const outbox = await prisma.outbox.create({ data: { queue: 'content-hydration', payload: { type: 'SYLLABUS', payload: { jobId: job.id } }, meta: { hydrationJobId: job.id } } })
+    const outbox = await prisma.outbox.create({ data: { queue: CONTENT_HYDRATION_QUEUE, payload: { type: 'SYLLABUS', payload: { jobId: job.id } }, meta: { hydrationJobId: job.id } } })
     if (HYDRATION_DEBUG) logger.debug('[hydration][DEBUG] created Outbox row for HydrationJob', { jobId: job.id, outboxId: outbox.id })
     return { created: true, jobId: job.id, bullJobId: null, outboxId: outbox.id }
   } catch (err) {

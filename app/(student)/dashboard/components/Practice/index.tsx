@@ -370,7 +370,7 @@ function ChapterBlock({
   chapter,
   helpers,
   onSelectTopic,
-  actionLabel,
+  actionLabel: _actionLabel,
   selectedTopicId,
 }: {
   chapter: HierarchyChapter;

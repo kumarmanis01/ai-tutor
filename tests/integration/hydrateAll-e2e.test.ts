@@ -19,6 +19,7 @@ import { describe, it, expect, beforeAll, afterAll } from '@jest/globals';
 import { prisma } from '@/lib/prisma';
 import { hydrationReconciler } from '@/worker/services/hydrationReconciler';
 import { JobStatus, LanguageCode, DifficultyLevel } from '@prisma/client';
+import { CONTENT_HYDRATION_QUEUE } from '@/lib/queues/constants';
 
 // Test configuration
 const TEST_TIMEOUT = 5 * 60 * 1000; // 5 minutes
@@ -114,7 +115,7 @@ describe('HydrateAll End-to-End Integration Test', () => {
 
         await tx.outbox.create({
           data: {
-            queue: 'content-hydration',
+            queue: CONTENT_HYDRATION_QUEUE,
             payload: {
               type: 'SYLLABUS',
               payload: { jobId: job.id },

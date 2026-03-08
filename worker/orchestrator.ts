@@ -24,6 +24,7 @@ import { prisma } from '@/lib/prisma.js'
 import { logger } from '@/lib/logger.js'
 import { startMetricsServer, incJobsSpawned } from './metrics-server'
 import { createJobForWorker } from './k8s-adapter'
+import { CONTENT_HYDRATION_QUEUE } from '@/lib/queues/constants'
 import { runAnalyticsJobs } from '../jobs/analyticsJobs'
 import { scheduleDailyFreeQuestionReset } from '../jobs/dailyFreeQuestionReset'
 // Register job definitions for orchestrator/worker processes only
@@ -61,7 +62,7 @@ async function pollAndSpawn() {
         args.push(path.join('dist', 'worker', 'bootstrap.js'))
       }
 
-      args.push('--type', r.type || 'content-hydration', '--lifecycleId', r.id)
+      args.push('--type', r.type || CONTENT_HYDRATION_QUEUE, '--lifecycleId', r.id)
       const env = { ...process.env }
 
       const proc = spawn(WORKER_CMD, args, { cwd: ROOT, env, stdio: 'inherit' }) as ChildProcessWithoutNullStreams

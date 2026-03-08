@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getServerSessionForHandlers } from '@/lib/session';
-import { getNextTopicRecommendation } from '@/lib/recommendations/topicRanker';
+import { getNextAction } from '@/lib/homeEngine/getNextAction';
 import { logger } from '@/lib/logger';
 
 export const dynamic = 'force-dynamic';
@@ -10,8 +10,9 @@ export const dynamic = 'force-dynamic';
  *
  * Returns the single best next topic for the authenticated student.
  * Gated by ENABLE_TUTOR_CARD feature flag.
+ * Delegates to the Home Tutor Engine (getNextAction).
  *
- * Response: { topic: { topicId, subject, chapter, reason } | null }
+ * Response: { topic: { topicId, topicName, subject, chapter, reason } | null }
  */
 export async function GET(req: Request) {
   const start = Date.now();
@@ -34,7 +35,20 @@ export async function GET(req: Request) {
   }
 
   try {
-    const topic = await getNextTopicRecommendation(user.id);
+    const result = await getNextAction(user.id);
+    const action = result && 'action' in result ? result.action : result;
+
+    const topic =
+      action && action.topicId
+        ? {
+            topicId: action.topicId,
+            topicName: action.topicName,
+            subject: action.subject,
+            chapter: action.chapter,
+            reason: action.reasonLabel,
+          }
+        : null;
+
     res = NextResponse.json({ topic });
   } catch (err) {
     logger.error('StudentNextTopicAPI.error', { userId: user.id, error: err });

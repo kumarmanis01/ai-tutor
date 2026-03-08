@@ -7,6 +7,7 @@
  */
 import { Queue } from "bullmq";
 import { redisConnection } from "@/lib/redis";
+import { CONTENT_HYDRATION_QUEUE } from "@/lib/queues/constants";
 
 /**
  * Lazy-init factories for queues to avoid creating Redis/Queue instances at import time.
@@ -49,7 +50,7 @@ export function getQuestionsQueue() {
 
 export function getContentQueue() {
   if (!queues.content) {
-    queues.content = new Queue("content-hydration", {
+    queues.content = new Queue(CONTENT_HYDRATION_QUEUE, {
       connection: getConnection(),
       defaultJobOptions: {
         attempts: 3,

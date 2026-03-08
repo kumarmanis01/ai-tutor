@@ -25,6 +25,7 @@
 import { prisma } from '@/lib/prisma.js';
 import { logger } from '@/lib/logger.js';
 import { JobStatus } from '@/lib/ai-engine/types';
+import { CONTENT_HYDRATION_QUEUE } from '@/lib/queues/constants';
 import { JobType, DifficultyLevel } from '@prisma/client';
 
 const RECONCILER_LOCK_NAME = 'hydration_reconciler';
@@ -414,7 +415,7 @@ export class HydrationReconciler {
       // Create Outbox entry for transactional queueing
       await tx.outbox.create({
         data: {
-          queue: 'content-hydration',
+          queue: CONTENT_HYDRATION_QUEUE,
           payload: {
             type: String(jobType).toUpperCase(),
             payload: { jobId: childJob.id },

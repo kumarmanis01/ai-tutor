@@ -1,17 +1,23 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getServerSessionForHandlers } from '@/lib/session';
-import { getPhaseContent, isSessionEngineEnabled } from '@/lib/session/sessionEngine';
+import {
+  getSessionView,
+  getPhaseContent,
+  isSessionEngineEnabled,
+  SessionError,
+} from '@/lib/session/sessionEngine';
 import { resolvePhaseContent } from '@/lib/session/getPhaseContent';
+import { markExplanationViewed } from '@/lib/session/phaseCompletionValidator';
 import { logger } from '@/lib/logger';
-import type { SessionPhase } from '@prisma/client';
 
 export const dynamic = 'force-dynamic';
 
 /**
  * GET /api/session/[sessionId]
  *
- * Returns current session state, phase content, and topic metadata.
+ * COUPLING-03: Uses SessionEngine.getSessionView() so response matches
+ * startSession and advanceSession. Adds phase, content, homework for detail view.
  */
 export async function GET(
   req: Request,
@@ -36,64 +42,66 @@ export async function GET(
     return res;
   }
 
-  const session = await prisma.structuredSession.findFirst({
-    where: { id: sessionId, studentId: user.id },
-    include: {
-      topic: {
-        select: {
-          name: true,
-          chapter: {
-            select: { name: true, subject: { select: { name: true } } },
-          },
-        },
-      },
-      homework: {
-        where: { studentId: user.id },
-        orderBy: { createdAt: 'desc' },
-        take: 1,
+  try {
+    const view = await getSessionView(user.id, sessionId);
+
+    const phaseInfo = getPhaseContent(view.currentPhase);
+    const content = await resolvePhaseContent(
+      view.currentPhase,
+      view.topicId,
+      view.sessionId,
+      user.id,
+    );
+
+    // ABSTRACTION-02: Mark explanation viewed when student fetches session in EXPLANATION phase.
+    if (view.currentPhase === 'EXPLANATION') {
+      markExplanationViewed(view.sessionId).catch(() => {});
+    }
+
+    let homework: { id: string; status: string; score: number | null; dueDate: string } | null =
+      null;
+    if (view.homeworkId) {
+      const hw = await prisma.homeworkAssignment.findUnique({
+        where: { id: view.homeworkId, studentId: user.id },
         select: { id: true, status: true, score: true, dueDate: true },
-      },
-    },
-  });
+      });
+      if (hw) {
+        homework = {
+          id: hw.id,
+          status: hw.status,
+          score: hw.score,
+          dueDate: hw.dueDate.toISOString(),
+        };
+      }
+    }
 
-  if (!session) {
-    res = NextResponse.json({ error: 'Session not found' }, { status: 404 });
-    logger.logAPI(req, res, { className: 'SessionDetailAPI', methodName: 'GET' }, start);
-    return res;
+    res = NextResponse.json({
+      session: view,
+      phase: phaseInfo,
+      content,
+      homework,
+    });
+  } catch (err) {
+    if (err instanceof SessionError) {
+      if (err.status === 404) {
+        res = NextResponse.json({ error: 'Session not found' }, { status: 404 });
+      } else if (err.status === 410) {
+        const details = (err as SessionError & { details?: { topicId?: string } }).details;
+        res = NextResponse.json(
+          {
+            error: 'Session expired',
+            code: 'SESSION_EXPIRED',
+            topicId: details?.topicId ?? null,
+          },
+          { status: 410 },
+        );
+      } else {
+        res = NextResponse.json({ error: err.message }, { status: err.status });
+      }
+    } else {
+      throw err;
+    }
   }
-
-  const phaseInfo = getPhaseContent(session.state as SessionPhase);
-  const homework = session.homework?.[0] ?? null;
-
-  const content = await resolvePhaseContent(
-    session.state as SessionPhase,
-    session.topicId,
-    session.id,
-    user.id,
-  );
-
-  res = NextResponse.json({
-    session: {
-      sessionId: session.id,
-      topicId: session.topicId,
-      topicName: session.topic.name,
-      subject: session.topic.chapter.subject.name,
-      chapter: session.topic.chapter.name,
-      state: session.state,
-      startedAt: session.startedAt.toISOString(),
-      completedAt: session.completedAt?.toISOString() ?? null,
-    },
-    phase: phaseInfo,
-    content,
-    homework: homework
-      ? {
-          id: homework.id,
-          status: homework.status,
-          score: homework.score,
-          dueDate: homework.dueDate.toISOString(),
-        }
-      : null,
-  });
 
   logger.logAPI(req, res, { className: 'SessionDetailAPI', methodName: 'GET' }, start);
   return res;

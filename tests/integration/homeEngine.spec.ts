@@ -16,7 +16,14 @@ try {
 }
 
 import { prisma } from '../../lib/prisma';
-import { getNextAction } from '../../lib/homeEngine/getNextAction';
+import { getNextAction, type NextAction } from '../../lib/homeEngine/getNextAction';
+
+/** Unwrap getNextAction return (handles { action, traceId } in dev). */
+function unwrap(res: Awaited<ReturnType<typeof getNextAction>>): NextAction | null {
+  if (res == null) return null;
+  if (typeof res === 'object' && 'action' in res) return (res as { action: NextAction }).action;
+  return res as NextAction;
+}
 
 /**
  * Integration tests for deterministic Home Engine (getNextAction).
@@ -54,9 +61,11 @@ async function createCurriculum() {
 beforeEach(async () => {
   // Clean relevant tables in sequence (children -> parents) to avoid FK RESTRICT errors.
   await prisma.learningSession.deleteMany();
+  await prisma.structuredSession.deleteMany();
   await prisma.dailyTask.deleteMany();
   await prisma.attentionFlag.deleteMany();
   await prisma.studentTopicMastery.deleteMany();
+  await prisma.studentTopicProgress.deleteMany();
   await prisma.topicDef.deleteMany();
   await prisma.chapterDef.deleteMany();
   await prisma.subjectDef.deleteMany();
@@ -111,9 +120,9 @@ describe('getNextAction deterministic priority rules', () => {
       },
     });
 
-    const res = await getNextAction(user.id);
-    expect(res).not.toBeNull();
-    expect(res!.ruleId).toBe('daily_task');
+    const action = unwrap(await getNextAction(user.id));
+    expect(action).not.toBeNull();
+    expect(action!.ruleId).toBe('daily_task');
   });
 
   it('P3: low_mastery fires when an unresolved AttentionFlag exists', async () => {
@@ -135,9 +144,9 @@ describe('getNextAction deterministic priority rules', () => {
       },
     });
 
-    const res = await getNextAction(user.id);
-    expect(res).not.toBeNull();
-    expect(res!.ruleId).toBe('low_mastery');
+    const action = unwrap(await getNextAction(user.id));
+    expect(action).not.toBeNull();
+    expect(action!.ruleId).toBe('low_mastery');
   });
 
   it('P4: low_accuracy fires when StudentTopicMastery accuracy < 0.6', async () => {
@@ -157,9 +166,9 @@ describe('getNextAction deterministic priority rules', () => {
       },
     });
 
-    const res = await getNextAction(user.id);
-    expect(res).not.toBeNull();
-    expect(res!.ruleId).toBe('low_accuracy');
+    const action = unwrap(await getNextAction(user.id));
+    expect(action).not.toBeNull();
+    expect(action!.ruleId).toBe('low_accuracy');
   });
 
   it('P5: next_new_topic fires as fallback when no higher-priority signals exist', async () => {
@@ -168,10 +177,10 @@ describe('getNextAction deterministic priority rules', () => {
       data: { language: 'en', board: 'cbse', grade: '10', subjects: ['Mathematics'] },
     });
 
-    const res = await getNextAction(user.id);
-    expect(res).not.toBeNull();
-    expect(res!.ruleId).toBe('next_new_topic');
+    const action = unwrap(await getNextAction(user.id));
+    expect(action).not.toBeNull();
+    expect(action!.ruleId).toBe('next_new_topic');
     // Ensure the returned topicId matches the seeded topic
-    expect(res!.topicId).toBe(topic.id);
+    expect(action!.topicId).toBe(topic.id);
   });
 });
