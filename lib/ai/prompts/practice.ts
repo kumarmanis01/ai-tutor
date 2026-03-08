@@ -13,6 +13,10 @@
  *
  * EDIT LOG:
  * - 2026-02-04 | claude | created practice prompt builder with schema-first approach
+ * - 2026-03-08 | claude | Phase 5: added UNDERSTANDING_DESCRIPTIONS for student-facing
+ *                          adaptive framing; updated buildPracticePrompt to include the
+ *                          "ADAPTIVE DIFFICULTY CONTEXT" paragraph; added buildQuickTestPrompt
+ *                          for assessment-mode question generation.
  */
 
 import type {
@@ -40,6 +44,17 @@ export const PRACTICE_OUTPUT_SCHEMA = `{
     }
   ]
 }`;
+
+/**
+ * Student-facing description of what each difficulty level implies about their understanding.
+ * Injected into prompts as the "ADAPTIVE DIFFICULTY CONTEXT" paragraph so the LLM can
+ * calibrate question framing to the student's actual level, not just an abstract label.
+ */
+const UNDERSTANDING_DESCRIPTIONS: Record<Difficulty, string> = {
+  easy:   'basic understanding',
+  medium: 'moderate understanding',
+  hard:   'strong understanding',
+};
 
 /**
  * Difficulty calibration descriptions for prompt
@@ -144,6 +159,9 @@ STUDENT PROFILE:
 - Topic: ${input.topic}
 - Language: ${input.language}
 
+ADAPTIVE DIFFICULTY CONTEXT:
+For this student with difficulty level ${input.difficulty.toUpperCase()}, generate questions appropriate for a Grade ${input.grade} learner with ${UNDERSTANDING_DESCRIPTIONS[input.difficulty]} of the topic.
+
 REQUIREMENTS:
 - Difficulty level: ${input.difficulty.toUpperCase()}
 - Total questions: ${input.questionCount}
@@ -232,4 +250,84 @@ export function isValidPracticeResponse(data: unknown): data is PracticeOutputSc
  */
 export function generateQuestionIds(count: number, prefix: string = 'q'): string[] {
   return Array.from({ length: count }, (_, i) => `${prefix}${i + 1}`);
+}
+
+/**
+ * Build a quick-test prompt for assessment-mode question generation.
+ *
+ * Differs from buildPracticePrompt in three ways:
+ *   1. Assessment-first framing — questions must unambiguously distinguish
+ *      understanding levels rather than building confidence gradually.
+ *   2. Marking clarity constraint — correctAnswer must be objectively verifiable.
+ *   3. No progressive difficulty softening — all questions sit firmly in the band.
+ *
+ * The `difficulty` field in the input is resolved upstream by resolveTargetDifficulty()
+ * and represents the student's current mastery band.
+ *
+ * @param input - Same PracticeInputContract used by buildPracticePrompt;
+ *                difficulty must already be resolved via resolveTargetDifficulty().
+ * @returns Formatted prompt string for LLM test generation.
+ */
+export function buildQuickTestPrompt(input: PracticeInputContract): string {
+  const difficultyDesc = DIFFICULTY_DESCRIPTIONS[input.difficulty];
+  const questionTypes = input.questionTypes ?? ['mcq', 'short_answer'];
+  const typeGuidelines = getQuestionTypeGuidelines(questionTypes);
+  const typeDistribution = questionTypes.length > 1
+    ? `Mix question types: approximately ${Math.ceil(input.questionCount / questionTypes.length)} of each type.`
+    : `All questions should be of type: ${questionTypes[0]}.`;
+
+  return `Create a quick assessment test for a K–12 student.
+
+STUDENT PROFILE:
+- Board: ${input.board}
+- Grade: ${input.grade}
+- Subject: ${input.subject}
+- Chapter: ${input.chapter}
+- Topic: ${input.topic}
+- Language: ${input.language}
+
+ADAPTIVE DIFFICULTY CONTEXT:
+For this student with difficulty level ${input.difficulty.toUpperCase()}, generate questions appropriate for a Grade ${input.grade} learner with ${UNDERSTANDING_DESCRIPTIONS[input.difficulty]} of the topic.
+
+REQUIREMENTS:
+- Difficulty level: ${input.difficulty.toUpperCase()}
+- Total questions: ${input.questionCount}
+- Question types allowed: ${questionTypes.join(', ')}
+- ${typeDistribution}
+
+${difficultyDesc}
+
+${typeGuidelines}
+
+ASSESSMENT DESIGN PRINCIPLES:
+
+1. ASSESSMENT FOCUS
+   - Questions must definitively distinguish whether the student understands the concept.
+   - Every question must have exactly one objectively correct answer — no ambiguity.
+   - Avoid questions where partial understanding could accidentally lead to the correct answer.
+
+2. CURRICULUM ALIGNMENT
+   - Questions must be solvable with Grade ${input.grade} ${input.board} knowledge only.
+   - Do NOT test concepts beyond the specified topic.
+   - Use terminology consistent with ${input.board} textbooks.
+
+3. MARKING CLARITY
+   - correctAnswer must be the precise expected response (for fair, unambiguous marking).
+   - For MCQ: correctAnswer must exactly match one of the four options.
+   - For short_answer: correctAnswer must be specific enough to mark objectively.
+
+4. ORIGINALITY
+   - Do NOT copy questions from textbooks verbatim.
+   - Create original questions that test the same concepts.
+
+5. CONCEPT COVERAGE
+   - Each question must test a distinct concept or sub-skill within "${input.topic}".
+   - Do not repeat the same concept across multiple questions.
+
+Return ONLY valid JSON matching this exact schema:
+${PRACTICE_OUTPUT_SCHEMA}
+
+Do NOT include any text before or after the JSON.
+Do NOT wrap in markdown code blocks.
+Ensure all ${input.questionCount} questions are included.`;
 }

@@ -15,6 +15,11 @@
  *
  * EDIT LOG:
  *   2026-03-07 | Manish Kumar | add resolveOverview() for the new OVERVIEW phase.
+ *   2026-03-08 | claude       | Phase 5: added adaptive difficulty — resolvePhaseContent
+ *                               accepts optional studentMastery; resolvePractice/resolveTest
+ *                               filter by resolveTargetDifficulty(mastery) with a graceful
+ *                               fallback to any-difficulty when content at the target band
+ *                               is not yet available. No schema changes.
  */
 
 import { prisma } from '@/lib/prisma';
@@ -24,6 +29,7 @@ import {
   PHASE_METADATA,
   UPCOMING_PHASES_ORDER,
 } from '@/lib/session/sessionEngine';
+import { resolveTargetDifficulty } from '@/lib/ai/adaptiveDifficulty';
 
 // ─── Return Types ─────────────────────────────────────────────────────────────
 
@@ -104,16 +110,21 @@ export type PhaseContentData =
 /**
  * Resolve content for the current session phase.
  *
- * @param phase     - Current SessionPhase value.
- * @param topicId   - The topic being studied.
- * @param sessionId - Used for HOMEWORK content lookup.
- * @param studentId - Used for HOMEWORK content lookup.
+ * @param phase          - Current SessionPhase value.
+ * @param topicId        - The topic being studied.
+ * @param sessionId      - Used for HOMEWORK content lookup.
+ * @param studentId      - Used for HOMEWORK content lookup.
+ * @param studentMastery - Optional: StudentTopicProgress.mastery in [0, 1].
+ *                         When provided, PRACTICE and TEST resolvers select
+ *                         content at the matching difficulty band (easy / medium / hard).
+ *                         Omit or pass null to use the 'medium' default (backward-compatible).
  */
 export async function resolvePhaseContent(
   phase: SessionPhase,
   topicId: string,
   sessionId: string,
   studentId: string,
+  studentMastery?: number | null,
 ): Promise<PhaseContentData> {
   switch (phase) {
     case 'OVERVIEW':
@@ -121,9 +132,9 @@ export async function resolvePhaseContent(
     case 'EXPLANATION':
       return resolveExplanation(topicId);
     case 'PRACTICE':
-      return resolvePractice(topicId);
+      return resolvePractice(topicId, studentMastery ?? null);
     case 'TEST':
-      return resolveTest(topicId);
+      return resolveTest(topicId, studentMastery ?? null);
     case 'HOMEWORK':
       return resolveHomework(sessionId, studentId);
     case 'COMPLETE':
@@ -240,18 +251,36 @@ async function resolveExplanation(topicId: string): Promise<PhaseContentData> {
 }
 
 /**
- * PRACTICE — 5 questions from the promoted question bank.
+ * PRACTICE — up to 5 questions from the promoted question bank.
+ *
+ * Adaptive difficulty: queries the target band first (derived from studentMastery).
+ * Falls back to any difficulty for the topic when the target band has no questions yet,
+ * so the student is never blocked by a content gap.
  */
-async function resolvePractice(topicId: string): Promise<PhaseContentData> {
-  const questions = await prisma.question.findMany({
-    where: { topicId },
+async function resolvePractice(topicId: string, studentMastery: number | null): Promise<PhaseContentData> {
+  const targetDifficulty = resolveTargetDifficulty(studentMastery);
+  const questionSelect = { id: true, type: true, prompt: true, choices: true, difficulty: true } as const;
+
+  // Primary: questions at the student's target difficulty band.
+  let questions = await prisma.question.findMany({
+    where: { topicId, difficulty: targetDifficulty },
     take: 5,
     orderBy: { createdAt: 'desc' },
-    select: { id: true, type: true, prompt: true, choices: true, difficulty: true },
+    select: questionSelect,
   });
 
+  // Fallback: any available questions for the topic (content may not yet cover all bands).
   if (questions.length === 0) {
-    logger.warn('[PHASE_CONTENT_MISSING]', { phase: 'PRACTICE', topicId });
+    questions = await prisma.question.findMany({
+      where: { topicId },
+      take: 5,
+      orderBy: { createdAt: 'desc' },
+      select: questionSelect,
+    });
+  }
+
+  if (questions.length === 0) {
+    logger.warn('[PHASE_CONTENT_MISSING]', { phase: 'PRACTICE', topicId, targetDifficulty });
     return { type: 'pending', message: 'Practice questions are being generated for this topic.' };
   }
 
@@ -259,29 +288,42 @@ async function resolvePractice(topicId: string): Promise<PhaseContentData> {
 }
 
 /**
- * TEST — approved GeneratedTest with questions; draft fallback.
+ * TEST — approved GeneratedTest with questions; difficulty-aware with fallback.
+ *
+ * Lookup order:
+ *   1. Approved test at student's target difficulty band.
+ *   2. Any approved test for the topic (difficulty fallback).
+ *   3. Draft test at any difficulty (content-in-progress fallback).
  */
-async function resolveTest(topicId: string): Promise<PhaseContentData> {
+async function resolveTest(topicId: string, studentMastery: number | null): Promise<PhaseContentData> {
+  const targetDifficulty = resolveTargetDifficulty(studentMastery);
   const questionSelect = {
     select: { id: true, type: true, question: true, options: true, explanation: true },
   };
 
-  const approved = await prisma.generatedTest.findFirst({
+  // Primary: approved test at the student's target difficulty.
+  const approvedAtBand = await prisma.generatedTest.findFirst({
+    where: { topicId, lifecycle: 'active', status: 'approved', difficulty: targetDifficulty },
+    orderBy: [{ version: 'desc' }],
+    include: { questions: questionSelect },
+  });
+
+  if (approvedAtBand && approvedAtBand.questions.length > 0) {
+    return { type: 'test', testId: approvedAtBand.id, title: approvedAtBand.title, difficulty: approvedAtBand.difficulty, questions: approvedAtBand.questions };
+  }
+
+  // Fallback: any approved test (ignores difficulty band).
+  const approvedAny = await prisma.generatedTest.findFirst({
     where: { topicId, lifecycle: 'active', status: 'approved' },
     orderBy: [{ version: 'desc' }],
     include: { questions: questionSelect },
   });
 
-  if (approved && approved.questions.length > 0) {
-    return {
-      type: 'test',
-      testId: approved.id,
-      title: approved.title,
-      difficulty: approved.difficulty,
-      questions: approved.questions,
-    };
+  if (approvedAny && approvedAny.questions.length > 0) {
+    return { type: 'test', testId: approvedAny.id, title: approvedAny.title, difficulty: approvedAny.difficulty, questions: approvedAny.questions };
   }
 
+  // Final fallback: draft (content review in progress).
   const draft = await prisma.generatedTest.findFirst({
     where: { topicId, lifecycle: 'active' },
     orderBy: [{ version: 'desc' }],
@@ -289,16 +331,10 @@ async function resolveTest(topicId: string): Promise<PhaseContentData> {
   });
 
   if (draft && draft.questions.length > 0) {
-    return {
-      type: 'test',
-      testId: draft.id,
-      title: draft.title,
-      difficulty: draft.difficulty,
-      questions: draft.questions,
-    };
+    return { type: 'test', testId: draft.id, title: draft.title, difficulty: draft.difficulty, questions: draft.questions };
   }
 
-  logger.warn('[PHASE_CONTENT_MISSING]', { phase: 'TEST', topicId });
+  logger.warn('[PHASE_CONTENT_MISSING]', { phase: 'TEST', topicId, targetDifficulty });
   return { type: 'pending', message: 'A test for this topic is being prepared.' };
 }
 
