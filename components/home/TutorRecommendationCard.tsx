@@ -16,7 +16,7 @@ export default function TutorRecommendationCard() {
   const [topic, setTopic] = useState<TopicData | null>(null);
   const [loading, setLoading] = useState(true);
   const [starting, setStarting] = useState(false);
-  const [error, setError] = useState(false);
+  const [fetchError, setFetchError] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -29,7 +29,7 @@ export default function TutorRecommendationCard() {
         if (!cancelled) setTopic(data?.topic ?? null);
       })
       .catch(() => {
-        if (!cancelled) setError(true);
+        if (!cancelled) setFetchError(true);
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -39,26 +39,11 @@ export default function TutorRecommendationCard() {
     };
   }, []);
 
-  const handleStartLesson = useCallback(async () => {
+  const handleStartLesson = useCallback(() => {
     if (!topic || starting) return;
     setStarting(true);
-    try {
-      const res = await fetch("/api/session/start", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ topicId: topic.topicId }),
-      });
-      if (!res.ok) throw new Error("Failed to start session");
-      const data = await res.json();
-      const sessionId = data?.session?.sessionId;
-      if (sessionId) {
-        router.push(`/session/${sessionId}`);
-      } else {
-        setStarting(false);
-      }
-    } catch {
-      setStarting(false);
-    }
+    // SessionContainer handles POST /api/session/start internally (idempotent).
+    router.push(`/session/${topic.topicId}`);
   }, [topic, starting, router]);
 
   // ── Loading skeleton ────────────────────────────────────────────────────
@@ -74,7 +59,7 @@ export default function TutorRecommendationCard() {
   }
 
   // ── No recommendation available ─────────────────────────────────────────
-  if (!topic || error) {
+  if (!topic || fetchError) {
     return (
       <article className="rounded-xl border border-gray-100 bg-gradient-to-br from-gray-50 to-white p-6 shadow-sm">
         <div className="flex items-center gap-2 mb-3">

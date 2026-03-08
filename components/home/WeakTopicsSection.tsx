@@ -59,7 +59,7 @@ export default function WeakTopicsSection({
             </p>
             <p className="mt-1 text-xs text-red-500 font-medium">{topic.masteryLabel}</p>
             <Link
-              href={`/session/start?topicId=${topic.topicId}`}
+              href={`/session/${topic.topicId}`}
               className="mt-3 inline-block w-full text-center rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-1.5 text-xs font-semibold text-indigo-700 hover:bg-indigo-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
             >
               Revise

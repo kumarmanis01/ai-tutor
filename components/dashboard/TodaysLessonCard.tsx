@@ -2,7 +2,7 @@
  * FILE OBJECTIVE:
  * - Hero card shown at the top of the student dashboard.
  * - Fetches the next recommended topic via useNextTopic.
- * - Start button POSTs to /api/session/start then redirects to /session/{sessionId}.
+ * - Start button navigates to /session/{topicId}; SessionContainer handles start internally.
  * - Renders nothing when no recommendation is available.
  *
  * EDIT LOG:
@@ -21,7 +21,6 @@ export default function TodaysLessonCard() {
   const router = useRouter();
   const { topic, loading } = useNextTopic();
   const [starting, setStarting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
   if (loading) {
     return (
@@ -37,32 +36,12 @@ export default function TodaysLessonCard() {
 
   const minutes = topic.estimatedMinutes ?? DEFAULT_MINUTES;
 
-  async function handleStart() {
+  function handleStart() {
     if (!topic) return;
     setStarting(true);
-    setError(null);
-
-    try {
-      const res = await fetch("/api/session/start", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ topicId: topic.topicId }),
-      });
-
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        throw new Error(data?.error ?? "Failed to start session");
-      }
-
-      const data = await res.json();
-      const sessionId = data?.session?.sessionId;
-      if (!sessionId) throw new Error("No session ID returned");
-
-      router.push(`/session/${sessionId}`);
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Something went wrong");
-      setStarting(false);
-    }
+    // SessionContainer calls POST /api/session/start internally (idempotent).
+    // Navigate directly — no pre-flight needed.
+    router.push(`/session/${topic.topicId}`);
   }
 
   return (
@@ -181,9 +160,6 @@ export default function TodaysLessonCard() {
             )}
           </button>
 
-          {error && (
-            <p className="max-w-[200px] text-right text-xs text-red-300">{error}</p>
-          )}
         </div>
       </div>
     </article>

@@ -41,16 +41,11 @@ const PHASES = ['OVERVIEW', 'EXPLANATION', 'PRACTICE', 'TEST', 'HOMEWORK'];
 
 interface SessionInfo {
   sessionId: string;
+  topicId: string;
   topicName: string;
   currentPhase: string;
   subject: string;
   chapter: string;
-  /**
-   * The exact StructuredSession phase the student is at.
-   * When present, the "Continue Session" button deep-links to that phase
-   * via ?phase= so the session page skips straight to the right step.
-   * Absent for legacy LearningSession resumes.
-   */
   resumePhase?: string;
 }
 
@@ -140,13 +135,7 @@ function ResumeState({ session }: { session: SessionInfo }) {
 
       <button
         type="button"
-        onClick={() => {
-          const phase = session.resumePhase ?? session.currentPhase;
-          const path = phase
-            ? `/session/${session.sessionId}?phase=${phase}`
-            : `/session/${session.sessionId}`;
-          router.push(path);
-        }}
+        onClick={() => router.push(`/session/${session.topicId}`)}
         className="mt-4 inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 active:scale-95 transition-transform"
       >
         Continue Session
@@ -163,29 +152,11 @@ function ResumeState({ session }: { session: SessionInfo }) {
 function StartState({ recommendation }: { recommendation: RecommendationInfo }) {
   const router = useRouter();
   const [starting, setStarting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
-  async function handleStart() {
+  function handleStart() {
     setStarting(true);
-    setError(null);
-    try {
-      const res = await fetch('/api/session/start', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ topicId: recommendation.topicId }),
-      });
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        throw new Error((data as { error?: string }).error ?? 'Failed to start session');
-      }
-      const data = await res.json() as { session?: { sessionId?: string } };
-      const sessionId = data?.session?.sessionId;
-      if (!sessionId) throw new Error('No session ID returned');
-      router.push(`/session/${sessionId}`);
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Something went wrong');
-      setStarting(false);
-    }
+    // SessionContainer handles POST /api/session/start internally (idempotent).
+    router.push(`/session/${recommendation.topicId}`);
   }
 
   return (
@@ -248,7 +219,6 @@ function StartState({ recommendation }: { recommendation: RecommendationInfo }) 
         </p>
       </div>
 
-      {error && <p className="mt-2 text-xs text-red-300">{error}</p>}
     </article>
   );
 }

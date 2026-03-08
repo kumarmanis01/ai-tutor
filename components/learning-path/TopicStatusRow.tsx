@@ -51,7 +51,7 @@ export default function TopicStatusRow({
   sessionId,
 }: TopicStatusRowProps) {
   const isActionable = status === 'in_progress' || status === 'needs_practice' || status === 'upcoming';
-  const href = sessionId ? `/session/${sessionId}` : `/session/start?topicId=${topicId}`;
+  const href = `/session/${topicId}`;
 
   return (
     <li className="flex items-center gap-3 py-2.5 border-b border-gray-100 last:border-0">
