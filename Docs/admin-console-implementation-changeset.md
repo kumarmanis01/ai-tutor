@@ -3,7 +3,7 @@
 This document summarizes what was implemented for the missing Spinzy Admin systems per the 35-step plan in `admin-console-implementation-plan.md`.
 
 **Implementation date:** March 8, 2026  
-**Scope:** Weak Topic Monitoring, Student Learning Analytics, Learning Outcome Analytics, Parent Report Monitoring, Content Readiness Dashboard, Content Quality Monitoring, and Admin navigation.
+**Scope:** Weak Topic Monitoring, Student Learning Analytics, Learning Outcome Analytics, Parent Report Monitoring, Content Readiness Dashboard, Content Quality Monitoring, Admin navigation, and Learning Intelligence dashboards (Recommendation Performance, Learning Funnel, Curriculum Difficulty, Student Risk).
 
 ---
 
@@ -88,6 +88,30 @@ This document summarizes what was implemented for the missing Spinzy Admin syste
 | Change | Type | Path | Description |
 |--------|------|------|-------------|
 | Sidebar: Learning & Quality | **Modified** | `components/Admin/AdminSidebar.tsx` | New section “Learning & Quality” with links: Weak Topic Monitoring (`/admin/weak-topics`), Student Learning (`/admin/student-learning`), Learning Outcomes (`/admin/learning-outcomes`), Parent Reporting (`/admin/parent-reporting`), Content Readiness (`/admin/content-readiness`), Content Quality (`/admin/content-quality`). Placed between Content Management and Jobs & Retries. |
+
+---
+
+## 8. Learning Intelligence Dashboards
+
+| Change | Type | Path | Description |
+|--------|------|------|-------------|
+| Persist home-engine decisions | **Modified** | `lib/homeEngine/recommendationTrace.ts` | When `ENABLE_REC_TRACE=1`, the existing Redis trace write now also appends an analytics fact row to `HomeRecommendationDecision` (fire-and-forget semantics preserved). |
+| Prisma model: HomeRecommendationDecision | **New** | `prisma/schema.prisma` | New model for aggregated analytics (ruleId, evaluatedAt, topicId/sessionId, etc). |
+| Migration: HomeRecommendationDecision | **New** | `prisma/migrations/20260309120000_add_home_recommendation_decision/migration.sql` | Creates table + indexes + FK to User. |
+| Admin service: recommendation performance | **New** | `lib/admin/recommendationPerformanceAnalytics.ts` | Aggregates rule frequency, attribution %, session start/completion rates, and accuracy improvement proxy (testScore - practiceScore) per rule. |
+| Admin API: recommendation performance summary | **New** | `app/api/admin/recommendation-performance/summary/route.ts` | GET aggregated performance by date range and attribution window. |
+| Admin UI: recommendation performance | **New** | `app/admin/recommendation-performance/page.tsx` | Table view of per-rule metrics with date range + attribution window controls. |
+| Admin service: learning funnel | **New** | `lib/admin/learningFunnelAnalytics.ts` | Computes session-stage funnel counts and conversion rates using `StructuredSession.meta` + `SessionEvent` and optional “recommendation computed” proxy. |
+| Admin API: learning funnel summary | **New** | `app/api/admin/learning-funnel/summary/route.ts` | GET funnel summary by date range. |
+| Admin UI: learning funnel | **New** | `app/admin/learning-funnel/page.tsx` | Funnel table + conversion cards; banner when recommendation top-stage isn’t available. |
+| Admin service: curriculum difficulty | **New** | `lib/admin/curriculumDifficultyIntelligence.ts` | Computes difficulty index per topic using avg accuracy, median attempts, weak rate, speed proxy (Postgres percentiles). |
+| Admin API: curriculum difficulty topics | **New** | `app/api/admin/curriculum-difficulty/topics/route.ts` | GET topic difficulty list by date range + optional subjectId. |
+| Admin UI: curriculum difficulty | **New** | `app/admin/curriculum-difficulty/page.tsx` | Hardest topics table with components and LOW_DATA flag. |
+| Admin service: student risk | **New** | `lib/admin/studentRiskDetection.ts` | Computes risk score from inactivity, weak-topic breadth, accuracy trend proxy, and completion rate. |
+| Admin API: student risk list | **New** | `app/api/admin/student-risk/students/route.ts` | GET paginated risk list with filters. |
+| Admin API: student risk summary | **New** | `app/api/admin/student-risk/summary/route.ts` | GET counts of low/medium/high. |
+| Admin UI: student risk | **New** | `app/admin/student-risk/page.tsx` | Risk list table with summary cards and filters. |
+| Sidebar: intelligence links | **Modified** | `components/Admin/AdminSidebar.tsx` | Added links for Student Risk, Learning Funnel, Recommendation Performance, Curriculum Difficulty under “Learning & Quality”. |
 
 ---
 

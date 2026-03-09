@@ -264,7 +264,11 @@ const systemMonitoringLinks: NavItem[] = [
 const learningAndQualityLinks: NavItem[] = [
   { href: '/admin/weak-topics', label: 'Weak Topic Monitoring', icon: 'Book' },
   { href: '/admin/student-learning', label: 'Student Learning', icon: 'Users' },
+  { href: '/admin/student-risk', label: 'Student Risk', icon: 'Bell' },
+  { href: '/admin/learning-funnel', label: 'Learning Funnel', icon: 'Chart' },
   { href: '/admin/learning-outcomes', label: 'Learning Outcomes', icon: 'Chart' },
+  { href: '/admin/recommendation-performance', label: 'Recommendation Performance', icon: 'Chart' },
+  { href: '/admin/curriculum-difficulty', label: 'Curriculum Difficulty', icon: 'Book' },
   { href: '/admin/parent-reporting', label: 'Parent Reporting', icon: 'ClipboardList' },
   { href: '/admin/content-readiness', label: 'Content Readiness', icon: 'Folder' },
   { href: '/admin/content-quality', label: 'Content Quality', icon: 'CheckCircle' },
