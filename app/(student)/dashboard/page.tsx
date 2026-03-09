@@ -75,6 +75,7 @@ export default async function StudentHomeDashboardPage() {
 
   // ── Parallel data fetches ─────────────────────────────────────────────────
   const [
+    studentProfile,
     activeSession,
     pendingHomeworkRaw,
     streakRow,
@@ -87,6 +88,12 @@ export default async function StudentHomeDashboardPage() {
     lastSessionRow,
     masteredTopicIds,
   ] = await Promise.all([
+    // 0. Student academic profile for onboarding gate
+    prisma.user.findUnique({
+      where: { id: userId },
+      select: { board: true, grade: true, language: true, subjects: true },
+    }),
+
     // 1. Active in-progress session
     isSessionEngineEnabled()
       ? prisma.structuredSession.findFirst({
@@ -163,6 +170,40 @@ export default async function StudentHomeDashboardPage() {
       select: { topicId: true },
     }),
   ]);
+
+  // ── Onboarding Gate: block learning features when profile is incomplete ──
+  const needsProfile =
+    !studentProfile?.board ||
+    !studentProfile?.grade ||
+    !studentProfile?.language ||
+    !Array.isArray(studentProfile.subjects) ||
+    studentProfile.subjects.length === 0;
+
+  if (needsProfile) {
+    // The OnboardingProvider + OnboardingModal handle actually showing the
+    // modal client-side. Here we simply avoid rendering learning features
+    // on the dashboard until the academic profile is completed.
+    return (
+      <main className="max-w-2xl mx-auto px-4 py-6 space-y-5">
+        <section className="rounded-xl border border-dashed border-gray-300 bg-gray-50 px-4 py-6 text-sm text-gray-700">
+          <h1 className="mb-2 text-lg font-semibold text-gray-900">
+            Welcome to Spinzy!
+          </h1>
+          <p className="mb-1">
+            Let&apos;s set up your learning profile before you start studying.
+          </p>
+          <p className="mb-3">
+            Please choose your Board, Class, Language, and Subjects in the
+            onboarding form that just opened.
+          </p>
+          <p className="text-xs text-gray-500">
+            Once your profile is complete, your home tutor and diagnostic
+            assessment will be unlocked automatically.
+          </p>
+        </section>
+      </main>
+    );
+  }
 
   // ── Build weekly activity strip ─────────────────────────────────────────
   const weekDays = Array.from({ length: 7 }, (_, i) => {
