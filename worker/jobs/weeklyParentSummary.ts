@@ -16,6 +16,14 @@ import { logger } from '../../lib/logger.js';
  * Aggregate weekly summary for all linked students
  */
 export async function aggregateWeeklySummaries(): Promise<number> {
+  const config = await prisma.adminConfig.findUnique({
+    where: { key: 'parent_reports_paused' },
+  });
+  if (config?.value === '1' || config?.value === 'true') {
+    logger.info('weeklyParentSummary: parent reports paused via AdminConfig, skipping');
+    return 0;
+  }
+
   // Find all students who have at least one active parent link
   const links = await prisma.parentStudent.findMany({
     where: { status: 'active' },

@@ -48,6 +48,16 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
+  const config = await prisma.adminConfig.findUnique({
+    where: { key: 'content_generation_paused' },
+  });
+  if (config?.value === '1' || config?.value === 'true') {
+    return NextResponse.json(
+      { error: 'Content generation is paused', paused: true },
+      { status: 503 }
+    );
+  }
+
   try {
     const body: HydrateAllRequest = await req.json();
     const { boardId, classId, subjectId, language, difficulties = ['easy', 'medium', 'hard'] } = body;

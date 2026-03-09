@@ -18,8 +18,7 @@ import { PrismaClient } from '@prisma/client';
 /* eslint-disable no-var */
 declare global {
   // Prevent multiple instances of PrismaClient in development due to HMR
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  var prisma: any | undefined;
+  var prisma: PrismaClient | undefined;
 }
 /* eslint-enable no-var */
 

@@ -20,6 +20,7 @@
 import type { NextAction } from './getNextAction';
 import { getRedis } from '@/lib/redis';
 import { logger } from '@/lib/logger';
+import { prisma } from '@/lib/prisma';
 
 // ─── Public types ─────────────────────────────────────────────────────────────
 
@@ -124,7 +125,24 @@ export async function persistRecTrace(trace: RecommendationTrace): Promise<void>
     const redis = getRedis();
     const key = `${TRACE_KEY_PREFIX}${trace.studentId}`;
     // Overwrites any previous trace for this student (only latest is kept).
-    await redis.set(key, JSON.stringify(trace, replaceDates), 'EX', TRACE_TTL_SECONDS);
+    const payload = JSON.stringify(trace, replaceDates);
+    await Promise.all([
+      redis.set(key, payload, 'EX', TRACE_TTL_SECONDS),
+      // Append-only fact for aggregated analytics (fire-and-forget behavior preserved via caller pattern).
+      prisma.homeRecommendationDecision.create({
+        data: {
+          traceId: trace.traceId,
+          studentId: trace.studentId,
+          evaluatedAt: trace.evaluatedAt,
+          ruleId: trace.finalDecision.ruleId,
+          reasonLabel: trace.finalDecision.reasonLabel,
+          actionType: trace.finalDecision.actionType,
+          topicId: trace.finalDecision.topicId ?? null,
+          sessionId: trace.finalDecision.sessionId ?? null,
+          rawTrace: trace as unknown as object,
+        },
+      }),
+    ]);
     logger.debug('rec-trace.written', { traceId: trace.traceId, studentId: trace.studentId });
   } catch (err) {
     // Silently absorb — trace writes must never throw or block.

@@ -66,6 +66,7 @@ model User {
   studentTopicProgress     StudentTopicProgress[]
   structuredSessions       StructuredSession[]
   homeworkAssignments      HomeworkAssignment[]
+  homeRecommendationDecisions HomeRecommendationDecision[]
   subscriptions            Subscription[]
   testResults              TestResult[]
   userBadges               UserBadge[]
@@ -406,6 +407,14 @@ model AuditLog {
   details   Json?
   createdAt DateTime @default(now())
   user      User?    @relation(fields: [userId], references: [id])
+}
+
+/// Admin key-value flags (e.g. parent_reports_paused, content_generation_paused).
+model AdminConfig {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  value     String
+  updatedAt DateTime @updatedAt
 }
 
 model ApiUsage {
@@ -1838,6 +1847,30 @@ model RecommendationTrace {
 
   @@index([studentId, createdAt])
   @@index([entityType])
+}
+
+/// Home Tutor Engine decision facts (P0–P6 ladder) for aggregated analytics.
+/// Captured when ENABLE_REC_TRACE=1 (same gate as Redis trace), sampled by TRACE_SAMPLE_RATE.
+model HomeRecommendationDecision {
+  id          String   @id @default(cuid())
+  traceId     String
+  studentId   String
+  evaluatedAt DateTime
+  ruleId      String
+  reasonLabel String
+  actionType  String
+  topicId     String?
+  sessionId   String?
+  rawTrace    Json?
+  createdAt   DateTime @default(now())
+
+  student User @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@index([evaluatedAt])
+  @@index([ruleId, evaluatedAt])
+  @@index([studentId, evaluatedAt])
+  @@index([topicId])
+  @@index([sessionId])
 }
 
 /// Failure Recovery System: tracks re-engagement events after inactivity
