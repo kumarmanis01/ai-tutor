@@ -55,10 +55,24 @@ export function OnboardingProvider({ children, service }: { children: React.Reac
           subjects: profile.subjects ?? undefined,
         });
         logger.info('onboarding.hydrate', { hasProfile: true });
-        const complete = !!profile.name && !!profile.language && !!profile.grade && !!profile.board;
-        if (!complete) {
+
+        // Onboarding Gate:
+        // Trigger modal when any of the core profile fields are missing
+        // (board, grade, language, subjects) OR when firstLogin is true.
+        const profileWithFirstLogin = profile as typeof profile & { firstLogin?: boolean };
+        const needsProfile =
+          !profile.board ||
+          !profile.grade ||
+          !profile.language ||
+          !profile.subjects ||
+          profile.subjects.length === 0;
+        const isFirstLogin = profileWithFirstLogin.firstLogin === true;
+
+        if (needsProfile || isFirstLogin) {
           setIsOpen(true);
-          logger.info('onboarding.open.auto', { reason: 'incomplete-profile' });
+          logger.info('onboarding.open.auto', {
+            reason: needsProfile ? 'incomplete-profile' : 'first-login',
+          });
         }
       }
     } catch (e) {
@@ -87,8 +101,15 @@ export function OnboardingProvider({ children, service }: { children: React.Reac
     logger.info('onboarding.open.manual');
   }, [hydrate, values]);
 
-  // Profile is required (non-dismissable) when board or grade is missing
-  const isRequired = !!session?.user && (!values.board || !values.class_grade);
+  // Profile is required (non-dismissable) when core fields are missing
+  const needsProfileValues =
+    !values.board ||
+    !values.class_grade ||
+    !values.preferred_language ||
+    !values.subjects ||
+    values.subjects.length === 0;
+
+  const isRequired = !!session?.user && needsProfileValues;
 
   const close = useCallback(() => {
     if (isRequired) return; // Cannot dismiss when onboarding is required
