@@ -408,6 +408,14 @@ model AuditLog {
   user      User?    @relation(fields: [userId], references: [id])
 }
 
+/// Admin key-value flags (e.g. parent_reports_paused, content_generation_paused).
+model AdminConfig {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  value     String
+  updatedAt DateTime @updatedAt
+}
+
 model ApiUsage {
   id       String   @id @default(cuid())
   userId   String?

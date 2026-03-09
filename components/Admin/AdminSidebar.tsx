@@ -261,6 +261,15 @@ const systemMonitoringLinks: NavItem[] = [
   { href: '/admin/content-engine/audit-logs', label: 'Engine Audit Logs', icon: 'ClipboardList' },
 ];
 
+const learningAndQualityLinks: NavItem[] = [
+  { href: '/admin/weak-topics', label: 'Weak Topic Monitoring', icon: 'Book' },
+  { href: '/admin/student-learning', label: 'Student Learning', icon: 'Users' },
+  { href: '/admin/learning-outcomes', label: 'Learning Outcomes', icon: 'Chart' },
+  { href: '/admin/parent-reporting', label: 'Parent Reporting', icon: 'ClipboardList' },
+  { href: '/admin/content-readiness', label: 'Content Readiness', icon: 'Folder' },
+  { href: '/admin/content-quality', label: 'Content Quality', icon: 'CheckCircle' },
+];
+
 const generalAdminLinks: NavItem[] = [
   { href: '/admin/users', label: 'User Management', icon: 'Users' },
   { href: '/admin/audit-logs', label: 'Platform Audit Logs', icon: 'ClipboardList' },
@@ -391,6 +400,7 @@ export default function AdminSidebar() {
       <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-1">
         <NavSection title="Content Generation" items={contentGenerationLinks} pathname={pathname} />
         <NavSection title="Content Management" items={contentManagementLinks} pathname={pathname} />
+        <NavSection title="Learning & Quality" items={learningAndQualityLinks} pathname={pathname} />
         <NavSection title="Jobs & Retries" items={jobsAndRetriesLinks} pathname={pathname} />
         <NavSection title="System Monitoring" items={systemMonitoringLinks} pathname={pathname} />
         <NavSection
