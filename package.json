@@ -77,6 +77,8 @@
     "test:unit": "cross-env NODE_OPTIONS=--max-old-space-size=4096 jest --runInBand",
     "orchestrator:start": "ts-node -r tsconfig-paths/register worker/orchestrator.ts",
     "seed-ai-data": "node scripts/seed-ai-data.cjs",
+    "seed:dashboard": "node scripts/seed-dashboard-test-data.cjs",
+    "seed:dashboard:dry": "node scripts/seed-dashboard-test-data.cjs --dry-run",
     "test:mvp-flow": "node scripts/test-mvp-flow.cjs",
     "seed-db-ai-content-infra": "node -r ts-node/register scripts/seed-database.ts",
     "reset-db-ai-content-infra": "node -r ts-node/register scripts/reset-remote-db.ts",
