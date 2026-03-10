@@ -19,12 +19,17 @@ import { LANGUAGES } from '@/components/CascadingFilters';
 type Props = {
   open: boolean;
   required?: boolean;
+  parentVerified?: boolean;
+  gradeLocked?: boolean;
   values: {
     name: string;
+    age: number | null;
     class_grade: string | null;
     board: string | null;
     preferred_language: string | null;
     subjects: string[] | undefined;
+    parent_phone?: string | null;
+    parent_otp?: string | null;
   };
   errors?: Record<string, string>;
   loading?: boolean;
@@ -34,7 +39,7 @@ type Props = {
   onSave: () => void;
 };
 
-export default function OnboardingModal({ open, required, values, errors = {}, saving, onChange, onClose, onSave }: Props) {
+export default function OnboardingModal({ open, required, parentVerified, gradeLocked, values, errors = {}, saving, onChange, onClose, onSave }: Props) {
   // Single hierarchy fetch with session caching
   const { loading: hierarchyLoading, helpers } = useAcademicHierarchy();
   
@@ -46,11 +51,31 @@ export default function OnboardingModal({ open, required, values, errors = {}, s
     values.class_grade ? parseInt(values.class_grade, 10) : null
   );
 
+  // Auto-select "core" subjects once board+grade are chosen (best-effort, MVP).
+  useEffect(() => {
+    if (!open) return;
+    if (!values.board || !values.class_grade) return;
+    if (values.subjects && values.subjects.length > 0) return;
+    if (!dbSubjects || dbSubjects.length === 0) return;
+
+    const gradeNum = parseInt(values.class_grade, 10);
+    const preferred = gradeNum >= 11
+      ? ['mathematics', 'math', 'physics', 'chemistry', 'biology', 'english']
+      : ['mathematics', 'math', 'science', 'english', 'hindi', 'social-science', 'social-studies'];
+
+    const available = new Set(dbSubjects.map((s) => s.slug.toLowerCase()));
+    const pick = preferred.filter((s) => available.has(s.toLowerCase())).slice(0, 6);
+    const fallback = pick.length > 0 ? pick : dbSubjects.slice(0, Math.min(4, dbSubjects.length)).map((s) => s.slug);
+    onChange('subjects', fallback);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [values.board, values.class_grade, dbSubjects]);
+
   // Reset dependent fields when parent changes
   const [prevBoard, setPrevBoard] = useState(values.board);
   const [prevGrade, setPrevGrade] = useState(values.class_grade);
 
   useEffect(() => {
+    if (!open) return;
     if (prevBoard !== values.board) {
       setPrevBoard(values.board);
       // Reset grade and subjects when board changes
@@ -64,6 +89,7 @@ export default function OnboardingModal({ open, required, values, errors = {}, s
   }, [values.board, prevBoard, values.class_grade, values.subjects, onChange]);
 
   useEffect(() => {
+    if (!open) return;
     if (prevGrade !== values.class_grade) {
       setPrevGrade(values.class_grade);
       // Reset subjects when grade changes
@@ -85,11 +111,11 @@ export default function OnboardingModal({ open, required, values, errors = {}, s
         </div>
         <div className="px-5 py-4 overflow-y-auto" style={{ maxHeight: 'calc(90vh - 112px)' }}>
           {/* Name */}
-          <label className="block text-sm mb-1">
+          <label htmlFor="onboarding-name" className="block text-sm mb-1">
             Name <span className="text-red-600">*</span>
           </label>
           <input 
-            aria-invalid={!!errors.name} 
+            id="onboarding-name"
             className={`w-full px-3 py-2 border rounded mb-1 ${errors.name ? 'border-red-500' : ''}`} 
             placeholder="Your name" 
             value={values.name} 
@@ -97,11 +123,29 @@ export default function OnboardingModal({ open, required, values, errors = {}, s
           />
           {errors.name && <div className="text-xs text-red-600 mb-2">{errors.name}</div>}
 
+          {/* Age */}
+          <div className="mb-3">
+            <label htmlFor="onboarding-age" className="block text-sm mb-1">
+              Age <span className="text-red-600">*</span>
+            </label>
+            <input
+              id="onboarding-age"
+              type="number"
+              min={3}
+              max={100}
+              value={values.age ?? ''}
+              onChange={(e) => onChange('age', e.target.value === '' ? null : Number(e.target.value))}
+              className={`w-full px-3 py-2 border rounded ${errors.age ? 'border-red-500' : ''}`}
+              placeholder="Your age"
+            />
+            {errors.age && <div className="text-xs text-red-600 mt-1">{errors.age}</div>}
+          </div>
+
           {/* Preferred Language - First in cascade */}
           <div className="mb-3">
-            <label className="block text-sm mb-1">Preferred language <span className="text-red-600">*</span></label>
+            <label htmlFor="onboarding-language" className="block text-sm mb-1">Preferred language <span className="text-red-600">*</span></label>
             <select 
-              aria-invalid={!!errors.preferred_language} 
+              id="onboarding-language"
               value={values.preferred_language ?? ''} 
               onChange={(e) => onChange('preferred_language', e.target.value || null)} 
               className={`w-full px-3 py-2 border rounded ${errors.preferred_language ? 'border-red-500' : ''}`}
@@ -116,9 +160,9 @@ export default function OnboardingModal({ open, required, values, errors = {}, s
 
           {/* Board - DB-driven */}
           <div className="mb-3">
-            <label className="block text-sm mb-1">Board <span className="text-red-600">*</span></label>
+            <label htmlFor="onboarding-board" className="block text-sm mb-1">Board <span className="text-red-600">*</span></label>
             <select 
-              aria-invalid={!!errors.board} 
+              id="onboarding-board"
               value={values.board ?? ''} 
               onChange={(e) => onChange('board', e.target.value || null)} 
               disabled={hierarchyLoading}
@@ -134,12 +178,12 @@ export default function OnboardingModal({ open, required, values, errors = {}, s
 
           {/* Grade/Class - DB-driven based on board */}
           <div className="mb-3">
-            <label className="block text-sm mb-1">Class <span className="text-red-600">*</span></label>
+            <label htmlFor="onboarding-grade" className="block text-sm mb-1">Class <span className="text-red-600">*</span></label>
             <select 
-              aria-invalid={!!errors.class_grade} 
+              id="onboarding-grade"
               value={values.class_grade ?? ''} 
               onChange={(e) => onChange('class_grade', e.target.value || null)} 
-              disabled={!values.board}
+              disabled={!values.board || !!gradeLocked}
               className={`w-full px-3 py-2 border rounded ${errors.class_grade ? 'border-red-500' : ''} ${!values.board ? 'opacity-50' : ''}`}
             >
               <option value="">
@@ -150,11 +194,18 @@ export default function OnboardingModal({ open, required, values, errors = {}, s
               ))}
             </select>
             {errors.class_grade && <div className="text-xs text-red-600 mt-1">{errors.class_grade}</div>}
+            {gradeLocked && (
+              <div className="text-xs text-muted-foreground mt-1">
+                Grade is locked after registration. Contact support/admin to change it.
+              </div>
+            )}
           </div>
 
           {/* Subjects - DB-driven based on board and grade */}
           <div className="mb-3">
-            <label className="block text-sm mb-1">Subjects (optional)</label>
+            <label className="block text-sm mb-1">
+              Subjects <span className="text-red-600">*</span> <span className="text-xs text-muted-foreground">(up to 6)</span>
+            </label>
             {!values.board || !values.class_grade ? (
               <div className="text-sm text-muted-foreground py-2">Select board and class to see available subjects</div>
             ) : dbSubjects.length === 0 ? (
@@ -168,9 +219,11 @@ export default function OnboardingModal({ open, required, values, errors = {}, s
                     onClick={() => {
                       const prev = values.subjects ?? [];
                       const subjectSlug = subject.slug;
-                      const next = prev.includes(subjectSlug) 
-                        ? prev.filter((x) => x !== subjectSlug) 
-                        : [...prev, subjectSlug];
+                      const next = prev.includes(subjectSlug)
+                        ? prev.filter((x) => x !== subjectSlug)
+                        : prev.length >= 6
+                          ? prev
+                          : [...prev, subjectSlug];
                       onChange('subjects', next.length ? next : undefined);
                     }} 
                     className={`px-3 py-2 border rounded text-left transition-colors ${
@@ -184,7 +237,66 @@ export default function OnboardingModal({ open, required, values, errors = {}, s
                 ))}
               </div>
             )}
+            {errors.subjects && <div className="text-xs text-red-600 mt-1">{errors.subjects}</div>}
           </div>
+
+          {/* Under-13 parent verification */}
+          {values.age != null && Number(values.age) < 13 && !parentVerified && (
+            <div className="mb-3 rounded-lg border bg-gray-50 p-3">
+              <div className="text-sm font-medium mb-2">Parent verification (required)</div>
+              <label htmlFor="onboarding-parent-phone" className="block text-sm mb-1">
+                Parent mobile number <span className="text-red-600">*</span>
+              </label>
+              <input
+                id="onboarding-parent-phone"
+                type="tel"
+                value={values.parent_phone ?? ''}
+                onChange={(e) => onChange('parent_phone', e.target.value || null)}
+                className={`w-full px-3 py-2 border rounded ${errors.parent_phone ? 'border-red-500' : ''}`}
+                placeholder="e.g. +91XXXXXXXXXX"
+              />
+              {errors.parent_phone && <div className="text-xs text-red-600 mt-1">{errors.parent_phone}</div>}
+
+              <div className="mt-3 grid grid-cols-3 gap-2 items-end">
+                <div className="col-span-2">
+                  <label htmlFor="onboarding-parent-otp" className="block text-sm mb-1">
+                    OTP <span className="text-red-600">*</span>
+                  </label>
+                  <input
+                    id="onboarding-parent-otp"
+                    inputMode="numeric"
+                    value={values.parent_otp ?? ''}
+                    onChange={(e) => onChange('parent_otp', e.target.value || null)}
+                    className={`w-full px-3 py-2 border rounded ${errors.parent_otp ? 'border-red-500' : ''}`}
+                    placeholder="Enter OTP"
+                  />
+                </div>
+                <button
+                  type="button"
+                  className="px-3 py-2 border rounded hover:bg-white"
+                  onClick={async () => {
+                    // Fire-and-forget UX: server will rate-limit.
+                    await fetch('/api/auth/parent/send-otp', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ parentPhone: values.parent_phone }),
+                    });
+                  }}
+                >
+                  Send OTP
+                </button>
+              </div>
+              {errors.parent_otp && <div className="text-xs text-red-600 mt-1">{errors.parent_otp}</div>}
+              <div className="mt-2 text-xs text-muted-foreground">
+                Students under 13 need a parent OTP to activate the account.
+              </div>
+            </div>
+          )}
+          {values.age != null && Number(values.age) < 13 && parentVerified && (
+            <div className="mb-3 rounded-lg border bg-green-50 p-3 text-sm text-green-800">
+              Parent phone is verified. Your account is active.
+            </div>
+          )}
 
           {errors._root && <div className="text-sm text-red-600 mb-2">{errors._root}</div>}
         </div>

@@ -43,6 +43,7 @@ export async function GET(req: Request) {
   const activeSub = savedUser?.subscriptions?.find((sub: { active: boolean }) => sub.active);
 
   res = NextResponse.json({
+    id: savedUser?.id ?? '',
     name: savedUser?.name ?? '',
     email: savedUser?.email ?? '',
     country: savedUser?.country ?? '',
@@ -51,6 +52,10 @@ export async function GET(req: Request) {
     grade: savedUser?.grade ?? null,
     board: savedUser?.board ?? null,
     subjects: savedUser?.subjects ?? [],
+    age: savedUser?.age ?? null,
+    parentPhone: savedUser?.parentPhone ?? null,
+    parentPhoneVerifiedAt: savedUser?.parentPhoneVerifiedAt ?? null,
+    accountStatus: (savedUser as any)?.accountStatus ?? 'active',
     createdAt: savedUser?.createdAt ?? null,
     role: savedUser?.role ?? '',
     parentEmail: savedUser?.parentEmail ?? '',

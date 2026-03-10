@@ -67,6 +67,15 @@ export async function middleware(request: NextRequest) {
         return NextResponse.redirect(new URL('/', request.url));
       }
 
+      // Under-13 gate: block access until parent phone is verified.
+      if (
+        (token as any).accountStatus === 'pending_parent_verification' &&
+        !pathname.startsWith('/dashboard') &&
+        !pathname.startsWith('/profile')
+      ) {
+        return NextResponse.redirect(new URL('/dashboard?parent_verify=1', request.url));
+      }
+
       if (!token.onboardingComplete && !pathname.startsWith('/profile') && !pathname.startsWith('/dashboard') && !pathname.startsWith('/parent')) {
         return NextResponse.redirect(new URL('/dashboard?onboarding=1', request.url));
       }

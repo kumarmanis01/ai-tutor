@@ -91,7 +91,7 @@ export default async function StudentHomeDashboardPage() {
     // 0. Student academic profile for onboarding gate
     prisma.user.findUnique({
       where: { id: userId },
-      select: { board: true, grade: true, language: true, subjects: true },
+      select: { board: true, grade: true, language: true, subjects: true, accountStatus: true },
     }),
 
     // 1. Active in-progress session
@@ -179,6 +179,8 @@ export default async function StudentHomeDashboardPage() {
     !Array.isArray(studentProfile.subjects) ||
     studentProfile.subjects.length === 0;
 
+  const needsParentVerification = (studentProfile as any)?.accountStatus === 'pending_parent_verification';
+
   if (needsProfile) {
     // The OnboardingProvider + OnboardingModal handle actually showing the
     // modal client-side. Here we simply avoid rendering learning features
@@ -199,6 +201,22 @@ export default async function StudentHomeDashboardPage() {
           <p className="text-xs text-gray-500">
             Once your profile is complete, your home tutor and diagnostic
             assessment will be unlocked automatically.
+          </p>
+        </section>
+      </main>
+    );
+  }
+
+  if (needsParentVerification) {
+    return (
+      <main className="max-w-2xl mx-auto px-4 py-6 space-y-5">
+        <section className="rounded-xl border border-dashed border-amber-300 bg-amber-50 px-4 py-6 text-sm text-amber-900">
+          <h1 className="mb-2 text-lg font-semibold">Parent verification required</h1>
+          <p className="mb-3">
+            Since you&apos;re under 13, a parent mobile OTP verification is required to activate your account.
+          </p>
+          <p className="text-xs text-amber-800">
+            Please complete the verification step in the onboarding form that just opened.
           </p>
         </section>
       </main>

@@ -2,10 +2,22 @@
 CREATE SCHEMA IF NOT EXISTS "public";
 
 -- CreateEnum
+CREATE TYPE "HomeworkStatus" AS ENUM ('PENDING', 'IN_PROGRESS', 'SUBMITTED', 'GRADED', 'OVERDUE');
+
+-- CreateEnum
+CREATE TYPE "SessionPhase" AS ENUM ('OVERVIEW', 'EXPLANATION', 'PRACTICE', 'TEST', 'HOMEWORK', 'COMPLETE', 'EXPIRED');
+
+-- CreateEnum
+CREATE TYPE "SessionEventType" AS ENUM ('SESSION_STARTED', 'SESSION_OVERVIEW_VIEWED', 'PHASE_STARTED', 'QUESTION_ANSWERED', 'HOMEWORK_SUBMITTED', 'SESSION_COMPLETED');
+
+-- CreateEnum
 CREATE TYPE "UserStatus" AS ENUM ('active', 'banned', 'suspended');
 
 -- CreateEnum
-CREATE TYPE "UserRole" AS ENUM ('user', 'admin', 'moderator', 'support');
+CREATE TYPE "AccountStatus" AS ENUM ('active', 'pending_parent_verification');
+
+-- CreateEnum
+CREATE TYPE "UserRole" AS ENUM ('user', 'parent', 'admin', 'moderator', 'support');
 
 -- CreateEnum
 CREATE TYPE "ApprovalStatus" AS ENUM ('draft', 'pending', 'approved', 'rejected', 'archived');
@@ -18,6 +30,24 @@ CREATE TYPE "LanguageCode" AS ENUM ('en', 'hi');
 
 -- CreateEnum
 CREATE TYPE "DifficultyLevel" AS ENUM ('easy', 'medium', 'hard');
+
+-- CreateEnum
+CREATE TYPE "MasteryLevel" AS ENUM ('beginner', 'intermediate', 'advanced', 'expert');
+
+-- CreateEnum
+CREATE TYPE "ParentLinkStatus" AS ENUM ('pending', 'active', 'revoked');
+
+-- CreateEnum
+CREATE TYPE "ParentInviteStatus" AS ENUM ('pending', 'consumed', 'revoked', 'expired');
+
+-- CreateEnum
+CREATE TYPE "DailyTaskType" AS ENUM ('learn', 'practice', 'revise', 'fix_gap', 'confidence');
+
+-- CreateEnum
+CREATE TYPE "DailyTaskStatus" AS ENUM ('pending', 'completed', 'skipped', 'expired');
+
+-- CreateEnum
+CREATE TYPE "RecoveryNudgeType" AS ENUM ('gentle_nudge', 'easy_task', 'fresh_start');
 
 -- CreateEnum
 CREATE TYPE "JobStatus" AS ENUM ('pending', 'running', 'failed', 'completed', 'cancelled');
@@ -88,6 +118,10 @@ CREATE TABLE "User" (
     "emailVerified" TIMESTAMP(3),
     "image" TEXT,
     "parentEmail" TEXT,
+    "age" INTEGER,
+    "parentPhone" TEXT,
+    "parentPhoneVerifiedAt" TIMESTAMP(3),
+    "accountStatus" "AccountStatus" NOT NULL DEFAULT 'active',
     "role" "UserRole" NOT NULL DEFAULT 'user',
     "country" TEXT,
     "language" "LanguageCode" NOT NULL,
@@ -100,6 +134,7 @@ CREATE TABLE "User" (
     "todaysFreeQuestionsCount" INTEGER NOT NULL DEFAULT 3,
     "status" TEXT,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "timezone" TEXT,
 
     CONSTRAINT "User_pkey" PRIMARY KEY ("id")
 );
@@ -299,11 +334,28 @@ CREATE TABLE "Subscription" (
     "startDate" TIMESTAMP(3) NOT NULL,
     "endDate" TIMESTAMP(3) NOT NULL,
     "active" BOOLEAN NOT NULL DEFAULT false,
+    "childSlots" INTEGER NOT NULL DEFAULT 1,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
     "paymentId" TEXT,
 
     CONSTRAINT "Subscription_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "ParentChildControl" (
+    "id" TEXT NOT NULL,
+    "parentId" TEXT NOT NULL,
+    "studentId" TEXT NOT NULL,
+    "dailyTimeLimitMin" INTEGER,
+    "allowedSubjects" TEXT[] DEFAULT ARRAY[]::TEXT[],
+    "focusMode" TEXT NOT NULL DEFAULT 'balanced',
+    "studyHoursStart" TEXT,
+    "studyHoursEnd" TEXT,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "ParentChildControl_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
@@ -404,6 +456,16 @@ CREATE TABLE "AuditLog" (
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "AuditLog_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "AdminConfig" (
+    "id" TEXT NOT NULL,
+    "key" TEXT NOT NULL,
+    "value" TEXT NOT NULL,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "AdminConfig_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
@@ -593,9 +655,91 @@ CREATE TABLE "ParentStudent" (
     "id" TEXT NOT NULL,
     "parentId" TEXT NOT NULL,
     "studentId" TEXT NOT NULL,
+    "status" "ParentLinkStatus" NOT NULL DEFAULT 'active',
+    "inviteCode" TEXT,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "ParentStudent_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "ParentInvite" (
+    "id" TEXT NOT NULL,
+    "studentId" TEXT NOT NULL,
+    "code" TEXT NOT NULL,
+    "status" "ParentInviteStatus" NOT NULL DEFAULT 'pending',
+    "expiresAt" TIMESTAMP(3) NOT NULL,
+    "consumedAt" TIMESTAMP(3),
+    "consumedByParentId" TEXT,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "ParentInvite_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "WeeklyStudentSummary" (
+    "id" TEXT NOT NULL,
+    "studentId" TEXT NOT NULL,
+    "weekStart" TIMESTAMP(3) NOT NULL,
+    "topicsCovered" INTEGER NOT NULL DEFAULT 0,
+    "testsTaken" INTEGER NOT NULL DEFAULT 0,
+    "averageScore" DOUBLE PRECISION NOT NULL DEFAULT 0,
+    "totalMinutes" INTEGER NOT NULL DEFAULT 0,
+    "sessionsCount" INTEGER NOT NULL DEFAULT 0,
+    "subjectsActive" TEXT[] DEFAULT ARRAY[]::TEXT[],
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "WeeklyStudentSummary_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "SubjectProgressSummary" (
+    "id" TEXT NOT NULL,
+    "studentId" TEXT NOT NULL,
+    "subject" TEXT NOT NULL,
+    "board" TEXT NOT NULL,
+    "totalTopics" INTEGER NOT NULL DEFAULT 0,
+    "topicsCovered" INTEGER NOT NULL DEFAULT 0,
+    "averageMastery" DOUBLE PRECISION NOT NULL DEFAULT 0,
+    "strongTopics" INTEGER NOT NULL DEFAULT 0,
+    "weakTopics" INTEGER NOT NULL DEFAULT 0,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "SubjectProgressSummary_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "AttentionFlag" (
+    "id" TEXT NOT NULL,
+    "studentId" TEXT NOT NULL,
+    "topicId" TEXT NOT NULL,
+    "subject" TEXT NOT NULL,
+    "chapter" TEXT NOT NULL,
+    "masteryLevel" "MasteryLevel" NOT NULL,
+    "accuracy" DOUBLE PRECISION NOT NULL,
+    "reason" TEXT NOT NULL,
+    "resolved" BOOLEAN NOT NULL DEFAULT false,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "AttentionFlag_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "ReadinessStatus" (
+    "id" TEXT NOT NULL,
+    "studentId" TEXT NOT NULL,
+    "subject" TEXT NOT NULL,
+    "board" TEXT NOT NULL,
+    "topicsCovered" INTEGER NOT NULL DEFAULT 0,
+    "totalTopics" INTEGER NOT NULL DEFAULT 0,
+    "coveragePercent" DOUBLE PRECISION NOT NULL DEFAULT 0,
+    "avgMastery" DOUBLE PRECISION NOT NULL DEFAULT 0,
+    "readinessScore" DOUBLE PRECISION NOT NULL DEFAULT 0,
+    "readinessLabel" TEXT NOT NULL DEFAULT 'not_started',
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "ReadinessStatus_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
@@ -641,10 +785,12 @@ CREATE TABLE "ContentRecommendation" (
     "isShown" BOOLEAN NOT NULL DEFAULT false,
     "isClicked" BOOLEAN NOT NULL DEFAULT false,
     "isCompleted" BOOLEAN NOT NULL DEFAULT false,
+    "isIgnored" BOOLEAN NOT NULL DEFAULT false,
     "firstShownAt" TIMESTAMP(3),
     "lastShownAt" TIMESTAMP(3),
     "clickedAt" TIMESTAMP(3),
     "completedAt" TIMESTAMP(3),
+    "ignoredAt" TIMESTAMP(3),
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
@@ -679,6 +825,8 @@ CREATE TABLE "StudentLearningProfile" (
     "weakSubjects" TEXT[] DEFAULT ARRAY[]::TEXT[],
     "strengths" JSONB,
     "recommendations" JSONB,
+    "dailyTargetMin" INTEGER,
+    "studyDaysPerWeek" INTEGER,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
     CONSTRAINT "StudentLearningProfile_pkey" PRIMARY KEY ("id")
@@ -695,6 +843,112 @@ CREATE TABLE "StudentStreak" (
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
     CONSTRAINT "StudentStreak_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "StudentEngagementStats" (
+    "id" TEXT NOT NULL,
+    "studentId" TEXT NOT NULL,
+    "currentStreak" INTEGER NOT NULL DEFAULT 0,
+    "longestStreak" INTEGER NOT NULL DEFAULT 0,
+    "lastActiveDate" TIMESTAMP(3),
+    "totalSessionsCompleted" INTEGER NOT NULL DEFAULT 0,
+    "learningPoints" INTEGER NOT NULL DEFAULT 0,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "StudentEngagementStats_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "EngagementProcessedSession" (
+    "id" TEXT NOT NULL,
+    "sessionId" TEXT NOT NULL,
+    "studentId" TEXT NOT NULL,
+    "processedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "EngagementProcessedSession_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "StudentTopicMastery" (
+    "id" TEXT NOT NULL,
+    "studentId" TEXT NOT NULL,
+    "topicId" TEXT NOT NULL,
+    "subject" TEXT NOT NULL,
+    "chapter" TEXT NOT NULL,
+    "masteryLevel" "MasteryLevel" NOT NULL DEFAULT 'beginner',
+    "accuracy" DOUBLE PRECISION NOT NULL DEFAULT 0,
+    "questionsAttempted" INTEGER NOT NULL DEFAULT 0,
+    "lastAttemptedAt" TIMESTAMP(3),
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "StudentTopicMastery_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "StudentTopicProgress" (
+    "id" TEXT NOT NULL,
+    "studentId" TEXT NOT NULL,
+    "topicId" TEXT NOT NULL,
+    "mastery" DOUBLE PRECISION NOT NULL DEFAULT 0,
+    "practiceCount" INTEGER NOT NULL DEFAULT 0,
+    "lastStudiedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "StudentTopicProgress_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "StructuredSession" (
+    "id" TEXT NOT NULL,
+    "studentId" TEXT NOT NULL,
+    "topicId" TEXT NOT NULL,
+    "state" "SessionPhase" NOT NULL DEFAULT 'OVERVIEW',
+    "startedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "completedAt" TIMESTAMP(3),
+    "meta" JSONB,
+
+    CONSTRAINT "StructuredSession_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "HomeworkAssignment" (
+    "id" TEXT NOT NULL,
+    "studentId" TEXT NOT NULL,
+    "topicId" TEXT NOT NULL,
+    "sessionId" TEXT,
+    "questions" JSONB NOT NULL,
+    "status" "HomeworkStatus" NOT NULL DEFAULT 'PENDING',
+    "dueDate" TIMESTAMP(3) NOT NULL,
+    "score" DOUBLE PRECISION,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "HomeworkAssignment_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "HomeworkAnswer" (
+    "id" TEXT NOT NULL,
+    "assignmentId" TEXT NOT NULL,
+    "questionId" TEXT NOT NULL,
+    "studentAnswer" JSONB NOT NULL,
+    "isCorrect" BOOLEAN,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "HomeworkAnswer_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "SessionEvent" (
+    "id" TEXT NOT NULL,
+    "sessionId" TEXT NOT NULL,
+    "eventType" "SessionEventType" NOT NULL,
+    "timestamp" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "metadata" JSONB,
+
+    CONSTRAINT "SessionEvent_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
@@ -766,6 +1020,7 @@ CREATE TABLE "Question" (
     "chapter" TEXT,
     "grade" TEXT,
     "board" TEXT,
+    "topicId" TEXT,
     "type" TEXT NOT NULL,
     "difficulty" TEXT,
     "prompt" TEXT NOT NULL,
@@ -907,7 +1162,9 @@ CREATE TABLE "GeneratedQuestion" (
     "question" TEXT NOT NULL,
     "options" JSONB,
     "answer" JSONB,
+    "explanation" TEXT,
     "marks" INTEGER,
+    "sourceJobId" TEXT,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "GeneratedQuestion_pkey" PRIMARY KEY ("id")
@@ -934,6 +1191,7 @@ CREATE TABLE "AIContentLog" (
     "requestBody" JSONB,
     "responseBody" JSONB,
     "topicId" TEXT,
+    "schemaHash" TEXT,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "AIContentLog_pkey" PRIMARY KEY ("id")
@@ -959,7 +1217,8 @@ CREATE TABLE "HydrationJob" (
     "chapterId" TEXT,
     "topicId" TEXT,
     "parentJobId" TEXT,
-    "rootJobId" TEXT NOT NULL,
+    "rootJobId" TEXT,
+    "hierarchyLevel" INTEGER NOT NULL DEFAULT 0,
     "language" "LanguageCode" NOT NULL,
     "difficulty" "DifficultyLevel" NOT NULL,
     "status" "JobStatus" NOT NULL DEFAULT 'pending',
@@ -969,6 +1228,19 @@ CREATE TABLE "HydrationJob" (
     "lastError" TEXT,
     "completedAt" TIMESTAMP(3),
     "contentReady" BOOLEAN NOT NULL DEFAULT false,
+    "inputParams" JSONB,
+    "traceId" TEXT,
+    "chaptersExpected" INTEGER NOT NULL DEFAULT 0,
+    "chaptersCompleted" INTEGER NOT NULL DEFAULT 0,
+    "topicsExpected" INTEGER NOT NULL DEFAULT 0,
+    "topicsCompleted" INTEGER NOT NULL DEFAULT 0,
+    "notesExpected" INTEGER NOT NULL DEFAULT 0,
+    "notesCompleted" INTEGER NOT NULL DEFAULT 0,
+    "questionsExpected" INTEGER NOT NULL DEFAULT 0,
+    "questionsCompleted" INTEGER NOT NULL DEFAULT 0,
+    "estimatedCostUsd" DOUBLE PRECISION,
+    "actualCostUsd" DOUBLE PRECISION DEFAULT 0,
+    "estimatedDurationMins" INTEGER,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
@@ -987,6 +1259,21 @@ CREATE TABLE "Outbox" (
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
     CONSTRAINT "Outbox_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "OutboxDeadLetter" (
+    "id" TEXT NOT NULL,
+    "originalOutboxId" TEXT NOT NULL,
+    "queue" TEXT NOT NULL,
+    "payload" JSONB NOT NULL,
+    "meta" JSONB,
+    "attempts" INTEGER NOT NULL DEFAULT 0,
+    "deadLetterReason" TEXT NOT NULL,
+    "failedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "OutboxDeadLetter_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
@@ -1230,6 +1517,76 @@ CREATE TABLE "StudentStudyBookmark" (
     CONSTRAINT "StudentStudyBookmark_pkey" PRIMARY KEY ("id")
 );
 
+-- CreateTable
+CREATE TABLE "DailyTask" (
+    "id" TEXT NOT NULL,
+    "studentId" TEXT NOT NULL,
+    "date" TIMESTAMP(3) NOT NULL,
+    "taskType" "DailyTaskType" NOT NULL,
+    "title" TEXT NOT NULL,
+    "description" TEXT,
+    "topicId" TEXT,
+    "subject" TEXT,
+    "chapter" TEXT,
+    "steps" JSONB,
+    "estimatedTimeMin" INTEGER NOT NULL DEFAULT 15,
+    "status" "DailyTaskStatus" NOT NULL DEFAULT 'pending',
+    "completedAt" TIMESTAMP(3),
+    "skippedAt" TIMESTAMP(3),
+    "motivationMessage" TEXT,
+    "isRecoveryTask" BOOLEAN NOT NULL DEFAULT false,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "DailyTask_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "RecommendationTrace" (
+    "id" TEXT NOT NULL,
+    "studentId" TEXT NOT NULL,
+    "entityType" TEXT NOT NULL,
+    "entityId" TEXT NOT NULL,
+    "score" DOUBLE PRECISION NOT NULL,
+    "signals" JSONB NOT NULL,
+    "engineVersion" TEXT NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "RecommendationTrace_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "HomeRecommendationDecision" (
+    "id" TEXT NOT NULL,
+    "traceId" TEXT NOT NULL,
+    "studentId" TEXT NOT NULL,
+    "evaluatedAt" TIMESTAMP(3) NOT NULL,
+    "ruleId" TEXT NOT NULL,
+    "reasonLabel" TEXT NOT NULL,
+    "actionType" TEXT NOT NULL,
+    "topicId" TEXT,
+    "sessionId" TEXT,
+    "rawTrace" JSONB,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "HomeRecommendationDecision_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "RecoveryEvent" (
+    "id" TEXT NOT NULL,
+    "studentId" TEXT NOT NULL,
+    "inactiveDays" INTEGER NOT NULL,
+    "nudgeType" "RecoveryNudgeType" NOT NULL,
+    "dailyTaskId" TEXT,
+    "sentAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "respondedAt" TIMESTAMP(3),
+    "dismissed" BOOLEAN NOT NULL DEFAULT false,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "RecoveryEvent_pkey" PRIMARY KEY ("id")
+);
+
 -- CreateIndex
 CREATE UNIQUE INDEX "User_email_key" ON "User"("email");
 
@@ -1315,6 +1672,12 @@ CREATE INDEX "idx_regenerationoutput_targetId" ON "RegenerationOutput"("targetId
 CREATE INDEX "Subscription_userId_idx" ON "Subscription"("userId");
 
 -- CreateIndex
+CREATE INDEX "ParentChildControl_studentId_idx" ON "ParentChildControl"("studentId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "ParentChildControl_parentId_studentId_key" ON "ParentChildControl"("parentId", "studentId");
+
+-- CreateIndex
 CREATE INDEX "WorkerLifecycle_status_idx" ON "WorkerLifecycle"("status");
 
 -- CreateIndex
@@ -1328,6 +1691,9 @@ CREATE INDEX "RoomMember_roomId_idx" ON "RoomMember"("roomId");
 
 -- CreateIndex
 CREATE INDEX "Message_roomId_idx" ON "Message"("roomId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "AdminConfig_key_key" ON "AdminConfig"("key");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "ApiUsage_userId_endpoint_method_key" ON "ApiUsage"("userId", "endpoint", "method");
@@ -1372,13 +1738,58 @@ CREATE INDEX "StudentQuestion_status_idx" ON "StudentQuestion"("status");
 CREATE INDEX "QuestionAttachment_questionId_idx" ON "QuestionAttachment"("questionId");
 
 -- CreateIndex
+CREATE UNIQUE INDEX "ParentStudent_inviteCode_key" ON "ParentStudent"("inviteCode");
+
+-- CreateIndex
 CREATE INDEX "ParentStudent_studentId_idx" ON "ParentStudent"("studentId");
+
+-- CreateIndex
+CREATE INDEX "ParentStudent_inviteCode_idx" ON "ParentStudent"("inviteCode");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "ParentStudent_parentId_studentId_key" ON "ParentStudent"("parentId", "studentId");
 
 -- CreateIndex
+CREATE UNIQUE INDEX "ParentInvite_code_key" ON "ParentInvite"("code");
+
+-- CreateIndex
+CREATE INDEX "ParentInvite_studentId_idx" ON "ParentInvite"("studentId");
+
+-- CreateIndex
+CREATE INDEX "ParentInvite_status_expiresAt_idx" ON "ParentInvite"("status", "expiresAt");
+
+-- CreateIndex
+CREATE INDEX "ParentInvite_consumedByParentId_idx" ON "ParentInvite"("consumedByParentId");
+
+-- CreateIndex
+CREATE INDEX "WeeklyStudentSummary_studentId_idx" ON "WeeklyStudentSummary"("studentId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "WeeklyStudentSummary_studentId_weekStart_key" ON "WeeklyStudentSummary"("studentId", "weekStart");
+
+-- CreateIndex
+CREATE INDEX "SubjectProgressSummary_studentId_idx" ON "SubjectProgressSummary"("studentId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "SubjectProgressSummary_studentId_subject_key" ON "SubjectProgressSummary"("studentId", "subject");
+
+-- CreateIndex
+CREATE INDEX "AttentionFlag_studentId_resolved_idx" ON "AttentionFlag"("studentId", "resolved");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "AttentionFlag_studentId_topicId_key" ON "AttentionFlag"("studentId", "topicId");
+
+-- CreateIndex
+CREATE INDEX "ReadinessStatus_studentId_idx" ON "ReadinessStatus"("studentId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "ReadinessStatus_studentId_subject_key" ON "ReadinessStatus"("studentId", "subject");
+
+-- CreateIndex
 CREATE INDEX "LearningSession_studentId_idx" ON "LearningSession"("studentId");
+
+-- CreateIndex
+CREATE INDEX "ContentRecommendation_userId_isIgnored_idx" ON "ContentRecommendation"("userId", "isIgnored");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "ContentRecommendation_userId_contentId_key" ON "ContentRecommendation"("userId", "contentId");
@@ -1393,6 +1804,69 @@ CREATE UNIQUE INDEX "StudentLearningProfile_studentId_key" ON "StudentLearningPr
 CREATE INDEX "StudentStreak_studentId_kind_idx" ON "StudentStreak"("studentId", "kind");
 
 -- CreateIndex
+CREATE UNIQUE INDEX "StudentEngagementStats_studentId_key" ON "StudentEngagementStats"("studentId");
+
+-- CreateIndex
+CREATE INDEX "StudentEngagementStats_studentId_idx" ON "StudentEngagementStats"("studentId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "EngagementProcessedSession_sessionId_key" ON "EngagementProcessedSession"("sessionId");
+
+-- CreateIndex
+CREATE INDEX "EngagementProcessedSession_studentId_idx" ON "EngagementProcessedSession"("studentId");
+
+-- CreateIndex
+CREATE INDEX "StudentTopicMastery_studentId_masteryLevel_idx" ON "StudentTopicMastery"("studentId", "masteryLevel");
+
+-- CreateIndex
+CREATE INDEX "StudentTopicMastery_subject_chapter_idx" ON "StudentTopicMastery"("subject", "chapter");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "StudentTopicMastery_studentId_topicId_key" ON "StudentTopicMastery"("studentId", "topicId");
+
+-- CreateIndex
+CREATE INDEX "StudentTopicProgress_studentId_mastery_idx" ON "StudentTopicProgress"("studentId", "mastery");
+
+-- CreateIndex
+CREATE INDEX "StudentTopicProgress_topicId_idx" ON "StudentTopicProgress"("topicId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "StudentTopicProgress_studentId_topicId_key" ON "StudentTopicProgress"("studentId", "topicId");
+
+-- CreateIndex
+CREATE INDEX "StructuredSession_studentId_state_idx" ON "StructuredSession"("studentId", "state");
+
+-- CreateIndex
+CREATE INDEX "StructuredSession_studentId_completedAt_idx" ON "StructuredSession"("studentId", "completedAt");
+
+-- CreateIndex
+CREATE INDEX "StructuredSession_topicId_idx" ON "StructuredSession"("topicId");
+
+-- CreateIndex
+CREATE INDEX "HomeworkAssignment_studentId_status_idx" ON "HomeworkAssignment"("studentId", "status");
+
+-- CreateIndex
+CREATE INDEX "HomeworkAssignment_topicId_idx" ON "HomeworkAssignment"("topicId");
+
+-- CreateIndex
+CREATE INDEX "HomeworkAssignment_sessionId_idx" ON "HomeworkAssignment"("sessionId");
+
+-- CreateIndex
+CREATE INDEX "HomeworkAnswer_assignmentId_idx" ON "HomeworkAnswer"("assignmentId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "HomeworkAnswer_assignmentId_questionId_key" ON "HomeworkAnswer"("assignmentId", "questionId");
+
+-- CreateIndex
+CREATE INDEX "SessionEvent_sessionId_idx" ON "SessionEvent"("sessionId");
+
+-- CreateIndex
+CREATE INDEX "SessionEvent_eventType_idx" ON "SessionEvent"("eventType");
+
+-- CreateIndex
+CREATE INDEX "SessionEvent_sessionId_eventType_idx" ON "SessionEvent"("sessionId", "eventType");
+
+-- CreateIndex
 CREATE INDEX "TestResult_studentId_idx" ON "TestResult"("studentId");
 
 -- CreateIndex
@@ -1403,6 +1877,9 @@ CREATE INDEX "NoteDownload_noteId_userId_idx" ON "NoteDownload"("noteId", "userI
 
 -- CreateIndex
 CREATE INDEX "Bookmark_studentId_type_idx" ON "Bookmark"("studentId", "type");
+
+-- CreateIndex
+CREATE INDEX "Question_topicId_idx" ON "Question"("topicId");
 
 -- CreateIndex
 CREATE INDEX "AttemptQuestion_testResultId_idx" ON "AttemptQuestion"("testResultId");
@@ -1444,6 +1921,9 @@ CREATE INDEX "AIContentLog_board_grade_subject_idx" ON "AIContentLog"("board", "
 CREATE INDEX "AIContentLog_createdAt_idx" ON "AIContentLog"("createdAt");
 
 -- CreateIndex
+CREATE INDEX "AIContentLog_promptType_schemaHash_idx" ON "AIContentLog"("promptType", "schemaHash");
+
+-- CreateIndex
 CREATE INDEX "HydrationJob_jobType_status_idx" ON "HydrationJob"("jobType", "status");
 
 -- CreateIndex
@@ -1456,7 +1936,16 @@ CREATE INDEX "HydrationJob_rootJobId_idx" ON "HydrationJob"("rootJobId");
 CREATE INDEX "HydrationJob_lockedAt_idx" ON "HydrationJob"("lockedAt");
 
 -- CreateIndex
+CREATE INDEX "HydrationJob_hierarchyLevel_idx" ON "HydrationJob"("hierarchyLevel");
+
+-- CreateIndex
 CREATE INDEX "Outbox_queue_sentAt_idx" ON "Outbox"("queue", "sentAt");
+
+-- CreateIndex
+CREATE INDEX "OutboxDeadLetter_queue_idx" ON "OutboxDeadLetter"("queue");
+
+-- CreateIndex
+CREATE INDEX "OutboxDeadLetter_failedAt_idx" ON "OutboxDeadLetter"("failedAt");
 
 -- CreateIndex
 CREATE INDEX "StudentContentPreference_studentId_idx" ON "StudentContentPreference"("studentId");
@@ -1557,6 +2046,42 @@ CREATE INDEX "StudentStudyBookmark_userId_createdAt_idx" ON "StudentStudyBookmar
 -- CreateIndex
 CREATE UNIQUE INDEX "StudentStudyBookmark_userId_contentType_contentId_key" ON "StudentStudyBookmark"("userId", "contentType", "contentId");
 
+-- CreateIndex
+CREATE INDEX "DailyTask_studentId_status_idx" ON "DailyTask"("studentId", "status");
+
+-- CreateIndex
+CREATE INDEX "DailyTask_date_idx" ON "DailyTask"("date");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "DailyTask_studentId_date_key" ON "DailyTask"("studentId", "date");
+
+-- CreateIndex
+CREATE INDEX "RecommendationTrace_studentId_createdAt_idx" ON "RecommendationTrace"("studentId", "createdAt");
+
+-- CreateIndex
+CREATE INDEX "RecommendationTrace_entityType_idx" ON "RecommendationTrace"("entityType");
+
+-- CreateIndex
+CREATE INDEX "HomeRecommendationDecision_evaluatedAt_idx" ON "HomeRecommendationDecision"("evaluatedAt");
+
+-- CreateIndex
+CREATE INDEX "HomeRecommendationDecision_ruleId_evaluatedAt_idx" ON "HomeRecommendationDecision"("ruleId", "evaluatedAt");
+
+-- CreateIndex
+CREATE INDEX "HomeRecommendationDecision_studentId_evaluatedAt_idx" ON "HomeRecommendationDecision"("studentId", "evaluatedAt");
+
+-- CreateIndex
+CREATE INDEX "HomeRecommendationDecision_topicId_idx" ON "HomeRecommendationDecision"("topicId");
+
+-- CreateIndex
+CREATE INDEX "HomeRecommendationDecision_sessionId_idx" ON "HomeRecommendationDecision"("sessionId");
+
+-- CreateIndex
+CREATE INDEX "RecoveryEvent_studentId_createdAt_idx" ON "RecoveryEvent"("studentId", "createdAt");
+
+-- CreateIndex
+CREATE INDEX "RecoveryEvent_nudgeType_idx" ON "RecoveryEvent"("nudgeType");
+
 -- AddForeignKey
 ALTER TABLE "PhoneOtp" ADD CONSTRAINT "PhoneOtp_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
@@ -1648,6 +2173,12 @@ ALTER TABLE "ParentStudent" ADD CONSTRAINT "ParentStudent_parentId_fkey" FOREIGN
 ALTER TABLE "ParentStudent" ADD CONSTRAINT "ParentStudent_studentId_fkey" FOREIGN KEY ("studentId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
+ALTER TABLE "ParentInvite" ADD CONSTRAINT "ParentInvite_studentId_fkey" FOREIGN KEY ("studentId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "ParentInvite" ADD CONSTRAINT "ParentInvite_consumedByParentId_fkey" FOREIGN KEY ("consumedByParentId") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
 ALTER TABLE "LearningSession" ADD CONSTRAINT "LearningSession_studentId_fkey" FOREIGN KEY ("studentId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
@@ -1663,6 +2194,42 @@ ALTER TABLE "StudentLearningProfile" ADD CONSTRAINT "StudentLearningProfile_stud
 ALTER TABLE "StudentStreak" ADD CONSTRAINT "StudentStreak_studentId_fkey" FOREIGN KEY ("studentId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
+ALTER TABLE "StudentEngagementStats" ADD CONSTRAINT "StudentEngagementStats_studentId_fkey" FOREIGN KEY ("studentId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "EngagementProcessedSession" ADD CONSTRAINT "EngagementProcessedSession_studentId_fkey" FOREIGN KEY ("studentId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "StudentTopicMastery" ADD CONSTRAINT "StudentTopicMastery_studentId_fkey" FOREIGN KEY ("studentId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "StudentTopicProgress" ADD CONSTRAINT "StudentTopicProgress_studentId_fkey" FOREIGN KEY ("studentId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "StudentTopicProgress" ADD CONSTRAINT "StudentTopicProgress_topicId_fkey" FOREIGN KEY ("topicId") REFERENCES "TopicDef"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "StructuredSession" ADD CONSTRAINT "StructuredSession_studentId_fkey" FOREIGN KEY ("studentId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "StructuredSession" ADD CONSTRAINT "StructuredSession_topicId_fkey" FOREIGN KEY ("topicId") REFERENCES "TopicDef"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "HomeworkAssignment" ADD CONSTRAINT "HomeworkAssignment_studentId_fkey" FOREIGN KEY ("studentId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "HomeworkAssignment" ADD CONSTRAINT "HomeworkAssignment_topicId_fkey" FOREIGN KEY ("topicId") REFERENCES "TopicDef"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "HomeworkAssignment" ADD CONSTRAINT "HomeworkAssignment_sessionId_fkey" FOREIGN KEY ("sessionId") REFERENCES "StructuredSession"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "HomeworkAnswer" ADD CONSTRAINT "HomeworkAnswer_assignmentId_fkey" FOREIGN KEY ("assignmentId") REFERENCES "HomeworkAssignment"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "SessionEvent" ADD CONSTRAINT "SessionEvent_sessionId_fkey" FOREIGN KEY ("sessionId") REFERENCES "StructuredSession"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
 ALTER TABLE "TestResult" ADD CONSTRAINT "TestResult_studentId_fkey" FOREIGN KEY ("studentId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
@@ -1676,6 +2243,9 @@ ALTER TABLE "NoteDownload" ADD CONSTRAINT "NoteDownload_userId_fkey" FOREIGN KEY
 
 -- AddForeignKey
 ALTER TABLE "Bookmark" ADD CONSTRAINT "Bookmark_studentId_fkey" FOREIGN KEY ("studentId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Question" ADD CONSTRAINT "Question_topicId_fkey" FOREIGN KEY ("topicId") REFERENCES "TopicDef"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "AttemptQuestion" ADD CONSTRAINT "AttemptQuestion_questionId_fkey" FOREIGN KEY ("questionId") REFERENCES "Question"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
@@ -1727,3 +2297,13 @@ ALTER TABLE "GeneratedStudyContent" ADD CONSTRAINT "GeneratedStudyContent_genera
 
 -- AddForeignKey
 ALTER TABLE "StudentStudyBookmark" ADD CONSTRAINT "StudentStudyBookmark_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "DailyTask" ADD CONSTRAINT "DailyTask_studentId_fkey" FOREIGN KEY ("studentId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "HomeRecommendationDecision" ADD CONSTRAINT "HomeRecommendationDecision_studentId_fkey" FOREIGN KEY ("studentId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "RecoveryEvent" ADD CONSTRAINT "RecoveryEvent_studentId_fkey" FOREIGN KEY ("studentId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+

@@ -360,13 +360,46 @@ export const authOptions: any = {
         token.email = user.email;
         token.image = user.image;
         if ('role' in user) token.role = user.role;
-        token.onboardingComplete = !!((user as any).grade && (user as any).board);
       } else if (token.email) {
-        // Always fetch latest role from DB for every request
-        const dbUser = await prisma.user.findUnique({ where: { email: token.email } });
-        if (dbUser) {
-          token.role = dbUser.role;
-          token.onboardingComplete = !!(dbUser.grade && dbUser.board);
+        // no-op (DB fetch below)
+      }
+
+      // Always fetch latest user flags from DB (role, onboardingComplete, accountStatus).
+      // This keeps middleware gating accurate across profile updates and under-13 activation.
+      if (token.email) {
+        try {
+          const dbUser = await prisma.user.findUnique({
+            where: { email: token.email },
+            select: { role: true, grade: true, board: true, language: true, subjects: true, accountStatus: true },
+          });
+          if (dbUser) {
+            token.role = dbUser.role;
+            token.accountStatus = (dbUser as { accountStatus?: string }).accountStatus ?? 'active';
+            token.onboardingComplete = !!(
+              dbUser.grade &&
+              dbUser.board &&
+              dbUser.language &&
+              Array.isArray(dbUser.subjects) &&
+              dbUser.subjects.length > 0
+            );
+          }
+        } catch (err) {
+          // e.g. accountStatus column missing (migration not applied) — fallback so OAuth still works
+          logger.warn('jwt callback DB fetch failed, using defaults', { className: 'auth', methodName: 'jwt', error: String(err) });
+          try {
+            const fallback = await prisma.user.findUnique({
+              where: { email: token.email },
+              select: { role: true, grade: true, board: true, language: true, subjects: true },
+            });
+            if (fallback) {
+              token.role = fallback.role;
+              token.accountStatus = 'active';
+              token.onboardingComplete = !!(fallback.grade && fallback.board && fallback.language && Array.isArray(fallback.subjects) && fallback.subjects.length > 0);
+            }
+          } catch {
+            token.accountStatus = 'active';
+            token.onboardingComplete = false;
+          }
         }
       }
       return token;
@@ -381,6 +414,7 @@ export const authOptions: any = {
         session.user.image = token.image as string;
         session.user.role = token.role as string;
         session.user.onboardingComplete = (token.onboardingComplete as boolean) ?? false;
+        (session.user as any).accountStatus = (token.accountStatus as string) ?? 'active';
 
         logger.add(`session callback populated minimal session for: ${session.user.email!}`, { className: 'auth', methodName: 'sessionCallback' });
         // Call the standalone method to handle welcome email logic

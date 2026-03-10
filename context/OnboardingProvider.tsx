@@ -10,11 +10,14 @@ type State = {
   saving: boolean;
   values: OnboardingValues;
   errors: Record<string, string>;
+  parentVerified: boolean;
+  gradeLocked: boolean;
+  allowDismiss: boolean;
 };
 
 type API = {
   isRequired: boolean;
-  open: (opts?: { force?: boolean }) => Promise<void> | void;
+  open: (opts?: { force?: boolean; allowDismiss?: boolean; afterSave?: 'dashboard' | 'stay' }) => Promise<void> | void;
   close: () => void;
   setValue: (field: keyof OnboardingValues, value: any) => void;
   save: () => Promise<void>;
@@ -22,10 +25,13 @@ type API = {
 
 const defaultValues: OnboardingValues = {
   name: '',
+  age: null,
   class_grade: null,
   board: null,
   preferred_language: null,
   subjects: undefined,
+  parent_phone: null,
+  parent_otp: null,
 };
 
 const Ctx = createContext<API | null>(null);
@@ -38,6 +44,10 @@ export function OnboardingProvider({ children, service }: { children: React.Reac
   const [saving, setSaving] = useState(false);
   const [values, setValues] = useState<OnboardingValues>(defaultValues);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [parentVerified, setParentVerified] = useState(false);
+  const [gradeLocked, setGradeLocked] = useState(false);
+  const [allowDismiss, setAllowDismiss] = useState(false);
+  const [afterSave, setAfterSave] = useState<'dashboard' | 'stay'>('dashboard');
   // reserved for future cancellation support
   // const abortRef = useRef<AbortController | null>(null);
 
@@ -47,13 +57,20 @@ export function OnboardingProvider({ children, service }: { children: React.Reac
     try {
       const profile: OnboardingProfile | null = await svc.loadProfile();
       if (profile) {
+        const pParentVerified = !!(profile as any)?.parentPhoneVerifiedAt;
+        const pGradeLocked = !!profile.grade;
         setValues({
           name: profile.name || '',
+          age: (profile as any).age ?? null,
           class_grade: profile.grade ?? null,
           board: profile.board ?? null,
           preferred_language: profile.language ?? null,
           subjects: profile.subjects ?? undefined,
+          parent_phone: (profile as any).parentPhone ?? null,
+          parent_otp: null,
         });
+        setParentVerified(pParentVerified);
+        setGradeLocked(pGradeLocked);
         logger.info('onboarding.hydrate', { hasProfile: true });
 
         // Onboarding Gate:
@@ -64,14 +81,17 @@ export function OnboardingProvider({ children, service }: { children: React.Reac
           !profile.board ||
           !profile.grade ||
           !profile.language ||
+          (profile as any).age == null ||
           !profile.subjects ||
           profile.subjects.length === 0;
         const isFirstLogin = profileWithFirstLogin.firstLogin === true;
 
-        if (needsProfile || isFirstLogin) {
+        const needsParentVerification = (profile as any)?.accountStatus === 'pending_parent_verification';
+
+        if (needsProfile || isFirstLogin || needsParentVerification) {
           setIsOpen(true);
           logger.info('onboarding.open.auto', {
-            reason: needsProfile ? 'incomplete-profile' : 'first-login',
+            reason: needsParentVerification ? 'parent-verification' : needsProfile ? 'incomplete-profile' : 'first-login',
           });
         }
       }
@@ -93,29 +113,48 @@ export function OnboardingProvider({ children, service }: { children: React.Reac
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session?.user?.email]);
 
-  const open = useCallback(async () => {
-    if (!values.name && !values.preferred_language && !values.class_grade && !values.board) {
-      await hydrate();
-    }
-    setIsOpen(true);
-    logger.info('onboarding.open.manual');
-  }, [hydrate, values]);
+  const open = useCallback(
+    async (opts?: { force?: boolean; allowDismiss?: boolean; afterSave?: 'dashboard' | 'stay' }) => {
+      const force = opts?.force === true;
+      const shouldHydrate =
+        force ||
+        !values.name ||
+        !values.preferred_language ||
+        !values.class_grade ||
+        !values.board ||
+        values.age == null ||
+        !values.subjects ||
+        values.subjects.length === 0;
+
+      if (shouldHydrate) {
+        await hydrate();
+      }
+      setAllowDismiss(!!opts?.allowDismiss);
+      setAfterSave(opts?.afterSave ?? 'dashboard');
+      setIsOpen(true);
+      logger.info('onboarding.open.manual', { force, allowDismiss: !!opts?.allowDismiss, afterSave: opts?.afterSave ?? 'dashboard' });
+    },
+    [hydrate, values],
+  );
 
   // Profile is required (non-dismissable) when core fields are missing
   const needsProfileValues =
     !values.board ||
     !values.class_grade ||
     !values.preferred_language ||
+    values.age == null ||
     !values.subjects ||
     values.subjects.length === 0;
 
-  const isRequired = !!session?.user && needsProfileValues;
+  const isRequired = !!session?.user && (needsProfileValues || (values.age != null && Number(values.age) < 13 && !parentVerified));
 
   const close = useCallback(() => {
-    if (isRequired) return; // Cannot dismiss when onboarding is required
+    if (isRequired && !allowDismiss) return; // Cannot dismiss when onboarding is required (unless explicitly allowed)
     setIsOpen(false);
+    setAllowDismiss(false);
+    setAfterSave('dashboard');
     logger.info('onboarding.close');
-  }, [isRequired]);
+  }, [isRequired, allowDismiss]);
 
   const setValue = useCallback((field: keyof OnboardingValues, value: any) => {
     setValues((v) => ({ ...v, [field]: value }));
@@ -124,9 +163,17 @@ export function OnboardingProvider({ children, service }: { children: React.Reac
   function validate(v: OnboardingValues) {
     const errs: Record<string, string> = {};
     if (!v.name || !v.name.trim()) errs.name = 'Name is required';
+    if (v.age == null || !Number.isFinite(Number(v.age)) || Number(v.age) <= 0) errs.age = 'Age is required';
     if (!v.class_grade || String(v.class_grade).trim() === '') errs.class_grade = 'Class is required';
     if (!v.board || String(v.board).trim() === '') errs.board = 'Board is required';
     if (!v.preferred_language || String(v.preferred_language).trim() === '') errs.preferred_language = 'Preferred language is required';
+    if (!v.subjects || v.subjects.length === 0) errs.subjects = 'Select at least 1 subject';
+    if (v.subjects && v.subjects.length > 6) errs.subjects = 'You can select up to 6 subjects';
+    if (v.age != null && Number(v.age) < 13 && !parentVerified) {
+      if (!v.parent_phone || !String(v.parent_phone).trim()) errs.parent_phone = 'Parent phone is required for under-13';
+      // OTP is verified via dedicated endpoint, but we validate presence here to block bypass.
+      if (!v.parent_otp || !String(v.parent_otp).trim()) errs.parent_otp = 'Enter OTP to verify parent phone';
+    }
     return errs;
   }
 
@@ -140,10 +187,39 @@ export function OnboardingProvider({ children, service }: { children: React.Reac
         setErrors(errs);
         throw new Error('Please fill all required fields.');
       }
+
+      // Under-13: verify parent OTP before saving profile (cannot bypass).
+      if (v.age != null && Number(v.age) < 13 && !parentVerified) {
+        const verifyRes = await fetch('/api/auth/parent/verify-otp', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ parentPhone: v.parent_phone, code: v.parent_otp }),
+        });
+        if (!verifyRes.ok) {
+          const payload = await verifyRes.json().catch(() => ({}));
+          setErrors((prev) => ({
+            ...prev,
+            parent_otp: payload?.error || 'Invalid OTP',
+            _root: payload?.error || 'Parent verification failed',
+          }));
+          throw new Error(payload?.error || 'Parent verification failed');
+        }
+        setParentVerified(true);
+        setValues((prev) => ({ ...prev, parent_otp: null }));
+      }
       await svc.saveProfile(v);
       logger.info('onboarding.save', { hasSubjects: !!values.subjects?.length });
       setIsOpen(false);
-      if (typeof window !== 'undefined') window.location.replace('/dashboard');
+      const next = afterSave;
+      setAllowDismiss(false);
+      setAfterSave('dashboard');
+      if (typeof window !== 'undefined') {
+        if (next === 'stay') {
+          window.location.reload();
+        } else {
+          window.location.replace('/dashboard');
+        }
+      }
     } catch (e: any) {
       if (e && typeof e === 'object' && e.fieldErrors && typeof e.fieldErrors === 'object') {
         setErrors((prev) => ({ ...prev, ...e.fieldErrors, _root: e?.message || 'Failed to save profile' }));
@@ -154,7 +230,7 @@ export function OnboardingProvider({ children, service }: { children: React.Reac
     } finally {
       setSaving(false);
     }
-  }, [svc, values]);
+  }, [svc, values, afterSave]);
 
   const api: API = {
     isOpen,
@@ -163,6 +239,9 @@ export function OnboardingProvider({ children, service }: { children: React.Reac
     saving,
     values,
     errors,
+    parentVerified,
+    gradeLocked,
+    allowDismiss,
     open,
     close,
     setValue,

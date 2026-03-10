@@ -2,18 +2,25 @@ import { logger } from '@/lib/logger';
 
 export type OnboardingValues = {
   name: string;
+  age: number | null;
   class_grade: string | null;
   board: string | null;
   preferred_language: string | null;
   subjects: string[] | undefined;
+  parent_phone?: string | null;
+  parent_otp?: string | null;
 };
 
 export type OnboardingProfile = {
   name?: string;
+  age?: number | null;
   grade?: string;
   board?: string;
   language?: string;
   subjects?: string[];
+  parentPhone?: string | null;
+  parentPhoneVerifiedAt?: string | Date | null;
+  accountStatus?: string;
 };
 
 export interface OnboardingService {
