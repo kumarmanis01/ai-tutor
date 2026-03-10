@@ -15,6 +15,8 @@ declare module 'next-auth' {
       billingCycle?: string | null;
       language?: string | null;
       createdAt?: string | null;
+      onboardingComplete?: boolean;
+      accountStatus?: string;
     };
   }
 }

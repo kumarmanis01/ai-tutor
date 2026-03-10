@@ -58,20 +58,20 @@ export function WelcomeBanner() {
         Welcome to Spinzy Academy, {firstName}!
       </h2>
       <p className="text-sm text-indigo-100 mb-3">
-        Your personalized learning journey starts now. Here&apos;s how to get the most out of it:
+        Your personalized learning journey starts now. Here&apos;s your quick start checklist:
       </p>
       <div className="grid grid-cols-3 gap-3 text-center">
         <div className="bg-white/10 rounded-xl p-3">
           <div className="text-xl mb-1">1</div>
-          <p className="text-xs">Start with today&apos;s task below</p>
+          <p className="text-xs">Complete your profile</p>
         </div>
         <div className="bg-white/10 rounded-xl p-3">
           <div className="text-xl mb-1">2</div>
-          <p className="text-xs">Ask questions anytime in Doubts</p>
+          <p className="text-xs">Take diagnostic</p>
         </div>
         <div className="bg-white/10 rounded-xl p-3">
           <div className="text-xl mb-1">3</div>
-          <p className="text-xs">Track your progress weekly</p>
+          <p className="text-xs">Start your first session</p>
         </div>
       </div>
     </div>

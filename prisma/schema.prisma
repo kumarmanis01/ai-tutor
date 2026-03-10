@@ -24,6 +24,13 @@ model User {
   emailVerified            DateTime?
   image                    String?
   parentEmail              String?
+  /// Self-reported age captured during registration/onboarding.
+  age                      Int?
+  /// Parent phone used for under-13 verification (not unique; families can share).
+  parentPhone              String?
+  parentPhoneVerifiedAt    DateTime?
+  /// Account activation state (e.g. pending parent verification for under-13).
+  accountStatus            AccountStatus            @default(active)
   role                     UserRole                 @default(user)
   country                  String?
   language                 LanguageCode
@@ -1481,6 +1488,11 @@ enum UserStatus {
   active
   banned
   suspended
+}
+
+enum AccountStatus {
+  active
+  pending_parent_verification
 }
 
 enum UserRole {

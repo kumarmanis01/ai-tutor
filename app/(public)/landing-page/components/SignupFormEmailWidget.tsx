@@ -1,99 +1,128 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { toast } from '@/lib/toast';
 import { useRouter } from 'next/navigation';
 import { signIn, useSession } from 'next-auth/react';
 import Icon from '@/components/UI/AppIcon';
-import useCurrentUser from '@/hooks/useCurrentUser';
-import { useGlobalLoader } from '@/context/GlobalLoaderProvider';
-import { logger } from '@/lib/logger';
 
-interface FormData {
-  phone: string;
-  email?: string;
-  otp: string;
-  childClass: string;
-  subjects: string[];
-  name: string;
-  board?: string;
-  token?: string | null;
-  preferredLanguage?: string | null;
-}
+type AuthMode = 'signup' | 'signin';
 
-const SignupFormWidget = () => {
-  
-  const [step, setStep] = useState(1);
-  const [formData, setFormData] = useState<FormData>({
-    phone: '',
-    otp: '',
-    childClass: '',
-    subjects: [],
-    name: '',
-    board: undefined,
-  });
+export default function SignupFormEmailWidget() {
+  const [mode, setMode] = useState<AuthMode>('signup');
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [emailSent, setEmailSent] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
-  const { data: session } = useSession();
-  const [signingWithGoogle, setSigningWithGoogle] = useState(false);
-
-  // NOTE: OTP/widget flow removed — keep `widgetToken` state only if needed later.
-
-  // When session becomes available (after Google / Email sign-in), auto-fill
-  // available profile fields and move to step 3 to collect grade/board/language.
-  useEffect(() => {
-    if (!session?.user) return;
-    setFormData((p) => ({
-      ...p,
-      name: p.name || (session.user?.name ?? ''),
-      email: p.email || (session.user?.email ?? ''),
-    }));
-    // Advance to step 2 (collect basic details) using functional update
-    setStep((s) => (s < 2 ? 2 : s));
-  }, [session]);
-
+  const { data: session, status } = useSession();
   const router = useRouter();
-  const { mutate: mutateCurrentUser } = useCurrentUser();
-  const { startLoading, stopLoading } = useGlobalLoader();
-  const [_submitting, setSubmitting] = useState(false);
 
-  const handleSubmit = async () => {
-    setSubmitting(true);
-    startLoading('Saving profile...');
-    try {
-      const res = await fetch('/api/user/onboarding', {
+  useEffect(() => {
+    if (status === 'authenticated' && session?.user) {
+      router.push('/dashboard');
+    }
+  }, [status, session?.user, router]);
+
+  if (status === 'loading' || (status === 'authenticated' && session?.user)) {
+    return (
+      <section id="signup-form-widget" className="py-16 md:py-24 bg-gradient-to-br from-primary/5 to-secondary/5">
+        <div className="mx-auto px-4 max-w-2xl text-center text-muted-foreground">
+          {status === 'authenticated' ? 'Taking you to your dashboard…' : 'Loading…'}
+        </div>
+      </section>
+    );
+  }
+
+  const handleGoogle = () => {
+    setLoading(true);
+    signIn('google', { callbackUrl: '/dashboard' });
+  };
+
+  const handleFacebook = () => {
+    setLoading(true);
+    signIn('facebook', { callbackUrl: '/dashboard' });
+  };
+
+  const handleMagicLink = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    setError('');
+    if (!email?.trim()) {
+      setError('Enter your email first.');
+      return;
+    }
+    setLoading(true);
+    const res = await signIn('email', { email: email.trim(), redirect: false, callbackUrl: '/dashboard' });
+    if (res?.ok) {
+      setEmailSent(true);
+    } else {
+      setError('Could not send magic link. Try again.');
+    }
+    setLoading(false);
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+    setLoading(true);
+
+    if (mode === 'signup') {
+      const res = await fetch('/api/auth/signup', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          phone: formData.phone,
-          email: formData.email ?? null,
-          name: formData.name,
-          class_grade: Number(formData.childClass) || null,
-          board: formData.board,
-          preferred_language: formData.preferredLanguage ?? null,
-          subjects: formData.subjects,
-          token: formData.token ?? null,
-        }),
+        body: JSON.stringify({ name: name.trim(), email: email.trim(), password }),
       });
-      if (!res.ok) {
-        const payload = await res.json().catch(() => ({}));
-        toast(payload?.error || 'Failed to save profile');
+      if (res.status === 409) {
+        setError('Account already exists. Sign in or use magic link.');
+        setMode('signin');
+        setLoading(false);
         return;
       }
-      // Refresh canonical client-side user cache and attempt a session refresh
-      try {
-        mutateCurrentUser?.();
-      } catch {}
-      try {
-        await fetch('/api/user/refresh-session', { method: 'POST' });
-      } catch {}
-      router.push('/dashboard');
-    } catch (err) {
-      logger.error('onboarding submit error', { className: 'SignupFormEmailWidget', methodName: 'handleSubmit', error: String(err) });
-      toast('Failed to complete signup');
-    } finally {
-      setSubmitting(false);
-      stopLoading();
+      if (!res.ok) {
+        setError('Sign up failed. Try again.');
+        setLoading(false);
+        return;
+      }
+      const signInRes = await signIn('credentials', {
+        email: email.trim(),
+        password,
+        redirect: false,
+        callbackUrl: '/dashboard',
+      });
+      if (signInRes?.ok) {
+        router.push('/dashboard');
+        return;
+      }
+      setError('Account created. Please sign in.');
+      setMode('signin');
+      setLoading(false);
+      return;
     }
+
+    // Sign in
+    if (password) {
+      const res = await signIn('credentials', {
+        email: email.trim(),
+        password,
+        redirect: false,
+        callbackUrl: '/dashboard',
+      });
+      if (res?.ok) {
+        router.push('/dashboard');
+        return;
+      }
+      setError('Invalid email or password.');
+      setLoading(false);
+      return;
+    }
+
+    // Sign in with magic link
+    const res = await signIn('email', { email: email.trim(), redirect: false, callbackUrl: '/dashboard' });
+    if (res?.ok) setEmailSent(true);
+    else setError('No account found or failed to send link.');
+    setLoading(false);
   };
 
   return (
@@ -118,160 +147,137 @@ const SignupFormWidget = () => {
           </p>
         </div>
 
-        <div className="bg-background rounded-2xl border-2 border-border p-6 md:p-8 shadow-xl">
-          <div className="flex items-center justify-between mb-8">
-            <div
-              className={`flex items-center gap-2 ${step >= 1 ? 'text-primary' : 'text-muted-foreground'}`}
-            >
-              <div
-                className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                  step >= 1 ? 'bg-primary text-white' : 'bg-muted'
-                }`}
-              >
-                {step > 1 ? <Icon name="CheckIcon" size={20} variant="outline" /> : '1'}
-              </div>
-              <span className="font-body text-sm font-medium hidden sm:inline">Phone</span>
-            </div>
-            <div className="flex-1 h-0.5 bg-border mx-2" />
-            <div
-              className={`flex items-center gap-2 ${step >= 2 ? 'text-primary' : 'text-muted-foreground'}`}
-            >
-              <div
-                className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                  step >= 2 ? 'bg-primary text-white' : 'bg-muted'
-                }`}
-              >
-                {step > 2 ? <Icon name="CheckIcon" size={20} variant="outline" /> : '2'}
-              </div>
-              <span className="font-body text-sm font-medium hidden sm:inline">Details</span>
-            </div>
-          </div>
+        <div className="bg-background rounded-xl border border-border/80 p-5 md:p-6 shadow-sm max-w-md mx-auto">
+          <h3 className="text-sm font-medium text-center text-muted-foreground mb-4">
+            {mode === 'signup' ? 'Sign Up' : 'Sign In'}
+          </h3>
 
-          {step === 1 && (
-            <div className="space-y-6">
-                <div className="space-y-4 text-center">
-                  <button
-                    onClick={() => {
-                      setSigningWithGoogle(true);
-                      // redirect to home after Google sign-in; onboarding page removed
-                      signIn('google', { callbackUrl: '/dashboard' });
-                    }}
-                    className="w-full inline-flex items-center justify-center gap-2 px-4 py-2 border border-gray-300 rounded hover:bg-gray-50 bg-white text-gray-700 font-medium"
-                  >
-                    <svg width="18" height="18" viewBox="0 0 20 20" fill="none">
-                      <g>
-                        <path d="M19.6 10.23c0-.68-.06-1.36-.18-2H10v3.79h5.41a4.63 4.63 0 01-2.01 3.04v2.52h3.24c1.9-1.75 2.96-4.33 2.96-7.35z" fill="#4285F4" />
-                        <path d="M10 20c2.7 0 4.97-.89 6.63-2.41l-3.24-2.52c-.9.6-2.05.96-3.39.96-2.6 0-4.8-1.76-5.59-4.13H1.08v2.59A10 10 0 0010 20z" fill="#34A853" />
-                        <path d="M4.41 12.9A5.99 5.99 0 014.07 10c0-.99.18-1.95.34-2.9V4.51H1.08A10 10 0 000 10c0 1.64.4 3.19 1.08 4.51l3.33-2.61z" fill="#FBBC05" />
-                        <path d="M10 3.96c1.47 0 2.78.51 3.81 1.51l2.85-2.85C14.97.89 12.7 0 10 0A10 10 0 001.08 4.51l3.33 2.59C5.2 5.72 7.4 3.96 10 3.96z" fill="#EA4335" />
-                      </g>
-                    </svg>
-                    Continue with Google
-                  </button>
-                  <div className="text-sm text-muted-foreground">or continue with phone verification</div>
-                </div>
-                {/* If user chose Google sign-in or session exists, show redirect/continue UI.
-                    Otherwise render a simple phone input and allow proceeding to details. */}
-                {!signingWithGoogle && !session ? (
-                  <div className="space-y-4">
-                    <div className="text-sm text-left">Enter your phone (optional) to help us personalize:</div>
-                    <input
-                      type="tel"
-                      value={formData.phone}
-                      onChange={(e) => setFormData((p) => ({ ...p, phone: e.target.value }))}
-                      placeholder="Phone (optional)"
-                      className="w-full px-4 py-2 border rounded"
-                    />
-                    <div className="flex items-center justify-center gap-3">
-                      <button
-                        onClick={() => setStep(2)}
-                        className="px-6 py-2 bg-primary text-white rounded-lg"
-                      >
-                        Continue
-                      </button>
-                      <div className="text-sm text-muted-foreground">or continue with Google</div>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="py-6 text-center text-sm text-muted-foreground">
-                    {session ? (
-                      <>
-                        Signed in as <strong>{session.user?.email || session.user?.name}</strong>. Continuing setup…
-                      </>
-                    ) : (
-                      <>Redirecting to Google for sign-in…</>
-                    )}
-                  </div>
+          {emailSent ? (
+            <p className="text-center text-sm text-muted-foreground py-2">
+              Check your email — we sent a link to <strong className="text-foreground">{email}</strong>.
+            </p>
+          ) : (
+            <>
+              {/* Socials side by side */}
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={handleGoogle}
+                  disabled={loading}
+                  className="flex items-center justify-center gap-1.5 px-3 py-2.5 border border-border rounded-lg hover:bg-muted/40 text-foreground text-sm font-medium transition-colors disabled:opacity-50"
+                >
+                  <svg width="18" height="18" viewBox="0 0 20 20" fill="none">
+                    <path d="M19.6 10.23c0-.68-.06-1.36-.18-2H10v3.79h5.41a4.63 4.63 0 01-2.01 3.04v2.52h3.24c1.9-1.75 2.96-4.33 2.96-7.35z" fill="#4285F4" />
+                    <path d="M10 20c2.7 0 4.97-.89 6.63-2.41l-3.24-2.52c-.9.6-2.05.96-3.39.96-2.6 0-4.8-1.76-5.59-4.13H1.08v2.59A10 10 0 0010 20z" fill="#34A853" />
+                    <path d="M4.41 12.9A5.99 5.99 0 014.07 10c0-.99.18-1.95.34-2.9V4.51H1.08A10 10 0 000 10c0 1.64.4 3.19 1.08 4.51l3.33-2.61z" fill="#FBBC05" />
+                    <path d="M10 3.96c1.47 0 2.78.51 3.81 1.51l2.85-2.85C14.97.89 12.7 0 10 0A10 10 0 001.08 4.51l3.33 2.59C5.2 5.72 7.4 3.96 10 3.96z" fill="#EA4335" />
+                  </svg>
+                  Google
+                </button>
+                <button
+                  type="button"
+                  onClick={handleFacebook}
+                  disabled={loading}
+                  className="flex items-center justify-center gap-1.5 px-3 py-2.5 border border-border rounded-lg hover:bg-muted/40 text-foreground text-sm font-medium transition-colors disabled:opacity-50"
+                >
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                    <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" fill="#1877F2" />
+                  </svg>
+                  Facebook
+                </button>
+              </div>
+
+              <div className="flex items-center gap-2 my-3">
+                <div className="flex-1 h-px bg-border" />
+                <span className="text-xs text-muted-foreground">or</span>
+                <div className="flex-1 h-px bg-border" />
+              </div>
+
+              <form onSubmit={handleSubmit} className="space-y-2.5">
+                {mode === 'signup' && (
+                  <input
+                    type="text"
+                    required
+                    placeholder="Full name"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    className="w-full px-3 py-2.5 text-sm border border-border rounded-lg placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/20"
+                    autoComplete="name"
+                  />
                 )}
-            </div>
-          )}
-
-          {step === 2 && (
-            <div className="space-y-6 text-center">
-              <div className="text-2xl font-semibold">🎉 Welcome to AI Tutor!</div>
-              <div className="mt-4 text-sm text-muted-foreground">What should we call you?</div>
-              <div className="mt-3">
                 <input
-                  type="text"
-                  aria-label="Enter your name"
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  placeholder="Enter your name"
-                  className="w-full px-4 py-3 bg-background border-2 border-border rounded-lg focus:border-primary focus:outline-none font-body text-base"
+                  type="email"
+                  required
+                  placeholder="Email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="w-full px-3 py-2.5 text-sm border border-border rounded-lg placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/20"
+                  autoComplete="email"
                 />
-              </div>
-              <p className="mt-2 text-xs text-muted-foreground">This helps us personalize your learning.</p>
-              <div className="mt-4">
-                <div className="flex items-center justify-center gap-3">
+                <div className="relative">
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    required={mode === 'signup'}
+                    placeholder="Password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="w-full px-3 py-2.5 text-sm border border-border rounded-lg placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/20 pr-14"
+                    autoComplete={mode === 'signup' ? 'new-password' : 'current-password'}
+                  />
                   <button
-                    onClick={() => {
-                      if (!formData.name?.trim()) return toast('Name is required');
-                      handleSubmit();
-                    }}
-                    disabled={!formData.name?.trim()}
-                    className="px-6 py-2 bg-primary text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground hover:text-foreground"
                   >
-                    Start Learning
+                    {showPassword ? 'Hide' : 'Show'}
                   </button>
-                  <div className="text-sm text-muted-foreground">Phone: {formData.phone || 'not provided'}</div>
                 </div>
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="w-full py-2.5 text-sm font-medium bg-primary text-primary-foreground rounded-lg hover:opacity-90 disabled:opacity-50 transition-opacity"
+                >
+                  {loading ? '…' : mode === 'signup' ? 'Sign Up' : 'Sign In'}
+                </button>
+              </form>
+
+              <div className="mt-3 flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
+                <button
+                  type="button"
+                  onClick={handleMagicLink}
+                  disabled={loading || !email?.trim()}
+                  className="text-primary hover:underline disabled:opacity-50"
+                >
+                  Magic link instead
+                </button>
+                <span>·</span>
+                {mode === 'signup' ? (
+                  <button type="button" onClick={() => { setMode('signin'); setError(''); setEmailSent(false); }} className="text-primary hover:underline">
+                    Sign in
+                  </button>
+                ) : (
+                  <button type="button" onClick={() => { setMode('signup'); setError(''); setEmailSent(false); }} className="text-primary hover:underline">
+                    Sign up
+                  </button>
+                )}
               </div>
-            </div>
+
+              {error && <p className="mt-2 text-xs text-destructive text-center">{error}</p>}
+            </>
           )}
 
-          
-
-          <div className="mt-6 pt-6 border-t border-border">
-            <div className="flex items-center justify-center gap-4 text-xs text-muted-foreground">
-              <div className="flex items-center gap-1">
-                <Icon name="ShieldCheckIcon" size={16} variant="solid" className="text-success" />
-                <span>Secure</span>
-              </div>
-              <div className="flex items-center gap-1">
-                <Icon name="LockClosedIcon" size={16} variant="solid" className="text-success" />
-                <span>Private</span>
-              </div>
-              <div className="flex items-center gap-1">
-                <Icon name="CheckBadgeIcon" size={16} variant="solid" className="text-success" />
-                <span>Verified</span>
-              </div>
-            </div>
-          </div>
+          <p className="mt-4 pt-3 border-t border-border/60 text-center text-[11px] text-muted-foreground">
+            Secure · Private · Verified
+          </p>
         </div>
 
         <p className="mt-6 text-center text-sm text-muted-foreground">
           By signing up, you agree to our{' '}
-          <a href="#" className="text-primary hover:underline">
-            Terms of Service
-          </a>{' '}
-          and{' '}
-          <a href="#" className="text-primary hover:underline">
-            Privacy Policy
-          </a>
+          <a href="#" className="text-primary hover:underline">Terms of Service</a>
+          {' '}and{' '}
+          <a href="#" className="text-primary hover:underline">Privacy Policy</a>
         </p>
       </div>
     </section>
   );
-};
-
-export default SignupFormWidget;
+}

@@ -15,6 +15,10 @@ export interface User {
   image?: string | null;
   role?: string | null;
   parentEmail?: string | null;
+  age?: number | null;
+  parentPhone?: string | null;
+  parentPhoneVerifiedAt?: string | null;
+  accountStatus?: string | null;
   grade?: string | null; // stored as string for flexibility
   board?: string | null;
   phone?: string | null;

@@ -34,6 +34,11 @@ export async function POST(req: NextRequest) {
     }
 
     const name = typeof body.name === 'string' ? body.name.trim() : undefined;
+    const ageRaw = body.age;
+    const age =
+      typeof ageRaw === 'number' && Number.isFinite(ageRaw) ? Math.trunc(ageRaw) :
+      typeof ageRaw === 'string' && ageRaw.trim() !== '' && Number.isFinite(Number(ageRaw)) ? Math.trunc(Number(ageRaw)) :
+      undefined;
     const gradeRaw = (typeof body.class_grade === 'number' || typeof body.class_grade === 'string') ? body.class_grade : body.grade;
     const grade = gradeRaw !== undefined && gradeRaw !== null ? String(gradeRaw) : undefined;
     const board = typeof body.board === 'string' ? body.board : undefined;
@@ -56,9 +61,12 @@ export async function POST(req: NextRequest) {
     // Enforce required fields for onboarding
     const fieldErrors: Record<string, string> = {};
     if (!name || name.trim() === '') fieldErrors.name = 'Name is required';
+    if (age == null || !Number.isFinite(age) || age <= 0) fieldErrors.age = 'Age is required';
     if (!grade || String(grade).trim() === '') fieldErrors.class_grade = 'Class is required';
     if (!board || String(board).trim() === '') fieldErrors.board = 'Board is required';
     if (!preferredLanguage || String(preferredLanguage).trim() === '') fieldErrors.preferred_language = 'Preferred language is required';
+    if (!subjects || subjects.length === 0) fieldErrors.subjects = 'Select at least 1 subject';
+    if (subjects && subjects.length > 6) fieldErrors.subjects = 'You can select up to 6 subjects';
     if (Object.keys(fieldErrors).length) {
       res = NextResponse.json({ error: 'validation_error', fieldErrors }, { status: 400 });
       logger.logAPI(req, res, { className: 'UserOnboardingAPI', methodName: 'POST' }, start);
@@ -76,10 +84,14 @@ export async function POST(req: NextRequest) {
             },
             lifecycle: 'active',
           },
-          select: { name: true },
+          select: { name: true, slug: true },
         });
-        const validNames = new Set(validSubjects.map((s) => s.name.toLowerCase()));
-        const invalid = subjects.filter((s) => !validNames.has(s.toLowerCase()));
+        const valid = new Set<string>();
+        for (const s of validSubjects) {
+          if (s?.name) valid.add(String(s.name).toLowerCase());
+          if (s?.slug) valid.add(String(s.slug).toLowerCase());
+        }
+        const invalid = subjects.filter((s) => !valid.has(s.toLowerCase()));
         if (invalid.length > 0) {
           fieldErrors.subjects = `Invalid subjects for ${board} grade ${grade}: ${invalid.join(', ')}`;
           res = NextResponse.json({ error: 'validation_error', fieldErrors }, { status: 400 });
@@ -94,6 +106,7 @@ export async function POST(req: NextRequest) {
 
     const updates: any = {};
     if (name) updates.name = name;
+    if (age != null) updates.age = age;
     if (grade) updates.grade = grade;
     if (board) updates.board = board;
     if (subjects) updates.subjects = subjects;
@@ -126,6 +139,17 @@ export async function POST(req: NextRequest) {
           return res;
         }
         userId = resolvedUserId as string;
+      }
+
+      // Grade immutability: once set, student cannot change grade (admin only).
+      // (Admin update is handled via /api/admin/users/[id].)
+      if (existingById?.grade && grade && String(existingById.grade) !== String(grade)) {
+        res = NextResponse.json(
+          { error: 'grade_locked', message: 'Grade cannot be changed without admin approval.', fieldErrors: { class_grade: 'Grade is locked.' } },
+          { status: 403 },
+        );
+        logger.logAPI(req, res, { className: 'UserOnboardingAPI', methodName: 'POST' }, start);
+        return res;
       }
 
       updatedUser = await prisma.user.update({ where: { id: userId }, data: updates });
@@ -195,6 +219,31 @@ export async function POST(req: NextRequest) {
         return res;
       }
       throw updErr;
+    }
+
+    // Under-13 activation gate: require parent verification before unlocking.
+    if (age != null && age < 13) {
+      const fresh = await prisma.user.findUnique({
+        where: { id: updatedUser.id },
+        select: { parentPhoneVerifiedAt: true, accountStatus: true },
+      });
+      if (!fresh?.parentPhoneVerifiedAt) {
+        // Ensure status is gated even if parent phone step hasn't started yet
+        await prisma.user.update({
+          where: { id: updatedUser.id },
+          data: { accountStatus: 'pending_parent_verification' },
+        }).catch(() => {});
+        res = NextResponse.json(
+          {
+            error: 'parent_verification_required',
+            message: 'Parent phone verification is required for students under 13.',
+            fieldErrors: { parent_phone: 'Parent verification required' },
+          },
+          { status: 403 },
+        );
+        logger.logAPI(req, res, { className: 'UserOnboardingAPI', methodName: 'POST' }, start);
+        return res;
+      }
     }
 
     try {

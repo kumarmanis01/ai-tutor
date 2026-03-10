@@ -39,15 +39,17 @@ export default function Providers({ children }: { children: React.ReactNode }) {
 }
 
 function OnboardingHost() {
-  const { isOpen, isRequired, values, errors, loading, saving, setValue, close, save } = useOnboarding();
+  const { isOpen, isRequired, allowDismiss, values, errors, loading, saving, setValue, close, save, parentVerified, gradeLocked } = useOnboarding();
   return (
     <OnboardingModal
       open={isOpen}
-      required={isRequired}
+      required={isRequired && !allowDismiss}
       values={values}
       errors={errors}
       loading={loading}
       saving={saving}
+      parentVerified={parentVerified}
+      gradeLocked={gradeLocked}
       onChange={setValue}
       onClose={close}
       onSave={save}
