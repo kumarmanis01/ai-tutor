@@ -26,6 +26,7 @@ import { handleSyllabusJob } from '@/worker/services/syllabusWorker'
 import { handleNotesJob } from '@/worker/services/notesWorker'
 import { handleQuestionsJob } from '@/worker/services/questionsWorker'
 import { handleAssembleJob } from '@/worker/services/assembleWorker'
+import { processDiagnosticBootstrap } from '@/worker/services/diagnosticBootstrapWorker'
 import { logger } from '@/lib/logger.js'
 import { CONTENT_HYDRATION_QUEUE } from '@/lib/queues/constants'
 
@@ -38,6 +39,38 @@ const WORKER_HANDLERS: Record<string, (jobId: string) => Promise<void>> = {
   NOTES: handleNotesJob,
   QUESTIONS: handleQuestionsJob,
   ASSEMBLE_TEST: handleAssembleJob,
+  'DIAGNOSTIC_BOOTSTRAP': async (hydrationJobId: string) => {
+    // TODO: Replace this shim with a dedicated diagnostic-bootstrap worker/queue.
+    // DIAGNOSTIC_BOOTSTRAP jobs do not use HydrationJob; Bull job should ultimately
+    // carry the full DiagnosticBootstrapJobData payload directly to its own processor.
+    await processDiagnosticBootstrap({
+      id: hydrationJobId,
+      name: 'bootstrap-concepts',
+      data: ({} as any),
+      opts: {} as any,
+      progress: () => undefined,
+      updateProgress: async () => undefined,
+      log: async () => undefined,
+      moveToCompleted: async () => undefined,
+      moveToFailed: async () => undefined,
+      isCompleted: async () => false,
+      isFailed: async () => false,
+      isActive: async () => false,
+      isDelayed: async () => false,
+      isWaiting: async () => false,
+      remove: async () => undefined,
+      retry: async () => undefined,
+      promote: async () => undefined,
+      discard: () => undefined,
+      update: async () => undefined,
+      getState: async () => 'completed',
+      getChildrenValues: async () => ({}),
+      getDependenciesCount: async () => ({ processed: 0, unprocessed: 0 }),
+      getDependencies: async () => ({} as any),
+      getRepeatableJobs: async () => [],
+      getJobLogs: async () => ({ logs: [], count: 0 }),
+    } as any)
+  },
 };
 
 /*
