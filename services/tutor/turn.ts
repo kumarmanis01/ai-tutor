@@ -1,30 +1,22 @@
 import { prisma } from '@/lib/prisma'
 import { isPremiumUser } from '@/lib/subscription'
 import { isAiTutorEnabledForStudent } from '@/lib/features/aiTutor'
-import { createChatCompletion } from '@/lib/callLLM'
+import { callTutorLLM, LLMError, type TutorCallType } from '@/lib/callLLM'
 import {
   getTutorSession as getRedisTutorSession,
   setTutorSession as setRedisTutorSession,
+  updateTutorSession,
+  markTurnStarted,
+  markTurnCompleted,
   type RedisSessionState,
 } from '@/lib/redis/tutorSession'
-
-export type TutorTag =
-  | 'QUESTION'
-  | 'VALIDATE'
-  | 'HINT_OFFER'
-  | 'STAGE_ADVANCE'
-  | 'PREREQ_FAIL'
-  | 'STRUGGLE_DETECTED'
-  | 'MASTERY_CONFIRMED'
-
-export type TutorStage =
-  | 'HOOK'
-  | 'PREREQUISITE_BRIDGE'
-  | 'CORE_EXPLANATION'
-  | 'WORKED_EXAMPLE'
-  | 'GUIDED_PRACTICE'
-  | 'INDEPENDENT_PRACTICE'
-  | 'CONSOLIDATION'
+import { checkInputSafety, type SafetyEventCreate as InputSafetyEvent } from '@/lib/ai/tutor/inputSafety'
+import { computeFrustrationScore } from '@/lib/ai/tutor/signals'
+import { assembleSystemPrompt } from '@/lib/ai/tutor/promptAssembly'
+import { parseTutorTag, stripTag } from '@/lib/ai/tutor/tagParser'
+import { checkOutputSafety, type SafetyEventCreate as OutputSafetyEvent } from '@/lib/ai/tutor/outputSafety'
+import { applyTagTransition, type TutorTag, type TutorStage } from '@/lib/ai/tutor/stateMachine'
+import { logger } from '@/lib/logger'
 
 export type TutorTurnRequest = {
   sessionId: string
@@ -126,56 +118,175 @@ export async function setTutorSession(state: TutorSessionState): Promise<void> {
   }
   await setRedisTutorSession(state.sessionId, payload)
 }
-
-function parseTutorTag(text: string): TutorTag {
-  const m = String(text).match(/\[(QUESTION|VALIDATE|HINT_OFFER|STAGE_ADVANCE|PREREQ_FAIL|STRUGGLE_DETECTED|MASTERY_CONFIRMED)\]\s*$/)
-  if (!m) return 'QUESTION'
-  return m[1] as TutorTag
-}
-
-function stripTutorTag(text: string): string {
-  return String(text).replace(/\n?\[(QUESTION|VALIDATE|HINT_OFFER|STAGE_ADVANCE|PREREQ_FAIL|STRUGGLE_DETECTED|MASTERY_CONFIRMED)\]\s*$/m, '').trimEnd()
-}
-
+/**
+ * Orchestrate a single tutor turn:
+ * 1. Mark turn started in Redis.
+ * 2. Run input safety (PII + jailbreak).
+ * 3. Compute frustration signals.
+ * 4. Assemble system prompt.
+ * 5. Call LLM via tutor-specific retry wrapper.
+ * 6–7. Parse and strip tutor tag.
+ * 8. Run output safety.
+ * 9–11. Apply state transition, persist session, mark turn completed.
+ * 12. Log tag to AITutorTurnLog.
+ */
 export async function runTutorOrchestrator(args: {
   studentId: string
   state: TutorSessionState
   studentMessage: string
 }): Promise<{ answerText: string; complete: TutorTurnComplete }> {
-  // Minimal per-turn orchestrator until the full AI-SSM pipeline lands.
-  // If LLM calls are not allowed in the web runtime, surface a contract-shaped 503.
-  if (process.env.LLM_MODE !== 'mock' && process.env.ALLOW_LLM_CALLS !== '1') {
-    const err = new Error('AI_UNAVAILABLE')
-    ;(err as any).code = 'AI_UNAVAILABLE'
+  const { studentId, state, studentMessage } = args
+  const sessionId = state.sessionId
+
+  await markTurnStarted(sessionId)
+
+  try {
+    const safetyContext = {
+      studentId,
+      sessionId,
+      turnId: `${sessionId}:${state.lastTurnNumber}`,
+    }
+
+    // 2. Input safety
+    const inputSafety = checkInputSafety(studentMessage, safetyContext)
+    const safetyEvents: (InputSafetyEvent | OutputSafetyEvent)[] = [...inputSafety.events]
+
+    if (!inputSafety.safe) {
+      // Jailbreak: insert safety events then surface a typed error for route.ts to map to SSE
+      if (safetyEvents.length) {
+        await prisma.safetyEvent.createMany({ data: safetyEvents })
+      }
+      const err: any = new Error('JAILBREAK_DETECTED')
+      err.code = 'JAILBREAK_DETECTED'
+      throw err
+    }
+
+    const redactedInput = inputSafety.redacted
+
+    // 3. Frustration score — use empty history for now (integration with real history is future work)
+    const frustration = computeFrustrationScore([], null)
+
+    // 4. Prompt assembly — minimal but structured PromptContext
+    const prompt = assembleSystemPrompt({
+      studentName: 'Student',
+      grade: 10,
+      board: 'CBSE',
+      teachingLanguage: 'en',
+      examDateProximityDays: null,
+      learningStyle: null,
+      recentMisconceptions: [],
+      masteryBrief: 'mastery_context_not_yet_wired',
+      emotionalState: frustration.emotionalState,
+      stage: state.stage as TutorStage,
+      stageAttemptCount: 0,
+      hintsUsed: 0,
+      sessionSummary: null,
+      recentTurns: [],
+      activeMisconceptionName: null,
+      frustrationScore: frustration.frustrationScore,
+      ragChunks: [],
+      conceptName: 'Current concept',
+      subjectName: 'Subject',
+    })
+
+    if (prompt.layersTruncated.length > 0) {
+      logger.warn('tutor.prompt.layersTruncated', {
+        layersTruncated: prompt.layersTruncated,
+      })
+    }
+
+    // 5. Tutor LLM call with retry/backoff
+    let llmContent: string
+    try {
+      const tutorCallType: TutorCallType = 'tutor:teach'
+      const res = await callTutorLLM(prompt.system, { callType: tutorCallType, sessionId, studentId }, undefined)
+      llmContent = res.content
+    } catch (err) {
+      if (err instanceof LLMError) {
+        // Surface typed tutor LLM errors back to the route for SSE mapping
+        throw err
+      }
+      const e: any = new LLMError('AI_UNAVAILABLE', 'Tutor LLM failed')
+      e.cause = err
+      throw e
+    }
+
+    // 6–7. Tag parse + strip
+    let tag: TutorTag | null = parseTutorTag(llmContent)
+    if (!tag) tag = 'QUESTION'
+    const stripped = stripTag(llmContent)
+
+    // 8. Output safety
+    const outputSafety = checkOutputSafety(stripped, safetyContext)
+    safetyEvents.push(...outputSafety.events)
+    const answerText = outputSafety.text
+
+    if (safetyEvents.length) {
+      await prisma.safetyEvent.createMany({ data: safetyEvents })
+    }
+
+    // 9. State machine transition — derive next stage + hint usage from tag
+    const nextCore = applyTagTransition(
+      {
+        stage: state.stage as TutorStage,
+        stageAttemptCount: 0,
+        hintsUsed: 0,
+        prereqRemediationActive: false,
+        prereqReturnStage: null,
+        consecutiveWrongAnswers: 0,
+      },
+      tag,
+    )
+
+    const hintsRemaining = Math.max(0, 3 - nextCore.hintsUsed)
+
+    const newState: TutorSessionState = {
+      ...state,
+      stage: nextCore.stage,
+      hintsRemaining,
+      lastTurnNumber: state.lastTurnNumber,
+    }
+
+    // 10–11. Persist session state and mark turn completed
+    await updateTutorSession(sessionId, {
+      stage: newState.stage,
+      hintsRemaining: newState.hintsRemaining,
+      lastTurnNumber: newState.lastTurnNumber,
+    })
+    await markTurnCompleted(sessionId)
+
+    // 12. Log tag to AITutorTurnLog.tag
+    await prisma.aITutorTurnLog.create({
+      data: {
+        sessionId,
+        callType: 'tutor:teach',
+        model: 'unknown',
+        inputTokens: 0,
+        outputTokens: 0,
+        costUsd: 0,
+        latencyMs: 0,
+        tag,
+        stage: newState.stage,
+        safetyFlagged: safetyEvents.length > 0,
+        cached: false,
+        ragChunksUsed: [],
+        frustrationScore: frustration.frustrationScore,
+      },
+    })
+
+    const complete: TutorTurnComplete = {
+      tag,
+      stage: newState.stage,
+      hintsRemaining: newState.hintsRemaining,
+      turnNumber: newState.lastTurnNumber,
+      sessionComplete: newState.stage === 'CONSOLIDATION',
+    }
+
+    return { answerText, complete }
+  } catch (err) {
+    // Always mark turn completed on any error path
+    await markTurnCompleted(args.state.sessionId)
     throw err
   }
-
-  const system = `You are Vidya, an expert AI tutor. Teach using guided questions. Ask at most one question per turn. Keep answers under 150 words.
-Always end your message with exactly one of these tags on a new line:
-[QUESTION] [VALIDATE] [HINT_OFFER] [STAGE_ADVANCE] [PREREQ_FAIL] [STRUGGLE_DETECTED] [MASTERY_CONFIRMED]`
-
-  const completion = await createChatCompletion({
-    model: process.env.OPENAI_MODEL || 'gpt-4o-mini',
-    messages: [
-      { role: 'system', content: system },
-      { role: 'user', content: args.studentMessage },
-    ],
-    temperature: 0.4,
-    max_tokens: 500,
-  })
-
-  const raw = completion?.choices?.[0]?.message?.content ?? ''
-  const tag = parseTutorTag(raw)
-  const answerText = stripTutorTag(raw)
-
-  const complete: TutorTurnComplete = {
-    tag,
-    stage: args.state.stage,
-    hintsRemaining: args.state.hintsRemaining,
-    turnNumber: args.state.lastTurnNumber,
-    sessionComplete: args.state.stage === 'CONSOLIDATION' && tag === 'STAGE_ADVANCE',
-  }
-
-  return { answerText, complete }
 }
 

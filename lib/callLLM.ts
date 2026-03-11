@@ -14,6 +14,13 @@ export class LLMError extends Error {
   }
 }
 
+// Retry config — tutor path only (do not alter global callLLM behaviour)
+const TUTOR_RETRY_CONFIG = {
+  maxAttempts: 3, // 1 original + 2 retries
+  backoffMs: [1000, 2000] as const, // delay before attempt 2, delay before attempt 3
+  totalCapMs: 10_000, // if elapsed > 10s, throw immediately without retrying
+}
+
 /**
  * Build a minimal retrieval context suitable for RAG-lite usage.
  * Only includes high-level syllabus metadata and sibling topic names.
@@ -346,6 +353,71 @@ export async function callLLM({ prompt, model, meta, timeoutMs }: CallLLMArgs) {
 
   // If we exited loop without returning, throw last error
   throw lastError ?? new Error('llm_call_failed');
+}
+
+/**
+ * Tutor-specific wrapper around callLLM with conservative retry/backoff.
+ * - Retries ONLY on LLMError with code 'AI_UNAVAILABLE'.
+ * - Non-retryable tutor errors (RATE_LIMITED, CONTEXT_TOO_LONG) are surfaced immediately.
+ * - Total elapsed time across attempts is capped by TUTOR_RETRY_CONFIG.totalCapMs.
+ *
+ * @param prompt - Fully assembled system prompt.
+ * @param meta - Metadata including a TutorCallType for callType.
+ * @param timeoutMs - Optional per-attempt timeout override.
+ * @returns The same shape as callLLM (content, usage, cost, etc.).
+ */
+export async function callTutorLLM(
+  prompt: string,
+  meta: { callType: TutorCallType } & Record<string, any>,
+  timeoutMs?: number,
+) {
+  const startedAt = Date.now()
+  let attempt = 0
+  let lastError: unknown
+
+  while (attempt < TUTOR_RETRY_CONFIG.maxAttempts) {
+    attempt += 1
+
+    try {
+      // Delegate to the shared callLLM, which handles logging and model selection.
+      return await callLLM({ prompt, meta: { ...meta, callType: meta.callType }, timeoutMs })
+    } catch (err: any) {
+      lastError = err
+      const elapsed = Date.now() - startedAt
+
+      // Only tutor-path LLMError with AI_UNAVAILABLE is retryable here.
+      if (err instanceof LLMError) {
+        if (err.code === 'RATE_LIMITED' || err.code === 'CONTEXT_TOO_LONG') {
+          // Non-retryable tutor errors: fail fast.
+          throw err
+        }
+        if (err.code !== 'AI_UNAVAILABLE') {
+          throw err
+        }
+      } else {
+        // Unknown error type: treat as non-retryable for tutor path.
+        throw err
+      }
+
+      // Stop retrying if we've exceeded total cap or attempts.
+      if (elapsed >= TUTOR_RETRY_CONFIG.totalCapMs || attempt >= TUTOR_RETRY_CONFIG.maxAttempts) {
+        throw err
+      }
+
+      const backoffIndex = attempt - 1
+      const backoff =
+        TUTOR_RETRY_CONFIG.backoffMs[backoffIndex] ??
+        TUTOR_RETRY_CONFIG.backoffMs[TUTOR_RETRY_CONFIG.backoffMs.length - 1]
+
+      try {
+        await new Promise((resolve) => setTimeout(resolve, backoff))
+      } catch {
+        // ignore sleep interruption
+      }
+    }
+  }
+
+  throw lastError ?? new LLMError('AI_UNAVAILABLE', 'tutor_llm_failed')
 }
 
 /**

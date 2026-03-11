@@ -89,9 +89,11 @@ describe('computeFrustrationScore', () => {
 
   test('Score 0.45–0.74 → CONFUSED', () => {
     const history = [
-      sTurn({ isCorrect: false }),
-      sTurn({ isCorrect: false }),
-      sTurn({ isCorrect: true }),
+      // Earlier correct turn, no negativity
+      sTurn({ isCorrect: true, hintsRequestedThisTurn: 0, negativeLanguageDetected: false, responseLatencyMs: 800 }),
+      // Two trailing wrong answers, some hints, one with negative language
+      sTurn({ isCorrect: false, hintsRequestedThisTurn: 1, negativeLanguageDetected: true, responseLatencyMs: 1200 }),
+      sTurn({ isCorrect: false, hintsRequestedThisTurn: 1, negativeLanguageDetected: false, responseLatencyMs: 1200 }),
     ]
     const res = computeFrustrationScore(history, 1000)
     expect(res.frustrationScore).toBeGreaterThanOrEqual(0.45)
