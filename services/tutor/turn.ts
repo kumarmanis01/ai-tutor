@@ -16,6 +16,7 @@ import { assembleSystemPrompt } from '@/lib/ai/tutor/promptAssembly'
 import { parseTutorTag, stripTag } from '@/lib/ai/tutor/tagParser'
 import { checkOutputSafety, type SafetyEventCreate as OutputSafetyEvent } from '@/lib/ai/tutor/outputSafety'
 import { applyTagTransition, type TutorTag, type TutorStage } from '@/lib/ai/tutor/stateMachine'
+import { retrieveRelevantChunks } from '@/lib/ai/tutor/rag'
 import { logger } from '@/lib/logger'
 
 export type TutorTurnRequest = {
@@ -166,7 +167,16 @@ export async function runTutorOrchestrator(args: {
     // 3. Frustration score — use empty history for now (integration with real history is future work)
     const frustration = computeFrustrationScore([], null)
 
-    // 4. Prompt assembly — minimal but structured PromptContext
+    // 4. Basic RAG hook: retrieve curriculum chunks for CURRICULUM_CONTEXT layer.
+    // For now we scope to a single synthetic concept id derived from the session.
+    const conceptId = sessionId
+    const ragContext = await retrieveRelevantChunks(
+      `Current concept ${redactedInput}`,
+      [conceptId],
+      { topN: 4 },
+    )
+
+    // 5. Prompt assembly — minimal but structured PromptContext
     const prompt = assembleSystemPrompt({
       studentName: 'Student',
       grade: 10,
@@ -184,7 +194,7 @@ export async function runTutorOrchestrator(args: {
       recentTurns: [],
       activeMisconceptionName: null,
       frustrationScore: frustration.frustrationScore,
-      ragChunks: [],
+      ragChunks: ragContext.chunks.map((c) => c.content),
       conceptName: 'Current concept',
       subjectName: 'Subject',
     })
@@ -195,7 +205,7 @@ export async function runTutorOrchestrator(args: {
       })
     }
 
-    // 5. Tutor LLM call with retry/backoff
+    // 6. Tutor LLM call with retry/backoff
     let llmContent: string
     try {
       const tutorCallType: TutorCallType = 'tutor:teach'
@@ -211,12 +221,12 @@ export async function runTutorOrchestrator(args: {
       throw e
     }
 
-    // 6–7. Tag parse + strip
+    // 7–8. Tag parse + strip
     let tag: TutorTag | null = parseTutorTag(llmContent)
     if (!tag) tag = 'QUESTION'
     const stripped = stripTag(llmContent)
 
-    // 8. Output safety
+    // 9. Output safety
     const outputSafety = checkOutputSafety(stripped, safetyContext)
     safetyEvents.push(...outputSafety.events)
     const answerText = outputSafety.text
@@ -225,7 +235,7 @@ export async function runTutorOrchestrator(args: {
       await prisma.safetyEvent.createMany({ data: safetyEvents })
     }
 
-    // 9. State machine transition — derive next stage + hint usage from tag
+    // 10. State machine transition — derive next stage + hint usage from tag
     const nextCore = applyTagTransition(
       {
         stage: state.stage as TutorStage,
@@ -247,7 +257,7 @@ export async function runTutorOrchestrator(args: {
       lastTurnNumber: state.lastTurnNumber,
     }
 
-    // 10–11. Persist session state and mark turn completed
+    // 11–12. Persist session state and mark turn completed
     await updateTutorSession(sessionId, {
       stage: newState.stage,
       hintsRemaining: newState.hintsRemaining,
@@ -255,7 +265,7 @@ export async function runTutorOrchestrator(args: {
     })
     await markTurnCompleted(sessionId)
 
-    // 12. Log tag to AITutorTurnLog.tag
+    // 13. Log tag to AITutorTurnLog.tag and rag chunk usage
     await prisma.aITutorTurnLog.create({
       data: {
         sessionId,
@@ -269,7 +279,7 @@ export async function runTutorOrchestrator(args: {
         stage: newState.stage,
         safetyFlagged: safetyEvents.length > 0,
         cached: false,
-        ragChunksUsed: [],
+        ragChunksUsed: ragContext.chunkIds,
         frustrationScore: frustration.frustrationScore,
       },
     })
