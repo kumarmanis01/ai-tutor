@@ -87,6 +87,24 @@ model User {
   timezone                 String?
   studentEngagementStats   StudentEngagementStats?
   engagementProcessedSessions EngagementProcessedSession[]
+  studentFeatureFlags      StudentFeatureFlag[]     @relation("StudentFeatureFlags")
+}
+
+/// Per-student feature flags used for staged rollouts + kill switch gating.
+model StudentFeatureFlag {
+  id        String   @id @default(cuid())
+  studentId String
+  /// Key for the feature, e.g. "AI_TUTOR".
+  key       String
+  enabled   Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  student User @relation("StudentFeatureFlags", fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([studentId, key], name: "studentId_key")
+  @@index([key, enabled], name: "idx_studentfeatureflag_key_enabled")
+  @@index([studentId], name: "idx_studentfeatureflag_studentId")
 }
 
 model PhoneOtp {
@@ -1039,6 +1057,8 @@ model Question {
   topicId       String? /// canonical topic reference — backfilled for legacy rows
   type          String
   difficulty    String?
+  /// IRT difficulty (b-parameter): recall = -1.5 to -0.5, single-step = -0.5 to 0.5, multi-step = 0.5 to 2.0
+  irt_b         Float?
   prompt        String
   choices       Json?
   correctAnswer String?
@@ -1100,30 +1120,33 @@ model ClassLevel {
 }
 
 model SubjectDef {
-  id        String           @id @default(cuid())
-  name      String
-  slug      String
-  classId   String
-  lifecycle SoftDeleteStatus @default(active)
-  createdAt DateTime         @default(now())
-  chapters  ChapterDef[]
-  class     ClassLevel       @relation(fields: [classId], references: [id])
+  id                  String               @id @default(cuid())
+  name                String
+  slug                String
+  classId             String
+  lifecycle           SoftDeleteStatus     @default(active)
+  createdAt           DateTime             @default(now())
+  chapters            ChapterDef[]
+  class               ClassLevel           @relation(fields: [classId], references: [id])
+  concepts            Concept[]
+  boardSubjectConfigs BoardSubjectConfig[]
 
   @@unique([classId, slug], name: "classId_slug")
 }
 
 model ChapterDef {
-  id        String           @id @default(cuid())
-  name      String
-  slug      String
-  order     Int
-  version   Int              @default(1)
-  status    ApprovalStatus   @default(draft)
-  lifecycle SoftDeleteStatus @default(active)
-  subjectId String
-  createdAt DateTime         @default(now())
-  subject   SubjectDef       @relation(fields: [subjectId], references: [id])
-  topics    TopicDef[]
+  id                   String               @id @default(cuid())
+  name                 String
+  slug                 String
+  order                Int
+  version              Int                  @default(1)
+  status               ApprovalStatus       @default(draft)
+  lifecycle            SoftDeleteStatus     @default(active)
+  subjectId            String
+  createdAt            DateTime             @default(now())
+  subject              SubjectDef           @relation(fields: [subjectId], references: [id])
+  topics               TopicDef[]
+  boardChapterWeights  BoardChapterWeight[]
 
   @@unique([subjectId, slug, version])
 }
@@ -1146,8 +1169,69 @@ model TopicDef {
   progress             StudentTopicProgress[]
   structuredSessions   StructuredSession[]
   homework             HomeworkAssignment[]
+  concepts             Concept[]
 
   @@unique([chapterId, slug])
+}
+
+/// Concept-level taxonomy for IRT, prereqs, and RAG. One topic can have many concepts.
+model Concept {
+  id                     String     @id @default(cuid())
+  topicId                String
+  subjectId              String /// Denormalized for queries: concepts WHERE subjectId IN (...)
+  name                   String
+  description            String? /// Required for launch slice; null breaks AI prompt
+  irt_b                  Float? /// Expected difficulty: recall -1.5 to -0.5, single-step -0.5 to 0.5, multi-step 0.5 to 2.0
+  bloomLevel             String? /// e.g. remember, understand, apply
+  prerequisiteConceptIds String[]  @default([])
+  commonlyConfusedWithIds String[]  @default([])
+  createdAt              DateTime   @default(now())
+  updatedAt              DateTime   @updatedAt
+  topic                  TopicDef   @relation(fields: [topicId], references: [id], onDelete: Cascade)
+  subject                SubjectDef @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+
+  @@index([subjectId])
+  @@index([topicId])
+}
+
+/// Per-chapter exam mark weight (e.g. CBSE Grade 10 Maths). Used for readiness score.
+model BoardChapterWeight {
+  id          String    @id @default(cuid())
+  chapterId   String
+  weightMarks Int /// Marks allocated to this chapter in board exam
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  chapter     ChapterDef @relation(fields: [chapterId], references: [id], onDelete: Cascade)
+
+  @@unique([chapterId])
+  @@index([chapterId])
+}
+
+/// Core vs optional subject per board+grade. Unblocks onboarding subject picker.
+model BoardSubjectConfig {
+  id           String     @id @default(cuid())
+  subjectDefId String
+  isCore       Boolean    @default(true) /// Mandatory for that board+grade
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  subjectDef   SubjectDef @relation(fields: [subjectDefId], references: [id], onDelete: Cascade)
+
+  @@unique([subjectDefId])
+  @@index([subjectDefId])
+}
+
+/// RAG curriculum chunks; tag with conceptIds for retrieval. pgvector embedding column added separately if needed.
+model CurriculumChunk {
+  id         String   @id @default(cuid())
+  conceptIds String[] @default([]) /// Empty = untagged; verify for launch slice
+  content    String?  /// Chunk text for display/grounding
+  board      String?
+  subject    String?
+  grade      String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([conceptIds])
 }
 
 model TopicNote {

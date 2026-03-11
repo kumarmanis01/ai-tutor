@@ -219,12 +219,10 @@ export async function callLLM({ prompt, model, meta, timeoutMs }: CallLLMArgs) {
               topic: meta?.topic,
               language: normalizeLanguage(meta?.language),
               topicId: meta?.topicId,
-              hydrationJobId: meta?.hydrationJobId || meta?.jobId || null,
               tokensIn: usage?.prompt_tokens,
               tokensOut: usage?.completion_tokens,
               tokensUsed: usage?.total_tokens,
               costUsd,
-              latencyMs,
               success: true,
               status: 'success',
               requestBody: { prompt },
@@ -257,11 +255,9 @@ export async function callLLM({ prompt, model, meta, timeoutMs }: CallLLMArgs) {
             topic: meta?.topic,
             language: normalizeLanguage(meta?.language),
             topicId: meta?.topicId,
-            hydrationJobId: meta?.hydrationJobId || meta?.jobId || null,
             success: false,
             status: 'failed',
             error: error?.message ?? String(error),
-            latencyMs,
           } })
         }
       } catch (e) { logger.error('Failed to write AIContentLog on error path', { error: String(e) }) }

@@ -911,179 +911,253 @@ data: {
 
 ---
 
+### ACTION PLAN — MASTER TABLE
+
+All 43 tickets across Weeks 1–8. Every ticket has: ID, title, week, role(s), severity, and file targets. Use this table for sprint planning and role assignment.
+
+| ID | Title | Week | Role(s) | Severity | Key Files / Targets |
+|----|-------|------|---------|----------|---------------------|
+| T1 | Taxonomy & Content Readiness | 1 | [DB] [CONTENT] | BLOCKER | `prisma/seeds/`, Neon console, question_bank rows |
+| T2 | Redis & Infra Guardrails | 1 | [INFRA] | BLOCKER | Redis config (`redis.conf`), PM2 ecosystem file |
+| T3 | Feature Flags & Kill Switches | 1 | [INFRA] [DB] | BLOCKER | `prisma/schema.prisma` (`StudentFeatureFlag`), `.env` |
+| T4 | New Tutor Turn Endpoint | 2 | [BE] [DB] | BLOCKER | `app/api/tutor/turn/route.ts` (new) |
+| T5 | Upgrade `callLLM` for Tutor | 2 | [AI] [DB] | BLOCKER | `lib/callLLM.ts`, `AITutorTurnLog` Prisma model |
+| T6 | Prompt Assembly: `assembleSystemPrompt` | 2 | [AI] | BLOCKER | `lib/ai/tutor/promptAssembly.ts` (new) |
+| T7 | Tag Parser & Monitoring | 2 | [AI] | BLOCKER | `lib/ai/tutor/tagParser.ts` (new) |
+| T8 | Redis Session State Helpers | 2 | [BE] | BLOCKER | `lib/redis/tutorSession.ts` (new) |
+| T9 | Pedagogical State Machine | 2 | [AI] | BLOCKER | `lib/ai/tutor/stateMachine.ts` (new), `tests/ai/tutor/stateMachine.test.ts` |
+| T10 | Chat Panel Integration | 2 | [FE] | CRITICAL | `components/student/session/AITutorChatPanel.tsx` (new) |
+| T10b | Session Completion Screen | 2 | [FE] | CRITICAL | `components/student/session/SessionCompletionScreen.tsx` (new) |
+| T11 | Frustration & Emotional Signals | 2 | [AI] | IMPORTANT | `lib/ai/tutor/signals.ts` (new) |
+| T12 | Safety: PII Redaction & Jailbreak | 2 | [SAFETY] | BLOCKER | `lib/ai/tutor/inputSafety.ts` (new) |
+| T13 | Safety: Age-Appropriate Output Filter | 2 | [SAFETY] | BLOCKER | `lib/ai/tutor/outputSafety.ts` (new) |
+| T14 | Safety Events Plumbing | 2 | [DB] [BE] | CRITICAL | `prisma/schema.prisma` (`SafetyEvent`), `app/api/admin/safety-events/route.ts` |
+| T15 | Distress Detection & Parent Notification | 2 | [SAFETY] [WORKER] [HUMAN] | BLOCKER | `lib/ai/tutor/distress.ts`, `worker/services/notificationWorker.ts` — GATED on T43 |
+| T16 | `StudentConceptState` & AnswerEvent (MVP) | 3 | [DB] | BLOCKER | `prisma/schema.prisma` (2 new models) |
+| T17 | Diagnostic → Concept Bootstrap | 3 | [WORKER] | BLOCKER | `worker/services/diagnosticBootstrapWorker.ts` (new) |
+| T18 | Misconception Library (Slice) | 3 | [CONTENT] [AI] [DB] | CRITICAL | `prisma/seeds/misconceptions-*.ts`, `lib/ai/tutor/misconceptionDetector.ts` (new) |
+| T19 | Basic RAG Hook for Tutor | 3 | [AI] | CRITICAL | `lib/ai/tutor/rag.ts` (new), orchestrator wiring |
+| T20 | Freemium Session Cap (Server-Side) | 3 | [BE] [DB] | BLOCKER | `prisma/schema.prisma` (`FreeTierUsage`), `app/api/tutor/session/start/route.ts` |
+| T21 | Extend `StudentConceptState` to full schema | 4 | [DB] | BLOCKER | `prisma/schema.prisma` (additive fields) |
+| T22 | AnswerEvent + IRT Update Worker | 4 | [DB] [WORKER] [AI] | BLOCKER | `lib/ai/tutor/irt.ts` (new), `worker/services/irtWorker.ts` (new) |
+| T23 | SM-18 Spaced Repetition Scheduler | 4 | [WORKER] [DB] [FE] | CRITICAL | `worker/services/revisionSchedulerWorker.ts` (new), `app/api/student/revisions/due-today/route.ts` |
+| T24 | Backfill `conceptIds[]` on Chunks | 5 | [CONTENT] [INFRA] | BLOCKER | Ingestion workers, Neon direct SQL backfill |
+| T25 | Per-Turn RAG Retrieval | 5 | [AI] | CRITICAL | `lib/ai/tutor/rag.ts` (extend), orchestrator |
+| T26 | `doubt_kb` Table & Retrieval | 5 | [DB] [BE] | CRITICAL | `prisma/schema.prisma` (`DoubtKb`), `worker/services/doubtKbWorker.ts` (new) |
+| T27 | Misconception Seeding + Detector | 5 | [CONTENT] [AI] [DB] | CRITICAL | `prisma/seeds/misconceptions-math10.ts`, `prisma/seeds/misconceptions-science10.ts` |
+| T28 | Explanation Cache | 5 | [BE] [INFRA] | IMPORTANT | `lib/redis/cache.ts` (new), orchestrator wiring |
+| T29 | Global Profile Completeness Guard | 6 | [BE] [FE] | BLOCKER | `lib/student/profileGuard.ts` (new), `app/(student)/layout.tsx` |
+| T30 | Global Parent OTP Enforcement | 6 | [BE] [FE] | BLOCKER | `app/(student)/layout.tsx`, auth middleware |
+| T31 | Diagnostic Hard Gate on All Entrypoints | 6 | [BE] [FE] | BLOCKER | All `app/(student)/session/**` pages, `lib/student/diagnostic.ts` |
+| T32 | Grade Immutability — Server-Side Strip | 6 | [BE] | CRITICAL | `app/api/user/onboarding/route.ts`, `app/api/student/profile/route.ts` |
+| T33 | Learning Plan Models & Generator | 6 | [DB] [BE] [WORKER] | CRITICAL | `prisma/schema.prisma` (`LearningPlan`, `LearningPlanItem`), `lib/ai/learningPlan.ts` (new) |
+| T34 | "Today's Plan" Widget | 6 | [FE] [BE] | CRITICAL | `components/student/TodaysLearningCard.tsx`, `app/api/student/learning-plan/today/route.ts` |
+| T35 | ExamReadinessScore Computation | 6 | [WORKER] [BE] [FE] | IMPORTANT | `lib/ai/readinessScore.ts` (new), `worker/services/readinessWorker.ts` (new) |
+| T36 | Prompt Evaluation Harness + CI Gate | 6 | [AI] [INFRA] | CRITICAL | `tests/ai/tutor/*.test.ts`, CI pipeline config |
+| T37 | Structured Consent Record (DPDP) | 7 | [DB] [BE] [HUMAN] | BLOCKER | `prisma/schema.prisma` (`Consent`), `app/api/parent/consent/route.ts` (new) |
+| T38 | Parent as Distinct Actor + Routing | 7 | [DB] [BE] [FE] | CRITICAL | `prisma/schema.prisma` (`ParentProfile`), `app/(parent)/**` (new route group) |
+| T39 | Parent Read-Only Progress Dashboard | 7 | [BE] [FE] | CRITICAL | `app/(parent)/dashboard/page.tsx` (new), `app/api/parent/progress/route.ts` (new) |
+| T40 | Multi-Tier LLM Router + Circuit Breaker | 8 | [AI] [INFRA] | CRITICAL | `lib/ai/tutor/modelRouter.ts` (new), Redis circuit breaker |
+| T41 | Staged Rollout + Kill Switch Wiring | 8 | [INFRA] [DB] | CRITICAL | `lib/features.ts` (new), tutor entrypoints |
+| T42 | Daily Cost Metric + Alert Process | 8 | [INFRA] [WORKER] | IMPORTANT | `worker/services/reportingWorker.ts` (new), `AITutorTurnLog` queries |
+| T43 | Distress Copy Review + Final Safety QA | 8 | [HUMAN] [SAFETY] | BLOCKER | Safety prompt templates, `lib/ai/prompts/safety.ts` — GATES T15 |
+
+**Role filter guide** — filter this table by the `Role(s)` column to extract your personal ticket list:
+- Backend engineer: filter `[BE]`
+- AI/ML engineer: filter `[AI]`
+- Frontend engineer: filter `[FE]`
+- Worker/infra engineer: filter `[WORKER]` or `[INFRA]`
+- DBA / data engineer: filter `[DB]`
+- Safety engineer: filter `[SAFETY]`
+- Content/curriculum team: filter `[CONTENT]`
+- Human sign-off required: filter `[HUMAN]` — T15, T37, T43
+
+**Critical dependencies (cannot start until predecessor is done)**:
+- T4 (Turn Endpoint) requires T8 (Redis Helpers) and T6 (Prompt Assembly)
+- T10 (Chat Panel) requires T4 (Turn Endpoint)
+- T15 (Distress) is BLOCKED until T43 (counsellor sign-off) — enforce with `ENABLE_DISTRESS_DETECTION=false`
+- T22 (IRT Worker) requires T16 (`StudentConceptState` schema)
+- T33 (Learning Plan) requires T17 (Concept Bootstrap)
+- T35 (Readiness Score) requires T21 (full `StudentConceptState`)
+
+---
+
 ### CONSOLIDATED PRIORITY LIST — BUILD ORDER
 
 #### Week 1 — Foundation & Kill Switches
 
-1. **Taxonomy & Content Readiness (launch slice only)** 🗄️ DB | 📋 CONTENT
+1. **Taxonomy & Content Readiness (launch slice only)** 🗄️ [DB] | 📋 [CONTENT]
    - Seed `irt_b`, `bloomLevel`, `prerequisiteConceptIds[]`, `commonlyConfusedWithIds[]`, and `description` for **CBSE Grade 10 Maths + Science** concepts.
-   - Verify that curriculum chunks for this slice are fully ingested with non‑null `conceptIds[]` in pgvector tables. Verify: `SELECT COUNT(*) FROM concepts WHERE description IS NULL AND subjectId IN (...)`.
+   - Verify that curriculum chunks for this slice are fully ingested with non‑null `conceptIds[]` in pgvector tables. Verify: `SELECT COUNT(*) FROM "Concept" WHERE "description" IS NULL AND "subjectId" IN (...)`; for chunks: `SELECT COUNT(*) FROM "CurriculumChunk" WHERE cardinality("conceptIds") = 0`.
    - Seed `BoardChapterWeight` for these chapters.
    - Seed `BoardSubjectConfig` for CBSE + ICSE Grade 6–12. Mark `isCore = true` for mandatory subjects. This unblocks the subject picker in onboarding — without it the picker renders empty.
    - Manually assign `irt_b` to all seeded questions in the launch slice.
+   - **Implementation:** Schema: `Concept`, `BoardChapterWeight`, `BoardSubjectConfig`, `CurriculumChunk` + `Question.irt_b` in `prisma/schema.prisma`. Run `npx prisma migrate dev` then `npx ts-node scripts/seed-taxonomy-launch-slice.ts`. Verify with `npx ts-node scripts/verify-taxonomy-launch-slice.ts`.
 
-2. **Redis & Infra Guardrails** 🔧 INFRA
+2. **Redis & Infra Guardrails** 🔧 [INFRA]
    - Verify Redis: `appendonly yes`, eviction policy `volatile-lru`.
    - Test Redis failover does not clear session keys unexpectedly.
+   - **Decision (pre‑market):** Redis Cloud may run with `Data persistence = None` (free plan). Treat Redis as **non‑durable cache** only; session state must be recoverable from Postgres. **Upgrade to paid durability** (AOF / provider durability option) is **PENDING** before market launch.
 
-3. **Feature Flags & Kill Switches** 🔧 INFRA | 🗄️ DB
+3. **Feature Flags & Kill Switches** 🔧 [INFRA] | 🗄️ [DB]
    - Introduce `StudentFeatureFlag` model and global `ENABLE_AI_TUTOR` env var.
    - `ENABLE_DISTRESS_DETECTION` flag defaults to `false` — must not be enabled until T43 copy review signed off.
    - Wire AI tutor entrypoints to check both flags.
+   - **Implementation:** `prisma/schema.prisma` adds `StudentFeatureFlag` (unique `studentId+key`). Migration: `npx prisma migrate dev --name add_student_feature_flag`. Helper: `lib/features/aiTutor.ts` (`isAiTutorGloballyEnabled`, `isAiTutorEnabledForStudent`, `isDistressDetectionEnabled`).
 
 ---
 
 #### Week 2–3 — AI Tutor Core Loop
 
-4. **New Tutor Turn Endpoint** ⚙️ BE | 🗄️ DB
+4. **New Tutor Turn Endpoint** ⚙️ [BE] | 🗄️ [DB]
    - `app/api/tutor/turn/route.ts`: auth check → feature flag check → freemium cap check → load Redis state → orchestrator → SSE stream → error handling.
    - Returns SSE event shapes from Domain 7 Section 7.1 exactly.
 
-5. **Upgrade `callLLM` for Tutor Calls** 🧠 AI | 🗄️ DB
+5. **Upgrade `callLLM` for Tutor Calls** 🧠 [AI] | 🗄️ [DB]
    - Dedicated `promptType` values for tutor turns. Typed error codes. Log to `AITutorTurnLog`.
 
-6. **Prompt Assembly: `assembleSystemPrompt`** 🧠 AI
+6. **Prompt Assembly: `assembleSystemPrompt`** 🧠 [AI]
    - `lib/ai/tutor/promptAssembly.ts`. All 7 layers. Token budget 16K total, 4K reserved. Priority-ordered truncation. Unit-tested in isolation.
 
-7. **Tag Parser & Monitoring** 🧠 AI
+7. **Tag Parser & Monitoring** 🧠 [AI]
    - `parseTutorTag(response: string): TutorTag | null`. Default to `[QUESTION]` on no valid tag. Log tag distribution metric.
 
-8. **Redis Session State Helpers** ⚙️ BE
+8. **Redis Session State Helpers** ⚙️ [BE]
    - `getTutorSession`, `setTutorSession`, `updateTutorSession`, `deleteTutorSession`.
    - `markTurnStarted`, `markTurnCompleted`, `hasIncompleteTurn` for incomplete turn recovery.
    - Key: `session:tutor:{sessionId}`. TTL: 86400s refreshed on every write.
 
-9. **Pedagogical State Machine Module** 🧠 AI
+9. **Pedagogical State Machine Module** 🧠 [AI]
    - `lib/ai/tutor/stateMachine.ts`. `applyTagTransition` pure reducer. 40+ unit tests covering all transitions and edge cases.
 
-10. **Chat Panel Integration** 🎨 FE
+10. **Chat Panel Integration** 🎨 [FE]
     - `AITutorChatPanel` as specified in Domain 5 Section 5.1. SSE streaming, hint counter, inactivity timer. Feature-flag guarded. Replaces PRACTICE/TEST phase UI.
 
-10b. **Session Completion Screen** 🎨 FE
+10b. **Session Completion Screen** 🎨 [FE]
     - `SessionCompletionScreen` component as specified in Domain 5 Section 5.1. XP animation, mastery delta, AI insight skeleton, star rating, next session CTA.
 
-11. **Frustration & Emotional State Signals** 🧠 AI
+11. **Frustration & Emotional State Signals** 🧠 [AI]
     - `lib/ai/tutor/signals.ts`. Weighted formula. Output: `frustrationScore` + `emotionalState` enum. Injected into SESSION_STATE and STUDENT_PROFILE layers.
 
-12. **Safety: PII Redaction & Jailbreak Guard** 🔴 SAFETY
+12. **Safety: PII Redaction & Jailbreak Guard** 🔴 [SAFETY]
     - `lib/ai/tutor/inputSafety.ts`. Pre-compiled regex patterns. On jailbreak: do NOT call LLM — return safe refusal immediately. Log `safety_event`.
 
-13. **Safety: Age‑Appropriate Output Filter** 🔴 SAFETY
+13. **Safety: Age‑Appropriate Output Filter** 🔴 [SAFETY]
     - Post-LLM filter. Block/regenerate on unsafe content. Log `safety_event`.
 
-14. **Safety Events Plumbing** 🗄️ DB | ⚙️ BE
+14. **Safety Events Plumbing** 🗄️ [DB] | ⚙️ [BE]
     - `SafetyEvent` Prisma model. Wire all safety detections to insert events. Admin SQL view for unresolved events. On-call alias defined and tested.
 
-15. **Distress Detection & Parent Notification** 🔴 SAFETY | 🔁 WORKER | 👤 HUMAN
+15. **Distress Detection & Parent Notification** 🔴 [SAFETY] | 🔁 [WORKER] | 👤 [HUMAN]
     - Gated behind `ENABLE_DISTRESS_DETECTION = false`. Detect distress keywords + sentiment. Background BullMQ job for parent notification. Check `parent.mobile IS NOT NULL AND parent.verified = true` — silent skip if absent. **T43 counsellor sign-off must complete before this flag is enabled.**
 
 ---
 
 #### Week 3 — Misconceptions & Minimal Knowledge Model
 
-16. **`StudentConceptState` & Answer Events (MVP fields)** 🗄️ DB
+16. **`StudentConceptState` & Answer Events (MVP fields)** 🗄️ [DB]
     - MVP fields only: `studentId`, `conceptId`, `masteryScore`, `nextReviewAt`, `lastInteraction`, `attemptCount`.
     - `AnswerEvent` minimum: `studentId`, `sessionId`, `conceptId`, `isCorrect`, `studentAnswer` (raw text), `questionId`, `source`. These minimum fields are required for misconception detection to fire correctly.
 
-17. **Diagnostic → Concept Bootstrap (MVP)** 🔁 WORKER
+17. **Diagnostic → Concept Bootstrap (MVP)** 🔁 [WORKER]
     - BullMQ job triggered on diagnostic completion. Map chapter/topic to concepts. Seed `StudentConceptState` with baseline mastery.
 
-18. **Misconception Library (Slice)** 📋 CONTENT | 🧠 AI | 🗄️ DB
+18. **Misconception Library (Slice)** 📋 [CONTENT] | 🧠 [AI] | 🗄️ [DB]
     - `Misconception` and `StudentMisconception` models. Seed 20+ misconceptions per subject. Expert-reviewed before enabling on production. `matchMisconception` integration in orchestrator.
 
-19. **Basic RAG Hook for Tutor** 🧠 AI
+19. **Basic RAG Hook for Tutor** 🧠 [AI]
     - For launch slice: per-turn retrieval, top 4 chunks after reranking into `CURRICULUM_CONTEXT`. Log chunk IDs to `AITutorTurnLog`.
 
-20. **Freemium Session Cap Enforcement (Server‑Side)** ⚙️ BE | 🗄️ DB
+20. **Freemium Session Cap Enforcement (Server‑Side)** ⚙️ [BE] | 🗄️ [DB]
     - `FreeTierUsage` table. Cap check before session start (never mid-session). Block + surface `FreemiumUpgradeGate` on hit. Returns `freeTierUsage` in `POST /api/tutor/session/start` response.
 
 ---
 
 #### Week 4 — Full Knowledge Model, IRT & Revision
 
-- **T21. Extend `StudentConceptState` to full v2 schema** 🗄️ DB
+- **T21. Extend `StudentConceptState` to full v2 schema** 🗄️ [DB]
   - Add: `masteryVariance`, `theta`, `stability`, `retention`. Additive only. Update all read/write paths.
 
-- **T22. `AnswerEvent` + IRT update worker** 🗄️ DB | 🔁 WORKER | 🧠 AI
+- **T22. `AnswerEvent` + IRT update worker** 🗄️ [DB] | 🔁 [WORKER] | 🧠 [AI]
   - `irtWorker.ts`: consume answer events, compute MAP 3PL theta update (bounded `|Δtheta| ≤ 0.5`), update `StudentConceptState`. Non-blocking — session continues immediately. Files: `lib/ai/tutor/irt.ts`, `worker/services/irtWorker.ts`.
 
-- **T23. SM‑18 spaced repetition scheduler & revision queue** 🔁 WORKER | 🗄️ DB | 🎨 FE
+- **T23. SM‑18 spaced repetition scheduler & revision queue** 🔁 [WORKER] | 🗄️ [DB] | 🎨 [FE]
   - Nightly BullMQ job: compute `R = e^(-t/S)`, update `nextReviewAt`. API: `GET /api/student/revisions/due-today` per Domain 7 Section 7.7. Surface on dashboard revision widget.
 
 ---
 
 #### Week 5 — RAG, Doubt KB, Misconceptions
 
-- **T24. Backfill `conceptIds[]` on curriculum chunks** 📋 CONTENT | 🔧 INFRA
+- **T24. Backfill `conceptIds[]` on curriculum chunks** 📋 [CONTENT] | 🔧 [INFRA]
   - For CBSE 10 Maths/Science: backfill all existing chunks. Lock in tagging for future ingestion runs.
 
-- **T25. Per‑turn RAG retrieval in tutor orchestrator** 🧠 AI
+- **T25. Per‑turn RAG retrieval in tutor orchestrator** 🧠 [AI]
   - `lib/ai/tutor/rag.ts`. Embed concept + brief history → pgvector query → top 4 after reranking → inject into `CURRICULUM_CONTEXT`. Log chunk IDs.
 
-- **T26. `doubt_kb` table & retrieval** 🗄️ DB | ⚙️ BE
+- **T26. `doubt_kb` table & retrieval** 🗄️ [DB] | ⚙️ [BE]
   - `DoubtKb` Prisma model. On write: similarity search at 0.88 threshold — update existing if near-duplicate, insert only if novel. Retrieval threshold: 0.92 for cache hit.
 
-- **T27. Misconception library seeding and detector integration** 📋 CONTENT | 🧠 AI | 🗄️ DB
+- **T27. Misconception library seeding and detector integration** 📋 [CONTENT] | 🧠 [AI] | 🗄️ [DB]
   - 20+ misconceptions per subject seeded and expert-reviewed. `misconceptionDetector.ts`. On wrong answer: match → set `activeMisconceptionId` in Redis state → inject correction fragment into prompt.
 
-- **T28. Explanation cache** ⚙️ BE | 🔧 INFRA
+- **T28. Explanation cache** ⚙️ [BE] | 🔧 [INFRA]
   - Redis key `cache:exp:{conceptId}:{lang}:{modality}`. 7-day TTL. Key includes `contentVersion` to invalidate on chunk updates. Cache hit < 500ms.
 
 ---
 
 #### Week 6 — Student Gating, Learning Plan & Freemium UX
 
-- **T29. Global profile completeness guard** ⚙️ BE | 🎨 FE
+- **T29. Global profile completeness guard** ⚙️ [BE] | 🎨 [FE]
   - `lib/student/profileGuard.ts`. Wire into `app/(student)/layout.tsx`. Render `ProfileCompletionGate` overlay (Domain 5 spec) until `isProfileComplete` returns true.
 
-- **T30. Global parent OTP enforcement** ⚙️ BE | 🎨 FE
+- **T30. Global parent OTP enforcement** ⚙️ [BE] | 🎨 [FE]
   - Wire `accountStatus = PENDING_PARENT_VERIFY` check into student layout. Full-screen `ParentOTPGate` overlay (Domain 5 spec). Priority over `ProfileCompletionGate`.
 
-- **T31. Diagnostic hard gate on all session entrypoints** ⚙️ BE | 🎨 FE
+- **T31. Diagnostic hard gate on all session entrypoints** ⚙️ [BE] | 🎨 [FE]
   - `hasDiagnosticForSubject()` at server load time on all session entry routes. Redirect to diagnostic start if not complete.
 
-- **T32. Grade immutability — server‑side strip** ⚙️ BE
+- **T32. Grade immutability — server‑side strip** ⚙️ [BE]
   - Strip `grade` from `PATCH /api/student/profile` and `POST /api/user/onboarding` unconditionally. UI read-only.
 
-- **T33. Learning plan models & generator** 🗄️ DB | ⚙️ BE | 🔁 WORKER
+- **T33. Learning plan models & generator** 🗄️ [DB] | ⚙️ [BE] | 🔁 [WORKER]
   - `LearningPlan` + `LearningPlanItem` models. Generator reads `StudentConceptState.masteryScore` for weak-first ordering. Dependency: item 17 must be complete.
 
-- **T34. "Today's Plan" widget** 🎨 FE | ⚙️ BE
+- **T34. "Today's Plan" widget** 🎨 [FE] | ⚙️ [BE]
   - `TodaysLearningCard`. API: `GET /api/student/learning-plan/today` per Domain 7 Section 7.5. Fallback to `getNextAction` if no plan item for today.
 
-- **T35. ExamReadinessScore computation & surfacing** 🔁 WORKER | ⚙️ BE | 🎨 FE
+- **T35. ExamReadinessScore computation & surfacing** 🔁 [WORKER] | ⚙️ [BE] | 🎨 [FE]
   - Simplified proxy at launch (weighted chapter mastery average). API: `GET /api/student/readiness/[subjectId]` per Domain 7 Section 7.8. Dashboard readiness rings + subject detail page.
 
-- **T36. Prompt evaluation harness** 🧠 AI | 🔧 INFRA
+- **T36. Prompt evaluation harness** 🧠 [AI] | 🔧 [INFRA]
   - `tests/ai/tutor/*.test.ts`. 20+ scenarios including adversarial inputs. Assert no direct answers, valid tags, safety rules. Wire into CI/CD as required gate — failing eval blocks deploy to `main`.
 
 ---
 
 #### Week 7 — Structured Consent & Parent Baseline
 
-- **T37. Structured consent record (DPDP‑style)** 🗄️ DB | ⚙️ BE | 👤 HUMAN
+- **T37. Structured consent record (DPDP‑style)** 🗄️ [DB] | ⚙️ [BE] | 👤 [HUMAN]
   - `Consent` Prisma model: scopes, timestamps, IP, withdrawal endpoint. Legal review of consent copy required.
 
-- **T38. Parent as distinct actor + routing** 🗄️ DB | ⚙️ BE | 🎨 FE
+- **T38. Parent as distinct actor + routing** 🗄️ [DB] | ⚙️ [BE] | 🎨 [FE]
   - `ParentProfile` model or `role` field on `User`. Separate `app/(parent)/**` shell. `ParentChild` relation. Parents cannot access student session transcripts.
 
-- **T39. Parent read‑only progress dashboard** ⚙️ BE | 🎨 FE
+- **T39. Parent read‑only progress dashboard** ⚙️ [BE] | 🎨 [FE]
   - API: `GET /api/parent/progress` per Domain 7 Section 7.10. UI: `ParentDashboard` as specified in Domain 5 Section 5.1.
 
 ---
 
 #### Week 8 — Controlled Rollout, Cost Guardrails & Final Safety
 
-- **T40. Multi‑tier LLM router & circuit breaker** 🧠 AI | 🔧 INFRA
+- **T40. Multi‑tier LLM router & circuit breaker** 🧠 [AI] | 🔧 [INFRA]
   - `lib/ai/tutor/modelRouter.ts`. Redis-backed circuit breaker (not in-memory). Anthropic failover. Tier 1: GPT-4o. Tier 2/3: GPT-4o-mini.
 
-- **T41. Staged rollout & kill switch wiring** 🔧 INFRA | 🗄️ DB
+- **T41. Staged rollout & kill switch wiring** 🔧 [INFRA] | 🗄️ [DB]
   - Enable AI Tutor for 5% CBSE Grade 10 cohort via `StudentFeatureFlag`. `ENABLE_AI_TUTOR=false` reverts everyone to v1 session flow immediately.
 
-- **T42. Daily tutor cost metric & alert process** 🔧 INFRA | 🔁 WORKER
+- **T42. Daily tutor cost metric & alert process** 🔧 [INFRA] | 🔁 [WORKER]
   - `reportingWorker.ts`. Daily `costUsd / sessions` aggregate from `AITutorTurnLog`. Manual alert playbook when > ₹0.25/session. On-call alias receives alert.
 
-- **T43. Distress copy review & final safety QA** 👤 HUMAN | 🔴 SAFETY
+- **T43. Distress copy review & final safety QA** 👤 [HUMAN] | 🔴 [SAFETY]
   - Counsellor signs off on: distress response copy, parent notification copy, edge-case safety behaviours. **Only after sign-off**: set `ENABLE_DISTRESS_DETECTION=true`. This is a hard gate — T15 is not complete until T43 is done.
 
 ---
