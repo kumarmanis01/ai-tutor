@@ -17,6 +17,7 @@ import { parseTutorTag, stripTag } from '@/lib/ai/tutor/tagParser'
 import { checkOutputSafety, type SafetyEventCreate as OutputSafetyEvent } from '@/lib/ai/tutor/outputSafety'
 import { applyTagTransition, type TutorTag, type TutorStage } from '@/lib/ai/tutor/stateMachine'
 import { retrieveRelevantChunks } from '@/lib/ai/tutor/rag'
+import { detectMisconceptions, loadMisconceptions } from '@/lib/ai/tutor/misconceptionDetector'
 import { logger } from '@/lib/logger'
 
 export type TutorTurnRequest = {
@@ -164,6 +165,49 @@ export async function runTutorOrchestrator(args: {
 
     const redactedInput = inputSafety.redacted
 
+    // Misconception detection (subject/concept wiring is a future enhancement).
+    // For now, use placeholder subjectId and a synthetic conceptId derived from sessionId.
+    const subjectIdForMisconceptions = 'CBSE_G10_placeholder'
+    const conceptIdForMisconceptions = sessionId
+    const loadedMisconceptions = await loadMisconceptions(subjectIdForMisconceptions, conceptIdForMisconceptions)
+    const detectedMisconceptions = detectMisconceptions(redactedInput, loadedMisconceptions)
+    const activeMisconception = detectedMisconceptions[0]?.name ?? null
+
+    if (detectedMisconceptions.length > 0) {
+      const now = new Date()
+      try {
+        await Promise.all(
+          detectedMisconceptions.map((m) =>
+            (prisma as any).studentMisconception.upsert({
+              where: {
+                studentId_misconceptionId: {
+                  studentId,
+                  misconceptionId: m.misconceptionId,
+                },
+              },
+              create: {
+                studentId,
+                misconceptionId: m.misconceptionId,
+                firstDetectedAt: now,
+                lastSeenAt: now,
+                occurrenceCount: 1,
+              },
+              update: {
+                lastSeenAt: now,
+                occurrenceCount: { increment: 1 },
+              },
+            }),
+          ),
+        )
+      } catch (err) {
+        logger.warn('studentMisconception.upsert.failed', {
+          studentId,
+          count: detectedMisconceptions.length,
+          error: String((err as any)?.message ?? err),
+        })
+      }
+    }
+
     // 3. Frustration score — use empty history for now (integration with real history is future work)
     const frustration = computeFrustrationScore([], null)
 
@@ -192,7 +236,7 @@ export async function runTutorOrchestrator(args: {
       hintsUsed: 0,
       sessionSummary: null,
       recentTurns: [],
-      activeMisconceptionName: null,
+      activeMisconceptionName: activeMisconception,
       frustrationScore: frustration.frustrationScore,
       ragChunks: ragContext.chunks.map((c) => c.content),
       conceptName: 'Current concept',
