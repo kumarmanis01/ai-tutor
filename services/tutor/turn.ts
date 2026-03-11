@@ -1,8 +1,12 @@
-import { getRedis } from '@/lib/redis'
 import { prisma } from '@/lib/prisma'
 import { isPremiumUser } from '@/lib/subscription'
 import { isAiTutorEnabledForStudent } from '@/lib/features/aiTutor'
 import { createChatCompletion } from '@/lib/callLLM'
+import {
+  getTutorSession as getRedisTutorSession,
+  setTutorSession as setRedisTutorSession,
+  type RedisSessionState,
+} from '@/lib/redis/tutorSession'
 
 export type TutorTag =
   | 'QUESTION'
@@ -56,9 +60,6 @@ export type TutorTurnError = {
   retryable: boolean
 }
 
-const SESSION_TTL_SECONDS = 86400
-const SESSION_KEY_PREFIX = 'session:tutor:'
-
 export async function requireTutorEnabled(studentId: string): Promise<void> {
   const enabled = await isAiTutorEnabledForStudent(studentId)
   if (!enabled) {
@@ -103,22 +104,27 @@ export async function enforceTutorFreemiumCap(studentId: string): Promise<void> 
 }
 
 export async function getTutorSession(sessionId: string): Promise<TutorSessionState | null> {
-  const redis = getRedis()
-  const raw = await redis.get(`${SESSION_KEY_PREFIX}${sessionId}`)
-  if (!raw) return null
-  try {
-    const parsed = JSON.parse(raw)
-    if (!parsed || typeof parsed !== 'object') return null
-    if (parsed.sessionId !== sessionId) return null
-    return parsed as TutorSessionState
-  } catch {
-    return null
+  const s = await getRedisTutorSession(sessionId)
+  if (!s) return null
+  if (typeof s.stage !== 'string') return null
+  if (typeof s.hintsRemaining !== 'number') return null
+  if (typeof s.lastTurnNumber !== 'number') return null
+  return {
+    sessionId,
+    stage: s.stage as TutorStage,
+    hintsRemaining: s.hintsRemaining,
+    lastTurnNumber: s.lastTurnNumber,
   }
 }
 
 export async function setTutorSession(state: TutorSessionState): Promise<void> {
-  const redis = getRedis()
-  await redis.set(`${SESSION_KEY_PREFIX}${state.sessionId}`, JSON.stringify(state), 'EX', SESSION_TTL_SECONDS)
+  const payload: RedisSessionState = {
+    sessionId: state.sessionId,
+    stage: state.stage,
+    hintsRemaining: state.hintsRemaining,
+    lastTurnNumber: state.lastTurnNumber,
+  }
+  await setRedisTutorSession(state.sessionId, payload)
 }
 
 function parseTutorTag(text: string): TutorTag {

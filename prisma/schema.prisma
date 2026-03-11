@@ -1334,6 +1334,24 @@ model AITutorTurnLog {
   @@index([createdAt])
 }
 
+model SafetyEvent {
+  id          String   @id @default(cuid())
+  triggerType String   // 'PII' | 'JAILBREAK' | 'UNSAFE_OUTPUT' | 'DISTRESS'
+  sessionId   String?
+  turnId      String?
+  studentId   String
+  severity    String   // 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL'
+  createdAt   DateTime @default(now())
+  resolvedAt  DateTime?
+  resolution  String?
+
+  @@index([studentId])
+  @@index([triggerType])
+  @@index([severity])
+  @@index([createdAt])
+  @@index([resolvedAt])
+}
+
 model SystemSetting {
   key       String   @id
   value     Json
