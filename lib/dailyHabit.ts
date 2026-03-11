@@ -172,7 +172,7 @@ async function generateDailyTask(studentId: string, todayStart: Date): Promise<D
         topicId: topicPick?.topicId ?? null,
         subject: topicPick?.subject ?? null,
         chapter: topicPick?.chapter ?? null,
-        steps,
+        steps: steps as any,
         estimatedTimeMin,
         status: 'pending',
         isRecoveryTask: false,

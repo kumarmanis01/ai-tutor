@@ -24,6 +24,7 @@ import { parseLlmJson } from '@/lib/llm/sanitizeJson'
 import { renderTemplate } from '@/prompts'
 import _fs from 'fs';
 import _path from 'path';
+import { LanguageCode } from '@prisma/client';
 import { isSystemSettingEnabled } from '@/lib/systemSettings.js';
 import { logger } from '@/lib/logger.js';
 import { JobStatus, ApprovalStatus } from '@/lib/ai-engine/types';
@@ -270,7 +271,7 @@ async function generateQuestionsForDifficulty(
   board: string,
   grade: number,
   subjectName: string,
-  language: string,
+  language: LanguageCode,
   jobId?: string,
   questionsCount?: number
 ): Promise<{ parsed: any; llmResult: any } | null> {
@@ -415,7 +416,7 @@ export async function handleQuestionsJob(jobId: string): Promise<void> {
     throw new Error('topic_not_found');
   }
 
-  const language = job.language || 'en';
+  const language: LanguageCode = (job.language as LanguageCode) || 'en';
   const board = topic.chapter.subject.class.board.name;
   const grade = topic.chapter.subject.class.grade;
   const subjectName = topic.chapter.subject.name;

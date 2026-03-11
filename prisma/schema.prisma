@@ -1312,6 +1312,28 @@ model AIContentLog {
   @@index([promptType, schemaHash])
 }
 
+model AITutorTurnLog {
+  id               String   @id @default(cuid())
+  sessionId        String
+  callType         String   // 'tutor:teach' | 'tutor:hint' | 'tutor:eval'
+  model            String
+  inputTokens      Int
+  outputTokens     Int
+  costUsd          Float
+  latencyMs        Int
+  tag              String?
+  stage            String?
+  safetyFlagged    Boolean  @default(false)
+  cached           Boolean  @default(false)
+  ragChunksUsed    String[] @default([])
+  frustrationScore Float?
+  createdAt        DateTime @default(now())
+
+  @@index([sessionId])
+  @@index([callType])
+  @@index([createdAt])
+}
+
 model SystemSetting {
   key       String   @id
   value     Json
