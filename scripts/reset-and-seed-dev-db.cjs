@@ -28,6 +28,7 @@ const ROOT = path.resolve(__dirname, '..');
 
 /** Commands to run after migrations, in order. */
 const SEED_COMMANDS = [
+  ['npx', ['tsx', 'scripts/seed-ai-content.cjs']],
   ['npx', ['tsx', 'scripts/seed-taxonomy-launch-slice.ts']],
   ['npx', ['tsx', 'scripts/seed-ai-data.cjs']],
   ['npx', ['tsx', 'scripts/seed-misconceptions.ts']],
