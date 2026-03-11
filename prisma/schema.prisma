@@ -1447,6 +1447,38 @@ model StudentContentPreference {
   @@index([studentId])
 }
 
+model StudentConceptState {
+  id              String   @id @default(cuid())
+  studentId       String
+  conceptId       String
+  masteryScore    Float    @default(0.0)
+  nextReviewAt    DateTime?
+  lastInteraction DateTime @default(now())
+  attemptCount    Int      @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([studentId, conceptId])
+  @@index([studentId])
+  @@index([nextReviewAt])
+}
+
+model AnswerEvent {
+  id            String   @id @default(cuid())
+  studentId     String
+  sessionId     String
+  conceptId     String
+  questionId    String?
+  isCorrect     Boolean
+  studentAnswer String
+  source        String
+  createdAt     DateTime @default(now())
+
+  @@index([studentId, conceptId])
+  @@index([studentId, createdAt])
+}
+
 model ApprovalAudit {
   id         String         @id @default(cuid())
   entityType String
