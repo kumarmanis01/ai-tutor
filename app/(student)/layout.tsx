@@ -11,6 +11,8 @@ import { redirect } from 'next/navigation';
 import { headers } from 'next/headers';
 import { checkProfileCompleteness } from '@/lib/student/profileGuard';
 import { checkParentGate } from '@/lib/student/parentGate';
+import { requiresParentOTPGate } from '@/lib/student/accountStatus';
+import StudentLayoutShell from '@/components/student/StudentLayoutShell';
 import '@/styles/index.css';
 
 export const viewport = {
@@ -39,7 +41,29 @@ export default async function StudentLayout({ children }: { children: React.Reac
   const skipVerifyParent = pathname.startsWith('/student/verify-parent');
   const skipOnboarding = pathname.startsWith('/student/onboarding');
 
-  if (!skipApi && userId) {
+  let showParentGate = false;
+  let maskedParentEmail: string | null = null;
+
+  if (!skipApi && !skipVerifyParent && userId) {
+    const needsOtpGate = await requiresParentOTPGate(userId);
+    if (needsOtpGate) {
+      showParentGate = true;
+      const parentEmail = (session.user as { parentEmail?: string | null }).parentEmail ?? null;
+      if (parentEmail) {
+        const [localPart, domain] = parentEmail.split('@');
+        if (localPart && domain) {
+          const first = localPart.charAt(0);
+          maskedParentEmail = `${first}${'*'.repeat(Math.max(localPart.length - 1, 1))}@${domain}`;
+        } else {
+          maskedParentEmail = parentEmail;
+        }
+      } else {
+        maskedParentEmail = 'parent email on file';
+      }
+    }
+  }
+
+  if (!skipApi && !showParentGate && userId) {
     const gate = await checkParentGate(userId);
     if (!skipVerifyParent && gate.required && !gate.verified) {
       redirect('/student/verify-parent');
@@ -67,7 +91,9 @@ export default async function StudentLayout({ children }: { children: React.Reac
             <AppModalClient />
             <StudentNav studentName={studentName} />
             <div className="pt-14">
-              {children}
+              <StudentLayoutShell showParentGate={showParentGate} maskedParentEmail={maskedParentEmail}>
+                {children}
+              </StudentLayoutShell>
             </div>
             <ToastHost />
           </GlobalLoaderProvider>

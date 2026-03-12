@@ -1,6 +1,6 @@
 import { prisma } from '@/lib/prisma'
 import { logger } from '@/lib/logger'
-import OpenAI from 'openai'
+import { getEmbedding } from '@/lib/ai/embeddings'
 
 export interface RagChunk {
   chunkId: string
@@ -15,10 +15,6 @@ export interface RagContext {
 }
 
 const DEFAULT_TOP_N = 4
-
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-})
 
 /**
  * Retrieve top N curriculum chunks relevant to the query.
@@ -44,19 +40,8 @@ export async function retrieveRelevantChunks(
   }
 
   try {
-    if (!process.env.OPENAI_API_KEY) {
-      logger.warn('rag.retrieveRelevantChunks.missingApiKey')
-      return { chunks: [], chunkIds: [] }
-    }
-
-    // 1. Embed query
-    const embeddingResponse = await openai.embeddings.create({
-      model: 'text-embedding-3-small',
-      input: query,
-    })
-
-    const vector = embeddingResponse.data?.[0]?.embedding
-    if (!vector || !Array.isArray(vector) || vector.length === 0) {
+    const vector = await getEmbedding(query)
+    if (!vector) {
       logger.warn('rag.retrieveRelevantChunks.emptyEmbedding')
       return { chunks: [], chunkIds: [] }
     }
@@ -65,25 +50,26 @@ export async function retrieveRelevantChunks(
     type RawRow = {
       id: string
       content: string | null
-      concept_ids: string[]
+      conceptIds: string[]
       similarity: number
     }
 
     let rows: RawRow[] = []
     try {
-      // NOTE: This assumes a pgvector "vector" column named embedding exists on CurriculumChunk.
+      const embeddingLiteral = `[${vector.join(',')}]`
       rows =
         ((await prisma.$queryRawUnsafe(
           `
-            SELECT id, content, concept_ids,
+            SELECT id, content, "conceptIds",
                    1 - (embedding <=> $1::vector) AS similarity
             FROM "CurriculumChunk"
-            WHERE concept_ids && $2::text[]
+            WHERE "conceptIds" && $2::text[]
               AND embedding IS NOT NULL
-            ORDER BY embedding <=> $1::vector
+              AND 1 - (embedding <=> $1::vector) > 0.75
+            ORDER BY similarity DESC
             LIMIT $3
           `,
-          vector,
+          embeddingLiteral,
           conceptIds,
           topN,
         )) as RawRow[]) ?? []
@@ -98,21 +84,15 @@ export async function retrieveRelevantChunks(
       return { chunks: [], chunkIds: [] }
     }
 
-    // 3. Rerank: apply similarity threshold and sort desc
-    const threshold = 0.75
-    const filtered = rows
-      .filter((r) => typeof r.similarity === 'number' && r.similarity >= threshold)
-      .sort((a, b) => b.similarity - a.similarity)
-      .slice(0, topN)
-
-    if (!filtered.length) {
+    // 3. Basic check — rows already thresholded and ordered in SQL
+    if (!rows.length) {
       return { chunks: [], chunkIds: [] }
     }
 
-    const chunks: RagChunk[] = filtered.map((r) => ({
+    const chunks: RagChunk[] = rows.map((r) => ({
       chunkId: r.id,
       content: r.content ?? '',
-      conceptIds: r.concept_ids ?? [],
+      conceptIds: r.conceptIds ?? [],
       similarityScore: r.similarity,
     }))
 

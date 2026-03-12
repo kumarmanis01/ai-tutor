@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useEffect, useRef, useState } from 'react'
+import SessionRatingModal from '@/components/student/session/SessionRatingModal'
 
 interface SessionCompletionScreenProps {
   sessionId: string
@@ -36,9 +37,8 @@ export const SessionCompletionScreen: React.FC<SessionCompletionScreenProps> = (
   const [showLevelOverlay, setShowLevelOverlay] = useState(false)
   const [overlayDone, setOverlayDone] = useState(false)
   const [aiInsightVisible, setAiInsightVisible] = useState(false)
-  const [rating, setRating] = useState(0)
-  const [ratingSubmitting, setRatingSubmitting] = useState(false)
-  const [ratingSubmitted, setRatingSubmitted] = useState(false)
+  const [showRating, setShowRating] = useState(false)
+  const [ratingModalDone, setRatingModalDone] = useState(false)
 
   const xpAnimationRef = useRef<number | null>(null)
   const xpStartTimeRef = useRef<number | null>(null)
@@ -131,27 +131,15 @@ export const SessionCompletionScreen: React.FC<SessionCompletionScreenProps> = (
     return () => clearTimeout(timer)
   }, [data])
 
-  const handleRatingClick = async (value: number) => {
-    if (ratingSubmitting) return
-    setRating(value)
-    setRatingSubmitting(true)
-    try {
-      await fetch(`/api/student/session/${encodeURIComponent(sessionId)}/rate`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sessionId, rating: value }),
-      })
-      setRatingSubmitted(true)
-    } catch {
-      // ignore errors; keep CTA disabled until successful rating submission
-      setRatingSubmitted(false)
-    } finally {
-      setRatingSubmitting(false)
-    }
-  }
+  // Show rating modal 1.5s after XP animation completes (or data loads)
+  useEffect(() => {
+    if (!data) return
+    const t = setTimeout(() => setShowRating(true), 1500)
+    return () => clearTimeout(t)
+  }, [data])
 
   const handleNext = () => {
-    if (!ratingSubmitted) return
+    if (!ratingModalDone) return
     onNext()
   }
 
@@ -175,6 +163,16 @@ export const SessionCompletionScreen: React.FC<SessionCompletionScreenProps> = (
 
   return (
     <div className="relative flex h-full flex-col rounded-lg border border-gray-200 bg-white p-4">
+      {showRating && (
+        <SessionRatingModal
+          sessionId={sessionId}
+          onClose={() => {
+            setShowRating(false)
+            setRatingModalDone(true)
+          }}
+        />
+      )}
+
       {/* Level-up overlay */}
       {showLevelOverlay && data.leveledUp && data.newLevel != null && (
         <div className="absolute inset-0 z-20 flex items-center justify-center bg-black/70">
@@ -260,44 +258,11 @@ export const SessionCompletionScreen: React.FC<SessionCompletionScreenProps> = (
         )}
       </div>
 
-      {/* Star rating */}
-      <div className="mb-4">
-        <div className="mb-1 text-xs font-medium uppercase tracking-wide text-gray-500">
-          Rate this session
-        </div>
-        <div className="flex items-center gap-1">
-          {[1, 2, 3, 4, 5].map((star) => {
-            const filled = star <= rating
-            return (
-              <button
-                key={star}
-                type="button"
-                onClick={() => handleRatingClick(star)}
-                className="h-8 w-8"
-                aria-label={`Rate ${star} star${star > 1 ? 's' : ''}`}
-              >
-                <svg
-                  className={filled ? 'h-8 w-8 text-yellow-400' : 'h-8 w-8 text-gray-300'}
-                  xmlns="http://www.w3.org/2000/svg"
-                  viewBox="0 0 20 20"
-                  fill="currentColor"
-                >
-                  <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.18 3.63a1 1 0 00.95.69h3.813c.969 0 1.371 1.24.588 1.81l-3.083 2.24a1 1 0 00-.364 1.118l1.18 3.63c.3.922-.755 1.688-1.54 1.118L10 14.347l-3.575 2.836c-.784.57-1.838-.196-1.539-1.118l1.18-3.63a1 1 0 00-.364-1.118L2.62 9.057c-.783-.57-.38-1.81.588-1.81h3.813a1 1 0 00.95-.69l1.078-3.63z" />
-                </svg>
-              </button>
-            )
-          })}
-          {ratingSubmitted && !ratingSubmitting && (
-            <span className="ml-2 text-xs text-emerald-600">Thanks for your feedback!</span>
-          )}
-        </div>
-      </div>
-
       {/* CTA */}
       <button
         type="button"
         onClick={handleNext}
-        disabled={!ratingSubmitted || ratingSubmitting || !overlayDone}
+        disabled={!ratingModalDone || !overlayDone}
         className="mt-auto w-full rounded-lg bg-indigo-600 px-4 py-2 text-center text-sm font-semibold text-white shadow-sm disabled:cursor-not-allowed disabled:bg-gray-300"
       >
         Continue Learning

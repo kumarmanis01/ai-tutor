@@ -56,6 +56,8 @@ model User {
   welcomeEmailSent         Boolean                  @default(false)
   passwordHash             String?
   todaysFreeQuestionsCount Int                      @default(3)
+  subscriptionStatus       String                   @default("free")
+  subscriptionExpiry       DateTime?
   status                   String?
   createdAt                DateTime                 @default(now())
   accounts                 Account[]
@@ -105,6 +107,21 @@ model User {
   studentFeatureFlags      StudentFeatureFlag[]     @relation("StudentFeatureFlags")
   studentXpRecords         StudentXP[]
   learningPlans           LearningPlan[]
+}
+
+model PaymentOrder {
+  id              String   @id @default(cuid())
+  studentId       String
+  razorpayOrderId String   @unique
+  amount          Int
+  currency        String   @default("INR")
+  status          String   @default("created")
+  planMonths      Int      @default(1)
+  createdAt       DateTime @default(now())
+  paidAt          DateTime?
+
+  @@index([studentId])
+  @@index([razorpayOrderId])
 }
 
 /// Per-student XP ledger; totalXp on User is the source of truth.
@@ -1265,6 +1282,7 @@ model CurriculumChunk {
   grade      String?
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
+  embedding  Unsupported("vector(1536)")?
 
   @@index([conceptIds])
 }
@@ -1376,6 +1394,8 @@ model SafetyEvent {
   turnId      String?
   studentId   String
   severity    String   // 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL'
+  /// Redacted preview of the flagged input (never raw PII). Truncated server-side.
+  inputPreview String?
   createdAt   DateTime @default(now())
   resolvedAt  DateTime?
   resolution  String?

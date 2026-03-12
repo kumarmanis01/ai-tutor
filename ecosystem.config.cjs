@@ -12,6 +12,13 @@
  * PM2 will then inherit these variables when started with --update-env.
  */
 
+// ── Redis production checklist (run on VPS before first deploy) ──
+// redis-cli CONFIG SET maxmemory-policy allkeys-lru
+// redis-cli CONFIG SET maxmemory 256mb
+// redis-cli CONFIG SET save "3600 1 300 100 60 10000"   // persistence
+// redis-cli CONFIG SET appendonly yes                    // AOF persistence
+// Verify: redis-cli CONFIG GET maxmemory-policy
+
 module.exports = {
   apps: [
     // ─────────────────────────────────────────────────────────────────────

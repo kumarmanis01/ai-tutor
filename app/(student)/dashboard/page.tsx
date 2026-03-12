@@ -39,6 +39,8 @@ import UpcomingTopicsList from '@/components/home/UpcomingTopicsList';
 import NudgeBanner from '@/components/home/NudgeBanner';
 import { EngagementSection } from '@/components/home/EngagementSection';
 import RevisionWidget from '@/components/student/dashboard/RevisionWidget';
+import PaymentButton from '@/components/student/PaymentButton';
+import { checkFreeTierCap } from '@/lib/freemium';
 
 export const dynamic = 'force-dynamic';
 
@@ -88,6 +90,8 @@ export default async function StudentHomeDashboardPage() {
     orderedTopics,
     lastSessionRow,
     masteredTopicIds,
+    freeTierStatus,
+    userSub,
   ] = await Promise.all([
     // 0. Student academic profile for onboarding gate
     prisma.user.findUnique({
@@ -169,6 +173,11 @@ export default async function StudentHomeDashboardPage() {
     prisma.studentTopicProgress.findMany({
       where: { studentId: userId, mastery: { gte: 0.9 } },
       select: { topicId: true },
+    }),
+    checkFreeTierCap(userId),
+    prisma.user.findUnique({
+      where: { id: userId },
+      select: { subscriptionStatus: true, subscriptionExpiry: true, name: true, email: true },
     }),
   ]);
 
@@ -314,6 +323,31 @@ export default async function StudentHomeDashboardPage() {
 
       {/* Revisions due today — highest priority */}
       <RevisionWidget />
+
+      {/* Freemium upgrade gate */}
+      {userSub?.subscriptionStatus === 'free' && freeTierStatus.sessionsRemaining === 0 && (
+        <section className="rounded-xl border border-indigo-200 bg-indigo-50 px-4 py-4 text-sm text-indigo-900">
+          <h2 className="mb-1 text-base font-semibold">You&apos;ve used your free sessions</h2>
+          <p className="mb-3 text-xs text-indigo-900/80">
+            Upgrade to continue learning with unlimited AI tutor sessions this month.
+          </p>
+          <PaymentButton
+            planMonths={1}
+            studentName={userSub.name}
+            studentEmail={userSub.email}
+            onSuccess={() => {
+              // After payment, reload dashboard to pick up new subscriptionStatus.
+              // The client router will handle the refresh.
+              if (typeof window !== 'undefined') {
+                window.location.reload();
+              }
+            }}
+            onFailure={() => {
+              // No-op: inline error is shown in the button component.
+            }}
+          />
+        </section>
+      )}
 
       {/* 1. Primary Action — single hero CTA, always visible */}
       <PrimaryActionCard
