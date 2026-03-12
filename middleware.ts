@@ -80,13 +80,17 @@ export async function middleware(request: NextRequest) {
         return NextResponse.redirect(new URL('/dashboard?onboarding=1', request.url));
       }
 
-      return NextResponse.next();
+  const res = NextResponse.next();
+  res.headers.set('x-pathname', pathname);
+  return res;
     }
   }
 
-  return NextResponse.next();
+  const res = NextResponse.next();
+  res.headers.set('x-pathname', pathname);
+  return res;
 }
 
 export const config = {
-  matcher: ['/session/:path*', '/api/:path*', '/admin/:path*', '/dashboard/:path*', '/profile/:path*', '/rooms/:path*', '/parent/:path*', '/learn/:path*'],
+  matcher: ['/session/:path*', '/api/:path*', '/admin/:path*', '/dashboard/:path*', '/profile/:path*', '/rooms/:path*', '/parent/:path*', '/learn/:path*', '/student/:path*'],
 };
