@@ -1484,6 +1484,20 @@ model AnswerEvent {
   @@index([studentId, createdAt])
 }
 
+/// Student doubt Q&A pairs for reuse; embedding column added in production when pgvector is available.
+model DoubtKb {
+  id        String   @id @default(cuid())
+  studentId String
+  sessionId String
+  conceptId String
+  question  String
+  answer    String
+  createdAt DateTime @default(now())
+
+  @@index([studentId, conceptId])
+  @@index([conceptId])
+}
+
 model FreeTierUsage {
   id           String   @id @default(cuid())
   studentId    String   @unique

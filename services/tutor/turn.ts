@@ -18,6 +18,7 @@ import { checkOutputSafety, type SafetyEventCreate as OutputSafetyEvent } from '
 import { applyTagTransition, type TutorTag, type TutorStage } from '@/lib/ai/tutor/stateMachine'
 import { retrieveRelevantChunks } from '@/lib/ai/tutor/rag'
 import { detectMisconceptions, loadMisconceptions } from '@/lib/ai/tutor/misconceptionDetector'
+import { saveDoubt } from '@/lib/ai/tutor/doubtKb'
 import { enqueueIRTUpdate } from '@/jobs/irtUpdate'
 import { logger } from '@/lib/logger'
 
@@ -286,6 +287,17 @@ export async function runTutorOrchestrator(args: {
 
     if (safetyEvents.length) {
       await prisma.safetyEvent.createMany({ data: safetyEvents })
+    }
+
+    // Doubt KB: after output safety passes, persist helpful Q&A for future context.
+    if (tag === 'QUESTION' || tag === 'HINT_OFFER') {
+      void saveDoubt({
+        studentId,
+        sessionId,
+        conceptId: args.conceptId ?? conceptId,
+        question: redactedInput,
+        answer: answerText,
+      })
     }
 
     // 10. State machine transition — derive next stage + hint usage from tag
