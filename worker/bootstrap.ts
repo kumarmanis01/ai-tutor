@@ -38,8 +38,10 @@ import { handleNotesJob } from "./services/notesWorker.js";
 import { handleQuestionsJob } from "./services/questionsWorker.js";
 import { handleAssembleJob } from "./services/assembleWorker.js";
 import { processIRTUpdate } from "./services/irtWorker.js";
+import { processNightlySM18 } from "./services/sm18Worker.js";
 import { startOutboxDispatcher, stopOutboxDispatcher } from "./outboxDispatcher.js";
 import { IRT_UPDATE_QUEUE_NAME } from "../jobs/irtUpdate.js";
+import { SM18_SCHEDULER_QUEUE_NAME, registerNightlySM18Job } from "../jobs/sm18.js";
 
 const argv = minimist(process.argv.slice(2));
 
@@ -183,6 +185,16 @@ export async function bootstrapWorker() {
     }
   );
 
+  const sm18Worker = new Worker(
+    SM18_SCHEDULER_QUEUE_NAME,
+    async (job: Job) => processNightlySM18(job),
+    {
+      connection: redisConnection,
+      concurrency: 1,
+    }
+  );
+  await registerNightlySM18Job();
+
   // Debug events: active, stalled
     if (process.env.WORKER_DEBUG === '1') {
     worker.on('active', (job) => {
@@ -243,6 +255,7 @@ export async function bootstrapWorker() {
       await stopOutboxDispatcher();
       await worker.close();
       await irtWorker.close();
+      await sm18Worker.close();
 
       await prisma.workerLifecycle.update({
         where: { id: lifecycleId },
