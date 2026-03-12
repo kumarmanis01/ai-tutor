@@ -108,7 +108,7 @@ export async function loadMisconceptions(
   }
 
   try {
-    const rows = await (prisma as any).misconception.findMany({
+    const rows = await prisma.misconception.findMany({
       where: { subjectId, conceptId },
       select: {
         id: true,

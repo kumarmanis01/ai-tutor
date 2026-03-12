@@ -24,6 +24,12 @@ model User {
   emailVerified            DateTime?
   image                    String?
   parentEmail              String?
+  /// Date of birth for under-18 parent verification gate.
+  dateOfBirth              DateTime?
+  /// Parent email OTP verified at (under-18 gate).
+  parentVerifiedAt         DateTime?
+  /// When true, student must complete parent verification regardless of DOB.
+  requiresParentVerification Boolean                 @default(false)
   /// Self-reported age captured during registration/onboarding.
   age                      Int?
   /// Parent phone used for under-13 verification (not unique; families can share).
@@ -38,6 +44,15 @@ model User {
   board                    String?
   subjects                 String[]                 @default([])
   points                   Int                      @default(0)
+  /// Cumulative XP for level progression (1–10).
+  totalXp                  Int                      @default(0)
+  /// Current level derived from totalXp (1–10).
+  level                    Int                      @default(1)
+  /// Consecutive days with ≥1 learning session.
+  currentStreak            Int                      @default(0)
+  longestStreak            Int                      @default(0)
+  /// Date of last completed session (date-only; time ignored).
+  lastSessionDate          DateTime?
   welcomeEmailSent         Boolean                  @default(false)
   passwordHash             String?
   todaysFreeQuestionsCount Int                      @default(3)
@@ -88,6 +103,23 @@ model User {
   studentEngagementStats   StudentEngagementStats?
   engagementProcessedSessions EngagementProcessedSession[]
   studentFeatureFlags      StudentFeatureFlag[]     @relation("StudentFeatureFlags")
+  studentXpRecords         StudentXP[]
+  learningPlans           LearningPlan[]
+}
+
+/// Per-student XP ledger; totalXp on User is the source of truth.
+model StudentXP {
+  id          String    @id @default(cuid())
+  studentId   String
+  source      String    // 'session_correct' | 'streak_bonus' | 'revision_complete' | 'badge'
+  amount      Int
+  sessionId   String?
+  awardedAt   DateTime  @default(now())
+
+  student     User      @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@index([studentId])
+  @@index([studentId, awardedAt])
 }
 
 /// Per-student feature flags used for staged rollouts + kill switch gating.
@@ -740,6 +772,9 @@ model LearningSession {
   meta                 Json?
   startedAt            DateTime        @default(now())
   endedAt              DateTime?
+  rating               Int?
+  ratingFeedback       String?
+  ratedAt              DateTime?
   createdAt            DateTime        @default(now())
   completionPercentage Int             @default(0)
   isCompleted          Boolean         @default(false)
@@ -1459,9 +1494,41 @@ model StudentConceptState {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  masteryVariance Float   @default(0.1)
+  theta           Float   @default(0.0)
+  stability       Float   @default(1.0)
+  retention       Float   @default(1.0)
+
   @@unique([studentId, conceptId])
   @@index([studentId])
   @@index([nextReviewAt])
+}
+
+model LearningPlan {
+  id          String            @id @default(cuid())
+  studentId   String            @unique
+  subjectId   String
+  gradeId     String
+  items       LearningPlanItem[]
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+  student     User              @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@index([studentId])
+}
+
+model LearningPlanItem {
+  id           String       @id @default(cuid())
+  planId       String
+  plan         LearningPlan @relation(fields: [planId], references: [id], onDelete: Cascade)
+  conceptId    String
+  orderIndex   Int
+  status       String       @default("pending")
+  unlockedAt   DateTime?
+  completedAt  DateTime?
+
+  @@index([planId, orderIndex])
+  @@index([planId, status])
 }
 
 model AnswerEvent {
@@ -1477,6 +1544,20 @@ model AnswerEvent {
 
   @@index([studentId, conceptId])
   @@index([studentId, createdAt])
+}
+
+/// Student doubt Q&A pairs for reuse; embedding column added in production when pgvector is available.
+model DoubtKb {
+  id        String   @id @default(cuid())
+  studentId String
+  sessionId String
+  conceptId String
+  question  String
+  answer    String
+  createdAt DateTime @default(now())
+
+  @@index([studentId, conceptId])
+  @@index([conceptId])
 }
 
 model FreeTierUsage {

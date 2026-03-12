@@ -1,6 +1,11 @@
-import type { Prisma } from '@prisma/client'
-
-export type SafetyEventCreate = Prisma.SafetyEventCreateInput
+// Type for creating SafetyEvent rows; matches Prisma SafetyEvent model.
+export interface SafetyEventCreate {
+  triggerType: string
+  severity: string
+  studentId: string
+  sessionId?: string | null
+  turnId?: string | null
+}
 
 export interface OutputSafetyResult {
   safe: boolean

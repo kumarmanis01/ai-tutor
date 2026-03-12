@@ -5,6 +5,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSessionForHandlers } from '@/lib/session';
 import { prisma } from '@/lib/prisma';
 import { getDailyTask } from '@/lib/dailyHabit';
+import { enqueueDiagnosticBootstrapJob } from '@/jobs/diagnosticBootstrap';
 
 export async function POST(req: NextRequest) {
   const start = Date.now();
@@ -258,6 +259,50 @@ export async function POST(req: NextRequest) {
     getDailyTask(updatedUser.id).catch((err) => {
       logger.warn('/api/user/onboarding: failed to seed initial daily task', { className: 'api.user.onboarding', methodName: 'POST', error: err });
     });
+
+    // Trigger diagnostic bootstrap (non-blocking): seeds baseline StudentConceptState for selected chapters.
+    // This is the onboarding completion trigger point.
+    try {
+      const gradeNum = Number(grade);
+      if (board && Number.isFinite(gradeNum) && subjects && subjects.length > 0) {
+        prisma.classLevel.findFirst({
+          where: {
+            board: { slug: { equals: board, mode: 'insensitive' } },
+            grade: gradeNum,
+          },
+          select: { id: true, boardId: true },
+        }).then(async (cl) => {
+          if (!cl) return;
+          const subjectPrefs = new Set(subjects.map((s) => String(s).toLowerCase()));
+          const subjectRows = await prisma.subjectDef.findMany({
+            where: { classId: cl.id, lifecycle: 'active' },
+            select: { id: true, slug: true, name: true },
+          });
+          const subjectIds = subjectRows
+            .filter((s) => subjectPrefs.has(String(s.slug).toLowerCase()) || subjectPrefs.has(String(s.name).toLowerCase()))
+            .map((s) => s.id);
+          if (subjectIds.length === 0) return;
+          const chapters = await prisma.chapterDef.findMany({
+            where: { subjectId: { in: subjectIds }, lifecycle: 'active' },
+            select: { id: true },
+          });
+          const chapterIds = chapters.map((c) => c.id);
+          if (chapterIds.length === 0) return;
+
+          await enqueueDiagnosticBootstrapJob({
+            studentId: updatedUser.id,
+            diagnosticSessionId: `bootstrap:${updatedUser.id}`,
+            chapterIds,
+            boardId: cl.boardId,
+            gradeId: cl.id,
+          });
+        }).catch((err) => {
+          logger.warn('/api/user/onboarding: failed to enqueue diagnostic bootstrap', { className: 'api.user.onboarding', methodName: 'POST', error: err });
+        });
+      }
+    } catch (err) {
+      logger.warn('/api/user/onboarding: failed to trigger diagnostic bootstrap', { className: 'api.user.onboarding', methodName: 'POST', error: err });
+    }
 
     res = NextResponse.json({ ok: true, user: { id: updatedUser.id, name: updatedUser.name, phone: updatedUser.phone } });
     logger.logAPI(req, res, { className: 'UserOnboardingAPI', methodName: 'POST' }, start);

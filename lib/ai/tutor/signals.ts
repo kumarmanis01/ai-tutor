@@ -107,10 +107,7 @@ export function computeFrustrationScore(
     }
   }
 
-  // Never emit DISTRESSED from this module
-  if (emotionalState === 'DISTRESSED') {
-    emotionalState = 'FRUSTRATED'
-  }
+  // DISTRESSED is reserved for the safety layer; this module never emits it.
 
   return { frustrationScore, emotionalState }
 }

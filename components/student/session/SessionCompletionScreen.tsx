@@ -28,7 +28,7 @@ interface CompletionData {
 
 export const SessionCompletionScreen: React.FC<SessionCompletionScreenProps> = ({
   sessionId,
-  sessionSummary,
+  sessionSummary: _sessionSummary,
   onNext,
 }) => {
   const [data, setData] = useState<CompletionData | null>(null)

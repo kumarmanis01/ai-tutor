@@ -38,6 +38,7 @@ import WeakTopicsSection from '@/components/home/WeakTopicsSection';
 import UpcomingTopicsList from '@/components/home/UpcomingTopicsList';
 import NudgeBanner from '@/components/home/NudgeBanner';
 import { EngagementSection } from '@/components/home/EngagementSection';
+import RevisionWidget from '@/components/student/dashboard/RevisionWidget';
 
 export const dynamic = 'force-dynamic';
 
@@ -310,6 +311,9 @@ export default async function StudentHomeDashboardPage() {
 
       {/* 0. Daily Learning Habit — today's goal (primary CTA), streak, weekly calendar */}
       <EngagementSection nextTopicId={recommendation?.topicId ?? null} />
+
+      {/* Revisions due today — highest priority */}
+      <RevisionWidget />
 
       {/* 1. Primary Action — single hero CTA, always visible */}
       <PrimaryActionCard

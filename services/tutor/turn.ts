@@ -18,6 +18,9 @@ import { checkOutputSafety, type SafetyEventCreate as OutputSafetyEvent } from '
 import { applyTagTransition, type TutorTag, type TutorStage } from '@/lib/ai/tutor/stateMachine'
 import { retrieveRelevantChunks } from '@/lib/ai/tutor/rag'
 import { detectMisconceptions, loadMisconceptions } from '@/lib/ai/tutor/misconceptionDetector'
+import { saveDoubt } from '@/lib/ai/tutor/doubtKb'
+import { getCachedExplanation, setCachedExplanation, type ExplanationLang, type ExplanationModality } from '@/lib/ai/tutor/explanationCache'
+import { enqueueIRTUpdate } from '@/jobs/irtUpdate'
 import { logger } from '@/lib/logger'
 
 export type TutorTurnRequest = {
@@ -136,13 +139,33 @@ export async function runTutorOrchestrator(args: {
   studentId: string
   state: TutorSessionState
   studentMessage: string
+  subjectId: string
+  conceptId: string
+  /** When tag is VALIDATE, used for IRT enqueue; from client or evaluator. */
+  isCorrect?: boolean
+  /** Question ID for AnswerEvent dedup; when absent, synthetic id is used. */
+  questionId?: string
+  /** Item difficulty (Concept.irt_b) for IRT; when absent, Concept.irt_b or 0 is used. */
+  itemDifficulty?: number
 }): Promise<{ answerText: string; complete: TutorTurnComplete }> {
-  const { studentId, state, studentMessage } = args
+  const { studentId, state, studentMessage, subjectId, conceptId } = args
   const sessionId = state.sessionId
 
   await markTurnStarted(sessionId)
 
   try {
+    const concept = await prisma.concept.findUnique({
+      where: { id: conceptId },
+      select: { name: true, irt_b: true },
+    })
+    const subject = await prisma.subjectDef.findUnique({
+      where: { id: subjectId },
+      select: { name: true },
+    })
+    const conceptName = concept?.name ?? 'this concept'
+    const subjectName = subject?.name ?? 'Subject'
+    const conceptDifficulty = typeof concept?.irt_b === 'number' && Number.isFinite(concept.irt_b) ? concept.irt_b : 0
+
     const safetyContext = {
       studentId,
       sessionId,
@@ -165,11 +188,8 @@ export async function runTutorOrchestrator(args: {
 
     const redactedInput = inputSafety.redacted
 
-    // Misconception detection (subject/concept wiring is a future enhancement).
-    // For now, use placeholder subjectId and a synthetic conceptId derived from sessionId.
-    const subjectIdForMisconceptions = 'CBSE_G10_placeholder'
-    const conceptIdForMisconceptions = sessionId
-    const loadedMisconceptions = await loadMisconceptions(subjectIdForMisconceptions, conceptIdForMisconceptions)
+    // Misconception detection using real subjectId + conceptId.
+    const loadedMisconceptions = await loadMisconceptions(subjectId, conceptId)
     const detectedMisconceptions = detectMisconceptions(redactedInput, loadedMisconceptions)
     const activeMisconception = detectedMisconceptions[0]?.name ?? null
 
@@ -178,7 +198,7 @@ export async function runTutorOrchestrator(args: {
       try {
         await Promise.all(
           detectedMisconceptions.map((m) =>
-            (prisma as any).studentMisconception.upsert({
+            prisma.studentMisconception.upsert({
               where: {
                 studentId_misconceptionId: {
                   studentId,
@@ -212,10 +232,8 @@ export async function runTutorOrchestrator(args: {
     const frustration = computeFrustrationScore([], null)
 
     // 4. Basic RAG hook: retrieve curriculum chunks for CURRICULUM_CONTEXT layer.
-    // For now we scope to a single synthetic concept id derived from the session.
-    const conceptId = sessionId
     const ragContext = await retrieveRelevantChunks(
-      `Current concept ${redactedInput}`,
+      `${conceptName} ${redactedInput}`,
       [conceptId],
       { topN: 4 },
     )
@@ -239,8 +257,8 @@ export async function runTutorOrchestrator(args: {
       activeMisconceptionName: activeMisconception,
       frustrationScore: frustration.frustrationScore,
       ragChunks: ragContext.chunks.map((c) => c.content),
-      conceptName: 'Current concept',
-      subjectName: 'Subject',
+      conceptName,
+      subjectName,
     })
 
     if (prompt.layersTruncated.length > 0) {
@@ -251,10 +269,29 @@ export async function runTutorOrchestrator(args: {
 
     // 6. Tutor LLM call with retry/backoff
     let llmContent: string
+    let servedFromCache = false
     try {
       const tutorCallType: TutorCallType = 'tutor:teach'
-      const res = await callTutorLLM(prompt.system, { callType: tutorCallType, sessionId, studentId }, undefined)
-      llmContent = res.content
+
+      const lang: ExplanationLang = 'en'
+      const stage = state.stage as TutorStage
+      const modality: ExplanationModality | null =
+        stage === 'CORE_EXPLANATION' ? 'text' : stage === 'WORKED_EXAMPLE' ? 'worked_example' : null
+
+      if (modality) {
+        const cached = await getCachedExplanation(conceptId, lang, modality)
+        if (cached?.content) {
+          // Append a default machine tag so downstream tag parser/stripper remains consistent.
+          llmContent = `${cached.content}\n[QUESTION]`
+          servedFromCache = true
+        } else {
+          const res = await callTutorLLM(prompt.system, { callType: tutorCallType, sessionId, studentId }, undefined)
+          llmContent = res.content
+        }
+      } else {
+        const res = await callTutorLLM(prompt.system, { callType: tutorCallType, sessionId, studentId }, undefined)
+        llmContent = res.content
+      }
     } catch (err) {
       if (err instanceof LLMError) {
         // Surface typed tutor LLM errors back to the route for SSE mapping
@@ -266,8 +303,7 @@ export async function runTutorOrchestrator(args: {
     }
 
     // 7–8. Tag parse + strip
-    let tag: TutorTag | null = parseTutorTag(llmContent)
-    if (!tag) tag = 'QUESTION'
+    const tag: TutorTag = parseTutorTag(llmContent) ?? 'QUESTION'
     const stripped = stripTag(llmContent)
 
     // 9. Output safety
@@ -277,6 +313,30 @@ export async function runTutorOrchestrator(args: {
 
     if (safetyEvents.length) {
       await prisma.safetyEvent.createMany({ data: safetyEvents })
+    }
+
+    // Explanation cache: only cache safe, non-replacement responses for the eligible stages.
+    // Never cache if output safety fired (replacement text) or when served from cache already.
+    {
+      const stage = state.stage as TutorStage
+      const modality: ExplanationModality | null =
+        stage === 'CORE_EXPLANATION' ? 'text' : stage === 'WORKED_EXAMPLE' ? 'worked_example' : null
+      const lang: ExplanationLang = 'en'
+
+      if (modality && !servedFromCache && outputSafety.safe) {
+        await setCachedExplanation(conceptId, lang, modality, answerText)
+      }
+    }
+
+    // Doubt KB: after output safety passes, persist helpful Q&A for future context.
+    if (tag === 'QUESTION' || tag === 'HINT_OFFER') {
+      void saveDoubt({
+        studentId,
+        sessionId,
+        conceptId: args.conceptId ?? conceptId,
+        question: redactedInput,
+        answer: answerText,
+      })
     }
 
     // 10. State machine transition — derive next stage + hint usage from tag
@@ -322,7 +382,7 @@ export async function runTutorOrchestrator(args: {
         tag,
         stage: newState.stage,
         safetyFlagged: safetyEvents.length > 0,
-        cached: false,
+        cached: servedFromCache,
         ragChunksUsed: ragContext.chunkIds,
         frustrationScore: frustration.frustrationScore,
       },
@@ -334,6 +394,18 @@ export async function runTutorOrchestrator(args: {
       hintsRemaining: newState.hintsRemaining,
       turnNumber: newState.lastTurnNumber,
       sessionComplete: newState.stage === 'CONSOLIDATION',
+    }
+
+    if (tag === 'VALIDATE') {
+      await enqueueIRTUpdate({
+        studentId,
+        conceptId,
+        questionId: args.questionId ?? `${sessionId}:${state.lastTurnNumber}`,
+        sessionId,
+        isCorrect: args.isCorrect ?? false,
+        itemDifficulty: Number.isFinite(args.itemDifficulty) ? args.itemDifficulty! : conceptDifficulty,
+        studentAnswer: redactedInput,
+      })
     }
 
     return { answerText, complete }

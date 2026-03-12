@@ -1,6 +1,7 @@
 import type { Job } from 'bullmq'
 import { prisma } from '@/lib/prisma.js'
 import { logger } from '@/lib/logger.js'
+import { buildLearningPlan } from '@/lib/student/learningPlan.js'
 
 export interface DiagnosticBootstrapJobData {
   studentId: string
@@ -138,6 +139,22 @@ export async function processDiagnosticBootstrap(job: Job<DiagnosticBootstrapJob
       conceptsSeeded: seeded,
       conceptsSkipped: skipped,
     })
+
+    const firstChapter = await prisma.chapterDef.findUnique({
+      where: { id: chapterIds[0] },
+      select: { subjectId: true },
+    })
+    const primarySubjectId = firstChapter?.subjectId
+    if (primarySubjectId) {
+      const planResult = await buildLearningPlan(studentId, primarySubjectId)
+      if (planResult) {
+        logger.info('[diagnostic-bootstrap] learning plan built', {
+          studentId,
+          planId: planResult.planId,
+          itemCount: planResult.itemCount,
+        })
+      }
+    }
   } catch (err) {
     logger.error('[diagnostic-bootstrap] job failed', {
       jobId: job.id,
