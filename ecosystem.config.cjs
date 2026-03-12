@@ -30,6 +30,8 @@ module.exports = {
         NODE_ENV: 'production',
         DATABASE_URL: process.env.DATABASE_URL,
         REDIS_URL: process.env.REDIS_URL,
+        ENABLE_AI_TUTOR: 'false',
+        ENABLE_DISTRESS_DETECTION: 'false',
       },
 
       error_file: 'logs/ai-tutor-web-error.log',
