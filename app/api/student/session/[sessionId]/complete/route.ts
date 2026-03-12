@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { getServerSessionForHandlers } from '@/lib/session'
 import { prisma } from '@/lib/prisma'
 import { awardXP } from '@/lib/student/xp'
+import { updateStreak } from '@/lib/student/streak'
 import { logger } from '@/lib/logger'
 
 export const dynamic = 'force-dynamic'
@@ -71,6 +72,8 @@ export async function POST(req: Request, { params }: { params: { sessionId: stri
     const totalXp = xpResult?.totalXp ?? xpEarned
     const leveledUp = xpResult?.leveledUp ?? false
     const newLevel = xpResult?.newLevel ?? null
+
+    void updateStreak(userId)
 
     const learningSession = await prisma.learningSession.findUnique({
       where: { id: sessionId },

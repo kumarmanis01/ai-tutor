@@ -48,6 +48,11 @@ model User {
   totalXp                  Int                      @default(0)
   /// Current level derived from totalXp (1–10).
   level                    Int                      @default(1)
+  /// Consecutive days with ≥1 learning session.
+  currentStreak            Int                      @default(0)
+  longestStreak            Int                      @default(0)
+  /// Date of last completed session (date-only; time ignored).
+  lastSessionDate          DateTime?
   welcomeEmailSent         Boolean                  @default(false)
   passwordHash             String?
   todaysFreeQuestionsCount Int                      @default(3)
