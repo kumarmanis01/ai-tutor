@@ -29,6 +29,8 @@ import { handleAssembleJob } from '@/worker/services/assembleWorker'
 import { processDiagnosticBootstrap } from '@/worker/services/diagnosticBootstrapWorker'
 import { logger } from '@/lib/logger.js'
 import { CONTENT_HYDRATION_QUEUE } from '@/lib/queues/constants'
+import { DIAGNOSTIC_BOOTSTRAP_QUEUE_NAME } from '@/jobs/diagnosticBootstrap.js'
+import type { DiagnosticBootstrapJobData } from '@/worker/services/diagnosticBootstrapWorker'
 
 /**
  * Supported worker types and their handlers.
@@ -39,38 +41,6 @@ const WORKER_HANDLERS: Record<string, (jobId: string) => Promise<void>> = {
   NOTES: handleNotesJob,
   QUESTIONS: handleQuestionsJob,
   ASSEMBLE_TEST: handleAssembleJob,
-  'DIAGNOSTIC_BOOTSTRAP': async (hydrationJobId: string) => {
-    // TODO: Replace this shim with a dedicated diagnostic-bootstrap worker/queue.
-    // DIAGNOSTIC_BOOTSTRAP jobs do not use HydrationJob; Bull job should ultimately
-    // carry the full DiagnosticBootstrapJobData payload directly to its own processor.
-    await processDiagnosticBootstrap({
-      id: hydrationJobId,
-      name: 'bootstrap-concepts',
-      data: ({} as any),
-      opts: {} as any,
-      progress: () => undefined,
-      updateProgress: async () => undefined,
-      log: async () => undefined,
-      moveToCompleted: async () => undefined,
-      moveToFailed: async () => undefined,
-      isCompleted: async () => false,
-      isFailed: async () => false,
-      isActive: async () => false,
-      isDelayed: async () => false,
-      isWaiting: async () => false,
-      remove: async () => undefined,
-      retry: async () => undefined,
-      promote: async () => undefined,
-      discard: () => undefined,
-      update: async () => undefined,
-      getState: async () => 'completed',
-      getChildrenValues: async () => ({}),
-      getDependenciesCount: async () => ({ processed: 0, unprocessed: 0 }),
-      getDependencies: async () => ({} as any),
-      getRepeatableJobs: async () => [],
-      getJobLogs: async () => ({ logs: [], count: 0 }),
-    } as any)
-  },
 };
 
 /*
@@ -478,6 +448,31 @@ export function startContentWorker(opts?: { concurrency?: number }) {
     } catch (e) {
       logger?.warn?.('worker.completed: failed to mark executionJob completed or write JobExecutionLog', { err: e })
     }
+  })
+
+  return worker
+}
+
+export function startDiagnosticBootstrapWorker(opts?: { concurrency?: number }) {
+  const concurrency = opts?.concurrency ?? 1
+  const worker = new Worker(
+    DIAGNOSTIC_BOOTSTRAP_QUEUE_NAME,
+    async (job: Job<DiagnosticBootstrapJobData>) => processDiagnosticBootstrap(job),
+    {
+      connection: redisConnection,
+      concurrency,
+      settings: {
+        backoffStrategy: (attemptsMade: number) => Math.min(60_000, 2 ** attemptsMade * 1000),
+      },
+    },
+  )
+
+  worker.on('failed', (job, err) => {
+    logger.error(`[DIAGNOSTIC_BOOTSTRAP WORKER FAILED] jobId=${job?.id}`, { error: err?.message })
+  })
+
+  worker.on('completed', (job) => {
+    logger.info(`[DIAGNOSTIC_BOOTSTRAP WORKER COMPLETED] jobId=${job?.id}`)
   })
 
   return worker

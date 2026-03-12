@@ -42,6 +42,8 @@ import { processNightlySM18 } from "./services/sm18Worker.js";
 import { startOutboxDispatcher, stopOutboxDispatcher } from "./outboxDispatcher.js";
 import { IRT_UPDATE_QUEUE_NAME } from "../jobs/irtUpdate.js";
 import { SM18_SCHEDULER_QUEUE_NAME, registerNightlySM18Job } from "../jobs/sm18.js";
+import { DIAGNOSTIC_BOOTSTRAP_QUEUE_NAME } from "../jobs/diagnosticBootstrap.js";
+import { processDiagnosticBootstrap } from "./services/diagnosticBootstrapWorker.js";
 
 const argv = minimist(process.argv.slice(2));
 
@@ -194,6 +196,15 @@ export async function bootstrapWorker() {
     }
   );
   await registerNightlySM18Job();
+
+  const diagnosticBootstrapWorker = new Worker(
+    DIAGNOSTIC_BOOTSTRAP_QUEUE_NAME,
+    async (job: Job) => processDiagnosticBootstrap(job as any),
+    {
+      connection: redisConnection,
+      concurrency: 1,
+    }
+  );
 
   // Debug events: active, stalled
     if (process.env.WORKER_DEBUG === '1') {
