@@ -303,8 +303,7 @@ export async function runTutorOrchestrator(args: {
     }
 
     // 7–8. Tag parse + strip
-    let tag: TutorTag | null = parseTutorTag(llmContent)
-    if (!tag) tag = 'QUESTION'
+    const tag: TutorTag = parseTutorTag(llmContent) ?? 'QUESTION'
     const stripped = stripTag(llmContent)
 
     // 9. Output safety
