@@ -141,6 +141,7 @@ export const AITutorChatPanel: React.FC<AITutorChatPanelProps> = ({
         void sendMessageInternal('__HINT_REQUEST__', true)
       }
     }, INACTIVITY_MS)
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- sendMessageInternal is stable; omit to avoid resetting timer on every turn
   }, [clearInactivityTimer, isStreaming])
 
   const addStudentMessage = useCallback((content: string) => {
@@ -284,6 +285,7 @@ export const AITutorChatPanel: React.FC<AITutorChatPanelProps> = ({
     const msg = inputValue.trim()
     setInputValue('')
     void sendMessageInternal(msg, false)
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- sendMessageInternal is stable; omit to avoid recreating handleSend every turn
   }, [inputValue, isStreaming])
 
   const handleKeyDown: React.KeyboardEventHandler<HTMLTextAreaElement> = (e) => {
@@ -318,6 +320,7 @@ export const AITutorChatPanel: React.FC<AITutorChatPanelProps> = ({
     }, 3000)
 
     return () => clearTimeout(timer)
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- streamTutorTurn is stable; omit to avoid re-running reconnect on every turn
   }, [connectionError, reconnectAttempts])
 
   const header = (

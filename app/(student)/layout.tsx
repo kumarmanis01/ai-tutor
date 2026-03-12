@@ -10,6 +10,7 @@ import { requireActiveSession } from '@/lib/auth';
 import { redirect } from 'next/navigation';
 import { headers } from 'next/headers';
 import { checkProfileCompleteness } from '@/lib/student/profileGuard';
+import { checkParentGate } from '@/lib/student/parentGate';
 import '@/styles/index.css';
 
 export const viewport = {
@@ -23,6 +24,7 @@ export const viewport = {
  *   (/dashboard/*, /rooms/*, /profile, /parent, /learn/*)
  * - Fetches session server-side; redirects to / if unauthenticated
  * - Profile completeness guard: redirects to /student/onboarding when required fields missing
+ * - Parent verification gate (under-18): redirects to /student/verify-parent when required and not verified
  * - Renders StudentNav — the persistent student navigation bar
  * - Must NOT render the public Navbar
  */
@@ -33,12 +35,21 @@ export default async function StudentLayout({ children }: { children: React.Reac
   const userId = (session.user as { id?: string })?.id;
   const pathname = (await headers()).get('x-pathname') ?? '';
 
-  if (!pathname.startsWith('/student/onboarding') && !pathname.startsWith('/student/api')) {
-    if (userId) {
-      const profile = await checkProfileCompleteness(userId);
-      if (!profile.complete) {
-        redirect(`/student/onboarding?missing=${profile.missingFields.join(',')}`);
-      }
+  const skipApi = pathname.startsWith('/student/api');
+  const skipVerifyParent = pathname.startsWith('/student/verify-parent');
+  const skipOnboarding = pathname.startsWith('/student/onboarding');
+
+  if (!skipApi && userId) {
+    const gate = await checkParentGate(userId);
+    if (!skipVerifyParent && gate.required && !gate.verified) {
+      redirect('/student/verify-parent');
+    }
+  }
+
+  if (!skipOnboarding && !skipApi && userId) {
+    const profile = await checkProfileCompleteness(userId);
+    if (!profile.complete) {
+      redirect(`/student/onboarding?missing=${profile.missingFields.join(',')}`);
     }
   }
 

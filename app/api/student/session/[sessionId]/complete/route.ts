@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { getServerSessionForHandlers } from '@/lib/session'
 import { prisma } from '@/lib/prisma'
+import { awardXP } from '@/lib/student/xp'
 import { logger } from '@/lib/logger'
 
 export const dynamic = 'force-dynamic'
@@ -61,9 +62,15 @@ export async function POST(req: Request, { params }: { params: { sessionId: stri
     }
 
     const xpEarned = correctAnswers * 10
-    const totalXp = xpEarned
-    const leveledUp = false
-    const newLevel: number | null = null
+    const xpResult = await awardXP({
+      studentId: userId,
+      amount: xpEarned,
+      source: 'session_correct',
+      sessionId,
+    })
+    const totalXp = xpResult?.totalXp ?? xpEarned
+    const leveledUp = xpResult?.leveledUp ?? false
+    const newLevel = xpResult?.newLevel ?? null
 
     const learningSession = await prisma.learningSession.findUnique({
       where: { id: sessionId },
@@ -102,7 +109,7 @@ export async function POST(req: Request, { params }: { params: { sessionId: stri
     )
     logger.logAPI(req, res, { className: 'StudentSessionCompleteAPI', methodName: 'POST' }, start)
     return res
-  } catch (err) {
+  } catch {
     const res = NextResponse.json({ error: 'Internal error' }, { status: 500 })
     logger.logAPI(req, res, { className: 'StudentSessionCompleteAPI', methodName: 'POST' }, start)
     return res

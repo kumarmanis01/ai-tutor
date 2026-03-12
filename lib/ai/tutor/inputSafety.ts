@@ -1,7 +1,11 @@
-import type { Prisma } from '@prisma/client'
-
-// Use the Prisma-generated type so SafetyEvent inserts are type-safe
-export type SafetyEventCreate = Prisma.SafetyEventCreateInput
+// Type for creating SafetyEvent rows; matches Prisma SafetyEvent model.
+export interface SafetyEventCreate {
+  triggerType: string
+  severity: string
+  studentId: string
+  sessionId?: string | null
+  turnId?: string | null
+}
 
 export interface InputSafetyResult {
   safe: boolean // false = do NOT call LLM; return safe refusal to student
