@@ -1,90 +1,77 @@
-import { prisma } from '@/lib/prisma'
-import OpenAI from 'openai'
+/**
+ * Ingestion pipeline — embeds all CurriculumChunk rows that have no embedding.
+ * Safe to re-run (idempotent — skips chunks that already have embeddings).
+ *
+ * Usage:
+ *   DATABASE_URL=<neon-url> OPENAI_API_KEY=<key> npx tsx scripts/ingest-curriculum.ts
+ */
 
+import { PrismaClient } from '@prisma/client'
+import { getEmbeddingsBatch } from '../lib/ai/embeddings'
+
+const prisma = new PrismaClient()
 const BATCH_SIZE = 20
-const MODEL = 'text-embedding-3-small'
-
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-})
 
 async function main() {
-  if (!process.env.OPENAI_API_KEY) {
-    console.error('OPENAI_API_KEY is not set. Aborting.')
-    process.exit(1)
+  console.log('[ingest] Starting curriculum chunk ingestion...')
+
+  const chunks = await prisma.curriculumChunk.findMany({
+    where: { embedding: null as any },
+    select: { id: true, content: true },
+    orderBy: { createdAt: 'asc' },
+  })
+
+  if (chunks.length === 0) {
+    console.log('[ingest] All chunks already embedded. Nothing to do.')
+    await prisma.$disconnect()
+    return
   }
 
-  const totalResult = (await prisma.$queryRawUnsafe<{ count: bigint }[]>(
-    `SELECT COUNT(*)::bigint AS count FROM "CurriculumChunk" WHERE embedding IS NULL`,
-  )) as { count: bigint }[]
-  const total = Number(totalResult?.[0]?.count ?? 0)
-  if (!total) {
-    console.log('No CurriculumChunk rows without embeddings. Nothing to do.')
-    process.exit(0)
-  }
-
-  console.log(`Found ${total} CurriculumChunk rows without embeddings.`)
+  console.log(`[ingest] Found ${chunks.length} chunks to embed.`)
 
   let embedded = 0
+  let failed = 0
 
-  while (true) {
-    const rows = (await prisma.$queryRawUnsafe<
-      { id: string; content: string | null }[]
-    >(
-      `
-        SELECT id, content
-        FROM "CurriculumChunk"
-        WHERE embedding IS NULL
-        ORDER BY id
-        LIMIT $1
-      `,
-      BATCH_SIZE,
-    )) as { id: string; content: string | null }[]
+  for (let i = 0; i < chunks.length; i += BATCH_SIZE) {
+    const batch = chunks.slice(i, i + BATCH_SIZE)
+    const texts = batch.map((c) => c.content ?? '')
+    const embeddings = await getEmbeddingsBatch(texts, BATCH_SIZE)
 
-    if (!rows.length) break
+    for (let j = 0; j < batch.length; j++) {
+      const chunk = batch[j]
+      const embedding = embeddings[j]
 
-    const inputs = rows.map((r) => (r.content && r.content.trim().length > 0 ? r.content : ' '))
-
-    const resp = await openai.embeddings.create({
-      model: MODEL,
-      input: inputs,
-    })
-
-    if (!resp.data || resp.data.length !== rows.length) {
-      console.warn(
-        `Embedding response size mismatch: got ${resp.data?.length ?? 0}, expected ${rows.length}. Skipping batch.`,
-      )
-      continue
-    }
-
-    for (let i = 0; i < rows.length; i++) {
-      const row = rows[i]
-      const embedding = resp.data[i]?.embedding
-      if (!Array.isArray(embedding) || embedding.length === 0) {
+      if (!embedding) {
+        // eslint-disable-next-line no-console
+        console.error(`[ingest] ✗ Failed to embed chunk ${chunk.id}`)
+        failed++
         continue
       }
 
-      const literal = `[${embedding.join(',')}]`
+      const vectorLiteral = `[${embedding.join(',')}]`
       await prisma.$executeRawUnsafe(
         `UPDATE "CurriculumChunk" SET embedding = $1::vector WHERE id = $2`,
-        literal,
-        row.id,
+        vectorLiteral,
+        chunk.id,
       )
-      embedded += 1
+      embedded++
     }
 
-    console.log(`Embedded ${embedded}/${total} chunks`)
+    // eslint-disable-next-line no-console
+    console.log(`[ingest] Progress: ${Math.min(i + BATCH_SIZE, chunks.length)}/${chunks.length}`)
   }
 
-  console.log('Done.')
+  // eslint-disable-next-line no-console
+  console.log(`\n[ingest] Done. Embedded: ${embedded}, Failed: ${failed}`)
+  await prisma.$disconnect()
+
+  if (failed > 0) process.exit(1)
 }
 
-main()
-  .catch((err) => {
-    console.error('Error ingesting curriculum embeddings', err)
-    process.exit(1)
-  })
-  .finally(async () => {
-    await prisma.$disconnect()
-  })
+main().catch((err) => {
+  // eslint-disable-next-line no-console
+  console.error('[ingest] Fatal error:', err)
+  prisma.$disconnect()
+  process.exit(1)
+})
 

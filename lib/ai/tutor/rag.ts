@@ -1,6 +1,6 @@
 import { prisma } from '@/lib/prisma'
 import { logger } from '@/lib/logger'
-import OpenAI from 'openai'
+import { getEmbedding } from '@/lib/ai/embeddings'
 
 export interface RagChunk {
   chunkId: string
@@ -15,10 +15,6 @@ export interface RagContext {
 }
 
 const DEFAULT_TOP_N = 4
-
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-})
 
 /**
  * Retrieve top N curriculum chunks relevant to the query.
@@ -44,19 +40,8 @@ export async function retrieveRelevantChunks(
   }
 
   try {
-    if (!process.env.OPENAI_API_KEY) {
-      logger.warn('rag.retrieveRelevantChunks.missingApiKey')
-      return { chunks: [], chunkIds: [] }
-    }
-
-    // 1. Embed query
-    const embeddingResponse = await openai.embeddings.create({
-      model: 'text-embedding-3-small',
-      input: query,
-    })
-
-    const vector = embeddingResponse.data?.[0]?.embedding
-    if (!vector || !Array.isArray(vector) || vector.length === 0) {
+    const vector = await getEmbedding(query)
+    if (!vector) {
       logger.warn('rag.retrieveRelevantChunks.emptyEmbedding')
       return { chunks: [], chunkIds: [] }
     }
