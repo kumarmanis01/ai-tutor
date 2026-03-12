@@ -174,7 +174,14 @@ export async function runTutorOrchestrator(args: {
 
     // 2. Input safety
     const inputSafety = checkInputSafety(studentMessage, safetyContext)
-    const safetyEvents: (InputSafetyEvent | OutputSafetyEvent)[] = [...inputSafety.events]
+    const safetyEvents: (InputSafetyEvent | OutputSafetyEvent)[] = [...inputSafety.events].map((e) => {
+      const trigger = String((e as any).triggerType ?? '').toUpperCase()
+      if (trigger === 'PII' || trigger === 'JAILBREAK') {
+        // Store only redacted input; truncate to avoid storing full conversation.
+        return { ...e, inputPreview: String(inputSafety.redacted ?? '').slice(0, 200) } as any
+      }
+      return e as any
+    })
 
     if (!inputSafety.safe) {
       // Jailbreak: insert safety events then surface a typed error for route.ts to map to SSE
@@ -308,6 +315,7 @@ export async function runTutorOrchestrator(args: {
 
     // 9. Output safety
     const outputSafety = checkOutputSafety(stripped, safetyContext)
+    // Never store raw unsafe output; leave inputPreview unset for UNSAFE_OUTPUT events.
     safetyEvents.push(...outputSafety.events)
     const answerText = outputSafety.text
 

@@ -1376,6 +1376,8 @@ model SafetyEvent {
   turnId      String?
   studentId   String
   severity    String   // 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL'
+  /// Redacted preview of the flagged input (never raw PII). Truncated server-side.
+  inputPreview String?
   createdAt   DateTime @default(now())
   resolvedAt  DateTime?
   resolution  String?

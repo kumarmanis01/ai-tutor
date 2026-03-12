@@ -258,6 +258,7 @@ const systemMonitoringLinks: NavItem[] = [
   { href: '/admin/content-engine/redis', label: 'Redis', icon: 'Database' },
   { href: '/admin/system/metrics', label: 'System Metrics', icon: 'Chart' },
   { href: '/admin/system/alerts', label: 'System Alerts', icon: 'Bell' },
+  { href: '/admin/safety', label: 'Safety Events', icon: 'Shield' },
   { href: '/admin/content-engine/audit-logs', label: 'Engine Audit Logs', icon: 'ClipboardList' },
 ];
 
