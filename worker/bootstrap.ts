@@ -37,7 +37,9 @@ import { handleSyllabusJob } from "./index.js";
 import { handleNotesJob } from "./services/notesWorker.js";
 import { handleQuestionsJob } from "./services/questionsWorker.js";
 import { handleAssembleJob } from "./services/assembleWorker.js";
+import { processIRTUpdate } from "./services/irtWorker.js";
 import { startOutboxDispatcher, stopOutboxDispatcher } from "./outboxDispatcher.js";
+import { IRT_UPDATE_QUEUE_NAME } from "../jobs/irtUpdate.js";
 
 const argv = minimist(process.argv.slice(2));
 
@@ -172,6 +174,15 @@ export async function bootstrapWorker() {
     }
   );
 
+  const irtWorker = new Worker(
+    IRT_UPDATE_QUEUE_NAME,
+    async (job: Job) => processIRTUpdate(job as Job<import("../jobs/irtUpdate.js").IRTUpdateJobData>),
+    {
+      connection: redisConnection,
+      concurrency: 2,
+    }
+  );
+
   // Debug events: active, stalled
     if (process.env.WORKER_DEBUG === '1') {
     worker.on('active', (job) => {
@@ -231,6 +242,7 @@ export async function bootstrapWorker() {
       clearInterval(heartbeat);
       await stopOutboxDispatcher();
       await worker.close();
+      await irtWorker.close();
 
       await prisma.workerLifecycle.update({
         where: { id: lifecycleId },

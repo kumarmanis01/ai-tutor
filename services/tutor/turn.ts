@@ -18,6 +18,7 @@ import { checkOutputSafety, type SafetyEventCreate as OutputSafetyEvent } from '
 import { applyTagTransition, type TutorTag, type TutorStage } from '@/lib/ai/tutor/stateMachine'
 import { retrieveRelevantChunks } from '@/lib/ai/tutor/rag'
 import { detectMisconceptions, loadMisconceptions } from '@/lib/ai/tutor/misconceptionDetector'
+import { enqueueIRTUpdate } from '@/jobs/irtUpdate'
 import { logger } from '@/lib/logger'
 
 export type TutorTurnRequest = {
@@ -136,6 +137,14 @@ export async function runTutorOrchestrator(args: {
   studentId: string
   state: TutorSessionState
   studentMessage: string
+  /** When tag is VALIDATE, used for IRT enqueue; from client or evaluator. */
+  isCorrect?: boolean
+  /** Concept ID for IRT; when absent, sessionId is used as placeholder. */
+  conceptId?: string
+  /** Question ID for AnswerEvent dedup; when absent, synthetic id is used. */
+  questionId?: string
+  /** Item difficulty (Concept.irt_b) for IRT; when absent, 0 is used. */
+  itemDifficulty?: number
 }): Promise<{ answerText: string; complete: TutorTurnComplete }> {
   const { studentId, state, studentMessage } = args
   const sessionId = state.sessionId
@@ -334,6 +343,18 @@ export async function runTutorOrchestrator(args: {
       hintsRemaining: newState.hintsRemaining,
       turnNumber: newState.lastTurnNumber,
       sessionComplete: newState.stage === 'CONSOLIDATION',
+    }
+
+    if (tag === 'VALIDATE') {
+      await enqueueIRTUpdate({
+        studentId,
+        conceptId: args.conceptId ?? conceptId,
+        questionId: args.questionId ?? `${sessionId}:${state.lastTurnNumber}`,
+        sessionId,
+        isCorrect: args.isCorrect ?? false,
+        itemDifficulty: Number.isFinite(args.itemDifficulty) ? args.itemDifficulty! : 0,
+        studentAnswer: redactedInput,
+      })
     }
 
     return { answerText, complete }
