@@ -397,7 +397,9 @@ async function main() {
       continue;
     }
 
-    await prisma.$transaction(async (tx) => {
+    // No transaction wrapper — seed ops are idempotent; tx timeout (P2028) avoided by using prisma directly
+    await (async () => {
+      const tx = prisma;
       const chapter = await tx.chapterDef.upsert({
         where: { subjectId_slug_version: { subjectId: subject.id, slug: chapterSlug, version: 1 } },
         update: { name: chapterName, order: plan.orderIndex, status: 'approved' },
@@ -537,7 +539,7 @@ async function main() {
           },
         });
       }
-    });
+    })();
 
     console.log(
       `Seeded: [${plan.subjectSlug}] ${chapterName} | topics=3 | concepts=9 | questions=45 | weight=${plan.weightMarks} | chunks=2–3`
