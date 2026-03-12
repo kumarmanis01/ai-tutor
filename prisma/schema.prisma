@@ -1282,6 +1282,7 @@ model CurriculumChunk {
   grade      String?
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
+  embedding  Unsupported("vector(1536)")?
 
   @@index([conceptIds])
 }
