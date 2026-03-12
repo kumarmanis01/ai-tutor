@@ -19,6 +19,7 @@ import { applyTagTransition, type TutorTag, type TutorStage } from '@/lib/ai/tut
 import { retrieveRelevantChunks } from '@/lib/ai/tutor/rag'
 import { detectMisconceptions, loadMisconceptions } from '@/lib/ai/tutor/misconceptionDetector'
 import { saveDoubt } from '@/lib/ai/tutor/doubtKb'
+import { getCachedExplanation, setCachedExplanation, type ExplanationLang, type ExplanationModality } from '@/lib/ai/tutor/explanationCache'
 import { enqueueIRTUpdate } from '@/jobs/irtUpdate'
 import { logger } from '@/lib/logger'
 
@@ -261,10 +262,29 @@ export async function runTutorOrchestrator(args: {
 
     // 6. Tutor LLM call with retry/backoff
     let llmContent: string
+    let servedFromCache = false
     try {
       const tutorCallType: TutorCallType = 'tutor:teach'
-      const res = await callTutorLLM(prompt.system, { callType: tutorCallType, sessionId, studentId }, undefined)
-      llmContent = res.content
+
+      const lang: ExplanationLang = 'en'
+      const stage = state.stage as TutorStage
+      const modality: ExplanationModality | null =
+        stage === 'CORE_EXPLANATION' ? 'text' : stage === 'WORKED_EXAMPLE' ? 'worked_example' : null
+
+      if (modality) {
+        const cached = await getCachedExplanation(conceptId, lang, modality)
+        if (cached?.content) {
+          // Append a default machine tag so downstream tag parser/stripper remains consistent.
+          llmContent = `${cached.content}\n[QUESTION]`
+          servedFromCache = true
+        } else {
+          const res = await callTutorLLM(prompt.system, { callType: tutorCallType, sessionId, studentId }, undefined)
+          llmContent = res.content
+        }
+      } else {
+        const res = await callTutorLLM(prompt.system, { callType: tutorCallType, sessionId, studentId }, undefined)
+        llmContent = res.content
+      }
     } catch (err) {
       if (err instanceof LLMError) {
         // Surface typed tutor LLM errors back to the route for SSE mapping
@@ -287,6 +307,19 @@ export async function runTutorOrchestrator(args: {
 
     if (safetyEvents.length) {
       await prisma.safetyEvent.createMany({ data: safetyEvents })
+    }
+
+    // Explanation cache: only cache safe, non-replacement responses for the eligible stages.
+    // Never cache if output safety fired (replacement text) or when served from cache already.
+    {
+      const stage = state.stage as TutorStage
+      const modality: ExplanationModality | null =
+        stage === 'CORE_EXPLANATION' ? 'text' : stage === 'WORKED_EXAMPLE' ? 'worked_example' : null
+      const lang: ExplanationLang = 'en'
+
+      if (modality && !servedFromCache && outputSafety.safe) {
+        await setCachedExplanation(conceptId, lang, modality, answerText)
+      }
     }
 
     // Doubt KB: after output safety passes, persist helpful Q&A for future context.
@@ -343,7 +376,7 @@ export async function runTutorOrchestrator(args: {
         tag,
         stage: newState.stage,
         safetyFlagged: safetyEvents.length > 0,
-        cached: false,
+        cached: servedFromCache,
         ragChunksUsed: ragContext.chunkIds,
         frustrationScore: frustration.frustrationScore,
       },
