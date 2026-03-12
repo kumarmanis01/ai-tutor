@@ -198,7 +198,7 @@ export async function runTutorOrchestrator(args: {
       try {
         await Promise.all(
           detectedMisconceptions.map((m) =>
-            (prisma as any).studentMisconception.upsert({
+            prisma.studentMisconception.upsert({
               where: {
                 studentId_misconceptionId: {
                   studentId,
