@@ -104,6 +104,7 @@ model User {
   engagementProcessedSessions EngagementProcessedSession[]
   studentFeatureFlags      StudentFeatureFlag[]     @relation("StudentFeatureFlags")
   studentXpRecords         StudentXP[]
+  learningPlans           LearningPlan[]
 }
 
 /// Per-student XP ledger; totalXp on User is the source of truth.
@@ -1498,6 +1499,33 @@ model StudentConceptState {
   @@unique([studentId, conceptId])
   @@index([studentId])
   @@index([nextReviewAt])
+}
+
+model LearningPlan {
+  id          String            @id @default(cuid())
+  studentId   String            @unique
+  subjectId   String
+  gradeId     String
+  items       LearningPlanItem[]
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+  student     User              @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@index([studentId])
+}
+
+model LearningPlanItem {
+  id           String       @id @default(cuid())
+  planId       String
+  plan         LearningPlan @relation(fields: [planId], references: [id], onDelete: Cascade)
+  conceptId    String
+  orderIndex   Int
+  status       String       @default("pending")
+  unlockedAt   DateTime?
+  completedAt  DateTime?
+
+  @@index([planId, orderIndex])
+  @@index([planId, status])
 }
 
 model AnswerEvent {
