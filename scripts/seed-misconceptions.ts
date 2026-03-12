@@ -7,8 +7,8 @@ type SeedMisconception = {
   id: string
   boardSlug: string
   grade: number
-  subjectSlug: string
-  conceptName: string
+  subjectSlug: 'math' | 'science'
+  chapterName: string
   name: string
   description: string
   triggerPatterns: string[]
@@ -21,7 +21,7 @@ const SEEDS: SeedMisconception[] = [
     boardSlug: 'cbse',
     grade: 10,
     subjectSlug: 'math',
-    conceptName: 'Quadratic equations',
+    chapterName: 'Quadratic',
     name: 'Quadratic equation has only one root',
     description: 'Student believes that if x² = 9 then x = 3 only, ignoring the negative root.',
     triggerPatterns: ['x^2 = 9 so x = 3', 'square root of 9 is 3', 'only one solution for x^2'],
@@ -33,7 +33,7 @@ const SEEDS: SeedMisconception[] = [
     boardSlug: 'cbse',
     grade: 10,
     subjectSlug: 'math',
-    conceptName: 'Polynomials',
+    chapterName: 'Polynomials',
     name: 'Binomial square without middle term',
     description: 'Student expands (a + b)² as a² + b², missing the 2ab term.',
     triggerPatterns: ['(a+b)^2 = a^2 + b^2', 'ignores 2ab term', 'no middle term in (a+b)^2'],
@@ -45,7 +45,7 @@ const SEEDS: SeedMisconception[] = [
     boardSlug: 'cbse',
     grade: 10,
     subjectSlug: 'math',
-    conceptName: 'Trigonometry',
+    chapterName: 'Trigonometry',
     name: 'Right-triangle ratios on any triangle',
     description: 'Student applies sin and cos ratios directly to non-right triangles.',
     triggerPatterns: ['sin = opposite/hypotenuse for any triangle', 'use tan in any triangle', 'right angle not required'],
@@ -57,7 +57,7 @@ const SEEDS: SeedMisconception[] = [
     boardSlug: 'cbse',
     grade: 10,
     subjectSlug: 'math',
-    conceptName: 'Graphs of equations',
+    chapterName: 'Graph',
     name: 'Quadratic graphs are straight lines',
     description: 'Student thinks the graph of y = ax² + bx + c is a straight line.',
     triggerPatterns: ['parabola is a straight line', 'y = x^2 is linear', 'quadratic graph is a line'],
@@ -69,7 +69,7 @@ const SEEDS: SeedMisconception[] = [
     boardSlug: 'cbse',
     grade: 10,
     subjectSlug: 'science',
-    conceptName: 'Chemical reactions',
+    chapterName: 'Chemical Reactions',
     name: 'Melting as chemical change',
     description: 'Student believes that melting ice is a chemical change.',
     triggerPatterns: ['melting ice is a chemical change', 'change of state is chemical', 'melting changes substance'],
@@ -81,7 +81,7 @@ const SEEDS: SeedMisconception[] = [
     boardSlug: 'cbse',
     grade: 10,
     subjectSlug: 'science',
-    conceptName: 'Acids, bases and salts',
+    chapterName: 'Acids, Bases and Salts',
     name: 'All acids burn skin',
     description: 'Student thinks every acid will burn the skin strongly.',
     triggerPatterns: ['all acids burn', 'any acid is dangerous', 'every acid is corrosive'],
@@ -93,7 +93,7 @@ const SEEDS: SeedMisconception[] = [
     boardSlug: 'cbse',
     grade: 10,
     subjectSlug: 'science',
-    conceptName: 'Electricity',
+    chapterName: 'Electricity',
     name: 'Current is used up in a circuit',
     description: 'Student believes that current is used up as it flows through devices.',
     triggerPatterns: ['current gets used up', 'less current after bulb', 'current is consumed'],
@@ -105,7 +105,7 @@ const SEEDS: SeedMisconception[] = [
     boardSlug: 'cbse',
     grade: 10,
     subjectSlug: 'science',
-    conceptName: 'Electricity',
+    chapterName: 'Electricity',
     name: 'More bulbs in series are always brighter',
     description: 'Student thinks adding more bulbs in series makes each bulb brighter.',
     triggerPatterns: ['add bulbs to make it brighter in series', 'more bulbs = more brightness in same circuit'],
@@ -117,7 +117,7 @@ const SEEDS: SeedMisconception[] = [
     boardSlug: 'cbse',
     grade: 10,
     subjectSlug: 'science',
-    conceptName: 'Chemical equations',
+    chapterName: 'Chemical Reactions',
     name: 'Atoms disappear or appear in reactions',
     description: 'Student thinks atoms can vanish or appear in a chemical equation without balancing.',
     triggerPatterns: ['atoms disappear', 'extra atoms after reaction', 'don’t need to balance equation'],
@@ -129,7 +129,7 @@ const SEEDS: SeedMisconception[] = [
     boardSlug: 'cbse',
     grade: 10,
     subjectSlug: 'science',
-    conceptName: 'Heat and temperature',
+    chapterName: 'Heat',
     name: 'Heat and temperature are the same',
     description: 'Student confuses heat with temperature and uses the terms interchangeably.',
     triggerPatterns: ['heat and temperature are same', 'more heat = higher temperature always', 'temperature is amount of heat'],
@@ -143,40 +143,46 @@ async function main() {
 
   for (const seed of SEEDS) {
     try {
-      const subject = await prisma.subjectDef.findFirst({
+      const chapter = await prisma.chapterDef.findFirst({
         where: {
-          slug: seed.subjectSlug,
+          name: { contains: seed.chapterName, mode: 'insensitive' },
           lifecycle: 'active',
-          class: {
+          subject: {
+            slug: seed.subjectSlug,
             lifecycle: 'active',
-            grade: seed.grade,
-            board: {
+            class: {
+              grade: seed.grade,
               lifecycle: 'active',
-              slug: { equals: seed.boardSlug, mode: 'insensitive' },
+              board: {
+                slug: { equals: seed.boardSlug, mode: 'insensitive' },
+                lifecycle: 'active',
+              },
             },
           },
         },
-        select: { id: true },
+        select: { id: true, subjectId: true, name: true },
       })
 
-      if (!subject) {
+      if (!chapter) {
         console.warn(
-          `[seed-misconceptions] Subject not found for board=${seed.boardSlug}, grade=${seed.grade}, subject=${seed.subjectSlug}; skipping ${seed.id}`,
+          `[seed-misconceptions] Chapter not found for board=${seed.boardSlug}, grade=${seed.grade}, subject=${seed.subjectSlug}, chapterName="${seed.chapterName}"; skipping ${seed.id}`,
         )
         continue
       }
 
       const concept = await prisma.concept.findFirst({
         where: {
-          name: seed.conceptName,
-          subjectId: subject.id,
+          topic: {
+            chapterId: chapter.id,
+          },
         },
         select: { id: true },
+        orderBy: { createdAt: 'asc' },
       })
 
       if (!concept) {
         console.warn(
-          `[seed-misconceptions] Concept not found for subjectId=${subject.id}, name="${seed.conceptName}"; skipping ${seed.id}`,
+          `[seed-misconceptions] Concept not found for chapterId=${chapter.id} (chapterName="${chapter.name}"); skipping ${seed.id}`,
         )
         continue
       }
@@ -185,7 +191,7 @@ async function main() {
         where: { id: seed.id },
         create: {
           id: seed.id,
-          subjectId: subject.id,
+          subjectId: chapter.subjectId,
           conceptId: concept.id,
           name: seed.name,
           description: seed.description,
@@ -193,7 +199,7 @@ async function main() {
           correction: seed.correction,
         },
         update: {
-          subjectId: subject.id,
+          subjectId: chapter.subjectId,
           conceptId: concept.id,
           name: seed.name,
           description: seed.description,
