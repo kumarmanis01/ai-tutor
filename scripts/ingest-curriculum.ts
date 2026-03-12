@@ -15,11 +15,16 @@ const BATCH_SIZE = 20
 async function main() {
   console.log('[ingest] Starting curriculum chunk ingestion...')
 
-  const chunks = await prisma.curriculumChunk.findMany({
-    where: { embedding: null as any },
-    select: { id: true, content: true },
-    orderBy: { createdAt: 'asc' },
-  })
+  const chunks = (await prisma.$queryRawUnsafe<
+    { id: string; content: string | null }[]
+  >(
+    `
+      SELECT id, content
+      FROM "CurriculumChunk"
+      WHERE embedding IS NULL
+      ORDER BY "createdAt" ASC
+    `,
+  )) as { id: string; content: string | null }[]
 
   if (chunks.length === 0) {
     console.log('[ingest] All chunks already embedded. Nothing to do.')
