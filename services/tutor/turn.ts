@@ -139,21 +139,33 @@ export async function runTutorOrchestrator(args: {
   studentId: string
   state: TutorSessionState
   studentMessage: string
+  subjectId: string
+  conceptId: string
   /** When tag is VALIDATE, used for IRT enqueue; from client or evaluator. */
   isCorrect?: boolean
-  /** Concept ID for IRT; when absent, sessionId is used as placeholder. */
-  conceptId?: string
   /** Question ID for AnswerEvent dedup; when absent, synthetic id is used. */
   questionId?: string
-  /** Item difficulty (Concept.irt_b) for IRT; when absent, 0 is used. */
+  /** Item difficulty (Concept.irt_b) for IRT; when absent, Concept.irt_b or 0 is used. */
   itemDifficulty?: number
 }): Promise<{ answerText: string; complete: TutorTurnComplete }> {
-  const { studentId, state, studentMessage } = args
+  const { studentId, state, studentMessage, subjectId, conceptId } = args
   const sessionId = state.sessionId
 
   await markTurnStarted(sessionId)
 
   try {
+    const concept = await prisma.concept.findUnique({
+      where: { id: conceptId },
+      select: { name: true, irt_b: true },
+    })
+    const subject = await prisma.subjectDef.findUnique({
+      where: { id: subjectId },
+      select: { name: true },
+    })
+    const conceptName = concept?.name ?? 'this concept'
+    const subjectName = subject?.name ?? 'Subject'
+    const conceptDifficulty = typeof concept?.irt_b === 'number' && Number.isFinite(concept.irt_b) ? concept.irt_b : 0
+
     const safetyContext = {
       studentId,
       sessionId,
@@ -176,11 +188,8 @@ export async function runTutorOrchestrator(args: {
 
     const redactedInput = inputSafety.redacted
 
-    // Misconception detection (subject/concept wiring is a future enhancement).
-    // For now, use placeholder subjectId and a synthetic conceptId derived from sessionId.
-    const subjectIdForMisconceptions = 'CBSE_G10_placeholder'
-    const conceptIdForMisconceptions = sessionId
-    const loadedMisconceptions = await loadMisconceptions(subjectIdForMisconceptions, conceptIdForMisconceptions)
+    // Misconception detection using real subjectId + conceptId.
+    const loadedMisconceptions = await loadMisconceptions(subjectId, conceptId)
     const detectedMisconceptions = detectMisconceptions(redactedInput, loadedMisconceptions)
     const activeMisconception = detectedMisconceptions[0]?.name ?? null
 
@@ -223,10 +232,8 @@ export async function runTutorOrchestrator(args: {
     const frustration = computeFrustrationScore([], null)
 
     // 4. Basic RAG hook: retrieve curriculum chunks for CURRICULUM_CONTEXT layer.
-    // For now we scope to a single synthetic concept id derived from the session.
-    const conceptId = sessionId
     const ragContext = await retrieveRelevantChunks(
-      `Current concept ${redactedInput}`,
+      `${conceptName} ${redactedInput}`,
       [conceptId],
       { topN: 4 },
     )
@@ -250,8 +257,8 @@ export async function runTutorOrchestrator(args: {
       activeMisconceptionName: activeMisconception,
       frustrationScore: frustration.frustrationScore,
       ragChunks: ragContext.chunks.map((c) => c.content),
-      conceptName: 'Current concept',
-      subjectName: 'Subject',
+      conceptName,
+      subjectName,
     })
 
     if (prompt.layersTruncated.length > 0) {
@@ -393,11 +400,11 @@ export async function runTutorOrchestrator(args: {
     if (tag === 'VALIDATE') {
       await enqueueIRTUpdate({
         studentId,
-        conceptId: args.conceptId ?? conceptId,
+        conceptId,
         questionId: args.questionId ?? `${sessionId}:${state.lastTurnNumber}`,
         sessionId,
         isCorrect: args.isCorrect ?? false,
-        itemDifficulty: Number.isFinite(args.itemDifficulty) ? args.itemDifficulty! : 0,
+        itemDifficulty: Number.isFinite(args.itemDifficulty) ? args.itemDifficulty! : conceptDifficulty,
         studentAnswer: redactedInput,
       })
     }

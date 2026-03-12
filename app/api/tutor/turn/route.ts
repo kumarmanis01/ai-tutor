@@ -44,17 +44,49 @@ function chunkText(text: string, chunkSize = 48): string[] {
   return out
 }
 
+export type TutorTurnRequest = {
+  sessionId: string
+  studentMessage: string
+  turnNumber: number
+  conceptId: string
+  subjectId: string
+  isCorrect?: boolean
+  questionId?: string
+  itemDifficulty?: number
+}
+
 function parseBody(body: any): TutorTurnRequest | null {
   if (!body || typeof body !== 'object') return null
   const sessionId = body.sessionId
   const studentMessage = body.studentMessage
   const turnNumber = body.turnNumber
+  const conceptId = body.conceptId
+  const subjectId = body.subjectId
+  const isCorrect = body.isCorrect
+  const questionId = body.questionId
+  const itemDifficulty = body.itemDifficulty
+
   if (typeof sessionId !== 'string' || !sessionId.trim()) return null
   if (typeof studentMessage !== 'string') return null
   const msg = studentMessage.trim()
   if (!msg || msg.length > 2000) return null
   if (typeof turnNumber !== 'number' || !Number.isFinite(turnNumber) || turnNumber < 0) return null
-  return { sessionId: sessionId.trim(), studentMessage: msg, turnNumber: Math.floor(turnNumber) }
+  if (typeof conceptId !== 'string' || !conceptId.trim()) return null
+  if (typeof subjectId !== 'string' || !subjectId.trim()) return null
+
+  const parsed: TutorTurnRequest = {
+    sessionId: sessionId.trim(),
+    studentMessage: msg,
+    turnNumber: Math.floor(turnNumber),
+    conceptId: conceptId.trim(),
+    subjectId: subjectId.trim(),
+  }
+
+  if (typeof isCorrect === 'boolean') parsed.isCorrect = isCorrect
+  if (typeof questionId === 'string' && questionId.trim()) parsed.questionId = questionId.trim()
+  if (typeof itemDifficulty === 'number' && Number.isFinite(itemDifficulty)) parsed.itemDifficulty = itemDifficulty
+
+  return parsed
 }
 
 async function streamSingleError(status: number, payload: TutorTurnError) {
@@ -147,6 +179,11 @@ export async function POST(req: Request) {
             studentId: userId,
             state: nextState,
             studentMessage: parsed.studentMessage,
+            conceptId: parsed.conceptId,
+            subjectId: parsed.subjectId,
+            isCorrect: parsed.isCorrect,
+            questionId: parsed.questionId,
+            itemDifficulty: parsed.itemDifficulty,
           })
 
           for (const chunk of chunkText(answerText)) {
