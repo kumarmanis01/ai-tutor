@@ -21,7 +21,7 @@
 import { prisma } from '@/lib/prisma.js';
 import { callLLM } from '@/lib/callLLM.js';
 import { parseLlmJson } from '@/lib/llm/sanitizeJson'
-import { renderTemplate } from '@/prompts'
+import { renderTemplate } from '@/prompts/index'
 import _fs from 'fs';
 import _path from 'path';
 import { LanguageCode } from '@prisma/client';

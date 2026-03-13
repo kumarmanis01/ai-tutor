@@ -18,7 +18,7 @@
 import { prisma } from '@/lib/prisma.js'
 import { callLLM } from '@/lib/callLLM.js'
 import { parseLlmJson } from '@/lib/llm/sanitizeJson'
-import { renderTemplate } from '@/prompts'
+import { renderTemplate } from '@/prompts/index'
 import { createStartedAIContentLog } from '@/lib/ai/aiContentLogHelper'
 import { validateOrThrow } from '@/lib/aiOutputValidator'
 import { toSlug } from '@/lib/slug.js'

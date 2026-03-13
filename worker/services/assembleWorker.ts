@@ -19,7 +19,7 @@
 import { prisma } from '@/lib/prisma.js';
 import { isSystemSettingEnabled } from '@/lib/systemSettings.js';
 import { logger } from '@/lib/logger.js';
-import { renderTemplate } from '@/prompts';
+import { renderTemplate } from '@/prompts/index';
 import { createStartedAIContentLog } from '@/lib/ai/aiContentLogHelper';
 import { JobStatus } from '@/lib/ai-engine/types';
 

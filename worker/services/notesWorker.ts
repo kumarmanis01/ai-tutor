@@ -22,7 +22,7 @@ import { parseLlmJson } from '@/lib/llm/sanitizeJson';
 import { validateOrThrow } from '@/lib/aiOutputValidator';
 import _fs from 'fs';
 import _path from 'path';
-import { renderTemplate } from '@/prompts'
+import { renderTemplate } from '@/prompts/index'
 import { isSystemSettingEnabled } from '@/lib/systemSettings.js';
 import { logger } from '@/lib/logger.js';
 import { JobStatus, ApprovalStatus } from '@/lib/ai-engine/types';
