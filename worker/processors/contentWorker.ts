@@ -29,7 +29,7 @@ import { handleAssembleJob } from '@/worker/services/assembleWorker'
 import { processDiagnosticBootstrap } from '@/worker/services/diagnosticBootstrapWorker'
 import { logger } from '@/lib/logger.js'
 import { CONTENT_HYDRATION_QUEUE } from '@/lib/queues/constants'
-import { DIAGNOSTIC_BOOTSTRAP_QUEUE_NAME } from '@/jobs/diagnosticBootstrap.js'
+import { DIAGNOSTIC_BOOTSTRAP_QUEUE_NAME } from '@/jobs/diagnosticBootstrap'
 import type { DiagnosticBootstrapJobData } from '@/worker/services/diagnosticBootstrapWorker'
 
 /**

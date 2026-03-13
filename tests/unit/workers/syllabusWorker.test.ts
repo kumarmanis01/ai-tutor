@@ -10,6 +10,7 @@ jest.mock('@/lib/prisma', () => ({
     systemSetting: { findUnique: jest.fn() },
     chapterDef: { findFirst: jest.fn() },
     subjectDef: { findUnique: jest.fn() },
+    aIContentLog: { create: jest.fn(), update: jest.fn() },
     $transaction: jest.fn()
   }
 }))

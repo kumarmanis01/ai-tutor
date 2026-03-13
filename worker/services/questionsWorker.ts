@@ -539,10 +539,10 @@ export async function handleQuestionsJob(jobId: string): Promise<void> {
 
     // Per-difficulty validation — failures are isolated and do NOT abort remaining difficulties
     try {
-      try {
-        const { report } = validateQuestionsShapeWithReport(parsed, subjectName);
-        if (linkedExec) {
-          await prisma.jobExecutionLog.create({
+      const { valid, report } = validateQuestionsShapeWithReport(parsed, subjectName);
+      if (linkedExec) {
+        await prisma.jobExecutionLog
+          .create({
             data: {
               jobId: linkedExec.id,
               event: 'VALIDATION_REPORT',
@@ -550,10 +550,15 @@ export async function handleQuestionsJob(jobId: string): Promise<void> {
               newStatus: linkedExec.status,
               meta: { hydrationJobId: job.id, difficulty, report },
             },
-          }).catch(() => {});
-        }
-      } catch {
-        // non-fatal; validationWithReport is best-effort
+          })
+          .catch(() => {});
+      }
+      // If the shape-level validation fails, treat this difficulty as failed
+      if (!valid) {
+        const shapeError: any = new Error('questions_shape_invalid');
+        shapeError.type = 'questions_shape_invalid';
+        shapeError.details = report;
+        throw shapeError;
       }
 
       (await import('@/lib/aiOutputValidator')).validateOrThrow(parsed, {

@@ -1,6 +1,6 @@
 import { Queue } from 'bullmq'
-import { redisConnection } from '@/lib/redis.js'
-import { logger } from '@/lib/logger.js'
+import { redisConnection } from '@/lib/redis'
+import { logger } from '@/lib/logger'
 import type { DiagnosticBootstrapJobData } from '@/worker/services/diagnosticBootstrapWorker'
 
 export const DIAGNOSTIC_BOOTSTRAP_QUEUE_NAME = 'diagnostic-bootstrap'
