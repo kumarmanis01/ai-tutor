@@ -37,8 +37,13 @@ module.exports = {
         NODE_ENV: 'production',
         DATABASE_URL: process.env.DATABASE_URL,
         REDIS_URL: process.env.REDIS_URL,
-        ENABLE_AI_TUTOR: 'false',
-        ENABLE_DISTRESS_DETECTION: 'false',
+        NEXTAUTH_SECRET: process.env.NEXTAUTH_SECRET,
+        NEXTAUTH_URL: process.env.NEXTAUTH_URL,
+        OPENAI_API_KEY: process.env.OPENAI_API_KEY,
+        RAZORPAY_KEY_ID: process.env.RAZORPAY_KEY_ID,
+        RAZORPAY_KEY_SECRET: process.env.RAZORPAY_KEY_SECRET,
+        ENABLE_AI_TUTOR: process.env.ENABLE_AI_TUTOR ?? 'false',
+        ENABLE_DISTRESS_DETECTION: process.env.ENABLE_DISTRESS_DETECTION ?? 'false',
       },
 
       error_file: 'logs/ai-tutor-web-error.log',
@@ -68,6 +73,9 @@ module.exports = {
 
       env: {
         NODE_ENV: 'production',
+        DATABASE_URL: process.env.DATABASE_URL,
+        REDIS_URL: process.env.REDIS_URL,
+        OPENAI_API_KEY: process.env.OPENAI_API_KEY,
       },
 
       error_file: 'logs/content-engine-worker-error.log',
@@ -97,6 +105,8 @@ module.exports = {
 
       env: {
         NODE_ENV: 'production',
+        DATABASE_URL: process.env.DATABASE_URL,
+        REDIS_URL: process.env.REDIS_URL,
       },
 
       error_file: 'logs/ai-tutor-scheduler-error.log',
