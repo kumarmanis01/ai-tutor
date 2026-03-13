@@ -26,8 +26,11 @@ import { handleSyllabusJob } from '@/worker/services/syllabusWorker'
 import { handleNotesJob } from '@/worker/services/notesWorker'
 import { handleQuestionsJob } from '@/worker/services/questionsWorker'
 import { handleAssembleJob } from '@/worker/services/assembleWorker'
+import { processDiagnosticBootstrap } from '@/worker/services/diagnosticBootstrapWorker'
 import { logger } from '@/lib/logger.js'
 import { CONTENT_HYDRATION_QUEUE } from '@/lib/queues/constants'
+import { DIAGNOSTIC_BOOTSTRAP_QUEUE_NAME } from '@/jobs/diagnosticBootstrap'
+import type { DiagnosticBootstrapJobData } from '@/worker/services/diagnosticBootstrapWorker'
 
 /**
  * Supported worker types and their handlers.
@@ -445,6 +448,31 @@ export function startContentWorker(opts?: { concurrency?: number }) {
     } catch (e) {
       logger?.warn?.('worker.completed: failed to mark executionJob completed or write JobExecutionLog', { err: e })
     }
+  })
+
+  return worker
+}
+
+export function startDiagnosticBootstrapWorker(opts?: { concurrency?: number }) {
+  const concurrency = opts?.concurrency ?? 1
+  const worker = new Worker(
+    DIAGNOSTIC_BOOTSTRAP_QUEUE_NAME,
+    async (job: Job<DiagnosticBootstrapJobData>) => processDiagnosticBootstrap(job),
+    {
+      connection: redisConnection,
+      concurrency,
+      settings: {
+        backoffStrategy: (attemptsMade: number) => Math.min(60_000, 2 ** attemptsMade * 1000),
+      },
+    },
+  )
+
+  worker.on('failed', (job, err) => {
+    logger.error(`[DIAGNOSTIC_BOOTSTRAP WORKER FAILED] jobId=${job?.id}`, { error: err?.message })
+  })
+
+  worker.on('completed', (job) => {
+    logger.info(`[DIAGNOSTIC_BOOTSTRAP WORKER COMPLETED] jobId=${job?.id}`)
   })
 
   return worker

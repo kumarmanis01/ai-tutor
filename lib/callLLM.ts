@@ -3,6 +3,24 @@ import { prisma } from '@/lib/prisma'
 import { normalizeLanguage } from '@/lib/normalize'
 import { logger } from '@/lib/logger'
 
+export type TutorCallType = 'tutor:teach' | 'tutor:hint' | 'tutor:eval'
+
+export class LLMError extends Error {
+  constructor(
+    public code: 'AI_UNAVAILABLE' | 'RATE_LIMITED' | 'CONTEXT_TOO_LONG',
+    message: string
+  ) {
+    super(message)
+  }
+}
+
+// Retry config — tutor path only (do not alter global callLLM behaviour)
+const TUTOR_RETRY_CONFIG = {
+  maxAttempts: 3, // 1 original + 2 retries
+  backoffMs: [1000, 2000] as const, // delay before attempt 2, delay before attempt 3
+  totalCapMs: 10_000, // if elapsed > 10s, throw immediately without retrying
+}
+
 /**
  * Build a minimal retrieval context suitable for RAG-lite usage.
  * Only includes high-level syllabus metadata and sibling topic names.
@@ -83,6 +101,9 @@ export async function createSpeech(input: any) {
 type CallLLMArgs = { prompt: string; model?: string; meta: any; timeoutMs?: number };
 
 function isRetryableLLMError(err: any): boolean {
+  if (err instanceof LLMError) {
+    return err.code === 'AI_UNAVAILABLE' || err.code === 'RATE_LIMITED'
+  }
   const msg = String(err?.message ?? err ?? '').toLowerCase();
   if (!msg) return false;
   if (msg.includes('llm_timeout')) return true;
@@ -113,6 +134,9 @@ export async function callLLM({ prompt, model, meta, timeoutMs }: CallLLMArgs) {
   const client = getClient()
   const HYDRATION_DEBUG = process.env.HYDRATION_DEBUG === '1' || process.env.AI_CONTENT_DEBUG === '1'
 
+  const callType = (meta?.callType || meta?.promptType || 'general') as string
+  const isTutorCall = typeof callType === 'string' && callType.startsWith('tutor:')
+
   // Model selection rules
   // - Small models for topics/structure/syllabus
   // - Medium models for notes, doubts (chat), practice questions
@@ -125,6 +149,8 @@ export async function callLLM({ prompt, model, meta, timeoutMs }: CallLLMArgs) {
   const envDefault = process.env.MODEL_DEFAULT || envSmall
 
   const selectedModel = model || ((): string => {
+    if (callType === 'tutor:hint' || callType === 'tutor:eval') return envSmall
+    if (callType === 'tutor:teach') return envMedium
     if (['topics', 'structure', 'syllabus'].includes(promptType)) return envSmall
     if (['notes', 'doubts', 'practice'].includes(promptType)) return envMedium
     if (['questions'].includes(promptType)) return envLarge
@@ -149,6 +175,7 @@ export async function callLLM({ prompt, model, meta, timeoutMs }: CallLLMArgs) {
   // Prompt size guard - prefer failing fast if context too large
   const MAX_PROMPT_LENGTH = Number(process.env.MAX_PROMPT_LENGTH || 24_000) // characters
   if ((prompt || '').length > MAX_PROMPT_LENGTH) {
+    if (isTutorCall) throw new LLMError('CONTEXT_TOO_LONG', 'Tutor context too long')
     throw new Error('prompt_too_large')
   }
 
@@ -205,32 +232,50 @@ export async function callLLM({ prompt, model, meta, timeoutMs }: CallLLMArgs) {
         const respBody: any = JSON.parse(JSON.stringify(response));
         if (AI_CONTENT_DEBUG) respBody._rawText = content;
 
-        // Allow callers to suppress auto-logging and instead persist AIContentLog inside their transaction
+        // Allow callers to suppress auto-logging and instead persist logs inside their transaction
         const suppressLog = !!meta?.suppressLog;
         if (!suppressLog) {
-          await prisma.aIContentLog.create({
-            data: {
-              model: selectedModel,
-              promptType: promptType,
-              board: meta?.board,
-              grade: meta?.grade,
-              subject: meta?.subject,
-              chapter: meta?.chapter,
-              topic: meta?.topic,
-              language: normalizeLanguage(meta?.language),
-              topicId: meta?.topicId,
-              hydrationJobId: meta?.hydrationJobId || meta?.jobId || null,
-              tokensIn: usage?.prompt_tokens,
-              tokensOut: usage?.completion_tokens,
-              tokensUsed: usage?.total_tokens,
-              costUsd,
-              latencyMs,
-              success: true,
-              status: 'success',
-              requestBody: { prompt },
-              responseBody: respBody,
-            },
-          })
+          if (isTutorCall) {
+            await prisma.aITutorTurnLog.create({
+              data: {
+                sessionId: String(meta?.sessionId ?? ''),
+                callType,
+                model: selectedModel,
+                inputTokens: Number(usage?.prompt_tokens ?? 0),
+                outputTokens: Number(usage?.completion_tokens ?? 0),
+                costUsd: Number(costUsd ?? 0),
+                latencyMs: Number(latencyMs ?? 0),
+                tag: meta?.tag ? String(meta.tag) : null,
+                stage: meta?.stage ? String(meta.stage) : null,
+                safetyFlagged: Boolean(meta?.safetyFlagged ?? false),
+                cached: Boolean(meta?.cached ?? false),
+                ragChunksUsed: Array.isArray(meta?.ragChunksUsed) ? meta.ragChunksUsed.map((x: any) => String(x)) : [],
+                frustrationScore: typeof meta?.frustrationScore === 'number' ? meta.frustrationScore : null,
+              },
+            })
+          } else {
+            await prisma.aIContentLog.create({
+              data: {
+                model: selectedModel,
+                promptType: promptType,
+                board: meta?.board,
+                grade: meta?.grade,
+                subject: meta?.subject,
+                chapter: meta?.chapter,
+                topic: meta?.topic,
+                language: normalizeLanguage(meta?.language),
+                topicId: meta?.topicId,
+                tokensIn: usage?.prompt_tokens,
+                tokensOut: usage?.completion_tokens,
+                tokensUsed: usage?.total_tokens,
+                costUsd,
+                success: true,
+                status: 'success',
+                requestBody: { prompt },
+                responseBody: respBody,
+              },
+            })
+          }
         }
         // Attach model and attempt to result for callers
         return { content, usage, costUsd, latencyMs, model: selectedModel, attempt }
@@ -247,27 +292,53 @@ export async function callLLM({ prompt, model, meta, timeoutMs }: CallLLMArgs) {
       // Persist failure logs outside caller transactions unless caller opted to handle logging
       try {
         if (!meta?.suppressLog) {
-          await prisma.aIContentLog.create({ data: {
-            model: selectedModel,
-            promptType: promptType,
-            board: meta?.board,
-            grade: meta?.grade,
-            subject: meta?.subject,
-            chapter: meta?.chapter,
-            topic: meta?.topic,
-            language: normalizeLanguage(meta?.language),
-            topicId: meta?.topicId,
-            hydrationJobId: meta?.hydrationJobId || meta?.jobId || null,
-            success: false,
-            status: 'failed',
-            error: error?.message ?? String(error),
-            latencyMs,
-          } })
+          if (isTutorCall) {
+            await prisma.aITutorTurnLog.create({
+              data: {
+                sessionId: String(meta?.sessionId ?? ''),
+                callType,
+                model: selectedModel,
+                inputTokens: 0,
+                outputTokens: 0,
+                costUsd: 0,
+                latencyMs: Number(latencyMs ?? 0),
+                tag: meta?.tag ? String(meta.tag) : null,
+                stage: meta?.stage ? String(meta.stage) : null,
+                safetyFlagged: Boolean(meta?.safetyFlagged ?? false),
+                cached: Boolean(meta?.cached ?? false),
+                ragChunksUsed: Array.isArray(meta?.ragChunksUsed) ? meta.ragChunksUsed.map((x: any) => String(x)) : [],
+                frustrationScore: typeof meta?.frustrationScore === 'number' ? meta.frustrationScore : null,
+              },
+            })
+          } else {
+            await prisma.aIContentLog.create({ data: {
+              model: selectedModel,
+              promptType: promptType,
+              board: meta?.board,
+              grade: meta?.grade,
+              subject: meta?.subject,
+              chapter: meta?.chapter,
+              topic: meta?.topic,
+              language: normalizeLanguage(meta?.language),
+              topicId: meta?.topicId,
+              success: false,
+              status: 'failed',
+              error: error?.message ?? String(error),
+            } })
+          }
         }
       } catch (e) { logger.error('Failed to write AIContentLog on error path', { error: String(e) }) }
 
       if (!retryable || isLastAttempt) {
-        throw error;
+        if (isTutorCall) {
+          const msg = String(error?.message ?? error ?? '')
+          const lower = msg.toLowerCase()
+          if (lower.includes('rate limit') || lower.includes('rate_limit')) throw new LLMError('RATE_LIMITED', msg || 'Rate limited')
+          if (lower.includes('prompt_too_large') || lower.includes('context too long') || lower.includes('prompt too large')) throw new LLMError('CONTEXT_TOO_LONG', msg || 'Context too long')
+          if (lower.includes('llm_timeout') || lower.includes('timeout') || lower.includes('temporarily unavailable')) throw new LLMError('AI_UNAVAILABLE', msg || 'AI unavailable')
+          throw new LLMError('AI_UNAVAILABLE', msg || 'AI unavailable')
+        }
+        throw error
       }
 
       // Backoff before next attempt (exponential with cap)
@@ -282,6 +353,71 @@ export async function callLLM({ prompt, model, meta, timeoutMs }: CallLLMArgs) {
 
   // If we exited loop without returning, throw last error
   throw lastError ?? new Error('llm_call_failed');
+}
+
+/**
+ * Tutor-specific wrapper around callLLM with conservative retry/backoff.
+ * - Retries ONLY on LLMError with code 'AI_UNAVAILABLE'.
+ * - Non-retryable tutor errors (RATE_LIMITED, CONTEXT_TOO_LONG) are surfaced immediately.
+ * - Total elapsed time across attempts is capped by TUTOR_RETRY_CONFIG.totalCapMs.
+ *
+ * @param prompt - Fully assembled system prompt.
+ * @param meta - Metadata including a TutorCallType for callType.
+ * @param timeoutMs - Optional per-attempt timeout override.
+ * @returns The same shape as callLLM (content, usage, cost, etc.).
+ */
+export async function callTutorLLM(
+  prompt: string,
+  meta: { callType: TutorCallType } & Record<string, any>,
+  timeoutMs?: number,
+) {
+  const startedAt = Date.now()
+  let attempt = 0
+  let lastError: unknown
+
+  while (attempt < TUTOR_RETRY_CONFIG.maxAttempts) {
+    attempt += 1
+
+    try {
+      // Delegate to the shared callLLM, which handles logging and model selection.
+      return await callLLM({ prompt, meta: { ...meta, callType: meta.callType }, timeoutMs })
+    } catch (err: any) {
+      lastError = err
+      const elapsed = Date.now() - startedAt
+
+      // Only tutor-path LLMError with AI_UNAVAILABLE is retryable here.
+      if (err instanceof LLMError) {
+        if (err.code === 'RATE_LIMITED' || err.code === 'CONTEXT_TOO_LONG') {
+          // Non-retryable tutor errors: fail fast.
+          throw err
+        }
+        if (err.code !== 'AI_UNAVAILABLE') {
+          throw err
+        }
+      } else {
+        // Unknown error type: treat as non-retryable for tutor path.
+        throw err
+      }
+
+      // Stop retrying if we've exceeded total cap or attempts.
+      if (elapsed >= TUTOR_RETRY_CONFIG.totalCapMs || attempt >= TUTOR_RETRY_CONFIG.maxAttempts) {
+        throw err
+      }
+
+      const backoffIndex = attempt - 1
+      const backoff =
+        TUTOR_RETRY_CONFIG.backoffMs[backoffIndex] ??
+        TUTOR_RETRY_CONFIG.backoffMs[TUTOR_RETRY_CONFIG.backoffMs.length - 1]
+
+      try {
+        await new Promise((resolve) => setTimeout(resolve, backoff))
+      } catch {
+        // ignore sleep interruption
+      }
+    }
+  }
+
+  throw lastError ?? new LLMError('AI_UNAVAILABLE', 'tutor_llm_failed')
 }
 
 /**

@@ -319,8 +319,9 @@ export const authOptions: any = {
               take: 2,
             });
             const previous = recentLogins.length > 1 ? recentLogins[1] : null;
-            const prevBoard = previous?.details?.board ?? null;
-            const prevGrade = previous?.details?.grade ?? null;
+            const prevDetails = previous?.details as { board?: string; grade?: string } | null;
+            const prevBoard = prevDetails?.board ?? null;
+            const prevGrade = prevDetails?.grade ?? null;
             const curBoard = dbUser.board ?? null;
             const curGrade = dbUser.grade ?? null;
             if (previous && (prevBoard !== curBoard || prevGrade !== curGrade)) {

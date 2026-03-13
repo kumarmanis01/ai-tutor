@@ -12,6 +12,13 @@
  * PM2 will then inherit these variables when started with --update-env.
  */
 
+// ── Redis production checklist (run on VPS before first deploy) ──
+// redis-cli CONFIG SET maxmemory-policy allkeys-lru
+// redis-cli CONFIG SET maxmemory 256mb
+// redis-cli CONFIG SET save "3600 1 300 100 60 10000"   // persistence
+// redis-cli CONFIG SET appendonly yes                    // AOF persistence
+// Verify: redis-cli CONFIG GET maxmemory-policy
+
 module.exports = {
   apps: [
     // ─────────────────────────────────────────────────────────────────────
@@ -30,6 +37,13 @@ module.exports = {
         NODE_ENV: 'production',
         DATABASE_URL: process.env.DATABASE_URL,
         REDIS_URL: process.env.REDIS_URL,
+        NEXTAUTH_SECRET: process.env.NEXTAUTH_SECRET,
+        NEXTAUTH_URL: process.env.NEXTAUTH_URL,
+        OPENAI_API_KEY: process.env.OPENAI_API_KEY,
+        RAZORPAY_KEY_ID: process.env.RAZORPAY_KEY_ID,
+        RAZORPAY_KEY_SECRET: process.env.RAZORPAY_KEY_SECRET,
+        ENABLE_AI_TUTOR: process.env.ENABLE_AI_TUTOR ?? 'false',
+        ENABLE_DISTRESS_DETECTION: process.env.ENABLE_DISTRESS_DETECTION ?? 'false',
       },
 
       error_file: 'logs/ai-tutor-web-error.log',
@@ -59,6 +73,11 @@ module.exports = {
 
       env: {
         NODE_ENV: 'production',
+        DATABASE_URL: process.env.DATABASE_URL,
+        REDIS_URL: process.env.REDIS_URL,
+        OPENAI_API_KEY: process.env.OPENAI_API_KEY,
+        ENABLE_AI_TUTOR: process.env.ENABLE_AI_TUTOR ?? 'false',
+        ENABLE_DISTRESS_DETECTION: process.env.ENABLE_DISTRESS_DETECTION ?? 'false',
       },
 
       error_file: 'logs/content-engine-worker-error.log',
@@ -88,6 +107,9 @@ module.exports = {
 
       env: {
         NODE_ENV: 'production',
+        DATABASE_URL: process.env.DATABASE_URL,
+        REDIS_URL: process.env.REDIS_URL,
+        OPENAI_API_KEY: process.env.OPENAI_API_KEY,
       },
 
       error_file: 'logs/ai-tutor-scheduler-error.log',

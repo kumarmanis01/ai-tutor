@@ -28,3 +28,8 @@ jobs:
         run: npx prisma generate
       - name: Build (tsc + next)
         run: npm run build
+
+      # Hard deploy gate: deterministic prompt eval harness (no LLM/network/DB).
+      # Must run after build so we validate the real assembled prompts.
+      - name: Run prompt eval
+        run: npx tsx scripts/run-prompt-eval.ts

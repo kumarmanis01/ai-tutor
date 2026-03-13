@@ -8,6 +8,11 @@ import ToastHost from '@/components/ToastHost';
 import StudentNav from './StudentNav';
 import { requireActiveSession } from '@/lib/auth';
 import { redirect } from 'next/navigation';
+import { headers } from 'next/headers';
+import { checkProfileCompleteness } from '@/lib/student/profileGuard';
+import { checkParentGate } from '@/lib/student/parentGate';
+import { requiresParentOTPGate } from '@/lib/student/accountStatus';
+import StudentLayoutShell from '@/components/student/StudentLayoutShell';
 import '@/styles/index.css';
 
 export const viewport = {
@@ -20,12 +25,57 @@ export const viewport = {
  * - Owns the HTML document for all authenticated student routes
  *   (/dashboard/*, /rooms/*, /profile, /parent, /learn/*)
  * - Fetches session server-side; redirects to / if unauthenticated
+ * - Profile completeness guard: redirects to /student/onboarding when required fields missing
+ * - Parent verification gate (under-18): redirects to /student/verify-parent when required and not verified
  * - Renders StudentNav — the persistent student navigation bar
  * - Must NOT render the public Navbar
  */
 export default async function StudentLayout({ children }: { children: React.ReactNode }) {
   const session = await requireActiveSession();
   if (!session) redirect('/');
+
+  const userId = (session.user as { id?: string })?.id;
+  const pathname = (await headers()).get('x-pathname') ?? '';
+
+  const skipApi = pathname.startsWith('/student/api');
+  const skipVerifyParent = pathname.startsWith('/student/verify-parent');
+  const skipOnboarding = pathname.startsWith('/student/onboarding');
+
+  let showParentGate = false;
+  let maskedParentEmail: string | null = null;
+
+  if (!skipApi && !skipVerifyParent && userId) {
+    const needsOtpGate = await requiresParentOTPGate(userId);
+    if (needsOtpGate) {
+      showParentGate = true;
+      const parentEmail = (session.user as { parentEmail?: string | null }).parentEmail ?? null;
+      if (parentEmail) {
+        const [localPart, domain] = parentEmail.split('@');
+        if (localPart && domain) {
+          const first = localPart.charAt(0);
+          maskedParentEmail = `${first}${'*'.repeat(Math.max(localPart.length - 1, 1))}@${domain}`;
+        } else {
+          maskedParentEmail = parentEmail;
+        }
+      } else {
+        maskedParentEmail = 'parent email on file';
+      }
+    }
+  }
+
+  if (!skipApi && !showParentGate && userId) {
+    const gate = await checkParentGate(userId);
+    if (!skipVerifyParent && gate.required && !gate.verified) {
+      redirect('/student/verify-parent');
+    }
+  }
+
+  if (!skipOnboarding && !skipApi && userId) {
+    const profile = await checkProfileCompleteness(userId);
+    if (!profile.complete) {
+      redirect(`/student/onboarding?missing=${profile.missingFields.join(',')}`);
+    }
+  }
 
   const studentName = (session.user as { name?: string })?.name ?? '';
 
@@ -41,7 +91,9 @@ export default async function StudentLayout({ children }: { children: React.Reac
             <AppModalClient />
             <StudentNav studentName={studentName} />
             <div className="pt-14">
-              {children}
+              <StudentLayoutShell showParentGate={showParentGate} maskedParentEmail={maskedParentEmail}>
+                {children}
+              </StudentLayoutShell>
             </div>
             <ToastHost />
           </GlobalLoaderProvider>

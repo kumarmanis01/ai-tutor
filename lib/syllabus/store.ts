@@ -1,3 +1,4 @@
+import { SyllabusStatus } from '@prisma/client';
 import { prisma } from '../prisma';
 
 // Reusable types (use lightweight types to avoid relying on named Prisma exports
@@ -16,7 +17,7 @@ export type SyllabusRecord = any;
  */
 export async function createSyllabus(input: CreateSyllabusInput): Promise<SyllabusRecord> {
   try {
-    const created = await prisma.syllabus.create({ data: { ...input, json: input.json } });
+    const created = await prisma.syllabus.create({ data: { ...input, json: input.json, status: input.status as SyllabusStatus } });
     return created;
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err);

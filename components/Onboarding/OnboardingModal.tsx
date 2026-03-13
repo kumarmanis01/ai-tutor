@@ -86,7 +86,7 @@ export default function OnboardingModal({ open, required, parentVerified, gradeL
         onChange('subjects', undefined);
       }
     }
-  }, [values.board, prevBoard, values.class_grade, values.subjects, onChange]);
+  }, [open, values.board, prevBoard, values.class_grade, values.subjects, onChange]);
 
   useEffect(() => {
     if (!open) return;
@@ -97,7 +97,7 @@ export default function OnboardingModal({ open, required, parentVerified, gradeL
         onChange('subjects', undefined);
       }
     }
-  }, [values.class_grade, prevGrade, values.subjects, onChange]);
+  }, [open, values.class_grade, prevGrade, values.subjects, onChange]);
 
   if (!open) return null;
   

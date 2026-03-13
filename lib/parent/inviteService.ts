@@ -117,16 +117,18 @@ export async function redeemParentInviteAndLink(params: {
         data: { status: 'consumed', consumedAt: now, consumedByParentId: parentId },
       });
 
-      await ensureParentRole(tx, parentId);
-      await tx.auditLog
-        .create({
-          data: {
-            userId: parentId,
-            action: 'parent_link_student',
-            details: { parentId, studentId: invite.studentId, method: 'invite_code', status: 'already_linked' },
-          },
-        })
-        .catch(() => {});
+    await ensureParentRole(tx, parentId);
+    try {
+      await tx.auditLog.create({
+        data: {
+          userId: parentId,
+          action: 'parent_link_student',
+          details: { parentId, studentId: invite.studentId, method: 'invite_code', status: 'already_linked' },
+        },
+      });
+    } catch {
+      // Non-fatal: audit log failure should not break linking
+    }
 
       return { studentId: invite.studentId, status: 'already_linked' };
     }
@@ -149,15 +151,17 @@ export async function redeemParentInviteAndLink(params: {
 
     await ensureParentRole(tx, parentId);
 
-    await tx.auditLog
-      .create({
+    try {
+      await tx.auditLog.create({
         data: {
           userId: parentId,
           action: 'parent_link_student',
           details: { parentId, studentId: invite.studentId, method: 'invite_code', status: 'linked' },
         },
-      })
-      .catch(() => {});
+      });
+    } catch {
+      // Non-fatal: audit log failure should not break linking
+    }
 
     return { studentId: invite.studentId, status: 'linked' };
   });
@@ -217,15 +221,17 @@ export async function linkParentToStudentByEmail(params: {
 
   await ensureParentRole(prisma, parentId);
 
-  await prisma.auditLog
-    .create({
+  try {
+    await prisma.auditLog.create({
       data: {
         userId: parentId,
         action: 'parent_link_student',
         details: { parentId, studentId: student.id, method: 'email', status: 'linked' },
       },
-    })
-    .catch(() => {});
+    });
+  } catch {
+    // Non-fatal: audit log failure should not break linking
+  }
 
   return { studentId: student.id, status: 'linked' };
 }

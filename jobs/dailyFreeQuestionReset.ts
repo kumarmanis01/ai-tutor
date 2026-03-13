@@ -74,20 +74,16 @@ export async function runDailyFreeQuestionReset(): Promise<DailyResetResult> {
     // and reset their free question count to the daily limit
     const result = await prisma.user.updateMany({
       where: {
-        // Exclude users with active subscriptions
-        // A user is premium if they have a Subscription with status 'active'
-        OR: [
-          {
-            subscription: null,
+        // Exclude users with an active (non-free) subscription.
+        // Relation name is plural (`subscriptions`).
+        subscriptions: {
+          none: {
+            active: true,
+            plan: { not: 'free' },
+            startDate: { lte: new Date() },
+            endDate: { gte: new Date() },
           },
-          {
-            subscription: {
-              status: {
-                not: 'active',
-              },
-            },
-          },
-        ],
+        },
         // Only update users who have consumed some questions (optimization)
         todaysFreeQuestionsCount: {
           lt: DAILY_FREE_LIMIT,

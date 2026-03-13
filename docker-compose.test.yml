@@ -28,7 +28,22 @@ services:
   redis-test:
     image: redis:7-alpine
     restart: "no"
-    command: ["redis-server", "--save", "", "--appendonly", "no"]
+    # Prelaunch guardrails: AOF enabled + volatile-lru eviction.
+    # NOTE: volatile-lru requires maxmemory to be set, otherwise eviction won't occur.
+    command:
+      [
+        "redis-server",
+        "--save",
+        "",
+        "--appendonly",
+        "yes",
+        "--appendfsync",
+        "everysec",
+        "--maxmemory",
+        "256mb",
+        "--maxmemory-policy",
+        "volatile-lru"
+      ]
     tmpfs:
       - /data
     ports:

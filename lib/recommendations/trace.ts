@@ -8,6 +8,7 @@
  * - 2026-03-03 | claude | created recommendation trace persistence
  */
 
+import { Prisma } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
 import { logger } from '@/lib/logger';
 
@@ -39,7 +40,7 @@ export async function persistRecommendationTrace(trace: RecommendationTraceInput
         entityType: trace.entityType,
         entityId: trace.entityId,
         score: trace.score,
-        signals: trace.signals,
+        signals: trace.signals as Prisma.JsonObject,
         engineVersion: ENGINE_VERSION,
       },
     });
@@ -64,7 +65,7 @@ export async function persistRecommendationTraces(traces: RecommendationTraceInp
         entityType: t.entityType,
         entityId: t.entityId,
         score: t.score,
-        signals: t.signals,
+        signals: t.signals as Prisma.JsonObject,
         engineVersion: ENGINE_VERSION,
       })),
     });

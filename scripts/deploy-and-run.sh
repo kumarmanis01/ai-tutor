@@ -92,6 +92,13 @@ set -o allexport; source "${REPO_ROOT}/.env.production"; set +o allexport
 echo "DATABASE_URL set: $([ -n "${DATABASE_URL:-}" ] && echo 'YES' || echo 'NO')"
 echo "REDIS_URL set:    $([ -n "${REDIS_URL:-}" ] && echo 'YES' || echo 'NO')"
 
+# Fail fast if DATABASE_URL points to localhost (never deploy against local DB)
+if echo "${DATABASE_URL:-}" | grep -qiE 'localhost|127\.0\.0\.1'; then
+  echo "FATAL: DATABASE_URL points to localhost. Use Neon production URL." >&2
+  exit 1
+fi
+echo "DATABASE_URL host: $(echo "${DATABASE_URL}" | sed 's|.*@||' | cut -d'/' -f1)"
+
 # ─────────────────────────────────────────────────────────────────────────────
 # 3. INSTALL DEPENDENCIES
 # ─────────────────────────────────────────────────────────────────────────────
@@ -139,6 +146,23 @@ else
   tail -n 100 "${BUILD_LOG}" >&2 || true
   exit 1
 fi
+
+# 6b. Prompt eval gate (hard deploy gate for tutor prompt)
+step "6b — Prompt eval gate (must pass before deploy)"
+if npx tsx scripts/run-prompt-eval.ts; then
+  echo "Prompt eval: all assertions passed"
+else
+  echo "FATAL: Prompt eval failed. Deploy blocked." >&2
+  exit 1
+fi
+
+# 6c. Verify worker dist
+step "6c — Verify worker dist"
+if [ ! -f "${REPO_ROOT}/dist/worker/bootstrap.js" ]; then
+  echo "FATAL: dist/worker/bootstrap.js not found. build:workers may have failed." >&2
+  exit 1
+fi
+echo "Worker dist: OK ($(du -sh "${REPO_ROOT}/dist/worker/bootstrap.js" | cut -f1))"
 
 # ─────────────────────────────────────────────────────────────────────────────
 # 7. VERIFY DIST
@@ -201,6 +225,17 @@ fi
 
 pm2 start ecosystem.config.cjs --env production --update-env
 
+# 9b. Redis hardening (idempotent; safe to re-run)
+step "9b — Redis hardening (idempotent)"
+if command -v redis-cli >/dev/null 2>&1; then
+  redis-cli CONFIG SET maxmemory-policy allkeys-lru 2>/dev/null && echo "  maxmemory-policy: allkeys-lru" || echo "  WARN: redis-cli CONFIG SET maxmemory-policy failed (may need auth)"
+  redis-cli CONFIG SET maxmemory 256mb 2>/dev/null || true
+  redis-cli CONFIG SET save "3600 1 300 100 60 10000" 2>/dev/null || true
+  redis-cli CONFIG SET appendonly yes 2>/dev/null || true
+else
+  echo "  redis-cli not found — skip hardening (run manually or via Redis Cloud console)"
+fi
+
 # ─────────────────────────────────────────────────────────────────────────────
 # 10. PM2 SAVE + STARTUP (systemd persistence)
 # ─────────────────────────────────────────────────────────────────────────────
@@ -262,21 +297,40 @@ else
 fi
 
 # ─────────────────────────────────────────────────────────────────────────────
-# 13. HEALTH CHECK
+# 13. HEALTH CHECK + SMOKE TEST
 # ─────────────────────────────────────────────────────────────────────────────
-step "13/13 — Health check"
-echo "Waiting 5s for processes to stabilize..."
-sleep 5
+step "13/13 — Health check + smoke test"
+echo "Waiting 8s for processes to stabilize..."
+sleep 8
 
 EXPECTED_PROCS=("ai-tutor-web" "content-engine-worker" "ai-tutor-scheduler")
 FAILED=0
 
 for proc in "${EXPECTED_PROCS[@]}"; do
-  status=$(pm2 show "${proc}" 2>/dev/null | grep -i "status" | head -1 | awk '{print $NF}' || echo "not found")
+  status=$(pm2 jlist 2>/dev/null | node -e "
+    const fs = require('fs');
+    const list = JSON.parse(fs.readFileSync(0, 'utf8'));
+    const p = list.find(x => x.name === '${proc}');
+    process.stdout.write(p ? p.pm2_env.status : 'not found');
+  " 2>/dev/null || echo "unknown")
   if [ "${status}" = "online" ]; then
-    echo "  ${proc}: online"
+    echo "  ✓ ${proc}: online"
   else
-    echo "  ${proc}: ${status} <-- CHECK LOGS: pm2 logs ${proc} --lines 50"
+    echo "  ✗ ${proc}: ${status} — run: pm2 logs ${proc} --lines 50"
+    FAILED=$((FAILED + 1))
+  fi
+done
+
+APP_URL="${NEXTAUTH_URL:-http://localhost:3000}"
+echo ""
+echo "HTTP smoke tests against ${APP_URL}:"
+
+for endpoint in "/api/health/redis"; do
+  http_code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 "${APP_URL}${endpoint}" 2>/dev/null || echo "000")
+  if [ "${http_code}" = "200" ]; then
+    echo "  ✓ GET ${endpoint} → ${http_code}"
+  else
+    echo "  ✗ GET ${endpoint} → ${http_code}"
     FAILED=$((FAILED + 1))
   fi
 done
@@ -285,11 +339,12 @@ echo
 pm2 status
 
 if [ ${FAILED} -gt 0 ]; then
-  echo
-  echo "WARNING: ${FAILED} process(es) not online. Check logs above."
+  echo ""
+  echo "WARNING: ${FAILED} check(s) failed. Review logs above."
+  exit 1
 else
-  echo
-  echo "All ${#EXPECTED_PROCS[@]} processes online. Deploy complete."
+  echo ""
+  echo "All checks passed. Deploy complete ✓"
 fi
 
 echo

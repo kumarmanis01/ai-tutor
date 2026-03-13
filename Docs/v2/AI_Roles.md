@@ -59,9 +59,7 @@ using Prisma ORM. Your rules:
 CONTEXT
 Read the following before writing anything:
 
-<current_schema>
-[PASTE: full prisma/schema.prisma]
-</current_schema>
+prisma/schema.prisma
 
 TASK
 Add the following models to the schema. Do not modify any existing model.

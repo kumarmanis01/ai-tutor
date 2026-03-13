@@ -4,7 +4,11 @@ module.exports = {
   testEnvironment: 'node',
   // run only unit tests by default; integration tests are excluded
   testMatch: ['**/tests/**/*.test.ts'],
-  testPathIgnorePatterns: ['/tests/integration/'],
+  testPathIgnorePatterns: [
+    '/tests/integration/',
+    'tests/phase12/runner.integration.test.ts',
+    'tests/workers/regenerationWorker.db.integration.test.ts',
+  ],
   moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json', 'node'],
   moduleNameMapper: {
     // Avoid mapping generic relative ../lib/* patterns — they clash with node_modules internals.

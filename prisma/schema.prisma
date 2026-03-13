@@ -24,6 +24,12 @@ model User {
   emailVerified            DateTime?
   image                    String?
   parentEmail              String?
+  /// Date of birth for under-18 parent verification gate.
+  dateOfBirth              DateTime?
+  /// Parent email OTP verified at (under-18 gate).
+  parentVerifiedAt         DateTime?
+  /// When true, student must complete parent verification regardless of DOB.
+  requiresParentVerification Boolean                 @default(false)
   /// Self-reported age captured during registration/onboarding.
   age                      Int?
   /// Parent phone used for under-13 verification (not unique; families can share).
@@ -38,9 +44,20 @@ model User {
   board                    String?
   subjects                 String[]                 @default([])
   points                   Int                      @default(0)
+  /// Cumulative XP for level progression (1–10).
+  totalXp                  Int                      @default(0)
+  /// Current level derived from totalXp (1–10).
+  level                    Int                      @default(1)
+  /// Consecutive days with ≥1 learning session.
+  currentStreak            Int                      @default(0)
+  longestStreak            Int                      @default(0)
+  /// Date of last completed session (date-only; time ignored).
+  lastSessionDate          DateTime?
   welcomeEmailSent         Boolean                  @default(false)
   passwordHash             String?
   todaysFreeQuestionsCount Int                      @default(3)
+  subscriptionStatus       String                   @default("free")
+  subscriptionExpiry       DateTime?
   status                   String?
   createdAt                DateTime                 @default(now())
   accounts                 Account[]
@@ -87,6 +104,56 @@ model User {
   timezone                 String?
   studentEngagementStats   StudentEngagementStats?
   engagementProcessedSessions EngagementProcessedSession[]
+  studentFeatureFlags      StudentFeatureFlag[]     @relation("StudentFeatureFlags")
+  studentXpRecords         StudentXP[]
+  learningPlans           LearningPlan[]
+}
+
+model PaymentOrder {
+  id              String   @id @default(cuid())
+  studentId       String
+  razorpayOrderId String   @unique
+  amount          Int
+  currency        String   @default("INR")
+  status          String   @default("created")
+  planMonths      Int      @default(1)
+  createdAt       DateTime @default(now())
+  paidAt          DateTime?
+
+  @@index([studentId])
+  @@index([razorpayOrderId])
+}
+
+/// Per-student XP ledger; totalXp on User is the source of truth.
+model StudentXP {
+  id          String    @id @default(cuid())
+  studentId   String
+  source      String    // 'session_correct' | 'streak_bonus' | 'revision_complete' | 'badge'
+  amount      Int
+  sessionId   String?
+  awardedAt   DateTime  @default(now())
+
+  student     User      @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@index([studentId])
+  @@index([studentId, awardedAt])
+}
+
+/// Per-student feature flags used for staged rollouts + kill switch gating.
+model StudentFeatureFlag {
+  id        String   @id @default(cuid())
+  studentId String
+  /// Key for the feature, e.g. "AI_TUTOR".
+  key       String
+  enabled   Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  student User @relation("StudentFeatureFlags", fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([studentId, key], name: "studentId_key")
+  @@index([key, enabled], name: "idx_studentfeatureflag_key_enabled")
+  @@index([studentId], name: "idx_studentfeatureflag_studentId")
 }
 
 model PhoneOtp {
@@ -722,6 +789,9 @@ model LearningSession {
   meta                 Json?
   startedAt            DateTime        @default(now())
   endedAt              DateTime?
+  rating               Int?
+  ratingFeedback       String?
+  ratedAt              DateTime?
   createdAt            DateTime        @default(now())
   completionPercentage Int             @default(0)
   isCompleted          Boolean         @default(false)
@@ -1039,6 +1109,8 @@ model Question {
   topicId       String? /// canonical topic reference — backfilled for legacy rows
   type          String
   difficulty    String?
+  /// IRT difficulty (b-parameter): recall = -1.5 to -0.5, single-step = -0.5 to 0.5, multi-step = 0.5 to 2.0
+  irt_b         Float?
   prompt        String
   choices       Json?
   correctAnswer String?
@@ -1100,30 +1172,33 @@ model ClassLevel {
 }
 
 model SubjectDef {
-  id        String           @id @default(cuid())
-  name      String
-  slug      String
-  classId   String
-  lifecycle SoftDeleteStatus @default(active)
-  createdAt DateTime         @default(now())
-  chapters  ChapterDef[]
-  class     ClassLevel       @relation(fields: [classId], references: [id])
+  id                  String               @id @default(cuid())
+  name                String
+  slug                String
+  classId             String
+  lifecycle           SoftDeleteStatus     @default(active)
+  createdAt           DateTime             @default(now())
+  chapters            ChapterDef[]
+  class               ClassLevel           @relation(fields: [classId], references: [id])
+  concepts            Concept[]
+  boardSubjectConfigs BoardSubjectConfig[]
 
   @@unique([classId, slug], name: "classId_slug")
 }
 
 model ChapterDef {
-  id        String           @id @default(cuid())
-  name      String
-  slug      String
-  order     Int
-  version   Int              @default(1)
-  status    ApprovalStatus   @default(draft)
-  lifecycle SoftDeleteStatus @default(active)
-  subjectId String
-  createdAt DateTime         @default(now())
-  subject   SubjectDef       @relation(fields: [subjectId], references: [id])
-  topics    TopicDef[]
+  id                   String               @id @default(cuid())
+  name                 String
+  slug                 String
+  order                Int
+  version              Int                  @default(1)
+  status               ApprovalStatus       @default(draft)
+  lifecycle            SoftDeleteStatus     @default(active)
+  subjectId            String
+  createdAt            DateTime             @default(now())
+  subject              SubjectDef           @relation(fields: [subjectId], references: [id])
+  topics               TopicDef[]
+  boardChapterWeights  BoardChapterWeight[]
 
   @@unique([subjectId, slug, version])
 }
@@ -1146,8 +1221,70 @@ model TopicDef {
   progress             StudentTopicProgress[]
   structuredSessions   StructuredSession[]
   homework             HomeworkAssignment[]
+  concepts             Concept[]
 
   @@unique([chapterId, slug])
+}
+
+/// Concept-level taxonomy for IRT, prereqs, and RAG. One topic can have many concepts.
+model Concept {
+  id                     String     @id @default(cuid())
+  topicId                String
+  subjectId              String /// Denormalized for queries: concepts WHERE subjectId IN (...)
+  name                   String
+  description            String? /// Required for launch slice; null breaks AI prompt
+  irt_b                  Float? /// Expected difficulty: recall -1.5 to -0.5, single-step -0.5 to 0.5, multi-step 0.5 to 2.0
+  bloomLevel             String? /// e.g. remember, understand, apply
+  prerequisiteConceptIds String[]  @default([])
+  commonlyConfusedWithIds String[]  @default([])
+  createdAt              DateTime   @default(now())
+  updatedAt              DateTime   @updatedAt
+  topic                  TopicDef   @relation(fields: [topicId], references: [id], onDelete: Cascade)
+  subject                SubjectDef @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+
+  @@index([subjectId])
+  @@index([topicId])
+}
+
+/// Per-chapter exam mark weight (e.g. CBSE Grade 10 Maths). Used for readiness score.
+model BoardChapterWeight {
+  id          String    @id @default(cuid())
+  chapterId   String
+  weightMarks Int /// Marks allocated to this chapter in board exam
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  chapter     ChapterDef @relation(fields: [chapterId], references: [id], onDelete: Cascade)
+
+  @@unique([chapterId])
+  @@index([chapterId])
+}
+
+/// Core vs optional subject per board+grade. Unblocks onboarding subject picker.
+model BoardSubjectConfig {
+  id           String     @id @default(cuid())
+  subjectDefId String
+  isCore       Boolean    @default(true) /// Mandatory for that board+grade
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  subjectDef   SubjectDef @relation(fields: [subjectDefId], references: [id], onDelete: Cascade)
+
+  @@unique([subjectDefId])
+  @@index([subjectDefId])
+}
+
+/// RAG curriculum chunks; tag with conceptIds for retrieval. pgvector embedding column added separately if needed.
+model CurriculumChunk {
+  id         String   @id @default(cuid())
+  conceptIds String[] @default([]) /// Empty = untagged; verify for launch slice
+  content    String?  /// Chunk text for display/grounding
+  board      String?
+  subject    String?
+  grade      String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  embedding  Unsupported("vector(1536)")?
+
+  @@index([conceptIds])
 }
 
 model TopicNote {
@@ -1226,6 +1363,48 @@ model AIContentLog {
   @@index([board, grade, subject])
   @@index([createdAt])
   @@index([promptType, schemaHash])
+}
+
+model AITutorTurnLog {
+  id               String   @id @default(cuid())
+  sessionId        String
+  callType         String   // 'tutor:teach' | 'tutor:hint' | 'tutor:eval'
+  model            String
+  inputTokens      Int
+  outputTokens     Int
+  costUsd          Float
+  latencyMs        Int
+  tag              String?
+  stage            String?
+  safetyFlagged    Boolean  @default(false)
+  cached           Boolean  @default(false)
+  ragChunksUsed    String[] @default([])
+  frustrationScore Float?
+  createdAt        DateTime @default(now())
+
+  @@index([sessionId])
+  @@index([callType])
+  @@index([createdAt])
+}
+
+model SafetyEvent {
+  id          String   @id @default(cuid())
+  triggerType String   // 'PII' | 'JAILBREAK' | 'UNSAFE_OUTPUT' | 'DISTRESS'
+  sessionId   String?
+  turnId      String?
+  studentId   String
+  severity    String   // 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL'
+  /// Redacted preview of the flagged input (never raw PII). Truncated server-side.
+  inputPreview String?
+  createdAt   DateTime @default(now())
+  resolvedAt  DateTime?
+  resolution  String?
+
+  @@index([studentId])
+  @@index([triggerType])
+  @@index([severity])
+  @@index([createdAt])
+  @@index([resolvedAt])
 }
 
 model SystemSetting {
@@ -1320,6 +1499,120 @@ model StudentContentPreference {
   language   LanguageCode
   createdAt  DateTime        @default(now())
 
+  @@index([studentId])
+}
+
+model StudentConceptState {
+  id              String   @id @default(cuid())
+  studentId       String
+  conceptId       String
+  masteryScore    Float    @default(0.0)
+  nextReviewAt    DateTime?
+  lastInteraction DateTime @default(now())
+  attemptCount    Int      @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  masteryVariance Float   @default(0.1)
+  theta           Float   @default(0.0)
+  stability       Float   @default(1.0)
+  retention       Float   @default(1.0)
+
+  @@unique([studentId, conceptId])
+  @@index([studentId])
+  @@index([nextReviewAt])
+}
+
+model LearningPlan {
+  id          String            @id @default(cuid())
+  studentId   String            @unique
+  subjectId   String
+  gradeId     String
+  items       LearningPlanItem[]
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+  student     User              @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@index([studentId])
+}
+
+model LearningPlanItem {
+  id           String       @id @default(cuid())
+  planId       String
+  plan         LearningPlan @relation(fields: [planId], references: [id], onDelete: Cascade)
+  conceptId    String
+  orderIndex   Int
+  status       String       @default("pending")
+  unlockedAt   DateTime?
+  completedAt  DateTime?
+
+  @@index([planId, orderIndex])
+  @@index([planId, status])
+}
+
+model AnswerEvent {
+  id            String   @id @default(cuid())
+  studentId     String
+  sessionId     String
+  conceptId     String
+  questionId    String?
+  isCorrect     Boolean
+  studentAnswer String
+  source        String
+  createdAt     DateTime @default(now())
+
+  @@index([studentId, conceptId])
+  @@index([studentId, createdAt])
+}
+
+/// Student doubt Q&A pairs for reuse; embedding column added in production when pgvector is available.
+model DoubtKb {
+  id        String   @id @default(cuid())
+  studentId String
+  sessionId String
+  conceptId String
+  question  String
+  answer    String
+  createdAt DateTime @default(now())
+
+  @@index([studentId, conceptId])
+  @@index([conceptId])
+}
+
+model FreeTierUsage {
+  id           String   @id @default(cuid())
+  studentId    String   @unique
+  periodStart  DateTime
+  sessionsUsed Int      @default(0)
+  updatedAt    DateTime @updatedAt
+
+  @@index([studentId, periodStart])
+}
+
+model Misconception {
+  id               String   @id @default(cuid())
+  subjectId        String
+  conceptId        String
+  name             String
+  description      String
+  triggerPatterns  String[]
+  correction       String
+  createdAt        DateTime @default(now())
+
+  @@index([subjectId, conceptId])
+}
+
+model StudentMisconception {
+  id              String   @id @default(cuid())
+  studentId       String
+  misconceptionId String
+  firstDetectedAt DateTime @default(now())
+  lastSeenAt      DateTime @default(now())
+  resolvedAt      DateTime?
+  occurrenceCount Int      @default(1)
+
+  @@unique([studentId, misconceptionId])
   @@index([studentId])
 }
 

@@ -246,13 +246,20 @@ export async function rankTopics(
       score += WEIGHTS.WEAK_TOPIC_BOOST;
     }
 
-    // 2. Curriculum-next boost — this is the natural next step.
-    if (topic.topicId === firstUnstartedId) {
+    // 2. Prerequisite penalty — prior topic not yet sufficiently learned.
+    const prereqsMet = arePrerequisitesMet(topic.topicId, graph, sufficientlyMasteredIds);
+    if (!prereqsMet) {
+      signals.prerequisitePenalty = WEIGHTS.PREREQUISITE_PENALTY;
+      score += WEIGHTS.PREREQUISITE_PENALTY;
+    }
+
+    // 3. Curriculum-next boost — this is the natural next step (only when prerequisites are met).
+    if (prereqsMet && topic.topicId === firstUnstartedId) {
       signals.curriculumNextBoost = WEIGHTS.CURRICULUM_NEXT_BOOST;
       score += WEIGHTS.CURRICULUM_NEXT_BOOST;
     }
 
-    // 3. Recency penalty — penalise topics studied very recently.
+    // 4. Recency penalty — penalise topics studied very recently.
     //    Uses StudentTopicProgress.lastStudiedAt (always populated by session engine).
     //    Penalty decays linearly: full penalty at 0 h, zero at RECENCY_HOURS.
     if (progress?.lastStudiedAt) {
@@ -262,12 +269,6 @@ export async function rankTopics(
         signals.recencyPenalty = penalty;
         score += penalty;
       }
-    }
-
-    // 4. Prerequisite penalty — prior topic not yet sufficiently learned.
-    if (!arePrerequisitesMet(topic.topicId, graph, sufficientlyMasteredIds)) {
-      signals.prerequisitePenalty = WEIGHTS.PREREQUISITE_PENALTY;
-      score += WEIGHTS.PREREQUISITE_PENALTY;
     }
 
     // 5. Weak subject boost — topic is in a subject the student finds difficult.

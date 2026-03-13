@@ -15,6 +15,7 @@
  * - 2026-01-22 | copilot | created recommendation engine with multi-signal scoring
  */
 
+import { LanguageCode } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
 import { logger } from '@/lib/logger';
 import { persistRecommendationTraces, isTraceEnabled } from '@/lib/recommendations/trace';
@@ -382,7 +383,7 @@ export class RecommendationEngine {
       prisma.contentCatalog.findMany({
         where: {
           active: true,
-          OR: [{ board, grade }, hasSubjects ? { subject: { in: subjects } } : {}, { language }],
+          OR: [{ board, grade }, hasSubjects ? { subject: { in: subjects } } : {}, { language: language as LanguageCode }],
         },
         take: 100,
         orderBy: { updatedAt: 'desc' },
