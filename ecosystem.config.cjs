@@ -76,6 +76,8 @@ module.exports = {
         DATABASE_URL: process.env.DATABASE_URL,
         REDIS_URL: process.env.REDIS_URL,
         OPENAI_API_KEY: process.env.OPENAI_API_KEY,
+        ENABLE_AI_TUTOR: process.env.ENABLE_AI_TUTOR ?? 'false',
+        ENABLE_DISTRESS_DETECTION: process.env.ENABLE_DISTRESS_DETECTION ?? 'false',
       },
 
       error_file: 'logs/content-engine-worker-error.log',
@@ -107,6 +109,7 @@ module.exports = {
         NODE_ENV: 'production',
         DATABASE_URL: process.env.DATABASE_URL,
         REDIS_URL: process.env.REDIS_URL,
+        OPENAI_API_KEY: process.env.OPENAI_API_KEY,
       },
 
       error_file: 'logs/ai-tutor-scheduler-error.log',
