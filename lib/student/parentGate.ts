@@ -7,7 +7,8 @@ export interface ParentGateResult {
 }
 
 function isUnder18(dob: Date | null): boolean {
-  if (!dob) return true
+  // Null DOB = no gate; only enforce when DOB is actually collected.
+  if (!dob) return false
   const now = new Date()
   let age = now.getFullYear() - dob.getFullYear()
   const m = now.getMonth() - dob.getMonth()
@@ -19,7 +20,7 @@ function isUnder18(dob: Date | null): boolean {
  * Check if the student requires and has completed parent verification.
  * Required when: User.dateOfBirth indicates age < 18, OR User.requiresParentVerification = true.
  * Verified when: User.parentVerifiedAt is non-null.
- * If dateOfBirth is missing — treat as requiring verification (safe default).
+ * If dateOfBirth is missing — DO NOT require the gate (null DOB = no gate).
  * Never throws — returns { required: true, verified: false } on DB error.
  */
 export async function checkParentGate(studentId: string): Promise<ParentGateResult> {

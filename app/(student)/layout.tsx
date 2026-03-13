@@ -44,7 +44,7 @@ export default async function StudentLayout({ children }: { children: React.Reac
   let showParentGate = false;
   let maskedParentEmail: string | null = null;
 
-  if (!skipApi && !skipVerifyParent && userId) {
+  if (!skipApi && !skipVerifyParent && !skipOnboarding && userId) {
     const needsOtpGate = await requiresParentOTPGate(userId);
     if (needsOtpGate) {
       showParentGate = true;
@@ -65,15 +65,8 @@ export default async function StudentLayout({ children }: { children: React.Reac
 
   if (!skipApi && !showParentGate && userId) {
     const gate = await checkParentGate(userId);
-    if (!skipVerifyParent && gate.required && !gate.verified) {
+    if (!skipVerifyParent && !skipOnboarding && gate.required && !gate.verified) {
       redirect('/student/verify-parent');
-    }
-  }
-
-  if (!skipOnboarding && !skipApi && userId) {
-    const profile = await checkProfileCompleteness(userId);
-    if (!profile.complete) {
-      redirect(`/student/onboarding?missing=${profile.missingFields.join(',')}`);
     }
   }
 

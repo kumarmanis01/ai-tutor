@@ -3,7 +3,8 @@ import { prisma } from '@/lib/prisma'
 export type AccountStatus = 'ACTIVE' | 'PENDING_PARENT_VERIFY' | 'SUSPENDED' | 'DEACTIVATED'
 
 function isUnder13(dob: Date | null | undefined): boolean {
-  if (!dob) return true
+  // Null DOB = no gate; only enforce under-13 rule when DOB is known.
+  if (!dob) return false
   const today = new Date()
   let age = today.getFullYear() - dob.getFullYear()
   const m = today.getMonth() - dob.getMonth()
