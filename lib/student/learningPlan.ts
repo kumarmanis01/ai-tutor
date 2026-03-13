@@ -54,17 +54,21 @@ export async function buildLearningPlan(
       where: { chapterId: { in: chapterIds } },
       select: { chapterId: true, weightMarks: true },
     })
-    const weightByChapter = new Map(weights.map((w) => [w.chapterId, w.weightMarks]))
+    const weightByChapter = new Map<string, number>(
+      weights.map((w) => [w.chapterId, w.weightMarks] as [string, number]),
+    )
 
     const states = await prisma.studentConceptState.findMany({
       where: { studentId, conceptId: { in: concepts.map((c) => c.id) } },
       select: { conceptId: true, masteryScore: true },
     })
-    const masteryByConcept = new Map(states.map((s) => [s.conceptId, s.masteryScore]))
+    const masteryByConcept = new Map<string, number>(
+      states.map((s) => [s.conceptId, s.masteryScore] as [string, number]),
+    )
 
     const scored = concepts.map((concept) => {
       const chapterId = concept.topic?.chapter?.id
-      const chapterWeight = chapterId ? (weightByChapter.get(chapterId) ?? 1) : 1
+      const chapterWeight = chapterId ? weightByChapter.get(chapterId) ?? 1 : 1
       const mastery = masteryByConcept.get(concept.id) ?? 0
       const bloom = concept.bloomLevel
         ? (BLOOM_MULTIPLIER[concept.bloomLevel.toLowerCase()] ?? DEFAULT_BLOOM_MULTIPLIER)

@@ -5,9 +5,9 @@
  * propagated so they cannot break the session flow.
  */
 
-import { Prisma } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
 import { logger } from '@/lib/logger';
+import type { Prisma } from '@prisma/client';
 
 type SessionEventType =
   | 'SESSION_STARTED'
@@ -35,7 +35,7 @@ export async function recordSessionEvent(
       data: {
         sessionId: payload.sessionId,
         eventType: payload.eventType,
-        metadata: (payload.metadata ?? undefined) as Prisma.JsonObject | undefined,
+        metadata: (payload.metadata ?? undefined) as Prisma.InputJsonValue | undefined,
       },
     });
 
@@ -65,7 +65,7 @@ export async function recordSessionEvents(
           data: {
             sessionId: e.sessionId,
             eventType: e.eventType,
-            metadata: (e.metadata ?? undefined) as Prisma.JsonObject | undefined,
+            metadata: (e.metadata ?? undefined) as Prisma.InputJsonValue | undefined,
           },
         }),
       ),

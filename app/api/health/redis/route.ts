@@ -9,7 +9,6 @@ import { getRedis } from '@/lib/redis'
  * Always returns 200 with { status, latencyMs }.
  */
 export async function GET() {
-  const start = Date.now()
   let latencyMs = -1
   let status: 'ok' | 'degraded' = 'degraded'
 

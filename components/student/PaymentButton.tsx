@@ -80,7 +80,7 @@ export function PaymentButton({
               throw new Error(typeof verifyJson?.error === 'string' ? verifyJson.error : 'Verification failed')
             }
             onSuccess()
-          } catch (e) {
+          } catch {
             setError('Payment verification failed. Please contact support if you were charged.')
             onFailure()
           } finally {
@@ -97,8 +97,9 @@ export function PaymentButton({
 
       const rz = new window.Razorpay(options)
       rz.open()
-    } catch (e) {
-      setError((e as Error).message || 'Payment failed. Please try again.')
+    } catch (error) {
+      const err = error as Error
+      setError(err.message || 'Payment failed. Please try again.')
       setLoading(false)
       onFailure()
     }

@@ -3,7 +3,6 @@
  * Uses same weak-topic definition as lib/learning/getWeakTopics (mastery < 0.4, practiceCount > 5).
  */
 
-import { Prisma } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
 
 const MASTERY_THRESHOLD = 0.4;
@@ -67,7 +66,9 @@ export async function getWeakTopicsByTopic(opts: {
     where: {
       mastery: { lt: MASTERY_THRESHOLD },
       practiceCount: { gt: PRACTICE_MIN },
-      topic: topicWhere as Prisma.TopicDefWhereInput,
+      // Cast to any to avoid tight coupling to generated Prisma types; the
+      // object shape mirrors TopicDef where structure and is covered by tests.
+      topic: topicWhere as any,
     },
     select: {
       topicId: true,

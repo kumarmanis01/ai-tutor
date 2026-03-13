@@ -73,8 +73,12 @@ export async function computeExamReadiness(
       }),
     ])
 
-    const masteryByConcept = new Map(states.map((s) => [s.conceptId, s.masteryScore]))
-    const weightByChapter = new Map(weights.map((w) => [w.chapterId, w.weightMarks]))
+    const masteryByConcept = new Map<string, number>(
+      states.map((s) => [s.conceptId, s.masteryScore] as [string, number]),
+    )
+    const weightByChapter = new Map<string, number>(
+      weights.map((w) => [w.chapterId, w.weightMarks] as [string, number]),
+    )
 
     const totalMarks = weights.reduce((sum, w) => sum + w.weightMarks, 0)
     if (totalMarks <= 0) {
@@ -104,8 +108,9 @@ export async function computeExamReadiness(
 
     for (const [chapterId, { chapterName, conceptIds: cIds }] of conceptsByChapter) {
       const weightMarks = weightByChapter.get(chapterId) ?? 0
-      const masteries = cIds.map((cid) => masteryByConcept.get(cid) ?? BASELINE_MASTERY)
-      const avgMastery = masteries.length > 0 ? masteries.reduce((a, b) => a + b, 0) / masteries.length : 0
+      const masteries: number[] = cIds.map((cid) => masteryByConcept.get(cid) ?? BASELINE_MASTERY)
+      const avgMastery =
+        masteries.length > 0 ? masteries.reduce((a: number, b: number) => a + b, 0) / masteries.length : 0
       const weightedContribution = computeWeightedContribution(avgMastery, weightMarks, totalMarks)
       scoreSum += weightedContribution
       chapterBreakdown.push({
@@ -117,7 +122,10 @@ export async function computeExamReadiness(
     }
 
     const score = Math.round(scoreSum * 10) / 10
-    const conceptsCovered = concepts.filter((c) => (masteryByConcept.get(c.id) ?? BASELINE_MASTERY) > 0.4).length
+    const conceptsCovered = concepts.filter((c) => {
+      const mastery = masteryByConcept.get(c.id) ?? BASELINE_MASTERY
+      return mastery > 0.4
+    }).length
 
     return {
       score,

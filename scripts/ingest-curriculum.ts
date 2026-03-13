@@ -15,9 +15,7 @@ const BATCH_SIZE = 20
 async function main() {
   console.log('[ingest] Starting curriculum chunk ingestion...')
 
-  const chunks = (await prisma.$queryRawUnsafe<
-    { id: string; content: string | null }[]
-  >(
+  const chunks = (await prisma.$queryRawUnsafe(
     `
       SELECT id, content
       FROM "CurriculumChunk"
