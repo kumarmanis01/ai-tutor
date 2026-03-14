@@ -30,6 +30,7 @@ const defaultValues: OnboardingValues = {
   board: null,
   preferred_language: null,
   subjects: undefined,
+  parent_email: null,
   parent_phone: null,
   parent_otp: null,
 };
@@ -66,6 +67,7 @@ export function OnboardingProvider({ children, service }: { children: React.Reac
           board: profile.board ?? null,
           preferred_language: profile.language ?? null,
           subjects: profile.subjects ?? undefined,
+          parent_email: profile.parentEmail ?? null,
           parent_phone: (profile as any).parentPhone ?? null,
           parent_otp: null,
         });
@@ -77,13 +79,17 @@ export function OnboardingProvider({ children, service }: { children: React.Reac
         // Trigger modal when any of the core profile fields are missing
         // (board, grade, language, subjects) OR when firstLogin is true.
         const profileWithFirstLogin = profile as typeof profile & { firstLogin?: boolean };
+        const ageNum = (profile as any).age;
+        const under18 = ageNum != null && Number(ageNum) >= 1 && Number(ageNum) < 18;
+        const needsParentEmail = under18 && !(profile as any).parentEmail?.trim?.();
         const needsProfile =
           !profile.board ||
           !profile.grade ||
           !profile.language ||
           (profile as any).age == null ||
           !profile.subjects ||
-          profile.subjects.length === 0;
+          profile.subjects.length === 0 ||
+          needsParentEmail;
         const isFirstLogin = profileWithFirstLogin.firstLogin === true;
 
         const needsParentVerification = (profile as any)?.accountStatus === 'pending_parent_verification';
@@ -116,6 +122,8 @@ export function OnboardingProvider({ children, service }: { children: React.Reac
   const open = useCallback(
     async (opts?: { force?: boolean; allowDismiss?: boolean; afterSave?: 'dashboard' | 'stay' }) => {
       const force = opts?.force === true;
+      const under18 = values.age != null && Number(values.age) >= 1 && Number(values.age) < 18;
+      const needsParentEmail = under18 && !values.parent_email?.trim?.();
       const shouldHydrate =
         force ||
         !values.name ||
@@ -124,7 +132,8 @@ export function OnboardingProvider({ children, service }: { children: React.Reac
         !values.board ||
         values.age == null ||
         !values.subjects ||
-        values.subjects.length === 0;
+        values.subjects.length === 0 ||
+        needsParentEmail;
 
       if (shouldHydrate) {
         await hydrate();
@@ -138,13 +147,16 @@ export function OnboardingProvider({ children, service }: { children: React.Reac
   );
 
   // Profile is required (non-dismissable) when core fields are missing
+  const under18 = values.age != null && Number(values.age) >= 1 && Number(values.age) < 18;
+  const needsParentEmail = under18 && !values.parent_email?.trim?.();
   const needsProfileValues =
     !values.board ||
     !values.class_grade ||
     !values.preferred_language ||
     values.age == null ||
     !values.subjects ||
-    values.subjects.length === 0;
+    values.subjects.length === 0 ||
+    needsParentEmail;
 
   const isRequired = !!session?.user && (needsProfileValues || (values.age != null && Number(values.age) < 13 && !parentVerified));
 
@@ -169,6 +181,9 @@ export function OnboardingProvider({ children, service }: { children: React.Reac
     if (!v.preferred_language || String(v.preferred_language).trim() === '') errs.preferred_language = 'Preferred language is required';
     if (!v.subjects || v.subjects.length === 0) errs.subjects = 'Select at least 1 subject';
     if (v.subjects && v.subjects.length > 6) errs.subjects = 'You can select up to 6 subjects';
+    if (v.age != null && Number(v.age) >= 1 && Number(v.age) < 18 && (!v.parent_email || !String(v.parent_email).trim() || !v.parent_email.includes('@'))) {
+      errs.parent_email = 'Parent or guardian email is required for students under 18.';
+    }
     if (v.age != null && Number(v.age) < 13 && !parentVerified) {
       if (!v.parent_phone || !String(v.parent_phone).trim()) errs.parent_phone = 'Parent phone is required for under-13';
       // OTP is verified via dedicated endpoint, but we validate presence here to block bypass.

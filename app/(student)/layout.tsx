@@ -26,7 +26,7 @@ export const viewport = {
  *   (/dashboard/*, /rooms/*, /profile, /parent, /learn/*)
  * - Fetches session server-side; redirects to / if unauthenticated
  * - Profile completeness guard: redirects to /student/onboarding when required fields missing
- * - Parent verification gate (under-18): redirects to /student/verify-parent when required and not verified
+ * - Parent verification (under-13/under-18): shown as modal via ParentOTPGate when required
  * - Renders StudentNav — the persistent student navigation bar
  * - Must NOT render the public Navbar
  */
@@ -50,7 +50,9 @@ export default async function StudentLayout({ children }: { children: React.Reac
 
   if (!skipApi && !skipVerifyParent && !skipOnboarding && userId && onboardingComplete) {
     const needsOtpGate = await requiresParentOTPGate(userId);
-    if (needsOtpGate) {
+    const gate = await checkParentGate(userId);
+    const needsParentVerification = needsOtpGate || (gate.required && !gate.verified);
+    if (needsParentVerification) {
       showParentGate = true;
       const parentEmail = (session.user as { parentEmail?: string | null }).parentEmail ?? null;
       if (parentEmail) {
@@ -67,13 +69,8 @@ export default async function StudentLayout({ children }: { children: React.Reac
     }
   }
 
-  if (!skipApi && !showParentGate && userId && onboardingComplete) {
-    const gate = await checkParentGate(userId);
-    if (!skipVerifyParent && !skipOnboarding && gate.required && !gate.verified) {
-      redirect('/student/verify-parent');
-    }
-  }
-
+  // Parent verification is shown as modal (ParentOTPGate); do not redirect to
+  // /student/verify-parent — that page redirects to /dashboard and causes a loop.
   const studentName = (session.user as { name?: string })?.name ?? '';
 
   return (
