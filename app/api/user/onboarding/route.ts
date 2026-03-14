@@ -150,7 +150,8 @@ export async function POST(req: NextRequest) {
       }
 
       // grade is immutable after first save — never accept from client
-      if (existingById?.grade != null) {
+      const gradeRow = existingById ?? await prisma.user.findUnique({ where: { id: userId }, select: { grade: true } }).catch(() => null);
+      if (gradeRow?.grade != null) {
         delete updates.grade
       }
 
