@@ -3,7 +3,6 @@
 import React from 'react';
 import { useRouter } from 'next/navigation';
 import type { ProfileMissingField } from '@/lib/student/profileGuard';
-import ProgressBar, { calculateProgress } from '@/components/ProgressBar';
 
 interface ProfileCompletionGateProps {
   missingFields: ProfileMissingField[];
@@ -11,7 +10,7 @@ interface ProfileCompletionGateProps {
 
 const GATE_FIELDS: { key: ProfileMissingField; label: string }[] = [
   { key: 'board', label: 'Board' },
-  { key: 'grade', label: 'Grade' },
+  { key: 'grade', label: 'Class' },
   { key: 'language', label: 'Medium' },
   { key: 'subjects', label: 'Subjects' },
 ];
@@ -21,57 +20,64 @@ export default function ProfileCompletionGate({ missingFields }: ProfileCompleti
 
   const items = GATE_FIELDS.map((f) => ({ ...f, filled: !missingFields.includes(f.key) }));
   const completedCount = items.filter((i) => i.filled).length;
-  const progress = calculateProgress(completedCount, GATE_FIELDS.length);
+  const total = GATE_FIELDS.length;
 
   return (
-    <div className="fixed inset-0 z-[9998] flex items-center justify-center bg-black/70 px-4">
-      <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl">
-        <div className="mb-4 flex items-center gap-2">
-          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-amber-100 text-amber-600">
-            <span className="text-lg">📋</span>
+    <div className="fixed inset-0 z-[9000] flex flex-col bg-white dark:bg-gray-950">
+      <div className="flex flex-1 flex-col items-center justify-center px-6 py-10">
+        <div className="w-full max-w-sm">
+          <h1 className="mb-1 text-2xl font-bold text-gray-900 dark:text-gray-100">
+            Complete your profile
+          </h1>
+          <p className="mb-6 text-sm text-gray-500 dark:text-gray-400">
+            We need a few details before you can start learning.
+          </p>
+
+          {/* Progress bar */}
+          <div className="mb-1 flex justify-between text-xs text-gray-500 dark:text-gray-400">
+            <span>{completedCount} of {total} complete</span>
           </div>
-          <h1 className="text-lg font-semibold text-gray-900">Complete your profile</h1>
+          <div className="mb-6 h-2 w-full overflow-hidden rounded-full bg-gray-100 dark:bg-gray-800">
+            <div
+              className="h-full rounded-full bg-indigo-500 transition-all"
+              style={{ width: `${Math.round((completedCount / total) * 100)}%` }}
+            />
+          </div>
+
+          {/* Checklist */}
+          <ul className="mb-8 space-y-3">
+            {items.map((item) => (
+              <li key={item.key} className="flex items-center gap-3 text-sm">
+                <span
+                  className={`flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full text-xs font-bold ${
+                    item.filled
+                      ? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900 dark:text-emerald-400'
+                      : 'bg-gray-100 text-gray-400 dark:bg-gray-800 dark:text-gray-500'
+                  }`}
+                >
+                  {item.filled ? '✓' : '○'}
+                </span>
+                <span
+                  className={
+                    item.filled
+                      ? 'text-gray-500 dark:text-gray-400'
+                      : 'font-medium text-gray-900 dark:text-gray-100'
+                  }
+                >
+                  {item.label}
+                </span>
+              </li>
+            ))}
+          </ul>
+
+          <button
+            type="button"
+            onClick={() => router.push('/student/onboarding')}
+            className="min-h-[44px] w-full rounded-lg bg-indigo-600 px-4 py-3 text-sm font-semibold text-white shadow-sm hover:bg-indigo-700 dark:hover:bg-indigo-500"
+          >
+            Complete your profile
+          </button>
         </div>
-
-        <p className="mb-4 text-sm text-gray-600">
-          To start learning, please fill in your academic details.
-        </p>
-
-        {/* Progress */}
-        <div className="mb-1 flex items-center justify-between text-xs text-gray-500">
-          <span>{completedCount} of {GATE_FIELDS.length} complete</span>
-        </div>
-        <div className="mb-5">
-          <ProgressBar progress={progress} size="sm" showLabel={false} variant="warning" />
-        </div>
-
-        {/* Checklist */}
-        <ul className="mb-6 space-y-2">
-          {items.map((item) => (
-            <li key={item.key} className="flex items-center gap-3 text-sm">
-              <span
-                className={`flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full text-xs font-bold ${
-                  item.filled
-                    ? 'bg-emerald-100 text-emerald-600'
-                    : 'bg-gray-100 text-gray-400'
-                }`}
-              >
-                {item.filled ? '✓' : '✗'}
-              </span>
-              <span className={item.filled ? 'text-gray-700' : 'font-medium text-gray-900'}>
-                {item.label}
-              </span>
-            </li>
-          ))}
-        </ul>
-
-        <button
-          type="button"
-          onClick={() => router.push('/profile')}
-          className="w-full rounded-lg bg-amber-500 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-amber-600"
-        >
-          Complete your profile
-        </button>
       </div>
     </div>
   );
