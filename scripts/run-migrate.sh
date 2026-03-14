@@ -27,15 +27,27 @@ MIGRATE_LOG="$LOG_DIR/migrate-$(date -u +%Y%m%dT%H%M%SZ).log"
 
 ROOT_DIR=$(cd "$(dirname "$0")/.." && pwd)
 ENV_FILE="$ROOT_DIR/.env.production"
-# Only load .env.production if DATABASE_URL is not already set (e.g., by docker-compose)
+# Only load .env.production if DATABASE_URL is not already set (e.g., by deploy-and-run.sh or docker-compose)
 if [ -f "$ENV_FILE" ] && [ -z "$DATABASE_URL" ]; then
   echo "[run-migrate] loading $ENV_FILE"
-  # export all variables for the script (POSIX-friendly)
-  # normalize line endings in the env file (may have CRLF on Windows hosts)
-  sed -i 's/\r$//' "$ENV_FILE" || true
-  set -a
-  . "$ENV_FILE"
-  set +a
+  # Normalize line endings (CRLF -> LF)
+  sed -i 's/\r$//' "$ENV_FILE" 2>/dev/null || true
+  # Line-by-line load so unquoted values (e.g. DATABASE_URL=postgresql://...) work
+  while IFS= read -r line || [ -n "$line" ]; do
+    line="${line#"${line%%[![:space:]]*}"}"
+    line="${line%"${line##*[![:space:]]}"}"
+    [ -z "$line" ] && continue
+    case "$line" in \#*) continue ;; esac
+    case "$line" in
+      [A-Za-z_]*=*)
+        key="${line%%=*}"; key="${key% }"
+        value="${line#*=}"; value="${value# }"
+        case "$value" in \"*) value="${value#\"}"; value="${value%\"}" ;; esac
+        case "$value" in \'*) value="${value#\'}"; value="${value%\'}" ;; esac
+        export "$key=$value"
+        ;;
+    esac
+  done < "$ENV_FILE"
 fi
 
 # Determine DB host/port: prefer explicit POSTGRES_HOST/POSTGRES_PORT,

@@ -87,13 +87,38 @@ else
   sed -i 's/\r$//' "${REPO_ROOT}/.env.production" || true
 fi
 
-set -o allexport; source "${REPO_ROOT}/.env.production"; set +o allexport
+# Load .env.production line-by-line so unquoted values (e.g. DATABASE_URL=postgresql://...)
+# are set correctly; no sourcing so # and $ inside values are preserved.
+while IFS= read -r line || [ -n "$line" ]; do
+  line="${line%"${line##*[![:space:]]}"}"
+  line="${line#"${line%%[![:space:]]*}"}"
+  [ -z "$line" ] && continue
+  case "$line" in
+    \#*) continue ;;
+    [A-Za-z_]*=*)
+      key="${line%%=*}"
+      key="${key% }"
+      value="${line#*=}"
+      value="${value# }"
+      # Remove surrounding single or double quotes
+      case "$value" in
+        \"*) value="${value#\"}"; value="${value%\"}" ;;
+        \'*) value="${value#\'}"; value="${value%\'}" ;;
+      esac
+      export "$key=$value"
+      ;;
+  esac
+done < "${REPO_ROOT}/.env.production"
 
 echo "DATABASE_URL set: $([ -n "${DATABASE_URL:-}" ] && echo 'YES' || echo 'NO')"
 echo "REDIS_URL set:    $([ -n "${REDIS_URL:-}" ] && echo 'YES' || echo 'NO')"
 
 # Fail fast if DATABASE_URL points to localhost (never deploy against local DB)
-if echo "${DATABASE_URL:-}" | grep -qiE 'localhost|127\.0\.0\.1'; then
+if [ -z "${DATABASE_URL:-}" ]; then
+  echo "FATAL: DATABASE_URL not set after loading .env.production." >&2
+  exit 1
+fi
+if echo "${DATABASE_URL}" | grep -qiE 'localhost|127\.0\.0\.1'; then
   echo "FATAL: DATABASE_URL points to localhost. Use Neon production URL." >&2
   exit 1
 fi
