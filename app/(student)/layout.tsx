@@ -9,7 +9,7 @@ import StudentNav from './StudentNav';
 import { requireActiveSession } from '@/lib/auth';
 import { redirect } from 'next/navigation';
 import { headers } from 'next/headers';
-import { checkProfileCompleteness } from '@/lib/student/profileGuard';
+import { checkProfileCompleteness, isProfileComplete, EMPTY_PROFILE_DATA, type ProfileMissingField } from '@/lib/student/profileGuard';
 import { checkParentGate } from '@/lib/student/parentGate';
 import { requiresParentOTPGate } from '@/lib/student/accountStatus';
 import StudentLayoutShell from '@/components/student/StudentLayoutShell';
@@ -42,15 +42,17 @@ export default async function StudentLayout({ children }: { children: React.Reac
   const skipOnboarding = pathname.startsWith('/student/onboarding');
 
   // Onboarding first, then parent verification: only run parent gate after profile is complete.
-  const profile = userId ? await checkProfileCompleteness(userId) : { complete: false, missingFields: [] as const };
+  const profile = userId ? await checkProfileCompleteness(userId) : { complete: false, missingFields: [] as const, data: EMPTY_PROFILE_DATA };
   const onboardingComplete = profile.complete;
 
   let showParentGate = false;
   let maskedParentEmail: string | null = null;
 
   if (!skipApi && !skipVerifyParent && !skipOnboarding && userId && onboardingComplete) {
-    const needsOtpGate = await requiresParentOTPGate(userId);
-    const gate = await checkParentGate(userId);
+    const [needsOtpGate, gate] = await Promise.all([
+      requiresParentOTPGate(userId),
+      checkParentGate(userId),
+    ]);
     const needsParentVerification = needsOtpGate || (gate.required && !gate.verified);
     if (needsParentVerification) {
       showParentGate = true;
@@ -69,6 +71,14 @@ export default async function StudentLayout({ children }: { children: React.Reac
     }
   }
 
+  // Profile completion gate: shown as overlay when board/grade/language/subjects are missing.
+  // Skipped on the same paths as the parent gate to avoid blocking API and onboarding routes.
+  const showProfileGate =
+    !skipApi &&
+    !skipVerifyParent &&
+    !skipOnboarding &&
+    !isProfileComplete(profile.data);
+
   // Parent verification is shown as modal (ParentOTPGate); do not redirect to
   // /student/verify-parent — that page redirects to /dashboard and causes a loop.
   const studentName = (session.user as { name?: string })?.name ?? '';
@@ -85,7 +95,12 @@ export default async function StudentLayout({ children }: { children: React.Reac
             <AppModalClient />
             <StudentNav studentName={studentName} />
             <div className="pt-14">
-              <StudentLayoutShell showParentGate={showParentGate} maskedParentEmail={maskedParentEmail}>
+              <StudentLayoutShell
+                showParentGate={showParentGate}
+                maskedParentEmail={maskedParentEmail}
+                showProfileGate={showProfileGate}
+                missingProfileFields={profile.missingFields as ProfileMissingField[]}
+              >
                 {children}
               </StudentLayoutShell>
             </div>

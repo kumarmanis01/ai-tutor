@@ -5,6 +5,7 @@ import { logger } from '@/lib/logger'
 import { formatErrorForResponse } from '@/lib/errorResponse'
 import { checkFreeTierCap, incrementFreeTierUsage } from '@/lib/freemium'
 import { isAiTutorEnabledForStudent, isAiTutorGloballyEnabled } from '@/lib/features/aiTutor'
+import { hasDiagnosticForSubject } from '@/lib/student/diagnosticGuard'
 
 export const dynamic = 'force-dynamic'
 
@@ -43,6 +44,14 @@ export async function POST(req: Request) {
     }
 
     const { conceptId, subjectId } = parseResult.data
+
+    // Diagnostic gate — student must have completed the IRT bootstrap for this subject.
+    const hasDiag = await hasDiagnosticForSubject(userId, subjectId)
+    if (!hasDiag) {
+      res = NextResponse.json({ code: 'DIAGNOSTIC_REQUIRED', subjectId }, { status: 403 })
+      logger.logAPI(req, res, { className: 'TutorSessionStartAPI', methodName: 'POST' }, start)
+      return res
+    }
 
     // Free tier enforcement — never throws.
     const freeTierUsage = await checkFreeTierCap(userId)

@@ -26,6 +26,7 @@
 
 export interface NudgeContext {
   daysSinceLastSession: number;      // 0 = today, 1 = yesterday, etc.
+  lastSessionDate: Date | null;      // null for users who have never had a session
   pendingHomeworkCount: number;
   sessionsThisWeek: number;
   weeklyGoalSessions: number;        // student's chosen weekly goal
@@ -37,6 +38,11 @@ export interface NudgeContext {
  * Returns a plain-language nudge message, or null if no nudge is appropriate.
  */
 export function getNudgeMessage(ctx: NudgeContext): string | null {
+  // Never show nudge to users who have never had a session
+  if (!ctx.lastSessionDate || ctx.daysSinceLastSession >= 90) {
+    return null;
+  }
+
   // Priority 1: Absent 2+ days — highest priority; bring student back
   if (ctx.daysSinceLastSession >= 2) {
     return "It's been a couple of days. Your tutor is ready when you are.";

@@ -149,15 +149,10 @@ export async function POST(req: NextRequest) {
         userId = resolvedUserId as string;
       }
 
-      // Grade immutability: once set, student cannot change grade (admin only).
-      // (Admin update is handled via /api/admin/users/[id].)
-      if (existingById?.grade && grade && String(existingById.grade) !== String(grade)) {
-        res = NextResponse.json(
-          { error: 'grade_locked', message: 'Grade cannot be changed without admin approval.', fieldErrors: { class_grade: 'Grade is locked.' } },
-          { status: 403 },
-        );
-        logger.logAPI(req, res, { className: 'UserOnboardingAPI', methodName: 'POST' }, start);
-        return res;
+      // grade is immutable after first save — never accept from client
+      const gradeRow = existingById ?? await prisma.user.findUnique({ where: { id: userId }, select: { grade: true } }).catch(() => null);
+      if (gradeRow?.grade != null) {
+        delete updates.grade
       }
 
       updatedUser = await prisma.user.update({ where: { id: userId }, data: updates });
