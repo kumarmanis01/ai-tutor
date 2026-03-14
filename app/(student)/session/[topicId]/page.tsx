@@ -28,6 +28,7 @@ import { redirect } from 'next/navigation';
 import { prisma } from '@/lib/prisma';
 import { getServerSessionForHandlers } from '@/lib/session';
 import { SessionContainer } from '@/components/session/SessionContainer';
+import { hasDiagnosticForSubject } from '@/lib/student/diagnosticGuard';
 
 interface Props {
   params: Promise<{ topicId: string }>;
@@ -49,19 +50,31 @@ export default async function SessionPage({ params, searchParams }: Props) {
     redirect(`/auth/signin?callbackUrl=/session/${id}`);
   }
 
-  const session = await prisma.structuredSession.findUnique({
-    where: { id },
-    select: { topicId: true },
-  });
+  // Look up both in parallel; they are mutually exclusive.
+  const [legacySession, topic] = await Promise.all([
+    prisma.structuredSession.findUnique({ where: { id }, select: { topicId: true } }),
+    prisma.topicDef.findUnique({
+      where: { id },
+      select: { chapter: { select: { subjectId: true } } },
+    }),
+  ]);
 
-  if (session) {
-    // Legacy sessionId — redirect to the canonical topicId URL
-    redirect(`/session/${session.topicId}`);
+  if (legacySession) {
+    // Legacy sessionId — redirect to the canonical topicId URL.
+    // The diagnostic guard will run again on the redirected request.
+    redirect(`/session/${legacySession.topicId}`);
   }
 
   // ── Canonical topicId path ────────────────────────────────────────────────
   //
-  // id is a topicId. Pass it directly to SessionContainer as a prop
+  // id is a topicId. Check the diagnostic gate before rendering.
+  const subjectId = topic?.chapter?.subjectId;
+  if (subjectId) {
+    const hasDiag = await hasDiagnosticForSubject(auth.user.id, subjectId);
+    if (!hasDiag) redirect(`/student/diagnostic/${subjectId}`);
+  }
+
+  // Pass topicId directly to SessionContainer as a prop
   // (no useParams/useSearchParams needed in the client component).
   const reasonLabel = reason ?? null;
   const estimatedTimeMin = time ? Number(time) : undefined;
