@@ -25,6 +25,7 @@ per paid student. Price point: ₹99/month.
 5. Every async widget handles error/loading/empty states independently.
 6. grade and board are immutable after first save — strip from all PATCH handlers.
 7. ENABLE_DISTRESS_DETECTION stays false until explicitly instructed otherwise.
+8. Prisma is locked to v6.19.1 — never upgrade to v7. Run `npm install prisma@6.19.1 @prisma/client@6.19.1 --save-exact` if Prisma version drifts.
 
 ## Gate after every task
 npm run build:workers && npm run build && npm test
