@@ -1,10 +1,29 @@
 import { prisma } from '@/lib/prisma'
 
-export type ProfileMissingField = 'grade' | 'board' | 'subjects' | 'name' | 'age' | 'parent_email' | 'parent_phone'
+export type ProfileMissingField = 'grade' | 'board' | 'subjects' | 'language' | 'name' | 'age' | 'parent_email' | 'parent_phone'
+
+export interface StudentProfileData {
+  board: string | null
+  grade: string | null
+  language: string | null
+  subjects: unknown[]
+}
 
 export interface ProfileCompletenessResult {
   complete: boolean
   missingFields: ProfileMissingField[]
+  data: StudentProfileData
+}
+
+/**
+ * Pure function: returns true only when all four academic profile fields are filled.
+ */
+export function isProfileComplete(user: StudentProfileData): boolean {
+  if (!user.board || String(user.board).trim() === '') return false
+  if (!user.grade || String(user.grade).trim() === '') return false
+  if (!user.language || String(user.language).trim() === '') return false
+  if (!Array.isArray(user.subjects) || user.subjects.length === 0) return false
+  return true
 }
 
 /**
@@ -16,7 +35,8 @@ export interface ProfileCompletenessResult {
  * Returns complete: false on any DB error — never throws.
  */
 export async function checkProfileCompleteness(studentId: string): Promise<ProfileCompletenessResult> {
-  const empty: ProfileCompletenessResult = { complete: false, missingFields: ['name', 'grade', 'board', 'subjects', 'age'] }
+  const emptyData: StudentProfileData = { board: null, grade: null, language: null, subjects: [] }
+  const empty: ProfileCompletenessResult = { complete: false, missingFields: ['name', 'grade', 'board', 'subjects', 'language', 'age'], data: emptyData }
   try {
     const user = await prisma.user.findUnique({
       where: { id: studentId },
@@ -25,6 +45,7 @@ export async function checkProfileCompleteness(studentId: string): Promise<Profi
         grade: true,
         board: true,
         subjects: true,
+        language: true,
         age: true,
         parentEmail: true,
         parentPhone: true,
@@ -54,6 +75,10 @@ export async function checkProfileCompleteness(studentId: string): Promise<Profi
       missingFields.push('subjects')
     }
 
+    if (!user.language || String(user.language).trim() === '') {
+      missingFields.push('language')
+    }
+
     const ageNum = user.age != null ? Number(user.age) : NaN
     if (!Number.isFinite(ageNum) || ageNum < 1 || ageNum > 120) {
       missingFields.push('age')
@@ -76,6 +101,12 @@ export async function checkProfileCompleteness(studentId: string): Promise<Profi
     return {
       complete: missingFields.length === 0,
       missingFields,
+      data: {
+        board: user.board ?? null,
+        grade: user.grade ?? null,
+        language: user.language ? String(user.language) : null,
+        subjects: user.subjects,
+      },
     }
   } catch {
     return empty
