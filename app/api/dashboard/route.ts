@@ -210,6 +210,7 @@ export async function GET(_req: Request) {
 
     const nudgeMessage = getNudgeMessage({
       daysSinceLastSession: daysSince,
+      lastSessionDate,
       pendingHomeworkCount: pendingHomeworkRaw.length,
       sessionsThisWeek: weeklySessionsRaw.length,
       weeklyGoalSessions: weeklyGoal,

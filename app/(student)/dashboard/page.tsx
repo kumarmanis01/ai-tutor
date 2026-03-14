@@ -308,6 +308,7 @@ export default async function StudentHomeDashboardPage() {
 
   const nudgeMessage = getNudgeMessage({
     daysSinceLastSession: daysSince,
+    lastSessionDate,
     pendingHomeworkCount: pendingHomeworkRaw.length,
     sessionsThisWeek: weeklySessionsRaw.length,
     weeklyGoalSessions: weeklyGoal,

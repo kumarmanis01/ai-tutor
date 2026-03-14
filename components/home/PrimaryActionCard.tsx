@@ -272,13 +272,41 @@ function HomeworkState({ homework }: { homework: HomeworkInfo }) {
 
 // ── Empty / First-time Start State ────────────────────────────────────────────
 
+// New-user empty state — shown when recommendation is null and no active session
 function EmptyStartState() {
   return (
-    <article className="rounded-2xl border border-dashed border-violet-300 bg-violet-50 p-6 text-center">
-      <p className="text-sm font-medium text-violet-700">Ready to start?</p>
-      <p className="mt-1 text-sm text-gray-500">
-        Your tutor is picking your first topic. Refresh in a moment.
+    <div className="rounded-xl border border-dashed border-gray-200 bg-gray-50 dark:bg-gray-900 dark:border-gray-700 px-4 py-5">
+      <p className="text-sm font-medium text-gray-900 dark:text-gray-100 mb-1">
+        Let&apos;s get you started
       </p>
-    </article>
+      <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">
+        Complete these steps to begin learning with Vidya.
+      </p>
+
+      <div className="space-y-2 mb-4">
+        <div className="flex items-center gap-2 text-sm text-gray-500">
+          <span className="text-green-600">✓</span> Create your account
+        </div>
+        <div className="flex items-center gap-2 text-sm text-gray-500">
+          <span className="text-green-600">✓</span> Complete your profile
+        </div>
+        <div className="flex items-center gap-2 text-sm font-medium text-indigo-700 dark:text-indigo-400">
+          <span className="text-indigo-500">→</span> Take your diagnostic test
+        </div>
+        <div className="flex items-center gap-2 text-sm text-gray-300 dark:text-gray-600">
+          <span>○</span> Start your first session
+        </div>
+      </div>
+
+      <a
+        href="/learn"
+        className="block w-full rounded-lg bg-indigo-600 px-4 py-3 text-center text-sm font-medium text-white"
+      >
+        Take diagnostic — Mathematics
+      </a>
+      <p className="mt-2 text-center text-xs text-gray-400">
+        ~15 minutes · tells Vidya where to start
+      </p>
+    </div>
   );
 }
