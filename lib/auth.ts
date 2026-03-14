@@ -371,17 +371,20 @@ export const authOptions: any = {
         try {
           const dbUser = await prisma.user.findUnique({
             where: { email: token.email },
-            select: { role: true, grade: true, board: true, language: true, subjects: true, accountStatus: true },
+            select: { role: true, grade: true, board: true, language: true, subjects: true, accountStatus: true, age: true },
           });
           if (dbUser) {
             token.role = dbUser.role;
             token.accountStatus = (dbUser as { accountStatus?: string }).accountStatus ?? 'active';
+            const ageNum = dbUser.age != null ? Number(dbUser.age) : NaN;
+            const hasValidAge = Number.isFinite(ageNum) && ageNum >= 1 && ageNum <= 120;
             token.onboardingComplete = !!(
               dbUser.grade &&
               dbUser.board &&
               dbUser.language &&
               Array.isArray(dbUser.subjects) &&
-              dbUser.subjects.length > 0
+              dbUser.subjects.length > 0 &&
+              hasValidAge
             );
           }
         } catch (err) {
@@ -390,12 +393,14 @@ export const authOptions: any = {
           try {
             const fallback = await prisma.user.findUnique({
               where: { email: token.email },
-              select: { role: true, grade: true, board: true, language: true, subjects: true },
+              select: { role: true, grade: true, board: true, language: true, subjects: true, age: true },
             });
             if (fallback) {
               token.role = fallback.role;
               token.accountStatus = 'active';
-              token.onboardingComplete = !!(fallback.grade && fallback.board && fallback.language && Array.isArray(fallback.subjects) && fallback.subjects.length > 0);
+              const ageNum = fallback.age != null ? Number(fallback.age) : NaN;
+              const hasValidAge = Number.isFinite(ageNum) && ageNum >= 1 && ageNum <= 120;
+              token.onboardingComplete = !!(fallback.grade && fallback.board && fallback.language && Array.isArray(fallback.subjects) && fallback.subjects.length > 0 && hasValidAge);
             }
           } catch {
             token.accountStatus = 'active';

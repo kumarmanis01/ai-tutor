@@ -41,10 +41,14 @@ export default async function StudentLayout({ children }: { children: React.Reac
   const skipVerifyParent = pathname.startsWith('/student/verify-parent');
   const skipOnboarding = pathname.startsWith('/student/onboarding');
 
+  // Onboarding first, then parent verification: only run parent gate after profile is complete.
+  const profile = userId ? await checkProfileCompleteness(userId) : { complete: false, missingFields: [] as const };
+  const onboardingComplete = profile.complete;
+
   let showParentGate = false;
   let maskedParentEmail: string | null = null;
 
-  if (!skipApi && !skipVerifyParent && !skipOnboarding && userId) {
+  if (!skipApi && !skipVerifyParent && !skipOnboarding && userId && onboardingComplete) {
     const needsOtpGate = await requiresParentOTPGate(userId);
     if (needsOtpGate) {
       showParentGate = true;
@@ -63,7 +67,7 @@ export default async function StudentLayout({ children }: { children: React.Reac
     }
   }
 
-  if (!skipApi && !showParentGate && userId) {
+  if (!skipApi && !showParentGate && userId && onboardingComplete) {
     const gate = await checkParentGate(userId);
     if (!skipVerifyParent && !skipOnboarding && gate.required && !gate.verified) {
       redirect('/student/verify-parent');

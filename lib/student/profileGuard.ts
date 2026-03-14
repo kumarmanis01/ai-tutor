@@ -1,6 +1,6 @@
 import { prisma } from '@/lib/prisma'
 
-export type ProfileMissingField = 'grade' | 'board' | 'subjects' | 'name'
+export type ProfileMissingField = 'grade' | 'board' | 'subjects' | 'name' | 'age'
 
 export interface ProfileCompletenessResult {
   complete: boolean
@@ -8,13 +8,13 @@ export interface ProfileCompletenessResult {
 }
 
 /**
- * Checks minimum required fields for a student to use the platform.
- * Required: name (non-empty), grade (1–12), board (non-empty), at least 1 subject.
- * Uses User model: name, grade, board, subjects.
+ * Checks minimum required fields for a student (onboarding complete).
+ * Required: name, grade (1–12), board, at least 1 subject, age.
+ * Parent verification gates run only after this returns complete.
  * Returns complete: false on any DB error — never throws.
  */
 export async function checkProfileCompleteness(studentId: string): Promise<ProfileCompletenessResult> {
-  const empty: ProfileCompletenessResult = { complete: false, missingFields: ['name', 'grade', 'board', 'subjects'] }
+  const empty: ProfileCompletenessResult = { complete: false, missingFields: ['name', 'grade', 'board', 'subjects', 'age'] }
   try {
     const user = await prisma.user.findUnique({
       where: { id: studentId },
@@ -23,6 +23,7 @@ export async function checkProfileCompleteness(studentId: string): Promise<Profi
         grade: true,
         board: true,
         subjects: true,
+        age: true,
       },
     })
 
@@ -47,6 +48,11 @@ export async function checkProfileCompleteness(studentId: string): Promise<Profi
 
     if (!Array.isArray(user.subjects) || user.subjects.length === 0) {
       missingFields.push('subjects')
+    }
+
+    const ageNum = user.age != null ? Number(user.age) : NaN
+    if (!Number.isFinite(ageNum) || ageNum < 1 || ageNum > 120) {
+      missingFields.push('age')
     }
 
     return {
