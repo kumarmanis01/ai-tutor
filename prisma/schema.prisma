@@ -24,13 +24,11 @@ model User {
   emailVerified            DateTime?
   image                    String?
   parentEmail              String?
-  /// Date of birth for under-18 parent verification gate.
-  dateOfBirth              DateTime?
   /// Parent email OTP verified at (under-18 gate).
   parentVerifiedAt         DateTime?
-  /// When true, student must complete parent verification regardless of DOB.
+  /// When true, student must complete parent verification regardless of age.
   requiresParentVerification Boolean                 @default(false)
-  /// Self-reported age captured during registration/onboarding.
+  /// Self-reported age (integer). Used for under-13 / under-18 parent verification gates.
   age                      Int?
   /// Parent phone used for under-13 verification (not unique; families can share).
   parentPhone              String?

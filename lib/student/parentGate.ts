@@ -6,21 +6,19 @@ export interface ParentGateResult {
   parentEmail: string | null
 }
 
-function isUnder18(dob: Date | null): boolean {
-  // Null DOB = no gate; only enforce when DOB is actually collected.
-  if (!dob) return false
-  const now = new Date()
-  let age = now.getFullYear() - dob.getFullYear()
-  const m = now.getMonth() - dob.getMonth()
-  if (m < 0 || (m === 0 && now.getDate() < dob.getDate())) age -= 1
+/**
+ * Gate required when age is known and < 18. Null/unknown age = no gate.
+ */
+function requiresGateByAge(age: number | null | undefined): boolean {
+  if (age == null || !Number.isFinite(age)) return false
   return age < 18
 }
 
 /**
  * Check if the student requires and has completed parent verification.
- * Required when: User.dateOfBirth indicates age < 18, OR User.requiresParentVerification = true.
+ * Required when: User.age indicates age < 18, OR User.requiresParentVerification = true.
  * Verified when: User.parentVerifiedAt is non-null.
- * If dateOfBirth is missing — DO NOT require the gate (null DOB = no gate).
+ * Null/unknown age = no age-based gate (no DOB-style ambiguity).
  * Never throws — returns { required: true, verified: false } on DB error.
  */
 export async function checkParentGate(studentId: string): Promise<ParentGateResult> {
@@ -29,7 +27,7 @@ export async function checkParentGate(studentId: string): Promise<ParentGateResu
     const user = await prisma.user.findUnique({
       where: { id: studentId },
       select: {
-        dateOfBirth: true,
+        age: true,
         parentEmail: true,
         parentVerifiedAt: true,
         requiresParentVerification: true,
@@ -39,9 +37,9 @@ export async function checkParentGate(studentId: string): Promise<ParentGateResu
     if (!user) return fallback
 
     const verified = user.parentVerifiedAt != null
-    const requiredByDob = isUnder18(user.dateOfBirth)
+    const requiredByAge = requiresGateByAge(user.age)
     const requiredByFlag = Boolean(user.requiresParentVerification)
-    const required = requiredByDob || requiredByFlag
+    const required = requiredByAge || requiredByFlag
 
     return {
       required,

@@ -2,38 +2,34 @@ import { prisma } from '@/lib/prisma'
 
 export type AccountStatus = 'ACTIVE' | 'PENDING_PARENT_VERIFY' | 'SUSPENDED' | 'DEACTIVATED'
 
-function isUnder13(dob: Date | null | undefined): boolean {
-  // Null DOB = no gate; only enforce under-13 rule when DOB is known.
-  if (!dob) return false
-  const today = new Date()
-  let age = today.getFullYear() - dob.getFullYear()
-  const m = today.getMonth() - dob.getMonth()
-  if (m < 0 || (m === 0 && today.getDate() < dob.getDate())) {
-    age--
-  }
+/**
+ * Under-13 rule: gate only when age is known and < 13. Null/unknown age = no gate.
+ */
+function isUnder13(age: number | null | undefined): boolean {
+  if (age == null || !Number.isFinite(age)) return false
   return age < 13
 }
 
 /**
  * Check if the student's account requires parent OTP gate.
  * Returns true when:
- *   User.accountStatus = 'PENDING_PARENT_VERIFY'
- *   AND User.dateOfBirth indicates age < 13 (under-13 rule)
- *   OR accountStatus = 'PENDING_PARENT_VERIFY' with no DOB (safe default)
+ *   User.accountStatus = 'pending_parent_verification'
+ *   AND User.age indicates age < 13 (under-13 rule).
+ * Null/unknown age = no age-based gate.
  * Returns false on any DB error — never throws.
  */
 export async function requiresParentOTPGate(studentId: string): Promise<boolean> {
   try {
     const user = await prisma.user.findUnique({
       where: { id: studentId },
-      select: { accountStatus: true, dateOfBirth: true },
+      select: { accountStatus: true, age: true },
     })
     if (!user) return false
 
     const status = String(user.accountStatus || '').toLowerCase()
     if (status !== 'pending_parent_verification') return false
 
-    return isUnder13(user.dateOfBirth ?? null)
+    return isUnder13(user.age ?? null)
   } catch {
     return false
   }
