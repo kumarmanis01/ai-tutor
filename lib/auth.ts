@@ -371,20 +371,28 @@ export const authOptions: any = {
         try {
           const dbUser = await prisma.user.findUnique({
             where: { email: token.email },
-            select: { role: true, grade: true, board: true, language: true, subjects: true, accountStatus: true, age: true },
+            select: { role: true, grade: true, board: true, language: true, subjects: true, accountStatus: true, age: true, parentEmail: true, parentPhone: true },
           });
           if (dbUser) {
             token.role = dbUser.role;
             token.accountStatus = (dbUser as { accountStatus?: string }).accountStatus ?? 'active';
             const ageNum = dbUser.age != null ? Number(dbUser.age) : NaN;
             const hasValidAge = Number.isFinite(ageNum) && ageNum >= 1 && ageNum <= 120;
+            const hasParentEmail = dbUser.parentEmail != null && String(dbUser.parentEmail).trim() !== '';
+            const hasParentPhone = dbUser.parentPhone != null && String(dbUser.parentPhone).trim() !== '';
+            const under18 = hasValidAge && ageNum < 18;
+            const under13 = hasValidAge && ageNum < 13;
+            const parentContactOk = under18 ? hasParentEmail : true;
+            const parentPhoneOk = under13 ? hasParentPhone : true;
             token.onboardingComplete = !!(
               dbUser.grade &&
               dbUser.board &&
               dbUser.language &&
               Array.isArray(dbUser.subjects) &&
               dbUser.subjects.length > 0 &&
-              hasValidAge
+              hasValidAge &&
+              parentContactOk &&
+              parentPhoneOk
             );
           }
         } catch (err) {
@@ -393,14 +401,20 @@ export const authOptions: any = {
           try {
             const fallback = await prisma.user.findUnique({
               where: { email: token.email },
-              select: { role: true, grade: true, board: true, language: true, subjects: true, age: true },
+              select: { role: true, grade: true, board: true, language: true, subjects: true, age: true, parentEmail: true, parentPhone: true },
             });
             if (fallback) {
               token.role = fallback.role;
               token.accountStatus = 'active';
               const ageNum = fallback.age != null ? Number(fallback.age) : NaN;
               const hasValidAge = Number.isFinite(ageNum) && ageNum >= 1 && ageNum <= 120;
-              token.onboardingComplete = !!(fallback.grade && fallback.board && fallback.language && Array.isArray(fallback.subjects) && fallback.subjects.length > 0 && hasValidAge);
+              const hasParentEmail = fallback.parentEmail != null && String(fallback.parentEmail).trim() !== '';
+              const hasParentPhone = fallback.parentPhone != null && String(fallback.parentPhone).trim() !== '';
+              const under18 = hasValidAge && ageNum < 18;
+              const under13 = hasValidAge && ageNum < 13;
+              const parentContactOk = under18 ? hasParentEmail : true;
+              const parentPhoneOk = under13 ? hasParentPhone : true;
+              token.onboardingComplete = !!(fallback.grade && fallback.board && fallback.language && Array.isArray(fallback.subjects) && fallback.subjects.length > 0 && hasValidAge && parentContactOk && parentPhoneOk);
             }
           } catch {
             token.accountStatus = 'active';

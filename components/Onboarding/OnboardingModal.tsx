@@ -28,6 +28,7 @@ type Props = {
     board: string | null;
     preferred_language: string | null;
     subjects: string[] | undefined;
+    parent_email?: string | null;
     parent_phone?: string | null;
     parent_otp?: string | null;
   };
@@ -239,6 +240,27 @@ export default function OnboardingModal({ open, required, parentVerified, gradeL
             )}
             {errors.subjects && <div className="text-xs text-red-600 mt-1">{errors.subjects}</div>}
           </div>
+
+          {/* Under-18: parent/guardian email (required for verification step after onboarding) */}
+          {values.age != null && Number(values.age) >= 1 && Number(values.age) < 18 && (
+            <div className="mb-3">
+              <label htmlFor="onboarding-parent-email" className="block text-sm mb-1">
+                Parent or guardian email <span className="text-red-600">*</span>
+              </label>
+              <input
+                id="onboarding-parent-email"
+                type="email"
+                value={values.parent_email ?? ''}
+                onChange={(e) => onChange('parent_email', e.target.value || null)}
+                className={`w-full px-3 py-2 border rounded ${errors.parent_email ? 'border-red-500' : ''}`}
+                placeholder="e.g. parent@example.com"
+              />
+              <div className="text-xs text-muted-foreground mt-1">
+                We&apos;ll send a verification code to this email to keep your account safe.
+              </div>
+              {errors.parent_email && <div className="text-xs text-red-600 mt-1">{errors.parent_email}</div>}
+            </div>
+          )}
 
           {/* Under-13 parent verification */}
           {values.age != null && Number(values.age) < 13 && !parentVerified && (

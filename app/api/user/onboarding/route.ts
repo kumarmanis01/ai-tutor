@@ -50,6 +50,8 @@ export async function POST(req: NextRequest) {
     const token = typeof body.token === 'string' ? body.token : undefined;
     const rawPhone = typeof body.phone === 'string' ? body.phone.trim() : undefined;
     const phone = rawPhone ? rawPhone.replace(/[^0-9+]/g, '') : undefined;
+    const parentEmailRaw = typeof body.parent_email === 'string' ? body.parent_email.trim() : (typeof body.parentEmail === 'string' ? body.parentEmail.trim() : undefined);
+    const parentEmail = parentEmailRaw && parentEmailRaw.includes('@') ? parentEmailRaw : undefined;
 
     // Do not create users in onboarding. If there's no session user id, we will return 401 below.
 
@@ -68,6 +70,10 @@ export async function POST(req: NextRequest) {
     if (!preferredLanguage || String(preferredLanguage).trim() === '') fieldErrors.preferred_language = 'Preferred language is required';
     if (!subjects || subjects.length === 0) fieldErrors.subjects = 'Select at least 1 subject';
     if (subjects && subjects.length > 6) fieldErrors.subjects = 'You can select up to 6 subjects';
+    // Under 18: parent/guardian email required for verification step
+    if (age != null && age >= 1 && age < 18 && (!parentEmail || parentEmail.length === 0)) {
+      fieldErrors.parent_email = 'Parent or guardian email is required for students under 18.';
+    }
     if (Object.keys(fieldErrors).length) {
       res = NextResponse.json({ error: 'validation_error', fieldErrors }, { status: 400 });
       logger.logAPI(req, res, { className: 'UserOnboardingAPI', methodName: 'POST' }, start);
@@ -113,6 +119,7 @@ export async function POST(req: NextRequest) {
     if (subjects) updates.subjects = subjects;
     if (preferredLanguage) updates.language = preferredLanguage;
     if (token) updates.lastWidgetToken = token;
+    if (parentEmail !== undefined) updates.parentEmail = parentEmail || null;
 
     logger.info('/api/user/onboarding userId and updates', { className: 'api.user.onboarding', methodName: 'POST', userId, updates });
     let updatedUser;
