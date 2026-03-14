@@ -2,46 +2,26 @@
 
 import React from 'react';
 import { useRouter } from 'next/navigation';
-import type { StudentProfileData } from '@/lib/student/profileGuard';
+import type { ProfileMissingField } from '@/lib/student/profileGuard';
+import ProgressBar, { calculateProgress } from '@/components/ProgressBar';
 
 interface ProfileCompletionGateProps {
-  profileData: StudentProfileData;
+  missingFields: ProfileMissingField[];
 }
 
-interface ChecklistItem {
-  key: keyof StudentProfileData;
-  label: string;
-  filled: boolean;
-}
+const GATE_FIELDS: { key: ProfileMissingField; label: string }[] = [
+  { key: 'board', label: 'Board' },
+  { key: 'grade', label: 'Grade' },
+  { key: 'language', label: 'Medium' },
+  { key: 'subjects', label: 'Subjects' },
+];
 
-export default function ProfileCompletionGate({ profileData }: ProfileCompletionGateProps) {
+export default function ProfileCompletionGate({ missingFields }: ProfileCompletionGateProps) {
   const router = useRouter();
 
-  const items: ChecklistItem[] = [
-    {
-      key: 'board',
-      label: 'Board',
-      filled: !!profileData.board && String(profileData.board).trim() !== '',
-    },
-    {
-      key: 'grade',
-      label: 'Grade',
-      filled: !!profileData.grade && String(profileData.grade).trim() !== '',
-    },
-    {
-      key: 'language',
-      label: 'Medium',
-      filled: !!profileData.language && String(profileData.language).trim() !== '',
-    },
-    {
-      key: 'subjects',
-      label: 'Subjects',
-      filled: Array.isArray(profileData.subjects) && profileData.subjects.length > 0,
-    },
-  ];
-
+  const items = GATE_FIELDS.map((f) => ({ ...f, filled: !missingFields.includes(f.key) }));
   const completedCount = items.filter((i) => i.filled).length;
-  const progressPercent = Math.round((completedCount / items.length) * 100);
+  const progress = calculateProgress(completedCount, GATE_FIELDS.length);
 
   return (
     <div className="fixed inset-0 z-[9998] flex items-center justify-center bg-black/70 px-4">
@@ -57,16 +37,12 @@ export default function ProfileCompletionGate({ profileData }: ProfileCompletion
           To start learning, please fill in your academic details.
         </p>
 
-        {/* Progress bar */}
+        {/* Progress */}
         <div className="mb-1 flex items-center justify-between text-xs text-gray-500">
-          <span>{completedCount} of {items.length} complete</span>
-          <span>{progressPercent}%</span>
+          <span>{completedCount} of {GATE_FIELDS.length} complete</span>
         </div>
-        <div className="mb-5 h-2 w-full overflow-hidden rounded-full bg-gray-200">
-          <div
-            className="h-full rounded-full bg-amber-500 transition-all"
-            style={{ width: `${progressPercent}%` }}
-          />
+        <div className="mb-5">
+          <ProgressBar progress={progress} size="sm" showLabel={false} variant="warning" />
         </div>
 
         {/* Checklist */}

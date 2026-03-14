@@ -9,7 +9,7 @@ import StudentNav from './StudentNav';
 import { requireActiveSession } from '@/lib/auth';
 import { redirect } from 'next/navigation';
 import { headers } from 'next/headers';
-import { checkProfileCompleteness, isProfileComplete } from '@/lib/student/profileGuard';
+import { checkProfileCompleteness, isProfileComplete, EMPTY_PROFILE_DATA, type ProfileMissingField } from '@/lib/student/profileGuard';
 import { checkParentGate } from '@/lib/student/parentGate';
 import { requiresParentOTPGate } from '@/lib/student/accountStatus';
 import StudentLayoutShell from '@/components/student/StudentLayoutShell';
@@ -42,15 +42,17 @@ export default async function StudentLayout({ children }: { children: React.Reac
   const skipOnboarding = pathname.startsWith('/student/onboarding');
 
   // Onboarding first, then parent verification: only run parent gate after profile is complete.
-  const profile = userId ? await checkProfileCompleteness(userId) : { complete: false, missingFields: [] as const, data: { board: null, grade: null, language: null, subjects: [] as unknown[] } };
+  const profile = userId ? await checkProfileCompleteness(userId) : { complete: false, missingFields: [] as const, data: EMPTY_PROFILE_DATA };
   const onboardingComplete = profile.complete;
 
   let showParentGate = false;
   let maskedParentEmail: string | null = null;
 
   if (!skipApi && !skipVerifyParent && !skipOnboarding && userId && onboardingComplete) {
-    const needsOtpGate = await requiresParentOTPGate(userId);
-    const gate = await checkParentGate(userId);
+    const [needsOtpGate, gate] = await Promise.all([
+      requiresParentOTPGate(userId),
+      checkParentGate(userId),
+    ]);
     const needsParentVerification = needsOtpGate || (gate.required && !gate.verified);
     if (needsParentVerification) {
       showParentGate = true;
@@ -97,7 +99,7 @@ export default async function StudentLayout({ children }: { children: React.Reac
                 showParentGate={showParentGate}
                 maskedParentEmail={maskedParentEmail}
                 showProfileGate={showProfileGate}
-                profileData={profile.data}
+                missingProfileFields={profile.missingFields as ProfileMissingField[]}
               >
                 {children}
               </StudentLayoutShell>

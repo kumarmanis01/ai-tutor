@@ -6,8 +6,10 @@ export interface StudentProfileData {
   board: string | null
   grade: string | null
   language: string | null
-  subjects: unknown[]
+  subjects: string[]
 }
+
+export const EMPTY_PROFILE_DATA: StudentProfileData = { board: null, grade: null, language: null, subjects: [] }
 
 export interface ProfileCompletenessResult {
   complete: boolean
@@ -22,7 +24,7 @@ export function isProfileComplete(user: StudentProfileData): boolean {
   if (!user.board || String(user.board).trim() === '') return false
   if (!user.grade || String(user.grade).trim() === '') return false
   if (!user.language || String(user.language).trim() === '') return false
-  if (!Array.isArray(user.subjects) || user.subjects.length === 0) return false
+  if (user.subjects.length === 0) return false
   return true
 }
 
@@ -35,7 +37,7 @@ export function isProfileComplete(user: StudentProfileData): boolean {
  * Returns complete: false on any DB error — never throws.
  */
 export async function checkProfileCompleteness(studentId: string): Promise<ProfileCompletenessResult> {
-  const emptyData: StudentProfileData = { board: null, grade: null, language: null, subjects: [] }
+  const emptyData: StudentProfileData = EMPTY_PROFILE_DATA
   const empty: ProfileCompletenessResult = { complete: false, missingFields: ['name', 'grade', 'board', 'subjects', 'language', 'age'], data: emptyData }
   try {
     const user = await prisma.user.findUnique({
@@ -71,7 +73,7 @@ export async function checkProfileCompleteness(studentId: string): Promise<Profi
       missingFields.push('board')
     }
 
-    if (!Array.isArray(user.subjects) || user.subjects.length === 0) {
+    if (user.subjects.length === 0) {
       missingFields.push('subjects')
     }
 
