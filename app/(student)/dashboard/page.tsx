@@ -39,8 +39,11 @@ import UpcomingTopicsList from '@/components/home/UpcomingTopicsList';
 import NudgeBanner from '@/components/home/NudgeBanner';
 import { EngagementSection } from '@/components/home/EngagementSection';
 import RevisionWidget from '@/components/student/dashboard/RevisionWidget';
+import XPWidget from '@/components/student/dashboard/XPWidget';
+import SubjectReadinessCard from '@/components/student/dashboard/SubjectReadinessCard';
 import PaymentButton from '@/components/student/PaymentButton';
 import { checkFreeTierCap } from '@/lib/freemium';
+import { computeExamReadiness } from '@/lib/student/examReadiness';
 
 export const dynamic = 'force-dynamic';
 
@@ -92,11 +95,12 @@ export default async function StudentHomeDashboardPage() {
     masteredTopicIds,
     freeTierStatus,
     userSub,
+    xpThisWeekAgg,
   ] = await Promise.all([
-    // 0. Student academic profile for onboarding gate
+    // 0. Student academic profile for onboarding gate + XP fields
     prisma.user.findUnique({
       where: { id: userId },
-      select: { board: true, grade: true, language: true, subjects: true, accountStatus: true },
+      select: { board: true, grade: true, language: true, subjects: true, accountStatus: true, totalXp: true, level: true },
     }),
 
     // 1. Active in-progress session
@@ -179,6 +183,12 @@ export default async function StudentHomeDashboardPage() {
       where: { id: userId },
       select: { subscriptionStatus: true, subscriptionExpiry: true, name: true, email: true },
     }),
+
+    // 14. XP earned this week
+    prisma.studentXP.aggregate({
+      where: { studentId: userId, awardedAt: { gte: monday, lte: sunday } },
+      _sum: { amount: true },
+    }),
   ]);
 
   // ── Onboarding Gate: block learning features when profile is incomplete ──
@@ -232,6 +242,33 @@ export default async function StudentHomeDashboardPage() {
       </main>
     );
   }
+
+  // ── XP this week ─────────────────────────────────────────────────────────
+  const xpThisWeek = xpThisWeekAgg._sum.amount ?? 0
+  const totalXp = studentProfile?.totalXp ?? 0
+  const currentLevel = studentProfile?.level ?? 1
+
+  // ── Subject readiness scores ─────────────────────────────────────────────
+  const subjectNames = (studentProfile?.subjects ?? []).map((s) => String(s)).filter(Boolean)
+  const subjectDefsForReadiness = subjectNames.length
+    ? await prisma.subjectDef.findMany({
+        where: {
+          OR: [{ name: { in: subjectNames } }, { slug: { in: subjectNames } }],
+          lifecycle: 'active',
+        },
+        select: { id: true, name: true },
+      })
+    : []
+  const readinessResults = await Promise.all(
+    subjectDefsForReadiness.map(async (subj) => {
+      const result = await computeExamReadiness(userId, subj.id).catch(() => null)
+      return {
+        subjectId: subj.id,
+        subjectName: subj.name,
+        score: result ? Math.round(result.score) : 0,
+      }
+    }),
+  )
 
   // ── Build weekly activity strip ─────────────────────────────────────────
   const weekDays = Array.from({ length: 7 }, (_, i) => {
@@ -403,6 +440,21 @@ export default async function StudentHomeDashboardPage() {
           currentStreak: streakRow?.current ?? 0,
         }}
       />
+
+      {/* 3b. XP Widget + Subject Readiness */}
+      <XPWidget totalXp={totalXp} level={currentLevel} xpThisWeek={xpThisWeek} />
+      {readinessResults.length > 0 && (
+        <div className="space-y-3">
+          {readinessResults.map((r) => (
+            <SubjectReadinessCard
+              key={r.subjectId}
+              subjectName={r.subjectName}
+              score={r.score}
+              subjectId={r.subjectId}
+            />
+          ))}
+        </div>
+      )}
 
       {/* 4. Homework Pending — hidden when empty */}
       <HomeworkPendingCard
