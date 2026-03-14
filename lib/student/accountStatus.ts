@@ -18,10 +18,11 @@ export async function requiresParentOTPGate(studentId: string): Promise<boolean>
     })
     if (!user) return false
 
-    const status = String(user.accountStatus || '').toLowerCase()
-    const requiredByAge = user.age !== null && user.age < 13
-
-    return status === 'pending_parent_verification' && requiredByAge
+    return (
+      user.accountStatus === 'pending_parent_verification' &&
+      user.age !== null &&
+      user.age < 13
+    )
   } catch {
     return false
   }
