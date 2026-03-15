@@ -106,6 +106,7 @@ model User {
   studentXpRecords         StudentXP[]
   learningPlans           LearningPlan[]
   consents                Consent[]
+  parentProfile           ParentProfile?
 }
 
 model PaymentOrder {
@@ -2226,4 +2227,13 @@ enum ConsentScope {
   AI_INTERACTION
   PARENT_NOTIFICATION
   MARKETING
+}
+
+/// Parent-specific profile record — one per parent user.
+/// Exists once a user is promoted to the parent role.
+model ParentProfile {
+  id        String    @id @default(cuid())
+  userId    String    @unique
+  createdAt DateTime  @default(now())
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 }

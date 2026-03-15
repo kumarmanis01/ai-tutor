@@ -1,96 +1,109 @@
 /**
- * FILE OBJECTIVE:
- * - Parent Progress Dashboard page.
- * - Composes four live self-fetching client components in a responsive 2-column
- *   grid: Weekly Activity, Subject Mastery, Weak Topics, Improvement Trend.
+ * Parent Dashboard page — T38
  *
- * RENDERING STRATEGY:
- * - This page is a React Server Component (RSC). It renders synchronously on
- *   the server and ships static HTML for the shell (header, grid layout) with
- *   zero blocking data fetches at the page level.
- * - Each card component is "use client" and owns its own fetch lifecycle,
- *   so the four API calls fire in parallel from the browser after hydration.
- *   No single slow card blocks the others from rendering.
- * - `export const dynamic = 'force-dynamic'` is intentionally omitted: the
- *   page shell has no server-side data, so Next.js can statically render it
- *   and serve it from the CDN edge. Only the client components fetch at runtime.
+ * Server component: loads all linked children for the parent user,
+ * computes per-child readiness scores, passes to ParentDashboard.
  *
  * Route: /parent/dashboard
  *
  * EDIT LOG:
- * - 2026-03-08 | claude | created for Spinzy Academy parent dashboard
- * - 2026-03-08 | claude | integrated all four live components; updated header
+ *   2026-03-08 | claude | original 4-card client-polling dashboard
+ *   2026-03-15 | claude | T38 — rewritten as server component with multi-child view
  */
 
-import type { Metadata } from 'next';
-import ParentWeeklyActivity from '@/components/parent/ParentWeeklyActivity';
-import ParentSubjectMastery from '@/components/parent/ParentSubjectMastery';
-import ParentWeakTopics from '@/components/parent/ParentWeakTopics';
-import ParentImprovementTrend from '@/components/parent/ParentImprovementTrend';
+import type { Metadata } from 'next'
+import { redirect } from 'next/navigation'
+import { getServerSession } from 'next-auth/next'
+import { authOptions } from '@/lib/auth'
+import type { AppSession } from '@/lib/types/auth'
+import { prisma } from '@/lib/prisma'
+import { computeReadinessScore } from '@/lib/student/examReadiness'
+import ParentDashboard from '@/components/parent/ParentDashboard'
+
+export const dynamic = 'force-dynamic'
 
 export const metadata: Metadata = {
-  title: "Your Child's Learning Progress | Spinzy Academy",
-  description: "Track your child's weekly activity, subject mastery, weak topics, and improvement trends.",
-};
+  title: "My Children's Progress | Spinzy",
+  description: "See how your children are progressing on Spinzy.",
+}
 
-export default function ParentProgressDashboard() {
-  return (
-    <main className="min-h-screen bg-gray-50">
+function weekStart(): Date {
+  const now = new Date()
+  const dow = now.getUTCDay()
+  const distToMonday = dow === 0 ? 6 : dow - 1
+  const monday = new Date(now)
+  monday.setUTCDate(now.getUTCDate() - distToMonday)
+  monday.setUTCHours(0, 0, 0, 0)
+  return monday
+}
 
-      {/* ── Page header ─────────────────────────────────────────────────────── */}
-      <header className="border-b border-gray-100 bg-white px-6 py-6">
-        <div className="mx-auto max-w-5xl">
-          {/* Brand eyebrow */}
-          <p className="text-xs font-semibold uppercase tracking-widest text-indigo-500">
-            Spinzy Academy
-          </p>
+export default async function ParentDashboardPage() {
+  const session = (await getServerSession(authOptions)) as AppSession | null
+  if (!session?.user?.id) redirect('/login')
+  if (session.user.role !== 'parent') redirect('/dashboard')
 
-          {/* Primary heading — per spec */}
-          <h1 className="mt-1 text-2xl font-bold tracking-tight text-gray-900">
-            Your Child&apos;s Learning Progress
-          </h1>
+  const parentId = session.user.id
+  const monday = weekStart()
 
-          {/* Supportive sub-text */}
-          <p className="mt-1 text-sm text-gray-500">
-            A weekly snapshot across all subjects — updated in real time.
-          </p>
-        </div>
-      </header>
+  // 1. Load all active child links
+  const links = await prisma.parentStudent.findMany({
+    where: { parentId, status: 'active' },
+    select: { studentId: true },
+  })
 
-      {/* ── Section label ────────────────────────────────────────────────────── */}
-      <div className="mx-auto max-w-5xl px-6 pt-8 pb-2">
-        <h2 className="text-xs font-semibold uppercase tracking-widest text-gray-400">
-          This week
-        </h2>
-      </div>
+  // 2. Per-child data (parallel)
+  const children = await Promise.all(
+    links.map(async ({ studentId }) => {
+      const [student, streak, sessionsThisWeek] = await Promise.all([
+        prisma.user.findUnique({
+          where: { id: studentId },
+          select: { name: true, grade: true, board: true, subjects: true },
+        }),
+        prisma.studentStreak.findFirst({
+          where: { studentId, kind: 'daily' },
+          select: { current: true },
+        }),
+        prisma.structuredSession.count({
+          where: { studentId, startedAt: { gte: monday } },
+        }),
+      ])
 
-      {/* ── Dashboard grid ───────────────────────────────────────────────────── */}
-      {/*
-        grid-cols-1 on mobile  → each card stacks full-width, easiest to read
-        md:grid-cols-2         → two-column layout from 768 px and up
-        gap-6                  → 24 px gutter matches card padding rhythm
-        Cards are ordered to pair naturally on desktop:
-          [Weekly Activity]  [Subject Mastery]
-          [Weak Topics]      [Improvement Trend]
-      */}
-      <div className="mx-auto max-w-5xl px-6 pb-12">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      if (!student) return null
 
-          {/* 1. Weekly Study Activity — study time, sessions, topics this week */}
-          <ParentWeeklyActivity />
+      // 3. Resolve subject names → SubjectDef IDs → readiness
+      const subjectNames = (student.subjects as string[]).filter(Boolean)
+      const subjectDefs = subjectNames.length
+        ? await prisma.subjectDef.findMany({
+            where: {
+              lifecycle: 'active',
+              OR: [{ name: { in: subjectNames } }, { slug: { in: subjectNames } }],
+            },
+            select: { id: true, name: true },
+          })
+        : []
 
-          {/* 2. Subject Mastery — accuracy per subject, all time */}
-          <ParentSubjectMastery />
+      const readiness = await Promise.all(
+        subjectDefs.map(async (sd) => {
+          const result = await computeReadinessScore(studentId, sd.id).catch(() => null)
+          return { subjectId: sd.id, subjectName: sd.name, score: result?.score ?? 0 }
+        }),
+      )
 
-          {/* 3. Weak Topics — up to 5 topics needing attention */}
-          <ParentWeakTopics />
+      return {
+        studentId,
+        name: student.name ?? 'Student',
+        grade: student.grade ?? '',
+        board: student.board ?? '',
+        streak: streak?.current ?? 0,
+        sessionsThisWeek,
+        readiness,
+      }
+    }),
+  )
 
-          {/* 4. Improvement Trend — 8-week accuracy line chart */}
-          <ParentImprovementTrend />
+  const validChildren = children.filter(
+    (c): c is NonNullable<typeof c> => c !== null,
+  )
 
-        </div>
-      </div>
-
-    </main>
-  );
+  return <ParentDashboard children={validChildren} />
 }
