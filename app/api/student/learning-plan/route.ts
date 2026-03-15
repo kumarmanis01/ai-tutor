@@ -16,16 +16,15 @@ export async function GET(req: Request) {
     return res
   }
 
-  const plan = await prisma.learningPlan.findUnique({
+  const plan = await prisma.learningPlan.findFirst({
     where: { studentId: userId },
+    orderBy: { generatedAt: 'desc' },
     select: {
       id: true,
       subjectId: true,
       _count: { select: { items: true } },
-    },
-    include: {
       items: {
-        where: { status: 'complete' },
+        where: { status: 'COMPLETED' },
         orderBy: { completedAt: 'desc' },
         take: 3,
         select: { conceptId: true, completedAt: true },
@@ -43,7 +42,7 @@ export async function GET(req: Request) {
   }
 
   const completedCount = await prisma.learningPlanItem.count({
-    where: { planId: plan.id, status: 'complete' },
+    where: { planId: plan.id, status: 'COMPLETED' },
   })
   const totalConcepts = plan._count.items
   const progressPercent = totalConcepts > 0 ? Math.round((completedCount / totalConcepts) * 100) : 0
