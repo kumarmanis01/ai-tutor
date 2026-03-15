@@ -6,10 +6,6 @@ import type { ConnectionOptions } from 'bullmq';
 // on the package's exported type shape which can differ between CJS/ESM builds.
 let _redis: InstanceType<typeof IORedis> | null = null;
 
-let failureCount = 0;
-let circuitOpenUntil: number | null = null;
-let halfOpenProbeInFlight = false;
-
 // Build a connection object for BullMQ; include TLS options when requested.
 const _url = process.env.REDIS_URL || undefined
 const _tlsOpts: any = {}
@@ -23,21 +19,6 @@ export const redisConnection: ConnectionOptions = _url
   : ({} as any)
 
 export function getRedis() {
-  const now = Date.now();
-
-  // Circuit open: short-circuit to null
-  if (circuitOpenUntil && now < circuitOpenUntil) {
-    return null;
-  }
-
-  // Half-open: allow a single probe attempt
-  if (circuitOpenUntil && now >= circuitOpenUntil) {
-    if (halfOpenProbeInFlight) {
-      return null;
-    }
-    halfOpenProbeInFlight = true;
-  }
-
   if (_redis) return _redis;
   if (!process.env.REDIS_URL) {
     return null;
@@ -72,10 +53,6 @@ export function getRedis() {
   // Attach lightweight logging for connection-level issues; avoid circular
   // imports by using a dynamic import of the logger module.
   client.on('error', (err: any) => {
-    failureCount += 1;
-    if (failureCount >= 5 && !circuitOpenUntil) {
-      circuitOpenUntil = Date.now() + 30_000;
-    }
     import('../lib/logger')
       .then(({ error }) => {
         try {
@@ -87,12 +64,6 @@ export function getRedis() {
       .catch(() => {
         // logger may not be available in some runtimes; ignore
       });
-  });
-
-  client.on('connect', () => {
-    failureCount = 0;
-    circuitOpenUntil = null;
-    halfOpenProbeInFlight = false;
   });
 
   _redis = client;
