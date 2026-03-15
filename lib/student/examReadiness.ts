@@ -1,6 +1,152 @@
 import { prisma } from '@/lib/prisma'
+import { getRedis } from '@/lib/redis'
 
 const BASELINE_MASTERY = 0.3
+const READINESS_CACHE_TTL = 3600 // 1 hour
+
+// ── New typed result shape (Domain 7 §7.8) ───────────────────────────────────
+
+export type ReadinessLabel = 'critical' | 'needs_work' | 'on_track' | 'ready'
+
+export interface ReadinessChapter {
+  chapterId: string
+  chapterName: string
+  masteryScore: number   // 0-1 float, 0 if no student data
+  boardWeightPct: number // chapter weight as % of total exam marks
+  contribution: number   // masteryScore × boardWeightPct (0-100 scale)
+  status: ReadinessLabel
+}
+
+export interface ReadinessResult {
+  score: number             // 0-100 integer
+  label: ReadinessLabel
+  chapters: ReadinessChapter[]
+}
+
+function readinessLabel(score: number): ReadinessLabel {
+  if (score < 40) return 'critical'
+  if (score < 70) return 'needs_work'
+  if (score < 90) return 'on_track'
+  return 'ready'
+}
+
+/**
+ * Compute exam readiness for a student + subject using chapter-weighted mastery.
+ *
+ * Algorithm:
+ * - avgMastery per chapter = mean(StudentConceptState.masteryScore) for that chapter
+ *   If no states → avgMastery = 0 (no BASELINE fallback; honest zero for untouched chapters)
+ * - contribution = avgMastery × (weightMarks / totalWeightMarks) × 100
+ * - score = Math.round(sum(contributions))  → integer 0-100
+ *
+ * Caches result in Redis (TTL 3600s). Never throws — returns zero-state on error.
+ */
+export async function computeReadinessScore(
+  studentId: string,
+  subjectId: string,
+): Promise<ReadinessResult> {
+  const zero: ReadinessResult = { score: 0, label: 'critical', chapters: [] }
+
+  // 1. Try cache first
+  const cacheKey = `readiness:${studentId}:${subjectId}`
+  try {
+    const redis = getRedis()
+    if (redis) {
+      const cached = await redis.get(cacheKey)
+      if (cached) return JSON.parse(cached) as ReadinessResult
+    }
+  } catch {
+    // cache miss — continue to compute
+  }
+
+  try {
+    // 2. Load all concepts grouped by chapter for this subject
+    const chapters = await prisma.chapterDef.findMany({
+      where: { subject: { id: subjectId } },
+      select: {
+        id: true,
+        name: true,
+        boardChapterWeights: { select: { weightMarks: true } },
+        topics: {
+          select: {
+            concepts: {
+              select: { id: true },
+            },
+          },
+        },
+      },
+    })
+
+    if (chapters.length === 0) return zero
+
+    const totalWeightMarks = chapters.reduce(
+      (sum, ch) => sum + (ch.boardChapterWeights[0]?.weightMarks ?? 0),
+      0,
+    )
+    if (totalWeightMarks <= 0) return zero
+
+    // 3. Gather all concept IDs for a single bulk state fetch
+    const allConceptIds = chapters.flatMap((ch) =>
+      ch.topics.flatMap((t) => t.concepts.map((c) => c.id)),
+    )
+    if (allConceptIds.length === 0) return zero
+
+    const states = await prisma.studentConceptState.findMany({
+      where: { studentId, conceptId: { in: allConceptIds } },
+      select: { conceptId: true, masteryScore: true },
+    })
+    const masteryMap = new Map<string, number>(
+      states.map((s) => [s.conceptId, s.masteryScore]),
+    )
+
+    // 4. Compute per-chapter contribution
+    let scoreSum = 0
+    const chapterBreakdown: ReadinessChapter[] = []
+
+    for (const ch of chapters) {
+      const weightMarks = ch.boardChapterWeights[0]?.weightMarks ?? 0
+      const conceptIds = ch.topics.flatMap((t) => t.concepts.map((c) => c.id))
+      const masteries = conceptIds.map((id) => masteryMap.get(id) ?? 0)
+      const avgMastery =
+        masteries.length > 0
+          ? masteries.reduce((a, b) => a + b, 0) / masteries.length
+          : 0
+      const boardWeightPct = (weightMarks / totalWeightMarks) * 100
+      const contribution = avgMastery * boardWeightPct
+
+      scoreSum += contribution
+      chapterBreakdown.push({
+        chapterId: ch.id,
+        chapterName: ch.name,
+        masteryScore: Math.round(avgMastery * 1000) / 1000,
+        boardWeightPct: Math.round(boardWeightPct * 10) / 10,
+        contribution: Math.round(contribution * 10) / 10,
+        status: readinessLabel(Math.round(avgMastery * 100)),
+      })
+    }
+
+    const score = Math.round(scoreSum)
+    const result: ReadinessResult = {
+      score,
+      label: readinessLabel(score),
+      chapters: chapterBreakdown,
+    }
+
+    // 5. Write to cache (fire-and-forget)
+    try {
+      const redis = getRedis()
+      if (redis) {
+        void redis.set(cacheKey, JSON.stringify(result), 'EX', READINESS_CACHE_TTL)
+      }
+    } catch {
+      // non-fatal
+    }
+
+    return result
+  } catch {
+    return zero
+  }
+}
 
 export interface ExamReadinessResult {
   score: number

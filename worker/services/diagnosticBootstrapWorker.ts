@@ -1,7 +1,7 @@
 import type { Job } from 'bullmq'
 import { prisma } from '@/lib/prisma.js'
 import { logger } from '@/lib/logger.js'
-import { buildLearningPlan } from '@/lib/student/learningPlan.js'
+import { generateLearningPlan } from '@/lib/ai/learningPlan.js'
 
 export interface DiagnosticBootstrapJobData {
   studentId: string
@@ -146,12 +146,13 @@ export async function processDiagnosticBootstrap(job: Job<DiagnosticBootstrapJob
     })
     const primarySubjectId = firstChapter?.subjectId
     if (primarySubjectId) {
-      const planResult = await buildLearningPlan(studentId, primarySubjectId)
-      if (planResult) {
-        logger.info('[diagnostic-bootstrap] learning plan built', {
+      const planId = await generateLearningPlan(studentId, primarySubjectId)
+      if (planId) {
+        const itemCount = await prisma.learningPlanItem.count({ where: { planId } })
+        logger.info('[diagnostic-bootstrap] learning plan generated', {
           studentId,
-          planId: planResult.planId,
-          itemCount: planResult.itemCount,
+          planId,
+          itemCount,
         })
       }
     }

@@ -19,9 +19,11 @@ import { logger } from '../lib/logger.js';
 import { markIgnoredRecommendations, cleanupOldIgnoredRecommendations } from './jobs/markIgnoredRecommendations.js';
 import { aggregateWeeklySummaries } from './jobs/weeklyParentSummary.js';
 import { sendParentDigests } from './jobs/parentEmailDigest.js';
-import { runRecoveryCheck } from '../lib/failureRecovery.js';
+import { runRecoveryCheck } from '../lib/failureRecovery.js'
+import { precomputeReadiness } from './jobs/precomputeReadiness.js';
 import { expireStaleTasks } from '../lib/dailyHabit.js';
 import { hydrationReconciler } from './services/hydrationReconciler.js';
+import { runDailyCostReport } from './services/costReportingWorker.js';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
@@ -30,6 +32,8 @@ const MARK_IGNORED_INTERVAL_MS = 24 * 60 * 60 * 1000; // 24 hours
 const CLEANUP_INTERVAL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
 const WEEKLY_INTERVAL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
 const DAILY_MAINTENANCE_INTERVAL_MS = 24 * 60 * 60 * 1000; // 24 hours
+const READINESS_PRECOMPUTE_INTERVAL_MS = 24 * 60 * 60 * 1000; // 24 hours
+const COST_REPORT_INTERVAL_MS = 24 * 60 * 60 * 1000; // 24 hours
 
 /**
  * Calculate milliseconds until next scheduled time (2 AM UTC)
@@ -125,6 +129,40 @@ async function runHydrationReconciler() {
 }
 
 /**
+ * Daily AI cost report + alert (6 AM IST = 00:30 UTC)
+ */
+async function runCostReportJob() {
+  try {
+    logger.info('scheduler.costReport.starting')
+    const result = await runDailyCostReport()
+    logger.info('scheduler.costReport.completed', { ...result })
+  } catch (error) {
+    logger.error('scheduler.costReport.error', {
+      error: error instanceof Error ? error.message : String(error),
+    })
+  }
+
+  setTimeout(runCostReportJob, COST_REPORT_INTERVAL_MS)
+}
+
+/**
+ * Pre-compute readiness scores for active students (3 AM IST = 21:30 UTC)
+ */
+async function runReadinessPrecompute() {
+  try {
+    logger.info('scheduler.readinessPrecompute.starting')
+    const { students, scores } = await precomputeReadiness()
+    logger.info('scheduler.readinessPrecompute.completed', { students, scores })
+  } catch (error) {
+    logger.error('scheduler.readinessPrecompute.error', {
+      error: error instanceof Error ? error.message : String(error),
+    })
+  }
+
+  setTimeout(runReadinessPrecompute, READINESS_PRECOMPUTE_INTERVAL_MS)
+}
+
+/**
  * Run daily maintenance: expire stale tasks + recovery check
  */
 async function runDailyMaintenanceJob() {
@@ -182,6 +220,8 @@ export async function startScheduler() {
   const delayCleanup = msUntilNextRun(3); // 3 AM UTC for cleanup
   const delayWeeklyParent = msUntilNextWeeklyRun(0, 4); // Sunday 4 AM UTC
   const delayDailyMaintenance = msUntilNextRun(1); // 1 AM UTC for task expiry + recovery
+  const delayReadinessPrecompute = msUntilNextRun(21) + 30 * 60 * 1000; // 21:30 UTC = 3 AM IST
+  const delayCostReport = msUntilNextRun(0) + 30 * 60 * 1000; // 00:30 UTC = 6 AM IST
 
   logger.info('scheduler.scheduled', {
     hydrationReconcilerInterval: '2 minutes (starts immediately)',
@@ -189,6 +229,8 @@ export async function startScheduler() {
     markIgnoredFirstRun: new Date(Date.now() + delayMarkIgnored).toISOString(),
     cleanupFirstRun: new Date(Date.now() + delayCleanup).toISOString(),
     weeklyParentFirstRun: new Date(Date.now() + delayWeeklyParent).toISOString(),
+    readinessPrecomputeFirstRun: new Date(Date.now() + delayReadinessPrecompute).toISOString(),
+    costReportFirstRun: new Date(Date.now() + delayCostReport).toISOString(),
   });
 
   // Hydration reconciler: run immediately then every 2 minutes
@@ -199,6 +241,8 @@ export async function startScheduler() {
   setTimeout(runMarkIgnoredJob, delayMarkIgnored);
   setTimeout(runCleanupJob, delayCleanup);
   setTimeout(runWeeklyParentJob, delayWeeklyParent);
+  setTimeout(runReadinessPrecompute, delayReadinessPrecompute);
+  setTimeout(runCostReportJob, delayCostReport);
 
   logger.info('scheduler.started');
 }

@@ -1,5 +1,6 @@
 import { prisma } from '@/lib/prisma'
 import { logger } from '@/lib/logger'
+import { getEmbedding } from '@/lib/ai/embeddings'
 
 function normalizeQuestion(q: string): string {
   return (q ?? '')
@@ -85,6 +86,141 @@ export async function saveDoubt(params: {
       error: String((err as any)?.message ?? err),
     })
     return null
+  }
+}
+
+// ── T26: pgvector-based shared DoubtKb functions ──────────────────────────────
+
+const LOOKUP_THRESHOLD = 0.92 // cosine similarity for cache hit
+const DEDUP_THRESHOLD = 0.88  // cosine similarity for near-duplicate detection
+
+/**
+ * Look up a cached answer for this question using pgvector cosine similarity.
+ * Threshold: 0.92. On hit, increments timesServed and returns answerText.
+ * Never throws — returns null on embedding failure or any error.
+ */
+export async function lookupDoubt(
+  questionText: string,
+  subjectId: string,
+): Promise<string | null> {
+  if (!questionText?.trim() || !subjectId) return null
+  try {
+    const vec = await getEmbedding(questionText)
+    if (!vec) return null
+
+    const embeddingLiteral = `[${vec.join(',')}]`
+
+    type Row = { id: string; answerText: string; similarity: number }
+    const rows = (await prisma.$queryRawUnsafe<Row[]>(
+      `
+      SELECT id, "answerText", 1 - (embedding <=> $1::vector) AS similarity
+      FROM "DoubtKb"
+      WHERE "subjectId" = $2
+        AND embedding IS NOT NULL
+        AND "answerText" IS NOT NULL
+        AND 1 - (embedding <=> $1::vector) > $3
+      ORDER BY similarity DESC
+      LIMIT 1
+      `,
+      embeddingLiteral,
+      subjectId,
+      LOOKUP_THRESHOLD,
+    ))
+
+    if (!rows.length) return null
+
+    // Increment timesServed (fire-and-forget)
+    prisma.doubtKb.update({
+      where: { id: rows[0].id },
+      data: { timesServed: { increment: 1 } },
+    }).catch(() => {})
+
+    return rows[0].answerText
+  } catch (err) {
+    logger.warn('[doubtKb] lookupDoubt failed', {
+      error: String((err as any)?.message ?? err),
+    })
+    return null
+  }
+}
+
+/**
+ * Record a novel doubt into the shared KB, or update an existing near-duplicate.
+ *
+ * - Similarity >= 0.88 → update timesServed++, append to alternatePhrasings
+ * - Novel (< 0.88)     → create new row with embedding
+ *
+ * Never throws. Call fire-and-forget: `recordDoubt(...).catch(() => {})`
+ */
+export async function recordDoubt(
+  questionText: string,
+  answerText: string,
+  subjectId: string,
+  conceptId?: string,
+): Promise<void> {
+  if (!questionText?.trim() || !answerText?.trim() || !subjectId) return
+  try {
+    const vec = await getEmbedding(questionText)
+    if (!vec) return
+
+    const embeddingLiteral = `[${vec.join(',')}]`
+
+    type Row = { id: string; alternatePhrasings: string[] }
+    const existing = (await prisma.$queryRawUnsafe<Row[]>(
+      `
+      SELECT id, "alternatePhrasings", 1 - (embedding <=> $1::vector) AS similarity
+      FROM "DoubtKb"
+      WHERE "subjectId" = $2
+        AND embedding IS NOT NULL
+        AND 1 - (embedding <=> $1::vector) > $3
+      ORDER BY similarity DESC
+      LIMIT 1
+      `,
+      embeddingLiteral,
+      subjectId,
+      DEDUP_THRESHOLD,
+    ))
+
+    if (existing.length > 0) {
+      const row = existing[0]
+      const newPhrasings = [...(row.alternatePhrasings ?? []), questionText].slice(-10)
+      await prisma.$executeRawUnsafe(
+        `UPDATE "DoubtKb"
+         SET "timesServed" = "timesServed" + 1,
+             "alternatePhrasings" = $1::text[],
+             "updatedAt" = NOW()
+         WHERE id = $2`,
+        newPhrasings,
+        row.id,
+      )
+    } else {
+      // Novel doubt — create new row
+      await prisma.doubtKb.create({
+        data: {
+          // legacy fields kept for compatibility
+          studentId: 'shared',
+          sessionId: 'shared',
+          question: questionText,
+          answer: answerText,
+          // T26 fields
+          subjectId,
+          conceptId: conceptId ?? null,
+          questionText,
+          answerText,
+        },
+      })
+      // Write embedding in a separate raw update (Prisma doesn't support Unsupported on create)
+      await prisma.$executeRawUnsafe(
+        `UPDATE "DoubtKb" SET embedding = $1::vector WHERE "questionText" = $2 AND "subjectId" = $3 AND embedding IS NULL`,
+        embeddingLiteral,
+        questionText,
+        subjectId,
+      )
+    }
+  } catch (err) {
+    logger.warn('[doubtKb] recordDoubt failed', {
+      error: String((err as any)?.message ?? err),
+    })
   }
 }
 

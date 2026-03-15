@@ -18,8 +18,10 @@ import { checkOutputSafety, type SafetyEventCreate as OutputSafetyEvent } from '
 import { applyTagTransition, type TutorTag, type TutorStage } from '@/lib/ai/tutor/stateMachine'
 import { retrieveRelevantChunks } from '@/lib/ai/tutor/rag'
 import { detectMisconceptions, loadMisconceptions } from '@/lib/ai/tutor/misconceptionDetector'
-import { saveDoubt } from '@/lib/ai/tutor/doubtKb'
+import { saveDoubt, lookupDoubt, recordDoubt } from '@/lib/ai/tutor/doubtKb'
 import { getCachedExplanation, setCachedExplanation, type ExplanationLang, type ExplanationModality } from '@/lib/ai/tutor/explanationCache'
+import { detectDistress } from '@/lib/ai/tutor/distress'
+import { enqueueDistressNotification } from '@/jobs/distressNotification'
 import { enqueueIRTUpdate } from '@/jobs/irtUpdate'
 import { logger } from '@/lib/logger'
 
@@ -50,6 +52,7 @@ export type TutorTurnErrorCode =
   | 'AI_UNAVAILABLE'
   | 'SAFETY_BLOCK'
   | 'FEATURE_DISABLED'
+  | 'CONSENT_REQUIRED'
 
 export type TutorTurnError = {
   code: TutorTurnErrorCode
@@ -195,6 +198,60 @@ export async function runTutorOrchestrator(args: {
 
     const redactedInput = inputSafety.redacted
 
+    // Distress detection — gated by ENABLE_DISTRESS_DETECTION flag (currently false until T43 sign-off)
+    if (process.env.ENABLE_DISTRESS_DETECTION === 'true') {
+      const distressResult = detectDistress(redactedInput)
+      if (distressResult.detected) {
+        // Non-blocking enqueue — never affects student-facing response
+        enqueueDistressNotification({
+          studentId,
+          sessionId,
+          turnId: safetyContext.turnId,
+          severity: distressResult.severity,
+          triggerPhrases: distressResult.triggerPhrases,
+          studentMessage: redactedInput, // already PII-redacted
+        }).catch(() => {})
+
+        // CRITICAL/HIGH: override LLM with supportive response, skip LLM call
+        if (distressResult.severity === 'CRITICAL' || distressResult.severity === 'HIGH') {
+          await updateTutorSession(sessionId, {
+            stage: state.stage,
+            hintsRemaining: state.hintsRemaining,
+            lastTurnNumber: state.lastTurnNumber,
+          })
+          await markTurnCompleted(sessionId)
+          await prisma.aITutorTurnLog.create({
+            data: {
+              sessionId,
+              callType: 'tutor:teach',
+              model: 'distress_override',
+              inputTokens: 0,
+              outputTokens: 0,
+              costUsd: 0,
+              latencyMs: 0,
+              tag: 'QUESTION',
+              stage: state.stage,
+              safetyFlagged: true,
+              cached: false,
+              ragChunksUsed: [],
+              frustrationScore: null,
+            },
+          }).catch(() => {})
+          return {
+            answerText: distressResult.suggestedResponse,
+            complete: {
+              tag: 'QUESTION' as TutorTag,
+              stage: state.stage,
+              hintsRemaining: state.hintsRemaining,
+              turnNumber: state.lastTurnNumber,
+              sessionComplete: false,
+            },
+          }
+        }
+        // LOW/MEDIUM: let normal LLM call proceed (distress context already in prompt system layer)
+      }
+    }
+
     // Misconception detection using real subjectId + conceptId.
     const loadedMisconceptions = await loadMisconceptions(subjectId, conceptId)
     const detectedMisconceptions = detectMisconceptions(redactedInput, loadedMisconceptions)
@@ -274,6 +331,47 @@ export async function runTutorOrchestrator(args: {
       })
     }
 
+    // 5b. DoubtKb cache lookup (T26) — only for question/clarification turns
+    // Detect: message ends with '?' or contains common doubt indicators
+    const isDoubtTurn =
+      redactedInput.endsWith('?') ||
+      /\b(what|why|how|explain|confused|don'?t understand|clarify|mean|means|help)\b/i.test(redactedInput)
+
+    if (isDoubtTurn) {
+      const cachedAnswer = await lookupDoubt(redactedInput, subjectId)
+      if (cachedAnswer) {
+        // Serve from DoubtKb — skip LLM call
+        await markTurnCompleted(sessionId)
+        await prisma.aITutorTurnLog.create({
+          data: {
+            sessionId,
+            callType: 'tutor:teach',
+            model: 'doubt_kb_cache',
+            inputTokens: 0,
+            outputTokens: 0,
+            costUsd: 0,
+            latencyMs: 0,
+            tag: 'QUESTION',
+            stage: state.stage,
+            safetyFlagged: false,
+            cached: true,
+            ragChunksUsed: [],
+            frustrationScore: frustration.frustrationScore,
+          },
+        }).catch(() => {})
+        return {
+          answerText: cachedAnswer,
+          complete: {
+            tag: 'QUESTION' as TutorTag,
+            stage: state.stage,
+            hintsRemaining: state.hintsRemaining,
+            turnNumber: state.lastTurnNumber,
+            sessionComplete: false,
+          },
+        }
+      }
+    }
+
     // 6. Tutor LLM call with retry/backoff
     let llmContent: string
     let servedFromCache = false
@@ -345,6 +443,10 @@ export async function runTutorOrchestrator(args: {
         question: redactedInput,
         answer: answerText,
       })
+      // T26: also write to shared subjectId-scoped KB with pgvector dedup (fire-and-forget)
+      if (isDoubtTurn) {
+        recordDoubt(redactedInput, answerText, subjectId, conceptId).catch(() => {})
+      }
     }
 
     // 10. State machine transition — derive next stage + hint usage from tag

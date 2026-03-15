@@ -1,300 +1,256 @@
-export const dynamic = 'force-dynamic'
-
 /**
- * FILE OBJECTIVE:
- * - Returns subject-level progress, weak topics (attention flags), and readiness
- *   for a specific linked student. Aggregated data only — no raw answers exposed.
+ * GET /api/parent/progress
+ *
+ * Domain 7 §7.10 — returns all linked children with per-subject readiness,
+ * study time, alerts, and mastery delta for the authenticated parent.
+ *
+ * Auth: parent role required.
+ *
+ * Response shape:
+ * {
+ *   children: Array<{
+ *     studentId, name, grade, board,
+ *     streakDays, sessionsThisWeek, studyTimeThisWeekMinutes,
+ *     subjects: Array<{
+ *       subjectId, subjectName, readinessScore, daysToExam, recentMasteryChange
+ *     }>,
+ *     recentAlerts: Array<{ type, message, occurredAt }>
+ *   }>
+ * }
  *
  * EDIT LOG:
- * - 2026-02-04 | claude | created parent progress API
- * - 2026-02-07 | copilot | added force-dynamic to prevent static render error
+ *   2026-02-04 | claude | original per-student ?studentId query
+ *   2026-03-15 | claude | T39 — full D7 §7.10 multi-child contract
  */
 
-import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth/next';
-import { authOptions } from '@/lib/auth';
-import { prisma } from '@/lib/prisma';
-import { logger } from '@/lib/logger';
-import { formatErrorForResponse } from '@/lib/errorResponse';
-import type { AppSession } from '@/lib/types/auth';
+export const dynamic = 'force-dynamic'
 
-const CLASS_NAME = 'ParentProgressAPI';
+import { NextResponse } from 'next/server'
+import { getServerSession } from 'next-auth/next'
+import { authOptions } from '@/lib/auth'
+import { prisma } from '@/lib/prisma'
+import { logger } from '@/lib/logger'
+import { computeReadinessScore } from '@/lib/student/examReadiness'
+import type { AppSession } from '@/lib/types/auth'
 
-// Accuracy threshold from the home engine: accuracy >= 0.6 is treated as "strong"
-// for parent-facing aggregates and readiness scoring.
-const LOW_ACCURACY_THRESHOLD = 0.6;
+const CLASS_NAME = 'ParentProgressAPI'
 
-interface SubjectProgress {
-  subject: string;
-  totalTopics: number;
-  topicsCovered: number;
-  coveragePercent: number;
-  averageMastery: number;
-  strongTopics: number;
-  weakTopics: number;
-  chapters: ChapterProgress[];
+type AlertType = 'readiness_drop' | 'streak_break' | 'milestone'
+
+interface SubjectResult {
+  subjectId: string
+  subjectName: string
+  readinessScore: number
+  daysToExam: number | null
+  recentMasteryChange: number | null // delta 0-1 float; positive = improved; null if no data
 }
 
-interface ChapterProgress {
-  chapter: string;
-  topics: TopicSummary[];
-  averageMastery: number;
-  topicCount: number;
+interface RecentAlert {
+  type: AlertType
+  message: string
+  occurredAt: string // ISO timestamp
 }
 
-interface TopicSummary {
-  topicId: string;
-  masteryLevel: string;
-  accuracy: number;
-  questionsAttempted: number;
+function weekStart(): Date {
+  const now = new Date()
+  const dow = now.getUTCDay()
+  const distToMonday = dow === 0 ? 6 : dow - 1
+  const monday = new Date(now)
+  monday.setUTCDate(now.getUTCDate() - distToMonday)
+  monday.setUTCHours(0, 0, 0, 0)
+  return monday
 }
 
-interface AttentionItem {
-  topicId: string;
-  subject: string;
-  chapter: string;
-  masteryLevel: string;
-  accuracy: number;
-  reason: string;
-}
+export async function GET(req: Request) {
+  const start = Date.now()
+  const session = (await getServerSession(authOptions)) as AppSession | null
 
-interface ReadinessItem {
-  subject: string;
-  topicsCovered: number;
-  totalTopics: number;
-  coveragePercent: number;
-  avgMastery: number;
-  readinessScore: number;
-  readinessLabel: string;
-}
+  if (!session?.user?.id) {
+    const res = NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    logger.logAPI(req, res, { className: CLASS_NAME, methodName: 'GET' }, start)
+    return res
+  }
 
-/**
- * GET /api/parent/progress?studentId=xxx
- * Returns subject progress, weak topics, and readiness for a linked student
- */
-export async function GET(req: NextRequest) {
-  const start = Date.now();
-  const METHOD_NAME = 'GET';
+  if (session.user.role !== 'parent') {
+    const res = NextResponse.json({ error: 'Parent role required' }, { status: 403 })
+    logger.logAPI(req, res, { className: CLASS_NAME, methodName: 'GET' }, start)
+    return res
+  }
 
-  try {
-    const session = (await getServerSession(authOptions)) as AppSession | null;
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+  const parentId = session.user.id
+  const monday = weekStart()
+  const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
 
-    const studentId = req.nextUrl.searchParams.get('studentId');
-    if (!studentId) {
-      return NextResponse.json({ error: 'studentId is required' }, { status: 400 });
-    }
+  // All active linked children
+  const links = await prisma.parentStudent.findMany({
+    where: { parentId, status: 'active' },
+    select: { studentId: true },
+  })
 
-    const parentId = session.user.id;
+  const children = await Promise.all(
+    links.map(async ({ studentId }) => {
+      // ── Core data in parallel ─────────────────────────────────────────
+      const [student, streak, sessionsThisWeek, learningPlans] = await Promise.all([
+        prisma.user.findUnique({
+          where: { id: studentId },
+          select: { name: true, grade: true, board: true, subjects: true },
+        }),
+        prisma.studentStreak.findFirst({
+          where: { studentId, kind: 'daily' },
+          select: { current: true, lastActive: true },
+        }),
+        prisma.structuredSession.findMany({
+          where: { studentId, startedAt: { gte: monday } },
+          select: { startedAt: true, completedAt: true },
+        }),
+        prisma.learningPlan.findMany({
+          where: { studentId },
+          select: { subjectId: true, examDate: true },
+        }),
+      ])
 
-    // Verify parent-student link exists and is active
-    const link = await prisma.parentStudent.findUnique({
-      where: { parentId_studentId: { parentId, studentId } },
-    });
-    if (!link || link.status === 'revoked') {
-      return NextResponse.json({ error: 'Student not linked' }, { status: 403 });
-    }
+      if (!student) return null
 
-    // Log parent access for audit
-    await prisma.auditLog.create({
-      data: {
-        userId: parentId,
-        action: 'parent_view_progress',
-        details: { studentId, parentId },
-      },
-    }).catch((err) => logger.warn('audit log failed', { error: String(err) }));
+      // ── Study time this week (minutes) ────────────────────────────────
+      const studyTimeThisWeekMinutes = sessionsThisWeek.reduce((sum, s) => {
+        if (!s.completedAt) return sum
+        const mins = (s.completedAt.getTime() - s.startedAt.getTime()) / 60_000
+        return sum + Math.max(0, mins)
+      }, 0)
 
-    // Fetch all mastery data for this student
-    const masteryData = await prisma.studentTopicMastery.findMany({
-      where: { studentId },
-      orderBy: [{ subject: 'asc' }, { chapter: 'asc' }],
-    });
+      // ── Resolve subjects → SubjectDef IDs ────────────────────────────
+      const subjectNames = (student.subjects as string[]).filter(Boolean)
+      const subjectDefs = subjectNames.length
+        ? await prisma.subjectDef.findMany({
+            where: {
+              lifecycle: 'active',
+              OR: [{ name: { in: subjectNames } }, { slug: { in: subjectNames } }],
+            },
+            select: { id: true, name: true },
+          })
+        : []
 
-    // Fetch total topics per subject from the curriculum (TopicDef)
-    const student = await prisma.user.findUnique({
-      where: { id: studentId },
-      select: { board: true, grade: true },
-    });
+      // Exam-date map by subjectId
+      const examDateMap = new Map<string, Date | null>()
+      for (const lp of learningPlans) {
+        if (!examDateMap.has(lp.subjectId)) {
+          examDateMap.set(lp.subjectId, lp.examDate ?? null)
+        }
+      }
 
-    const totalTopicsBySubject: Record<string, number> = {};
-    if (student?.board && student?.grade) {
-      const topicDefs = await prisma.topicDef.findMany({
+      // ── Per-subject readiness + mastery delta ─────────────────────────
+      const subjects: SubjectResult[] = await Promise.all(
+        subjectDefs.map(async (sd) => {
+          // Readiness score (Redis-cached)
+          const readiness = await computeReadinessScore(studentId, sd.id).catch(() => null)
+          const readinessScore = readiness?.score ?? 0
+
+          // Days to exam
+          const examDate = examDateMap.get(sd.id) ?? null
+          const daysToExam = examDate
+            ? Math.ceil((examDate.getTime() - Date.now()) / 86_400_000)
+            : null
+
+          // Mastery delta — avg score of concepts updated in last 7 days
+          // compared to the overall subject average (proxy delta)
+          const [recentStates, allStates] = await Promise.all([
+            prisma.studentConceptState.findMany({
+              where: {
+                studentId,
+                updatedAt: { gte: sevenDaysAgo },
+                concept: { subjectId: sd.id },
+              },
+              select: { masteryScore: true },
+            }),
+            prisma.studentConceptState.findMany({
+              where: { studentId, concept: { subjectId: sd.id } },
+              select: { masteryScore: true },
+            }),
+          ])
+
+          let recentMasteryChange: number | null = null
+          if (recentStates.length > 0 && allStates.length > 0) {
+            const allAvg = allStates.reduce((s, r) => s + r.masteryScore, 0) / allStates.length
+            const recentAvg =
+              recentStates.reduce((s, r) => s + r.masteryScore, 0) / recentStates.length
+            // Positive = recent concepts scoring above average (improvement signal)
+            recentMasteryChange = Math.round((recentAvg - allAvg) * 1000) / 1000
+          }
+
+          return {
+            subjectId: sd.id,
+            subjectName: sd.name,
+            readinessScore,
+            daysToExam,
+            recentMasteryChange,
+          }
+        }),
+      )
+
+      // ── Alerts ────────────────────────────────────────────────────────
+      const recentAlerts: RecentAlert[] = []
+      const now = new Date()
+
+      // streak_break: streak went to 0 and lastActive was within 3 days
+      if (streak && streak.current === 0 && streak.lastActive) {
+        const daysSince = Math.floor(
+          (now.getTime() - streak.lastActive.getTime()) / 86_400_000,
+        )
+        if (daysSince <= 3) {
+          recentAlerts.push({
+            type: 'streak_break',
+            message: 'Study streak ended — encourage getting back on track',
+            occurredAt: streak.lastActive.toISOString(),
+          })
+        }
+      }
+
+      // readiness_drop: any subject with recentMasteryChange < -0.1
+      for (const s of subjects) {
+        if (s.recentMasteryChange !== null && s.recentMasteryChange < -0.1) {
+          recentAlerts.push({
+            type: 'readiness_drop',
+            message: `${s.subjectName} readiness may have dropped — recent concepts below average`,
+            occurredAt: sevenDaysAgo.toISOString(),
+          })
+        }
+      }
+
+      // milestone: any concept reached masteryScore >= 0.9 this week
+      const milestoneCount = await prisma.studentConceptState.count({
         where: {
-          chapter: {
-            subject: {
-              class: {
-                board: { slug: student.board },
-                grade: parseInt(student.grade, 10),
-              },
-            },
-          },
+          studentId,
+          masteryScore: { gte: 0.9 },
+          updatedAt: { gte: monday },
         },
-        select: {
-          chapter: {
-            select: {
-              subject: {
-                select: { slug: true },
-              },
-            },
-          },
-        },
-      });
-
-      for (const td of topicDefs) {
-        const subjectSlug = td.chapter.subject.slug;
-        totalTopicsBySubject[subjectSlug] = (totalTopicsBySubject[subjectSlug] || 0) + 1;
+      })
+      if (milestoneCount > 0) {
+        recentAlerts.push({
+          type: 'milestone',
+          message: `Mastered ${milestoneCount} concept${milestoneCount > 1 ? 's' : ''} this week!`,
+          occurredAt: now.toISOString(),
+        })
       }
-    }
-
-    // Group mastery by subject -> chapter -> topics
-    const subjectMap: Record<string, {
-      chapters: Record<string, TopicSummary[]>;
-      totalMastery: number;
-      count: number;
-      strong: number;
-      weak: number;
-    }> = {};
-
-    const attentionItems: AttentionItem[] = [];
-
-    for (const m of masteryData) {
-      if (!subjectMap[m.subject]) {
-        subjectMap[m.subject] = { chapters: {}, totalMastery: 0, count: 0, strong: 0, weak: 0 };
-      }
-      const subj = subjectMap[m.subject];
-
-      if (!subj.chapters[m.chapter]) {
-        subj.chapters[m.chapter] = [];
-      }
-
-      const masteryValue = masteryLevelToNumber(m.masteryLevel);
-      subj.chapters[m.chapter].push({
-        topicId: m.topicId,
-        masteryLevel: m.masteryLevel,
-        accuracy: m.accuracy,
-        questionsAttempted: m.questionsAttempted,
-      });
-
-      subj.totalMastery += masteryValue;
-      subj.count++;
-
-      // Aligned with engine P4 threshold: accuracy >= 0.6 = completed
-        if (m.accuracy >= LOW_ACCURACY_THRESHOLD) {
-        subj.strong++;
-      }
-        if (m.accuracy < LOW_ACCURACY_THRESHOLD && m.questionsAttempted >= 3) {
-        subj.weak++;
-        attentionItems.push({
-          topicId: m.topicId,
-          subject: m.subject,
-          chapter: m.chapter,
-          masteryLevel: m.masteryLevel,
-          accuracy: m.accuracy,
-          reason: m.accuracy < 0.3 ? 'very_low_accuracy' : 'low_mastery',
-        });
-      } else if (m.masteryLevel === 'intermediate' && m.accuracy < 0.4 && m.questionsAttempted >= 5) {
-        subj.weak++;
-        attentionItems.push({
-          topicId: m.topicId,
-          subject: m.subject,
-          chapter: m.chapter,
-          masteryLevel: m.masteryLevel,
-          accuracy: m.accuracy,
-          reason: 'declining_accuracy',
-        });
-      }
-    }
-
-    // Build subject progress array
-    const subjectProgress: SubjectProgress[] = Object.entries(subjectMap).map(([subject, data]) => {
-      const totalTopics = totalTopicsBySubject[subject] || data.count;
-      const topicsCovered = data.count;
-      const coveragePercent = totalTopics > 0 ? (topicsCovered / totalTopics) * 100 : 0;
-      const averageMastery = data.count > 0 ? data.totalMastery / data.count : 0;
-
-      const chapters: ChapterProgress[] = Object.entries(data.chapters).map(([chapter, topics]) => {
-        const chapterMastery = topics.reduce((sum, t) => sum + masteryLevelToNumber(t.masteryLevel as any), 0);
-        return {
-          chapter,
-          topics,
-          averageMastery: topics.length > 0 ? chapterMastery / topics.length : 0,
-          topicCount: topics.length,
-        };
-      });
 
       return {
-        subject,
-        totalTopics,
-        topicsCovered,
-        coveragePercent: Math.round(coveragePercent),
-        averageMastery: Math.round(averageMastery * 100) / 100,
-        strongTopics: data.strong,
-        weakTopics: data.weak,
-        chapters,
-      };
-    });
+        studentId,
+        name: student.name ?? 'Student',
+        grade: student.grade ?? '',
+        board: student.board ?? '',
+        streakDays: streak?.current ?? 0,
+        sessionsThisWeek: sessionsThisWeek.length,
+        studyTimeThisWeekMinutes: Math.round(studyTimeThisWeekMinutes),
+        subjects,
+        recentAlerts,
+      }
+    }),
+  )
 
-    // Build readiness indicators
-    const readiness: ReadinessItem[] = subjectProgress.map((sp) => {
-      const coverageWeight = 0.4;
-      const masteryWeight = LOW_ACCURACY_THRESHOLD;
-      const coverageScore = sp.coveragePercent;
-      const masteryScore = (sp.averageMastery / 4) * 100; // 4 = max mastery (expert)
-      const readinessScore = Math.round(coverageWeight * coverageScore + masteryWeight * masteryScore);
+  const validChildren = children.filter(
+    (c): c is NonNullable<typeof c> => c !== null,
+  )
 
-      let readinessLabel = 'not_started';
-      if (sp.topicsCovered === 0) readinessLabel = 'not_started';
-      else if (readinessScore >= 75) readinessLabel = 'ready';
-      else if (readinessScore >= 50) readinessLabel = 'on_track';
-      else readinessLabel = 'needs_work';
-
-      return {
-        subject: sp.subject,
-        topicsCovered: sp.topicsCovered,
-        totalTopics: sp.totalTopics,
-        coveragePercent: sp.coveragePercent,
-        avgMastery: sp.averageMastery,
-        readinessScore,
-        readinessLabel,
-      };
-    });
-
-    const response = NextResponse.json({
-      studentId,
-      subjectProgress,
-      attentionFlags: attentionItems,
-      readiness,
-    });
-
-    logger.info('Parent progress data fetched', {
-      className: CLASS_NAME,
-      methodName: METHOD_NAME,
-      parentId,
-      studentId,
-      subjectCount: subjectProgress.length,
-      attentionCount: attentionItems.length,
-    });
-
-    logger.logAPI(req, response, { className: CLASS_NAME, methodName: METHOD_NAME }, start);
-    return response;
-  } catch (error) {
-    logger.error('Failed to fetch parent progress', {
-      className: CLASS_NAME,
-      methodName: METHOD_NAME,
-      error,
-    });
-    return NextResponse.json({ error: formatErrorForResponse(error) }, { status: 500 });
-  }
-}
-
-function masteryLevelToNumber(level: string): number {
-  switch (level) {
-    case 'expert': return 4;
-    case 'advanced': return 3;
-    case 'intermediate': return 2;
-    case 'beginner': return 1;
-    default: return 0;
-  }
+  const res = NextResponse.json({ children: validChildren }, { status: 200 })
+  logger.logAPI(req, res, { className: CLASS_NAME, methodName: 'GET' }, start)
+  return res
 }

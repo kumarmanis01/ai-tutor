@@ -44,6 +44,10 @@ import { IRT_UPDATE_QUEUE_NAME } from "../jobs/irtUpdate.js";
 import { SM18_SCHEDULER_QUEUE_NAME, registerNightlySM18Job } from "../jobs/sm18.js";
 import { DIAGNOSTIC_BOOTSTRAP_QUEUE_NAME } from "../jobs/diagnosticBootstrap.js";
 import { processDiagnosticBootstrap } from "./services/diagnosticBootstrapWorker.js";
+import { WEEKLY_DIGEST_QUEUE_NAME, registerWeeklyDigestJob } from "../jobs/weeklyDigest.js";
+import { processWeeklyDigest } from "./services/weeklyDigestWorker.js";
+import { DISTRESS_NOTIFICATION_QUEUE_NAME } from "../jobs/distressNotification.js";
+import { processDistressNotification } from "./services/distressNotificationWorker.js";
 
 const argv = minimist(process.argv.slice(2));
 
@@ -197,6 +201,13 @@ export async function bootstrapWorker() {
   );
   await registerNightlySM18Job();
 
+  const weeklyDigestWorker = new Worker(
+    WEEKLY_DIGEST_QUEUE_NAME,
+    async (_job: Job) => processWeeklyDigest(),
+    { connection: redisConnection, concurrency: 1 },
+  );
+  await registerWeeklyDigestJob();
+
   const diagnosticBootstrapWorker = new Worker(
     DIAGNOSTIC_BOOTSTRAP_QUEUE_NAME,
     async (job: Job) => processDiagnosticBootstrap(job as any),
@@ -204,6 +215,12 @@ export async function bootstrapWorker() {
       connection: redisConnection,
       concurrency: 1,
     }
+  );
+
+  const distressNotificationWorker = new Worker(
+    DISTRESS_NOTIFICATION_QUEUE_NAME,
+    async (job: Job) => processDistressNotification(job as Job<import("../jobs/distressNotification.js").DistressNotificationJobData>),
+    { connection: redisConnection, concurrency: 2 },
   );
 
   // Debug events: active, stalled
@@ -267,6 +284,8 @@ export async function bootstrapWorker() {
       await worker.close();
       await irtWorker.close();
       await sm18Worker.close();
+      await weeklyDigestWorker.close();
+      await distressNotificationWorker.close();
 
       await prisma.workerLifecycle.update({
         where: { id: lifecycleId },

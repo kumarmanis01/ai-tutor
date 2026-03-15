@@ -39,8 +39,11 @@ import UpcomingTopicsList from '@/components/home/UpcomingTopicsList';
 import NudgeBanner from '@/components/home/NudgeBanner';
 import { EngagementSection } from '@/components/home/EngagementSection';
 import RevisionWidget from '@/components/student/dashboard/RevisionWidget';
+import XPWidget from '@/components/student/dashboard/XPWidget';
+import SubjectReadinessCard from '@/components/student/dashboard/SubjectReadinessCard';
 import PaymentButton from '@/components/student/PaymentButton';
 import { checkFreeTierCap } from '@/lib/freemium';
+import { computeReadinessScore } from '@/lib/student/examReadiness';
 
 export const dynamic = 'force-dynamic';
 
@@ -92,11 +95,13 @@ export default async function StudentHomeDashboardPage() {
     masteredTopicIds,
     freeTierStatus,
     userSub,
+    xpThisWeekAgg,
+    planTodayResult,
   ] = await Promise.all([
-    // 0. Student academic profile for onboarding gate
+    // 0. Student academic profile for onboarding gate + XP fields
     prisma.user.findUnique({
       where: { id: userId },
-      select: { board: true, grade: true, language: true, subjects: true, accountStatus: true },
+      select: { board: true, grade: true, language: true, subjects: true, accountStatus: true, totalXp: true, level: true },
     }),
 
     // 1. Active in-progress session
@@ -179,6 +184,54 @@ export default async function StudentHomeDashboardPage() {
       where: { id: userId },
       select: { subscriptionStatus: true, subscriptionExpiry: true, name: true, email: true },
     }),
+
+    // 14. XP earned this week
+    prisma.studentXP.aggregate({
+      where: { studentId: userId, awardedAt: { gte: monday, lte: sunday } },
+      _sum: { amount: true },
+    }),
+
+    // 15. Today's learning plan item (primary recommendation source)
+    (async () => {
+      try {
+        const plan = await prisma.learningPlan.findFirst({
+          where: { studentId: userId },
+          orderBy: { generatedAt: 'desc' },
+          select: { id: true },
+        })
+        if (!plan) return null
+
+        const firstSession = await prisma.structuredSession.findFirst({
+          where: { studentId: userId },
+          orderBy: { startedAt: 'asc' },
+          select: { startedAt: true },
+        })
+        const daysSinceFirst = firstSession
+          ? Math.floor((Date.now() - firstSession.startedAt.getTime()) / 86_400_000)
+          : 0
+        const currentWeek = Math.max(1, Math.ceil((daysSinceFirst + 1) / 7))
+
+        const item = await prisma.learningPlanItem.findFirst({
+          where: { planId: plan.id, status: 'UPCOMING', weekNumber: { lte: currentWeek } },
+          orderBy: [{ weekNumber: 'asc' }, { orderInWeek: 'asc' }],
+          select: {
+            id: true,
+            conceptId: true,
+            weekNumber: true,
+            orderInWeek: true,
+            concept: {
+              select: {
+                name: true,
+                subject: { select: { name: true } },
+              },
+            },
+          },
+        })
+        return { item, fallback: false, planExists: true }
+      } catch {
+        return null
+      }
+    })(),
   ]);
 
   // ── Onboarding Gate: block learning features when profile is incomplete ──
@@ -233,6 +286,33 @@ export default async function StudentHomeDashboardPage() {
     );
   }
 
+  // ── XP this week ─────────────────────────────────────────────────────────
+  const xpThisWeek = xpThisWeekAgg._sum.amount ?? 0
+  const totalXp = studentProfile?.totalXp ?? 0
+  const currentLevel = studentProfile?.level ?? 1
+
+  // ── Subject readiness scores ─────────────────────────────────────────────
+  const subjectNames = (studentProfile?.subjects ?? []).map((s) => String(s)).filter(Boolean)
+  const subjectDefsForReadiness = subjectNames.length
+    ? await prisma.subjectDef.findMany({
+        where: {
+          OR: [{ name: { in: subjectNames } }, { slug: { in: subjectNames } }],
+          lifecycle: 'active',
+        },
+        select: { id: true, name: true },
+      })
+    : []
+  const readinessResults = await Promise.all(
+    subjectDefsForReadiness.map(async (subj) => {
+      const result = await computeReadinessScore(userId, subj.id).catch(() => null)
+      return {
+        subjectId: subj.id,
+        subjectName: subj.name,
+        score: result?.score ?? 0,
+      }
+    }),
+  )
+
   // ── Build weekly activity strip ─────────────────────────────────────────
   const weekDays = Array.from({ length: 7 }, (_, i) => {
     const d = new Date(monday);
@@ -245,12 +325,25 @@ export default async function StudentHomeDashboardPage() {
     if (idx >= 0 && idx < 7) weekDays[idx].hasSession = true;
   }
 
-  // ── Unwrap next action ──────────────────────────────────────────────────
+  // ── Unwrap next action (legacy fallback) ────────────────────────────────
   type RawAction = { ruleId?: string; topicId?: string; topicName?: string | null; subject?: string | null; chapter?: string | null; estimatedTimeMin?: number } | null;
   const rawAction: RawAction = nextActionResult && typeof nextActionResult === 'object' && 'action' in nextActionResult
     ? (nextActionResult as { action: RawAction }).action
     : (nextActionResult as RawAction);
-  const recommendation = rawAction?.topicId ? rawAction : null;
+  const legacyRecommendation = rawAction?.topicId ? rawAction : null;
+
+  // ── Build recommendation from learning plan (primary) or legacy engine ───
+  // planTodayResult.planExists=true but item=null → student is ahead of plan
+  const aheadOfPlan = planTodayResult?.planExists === true && planTodayResult.item == null
+  const recommendation = planTodayResult?.item
+    ? {
+        topicId: planTodayResult.item.conceptId,
+        topicTitle: planTodayResult.item.concept?.name ?? planTodayResult.item.conceptId,
+        subject: planTodayResult.item.concept?.subject?.name ?? '',
+        estimatedTimeMin: 20,
+        weekNumber: planTodayResult.item.weekNumber,
+      }
+    : legacyRecommendation
 
   // ── Primary action type — driven by engine ruleId ───────────────────────
   // The engine is the single source of truth for what the student should do.
@@ -365,14 +458,16 @@ export default async function StudentHomeDashboardPage() {
               }
             : null
         }
+        aheadOfPlan={aheadOfPlan}
         recommendation={
           recommendation
             ? {
-                topicId: recommendation.topicId!,
-                topicTitle: recommendation.topicName ?? recommendation.topicId!,
-                subject: recommendation.subject ?? '',
-                chapter: recommendation.chapter ?? undefined,
-                estimatedTimeMin: recommendation.estimatedTimeMin ?? 20,
+                topicId: (recommendation as any).topicId!,
+                topicTitle: (recommendation as any).topicTitle ?? (recommendation as any).topicName ?? (recommendation as any).topicId!,
+                subject: (recommendation as any).subject ?? '',
+                chapter: (recommendation as any).chapter ?? undefined,
+                estimatedTimeMin: (recommendation as any).estimatedTimeMin ?? 20,
+                weekNumber: (recommendation as any).weekNumber,
                 buildsOnTopicName,
               }
             : null
@@ -403,6 +498,21 @@ export default async function StudentHomeDashboardPage() {
           currentStreak: streakRow?.current ?? 0,
         }}
       />
+
+      {/* 3b. XP Widget + Subject Readiness */}
+      <XPWidget totalXp={totalXp} level={currentLevel} xpThisWeek={xpThisWeek} />
+      {readinessResults.length > 0 && (
+        <div className="space-y-3">
+          {readinessResults.map((r) => (
+            <SubjectReadinessCard
+              key={r.subjectId}
+              subjectName={r.subjectName}
+              score={r.score}
+              subjectId={r.subjectId}
+            />
+          ))}
+        </div>
+      )}
 
       {/* 4. Homework Pending — hidden when empty */}
       <HomeworkPendingCard

@@ -2,6 +2,7 @@ import OpenAI from 'openai'
 import { prisma } from '@/lib/prisma'
 import { normalizeLanguage } from '@/lib/normalize'
 import { logger } from '@/lib/logger'
+import { isCircuitOpen, recordFailure, recordSuccess } from '@/lib/ai/tutor/circuitBreaker'
 
 export type TutorCallType = 'tutor:teach' | 'tutor:hint' | 'tutor:eval'
 
@@ -80,6 +81,51 @@ function getClient() {
     client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
   }
   return client
+}
+
+/**
+ * Anthropic failover — used when the LLM circuit breaker is open.
+ * Uses @anthropic-ai/sdk if available, else throws AI_UNAVAILABLE.
+ * Model: claude-haiku-4-5-20251001 (fast, cheap, failover only).
+ */
+async function callAnthropic(
+  prompt: string,
+  opts: { timeoutMs?: number } = {},
+): Promise<{ content: string; usage: any; costUsd: number; latencyMs: number; model: string }> {
+  let Anthropic: any
+  try {
+    Anthropic = (await import('@anthropic-ai/sdk')).default
+  } catch {
+    throw new LLMError('AI_UNAVAILABLE', 'Anthropic SDK not installed')
+  }
+
+  const anthropicClient = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+  const model = 'claude-haiku-4-5-20251001'
+  const start = Date.now()
+
+  try {
+    const response: any = await Promise.race([
+      anthropicClient.messages.create({
+        model,
+        max_tokens: 2048,
+        messages: [{ role: 'user', content: prompt }],
+      }),
+      new Promise((_, rej) =>
+        setTimeout(() => rej(new Error('llm_timeout')), opts.timeoutMs ?? 45_000),
+      ),
+    ])
+
+    const latencyMs = Date.now() - start
+    const content: string = response.content?.[0]?.text ?? ''
+    const usage = response.usage ?? {}
+    const costUsd =
+      (usage.input_tokens ?? 0) * 0.00000025 + (usage.output_tokens ?? 0) * 0.00000125
+
+    await recordSuccess()
+    return { content, usage, costUsd, latencyMs, model }
+  } catch (err: any) {
+    throw new LLMError('AI_UNAVAILABLE', String(err?.message ?? 'Anthropic failover failed'))
+  }
 }
 
 export async function createChatCompletion(input: any) {
@@ -195,6 +241,14 @@ export async function callLLM({ prompt, model, meta, timeoutMs }: CallLLMArgs) {
     const effectiveTimeout = baseTimeout;
 
     try {
+      // Circuit breaker: if open, try Anthropic failover before any OpenAI call.
+      if (await isCircuitOpen()) {
+        if (process.env.ANTHROPIC_API_KEY) {
+          return await callAnthropic(prompt, { timeoutMs: effectiveTimeout })
+        }
+        throw new LLMError('AI_UNAVAILABLE', 'LLM circuit open')
+      }
+
       // Promise.race to enforce timeout (note: underlying request not aborted)
       const response: any = await Promise.race([
         client.chat.completions.create({ model: selectedModel, messages: [{ role: 'user', content: prompt }], temperature: 0.0 }),
@@ -278,13 +332,16 @@ export async function callLLM({ prompt, model, meta, timeoutMs }: CallLLMArgs) {
           }
         }
         // Attach model and attempt to result for callers
+        await recordSuccess()
         return { content, usage, costUsd, latencyMs, model: selectedModel, attempt }
       } catch (e) { logger.error('Failed to write AIContentLog', { error: String(e) }) }
 
+      await recordSuccess()
       return { content, usage, costUsd, latencyMs, model: selectedModel, attempt }
     } catch (error: any) {
       lastError = error;
       const latencyMs = Date.now() - attemptStart;
+      await recordFailure();
 
       const retryable = isRetryableLLMError(error);
       const isLastAttempt = attempt >= maxAttempts;

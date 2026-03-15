@@ -1,6 +1,12 @@
 import OpenAI from 'openai'
 
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
+let _openai: OpenAI | null = null
+function getClient(): OpenAI {
+  if (!_openai) {
+    _openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
+  }
+  return _openai
+}
 
 /**
  * Get embedding vector for a text string.
@@ -11,7 +17,7 @@ export async function getEmbedding(text: string): Promise<number[] | null> {
   try {
     if (!process.env.OPENAI_API_KEY) return null
     const input = text.slice(0, 8000)
-    const response = await openai.embeddings.create({
+    const response = await getClient().embeddings.create({
       model: 'text-embedding-3-small',
       input,
     })
@@ -42,7 +48,7 @@ export async function getEmbeddingsBatch(
       if (!process.env.OPENAI_API_KEY) {
         results.push(...batch.map(() => null))
       } else {
-        const response = await openai.embeddings.create({
+        const response = await getClient().embeddings.create({
           model: 'text-embedding-3-small',
           input: batch.map((t) => t.slice(0, 8000)),
         })

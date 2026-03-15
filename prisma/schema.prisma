@@ -105,6 +105,8 @@ model User {
   studentFeatureFlags      StudentFeatureFlag[]     @relation("StudentFeatureFlags")
   studentXpRecords         StudentXP[]
   learningPlans           LearningPlan[]
+  consents                Consent[]
+  parentProfile           ParentProfile?
 }
 
 model PaymentOrder {
@@ -152,6 +154,15 @@ model StudentFeatureFlag {
   @@unique([studentId, key], name: "studentId_key")
   @@index([key, enabled], name: "idx_studentfeatureflag_key_enabled")
   @@index([studentId], name: "idx_studentfeatureflag_studentId")
+}
+
+model DailyCostMetric {
+  id             String   @id @default(cuid())
+  date           DateTime @unique
+  sessions       Int
+  totalCostUsd   Float
+  costPerSession Float
+  createdAt      DateTime @default(now())
 }
 
 model PhoneOtp {
@@ -1237,8 +1248,10 @@ model Concept {
   commonlyConfusedWithIds String[]  @default([])
   createdAt              DateTime   @default(now())
   updatedAt              DateTime   @updatedAt
-  topic                  TopicDef   @relation(fields: [topicId], references: [id], onDelete: Cascade)
-  subject                SubjectDef @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  topic                  TopicDef              @relation(fields: [topicId], references: [id], onDelete: Cascade)
+  subject                SubjectDef            @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  learningPlanItems      LearningPlanItem[]
+  conceptStates          StudentConceptState[]
 
   @@index([subjectId])
   @@index([topicId])
@@ -1504,6 +1517,7 @@ model StudentConceptState {
   id              String   @id @default(cuid())
   studentId       String
   conceptId       String
+  concept         Concept  @relation(fields: [conceptId], references: [id])
   masteryScore    Float    @default(0.0)
   nextReviewAt    DateTime?
   lastInteraction DateTime @default(now())
@@ -1524,29 +1538,38 @@ model StudentConceptState {
 
 model LearningPlan {
   id          String            @id @default(cuid())
-  studentId   String            @unique
+  studentId   String
   subjectId   String
-  gradeId     String
-  items       LearningPlanItem[]
-  createdAt   DateTime          @default(now())
+  examDate    DateTime?
+  weeklyGoal  Int               @default(5)
+  generatedAt DateTime          @default(now())
   updatedAt   DateTime          @updatedAt
   student     User              @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  items       LearningPlanItem[]
 
-  @@index([studentId])
+  @@unique([studentId, subjectId])
 }
 
 model LearningPlanItem {
-  id           String       @id @default(cuid())
-  planId       String
-  plan         LearningPlan @relation(fields: [planId], references: [id], onDelete: Cascade)
-  conceptId    String
-  orderIndex   Int
-  status       String       @default("pending")
-  unlockedAt   DateTime?
-  completedAt  DateTime?
+  id          String         @id @default(cuid())
+  planId      String
+  conceptId   String
+  weekNumber  Int
+  orderInWeek Int
+  status      PlanItemStatus @default(UPCOMING)
+  deferredAt  DateTime?
+  completedAt DateTime?
+  plan        LearningPlan   @relation(fields: [planId], references: [id], onDelete: Cascade)
+  concept     Concept        @relation(fields: [conceptId], references: [id])
 
-  @@index([planId, orderIndex])
-  @@index([planId, status])
+  @@index([planId, weekNumber, status])
+}
+
+enum PlanItemStatus {
+  UPCOMING
+  IN_PROGRESS
+  COMPLETED
+  DEFERRED
 }
 
 model AnswerEvent {
@@ -1569,13 +1592,23 @@ model DoubtKb {
   id        String   @id @default(cuid())
   studentId String
   sessionId String
-  conceptId String
+  conceptId String?
   question  String
   answer    String
   createdAt DateTime @default(now())
 
+  // T26 — shared KB fields (subjectId-scoped, pgvector dedup)
+  subjectId          String?
+  questionText       String?
+  answerText         String?
+  embedding          Unsupported("vector(1536)")?
+  timesServed        Int      @default(1)
+  alternatePhrasings String[] @default([])
+  updatedAt          DateTime @default(now()) @updatedAt
+
   @@index([studentId, conceptId])
   @@index([conceptId])
+  @@index([subjectId])
 }
 
 model FreeTierUsage {
@@ -2191,4 +2224,35 @@ model RecoveryEvent {
 
   @@index([studentId, createdAt])
   @@index([nudgeType])
+}
+
+/// DPDP consent record — one row per user × scope
+model Consent {
+  id          String       @id @default(cuid())
+  userId      String
+  scope       ConsentScope
+  givenAt     DateTime     @default(now())
+  ipAddress   String?
+  userAgent   String?
+  withdrawnAt DateTime?
+  version     String       @default("1.0")
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, scope])
+}
+
+enum ConsentScope {
+  DATA_PROCESSING
+  AI_INTERACTION
+  PARENT_NOTIFICATION
+  MARKETING
+}
+
+/// Parent-specific profile record — one per parent user.
+/// Exists once a user is promoted to the parent role.
+model ParentProfile {
+  id        String    @id @default(cuid())
+  userId    String    @unique
+  createdAt DateTime  @default(now())
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
