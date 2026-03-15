@@ -4,7 +4,7 @@ import { getServerSessionForHandlers } from '@/lib/session'
 import { logger } from '@/lib/logger'
 import { formatErrorForResponse } from '@/lib/errorResponse'
 import { checkFreeTierCap, incrementFreeTierUsage } from '@/lib/freemium'
-import { isAiTutorEnabledForStudent, isAiTutorGloballyEnabled } from '@/lib/features/aiTutor'
+import { isInAITutorRollout } from '@/lib/features/rollout'
 import { hasDiagnosticForSubject } from '@/lib/student/diagnosticGuard'
 
 export const dynamic = 'force-dynamic'
@@ -28,8 +28,8 @@ export async function POST(req: Request) {
       return res
     }
 
-    // Global + per-student feature flag check
-    if (!isAiTutorGloballyEnabled() || !(await isAiTutorEnabledForStudent(userId))) {
+    // Rollout gate: kill switch → per-user flag → percentage hash
+    if (!(await isInAITutorRollout(userId))) {
       res = NextResponse.json({ error: 'AI Tutor is not enabled for your account.', code: 'FEATURE_DISABLED' }, { status: 403 })
       logger.logAPI(req, res, { className: 'TutorSessionStartAPI', methodName: 'POST' }, start)
       return res

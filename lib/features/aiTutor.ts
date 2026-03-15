@@ -1,4 +1,4 @@
-import { prisma } from '@/lib/prisma'
+import { isInAITutorRollout } from '@/lib/features/rollout'
 
 export const AI_TUTOR_FLAG_KEY = 'AI_TUTOR'
 
@@ -19,20 +19,11 @@ export function isDistressDetectionEnabled() {
   return isTruthyEnv(process.env.ENABLE_DISTRESS_DETECTION)
 }
 
-/** Staged rollout flag: allows enabling AI tutor for a cohort of students. */
-export async function isAiTutorEnabledForStudent(studentId: string) {
-  if (!isAiTutorGloballyEnabled()) return false
-
-  const flag = await prisma.studentFeatureFlag.findUnique({
-    where: {
-      studentId_key: {
-        studentId,
-        key: AI_TUTOR_FLAG_KEY,
-      },
-    },
-    select: { enabled: true },
-  })
-
-  return flag?.enabled === true
+/**
+ * Staged rollout flag: delegates to isInAITutorRollout which applies
+ * kill switch → per-user override → percentage hash in order.
+ */
+export async function isAiTutorEnabledForStudent(studentId: string): Promise<boolean> {
+  return isInAITutorRollout(studentId)
 }
 
