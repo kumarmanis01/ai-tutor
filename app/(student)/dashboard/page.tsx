@@ -43,7 +43,7 @@ import XPWidget from '@/components/student/dashboard/XPWidget';
 import SubjectReadinessCard from '@/components/student/dashboard/SubjectReadinessCard';
 import PaymentButton from '@/components/student/PaymentButton';
 import { checkFreeTierCap } from '@/lib/freemium';
-import { computeExamReadiness } from '@/lib/student/examReadiness';
+import { computeReadinessScore } from '@/lib/student/examReadiness';
 
 export const dynamic = 'force-dynamic';
 
@@ -304,11 +304,11 @@ export default async function StudentHomeDashboardPage() {
     : []
   const readinessResults = await Promise.all(
     subjectDefsForReadiness.map(async (subj) => {
-      const result = await computeExamReadiness(userId, subj.id).catch(() => null)
+      const result = await computeReadinessScore(userId, subj.id).catch(() => null)
       return {
         subjectId: subj.id,
         subjectName: subj.name,
-        score: result ? Math.round(result.score) : 0,
+        score: result?.score ?? 0,
       }
     }),
   )
