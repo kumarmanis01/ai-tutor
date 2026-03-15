@@ -3,6 +3,7 @@ import { getServerSessionForHandlers } from '@/lib/session'
 import { logger } from '@/lib/logger'
 import { formatErrorForResponse } from '@/lib/errorResponse'
 import { InMemoryRateLimiter } from '@/lib/alerts/rateLimiter'
+import { hasConsented, ConsentScope } from '@/lib/consent/check'
 import {
   enforceTutorFreemiumCap,
   getTutorSession,
@@ -122,6 +123,14 @@ export async function POST(req: Request) {
     const parsed = parseBody(bodyRaw)
     if (!parsed) {
       const res = await streamSingleError(400, errorPayload('SESSION_NOT_FOUND', 'Invalid request body.', false))
+      logger.logAPI(req, res, { className: 'TutorTurnAPI', methodName: 'POST' }, start)
+      return res
+    }
+
+    // Consent gate (DPDP T37) — must have AI_INTERACTION consent
+    const canUseAI = await hasConsented(userId, ConsentScope.AI_INTERACTION)
+    if (!canUseAI) {
+      const res = await streamSingleError(403, errorPayload('CONSENT_REQUIRED', 'AI interaction consent required', false))
       logger.logAPI(req, res, { className: 'TutorTurnAPI', methodName: 'POST' }, start)
       return res
     }

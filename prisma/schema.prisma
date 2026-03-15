@@ -105,6 +105,7 @@ model User {
   studentFeatureFlags      StudentFeatureFlag[]     @relation("StudentFeatureFlags")
   studentXpRecords         StudentXP[]
   learningPlans           LearningPlan[]
+  consents                Consent[]
 }
 
 model PaymentOrder {
@@ -2203,4 +2204,26 @@ model RecoveryEvent {
 
   @@index([studentId, createdAt])
   @@index([nudgeType])
+}
+
+/// DPDP consent record — one row per user × scope
+model Consent {
+  id          String       @id @default(cuid())
+  userId      String
+  scope       ConsentScope
+  givenAt     DateTime     @default(now())
+  ipAddress   String?
+  userAgent   String?
+  withdrawnAt DateTime?
+  version     String       @default("1.0")
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, scope])
+}
+
+enum ConsentScope {
+  DATA_PROCESSING
+  AI_INTERACTION
+  PARENT_NOTIFICATION
+  MARKETING
 }

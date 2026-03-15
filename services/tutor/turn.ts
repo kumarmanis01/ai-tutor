@@ -50,6 +50,7 @@ export type TutorTurnErrorCode =
   | 'AI_UNAVAILABLE'
   | 'SAFETY_BLOCK'
   | 'FEATURE_DISABLED'
+  | 'CONSENT_REQUIRED'
 
 export type TutorTurnError = {
   code: TutorTurnErrorCode
