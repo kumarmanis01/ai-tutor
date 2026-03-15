@@ -18,7 +18,7 @@ import { checkOutputSafety, type SafetyEventCreate as OutputSafetyEvent } from '
 import { applyTagTransition, type TutorTag, type TutorStage } from '@/lib/ai/tutor/stateMachine'
 import { retrieveRelevantChunks } from '@/lib/ai/tutor/rag'
 import { detectMisconceptions, loadMisconceptions } from '@/lib/ai/tutor/misconceptionDetector'
-import { saveDoubt } from '@/lib/ai/tutor/doubtKb'
+import { saveDoubt, lookupDoubt, recordDoubt } from '@/lib/ai/tutor/doubtKb'
 import { getCachedExplanation, setCachedExplanation, type ExplanationLang, type ExplanationModality } from '@/lib/ai/tutor/explanationCache'
 import { enqueueIRTUpdate } from '@/jobs/irtUpdate'
 import { logger } from '@/lib/logger'
@@ -275,6 +275,47 @@ export async function runTutorOrchestrator(args: {
       })
     }
 
+    // 5b. DoubtKb cache lookup (T26) — only for question/clarification turns
+    // Detect: message ends with '?' or contains common doubt indicators
+    const isDoubtTurn =
+      redactedInput.endsWith('?') ||
+      /\b(what|why|how|explain|confused|don'?t understand|clarify|mean|means|help)\b/i.test(redactedInput)
+
+    if (isDoubtTurn) {
+      const cachedAnswer = await lookupDoubt(redactedInput, subjectId)
+      if (cachedAnswer) {
+        // Serve from DoubtKb — skip LLM call
+        await markTurnCompleted(sessionId)
+        await prisma.aITutorTurnLog.create({
+          data: {
+            sessionId,
+            callType: 'tutor:teach',
+            model: 'doubt_kb_cache',
+            inputTokens: 0,
+            outputTokens: 0,
+            costUsd: 0,
+            latencyMs: 0,
+            tag: 'QUESTION',
+            stage: state.stage,
+            safetyFlagged: false,
+            cached: true,
+            ragChunksUsed: [],
+            frustrationScore: frustration.frustrationScore,
+          },
+        }).catch(() => {})
+        return {
+          answerText: cachedAnswer,
+          complete: {
+            tag: 'QUESTION' as TutorTag,
+            stage: state.stage,
+            hintsRemaining: state.hintsRemaining,
+            turnNumber: state.lastTurnNumber,
+            sessionComplete: false,
+          },
+        }
+      }
+    }
+
     // 6. Tutor LLM call with retry/backoff
     let llmContent: string
     let servedFromCache = false
@@ -346,6 +387,10 @@ export async function runTutorOrchestrator(args: {
         question: redactedInput,
         answer: answerText,
       })
+      // T26: also write to shared subjectId-scoped KB with pgvector dedup (fire-and-forget)
+      if (isDoubtTurn) {
+        recordDoubt(redactedInput, answerText, subjectId, conceptId).catch(() => {})
+      }
     }
 
     // 10. State machine transition — derive next stage + hint usage from tag

@@ -1583,13 +1583,23 @@ model DoubtKb {
   id        String   @id @default(cuid())
   studentId String
   sessionId String
-  conceptId String
+  conceptId String?
   question  String
   answer    String
   createdAt DateTime @default(now())
 
+  // T26 — shared KB fields (subjectId-scoped, pgvector dedup)
+  subjectId          String?
+  questionText       String?
+  answerText         String?
+  embedding          Unsupported("vector(1536)")?
+  timesServed        Int      @default(1)
+  alternatePhrasings String[] @default([])
+  updatedAt          DateTime @default(now()) @updatedAt
+
   @@index([studentId, conceptId])
   @@index([conceptId])
+  @@index([subjectId])
 }
 
 model FreeTierUsage {
