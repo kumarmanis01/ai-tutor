@@ -55,6 +55,8 @@ interface RecommendationInfo {
   subject: string;
   chapter?: string;
   estimatedTimeMin: number;
+  /** Present when recommendation comes from a LearningPlan item. */
+  weekNumber?: number;
   /** Most recently mastered topic before this one — renders continuity sentence. */
   buildsOnTopicName?: string;
 }
@@ -72,6 +74,8 @@ export interface PrimaryActionCardProps {
   session?: SessionInfo | null;
   recommendation?: RecommendationInfo | null;
   pendingHomework?: HomeworkInfo | null;
+  /** True when a plan exists but the student has finished all items for the current week. */
+  aheadOfPlan?: boolean;
 }
 
 // ── Main Component ────────────────────────────────────────────────────────────
@@ -81,6 +85,7 @@ export default function PrimaryActionCard({
   session,
   recommendation,
   pendingHomework,
+  aheadOfPlan,
 }: PrimaryActionCardProps) {
   if (type === 'homework' && pendingHomework) {
     return <HomeworkState homework={pendingHomework} />;
@@ -90,6 +95,9 @@ export default function PrimaryActionCard({
   }
   if (type === 'start' && recommendation) {
     return <StartState recommendation={recommendation} />;
+  }
+  if (type === 'start' && aheadOfPlan) {
+    return <AheadOfPlanState />;
   }
   // Fallback: always render something
   return <EmptyStartState />;
@@ -179,6 +187,12 @@ function StartState({ recommendation }: { recommendation: RecommendationInfo }) 
         {recommendation.topicTitle}
       </h2>
 
+      {recommendation.weekNumber && (
+        <p className="text-xs text-violet-300 mt-0.5">
+          Week {recommendation.weekNumber} of your plan
+        </p>
+      )}
+
       {recommendation.buildsOnTopicName && (
         <p className="mt-1.5 text-sm text-violet-300">
           This builds on {recommendation.buildsOnTopicName}, which you completed recently.
@@ -267,6 +281,22 @@ function HomeworkState({ homework }: { homework: HomeworkInfo }) {
         </svg>
       </button>
     </article>
+  );
+}
+
+// ── Ahead Of Plan State ───────────────────────────────────────────────────────
+
+// Shown when a plan exists but the student has completed all items for this week
+function AheadOfPlanState() {
+  return (
+    <div className="rounded-lg bg-green-50 dark:bg-green-950 px-4 py-3">
+      <p className="text-sm font-medium text-green-800 dark:text-green-200">
+        You&apos;re ahead of your plan this week! 🎉
+      </p>
+      <a href="/student/subjects" className="mt-2 block text-xs text-green-700 dark:text-green-400 underline">
+        Study an extra topic
+      </a>
+    </div>
   );
 }
 
