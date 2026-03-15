@@ -23,6 +23,7 @@ import { getCachedExplanation, setCachedExplanation, type ExplanationLang, type 
 import { detectDistress } from '@/lib/ai/tutor/distress'
 import { enqueueDistressNotification } from '@/jobs/distressNotification'
 import { enqueueIRTUpdate } from '@/jobs/irtUpdate'
+import { updateStreak } from '@/lib/student/streak'
 import { logger } from '@/lib/logger'
 
 export type TutorTurnRequest = {
@@ -504,6 +505,12 @@ export async function runTutorOrchestrator(args: {
       hintsRemaining: newState.hintsRemaining,
       turnNumber: newState.lastTurnNumber,
       sessionComplete: newState.stage === 'CONSOLIDATION',
+    }
+
+    // Award streak credit only when student completes the full session
+    // (all 7 stages → CONSOLIDATION). Fire-and-forget; streak loss on crash is acceptable.
+    if (newState.stage === 'CONSOLIDATION') {
+      void updateStreak(studentId)
     }
 
     if (tag === 'VALIDATE') {
