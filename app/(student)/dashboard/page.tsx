@@ -33,8 +33,8 @@ import { getOrderedTopicsForStudent } from '@/lib/homeEngine/getOrderedTopicsFor
 import { isSessionEngineEnabled } from '@/lib/session/sessionEngine';
 import { computeReadinessScore } from '@/lib/student/examReadiness';
 
-import TodaysLearningCard from '@/components/home/TodaysLearningCard';
-import WeeklyStudyStrip from '@/components/home/WeeklyStudyStrip';
+import TodaysLearningCard from '@/components/student/dashboard/TodaysLearningCard';
+import WeeklyStudyStrip from '@/components/student/dashboard/WeeklyStudyStrip';
 import XPWidget from '@/components/student/dashboard/XPWidget';
 import RevisionWidget from '@/components/student/dashboard/RevisionWidget';
 import SubjectReadinessCard from '@/components/student/dashboard/SubjectReadinessCard';
