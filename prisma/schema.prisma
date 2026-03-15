@@ -156,6 +156,15 @@ model StudentFeatureFlag {
   @@index([studentId], name: "idx_studentfeatureflag_studentId")
 }
 
+model DailyCostMetric {
+  id             String   @id @default(cuid())
+  date           DateTime @unique
+  sessions       Int
+  totalCostUsd   Float
+  costPerSession Float
+  createdAt      DateTime @default(now())
+}
+
 model PhoneOtp {
   id        String   @id @default(cuid())
   phone     String
