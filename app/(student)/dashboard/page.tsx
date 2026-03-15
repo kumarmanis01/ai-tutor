@@ -34,8 +34,6 @@ import { computeReadinessScore } from '@/lib/student/examReadiness';
 
 import TodaysLearningCard from '@/components/home/TodaysLearningCard';
 import WeeklyStudyStrip from '@/components/home/WeeklyStudyStrip';
-import WeakTopicsSection from '@/components/home/WeakTopicsSection';
-import UpcomingTopicsList from '@/components/home/UpcomingTopicsList';
 import XPWidget from '@/components/student/dashboard/XPWidget';
 import RevisionWidget from '@/components/student/dashboard/RevisionWidget';
 import SubjectReadinessCard from '@/components/student/dashboard/SubjectReadinessCard';
@@ -465,18 +463,76 @@ export default async function StudentHomeDashboardPage() {
               </section>
             )}
 
-            {/* ⑦ WeakTopicsSection */}
-            <WeakTopicsSection
-              topics={weakTopicsRaw.slice(0, 2).map((t) => ({
-                topicId: t.topicId,
-                topicName: t.topicName,
-                masteryLabel: getMasteryLabel(t.mastery),
-              }))}
-              sessionCount={totalSessions}
-            />
+            {/* ⑦ WeakTopicsSection — inline, hidden until 3+ sessions */}
+            {totalSessions >= 3 && weakTopicsRaw.length > 0 && (
+              <section aria-labelledby="weak-topics-heading">
+                <h3
+                  id="weak-topics-heading"
+                  className="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-3"
+                >
+                  Needs more practice
+                </h3>
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  {weakTopicsRaw.slice(0, 2).map((t) => (
+                    <article
+                      key={t.topicId}
+                      className="rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-4 shadow-sm"
+                    >
+                      <p className="text-sm font-semibold text-gray-800 dark:text-gray-200 leading-snug line-clamp-2 mb-1">
+                        {t.topicName}
+                      </p>
+                      <p className="text-xs font-medium text-[#E24B4A] dark:text-red-400 mb-3">
+                        {getMasteryLabel(t.mastery)}
+                      </p>
+                      <a
+                        href={`/session/${t.topicId}`}
+                        className="flex w-full min-h-[44px] items-center justify-center rounded-lg border border-[#534AB7]/30 bg-[#534AB7]/5 dark:bg-[#534AB7]/10 text-xs font-semibold text-[#534AB7] dark:text-indigo-300 hover:bg-[#534AB7]/10 dark:hover:bg-[#534AB7]/20 transition-colors"
+                      >
+                        Revise
+                      </a>
+                    </article>
+                  ))}
+                </div>
+              </section>
+            )}
 
-            {/* ⑧ UpcomingTopicsList */}
-            <UpcomingTopicsList topics={upcomingTopics} />
+            {/* ⑧ UpcomingTopicsList — inline simple rows */}
+            {upcomingTopics.length > 0 && (
+              <section aria-labelledby="upcoming-heading">
+                <h3
+                  id="upcoming-heading"
+                  className="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-3"
+                >
+                  Up next
+                </h3>
+                <ul className="space-y-1" role="list">
+                  {upcomingTopics.map((topic, i) => (
+                    <li
+                      key={topic.topicId}
+                      className="flex items-center gap-3 rounded-xl px-3 py-3 min-h-[44px] bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700"
+                    >
+                      <span className="flex-shrink-0 w-5 h-5 rounded-full bg-gray-100 dark:bg-slate-700 flex items-center justify-center text-[10px] font-bold text-gray-500 dark:text-gray-400">
+                        {i + 1}
+                      </span>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-gray-800 dark:text-gray-200 truncate">
+                          {topic.topicTitle}
+                        </p>
+                        {topic.subject && (
+                          <p className="text-xs text-gray-400 dark:text-gray-500 truncate">{topic.subject}</p>
+                        )}
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+                <a
+                  href="/learn/learning-path"
+                  className="mt-3 inline-flex min-h-[44px] items-center text-xs font-medium text-[#534AB7] dark:text-indigo-400 hover:underline"
+                >
+                  View full learning path →
+                </a>
+              </section>
+            )}
           </div>
         </div>
       </div>

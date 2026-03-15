@@ -81,7 +81,7 @@ function StartState({ rec }: { rec: TodaysLearningCardRecommendation }) {
 
   function handleStart() {
     setLoading(true);
-    router.push(`/student/session/start?conceptId=${encodeURIComponent(rec.conceptId)}`);
+    router.push(`/session/pre/${encodeURIComponent(rec.conceptId)}`);
   }
 
   return (
