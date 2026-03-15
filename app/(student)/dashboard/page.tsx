@@ -4,8 +4,8 @@
  * Full rebuild per v2 wireframe spec.
  *
  * Section order (single column mobile / two-column desktop):
- *   1. DashboardTopbar   — sticky, logo + streak badge + level badge + avatar
- *   2. TodaysLearningCard — topic name, subject badge, duration chip, CTA
+ *   1. TodaysLearningCard — topic name, subject badge, duration chip, CTA
+ *      (Topbar with streak/level/avatar is in the shared layout)
  *   3. XPWidget           — XP this week, level progress bar
  *   4. WeeklyStudyStrip   — Mon–Sun dots, purple filled, teal today ring
  *   5. RevisionWidget     — cards due today or "all caught up"
@@ -32,7 +32,6 @@ import { getOrderedTopicsForStudent } from '@/lib/homeEngine/getOrderedTopicsFor
 import { isSessionEngineEnabled } from '@/lib/session/sessionEngine';
 import { computeReadinessScore } from '@/lib/student/examReadiness';
 
-import DashboardTopbar from '@/components/dashboard/DashboardTopbar';
 import TodaysLearningCard from '@/components/home/TodaysLearningCard';
 import WeeklyStudyStrip from '@/components/home/WeeklyStudyStrip';
 import WeakTopicsSection from '@/components/home/WeakTopicsSection';
@@ -359,13 +358,6 @@ export default async function StudentHomeDashboardPage() {
   // ── Render ────────────────────────────────────────────────────────────────
   return (
     <>
-      {/* ① Topbar — full-width sticky */}
-      <DashboardTopbar
-        name={studentName}
-        streakCurrent={streakCurrent}
-        level={currentLevel}
-      />
-
       <div className="px-4 py-5 max-w-5xl mx-auto">
 
         {/* Freemium upgrade gate */}
