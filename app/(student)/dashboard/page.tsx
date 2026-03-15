@@ -1,23 +1,24 @@
 /**
- * Student Home Dashboard — Phase 1 UX Redesign
+ * Student Dashboard — v2
  *
- * Replaces the previous 14-section dashboard with a 5-section tutor-driven
- * layout. A single consolidated fetch from /api/dashboard replaces 8 parallel
- * fetches, reducing latency and simplifying the component tree.
+ * Full rebuild per v2 wireframe spec.
  *
- * Section order (matches UX architecture blueprint):
- *   1. PrimaryActionCard   — single hero CTA (resume / start / homework)
- *   2. NudgeBanner         — optional in-app nudge, dismissable
- *   3. WeeklyStudyStrip    — 7-day Mon–Sun activity dots + streak text
- *   4. HomeworkPendingCard — pending homework (hidden when empty)
- *   5. WeakTopicsSection   — up to 2 weak topics (hidden until 3+ sessions)
- *   6. UpcomingTopicsList  — next 3 topics in curriculum + learning path link
+ * Section order (single column mobile / two-column desktop):
+ *   1. DashboardTopbar   — sticky, logo + streak badge + level badge + avatar
+ *   2. TodaysLearningCard — topic name, subject badge, duration chip, CTA
+ *   3. XPWidget           — XP this week, level progress bar
+ *   4. WeeklyStudyStrip   — Mon–Sun dots, purple filled, teal today ring
+ *   5. RevisionWidget     — cards due today or "all caught up"
+ *   --- desktop right column ---
+ *   6. SubjectReadinessSection — one card per subject
+ *   7. WeakTopicsSection  — hidden until 3+ sessions, max 2 cards
+ *   8. UpcomingTopicsList — next 3 topics, simple rows
  *
- * Rollback: git revert this file. No backend or DB changes required.
+ * Desktop (md:): left 60% = sections 2–5, right 40% = sections 6–8.
+ * Topbar is always full-width sticky.
  *
  * EDIT LOG:
- *   2026-03-07 | UX implementation | full redesign per UX architecture blueprint.
- *               Previous 14-section layout preserved in git history.
+ *   2026-03-15 | v2 migration | full rebuild; replaces v1 dashboard
  */
 
 import type { Metadata } from 'next';
@@ -27,23 +28,20 @@ import { prisma } from '@/lib/prisma';
 import { getNextAction } from '@/lib/homeEngine/getNextAction';
 import { getWeakTopicsWithNames } from '@/lib/learning/getWeakTopics';
 import { getMasteryLabel } from '@/lib/learning/masteryLabel';
-import { getNudgeMessage } from '@/lib/dashboard/nudgeMessage';
 import { getOrderedTopicsForStudent } from '@/lib/homeEngine/getOrderedTopicsForStudent';
 import { isSessionEngineEnabled } from '@/lib/session/sessionEngine';
+import { computeReadinessScore } from '@/lib/student/examReadiness';
 
-import PrimaryActionCard from '@/components/home/PrimaryActionCard';
+import DashboardTopbar from '@/components/dashboard/DashboardTopbar';
+import TodaysLearningCard from '@/components/home/TodaysLearningCard';
 import WeeklyStudyStrip from '@/components/home/WeeklyStudyStrip';
-import HomeworkPendingCard from '@/components/home/HomeworkPendingCard';
 import WeakTopicsSection from '@/components/home/WeakTopicsSection';
 import UpcomingTopicsList from '@/components/home/UpcomingTopicsList';
-import NudgeBanner from '@/components/home/NudgeBanner';
-import { EngagementSection } from '@/components/home/EngagementSection';
-import RevisionWidget from '@/components/student/dashboard/RevisionWidget';
 import XPWidget from '@/components/student/dashboard/XPWidget';
+import RevisionWidget from '@/components/student/dashboard/RevisionWidget';
 import SubjectReadinessCard from '@/components/student/dashboard/SubjectReadinessCard';
 import PaymentButton from '@/components/student/PaymentButton';
 import { checkFreeTierCap } from '@/lib/freemium';
-import { computeReadinessScore } from '@/lib/student/examReadiness';
 
 export const dynamic = 'force-dynamic';
 
@@ -55,7 +53,6 @@ export const metadata: Metadata = {
 // ── Week boundary helpers ─────────────────────────────────────────────────────
 
 const DAY_LABELS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-const DEFAULT_WEEKLY_GOAL = 3;
 
 function getISOWeekBoundaries() {
   const now = new Date();
@@ -91,17 +88,25 @@ export default async function StudentHomeDashboardPage() {
     weakTopicsRaw,
     nextActionResult,
     orderedTopics,
-    lastSessionRow,
     masteredTopicIds,
     freeTierStatus,
     userSub,
     xpThisWeekAgg,
     planTodayResult,
   ] = await Promise.all([
-    // 0. Student academic profile for onboarding gate + XP fields
+    // 0. Student academic profile
     prisma.user.findUnique({
       where: { id: userId },
-      select: { board: true, grade: true, language: true, subjects: true, accountStatus: true, totalXp: true, level: true },
+      select: {
+        board: true,
+        grade: true,
+        language: true,
+        subjects: true,
+        accountStatus: true,
+        totalXp: true,
+        level: true,
+        name: true,
+      },
     }),
 
     // 1. Active in-progress session
@@ -135,7 +140,7 @@ export default async function StudentHomeDashboardPage() {
         topic: { select: { name: true } },
       },
       orderBy: { dueDate: 'asc' },
-      take: 3,
+      take: 1,
     }),
 
     // 3. Streak
@@ -150,7 +155,7 @@ export default async function StudentHomeDashboardPage() {
       select: { startedAt: true },
     }),
 
-    // 5. Total session count (for WeakTopicsSection gate)
+    // 5. Total session count (WeakTopicsSection gate)
     prisma.structuredSession.count({ where: { studentId: userId } }),
 
     // 6. Learning profile (weekly goal)
@@ -158,58 +163,55 @@ export default async function StudentHomeDashboardPage() {
       .findFirst({ where: { studentId: userId }, select: { studyDaysPerWeek: true } })
       .catch(() => null),
 
-    // 7. Weak topics (max 2 on dashboard)
+    // 7. Weak topics (max 2)
     getWeakTopicsWithNames(userId).catch(() => []),
 
-    // 8. Next topic recommendation
+    // 8. Next topic recommendation (legacy engine fallback)
     getNextAction(userId).catch(() => null),
 
     // 9. Ordered curriculum topics for upcoming list
     getOrderedTopicsForStudent(userId).catch(() => []),
 
-    // 10. Last session for nudge calculation
-    prisma.structuredSession.findFirst({
-      where: { studentId: userId },
-      select: { startedAt: true },
-      orderBy: { startedAt: 'desc' },
-    }),
-
-    // 11. Mastered topics (for filtering upcoming list)
+    // 10. Mastered topics (filter upcoming list)
     prisma.studentTopicProgress.findMany({
       where: { studentId: userId, mastery: { gte: 0.9 } },
       select: { topicId: true },
     }),
+
+    // 11. Freemium cap check
     checkFreeTierCap(userId),
+
+    // 12. Subscription status
     prisma.user.findUnique({
       where: { id: userId },
       select: { subscriptionStatus: true, subscriptionExpiry: true, name: true, email: true },
     }),
 
-    // 14. XP earned this week
+    // 13. XP earned this week
     prisma.studentXP.aggregate({
       where: { studentId: userId, awardedAt: { gte: monday, lte: sunday } },
       _sum: { amount: true },
     }),
 
-    // 15. Today's learning plan item (primary recommendation source)
+    // 14. Today's learning plan item
     (async () => {
       try {
         const plan = await prisma.learningPlan.findFirst({
           where: { studentId: userId },
           orderBy: { generatedAt: 'desc' },
           select: { id: true },
-        })
-        if (!plan) return null
+        });
+        if (!plan) return null;
 
         const firstSession = await prisma.structuredSession.findFirst({
           where: { studentId: userId },
           orderBy: { startedAt: 'asc' },
           select: { startedAt: true },
-        })
+        });
         const daysSinceFirst = firstSession
           ? Math.floor((Date.now() - firstSession.startedAt.getTime()) / 86_400_000)
-          : 0
-        const currentWeek = Math.max(1, Math.ceil((daysSinceFirst + 1) / 7))
+          : 0;
+        const currentWeek = Math.max(1, Math.ceil((daysSinceFirst + 1) / 7));
 
         const item = await prisma.learningPlanItem.findFirst({
           where: { planId: plan.id, status: 'UPCOMING', weekNumber: { lte: currentWeek } },
@@ -220,21 +222,18 @@ export default async function StudentHomeDashboardPage() {
             weekNumber: true,
             orderInWeek: true,
             concept: {
-              select: {
-                name: true,
-                subject: { select: { name: true } },
-              },
+              select: { name: true, subject: { select: { name: true } } },
             },
           },
-        })
-        return { item, fallback: false, planExists: true }
+        });
+        return { item, planExists: true };
       } catch {
-        return null
+        return null;
       }
     })(),
   ]);
 
-  // ── Onboarding Gate: block learning features when profile is incomplete ──
+  // ── Onboarding gates ──────────────────────────────────────────────────────
   const needsProfile =
     !studentProfile?.board ||
     !studentProfile?.grade ||
@@ -242,78 +241,39 @@ export default async function StudentHomeDashboardPage() {
     !Array.isArray(studentProfile.subjects) ||
     studentProfile.subjects.length === 0;
 
-  const needsParentVerification = (studentProfile as any)?.accountStatus === 'pending_parent_verification';
+  const needsParentVerification =
+    (studentProfile as any)?.accountStatus === 'pending_parent_verification';
 
   if (needsProfile) {
-    // The OnboardingProvider + OnboardingModal handle actually showing the
-    // modal client-side. Here we simply avoid rendering learning features
-    // on the dashboard until the academic profile is completed.
     return (
-      <main className="max-w-2xl mx-auto px-4 py-6 space-y-5">
-        <section className="rounded-xl border border-dashed border-gray-300 bg-gray-50 px-4 py-6 text-sm text-gray-700">
-          <h1 className="mb-2 text-lg font-semibold text-gray-900">
-            Welcome to Spinzy!
-          </h1>
-          <p className="mb-1">
-            Let&apos;s set up your learning profile before you start studying.
-          </p>
-          <p className="mb-3">
-            Please choose your Board, Class, Language, and Subjects in the
-            onboarding form that just opened.
-          </p>
-          <p className="text-xs text-gray-500">
-            Once your profile is complete, your home tutor and diagnostic
-            assessment will be unlocked automatically.
-          </p>
-        </section>
+      <main className="max-w-lg mx-auto px-4 py-6">
+        <TodaysLearningCard type="empty" />
       </main>
     );
   }
 
   if (needsParentVerification) {
     return (
-      <main className="max-w-2xl mx-auto px-4 py-6 space-y-5">
-        <section className="rounded-xl border border-dashed border-amber-300 bg-amber-50 px-4 py-6 text-sm text-amber-900">
-          <h1 className="mb-2 text-lg font-semibold">Parent verification required</h1>
-          <p className="mb-3">
-            Since you&apos;re under 13, a parent mobile OTP verification is required to activate your account.
-          </p>
-          <p className="text-xs text-amber-800">
-            Please complete the verification step in the onboarding form that just opened.
+      <main className="max-w-lg mx-auto px-4 py-6">
+        <section className="rounded-2xl border border-dashed border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-900/20 p-6 text-sm text-amber-900 dark:text-amber-200">
+          <h1 className="mb-2 text-base font-semibold">Parent verification required</h1>
+          <p className="text-xs text-amber-800 dark:text-amber-300">
+            Since you&apos;re under 13, a parent mobile OTP verification is required to activate your account. Please complete it in the form that opened.
           </p>
         </section>
       </main>
     );
   }
 
-  // ── XP this week ─────────────────────────────────────────────────────────
-  const xpThisWeek = xpThisWeekAgg._sum.amount ?? 0
-  const totalXp = studentProfile?.totalXp ?? 0
-  const currentLevel = studentProfile?.level ?? 1
+  // ── Derived values ────────────────────────────────────────────────────────
+  const xpThisWeek = xpThisWeekAgg._sum.amount ?? 0;
+  const totalXp = studentProfile?.totalXp ?? 0;
+  const currentLevel = studentProfile?.level ?? 1;
+  const studentName = studentProfile?.name ?? userSub?.name ?? 'Student';
+  const streakCurrent = streakRow?.current ?? 0;
+  const weeklyGoal = learningProfile?.studyDaysPerWeek ?? 5;
 
-  // ── Subject readiness scores ─────────────────────────────────────────────
-  const subjectNames = (studentProfile?.subjects ?? []).map((s) => String(s)).filter(Boolean)
-  const subjectDefsForReadiness = subjectNames.length
-    ? await prisma.subjectDef.findMany({
-        where: {
-          OR: [{ name: { in: subjectNames } }, { slug: { in: subjectNames } }],
-          lifecycle: 'active',
-        },
-        select: { id: true, name: true },
-      })
-    : []
-  const readinessResults = await Promise.all(
-    subjectDefsForReadiness.map(async (subj) => {
-      const result = await computeReadinessScore(userId, subj.id).catch(() => null)
-      return {
-        subjectId: subj.id,
-        subjectName: subj.name,
-        score: result?.score ?? 0,
-      }
-    }),
-  )
-
-  // ── Build weekly activity strip ─────────────────────────────────────────
+  // ── Weekly strip data ─────────────────────────────────────────────────────
   const weekDays = Array.from({ length: 7 }, (_, i) => {
     const d = new Date(monday);
     d.setUTCDate(monday.getUTCDate() + i);
@@ -325,62 +285,51 @@ export default async function StudentHomeDashboardPage() {
     if (idx >= 0 && idx < 7) weekDays[idx].hasSession = true;
   }
 
-  // ── Unwrap next action (legacy fallback) ────────────────────────────────
+  // ── Learning plan → recommendation ────────────────────────────────────────
   type RawAction = { ruleId?: string; topicId?: string; topicName?: string | null; subject?: string | null; chapter?: string | null; estimatedTimeMin?: number } | null;
-  const rawAction: RawAction = nextActionResult && typeof nextActionResult === 'object' && 'action' in nextActionResult
-    ? (nextActionResult as { action: RawAction }).action
-    : (nextActionResult as RawAction);
-  const legacyRecommendation = rawAction?.topicId ? rawAction : null;
+  const rawAction: RawAction =
+    nextActionResult && typeof nextActionResult === 'object' && 'action' in nextActionResult
+      ? (nextActionResult as { action: RawAction }).action
+      : (nextActionResult as RawAction);
 
-  // ── Build recommendation from learning plan (primary) or legacy engine ───
-  // planTodayResult.planExists=true but item=null → student is ahead of plan
-  const aheadOfPlan = planTodayResult?.planExists === true && planTodayResult.item == null
-  const recommendation = planTodayResult?.item
+  const aheadOfPlan = planTodayResult?.planExists === true && planTodayResult.item == null;
+  const planItem = planTodayResult?.item ?? null;
+
+  const recommendation = planItem
     ? {
-        topicId: planTodayResult.item.conceptId,
-        topicTitle: planTodayResult.item.concept?.name ?? planTodayResult.item.conceptId,
-        subject: planTodayResult.item.concept?.subject?.name ?? '',
+        conceptId: planItem.conceptId,
+        topicTitle: planItem.concept?.name ?? planItem.conceptId,
+        subject: planItem.concept?.subject?.name ?? '',
         estimatedTimeMin: 20,
-        weekNumber: planTodayResult.item.weekNumber,
+        weekNumber: planItem.weekNumber,
       }
-    : legacyRecommendation
+    : rawAction?.topicId
+    ? {
+        conceptId: rawAction.topicId,
+        topicTitle: rawAction.topicName ?? rawAction.topicId,
+        subject: rawAction.subject ?? '',
+        estimatedTimeMin: rawAction.estimatedTimeMin ?? 20,
+      }
+    : null;
 
-  // ── Primary action type — driven by engine ruleId ───────────────────────
-  // The engine is the single source of truth for what the student should do.
-  // P0 (homework_pending) → 'homework'; P1 (resume_session) → 'resume'; else → 'start'.
-  const oldestPendingHomework = pendingHomeworkRaw[0] ?? null;
+  // ── Primary card type ─────────────────────────────────────────────────────
   const engineRuleId = rawAction?.ruleId;
-  const primaryType =
-    engineRuleId === 'homework_pending' ? 'homework'
-    : engineRuleId === 'resume_session' ? 'resume'
-    : 'start';
+  const cardType =
+    engineRuleId === 'homework_pending' || pendingHomeworkRaw.length > 0 ? 'homework'
+    : activeSession ? 'resume'
+    : recommendation ? 'start'
+    : aheadOfPlan ? 'ahead'
+    : 'empty';
 
-  // ── Upcoming topics + "builds on" context ──────────────────────────────
+  const oldestHw = pendingHomeworkRaw[0] ?? null;
+
+  // ── Upcoming topics (next 3 unmastered, excluding current recommendation) ─
   const masteredIdSet = new Set(masteredTopicIds.map((r) => r.topicId));
-  const recTopicId = recommendation?.topicId;
   type OrderedTopic = { topicId?: string; id?: string; topicName?: string; name?: string; subject?: string };
-
-  // "Builds on" = the most recent mastered topic in curriculum order before the
-  // recommended topic. Used to give the student continuity context in StartState.
-  const buildsOnTopicName = (() => {
-    if (!recTopicId) return undefined;
-    const ordered = orderedTopics as OrderedTopic[];
-    const recIndex = ordered.findIndex((t) => (t.topicId ?? t.id) === recTopicId);
-    if (recIndex <= 0) return undefined;
-    // Walk backwards from the recommended topic to find the last mastered one
-    for (let i = recIndex - 1; i >= 0; i--) {
-      const id = ordered[i].topicId ?? ordered[i].id;
-      if (id && masteredIdSet.has(id)) {
-        return ordered[i].topicName ?? ordered[i].name ?? undefined;
-      }
-    }
-    return undefined;
-  })();
-
   const upcomingTopics = (orderedTopics as OrderedTopic[])
     .filter((t) => {
       const id = t.topicId ?? t.id;
-      return id && id !== recTopicId && !masteredIdSet.has(id);
+      return id && id !== recommendation?.conceptId && !masteredIdSet.has(id);
     })
     .slice(0, 3)
     .map((t) => ({
@@ -389,157 +338,156 @@ export default async function StudentHomeDashboardPage() {
       subject: t.subject ?? '',
     }));
 
-  // ── Nudge message ───────────────────────────────────────────────────────
-  const now = new Date();
-  const lastSessionDate = lastSessionRow?.startedAt ?? null;
-  const daysSince = lastSessionDate
-    ? Math.floor((now.getTime() - lastSessionDate.getTime()) / 86_400_000)
-    : 99;
-  const weeklyGoal = learningProfile?.studyDaysPerWeek ?? DEFAULT_WEEKLY_GOAL;
-  const dowNow = now.getUTCDay();
-  const daysLeft = dowNow === 0 ? 1 : 7 - dowNow + 1;
+  // ── Subject readiness ─────────────────────────────────────────────────────
+  const subjectNames = (studentProfile?.subjects ?? []).map((s) => String(s)).filter(Boolean);
+  const subjectDefs = subjectNames.length
+    ? await prisma.subjectDef.findMany({
+        where: {
+          OR: [{ name: { in: subjectNames } }, { slug: { in: subjectNames } }],
+          lifecycle: 'active',
+        },
+        select: { id: true, name: true },
+      })
+    : [];
+  const readinessResults = await Promise.all(
+    subjectDefs.map(async (subj) => {
+      const result = await computeReadinessScore(userId, subj.id).catch(() => null);
+      return { subjectId: subj.id, subjectName: subj.name, score: result?.score ?? 0 };
+    }),
+  );
 
-  const nudgeMessage = getNudgeMessage({
-    daysSinceLastSession: daysSince,
-    lastSessionDate,
-    pendingHomeworkCount: pendingHomeworkRaw.length,
-    sessionsThisWeek: weeklySessionsRaw.length,
-    weeklyGoalSessions: weeklyGoal,
-    daysLeftInWeek: daysLeft,
-  });
-
-  // ── Render ──────────────────────────────────────────────────────────────
+  // ── Render ────────────────────────────────────────────────────────────────
   return (
-    <main className="max-w-2xl mx-auto px-4 py-6 space-y-5">
-
-      {/* 0. Daily Learning Habit — today's goal (primary CTA), streak, weekly calendar */}
-      <EngagementSection nextTopicId={recommendation?.topicId ?? null} />
-
-      {/* Revisions due today — highest priority */}
-      <RevisionWidget />
-
-      {/* Freemium upgrade gate */}
-      {userSub?.subscriptionStatus === 'free' && freeTierStatus.sessionsRemaining === 0 && (
-        <section className="rounded-xl border border-indigo-200 bg-indigo-50 px-4 py-4 text-sm text-indigo-900">
-          <h2 className="mb-1 text-base font-semibold">You&apos;ve used your free sessions</h2>
-          <p className="mb-3 text-xs text-indigo-900/80">
-            Upgrade to continue learning with unlimited AI tutor sessions this month.
-          </p>
-          <PaymentButton
-            planMonths={1}
-            studentName={userSub.name}
-            studentEmail={userSub.email}
-            onSuccess={() => {
-              // After payment, reload dashboard to pick up new subscriptionStatus.
-              // The client router will handle the refresh.
-              if (typeof window !== 'undefined') {
-                window.location.reload();
-              }
-            }}
-            onFailure={() => {
-              // No-op: inline error is shown in the button component.
-            }}
-          />
-        </section>
-      )}
-
-      {/* 1. Primary Action — single hero CTA, always visible */}
-      <PrimaryActionCard
-        type={primaryType}
-        session={
-          activeSession
-            ? {
-                sessionId: activeSession.id,
-                topicName: activeSession.topic?.name ?? '',
-                currentPhase: activeSession.state,
-                resumePhase: activeSession.state,
-                subject: activeSession.topic?.chapter?.subject?.name ?? '',
-                chapter: activeSession.topic?.chapter?.name ?? '',
-              }
-            : null
-        }
-        aheadOfPlan={aheadOfPlan}
-        recommendation={
-          recommendation
-            ? {
-                topicId: (recommendation as any).topicId!,
-                topicTitle: (recommendation as any).topicTitle ?? (recommendation as any).topicName ?? (recommendation as any).topicId!,
-                subject: (recommendation as any).subject ?? '',
-                chapter: (recommendation as any).chapter ?? undefined,
-                estimatedTimeMin: (recommendation as any).estimatedTimeMin ?? 20,
-                weekNumber: (recommendation as any).weekNumber,
-                buildsOnTopicName,
-              }
-            : null
-        }
-        pendingHomework={
-          oldestPendingHomework
-            ? {
-                id: oldestPendingHomework.id,
-                topicName: oldestPendingHomework.topic?.name ?? '',
-                questionCount: Array.isArray(oldestPendingHomework.questions)
-                  ? (oldestPendingHomework.questions as unknown[]).length
-                  : 0,
-                dueDate: oldestPendingHomework.dueDate.toISOString(),
-                status: oldestPendingHomework.status as 'PENDING' | 'OVERDUE',
-              }
-            : null
-        }
+    <>
+      {/* ① Topbar — full-width sticky */}
+      <DashboardTopbar
+        name={studentName}
+        streakCurrent={streakCurrent}
+        level={currentLevel}
       />
 
-      {/* 2. Nudge Banner — dismissable, calm tone, optional */}
-      <NudgeBanner nudgeMessage={nudgeMessage} />
+      <div className="px-4 py-5 max-w-5xl mx-auto">
 
-      {/* 3. Weekly Study Strip — 7-day Mon–Sun activity dots */}
-      <WeeklyStudyStrip
-        data={{
-          days: weekDays,
-          sessionCountThisWeek: weeklySessionsRaw.length,
-          currentStreak: streakRow?.current ?? 0,
-        }}
-      />
-
-      {/* 3b. XP Widget + Subject Readiness */}
-      <XPWidget totalXp={totalXp} level={currentLevel} xpThisWeek={xpThisWeek} />
-      {readinessResults.length > 0 && (
-        <div className="space-y-3">
-          {readinessResults.map((r) => (
-            <SubjectReadinessCard
-              key={r.subjectId}
-              subjectName={r.subjectName}
-              score={r.score}
-              subjectId={r.subjectId}
+        {/* Freemium upgrade gate */}
+        {userSub?.subscriptionStatus === 'free' && freeTierStatus.sessionsRemaining === 0 && (
+          <section className="mb-5 rounded-2xl border border-[#534AB7]/30 bg-[#534AB7]/5 dark:bg-[#534AB7]/10 px-4 py-4">
+            <h2 className="mb-1 text-base font-semibold text-gray-900 dark:text-gray-100">
+              You&apos;ve used your free sessions
+            </h2>
+            <p className="mb-3 text-xs text-gray-600 dark:text-gray-400">
+              Upgrade to continue learning with unlimited AI tutor sessions this month.
+            </p>
+            <PaymentButton
+              planMonths={1}
+              studentName={userSub.name}
+              studentEmail={userSub.email}
+              onSuccess={() => {
+                if (typeof window !== 'undefined') window.location.reload();
+              }}
+              onFailure={() => {}}
             />
-          ))}
+          </section>
+        )}
+
+        {/* Two-column desktop grid */}
+        <div className="flex flex-col gap-5 md:flex-row md:gap-6 md:items-start">
+
+          {/* ── Left column (60%) — sections 2–5 ── */}
+          <div className="flex flex-col gap-5 md:w-3/5">
+
+            {/* ② TodaysLearningCard */}
+            <TodaysLearningCard
+              type={cardType}
+              recommendation={recommendation}
+              session={
+                activeSession
+                  ? {
+                      sessionId: activeSession.id,
+                      topicId: activeSession.topicId,
+                      topicName: activeSession.topic?.name ?? '',
+                      subject: activeSession.topic?.chapter?.subject?.name ?? '',
+                      chapter: activeSession.topic?.chapter?.name ?? '',
+                      currentPhase: activeSession.state,
+                    }
+                  : null
+              }
+              homework={
+                oldestHw
+                  ? {
+                      id: oldestHw.id,
+                      topicName: oldestHw.topic?.name ?? '',
+                      questionCount: Array.isArray(oldestHw.questions)
+                        ? (oldestHw.questions as unknown[]).length
+                        : 0,
+                      dueDate: oldestHw.dueDate.toISOString(),
+                      status: oldestHw.status as 'PENDING' | 'OVERDUE',
+                    }
+                  : null
+              }
+            />
+
+            {/* ③ XPWidget */}
+            <XPWidget totalXp={totalXp} level={currentLevel} xpThisWeek={xpThisWeek} />
+
+            {/* ④ WeeklyStudyStrip */}
+            <WeeklyStudyStrip
+              data={{
+                days: weekDays,
+                sessionCountThisWeek: weeklySessionsRaw.length,
+                currentStreak: streakCurrent,
+                weeklyGoal,
+              }}
+            />
+
+            {/* ⑤ RevisionWidget */}
+            <RevisionWidget />
+          </div>
+
+          {/* ── Right column (40%) — sections 6–8 ── */}
+          <div className="flex flex-col gap-5 md:w-2/5">
+
+            {/* ⑥ SubjectReadinessSection */}
+            {readinessResults.length > 0 && (
+              <section aria-labelledby="readiness-heading">
+                <h3
+                  id="readiness-heading"
+                  className="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-3"
+                >
+                  Subject readiness
+                </h3>
+                <div className="space-y-3">
+                  {readinessResults.map((r) => (
+                    <a
+                      key={r.subjectId}
+                      href={`/student/progress/${r.subjectId}`}
+                      className="block rounded-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-[#534AB7]"
+                    >
+                      <SubjectReadinessCard
+                        subjectName={r.subjectName}
+                        score={r.score}
+                        subjectId={r.subjectId}
+                      />
+                    </a>
+                  ))}
+                </div>
+              </section>
+            )}
+
+            {/* ⑦ WeakTopicsSection */}
+            <WeakTopicsSection
+              topics={weakTopicsRaw.slice(0, 2).map((t) => ({
+                topicId: t.topicId,
+                topicName: t.topicName,
+                masteryLabel: getMasteryLabel(t.mastery),
+              }))}
+              sessionCount={totalSessions}
+            />
+
+            {/* ⑧ UpcomingTopicsList */}
+            <UpcomingTopicsList topics={upcomingTopics} />
+          </div>
         </div>
-      )}
-
-      {/* 4. Homework Pending — hidden when empty */}
-      <HomeworkPendingCard
-        items={pendingHomeworkRaw.map((h) => ({
-          id: h.id,
-          topicName: h.topic?.name ?? '',
-          status: h.status as 'PENDING' | 'OVERDUE',
-          dueDate: h.dueDate.toISOString(),
-          questionCount: Array.isArray(h.questions)
-            ? (h.questions as unknown[]).length
-            : 0,
-        }))}
-      />
-
-      {/* 5. Weak Topics — hidden until 3+ sessions, max 2 cards */}
-      <WeakTopicsSection
-        topics={weakTopicsRaw.slice(0, 2).map((t) => ({
-          topicId: t.topicId,
-          topicName: t.topicName,
-          masteryLabel: getMasteryLabel(t.mastery),
-        }))}
-        sessionCount={totalSessions}
-      />
-
-      {/* 6. Upcoming Topics — simple list + learning path link */}
-      <UpcomingTopicsList topics={upcomingTopics} />
-
-    </main>
+      </div>
+    </>
   );
 }

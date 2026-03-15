@@ -50,7 +50,7 @@ export function XPWidget({
       <div className="rounded-xl border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800 p-4">
         {/* Header row: level badge + xp this week */}
         <div className="flex items-center justify-between mb-3">
-          <span className="inline-flex items-center px-2.5 py-1 rounded-lg bg-indigo-100 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300 text-xs font-bold tracking-wide">
+          <span className="inline-flex items-center px-2.5 py-1 rounded-lg bg-[#534AB7]/10 dark:bg-[#534AB7]/20 text-[#534AB7] dark:text-indigo-300 text-xs font-bold tracking-wide">
             Level {level}
           </span>
           <span className="text-xs text-gray-500 dark:text-gray-400">
@@ -72,7 +72,7 @@ export function XPWidget({
             aria-valuemax={threshold}
           >
             <div
-              className="h-full rounded-full bg-indigo-500 dark:bg-indigo-400 transition-all duration-300"
+              className="h-full rounded-full bg-[#534AB7] dark:bg-[#534AB7] transition-all duration-300"
               style={{ width: `${progressPct}%` }}
             />
           </div>
