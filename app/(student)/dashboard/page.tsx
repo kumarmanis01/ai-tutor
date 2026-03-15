@@ -19,6 +19,7 @@
  *
  * EDIT LOG:
  *   2026-03-15 | v2 migration | full rebuild; replaces v1 dashboard
+ *   2026-03-15 | Task 28      | UpgradeFlow + UpgradeBanner replace PaymentButton gate
  */
 
 import type { Metadata } from 'next';
@@ -37,8 +38,10 @@ import WeeklyStudyStrip from '@/components/home/WeeklyStudyStrip';
 import XPWidget from '@/components/student/dashboard/XPWidget';
 import RevisionWidget from '@/components/student/dashboard/RevisionWidget';
 import SubjectReadinessCard from '@/components/student/dashboard/SubjectReadinessCard';
-import PaymentButton from '@/components/student/PaymentButton';
+import UpgradeFlow from '@/components/student/subscription/UpgradeFlow';
+import UpgradeBanner from '@/components/student/subscription/UpgradeBanner';
 import { checkFreeTierCap } from '@/lib/freemium';
+import { getRedis } from '@/lib/redis';
 
 export const dynamic = 'force-dynamic';
 
@@ -90,6 +93,7 @@ export default async function StudentHomeDashboardPage() {
     userSub,
     xpThisWeekAgg,
     planTodayResult,
+    upgradeDismissed,
   ] = await Promise.all([
     // 0. Student academic profile
     prisma.user.findUnique({
@@ -228,6 +232,18 @@ export default async function StudentHomeDashboardPage() {
         return null;
       }
     })(),
+
+    // 15. Upgrade gate dismiss check (Redis, non-blocking)
+    (async () => {
+      try {
+        const redis = getRedis();
+        if (!redis) return false;
+        const val = await redis.get(`upgrade:dismissed:${userId}`);
+        return val === '1';
+      } catch {
+        return false;
+      }
+    })(),
   ]);
 
   // ── Onboarding gates ──────────────────────────────────────────────────────
@@ -358,25 +374,18 @@ export default async function StudentHomeDashboardPage() {
     <>
       <div className="px-4 py-5 max-w-5xl mx-auto">
 
-        {/* Freemium upgrade gate */}
+        {/* Freemium upgrade gate / banner */}
         {userSub?.subscriptionStatus === 'free' && freeTierStatus.sessionsRemaining === 0 && (
-          <section className="mb-5 rounded-2xl border border-[#534AB7]/30 bg-[#534AB7]/5 dark:bg-[#534AB7]/10 px-4 py-4">
-            <h2 className="mb-1 text-base font-semibold text-gray-900 dark:text-gray-100">
-              You&apos;ve used your free sessions
-            </h2>
-            <p className="mb-3 text-xs text-gray-600 dark:text-gray-400">
-              Upgrade to continue learning with unlimited AI tutor sessions this month.
-            </p>
-            <PaymentButton
-              planMonths={1}
-              studentName={userSub.name}
-              studentEmail={userSub.email}
-              onSuccess={() => {
-                if (typeof window !== 'undefined') window.location.reload();
-              }}
-              onFailure={() => {}}
-            />
-          </section>
+          upgradeDismissed
+            ? <UpgradeBanner show />
+            : (
+              <section id="upgrade-section" className="mb-5">
+                <UpgradeFlow
+                  studentName={userSub.name}
+                  studentEmail={userSub.email}
+                />
+              </section>
+            )
         )}
 
         {/* Two-column desktop grid */}
