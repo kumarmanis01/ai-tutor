@@ -43,7 +43,7 @@ export async function POST(
         reason,
       },
     }),
-    prisma.auditLog.create({ data: { userId: adminId, action: 'reject_chapter', details: { chapterId: params.id, reason, fromStatus: chapter.status }, createdAt: new Date() } })
+    prisma.auditLog.create({ data: { adminId, targetEntity: 'ChapterDef', targetId: params.id, action: 'CONTENT_REJECT', previousValue: { status: chapter.status }, newValue: { status: 'rejected' }, reason: reason ?? null } })
   ])
 
   return NextResponse.json({ success: true })

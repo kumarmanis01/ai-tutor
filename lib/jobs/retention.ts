@@ -13,8 +13,10 @@ export async function pruneOldAnalyticsEvents(days = 90): Promise<number> {
     const count = (res as any)?.count ?? 0
     try {
       await logAuditEvent(prisma, {
-        action: 'RETENTION_PRUNE_ANALYTICS',
-        metadata: { days, cutoff: cutoff.toISOString(), deletedCount: count }
+        targetEntity: 'System',
+        targetId: 'retention',
+        action: null,
+        details: { legacyAction: 'RETENTION_PRUNE_ANALYTICS', days, cutoff: cutoff.toISOString(), deletedCount: count }
       })
     } catch {
       // audit best-effort
@@ -22,7 +24,7 @@ export async function pruneOldAnalyticsEvents(days = 90): Promise<number> {
     return count
   } catch (err: any) {
     try {
-      await logAuditEvent(prisma, { action: 'RETENTION_PRUNE_ANALYTICS_FAILED', metadata: { days, cutoff: cutoff.toISOString(), error: String(err?.message ?? err) } })
+      await logAuditEvent(prisma, { targetEntity: 'System', targetId: 'retention', action: null, details: { legacyAction: 'RETENTION_PRUNE_ANALYTICS_FAILED', days, cutoff: cutoff.toISOString(), error: String(err?.message ?? err) } })
     } catch {}
     throw err
   }

@@ -42,7 +42,7 @@ test('processNextJob persists output exactly once and emits COMPLETED audit', as
 
   // audits: LOCKED, STARTED, COMPLETED at least
   expect(mockedLogAudit).toHaveBeenCalled()
-  const actions = mockedLogAudit.mock.calls.map((c: any) => c[1]?.action || c[0]?.action)
+  const actions = mockedLogAudit.mock.calls.map((c: any) => c[1]?.details?.legacyAction || c[0]?.details?.legacyAction)
   expect(actions).toEqual(expect.arrayContaining([AuditEvents.REGEN_JOB_COMPLETED]))
 })
 
@@ -70,6 +70,6 @@ test('processNextJob marks FAILED and emits FAILED audit when generator throws',
   expect(mockedPrisma.regenerationJob.update).toHaveBeenCalled()
 
   // audit FAILED emitted
-  const actions = mockedLogAudit.mock.calls.map((c: any) => c[1]?.action || c[0]?.action)
+  const actions = mockedLogAudit.mock.calls.map((c: any) => c[1]?.details?.legacyAction || c[0]?.details?.legacyAction)
   expect(actions).toEqual(expect.arrayContaining([AuditEvents.REGEN_JOB_FAILED]))
 })

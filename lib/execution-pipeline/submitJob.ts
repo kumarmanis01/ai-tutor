@@ -217,7 +217,7 @@ export async function submitJob(input: SubmitJobInput) {
   }
   // Audit the creation so admins can see intent in logs
   try {
-    await prisma.auditLog.create({ data: { userId: null, action: 'create_job', details: { jobId: job.id, jobType: normalizedJobType, entityType, entityId }, createdAt: new Date() } });
+    await prisma.auditLog.create({ data: { targetEntity: 'HydrationJob', targetId: job.id, action: null, details: { legacyAction: 'create_job', jobType: normalizedJobType, entityType, entityId } } });
   } catch (err) {
     // non-fatal - log the error
     logger?.warn?.(`Failed to create audit log for job ${job.id}`, { err });

@@ -54,9 +54,12 @@ export async function POST(req: Request, { params }: RouteParams) {
 
       await prisma.auditLog.create({
         data: {
-          userId: session.user.id,
-          action: `moderation_${action}_note`,
-          details: { noteId: id, newStatus },
+          adminId: session.user.id,
+          targetEntity: 'TopicNote',
+          targetId: id,
+          action: action === 'approve' ? 'CONTENT_APPROVE' : 'CONTENT_REJECT',
+          previousValue: { status: note.status },
+          newValue: { status: newStatus },
         },
       });
 
@@ -74,9 +77,12 @@ export async function POST(req: Request, { params }: RouteParams) {
 
       await prisma.auditLog.create({
         data: {
-          userId: session.user.id,
-          action: `moderation_${action}_test`,
-          details: { testId: id, newStatus },
+          adminId: session.user.id,
+          targetEntity: 'GeneratedTest',
+          targetId: id,
+          action: action === 'approve' ? 'CONTENT_APPROVE' : 'CONTENT_REJECT',
+          previousValue: { status: test.status },
+          newValue: { status: newStatus },
         },
       });
 

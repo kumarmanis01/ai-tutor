@@ -48,7 +48,7 @@ export async function POST(req: Request, { params }: { params: { id: string; act
       } catch (e) {
         logger?.warn?.('admin.cancel: failed to write JobExecutionLog', { err: e, jobId: id });
       }
-      await prisma.auditLog.create({ data: { userId: adminId, action: 'cancel_job', details: { jobId: id, prevStatus: job.status }, createdAt: new Date() } });
+      await prisma.auditLog.create({ data: { adminId, targetEntity: 'HydrationJob', targetId: id, action: 'JOB_CANCEL', previousValue: { status: job.status } } });
       return NextResponse.json({ ok: true, job: updated });
     }
 
@@ -69,7 +69,7 @@ export async function POST(req: Request, { params }: { params: { id: string; act
       }
 
       const adminId = session?.user?.id ?? null;
-      await prisma.auditLog.create({ data: { userId: adminId, action: 'retry_job', details: { originalJobId: id, newJobId: result.jobId }, createdAt: new Date() } });
+      await prisma.auditLog.create({ data: { adminId, targetEntity: 'HydrationJob', targetId: id, action: 'JOB_RETRY', details: { newJobId: result.jobId } } });
 
       return NextResponse.json({ jobId: result.jobId, existing: result.existing });
     }
@@ -92,7 +92,7 @@ export async function POST(req: Request, { params }: { params: { id: string; act
           // Create an outbox entry for the existing hydration job so dispatcher will enqueue it
           await prisma.outbox.create({ data: { queue: CONTENT_HYDRATION_QUEUE, payload: { type: 'SYLLABUS', payload: { jobId: payload.hydrationJobId } }, meta: { hydrationJobId: payload.hydrationJobId } } });
           await prisma.jobExecutionLog.create({ data: { jobId: id, event: 'REQUEUE', prevStatus: job.status, newStatus: job.status, meta: { hydrationJobId: payload.hydrationJobId, actor: session?.user?.id ?? null } } }).catch(()=>{});
-          await prisma.auditLog.create({ data: { userId: session?.user?.id ?? null, action: 'requeue_job', details: { jobId: id, hydrationJobId: payload.hydrationJobId }, createdAt: new Date() } });
+          await prisma.auditLog.create({ data: { adminId: session?.user?.id ?? null, targetEntity: 'HydrationJob', targetId: id, action: 'JOB_REQUEUE', details: { hydrationJobId: payload.hydrationJobId } } });
           return NextResponse.json({ ok: true, requeued: true });
         }
 
@@ -105,7 +105,7 @@ export async function POST(req: Request, { params }: { params: { id: string; act
 
         const res = await enqueueSyllabusHydration({ board, grade, subject, subjectId, language });
         await prisma.jobExecutionLog.create({ data: { jobId: id, event: 'REQUEUE', prevStatus: job.status, newStatus: job.status, meta: { hydratorResult: res, actor: session?.user?.id ?? null } } }).catch(()=>{});
-        await prisma.auditLog.create({ data: { userId: session?.user?.id ?? null, action: 'requeue_job', details: { jobId: id, hydratorResult: res }, createdAt: new Date() } });
+        await prisma.auditLog.create({ data: { adminId: session?.user?.id ?? null, targetEntity: 'HydrationJob', targetId: id, action: 'JOB_REQUEUE', details: { hydratorResult: res } } });
 
         return NextResponse.json({ ok: true, requeued: true, result: res });
       } catch (e) {

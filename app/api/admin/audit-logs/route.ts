@@ -10,7 +10,7 @@ export async function GET() {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
   const logs = await prisma.auditLog.findMany({
-    include: { user: { select: { email: true } } },
+    include: { admin: { select: { email: true } } },
     orderBy: { createdAt: 'desc' },
     take: 100,
   });

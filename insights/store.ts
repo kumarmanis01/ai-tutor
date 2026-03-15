@@ -42,11 +42,11 @@ export async function saveSuggestions(db: PrismaClient, suggestions: SuggestionR
       // non-blocking audit
       try {
         logAuditEvent(db, {
-          actorId: actorId ?? null,
-          action: 'SUGGESTION_CREATED',
-          entityType: 'ContentSuggestion',
-          entityId: row.id,
-          metadata: { courseId: s.courseId, type: s.type }
+          adminId: actorId ?? null,
+          targetEntity: 'ContentSuggestion',
+          targetId: row.id,
+          action: null,
+          details: { legacyAction: 'SUGGESTION_CREATED', courseId: s.courseId, type: s.type }
         })
       } catch {}
     } catch {
@@ -77,11 +77,11 @@ export async function updateSuggestionStatus(db: PrismaClient, id: string, statu
   const updated = await (db as any).contentSuggestion.update({ where: { id }, data: { status: status as any } })
   try {
     logAuditEvent(db, {
-      actorId: actorId ?? null,
-      action: status === 'ACCEPTED' ? 'SUGGESTION_ACCEPTED' : 'SUGGESTION_DISMISSED',
-      entityType: 'ContentSuggestion',
-      entityId: id,
-      metadata: { courseId: existing.courseId, status }
+      adminId: actorId ?? null,
+      targetEntity: 'ContentSuggestion',
+      targetId: id,
+      action: null,
+      details: { legacyAction: status === 'ACCEPTED' ? 'SUGGESTION_ACCEPTED' : 'SUGGESTION_DISMISSED', courseId: existing.courseId, status }
     })
   } catch {}
   return updated

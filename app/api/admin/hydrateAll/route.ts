@@ -529,10 +529,11 @@ export async function POST(request: NextRequest) {
 
     await prisma.auditLog.create({
       data: {
-        userId: auditUserId,
-        action: 'HYDRATEALL_SUBMIT',
+        adminId: auditUserId,
+        targetEntity: 'HydrationJob',
+        targetId: result.id,
+        action: 'CONTENT_HYDRATE',
         details: {
-          rootJobId: result.id,
           boardCode,
           grade,
           subjectCode,

@@ -135,9 +135,11 @@ export async function PUT(req: NextRequest) {
     // Audit
     await prisma.auditLog.create({
       data: {
-        userId: parentId,
-        action: 'parent_update_controls',
-        details: { studentId, controls: { dailyTimeLimitMin, allowedSubjects, focusMode, studyHoursStart, studyHoursEnd } },
+        adminId: parentId,
+        targetEntity: 'User',
+        targetId: studentId,
+        action: null,
+        details: { legacyAction: 'parent_update_controls', controls: { dailyTimeLimitMin, allowedSubjects, focusMode, studyHoursStart, studyHoursEnd } },
       },
     }).catch((err) => logger.warn('audit log failed', { error: String(err) }));
 

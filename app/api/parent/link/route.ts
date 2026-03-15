@@ -70,9 +70,11 @@ async function handleGenerateCode(studentId: string, req: NextRequest, start: nu
   await prisma.auditLog
     .create({
       data: {
-        userId: studentId,
-        action: 'student_generate_parent_invite',
-        details: { studentId, expiresAt: invite.expiresAt },
+        adminId: studentId,
+        targetEntity: 'User',
+        targetId: studentId,
+        action: null,
+        details: { legacyAction: 'student_generate_parent_invite', expiresAt: invite.expiresAt },
       },
     })
     .catch(() => {});
@@ -156,9 +158,11 @@ async function handleLink(parentId: string, parentEmail: string | null, body: an
       await prisma.auditLog
         .create({
           data: {
-            userId: parentId,
-            action: 'parent_link_student',
-            details: { parentId, studentId: legacy.studentId, method: 'invite_code_legacy', status: 'linked' },
+            adminId: parentId,
+            targetEntity: 'User',
+            targetId: legacy.studentId,
+            action: null,
+            details: { legacyAction: 'parent_link_student', parentId, method: 'invite_code_legacy', status: 'linked' },
           },
         })
         .catch(() => {});
@@ -210,9 +214,11 @@ export async function DELETE(req: NextRequest) {
 
     await prisma.auditLog.create({
       data: {
-        userId: parentId,
-        action: 'parent_unlink_student',
-        details: { parentId, studentId },
+        adminId: parentId,
+        targetEntity: 'User',
+        targetId: studentId,
+        action: null,
+        details: { legacyAction: 'parent_unlink_student', parentId },
       },
     }).catch((err) => logger.warn('audit log failed', { error: String(err) }));
 

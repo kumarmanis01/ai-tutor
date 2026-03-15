@@ -18,7 +18,7 @@ describe('admin content approve route', () => {
     const res = await route.POST(req as any)
     expect(res.status).toBe(200)
     expect(mockPrisma.topicDef.update).toHaveBeenCalled()
-    expect(mockPrisma.auditLog.create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ userId: 'u1', action: 'approve_topic' }) }))
+    expect(mockPrisma.auditLog.create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ adminId: 'u1', action: 'CONTENT_APPROVE' }) }))
   })
 
   test('falls back to null userId when session user not in DB', async () => {
@@ -35,6 +35,6 @@ describe('admin content approve route', () => {
     const res = await route.POST(req as any)
     expect(res.status).toBe(200)
     expect(mockPrisma.topicDef.update).toHaveBeenCalled()
-    expect(mockPrisma.auditLog.create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ userId: null, action: 'approve_topic' }) }))
+    expect(mockPrisma.auditLog.create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ adminId: null, action: 'CONTENT_APPROVE' }) }))
   })
 })

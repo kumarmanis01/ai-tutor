@@ -61,7 +61,7 @@ model User {
   accounts                 Account[]
   apiUsages                ApiUsage[]
   approvalAudits           ApprovalAudit[]
-  auditLogs                AuditLog[]
+  adminActions             AuditLog[]               @relation("AdminActions")
   bookmarks                Bookmark[]
   challengeParticipations  ChallengeParticipation[]
   chats                    Chat[]
@@ -484,12 +484,21 @@ model Payment {
 }
 
 model AuditLog {
-  id        String   @id @default(cuid())
-  userId    String?
-  action    String
-  details   Json?
-  createdAt DateTime @default(now())
-  user      User?    @relation(fields: [userId], references: [id])
+  id            String           @id @default(cuid())
+  adminId       String?          // who performed the action (null = system)
+  targetEntity  String           // 'User' | 'Worker' | 'HydrationJob' | 'TopicNote' | etc.
+  targetId      String           // ID of the affected entity
+  action        AdminActionType? // typed enum; null for non-admin system events
+  previousValue Json?            // state before change
+  newValue      Json?            // state after change
+  reason        String?          // required for destructive actions
+  ipAddress     String?
+  details       Json?            // retained for legacy system-event metadata
+  createdAt     DateTime         @default(now())
+  admin         User?            @relation("AdminActions", fields: [adminId], references: [id])
+
+  @@index([targetEntity, targetId])
+  @@index([adminId, createdAt])
 }
 
 /// Admin key-value flags (e.g. parent_reports_paused, content_generation_paused).
@@ -1801,6 +1810,32 @@ model Purchase {
 
   @@index([userId])
   @@index([productId])
+}
+
+enum AdminActionType {
+  GRADE_CHANGE
+  DIAGNOSTIC_RESET
+  ACCOUNT_SUSPEND
+  ACCOUNT_REACTIVATE
+  ACCOUNT_DEACTIVATE
+  SUBSCRIPTION_EXTEND
+  SUBSCRIPTION_REFUND
+  QUESTION_QUARANTINE
+  QUESTION_APPROVE
+  QUESTION_REJECT
+  FEATURE_FLAG_CHANGE
+  ERASURE_REQUEST
+  ERASURE_PSEUDONYMISE
+  ERASURE_PURGE
+  CONTENT_APPROVE
+  DOUBT_RESOLVE
+  CONTENT_REJECT
+  JOB_CANCEL
+  JOB_RETRY
+  JOB_REQUEUE
+  CONTENT_HYDRATE
+  WORKER_START
+  WORKER_STOP
 }
 
 /// ⚠️ AI CONTENT ENGINE RULES

@@ -39,18 +39,18 @@ export async function runJob(job: JobDefinition): Promise<{ skipped?: true; dura
 
   const start = Date.now()
   if (!acquired) {
-    logAuditEvent(prisma, { action: 'JOB_RUN', metadata: { job: job.name, status: 'SKIPPED', reason: 'lock_unavailable' } })
+    logAuditEvent(prisma, { targetEntity: 'System', targetId: job.name, action: null, details: { legacyAction: 'JOB_RUN', status: 'SKIPPED', reason: 'lock_unavailable' } })
     return { skipped: true, durationMs: Date.now() - start }
   }
 
   // START audit + metrics
-  logAuditEvent(prisma, { action: 'JOB_RUN', metadata: { job: job.name, status: 'STARTED', timestamp: new Date().toISOString() } })
+  logAuditEvent(prisma, { targetEntity: 'System', targetId: job.name, action: null, details: { legacyAction: 'JOB_RUN', status: 'STARTED', timestamp: new Date().toISOString() } })
   try { recordJobStart(job.name) } catch {}
 
   try {
     if (process.env.JOB_DRY_RUN === '1') {
       try { const logger = (await import('@/lib/logger')).logger; logger?.info?.('job-runner: dry-run', { job: job.name }) } catch {}
-      logAuditEvent(prisma, { action: 'JOB_RUN', metadata: { job: job.name, status: 'DRY_RUN' } })
+      logAuditEvent(prisma, { targetEntity: 'System', targetId: job.name, action: null, details: { legacyAction: 'JOB_RUN', status: 'DRY_RUN' } })
       return
     }
 
@@ -61,13 +61,13 @@ export async function runJob(job: JobDefinition): Promise<{ skipped?: true; dura
     ])
 
     const durationMs = Date.now() - start
-    logAuditEvent(prisma, { action: 'JOB_RUN', metadata: { job: job.name, status: 'SUCCESS', durationMs } })
+    logAuditEvent(prisma, { targetEntity: 'System', targetId: job.name, action: null, details: { legacyAction: 'JOB_RUN', status: 'SUCCESS', durationMs } })
     try { recordJobSuccess(job.name, durationMs) } catch {}
     return
   } catch (err: any) {
     const durationMs = Date.now() - start
     const message = String(err?.message ?? err)
-    logAuditEvent(prisma, { action: 'JOB_RUN', metadata: { job: job.name, status: message === 'timeout' ? 'TIMED_OUT' : 'FAILED', error: message, durationMs } })
+    logAuditEvent(prisma, { targetEntity: 'System', targetId: job.name, action: null, details: { legacyAction: 'JOB_RUN', status: message === 'timeout' ? 'TIMED_OUT' : 'FAILED', error: message, durationMs } })
     try { recordJobFailure(job.name, message) } catch {}
     // Emit an alert for job failures (best-effort; router handles dedupe/rate-limit)
     try {

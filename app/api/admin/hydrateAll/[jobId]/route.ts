@@ -321,13 +321,11 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
     // 5. Create Audit Log
     await prisma.auditLog.create({
       data: {
-        userId: session.user.id,
-        action: 'HYDRATEALL_CANCEL',
-        details: {
-          jobId,
-          previousStatus: job.status,
-          cancelledAt: new Date().toISOString(),
-        },
+        adminId: session.user.id,
+        targetEntity: 'HydrationJob',
+        targetId: jobId,
+        action: 'JOB_CANCEL',
+        previousValue: { status: job.status },
       },
     });
 

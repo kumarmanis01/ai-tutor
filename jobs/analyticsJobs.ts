@@ -20,8 +20,10 @@ export async function runAnalyticsJobs(): Promise<{ success: boolean; durationMs
     if ((lock as any).skipped) {
       // Record audit log for skipped run
       logAuditEvent(prisma, {
-        action: 'ANALYTICS_JOB_RUN',
-        metadata: { status: 'SKIPPED', reason: (lock as any).reason ?? 'locked' }
+        targetEntity: 'System',
+        targetId: 'analytics_jobs',
+        action: null,
+        details: { legacyAction: 'ANALYTICS_JOB_RUN', status: 'SKIPPED', reason: (lock as any).reason ?? 'locked' }
       })
       const durationMs = Date.now() - started
       return { success: false, durationMs, error: String((lock as any).reason ?? 'locked'), skipped: true, reason: (lock as any).reason }
@@ -100,8 +102,10 @@ export async function runAnalyticsJobs(): Promise<{ success: boolean; durationMs
   // Write audit log (non-blocking)
   try {
     logAuditEvent(prisma, {
-      action: 'ANALYTICS_JOB_RUN',
-      metadata: { status: success ? 'SUCCESS' : 'FAILED', durationMs, error: accumulatedError ?? null }
+      targetEntity: 'System',
+      targetId: 'analytics_jobs',
+      action: null,
+      details: { legacyAction: 'ANALYTICS_JOB_RUN', status: success ? 'SUCCESS' : 'FAILED', durationMs, error: accumulatedError ?? null }
     })
   } catch (e) {
     try {

@@ -30,7 +30,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
 
   await prisma.$transaction([
     prisma.topicNote.update({ where: { id: params.id }, data: { status: ApprovalStatus.Rejected } }),
-    prisma.auditLog.create({ data: { userId: adminId, action: 'reject_note', details: { noteId: params.id, reason, fromStatus: note.status }, createdAt: new Date() } })
+    prisma.auditLog.create({ data: { adminId, targetEntity: 'TopicNote', targetId: params.id, action: 'CONTENT_REJECT', previousValue: { status: note.status }, newValue: { status: 'rejected' }, reason: reason ?? null } })
   ]);
 
   // Auto-regenerate: enqueue a new notes hydration job for this topic

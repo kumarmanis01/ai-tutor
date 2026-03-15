@@ -25,7 +25,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
 
   await prisma.$transaction([
     prisma.topicNote.update({ where: { id: params.id }, data: { status: ApprovalStatus.Approved } }),
-    prisma.auditLog.create({ data: { userId: adminId, action: 'approve_note', details: { noteId: params.id, fromStatus: note.status }, createdAt: new Date() } })
+    prisma.auditLog.create({ data: { adminId, targetEntity: 'TopicNote', targetId: params.id, action: 'CONTENT_APPROVE', previousValue: { status: note.status }, newValue: { status: 'approved' } } })
   ]);
 
   return NextResponse.json({ approved: true });

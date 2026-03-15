@@ -28,7 +28,7 @@ export async function GET() {
 
     const auditLogs = await prisma.auditLog.findMany({
       include: {
-        user: {
+        admin: {
           select: { email: true },
         },
       },

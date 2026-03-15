@@ -314,7 +314,11 @@ export const authOptions: any = {
           if (dbUser?.id) {
             // Fetch the most recent two login audit entries (if any)
             const recentLogins = await prisma.auditLog.findMany({
-              where: { userId: dbUser.id, action: 'student.login' },
+              where: {
+                targetId: dbUser.id,
+                targetEntity: 'User',
+                details: { path: ['legacyAction'], equals: 'student.login' },
+              },
               orderBy: { createdAt: 'desc' },
               take: 2,
             });
@@ -329,7 +333,7 @@ export const authOptions: any = {
               logger.info('student.curriculum.changed', { studentId: dbUser.id });
             }
             // Always record this login with current curriculum snapshot
-            await prisma.auditLog.create({ data: { userId: dbUser.id, action: 'student.login', details: { board: curBoard, grade: curGrade } } });
+            await prisma.auditLog.create({ data: { targetEntity: 'User', targetId: dbUser.id, action: null, details: { legacyAction: 'student.login', board: curBoard, grade: curGrade } } });
           }
         }
       } catch (err) {

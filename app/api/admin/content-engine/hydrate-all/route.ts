@@ -144,11 +144,13 @@ export async function POST(req: Request) {
       auditUserId = null;
     }
 
-    // Create audit log entry (userId may be null)
+    // Create audit log entry (adminId may be null)
     await prisma.auditLog.create({
       data: {
-        userId: auditUserId,
-        action: 'hydrate_all_initiated',
+        adminId: auditUserId,
+        targetEntity: 'HydrationJob',
+        targetId: syllabusResult.jobId,
+        action: 'CONTENT_HYDRATE',
         details: {
           boardId,
           boardName: subject.class?.board?.name,
@@ -158,7 +160,6 @@ export async function POST(req: Request) {
           subjectName: subject.name,
           language,
           difficulties,
-          syllabusJobId: syllabusResult.jobId,
           isExisting: syllabusResult.existing,
         },
       },

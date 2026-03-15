@@ -44,10 +44,11 @@ async function main() {
 
       await prisma.auditLog.create({
         data: {
-          userId: null,
-          action: 'soft-delete-topic',
+          targetEntity: 'TopicDef',
+          targetId: t.id,
+          action: null,
           details: {
-            topicId: t.id,
+            legacyAction: 'soft-delete-topic',
             topicName: t.name,
             chapterId: t.chapterId,
           },

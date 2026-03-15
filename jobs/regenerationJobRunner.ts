@@ -56,7 +56,7 @@ export async function runRegenerationJobs() {
     }
 
     // Audit: started
-    logAuditEvent(prisma as any, { action: AuditEvents.REGEN_JOB_STARTED, entityId: job.id, metadata: { jobId: job.id } })
+    logAuditEvent(prisma as any, { targetEntity: 'RegenerationJob', targetId: job.id, action: null, details: { legacyAction: AuditEvents.REGEN_JOB_STARTED } })
 
     try {
       
@@ -82,7 +82,7 @@ export async function runRegenerationJobs() {
       const updated = await (prisma as any).regenerationJob.updateMany({ where: { id: job.id, status: 'RUNNING' }, data: { status: 'COMPLETED', outputRef } as any })
       
       if ((updated?.count ?? 0) > 0) {
-        logAuditEvent(prisma as any, { action: AuditEvents.REGEN_JOB_COMPLETED, entityId: job.id, metadata: { jobId: job.id, outputRef } })
+        logAuditEvent(prisma as any, { targetEntity: 'RegenerationJob', targetId: job.id, action: null, details: { legacyAction: AuditEvents.REGEN_JOB_COMPLETED, outputRef } })
       }
 
       return { processed: 1, jobId: job.id }
@@ -91,7 +91,7 @@ export async function runRegenerationJobs() {
       const errorJson = { message: String(err?.message ?? err), stack: err?.stack }
       // Use updateMany to avoid schema-selection issues and to ensure we only transition RUNNING -> FAILED
       await (prisma as any).regenerationJob.updateMany({ where: { id: job.id, status: 'RUNNING' }, data: { status: 'FAILED', errorJson } as any }).catch(() => {})
-      logAuditEvent(prisma as any, { action: AuditEvents.REGEN_JOB_FAILED, entityId: job.id, metadata: { jobId: job.id, errorJson } })
+      logAuditEvent(prisma as any, { targetEntity: 'RegenerationJob', targetId: job.id, action: null, details: { legacyAction: AuditEvents.REGEN_JOB_FAILED, errorJson } })
       return { processed: 0 }
     }
     } finally {

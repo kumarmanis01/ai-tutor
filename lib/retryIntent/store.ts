@@ -39,9 +39,10 @@ export function makeRetryIntentStore(prisma: PrismaClient) {
     // fire-and-forget audit (non-blocking)
     try {
       logAuditEvent(prisma, {
-        action: 'RETRY_INTENT_CREATED',
-        entityId: created.id,
-        metadata: { sourceJobId: input.sourceJobId, approvedBy: input.approvedBy },
+        targetEntity: 'RetryIntent',
+        targetId: created.id,
+        action: null,
+        details: { legacyAction: 'RETRY_INTENT_CREATED', sourceJobId: input.sourceJobId, approvedBy: input.approvedBy },
       })
     } catch {
       // swallow errors — auditing must not break flow
@@ -69,8 +70,10 @@ export function makeRetryIntentStore(prisma: PrismaClient) {
     // Emit audit event (non-blocking)
     try {
       logAuditEvent(prisma, {
-        action: 'RETRY_INTENT_CONSUMED',
-        entityId: id,
+        targetEntity: 'RetryIntent',
+        targetId: id,
+        action: null,
+        details: { legacyAction: 'RETRY_INTENT_CONSUMED' },
       })
     } catch {
       // swallow

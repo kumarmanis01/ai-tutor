@@ -66,7 +66,7 @@ export async function POST(req: Request) {
       auditUserId = null;
     }
 
-    await prisma.auditLog.create({ data: { userId: auditUserId, action: 'WORKER_START', details: { reason: body.reason ?? null, workerId: created.id } } })
+    await prisma.auditLog.create({ data: { adminId: auditUserId, targetEntity: 'Worker', targetId: created.id, action: 'WORKER_START', details: { reason: body.reason ?? null } } })
 
     // Return minimal response the orchestrator / CLI expects
     return NextResponse.json({ lifecycleId: created.id, type: created.type })
@@ -94,7 +94,7 @@ export async function POST(req: Request) {
       auditUserId2 = null;
     }
 
-    await prisma.auditLog.create({ data: { userId: auditUserId2, action: 'WORKER_STOP', details: { reason: body.reason ?? null, workerId: id, drain } } })
+    await prisma.auditLog.create({ data: { adminId: auditUserId2, targetEntity: 'Worker', targetId: id, action: 'WORKER_STOP', details: { reason: body.reason ?? null, drain } } })
 
     return NextResponse.json(update)
   }

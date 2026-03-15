@@ -51,7 +51,7 @@ export async function POST(
         actorId: adminId,
       },
     }),
-    prisma.auditLog.create({ data: { userId: adminId, action: 'approve_chapter', details: { chapterId: params.id, fromStatus: chapter.status }, createdAt: new Date() } })
+    prisma.auditLog.create({ data: { adminId, targetEntity: 'ChapterDef', targetId: params.id, action: 'CONTENT_APPROVE', previousValue: { status: chapter.status }, newValue: { status: 'approved' } } })
   ])
 
   return NextResponse.json({ success: true })
