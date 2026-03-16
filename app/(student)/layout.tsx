@@ -13,11 +13,40 @@ import { checkProfileCompleteness, isProfileComplete, EMPTY_PROFILE_DATA, type P
 import { checkParentGate } from '@/lib/student/parentGate';
 import { requiresParentOTPGate } from '@/lib/student/accountStatus';
 import StudentLayoutShell from '@/components/student/StudentLayoutShell';
+import InstallPrompt from '@/components/pwa/InstallPrompt';
 import '@/styles/index.css';
 
-export const viewport = {
+import type { Metadata, Viewport } from 'next';
+
+export const viewport: Viewport = {
+  themeColor: '#534AB7',
   width: 'device-width',
   initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+};
+
+export const metadata: Metadata = {
+  title: 'Spinzy AI Tutor',
+  description: 'AI-powered home tutor for CBSE & ICSE students',
+  manifest: '/manifest.json',
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'default',
+    title: 'Spinzy',
+  },
+  icons: {
+    apple: [
+      { url: '/icons/icon-152.png', sizes: '152x152' },
+      { url: '/icons/icon-192.png', sizes: '192x192' },
+    ],
+    icon: '/icons/icon-192.png',
+  },
+  other: {
+    'mobile-web-app-capable': 'yes',
+    'msapplication-TileColor': '#534AB7',
+    'msapplication-TileImage': '/icons/icon-144.png',
+  },
 };
 
 /**
@@ -105,6 +134,7 @@ export default async function StudentLayout({ children }: { children: React.Reac
               </StudentLayoutShell>
             </div>
             <ToastHost />
+            <InstallPrompt />
           </GlobalLoaderProvider>
         </Providers>
       </body>

@@ -13,7 +13,7 @@
  *   2026-03-15 | claude | T38 — add auth gate + top nav
  */
 
-import type { Metadata } from 'next'
+import type { Metadata, Viewport } from 'next'
 import { redirect } from 'next/navigation'
 import { getServerSession } from 'next-auth/next'
 import { authOptions } from '@/lib/auth'
@@ -21,9 +21,21 @@ import type { AppSession } from '@/lib/types/auth'
 import '@/styles/index.css'
 import ParentLogoutButton from '@/components/parent/ParentLogoutButton'
 
+export const viewport: Viewport = {
+  themeColor: '#534AB7',
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+}
+
 export const metadata: Metadata = {
-  title: 'Parent Dashboard | Spinzy Academy',
-  description: "Monitor your child's learning progress on Spinzy Academy.",
+  title: 'Parent Dashboard | Spinzy',
+  description: "Monitor your child's learning progress on Spinzy.",
+  manifest: '/manifest.json',
+  icons: {
+    icon: '/icons/icon-192.png',
+  },
 }
 
 export default async function ParentLayout({ children }: { children: React.ReactNode }) {
