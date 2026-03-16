@@ -58,7 +58,10 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
             </Suspense>
             <AppModalClient />
             <Navbar />
-            {children}
+            {/* pt-16 offsets fixed Navbar (64 px) so page content is not hidden behind it */}
+            <div className="pt-16">
+              {children}
+            </div>
             <ToastHost />
           </GlobalLoaderProvider>
         </Providers>
