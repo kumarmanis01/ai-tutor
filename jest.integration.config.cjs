@@ -1,6 +1,10 @@
 /** Jest config for integration tests only — mocks all external deps, no live DB/network */
 module.exports = {
   preset: 'ts-jest',
+  // setupFiles runs before any test module is loaded, before setupFilesAfterEnv.
+  // This forces NODE_ENV=test even when the deploy script has exported NODE_ENV=production
+  // from .env.production into the shell before invoking jest.
+  setupFiles: ['<rootDir>/tests/setup/forceTestNodeEnv.cjs'],
   testEnvironment: 'node',
   testMatch: ['**/tests/integration/**/*.test.ts'],
   // alert-evaluator.test.ts is a standalone script (IIFE), not a Jest suite
