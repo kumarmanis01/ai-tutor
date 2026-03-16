@@ -128,8 +128,9 @@ echo "DATABASE_URL host: $(echo "${DATABASE_URL}" | sed 's|.*@||' | cut -d'/' -f
 # 3. INSTALL DEPENDENCIES
 # ─────────────────────────────────────────────────────────────────────────────
 step "3/11 — Install dependencies"
-# Full install (devDeps needed for tsc, next build, tsc-alias, etc.)
-npm ci
+# Full install (devDeps needed for tsc, next build, tsc-alias, jest, etc.)
+# --include=dev ensures devDependencies install even when NODE_ENV=production
+npm ci --include=dev
 
 # ─────────────────────────────────────────────────────────────────────────────
 # 4. PRISMA GENERATE + MIGRATE
