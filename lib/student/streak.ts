@@ -1,4 +1,6 @@
 import { prisma } from '@/lib/prisma'
+import { sendPushSafe } from '@/lib/push/send'
+import { PUSH_NOTIFICATIONS } from '@/lib/push/notifications'
 
 const MS_PER_DAY = 86400000
 
@@ -79,6 +81,15 @@ export async function updateStreak(studentId: string): Promise<{
         longestStreak,
       },
     })
+
+    // Fire milestone push notifications (best-effort, non-blocking)
+    if (streakIncremented) {
+      if (currentStreak === 7) {
+        void sendPushSafe(studentId, PUSH_NOTIFICATIONS.streak_milestone_7())
+      } else if (currentStreak === 30) {
+        void sendPushSafe(studentId, PUSH_NOTIFICATIONS.streak_milestone_30())
+      }
+    }
 
     return {
       currentStreak,

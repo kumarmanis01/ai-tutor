@@ -1,5 +1,5 @@
 import React, { Suspense } from 'react';
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import GoogleTagManagerClient from '@/components/ClientOnly/GoogleTagManagerClient';
 import AppModalClient from '@/components/ClientOnly/AppModalClient';
 import Providers from '@/app/providers';
@@ -9,16 +9,35 @@ import ToastHost from '@/components/ToastHost';
 import Navbar from '@/components/Navbar';
 import '@/styles/index.css';
 
-export const viewport = {
+export const viewport: Viewport = {
+  themeColor: '#534AB7',
   width: 'device-width',
   initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
 };
 
 export const metadata: Metadata = {
-  title: 'Spinzy Academy – AI Tutor India',
-  description:
-    "India's first AI-powered tutor providing instant homework help for classes 1-12.",
-  icons: { icon: [{ url: '/favicon.ico', type: 'image/x-icon' }] },
+  title: 'Spinzy AI Tutor',
+  description: 'AI-powered home tutor for CBSE & ICSE students',
+  manifest: '/manifest.json',
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'default',
+    title: 'Spinzy',
+  },
+  icons: {
+    apple: [
+      { url: '/icons/icon-152.png', sizes: '152x152' },
+      { url: '/icons/icon-192.png', sizes: '192x192' },
+    ],
+    icon: '/icons/icon-192.png',
+  },
+  other: {
+    'mobile-web-app-capable': 'yes',
+    'msapplication-TileColor': '#534AB7',
+    'msapplication-TileImage': '/icons/icon-144.png',
+  },
 };
 
 /**

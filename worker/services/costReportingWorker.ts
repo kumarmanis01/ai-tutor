@@ -15,6 +15,8 @@
 import { prisma } from '@/lib/prisma.js'
 import { logger } from '@/lib/logger.js'
 import { sendEmail } from '@/lib/mailer.js'
+import { sendPushSafe } from '@/lib/push/send.js'
+import { PUSH_NOTIFICATIONS } from '@/lib/push/notifications.js'
 
 // 1 USD to INR exchange rate (fixed reference — update quarterly)
 const USD_TO_INR = 84
@@ -332,5 +334,46 @@ export async function runDailyCostReport(): Promise<CostReportResult> {
     }
   }
 
+  // ── Push: free tier reset reminder ─────────────────────────────────────
+  await runFreeTierResetPush()
+
   return { date: dateLabel, sessions, totalCostUsd, costPerSession, alertSent, trendingDoubts, qualityFlags }
+}
+
+/**
+ * Notify free-tier students (≥ 2 sessions used) whose reset is 3 days away.
+ * "Reset is in 3 days" = today is the 28th or later (month resets on the 1st).
+ */
+async function runFreeTierResetPush(): Promise<void> {
+  try {
+    const today = new Date()
+    const dayOfMonth = today.getDate()
+    // Only run on the 28th, 29th, or 30th
+    if (dayOfMonth < 28) return
+
+    const daysLeft = 32 - dayOfMonth // rough days until month end (1st)
+
+    // Find free-tier students who have used ≥ 2 of 10 sessions this month
+    const usages = await prisma.freeTierUsage.findMany({
+      where: { sessionsUsed: { gte: 2 } },
+      select: { studentId: true, sessionsUsed: true },
+    })
+
+    for (const usage of usages) {
+      // Check they are still free tier (not premium)
+      const { isPremiumUser } = await import('@/lib/subscription.js')
+      const isPremium = await isPremiumUser(usage.studentId).catch(() => false)
+      if (isPremium) continue
+
+      await sendPushSafe(
+        usage.studentId,
+        PUSH_NOTIFICATIONS.free_tier_reset_soon(daysLeft, 'your'),
+      )
+    }
+    logger.info('costReportingWorker.freeTierResetPush', { notified: usages.length })
+  } catch (err) {
+    logger.error('costReportingWorker.freeTierResetPushFailed', {
+      error: err instanceof Error ? err.message : String(err),
+    })
+  }
 }

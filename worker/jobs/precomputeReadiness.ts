@@ -13,6 +13,11 @@
 import { prisma } from '../../lib/prisma.js'
 import { computeReadinessScore } from '../../lib/student/examReadiness.js'
 import { logger } from '../../lib/logger.js'
+import { getRedis } from '../../lib/redis.js'
+import { sendPushSafe } from '../../lib/push/send.js'
+import { PUSH_NOTIFICATIONS } from '../../lib/push/notifications.js'
+
+const READINESS_NOTIFICATION_THRESHOLDS = [50, 70, 90]
 
 export async function precomputeReadiness(): Promise<{ students: number; scores: number }> {
   const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
@@ -50,11 +55,13 @@ export async function precomputeReadiness(): Promise<{ students: number; scores:
     select: { id: true, name: true, slug: true },
   })
 
-  // Build name/slug → id map
+  // Build name/slug → id map  and id → name map
   const subjectIdMap = new Map<string, string>()
+  const subjectNameById = new Map<string, string>()
   for (const sd of subjectDefs) {
     subjectIdMap.set(sd.name, sd.id)
     if (sd.slug) subjectIdMap.set(sd.slug, sd.id)
+    subjectNameById.set(sd.id, sd.name)
   }
 
   // 4. Pre-compute per student × subject
@@ -72,8 +79,12 @@ export async function precomputeReadiness(): Promise<{ students: number; scores:
     processedStudents++
     for (const subjectId of subjectIds) {
       try {
-        await computeReadinessScore(user.id, subjectId)
+        const readiness = await computeReadinessScore(user.id, subjectId)
         totalScores++
+
+        // Fire readiness milestone push if score crosses 50/70/90 for the first time
+        const subjectName = subjectNameById.get(subjectId) ?? subjectId
+        await maybeFireReadinessMilestone(user.id, subjectId, subjectName, readiness.score)
       } catch (err) {
         logger.error('precomputeReadiness.scoreError', {
           studentId: user.id,
@@ -85,4 +96,32 @@ export async function precomputeReadiness(): Promise<{ students: number; scores:
   }
 
   return { students: processedStudents, scores: totalScores }
+}
+
+/**
+ * Fire a readiness milestone push once per threshold per student per subject.
+ * Uses Redis key readiness:notified:{studentId}:{subjectId}:{threshold} to prevent duplicates.
+ */
+async function maybeFireReadinessMilestone(
+  studentId: string,
+  subjectId: string,
+  subjectName: string,
+  score: number,
+): Promise<void> {
+  try {
+    const redis = getRedis()
+    if (!redis) return
+
+    for (const threshold of READINESS_NOTIFICATION_THRESHOLDS) {
+      if (score < threshold) continue
+      const key = `readiness:notified:${studentId}:${subjectId}:${threshold}`
+      const alreadySent = await redis.get(key)
+      if (alreadySent) continue
+      await redis.set(key, '1', 'EX', 365 * 24 * 60 * 60) // 1 year TTL
+      await sendPushSafe(studentId, PUSH_NOTIFICATIONS.readiness_milestone(score, subjectName))
+      break // Only send the highest newly-crossed threshold
+    }
+  } catch {
+    // Best-effort
+  }
 }
