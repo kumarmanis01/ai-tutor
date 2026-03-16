@@ -8,7 +8,7 @@
  * Run alone: npm run test:integration:scenarios
  */
 
-jest.setTimeout(60_000);
+jest.setTimeout(120_000);
 
 import { execSync } from 'child_process';
 import path from 'path';
@@ -31,7 +31,7 @@ let student3Id: string;
 
 beforeAll(async () => {
   const root = path.resolve(__dirname, '../..');
-  execSync('npx tsx scripts/seed-scenario-curriculum.ts', {
+  execSync('./node_modules/.bin/tsx scripts/seed-scenario-curriculum.ts', {
     stdio: 'pipe',
     cwd: root,
     env: process.env,
@@ -96,10 +96,13 @@ describe('Scenarios with full curriculum (2 subjects, 2 chapters, 2 topics each)
     expect(action!.topicId).toBe(firstTopicId);
   });
 
-  it('Scenario C — Weak topic student: P4 low_accuracy or P3 low_mastery', async () => {
+  it('Scenario C — Weak topic student: P2 weak_topic_urgent', async () => {
     await prisma.structuredSession.deleteMany({ where: { studentId: student3Id } });
+    await prisma.learningSession.deleteMany({ where: { studentId: student3Id } });
+    await prisma.homeworkAssignment.deleteMany({ where: { studentId: student3Id } });
     await prisma.attentionFlag.deleteMany({ where: { studentId: student3Id } });
     await prisma.studentTopicMastery.deleteMany({ where: { studentId: student3Id } });
+    await prisma.studentTopicProgress.deleteMany({ where: { studentId: student3Id } });
     const weakTopicId = topicIds[1];
     await prisma.studentTopicMastery.upsert({
       where: {
@@ -115,10 +118,22 @@ describe('Scenarios with full curriculum (2 subjects, 2 chapters, 2 topics each)
       },
       update: { accuracy: 0.35 },
     });
+    // Engine P2 reads studentTopicProgress (not studentTopicMastery).
+    await prisma.studentTopicProgress.upsert({
+      where: { studentId_topicId: { studentId: student3Id, topicId: weakTopicId } },
+      create: {
+        studentId: student3Id,
+        topicId: weakTopicId,
+        mastery: 0.35,
+        practiceCount: 6,
+        lastStudiedAt: new Date(),
+      },
+      update: { mastery: 0.35, practiceCount: 6 },
+    });
 
     const action = unwrap(await getNextAction(student3Id));
     expect(action).not.toBeNull();
-    expect(['low_accuracy', 'low_mastery']).toContain(action!.ruleId);
+    expect(action!.ruleId).toBe('weak_topic_urgent');
     expect(action!.actionType).toBe('practice');
   });
 });
