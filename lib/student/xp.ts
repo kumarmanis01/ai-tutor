@@ -1,4 +1,6 @@
 import { prisma } from '@/lib/prisma'
+import { sendPushSafe } from '@/lib/push/send'
+import { PUSH_NOTIFICATIONS } from '@/lib/push/notifications'
 
 // Level thresholds — XP required to reach each level (cumulative).
 // Level 1: 0, Level 2: 100, Level 3: 250, Level 4: 500,
@@ -130,6 +132,10 @@ export async function awardXP(params: {
         newLevel: levelChanged ? newLevel : null,
       }
     })
+    // Fire level-up push notification (best-effort, outside transaction)
+    if (result?.leveledUp && result.newLevel !== null) {
+      void sendPushSafe(params.studentId, PUSH_NOTIFICATIONS.level_up(result.newLevel))
+    }
     return result
   } catch {
     return null

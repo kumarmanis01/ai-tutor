@@ -25,6 +25,9 @@ import { expireStaleTasks } from '../lib/dailyHabit.js';
 import { hydrationReconciler } from './services/hydrationReconciler.js';
 import { runDailyCostReport } from './services/costReportingWorker.js'
 import { runDataDeletionCycle } from './services/dataDeletionWorker.js';
+import { prisma } from '../lib/prisma.js';
+import { sendPushSafe } from '../lib/push/send.js';
+import { PUSH_NOTIFICATIONS } from '../lib/push/notifications.js';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
@@ -164,6 +167,116 @@ async function runReadinessPrecompute() {
   setTimeout(runReadinessPrecompute, READINESS_PRECOMPUTE_INTERVAL_MS)
 }
 
+// ── Push notification helpers (called inside runDailyMaintenanceJob) ─────────
+
+async function runInactivityPush(): Promise<void> {
+  const twoDaysAgo = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000)
+  const threeDaysAgo = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000)
+  const fourDaysAgo = new Date(Date.now() - 4 * 24 * 60 * 60 * 1000)
+
+  // Students inactive for exactly 2 days (first nudge)
+  const inactiveDay2 = await prisma.user.findMany({
+    where: {
+      role: 'user',
+      accountStatus: 'active',
+      lastSessionDate: { gte: threeDaysAgo, lt: twoDaysAgo },
+    },
+    select: { id: true, currentStreak: true },
+  })
+  for (const student of inactiveDay2) {
+    await sendPushSafe(student.id, PUSH_NOTIFICATIONS.inactivity_day2(student.currentStreak ?? 0))
+  }
+
+  // Students inactive for exactly 3 days (second nudge with topic)
+  const inactiveDay3 = await prisma.user.findMany({
+    where: {
+      role: 'user',
+      accountStatus: 'active',
+      lastSessionDate: { gte: fourDaysAgo, lt: threeDaysAgo },
+    },
+    select: { id: true },
+  })
+  for (const student of inactiveDay3) {
+    const nextItem = await prisma.learningPlanItem.findFirst({
+      where: { plan: { studentId: student.id }, status: 'UPCOMING' },
+      include: { concept: { select: { name: true } } },
+      orderBy: [{ weekNumber: 'asc' }, { orderInWeek: 'asc' }],
+    })
+    const topicName = nextItem?.concept?.name ?? 'your next topic'
+    await sendPushSafe(student.id, PUSH_NOTIFICATIONS.inactivity_day3(topicName))
+  }
+  logger.info('scheduler.push.inactivity', {
+    day2: inactiveDay2.length,
+    day3: inactiveDay3.length,
+  })
+}
+
+async function runExamCountdownPush(): Promise<void> {
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  const examMilestones = [14, 7, 3, 1]
+
+  for (const daysLeft of examMilestones) {
+    const targetDate = new Date(today)
+    targetDate.setDate(targetDate.getDate() + daysLeft)
+    const nextDay = new Date(targetDate)
+    nextDay.setDate(nextDay.getDate() + 1)
+
+    const plans = await prisma.learningPlan.findMany({
+      where: { examDate: { gte: targetDate, lt: nextDay } },
+      select: { studentId: true, subjectId: true },
+    })
+
+    for (const plan of plans) {
+      if (daysLeft === 14) {
+        const readiness = await import('../lib/student/examReadiness.js')
+          .then((m) => m.computeReadinessScore(plan.studentId, plan.subjectId))
+          .catch(() => ({ score: 0 }))
+        await sendPushSafe(
+          plan.studentId,
+          PUSH_NOTIFICATIONS.exam_14_days(plan.subjectId, readiness.score),
+        )
+      } else if (daysLeft === 7) {
+        const topItem = await prisma.learningPlanItem.findFirst({
+          where: { plan: { studentId: plan.studentId }, status: 'UPCOMING' },
+          include: { concept: { select: { name: true } } },
+          orderBy: [{ weekNumber: 'asc' }],
+        })
+        await sendPushSafe(
+          plan.studentId,
+          PUSH_NOTIFICATIONS.exam_7_days(plan.subjectId, topItem?.concept?.name ?? 'revision'),
+        )
+      } else if (daysLeft === 3) {
+        await sendPushSafe(plan.studentId, PUSH_NOTIFICATIONS.exam_3_days(plan.subjectId))
+      } else if (daysLeft === 1) {
+        await sendPushSafe(plan.studentId, PUSH_NOTIFICATIONS.exam_day(plan.subjectId))
+      }
+    }
+  }
+  logger.info('scheduler.push.examCountdown', { milestones: examMilestones })
+}
+
+async function runRevisionDuePush(): Promise<void> {
+  // Only send if current time is between 07:30–09:00 IST
+  const nowIST = new Date(Date.now() + 5.5 * 60 * 60 * 1000)
+  const hourIST = nowIST.getUTCHours()
+  const minuteIST = nowIST.getUTCMinutes()
+  const afterHalfPast7 = hourIST === 7 ? minuteIST >= 30 : hourIST === 8
+  if (!afterHalfPast7) return
+
+  const groups = await prisma.studentConceptState.groupBy({
+    by: ['studentId'],
+    where: { nextReviewAt: { lte: new Date() } },
+    _count: { id: true },
+  })
+  for (const { studentId, _count } of groups) {
+    if (_count.id > 0) {
+      await sendPushSafe(studentId, PUSH_NOTIFICATIONS.revision_due(_count.id))
+    }
+  }
+  logger.info('scheduler.push.revisionDue', { studentsNotified: groups.length })
+}
+
 /**
  * Run daily maintenance: expire stale tasks + recovery check
  */
@@ -178,6 +291,15 @@ async function runDailyMaintenanceJob() {
     // Run failure recovery check
     const recoveryEvents = await runRecoveryCheck();
     logger.info('scheduler.dailyMaintenance.recoveryCheck', { recoveryEvents });
+
+    // ── Push: inactivity reminders ──────────────────────────────────────
+    await runInactivityPush();
+
+    // ── Push: exam countdown reminders ──────────────────────────────────
+    await runExamCountdownPush();
+
+    // ── Push: revision due (only between 07:30–09:00 IST) ───────────────
+    await runRevisionDuePush();
   } catch (error) {
     logger.error('scheduler.dailyMaintenance.error', {
       error: error instanceof Error ? error.message : String(error),

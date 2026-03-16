@@ -1,12 +1,37 @@
 {
-  "name": "Spinzy Academy",
-  "short_name": "Tutor",
-  "start_url": "/",
+  "name": "Spinzy AI Tutor",
+  "short_name": "Spinzy",
+  "description": "AI-powered home tutor for CBSE & ICSE students",
+  "start_url": "/dashboard",
   "display": "standalone",
   "background_color": "#ffffff",
-  "theme_color": "#4f46e5",
+  "theme_color": "#534AB7",
+  "orientation": "portrait",
+  "scope": "/",
+  "lang": "en-IN",
+  "categories": ["education"],
   "icons": [
-    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png" },
-    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png" }
+    { "src": "/icons/icon-72.png",  "sizes": "72x72",   "type": "image/png" },
+    { "src": "/icons/icon-96.png",  "sizes": "96x96",   "type": "image/png" },
+    { "src": "/icons/icon-128.png", "sizes": "128x128", "type": "image/png" },
+    { "src": "/icons/icon-144.png", "sizes": "144x144", "type": "image/png" },
+    { "src": "/icons/icon-152.png", "sizes": "152x152", "type": "image/png" },
+    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
+    { "src": "/icons/icon-384.png", "sizes": "384x384", "type": "image/png" },
+    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ],
+  "shortcuts": [
+    {
+      "name": "Start Learning",
+      "short_name": "Learn",
+      "url": "/dashboard",
+      "icons": [{ "src": "/icons/icon-96.png", "sizes": "96x96" }]
+    },
+    {
+      "name": "Revision Cards",
+      "short_name": "Revise",
+      "url": "/student/revisions",
+      "icons": [{ "src": "/icons/icon-96.png", "sizes": "96x96" }]
+    }
   ]
 }

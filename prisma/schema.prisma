@@ -109,6 +109,7 @@ model User {
   parentProfile           ParentProfile?
   doubtEscalations        DoubtEscalation[]
   sessionQuestionFlags    SessionQuestionFlag[]
+  pushSubscriptions       PushSubscriptionRecord[]
   deletionRequest         DeletionRequest?
 }
 
@@ -2395,4 +2396,24 @@ model SessionQuestionFlag {
 
   @@unique([questionId, studentId])
   @@index([questionId])
+}
+
+/// Web Push API subscription record.
+/// Stores a browser push subscription so the server can send push notifications
+/// to the student. One record per user+endpoint pair (users may have multiple devices).
+/// Actual notification sending is a post-MVP feature — this model is infrastructure only.
+/// Web Push API subscription record.
+/// One record per user+endpoint pair (users may have multiple devices).
+/// Actual notification sending is triggered by existing background jobs.
+model PushSubscriptionRecord {
+  id        String   @id @default(cuid())
+  userId    String
+  endpoint  String
+  p256dh    String
+  auth      String
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, endpoint])
+  @@index([userId])
 }
