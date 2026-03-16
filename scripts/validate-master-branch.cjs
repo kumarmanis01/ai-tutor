@@ -45,8 +45,9 @@ function main() {
   runStep("Next.js Production Build", "npm", ["run", "build"]);
 
   // 3️⃣ Prisma Validate
-  runStep("Prisma Validate", "npx", ["prisma", "validate"]);
-  runStep("Prisma Generate", "npx", ["prisma", "generate"]);
+  const prismaBin = path.resolve(root, "node_modules", ".bin", "prisma");
+  runStep("Prisma Validate", prismaBin, ["validate"]);
+  runStep("Prisma Generate", prismaBin, ["generate"]);
 
   // 4️⃣ Deterministic Engine Scenarios
   runStep("MVP Flow Test", "node", ["scripts/test-mvp-flow.cjs"]);

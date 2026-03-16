@@ -59,7 +59,7 @@
     "type-check": "tsc --noEmit",
     "type-check:orig": "tsc -p tsconfig.json --noEmit",
     "clear-auth": "set CONFIRM=true && node -r ts-node/register scripts/clear-auth-tables.ts",
-    "pretest": "npx prisma generate",
+    "pretest": "prisma generate",
     "test": "jest",
     "test:ci": "npm run lint:orig && npm run type-check:orig && npm run test:unit",
     "test:watch": "jest --watch",
@@ -215,6 +215,9 @@
     ]
   },
   "overrides": {
-    "cookie": "^0.7.2"
+    "cookie": "^0.7.2",
+    "prisma": "6.19.1",
+    "@prisma/client": "6.19.1",
+    "@prisma/instrumentation": "6.19.1"
   }
 }

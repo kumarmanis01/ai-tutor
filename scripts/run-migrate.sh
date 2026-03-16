@@ -112,7 +112,7 @@ echo "Running Prisma migrate deploy..."
 attempt=1
 while [ $attempt -le $RETRIES ]; do
   echo "[run-migrate] attempt $attempt/$RETRIES: running prisma migrate deploy (logs: $MIGRATE_LOG)"
-  if npx prisma migrate deploy >>"$MIGRATE_LOG" 2>&1; then
+  if ./node_modules/.bin/prisma migrate deploy >>"$MIGRATE_LOG" 2>&1; then
     echo "[run-migrate] prisma migrate deploy: OK"
     echo "[run-migrate] full log: $MIGRATE_LOG"
     break

@@ -56,15 +56,17 @@ async function main() {
   console.log('=== Dev DB reset + seed ===');
   console.log('This will DROP all data in the configured database.');
 
+  const prismaBin = path.resolve(ROOT, 'node_modules', '.bin', 'prisma');
+
   // 1) Reset DB (drop + reapply migrations)
   // Note: When run manually by a human, Prisma will prompt for confirmation.
-  run('npx', ['prisma', 'migrate', 'reset', '--force']);
+  run(prismaBin, ['migrate', 'reset', '--force']);
 
   // 2) Ensure latest migrations applied (usually covered by reset, but explicit here)
-  run('npx', ['prisma', 'migrate', 'dev']);
+  run(prismaBin, ['migrate', 'dev']);
 
   // 3) Regenerate Prisma client
-  run('npx', ['prisma', 'generate']);
+  run(prismaBin, ['generate']);
 
   // 4) Run seed scripts in order
   for (const [cmd, args] of SEED_COMMANDS) {

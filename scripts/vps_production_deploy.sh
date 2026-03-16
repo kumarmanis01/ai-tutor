@@ -162,7 +162,7 @@ run_step_allow_fail "Stop all PM2 processes (best-effort)" "pm2 stop all || true
 
 run_step "Install production dependencies (npm ci)" "npm ci --no-audit --prefer-offline"
 
-run_step "Prisma generate (if applicable)" "npx prisma generate"
+run_step "Prisma generate (if applicable)" "./node_modules/.bin/prisma generate"
 
 run_step "Build workers (if-present)" "npm run build:workers --if-present"
 
