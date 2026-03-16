@@ -33,6 +33,7 @@ export type QuestionFilters = {
  */
 export async function selectQuestions(filters: QuestionFilters, count: number): Promise<Question[]> {
   const where = {
+    status: 'ACTIVE' as const, // quarantined questions excluded — do not remove this filter
     ...(filters.subject ? { subject: filters.subject } : {}),
     ...(filters.grade ? { grade: filters.grade } : {}),
     ...(filters.board ? { board: filters.board } : {}),
@@ -50,7 +51,8 @@ export async function selectQuestions(filters: QuestionFilters, count: number): 
   // Broaden if too few
   if (pool.length < count && filters.subject) {
     pool = await prisma.question.findMany({
-      where: { subject: filters.subject },
+      // quarantined questions excluded — do not remove this filter
+      where: { status: 'ACTIVE', subject: filters.subject },
       orderBy: [{ difficulty: 'asc' }, { updatedAt: 'desc' }],
       take: count * 3,
     });
@@ -170,7 +172,8 @@ async function syncFromGeneratedQuestions(filters: QuestionFilters, take: number
   }
 
   return prisma.question.findMany({
-    where: { id: { in: ids } },
+    // quarantined questions excluded — do not remove this filter
+    where: { id: { in: ids }, status: 'ACTIVE' },
     take,
   });
 }

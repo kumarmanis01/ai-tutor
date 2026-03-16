@@ -108,6 +108,7 @@ model User {
   consents                Consent[]
   parentProfile           ParentProfile?
   doubtEscalations        DoubtEscalation[]
+  sessionQuestionFlags    SessionQuestionFlag[]
 }
 
 model PaymentOrder {
@@ -1120,7 +1121,7 @@ model Bookmark {
 }
 
 model Question {
-  id            String            @id @default(cuid())
+  id            String              @id @default(cuid())
   subject       String?
   chapter       String?
   grade         String?
@@ -1134,12 +1135,15 @@ model Question {
   choices       Json?
   correctAnswer String?
   source        String?
-  createdAt     DateTime          @default(now())
-  updatedAt     DateTime          @updatedAt
-  topic         TopicDef?         @relation(fields: [topicId], references: [id])
+  status        QuestionStatus      @default(ACTIVE)
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+  topic         TopicDef?           @relation(fields: [topicId], references: [id])
   attempts      AttemptQuestion[]
+  sessionFlags  SessionQuestionFlag[]
 
   @@index([topicId])
+  @@index([status])
 }
 
 model AttemptQuestion {
@@ -2311,4 +2315,37 @@ model DoubtEscalation {
   @@index([resolvedAt, createdAt])
   @@index([studentId])
   @@index([conceptId, createdAt])
+}
+
+enum QuestionStatus {
+  ACTIVE
+  QUARANTINED
+  REJECTED
+  PENDING_REVIEW
+}
+
+enum FlagReason {
+  WRONG_ANSWER
+  AMBIGUOUS
+  TYPO
+  OFF_TOPIC
+  TOO_EASY
+  TOO_HARD
+}
+
+/// Student flag on a session question (from the AI pipeline Question bank).
+/// One flag per student per question (@@unique enforced). At 3 flags the question
+/// is auto-quarantined.
+model SessionQuestionFlag {
+  id         String     @id @default(cuid())
+  questionId String
+  studentId  String
+  reason     FlagReason
+  details    String?
+  createdAt  DateTime   @default(now())
+  question   Question   @relation(fields: [questionId], references: [id])
+  student    User       @relation(fields: [studentId], references: [id])
+
+  @@unique([questionId, studentId])
+  @@index([questionId])
 }

@@ -172,7 +172,8 @@ async function gatherQuestions(topicId: string): Promise<HomeworkQuestion[]> {
   };
 
   const bankQuestions: BankQuestion[] = await prisma.question.findMany({
-    where: { topicId },
+    // quarantined questions excluded — do not remove this filter
+    where: { topicId, status: 'ACTIVE' },
     take: MAX_QUESTIONS * 2,
     orderBy: { createdAt: 'desc' },
     select: {

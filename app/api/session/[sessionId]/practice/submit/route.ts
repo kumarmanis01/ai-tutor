@@ -196,7 +196,8 @@ export async function POST(
   // are graded; unknown IDs are silently skipped.
 
   const practiceQuestions = await prisma.question.findMany({
-    where: { topicId: session.topicId },
+    // quarantined questions excluded — do not remove this filter
+    where: { topicId: session.topicId, status: 'ACTIVE' },
     orderBy: { createdAt: 'desc' },
     take: 20,
     select: { id: true, type: true, choices: true, correctAnswer: true },
