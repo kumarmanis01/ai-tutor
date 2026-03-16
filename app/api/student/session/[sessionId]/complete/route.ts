@@ -73,7 +73,12 @@ export async function POST(req: Request, { params }: { params: { sessionId: stri
     const leveledUp = xpResult?.leveledUp ?? false
     const newLevel = xpResult?.newLevel ?? null
 
-    void updateStreak(userId)
+    // Only award streak credit for sessions where the student answered enough
+    // questions to have meaningfully progressed through the learning stages.
+    // totalQuestions < 5 indicates a login/browse or heavily incomplete session.
+    if (totalQuestions >= 5) {
+      void updateStreak(userId)
+    }
 
     const learningSession = await prisma.learningSession.findUnique({
       where: { id: sessionId },
