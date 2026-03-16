@@ -1300,17 +1300,35 @@ model BoardSubjectConfig {
 
 /// RAG curriculum chunks; tag with conceptIds for retrieval. pgvector embedding column added separately if needed.
 model CurriculumChunk {
-  id         String   @id @default(cuid())
-  conceptIds String[] @default([]) /// Empty = untagged; verify for launch slice
-  content    String?  /// Chunk text for display/grounding
-  board      String?
-  subject    String?
-  grade      String?
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
-  embedding  Unsupported("vector(1536)")?
+  id           String   @id @default(cuid())
+  conceptIds   String[] @default([]) /// Empty = untagged; verify for launch slice
+  content      String?  /// Chunk text for display/grounding
+  board        String?
+  subject      String?
+  grade        String?
+  contentHash  String?  /// SHA-256 of content; used for idempotent ingest
+  version      Int      @default(1) /// Incremented when content changes
+  supersededBy String?  /// ID of newer chunk if this one was updated
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  embedding    Unsupported("vector(1536)")?
 
   @@index([conceptIds])
+  @@index([contentHash])
+}
+
+model IngestRunLog {
+  id                  String   @id @default(cuid())
+  runAt               DateTime @default(now())
+  fileSource          String?
+  board               String?
+  subjectId           String?
+  chunksCreated       Int      @default(0)
+  chunksUpdated       Int      @default(0)
+  embeddingsGenerated Int      @default(0)
+  errors              Int      @default(0)
+  durationMs          Int?
+  errorDetails        Json?
 }
 
 model TopicNote {

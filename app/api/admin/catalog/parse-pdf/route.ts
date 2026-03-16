@@ -1,64 +1,133 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { getServerSessionForHandlers } from '@/lib/session';
-import { logger } from '@/lib/logger';
+import { createHash } from 'crypto'
+import { NextRequest, NextResponse } from 'next/server'
+import { prisma } from '@/lib/prisma'
+import { getServerSessionForHandlers } from '@/lib/session'
+import { logger } from '@/lib/logger'
 
-// Parses a chapter PDF to metadata entries (titles, tags) without storing textbook content.
+const CHUNK_WORDS = 400
+const OVERLAP_WORDS = 50
+
+function sha256(text: string): string {
+  return createHash('sha256').update(text, 'utf8').digest('hex')
+}
+
+function chunkText(text: string): string[] {
+  const words = text.split(/\s+/).filter((w) => w.length > 0)
+  const chunks: string[] = []
+  let i = 0
+  while (i < words.length) {
+    const slice = words.slice(i, i + CHUNK_WORDS)
+    if (slice.length > 10) chunks.push(slice.join(' '))
+    i += CHUNK_WORDS - OVERLAP_WORDS
+  }
+  return chunks
+}
+
 export async function POST(req: NextRequest) {
-  const session = await getServerSessionForHandlers();
-  const role = (session?.user as any)?.role || 'user';
-  if (role !== 'admin') return NextResponse.json({ error: 'forbidden' }, { status: 403 });
+  const session = await getServerSessionForHandlers()
+  if (!session?.user?.id || (session.user as { role?: string }).role !== 'admin') {
+    return NextResponse.json({ error: 'forbidden' }, { status: 403 })
+  }
 
-  const form = await req.formData().catch(() => null);
-  if (!form) return NextResponse.json({ error: 'invalid_form' }, { status: 400 });
-  const file = form.get('pdf');
-  if (!(file instanceof Blob)) return NextResponse.json({ error: 'no_pdf' }, { status: 400 });
+  const form = await req.formData().catch(() => null)
+  if (!form) return NextResponse.json({ error: 'invalid_form' }, { status: 400 })
+
+  const file = form.get('pdf')
+  if (!(file instanceof Blob)) return NextResponse.json({ error: 'no_pdf' }, { status: 400 })
+
+  const board = String(form.get('board') ?? 'CBSE')
+  const subjectId = form.get('subjectId') ? String(form.get('subjectId')) : null
+  const grade = form.get('grade') ? String(form.get('grade')) : null
+  const fileSource = file instanceof File ? file.name : 'upload.pdf'
+
+  const startMs = Date.now()
+  let chunksCreated = 0
+  let chunksSkipped = 0
+  let embeddingsPending = 0
+  let errors = 0
 
   try {
-    const buf = Buffer.from(await file.arrayBuffer());
-    // Attempt to use pdf-parse if available
-    let text = '';
+    const buf = Buffer.from(await file.arrayBuffer())
+
+    let text = ''
     try {
-      const pdfParse = (await import('pdf-parse')).default as any;
-      const data = await pdfParse(buf);
-    text = String(data.text || '');
+      const pdfParse = (await import('pdf-parse')).default as (buf: Buffer) => Promise<{ text: string }>
+      const data = await pdfParse(buf)
+      text = String(data.text ?? '')
     } catch (e) {
-    logger.warn('pdf-parse not available or failed; falling back to naive text extraction');
-    logger.error('pdf-parse error:', e as any);
-    // Fallback: naive binary-to-string; results may be poor without pdf-parse
-    text = buf.toString('latin1');
+      logger.warn('pdf-parse not available or failed; falling back to naive text extraction')
+      logger.error('pdf-parse error:', e as Error)
+      text = buf.toString('latin1')
     }
 
-    // Extract headings heuristically: lines with Title Case or numbered headings
-    const lines = text.split(/\r?\n/).map((l) => l.trim()).filter((l) => l.length > 0);
-    const headingLike = lines.filter((l) => /^(chapter\s*\d+|[A-Z][A-Za-z0-9 ,:-]{5,})$/.test(l.replace(/\s+/g, ' '))); 
+    const textChunks = chunkText(text)
+    if (textChunks.length === 0) {
+      return NextResponse.json({ error: 'no_text_extracted' }, { status: 422 })
+    }
 
-    // Build hierarchical taxonomy structure (Board > Class > Subject > Chapter > Topic)
-    // For demo, assume headings are chapters/topics under a single subject/grade/board
-    const board = 'CBSE';
-    const grade = '6'; // eslint-disable-line @typescript-eslint/no-unused-vars
-    const subject = 'Mathematics';
-    const language = 'en';
-    const chapters = headingLike.slice(0, 50).map((h, idx) => {
-      const slug = h.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
-      return {
-        id: `chapter-${slug}`,
-        name: h,
-        slug,
-        order: idx + 1,
-        topics: [], // You can enhance this to extract topics if available
-      };
-    });
-    const taxonomy = {
-      board: { id: 'cbse', name: board, slug: 'cbse' },
-      class: { id: 'class-6', name: 'Class 6', slug: 'class-6', board_id: 'cbse' },
-      subject: { id: 'math', name: subject, slug: 'mathematics', class_id: 'class-6' },
-      chapters,
-      language,
-    };
-    // Print taxonomy JSON to the dev logger for inspection
-    logger.info('[PARSE-PDF TAXONOMY] ' + JSON.stringify(taxonomy, null, 2));
-    return NextResponse.json({ ok: true, message: 'Taxonomy logged to server logger.' });
-  } catch (e: any) {
-    return NextResponse.json({ error: 'parse_failed', message: String(e?.message || e) }, { status: 500 });
+    for (const chunkText of textChunks) {
+      const hash = sha256(chunkText)
+      try {
+        // Check if chunk with same hash already exists
+        const existing = await prisma.$queryRaw<{ id: string }[]>`
+          SELECT id FROM "CurriculumChunk" WHERE "contentHash" = ${hash} LIMIT 1
+        `
+        if (existing.length > 0) {
+          chunksSkipped++
+          continue
+        }
+
+        await prisma.curriculumChunk.create({
+          data: {
+            content: chunkText,
+            contentHash: hash,
+            board,
+            subject: subjectId ?? undefined,
+            grade: grade ?? undefined,
+            version: 1,
+          },
+        })
+        chunksCreated++
+        embeddingsPending++
+      } catch (err) {
+        logger.error('[parse-pdf] chunk upsert error:', err as Error)
+        errors++
+      }
+    }
+
+    // Signal pending embeddings via Redis key (best-effort)
+    if (subjectId && embeddingsPending > 0) {
+      try {
+        const { redis } = await import('@/lib/redis/client')
+        await redis.set(`ingest:pending:${subjectId}`, embeddingsPending, { ex: 86400 })
+      } catch {
+        // Non-fatal — embedding pipeline will scan DB directly
+      }
+    }
+
+    // Write IngestRunLog
+    try {
+      await prisma.ingestRunLog.create({
+        data: {
+          fileSource,
+          board,
+          subjectId,
+          chunksCreated,
+          chunksUpdated: 0,
+          embeddingsGenerated: 0,
+          errors,
+          durationMs: Date.now() - startMs,
+        },
+      })
+    } catch (err) {
+      logger.warn('[parse-pdf] Could not write IngestRunLog:', err as Error)
+    }
+
+    return NextResponse.json({ ok: true, chunksCreated, chunksSkipped, embeddingsPending })
+  } catch (e) {
+    return NextResponse.json(
+      { error: 'parse_failed', message: String((e as Error)?.message ?? e) },
+      { status: 500 },
+    )
   }
 }
