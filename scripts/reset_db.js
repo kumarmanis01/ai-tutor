@@ -161,14 +161,15 @@ async function confirmDropMigrations(migrationsDir) {
     }
 
     // Create a fresh baseline migration (create-only) then deploy it
+    const prismaBin = new URL("../node_modules/.bin/prisma", import.meta.url).pathname;
     logStep("Creating new baseline migration (create-only)");
-    run("npx", ["prisma", "migrate", "dev", "--name", "init", "--create-only"]);
+    run(prismaBin, ["migrate", "dev", "--name", "init", "--create-only"]);
 
     logStep("Applying Prisma migrations");
-    run("npx", ["prisma", "migrate", "deploy"]);
+    run(prismaBin, ["migrate", "deploy"]);
 
     logStep("Generating Prisma client");
-    run("npx", ["prisma", "generate"]);
+    run(prismaBin, ["generate"]);
 
     // This reset script intentionally does NOT run any seed scripts.
     // Seeding should be performed separately to avoid accidental data inserts.

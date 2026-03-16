@@ -135,12 +135,12 @@ npm ci
 # 4. PRISMA GENERATE + MIGRATE
 # ─────────────────────────────────────────────────────────────────────────────
 step "4/11 — Prisma generate + migrate"
-npx prisma generate
+./node_modules/.bin/prisma generate
 
 if [ -f "${SCRIPT_DIR}/run-migrate.sh" ]; then
   bash "${SCRIPT_DIR}/run-migrate.sh"
 else
-  npx prisma migrate deploy --schema=prisma/schema.prisma
+  ./node_modules/.bin/prisma migrate deploy --schema=prisma/schema.prisma
 fi
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -323,7 +323,7 @@ if [ "${SEED_FLAG}" -eq 1 ]; then
   # 12. PRISMA STUDIO (optional, background)
   # ───────────────────────────────────────────────────────────────────────────
   step "12/13 — Prisma Studio (background on port 5555)"
-  npx prisma studio --port 5555 &
+  ./node_modules/.bin/prisma studio --port 5555 &
   PRISMA_STUDIO_PID=$!
   echo "  Prisma Studio started (PID ${PRISMA_STUDIO_PID}) → http://localhost:5555"
 else

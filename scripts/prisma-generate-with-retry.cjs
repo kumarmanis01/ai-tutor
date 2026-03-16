@@ -10,18 +10,26 @@
  * Contract:
  * - NEVER suppress failures: we retry a few times and log actionable guidance.
  * - Exit non-zero if generation still fails.
+ *
+ * IMPORTANT: Uses the locally installed prisma binary (node_modules/.bin/prisma).
+ * Never use `npx prisma` — npx can resolve a globally cached v7 binary when
+ * node_modules/.bin/prisma doesn't exist yet, causing a version mismatch against
+ * the pinned prisma@6.19.1.
  */
 
 const { spawnSync } = require('child_process');
+const path = require('path');
 
 function sleep(ms) {
   return new Promise((r) => setTimeout(r, ms));
 }
 
+const PRISMA_BIN = path.resolve(__dirname, '..', 'node_modules', '.bin', 'prisma');
+
 function runOnce() {
-  const res = spawnSync('npx', ['prisma', 'generate'], {
+  const res = spawnSync(PRISMA_BIN, ['generate'], {
     stdio: 'inherit',
-    shell: true,
+    shell: false,
     env: process.env,
   });
   return res.status ?? 1;
@@ -62,4 +70,3 @@ main().catch((e) => {
   console.error('[prisma-generate] fatal', String(e));
   process.exit(1);
 });
-

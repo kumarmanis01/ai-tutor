@@ -105,7 +105,7 @@ run_cmd sh -c 'echo \$REDIS_URL'
 echo "PHASE 3 — Install & Build"
 run_cmd npm ci
 
-run_cmd npx prisma generate
+run_cmd ./node_modules/.bin/prisma generate
 run_cmd sh -c 'ls node_modules/.prisma/client >/dev/null && echo "Prisma OK" || echo "Prisma NOT found"'
 
 run_cmd npm run build || { echo "Build failed - stop and paste error output"; exit 1; }
