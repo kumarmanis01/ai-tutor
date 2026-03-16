@@ -181,6 +181,16 @@ else
   exit 1
 fi
 
+# 6d. Integration tests gate
+step "6d — Integration tests (must pass before deploy)"
+echo "Running integration tests..."
+./node_modules/.bin/jest --config jest.integration.config.cjs tests/integration/ --passWithNoTests
+if [ $? -ne 0 ]; then
+  echo "Integration tests failed — deploy aborted"
+  exit 1
+fi
+echo "Integration tests passed"
+
 # 6c. Verify worker dist
 step "6c — Verify worker dist"
 if [ ! -f "${REPO_ROOT}/dist/worker/bootstrap.js" ]; then

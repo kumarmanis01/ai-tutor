@@ -30,6 +30,7 @@ per paid student. Price point: ₹99/month.
 ## Gate after every task
 npm run build:workers && npm run build && npm test
 All must pass before committing. Never commit a broken build.
+Integration tests: ./node_modules/.bin/jest --config jest.integration.config.cjs tests/integration/
 
 ## Current task tracking
 Tasks are in aider_tasks.md in the repo root.
