@@ -128,8 +128,8 @@ echo "DATABASE_URL host: $(echo "${DATABASE_URL}" | sed 's|.*@||' | cut -d'/' -f
 # 3. INSTALL DEPENDENCIES
 # ─────────────────────────────────────────────────────────────────────────────
 step "3/11 — Install dependencies"
-# Full install (devDeps needed for tsc, next build, tsc-alias, jest, etc.)
-# --include=dev ensures devDependencies install even when NODE_ENV=production
+# Full install including devDeps (needed for tsc, next build, jest, prisma CLI).
+# devDeps will be pruned after tests pass, before the app starts (see step 6e).
 npm ci --include=dev
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -191,6 +191,11 @@ if [ $? -ne 0 ]; then
   exit 1
 fi
 echo "Integration tests passed"
+
+# 6e. Prune devDependencies — builds and tests are done, keep prod runtime lean
+step "6e — Prune devDependencies"
+npm prune --omit=dev
+echo "devDependencies pruned"
 
 # 6c. Verify worker dist
 step "6c — Verify worker dist"
