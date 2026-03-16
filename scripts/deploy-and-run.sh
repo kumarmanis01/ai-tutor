@@ -184,7 +184,7 @@ fi
 # 6d. Integration tests gate
 step "6d — Integration tests (must pass before deploy)"
 echo "Running integration tests..."
-npx jest --config jest.integration.config.cjs tests/integration/ --passWithNoTests
+./node_modules/.bin/jest --config jest.integration.config.cjs tests/integration/ --passWithNoTests
 if [ $? -ne 0 ]; then
   echo "Integration tests failed — deploy aborted"
   exit 1
