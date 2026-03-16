@@ -11,6 +11,7 @@ interface ChatMessage {
   role: MessageRole
   content: string
   isStreaming?: boolean
+  questionId?: string
 }
 
 interface AITutorChatPanelProps {
@@ -19,6 +20,7 @@ interface AITutorChatPanelProps {
   subjectName: string
   initialStage: string // TutorStage from session start
   isAITutorEnabled: boolean
+  questionId?: string // current practice question; when set, AI messages show a flag link
   onSessionComplete: (summary: { tag: string; stage: string; turnNumber: number }) => void
 }
 
@@ -93,6 +95,7 @@ export const AITutorChatPanel: React.FC<AITutorChatPanelProps> = ({
   subjectName,
   initialStage,
   isAITutorEnabled,
+  questionId,
   onSessionComplete,
 }) => {
   const [messages, setMessages] = useState<ChatMessage[]>([])
@@ -103,10 +106,14 @@ export const AITutorChatPanel: React.FC<AITutorChatPanelProps> = ({
   const [connectionError, setConnectionError] = useState<string | null>(null)
   const [isReconnecting, setIsReconnecting] = useState(false)
   const [reconnectAttempts, setReconnectAttempts] = useState(0)
+  const [flaggedIds, setFlaggedIds] = useState<Set<string>>(new Set())
+  const [flagToast, setFlagToast] = useState<string | null>(null)
 
   const inactivityTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const messagesEndRef = useRef<HTMLDivElement | null>(null)
   const lastAiMessageIdRef = useRef<string | null>(null)
+  const questionIdRef = useRef(questionId)
+  useEffect(() => { questionIdRef.current = questionId }, [questionId])
 
   const scrollToBottom = useCallback(() => {
     if (messagesEndRef.current) {
@@ -183,12 +190,14 @@ export const AITutorChatPanel: React.FC<AITutorChatPanelProps> = ({
   const finalizeAiMessage = useCallback(() => {
     const id = lastAiMessageIdRef.current
     if (!id) return
+    const qId = questionIdRef.current
     setMessages((prev) =>
       prev.map((m) =>
         m.id === id
           ? {
               ...m,
               isStreaming: false,
+              ...(qId ? { questionId: qId } : {}),
             }
           : m,
       ),
@@ -351,6 +360,22 @@ export const AITutorChatPanel: React.FC<AITutorChatPanelProps> = ({
     </div>
   )
 
+  const handleFlagQuestion = useCallback(async (msgId: string, qId: string) => {
+    if (flaggedIds.has(msgId)) return
+    setFlaggedIds((prev) => new Set(prev).add(msgId))
+    try {
+      await fetch(`/api/student/question/${qId}/flag`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reason: 'WRONG_ANSWER' }),
+      })
+    } catch {
+      // ignore network errors — flag is best-effort
+    }
+    setFlagToast("Thanks for flagging — we'll review it")
+    setTimeout(() => setFlagToast(null), 4000)
+  }, [flaggedIds])
+
   const renderMessage = (m: ChatMessage) => {
     const isStudent = m.role === 'student'
     const align = isStudent ? 'items-end' : 'items-start'
@@ -361,13 +386,23 @@ export const AITutorChatPanel: React.FC<AITutorChatPanelProps> = ({
       : `${bubbleBase} bg-white text-gray-900 border border-gray-200 rounded-bl-none`
 
     return (
-      <div key={m.id} className={`flex ${align} mb-2`}>
+      <div key={m.id} className={`flex flex-col ${align} mb-2`}>
         <div className={bubbleClasses}>
           {m.content}
           {m.isStreaming && (
             <span className="ml-1 inline-block animate-pulse text-lg leading-none text-gray-400">…</span>
           )}
         </div>
+        {!isStudent && m.questionId && !m.isStreaming && (
+          <button
+            type="button"
+            onClick={() => void handleFlagQuestion(m.id, m.questionId!)}
+            disabled={flaggedIds.has(m.id)}
+            className="mt-0.5 text-[11px] text-gray-400 underline hover:text-red-500 disabled:cursor-default disabled:no-underline disabled:text-gray-300"
+          >
+            {flaggedIds.has(m.id) ? 'Flagged' : 'Flag this question'}
+          </button>
+        )}
       </div>
     )
   }
@@ -376,6 +411,11 @@ export const AITutorChatPanel: React.FC<AITutorChatPanelProps> = ({
 
   return (
     <div className="flex h-full flex-col rounded-lg border border-gray-200 bg-gray-50">
+      {flagToast && (
+        <div className="absolute bottom-20 left-1/2 -translate-x-1/2 rounded-full bg-gray-800 px-4 py-2 text-xs text-white shadow-lg z-50">
+          {flagToast}
+        </div>
+      )}
       {header}
       <div className="flex-1 overflow-y-auto px-4 py-3">
         {messages.length === 0 && (

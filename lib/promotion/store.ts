@@ -26,7 +26,7 @@ export default function makePromotionStore(prisma: PrismaClient) {
 
     // audit (best-effort)
     try {
-      logAuditEvent(prisma as any, { action: 'PROMOTION_CANDIDATE_CREATED', entityId: created.id, actorId: input.createdBy, metadata: { scope: input.scope, scopeRefId: input.scopeRefId, regenerationJobId: input.regenerationJobId } })
+      logAuditEvent(prisma as any, { targetEntity: 'Promotion', targetId: created.id, adminId: input.createdBy ?? null, action: null, details: { legacyAction: 'PROMOTION_CANDIDATE_CREATED', scope: input.scope, scopeRefId: input.scopeRefId, regenerationJobId: input.regenerationJobId } })
     } catch {}
 
     return created

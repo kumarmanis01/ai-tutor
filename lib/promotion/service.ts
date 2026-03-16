@@ -27,7 +27,7 @@ export default function makePromotionService(prisma: PrismaClient) {
 
       // audit
       try {
-        logAuditEvent(prisma as any, { action: 'PROMOTION_APPROVED', entityId: candidateId, actorId, metadata: { publishedId: published.id, scope: candidate.scope, scopeRefId: candidate.scopeRefId } })
+        logAuditEvent(prisma as any, { targetEntity: 'Promotion', targetId: candidateId, adminId: actorId ?? null, action: null, details: { legacyAction: 'PROMOTION_APPROVED', publishedId: published.id, scope: candidate.scope, scopeRefId: candidate.scopeRefId } })
       } catch {}
 
       return published
@@ -43,7 +43,7 @@ export default function makePromotionService(prisma: PrismaClient) {
     const updated = await prisma.promotionCandidate.update({ where: { id: candidateId }, data: { status: 'REJECTED', reviewedBy: actorId, reviewedAt: new Date(), reviewNotes: notes as any } })
 
     try {
-      logAuditEvent(prisma as any, { action: 'PROMOTION_REJECTED', entityId: candidateId, actorId, metadata: { scope: cand.scope, scopeRefId: cand.scopeRefId } })
+      logAuditEvent(prisma as any, { targetEntity: 'Promotion', targetId: candidateId, adminId: actorId ?? null, action: null, details: { legacyAction: 'PROMOTION_REJECTED', scope: cand.scope, scopeRefId: cand.scopeRefId } })
     } catch {}
 
     return updated

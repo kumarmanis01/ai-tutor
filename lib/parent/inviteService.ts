@@ -121,9 +121,11 @@ export async function redeemParentInviteAndLink(params: {
     try {
       await tx.auditLog.create({
         data: {
-          userId: parentId,
-          action: 'parent_link_student',
-          details: { parentId, studentId: invite.studentId, method: 'invite_code', status: 'already_linked' },
+          adminId: parentId,
+          targetEntity: 'User',
+          targetId: invite.studentId,
+          action: null,
+          details: { legacyAction: 'parent_link_student', parentId, method: 'invite_code', status: 'already_linked' },
         },
       });
     } catch {
@@ -154,9 +156,11 @@ export async function redeemParentInviteAndLink(params: {
     try {
       await tx.auditLog.create({
         data: {
-          userId: parentId,
-          action: 'parent_link_student',
-          details: { parentId, studentId: invite.studentId, method: 'invite_code', status: 'linked' },
+          adminId: parentId,
+          targetEntity: 'User',
+          targetId: invite.studentId,
+          action: null,
+          details: { legacyAction: 'parent_link_student', parentId, method: 'invite_code', status: 'linked' },
         },
       });
     } catch {
@@ -204,9 +208,11 @@ export async function linkParentToStudentByEmail(params: {
     await prisma.auditLog
       .create({
         data: {
-          userId: parentId,
-          action: 'parent_link_student',
-          details: { parentId, studentId: student.id, method: 'email', status: 'already_linked' },
+          adminId: parentId,
+          targetEntity: 'User',
+          targetId: student.id,
+          action: null,
+          details: { legacyAction: 'parent_link_student', parentId, method: 'email', status: 'already_linked' },
         },
       })
       .catch(() => {});
@@ -224,9 +230,11 @@ export async function linkParentToStudentByEmail(params: {
   try {
     await prisma.auditLog.create({
       data: {
-        userId: parentId,
-        action: 'parent_link_student',
-        details: { parentId, studentId: student.id, method: 'email', status: 'linked' },
+        adminId: parentId,
+        targetEntity: 'User',
+        targetId: student.id,
+        action: null,
+        details: { legacyAction: 'parent_link_student', parentId, method: 'email', status: 'linked' },
       },
     });
   } catch {

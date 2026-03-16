@@ -25,7 +25,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
 
   await prisma.$transaction([
     prisma.generatedTest.update({ where: { id: params.id }, data: { status: ApprovalStatus.Approved } }),
-    prisma.auditLog.create({ data: { userId: adminId, action: 'approve_test', details: { testId: params.id, fromStatus: test.status }, createdAt: new Date() } })
+    prisma.auditLog.create({ data: { adminId, targetEntity: 'GeneratedTest', targetId: params.id, action: 'CONTENT_APPROVE', previousValue: { status: test.status }, newValue: { status: 'approved' } } })
   ]);
 
   return NextResponse.json({ approved: true });

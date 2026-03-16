@@ -104,17 +104,15 @@ export async function POST(req: Request) {
       auditUserId = null;
     }
 
-    // Create audit log entry (userId may be null)
+    // Create audit log entry (adminId may be null)
     await db.auditLog.create({
       data: {
-        userId: auditUserId,
-        action: `${action}_${type}`,
-        details: {
-          entityType: type,
-          entityId: id,
-          newStatus,
-          reason: reason || null,
-        },
+        adminId: auditUserId,
+        targetEntity: type === 'chapter' ? 'ChapterDef' : type === 'topic' ? 'TopicDef' : type === 'note' ? 'TopicNote' : type === 'test' ? 'GeneratedTest' : 'Syllabus',
+        targetId: id,
+        action: action === 'approve' ? 'CONTENT_APPROVE' : 'CONTENT_REJECT',
+        newValue: { status: newStatus },
+        reason: reason || null,
       },
     });
 

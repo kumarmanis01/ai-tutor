@@ -401,6 +401,8 @@ export class RecommendationEngine {
       }),
       prisma.question.findMany({
         where: {
+          // quarantined questions excluded — do not remove this filter
+          status: 'ACTIVE',
           OR: [{ board, grade }, hasSubjects ? { subject: { in: subjects } } : {}],
         },
         take: 50,

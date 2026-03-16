@@ -106,9 +106,11 @@ export async function POST(req: Request) {
   // Audit log (non-fatal)
   prisma.auditLog.create({
     data: {
-      userId: parentId,
-      action: 'parent_link_student',
-      details: { parentId, studentId, method: 'redis_invite_token' },
+      adminId: parentId,
+      targetEntity: 'User',
+      targetId: studentId,
+      action: null,
+      details: { legacyAction: 'parent_link_student', parentId, method: 'redis_invite_token' },
     },
   }).catch(() => {})
 

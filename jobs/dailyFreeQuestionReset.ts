@@ -50,8 +50,10 @@ export async function runDailyFreeQuestionReset(): Promise<DailyResetResult> {
     if ((lock as any).skipped) {
       // Record audit log for skipped run
       logAuditEvent(prisma, {
-        action: 'DAILY_FREE_RESET_RUN',
-        metadata: { status: 'SKIPPED', reason: (lock as any).reason ?? 'locked' },
+        targetEntity: 'System',
+        targetId: 'daily_free_reset',
+        action: null,
+        details: { legacyAction: 'DAILY_FREE_RESET_RUN', status: 'SKIPPED', reason: (lock as any).reason ?? 'locked' },
       });
       
       const durationMs = Date.now() - started;
@@ -105,12 +107,10 @@ export async function runDailyFreeQuestionReset(): Promise<DailyResetResult> {
 
     // Record audit log for successful run
     logAuditEvent(prisma, {
-      action: 'DAILY_FREE_RESET_RUN',
-      metadata: {
-        status: 'SUCCESS',
-        usersUpdated: result.count,
-        durationMs,
-      },
+      targetEntity: 'System',
+      targetId: 'daily_free_reset',
+      action: null,
+      details: { legacyAction: 'DAILY_FREE_RESET_RUN', status: 'SUCCESS', usersUpdated: result.count, durationMs },
     });
 
     return {
@@ -131,12 +131,10 @@ export async function runDailyFreeQuestionReset(): Promise<DailyResetResult> {
 
     // Record audit log for failed run
     logAuditEvent(prisma, {
-      action: 'DAILY_FREE_RESET_RUN',
-      metadata: {
-        status: 'FAILED',
-        error: errorMsg,
-        durationMs,
-      },
+      targetEntity: 'System',
+      targetId: 'daily_free_reset',
+      action: null,
+      details: { legacyAction: 'DAILY_FREE_RESET_RUN', status: 'FAILED', error: errorMsg, durationMs },
     });
 
     return {

@@ -35,7 +35,8 @@ export async function GET(req: NextRequest) {
     if (b) boardSlug = b.slug;
   }
 
-  const where: any = {};
+  // quarantined questions excluded — do not remove this filter
+  const where: any = { status: 'ACTIVE' };
   if (subjectNames && subjectNames.length) where.subject = { in: subjectNames };
   if (boardSlug) where.board = boardSlug;
 

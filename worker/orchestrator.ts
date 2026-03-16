@@ -71,7 +71,7 @@ async function pollAndSpawn() {
 
       // update DB with pid and status
       await prisma.workerLifecycle.update({ where: { id: r.id }, data: { pid: proc.pid ?? undefined, host: os.hostname(), status: 'RUNNING', lastHeartbeatAt: new Date() } })
-      await prisma.auditLog.create({ data: { userId: null, action: 'WORKER_SPAWN', details: { workerId: r.id, pid: proc.pid } } })
+      await prisma.auditLog.create({ data: { targetEntity: 'Worker', targetId: r.id, action: null, details: { legacyAction: 'WORKER_SPAWN', pid: proc.pid } } })
       incJobsSpawned()
 
       proc.on('exit', async (code: any, signal: any) => {
@@ -79,10 +79,10 @@ async function pollAndSpawn() {
         try {
           if (code === 0) {
             await prisma.workerLifecycle.update({ where: { id: r.id }, data: { status: 'STOPPED', stoppedAt: new Date() } })
-            await prisma.auditLog.create({ data: { userId: null, action: 'WORKER_EXIT', details: { workerId: r.id, code, signal } } })
+            await prisma.auditLog.create({ data: { targetEntity: 'Worker', targetId: r.id, action: null, details: { legacyAction: 'WORKER_EXIT', code, signal } } })
           } else {
             await prisma.workerLifecycle.update({ where: { id: r.id }, data: { status: 'FAILED', stoppedAt: new Date(), meta: { code, signal } } })
-            await prisma.auditLog.create({ data: { userId: null, action: 'WORKER_FAILED', details: { workerId: r.id, code, signal } } })
+            await prisma.auditLog.create({ data: { targetEntity: 'Worker', targetId: r.id, action: null, details: { legacyAction: 'WORKER_FAILED', code, signal } } })
           }
         } catch (err) {
           logger.error('[orchestrator] failed to update lifecycle on exit', err)
@@ -216,7 +216,7 @@ async function main() {
             logger.info('[orchestrator:k8s] creating job for', { id: r.id })
             await createJobForWorker(r.id, r.type)
             await prisma.workerLifecycle.update({ where: { id: r.id }, data: { status: 'RUNNING', lastHeartbeatAt: new Date() } })
-            await prisma.auditLog.create({ data: { userId: null, action: 'WORKER_SPAWN_K8S', details: { workerId: r.id } } })
+            await prisma.auditLog.create({ data: { targetEntity: 'Worker', targetId: r.id, action: null, details: { legacyAction: 'WORKER_SPAWN_K8S' } } })
             incJobsSpawned()
             } catch (e) {
             logger.error('[orchestrator:k8s] failed to create job', e)

@@ -263,7 +263,8 @@ async function resolvePractice(topicId: string, studentMastery: number | null): 
 
   // Primary: questions at the student's target difficulty band.
   let questions = await prisma.question.findMany({
-    where: { topicId, difficulty: targetDifficulty },
+    // quarantined questions excluded — do not remove this filter
+    where: { topicId, difficulty: targetDifficulty, status: 'ACTIVE' },
     take: 5,
     orderBy: { createdAt: 'desc' },
     select: questionSelect,
@@ -272,7 +273,8 @@ async function resolvePractice(topicId: string, studentMastery: number | null): 
   // Fallback: any available questions for the topic (content may not yet cover all bands).
   if (questions.length === 0) {
     questions = await prisma.question.findMany({
-      where: { topicId },
+      // quarantined questions excluded — do not remove this filter
+      where: { topicId, status: 'ACTIVE' },
       take: 5,
       orderBy: { createdAt: 'desc' },
       select: questionSelect,

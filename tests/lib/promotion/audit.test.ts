@@ -14,7 +14,7 @@ describe('Promotion audit events', () => {
     }
     const store = makePromotionStore(prisma)
     await store.createPromotionCandidate({ scope: 'LESSON', scopeRefId: 'l1', regenerationJobId: 'j1', outputRef: 'o1', createdBy: 'admin' })
-    expect(logAuditEvent).toHaveBeenCalledWith(prisma, expect.objectContaining({ action: 'PROMOTION_CANDIDATE_CREATED' }))
+    expect(logAuditEvent).toHaveBeenCalledWith(prisma, expect.objectContaining({ action: null, details: expect.objectContaining({ legacyAction: 'PROMOTION_CANDIDATE_CREATED' }) }))
   })
 
   test('service.approveCandidate emits audit event', async () => {
@@ -25,7 +25,7 @@ describe('Promotion audit events', () => {
     }
     const svc = makePromotionService(prisma)
     await svc.approveCandidate('pc1', 'admin')
-    expect(logAuditEvent).toHaveBeenCalledWith(prisma, expect.objectContaining({ action: 'PROMOTION_APPROVED' }))
+    expect(logAuditEvent).toHaveBeenCalledWith(prisma, expect.objectContaining({ action: null, details: expect.objectContaining({ legacyAction: 'PROMOTION_APPROVED' }) }))
   })
 
   test('service.rejectCandidate emits audit event', async () => {
@@ -34,6 +34,6 @@ describe('Promotion audit events', () => {
     }
     const svc = makePromotionService(prisma)
     await svc.rejectCandidate('pc1', 'admin')
-    expect(logAuditEvent).toHaveBeenCalledWith(prisma, expect.objectContaining({ action: 'PROMOTION_REJECTED' }))
+    expect(logAuditEvent).toHaveBeenCalledWith(prisma, expect.objectContaining({ action: null, details: expect.objectContaining({ legacyAction: 'PROMOTION_REJECTED' }) }))
   })
 })

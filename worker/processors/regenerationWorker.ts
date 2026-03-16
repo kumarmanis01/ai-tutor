@@ -36,8 +36,8 @@ export async function processNextJob() {
   }
   if (!claimed) return null
 
-  try { logAuditEvent(prisma as any, { action: AuditEvents.REGEN_JOB_LOCKED, entityId: claimed.id, metadata: { jobId: claimed.id, status: 'RUNNING' } }) } catch {}
-  try { logAuditEvent(prisma as any, { action: AuditEvents.REGEN_JOB_STARTED, entityId: claimed.id, metadata: { jobId: claimed.id, status: 'RUNNING' } }) } catch {}
+  try { logAuditEvent(prisma as any, { targetEntity: 'RegenerationJob', targetId: claimed.id, action: null, details: { legacyAction: AuditEvents.REGEN_JOB_LOCKED } }) } catch {}
+  try { logAuditEvent(prisma as any, { targetEntity: 'RegenerationJob', targetId: claimed.id, action: null, details: { legacyAction: AuditEvents.REGEN_JOB_STARTED } }) } catch {}
 
   try {
     if (process.env.NODE_ENV === 'test') {
@@ -72,7 +72,7 @@ export async function processNextJob() {
     try {
       const updated = await prisma.regenerationJob.updateMany({ where: { id: claimed.id, status: 'RUNNING' }, data: { status: 'COMPLETED', outputRef } as any })
       if ((updated as any).count > 0) {
-        try { logAuditEvent(prisma as any, { action: AuditEvents.REGEN_JOB_COMPLETED, entityId: claimed.id, metadata: { jobId: claimed.id, status: 'COMPLETED', outputRef } }) } catch {}
+        try { logAuditEvent(prisma as any, { targetEntity: 'RegenerationJob', targetId: claimed.id, action: null, details: { legacyAction: AuditEvents.REGEN_JOB_COMPLETED, outputRef } }) } catch {}
       }
     } catch {}
 
@@ -83,7 +83,7 @@ export async function processNextJob() {
     }
     const errorJson = { message: String(err?.message ?? err), stack: err?.stack }
     try { await prisma.regenerationJob.update({ where: { id: claimed.id }, data: { status: 'FAILED', errorJson } }) } catch {}
-    try { logAuditEvent(prisma as any, { action: AuditEvents.REGEN_JOB_FAILED, entityId: claimed.id, metadata: { jobId: claimed.id, status: 'FAILED', errorJson } }) } catch {}
+    try { logAuditEvent(prisma as any, { targetEntity: 'RegenerationJob', targetId: claimed.id, action: null, details: { legacyAction: AuditEvents.REGEN_JOB_FAILED, errorJson } }) } catch {}
     return claimed
   }
 }

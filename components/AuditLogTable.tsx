@@ -27,8 +27,8 @@ const AuditLogTable: React.FC<AuditLogTableProps> = ({ logs }) => {
         <tbody>
           {logs.map((log) => (
             <tr key={log.id} className="hover:bg-gray-50">
-              <td className="border border-gray-300 px-4 py-2">{log.user?.email || 'System'}</td>
-              <td className="border border-gray-300 px-4 py-2">{log.action}</td>
+              <td className="border border-gray-300 px-4 py-2">{log.admin?.email || 'System'}</td>
+              <td className="border border-gray-300 px-4 py-2">{log.action ?? 'system'}</td>
               <td className="border border-gray-300 px-4 py-2">
                 {log.details ? JSON.stringify(log.details) : 'N/A'}
               </td>

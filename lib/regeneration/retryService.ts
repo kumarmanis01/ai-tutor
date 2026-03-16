@@ -46,9 +46,10 @@ export function makeRetryService(prisma: PrismaClient) {
       // Emit audit (non-blocking)
       try {
         logAuditEvent(prisma, {
-          action: 'REGEN_JOB_RETRIED',
-          entityId: created.id,
-          metadata: { sourceJobId: sourceJob.id, retryIntentId: intentId },
+          targetEntity: 'RegenerationJob',
+          targetId: created.id,
+          action: null,
+          details: { legacyAction: 'REGEN_JOB_RETRIED', sourceJobId: sourceJob.id, retryIntentId: intentId },
         })
       } catch {
         // swallow

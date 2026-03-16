@@ -30,7 +30,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
 
   await prisma.$transaction([
     prisma.generatedTest.update({ where: { id: params.id }, data: { status: ApprovalStatus.Rejected } }),
-    prisma.auditLog.create({ data: { userId: adminId, action: 'reject_test', details: { testId: params.id, reason, fromStatus: test.status }, createdAt: new Date() } })
+    prisma.auditLog.create({ data: { adminId, targetEntity: 'GeneratedTest', targetId: params.id, action: 'CONTENT_REJECT', previousValue: { status: test.status }, newValue: { status: 'rejected' }, reason: reason ?? null } })
   ]);
 
   // Auto-regenerate: enqueue a new questions hydration job for this topic

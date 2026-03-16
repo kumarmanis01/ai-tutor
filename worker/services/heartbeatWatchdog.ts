@@ -18,7 +18,7 @@ export function startWorkerLifecycleWatchdog(opts?: { intervalMs?: number; stale
       for (const wk of staleWorkers) {
         try {
           await prisma.workerLifecycle.update({ where: { id: wk.id }, data: { status: 'FAILED', stoppedAt: new Date() } });
-          await prisma.auditLog.create({ data: { userId: null, action: 'worker_watchdog_mark_failed', details: { workerId: wk.id, prevStatus: wk.status }, createdAt: new Date() } });
+          await prisma.auditLog.create({ data: { targetEntity: 'Worker', targetId: wk.id, action: null, details: { legacyAction: 'worker_watchdog_mark_failed', prevStatus: wk.status } } });
           logger.warn('watchdog: marked worker FAILED', { workerId: wk.id, prevStatus: wk.status });
         } catch (e) {
           logger?.error?.('watchdog: failed to mark worker FAILED', { err: e, workerId: wk.id });

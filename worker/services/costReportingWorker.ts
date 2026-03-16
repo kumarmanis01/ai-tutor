@@ -21,6 +21,21 @@ const USD_TO_INR = 84
 
 // Alert threshold: $0.003 per session (~₹0.25)
 const ALERT_THRESHOLD_USD = 0.003
+// Hard daily ceiling: $15 USD
+const DAILY_CEILING_USD = 15
+// Cache hit rate target
+const CACHE_HIT_RATE_TARGET = 0.55
+
+export interface TrendingDoubt {
+  conceptId: string
+  conceptName: string
+  studentCount: number
+}
+
+export interface QualityFlagSummary {
+  flag: string
+  count: number
+}
 
 export interface CostReportResult {
   date: string         // ISO date string (YYYY-MM-DD) for the reported day (IST)
@@ -28,6 +43,8 @@ export interface CostReportResult {
   totalCostUsd: number
   costPerSession: number
   alertSent: boolean
+  trendingDoubts: TrendingDoubt[]
+  qualityFlags?: QualityFlagSummary[]
 }
 
 /**
@@ -58,15 +75,60 @@ export function getYesterdayIstBounds(): { start: Date; end: Date; dateLabel: st
   return { start, end, dateLabel }
 }
 
+/**
+ * Returns conceptIds escalated by more than 5 distinct students in the last 7 days.
+ * Joins with Concept table to resolve names. Never throws.
+ */
+async function getTrendingEscalations(since: Date): Promise<TrendingDoubt[]> {
+  try {
+    type Row = { conceptId: string; studentCount: bigint }
+    const rows = await prisma.$queryRaw<Row[]>`
+      SELECT "conceptId", COUNT(DISTINCT "studentId")::bigint AS "studentCount"
+      FROM "DoubtEscalation"
+      WHERE "createdAt" >= ${since}
+        AND "conceptId" IS NOT NULL
+      GROUP BY "conceptId"
+      HAVING COUNT(DISTINCT "studentId") > 5
+      ORDER BY "studentCount" DESC
+    `
+    if (!rows.length) return []
+
+    const conceptIds = rows.map((r) => r.conceptId)
+    const concepts = await prisma.concept.findMany({
+      where: { id: { in: conceptIds } },
+      select: { id: true, name: true },
+    })
+    const nameMap = new Map(concepts.map((c) => [c.id, c.name]))
+
+    return rows.map((r) => ({
+      conceptId: r.conceptId,
+      conceptName: nameMap.get(r.conceptId) ?? r.conceptId,
+      studentCount: Number(r.studentCount),
+    }))
+  } catch {
+    return []
+  }
+}
+
 function buildAlertHtml(params: {
   dateLabel: string
   sessions: number
   totalCostUsd: number
   costPerSession: number
+  trendingDoubts: TrendingDoubt[]
 }): string {
-  const { dateLabel, sessions, totalCostUsd, costPerSession } = params
+  const { dateLabel, sessions, totalCostUsd, costPerSession, trendingDoubts } = params
   const costInr = (costPerSession * USD_TO_INR).toFixed(2)
   const totalInr = (totalCostUsd * USD_TO_INR).toFixed(2)
+
+  const trendingSection = trendingDoubts.length > 0
+    ? `<div style="background:#FFFBEB;border:1px solid #FCD34D;border-radius:8px;padding:16px;margin-top:20px;">
+  <h3 style="margin:0 0 8px;color:#92400E;font-size:15px;">Trending Doubts (last 7 days)</h3>
+  <ul style="margin:0;padding:0 0 0 18px;color:#78350F;">
+    ${trendingDoubts.map((d) => `<li>${d.conceptName} — ${d.studentCount} escalations this week</li>`).join('\n    ')}
+  </ul>
+</div>`
+    : ''
 
   return `<!DOCTYPE html>
 <html>
@@ -98,7 +160,9 @@ function buildAlertHtml(params: {
     </tr>
   </table>
 
-  <p style="color:#6B7280;font-size:12px;">
+  ${trendingSection}
+
+  <p style="color:#6B7280;font-size:12px;margin-top:20px;">
     Threshold: $${ALERT_THRESHOLD_USD.toFixed(3)} per session. Check model usage and caching.
   </p>
 </body>
@@ -108,8 +172,10 @@ function buildAlertHtml(params: {
 export async function runDailyCostReport(): Promise<CostReportResult> {
   const { start, end, dateLabel } = getYesterdayIstBounds()
 
-  // Count distinct sessions and sum costs for yesterday
-  const [distinctSessionRows, agg] = await Promise.all([
+  const sevenDaysAgo = new Date(start.getTime() - 6 * 24 * 60 * 60 * 1000)
+
+  // Count distinct sessions, sum costs, trending escalations, rolling avg history, cache stats in parallel
+  const [distinctSessionRows, agg, trendingDoubts, last7Metrics, cacheStats, yesterdayMetric] = await Promise.all([
     prisma.aITutorTurnLog.findMany({
       where: { createdAt: { gte: start, lt: end } },
       distinct: ['sessionId'],
@@ -118,6 +184,24 @@ export async function runDailyCostReport(): Promise<CostReportResult> {
     prisma.aITutorTurnLog.aggregate({
       where: { createdAt: { gte: start, lt: end } },
       _sum: { costUsd: true },
+    }),
+    getTrendingEscalations(sevenDaysAgo),
+    prisma.dailyCostMetric.findMany({
+      where: { date: { gte: sevenDaysAgo, lt: start } },
+      orderBy: { date: 'desc' },
+      take: 7,
+    }),
+    // Cache hit rate: count cached=true vs total for yesterday
+    prisma.$queryRaw<[{ total: bigint; cached: bigint }]>`
+      SELECT COUNT(*)::bigint AS total,
+             COUNT(*) FILTER (WHERE cached = true)::bigint AS cached
+      FROM "AITutorTurnLog"
+      WHERE "createdAt" >= ${start} AND "createdAt" < ${end}
+    `,
+    // Previous day metric for dropout detection
+    prisma.dailyCostMetric.findFirst({
+      where: { date: { gte: sevenDaysAgo, lt: start } },
+      orderBy: { date: 'desc' },
     }),
   ])
 
@@ -132,26 +216,71 @@ export async function runDailyCostReport(): Promise<CostReportResult> {
     update: { sessions, totalCostUsd, costPerSession },
   })
 
-  logger.info('costReportingWorker.report', { date: dateLabel, sessions, totalCostUsd, costPerSession })
+  // Rolling average (need ≥3 data points)
+  const rollingAvg =
+    last7Metrics.length >= 3
+      ? last7Metrics.reduce((s, d) => s + d.costPerSession, 0) / last7Metrics.length
+      : null
 
-  // Alert if cost per session exceeds threshold
+  // Cache hit rate
+  const totalTurns = Number(cacheStats[0]?.total ?? 0)
+  const cachedTurns = Number(cacheStats[0]?.cached ?? 0)
+  const cacheHitRate = totalTurns > 0 ? cachedTurns / totalTurns : null
+
+  // Anomaly detection
+  const isCostThreshold = costPerSession > ALERT_THRESHOLD_USD
+  const isRollingAnomaly = rollingAvg !== null && costPerSession > rollingAvg * 1.5
+  const isCeiling = totalCostUsd > DAILY_CEILING_USD
+  const isDropout = sessions === 0 && (yesterdayMetric?.sessions ?? 0) > 10
+  const isCacheWarn = cacheHitRate !== null && cacheHitRate < CACHE_HIT_RATE_TARGET
+  const needsAlert = isCostThreshold || isRollingAnomaly || isCeiling || isDropout
+
+  // Build alert subject
+  let alertSubject = `⚠️ Spinzy AI cost alert: ₹${(costPerSession * USD_TO_INR).toFixed(2)} per session on ${dateLabel}`
+  if (isDropout) {
+    alertSubject = `⚠️ Zero sessions — possible outage on ${dateLabel}`
+  } else if (isCeiling) {
+    alertSubject = `⚠️ Daily cost ceiling reached: $${totalCostUsd.toFixed(2)} on ${dateLabel}`
+  } else if (isRollingAnomaly && rollingAvg) {
+    const multiple = (costPerSession / rollingAvg).toFixed(1)
+    alertSubject = `⚠️ Cost spike: ${multiple}× above 7-day average on ${dateLabel}`
+  }
+
+  logger.info('costReportingWorker.report', {
+    date: dateLabel, sessions, totalCostUsd, costPerSession,
+    rollingAvg, cacheHitRate, trendingDoubtCount: trendingDoubts.length,
+    anomalies: { isCostThreshold, isRollingAnomaly, isCeiling, isDropout },
+  })
+
+  if (isCacheWarn) {
+    logger.warn('costReportingWorker.cacheLow', { cacheHitRate, target: CACHE_HIT_RATE_TARGET })
+  }
+
+  // Alert if any condition triggered
   let alertSent = false
-  if (costPerSession > ALERT_THRESHOLD_USD) {
+  if (needsAlert) {
     const oncallEmail = process.env.ONCALL_EMAIL
     if (oncallEmail) {
       try {
         const costInr = (costPerSession * USD_TO_INR).toFixed(2)
+        const trendingText = trendingDoubts.length > 0
+          ? '\n\nTrending doubts (last 7 days):\n' + trendingDoubts.map((d) => `  - ${d.conceptName}: ${d.studentCount} escalations`).join('\n')
+          : ''
+        const cacheText = cacheHitRate !== null
+          ? `\nCache hit rate: ${(cacheHitRate * 100).toFixed(1)}% (target >${(CACHE_HIT_RATE_TARGET * 100).toFixed(0)}%)${isCacheWarn ? ' ⚠️ below target' : ''}`
+          : ''
+        const rollingText = rollingAvg !== null ? `\n7-day avg cost/session: $${rollingAvg.toFixed(5)}` : ''
         await sendEmail({
           to: oncallEmail,
-          subject: `⚠️ Spinzy AI cost alert: ₹${costInr} per session on ${dateLabel}`,
-          html: buildAlertHtml({ dateLabel, sessions, totalCostUsd, costPerSession }),
+          subject: alertSubject,
+          html: buildAlertHtml({ dateLabel, sessions, totalCostUsd, costPerSession, trendingDoubts }),
           text: [
             `Spinzy AI cost alert — ${dateLabel}`,
             `Sessions: ${sessions}`,
             `Total cost: $${totalCostUsd.toFixed(4)} (₹${(totalCostUsd * USD_TO_INR).toFixed(2)})`,
             `Cost per session: $${costPerSession.toFixed(5)} (₹${costInr})`,
             `Threshold: $${ALERT_THRESHOLD_USD.toFixed(3)} per session`,
-          ].join('\n'),
+          ].join('\n') + rollingText + cacheText + trendingText,
         })
         alertSent = true
         logger.info('costReportingWorker.alertSent', { to: oncallEmail, dateLabel, costPerSession })
@@ -169,5 +298,39 @@ export async function runDailyCostReport(): Promise<CostReportResult> {
     }
   }
 
-  return { date: dateLabel, sessions, totalCostUsd, costPerSession, alertSent }
+  // Weekly quality flag summary (only on Sunday runs, day 0)
+  const dayOfWeekIst = new Date(Date.now() + (5 * 60 + 30) * 60 * 1000).getUTCDay()
+  let qualityFlags: QualityFlagSummary[] | undefined
+  if (dayOfWeekIst === 0) {
+    const sevenDaysAgoForQuality = new Date(start.getTime() - 6 * 24 * 60 * 60 * 1000)
+    try {
+      type FlagRow = { qualityFlag: string; _count: number }
+      const flagGroups = await prisma.aITutorTurnLog.groupBy({
+        by: ['qualityFlag'],
+        where: {
+          createdAt: { gte: sevenDaysAgoForQuality, lt: end },
+          qualityFlag: { not: null },
+        },
+        _count: { qualityFlag: true },
+      })
+      qualityFlags = flagGroups.map((g) => ({
+        flag: g.qualityFlag as string,
+        count: g._count.qualityFlag,
+      }))
+      if (qualityFlags.length > 0) {
+        const directAnswerCount = qualityFlags.find((f) => f.flag === 'DIRECT_ANSWER_GIVEN')?.count ?? 0
+        const summaryLines = qualityFlags.map((f) => `${f.flag}: ${f.count}`).join(', ')
+        logger.warn('costReportingWorker.qualityFlags', { summaryLines, directAnswerCount })
+        if (directAnswerCount > 0) {
+          logger.error('costReportingWorker.CRITICAL_DIRECT_ANSWER_GIVEN', { count: directAnswerCount })
+        }
+      }
+    } catch (err) {
+      logger.error('costReportingWorker.qualityFlagsFailed', {
+        error: err instanceof Error ? err.message : String(err),
+      })
+    }
+  }
+
+  return { date: dateLabel, sessions, totalCostUsd, costPerSession, alertSent, trendingDoubts, qualityFlags }
 }
