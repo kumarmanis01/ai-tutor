@@ -19,6 +19,9 @@
 
 import { describe, it, expect, beforeAll, afterAll } from '@jest/globals';
 import { prisma } from '@/lib/prisma';
+
+// Each beforeAll upserts several rows into Neon over the network — 5s is too tight.
+jest.setTimeout(30_000);
 import {
   validateOrThrow,
   SchemaInvalidError,

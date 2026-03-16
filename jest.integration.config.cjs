@@ -3,8 +3,10 @@ module.exports = {
   preset: 'ts-jest',
   testEnvironment: 'node',
   testMatch: ['**/tests/integration/**/*.test.ts'],
-  // Do NOT exclude integration tests
-  testPathIgnorePatterns: [],
+  // alert-evaluator.test.ts is a standalone script (IIFE), not a Jest suite
+  testPathIgnorePatterns: [
+    'tests/integration/alert-evaluator.test.ts',
+  ],
   moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json', 'node'],
   moduleNameMapper: {
     '^@/lib/(.*)\\.js$': '<rootDir>/lib/$1.ts',

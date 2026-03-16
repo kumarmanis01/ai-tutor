@@ -18,6 +18,7 @@ jest.mock('@/lib/prisma', () => ({
     generatedQuestion: { create: jest.fn() },
     executionJob: { findFirst: jest.fn(), update: jest.fn() },
     jobExecutionLog: { create: jest.fn() },
+    aIContentLog: { create: jest.fn().mockResolvedValue({ id: 'log-1' }), update: jest.fn().mockResolvedValue({}) },
     $transaction: jest.fn()
   }
 }))

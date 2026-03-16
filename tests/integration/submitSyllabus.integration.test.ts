@@ -6,6 +6,7 @@ jest.mock('@/lib/logger', () => ({ logger: { info: jest.fn(), warn: jest.fn(), e
 
 jest.mock('@/lib/prisma', () => ({
   prisma: {
+    systemSetting: { findUnique: jest.fn().mockResolvedValue(null) },
     subjectDef: { findUnique: jest.fn().mockResolvedValue({ id: 'sub-1', name: 'Mathematics', class: { grade: 6, board: { name: 'CBSE' } } }) },
     executionJob: { findFirst: jest.fn().mockResolvedValue(null), create: jest.fn().mockResolvedValue({ id: 'exec-1' }), update: jest.fn().mockResolvedValue(null) },
     jobExecutionLog: { create: jest.fn().mockResolvedValue(null) },
