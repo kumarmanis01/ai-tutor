@@ -107,6 +107,7 @@ model User {
   learningPlans           LearningPlan[]
   consents                Consent[]
   parentProfile           ParentProfile?
+  doubtEscalations        DoubtEscalation[]
 }
 
 model PaymentOrder {
@@ -2290,4 +2291,24 @@ model ParentProfile {
   userId    String    @unique
   createdAt DateTime  @default(now())
   user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+/// Doubt escalation: created when a student asks the same concept question
+/// 3 consecutive times without the AI marking it resolved.
+model DoubtEscalation {
+  id             String    @id @default(cuid())
+  studentId      String
+  sessionId      String
+  conceptId      String?
+  doubtText      String
+  aiAttempts     Json      // Array of { turnId, aiResponse } — last 3 attempts
+  resolvedAt     DateTime?
+  resolutionType String?   // 'chunk_updated' | 'misconception_added' | 'prompt_fix' | 'cached_answer'
+  resolutionNote String?
+  createdAt      DateTime  @default(now())
+  student        User      @relation(fields: [studentId], references: [id])
+
+  @@index([resolvedAt, createdAt])
+  @@index([studentId])
+  @@index([conceptId, createdAt])
 }

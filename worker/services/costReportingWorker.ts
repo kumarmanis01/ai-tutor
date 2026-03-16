@@ -22,12 +22,19 @@ const USD_TO_INR = 84
 // Alert threshold: $0.003 per session (~₹0.25)
 const ALERT_THRESHOLD_USD = 0.003
 
+export interface TrendingDoubt {
+  conceptId: string
+  conceptName: string
+  studentCount: number
+}
+
 export interface CostReportResult {
   date: string         // ISO date string (YYYY-MM-DD) for the reported day (IST)
   sessions: number
   totalCostUsd: number
   costPerSession: number
   alertSent: boolean
+  trendingDoubts: TrendingDoubt[]
 }
 
 /**
@@ -58,15 +65,60 @@ export function getYesterdayIstBounds(): { start: Date; end: Date; dateLabel: st
   return { start, end, dateLabel }
 }
 
+/**
+ * Returns conceptIds escalated by more than 5 distinct students in the last 7 days.
+ * Joins with Concept table to resolve names. Never throws.
+ */
+async function getTrendingEscalations(since: Date): Promise<TrendingDoubt[]> {
+  try {
+    type Row = { conceptId: string; studentCount: bigint }
+    const rows = await prisma.$queryRaw<Row[]>`
+      SELECT "conceptId", COUNT(DISTINCT "studentId")::bigint AS "studentCount"
+      FROM "DoubtEscalation"
+      WHERE "createdAt" >= ${since}
+        AND "conceptId" IS NOT NULL
+      GROUP BY "conceptId"
+      HAVING COUNT(DISTINCT "studentId") > 5
+      ORDER BY "studentCount" DESC
+    `
+    if (!rows.length) return []
+
+    const conceptIds = rows.map((r) => r.conceptId)
+    const concepts = await prisma.concept.findMany({
+      where: { id: { in: conceptIds } },
+      select: { id: true, name: true },
+    })
+    const nameMap = new Map(concepts.map((c) => [c.id, c.name]))
+
+    return rows.map((r) => ({
+      conceptId: r.conceptId,
+      conceptName: nameMap.get(r.conceptId) ?? r.conceptId,
+      studentCount: Number(r.studentCount),
+    }))
+  } catch {
+    return []
+  }
+}
+
 function buildAlertHtml(params: {
   dateLabel: string
   sessions: number
   totalCostUsd: number
   costPerSession: number
+  trendingDoubts: TrendingDoubt[]
 }): string {
-  const { dateLabel, sessions, totalCostUsd, costPerSession } = params
+  const { dateLabel, sessions, totalCostUsd, costPerSession, trendingDoubts } = params
   const costInr = (costPerSession * USD_TO_INR).toFixed(2)
   const totalInr = (totalCostUsd * USD_TO_INR).toFixed(2)
+
+  const trendingSection = trendingDoubts.length > 0
+    ? `<div style="background:#FFFBEB;border:1px solid #FCD34D;border-radius:8px;padding:16px;margin-top:20px;">
+  <h3 style="margin:0 0 8px;color:#92400E;font-size:15px;">Trending Doubts (last 7 days)</h3>
+  <ul style="margin:0;padding:0 0 0 18px;color:#78350F;">
+    ${trendingDoubts.map((d) => `<li>${d.conceptName} — ${d.studentCount} escalations this week</li>`).join('\n    ')}
+  </ul>
+</div>`
+    : ''
 
   return `<!DOCTYPE html>
 <html>
@@ -98,7 +150,9 @@ function buildAlertHtml(params: {
     </tr>
   </table>
 
-  <p style="color:#6B7280;font-size:12px;">
+  ${trendingSection}
+
+  <p style="color:#6B7280;font-size:12px;margin-top:20px;">
     Threshold: $${ALERT_THRESHOLD_USD.toFixed(3)} per session. Check model usage and caching.
   </p>
 </body>
@@ -108,8 +162,10 @@ function buildAlertHtml(params: {
 export async function runDailyCostReport(): Promise<CostReportResult> {
   const { start, end, dateLabel } = getYesterdayIstBounds()
 
-  // Count distinct sessions and sum costs for yesterday
-  const [distinctSessionRows, agg] = await Promise.all([
+  const sevenDaysAgo = new Date(start.getTime() - 6 * 24 * 60 * 60 * 1000)
+
+  // Count distinct sessions, sum costs, and check trending escalations in parallel
+  const [distinctSessionRows, agg, trendingDoubts] = await Promise.all([
     prisma.aITutorTurnLog.findMany({
       where: { createdAt: { gte: start, lt: end } },
       distinct: ['sessionId'],
@@ -119,6 +175,7 @@ export async function runDailyCostReport(): Promise<CostReportResult> {
       where: { createdAt: { gte: start, lt: end } },
       _sum: { costUsd: true },
     }),
+    getTrendingEscalations(sevenDaysAgo),
   ])
 
   const sessions = distinctSessionRows.length
@@ -132,7 +189,7 @@ export async function runDailyCostReport(): Promise<CostReportResult> {
     update: { sessions, totalCostUsd, costPerSession },
   })
 
-  logger.info('costReportingWorker.report', { date: dateLabel, sessions, totalCostUsd, costPerSession })
+  logger.info('costReportingWorker.report', { date: dateLabel, sessions, totalCostUsd, costPerSession, trendingDoubtCount: trendingDoubts.length })
 
   // Alert if cost per session exceeds threshold
   let alertSent = false
@@ -141,17 +198,20 @@ export async function runDailyCostReport(): Promise<CostReportResult> {
     if (oncallEmail) {
       try {
         const costInr = (costPerSession * USD_TO_INR).toFixed(2)
+        const trendingText = trendingDoubts.length > 0
+          ? '\n\nTrending doubts (last 7 days):\n' + trendingDoubts.map((d) => `  - ${d.conceptName}: ${d.studentCount} escalations`).join('\n')
+          : ''
         await sendEmail({
           to: oncallEmail,
           subject: `⚠️ Spinzy AI cost alert: ₹${costInr} per session on ${dateLabel}`,
-          html: buildAlertHtml({ dateLabel, sessions, totalCostUsd, costPerSession }),
+          html: buildAlertHtml({ dateLabel, sessions, totalCostUsd, costPerSession, trendingDoubts }),
           text: [
             `Spinzy AI cost alert — ${dateLabel}`,
             `Sessions: ${sessions}`,
             `Total cost: $${totalCostUsd.toFixed(4)} (₹${(totalCostUsd * USD_TO_INR).toFixed(2)})`,
             `Cost per session: $${costPerSession.toFixed(5)} (₹${costInr})`,
             `Threshold: $${ALERT_THRESHOLD_USD.toFixed(3)} per session`,
-          ].join('\n'),
+          ].join('\n') + trendingText,
         })
         alertSent = true
         logger.info('costReportingWorker.alertSent', { to: oncallEmail, dateLabel, costPerSession })
@@ -169,5 +229,5 @@ export async function runDailyCostReport(): Promise<CostReportResult> {
     }
   }
 
-  return { date: dateLabel, sessions, totalCostUsd, costPerSession, alertSent }
+  return { date: dateLabel, sessions, totalCostUsd, costPerSession, alertSent, trendingDoubts }
 }
