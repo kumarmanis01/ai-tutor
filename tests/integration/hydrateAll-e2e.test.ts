@@ -25,33 +25,30 @@ import { CONTENT_HYDRATION_QUEUE } from '@/lib/queues/constants';
 const TEST_TIMEOUT = 5 * 60 * 1000; // 5 minutes
 const _POLL_INTERVAL = 5000; // 5 seconds (prefixed to indicate intentionally unused)
 
+jest.setTimeout(TEST_TIMEOUT);
+
 describe('HydrateAll End-to-End Integration Test', () => {
   let rootJobId: string;
   let testSubjectId: string;
 
   beforeAll(async () => {
-    // Setup: Create test board, class, subject
-    const board = await prisma.board.create({
-      data: {
-        name: 'Test Board',
-        slug: 'test-board-e2e',
-      },
+    // Setup: Create test board, class, subject (upsert so re-runs don't fail on unique constraints)
+    const board = await prisma.board.upsert({
+      where: { slug: 'test-board-e2e' },
+      update: {},
+      create: { name: 'Test Board', slug: 'test-board-e2e' },
     });
 
-    const classLevel = await prisma.classLevel.create({
-      data: {
-        boardId: board.id,
-        grade: 10,
-        slug: 'grade-10-test',
-      },
+    const classLevel = await prisma.classLevel.upsert({
+      where: { boardId_grade: { boardId: board.id, grade: 10 } },
+      update: {},
+      create: { boardId: board.id, grade: 10, slug: 'grade-10-test' },
     });
 
-    const subject = await prisma.subjectDef.create({
-      data: {
-        classId: classLevel.id,
-        name: 'Test Subject',
-        slug: 'test-subject-e2e',
-      },
+    const subject = await prisma.subjectDef.upsert({
+      where: { classId_slug: { classId: classLevel.id, slug: 'test-subject-e2e' } },
+      update: {},
+      create: { classId: classLevel.id, name: 'Test Subject', slug: 'test-subject-e2e' },
     });
 
     testSubjectId = subject.id;
