@@ -4,8 +4,11 @@ module.exports = {
   testEnvironment: 'node',
   testMatch: ['**/tests/integration/**/*.test.ts'],
   // alert-evaluator.test.ts is a standalone script (IIFE), not a Jest suite
+  // hydrateAll-e2e and homeEngine.scenarios.withSeed require a live DATABASE_URL + seed script
   testPathIgnorePatterns: [
     'tests/integration/alert-evaluator.test.ts',
+    'tests/integration/hydrateAll-e2e.test.ts',
+    'tests/integration/homeEngine.scenarios.withSeed.test.ts',
   ],
   moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json', 'node'],
   moduleNameMapper: {
