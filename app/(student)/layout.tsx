@@ -5,7 +5,8 @@ import Providers from '@/app/providers';
 import { GlobalLoaderProvider } from '@/context/GlobalLoaderProvider';
 import AuthSessionLoader from '@/components/AuthSessionLoader';
 import ToastHost from '@/components/ToastHost';
-import StudentNav from './StudentNav';
+import Topbar from '@/components/student/layout/Topbar';
+import BottomNav from '@/components/student/layout/BottomNav';
 import { requireActiveSession } from '@/lib/auth';
 import { redirect } from 'next/navigation';
 import { headers } from 'next/headers';
@@ -56,7 +57,8 @@ export const metadata: Metadata = {
  * - Fetches session server-side; redirects to / if unauthenticated
  * - Profile completeness guard: redirects to /student/onboarding when required fields missing
  * - Parent verification (under-13/under-18): shown as modal via ParentOTPGate when required
- * - Renders StudentNav — the persistent student navigation bar
+ * - Renders Topbar (sticky, v2 slim bar with logo + streak + level + avatar)
+ * - Renders BottomNav (fixed bottom, mobile-only, 4 tabs)
  * - Must NOT render the public Navbar
  */
 export default async function StudentLayout({ children }: { children: React.ReactNode }) {
@@ -64,6 +66,7 @@ export default async function StudentLayout({ children }: { children: React.Reac
   if (!session) redirect('/');
 
   const userId = (session.user as { id?: string })?.id;
+  // studentName kept for StudentLayoutShell (profile gate overlay)
   const pathname = (await headers()).get('x-pathname') ?? '';
 
   const skipApi = pathname.startsWith('/student/api');
@@ -122,17 +125,18 @@ export default async function StudentLayout({ children }: { children: React.Reac
               <GoogleTagManagerClient />
             </Suspense>
             <AppModalClient />
-            <StudentNav studentName={studentName} />
-            <div className="pt-14">
-              <StudentLayoutShell
-                showParentGate={showParentGate}
-                maskedParentEmail={maskedParentEmail}
-                showProfileGate={showProfileGate}
-                missingProfileFields={profile.missingFields as ProfileMissingField[]}
-              >
+            <Topbar />
+            <StudentLayoutShell
+              showParentGate={showParentGate}
+              maskedParentEmail={maskedParentEmail}
+              showProfileGate={showProfileGate}
+              missingProfileFields={profile.missingFields as ProfileMissingField[]}
+            >
+              <div className="pb-16 md:pb-0">
                 {children}
-              </StudentLayoutShell>
-            </div>
+              </div>
+            </StudentLayoutShell>
+            <BottomNav />
             <ToastHost />
             <InstallPrompt />
           </GlobalLoaderProvider>

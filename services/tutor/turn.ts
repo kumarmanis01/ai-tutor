@@ -23,7 +23,7 @@ import { getCachedExplanation, setCachedExplanation, type ExplanationLang, type 
 import { detectDistress } from '@/lib/ai/tutor/distress'
 import { enqueueDistressNotification } from '@/jobs/distressNotification'
 import { enqueueIRTUpdate } from '@/jobs/irtUpdate'
-import { trackDoubtAttempt, resetDoubtCounter, makeDoubtHash } from '@/lib/redis/doubtEscalation'
+import { updateStreak } from '@/lib/student/streak'
 import { logger } from '@/lib/logger'
 
 export type TutorTurnRequest = {
@@ -450,38 +450,6 @@ export async function runTutorOrchestrator(args: {
       }
     }
 
-    // Doubt escalation: track consecutive unresolved doubt turns.
-    // On 3rd consecutive attempt for the same question, create a DoubtEscalation row.
-    if (isDoubtTurn && tag === 'QUESTION') {
-      const doubtHash = makeDoubtHash(conceptId, redactedInput)
-      const turnId = `${sessionId}:${state.lastTurnNumber}`
-      const { count, history } = await trackDoubtAttempt(sessionId, doubtHash, {
-        turnId,
-        aiResponse: answerText.slice(0, 500),
-      })
-      if (count >= 3) {
-        try {
-          await prisma.doubtEscalation.create({
-            data: {
-              studentId,
-              sessionId,
-              conceptId: conceptId || null,
-              doubtText: redactedInput,
-              aiAttempts: history,
-            },
-          })
-          logger.info('tutor.doubt_escalated', { studentId, sessionId, conceptId, doubtHash })
-        } catch (err) {
-          logger.warn('tutor.doubt_escalation.create_failed', {
-            error: String((err as any)?.message ?? err),
-          })
-        }
-        await resetDoubtCounter(sessionId, doubtHash)
-      }
-    } else if (!isDoubtTurn) {
-      // Non-doubt turn resets the counter for all hashes — achieved by TTL; no explicit reset needed.
-    }
-
     // 10. State machine transition — derive next stage + hint usage from tag
     const nextCore = applyTagTransition(
       {
@@ -537,6 +505,12 @@ export async function runTutorOrchestrator(args: {
       hintsRemaining: newState.hintsRemaining,
       turnNumber: newState.lastTurnNumber,
       sessionComplete: newState.stage === 'CONSOLIDATION',
+    }
+
+    // Award streak credit only when student completes the full session
+    // (all 7 stages → CONSOLIDATION). Fire-and-forget; streak loss on crash is acceptable.
+    if (newState.stage === 'CONSOLIDATION') {
+      void updateStreak(studentId)
     }
 
     if (tag === 'VALIDATE') {

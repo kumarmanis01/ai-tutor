@@ -1,6 +1,7 @@
 import { prisma } from '@/lib/prisma'
-import { sendPushSafe } from '@/lib/push/send'
-import { PUSH_NOTIFICATIONS } from '@/lib/push/notifications'
+import { getRedis } from '@/lib/redis'
+import { logger } from '@/lib/logger'
+import { isShieldAvailable, consumeShield } from '@/lib/student/streakShield'
 
 const MS_PER_DAY = 86400000
 
@@ -29,22 +30,27 @@ export function classifyStreakGap(
 }
 
 /**
- * Call this once per completed session, after XP is awarded.
+ * Call this once per qualifying activity: a completed full session (CONSOLIDATION reached)
+ * or after the revision-card daily threshold is met.
+ *
  * Logic:
  * 1. Load User.lastSessionDate, currentStreak, longestStreak.
  * 2. Get today's date (UTC, date-only — strip time).
  * 3. If lastSessionDate is today → already counted, return current state (idempotent).
  * 4. If lastSessionDate is yesterday → increment streak.
- * 5. If lastSessionDate is older or null → reset streak to 1.
+ * 5. If lastSessionDate is older or null (broken) → check streak shield.
+ *    a. Shield available → consume it, keep current streak, return shieldActivated=true.
+ *    b. No shield → reset streak to 1.
  * 6. Update longestStreak if currentStreak > longestStreak.
  * 7. Set lastSessionDate = today.
- * 8. Persist via prisma.user.update — not in a transaction (streak loss is acceptable on crash).
+ * 8. Persist via prisma.user.update — not in a transaction (streak loss on crash is acceptable).
  * Never throws — returns null on error.
  */
 export async function updateStreak(studentId: string): Promise<{
   currentStreak: number
   longestStreak: number
   streakIncremented: boolean
+  shieldActivated: boolean
 } | null> {
   try {
     const user = await prisma.user.findUnique({
@@ -58,16 +64,36 @@ export async function updateStreak(studentId: string): Promise<{
 
     let currentStreak: number
     let streakIncremented: boolean
+    let shieldActivated = false
 
     if (gap === 'same_day') {
-      currentStreak = user.currentStreak
-      streakIncremented = false
+      // Already counted today — idempotent return.
+      return {
+        currentStreak: user.currentStreak,
+        longestStreak: user.longestStreak,
+        streakIncremented: false,
+        shieldActivated: false,
+      }
     } else if (gap === 'consecutive') {
       currentStreak = user.currentStreak + 1
       streakIncremented = true
     } else {
-      currentStreak = 1
-      streakIncremented = true
+      // Gap ≥ 2 days — streak would break. Check shield first.
+      const shieldAvail = await isShieldAvailable(studentId, now)
+      if (shieldAvail && user.currentStreak > 0) {
+        // Shield protects the streak — keep current streak, mark shield consumed.
+        await consumeShield(studentId, now)
+        currentStreak = user.currentStreak + 1 // shield protected yesterday, today counts
+        streakIncremented = true
+        shieldActivated = true
+        logger.info('streak.shield_activated', {
+          event: 'streak_shield_activated',
+          context: { studentId, previousStreak: user.currentStreak },
+        })
+      } else {
+        currentStreak = 1
+        streakIncremented = true
+      }
     }
 
     const longestStreak = Math.max(user.longestStreak, currentStreak)
@@ -82,21 +108,61 @@ export async function updateStreak(studentId: string): Promise<{
       },
     })
 
-    // Fire milestone push notifications (best-effort, non-blocking)
-    if (streakIncremented) {
-      if (currentStreak === 7) {
-        void sendPushSafe(studentId, PUSH_NOTIFICATIONS.streak_milestone_7())
-      } else if (currentStreak === 30) {
-        void sendPushSafe(studentId, PUSH_NOTIFICATIONS.streak_milestone_30())
-      }
-    }
-
     return {
       currentStreak,
       longestStreak,
       streakIncremented,
+      shieldActivated,
     }
   } catch {
+    return null
+  }
+}
+
+// Redis key: revision:daily:{studentId}:{YYYY-MM-DD}  value: count  TTL: 48h
+const REVISION_DAILY_TTL_SECONDS = 48 * 60 * 60
+const REVISION_STREAK_THRESHOLD = 10
+
+function revisionDailyKey(studentId: string, dateStr: string): string {
+  return `revision:daily:${studentId}:${dateStr}`
+}
+
+/**
+ * Call after each revision card is answered/completed.
+ *
+ * Increments the student's daily revision counter in Redis.
+ * When the counter first reaches REVISION_STREAK_THRESHOLD (10),
+ * calls updateStreak() exactly once (idempotent via lastSessionDate check).
+ *
+ * Returns the new daily count, or null on Redis error.
+ */
+export async function trackRevisionAndMaybeUpdateStreak(
+  studentId: string,
+  now = new Date(),
+): Promise<number | null> {
+  const redis = getRedis()
+  if (!redis) return null
+
+  const dateStr = now.toISOString().split('T')[0] // YYYY-MM-DD
+  const key = revisionDailyKey(studentId, dateStr)
+
+  try {
+    const count = await redis.incr(key)
+    // Set TTL only on first creation (count === 1)
+    if (count === 1) {
+      await redis.expire(key, REVISION_DAILY_TTL_SECONDS)
+    }
+    if (count === REVISION_STREAK_THRESHOLD) {
+      // Fire-and-forget — streak loss on crash is acceptable.
+      void updateStreak(studentId)
+      logger.info('streak.revision_threshold_reached', {
+        event: 'streak_revision_threshold_reached',
+        context: { studentId, count },
+      })
+    }
+    return count
+  } catch (err) {
+    logger.error('streak.trackRevision.error', { studentId, error: String(err) })
     return null
   }
 }

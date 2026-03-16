@@ -48,6 +48,8 @@ import { WEEKLY_DIGEST_QUEUE_NAME, registerWeeklyDigestJob } from "../jobs/weekl
 import { processWeeklyDigest } from "./services/weeklyDigestWorker.js";
 import { DISTRESS_NOTIFICATION_QUEUE_NAME } from "../jobs/distressNotification.js";
 import { processDistressNotification } from "./services/distressNotificationWorker.js";
+import { RETEACH_PLAN_QUEUE_NAME } from "../jobs/reteachPlan.js";
+import { processReteachPlan } from "./services/reteachPlanWorker.js";
 
 const argv = minimist(process.argv.slice(2));
 
@@ -223,6 +225,12 @@ export async function bootstrapWorker() {
     { connection: redisConnection, concurrency: 2 },
   );
 
+  const reteachPlanWorker = new Worker(
+    RETEACH_PLAN_QUEUE_NAME,
+    async (job: Job) => processReteachPlan(job as Job<import("../jobs/reteachPlan.js").ReteachPlanJobData>),
+    { connection: redisConnection, concurrency: 2 },
+  );
+
   // Debug events: active, stalled
     if (process.env.WORKER_DEBUG === '1') {
     worker.on('active', (job) => {
@@ -286,6 +294,7 @@ export async function bootstrapWorker() {
       await sm18Worker.close();
       await weeklyDigestWorker.close();
       await distressNotificationWorker.close();
+      await reteachPlanWorker.close();
 
       await prisma.workerLifecycle.update({
         where: { id: lifecycleId },

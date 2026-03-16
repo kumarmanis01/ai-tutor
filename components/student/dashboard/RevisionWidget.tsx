@@ -74,7 +74,7 @@ function RevisionRow({
       <button
         type="button"
         onClick={onStart}
-        className="flex-shrink-0 text-sm font-medium text-primary hover:underline"
+        className="flex-shrink-0 text-sm font-medium text-primary hover:underline min-h-[44px] flex items-center"
       >
         Start →
       </button>
@@ -155,20 +155,16 @@ export function RevisionWidget() {
     <section aria-label="Revisions due today" className="w-full max-w-full">
       <div className="rounded-xl border border-gray-200 bg-white p-4">
         <div className="flex items-center justify-between mb-3">
-          <h2 className="text-base font-semibold text-gray-900">
-            📚 Review Today ({totalDue} due)
-          </h2>
+          <Link href="/student/revisions" className="text-base font-semibold text-gray-900 hover:underline">
+            📚 {totalDue} cards due today
+          </Link>
         </div>
         <div className="divide-y divide-gray-100">
           {displayItems.map((item) => (
             <RevisionRow
               key={item.conceptId}
               item={item}
-              onStart={() =>
-                router.push(
-                  `/student/session/start?conceptId=${encodeURIComponent(item.conceptId)}&mode=revision`,
-                )
-              }
+              onStart={() => router.push('/student/revisions')}
             />
           ))}
         </div>
