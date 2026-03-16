@@ -217,7 +217,6 @@
   "overrides": {
     "cookie": "^0.7.2",
     "prisma": "6.19.1",
-    "@prisma/client": "6.19.1",
-    "@prisma/instrumentation": "6.19.1"
+    "@prisma/client": "6.19.1"
   }
 }
