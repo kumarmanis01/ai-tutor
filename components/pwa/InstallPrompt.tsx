@@ -68,6 +68,8 @@ export default function InstallPrompt() {
       setShowBanner(false);
       setShowIOSGuide(false);
     }, 300);
+    // Ask for push permission 3s after dismissing the install banner
+    setTimeout(() => void requestNotificationPermission(), 3000);
   }
 
   async function handleInstall() {
@@ -77,10 +79,44 @@ export default function InstallPrompt() {
     if (outcome === 'accepted') {
       setShowBanner(false);
       setVisible(false);
+      // Ask for push permission 3s after install accepted
+      setTimeout(() => void requestNotificationPermission(), 3000);
     } else {
       handleDismiss();
     }
     setDeferredPrompt(null);
+  }
+
+  async function requestNotificationPermission(): Promise<void> {
+    if (!('Notification' in window) || !('serviceWorker' in navigator)) return;
+    if (Notification.permission === 'granted') {
+      await subscribeUserToPush();
+      return;
+    }
+    if (Notification.permission === 'denied') return;
+    const permission = await Notification.requestPermission();
+    if (permission === 'granted') {
+      await subscribeUserToPush();
+    }
+  }
+
+  async function subscribeUserToPush(): Promise<void> {
+    try {
+      const vapidKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
+      if (!vapidKey) return;
+      const registration = await navigator.serviceWorker.ready;
+      const subscription = await registration.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: vapidKey,
+      });
+      await fetch('/api/push/subscribe', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ subscription }),
+      });
+    } catch {
+      // Best-effort — never affect UX
+    }
   }
 
   if (!showBanner && !showIOSGuide) return null;

@@ -52,12 +52,14 @@ export async function POST(request: Request) {
       },
     },
     update: {
-      keys: subscription.keys,
+      p256dh: subscription.keys.p256dh,
+      auth: subscription.keys.auth,
     },
     create: {
       userId: session.user.id,
       endpoint: subscription.endpoint,
-      keys: subscription.keys,
+      p256dh: subscription.keys.p256dh,
+      auth: subscription.keys.auth,
     },
   });
 

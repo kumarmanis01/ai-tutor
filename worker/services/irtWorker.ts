@@ -3,6 +3,10 @@ import { prisma } from '@/lib/prisma.js'
 import { logger } from '@/lib/logger.js'
 import { updateTheta } from '@/lib/ai/tutor/irt.js'
 import type { IRTUpdateJobData } from '@/jobs/irtUpdate'
+import { sendPushSafe } from '@/lib/push/send.js'
+import { PUSH_NOTIFICATIONS } from '@/lib/push/notifications.js'
+
+const MASTERY_THRESHOLD = 0.75
 
 export async function processIRTUpdate(job: Job<IRTUpdateJobData>): Promise<void> {
   const { studentId, conceptId, questionId, sessionId, isCorrect, itemDifficulty, studentAnswer } = job.data
@@ -90,6 +94,11 @@ export async function processIRTUpdate(job: Job<IRTUpdateJobData>): Promise<void
       thetaAfter: result.newTheta,
       masteryAfter: result.newMastery,
     })
+
+    // Check for chapter mastery milestone (best-effort, non-blocking)
+    if (result.newMastery >= MASTERY_THRESHOLD && current.masteryScore < MASTERY_THRESHOLD) {
+      void checkChapterMastery(studentId, conceptId)
+    }
   } catch (err) {
     logger.error('[irt-worker] process failed', {
       jobId: job.id,
@@ -98,5 +107,63 @@ export async function processIRTUpdate(job: Job<IRTUpdateJobData>): Promise<void
       error: String((err as any)?.message ?? err),
     })
     throw err
+  }
+}
+
+/**
+ * Checks if all concepts in the concept's chapter are now mastered.
+ * If so, sends a chapter_mastered push notification once.
+ * Uses a Redis key to avoid duplicate notifications.
+ */
+async function checkChapterMastery(studentId: string, conceptId: string): Promise<void> {
+  try {
+    // Find the chapter via concept → topic → chapter
+    const concept = await prisma.concept.findUnique({
+      where: { id: conceptId },
+      select: {
+        topic: {
+          select: {
+            chapterId: true,
+            chapter: { select: { id: true, name: true } },
+          },
+        },
+      },
+    })
+    const chapter = concept?.topic?.chapter
+    if (!chapter) return
+
+    // All concept IDs in this chapter
+    const allConcepts = await prisma.concept.findMany({
+      where: { topic: { chapterId: chapter.id } },
+      select: { id: true },
+    })
+    if (allConcepts.length === 0) return
+
+    const conceptIds = allConcepts.map((c) => c.id)
+
+    // How many does this student have mastered?
+    const masteredCount = await prisma.studentConceptState.count({
+      where: {
+        studentId,
+        conceptId: { in: conceptIds },
+        masteryScore: { gte: MASTERY_THRESHOLD },
+      },
+    })
+
+    if (masteredCount < conceptIds.length) return
+
+    // Guard: use Redis to prevent duplicate chapter_mastered notifications
+    const { getRedis } = await import('@/lib/redis.js')
+    const redis = getRedis()
+    if (redis) {
+      const notifiedKey = `push:chapter_mastered:${studentId}:${chapter.id}`
+      const alreadySent = await redis.get(notifiedKey)
+      if (alreadySent) return
+      await redis.set(notifiedKey, '1', 'EX', 365 * 24 * 60 * 60) // 1 year TTL
+    }
+
+    await sendPushSafe(studentId, PUSH_NOTIFICATIONS.chapter_mastered(chapter.name))
+  } catch {
+    // Best-effort — never affect the main IRT pipeline
   }
 }

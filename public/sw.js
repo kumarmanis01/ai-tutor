@@ -91,3 +91,43 @@ async function evictOldEntries(cache) {
   const toDelete = keys.slice(0, keys.length - MAX_ENTRIES);
   await Promise.all(toDelete.map((k) => cache.delete(k)));
 }
+
+// ── Push notifications ────────────────────────────────────────────────────────
+
+self.addEventListener('push', (event) => {
+  if (!event.data) return;
+  let data;
+  try {
+    data = JSON.parse(event.data.text());
+  } catch {
+    return;
+  }
+  event.waitUntil(
+    self.registration.showNotification(data.title, {
+      body: data.body,
+      icon: data.icon || '/icons/icon-192.png',
+      badge: data.badge || '/icons/icon-72.png',
+      tag: data.tag,
+      requireInteraction: data.requireInteraction || false,
+      data: { url: data.url || '/dashboard' },
+    })
+  );
+});
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  event.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
+      // If app is already open, focus it and navigate
+      for (const client of clientList) {
+        if (client.url.includes(self.location.origin) && 'focus' in client) {
+          return client.focus().then(() => client.navigate(event.notification.data.url));
+        }
+      }
+      // Otherwise open a new window
+      if (clients.openWindow) {
+        return clients.openWindow(event.notification.data.url);
+      }
+    })
+  );
+});
