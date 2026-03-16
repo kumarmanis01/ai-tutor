@@ -48,7 +48,8 @@ describe('Full hydration flow: syllabus -> notes -> questions -> assembleTest', 
       topicDef: { findFirst: jest.fn().mockResolvedValue(null), create: jest.fn().mockResolvedValue({ id: 'topic-1', name: 'Integers' }) },
       hydrationJob: { update: jest.fn().mockResolvedValue({}) },
       executionJob: { findFirst: jest.fn().mockResolvedValue({ id: 'exec-1', status: 'pending' }), update: jest.fn().mockResolvedValue({}) },
-      jobExecutionLog: { create: jest.fn().mockResolvedValue({}) }
+      jobExecutionLog: { create: jest.fn().mockResolvedValue({}) },
+      aIContentLog: { update: jest.fn().mockResolvedValue({}), create: jest.fn().mockResolvedValue({ id: 'log-1' }) },
     }
     ;(prisma.$transaction as jest.Mock).mockImplementation(async (cb: any) => cb(tx))
 

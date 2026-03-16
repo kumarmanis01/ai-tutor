@@ -25,6 +25,8 @@ import { CONTENT_HYDRATION_QUEUE } from '@/lib/queues/constants';
 const TEST_TIMEOUT = 5 * 60 * 1000; // 5 minutes
 const _POLL_INTERVAL = 5000; // 5 seconds (prefixed to indicate intentionally unused)
 
+jest.setTimeout(TEST_TIMEOUT);
+
 describe('HydrateAll End-to-End Integration Test', () => {
   let rootJobId: string;
   let testSubjectId: string;

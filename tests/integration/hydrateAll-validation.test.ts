@@ -135,7 +135,70 @@ const VALID_SYLLABUS = {
 };
 
 // ============================================================
-// Invalid / Edge-case Fixtures
+// NoteSchema-compatible fixtures (for validateOrThrow which uses Zod NoteSchema)
+// Shape: { title, concept, explanation, example, keyPoints: string[], commonMistakes: string[] }
+// ============================================================
+
+const VALID_NOTE_NS = {
+  title: 'Photosynthesis - The Process of Life',
+  concept: 'Photosynthesis is the biological process by which green plants convert light energy into chemical energy stored as glucose, occurring in chloroplasts using sunlight, water, and carbon dioxide.',
+  explanation: 'In the light-dependent reactions, chlorophyll absorbs sunlight and uses this energy to split water molecules, releasing oxygen and producing ATP and NADPH. The Calvin Cycle in the stroma then uses ATP and NADPH to fix carbon dioxide into a three-carbon sugar through a series of enzyme-catalyzed reactions, which is ultimately converted to glucose.',
+  example: 'A leaf submerged in water and placed under sunlight produces visible oxygen bubbles, directly demonstrating that water is split during the light-dependent reactions of photosynthesis.',
+  keyPoints: ['Occurs in chloroplasts', 'Requires sunlight, water, and CO2', 'Produces glucose and oxygen', 'Two stages: light-dependent reactions and Calvin Cycle'],
+  commonMistakes: ['Confusing photosynthesis with cellular respiration', 'Thinking only leaves can photosynthesize'],
+};
+
+const VALID_NOTE_NS_2 = {
+  title: "Newton's Laws of Motion",
+  concept: "Newton's three laws describe the fundamental relationships between forces and the motion of objects, forming the foundation of classical mechanics.",
+  explanation: "The First Law (Inertia) states an object at rest stays at rest and an object in motion continues at constant velocity unless acted on by a net external force. The Second Law states F = ma, quantifying how force, mass, and acceleration relate. The Third Law states every action force has an equal and opposite reaction force acting on a different body.",
+  example: "A book on a table remains stationary because gravity and the table's normal force balance (First Law). Pushing a lighter shopping cart accelerates it more than a heavier one with the same force (Second Law). A rocket rises as burning fuel expelled downward creates an equal upward thrust (Third Law).",
+  keyPoints: ['Inertia: objects resist changes in motion', 'F = ma relates force, mass, and acceleration', 'Action-reaction forces are equal, opposite, on different bodies', 'Net force determines acceleration, not individual forces'],
+  commonMistakes: ['Thinking heavier objects fall faster in a vacuum', 'Believing action-reaction force pairs cancel each other out'],
+};
+
+const VALID_NOTE_NS_3 = {
+  title: 'Understanding Fractions',
+  concept: 'A fraction represents a part of a whole, written as a numerator over a denominator, where the denominator is the number of equal parts and the numerator is how many parts are taken.',
+  explanation: 'Fractions can be proper (numerator less than denominator), improper (numerator greater than or equal), or mixed numbers. To add fractions with different denominators, first find the Least Common Denominator (LCD). To simplify, divide both numerator and denominator by their Greatest Common Divisor (GCD). Equivalent fractions represent the same value with different numbers.',
+  example: 'If a pizza is cut into 8 equal slices and you eat 3 slices, you ate 3/8 of the pizza. To add 1/2 + 1/4, convert to 2/4 + 1/4 = 3/4.',
+  keyPoints: ['Numerator: how many parts you have', 'Denominator: total equal parts in the whole', 'Equivalent fractions represent the same value', 'Find LCD before adding or subtracting fractions'],
+  commonMistakes: ["Adding numerators and denominators directly (e.g. 1/2 + 1/3 ≠ 2/5)", 'Forgetting to simplify the final answer to lowest terms'],
+};
+
+// NoteSchema-compatible placeholder (triggers PlaceholderContentError)
+const PLACEHOLDER_NOTE_NS = {
+  title: 'Introduction to Genetics',
+  concept: 'Genetics is the study of heredity and genetic variation in living organisms, examining how traits are passed from parents to offspring.',
+  explanation: 'This topic will be discussed in detail in the upcoming classes. Content coming soon for this important unit covering genes, alleles, Mendelian inheritance, and modern genetic concepts.',
+  example: 'Examples will be provided once content is finalized to illustrate dominant and recessive traits.',
+  keyPoints: ['DNA carries genetic information in sequences', 'Genes are segments of DNA encoding proteins', 'Alleles are different versions of the same gene'],
+  commonMistakes: ['Confusing genotype (genetic makeup) with phenotype (observable traits)'],
+};
+
+// NoteSchema-compatible thin content (triggers SemanticWeaknessError, combined text < 200 chars)
+const THIN_CONTENT_NS = {
+  title: 'Cell',
+  concept: 'Cells are the unit.',
+  explanation: 'Very short here.',
+  example: 'N/A.',
+  keyPoints: ['Has membrane', 'Has nucleus', 'Has DNA'],
+  commonMistakes: [],
+};
+
+// NoteSchema-compatible with language field (triggers ContextMismatchError)
+const LANGUAGE_MISMATCH_NS = {
+  title: 'Photosynthesis Notes',
+  language: 'hi',
+  concept: 'Photosynthesis is the process by which green plants convert light energy into chemical energy stored as glucose in chloroplasts.',
+  explanation: 'Plants absorb sunlight using chlorophyll and use it to split water molecules, releasing oxygen and producing ATP and NADPH. The Calvin cycle then uses these energy carriers to fix carbon dioxide into glucose through enzyme-catalyzed reactions in the stroma of chloroplasts.',
+  example: 'Aquatic plants like Elodea placed in sunlight produce visible oxygen bubbles, demonstrating oxygen release during the light-dependent reactions of photosynthesis.',
+  keyPoints: ['Chlorophyll absorbs light energy from the sun', 'Water molecules are split releasing oxygen', 'Carbon dioxide is fixed into glucose in Calvin Cycle', 'Two stages: light-dependent reactions and dark reactions'],
+  commonMistakes: ['Confusing photosynthesis with cellular respiration'],
+};
+
+// ============================================================
+// Invalid / Edge-case Fixtures (old-format, used by validateNotesShape tests)
 // ============================================================
 
 const PLACEHOLDER_NOTES = {
@@ -292,7 +355,7 @@ describe('HydrateAll Content Validation (Container-based)', () => {
 
   describe('Notes Content Validation', () => {
     it('should accept valid notes with sections structure', () => {
-      const result = validateOrThrow(VALID_NOTES_SECTIONS, {
+      const result = validateOrThrow(VALID_NOTE_NS, {
         jobType: 'notes',
         language: 'en',
         subject: 'Science',
@@ -303,7 +366,7 @@ describe('HydrateAll Content Validation (Container-based)', () => {
     });
 
     it('should accept valid notes with paragraphs structure', () => {
-      const result = validateOrThrow(VALID_NOTES_PARAGRAPHS, {
+      const result = validateOrThrow(VALID_NOTE_NS_2, {
         jobType: 'notes',
         language: 'en',
         subject: 'Physics',
@@ -314,7 +377,7 @@ describe('HydrateAll Content Validation (Container-based)', () => {
     });
 
     it('should accept valid notes with explanation structure', () => {
-      const result = validateOrThrow(VALID_NOTES_EXPLANATION, {
+      const result = validateOrThrow(VALID_NOTE_NS_3, {
         jobType: 'notes',
         language: 'en',
         subject: 'Mathematics',
@@ -326,35 +389,35 @@ describe('HydrateAll Content Validation (Container-based)', () => {
 
     it('should reject notes with placeholder content', () => {
       expect(() =>
-        validateOrThrow(PLACEHOLDER_NOTES, {
+        validateOrThrow(PLACEHOLDER_NOTE_NS, {
           jobType: 'notes',
           language: 'en',
           subject: 'Science',
-          topic: 'Placeholder',
+          topic: 'Genetics',
           grade: 10,
         })
       ).toThrow(PlaceholderContentError);
     });
 
-    it('should reject notes with empty sections', () => {
+    it('should reject notes with empty/thin content (SemanticWeaknessError)', () => {
       expect(() =>
-        validateOrThrow(EMPTY_SECTIONS_NOTES, {
+        validateOrThrow(THIN_CONTENT_NS, {
           jobType: 'notes',
           language: 'en',
           subject: 'Science',
-          topic: 'Empty',
+          topic: 'Cell',
           grade: 8,
         })
       ).toThrow(SemanticWeaknessError);
     });
 
-    it('should reject notes with too-short sections', () => {
+    it('should reject notes with too-short content', () => {
       expect(() =>
-        validateOrThrow(SHORT_SECTION_NOTES, {
+        validateOrThrow(THIN_CONTENT_NS, {
           jobType: 'notes',
           language: 'en',
           subject: 'Science',
-          topic: 'Short',
+          topic: 'Cell',
           grade: 7,
         })
       ).toThrow(SemanticWeaknessError);
@@ -372,7 +435,7 @@ describe('HydrateAll Content Validation (Container-based)', () => {
 
     it('should detect language mismatch in notes', () => {
       expect(() =>
-        validateOrThrow(LANGUAGE_MISMATCH_NOTES, {
+        validateOrThrow(LANGUAGE_MISMATCH_NS, {
           jobType: 'notes',
           language: 'en',
           subject: 'Science',
@@ -628,11 +691,11 @@ describe('HydrateAll Content Validation (Container-based)', () => {
         audience: 'Grade 10 students',
       };
 
-      // Validate the shape matches what workers expect
+      // Validate the old-format shape matches what notesWorker expects
       expect(validateNotesShape(reconstructed)).toBe(true);
 
-      // Validate via central validator
-      const valid = validateOrThrow(reconstructed, {
+      // Validate via central validator using NoteSchema-compliant format
+      const valid = validateOrThrow(VALID_NOTE_NS, {
         jobType: 'notes',
         language: 'en',
         subject: 'Science',
@@ -861,11 +924,11 @@ describe('HydrateAll Content Validation (Container-based)', () => {
 
       // Simulate what the notesWorker does on validation failure
       try {
-        validateOrThrow(PLACEHOLDER_NOTES, {
+        validateOrThrow(PLACEHOLDER_NOTE_NS, {
           jobType: 'notes',
           language: 'en',
           subject: 'Science',
-          topic: 'Placeholder',
+          topic: 'Genetics',
           grade: 10,
         });
         // Should not reach here
@@ -952,7 +1015,7 @@ describe('HydrateAll Content Validation (Container-based)', () => {
       });
 
       try {
-        validateOrThrow(SHORT_SECTION_NOTES, {
+        validateOrThrow(THIN_CONTENT_NS, {
           jobType: 'notes',
           language: 'en',
         });
@@ -976,7 +1039,7 @@ describe('HydrateAll Content Validation (Container-based)', () => {
         data: { status: 'running', attempts: 2 },
       });
 
-      const result = validateOrThrow(VALID_NOTES_SECTIONS, {
+      const result = validateOrThrow(VALID_NOTE_NS, {
         jobType: 'notes',
         language: 'en',
         subject: 'Science',
@@ -1043,7 +1106,7 @@ describe('HydrateAll Content Validation (Container-based)', () => {
       const validationResults = await Promise.all([
         // Notes validation
         Promise.resolve().then(() =>
-          validateOrThrow(VALID_NOTES_SECTIONS, {
+          validateOrThrow(VALID_NOTE_NS, {
             jobType: 'notes',
             language: 'en',
             subject: 'Science',
@@ -1063,7 +1126,7 @@ describe('HydrateAll Content Validation (Container-based)', () => {
         ),
         // Another notes validation
         Promise.resolve().then(() =>
-          validateOrThrow(VALID_NOTES_PARAGRAPHS, {
+          validateOrThrow(VALID_NOTE_NS_2, {
             jobType: 'notes',
             language: 'en',
             subject: 'Physics',
@@ -1080,7 +1143,7 @@ describe('HydrateAll Content Validation (Container-based)', () => {
       const results = await Promise.allSettled([
         // Valid content
         Promise.resolve().then(() =>
-          validateOrThrow(VALID_NOTES_SECTIONS, {
+          validateOrThrow(VALID_NOTE_NS, {
             jobType: 'notes',
             language: 'en',
             subject: 'Science',
@@ -1090,7 +1153,7 @@ describe('HydrateAll Content Validation (Container-based)', () => {
         ),
         // Invalid: placeholder
         Promise.resolve().then(() =>
-          validateOrThrow(PLACEHOLDER_NOTES, {
+          validateOrThrow(PLACEHOLDER_NOTE_NS, {
             jobType: 'notes',
             language: 'en',
           })
@@ -1126,7 +1189,7 @@ describe('HydrateAll Content Validation (Container-based)', () => {
 function validateSyllabusShapeLocal(raw: any): boolean {
   if (!raw || typeof raw !== 'object') return false;
   const { chapters } = raw;
-  if (!Array.isArray(chapters)) return false;
+  if (!Array.isArray(chapters) || chapters.length === 0) return false;
   for (const ch of chapters) {
     if (!ch || typeof ch !== 'object') return false;
     if (!ch.title || typeof ch.title !== 'string') return false;
