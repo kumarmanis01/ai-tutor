@@ -25,6 +25,7 @@ import { useOnboarding } from '@/context/OnboardingProvider';
 import { LANGUAGES, _DIFFICULTY_LEVELS } from '@/components/CascadingFilters';
 import Link from 'next/link';
 import ParentAccessCard from '@/components/Profile/ParentAccessCard';
+import { useState } from 'react';
 
 export default function ProfilePage() {
   const { data: session } = useSession();
@@ -33,6 +34,10 @@ export default function ProfilePage() {
   const { open } = useOnboarding();
   const router = useRouter();
   const badges = extractBadges(profile as User | null);
+  const [deletionConfirmText, setDeletionConfirmText] = useState('');
+  const [deletionPending, setDeletionPending] = useState(false);
+  const [deletionRequested, setDeletionRequested] = useState(false);
+  const [showDeletionDialog, setShowDeletionDialog] = useState(false);
 
   if (!session) return <div className="p-6">You are not signed in.</div>;
   if (loading) return <div className="p-6">Loading...</div>;
@@ -170,6 +175,79 @@ export default function ProfilePage() {
             </div>
 
             <ParentAccessCard />
+
+            {/* Privacy & Data */}
+            <div className="bg-gray-50 dark:bg-gray-800 p-6 rounded-lg border border-red-200 dark:border-red-900 space-y-3">
+              <h3 className="font-semibold text-lg text-red-700 dark:text-red-400">Privacy &amp; Data</h3>
+              <p className="text-sm text-gray-600 dark:text-gray-300">
+                Delete my account and data
+              </p>
+              <p className="text-xs text-gray-500 dark:text-gray-400">
+                Permanently deletes your account and personal data within 30 days.
+                Learning analytics are kept anonymously.
+              </p>
+              {deletionRequested ? (
+                <p className="text-sm text-green-700 dark:text-green-400 font-medium">
+                  Your deletion request has been submitted. You will receive a confirmation email.
+                </p>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setShowDeletionDialog(true)}
+                  className="px-4 py-2 border border-red-500 text-red-600 rounded hover:bg-red-50 dark:hover:bg-red-900/20 text-sm"
+                >
+                  Request account deletion
+                </button>
+              )}
+              {showDeletionDialog && !deletionRequested && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+                  <div className="bg-white dark:bg-gray-800 rounded-xl p-6 max-w-sm w-full shadow-xl mx-4">
+                    <h4 className="font-semibold text-lg mb-2 text-gray-900 dark:text-gray-100">
+                      This cannot be undone
+                    </h4>
+                    <p className="text-sm text-gray-600 dark:text-gray-300 mb-4">
+                      Type <strong>DELETE</strong> to confirm account deletion:
+                    </p>
+                    <input
+                      type="text"
+                      value={deletionConfirmText}
+                      onChange={(e) => setDeletionConfirmText(e.target.value)}
+                      placeholder="DELETE"
+                      className="w-full border border-gray-300 dark:border-gray-600 rounded px-3 py-2 mb-4 text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                    />
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => { setShowDeletionDialog(false); setDeletionConfirmText(''); }}
+                        className="flex-1 px-4 py-2 border border-gray-300 rounded text-sm hover:bg-gray-50 dark:hover:bg-gray-700"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="button"
+                        disabled={deletionConfirmText !== 'DELETE' || deletionPending}
+                        onClick={async () => {
+                          setDeletionPending(true);
+                          try {
+                            const res = await fetch('/api/student/account/deletion-request', { method: 'POST' });
+                            if (res.ok) {
+                              setDeletionRequested(true);
+                              setShowDeletionDialog(false);
+                              router.push('/login?message=deletion-requested');
+                            }
+                          } finally {
+                            setDeletionPending(false);
+                          }
+                        }}
+                        className="flex-1 px-4 py-2 bg-red-600 text-white rounded text-sm hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {deletionPending ? 'Submitting…' : 'Confirm deletion'}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         </main>
 

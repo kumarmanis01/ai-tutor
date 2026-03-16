@@ -109,6 +109,7 @@ model User {
   parentProfile           ParentProfile?
   doubtEscalations        DoubtEscalation[]
   sessionQuestionFlags    SessionQuestionFlag[]
+  deletionRequest         DeletionRequest?
 }
 
 model PaymentOrder {
@@ -2309,6 +2310,20 @@ model ParentProfile {
   userId    String    @unique
   createdAt DateTime  @default(now())
   user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+/// DPDP right-to-erasure: one row per user, created on deletion request.
+model DeletionRequest {
+  id              String    @id @default(cuid())
+  userId          String    @unique
+  requestedAt     DateTime  @default(now())
+  pseudonymisedAt DateTime?
+  purgedAt        DateTime?
+  retainAuditLog  Boolean   @default(true)
+  user            User      @relation(fields: [userId], references: [id])
+
+  @@index([pseudonymisedAt])
+  @@index([purgedAt])
 }
 
 /// Doubt escalation: created when a student asks the same concept question

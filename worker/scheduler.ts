@@ -23,7 +23,8 @@ import { runRecoveryCheck } from '../lib/failureRecovery.js'
 import { precomputeReadiness } from './jobs/precomputeReadiness.js';
 import { expireStaleTasks } from '../lib/dailyHabit.js';
 import { hydrationReconciler } from './services/hydrationReconciler.js';
-import { runDailyCostReport } from './services/costReportingWorker.js';
+import { runDailyCostReport } from './services/costReportingWorker.js'
+import { runDataDeletionCycle } from './services/dataDeletionWorker.js';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
@@ -34,6 +35,7 @@ const WEEKLY_INTERVAL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
 const DAILY_MAINTENANCE_INTERVAL_MS = 24 * 60 * 60 * 1000; // 24 hours
 const READINESS_PRECOMPUTE_INTERVAL_MS = 24 * 60 * 60 * 1000; // 24 hours
 const COST_REPORT_INTERVAL_MS = 24 * 60 * 60 * 1000; // 24 hours
+const DATA_DELETION_INTERVAL_MS = 24 * 60 * 60 * 1000; // 24 hours
 
 /**
  * Calculate milliseconds until next scheduled time (2 AM UTC)
@@ -205,6 +207,22 @@ function msUntilNextWeeklyRun(targetDay: number, targetHour: number): number {
 }
 
 /**
+ * Nightly DPDP data deletion (02:00 AM IST = 20:30 UTC)
+ */
+async function runDataDeletionJob() {
+  try {
+    logger.info('scheduler.dataDeletion.starting')
+    const result = await runDataDeletionCycle()
+    logger.info('scheduler.dataDeletion.completed', result)
+  } catch (error) {
+    logger.error('scheduler.dataDeletion.error', {
+      error: error instanceof Error ? error.message : String(error),
+    })
+  }
+  setTimeout(runDataDeletionJob, DATA_DELETION_INTERVAL_MS)
+}
+
+/**
  * Start the scheduler
  */
 export async function startScheduler() {
@@ -243,6 +261,11 @@ export async function startScheduler() {
   setTimeout(runWeeklyParentJob, delayWeeklyParent);
   setTimeout(runReadinessPrecompute, delayReadinessPrecompute);
   setTimeout(runCostReportJob, delayCostReport);
+
+  // Data deletion: 02:00 AM IST = 20:30 UTC
+  const delayDataDeletion = msUntilNextRun(20) + 30 * 60 * 1000
+  logger.info('scheduler.scheduled.dataDeletion', { firstRun: new Date(Date.now() + delayDataDeletion).toISOString() })
+  setTimeout(runDataDeletionJob, delayDataDeletion);
 
   logger.info('scheduler.started');
 }
