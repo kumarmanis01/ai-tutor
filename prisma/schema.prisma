@@ -1391,9 +1391,9 @@ model AIContentLog {
 }
 
 model AITutorTurnLog {
-  id               String   @id @default(cuid())
+  id               String      @id @default(cuid())
   sessionId        String
-  callType         String   // 'tutor:teach' | 'tutor:hint' | 'tutor:eval'
+  callType         String      // 'tutor:teach' | 'tutor:hint' | 'tutor:eval'
   model            String
   inputTokens      Int
   outputTokens     Int
@@ -1401,15 +1401,27 @@ model AITutorTurnLog {
   latencyMs        Int
   tag              String?
   stage            String?
-  safetyFlagged    Boolean  @default(false)
-  cached           Boolean  @default(false)
-  ragChunksUsed    String[] @default([])
+  safetyFlagged    Boolean     @default(false)
+  cached           Boolean     @default(false)
+  ragChunksUsed    String[]    @default([])
   frustrationScore Float?
-  createdAt        DateTime @default(now())
+  qualityFlag      QualityFlag?
+  qualityNote      String?
+  createdAt        DateTime    @default(now())
 
   @@index([sessionId])
   @@index([callType])
   @@index([createdAt])
+  @@index([qualityFlag])
+}
+
+enum QualityFlag {
+  HALLUCINATION
+  INCORRECT_EXPLANATION
+  POOR_PEDAGOGY
+  OFF_TOPIC
+  DIRECT_ANSWER_GIVEN
+  SAFETY_CONCERN
 }
 
 model SafetyEvent {

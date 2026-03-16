@@ -28,6 +28,11 @@ export interface TrendingDoubt {
   studentCount: number
 }
 
+export interface QualityFlagSummary {
+  flag: string
+  count: number
+}
+
 export interface CostReportResult {
   date: string         // ISO date string (YYYY-MM-DD) for the reported day (IST)
   sessions: number
@@ -35,6 +40,7 @@ export interface CostReportResult {
   costPerSession: number
   alertSent: boolean
   trendingDoubts: TrendingDoubt[]
+  qualityFlags?: QualityFlagSummary[]
 }
 
 /**
@@ -229,5 +235,39 @@ export async function runDailyCostReport(): Promise<CostReportResult> {
     }
   }
 
-  return { date: dateLabel, sessions, totalCostUsd, costPerSession, alertSent, trendingDoubts }
+  // Weekly quality flag summary (only on Sunday runs, day 0)
+  const dayOfWeekIst = new Date(Date.now() + (5 * 60 + 30) * 60 * 1000).getUTCDay()
+  let qualityFlags: QualityFlagSummary[] | undefined
+  if (dayOfWeekIst === 0) {
+    const sevenDaysAgoForQuality = new Date(start.getTime() - 6 * 24 * 60 * 60 * 1000)
+    try {
+      type FlagRow = { qualityFlag: string; _count: number }
+      const flagGroups = await prisma.aITutorTurnLog.groupBy({
+        by: ['qualityFlag'],
+        where: {
+          createdAt: { gte: sevenDaysAgoForQuality, lt: end },
+          qualityFlag: { not: null },
+        },
+        _count: { qualityFlag: true },
+      })
+      qualityFlags = flagGroups.map((g) => ({
+        flag: g.qualityFlag as string,
+        count: g._count.qualityFlag,
+      }))
+      if (qualityFlags.length > 0) {
+        const directAnswerCount = qualityFlags.find((f) => f.flag === 'DIRECT_ANSWER_GIVEN')?.count ?? 0
+        const summaryLines = qualityFlags.map((f) => `${f.flag}: ${f.count}`).join(', ')
+        logger.warn('costReportingWorker.qualityFlags', { summaryLines, directAnswerCount })
+        if (directAnswerCount > 0) {
+          logger.error('costReportingWorker.CRITICAL_DIRECT_ANSWER_GIVEN', { count: directAnswerCount })
+        }
+      }
+    } catch (err) {
+      logger.error('costReportingWorker.qualityFlagsFailed', {
+        error: err instanceof Error ? err.message : String(err),
+      })
+    }
+  }
+
+  return { date: dateLabel, sessions, totalCostUsd, costPerSession, alertSent, trendingDoubts, qualityFlags }
 }
