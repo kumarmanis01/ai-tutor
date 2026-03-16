@@ -8,7 +8,7 @@ jest.mock('@/lib/slug', () => ({ toSlug: (s: string) => s.toLowerCase().replace(
 jest.mock('@/lib/getNextVersion', () => ({ getNextVersion: jest.fn().mockResolvedValue(2) }))
 jest.mock('@/lib/prisma', () => ({
   prisma: {
-    hydrationJob: { updateMany: jest.fn(), findUnique: jest.fn(), update: jest.fn() },
+    hydrationJob: { updateMany: jest.fn(), findUnique: jest.fn(), findFirst: jest.fn(), update: jest.fn(), create: jest.fn() },
     systemSetting: { findUnique: jest.fn() },
     chapterDef: { findFirst: jest.fn() },
     subjectDef: { findUnique: jest.fn() },
@@ -67,6 +67,8 @@ describe('Full hydration flow: syllabus -> notes -> questions -> assembleTest', 
     const notesJson = { title: 'Integers - Notes', content: { overview: 'Basics of integers' } }
     ;(callLLM as jest.Mock).mockResolvedValueOnce({ content: JSON.stringify(notesJson) })
 
+    ;(prisma.hydrationJob.findFirst as jest.Mock).mockResolvedValue(null)
+    ;(prisma.hydrationJob.create as jest.Mock).mockResolvedValue({ id: 'job-2' })
     ;(prisma.topicNote.findFirst as jest.Mock).mockResolvedValue(null)
     ;(prisma.topicNote.create as jest.Mock).mockResolvedValue({ id: 'note-1' })
 
