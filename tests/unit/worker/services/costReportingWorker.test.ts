@@ -4,16 +4,25 @@ import { getYesterdayIstBounds, runDailyCostReport } from '@/worker/services/cos
 const mockFindMany = jest.fn()
 const mockAggregate = jest.fn()
 const mockUpsert = jest.fn()
+const mockQueryRaw = jest.fn()
+const mockMetricFindMany = jest.fn()
+const mockMetricFindFirst = jest.fn()
+const mockGroupBy = jest.fn()
 
 jest.mock('@/lib/prisma', () => ({
   prisma: {
     aITutorTurnLog: {
       findMany: (...a: any[]) => mockFindMany(...a),
       aggregate: (...a: any[]) => mockAggregate(...a),
+      groupBy: (...a: any[]) => mockGroupBy(...a),
     },
     dailyCostMetric: {
       upsert: (...a: any[]) => mockUpsert(...a),
+      findMany: (...a: any[]) => mockMetricFindMany(...a),
+      findFirst: (...a: any[]) => mockMetricFindFirst(...a),
     },
+    concept: { findMany: jest.fn().mockResolvedValue([]) },
+    $queryRaw: (...a: any[]) => mockQueryRaw(...a),
   },
 }))
 
@@ -26,6 +35,15 @@ beforeEach(() => {
   mockAggregate.mockReset()
   mockUpsert.mockReset()
   mockSendEmail.mockReset()
+  mockQueryRaw.mockReset()
+  mockMetricFindMany.mockReset()
+  mockMetricFindFirst.mockReset()
+  mockGroupBy.mockReset()
+  // Safe defaults for new parallel calls
+  mockQueryRaw.mockResolvedValue([{ conceptId: null, studentCount: BigInt(0) }])
+  mockMetricFindMany.mockResolvedValue([])
+  mockMetricFindFirst.mockResolvedValue(null)
+  mockGroupBy.mockResolvedValue([])
   delete process.env.ONCALL_EMAIL
 })
 
@@ -116,8 +134,8 @@ describe('runDailyCostReport', () => {
     expect(mockSendEmail).toHaveBeenCalledTimes(1)
     const emailArgs = mockSendEmail.mock.calls[0][0]
     expect(emailArgs.to).toBe('oncall@example.com')
-    expect(emailArgs.subject).toMatch(/Spinzy AI cost alert/)
-    expect(emailArgs.subject).toMatch(/₹/)
+    expect(emailArgs.subject).toMatch(/⚠️/)
+    expect(emailArgs.subject).toMatch(/cost|spike|ceiling|outage/i)
   })
 
   test('alertSent=false when ONCALL_EMAIL is not set even if threshold exceeded', async () => {

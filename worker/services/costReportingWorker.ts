@@ -21,6 +21,10 @@ const USD_TO_INR = 84
 
 // Alert threshold: $0.003 per session (~₹0.25)
 const ALERT_THRESHOLD_USD = 0.003
+// Hard daily ceiling: $15 USD
+const DAILY_CEILING_USD = 15
+// Cache hit rate target
+const CACHE_HIT_RATE_TARGET = 0.55
 
 export interface TrendingDoubt {
   conceptId: string
@@ -170,8 +174,8 @@ export async function runDailyCostReport(): Promise<CostReportResult> {
 
   const sevenDaysAgo = new Date(start.getTime() - 6 * 24 * 60 * 60 * 1000)
 
-  // Count distinct sessions, sum costs, and check trending escalations in parallel
-  const [distinctSessionRows, agg, trendingDoubts] = await Promise.all([
+  // Count distinct sessions, sum costs, trending escalations, rolling avg history, cache stats in parallel
+  const [distinctSessionRows, agg, trendingDoubts, last7Metrics, cacheStats, yesterdayMetric] = await Promise.all([
     prisma.aITutorTurnLog.findMany({
       where: { createdAt: { gte: start, lt: end } },
       distinct: ['sessionId'],
@@ -182,6 +186,23 @@ export async function runDailyCostReport(): Promise<CostReportResult> {
       _sum: { costUsd: true },
     }),
     getTrendingEscalations(sevenDaysAgo),
+    prisma.dailyCostMetric.findMany({
+      where: { date: { gte: sevenDaysAgo, lt: start } },
+      orderBy: { date: 'desc' },
+      take: 7,
+    }),
+    // Cache hit rate: count cached=true vs total for yesterday
+    prisma.$queryRaw<[{ total: bigint; cached: bigint }]>`
+      SELECT COUNT(*)::bigint AS total,
+             COUNT(*) FILTER (WHERE cached = true)::bigint AS cached
+      FROM "AITutorTurnLog"
+      WHERE "createdAt" >= ${start} AND "createdAt" < ${end}
+    `,
+    // Previous day metric for dropout detection
+    prisma.dailyCostMetric.findFirst({
+      where: { date: { gte: sevenDaysAgo, lt: start } },
+      orderBy: { date: 'desc' },
+    }),
   ])
 
   const sessions = distinctSessionRows.length
@@ -195,11 +216,49 @@ export async function runDailyCostReport(): Promise<CostReportResult> {
     update: { sessions, totalCostUsd, costPerSession },
   })
 
-  logger.info('costReportingWorker.report', { date: dateLabel, sessions, totalCostUsd, costPerSession, trendingDoubtCount: trendingDoubts.length })
+  // Rolling average (need ≥3 data points)
+  const rollingAvg =
+    last7Metrics.length >= 3
+      ? last7Metrics.reduce((s, d) => s + d.costPerSession, 0) / last7Metrics.length
+      : null
 
-  // Alert if cost per session exceeds threshold
+  // Cache hit rate
+  const totalTurns = Number(cacheStats[0]?.total ?? 0)
+  const cachedTurns = Number(cacheStats[0]?.cached ?? 0)
+  const cacheHitRate = totalTurns > 0 ? cachedTurns / totalTurns : null
+
+  // Anomaly detection
+  const isCostThreshold = costPerSession > ALERT_THRESHOLD_USD
+  const isRollingAnomaly = rollingAvg !== null && costPerSession > rollingAvg * 1.5
+  const isCeiling = totalCostUsd > DAILY_CEILING_USD
+  const isDropout = sessions === 0 && (yesterdayMetric?.sessions ?? 0) > 10
+  const isCacheWarn = cacheHitRate !== null && cacheHitRate < CACHE_HIT_RATE_TARGET
+  const needsAlert = isCostThreshold || isRollingAnomaly || isCeiling || isDropout
+
+  // Build alert subject
+  let alertSubject = `⚠️ Spinzy AI cost alert: ₹${(costPerSession * USD_TO_INR).toFixed(2)} per session on ${dateLabel}`
+  if (isDropout) {
+    alertSubject = `⚠️ Zero sessions — possible outage on ${dateLabel}`
+  } else if (isCeiling) {
+    alertSubject = `⚠️ Daily cost ceiling reached: $${totalCostUsd.toFixed(2)} on ${dateLabel}`
+  } else if (isRollingAnomaly && rollingAvg) {
+    const multiple = (costPerSession / rollingAvg).toFixed(1)
+    alertSubject = `⚠️ Cost spike: ${multiple}× above 7-day average on ${dateLabel}`
+  }
+
+  logger.info('costReportingWorker.report', {
+    date: dateLabel, sessions, totalCostUsd, costPerSession,
+    rollingAvg, cacheHitRate, trendingDoubtCount: trendingDoubts.length,
+    anomalies: { isCostThreshold, isRollingAnomaly, isCeiling, isDropout },
+  })
+
+  if (isCacheWarn) {
+    logger.warn('costReportingWorker.cacheLow', { cacheHitRate, target: CACHE_HIT_RATE_TARGET })
+  }
+
+  // Alert if any condition triggered
   let alertSent = false
-  if (costPerSession > ALERT_THRESHOLD_USD) {
+  if (needsAlert) {
     const oncallEmail = process.env.ONCALL_EMAIL
     if (oncallEmail) {
       try {
@@ -207,9 +266,13 @@ export async function runDailyCostReport(): Promise<CostReportResult> {
         const trendingText = trendingDoubts.length > 0
           ? '\n\nTrending doubts (last 7 days):\n' + trendingDoubts.map((d) => `  - ${d.conceptName}: ${d.studentCount} escalations`).join('\n')
           : ''
+        const cacheText = cacheHitRate !== null
+          ? `\nCache hit rate: ${(cacheHitRate * 100).toFixed(1)}% (target >${(CACHE_HIT_RATE_TARGET * 100).toFixed(0)}%)${isCacheWarn ? ' ⚠️ below target' : ''}`
+          : ''
+        const rollingText = rollingAvg !== null ? `\n7-day avg cost/session: $${rollingAvg.toFixed(5)}` : ''
         await sendEmail({
           to: oncallEmail,
-          subject: `⚠️ Spinzy AI cost alert: ₹${costInr} per session on ${dateLabel}`,
+          subject: alertSubject,
           html: buildAlertHtml({ dateLabel, sessions, totalCostUsd, costPerSession, trendingDoubts }),
           text: [
             `Spinzy AI cost alert — ${dateLabel}`,
@@ -217,7 +280,7 @@ export async function runDailyCostReport(): Promise<CostReportResult> {
             `Total cost: $${totalCostUsd.toFixed(4)} (₹${(totalCostUsd * USD_TO_INR).toFixed(2)})`,
             `Cost per session: $${costPerSession.toFixed(5)} (₹${costInr})`,
             `Threshold: $${ALERT_THRESHOLD_USD.toFixed(3)} per session`,
-          ].join('\n') + trendingText,
+          ].join('\n') + rollingText + cacheText + trendingText,
         })
         alertSent = true
         logger.info('costReportingWorker.alertSent', { to: oncallEmail, dateLabel, costPerSession })
