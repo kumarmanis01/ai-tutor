@@ -44,7 +44,7 @@ export async function POST(req: NextRequest) {
     const grade = gradeRaw !== undefined && gradeRaw !== null ? String(gradeRaw) : undefined;
     const board = typeof body.board === 'string' ? body.board : undefined;
     const subjects = Array.isArray(body.subjects)
-      ? (body.subjects as any[]).map((s) => (s == null ? '' : String(s))).filter((s) => s.length > 0)
+      ? [...new Set((body.subjects as any[]).map((s) => (s == null ? '' : String(s))).filter((s) => s.length > 0))]
       : undefined;
     const preferredLanguage = typeof body.preferred_language === 'string' ? body.preferred_language : undefined;
     const token = typeof body.token === 'string' ? body.token : undefined;
