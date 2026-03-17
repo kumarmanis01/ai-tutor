@@ -82,25 +82,16 @@ const StickyHeader = ({ activeSection = '', onSectionChange }: StickyHeaderProps
               }}
             >
               <div className="flex items-center gap-2">
-                <div className="w-10 h-10 md:w-12 md:h-12 bg-primary rounded-lg flex items-center justify-center">
-                  <svg
-                    viewBox="0 0 40 40"
-                    fill="none"
-                    xmlns="http://www.w3.org/2000/svg"
-                    className="w-6 h-6 md:w-8 md:h-8"
-                  >
-                    <path d="M20 8L12 14V26L20 32L28 26V14L20 8Z" fill="white" fillOpacity="0.9" />
-                    <path d="M20 14L16 17V23L20 26L24 23V17L20 14Z" fill="#000080" />
-                    <circle cx="20" cy="20" r="3" fill="white" />
-                  </svg>
-                </div>
-                <div className="flex flex-col">
-                  <span className="font-headline font-bold text-lg md:text-xl text-secondary leading-tight">
+                <img
+                  src="/icons/icon-96.png"
+                  alt="Spinzy Academy"
+                  className="w-8 h-8 rounded-lg object-contain"
+                />
+                <div className="leading-tight">
+                  <div className="font-bold text-sm text-gray-900 dark:text-white">
                     Spinzy Academy
-                  </span>
-                  <span className="font-accent text-xs text-muted-foreground leading-tight">
-                    भारत का शिक्षक
-                  </span>
+                  </div>
+                  <div className="text-xs text-gray-500">भारत का शिक्षक</div>
                 </div>
               </div>
             </Link>
