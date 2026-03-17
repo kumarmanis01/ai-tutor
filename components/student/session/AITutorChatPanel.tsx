@@ -242,7 +242,7 @@ function AiMessageBubble({
       {showLabel && (
         <div className="mb-1 ml-1 flex items-center gap-1.5">
           <img
-            src="/icons/icon-96.png"
+            src="/icons/teacher-vidya-avatar.png"
             alt="Teacher Vidya"
             className="w-5 h-5 rounded-full object-cover flex-shrink-0"
           />
