@@ -241,7 +241,7 @@ function AiMessageBubble({
     <div className="v2-msg-appear mb-3 flex flex-col items-start">
       {showLabel && (
         <span className="mb-0.5 ml-1 text-[10px] font-medium text-gray-400 dark:text-gray-500">
-          Vidya
+          Teacher Vidya
         </span>
       )}
       <div className="max-w-[85%] rounded-[4px_12px_12px_12px] bg-gray-100 px-3 py-2.5 text-sm leading-relaxed text-gray-900 dark:bg-gray-800 dark:text-gray-100 whitespace-pre-wrap break-words">
@@ -621,7 +621,7 @@ export const AITutorChatPanel: React.FC<AITutorChatPanelProps> = ({
         <div className="flex-1 overflow-y-auto px-4 pb-2 pt-4">
           {items.length === 0 && !isTyping && (
             <p className="text-xs text-gray-400 dark:text-gray-500">
-              Vidya will guide you through this concept. Type your answer or question below.
+              Teacher Vidya will guide you through this concept. Type your answer or question below.
             </p>
           )}
 

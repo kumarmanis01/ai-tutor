@@ -222,7 +222,7 @@ export async function processWeeklyDigest(): Promise<void> {
       const narrative = await generateNarrative(child.name, sessions.length, topSubject)
 
       // Build and send email
-      const subject = `${child.name}'s learning update — week of ${weekLabel}`
+      const subject = `Teacher Vidya's weekly report for ${child.name}`
       const html = buildEmailHtml({
         parentName: parent.name,
         childName: child.name,

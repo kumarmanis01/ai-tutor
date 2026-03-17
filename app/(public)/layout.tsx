@@ -18,8 +18,8 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-  title: 'Spinzy AI Tutor',
-  description: 'AI-powered home tutor for CBSE & ICSE students',
+  title: 'Spinzy Academy — Teacher Vidya, Your Child\'s AI Home Tutor',
+  description: 'Meet Teacher Vidya — India\'s AI home tutor for Class 6-12 students. CBSE, ICSE & State Board. Start free at Spinzy Academy.',
   manifest: '/manifest.json',
   appleWebApp: {
     capable: true,

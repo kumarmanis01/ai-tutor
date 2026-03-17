@@ -232,7 +232,7 @@ function KnowledgeMapResults({
                 {startHere.chapterName}
               </p>
               <p className="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
-                This chapter needs the most attention — Vidya will start here.
+                This chapter needs the most attention — Teacher Vidya will start here.
               </p>
             </div>
           </div>

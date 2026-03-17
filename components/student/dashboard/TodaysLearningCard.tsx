@@ -253,7 +253,7 @@ function EmptyState() {
           Let&apos;s get you started
         </p>
         <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">
-          Complete these steps to begin learning with Vidya.
+          Complete these steps to begin learning with Teacher Vidya.
         </p>
 
         <ol className="space-y-2 mb-5">
@@ -285,7 +285,7 @@ function EmptyState() {
           Take diagnostic test
         </Link>
         <p className="mt-2 text-center text-xs text-gray-400 dark:text-gray-500">
-          ~15 minutes · tells Vidya where to start
+          ~15 minutes · tells Teacher Vidya where to start
         </p>
       </div>
     </article>

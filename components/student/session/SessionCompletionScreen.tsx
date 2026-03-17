@@ -310,7 +310,7 @@ function AiInsightCard({ insight }: { insight: string | null }) {
       <div className="flex items-center gap-2 mb-2">
         <span className="text-sm" aria-hidden>💡</span>
         <p className="text-xs font-semibold text-[#534AB7] dark:text-indigo-300 uppercase tracking-wide">
-          Vidya's insight
+          Teacher Vidya's insight
         </p>
       </div>
       {!visible ? (

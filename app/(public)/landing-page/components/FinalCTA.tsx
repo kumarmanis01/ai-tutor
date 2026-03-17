@@ -9,11 +9,11 @@ const FinalCTA = () => {
       <div className="mx-auto px-4 md:px-6 lg:px-8 max-w-3xl">
         <div className="text-center text-white space-y-6 md:space-y-8">
           <h2 className="font-headline font-bold text-3xl md:text-4xl lg:text-5xl">
-            Start learning with Vidya today
+            Start learning with Teacher Vidya today
           </h2>
 
           <p className="font-accent text-xl md:text-2xl">
-            आज ही Vidya के साथ सीखना शुरू करें
+            आज ही Teacher Vidya के साथ सीखना शुरू करें
           </p>
 
           <p className="font-body text-lg md:text-xl opacity-90 max-w-2xl mx-auto">

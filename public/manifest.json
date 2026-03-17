@@ -1,7 +1,7 @@
 {
-  "name": "Spinzy AI Tutor",
+  "name": "Spinzy Academy",
   "short_name": "Spinzy",
-  "description": "AI-powered home tutor for CBSE & ICSE students",
+  "description": "Meet Teacher Vidya — India's AI home tutor for Class 6-12. CBSE, ICSE & State Board.",
   "start_url": "/dashboard",
   "display": "standalone",
   "background_color": "#ffffff",

@@ -109,7 +109,7 @@ export default function ExamDatePage() {
             When is your board exam?
           </h1>
           <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-            Vidya will build a plan that covers every chapter in time.
+            Teacher Vidya will build a plan that covers every chapter in time.
           </p>
         </div>
 

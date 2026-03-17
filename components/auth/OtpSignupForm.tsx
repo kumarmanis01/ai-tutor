@@ -28,7 +28,7 @@ const OtpSignupForm = () => {
               <Icon name="SparklesIcon" size={28} variant="solid" className="text-white" />
             </div>
             <h2 className="font-headline font-bold text-2xl text-secondary">
-              Start free with Vidya
+              Start free with Teacher Vidya
             </h2>
             <p className="font-accent text-base text-[#534AB7] mt-1">Vidya के साथ मुफ्त शुरू करें</p>
             <p className="font-body text-sm text-muted-foreground mt-2">

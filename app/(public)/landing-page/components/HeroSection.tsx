@@ -53,7 +53,7 @@ const HeroSection = () => {
 
             <div className="space-y-4">
               <h1 className="font-headline font-bold text-4xl md:text-5xl lg:text-6xl text-secondary leading-tight">
-                Meet Vidya — Your Child&apos;s Personal AI Tutor. 24×7
+                Meet Teacher Vidya — Your Child&apos;s Personal AI Tutor. 24×7
               </h1>
               <p className="font-body text-xl md:text-2xl text-foreground/80">
                 Class 6–12 · CBSE / ICSE / State Board
@@ -76,7 +76,7 @@ const HeroSection = () => {
                 className="inline-flex items-center justify-center gap-2 px-6 py-3 md:px-8 md:py-4 min-h-[44px] bg-background border-2 border-secondary text-secondary font-cta font-semibold rounded-lg hover:bg-secondary hover:text-white transition-all duration-250 text-base md:text-lg"
               >
                 <Icon name="PlayCircleIcon" size={24} variant="solid" />
-                <span>See How Vidya Teaches</span>
+                <span>See How Teacher Vidya Teaches</span>
               </button>
             </div>
 

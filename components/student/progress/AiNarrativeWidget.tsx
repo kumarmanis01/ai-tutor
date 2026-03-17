@@ -45,7 +45,7 @@ export default function AiNarrativeWidget() {
       <article
         className="rounded-2xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-4"
         aria-busy="true"
-        aria-label="Loading Vidya's insight"
+        aria-label="Loading Teacher Vidya's insight"
       >
         <div className="flex items-center justify-between mb-3">
           <div className="h-3 w-24 bg-gray-200 dark:bg-slate-600 rounded animate-pulse" />

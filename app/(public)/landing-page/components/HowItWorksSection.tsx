@@ -18,8 +18,8 @@ const steps = [
     titleEn: 'Vidya teaches you, Socratically',
     titleHi: 'Vidya आपको Socratic तरीके से सिखाती है',
     descEn:
-      'Not lectures. Vidya asks you questions, gives hints, and guides you to the answer. Every session, every concept.',
-    descHi: 'Lectures नहीं। Vidya आपसे सवाल पूछती है, hints देती है, और सही जवाब तक पहुंचाती है।',
+      'Not lectures. Teacher Vidya asks you questions, gives hints, and guides you to the answer. Every session, every concept.',
+    descHi: 'Lectures नहीं। Teacher Vidya आपसे सवाल पूछती है, hints देती है, और सही जवाब तक पहुंचाती है।',
   },
   {
     number: '03',
@@ -68,7 +68,7 @@ const HowItWorksSection = () => {
         <div className="text-center mb-12 md:mb-16">
           <div className="inline-flex items-center gap-2 px-4 py-2 bg-[#534AB7]/10 text-[#534AB7] rounded-full text-sm font-medium mb-4">
             <Icon name="SparklesIcon" size={20} variant="solid" />
-            <span>How Vidya Works</span>
+            <span>How Teacher Vidya Works</span>
           </div>
           <h2 className="font-headline font-bold text-3xl md:text-4xl lg:text-5xl text-secondary mb-4">
             Three steps to board exam confidence
@@ -100,7 +100,7 @@ const HowItWorksSection = () => {
         {/* Animated chat demo */}
         <div className="max-w-sm mx-auto">
           <p className="text-center text-sm font-semibold text-[#534AB7] mb-3 tracking-wide uppercase">
-            This is how Vidya actually teaches
+            This is how Teacher Vidya actually teaches
           </p>
 
           <div className="border border-border rounded-2xl bg-white dark:bg-gray-900 p-4 space-y-3 overflow-hidden">

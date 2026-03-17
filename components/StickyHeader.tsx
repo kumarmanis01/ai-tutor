@@ -105,7 +105,7 @@ const StickyHeader = ({ activeSection = '', onSectionChange }: StickyHeaderProps
                 </div>
                 <div className="flex flex-col">
                   <span className="font-headline font-bold text-lg md:text-xl text-secondary leading-tight">
-                    AI Tutor
+                    Spinzy Academy
                   </span>
                   <span className="font-accent text-xs text-muted-foreground leading-tight">
                     भारत का शिक्षक

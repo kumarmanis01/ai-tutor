@@ -16,7 +16,7 @@ export default function OfflinePage() {
       </h1>
 
       <p className="mb-8 max-w-xs text-base text-gray-500">
-        Connect to the internet to continue learning with Vidya.
+        Connect to the internet to continue learning with Teacher Vidya.
       </p>
 
       <button
