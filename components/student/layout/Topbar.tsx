@@ -55,9 +55,9 @@ export default function Topbar() {
           aria-label="Spinzy home"
         >
           <img
-            src="/icons/icon-96.png"
+            src="/icons/spinzy-navbar-icon.png"
             alt="Spinzy Academy"
-            className="w-8 h-8 rounded-lg object-contain flex-shrink-0"
+            className="w-10 h-10 object-contain flex-shrink-0"
           />
           <span className="font-semibold text-sm text-gray-900 dark:text-white hidden sm:block select-none">
             Spinzy
