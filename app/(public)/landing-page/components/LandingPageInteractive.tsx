@@ -1,7 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import StickyHeader from '@/components/StickyHeader';
 import HeroSection from './HeroSection';
 import TrustBar from './TrustBar';
 import ProblemSection from './ProblemSection';
@@ -13,7 +12,6 @@ import FinalCTA from './FinalCTA';
 import Footer from './Footer';
 
 const LandingPageInteractive = () => {
-  const [activeSection, setActiveSection] = useState('');
   const [showDemoModal, setShowDemoModal] = useState(false);
 
   const handleDemoClick = () => {
@@ -22,7 +20,6 @@ const LandingPageInteractive = () => {
 
   return (
     <>
-      <StickyHeader activeSection={activeSection} onSectionChange={setActiveSection} />
       <main className="min-h-screen">
         <HeroSection onDemoClick={handleDemoClick} />
         <TrustBar />

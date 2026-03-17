@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useSession } from 'next-auth/react';
 import Icon from '@/components/UI/AppIcon';
 
 import ConversionCTA from './ConversionCTA';
@@ -45,6 +46,7 @@ const navigationItems: NavigationItem[] = [
 ];
 
 const StickyHeader = ({ activeSection = '', onSectionChange }: StickyHeaderProps) => {
+  const { data: session } = useSession();
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [currentLanguage, setCurrentLanguage] = useState<'en' | 'hi'>('en');
@@ -131,14 +133,27 @@ const StickyHeader = ({ activeSection = '', onSectionChange }: StickyHeaderProps
             </nav>
 
             <div className="flex items-center gap-3 md:gap-4">
-              <button
-                onClick={toggleLanguage}
-                className="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-border hover:bg-muted transition-colors text-sm font-medium"
-                aria-label="Toggle language"
-              >
-                <Icon name="LanguageIcon" size={18} variant="outline" />
-                <span>{currentLanguage === 'en' ? 'हिं' : 'EN'}</span>
-              </button>
+              {/* Language toggle — only shown to logged-out visitors */}
+              {!session && (
+                <button
+                  onClick={toggleLanguage}
+                  className="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-border hover:bg-muted transition-colors text-sm font-medium"
+                  aria-label="Toggle language"
+                >
+                  <Icon name="LanguageIcon" size={18} variant="outline" />
+                  <span>{currentLanguage === 'en' ? 'हिं' : 'EN'}</span>
+                </button>
+              )}
+
+              {/* Login link — only shown to logged-out visitors */}
+              {!session && (
+                <Link
+                  href="/auth/signin"
+                  className="hidden md:inline-flex items-center px-4 py-2 text-sm font-medium text-foreground hover:text-primary border border-border rounded-lg hover:bg-muted transition-colors"
+                >
+                  Login
+                </Link>
+              )}
 
               <div className="hidden lg:block">
                 <ConversionCTA variant="header" />

@@ -6,7 +6,7 @@ import Providers from '@/app/providers';
 import { GlobalLoaderProvider } from '@/context/GlobalLoaderProvider';
 import AuthSessionLoader from '@/components/AuthSessionLoader';
 import ToastHost from '@/components/ToastHost';
-import Navbar from '@/components/Navbar';
+import StickyHeader from '@/components/StickyHeader';
 import '@/styles/index.css';
 
 export const viewport: Viewport = {
@@ -57,9 +57,9 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
               <GoogleTagManagerClient />
             </Suspense>
             <AppModalClient />
-            <Navbar />
-            {/* pt-16 offsets fixed Navbar (64 px) so page content is not hidden behind it */}
-            <div className="pt-16">
+            {/* Single public navbar — StickyHeader is h-16 mobile / h-[72px] desktop */}
+            <StickyHeader />
+            <div className="pt-16 md:pt-[72px]">
               {children}
             </div>
             <ToastHost />
