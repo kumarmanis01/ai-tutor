@@ -30,7 +30,7 @@ const OtpSignupForm = () => {
             <h2 className="font-headline font-bold text-2xl text-secondary">
               Start free with Teacher Vidya
             </h2>
-            <p className="font-accent text-base text-[#534AB7] mt-1">Vidya के साथ मुफ्त शुरू करें</p>
+            <p className="font-accent text-base text-[#534AB7] mt-1">Teacher Vidya के साथ मुफ्त शुरू करें</p>
             <p className="font-body text-sm text-muted-foreground mt-2">
               3 free sessions per subject · No credit card · Class 6–12
             </p>

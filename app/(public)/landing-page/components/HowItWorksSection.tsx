@@ -9,14 +9,14 @@ const steps = [
     titleEn: 'Take a 15-min diagnostic',
     titleHi: '15 मिनट का diagnostic दें',
     descEn:
-      'Vidya maps your knowledge gaps across every chapter. No stress — it\'s just a starting point.',
-    descHi: 'Vidya हर chapter में आपकी knowledge gaps को समझती है। बिना किसी दबाव के — यह सिर्फ शुरुआत है।',
+      'Teacher Vidya maps your knowledge gaps across every chapter. No stress — it\'s just a starting point.',
+    descHi: 'Teacher Vidya हर chapter में आपकी knowledge gaps को समझती है। बिना किसी दबाव के — यह सिर्फ शुरुआत है।',
   },
   {
     number: '02',
     icon: 'ChatBubbleLeftRightIcon' as const,
-    titleEn: 'Vidya teaches you, Socratically',
-    titleHi: 'Vidya आपको Socratic तरीके से सिखाती है',
+    titleEn: 'Teacher Vidya teaches you, Socratically',
+    titleHi: 'Teacher Vidya आपको Socratic तरीके से सिखाती है',
     descEn:
       'Not lectures. Teacher Vidya asks you questions, gives hints, and guides you to the answer. Every session, every concept.',
     descHi: 'Lectures नहीं। Teacher Vidya आपसे सवाल पूछती है, hints देती है, और सही जवाब तक पहुंचाती है।',
@@ -104,8 +104,8 @@ const HowItWorksSection = () => {
           </p>
 
           <div className="border border-border rounded-2xl bg-white dark:bg-gray-900 p-4 space-y-3 overflow-hidden">
-            {/* Vidya label */}
-            <p className="text-xs font-semibold text-[#534AB7] pl-1">Vidya</p>
+            {/* Teacher Vidya label */}
+            <p className="text-xs font-semibold text-[#534AB7] pl-1">Teacher Vidya</p>
 
             {chatMessages.map((msg, i) => (
               <div
