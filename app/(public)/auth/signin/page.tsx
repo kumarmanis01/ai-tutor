@@ -2,8 +2,8 @@
 
 import { Suspense, useState } from 'react'
 import { signIn } from 'next-auth/react'
-import Image from 'next/image'
 import { useSearchParams } from 'next/navigation'
+import Logo from '@/components/Logo'
 
 function AuthContent() {
   const searchParams = useSearchParams()
@@ -66,24 +66,14 @@ function AuthContent() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-950 px-4">
       <div className="w-full max-w-sm space-y-6">
-        {/* Teacher Vidya + Branding */}
+        {/* Branding */}
         <div className="text-center space-y-3">
           <div className="flex justify-center">
-            <Image
-              src="/icons/teacher-vidya-avatar.png"
-              alt="Teacher Vidya"
-              width={72}
-              height={72}
-              className="rounded-full ring-2 ring-[#534AB7] ring-offset-2"
-            />
+            <Logo variant="auth" className="mb-6" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-              Learn with Teacher Vidya
-            </h1>
-            <p className="text-sm text-gray-500 mt-1">
-              Spinzy Academy · Class 6–12 · CBSE / ICSE
-            </p>
+            <h1 className="text-xl font-brand font-bold text-gray-900 dark:text-white">Welcome to Spinzy</h1>
+            <p className="text-sm text-muted-foreground mt-1">AI home tutor · CBSE Grades 6–12</p>
           </div>
         </div>
 

@@ -1,5 +1,6 @@
 import React, { Suspense } from 'react';
 import type { Metadata, Viewport } from 'next';
+import { Inter, Nunito } from 'next/font/google';
 import GoogleTagManagerClient from '@/components/ClientOnly/GoogleTagManagerClient';
 import AppModalClient from '@/components/ClientOnly/AppModalClient';
 import Providers from '@/app/providers';
@@ -8,6 +9,9 @@ import AuthSessionLoader from '@/components/AuthSessionLoader';
 import ToastHost from '@/components/ToastHost';
 import StickyHeader from '@/components/StickyHeader';
 import '@/styles/index.css';
+
+const inter = Inter({ subsets: ['latin'], variable: '--font-inter', display: 'swap' });
+const nunito = Nunito({ subsets: ['latin'], weight: ['600', '700'], variable: '--font-nunito', display: 'swap' });
 
 export const viewport: Viewport = {
   themeColor: '#534AB7',
@@ -28,16 +32,22 @@ export const metadata: Metadata = {
   },
   icons: {
     icon: [
-      { url: '/favicon.png', type: 'image/png', sizes: '32x32' },
-      { url: '/icons/icon-192.png', sizes: '192x192', type: 'image/png' },
+      { url: '/favicon-16x16.png', type: 'image/png', sizes: '16x16' },
+      { url: '/favicon-32x32.png', type: 'image/png', sizes: '32x32' },
     ],
-    apple: '/apple-touch-icon.png',
-    shortcut: '/favicon.png',
+    apple: { url: '/apple-touch-icon.png', sizes: '180x180' },
+    shortcut: '/favicon.ico',
+  },
+  openGraph: {
+    images: [{ url: '/logos/og-image.png', width: 1200, height: 630 }],
+  },
+  twitter: {
+    card: 'summary_large_image',
   },
   other: {
     'mobile-web-app-capable': 'yes',
     'msapplication-TileColor': '#534AB7',
-    'msapplication-TileImage': '/icons/icon-144.png',
+    'msapplication-TileImage': '/logos/icon-192.png',
   },
 };
 
@@ -49,8 +59,8 @@ export const metadata: Metadata = {
  */
 export default function PublicLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className="h-full">
-      <body className="min-h-screen h-full">
+    <html lang="en" className={`h-full ${inter.variable} ${nunito.variable}`}>
+      <body className="font-sans antialiased min-h-screen h-full">
         <Providers>
           <GlobalLoaderProvider>
             <AuthSessionLoader />

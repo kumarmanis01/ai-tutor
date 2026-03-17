@@ -56,14 +56,15 @@ export function PaymentButton({
         key: keyId,
         amount,
         currency: 'INR',
-        name: 'AI Home Tutor',
+        name: 'Spinzy Academy',
         description: '₹99/month — Unlimited Sessions',
+        image: 'https://spinzy.in/logos/logo-razorpay.png',
         order_id: orderId,
         prefill: {
           name: studentName ?? '',
           email: studentEmail ?? '',
         },
-        theme: { color: '#6366f1' },
+        theme: { color: '#F97316' },
         handler: async (response: any) => {
           try {
             const verifyRes = await fetch('/api/payments/verify', {

@@ -14,12 +14,17 @@
  */
 
 import type { Metadata, Viewport } from 'next'
+import { Inter, Nunito } from 'next/font/google'
 import { redirect } from 'next/navigation'
 import { getServerSession } from 'next-auth/next'
 import { authOptions } from '@/lib/auth'
 import type { AppSession } from '@/lib/types/auth'
 import '@/styles/index.css'
 import ParentLogoutButton from '@/components/parent/ParentLogoutButton'
+import Logo from '@/components/Logo'
+
+const inter = Inter({ subsets: ['latin'], variable: '--font-inter', display: 'swap' })
+const nunito = Nunito({ subsets: ['latin'], weight: ['600', '700'], variable: '--font-nunito', display: 'swap' })
 
 export const viewport: Viewport = {
   themeColor: '#534AB7',
@@ -34,7 +39,12 @@ export const metadata: Metadata = {
   description: "Monitor your child's learning progress on Spinzy.",
   manifest: '/manifest.json',
   icons: {
-    icon: '/icons/icon-192.png',
+    icon: [
+      { url: '/favicon-16x16.png', type: 'image/png', sizes: '16x16' },
+      { url: '/favicon-32x32.png', type: 'image/png', sizes: '32x32' },
+    ],
+    apple: { url: '/apple-touch-icon.png', sizes: '180x180' },
+    shortcut: '/favicon.ico',
   },
 }
 
@@ -50,16 +60,17 @@ export default async function ParentLayout({ children }: { children: React.React
   }
 
   return (
-    <html lang="en" className="h-full">
-      <body className="min-h-screen bg-gray-50 antialiased dark:bg-gray-950">
+    <html lang="en" className={`h-full ${inter.variable} ${nunito.variable}`}>
+      <body className="font-sans antialiased min-h-screen bg-gray-50 dark:bg-gray-950">
 
         {/* ── Top nav ────────────────────────────────────────────────────── */}
         <nav className="sticky top-0 z-30 border-b border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900">
           <div className="mx-auto flex max-w-3xl items-center justify-between px-4 py-3">
 
             {/* Logo */}
-            <a href="/parent/dashboard" className="flex items-center gap-1.5" aria-label="Parent dashboard">
-              <span className="text-lg font-bold text-indigo-600 dark:text-indigo-400">Spinzy</span>
+            <a href="/parent/dashboard" className="flex items-center gap-2" aria-label="Parent dashboard">
+              <span className="hidden sm:flex"><Logo variant="navbar" /></span>
+              <span className="flex sm:hidden"><Logo variant="navbar-mobile" /></span>
               <span className="hidden text-xs font-medium text-gray-500 sm:inline dark:text-gray-400">
                 | Parent View
               </span>

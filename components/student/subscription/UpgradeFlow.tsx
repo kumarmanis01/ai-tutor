@@ -86,11 +86,12 @@ export function UpgradeFlow({ studentName, studentEmail }: UpgradeFlowProps) {
         key: keyId,
         amount,
         currency: 'INR',
-        name: 'Spinzy AI Tutor',
+        name: 'Spinzy Academy',
         description: 'Monthly subscription',
+        image: 'https://spinzy.in/logos/logo-razorpay.png',
         order_id: orderId,
         prefill: { name: studentName ?? '', email: studentEmail ?? '' },
-        theme: { color: '#534AB7' },
+        theme: { color: '#F97316' },
         handler: async (response: { razorpay_order_id: string; razorpay_payment_id: string; razorpay_signature: string }) => {
           try {
             const verifyRes = await fetch('/api/student/subscription/verify', {
