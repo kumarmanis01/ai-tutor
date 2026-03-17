@@ -32,6 +32,18 @@
     "worker/k8s-adapter.ts",
     "worker/metrics-server.ts",
     "worker/dev-entry.ts",
-    "worker/dev-supervisor.ts"
+    "worker/dev-supervisor.ts",
+    "lib/tests.ts",
+    "lib/diagnostics/diagnosticQuestionService.ts",
+    "lib/aiContext.ts",
+    "lib/alerts.ts",
+    "lib/analytics/client.ts",
+    "lib/analyticsClient.ts",
+    "lib/inputHandlers.ts",
+    "lib/onboarding.ts",
+    "lib/resizeImage.ts",
+    "lib/session/sessionActions.ts",
+    "lib/speech.ts",
+    "lib/toast.ts"
   ]
 }

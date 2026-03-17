@@ -71,10 +71,20 @@ const FAQSection = () => {
       questionEn: 'Which boards and classes are supported?',
       questionHi: 'कौन से बोर्ड और कक्षाएं समर्थित हैं?',
       answerEn:
-        'We support CBSE, ICSE, and all State Boards for classes 1-12. All major subjects including Math, Science, Social Studies, English, and Hindi are covered. Our AI understands regional language variations and provides explanations accordingly.',
+        'We support CBSE, ICSE, and all State Boards for classes 6-12. All major subjects including Math, Science, Social Studies, English, and Hindi are covered. Our AI understands regional language variations and provides explanations accordingly.',
       answerHi:
-        'हम कक्षा 1-12 के लिए CBSE, ICSE और सभी State Boards का समर्थन करते हैं। Math, Science, Social Studies, English और Hindi सहित सभी प्रमुख विषय शामिल हैं। हमारा AI क्षेत्रीय भाषा भिन्नताओं को समझता है और तदनुसार समाधान प्रदान करता है।',
+        'हम कक्षा 6-12 के लिए CBSE, ICSE और सभी State Boards का समर्थन करते हैं। Math, Science, Social Studies, English और Hindi सहित सभी प्रमुख विषय शामिल हैं। हमारा AI क्षेत्रीय भाषा भिन्नताओं को समझता है और तदनुसार समाधान प्रदान करता है।',
       category: 'Coverage',
+    },
+    {
+      id: 7,
+      questionEn: 'Is Teacher Vidya available in Hindi?',
+      questionHi: 'क्या Teacher Vidya हिंदी में उपलब्ध है?',
+      answerEn:
+        'Yes — Teacher Vidya teaches in both English and Hindi. You can switch language at any time, even mid-session. All explanations, hints, and feedback are available in the language you prefer.',
+      answerHi:
+        'हां — Teacher Vidya अंग्रेजी और हिंदी दोनों में पढ़ाती है। आप कभी भी, यहाँ तक कि session के बीच में भी, भाषा बदल सकते हैं। सभी explanations, hints और feedback आपकी पसंदीदा भाषा में उपलब्ध हैं।',
+      category: 'Language',
     },
   ];
 
@@ -162,18 +172,18 @@ const FAQSection = () => {
               </p>
               <div className="flex flex-wrap gap-4 justify-center md:justify-start">
                 <a
-                  href="tel:+911234567890"
+                  href="tel:+918920754675"
                   className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-accent transition-colors font-semibold"
                 >
                   <Icon name="PhoneIcon" size={20} variant="solid" />
-                  <span>+91 123 456 7890</span>
+                  <span>+91 89207 54675</span>
                 </a>
                 <a
-                  href="mailto:support@aitutor.in"
+                  href="mailto:support@spinzyacademy.com"
                   className="inline-flex items-center gap-2 px-4 py-2 bg-secondary text-white rounded-lg hover:bg-secondary/90 transition-colors font-semibold"
                 >
                   <Icon name="EnvelopeIcon" size={20} variant="solid" />
-                  <span>support@aitutor.in</span>
+                  <span>support@spinzyacademy.com</span>
                 </a>
               </div>
             </div>

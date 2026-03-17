@@ -240,14 +240,21 @@ function AiMessageBubble({
   return (
     <div className="v2-msg-appear mb-3 flex flex-col items-start">
       {showLabel && (
-        <span className="mb-0.5 ml-1 text-[10px] font-medium text-gray-400 dark:text-gray-500">
-          Vidya
-        </span>
+        <div className="mb-1 ml-1 flex items-center gap-1.5">
+          <img
+            src="/icons/teacher-vidya-avatar.png"
+            alt="Teacher Vidya"
+            className="w-5 h-5 rounded-full object-cover flex-shrink-0"
+          />
+          <span className="text-[10px] font-medium text-gray-400 dark:text-gray-500">
+            Teacher Vidya
+          </span>
+        </div>
       )}
-      <div className="max-w-[85%] rounded-[4px_12px_12px_12px] bg-gray-100 px-3 py-2.5 text-sm leading-relaxed text-gray-900 dark:bg-gray-800 dark:text-gray-100 whitespace-pre-wrap break-words">
+      <div className="max-w-[85%] rounded-[4px_12px_12px_12px] bg-[#EEEDFE] px-3 py-2.5 text-sm leading-relaxed text-[#3C3489] dark:bg-[#534AB7]/20 dark:text-[#EEEDFE] whitespace-pre-wrap break-words">
         {msg.content || '\u200B' /* zero-width space keeps bubble visible when empty */}
         {msg.isStreaming && (
-          <span className="v2-cursor text-gray-400 dark:text-gray-500">|</span>
+          <span className="v2-cursor text-[#534AB7]/50 dark:text-[#EEEDFE]/50">|</span>
         )}
       </div>
     </div>
@@ -434,7 +441,7 @@ export const AITutorChatPanel: React.FC<AITutorChatPanelProps> = ({
           'Your message could not be processed safely. Please rephrase.',
         );
       } else {
-        setConnectionError('Connection lost — reconnecting...');
+        setConnectionError('Teacher Vidya will be right back. Please try again in a moment.');
       }
     },
     [finalizeAiMessage],
@@ -454,14 +461,14 @@ export const AITutorChatPanel: React.FC<AITutorChatPanelProps> = ({
         body: JSON.stringify({ sessionId, studentMessage: message, turnNumber: Date.now() }),
       });
     } catch {
-      setConnectionError('Connection lost — reconnecting...');
+      setConnectionError('Teacher Vidya will be right back. Please try again in a moment.');
       setIsStreaming(false);
       setIsTyping(false);
       return false;
     }
 
     if (!response.ok || !response.body) {
-      setConnectionError('Connection lost — reconnecting...');
+      setConnectionError('Teacher Vidya will be right back. Please try again in a moment.');
       setIsStreaming(false);
       setIsTyping(false);
       return false;
@@ -491,7 +498,7 @@ export const AITutorChatPanel: React.FC<AITutorChatPanelProps> = ({
         }
       }
     } catch {
-      setConnectionError('Connection lost — reconnecting...');
+      setConnectionError('Teacher Vidya will be right back. Please try again in a moment.');
       return false;
     } finally {
       setIsStreaming(false);
@@ -621,7 +628,7 @@ export const AITutorChatPanel: React.FC<AITutorChatPanelProps> = ({
         <div className="flex-1 overflow-y-auto px-4 pb-2 pt-4">
           {items.length === 0 && !isTyping && (
             <p className="text-xs text-gray-400 dark:text-gray-500">
-              Vidya will guide you through this concept. Type your answer or question below.
+              Teacher Vidya will guide you through this concept. Type your answer or question below.
             </p>
           )}
 
@@ -703,7 +710,7 @@ export const AITutorChatPanel: React.FC<AITutorChatPanelProps> = ({
             )}
             <p className="flex-1 text-xs text-amber-800 dark:text-amber-200">
               {reconnectAttempts >= MAX_RECONNECT
-                ? 'Connection failed. Refresh to continue.'
+                ? 'Teacher Vidya will be right back. Refresh to continue.'
                 : connectionError}
             </p>
             {reconnectAttempts >= MAX_RECONNECT && (

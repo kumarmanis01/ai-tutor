@@ -51,10 +51,22 @@ export function StudentGreeting() {
 
   return (
     <div className="mb-6">
+      {/* Teacher Vidya ready badge */}
+      <div className="flex items-center gap-2 mb-3">
+        <img
+          src="/icons/teacher-vidya-avatar.png"
+          alt="Teacher Vidya"
+          className="w-8 h-8 rounded-full object-cover flex-shrink-0"
+        />
+        <span className="text-sm text-muted-foreground">
+          Teacher Vidya recommends your next topic.
+        </span>
+      </div>
+
       {/* Main Greeting + Streak badge */}
       <div className="flex items-start justify-between gap-4">
         <h1 className="text-2xl sm:text-3xl font-bold text-foreground">
-          {greeting}, <span className="text-primary">{firstName}</span> 👋
+          Hello, <span className="text-primary">{firstName}</span> 👋
         </h1>
         {streakDays > 0 && (
           <div className="flex-shrink-0 flex items-center gap-1 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 text-amber-700 dark:text-amber-400 px-3 py-1.5 rounded-full text-sm font-semibold">

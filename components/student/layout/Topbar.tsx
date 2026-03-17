@@ -54,10 +54,12 @@ export default function Topbar() {
           className="flex items-center gap-2 flex-shrink-0 min-h-[44px] min-w-[44px] -ml-1 px-1"
           aria-label="Spinzy home"
         >
-          <div className="w-7 h-7 rounded-lg bg-[#534AB7] flex items-center justify-center flex-shrink-0">
-            <span className="text-white font-bold text-xs leading-none">S</span>
-          </div>
-          <span className="font-bold text-sm text-[#534AB7] hidden sm:inline select-none">
+          <img
+            src="/icons/spinzy-navbar-icon.png"
+            alt="Spinzy Academy"
+            className="w-10 h-10 object-contain flex-shrink-0"
+          />
+          <span className="font-semibold text-sm text-gray-900 dark:text-white hidden sm:block select-none">
             Spinzy
           </span>
         </Link>

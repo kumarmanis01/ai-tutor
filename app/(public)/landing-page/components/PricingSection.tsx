@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import Link from 'next/link';
 import Icon from '@/components/UI/AppIcon';
 
 interface PricingPlan {
@@ -21,7 +21,6 @@ interface PricingPlan {
 }
 
 const PricingSection = () => {
-  const [, setSelectedPlan] = useState('individual');
 
   const plans: PricingPlan[] = [
     {
@@ -34,13 +33,13 @@ const PricingSection = () => {
       description: 'Try AI Tutor with limited features',
       descriptionHi: 'सीमित सुविधाओं के साथ AI Tutor आज़माएं',
       features: [
-        '5 questions per day',
+        '3 sessions per subject per month',
         'Basic explanations',
         'Hindi + English support',
         'NCERT notes access',
       ],
       featuresHi: [
-        'प्रतिदिन 5 सवाल',
+        'प्रति विषय 3 sessions प्रति माह',
         'बुनियादी समाधान',
         'हिंदी + अंग्रेजी सहायता',
         'NCERT नोट्स एक्सेस',
@@ -64,7 +63,7 @@ const PricingSection = () => {
         'Voice explanations',
         'Practice tests & worksheets',
         'Doubt solving in 30 seconds',
-        'All subjects (Class 1-12)',
+        'All subjects (Class 6-12)',
         'Priority support',
         'Progress tracking',
       ],
@@ -74,7 +73,7 @@ const PricingSection = () => {
         'आवाज में समझाना',
         'अभ्यास टेस्ट और वर्कशीट',
         '30 सेकंड में doubt solving',
-        'सभी विषय (कक्षा 1-12)',
+        'सभी विषय (कक्षा 6-12)',
         'प्राथमिकता सहायता',
         'प्रगति ट्रैकिंग',
       ],
@@ -139,7 +138,7 @@ const PricingSection = () => {
           </p>
         </div>
 
-        <div className="grid md:grid-cols-3 gap-6 lg:gap-8 mb-12">
+        <div className="grid md:grid-cols-3 gap-6 lg:gap-8 mb-6">
           {plans.map((plan) => (
             <div
               key={plan.id}
@@ -192,19 +191,27 @@ const PricingSection = () => {
                   ))}
                 </div>
 
-                <button
-                  onClick={() => setSelectedPlan(plan.id)}
-                  className={`w-full py-3 rounded-lg font-cta font-semibold transition-all duration-250 ${
+                <Link
+                  href={plan.id === 'free' ? '/auth/signup' : '/pricing'}
+                  className={`w-full py-3 rounded-lg font-cta font-semibold transition-all duration-250 min-h-[44px] flex items-center justify-center ${
                     plan.recommended
-                      ? 'bg-primary text-white hover:bg-accent shadow-lg'
+                      ? 'bg-[#534AB7] text-white hover:bg-[#4239a0] shadow-lg'
                       : 'bg-secondary text-white hover:bg-secondary/90'
                   }`}
                 >
                   {plan.ctaText}
-                </button>
+                </Link>
               </div>
             </div>
           ))}
+        </div>
+
+        {/* Payment trust badges */}
+        <div className="text-center mb-10">
+          <p className="text-sm text-muted-foreground">
+            🔒 Secure checkout &middot; UPI / Cards / Net Banking &middot; Powered by Razorpay
+          </p>
+          <p className="text-xs text-muted-foreground mt-1">All prices + 18% GST</p>
         </div>
 
         <div className="bg-background rounded-2xl border-2 border-border p-6 md:p-8 mb-12">

@@ -235,7 +235,7 @@ export default function PreSessionScreen({
                     <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
                   </svg>
                   <p className="text-xs text-[#BA7517] dark:text-amber-300 leading-relaxed">
-                    Some prerequisites are incomplete. Vidya will help you catch up.
+                    Some prerequisites are incomplete. Teacher Vidya will help you catch up.
                   </p>
                 </div>
               )}
@@ -292,7 +292,7 @@ export default function PreSessionScreen({
 
           {/* Footer note */}
           <p className="text-center text-xs text-gray-400 dark:text-gray-500">
-            Vidya is already preparing your first question
+            Teacher Vidya is already preparing your first question
           </p>
         </div>
       </div>

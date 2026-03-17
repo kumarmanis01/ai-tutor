@@ -6,7 +6,7 @@ import Providers from '@/app/providers';
 import { GlobalLoaderProvider } from '@/context/GlobalLoaderProvider';
 import AuthSessionLoader from '@/components/AuthSessionLoader';
 import ToastHost from '@/components/ToastHost';
-import Navbar from '@/components/Navbar';
+import StickyHeader from '@/components/StickyHeader';
 import '@/styles/index.css';
 
 export const viewport: Viewport = {
@@ -18,8 +18,8 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-  title: 'Spinzy AI Tutor',
-  description: 'AI-powered home tutor for CBSE & ICSE students',
+  title: 'Spinzy Academy — Teacher Vidya, Your Child\'s AI Home Tutor',
+  description: 'Meet Teacher Vidya — India\'s AI home tutor for Class 6-12 students. CBSE, ICSE & State Board. Start free at Spinzy Academy.',
   manifest: '/manifest.json',
   appleWebApp: {
     capable: true,
@@ -27,11 +27,12 @@ export const metadata: Metadata = {
     title: 'Spinzy',
   },
   icons: {
-    apple: [
-      { url: '/icons/icon-152.png', sizes: '152x152' },
-      { url: '/icons/icon-192.png', sizes: '192x192' },
+    icon: [
+      { url: '/favicon.png', type: 'image/png', sizes: '32x32' },
+      { url: '/icons/icon-192.png', sizes: '192x192', type: 'image/png' },
     ],
-    icon: '/icons/icon-192.png',
+    apple: '/apple-touch-icon.png',
+    shortcut: '/favicon.png',
   },
   other: {
     'mobile-web-app-capable': 'yes',
@@ -57,8 +58,11 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
               <GoogleTagManagerClient />
             </Suspense>
             <AppModalClient />
-            <Navbar />
-            {children}
+            {/* Single public navbar — StickyHeader is h-16 mobile / h-[72px] desktop */}
+            <StickyHeader />
+            <div className="pt-16 md:pt-[72px]">
+              {children}
+            </div>
             <ToastHost />
           </GlobalLoaderProvider>
         </Providers>

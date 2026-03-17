@@ -154,7 +154,7 @@ export function UpgradeFlow({ studentName, studentEmail }: UpgradeFlowProps) {
           You&apos;ve used all your free sessions
         </h2>
         <p className="mb-4 text-sm text-gray-600 dark:text-gray-300">
-          Keep learning with Vidya — unlimited AI tutor sessions, personalised to you.
+          Keep learning with Teacher Vidya — unlimited AI tutor sessions, personalised to you.
         </p>
         <p className="mb-5 text-xl font-bold text-[#534AB7]">From ₹74/month</p>
         <div className="flex flex-col gap-3 sm:flex-row">
@@ -253,7 +253,7 @@ export function UpgradeFlow({ studentName, studentEmail }: UpgradeFlowProps) {
           You&apos;re all set!
         </h2>
         <p className="text-sm text-gray-600 dark:text-gray-300 mb-5">
-          Your subscription is active. Keep learning — Vidya is ready for you.
+          Your subscription is active. Keep learning — Teacher Vidya is ready for you.
         </p>
         <a
           href="/dashboard"

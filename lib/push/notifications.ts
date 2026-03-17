@@ -13,7 +13,7 @@ export const PUSH_NOTIFICATIONS = {
   // ── Streak / inactivity ─────────────────────────────────────────────────
   inactivity_day2: (streak: number): PushPayload => ({
     title: streak > 0 ? `🔥 Keep your ${streak}-day streak!` : '📚 Start your streak today!',
-    body: 'Vidya has your next session ready. 5 minutes is enough to keep learning going.',
+    body: 'Teacher Vidya has your next session ready. 5 minutes is enough to keep learning going.',
     url: '/dashboard',
     tag: 'inactivity',
   }),

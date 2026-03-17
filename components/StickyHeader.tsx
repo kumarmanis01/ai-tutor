@@ -2,10 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import Icon from '@/components/UI/AppIcon';
+import { useSession } from 'next-auth/react';
 
-import ConversionCTA from './ConversionCTA';
-import MobileMenu from './MobileMenu';
 
 interface NavigationItem {
   id: string;
@@ -23,10 +21,10 @@ interface StickyHeaderProps {
 const navigationItems: NavigationItem[] = [
   {
     id: 'features',
-    labelEn: 'Features',
-    labelHi: 'विशेषताएं',
-    target: '#solution-showcase',
-    description: 'See how AI tutoring works',
+    labelEn: 'How It Works',
+    labelHi: 'कैसे काम करता है',
+    target: '#how-it-works',
+    description: 'See how Vidya teaches',
   },
   {
     id: 'pricing',
@@ -45,9 +43,9 @@ const navigationItems: NavigationItem[] = [
 ];
 
 const StickyHeader = ({ activeSection = '', onSectionChange }: StickyHeaderProps) => {
+  const { data: session } = useSession();
   const [isScrolled, setIsScrolled] = useState(false);
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [currentLanguage, setCurrentLanguage] = useState<'en' | 'hi'>('en');
+  // TODO Phase 2: re-add language toggle when Hindi content is live
 
   useEffect(() => {
     const handleScroll = () => {
@@ -63,12 +61,7 @@ const StickyHeader = ({ activeSection = '', onSectionChange }: StickyHeaderProps
     if (element) {
       element.scrollIntoView({ behavior: 'smooth', block: 'start' });
       onSectionChange?.(id);
-      setIsMobileMenuOpen(false);
     }
-  };
-
-  const toggleLanguage = () => {
-    setCurrentLanguage((prev) => (prev === 'en' ? 'hi' : 'en'));
   };
 
   return (
@@ -89,25 +82,16 @@ const StickyHeader = ({ activeSection = '', onSectionChange }: StickyHeaderProps
               }}
             >
               <div className="flex items-center gap-2">
-                <div className="w-10 h-10 md:w-12 md:h-12 bg-primary rounded-lg flex items-center justify-center">
-                  <svg
-                    viewBox="0 0 40 40"
-                    fill="none"
-                    xmlns="http://www.w3.org/2000/svg"
-                    className="w-6 h-6 md:w-8 md:h-8"
-                  >
-                    <path d="M20 8L12 14V26L20 32L28 26V14L20 8Z" fill="white" fillOpacity="0.9" />
-                    <path d="M20 14L16 17V23L20 26L24 23V17L20 14Z" fill="#000080" />
-                    <circle cx="20" cy="20" r="3" fill="white" />
-                  </svg>
-                </div>
-                <div className="flex flex-col">
-                  <span className="font-headline font-bold text-lg md:text-xl text-secondary leading-tight">
-                    AI Tutor
-                  </span>
-                  <span className="font-accent text-xs text-muted-foreground leading-tight">
-                    भारत का शिक्षक
-                  </span>
+                <img
+                  src="/icons/spinzy-navbar-icon.png"
+                  alt="Spinzy Academy"
+                  className="w-10 h-10 object-contain"
+                />
+                <div className="leading-tight">
+                  <div className="font-bold text-sm text-gray-900 dark:text-white">
+                    Spinzy Academy
+                  </div>
+                  <div className="text-xs text-gray-500">भारत का शिक्षक</div>
                 </div>
               </div>
             </Link>
@@ -122,7 +106,7 @@ const StickyHeader = ({ activeSection = '', onSectionChange }: StickyHeaderProps
                   }`}
                   title={item.description}
                 >
-                  {currentLanguage === 'en' ? item.labelEn : item.labelHi}
+                  {item.labelEn}
                   {activeSection === item.id && (
                     <span className="absolute -bottom-1 left-0 right-0 h-0.5 bg-primary rounded-full" />
                   )}
@@ -130,41 +114,29 @@ const StickyHeader = ({ activeSection = '', onSectionChange }: StickyHeaderProps
               ))}
             </nav>
 
-            <div className="flex items-center gap-3 md:gap-4">
-              <button
-                onClick={toggleLanguage}
-                className="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-border hover:bg-muted transition-colors text-sm font-medium"
-                aria-label="Toggle language"
-              >
-                <Icon name="LanguageIcon" size={18} variant="outline" />
-                <span>{currentLanguage === 'en' ? 'हिं' : 'EN'}</span>
-              </button>
+            <div className="flex items-center gap-2 md:gap-3">
+              {/* Login — visible at all screen sizes to logged-out visitors */}
+              {!session && (
+                <Link
+                  href="/auth/signin"
+                  className="text-sm font-medium text-gray-600 hover:text-[#534AB7] dark:text-gray-300 dark:hover:text-[#EEEDFE] transition-colors px-3 py-2"
+                >
+                  Login
+                </Link>
+              )}
 
-              <div className="hidden lg:block">
-                <ConversionCTA variant="header" />
-              </div>
-
-              <button
-                onClick={() => setIsMobileMenuOpen(true)}
-                className="lg:hidden p-2 hover:bg-muted rounded-md transition-colors"
-                aria-label="Open menu"
+              {/* Start Free — navigates directly to /auth/signup */}
+              <Link
+                href="/auth/signup"
+                className="px-4 py-2 md:px-6 md:py-2.5 bg-[#534AB7] hover:bg-[#4338A0] text-white rounded-lg text-sm font-semibold transition-colors"
               >
-                <Icon name="Bars3Icon" size={24} variant="outline" />
-              </button>
+                Start Free
+              </Link>
             </div>
           </div>
         </div>
       </header>
 
-      <MobileMenu
-        isOpen={isMobileMenuOpen}
-        onClose={() => setIsMobileMenuOpen(false)}
-        navigationItems={navigationItems}
-        activeSection={activeSection}
-        currentLanguage={currentLanguage}
-        onLanguageToggle={toggleLanguage}
-        onNavigate={handleSmoothScroll}
-      />
     </>
   );
 };

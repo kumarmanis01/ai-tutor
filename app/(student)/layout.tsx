@@ -37,11 +37,12 @@ export const metadata: Metadata = {
     title: 'Spinzy',
   },
   icons: {
-    apple: [
-      { url: '/icons/icon-152.png', sizes: '152x152' },
-      { url: '/icons/icon-192.png', sizes: '192x192' },
+    icon: [
+      { url: '/favicon.png', type: 'image/png', sizes: '32x32' },
+      { url: '/icons/icon-192.png', sizes: '192x192', type: 'image/png' },
     ],
-    icon: '/icons/icon-192.png',
+    apple: '/apple-touch-icon.png',
+    shortcut: '/favicon.png',
   },
   other: {
     'mobile-web-app-capable': 'yes',

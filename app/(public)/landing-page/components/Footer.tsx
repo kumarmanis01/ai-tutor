@@ -1,30 +1,20 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-
 import Icon from '@/components/UI/AppIcon';
 
 const Footer = () => {
-  const [isHydrated, setIsHydrated] = useState(false);
-  const [currentYear, setCurrentYear] = useState(2025);
-
-  useEffect(() => {
-    setIsHydrated(true);
-    setCurrentYear(new Date()?.getFullYear());
-  }, []);
-
   const footerLinks = {
     product: [
-      { label: 'Features', href: '#solution-showcase' },
+      { label: 'How It Works', href: '#how-it-works' },
       { label: 'Pricing', href: '#pricing' },
       { label: 'Success Stories', href: '#testimonials' },
       { label: 'FAQ', href: '#faq' },
     ],
     support: [
-      { label: 'Help Center', href: '#' },
-      { label: 'Contact Us', href: 'tel:+918920754675' },
-      { label: 'WhatsApp Support', href: 'https://wa.me/918920754675' },
-      { label: 'Email Support', href: 'mailto:support@aitutor.in' },
+      { label: 'Help Center', href: '/contact-us' },
+      { label: 'Call us: +91 89207 54675', href: 'tel:+918920754675' },
+      { label: '💬 WhatsApp us: +91 89207 54675', href: 'https://wa.me/918920754675' },
+      { label: 'Email: support@spinzyacademy.com', href: 'mailto:support@spinzyacademy.com' },
     ],
     legal: [
       { label: 'Privacy Policy', href: '/privacy' },
@@ -33,13 +23,6 @@ const Footer = () => {
       { label: 'Data Security', href: '/data-security' },
     ],
   };
-
-  const socialLinks = [
-    { icon: 'facebook', href: '#', label: 'Facebook' },
-    { icon: 'twitter', href: '#', label: 'Twitter' },
-    { icon: 'instagram', href: '#', label: 'Instagram' },
-    { icon: 'youtube', href: '#', label: 'YouTube' },
-  ];
 
   return (
     <footer className="bg-secondary text-white">
@@ -60,24 +43,24 @@ const Footer = () => {
                 </svg>
               </div>
               <div>
-                <span className="font-headline font-bold text-xl">AI Tutor</span>
+                <span className="font-headline font-bold text-xl">Spinzy</span>
                 <p className="font-accent text-sm opacity-80">भारत का शिक्षक</p>
               </div>
             </div>
             <p className="font-body text-sm opacity-80 mb-4 max-w-sm">
-              India's first AI-powered tutor providing affordable, quality education to every child.
-              Available 24×7 in Hindi and English.
+              AI-powered tutoring for Class 6–12 students. Affordable, personalised, and available
+              24×7 in Hindi and English. Aligned with CBSE, ICSE &amp; State Boards.
             </p>
             <div className="flex gap-3">
               <a
-                href="tel:+911234567890"
+                href="tel:+918920754675"
                 className="inline-flex items-center gap-2 px-4 py-2 bg-white/10 hover:bg-white/20 rounded-lg transition-colors text-sm"
               >
                 <Icon name="PhoneIcon" size={18} variant="solid" />
                 <span>Call Us</span>
               </a>
               <a
-                href="mailto:support@aitutor.in"
+                href="mailto:support@spinzyacademy.com"
                 className="inline-flex items-center gap-2 px-4 py-2 bg-white/10 hover:bg-white/20 rounded-lg transition-colors text-sm"
               >
                 <Icon name="EnvelopeIcon" size={18} variant="solid" />
@@ -89,13 +72,13 @@ const Footer = () => {
           <div>
             <h3 className="font-headline font-bold text-lg mb-4">Product</h3>
             <ul className="space-y-2">
-              {footerLinks?.product?.map((link) => (
-                <li key={link?.label}>
+              {footerLinks.product.map((link) => (
+                <li key={link.label}>
                   <a
-                    href={link?.href}
+                    href={link.href}
                     className="font-body text-sm opacity-80 hover:opacity-100 hover:text-primary transition-colors"
                   >
-                    {link?.label}
+                    {link.label}
                   </a>
                 </li>
               ))}
@@ -105,13 +88,13 @@ const Footer = () => {
           <div>
             <h3 className="font-headline font-bold text-lg mb-4">Support</h3>
             <ul className="space-y-2">
-              {footerLinks?.support?.map((link) => (
-                <li key={link?.label}>
+              {footerLinks.support.map((link) => (
+                <li key={link.label}>
                   <a
-                    href={link?.href}
+                    href={link.href}
                     className="font-body text-sm opacity-80 hover:opacity-100 hover:text-primary transition-colors"
                   >
-                    {link?.label}
+                    {link.label}
                   </a>
                 </li>
               ))}
@@ -121,13 +104,13 @@ const Footer = () => {
           <div>
             <h3 className="font-headline font-bold text-lg mb-4">Legal</h3>
             <ul className="space-y-2">
-              {footerLinks?.legal?.map((link) => (
-                <li key={link?.label}>
+              {footerLinks.legal.map((link) => (
+                <li key={link.label}>
                   <a
-                    href={link?.href}
+                    href={link.href}
                     className="font-body text-sm opacity-80 hover:opacity-100 hover:text-primary transition-colors"
                   >
-                    {link?.label}
+                    {link.label}
                   </a>
                 </li>
               ))}
@@ -136,27 +119,9 @@ const Footer = () => {
         </div>
 
         <div className="border-t border-white/10 pt-8">
-          <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-            <p className="font-body text-sm opacity-80 text-center md:text-left">
-              {isHydrated ? `© ${currentYear}` : '© 2025'} AI Tutor India. All rights reserved.
-              Made with ❤️ for Indian students.
-            </p>
-            <div className="flex items-center gap-4">
-              <span className="font-body text-sm opacity-60">Follow us:</span>
-              <div className="flex gap-2">
-                {socialLinks?.map((social) => (
-                  <a
-                    key={social?.icon}
-                    href={social?.href}
-                    aria-label={social?.label}
-                    className="w-10 h-10 rounded-full bg-white/10 hover:bg-primary flex items-center justify-center transition-colors"
-                  >
-                    <Icon name="ShareIcon" size={18} variant="outline" />
-                  </a>
-                ))}
-              </div>
-            </div>
-          </div>
+          <p className="font-body text-sm opacity-80 text-center">
+            &copy; 2026 Spinzy Academy. All rights reserved. Made with ❤️ for Indian students.
+          </p>
         </div>
       </div>
     </footer>

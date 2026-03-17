@@ -58,7 +58,7 @@ function OnboardingInner() {
           </div>
           <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100">Set up your profile</h1>
           <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-            This takes under a minute. Vidya will personalise your learning plan.
+            This takes under a minute. Teacher Vidya will personalise your learning plan.
           </p>
         </div>
 

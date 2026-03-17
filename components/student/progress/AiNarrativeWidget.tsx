@@ -45,7 +45,7 @@ export default function AiNarrativeWidget() {
       <article
         className="rounded-2xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-4"
         aria-busy="true"
-        aria-label="Loading Vidya's insight"
+        aria-label="Loading Teacher Vidya's insight"
       >
         <div className="flex items-center justify-between mb-3">
           <div className="h-3 w-24 bg-gray-200 dark:bg-slate-600 rounded animate-pulse" />
@@ -64,12 +64,12 @@ export default function AiNarrativeWidget() {
     return (
       <article className="rounded-2xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-4">
         <p className="text-sm text-gray-500 dark:text-gray-400">
-          {"Couldn't load insight — "}
+          {"Teacher Vidya will be right back. "}
           <button
             onClick={fetchNarrative}
             className="underline text-[#534AB7] dark:text-[#9B96E0] min-h-[44px] inline-flex items-center"
           >
-            tap to retry
+            Please try again in a moment.
           </button>
         </p>
       </article>
@@ -80,7 +80,7 @@ export default function AiNarrativeWidget() {
     <article className="rounded-2xl border border-[#534AB7]/20 bg-[#EEEDFE] dark:bg-[#534AB7]/10 p-4">
       <div className="flex items-center justify-between mb-3 gap-2">
         <span className="text-xs font-semibold uppercase tracking-wider text-[#534AB7] dark:text-[#9B96E0]">
-          {"Vidya's insight"}
+          {"Teacher Vidya's insight"}
         </span>
         <button
           onClick={() => toast('PDF download coming soon!')}
