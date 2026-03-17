@@ -11,6 +11,7 @@
  */
 
 import React from 'react';
+import Logo from '@/components/Logo';
 
 export interface DashboardTopbarProps {
   name: string;
@@ -28,13 +29,9 @@ export default function DashboardTopbar({
   return (
     <header className="sticky top-14 z-40 bg-white/95 dark:bg-slate-900/95 backdrop-blur-sm border-b border-gray-100 dark:border-slate-800 px-4 py-2 flex items-center justify-between min-h-[44px]">
       {/* Logo */}
-      <div className="flex items-center gap-2">
-        <div className="w-8 h-8 rounded-lg bg-[#534AB7] flex items-center justify-center flex-shrink-0">
-          <span className="text-white font-bold text-xs leading-none">S</span>
-        </div>
-        <span className="font-bold text-sm text-gray-900 dark:text-gray-100 hidden sm:inline">
-          Spinzy
-        </span>
+      <div className="flex items-center">
+        <span className="hidden sm:flex"><Logo variant="navbar" /></span>
+        <span className="flex sm:hidden"><Logo variant="navbar-mobile" /></span>
       </div>
 
       {/* Right badges */}

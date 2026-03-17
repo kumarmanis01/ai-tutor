@@ -20,13 +20,13 @@
       "name": "Start Learning",
       "short_name": "Learn",
       "url": "/dashboard",
-      "icons": [{ "src": "/icons/icon-96.png", "sizes": "96x96" }]
+      "icons": [{ "src": "/logos/icon-96.png", "sizes": "96x96" }]
     },
     {
       "name": "Revision Cards",
       "short_name": "Revise",
       "url": "/student/revisions",
-      "icons": [{ "src": "/icons/icon-96.png", "sizes": "96x96" }]
+      "icons": [{ "src": "/logos/icon-96.png", "sizes": "96x96" }]
     }
   ]
 }
