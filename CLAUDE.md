@@ -159,7 +159,14 @@ This is a deletion task. Rules:
    npm run build:workers && npm run build && npm test
    All must pass before committing. Never commit a broken build.
 
-10. **One task at a time.**
+10. **package-lock.json must be committed with package.json — always.**
+    After any `npm install` or `npm install <package>`, commit both files in
+    the same commit. Never commit package.json changes without the matching
+    package-lock.json update. Before pushing any branch, verify lockfile sync:
+      npm ci --include=dev
+    If this fails locally, run `npm install` first, then re-commit the lockfile.
+
+11. **One task at a time.**
     Never combine two tasks. Never start the next task until the current one
     is committed with a green gate.
 
