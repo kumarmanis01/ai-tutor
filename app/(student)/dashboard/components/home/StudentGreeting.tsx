@@ -54,7 +54,7 @@ export function StudentGreeting() {
       {/* Teacher Vidya ready badge */}
       <div className="flex items-center gap-2 mb-3">
         <img
-          src="/icons/teacher-vidya-avatar.png"
+          src="/logos/vidya/vidya-avatar-64.png"
           alt="Teacher Vidya"
           className="w-8 h-8 rounded-full object-cover flex-shrink-0"
         />

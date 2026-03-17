@@ -108,7 +108,7 @@ const HeroSection = () => {
             {/* Teacher Vidya avatar badge */}
             <div className="flex flex-col items-center mb-6">
               <img
-                src="/icons/teacher-vidya-avatar.png"
+                src="/logos/vidya/vidya-avatar-128.png"
                 alt="Teacher Vidya"
                 className="w-24 h-24 rounded-full object-cover ring-2 ring-[#534AB7] ring-offset-2"
               />
