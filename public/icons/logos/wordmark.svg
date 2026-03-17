@@ -1,9 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 80" width="240" height="80">
-  <defs>
-    <style>
-      @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@700&amp;display=swap');
-      .wm { font-family: 'Nunito', 'Baloo 2', 'Poppins', sans-serif; font-weight: 700; font-size: 68px; fill: #F97316; }
-    </style>
-  </defs>
-  <text class="wm" x="8" y="68" dominant-baseline="auto" letter-spacing="-1">Spinzy</text>
-</svg>
