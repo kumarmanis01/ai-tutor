@@ -174,12 +174,9 @@ export default function ProfileSetupForm({
 
       {/* Progress bar */}
       <div className="mb-6">
-        <div className="flex items-center justify-between mb-1.5">
+        <div className="flex items-center mb-1.5">
           <span className="text-xs font-semibold text-gray-500 dark:text-gray-400">
             {progress} of 4 complete
-          </span>
-          <span className="text-xs text-gray-400 dark:text-gray-500">
-            Step {step + 1} of 4
           </span>
         </div>
         <div className="h-2 rounded-full bg-gray-100 dark:bg-slate-700 overflow-hidden">
