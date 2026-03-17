@@ -16,15 +16,16 @@
  * Mobile-first: full-height on mobile, max-w-sm card on desktop.
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { signIn } from 'next-auth/react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 
 type Stage = 'phone' | 'otp' | 'loading';
 
 export default function SignInPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
 
   const [stage, setStage] = useState<Stage>('phone');
   const [phone, setPhone] = useState('');
@@ -32,6 +33,15 @@ export default function SignInPage() {
   const [otp, setOtp] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    const paramPhone = searchParams.get('phone');
+    const storedPhone = sessionStorage.getItem('spinzy_signup_phone');
+    const pre = paramPhone || storedPhone;
+    if (pre && /^[6-9]\d{9}$/.test(pre)) {
+      setPhone(pre);
+    }
+  }, [searchParams]);
 
   // ── Send OTP ───────────────────────────────────────────────────────────────
   async function handleSendOtp(e: React.FormEvent) {
@@ -95,6 +105,7 @@ export default function SignInPage() {
         return;
       }
       // Session cookie is set by the API. Redirect to onboarding with age.
+      sessionStorage.removeItem('spinzy_signup_phone');
       router.push(`/student/onboarding?age=${encodeURIComponent(age)}`);
     } catch {
       setError('Network error. Please check your connection.');

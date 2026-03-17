@@ -1,12 +1,14 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { signIn } from 'next-auth/react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 
 type Stage = 'phone' | 'otp' | 'loading';
 
 export default function SignupPage() {
+  const searchParams = useSearchParams();
   const [stage, setStage] = useState<Stage>('phone');
   const [phone, setPhone] = useState('');
   const [age, setAge] = useState('');
@@ -14,6 +16,15 @@ export default function SignupPage() {
   const [error, setError] = useState('');
   const [sending, setSending] = useState(false);
   const [verifying, setVerifying] = useState(false);
+
+  useEffect(() => {
+    const paramPhone = searchParams.get('phone');
+    const storedPhone = sessionStorage.getItem('spinzy_signup_phone');
+    const pre = paramPhone || storedPhone;
+    if (pre && /^[6-9]\d{9}$/.test(pre)) {
+      setPhone(pre);
+    }
+  }, [searchParams]);
 
   const phoneDigits = phone.replace(/\D/g, '');
 
@@ -70,6 +81,7 @@ export default function SignupPage() {
         return;
       }
       setStage('loading');
+      sessionStorage.removeItem('spinzy_signup_phone');
       window.location.href = `/student/onboarding?age=${encodeURIComponent(age)}`;
     } catch {
       setError('Something went wrong. Please try again.');

@@ -3,10 +3,8 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useSession } from 'next-auth/react';
-import Icon from '@/components/UI/AppIcon';
 
 import ConversionCTA from './ConversionCTA';
-import MobileMenu from './MobileMenu';
 
 interface NavigationItem {
   id: string;
@@ -48,8 +46,7 @@ const navigationItems: NavigationItem[] = [
 const StickyHeader = ({ activeSection = '', onSectionChange }: StickyHeaderProps) => {
   const { data: session } = useSession();
   const [isScrolled, setIsScrolled] = useState(false);
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [currentLanguage, setCurrentLanguage] = useState<'en' | 'hi'>('en');
+  // TODO Phase 2: re-add language toggle when Hindi content is live
 
   useEffect(() => {
     const handleScroll = () => {
@@ -65,12 +62,7 @@ const StickyHeader = ({ activeSection = '', onSectionChange }: StickyHeaderProps
     if (element) {
       element.scrollIntoView({ behavior: 'smooth', block: 'start' });
       onSectionChange?.(id);
-      setIsMobileMenuOpen(false);
     }
-  };
-
-  const toggleLanguage = () => {
-    setCurrentLanguage((prev) => (prev === 'en' ? 'hi' : 'en'));
   };
 
   return (
@@ -124,7 +116,7 @@ const StickyHeader = ({ activeSection = '', onSectionChange }: StickyHeaderProps
                   }`}
                   title={item.description}
                 >
-                  {currentLanguage === 'en' ? item.labelEn : item.labelHi}
+                  {item.labelEn}
                   {activeSection === item.id && (
                     <span className="absolute -bottom-1 left-0 right-0 h-0.5 bg-primary rounded-full" />
                   )}
@@ -132,54 +124,24 @@ const StickyHeader = ({ activeSection = '', onSectionChange }: StickyHeaderProps
               ))}
             </nav>
 
-            <div className="flex items-center gap-3 md:gap-4">
-              {/* Language toggle — only shown to logged-out visitors */}
-              {!session && (
-                <button
-                  onClick={toggleLanguage}
-                  className="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-border hover:bg-muted transition-colors text-sm font-medium"
-                  aria-label="Toggle language"
-                >
-                  <Icon name="LanguageIcon" size={18} variant="outline" />
-                  <span>{currentLanguage === 'en' ? 'हिं' : 'EN'}</span>
-                </button>
-              )}
-
-              {/* Login link — only shown to logged-out visitors */}
+            <div className="flex items-center gap-2 md:gap-3">
+              {/* Login — visible at all screen sizes to logged-out visitors */}
               {!session && (
                 <Link
                   href="/auth/signin"
-                  className="hidden md:inline-flex items-center px-4 py-2 text-sm font-medium text-foreground hover:text-primary border border-border rounded-lg hover:bg-muted transition-colors"
+                  className="text-sm font-medium text-gray-600 hover:text-[#534AB7] dark:text-gray-300 dark:hover:text-[#EEEDFE] transition-colors px-3 py-2"
                 >
                   Login
                 </Link>
               )}
 
-              <div className="hidden lg:block">
-                <ConversionCTA variant="header" />
-              </div>
-
-              <button
-                onClick={() => setIsMobileMenuOpen(true)}
-                className="lg:hidden p-2 hover:bg-muted rounded-md transition-colors"
-                aria-label="Open menu"
-              >
-                <Icon name="Bars3Icon" size={24} variant="outline" />
-              </button>
+              {/* Start Free — visible at all screen sizes; navigates directly to /auth/signup */}
+              <ConversionCTA variant="header" />
             </div>
           </div>
         </div>
       </header>
 
-      <MobileMenu
-        isOpen={isMobileMenuOpen}
-        onClose={() => setIsMobileMenuOpen(false)}
-        navigationItems={navigationItems}
-        activeSection={activeSection}
-        currentLanguage={currentLanguage}
-        onLanguageToggle={toggleLanguage}
-        onNavigate={handleSmoothScroll}
-      />
     </>
   );
 };

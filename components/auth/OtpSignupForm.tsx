@@ -16,6 +16,8 @@ const OtpSignupForm = () => {
       return;
     }
     setError('');
+    // Store in sessionStorage as fallback in case query param is lost
+    sessionStorage.setItem('spinzy_signup_phone', digits);
     window.location.href = `/auth/signup?phone=${encodeURIComponent(digits)}`;
   };
 

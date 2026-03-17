@@ -3,66 +3,75 @@ export type SendSmsResult =
   | { ok: false; error: string };
 
 /**
- * Send an SMS message.
+ * Send an OTP SMS via MSG91 v5 OTP API.
  *
  * Behavior:
- * - In non-production, we log to console and return a dev-ok result.
- * - In production, we attempt to use Twilio when `TWILIO_SID`,
- *   `TWILIO_TOKEN` and `TWILIO_FROM` are present.
- * - The function returns a structured result instead of throwing when
- *   possible, but will re-throw internal unexpected errors.
+ * - In non-production: logs to console only, returns dev-ok (no SMS sent).
+ * - In production: uses MSG91 OTP API v5.
+ *   Requires env vars: MSG91_AUTH_KEY, MSG91_TEMPLATE_ID
+ *   Optional: MSG91_SENDER (default 'MSGIND')
+ *
+ * Returns a structured result — never throws for expected error cases.
  */
 import { logger } from '@/lib/logger';
 
 export async function sendSms(phone: string, message: string): Promise<SendSmsResult> {
-  // Normalise phone as E.164 is recommended; here we assume caller
-  // provides a valid phone string including country code (e.g. +91...).
-  const to = String(phone).trim();
+  const to = String(phone).replace(/\D/g, '');
 
-  // Development: just log and return ok
+  // Development: log only, no real SMS
   if (process.env.NODE_ENV !== 'production') {
-    logger.add(`[SMS DEV] Sending to ${to}: ${message}`, { className: 'sms', methodName: 'sendSms' });
+    logger.add(`[SMS DEV] To +91${to}: ${message}`, { className: 'sms', methodName: 'sendSms' });
     return { ok: true, provider: 'dev' };
   }
 
-  // Production: try MSG91 when configured
-  const MSG91_AUTH_KEY = process.env.MSG91_AUTH_KEY;
-  if (!MSG91_AUTH_KEY) {
-    return { ok: false, error: 'MSG91_AUTH_KEY not set in environment' };
+  // Production: validate required env vars before attempting the API call
+  if (!process.env.MSG91_AUTH_KEY || !process.env.MSG91_TEMPLATE_ID) {
+    logger.add('[sendSms] MSG91_AUTH_KEY or MSG91_TEMPLATE_ID not configured', { className: 'sms', methodName: 'sendSms' });
+    return { ok: false, error: 'MSG91 not configured' };
   }
 
-  try {
-    // Use MSG91 send SMS endpoint. MSG91 has multiple APIs; here we call the control v2 sendsms endpoint
-    // with form-encoded params. Adjust if your MSG91 account requires a different endpoint or parameters.
-    const sender = process.env.MSG91_SENDER ?? 'MSGIND';
-    const country = process.env.MSG91_COUNTRY ?? '91';
+  // Extract the 6-digit OTP from the message so we can pass it directly to MSG91
+  // MSG91 OTP API v5 injects the otp variable into the approved template
+  const otpMatch = message.match(/\b(\d{4,6})\b/);
+  const otp = otpMatch ? otpMatch[1] : undefined;
 
-    const url = 'https://control.msg91.com/api/v2/sendsms';
-    const params = new URLSearchParams();
-    params.append('authkey', MSG91_AUTH_KEY);
-    params.append('mobiles', to);
-    params.append('message', message);
-    params.append('sender', sender);
-    params.append('route', process.env.MSG91_ROUTE ?? '4');
-    params.append('country', country);
+  try {
+    const url = 'https://control.msg91.com/api/v5/otp';
+    const payload: Record<string, string> = {
+      template_id: process.env.MSG91_TEMPLATE_ID,
+      mobile: `91${to}`,   // always prefix with country code
+      authkey: process.env.MSG91_AUTH_KEY,
+    };
+    if (otp) {
+      payload['otp'] = otp;
+    }
 
     const resp = await fetch(url, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: params.toString(),
+      headers: {
+        authkey: process.env.MSG91_AUTH_KEY,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(payload),
     });
 
-    const json = await resp.json().catch(() => ({}));
+    const json = await resp.json().catch(() => ({})) as Record<string, unknown>;
 
     if (!resp.ok) {
-      logger.add(`[sendSms] MSG91 send failed status=${resp.status} body=${JSON.stringify(json)}`, { className: 'sms', methodName: 'sendSms' });
+      logger.add(`[sendSms] MSG91 v5 failed status=${resp.status} body=${JSON.stringify(json)}`, { className: 'sms', methodName: 'sendSms' });
       return { ok: false, error: `msg91-error: ${resp.status}` };
     }
 
-    // MSG91 v2 usually returns { type: 'success', message: '...' } or an object with details.
-    return { ok: true, provider: 'msg91', id: (json as any)?.messageId || (json as any)?.message || undefined };
-  } catch (err: any) {
-    logger.add(`[sendSms] MSG91 send error ${String(err)}`, { className: 'sms', methodName: 'sendSms' });
-    return { ok: false, error: `msg91-error: ${err?.message || 'unknown'}` };
+    // MSG91 v5 returns { type: 'success', message: '...' }
+    if (json['type'] === 'error') {
+      logger.add(`[sendSms] MSG91 v5 returned error: ${JSON.stringify(json)}`, { className: 'sms', methodName: 'sendSms' });
+      return { ok: false, error: `msg91-error: ${String(json['message'] ?? 'unknown')}` };
+    }
+
+    return { ok: true, provider: 'msg91', id: String(json['message'] ?? '') || undefined };
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : 'unknown';
+    logger.add(`[sendSms] MSG91 v5 exception: ${msg}`, { className: 'sms', methodName: 'sendSms' });
+    return { ok: false, error: `msg91-error: ${msg}` };
   }
 }

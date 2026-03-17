@@ -66,7 +66,15 @@ export async function POST(req: NextRequest) {
       data: { phone, codeHash, expiresAt, ip },
     });
 
-    await sendSms(phone, `Your verification code is ${otp}. It expires in ${Math.round(OTP_EXPIRY_SECONDS/60)} minutes.`);
+    const smsResult = await sendSms(phone, `Your verification code is ${otp}. It expires in ${Math.round(OTP_EXPIRY_SECONDS / 60)} minutes.`);
+
+    if (!smsResult.ok) {
+      logger.error('send-otp SMS delivery failed', { className: 'api.auth.send-otp', methodName: 'POST', error: smsResult.error });
+      return NextResponse.json(
+        { ok: false, error: 'Failed to send OTP. Please try again.' },
+        { status: 500 },
+      );
+    }
 
     return NextResponse.json({ ok: true });
   } catch (err) {
