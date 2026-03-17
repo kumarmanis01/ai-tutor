@@ -76,9 +76,9 @@ const TrustBar = () => {
       color: 'text-secondary',
     },
     {
-      icon: 'ShieldCheckIcon',
-      value: 'Ex-Microsoft',
-      label: 'Expert Team',
+      icon: 'AcademicCapIcon',
+      value: 'CBSE & ICSE',
+      label: 'Curriculum Aligned',
       color: 'text-accent',
     },
   ];

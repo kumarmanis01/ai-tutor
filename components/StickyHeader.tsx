@@ -24,10 +24,10 @@ interface StickyHeaderProps {
 const navigationItems: NavigationItem[] = [
   {
     id: 'features',
-    labelEn: 'Features',
-    labelHi: 'विशेषताएं',
-    target: '#solution-showcase',
-    description: 'See how AI tutoring works',
+    labelEn: 'How It Works',
+    labelHi: 'कैसे काम करता है',
+    target: '#how-it-works',
+    description: 'See how Vidya teaches',
   },
   {
     id: 'pricing',

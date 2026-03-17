@@ -1,15 +1,11 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Link from 'next/link';
 import AppImage from '@/components/UI/AppImage';
 import Icon from '@/components/UI/AppIcon';
-import ConversionCTA from '@/components/ConversionCTA';
 
-interface HeroSectionProps {
-  onDemoClick: () => void;
-}
-
-const HeroSection = ({ onDemoClick }: HeroSectionProps) => {
+const HeroSection = () => {
   const [isHydrated, setIsHydrated] = useState(false);
   const [currentTestimonial, setCurrentTestimonial] = useState(0);
 
@@ -33,6 +29,13 @@ const HeroSection = ({ onDemoClick }: HeroSectionProps) => {
     '24×7 doubt solving, amazing! - Priya, Lucknow',
   ];
 
+  const handleSeeHow = () => {
+    const el = document.querySelector('#how-it-works');
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  };
+
   return (
     <section className="relative min-h-screen flex items-center bg-gradient-to-br from-primary/5 via-background to-secondary/5 pt-20 md:pt-24">
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
@@ -45,52 +48,60 @@ const HeroSection = ({ onDemoClick }: HeroSectionProps) => {
           <div className="text-center lg:text-left space-y-6 md:space-y-8">
             <div className="inline-flex items-center gap-2 px-4 py-2 bg-success/10 text-success rounded-full text-sm font-medium">
               <Icon name="CheckBadgeIcon" size={20} variant="solid" />
-              <span>Trusted by 5+ Lakh Students</span>
+              <span>Trusted by thousands of Indian families</span>
             </div>
 
             <div className="space-y-4">
               <h1 className="font-headline font-bold text-4xl md:text-5xl lg:text-6xl text-secondary leading-tight">
-                AI Tutor – Har Bacche Ka Personal Teacher. 24×7
+                Meet Vidya — Your Child&apos;s Personal AI Tutor. 24×7
               </h1>
               <p className="font-body text-xl md:text-2xl text-foreground/80">
-                Every Child Deserves Quality Education
+                Class 6–12 · CBSE / ICSE / State Board
               </p>
               <p className="font-body text-lg md:text-xl text-primary font-semibold">
-                Get instant homework help in Hindi & English for just ₹99/month
+                Instant doubt solving in Hindi & English for just ₹99/month
               </p>
             </div>
 
             <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
-              <ConversionCTA variant="hero" />
+              <Link
+                href="/auth/signup"
+                className="inline-flex items-center justify-center gap-2 px-6 py-3 md:px-8 md:py-4 min-h-[44px] bg-[#534AB7] text-white font-cta font-semibold rounded-lg hover:bg-[#4239a0] transition-all duration-250 text-base md:text-lg shadow-lg"
+              >
+                <Icon name="SparklesIcon" size={20} variant="solid" />
+                <span>Start Free</span>
+              </Link>
               <button
-                onClick={onDemoClick}
-                className="inline-flex items-center justify-center gap-2 px-6 py-3 md:px-8 md:py-4 bg-background border-2 border-secondary text-secondary font-cta font-semibold rounded-lg hover:bg-secondary hover:text-white transition-all duration-250 text-base md:text-lg"
+                onClick={handleSeeHow}
+                className="inline-flex items-center justify-center gap-2 px-6 py-3 md:px-8 md:py-4 min-h-[44px] bg-background border-2 border-secondary text-secondary font-cta font-semibold rounded-lg hover:bg-secondary hover:text-white transition-all duration-250 text-base md:text-lg"
               >
                 <Icon name="PlayCircleIcon" size={24} variant="solid" />
-                <span>See Demo Video</span>
+                <span>See How Vidya Teaches</span>
               </button>
             </div>
 
-            <div className="pt-4 space-y-3">
-              <div className="flex flex-wrap items-center justify-center lg:justify-start gap-4 text-sm md:text-base text-muted-foreground">
-                <div className="flex items-center gap-2">
-                  <Icon name="CheckCircleIcon" size={20} variant="solid" className="text-success" />
-                  <span>No Credit Card Required</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Icon name="ShieldCheckIcon" size={20} variant="solid" className="text-success" />
-                  <span>100% Safe & Private</span>
-                </div>
-              </div>
-
-              {isHydrated && (
-                <div className="bg-muted/50 rounded-lg p-3 md:p-4 border border-border">
-                  <p className="font-body text-sm md:text-base text-foreground italic text-center lg:text-left">
-                    "{testimonials[currentTestimonial]}"
-                  </p>
-                </div>
-              )}
+            <div className="flex flex-wrap items-center justify-center lg:justify-start gap-x-4 gap-y-2 text-sm md:text-base text-muted-foreground">
+              <span className="flex items-center gap-1.5">
+                <Icon name="CheckCircleIcon" size={18} variant="solid" className="text-[#1D9E75]" />
+                Free 3 sessions
+              </span>
+              <span className="flex items-center gap-1.5">
+                <Icon name="CheckCircleIcon" size={18} variant="solid" className="text-[#1D9E75]" />
+                No credit card
+              </span>
+              <span className="flex items-center gap-1.5">
+                <Icon name="CheckCircleIcon" size={18} variant="solid" className="text-[#1D9E75]" />
+                Setup in 2 minutes
+              </span>
             </div>
+
+            {isHydrated && (
+              <div className="bg-muted/50 rounded-lg p-3 md:p-4 border border-border">
+                <p className="font-body text-sm md:text-base text-foreground italic text-center lg:text-left">
+                  &ldquo;{testimonials[currentTestimonial]}&rdquo;
+                </p>
+              </div>
+            )}
           </div>
 
           <div className="relative">
