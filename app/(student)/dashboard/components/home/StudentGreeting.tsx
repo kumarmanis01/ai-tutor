@@ -51,6 +51,18 @@ export function StudentGreeting() {
 
   return (
     <div className="mb-6">
+      {/* Teacher Vidya ready badge */}
+      <div className="flex items-center gap-2 mb-3">
+        <img
+          src="/icons/icon-96.png"
+          alt="Teacher Vidya"
+          className="w-8 h-8 rounded-full object-cover flex-shrink-0"
+        />
+        <span className="text-sm text-muted-foreground">
+          Teacher Vidya is ready for you
+        </span>
+      </div>
+
       {/* Main Greeting + Streak badge */}
       <div className="flex items-start justify-between gap-4">
         <h1 className="text-2xl sm:text-3xl font-bold text-foreground">

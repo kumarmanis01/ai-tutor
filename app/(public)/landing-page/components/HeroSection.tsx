@@ -105,6 +105,17 @@ const HeroSection = () => {
           </div>
 
           <div className="relative">
+            {/* Teacher Vidya avatar badge */}
+            <div className="flex flex-col items-center mb-6">
+              <img
+                src="/icons/icon-192.png"
+                alt="Teacher Vidya"
+                className="w-24 h-24 rounded-full object-cover ring-2 ring-[#534AB7] ring-offset-2"
+              />
+              <p className="mt-2 text-sm font-semibold text-[#534AB7]">Teacher Vidya</p>
+              <p className="text-xs text-muted-foreground">Your AI home tutor</p>
+            </div>
+
             <div className="relative rounded-2xl overflow-hidden shadow-2xl border-8 border-border bg-card">
               <AppImage
                 src="https://images.unsplash.com/photo-1547567667-1aa64e6f58dc"

@@ -240,9 +240,16 @@ function AiMessageBubble({
   return (
     <div className="v2-msg-appear mb-3 flex flex-col items-start">
       {showLabel && (
-        <span className="mb-0.5 ml-1 text-[10px] font-medium text-gray-400 dark:text-gray-500">
-          Teacher Vidya
-        </span>
+        <div className="mb-1 ml-1 flex items-center gap-1.5">
+          <img
+            src="/icons/icon-96.png"
+            alt="Teacher Vidya"
+            className="w-5 h-5 rounded-full object-cover flex-shrink-0"
+          />
+          <span className="text-[10px] font-medium text-gray-400 dark:text-gray-500">
+            Teacher Vidya
+          </span>
+        </div>
       )}
       <div className="max-w-[85%] rounded-[4px_12px_12px_12px] bg-gray-100 px-3 py-2.5 text-sm leading-relaxed text-gray-900 dark:bg-gray-800 dark:text-gray-100 whitespace-pre-wrap break-words">
         {msg.content || '\u200B' /* zero-width space keeps bubble visible when empty */}
