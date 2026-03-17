@@ -98,8 +98,9 @@ export async function POST(req: NextRequest) {
     // Signal pending embeddings via Redis key (best-effort)
     if (subjectId && embeddingsPending > 0) {
       try {
-        const { redis } = await import('@/lib/redis/client')
-        await redis.set(`ingest:pending:${subjectId}`, embeddingsPending, { ex: 86400 })
+        const { getRedis } = await import('@/lib/redis')
+        const redis = getRedis()
+        await redis?.set(`ingest:pending:${subjectId}`, String(embeddingsPending), 'EX', 86400)
       } catch {
         // Non-fatal — embedding pipeline will scan DB directly
       }

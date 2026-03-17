@@ -1,13 +1,13 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { Suspense, useState, useEffect } from 'react';
 import { signIn } from 'next-auth/react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 
 type Stage = 'phone' | 'otp' | 'loading';
 
-export default function SignupPage() {
+function SignupContent() {
   const searchParams = useSearchParams();
   const [stage, setStage] = useState<Stage>('phone');
   const [phone, setPhone] = useState('');
@@ -281,6 +281,18 @@ export default function SignupPage() {
         )}
       </div>
     </div>
+  );
+}
+
+export default function SignupPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="w-8 h-8 border-2 border-[#534AB7] border-t-transparent rounded-full animate-spin" />
+      </div>
+    }>
+      <SignupContent />
+    </Suspense>
   );
 }
 
