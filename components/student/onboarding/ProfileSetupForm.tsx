@@ -22,6 +22,7 @@
 import React, { useEffect, useState } from 'react';
 import { useSession } from 'next-auth/react';
 import { useAcademicHierarchy } from '@/hooks/useAcademicHierarchy';
+import { MIN_STUDENT_AGE, MAX_STUDENT_AGE } from '@/lib/constants/age';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -137,7 +138,7 @@ export default function ProfileSetupForm({
 
   // ── Helpers ─────────────────────────────────────────────────────────────────
 
-  const nameAndAgeDone = !!(name.trim()) && !!(age && age >= 5 && age <= 25);
+  const nameAndAgeDone = !!(name.trim()) && !!(age && age >= MIN_STUDENT_AGE && age <= MAX_STUDENT_AGE);
 
   const completedSteps: boolean[] = [
     nameAndAgeDone,
@@ -176,7 +177,7 @@ export default function ProfileSetupForm({
       const trimmed = name.trim();
       let hasError = false;
       if (!trimmed) { setNameError('Name is required'); hasError = true; }
-      if (!age || age < 5 || age > 25) { setAgeError('Age is required'); hasError = true; }
+      if (!age || age < MIN_STUDENT_AGE || age > MAX_STUDENT_AGE) { setAgeError('Age is required'); hasError = true; }
       if (hasError) return;
       setNameError('');
       setAgeError('');
@@ -297,8 +298,8 @@ export default function ProfileSetupForm({
                   <input
                     id="onboarding-age"
                     type="number"
-                    min={5}
-                    max={25}
+                    min={MIN_STUDENT_AGE}
+                    max={MAX_STUDENT_AGE}
                     value={age ?? ''}
                     onChange={(e) => {
                       const v = e.target.value === '' ? undefined : parseInt(e.target.value, 10);

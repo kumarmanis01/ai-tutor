@@ -21,18 +21,46 @@ import { useRouter } from 'next/navigation';
 
 const STUDY_DAY_OPTIONS = [3, 4, 5, 6, 7];
 const DEFAULT_STUDY_DAYS = 5;
+/** Default concept count — CBSE Grade 10 has ~60 concepts across subjects. */
+const TOTAL_CONCEPTS = 60;
 
-/** Returns { weeks, revisionRounds } given weeksUntilExam and daysPerWeek. */
+interface EstimateResult {
+  weeksToComplete: number;
+  months: string;
+  revisionRounds: number;
+  sufficient: boolean;
+  /** Weeks to spare when exam date is set and pace is sufficient. */
+  spareWeeks: number;
+  /** Minimum days/week needed when pace is insufficient for the exam date. */
+  daysNeeded: number;
+}
+
+/**
+ * Calculates study plan estimate from days/week and optional exam date.
+ * - No exam date: weeksToComplete based on TOTAL_CONCEPTS / daysPerWeek.
+ * - Exam date set: compares available weeks to weeksToComplete; flags if pace is insufficient.
+ */
 function computeEstimate(
   daysPerWeek: number,
-  weeksUntilExam: number | null
-): { weeksLabel: string; revisions: number } {
-  const weeks = weeksUntilExam ?? 26; // default 6 months
-  const totalStudyDays = daysPerWeek * weeks;
-  // Rough: 70% of time → new topics, 30% → revisions
-  const revisions = Math.max(1, Math.floor((totalStudyDays * 0.3) / daysPerWeek));
-  const weeksLabel = weeksUntilExam ? `${weeks} weeks` : '26 weeks (6 months)';
-  return { weeksLabel, revisions };
+  weeksUntilExam: number | null,
+): EstimateResult {
+  const sessionsNeeded = TOTAL_CONCEPTS; // one session per concept
+  const weeksToComplete = Math.ceil(sessionsNeeded / daysPerWeek);
+  const totalSessions = weeksToComplete * daysPerWeek;
+  const revisionRounds = Math.max(1, Math.floor((totalSessions - sessionsNeeded) / (TOTAL_CONCEPTS / 3)));
+  const months = (weeksToComplete / 4.33).toFixed(1);
+
+  if (weeksUntilExam === null) {
+    return { weeksToComplete, months, revisionRounds, sufficient: true, spareWeeks: 0, daysNeeded: 0 };
+  }
+
+  if (weeksUntilExam >= weeksToComplete) {
+    const spareWeeks = weeksUntilExam - weeksToComplete;
+    return { weeksToComplete, months, revisionRounds, sufficient: true, spareWeeks, daysNeeded: 0 };
+  }
+
+  const daysNeeded = Math.ceil(sessionsNeeded / weeksUntilExam);
+  return { weeksToComplete, months, revisionRounds: 0, sufficient: false, spareWeeks: 0, daysNeeded };
 }
 
 function parseExamDate(raw: string): Date | null {
@@ -169,12 +197,33 @@ export default function ExamDatePage() {
           </div>
 
           {/* Live estimate */}
-          <div className="rounded-xl bg-[#EEEDFE] dark:bg-[#534AB7]/10 px-4 py-3">
-            <p className="text-sm text-[#534AB7] dark:text-indigo-300 leading-relaxed">
-              With <strong>{studyDays} days/week</strong> and{' '}
-              <strong>{estimate.weeksLabel}</strong> — we&apos;ll cover all chapters with
-              time for <strong>{estimate.revisions} revision round{estimate.revisions !== 1 ? 's' : ''}</strong>.
-            </p>
+          <div className={`rounded-xl px-4 py-3 ${estimate.sufficient ? 'bg-[#EEEDFE] dark:bg-[#534AB7]/10' : 'bg-[#FAEEDA] dark:bg-[#BA7517]/10'}`}>
+            {!weeks ? (
+              // No exam date — show plan horizon
+              <p className="text-sm text-[#534AB7] dark:text-indigo-300 leading-relaxed">
+                With <strong>{studyDays} days/week</strong> — we&apos;ll cover all chapters in{' '}
+                <strong>{estimate.weeksToComplete} weeks ({estimate.months} months)</strong> with time for{' '}
+                <strong>{estimate.revisionRounds} revision round{estimate.revisionRounds !== 1 ? 's' : ''}</strong>.
+              </p>
+            ) : estimate.sufficient ? (
+              // Exam date set, pace is sufficient
+              <p className="text-sm text-[#534AB7] dark:text-indigo-300 leading-relaxed">
+                With <strong>{studyDays} days/week</strong> — you&apos;ll finish all chapters{' '}
+                {estimate.spareWeeks > 0 ? (
+                  <>with <strong>{estimate.spareWeeks} week{estimate.spareWeeks !== 1 ? 's' : ''} to spare</strong> for revision</>
+                ) : (
+                  <>just in time</>
+                )}.
+              </p>
+            ) : (
+              // Exam date set, pace is NOT sufficient
+              <p className="text-sm text-[#BA7517] dark:text-amber-300 leading-relaxed">
+                At <strong>{studyDays} days/week</strong> you&apos;ll need{' '}
+                <strong>{estimate.weeksToComplete} weeks</strong> — but your exam is in{' '}
+                <strong>{weeks} weeks</strong>. Study{' '}
+                <strong>{estimate.daysNeeded} days/week</strong> to cover all chapters in time.
+              </p>
+            )}
           </div>
 
           {error && (

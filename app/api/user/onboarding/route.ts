@@ -3,6 +3,7 @@ import { formatErrorForResponse } from '@/lib/errorResponse';
 // Consolidated onboarding handler (merged onboarding-phone -> onboarding)
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSessionForHandlers } from '@/lib/session';
+import { DPDP_MINOR_AGE } from '@/lib/constants/age';
 import { prisma } from '@/lib/prisma';
 import { getDailyTask } from '@/lib/dailyHabit';
 import { enqueueDiagnosticBootstrapJob } from '@/jobs/diagnosticBootstrap';
@@ -70,10 +71,8 @@ export async function POST(req: NextRequest) {
     if (!preferredLanguage || String(preferredLanguage).trim() === '') fieldErrors.preferred_language = 'Preferred language is required';
     if (!subjects || subjects.length === 0) fieldErrors.subjects = 'Select at least 1 subject';
     if (subjects && subjects.length > 6) fieldErrors.subjects = 'You can select up to 6 subjects';
-    // Under 18: parent/guardian email required for verification step
-    if (age != null && age >= 1 && age < 18 && (!parentEmail || parentEmail.length === 0)) {
-      fieldErrors.parent_email = 'Parent or guardian email is required for students under 18.';
-    }
+    // Parent email is collected in a separate post-onboarding step — not required here.
+    // Under-DPDP_MINOR_AGE handling sets accountStatus below after the DB save.
     if (Object.keys(fieldErrors).length) {
       res = NextResponse.json({ error: 'validation_error', fieldErrors }, { status: 400 });
       logger.logAPI(req, res, { className: 'UserOnboardingAPI', methodName: 'POST' }, start);
@@ -244,28 +243,22 @@ export async function POST(req: NextRequest) {
       throw updErr;
     }
 
-    // Under-13 activation gate: require parent verification before unlocking.
-    if (age != null && age < 13) {
+    // Under-DPDP_MINOR_AGE: set pending_parent_verification so the ParentOTPGate
+    // overlay handles it after onboarding. Do NOT block here — return 200 and let
+    // the client navigate forward; the gate overlay intercepts the next page load.
+    if (age != null && age < DPDP_MINOR_AGE) {
       const fresh = await prisma.user.findUnique({
         where: { id: updatedUser.id },
         select: { parentPhoneVerifiedAt: true, accountStatus: true },
       });
       if (!fresh?.parentPhoneVerifiedAt) {
-        // Ensure status is gated even if parent phone step hasn't started yet
         await prisma.user.update({
           where: { id: updatedUser.id },
           data: { accountStatus: 'pending_parent_verification' },
         }).catch(() => {});
-        res = NextResponse.json(
-          {
-            error: 'parent_verification_required',
-            message: 'Parent phone verification is required for students under 13.',
-            fieldErrors: { parent_phone: 'Parent verification required' },
-          },
-          { status: 403 },
-        );
-        logger.logAPI(req, res, { className: 'UserOnboardingAPI', methodName: 'POST' }, start);
-        return res;
+        logger.info('/api/user/onboarding: under-DPDP age — accountStatus set to pending_parent_verification', {
+          className: 'api.user.onboarding', methodName: 'POST', id: updatedUser.id,
+        });
       }
     }
 
