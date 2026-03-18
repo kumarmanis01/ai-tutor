@@ -29,6 +29,7 @@ function OnboardingInner() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          name: values.name,
           board: values.board,
           class_grade: values.grade,
           preferred_language: values.language,

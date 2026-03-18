@@ -3,22 +3,24 @@
 /**
  * ProfileSetupForm — v2 (Screen 3)
  *
- * 4-step forward-only wizard to capture the student's academic profile.
+ * 5-step forward-only wizard to capture the student's academic profile.
  * No back button, no close.
  *
  * Steps:
- *   1. Board    — card grid: CBSE | ICSE | State Board
- *   2. Class    — number grid 6–12, selected = purple border
- *   3. Medium   — two large tap targets: English | Hindi
- *   4. Subjects — checkbox grid, locked core subjects, max 6
+ *   0. Name & Age — name text input + age number input (pre-filled from session)
+ *   1. Board      — card grid: CBSE | ICSE | State Board
+ *   2. Class      — number grid 1–12, selected = purple border
+ *   3. Medium     — two large tap targets: English | Hindi
+ *   4. Subjects   — checkbox grid, locked core subjects, max 6
  *
  * On final step submit: calls onSave(values) — caller posts to /api/user/onboarding.
  *
- * Progress bar shows N of 4 complete.
+ * Progress bar shows N of 5 complete.
  * Sidebar checklist tracks which steps are done.
  */
 
 import React, { useEffect, useState } from 'react';
+import { useSession } from 'next-auth/react';
 import { useAcademicHierarchy } from '@/hooks/useAcademicHierarchy';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -65,8 +67,7 @@ function getMandatorySubjects(board: string, grade: number): string[] {
 }
 
 /** Steps label + key */
-const STEPS = ['Board', 'Class', 'Medium', 'Subjects'] as const;
-type StepKey = typeof STEPS[number];
+const STEPS = ['Name & Age', 'Board', 'Class', 'Medium', 'Subjects'] as const;
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
@@ -77,7 +78,13 @@ export default function ProfileSetupForm({
   saveError,
   onSave,
 }: ProfileSetupFormProps) {
-  const [step, setStep] = useState(0); // 0–3
+  const { data: session } = useSession();
+
+  const [step, setStep] = useState(0); // 0–4
+  const [name, setName] = useState('');
+  const [age, setAge] = useState<number | undefined>(initialAge);
+  const [nameError, setNameError] = useState('');
+  const [ageError, setAgeError] = useState('');
   const [board, setBoard] = useState('');
   const [grade, setGrade] = useState(0);
   const [language, setLanguage] = useState<'en' | 'hi'>('en');
@@ -85,6 +92,14 @@ export default function ProfileSetupForm({
   const [subjectError, setSubjectError] = useState('');
 
   const { helpers, loading: hierarchyLoading } = useAcademicHierarchy();
+
+  // Pre-fill name from session on mount (only if not yet typed)
+  useEffect(() => {
+    const sessionName = (session?.user as any)?.name;
+    if (sessionName && typeof sessionName === 'string' && !name) {
+      setName(sessionName);
+    }
+  }, [session]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Derive subjects list from hierarchy (falls back to empty if not loaded yet)
   const availableSubjects = grade
@@ -122,7 +137,10 @@ export default function ProfileSetupForm({
 
   // ── Helpers ─────────────────────────────────────────────────────────────────
 
+  const nameAndAgeDone = !!(name.trim()) && !!(age && age >= 5 && age <= 25);
+
   const completedSteps: boolean[] = [
+    nameAndAgeDone,
     !!board,
     !!grade,
     !!language,
@@ -145,19 +163,31 @@ export default function ProfileSetupForm({
   }
 
   function canAdvance(): boolean {
-    if (step === 0) return !!board;
-    if (step === 1) return !!grade;
-    if (step === 2) return !!language;
-    if (step === 3) return subjects.length > 0;
+    if (step === 0) return nameAndAgeDone;
+    if (step === 1) return !!board;
+    if (step === 2) return !!grade;
+    if (step === 3) return !!language;
+    if (step === 4) return subjects.length > 0;
     return false;
   }
 
   function handleContinue() {
+    if (step === 0) {
+      const trimmed = name.trim();
+      let hasError = false;
+      if (!trimmed) { setNameError('Name is required'); hasError = true; }
+      if (!age || age < 5 || age > 25) { setAgeError('Age is required'); hasError = true; }
+      if (hasError) return;
+      setNameError('');
+      setAgeError('');
+      setStep(1);
+      return;
+    }
     if (!canAdvance()) return;
-    if (step < 3) {
+    if (step < 4) {
       setStep((s) => s + 1);
     } else {
-      onSave({ board, grade, language, subjects, age: initialAge });
+      onSave({ board, grade, language, subjects, age, name: name.trim() });
     }
   }
 
@@ -176,13 +206,13 @@ export default function ProfileSetupForm({
       <div className="mb-6">
         <div className="flex items-center mb-1.5">
           <span className="text-xs font-semibold text-gray-500 dark:text-gray-400">
-            {progress} of 4 complete
+            {progress} of 5 complete
           </span>
         </div>
         <div className="h-2 rounded-full bg-gray-100 dark:bg-slate-700 overflow-hidden">
           <div
             className="h-full rounded-full bg-[#534AB7] transition-all duration-500"
-            style={{ width: `${((step + (canAdvance() ? 1 : 0)) / 4) * 100}%` }}
+            style={{ width: `${((step + (canAdvance() ? 1 : 0)) / 5) * 100}%` }}
           />
         </div>
       </div>
@@ -225,8 +255,72 @@ export default function ProfileSetupForm({
         {/* Step content */}
         <div className="flex-1 min-w-0">
 
-          {/* ── Step 1: Board ────────────────────────────────────────── */}
+          {/* ── Step 0: Name & Age ───────────────────────────────────── */}
           {step === 0 && (
+            <section aria-labelledby="step-nameage">
+              <h2 id="step-nameage" className="text-lg font-bold text-gray-900 dark:text-gray-100 mb-1">
+                Let&apos;s get to know you
+              </h2>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mb-5">
+                This helps Vidya personalise your learning.
+              </p>
+              <div className="space-y-4">
+                {/* Name */}
+                <div>
+                  <label
+                    htmlFor="onboarding-name"
+                    className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+                  >
+                    Your name
+                  </label>
+                  <input
+                    id="onboarding-name"
+                    type="text"
+                    value={name}
+                    onChange={(e) => { setName(e.target.value); if (nameError) setNameError(''); }}
+                    placeholder="e.g. Riya Sharma"
+                    className="w-full min-h-[44px] rounded-xl border-2 border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-2 text-sm text-gray-900 dark:text-gray-100 placeholder-gray-400 focus:outline-none focus:border-[#534AB7] dark:focus:border-indigo-400 transition-colors"
+                  />
+                  {nameError && (
+                    <p role="alert" className="mt-1 text-xs text-[#E24B4A] dark:text-red-400">{nameError}</p>
+                  )}
+                </div>
+
+                {/* Age */}
+                <div>
+                  <label
+                    htmlFor="onboarding-age"
+                    className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+                  >
+                    Your age
+                  </label>
+                  <input
+                    id="onboarding-age"
+                    type="number"
+                    min={5}
+                    max={25}
+                    value={age ?? ''}
+                    onChange={(e) => {
+                      const v = e.target.value === '' ? undefined : parseInt(e.target.value, 10);
+                      setAge(v);
+                      if (ageError) setAgeError('');
+                    }}
+                    placeholder="e.g. 14"
+                    className="w-full min-h-[44px] rounded-xl border-2 border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-2 text-sm text-gray-900 dark:text-gray-100 placeholder-gray-400 focus:outline-none focus:border-[#534AB7] dark:focus:border-indigo-400 transition-colors"
+                  />
+                  {ageError && (
+                    <p role="alert" className="mt-1 text-xs text-[#E24B4A] dark:text-red-400">{ageError}</p>
+                  )}
+                  <p className="mt-1 text-xs text-gray-400 dark:text-gray-500">
+                    We ask this to keep your account safe.
+                  </p>
+                </div>
+              </div>
+            </section>
+          )}
+
+          {/* ── Step 1: Board ────────────────────────────────────────── */}
+          {step === 1 && (
             <section aria-labelledby="step-board">
               <h2 id="step-board" className="text-lg font-bold text-gray-900 dark:text-gray-100 mb-4">
                 Which board do you study under?
@@ -264,7 +358,7 @@ export default function ProfileSetupForm({
           )}
 
           {/* ── Step 2: Class ────────────────────────────────────────── */}
-          {step === 1 && (
+          {step === 2 && (
             <section aria-labelledby="step-class">
               <h2 id="step-class" className="text-lg font-bold text-gray-900 dark:text-gray-100 mb-1">
                 Which class are you in?
@@ -302,7 +396,7 @@ export default function ProfileSetupForm({
           )}
 
           {/* ── Step 3: Medium ───────────────────────────────────────── */}
-          {step === 2 && (
+          {step === 3 && (
             <section aria-labelledby="step-medium">
               <h2 id="step-medium" className="text-lg font-bold text-gray-900 dark:text-gray-100 mb-4">
                 Which language do you prefer?
@@ -332,7 +426,7 @@ export default function ProfileSetupForm({
           )}
 
           {/* ── Step 4: Subjects ─────────────────────────────────────── */}
-          {step === 3 && (
+          {step === 4 && (
             <section aria-labelledby="step-subjects">
               <h2 id="step-subjects" className="text-lg font-bold text-gray-900 dark:text-gray-100 mb-1">
                 Which subjects?
@@ -412,12 +506,12 @@ export default function ProfileSetupForm({
             <button
               type="button"
               onClick={handleContinue}
-              disabled={!canAdvance() || saving}
+              disabled={saving}
               className="flex w-full min-h-[44px] items-center justify-center rounded-xl bg-[#534AB7] text-white text-sm font-semibold hover:bg-[#4840a3] active:scale-[0.98] disabled:opacity-50 transition-all shadow-md shadow-[#534AB7]/25"
             >
               {saving
                 ? 'Saving…'
-                : step < 3
+                : step < 4
                 ? 'Continue →'
                 : 'Save & continue'}
             </button>

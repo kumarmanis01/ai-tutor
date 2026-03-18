@@ -9,7 +9,9 @@ interface ProfileCompletionGateProps {
   missingFields: ProfileMissingField[];
 }
 
-const GATE_FIELDS: { key: ProfileMissingField; label: string }[] = [
+// key2 allows a combined display item (e.g. Name & Age checks both 'name' and 'age')
+const GATE_FIELDS: { key: ProfileMissingField; key2?: ProfileMissingField; label: string }[] = [
+  { key: 'name', key2: 'age', label: 'Name & Age' },
   { key: 'board', label: 'Board' },
   { key: 'grade', label: 'Class' },
   { key: 'language', label: 'Medium' },
@@ -24,7 +26,10 @@ export default function ProfileCompletionGate({ missingFields }: ProfileCompleti
     setMounted(true);
   }, []);
 
-  const items = GATE_FIELDS.map((f) => ({ ...f, filled: !missingFields.includes(f.key) }));
+  const items = GATE_FIELDS.map((f) => ({
+    ...f,
+    filled: !missingFields.includes(f.key) && (!f.key2 || !missingFields.includes(f.key2)),
+  }));
   const completedCount = items.filter((i) => i.filled).length;
   const total = GATE_FIELDS.length;
 
