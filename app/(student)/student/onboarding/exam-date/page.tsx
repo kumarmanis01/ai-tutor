@@ -105,6 +105,12 @@ export default function ExamDatePage() {
         setError(json?.error ?? 'Something went wrong. Please try again.');
         return;
       }
+      // No-exam path always goes to dashboard — diagnostic skipped.
+      // Exam path navigates to the diagnostic route if a firstSubjectId was returned.
+      if (!includeExamDate) {
+        router.push('/dashboard');
+        return;
+      }
       const firstSubjectId: string | null = json?.firstSubjectId ?? null;
       if (firstSubjectId) {
         router.push(`/student/diagnostic/${encodeURIComponent(firstSubjectId)}`);
