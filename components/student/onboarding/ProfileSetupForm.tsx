@@ -46,7 +46,7 @@ export interface ProfileSetupFormProps {
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
-const GRADES = [6, 7, 8, 9, 10, 11, 12];
+const GRADES = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
 
 const BOARD_OPTIONS = [
   { slug: 'cbse', label: 'CBSE', desc: 'Central Board of Secondary Education' },

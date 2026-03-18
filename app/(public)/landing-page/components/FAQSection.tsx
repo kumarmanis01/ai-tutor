@@ -71,9 +71,9 @@ const FAQSection = () => {
       questionEn: 'Which boards and classes are supported?',
       questionHi: 'कौन से बोर्ड और कक्षाएं समर्थित हैं?',
       answerEn:
-        'We support CBSE, ICSE, and all State Boards for classes 6-12. All major subjects including Math, Science, Social Studies, English, and Hindi are covered. Our AI understands regional language variations and provides explanations accordingly.',
+        'We support CBSE, ICSE, and all State Boards for classes 1-12. All major subjects including Math, Science, Social Studies, English, and Hindi are covered. Our AI understands regional language variations and provides explanations accordingly.',
       answerHi:
-        'हम कक्षा 6-12 के लिए CBSE, ICSE और सभी State Boards का समर्थन करते हैं। Math, Science, Social Studies, English और Hindi सहित सभी प्रमुख विषय शामिल हैं। हमारा AI क्षेत्रीय भाषा भिन्नताओं को समझता है और तदनुसार समाधान प्रदान करता है।',
+        'हम कक्षा 1-12 के लिए CBSE, ICSE और सभी State Boards का समर्थन करते हैं। Math, Science, Social Studies, English और Hindi सहित सभी प्रमुख विषय शामिल हैं। हमारा AI क्षेत्रीय भाषा भिन्नताओं को समझता है और तदनुसार समाधान प्रदान करता है।',
       category: 'Coverage',
     },
     {

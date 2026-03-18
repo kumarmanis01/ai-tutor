@@ -48,7 +48,7 @@ const Footer = () => {
               </div>
             </div>
             <p className="font-body text-sm opacity-80 mb-4 max-w-sm">
-              AI-powered tutoring for Class 6–12 students. Affordable, personalised, and available
+              AI-powered tutoring for Class 1–12 students. Affordable, personalised, and available
               24×7 in Hindi and English. Aligned with CBSE, ICSE &amp; State Boards.
             </p>
             <div className="flex gap-3">

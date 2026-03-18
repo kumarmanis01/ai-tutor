@@ -56,7 +56,7 @@ const HeroSection = () => {
                 Meet Teacher Vidya — Your Child&apos;s Personal AI Tutor. 24×7
               </h1>
               <p className="font-body text-xl md:text-2xl text-foreground/80">
-                Class 6–12 · CBSE / ICSE / State Board
+                Class 1–12 · CBSE / ICSE / State Board
               </p>
               <p className="font-body text-lg md:text-xl text-primary font-semibold">
                 Instant doubt solving in Hindi & English for just ₹99/month

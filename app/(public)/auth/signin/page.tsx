@@ -73,7 +73,7 @@ function AuthContent() {
           </div>
           <div>
             <h1 className="text-xl font-brand font-bold text-gray-900 dark:text-white">Welcome to Spinzy</h1>
-            <p className="text-sm text-muted-foreground mt-1">AI home tutor · CBSE Grades 6–12</p>
+            <p className="text-sm text-muted-foreground mt-1">AI home tutor · CBSE Grades 1–12</p>
           </div>
         </div>
 

@@ -93,17 +93,26 @@ export async function POST(req: NextRequest) {
           },
           select: { name: true, slug: true },
         });
-        const valid = new Set<string>();
-        for (const s of validSubjects) {
-          if (s?.name) valid.add(String(s.name).toLowerCase());
-          if (s?.slug) valid.add(String(s.slug).toLowerCase());
-        }
-        const invalid = subjects.filter((s) => !valid.has(s.toLowerCase()));
-        if (invalid.length > 0) {
-          fieldErrors.subjects = `Invalid subjects for ${board} grade ${grade}: ${invalid.join(', ')}`;
-          res = NextResponse.json({ error: 'validation_error', fieldErrors }, { status: 400 });
-          logger.logAPI(req, res, { className: 'UserOnboardingAPI', methodName: 'POST' }, start);
-          return res;
+        // If no SubjectDef rows are seeded for this board+grade, skip validation entirely
+        if (validSubjects.length > 0) {
+          const valid = new Set<string>();
+          for (const s of validSubjects) {
+            if (s?.name) {
+              valid.add(String(s.name).toLowerCase());
+              valid.add(String(s.name)); // exact-case match
+            }
+            if (s?.slug) {
+              valid.add(String(s.slug).toLowerCase());
+              valid.add(String(s.slug)); // exact-case match
+            }
+          }
+          const invalid = subjects.filter((s) => !valid.has(s.toLowerCase()) && !valid.has(s));
+          if (invalid.length > 0) {
+            fieldErrors.subjects = `Invalid subjects for ${board} grade ${grade}: ${invalid.join(', ')}`;
+            res = NextResponse.json({ error: 'validation_error', fieldErrors }, { status: 400 });
+            logger.logAPI(req, res, { className: 'UserOnboardingAPI', methodName: 'POST' }, start);
+            return res;
+          }
         }
       } catch (valErr) {
         // Non-blocking: if validation query fails, log and continue
