@@ -107,7 +107,8 @@
     "outbox:start": "tsx src/jobs/outbox/dispatcher.ts",
     "docker:build": "docker build -t edtech-backend .",
     "docker:up": "docker-compose up -d",
-    "docker:down": "docker-compose down"
+    "docker:down": "docker-compose down",
+    "seed:classes": "node scripts/seed-classes.cjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.78.0",
