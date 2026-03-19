@@ -1,11 +1,119 @@
 /**
- * Diagnostic placeholder — redirects to dashboard.
+ * Diagnostic test page — full-screen, no navbar.
  *
- * The full diagnostic UI will replace this file in a future task.
- * This prevents stale links or direct URL visits from showing a 404.
+ * Fetches questions via generateSubjectDiagnosticTest (board + grade + subject slug),
+ * resumes partial state from Redis, then renders DiagnosticFlow.
+ *
+ * Route: /diagnostic/[subjectId]   (subjectId = SubjectDef CUID)
  */
-import { redirect } from 'next/navigation';
 
-export default function DiagnosticPage() {
-  redirect('/dashboard');
+import { redirect } from 'next/navigation';
+import { requireActiveSession } from '@/lib/auth';
+import { prisma } from '@/lib/prisma';
+import { generateSubjectDiagnosticTest } from '@/lib/diagnostics/diagnosticQuestionService';
+import { getPartialDiagnostic } from '@/lib/redis/diagnosticPartial';
+import DiagnosticFlow, {
+  type DiagnosticQuestion,
+} from '@/components/student/diagnostic/DiagnosticFlow';
+
+export const dynamic = 'force-dynamic';
+
+export default async function DiagnosticPage({
+  params,
+}: {
+  params: { subjectId: string };
+}) {
+  const authSession = await requireActiveSession();
+  if (!authSession) redirect('/');
+
+  const userId = (authSession.user as { id: string }).id;
+  const { subjectId } = params;
+
+  // Fetch student profile — need board slug, grade, language for question generation
+  const student = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { board: true, grade: true, language: true },
+  });
+
+  if (!student?.board || !student?.grade) redirect('/student/onboarding');
+
+  // Fetch SubjectDef with active chapters + topics so we can map topicId → chapterId/name
+  const subjectDef = await prisma.subjectDef.findUnique({
+    where: { id: subjectId },
+    select: {
+      id: true,
+      name: true,
+      slug: true,
+      chapters: {
+        where: { lifecycle: 'active' },
+        orderBy: { order: 'asc' },
+        select: {
+          id: true,
+          name: true,
+          topics: {
+            where: { lifecycle: 'active' },
+            select: { id: true },
+          },
+        },
+      },
+    },
+  });
+
+  if (!subjectDef) redirect('/dashboard');
+
+  // Build topicId → {chapterId, chapterName} lookup
+  const topicChapterMap = new Map<string, { chapterId: string; chapterName: string }>();
+  for (const chapter of subjectDef.chapters) {
+    for (const topic of chapter.topics) {
+      topicChapterMap.set(topic.id, { chapterId: chapter.id, chapterName: chapter.name });
+    }
+  }
+
+  // Generate (or retrieve cached) diagnostic questions
+  let rawQuestions: Awaited<ReturnType<typeof generateSubjectDiagnosticTest>>['questions'] = [];
+  try {
+    const diagnosticTest = await generateSubjectDiagnosticTest({
+      boardSlug: student.board,
+      grade: student.grade,
+      subjectSlug: subjectDef.slug,
+      languageCode: student.language ?? undefined,
+    });
+    rawQuestions = diagnosticTest.questions;
+  } catch {
+    redirect('/dashboard');
+  }
+
+  if (rawQuestions.length === 0) redirect('/dashboard');
+
+  // Map service question shape → DiagnosticFlow question shape
+  const questions: DiagnosticQuestion[] = rawQuestions.map((q) => {
+    const chapterInfo = topicChapterMap.get(q.topicId) ?? { chapterId: '', chapterName: '' };
+    return {
+      id: q.id,
+      prompt: q.questionText,
+      choices: q.options.map((o) => o.label),
+      correctAnswer: q.correctAnswer,
+      topicId: q.topicId,
+      chapterId: chapterInfo.chapterId,
+      chapterName: chapterInfo.chapterName,
+    };
+  });
+
+  // Resume partial state from Redis (non-fatal if Redis is unavailable)
+  const partial = await getPartialDiagnostic(userId, subjectId);
+  const initialAnswers = partial?.answers ?? [];
+  const initialIndex = Math.min(
+    partial?.currentIndex ?? 0,
+    Math.max(0, questions.length - 1),
+  );
+
+  return (
+    <DiagnosticFlow
+      subjectId={subjectId}
+      subjectName={subjectDef.name}
+      questions={questions}
+      initialAnswers={initialAnswers}
+      initialIndex={initialIndex}
+    />
+  );
 }

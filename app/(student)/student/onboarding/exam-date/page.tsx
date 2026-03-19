@@ -113,7 +113,7 @@ export default function ExamDatePage() {
       }
       const firstSubjectId: string | null = json?.firstSubjectId ?? null;
       if (firstSubjectId) {
-        router.push(`/student/diagnostic/${encodeURIComponent(firstSubjectId)}`);
+        router.push(`/diagnostic/${encodeURIComponent(firstSubjectId)}`);
       } else {
         router.push('/dashboard');
       }
