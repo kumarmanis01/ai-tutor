@@ -19,9 +19,6 @@
  */
 
 import { createHash } from 'crypto'
-// pdf-parse has no @types package — same pattern as other untyped deps in this repo
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-import pdfParse from 'pdf-parse'
 import { PrismaClient } from '@prisma/client'
 import { getEmbeddingsBatch } from '../lib/ai/embeddings'
 
@@ -240,6 +237,19 @@ async function downloadPdf(url: string): Promise<Buffer> {
 // ── Step 2 cont.: Extract text, validate, clean ───────────────────────────────
 
 async function extractText(buf: Buffer, chapterNum: number): Promise<string | null> {
+  // Dynamic import so --dry-run and module loading never require pdf-parse
+  // (pdf-parse depends on pdfjs-dist which may not be available in all envs)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let pdfParse: (buf: Buffer) => Promise<{ text: string }>
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const mod = await import('pdf-parse') as any
+    pdfParse = mod.default ?? mod
+  } catch {
+    console.warn(`  Chapter ${chapterNum}: pdf-parse not available — skipping`)
+    return null
+  }
+
   let rawText: string
   try {
     const data = await pdfParse(buf)
