@@ -72,23 +72,28 @@ function validateQuestionsShape(raw: any, subjectName?: string): boolean {
     // answer must exist and not be null
     if (q.answer === null || typeof q.answer === 'undefined') return false;
 
-    // Subject-specific stricter checks
-    try {
-      const subjectLower = (subjectName || '').toLowerCase();
-      if (subjectLower.includes('math') || subjectLower.includes('mathematics')) {
-        // For math, answer should be an object with solution_steps and final_answer
-        if (typeof q.answer !== 'object') return false;
-        if (!Array.isArray(q.answer.solution_steps) || q.answer.solution_steps.length === 0) return false;
-        if (!q.answer.final_answer) return false;
+    // Subject-specific stricter checks only apply to non-MCQ question types.
+    // MCQ questions always use a string answer matching one of the options — the
+    // topic-questions prompt generates MCQ exclusively, so enforcing structured
+    // object answers (solution_steps / direct_answer) on MCQ would always fail.
+    if (q.type !== 'mcq') {
+      try {
+        const subjectLower = (subjectName || '').toLowerCase();
+        if (subjectLower.includes('math') || subjectLower.includes('mathematics')) {
+          // For non-MCQ math, answer should be an object with solution_steps and final_answer
+          if (typeof q.answer !== 'object') return false;
+          if (!Array.isArray(q.answer.solution_steps) || q.answer.solution_steps.length === 0) return false;
+          if (!q.answer.final_answer) return false;
+        }
+        if (subjectLower.includes('science')) {
+          if (typeof q.answer !== 'object') return false;
+          if (!q.answer.direct_answer) return false;
+          if (!q.answer.scientific_explanation) return false;
+        }
+      } catch {
+        // fallback: ensure answer has substantial content
+        if (typeof q.answer === 'string' && q.answer.trim().length < 10) return false;
       }
-      if (subjectLower.includes('science')) {
-        if (typeof q.answer !== 'object') return false;
-        if (!q.answer.direct_answer) return false;
-        if (!q.answer.scientific_explanation) return false;
-      }
-    } catch {
-      // fallback: ensure answer has substantial content
-      if (typeof q.answer === 'string' && q.answer.trim().length < 10) return false;
     }
   }
   return true;
@@ -125,19 +130,23 @@ function validateQuestionsShapeWithReport(raw: any, subjectName?: string) {
     }
     if (q.answer === null || typeof q.answer === 'undefined') { qReport.ok = false; qReport.issues.push('missing-answer'); }
 
-    try {
-      if (subjectLower.includes('math') || subjectLower.includes('mathematics')) {
-        if (typeof q.answer !== 'object') { qReport.ok = false; qReport.issues.push('math-answer-not-object'); }
-        if (!Array.isArray(q.answer.solution_steps) || q.answer.solution_steps.length === 0) { qReport.ok = false; qReport.issues.push('math-missing-solution_steps'); }
-        if (!('final_answer' in q.answer)) { qReport.ok = false; qReport.issues.push('math-missing-final_answer'); }
+    // Subject-specific answer-shape checks only for non-MCQ types.
+    // MCQ uses string answer = correctAnswer — structured object checks must not apply.
+    if (q.type !== 'mcq') {
+      try {
+        if (subjectLower.includes('math') || subjectLower.includes('mathematics')) {
+          if (typeof q.answer !== 'object') { qReport.ok = false; qReport.issues.push('math-answer-not-object'); }
+          if (!Array.isArray(q.answer?.solution_steps) || q.answer.solution_steps.length === 0) { qReport.ok = false; qReport.issues.push('math-missing-solution_steps'); }
+          if (!q.answer || !('final_answer' in q.answer)) { qReport.ok = false; qReport.issues.push('math-missing-final_answer'); }
+        }
+        if (subjectLower.includes('science')) {
+          if (typeof q.answer !== 'object') { qReport.ok = false; qReport.issues.push('science-answer-not-object'); }
+          if (!q.answer || (!('direct_answer' in q.answer) && !('final_answer' in q.answer))) { qReport.ok = false; qReport.issues.push('science-missing-direct_answer'); }
+          if (!q.answer?.scientific_explanation && !q.answer?.explanation) { qReport.ok = false; qReport.issues.push('science-missing-explanation'); }
+        }
+      } catch {
+        qReport.ok = false; qReport.issues.push('subject-validation-exception');
       }
-      if (subjectLower.includes('science')) {
-        if (typeof q.answer !== 'object') { qReport.ok = false; qReport.issues.push('science-answer-not-object'); }
-        if (!('direct_answer' in q.answer) && !('final_answer' in q.answer)) { qReport.ok = false; qReport.issues.push('science-missing-direct_answer'); }
-        if (!q.answer.scientific_explanation && !q.answer.explanation) { qReport.ok = false; qReport.issues.push('science-missing-explanation'); }
-      }
-    } catch {
-      qReport.ok = false; qReport.issues.push('subject-validation-exception');
     }
 
     if (qReport.ok) report.summary.validCount += 1; else report.summary.issues.push({ index: idx, issues: qReport.issues });

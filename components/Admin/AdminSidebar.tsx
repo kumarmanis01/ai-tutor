@@ -232,6 +232,7 @@ const contentGenerationLinks: NavItem[] = [
 ];
 
 const contentManagementLinks: NavItem[] = [
+  { href: '/admin/content', label: 'Coverage & Hydrate', icon: 'Generate' },
   {
     href: '/admin/content-approval',
     label: 'Content Review',
