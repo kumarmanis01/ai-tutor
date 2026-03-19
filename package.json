@@ -76,7 +76,7 @@
     "render:diagrams": "npx @mermaid-js/mermaid-cli -i docs/diagrams/submit-enqueue.mmd -o docs/diagrams/submit-enqueue.png && npx @mermaid-js/mermaid-cli -i docs/diagrams/worker-claim-execute.mmd -o docs/diagrams/worker-claim-execute.png && npx @mermaid-js/mermaid-cli -i docs/diagrams/reconciler-aggregation.mmd -o docs/diagrams/reconciler-aggregation.png",
     "test:unit": "cross-env NODE_OPTIONS=--max-old-space-size=4096 jest --runInBand",
     "orchestrator:start": "ts-node -r tsconfig-paths/register worker/orchestrator.ts",
-    "seed-ai-data": "node scripts/seed-ai-data.cjs",
+    "seed": "node scripts/seed-taxonomy.cjs",
     "seed:dashboard": "node scripts/seed-dashboard-test-data.cjs",
     "seed:dashboard:dry": "node scripts/seed-dashboard-test-data.cjs --dry-run",
     "test:mvp-flow": "node scripts/test-mvp-flow.cjs",
@@ -108,7 +108,7 @@
     "docker:build": "docker build -t edtech-backend .",
     "docker:up": "docker-compose up -d",
     "docker:down": "docker-compose down",
-    "seed:classes": "node scripts/seed-classes.cjs"
+    "seed:taxonomy": "node scripts/seed-taxonomy.cjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.78.0",

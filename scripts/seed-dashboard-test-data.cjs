@@ -3,7 +3,7 @@
  *
  * CBSE · Grade 10 · English
  * Curriculum (4 subjects × 2 chapters × 2 topics = 16 topics total):
- *   Science, Mathematics (from seed-ai-data.cjs)
+ *   Science, Mathematics (from seed-taxonomy.cjs)
  *   + Social Science, English Language  (seeded here)
  *
  * 3 Students with end-to-end differentiated journeys:
@@ -58,7 +58,7 @@
  *   ✓ SubjectProgressSummary per-subject snapshot
  *
  * Idempotent: uses upsert / skipDuplicates throughout.
- * Prerequisite: node scripts/seed-ai-content.cjs + node scripts/seed-ai-data.cjs
+ * Prerequisite: node scripts/seed-taxonomy.cjs
  *
  * Usage:
  *   node scripts/seed-dashboard-test-data.cjs           # live run
@@ -413,7 +413,7 @@ async function seedCurriculum(classLevel) {
 // ── fetch all topics from DB, build lookup map ────────────────────────────────
 async function fetchTopicMap() {
   const board = await prisma.board.findUnique({ where: { slug: BOARD_SLUG } });
-  if (!board) throw new Error(`Board '${BOARD_SLUG}' not found. Run seed-ai-content first.`);
+  if (!board) throw new Error(`Board '${BOARD_SLUG}' not found. Run seed-taxonomy.cjs first.`);
   const classLevel = await prisma.classLevel.findUnique({
     where: { boardId_grade: { boardId: board.id, grade: GRADE } },
   });
@@ -1366,8 +1366,7 @@ function printReport(studentIdByKey) {
   h1('NEXT STEPS IF ANYTHING IS MISSING');
   line();
   line('  Prerequisite seed order:');
-  line('    1. node scripts/seed-ai-content.cjs      # board + class hierarchy');
-  line('    2. node scripts/seed-ai-data.cjs          # Science + Mathematics content');
+  line('    1. node scripts/seed-taxonomy.cjs          # board + class hierarchy');
   line('    3. node scripts/seed-dashboard-test-data.cjs  # this script');
   line();
   line('  Full reset:');

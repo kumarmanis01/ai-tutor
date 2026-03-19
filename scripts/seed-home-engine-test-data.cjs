@@ -73,7 +73,7 @@ async function main() {
   });
 
   if (!topic) {
-    console.error('No active TopicDef found. Run seed-ai-data first.');
+    console.error('No active TopicDef found. Run seed-taxonomy.cjs first.');
     process.exit(1);
   }
 

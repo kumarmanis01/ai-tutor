@@ -12,8 +12,8 @@
  * 2. Applies all Prisma migrations via `prisma migrate dev`.
  * 3. Regenerates the Prisma client via `prisma generate`.
  * 4. Runs seed scripts in order:
+ *    - scripts/seed-taxonomy.cjs
  *    - scripts/seed-taxonomy-launch-slice.ts
- *    - scripts/seed-ai-data.cjs
  *    - scripts/seed-misconceptions.ts
  *
  * SAFETY:
@@ -28,9 +28,8 @@ const ROOT = path.resolve(__dirname, '..');
 
 /** Commands to run after migrations, in order. */
 const SEED_COMMANDS = [
-  ['npx', ['tsx', 'scripts/seed-ai-content.cjs']],
+  ['node', ['scripts/seed-taxonomy.cjs']],
   ['npx', ['tsx', 'scripts/seed-taxonomy-launch-slice.ts']],
-  ['npx', ['tsx', 'scripts/seed-ai-data.cjs']],
   ['npx', ['tsx', 'scripts/seed-misconceptions.ts']],
 ];
 

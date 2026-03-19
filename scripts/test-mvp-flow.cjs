@@ -772,7 +772,7 @@ async function main() {
   });
 
   if (!seedTopic) {
-    console.error('\n[FATAL] No active TopicDef found. Run "npm run seed-ai-data" first.');
+    console.error('\n[FATAL] No active TopicDef found. Run "npm run seed" first.');
     process.exit(1);
   }
 

@@ -6,7 +6,7 @@
  * - Concept records from existing TopicDef for CBSE Grade 10 Maths + Science
  *   with description, irt_b, bloomLevel, prerequisiteConceptIds, commonlyConfusedWithIds.
  *
- * Run after: seed-ai-content.ts (Board/ClassLevel/SubjectDef/ChapterDef/TopicDef must exist).
+ * Run after: seed-taxonomy.cjs (Board/ClassLevel/SubjectDef must exist).
  * Idempotent: safe to rerun.
  */
 
@@ -60,7 +60,7 @@ const DEFAULT_CHAPTER_WEIGHT = 8;
 async function seedBoardChapterWeights() {
   const cbse = await prisma.board.findFirst({ where: { slug: "cbse" } });
   if (!cbse) {
-    console.log("⚠️ Board CBSE not found; run seed-ai-content first.");
+    console.log("⚠️ Board CBSE not found; run seed-taxonomy.cjs first.");
     return;
   }
   const class10 = await prisma.classLevel.findFirst({
