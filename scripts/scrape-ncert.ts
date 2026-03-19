@@ -89,7 +89,8 @@ const SUBJECT_ALIASES: Record<string, string> = {
 // ── CLI args ──────────────────────────────────────────────────────────────────
 
 interface Args {
-  grade: number
+  grade: number | null  // null when --all-grades is set
+  allGrades: boolean
   subject: string
   board: string
   lang: string
@@ -103,11 +104,19 @@ function parseArgs(): Args {
     const i = argv.indexOf(`--${name}`)
     return i !== -1 ? (argv[i + 1] ?? null) : null
   }
-  const gradeRaw = flag('grade')
-  if (!gradeRaw) { console.error('[scrape-ncert] --grade is required'); process.exit(1) }
-  const grade = parseInt(gradeRaw, 10)
-  if (isNaN(grade) || grade < 1 || grade > 12) {
-    console.error(`[scrape-ncert] --grade must be 1–12, got "${gradeRaw}"`); process.exit(1)
+  const allGrades = argv.includes('--all-grades')
+
+  let grade: number | null = null
+  if (!allGrades) {
+    const gradeRaw = flag('grade')
+    if (!gradeRaw) {
+      console.error('[scrape-ncert] --grade is required (or use --all-grades)')
+      process.exit(1)
+    }
+    grade = parseInt(gradeRaw, 10)
+    if (isNaN(grade) || grade < 1 || grade > 12) {
+      console.error(`[scrape-ncert] --grade must be 1–12, got "${gradeRaw}"`); process.exit(1)
+    }
   }
 
   const subjectRaw = flag('subject')
@@ -120,6 +129,7 @@ function parseArgs(): Args {
 
   return {
     grade,
+    allGrades,
     subject,
     board: (flag('board') ?? 'cbse').toUpperCase(),
     lang:  (flag('lang')  ?? 'en').toLowerCase(),
@@ -130,9 +140,9 @@ function parseArgs(): Args {
 
 // ── URL resolution ────────────────────────────────────────────────────────────
 
-function resolveDownloadUrl(args: Args): string {
+function resolveDownloadUrl(args: Args, grade: number): string {
   if (args.urlOverride) return args.urlOverride
-  const key = `${args.grade}-${args.subject}-${args.lang}`
+  const key = `${grade}-${args.subject}-${args.lang}`
   const stem = URL_TABLE[key]
   if (!stem) {
     console.error(
@@ -143,6 +153,16 @@ function resolveDownloadUrl(args: Args): string {
     process.exit(1)
   }
   return `${BASE_URL}/${stem}.zip`
+}
+
+/** Return all grades available for a given subject+lang in URL_TABLE. */
+function availableGrades(subject: string, lang: string): number[] {
+  const prefix = `-${subject}-${lang}`
+  return Object.keys(URL_TABLE)
+    .filter((k) => k.endsWith(prefix))
+    .map((k) => parseInt(k.split('-')[0], 10))
+    .filter((n) => !isNaN(n))
+    .sort((a, b) => a - b)
 }
 
 // ── Download ──────────────────────────────────────────────────────────────────
@@ -381,35 +401,38 @@ function cleanupTempDir(dir: string): void {
   }
 }
 
-// ── Main ──────────────────────────────────────────────────────────────────────
+// ── Per-grade pipeline ────────────────────────────────────────────────────────
 
-async function main() {
-  const args = parseArgs()
+async function runForGrade(
+  prisma: PrismaClient,
+  args: Args,
+  grade: number,
+): Promise<{ errors: number }> {
   const startMs = Date.now()
-  const prisma = new PrismaClient()
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'ncert-'))
 
   console.log(
-    `[scrape-ncert] grade=${args.grade} subject=${args.subject} board=${args.board} lang=${args.lang}`,
+    `\n[scrape-ncert] ── grade=${grade} subject=${args.subject} board=${args.board} lang=${args.lang} ──`,
   )
-  if (args.dryRun) console.log('[scrape-ncert] DRY RUN — no DB writes.')
 
   try {
-    // ── Step 1: Download ────────────────────────────────────────────────────
-    const downloadUrl = resolveDownloadUrl(args)
+    // ── Step 1: Download ──────────────────────────────────────────────────
+    const downloadUrl = resolveDownloadUrl(args, grade)
     const zipPath = path.join(tmpDir, 'textbook.zip')
     await verifyAndDownload(downloadUrl, zipPath)
 
-    // ── Step 2: Extract ─────────────────────────────────────────────────────
+    // ── Step 2: Extract ───────────────────────────────────────────────────
     const extractDir = path.join(tmpDir, 'extracted')
     fs.mkdirSync(extractDir)
     extractZip(zipPath, extractDir)
 
     const pdfPaths = collectPdfs(extractDir)
     if (pdfPaths.length === 0) throw new Error('No PDF files found in ZIP.')
-    console.log(`[scrape-ncert] Found ${pdfPaths.length} PDF file(s): ${pdfPaths.map(p => path.basename(p)).join(', ')}`)
+    console.log(
+      `[scrape-ncert] Found ${pdfPaths.length} PDF file(s): ${pdfPaths.map((p) => path.basename(p)).join(', ')}`,
+    )
 
-    // ── Step 3: Parse + clean all PDFs ─────────────────────────────────────
+    // ── Step 3: Parse + clean ─────────────────────────────────────────────
     const rawTexts: string[] = []
     for (const p of pdfPaths) {
       console.log(`[scrape-ncert] Parsing ${path.basename(p)} …`)
@@ -419,25 +442,27 @@ async function main() {
     const combinedText = rawTexts.join('\n\n')
     console.log(`[scrape-ncert] Total text: ${combinedText.length.toLocaleString()} chars`)
 
-    // ── Step 4: Chunk ───────────────────────────────────────────────────────
+    // ── Step 4: Chunk ─────────────────────────────────────────────────────
     const chunks = chunkText(combinedText)
-    console.log(`[scrape-ncert] ${chunks.length} chunks at ~${CHUNK_WORDS} words / ${OVERLAP_WORDS}-word overlap`)
+    console.log(
+      `[scrape-ncert] ${chunks.length} chunks at ~${CHUNK_WORDS} words / ${OVERLAP_WORDS}-word overlap`,
+    )
 
     if (args.dryRun) {
-      console.log(`[scrape-ncert] Dry run complete. Would process ${chunks.length} chunks.`)
-      return
+      console.log(`[scrape-ncert] Dry run — would process ${chunks.length} chunks for grade ${grade}.`)
+      return { errors: 0 }
     }
 
-    // ── Step 5: Upsert CurriculumChunk rows ─────────────────────────────────
+    // ── Step 5: Upsert CurriculumChunk rows ───────────────────────────────
     const meta: ChunkMeta = {
       board: args.board,
       subject: args.subject,
-      grade: String(args.grade),
+      grade: String(grade),
     }
     const { toEmbed, created, skipped } = await upsertChunks(prisma, chunks, meta)
     console.log(`[scrape-ncert] Chunks: ${created} created, ${skipped} skipped (hash match)`)
 
-    // ── Step 6: Embed ───────────────────────────────────────────────────────
+    // ── Step 6: Embed ─────────────────────────────────────────────────────
     let embeds = { embedded: 0, errors: 0, errorDetails: [] as { id: string; error: string }[] }
     if (toEmbed.length > 0) {
       console.log(`[scrape-ncert] Embedding ${toEmbed.length} chunk(s) …`)
@@ -447,7 +472,7 @@ async function main() {
       console.log('[scrape-ncert] All chunks already embedded — nothing to do.')
     }
 
-    // ── Step 7: IngestRunLog ─────────────────────────────────────────────────
+    // ── Step 7: IngestRunLog ──────────────────────────────────────────────
     await writeRunLog(prisma, {
       fileSource: downloadUrl,
       board: args.board,
@@ -461,15 +486,56 @@ async function main() {
 
     const durationSec = ((Date.now() - startMs) / 1000).toFixed(1)
     console.log(
-      `\n[scrape-ncert] ✓ Done in ${durationSec}s — ` +
-      `${chunks.length} chunks, ${embeds.embedded} embedded, ${embeds.errors} errors.`,
+      `[scrape-ncert] ✓ grade ${grade} done in ${durationSec}s — ` +
+        `${chunks.length} chunks, ${embeds.embedded} embedded, ${embeds.errors} errors.`,
     )
 
-    if (embeds.errors > 0) process.exit(1)
+    return { errors: embeds.errors }
   } finally {
     cleanupTempDir(tmpDir)
+  }
+}
+
+// ── Main ──────────────────────────────────────────────────────────────────────
+
+async function main() {
+  const args = parseArgs()
+  if (args.dryRun) console.log('[scrape-ncert] DRY RUN — no DB writes.')
+
+  const grades: number[] = args.allGrades
+    ? availableGrades(args.subject, args.lang)
+    : [args.grade as number]
+
+  if (grades.length === 0) {
+    console.error(
+      `[scrape-ncert] No grades available for subject="${args.subject}" lang="${args.lang}" in URL_TABLE.`,
+    )
+    process.exit(1)
+  }
+
+  if (args.allGrades) {
+    console.log(`[scrape-ncert] --all-grades: will process grades ${grades.join(', ')} for ${args.subject}`)
+  }
+
+  const prisma = new PrismaClient()
+  let totalErrors = 0
+
+  try {
+    for (const grade of grades) {
+      const { errors } = await runForGrade(prisma, args, grade)
+      totalErrors += errors
+    }
+  } finally {
     await prisma.$disconnect()
   }
+
+  if (grades.length > 1) {
+    console.log(
+      `\n[scrape-ncert] ✓ All ${grades.length} grades complete. Total errors: ${totalErrors}`,
+    )
+  }
+
+  if (totalErrors > 0) process.exit(1)
 }
 
 main().catch((err) => {
