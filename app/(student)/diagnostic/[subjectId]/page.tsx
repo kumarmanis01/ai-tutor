@@ -7,6 +7,7 @@
  * Route: /diagnostic/[subjectId]   (subjectId = SubjectDef CUID)
  */
 
+import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { requireActiveSession } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
@@ -60,6 +61,33 @@ export default async function DiagnosticPage({
   });
 
   if (!subjectDef) redirect('/dashboard');
+
+  // Content gate — must have minimum viable questions before starting diagnostic
+  const questionCount = await prisma.question.count({
+    where: { subjectId: subjectDef.id, status: 'ACTIVE' },
+  });
+  if (questionCount < 10) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-white dark:bg-gray-950">
+        <div className="max-w-sm text-center px-6">
+          <div className="text-4xl mb-4">📚</div>
+          <h1 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">
+            Vidya is getting ready
+          </h1>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">
+            We&apos;re preparing your {subjectDef.name} diagnostic. This usually takes a few
+            minutes. Check back shortly.
+          </p>
+          <Link
+            href="/dashboard"
+            className="inline-block px-4 py-2 bg-[#534AB7] text-white text-sm rounded-lg hover:bg-[#3d3690] transition-colors min-h-[44px] min-w-[44px] leading-[28px]"
+          >
+            Back to dashboard
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   // Build topicId → {chapterId, chapterName} lookup
   const topicChapterMap = new Map<string, { chapterId: string; chapterName: string }>();

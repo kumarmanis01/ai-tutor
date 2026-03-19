@@ -352,16 +352,23 @@ export default async function StudentHomeDashboardPage() {
     }));
 
   // ── Subject readiness ─────────────────────────────────────────────────────
-  const subjectNames = (studentProfile?.subjects ?? []).map((s) => String(s)).filter(Boolean);
-  const subjectDefs = subjectNames.length
-    ? await prisma.subjectDef.findMany({
-        where: {
-          OR: [{ name: { in: subjectNames } }, { slug: { in: subjectNames } }],
-          lifecycle: 'active',
-        },
-        select: { id: true, name: true },
-      })
-    : [];
+  // Fetch subjects from the student's enrolled ClassLevel (grade + board) to
+  // avoid duplicates from the OR name/slug match and stale subjects[] array.
+  const subjectDefs =
+    studentProfile?.grade && studentProfile?.board
+      ? await prisma.subjectDef.findMany({
+          where: {
+            lifecycle: 'active',
+            classLevel: {
+              grade: studentProfile.grade,
+              board: { slug: studentProfile.board },
+            },
+          },
+          distinct: ['name'],
+          orderBy: { name: 'asc' },
+          select: { id: true, name: true },
+        })
+      : [];
   const readinessResults = await Promise.all(
     subjectDefs.map(async (subj) => {
       const result = await computeReadinessScore(userId, subj.id).catch(() => null);
