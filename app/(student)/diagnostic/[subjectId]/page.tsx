@@ -62,11 +62,16 @@ export default async function DiagnosticPage({
 
   if (!subjectDef) redirect('/dashboard');
 
-  // Content gate — must have minimum viable questions before starting diagnostic
-  const questionCount = await prisma.question.count({
-    where: { subjectId: subjectDef.id, status: 'ACTIVE' },
+  // Content gate — syllabus must have been hydrated (SyllabusWorker writes TopicDef first).
+  // Questions are lazy-promoted from GeneratedQuestion on first session use, so we gate
+  // on TopicDef presence, not the Question table which starts empty.
+  const topicCount = await prisma.topicDef.count({
+    where: {
+      chapter: { subjectId: subjectDef.id, lifecycle: 'active' },
+      lifecycle: 'active',
+    },
   });
-  if (questionCount < 10) {
+  if (topicCount === 0) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-white dark:bg-gray-950">
         <div className="max-w-sm text-center px-6">
