@@ -16,6 +16,7 @@
  */
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+import Image from 'next/image';
 import { stripTag } from '@/lib/ai/tutor/tagParser';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
@@ -241,10 +242,12 @@ function AiMessageBubble({
     <div className="v2-msg-appear mb-3 flex flex-col items-start">
       {showLabel && (
         <div className="mb-1 ml-1 flex items-center gap-1.5">
-          <img
-            src="/icons/teacher-vidya-avatar.png"
-            alt="Teacher Vidya"
-            className="w-5 h-5 rounded-full object-cover flex-shrink-0"
+          <Image
+            src="/logos/vidya/vidya-avatar-64.png"
+            alt="Vidya"
+            width={32}
+            height={32}
+            className="rounded-full flex-shrink-0"
           />
           <span className="text-[10px] font-medium text-gray-400 dark:text-gray-500">
             Teacher Vidya

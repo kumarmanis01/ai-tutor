@@ -1,4 +1,5 @@
 import { prisma } from '@/lib/prisma'
+import { DPDP_MINOR_AGE } from '@/lib/constants/age'
 
 export type ProfileMissingField = 'grade' | 'board' | 'subjects' | 'language' | 'name' | 'age' | 'parent_email' | 'parent_phone'
 
@@ -93,8 +94,8 @@ export async function checkProfileCompleteness(studentId: string): Promise<Profi
       }
     }
 
-    // Under 13: need parent phone for OTP verification (collected and set via send-otp in onboarding)
-    if (Number.isFinite(ageNum) && ageNum >= 1 && ageNum < 13) {
+    // Under DPDP_MINOR_AGE: need parent phone for OTP verification (collected and set via send-otp in onboarding)
+    if (Number.isFinite(ageNum) && ageNum >= 1 && ageNum < DPDP_MINOR_AGE) {
       if (!user.parentPhone || String(user.parentPhone).trim() === '') {
         missingFields.push('parent_phone')
       }

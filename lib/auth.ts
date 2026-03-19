@@ -8,6 +8,7 @@ import { getEmailTransporter } from '@/lib/mailer';
 import { logger } from '@/lib/logger';
 import { LanguageCode } from '@/lib/normalize';
 import { getServerSession } from 'next-auth/next';
+import { DPDP_MINOR_AGE } from '@/lib/constants/age';
 import type { AppSession } from '@/lib/types/auth';
 
 export async function requireAdmin() {
@@ -323,7 +324,7 @@ export const authOptions: any = {
             const hasParentEmail = dbUser.parentEmail != null && String(dbUser.parentEmail).trim() !== '';
             const hasParentPhone = dbUser.parentPhone != null && String(dbUser.parentPhone).trim() !== '';
             const under18 = hasValidAge && ageNum < 18;
-            const under13 = hasValidAge && ageNum < 13;
+            const under13 = hasValidAge && ageNum < DPDP_MINOR_AGE;
             const parentContactOk = under18 ? hasParentEmail : true;
             const parentPhoneOk = under13 ? hasParentPhone : true;
             token.onboardingComplete = !!(
@@ -353,7 +354,7 @@ export const authOptions: any = {
               const hasParentEmail = fallback.parentEmail != null && String(fallback.parentEmail).trim() !== '';
               const hasParentPhone = fallback.parentPhone != null && String(fallback.parentPhone).trim() !== '';
               const under18 = hasValidAge && ageNum < 18;
-              const under13 = hasValidAge && ageNum < 13;
+              const under13 = hasValidAge && ageNum < DPDP_MINOR_AGE;
               const parentContactOk = under18 ? hasParentEmail : true;
               const parentPhoneOk = under13 ? hasParentPhone : true;
               token.onboardingComplete = !!(fallback.grade && fallback.board && fallback.language && Array.isArray(fallback.subjects) && fallback.subjects.length > 0 && hasValidAge && parentContactOk && parentPhoneOk);

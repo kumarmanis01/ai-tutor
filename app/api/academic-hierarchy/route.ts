@@ -145,23 +145,26 @@ export async function GET() {
         id: cls.id,
         grade: cls.grade,
         slug: cls.slug,
-        subjects: cls.subjects.map((sub) => ({
-          id: sub.id,
-          name: sub.name,
-          slug: sub.slug,
-          chapters: sub.chapters.map((ch) => ({
-            id: ch.id,
-            name: ch.name,
-            slug: ch.slug,
-            order: ch.order,
-            topics: ch.topics.map((tp) => ({
-              id: tp.id,
-              name: tp.name,
-              slug: tp.slug,
-              order: tp.order,
+        // Deduplicate by name — prevents duplicate subject names in the subject picker
+        // when SubjectDef rows share the same name but have different slugs for the same classId
+        subjects: [...new Map(cls.subjects.map((sub) => [sub.name, sub])).values()]
+          .map((sub) => ({
+            id: sub.id,
+            name: sub.name,
+            slug: sub.slug,
+            chapters: sub.chapters.map((ch) => ({
+              id: ch.id,
+              name: ch.name,
+              slug: ch.slug,
+              order: ch.order,
+              topics: ch.topics.map((tp) => ({
+                id: tp.id,
+                name: tp.name,
+                slug: tp.slug,
+                order: tp.order,
+              })),
             })),
           })),
-        })),
       })),
     }));
 

@@ -41,6 +41,10 @@ const nextConfig: NextConfig = {
     ];
   },
   images: {
+localPatterns: [
+    { pathname: '/logos/**' },
+    { pathname: '/images/**' },
+  ],
     domains: [
       'lh3.googleusercontent.com',
       'i.pravatar.cc',

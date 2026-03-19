@@ -367,8 +367,8 @@ function buildDigestHtml(parentName: string, childSections: string[]): string {
     <head><meta charset="utf-8"></head>
     <body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;max-width:600px;margin:0 auto;padding:20px;color:#1F2937;">
       <div style="text-align:center;margin-bottom:24px;">
-        <h1 style="margin:0;color:#4F46E5;">Spinzy Academy</h1>
-        <p style="color:#6B7280;margin:4px 0 0;">Weekly Learning Summary</p>
+        <img src="https://spinzy.in/logos/logo-email.png" width="176" height="50" alt="Spinzy Academy" style="display:block;margin:0 auto">
+        <p style="color:#6B7280;margin:8px 0 0;">Weekly Learning Summary</p>
       </div>
 
       <p>Hi ${parentName},</p>

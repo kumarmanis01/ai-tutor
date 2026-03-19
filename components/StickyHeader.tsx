@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useSession } from 'next-auth/react';
+import Logo from '@/components/Logo';
 
 
 interface NavigationItem {
@@ -75,25 +76,14 @@ const StickyHeader = ({ activeSection = '', onSectionChange }: StickyHeaderProps
           <div className="flex items-center justify-between h-16 md:h-[72px]">
             <Link
               href="/"
-              className="flex items-center gap-2 hover:opacity-80 transition-opacity"
+              className="hover:opacity-80 transition-opacity"
               onClick={(e) => {
                 e.preventDefault();
                 window.scrollTo({ top: 0, behavior: 'smooth' });
               }}
             >
-              <div className="flex items-center gap-2">
-                <img
-                  src="/icons/spinzy-navbar-icon.png"
-                  alt="Spinzy Academy"
-                  className="w-10 h-10 object-contain"
-                />
-                <div className="leading-tight">
-                  <div className="font-bold text-sm text-gray-900 dark:text-white">
-                    Spinzy Academy
-                  </div>
-                  <div className="text-xs text-gray-500">भारत का शिक्षक</div>
-                </div>
-              </div>
+              <span className="hidden sm:flex"><Logo variant="navbar" /></span>
+              <span className="flex sm:hidden"><Logo variant="navbar-mobile" /></span>
             </Link>
 
             <nav className="hidden lg:flex items-center gap-8">

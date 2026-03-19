@@ -59,7 +59,7 @@ const TestimonialsSection = () => {
       id: 3,
       name: 'Priya Patel',
       location: 'Lucknow, Uttar Pradesh',
-      role: 'Mother of Class 6 & 9 Students',
+      role: 'Mother of Class 3 & 9 Students',
       image: 'https://img.rocket.new/generatedImages/rocket_gen_img_10ca1ffd3-1763301127083.png',
       alt: 'Indian mother in modern casual wear smiling happily at camera in bright home interior',
       rating: 5,

@@ -1,4 +1,5 @@
 import React, { Suspense } from 'react';
+import { Inter, Nunito } from 'next/font/google';
 import { getServerSessionForHandlers } from '@/lib/session';
 import { notFound } from 'next/navigation';
 import AdminSidebar from '@/components/Admin/AdminSidebar';
@@ -9,6 +10,9 @@ import ToastHost from '@/components/ToastHost';
 import GoogleTagManagerClient from '@/components/ClientOnly/GoogleTagManagerClient';
 import AppModalClient from '@/components/ClientOnly/AppModalClient';
 import '@/styles/index.css';
+
+const inter = Inter({ subsets: ['latin'], variable: '--font-inter', display: 'swap' });
+const nunito = Nunito({ subsets: ['latin'], weight: ['600', '700'], variable: '--font-nunito', display: 'swap' });
 
 export const viewport = {
   width: 'device-width',
@@ -30,8 +34,8 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   }
 
   return (
-    <html lang="en" className="h-full">
-      <body className="min-h-screen h-full">
+    <html lang="en" className={`h-full ${inter.variable} ${nunito.variable}`}>
+      <body className="font-sans antialiased min-h-screen h-full">
         <Providers>
           <GlobalLoaderProvider>
             <AuthSessionLoader />

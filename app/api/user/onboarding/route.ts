@@ -3,6 +3,7 @@ import { formatErrorForResponse } from '@/lib/errorResponse';
 // Consolidated onboarding handler (merged onboarding-phone -> onboarding)
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSessionForHandlers } from '@/lib/session';
+import { DPDP_MINOR_AGE } from '@/lib/constants/age';
 import { prisma } from '@/lib/prisma';
 import { getDailyTask } from '@/lib/dailyHabit';
 import { enqueueDiagnosticBootstrapJob } from '@/jobs/diagnosticBootstrap';
@@ -44,7 +45,7 @@ export async function POST(req: NextRequest) {
     const grade = gradeRaw !== undefined && gradeRaw !== null ? String(gradeRaw) : undefined;
     const board = typeof body.board === 'string' ? body.board : undefined;
     const subjects = Array.isArray(body.subjects)
-      ? (body.subjects as any[]).map((s) => (s == null ? '' : String(s))).filter((s) => s.length > 0)
+      ? [...new Set((body.subjects as any[]).map((s) => (s == null ? '' : String(s))).filter((s) => s.length > 0))]
       : undefined;
     const preferredLanguage = typeof body.preferred_language === 'string' ? body.preferred_language : undefined;
     const token = typeof body.token === 'string' ? body.token : undefined;
@@ -62,18 +63,16 @@ export async function POST(req: NextRequest) {
     }
 
     // Enforce required fields for onboarding
+    // name: body value takes precedence; fall back to existing DB value — only error if both absent (checked post-lookup below)
+    // age:  optional — if absent from body, skip without error
     const fieldErrors: Record<string, string> = {};
-    if (!name || name.trim() === '') fieldErrors.name = 'Name is required';
-    if (age == null || !Number.isFinite(age) || age <= 0) fieldErrors.age = 'Age is required';
     if (!grade || String(grade).trim() === '') fieldErrors.class_grade = 'Class is required';
     if (!board || String(board).trim() === '') fieldErrors.board = 'Board is required';
     if (!preferredLanguage || String(preferredLanguage).trim() === '') fieldErrors.preferred_language = 'Preferred language is required';
     if (!subjects || subjects.length === 0) fieldErrors.subjects = 'Select at least 1 subject';
     if (subjects && subjects.length > 6) fieldErrors.subjects = 'You can select up to 6 subjects';
-    // Under 18: parent/guardian email required for verification step
-    if (age != null && age >= 1 && age < 18 && (!parentEmail || parentEmail.length === 0)) {
-      fieldErrors.parent_email = 'Parent or guardian email is required for students under 18.';
-    }
+    // Parent email is collected in a separate post-onboarding step — not required here.
+    // Under-DPDP_MINOR_AGE handling sets accountStatus below after the DB save.
     if (Object.keys(fieldErrors).length) {
       res = NextResponse.json({ error: 'validation_error', fieldErrors }, { status: 400 });
       logger.logAPI(req, res, { className: 'UserOnboardingAPI', methodName: 'POST' }, start);
@@ -93,17 +92,26 @@ export async function POST(req: NextRequest) {
           },
           select: { name: true, slug: true },
         });
-        const valid = new Set<string>();
-        for (const s of validSubjects) {
-          if (s?.name) valid.add(String(s.name).toLowerCase());
-          if (s?.slug) valid.add(String(s.slug).toLowerCase());
-        }
-        const invalid = subjects.filter((s) => !valid.has(s.toLowerCase()));
-        if (invalid.length > 0) {
-          fieldErrors.subjects = `Invalid subjects for ${board} grade ${grade}: ${invalid.join(', ')}`;
-          res = NextResponse.json({ error: 'validation_error', fieldErrors }, { status: 400 });
-          logger.logAPI(req, res, { className: 'UserOnboardingAPI', methodName: 'POST' }, start);
-          return res;
+        // If no SubjectDef rows are seeded for this board+grade, skip validation entirely
+        if (validSubjects.length > 0) {
+          const valid = new Set<string>();
+          for (const s of validSubjects) {
+            if (s?.name) {
+              valid.add(String(s.name).toLowerCase());
+              valid.add(String(s.name)); // exact-case match
+            }
+            if (s?.slug) {
+              valid.add(String(s.slug).toLowerCase());
+              valid.add(String(s.slug)); // exact-case match
+            }
+          }
+          const invalid = subjects.filter((s) => !valid.has(s.toLowerCase()) && !valid.has(s));
+          if (invalid.length > 0) {
+            fieldErrors.subjects = `Invalid subjects for ${board} grade ${grade}: ${invalid.join(', ')}`;
+            res = NextResponse.json({ error: 'validation_error', fieldErrors }, { status: 400 });
+            logger.logAPI(req, res, { className: 'UserOnboardingAPI', methodName: 'POST' }, start);
+            return res;
+          }
         }
       } catch (valErr) {
         // Non-blocking: if validation query fails, log and continue
@@ -147,6 +155,17 @@ export async function POST(req: NextRequest) {
           return res;
         }
         userId = resolvedUserId as string;
+      }
+
+      // Name fallback: body name takes precedence; if absent, existing DB name is kept.
+      // Error only when body name is empty AND DB record has no name yet.
+      if (existingById) {
+        const existingName = (existingById.name ?? '').trim();
+        if (!name && !existingName) {
+          res = NextResponse.json({ error: 'validation_error', fieldErrors: { name: 'Name is required' } }, { status: 400 });
+          logger.logAPI(req, res, { className: 'UserOnboardingAPI', methodName: 'POST' }, start);
+          return res;
+        }
       }
 
       // grade is immutable after first save — never accept from client
@@ -224,28 +243,22 @@ export async function POST(req: NextRequest) {
       throw updErr;
     }
 
-    // Under-13 activation gate: require parent verification before unlocking.
-    if (age != null && age < 13) {
+    // Under-DPDP_MINOR_AGE: set pending_parent_verification so the ParentOTPGate
+    // overlay handles it after onboarding. Do NOT block here — return 200 and let
+    // the client navigate forward; the gate overlay intercepts the next page load.
+    if (age != null && age < DPDP_MINOR_AGE) {
       const fresh = await prisma.user.findUnique({
         where: { id: updatedUser.id },
         select: { parentPhoneVerifiedAt: true, accountStatus: true },
       });
       if (!fresh?.parentPhoneVerifiedAt) {
-        // Ensure status is gated even if parent phone step hasn't started yet
         await prisma.user.update({
           where: { id: updatedUser.id },
           data: { accountStatus: 'pending_parent_verification' },
         }).catch(() => {});
-        res = NextResponse.json(
-          {
-            error: 'parent_verification_required',
-            message: 'Parent phone verification is required for students under 13.',
-            fieldErrors: { parent_phone: 'Parent verification required' },
-          },
-          { status: 403 },
-        );
-        logger.logAPI(req, res, { className: 'UserOnboardingAPI', methodName: 'POST' }, start);
-        return res;
+        logger.info('/api/user/onboarding: under-DPDP age — accountStatus set to pending_parent_verification', {
+          className: 'api.user.onboarding', methodName: 'POST', id: updatedUser.id,
+        });
       }
     }
 

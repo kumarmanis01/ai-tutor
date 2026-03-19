@@ -19,6 +19,7 @@ import Link from 'next/link';
 import { useSession } from 'next-auth/react';
 import useSWR from 'swr';
 import StreakWidget from '@/components/student/dashboard/StreakWidget';
+import Logo from '@/components/Logo';
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
@@ -51,17 +52,11 @@ export default function Topbar() {
         {/* Left: logo */}
         <Link
           href="/dashboard"
-          className="flex items-center gap-2 flex-shrink-0 min-h-[44px] min-w-[44px] -ml-1 px-1"
+          className="flex items-center flex-shrink-0 min-h-[44px] min-w-[44px] -ml-1 px-1"
           aria-label="Spinzy home"
         >
-          <img
-            src="/icons/spinzy-navbar-icon.png"
-            alt="Spinzy Academy"
-            className="w-10 h-10 object-contain flex-shrink-0"
-          />
-          <span className="font-semibold text-sm text-gray-900 dark:text-white hidden sm:block select-none">
-            Spinzy
-          </span>
+          <span className="hidden sm:flex"><Logo variant="navbar" /></span>
+          <span className="flex sm:hidden"><Logo variant="navbar-mobile" /></span>
         </Link>
 
         {/* Right: badges + avatar */}

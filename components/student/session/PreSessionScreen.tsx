@@ -18,6 +18,7 @@
  */
 
 import React, { useState } from 'react';
+import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import InterruptedSessionSheet from './InterruptedSessionSheet';
 
@@ -161,6 +162,17 @@ export default function PreSessionScreen({
       {/* Pre-session screen */}
       <div className="min-h-screen bg-gray-50 dark:bg-slate-950 flex flex-col items-center px-4 py-8">
         <div className="w-full max-w-[480px] flex flex-col gap-5">
+
+          {/* Header — Vidya avatar */}
+          <div className="flex justify-center">
+            <Image
+              src="/logos/vidya/vidya-avatar-128.png"
+              alt="Vidya"
+              width={48}
+              height={48}
+              className="rounded-full"
+            />
+          </div>
 
           {/* Subject badge */}
           <div>

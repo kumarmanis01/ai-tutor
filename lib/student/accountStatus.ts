@@ -1,4 +1,5 @@
 import { prisma } from '@/lib/prisma'
+import { DPDP_MINOR_AGE } from '@/lib/constants/age'
 
 export type AccountStatus = 'ACTIVE' | 'PENDING_PARENT_VERIFY' | 'SUSPENDED' | 'DEACTIVATED'
 
@@ -6,7 +7,7 @@ export type AccountStatus = 'ACTIVE' | 'PENDING_PARENT_VERIFY' | 'SUSPENDED' | '
  * Check if the student's account requires parent OTP gate.
  * Returns true when:
  *   User.accountStatus = 'pending_parent_verification'
- *   AND User.age is known and < 13 (under-13 rule).
+ *   AND User.age is known and < DPDP_MINOR_AGE (Indian DPDP Act 2023).
  * Null/unknown age = no gate — we don't gate on missing data.
  * Returns false on any DB error — never throws.
  */
@@ -21,10 +22,11 @@ export async function requiresParentOTPGate(studentId: string): Promise<boolean>
     return (
       user.accountStatus === 'pending_parent_verification' &&
       user.age !== null &&
-      user.age < 13
+      user.age < DPDP_MINOR_AGE
     )
   } catch {
     return false
   }
 }
+
 

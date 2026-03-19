@@ -18,6 +18,10 @@ const config = {
   content: ['./app/**/*.{js,ts,jsx,tsx}', './components/**/*.{js,ts,jsx,tsx}'],
   theme: {
     extend: {
+      fontFamily: {
+        sans: ['var(--font-inter)', 'sans-serif'],
+        brand: ['var(--font-nunito)', 'sans-serif'],
+      },
       colors: {
         userBubble: '#DCF8C6', // light green
         aiBubble: '#F1F0F0', // light gray
@@ -44,6 +48,10 @@ const config = {
         'card-foreground': 'var(--color-card-foreground)',
         popover: 'var(--color-popover)',
         'popover-foreground': 'var(--color-popover-foreground)',
+        brand: {
+          orange: '#F97316',
+          'orange-dark': '#EA6C00',
+        },
       },
     },
   },

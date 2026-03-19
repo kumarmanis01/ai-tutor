@@ -37,7 +37,7 @@ const FinalCTA = () => {
             </span>
             <span className="flex items-center gap-1.5">
               <Icon name="CheckCircleIcon" size={16} variant="solid" />
-              Class 6–12
+              Class 1–12
             </span>
             <span className="flex items-center gap-1.5">
               <Icon name="CheckCircleIcon" size={16} variant="solid" />
