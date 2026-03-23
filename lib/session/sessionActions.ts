@@ -3,7 +3,7 @@
  * FILE OBJECTIVE:
  * - Pure API call abstractions for session lifecycle operations.
  * - Components and hooks call these functions instead of writing fetch directly.
- * - No React imports — usable in both hooks and server actions if needed.
+ * - No React imports -- usable in both hooks and server actions if needed.
  *
  * EDIT LOG:
  * - 2026-03-08 | claude | created for Session Architecture refactor

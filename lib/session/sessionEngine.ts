@@ -6,7 +6,7 @@
  *   OVERVIEW → EXPLANATION → PRACTICE → TEST → HOMEWORK → COMPLETE
  *
  * Design principles:
- *   1. The engine owns all state transitions — callers never mutate state directly.
+ *   1. The engine owns all state transitions -- callers never mutate state directly.
  *   2. Starting a session on a topic that already has an in-progress session
  *      resumes that session rather than creating a duplicate.
  *   3. `completeSession()` persists a STUDY-type progress touch so the
@@ -17,13 +17,13 @@
  *      a guarded DB write that will fail for the second caller.
  *
  * Phase overview:
- *   OVERVIEW     – Student reads a topic summary and learning objectives.
+ *   OVERVIEW     - Student reads a topic summary and learning objectives.
  *                  Acts as an intentional entry gate; student must confirm before proceeding.
- *   EXPLANATION  – Full topic notes are displayed for deep reading.
- *   PRACTICE     – 5 practice questions drawn from the question bank.
- *   TEST         – A generated test (approved or draft fallback).
- *   HOMEWORK     – A homework assignment generated automatically on entry.
- *   COMPLETE     – Session closed; progress persisted; celebration shown.
+ *   EXPLANATION  - Full topic notes are displayed for deep reading.
+ *   PRACTICE     - 5 practice questions drawn from the question bank.
+ *   TEST         - A generated test (approved or draft fallback).
+ *   HOMEWORK     - A homework assignment generated automatically on entry.
+ *   COMPLETE     - Session closed; progress persisted; celebration shown.
  *
  * EDIT LOG:
  *   2026-03-07 | Manish Kumar | full rewrite: add OVERVIEW phase, move progress
@@ -229,7 +229,7 @@ export async function startSession(
       });
       // Fall through to create new session below
     } else {
-      // Fresh session — resume
+      // Fresh session -- resume
       touchBridgedLearningSession(existing.id).catch((err) =>
         logger.warn('[SESSION_BRIDGE_TOUCH_FAILED]', { sessionId: existing.id, error: err }),
       );
@@ -263,7 +263,7 @@ export async function startSession(
     include: topicInclude,
   });
 
-  // Bridge to LearningSession — fire-and-forget.
+  // Bridge to LearningSession -- fire-and-forget.
   createBridgedLearningSession(studentId, topicId, session.id).catch((err) =>
     logger.error('[SESSION_BRIDGE_CREATE_FAILED]', { sessionId: session.id, error: err }),
   );
@@ -276,7 +276,7 @@ export async function startSession(
 /**
  * Advance the session to the next phase.
  *
- * Uses `transitionSessionPhase` which performs a guarded DB write — if two
+ * Uses `transitionSessionPhase` which performs a guarded DB write -- if two
  * concurrent requests both try to advance the same session the second write
  * will fail (session state will have already changed), surfacing a 409.
  *
@@ -322,7 +322,7 @@ export async function advanceSession(
     throw new SessionError(completion.message ?? 'Phase completion requirements not met', 400);
   }
 
-  // Validated, guarded transition — throws InvalidTransitionError on illegal moves.
+  // Validated, guarded transition -- throws InvalidTransitionError on illegal moves.
   // On race lost (CAS count=0), transition returns raceLost: true; we reload and
   // return current state without running phase side-effects (RISK-03).
   let transition;
@@ -408,7 +408,7 @@ export async function advanceSession(
   }
 
   if (transition.isComplete) {
-    // Persist progress and invalidate the ranker cache — fire-and-forget
+    // Persist progress and invalidate the ranker cache -- fire-and-forget
     // so they don't block the response.
     persistCompletionProgress(studentId, updated.topicId, sessionId);
   } else {
@@ -474,7 +474,7 @@ export async function completeSession(
     throw new SessionError('Session not found', 404);
   }
 
-  // Already complete — fetch with topic and return.
+  // Already complete -- fetch with topic and return.
   if (session.state === 'COMPLETE') {
     const full = await prisma.structuredSession.findUniqueOrThrow({
       where: { id: sessionId },
@@ -498,7 +498,7 @@ export async function completeSession(
     include: topicInclude,
   });
 
-  // Persist progress and invalidate the ranker cache — fire-and-forget.
+  // Persist progress and invalidate the ranker cache -- fire-and-forget.
   persistCompletionProgress(studentId, updated.topicId, sessionId);
 
   logger.info('[SESSION_FORCE_COMPLETED]', {
@@ -576,13 +576,13 @@ const HOMEWORK_RETRY_DELAY_MS = 1_000;
  * Attempt homework generation with one retry on infrastructure failure.
  *
  * generateHomework() only throws for real infrastructure errors (DB write
- * failure) — it handles "no questions" internally by creating a stub.
+ * failure) -- it handles "no questions" internally by creating a stub.
  * This wrapper adds one retry after HOMEWORK_RETRY_DELAY_MS and, if that
  * also fails, attempts a direct minimal stub creation as a last resort.
  *
  * Returns null only when the DB is completely unavailable (catastrophic).
  * In that case the session will remain in HOMEWORK state with no assignment
- * row — the only scenario where PendingContent could still appear.
+ * row -- the only scenario where PendingContent could still appear.
  */
 async function generateHomeworkWithRetry(
   studentId: string,
@@ -616,7 +616,7 @@ async function generateHomeworkWithRetry(
   }
 
   // Last resort: write a minimal stub directly, bypassing homework.ts.
-  // This fires only when generateHomework() itself throws on DB write —
+  // This fires only when generateHomework() itself throws on DB write --
   // i.e. the DB is degraded but not completely down.
   try {
     const dueDate = new Date();

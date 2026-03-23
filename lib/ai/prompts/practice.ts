@@ -149,7 +149,7 @@ export function buildPracticePrompt(input: PracticeInputContract): string {
     ? `Mix question types: approximately ${Math.ceil(input.questionCount / questionTypes.length)} of each type.`
     : `All questions should be of type: ${questionTypes[0]}.`;
 
-  return `Create practice questions for a K–12 student preparing for their exams.
+  return `Create practice questions for a K-12 student preparing for their exams.
 
 STUDENT PROFILE:
 - Board: ${input.board}
@@ -256,10 +256,10 @@ export function generateQuestionIds(count: number, prefix: string = 'q'): string
  * Build a quick-test prompt for assessment-mode question generation.
  *
  * Differs from buildPracticePrompt in three ways:
- *   1. Assessment-first framing — questions must unambiguously distinguish
+ *   1. Assessment-first framing -- questions must unambiguously distinguish
  *      understanding levels rather than building confidence gradually.
- *   2. Marking clarity constraint — correctAnswer must be objectively verifiable.
- *   3. No progressive difficulty softening — all questions sit firmly in the band.
+ *   2. Marking clarity constraint -- correctAnswer must be objectively verifiable.
+ *   3. No progressive difficulty softening -- all questions sit firmly in the band.
  *
  * The `difficulty` field in the input is resolved upstream by resolveTargetDifficulty()
  * and represents the student's current mastery band.
@@ -276,7 +276,7 @@ export function buildQuickTestPrompt(input: PracticeInputContract): string {
     ? `Mix question types: approximately ${Math.ceil(input.questionCount / questionTypes.length)} of each type.`
     : `All questions should be of type: ${questionTypes[0]}.`;
 
-  return `Create a quick assessment test for a K–12 student.
+  return `Create a quick assessment test for a K-12 student.
 
 STUDENT PROFILE:
 - Board: ${input.board}
@@ -303,7 +303,7 @@ ASSESSMENT DESIGN PRINCIPLES:
 
 1. ASSESSMENT FOCUS
    - Questions must definitively distinguish whether the student understands the concept.
-   - Every question must have exactly one objectively correct answer — no ambiguity.
+   - Every question must have exactly one objectively correct answer -- no ambiguity.
    - Avoid questions where partial understanding could accidentally lead to the correct answer.
 
 2. CURRICULUM ALIGNMENT

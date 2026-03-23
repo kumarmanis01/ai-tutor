@@ -4,8 +4,8 @@
  * Returns minimal data needed for the global Topbar:
  *   { streak: number, level: number, shieldAvailable: boolean }
  *
- * Reads denormalized fields from the User row — no join, single query.
- * Auth: session required — 401 if missing.
+ * Reads denormalized fields from the User row -- no join, single query.
+ * Auth: session required -- 401 if missing.
  * Cache: 60s (stale-while-revalidate is fine for these low-urgency stats).
  */
 

@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * DashboardTopbar — v2
+ * DashboardTopbar -- v2
  *
  * Sticky on mobile (top-14 = below StudentNav), static on desktop.
  * Left: Spinzy logo mark + wordmark.
@@ -36,7 +36,7 @@ export default function DashboardTopbar({
 
       {/* Right badges */}
       <div className="flex items-center gap-2">
-        {/* Streak badge — only shown when streak > 0 */}
+        {/* Streak badge -- only shown when streak > 0 */}
         {streakCurrent > 0 && (
           <span className="inline-flex items-center gap-1 rounded-full bg-orange-100 dark:bg-orange-900/40 px-3 py-1 text-xs font-semibold text-orange-700 dark:text-orange-300">
             🔥 {streakCurrent} {streakCurrent === 1 ? 'day' : 'days'}

@@ -18,7 +18,7 @@ function getCurrentPeriodStart(): Date {
 /**
  * Check if student can start a new session.
  * Resets counter if current period is a new calendar month.
- * Never throws — returns allowed: false on any DB or subscription error.
+ * Never throws -- returns allowed: false on any DB or subscription error.
  */
 export async function checkFreeTierCap(studentId: string): Promise<FreeTierStatus> {
   const fallback: FreeTierStatus = {
@@ -87,7 +87,7 @@ export async function checkFreeTierCap(studentId: string): Promise<FreeTierStatu
 
 /**
  * Increment sessionsUsed for the student's current period.
- * Call AFTER session successfully starts — not before.
+ * Call AFTER session successfully starts -- not before.
  * Never throws.
  */
 export async function incrementFreeTierUsage(studentId: string): Promise<void> {
@@ -135,7 +135,7 @@ export async function incrementFreeTierUsage(studentId: string): Promise<void> {
       })
     })
   } catch {
-    // Swallow all errors – freemium enforcement must never break session start.
+    // Swallow all errors - freemium enforcement must never break session start.
   }
 }
 

@@ -8,7 +8,7 @@ export const dynamic = 'force-dynamic';
  *
  * SECURITY:
  * - Caller must be authenticated.
- * - parentId–studentId link is verified before any student data is read.
+ * - parentId-studentId link is verified before any student data is read.
  *   A missing or revoked link returns 403 before a single row of student
  *   data is touched.
  *
@@ -40,7 +40,7 @@ const CLASS_NAME = 'ParentWeeklyActivityAPI';
  */
 function getISOWeekBoundaries(): { weekStart: Date; weekEnd: Date } {
   const now = new Date();
-  const dow = now.getUTCDay(); // 0 = Sunday … 6 = Saturday
+  const dow = now.getUTCDay(); // 0 = Sunday ... 6 = Saturday
   const distToMonday = dow === 0 ? 6 : dow - 1;
 
   const weekStart = new Date(now);
@@ -86,7 +86,7 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'studentId is required' }, { status: 400 });
     }
 
-    // ── 3. Parent–student link guard ──────────────────────────────────────────
+    // ── 3. Parent-student link guard ──────────────────────────────────────────
     // Touch the link table first; return 403 before reading any student data.
     const link = await prisma.parentStudent.findUnique({
       where: { parentId_studentId: { parentId, studentId } },
@@ -124,7 +124,7 @@ export async function GET(req: NextRequest) {
     // index, so Postgres performs an index scan on studentId + a heap filter on
     // startedAt. For production scale (thousands of sessions per student over
     // months) a dedicated @@index([studentId, startedAt]) would turn this into
-    // a pure index range scan — no heap fetch. That index can be added without
+    // a pure index range scan -- no heap fetch. That index can be added without
     // a schema migration if needed.
     const sessions = await prisma.structuredSession.findMany({
       where: {
@@ -153,7 +153,7 @@ export async function GET(req: NextRequest) {
     const topicIdsSeen = new Set<string>();
 
     for (const s of sessions) {
-      // Distinct topics — counted across ALL sessions this week (started or not)
+      // Distinct topics -- counted across ALL sessions this week (started or not)
       topicIdsSeen.add(s.topicId);
 
       if (s.completedAt !== null) {

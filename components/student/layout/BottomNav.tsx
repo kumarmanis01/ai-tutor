@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * BottomNav — v2 mobile primary navigation
+ * BottomNav -- v2 mobile primary navigation
  *
  * Fixed bottom bar, full width, iOS safe-area-aware.
  * 4 items: Home / Learn / Doubts / Profile
@@ -9,7 +9,7 @@
  * Inactive:    icon + label in gray
  * Each tap target: min-h-[44px], covers full cell width.
  *
- * Hidden on md: and above — desktop uses the Topbar only.
+ * Hidden on md: and above -- desktop uses the Topbar only.
  * bg-white dark:bg-gray-950 with top border.
  */
 

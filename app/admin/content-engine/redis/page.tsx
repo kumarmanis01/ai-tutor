@@ -15,7 +15,7 @@ export default async function RedisPage() {
 
     return (
       <div className="p-6">
-        <h1 className="text-2xl font-semibold mb-4">Content Engine — Redis</h1>
+        <h1 className="text-2xl font-semibold mb-4">Content Engine -- Redis</h1>
         <div className="bg-white dark:bg-gray-900 rounded shadow p-4">
           <pre className="text-sm whitespace-pre-wrap">{JSON.stringify(data, null, 2)}</pre>
         </div>
@@ -25,7 +25,7 @@ export default async function RedisPage() {
     logger?.error?.('GET /admin/content-engine/redis page error', { err })
     return (
       <div className="p-6">
-        <h1 className="text-2xl font-semibold mb-4">Content Engine — Redis</h1>
+        <h1 className="text-2xl font-semibold mb-4">Content Engine -- Redis</h1>
         <div className="text-sm text-gray-500">Unable to fetch Redis health.</div>
       </div>
     )

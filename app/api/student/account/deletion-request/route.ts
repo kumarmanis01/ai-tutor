@@ -51,7 +51,7 @@ export async function POST() {
   if (userEmail) {
     sendEmail({
       to: userEmail,
-      subject: 'Your data deletion request — Spinzy',
+      subject: 'Your data deletion request -- Spinzy',
       html: `<p>We've received your request. Your account has been deactivated.</p>
 <p>Your personal data will be anonymised within 7 days and permanently deleted within 30 days.</p>
 <p>Learning analytics are retained anonymously as required by law.</p>`,

@@ -78,7 +78,7 @@ export default function AdminCurriculumDifficultyPage() {
         </div>
       </div>
 
-      {isLoading && <div className="text-sm text-gray-500">Loading…</div>}
+      {isLoading && <div className="text-sm text-gray-500">Loading...</div>}
       {error && <div className="text-sm text-red-600">Failed to load difficulty list</div>}
 
       {!isLoading && items.length === 0 && <div className="text-sm text-gray-500">No topics found.</div>}
@@ -110,11 +110,11 @@ export default function AdminCurriculumDifficultyPage() {
                     )}
                   </td>
                   <td className="p-3">{r.subjectName} / {r.chapterName}</td>
-                  <td className="p-3 text-right font-semibold">{r.difficultyIndex == null ? '—' : r.difficultyIndex.toFixed(1)}</td>
-                  <td className="p-3 text-right">{r.avgAccuracy == null ? '—' : `${(r.avgAccuracy * 100).toFixed(1)}%`}</td>
-                  <td className="p-3 text-right">{r.medianAttempts == null ? '—' : Math.round(r.medianAttempts)}</td>
-                  <td className="p-3 text-right">{r.weakRate == null ? '—' : `${(r.weakRate * 100).toFixed(1)}%`}</td>
-                  <td className="p-3 text-right">{r.speedMedian == null ? '—' : r.speedMedian.toFixed(3)}</td>
+                  <td className="p-3 text-right font-semibold">{r.difficultyIndex == null ? '--' : r.difficultyIndex.toFixed(1)}</td>
+                  <td className="p-3 text-right">{r.avgAccuracy == null ? '--' : `${(r.avgAccuracy * 100).toFixed(1)}%`}</td>
+                  <td className="p-3 text-right">{r.medianAttempts == null ? '--' : Math.round(r.medianAttempts)}</td>
+                  <td className="p-3 text-right">{r.weakRate == null ? '--' : `${(r.weakRate * 100).toFixed(1)}%`}</td>
+                  <td className="p-3 text-right">{r.speedMedian == null ? '--' : r.speedMedian.toFixed(3)}</td>
                   <td className="p-3 text-right">{r.attemptedStudents} students / {r.masteryRows} rows</td>
                 </tr>
               ))}

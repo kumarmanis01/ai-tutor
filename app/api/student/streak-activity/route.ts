@@ -5,7 +5,7 @@
  * on which the student had at least one qualifying session (state=COMPLETE).
  *
  * Used by StreakWidget to render the 7-day mini calendar.
- * Auth: session required — 401 if missing.
+ * Auth: session required -- 401 if missing.
  */
 
 import { NextResponse } from 'next/server'
@@ -64,7 +64,7 @@ export async function GET() {
       }
     }
   } catch {
-    // On DB error, return empty list — widget will show all-grey calendar
+    // On DB error, return empty list -- widget will show all-grey calendar
     activeDates = []
   }
 

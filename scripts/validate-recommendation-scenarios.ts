@@ -13,7 +13,7 @@
  * This script calls getNextAction(studentId, { returnTrace: true }) for each
  * scenario student and prints expected vs actual rule and trace.
  * Phase-2 rules (P0 homework_pending, P3 spaced_revision, P2 weak_topic_urgent
- * as a separate rule) may not be implemented yet — see engine rule order.
+ * as a separate rule) may not be implemented yet -- see engine rule order.
  */
 
 import path from 'path';
@@ -36,12 +36,12 @@ import { getNextAction } from '../lib/homeEngine/getNextAction';
 const prisma = new PrismaClient();
 
 const SCENARIO_EMAILS = [
-  { scenario: 'A — Fresh', email: 'fresh@scenario.test', expectedRule: 'next_new_topic', phase2: false },
-  { scenario: 'B — Mid-session', email: 'midsession@scenario.test', expectedRule: 'resume_session', phase2: false },
-  { scenario: 'C — Weak topic', email: 'weak@scenario.test', expectedRule: 'low_accuracy', phase2: false },
-  { scenario: 'D — Spaced revision', email: 'spaced@scenario.test', expectedRule: 'spaced_revision', phase2: true },
-  { scenario: 'E — Homework pending', email: 'homework@scenario.test', expectedRule: 'homework_pending', phase2: true },
-  { scenario: 'P2 — Daily task', email: 'daily@scenario.test', expectedRule: 'daily_task', phase2: false },
+  { scenario: 'A -- Fresh', email: 'fresh@scenario.test', expectedRule: 'next_new_topic', phase2: false },
+  { scenario: 'B -- Mid-session', email: 'midsession@scenario.test', expectedRule: 'resume_session', phase2: false },
+  { scenario: 'C -- Weak topic', email: 'weak@scenario.test', expectedRule: 'low_accuracy', phase2: false },
+  { scenario: 'D -- Spaced revision', email: 'spaced@scenario.test', expectedRule: 'spaced_revision', phase2: true },
+  { scenario: 'E -- Homework pending', email: 'homework@scenario.test', expectedRule: 'homework_pending', phase2: true },
+  { scenario: 'P2 -- Daily task', email: 'daily@scenario.test', expectedRule: 'daily_task', phase2: false },
 ] as const;
 
 function unwrap(result: Awaited<ReturnType<typeof getNextAction>>) {

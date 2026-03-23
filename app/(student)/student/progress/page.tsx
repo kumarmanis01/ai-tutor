@@ -1,15 +1,15 @@
 /**
- * Progress report page — /student/progress
+ * Progress report page -- /student/progress
  *
- * Server component. Never paywalled — all students see this regardless of subscription.
+ * Server component. Never paywalled -- all students see this regardless of subscription.
  *
  * Sections (top to bottom):
- *   1. AI Narrative Insight ("Vidya's insight") — client widget, fetches independently
- *   2. Sessions Chart — last 30 days grouped into 4 weeks, pure CSS bars
- *   3. Chapter Mastery Bars — per subject, ordered lowest mastery first
- *   4. Test Score History — last 10 completed sessions
+ *   1. AI Narrative Insight ("Vidya's insight") -- client widget, fetches independently
+ *   2. Sessions Chart -- last 30 days grouped into 4 weeks, pure CSS bars
+ *   3. Chapter Mastery Bars -- per subject, ordered lowest mastery first
+ *   4. Test Score History -- last 10 completed sessions
  *
- * Desktop layout (md:): left 60% = sections 1–2 | right 40% = sections 3–4
+ * Desktop layout (md:): left 60% = sections 1-2 | right 40% = sections 3-4
  *
  * EDIT LOG:
  * - 2026-03-15 | claude | created for Task 29 progress report page
@@ -186,7 +186,7 @@ export default async function ProgressPage() {
       <h1 className="text-xl font-bold text-gray-900 dark:text-gray-50 mb-6">My Progress</h1>
 
       <div className="flex flex-col gap-6 md:flex-row md:items-start">
-        {/* Left column — narrative + chart (60%) */}
+        {/* Left column -- narrative + chart (60%) */}
         <div className="flex flex-col gap-6 md:w-3/5">
           <AiNarrativeWidget />
           <SessionsChart
@@ -196,7 +196,7 @@ export default async function ProgressPage() {
           />
         </div>
 
-        {/* Right column — chapter mastery + session history (40%) */}
+        {/* Right column -- chapter mastery + session history (40%) */}
         <div className="flex flex-col gap-6 md:w-2/5">
           <ChapterMasteryBars subjects={subjectMasteryData} />
           <TestScoreHistory sessions={sessionRows} />

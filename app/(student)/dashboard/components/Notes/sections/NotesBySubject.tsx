@@ -26,7 +26,7 @@ export function NotesBySubject() {
   return (
     <NotesSection title="By Subject">
       {loading && subjects.length === 0 ? (
-        <div className="text-sm text-muted-foreground">Loading…</div>
+        <div className="text-sm text-muted-foreground">Loading...</div>
       ) : subjects.length === 0 ? (
         <div className="text-sm text-muted-foreground">No subjects found</div>
       ) : (

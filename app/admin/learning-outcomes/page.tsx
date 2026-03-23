@@ -57,12 +57,12 @@ export default function AdminLearningOutcomesPage() {
       <div className="grid grid-cols-2 gap-4">
         <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4">
           <div className="text-sm font-medium text-gray-500 dark:text-gray-400">Total mastery records</div>
-          <div className="text-2xl font-bold text-gray-900 dark:text-white">{summary?.totalRecords ?? '—'}</div>
+          <div className="text-2xl font-bold text-gray-900 dark:text-white">{summary?.totalRecords ?? '--'}</div>
         </div>
         <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4">
           <div className="text-sm font-medium text-gray-500 dark:text-gray-400">Overall avg accuracy</div>
           <div className="text-2xl font-bold text-gray-900 dark:text-white">
-            {summary?.overallAvgAccuracy != null ? `${(summary.overallAvgAccuracy * 100).toFixed(1)}%` : '—'}
+            {summary?.overallAvgAccuracy != null ? `${(summary.overallAvgAccuracy * 100).toFixed(1)}%` : '--'}
           </div>
         </div>
       </div>

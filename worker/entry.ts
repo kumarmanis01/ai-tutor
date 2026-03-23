@@ -12,7 +12,7 @@
 import path from 'path';
 
 // Local/CI only: ensure DATABASE_URL and REDIS_URL match the .env file.
-// dotenv must never appear as a literal import token in compiled output — the
+// dotenv must never appear as a literal import token in compiled output -- the
 // verify-dist check and Vercel's scanner both flag it. We load it via eval so
 // the string is never statically analysable as an import of "dotenv".
 if (process.env.NODE_ENV !== 'production') {
@@ -25,13 +25,13 @@ if (process.env.NODE_ENV !== 'production') {
       pkg.config({ path: envPath });
     }
   } catch {
-    // dotenv is optional — swallow if not installed in this environment
+    // dotenv is optional -- swallow if not installed in this environment
   }
 }
 
 (async () => {
   try {
-    // Hard fail if env is missing — DO NOT load dotenv here
+    // Hard fail if env is missing -- DO NOT load dotenv here
     if (!process.env.DATABASE_URL) {
       throw new Error("DATABASE_URL is not set");
     }

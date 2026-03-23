@@ -65,7 +65,7 @@ export function HomeTab({ onStartLearning }: HomeTabProps) {
         <StreakCalendar />
       </section>
 
-      {/* Recent activities — up to 5 items (Gap #8) */}
+      {/* Recent activities -- up to 5 items (Gap #8) */}
       <section aria-label="Recently studied">
         <RecentlyStudied />
       </section>

@@ -144,7 +144,7 @@ export async function POST(req: Request) {
     });
   }
 
-  // Try LLM call — if unavailable, return a helpful fallback
+  // Try LLM call -- if unavailable, return a helpful fallback
   let aiResponse: { response: string; followUpQuestion: string; confidenceLevel: string };
 
   try {

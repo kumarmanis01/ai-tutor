@@ -164,6 +164,6 @@ async function checkChapterMastery(studentId: string, conceptId: string): Promis
 
     await sendPushSafe(studentId, PUSH_NOTIFICATIONS.chapter_mastered(chapter.name))
   } catch {
-    // Best-effort — never affect the main IRT pipeline
+    // Best-effort -- never affect the main IRT pipeline
   }
 }

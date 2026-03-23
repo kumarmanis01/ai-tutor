@@ -1,7 +1,7 @@
 /**
  * GET /api/parent/progress
  *
- * Domain 7 §7.10 — returns all linked children with per-subject readiness,
+ * Domain 7 §7.10 -- returns all linked children with per-subject readiness,
  * study time, alerts, and mastery delta for the authenticated parent.
  *
  * Auth: parent role required.
@@ -20,7 +20,7 @@
  *
  * EDIT LOG:
  *   2026-02-04 | claude | original per-student ?studentId query
- *   2026-03-15 | claude | T39 — full D7 §7.10 multi-child contract
+ *   2026-03-15 | claude | T39 -- full D7 §7.10 multi-child contract
  */
 
 export const dynamic = 'force-dynamic'
@@ -151,7 +151,7 @@ export async function GET(req: Request) {
             ? Math.ceil((examDate.getTime() - Date.now()) / 86_400_000)
             : null
 
-          // Mastery delta — avg score of concepts updated in last 7 days
+          // Mastery delta -- avg score of concepts updated in last 7 days
           // compared to the overall subject average (proxy delta)
           const [recentStates, allStates] = await Promise.all([
             prisma.studentConceptState.findMany({
@@ -199,7 +199,7 @@ export async function GET(req: Request) {
         if (daysSince <= 3) {
           recentAlerts.push({
             type: 'streak_break',
-            message: 'Study streak ended — encourage getting back on track',
+            message: 'Study streak ended -- encourage getting back on track',
             occurredAt: streak.lastActive.toISOString(),
           })
         }
@@ -210,7 +210,7 @@ export async function GET(req: Request) {
         if (s.recentMasteryChange !== null && s.recentMasteryChange < -0.1) {
           recentAlerts.push({
             type: 'readiness_drop',
-            message: `${s.subjectName} readiness may have dropped — recent concepts below average`,
+            message: `${s.subjectName} readiness may have dropped -- recent concepts below average`,
             occurredAt: sevenDaysAgo.toISOString(),
           })
         }

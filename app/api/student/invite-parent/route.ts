@@ -37,7 +37,7 @@ export async function POST(req: Request) {
   const token = randomBytes(16).toString('hex')
   const key = `parent_invite:${token}`
 
-  // Store studentId in Redis — single-use token (deleted on claim)
+  // Store studentId in Redis -- single-use token (deleted on claim)
   await redis.set(key, userId, 'EX', INVITE_TTL_SECONDS)
 
   const appUrl = (process.env.NEXTAUTH_URL ?? process.env.NEXT_PUBLIC_APP_URL ?? '').replace(/\/$/, '')

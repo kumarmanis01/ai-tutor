@@ -16,7 +16,7 @@ export default function AuthSessionLoader() {
     if (status === 'loading') {
       if (!startedRef.current) {
         startedRef.current = true;
-        startLoading('Checking session…');
+        startLoading('Checking session...');
       }
     } else {
       stopLoading();

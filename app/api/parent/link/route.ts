@@ -31,9 +31,9 @@ const CLASS_NAME = 'ParentLinkAPI';
 /**
  * POST /api/parent/link
  * Two modes:
- *   1. { action: "generate" } — student generates an invite code for their parent (preferred)
- *   2. { action: "link", inviteCode: "ABCD1234" } — parent links using invite code (preferred)
- *   3. { action: "link", studentEmail: "x@y.com" } — parent links using email (only if student.parentEmail matches)
+ *   1. { action: "generate" } -- student generates an invite code for their parent (preferred)
+ *   2. { action: "link", inviteCode: "ABCD1234" } -- parent links using invite code (preferred)
+ *   3. { action: "link", studentEmail: "x@y.com" } -- parent links using email (only if student.parentEmail matches)
  */
 export async function POST(req: NextRequest) {
   const start = Date.now();
@@ -148,7 +148,7 @@ async function handleLink(parentId: string, parentEmail: string | null, body: an
           .delete({ where: { id: existing.id } })
           .catch(() => {});
       } else if (!existing) {
-        // No existing link yet — convert the legacy placeholder into the real link.
+        // No existing link yet -- convert the legacy placeholder into the real link.
         await prisma.parentStudent.update({
           where: { id: legacy.id },
           data: { parentId, status: 'active', inviteCode: null },

@@ -1,8 +1,8 @@
 /**
- * ParentDashboard — T38
+ * ParentDashboard -- T38
  *
  * One card per linked child. Read-only. Mobile-first.
- * Language: plain, avoids jargon — written for low-digital-literacy parents.
+ * Language: plain, avoids jargon -- written for low-digital-literacy parents.
  *
  * Props shape matches what app/(parent)/dashboard/page.tsx computes.
  */

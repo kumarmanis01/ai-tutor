@@ -53,10 +53,10 @@ const HeroSection = () => {
 
             <div className="space-y-4">
               <h1 className="font-headline font-bold text-4xl md:text-5xl lg:text-6xl text-secondary leading-tight">
-                Meet Teacher Vidya — Your Child&apos;s Personal AI Tutor. 24×7
+                Meet Teacher Vidya -- Your Child&apos;s Personal AI Tutor. 24×7
               </h1>
               <p className="font-body text-xl md:text-2xl text-foreground/80">
-                Class 1–12 · CBSE / ICSE / State Board
+                Class 1-12 · CBSE / ICSE / State Board
               </p>
               <p className="font-body text-lg md:text-xl text-primary font-semibold">
                 Instant doubt solving in Hindi & English for just ₹99/month

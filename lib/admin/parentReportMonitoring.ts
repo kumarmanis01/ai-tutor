@@ -1,5 +1,5 @@
 /**
- * Admin Parent Report Monitoring — scope, student list, and pause toggle via AdminConfig.
+ * Admin Parent Report Monitoring -- scope, student list, and pause toggle via AdminConfig.
  */
 
 import { prisma } from '@/lib/prisma';

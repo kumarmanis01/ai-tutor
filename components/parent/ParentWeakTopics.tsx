@@ -19,13 +19,13 @@ const MOCK_STUDENT_ID = 'mock-student';
 
 interface WeakTopic {
   topicId: string;
-  mastery: number;      // 0–1 float from the API
+  mastery: number;      // 0-1 float from the API
   practiceCount: number;
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-/** Converts a 0–1 mastery float to a rounded percentage string, e.g. "32%". */
+/** Converts a 0-1 mastery float to a rounded percentage string, e.g. "32%". */
 function toPercent(mastery: number): string {
   return `${Math.round(mastery * 100)}%`;
 }
@@ -103,7 +103,7 @@ function ErrorState({ onRetry }: { onRetry: () => void }) {
 }
 
 function TopicRow({ topic }: { topic: WeakTopic }) {
-  // topicId is a cuid like "clxyz123…"; show it as a readable fallback.
+  // topicId is a cuid like "clxyz123..."; show it as a readable fallback.
   // When a name mapping is available it will replace topicId via props.
   const displayName = topic.topicId;
   const pct = toPercent(topic.mastery);

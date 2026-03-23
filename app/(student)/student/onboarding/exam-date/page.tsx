@@ -1,19 +1,19 @@
 'use client';
 
 /**
- * Exam Date Capture — v2 onboarding Screen 4
+ * Exam Date Capture -- v2 onboarding Screen 4
  *
  * Collects:
  *   - Board exam date (text input, parsed by browser)
  *   - Study days per week (3 / 4 / 5 / 6 / 7 tap buttons)
  *
- * Live estimate: "With N days/week and N weeks — we'll cover all chapters
+ * Live estimate: "With N days/week and N weeks -- we'll cover all chapters
  *                with time for N revision rounds"
  *
  * CTAs:
- *   - "Build my learning plan" — POSTs to /api/student/onboarding/generate-plan
+ *   - "Build my learning plan" -- POSTs to /api/student/onboarding/generate-plan
  *     then redirects to /student/diagnostic/[firstSubjectId]
- *   - "No upcoming exam — set a 6-month plan" — same but examDate = null
+ *   - "No upcoming exam -- set a 6-month plan" -- same but examDate = null
  */
 
 import React, { useMemo, useState } from 'react';
@@ -21,7 +21,7 @@ import { useRouter } from 'next/navigation';
 
 const STUDY_DAY_OPTIONS = [3, 4, 5, 6, 7];
 const DEFAULT_STUDY_DAYS = 5;
-/** Default concept count — CBSE Grade 10 has ~60 concepts across subjects. */
+/** Default concept count -- CBSE Grade 10 has ~60 concepts across subjects. */
 const TOTAL_CONCEPTS = 60;
 
 interface EstimateResult {
@@ -105,7 +105,7 @@ export default function ExamDatePage() {
         setError(json?.error ?? 'Something went wrong. Please try again.');
         return;
       }
-      // No-exam path always goes to dashboard — diagnostic skipped.
+      // No-exam path always goes to dashboard -- diagnostic skipped.
       // Exam path navigates to the diagnostic route if a firstSubjectId was returned.
       if (!includeExamDate) {
         router.push('/dashboard');
@@ -205,16 +205,16 @@ export default function ExamDatePage() {
           {/* Live estimate */}
           <div className={`rounded-xl px-4 py-3 ${estimate.sufficient ? 'bg-[#EEEDFE] dark:bg-[#534AB7]/10' : 'bg-[#FAEEDA] dark:bg-[#BA7517]/10'}`}>
             {!weeks ? (
-              // No exam date — show plan horizon
+              // No exam date -- show plan horizon
               <p className="text-sm text-[#534AB7] dark:text-indigo-300 leading-relaxed">
-                With <strong>{studyDays} days/week</strong> — we&apos;ll cover all chapters in{' '}
+                With <strong>{studyDays} days/week</strong> -- we&apos;ll cover all chapters in{' '}
                 <strong>{estimate.weeksToComplete} weeks ({estimate.months} months)</strong> with time for{' '}
                 <strong>{estimate.revisionRounds} revision round{estimate.revisionRounds !== 1 ? 's' : ''}</strong>.
               </p>
             ) : estimate.sufficient ? (
               // Exam date set, pace is sufficient
               <p className="text-sm text-[#534AB7] dark:text-indigo-300 leading-relaxed">
-                With <strong>{studyDays} days/week</strong> — you&apos;ll finish all chapters{' '}
+                With <strong>{studyDays} days/week</strong> -- you&apos;ll finish all chapters{' '}
                 {estimate.spareWeeks > 0 ? (
                   <>with <strong>{estimate.spareWeeks} week{estimate.spareWeeks !== 1 ? 's' : ''} to spare</strong> for revision</>
                 ) : (
@@ -225,7 +225,7 @@ export default function ExamDatePage() {
               // Exam date set, pace is NOT sufficient
               <p className="text-sm text-[#BA7517] dark:text-amber-300 leading-relaxed">
                 At <strong>{studyDays} days/week</strong> you&apos;ll need{' '}
-                <strong>{estimate.weeksToComplete} weeks</strong> — but your exam is in{' '}
+                <strong>{estimate.weeksToComplete} weeks</strong> -- but your exam is in{' '}
                 <strong>{weeks} weeks</strong>. Study{' '}
                 <strong>{estimate.daysNeeded} days/week</strong> to cover all chapters in time.
               </p>
@@ -248,7 +248,7 @@ export default function ExamDatePage() {
                 <svg className="w-4 h-4 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
                   <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
                 </svg>
-                Building your plan…
+                Building your plan...
               </>
             ) : (
               'Build my learning plan →'
@@ -262,7 +262,7 @@ export default function ExamDatePage() {
             disabled={busy}
             className="flex w-full min-h-[44px] items-center justify-center rounded-xl border border-gray-200 dark:border-slate-700 text-gray-600 dark:text-gray-400 text-sm font-medium hover:bg-gray-50 dark:hover:bg-slate-800 disabled:opacity-50 transition-colors"
           >
-            No upcoming exam — set a 6-month plan
+            No upcoming exam -- set a 6-month plan
           </button>
         </div>
 

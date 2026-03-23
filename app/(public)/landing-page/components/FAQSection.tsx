@@ -81,9 +81,9 @@ const FAQSection = () => {
       questionEn: 'Is Teacher Vidya available in Hindi?',
       questionHi: 'क्या Teacher Vidya हिंदी में उपलब्ध है?',
       answerEn:
-        'Yes — Teacher Vidya teaches in both English and Hindi. You can switch language at any time, even mid-session. All explanations, hints, and feedback are available in the language you prefer.',
+        'Yes -- Teacher Vidya teaches in both English and Hindi. You can switch language at any time, even mid-session. All explanations, hints, and feedback are available in the language you prefer.',
       answerHi:
-        'हां — Teacher Vidya अंग्रेजी और हिंदी दोनों में पढ़ाती है। आप कभी भी, यहाँ तक कि session के बीच में भी, भाषा बदल सकते हैं। सभी explanations, hints और feedback आपकी पसंदीदा भाषा में उपलब्ध हैं।',
+        'हां -- Teacher Vidya अंग्रेजी और हिंदी दोनों में पढ़ाती है। आप कभी भी, यहाँ तक कि session के बीच में भी, भाषा बदल सकते हैं। सभी explanations, hints और feedback आपकी पसंदीदा भाषा में उपलब्ध हैं।',
       category: 'Language',
     },
   ];

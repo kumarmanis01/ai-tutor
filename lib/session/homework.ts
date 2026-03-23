@@ -1,15 +1,15 @@
 /**
  * Homework Generation
  *
- * Generates a HomeworkAssignment by selecting 5–10 questions from
+ * Generates a HomeworkAssignment by selecting 5-10 questions from
  * the existing question bank for the topic. Falls back through three
  * strategies before creating a stub (zero-question) assignment.
  *
  * Fallback order:
- *   Strategy 1 — promoted Question bank (topicId FK)
- *   Strategy 2 — GeneratedQuestion via GeneratedTest (same topic)
- *   Strategy 3 — GeneratedQuestion from sibling topics in same chapter
- *   Stub       — HomeworkAssignment with questions: [] (never throws)
+ *   Strategy 1 -- promoted Question bank (topicId FK)
+ *   Strategy 2 -- GeneratedQuestion via GeneratedTest (same topic)
+ *   Strategy 3 -- GeneratedQuestion from sibling topics in same chapter
+ *   Stub       -- HomeworkAssignment with questions: [] (never throws)
  *
  * Design decisions:
  *   - generateHomework() NEVER throws for content unavailability.
@@ -18,7 +18,7 @@
  *     in getPhaseContent.ts always finds a row, so PendingContent is
  *     never returned and the student is never permanently stuck.
  *   - One internal retry (RETRY_DELAY_MS gap) is applied when the first
- *     gatherQuestions() call returns empty — covers transient DB hiccups
+ *     gatherQuestions() call returns empty -- covers transient DB hiccups
  *     where a recently completed hydration job is not yet visible.
  *   - isStub is exposed in HomeworkResult so the engine and UI can make
  *     informed decisions (log it, display a "no homework" message, etc.).
@@ -101,7 +101,7 @@ export async function generateHomework(
   // First attempt at gathering questions.
   let questions = await gatherQuestions(topicId);
 
-  // One retry after a short delay — handles transient DB hiccups where a
+  // One retry after a short delay -- handles transient DB hiccups where a
   // very recently completed hydration job has not yet been committed.
   if (questions.length === 0) {
     logger.info('[HOMEWORK_RETRY]', {
@@ -129,7 +129,7 @@ export async function generateHomework(
   const dueDate = new Date();
   dueDate.setDate(dueDate.getDate() + DUE_DATE_DAYS);
 
-  // Only this write can throw — only on DB/infrastructure failure.
+  // Only this write can throw -- only on DB/infrastructure failure.
   const assignment = await prisma.homeworkAssignment.create({
     data: {
       studentId,
@@ -158,7 +158,7 @@ export async function generateHomework(
 
 /**
  * Attempt to gather questions for the topic via three strategies.
- * Returns an empty array when all strategies fail — never throws.
+ * Returns an empty array when all strategies fail -- never throws.
  */
 async function gatherQuestions(topicId: string): Promise<HomeworkQuestion[]> {
   // ── Strategy 1: promoted Question bank (topicId FK) ─────────────────────
@@ -172,7 +172,7 @@ async function gatherQuestions(topicId: string): Promise<HomeworkQuestion[]> {
   };
 
   const bankQuestions: BankQuestion[] = await prisma.question.findMany({
-    // quarantined questions excluded — do not remove this filter
+    // quarantined questions excluded -- do not remove this filter
     where: { topicId, status: 'ACTIVE' },
     take: MAX_QUESTIONS * 2,
     orderBy: { createdAt: 'desc' },
@@ -254,10 +254,10 @@ async function gatherQuestions(topicId: string): Promise<HomeworkQuestion[]> {
     return shuffle(uniqueTopicQuestions).slice(0, MAX_QUESTIONS);
   }
 
-  // ── Strategy 3: chapter-level fallback — sibling topic questions ─────────
+  // ── Strategy 3: chapter-level fallback -- sibling topic questions ─────────
   // When the topic itself has insufficient questions, pull from GeneratedTests
   // for other active topics in the same chapter. This mirrors the "PRACTICE
-  // questions" pool from getPhaseContent.ts — the same source the PRACTICE
+  // questions" pool from getPhaseContent.ts -- the same source the PRACTICE
   // and TEST phases draw from.
   const topicDef = await prisma.topicDef.findUnique({
     where: { id: topicId },

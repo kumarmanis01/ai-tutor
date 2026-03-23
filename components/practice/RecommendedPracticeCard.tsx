@@ -1,7 +1,7 @@
 /**
  * FILE OBJECTIVE:
  * - Presentational card for the HomeEngine "practice" action.
- * - Pure props — no hooks, no fetch, no client directive.
+ * - Pure props -- no hooks, no fetch, no client directive.
  * - Rendered by the Practice page server component.
  *
  * EDIT LOG:

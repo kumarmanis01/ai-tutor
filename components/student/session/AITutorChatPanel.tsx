@@ -1,18 +1,18 @@
 'use client';
 
 /**
- * AITutorChatPanel — v2
+ * AITutorChatPanel -- v2
  *
  * Full-height flex-column layout:
- *   ① Session header  — topic name + stage badge (sticky)
- *   ② Stage strip     — 7 chips, scrollable, done/active/pending states
- *   ③ Chat history    — flex-1, overflow-y-auto, smooth scroll to bottom
- *   ④ Hint bar        — hidden during non-practice stages
- *   ⑤ Inactivity prompt — pulsing banner after 90s silence
- *   ⑥ SSE error banner — reconnecting spinner / refresh fallback
- *   ⑦ Input bar       — auto-resize textarea + circular send button (sticky)
+ *   ① Session header  -- topic name + stage badge (sticky)
+ *   ② Stage strip     -- 7 chips, scrollable, done/active/pending states
+ *   ③ Chat history    -- flex-1, overflow-y-auto, smooth scroll to bottom
+ *   ④ Hint bar        -- hidden during non-practice stages
+ *   ⑤ Inactivity prompt -- pulsing banner after 90s silence
+ *   ⑥ SSE error banner -- reconnecting spinner / refresh fallback
+ *   ⑦ Input bar       -- auto-resize textarea + circular send button (sticky)
  *
- * Copy rules: no "broke/missed/failed" — forward-looking tone only.
+ * Copy rules: no "broke/missed/failed" -- forward-looking tone only.
  */
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
@@ -30,7 +30,7 @@ interface ChatMessage {
   isStreaming?: boolean;
 }
 
-// Items rendered in the chat list — either a message or a stage-transition divider
+// Items rendered in the chat list -- either a message or a stage-transition divider
 type MessageItem =
   | { kind: 'msg'; msg: ChatMessage }
   | { kind: 'divider'; id: string; label: string };
@@ -99,7 +99,7 @@ const NO_HINT_STAGES = new Set<string>([
 
 const INACTIVITY_MS = 90_000;
 const MAX_RECONNECT = 3;
-const TEXTAREA_LINE_HEIGHT = 22; // px — matches text-sm + line-height
+const TEXTAREA_LINE_HEIGHT = 22; // px -- matches text-sm + line-height
 const TEXTAREA_MAX_LINES = 4;
 
 // ── CSS (injected via <style>) ─────────────────────────────────────────────────
@@ -279,7 +279,7 @@ function StageDivider({ label }: { label: string }) {
     <div className="v2-divider my-4 flex items-center gap-2">
       <div className="h-px flex-1 bg-gray-200 dark:bg-slate-700" />
       <span className="whitespace-nowrap text-xs text-gray-400 dark:text-gray-500">
-        — Moving to {label} —
+        -- Moving to {label} --
       </span>
       <div className="h-px flex-1 bg-gray-200 dark:bg-slate-700" />
     </div>
@@ -648,7 +648,7 @@ export const AITutorChatPanel: React.FC<AITutorChatPanelProps> = ({
             return <StudentMessageBubble key={msg.id} msg={msg} />;
           })}
 
-          {/* AI typing indicator — three dots before first token */}
+          {/* AI typing indicator -- three dots before first token */}
           {isTyping && <TypingIndicator />}
 
           <div ref={messagesEndRef} />

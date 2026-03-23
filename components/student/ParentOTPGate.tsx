@@ -88,7 +88,7 @@ export default function ParentOTPGate({ maskedEmail }: ParentOTPGateProps) {
           disabled={sending}
           className="mb-4 w-full rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm disabled:cursor-not-allowed disabled:bg-gray-300"
         >
-          {sending ? 'Sending…' : 'Send Code'}
+          {sending ? 'Sending...' : 'Send Code'}
         </button>
 
         <div className="mb-2 text-center text-xs font-semibold uppercase tracking-wide text-gray-400">
@@ -112,7 +112,7 @@ export default function ParentOTPGate({ maskedEmail }: ParentOTPGateProps) {
             disabled={verifying || otp.length !== 6}
             className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm disabled:cursor-not-allowed disabled:bg-gray-300"
           >
-            {verifying ? 'Verifying…' : 'Verify'}
+            {verifying ? 'Verifying...' : 'Verify'}
           </button>
         </div>
 

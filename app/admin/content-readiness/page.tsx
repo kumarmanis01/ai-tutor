@@ -36,19 +36,19 @@ export default function AdminContentReadinessPage() {
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
         <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4">
           <div className="text-sm font-medium text-gray-500 dark:text-gray-400">Pending</div>
-          <div className="text-2xl font-bold text-gray-900 dark:text-white">{summary?.pending ?? '—'}</div>
+          <div className="text-2xl font-bold text-gray-900 dark:text-white">{summary?.pending ?? '--'}</div>
         </div>
         <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4">
           <div className="text-sm font-medium text-gray-500 dark:text-gray-400">Running</div>
-          <div className="text-2xl font-bold text-gray-900 dark:text-white">{summary?.running ?? '—'}</div>
+          <div className="text-2xl font-bold text-gray-900 dark:text-white">{summary?.running ?? '--'}</div>
         </div>
         <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4">
           <div className="text-sm font-medium text-gray-500 dark:text-gray-400">Failed</div>
-          <div className="text-2xl font-bold text-red-600 dark:text-red-400">{summary?.failed ?? '—'}</div>
+          <div className="text-2xl font-bold text-red-600 dark:text-red-400">{summary?.failed ?? '--'}</div>
         </div>
         <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4">
           <div className="text-sm font-medium text-gray-500 dark:text-gray-400">Completed</div>
-          <div className="text-2xl font-bold text-green-600 dark:text-green-400">{summary?.completed ?? '—'}</div>
+          <div className="text-2xl font-bold text-green-600 dark:text-green-400">{summary?.completed ?? '--'}</div>
         </div>
         <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4">
           <div className="text-sm font-medium text-gray-500 dark:text-gray-400">Generation paused</div>
@@ -87,7 +87,7 @@ export default function AdminContentReadinessPage() {
         </button>
       </div>
 
-      {isLoading && <div className="text-sm text-gray-500">Loading…</div>}
+      {isLoading && <div className="text-sm text-gray-500">Loading...</div>}
       {!isLoading && (
         <div className="rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
           <table className="w-full text-sm">
@@ -117,7 +117,7 @@ export default function AdminContentReadinessPage() {
                     </span>
                   </td>
                   <td className="p-3">{j.contentReady ? 'Yes' : 'No'}</td>
-                  <td className="p-3 max-w-xs truncate" title={j.lastError ?? ''}>{j.lastError ?? '—'}</td>
+                  <td className="p-3 max-w-xs truncate" title={j.lastError ?? ''}>{j.lastError ?? '--'}</td>
                   <td className="p-3">{new Date(j.updatedAt).toLocaleString()}</td>
                 </tr>
               ))}

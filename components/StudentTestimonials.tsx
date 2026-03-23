@@ -71,7 +71,7 @@ export default function StudentTestimonials() {
               "{quotes[index].text}"
             </blockquote>
             <p className="text-sm font-medium text-indigo-700 dark:text-indigo-300 mb-2">
-              — {quotes[index].author}
+              -- {quotes[index].author}
             </p>
 
             <div className="flex gap-2 items-center" aria-hidden>
@@ -92,7 +92,7 @@ export default function StudentTestimonials() {
         <aside className="w-full md:w-48 mt-2 md:mt-0">
           <div className="p-3 rounded-lg bg-white/70 dark:bg-white/5 border border-gray-100 dark:border-gray-800">
             <p className="text-xs text-gray-600 dark:text-gray-400">
-              Trusted by students and teachers — subtle visuals help the content pop without
+              Trusted by students and teachers -- subtle visuals help the content pop without
               overwhelming the page.
             </p>
           </div>

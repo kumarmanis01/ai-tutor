@@ -1,5 +1,5 @@
 /**
- * PhaseCompletionValidator — ABSTRACTION-02
+ * PhaseCompletionValidator -- ABSTRACTION-02
  *
  * Validates that phase completion requirements are met before allowing
  * advanceSession to transition to the next phase.

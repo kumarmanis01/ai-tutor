@@ -1,5 +1,5 @@
 /**
- * COPILOT RULES — NORMALIZATION
+ * COPILOT RULES -- NORMALIZATION
  *
  * - Input may be unsafe
  * - Output MUST be Prisma enums

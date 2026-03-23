@@ -1,5 +1,5 @@
 /**
- * /admin/content — Content Coverage Dashboard
+ * /admin/content -- Content Coverage Dashboard
  *
  * Server component. Fetches coverage data from the internal API and renders
  * the interactive ContentTable client component.
@@ -14,7 +14,7 @@ async function fetchCoverageRows() {
     notFound()
   }
 
-  // Import prisma directly — we're in a server component, avoid extra round-trip
+  // Import prisma directly -- we're in a server component, avoid extra round-trip
   const { prisma } = await import('@/lib/prisma')
   const { logger } = await import('@/lib/logger')
 

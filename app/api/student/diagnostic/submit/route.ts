@@ -11,7 +11,7 @@
  * }
  *
  * Returns: { success: true, subjectId }
- * Auth: session required — 401 if missing.
+ * Auth: session required -- 401 if missing.
  */
 
 import { NextRequest, NextResponse } from 'next/server';

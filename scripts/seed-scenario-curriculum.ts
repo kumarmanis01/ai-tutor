@@ -4,13 +4,13 @@
  * 1 GeneratedTest (medium) with 3 GeneratedQuestions.
  *
  * Students and scenario data for engine validation:
- *   A — fresh@scenario.test       : no sessions, no homework, no progress → P5 next_new_topic
- *   B — midsession@scenario.test  : StructuredSession state PRACTICE       → P1 resume_session
- *   C — weak@scenario.test        : StudentTopicMastery accuracy < 0.6,   → P4 low_accuracy
+ *   A -- fresh@scenario.test       : no sessions, no homework, no progress → P5 next_new_topic
+ *   B -- midsession@scenario.test  : StructuredSession state PRACTICE       → P1 resume_session
+ *   C -- weak@scenario.test        : StudentTopicMastery accuracy < 0.6,   → P4 low_accuracy
  *                                   StudentTopicProgress practiceCount > 5
- *   D — spaced@scenario.test      : mastery 0.65, lastStudiedAt 7 days ago → P3 spaced_revision (Phase-2)
- *   E — homework@scenario.test   : HomeworkAssignment PENDING, due < 48h → P0 homework_pending (Phase-2)
- *   P2 — daily@scenario.test      : DailyTask today, pending               → P2 daily_task
+ *   D -- spaced@scenario.test      : mastery 0.65, lastStudiedAt 7 days ago → P3 spaced_revision (Phase-2)
+ *   E -- homework@scenario.test   : HomeworkAssignment PENDING, due < 48h → P0 homework_pending (Phase-2)
+ *   P2 -- daily@scenario.test      : DailyTask today, pending               → P2 daily_task
  *
  * Run: npx tsx scripts/seed-scenario-curriculum.ts
  */
@@ -213,7 +213,7 @@ async function main() {
 
   const getStudentId = (email: string) => students.find((s) => s.email === email)!.id;
 
-  // —— Scenario A: Fresh — ensure no sessions, homework, or progress (P5 next_new_topic)
+  // ---- Scenario A: Fresh -- ensure no sessions, homework, or progress (P5 next_new_topic)
   const freshId = getStudentId('fresh@scenario.test');
   await prisma.structuredSession.deleteMany({ where: { studentId: freshId } });
   await prisma.learningSession.deleteMany({ where: { studentId: freshId } });
@@ -222,7 +222,7 @@ async function main() {
   await prisma.attentionFlag.deleteMany({ where: { studentId: freshId } });
   await prisma.homeworkAssignment.deleteMany({ where: { studentId: freshId } });
 
-  // —— Scenario B: Mid-session — StructuredSession state PRACTICE → P1 resume_session
+  // ---- Scenario B: Mid-session -- StructuredSession state PRACTICE → P1 resume_session
   const midsessionId = getStudentId('midsession@scenario.test');
   await prisma.structuredSession.deleteMany({ where: { studentId: midsessionId } });
   await prisma.structuredSession.create({
@@ -234,7 +234,7 @@ async function main() {
     },
   });
 
-  // —— Scenario C: Weak topic — P4 low_accuracy (mastery < 0.6, practiceCount > 5)
+  // ---- Scenario C: Weak topic -- P4 low_accuracy (mastery < 0.6, practiceCount > 5)
   const weakId = getStudentId('weak@scenario.test');
   await prisma.studentTopicMastery.deleteMany({ where: { studentId: weakId } });
   await prisma.studentTopicProgress.deleteMany({ where: { studentId: weakId } });
@@ -262,7 +262,7 @@ async function main() {
     update: { mastery: 0.35, practiceCount: 6 },
   });
 
-  // —— Scenario D: Spaced revision — mastery 0.65, lastStudiedAt 7 days ago (Phase-2 P3)
+  // ---- Scenario D: Spaced revision -- mastery 0.65, lastStudiedAt 7 days ago (Phase-2 P3)
   const spacedId = getStudentId('spaced@scenario.test');
   const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
   await prisma.studentTopicMastery.deleteMany({ where: { studentId: spacedId } });
@@ -291,7 +291,7 @@ async function main() {
     update: { mastery: 0.65, practiceCount: 5, lastStudiedAt: sevenDaysAgo },
   });
 
-  // —— Scenario E: Homework pending — PENDING, dueDate < 48h (Phase-2 P0)
+  // ---- Scenario E: Homework pending -- PENDING, dueDate < 48h (Phase-2 P0)
   const homeworkId = getStudentId('homework@scenario.test');
   const dueIn24h = new Date(Date.now() + 24 * 60 * 60 * 1000);
   await prisma.homeworkAssignment.deleteMany({ where: { studentId: homeworkId } });
@@ -305,7 +305,7 @@ async function main() {
     },
   });
 
-  // —— P2: Daily task — today, pending → P2 daily_task
+  // ---- P2: Daily task -- today, pending → P2 daily_task
   const dailyId = getStudentId('daily@scenario.test');
   const todayStart = utcMidnightToday();
   await prisma.dailyTask.deleteMany({ where: { studentId: dailyId } });

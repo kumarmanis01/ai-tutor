@@ -34,7 +34,7 @@ const MIN_HOURS_BETWEEN_MESSAGES = 7 * 24; // 1 week
 /**
  * Send a WhatsApp message to a parent.
  * Enforces: max 1/week, under 500 chars, opt-in required.
- * Fails silently — caller should not depend on success.
+ * Fails silently -- caller should not depend on success.
  */
 export async function sendWhatsAppMessage(
   parentPhone: string,
@@ -77,7 +77,7 @@ export async function sendWhatsAppMessage(
       parentId,
       error: error instanceof Error ? error.message : String(error),
     });
-    // Fail silently — caller can try SMS fallback
+    // Fail silently -- caller can try SMS fallback
     return false;
   }
 }
@@ -148,9 +148,9 @@ function buildEnglishMessage(
   }
 
   lines.push('');
-  lines.push('Keep encouraging regular study — every small step counts. 🌱');
+  lines.push('Keep encouraging regular study -- every small step counts. 🌱');
   lines.push('');
-  lines.push('– Spinzy Academy');
+  lines.push('- Spinzy Academy');
 
   return lines.join('\n');
 }
@@ -175,9 +175,9 @@ function buildHindiMessage(
   }
 
   lines.push('');
-  lines.push('आप बस प्रोत्साहित करते रहिये — प्रगति हो रही है। 🌱');
+  lines.push('आप बस प्रोत्साहित करते रहिये -- प्रगति हो रही है। 🌱');
   lines.push('');
-  lines.push('– Spinzy Academy');
+  lines.push('- Spinzy Academy');
 
   return lines.join('\n');
 }
@@ -202,9 +202,9 @@ function buildHinglishMessage(
   }
 
   lines.push('');
-  lines.push('Aap bas encourage karte rahiye — progress ho rahi hai. 🌱');
+  lines.push('Aap bas encourage karte rahiye -- progress ho rahi hai. 🌱');
   lines.push('');
-  lines.push('– Spinzy Academy');
+  lines.push('- Spinzy Academy');
 
   return lines.join('\n');
 }

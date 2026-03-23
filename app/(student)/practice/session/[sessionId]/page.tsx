@@ -25,7 +25,7 @@ export default function PracticeSessionPage({ params }: { params: { sessionId: s
 
   return (
     <div className="flex items-center justify-center min-h-40">
-      <p className="text-sm text-muted-foreground">Resuming session…</p>
+      <p className="text-sm text-muted-foreground">Resuming session...</p>
     </div>
   );
 }

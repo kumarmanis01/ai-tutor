@@ -127,7 +127,7 @@ export async function POST(req: Request) {
       return res
     }
 
-    // Consent gate (DPDP T37) — must have AI_INTERACTION consent
+    // Consent gate (DPDP T37) -- must have AI_INTERACTION consent
     const canUseAI = await hasConsented(userId, ConsentScope.AI_INTERACTION)
     if (!canUseAI) {
       const res = await streamSingleError(403, errorPayload('CONSENT_REQUIRED', 'AI interaction consent required', false))

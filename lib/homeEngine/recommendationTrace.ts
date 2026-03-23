@@ -8,7 +8,7 @@
  * - Enabled only when ENABLE_REC_TRACE=1.
  *
  * LINKED UNIT TEST:
- * - (no integration tests — Redis calls are fire-and-forget and cannot block
+ * - (no integration tests -- Redis calls are fire-and-forget and cannot block
  *   the recommendation path; acceptance verified via admin API endpoint)
  *
  * EDIT LOG:
@@ -26,8 +26,8 @@ import { prisma } from '@/lib/prisma';
 
 /**
  * A single rule slot in the evaluation trace.
- * Even rules that were not evaluated (e.g. P2–P5 when P0 fires) are included
- * with evaluated: false so the admin UI can show the complete P0–P6 ladder.
+ * Even rules that were not evaluated (e.g. P2-P5 when P0 fires) are included
+ * with evaluated: false so the admin UI can show the complete P0-P6 ladder.
  */
 export interface RuleEntry {
   /** Human-readable rule identifier matching NextAction.ruleId (e.g. 'homework_pending'). */
@@ -42,7 +42,7 @@ export interface RuleEntry {
 
 /**
  * Per-topic scoring record captured from the P5 TopicRanker pass.
- * Only present when P0–P4 did not short-circuit (i.e. P5 was reached).
+ * Only present when P0-P4 did not short-circuit (i.e. P5 was reached).
  */
 export interface TopicScoringEntry {
   topicId: string;
@@ -57,12 +57,12 @@ export interface TopicScoringEntry {
  * Written to Redis as fire-and-forget; TTL = 10 minutes.
  *
  * Schema:
- *   traceId           — UUID from the getNextAction call (same as logged to logger.info).
- *   studentId         — The student being recommended for.
- *   evaluatedAt       — Wall-clock time of the getNextAction() call (UTC).
- *   rules             — Ordered P0→P6 rule entries with timing and match status.
- *   topicScoringBreakdown — Present when P5 ran; full ranked-topic signal breakdown.
- *   finalDecision     — The NextAction returned to the caller.
+ *   traceId           -- UUID from the getNextAction call (same as logged to logger.info).
+ *   studentId         -- The student being recommended for.
+ *   evaluatedAt       -- Wall-clock time of the getNextAction() call (UTC).
+ *   rules             -- Ordered P0→P6 rule entries with timing and match status.
+ *   topicScoringBreakdown -- Present when P5 ran; full ranked-topic signal breakdown.
+ *   finalDecision     -- The NextAction returned to the caller.
  */
 export interface RecommendationTrace {
   traceId: string;
@@ -105,7 +105,7 @@ export const TRACE_SAMPLE_RATE: number = (() => {
 
 const TRACE_KEY_PREFIX = 'rec-trace:';
 
-/** 10 minutes — long enough for admin debugging, short enough to self-clean. */
+/** 10 minutes -- long enough for admin debugging, short enough to self-clean. */
 const TRACE_TTL_SECONDS = 10 * 60;
 
 // ─── Persistence ─────────────────────────────────────────────────────────────
@@ -117,7 +117,7 @@ const TRACE_TTL_SECONDS = 10 * 60;
  *   void persistRecTrace(trace);
  *   // or: persistRecTrace(trace).catch(() => { / already logged / });
  *
- * Errors are swallowed internally — a Redis failure must never surface to the
+ * Errors are swallowed internally -- a Redis failure must never surface to the
  * student or affect the recommendation result.
  */
 export async function persistRecTrace(trace: RecommendationTrace): Promise<void> {
@@ -145,7 +145,7 @@ export async function persistRecTrace(trace: RecommendationTrace): Promise<void>
     ]);
     logger.debug('rec-trace.written', { traceId: trace.traceId, studentId: trace.studentId });
   } catch (err) {
-    // Silently absorb — trace writes must never throw or block.
+    // Silently absorb -- trace writes must never throw or block.
     logger.warn('rec-trace.write_failed', {
       traceId: trace.traceId,
       studentId: trace.studentId,

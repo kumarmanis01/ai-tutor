@@ -16,7 +16,7 @@ export async function pushMetricsOnce(): Promise<void> {
       });
     });
   } catch {
-    // swallow — pushgateway is optional
+    // swallow -- pushgateway is optional
   }
 }
 

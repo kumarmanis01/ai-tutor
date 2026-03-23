@@ -1,7 +1,7 @@
 'use client';
 /**
  * FILE OBJECTIVE:
- * - Phase 3: PRACTICE — Question-by-question MCQ with instant feedback.
+ * - Phase 3: PRACTICE -- Question-by-question MCQ with instant feedback.
  * - Uses usePracticeQuestions hook and normaliseChoices from sessionUtils.
  * - TutorTipPanel shown above questions.
  *
@@ -83,7 +83,7 @@ function ResultsScreen({ result }: { result: SubmitActionResult }) {
 // ─── Main ─────────────────────────────────────────────────────────────────────
 
 const FEEDBACK_CORRECT = 'Great job!';
-const FEEDBACK_INCORRECT = 'Almost there — try again.';
+const FEEDBACK_INCORRECT = 'Almost there -- try again.';
 
 export function PracticePhase({ content, topicName: _topicName, onSubmit, onReadyToProceed, submitting: _submitting }: PracticePhaseProps) {
   const questions = content.questions;
@@ -187,7 +187,7 @@ export function PracticePhase({ content, topicName: _topicName, onSubmit, onRead
         ) : (
           <input
             type="text"
-            placeholder="Type your answer…"
+            placeholder="Type your answer..."
             onBlur={(e) => {
               if (e.target.value.trim()) handleAnswer(question.id, e.target.value.trim());
             }}

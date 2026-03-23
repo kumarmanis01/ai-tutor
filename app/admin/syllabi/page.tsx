@@ -35,7 +35,7 @@ export default function AdminSyllabiPage() {
 
   return (
     <div style={{ padding: 20, fontFamily: 'Inter, system-ui, -apple-system' }}>
-      <h1>Admin — Syllabi (Read-only)</h1>
+      <h1>Admin -- Syllabi (Read-only)</h1>
       {loading ? (
         <p>Loading...</p>
       ) : (
@@ -52,7 +52,7 @@ export default function AdminSyllabiPage() {
               >
                 {syllabi.map((s) => (
                   <option key={s.id} value={s.id}>
-                    {s.title} — {s.version} — {s.status}
+                    {s.title} -- {s.version} -- {s.status}
                   </option>
                 ))}
               </select>

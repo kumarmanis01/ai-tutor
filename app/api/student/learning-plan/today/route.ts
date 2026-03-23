@@ -34,7 +34,7 @@ export async function GET(req: Request) {
     })
 
     if (!plan) {
-      // No plan exists — fall back to next action engine
+      // No plan exists -- fall back to next action engine
       const nextAction = await getNextAction(userId).catch(() => null)
       const action =
         nextAction && typeof nextAction === 'object' && 'action' in nextAction

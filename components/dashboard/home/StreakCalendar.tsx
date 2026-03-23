@@ -93,7 +93,7 @@ export function StreakCalendar() {
       )}
       {current > 0 && (
         <p className="text-xs text-primary font-medium mt-3 text-center">
-          {current >= 7 ? '🏆 Amazing week!' : `Keep going — ${7 - current} more days for a perfect week!`}
+          {current >= 7 ? '🏆 Amazing week!' : `Keep going -- ${7 - current} more days for a perfect week!`}
         </p>
       )}
     </div>

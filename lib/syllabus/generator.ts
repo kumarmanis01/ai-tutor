@@ -119,7 +119,7 @@ export async function stubLLMGenerate(input: GenerateSyllabusInput): Promise<unk
 /**
  * Very small runtime validator that checks presence and basic types for
  * fields required by the Phase 6 schema. This is intentionally lightweight
- * and defensive — a full JSON Schema + AJV validation can be added later.
+ * and defensive -- a full JSON Schema + AJV validation can be added later.
  */
 // Note: schema validation is delegated to `lib/syllabus/schema.ts` via validateSyllabusJson
 

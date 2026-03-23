@@ -10,7 +10,7 @@ export default function PageLoader({ label }: { label?: string | null }) {
       role="status"
       aria-live="polite"
     >
-      <LoadingSpinner size={56} label={label ?? 'Loading…'} />
+      <LoadingSpinner size={56} label={label ?? 'Loading...'} />
     </div>
   );
 }

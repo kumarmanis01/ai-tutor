@@ -203,7 +203,7 @@ export function TodaysLearningCard({ onStartLearning }: TodaysLearningCardProps)
         )}
       </div>
 
-      {/* Primary CTA — context-aware label per task type */}
+      {/* Primary CTA -- context-aware label per task type */}
       <button
         onClick={handleStart}
         className="w-full py-4 px-6 bg-primary hover:bg-primary/90 text-primary-foreground font-semibold rounded-xl transition-colors flex items-center justify-center gap-2 shadow-lg shadow-primary/20"
@@ -214,7 +214,7 @@ export function TodaysLearningCard({ onStartLearning }: TodaysLearningCardProps)
         </svg>
       </button>
 
-      {/* Skip — demoted to text link so the primary CTA is the only prominent action */}
+      {/* Skip -- demoted to text link so the primary CTA is the only prominent action */}
       <button
         onClick={skipTask}
         className="w-full py-2 text-xs text-muted-foreground hover:text-foreground transition-colors text-center"

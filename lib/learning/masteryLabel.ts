@@ -1,9 +1,9 @@
 /**
  * Mastery Label Utility
  *
- * Maps a mastery float (0–1) to a plain-language qualitative label
+ * Maps a mastery float (0-1) to a plain-language qualitative label
  * shown to students. The platform NEVER shows raw percentages or mastery
- * numbers to students — only these four labels.
+ * numbers to students -- only these four labels.
  *
  * Thresholds:
  *   < 0.50  → "Needs practice"

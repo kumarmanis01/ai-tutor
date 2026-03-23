@@ -1,5 +1,5 @@
 /**
- * Admin Student Learning Analytics — read-only aggregations for admin console.
+ * Admin Student Learning Analytics -- read-only aggregations for admin console.
  * Data: User (role=user), StructuredSession, StudentTopicProgress, HomeworkAssignment.
  */
 
@@ -199,7 +199,7 @@ export async function getStudentDrilldown(studentId: string): Promise<StudentDri
     weakTopicCount: weakTopics.length,
     recentSessions: recentSessions.map((s) => ({
       sessionId: s.id,
-      topicName: s.topic?.name ?? '—',
+      topicName: s.topic?.name ?? '--',
       completedAt: s.completedAt,
     })),
     weakTopics: weakTopics.map((w) => ({

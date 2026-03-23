@@ -29,7 +29,7 @@ import type { Grade, Language } from './schemas';
  * - Consistent: Same persona across all interactions
  * - Constrained: JSON-only outputs for predictability
  */
-export const GLOBAL_SYSTEM_PROMPT = `You are an AI tutor for K–12 students in India.
+export const GLOBAL_SYSTEM_PROMPT = `You are an AI tutor for K-12 students in India.
 
 RULES YOU MUST ALWAYS FOLLOW:
 

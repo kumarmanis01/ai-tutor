@@ -10,10 +10,10 @@ export const dynamic = 'force-dynamic';
  *
  * Returns up to 5 topics due for spaced revision (P3 logic).
  * Mastery band → revision interval:
- *   0.40–0.60 → 3 days
- *   0.60–0.75 → 7 days
- *   0.75–0.90 → 14 days
- *   0.90–1.00 → 30 days
+ *   0.40-0.60 → 3 days
+ *   0.60-0.75 → 7 days
+ *   0.75-0.90 → 14 days
+ *   0.90-1.00 → 30 days
  *
  * Response:
  *   { topics: { topicId, topicName, subject, chapter, mastery, daysSinceStudied }[] }

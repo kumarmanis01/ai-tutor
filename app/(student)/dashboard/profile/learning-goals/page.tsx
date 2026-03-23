@@ -9,7 +9,7 @@
 import Link from 'next/link';
 import { LearningGoalsCard } from '@/app/(student)/dashboard/components/profile';
 
-export const metadata = { title: 'Learning Goals – Spinzy Academy' };
+export const metadata = { title: 'Learning Goals - Spinzy Academy' };
 
 export default function LearningGoalsPage() {
   return (

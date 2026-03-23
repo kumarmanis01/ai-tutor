@@ -2,7 +2,7 @@
  * POST /api/push/unsubscribe
  *
  * Removes a Web Push API subscription for the authenticated user.
- * Infrastructure only — actual push sending is a post-MVP feature.
+ * Infrastructure only -- actual push sending is a post-MVP feature.
  *
  * Body: { endpoint: string }
  * Response: { unsubscribed: true }

@@ -1,13 +1,13 @@
 'use client';
 
 /**
- * AiNarrativeWidget — "Vidya's insight" section on the progress report page.
+ * AiNarrativeWidget -- "Vidya's insight" section on the progress report page.
  *
  * Fetches /api/student/progress/narrative on mount and renders a 2-3 sentence
  * AI-generated summary of the student's last 30 days. Independent loading and
  * error states ensure one failing widget never blanks the whole page.
  *
- * PDF download is a placeholder — shows "coming soon" toast (deferred feature).
+ * PDF download is a placeholder -- shows "coming soon" toast (deferred feature).
  *
  * EDIT LOG:
  * - 2026-03-15 | claude | created for Task 29 progress report page

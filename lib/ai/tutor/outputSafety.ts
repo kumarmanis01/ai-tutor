@@ -112,7 +112,7 @@ const CATEGORIES: Readonly<Record<string, CategoryDef>> = {
   PERSONAL_ADVICE: {
     severity: 'LOW',
     patterns: PERSONAL_ADVICE_PATTERNS,
-    replacement: "That's outside what I can help with. I'm here for your studies — what shall we work on?",
+    replacement: "That's outside what I can help with. I'm here for your studies -- what shall we work on?",
   },
 } as const
 

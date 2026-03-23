@@ -81,7 +81,7 @@ export default function VerifyParentForm({
           disabled={sending}
           className="rounded-md bg-primary px-4 py-2 text-white disabled:opacity-60"
         >
-          {sending ? 'Sending…' : 'Send OTP'}
+          {sending ? 'Sending...' : 'Send OTP'}
         </button>
         {sendSuccess && (
           <p className="mt-2 text-sm text-green-600">
@@ -109,7 +109,7 @@ export default function VerifyParentForm({
           disabled={confirming || otp.length !== 6}
           className="rounded-md bg-primary px-4 py-2 text-white disabled:opacity-60"
         >
-          {confirming ? 'Verifying…' : 'Verify'}
+          {confirming ? 'Verifying...' : 'Verify'}
         </button>
       </form>
 

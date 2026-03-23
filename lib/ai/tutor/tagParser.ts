@@ -14,7 +14,7 @@ const VALID_TAG_SET: ReadonlySet<string> = new Set(VALID_TAGS)
 
 /**
  * Extracts the machine tag from the LAST NON-EMPTY line of an AI response.
- * Tag format: [TAG_NAME] — must be the entire content of that line.
+ * Tag format: [TAG_NAME] -- must be the entire content of that line.
  * Returns null if last non-empty line contains no valid tag.
  *
  * @param response - Full AI response text (may contain multiple lines).

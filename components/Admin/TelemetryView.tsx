@@ -88,7 +88,7 @@ export default function TelemetryView({ fromIso, toIso }: { fromIso: string; toI
   }, [data]);
 
   if (error) return <div className="text-red-600">Failed to load telemetry</div>;
-  if (!data) return <div>Loading telemetry…</div>;
+  if (!data) return <div>Loading telemetry...</div>;
 
   return (
     <div className="space-y-4">

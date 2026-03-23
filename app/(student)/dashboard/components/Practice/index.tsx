@@ -4,10 +4,10 @@
  * FILE OBJECTIVE:
  * - Simplified Practice page with section-tab navigation (no filters).
  * - Four sections, one visible at a time:
- *     1. Recommended Practice (default) — from TopicRanker
- *     2. Weak Topics Practice            — mastery < 0.4
- *     3. Chapter Practice                — subject → chapter → topic drill-down
- *     4. Custom Test                     — difficulty picker + hierarchy browser
+ *     1. Recommended Practice (default) -- from TopicRanker
+ *     2. Weak Topics Practice            -- mastery < 0.4
+ *     3. Chapter Practice                -- subject → chapter → topic drill-down
+ *     4. Custom Test                     -- difficulty picker + hierarchy browser
  * - Students can start practice in ≤ 2 clicks from any section.
  *
  * EDIT LOG:
@@ -288,7 +288,7 @@ export default function PracticeTab() {
             )}
           </div>
 
-          {/* CTA bar — shown once a topic is selected */}
+          {/* CTA bar -- shown once a topic is selected */}
           {customTopicId ? (
             <div className="rounded-xl border border-indigo-100 bg-indigo-50 p-4 flex items-center justify-between gap-3">
               <p className="text-sm text-gray-700 truncate">

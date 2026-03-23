@@ -203,7 +203,7 @@ export async function handleNotesJob(jobId: string): Promise<void> {
     where: { topicId, language: job.language, status: 'approved' }
   });
   if (existingApproved) {
-    logger.info('handleNotesJob: existing approved notes found — generating new version', { jobId, topicId });
+    logger.info('handleNotesJob: existing approved notes found -- generating new version', { jobId, topicId });
   }
 
   const board = topic.chapter.subject.class.board.name;

@@ -217,7 +217,7 @@ interface NavItem {
   badgeColor?: string;
 }
 
-// Navigation sections — organised by workflow; all hrefs must match app/admin route segments
+// Navigation sections -- organised by workflow; all hrefs must match app/admin route segments
 const contentGenerationLinks: NavItem[] = [
   { href: '/admin', label: 'Home', icon: 'Dashboard' },
   { href: '/admin/ai-dashboard', label: 'AI Dashboard', icon: 'Chart' },
@@ -246,7 +246,7 @@ const contentManagementLinks: NavItem[] = [
   { href: '/admin/catalog', label: 'Content Catalog', icon: 'Folder' },
 ];
 
-// Jobs, failure logs, retries — single place for execution and HydrateAll jobs + retry actions
+// Jobs, failure logs, retries -- single place for execution and HydrateAll jobs + retry actions
 const jobsAndRetriesLinks: NavItem[] = [
   { href: '/admin/content-engine/jobs', label: 'Execution Jobs', icon: 'Briefcase' },
   { href: '/admin/content-engine/hydrateAll', label: 'Hydrate All Jobs', icon: 'Rocket' },

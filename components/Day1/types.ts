@@ -137,7 +137,7 @@ export interface Day1ParentMessage {
  */
 export const WELCOME_COPY_HI = {
   greeting: (name: string) => `👋 Welcome, ${name}`,
-  body: `Aaj sirf 10–15 minute ka kaam hai
+  body: `Aaj sirf 10-15 minute ka kaam hai
 
 Dheere-dheere seekhenge
 Galti ho gayi toh koi problem nahi 🙂`,
@@ -223,7 +223,7 @@ Aaj ${childName} ne app par
 Bas itna hi kaafi hai shuruaat ke liye.
 Dheere-dheere progress dikhega.
 
-– Spinzy AI Tutor`;
+- Spinzy AI Tutor`;
 
 /**
  * Parent message template - English
@@ -236,7 +236,7 @@ Today ${childName} completed a
 That's all they need for now.
 Progress will show gradually.
 
-– Spinzy AI Tutor`;
+- Spinzy AI Tutor`;
 
 // ============================================================================
 // DAY-1 HARD RULES (DO NOT VIOLATE)

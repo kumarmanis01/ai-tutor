@@ -158,7 +158,7 @@ async function getFallbackRecommendations(userId: string) {
     }
   }
 
-  // 3. Next topic in chapter — first uncompleted topic per chapter
+  // 3. Next topic in chapter -- first uncompleted topic per chapter
   const chapters = await prisma.chapterDef.findMany({
     where: {
       lifecycle: 'active',
@@ -182,7 +182,7 @@ async function getFallbackRecommendations(userId: string) {
       subject: c.subject?.name || 'General',
       title: topic ? `Learn: ${topic.name}` : c.name,
       chapter: c.slug,
-      reasoning: `Next topic in ${c.name} — ${c.subject?.name || 'your curriculum'}`,
+      reasoning: `Next topic in ${c.name} -- ${c.subject?.name || 'your curriculum'}`,
       priority: 60,
       meta: {
         topicId: topic?.id || null,

@@ -5,7 +5,7 @@
  * Producers emit events; consumers subscribe. No direct imports between layers.
  *
  * Events:
- *   SESSION_COMPLETED — { studentId: string, sessionId: string }
+ *   SESSION_COMPLETED -- { studentId: string, sessionId: string }
  */
 
 import { EventEmitter } from 'events';

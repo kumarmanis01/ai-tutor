@@ -237,7 +237,7 @@ const OtpProviderForm = forwardRef<OtpProviderHandle, OtpProviderProps>(
             disabled={loading}
             className="px-4 py-2 bg-primary text-white rounded-md disabled:opacity-50"
           >
-            {loaded ? "Provider Ready" : loading ? "Loading…" : "Send OTP"}
+            {loaded ? "Provider Ready" : loading ? "Loading..." : "Send OTP"}
           </button>
         </div>
 

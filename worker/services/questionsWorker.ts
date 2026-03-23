@@ -73,7 +73,7 @@ function validateQuestionsShape(raw: any, subjectName?: string): boolean {
     if (q.answer === null || typeof q.answer === 'undefined') return false;
 
     // Subject-specific stricter checks only apply to non-MCQ question types.
-    // MCQ questions always use a string answer matching one of the options — the
+    // MCQ questions always use a string answer matching one of the options -- the
     // topic-questions prompt generates MCQ exclusively, so enforcing structured
     // object answers (solution_steps / direct_answer) on MCQ would always fail.
     if (q.type !== 'mcq') {
@@ -131,7 +131,7 @@ function validateQuestionsShapeWithReport(raw: any, subjectName?: string) {
     if (q.answer === null || typeof q.answer === 'undefined') { qReport.ok = false; qReport.issues.push('missing-answer'); }
 
     // Subject-specific answer-shape checks only for non-MCQ types.
-    // MCQ uses string answer = correctAnswer — structured object checks must not apply.
+    // MCQ uses string answer = correctAnswer -- structured object checks must not apply.
     if (q.type !== 'mcq') {
       try {
         if (subjectLower.includes('math') || subjectLower.includes('mathematics')) {
@@ -284,7 +284,7 @@ async function generateQuestionsForDifficulty(
   jobId?: string,
   questionsCount?: number
 ): Promise<{ parsed: any; llmResult: any } | null> {
-  // Resolve validated question count — enforces validation cap
+  // Resolve validated question count -- enforces validation cap
   const count = getValidationQuestionCount(questionsCount);
 
   const difficultyDescriptions: Record<DifficultyLevel, string> = {
@@ -293,7 +293,7 @@ async function generateQuestionsForDifficulty(
     hard: 'analysis and evaluation questions that challenge advanced understanding',
   };
 
-  // COUPLING-04: Single canonical prompt source — renderTemplate only.
+  // COUPLING-04: Single canonical prompt source -- renderTemplate only.
   const rendered = renderTemplate('topic-questions', {
     topicName: topic.name,
     grade,
@@ -471,7 +471,7 @@ export async function handleQuestionsJob(jobId: string): Promise<void> {
   const runOneDifficulty = async (difficulty: DifficultyLevel) => {
     const existingApproved = await prisma.generatedTest.findFirst({ where: { topicId, language, difficulty, status: 'approved' } });
     if (existingApproved) {
-      logger.info('handleQuestionsJob: existing approved questions found — generating new version', { jobId, topicId, difficulty });
+      logger.info('handleQuestionsJob: existing approved questions found -- generating new version', { jobId, topicId, difficulty });
     }
     const gen = await generateQuestionsForDifficulty(difficulty, topic, board, grade, subjectName, language, job.id, resolvedQuestionsCount);
     return { difficulty, existingApproved: existingApproved ?? null, parsed: gen?.parsed ?? null, llmResult: gen?.llmResult ?? null };
@@ -521,7 +521,7 @@ export async function handleQuestionsJob(jobId: string): Promise<void> {
     // Guard: warn if LLM returned more questions than the cap
     const returnedCount = Array.isArray(parsed?.questions) ? parsed.questions.length : 0;
     if (returnedCount > resolvedQuestionsCount) {
-      logger.warn('[VALIDATION_CAP] questionsWorker: LLM returned more questions than cap — trimming', {
+      logger.warn('[VALIDATION_CAP] questionsWorker: LLM returned more questions than cap -- trimming', {
         jobId,
         difficulty,
         topicId,
@@ -546,7 +546,7 @@ export async function handleQuestionsJob(jobId: string): Promise<void> {
       }).catch(() => {});
     }
 
-    // Per-difficulty validation — failures are isolated and do NOT abort remaining difficulties
+    // Per-difficulty validation -- failures are isolated and do NOT abort remaining difficulties
     try {
       const { valid, report } = validateQuestionsShapeWithReport(parsed, subjectName);
       if (linkedExec) {

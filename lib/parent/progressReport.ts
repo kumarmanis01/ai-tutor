@@ -65,7 +65,7 @@ function minutesForSession(s: { duration: number | null; actualTimeSpent: number
  * Build progress report for a student, scoped to calling parent.
  * Verify parentId has access to studentId (parent-student relationship).
  * "This week" = last 7 calendar days from now().
- * Never throws — returns null on error or access denied.
+ * Never throws -- returns null on error or access denied.
  */
 export async function buildProgressReport(
   parentId: string,

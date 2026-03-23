@@ -1,20 +1,20 @@
 /**
- * Student Dashboard — v2
+ * Student Dashboard -- v2
  *
  * Full rebuild per v2 wireframe spec.
  *
  * Section order (single column mobile / two-column desktop):
- *   1. TodaysLearningCard — topic name, subject badge, duration chip, CTA
+ *   1. TodaysLearningCard -- topic name, subject badge, duration chip, CTA
  *      (Topbar with streak/level/avatar is in the shared layout)
- *   3. XPWidget           — XP this week, level progress bar
- *   4. WeeklyStudyStrip   — Mon–Sun dots, purple filled, teal today ring
- *   5. RevisionWidget     — cards due today or "all caught up"
+ *   3. XPWidget           -- XP this week, level progress bar
+ *   4. WeeklyStudyStrip   -- Mon-Sun dots, purple filled, teal today ring
+ *   5. RevisionWidget     -- cards due today or "all caught up"
  *   --- desktop right column ---
- *   6. SubjectReadinessSection — one card per subject
- *   7. WeakTopicsSection  — hidden until 3+ sessions, max 2 cards
- *   8. UpcomingTopicsList — next 3 topics, simple rows
+ *   6. SubjectReadinessSection -- one card per subject
+ *   7. WeakTopicsSection  -- hidden until 3+ sessions, max 2 cards
+ *   8. UpcomingTopicsList -- next 3 topics, simple rows
  *
- * Desktop (md:): left 60% = sections 2–5, right 40% = sections 6–8.
+ * Desktop (md:): left 60% = sections 2-5, right 40% = sections 6-8.
  * Topbar is always full-width sticky.
  *
  * EDIT LOG:
@@ -47,7 +47,7 @@ export const dynamic = 'force-dynamic';
 
 export const metadata: Metadata = {
   title: 'Home | Spinzy AI Tutor',
-  description: 'Your AI tutor — ready when you are.',
+  description: 'Your AI tutor -- ready when you are.',
 };
 
 // ── Week boundary helpers ─────────────────────────────────────────────────────
@@ -398,7 +398,7 @@ export default async function StudentHomeDashboardPage() {
         {/* Two-column desktop grid */}
         <div className="flex flex-col gap-5 md:flex-row md:gap-6 md:items-start">
 
-          {/* ── Left column (60%) — sections 2–5 ── */}
+          {/* ── Left column (60%) -- sections 2-5 ── */}
           <div className="flex flex-col gap-5 md:w-3/5">
 
             {/* ② TodaysLearningCard */}
@@ -449,7 +449,7 @@ export default async function StudentHomeDashboardPage() {
             <RevisionWidget />
           </div>
 
-          {/* ── Right column (40%) — sections 6–8 ── */}
+          {/* ── Right column (40%) -- sections 6-8 ── */}
           <div className="flex flex-col gap-5 md:w-2/5">
 
             {/* ⑥ SubjectReadinessSection */}
@@ -479,7 +479,7 @@ export default async function StudentHomeDashboardPage() {
               </section>
             )}
 
-            {/* ⑦ WeakTopicsSection — inline, hidden until 3+ sessions */}
+            {/* ⑦ WeakTopicsSection -- inline, hidden until 3+ sessions */}
             {totalSessions >= 3 && weakTopicsRaw.length > 0 && (
               <section aria-labelledby="weak-topics-heading">
                 <h3
@@ -512,7 +512,7 @@ export default async function StudentHomeDashboardPage() {
               </section>
             )}
 
-            {/* ⑧ UpcomingTopicsList — inline simple rows */}
+            {/* ⑧ UpcomingTopicsList -- inline simple rows */}
             {upcomingTopics.length > 0 && (
               <section aria-labelledby="upcoming-heading">
                 <h3

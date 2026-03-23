@@ -3,7 +3,7 @@ export type EmotionalState =
   | 'ENGAGED'
   | 'CONFUSED'
   | 'FRUSTRATED'
-  | 'DISTRESSED' // never set by this module — reserved for safety layer
+  | 'DISTRESSED' // never set by this module -- reserved for safety layer
 
 export interface TurnHistoryEntry {
   role: 'student' | 'ai'
@@ -14,7 +14,7 @@ export interface TurnHistoryEntry {
 }
 
 export interface FrustrationResult {
-  frustrationScore: number // 0.0–1.0, clamped
+  frustrationScore: number // 0.0-1.0, clamped
   emotionalState: EmotionalState
 }
 

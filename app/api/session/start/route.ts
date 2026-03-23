@@ -19,7 +19,7 @@ export const dynamic = 'force-dynamic';
  * Creates (or resumes) a structured learning session for the topic.
  * New sessions always begin at the OVERVIEW phase.
  * If an in-progress session already exists for this student+topic it is
- * resumed (idempotent — safe to call multiple times).
+ * resumed (idempotent -- safe to call multiple times).
  *
  * Response:
  *   { session: SessionView, phase: PhaseContent, content: PhaseContentData }

@@ -9,7 +9,7 @@ export const dynamic = 'force-dynamic';
  * GET /api/dashboard/next-topic
  *
  * Returns the single best next topic for the authenticated student.
- * Delegates to the Home Tutor Engine (getNextAction) — no feature flag.
+ * Delegates to the Home Tutor Engine (getNextAction) -- no feature flag.
  *
  * Response: { topic: { topicId, topicName, subject, chapter, reason } | null }
  */

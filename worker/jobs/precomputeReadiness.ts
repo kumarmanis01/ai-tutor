@@ -7,7 +7,7 @@
  *   - Resolve their enrolled subjects (User.subjects string array → SubjectDef.id)
  *   - Call computeReadinessScore per subject to warm the Redis cache
  *
- * Never throws — logs and continues on per-student errors.
+ * Never throws -- logs and continues on per-student errors.
  */
 
 import { prisma } from '../../lib/prisma.js'

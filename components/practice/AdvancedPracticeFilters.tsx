@@ -6,7 +6,7 @@
  * - State machine: Start Practice CTA enforces topicId before navigating.
  *
  * EDIT LOG:
- * - 2026-02-21 | claude | created per refactor spec — accordion wrapper, collapsed by default
+ * - 2026-02-21 | claude | created per refactor spec -- accordion wrapper, collapsed by default
  */
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';

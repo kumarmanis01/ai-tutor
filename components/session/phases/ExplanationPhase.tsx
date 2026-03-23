@@ -1,7 +1,7 @@
 'use client';
 /**
  * FILE OBJECTIVE:
- * - Phase 2: EXPLANATION — Renders topic note content with TutorTipPanel.
+ * - Phase 2: EXPLANATION -- Renders topic note content with TutorTipPanel.
  * - Uses sessionUtils.extractSections() for content normalisation (not inline).
  *
  * EDIT LOG:

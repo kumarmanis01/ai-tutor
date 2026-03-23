@@ -2,7 +2,7 @@
  * TopicStatusRow
  *
  * A single row in the learning path grid showing a topic's completion status.
- * Uses qualitative labels and icons — never raw mastery percentages.
+ * Uses qualitative labels and icons -- never raw mastery percentages.
  *
  * Status icons:
  *   mastered / understood  → ✓ (green filled)
@@ -22,7 +22,7 @@ export interface TopicStatusRowProps {
   topicName: string;
   status: TopicStatus;
   masteryLabel: string;
-  sessionId?: string; // if in_progress — links to resume
+  sessionId?: string; // if in_progress -- links to resume
 }
 
 const STATUS_ICON: Record<TopicStatus, React.ReactNode> = {

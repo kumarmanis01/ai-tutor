@@ -5,7 +5,7 @@
  * Phase 1 (7 days after request): pseudonymise PII fields
  * Phase 2 (30 days after pseudonymise): purge remaining PII
  *
- * Never throws — logs all errors and continues to next request.
+ * Never throws -- logs all errors and continues to next request.
  */
 
 import { prisma } from '@/lib/prisma.js'
@@ -93,7 +93,7 @@ export async function runDataDeletionCycle(): Promise<{ pseudonymised: number; p
           where: { id: req.id },
           data: { purgedAt: now },
         }),
-        // Audit (keep AuditLog for 7yr legal requirement — use requestId not userId)
+        // Audit (keep AuditLog for 7yr legal requirement -- use requestId not userId)
         prisma.auditLog.create({
           data: {
             targetEntity: 'DeletionRequest',
@@ -103,7 +103,7 @@ export async function runDataDeletionCycle(): Promise<{ pseudonymised: number; p
         }),
       ])
 
-      // AITutorTurnLog: no studentMessage/rawInput fields in current schema — skip
+      // AITutorTurnLog: no studentMessage/rawInput fields in current schema -- skip
       void sessionIds // suppress unused var warning
 
       purged++

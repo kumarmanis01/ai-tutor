@@ -10,7 +10,7 @@ export default async function Page({ params }: Props) {
 
   return (
     <div style={{ padding: 24 }}>
-      <h1>Course {syllabusId} — v{version}</h1>
+      <h1>Course {syllabusId} -- v{version}</h1>
       <JsonViewer data={data} />
     </div>
   )

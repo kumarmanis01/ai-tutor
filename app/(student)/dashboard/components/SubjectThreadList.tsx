@@ -117,7 +117,7 @@ export default function SubjectThreadList({ subjects = defaultSubjects, subject,
         <div className="space-y-1 lg:space-y-2 max-h-40 lg:max-h-60 overflow-y-auto">
           {threads.map((t) => {
             const isSelected = selectedConversationId === t.conversationId;
-            const preview = t.lastMessage?.slice(0, 50) + (t.lastMessage?.length > 50 ? '…' : '');
+            const preview = t.lastMessage?.slice(0, 50) + (t.lastMessage?.length > 50 ? '...' : '');
             return (
               <button
                 key={t.conversationId}

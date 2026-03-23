@@ -80,12 +80,12 @@ export default function ParentAccessCard() {
           disabled={busy}
           className="px-4 py-2 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-60"
         >
-          {busy ? 'Working…' : 'Generate code'}
+          {busy ? 'Working...' : 'Generate code'}
         </button>
       </div>
 
       {loading ? (
-        <div className="text-sm text-gray-500">Loading…</div>
+        <div className="text-sm text-gray-500">Loading...</div>
       ) : (
         <>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -125,7 +125,7 @@ export default function ParentAccessCard() {
                   {data.linkedParents.map((p, idx) => (
                     <li key={idx} className="flex items-center justify-between">
                       <span className="font-medium">{p.name}</span>
-                      <span className="text-gray-500">{p.email ?? '—'}</span>
+                      <span className="text-gray-500">{p.email ?? '--'}</span>
                     </li>
                   ))}
                 </ul>

@@ -16,7 +16,7 @@ export default function AdminStudentLearningDrilldownPage() {
   );
 
   if (!studentId) return <div className="p-6">Missing student ID</div>;
-  if (isLoading) return <div className="p-6">Loading…</div>;
+  if (isLoading) return <div className="p-6">Loading...</div>;
   if (error || !data) return <div className="p-6">Failed to load student or not found.</div>;
 
   const s = data as {
@@ -51,7 +51,7 @@ export default function AdminStudentLearningDrilldownPage() {
         </div>
         <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4">
           <div className="text-sm font-medium text-gray-500 dark:text-gray-400">Last active</div>
-          <div className="text-sm">{s.lastActiveAt ? new Date(s.lastActiveAt).toLocaleString() : '—'}</div>
+          <div className="text-sm">{s.lastActiveAt ? new Date(s.lastActiveAt).toLocaleString() : '--'}</div>
         </div>
         <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4">
           <div className="text-sm font-medium text-gray-500 dark:text-gray-400">Homework pending</div>
@@ -80,7 +80,7 @@ export default function AdminStudentLearningDrilldownPage() {
               {s.recentSessions?.map((r: { sessionId: string; topicName: string; completedAt: string | null }) => (
                 <tr key={r.sessionId} className="border-t border-gray-200 dark:border-gray-700">
                   <td className="p-3">{r.topicName}</td>
-                  <td className="p-3">{r.completedAt ? new Date(r.completedAt).toLocaleString() : '—'}</td>
+                  <td className="p-3">{r.completedAt ? new Date(r.completedAt).toLocaleString() : '--'}</td>
                 </tr>
               ))}
             </tbody>

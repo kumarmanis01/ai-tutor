@@ -31,7 +31,7 @@ export default function MetricsPage() {
       </div>
 
       {error && <div className="text-red-600">Failed to load metrics.</div>}
-      {!data && <div>Loading metrics…</div>}
+      {!data && <div>Loading metrics...</div>}
 
       <TelemetryView fromIso={isoFrom} toIso={isoTo} />
     </div>

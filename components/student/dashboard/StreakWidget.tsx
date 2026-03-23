@@ -1,7 +1,7 @@
 'use client'
 
 /**
- * StreakWidget — Task 30
+ * StreakWidget -- Task 30
  *
  * Shows the student's current streak with a 7-day mini calendar.
  * Designed as a popover triggered from the Topbar streak badge.
@@ -32,7 +32,7 @@ function lastSevenDays(now: Date): string[] {
   return days
 }
 
-/** Short day label (Mon–Sun) for a YYYY-MM-DD date string. */
+/** Short day label (Mon-Sun) for a YYYY-MM-DD date string. */
 function dayLabel(dateStr: string): string {
   const d = new Date(dateStr + 'T00:00:00Z')
   return ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][d.getUTCDay()]
@@ -125,7 +125,7 @@ export default function StreakWidget({ onClose }: Props) {
         className="absolute right-0 top-full mt-2 z-50 w-72 rounded-2xl bg-white dark:bg-gray-900 border border-gray-100 dark:border-slate-700 shadow-xl p-4 text-center"
       >
         <p className="text-sm text-gray-500 dark:text-gray-400 mb-3">
-          Couldn&apos;t load — tap to retry
+          Couldn&apos;t load -- tap to retry
         </p>
         <button
           className="text-sm font-semibold text-[#534AB7] min-h-[44px] min-w-[44px] px-4"
@@ -148,9 +148,9 @@ export default function StreakWidget({ onClose }: Props) {
           Start your streak today!
         </p>
         <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
-          Start a new streak today — your best is still ahead.
+          Start a new streak today -- your best is still ahead.
         </p>
-        {/* 7-day calendar — all grey */}
+        {/* 7-day calendar -- all grey */}
         <div className="flex gap-1.5 mb-3">
           {calendarDays.map((date) => (
             <div key={date} className="flex-1 flex flex-col items-center gap-1">
@@ -245,7 +245,7 @@ export default function StreakWidget({ onClose }: Props) {
       {/* Shield info */}
       {shieldAvailable && (
         <p className="text-xs text-[#534AB7] dark:text-indigo-400 text-center mt-1">
-          🛡️ Shield ready — keeps your streak if you need a day off
+          🛡️ Shield ready -- keeps your streak if you need a day off
         </p>
       )}
     </div>

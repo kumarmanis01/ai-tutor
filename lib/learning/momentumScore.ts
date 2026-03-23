@@ -1,7 +1,7 @@
 /**
  * Learning Momentum Score
  *
- * Measures a student's current engagement intensity on a 0–1 scale.
+ * Measures a student's current engagement intensity on a 0-1 scale.
  * Used as a boost signal in the topic ranker.
  *
  * Formula:

@@ -12,7 +12,7 @@ export default function makePromotionService(prisma: PrismaClient) {
       if (candidate.status === 'APPROVED') throw new Error('candidate already approved')
       if (candidate.status === 'REJECTED') throw new Error('candidate already rejected')
 
-      // PublishedOutput removed in schema_audit_cleanup — promotion
+      // PublishedOutput removed in schema_audit_cleanup -- promotion
       // now handled by HydrationJob completion directly
 
       // mark candidate approved

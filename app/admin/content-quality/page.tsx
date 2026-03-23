@@ -41,19 +41,19 @@ export default function AdminContentQualityPage() {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4">
           <div className="text-sm font-medium text-gray-500 dark:text-gray-400">Approved</div>
-          <div className="text-2xl font-bold text-green-600 dark:text-green-400">{summary?.approved ?? '—'}</div>
+          <div className="text-2xl font-bold text-green-600 dark:text-green-400">{summary?.approved ?? '--'}</div>
         </div>
         <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4">
           <div className="text-sm font-medium text-gray-500 dark:text-gray-400">Rejected</div>
-          <div className="text-2xl font-bold text-red-600 dark:text-red-400">{summary?.rejected ?? '—'}</div>
+          <div className="text-2xl font-bold text-red-600 dark:text-red-400">{summary?.rejected ?? '--'}</div>
         </div>
         <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4">
           <div className="text-sm font-medium text-gray-500 dark:text-gray-400">Total pending (draft)</div>
-          <div className="text-2xl font-bold text-gray-900 dark:text-white">{pending?.totalPending ?? '—'}</div>
+          <div className="text-2xl font-bold text-gray-900 dark:text-white">{pending?.totalPending ?? '--'}</div>
         </div>
         <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4">
           <div className="text-sm font-medium text-gray-500 dark:text-gray-400">Oldest pending</div>
-          <div className="text-sm">{pending?.oldestPendingAt ? new Date(pending.oldestPendingAt).toLocaleDateString() : '—'}</div>
+          <div className="text-sm">{pending?.oldestPendingAt ? new Date(pending.oldestPendingAt).toLocaleDateString() : '--'}</div>
         </div>
       </div>
 
@@ -163,7 +163,7 @@ export default function AdminContentQualityPage() {
                 {historyData.history?.map((h: { id: string; fromStatus: string; toStatus: string; reason: string | null; createdAt: string }) => (
                   <tr key={h.id} className="border-t border-gray-200 dark:border-gray-700">
                     <td className="p-3">{h.fromStatus} → {h.toStatus}</td>
-                    <td className="p-3">{h.reason ?? '—'}</td>
+                    <td className="p-3">{h.reason ?? '--'}</td>
                     <td className="p-3">{new Date(h.createdAt).toLocaleString()}</td>
                   </tr>
                 ))}

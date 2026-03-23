@@ -14,7 +14,7 @@ export default async function QueuePage() {
 
     return (
       <div className="p-6">
-        <h1 className="text-2xl font-semibold mb-4">Content Engine — Queue</h1>
+        <h1 className="text-2xl font-semibold mb-4">Content Engine -- Queue</h1>
         <div className="bg-white dark:bg-gray-900 rounded shadow p-4">
           <pre className="text-sm whitespace-pre-wrap">{JSON.stringify({ queue: CONTENT_HYDRATION_QUEUE, counts }, null, 2)}</pre>
         </div>
@@ -24,7 +24,7 @@ export default async function QueuePage() {
     logger?.error?.('GET /admin/content-engine/queue page error', { err })
     return (
       <div className="p-6">
-        <h1 className="text-2xl font-semibold mb-4">Content Engine — Queue</h1>
+        <h1 className="text-2xl font-semibold mb-4">Content Engine -- Queue</h1>
         <div className="text-sm text-gray-500">Unable to fetch queue info.</div>
       </div>
     )

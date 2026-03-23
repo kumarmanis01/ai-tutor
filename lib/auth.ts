@@ -259,7 +259,7 @@ export const authOptions: any = {
             const curBoard = dbUser.board ?? null;
             const curGrade = dbUser.grade ?? null;
             if (previous && (prevBoard !== curBoard || prevGrade !== curGrade)) {
-              // Curriculum changed since previous login — log the event for audit/alerting
+              // Curriculum changed since previous login -- log the event for audit/alerting
               logger.info('student.curriculum.changed', { studentId: dbUser.id });
             }
             // Always record this login with current curriculum snapshot
@@ -330,7 +330,7 @@ export const authOptions: any = {
             );
           }
         } catch (err) {
-          // e.g. accountStatus column missing (migration not applied) — fallback so OAuth still works
+          // e.g. accountStatus column missing (migration not applied) -- fallback so OAuth still works
           logger.warn('jwt callback DB fetch failed, using defaults', { className: 'auth', methodName: 'jwt', error: String(err) });
           try {
             const fallback = await prisma.user.findUnique({

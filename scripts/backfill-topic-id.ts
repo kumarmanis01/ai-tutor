@@ -95,7 +95,7 @@ async function main() {
   console.log(`  Matched via chapter string:    ${matchedByChapter}`);
   console.log(`  Unmatched (skipped):           ${unmatched}`);
   console.log(`  Total processed:               ${questions.length}`);
-  if (DRY_RUN) console.log('\n  (dry run — no writes performed)');
+  if (DRY_RUN) console.log('\n  (dry run -- no writes performed)');
 
   logger.info('[BACKFILL_TOPIC_ID]', {
     total: questions.length,

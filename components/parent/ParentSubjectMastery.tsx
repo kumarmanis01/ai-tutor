@@ -19,18 +19,18 @@ const MOCK_STUDENT_ID = 'mock-student';
 
 interface SubjectMastery {
   subject: string;
-  avgAccuracy: number; // 0–1
+  avgAccuracy: number; // 0-1
   topicCount: number;
 }
 
-/** Converts a 0–1 accuracy float to a rounded percentage string. */
+/** Converts a 0-1 accuracy float to a rounded percentage string. */
 function toPercent(value: number): string {
   return `${Math.round(value * 100)}%`;
 }
 
 /**
- * Maps a 0–1 accuracy value to a Tailwind bg colour class.
- * Three tiers: strong (≥70%) / developing (40–69%) / needs work (<40%).
+ * Maps a 0-1 accuracy value to a Tailwind bg colour class.
+ * Three tiers: strong (≥70%) / developing (40-69%) / needs work (<40%).
  */
 function accuracyColour(value: number): string {
   if (value >= 0.7) return 'bg-violet-400';

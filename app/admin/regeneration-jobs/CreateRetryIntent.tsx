@@ -70,7 +70,7 @@ export default function CreateRetryIntent({ job }: any) {
               <textarea required className="w-full p-2 border mb-3" rows={4} value={reasonText} onChange={(e) => setReasonText(e.target.value)} />
               <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
                 <button type="button" onClick={() => setOpen(false)} className="px-3 py-1">Cancel</button>
-                <button type="submit" disabled={loading} className="px-3 py-1 bg-blue-600 text-white rounded disabled:opacity-50">{loading ? 'Creating…' : 'Create'}</button>
+                <button type="submit" disabled={loading} className="px-3 py-1 bg-blue-600 text-white rounded disabled:opacity-50">{loading ? 'Creating...' : 'Create'}</button>
               </div>
               {error && <div style={{ color: 'red', marginTop: 8 }}>{error}</div>}
             </form>

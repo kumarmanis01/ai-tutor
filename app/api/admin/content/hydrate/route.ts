@@ -47,7 +47,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'subject_not_found' }, { status: 404 })
   }
 
-  // Guard 2: no active job — enqueueSyllabusHydration checks internally and returns created:false
+  // Guard 2: no active job -- enqueueSyllabusHydration checks internally and returns created:false
   const result = await enqueueSyllabusHydration({
     board,
     grade: Number(grade),
@@ -82,7 +82,7 @@ export async function POST(req: Request) {
       },
     })
   } catch (auditErr) {
-    // Non-fatal — job was already created; log and continue
+    // Non-fatal -- job was already created; log and continue
     logger.warn('[admin/content/hydrate] failed to write AuditLog', {
       event: 'audit_log_failed',
       context: { jobId: result.jobId, error: String(auditErr) },

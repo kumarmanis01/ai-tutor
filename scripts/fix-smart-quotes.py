@@ -16,6 +16,9 @@ REPLACEMENTS = [
     (b'\xe2\x80\x99', b"'"),   # ' right single / apostrophe
     (b'\xe2\x80\x9c', b'"'),   # " left double
     (b'\xe2\x80\x9d', b'"'),   # " right double
+    (b'\xe2\x80\x93', b'-'),   # – en dash
+    (b'\xe2\x80\x94', b'--'),  # — em dash
+    (b'\xe2\x80\xa6', b'...'), # … ellipsis
 ]
 
 CHECK_ONLY = '--check' in sys.argv

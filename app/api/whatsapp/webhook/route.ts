@@ -3,7 +3,7 @@
  * - WhatsApp webhook endpoint for receiving incoming messages.
  * - Handles opt-in/opt-out via keyword replies ("START", "STOP").
  * - Handles WhatsApp webhook verification (GET challenge).
- * - Fail-safe: never throws to WhatsApp — always returns 200.
+ * - Fail-safe: never throws to WhatsApp -- always returns 200.
  *
  * Environment variables:
  *   WHATSAPP_VERIFY_TOKEN  - Token for webhook verification handshake
@@ -91,7 +91,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ status: 'ok' }, { status: 200 });
   } catch (error) {
-    // Never fail — WhatsApp will retry on non-200
+    // Never fail -- WhatsApp will retry on non-200
     logger.error('whatsapp.webhook.error', {
       error: error instanceof Error ? error.message : String(error),
     });
@@ -130,7 +130,7 @@ async function processIncomingMessage(message: any): Promise<void> {
     return;
   }
 
-  // Unknown message — log and ignore
+  // Unknown message -- log and ignore
   logger.info('whatsapp.webhook.unrecognized', {
     parentId: parent.id,
     textLength: text.length,

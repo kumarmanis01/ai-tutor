@@ -1,6 +1,6 @@
 /**
  * SM-18 spaced repetition: retention decay, stability update, next review interval.
- * Pure functions only — no I/O, no side effects.
+ * Pure functions only -- no I/O, no side effects.
  */
 
 export interface SM18Params {
@@ -21,7 +21,7 @@ const NEXT_REVIEW_MIN_DAYS = 1
 const NEXT_REVIEW_MAX_DAYS = 180
 
 /**
- * Retention decay: R = exp(-elapsedDays / stability). Clamped 0.0–1.0.
+ * Retention decay: R = exp(-elapsedDays / stability). Clamped 0.0-1.0.
  *
  * @param elapsedDays - Days since last interaction.
  * @param stability - Current memory stability in days.
@@ -40,7 +40,7 @@ export function computeRetention(elapsedDays: number, stability: number): number
  * Wrong: newStability = max(1, stability * 0.5).
  *
  * @param stability - Current stability in days.
- * @param retention - Current retention 0.0–1.0.
+ * @param retention - Current retention 0.0-1.0.
  * @param isCorrect - Whether the review was answered correctly.
  * @returns Updated stability in days (≥ 1 on wrong).
  */

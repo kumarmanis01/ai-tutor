@@ -1,20 +1,20 @@
 'use client';
 
 /**
- * SessionCompletionScreen — v2
+ * SessionCompletionScreen -- v2
  *
  * Full-screen scrollable celebration screen shown after a session ends.
  * Layout (top → bottom):
- *   1. Celebration header — confetti burst, 'Session complete!', topic · duration
- *   2. XP section — circle badge, +N XP, animated progress bar (easeOut 800ms)
- *   3. Level-up overlay (leveledUp=true) — min 1.5s, auto-dismiss 3s, tap to dismiss
- *   4. Stats row — 4 chips: attempted | % correct | hints | minutes
- *   5. Mastery delta — per concept (single from API; max 5 in future)
- *   6. AI insight card — 3s skeleton then text
- *   7. Inline star rating — POST /api/student/session/[sessionId]/rate
- *   8. CTAs — primary 'Start next session', secondary 'Back to dashboard'
+ *   1. Celebration header -- confetti burst, 'Session complete!', topic · duration
+ *   2. XP section -- circle badge, +N XP, animated progress bar (easeOut 800ms)
+ *   3. Level-up overlay (leveledUp=true) -- min 1.5s, auto-dismiss 3s, tap to dismiss
+ *   4. Stats row -- 4 chips: attempted | % correct | hints | minutes
+ *   5. Mastery delta -- per concept (single from API; max 5 in future)
+ *   6. AI insight card -- 3s skeleton then text
+ *   7. Inline star rating -- POST /api/student/session/[sessionId]/rate
+ *   8. CTAs -- primary 'Start next session', secondary 'Back to dashboard'
  *
- * Copy rules: no "broke/missed/failed" — forward-looking tone.
+ * Copy rules: no "broke/missed/failed" -- forward-looking tone.
  */
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
@@ -234,7 +234,7 @@ function StatsRow({
   const chips = [
     { label: 'Attempted', value: String(totalQuestions) },
     { label: '% Correct', value: `${pct}%` },
-    { label: 'Hints', value: '—' },
+    { label: 'Hints', value: '--' },
     { label: 'Minutes', value: sessionDurationMinutes > 0 ? String(sessionDurationMinutes) : '<1' },
   ];
 
@@ -303,7 +303,7 @@ function AiInsightCard({ insight }: { insight: string | null }) {
   }, []);
 
   const text =
-    insight && insight.trim() ? insight : 'Great work this session — your consistency is building strong foundations!';
+    insight && insight.trim() ? insight : 'Great work this session -- your consistency is building strong foundations!';
 
   return (
     <div className="rounded-xl border border-[#EEEDFE] dark:border-[#534AB7]/30 bg-[#EEEDFE]/50 dark:bg-[#534AB7]/10 px-4 py-3">
@@ -440,7 +440,7 @@ export const SessionCompletionScreen: React.FC<SessionCompletionScreenProps> = (
       .catch(() => {});
   }, []);
 
-  // Level-up overlay — show for 3s, dismiss via timer or tap; mark done when overlay goes away
+  // Level-up overlay -- show for 3s, dismiss via timer or tap; mark done when overlay goes away
   useEffect(() => {
     if (!data) return;
     if (!data.leveledUp) {
@@ -504,7 +504,7 @@ export const SessionCompletionScreen: React.FC<SessionCompletionScreenProps> = (
       {/* Inject keyframes */}
       <style>{CONFETTI_STYLE}</style>
 
-      {/* Level-up overlay — rendered above everything */}
+      {/* Level-up overlay -- rendered above everything */}
       {showLevelOverlay && d.leveledUp && d.newLevel != null && (
         <LevelUpOverlay newLevel={d.newLevel} onDismiss={dismissLevelOverlay} />
       )}

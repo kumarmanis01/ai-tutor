@@ -116,7 +116,7 @@ type MinimalSpeechRecognition = {
 };
 
 /**
- * Speech helper — small adapter around browser APIs.
+ * Speech helper -- small adapter around browser APIs.
  * Swap this file with an external cloud provider wrapper without touching UI.
  */
 export const Speech = {

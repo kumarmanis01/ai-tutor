@@ -54,7 +54,7 @@ try {
 
   enabled = true;
 } catch {
-  // prom-client not installed or not available — fall back to no-op
+  // prom-client not installed or not available -- fall back to no-op
   enabled = false;
 }
 

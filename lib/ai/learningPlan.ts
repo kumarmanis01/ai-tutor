@@ -4,7 +4,7 @@ import { logger } from '@/lib/logger'
 /**
  * Generate (or regenerate) a week-based LearningPlan for a student + subject.
  *
- * Ordering strategy: weak-first — lowest masteryScore first, then curriculum
+ * Ordering strategy: weak-first -- lowest masteryScore first, then curriculum
  * order (chapter.order → topic.order → concept insert order) for ties.
  * This surfaces the most urgent gaps at the start of the plan.
  *
@@ -14,7 +14,7 @@ import { logger } from '@/lib/logger'
  * Upserts the LearningPlan row, deletes all old LearningPlanItems, then
  * bulk-creates new ones.
  *
- * Never throws — logs error and returns null on failure.
+ * Never throws -- logs error and returns null on failure.
  *
  * @returns planId string on success, null on failure
  */

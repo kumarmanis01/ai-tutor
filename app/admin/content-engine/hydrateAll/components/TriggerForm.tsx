@@ -46,7 +46,7 @@ interface Estimates {
   estimatedDurationMins: number;
 }
 
-// Validation-run hard caps (mirrored from server — UI enforces these client-side as a guard)
+// Validation-run hard caps (mirrored from server -- UI enforces these client-side as a guard)
 const VALIDATION_CAP_CHAPTERS = 2;
 const VALIDATION_CAP_TOPICS_PER_CHAPTER = 2;
 const VALIDATION_CAP_QUESTIONS_PER_DIFFICULTY = 2;
@@ -61,7 +61,7 @@ export default function TriggerForm({ onJobCreated }: TriggerFormProps) {
       generateNotes: true,
       generateQuestions: true,
       difficulties: ['easy', 'medium', 'hard'],
-      // Default to validation cap — server will enforce regardless
+      // Default to validation cap -- server will enforce regardless
       questionsPerDifficulty: VALIDATION_CAP_QUESTIONS_PER_DIFFICULTY,
       skipValidation: false,
       dryRun: false,
@@ -330,7 +330,7 @@ export default function TriggerForm({ onJobCreated }: TriggerFormProps) {
               <label className="block text-sm font-medium text-gray-700">
                 Questions per Difficulty{' '}
                 <span className="text-xs text-amber-600 font-normal">
-                  (max {VALIDATION_CAP_QUESTIONS_PER_DIFFICULTY} — validation cap)
+                  (max {VALIDATION_CAP_QUESTIONS_PER_DIFFICULTY} -- validation cap)
                 </span>
               </label>
               <input

@@ -5,13 +5,13 @@
  * - ZERO AI calls. Prisma only. Target latency: <150 ms.
  *
  * Priority order (short-circuits at first match):
- *   P0   – Homework pending/overdue with dueDate <= NOW + 48h (hard block)
- *   P1   – Resume active StructuredSession or LearningSession (legacy)
- *   P2   – Weak topic: StudentTopicProgress mastery < 0.4 AND practiceCount > 5
- *   P3   – Spaced revision: mastery 0.4–0.85, not studied in 7+ days
- *   P4   – Inactive return: no study activity in 3+ days
- *   P5   – Scored next topic via TopicRanker
- *   P6   – All topics complete
+ *   P0   - Homework pending/overdue with dueDate <= NOW + 48h (hard block)
+ *   P1   - Resume active StructuredSession or LearningSession (legacy)
+ *   P2   - Weak topic: StudentTopicProgress mastery < 0.4 AND practiceCount > 5
+ *   P3   - Spaced revision: mastery 0.4-0.85, not studied in 7+ days
+ *   P4   - Inactive return: no study activity in 3+ days
+ *   P5   - Scored next topic via TopicRanker
+ *   P6   - All topics complete
  *
  * DO NOT modify the existing recommendation engine.
  * DO NOT change the Prisma schema.
@@ -19,7 +19,7 @@
  * EDIT LOG:
  * - 2026-02-21 | claude | created deterministic tutor engine per architectural spec
  * - 2026-02-21 | claude | added topicName enrichment via shared enrichTopic helper
- * - 2026-03-07 | claude | added StructuredSession lock (LOCK rule) — prevents P3–P5
+ * - 2026-03-07 | claude | added StructuredSession lock (LOCK rule) -- prevents P3-P5
  *                          from firing while a live session exists; adds resumePhase
  *                          to NextAction so callers can deep-link to the correct phase
  * - 2026-03-07 | claude | Phase 1: replaced p5_nextNewTopic (simple first-unstarted
@@ -43,10 +43,10 @@
  * - 2026-03-07 | claude | Phase 4: replaced fixed 7-day spaced revision window with
  *                          dynamic SPACED_REVISION_INTERVALS (3/7/14/30 days per band);
  *                          P2+P3+P4 now share a single StudentTopicProgress findMany
- *                          (ProgressRow[]) — eliminates 2 extra DB queries; p3 selects
+ *                          (ProgressRow[]) -- eliminates 2 extra DB queries; p3 selects
  *                          the most overdue topic (largest overdueDays); reasonLabel
  *                          now includes "it's been N days" for actionable context
- * - 2026-03-08 | claude | Phase 6: RecommendationTrace observability — per-rule durationMs
+ * - 2026-03-08 | claude | Phase 6: RecommendationTrace observability -- per-rule durationMs
  *                          timing, topicScoringBreakdown from P5 ScoredTopics; fire-and-
  *                          forget Redis write gated by ENABLE_REC_TRACE=1; p5_scoredTopic
  *                          now returns { action, scoredTopics } so trace can capture the
@@ -100,7 +100,7 @@ export type RuleId =
   | 'inactive_return'
   | 'next_new_topic'
   | 'all_topics_complete'
-  // Legacy ruleIds kept for API backward-compatibility — no longer emitted.
+  // Legacy ruleIds kept for API backward-compatibility -- no longer emitted.
   | 'daily_task'
   | 'low_mastery'
   | 'low_accuracy';
@@ -123,24 +123,24 @@ export interface NextAction {
   actionType: ActionType;
   masteryLevel?: 'beginner' | 'intermediate' | 'advanced' | 'expert';
   accuracy?: number;
-  /** Present only for resume_session — used to build /session/[id] URL */
+  /** Present only for resume_session -- used to build /session/[id] URL */
   sessionId?: string;
   /**
    * Present only when P1 resumes a StructuredSession (not a legacy LearningSession).
    * Tells the caller which phase the student was at so the UI can deep-link
    * directly to that step rather than always starting at OVERVIEW.
-   * Absent for legacy LearningSession resumes — those lack a structured phase.
+   * Absent for legacy LearningSession resumes -- those lack a structured phase.
    */
   resumePhase?: SessionPhase;
-  /** Present only for daily_task — estimated minutes for the task */
+  /** Present only for daily_task -- estimated minutes for the task */
   estimatedTimeMin?: number;
-  /** Present only for homework_pending — the HomeworkAssignment id to open */
+  /** Present only for homework_pending -- the HomeworkAssignment id to open */
   assignmentId?: string;
 }
 
 /**
  * Options accepted by getNextAction.
- * All fields are optional — the engine degrades gracefully to independent
+ * All fields are optional -- the engine degrades gracefully to independent
  * fetches when not provided.
  */
 export interface GetNextActionOptions {
@@ -235,7 +235,7 @@ async function enrichTopic(
 // ─── Shared progress row type (P2 / P3 / P4) ─────────────────────────────────
 
 /**
- * A single row fetched from StudentTopicProgress for curriculum rules P2–P4.
+ * A single row fetched from StudentTopicProgress for curriculum rules P2-P4.
  * One findMany per getNextAction call supplies all three rules; no per-rule queries.
  */
 interface ProgressRow {
@@ -247,14 +247,14 @@ interface ProgressRow {
 
 /**
  * Returns the spaced-repetition interval in days for a given mastery score.
- * Bands are [min, max) — the last band implicitly covers mastery = 1.0.
+ * Bands are [min, max) -- the last band implicitly covers mastery = 1.0.
  * Returns null when mastery < 0.40 (those topics are owned by P2, not P3).
  */
 function lookupSpacedInterval(mastery: number): number | null {
   for (const band of SPACED_REVISION_INTERVALS) {
     if (mastery >= band.min && mastery < band.max) return band.intervalDays;
   }
-  // mastery exactly 1.0 — use the highest band (30 days)
+  // mastery exactly 1.0 -- use the highest band (30 days)
   const last = SPACED_REVISION_INTERVALS[SPACED_REVISION_INTERVALS.length - 1];
   if (mastery >= last.min) return last.intervalDays;
   return null; // mastery < 0.40 → P2 domain
@@ -263,7 +263,7 @@ function lookupSpacedInterval(mastery: number): number | null {
 /**
  * Returns the number of elapsed whole calendar days between two Unix timestamps,
  * normalized to UTC midnight. Prevents a topic studied at 23:50 from counting as
- * "1 day ago" just 10 minutes later — spaced repetition intervals advance at day
+ * "1 day ago" just 10 minutes later -- spaced repetition intervals advance at day
  * boundaries, not at the exact millisecond the student last studied.
  */
 function floorDays(ms: number): number {
@@ -273,16 +273,16 @@ function floorDays(ms: number): number {
 // ─── Priority sub-functions ───────────────────────────────────────────────────
 
 /**
- * P0 — Homework blocker (hard gate before all other rules).
+ * P0 -- Homework blocker (hard gate before all other rules).
  *
  * Fires when the student has a PENDING or OVERDUE HomeworkAssignment
- * due within the next 48 hours. Short-circuits P1–P6 so the student
+ * due within the next 48 hours. Short-circuits P1-P6 so the student
  * cannot be recommended a new topic while homework is outstanding.
  *
  * Query: HomeworkAssignment WHERE studentId = X
  *   AND status IN ('PENDING','OVERDUE')
  *   AND dueDate <= NOW() + 48h
- * ORDER BY dueDate ASC — most urgent first.
+ * ORDER BY dueDate ASC -- most urgent first.
  */
 async function p0_homeworkBlocker(studentId: string): Promise<NextAction | null> {
   const cutoff = new Date(Date.now() + 48 * 60 * 60 * 1000);
@@ -336,24 +336,24 @@ function structuredPhaseToAction(phase: SessionPhase): ActionType {
 }
 
 /**
- * P1 — Resume the most recently active session.
+ * P1 -- Resume the most recently active session.
  *
  * Priority within P1:
- *   1a. StructuredSession (new engine) — checked first.
+ *   1a. StructuredSession (new engine) -- checked first.
  *       Excludes COMPLETE and EXPIRED states.
  *       Returns resumePhase so callers can deep-link to the exact phase
  *       (OVERVIEW → EXPLANATION → PRACTICE → TEST → HOMEWORK).
- *   1b. LearningSession (legacy) — fallback for students on the old engine.
+ *   1b. LearningSession (legacy) -- fallback for students on the old engine.
  *       Only evaluated when no active StructuredSession exists.
- *       Does NOT return resumePhase — legacy sessions have no structured phases.
+ *       Does NOT return resumePhase -- legacy sessions have no structured phases.
  *
- * Short-circuits the engine: when P1 finds a session, P2–P5 are never evaluated.
+ * Short-circuits the engine: when P1 finds a session, P2-P5 are never evaluated.
  * This prevents recommending a new topic while the student is mid-session.
  *
- * Uses a compound index on StructuredSession: @@index([studentId, state]) — O(log n).
+ * Uses a compound index on StructuredSession: @@index([studentId, state]) -- O(log n).
  */
 async function p1_resumeSession(studentId: string): Promise<NextAction | null> {
-  // ── 1a. StructuredSession — primary path for new-engine students ──────────
+  // ── 1a. StructuredSession -- primary path for new-engine students ──────────
   const structured = await prisma.structuredSession.findFirst({
     where: {
       studentId,
@@ -379,7 +379,7 @@ async function p1_resumeSession(studentId: string): Promise<NextAction | null> {
   });
 
   if (structured) {
-    // state is guaranteed to be one of the SessionPhase values — COMPLETE and EXPIRED
+    // state is guaranteed to be one of the SessionPhase values -- COMPLETE and EXPIRED
     // are excluded by the notIn filter above.
     const resumePhase = structured.state as SessionPhase;
     return {
@@ -395,7 +395,7 @@ async function p1_resumeSession(studentId: string): Promise<NextAction | null> {
     };
   }
 
-  // ── 1b. LearningSession — legacy fallback for pre-StructuredSession students ─
+  // ── 1b. LearningSession -- legacy fallback for pre-StructuredSession students ─
   // Only runs when no active StructuredSession was found above.
   const legacy = await prisma.learningSession.findFirst({
     where: { studentId, isCompleted: false },
@@ -431,12 +431,12 @@ async function p1_resumeSession(studentId: string): Promise<NextAction | null> {
     reasonLabel: 'Resume where you left off',
     actionType: sessionToAction(legacy.activityType),
     sessionId: legacy.id,
-    // No resumePhase for legacy sessions — they pre-date structured phases.
+    // No resumePhase for legacy sessions -- they pre-date structured phases.
   };
 }
 
 /**
- * P2 — Weak topic (urgent).
+ * P2 -- Weak topic (urgent).
  *
  * Selects from pre-fetched progress rows (no DB call).
  * Fires when the student has practiced meaningfully (practiceCount > 5)
@@ -463,13 +463,13 @@ async function p2_weakTopicUrgent(rows: ProgressRow[]): Promise<NextAction | nul
 }
 
 /**
- * P3 — Spaced revision (dynamic interval).
+ * P3 -- Spaced revision (dynamic interval).
  *
- * Selects from pre-fetched progress rows (no DB call — reuses P2's fetch).
+ * Selects from pre-fetched progress rows (no DB call -- reuses P2's fetch).
  *
  * Uses SPACED_REVISION_INTERVALS to derive a mastery-band interval:
- *   0.40–0.60 → 3 days   |   0.60–0.75 → 7 days
- *   0.75–0.90 → 14 days  |   0.90–1.00 → 30 days
+ *   0.40-0.60 → 3 days   |   0.60-0.75 → 7 days
+ *   0.75-0.90 → 14 days  |   0.90-1.00 → 30 days
  *
  * A topic is a candidate when daysSince >= intervalDays.
  * Among candidates, the topic with the largest overdueDays wins.
@@ -483,9 +483,9 @@ async function p3_spacedRevision(rows: ProgressRow[]): Promise<NextAction | null
 
   for (const row of rows) {
     const intervalDays = lookupSpacedInterval(row.mastery);
-    if (intervalDays === null) continue; // mastery < 0.40 — P2's domain
+    if (intervalDays === null) continue; // mastery < 0.40 -- P2's domain
     // Normalize to calendar days so a student who studied at 23:50 isn't shown
-    // as "1 day ago" 10 minutes later — intervals advance at day boundaries.
+    // as "1 day ago" 10 minutes later -- intervals advance at day boundaries.
     const daysSince = todayOrdinal - floorDays(row.lastStudiedAt.getTime());
     if (daysSince < intervalDays) continue; // not yet overdue
     candidates.push({ ...row, daysSince, overdueDays: daysSince - intervalDays });
@@ -504,16 +504,16 @@ async function p3_spacedRevision(rows: ProgressRow[]): Promise<NextAction | null
     subject: enriched.subject,
     chapter: enriched.chapter,
     ruleId: 'spaced_revision',
-    reasonLabel: `Time to revisit ${enriched.topicName ?? 'this topic'} — it's been ${days} days.`,
+    reasonLabel: `Time to revisit ${enriched.topicName ?? 'this topic'} -- it's been ${days} days.`,
     actionType: 'revision',
     accuracy: best.mastery,
   };
 }
 
 /**
- * P4 — Inactive return.
+ * P4 -- Inactive return.
  *
- * Selects from pre-fetched progress rows (no DB call — reuses P2's fetch).
+ * Selects from pre-fetched progress rows (no DB call -- reuses P2's fetch).
  * Fires when the student's most recent curriculum study is 3+ days ago,
  * surfacing their last topic as a "welcome back" prompt.
  */
@@ -544,19 +544,19 @@ async function p4_inactiveReturn(rows: ProgressRow[]): Promise<NextAction | null
 }
 
 /**
- * P5 — Scored topic recommendation using TopicRanker signals.
+ * P5 -- Scored topic recommendation using TopicRanker signals.
  *
  * Replaces the old "first unattempted topic" selection with a full multi-signal
  * scoring pass over the curriculum frontier (first FRONTIER_SIZE topics after
  * the student's last mastered position).
  *
  * Signals applied (see lib/recommendations/topicRanker.ts for weights):
- *   weakTopicBoost       — student has struggled here
- *   curriculumNextBoost  — natural next topic in syllabus
- *   recencyPenalty       — studied < 24 h ago
- *   prerequisitePenalty  — prior topic not mastered
- *   weakSubjectBoost     — flagged weak subject
- *   momentumBoost        — scaled by engagement score
+ *   weakTopicBoost       -- student has struggled here
+ *   curriculumNextBoost  -- natural next topic in syllabus
+ *   recencyPenalty       -- studied < 24 h ago
+ *   prerequisitePenalty  -- prior topic not mastered
+ *   weakSubjectBoost     -- flagged weak subject
+ *   momentumBoost        -- scaled by engagement score
  *
  * Returns both the recommended NextAction and the full scored list so the
  * caller can attach the signal breakdown to the RecommendationTrace without
@@ -618,7 +618,7 @@ function p5ActionType(topic: ScoredTopic): ActionType {
 
 /**
  * Returns the single most important next action for the student.
- * Short-circuits at the first matching priority — never runs all 5 queries.
+ * Short-circuits at the first matching priority -- never runs all 5 queries.
  *
  * Returns null only if the student has no curriculum context (missing board/grade)
  * and has completed all reachable topics.
@@ -630,7 +630,7 @@ export type GetNextActionReturn =
 
 /**
  * Returns the single most important next action for the student.
- * Short-circuits at the first matching priority — never runs all rules.
+ * Short-circuits at the first matching priority -- never runs all rules.
  *
  * @param studentId - The student to recommend for.
  * @param options   - Optional preloaded data to avoid duplicate DB round-trips.
@@ -652,12 +652,12 @@ export async function getNextAction(
   const returnTrace = options.returnTrace === true;
   // Detailed per-rule entries for RecommendationTrace (Phase 6 observability).
   const ruleEntries: RuleEntry[] = [];
-  // Scored topics from P5 — populated only when TopicRanker runs.
+  // Scored topics from P5 -- populated only when TopicRanker runs.
   let scoredTopicsForTrace: ScoredTopic[] = [];
 
-  // ── P0 — Homework blocker (hard gate) ────────────────────────────────────────
+  // ── P0 -- Homework blocker (hard gate) ────────────────────────────────────────
   // Fires before any other rule. A PENDING/OVERDUE assignment due within 48 h
-  // takes absolute priority — the student must complete it first.
+  // takes absolute priority -- the student must complete it first.
   trace.rulesEvaluated.push('P0');
   const p0Start = Date.now();
   const p0 = await p0_homeworkBlocker(studentId);
@@ -668,9 +668,9 @@ export async function getNextAction(
     return finalise(p0, traceId, studentId, { trace, returnTrace, startMs, ruleEntries });
   }
 
-  // ── P1 — Resume session ───────────────────────────────────────────────────────
+  // ── P1 -- Resume session ───────────────────────────────────────────────────────
   // Checks StructuredSession first (new engine), then LearningSession (legacy).
-  // When P1 fires, P2–P5 are never evaluated — the student must finish the
+  // When P1 fires, P2-P5 are never evaluated -- the student must finish the
   // in-progress session before the engine recommends a new topic.
   trace.rulesEvaluated.push('P1');
   const p1Start = Date.now();
@@ -682,7 +682,7 @@ export async function getNextAction(
     return finalise(p1, traceId, studentId, { trace, returnTrace, startMs, ruleEntries });
   }
 
-  // ── CURRICULUM RULES P2–P5 ─────────────────────────────────────────────────
+  // ── CURRICULUM RULES P2-P5 ─────────────────────────────────────────────────
   // Guaranteed: no blocking homework (P0) and no active session (P1).
   // Safe to recommend a new or revision topic.
   //
@@ -692,7 +692,7 @@ export async function getNextAction(
     options.preloadedOrderedTopics ?? (await getOrderedTopicsForStudent(studentId));
   const allowedTopicIds = new Set(orderedTopics.map((t) => t.id));
 
-  // Single shared progress fetch for P2 + P3 + P4 — one round-trip covers all three rules.
+  // Single shared progress fetch for P2 + P3 + P4 -- one round-trip covers all three rules.
   // Scoped to the student's curriculum (allowedTopicIds) to exclude stale/cross-grade rows.
   const progressRows: ProgressRow[] = allowedTopicIds.size > 0
     ? await prisma.studentTopicProgress.findMany({
@@ -703,7 +703,7 @@ export async function getNextAction(
 
   let action: NextAction | null;
 
-  // P2 — Weak topic: mastery < 0.4 AND practiceCount > 5 (in-memory filter on progressRows)
+  // P2 -- Weak topic: mastery < 0.4 AND practiceCount > 5 (in-memory filter on progressRows)
   trace.rulesEvaluated.push('P2');
   const p2Start = Date.now();
   action = await p2_weakTopicUrgent(progressRows);
@@ -714,7 +714,7 @@ export async function getNextAction(
     return finalise(action, traceId, studentId, { trace, returnTrace, startMs, ruleEntries });
   }
 
-  // P3 — Spaced revision: dynamic interval per mastery band (in-memory, most overdue wins)
+  // P3 -- Spaced revision: dynamic interval per mastery band (in-memory, most overdue wins)
   trace.rulesEvaluated.push('P3');
   const p3Start = Date.now();
   action = await p3_spacedRevision(progressRows);
@@ -725,7 +725,7 @@ export async function getNextAction(
     return finalise(action, traceId, studentId, { trace, returnTrace, startMs, ruleEntries });
   }
 
-  // P4 — Inactive return: no study in 3+ days (in-memory, most recently studied topic)
+  // P4 -- Inactive return: no study in 3+ days (in-memory, most recently studied topic)
   trace.rulesEvaluated.push('P4');
   const p4Start = Date.now();
   action = await p4_inactiveReturn(progressRows);
@@ -736,7 +736,7 @@ export async function getNextAction(
     return finalise(action, traceId, studentId, { trace, returnTrace, startMs, ruleEntries });
   }
 
-  // P5 — Scored next topic via TopicRanker
+  // P5 -- Scored next topic via TopicRanker
   trace.rulesEvaluated.push('P5');
   const p5Start = Date.now();
   const p5Result = await p5_scoredTopic(studentId, orderedTopics);
@@ -754,7 +754,7 @@ export async function getNextAction(
       subject: null,
       chapter: null,
       ruleId: 'all_topics_complete',
-      reasonLabel: 'All topics completed — try a revision test',
+      reasonLabel: 'All topics completed -- try a revision test',
       actionType: 'revision',
       estimatedTimeMin: 20,
     };
@@ -780,7 +780,7 @@ interface FinaliseOptions {
   startMs?: number;
   /** Per-rule timing entries for Phase 6 RecommendationTrace observability. */
   ruleEntries?: RuleEntry[];
-  /** Full ranked-topic list from P5 (TopicRanker); absent when P0–P4 short-circuited. */
+  /** Full ranked-topic list from P5 (TopicRanker); absent when P0-P4 short-circuited. */
   scoredTopics?: ScoredTopic[];
 }
 
@@ -833,17 +833,17 @@ function finalise(
     logger.warn('engine.loop_detection_failed', { traceId, studentId, error: String(err) });
   }
 
-  // ── Phase 6: RecommendationTrace — fire-and-forget Redis write ───────────────
+  // ── Phase 6: RecommendationTrace -- fire-and-forget Redis write ───────────────
   // Gated by ENABLE_REC_TRACE=1 AND a sampling roll (default 5 %).
-  // Never awaited — must not block the response.
+  // Never awaited -- must not block the response.
   if (isRecTraceEnabled() && opts?.ruleEntries && Math.random() < TRACE_SAMPLE_RATE) {
-    // Pad un-evaluated rules with { evaluated: false } so the full P0–P6 ladder
+    // Pad un-evaluated rules with { evaluated: false } so the full P0-P6 ladder
     // is always visible in the trace, making short-circuit behaviour explicit.
     const evaluatedIds = new Set(opts.ruleEntries.map((r) => r.ruleId));
     const fullRules: RuleEntry[] = ALL_RULE_IDS.map((ruleId) => {
       const existing = opts.ruleEntries!.find((r) => r.ruleId === ruleId);
       if (existing) return existing;
-      // Rule was not reached — short-circuited by an earlier match.
+      // Rule was not reached -- short-circuited by an earlier match.
       return { ruleId, evaluated: false, matched: false, durationMs: 0 };
     });
     // Append any entries whose ruleId isn't in ALL_RULE_IDS (forward compat).

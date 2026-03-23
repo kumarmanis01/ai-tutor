@@ -169,7 +169,7 @@ function MonitorTab({
         >
           {jobs.map((j: any) => (
             <option key={j.id} value={j.id}>
-              {j.metadata.subject} Gr.{j.metadata.grade} ({j.metadata.board}) — {j.status} — {j.progress.overall}% — {j.id.slice(0, 10)}...
+              {j.metadata.subject} Gr.{j.metadata.grade} ({j.metadata.board}) -- {j.status} -- {j.progress.overall}% -- {j.id.slice(0, 10)}...
             </option>
           ))}
         </select>

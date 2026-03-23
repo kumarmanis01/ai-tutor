@@ -2,12 +2,12 @@
  * POST /api/admin/content/ingest-ncert
  *
  * Spawns the NCERT scraper script in the background on the VPS.
- * Returns immediately — admin refreshes the page after a few minutes.
+ * Returns immediately -- admin refreshes the page after a few minutes.
  *
  * Body: { subjectId, board, grade, language }
  * Auth: admin role required.
  * Spawns: npx tsx scripts/scrape-ncert.ts --grade N --subject X --lang Y
- * Non-blocking: returns { ok: true, message: "Ingestion started — check IngestRunLog" }
+ * Non-blocking: returns { ok: true, message: "Ingestion started -- check IngestRunLog" }
  */
 import { NextResponse } from 'next/server'
 import { spawn } from 'child_process'
@@ -56,7 +56,7 @@ export async function POST(req: Request) {
   const subjectSlug = SUBJECT_SLUG_MAP[subject.name.toLowerCase()] ?? subject.slug.toLowerCase()
   const lang = (language ?? 'en').toLowerCase()
 
-  // Spawn scraper in background — non-blocking
+  // Spawn scraper in background -- non-blocking
   const args = [
     'tsx',
     'scripts/scrape-ncert.ts',
@@ -101,6 +101,6 @@ export async function POST(req: Request) {
 
   return NextResponse.json({
     ok: true,
-    message: 'Ingestion started — check IngestRunLog in a few minutes for results.',
+    message: 'Ingestion started -- check IngestRunLog in a few minutes for results.',
   })
 }

@@ -18,7 +18,7 @@ export default async function WorkersPage() {
 
   return (
     <div className="p-6">
-      <h1 className="text-2xl font-semibold mb-4">Content Engine — Workers</h1>
+      <h1 className="text-2xl font-semibold mb-4">Content Engine -- Workers</h1>
       {/* Workers table is a client component to allow Stop actions */}
       <WorkersTable workers={rows as any} />
     </div>

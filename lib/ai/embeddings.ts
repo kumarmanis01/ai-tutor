@@ -34,7 +34,7 @@ export async function getEmbedding(text: string): Promise<number[] | null> {
 /**
  * Batch embed multiple texts.
  * Processes in chunks of batchSize (default 20) to respect rate limits.
- * Returns array of same length as input — null entries for failed rows.
+ * Returns array of same length as input -- null entries for failed rows.
  * Never throws.
  */
 export async function getEmbeddingsBatch(
@@ -56,7 +56,7 @@ export async function getEmbeddingsBatch(
       }
     } catch (err) {
       // eslint-disable-next-line no-console
-      console.error(`[embeddings] batch ${i}–${i + batchSize} failed:`, err)
+      console.error(`[embeddings] batch ${i}-${i + batchSize} failed:`, err)
       results.push(...batch.map(() => null))
     }
     if (i + batchSize < texts.length) {

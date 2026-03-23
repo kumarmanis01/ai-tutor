@@ -9,7 +9,7 @@ export default function SystemAlertsPage() {
   const [includeResolved, setIncludeResolved] = useState(false);
   const { data, error, isLoading } = useSWR(`/api/admin/system/alerts?includeResolved=${includeResolved ? '1' : '0'}`, fetcher);
 
-  if (isLoading) return <div>Loading alerts…</div>;
+  if (isLoading) return <div>Loading alerts...</div>;
   if (error) return <div>Error loading alerts</div>;
 
   const alerts = data?.alerts ?? [];

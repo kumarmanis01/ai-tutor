@@ -32,9 +32,9 @@ function jaccardSimilarity(a: string, b: string): number {
 /**
  * Save a student doubt + Vidya's answer to the KB.
  * Dedup check: if an identical question (exact string match after normalisation)
- * already exists for this studentId + conceptId — skip insert, return existing.
+ * already exists for this studentId + conceptId -- skip insert, return existing.
  * Normalisation: lowercase, collapse whitespace, strip punctuation.
- * Never throws — returns null on any DB error.
+ * Never throws -- returns null on any DB error.
  */
 export async function saveDoubt(params: {
   studentId: string
@@ -97,7 +97,7 @@ const DEDUP_THRESHOLD = 0.88  // cosine similarity for near-duplicate detection
 /**
  * Look up a cached answer for this question using pgvector cosine similarity.
  * Threshold: 0.92. On hit, increments timesServed and returns answerText.
- * Never throws — returns null on embedding failure or any error.
+ * Never throws -- returns null on embedding failure or any error.
  */
 export async function lookupDoubt(
   questionText: string,
@@ -194,7 +194,7 @@ export async function recordDoubt(
         row.id,
       )
     } else {
-      // Novel doubt — create new row
+      // Novel doubt -- create new row
       await prisma.doubtKb.create({
         data: {
           // legacy fields kept for compatibility

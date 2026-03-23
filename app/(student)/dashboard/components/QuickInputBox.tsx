@@ -612,7 +612,7 @@ const QuickInputBox: React.FC<QuickInputBoxProps> = ({ onReply, onError, initial
           <button
             onClick={handleVoiceInput}
             className="flex flex-col items-center justify-center p-4 bg-muted rounded-lg hover:bg-primary/10 transition-colors border border-border w-full"
-            title="Speak (tap) — long-press or use the menu to change language"
+            title="Speak (tap) -- long-press or use the menu to change language"
           >
             <svg className="w-8 h-8 text-primary mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
@@ -823,7 +823,7 @@ const QuickInputBox: React.FC<QuickInputBoxProps> = ({ onReply, onError, initial
           className="w-full bg-primary hover:bg-accent text-primary-foreground font-semibold py-3 rounded-lg transition-colors shadow-cta"
           disabled={asking || (images.length > 0 && !consentToShare)}
       >
-        {asking ? 'Asking…' : 'Ask AI Tutor / पूछें'}
+        {asking ? 'Asking...' : 'Ask AI Tutor / पूछें'}
       </button>
     </div>
   );

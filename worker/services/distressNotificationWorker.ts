@@ -1,5 +1,5 @@
 /**
- * Distress notification worker — T43 prep (ENABLE_DISTRESS_DETECTION=false)
+ * Distress notification worker -- T43 prep (ENABLE_DISTRESS_DETECTION=false)
  *
  * BullMQ processor for 'distress-notification' queue.
  *
@@ -10,7 +10,7 @@
  *   3. If no parent: marks SafetyEvent for admin review and logs CRITICAL
  *   4. If parent found: sends a warm support email with helpline numbers
  *
- * Never throws — all errors are caught and logged.
+ * Never throws -- all errors are caught and logged.
  */
 
 import type { Job } from 'bullmq'
@@ -37,7 +37,7 @@ function buildParentEmailHtml(params: {
 
   <p>During a recent learning session, ${childName} expressed feelings that suggest they may be going through a difficult time. We wanted to let you know so you can check in with them.</p>
 
-  <p>You know your child best. A gentle conversation — even just asking how they're feeling today — can make a big difference.</p>
+  <p>You know your child best. A gentle conversation -- even just asking how they're feeling today -- can make a big difference.</p>
 
   <div style="background:#F0FDF4;border:1px solid #BBF7D0;border-radius:8px;padding:16px;margin:20px 0;">
     <p style="margin:0 0 8px;font-weight:600;color:#166534;">Support resources (India):</p>
@@ -76,7 +76,7 @@ export async function processDistressNotification(
         studentId,
         sessionId: sessionId || null,
         turnId: turnId || null,
-        // Never store verbatim — store trigger phrase list only
+        // Never store verbatim -- store trigger phrase list only
         inputPreview: triggerPhrases.join(', ').slice(0, 200),
       },
     })
@@ -99,7 +99,7 @@ export async function processDistressNotification(
       logger.error('distressNotification.noParent', {
         studentId,
         severity,
-        message: 'CRITICAL: distress detected but no parent linked — admin must review',
+        message: 'CRITICAL: distress detected but no parent linked -- admin must review',
         safetyEventId: safetyEvent.id,
       })
       return
@@ -125,7 +125,7 @@ export async function processDistressNotification(
         ``,
         `If you have concerns, please reply to this email.`,
         ``,
-        `– Spinzy Team`,
+        `- Spinzy Team`,
       ].join('\n'),
     })
 
@@ -141,6 +141,6 @@ export async function processDistressNotification(
       severity,
       error: err instanceof Error ? err.message : String(err),
     })
-    // Never rethrow — student-facing response must not be affected
+    // Never rethrow -- student-facing response must not be affected
   }
 }

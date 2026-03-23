@@ -73,7 +73,7 @@ export async function handleSyllabusJob(jobId: string) {
 
   const existing = await prisma.chapterDef.findFirst({ where: { subjectId: subjectId as string, lifecycle: 'active' } })
   if (existing) {
-    // Chapters already exist — skip LLM call but keep root as Running with contentReady
+    // Chapters already exist -- skip LLM call but keep root as Running with contentReady
     // so the reconciler can still create child notes/questions jobs for existing topics.
     await prisma.hydrationJob.update({ where: { id: job.id }, data: { status: JobStatus.Running, contentReady: true, lastError: null } })
     return
@@ -115,7 +115,7 @@ export async function handleSyllabusJob(jobId: string) {
     await prisma.hydrationJob.update({ where: { id: job.id }, data: { status: JobStatus.Failed, lastError: le } })
     throw err
   }
-  // Record that a response was received — attempt to attach to a linked ExecutionJob if present
+  // Record that a response was received -- attempt to attach to a linked ExecutionJob if present
   let linkedExec: any = null
   try {
     linkedExec = await prisma.executionJob.findFirst({ where: { payload: { path: ['hydrationJobId'], equals: job.id } } })

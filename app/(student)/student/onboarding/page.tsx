@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * Student onboarding — profile setup (Screen 3)
+ * Student onboarding -- profile setup (Screen 3)
  *
  * Uses ProfileSetupForm (4-step wizard) to collect board, class, medium, subjects.
  * Reads ?age= from registration redirect to pre-fill age.
@@ -78,7 +78,7 @@ export default function StudentOnboardingPage() {
   return (
     <Suspense fallback={
       <div className="min-h-screen bg-gray-50 dark:bg-slate-950 flex items-center justify-center">
-        <div className="text-sm text-gray-400 dark:text-gray-500">Loading…</div>
+        <div className="text-sm text-gray-400 dark:text-gray-500">Loading...</div>
       </div>
     }>
       <OnboardingInner />

@@ -40,7 +40,7 @@ export default function TodaysLessonCard() {
     if (!topic) return;
     setStarting(true);
     // SessionContainer calls POST /api/session/start internally (idempotent).
-    // Navigate directly — no pre-flight needed.
+    // Navigate directly -- no pre-flight needed.
     router.push(`/session/${topic.topicId}`);
   }
 
@@ -139,7 +139,7 @@ export default function TodaysLessonCard() {
                     d="M4 12a8 8 0 018-8v4l3-3-3-3V4a10 10 0 100 20v-4l-3 3 3 3v-4a8 8 0 01-8-8z"
                   />
                 </svg>
-                Starting…
+                Starting...
               </>
             ) : (
               <>

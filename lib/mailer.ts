@@ -11,7 +11,7 @@
  */
 import { Resend } from 'resend';
 
-// Lazy singleton — avoids throwing at module load time when RESEND_API_KEY
+// Lazy singleton -- avoids throwing at module load time when RESEND_API_KEY
 // is absent (e.g. in test environments or during Next.js build).
 let _resend: Resend | null = null;
 function getResend(): Resend {
@@ -51,7 +51,7 @@ export async function sendMail(opts: MailOptions): Promise<void> {
 }
 
 // Convenience: fire-and-forget for non-critical emails.
-// Logs error but never throws — safe to use in workers.
+// Logs error but never throws -- safe to use in workers.
 export async function sendMailSafe(opts: MailOptions): Promise<void> {
   try {
     await sendMail(opts);

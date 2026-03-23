@@ -2,7 +2,7 @@ import { getRedis } from '@/lib/redis';
 
 // Key pattern: diagnostic:partial:{studentId}:{subjectId}
 // TTL: 86400s (24 hours)
-// Redis failure NEVER throws — all ops wrapped in try/catch, return null on miss/error
+// Redis failure NEVER throws -- all ops wrapped in try/catch, return null on miss/error
 
 const TTL_SECONDS = 86400;
 

@@ -1,6 +1,6 @@
 /**
  * Legacy system-event action strings for regeneration jobs.
- * These are NOT AdminActionType enum values — regeneration events are system events
+ * These are NOT AdminActionType enum values -- regeneration events are system events
  * (action: null) and the string is stored in details.legacyAction.
  *
  * @deprecated Pass action: null and include legacyAction in details when calling

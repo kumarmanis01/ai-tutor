@@ -31,7 +31,7 @@ interface StudentHomeDashboardProps { [key: string]: unknown }
 
 const StudentHomeDashboard: React.FC<StudentHomeDashboardProps> = () => {
   const [activeTab, setActiveTab] = useState<TabId>('home');
-  // Chat state removed for Home — chat remains available in dedicated areas
+  // Chat state removed for Home -- chat remains available in dedicated areas
   const { data: profile, loading } = useCurrentUser();
   const studentName = profile?.name ?? 'Student';
   const { startLoading, stopLoading } = useGlobalLoader();
@@ -54,7 +54,7 @@ const StudentHomeDashboard: React.FC<StudentHomeDashboardProps> = () => {
   // Use global loader overlay while canonical profile is being fetched.
   useEffect(() => {
     if (loading && !profile) {
-      try { startLoading('Loading…'); } catch { /* ignore */ }
+      try { startLoading('Loading...'); } catch { /* ignore */ }
     } else {
       try { stopLoading(); } catch { /* ignore */ }
     }

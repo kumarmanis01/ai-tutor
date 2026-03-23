@@ -3,7 +3,7 @@ import type { TutorStage } from '@/lib/ai/tutor/stateMachine'
 export interface PromptContext {
   // PERSONA layer inputs
   studentName: string
-  grade: number // 6–12
+  grade: number // 6-12
   board: string // 'CBSE' | 'ICSE' | ...
   teachingLanguage: 'en' | 'hi'
 
@@ -23,7 +23,7 @@ export interface PromptContext {
   activeMisconceptionName: string | null
   frustrationScore: number
 
-  // CURRICULUM_CONTEXT layer inputs — RAG chunks, may be truncated
+  // CURRICULUM_CONTEXT layer inputs -- RAG chunks, may be truncated
   ragChunks: string[] // ordered by relevance descending
 
   // Meta
@@ -75,7 +75,7 @@ export function buildPersonaLayer(ctx: PromptContext): string {
     'Never refer to yourself as just "Vidya" or "AI" or "assistant".',
     '',
     'PERSONALITY AND TONE:',
-    'You are Teacher Vidya — a patient, encouraging Indian school teacher.',
+    'You are Teacher Vidya -- a patient, encouraging Indian school teacher.',
     'You speak like a friendly Ma\'am, not like an AI assistant.',
     '',
     'STRICT TONE RULES:',
@@ -83,15 +83,15 @@ export function buildPersonaLayer(ctx: PromptContext): string {
     '- ALWAYS say: "Almost there!", "Good attempt!", "Let\'s try together", "Great thinking!"',
     '- Always acknowledge what the student got RIGHT before addressing the gap',
     `- Use student's name when available: "Good work, ${ctx.studentName || 'beta'}!"`,
-    '- One question per response — never ask multiple questions at once',
-    '- Short sentences — maximum 2-3 sentences per response turn',
-    '- Accept Hinglish naturally — never correct or penalise mixed language',
+    '- One question per response -- never ask multiple questions at once',
+    '- Short sentences -- maximum 2-3 sentences per response turn',
+    '- Accept Hinglish naturally -- never correct or penalise mixed language',
     '',
     'EXAMPLE RESPONSES:',
     'Wrong answer: "Almost there! You got the first part right. Let\'s look at step 2 together."',
-    'Stuck student: "Don\'t worry — this topic is tricky for many students. Let me explain it differently."',
+    'Stuck student: "Don\'t worry -- this topic is tricky for many students. Let me explain it differently."',
     `Correct answer: "Excellent! That's exactly right, ${ctx.studentName || 'beta'}. You're getting better at this!"`,
-    'Offering hint: "Still working on it? I have a hint ready — want me to share it?"',
+    'Offering hint: "Still working on it? I have a hint ready -- want me to share it?"',
     `Session open: "Hi! I'm Teacher Vidya. Let's understand ${ctx.conceptName} in a simple way. What do you already know about this?"`,
   ].join('\n')
 }
@@ -126,7 +126,7 @@ export function buildPedagogicalRulesLayer(_ctx: PromptContext): string {
     '1b. For avoidance of doubt: never give the student the direct answer.',
     '2. Ask exactly one question per turn.',
     '3. Acknowledge partial credit explicitly before correcting.',
-    '4. When a student says "I don\'t know", ask a simpler prerequisite question — do not give the answer.',
+    '4. When a student says "I don\'t know", ask a simpler prerequisite question -- do not give the answer.',
     "5. Adapt tone and complexity to the student's emotional state and frustration level.",
     '6. Use Indian-context analogies and examples where helpful.',
     '7. Always end your response with exactly one machine tag on its own line.',
@@ -150,7 +150,7 @@ export function buildStudentProfileLayer(ctx: PromptContext): string {
 
   if (ctx.examDateProximityDays != null) {
     lines.push(
-      `Exam proximity: exam is in ${ctx.examDateProximityDays} days — prioritise exam-focused practice and revision.`,
+      `Exam proximity: exam is in ${ctx.examDateProximityDays} days -- prioritise exam-focused practice and revision.`,
     )
   } else {
     lines.push('Exam proximity: no exam date set.')
@@ -166,7 +166,7 @@ export function buildStudentProfileLayer(ctx: PromptContext): string {
 
   if (ctx.emotionalState === 'FRUSTRATED') {
     lines.push(
-      'Tone guidance: student appears FRUSTRATED — be extra gentle, acknowledge effort, reduce difficulty slightly, and celebrate small wins.',
+      'Tone guidance: student appears FRUSTRATED -- be extra gentle, acknowledge effort, reduce difficulty slightly, and celebrate small wins.',
     )
   }
 
@@ -191,7 +191,7 @@ export function buildSessionStateLayer(
     `Current stage: ${ctx.stage}`,
     `Stage attempt count: ${ctx.stageAttemptCount}`,
     `Hints used this stage: ${ctx.hintsUsed}`,
-    `Frustration score (0–1): ${ctx.frustrationScore.toFixed(2)}`,
+    `Frustration score (0-1): ${ctx.frustrationScore.toFixed(2)}`,
   ]
 
   if (sessionSummary) {

@@ -40,7 +40,7 @@ function clamp01(x: number): number {
 }
 
 /**
- * Computes a per-topic difficulty index (0–100) from existing signals:
+ * Computes a per-topic difficulty index (0-100) from existing signals:
  * - Avg accuracy (StudentTopicMastery.accuracy)
  * - Median attempts (StudentTopicMastery.questionsAttempted)
  * - Weak-topic frequency (StudentTopicProgress weak definition)
@@ -86,8 +86,8 @@ export async function getTopicDifficultyList(opts: {
       t.id,
       {
         topicName: t.name,
-        chapterName: t.chapter?.name ?? '—',
-        subjectName: t.chapter?.subject?.name ?? '—',
+        chapterName: t.chapter?.name ?? '--',
+        subjectName: t.chapter?.subject?.name ?? '--',
       },
     ])
   );
@@ -159,7 +159,7 @@ export async function getTopicDifficultyList(opts: {
 
       const lowData = attemptedStudents < 30 || masteryRows < 30;
 
-      // Components (0–1) where higher means harder
+      // Components (0-1) where higher means harder
       const nA = avgAccuracy == null ? null : clamp01(1 - avgAccuracy);
       const nP = medianAttempts == null ? null : normMinMax(Math.log(1 + medianAttempts), Math.log(1 + attemptMin), Math.log(1 + attemptMax));
       const nS = speedMedian == null ? null : clamp01(1 - normMinMax(speedMedian, speedMin, speedMax));

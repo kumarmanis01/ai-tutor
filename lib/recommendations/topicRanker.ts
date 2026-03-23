@@ -3,7 +3,7 @@
  * - Internal topic scoring utility for the Home Tutor Engine.
  * - Scores curriculum topics using 7 signals and returns the ranked list.
  * - Called exclusively by p5_scoredTopic() inside getNextAction.ts.
- * - No longer a standalone public API — the feature flag has been removed.
+ * - No longer a standalone public API -- the feature flag has been removed.
  *
  * Signal weights (documented for tuning):
  *   WEAK_TOPIC_BOOST       +40  mastery < 0.4 AND practiceCount > 5
@@ -11,7 +11,7 @@
  *   RECENCY_PENALTY        -20  studied < 24 h ago (decays linearly)
  *   PREREQUISITE_PENALTY   -15  prior topic not yet sufficiently mastered
  *   WEAK_SUBJECT_BOOST     +15  topic belongs to a flagged weak subject
- *   MOMENTUM_BOOST         +20  scaled by student engagement (0–1)
+ *   MOMENTUM_BOOST         +20  scaled by student engagement (0-1)
  *   BASE                   +10  floor so every topic starts positive
  *
  * Frontier cap:
@@ -20,7 +20,7 @@
  *   curricula and keeps P5 within the 50 ms latency budget.
  *
  * Recency signal source:
- *   StudentTopicProgress.lastStudiedAt — always populated by the session
+ *   StudentTopicProgress.lastStudiedAt -- always populated by the session
  *   engine on practice/test submit. No longer reads LearningSession.
  *
  * EDIT LOG:
@@ -34,7 +34,7 @@
  * - 2026-03-07 | claude          | Phase 2: confirmed no LearningSession dependency
  *                                  remains; incomplete-session detection is handled
  *                                  exclusively by getNextAction P1 (StructuredSession
- *                                  query) before rankTopics is ever called — so
+ *                                  query) before rankTopics is ever called -- so
  *                                  rankTopics never runs while a session is active
  */
 
@@ -84,7 +84,7 @@ export const WEIGHTS = {
   BASE: 10,
 } as const;
 
-// ─── Cache (invalidation only — no longer caches ranked results here) ─────────
+// ─── Cache (invalidation only -- no longer caches ranked results here) ─────────
 // Cache key kept for invalidateTopicRankerCache(), which is called by the
 // domain event bus on session completion. The engine (getNextAction) is
 // responsible for any result-level caching it chooses to add.
@@ -102,7 +102,7 @@ export interface ScoredTopic {
   /** Curriculum position: chapterOrder × 1000 + topicOrder (for tie-breaking). */
   curriculumOrder: number;
   score: number;
-  /** Per-signal score contributions — used for observability and debug. */
+  /** Per-signal score contributions -- used for observability and debug. */
   signals: Record<string, number>;
 }
 
@@ -161,7 +161,7 @@ export async function rankTopics(
       select: { weakSubjects: true },
     }),
     prisma.studentTopicProgress.findMany({ where: { studentId } }),
-    getCurriculumGraph(), // Redis-cached — effectively free on warm paths
+    getCurriculumGraph(), // Redis-cached -- effectively free on warm paths
     computeMomentumScore(studentId),
     getWeakTopicIds(studentId),
   ]);
@@ -172,7 +172,7 @@ export async function rankTopics(
   let curriculumTopics: CurriculumTopic[];
 
   if (options.preloadedOrderedTopics && options.preloadedOrderedTopics.length > 0) {
-    // Caller already fetched and filtered the curriculum — convert shape.
+    // Caller already fetched and filtered the curriculum -- convert shape.
     curriculumTopics = options.preloadedOrderedTopics.map(orderedTopicToCurriculumTopic);
   } else {
     // Fallback: derive from CurriculumGraph filtered by student's enrolled subjects.
@@ -209,13 +209,13 @@ export async function rankTopics(
       frontierStartIndex = i;
       break;
     }
-    // All topics have been started — frontier is the last one.
+    // All topics have been started -- frontier is the last one.
     if (i === curriculumTopics.length - 1) {
       frontierStartIndex = i;
     }
   }
 
-  // ID of the very first unstarted topic — receives CURRICULUM_NEXT_BOOST.
+  // ID of the very first unstarted topic -- receives CURRICULUM_NEXT_BOOST.
   const firstUnstartedId = curriculumTopics[frontierStartIndex]?.topicId ?? null;
 
   // Slice to FRONTIER_SIZE topics starting from the frontier.
@@ -240,26 +240,26 @@ export async function rankTopics(
     let score = WEIGHTS.BASE;
     signals.base = WEIGHTS.BASE;
 
-    // 1. Weak topic boost — student has tried this but is still struggling.
+    // 1. Weak topic boost -- student has tried this but is still struggling.
     if (weakTopicIdSet.has(topic.topicId)) {
       signals.weakTopicBoost = WEIGHTS.WEAK_TOPIC_BOOST;
       score += WEIGHTS.WEAK_TOPIC_BOOST;
     }
 
-    // 2. Prerequisite penalty — prior topic not yet sufficiently learned.
+    // 2. Prerequisite penalty -- prior topic not yet sufficiently learned.
     const prereqsMet = arePrerequisitesMet(topic.topicId, graph, sufficientlyMasteredIds);
     if (!prereqsMet) {
       signals.prerequisitePenalty = WEIGHTS.PREREQUISITE_PENALTY;
       score += WEIGHTS.PREREQUISITE_PENALTY;
     }
 
-    // 3. Curriculum-next boost — this is the natural next step (only when prerequisites are met).
+    // 3. Curriculum-next boost -- this is the natural next step (only when prerequisites are met).
     if (prereqsMet && topic.topicId === firstUnstartedId) {
       signals.curriculumNextBoost = WEIGHTS.CURRICULUM_NEXT_BOOST;
       score += WEIGHTS.CURRICULUM_NEXT_BOOST;
     }
 
-    // 4. Recency penalty — penalise topics studied very recently.
+    // 4. Recency penalty -- penalise topics studied very recently.
     //    Uses StudentTopicProgress.lastStudiedAt (always populated by session engine).
     //    Penalty decays linearly: full penalty at 0 h, zero at RECENCY_HOURS.
     if (progress?.lastStudiedAt) {
@@ -271,13 +271,13 @@ export async function rankTopics(
       }
     }
 
-    // 5. Weak subject boost — topic is in a subject the student finds difficult.
+    // 5. Weak subject boost -- topic is in a subject the student finds difficult.
     if (weakSubjects.has(topic.subjectName)) {
       signals.weakSubjectBoost = WEIGHTS.WEAK_SUBJECT_BOOST;
       score += WEIGHTS.WEAK_SUBJECT_BOOST;
     }
 
-    // 6. Momentum boost — reward students who are actively studying.
+    // 6. Momentum boost -- reward students who are actively studying.
     if (momentum.score > 0) {
       const boost = Math.round(WEIGHTS.MOMENTUM_BOOST * momentum.score);
       signals.momentumBoost = boost;

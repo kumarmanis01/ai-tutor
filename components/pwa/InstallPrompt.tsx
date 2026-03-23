@@ -36,7 +36,7 @@ export default function InstallPrompt() {
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
-    // Already installed as standalone — never show
+    // Already installed as standalone -- never show
     if (window.matchMedia('(display-mode: standalone)').matches) return;
     // Previously dismissed within 7 days
     if (isDismissed()) return;
@@ -115,7 +115,7 @@ export default function InstallPrompt() {
         body: JSON.stringify({ subscription }),
       });
     } catch {
-      // Best-effort — never affect UX
+      // Best-effort -- never affect UX
     }
   }
 

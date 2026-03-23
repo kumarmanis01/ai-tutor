@@ -81,7 +81,7 @@ const AVG_CHAPTERS_PER_SUBJECT = 12;
 const AVG_TOPICS_PER_CHAPTER = 5;
 const NOTES_PER_TOPIC = 1;
 
-// Validation run hard caps — enforced when LLM_MODE=real or LLM_SAFE_MODE=true
+// Validation run hard caps -- enforced when LLM_MODE=real or LLM_SAFE_MODE=true
 // Total max: 2 chapters × 2 topics × 3 difficulties × 2 questions = 24 questions
 const VALIDATION_CAP_CHAPTERS = 2;
 const VALIDATION_CAP_TOPICS_PER_CHAPTER = 2;
@@ -369,7 +369,7 @@ export async function POST(request: NextRequest) {
       : AVG_TOPICS_PER_CHAPTER;
     const adjustedEstimatedTopics = chaptersLimit * topicsPerChapterUsed;
 
-    // questionsPerDifficulty cap — stored separately so workers can enforce per-LLM-call
+    // questionsPerDifficulty cap -- stored separately so workers can enforce per-LLM-call
     const questionsPerDifficultyUsed = isValidationRun
       ? VALIDATION_CAP_QUESTIONS_PER_DIFFICULTY
       : requestedQuestionsPerDifficulty;
@@ -399,7 +399,7 @@ export async function POST(request: NextRequest) {
 
     // Guard: warn if requested counts exceed caps
     if (isValidationRun && requestedQuestionsPerDifficulty > VALIDATION_CAP_QUESTIONS_PER_DIFFICULTY) {
-      logger.warn('[VALIDATION_CAP] questionsPerDifficulty exceeds cap — enforcing cap', {
+      logger.warn('[VALIDATION_CAP] questionsPerDifficulty exceeds cap -- enforcing cap', {
         traceId,
         requested: requestedQuestionsPerDifficulty,
         enforced: VALIDATION_CAP_QUESTIONS_PER_DIFFICULTY,
@@ -544,7 +544,7 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    // 10. Return Response — log validation session summary
+    // 10. Return Response -- log validation session summary
     logger.info('[VALIDATION_RUN] HydrateAll job created', {
       traceId,
       rootJobId: result.id,

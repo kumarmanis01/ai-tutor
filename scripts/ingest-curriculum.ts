@@ -1,5 +1,5 @@
 /**
- * Ingestion pipeline v2 — embeds CurriculumChunk rows, skipping unchanged content.
+ * Ingestion pipeline v2 -- embeds CurriculumChunk rows, skipping unchanged content.
  * Content-hash idempotency: re-embeds only if content changed (version bumped).
  * Writes an IngestRunLog entry on completion.
  *
@@ -64,7 +64,7 @@ async function main() {
     const newHash = sha256(text)
 
     if (chunk.contentHash !== newHash) {
-      // Content changed — needs re-embed and version bump
+      // Content changed -- needs re-embed and version bump
       toProcess.push({ id: chunk.id, content: text, newHash, needsVersionBump: chunk.contentHash !== null })
     }
   }
@@ -121,7 +121,7 @@ async function main() {
             chunk.id,
           )
         } else {
-          // First-time embed — set hash + embedding
+          // First-time embed -- set hash + embedding
           await prisma.$executeRawUnsafe(
             `UPDATE "CurriculumChunk"
              SET embedding = $1::vector, "contentHash" = $2, "updatedAt" = NOW()

@@ -1,5 +1,5 @@
 /**
- * Pre-session screen — v2
+ * Pre-session screen -- v2
  *
  * Server component. Loads concept data, prerequisites with mastery scores,
  * and any incomplete session for this concept. Renders PreSessionScreen.
@@ -140,7 +140,7 @@ export default async function PreSessionPage({ params }: Props) {
     orderBy: { createdAt: 'asc' },
   });
 
-  // Background prefetch — non-blocking, best-effort
+  // Background prefetch -- non-blocking, best-effort
   // In a server component we can't fire a true background fetch, so we skip it.
   // The session container will load its own content on first render.
 

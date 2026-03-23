@@ -84,7 +84,7 @@ export async function retrieveRelevantChunks(
       return { chunks: [], chunkIds: [] }
     }
 
-    // 3. Basic check — rows already thresholded and ordered in SQL
+    // 3. Basic check -- rows already thresholded and ordered in SQL
     if (!rows.length) {
       return { chunks: [], chunkIds: [] }
     }

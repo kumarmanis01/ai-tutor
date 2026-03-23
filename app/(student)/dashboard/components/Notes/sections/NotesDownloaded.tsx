@@ -27,7 +27,7 @@ export function NotesDownloaded() {
   return (
     <NotesSection title="Downloaded (Offline)">
       {loading && downloaded.length === 0 ? (
-        <div className="text-sm text-muted-foreground">Loading…</div>
+        <div className="text-sm text-muted-foreground">Loading...</div>
       ) : downloaded.length === 0 ? (
         <div className="text-sm text-muted-foreground">No downloaded notes</div>
       ) : (

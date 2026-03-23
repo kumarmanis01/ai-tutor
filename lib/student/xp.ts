@@ -2,7 +2,7 @@ import { prisma } from '@/lib/prisma'
 import { sendPushSafe } from '@/lib/push/send'
 import { PUSH_NOTIFICATIONS } from '@/lib/push/notifications'
 
-// Level thresholds — XP required to reach each level (cumulative).
+// Level thresholds -- XP required to reach each level (cumulative).
 // Level 1: 0, Level 2: 100, Level 3: 250, Level 4: 500,
 // Level 5: 1000, Level 6: 2000, Level 7: 3500, Level 8: 5000,
 // Level 9: 7500, Level 10: 10000
@@ -11,7 +11,7 @@ export const LEVEL_THRESHOLDS = [0, 100, 250, 500, 1000, 2000, 3500, 5000, 7500,
 const MAX_LEVEL = LEVEL_THRESHOLDS.length
 
 /**
- * Returns level 1–10 from total XP. Level 10 is max (capped).
+ * Returns level 1-10 from total XP. Level 10 is max (capped).
  */
 export function getLevelFromXP(totalXp: number): number {
   if (totalXp <= 0) return 1
@@ -36,7 +36,7 @@ export function getXPToNextLevel(totalXp: number): number | null {
 }
 
 /**
- * Returns 0–100 progress within the current level band.
+ * Returns 0-100 progress within the current level band.
  */
 export function getProgressPercent(totalXp: number): number {
   const level = getLevelFromXP(totalXp)
@@ -60,8 +60,8 @@ export type StudentXPSource =
  * 1. Insert StudentXP row.
  * 2. Increment User.totalXp atomically.
  * 3. Recalculate level from new totalXp.
- * 4. If level changed — update User.level, return leveledUp: true.
- * All in a Prisma transaction. Never throws — returns null on error.
+ * 4. If level changed -- update User.level, return leveledUp: true.
+ * All in a Prisma transaction. Never throws -- returns null on error.
  */
 export async function awardXP(params: {
   studentId: string

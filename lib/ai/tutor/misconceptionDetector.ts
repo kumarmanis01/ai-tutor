@@ -17,7 +17,7 @@ type MisconceptionInput = {
 
 /**
  * Match student input against loaded misconception trigger patterns.
- * Pure function — no DB calls. Takes pre-loaded misconceptions as input.
+ * Pure function -- no DB calls. Takes pre-loaded misconceptions as input.
  * Returns all matched misconceptions, ordered by confidence desc.
  *
  * @param studentInput - Raw student message text.
@@ -90,7 +90,7 @@ const misconceptionCache = new Map<string, LoadedMisconception[]>()
 /**
  * Load misconceptions for a subject+concept from DB.
  * Cache result in module-level Map for session duration.
- * Returns [] on any DB error — never throws.
+ * Returns [] on any DB error -- never throws.
  *
  * @param subjectId - Subject identifier.
  * @param conceptId - Concept identifier.

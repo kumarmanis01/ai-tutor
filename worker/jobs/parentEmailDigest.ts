@@ -196,7 +196,7 @@ function buildTrustSignals(
       improvementTrend = `Covered ${summary.topicsCovered - lastWeek.topicsCovered} more topics than last week`;
     }
   } else if (summary && !lastWeek) {
-    improvementTrend = 'First tracked week — great start!';
+    improvementTrend = 'First tracked week -- great start!';
   }
 
   // Strengths unlocked
@@ -205,9 +205,9 @@ function buildTrustSignals(
   );
 
   // Suggested action
-  let suggestedAction = 'Keep encouraging regular study — consistency is key!';
+  let suggestedAction = 'Keep encouraging regular study -- consistency is key!';
   if (flags.length > 0) {
-    suggestedAction = 'Ask about the topics flagged above — a quick chat can help build confidence.';
+    suggestedAction = 'Ask about the topics flagged above -- a quick chat can help build confidence.';
   } else if (strengthsUnlocked.length > 0) {
     suggestedAction = `Celebrate the new strengths unlocked this week! Positive recognition boosts motivation.`;
   } else if (streak && streak.current >= 5) {
@@ -265,7 +265,7 @@ function buildChildSection(
       const friendlyReason = f.reason === 'very_low_accuracy' ? 'developing skills'
         : f.reason === 'low_mastery' ? 'room to grow'
         : 'needs a little more support';
-      return `<li style="margin:4px 0;color:#92400E;">${f.subject} / ${f.chapter} — ${friendlyReason}</li>`;
+      return `<li style="margin:4px 0;color:#92400E;">${f.subject} / ${f.chapter} -- ${friendlyReason}</li>`;
     }).join('');
     flagsHtml = `
       <div style="margin-top:12px;padding:12px;background:#FFFBEB;border-radius:8px;">
@@ -284,7 +284,7 @@ function buildChildSection(
       const friendlyLabel = r.readinessLabel === 'ready' ? 'looking great'
         : r.readinessLabel === 'on_track' ? 'making progress'
         : r.readinessLabel === 'needs_work' ? 'developing skills' : 'just getting started';
-      return `<li style="margin:4px 0;"><span style="color:${color};font-weight:bold;">${r.subject}</span>: ${r.readinessScore}% — ${friendlyLabel}</li>`;
+      return `<li style="margin:4px 0;"><span style="color:${color};font-weight:bold;">${r.subject}</span>: ${r.readinessScore}% -- ${friendlyLabel}</li>`;
     }).join('');
     readinessHtml = `
       <div style="margin-top:12px;">

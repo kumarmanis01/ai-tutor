@@ -1,7 +1,7 @@
 import { getRedis } from '@/lib/redis'
 
 // Key pattern: session:tutor:{sessionId}   TTL: 86400s (refreshed on every write)
-// Redis failure NEVER throws — all ops wrapped in try/catch, return null on miss/error
+// Redis failure NEVER throws -- all ops wrapped in try/catch, return null on miss/error
 
 export type RedisSessionState = {
   sessionId: string

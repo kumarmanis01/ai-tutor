@@ -1,5 +1,5 @@
 /**
- * Streak Shield — one shield per calendar month per student.
+ * Streak Shield -- one shield per calendar month per student.
  *
  * When a student misses a day that would break their streak, the shield
  * auto-activates (if available) to preserve the streak for that month.

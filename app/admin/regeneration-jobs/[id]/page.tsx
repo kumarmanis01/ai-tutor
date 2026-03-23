@@ -69,7 +69,7 @@ export default async function JobDetail({ params }: Props) {
       <ul>
         {audits.map(a => (
           <li key={a.id} style={{ marginBottom: 8 }}>
-            <div><strong>{a.action}</strong> — {new Date(a.createdAt).toLocaleString()}</div>
+            <div><strong>{a.action}</strong> -- {new Date(a.createdAt).toLocaleString()}</div>
             <div style={{ fontFamily: 'monospace', fontSize: 12 }}>{JSON.stringify(a.details)}</div>
           </li>
         ))}

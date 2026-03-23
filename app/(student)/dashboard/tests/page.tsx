@@ -13,7 +13,7 @@ import PracticeTab from '@/app/(student)/dashboard/components/Practice';
 
 export const dynamic = 'force-dynamic';
 
-export const metadata = { title: 'Practice – Spinzy Academy' };
+export const metadata = { title: 'Practice - Spinzy Academy' };
 
 export default function PracticePage() {
   return <PracticeTab />;

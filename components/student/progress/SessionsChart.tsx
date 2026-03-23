@@ -1,5 +1,5 @@
 /**
- * SessionsChart — pure-CSS bar chart for the progress report page.
+ * SessionsChart -- pure-CSS bar chart for the progress report page.
  *
  * Renders 4 weekly bars (last 30 days). Purple bars for weeks with sessions,
  * light grey for empty weeks. No external charting library.
@@ -37,7 +37,7 @@ export default function SessionsChart({
           const hasActivity = count > 0;
           return (
             <div key={i} className="flex-1 flex flex-col items-center gap-2">
-              {/* Bar container — fixed height, bar grows from bottom */}
+              {/* Bar container -- fixed height, bar grows from bottom */}
               <div className="w-full h-20 flex items-end">
                 <div
                   className={[

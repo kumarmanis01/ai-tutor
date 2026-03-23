@@ -30,7 +30,7 @@ function historyKey(sessionId: string, doubtHash: string): string {
  * append the new entry to the rolling history (capped at 3), and return the
  * updated count and history.
  *
- * Never throws — returns { count: 0, history: [] } on Redis error.
+ * Never throws -- returns { count: 0, history: [] } on Redis error.
  */
 export async function trackDoubtAttempt(
   sessionId: string,

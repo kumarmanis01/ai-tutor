@@ -1,5 +1,5 @@
 /**
- * Admin Weak Topic Monitoring — read-only aggregation for admin console.
+ * Admin Weak Topic Monitoring -- read-only aggregation for admin console.
  * Uses same weak-topic definition as lib/learning/getWeakTopics (mastery < 0.4, practiceCount > 5).
  */
 

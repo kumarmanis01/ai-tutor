@@ -117,7 +117,7 @@ export async function generateDailyTaskAI(
       grade: profile.grade,
       error: error instanceof Error ? error.message : String(error),
     });
-    // Deterministic fallback — no AI needed
+    // Deterministic fallback -- no AI needed
     return buildFallbackTask(profile, context, forceRecovery);
   }
 }
@@ -138,7 +138,7 @@ function buildPrompt(
       : 'Respond in simple English.';
 
   const taskTypeInstruction = forceRecovery
-    ? 'Task type MUST be "recover". This student has been inactive — make it very easy and encouraging.'
+    ? 'Task type MUST be "recover". This student has been inactive -- make it very easy and encouraging.'
     : 'Choose the best task type: learn (new topic), practice (questions), revise (spaced repetition), or recover (re-engagement).';
 
   const strengthsLine = profile.strengths?.length
@@ -247,7 +247,7 @@ function buildFallbackTask(
         { step_type: 'read', content: `Read through the summary of ${topic}` },
         { step_type: 'answer', content: 'Try 2 easy questions' },
       ],
-      motivation_message: 'You showed up — that\'s what matters!',
+      motivation_message: 'You showed up -- that\'s what matters!',
     };
   }
 

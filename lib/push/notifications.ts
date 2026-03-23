@@ -4,7 +4,7 @@ import type { PushPayload } from './send'
  * All push notification copy lives here.
  *
  * Copy rules:
- * - Never use "broke", "missed", "failed", "lost" — forward-looking only
+ * - Never use "broke", "missed", "failed", "lost" -- forward-looking only
  * - Max 50 chars for title, max 100 chars for body
  * - Always include a specific action in the body
  * - Emojis are allowed and encouraged (one per notification)
@@ -35,15 +35,15 @@ export const PUSH_NOTIFICATIONS = {
   // ── Exam reminders ──────────────────────────────────────────────────────
   exam_14_days: (subject: string, readiness: number): PushPayload => ({
     title: `📅 14 days to your ${subject} exam`,
-    body: `You're ${readiness}% ready. Today's session is critical — let's close the gap.`,
+    body: `You're ${readiness}% ready. Today's session is critical -- let's close the gap.`,
     url: '/dashboard',
     tag: 'exam-countdown',
     requireInteraction: true,
   }),
 
   exam_7_days: (subject: string, topicName: string): PushPayload => ({
-    title: `⚡ 7 days left — ${subject}`,
-    body: `Focus on ${topicName} today — it's your highest-impact topic.`,
+    title: `⚡ 7 days left -- ${subject}`,
+    body: `Focus on ${topicName} today -- it's your highest-impact topic.`,
     url: '/dashboard',
     tag: 'exam-countdown',
     requireInteraction: true,
@@ -58,7 +58,7 @@ export const PUSH_NOTIFICATIONS = {
   }),
 
   exam_day: (subject: string): PushPayload => ({
-    title: `🌟 ${subject} exam day — you've got this`,
+    title: `🌟 ${subject} exam day -- you've got this`,
     body: 'A quick 10-minute revision this morning can make a difference.',
     url: '/student/revisions',
     tag: 'exam-day',
@@ -75,14 +75,14 @@ export const PUSH_NOTIFICATIONS = {
 
   // ── Milestones (positive reinforcement) ─────────────────────────────────
   streak_milestone_7: (): PushPayload => ({
-    title: '🔥 7-day streak — incredible!',
+    title: '🔥 7-day streak -- incredible!',
     body: "You've studied every day this week. That's the habit that wins exams.",
     url: '/dashboard',
     tag: 'milestone',
   }),
 
   streak_milestone_30: (): PushPayload => ({
-    title: "🏆 30-day streak — you're unstoppable",
+    title: "🏆 30-day streak -- you're unstoppable",
     body: 'A full month of daily learning. Your consistency is building real mastery.',
     url: '/dashboard',
     tag: 'milestone',
@@ -107,7 +107,7 @@ export const PUSH_NOTIFICATIONS = {
     body:
       score >= 70
         ? "You're on track for a strong board exam result!"
-        : 'Good progress — keep the momentum going.',
+        : 'Good progress -- keep the momentum going.',
     url: '/student/progress',
     tag: 'readiness',
   }),

@@ -31,11 +31,11 @@ export function isProfileComplete(user: StudentProfileData): boolean {
 
 /**
  * Checks minimum required fields for a student (onboarding complete).
- * Base: name, grade (1–12), board, at least 1 subject, age.
+ * Base: name, grade (1-12), board, at least 1 subject, age.
  * When age is under 18: parent email is required (for parent verification step).
  * When age is under 13: parent phone is required (for OTP verification in onboarding).
  * Parent verification modal runs only after this returns complete (so we have contact info).
- * Returns complete: false on any DB error — never throws.
+ * Returns complete: false on any DB error -- never throws.
  */
 export async function checkProfileCompleteness(studentId: string): Promise<ProfileCompletenessResult> {
   const emptyData: StudentProfileData = EMPTY_PROFILE_DATA

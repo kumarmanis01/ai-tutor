@@ -22,7 +22,7 @@ export type TutorTag =
 export interface TutorSessionState {
   stage: TutorStage
   stageAttemptCount: number
-  hintsUsed: number // 0–3
+  hintsUsed: number // 0-3
   prereqRemediationActive: boolean
   prereqReturnStage: TutorStage | null
   consecutiveWrongAnswers: number

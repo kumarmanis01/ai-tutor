@@ -18,13 +18,13 @@ export default async function Page({ params }: Props) {
       <h1 className="text-2xl font-bold mb-4">Retry Intent {intent.id}</h1>
       <div style={{ marginBottom: 8 }}><strong>Status:</strong> {intent.status}</div>
       <div style={{ marginBottom: 8 }}><strong>Source Job:</strong> {intent.sourceJobId}</div>
-      <div style={{ marginBottom: 8 }}><strong>Reason:</strong> {intent.reasonCode} — {intent.reasonText}</div>
+      <div style={{ marginBottom: 8 }}><strong>Reason:</strong> {intent.reasonCode} -- {intent.reasonText}</div>
       <div style={{ marginBottom: 8 }}><strong>Approved By:</strong> {intent.approvedBy} {intent.approvedAt ? `on ${new Date(intent.approvedAt).toLocaleString()}` : ''}</div>
       <div style={{ marginTop: 16 }}>
         {intent.status === 'PENDING' ? (
           <ExecuteRetryButton intentId={intent.id} />
         ) : (
-          <div className="text-sm text-gray-600">Execute disabled — status is {intent.status}</div>
+          <div className="text-sm text-gray-600">Execute disabled -- status is {intent.status}</div>
         )}
       </div>
       <div style={{ marginTop: 16 }}>

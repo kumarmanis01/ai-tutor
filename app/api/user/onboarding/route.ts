@@ -69,7 +69,7 @@ export async function POST(req: NextRequest) {
     if (!preferredLanguage || String(preferredLanguage).trim() === '') fieldErrors.preferred_language = 'Preferred language is required';
     if (!subjects || subjects.length === 0) fieldErrors.subjects = 'Select at least 1 subject';
     if (subjects && subjects.length > 6) fieldErrors.subjects = 'You can select up to 6 subjects';
-    // Parent email is collected in a separate post-onboarding step — not required here.
+    // Parent email is collected in a separate post-onboarding step -- not required here.
     // Under-DPDP_MINOR_AGE handling sets accountStatus below after the DB save.
     if (Object.keys(fieldErrors).length) {
       res = NextResponse.json({ error: 'validation_error', fieldErrors }, { status: 400 });
@@ -155,7 +155,7 @@ export async function POST(req: NextRequest) {
         userId = resolvedUserId as string;
       }
 
-      // grade is immutable after first save — never accept from client
+      // grade is immutable after first save -- never accept from client
       const gradeRow = existingById ?? await prisma.user.findUnique({ where: { id: userId }, select: { grade: true } }).catch(() => null);
       if (gradeRow?.grade != null) {
         delete updates.grade
@@ -231,7 +231,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Under-DPDP_MINOR_AGE: set pending_parent_verification so the ParentOTPGate
-    // overlay handles it after onboarding. Do NOT block here — return 200 and let
+    // overlay handles it after onboarding. Do NOT block here -- return 200 and let
     // the client navigate forward; the gate overlay intercepts the next page load.
     if (age != null && age < DPDP_MINOR_AGE) {
       const fresh = await prisma.user.findUnique({
@@ -243,7 +243,7 @@ export async function POST(req: NextRequest) {
           where: { id: updatedUser.id },
           data: { accountStatus: 'pending_parent_verification' },
         }).catch(() => {});
-        logger.info('/api/user/onboarding: under-DPDP age — accountStatus set to pending_parent_verification', {
+        logger.info('/api/user/onboarding: under-DPDP age -- accountStatus set to pending_parent_verification', {
           className: 'api.user.onboarding', methodName: 'POST', id: updatedUser.id,
         });
       }

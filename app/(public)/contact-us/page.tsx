@@ -27,7 +27,7 @@ export default function ContactPage() {
         Greater Noida, UP, India
       </p>
       <h2 className="text-xl font-semibold mt-6 mb-2">Support Hours</h2>
-      <p>Monday to Friday: 10:00 AM – 5:00 PM IST - (GMT+5.30)</p>
+      <p>Monday to Friday: 10:00 AM - 5:00 PM IST - (GMT+5.30)</p>
     </div>
   );
 }

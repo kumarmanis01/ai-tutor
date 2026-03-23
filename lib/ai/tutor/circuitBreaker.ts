@@ -8,8 +8,8 @@ const KEYS = {
   open: 'cb:llm:open',
 } as const
 
-const FAILURE_WINDOW_TTL = 30 // seconds — sliding failure window
-const OPEN_TTL = 60           // seconds — auto-closes after this
+const FAILURE_WINDOW_TTL = 30 // seconds -- sliding failure window
+const OPEN_TTL = 60           // seconds -- auto-closes after this
 const FAILURE_THRESHOLD = 3
 
 /** Returns true if cb:llm:open key exists in Redis. Never throws. */

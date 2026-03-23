@@ -1,5 +1,5 @@
 /**
- * Admin Content Readiness — HydrationJob status summary and list for admin dashboard.
+ * Admin Content Readiness -- HydrationJob status summary and list for admin dashboard.
  */
 
 import { prisma } from '@/lib/prisma';
@@ -107,8 +107,8 @@ export async function getReadinessList(opts: {
       t.id,
       {
         name: t.name,
-        chapterName: t.chapter?.name ?? '—',
-        subjectName: t.chapter?.subject?.name ?? '—',
+        chapterName: t.chapter?.name ?? '--',
+        subjectName: t.chapter?.subject?.name ?? '--',
       },
     ])
   );
@@ -118,9 +118,9 @@ export async function getReadinessList(opts: {
     return {
       jobId: j.id,
       topicId: j.topicId,
-      topicName: t?.name ?? j.topicId ?? '—',
-      subjectName: t?.subjectName ?? '—',
-      chapterName: t?.chapterName ?? '—',
+      topicName: t?.name ?? j.topicId ?? '--',
+      subjectName: t?.subjectName ?? '--',
+      chapterName: t?.chapterName ?? '--',
       status: j.status,
       contentReady: j.contentReady,
       lastError: j.lastError,

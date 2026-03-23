@@ -27,7 +27,7 @@ export function NotesRecentlyAdded() {
   return (
     <NotesSection title="Recently Added">
       {loading && recent.length === 0 ? (
-        <div className="text-sm text-muted-foreground">Loading…</div>
+        <div className="text-sm text-muted-foreground">Loading...</div>
       ) : recent.length === 0 ? (
         <div className="text-sm text-muted-foreground">No recent notes</div>
       ) : (

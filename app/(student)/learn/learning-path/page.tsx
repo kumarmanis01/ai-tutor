@@ -8,7 +8,7 @@
  * Students reach it via the "View full learning path" link on the dashboard.
  *
  * Design rules (UX architecture review):
- *   - List format, not cards — low visual weight
+ *   - List format, not cards -- low visual weight
  *   - Qualitative labels only (Mastered / Understood / Getting there / Needs practice)
  *   - No percentages shown
  *   - In-progress topics show "Continue →" link
@@ -108,7 +108,7 @@ export default async function LearningPathPage() {
           </Link>
           <h1 className="text-2xl font-bold text-gray-900">Learning Path</h1>
           <p className="text-sm text-gray-500 mt-0.5">
-            Your full curriculum — topic by topic.
+            Your full curriculum -- topic by topic.
           </p>
         </div>
       </div>

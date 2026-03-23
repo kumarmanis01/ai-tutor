@@ -6,11 +6,11 @@
  *   - role !== parent → redirect to /dashboard (student home)
  *
  * Nav: logo + "My children" + sign-out
- * Student routes are in a separate route group — not accessible from here.
+ * Student routes are in a separate route group -- not accessible from here.
  *
  * EDIT LOG:
  *   2026-03-08 | claude | created for Parent Progress Dashboard
- *   2026-03-15 | claude | T38 — add auth gate + top nav
+ *   2026-03-15 | claude | T38 -- add auth gate + top nav
  */
 
 import type { Metadata, Viewport } from 'next'

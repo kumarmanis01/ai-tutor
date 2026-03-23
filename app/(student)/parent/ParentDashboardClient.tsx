@@ -837,10 +837,10 @@ export default function ParentDashboardClient() {
                     <div className="flex-1">
                       <div className="text-lg font-bold text-gray-900 dark:text-white">{selected.studentName}</div>
                       <div className="text-sm text-gray-500 dark:text-gray-400">
-                        {selected.grade ? `Class ${selected.grade}` : 'Class —'} {selected.board ? `• ${selected.board}` : ''}
+                        {selected.grade ? `Class ${selected.grade}` : 'Class --'} {selected.board ? `• ${selected.board}` : ''}
                       </div>
                       <div className="text-xs text-gray-400 mt-1">
-                        Last active: {selected.lastActiveAt ? formatDate(selected.lastActiveAt) : '—'}
+                        Last active: {selected.lastActiveAt ? formatDate(selected.lastActiveAt) : '--'}
                       </div>
                     </div>
                   </div>
@@ -862,7 +862,7 @@ export default function ParentDashboardClient() {
                   <div className="rounded-xl bg-amber-50 dark:bg-amber-900/20 p-3">
                     <div className="text-xs text-gray-500 dark:text-gray-400">Avg score (latest)</div>
                     <div className="text-2xl font-bold text-amber-700 dark:text-amber-300">
-                      {latestWeek ? `${clamp(Math.round(latestWeek.averageScore), 0, 100)}%` : '—'}
+                      {latestWeek ? `${clamp(Math.round(latestWeek.averageScore), 0, 100)}%` : '--'}
                     </div>
                   </div>
                   <div className="rounded-xl bg-rose-50 dark:bg-rose-900/20 p-3">

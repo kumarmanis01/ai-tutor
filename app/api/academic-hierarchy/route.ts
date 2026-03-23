@@ -145,7 +145,7 @@ export async function GET() {
         id: cls.id,
         grade: cls.grade,
         slug: cls.slug,
-        // Deduplicate by name — prevents duplicate subject names in the subject picker
+        // Deduplicate by name -- prevents duplicate subject names in the subject picker
         // when SubjectDef rows share the same name but have different slugs for the same classId
         subjects: [...new Map(cls.subjects.map((sub) => [sub.name, sub])).values()]
           .map((sub) => ({

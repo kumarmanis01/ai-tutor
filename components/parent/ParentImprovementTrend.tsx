@@ -33,7 +33,7 @@ const MOCK_STUDENT_ID = 'mock-student';
 
 interface TrendPoint {
   week: string;     // e.g. "2026-W10"
-  accuracy: number; // 0–1 float
+  accuracy: number; // 0-1 float
 }
 
 /** Converts "2026-W10" → "W10" for a compact X-axis label. */
@@ -42,7 +42,7 @@ function shortWeek(isoWeek: string): string {
   return parts[1] ?? isoWeek;
 }
 
-/** Formats a 0–1 accuracy value as "58%" for tooltip / Y-axis. */
+/** Formats a 0-1 accuracy value as "58%" for tooltip / Y-axis. */
 function fmtPct(value: number): string {
   return `${Math.round(value * 100)}%`;
 }
@@ -112,7 +112,7 @@ function ErrorState({ onRetry }: { onRetry: () => void }) {
   );
 }
 
-// Custom tooltip shown on hover — cleaner than recharts default for parents.
+// Custom tooltip shown on hover -- cleaner than recharts default for parents.
 function TrendTooltip({ active, payload, label }: {
   active?: boolean;
   payload?: { value: number }[];
@@ -163,11 +163,11 @@ export default function ParentImprovementTrend() {
   useEffect(fetchTrend, [studentId]);
 
   // Recharts needs the data in a flat object shape.
-  // We keep accuracy as 0–1 and format it at render time to avoid
+  // We keep accuracy as 0-1 and format it at render time to avoid
   // a second mapping pass.
   const chartData = points.map((p) => ({
     week: shortWeek(p.week),      // "W10"
-    accuracy: p.accuracy,          // 0–1 (formatted by tickFormatter / tooltip)
+    accuracy: p.accuracy,          // 0-1 (formatted by tickFormatter / tooltip)
   }));
 
   return (

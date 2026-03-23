@@ -1,5 +1,5 @@
 /**
- * Parent Dashboard page — T38
+ * Parent Dashboard page -- T38
  *
  * Server component: loads all linked children for the parent user,
  * computes per-child readiness scores, passes to ParentDashboard.
@@ -8,7 +8,7 @@
  *
  * EDIT LOG:
  *   2026-03-08 | claude | original 4-card client-polling dashboard
- *   2026-03-15 | claude | T38 — rewritten as server component with multi-child view
+ *   2026-03-15 | claude | T38 -- rewritten as server component with multi-child view
  */
 
 import type { Metadata } from 'next'

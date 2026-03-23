@@ -109,7 +109,7 @@ export async function GET() {
       questionsBySubject.set(sid, (questionsBySubject.get(sid) ?? 0) + row._count.id)
     }
 
-    // Batch 3: CurriculumChunk counts — matched by subject name + grade + board name
+    // Batch 3: CurriculumChunk counts -- matched by subject name + grade + board name
     // CurriculumChunk has no subjectId FK; uses string fields board/grade/subject.
     const chunkCounts = await prisma.curriculumChunk.groupBy({
       by: ['board', 'grade', 'subject'],

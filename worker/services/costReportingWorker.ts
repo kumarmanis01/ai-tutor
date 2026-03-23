@@ -1,5 +1,5 @@
 /**
- * Daily AI cost reporting worker — T42
+ * Daily AI cost reporting worker -- T42
  *
  * Runs at 6:00 AM IST (00:30 UTC) daily.
  *
@@ -9,7 +9,7 @@
  *   - Upserts a DailyCostMetric row
  *   - Fires an alert email to ONCALL_EMAIL if costPerSession > $0.003
  *
- * Never throws — logs errors and returns a safe result.
+ * Never throws -- logs errors and returns a safe result.
  */
 
 import { prisma } from '@/lib/prisma.js'
@@ -18,7 +18,7 @@ import { sendEmail } from '@/lib/mailer.js'
 import { sendPushSafe } from '@/lib/push/send.js'
 import { PUSH_NOTIFICATIONS } from '@/lib/push/notifications.js'
 
-// 1 USD to INR exchange rate (fixed reference — update quarterly)
+// 1 USD to INR exchange rate (fixed reference -- update quarterly)
 const USD_TO_INR = 84
 
 // Alert threshold: $0.003 per session (~₹0.25)
@@ -127,7 +127,7 @@ function buildAlertHtml(params: {
     ? `<div style="background:#FFFBEB;border:1px solid #FCD34D;border-radius:8px;padding:16px;margin-top:20px;">
   <h3 style="margin:0 0 8px;color:#92400E;font-size:15px;">Trending Doubts (last 7 days)</h3>
   <ul style="margin:0;padding:0 0 0 18px;color:#78350F;">
-    ${trendingDoubts.map((d) => `<li>${d.conceptName} — ${d.studentCount} escalations this week</li>`).join('\n    ')}
+    ${trendingDoubts.map((d) => `<li>${d.conceptName} -- ${d.studentCount} escalations this week</li>`).join('\n    ')}
   </ul>
 </div>`
     : ''
@@ -240,7 +240,7 @@ export async function runDailyCostReport(): Promise<CostReportResult> {
   // Build alert subject
   let alertSubject = `⚠️ Spinzy AI cost alert: ₹${(costPerSession * USD_TO_INR).toFixed(2)} per session on ${dateLabel}`
   if (isDropout) {
-    alertSubject = `⚠️ Zero sessions — possible outage on ${dateLabel}`
+    alertSubject = `⚠️ Zero sessions -- possible outage on ${dateLabel}`
   } else if (isCeiling) {
     alertSubject = `⚠️ Daily cost ceiling reached: $${totalCostUsd.toFixed(2)} on ${dateLabel}`
   } else if (isRollingAnomaly && rollingAvg) {
@@ -277,7 +277,7 @@ export async function runDailyCostReport(): Promise<CostReportResult> {
           subject: alertSubject,
           html: buildAlertHtml({ dateLabel, sessions, totalCostUsd, costPerSession, trendingDoubts }),
           text: [
-            `Spinzy AI cost alert — ${dateLabel}`,
+            `Spinzy AI cost alert -- ${dateLabel}`,
             `Sessions: ${sessions}`,
             `Total cost: $${totalCostUsd.toFixed(4)} (₹${(totalCostUsd * USD_TO_INR).toFixed(2)})`,
             `Cost per session: $${costPerSession.toFixed(5)} (₹${costInr})`,

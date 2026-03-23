@@ -1,5 +1,5 @@
 /*
- * Worker index — explicit registry and safe re-exports.
+ * Worker index -- explicit registry and safe re-exports.
  * - Does NOT start any background loops on import.
  * - Exports factories and handlers for the bootstrap entrypoint.
  */

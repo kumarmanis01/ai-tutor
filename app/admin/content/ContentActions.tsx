@@ -80,7 +80,7 @@ function RowActions({ row }: { row: CoverageRow }) {
       setMsg(`Job created: ${data.jobId}`)
     } catch {
       setHydrateState('error')
-      setMsg('Network error — try again.')
+      setMsg('Network error -- try again.')
     }
   }
 
@@ -108,7 +108,7 @@ function RowActions({ row }: { row: CoverageRow }) {
       setMsg(data.message ?? 'Ingestion started.')
     } catch {
       setIngestState('error')
-      setMsg('Network error — try again.')
+      setMsg('Network error -- try again.')
     }
   }
 
@@ -120,14 +120,14 @@ function RowActions({ row }: { row: CoverageRow }) {
           disabled={hydrateState === 'loading'}
           className="min-h-[44px] min-w-[44px] px-3 py-1 rounded text-xs font-medium bg-[#534AB7] text-white hover:bg-[#3d3690] disabled:opacity-50 disabled:cursor-wait transition-colors"
         >
-          {hydrateState === 'loading' ? 'Queuing…' : hydrateState === 'done' ? '✓ Queued' : 'Generate Questions'}
+          {hydrateState === 'loading' ? 'Queuing...' : hydrateState === 'done' ? '✓ Queued' : 'Generate Questions'}
         </button>
         <button
           onClick={triggerIngest}
           disabled={ingestState === 'loading'}
           className="min-h-[44px] min-w-[44px] px-3 py-1 rounded text-xs font-medium bg-[#1D9E75] text-white hover:bg-[#157a5b] disabled:opacity-50 disabled:cursor-wait transition-colors"
         >
-          {ingestState === 'loading' ? 'Starting…' : ingestState === 'done' ? '✓ Started' : 'Ingest NCERT'}
+          {ingestState === 'loading' ? 'Starting...' : ingestState === 'done' ? '✓ Started' : 'Ingest NCERT'}
         </button>
       </div>
       {msg && (
@@ -205,7 +205,7 @@ export default function ContentTable({ rows }: { rows: CoverageRow[] }) {
                     )}
                   </div>
                 ) : (
-                  <span className="text-xs text-gray-400 dark:text-gray-500">—</span>
+                  <span className="text-xs text-gray-400 dark:text-gray-500">--</span>
                 )}
               </td>
               <td className="px-4 py-3">

@@ -5,7 +5,7 @@ export interface DistressResult {
   suggestedResponse: string
 }
 
-// ── Keyword categories — checked case-insensitively ──────────────────────────
+// ── Keyword categories -- checked case-insensitively ──────────────────────────
 
 const CRITICAL_PHRASES = [
   'want to disappear',
@@ -40,11 +40,11 @@ const LOW_PHRASES = [
 
 const CRITICAL_HIGH_RESPONSE =
   "I hear you, and I'm glad you're talking to me. What you're feeling matters. " +
-  "Please talk to someone you trust — a parent, teacher, or counsellor — about this. " +
+  "Please talk to someone you trust -- a parent, teacher, or counsellor -- about this. " +
   "You don't have to carry this alone. 💙"
 
 const MEDIUM_LOW_RESPONSE =
-  "It sounds like you're having a tough time. That's completely okay — " +
+  "It sounds like you're having a tough time. That's completely okay -- " +
   "learning is hard sometimes. Want to take a short break and come back to this?"
 
 const NO_RESPONSE = ''
@@ -53,7 +53,7 @@ const NO_RESPONSE = ''
 
 /**
  * Detects emotional distress signals in a student message.
- * Pure function — no I/O, never throws.
+ * Pure function -- no I/O, never throws.
  * Severity precedence: CRITICAL > HIGH > MEDIUM > LOW.
  */
 export function detectDistress(studentMessage: string): DistressResult {

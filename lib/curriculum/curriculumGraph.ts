@@ -1,5 +1,5 @@
 /**
- * CurriculumGraph — Learning Intelligence layer
+ * CurriculumGraph -- Learning Intelligence layer
  *
  * Builds and exposes the curriculum as a directed prerequisite graph.
  * Nodes are TopicDef IDs. Edges represent "must be studied before" relationships
@@ -64,7 +64,7 @@ export interface CurriculumGraphSnapshot {
 
 /**
  * Load all active topics from Prisma and build the prerequisite graph.
- * Expensive — results are always cached.
+ * Expensive -- results are always cached.
  */
 async function buildGraph(): Promise<CurriculumGraphSnapshot> {
   const rawTopics = await prisma.topicDef.findMany({
@@ -180,7 +180,7 @@ async function buildGraph(): Promise<CurriculumGraphSnapshot> {
 
 // ─── Cache Helpers ────────────────────────────────────────────────────────────
 
-/** RISK-05: In-flight mutex — only one buildGraph at a time; others await. */
+/** RISK-05: In-flight mutex -- only one buildGraph at a time; others await. */
 let inFlightBuild: Promise<CurriculumGraphSnapshot> | null = null;
 
 async function loadFromCache(): Promise<CurriculumGraphSnapshot | null> {
@@ -211,7 +211,7 @@ async function storeInCache(snapshot: CurriculumGraphSnapshot): Promise<void> {
  * Return the full curriculum graph snapshot, loading from Redis cache when
  * available and rebuilding from Prisma on a cache miss.
  *
- * RISK-05: In-flight mutex — if a build is already running, concurrent
+ * RISK-05: In-flight mutex -- if a build is already running, concurrent
  * requests await the same result instead of triggering parallel builds.
  */
 export async function getCurriculumGraph(): Promise<CurriculumGraphSnapshot> {
@@ -286,7 +286,7 @@ function getTransitivePrerequisites(
  * Check whether all prerequisites for `topicId` are satisfied by the
  * provided set of mastered topic IDs (mastery >= threshold).
  *
- * GAP-04: Uses transitive prerequisite check — deep prerequisite chains
+ * GAP-04: Uses transitive prerequisite check -- deep prerequisite chains
  * are respected (e.g. A→B→C means A requires both B and C).
  */
 export function arePrerequisitesMet(
@@ -299,7 +299,7 @@ export function arePrerequisitesMet(
 }
 
 /**
- * Return all topic IDs that are unlocked for a student — meaning every one
+ * Return all topic IDs that are unlocked for a student -- meaning every one
  * of their prerequisites is in `completedTopicIds`.
  */
 export function getUnlockedTopics(

@@ -7,16 +7,16 @@
  *   session for the given topicId directly.
  *
  * ARCHITECTURE:
- * - Server component — resolves the param before any client JS runs.
+ * - Server component -- resolves the param before any client JS runs.
  * - Passes topicId, reasonLabel, estimatedTimeMin as props to SessionContainer
  *   (a "use client" component) rather than using useParams/useSearchParams.
  * - This replaces both the legacy [sessionId] redirect page and the
  *   [topicId] client-only page, eliminating the ambiguous-route conflict.
  *
  * URL shapes:
- *   /session/[topicId]                      — canonical
- *   /session/[topicId]?reason=...&time=8    — with recommendation context
- *   /session/[sessionId]                    — legacy: redirects to canonical
+ *   /session/[topicId]                      -- canonical
+ *   /session/[topicId]?reason=...&time=8    -- with recommendation context
+ *   /session/[sessionId]                    -- legacy: redirects to canonical
  *
  * EDIT LOG:
  * - 2026-03-08 | claude | created for Session Container Architecture
@@ -60,7 +60,7 @@ export default async function SessionPage({ params, searchParams }: Props) {
   ]);
 
   if (legacySession) {
-    // Legacy sessionId — redirect to the canonical topicId URL.
+    // Legacy sessionId -- redirect to the canonical topicId URL.
     // The diagnostic guard will run again on the redirected request.
     redirect(`/session/${legacySession.topicId}`);
   }

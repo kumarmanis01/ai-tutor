@@ -1,5 +1,5 @@
 /**
- * Session Analytics — fire-and-forget event recording for structured sessions.
+ * Session Analytics -- fire-and-forget event recording for structured sessions.
  *
  * Events are written asynchronously; failures are logged but never
  * propagated so they cannot break the session flow.
@@ -25,7 +25,7 @@ export interface SessionEventPayload {
 
 /**
  * Record a single session analytics event.
- * Runs fire-and-forget — the returned promise resolves even on failure.
+ * Runs fire-and-forget -- the returned promise resolves even on failure.
  */
 export async function recordSessionEvent(
   payload: SessionEventPayload,

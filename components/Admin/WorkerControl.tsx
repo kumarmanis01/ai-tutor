@@ -126,7 +126,7 @@ export default function WorkerControl() {
       </div>
       <div className="flex items-center gap-2 mb-4">
         <button disabled={loading} onClick={startWorker} className="bg-blue-600 text-white px-3 py-1 rounded">
-          {loading ? 'Starting…' : 'Start Worker'}
+          {loading ? 'Starting...' : 'Start Worker'}
         </button>
         <button onClick={fetchWorkers} className="px-3 py-1 border rounded">Refresh</button>
       </div>
@@ -158,9 +158,9 @@ export default function WorkerControl() {
                   <div className="text-xs text-gray-600">{w.status}</div>
                 </div>
                 <div className="text-xs text-gray-500">id: <code className="break-all">{w.id}</code></div>
-                <div className="text-xs text-gray-500">host: {w.host ?? '—'} • pid: {w.pid ?? '—'}</div>
-                <div className="text-xs text-gray-500">started: {w.startedAt ?? '—'}</div>
-                <div className="text-xs text-gray-500">lastHeartbeat: {w.lastHeartbeatAt ?? '—'}</div>
+                <div className="text-xs text-gray-500">host: {w.host ?? '--'} • pid: {w.pid ?? '--'}</div>
+                <div className="text-xs text-gray-500">started: {w.startedAt ?? '--'}</div>
+                <div className="text-xs text-gray-500">lastHeartbeat: {w.lastHeartbeatAt ?? '--'}</div>
               </div>
               <div className="flex items-center gap-2">
                 <button onClick={() => copyToClipboard(w.id)} className="px-2 py-1 border rounded text-sm">Copy ID</button>
@@ -169,7 +169,7 @@ export default function WorkerControl() {
                   disabled={stoppingIds.includes(w.id)}
                   className="px-2 py-1 bg-red-600 text-white rounded text-sm disabled:opacity-50"
                 >
-                  {stoppingIds.includes(w.id) ? 'Stopping…' : 'Stop'}
+                  {stoppingIds.includes(w.id) ? 'Stopping...' : 'Stop'}
                 </button>
               </div>
             </div>
@@ -206,7 +206,7 @@ export default function WorkerControl() {
                 disabled={confirmLoading}
                 className="px-3 py-1 bg-red-600 text-white rounded"
               >
-                {confirmLoading ? 'Stopping…' : 'Confirm Stop'}
+                {confirmLoading ? 'Stopping...' : 'Confirm Stop'}
               </button>
             </div>
           </div>

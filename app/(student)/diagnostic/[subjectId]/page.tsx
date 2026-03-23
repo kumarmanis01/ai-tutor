@@ -1,5 +1,5 @@
 /**
- * Diagnostic test page — full-screen, no navbar.
+ * Diagnostic test page -- full-screen, no navbar.
  *
  * Fetches questions via generateSubjectDiagnosticTest (board + grade + subject slug),
  * resumes partial state from Redis, then renders DiagnosticFlow.
@@ -30,7 +30,7 @@ export default async function DiagnosticPage({
   const userId = (authSession.user as { id: string }).id;
   const { subjectId } = params;
 
-  // Fetch student profile — need board slug, grade, language for question generation
+  // Fetch student profile -- need board slug, grade, language for question generation
   const student = await prisma.user.findUnique({
     where: { id: userId },
     select: { board: true, grade: true, language: true },
@@ -62,7 +62,7 @@ export default async function DiagnosticPage({
 
   if (!subjectDef) redirect('/dashboard');
 
-  // Content gate — syllabus must have been hydrated (SyllabusWorker writes TopicDef first).
+  // Content gate -- syllabus must have been hydrated (SyllabusWorker writes TopicDef first).
   // Questions are lazy-promoted from GeneratedQuestion on first session use, so we gate
   // on TopicDef presence, not the Question table which starts empty.
   const topicCount = await prisma.topicDef.count({

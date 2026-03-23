@@ -2,7 +2,7 @@
  * POST /api/push/subscribe
  *
  * Stores a Web Push API subscription for the authenticated user.
- * Infrastructure only — actual push sending is a post-MVP feature.
+ * Infrastructure only -- actual push sending is a post-MVP feature.
  *
  * Body: { subscription: PushSubscription }
  * Response: { subscribed: true }

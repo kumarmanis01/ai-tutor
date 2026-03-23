@@ -252,7 +252,7 @@ function ContentDetailPanel({
                     <div className="text-sm text-gray-600 dark:text-gray-400">
                       <span className="font-medium">Answer:</span>{' '}
                       {typeof q.answer === 'object' && q.answer !== null && 'correct' in (q.answer as any)
-                        ? `${(q.answer as any).correct}${(q.answer as any).explanation ? ` — ${(q.answer as any).explanation}` : ''}`
+                        ? `${(q.answer as any).correct}${(q.answer as any).explanation ? ` -- ${(q.answer as any).explanation}` : ''}`
                         : Array.isArray(q.answer) ? q.answer.join(', ') : String(q.answer)}
                     </div>
                   </div>

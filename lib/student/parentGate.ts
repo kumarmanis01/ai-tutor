@@ -19,7 +19,7 @@ function requiresGateByAge(age: number | null | undefined): boolean {
  * Required when: User.age indicates age < 18, OR User.requiresParentVerification = true.
  * Verified when: User.parentVerifiedAt is non-null.
  * Null/unknown age = no age-based gate (no DOB-style ambiguity).
- * Never throws — returns { required: true, verified: false } on DB error.
+ * Never throws -- returns { required: true, verified: false } on DB error.
  */
 export async function checkParentGate(studentId: string): Promise<ParentGateResult> {
   const fallback: ParentGateResult = { required: true, verified: false, parentEmail: null }

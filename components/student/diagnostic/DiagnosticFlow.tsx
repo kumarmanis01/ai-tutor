@@ -1,12 +1,12 @@
 'use client';
 
 /**
- * DiagnosticFlow — v2 full-screen diagnostic test component
+ * DiagnosticFlow -- v2 full-screen diagnostic test component
  *
  * Renders as a fixed overlay (z-[100]) covering the StudentNav.
  * Two phases:
- *   1. Active quiz  — one question at a time, 30-min countdown timer
- *   2. Results view — knowledge map (no numeric score, colour bands only)
+ *   1. Active quiz  -- one question at a time, 30-min countdown timer
+ *   2. Results view -- knowledge map (no numeric score, colour bands only)
  *
  * Supports:
  *   - Resume from partial Redis state (initialAnswers / initialIndex)
@@ -123,7 +123,7 @@ function computeChapterResults(
     results.push({ chapterId, chapterName: stat.chapterName, avgMastery, questionCount: total });
   }
 
-  // Sort by mastery ascending (weakest first — "Start here" = first)
+  // Sort by mastery ascending (weakest first -- "Start here" = first)
   results.sort((a, b) => a.avgMastery - b.avgMastery);
   return results;
 }
@@ -160,7 +160,7 @@ function AbandonDialog({
           Leave the diagnostic?
         </h2>
         <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">
-          Your progress is saved for 24 hours — you can pick up where you left off.
+          Your progress is saved for 24 hours -- you can pick up where you left off.
         </p>
         <div className="flex flex-col gap-3">
           <button
@@ -169,7 +169,7 @@ function AbandonDialog({
             disabled={busy}
             className="flex w-full min-h-[44px] items-center justify-center rounded-xl bg-[#534AB7] text-white text-sm font-semibold hover:bg-[#4840a3] disabled:opacity-60 transition-colors"
           >
-            {busy ? 'Saving…' : 'Save progress and leave'}
+            {busy ? 'Saving...' : 'Save progress and leave'}
           </button>
           <button
             type="button"
@@ -177,7 +177,7 @@ function AbandonDialog({
             disabled={busy}
             className="flex w-full min-h-[44px] items-center justify-center rounded-xl border border-[#E24B4A] text-[#E24B4A] text-sm font-medium hover:bg-[#FCEBEB] dark:hover:bg-[#E24B4A]/10 disabled:opacity-50 transition-colors"
           >
-            Abandon — progress will be lost
+            Abandon -- progress will be lost
           </button>
           <button
             type="button"
@@ -217,7 +217,7 @@ function KnowledgeMapResults({
             Your knowledge map
           </h1>
           <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-            Here&apos;s where you stand in {subjectName} — no score, just your starting point.
+            Here&apos;s where you stand in {subjectName} -- no score, just your starting point.
           </p>
         </div>
 
@@ -232,7 +232,7 @@ function KnowledgeMapResults({
                 {startHere.chapterName}
               </p>
               <p className="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
-                This chapter needs the most attention — Teacher Vidya will start here.
+                This chapter needs the most attention -- Teacher Vidya will start here.
               </p>
             </div>
           </div>
@@ -426,7 +426,7 @@ export default function DiagnosticFlow({
       setSelectedOption('');
       questionStartRef.current = Date.now();
     } else {
-      // Last question — submit
+      // Last question -- submit
       submitDiagnostic(updatedAnswers);
     }
   }
@@ -472,7 +472,7 @@ export default function DiagnosticFlow({
         />
       )}
 
-      {/* Full-screen overlay — covers StudentNav */}
+      {/* Full-screen overlay -- covers StudentNav */}
       <div className="fixed inset-0 z-[100] flex flex-col bg-white dark:bg-slate-950 overflow-y-auto">
 
         {/* ── Top bar ──────────────────────────────────────────────────────── */}
@@ -519,7 +519,7 @@ export default function DiagnosticFlow({
               </svg>
               {formatTime(secondsLeft)}
               {isAmber && (
-                <span className="text-xs font-normal ml-1 text-[#BA7517]">— finishing soon</span>
+                <span className="text-xs font-normal ml-1 text-[#BA7517]">-- finishing soon</span>
               )}
             </div>
           </div>
@@ -597,7 +597,7 @@ export default function DiagnosticFlow({
                 >
                   <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
                 </svg>
-                Submitting…
+                Submitting...
               </>
             ) : isLast ? (
               'Submit diagnostic →'

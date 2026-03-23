@@ -94,7 +94,7 @@ export default function SessionRatingModal(props: { sessionId: string; onClose: 
             disabled={!canSubmit}
             className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm disabled:cursor-not-allowed disabled:bg-gray-300"
           >
-            {submitting ? 'Submitting…' : 'Submit'}
+            {submitting ? 'Submitting...' : 'Submit'}
           </button>
         </div>
       </div>

@@ -17,7 +17,7 @@ type Props = {
 export default function ShareBadge({ badgeId, title, description, url }: Props) {
   const [loading, setLoading] = useState(false);
 
-  const shareTextBase = `${title}${description ? ` — ${description}` : ''}`;
+  const shareTextBase = `${title}${description ? ` -- ${description}` : ''}`;
 
   const recordAndGetShareUrl = async (): Promise<string> => {
     setLoading(true);
@@ -49,7 +49,7 @@ export default function ShareBadge({ badgeId, title, description, url }: Props) 
         await navigator.share({ title: 'Spinzy Achievement', text, url: shareUrl });
         return;
       } catch {
-        // user cancelled or share failed — fallback below
+        // user cancelled or share failed -- fallback below
       }
     }
     const twitter = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`;

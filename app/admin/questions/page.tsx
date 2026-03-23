@@ -51,7 +51,7 @@ export default function QuestionsPage() {
       })
       if (res.ok) {
         setQuestions((prev) => prev.filter((q) => q.id !== id))
-        setToast(`Question ${status === 'ACTIVE' ? 'approved' : 'rejected'}: ${id.slice(0, 8)}…`)
+        setToast(`Question ${status === 'ACTIVE' ? 'approved' : 'rejected'}: ${id.slice(0, 8)}...`)
         setTimeout(() => setToast(null), 3000)
       }
     } finally {
@@ -59,7 +59,7 @@ export default function QuestionsPage() {
     }
   }
 
-  if (loading) return <p className="p-6 text-gray-500">Loading quarantined questions…</p>
+  if (loading) return <p className="p-6 text-gray-500">Loading quarantined questions...</p>
   if (error) return <p className="p-6 text-red-600">Error: {error}</p>
 
   return (
@@ -71,7 +71,7 @@ export default function QuestionsPage() {
       )}
       <h1 className="text-2xl font-bold mb-6">Quarantined Questions</h1>
       {!questions.length ? (
-        <p className="text-green-600">No quarantined questions — queue is clean ✓</p>
+        <p className="text-green-600">No quarantined questions -- queue is clean ✓</p>
       ) : (
         <table className="w-full text-sm border-collapse">
           <thead>
@@ -85,9 +85,9 @@ export default function QuestionsPage() {
           <tbody>
             {questions.map((q) => (
               <tr key={q.id} className="border-b border-gray-100 hover:bg-gray-50">
-                <td className="py-2 pr-4 text-gray-600">{q.topic?.name ?? q.subject ?? '—'}</td>
+                <td className="py-2 pr-4 text-gray-600">{q.topic?.name ?? q.subject ?? '--'}</td>
                 <td className="py-2 pr-4 text-gray-900 max-w-sm">
-                  <span title={q.prompt}>{q.prompt.slice(0, 80)}{q.prompt.length > 80 ? '…' : ''}</span>
+                  <span title={q.prompt}>{q.prompt.slice(0, 80)}{q.prompt.length > 80 ? '...' : ''}</span>
                 </td>
                 <td className="py-2 pr-4 text-center">
                   <span className="inline-block px-2 py-0.5 bg-red-100 text-red-700 rounded-full text-xs font-medium">

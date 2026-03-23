@@ -439,10 +439,10 @@ function FailedJobsPanel({
   const parsedReason = (lastError: string | null) => {
     if (!lastError) return null;
     const lower = lastError.toLowerCase();
-    if (lower.includes('llm_timeout')) return 'LLM request timed out – likely provider or network slowness.';
+    if (lower.includes('llm_timeout')) return 'LLM request timed out - likely provider or network slowness.';
     if (lower.includes('prompt_too_large')) return 'Prompt exceeded maximum allowed size. Check topic content limits.';
     if (lower.includes('validation_failed') || lower.includes('semantic_weakness')) {
-      return 'Output failed schema/semantic validation – review content and prompts.';
+      return 'Output failed schema/semantic validation - review content and prompts.';
     }
     return null;
   };

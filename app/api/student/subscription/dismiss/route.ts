@@ -1,9 +1,9 @@
 /**
- * GET  /api/student/subscription/dismiss — check if student dismissed the upgrade gate
- * POST /api/student/subscription/dismiss — record dismissal (TTL 24 h)
+ * GET  /api/student/subscription/dismiss -- check if student dismissed the upgrade gate
+ * POST /api/student/subscription/dismiss -- record dismissal (TTL 24 h)
  *
  * Redis key: upgrade:dismissed:{studentId}  TTL 86400 s
- * Auth: session required — 401 before any DB/Redis query.
+ * Auth: session required -- 401 before any DB/Redis query.
  */
 
 import { NextResponse } from 'next/server';
@@ -52,7 +52,7 @@ export async function POST() {
     return NextResponse.json({ ok: true }, { status: 200 });
   } catch (err) {
     logger.error('Dismiss POST failed', { event: 'subscription.dismiss.post_error', context: { userId }, err });
-    // Gracefully succeed even if Redis is down — dismiss is UX-only
+    // Gracefully succeed even if Redis is down -- dismiss is UX-only
     return NextResponse.json({ ok: true }, { status: 200 });
   }
 }

@@ -102,13 +102,13 @@ export default function AdminHome() {
                         {job.id}
                       </Link>
                     </td>
-                    <td className="py-2 pr-4">{job.jobType ?? '—'}</td>
+                    <td className="py-2 pr-4">{job.jobType ?? '--'}</td>
                     <td className="py-2 pr-4">
                       {job.entityType}
-                      {job.entityId ? ` (${String(job.entityId).slice(0, 8)}…)` : ''}
+                      {job.entityId ? ` (${String(job.entityId).slice(0, 8)}...)` : ''}
                     </td>
                     <td className="py-2 pr-4 text-gray-500 dark:text-gray-400">
-                      {job.createdAt ? new Date(job.createdAt).toLocaleString() : '—'}
+                      {job.createdAt ? new Date(job.createdAt).toLocaleString() : '--'}
                     </td>
                     <td className="py-2">
                       <Link

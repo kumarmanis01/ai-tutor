@@ -26,7 +26,7 @@ export default function TriggerButton({ suggestionId, targetType, targetId }: { 
   return (
     <div>
       <button onClick={handleTrigger} disabled={loading} style={{ padding: '8px 12px' }}>
-        {loading ? 'Triggering…' : 'Trigger Job'}
+        {loading ? 'Triggering...' : 'Trigger Job'}
       </button>
       {result && <div style={{ marginTop: 8 }}>{result}</div>}
     </div>

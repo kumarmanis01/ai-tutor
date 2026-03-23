@@ -35,7 +35,7 @@ export async function POST(
     return NextResponse.json({ error: 'Question not found' }, { status: 404 })
   }
 
-  // Upsert — @@unique([questionId, studentId]) prevents duplicate flags
+  // Upsert -- @@unique([questionId, studentId]) prevents duplicate flags
   await prisma.sessionQuestionFlag.upsert({
     where: { questionId_studentId: { questionId, studentId: session.user.id } },
     create: { questionId, studentId: session.user.id, reason: reason as FlagReason, details: details ?? null },
@@ -44,7 +44,7 @@ export async function POST(
 
   const totalFlags = await prisma.sessionQuestionFlag.count({ where: { questionId } })
 
-  // Auto-quarantine at threshold — idempotent (may already be QUARANTINED)
+  // Auto-quarantine at threshold -- idempotent (may already be QUARANTINED)
   if (totalFlags >= AUTO_QUARANTINE_THRESHOLD && question.status === QuestionStatus.ACTIVE) {
     await prisma.$transaction([
       prisma.question.update({
