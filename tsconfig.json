@@ -39,7 +39,6 @@
     "lib/**/*.tsx",
     "worker/**/*.ts",
     "worker/**/*.tsx",
-    "scripts/**/*.ts",
     ".next/types/**/*.ts",
     ".next/dev/types/**/*.ts"
   ],
@@ -48,6 +47,7 @@
     ".next",
     "dist",
     "tests",
+    "scripts",
     "app",
     "public"
   ]

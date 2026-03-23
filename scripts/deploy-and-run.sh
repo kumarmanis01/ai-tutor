@@ -165,7 +165,7 @@ fi
 echo "✅ No smart quotes"
 
 step "5c — Pre-flight: TypeScript type check"
-npx tsc --noEmit
+npx tsc --noEmit --project tsconfig.json
 if [ $? -ne 0 ]; then
   echo "❌ TypeScript errors found. Fix before deploying."
   exit 1
