@@ -85,8 +85,59 @@ export async function handleSyllabusJob(jobId: string) {
   const subjectName = subjectRow?.name || job.subject || ''
   const language = job.language || 'en'
 
+  // ── Ground syllabus with NCERT content if available ──────────────────────
+  // CurriculumChunk stores subject as a lowercase slug (e.g. 'science').
+  // Normalise subjectName the same way the scraper does.
+  let ncertChapterHints: string[] | undefined
+  try {
+    const subjectSlug = subjectName.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')
+    const firstChunks = await prisma.curriculumChunk.findMany({
+      where: {
+        board: board.toUpperCase() || undefined,
+        subject: subjectSlug,
+        grade: String(grade),
+        conceptIds: { hasSome: ['chunkIndex:0'] },
+      },
+      select: { conceptIds: true, content: true },
+      orderBy: { createdAt: 'asc' },
+      take: 30,
+    })
+    if (firstChunks.length > 0) {
+      // Build ordered map: chapter number → opening text snippet (first 200 chars)
+      const chapterMap = new Map<number, string>()
+      for (const chunk of firstChunks) {
+        const chapterTag = chunk.conceptIds.find((t) => t.startsWith('chapter:'))
+        if (!chapterTag) continue
+        const chNum = parseInt(chapterTag.split(':')[1], 10)
+        if (!chapterMap.has(chNum)) {
+          chapterMap.set(chNum, (chunk.content ?? '').slice(0, 200).trim())
+        }
+      }
+      if (chapterMap.size > 0) {
+        ncertChapterHints = [...chapterMap.entries()]
+          .sort(([a], [b]) => a - b)
+          .map(([, hint]) => hint)
+        logger.info('[syllabusWorker] grounding prompt with NCERT chunks', {
+          event: 'ncert_grounding',
+          context: { jobId: job.id, subject: subjectSlug, grade, chaptersFound: ncertChapterHints.length },
+        })
+      }
+    } else {
+      logger.warn('[syllabusWorker] no NCERT chunks found — using GPT knowledge', {
+        event: 'ncert_grounding_fallback',
+        context: { jobId: job.id, subject: subjectSlug, grade },
+      })
+    }
+  } catch (err) {
+    // Non-fatal: fall back to GPT knowledge if chunk query fails
+    logger.warn('[syllabusWorker] CurriculumChunk query error — using GPT knowledge', {
+      event: 'ncert_grounding_error',
+      context: { jobId: job.id, error: String(err) },
+    })
+  }
+
   // Use prompt renderer for deterministic prompt and schemaHash
-  const rendered = renderTemplate('syllabus', { board, grade, subject: subjectName, language })
+  const rendered = renderTemplate('syllabus', { board, grade, subject: subjectName, language, ncertChapterHints })
   const prompt = rendered.prompt
   // Persist initial AIContentLog with schemaHash/version before LLM call
   let aiLog: any = null
