@@ -262,3 +262,25 @@ When a string contains an apostrophe (it's, don't, I'm etc.), use template liter
 - Never use 'import type' for Prisma enums -- use 'import'
 - Never use ${!var} for indirect bash expansion -- use eval pattern
 - Run 'npx tsc --noEmit --project tsconfig.json' before committing
+
+---
+
+## Pre-commit Checklist (automated via husky)
+Every commit automatically runs:
+1. python3 scripts/fix-smart-quotes.py  (auto-fixes, re-stages)
+2. npx tsc --noEmit --project tsconfig.json  (type check)
+
+## Deploy Pre-flight Checklist (deploy-and-run.sh)
+1. Required env vars present
+2. Smart quote verification (auto-fixes if any slipped through)
+3. TypeScript clean
+4. npm run build
+5. pm2 restart
+
+## Rules for Claude Code sessions
+Before ending ANY session:
+1. Run: python3 scripts/fix-smart-quotes.py
+2. Run: npx tsc --noEmit --project tsconfig.json
+3. Only then: git add -A && git commit
+
+This must be the LAST step of every task, not optional.
