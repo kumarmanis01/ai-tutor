@@ -234,3 +234,31 @@ Environment flags on VPS:
   ROLLOUT_PERCENTAGE=5
   LLM_MODE=real
   LLM_SAFE_MODE=true
+
+---
+
+## Code Quality Rules (enforced automatically)
+
+### Smart quotes + Unicode
+NEVER use Unicode smart quotes, em dashes, or ellipsis in .ts/.tsx/.cjs/.js files.
+Always use ASCII equivalents:
+
+  ' and ' -> '
+  " and " -> "
+  - (en dash) -> -
+  -- (em dash) -> --
+  ... (ellipsis) -> ...
+
+The pre-commit hook auto-fixes these. But to avoid the fix running, write correct ASCII in the first place.
+
+### String literals with apostrophes
+When a string contains an apostrophe (it's, don't, I'm etc.), use template literals or double quotes -- never single quotes:
+
+  BAD:  'It\'s working'
+  GOOD: `It's working`
+  GOOD: "It's working"
+
+### TypeScript
+- Never use 'import type' for Prisma enums -- use 'import'
+- Never use ${!var} for indirect bash expansion -- use eval pattern
+- Run 'npx tsc --noEmit --project tsconfig.json' before committing
