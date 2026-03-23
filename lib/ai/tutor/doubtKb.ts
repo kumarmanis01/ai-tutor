@@ -111,7 +111,7 @@ export async function lookupDoubt(
     const embeddingLiteral = `[${vec.join(',')}]`
 
     type Row = { id: string; answerText: string; similarity: number }
-    const rows = (await prisma.$queryRawUnsafe<Row[]>(
+    const rows = (await prisma.$queryRawUnsafe(
       `
       SELECT id, "answerText", 1 - (embedding <=> $1::vector) AS similarity
       FROM "DoubtKb"
@@ -125,7 +125,7 @@ export async function lookupDoubt(
       embeddingLiteral,
       subjectId,
       LOOKUP_THRESHOLD,
-    ))
+    )) as Row[]
 
     if (!rows.length) return null
 
@@ -166,7 +166,7 @@ export async function recordDoubt(
     const embeddingLiteral = `[${vec.join(',')}]`
 
     type Row = { id: string; alternatePhrasings: string[] }
-    const existing = (await prisma.$queryRawUnsafe<Row[]>(
+    const existing = (await prisma.$queryRawUnsafe(
       `
       SELECT id, "alternatePhrasings", 1 - (embedding <=> $1::vector) AS similarity
       FROM "DoubtKb"
@@ -179,7 +179,7 @@ export async function recordDoubt(
       embeddingLiteral,
       subjectId,
       DEDUP_THRESHOLD,
-    ))
+    )) as Row[]
 
     if (existing.length > 0) {
       const row = existing[0]

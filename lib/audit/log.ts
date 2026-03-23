@@ -1,5 +1,5 @@
 import { logger } from '@/lib/logger'
-import type { AdminActionType } from '@prisma/client'
+import { AdminActionType } from '@prisma/client'
 
 export type AuditEvent = {
   adminId?:      string | null          // who performed the action (null = system)
