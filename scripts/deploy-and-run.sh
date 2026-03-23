@@ -288,7 +288,8 @@ REQUIRED_VARS="DATABASE_URL REDIS_URL NEXTAUTH_SECRET NEXTAUTH_URL \
   OPENAI_API_KEY GOOGLE_CLIENT_ID GOOGLE_CLIENT_SECRET RESEND_API_KEY"
 MISSING=""
 for var in $REQUIRED_VARS; do
-  if [ -z "${!var}" ]; then
+  val=$(eval "echo \"\$$var\"")
+  if [ -z "$val" ]; then
     MISSING="$MISSING $var"
   fi
 done
