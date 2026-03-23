@@ -48,36 +48,21 @@ export async function GET(req: Request) {
       );
     }
 
-    // Resolve: Board (slug) → ClassLevel (grade) → SubjectDef (active)
-    const board = await prisma.board.findFirst({
-      where: {
-        slug: { equals: boardSlug, mode: 'insensitive' },
-        lifecycle: 'active',
-      },
-      select: { id: true },
-    });
-
-    if (!board) {
-      return NextResponse.json({ subjects: [] });
-    }
-
-    const classLevel = await prisma.classLevel.findFirst({
-      where: {
-        boardId: board.id,
-        grade,
-        lifecycle: 'active',
-      },
-      select: { id: true },
-    });
-
-    if (!classLevel) {
-      return NextResponse.json({ subjects: [] });
-    }
-
+    // Resolve Board → ClassLevel → SubjectDef in a single nested query.
+    // Using relation filters (class.board.slug) avoids the indeterminate findFirst
+    // on ClassLevel when multiple active ClassLevel rows exist for the same grade+board.
+    // Consistent with the subject validation pattern in /api/user/onboarding.
     const subjects = await prisma.subjectDef.findMany({
       where: {
-        classId: classLevel.id,
         lifecycle: 'active',
+        class: {
+          grade,
+          lifecycle: 'active',
+          board: {
+            slug: { equals: boardSlug, mode: 'insensitive' },
+            lifecycle: 'active',
+          },
+        },
       },
       select: {
         id: true,

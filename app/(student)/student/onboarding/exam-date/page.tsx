@@ -105,15 +105,12 @@ export default function ExamDatePage() {
         setError(json?.error ?? 'Something went wrong. Please try again.');
         return;
       }
-      // No-exam path always goes to dashboard -- diagnostic skipped.
-      // Exam path navigates to the diagnostic route if a firstSubjectId was returned.
-      if (!includeExamDate) {
-        router.push('/dashboard');
-        return;
-      }
+      // Both exam and no-exam paths go to diagnostic when subjects exist.
+      // Fallback to /dashboard only when generate-plan returns no firstSubjectId
+      // (i.e. student has no enrolled subjects at all).
       const firstSubjectId: string | null = json?.firstSubjectId ?? null;
       if (firstSubjectId) {
-        router.push(`/diagnostic/${encodeURIComponent(firstSubjectId)}`);
+        router.push(`/diagnostic/${firstSubjectId}`);
       } else {
         router.push('/dashboard');
       }
