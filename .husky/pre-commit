@@ -12,6 +12,10 @@ fi
 
 echo "Running lightweight local pre-commit checks (CI will run full pipeline)..."
 
+# Check for smart quotes in TS/TSX files (introduced by AI tools / editors)
+echo "Checking for smart quotes in TS/TSX files..."
+python3 scripts/fix-smart-quotes.py --check || { echo "Smart quotes found — run: npm run fix:quotes" && exit 1; }
+
 # Run only the quick ESLint rule tests (fast)
 echo "Running ESLint custom rule tests..."
 npm run test:eslint-rules || { echo "Custom ESLint rule tests failed" && exit 1; }

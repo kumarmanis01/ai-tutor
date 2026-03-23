@@ -53,6 +53,8 @@
     "lint:orig": "eslint . --max-warnings=0",
     "test:eslint-rules": "node ./eslint-rules/tests/run-rule-tests.cjs",
     "lint:fix": "eslint \"app/**\" \"components/**\" \"lib/**\" \"scripts/**\" \"src/**\" --fix",
+    "lint:quotes": "python3 scripts/fix-smart-quotes.py --check",
+    "fix:quotes": "python3 scripts/fix-smart-quotes.py",
     "format": "prettier --write \"src/**/*.ts\"",
     "format:orig": "prettier --write \"src/**/*.{ts,tsx,css,md,json}\"",
     "serve": "next start",
