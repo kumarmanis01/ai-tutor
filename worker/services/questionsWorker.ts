@@ -282,7 +282,8 @@ async function generateQuestionsForDifficulty(
   subjectName: string,
   language: LanguageCode,
   jobId?: string,
-  questionsCount?: number
+  questionsCount?: number,
+  ncertContext?: string
 ): Promise<{ parsed: any; llmResult: any } | null> {
   // Resolve validated question count -- enforces validation cap
   const count = getValidationQuestionCount(questionsCount);
@@ -303,6 +304,7 @@ async function generateQuestionsForDifficulty(
     subject: subjectName,
     difficulty,
     difficultyDescription: difficultyDescriptions[difficulty],
+    ncertContext,
   });
 
   // Persist initial AIContentLog with schemaHash and version for observability before calling LLM
@@ -430,6 +432,42 @@ export async function handleQuestionsJob(jobId: string): Promise<void> {
   const grade = topic.chapter.subject.class.grade;
   const subjectName = topic.chapter.subject.name;
 
+  // ── Ground questions in NCERT CurriculumChunk content when available ─────────
+  let ncertContext: string | undefined
+  try {
+    const subjectSlug = subjectName.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')
+    const chapterOrder = (topic.chapter as any).order ?? 0
+    if (chapterOrder > 0) {
+      const chunks = await prisma.curriculumChunk.findMany({
+        where: {
+          subject: subjectSlug,
+          grade: String(grade),
+          conceptIds: { hasSome: [`chapter:${chapterOrder}`] },
+        },
+        select: { content: true },
+        orderBy: { createdAt: 'asc' },
+        take: 8,
+      })
+      if (chunks.length > 0) {
+        ncertContext = chunks.map((c) => c.content ?? '').filter(Boolean).join('\n\n---\n\n')
+        logger.info('[questionsWorker] grounding questions with NCERT chunks', {
+          event: 'ncert_grounding',
+          context: { jobId: job.id, chapterOrder, subject: subjectSlug, grade, chunkCount: chunks.length },
+        })
+      } else {
+        logger.warn('[questionsWorker] no NCERT chunks for chapter — using GPT knowledge', {
+          event: 'ncert_grounding_fallback',
+          context: { jobId: job.id, chapterOrder, subject: subjectSlug, grade },
+        })
+      }
+    }
+  } catch (chunkErr) {
+    logger.warn('[questionsWorker] CurriculumChunk query failed — using GPT knowledge', {
+      event: 'ncert_grounding_error',
+      context: { jobId: job.id, error: String(chunkErr) },
+    })
+  }
+
   // Log processing started for linked ExecutionJob
   const linkedExecStart = await prisma.executionJob.findFirst({
     where: { payload: { path: ['hydrationJobId'], equals: job.id } }
@@ -473,7 +511,7 @@ export async function handleQuestionsJob(jobId: string): Promise<void> {
     if (existingApproved) {
       logger.info('handleQuestionsJob: existing approved questions found -- generating new version', { jobId, topicId, difficulty });
     }
-    const gen = await generateQuestionsForDifficulty(difficulty, topic, board, grade, subjectName, language, job.id, resolvedQuestionsCount);
+    const gen = await generateQuestionsForDifficulty(difficulty, topic, board, grade, subjectName, language, job.id, resolvedQuestionsCount, ncertContext);
     return { difficulty, existingApproved: existingApproved ?? null, parsed: gen?.parsed ?? null, llmResult: gen?.llmResult ?? null };
   };
 

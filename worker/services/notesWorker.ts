@@ -213,8 +213,44 @@ export async function handleNotesJob(jobId: string): Promise<void> {
 
   const _studentAge = grade + 5; // Approximate age based on grade (unused by design)
 
+  // ── Ground notes in NCERT CurriculumChunk content when available ─────────────
+  let ncertContext: string | undefined
+  try {
+    const subjectSlug = subjectName.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')
+    const chapterOrder = (topic.chapter as any).order ?? 0
+    if (chapterOrder > 0) {
+      const chunks = await prisma.curriculumChunk.findMany({
+        where: {
+          subject: subjectSlug,
+          grade: String(grade),
+          conceptIds: { hasSome: [`chapter:${chapterOrder}`] },
+        },
+        select: { content: true },
+        orderBy: { createdAt: 'asc' },
+        take: 8,
+      })
+      if (chunks.length > 0) {
+        ncertContext = chunks.map((c) => c.content ?? '').filter(Boolean).join('\n\n---\n\n')
+        logger.info('[notesWorker] grounding notes with NCERT chunks', {
+          event: 'ncert_grounding',
+          context: { jobId: job.id, chapterOrder, subject: subjectSlug, grade, chunkCount: chunks.length },
+        })
+      } else {
+        logger.warn('[notesWorker] no NCERT chunks for chapter — using GPT knowledge', {
+          event: 'ncert_grounding_fallback',
+          context: { jobId: job.id, chapterOrder, subject: subjectSlug, grade },
+        })
+      }
+    }
+  } catch (chunkErr) {
+    logger.warn('[notesWorker] CurriculumChunk query failed — using GPT knowledge', {
+      event: 'ncert_grounding_error',
+      context: { jobId: job.id, error: String(chunkErr) },
+    })
+  }
+
   // Use centralized prompt renderer to produce deterministic prompt and schema fingerprint
-  const rendered = renderTemplate('topic-notes', { topicName: topic.name, grade, maxWords: 400, language: language as any });
+  const rendered = renderTemplate('topic-notes', { topicName: topic.name, grade, maxWords: 400, language: language as any, ncertContext });
   const prompt = rendered.prompt
 
   // Always use next version number so new jobs create v1, v2, v3... (versioned content, never overwrite).

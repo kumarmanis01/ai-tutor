@@ -61,8 +61,14 @@ function RowActions({ row }: { row: CoverageRow }) {
   const [hydrateState, setHydrateState] = useState<'idle' | 'loading' | 'done' | 'error'>('idle')
   const [ingestState, setIngestState] = useState<'idle' | 'loading' | 'done' | 'error'>('idle')
   const [msg, setMsg] = useState<string | null>(null)
+  const [showNoChunksWarning, setShowNoChunksWarning] = useState(false)
 
   async function triggerHydrate() {
+    if (row.curriculumChunkCount === 0 && !showNoChunksWarning) {
+      setShowNoChunksWarning(true)
+      return
+    }
+    setShowNoChunksWarning(false)
     setHydrateState('loading')
     setMsg(null)
     try {
@@ -151,6 +157,27 @@ function RowActions({ row }: { row: CoverageRow }) {
           {ingestState === 'loading' ? 'Starting...' : ingestState === 'done' ? '✓ Started' : 'Ingest NCERT'}
         </button>
       </div>
+      {showNoChunksWarning && (
+        <div className="mt-1 rounded border border-[#BA7517] bg-[#FAEEDA] dark:bg-amber-900/30 dark:border-amber-600 p-2">
+          <p className="text-xs text-[#BA7517] dark:text-amber-300 font-medium">
+            No NCERT content ingested yet. Hydrating without NCERT grounding may produce inaccurate chapters. Ingest NCERT first for best results.
+          </p>
+          <div className="mt-1.5 flex gap-2">
+            <button
+              onClick={triggerHydrate}
+              className="min-h-[44px] min-w-[44px] px-3 py-1 rounded text-xs font-medium bg-[#534AB7] text-white hover:bg-[#3d3690] transition-colors"
+            >
+              Continue anyway
+            </button>
+            <button
+              onClick={() => setShowNoChunksWarning(false)}
+              className="min-h-[44px] min-w-[44px] px-3 py-1 rounded text-xs font-medium border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
       {msg && (
         <p
           className={`text-xs mt-0.5 ${hydrateState === 'error' || ingestState === 'error' ? 'text-red-600 dark:text-red-400' : 'text-gray-600 dark:text-gray-400'}`}

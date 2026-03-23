@@ -58,57 +58,54 @@ interface BookInfo {
  *
  * Grade 6 Science is now "Curiosity" (fecu1) — updated 2024.
  * Grade 6 Maths is now "Ganita Prakash" (fmth6) — updated 2024.
+ * Grades 1–5 and standalone Physics/Chemistry/Biology are out of MVP scope.
  */
 const NCERT_BOOK_MAP: Record<string, Record<number, BookInfo>> = {
+  science: {
+    6:  { code: 'fecu1',  chapters: 12 }, // Curiosity 2024
+    7:  { code: 'gesc1',  chapters: 18 },
+    8:  { code: 'hesc1',  chapters: 18 },
+    9:  { code: 'iesc1',  chapters: 15 },
+    10: { code: 'jesc1',  chapters: 16 },
+  },
   mathematics: {
-    1:  { code: 'emth1',  chapters: 13 },
-    2:  { code: 'emth2',  chapters: 15 },
-    3:  { code: 'emth3',  chapters: 14 },
-    4:  { code: 'emth4',  chapters: 14 },
-    5:  { code: 'emth5',  chapters: 14 },
-    6:  { code: 'fmth6',  chapters: 14 },  // Ganita Prakash (2024)
+    6:  { code: 'fmth6',  chapters: 10 }, // Ganita Prakash 2024
     7:  { code: 'gmt1',   chapters: 15 },
     8:  { code: 'hmth1',  chapters: 16 },
     9:  { code: 'iemh1',  chapters: 15 },
-    10: { code: 'jemh1',  chapters: 15 },  // ✓ verified
+    10: { code: 'jemh1',  chapters: 15 },
     11: { code: 'kemh1',  chapters: 16 },
     12: { code: 'lemh1',  chapters: 13 },
   },
-  science: {
-    6:  { code: 'fecu1',  chapters: 16 },  // Curiosity (2024 new book)
-    7:  { code: 'gesc1',  chapters: 18 },
-    8:  { code: 'hesc1',  chapters: 18 },
-    9:  { code: 'iesc1',  chapters: 15 },  // ✓ verified
-    10: { code: 'jesc1',  chapters: 16 },  // ✓ verified
-  },
   'social-science': {
-    6:  { code: 'fess1',  chapters: 12 },  // Exploring Society (2024)
+    6:  { code: 'fess1',  chapters: 9  }, // Exploring Society 2024
     7:  { code: 'gess1',  chapters: 10 },
     8:  { code: 'hess1',  chapters: 10 },
-    9:  { code: 'jess1',  chapters: 8 },
-    10: { code: 'jess2',  chapters: 8 },
+    9:  { code: 'jess1',  chapters: 8  },
+    10: { code: 'jess2',  chapters: 8  },
   },
-  physics: {
-    11: { code: 'keph1',  chapters: 15 },
-    12: { code: 'leph1',  chapters: 14 },
+  english: {
+    6:  { code: 'fehl1',  chapters: 10 }, // Poorvi 2024
+    7:  { code: 'gehl1',  chapters: 10 },
+    8:  { code: 'hehl1',  chapters: 10 },
+    9:  { code: 'ieel1',  chapters: 11 },
+    10: { code: 'jeel1',  chapters: 11 },
   },
-  chemistry: {
-    11: { code: 'kech1',  chapters: 14 },
-    12: { code: 'lech1',  chapters: 10 },
-  },
-  biology: {
-    11: { code: 'kebo1',  chapters: 22 },
-    12: { code: 'lebo1',  chapters: 16 },
+  hindi: {
+    6:  { code: 'fhhl1',  chapters: 17 }, // Vasant
+    7:  { code: 'ghhl1',  chapters: 20 },
+    8:  { code: 'hhhl1',  chapters: 18 },
+    9:  { code: 'ihhl1',  chapters: 19 },
+    10: { code: 'jhhl1',  chapters: 17 },
   },
 }
 
 const SUBJECT_ALIASES: Record<string, string> = {
-  mathematics:    'mathematics', math: 'mathematics', maths: 'mathematics',
-  science:        'science',
+  mathematics:      'mathematics', math: 'mathematics', maths: 'mathematics',
+  science:          'science',
   'social-science': 'social-science', sst: 'social-science', social: 'social-science',
-  physics:        'physics',
-  chemistry:      'chemistry',
-  biology:        'biology',
+  english:          'english',
+  hindi:            'hindi',
 }
 
 // ── Utilities ─────────────────────────────────────────────────────────────────

@@ -26,6 +26,9 @@ export type TopicQuestionsParams = {
   difficulty?: 'easy' | 'medium' | 'hard'
   /** Human-readable description of the difficulty level. */
   difficultyDescription?: string
+  /** Official NCERT chapter text from CurriculumChunk. When present questions must
+   *  test ONLY concepts explicitly stated in this content. */
+  ncertContext?: string
 }
 
 export function topicQuestionsPrompt(params: TopicQuestionsParams): string {
@@ -40,7 +43,11 @@ export function topicQuestionsPrompt(params: TopicQuestionsParams): string {
       ? `\nDifficulty: ${params.difficulty} — ${params.difficultyDescription}. All ${params.count} questions MUST be ${params.difficulty} level.`
       : ''
 
-  return `Role: educational question writer for grade ${params.grade}.
+  const ncertSection = params.ncertContext
+    ? `Official NCERT Textbook Content (generate questions based ONLY on concepts explicitly stated here):\n---\n${params.ncertContext}\n---\n\n`
+    : ''
+
+  return `${ncertSection}Role: educational question writer for grade ${params.grade}.
 
 Task: Generate exactly ${params.count} multiple-choice questions for topic "${params.topicName}" in ${lang}.${contextLine}${difficultyLine}
 
