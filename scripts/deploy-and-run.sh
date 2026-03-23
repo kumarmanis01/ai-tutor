@@ -153,6 +153,26 @@ rm -rf "${REPO_ROOT}/dist" || true
 echo "Removed .next/ and dist/"
 
 # ─────────────────────────────────────────────────────────────────────────────
+# 5b. PRE-FLIGHT CHECKS (fast — fail before spending time on a full build)
+# ─────────────────────────────────────────────────────────────────────────────
+step "5b — Pre-flight: smart quote check"
+python3 scripts/fix-smart-quotes.py --check
+if [ $? -ne 0 ]; then
+  echo "❌ Smart quotes found in source files."
+  echo "   Run: npm run fix:quotes — then commit before deploying."
+  exit 1
+fi
+echo "✅ No smart quotes"
+
+step "5c — Pre-flight: TypeScript type check"
+npx tsc --noEmit
+if [ $? -ne 0 ]; then
+  echo "❌ TypeScript errors found. Fix before deploying."
+  exit 1
+fi
+echo "✅ TypeScript clean"
+
+# ─────────────────────────────────────────────────────────────────────────────
 # 6. BUILD
 # ─────────────────────────────────────────────────────────────────────────────
 step "6/11 — Build workers"
