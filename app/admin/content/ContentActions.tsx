@@ -2,6 +2,17 @@
 
 import { useState } from 'react'
 
+export interface IngestRun {
+  id: string
+  runAt: string
+  fileSource: string | null
+  board: string | null
+  chunksCreated: number
+  embeddingsGenerated: number
+  errors: number
+  durationMs: number | null
+}
+
 interface CoverageRow {
   board: string
   boardSlug: string
@@ -112,15 +123,25 @@ function RowActions({ row }: { row: CoverageRow }) {
     }
   }
 
+  const isJobActive = ['pending', 'running', 'processing'].includes(
+    (row.latestJob?.status ?? '').toLowerCase(),
+  )
+
   return (
     <div className="flex flex-col gap-1 min-w-[200px]">
       <div className="flex gap-2">
         <button
           onClick={triggerHydrate}
-          disabled={hydrateState === 'loading'}
+          disabled={hydrateState === 'loading' || isJobActive}
           className="min-h-[44px] min-w-[44px] px-3 py-1 rounded text-xs font-medium bg-[#534AB7] text-white hover:bg-[#3d3690] disabled:opacity-50 disabled:cursor-wait transition-colors"
         >
-          {hydrateState === 'loading' ? 'Queuing...' : hydrateState === 'done' ? '✓ Queued' : 'Generate Questions'}
+          {isJobActive
+            ? 'In Progress...'
+            : hydrateState === 'loading'
+              ? 'Queuing...'
+              : hydrateState === 'done'
+                ? '✓ Queued'
+                : 'Generate Questions'}
         </button>
         <button
           onClick={triggerIngest}
@@ -137,6 +158,71 @@ function RowActions({ row }: { row: CoverageRow }) {
           {msg}
         </p>
       )}
+    </div>
+  )
+}
+
+export function RecentIngestRuns({ runs }: { runs: IngestRun[] }) {
+  if (runs.length === 0) {
+    return (
+      <p className="text-sm text-gray-500 dark:text-gray-400 py-4 text-center">
+        No ingestion runs yet. Use the &quot;Ingest NCERT&quot; buttons above to start.
+      </p>
+    )
+  }
+
+  return (
+    <div className="overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-700">
+      <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700 text-sm">
+        <thead className="bg-gray-50 dark:bg-gray-800">
+          <tr>
+            {['Run at', 'Source', 'Board', 'Chunks created', 'Embeddings', 'Errors', 'Duration'].map((h) => (
+              <th
+                key={h}
+                className="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wide whitespace-nowrap"
+              >
+                {h}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-gray-100 dark:divide-gray-800 bg-white dark:bg-gray-900">
+          {runs.map((run) => (
+            <tr key={run.id} className="hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
+              <td className="px-4 py-3 whitespace-nowrap text-gray-700 dark:text-gray-300 tabular-nums">
+                {new Date(run.runAt).toLocaleString('en-IN', {
+                  day: '2-digit',
+                  month: 'short',
+                  hour: '2-digit',
+                  minute: '2-digit',
+                })}
+              </td>
+              <td className="px-4 py-3 text-gray-700 dark:text-gray-300 max-w-[180px] truncate" title={run.fileSource ?? ''}>
+                {run.fileSource ?? '--'}
+              </td>
+              <td className="px-4 py-3 whitespace-nowrap text-gray-700 dark:text-gray-300">
+                {run.board ?? '--'}
+              </td>
+              <td className="px-4 py-3 whitespace-nowrap tabular-nums font-medium text-gray-900 dark:text-gray-100">
+                {run.chunksCreated}
+              </td>
+              <td className="px-4 py-3 whitespace-nowrap tabular-nums text-gray-700 dark:text-gray-300">
+                {run.embeddingsGenerated}
+              </td>
+              <td className="px-4 py-3 whitespace-nowrap tabular-nums">
+                {run.errors > 0 ? (
+                  <span className="text-[#E24B4A] dark:text-red-400 font-semibold">{run.errors}</span>
+                ) : (
+                  <span className="text-[#1D9E75] dark:text-green-400">0</span>
+                )}
+              </td>
+              <td className="px-4 py-3 whitespace-nowrap tabular-nums text-gray-500 dark:text-gray-400">
+                {run.durationMs != null ? `${(run.durationMs / 1000).toFixed(1)}s` : '--'}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   )
 }
@@ -180,8 +266,16 @@ export default function ContentTable({ rows }: { rows: CoverageRow[] }) {
               <td className="px-4 py-3 whitespace-nowrap">
                 <QuestionCountCell count={row.questionCount} />
               </td>
-              <td className="px-4 py-3 whitespace-nowrap tabular-nums text-gray-700 dark:text-gray-300">
-                {row.curriculumChunkCount}
+              <td className="px-4 py-3 whitespace-nowrap">
+                {row.curriculumChunkCount === 0 ? (
+                  <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-[#FCEBEB] text-[#E24B4A] dark:bg-red-900/40 dark:text-red-300">
+                    Not ingested
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-[#EAF3DE] text-[#1D9E75] dark:bg-green-900/40 dark:text-green-300">
+                    {row.curriculumChunkCount} chunks
+                  </span>
+                )}
               </td>
               <td className="px-4 py-3 whitespace-nowrap">
                 {row.latestJob ? (

@@ -6,7 +6,7 @@
  */
 import { getServerSessionForHandlers } from '@/lib/session'
 import { notFound } from 'next/navigation'
-import ContentTable from './ContentActions'
+import ContentTable, { RecentIngestRuns, type IngestRun } from './ContentActions'
 
 async function fetchCoverageRows() {
   const session = await getServerSessionForHandlers()
@@ -121,8 +121,35 @@ async function fetchCoverageRows() {
   }
 }
 
+async function fetchRecentIngestRuns(): Promise<IngestRun[]> {
+  const { prisma } = await import('@/lib/prisma')
+  try {
+    const runs = await prisma.ingestRunLog.findMany({
+      orderBy: { runAt: 'desc' },
+      take: 5,
+      select: {
+        id: true,
+        runAt: true,
+        fileSource: true,
+        board: true,
+        chunksCreated: true,
+        embeddingsGenerated: true,
+        errors: true,
+        durationMs: true,
+      },
+    })
+    return runs.map((r) => ({
+      ...r,
+      runAt: r.runAt.toISOString(),
+      durationMs: r.durationMs ?? null,
+    }))
+  } catch {
+    return []
+  }
+}
+
 export default async function ContentPage() {
-  const rows = await fetchCoverageRows()
+  const [rows, recentRuns] = await Promise.all([fetchCoverageRows(), fetchRecentIngestRuns()])
 
   return (
     <div>
@@ -134,6 +161,10 @@ export default async function ContentPage() {
         </p>
       </div>
       <ContentTable rows={rows} />
+      <div className="mt-10">
+        <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-3">Recent Ingestion Runs</h2>
+        <RecentIngestRuns runs={recentRuns} />
+      </div>
     </div>
   )
 }
