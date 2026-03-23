@@ -5,8 +5,14 @@
 # This runs BEFORE commit — fixes are included in the commit automatically
 python3 scripts/fix-smart-quotes.py
 
-# Re-stage any files that were auto-fixed
-git add -u
+# Re-stage any files the fixer modified on disk.
+# git diff --name-only = files that differ between index and working tree,
+# i.e. exactly the files fix-smart-quotes.py rewrote.
+# Works for both new files (git add -u misses these) and existing tracked files.
+FIXED=$(git diff --name-only)
+if [ -n "$FIXED" ]; then
+  echo "$FIXED" | xargs git add
+fi
 
 # Run typecheck on production code only
 npx tsc --noEmit --project tsconfig.json
