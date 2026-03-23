@@ -3,6 +3,4 @@ declare module '*.json' {
   export default value;
 }
 
-declare module 'nodemailer';
-
 declare module '@sentry/nextjs';

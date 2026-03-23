@@ -4,7 +4,7 @@ import { PrismaAdapter } from '@next-auth/prisma-adapter'; // Connects NextAuth 
 import GoogleProvider from 'next-auth/providers/google'; // Enables Google login/signup
 import EmailProvider from 'next-auth/providers/email'; // Enables email login/signup
 import { prisma } from '@/lib/prisma'; // Your Prisma database client
-import { getEmailTransporter } from '@/lib/mailer';
+import { sendMail } from '@/lib/mailer';
 import { logger } from '@/lib/logger';
 import { LanguageCode } from '@/lib/normalize';
 import { getServerSession } from 'next-auth/next';
@@ -51,13 +51,8 @@ export async function requireActiveSession() {
 
 // This function sends a welcome email to the user
 async function sendWelcomeEmail(to: string, name?: string) {
-  // Set up the email transporter using your SMTP credentials
-  const transporter = getEmailTransporter();
-
   try {
-    // Send the actual email
-    const info = await transporter.sendMail({
-      from: process.env.EMAIL_FROM_NOREPLY,
+    await sendMail({
       to,
       subject: 'Welcome to Spinzy Academy!',
       html: `
@@ -68,11 +63,11 @@ async function sendWelcomeEmail(to: string, name?: string) {
             At Spinzy Academy, your curiosity and growth are at the heart of everything we do.
           </p>
           <p>
-            <strong>What’s next?</strong><br>
+            <strong>What's next?</strong><br>
             Explore our resources, ask questions, and connect with fellow learners. Your journey to mastering new skills starts now!
           </p>
           <p>
-            If you ever need help or just want to say hello, reply to this email or reach out to our friendly support team. We’re here for you!
+            If you ever need help or just want to say hello, reply to this email or reach out to our friendly support team. We're here for you!
           </p>
           <br>
           <p>
@@ -83,10 +78,8 @@ async function sendWelcomeEmail(to: string, name?: string) {
         </div>
       `,
     });
-    // Log success info
-    logger.add(`Welcome email sent: ${JSON.stringify(info)}`, { className: 'auth', methodName: 'sendWelcomeEmail' });
+    logger.add('Welcome email sent', { className: 'auth', methodName: 'sendWelcomeEmail' });
   } catch (error) {
-    // Log any errors via logger
     logger.error('Failed to send welcome email', { className: 'auth', methodName: 'sendWelcomeEmail', error: String(error) });
   }
 }
@@ -119,24 +112,22 @@ export const authOptions: any = {
       clientId: process.env.GOOGLE_CLIENT_ID!,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
     }),
-    // Enable email login/signup
+    // Enable email magic-link login via Resend
     EmailProvider({
-      // Use explicit SMTP object so NextAuth uses the same SMTP config
-      // as `lib/mailer.ts` (host/port/user/password). This avoids relying
-      // on a single `EMAIL_SERVER` URL and keeps configuration explicit.
-      server: {
-        host: process.env.EMAIL_SERVER_HOST,
-        port: Number(process.env.EMAIL_SERVER_PORT),
-        auth: {
-          user: process.env.EMAIL_SERVER_USER,
-          pass: process.env.EMAIL_SERVER_PASSWORD,
-        },
-        secure: true,
+      from: process.env.EMAIL_FROM ?? 'Spinzy Academy <no-reply@spinzyacademy.com>',
+      sendVerificationRequest: async ({ identifier, url }) => {
+        await sendMail({
+          to: identifier,
+          subject: 'Sign in to Spinzy Academy',
+          html: `<div style="font-family:Arial,sans-serif;color:#222;max-width:480px">
+            <h2 style="color:#534AB7">Sign in to Spinzy Academy</h2>
+            <p>Click the button below to sign in. This link expires in 24 hours.</p>
+            <p><a href="${url}" style="display:inline-block;padding:12px 24px;background:#534AB7;color:#fff;text-decoration:none;border-radius:8px;font-weight:bold">Sign in</a></p>
+            <p style="color:#888;font-size:12px">If you did not request this, you can safely ignore this email.</p>
+          </div>`,
+          text: `Sign in to Spinzy Academy: ${url}\n\nThis link expires in 24 hours.`,
+        });
       },
-      from:
-        process.env.EMAIL_FROM_NOREPLY ||
-        process.env.EMAIL_FROM ||
-        `"Spinzy Academy" <${process.env.EMAIL_SERVER_USER}>`,
     }),
     /*
       Phone OTP credentials provider (commented out)

@@ -1,52 +1,64 @@
-import nodemailer from 'nodemailer';
-import { logger } from '@/lib/logger';
+/**
+ * lib/mailer.ts
+ * All transactional email via Resend (https://resend.com)
+ *
+ * Required env vars:
+ *   RESEND_API_KEY=re_xxxx   (from Resend dashboard)
+ *   EMAIL_FROM=Spinzy Academy <no-reply@spinzyacademy.com>
+ *
+ * Domain spinzyacademy.com must be verified in Resend dashboard.
+ * Free tier: 3,000 emails/month, 100/day.
+ */
+import { Resend } from 'resend';
 
-export function getEmailTransporter() {
-  return nodemailer.createTransport({
-    host: process.env.EMAIL_SERVER_HOST,
-    port: Number(process.env.EMAIL_SERVER_PORT),
-    secure: true,
-    requireTLS: true,
-    tls: { ciphers: 'SSLv3' },
-    auth: {
-      user: process.env.EMAIL_SERVER_USER,
-      pass: process.env.EMAIL_SERVER_PASSWORD,
-    },
-    debug: true,
-  });
+// Lazy singleton — avoids throwing at module load time when RESEND_API_KEY
+// is absent (e.g. in test environments or during Next.js build).
+let _resend: Resend | null = null;
+function getResend(): Resend {
+  if (!_resend) {
+    _resend = new Resend(process.env.RESEND_API_KEY);
+  }
+  return _resend;
 }
 
-export async function sendEmail({
-  to,
-  subject,
-  html,
-  text,
-  from,
-}: {
-  to: string;
+export interface MailOptions {
+  to: string | string[];
   subject: string;
-  html?: string;
+  html: string;
   text?: string;
-  from?: string;
-}) {
-  const transporter = getEmailTransporter();
-  try {
-    // Send the actual email
-    const info = await transporter.sendMail({
-      from:
-        from ||
-        process.env.EMAIL_FROM_NOREPLY ||
-        `"Spinzy Academy" <${process.env.EMAIL_SERVER_USER}>`,
-      to,
-      subject,
-      html,
-      text,
+  replyTo?: string;
+}
+
+export async function sendMail(opts: MailOptions): Promise<void> {
+  const from = process.env.EMAIL_FROM ?? 'Spinzy Academy <no-reply@spinzyacademy.com>';
+  const { error } = await getResend().emails.send({
+    from,
+    to: Array.isArray(opts.to) ? opts.to : [opts.to],
+    subject: opts.subject,
+    html: opts.html,
+    text: opts.text,
+    replyTo: opts.replyTo,
+  });
+  if (error) {
+    console.error('[mailer] Resend error:', {
+      code: error.name,
+      message: error.message,
+      to: opts.to,
+      subject: opts.subject,
     });
-    // Log success info using central logger
-    logger.add(`Email sent: ${JSON.stringify(info)}`, { className: 'mailer', methodName: 'sendEmail' });
-  } catch (error) {
-    // Log any errors using central logger
-    logger.add(`Failed to send email: ${String(error)}`, { className: 'mailer', methodName: 'sendEmail' });
-    throw error; // Re-throw to let caller handle it
+    throw new Error(`Email send failed: ${error.message}`);
   }
 }
+
+// Convenience: fire-and-forget for non-critical emails.
+// Logs error but never throws — safe to use in workers.
+export async function sendMailSafe(opts: MailOptions): Promise<void> {
+  try {
+    await sendMail(opts);
+  } catch (err) {
+    console.error('[mailer] sendMailSafe suppressed error:', err);
+  }
+}
+
+// Alias kept for backwards compatibility with existing call sites.
+export const sendEmail = sendMail;
