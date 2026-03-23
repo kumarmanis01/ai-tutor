@@ -45,7 +45,7 @@ async function main() {
 
       for (const subject of subjects) {
         const chapters = await prisma.chapterDef.findMany({ where: { subjectId: subject.id }, orderBy: { order: 'asc' } });
-        console.log(`    Subject: ${subject.name} — Chapters: ${chapters.length}`);
+        console.log(`    Subject: ${subject.name} -- Chapters: ${chapters.length}`);
         if (chapters.length < 2) console.warn(`      WARN: Subject ${subject.name} has <2 chapters (${chapters.length})`);
         if (chapters.length === 0) {
           fatal = true;
@@ -54,7 +54,7 @@ async function main() {
 
         for (const chapter of chapters) {
           const topics = await prisma.topicDef.findMany({ where: { chapterId: chapter.id }, orderBy: [{ order: 'asc' }] });
-          console.log(`      Chapter: ${chapter.name} — Topics: ${topics.length}`);
+          console.log(`      Chapter: ${chapter.name} -- Topics: ${topics.length}`);
           if (topics.length < 5) console.warn(`        WARN: Chapter ${chapter.name} has <5 topics (${topics.length})`);
           if (topics.length === 0) {
             fatal = true;
@@ -65,7 +65,7 @@ async function main() {
           for (const topic of topics) {
             const qCount = await prisma.question.count({ where: { topicId: topic.id } });
             const genCount = await prisma.generatedTest.count({ where: { topicId: topic.id } }).catch(() => 0);
-            console.log(`        Topic: ${topic.name} — Questions: ${qCount} — GeneratedTests: ${genCount}`);
+            console.log(`        Topic: ${topic.name} -- Questions: ${qCount} -- GeneratedTests: ${genCount}`);
             if (qCount < 5) console.warn(`          WARN: Topic ${topic.name} has <5 questions (${qCount})`);
             if (genCount === 0) console.warn(`          WARN: Topic ${topic.name} is missing GeneratedTest`);
             if (qCount === 0) {
@@ -85,7 +85,7 @@ async function main() {
     process.exit(1);
   }
 
-  console.log('\nAudit completed — no fatal issues detected.');
+  console.log('\nAudit completed -- no fatal issues detected.');
   process.exit(0);
 }
 

@@ -97,7 +97,7 @@ async function main() {
 
   await generateAvatar();
 
-  console.log('\nDone — all icons written to public/icons/');
+  console.log('\nDone -- all icons written to public/icons/');
 }
 
 main().catch((err) => {

@@ -98,7 +98,7 @@ async function findBadSessions() {
 }
 
 (async function main() {
-  console.log('Failure injection test starting — requests=', REQUESTS);
+  console.log('Failure injection test starting -- requests=', REQUESTS);
   try {
     // create a test user
     const testEmail = `failure-inject-${Date.now()}@example.com`;

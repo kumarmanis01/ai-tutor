@@ -9,7 +9,7 @@ require('dotenv').config({
 /**
  * seed-taxonomy.cjs
  *
- * Seeds structural taxonomy only — no content, no questions, no chunks.
+ * Seeds structural taxonomy only -- no content, no questions, no chunks.
  * Safe to run on production: all operations are upsert-based (idempotent).
  * Existing SubjectDef slugs are never renamed.
  *
@@ -26,7 +26,7 @@ const BOARDS = [
   { name: 'ICSE', slug: 'icse', description: 'Indian Certificate of Secondary Education' },
 ];
 
-// Applied to BOTH boards for all grades 1–12.
+// Applied to BOTH boards for all grades 1-12.
 const SUBJECT_MATRIX = {
   '1-5':  ['English', 'Hindi', 'Mathematics', 'Environmental Studies'],
   '6-8':  ['English', 'Hindi', 'Mathematics', 'Science', 'Social Science'],
@@ -70,7 +70,7 @@ async function seedClassLevels() {
         create: { boardId: board.id, grade, slug: `grade-${grade}` },
       });
     }
-    console.log(`[seed-taxonomy]   ${board.name}: grades 1–12 ✓`);
+    console.log(`[seed-taxonomy]   ${board.name}: grades 1-12 ✓`);
   }
 }
 
@@ -83,7 +83,7 @@ async function seedSubjectDefs() {
   for (const cl of classLevels) {
     const subjects = SUBJECT_MATRIX[gradeRange(cl.grade)];
     for (const name of subjects) {
-      // Preserve existing slug — never rename a SubjectDef in production.
+      // Preserve existing slug -- never rename a SubjectDef in production.
       const existing = await prisma.subjectDef.findFirst({
         where: { classId: cl.id, name },
         select: { slug: true },

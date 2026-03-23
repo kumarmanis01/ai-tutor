@@ -13,11 +13,11 @@ require('./bootstrap-env.cjs');
  * and cleanup.
  *
  * Five scenarios:
- *   1. FRESH    — no mastery, no sessions → next_new_topic
- *   2. WEAK     — mastery accuracy=0.3 + AttentionFlag → low_mastery
- *   3. ACTIVE   — open LearningSession → resume_session
- *   4. MULTI    — 5 topics sequentially: lesson → practice → next topic (no regression)
- *   5. PIPELINE — full HTTP: next-action → complete-action → submit → next-action
+ *   1. FRESH    -- no mastery, no sessions → next_new_topic
+ *   2. WEAK     -- mastery accuracy=0.3 + AttentionFlag → low_mastery
+ *   3. ACTIVE   -- open LearningSession → resume_session
+ *   4. MULTI    -- 5 topics sequentially: lesson → practice → next topic (no regression)
+ *   5. PIPELINE -- full HTTP: next-action → complete-action → submit → next-action
  *                 verifies updateTopicMastery uses canonical TopicDef.id (not subject::chapter)
  *
  * For each scenario:
@@ -128,7 +128,7 @@ function assertOk(label, value, detail = '') {
 let _encode;
 async function getEncoder() {
   if (_encode) return _encode;
-  // next-auth/jwt is ESM — dynamic import works from CJS in Node ≥ 18
+  // next-auth/jwt is ESM -- dynamic import works from CJS in Node ≥ 18
   const mod = await import('next-auth/jwt');
   _encode = mod.encode;
   return _encode;
@@ -190,7 +190,7 @@ async function ensureUser(email, board, grade) {
  * Simulate a practice session completing with a given accuracy.
  * Writes only the DB columns the engine actually checks (accuracy,
  * questionsAttempted, AttentionFlag.resolved). masteryLevel is set to
- * 'beginner' — the engine's P1-P5 rules never inspect it; the real
+ * 'beginner' -- the engine's P1-P5 rules never inspect it; the real
  * derivation lives exclusively in lib/tests.ts:updateTopicMastery().
  */
 async function simulatePracticeComplete(studentId, topicId, subject, chapter, accuracy) {
@@ -220,7 +220,7 @@ async function clearUserData(studentId) {
  * Returns all active TopicDefs for a student's board + grade + subjects context,
  * ordered by chapter.order ASC, topic.order ASC.
  *
- * Mirrors lib/homeEngine/getOrderedTopicsForStudent exactly — guarantees the
+ * Mirrors lib/homeEngine/getOrderedTopicsForStudent exactly -- guarantees the
  * test script and the engine work from an identical, student-scoped dataset.
  * Any change to the engine's curriculum filters must be mirrored here.
  */
@@ -295,7 +295,7 @@ async function testFreshStudent(topic) {
     topicId, subject, chapter: chapterName,
   });
   assert('FRESH complete-action status', r2.status, 200);
-  // complete-action returns nextAction inline — should already be low_accuracy
+  // complete-action returns nextAction inline -- should already be low_accuracy
   assert('FRESH complete-action nextAction rule', r2.body?.nextAction?.ruleId, 'low_accuracy');
   assert('FRESH complete-action actionType', r2.body?.nextAction?.actionType, 'practice');
 
@@ -306,9 +306,9 @@ async function testFreshStudent(topic) {
   // ── d) Simulate practice with good score (75%) ────────────────────────────
   await simulatePracticeComplete(userId, topicId, subject, chapterName, 0.75);
 
-  // ── e) Rule must advance — no longer low_accuracy for that topic ──────────
+  // ── e) Rule must advance -- no longer low_accuracy for that topic ──────────
   const r4 = await apiGet('/api/home/next-action', cookie);
-  assertNot('FRESH after practice — rule advanced', r4.body?.action?.ruleId, 'low_accuracy');
+  assertNot('FRESH after practice -- rule advanced', r4.body?.action?.ruleId, 'low_accuracy');
 
   return userId;
 }
@@ -355,7 +355,7 @@ async function testWeakStudent(topic) {
     topicId, subject, chapter: chapterName,
   });
   assert('WEAK complete-action status', r2.status, 200);
-  // Flag still unresolved at this point — next action stays low_mastery or low_accuracy
+  // Flag still unresolved at this point -- next action stays low_mastery or low_accuracy
   assertNot('WEAK post-lesson rule not next_new_topic yet', r2.body?.nextAction?.ruleId, 'next_new_topic');
 
   // ── c) Practice with good score (72%) → flag resolved ────────────────────
@@ -367,10 +367,10 @@ async function testWeakStudent(topic) {
   });
   assert('WEAK AttentionFlag resolved', String(!flag), 'true');
 
-  // ── d) Rule must advance — P3 and P4 both gone ───────────────────────────
+  // ── d) Rule must advance -- P3 and P4 both gone ───────────────────────────
   const r3 = await apiGet('/api/home/next-action', cookie);
-  assertNot('WEAK after practice — rule no longer low_mastery', r3.body?.action?.ruleId, 'low_mastery');
-  assertNot('WEAK after practice — rule no longer low_accuracy', r3.body?.action?.ruleId, 'low_accuracy');
+  assertNot('WEAK after practice -- rule no longer low_mastery', r3.body?.action?.ruleId, 'low_mastery');
+  assertNot('WEAK after practice -- rule no longer low_accuracy', r3.body?.action?.ruleId, 'low_accuracy');
 
   return userId;
 }
@@ -393,7 +393,7 @@ async function testActiveStudent(topic) {
   // Use the canonical curriculum helper to pick a valid topic for this student.
   const orderedTopics = await getOrderedTopicsForStudent(userId);
   if (!orderedTopics || orderedTopics.length === 0) {
-    throw new Error('No ordered topics found for ACTIVE scenario — run seed data first');
+    throw new Error('No ordered topics found for ACTIVE scenario -- run seed data first');
   }
   const allowedTopicIds = new Set(orderedTopics.map((t) => t.id));
   const sessionTopic = orderedTopics[0];
@@ -434,14 +434,14 @@ async function testActiveStudent(topic) {
 
   // ── c) Confirm via fresh call ─────────────────────────────────────────────
   const r3 = await apiGet('/api/home/next-action', cookie);
-  assertNot('ACTIVE next-action — session gone', r3.body?.action?.ruleId, 'resume_session');
-  assert('ACTIVE next-action — low_accuracy', r3.body?.action?.ruleId, 'low_accuracy');
+  assertNot('ACTIVE next-action -- session gone', r3.body?.action?.ruleId, 'resume_session');
+  assert('ACTIVE next-action -- low_accuracy', r3.body?.action?.ruleId, 'low_accuracy');
 
   // ── d) Good practice score → advance ─────────────────────────────────────
   await simulatePracticeComplete(userId, topicId, subject, chapterName, 0.80);
 
   const r4 = await apiGet('/api/home/next-action', cookie);
-  assertNot('ACTIVE after practice — rule advanced', r4.body?.action?.ruleId, 'low_accuracy');
+  assertNot('ACTIVE after practice -- rule advanced', r4.body?.action?.ruleId, 'low_accuracy');
 
   return userId;
 }
@@ -529,7 +529,7 @@ async function testMultiTopicSequential(topics) {
 /**
  * Exercises the complete Notes→Practice→Mastery loop exclusively through HTTP.
  *
- * Setup (Prisma — no StudentTopicMastery written here):
+ * Setup (Prisma -- no StudentTopicMastery written here):
  *   • Question with known correctAnswer
  *   • GeneratedTest linked to the curriculum TopicDef
  *   • TestResult + AttemptQuestion wiring the attempt to the question
@@ -544,7 +544,7 @@ async function testMultiTopicSequential(topics) {
  *   • updateTopicMastery resolved canonical TopicDef.id via GeneratedTest
  *   • STM[topicId] accuracy updated to ≥ 0.6 (same record complete-action seeded)
  *   • No unresolved AttentionFlag for the canonical topicId
- *   • Engine P4 clears — ruleId no longer low_accuracy after submit
+ *   • Engine P4 clears -- ruleId no longer low_accuracy after submit
  *   • No HTTP 500 errors at any step
  *
  * Returns { userId, genTestId, questionId } for caller-managed cleanup.
@@ -602,7 +602,7 @@ async function testFullHttpPipeline(topic) {
   });
 
   // ── 3. Seed TestResult + AttemptQuestion via Prisma ──────────────────────────
-  // StudentTopicMastery is intentionally NOT written here — it must only be written
+  // StudentTopicMastery is intentionally NOT written here -- it must only be written
   // by the HTTP API pipeline (complete-action seeds it; submit updates it).
   const attempt = await prisma.testResult.create({
     data: {
@@ -658,12 +658,12 @@ async function testFullHttpPipeline(topic) {
     where: { studentId: userId, topicId },
   });
   assertOk(
-    'PIPELINE updateTopicMastery — STM record updated for canonical topicId',
+    'PIPELINE updateTopicMastery -- STM record updated for canonical topicId',
     !!mastery,
     mastery ? `accuracy=${mastery.accuracy}` : 'NOT FOUND',
   );
   assertOk(
-    'PIPELINE updateTopicMastery — accuracy reflects correct answer (≥ 0.6)',
+    'PIPELINE updateTopicMastery -- accuracy reflects correct answer (≥ 0.6)',
     mastery?.accuracy != null && mastery.accuracy >= 0.6,
     `accuracy=${mastery?.accuracy}`,
   );
@@ -684,7 +684,7 @@ async function testFullHttpPipeline(topic) {
     where: { studentId: userId, topicId, resolved: false },
   });
   assertOk(
-    'PIPELINE AttentionFlag synced — no open flag for canonical topicId',
+    'PIPELINE AttentionFlag synced -- no open flag for canonical topicId',
     openFlag === null,
     openFlag ? `unexpected flag id=${openFlag.id}` : 'ok',
   );
@@ -697,7 +697,7 @@ async function testFullHttpPipeline(topic) {
   assertNot('PIPELINE [d] no 500',   r4.status, 500);
   const ruleAfterD = r4.body?.action?.ruleId;
   assertNot(
-    'PIPELINE [d] engine advanced — no longer low_accuracy',
+    'PIPELINE [d] engine advanced -- no longer low_accuracy',
     ruleAfterD,
     'low_accuracy',
   );
@@ -712,17 +712,17 @@ async function testFullHttpPipeline(topic) {
 // ── Main ──────────────────────────────────────────────────────────────────────
 async function main() {
   console.log('═'.repeat(62));
-  console.log('  test-mvp-flow.cjs — HTTP end-to-end MVP flow validation');
+  console.log('  test-mvp-flow.cjs -- HTTP end-to-end MVP flow validation');
   console.log(`  Server: ${BASE_URL}${DRY_RUN ? '  [DRY RUN]' : ''}`);
   console.log('═'.repeat(62));
 
   if (DRY_RUN) {
     console.log('\n[dry-run] Would execute 5 scenarios:');
-    console.log('  1. FRESH    — no mastery, no sessions → next_new_topic');
-    console.log('  2. WEAK     — mastery accuracy=0.3 + AttentionFlag → low_mastery');
-    console.log('  3. ACTIVE   — open LearningSession → resume_session');
-    console.log('  4. MULTI    — 5 topics sequentially: lesson → practice → next topic');
-    console.log('  5. PIPELINE — full HTTP: next-action → complete-action → submit → next-action');
+    console.log('  1. FRESH    -- no mastery, no sessions → next_new_topic');
+    console.log('  2. WEAK     -- mastery accuracy=0.3 + AttentionFlag → low_mastery');
+    console.log('  3. ACTIVE   -- open LearningSession → resume_session');
+    console.log('  4. MULTI    -- 5 topics sequentially: lesson → practice → next topic');
+    console.log('  5. PIPELINE -- full HTTP: next-action → complete-action → submit → next-action');
     console.log('\n[dry-run] No DB writes, no HTTP calls. Exiting.');
     process.exit(0);
   }
@@ -745,7 +745,7 @@ async function main() {
   }
 
   // Bootstrap: discover any active board+grade combo from the curriculum.
-  // This single findFirst is the only direct TopicDef query in main() — all further
+  // This single findFirst is the only direct TopicDef query in main() -- all further
   // topic selection goes through getOrderedTopicsForStudent (same filters as the engine).
   const seedTopic = await prisma.topicDef.findFirst({
     where: {
@@ -780,11 +780,11 @@ async function main() {
   const grade     = seedTopic.chapter.subject.class.grade;
 
   // Create a bootstrap user scoped to this board/grade so we can call the
-  // shared curriculum helper — same scoping the engine applies for real students.
+  // shared curriculum helper -- same scoping the engine applies for real students.
   const bootstrapUser = await ensureUser('test-mvp-bootstrap@mvp-test.local', boardSlug, grade);
 
   // Fetch the canonical ordered topic list via the shared curriculum helper.
-  // This mirrors getOrderedTopicsForStudent() exactly — same filters as the engine.
+  // This mirrors getOrderedTopicsForStudent() exactly -- same filters as the engine.
   const allTopics = await getOrderedTopicsForStudent(bootstrapUser.id);
 
   // Assertion: topic count returned by the helper must match engine expectation.
@@ -831,7 +831,7 @@ async function main() {
       userIds.push(await testMultiTopicSequential(allTopics.slice(0, 5)));
     }
 
-    // Scenario 5: full HTTP practice pipeline (always runs — needs only 1 topic)
+    // Scenario 5: full HTTP practice pipeline (always runs -- needs only 1 topic)
     const s5 = await testFullHttpPipeline(topic);
     userIds.push(s5.userId);
     s5GenTestId  = s5.genTestId;
@@ -861,7 +861,7 @@ async function main() {
   // ── Summary ───────────────────────────────────────────────────────────────
   console.log('\n' + '═'.repeat(62));
   const verdict = failed === 0 ? 'PASS' : 'FAIL';
-  console.log(`  ${verdict} — ${passed} passed, ${failed} failed`);
+  console.log(`  ${verdict} -- ${passed} passed, ${failed} failed`);
   if (failures.length) {
     console.error('\n  Failures:');
     failures.forEach((f) => console.error(`    • ${f}`));

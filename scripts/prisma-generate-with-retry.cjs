@@ -12,7 +12,7 @@
  * - Exit non-zero if generation still fails.
  *
  * IMPORTANT: Uses the locally installed prisma binary (node_modules/.bin/prisma).
- * Never use `npx prisma` — npx can resolve a globally cached v7 binary when
+ * Never use `npx prisma` -- npx can resolve a globally cached v7 binary when
  * node_modules/.bin/prisma doesn't exist yet, causing a version mismatch against
  * the pinned prisma@6.19.1.
  */

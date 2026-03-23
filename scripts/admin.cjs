@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Spinzy admin CLI — user and content operations.
+ * Spinzy admin CLI -- user and content operations.
  *
  * Usage:
  *   node scripts/admin.cjs <command> [options]
@@ -16,7 +16,7 @@
  *   change-grade        --userId <id> --grade <6-12> --reason "text"
  *
  * Reads DATABASE_URL from environment; falls back to .env.production.
- * Never requires the app to be running — direct DB access only.
+ * Never requires the app to be running -- direct DB access only.
  */
 
 'use strict'
@@ -220,7 +220,7 @@ async function listEscalations(prisma) {
       include: { student: { select: { email: true } } },
     })
   } catch {
-    console.log('Doubt escalation queue not yet built — run Task A5')
+    console.log('Doubt escalation queue not yet built -- run Task A5')
     return
   }
 
@@ -236,7 +236,7 @@ async function listEscalations(prisma) {
     console.log(
       e.id.padEnd(26) +
         (e.student?.email ?? '').padEnd(30) +
-        (e.conceptId ?? '—').padEnd(20) +
+        (e.conceptId ?? '--').padEnd(20) +
         e.createdAt.toISOString(),
     )
   }
@@ -261,7 +261,7 @@ async function listQuarantined(prisma) {
   for (const q of questions) {
     console.log(
       q.id.padEnd(26) +
-        (q.topic?.name ?? q.subject ?? '—').slice(0, 20).padEnd(22) +
+        (q.topic?.name ?? q.subject ?? '--').slice(0, 20).padEnd(22) +
         String(q.sessionFlags.length).padEnd(8) +
         q.updatedAt.toISOString(),
     )
@@ -316,7 +316,7 @@ async function changeGrade(prisma, args) {
   console.log('   This is irreversible and resets all concept states.')
   const answer = await prompt('   Type YES to confirm: ')
   if (answer.trim() !== 'YES') {
-    console.log('Aborted — no changes made')
+    console.log('Aborted -- no changes made')
     return
   }
 

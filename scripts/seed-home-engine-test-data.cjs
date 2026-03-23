@@ -3,14 +3,14 @@
  *
  * Seeds deterministic HomeEngine test data for three dummy-user scenarios:
  *
- *   1. WEAK student  — StudentTopicMastery with accuracy=0.4  → triggers low_accuracy rule
- *   2. ACTIVE student — open LearningSession (isCompleted=false) → triggers resume_session rule
- *   3. FRESH student  — no mastery, no sessions → triggers next_new_topic rule
+ *   1. WEAK student  -- StudentTopicMastery with accuracy=0.4  → triggers low_accuracy rule
+ *   2. ACTIVE student -- open LearningSession (isCompleted=false) → triggers resume_session rule
+ *   3. FRESH student  -- no mastery, no sessions → triggers next_new_topic rule
  *
  * Requires env vars (or args):
- *   WEAK_USER_ID    — userId for the weak-student scenario
- *   ACTIVE_USER_ID  — userId for the resume-session scenario
- *   (FRESH_USER_ID  — needs no seeding, just verify the user has no records)
+ *   WEAK_USER_ID    -- userId for the weak-student scenario
+ *   ACTIVE_USER_ID  -- userId for the resume-session scenario
+ *   (FRESH_USER_ID  -- needs no seeding, just verify the user has no records)
  *
  * Usage:
  *   WEAK_USER_ID=abc ACTIVE_USER_ID=xyz node scripts/seed-home-engine-test-data.cjs
@@ -80,9 +80,9 @@ async function main() {
   const topicId = topic.id;
   const subject = topic.chapter.subject.name;
   const chapter = topic.chapter.name;
-  console.log(`Using topic: ${topic.name} (${topicId}) — ${subject} / ${chapter}\n`);
+  console.log(`Using topic: ${topic.name} (${topicId}) -- ${subject} / ${chapter}\n`);
 
-  // ── Case 1: Weak student — low accuracy mastery record ──────────────────
+  // ── Case 1: Weak student -- low accuracy mastery record ──────────────────
   if (WEAK_USER_ID) {
     console.log(`[Weak student] userId=${WEAK_USER_ID}`);
     await prisma.studentTopicMastery.upsert({
@@ -104,7 +104,7 @@ async function main() {
     console.log('  → StudentTopicMastery upserted (accuracy=0.4, masteryLevel=beginner)\n');
   }
 
-  // ── Case 2: Active student — open LearningSession ──────────────────────
+  // ── Case 2: Active student -- open LearningSession ──────────────────────
   if (ACTIVE_USER_ID) {
     console.log(`[Active student] userId=${ACTIVE_USER_ID}`);
 

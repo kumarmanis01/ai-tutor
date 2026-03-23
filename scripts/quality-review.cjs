@@ -119,7 +119,7 @@ function prompt(question) {
       const durationMs = row.completedAt
         ? new Date(row.completedAt).getTime() - new Date(row.startedAt).getTime()
         : null
-      const durationMin = durationMs ? Math.round(durationMs / 60000) : '—'
+      const durationMin = durationMs ? Math.round(durationMs / 60000) : '--'
       const studentAnon = String(row.studentId).slice(0, 8)
       console.log(`Session: ${row.id} | Student: ${studentAnon}... | Duration: ${durationMin}min | Turns: ${row.turnCount}`)
 
@@ -142,7 +142,7 @@ function prompt(question) {
 
     const input = await prompt('> ')
     if (!input.trim()) {
-      console.log('Skipped — no flags added.')
+      console.log('Skipped -- no flags added.')
       return
     }
 

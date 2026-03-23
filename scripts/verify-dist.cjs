@@ -36,7 +36,7 @@ for (const token of banned) {
 
     if (token === 'dotenv') {
       // Only consider an actual import/use of dotenv (not mere mentions in comments).
-      // Also only enforce this in production builds — local/dev builds may mention dotenv.
+      // Also only enforce this in production builds -- local/dev builds may mention dotenv.
       if (process.env.NODE_ENV !== 'production') continue
 
       const importPattern = /\b(require\(['"]dotenv(?:\/config)?['"]\)|import\s+['"][^'"\n]*dotenv(?:\/config)?['"]|import\s+.+from\s+['"]dotenv(?:\/config)?['"])/

@@ -62,7 +62,7 @@ function fail(msg) {
     try {
       IORedis = require('ioredis');
     } catch (e) {
-      console.warn('ioredis not installed — skipping Redis checks');
+      console.warn('ioredis not installed -- skipping Redis checks');
       IORedis = null;
     }
 
@@ -96,7 +96,7 @@ function fail(msg) {
           console.warn('Redis host DNS lookup failed for', host, '- skipping Redis checks');
         }
       } else {
-        console.warn('Could not parse REDIS_URL host — skipping Redis checks');
+        console.warn('Could not parse REDIS_URL host -- skipping Redis checks');
       }
 
       if (hostResolves) {

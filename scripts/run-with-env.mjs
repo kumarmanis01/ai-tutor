@@ -31,7 +31,7 @@ if (!target) {
 if (process.env.DATABASE_URL) {
   console.log('DATABASE_URL is set');
 } else {
-  console.warn('DATABASE_URL is NOT set — integration tests may be skipped or fail');
+  console.warn('DATABASE_URL is NOT set -- integration tests may be skipped or fail');
 }
 
 const full = path.resolve(process.cwd(), target);

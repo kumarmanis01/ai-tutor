@@ -73,7 +73,7 @@ async function main() {
           // and lead to missing syllabus data. Record a skip and surface for manual review.
           console.warn('[requeue] skipping legacy enqueue for', job.id, 'missing subject/board/grade')
           try {
-            await prisma.jobExecutionLog.create({ data: { jobId: job.id, event: 'REQUEUE_SKIPPED_MISSING_METADATA', prevStatus: 'pending', newStatus: 'pending', message: 'Missing subject/board/grade — manual review required', meta: { missingFields: { subjectId: !!subjectId, board: !!board, grade: !!grade }, originalPayload: job.payload || {} } } })
+            await prisma.jobExecutionLog.create({ data: { jobId: job.id, event: 'REQUEUE_SKIPPED_MISSING_METADATA', prevStatus: 'pending', newStatus: 'pending', message: 'Missing subject/board/grade -- manual review required', meta: { missingFields: { subjectId: !!subjectId, board: !!board, grade: !!grade }, originalPayload: job.payload || {} } } })
           } catch (e) {
             console.error('[requeue] failed to write skip log for', job.id, String(e))
           }

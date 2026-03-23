@@ -10,21 +10,21 @@ async function main() {
   const padX = Math.floor(third * 0.08)
   const padY = Math.floor(H * 0.12)
 
-  // LEFT THIRD — favicon owl face icon
+  // LEFT THIRD -- favicon owl face icon
   await sharp(source)
     .extract({ left: padX, top: padY, width: third - (padX * 2), height: H - (padY * 2) })
     .png()
     .toFile('public/icons/spinzy-favicon-source.png')
   console.log('✅ spinzy-favicon-source.png')
 
-  // MIDDLE THIRD — navbar icon + Spinzy text
+  // MIDDLE THIRD -- navbar icon + Spinzy text
   await sharp(source)
     .extract({ left: third + padX, top: padY, width: third - (padX * 2), height: H - (padY * 2) })
     .png()
     .toFile('public/icons/spinzy-navbar-source.png')
   console.log('✅ spinzy-navbar-source.png')
 
-  // RIGHT THIRD — full marketing logo
+  // RIGHT THIRD -- full marketing logo
   await sharp(source)
     .extract({ left: (third * 2) + padX, top: padY, width: third - (padX * 2), height: H - (padY * 2) })
     .png()
