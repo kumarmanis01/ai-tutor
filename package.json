@@ -42,7 +42,7 @@
     "dev": "next dev",
     "dev:next": "npm run lint:orig && npm run type-check:orig && next dev",
     "dev:fast": "next dev",
-    "prepare": "node -e \"if(process.env.NODE_ENV !== 'production') { require('child_process').execSync('npx husky install', {stdio: 'inherit'}) }\"",
+    "prepare": "husky",
     "build": "node scripts/prisma-generate-with-retry.cjs && tsc -p tsconfig.build.json && npx tsc-alias -p tsconfig.build.json && node scripts/verify-dist.cjs && next build",
     "build:tsc": "tsc -p tsconfig.build.json && npx tsc-alias -p tsconfig.build.json",
     "build:prod": "node scripts/prisma-generate-with-retry.cjs && npm run build:tsc && npm run build:workers && next build",
@@ -215,8 +215,9 @@
     "node": ">=20.0.0"
   },
   "lint-staged": {
-    "**/*.{js,jsx,ts,tsx}": [
-      "eslint --fix"
+    "*.{ts,tsx,cjs,js,mjs}": [
+      "python3 scripts/fix-smart-quotes.py",
+      "git add"
     ]
   },
   "overrides": {
