@@ -122,6 +122,18 @@ export default async function StudentLayout({ children }: { children: React.Reac
     !skipOnboarding &&
     !isProfileComplete(profile.data);
 
+  // [layout-gate] diagnostic log — remove after confirming fix is live
+  console.log('[layout-gate]', {
+    isProfileComplete: isProfileComplete(profile.data),
+    requiresParentOTPGate: showParentGate,
+    grade: profile.data.grade,
+    board: profile.data.board,
+    language: profile.data.language,
+    subjectCount: profile.data.subjects?.length,
+    accountStatus: (session.user as any).accountStatus,
+    age: (session.user as any).age,
+  });
+
   // Parent verification is shown as modal (ParentOTPGate); do not redirect to
   // /student/verify-parent -- that page redirects to /dashboard and causes a loop.
   const studentName = (session.user as { name?: string })?.name ?? '';

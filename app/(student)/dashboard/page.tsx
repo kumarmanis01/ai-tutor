@@ -42,6 +42,7 @@ import UpgradeFlow from '@/components/student/subscription/UpgradeFlow';
 import UpgradeBanner from '@/components/student/subscription/UpgradeBanner';
 import { checkFreeTierCap } from '@/lib/freemium';
 import { getRedis } from '@/lib/redis';
+import { DPDP_MINOR_AGE } from '@/lib/constants/age';
 
 export const dynamic = 'force-dynamic';
 
@@ -104,6 +105,7 @@ export default async function StudentHomeDashboardPage() {
         language: true,
         subjects: true,
         accountStatus: true,
+        age: true,
         totalXp: true,
         level: true,
         name: true,
@@ -254,8 +256,15 @@ export default async function StudentHomeDashboardPage() {
     !Array.isArray(studentProfile.subjects) ||
     studentProfile.subjects.length === 0;
 
+  // age guard: only under-DPDP_MINOR_AGE users require the phone OTP gate.
+  // accountStatus alone is not sufficient — stale 'pending_parent_verification' on
+  // age >= DPDP_MINOR_AGE users (Task 1 dateOfBirth fix regression) must not fire.
+  const profileAge = (studentProfile as any)?.age ?? null;
   const needsParentVerification =
-    (studentProfile as any)?.accountStatus === 'pending_parent_verification';
+    (studentProfile as any)?.accountStatus === 'pending_parent_verification' &&
+    profileAge !== null &&
+    Number.isFinite(Number(profileAge)) &&
+    Number(profileAge) < DPDP_MINOR_AGE;
 
   if (needsProfile) {
     return (
