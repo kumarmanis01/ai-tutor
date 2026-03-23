@@ -96,7 +96,7 @@ async function loadPrisma() {
 
     // Check for execution logs / linked jobs if schema supports it
     try {
-      const executions = await prisma.hydrationJobExecution.findMany({ where: { hydrationJobId: jobId }, orderBy: { createdAt: 'desc' }, take: 50 });
+      const executions = await prisma.jobExecutionLog.findMany({ where: { jobId: jobId }, orderBy: { createdAt: 'desc' }, take: 50 });
       console.log('\n--- EXECUTION LOGS --- count=', executions.length);
       executions.forEach((e) => console.log(JSON.stringify(e)));
     } catch (_) {
