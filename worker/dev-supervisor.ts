@@ -41,7 +41,7 @@ function spawnTsx(args: string[], name: string): Child {
   });
 
   child.on('exit', (code, signal) => {
-    // If a child exits unexpectedly, end the supervisor so it’s obvious in dev.
+    // If a child exits unexpectedly, end the supervisor so it's obvious in dev.
     // (Keeping this strict prevents silent missing reconciler/worker issues.)
     const msg = signal
       ? `${name} exited via signal ${signal}`

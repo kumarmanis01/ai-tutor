@@ -27,7 +27,7 @@ export function sanitizeTextForJson(input: string): string {
   if (s.startsWith('`') && s.endsWith('`')) s = s.slice(1, -1).trim();
 
   // Normalize smart quotes to straight ones
-  s = s.replace(/[“”]/g, '"').replace(/[‘’]/g, "'");
+  s = s.replace(/[""]/g, '"').replace(/['']/g, "'");
 
   return s;
 }

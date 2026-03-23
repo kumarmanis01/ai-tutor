@@ -64,7 +64,7 @@ export default function AdminLearningFunnelPage() {
         <>
           {!dq.hasRecommendationComputed && (
             <div className="rounded border border-amber-200 bg-amber-50 text-amber-900 p-3 text-sm">
-              Recommendation “shown” is not instrumented. The top stage displayed is session-started; recommendationComputed will appear only when Home Tutor tracing is enabled and decisions are persisted.
+              Recommendation "shown" is not instrumented. The top stage displayed is session-started; recommendationComputed will appear only when Home Tutor tracing is enabled and decisions are persisted.
             </div>
           )}
 

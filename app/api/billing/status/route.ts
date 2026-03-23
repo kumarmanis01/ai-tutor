@@ -10,7 +10,7 @@ import { logApiUsage } from '@/utils/logApiUsage';
 Returns the current user's subscription status (plan, billing cycle, validity).
 How:
 Checks if the user is authenticated.
-Gets the user’s ID from the session or database.
+Gets the user's ID from the session or database.
 Finds the latest active subscription for the user.
 Returns plan, billing cycle, status, and validity date.
 Typical Response:

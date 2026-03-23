@@ -16,11 +16,11 @@ async function sendPaymentSuccessEmail(
 ) {
   await sendMail({
     to,
-    subject: ‘Payment Successful - Spinzy Academy’,
+    subject: 'Payment Successful - Spinzy Academy',
     html: `
       <h2 style="color:#2d6cdf;">Thank You for Your Payment!</h2>
       <p>Hi ${name},</p>
-      <p>We’re excited to confirm that your payment for the <strong>${plan}</strong> plan (${billingCycle}) has been received successfully.</p>
+      <p>We're excited to confirm that your payment for the <strong>${plan}</strong> plan (${billingCycle}) has been received successfully.</p>
       <p>
         <strong>Amount Paid:</strong> ₹${amount}<br>
         <strong>Plan:</strong> ${plan}<br>

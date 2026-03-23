@@ -68,7 +68,7 @@ export default function StudentTestimonials() {
 
           <div className="flex-1">
             <blockquote className="text-gray-800 dark:text-gray-100 italic text-lg mb-2 leading-relaxed">
-              “{quotes[index].text}”
+              "{quotes[index].text}"
             </blockquote>
             <p className="text-sm font-medium text-indigo-700 dark:text-indigo-300 mb-2">
               — {quotes[index].author}
