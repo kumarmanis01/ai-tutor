@@ -257,7 +257,7 @@ export default async function StudentHomeDashboardPage() {
     studentProfile.subjects.length === 0;
 
   // age guard: only under-DPDP_MINOR_AGE users require the phone OTP gate.
-  // accountStatus alone is not sufficient — stale 'pending_parent_verification' on
+  // accountStatus alone is not sufficient -- stale 'pending_parent_verification' on
   // age >= DPDP_MINOR_AGE users (Task 1 dateOfBirth fix regression) must not fire.
   const profileAge = (studentProfile as any)?.age ?? null;
   const needsParentVerification =

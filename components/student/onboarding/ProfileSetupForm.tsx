@@ -61,7 +61,7 @@ const BOARD_OPTIONS = [
 function getMandatorySubjects(board: string, grade: number): string[] {
   const g = grade;
   if (board === 'cbse') {
-    // 'math' was a legacy slug — removed to prevent onboarding API validation failure.
+    // 'math' was a legacy slug -- removed to prevent onboarding API validation failure.
     // 'mathematics' covers the mandatory maths requirement; isMandatory startsWith check
     // ensures any subject with slug starting with 'mathematics' is also locked.
     if (g >= 9 && g <= 10) return ['mathematics', 'science', 'english'];
