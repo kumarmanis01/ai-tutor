@@ -1,8 +1,8 @@
 /**
  * scripts/scrape-ncert.ts
  *
- * Discovers NCERT chapter PDFs from ncert.nic.in via HEAD probing (1 s delay
- * between requests), downloads each chapter PDF into memory, extracts text via
+ * Downloads NCERT chapter PDFs from ncert.nic.in using the 2024-25 book map
+ * (no HEAD probing — chapter counts are known), extracts text via
  * pdf-parse, chunks at ~500 tokens with 50-token overlap, deduplicates via
  * SHA-256, embeds via text-embedding-3-small in batches of 20, and upserts
  * CurriculumChunk rows. Writes one IngestRunLog entry per grade run.
@@ -36,66 +36,79 @@ const MIN_PDF_CHARS = 200
 const BATCH_SIZE = 20
 /** Be polite to NCERT's server. */
 const REQUEST_DELAY_MS = 1000
-/** Probe up to this many chapters per book. */
+/** Probe up to this many chapters per book (used only for --url override path). */
 const MAX_CHAPTERS = 16
 
 const BASE_URL = 'https://ncert.nic.in/textbook/pdf'
 
-// ── BOOK_MAP ──────────────────────────────────────────────────────────────────
+// ── NCERT_BOOK_MAP ────────────────────────────────────────────────────────────
+
+interface BookInfo {
+  /** Base code for building chapter PDF URLs. */
+  code: string
+  /** Exact chapter count for this book (2024-25 edition). */
+  chapters: number
+}
 
 /**
- * Maps subject → grade → NCERT chapter PDF base code.
+ * Maps subject → grade → NCERT chapter PDF info (2024-25 edition).
  * Chapter URL pattern: {BASE_URL}/{code}{chapter:02d}.pdf
- * Example: grade 10 maths ch 1 → https://ncert.nic.in/textbook/pdf/jemh101.pdf ✓ verified
+ * Example: grade 10 maths ch 3 → https://ncert.nic.in/textbook/pdf/jemh103.pdf
+ * Example: grade 6 science ch 1 → https://ncert.nic.in/textbook/pdf/fecu101.pdf
  *
- * Grade letter encoding: a=1 b=2 c=3 d=4 e=5 f=6 g=7 h=8 i=9 j=10 k=11 l=12
- * Medium letter: e=English, h=Hindi
+ * Grade 6 Science is now "Curiosity" (fecu1) — updated 2024.
+ * Grade 6 Maths is now "Ganita Prakash" (fmth6) — updated 2024.
  */
-const BOOK_MAP: Record<string, Record<number, string>> = {
+const NCERT_BOOK_MAP: Record<string, Record<number, BookInfo>> = {
   mathematics: {
-    1:  'aemm1',  // Math-Magic Grade 1
-    2:  'bemm1',  // Math-Magic Grade 2
-    3:  'cemm1',  // Math-Magic Grade 3
-    4:  'demm1',  // Math-Magic Grade 4
-    5:  'eemm1',  // Math-Magic Grade 5
-    6:  'fmth1',  // Grade 6 Maths
-    7:  'gmt1',   // Grade 7 Maths
-    8:  'hmth1',  // Grade 8 Maths
-    9:  'iemh1',  // Grade 9 Maths
-    10: 'jemh1',  // Grade 10 Maths ✓ verified
-    11: 'kemh1',  // Grade 11 Maths Part 1
-    12: 'lemh1',  // Grade 12 Maths Part 1
+    1:  { code: 'emth1',  chapters: 13 },
+    2:  { code: 'emth2',  chapters: 15 },
+    3:  { code: 'emth3',  chapters: 14 },
+    4:  { code: 'emth4',  chapters: 14 },
+    5:  { code: 'emth5',  chapters: 14 },
+    6:  { code: 'fmth6',  chapters: 14 },  // Ganita Prakash (2024)
+    7:  { code: 'gmt1',   chapters: 15 },
+    8:  { code: 'hmth1',  chapters: 16 },
+    9:  { code: 'iemh1',  chapters: 15 },
+    10: { code: 'jemh1',  chapters: 15 },  // ✓ verified
+    11: { code: 'kemh1',  chapters: 16 },
+    12: { code: 'lemh1',  chapters: 13 },
   },
   science: {
-    3:  'ceev1',  // EVS: Looking Around Grade 3
-    4:  'deev1',  // EVS: Looking Around Grade 4
-    5:  'eeev1',  // EVS: Looking Around Grade 5
-    6:  'fesc1',  // Grade 6 Science
-    7:  'gesc1',  // Grade 7 Science
-    8:  'hesc1',  // Grade 8 Science
-    9:  'iesc1',  // Grade 9 Science ✓ verified
-    10: 'jesc1',  // Grade 10 Science ✓ verified
+    6:  { code: 'fecu1',  chapters: 16 },  // Curiosity (2024 new book)
+    7:  { code: 'gesc1',  chapters: 18 },
+    8:  { code: 'hesc1',  chapters: 18 },
+    9:  { code: 'iesc1',  chapters: 15 },  // ✓ verified
+    10: { code: 'jesc1',  chapters: 16 },  // ✓ verified
+  },
+  'social-science': {
+    6:  { code: 'fess1',  chapters: 12 },  // Exploring Society (2024)
+    7:  { code: 'gess1',  chapters: 10 },
+    8:  { code: 'hess1',  chapters: 10 },
+    9:  { code: 'jess1',  chapters: 8 },
+    10: { code: 'jess2',  chapters: 8 },
   },
   physics: {
-    11: 'keph1',  // Grade 11 Physics Part 1
-    12: 'leph1',  // Grade 12 Physics Part 1
+    11: { code: 'keph1',  chapters: 15 },
+    12: { code: 'leph1',  chapters: 14 },
   },
   chemistry: {
-    11: 'kech1',  // Grade 11 Chemistry Part 1
-    12: 'lech1',  // Grade 12 Chemistry Part 1
+    11: { code: 'kech1',  chapters: 14 },
+    12: { code: 'lech1',  chapters: 10 },
   },
   biology: {
-    11: 'kebo1',  // Grade 11 Biology
-    12: 'lebo1',  // Grade 12 Biology
+    11: { code: 'kebo1',  chapters: 22 },
+    12: { code: 'lebo1',  chapters: 16 },
   },
 }
 
 const SUBJECT_ALIASES: Record<string, string> = {
-  mathematics: 'mathematics', math: 'mathematics', maths: 'mathematics',
-  science:     'science',
-  physics:     'physics',
-  chemistry:   'chemistry',
-  biology:     'biology',
+  mathematics:    'mathematics', math: 'mathematics', maths: 'mathematics',
+  science:        'science',
+  'social-science': 'social-science', sst: 'social-science', social: 'social-science',
+  physics:        'physics',
+  chemistry:      'chemistry',
+  biology:        'biology',
 }
 
 // ── Utilities ─────────────────────────────────────────────────────────────────
@@ -166,44 +179,61 @@ function parseArgs(): Args {
   }
 }
 
-/** Return all grades that have a BOOK_MAP entry for the given subject. */
+/** Return all grades that have a NCERT_BOOK_MAP entry for the given subject. */
 function availableGrades(subject: string): number[] {
-  return Object.keys(BOOK_MAP[subject] ?? {})
+  return Object.keys(NCERT_BOOK_MAP[subject] ?? {})
     .map(Number)
     .sort((a, b) => a - b)
 }
 
 // ── URL helpers ───────────────────────────────────────────────────────────────
 
-function chapterUrl(code: string, chapter: number): string {
-  return `${BASE_URL}/${code}${chapter.toString().padStart(2, '0')}.pdf`
+function buildChapterUrl(code: string, chapter: number): string {
+  return `${BASE_URL}/${code}${String(chapter).padStart(2, '0')}.pdf`
 }
 
-// ── Step 1: URL discovery via HEAD probing ────────────────────────────────────
+// ── Step 1: Chapter URL generation ───────────────────────────────────────────
 
 interface ChapterRef { chapter: number; url: string }
 
 /**
  * For a URL override (--url flag): treat it as a single chapter 1 PDF.
- * Otherwise: probe chapter 01-MAX_CHAPTERS with HEAD requests, 1 s apart.
- * Returns only chapters that returned HTTP 200.
+ * Otherwise: generate all chapter URLs directly from NCERT_BOOK_MAP chapter
+ * count -- no HEAD probing needed since counts are verified per 2024-25 edition.
+ * Falls back to HEAD probing (up to MAX_CHAPTERS) only for unknown books.
  */
 async function discoverChapterUrls(
   code: string,
   grade: number,
   urlOverride: string | null,
+  knownChapters: number | null,
 ): Promise<ChapterRef[]> {
   if (urlOverride) {
     console.log(`[scrape-ncert] Using --url override: ${urlOverride}`)
     return [{ chapter: 1, url: urlOverride }]
   }
 
+  if (knownChapters !== null) {
+    // Chapter count is known from NCERT_BOOK_MAP -- generate URLs directly
+    console.log(
+      `[scrape-ncert] grade ${grade}: generating ${knownChapters} chapter URL(s) from map ...`,
+    )
+    const refs: ChapterRef[] = []
+    for (let ch = 1; ch <= knownChapters; ch++) {
+      const url = buildChapterUrl(code, ch)
+      refs.push({ chapter: ch, url })
+      console.log(`  Chapter ${ch.toString().padStart(2, '0')}: ${url}`)
+    }
+    return refs
+  }
+
+  // Fallback: HEAD probe up to MAX_CHAPTERS for books not in NCERT_BOOK_MAP
   const found: ChapterRef[] = []
   console.log(
-    `[scrape-ncert] Probing grade ${grade} chapters 01-${MAX_CHAPTERS.toString().padStart(2, '0')} ...`,
+    `[scrape-ncert] Probing grade ${grade} chapters 01-${MAX_CHAPTERS.toString().padStart(2, '0')} (HEAD) ...`,
   )
   for (let ch = 1; ch <= MAX_CHAPTERS; ch++) {
-    const url = chapterUrl(code, ch)
+    const url = buildChapterUrl(code, ch)
     try {
       const res = await fetch(url, {
         method: 'HEAD',
@@ -466,21 +496,24 @@ async function runForGrade(
     `\n[scrape-ncert] ── grade=${grade} subject=${args.subject} board=${args.board} lang=${args.lang} ──`,
   )
 
-  // Resolve book code (may be null for grades/subjects without a mapping)
-  const code = BOOK_MAP[args.subject]?.[grade] ?? null
-  if (!code && !args.urlOverride) {
+  // Resolve book info (may be null for grades/subjects without a mapping)
+  const bookInfo = NCERT_BOOK_MAP[args.subject]?.[grade] ?? null
+  if (!bookInfo && !args.urlOverride) {
     console.warn(
-      `[scrape-ncert] No book code for grade ${grade} ${args.subject} in BOOK_MAP -- skipping.`,
+      `[scrape-ncert] No book info for grade ${grade} ${args.subject} in NCERT_BOOK_MAP -- skipping.`,
     )
     return { errors: 0 }
   }
+  const code = bookInfo?.code ?? ''
+  const knownChapters = bookInfo?.chapters ?? null
 
-  // ── Step 1: URL discovery ─────────────────────────────────────────────────
-  const chapters = await discoverChapterUrls(code ?? '', grade, args.urlOverride)
+  // ── Step 1: Chapter URL generation ───────────────────────────────────────
+  const chapters = await discoverChapterUrls(code, grade, args.urlOverride, knownChapters)
   if (chapters.length === 0) {
     console.warn(
       `[scrape-ncert] No chapters found for grade ${grade} ${args.subject}. ` +
-      `Book code "${code}" may be stale -- use --url <pdf-url> to test a direct link.`,
+      `Book code "${code}" may be stale -- use --url <pdf-url> to test a direct link, ` +
+      `or update NCERT_BOOK_MAP with the correct 2024-25 code.`,
     )
     return { errors: 0 }
   }
