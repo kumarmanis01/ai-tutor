@@ -28,7 +28,7 @@ export default function ParentOTPGate({ maskedEmail }: ParentOTPGateProps) {
       if (!res.ok || !json?.sent) {
         throw new Error(typeof json?.error === 'string' ? json.error : 'Could not send code');
       }
-      setStatusMessage('Code sent. Please check your parent or guardian's email.');
+      setStatusMessage(`Code sent. Please check your parent or guardian email.`);
     } catch (e) {
       setError((e as Error).message || 'Could not send code. Please try again.');
     } finally {
