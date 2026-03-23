@@ -2,7 +2,7 @@
  * scripts/scrape-ncert.ts
  *
  * Downloads NCERT chapter PDFs from ncert.nic.in using the 2024-25 book map
- * (no HEAD probing — chapter counts are known), extracts text via
+ * (no HEAD probing -- chapter counts are known), extracts text via
  * pdf-parse, chunks at ~500 tokens with 50-token overlap, deduplicates via
  * SHA-256, embeds via text-embedding-3-small in batches of 20, and upserts
  * CurriculumChunk rows. Writes one IngestRunLog entry per grade run.
@@ -56,9 +56,9 @@ interface BookInfo {
  * Example: grade 10 maths ch 3 → https://ncert.nic.in/textbook/pdf/jemh103.pdf
  * Example: grade 6 science ch 1 → https://ncert.nic.in/textbook/pdf/fecu101.pdf
  *
- * Grade 6 Science is now "Curiosity" (fecu1) — updated 2024.
- * Grade 6 Maths is now "Ganita Prakash" (fmth6) — updated 2024.
- * Grades 1–5 and standalone Physics/Chemistry/Biology are out of MVP scope.
+ * Grade 6 Science is now "Curiosity" (fecu1) -- updated 2024.
+ * Grade 6 Maths is now "Ganita Prakash" (fmth6) -- updated 2024.
+ * Grades 1-5 and standalone Physics/Chemistry/Biology are out of MVP scope.
  */
 const NCERT_BOOK_MAP: Record<string, Record<number, BookInfo>> = {
   science: {

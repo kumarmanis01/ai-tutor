@@ -27,20 +27,20 @@ const BOARDS = [
 ];
 
 // ─────────────────────────────────────────────────────────────────────────────
-// CBSE Subject Matrix — verified against NCERT 2024-25 textbook availability
+// CBSE Subject Matrix -- verified against NCERT 2024-25 textbook availability
 //
 // Design rules:
 //   1. Only subjects with actual NCERT textbooks (or high CBSE demand) listed
 //   2. mvp:true  = content generated at launch
 //      mvp:false = row seeded but no content yet (content deferred)
 //   3. Grades 1-5 seeded but content deprioritised below 6-12
-//   4. Gr11-12 defaults to Science stream (JEE/NEET — 70% of demand)
+//   4. Gr11-12 defaults to Science stream (JEE/NEET -- 70% of demand)
 //      Commerce + Humanities streams added via admin after stream selection
 //      is implemented in onboarding (post-launch backlog)
 // ─────────────────────────────────────────────────────────────────────────────
 const SUBJECT_MATRIX = {
 
-  // ── Grades 1–2: Foundational stage (NEP 2020) ──────────────────────────
+  // ── Grades 1-2: Foundational stage (NEP 2020) ──────────────────────────
   '1-2': [
     { name: 'English',               slug: 'english',               hasNCERT: true,  mvp: false },
     { name: 'Hindi',                 slug: 'hindi',                 hasNCERT: true,  mvp: false },
@@ -48,7 +48,7 @@ const SUBJECT_MATRIX = {
     { name: 'Environmental Studies', slug: 'environmental-studies', hasNCERT: true,  mvp: false },
   ],
 
-  // ── Grades 3–5: Preparatory stage ────────────────────────────────────────
+  // ── Grades 3-5: Preparatory stage ────────────────────────────────────────
   '3-5': [
     { name: 'English',               slug: 'english',               hasNCERT: true,  mvp: false },
     { name: 'Hindi',                 slug: 'hindi',                 hasNCERT: true,  mvp: false },
@@ -56,7 +56,7 @@ const SUBJECT_MATRIX = {
     { name: 'Environmental Studies', slug: 'environmental-studies', hasNCERT: true,  mvp: false },
   ],
 
-  // ── Grades 6–8: Middle school ─────────────────────────────────────────────
+  // ── Grades 6-8: Middle school ─────────────────────────────────────────────
   // NCERT 2024: Curiosity (Science), Ganita Prakash (Maths),
   //             Exploring Society (Social Science), Poorvi (English)
   '6-8': [
@@ -69,7 +69,7 @@ const SUBJECT_MATRIX = {
     { name: 'Urdu',           slug: 'urdu',           hasNCERT: true,  mvp: false },
   ],
 
-  // ── Grades 9–10: Secondary (board exam) ──────────────────────────────────
+  // ── Grades 9-10: Secondary (board exam) ──────────────────────────────────
   '9-10': [
     { name: 'English',                 slug: 'english',                  hasNCERT: true,  mvp: true  },
     { name: 'Hindi',                   slug: 'hindi',                    hasNCERT: true,  mvp: true  },
@@ -81,7 +81,7 @@ const SUBJECT_MATRIX = {
     { name: 'Artificial Intelligence', slug: 'artificial-intelligence',  hasNCERT: false, mvp: false },
   ],
 
-  // ── Grades 11–12: Science stream (JEE/NEET — highest demand) ─────────────
+  // ── Grades 11-12: Science stream (JEE/NEET -- highest demand) ─────────────
   // Commerce + Humanities: seeded separately post-launch via stream selection
   '11-12-science': [
     { name: 'English',            slug: 'english',          hasNCERT: true,  mvp: true  },

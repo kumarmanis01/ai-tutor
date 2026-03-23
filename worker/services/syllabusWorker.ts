@@ -123,14 +123,14 @@ export async function handleSyllabusJob(jobId: string) {
         })
       }
     } else {
-      logger.warn('[syllabusWorker] no NCERT chunks found — using GPT knowledge', {
+      logger.warn('[syllabusWorker] no NCERT chunks found -- using GPT knowledge', {
         event: 'ncert_grounding_fallback',
         context: { jobId: job.id, subject: subjectSlug, grade },
       })
     }
   } catch (err) {
     // Non-fatal: fall back to GPT knowledge if chunk query fails
-    logger.warn('[syllabusWorker] CurriculumChunk query error — using GPT knowledge', {
+    logger.warn('[syllabusWorker] CurriculumChunk query error -- using GPT knowledge', {
       event: 'ncert_grounding_error',
       context: { jobId: job.id, error: String(err) },
     })

@@ -68,10 +68,6 @@ for root in ROOTS:
                 if APOSTROPHE_IN_SINGLE_QUOTE.search(line):
                     apostrophe_warnings.append((p, i, line.strip()))
 
-for p, i, line in apostrophe_warnings:
-    print(f'WARN apostrophe-in-string: {p}:{i}')
-    print(f'  {line}')
-
 if CHECK_ONLY and found:
     print(f'\n{len(found)} file(s) contain smart quotes/dashes/ellipsis. Run without --check to fix.')
     sys.exit(1)
@@ -80,8 +76,11 @@ elif not found:
 elif not CHECK_ONLY:
     print(f'\nFixed {len(found)} file(s).')
 
-if apostrophe_warnings:
+# Apostrophe-in-single-quoted-string warnings: only shown in --check mode.
+# In fix mode these are silent — they are legitimate English contractions,
+# not bugs, and cannot be auto-fixed without human judgement.
+if CHECK_ONLY and apostrophe_warnings:
+    for p, i, line in apostrophe_warnings:
+        print(f'WARN apostrophe-in-string: {p}:{i}')
+        print(f'  {line}')
     print(f'\n{len(apostrophe_warnings)} apostrophe-in-single-quoted-string warning(s) — fix manually.')
-    # Warnings are informational only — never block the pre-flight gate.
-    # Smart-quote replacements (above) already fix the unicode variant;
-    # these remaining cases need human review.

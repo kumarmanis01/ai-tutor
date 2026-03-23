@@ -455,14 +455,14 @@ export async function handleQuestionsJob(jobId: string): Promise<void> {
           context: { jobId: job.id, chapterOrder, subject: subjectSlug, grade, chunkCount: chunks.length },
         })
       } else {
-        logger.warn('[questionsWorker] no NCERT chunks for chapter — using GPT knowledge', {
+        logger.warn('[questionsWorker] no NCERT chunks for chapter -- using GPT knowledge', {
           event: 'ncert_grounding_fallback',
           context: { jobId: job.id, chapterOrder, subject: subjectSlug, grade },
         })
       }
     }
   } catch (chunkErr) {
-    logger.warn('[questionsWorker] CurriculumChunk query failed — using GPT knowledge', {
+    logger.warn('[questionsWorker] CurriculumChunk query failed -- using GPT knowledge', {
       event: 'ncert_grounding_error',
       context: { jobId: job.id, error: String(chunkErr) },
     })

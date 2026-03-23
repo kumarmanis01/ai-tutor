@@ -157,7 +157,7 @@ export default async function ContentPage() {
         <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Content Coverage</h1>
         <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
           Step 1: Ingest NCERT content first (RAG Chunks must be &gt; 0)<br />
-          Step 2: Generate content (Hydrate) — grounded in NCERT text<br />
+          Step 2: Generate content (Hydrate) -- grounded in NCERT text<br />
           Hydrating without NCERT content will produce GPT-only chapters (lower quality)
         </p>
       </div>
