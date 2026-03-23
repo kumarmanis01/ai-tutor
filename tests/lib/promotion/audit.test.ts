@@ -20,7 +20,6 @@ describe('Promotion audit events', () => {
   test('service.approveCandidate emits audit event', async () => {
     const prisma: any = {
       promotionCandidate: { findUnique: jest.fn().mockResolvedValue({ id: 'pc1', status: 'PENDING', scope: 'LESSON', scopeRefId: 'l1', outputRef: 'o1' }), update: jest.fn().mockResolvedValue({ id: 'pc1', status: 'APPROVED' }) },
-      publishedOutput: { deleteMany: jest.fn().mockResolvedValue({ count: 0 }), create: jest.fn().mockResolvedValue({ id: 'pub1' }) },
       $transaction: jest.fn().mockImplementation(async (fn: any) => fn(prisma))
     }
     const svc = makePromotionService(prisma)

@@ -11,8 +11,8 @@ export async function POST(_req: Request, { params }: any) {
 
     const service = makePromotionService(prisma as any)
     try {
-      const pub = await service.approveCandidate(id, session.user.id)
-      return NextResponse.json({ published: pub })
+      const approved = await service.approveCandidate(id, session.user.id)
+      return NextResponse.json({ approved })
     } catch (err: any) {
       if ((err?.message ?? '').includes('already approved')) return NextResponse.json({ error: 'already_approved' }, { status: 409 })
       if ((err?.message ?? '').includes('rejected')) return NextResponse.json({ error: 'rejected' }, { status: 400 })
