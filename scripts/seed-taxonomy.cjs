@@ -27,15 +27,35 @@ const BOARDS = [
 ];
 
 // Applied to BOTH boards for all grades 1-12.
+// NEP 2020 stage boundaries: Foundational (1-2), Preparatory (3-5), Middle (6-8), Secondary (9-10), Sr. Secondary (11-12).
+// CBSE 2025-26 verified curriculum. MVP: Science stream only for 11-12;
+// Commerce + Humanities added post-launch when student volume justifies it.
 const SUBJECT_MATRIX = {
-  '1-5':  ['English', 'Hindi', 'Mathematics', 'Environmental Studies'],
-  '6-8':  ['English', 'Hindi', 'Mathematics', 'Science', 'Social Science'],
-  '9-10': ['English', 'Hindi', 'Mathematics', 'Science', 'Social Science', 'Computer Applications'],
-  '11-12':['English', 'Physics', 'Chemistry', 'Mathematics', 'Biology', 'Computer Science'],
+  '1-2':  [
+    'English', 'Hindi', 'Mathematics', 'Environmental Studies',
+  ],
+  '3-5':  [
+    'English', 'Hindi', 'Mathematics', 'Environmental Studies',
+  ],
+  '6-8':  [
+    'English', 'Hindi', 'Mathematics', 'Science',
+    'Social Science', 'Sanskrit',
+  ],
+  '9-10': [
+    'English', 'Hindi', 'Mathematics', 'Science', 'Social Science',
+    'Sanskrit', 'Computer Applications', 'Information Technology',
+  ],
+  // MVP: Science stream only (JEE/NEET aspirants -- highest demand)
+  // Commerce + Humanities added post-launch
+  '11-12': [
+    'English', 'Physics', 'Chemistry', 'Mathematics',
+    'Biology', 'Computer Science', 'Physical Education',
+  ],
 };
 
 function gradeRange(grade) {
-  if (grade <= 5)  return '1-5';
+  if (grade <= 2)  return '1-2';
+  if (grade <= 5)  return '3-5';
   if (grade <= 8)  return '6-8';
   if (grade <= 10) return '9-10';
   return '11-12';
