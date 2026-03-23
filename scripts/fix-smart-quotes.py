@@ -30,7 +30,7 @@ for root in ROOTS:
     for dp, dirs, files in os.walk(root):
         dirs[:] = [d for d in dirs if d not in ('node_modules', '.next')]
         for f in files:
-            if not f.endswith(('.ts', '.tsx')):
+            if not f.endswith(('.ts', '.tsx', '.cjs', '.js', '.mjs')):
                 continue
             p = os.path.join(dp, f)
             content = open(p, 'rb').read()
@@ -46,7 +46,7 @@ for root in ROOTS:
                     print(f'Found:   {p}')
 
 if CHECK_ONLY and found:
-    print(f'\n{len(found)} file(s) contain smart quotes. Run without --check to fix.')
+    print(f'\n{len(found)} file(s) contain smart quotes/dashes/ellipsis. Run without --check to fix.')
     sys.exit(1)
 elif not found:
     print('No smart quotes found.')
