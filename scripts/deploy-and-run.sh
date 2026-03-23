@@ -264,6 +264,21 @@ if [ ! -f "${REPO_ROOT}/ecosystem.config.cjs" ]; then
   exit 1
 fi
 
+REQUIRED_VARS="DATABASE_URL REDIS_URL NEXTAUTH_SECRET NEXTAUTH_URL \
+  OPENAI_API_KEY GOOGLE_CLIENT_ID GOOGLE_CLIENT_SECRET"
+MISSING=""
+for var in $REQUIRED_VARS; do
+  if [ -z "${!var}" ]; then
+    MISSING="$MISSING $var"
+  fi
+done
+if [ -n "$MISSING" ]; then
+  echo "❌ ERROR: Missing required env vars:$MISSING"
+  echo "   Run: set -o allexport; source .env.production; set +o allexport"
+  exit 1
+fi
+echo "✅ All required env vars present"
+
 pm2 start ecosystem.config.cjs --env production --update-env
 
 # 9b. Redis hardening (idempotent; safe to re-run)

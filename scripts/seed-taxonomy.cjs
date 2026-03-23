@@ -1,5 +1,11 @@
 'use strict';
 
+// Load .env.production when running directly on VPS
+const path = require('path');
+require('dotenv').config({
+  path: path.resolve(__dirname, '../.env.production'),
+});
+
 /**
  * seed-taxonomy.cjs
  *
@@ -9,42 +15,6 @@
  *
  * Usage: node scripts/seed-taxonomy.cjs
  */
-
-const fs = require('fs');
-const path = require('path');
-
-// ── env loader ───────────────────────────────────────────────────────────────
-function loadEnvFileIfPresent() {
-  try {
-    const root = path.resolve(__dirname, '..');
-    for (const name of ['.env.local', '.env']) {
-      const p = path.join(root, name);
-      if (!fs.existsSync(p)) continue;
-      const raw = fs.readFileSync(p, 'utf8');
-      for (let line of raw.split(/\r?\n/)) {
-        line = line.trim();
-        if (!line || line.startsWith('#')) continue;
-        const m = line.match(/^([^=\s]+)=((?:".*")|(?:'.*')|.*)$/);
-        if (!m) continue;
-        const key = m[1];
-        let val = m[2];
-        if (
-          (val.startsWith('"') && val.endsWith('"')) ||
-          (val.startsWith("'") && val.endsWith("'"))
-        ) {
-          val = val.slice(1, -1);
-        }
-        if (!process.env[key]) process.env[key] = val;
-      }
-      console.log(`[seed-taxonomy] env loaded from ${p}`);
-      break;
-    }
-  } catch (e) {
-    console.warn('[seed-taxonomy] env load warning:', e && e.message);
-  }
-}
-
-loadEnvFileIfPresent();
 
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();

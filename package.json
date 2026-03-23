@@ -132,6 +132,7 @@
     "bcryptjs": "^2.4.3",
     "bullmq": "^5.66.0",
     "chalk": "^4.1.2",
+    "dotenv": "^17.3.1",
     "framer-motion": "^12.23.16",
     "ioredis": "^5.8.2",
     "lucide-react": "^0.544.0",
