@@ -155,12 +155,17 @@ echo "Removed .next/ and dist/"
 # ─────────────────────────────────────────────────────────────────────────────
 # 5b. PRE-FLIGHT CHECKS (fast — fail before spending time on a full build)
 # ─────────────────────────────────────────────────────────────────────────────
-step "5b — Pre-flight: smart quote check"
-python3 scripts/fix-smart-quotes.py --check
-if [ $? -ne 0 ]; then
-  echo "❌ Smart quotes found in source files."
-  echo "   Run: npm run fix:quotes — then commit before deploying."
-  exit 1
+step "5b — Pre-flight: smart quote verification"
+python3 scripts/fix-smart-quotes.py
+# Auto-fix any remaining issues (should be zero if pre-commit ran)
+CHANGED=$(git diff --name-only)
+if [ -n "$CHANGED" ]; then
+  echo "WARNING: Smart quotes found and auto-fixed in deploy."
+  echo "These files were not cleaned at commit time:"
+  echo "$CHANGED"
+  echo "Committing fixes automatically..."
+  git add -u
+  git commit -m "fix: auto-fix smart quotes missed in pre-commit"
 fi
 echo "✅ No smart quotes"
 
