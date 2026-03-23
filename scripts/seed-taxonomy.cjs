@@ -26,30 +26,71 @@ const BOARDS = [
   { name: 'ICSE', slug: 'icse', description: 'Indian Certificate of Secondary Education' },
 ];
 
-// Applied to BOTH boards for all grades 1-12.
-// NEP 2020 stage boundaries: Foundational (1-2), Preparatory (3-5), Middle (6-8), Secondary (9-10), Sr. Secondary (11-12).
-// CBSE 2025-26 verified curriculum. MVP: Science stream only for 11-12;
-// Commerce + Humanities added post-launch when student volume justifies it.
+// ─────────────────────────────────────────────────────────────────────────────
+// CBSE Subject Matrix — verified against NCERT 2024-25 textbook availability
+//
+// Design rules:
+//   1. Only subjects with actual NCERT textbooks (or high CBSE demand) listed
+//   2. mvp:true  = content generated at launch
+//      mvp:false = row seeded but no content yet (content deferred)
+//   3. Grades 1-5 seeded but content deprioritised below 6-12
+//   4. Gr11-12 defaults to Science stream (JEE/NEET — 70% of demand)
+//      Commerce + Humanities streams added via admin after stream selection
+//      is implemented in onboarding (post-launch backlog)
+// ─────────────────────────────────────────────────────────────────────────────
 const SUBJECT_MATRIX = {
-  '1-2':  [
-    'English', 'Hindi', 'Mathematics', 'Environmental Studies',
+
+  // ── Grades 1–2: Foundational stage (NEP 2020) ──────────────────────────
+  '1-2': [
+    { name: 'English',               slug: 'english',               hasNCERT: true,  mvp: false },
+    { name: 'Hindi',                 slug: 'hindi',                 hasNCERT: true,  mvp: false },
+    { name: 'Mathematics',           slug: 'mathematics',           hasNCERT: true,  mvp: false },
+    { name: 'Environmental Studies', slug: 'environmental-studies', hasNCERT: true,  mvp: false },
   ],
-  '3-5':  [
-    'English', 'Hindi', 'Mathematics', 'Environmental Studies',
+
+  // ── Grades 3–5: Preparatory stage ────────────────────────────────────────
+  '3-5': [
+    { name: 'English',               slug: 'english',               hasNCERT: true,  mvp: false },
+    { name: 'Hindi',                 slug: 'hindi',                 hasNCERT: true,  mvp: false },
+    { name: 'Mathematics',           slug: 'mathematics',           hasNCERT: true,  mvp: false },
+    { name: 'Environmental Studies', slug: 'environmental-studies', hasNCERT: true,  mvp: false },
   ],
-  '6-8':  [
-    'English', 'Hindi', 'Mathematics', 'Science',
-    'Social Science', 'Sanskrit',
+
+  // ── Grades 6–8: Middle school ─────────────────────────────────────────────
+  // NCERT 2024: Curiosity (Science), Ganita Prakash (Maths),
+  //             Exploring Society (Social Science), Poorvi (English)
+  '6-8': [
+    { name: 'English',        slug: 'english',        hasNCERT: true,  mvp: true  },
+    { name: 'Hindi',          slug: 'hindi',          hasNCERT: true,  mvp: true  },
+    { name: 'Mathematics',    slug: 'mathematics',    hasNCERT: true,  mvp: true  },
+    { name: 'Science',        slug: 'science',        hasNCERT: true,  mvp: true  },
+    { name: 'Social Science', slug: 'social-science', hasNCERT: true,  mvp: true  },
+    { name: 'Sanskrit',       slug: 'sanskrit',       hasNCERT: true,  mvp: false },
+    { name: 'Urdu',           slug: 'urdu',           hasNCERT: true,  mvp: false },
   ],
+
+  // ── Grades 9–10: Secondary (board exam) ──────────────────────────────────
   '9-10': [
-    'English', 'Hindi', 'Mathematics', 'Science', 'Social Science',
-    'Sanskrit', 'Computer Applications', 'Information Technology',
+    { name: 'English',                 slug: 'english',                  hasNCERT: true,  mvp: true  },
+    { name: 'Hindi',                   slug: 'hindi',                    hasNCERT: true,  mvp: true  },
+    { name: 'Mathematics',             slug: 'mathematics',              hasNCERT: true,  mvp: true  },
+    { name: 'Science',                 slug: 'science',                  hasNCERT: true,  mvp: true  },
+    { name: 'Social Science',          slug: 'social-science',           hasNCERT: true,  mvp: true  },
+    { name: 'Sanskrit',                slug: 'sanskrit',                 hasNCERT: true,  mvp: false },
+    { name: 'Information Technology',  slug: 'information-technology',   hasNCERT: false, mvp: false },
+    { name: 'Artificial Intelligence', slug: 'artificial-intelligence',  hasNCERT: false, mvp: false },
   ],
-  // MVP: Science stream only (JEE/NEET aspirants -- highest demand)
-  // Commerce + Humanities added post-launch
-  '11-12': [
-    'English', 'Physics', 'Chemistry', 'Mathematics',
-    'Biology', 'Computer Science', 'Physical Education',
+
+  // ── Grades 11–12: Science stream (JEE/NEET — highest demand) ─────────────
+  // Commerce + Humanities: seeded separately post-launch via stream selection
+  '11-12-science': [
+    { name: 'English',            slug: 'english',          hasNCERT: true,  mvp: true  },
+    { name: 'Physics',            slug: 'physics',          hasNCERT: true,  mvp: true  },
+    { name: 'Chemistry',          slug: 'chemistry',        hasNCERT: true,  mvp: true  },
+    { name: 'Mathematics',        slug: 'mathematics',      hasNCERT: true,  mvp: true  },
+    { name: 'Biology',            slug: 'biology',          hasNCERT: true,  mvp: true  },
+    { name: 'Computer Science',   slug: 'computer-science', hasNCERT: true,  mvp: false },
+    { name: 'Physical Education', slug: 'physical-education', hasNCERT: false, mvp: false },
   ],
 };
 
@@ -58,11 +99,7 @@ function gradeRange(grade) {
   if (grade <= 5)  return '3-5';
   if (grade <= 8)  return '6-8';
   if (grade <= 10) return '9-10';
-  return '11-12';
-}
-
-function toSlug(name) {
-  return name.toLowerCase().replace(/\s+/g, '-');
+  return '11-12-science'; // Science stream default; other streams added post-launch
 }
 
 // ── phases ───────────────────────────────────────────────────────────────────
@@ -102,17 +139,17 @@ async function seedSubjectDefs() {
   let total = 0;
   for (const cl of classLevels) {
     const subjects = SUBJECT_MATRIX[gradeRange(cl.grade)];
-    for (const name of subjects) {
+    for (const subj of subjects) {
       // Preserve existing slug -- never rename a SubjectDef in production.
       const existing = await prisma.subjectDef.findFirst({
-        where: { classId: cl.id, name },
+        where: { classId: cl.id, name: subj.name },
         select: { slug: true },
       });
-      const slug = existing ? existing.slug : toSlug(name);
+      const slug = existing ? existing.slug : subj.slug;
       await prisma.subjectDef.upsert({
         where: { classId_slug: { classId: cl.id, slug } },
         update: {},
-        create: { name, slug, classId: cl.id },
+        create: { name: subj.name, slug, classId: cl.id },
       });
       total++;
     }
