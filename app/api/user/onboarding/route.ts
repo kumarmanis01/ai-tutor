@@ -63,8 +63,6 @@ export async function POST(req: NextRequest) {
     }
 
     // Enforce required fields for onboarding
-    // name: body value takes precedence; fall back to existing DB value — only error if both absent (checked post-lookup below)
-    // age:  optional — if absent from body, skip without error
     const fieldErrors: Record<string, string> = {};
     if (!grade || String(grade).trim() === '') fieldErrors.class_grade = 'Class is required';
     if (!board || String(board).trim() === '') fieldErrors.board = 'Board is required';
@@ -155,17 +153,6 @@ export async function POST(req: NextRequest) {
           return res;
         }
         userId = resolvedUserId as string;
-      }
-
-      // Name fallback: body name takes precedence; if absent, existing DB name is kept.
-      // Error only when body name is empty AND DB record has no name yet.
-      if (existingById) {
-        const existingName = (existingById.name ?? '').trim();
-        if (!name && !existingName) {
-          res = NextResponse.json({ error: 'validation_error', fieldErrors: { name: 'Name is required' } }, { status: 400 });
-          logger.logAPI(req, res, { className: 'UserOnboardingAPI', methodName: 'POST' }, start);
-          return res;
-        }
       }
 
       // grade is immutable after first save — never accept from client
