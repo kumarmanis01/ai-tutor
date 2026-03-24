@@ -285,23 +285,22 @@ export const authOptions: any = {
           if (dbUser) {
             token.role = dbUser.role;
             token.accountStatus = (dbUser as { accountStatus?: string }).accountStatus ?? 'active';
-            const ageNum = dbUser.age != null ? Number(dbUser.age) : NaN;
-            const hasValidAge = Number.isFinite(ageNum) && ageNum >= 1 && ageNum <= 120;
-            const hasParentEmail = dbUser.parentEmail != null && String(dbUser.parentEmail).trim() !== '';
-            const hasParentPhone = dbUser.parentPhone != null && String(dbUser.parentPhone).trim() !== '';
-            const under18 = hasValidAge && ageNum < 18;
-            const under13 = hasValidAge && ageNum < DPDP_MINOR_AGE;
-            const parentContactOk = under18 ? hasParentEmail : true;
-            const parentPhoneOk = under13 ? hasParentPhone : true;
+            // Resolve subjects from both array (standard Prisma) and Neon wire-format string "{a,b,c}"
+            let subjectCount = 0;
+            if (Array.isArray(dbUser.subjects)) {
+              subjectCount = (dbUser.subjects as string[]).filter(Boolean).length;
+            } else if (typeof dbUser.subjects === 'string' && (dbUser.subjects as string).length > 0) {
+              subjectCount = (dbUser.subjects as string)
+                .replace(/^\{/, '').replace(/\}$/, '').split(',')
+                .filter((s) => s.trim().length > 0).length;
+            }
+            // onboardingComplete = academic profile only (board/grade/language/subjects).
+            // Age/parentEmail/parentPhone are enforced separately via accountStatus gate.
             token.onboardingComplete = !!(
               dbUser.grade &&
               dbUser.board &&
               dbUser.language &&
-              Array.isArray(dbUser.subjects) &&
-              dbUser.subjects.length > 0 &&
-              hasValidAge &&
-              parentContactOk &&
-              parentPhoneOk
+              subjectCount > 0
             );
           }
         } catch (err) {
@@ -315,15 +314,15 @@ export const authOptions: any = {
             if (fallback) {
               token.role = fallback.role;
               token.accountStatus = 'active';
-              const ageNum = fallback.age != null ? Number(fallback.age) : NaN;
-              const hasValidAge = Number.isFinite(ageNum) && ageNum >= 1 && ageNum <= 120;
-              const hasParentEmail = fallback.parentEmail != null && String(fallback.parentEmail).trim() !== '';
-              const hasParentPhone = fallback.parentPhone != null && String(fallback.parentPhone).trim() !== '';
-              const under18 = hasValidAge && ageNum < 18;
-              const under13 = hasValidAge && ageNum < DPDP_MINOR_AGE;
-              const parentContactOk = under18 ? hasParentEmail : true;
-              const parentPhoneOk = under13 ? hasParentPhone : true;
-              token.onboardingComplete = !!(fallback.grade && fallback.board && fallback.language && Array.isArray(fallback.subjects) && fallback.subjects.length > 0 && hasValidAge && parentContactOk && parentPhoneOk);
+              let fallbackSubjectCount = 0;
+              if (Array.isArray(fallback.subjects)) {
+                fallbackSubjectCount = (fallback.subjects as string[]).filter(Boolean).length;
+              } else if (typeof fallback.subjects === 'string' && (fallback.subjects as string).length > 0) {
+                fallbackSubjectCount = (fallback.subjects as string)
+                  .replace(/^\{/, '').replace(/\}$/, '').split(',')
+                  .filter((s) => s.trim().length > 0).length;
+              }
+              token.onboardingComplete = !!(fallback.grade && fallback.board && fallback.language && fallbackSubjectCount > 0);
             }
           } catch {
             token.accountStatus = 'active';

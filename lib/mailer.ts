@@ -4,9 +4,9 @@
  *
  * Required env vars:
  *   RESEND_API_KEY   (from Resend dashboard -- re_xxxx)
- *   EMAIL_FROM       Spinzy Academy <no-reply@spinzyacademy.com>
+ *   EMAIL_FROM       Spinzy Academy <no-reply@send.spinzyacademy.com>
  *
- * Domain spinzyacademy.com must be verified in Resend dashboard.
+ * Verified sending domain: send.spinzyacademy.com (subdomain verified in Resend).
  * Free tier: 3,000 emails/month, 100/day.
  */
 import { Resend } from 'resend';
@@ -44,7 +44,7 @@ export interface MailOptions {
  */
 export async function sendMail(opts: MailOptions): Promise<string> {
   const from =
-    process.env.EMAIL_FROM ?? 'Spinzy Academy <no-reply@spinzyacademy.com>';
+    process.env.EMAIL_FROM ?? 'Spinzy Academy <no-reply@send.spinzyacademy.com>';
   const { data, error } = await getClient().emails.send({
     from,
     to: Array.isArray(opts.to) ? opts.to : [opts.to],

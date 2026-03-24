@@ -21,7 +21,6 @@ import ProfileWidgets from '@/components/ProfileWidgets';
 import { extractBadges } from '@/lib/extractBadge';
 import AuthRedeemOnSignIn from '@/components/AuthRedeemOnSignIn';
 import useCurrentUser from '@/hooks/useCurrentUser';
-import { useOnboarding } from '@/context/OnboardingProvider';
 import { LANGUAGES, _DIFFICULTY_LEVELS } from '@/components/CascadingFilters';
 import Link from 'next/link';
 import ParentAccessCard from '@/components/Profile/ParentAccessCard';
@@ -31,7 +30,6 @@ export default function ProfilePage() {
   const { data: session } = useSession();
   const sess = session as unknown as import('@/lib/types/auth').AppSession | null;
   const { data: profile, loading } = useCurrentUser();
-  const { open } = useOnboarding();
   const router = useRouter();
   const badges = extractBadges(profile as User | null);
   const [deletionConfirmText, setDeletionConfirmText] = useState('');
@@ -72,13 +70,12 @@ export default function ProfilePage() {
             />
             <h1 className="text-3xl font-bold mt-2">{profile?.name ?? session?.user?.name}</h1>
             <p className="text-gray-500 dark:text-gray-400">{profile?.email ?? session?.user?.email}</p>
-            <button
-              type="button"
-              className="mt-4 px-5 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-              onClick={() => open({ force: true, allowDismiss: true, afterSave: 'stay' })}
+            <Link
+              href="/student/onboarding"
+              className="mt-4 inline-block px-5 py-2 min-h-[44px] leading-[28px] bg-[#534AB7] text-white text-sm font-semibold rounded-xl hover:bg-[#4840a3] transition-colors"
             >
               Update Profile
-            </button>
+            </Link>
             <div className="mt-3 flex gap-2 items-center">
               <LogoutButton />
               {isAdmin && (

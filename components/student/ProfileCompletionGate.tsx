@@ -6,7 +6,7 @@
  * Shows as a centred modal when board/grade/language/subjects are missing.
  * Steps: Language -> Board -> Grade -> Subjects -> [Parent Email if age known].
  *
- * Visual style matches ProfileSetupForm exactly:
+ * Visual style:
  *   - Same board cards (radio dot inside), grade grid (min-h-[52px]),
  *     language large cards, subject chips (2-column grid with mandatory lock).
  *   - Purple header with Vidya avatar.
@@ -32,6 +32,12 @@ interface ProfileCompletionGateProps {
   // server-side profile data from checkProfileCompleteness(); used to
   // pre-populate the form and jump to the first missing step.
   initialValues?: StudentProfileData;
+  // When true: renders inline (full-page, no modal overlay, no portal).
+  // Used by the /student/onboarding page so new users see the same V2 form.
+  standalone?: boolean;
+  // Called after a successful save when standalone=true.
+  // In modal mode, router.refresh() is used instead.
+  afterSave?: () => void;
 }
 
 // ── Constants ──────────────────────────────────────────────────────────────────
@@ -49,7 +55,7 @@ const LANGUAGE_OPTIONS = [
 
 const GRADES = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12] as const;
 
-// Mandatory subjects that cannot be deselected (mirrors ProfileSetupForm).
+// Mandatory subjects that cannot be deselected.
 function getMandatorySubjects(board: string, grade: number): string[] {
   if (board === 'cbse') {
     if (grade >= 9 && grade <= 10) return ['mathematics', 'science', 'english'];
@@ -96,6 +102,8 @@ function getInitialStep(
 
 export default function ProfileCompletionGate({
   initialValues,
+  standalone = false,
+  afterSave,
 }: ProfileCompletionGateProps) {
   const router = useRouter();
   const [mounted, setMounted] = useState(false);
@@ -188,8 +196,12 @@ export default function ProfileCompletionGate({
         setSaveError((json?.error as string | undefined) ?? "Couldn't save -- tap to retry.");
         return;
       }
-      // Force server layout re-render: isProfileComplete() -> true -> gate unmounts
-      router.refresh();
+      if (afterSave) {
+        afterSave();
+      } else {
+        // Modal mode: force server layout re-render so isProfileComplete() -> true -> gate unmounts
+        router.refresh();
+      }
     } catch {
       setSaveError("Network error -- check your connection.");
     } finally {
@@ -212,7 +224,8 @@ export default function ProfileCompletionGate({
     }
   }
 
-  if (!mounted) return null;
+  // In standalone mode we don't use a portal so no hydration issue -- skip the mounted guard.
+  if (!mounted && !standalone) return null;
 
   const progressPct = Math.round(((step + (canAdvance() ? 1 : 0)) / totalSteps) * 100);
 
@@ -221,14 +234,8 @@ export default function ProfileCompletionGate({
       ? `Maths & Science are mandatory for CBSE Class ${grade}.`
       : null;
 
-  const gate = (
-    <div
-      className="fixed inset-0 z-[9000] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
-      role="dialog"
-      aria-modal="true"
-      aria-label="Complete your profile"
-    >
-      <div className="w-full max-w-lg bg-white dark:bg-gray-900 rounded-2xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col">
+  const formCard = (
+    <div className="w-full max-w-lg bg-white dark:bg-gray-900 rounded-2xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col">
 
         {/* Purple header with Vidya avatar */}
         <div className="bg-[#534AB7] px-6 py-5 flex-shrink-0">
@@ -507,9 +514,28 @@ export default function ProfileCompletionGate({
 
         </div>
       </div>
-    </div>
   );
 
-  // Render via portal so the overlay sits outside any scroll-container ancestor.
+  // Standalone mode: full-page layout, no portal, no backdrop.
+  // Used by the /student/onboarding page so new users see the same V2 form.
+  if (standalone) {
+    return (
+      <div className="min-h-screen bg-gray-50 dark:bg-slate-950 flex items-center justify-center p-4">
+        {formCard}
+      </div>
+    );
+  }
+
+  // Modal mode: render via portal so the overlay sits outside any scroll-container ancestor.
+  const gate = (
+    <div
+      className="fixed inset-0 z-[9000] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Complete your profile"
+    >
+      {formCard}
+    </div>
+  );
   return createPortal(gate, document.body);
 }
