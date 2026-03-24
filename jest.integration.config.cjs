@@ -22,10 +22,8 @@ module.exports = {
     '^@/(.*)$': ['<rootDir>/src/$1', '<rootDir>/$1'],
   },
   moduleDirectories: ['node_modules', '<rootDir>'],
-  globals: {
-    'ts-jest': {
-      tsconfig: 'tsconfig.json',
-    },
+  transform: {
+    '^.+\\.tsx?$': ['ts-jest', { tsconfig: 'tsconfig.json' }],
   },
   setupFilesAfterEnv: [
     '<rootDir>/tests/setup/normalizePaths.cjs',

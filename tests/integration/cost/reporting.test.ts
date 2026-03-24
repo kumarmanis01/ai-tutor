@@ -40,15 +40,16 @@ jest.mock('@/lib/logger', () => ({
 }));
 jest.mock('@/lib/mailer', () => ({
   sendEmail: jest.fn().mockResolvedValue(undefined),
+  sendMailSafe: jest.fn().mockResolvedValue(undefined),
 }));
 
 // ---------------------------------------------------------------------------
 // Module imports
 // ---------------------------------------------------------------------------
 import { runDailyCostReport, getYesterdayIstBounds } from '@/worker/services/costReportingWorker';
-import { sendEmail } from '@/lib/mailer';
+import { sendMailSafe } from '@/lib/mailer';
 
-const mockSendEmail = sendEmail as jest.Mock;
+const mockSendEmail = sendMailSafe as jest.Mock;
 
 // ---------------------------------------------------------------------------
 // Helpers to build mock data

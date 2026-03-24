@@ -19,10 +19,8 @@ module.exports = {
     '^@/(.*)$': ['<rootDir>/src/$1', '<rootDir>/$1']
   },
   moduleDirectories: ['node_modules', '<rootDir>'],
-  globals: {
-    'ts-jest': {
-      tsconfig: 'tsconfig.json',
-    },
+  transform: {
+    '^.+\\.tsx?$': ['ts-jest', { tsconfig: 'tsconfig.json' }],
   },
   setupFilesAfterEnv: ['<rootDir>/tests/setup/normalizePaths.cjs', '<rootDir>/tests/setup/normalizePaths.ts', '<rootDir>/tests/setup/prismaEnsureColumns.ts', '<rootDir>/tests/setup/loggerTeardown.ts'],
   // Force exit after tests to avoid intermittent open-handle failures in CI
