@@ -100,10 +100,11 @@ export default function ProfileCompletionGate({
   const router = useRouter();
   const [mounted, setMounted] = useState(false);
 
-  // Whether to show the parent email step (age is known)
+  // Show the parent email step only for under-DPDP_MINOR_AGE (strictly < 13).
+  // Age 14+ must NOT see the field -- it is irrelevant for students above the threshold.
   const ageNum = initialValues?.age ?? null;
-  const showParentEmail = ageNum !== null;
   const parentEmailRequired = ageNum !== null && ageNum < DPDP_MINOR_AGE;
+  const showParentEmail = parentEmailRequired;
 
   const steps = buildSteps(showParentEmail);
 
