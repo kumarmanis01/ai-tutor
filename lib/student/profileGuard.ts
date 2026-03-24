@@ -113,9 +113,22 @@ export async function checkProfileCompleteness(studentId: string): Promise<Profi
       missingFields.push('board')
     }
 
-    // subjects may be null at runtime for pre-migration rows
+    // subjects may be null for pre-migration rows, or returned as a Postgres
+    // wire-format string "{a,b,c}" by the Neon serverless driver.
+    // Normalise to string[] here so both the missingFields check and the
+    // returned data.subjects are always consistent.
     const subjectsArr: unknown = user.subjects
-    if (!Array.isArray(subjectsArr) || subjectsArr.length === 0) {
+    let resolvedSubjects: string[] = []
+    if (Array.isArray(subjectsArr)) {
+      resolvedSubjects = (subjectsArr as string[]).filter(Boolean)
+    } else if (typeof subjectsArr === 'string' && subjectsArr.length > 0) {
+      resolvedSubjects = subjectsArr
+        .replace(/^\{/, '').replace(/\}$/, '')
+        .split(',')
+        .map((s) => s.trim())
+        .filter(Boolean)
+    }
+    if (resolvedSubjects.length === 0) {
       missingFields.push('subjects')
     }
 
@@ -150,7 +163,7 @@ export async function checkProfileCompleteness(studentId: string): Promise<Profi
         board: user.board ?? null,
         grade: user.grade ?? null,
         language: user.language ? String(user.language) : null,
-        subjects: Array.isArray(user.subjects) ? user.subjects : [],
+        subjects: resolvedSubjects,
         age: user.age ?? null,
         parentEmail: user.parentEmail ?? null,
       },

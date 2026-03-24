@@ -15,6 +15,7 @@ import { checkProfileCompleteness, isProfileComplete, EMPTY_PROFILE_DATA } from 
 import { checkParentGate } from '@/lib/student/parentGate';
 import { requiresParentOTPGate } from '@/lib/student/accountStatus';
 import StudentLayoutShell from '@/components/student/StudentLayoutShell';
+import { prisma } from '@/lib/prisma';
 import InstallPrompt from '@/components/pwa/InstallPrompt';
 import '@/styles/index.css';
 
@@ -89,6 +90,37 @@ export default async function StudentLayout({ children }: { children: React.Reac
   const profile = userId ? await checkProfileCompleteness(userId) : { complete: false, missingFields: [] as const, data: EMPTY_PROFILE_DATA };
   const onboardingComplete = profile.complete;
 
+  // Always read fresh from DB for the profile gate check.
+  // session.user is stale after onboarding and does not reflect updated subjects.
+  // isProfileComplete handles all Prisma return shapes including Postgres wire-format strings.
+  const freshProfile = userId
+    ? await prisma.user.findUnique({
+        where: { id: userId },
+        select: {
+          board: true,
+          grade: true,
+          language: true,
+          subjects: true,
+          age: true,
+          parentEmail: true,
+        },
+      })
+    : null;
+
+  // Debug log: visible in PM2 / server stdout. Remove after confirming gate is fixed.
+  if (userId && !skipApi && !skipVerifyParent && !skipOnboarding) {
+    console.log('[GATE DEBUG]', JSON.stringify({
+      id: userId,
+      board: freshProfile?.board,
+      grade: freshProfile?.grade,
+      language: freshProfile?.language,
+      subjects: freshProfile?.subjects,
+      subjectsType: typeof freshProfile?.subjects,
+      isArray: Array.isArray(freshProfile?.subjects),
+      profileComplete: freshProfile ? isProfileComplete(freshProfile) : false,
+    }));
+  }
+
   let showParentGate = false;
   let maskedParentEmail: string | null = null;
 
@@ -115,13 +147,35 @@ export default async function StudentLayout({ children }: { children: React.Reac
     }
   }
 
+  // Parse subjects from any Prisma return shape into string[] for the gate's initialValues.
+  function parseSubjectsForGate(raw: unknown): string[] {
+    if (Array.isArray(raw)) return (raw as string[]).filter(Boolean)
+    if (typeof raw === 'string' && raw.length > 0) {
+      return raw.replace(/^\{/, '').replace(/\}$/, '').split(',').map((s) => s.trim()).filter(Boolean)
+    }
+    return []
+  }
+
   // Profile completion gate: shown as overlay when board/grade/language/subjects are missing.
-  // Skipped on the same paths as the parent gate to avoid blocking API and onboarding routes.
+  // Uses freshProfile (direct DB read) so the gate check is never stale after onboarding.
+  // Skipped on API routes, /student/onboarding, and /student/verify-parent.
   const showProfileGate =
     !skipApi &&
     !skipVerifyParent &&
     !skipOnboarding &&
-    !isProfileComplete(profile.data);
+    !isProfileComplete(freshProfile ?? profile.data);
+
+  // Build initialProfileData from fresh DB row, falling back to checkProfileCompleteness result.
+  const initialProfileData = freshProfile
+    ? {
+        board: freshProfile.board ?? null,
+        grade: freshProfile.grade ?? null,
+        language: freshProfile.language ?? null,
+        subjects: parseSubjectsForGate(freshProfile.subjects),
+        age: freshProfile.age ?? null,
+        parentEmail: freshProfile.parentEmail ?? null,
+      }
+    : profile.data;
 
   // Parent verification is shown as modal (ParentOTPGate); do not redirect to
   // /student/verify-parent -- that page redirects to /dashboard and causes a loop.
@@ -142,7 +196,7 @@ export default async function StudentLayout({ children }: { children: React.Reac
               showParentGate={showParentGate}
               maskedParentEmail={maskedParentEmail}
               showProfileGate={showProfileGate}
-              initialProfileData={profile.data}
+              initialProfileData={initialProfileData}
             >
               <div className="pb-16 md:pb-0">
                 {children}
