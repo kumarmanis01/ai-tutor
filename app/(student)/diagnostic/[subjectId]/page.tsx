@@ -80,8 +80,8 @@ export default async function DiagnosticPage({
             Vidya is getting ready
           </h1>
           <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">
-            We&apos;re preparing your {subjectDef.name} diagnostic. This usually takes a few
-            minutes. Check back shortly.
+            We&apos;re getting your personalised content ready.
+            This usually takes a few minutes -- check back shortly.
           </p>
           <Link
             href="/dashboard"
