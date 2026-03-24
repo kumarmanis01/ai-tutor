@@ -22,13 +22,13 @@ export const dynamic = 'force-dynamic';
 export default async function DiagnosticPage({
   params,
 }: {
-  params: { subjectId: string };
+  params: Promise<{ subjectId: string }>;
 }) {
   const authSession = await requireActiveSession();
   if (!authSession) redirect('/');
 
   const userId = (authSession.user as { id: string }).id;
-  const { subjectId } = params;
+  const { subjectId } = await params;
 
   // Fetch student profile -- need board slug, grade, language for question generation
   const student = await prisma.user.findUnique({
