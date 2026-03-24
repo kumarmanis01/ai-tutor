@@ -56,6 +56,9 @@ export interface TodaysLearningCardProps {
   recommendation?: TodaysLearningCardRecommendation | null;
   session?: TodaysLearningCardSession | null;
   homework?: TodaysLearningCardHomework | null;
+  // href for the "Take diagnostic test" CTA shown in the empty/onboarding state.
+  // Should be /diagnostic/[firstSubjectId]. Defaults to /dashboard if not provided.
+  diagnosticHref?: string;
 }
 
 // ── Main component ────────────────────────────────────────────────────────────
@@ -65,12 +68,13 @@ export default function TodaysLearningCard({
   recommendation,
   session,
   homework,
+  diagnosticHref,
 }: TodaysLearningCardProps) {
   if (type === 'resume' && session) return <ResumeState session={session} />;
   if (type === 'homework' && homework) return <HomeworkState homework={homework} />;
   if (type === 'start' && recommendation) return <StartState rec={recommendation} />;
   if (type === 'ahead') return <AheadState />;
-  return <EmptyState />;
+  return <EmptyState diagnosticHref={diagnosticHref ?? '/dashboard'} />;
 }
 
 // ── Start state ───────────────────────────────────────────────────────────────
@@ -245,7 +249,7 @@ function AheadState() {
 
 // ── Empty / onboarding state ──────────────────────────────────────────────────
 
-function EmptyState() {
+function EmptyState({ diagnosticHref }: { diagnosticHref: string }) {
   return (
     <article className="rounded-2xl border border-dashed border-gray-300 dark:border-slate-600 bg-gray-50 dark:bg-slate-800/50 border-l-4 border-l-[#534AB7] overflow-hidden">
       <div className="p-5">
@@ -279,7 +283,7 @@ function EmptyState() {
         </ol>
 
         <Link
-          href="/learn"
+          href={diagnosticHref}
           className="flex w-full min-h-[44px] items-center justify-center rounded-xl bg-[#534AB7] text-white text-sm font-semibold hover:bg-[#4840a3] transition-colors"
         >
           Take diagnostic test

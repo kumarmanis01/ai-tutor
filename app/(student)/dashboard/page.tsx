@@ -281,7 +281,7 @@ export default async function StudentHomeDashboardPage() {
   if (needsProfile) {
     return (
       <main className="max-w-lg mx-auto px-4 py-6">
-        <TodaysLearningCard type="empty" />
+        <TodaysLearningCard type="empty" diagnosticHref="/student/onboarding" />
       </main>
     );
   }
@@ -399,6 +399,12 @@ export default async function StudentHomeDashboardPage() {
     }),
   );
 
+  // href for the "Take diagnostic test" CTA in the empty/onboarding card.
+  // Uses the first enrolled subject resolved against DB so the link is always valid.
+  const diagnosticHref = subjectDefs[0]?.id
+    ? `/diagnostic/${subjectDefs[0].id}`
+    : '/student/onboarding';
+
   // ── Render ────────────────────────────────────────────────────────────────
   return (
     <>
@@ -427,6 +433,7 @@ export default async function StudentHomeDashboardPage() {
             {/* ② TodaysLearningCard */}
             <TodaysLearningCard
               type={cardType}
+              diagnosticHref={diagnosticHref}
               recommendation={recommendation}
               session={
                 activeSession
