@@ -44,8 +44,9 @@ export async function POST(req: NextRequest) {
     const gradeRaw = (typeof body.class_grade === 'number' || typeof body.class_grade === 'string') ? body.class_grade : body.grade;
     const grade = gradeRaw !== undefined && gradeRaw !== null ? String(gradeRaw) : undefined;
     const board = typeof body.board === 'string' ? body.board : undefined;
+    // Normalise subject slugs to lowercase to prevent 'Mathematics' vs 'mathematics' mismatch downstream
     const subjects = Array.isArray(body.subjects)
-      ? [...new Set((body.subjects as any[]).map((s) => (s == null ? '' : String(s))).filter((s) => s.length > 0))]
+      ? [...new Set((body.subjects as any[]).map((s) => (s == null ? '' : String(s).toLowerCase().replace(/\s+/g, '-'))).filter((s) => s.length > 0))]
       : undefined;
     const preferredLanguage = typeof body.preferred_language === 'string' ? body.preferred_language : undefined;
     const token = typeof body.token === 'string' ? body.token : undefined;
