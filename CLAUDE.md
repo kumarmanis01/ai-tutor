@@ -284,3 +284,18 @@ Before ending ANY session:
 3. Only then: git add -A && git commit
 
 This must be the LAST step of every task, not optional.
+
+---
+
+## Running SQL on VPS -- Canonical Pattern
+ALWAYS use scripts/db-exec.sh for SQL. NEVER use --stdin or here-strings.
+
+Correct:
+  bash scripts/db-exec.sh "SELECT COUNT(*) FROM \"User\""
+
+Wrong (breaks on AlmaLinux):
+  npx prisma db execute --stdin <<< "SELECT..."
+  npx prisma db execute --url "$DATABASE_URL" --stdin <<< "..."
+
+The wrapper handles DATABASE_URL loading, temp file creation,
+and cleanup automatically.

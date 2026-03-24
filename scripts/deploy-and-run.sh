@@ -332,6 +332,25 @@ pm2 set pm2-logrotate:retain 14 2>/dev/null || true
 # Systemd startup (survives reboot)
 sudo pm2 startup systemd -u "$(whoami)" --hp "$HOME" 2>/dev/null || true
 
+# Post-deploy: mark stale WorkerLifecycle rows as STOPPED.
+# Any DRAINING/RUNNING row that is not the single most-recent RUNNING row
+# is left over from a previous deploy and should be closed out.
+step "Post-deploy: stale worker cleanup"
+bash "${SCRIPT_DIR}/db-exec.sh" "
+  UPDATE \"WorkerLifecycle\"
+  SET status = 'STOPPED',
+      \"stoppedAt\" = NOW(),
+      \"updatedAt\" = NOW()
+  WHERE status IN ('DRAINING', 'RUNNING')
+  AND id NOT IN (
+    SELECT id FROM \"WorkerLifecycle\"
+    WHERE status = 'RUNNING'
+    ORDER BY \"startedAt\" DESC
+    LIMIT 1
+  );
+"
+echo "OK: Stale worker records cleaned"
+
 # ─────────────────────────────────────────────────────────────────────────────
 # 11. SEED SCRIPTS (optional, --seed flag)
 # ─────────────────────────────────────────────────────────────────────────────
