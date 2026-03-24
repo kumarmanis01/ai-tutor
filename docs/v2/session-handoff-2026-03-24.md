@@ -1,101 +1,141 @@
-# Spinzy Academy — Session Handoff
+# Spinzy Academy -- Session Handoff
 # Date: 2026-03-24
 # Start next chat by sharing this file + docs/v2/02-architecture.md
 ---
 ## Project Identity
-- Product: Spinzy Academy — AI home tutor "Vidya" for Indian K-12 students
+- Product: Spinzy Academy -- AI home tutor "Vidya" for Indian K-12 students (CBSE/ICSE Gr 6-12)
 - Domain: https://spinzyacademy.com
-- VPS: gnosiva@srv1232455
-- App path: /home/gnosiva/apps/content-engine/ai-tutor/
-- Stack: Next.js 16 + TypeScript + Prisma 6 + Neon PostgreSQL + Redis + BullMQ + PM2
+- VPS: gnosiva@srv1232455  |  App: /home/gnosiva/apps/content-engine/ai-tutor/
+- Stack: Next.js 16 + TypeScript + Prisma 6.19.1 + Neon PostgreSQL + Redis + BullMQ + PM2
 - PM2 processes: ai-tutor-web | content-engine-worker | ai-tutor-scheduler
 - Deploy: ./scripts/deploy-and-run.sh
-- Branch: claude/audit-hydrate-all-pipeline-R14hP
+- Branch: claude/session-handoff-docs-AWVZW (merge to master, then pull on VPS)
 ---
 ## Critical Rules (always follow these)
 ### SQL on VPS
 ALWAYS: bash scripts/db-exec.sh "SELECT ..."
-NEVER: npx prisma db execute --stdin <<< "..."
+NEVER:  npx prisma db execute --stdin <<< "..."
+
 ### Bash indirect expansion
 ALWAYS: val=$(eval echo "\$$var")
-NEVER: ${!var}  -- breaks on AlmaLinux bash
+NEVER:  ${!var}  -- breaks on AlmaLinux bash
+
 ### Smart quotes
 Pre-commit hook auto-fixes. If deploy fails: python3 scripts/fix-smart-quotes.py
 NEVER use Unicode curly quotes in .ts/.tsx/.cjs files
+
 ### Prisma enum imports
 ALWAYS: import { AdminActionType } from '@prisma/client'
-NEVER: import type { AdminActionType } from '@prisma/client'
+NEVER:  import type { AdminActionType } from '@prisma/client'
+
 ### SubjectDef schema
-FK column is "classId" NOT "classLevelId" -- confirmed in DB
-### User.subjects field
-Stores lowercase slugs: {english,mathematics,science}
-ALWAYS filter SubjectDef by grade + board when resolving slugs to IDs
-NEVER query SubjectDef by slug alone -- returns Grade 1 row (inserted first)
+- FK column: "classId"  (NOT "classLevelId")
+- Relation name: "class"  (NOT "classLevel")
+- To join: include: { class: { include: { board: true } } }
+- ALWAYS filter SubjectDef by grade + board when resolving slugs
+- NEVER query SubjectDef by slug alone -- returns Grade 1 row (inserted first)
+
 ### Content pipeline order
 1. NCERT scraper FIRST (populates CurriculumChunk)
 2. HydrateAll SECOND (SyllabusWorker reads chunks for correct chapters)
 Never run HydrateAll without NCERT content -- generates hallucinated chapters
+
+### Prisma version
+LOCKED at 6.19.1 -- never upgrade to v7
+If drift: npm install prisma@6.19.1 @prisma/client@6.19.1 --save-exact
+
+### grade and board
+Immutable after first save -- strip from all PATCH handlers
+Comment: // grade/board immutable after first save -- strip from all PATCH handlers
+
+### Environment flags (DO NOT CHANGE)
+ENABLE_DISTRESS_DETECTION=false  -- flip only after on-call process defined
+NEXT_PUBLIC_CONSENT_LIVE=false   -- flip only after lawyer approves ConsentGate.tsx copy
+ROLLOUT_PERCENTAGE=5             -- V2 feature rollout percentage
+
 ---
-## Production State
+## Production State (as of 2026-03-24)
 - Site: LIVE at spinzyacademy.com
 - Google OAuth: working
-- Cloudflare: A record -> VPS, SSL Full strict
-- Redis: CHECK STATUS -- was down last session (sudo systemctl start redis)
-- Migrations: 20 applied including schema_audit_cleanup
-- Taxonomy: seeded (2 boards, 24 ClassLevels, ~52 SubjectDefs)
-- Content: Grade 6 Science chapters generated (wrong -- see B7)
+- Migrations: 24 applied (all up to date on Neon)
+- Tests: 1222 passing
+- PM2: all 3 processes online, restart count 0
+- Scheduler jobs: hydrationReconciler, weeklyParent, readinessPrecompute,
+                  costReport, dailyMaintenance, markIgnored, cleanup
+
+---
+## Completed This Session
+- ProfileCompletionGate: full V2 rewrite -- inline multi-step form (no redirect)
+  purple Vidya header, board radio cards, 52px grade grid, 2-col language cards,
+  subject chips with mandatory lock, conditional parent email (DPDP age < 13),
+  pre-populated from DB via initialValues prop, skip to first missing step,
+  router.refresh() after save so gate unmounts when isProfileComplete() = true
+- StudentProfileData: added age + parentEmail fields
+- Admin system metrics: replaced SWR client component with server component
+  using systemHealth() + Prisma queries -- no more "Loading forever"
+  Added AI Telemetry section (cost this month, avg cost/session, cache hit rate)
+- Diagnostic loading copy: removed subject name ("getting your personalised content ready")
+- Recent jobs enrichment: GET /api/admin/hydrateAll now enriches board/grade/subject
+  from SubjectDef.class join when denormalized fields are null
+- Recent jobs progress: shows Ch/Notes/Q breakdown below overall progress bar
+
 ---
 ## Pending Bugs (fix in order)
-B1 CRITICAL: generate-plan returns Grade 1 SubjectDef for Grade 6 student
-   File: app/api/student/onboarding/generate-plan/route.ts
-   RCA: slug lookup missing grade+board filter
-   Fix: add classLevel.grade + board.slug to WHERE clause
-   Also fix: app/api/subjects/for-selection/route.ts (same bug)
-B2 CRITICAL: User.subjects has capitalised values {Mathematics,Science}
-   Fix: run this SQL on Neon:
-   UPDATE "User"
-   SET subjects = ARRAY(
-     SELECT lower(regexp_replace(unnest(subjects), '\s+', '-', 'g'))
-   )
-   WHERE subjects IS NOT NULL AND subjects != '{}';
-B3 HIGH: deploy-and-run.sh fails with "unbound variable" at line ~291
-   Fix: replace ${!var} with: val=$(eval echo "\$$var")
-   Also wire: worker cleanup + db-exec.sh creation
-B4 HIGH: Redis down -- HydrateAll cascade stops after Level 1 (chapters only)
-   Fix on VPS: sudo systemctl start redis && sudo systemctl enable redis
-   Then: redis-cli CONFIG SET maxmemory-policy noeviction
-B5 HIGH: Wrong NCERT chapters for Grade 6 Science (Grade 8 chapters generated)
-   Fix: SyllabusWorker must read CurriculumChunk for chapter names
-   But first: run NCERT scraper so CurriculumChunk is populated
-B6 MEDIUM: NCERT scraper never ran (IngestRunLog empty)
-   Fix: npm install -g tsx on VPS, then trigger from /admin/content Coverage page
-   URL table needs updating: Grade 6 Science = fecu1 (Curiosity 2024 book)
-B7 MEDIUM: Husky pre-commit not wired -- smart quotes keep recurring
-   Fix prompt: written in session, not applied yet
-B8 LOW: WorkerLifecycle stale records in admin UI
-   Fix: added to deploy script in fix prompt, not applied yet
+B4 MEDIUM: Doubts tab 404
+   Fix: create app/(student)/doubts/page.tsx showing DoubtKb for student
+
+B5 MEDIUM: HydrateAll generates wrong chapters (hallucinated, not NCERT)
+   Fix: SyllabusWorker reads CurriculumChunk for chapter names
+   Prerequisite: NCERT scraper must run first (IngestRunLog is empty)
+
 ---
-## Pending Actions (not code fixes)
-- Resend domain verify: spinzyacademy.com in Resend dashboard + Cloudflare DNS records
-- RESEND_API_KEY: add to .env.production on VPS
-- SMTP vars: remove EMAIL_SERVER_* from .env.production (replaced by Resend)
-- Run SubjectDef dedup SQL if duplicates exist after taxonomy reseed
-- Trigger HydrateAll for CBSE Grade 10 Maths + Science (highest priority content)
+## Pending VPS Actions
+- Redis: verify running (redis-cli ping must return PONG)
+  If down: sudo systemctl start redis && sudo systemctl enable redis
+  Then: redis-cli CONFIG SET maxmemory-policy noeviction
+- HydrateAll: trigger for CBSE Grade 10 Maths + Science from admin UI
+  ONLY after NCERT scraper has run (otherwise hallucinated chapters)
+- NCERT scraper: trigger from /admin/content Coverage page for Grade 10 Maths + Science
+- Resend: add RESEND_API_KEY to .env.production + verify spinzyacademy.com domain in Resend
+- Deploy: git pull on VPS then ./scripts/deploy-and-run.sh
+
+---
+## Content Pipeline Status
+- Taxonomy: seeded (2 boards, 24 ClassLevels, ~52 SubjectDefs)
+- NCERT chunks: NOT ingested (IngestRunLog empty) -- run scraper before HydrateAll
+- Questions: 0 in Question table, some in GeneratedQuestion
+- Diagnostic: shows "Vidya is getting ready" (topicDef count = 0 for most subjects)
+
 ---
 ## Architecture Quick Reference
-Content pipeline:
+### Content pipeline
   seed-taxonomy.cjs -> ClassLevel + SubjectDef
-  scrape-ncert.ts -> CurriculumChunk (NCERT PDFs -> pgvector)
-  HydrateAll -> ChapterDef + TopicDef + TopicNote + GeneratedQuestion
+  scrape-ncert.ts   -> CurriculumChunk (NCERT PDFs -> pgvector)
+  HydrateAll        -> ChapterDef + TopicDef + TopicNote + GeneratedQuestion
   GeneratedQuestion -> Question (lazy promotion on first session)
-Key files:
-  lib/ai/tutor/promptAssembly.ts -- Teacher Vidya persona
-  worker/services/syllabusWorker.ts -- chapter generation
-  worker/services/hydrationReconciler.ts -- cascade orchestration
-  scripts/deploy-and-run.sh -- full deploy with pre-flight gates
-  scripts/db-exec.sh -- SQL runner (use this, not prisma --stdin)
-  scripts/fix-smart-quotes.py -- unicode fixer
-  scripts/seed-taxonomy.cjs -- Board/ClassLevel/SubjectDef seed
-  prisma/schema.prisma -- source of truth for all models
-Admin panel: https://spinzyacademy.com/admin
-  Key pages: /admin/content-engine/hydrateAll | /admin/content | /admin/users
+
+### Key relations
+  SubjectDef.class    -> ClassLevel  (FK: classId)
+  ClassLevel.board    -> Board
+  ClassLevel.subjects -> SubjectDef[]
+
+### isProfileComplete vs checkProfileCompleteness
+  isProfileComplete()        -- checks board/grade/language/subjects only (gate trigger)
+  checkProfileCompleteness() -- checks all fields including name/age/parentEmail
+
+### Key files
+  lib/ai/tutor/promptAssembly.ts          -- Vidya persona + Socratic prompt
+  lib/student/profileGuard.ts             -- isProfileComplete, checkProfileCompleteness
+  components/student/ProfileCompletionGate.tsx -- inline V2 profile completion form
+  worker/services/syllabusWorker.ts       -- chapter generation
+  worker/services/hydrationReconciler.ts  -- cascade orchestration
+  scripts/deploy-and-run.sh               -- full deploy with pre-flight gates
+  scripts/db-exec.sh                      -- SQL runner (use this, NOT prisma --stdin)
+  scripts/fix-smart-quotes.py             -- unicode fixer
+  scripts/seed-taxonomy.cjs               -- Board/ClassLevel/SubjectDef seed
+  prisma/schema.prisma                    -- source of truth for all models
+
+### Admin panel
+  https://spinzyacademy.com/admin
+  Key pages: /admin/content-engine/hydrate-all | /admin/content | /admin/users
+             /admin/system/metrics | /admin/ai-dashboard
