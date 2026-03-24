@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getServerSessionForHandlers } from '@/lib/session'
 import { sendEmail } from '@/lib/mailer'
+import { deletionConfirmHtml } from '@/lib/email/templates'
 import { AdminActionType } from '@prisma/client'
 
 const DAYS_TO_PSEUDONYMISE = 7
@@ -51,15 +52,8 @@ export async function POST() {
   if (userEmail) {
     sendEmail({
       to: userEmail,
-      subject: 'Your data deletion request -- Spinzy',
-      html: `<p>We've received your request. Your account has been deactivated.</p>
-<p>Your personal data will be anonymised within 7 days and permanently deleted within 30 days.</p>
-<p>Learning analytics are retained anonymously as required by law.</p>`,
-      text: [
-        "We've received your request. Your account has been deactivated.",
-        'Your personal data will be anonymised within 7 days and permanently deleted within 30 days.',
-        'Learning analytics are retained anonymously as required by law.',
-      ].join('\n'),
+      subject: 'Account deletion request received -- Spinzy Academy',
+      html: deletionConfirmHtml(),
     }).catch(() => undefined)
   }
 

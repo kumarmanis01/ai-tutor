@@ -3,6 +3,8 @@ import { getServerSessionForHandlers } from '@/lib/session'
 import { getRedis } from '@/lib/redis'
 import { prisma } from '@/lib/prisma'
 import { logger } from '@/lib/logger'
+import { sendMail } from '@/lib/mailer'
+import { parentOtpHtml } from '@/lib/email/templates'
 
 export const dynamic = 'force-dynamic'
 
@@ -37,7 +39,7 @@ export async function POST(req: Request) {
 
     const user = await prisma.user.findUnique({
       where: { id: userId },
-      select: { parentEmail: true },
+      select: { parentEmail: true, name: true },
     })
     const parentEmail = user?.parentEmail?.trim()
     if (!parentEmail) {
@@ -69,7 +71,14 @@ export async function POST(req: Request) {
         methodName: 'POST',
       })
     }
-    // TODO: send to parentEmail via email service
+
+    // Send OTP to parent email -- throws on failure so the caller knows it wasn't sent
+    const studentName = user.name ?? 'your child'
+    await sendMail({
+      to: parentEmail,
+      subject: `Verify ${studentName}'s Spinzy Academy account`,
+      html: parentOtpHtml(otp, studentName),
+    })
 
     const res = NextResponse.json({
       sent: true,
