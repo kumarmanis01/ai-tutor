@@ -131,7 +131,7 @@ export default function AdminHome() {
         <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Quick links</h2>
         <ul className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <QuickLink href="/admin/content-engine/jobs" label="Execution jobs" desc="List, filter, view details, Retry / Cancel / Requeue" />
-          <QuickLink href="/admin/content-engine/hydrateAll" label="Hydrate All" desc="Submit and monitor pipeline; retry failed child jobs from Monitor" />
+          <QuickLink href="/admin/content-engine/hydrate-all" label="Hydrate All" desc="Submit and monitor pipeline; retry failed child jobs from Monitor" />
           <QuickLink href="/admin/content-engine/audit-logs" label="Engine audit logs" desc="Content engine execution and job events" />
           <QuickLink href="/admin/regeneration-jobs" label="Regeneration jobs" desc="Legacy regeneration job list" />
           <QuickLink href="/admin/system/alerts" label="System alerts" desc="Active and resolved alerts" />

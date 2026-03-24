@@ -1,23 +1,30 @@
-"use client"
-import React, { useEffect, useState } from "react";
-import { JobStatus, ApprovalStatus } from '@/lib/ai-engine/types'
+"use client";
+import React, { useCallback, useEffect, useState } from "react";
+import { ApprovalStatus } from '@/lib/ai-engine/types';
+
+interface ChapterRow {
+  id: string;
+  name: string;
+  slug: string;
+  subjectId: string;
+  status: string;
+}
 
 function StatusBadge({ status }: { status: string }) {
   const color =
     status === ApprovalStatus.Approved
-      ? "bg-green-200 text-green-800"
-      : status === JobStatus.Pending
-      ? "bg-yellow-200 text-yellow-800"
+      ? "bg-green-100 text-green-700"
       : status === ApprovalStatus.Rejected
-      ? "bg-red-200 text-red-800"
-      : "bg-gray-200 text-gray-800";
-  return <span className={`px-2 py-1 rounded text-xs font-semibold ${color}`}>{status}</span>;
+      ? "bg-red-100 text-red-700"
+      : status === 'draft'
+      ? "bg-yellow-100 text-yellow-700"
+      : "bg-gray-100 text-gray-600";
+  return <span className={`px-2 py-0.5 rounded text-xs font-semibold ${color}`}>{status}</span>;
 }
 
-function ModerationActions({ chapter, refresh }: { chapter: any; refresh: () => void }) {
+function ModerationActions({ chapter, refresh }: { chapter: ChapterRow; refresh: () => void }) {
   const [confirm, setConfirm] = useState<string | null>(null);
-  const [audit, setAudit] = useState<any[]>([]);
-  const [showAudit, setShowAudit] = useState(false);
+  const [busy, setBusy] = useState(false);
 
   const handleAction = async (action: string) => {
     if (confirm !== action) {
@@ -25,108 +32,107 @@ function ModerationActions({ chapter, refresh }: { chapter: any; refresh: () => 
       setTimeout(() => setConfirm(null), 2000);
       return;
     }
-    const url = `/api/admin/chapters/${chapter.id}/${action}`;
-    const method = "POST";
-    let body: any = undefined;
-    if (action === "reject") {
-      body = JSON.stringify({ reason: "Rejected by admin" });
+    setBusy(true);
+    try {
+      const body = action === "reject" ? JSON.stringify({ reason: "Rejected by admin" }) : undefined;
+      await fetch(`/api/admin/chapters/${chapter.id}/${action}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body,
+      });
+      setConfirm(null);
+      refresh();
+    } finally {
+      setBusy(false);
     }
-    await fetch(url, { method, headers: { "Content-Type": "application/json" }, body });
-    setConfirm(null);
-    refresh();
-  };
-
-  const fetchAudit = async () => {
-    const res = await fetch(`/api/admin/audit-logs?entityType=chapter&entityId=${chapter.id}`);
-    if (res.ok) setAudit(await res.json());
-    setShowAudit(true);
   };
 
   return (
-    <div className="flex flex-col gap-1">
-      <div className="flex gap-2">
-        <button className="text-green-600" onClick={() => handleAction("approve")}>
-          {confirm === "approve" ? "Confirm Approve" : "Approve"}
-        </button>
-        <button className="text-red-600" onClick={() => handleAction("reject")}>
-          {confirm === "reject" ? "Confirm Reject" : "Reject"}
-        </button>
-      </div>
-      <button className="text-xs text-blue-600 underline" onClick={fetchAudit}>
-        View Audit Log
+    <div className="flex gap-2">
+      <button
+        disabled={busy}
+        className="min-h-[36px] px-2 py-1 text-xs text-green-700 border border-green-300 rounded disabled:opacity-50"
+        onClick={() => handleAction("approve")}
+      >
+        {confirm === "approve" ? "Confirm?" : "Approve"}
       </button>
-      {showAudit && (
-        <div className="bg-gray-50 border p-2 mt-1 max-w-xs">
-          <div className="font-bold mb-1">Audit Log</div>
-          {audit.length === 0 ? (
-            <div>No audit entries.</div>
-          ) : (
-            <ul className="text-xs">
-              {audit.map((entry: any) => (
-                <li key={entry.id}>
-                  {entry.fromStatus} → {entry.toStatus} by {entry.actorId || "admin"} ({new Date(entry.createdAt).toLocaleString()})
-                </li>
-              ))}
-            </ul>
-          )}
-          <button className="text-xs text-gray-600 mt-1" onClick={() => setShowAudit(false)}>
-            Close
-          </button>
-        </div>
-      )}
+      <button
+        disabled={busy}
+        className="min-h-[36px] px-2 py-1 text-xs text-red-700 border border-red-300 rounded disabled:opacity-50"
+        onClick={() => handleAction("reject")}
+      >
+        {confirm === "reject" ? "Confirm?" : "Reject"}
+      </button>
     </div>
   );
 }
 
 export default function ChaptersClient() {
-  const [chapters, setChapters] = useState<any[]>([]);
+  const [chapters, setChapters] = useState<ChapterRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
 
-  const fetchChapters = () => {
+  const fetchChapters = useCallback(() => {
     setLoading(true);
+    setError(false);
     fetch("/api/chapters")
-      .then((res) => res.json())
-      .then((data) => {
-        setChapters(data);
-        setLoading(false);
-      });
-  };
-
-  useEffect(() => {
-    fetchChapters();
+      .then(res => {
+        if (!res.ok) throw new Error('Failed');
+        return res.json();
+      })
+      .then((data: ChapterRow[]) => setChapters(data))
+      .catch(() => setError(true))
+      .finally(() => setLoading(false));
   }, []);
+
+  useEffect(() => { fetchChapters(); }, [fetchChapters]);
+
+  if (loading) {
+    return (
+      <div className="p-6 animate-pulse space-y-3">
+        {[1, 2, 3, 4].map(i => <div key={i} className="h-8 bg-gray-200 rounded" />)}
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="p-6 text-red-600">
+        {"Couldn't load chapters -- tap to retry"}
+        <button className="ml-3 underline text-sm" onClick={fetchChapters}>Retry</button>
+      </div>
+    );
+  }
 
   return (
     <div className="p-6">
       <h1 className="text-2xl font-bold mb-4">Chapters</h1>
-      {loading ? (
-        <div>Loading...</div>
-      ) : (
-        <table className="min-w-full border">
-          <thead>
-            <tr>
-              <th className="border px-4 py-2">Name</th>
-              <th className="border px-4 py-2">Slug</th>
-              <th className="border px-4 py-2">Subject</th>
-              <th className="border px-4 py-2">Status</th>
-              <th className="border px-4 py-2">Actions</th>
+      <p className="text-sm text-gray-500 mb-4">{chapters.length} chapters</p>
+      <table className="min-w-full border text-sm">
+        <thead className="bg-gray-50">
+          <tr>
+            <th className="border px-4 py-2 text-left">Name</th>
+            <th className="border px-4 py-2 text-left">Slug</th>
+            <th className="border px-4 py-2 text-left">Status</th>
+            <th className="border px-4 py-2 text-left">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {chapters.length === 0 && (
+            <tr><td colSpan={4} className="border px-4 py-4 text-center text-gray-400">No chapters found</td></tr>
+          )}
+          {chapters.map(chapter => (
+            <tr key={chapter.id} className="hover:bg-gray-50">
+              <td className="border px-4 py-2 font-medium">{chapter.name}</td>
+              <td className="border px-4 py-2 text-gray-500 font-mono text-xs">{chapter.slug}</td>
+              <td className="border px-4 py-2"><StatusBadge status={chapter.status} /></td>
+              <td className="border px-4 py-2">
+                <ModerationActions chapter={chapter} refresh={fetchChapters} />
+              </td>
             </tr>
-          </thead>
-          <tbody>
-            {chapters.map((chapter) => (
-              <tr key={chapter.id}>
-                <td className="border px-4 py-2">{chapter.name}</td>
-                <td className="border px-4 py-2">{chapter.slug}</td>
-                <td className="border px-4 py-2">{chapter.subjectId}</td>
-                <td className="border px-4 py-2"><StatusBadge status={chapter.status} /></td>
-                <td className="border px-4 py-2">
-                  <ModerationActions chapter={chapter} refresh={fetchChapters} />
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      )}
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }

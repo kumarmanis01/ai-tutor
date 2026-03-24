@@ -1709,6 +1709,8 @@ enum AdminActionType {
   DOUBT_RESOLVE
   CONTENT_REJECT
   JOB_CANCEL
+  JOB_PAUSE
+  JOB_RESUME
   JOB_RETRY
   JOB_REQUEUE
   CONTENT_HYDRATE
@@ -1813,6 +1815,7 @@ enum JobStatus {
   failed
   completed
   cancelled
+  paused
 }
 
 enum JobType {

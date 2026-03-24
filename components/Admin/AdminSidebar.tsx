@@ -223,7 +223,7 @@ const contentGenerationLinks: NavItem[] = [
   { href: '/admin/ai-dashboard', label: 'AI Dashboard', icon: 'Chart' },
   { href: '/admin/content-engine/control-panel', label: 'AI Generation', icon: 'Generate' },
   {
-    href: '/admin/content-engine/hydrateAll',
+    href: '/admin/content-engine/hydrate-all',
     label: 'Hydrate All',
     icon: 'Rocket',
     badge: 'Pipeline',
@@ -249,7 +249,7 @@ const contentManagementLinks: NavItem[] = [
 // Jobs, failure logs, retries -- single place for execution and HydrateAll jobs + retry actions
 const jobsAndRetriesLinks: NavItem[] = [
   { href: '/admin/content-engine/jobs', label: 'Execution Jobs', icon: 'Briefcase' },
-  { href: '/admin/content-engine/hydrateAll', label: 'Hydrate All Jobs', icon: 'Rocket' },
+  { href: '/admin/content-engine/hydrate-all', label: 'Hydrate All Jobs', icon: 'Rocket' },
   { href: '/admin/regeneration-jobs', label: 'Regeneration Jobs', icon: 'Rewind' },
 ];
 
@@ -278,6 +278,7 @@ const learningAndQualityLinks: NavItem[] = [
 
 const generalAdminLinks: NavItem[] = [
   { href: '/admin/users', label: 'User Management', icon: 'Users' },
+  { href: '/admin/notifications', label: 'Notifications', icon: 'Bell' },
   { href: '/admin/audit-logs', label: 'Platform Audit Logs', icon: 'ClipboardList' },
   { href: '/admin/api-usage', label: 'API Usage', icon: 'Chart' },
   { href: '/admin/payments/success', label: 'Payments', icon: 'CreditCard' },
