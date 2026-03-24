@@ -1,18 +1,9 @@
 #!/usr/bin/env sh
 . "$(dirname -- "$0")/_/husky.sh"
 
-# Auto-fix smart quotes + unicode on staged files
-# This runs BEFORE commit — fixes are included in the commit automatically
-python3 scripts/fix-smart-quotes.py
-
-# Re-stage any files the fixer modified on disk.
-# git diff --name-only = files that differ between index and working tree,
-# i.e. exactly the files fix-smart-quotes.py rewrote.
-# Works for both new files (git add -u misses these) and existing tracked files.
-FIXED=$(git diff --name-only)
-if [ -n "$FIXED" ]; then
-  echo "$FIXED" | xargs git add
-fi
+# lint-staged runs fix-smart-quotes.py on staged files and re-stages the result.
+# This is the correct place to auto-fix: lint-staged handles the index update.
+npx --no-install lint-staged
 
 # Run typecheck on production code only
 npx tsc --noEmit --project tsconfig.json

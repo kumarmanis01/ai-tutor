@@ -135,6 +135,7 @@
     "bullmq": "^5.66.0",
     "chalk": "^4.1.2",
     "dotenv": "^17.3.1",
+    "eventemitter3": "5.0.4",
     "framer-motion": "^12.23.16",
     "ioredis": "^5.8.2",
     "lucide-react": "^0.544.0",
@@ -216,8 +217,7 @@
   },
   "lint-staged": {
     "*.{ts,tsx,cjs,js,mjs}": [
-      "python3 scripts/fix-smart-quotes.py",
-      "git add"
+      "python3 scripts/fix-smart-quotes.py"
     ]
   },
   "overrides": {
