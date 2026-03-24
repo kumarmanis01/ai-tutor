@@ -8,8 +8,8 @@ export type AccountStatus = 'ACTIVE' | 'PENDING_PARENT_VERIFY' | 'SUSPENDED' | '
  * Returns true when:
  *   User.accountStatus = 'pending_parent_verification'
  *   AND User.age is known and < DPDP_MINOR_AGE (Indian DPDP Act 2023).
- * Null/unknown age = no gate — we don't gate on missing data.
- * Returns false on any DB error — never throws.
+ * Null/unknown age = no gate -- we don't gate on missing data.
+ * Returns false on any DB error -- never throws.
  */
 export async function requiresParentOTPGate(studentId: string): Promise<boolean> {
   try {

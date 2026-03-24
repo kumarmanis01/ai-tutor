@@ -136,7 +136,7 @@ export async function processContentJob(job: Job) {
   }
 
   if (!hydrationJobId && !executionJobId) {
-    // No usable id provided — hard error per contract
+    // No usable id provided -- hard error per contract
     throw new Error('Missing required payload: hydration job id or execution job id')
   }
 
@@ -421,7 +421,7 @@ export function startContentWorker(opts?: { concurrency?: number }) {
       const hydrateRow = await prisma.hydrationJob.findUnique({ where: { id: resolvedHydrationId } })
       const subjectId = hydrateRow?.subjectId ?? null
       if (!subjectId) {
-        // Missing subject linkage — treat as incomplete and log
+        // Missing subject linkage -- treat as incomplete and log
         await prisma.jobExecutionLog.create({ data: { jobId: String(incomingId), event: 'COMPLETION_SKIPPED', prevStatus: 'running', newStatus: 'running', message: 'hydration_missing_subject', meta: { hydrationJobId: resolvedHydrationId, bullJobId: job.id } } }).catch(() => {})
         logger.warn('[worker][WARN] completion skipped: hydration missing subject', { hydrationJobId: resolvedHydrationId, bullJobId: job.id })
         return
@@ -429,7 +429,7 @@ export function startContentWorker(opts?: { concurrency?: number }) {
 
       const chapter = await prisma.chapterDef.findFirst({ where: { subjectId: subjectId as string, lifecycle: 'active' } })
       if (!chapter) {
-        // No generated content — do not advance ExecutionJob automatically.
+        // No generated content -- do not advance ExecutionJob automatically.
         await prisma.jobExecutionLog.create({ data: { jobId: String(incomingId), event: 'COMPLETION_SKIPPED', prevStatus: 'running', newStatus: 'running', message: 'no_generated_content', meta: { hydrationJobId: resolvedHydrationId, bullJobId: job.id } } }).catch(() => {})
         logger.warn('[worker][WARN] completion skipped: no generated chapters', { hydrationJobId: resolvedHydrationId, bullJobId: job.id })
         return

@@ -257,7 +257,7 @@ async function runExamCountdownPush(): Promise<void> {
 }
 
 async function runRevisionDuePush(): Promise<void> {
-  // Only send if current time is between 07:30–09:00 IST
+  // Only send if current time is between 07:30-09:00 IST
   const nowIST = new Date(Date.now() + 5.5 * 60 * 60 * 1000)
   const hourIST = nowIST.getUTCHours()
   const minuteIST = nowIST.getUTCMinutes()
@@ -298,7 +298,7 @@ async function runDailyMaintenanceJob() {
     // ── Push: exam countdown reminders ──────────────────────────────────
     await runExamCountdownPush();
 
-    // ── Push: revision due (only between 07:30–09:00 IST) ───────────────
+    // ── Push: revision due (only between 07:30-09:00 IST) ───────────────
     await runRevisionDuePush();
   } catch (error) {
     logger.error('scheduler.dailyMaintenance.error', {

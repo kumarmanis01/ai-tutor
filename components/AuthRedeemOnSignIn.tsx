@@ -18,7 +18,7 @@ type TrackFn = (event: string, props?: Record<string, unknown>) => void | Promis
  * Notes:
  * - This file intentionally avoids importing any server-only modules at top-level.
  * - The analytics module is loaded dynamically; runtime checks ensure we only call a real function.
- * - No use of `any` — runtime-checked against Record<string, unknown>.
+ * - No use of `any` -- runtime-checked against Record<string, unknown>.
  */
 export default function AuthRedeemOnSignIn(): ReactElement | null {
   const { status, data: session } = useSession();

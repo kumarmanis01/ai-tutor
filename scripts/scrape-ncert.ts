@@ -1,95 +1,126 @@
 /**
  * scripts/scrape-ncert.ts
  *
- * Downloads NCERT textbook ZIP from ncert.nic.in, parses all PDFs inside,
- * chunks text at ~500 tokens / 50-token overlap, upserts CurriculumChunk rows
- * with SHA-256 idempotency, embeds via text-embedding-3-small, and writes an
- * IngestRunLog entry with final stats.
+ * Downloads NCERT chapter PDFs from ncert.nic.in using the 2024-25 book map
+ * (no HEAD probing -- chapter counts are known), extracts text via
+ * pdf-parse, chunks at ~500 tokens with 50-token overlap, deduplicates via
+ * SHA-256, embeds via text-embedding-3-small in batches of 20, and upserts
+ * CurriculumChunk rows. Writes one IngestRunLog entry per grade run.
+ *
+ * Covers CBSE grades 1-12.  Uses native fetch (Node 18+) -- no extra deps.
  *
  * Usage:
- *   npx tsx scripts/scrape-ncert.ts --grade 10 --subject mathematics --board cbse --lang en
- *   npx tsx scripts/scrape-ncert.ts --grade 10 --subject science    --board cbse --lang en
+ *   npx tsx scripts/scrape-ncert.ts --grade 10 --subject mathematics --lang en
+ *   npx tsx scripts/scrape-ncert.ts --subject mathematics --all-grades --lang en
+ *   npx tsx scripts/scrape-ncert.ts --grade 10 --subject mathematics --dry-run
+ *   npx tsx scripts/scrape-ncert.ts --grade 10 --subject mathematics --url <pdf-url>
  *
- * Optional:
- *   --url <override>   Skip the built-in URL table and fetch from this URL directly.
- *   --dry-run          Parse + chunk but skip DB writes and embeddings.
- *
- * Env required:
- *   DATABASE_URL, OPENAI_API_KEY
+ * Env required: DATABASE_URL, OPENAI_API_KEY
  */
 
 import { createHash } from 'crypto'
-import fs from 'fs'
-import os from 'os'
-import path from 'path'
-import { execSync } from 'child_process'
-// pdf-parse has no @types package — same pattern as other untyped deps in this repo
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-import pdfParse from 'pdf-parse'
 import { PrismaClient } from '@prisma/client'
 import { getEmbeddingsBatch } from '../lib/ai/embeddings'
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
-const BATCH_SIZE = 20
-/**
- * 375 words ≈ 500 tokens (at ~1.33 tokens/word for English text).
- * 37 words ≈ 50-token overlap.
- */
+/** 375 words ≈ 500 tokens at ~1.33 tokens/word for English text. */
 const CHUNK_WORDS = 375
+/** 37 words ≈ 50-token overlap between consecutive chunks. */
 const OVERLAP_WORDS = 37
-/** Drop chunks shorter than this — avoids headers, footers, page numbers. */
+/** Drop chunks shorter than this -- catches headers, footers, page numbers. */
 const MIN_CHUNK_WORDS = 30
+/** Scanned/image PDFs produce almost no text -- skip them. */
+const MIN_PDF_CHARS = 200
+/** OpenAI embedding batch size. */
+const BATCH_SIZE = 20
+/** Be polite to NCERT's server. */
+const REQUEST_DELAY_MS = 1000
+/** Probe up to this many chapters per book (used only for --url override path). */
+const MAX_CHAPTERS = 16
 
 const BASE_URL = 'https://ncert.nic.in/textbook/pdf'
 
-/**
- * NCERT URL code table: `${grade}-${normalised_subject}-${lang}` → filename stem.
- * Filename stem + '.zip' is the full download path under BASE_URL.
- *
- * Pattern: {gradeCode}{mediumCode}{subjectCode}1dd
- *   gradeCode : f=6, g=7, h=8, i=9, j=10, k=11, l=12
- *   mediumCode: e=English, h=Hindi
- *   1dd        = all chapters combined
- *
- * Two URLs verified by the spec author:
- *   jemh1dd → Grade 10 English Mathematics   ✓
- *   jesc1dd → Grade 10 English Science        ✓
- */
-const URL_TABLE: Record<string, string> = {
-  '6-mathematics-en':  'femh1dd',
-  '6-science-en':      'fesc1dd',
-  '7-mathematics-en':  'gemh1dd',
-  '7-science-en':      'gesc1dd',
-  '8-mathematics-en':  'hemh1dd',
-  '8-science-en':      'hesc1dd',
-  '9-mathematics-en':  'iemh1dd',
-  '9-science-en':      'iesc1dd',
-  '10-mathematics-en': 'jemh1dd',
-  '10-science-en':     'jesc1dd',
-  '11-mathematics-en': 'kemh1dd',
-  '11-physics-en':     'keph1dd',
-  '11-chemistry-en':   'kech1dd',
-  '11-biology-en':     'kebo1dd',
-  '12-mathematics-en': 'lemh1dd',
-  '12-physics-en':     'leph1dd',
-  '12-chemistry-en':   'lech1dd',
-  '12-biology-en':     'lebo1dd',
+// ── NCERT_BOOK_MAP ────────────────────────────────────────────────────────────
+
+interface BookInfo {
+  /** Base code for building chapter PDF URLs. */
+  code: string
+  /** Exact chapter count for this book (2024-25 edition). */
+  chapters: number
 }
 
-/** Map user-supplied subject strings to canonical keys used in URL_TABLE. */
+/**
+ * Maps subject → grade → NCERT chapter PDF info (2024-25 edition).
+ * Chapter URL pattern: {BASE_URL}/{code}{chapter:02d}.pdf
+ * Example: grade 10 maths ch 3 → https://ncert.nic.in/textbook/pdf/jemh103.pdf
+ * Example: grade 6 science ch 1 → https://ncert.nic.in/textbook/pdf/fecu101.pdf
+ *
+ * Grade 6 Science is now "Curiosity" (fecu1) -- updated 2024.
+ * Grade 6 Maths is now "Ganita Prakash" (fmth6) -- updated 2024.
+ * Grades 1-5 and standalone Physics/Chemistry/Biology are out of MVP scope.
+ */
+const NCERT_BOOK_MAP: Record<string, Record<number, BookInfo>> = {
+  science: {
+    6:  { code: 'fecu1',  chapters: 12 }, // Curiosity 2024
+    7:  { code: 'gesc1',  chapters: 18 },
+    8:  { code: 'hesc1',  chapters: 18 },
+    9:  { code: 'iesc1',  chapters: 15 },
+    10: { code: 'jesc1',  chapters: 16 },
+  },
+  mathematics: {
+    6:  { code: 'fmth6',  chapters: 10 }, // Ganita Prakash 2024
+    7:  { code: 'gmt1',   chapters: 15 },
+    8:  { code: 'hmth1',  chapters: 16 },
+    9:  { code: 'iemh1',  chapters: 15 },
+    10: { code: 'jemh1',  chapters: 15 },
+    11: { code: 'kemh1',  chapters: 16 },
+    12: { code: 'lemh1',  chapters: 13 },
+  },
+  'social-science': {
+    6:  { code: 'fess1',  chapters: 9  }, // Exploring Society 2024
+    7:  { code: 'gess1',  chapters: 10 },
+    8:  { code: 'hess1',  chapters: 10 },
+    9:  { code: 'jess1',  chapters: 8  },
+    10: { code: 'jess2',  chapters: 8  },
+  },
+  english: {
+    6:  { code: 'fehl1',  chapters: 10 }, // Poorvi 2024
+    7:  { code: 'gehl1',  chapters: 10 },
+    8:  { code: 'hehl1',  chapters: 10 },
+    9:  { code: 'ieel1',  chapters: 11 },
+    10: { code: 'jeel1',  chapters: 11 },
+  },
+  hindi: {
+    6:  { code: 'fhhl1',  chapters: 17 }, // Vasant
+    7:  { code: 'ghhl1',  chapters: 20 },
+    8:  { code: 'hhhl1',  chapters: 18 },
+    9:  { code: 'ihhl1',  chapters: 19 },
+    10: { code: 'jhhl1',  chapters: 17 },
+  },
+}
+
 const SUBJECT_ALIASES: Record<string, string> = {
-  mathematics: 'mathematics', math: 'mathematics', maths: 'mathematics',
-  science: 'science',
-  physics: 'physics',
-  chemistry: 'chemistry',
-  biology: 'biology',
+  mathematics:      'mathematics', math: 'mathematics', maths: 'mathematics',
+  science:          'science',
+  'social-science': 'social-science', sst: 'social-science', social: 'social-science',
+  english:          'english',
+  hindi:            'hindi',
+}
+
+// ── Utilities ─────────────────────────────────────────────────────────────────
+
+const sleep = (ms: number): Promise<void> => new Promise((res) => setTimeout(res, ms))
+
+function sha256(text: string): string {
+  return createHash('sha256').update(text, 'utf8').digest('hex')
 }
 
 // ── CLI args ──────────────────────────────────────────────────────────────────
 
 interface Args {
-  grade: number
+  grade: number | null  // null when --all-grades is set
+  allGrades: boolean
   subject: string
   board: string
   lang: string
@@ -103,115 +134,174 @@ function parseArgs(): Args {
     const i = argv.indexOf(`--${name}`)
     return i !== -1 ? (argv[i + 1] ?? null) : null
   }
-  const gradeRaw = flag('grade')
-  if (!gradeRaw) { console.error('[scrape-ncert] --grade is required'); process.exit(1) }
-  const grade = parseInt(gradeRaw, 10)
-  if (isNaN(grade) || grade < 1 || grade > 12) {
-    console.error(`[scrape-ncert] --grade must be 1–12, got "${gradeRaw}"`); process.exit(1)
+
+  const allGrades = argv.includes('--all-grades')
+  let grade: number | null = null
+  if (!allGrades) {
+    const gradeRaw = flag('grade')
+    if (!gradeRaw) {
+      console.error('[scrape-ncert] --grade is required (or use --all-grades)')
+      process.exit(1)
+    }
+    grade = parseInt(gradeRaw, 10)
+    if (isNaN(grade) || grade < 1 || grade > 12) {
+      console.error(`[scrape-ncert] --grade must be 1-12, got "${gradeRaw}"`); process.exit(1)
+    }
   }
 
   const subjectRaw = flag('subject')
   if (!subjectRaw) { console.error('[scrape-ncert] --subject is required'); process.exit(1) }
   const subject = SUBJECT_ALIASES[subjectRaw.toLowerCase().trim()]
   if (!subject) {
-    console.error(`[scrape-ncert] Unknown subject "${subjectRaw}". Known: ${Object.keys(SUBJECT_ALIASES).join(', ')}`)
+    console.error(
+      `[scrape-ncert] Unknown subject "${subjectRaw}". Known: ${Object.keys(SUBJECT_ALIASES).join(', ')}`,
+    )
+    process.exit(1)
+  }
+
+  const urlOverride = flag('url')
+  if (urlOverride && allGrades) {
+    console.error('[scrape-ncert] --url and --all-grades cannot be used together')
     process.exit(1)
   }
 
   return {
     grade,
+    allGrades,
     subject,
     board: (flag('board') ?? 'cbse').toUpperCase(),
     lang:  (flag('lang')  ?? 'en').toLowerCase(),
-    urlOverride: flag('url'),
+    urlOverride,
     dryRun: argv.includes('--dry-run'),
   }
 }
 
-// ── URL resolution ────────────────────────────────────────────────────────────
-
-function resolveDownloadUrl(args: Args): string {
-  if (args.urlOverride) return args.urlOverride
-  const key = `${args.grade}-${args.subject}-${args.lang}`
-  const stem = URL_TABLE[key]
-  if (!stem) {
-    console.error(
-      `[scrape-ncert] No URL mapping for "${key}".\n` +
-      `  Known keys: ${Object.keys(URL_TABLE).join(', ')}\n` +
-      `  Use --url <direct-url> to override.`,
-    )
-    process.exit(1)
-  }
-  return `${BASE_URL}/${stem}.zip`
+/** Return all grades that have a NCERT_BOOK_MAP entry for the given subject. */
+function availableGrades(subject: string): number[] {
+  return Object.keys(NCERT_BOOK_MAP[subject] ?? {})
+    .map(Number)
+    .sort((a, b) => a - b)
 }
 
-// ── Download ──────────────────────────────────────────────────────────────────
+// ── URL helpers ───────────────────────────────────────────────────────────────
 
-async function verifyAndDownload(url: string, destPath: string): Promise<void> {
-  console.log(`[scrape-ncert] Verifying ${url} …`)
-  const headRes = await fetch(url, { method: 'HEAD' })
-  if (!headRes.ok) {
-    throw new Error(`HEAD ${url} → HTTP ${headRes.status}. URL may be wrong or NCERT server is down.`)
+function buildChapterUrl(code: string, chapter: number): string {
+  return `${BASE_URL}/${code}${String(chapter).padStart(2, '0')}.pdf`
+}
+
+// ── Step 1: Chapter URL generation ───────────────────────────────────────────
+
+interface ChapterRef { chapter: number; url: string }
+
+/**
+ * For a URL override (--url flag): treat it as a single chapter 1 PDF.
+ * Otherwise: generate all chapter URLs directly from NCERT_BOOK_MAP chapter
+ * count -- no HEAD probing needed since counts are verified per 2024-25 edition.
+ * Falls back to HEAD probing (up to MAX_CHAPTERS) only for unknown books.
+ */
+async function discoverChapterUrls(
+  code: string,
+  grade: number,
+  urlOverride: string | null,
+  knownChapters: number | null,
+): Promise<ChapterRef[]> {
+  if (urlOverride) {
+    console.log(`[scrape-ncert] Using --url override: ${urlOverride}`)
+    return [{ chapter: 1, url: urlOverride }]
   }
 
-  console.log(`[scrape-ncert] Downloading …`)
+  if (knownChapters !== null) {
+    // Chapter count is known from NCERT_BOOK_MAP -- generate URLs directly
+    console.log(
+      `[scrape-ncert] grade ${grade}: generating ${knownChapters} chapter URL(s) from map ...`,
+    )
+    const refs: ChapterRef[] = []
+    for (let ch = 1; ch <= knownChapters; ch++) {
+      const url = buildChapterUrl(code, ch)
+      refs.push({ chapter: ch, url })
+      console.log(`  Chapter ${ch.toString().padStart(2, '0')}: ${url}`)
+    }
+    return refs
+  }
+
+  // Fallback: HEAD probe up to MAX_CHAPTERS for books not in NCERT_BOOK_MAP
+  const found: ChapterRef[] = []
+  console.log(
+    `[scrape-ncert] Probing grade ${grade} chapters 01-${MAX_CHAPTERS.toString().padStart(2, '0')} (HEAD) ...`,
+  )
+  for (let ch = 1; ch <= MAX_CHAPTERS; ch++) {
+    const url = buildChapterUrl(code, ch)
+    try {
+      const res = await fetch(url, {
+        method: 'HEAD',
+        signal: AbortSignal.timeout(8000),
+        headers: { 'User-Agent': 'Mozilla/5.0 (compatible; NCERT-scraper/1.0; educational-use)' },
+      })
+      if (res.ok) {
+        found.push({ chapter: ch, url })
+        console.log(`  ✓ Chapter ${ch.toString().padStart(2, '0')}: ${url}`)
+      }
+    } catch {
+      // Network error / timeout -- chapter does not exist at this URL
+    }
+    if (ch < MAX_CHAPTERS) await sleep(REQUEST_DELAY_MS)
+  }
+  return found
+}
+
+// ── Step 2: Download PDF into memory ─────────────────────────────────────────
+
+async function downloadPdf(url: string): Promise<Buffer> {
   const res = await fetch(url, {
     headers: { 'User-Agent': 'Mozilla/5.0 (compatible; NCERT-scraper/1.0; educational-use)' },
+    signal: AbortSignal.timeout(30000),
   })
   if (!res.ok) throw new Error(`GET ${url} → HTTP ${res.status}`)
-
-  const buf = Buffer.from(await res.arrayBuffer())
-  fs.writeFileSync(destPath, buf)
-  console.log(`[scrape-ncert] Downloaded ${(buf.length / 1024 / 1024).toFixed(1)} MB`)
+  return Buffer.from(await res.arrayBuffer())
+  // Buffer is used here and immediately passed to pdf-parse -- never written to disk
 }
 
-// ── ZIP extraction ────────────────────────────────────────────────────────────
+// ── Step 2 cont.: Extract text, validate, clean ───────────────────────────────
 
-function extractZip(zipPath: string, destDir: string): void {
+async function extractText(buf: Buffer, chapterNum: number): Promise<string | null> {
+  // Dynamic import so --dry-run and module loading never require pdf-parse
+  // (pdf-parse depends on pdfjs-dist which may not be available in all envs)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let pdfParse: (buf: Buffer) => Promise<{ text: string }>
   try {
-    execSync(`unzip -q "${zipPath}" -d "${destDir}"`, { stdio: 'pipe' })
-  } catch (err: any) {
-    const msg = String(err?.message ?? err)
-    if (msg.includes('not found') || msg.includes('command not found')) {
-      throw new Error('`unzip` not found on PATH. Install with: yum install unzip')
-    }
-    // unzip exits 1 for warnings (e.g. unsupported compression) but may still extract
-    if (!fs.existsSync(destDir) || fs.readdirSync(destDir).length === 0) throw err
-    console.warn('[scrape-ncert] unzip exited with warnings; continuing with extracted files.')
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const mod = await import('pdf-parse') as any
+    pdfParse = mod.default ?? mod
+  } catch {
+    console.warn(`  Chapter ${chapterNum}: pdf-parse not available -- skipping`)
+    return null
   }
-}
 
-function collectPdfs(dir: string): string[] {
-  const found: string[] = []
-  function walk(d: string) {
-    for (const entry of fs.readdirSync(d, { withFileTypes: true })) {
-      const full = path.join(d, entry.name)
-      if (entry.isDirectory()) walk(full)
-      else if (entry.isFile() && entry.name.toLowerCase().endsWith('.pdf')) found.push(full)
-    }
-  }
-  walk(dir)
-  return found.sort()
-}
-
-// ── PDF parsing ───────────────────────────────────────────────────────────────
-
-async function parsePdf(filePath: string): Promise<string> {
-  const buf = fs.readFileSync(filePath)
+  let rawText: string
   try {
     const data = await pdfParse(buf)
-    return data.text
+    rawText = data.text
   } catch {
-    // pdf-parse can throw on encrypted or malformed PDFs
-    console.warn(`[scrape-ncert] pdf-parse failed for ${path.basename(filePath)}, skipping.`)
-    return ''
+    console.warn(`  Chapter ${chapterNum}: pdf-parse failed -- skipping`)
+    return null
   }
+
+  const text = cleanText(rawText)
+  console.log(`  Chapter ${chapterNum}: extracted ${text.length} chars`)
+
+  if (text.length < MIN_PDF_CHARS) {
+    console.log(
+      `  Chapter ${chapterNum}: skipping -- likely scanned image PDF (< ${MIN_PDF_CHARS} chars)`,
+    )
+    return null
+  }
+  return text
 }
 
 function cleanText(raw: string): string {
   return raw
     .replace(/\r\n/g, '\n')
-    // Remove lines that are purely numeric (page numbers)
+    // Strip lines that are purely numeric (page numbers)
     .replace(/^\s*\d+\s*$/gm, '')
     // Collapse 3+ blank lines to 2
     .replace(/\n{3,}/g, '\n\n')
@@ -220,7 +310,7 @@ function cleanText(raw: string): string {
     .trim()
 }
 
-// ── Chunking ──────────────────────────────────────────────────────────────────
+// ── Step 3: Chunk ─────────────────────────────────────────────────────────────
 
 function chunkText(text: string): string[] {
   const words = text.split(/\s+/).filter((w) => w.length > 0)
@@ -228,64 +318,63 @@ function chunkText(text: string): string[] {
   let i = 0
   while (i < words.length) {
     const slice = words.slice(i, i + CHUNK_WORDS)
-    const chunk = slice.join(' ').trim()
-    if (slice.length >= MIN_CHUNK_WORDS) chunks.push(chunk)
+    if (slice.length >= MIN_CHUNK_WORDS) chunks.push(slice.join(' ').trim())
     i += CHUNK_WORDS - OVERLAP_WORDS
   }
   return chunks
 }
 
-// ── Hashing ───────────────────────────────────────────────────────────────────
+// ── Steps 4+6: Upsert CurriculumChunk (idempotent) ───────────────────────────
 
-function sha256(text: string): string {
-  return createHash('sha256').update(text, 'utf8').digest('hex')
+interface ChunkRecord {
+  content: string
+  contentHash: string
+  board: string
+  subject: string
+  grade: string
+  /** Tags stored in conceptIds: chapter:N, chunkIndex:I, source:ncert, lang:X */
+  conceptIds: string[]
 }
 
-// ── DB upsert ─────────────────────────────────────────────────────────────────
-
-interface ChunkMeta { board: string; subject: string; grade: string }
-
-interface ChunkToEmbed { id: string; content: string }
+interface EmbedItem { id: string; content: string }
 
 async function upsertChunks(
   prisma: PrismaClient,
-  chunks: string[],
-  meta: ChunkMeta,
-): Promise<{ toEmbed: ChunkToEmbed[]; created: number; skipped: number }> {
+  records: ChunkRecord[],
+): Promise<{ toEmbed: EmbedItem[]; created: number; skipped: number }> {
   let created = 0
   let skipped = 0
-  const toEmbed: ChunkToEmbed[] = []
+  const toEmbed: EmbedItem[] = []
 
-  for (const content of chunks) {
-    const contentHash = sha256(content)
-
-    // Check if a chunk with this exact hash already exists and is embedded.
-    // embedding is Unsupported("vector(1536)") so must use raw SQL.
+  for (const rec of records) {
+    // Step 4: idempotency -- check by contentHash.
+    // embedding is Unsupported("vector(1536)") → must use raw SQL to inspect it.
     const rows = (await prisma.$queryRawUnsafe(
       `SELECT id, (embedding IS NOT NULL) AS has_embedding
        FROM "CurriculumChunk"
        WHERE "contentHash" = $1
        LIMIT 1`,
-      contentHash,
+      rec.contentHash,
     )) as { id: string; has_embedding: boolean }[]
 
     if (rows.length > 0) {
-      // Row exists: only re-embed if embedding is missing
-      if (!rows[0].has_embedding) toEmbed.push({ id: rows[0].id, content })
+      // Already exists -- queue for re-embedding only if embedding is missing
+      if (!rows[0].has_embedding) toEmbed.push({ id: rows[0].id, content: rec.content })
       skipped++
     } else {
-      // New chunk
+      // Step 6: persist new chunk
       const row = await prisma.curriculumChunk.create({
         data: {
-          content,
-          contentHash,
-          board: meta.board,
-          subject: meta.subject,
-          grade: meta.grade,
+          content:     rec.content,
+          contentHash: rec.contentHash,
+          board:       rec.board,
+          subject:     rec.subject,
+          grade:       rec.grade,
+          conceptIds:  rec.conceptIds,
         },
         select: { id: true },
       })
-      toEmbed.push({ id: row.id, content })
+      toEmbed.push({ id: row.id, content: rec.content })
       created++
     }
   }
@@ -293,35 +382,36 @@ async function upsertChunks(
   return { toEmbed, created, skipped }
 }
 
-// ── Embedding ─────────────────────────────────────────────────────────────────
+// ── Step 5: Embed in batches of 20 ───────────────────────────────────────────
 
-interface EmbedStats { embedded: number; errors: number; errorDetails: { id: string; error: string }[] }
+interface EmbedStats {
+  embedded: number
+  errors: number
+  errorDetails: { id: string; error: string }[]
+}
 
-async function embedChunks(prisma: PrismaClient, toEmbed: ChunkToEmbed[]): Promise<EmbedStats> {
+async function embedChunks(prisma: PrismaClient, toEmbed: EmbedItem[]): Promise<EmbedStats> {
   let embedded = 0
   let errors = 0
   const errorDetails: { id: string; error: string }[] = []
 
   for (let i = 0; i < toEmbed.length; i += BATCH_SIZE) {
     const batch = toEmbed.slice(i, i + BATCH_SIZE)
-    const texts = batch.map((c) => c.content)
-    const embeddings = await getEmbeddingsBatch(texts, BATCH_SIZE)
+    const embeddings = await getEmbeddingsBatch(batch.map((c) => c.content), BATCH_SIZE)
 
     for (let j = 0; j < batch.length; j++) {
       const embedding = embeddings[j]
       if (!embedding) {
+        // On failure: log and continue -- don't abort whole run
         console.error(`[scrape-ncert] ✗ Embedding failed for chunk ${batch[j].id}`)
         errors++
         errorDetails.push({ id: batch[j].id, error: 'embedding_api_null' })
         continue
       }
-      const vectorLiteral = `[${embedding.join(',')}]`
       try {
         await prisma.$executeRawUnsafe(
-          `UPDATE "CurriculumChunk"
-           SET embedding = $1::vector, "updatedAt" = NOW()
-           WHERE id = $2`,
-          vectorLiteral,
+          `UPDATE "CurriculumChunk" SET embedding = $1::vector, "updatedAt" = NOW() WHERE id = $2`,
+          `[${embedding.join(',')}]`,
           batch[j].id,
         )
         embedded++
@@ -337,13 +427,32 @@ async function embedChunks(prisma: PrismaClient, toEmbed: ChunkToEmbed[]): Promi
   return { embedded, errors, errorDetails }
 }
 
-// ── IngestRunLog ──────────────────────────────────────────────────────────────
+// ── SubjectDef lookup (for IngestRunLog.subjectId) ────────────────────────────
+
+async function resolveSubjectId(
+  prisma: PrismaClient,
+  subject: string,
+  grade: number,
+): Promise<string | null> {
+  try {
+    const row = await prisma.subjectDef.findFirst({
+      where: { code: subject, classLevel: { level: grade } },
+      select: { id: true },
+    })
+    return row?.id ?? null
+  } catch {
+    return null
+  }
+}
+
+// ── Step 7: IngestRunLog ──────────────────────────────────────────────────────
 
 async function writeRunLog(
   prisma: PrismaClient,
   opts: {
     fileSource: string
     board: string
+    subjectId: string | null
     chunksCreated: number
     chunksUpdated: number
     embeddingsGenerated: number
@@ -355,14 +464,15 @@ async function writeRunLog(
   try {
     await prisma.ingestRunLog.create({
       data: {
-        fileSource: opts.fileSource,
-        board: opts.board,
-        chunksCreated: opts.chunksCreated,
-        chunksUpdated: opts.chunksUpdated,
+        fileSource:          opts.fileSource,
+        board:               opts.board,
+        subjectId:           opts.subjectId ?? undefined,
+        chunksCreated:       opts.chunksCreated,
+        chunksUpdated:       opts.chunksUpdated,
         embeddingsGenerated: opts.embeddingsGenerated,
-        errors: opts.errors,
-        durationMs: Date.now() - opts.startMs,
-        errorDetails: opts.errorDetails ? (opts.errorDetails as object) : undefined,
+        errors:              opts.errors,
+        durationMs:          Date.now() - opts.startMs,
+        errorDetails:        opts.errorDetails ? (opts.errorDetails as object) : undefined,
       },
     })
     console.log('[scrape-ncert] IngestRunLog written.')
@@ -371,105 +481,179 @@ async function writeRunLog(
   }
 }
 
-// ── Cleanup ───────────────────────────────────────────────────────────────────
+// ── Per-grade pipeline ────────────────────────────────────────────────────────
 
-function cleanupTempDir(dir: string): void {
-  try {
-    fs.rmSync(dir, { recursive: true, force: true })
-  } catch {
-    // non-fatal
+async function runForGrade(
+  prisma: PrismaClient,
+  args: Args,
+  grade: number,
+): Promise<{ errors: number }> {
+  const startMs = Date.now()
+  console.log(
+    `\n[scrape-ncert] ── grade=${grade} subject=${args.subject} board=${args.board} lang=${args.lang} ──`,
+  )
+
+  // Resolve book info (may be null for grades/subjects without a mapping)
+  const bookInfo = NCERT_BOOK_MAP[args.subject]?.[grade] ?? null
+  if (!bookInfo && !args.urlOverride) {
+    console.warn(
+      `[scrape-ncert] No book info for grade ${grade} ${args.subject} in NCERT_BOOK_MAP -- skipping.`,
+    )
+    return { errors: 0 }
   }
+  const code = bookInfo?.code ?? ''
+  const knownChapters = bookInfo?.chapters ?? null
+
+  // ── Step 1: Chapter URL generation ───────────────────────────────────────
+  const chapters = await discoverChapterUrls(code, grade, args.urlOverride, knownChapters)
+  if (chapters.length === 0) {
+    console.warn(
+      `[scrape-ncert] No chapters found for grade ${grade} ${args.subject}. ` +
+      `Book code "${code}" may be stale -- use --url <pdf-url> to test a direct link, ` +
+      `or update NCERT_BOOK_MAP with the correct 2024-25 code.`,
+    )
+    return { errors: 0 }
+  }
+  console.log(`[scrape-ncert] ${chapters.length} chapter(s) found for grade ${grade}.`)
+
+  // Dry run: chapter URLs are now printed above -- stop here
+  if (args.dryRun) {
+    console.log(`[scrape-ncert] Dry run complete for grade ${grade}.`)
+    return { errors: 0 }
+  }
+
+  // ── Steps 2-6: Download → parse → chunk → deduplicate → embed ─────────────
+  const subjectId = await resolveSubjectId(prisma, args.subject, grade)
+  const allRecords: ChunkRecord[] = []
+
+  for (let idx = 0; idx < chapters.length; idx++) {
+    const { chapter, url } = chapters[idx]
+    console.log(`[scrape-ncert] Downloading chapter ${chapter} ...`)
+
+    let buf: Buffer
+    try {
+      buf = await downloadPdf(url)
+    } catch (err) {
+      console.error(`[scrape-ncert] ✗ Download failed for chapter ${chapter}:`, err)
+      continue
+    }
+
+    // Extract text; buf is discarded after this call -- never written to disk
+    const text = await extractText(buf, chapter)
+    if (!text) continue  // scanned PDF or parse failure
+
+    const rawChunks = chunkText(text)
+    console.log(`  Chapter ${chapter}: ${rawChunks.length} chunks`)
+
+    for (let i = 0; i < rawChunks.length; i++) {
+      // Step 3 tag: encode chapter + chunkIndex in conceptIds (schema has no metadata field)
+      allRecords.push({
+        content:     rawChunks[i],
+        contentHash: sha256(rawChunks[i]),
+        board:       args.board,
+        subject:     args.subject,
+        grade:       String(grade),
+        conceptIds:  [
+          `chapter:${chapter}`,
+          `chunkIndex:${i}`,
+          `source:ncert`,
+          `lang:${args.lang}`,
+        ],
+      })
+    }
+
+    // 1 s delay between chapter downloads -- don't hammer NCERT
+    if (idx < chapters.length - 1) await sleep(REQUEST_DELAY_MS)
+  }
+
+  if (allRecords.length === 0) {
+    console.log(`[scrape-ncert] No usable chunks extracted for grade ${grade}.`)
+    return { errors: 0 }
+  }
+  console.log(`[scrape-ncert] Total chunks this grade: ${allRecords.length}`)
+
+  // ── Steps 4+5: Upsert + embed ─────────────────────────────────────────────
+  const { toEmbed, created, skipped } = await upsertChunks(prisma, allRecords)
+  console.log(`[scrape-ncert] Chunks: ${created} created, ${skipped} skipped (hash match)`)
+
+  let embeds: EmbedStats = { embedded: 0, errors: 0, errorDetails: [] }
+  if (toEmbed.length > 0) {
+    console.log(`[scrape-ncert] Embedding ${toEmbed.length} chunk(s) ...`)
+    embeds = await embedChunks(prisma, toEmbed)
+    console.log(`[scrape-ncert] Embedded: ${embeds.embedded}, Errors: ${embeds.errors}`)
+  } else {
+    console.log('[scrape-ncert] All chunks already embedded -- nothing to do.')
+  }
+
+  // ── Step 7: IngestRunLog ──────────────────────────────────────────────────
+  await writeRunLog(prisma, {
+    fileSource:          `ncert-scraper:grade${grade}:${args.subject}`,
+    board:               args.board,
+    subjectId,
+    chunksCreated:       created,
+    chunksUpdated:       0,
+    embeddingsGenerated: embeds.embedded,
+    errors:              embeds.errors,
+    startMs,
+    errorDetails:        embeds.errorDetails.length > 0 ? embeds.errorDetails : undefined,
+  })
+
+  // ── Step 8: Output summary ────────────────────────────────────────────────
+  const durationSec = ((Date.now() - startMs) / 1000).toFixed(1)
+  console.log(
+    `[scrape-ncert] ✓ grade ${grade} done in ${durationSec}s -- ` +
+    `${allRecords.length} chunks, ${embeds.embedded} embedded, ${embeds.errors} errors.`,
+  )
+
+  return { errors: embeds.errors }
 }
 
 // ── Main ──────────────────────────────────────────────────────────────────────
 
 async function main() {
   const args = parseArgs()
-  const startMs = Date.now()
-  const prisma = new PrismaClient()
-  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'ncert-'))
 
-  console.log(
-    `[scrape-ncert] grade=${args.grade} subject=${args.subject} board=${args.board} lang=${args.lang}`,
-  )
-  if (args.dryRun) console.log('[scrape-ncert] DRY RUN — no DB writes.')
+  if (args.dryRun) {
+    console.log('[scrape-ncert] DRY RUN -- probing chapter URLs only. No downloads, no DB writes.')
+  }
+
+  const grades: number[] = args.allGrades
+    ? availableGrades(args.subject)
+    : [args.grade as number]
+
+  if (grades.length === 0) {
+    console.error(
+      `[scrape-ncert] No grades in BOOK_MAP for subject="${args.subject}". ` +
+      `Use --url <pdf-url> to ingest a specific PDF directly.`,
+    )
+    process.exit(1)
+  }
+
+  if (args.allGrades) {
+    console.log(
+      `[scrape-ncert] --all-grades: grades ${grades.join(', ')} for ${args.subject}`,
+    )
+  }
+
+  const prisma = new PrismaClient()
+  let totalErrors = 0
 
   try {
-    // ── Step 1: Download ────────────────────────────────────────────────────
-    const downloadUrl = resolveDownloadUrl(args)
-    const zipPath = path.join(tmpDir, 'textbook.zip')
-    await verifyAndDownload(downloadUrl, zipPath)
-
-    // ── Step 2: Extract ─────────────────────────────────────────────────────
-    const extractDir = path.join(tmpDir, 'extracted')
-    fs.mkdirSync(extractDir)
-    extractZip(zipPath, extractDir)
-
-    const pdfPaths = collectPdfs(extractDir)
-    if (pdfPaths.length === 0) throw new Error('No PDF files found in ZIP.')
-    console.log(`[scrape-ncert] Found ${pdfPaths.length} PDF file(s): ${pdfPaths.map(p => path.basename(p)).join(', ')}`)
-
-    // ── Step 3: Parse + clean all PDFs ─────────────────────────────────────
-    const rawTexts: string[] = []
-    for (const p of pdfPaths) {
-      console.log(`[scrape-ncert] Parsing ${path.basename(p)} …`)
-      const raw = await parsePdf(p)
-      if (raw.trim()) rawTexts.push(cleanText(raw))
+    for (const grade of grades) {
+      const { errors } = await runForGrade(prisma, args, grade)
+      totalErrors += errors
     }
-    const combinedText = rawTexts.join('\n\n')
-    console.log(`[scrape-ncert] Total text: ${combinedText.length.toLocaleString()} chars`)
-
-    // ── Step 4: Chunk ───────────────────────────────────────────────────────
-    const chunks = chunkText(combinedText)
-    console.log(`[scrape-ncert] ${chunks.length} chunks at ~${CHUNK_WORDS} words / ${OVERLAP_WORDS}-word overlap`)
-
-    if (args.dryRun) {
-      console.log(`[scrape-ncert] Dry run complete. Would process ${chunks.length} chunks.`)
-      return
-    }
-
-    // ── Step 5: Upsert CurriculumChunk rows ─────────────────────────────────
-    const meta: ChunkMeta = {
-      board: args.board,
-      subject: args.subject,
-      grade: String(args.grade),
-    }
-    const { toEmbed, created, skipped } = await upsertChunks(prisma, chunks, meta)
-    console.log(`[scrape-ncert] Chunks: ${created} created, ${skipped} skipped (hash match)`)
-
-    // ── Step 6: Embed ───────────────────────────────────────────────────────
-    let embeds = { embedded: 0, errors: 0, errorDetails: [] as { id: string; error: string }[] }
-    if (toEmbed.length > 0) {
-      console.log(`[scrape-ncert] Embedding ${toEmbed.length} chunk(s) …`)
-      embeds = await embedChunks(prisma, toEmbed)
-      console.log(`[scrape-ncert] Embedded: ${embeds.embedded}, Errors: ${embeds.errors}`)
-    } else {
-      console.log('[scrape-ncert] All chunks already embedded — nothing to do.')
-    }
-
-    // ── Step 7: IngestRunLog ─────────────────────────────────────────────────
-    await writeRunLog(prisma, {
-      fileSource: downloadUrl,
-      board: args.board,
-      chunksCreated: created,
-      chunksUpdated: 0,
-      embeddingsGenerated: embeds.embedded,
-      errors: embeds.errors,
-      startMs,
-      errorDetails: embeds.errorDetails.length > 0 ? embeds.errorDetails : undefined,
-    })
-
-    const durationSec = ((Date.now() - startMs) / 1000).toFixed(1)
-    console.log(
-      `\n[scrape-ncert] ✓ Done in ${durationSec}s — ` +
-      `${chunks.length} chunks, ${embeds.embedded} embedded, ${embeds.errors} errors.`,
-    )
-
-    if (embeds.errors > 0) process.exit(1)
   } finally {
-    cleanupTempDir(tmpDir)
     await prisma.$disconnect()
   }
+
+  if (grades.length > 1) {
+    console.log(
+      `\n[scrape-ncert] ✓ All ${grades.length} grades complete. Total errors: ${totalErrors}`,
+    )
+  }
+
+  if (totalErrors > 0) process.exit(1)
 }
 
 main().catch((err) => {

@@ -1,19 +1,19 @@
 /**
  * GET /api/admin/recommendation-trace?studentId=xxx
  *
- * Phase 6 — RecommendationTrace observability endpoint.
+ * Phase 6 -- RecommendationTrace observability endpoint.
  *
  * Returns the most recent full RecommendationTrace for a student from Redis.
  * The trace is written by getNextAction() as a fire-and-forget side-effect
  * whenever ENABLE_REC_TRACE=1; this endpoint reads it back for admin debugging.
  *
  * Trace schema:
- *   traceId              — UUID from the getNextAction() call
- *   studentId            — student being recommended for
- *   evaluatedAt          — wall-clock timestamp (UTC ISO string after Redis round-trip)
- *   rules[]              — P0–P6 entries: { ruleId, evaluated, matched, durationMs }
- *   topicScoringBreakdown? — full ranked-topic signal table (only when P5 ran)
- *   finalDecision        — the NextAction returned to the student
+ *   traceId              -- UUID from the getNextAction() call
+ *   studentId            -- student being recommended for
+ *   evaluatedAt          -- wall-clock timestamp (UTC ISO string after Redis round-trip)
+ *   rules[]              -- P0-P6 entries: { ruleId, evaluated, matched, durationMs }
+ *   topicScoringBreakdown? -- full ranked-topic signal table (only when P5 ran)
+ *   finalDecision        -- the NextAction returned to the student
  *
  * TTL: 10 minutes from last getNextAction() call for this student.
  *
@@ -24,7 +24,7 @@
  *   • Returns 503 when ENABLE_REC_TRACE is off to surface config instructions.
  *
  * EDIT LOG:
- * - (previous) | — | GET live NextActionTrace via getNextAction(returnTrace: true)
+ * - (previous) | -- | GET live NextActionTrace via getNextAction(returnTrace: true)
  * - 2026-03-08 | claude | Phase 6: replaced live call with Redis read of persisted
  *                          full RecommendationTrace; kept 503 hint when flag is off;
  *                          maintained admin auth guard pattern

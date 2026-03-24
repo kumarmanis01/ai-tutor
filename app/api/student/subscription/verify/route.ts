@@ -3,7 +3,7 @@
  *
  * Verifies Razorpay payment signature, activates subscription,
  * sends receipt email, and sends SMS if phone is available.
- * Auth: session required — 401 before any DB query.
+ * Auth: session required -- 401 before any DB query.
  * Idempotent: safe to retry if subscription is already active.
  */
 
@@ -56,7 +56,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Invalid planId' }, { status: 400 });
   }
 
-  // Security gate — verify signature before any DB write
+  // Security gate -- verify signature before any DB write
   if (!verifySignature(orderId, paymentId, signature)) {
     logger.error('Invalid Razorpay signature', { event: 'subscription.verify.bad_sig', context: { userId, orderId } });
     return NextResponse.json({ error: 'Payment verification failed' }, { status: 400 });
@@ -104,7 +104,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Could not activate subscription' }, { status: 500 });
   }
 
-  // Fetch user for email/SMS — not part of the transaction
+  // Fetch user for email/SMS -- not part of the transaction
   const user = await prisma.user.findUnique({
     where: { id: userId },
     select: { name: true, email: true, phone: true },
@@ -114,7 +114,7 @@ export async function POST(req: Request) {
     day: 'numeric', month: 'long', year: 'numeric',
   });
 
-  // Send receipt email — non-blocking, never throws to caller
+  // Send receipt email -- non-blocking, never throws to caller
   if (user?.email) {
     sendEmail({
       to: user.email,
@@ -137,7 +137,7 @@ export async function POST(req: Request) {
     });
   }
 
-  // Send receipt SMS — non-blocking
+  // Send receipt SMS -- non-blocking
   if (user?.phone) {
     const smsText = `Hi ${user.name ?? ''}! Your Spinzy ${plan.label} plan is active. Happy learning! - Team Spinzy`;
     sendSms(user.phone, smsText).catch((err) => {

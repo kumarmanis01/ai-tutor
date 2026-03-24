@@ -11,7 +11,7 @@ function toMidnightUTC(d: Date): number {
 }
 
 /**
- * Pure helper — exported for tests.
+ * Pure helper -- exported for tests.
  * Given lastSessionDate (nullable) and today (Date),
  * returns: 'same_day' | 'consecutive' | 'broken'
  * Time component is stripped; same calendar day = 'same_day' regardless of hour.
@@ -35,7 +35,7 @@ export function classifyStreakGap(
  *
  * Logic:
  * 1. Load User.lastSessionDate, currentStreak, longestStreak.
- * 2. Get today's date (UTC, date-only — strip time).
+ * 2. Get today's date (UTC, date-only -- strip time).
  * 3. If lastSessionDate is today → already counted, return current state (idempotent).
  * 4. If lastSessionDate is yesterday → increment streak.
  * 5. If lastSessionDate is older or null (broken) → check streak shield.
@@ -43,8 +43,8 @@ export function classifyStreakGap(
  *    b. No shield → reset streak to 1.
  * 6. Update longestStreak if currentStreak > longestStreak.
  * 7. Set lastSessionDate = today.
- * 8. Persist via prisma.user.update — not in a transaction (streak loss on crash is acceptable).
- * Never throws — returns null on error.
+ * 8. Persist via prisma.user.update -- not in a transaction (streak loss on crash is acceptable).
+ * Never throws -- returns null on error.
  */
 export async function updateStreak(studentId: string): Promise<{
   currentStreak: number
@@ -67,7 +67,7 @@ export async function updateStreak(studentId: string): Promise<{
     let shieldActivated = false
 
     if (gap === 'same_day') {
-      // Already counted today — idempotent return.
+      // Already counted today -- idempotent return.
       return {
         currentStreak: user.currentStreak,
         longestStreak: user.longestStreak,
@@ -78,10 +78,10 @@ export async function updateStreak(studentId: string): Promise<{
       currentStreak = user.currentStreak + 1
       streakIncremented = true
     } else {
-      // Gap ≥ 2 days — streak would break. Check shield first.
+      // Gap ≥ 2 days -- streak would break. Check shield first.
       const shieldAvail = await isShieldAvailable(studentId, now)
       if (shieldAvail && user.currentStreak > 0) {
-        // Shield protects the streak — keep current streak, mark shield consumed.
+        // Shield protects the streak -- keep current streak, mark shield consumed.
         await consumeShield(studentId, now)
         currentStreak = user.currentStreak + 1 // shield protected yesterday, today counts
         streakIncremented = true
@@ -153,7 +153,7 @@ export async function trackRevisionAndMaybeUpdateStreak(
       await redis.expire(key, REVISION_DAILY_TTL_SECONDS)
     }
     if (count === REVISION_STREAK_THRESHOLD) {
-      // Fire-and-forget — streak loss on crash is acceptable.
+      // Fire-and-forget -- streak loss on crash is acceptable.
       void updateStreak(studentId)
       logger.info('streak.revision_threshold_reached', {
         event: 'streak_revision_threshold_reached',

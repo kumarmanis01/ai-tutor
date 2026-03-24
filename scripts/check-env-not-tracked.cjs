@@ -6,6 +6,6 @@ try {
   console.error('.env.production IS tracked in git. Remove it from the index and rotate secrets.')
   process.exit(2)
 } catch {
-  // git ls-files returns non-zero when not tracked — success
+  // git ls-files returns non-zero when not tracked -- success
   process.exit(0)
 }

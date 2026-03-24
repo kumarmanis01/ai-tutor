@@ -43,7 +43,7 @@ export async function GET(req: Request) {
       // fallback to question subjects
       if (subjects.length === 0) {
         const questionSubjects = await prisma.question.findMany({
-          // quarantined questions excluded — do not remove this filter
+          // quarantined questions excluded -- do not remove this filter
           where: { status: 'ACTIVE' },
           select: { subject: true },
           distinct: ['subject'],

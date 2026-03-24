@@ -1,19 +1,19 @@
 'use client';
 
 /**
- * ProfileSetupForm — v2 (Screen 3)
+ * ProfileSetupForm -- v2 (Screen 3)
  *
  * 5-step forward-only wizard to capture the student's academic profile.
  * No back button, no close.
  *
  * Steps:
- *   0. Name & Age — name text input + age number input (pre-filled from session)
- *   1. Board      — card grid: CBSE | ICSE | State Board
- *   2. Class      — number grid 1–12, selected = purple border
- *   3. Medium     — two large tap targets: English | Hindi
- *   4. Subjects   — checkbox grid, locked core subjects, max 6
+ *   0. Name & Age -- name text input + age number input (pre-filled from session)
+ *   1. Board      -- card grid: CBSE | ICSE | State Board
+ *   2. Class      -- number grid 1-12, selected = purple border
+ *   3. Medium     -- two large tap targets: English | Hindi
+ *   4. Subjects   -- checkbox grid, locked core subjects, max 6
  *
- * On final step submit: calls onSave(values) — caller posts to /api/user/onboarding.
+ * On final step submit: calls onSave(values) -- caller posts to /api/user/onboarding.
  *
  * Progress bar shows N of 5 complete.
  * Sidebar checklist tracks which steps are done.
@@ -61,7 +61,10 @@ const BOARD_OPTIONS = [
 function getMandatorySubjects(board: string, grade: number): string[] {
   const g = grade;
   if (board === 'cbse') {
-    if (g >= 9 && g <= 10) return ['mathematics', 'math', 'science', 'english'];
+    // 'math' was a legacy slug -- removed to prevent onboarding API validation failure.
+    // 'mathematics' covers the mandatory maths requirement; isMandatory startsWith check
+    // ensures any subject with slug starting with 'mathematics' is also locked.
+    if (g >= 9 && g <= 10) return ['mathematics', 'science', 'english'];
     if (g >= 11) return ['english'];
   }
   return [];
@@ -81,7 +84,7 @@ export default function ProfileSetupForm({
 }: ProfileSetupFormProps) {
   const { data: session } = useSession();
 
-  const [step, setStep] = useState(0); // 0–4
+  const [step, setStep] = useState(0); // 0-4
   const [name, setName] = useState('');
   const [age, setAge] = useState<number | undefined>(initialAge);
   const [nameError, setNameError] = useState('');
@@ -371,7 +374,7 @@ export default function ProfileSetupForm({
                 <div className="rounded-xl border border-gray-200 dark:border-slate-700 bg-gray-50 dark:bg-slate-800 px-4 py-3 mb-4">
                   <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">Class {grade}</p>
                   <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                    Class is locked — contact support to change it.
+                    Class is locked -- contact support to change it.
                   </p>
                 </div>
               ) : (
@@ -472,7 +475,7 @@ export default function ProfileSetupForm({
                           isMandatory ? 'opacity-80' : '',
                         ].join(' ')}
                         aria-pressed={selected}
-                        title={isMandatory ? 'Mandatory — cannot be removed' : undefined}
+                        title={isMandatory ? 'Mandatory -- cannot be removed' : undefined}
                       >
                         <span
                           className={`w-4 h-4 rounded flex-shrink-0 border flex items-center justify-center text-[10px] font-bold ${
@@ -511,7 +514,7 @@ export default function ProfileSetupForm({
               className="flex w-full min-h-[44px] items-center justify-center rounded-xl bg-[#534AB7] text-white text-sm font-semibold hover:bg-[#4840a3] active:scale-[0.98] disabled:opacity-50 transition-all shadow-md shadow-[#534AB7]/25"
             >
               {saving
-                ? 'Saving…'
+                ? 'Saving...'
                 : step < 4
                 ? 'Continue →'
                 : 'Save & continue'}

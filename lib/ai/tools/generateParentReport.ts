@@ -166,7 +166,7 @@ function parseOutput(content: string): ParentReportOutput {
 }
 
 function validateOutput(output: ParentReportOutput): ParentReportOutput {
-  // Word count check — truncate if over 120 words
+  // Word count check -- truncate if over 120 words
   const words = output.summary.split(/\s+/);
   if (words.length > 130) { // Small buffer
     output.summary = words.slice(0, 120).join(' ') + '...';
@@ -190,20 +190,20 @@ function buildFallbackReport(
   if (language === 'hi') {
     const improved = summary.improved_topics?.[0] || 'अध्ययन';
     return {
-      summary: `इस हफ्ते ${studentName} ने ${summary.days_active} दिन पढ़ाई की। ${improved} में अच्छी प्रगति हुई। ${studentName} को प्रोत्साहित करते रहें — हर छोटा कदम मायने रखता है।`,
+      summary: `इस हफ्ते ${studentName} ने ${summary.days_active} दिन पढ़ाई की। ${improved} में अच्छी प्रगति हुई। ${studentName} को प्रोत्साहित करते रहें -- हर छोटा कदम मायने रखता है।`,
       improvement: `${improved} में प्रगति`,
       encouragement: `${studentName} सही दिशा में बढ़ रहे हैं।`,
-      parent_action: 'आज क्या सीखा, यह पूछें — बच्चों को बहुत अच्छा लगता है।',
+      parent_action: 'आज क्या सीखा, यह पूछें -- बच्चों को बहुत अच्छा लगता है।',
     };
   }
 
   if (language === 'hinglish') {
     const improved = summary.improved_topics?.[0] || 'studies';
     return {
-      summary: `Is week ${studentName} ne ${summary.days_active} din padhai ki. ${improved} mein acchi progress hui. ${studentName} ko encourage karte rahiye — har chhota step matter karta hai.`,
+      summary: `Is week ${studentName} ne ${summary.days_active} din padhai ki. ${improved} mein acchi progress hui. ${studentName} ko encourage karte rahiye -- har chhota step matter karta hai.`,
       improvement: `${improved} mein progress`,
       encouragement: `${studentName} sahi direction mein hai.`,
-      parent_action: 'Aaj kya seekha, ye poochiye — bacchon ko bahut accha lagta hai.',
+      parent_action: 'Aaj kya seekha, ye poochiye -- bacchon ko bahut accha lagta hai.',
     };
   }
 
@@ -214,9 +214,9 @@ function buildFallbackReport(
     : `${summary.time_spent_min} minutes`;
 
   return {
-    summary: `This week, ${studentName} studied on ${summary.days_active} days for a total of ${timeStr}. ${studentName} showed progress in ${improved}. Keep encouraging regular practice — every small step adds up.`,
+    summary: `This week, ${studentName} studied on ${summary.days_active} days for a total of ${timeStr}. ${studentName} showed progress in ${improved}. Keep encouraging regular practice -- every small step adds up.`,
     improvement: `Progress in ${improved}.`,
     encouragement: `${studentName} is moving in the right direction.`,
-    parent_action: 'Ask what they learned today — children love sharing when asked.',
+    parent_action: 'Ask what they learned today -- children love sharing when asked.',
   };
 }

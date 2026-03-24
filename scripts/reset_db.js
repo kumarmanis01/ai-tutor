@@ -27,7 +27,7 @@ function setPgPasswordFromUrl(dbUrl) {
     }
   } catch (err) {
     console.error('Warning: could not parse DATABASE_URL for password extraction:', err);
-    // intentionally ignored — URL parsing may fail for non-standard strings
+    // intentionally ignored -- URL parsing may fail for non-standard strings
   }
 }
 
@@ -66,7 +66,7 @@ async function confirmDangerousAction(dbUrl) {
     }
 
     console.log(
-      "\n⚠️  FORCE_DROP / CI mode enabled and .allow_automation present — skipping confirmation"
+      "\n⚠️  FORCE_DROP / CI mode enabled and .allow_automation present -- skipping confirmation"
     );
     return true;
   }
@@ -96,7 +96,7 @@ async function confirmDropMigrations(migrationsDir) {
   if (process.env.FORCE_DROP === "1" || process.env.CI === "true") {
     const allowFile = path.join(process.cwd(), ".allow_automation");
     if (fs.existsSync(allowFile)) {
-      console.log('\n⚠️  Automation allow file present — skipping migrations delete confirmation');
+      console.log('\n⚠️  Automation allow file present -- skipping migrations delete confirmation');
       return true;
     }
   }
@@ -173,7 +173,7 @@ async function confirmDropMigrations(migrationsDir) {
 
     // This reset script intentionally does NOT run any seed scripts.
     // Seeding should be performed separately to avoid accidental data inserts.
-    logStep("Skipping seed execution — reset script only recreates schema and migrations");
+    logStep("Skipping seed execution -- reset script only recreates schema and migrations");
 
     console.log("\n✅ DATABASE RESET COMPLETE");
   } catch (err) {

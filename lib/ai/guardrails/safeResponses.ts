@@ -105,7 +105,7 @@ const UNSAFE_BLOCKS: Record<string, string[]> = {
  */
 const HOMEWORK_REDIRECTS: Record<string, string[]> = {
   junior: [
-    "I see you're working on homework! Let's focus on one question at a time — which one should we start with?",
+    "I see you're working on homework! Let's focus on one question at a time -- which one should we start with?",
     "Homework time! Let's work through this together so you really learn it. What part would you like help understanding?",
   ],
   middle: [

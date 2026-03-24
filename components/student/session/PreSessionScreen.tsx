@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * PreSessionScreen — v2
+ * PreSessionScreen -- v2
  *
  * Full-screen on mobile, centred card max-w-[480px] on desktop.
  * Shows concept info, prerequisite pills, and CTAs.
@@ -11,10 +11,10 @@
  *
  * Prereq pill colours:
  *   masteryScore >= 0.7 → green  "TopicName ✓"
- *   masteryScore 0.4–0.69 → amber "TopicName ~"
+ *   masteryScore 0.4-0.69 → amber "TopicName ~"
  *   masteryScore < 0.4  → red   "TopicName ✗"
  *
- * Copy rules: no "broke", "missed", "failed" — forward-looking tone only.
+ * Copy rules: no "broke", "missed", "failed" -- forward-looking tone only.
  */
 
 import React, { useState } from 'react';
@@ -147,7 +147,7 @@ export default function PreSessionScreen({
 
   return (
     <>
-      {/* Interrupted session bottom sheet — shown BEFORE the pre-session content */}
+      {/* Interrupted session bottom sheet -- shown BEFORE the pre-session content */}
       {showSheet && interruptedSession && (
         <InterruptedSessionSheet
           session={interruptedSession}
@@ -163,7 +163,7 @@ export default function PreSessionScreen({
       <div className="min-h-screen bg-gray-50 dark:bg-slate-950 flex flex-col items-center px-4 py-8">
         <div className="w-full max-w-[480px] flex flex-col gap-5">
 
-          {/* Header — Vidya avatar */}
+          {/* Header -- Vidya avatar */}
           <div className="flex justify-center">
             <Image
               src="/logos/vidya/vidya-avatar-128.png"
@@ -233,7 +233,7 @@ export default function PreSessionScreen({
                 })}
               </div>
 
-              {/* Amber warning banner — only when some prereqs are amber/red */}
+              {/* Amber warning banner -- only when some prereqs are amber/red */}
               {hasUnmetPrereqs && (
                 <div className="mt-3 flex items-start gap-2 rounded-xl bg-[#FAEEDA] dark:bg-[#BA7517]/15 px-3 py-2.5">
                   <svg
@@ -282,14 +282,14 @@ export default function PreSessionScreen({
                   >
                     <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
                   </svg>
-                  Starting…
+                  Starting...
                 </>
               ) : (
                 'Start session →'
               )}
             </button>
 
-            {/* Secondary: Study prerequisites first — only shown when unmet prereqs exist */}
+            {/* Secondary: Study prerequisites first -- only shown when unmet prereqs exist */}
             {hasUnmetPrereqs && lowestMasteryPrereq && (
               <button
                 type="button"

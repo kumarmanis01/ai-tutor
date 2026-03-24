@@ -6,8 +6,8 @@ module.exports = {
   testMatch: ['**/tests/**/*.test.ts'],
   testPathIgnorePatterns: [
     '/tests/integration/',
-    'tests/phase12/runner.integration.test.ts',
-    'tests/workers/regenerationWorker.db.integration.test.ts',
+    // phase12 and regenerationWorker DB integration tests re-enabled — they self-skip
+    // when DATABASE_URL is absent, so they are safe to run in CI without a live DB.
   ],
   moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json', 'node'],
   moduleNameMapper: {

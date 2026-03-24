@@ -55,7 +55,7 @@ export default function SessionsPage() {
     }
   }
 
-  if (loading) return <p className="p-6 text-gray-500">Loading sessions…</p>
+  if (loading) return <p className="p-6 text-gray-500">Loading sessions...</p>
   if (error) return <p className="p-6 text-red-600">Error: {error}</p>
 
   return (
@@ -67,7 +67,7 @@ export default function SessionsPage() {
       )}
       <h1 className="text-2xl font-bold mb-2">Session Quality Review</h1>
       <p className="text-sm text-gray-500 mb-6">
-        Date: {data?.date} — {data?.totalYesterday ?? 0} total sessions yesterday
+        Date: {data?.date} -- {data?.totalYesterday ?? 0} total sessions yesterday
       </p>
       {!data?.sessions?.length && <p className="text-gray-400">No sessions found.</p>}
       <div className="space-y-4">
@@ -82,8 +82,8 @@ export default function SessionsPage() {
                 onClick={() => setExpandedId(expandedId === s.id ? null : s.id)}
               >
                 <div className="text-sm">
-                  <span className="font-mono text-xs text-gray-400">{s.id.slice(0, 12)}…</span>
-                  <span className="ml-3 text-gray-600">Student: {s.studentId.slice(0, 8)}…</span>
+                  <span className="font-mono text-xs text-gray-400">{s.id.slice(0, 12)}...</span>
+                  <span className="ml-3 text-gray-600">Student: {s.studentId.slice(0, 8)}...</span>
                   {durationMin !== null && <span className="ml-3 text-gray-500">{durationMin}min</span>}
                   <span className="ml-3 text-gray-500">{s.turnCount} turns</span>
                 </div>
@@ -105,9 +105,9 @@ export default function SessionsPage() {
                     <tbody>
                       {s.turns.map((t) => (
                         <tr key={t.id} className="border-b border-gray-50">
-                          <td className="py-1 pr-3 font-mono">{t.id.slice(0, 10)}…</td>
+                          <td className="py-1 pr-3 font-mono">{t.id.slice(0, 10)}...</td>
                           <td className="py-1 pr-3">{t.stage ?? t.callType}</td>
-                          <td className="py-1 pr-3 text-amber-600">{t.qualityFlag ?? '—'}</td>
+                          <td className="py-1 pr-3 text-amber-600">{t.qualityFlag ?? '--'}</td>
                           <td className="py-1 pr-3">
                             <select
                               value={flagState[t.id]?.flag ?? ''}
@@ -119,7 +119,7 @@ export default function SessionsPage() {
                               }
                               className="border border-gray-200 rounded text-xs px-1 py-0.5"
                             >
-                              <option value="">— select —</option>
+                              <option value="">-- select --</option>
                               <option value="HALLUCINATION">HALLUCINATION</option>
                               <option value="INCORRECT_EXPLANATION">INCORRECT_EXPLANATION</option>
                               <option value="POOR_PEDAGOGY">POOR_PEDAGOGY</option>

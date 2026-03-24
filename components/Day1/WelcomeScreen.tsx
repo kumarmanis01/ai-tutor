@@ -29,7 +29,7 @@ import {
  * 
  * UX Rules (FROZEN):
  * - Must feel safe, not serious
- * - Mention time limit (10–15 min)
+ * - Mention time limit (10-15 min)
  * - Explicitly say mistakes are okay
  * - Exactly one CTA
  * 

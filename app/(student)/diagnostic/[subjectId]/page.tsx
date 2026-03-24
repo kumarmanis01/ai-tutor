@@ -1,5 +1,5 @@
 /**
- * Diagnostic test page — full-screen, no navbar.
+ * Diagnostic test page -- full-screen, no navbar.
  *
  * Fetches questions via generateSubjectDiagnosticTest (board + grade + subject slug),
  * resumes partial state from Redis, then renders DiagnosticFlow.
@@ -7,6 +7,7 @@
  * Route: /diagnostic/[subjectId]   (subjectId = SubjectDef CUID)
  */
 
+import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { requireActiveSession } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
@@ -29,7 +30,7 @@ export default async function DiagnosticPage({
   const userId = (authSession.user as { id: string }).id;
   const { subjectId } = params;
 
-  // Fetch student profile — need board slug, grade, language for question generation
+  // Fetch student profile -- need board slug, grade, language for question generation
   const student = await prisma.user.findUnique({
     where: { id: userId },
     select: { board: true, grade: true, language: true },
@@ -60,6 +61,38 @@ export default async function DiagnosticPage({
   });
 
   if (!subjectDef) redirect('/dashboard');
+
+  // Content gate -- syllabus must have been hydrated (SyllabusWorker writes TopicDef first).
+  // Questions are lazy-promoted from GeneratedQuestion on first session use, so we gate
+  // on TopicDef presence, not the Question table which starts empty.
+  const topicCount = await prisma.topicDef.count({
+    where: {
+      chapter: { subjectId: subjectDef.id, lifecycle: 'active' },
+      lifecycle: 'active',
+    },
+  });
+  if (topicCount === 0) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-white dark:bg-gray-950">
+        <div className="max-w-sm text-center px-6">
+          <div className="text-4xl mb-4">📚</div>
+          <h1 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">
+            Vidya is getting ready
+          </h1>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">
+            We&apos;re preparing your {subjectDef.name} diagnostic. This usually takes a few
+            minutes. Check back shortly.
+          </p>
+          <Link
+            href="/dashboard"
+            className="inline-block px-4 py-2 bg-[#534AB7] text-white text-sm rounded-lg hover:bg-[#3d3690] transition-colors min-h-[44px] min-w-[44px] leading-[28px]"
+          >
+            Back to dashboard
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   // Build topicId → {chapterId, chapterName} lookup
   const topicChapterMap = new Map<string, { chapterId: string; chapterName: string }>();

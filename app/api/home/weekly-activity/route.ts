@@ -8,12 +8,12 @@ export const dynamic = 'force-dynamic';
 /**
  * GET /api/home/weekly-activity
  *
- * Returns which days this week (Mon–Sun) had at least one learning session.
+ * Returns which days this week (Mon-Sun) had at least one learning session.
  * Used to render the visual streak calendar on the dashboard.
  *
  * Response:
  *   { activeDays: boolean[7] }  // index 0 = Monday, 6 = Sunday
- *   { todayIndex: number }      // 0–6, which slot is today
+ *   { todayIndex: number }      // 0-6, which slot is today
  */
 export async function GET(req: Request) {
   const start = Date.now();
@@ -48,7 +48,7 @@ export async function GET(req: Request) {
       select: { startedAt: true },
     });
 
-    // Build 7-element array (Mon=0 … Sun=6)
+    // Build 7-element array (Mon=0 ... Sun=6)
     const activeDays = Array(7).fill(false) as boolean[];
     for (const s of sessions) {
       const d = s.startedAt.getDay(); // 0=Sun

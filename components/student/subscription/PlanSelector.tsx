@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * PlanSelector — step 1 of upgrade flow.
+ * PlanSelector -- step 1 of upgrade flow.
  *
  * Three plan rows: Monthly / Quarterly (featured) / Annual.
  * Featured plan (Quarterly) gets border-2 border-[#534AB7] + "Most popular" badge.

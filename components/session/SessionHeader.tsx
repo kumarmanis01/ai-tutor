@@ -5,7 +5,7 @@
  * - Thin: delegates progress rendering to SessionProgressBar.
  *
  * EDIT LOG:
- * - 2026-03-08 | claude | refactored — progress bar extracted to SessionProgressBar
+ * - 2026-03-08 | claude | refactored -- progress bar extracted to SessionProgressBar
  */
 
 import React from 'react';

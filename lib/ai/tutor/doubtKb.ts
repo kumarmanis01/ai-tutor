@@ -32,9 +32,9 @@ function jaccardSimilarity(a: string, b: string): number {
 /**
  * Save a student doubt + Vidya's answer to the KB.
  * Dedup check: if an identical question (exact string match after normalisation)
- * already exists for this studentId + conceptId — skip insert, return existing.
+ * already exists for this studentId + conceptId -- skip insert, return existing.
  * Normalisation: lowercase, collapse whitespace, strip punctuation.
- * Never throws — returns null on any DB error.
+ * Never throws -- returns null on any DB error.
  */
 export async function saveDoubt(params: {
   studentId: string
@@ -97,7 +97,7 @@ const DEDUP_THRESHOLD = 0.88  // cosine similarity for near-duplicate detection
 /**
  * Look up a cached answer for this question using pgvector cosine similarity.
  * Threshold: 0.92. On hit, increments timesServed and returns answerText.
- * Never throws — returns null on embedding failure or any error.
+ * Never throws -- returns null on embedding failure or any error.
  */
 export async function lookupDoubt(
   questionText: string,
@@ -111,7 +111,7 @@ export async function lookupDoubt(
     const embeddingLiteral = `[${vec.join(',')}]`
 
     type Row = { id: string; answerText: string; similarity: number }
-    const rows = (await prisma.$queryRawUnsafe<Row[]>(
+    const rows = (await prisma.$queryRawUnsafe(
       `
       SELECT id, "answerText", 1 - (embedding <=> $1::vector) AS similarity
       FROM "DoubtKb"
@@ -125,7 +125,7 @@ export async function lookupDoubt(
       embeddingLiteral,
       subjectId,
       LOOKUP_THRESHOLD,
-    ))
+    )) as Row[]
 
     if (!rows.length) return null
 
@@ -166,7 +166,7 @@ export async function recordDoubt(
     const embeddingLiteral = `[${vec.join(',')}]`
 
     type Row = { id: string; alternatePhrasings: string[] }
-    const existing = (await prisma.$queryRawUnsafe<Row[]>(
+    const existing = (await prisma.$queryRawUnsafe(
       `
       SELECT id, "alternatePhrasings", 1 - (embedding <=> $1::vector) AS similarity
       FROM "DoubtKb"
@@ -179,7 +179,7 @@ export async function recordDoubt(
       embeddingLiteral,
       subjectId,
       DEDUP_THRESHOLD,
-    ))
+    )) as Row[]
 
     if (existing.length > 0) {
       const row = existing[0]
@@ -194,7 +194,7 @@ export async function recordDoubt(
         row.id,
       )
     } else {
-      // Novel doubt — create new row
+      // Novel doubt -- create new row
       await prisma.doubtKb.create({
         data: {
           // legacy fields kept for compatibility

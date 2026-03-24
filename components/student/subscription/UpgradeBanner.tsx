@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * UpgradeBanner — sticky dismiss-aware upgrade nudge.
+ * UpgradeBanner -- sticky dismiss-aware upgrade nudge.
  *
  * Shown on the dashboard when the student has previously dismissed
  * the FreemiumUpgradeGate (Redis key present, TTL 24 h).

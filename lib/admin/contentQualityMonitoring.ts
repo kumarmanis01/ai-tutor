@@ -1,5 +1,5 @@
 /**
- * Admin Content Quality Monitoring — ApprovalAudit and pending draft counts for admin dashboard.
+ * Admin Content Quality Monitoring -- ApprovalAudit and pending draft counts for admin dashboard.
  */
 
 import { prisma } from '@/lib/prisma';

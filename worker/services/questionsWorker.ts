@@ -72,23 +72,28 @@ function validateQuestionsShape(raw: any, subjectName?: string): boolean {
     // answer must exist and not be null
     if (q.answer === null || typeof q.answer === 'undefined') return false;
 
-    // Subject-specific stricter checks
-    try {
-      const subjectLower = (subjectName || '').toLowerCase();
-      if (subjectLower.includes('math') || subjectLower.includes('mathematics')) {
-        // For math, answer should be an object with solution_steps and final_answer
-        if (typeof q.answer !== 'object') return false;
-        if (!Array.isArray(q.answer.solution_steps) || q.answer.solution_steps.length === 0) return false;
-        if (!q.answer.final_answer) return false;
+    // Subject-specific stricter checks only apply to non-MCQ question types.
+    // MCQ questions always use a string answer matching one of the options -- the
+    // topic-questions prompt generates MCQ exclusively, so enforcing structured
+    // object answers (solution_steps / direct_answer) on MCQ would always fail.
+    if (q.type !== 'mcq') {
+      try {
+        const subjectLower = (subjectName || '').toLowerCase();
+        if (subjectLower.includes('math') || subjectLower.includes('mathematics')) {
+          // For non-MCQ math, answer should be an object with solution_steps and final_answer
+          if (typeof q.answer !== 'object') return false;
+          if (!Array.isArray(q.answer.solution_steps) || q.answer.solution_steps.length === 0) return false;
+          if (!q.answer.final_answer) return false;
+        }
+        if (subjectLower.includes('science')) {
+          if (typeof q.answer !== 'object') return false;
+          if (!q.answer.direct_answer) return false;
+          if (!q.answer.scientific_explanation) return false;
+        }
+      } catch {
+        // fallback: ensure answer has substantial content
+        if (typeof q.answer === 'string' && q.answer.trim().length < 10) return false;
       }
-      if (subjectLower.includes('science')) {
-        if (typeof q.answer !== 'object') return false;
-        if (!q.answer.direct_answer) return false;
-        if (!q.answer.scientific_explanation) return false;
-      }
-    } catch {
-      // fallback: ensure answer has substantial content
-      if (typeof q.answer === 'string' && q.answer.trim().length < 10) return false;
     }
   }
   return true;
@@ -125,19 +130,23 @@ function validateQuestionsShapeWithReport(raw: any, subjectName?: string) {
     }
     if (q.answer === null || typeof q.answer === 'undefined') { qReport.ok = false; qReport.issues.push('missing-answer'); }
 
-    try {
-      if (subjectLower.includes('math') || subjectLower.includes('mathematics')) {
-        if (typeof q.answer !== 'object') { qReport.ok = false; qReport.issues.push('math-answer-not-object'); }
-        if (!Array.isArray(q.answer.solution_steps) || q.answer.solution_steps.length === 0) { qReport.ok = false; qReport.issues.push('math-missing-solution_steps'); }
-        if (!('final_answer' in q.answer)) { qReport.ok = false; qReport.issues.push('math-missing-final_answer'); }
+    // Subject-specific answer-shape checks only for non-MCQ types.
+    // MCQ uses string answer = correctAnswer -- structured object checks must not apply.
+    if (q.type !== 'mcq') {
+      try {
+        if (subjectLower.includes('math') || subjectLower.includes('mathematics')) {
+          if (typeof q.answer !== 'object') { qReport.ok = false; qReport.issues.push('math-answer-not-object'); }
+          if (!Array.isArray(q.answer?.solution_steps) || q.answer.solution_steps.length === 0) { qReport.ok = false; qReport.issues.push('math-missing-solution_steps'); }
+          if (!q.answer || !('final_answer' in q.answer)) { qReport.ok = false; qReport.issues.push('math-missing-final_answer'); }
+        }
+        if (subjectLower.includes('science')) {
+          if (typeof q.answer !== 'object') { qReport.ok = false; qReport.issues.push('science-answer-not-object'); }
+          if (!q.answer || (!('direct_answer' in q.answer) && !('final_answer' in q.answer))) { qReport.ok = false; qReport.issues.push('science-missing-direct_answer'); }
+          if (!q.answer?.scientific_explanation && !q.answer?.explanation) { qReport.ok = false; qReport.issues.push('science-missing-explanation'); }
+        }
+      } catch {
+        qReport.ok = false; qReport.issues.push('subject-validation-exception');
       }
-      if (subjectLower.includes('science')) {
-        if (typeof q.answer !== 'object') { qReport.ok = false; qReport.issues.push('science-answer-not-object'); }
-        if (!('direct_answer' in q.answer) && !('final_answer' in q.answer)) { qReport.ok = false; qReport.issues.push('science-missing-direct_answer'); }
-        if (!q.answer.scientific_explanation && !q.answer.explanation) { qReport.ok = false; qReport.issues.push('science-missing-explanation'); }
-      }
-    } catch {
-      qReport.ok = false; qReport.issues.push('subject-validation-exception');
     }
 
     if (qReport.ok) report.summary.validCount += 1; else report.summary.issues.push({ index: idx, issues: qReport.issues });
@@ -273,9 +282,10 @@ async function generateQuestionsForDifficulty(
   subjectName: string,
   language: LanguageCode,
   jobId?: string,
-  questionsCount?: number
+  questionsCount?: number,
+  ncertContext?: string
 ): Promise<{ parsed: any; llmResult: any } | null> {
-  // Resolve validated question count — enforces validation cap
+  // Resolve validated question count -- enforces validation cap
   const count = getValidationQuestionCount(questionsCount);
 
   const difficultyDescriptions: Record<DifficultyLevel, string> = {
@@ -284,7 +294,7 @@ async function generateQuestionsForDifficulty(
     hard: 'analysis and evaluation questions that challenge advanced understanding',
   };
 
-  // COUPLING-04: Single canonical prompt source — renderTemplate only.
+  // COUPLING-04: Single canonical prompt source -- renderTemplate only.
   const rendered = renderTemplate('topic-questions', {
     topicName: topic.name,
     grade,
@@ -294,6 +304,7 @@ async function generateQuestionsForDifficulty(
     subject: subjectName,
     difficulty,
     difficultyDescription: difficultyDescriptions[difficulty],
+    ncertContext,
   });
 
   // Persist initial AIContentLog with schemaHash and version for observability before calling LLM
@@ -421,6 +432,42 @@ export async function handleQuestionsJob(jobId: string): Promise<void> {
   const grade = topic.chapter.subject.class.grade;
   const subjectName = topic.chapter.subject.name;
 
+  // ── Ground questions in NCERT CurriculumChunk content when available ─────────
+  let ncertContext: string | undefined
+  try {
+    const subjectSlug = subjectName.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')
+    const chapterOrder = (topic.chapter as any).order ?? 0
+    if (chapterOrder > 0) {
+      const chunks = await prisma.curriculumChunk.findMany({
+        where: {
+          subject: subjectSlug,
+          grade: String(grade),
+          conceptIds: { hasSome: [`chapter:${chapterOrder}`] },
+        },
+        select: { content: true },
+        orderBy: { createdAt: 'asc' },
+        take: 8,
+      })
+      if (chunks.length > 0) {
+        ncertContext = chunks.map((c) => c.content ?? '').filter(Boolean).join('\n\n---\n\n')
+        logger.info('[questionsWorker] grounding questions with NCERT chunks', {
+          event: 'ncert_grounding',
+          context: { jobId: job.id, chapterOrder, subject: subjectSlug, grade, chunkCount: chunks.length },
+        })
+      } else {
+        logger.warn('[questionsWorker] no NCERT chunks for chapter -- using GPT knowledge', {
+          event: 'ncert_grounding_fallback',
+          context: { jobId: job.id, chapterOrder, subject: subjectSlug, grade },
+        })
+      }
+    }
+  } catch (chunkErr) {
+    logger.warn('[questionsWorker] CurriculumChunk query failed -- using GPT knowledge', {
+      event: 'ncert_grounding_error',
+      context: { jobId: job.id, error: String(chunkErr) },
+    })
+  }
+
   // Log processing started for linked ExecutionJob
   const linkedExecStart = await prisma.executionJob.findFirst({
     where: { payload: { path: ['hydrationJobId'], equals: job.id } }
@@ -462,9 +509,9 @@ export async function handleQuestionsJob(jobId: string): Promise<void> {
   const runOneDifficulty = async (difficulty: DifficultyLevel) => {
     const existingApproved = await prisma.generatedTest.findFirst({ where: { topicId, language, difficulty, status: 'approved' } });
     if (existingApproved) {
-      logger.info('handleQuestionsJob: existing approved questions found — generating new version', { jobId, topicId, difficulty });
+      logger.info('handleQuestionsJob: existing approved questions found -- generating new version', { jobId, topicId, difficulty });
     }
-    const gen = await generateQuestionsForDifficulty(difficulty, topic, board, grade, subjectName, language, job.id, resolvedQuestionsCount);
+    const gen = await generateQuestionsForDifficulty(difficulty, topic, board, grade, subjectName, language, job.id, resolvedQuestionsCount, ncertContext);
     return { difficulty, existingApproved: existingApproved ?? null, parsed: gen?.parsed ?? null, llmResult: gen?.llmResult ?? null };
   };
 
@@ -512,7 +559,7 @@ export async function handleQuestionsJob(jobId: string): Promise<void> {
     // Guard: warn if LLM returned more questions than the cap
     const returnedCount = Array.isArray(parsed?.questions) ? parsed.questions.length : 0;
     if (returnedCount > resolvedQuestionsCount) {
-      logger.warn('[VALIDATION_CAP] questionsWorker: LLM returned more questions than cap — trimming', {
+      logger.warn('[VALIDATION_CAP] questionsWorker: LLM returned more questions than cap -- trimming', {
         jobId,
         difficulty,
         topicId,
@@ -537,7 +584,7 @@ export async function handleQuestionsJob(jobId: string): Promise<void> {
       }).catch(() => {});
     }
 
-    // Per-difficulty validation — failures are isolated and do NOT abort remaining difficulties
+    // Per-difficulty validation -- failures are isolated and do NOT abort remaining difficulties
     try {
       const { valid, report } = validateQuestionsShapeWithReport(parsed, subjectName);
       if (linkedExec) {

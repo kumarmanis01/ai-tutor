@@ -4,7 +4,7 @@ export type JobSchedule =
 
 export interface JobDefinition {
   name: string
-  // The job's main entrypoint — must be async and side-effecting
+  // The job's main entrypoint -- must be async and side-effecting
   run: () => Promise<void>
   // A numeric key used to derive advisory lock ids
   lockKey: string
@@ -17,7 +17,7 @@ export interface JobDefinition {
 /**
  * Central registry of JobDefinitions. Other modules should call
  * `registerJob()` to add their JobDefinition. This module does NOT run
- * jobs — it only stores metadata.
+ * jobs -- it only stores metadata.
  */
 const registry = new Map<string, JobDefinition>()
 

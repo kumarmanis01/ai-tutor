@@ -84,7 +84,7 @@ export async function POST(req: Request) {
     });
     topicId = gt?.topicId ?? null;
   } catch {
-    // non-fatal — test may not be a GeneratedTest
+    // non-fatal -- test may not be a GeneratedTest
   }
 
   if (topicId) {

@@ -8,7 +8,7 @@
  * which grouped questions by "${subject}::${chapter}" instead of using the
  * canonical TopicDef.id (UUID).
  *
- * This script ONLY logs — it does NOT delete or modify any data.
+ * This script ONLY logs -- it does NOT delete or modify any data.
  * Review the output before running any manual cleanup.
  *
  * Usage:
@@ -48,7 +48,7 @@ const prisma = new PrismaClient();
 
 async function main() {
   console.log('═'.repeat(62));
-  console.log('  audit-stm-composite-keys — find "::" topicId rows');
+  console.log('  audit-stm-composite-keys -- find "::" topicId rows');
   console.log('═'.repeat(62));
 
   // ── StudentTopicMastery ──────────────────────────────────────────────────────
@@ -113,11 +113,11 @@ async function main() {
   const total = stmRows.length + flagRows.length;
   console.log('═'.repeat(62));
   if (total === 0) {
-    console.log('  CLEAN — no composite "::" keys found in STM or AttentionFlag.');
+    console.log('  CLEAN -- no composite "::" keys found in STM or AttentionFlag.');
   } else {
     console.log(`  FOUND ${total} rows with composite "::" keys.`);
     console.log('  Review above and decide whether to delete or migrate.');
-    console.log('  These rows are orphans — the engine cannot match them to TopicDefs.');
+    console.log('  These rows are orphans -- the engine cannot match them to TopicDefs.');
   }
   console.log('═'.repeat(62) + '\n');
 

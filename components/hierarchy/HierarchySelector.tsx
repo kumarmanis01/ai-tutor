@@ -31,7 +31,7 @@ export default function HierarchySelector({ scope = "TOPIC", onChange }: Props) 
   void scope;
 
   // Defensive: if hierarchy missing, render a loader message
-  if (loading) return <div>Loading hierarchy…</div>;
+  if (loading) return <div>Loading hierarchy...</div>;
   if (!hierarchy) return <div>No hierarchy data available</div>;
 
   const boards = mapOptions(hierarchy.boards || hierarchy, "id", "name");

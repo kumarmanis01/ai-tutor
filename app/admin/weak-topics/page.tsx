@@ -45,11 +45,11 @@ export default function AdminWeakTopicsPage() {
       <div className="grid grid-cols-2 gap-4">
         <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4">
           <div className="text-sm font-medium text-gray-500 dark:text-gray-400">Students with weak topics</div>
-          <div className="text-2xl font-bold text-gray-900 dark:text-white">{summary?.totalStudentsWithWeakTopics ?? '—'}</div>
+          <div className="text-2xl font-bold text-gray-900 dark:text-white">{summary?.totalStudentsWithWeakTopics ?? '--'}</div>
         </div>
         <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4">
           <div className="text-sm font-medium text-gray-500 dark:text-gray-400">Total weak-topic instances</div>
-          <div className="text-2xl font-bold text-gray-900 dark:text-white">{summary?.totalWeakTopicInstances ?? '—'}</div>
+          <div className="text-2xl font-bold text-gray-900 dark:text-white">{summary?.totalWeakTopicInstances ?? '--'}</div>
         </div>
       </div>
 
@@ -98,7 +98,7 @@ export default function AdminWeakTopicsPage() {
       </div>
 
       {/* Table */}
-      {isLoading && <div className="text-sm text-gray-500">Loading…</div>}
+      {isLoading && <div className="text-sm text-gray-500">Loading...</div>}
       {!isLoading && view === 'by-topic' && (
         <div className="rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
           <table className="w-full text-sm">
@@ -152,8 +152,8 @@ export default function AdminWeakTopicsPage() {
               {students.map((s: { studentId: string; studentEmail: string | null; studentName: string | null; board: string | null; grade: string | null; weakTopicCount: number; topicNames: string[]; severity: string }) => (
                 <tr key={s.studentId} className="border-t border-gray-200 dark:border-gray-700">
                   <td className="p-3 font-medium">{s.studentName || s.studentEmail || s.studentId}</td>
-                  <td className="p-3">{s.board ?? '—'} / {s.grade ?? '—'}</td>
-                  <td className="p-3" title={s.topicNames?.join(', ')}>{s.weakTopicCount} ({s.topicNames?.slice(0, 2).join(', ')}{s.topicNames?.length > 2 ? '…' : ''})</td>
+                  <td className="p-3">{s.board ?? '--'} / {s.grade ?? '--'}</td>
+                  <td className="p-3" title={s.topicNames?.join(', ')}>{s.weakTopicCount} ({s.topicNames?.slice(0, 2).join(', ')}{s.topicNames?.length > 2 ? '...' : ''})</td>
                   <td className="p-3">
                     <span className={`px-2 py-0.5 rounded text-xs ${s.severity === 'high' ? 'bg-red-100 text-red-800' : s.severity === 'medium' ? 'bg-amber-100 text-amber-800' : 'bg-gray-100 text-gray-800'}`}>
                       {s.severity}

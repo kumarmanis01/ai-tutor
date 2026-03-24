@@ -1,11 +1,11 @@
 /**
  * FILE OBJECTIVE:
- * Shared curriculum query — returns the full ordered topic list for a student's
+ * Shared curriculum query -- returns the full ordered topic list for a student's
  * board + grade + subject context. Used by getNextAction() P5 and the test
  * script so both work from an identical, student-scoped dataset.
  *
  * The query is the single source of truth for "what topics is this student
- * expected to work through, and in what order?" — any caller that needs the
+ * expected to work through, and in what order?" -- any caller that needs the
  * curriculum sequence must go through this function.
  *
  * EDIT LOG:
@@ -24,7 +24,7 @@ import { prisma } from '@/lib/prisma';
  *   - grade matched to student's grade
  *   - subject names filtered when the student has enrolled subjects set
  *
- * Returns [] when the student's profile is missing board or grade — the caller
+ * Returns [] when the student's profile is missing board or grade -- the caller
  * should treat this as "curriculum context unknown, no action possible".
  */
 export async function getOrderedTopicsForStudent(studentId: string) {

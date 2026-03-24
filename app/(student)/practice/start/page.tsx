@@ -32,7 +32,7 @@ function PracticeStartContent() {
 
   return (
     <div className="flex items-center justify-center min-h-40">
-      <p className="text-sm text-muted-foreground">Loading practice session…</p>
+      <p className="text-sm text-muted-foreground">Loading practice session...</p>
     </div>
   );
 }

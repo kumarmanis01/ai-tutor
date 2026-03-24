@@ -199,7 +199,7 @@ export class RecommendationEngine {
     }
   }
 
-  // ── Signal Gathering (Prompt 3 — topic-first signals) ──────────────────
+  // ── Signal Gathering (Prompt 3 -- topic-first signals) ──────────────────
 
   private async gatherUserSignals(): Promise<UserSignals> {
     const [user, profile, testResults, sessions, completedRecs, engagementHistory] = await Promise.all([
@@ -333,7 +333,7 @@ export class RecommendationEngine {
       }
     }
 
-    // ── Engagement by type (Prompt 2 — mapped keys) ──
+    // ── Engagement by type (Prompt 2 -- mapped keys) ──
     const engagementByType: Record<string, { shown: number; clicked: number; completed: number; ignored: number }> = {};
     for (const rec of engagementHistory) {
       const rawPrefix = rec.contentId.includes(':') ? rec.contentId.split(':')[0] : 'catalog';
@@ -371,7 +371,7 @@ export class RecommendationEngine {
     };
   }
 
-  // ── Candidate Construction (Prompt 3 — always populate meta) ───────────
+  // ── Candidate Construction (Prompt 3 -- always populate meta) ───────────
 
   private async getCandidateContent(): Promise<CandidateContent[]> {
     if (!this.signals) return [];
@@ -401,7 +401,7 @@ export class RecommendationEngine {
       }),
       prisma.question.findMany({
         where: {
-          // quarantined questions excluded — do not remove this filter
+          // quarantined questions excluded -- do not remove this filter
           status: 'ACTIVE',
           OR: [{ board, grade }, hasSubjects ? { subject: { in: subjects } } : {}],
         },
@@ -713,7 +713,7 @@ export class RecommendationEngine {
       signalsApplied.push('recent_topic');
     }
 
-    // 6. Resume incomplete session — +50, highest priority
+    // 6. Resume incomplete session -- +50, highest priority
     if (candidateTopicId && this.signals.incompleteTopicIds.has(candidateTopicId)) {
       resumeBoost = SCORE_WEIGHTS.RESUME_SESSION;
       score += resumeBoost;
@@ -834,7 +834,7 @@ export class RecommendationEngine {
     return this.toRecommendationItem(candidate, score, reasons);
   }
 
-  // ── Output Construction (Prompt 1 — normalized contentId) ──────────────
+  // ── Output Construction (Prompt 1 -- normalized contentId) ──────────────
 
   private toRecommendationItem(
     candidate: CandidateContent,

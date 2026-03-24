@@ -12,7 +12,7 @@ export const dynamic = 'force-dynamic';
  * - Prisma's fluent API cannot express DATE_TRUNC + GROUP BY in a single
  *   round-trip. Fetching all rows for 8 weeks into JS and grouping there
  *   would transfer O(topics × student) rows over the wire for every request.
- *   A raw aggregate query is the correct tool here — the DB does the math,
+ *   A raw aggregate query is the correct tool here -- the DB does the math,
  *   the API returns only 8 numbers.
  *
  * ── INDEX ANALYSIS ──────────────────────────────────────────────────────────
@@ -27,18 +27,18 @@ export const dynamic = 'force-dynamic';
  * What the current query does without a dedicated index:
  *
  *   Index Range Scan on "StudentTopicMastery_studentId_masteryLevel_idx"
- *     → equality probe: studentId = $1          (index hit — fast)
+ *     → equality probe: studentId = $1          (index hit -- fast)
  *     → heap fetch for every matched row
- *     → heap-filter: updatedAt >= $2            (not in index — evaluated per row)
+ *     → heap-filter: updatedAt >= $2            (not in index -- evaluated per row)
  *     → DATE_TRUNC + GROUP BY + AVG on survivors
  *
  * The studentId probe is O(log N) on the index. The updatedAt filter is
  * applied from the heap, meaning Postgres reads every mastery row for this
  * student before discarding those outside the 8-week window.
  *
- * For a student with 50–200 mastery rows this is negligible. If the table
+ * For a student with 50-200 mastery rows this is negligible. If the table
  * grows to thousands of rows per student (many subjects × topics × revisions),
- * add the following index — zero downtime via CONCURRENTLY:
+ * add the following index -- zero downtime via CONCURRENTLY:
  *
  *   @@index([studentId, updatedAt])
  *
@@ -47,16 +47,16 @@ export const dynamic = 'force-dynamic';
  *
  *   With this index Postgres can:
  *     1. Probe studentId directly.
- *     2. Range-scan updatedAt >= $2 within the index — no heap reads for
+ *     2. Range-scan updatedAt >= $2 within the index -- no heap reads for
  *        rows that fall outside the 8-week window.
  *     3. Fetch heap pages only for rows that pass both predicates.
  *
  * SECURITY:
  * - Caller must be authenticated.
- * - parentId–studentId link is verified (O(1) unique-index lookup) before
+ * - parentId-studentId link is verified (O(1) unique-index lookup) before
  *   any student data is read.
- * - studentId is passed via Prisma.sql tagged template — never string-
- *   concatenated — so SQL injection is not possible.
+ * - studentId is passed via Prisma.sql tagged template -- never string-
+ *   concatenated -- so SQL injection is not possible.
  *
  * EDIT LOG:
  * - 2026-03-08 | claude | created for Parent Progress Dashboard
@@ -74,7 +74,7 @@ import type { AppSession } from '@/lib/types/auth';
 const CLASS_NAME = 'ParentImprovementTrendAPI';
 
 /** Number of past weeks to return. Kept as a named constant so it appears
- *  in one place — both in the cutoff date calculation and the response cap. */
+ *  in one place -- both in the cutoff date calculation and the response cap. */
 const WEEK_WINDOW = 8;
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -143,7 +143,7 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'studentId is required' }, { status: 400 });
     }
 
-    // ── 3. Parent–student link guard ─────────────────────────────────────────
+    // ── 3. Parent-student link guard ─────────────────────────────────────────
     const link = await prisma.parentStudent.findUnique({
       where: { parentId_studentId: { parentId, studentId } },
       select: { status: true },
@@ -175,7 +175,7 @@ export async function GET(req: NextRequest) {
     // ISO week format breakdown:
     //   IYYY  = ISO year  (handles week-1 of a year that starts in prev calendar year)
     //   "W"   = literal character W
-    //   IW    = ISO week number, zero-padded (01–53)
+    //   IW    = ISO week number, zero-padded (01-53)
     //   → produces "2026-W10", matching the required response shape exactly.
     //
     // Prisma.sql is a tagged template that passes $1/$2/$3 as prepared-statement
@@ -196,7 +196,7 @@ export async function GET(req: NextRequest) {
 
     // ── 6. Coerce and shape ──────────────────────────────────────────────────
     // node-postgres returns NUMERIC/FLOAT8 aggregates as strings.
-    // Round to 4 decimal places — enough precision for a trend line without
+    // Round to 4 decimal places -- enough precision for a trend line without
     // floating-point noise (e.g. 0.5799999... → 0.58).
     const trend: WeeklyAccuracy[] = rows.map((r) => ({
       week:     r.week,

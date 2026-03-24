@@ -37,7 +37,7 @@ type ContextShape = {
 const HierarchyContext = createContext<ContextShape | null>(null);
 
 export const HierarchyProvider: React.FC<React.PropsWithChildren<unknown>> = ({ children }) => {
-  // Fetch canonical hierarchy once — include chapters and topics so selector shows generated content
+  // Fetch canonical hierarchy once -- include chapters and topics so selector shows generated content
   const { data, error, isLoading } = useSWR<HierarchyData>("/api/hierarchy?include=subjects,chapters,topics", fetcher);
 
   const [selection, setSelection] = useState<Selection>({});

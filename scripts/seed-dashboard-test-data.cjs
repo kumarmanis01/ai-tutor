@@ -1,15 +1,15 @@
 /**
- * seed-dashboard-test-data.cjs  –  v2 (complete journey)
+ * seed-dashboard-test-data.cjs  -  v2 (complete journey)
  *
  * CBSE · Grade 10 · English
  * Curriculum (4 subjects × 2 chapters × 2 topics = 16 topics total):
- *   Science, Mathematics (from seed-ai-data.cjs)
+ *   Science, Mathematics (from seed-taxonomy.cjs)
  *   + Social Science, English Language  (seeded here)
  *
  * 3 Students with end-to-end differentiated journeys:
- *   1. arjun.sharma@test10.cbse  – Struggling (weak Science + SocSci, moderate Math)
- *   2. priya.patel@test10.cbse   – High achiever (all subjects 82-93%, rising trend)
- *   3. ravi.kumar@test10.cbse    – Mixed (strong Math, weak Science, inactive 3 d)
+ *   1. arjun.sharma@test10.cbse  - Struggling (weak Science + SocSci, moderate Math)
+ *   2. priya.patel@test10.cbse   - High achiever (all subjects 82-93%, rising trend)
+ *   3. ravi.kumar@test10.cbse    - Mixed (strong Math, weak Science, inactive 3 d)
  *
  * 2 Parent accounts:
  *   kavita.sharma@parent.test  → Arjun
@@ -58,7 +58,7 @@
  *   ✓ SubjectProgressSummary per-subject snapshot
  *
  * Idempotent: uses upsert / skipDuplicates throughout.
- * Prerequisite: node scripts/seed-ai-content.cjs + node scripts/seed-ai-data.cjs
+ * Prerequisite: node scripts/seed-taxonomy.cjs
  *
  * Usage:
  *   node scripts/seed-dashboard-test-data.cjs           # live run
@@ -244,7 +244,7 @@ const EXTRA_SUBJECTS = [
                 { term: 'Biotic Resources', definition: 'Resources from the biosphere (living component).', example: 'Forests, animals, fish, birds.' },
                 { term: 'Non-renewable Resources', definition: 'Resources that cannot be replenished once used.', example: 'Coal, petroleum, natural gas.' },
               ],
-              [{ scenario: "India's coal reserves are depleting rapidly due to industrial use.", connection: 'Coal is a non-renewable abiotic national resource — once exhausted it cannot be renewed, driving the shift to solar/wind.' }]),
+              [{ scenario: "India's coal reserves are depleting rapidly due to industrial use.", connection: 'Coal is a non-renewable abiotic national resource -- once exhausted it cannot be renewed, driving the shift to solar/wind.' }]),
           },
           {
             name: 'Land Use Pattern in India', slug: 'land-use-pattern-in-india', order: 2,
@@ -262,7 +262,7 @@ const EXTRA_SUBJECTS = [
                 { term: 'Net Sown Area', definition: 'Land sown with crops at least once in a year.', example: 'Punjab has the highest net sown area as % of total area.' },
                 { term: 'Fallow Land', definition: 'Cultivable land left uncultivated to restore fertility.', example: 'Current fallow: left uncultivated in the current year.' },
               ],
-              [{ scenario: 'Farmer leaves land uncultivated every third year.', connection: 'This is fallow land practice — it restores soil nutrients naturally.' }]),
+              [{ scenario: 'Farmer leaves land uncultivated every third year.', connection: 'This is fallow land practice -- it restores soil nutrients naturally.' }]),
           },
         ],
       },
@@ -274,10 +274,10 @@ const EXTRA_SUBJECTS = [
     name: 'English Language', slug: 'english-language',
     chapters: [
       {
-        name: 'First Flight – Literature', slug: 'first-flight-literature', order: 1,
+        name: 'First Flight - Literature', slug: 'first-flight-literature', order: 1,
         topics: [
           {
-            name: 'A Letter to God – Comprehension', slug: 'a-letter-to-god', order: 1,
+            name: 'A Letter to God - Comprehension', slug: 'a-letter-to-god', order: 1,
             note: buildNote('A Letter to God',
               '"A Letter to God" by G.L. Fuentes tells the story of Lencho, a farmer whose unwavering faith in God is contrasted ironically with his suspicion of the kind humans who helped him.',
               [
@@ -290,17 +290,17 @@ const EXTRA_SUBJECTS = [
               ],
               [
                 { term: 'Irony', definition: 'A literary device where the outcome is contrary to expectation.', example: 'Lencho accuses the kind helpers of being thieves.' },
-                { term: 'Personification', definition: 'Giving human qualities to non-human things.', example: '"The rain was like new coins" — comparing rain to money.' },
+                { term: 'Personification', definition: 'Giving human qualities to non-human things.', example: '"The rain was like new coins" -- comparing rain to money.' },
               ],
-              [{ scenario: 'Lencho receives 70 pesos instead of 100.', connection: "He interprets the shortage as theft, never considering the post office employees donated their own money — the story's tragic irony." }]),
+              [{ scenario: 'Lencho receives 70 pesos instead of 100.', connection: "He interprets the shortage as theft, never considering the post office employees donated their own money -- the story's tragic irony." }]),
           },
           {
-            name: 'Nelson Mandela – Long Walk to Freedom', slug: 'nelson-mandela-long-walk-to-freedom', order: 2,
-            note: buildNote('Nelson Mandela – Long Walk to Freedom',
+            name: 'Nelson Mandela - Long Walk to Freedom', slug: 'nelson-mandela-long-walk-to-freedom', order: 2,
+            note: buildNote('Nelson Mandela - Long Walk to Freedom',
               "This excerpt from Nelson Mandela's autobiography describes his inauguration as South Africa's first black President and his reflections on freedom, courage, and human obligation.",
               [
                 { heading: 'The Inauguration Scene',
-                  explanation: 'The ceremony was held at the Union Buildings, Pretoria. Military generals who had previously jailed Mandela now saluted him — a victory for justice. He saw the transformation of the apartheid state into one that recognised the rights of all.',
+                  explanation: 'The ceremony was held at the Union Buildings, Pretoria. Military generals who had previously jailed Mandela now saluted him -- a victory for justice. He saw the transformation of the apartheid state into one that recognised the rights of all.',
                   keyTakeaway: 'Inauguration = triumph of justice; former oppressors saluted Mandela.' },
                 { heading: 'Meaning of Freedom and Courage',
                   explanation: 'Mandela distinguishes two obligations: to family and to people/community. The oppressor is also a prisoner of hatred. True freedom = freedom of all. Courage = triumph over fear, not its absence.',
@@ -310,7 +310,7 @@ const EXTRA_SUBJECTS = [
                 { term: 'Apartheid', definition: 'Institutionalised racial segregation in South Africa, 1948-1994.', example: 'Black South Africans were denied voting rights and freedom of movement.' },
                 { term: 'Inauguration', definition: 'Formal ceremony inducting a person into a position of authority.', example: "Mandela's inauguration on 10 May 1994 marked the end of apartheid." },
               ],
-              [{ scenario: "Mandela's reflection on generals who jailed him now saluting him.", connection: 'Symbolises the complete transformation of South Africa — the oppressor system bowing to human dignity.' }]),
+              [{ scenario: "Mandela's reflection on generals who jailed him now saluting him.", connection: 'Symbolises the complete transformation of South Africa -- the oppressor system bowing to human dignity.' }]),
           },
         ],
       },
@@ -333,12 +333,12 @@ const EXTRA_SUBJECTS = [
                 { term: 'Present Perfect', definition: 'Tense for actions completed recently or with present relevance. Form: have/has + past participle.', example: '"She has finished her homework."' },
                 { term: 'Passive Voice', definition: 'Sentence structure where the subject receives the action.', example: '"The book was written by Rowling" (passive).' },
               ],
-              [{ scenario: 'Exam: Change to passive: "The teacher corrects the papers."', connection: '"The papers are corrected by the teacher." — Object (papers) + are + corrected + by + agent.' }]),
+              [{ scenario: 'Exam: Change to passive: "The teacher corrects the papers."', connection: '"The papers are corrected by the teacher." -- Object (papers) + are + corrected + by + agent.' }]),
           },
           {
             name: 'Formal Letter Writing', slug: 'formal-letter-writing', order: 2,
             note: buildNote('Formal Letter Writing',
-              'Formal letter writing is a key skill in the CBSE Class 10 English exam (Section B – Writing). It includes formal/official letters, application letters, and complaint letters, each with a fixed format.',
+              'Formal letter writing is a key skill in the CBSE Class 10 English exam (Section B - Writing). It includes formal/official letters, application letters, and complaint letters, each with a fixed format.',
               [
                 { heading: 'Format of a Formal Letter',
                   explanation: "8-part format: (1) Sender's address, (2) Date, (3) Receiver's designation & address, (4) Subject line, (5) Salutation, (6) Body (3 paragraphs), (7) Complimentary close, (8) Signature. 'Yours faithfully' when you don't know the name; 'Yours sincerely' when you do.",
@@ -396,8 +396,8 @@ async function seedCurriculum(classLevel) {
         for (const diff of ['easy', 'medium', 'hard']) {
           const test = await prisma.generatedTest.upsert({
             where: { topicId_difficulty_language_version: { topicId: topic.id, difficulty: diff, language: 'en', version: 1 } },
-            update: { title: `${tp.name} – ${diff[0].toUpperCase() + diff.slice(1)}`, status: 'approved' },
-            create: { topicId: topic.id, title: `${tp.name} – ${diff[0].toUpperCase() + diff.slice(1)}`, difficulty: diff, language: 'en', version: 1, status: 'approved' },
+            update: { title: `${tp.name} - ${diff[0].toUpperCase() + diff.slice(1)}`, status: 'approved' },
+            create: { topicId: topic.id, title: `${tp.name} - ${diff[0].toUpperCase() + diff.slice(1)}`, difficulty: diff, language: 'en', version: 1, status: 'approved' },
           });
           await prisma.generatedQuestion.deleteMany({ where: { testId: test.id } });
           await prisma.generatedQuestion.createMany({ data: qBank[diff].map(q => ({ testId: test.id, ...q })) });
@@ -413,7 +413,7 @@ async function seedCurriculum(classLevel) {
 // ── fetch all topics from DB, build lookup map ────────────────────────────────
 async function fetchTopicMap() {
   const board = await prisma.board.findUnique({ where: { slug: BOARD_SLUG } });
-  if (!board) throw new Error(`Board '${BOARD_SLUG}' not found. Run seed-ai-content first.`);
+  if (!board) throw new Error(`Board '${BOARD_SLUG}' not found. Run seed-taxonomy.cjs first.`);
   const classLevel = await prisma.classLevel.findUnique({
     where: { boardId_grade: { boardId: board.id, grade: GRADE } },
   });
@@ -552,7 +552,7 @@ async function seedEngagement(studentId, cfg) {
     update: { currentStreak: cfg.currentStreak, longestStreak: cfg.longestStreak, lastActiveDate: daysAgo(0), totalSessionsCompleted: cfg.totalSessions, learningPoints: cfg.learningPoints },
     create: { studentId, currentStreak: cfg.currentStreak, longestStreak: cfg.longestStreak, lastActiveDate: daysAgo(0), totalSessionsCompleted: cfg.totalSessions, learningPoints: cfg.learningPoints },
   });
-  // StudentStreak has no unique on (studentId,kind) – use findFirst + update/create
+  // StudentStreak has no unique on (studentId,kind) - use findFirst + update/create
   const existing = await prisma.studentStreak.findFirst({ where: { studentId, kind: 'daily' } });
   if (existing) {
     await prisma.studentStreak.update({ where: { id: existing.id }, data: { current: cfg.currentStreak, best: cfg.longestStreak, lastActive: daysAgo(0) } });
@@ -684,7 +684,7 @@ const HOMEWORK_PLANS = {
     // P0: overdue (dueDate in past) → PrimaryActionCard = homework (BLOCKED until done)
     { tPath:['science','electricity','electric-current-and-circuit'],   status:'OVERDUE',   dueDate:daysAgo(3),        score:null },
     { tPath:['social-science','nationalism-in-india','non-cooperation-movement'], status:'OVERDUE', dueDate:daysAgo(7), score:null },
-    // Urgent pending (dueDate within 24 h) – also P0 candidate
+    // Urgent pending (dueDate within 24 h) - also P0 candidate
     { tPath:['mathematics','real-numbers','euclids-division-lemma'],     status:'PENDING',   dueDate:hoursFromNow(20),  score:null },
   ],
   priya: [
@@ -731,14 +731,14 @@ async function seedHomework(studentId, key, topicMap) {
 
 // ── Content catalog (recommendation engine candidates) ────────────────────────
 const CATALOG_ENTRIES = [
-  { contentId:'cat:sci:electricity:notes',    title:'Electricity – Study Notes',           description:'Complete notes on electric current, Ohm\'s law and circuits.', type:'notes',    subject:'Science',        board:'cbse', grade:'10', language:'en', difficulty:'medium', tags:['electricity','circuits','current'] },
-  { contentId:'cat:sci:chemistry:practice',   title:'Chemical Reactions – Practice Set',   description:'50 practice problems on types of reactions and balancing.', type:'practice', subject:'Science',        board:'cbse', grade:'10', language:'en', difficulty:'medium', tags:['chemistry','reactions','equations'] },
-  { contentId:'cat:math:realnumbers:notes',   title:'Real Numbers – Concept Guide',        description:'Visual guide to Euclid\'s lemma and prime factorisation.', type:'notes',    subject:'Mathematics',    board:'cbse', grade:'10', language:'en', difficulty:'easy',   tags:['real numbers','HCF','LCM'] },
-  { contentId:'cat:math:linearequations:test',title:'Linear Equations – Quick Test',       description:'15-minute test on graphical and algebraic methods.', type:'test',     subject:'Mathematics',    board:'cbse', grade:'10', language:'en', difficulty:'medium', tags:['linear equations','substitution','elimination'] },
-  { contentId:'cat:socSci:nationalism:notes', title:'Nationalism in India – Timeline',     description:'Illustrated timeline of Non-Cooperation and Civil Disobedience.', type:'notes', subject:'Social Science', board:'cbse', grade:'10', language:'en', difficulty:'easy',   tags:['nationalism','Gandhi','independence'] },
-  { contentId:'cat:socSci:resources:practice',title:'Resources – Classification Practice', description:'Classify resources by origin, exhaustibility and ownership.', type:'practice', subject:'Social Science', board:'cbse', grade:'10', language:'en', difficulty:'easy',   tags:['resources','land use','environment'] },
-  { contentId:'cat:eng:literature:notes',     title:'First Flight – Story Analysis',       description:'Theme and character analysis for Letter to God and Mandela.', type:'notes',    subject:'English Language', board:'cbse', grade:'10', language:'en', difficulty:'easy',   tags:['literature','comprehension','themes'] },
-  { contentId:'cat:eng:grammar:practice',     title:'Grammar Booster – Tenses & Voice',   description:'100 transformation exercises: tenses, active/passive, reported speech.', type:'practice', subject:'English Language', board:'cbse', grade:'10', language:'en', difficulty:'medium', tags:['grammar','tenses','voice','letter writing'] },
+  { contentId:'cat:sci:electricity:notes',    title:'Electricity - Study Notes',           description:'Complete notes on electric current, Ohm\'s law and circuits.', type:'notes',    subject:'Science',        board:'cbse', grade:'10', language:'en', difficulty:'medium', tags:['electricity','circuits','current'] },
+  { contentId:'cat:sci:chemistry:practice',   title:'Chemical Reactions - Practice Set',   description:'50 practice problems on types of reactions and balancing.', type:'practice', subject:'Science',        board:'cbse', grade:'10', language:'en', difficulty:'medium', tags:['chemistry','reactions','equations'] },
+  { contentId:'cat:math:realnumbers:notes',   title:'Real Numbers - Concept Guide',        description:'Visual guide to Euclid\'s lemma and prime factorisation.', type:'notes',    subject:'Mathematics',    board:'cbse', grade:'10', language:'en', difficulty:'easy',   tags:['real numbers','HCF','LCM'] },
+  { contentId:'cat:math:linearequations:test',title:'Linear Equations - Quick Test',       description:'15-minute test on graphical and algebraic methods.', type:'test',     subject:'Mathematics',    board:'cbse', grade:'10', language:'en', difficulty:'medium', tags:['linear equations','substitution','elimination'] },
+  { contentId:'cat:socSci:nationalism:notes', title:'Nationalism in India - Timeline',     description:'Illustrated timeline of Non-Cooperation and Civil Disobedience.', type:'notes', subject:'Social Science', board:'cbse', grade:'10', language:'en', difficulty:'easy',   tags:['nationalism','Gandhi','independence'] },
+  { contentId:'cat:socSci:resources:practice',title:'Resources - Classification Practice', description:'Classify resources by origin, exhaustibility and ownership.', type:'practice', subject:'Social Science', board:'cbse', grade:'10', language:'en', difficulty:'easy',   tags:['resources','land use','environment'] },
+  { contentId:'cat:eng:literature:notes',     title:'First Flight - Story Analysis',       description:'Theme and character analysis for Letter to God and Mandela.', type:'notes',    subject:'English Language', board:'cbse', grade:'10', language:'en', difficulty:'easy',   tags:['literature','comprehension','themes'] },
+  { contentId:'cat:eng:grammar:practice',     title:'Grammar Booster - Tenses & Voice',   description:'100 transformation exercises: tenses, active/passive, reported speech.', type:'practice', subject:'English Language', board:'cbse', grade:'10', language:'en', difficulty:'medium', tags:['grammar','tenses','voice','letter writing'] },
 ];
 
 async function seedContentCatalog() {
@@ -1006,10 +1006,10 @@ async function seedParents(studentIdByKey) {
 async function runValidations(studentIds) {
   // ── curriculum ─────────────────────────────────────────────────────────────
   const topicCount = await prisma.topicDef.count({ where: { status: 'approved', lifecycle: 'active' } });
-  topicCount >= 16 ? pass(`Curriculum: ${topicCount} approved active topics (16 expected)`) : warn(`Curriculum: only ${topicCount} approved topics — need ≥16`);
+  topicCount >= 16 ? pass(`Curriculum: ${topicCount} approved active topics (16 expected)`) : warn(`Curriculum: only ${topicCount} approved topics -- need ≥16`);
 
   const noteCount = await prisma.topicNote.count({ where: { status: 'approved', language: 'en' } });
-  noteCount >= 16 ? pass(`TopicNote: ${noteCount} approved English notes`) : warn(`TopicNote: only ${noteCount} — need ≥16`);
+  noteCount >= 16 ? pass(`TopicNote: ${noteCount} approved English notes`) : warn(`TopicNote: only ${noteCount} -- need ≥16`);
 
   // ── student core ────────────────────────────────────────────────────────────
   const engStats  = await prisma.studentEngagementStats.count({ where: { studentId: { in: studentIds } } });
@@ -1030,13 +1030,13 @@ async function runValidations(studentIds) {
 
   // ── weak topics (student dashboard gate: mastery < 0.4) ────────────────────
   const weakStp = await prisma.studentTopicProgress.count({ where: { studentId: { in: studentIds }, mastery: { lt: 0.4 } } });
-  weakStp >= 5  ? pass(`Weak topics (mastery<0.4): ${weakStp} rows — WeakTopicsSection will render for Arjun + Ravi`)
-               : warn(`Weak topics (mastery<0.4): only ${weakStp} — WeakTopicsSection may be hidden`);
+  weakStp >= 5  ? pass(`Weak topics (mastery<0.4): ${weakStp} rows -- WeakTopicsSection will render for Arjun + Ravi`)
+               : warn(`Weak topics (mastery<0.4): only ${weakStp} -- WeakTopicsSection may be hidden`);
 
   // ── parent weak topics (mastery < 0.4 AND practiceCount > 5) ───────────────
   const parentWeak = await prisma.studentTopicProgress.count({ where: { studentId: { in: studentIds }, mastery: { lt: 0.4 }, practiceCount: { gt: 5 } } });
-  parentWeak >= 4  ? pass(`Parent weak topics (mastery<0.4, practiceCount>5): ${parentWeak} — ParentWeakTopics card will render`)
-                  : warn(`Parent weak topics: only ${parentWeak} — ParentWeakTopics card needs mastery<0.4 AND practiceCount>5`);
+  parentWeak >= 4  ? pass(`Parent weak topics (mastery<0.4, practiceCount>5): ${parentWeak} -- ParentWeakTopics card will render`)
+                  : warn(`Parent weak topics: only ${parentWeak} -- ParentWeakTopics card needs mastery<0.4 AND practiceCount>5`);
 
   // ── 8-week trend spread (StudentTopicMastery.updatedAt across 8 weeks) ──────
   const eightWeeksAgo = weeksAgo(8);
@@ -1052,7 +1052,7 @@ async function runValidations(studentIds) {
   completedS >= 12 ? pass(`COMPLETE sessions: ${completedS}`) : warn(`COMPLETE sessions: only ${completedS}`);
 
   const activeSess = await prisma.structuredSession.count({ where: { studentId: { in: studentIds }, state: { notIn: ['COMPLETE','EXPIRED'] } } });
-  activeSess >= 3  ? pass(`Active (in-progress) sessions: ${activeSess} — PrimaryActionCard resume CTAs ready`) : warn(`Active sessions: only ${activeSess}`);
+  activeSess >= 3  ? pass(`Active (in-progress) sessions: ${activeSess} -- PrimaryActionCard resume CTAs ready`) : warn(`Active sessions: only ${activeSess}`);
 
   const expiredS   = await prisma.structuredSession.count({ where: { studentId: { in: studentIds }, state: 'EXPIRED' } });
   expiredS >= 1    ? pass(`EXPIRED sessions: ${expiredS}`) : warn('No EXPIRED sessions');
@@ -1064,7 +1064,7 @@ async function runValidations(studentIds) {
     where: { studentId: { in: studentIds }, state: 'COMPLETE', startedAt: { gte: thisWeekMon, lte: thisWeekSun }, completedAt: { not: null } },
   });
   thisWeekSess >= 3 ? pass(`Current-week completed sessions: ${thisWeekSess} (with completedAt → studyMinutes will be non-zero)`)
-                    : warn(`Current-week sessions: only ${thisWeekSess} — ParentWeeklyActivity may show 0 minutes`);
+                    : warn(`Current-week sessions: only ${thisWeekSess} -- ParentWeeklyActivity may show 0 minutes`);
 
   // ── session events ──────────────────────────────────────────────────────────
   const events = await prisma.sessionEvent.count({ where: { session: { studentId: { in: studentIds } } } });
@@ -1076,7 +1076,7 @@ async function runValidations(studentIds) {
   const hwSubmit  = await prisma.homeworkAssignment.count({ where: { studentId: { in: studentIds }, status: 'SUBMITTED' } });
   const hwGraded  = await prisma.homeworkAssignment.count({ where: { studentId: { in: studentIds }, status: 'GRADED' } });
   hwPending >= 2 ? pass(`PENDING homework: ${hwPending}`) : warn(`PENDING homework: only ${hwPending}`);
-  hwOverdue >= 2 ? pass(`OVERDUE homework: ${hwOverdue} — HomeworkPendingCard will show (red)`) : warn(`OVERDUE homework: only ${hwOverdue}`);
+  hwOverdue >= 2 ? pass(`OVERDUE homework: ${hwOverdue} -- HomeworkPendingCard will show (red)`) : warn(`OVERDUE homework: only ${hwOverdue}`);
   hwSubmit >= 1  ? pass(`SUBMITTED homework: ${hwSubmit}`) : warn(`SUBMITTED homework: none`);
   hwGraded >= 2  ? pass(`GRADED homework: ${hwGraded}`) : warn(`GRADED homework: only ${hwGraded}`);
 
@@ -1084,8 +1084,8 @@ async function runValidations(studentIds) {
   const p0hw = await prisma.homeworkAssignment.count({
     where: { studentId: { in: studentIds }, status: { in: ['PENDING','OVERDUE'] }, dueDate: { lte: hoursFromNow(48) } },
   });
-  p0hw >= 2 ? pass(`P0 homework (due ≤ 48h): ${p0hw} — PrimaryActionCard will show URGENT homework CTA`)
-            : warn(`P0 homework trigger: only ${p0hw} — check dueDate values`);
+  p0hw >= 2 ? pass(`P0 homework (due ≤ 48h): ${p0hw} -- PrimaryActionCard will show URGENT homework CTA`)
+            : warn(`P0 homework trigger: only ${p0hw} -- check dueDate values`);
 
   // ── recommendations ──────────────────────────────────────────────────────────
   const catalog = await prisma.contentCatalog.count({ where: { active: true, board: 'cbse', grade: '10' } });
@@ -1112,7 +1112,7 @@ async function runValidations(studentIds) {
   // ── weekly summaries ────────────────────────────────────────────────────────────
   const weeklySumm = await prisma.weeklyStudentSummary.count({ where: { studentId: { in: studentIds } } });
   weeklySumm >= 20 ? pass(`WeeklyStudentSummary: ${weeklySumm} rows (8-week parent trend coverage)`)
-                   : warn(`WeeklyStudentSummary: only ${weeklySumm} — trend chart may be sparse`);
+                   : warn(`WeeklyStudentSummary: only ${weeklySumm} -- trend chart may be sparse`);
 
   // ── subject summaries ────────────────────────────────────────────────────────────
   const subjSumm = await prisma.subjectProgressSummary.count({ where: { studentId: { in: studentIds } } });
@@ -1233,17 +1233,17 @@ function printReport(studentIdByKey) {
 
   line();
   console.log('╔═══════════════════════════════════════════════════════════════════════╗');
-  console.log('║            SEED REPORT  –  CBSE Grade 10  Complete Journey          ║');
+  console.log('║            SEED REPORT  -  CBSE Grade 10  Complete Journey          ║');
   console.log('╚═══════════════════════════════════════════════════════════════════════╝');
 
   h1('CURRICULUM SEEDED');
   line('  4 Subjects × 2 Chapters × 2 Topics = 16 topics');
   line('  Each topic: 1 approved TopicNote (en) + 3 GeneratedTests (easy/medium/hard)');
   line();
-  line('  Science        – Electricity (2 topics) · Chemical Reactions (2 topics)');
-  line('  Mathematics    – Real Numbers (2 topics) · Pair of Linear Equations (2 topics)');
-  line('  Social Science – Nationalism in India (2) · Resources & Development (2)');
-  line('  English Lang.  – First Flight Literature (2) · Grammar & Writing (2)');
+  line('  Science        - Electricity (2 topics) · Chemical Reactions (2 topics)');
+  line('  Mathematics    - Real Numbers (2 topics) · Pair of Linear Equations (2 topics)');
+  line('  Social Science - Nationalism in India (2) · Resources & Development (2)');
+  line('  English Lang.  - First Flight Literature (2) · Grammar & Writing (2)');
 
   h1('TEST STUDENTS');
   line();
@@ -1366,8 +1366,7 @@ function printReport(studentIdByKey) {
   h1('NEXT STEPS IF ANYTHING IS MISSING');
   line();
   line('  Prerequisite seed order:');
-  line('    1. node scripts/seed-ai-content.cjs      # board + class hierarchy');
-  line('    2. node scripts/seed-ai-data.cjs          # Science + Mathematics content');
+  line('    1. node scripts/seed-taxonomy.cjs          # board + class hierarchy');
   line('    3. node scripts/seed-dashboard-test-data.cjs  # this script');
   line();
   line('  Full reset:');

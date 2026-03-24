@@ -45,7 +45,7 @@ export async function POST(req: Request) {
 
     const { conceptId, subjectId } = parseResult.data
 
-    // Diagnostic gate — student must have completed the IRT bootstrap for this subject.
+    // Diagnostic gate -- student must have completed the IRT bootstrap for this subject.
     const hasDiag = await hasDiagnosticForSubject(userId, subjectId)
     if (!hasDiag) {
       res = NextResponse.json({ code: 'DIAGNOSTIC_REQUIRED', subjectId }, { status: 403 })
@@ -53,7 +53,7 @@ export async function POST(req: Request) {
       return res
     }
 
-    // Free tier enforcement — never throws.
+    // Free tier enforcement -- never throws.
     const freeTierUsage = await checkFreeTierCap(userId)
     if (!freeTierUsage.allowed) {
       res = NextResponse.json(

@@ -34,7 +34,7 @@ export default function AdminRecommendationPerformancePage() {
     <div className="p-6 space-y-6">
       <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Recommendation Performance</h1>
       <p className="text-sm text-gray-600 dark:text-gray-400">
-        Aggregated performance for Home Tutor Engine rules (P0–P6). Attribution is based on sessionId when present,
+        Aggregated performance for Home Tutor Engine rules (P0-P6). Attribution is based on sessionId when present,
         otherwise by studentId+topicId with a time window.
       </p>
 
@@ -72,7 +72,7 @@ export default function AdminRecommendationPerformancePage() {
         </div>
       </div>
 
-      {isLoading && <div className="text-sm text-gray-500">Loading…</div>}
+      {isLoading && <div className="text-sm text-gray-500">Loading...</div>}
       {error && <div className="text-sm text-red-600">Failed to load summary</div>}
 
       {!isLoading && rows.length === 0 && (
@@ -106,7 +106,7 @@ export default function AdminRecommendationPerformancePage() {
                   <td className="p-3 text-right">{pct(r.sessionStartRate)}</td>
                   <td className="p-3 text-right">{pct(r.sessionCompletionRate)}</td>
                   <td className="p-3 text-right">
-                    {r.avgAccuracyImprovement == null ? '—' : `${(r.avgAccuracyImprovement * 100).toFixed(1)} pts`}
+                    {r.avgAccuracyImprovement == null ? '--' : `${(r.avgAccuracyImprovement * 100).toFixed(1)} pts`}
                   </td>
                   <td className="p-3 text-right">{pct(r.improvementCoverage)}</td>
                 </tr>

@@ -250,7 +250,7 @@ export async function POST(
     score,
   });
 
-  // ── Update topic mastery (weight 0.3) — fire-and-forget ────────────────────
+  // ── Update topic mastery (weight 0.3) -- fire-and-forget ────────────────────
   if (totalCount > 0) {
     updateStudentTopicProgress({
       studentId: user.id,
@@ -268,7 +268,7 @@ export async function POST(
     );
   }
 
-  // ── Session events — fire-and-forget ─────────────────────────────────────
+  // ── Session events -- fire-and-forget ─────────────────────────────────────
   if (gradedAnswers.length > 0) {
     recordSessionEvents(
       gradedAnswers.map((ga) => ({

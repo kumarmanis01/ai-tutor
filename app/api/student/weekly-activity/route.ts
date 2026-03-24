@@ -1,7 +1,7 @@
 /**
  * GET /api/student/weekly-activity
  *
- * Returns a 7-entry array (Mon–Sun) for the current ISO week, each entry
+ * Returns a 7-entry array (Mon-Sun) for the current ISO week, each entry
  * indicating whether the student had at least one structured session that day.
  * Also returns the total session count for the week and the current streak.
  *
@@ -29,8 +29,8 @@ const DAY_LABELS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
 function getISOWeekBoundaries(): { monday: Date; sunday: Date } {
   const now = new Date();
-  const dayOfWeek = now.getUTCDay(); // 0=Sun, 1=Mon, …, 6=Sat
-  // Distance back to Monday: Sun=6, Mon=0, Tue=1, …
+  const dayOfWeek = now.getUTCDay(); // 0=Sun, 1=Mon, ..., 6=Sat
+  // Distance back to Monday: Sun=6, Mon=0, Tue=1, ...
   const distanceToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
 
   const monday = new Date(now);
@@ -62,7 +62,7 @@ export async function GET() {
     select: { startedAt: true },
   });
 
-  // Build the 7-day array (Mon=index 0 … Sun=index 6).
+  // Build the 7-day array (Mon=index 0 ... Sun=index 6).
   const days = Array.from({ length: 7 }, (_, i) => {
     const date = new Date(monday);
     date.setUTCDate(monday.getUTCDate() + i);

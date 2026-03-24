@@ -1,9 +1,9 @@
 'use client';
 /**
  * FILE OBJECTIVE:
- * - Phase 1: OVERVIEW — Orients the student before starting the session.
+ * - Phase 1: OVERVIEW -- Orients the student before starting the session.
  * - Topic intro, session steps preview, estimated time, learning goals, tutor message.
- * - "Students should never jump directly into content." — spec
+ * - "Students should never jump directly into content." -- spec
  *
  * EDIT LOG:
  * - 2026-03-08 | claude | moved to components/session/phases/ (architecture refactor)
@@ -115,7 +115,7 @@ export function OverviewPhase({
         <div>
           <p className="text-xs font-semibold text-foreground mb-0.5">Tutor</p>
           <p className="text-sm text-muted-foreground leading-relaxed">
-            {reasonLabel ?? 'Pay attention to the example — it will help during practice.'}
+            {reasonLabel ?? 'Pay attention to the example -- it will help during practice.'}
           </p>
         </div>
       </div>

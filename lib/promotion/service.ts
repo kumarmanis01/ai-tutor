@@ -12,25 +12,18 @@ export default function makePromotionService(prisma: PrismaClient) {
       if (candidate.status === 'APPROVED') throw new Error('candidate already approved')
       if (candidate.status === 'REJECTED') throw new Error('candidate already rejected')
 
-      // Replace any existing published pointer for the scope
-      await tx.publishedOutput.deleteMany({ where: { scope: candidate.scope as any, scopeRefId: candidate.scopeRefId } })
-
-      const published = await tx.publishedOutput.create({ data: {
-        scope: candidate.scope as any,
-        scopeRefId: candidate.scopeRefId,
-        outputRef: candidate.outputRef,
-        promotedBy: actorId,
-      } })
+      // PublishedOutput removed in schema_audit_cleanup -- promotion
+      // now handled by HydrationJob completion directly
 
       // mark candidate approved
-      await tx.promotionCandidate.update({ where: { id: candidateId }, data: { status: 'APPROVED', reviewedBy: actorId, reviewedAt: new Date(), reviewNotes: notes as any } })
+      const approved = await tx.promotionCandidate.update({ where: { id: candidateId }, data: { status: 'APPROVED', reviewedBy: actorId, reviewedAt: new Date(), reviewNotes: notes as any } })
 
       // audit
       try {
-        logAuditEvent(prisma as any, { targetEntity: 'Promotion', targetId: candidateId, adminId: actorId ?? null, action: null, details: { legacyAction: 'PROMOTION_APPROVED', publishedId: published.id, scope: candidate.scope, scopeRefId: candidate.scopeRefId } })
+        logAuditEvent(prisma as any, { targetEntity: 'Promotion', targetId: candidateId, adminId: actorId ?? null, action: null, details: { legacyAction: 'PROMOTION_APPROVED', scope: candidate.scope, scopeRefId: candidate.scopeRefId } })
       } catch {}
 
-      return published
+      return approved
     })
   }
 

@@ -1,5 +1,5 @@
 /**
- * ChapterMasteryBars — per-subject, per-chapter mastery progress bars.
+ * ChapterMasteryBars -- per-subject, per-chapter mastery progress bars.
  *
  * Chapters are ordered lowest mastery first (most needs attention at top).
  * Each row links to /session/pre/[weakestConceptId] for targeted practice.
@@ -7,7 +7,7 @@
  *
  * Colour rules (from CLAUDE.md):
  *   >70% mastery → green  (#1D9E75)
- *   40–70%       → amber  (#BA7517)
+ *   40-70%       → amber  (#BA7517)
  *   <40%         → red    (#E24B4A)
  *
  * EDIT LOG:
@@ -19,7 +19,7 @@ import Link from 'next/link';
 export interface ChapterRow {
   chapterId: string;
   chapterName: string;
-  /** 0–1 float */
+  /** 0-1 float */
   masteryScore: number;
   /** chapter weight as % of total exam marks */
   boardWeightPct: number;
@@ -55,7 +55,7 @@ function ChapterRowLink({ chapter }: { chapter: ChapterRow }) {
     <a
       href={href}
       className="flex items-center gap-3 py-3 min-h-[44px] border-b border-gray-100 dark:border-slate-700 last:border-0 hover:bg-gray-50 dark:hover:bg-slate-700/40 rounded-lg px-1 transition-colors"
-      aria-label={`${chapter.chapterName}: ${mastery100}% mastery — tap to practise`}
+      aria-label={`${chapter.chapterName}: ${mastery100}% mastery -- tap to practise`}
     >
       <div className="flex-1 min-w-0">
         <div className="flex justify-between items-center mb-1.5">
@@ -94,7 +94,7 @@ export default function ChapterMasteryBars({ subjects }: ChapterMasteryBarsProps
           Chapter mastery
         </h2>
         <p className="text-sm text-gray-500 dark:text-gray-400 mb-3">
-          No chapter data yet — complete a session to start tracking your mastery.
+          No chapter data yet -- complete a session to start tracking your mastery.
         </p>
         <Link
           href="/dashboard"
@@ -112,7 +112,7 @@ export default function ChapterMasteryBars({ subjects }: ChapterMasteryBarsProps
         Chapter mastery
       </h2>
       <p className="text-[11px] text-gray-400 dark:text-gray-500 mb-4">
-        Tap a chapter to practise — lowest mastery first
+        Tap a chapter to practise -- lowest mastery first
       </p>
 
       {subjects.map((subject) => (

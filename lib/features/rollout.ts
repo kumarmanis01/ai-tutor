@@ -26,7 +26,7 @@ export async function isInAITutorRollout(userId: string): Promise<boolean> {
   return hash < pct
 }
 
-/** djb2 hash — deterministic, no external deps */
+/** djb2 hash -- deterministic, no external deps */
 export function djb2Hash(str: string): number {
   let hash = 5381
   for (let i = 0; i < str.length; i++) {

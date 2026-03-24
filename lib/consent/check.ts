@@ -5,7 +5,7 @@ export { ConsentScope }
 
 /**
  * Returns true if a non-withdrawn Consent row exists for user + scope.
- * Never throws — returns false on any error.
+ * Never throws -- returns false on any error.
  */
 export async function hasConsented(userId: string, scope: ConsentScope): Promise<boolean> {
   try {
@@ -20,7 +20,7 @@ export async function hasConsented(userId: string, scope: ConsentScope): Promise
 }
 
 /**
- * Creates Consent rows for each scope (idempotent — upserts by userId+scope).
+ * Creates Consent rows for each scope (idempotent -- upserts by userId+scope).
  * Re-activates a previously withdrawn consent by clearing withdrawnAt.
  */
 export async function grantConsent(
@@ -33,7 +33,7 @@ export async function grantConsent(
     scopes.map((scope) =>
       prisma.consent.upsert({
         where: {
-          // Prisma requires a unique constraint for upsert — we use findFirst+create pattern
+          // Prisma requires a unique constraint for upsert -- we use findFirst+create pattern
           // since @@index is not @@unique. Use a composite approach:
           id: `${userId}:${scope}`, // deterministic id for idempotency
         },

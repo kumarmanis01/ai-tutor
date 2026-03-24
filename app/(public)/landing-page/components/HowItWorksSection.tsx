@@ -9,8 +9,8 @@ const steps = [
     titleEn: 'Take a 15-min diagnostic',
     titleHi: '15 मिनट का diagnostic दें',
     descEn:
-      'Teacher Vidya maps your knowledge gaps across every chapter. No stress — it\'s just a starting point.',
-    descHi: 'Teacher Vidya हर chapter में आपकी knowledge gaps को समझती है। बिना किसी दबाव के — यह सिर्फ शुरुआत है।',
+      'Teacher Vidya maps your knowledge gaps across every chapter. No stress -- it\'s just a starting point.',
+    descHi: 'Teacher Vidya हर chapter में आपकी knowledge gaps को समझती है। बिना किसी दबाव के -- यह सिर्फ शुरुआत है।',
   },
   {
     number: '02',
@@ -35,8 +35,8 @@ const steps = [
 const chatMessages = [
   {
     sender: 'vidya' as const,
-    text: 'Before we start — what do you already know about quadratic equations?',
-    textHi: 'शुरू करने से पहले — quadratic equations के बारे में आप पहले से क्या जानते हैं?',
+    text: 'Before we start -- what do you already know about quadratic equations?',
+    textHi: 'शुरू करने से पहले -- quadratic equations के बारे में आप पहले से क्या जानते हैं?',
   },
   {
     sender: 'student' as const,
@@ -45,8 +45,8 @@ const chatMessages = [
   },
   {
     sender: 'vidya' as const,
-    text: 'Perfect start! Now, if a=1, b=−5, c=6 — what\'s the discriminant?',
-    textHi: 'बढ़िया! अब, अगर a=1, b=−5, c=6 — तो discriminant क्या होगा?',
+    text: 'Perfect start! Now, if a=1, b=−5, c=6 -- what\'s the discriminant?',
+    textHi: 'बढ़िया! अब, अगर a=1, b=−5, c=6 -- तो discriminant क्या होगा?',
   },
   {
     sender: 'student' as const,

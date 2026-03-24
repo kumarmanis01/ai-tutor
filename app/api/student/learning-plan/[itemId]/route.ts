@@ -5,8 +5,8 @@
  * Currently supports: status = 'DEFERRED' (skip to next topic).
  *
  * Body: { status: 'DEFERRED' }
- * Auth: session required — 401 if missing.
- *       Item must belong to the current student — 404 otherwise.
+ * Auth: session required -- 401 if missing.
+ *       Item must belong to the current student -- 404 otherwise.
  */
 
 import { NextRequest, NextResponse } from 'next/server';

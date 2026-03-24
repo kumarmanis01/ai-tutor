@@ -1,12 +1,12 @@
 'use client';
 
 /**
- * InterruptedSessionSheet — v2
+ * InterruptedSessionSheet -- v2
  *
  * Bottom sheet (slides up from bottom) shown when an incomplete session
  * exists for the current concept within the last 24 hours.
  *
- * Three choices — student MUST pick one (cannot dismiss by tapping outside):
+ * Three choices -- student MUST pick one (cannot dismiss by tapping outside):
  *   ▶ Resume from where I left off
  *   ↺ Restart this topic
  *   → Skip to next topic
@@ -99,7 +99,7 @@ export default function InterruptedSessionSheet({
   }
 
   return (
-    /* Backdrop — non-dismissable, student must choose */
+    /* Backdrop -- non-dismissable, student must choose */
     <div
       className="fixed inset-0 z-[110] flex flex-col justify-end bg-black/40"
       role="dialog"
@@ -126,7 +126,7 @@ export default function InterruptedSessionSheet({
             <span className="font-medium text-gray-700 dark:text-gray-300">
               {phaseLabel}
             </span>{' '}
-            — stage {session.phaseNumber} of 5, about {session.minutesIn}{' '}
+            -- stage {session.phaseNumber} of 5, about {session.minutesIn}{' '}
             {session.minutesIn === 1 ? 'minute' : 'minutes'} in.
           </p>
 

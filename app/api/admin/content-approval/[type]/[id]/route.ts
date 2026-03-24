@@ -134,10 +134,9 @@ export async function GET(
       }
 
       case 'syllabus': {
-        const syllabus = await prisma.syllabusDef.findUnique({
+        const syllabus = await prisma.subjectDef.findUnique({
           where: { id },
           include: {
-            subject: true,
             class: {
               include: {
                 board: true,
@@ -161,13 +160,13 @@ export async function GET(
         result = {
           id: syllabus.id,
           type: 'syllabus',
-          title: `${syllabus.subject?.name} - Grade ${syllabus.class?.grade}`,
+          title: `${syllabus.name} - Grade ${syllabus.class?.grade}`,
           chapters: syllabus.chapters,
           metadata: {
             board: syllabus.class?.board?.name,
             grade: syllabus.class?.grade,
-            subject: syllabus.subject?.name,
-            status: syllabus.status,
+            subject: syllabus.name,
+            status: syllabus.lifecycle,
             chapterCount: syllabus.chapters.length,
           },
         };

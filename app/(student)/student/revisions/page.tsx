@@ -1,8 +1,8 @@
 /**
- * /student/revisions — Revision Cards page (v2 Screen 13)
+ * /student/revisions -- Revision Cards page (v2 Screen 13)
  *
  * Server component:
- * 1. Checks auth — redirects to /login if unauthenticated.
+ * 1. Checks auth -- redirects to /login if unauthenticated.
  * 2. Fetches concepts due for revision (nextReviewAt <= now).
  * 3. For each concept, fetches up to 3 MCQ questions via topicId.
  * 4. If 0 due: shows empty state.
@@ -56,7 +56,7 @@ export default async function RevisionsPage() {
             No revision due today
           </h1>
           <p className="text-sm text-[#1D9E75] font-medium mb-6">
-            You&apos;re all caught up — well done!
+            You&apos;re all caught up -- well done!
           </p>
           <Link
             href="/dashboard"
@@ -99,7 +99,7 @@ export default async function RevisionsPage() {
     if (list.length < QUESTIONS_PER_CONCEPT) list.push(q)
   }
 
-  // 4. Build RevisionCard array — only concepts that have at least one question
+  // 4. Build RevisionCard array -- only concepts that have at least one question
   const cards: RevisionCard[] = []
   for (const d of dueConcepts) {
     const topicQs = questionsByTopic.get(d.concept.topicId) ?? []
@@ -134,7 +134,7 @@ export default async function RevisionsPage() {
             No revision due today
           </h1>
           <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">
-            Questions are being prepared — check back soon.
+            Questions are being prepared -- check back soon.
           </p>
           <Link
             href="/dashboard"

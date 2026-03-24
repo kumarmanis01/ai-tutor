@@ -18,7 +18,7 @@ const MOBILE_RE = /\b[6-9]\d{9}\b/g
 const EMAIL_RE = /[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}/g
 const AADHAAR_RE = /\b\d{4}\s?\d{4}\s?\d{4}\b/g
 
-// Jailbreak patterns — compiled once at module load.
+// Jailbreak patterns -- compiled once at module load.
 const JAILBREAK_PATTERNS: RegExp[] = [
   /ignore\s+(all\s+)?previous\s+instructions?/i,
   // "you are now ..." but explicitly NOT "vidya" or "tutor"/"teacher"

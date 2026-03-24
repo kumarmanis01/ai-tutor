@@ -21,7 +21,7 @@ export interface PushPayload {
   badge?: string          // default: '/icons/icon-72.png'
   url?: string            // deep link on tap
   tag?: string            // replaces previous notification with same tag
-  requireInteraction?: boolean // true for exam reminders — don't auto-dismiss
+  requireInteraction?: boolean // true for exam reminders -- don't auto-dismiss
 }
 
 export async function sendPushToUser(
@@ -58,7 +58,7 @@ export async function sendPushToUser(
     } catch (err: unknown) {
       const statusCode = (err as { statusCode?: number }).statusCode
       if (statusCode === 410 || statusCode === 404) {
-        // Subscription expired — clean it up
+        // Subscription expired -- clean it up
         await prisma.pushSubscriptionRecord.delete({ where: { id: sub.id } }).catch(() => {})
       } else {
         logger.warn('push.sendFailed', { userId, endpoint: sub.endpoint, statusCode })
@@ -74,18 +74,18 @@ export async function sendPushToUsers(
   userIds: string[],
   payload: PushPayload,
 ): Promise<void> {
-  // Process in batches of 50 — never flood the DB
+  // Process in batches of 50 -- never flood the DB
   for (let i = 0; i < userIds.length; i += 50) {
     const batch = userIds.slice(i, i + 50)
     await Promise.allSettled(batch.map((id) => sendPushToUser(id, payload)))
   }
 }
 
-/** Never throws — call anywhere without try/catch. Push is best-effort. */
+/** Never throws -- call anywhere without try/catch. Push is best-effort. */
 export async function sendPushSafe(userId: string, payload: PushPayload): Promise<void> {
   try {
     await sendPushToUser(userId, payload)
   } catch {
-    // Push is best-effort — never let it affect the main flow
+    // Push is best-effort -- never let it affect the main flow
   }
 }

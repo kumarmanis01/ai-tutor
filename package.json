@@ -42,7 +42,7 @@
     "dev": "next dev",
     "dev:next": "npm run lint:orig && npm run type-check:orig && next dev",
     "dev:fast": "next dev",
-    "prepare": "node -e \"if(process.env.NODE_ENV !== 'production') { require('child_process').execSync('npx husky install', {stdio: 'inherit'}) }\"",
+    "prepare": "husky",
     "build": "node scripts/prisma-generate-with-retry.cjs && tsc -p tsconfig.build.json && npx tsc-alias -p tsconfig.build.json && node scripts/verify-dist.cjs && next build",
     "build:tsc": "tsc -p tsconfig.build.json && npx tsc-alias -p tsconfig.build.json",
     "build:prod": "node scripts/prisma-generate-with-retry.cjs && npm run build:tsc && npm run build:workers && next build",
@@ -53,6 +53,8 @@
     "lint:orig": "eslint . --max-warnings=0",
     "test:eslint-rules": "node ./eslint-rules/tests/run-rule-tests.cjs",
     "lint:fix": "eslint \"app/**\" \"components/**\" \"lib/**\" \"scripts/**\" \"src/**\" --fix",
+    "lint:quotes": "python3 scripts/fix-smart-quotes.py --check",
+    "fix:quotes": "python3 scripts/fix-smart-quotes.py",
     "format": "prettier --write \"src/**/*.ts\"",
     "format:orig": "prettier --write \"src/**/*.{ts,tsx,css,md,json}\"",
     "serve": "next start",
@@ -76,7 +78,7 @@
     "render:diagrams": "npx @mermaid-js/mermaid-cli -i docs/diagrams/submit-enqueue.mmd -o docs/diagrams/submit-enqueue.png && npx @mermaid-js/mermaid-cli -i docs/diagrams/worker-claim-execute.mmd -o docs/diagrams/worker-claim-execute.png && npx @mermaid-js/mermaid-cli -i docs/diagrams/reconciler-aggregation.mmd -o docs/diagrams/reconciler-aggregation.png",
     "test:unit": "cross-env NODE_OPTIONS=--max-old-space-size=4096 jest --runInBand",
     "orchestrator:start": "ts-node -r tsconfig-paths/register worker/orchestrator.ts",
-    "seed-ai-data": "node scripts/seed-ai-data.cjs",
+    "seed": "node scripts/seed-taxonomy.cjs",
     "seed:dashboard": "node scripts/seed-dashboard-test-data.cjs",
     "seed:dashboard:dry": "node scripts/seed-dashboard-test-data.cjs --dry-run",
     "test:mvp-flow": "node scripts/test-mvp-flow.cjs",
@@ -107,7 +109,8 @@
     "outbox:start": "tsx src/jobs/outbox/dispatcher.ts",
     "docker:build": "docker build -t edtech-backend .",
     "docker:up": "docker-compose up -d",
-    "docker:down": "docker-compose down"
+    "docker:down": "docker-compose down",
+    "seed:taxonomy": "node scripts/seed-taxonomy.cjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.78.0",
@@ -131,6 +134,8 @@
     "bcryptjs": "^2.4.3",
     "bullmq": "^5.66.0",
     "chalk": "^4.1.2",
+    "dotenv": "^17.3.1",
+    "eventemitter3": "5.0.4",
     "framer-motion": "^12.23.16",
     "ioredis": "^5.8.2",
     "lucide-react": "^0.544.0",
@@ -140,8 +145,8 @@
     "next-auth": "^4.24.11",
     "next-pwa": "^5.6.0",
     "node-fetch": "^3.3.2",
-    "nodemailer": "^7.0.11",
     "openai": "^5.23.2",
+    "pathe": "^2.0.3",
     "pdf-lib": "^1.17.1",
     "pdf-parse": "^2.4.5",
     "pdfjs-dist": "^5.4.449",
@@ -154,6 +159,7 @@
     "react-speech-recognition": "^4.0.1",
     "recharts": "^2.15.2",
     "rehype-sanitize": "^5.0.1",
+    "resend": "^6.9.4",
     "sanscript": "^0.0.2",
     "serwist": "^9.5.7",
     "slugify": "^1.6.6",
@@ -210,8 +216,8 @@
     "node": ">=20.0.0"
   },
   "lint-staged": {
-    "**/*.{js,jsx,ts,tsx}": [
-      "eslint --fix"
+    "*.{ts,tsx,cjs,js,mjs}": [
+      "python3 scripts/fix-smart-quotes.py"
     ]
   },
   "overrides": {

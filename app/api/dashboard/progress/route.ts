@@ -78,7 +78,7 @@ export async function GET() {
         select: { activityType: true },
         distinct: ['activityType'],
       }),
-      // Topics considered complete — aligned with engine P4 threshold (accuracy >= LOW_ACCURACY_THRESHOLD)
+      // Topics considered complete -- aligned with engine P4 threshold (accuracy >= LOW_ACCURACY_THRESHOLD)
       prisma.studentTopicMastery.count({
         where: {
           studentId: userId,

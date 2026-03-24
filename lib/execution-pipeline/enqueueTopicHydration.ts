@@ -70,7 +70,7 @@ async function resolveTopicWithContext(topicId: string) {
 /**
  * Enqueues a notes hydration job for a specific topic.
  * 
- * COPILOT RULES — NOTES HYDRATOR:
+ * COPILOT RULES -- NOTES HYDRATOR:
  * - Hydrators ONLY enqueue jobs
  * - NO AI calls allowed
  * - Must be idempotent
@@ -166,7 +166,7 @@ export async function enqueueNotesHydration(input: TopicHydrationInput): Promise
 /**
  * Enqueues a questions hydration job for a specific topic.
  * 
- * COPILOT RULES — QUESTIONS HYDRATOR:
+ * COPILOT RULES -- QUESTIONS HYDRATOR:
  * - Hydrators ONLY enqueue jobs
  * - NO AI calls allowed
  * - Must be idempotent
@@ -266,7 +266,7 @@ export async function enqueueQuestionsHydration(input: TopicHydrationInput): Pro
  * Enqueues a test assembly hydration job for a specific topic.
  * Tests are assembled from existing questions for a topic.
  * 
- * COPILOT RULES — TESTS HYDRATOR:
+ * COPILOT RULES -- TESTS HYDRATOR:
  * - Hydrators ONLY enqueue jobs
  * - NO AI calls allowed
  * - Must be idempotent

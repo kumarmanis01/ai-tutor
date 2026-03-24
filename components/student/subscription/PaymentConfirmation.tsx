@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * PaymentConfirmation — step 3 of upgrade flow.
+ * PaymentConfirmation -- step 3 of upgrade flow.
  *
  * Shows order summary with GST breakdown and renewal date.
  * "Confirm & pay" button is LOCKED until user scrolls to the bottom
@@ -99,7 +99,7 @@ export function PaymentConfirmation({
         </p>
       </div>
 
-      {/* Terms — scrollable box; sentinel at bottom */}
+      {/* Terms -- scrollable box; sentinel at bottom */}
       <div>
         <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
           Please read the terms below before confirming
@@ -110,7 +110,7 @@ export function PaymentConfirmation({
           aria-label="Subscription terms"
         >
           <p>{TERMS_TEXT}</p>
-          {/* Sentinel div — becomes visible only when user reaches bottom */}
+          {/* Sentinel div -- becomes visible only when user reaches bottom */}
           <div ref={sentinelRef} className="h-1 mt-2" aria-hidden />
         </div>
         {!termsUnlocked && (
@@ -132,7 +132,7 @@ export function PaymentConfirmation({
             : 'bg-gray-200 dark:bg-slate-700 text-gray-400 dark:text-slate-500 cursor-not-allowed',
         ].join(' ')}
       >
-        {loading ? 'Opening payment…' : `Confirm & pay ₹${plan.billedRupees.toFixed(2)}`}
+        {loading ? 'Opening payment...' : `Confirm & pay ₹${plan.billedRupees.toFixed(2)}`}
       </button>
 
       <button

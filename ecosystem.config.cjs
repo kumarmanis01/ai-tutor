@@ -23,6 +23,7 @@ module.exports = {
   apps: [
     // ─────────────────────────────────────────────────────────────────────
     // Web process (Next.js)
+    // Deploy with: pm2 start ecosystem.config.cjs --env production
     // ─────────────────────────────────────────────────────────────────────
     {
       name: 'ai-tutor-web',
@@ -33,24 +34,6 @@ module.exports = {
       instances: 1,
       exec_mode: 'fork',
 
-      env: {
-        NODE_ENV: 'production',
-        DATABASE_URL: process.env.DATABASE_URL,
-        REDIS_URL: process.env.REDIS_URL,
-        NEXTAUTH_SECRET: process.env.NEXTAUTH_SECRET,
-        NEXTAUTH_URL: process.env.NEXTAUTH_URL,
-        OPENAI_API_KEY: process.env.OPENAI_API_KEY,
-        RAZORPAY_KEY_ID: process.env.RAZORPAY_KEY_ID,
-        RAZORPAY_KEY_SECRET: process.env.RAZORPAY_KEY_SECRET,
-        ENABLE_AI_TUTOR: process.env.ENABLE_AI_TUTOR ?? 'false',
-        ENABLE_DISTRESS_DETECTION: process.env.ENABLE_DISTRESS_DETECTION ?? 'false',
-        ENABLE_TUTOR_CARD: process.env.ENABLE_TUTOR_CARD ?? 'false',
-        ENABLE_SESSION_ENGINE: process.env.ENABLE_SESSION_ENGINE ?? 'false',
-        ROLLOUT_PERCENTAGE: process.env.ROLLOUT_PERCENTAGE ?? '5',
-        LLM_MODE: process.env.LLM_MODE ?? 'real',
-        LLM_SAFE_MODE: process.env.LLM_SAFE_MODE ?? 'true',
-      },
-
       env_production: {
         NODE_ENV: 'production',
         DATABASE_URL: process.env.DATABASE_URL,
@@ -60,6 +43,17 @@ module.exports = {
         OPENAI_API_KEY: process.env.OPENAI_API_KEY,
         RAZORPAY_KEY_ID: process.env.RAZORPAY_KEY_ID,
         RAZORPAY_KEY_SECRET: process.env.RAZORPAY_KEY_SECRET,
+        GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID,
+        GOOGLE_CLIENT_SECRET: process.env.GOOGLE_CLIENT_SECRET,
+        RESEND_API_KEY: process.env.RESEND_API_KEY,
+        EMAIL_FROM: process.env.EMAIL_FROM,
+        VAPID_PUBLIC_KEY: process.env.VAPID_PUBLIC_KEY,
+        VAPID_PRIVATE_KEY: process.env.VAPID_PRIVATE_KEY,
+        VAPID_SUBJECT: process.env.VAPID_SUBJECT,
+        NEXT_PUBLIC_VAPID_PUBLIC_KEY: process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY,
+        NEXT_PUBLIC_RAZORPAY_KEY_ID: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
+        NEXT_PUBLIC_CONSENT_LIVE: process.env.NEXT_PUBLIC_CONSENT_LIVE ?? 'false',
+        ONCALL_EMAIL: process.env.ONCALL_EMAIL,
         ENABLE_AI_TUTOR: process.env.ENABLE_AI_TUTOR ?? 'false',
         ENABLE_DISTRESS_DETECTION: process.env.ENABLE_DISTRESS_DETECTION ?? 'false',
         ENABLE_TUTOR_CARD: process.env.ENABLE_TUTOR_CARD ?? 'false',
@@ -85,6 +79,7 @@ module.exports = {
     // ─────────────────────────────────────────────────────────────────────
     // Content-engine worker (BullMQ consumer)
     // Uses run-worker.sh wrapper which sources .env.production
+    // Deploy with: pm2 start ecosystem.config.cjs --env production
     // ─────────────────────────────────────────────────────────────────────
     {
       name: 'content-engine-worker',
@@ -94,25 +89,14 @@ module.exports = {
       instances: 1,
       exec_mode: 'fork',
 
-      env: {
-        NODE_ENV: 'production',
-        DATABASE_URL: process.env.DATABASE_URL,
-        REDIS_URL: process.env.REDIS_URL,
-        OPENAI_API_KEY: process.env.OPENAI_API_KEY,
-        ENABLE_AI_TUTOR: process.env.ENABLE_AI_TUTOR ?? 'false',
-        ENABLE_DISTRESS_DETECTION: process.env.ENABLE_DISTRESS_DETECTION ?? 'false',
-        ENABLE_TUTOR_CARD: process.env.ENABLE_TUTOR_CARD ?? 'false',
-        ENABLE_SESSION_ENGINE: process.env.ENABLE_SESSION_ENGINE ?? 'false',
-        ROLLOUT_PERCENTAGE: process.env.ROLLOUT_PERCENTAGE ?? '5',
-        LLM_MODE: process.env.LLM_MODE ?? 'real',
-        LLM_SAFE_MODE: process.env.LLM_SAFE_MODE ?? 'true',
-      },
-
       env_production: {
         NODE_ENV: 'production',
         DATABASE_URL: process.env.DATABASE_URL,
         REDIS_URL: process.env.REDIS_URL,
         OPENAI_API_KEY: process.env.OPENAI_API_KEY,
+        RESEND_API_KEY: process.env.RESEND_API_KEY,
+        EMAIL_FROM: process.env.EMAIL_FROM,
+        ONCALL_EMAIL: process.env.ONCALL_EMAIL,
         ENABLE_AI_TUTOR: process.env.ENABLE_AI_TUTOR ?? 'false',
         ENABLE_DISTRESS_DETECTION: process.env.ENABLE_DISTRESS_DETECTION ?? 'false',
         ENABLE_TUTOR_CARD: process.env.ENABLE_TUTOR_CARD ?? 'false',
@@ -138,6 +122,7 @@ module.exports = {
     // ─────────────────────────────────────────────────────────────────────
     // Scheduler (cron jobs + hydration reconciler)
     // Uses run-scheduler.sh wrapper which sources .env.production
+    // Deploy with: pm2 start ecosystem.config.cjs --env production
     // ─────────────────────────────────────────────────────────────────────
     {
       name: 'ai-tutor-scheduler',
@@ -147,25 +132,14 @@ module.exports = {
       instances: 1,
       exec_mode: 'fork',
 
-      env: {
-        NODE_ENV: 'production',
-        DATABASE_URL: process.env.DATABASE_URL,
-        REDIS_URL: process.env.REDIS_URL,
-        OPENAI_API_KEY: process.env.OPENAI_API_KEY,
-        ENABLE_AI_TUTOR: process.env.ENABLE_AI_TUTOR ?? 'false',
-        ENABLE_DISTRESS_DETECTION: process.env.ENABLE_DISTRESS_DETECTION ?? 'false',
-        ENABLE_TUTOR_CARD: process.env.ENABLE_TUTOR_CARD ?? 'false',
-        ENABLE_SESSION_ENGINE: process.env.ENABLE_SESSION_ENGINE ?? 'false',
-        ROLLOUT_PERCENTAGE: process.env.ROLLOUT_PERCENTAGE ?? '5',
-        LLM_MODE: process.env.LLM_MODE ?? 'real',
-        LLM_SAFE_MODE: process.env.LLM_SAFE_MODE ?? 'true',
-      },
-
       env_production: {
         NODE_ENV: 'production',
         DATABASE_URL: process.env.DATABASE_URL,
         REDIS_URL: process.env.REDIS_URL,
         OPENAI_API_KEY: process.env.OPENAI_API_KEY,
+        RESEND_API_KEY: process.env.RESEND_API_KEY,
+        EMAIL_FROM: process.env.EMAIL_FROM,
+        ONCALL_EMAIL: process.env.ONCALL_EMAIL,
         ENABLE_AI_TUTOR: process.env.ENABLE_AI_TUTOR ?? 'false',
         ENABLE_DISTRESS_DETECTION: process.env.ENABLE_DISTRESS_DETECTION ?? 'false',
         ENABLE_TUTOR_CARD: process.env.ENABLE_TUTOR_CARD ?? 'false',

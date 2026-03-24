@@ -3,7 +3,7 @@
  * Centralised here so the DPDP threshold is never hardcoded in business logic.
  */
 
-/** Indian DPDP Act 2023 — parental consent required below this age. */
+/** Indian DPDP Act 2023 -- parental consent required below this age. */
 export const DPDP_MINOR_AGE = 13;
 
 /** Youngest student age accepted during onboarding. */

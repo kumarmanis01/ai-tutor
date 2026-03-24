@@ -1,7 +1,7 @@
 'use client';
 /**
  * FILE OBJECTIVE:
- * - Phase 5: HOMEWORK — Assignment card with Start Now / Complete Later.
+ * - Phase 5: HOMEWORK -- Assignment card with Start Now / Complete Later.
  *
  * EDIT LOG:
  * - 2026-03-08 | claude | moved to components/session/phases/

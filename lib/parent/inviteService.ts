@@ -15,7 +15,7 @@ export type InviteRedeemResult = {
 };
 
 function generateCode(): string {
-  // 8-char hex code (uppercase) — easy to read/type on mobile.
+  // 8-char hex code (uppercase) -- easy to read/type on mobile.
   return randomBytes(4).toString('hex').toUpperCase();
 }
 

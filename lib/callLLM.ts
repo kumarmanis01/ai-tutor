@@ -15,7 +15,7 @@ export class LLMError extends Error {
   }
 }
 
-// Retry config — tutor path only (do not alter global callLLM behaviour)
+// Retry config -- tutor path only (do not alter global callLLM behaviour)
 const TUTOR_RETRY_CONFIG = {
   maxAttempts: 3, // 1 original + 2 retries
   backoffMs: [1000, 2000] as const, // delay before attempt 2, delay before attempt 3
@@ -84,7 +84,7 @@ function getClient() {
 }
 
 /**
- * Anthropic failover — used when the LLM circuit breaker is open.
+ * Anthropic failover -- used when the LLM circuit breaker is open.
  * Uses @anthropic-ai/sdk if available, else throws AI_UNAVAILABLE.
  * Model: claude-haiku-4-5-20251001 (fast, cheap, failover only).
  */

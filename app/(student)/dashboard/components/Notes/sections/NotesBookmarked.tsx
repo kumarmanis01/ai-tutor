@@ -27,7 +27,7 @@ export function NotesBookmarked() {
   return (
     <NotesSection title="Bookmarked Notes">
       {loading && bookmarked.length === 0 ? (
-        <div className="text-sm text-muted-foreground">Loading…</div>
+        <div className="text-sm text-muted-foreground">Loading...</div>
       ) : bookmarked.length === 0 ? (
         <div className="text-sm text-muted-foreground">No bookmarked notes yet</div>
       ) : (

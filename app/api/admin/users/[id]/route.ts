@@ -14,7 +14,7 @@ export async function PATCH(req: Request, context: { params: Promise<{ id: strin
 
   if (body.grade !== undefined) {
     // Grade-change path: requires explicit reason + full audit trail
-    // grade changes require explicit reason + audit log — handled here
+    // grade changes require explicit reason + audit log -- handled here
     if (!body.reason || String(body.reason).trim() === '') {
       return NextResponse.json(
         { error: 'reason_required', message: 'A reason is required for grade changes.' },
@@ -50,9 +50,9 @@ export async function PATCH(req: Request, context: { params: Promise<{ id: strin
     return NextResponse.json({ ok: true });
   }
 
-  // General update path — strip grade and board (immutable after first save)
+  // General update path -- strip grade and board (immutable after first save)
   const { grade: _g, board: _b, reason: _r, ...safeData } = body;
-  // grade changes require explicit reason + audit log — handled above
+  // grade changes require explicit reason + audit log -- handled above
   const user = await prisma.user.update({ where: { id }, data: safeData });
   logApiUsage(`/api/admin/users/${id}`, 'PATCH');
   return NextResponse.json(user);

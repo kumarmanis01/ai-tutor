@@ -40,7 +40,7 @@ const ConversionCTA = ({ variant = 'hero', className = '', onClick }: Conversion
   const iconSize = variant === 'header' ? 18 : variant === 'final' ? 24 : 20;
   const combinedClass = `${sharedClasses} ${variantStyles[variant]} ${className}`;
 
-  // header variant: always navigate directly to signup — no scroll friction
+  // header variant: always navigate directly to signup -- no scroll friction
   if (variant === 'header') {
     return (
       <Link

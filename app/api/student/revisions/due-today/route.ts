@@ -10,7 +10,7 @@ const LIMIT = 20
 
 /**
  * GET /api/student/revisions/due-today
- * Domain 7 §7.7 — revisions due for the authenticated student (nextReviewAt <= now).
+ * Domain 7 §7.7 -- revisions due for the authenticated student (nextReviewAt <= now).
  */
 export async function GET(req: Request) {
   const start = Date.now()

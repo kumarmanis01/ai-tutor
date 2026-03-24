@@ -35,6 +35,7 @@
     "worker/dev-supervisor.ts",
     "lib/tests.ts",
     "lib/diagnostics/diagnosticQuestionService.ts",
+    "lib/exporters/pdf.ts",
     "lib/aiContext.ts",
     "lib/alerts.ts",
     "lib/analytics/client.ts",

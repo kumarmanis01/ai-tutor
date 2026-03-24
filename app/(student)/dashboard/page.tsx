@@ -1,20 +1,20 @@
 /**
- * Student Dashboard — v2
+ * Student Dashboard -- v2
  *
  * Full rebuild per v2 wireframe spec.
  *
  * Section order (single column mobile / two-column desktop):
- *   1. TodaysLearningCard — topic name, subject badge, duration chip, CTA
+ *   1. TodaysLearningCard -- topic name, subject badge, duration chip, CTA
  *      (Topbar with streak/level/avatar is in the shared layout)
- *   3. XPWidget           — XP this week, level progress bar
- *   4. WeeklyStudyStrip   — Mon–Sun dots, purple filled, teal today ring
- *   5. RevisionWidget     — cards due today or "all caught up"
+ *   3. XPWidget           -- XP this week, level progress bar
+ *   4. WeeklyStudyStrip   -- Mon-Sun dots, purple filled, teal today ring
+ *   5. RevisionWidget     -- cards due today or "all caught up"
  *   --- desktop right column ---
- *   6. SubjectReadinessSection — one card per subject
- *   7. WeakTopicsSection  — hidden until 3+ sessions, max 2 cards
- *   8. UpcomingTopicsList — next 3 topics, simple rows
+ *   6. SubjectReadinessSection -- one card per subject
+ *   7. WeakTopicsSection  -- hidden until 3+ sessions, max 2 cards
+ *   8. UpcomingTopicsList -- next 3 topics, simple rows
  *
- * Desktop (md:): left 60% = sections 2–5, right 40% = sections 6–8.
+ * Desktop (md:): left 60% = sections 2-5, right 40% = sections 6-8.
  * Topbar is always full-width sticky.
  *
  * EDIT LOG:
@@ -42,12 +42,13 @@ import UpgradeFlow from '@/components/student/subscription/UpgradeFlow';
 import UpgradeBanner from '@/components/student/subscription/UpgradeBanner';
 import { checkFreeTierCap } from '@/lib/freemium';
 import { getRedis } from '@/lib/redis';
+import { DPDP_MINOR_AGE } from '@/lib/constants/age';
 
 export const dynamic = 'force-dynamic';
 
 export const metadata: Metadata = {
   title: 'Home | Spinzy AI Tutor',
-  description: 'Your AI tutor — ready when you are.',
+  description: 'Your AI tutor -- ready when you are.',
 };
 
 // ── Week boundary helpers ─────────────────────────────────────────────────────
@@ -104,6 +105,7 @@ export default async function StudentHomeDashboardPage() {
         language: true,
         subjects: true,
         accountStatus: true,
+        age: true,
         totalXp: true,
         level: true,
         name: true,
@@ -254,8 +256,15 @@ export default async function StudentHomeDashboardPage() {
     !Array.isArray(studentProfile.subjects) ||
     studentProfile.subjects.length === 0;
 
+  // age guard: only under-DPDP_MINOR_AGE users require the phone OTP gate.
+  // accountStatus alone is not sufficient -- stale 'pending_parent_verification' on
+  // age >= DPDP_MINOR_AGE users (Task 1 dateOfBirth fix regression) must not fire.
+  const profileAge = (studentProfile as any)?.age ?? null;
   const needsParentVerification =
-    (studentProfile as any)?.accountStatus === 'pending_parent_verification';
+    (studentProfile as any)?.accountStatus === 'pending_parent_verification' &&
+    profileAge !== null &&
+    Number.isFinite(Number(profileAge)) &&
+    Number(profileAge) < DPDP_MINOR_AGE;
 
   if (needsProfile) {
     return (
@@ -352,16 +361,23 @@ export default async function StudentHomeDashboardPage() {
     }));
 
   // ── Subject readiness ─────────────────────────────────────────────────────
-  const subjectNames = (studentProfile?.subjects ?? []).map((s) => String(s)).filter(Boolean);
-  const subjectDefs = subjectNames.length
-    ? await prisma.subjectDef.findMany({
-        where: {
-          OR: [{ name: { in: subjectNames } }, { slug: { in: subjectNames } }],
-          lifecycle: 'active',
-        },
-        select: { id: true, name: true },
-      })
-    : [];
+  // Fetch subjects from the student's enrolled ClassLevel (grade + board) to
+  // avoid duplicates from the OR name/slug match and stale subjects[] array.
+  const subjectDefs =
+    studentProfile?.grade && studentProfile?.board
+      ? await prisma.subjectDef.findMany({
+          where: {
+            lifecycle: 'active',
+            classLevel: {
+              grade: studentProfile.grade,
+              board: { slug: studentProfile.board },
+            },
+          },
+          distinct: ['name'],
+          orderBy: { name: 'asc' },
+          select: { id: true, name: true },
+        })
+      : [];
   const readinessResults = await Promise.all(
     subjectDefs.map(async (subj) => {
       const result = await computeReadinessScore(userId, subj.id).catch(() => null);
@@ -391,7 +407,7 @@ export default async function StudentHomeDashboardPage() {
         {/* Two-column desktop grid */}
         <div className="flex flex-col gap-5 md:flex-row md:gap-6 md:items-start">
 
-          {/* ── Left column (60%) — sections 2–5 ── */}
+          {/* ── Left column (60%) -- sections 2-5 ── */}
           <div className="flex flex-col gap-5 md:w-3/5">
 
             {/* ② TodaysLearningCard */}
@@ -442,7 +458,7 @@ export default async function StudentHomeDashboardPage() {
             <RevisionWidget />
           </div>
 
-          {/* ── Right column (40%) — sections 6–8 ── */}
+          {/* ── Right column (40%) -- sections 6-8 ── */}
           <div className="flex flex-col gap-5 md:w-2/5">
 
             {/* ⑥ SubjectReadinessSection */}
@@ -472,7 +488,7 @@ export default async function StudentHomeDashboardPage() {
               </section>
             )}
 
-            {/* ⑦ WeakTopicsSection — inline, hidden until 3+ sessions */}
+            {/* ⑦ WeakTopicsSection -- inline, hidden until 3+ sessions */}
             {totalSessions >= 3 && weakTopicsRaw.length > 0 && (
               <section aria-labelledby="weak-topics-heading">
                 <h3
@@ -505,7 +521,7 @@ export default async function StudentHomeDashboardPage() {
               </section>
             )}
 
-            {/* ⑧ UpcomingTopicsList — inline simple rows */}
+            {/* ⑧ UpcomingTopicsList -- inline simple rows */}
             {upcomingTopics.length > 0 && (
               <section aria-labelledby="upcoming-heading">
                 <h3

@@ -5,7 +5,7 @@ import { prisma } from '@/lib/prisma'
  * for a concept belonging to the given subject, indicating the IRT diagnostic
  * bootstrap has run for that subject.
  *
- * Never throws — returns false on any DB error.
+ * Never throws -- returns false on any DB error.
  */
 export async function hasDiagnosticForSubject(
   studentId: string,

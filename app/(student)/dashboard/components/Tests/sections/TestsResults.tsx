@@ -29,7 +29,7 @@ export function TestsResults() {
     <div className="space-y-2">
       <h2 className="text-sm font-semibold">Recent Results</h2>
       {loading && results.length === 0 ? (
-        <div className="text-sm text-muted-foreground">Loading…</div>
+        <div className="text-sm text-muted-foreground">Loading...</div>
       ) : results.length === 0 ? (
         <div className="text-sm text-muted-foreground">No results yet. Take a test to see your scores!</div>
       ) : (

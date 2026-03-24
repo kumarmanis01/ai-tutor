@@ -177,7 +177,7 @@ export async function getStudentRiskList(opts: {
   const completedMap = new Map(sessionsCompleted.map((r) => [r.studentId, r._count.id]));
   const weakMap = new Map(weakCounts.map((r) => [r.studentId, r._count.topicId]));
 
-  // Trend: weighted accuracy in last 7d vs 8–14d
+  // Trend: weighted accuracy in last 7d vs 8-14d
   const recentPairs = new Map<string, Array<{ value: number; weight: number }>>();
   const priorPairs = new Map<string, Array<{ value: number; weight: number }>>();
   for (const r of masteryRows) {

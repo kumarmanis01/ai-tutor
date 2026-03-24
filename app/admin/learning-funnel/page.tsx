@@ -57,14 +57,14 @@ export default function AdminLearningFunnelPage() {
         </div>
       </div>
 
-      {isLoading && <div className="text-sm text-gray-500">Loading…</div>}
+      {isLoading && <div className="text-sm text-gray-500">Loading...</div>}
       {error && <div className="text-sm text-red-600">Failed to load funnel</div>}
 
       {data && (
         <>
           {!dq.hasRecommendationComputed && (
             <div className="rounded border border-amber-200 bg-amber-50 text-amber-900 p-3 text-sm">
-              Recommendation “shown” is not instrumented. The top stage displayed is session-started; recommendationComputed will appear only when Home Tutor tracing is enabled and decisions are persisted.
+              Recommendation "shown" is not instrumented. The top stage displayed is session-started; recommendationComputed will appear only when Home Tutor tracing is enabled and decisions are persisted.
             </div>
           )}
 
@@ -82,10 +82,10 @@ export default function AdminLearningFunnelPage() {
                   <tr className="border-t border-gray-200 dark:border-gray-700">
                     <td className="p-3 font-medium">Recommendation computed (proxy)</td>
                     <td className="p-3 text-right">{s.recommendationComputed}</td>
-                    <td className="p-3 text-right">—</td>
+                    <td className="p-3 text-right">--</td>
                   </tr>
                 )}
-                <Row label="Session started" count={s.sessionStarted} conversion={dq.hasRecommendationComputed ? pct(rates.startRateFromRecommendation) : '—'} />
+                <Row label="Session started" count={s.sessionStarted} conversion={dq.hasRecommendationComputed ? pct(rates.startRateFromRecommendation) : '--'} />
                 <Row label="Explanation viewed" count={s.explanationViewed} conversion={pct(rates.explanationViewRate)} />
                 <Row label="Practice completed" count={s.practiceCompleted} conversion={pct(rates.practiceCompletionRate)} />
                 <Row label="Test completed" count={s.testCompleted} conversion={pct(rates.testCompletionRate)} />

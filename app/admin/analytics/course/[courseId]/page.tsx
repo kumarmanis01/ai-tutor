@@ -23,20 +23,20 @@ export default async function Page({ params }: { params: { courseId: string } })
 
   return (
     <div style={{ padding: 20 }}>
-      <h1>Course Analytics — {courseId}</h1>
+      <h1>Course Analytics -- {courseId}</h1>
       <section style={{ display: 'flex', gap: 20 }}>
         <div style={{ flex: 1 }}>
           <h3>Overview (last {views.length} days)</h3>
           <div style={{ width: '100%', height: 80 }}>
             <Sparkline points={views} width={600} height={80} />
           </div>
-          <div>Latest views: {latest ? latest.totalViews : '—'}</div>
-          <div>Latest completions: {latest ? latest.totalCompletions : '—'}</div>
+          <div>Latest views: {latest ? latest.totalViews : '--'}</div>
+          <div>Latest completions: {latest ? latest.totalCompletions : '--'}</div>
         </div>
 
         <div style={{ width: 320 }}>
           <h3>Completion rate</h3>
-          <div style={{ fontSize: 28 }}>{latest && latest.completionRate != null ? `${Math.round(latest.completionRate * 100)}%` : '—'}</div>
+          <div style={{ fontSize: 28 }}>{latest && latest.completionRate != null ? `${Math.round(latest.completionRate * 100)}%` : '--'}</div>
         </div>
       </section>
 
@@ -71,7 +71,7 @@ async function FunnelSummary({ courseId, db }: { courseId: string; db: any }) {
     <div>
       <div>Total views (30d): {totals.views}</div>
       <div>Total completions (30d): {totals.completions}</div>
-      <div>Completion rate: {completionRate != null ? `${Math.round(completionRate * 100)}%` : '—'}</div>
+      <div>Completion rate: {completionRate != null ? `${Math.round(completionRate * 100)}%` : '--'}</div>
     </div>
   )
 }

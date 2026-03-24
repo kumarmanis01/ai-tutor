@@ -18,7 +18,7 @@ function getClient() {
 /**
  * Create a Razorpay order for ₹99/month.
  * Returns razorpayOrderId to pass to frontend SDK.
- * Never throws — returns null on error.
+ * Never throws -- returns null on error.
  */
 export async function createRazorpayOrder(
   studentId: string,
@@ -53,7 +53,7 @@ export async function createRazorpayOrder(
  * Verify Razorpay payment signature.
  * HMAC-SHA256 of `${orderId}|${paymentId}` with KEY_SECRET.
  * Returns true only if signature matches exactly.
- * This is the security gate — never skip.
+ * This is the security gate -- never skip.
  */
 export async function verifyPaymentSignature(params: {
   orderId: string
@@ -81,7 +81,7 @@ export async function verifyPaymentSignature(params: {
  * 3. Set User.subscriptionExpiry = now() + planMonths * 30 days
  * 4. Reset FreeTierUsage for the student
  * All in a Prisma transaction.
- * Never throws — returns false on error.
+ * Never throws -- returns false on error.
  */
 export async function activateSubscription(
   studentId: string,

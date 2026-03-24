@@ -1,11 +1,11 @@
 /**
  * FILE OBJECTIVE:
  * - GET /api/student/progress/narrative
- * - Returns a 2–3 sentence GPT-4o-mini generated narrative insight for the
+ * - Returns a 2-3 sentence GPT-4o-mini generated narrative insight for the
  *   student's last 30 days of learning (section 1 of the progress report page).
  * - Auth-guarded: 401 before any DB query.
- * - Calls OpenAI directly via fetch (callLLM.ts is worker-only — ALLOW_LLM_CALLS=1).
- * - Always returns { narrative: string } — never exposes raw errors to client.
+ * - Calls OpenAI directly via fetch (callLLM.ts is worker-only -- ALLOW_LLM_CALLS=1).
+ * - Always returns { narrative: string } -- never exposes raw errors to client.
  * - AbortController timeout: 10 000 ms.
  *
  * EDIT LOG:
@@ -22,7 +22,7 @@ export const dynamic = 'force-dynamic';
 
 const FALLBACK_NARRATIVE =
   'Keep going! Your consistent practice is building strong foundations. ' +
-  'Every session adds to your knowledge — you are making real progress.';
+  'Every session adds to your knowledge -- you are making real progress.';
 
 export async function GET(req: Request) {
   const start = Date.now();
@@ -78,7 +78,7 @@ export async function GET(req: Request) {
       }
     }
 
-    // Build narrative via GPT-4o-mini (direct fetch — callLLM.ts is worker-only)
+    // Build narrative via GPT-4o-mini (direct fetch -- callLLM.ts is worker-only)
     const apiKey = process.env.OPENAI_API_KEY;
     if (!apiKey) {
       res = NextResponse.json({ narrative: FALLBACK_NARRATIVE });
@@ -125,7 +125,7 @@ export async function GET(req: Request) {
         });
       }
     } catch (err) {
-      // Timeout or network error — use fallback silently
+      // Timeout or network error -- use fallback silently
       const isAbort = err instanceof Error && err.name === 'AbortError';
       logger.warn('OpenAI narrative request aborted/errored', {
         event: 'progress_narrative_fetch_error',

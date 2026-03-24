@@ -6,7 +6,7 @@ import { useMemo, useState } from 'react';
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
 function pct(x: number | null): string {
-  if (x == null) return '—';
+  if (x == null) return '--';
   return `${(x * 100).toFixed(0)}%`;
 }
 
@@ -48,9 +48,9 @@ export default function AdminStudentRiskPage() {
       </p>
 
       <div className="grid grid-cols-3 gap-4">
-        <Card title="High" value={summary?.high ?? '—'} />
-        <Card title="Medium" value={summary?.medium ?? '—'} />
-        <Card title="Low" value={summary?.low ?? '—'} />
+        <Card title="High" value={summary?.high ?? '--'} />
+        <Card title="Medium" value={summary?.medium ?? '--'} />
+        <Card title="Low" value={summary?.low ?? '--'} />
       </div>
 
       <div className="flex flex-wrap gap-3 items-end">
@@ -80,7 +80,7 @@ export default function AdminStudentRiskPage() {
         </select>
       </div>
 
-      {isLoading && <div className="text-sm text-gray-500">Loading…</div>}
+      {isLoading && <div className="text-sm text-gray-500">Loading...</div>}
 
       {!isLoading && (
         <div className="rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
@@ -103,16 +103,16 @@ export default function AdminStudentRiskPage() {
               {students.map((s: any) => (
                 <tr key={s.studentId} className="border-t border-gray-200 dark:border-gray-700">
                   <td className="p-3 font-medium">{s.name || s.email || s.studentId}</td>
-                  <td className="p-3">{s.board ?? '—'} / {s.grade ?? '—'}</td>
+                  <td className="p-3">{s.board ?? '--'} / {s.grade ?? '--'}</td>
                   <td className="p-3 text-right">
                     <span className={`px-2 py-0.5 rounded text-xs ${s.category === 'high' ? 'bg-red-100 text-red-800' : s.category === 'medium' ? 'bg-amber-100 text-amber-800' : 'bg-gray-100 text-gray-800'}`}>
                       {s.riskScore} ({s.category})
                     </span>
                   </td>
-                  <td className="p-3 text-right">{s.inactiveDays ?? '—'}</td>
+                  <td className="p-3 text-right">{s.inactiveDays ?? '--'}</td>
                   <td className="p-3 text-right">{s.weakTopicCount}</td>
                   <td className="p-3 text-right">{pct(s.completionRate)}</td>
-                  <td className="p-3 text-right">{s.accDelta == null ? '—' : `${(s.accDelta * 100).toFixed(1)} pts`}</td>
+                  <td className="p-3 text-right">{s.accDelta == null ? '--' : `${(s.accDelta * 100).toFixed(1)} pts`}</td>
                 </tr>
               ))}
             </tbody>

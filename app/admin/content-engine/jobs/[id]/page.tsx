@@ -35,14 +35,14 @@ export default function JobDetailPage() {
   }, [timelineRes, errorsOnly]);
 
   if (jobErr) return <div className="p-6 text-red-600">Failed to load job.</div>;
-  if (!job) return <div className="p-6">Loading…</div>;
+  if (!job) return <div className="p-6">Loading...</div>;
 
   return (
     <div className="p-6 max-w-3xl mx-auto">
       <div className="flex items-start justify-between mb-6">
         <div>
           <h1 className="text-2xl font-semibold">Job {job.id}</h1>
-          <div className="text-sm text-gray-600">{job.jobType} — {job.entityType} {job.entityName ? `→ ${job.entityName}` : ''}</div>
+          <div className="text-sm text-gray-600">{job.jobType} -- {job.entityType} {job.entityName ? `→ ${job.entityName}` : ''}</div>
         </div>
         <div>
           <JobActions jobId={job.id} status={job.status} onDone={() => { mutateJob(); mutateTimeline(); }} />

@@ -39,7 +39,7 @@ function readinessLabel(score: number): ReadinessLabel {
  * - contribution = avgMastery × (weightMarks / totalWeightMarks) × 100
  * - score = Math.round(sum(contributions))  → integer 0-100
  *
- * Caches result in Redis (TTL 3600s). Never throws — returns zero-state on error.
+ * Caches result in Redis (TTL 3600s). Never throws -- returns zero-state on error.
  */
 export async function computeReadinessScore(
   studentId: string,
@@ -56,7 +56,7 @@ export async function computeReadinessScore(
       if (cached) return JSON.parse(cached) as ReadinessResult
     }
   } catch {
-    // cache miss — continue to compute
+    // cache miss -- continue to compute
   }
 
   try {
@@ -163,7 +163,7 @@ export interface ExamReadinessResult {
 }
 
 /**
- * Pure helper — exported for tests.
+ * Pure helper -- exported for tests.
  */
 export function computeReadinessLabel(score: number): ExamReadinessResult['readinessLabel'] {
   if (score < 40) return 'Needs Work'
@@ -173,7 +173,7 @@ export function computeReadinessLabel(score: number): ExamReadinessResult['readi
 }
 
 /**
- * Pure helper — exported for tests.
+ * Pure helper -- exported for tests.
  * weightedContribution = avgMastery * (weightMarks / totalMarks) * 100
  */
 export function computeWeightedContribution(
@@ -187,7 +187,7 @@ export function computeWeightedContribution(
 
 /**
  * Compute exam readiness for a student + subject.
- * Weights each chapter's mastery by BoardChapterWeight. Never throws — returns null on error.
+ * Weights each chapter's mastery by BoardChapterWeight. Never throws -- returns null on error.
  */
 export async function computeExamReadiness(
   studentId: string,

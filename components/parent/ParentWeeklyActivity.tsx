@@ -2,7 +2,7 @@
  * FILE OBJECTIVE:
  * - Live Weekly Study Activity card for the Parent Progress Dashboard.
  * - Self-fetching client component: calls GET /api/parent/weekly-activity
- *   and renders three metrics — Study Time, Sessions Completed, Topics Studied.
+ *   and renders three metrics -- Study Time, Sessions Completed, Topics Studied.
  * - Handles loading skeleton and error states inline; no global state needed.
  *
  * DATA FETCHING STRATEGY:

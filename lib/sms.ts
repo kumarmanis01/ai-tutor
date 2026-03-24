@@ -11,7 +11,7 @@ export type SendSmsResult =
  *   Requires env vars: MSG91_AUTH_KEY, MSG91_TEMPLATE_ID
  *   Optional: MSG91_SENDER (default 'MSGIND')
  *
- * Returns a structured result — never throws for expected error cases.
+ * Returns a structured result -- never throws for expected error cases.
  */
 import { logger } from '@/lib/logger';
 

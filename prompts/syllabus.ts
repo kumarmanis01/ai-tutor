@@ -15,11 +15,17 @@ export type SyllabusParams = {
   subject: string
   language?: 'en' | 'hi'
   maxChapters?: number
+  /** Opening text (first ~200 chars) from the first chunk of each NCERT chapter,
+   *  ordered by chapter number. When provided, GPT is constrained to exactly
+   *  these chapters — no hallucination. */
+  ncertChapterHints?: string[]
 }
 
 export function syllabusPrompt(params: SyllabusParams): string {
-  const maxChapters = params.maxChapters ?? 12
-  return `Role: curriculum generator for board ${params.board}, grade ${params.grade}.
+  const hints = params.ncertChapterHints
+  const maxChapters = hints ? hints.length : (params.maxChapters ?? 12)
+
+  let prompt = `Role: curriculum generator for board ${params.board}, grade ${params.grade}.
 
 Task: Produce an ordered syllabus for subject "${params.subject}" in ${params.language === 'hi' ? 'Hindi' : 'English'}.
 
@@ -48,4 +54,13 @@ Validation Constraints:
 - If unable to produce, return '{ "chapters": [] }'.
 
 Strict Output Instruction: Return ONLY valid JSON matching the schema above, nothing else.`
+
+  if (hints && hints.length > 0) {
+    prompt += `\n\nNCERT Textbook Ground Truth — derive chapter titles from these ${hints.length} content excerpts (one per chapter, in order):
+${hints.map((h, i) => `Chapter ${i + 1}: "${h}"`).join('\n')}
+
+CRITICAL: Generate EXACTLY ${hints.length} chapters matching the excerpts above. Do NOT add, remove, or reorder chapters.`
+  }
+
+  return prompt
 }

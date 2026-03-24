@@ -14,7 +14,7 @@
  */
 
 /**
- * Control Panel — Hierarchy Workspace
+ * Control Panel -- Hierarchy Workspace
  * This page wires the HierarchyWorkspace into the admin control-panel area.
  * It intentionally renders a client-side `HierarchyWorkspace` component that
  * fetches `/api/hierarchy` and provides actions for content generation.

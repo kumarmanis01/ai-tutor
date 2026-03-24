@@ -56,11 +56,11 @@ export default function AdminParentReportingPage() {
       <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
         <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4">
           <div className="text-sm font-medium text-gray-500 dark:text-gray-400">Students with linked parents</div>
-          <div className="text-2xl font-bold text-gray-900 dark:text-white">{scope?.studentsWithLinkedParents ?? '—'}</div>
+          <div className="text-2xl font-bold text-gray-900 dark:text-white">{scope?.studentsWithLinkedParents ?? '--'}</div>
         </div>
         <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4">
           <div className="text-sm font-medium text-gray-500 dark:text-gray-400">Reports this week</div>
-          <div className="text-2xl font-bold text-gray-900 dark:text-white">{scope?.reportsGeneratedThisWeek ?? '—'}</div>
+          <div className="text-2xl font-bold text-gray-900 dark:text-white">{scope?.reportsGeneratedThisWeek ?? '--'}</div>
         </div>
         <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4 flex flex-col justify-center">
           <div className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-2">Weekly parent reports</div>
@@ -70,7 +70,7 @@ export default function AdminParentReportingPage() {
             disabled={savingPause}
             className={`px-4 py-2 rounded-lg text-sm font-medium ${reportsPaused ? 'bg-amber-600 text-white' : 'bg-green-600 text-white'} disabled:opacity-50`}
           >
-            {reportsPaused ? 'Paused — Click to resume' : 'Active — Click to pause'}
+            {reportsPaused ? 'Paused -- Click to resume' : 'Active -- Click to pause'}
           </button>
         </div>
       </div>
@@ -95,7 +95,7 @@ export default function AdminParentReportingPage() {
         </button>
       </div>
 
-      {isLoading && <div className="text-sm text-gray-500">Loading…</div>}
+      {isLoading && <div className="text-sm text-gray-500">Loading...</div>}
       {!isLoading && (
         <div className="rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
           <table className="w-full text-sm">
@@ -116,8 +116,8 @@ export default function AdminParentReportingPage() {
               {students.map((s: { studentId: string; studentName: string | null; studentEmail: string | null; board: string | null; grade: string | null; lastReportWeekStart: string | null; hasReport: boolean }) => (
                 <tr key={s.studentId} className="border-t border-gray-200 dark:border-gray-700">
                   <td className="p-3 font-medium">{s.studentName || s.studentEmail || s.studentId}</td>
-                  <td className="p-3">{s.board ?? '—'} / {s.grade ?? '—'}</td>
-                  <td className="p-3">{s.lastReportWeekStart ? new Date(s.lastReportWeekStart).toLocaleDateString() : '—'}</td>
+                  <td className="p-3">{s.board ?? '--'} / {s.grade ?? '--'}</td>
+                  <td className="p-3">{s.lastReportWeekStart ? new Date(s.lastReportWeekStart).toLocaleDateString() : '--'}</td>
                   <td className="p-3">{s.hasReport ? 'Yes' : 'No'}</td>
                 </tr>
               ))}

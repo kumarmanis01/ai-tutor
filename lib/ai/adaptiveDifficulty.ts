@@ -23,7 +23,7 @@ export type { Difficulty };
  *   accuracy < 0.50            → 'easy'   (student is still building foundations)
  *   0.50 <= accuracy < 0.75   → 'medium'  (student understands basics, needs application)
  *   accuracy >= 0.75           → 'hard'   (student is ready for deep/applied problems)
- *   null                       → 'medium'  (no signal yet — safe default)
+ *   null                       → 'medium'  (no signal yet -- safe default)
  *
  * Boundaries are half-open intervals [min, max) so 0.50 → medium, 0.75 → hard.
  */

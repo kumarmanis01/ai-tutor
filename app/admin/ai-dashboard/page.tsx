@@ -30,7 +30,7 @@ function StatusBadge({ status }: { status: string }) {
 export default function AIDashboard() {
   const { data: statusData, mutate: mutateStatus } = useSWR("/api/admin/content-engine/status", fetcher, { refreshInterval: 5000 });
   const { data: summary } = useSWR("/api/admin/content-engine/summary", fetcher, { refreshInterval: 5000 });
-  const { data: jobs, mutate: mutateJobs } = useSWR("/api/admin/content-engine/jobs?limit=10", fetcher, { refreshInterval: 5000 });
+  const { data: jobs, mutate: mutateJobs } = useSWR("/api/admin/hydrateAll?limit=20", fetcher, { refreshInterval: 5000 });
   const [loading, setLoading] = useState(false);
   const isBusy = loading;
 
@@ -64,7 +64,7 @@ export default function AIDashboard() {
       "Cancel this job? This cannot be undone.",
       async () => {
         setLoading(true);
-        const res = await fetch(`/api/admin/content-engine/jobs/${jobId}/cancel`, { method: "POST" });
+        const res = await fetch(`/api/admin/hydrateAll/${jobId}`, { method: "DELETE" });
         if (!res.ok) {
           alerts.error("Failed to cancel job.");
         } else {
@@ -80,7 +80,7 @@ export default function AIDashboard() {
 
   const retryJob = async (jobId: string) => {
     setLoading(true);
-    const res = await fetch(`/api/admin/content-engine/jobs/${jobId}/retry`, { method: "POST" });
+    const res = await fetch(`/api/admin/hydrateAll/${jobId}/retry`, { method: "POST" });
     if (!res.ok) {
       alerts.error("Failed to retry job.");
     } else {
@@ -143,7 +143,7 @@ export default function AIDashboard() {
         <div className="bg-white rounded shadow p-4">
           <div className="flex items-center justify-between mb-3">
             <div className="font-semibold">HydrateAll Pipeline</div>
-            <a href="/admin/content-engine/hydrateAll" className="text-xs text-blue-600 underline">Open Pipeline →</a>
+            <a href="/admin/content-engine/hydrate-all" className="text-xs text-blue-600 underline">Open Pipeline →</a>
           </div>
           <div className="grid grid-cols-2 gap-3 text-sm">
             <div className="bg-blue-50 rounded p-2 text-center">
@@ -192,14 +192,17 @@ export default function AIDashboard() {
 
       {/* Recent Jobs Table */}
       <div className="bg-white rounded shadow p-4">
-        <div className="font-semibold mb-2">Recent Jobs</div>
+        <div className="flex items-center justify-between mb-2">
+          <div className="font-semibold">Recent Root Jobs</div>
+          <a href="/admin/content-engine/hydrate-all" className="text-xs text-blue-600 underline">View all →</a>
+        </div>
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b">
-              <th className="py-2 text-left">Job ID</th>
-              <th className="py-2 text-left">Type</th>
-              <th className="py-2 text-left">Entity</th>
+              <th className="py-2 text-left">Subject</th>
+              <th className="py-2 text-left">Board / Grade</th>
               <th className="py-2 text-left">Lang</th>
+              <th className="py-2 text-left">Progress</th>
               <th className="py-2 text-left">Status</th>
               <th className="py-2 text-left">Actions</th>
             </tr>
@@ -210,17 +213,24 @@ export default function AIDashboard() {
             )}
             {jobs?.jobs?.map((job: any) => (
               <tr key={job.id} className="border-b">
-                <td className="py-2">{job.id}</td>
-                <td className="py-2">{job.jobType}</td>
-                <td className="py-2">{job.entityType}{job.entityName ? `: ${job.entityName}` : ""}</td>
-                <td className="py-2">{job.language?.toUpperCase() || "-"}</td>
+                <td className="py-2 font-medium">{job.metadata?.subject || "-"}</td>
+                <td className="py-2 text-gray-500">{job.metadata?.board} Gr.{job.metadata?.grade}</td>
+                <td className="py-2">{(job.metadata?.language || "en").toUpperCase()}</td>
+                <td className="py-2">
+                  <div className="flex items-center gap-1">
+                    <div className="w-20 bg-gray-200 rounded-full h-1.5">
+                      <div className="bg-blue-600 h-1.5 rounded-full" style={{ width: `${job.progress?.overall || 0}%` }} />
+                    </div>
+                    <span className="text-xs text-gray-500">{job.progress?.overall || 0}%</span>
+                  </div>
+                </td>
                 <td className="py-2">
                   <StatusBadge status={job.status} />
                 </td>
                 <td className="py-2 flex gap-2 flex-wrap">
-                  {job.status === JobStatus.Pending && (
+                  {(job.status === JobStatus.Pending || job.status === JobStatus.Running) && (
                     <button
-                      className="px-2 py-1 bg-red-500 text-white rounded"
+                      className="px-2 py-1 bg-red-100 text-red-800 rounded text-xs"
                       onClick={() => cancelJob(job.id)}
                       disabled={isBusy}
                     >
@@ -229,22 +239,14 @@ export default function AIDashboard() {
                   )}
                   {job.status === JobStatus.Failed && (
                     <button
-                      className="px-2 py-1 bg-blue-500 text-white rounded"
+                      className="px-2 py-1 bg-blue-100 text-blue-800 rounded text-xs"
                       onClick={() => retryJob(job.id)}
                       disabled={isBusy}
                     >
                       Retry
                     </button>
                   )}
-                  {job.status === JobStatus.Completed && (
-                    <>
-                      <a href={`/admin/content-engine/jobs/${job.id}`} className="px-2 py-1 bg-gray-500 text-white rounded">View</a>
-                      {job.contentId && (
-                        <a href={`/admin/content-engine/moderation/${job.contentId}`} className="px-2 py-1 bg-green-600 text-white rounded">Review Content</a>
-                      )}
-                    </>
-                  )}
-                  <a href={`/admin/content-engine/jobs/${job.id}`} className="px-2 py-1 bg-slate-200 text-gray-800 rounded">Details</a>
+                  <a href={`/admin/content-engine/hydrate-all`} className="px-2 py-1 bg-slate-200 text-gray-800 rounded text-xs">Details</a>
                 </td>
               </tr>
             ))}

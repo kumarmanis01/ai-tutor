@@ -34,19 +34,19 @@ export default function AdminStudentLearningPage() {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4">
           <div className="text-sm font-medium text-gray-500 dark:text-gray-400">Total students</div>
-          <div className="text-2xl font-bold text-gray-900 dark:text-white">{summary?.totalStudents ?? '—'}</div>
+          <div className="text-2xl font-bold text-gray-900 dark:text-white">{summary?.totalStudents ?? '--'}</div>
         </div>
         <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4">
           <div className="text-sm font-medium text-gray-500 dark:text-gray-400">Active (7d)</div>
-          <div className="text-2xl font-bold text-gray-900 dark:text-white">{summary?.activeStudentsLast7Days ?? '—'}</div>
+          <div className="text-2xl font-bold text-gray-900 dark:text-white">{summary?.activeStudentsLast7Days ?? '--'}</div>
         </div>
         <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4">
           <div className="text-sm font-medium text-gray-500 dark:text-gray-400">Sessions (7d)</div>
-          <div className="text-2xl font-bold text-gray-900 dark:text-white">{summary?.sessionsCompletedLast7Days ?? '—'}</div>
+          <div className="text-2xl font-bold text-gray-900 dark:text-white">{summary?.sessionsCompletedLast7Days ?? '--'}</div>
         </div>
         <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4">
           <div className="text-sm font-medium text-gray-500 dark:text-gray-400">Homework pending</div>
-          <div className="text-2xl font-bold text-gray-900 dark:text-white">{summary?.homeworkPendingCount ?? '—'}</div>
+          <div className="text-2xl font-bold text-gray-900 dark:text-white">{summary?.homeworkPendingCount ?? '--'}</div>
         </div>
       </div>
 
@@ -74,7 +74,7 @@ export default function AdminStudentLearningPage() {
         </button>
       </div>
 
-      {isLoading && <div className="text-sm text-gray-500">Loading…</div>}
+      {isLoading && <div className="text-sm text-gray-500">Loading...</div>}
       {!isLoading && (
         <div className="rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
           <table className="w-full text-sm">
@@ -98,9 +98,9 @@ export default function AdminStudentLearningPage() {
               {students.map((s: { studentId: string; name: string | null; email: string | null; board: string | null; grade: string | null; sessionsCompleted7d: number; lastActiveAt: string | null; homeworkPending: number; weakTopicCount: number }) => (
                 <tr key={s.studentId} className="border-t border-gray-200 dark:border-gray-700">
                   <td className="p-3 font-medium">{s.name || s.email || s.studentId}</td>
-                  <td className="p-3">{s.board ?? '—'} / {s.grade ?? '—'}</td>
+                  <td className="p-3">{s.board ?? '--'} / {s.grade ?? '--'}</td>
                   <td className="p-3">{s.sessionsCompleted7d}</td>
-                  <td className="p-3">{s.lastActiveAt ? new Date(s.lastActiveAt).toLocaleDateString() : '—'}</td>
+                  <td className="p-3">{s.lastActiveAt ? new Date(s.lastActiveAt).toLocaleDateString() : '--'}</td>
                   <td className="p-3">{s.homeworkPending}</td>
                   <td className="p-3">{s.weakTopicCount}</td>
                   <td className="p-3">

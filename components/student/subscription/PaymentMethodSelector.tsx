@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * PaymentMethodSelector — step 2 of upgrade flow.
+ * PaymentMethodSelector -- step 2 of upgrade flow.
  *
  * UPI is listed first (India-first default).
  * Each row is a radio-style button with min-height 44px.

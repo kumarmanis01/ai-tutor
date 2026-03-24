@@ -11,7 +11,7 @@
 
 import { prisma } from './prisma';
 import { logger } from './logger';
-// Types match Prisma enums — defined inline to avoid build dependency on prisma generate
+// Types match Prisma enums -- defined inline to avoid build dependency on prisma generate
 type DailyTaskType = 'learn' | 'practice' | 'revise' | 'fix_gap' | 'confidence';
 type DailyTaskStatus = 'pending' | 'completed' | 'skipped' | 'expired';
 
@@ -501,7 +501,7 @@ function buildDescription(taskType: DailyTaskType, _topic: TopicPick | null): st
     case 'revise':
       return 'A quick revisit to keep things fresh. Spaced repetition makes learning stick.';
     case 'fix_gap':
-      return 'This topic needs a bit more attention. Take it slow — understanding beats speed.';
+      return 'This topic needs a bit more attention. Take it slow -- understanding beats speed.';
     case 'confidence':
       return 'You\'re strong here! A quick test to prove it to yourself.';
     default:

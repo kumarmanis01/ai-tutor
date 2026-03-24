@@ -3,7 +3,7 @@
  *
  * Creates a Razorpay order for the chosen subscription plan.
  * Returns orderId, amount (paise), currency, keyId.
- * Auth: session required — 401 before any DB query.
+ * Auth: session required -- 401 before any DB query.
  */
 
 import { NextResponse } from 'next/server';

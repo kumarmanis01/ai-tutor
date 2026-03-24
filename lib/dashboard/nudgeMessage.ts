@@ -12,7 +12,7 @@
  *   4. Unit just completed           → celebration
  *
  * The caller is responsible for rendering (NudgeBanner component).
- * This function is pure — no side-effects, no DB calls.
+ * This function is pure -- no side-effects, no DB calls.
  *
  * Tone rules (from UX spec):
  *   - No exclamation marks
@@ -30,7 +30,7 @@ export interface NudgeContext {
   pendingHomeworkCount: number;
   sessionsThisWeek: number;
   weeklyGoalSessions: number;        // student's chosen weekly goal
-  daysLeftInWeek: number;            // 1–7, Mon=7 days, Sun=1 day
+  daysLeftInWeek: number;            // 1-7, Mon=7 days, Sun=1 day
   lastCompletedUnitName?: string;    // set when a unit was just completed
 }
 
@@ -43,7 +43,7 @@ export function getNudgeMessage(ctx: NudgeContext): string | null {
     return null;
   }
 
-  // Priority 1: Absent 2+ days — highest priority; bring student back
+  // Priority 1: Absent 2+ days -- highest priority; bring student back
   if (ctx.daysSinceLastSession >= 2) {
     return "It's been a couple of days. Your tutor is ready when you are.";
   }
@@ -59,7 +59,7 @@ export function getNudgeMessage(ctx: NudgeContext): string | null {
     return `You've done ${ctx.sessionsThisWeek} of ${ctx.weeklyGoalSessions} sessions this week. There's still time.`;
   }
 
-  // Priority 4: Unit completion — celebratory but calm
+  // Priority 4: Unit completion -- celebratory but calm
   if (ctx.lastCompletedUnitName) {
     return `You've finished the ${ctx.lastCompletedUnitName} unit. Ready for the next one?`;
   }

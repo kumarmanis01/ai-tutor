@@ -1,7 +1,7 @@
 'use client'
 
 /**
- * RevisionFlow — Task 31 (v2 Screen 13)
+ * RevisionFlow -- Task 31 (v2 Screen 13)
  *
  * Full-screen revision card flow (SM-18 spaced repetition).
  *
@@ -159,7 +159,7 @@ export default function RevisionFlow({ cards, totalDue }: RevisionFlowProps) {
           Daily cap reached.
         </h2>
         <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">
-          Come back tomorrow — you can do more then!
+          Come back tomorrow -- you can do more then!
         </p>
         <Link
           href="/dashboard"
@@ -187,7 +187,7 @@ export default function RevisionFlow({ cards, totalDue }: RevisionFlowProps) {
       if (r.isCorrect) entry.correct += 1
       conceptMap.set(r.card.conceptId, entry)
     }
-    // Note: postRevisionComplete for last card was already called in handleNext — skip duplicate
+    // Note: postRevisionComplete for last card was already called in handleNext -- skip duplicate
 
     return (
       <div className="fixed inset-0 z-[100] bg-white dark:bg-gray-950 flex flex-col px-4 py-safe-top">
@@ -220,7 +220,7 @@ export default function RevisionFlow({ cards, totalDue }: RevisionFlowProps) {
           ) : (
             <div className="w-full rounded-2xl bg-[#FAEEDA] dark:bg-[#BA7517]/10 p-5 text-center">
               <p className="text-base font-semibold text-[#BA7517] mb-1">
-                Keep going — you&apos;re making progress.
+                Keep going -- you&apos;re making progress.
               </p>
               <p className="text-sm text-gray-700 dark:text-gray-300">
                 We&apos;ll add a re-teach session to your plan to help strengthen these topics.

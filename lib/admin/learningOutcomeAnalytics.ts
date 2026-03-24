@@ -1,5 +1,5 @@
 /**
- * Admin Learning Outcome Analytics — read-only aggregates from StudentTopicMastery and StudentTopicProgress.
+ * Admin Learning Outcome Analytics -- read-only aggregates from StudentTopicMastery and StudentTopicProgress.
  */
 
 import { prisma } from '@/lib/prisma';

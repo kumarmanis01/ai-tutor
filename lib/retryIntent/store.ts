@@ -45,7 +45,7 @@ export function makeRetryIntentStore(prisma: PrismaClient) {
         details: { legacyAction: 'RETRY_INTENT_CREATED', sourceJobId: input.sourceJobId, approvedBy: input.approvedBy },
       })
     } catch {
-      // swallow errors — auditing must not break flow
+      // swallow errors -- auditing must not break flow
     }
 
     return created

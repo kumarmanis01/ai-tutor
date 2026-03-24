@@ -27,7 +27,7 @@ export interface AIMetadata {
   confidence?: number;
   /** Arbitrary provenance note (e.g. 'generated-dry-run', 'human-edited') */
   provenance?: string;
-  /** Raw response (may be truncated) — should be JSON-serializable */
+  /** Raw response (may be truncated) -- should be JSON-serializable */
   rawResponse?: Record<string, unknown> | unknown;
   /** Additional implementation-specific metadata */
   [key: string]: unknown;
@@ -55,7 +55,7 @@ export interface AssessmentHint {
   description?: string;
   /** Suggested duration in minutes */
   suggestedDurationMinutes?: number;
-  /** Relative weight (e.g. 0..1) — optional */
+  /** Relative weight (e.g. 0..1) -- optional */
   weight?: number;
   aiMetadata?: AIMetadata;
 }
@@ -108,7 +108,7 @@ export interface CourseSyllabus {
   outcomes?: string[];
   /** Version string (semantic or date-based) */
   version?: string;
-  /** Approval metadata — filled when a syllabus is approved */
+  /** Approval metadata -- filled when a syllabus is approved */
   approved?: boolean;
   approvalMetadata?: {
     approvedBy?: string;
@@ -119,7 +119,7 @@ export interface CourseSyllabus {
   createdBy?: string;
   createdAt?: string; // ISO 8601 timestamp
   aiMetadata?: AIMetadata;
-  /** Flexible bag for extension data — still JSON-serializable */
+  /** Flexible bag for extension data -- still JSON-serializable */
   metadata?: Record<string, unknown>;
 }
 

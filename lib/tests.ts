@@ -1,6 +1,6 @@
 import { prisma } from '@/lib/prisma';
 import type { Question, TestResult } from '@prisma/client';
-// Type matches Prisma enum — defined inline to avoid build dependency on prisma generate
+// Type matches Prisma enum -- defined inline to avoid build dependency on prisma generate
 const MasteryLevel = { beginner: 'beginner', intermediate: 'intermediate', advanced: 'advanced', expert: 'expert' } as const;
 type MasteryLevel = (typeof MasteryLevel)[keyof typeof MasteryLevel];
 import { createAIClient } from '@/lib/aiContext';
@@ -33,7 +33,7 @@ export type QuestionFilters = {
  */
 export async function selectQuestions(filters: QuestionFilters, count: number): Promise<Question[]> {
   const where = {
-    status: 'ACTIVE' as const, // quarantined questions excluded — do not remove this filter
+    status: 'ACTIVE' as const, // quarantined questions excluded -- do not remove this filter
     ...(filters.subject ? { subject: filters.subject } : {}),
     ...(filters.grade ? { grade: filters.grade } : {}),
     ...(filters.board ? { board: filters.board } : {}),
@@ -51,7 +51,7 @@ export async function selectQuestions(filters: QuestionFilters, count: number): 
   // Broaden if too few
   if (pool.length < count && filters.subject) {
     pool = await prisma.question.findMany({
-      // quarantined questions excluded — do not remove this filter
+      // quarantined questions excluded -- do not remove this filter
       where: { status: 'ACTIVE', subject: filters.subject },
       orderBy: [{ difficulty: 'asc' }, { updatedAt: 'desc' }],
       take: count * 3,
@@ -172,7 +172,7 @@ async function syncFromGeneratedQuestions(filters: QuestionFilters, take: number
   }
 
   return prisma.question.findMany({
-    // quarantined questions excluded — do not remove this filter
+    // quarantined questions excluded -- do not remove this filter
     where: { id: { in: ids }, status: 'ACTIVE' },
     take,
   });
@@ -411,7 +411,7 @@ export async function updateTopicMastery(studentId: string, attemptId: string): 
   // ── Resolve canonical TopicDef.id from TestResult → GeneratedTest ─────────
   // GeneratedTest.topicId is the authoritative curriculum reference.
   // For quick-practice attempts (testId = 'quick-practice'), there is no
-  // GeneratedTest — fall back to resolving via Question subject+chapter.
+  // GeneratedTest -- fall back to resolving via Question subject+chapter.
   const testResult = await prisma.testResult.findUnique({
     where: { id: attemptId },
     select: { testId: true },
@@ -447,13 +447,13 @@ export async function updateTopicMastery(studentId: string, attemptId: string): 
 
   // ── Build per-topic stats keyed by canonical TopicDef.id ──────────────────
   // When canonical topicId is known (GeneratedTest path), all questions in the
-  // attempt belong to that single topic — aggregate under one key.
+  // attempt belong to that single topic -- aggregate under one key.
   // When unknown (quick-practice), group by subject+chapter and resolve each
   // group to a TopicDef.id via the curriculum hierarchy.
   const groups: Record<string, { correct: number; total: number; subject: string; chapter: string }> = {};
 
   if (canonicalTopicId) {
-    // GeneratedTest path — single canonical topic for all questions.
+    // GeneratedTest path -- single canonical topic for all questions.
     const subject = topicSubject || attemptQuestions[0]?.question.subject || 'unknown';
     const chapter = topicChapter || attemptQuestions[0]?.question.chapter || 'unknown';
     groups[canonicalTopicId] = { correct: 0, total: 0, subject, chapter };
@@ -508,7 +508,7 @@ export async function updateTopicMastery(studentId: string, attemptId: string): 
           attemptId,
           subject: stats.subject,
           chapter: stats.chapter,
-          reason: 'No matching TopicDef found — skipping mastery write',
+          reason: 'No matching TopicDef found -- skipping mastery write',
         });
       }
     }
@@ -564,7 +564,7 @@ export async function updateTopicMastery(studentId: string, attemptId: string): 
         },
       });
 
-      // Bidirectional AttentionFlag sync — aligned with engine P4 threshold (accuracy < 0.6).
+      // Bidirectional AttentionFlag sync -- aligned with engine P4 threshold (accuracy < 0.6).
       // Low accuracy: upsert flag as unresolved (creates if missing, re-opens if resolved).
       // High accuracy: resolve any open flag.  Both branches keep accuracy on the flag current.
       // HomeEngine P3 short-circuits on unresolved flags, so this must stay in-sync every session.

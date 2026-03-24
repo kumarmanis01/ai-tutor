@@ -1,5 +1,5 @@
 /**
- * Subscription plan definitions — v2 pricing.
+ * Subscription plan definitions -- v2 pricing.
  *
  * Amounts are in Indian Rupees (display) and paise (Razorpay).
  * GST is 18% levied on base price.

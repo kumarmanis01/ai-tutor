@@ -1,5 +1,5 @@
 /**
- * ParentProgressDetail — T39
+ * ParentProgressDetail -- T39
  *
  * Read-only. No edit controls, no interaction, no transcript content.
  * Mobile-first, dark variants.
@@ -87,7 +87,7 @@ export default function ParentProgressDetail({
       {/* ── Sessions last 7 days ──────────────────────────────────────── */}
       <section>
         <h2 className="mb-3 text-sm font-semibold text-gray-700 uppercase tracking-wide dark:text-gray-400">
-          Sessions — last 7 days
+          Sessions -- last 7 days
         </h2>
 
         {sessions.length === 0 ? (
@@ -98,7 +98,7 @@ export default function ParentProgressDetail({
               <div key={s.id} className="flex items-start justify-between px-4 py-3 gap-3">
                 <div className="min-w-0">
                   <p className="truncate text-sm font-medium text-gray-900 dark:text-gray-50">
-                    {s.topicName || '—'}
+                    {s.topicName || '--'}
                   </p>
                   <p className="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
                     {[s.subjectName, s.chapterName].filter(Boolean).join(' · ')}

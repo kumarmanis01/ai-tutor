@@ -19,7 +19,7 @@ const NAV_LINKS = [
 /**
  * Persistent student navigation bar.
  * - Uses Next.js Link for proper route-based navigation (no ?tab= query params).
- * - Active state derived from usePathname — highlights current route.
+ * - Active state derived from usePathname -- highlights current route.
  * - Renders on /dashboard/*, /rooms/*, /profile, /parent, /learn/*.
  * - Never appears on public/marketing pages.
  */

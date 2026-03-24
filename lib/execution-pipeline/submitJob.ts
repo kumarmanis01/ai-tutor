@@ -396,7 +396,7 @@ export async function submitJob(input: SubmitJobInput) {
     }
 
     // NOTE: Orchestrator is responsible for creating WorkerLifecycle rows.
-    // submitJob MUST NOT create or mutate WorkerLifecycle entries — this keeps
+    // submitJob MUST NOT create or mutate WorkerLifecycle entries -- this keeps
     // job submission and worker orchestration responsibilities separated.
   return { jobId: job.id, existing: false };
 }

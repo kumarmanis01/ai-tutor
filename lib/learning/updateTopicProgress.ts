@@ -7,7 +7,7 @@
  * Concurrency safety (RISK-02):
  *   Uses atomic SQL (INSERT ... ON CONFLICT DO UPDATE) with
  *   mastery = LEAST(1, GREATEST(0, mastery + delta)). No read-modify-write
- *   race — two concurrent updates both apply correctly.
+ *   race -- two concurrent updates both apply correctly.
  *
  * Dual-write (Phase 3):
  *   Both StudentTopicProgress and StudentTopicMastery are updated inside a
@@ -85,7 +85,7 @@ export async function updateStudentTopicProgress(
 
   // Single transaction: StudentTopicProgress (atomic SQL) + StudentTopicMastery (upsert).
   await prisma.$transaction(async (tx) => {
-    // 1. Atomic upsert on StudentTopicProgress — preserves concurrent-update safety.
+    // 1. Atomic upsert on StudentTopicProgress -- preserves concurrent-update safety.
     await tx.$executeRaw(
       Prisma.sql`
         INSERT INTO "StudentTopicProgress" ("id", "studentId", "topicId", "mastery", "practiceCount", "lastStudiedAt", "updatedAt")
@@ -99,7 +99,7 @@ export async function updateStudentTopicProgress(
       `,
     );
 
-    // 2. Upsert StudentTopicMastery — keeps mastery table consistent with progress.
+    // 2. Upsert StudentTopicMastery -- keeps mastery table consistent with progress.
     //    accuracy reflects this session's performance; questionsAttempted accumulates.
     await tx.studentTopicMastery.upsert({
       where: { studentId_topicId: { studentId, topicId } },

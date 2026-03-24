@@ -120,7 +120,7 @@ const SEEDS: SeedMisconception[] = [
     chapterName: 'Chemical Reactions',
     name: 'Atoms disappear or appear in reactions',
     description: 'Student thinks atoms can vanish or appear in a chemical equation without balancing.',
-    triggerPatterns: ['atoms disappear', 'extra atoms after reaction', 'don’t need to balance equation'],
+    triggerPatterns: ['atoms disappear', 'extra atoms after reaction', 'don't need to balance equation'],
     correction:
       'In a chemical reaction, atoms are rearranged but not created or destroyed. Equations must be balanced so that the number of each type of atom is the same on both sides.',
   },

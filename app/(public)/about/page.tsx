@@ -12,7 +12,7 @@ export default function AboutPage() {
       </p>
       <p className="mb-4">
         Our mission is to empower learners worldwide by providing instant, AI-powered answers and
-        explanations in your preferred language. Whether you’re a student, professional, or lifelong
+        explanations in your preferred language. Whether you're a student, professional, or lifelong
         learner, Spinzy Academy is here to support your journey.
       </p>
       <h2 className="text-xl font-semibold mt-6 mb-2">Why Choose Spinzy Academy?</h2>

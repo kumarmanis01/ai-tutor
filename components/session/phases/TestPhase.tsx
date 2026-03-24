@@ -1,7 +1,7 @@
 'use client';
 /**
  * FILE OBJECTIVE:
- * - Phase 4: TEST — All questions at once, no hints, submit at end.
+ * - Phase 4: TEST -- All questions at once, no hints, submit at end.
  * - Uses useTestQuestions hook for answers state management.
  * - TutorTipPanel shown with test-specific tips.
  *
@@ -77,7 +77,7 @@ function TestResults({ result }: { result: SubmitActionResult }) {
               {r.isCorrect ? '✓' : '✗'}
             </span>
             <div>
-              <span className="text-muted-foreground">Q{i + 1} — </span>
+              <span className="text-muted-foreground">Q{i + 1} -- </span>
               {r.isCorrect ? (
                 <span className="text-green-700 dark:text-green-400">Correct</span>
               ) : (
@@ -187,7 +187,7 @@ export function TestPhase({
                 ) : (
                   <input
                     type="text"
-                    placeholder="Type your answer…"
+                    placeholder="Type your answer..."
                     value={answers[question.id] ?? ''}
                     onChange={(e) => setAnswer(question.id, e.target.value)}
                     className="w-full px-4 py-2.5 border border-border rounded-lg text-sm bg-background focus:outline-none focus:ring-2 focus:ring-primary/30"

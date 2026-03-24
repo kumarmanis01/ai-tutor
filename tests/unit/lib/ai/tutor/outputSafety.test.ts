@@ -48,7 +48,7 @@ describe('checkOutputSafety', () => {
   test('Response containing personal advice pattern → replacement, LOW event', () => {
     const res = checkOutputSafety('Should I break up with my girlfriend?', ctx)
     expectOneUnsafeEvent(res, 'LOW')
-    expect(res.text).toBe("That's outside what I can help with. I'm here for your studies — what shall we work on?")
+    expect(res.text).toBe("That's outside what I can help with. I'm here for your studies -- what shall we work on?")
   })
 
   test('Multiple categories matched → highest severity replacement, one event per matched category', () => {

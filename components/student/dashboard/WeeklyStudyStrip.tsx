@@ -1,9 +1,9 @@
 'use client';
 
 /**
- * WeeklyStudyStrip — v2
+ * WeeklyStudyStrip -- v2
  *
- * 7-day Mon–Sun activity grid.
+ * 7-day Mon-Sun activity grid.
  *   - Filled purple (#534AB7) = session completed that day
  *   - Teal ring (#1D9E75)    = today
  *   - Grey                   = no session (future or past)
@@ -65,7 +65,7 @@ export default function WeeklyStudyStrip({ data: initialData }: WeeklyStudyStrip
 
   const { days, sessionCountThisWeek, weeklyGoal = 5 } = data;
 
-  // Today's index (Mon=0 … Sun=6)
+  // Today's index (Mon=0 ... Sun=6)
   const todayDow = new Date().getUTCDay();
   const todayIdx = todayDow === 0 ? 6 : todayDow - 1;
 

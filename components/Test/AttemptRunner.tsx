@@ -50,7 +50,7 @@ export default function AttemptRunner(props: { attemptId: string; initialQuestio
           onClick={submit}
           disabled={submitting}
         >
-          {submitting ? 'Submitting…' : 'Submit Answers'}
+          {submitting ? 'Submitting...' : 'Submit Answers'}
         </button>
       </div>
       <ol className="mt-3 space-y-4">

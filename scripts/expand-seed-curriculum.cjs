@@ -76,7 +76,7 @@ const prisma = new PrismaClient();
         chapters.push(chapter);
       }
 
-      // Ensure 10 topics per subject — distribute across chapters
+      // Ensure 10 topics per subject -- distribute across chapters
       const TOPICS_PER_SUBJECT = 10;
       const topicsPerChapter = [4, 3, 3]; // sums to 10
       let topicGlobalIndex = 1;
@@ -99,7 +99,7 @@ const prisma = new PrismaClient();
           const existingCount = await prisma.question.count({ where: { prompt: { contains: `__seed:${topic.slug}:` } } });
           const needed = Math.max(0, 5 - existingCount);
           for (let qn = 1; qn <= needed; qn++) {
-            const prompt = `__seed:${topic.slug}:Q${qn} — What is ${topic.name} question ${qn}?`;
+            const prompt = `__seed:${topic.slug}:Q${qn} -- What is ${topic.name} question ${qn}?`;
             const options = ['A', 'B', 'C', 'D'].map((o, idx) => ({ key: o, text: `Option ${o}` }));
             await prisma.question.create({ data: { subject: subject.name, chapter: chapter.name, grade: String(GRADE), board: board.name, type: 'mcq', prompt, choices: JSON.stringify(options), correctAnswer: 'A' } });
           }

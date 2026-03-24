@@ -61,7 +61,7 @@ export type EmptyStatePreset = keyof typeof icons;
 export interface EmptyStateProps {
   /** Built-in icon preset. Ignored when `icon` is provided. */
   preset?: EmptyStatePreset;
-  /** Custom icon node — overrides preset icon. */
+  /** Custom icon node -- overrides preset icon. */
   icon?: React.ReactNode;
   title: string;
   subtitle?: string;

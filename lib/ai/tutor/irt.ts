@@ -1,5 +1,5 @@
 /**
- * 3PL IRT and theta-update logic. Pure functions only — no I/O, no side effects.
+ * 3PL IRT and theta-update logic. Pure functions only -- no I/O, no side effects.
  */
 
 export interface IRTParams {
@@ -68,7 +68,7 @@ export function updateTheta(params: IRTParams, isCorrect: boolean): IRTUpdateRes
 }
 
 /**
- * Convert theta to mastery score 0.0–1.0.
+ * Convert theta to mastery score 0.0-1.0.
  * mastery = 1 / (1 + exp(-0.8 * theta))
  *
  * @param theta - IRT ability estimate.

@@ -4,7 +4,7 @@ import crypto from 'crypto';
 import { getServerSessionForHandlers } from '@/lib/session';
 import { prisma } from '@/lib/prisma';
 import { SessionUser } from '@/lib/types';
-import nodemailer from 'nodemailer';
+import { sendMail } from '@/lib/mailer';
 import { logApiUsage } from '@/utils/logApiUsage';
 
 async function sendPaymentSuccessEmail(
@@ -14,30 +14,13 @@ async function sendPaymentSuccessEmail(
   billingCycle: string,
   amount: number,
 ) {
-  const transporter = nodemailer.createTransport({
-    host: process.env.EMAIL_SERVER_HOST,
-    port: Number(process.env.EMAIL_SERVER_PORT),
-    secure: true,
-    requireTLS: true,
-    tls: { ciphers: 'SSLv3' },
-    auth: {
-      user: process.env.EMAIL_SERVER_USER,
-      pass: process.env.EMAIL_SERVER_PASSWORD,
-    },
-    debug: true,
-  });
-
-  await transporter.sendMail({
-    from:
-      process.env.EMAIL_FROM_NOREPLY ||
-      process.env.EMAIL_FROM ||
-      `"Spinzy Academy" <${process.env.EMAIL_SERVER_USER}>`,
+  await sendMail({
     to,
     subject: 'Payment Successful - Spinzy Academy',
     html: `
       <h2 style="color:#2d6cdf;">Thank You for Your Payment!</h2>
       <p>Hi ${name},</p>
-      <p>We’re excited to confirm that your payment for the <strong>${plan}</strong> plan (${billingCycle}) has been received successfully.</p>
+      <p>We're excited to confirm that your payment for the <strong>${plan}</strong> plan (${billingCycle}) has been received successfully.</p>
       <p>
         <strong>Amount Paid:</strong> ₹${amount}<br>
         <strong>Plan:</strong> ${plan}<br>

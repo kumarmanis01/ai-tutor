@@ -3,7 +3,7 @@
  *
  * Server component. Parent role required.
  * Verifies the studentId is actually linked to this parent.
- * NO session transcript access — no message content loaded.
+ * NO session transcript access -- no message content loaded.
  *
  * Route: /parent/progress/[studentId]
  */
@@ -58,7 +58,7 @@ export default async function ParentProgressDetailPage({
       where: { id: studentId },
       select: { name: true, grade: true, board: true, subjects: true },
     }),
-    // Sessions last 7 days — NO message/transcript fields
+    // Sessions last 7 days -- NO message/transcript fields
     prisma.structuredSession.findMany({
       where: {
         studentId,

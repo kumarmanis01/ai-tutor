@@ -1,8 +1,8 @@
 /**
- * TestScoreHistory — table of last 10 completed sessions for the progress page.
+ * TestScoreHistory -- table of last 10 completed sessions for the progress page.
  *
  * Columns: Date | Topic | Score | Time spent
- * Score of null (meta.score not set) renders as "—".
+ * Score of null (meta.score not set) renders as "--".
  * Empty state includes a CTA to start the first session.
  *
  * EDIT LOG:
@@ -15,7 +15,7 @@ export interface SessionRow {
   id: string;
   date: string;        // ISO string
   topicName: string;
-  score: number | null; // 0–100, or null if not recorded
+  score: number | null; // 0-100, or null if not recorded
   durationMin: number;
 }
 
@@ -86,7 +86,7 @@ export default function TestScoreHistory({ sessions }: TestScoreHistoryProps) {
                         {row.score}%
                       </span>
                     ) : (
-                      <span className="text-gray-300 dark:text-gray-600">—</span>
+                      <span className="text-gray-300 dark:text-gray-600">--</span>
                     )}
                   </td>
                   <td className="py-2.5 text-right text-xs text-gray-400 dark:text-gray-500 whitespace-nowrap">

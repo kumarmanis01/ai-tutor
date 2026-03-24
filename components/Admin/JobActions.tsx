@@ -56,20 +56,20 @@ export default function JobActions({ jobId, status, onDone }: Props) {
     <div className="flex items-center gap-3">
       {canRetry && (
         <button className="px-3 py-1 bg-green-600 text-white rounded disabled:opacity-50" onClick={() => confirmAndRun('retry')} disabled={loading}>
-          {loading ? 'Working…' : 'Retry'}
+          {loading ? 'Working...' : 'Retry'}
         </button>
       )}
 
       {/* Requeue: for failed jobs, allow re-enqueueing the hydrator/worker */}
       {st === 'FAILED' && (
         <button className="px-3 py-1 bg-yellow-600 text-white rounded disabled:opacity-50" onClick={() => confirmAndRun('requeue')} disabled={loading}>
-          {loading ? 'Working…' : 'Requeue'}
+          {loading ? 'Working...' : 'Requeue'}
         </button>
       )}
 
       {canCancel && (
         <button className="px-3 py-1 bg-red-600 text-white rounded disabled:opacity-50" onClick={() => confirmAndRun('cancel')} disabled={loading}>
-          {loading ? 'Working…' : 'Cancel'}
+          {loading ? 'Working...' : 'Cancel'}
         </button>
       )}
 

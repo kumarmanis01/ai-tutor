@@ -160,7 +160,7 @@ async function seedAttemptForQuestion(genTestId, questionId, userId) {
 }
 
 async function simulateRandomPracticeLoop() {
-  console.log('Chaos simulation starting — connecting to server and DB');
+  console.log('Chaos simulation starting -- connecting to server and DB');
 
   // CLI mode handling
   const rawMode = (process.argv.find((a) => a.startsWith('--mode=')) || '').split('=')[1] || 'random';
@@ -173,12 +173,12 @@ async function simulateRandomPracticeLoop() {
     if (!ping) throw new Error('no response');
     console.log(`[ok] Server reachable at ${BASE_URL}`);
   } catch (err) {
-    fail(`Server not reachable at ${BASE_URL} — start server before running`);
+    fail(`Server not reachable at ${BASE_URL} -- start server before running`);
     return 1;
   }
 
   if (!NEXTAUTH_SECRET) {
-    fail('NEXTAUTH_SECRET not set — cannot forge session cookies');
+    fail('NEXTAUTH_SECRET not set -- cannot forge session cookies');
     return 1;
   }
 
@@ -248,7 +248,7 @@ async function simulateRandomPracticeLoop() {
 
   const allTopics = await getOrderedTopicsForStudent(userId);
   if (!allTopics || allTopics.length === 0) {
-    fail('No topics returned for bootstrap user — aborting');
+    fail('No topics returned for bootstrap user -- aborting');
     return 1;
   }
 
@@ -269,7 +269,7 @@ async function simulateRandomPracticeLoop() {
       const subject = topic.chapter.subject.name;
       const chapterName = topic.chapter.name;
 
-      // 1) GET next-action — record current engine decision
+      // 1) GET next-action -- record current engine decision
       const before = await apiGet('/api/home/next-action', cookie);
       if (before.status !== 200) throw new Error(`next-action HTTP ${before.status}`);
       const actionBefore = before.body?.action || {};
@@ -349,7 +349,7 @@ async function simulateRandomPracticeLoop() {
           }
         }
       } else {
-        // topic or rule changed — start a new consecutive sequence
+        // topic or rule changed -- start a new consecutive sequence
         oscillationState.topicId = record.topicId;
         oscillationState.ruleId = record.ruleId;
         oscillationState.count = (record.accuracy ?? 0) >= 0.6 ? 1 : 0;
@@ -394,7 +394,7 @@ async function simulateRandomPracticeLoop() {
   }
 
   // Final reporting
-  console.log('\nChaos simulation complete — summarizing results');
+  console.log('\nChaos simulation complete -- summarizing results');
   const finalAction = await apiGet('/api/home/next-action', cookie);
   console.log('Final engine response:', finalAction.status === 200 ? finalAction.body?.action : `HTTP ${finalAction.status}`);
 
@@ -427,7 +427,7 @@ async function simulateRandomPracticeLoop() {
           if (!model || typeof model[fnName] !== 'function') return null;
           return await model[fnName](params);
         } catch (err) {
-          console.warn(`Cleanup: ${fnName} failed on model —`, err?.message || err);
+          console.warn(`Cleanup: ${fnName} failed on model --`, err?.message || err);
           return null;
         }
       };
@@ -472,7 +472,7 @@ async function simulateRandomPracticeLoop() {
       }
     }
   } catch (e) {
-    // Never let cleanup throw — log and continue
+    // Never let cleanup throw -- log and continue
     console.warn('Cleanup warning (non-fatal):', e?.message || e);
   }
 

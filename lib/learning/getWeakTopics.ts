@@ -59,7 +59,7 @@ export interface WeakTopicWithName extends WeakTopic {
 
 /**
  * Returns up to 5 weak topics (mastery < 0.4) with their display names.
- * No practiceCount gate — used for the dashboard WeakTopicsCard.
+ * No practiceCount gate -- used for the dashboard WeakTopicsCard.
  */
 export async function getWeakTopicsWithNames(studentId: string): Promise<WeakTopicWithName[]> {
   const rows = await prisma.studentTopicProgress.findMany({

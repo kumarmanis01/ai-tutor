@@ -7,7 +7,7 @@ export function TestsUpcoming() {
     <div className="space-y-2">
       <h2 className="text-sm font-semibold">Upcoming</h2>
       {loading && upcoming.length === 0 ? (
-        <div className="text-sm text-muted-foreground">Loading…</div>
+        <div className="text-sm text-muted-foreground">Loading...</div>
       ) : (
         <div className="space-y-2">
           {upcoming.map((t) => (

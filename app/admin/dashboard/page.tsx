@@ -92,7 +92,7 @@ export default async function AdminDashboardPage() {
 
   const costLabel = metrics.latestCostMetric
     ? `$${metrics.latestCostMetric.totalCostUsd.toFixed(4)} (${metrics.latestCostMetric.date.toISOString().slice(0, 10)})`
-    : '—'
+    : '--'
 
   return (
     <div>

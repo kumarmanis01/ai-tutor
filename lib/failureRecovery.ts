@@ -12,7 +12,7 @@
 
 import { prisma } from './prisma';
 import { logger } from './logger';
-// Type matches Prisma enum — defined inline to avoid build dependency on prisma generate
+// Type matches Prisma enum -- defined inline to avoid build dependency on prisma generate
 type RecoveryNudgeType = 'gentle_nudge' | 'easy_task' | 'fresh_start';
 
 const THRESHOLDS: { days: number; nudgeType: RecoveryNudgeType }[] = [
@@ -237,7 +237,7 @@ function getRecoveryMessage(nudgeType: RecoveryNudgeType, inactiveDays: number):
     case 'gentle_nudge':
       return 'Hey! We noticed you\'ve been away. Even 10 minutes of learning today can keep your progress going.';
     case 'easy_task':
-      return `It's been ${inactiveDays} days. We've prepared a super easy warm-up just for you — no pressure!`;
+      return `It's been ${inactiveDays} days. We've prepared a super easy warm-up just for you -- no pressure!`;
     case 'fresh_start':
       return 'Welcome back! We\'ve reset your streak so you can start fresh. Here\'s an easy task to get going again.';
     default:

@@ -1,11 +1,11 @@
 /**
- * Per-subject progress page — /student/progress/[subjectId]
+ * Per-subject progress page -- /student/progress/[subjectId]
  *
  * Server component. Linked from SubjectReadinessCard on the dashboard.
  * Shows the AI narrative, chapter mastery breakdown for this specific subject,
  * and session history filtered to sessions within that subject.
  *
- * Never paywalled — all students see this.
+ * Never paywalled -- all students see this.
  *
  * EDIT LOG:
  * - 2026-03-15 | claude | created for Task 29 progress report page
@@ -181,11 +181,11 @@ export default async function SubjectProgressPage({ params }: Props) {
       </Link>
 
       <h1 className="text-xl font-bold text-gray-900 dark:text-gray-50 mb-6">
-        {subjectDef.name} — Progress
+        {subjectDef.name} -- Progress
       </h1>
 
       <div className="flex flex-col gap-6 md:flex-row md:items-start">
-        {/* Left column — narrative + chart (60%) */}
+        {/* Left column -- narrative + chart (60%) */}
         <div className="flex flex-col gap-6 md:w-3/5">
           <AiNarrativeWidget />
           <SessionsChart
@@ -195,7 +195,7 @@ export default async function SubjectProgressPage({ params }: Props) {
           />
         </div>
 
-        {/* Right column — chapter mastery + session history (40%) */}
+        {/* Right column -- chapter mastery + session history (40%) */}
         <div className="flex flex-col gap-6 md:w-2/5">
           <ChapterMasteryBars subjects={subjectMasteryData} />
           <TestScoreHistory sessions={sessionRows} />

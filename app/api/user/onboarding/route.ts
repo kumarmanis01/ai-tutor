@@ -44,8 +44,9 @@ export async function POST(req: NextRequest) {
     const gradeRaw = (typeof body.class_grade === 'number' || typeof body.class_grade === 'string') ? body.class_grade : body.grade;
     const grade = gradeRaw !== undefined && gradeRaw !== null ? String(gradeRaw) : undefined;
     const board = typeof body.board === 'string' ? body.board : undefined;
+    // Normalise subject slugs to lowercase to prevent 'Mathematics' vs 'mathematics' mismatch downstream
     const subjects = Array.isArray(body.subjects)
-      ? [...new Set((body.subjects as any[]).map((s) => (s == null ? '' : String(s))).filter((s) => s.length > 0))]
+      ? [...new Set((body.subjects as any[]).map((s) => (s == null ? '' : String(s).toLowerCase().replace(/\s+/g, '-'))).filter((s) => s.length > 0))]
       : undefined;
     const preferredLanguage = typeof body.preferred_language === 'string' ? body.preferred_language : undefined;
     const token = typeof body.token === 'string' ? body.token : undefined;
@@ -63,15 +64,13 @@ export async function POST(req: NextRequest) {
     }
 
     // Enforce required fields for onboarding
-    // name: body value takes precedence; fall back to existing DB value — only error if both absent (checked post-lookup below)
-    // age:  optional — if absent from body, skip without error
     const fieldErrors: Record<string, string> = {};
     if (!grade || String(grade).trim() === '') fieldErrors.class_grade = 'Class is required';
     if (!board || String(board).trim() === '') fieldErrors.board = 'Board is required';
     if (!preferredLanguage || String(preferredLanguage).trim() === '') fieldErrors.preferred_language = 'Preferred language is required';
     if (!subjects || subjects.length === 0) fieldErrors.subjects = 'Select at least 1 subject';
     if (subjects && subjects.length > 6) fieldErrors.subjects = 'You can select up to 6 subjects';
-    // Parent email is collected in a separate post-onboarding step — not required here.
+    // Parent email is collected in a separate post-onboarding step -- not required here.
     // Under-DPDP_MINOR_AGE handling sets accountStatus below after the DB save.
     if (Object.keys(fieldErrors).length) {
       res = NextResponse.json({ error: 'validation_error', fieldErrors }, { status: 400 });
@@ -157,18 +156,7 @@ export async function POST(req: NextRequest) {
         userId = resolvedUserId as string;
       }
 
-      // Name fallback: body name takes precedence; if absent, existing DB name is kept.
-      // Error only when body name is empty AND DB record has no name yet.
-      if (existingById) {
-        const existingName = (existingById.name ?? '').trim();
-        if (!name && !existingName) {
-          res = NextResponse.json({ error: 'validation_error', fieldErrors: { name: 'Name is required' } }, { status: 400 });
-          logger.logAPI(req, res, { className: 'UserOnboardingAPI', methodName: 'POST' }, start);
-          return res;
-        }
-      }
-
-      // grade is immutable after first save — never accept from client
+      // grade is immutable after first save -- never accept from client
       const gradeRow = existingById ?? await prisma.user.findUnique({ where: { id: userId }, select: { grade: true } }).catch(() => null);
       if (gradeRow?.grade != null) {
         delete updates.grade
@@ -244,7 +232,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Under-DPDP_MINOR_AGE: set pending_parent_verification so the ParentOTPGate
-    // overlay handles it after onboarding. Do NOT block here — return 200 and let
+    // overlay handles it after onboarding. Do NOT block here -- return 200 and let
     // the client navigate forward; the gate overlay intercepts the next page load.
     if (age != null && age < DPDP_MINOR_AGE) {
       const fresh = await prisma.user.findUnique({
@@ -256,7 +244,7 @@ export async function POST(req: NextRequest) {
           where: { id: updatedUser.id },
           data: { accountStatus: 'pending_parent_verification' },
         }).catch(() => {});
-        logger.info('/api/user/onboarding: under-DPDP age — accountStatus set to pending_parent_verification', {
+        logger.info('/api/user/onboarding: under-DPDP age -- accountStatus set to pending_parent_verification', {
           className: 'api.user.onboarding', methodName: 'POST', id: updatedUser.id,
         });
       }

@@ -99,7 +99,7 @@ export async function POST(req: Request) {
         if (byEmail) auditUserId = byEmail.id;
       }
     } catch {
-      // If DB lookup fails for any reason, fall back to null — do not block
+      // If DB lookup fails for any reason, fall back to null -- do not block
       // the approval flow because of auditing lookup problems.
       auditUserId = null;
     }

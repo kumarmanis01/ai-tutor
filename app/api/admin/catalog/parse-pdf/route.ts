@@ -102,7 +102,7 @@ export async function POST(req: NextRequest) {
         const redis = getRedis()
         await redis?.set(`ingest:pending:${subjectId}`, String(embeddingsPending), 'EX', 86400)
       } catch {
-        // Non-fatal — embedding pipeline will scan DB directly
+        // Non-fatal -- embedding pipeline will scan DB directly
       }
     }
 

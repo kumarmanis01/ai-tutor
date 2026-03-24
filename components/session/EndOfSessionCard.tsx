@@ -70,25 +70,25 @@ export function EndOfSessionCard({ topicName, subject: _subject, performance }: 
           <div>
             <dt className="text-muted-foreground">Accuracy</dt>
             <dd className="font-medium text-foreground mt-0.5">
-              {performance?.accuracyPercent != null ? `${performance.accuracyPercent}%` : '—'}
+              {performance?.accuracyPercent != null ? `${performance.accuracyPercent}%` : '--'}
             </dd>
           </div>
           <div>
             <dt className="text-muted-foreground">Practice questions completed</dt>
             <dd className="font-medium text-foreground mt-0.5">
-              {performance?.practiceCompleted != null ? performance.practiceCompleted : '—'}
+              {performance?.practiceCompleted != null ? performance.practiceCompleted : '--'}
             </dd>
           </div>
           <div>
             <dt className="text-muted-foreground">Test questions completed</dt>
             <dd className="font-medium text-foreground mt-0.5">
-              {performance?.testCompleted != null ? performance.testCompleted : '—'}
+              {performance?.testCompleted != null ? performance.testCompleted : '--'}
             </dd>
           </div>
           <div>
             <dt className="text-muted-foreground">Mastery status</dt>
             <dd className="font-medium text-foreground mt-0.5">
-              {performance?.masteryLabel ?? '—'}
+              {performance?.masteryLabel ?? '--'}
             </dd>
           </div>
         </dl>

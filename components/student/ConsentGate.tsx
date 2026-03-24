@@ -1,7 +1,7 @@
 'use client'
 
 /**
- * ConsentGate — DPDP consent overlay (T37)
+ * ConsentGate -- DPDP consent overlay (T37)
  *
  * IMPORTANT: This component is gated behind NEXT_PUBLIC_CONSENT_LIVE.
  * It will NOT render until that env var is set to "true".
@@ -24,7 +24,7 @@ export default function ConsentGate() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  // Feature-gated — renders nothing until lawyer approves copy
+  // Feature-gated -- renders nothing until lawyer approves copy
   if (!CONSENT_LIVE) return null
 
   const bothChecked = dataProcessing && aiInteraction
@@ -66,7 +66,7 @@ export default function ConsentGate() {
           Before we continue
         </h2>
 
-        {/* ⚠️  LEGAL PLACEHOLDER — must be replaced before going live */}
+        {/* ⚠️  LEGAL PLACEHOLDER -- must be replaced before going live */}
         <p className="mb-4 text-sm text-gray-700 dark:text-gray-300">
           Spinzy needs your consent to:
         </p>
@@ -126,7 +126,7 @@ export default function ConsentGate() {
             transition-colors hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-40
             dark:bg-indigo-500 dark:hover:bg-indigo-400"
         >
-          {loading ? 'Saving…' : 'I agree'}
+          {loading ? 'Saving...' : 'I agree'}
         </button>
       </div>
     </div>

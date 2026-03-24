@@ -1,12 +1,12 @@
 /**
- * Taxonomy & Content Readiness — Launch slice (PreLaunch Gap Analysis Task 1).
+ * Taxonomy & Content Readiness -- Launch slice (PreLaunch Gap Analysis Task 1).
  * Seeds:
- * - BoardSubjectConfig for CBSE + ICSE Grade 6–12 (isCore for mandatory subjects).
+ * - BoardSubjectConfig for CBSE + ICSE Grade 6-12 (isCore for mandatory subjects).
  * - BoardChapterWeight for CBSE Grade 10 Maths + Science chapters.
  * - Concept records from existing TopicDef for CBSE Grade 10 Maths + Science
  *   with description, irt_b, bloomLevel, prerequisiteConceptIds, commonlyConfusedWithIds.
  *
- * Run after: seed-ai-content.ts (Board/ClassLevel/SubjectDef/ChapterDef/TopicDef must exist).
+ * Run after: seed-taxonomy.cjs (Board/ClassLevel/SubjectDef must exist).
  * Idempotent: safe to rerun.
  */
 
@@ -51,7 +51,7 @@ async function seedBoardSubjectConfig() {
       }
     }
   }
-  console.log("✅ BoardSubjectConfig seeded for CBSE + ICSE Grade 6–12");
+  console.log("✅ BoardSubjectConfig seeded for CBSE + ICSE Grade 6-12");
 }
 
 /** Placeholder marks per chapter (CBSE Grade 10 style). Replace with official marking scheme. */
@@ -60,7 +60,7 @@ const DEFAULT_CHAPTER_WEIGHT = 8;
 async function seedBoardChapterWeights() {
   const cbse = await prisma.board.findFirst({ where: { slug: "cbse" } });
   if (!cbse) {
-    console.log("⚠️ Board CBSE not found; run seed-ai-content first.");
+    console.log("⚠️ Board CBSE not found; run seed-taxonomy.cjs first.");
     return;
   }
   const class10 = await prisma.classLevel.findFirst({

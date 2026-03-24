@@ -153,6 +153,31 @@ rm -rf "${REPO_ROOT}/dist" || true
 echo "Removed .next/ and dist/"
 
 # ─────────────────────────────────────────────────────────────────────────────
+# 5b. PRE-FLIGHT CHECKS (fast — fail before spending time on a full build)
+# ─────────────────────────────────────────────────────────────────────────────
+step "5b — Pre-flight: smart quote verification"
+python3 scripts/fix-smart-quotes.py
+# Auto-fix any remaining issues (should be zero if pre-commit ran)
+CHANGED=$(git diff --name-only)
+if [ -n "$CHANGED" ]; then
+  echo "WARNING: Smart quotes found and auto-fixed in deploy."
+  echo "These files were not cleaned at commit time:"
+  echo "$CHANGED"
+  echo "Committing fixes automatically..."
+  git add -u
+  git commit -m "fix: auto-fix smart quotes missed in pre-commit"
+fi
+echo "✅ No smart quotes"
+
+step "5c — Pre-flight: TypeScript type check"
+npx tsc --noEmit --project tsconfig.json
+if [ $? -ne 0 ]; then
+  echo "❌ TypeScript errors found. Fix before deploying."
+  exit 1
+fi
+echo "✅ TypeScript clean"
+
+# ─────────────────────────────────────────────────────────────────────────────
 # 6. BUILD
 # ─────────────────────────────────────────────────────────────────────────────
 step "6/11 — Build workers"
@@ -264,6 +289,22 @@ if [ ! -f "${REPO_ROOT}/ecosystem.config.cjs" ]; then
   exit 1
 fi
 
+REQUIRED_VARS="DATABASE_URL REDIS_URL NEXTAUTH_SECRET NEXTAUTH_URL \
+  OPENAI_API_KEY GOOGLE_CLIENT_ID GOOGLE_CLIENT_SECRET RESEND_API_KEY"
+MISSING=""
+for var in $REQUIRED_VARS; do
+  val=$(eval "echo \"\$$var\"")
+  if [ -z "$val" ]; then
+    MISSING="$MISSING $var"
+  fi
+done
+if [ -n "$MISSING" ]; then
+  echo "❌ ERROR: Missing required env vars:$MISSING"
+  echo "   Run: set -o allexport; source .env.production; set +o allexport"
+  exit 1
+fi
+echo "✅ All required env vars present"
+
 pm2 start ecosystem.config.cjs --env production --update-env
 
 # 9b. Redis hardening (idempotent; safe to re-run)
@@ -290,6 +331,25 @@ pm2 set pm2-logrotate:retain 14 2>/dev/null || true
 
 # Systemd startup (survives reboot)
 sudo pm2 startup systemd -u "$(whoami)" --hp "$HOME" 2>/dev/null || true
+
+# Post-deploy: mark stale WorkerLifecycle rows as STOPPED.
+# Any DRAINING/RUNNING row that is not the single most-recent RUNNING row
+# is left over from a previous deploy and should be closed out.
+step "Post-deploy: stale worker cleanup"
+bash "${SCRIPT_DIR}/db-exec.sh" "
+  UPDATE \"WorkerLifecycle\"
+  SET status = 'STOPPED',
+      \"stoppedAt\" = NOW(),
+      \"updatedAt\" = NOW()
+  WHERE status IN ('DRAINING', 'RUNNING')
+  AND id NOT IN (
+    SELECT id FROM \"WorkerLifecycle\"
+    WHERE status = 'RUNNING'
+    ORDER BY \"startedAt\" DESC
+    LIMIT 1
+  );
+"
+echo "OK: Stale worker records cleaned"
 
 # ─────────────────────────────────────────────────────────────────────────────
 # 11. SEED SCRIPTS (optional, --seed flag)

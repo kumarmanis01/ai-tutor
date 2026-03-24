@@ -100,7 +100,7 @@ async function updateDailyStreak(studentId: string, now: Date): Promise<void> {
   if (existing) {
     const lastActive = existing.lastActive;
 
-    // Already counted today — skip update
+    // Already counted today -- skip update
     if (lastActive && lastActive >= todayStart) {
       return;
     }

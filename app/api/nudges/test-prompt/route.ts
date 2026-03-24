@@ -111,7 +111,7 @@ export async function GET(req: NextRequest) {
       });
     }
 
-    // 2. Weekly review nudge — no test in last 5 days
+    // 2. Weekly review nudge -- no test in last 5 days
     const lastTest = recentTestResults[0];
     if (!lastTest || Date.now() - new Date(lastTest.createdAt).getTime() > 5 * 24 * 60 * 60 * 1000) {
       if (lessonProgress.length > 0) {

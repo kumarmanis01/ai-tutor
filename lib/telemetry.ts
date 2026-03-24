@@ -31,7 +31,7 @@ export async function sampleSystemHealth() {
 }
 
 export async function queryMetricSamples(from: Date, to: Date) {
-  // Query samples within range; return as-is for now — aggregation can be done in the API layer
+  // Query samples within range; return as-is for now -- aggregation can be done in the API layer
   const rows = await prisma.systemMetricSample.findMany({ where: { timestamp: { gte: from, lte: to } }, orderBy: { timestamp: 'asc' } });
   return rows;
 }

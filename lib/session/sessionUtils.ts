@@ -1,7 +1,7 @@
 /**
  * FILE OBJECTIVE:
  * - Shared pure utility functions for session UI components.
- * - No React, no server-side imports — safe everywhere.
+ * - No React, no server-side imports -- safe everywhere.
  * - Centralises normalisation logic previously duplicated across phase components.
  *
  * EDIT LOG:
@@ -138,7 +138,7 @@ function extractProseMirrorNodes(nodes: Record<string, unknown>[]): NormalisedSe
 
 // ─── Misc helpers ─────────────────────────────────────────────────────────────
 
-/** Convert a 0–1 mastery score to a percentage label. */
+/** Convert a 0-1 mastery score to a percentage label. */
 export function masteryToPercent(mastery: number): number {
   return Math.round(Math.min(Math.max(mastery, 0), 1) * 100);
 }

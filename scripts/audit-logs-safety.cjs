@@ -78,7 +78,7 @@ function scanFile(filePath) {
         l.startsWith("console.") &&
         !filePath.endsWith(path.join("lib", "logger.ts"))
       ) {
-        violations.push(`${filePath}:${idx + 1} — console.* detected`);
+        violations.push(`${filePath}:${idx + 1} -- console.* detected`);
     }
 
     // Block raw body logging
@@ -88,7 +88,7 @@ function scanFile(filePath) {
       l.includes("JSON.stringify(req") ||
       l.includes("JSON.stringify(request")
     ) {
-      violations.push(`${filePath}:${idx + 1} — raw request body logged`);
+      violations.push(`${filePath}:${idx + 1} -- raw request body logged`);
     }
 
     // Block auth header logging
@@ -96,7 +96,7 @@ function scanFile(filePath) {
       l.includes("authorization") &&
       l.includes("logger")
     ) {
-      violations.push(`${filePath}:${idx + 1} — authorization header logged`);
+      violations.push(`${filePath}:${idx + 1} -- authorization header logged`);
     }
 
     // Block cookies logging
@@ -104,12 +104,12 @@ function scanFile(filePath) {
       l.includes("cookies(") &&
       l.includes("logger")
     ) {
-      violations.push(`${filePath}:${idx + 1} — cookies logged`);
+      violations.push(`${filePath}:${idx + 1} -- cookies logged`);
     }
 
     // Detect real JWT literals
     if (JWT_REGEX.test(l)) {
-      violations.push(`${filePath}:${idx + 1} — JWT literal detected`);
+      violations.push(`${filePath}:${idx + 1} -- JWT literal detected`);
     }
   });
 }

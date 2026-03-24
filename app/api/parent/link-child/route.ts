@@ -76,7 +76,7 @@ export async function POST(req: Request) {
   })
 
   if (existing?.status === 'active') {
-    // Already linked — idempotent
+    // Already linked -- idempotent
   } else if (existing?.status === 'revoked') {
     await prisma.parentStudent.update({
       where: { id: existing.id },

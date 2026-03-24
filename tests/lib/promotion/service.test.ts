@@ -3,7 +3,6 @@ import makePromotionService from '@/lib/promotion/service'
 describe('Promotion service', () => {
   const prisma: any = {
     promotionCandidate: { findUnique: jest.fn(), update: jest.fn() },
-    publishedOutput: { deleteMany: jest.fn(), create: jest.fn() },
     $transaction: jest.fn()
   }
 
@@ -25,18 +24,15 @@ describe('Promotion service', () => {
     await expect(svc.approveCandidate('pc2', 'admin')).rejects.toThrow('candidate already rejected')
   })
 
-  test('approveCandidate creates published output and updates candidate', async () => {
+  test('approveCandidate updates candidate status to APPROVED', async () => {
     prisma.$transaction.mockImplementation(async (fn: any) => fn(prisma))
     const cand = { id: 'pc1', scope: 'LESSON', scopeRefId: 'l1', outputRef: 'o1', status: 'PENDING' }
     prisma.promotionCandidate.findUnique.mockResolvedValue(cand)
-    prisma.publishedOutput.deleteMany.mockResolvedValue({ count: 0 })
-    prisma.publishedOutput.create.mockResolvedValue({ id: 'pub1', outputRef: 'o1' })
     prisma.promotionCandidate.update.mockResolvedValue({ id: 'pc1', status: 'APPROVED' })
 
-    const published = await svc.approveCandidate('pc1', 'admin', { note: 'ok' })
-    expect(prisma.publishedOutput.create).toHaveBeenCalled()
+    const approved = await svc.approveCandidate('pc1', 'admin', { note: 'ok' })
     expect(prisma.promotionCandidate.update).toHaveBeenCalledWith({ where: { id: 'pc1' }, data: expect.objectContaining({ status: 'APPROVED' }) })
-    expect(published.id).toBe('pub1')
+    expect(approved.id).toBe('pc1')
   })
 
   test('rejectCandidate updates candidate and audits', async () => {

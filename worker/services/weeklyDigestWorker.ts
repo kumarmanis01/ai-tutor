@@ -1,5 +1,5 @@
 /**
- * Weekly parent digest worker — T39
+ * Weekly parent digest worker -- T39
  *
  * BullMQ processor for WEEKLY_DIGEST_QUEUE_NAME jobs.
  *
@@ -8,7 +8,7 @@
  *   2. Call GPT-4o-mini for a 2-sentence AI narrative
  *   3. Send email via lib/mailer.ts
  *
- * Never throws — logs and continues on per-parent failures.
+ * Never throws -- logs and continues on per-parent failures.
  */
 
 import { prisma } from '../../lib/prisma.js'

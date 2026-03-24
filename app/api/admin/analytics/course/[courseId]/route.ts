@@ -20,7 +20,7 @@ export async function GET(_req: Request, ctx: any) {
     take: 365,
   })
 
-  // Return only aggregated fields — never raw events
+  // Return only aggregated fields -- never raw events
   const sanitized = aggregates.map((a: any) => ({
     day: a.day,
     totalViews: a.totalViews,

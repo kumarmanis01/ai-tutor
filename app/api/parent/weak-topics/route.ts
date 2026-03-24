@@ -3,7 +3,7 @@ export const dynamic = 'force-dynamic';
 /**
  * FILE OBJECTIVE:
  * - Returns up to 5 weak topics for a linked student.
- * - A topic is "weak" when mastery < 0.4 AND practiceCount > 5 — meaning the
+ * - A topic is "weak" when mastery < 0.4 AND practiceCount > 5 -- meaning the
  *   student has practised the topic enough for the low mastery to be meaningful,
  *   not just noise from a first attempt.
  * - Results are sorted by mastery ascending so the most-struggling topics appear
@@ -43,11 +43,11 @@ export const dynamic = 'force-dynamic';
  *
  *   That would let Postgres evaluate the practiceCount predicate from the index
  *   page alone, avoiding heap fetches entirely for eliminated rows.
- *   Not needed at the current threshold — heap fetches for ≤ 5 rows are trivial.
+ *   Not needed at the current threshold -- heap fetches for ≤ 5 rows are trivial.
  *
  * SECURITY:
  * - Caller must be authenticated.
- * - parentId–studentId link is verified before any student data is read.
+ * - parentId-studentId link is verified before any student data is read.
  *
  * EDIT LOG:
  * - 2026-03-08 | claude | created for Parent Progress Dashboard
@@ -75,7 +75,7 @@ const MIN_PRACTICE_COUNT = 5;
 /** Mastery scores at or above this value are not considered weak. */
 const WEAK_MASTERY_CEILING = 0.4;
 
-/** Maximum weak topics returned — keeps the parent view focused. */
+/** Maximum weak topics returned -- keeps the parent view focused. */
 const RESULT_LIMIT = 5;
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -92,7 +92,7 @@ interface WeakTopic {
  * GET /api/parent/weak-topics?studentId=<id>
  *
  * Response shape:
- * WeakTopic[]   — ordered by mastery ascending, max 5 items.
+ * WeakTopic[]   -- ordered by mastery ascending, max 5 items.
  *
  * Returns an empty array when no weak topics exist (never null).
  */
@@ -114,8 +114,8 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'studentId is required' }, { status: 400 });
     }
 
-    // ── 3. Parent–student link guard ──────────────────────────────────────────
-    // Resolved via the @@unique([parentId, studentId]) key — O(1) index lookup.
+    // ── 3. Parent-student link guard ──────────────────────────────────────────
+    // Resolved via the @@unique([parentId, studentId]) key -- O(1) index lookup.
     // No student data is read until this passes.
     const link = await prisma.parentStudent.findUnique({
       where: { parentId_studentId: { parentId, studentId } },

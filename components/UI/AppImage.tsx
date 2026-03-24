@@ -152,7 +152,7 @@ function AppImage({
     ...restProps,
   };
 
-  // Avoid duplicate `alt` prop when spreading imageProps — create a copy without alt
+  // Avoid duplicate `alt` prop when spreading imageProps -- create a copy without alt
   const imagePropsNoAlt = { ...imageProps } as Record<string, any>;
   delete imagePropsNoAlt.alt;
 

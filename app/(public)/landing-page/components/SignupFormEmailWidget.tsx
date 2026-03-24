@@ -30,7 +30,7 @@ export default function SignupFormEmailWidget() {
     return (
       <section id="signup-form-widget" className="py-16 md:py-24 bg-gradient-to-br from-primary/5 to-secondary/5">
         <div className="mx-auto px-4 max-w-2xl text-center text-muted-foreground">
-          {status === 'authenticated' ? 'Taking you to your dashboard…' : 'Loading…'}
+          {status === 'authenticated' ? 'Taking you to your dashboard...' : 'Loading...'}
         </div>
       </section>
     );
@@ -154,7 +154,7 @@ export default function SignupFormEmailWidget() {
 
           {emailSent ? (
             <p className="text-center text-sm text-muted-foreground py-2">
-              Check your email — we sent a link to <strong className="text-foreground">{email}</strong>.
+              Check your email -- we sent a link to <strong className="text-foreground">{email}</strong>.
             </p>
           ) : (
             <>
@@ -237,7 +237,7 @@ export default function SignupFormEmailWidget() {
                   disabled={loading}
                   className="w-full py-2.5 text-sm font-medium bg-primary text-primary-foreground rounded-lg hover:opacity-90 disabled:opacity-50 transition-opacity"
                 >
-                  {loading ? '…' : mode === 'signup' ? 'Sign Up' : 'Sign In'}
+                  {loading ? '...' : mode === 'signup' ? 'Sign Up' : 'Sign In'}
                 </button>
               </form>
 

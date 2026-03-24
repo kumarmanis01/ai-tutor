@@ -13,7 +13,7 @@
  *   first submission. Re-submissions (network retries, double-clicks) detect
  *   this field and return the cached result immediately without re-grading or
  *   re-updating mastery. This matches the atomicity level of the rest of the
- *   session engine — no new Prisma table required.
+ *   session engine -- no new Prisma table required.
  *
  *   No schema migration
  *   -------------------
@@ -25,7 +25,7 @@
  *   ----------------
  *   Questions are loaded from the same Question bank query as resolvePractice()
  *   in getPhaseContent.ts (topicId, createdAt desc, take 20). Only answers
- *   whose questionId exists in that set are graded — unknown IDs are skipped.
+ *   whose questionId exists in that set are graded -- unknown IDs are skipped.
  *
  *   Mastery
  *   -------
@@ -91,8 +91,8 @@ interface PracticeResult {
  *
  * Response (200):
  *   {
- *     score: number,            // 0–1
- *     percentage: number,       // 0–100
+ *     score: number,            // 0-1
+ *     percentage: number,       // 0-100
  *     correctAnswers: number,
  *     totalAnswers: number,
  *     results: { questionId, isCorrect, correctAnswer }[],
@@ -155,7 +155,7 @@ export async function POST(
 
   // ── Idempotency gate ──────────────────────────────────────────────────────
   // If a practiceResult is already stored in meta, return it without
-  // re-grading or re-updating mastery — covers network retries and
+  // re-grading or re-updating mastery -- covers network retries and
   // double-submissions regardless of the current session phase.
 
   if (sessionMeta.practiceResult) {
@@ -192,11 +192,11 @@ export async function POST(
 
   // ── Load practice questions ───────────────────────────────────────────────
   // Same source as resolvePractice() in getPhaseContent.ts.
-  // take: 20 (generous) — only submitted questionIds that exist in the map
+  // take: 20 (generous) -- only submitted questionIds that exist in the map
   // are graded; unknown IDs are silently skipped.
 
   const practiceQuestions = await prisma.question.findMany({
-    // quarantined questions excluded — do not remove this filter
+    // quarantined questions excluded -- do not remove this filter
     where: { topicId: session.topicId, status: 'ACTIVE' },
     orderBy: { createdAt: 'desc' },
     take: 20,
@@ -215,7 +215,7 @@ export async function POST(
 
   for (const ans of body.answers) {
     const question = questionMap.get(ans.questionId);
-    if (!question) continue; // unknown question — skip silently
+    if (!question) continue; // unknown question -- skip silently
 
     totalCount++;
     const isCorrect = gradeQuestion(question, ans.answer);
@@ -238,7 +238,7 @@ export async function POST(
   // that case both writes compute the same grade from the same answers and
   // the second write is a benign overwrite. updateStudentTopicProgress is
   // called inside the same try block so it is only called by the writer
-  // that successfully updates mastery — fire-and-forget means failures
+  // that successfully updates mastery -- fire-and-forget means failures
   // are logged but do not roll back the meta write.
 
   const practiceResult: PracticeResult = {
@@ -272,7 +272,7 @@ export async function POST(
     score,
   });
 
-  // ── Update topic mastery — fire-and-forget ────────────────────────────────
+  // ── Update topic mastery -- fire-and-forget ────────────────────────────────
   // activityType PRACTICE carries weight 0.1. Non-fatal: logged but never
   // propagated so a mastery write failure cannot fail the submission.
 
@@ -293,7 +293,7 @@ export async function POST(
     );
   }
 
-  // ── Session events — fire-and-forget ──────────────────────────────────────
+  // ── Session events -- fire-and-forget ──────────────────────────────────────
 
   if (gradedAnswers.length > 0) {
     recordSessionEvents(

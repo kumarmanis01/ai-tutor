@@ -89,7 +89,7 @@ async function dispatchBatch(): Promise<number> {
   const q = getQueue();
 
   for (const row of rows) {
-    // RISK-04: Exceeded max attempts — move to dead-letter, skip dispatch
+    // RISK-04: Exceeded max attempts -- move to dead-letter, skip dispatch
     if (row.attempts >= MAX_ATTEMPTS) {
       await moveToDeadLetter(row, 'max_attempts_exceeded');
       continue;
@@ -122,7 +122,7 @@ async function dispatchBatch(): Promise<number> {
       logger.error('[outbox-dispatcher] failed to dispatch row', { outboxId: row.id, error: err });
       const newAttempts = row.attempts + 1;
 
-      // RISK-04: Exceeded max attempts after this failure — move to dead-letter
+      // RISK-04: Exceeded max attempts after this failure -- move to dead-letter
       if (newAttempts >= MAX_ATTEMPTS) {
         const reason = err instanceof Error ? err.message : String(err);
         await moveToDeadLetter(

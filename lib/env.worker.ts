@@ -15,7 +15,7 @@ export function loadEnv() {
     throw new Error(`Missing required environment variables: ${missing.join(', ')}`)
   }
 
-  // No-op otherwise — supervisor is responsible for injecting env.
+  // No-op otherwise -- supervisor is responsible for injecting env.
 }
 
 export default loadEnv

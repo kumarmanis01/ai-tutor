@@ -105,7 +105,7 @@ const StickyHeader = ({ activeSection = '', onSectionChange }: StickyHeaderProps
             </nav>
 
             <div className="flex items-center gap-2 md:gap-3">
-              {/* Login — visible at all screen sizes to logged-out visitors */}
+              {/* Login -- visible at all screen sizes to logged-out visitors */}
               {!session && (
                 <Link
                   href="/auth/signin"
@@ -115,7 +115,7 @@ const StickyHeader = ({ activeSection = '', onSectionChange }: StickyHeaderProps
                 </Link>
               )}
 
-              {/* Start Free — navigates directly to /auth/signup */}
+              {/* Start Free -- navigates directly to /auth/signup */}
               <Link
                 href="/auth/signup"
                 className="px-4 py-2 md:px-6 md:py-2.5 bg-[#534AB7] hover:bg-[#4338A0] text-white rounded-lg text-sm font-semibold transition-colors"

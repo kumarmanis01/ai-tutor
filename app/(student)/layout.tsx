@@ -123,7 +123,7 @@ export default async function StudentLayout({ children }: { children: React.Reac
     !isProfileComplete(profile.data);
 
   // Parent verification is shown as modal (ParentOTPGate); do not redirect to
-  // /student/verify-parent — that page redirects to /dashboard and causes a loop.
+  // /student/verify-parent -- that page redirects to /dashboard and causes a loop.
   const studentName = (session.user as { name?: string })?.name ?? '';
 
   return (

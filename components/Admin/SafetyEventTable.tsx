@@ -7,12 +7,12 @@ import { patchSafetyEventResolved } from '@/hooks/usePatchSafetyEventResolved';
 function truncateMiddle(id: string, n = 8) {
   const s = String(id || '');
   if (s.length <= n) return s;
-  return `${s.slice(0, n)}…`;
+  return `${s.slice(0, n)}...`;
 }
 
 function formatTime(iso: string) {
   const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return '—';
+  if (Number.isNaN(d.getTime())) return '--';
   return d.toLocaleString(undefined, {
     day: '2-digit',
     month: 'short',
@@ -46,8 +46,8 @@ function severityStyle(sev: string) {
 
 function safeInputPreview(e: AdminSafetyEvent) {
   const raw = e.inputPreview ?? '';
-  const s = raw.length > 60 ? `${raw.slice(0, 60)}…` : raw;
-  return s || '—';
+  const s = raw.length > 60 ? `${raw.slice(0, 60)}...` : raw;
+  return s || '--';
 }
 
 export function SafetyEventTable() {
@@ -150,7 +150,7 @@ export function SafetyEventTable() {
               type="text"
               value={studentId}
               onChange={(e) => { setPage(1); setStudentId(e.target.value); }}
-              placeholder="studentId…"
+              placeholder="studentId..."
               aria-label="StudentId filter"
               className="w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 px-3 py-2 text-sm"
             />
@@ -293,7 +293,7 @@ export function SafetyEventTable() {
                             onChange={(ev) => void toggleResolved(e, ev.target.checked)}
                             className="h-4 w-4 rounded border-gray-300"
                           />
-                          {togglingId === e.id ? 'Saving…' : resolved ? 'Yes' : 'No'}
+                          {togglingId === e.id ? 'Saving...' : resolved ? 'Yes' : 'No'}
                         </label>
                       </td>
                     </tr>
@@ -305,13 +305,13 @@ export function SafetyEventTable() {
                             <div>
                               <div className="font-semibold mb-1">Event</div>
                               <div className="font-mono">id: {e.id}</div>
-                              <div className="font-mono">sessionId: {e.sessionId ?? '—'}</div>
-                              <div className="font-mono">turnId: {e.turnId ?? '—'}</div>
+                              <div className="font-mono">sessionId: {e.sessionId ?? '--'}</div>
+                              <div className="font-mono">turnId: {e.turnId ?? '--'}</div>
                             </div>
                             <div>
                               <div className="font-semibold mb-1">Resolution</div>
-                              <div className="font-mono">resolvedAt: {e.resolvedAt ?? '—'}</div>
-                              <div className="font-mono">resolution: {e.resolution ?? '—'}</div>
+                              <div className="font-mono">resolvedAt: {e.resolvedAt ?? '--'}</div>
+                              <div className="font-mono">resolution: {e.resolution ?? '--'}</div>
                             </div>
                           </div>
                         </td>

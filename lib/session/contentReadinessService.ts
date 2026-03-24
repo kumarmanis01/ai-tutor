@@ -9,9 +9,9 @@
  *   - Test questions exist (GeneratedTest with topicId that has GeneratedQuestion children)
  *
  * Return:
- *   READY   — all three content types exist
- *   PARTIAL — at least one exists but not all
- *   MISSING — none exist
+ *   READY   -- all three content types exist
+ *   PARTIAL -- at least one exists but not all
+ *   MISSING -- none exist
  *
  * SessionEngine calls this before startSession() to gate session creation.
  */

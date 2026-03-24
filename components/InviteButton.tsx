@@ -36,7 +36,7 @@ export default function InviteButton() {
 
   const share = async () => {
     if (!link) return;
-    const text = `Join me on Spinzy Academy — get AI tutoring help. Sign up: ${link}`;
+    const text = `Join me on Spinzy Academy -- get AI tutoring help. Sign up: ${link}`;
 
     if (
       typeof navigator !== 'undefined' &&
@@ -47,7 +47,7 @@ export default function InviteButton() {
         await navigator.share({ title: 'Join Spinzy Academy', text, url: link });
         return;
       } catch {
-        // user cancelled or share failed — fall back to web share links
+        // user cancelled or share failed -- fall back to web share links
       }
     }
 

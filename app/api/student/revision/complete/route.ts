@@ -2,15 +2,15 @@
  * POST /api/student/revision/complete
  *
  * Records completion of a revision card session for one concept.
- * Body: { conceptId: string, score: number }   // score = 0.0–1.0
+ * Body: { conceptId: string, score: number }   // score = 0.0-1.0
  *
  * Side effects (all non-blocking / fire-and-forget):
  *   - Awards revision_complete XP (5 XP)
  *   - Calls trackRevisionAndMaybeUpdateStreak() to count toward streak
  *   - If score ≤ 0.8: enqueues a reteach LearningPlanItem via BullMQ
  *
- * Auth: session required — 401 before any DB work.
- * Input: validated with zod-style manual checks — 400 on bad input.
+ * Auth: session required -- 401 before any DB work.
+ * Input: validated with zod-style manual checks -- 400 on bad input.
  */
 
 import { NextResponse } from 'next/server'
@@ -44,14 +44,14 @@ export async function POST(req: Request) {
 
     if (!conceptId || score === null) {
       const res = NextResponse.json(
-        { error: 'conceptId (string) and score (number 0–1) are required' },
+        { error: 'conceptId (string) and score (number 0-1) are required' },
         { status: 400 },
       )
       logger.logAPI(req, res, { className: 'RevisionCompleteAPI', methodName: 'POST' }, start)
       return res
     }
 
-    // Fire-and-forget side effects — none can fail the response.
+    // Fire-and-forget side effects -- none can fail the response.
     void awardXP({ studentId: userId, amount: REVISION_XP, source: 'revision_complete' })
     void trackRevisionAndMaybeUpdateStreak(userId)
 

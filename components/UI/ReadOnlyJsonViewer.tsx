@@ -8,7 +8,7 @@ function isObject(v: any) {
 function shortPreview(v: any) {
   if (Array.isArray(v)) return `[Array(${v.length})]`
   if (isObject(v)) return '{...}'
-  if (typeof v === 'string') return `"${v.length > 80 ? v.slice(0, 80) + '…' : v}"`
+  if (typeof v === 'string') return `"${v.length > 80 ? v.slice(0, 80) + '...' : v}"`
   return String(v)
 }
 

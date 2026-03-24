@@ -1,19 +1,19 @@
 'use client';
 
 /**
- * UpgradeFlow — FreemiumUpgradeGate → PlanSelector → PaymentMethodSelector
+ * UpgradeFlow -- FreemiumUpgradeGate → PlanSelector → PaymentMethodSelector
  *               → PaymentConfirmation → Razorpay → Success | Failure
  *
  * Steps:
- *   'gate'     — headline + "See plans" + "Remind me later"
- *   'plan'     — PlanSelector
- *   'method'   — PaymentMethodSelector
- *   'confirm'  — PaymentConfirmation (locked until terms scrolled)
- *   'success'  — thank-you + redirect to /dashboard
- *   'failure'  — error + retry (max 3x) + support contact
+ *   'gate'     -- headline + "See plans" + "Remind me later"
+ *   'plan'     -- PlanSelector
+ *   'method'   -- PaymentMethodSelector
+ *   'confirm'  -- PaymentConfirmation (locked until terms scrolled)
+ *   'success'  -- thank-you + redirect to /dashboard
+ *   'failure'  -- error + retry (max 3x) + support contact
  *
  * Never mentions referral programme.
- * Razorpay SDK loaded globally via app/providers.tsx — no re-load here.
+ * Razorpay SDK loaded globally via app/providers.tsx -- no re-load here.
  */
 
 import React, { useState, useCallback } from 'react';
@@ -51,7 +51,7 @@ export function UpgradeFlow({ studentName, studentEmail }: UpgradeFlowProps) {
     try {
       await fetch('/api/student/subscription/dismiss', { method: 'POST' });
     } catch {
-      // non-blocking — dismiss is UX-only
+      // non-blocking -- dismiss is UX-only
     }
     // Reload so dashboard shows banner instead of gate
     window.location.reload();
@@ -73,7 +73,7 @@ export function UpgradeFlow({ studentName, studentEmail }: UpgradeFlowProps) {
       }
 
       if (!window.Razorpay) {
-        throw new Error('Payment SDK not loaded — please refresh and try again');
+        throw new Error('Payment SDK not loaded -- please refresh and try again');
       }
 
       const { orderId, amount, keyId } = orderJson as {
@@ -106,7 +106,7 @@ export function UpgradeFlow({ studentName, studentEmail }: UpgradeFlowProps) {
             });
             const verifyJson = await verifyRes.json().catch(() => ({}));
             if (!verifyRes.ok || !verifyJson?.success) {
-              throw new Error('Verification failed — please contact support if you were charged');
+              throw new Error('Verification failed -- please contact support if you were charged');
             }
             setStep('success');
           } catch (err) {
@@ -120,7 +120,7 @@ export function UpgradeFlow({ studentName, studentEmail }: UpgradeFlowProps) {
         modal: {
           ondismiss: () => {
             setPayLoading(false);
-            // User closed modal without paying — stay on confirm step
+            // User closed modal without paying -- stay on confirm step
           },
         },
       };
@@ -155,7 +155,7 @@ export function UpgradeFlow({ studentName, studentEmail }: UpgradeFlowProps) {
           You&apos;ve used all your free sessions
         </h2>
         <p className="mb-4 text-sm text-gray-600 dark:text-gray-300">
-          Keep learning with Teacher Vidya — unlimited AI tutor sessions, personalised to you.
+          Keep learning with Teacher Vidya -- unlimited AI tutor sessions, personalised to you.
         </p>
         <p className="mb-5 text-xl font-bold text-[#534AB7]">From ₹74/month</p>
         <div className="flex flex-col gap-3 sm:flex-row">
@@ -254,7 +254,7 @@ export function UpgradeFlow({ studentName, studentEmail }: UpgradeFlowProps) {
           You&apos;re all set!
         </h2>
         <p className="text-sm text-gray-600 dark:text-gray-300 mb-5">
-          Your subscription is active. Keep learning — Teacher Vidya is ready for you.
+          Your subscription is active. Keep learning -- Teacher Vidya is ready for you.
         </p>
         <a
           href="/dashboard"

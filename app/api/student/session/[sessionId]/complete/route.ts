@@ -14,7 +14,7 @@ async function buildAiInsight(
 ): Promise<string | null> {
   if (!totalQuestions) return null
   const name = conceptName ?? 'this concept'
-  return `You answered ${correctAnswers}/${totalQuestions} questions correctly on ${name} — nice work, keep going.`
+  return `You answered ${correctAnswers}/${totalQuestions} questions correctly on ${name} -- nice work, keep going.`
 }
 
 export async function POST(req: Request, { params }: { params: { sessionId: string } }) {

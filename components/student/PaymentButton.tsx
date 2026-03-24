@@ -57,7 +57,7 @@ export function PaymentButton({
         amount,
         currency: 'INR',
         name: 'Spinzy Academy',
-        description: '₹99/month — Unlimited Sessions',
+        description: '₹99/month -- Unlimited Sessions',
         image: 'https://spinzy.in/logos/logo-razorpay.png',
         order_id: orderId,
         prefill: {
@@ -120,7 +120,7 @@ export function PaymentButton({
           disabled={loading || !sdkReady}
           className="inline-flex w-full items-center justify-center rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm disabled:cursor-not-allowed disabled:bg-gray-300"
         >
-          {loading ? 'Processing…' : 'Upgrade for ₹99/month'}
+          {loading ? 'Processing...' : 'Upgrade for ₹99/month'}
         </button>
         {error && <p className="text-xs text-red-600">{error}</p>}
       </div>

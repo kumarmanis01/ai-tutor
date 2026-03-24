@@ -22,8 +22,8 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-  title: 'Spinzy Academy — Teacher Vidya, Your Child\'s AI Home Tutor',
-  description: 'Meet Teacher Vidya — India\'s AI home tutor for Class 1-12 students. CBSE, ICSE & State Board. Start free at Spinzy Academy.',
+  title: 'Spinzy Academy -- Teacher Vidya, Your Child\'s AI Home Tutor',
+  description: 'Meet Teacher Vidya -- India\'s AI home tutor for Class 1-12 students. CBSE, ICSE & State Board. Start free at Spinzy Academy.',
   manifest: '/manifest.json',
   appleWebApp: {
     capable: true,
@@ -53,7 +53,7 @@ export const metadata: Metadata = {
 
 /**
  * Public shell root layout
- * - Owns the HTML document for all public/marketing routes (/, /about, /pricing …)
+ * - Owns the HTML document for all public/marketing routes (/, /about, /pricing ...)
  * - Renders the public Navbar with auth-aware Login button
  * - Must NOT wrap any student or admin routes
  */
@@ -68,7 +68,7 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
               <GoogleTagManagerClient />
             </Suspense>
             <AppModalClient />
-            {/* Single public navbar — StickyHeader is h-16 mobile / h-[72px] desktop */}
+            {/* Single public navbar -- StickyHeader is h-16 mobile / h-[72px] desktop */}
             <StickyHeader />
             <div className="pt-16 md:pt-[72px]">
               {children}

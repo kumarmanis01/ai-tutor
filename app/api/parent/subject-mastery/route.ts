@@ -46,13 +46,13 @@ export const dynamic = 'force-dynamic';
  * Execution path (Postgres):
  *
  *   Index Scan on "StudentTopicMastery_studentId_masteryLevel_idx"
- *     → equality probe: studentId = $1       (index hit — leading column)
+ *     → equality probe: studentId = $1       (index hit -- leading column)
  *     → heap fetch for every matched row
  *     → GROUP BY subject + AVG(accuracy)     (in-memory hash aggregate)
  *     → ORDER BY subject ASC                 (sort on aggregate output)
  *
  * The studentId probe narrows the scan to this student's rows only.
- * GROUP BY subject then runs in memory over those rows — bounded by how
+ * GROUP BY subject then runs in memory over those rows -- bounded by how
  * many topics the student has attempted (typically tens to low hundreds).
  *
  * Recommended index for optimal performance (not yet in schema):
@@ -68,7 +68,7 @@ export const dynamic = 'force-dynamic';
  *
  * SECURITY:
  * - Caller must be authenticated.
- * - parentId–studentId link verified (O(1) unique-index lookup) before any
+ * - parentId-studentId link verified (O(1) unique-index lookup) before any
  *   student data is read.
  *
  * EDIT LOG:
@@ -89,7 +89,7 @@ const CLASS_NAME = 'ParentSubjectMasteryAPI';
 
 interface SubjectMastery {
   subject: string;    // e.g. "Mathematics"
-  avgAccuracy: number; // 0–1, rounded to 4 d.p.
+  avgAccuracy: number; // 0-1, rounded to 4 d.p.
   topicCount: number;  // how many distinct topics contribute to this average
 }
 
@@ -99,7 +99,7 @@ interface SubjectMastery {
  * GET /api/parent/subject-mastery?studentId=<id>
  *
  * Response shape:
- * SubjectMastery[]  — one entry per subject the student has attempted,
+ * SubjectMastery[]  -- one entry per subject the student has attempted,
  *                     ordered alphabetically.
  *
  * Returns an empty array when the student has no mastery data yet.
@@ -122,7 +122,7 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'studentId is required' }, { status: 400 });
     }
 
-    // ── 3. Parent–student link guard ──────────────────────────────────────────
+    // ── 3. Parent-student link guard ──────────────────────────────────────────
     const link = await prisma.parentStudent.findUnique({
       where: { parentId_studentId: { parentId, studentId } },
       select: { status: true },
@@ -133,7 +133,7 @@ export async function GET(req: NextRequest) {
 
     // ── 4. Per-subject aggregate ──────────────────────────────────────────────
     //
-    // groupBy is Prisma's typed aggregate API — generates a single SQL GROUP BY
+    // groupBy is Prisma's typed aggregate API -- generates a single SQL GROUP BY
     // query. No raw SQL needed here because the grouping key (`subject`) is a
     // plain string column, not a computed expression.
     //
@@ -154,7 +154,7 @@ export async function GET(req: NextRequest) {
     // ── 5. Shape response ─────────────────────────────────────────────────────
     const subjectMastery: SubjectMastery[] = rows.map((r) => ({
       subject:     r.subject,
-      // _avg.accuracy is null when there are no rows — guard with ?? 0
+      // _avg.accuracy is null when there are no rows -- guard with ?? 0
       avgAccuracy: Math.round((r._avg.accuracy ?? 0) * 10_000) / 10_000,
       topicCount:  r._count.topicId,
     }));

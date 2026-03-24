@@ -42,7 +42,7 @@ const VALID_TRANSITIONS: ReadonlyMap<SessionPhase, SessionPhase> = new Map([
 // ─── Error Types ──────────────────────────────────────────────────────────────
 
 export class InvalidTransitionError extends Error {
-  /** Always 400 — the caller supplied an illegal next phase. */
+  /** Always 400 -- the caller supplied an illegal next phase. */
   readonly status = 400;
 
   constructor(from: SessionPhase, to: SessionPhase) {
@@ -99,7 +99,7 @@ export async function transitionSessionPhase(
     throw err;
   }
 
-  // Terminal state — no further transitions are allowed.
+  // Terminal state -- no further transitions are allowed.
   if (session.state === 'COMPLETE') {
     const err = new Error('Session already complete') as Error & { status: number };
     err.status = 409;

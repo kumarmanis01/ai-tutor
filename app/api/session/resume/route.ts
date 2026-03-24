@@ -65,7 +65,7 @@ export async function GET(req: Request) {
       topicName: active.topic.name,
       subject: active.topic.chapter.subject.name,
       chapter: active.topic.chapter.name,
-      /** Canonical phase field — used by ResumeSessionCard for the label. */
+      /** Canonical phase field -- used by ResumeSessionCard for the label. */
       phase: active.state,
       currentPhase: active.state,
       startedAt: active.startedAt.toISOString(),

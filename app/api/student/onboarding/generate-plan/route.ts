@@ -6,7 +6,7 @@
  * Returns { ok: true, firstSubjectId } on success.
  *
  * Body: { examDate?: string | null, studyDaysPerWeek: number }
- * Auth: session required — 401 if missing.
+ * Auth: session required -- 401 if missing.
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -54,21 +54,43 @@ export async function POST(req: NextRequest) {
       where: { id: userId },
       select: { subjects: true, board: true, grade: true },
     });
-    const subjectSlugs: string[] =
-      Array.isArray(user?.subjects)
-        ? (user!.subjects as string[]).filter(Boolean)
-        : [];
 
-    // Resolve subject IDs from slugs
+    // Normalise stored slugs to lowercase to handle capitalised values
+    // e.g. 'Mathematics' -> 'mathematics', 'Science' -> 'science'
+    const normalisedSlugs: string[] = Array.isArray(user?.subjects)
+      ? (user!.subjects as string[])
+          .filter(Boolean)
+          .map((s) => String(s).toLowerCase().replace(/\s+/g, '-'))
+      : [];
+
+    const studentGrade = user?.grade ? Number(user.grade) : null;
+    const studentBoard = user?.board ?? null;
+
+    if (normalisedSlugs.length === 0 || !studentGrade || !studentBoard) {
+      logger.warn('[generate-plan] missing grade/board/subjects -- cannot resolve SubjectDef', {
+        className: 'GeneratePlanAPI',
+        methodName: 'POST',
+        studentId: userId,
+        normalisedSlugs,
+        grade: user?.grade,
+        board: user?.board,
+      });
+    }
+
+    // Resolve subject IDs filtered by student's exact grade + board.
+    // Without the grade+board filter the query would return SubjectDef rows for
+    // the wrong grade (e.g. Grade 1 English for a Grade 6 student) because the
+    // same slug exists for every grade.
     const subjectDefs =
-      subjectSlugs.length > 0
+      normalisedSlugs.length > 0 && studentGrade && studentBoard
         ? await prisma.subjectDef.findMany({
             where: {
-              OR: [
-                { slug: { in: subjectSlugs } },
-                { name: { in: subjectSlugs } },
-              ],
+              slug: { in: normalisedSlugs },
               lifecycle: 'active',
+              class: {
+                grade: studentGrade,
+                board: { slug: { equals: studentBoard, mode: 'insensitive' } },
+              },
             },
             select: { id: true, slug: true },
           })

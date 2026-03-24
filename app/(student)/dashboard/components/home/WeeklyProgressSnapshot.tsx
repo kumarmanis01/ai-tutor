@@ -58,7 +58,7 @@ export function WeeklyProgressSnapshot() {
         </div>
         {weeklyPercent >= 100 && (
           <p className="text-xs text-primary font-medium mt-1">
-            Weekly goal reached — awesome!
+            Weekly goal reached -- awesome!
           </p>
         )}
       </div>

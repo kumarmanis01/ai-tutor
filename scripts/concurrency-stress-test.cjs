@@ -44,7 +44,7 @@ try {
       const host = parsed.hostname;
       dns.lookup(host, (err) => {
         if (err && err.code === 'ENOTFOUND') {
-          console.warn(`Redis host '${host}' not resolvable — falling back to 127.0.0.1`);
+          console.warn(`Redis host '${host}' not resolvable -- falling back to 127.0.0.1`);
           try {
             const fallback = `redis://127.0.0.1:${parsed.port || 6379}`;
             process.env.REDIS_URL = fallback;
@@ -57,7 +57,7 @@ try {
     }
   }
 } catch (e) {
-  // dns unavailable — ignore
+  // dns unavailable -- ignore
 }
 
 const fs = require('fs');
@@ -210,7 +210,7 @@ async function runStudentSimulation(user, cookie) {
         const p = await apiPost('/api/home/complete-action', cookie, payload);
         if (p.status >= 500) requestErrors.push({ user: user.id, path: '/api/home/complete-action', status: p.status, body: p.body });
       } else {
-        // Unknown action — attempt a complete-action safely
+        // Unknown action -- attempt a complete-action safely
         const payload = { id: body && body.id ? body.id : undefined };
         const p = await apiPost('/api/home/complete-action', cookie, payload);
         if (p.status >= 500) requestErrors.push({ user: user.id, path: '/api/home/complete-action', status: p.status, body: p.body });
@@ -229,7 +229,7 @@ async function scanForDuplicateSTM() {
     const rows = await prisma.$queryRawUnsafe(`SELECT "studentId", "topicId", COUNT(*) as cnt FROM "StudentTopicMastery" GROUP BY "studentId","topicId" HAVING COUNT(*) > 1`);
     return rows && rows.length ? rows : [];
   } catch (e) {
-    // some dialects may require different quoting — try lowercase
+    // some dialects may require different quoting -- try lowercase
     try {
       const rows = await prisma.$queryRawUnsafe(`SELECT studentId, topicId, COUNT(*) as cnt FROM StudentTopicMastery GROUP BY studentId,topicId HAVING COUNT(*) > 1`);
       return rows && rows.length ? rows : [];

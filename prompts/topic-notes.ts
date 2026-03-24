@@ -18,13 +18,25 @@ export type TopicNotesParams = {
   grade: number // 6-12
   maxWords?: number
   language?: 'en' | 'hi' // single-language template
+  /** Official NCERT chapter text from CurriculumChunk. When present the LLM must
+   *  ground its output in this content and not introduce extra concepts. */
+  ncertContext?: string
 }
 
 export function topicNotesPrompt(params: TopicNotesParams): string {
   const maxWords = params.maxWords ?? 400
-  return `Role: educational content generator for grade ${params.grade}.
 
-Task: Produce concise, concept-first study notes for topic "${params.topicName}" in ${params.language === 'hi' ? 'Hindi' : 'English'}.
+  const ncertSection = params.ncertContext
+    ? `Official NCERT Textbook Content (primary source — base all notes on this text only):\n---\n${params.ncertContext}\n---\n\n`
+    : ''
+
+  const taskLine = params.ncertContext
+    ? `Task: Based ONLY on the NCERT content above, produce concise study notes for topic "${params.topicName}" in ${params.language === 'hi' ? 'Hindi' : 'English'}. Do not introduce concepts not present in the NCERT text.`
+    : `Task: Produce concise, concept-first study notes for topic "${params.topicName}" in ${params.language === 'hi' ? 'Hindi' : 'English'}.`
+
+  return `${ncertSection}Role: educational content generator for grade ${params.grade}.
+
+${taskLine}
 
 Constraints:
 - Audience: grade ${params.grade} (6-12). Use age-appropriate vocabulary.

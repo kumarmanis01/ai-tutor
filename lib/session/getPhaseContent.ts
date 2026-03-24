@@ -8,14 +8,14 @@
  *   PRACTICE     → 5 questions from the Question bank (topicId FK).
  *   TEST         → GeneratedTest with questions (approved; draft fallback).
  *   HOMEWORK     → HomeworkAssignment for this session.
- *   COMPLETE     → No content — terminal state.
+ *   COMPLETE     → No content -- terminal state.
  *
  * Every resolver returns a `PendingContent` sentinel when no content is
  * available yet, so the UI can display a "generating" state without crashing.
  *
  * EDIT LOG:
  *   2026-03-07 | Manish Kumar | add resolveOverview() for the new OVERVIEW phase.
- *   2026-03-08 | claude       | Phase 5: added adaptive difficulty — resolvePhaseContent
+ *   2026-03-08 | claude       | Phase 5: added adaptive difficulty -- resolvePhaseContent
  *                               accepts optional studentMastery; resolvePractice/resolveTest
  *                               filter by resolveTargetDifficulty(mastery) with a graceful
  *                               fallback to any-difficulty when content at the target band
@@ -145,7 +145,7 @@ export async function resolvePhaseContent(
 // ─── Phase Resolvers ─────────────────────────────────────────────────────────
 
 /**
- * OVERVIEW — lightweight topic introduction.
+ * OVERVIEW -- lightweight topic introduction.
  *
  * Fetches the TopicNote to extract a summary and objectives. If no note exists
  * yet, the card still renders with just the topic name so the student is not
@@ -184,7 +184,7 @@ async function resolveOverview(topicId: string): Promise<PhaseContentData> {
   if (note?.contentJson) {
     const json = note.contentJson as Record<string, unknown>;
 
-    // Unwrap nested content envelope if present (some notes wrap top-level in {content:…}).
+    // Unwrap nested content envelope if present (some notes wrap top-level in {content:...}).
     const content = (json.content && typeof json.content === 'object')
       ? (json.content as Record<string, unknown>)
       : json;
@@ -219,7 +219,7 @@ async function resolveOverview(topicId: string): Promise<PhaseContentData> {
 }
 
 /**
- * EXPLANATION — full topic notes.
+ * EXPLANATION -- full topic notes.
  *
  * Prefers the latest approved note; falls back to the latest draft so students
  * are never blocked even during content review.
@@ -251,7 +251,7 @@ async function resolveExplanation(topicId: string): Promise<PhaseContentData> {
 }
 
 /**
- * PRACTICE — up to 5 questions from the promoted question bank.
+ * PRACTICE -- up to 5 questions from the promoted question bank.
  *
  * Adaptive difficulty: queries the target band first (derived from studentMastery).
  * Falls back to any difficulty for the topic when the target band has no questions yet,
@@ -263,7 +263,7 @@ async function resolvePractice(topicId: string, studentMastery: number | null): 
 
   // Primary: questions at the student's target difficulty band.
   let questions = await prisma.question.findMany({
-    // quarantined questions excluded — do not remove this filter
+    // quarantined questions excluded -- do not remove this filter
     where: { topicId, difficulty: targetDifficulty, status: 'ACTIVE' },
     take: 5,
     orderBy: { createdAt: 'desc' },
@@ -273,7 +273,7 @@ async function resolvePractice(topicId: string, studentMastery: number | null): 
   // Fallback: any available questions for the topic (content may not yet cover all bands).
   if (questions.length === 0) {
     questions = await prisma.question.findMany({
-      // quarantined questions excluded — do not remove this filter
+      // quarantined questions excluded -- do not remove this filter
       where: { topicId, status: 'ACTIVE' },
       take: 5,
       orderBy: { createdAt: 'desc' },
@@ -290,7 +290,7 @@ async function resolvePractice(topicId: string, studentMastery: number | null): 
 }
 
 /**
- * TEST — approved GeneratedTest with questions; difficulty-aware with fallback.
+ * TEST -- approved GeneratedTest with questions; difficulty-aware with fallback.
  *
  * Lookup order:
  *   1. Approved test at student's target difficulty band.
@@ -341,7 +341,7 @@ async function resolveTest(topicId: string, studentMastery: number | null): Prom
 }
 
 /**
- * HOMEWORK — HomeworkAssignment created by the engine when entering this phase.
+ * HOMEWORK -- HomeworkAssignment created by the engine when entering this phase.
  */
 async function resolveHomework(sessionId: string, studentId: string): Promise<PhaseContentData> {
   const hw = await prisma.homeworkAssignment.findFirst({

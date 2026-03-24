@@ -63,7 +63,7 @@ export default function QuickPractice(props: {
           onClick={start}
           disabled={loading}
         >
-          {loading ? 'Starting…' : 'Start Now'}
+          {loading ? 'Starting...' : 'Start Now'}
         </button>
       </div>
       {error && <p className="mt-2 text-sm text-red-600">{error}</p>}

@@ -46,14 +46,6 @@ export async function POST(req: Request) {
         });
       }
 
-      if (challenge.rewardBadgeId) {
-        await tx.userBadge.upsert({
-          where: { userId_badgeId: { userId, badgeId: challenge.rewardBadgeId } },
-          update: {},
-          create: { userId, badgeId: challenge.rewardBadgeId },
-        });
-      }
-
       // mark participation rewarded to avoid re-applying
       await tx.challengeParticipation.update({
         where: { id: participation.id },

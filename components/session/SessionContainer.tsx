@@ -2,17 +2,17 @@
 /**
  * FILE OBJECTIVE:
  * - Root orchestrator for the 6-phase Spinzy learning session.
- * - Uses phaseRouter() to resolve the active phase component — no switch statement here.
+ * - Uses phaseRouter() to resolve the active phase component -- no switch statement here.
  * - Uses SessionLayout for consistent header/footer shell.
  * - Uses useSession() hook for all API lifecycle calls.
  *
  * Architecture (per spec):
  *   SessionContainer
- *     ├─ useSession()        — data
- *     ├─ phaseRouter()       — component resolution
- *     └─ SessionLayout       — UI frame
- *          ├─ SessionHeader  — breadcrumb + progress bar
- *          └─ PhaseComponent — the active phase
+ *     ├─ useSession()        -- data
+ *     ├─ phaseRouter()       -- component resolution
+ *     └─ SessionLayout       -- UI frame
+ *          ├─ SessionHeader  -- breadcrumb + progress bar
+ *          └─ PhaseComponent -- the active phase
  *
  * EDIT LOG:
  * - 2026-03-08 | claude | refactored to use phaseRouter + SessionLayout + useSession
@@ -100,7 +100,7 @@ export function SessionContainer({ topicId, reasonLabel, estimatedTimeMin }: Ses
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center space-y-3">
           <div className="w-10 h-10 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto" />
-          <p className="text-sm text-muted-foreground">Starting your session…</p>
+          <p className="text-sm text-muted-foreground">Starting your session...</p>
         </div>
       </div>
     );
@@ -162,7 +162,7 @@ export function SessionContainer({ topicId, reasonLabel, estimatedTimeMin }: Ses
       <SessionLayout session={session} phase={phase}>
         <div className="max-w-2xl mx-auto px-4 py-10 text-center space-y-4">
           <div className="text-4xl">⚙️</div>
-          <h2 className="text-lg font-semibold text-foreground">Preparing content…</h2>
+          <h2 className="text-lg font-semibold text-foreground">Preparing content...</h2>
           <p className="text-sm text-muted-foreground">{content.message}</p>
           <button onClick={advancePhase} disabled={submitting} className="px-5 py-2.5 bg-muted text-muted-foreground rounded-lg text-sm">
             Skip this phase

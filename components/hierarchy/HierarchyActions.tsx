@@ -96,7 +96,7 @@ export default function HierarchyActions({ selection: propSelection }: Props) {
         <div className="text-sm text-gray-600 mt-2">
           If chapters don't appear after generation, you can requeue the job from the <Link href="/admin/content-engine/jobs" className="underline text-blue-600">Jobs</Link> page (select the failed job and click Requeue).
         </div>
-        <button className="px-3 py-2 bg-gray-200 rounded text-gray-800" disabled={submitting} onClick={() => alerts.info("Assemble test — action placeholder")}>Assemble Test</button>
+        <button className="px-3 py-2 bg-gray-200 rounded text-gray-800" disabled={submitting} onClick={() => alerts.info("Assemble test -- action placeholder")}>Assemble Test</button>
       </div>
     </div>
   );

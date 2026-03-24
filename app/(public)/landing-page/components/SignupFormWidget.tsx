@@ -209,7 +209,7 @@ const SignupFormWidget = () => {
                 ) : widgetToken ? (
                   <div className="text-sm text-muted-foreground">Verification widget ready</div>
                 ) : (
-                  <div className="text-sm text-muted-foreground">Loading verification widget…</div>
+                  <div className="text-sm text-muted-foreground">Loading verification widget...</div>
                 )}
             </div>
           )}

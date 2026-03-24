@@ -15,7 +15,7 @@
  * ChapterSnapshotData { chapterId, name, order, topicCount, completedTopics, progress }
  *
  * EDIT LOG:
- * - 2026-02-22 | claude | created — replaces empty data with real curriculum query
+ * - 2026-02-22 | claude | created -- replaces empty data with real curriculum query
  */
 
 import { NextResponse } from 'next/server';
@@ -117,7 +117,7 @@ export async function GET() {
           subjectAttemptedTopics++;
           _sumAccuracy += m.accuracy;
           subjectSumAccuracy += m.accuracy;
-          // Use accuracy >= LOW_ACCURACY_THRESHOLD — aligned with engine P4 threshold.
+          // Use accuracy >= LOW_ACCURACY_THRESHOLD -- aligned with engine P4 threshold.
           if (m.accuracy >= LOW_ACCURACY_THRESHOLD) {
             completedTopics++;
             subjectMasteredCount++;

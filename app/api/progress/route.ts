@@ -113,7 +113,7 @@ export async function POST(req: NextRequest) {
         topicId,
         subject: subject || null,
         chapter: chapter || null,
-        // Always start at beginner — accuracy is only updated via practice (updateTopicMastery).
+        // Always start at beginner -- accuracy is only updated via practice (updateTopicMastery).
         masteryLevel: 'beginner',
         accuracy: 0,
         questionsAttempted: 0,
@@ -122,7 +122,7 @@ export async function POST(req: NextRequest) {
     });
   } else {
     // Only update the timestamp; mastery level and accuracy are owned by the
-    // practice grading pipeline (updateTopicMastery) — never inflate them here.
+    // practice grading pipeline (updateTopicMastery) -- never inflate them here.
     mastery = await prisma.studentTopicMastery.update({
       where: { id: mastery.id },
       data: { lastAttemptedAt: new Date() },
