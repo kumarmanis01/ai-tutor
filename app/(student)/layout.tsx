@@ -107,20 +107,6 @@ export default async function StudentLayout({ children }: { children: React.Reac
       })
     : null;
 
-  // Debug log: visible in PM2 / server stdout. Remove after confirming gate is fixed.
-  if (userId && !skipApi && !skipVerifyParent && !skipOnboarding) {
-    console.log('[GATE DEBUG]', JSON.stringify({
-      id: userId,
-      board: freshProfile?.board,
-      grade: freshProfile?.grade,
-      language: freshProfile?.language,
-      subjects: freshProfile?.subjects,
-      subjectsType: typeof freshProfile?.subjects,
-      isArray: Array.isArray(freshProfile?.subjects),
-      profileComplete: freshProfile ? isProfileComplete(freshProfile) : false,
-    }));
-  }
-
   let showParentGate = false;
   let maskedParentEmail: string | null = null;
 

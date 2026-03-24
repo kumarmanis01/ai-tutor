@@ -392,7 +392,6 @@ export default async function StudentHomeDashboardPage() {
         })
       : [];
 
-  console.log('[dashboard subjects]', subjectDefs.map((s) => s.name));
   const readinessResults = await Promise.all(
     subjectDefs.map(async (subj) => {
       const result = await computeReadinessScore(userId, subj.id).catch(() => null);
