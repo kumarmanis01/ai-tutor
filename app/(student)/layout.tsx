@@ -11,7 +11,7 @@ import BottomNav from '@/components/student/layout/BottomNav';
 import { requireActiveSession } from '@/lib/auth';
 import { redirect } from 'next/navigation';
 import { headers } from 'next/headers';
-import { checkProfileCompleteness, isProfileComplete, EMPTY_PROFILE_DATA, type ProfileMissingField } from '@/lib/student/profileGuard';
+import { checkProfileCompleteness, isProfileComplete, EMPTY_PROFILE_DATA } from '@/lib/student/profileGuard';
 import { checkParentGate } from '@/lib/student/parentGate';
 import { requiresParentOTPGate } from '@/lib/student/accountStatus';
 import StudentLayoutShell from '@/components/student/StudentLayoutShell';
@@ -142,7 +142,7 @@ export default async function StudentLayout({ children }: { children: React.Reac
               showParentGate={showParentGate}
               maskedParentEmail={maskedParentEmail}
               showProfileGate={showProfileGate}
-              missingProfileFields={profile.missingFields as ProfileMissingField[]}
+              initialProfileData={profile.data}
             >
               <div className="pb-16 md:pb-0">
                 {children}
