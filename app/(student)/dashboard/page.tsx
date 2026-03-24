@@ -368,8 +368,8 @@ export default async function StudentHomeDashboardPage() {
       ? await prisma.subjectDef.findMany({
           where: {
             lifecycle: 'active',
-            classLevel: {
-              grade: studentProfile.grade,
+            class: {
+              grade: parseInt(String(studentProfile.grade), 10),
               board: { slug: studentProfile.board },
             },
           },
