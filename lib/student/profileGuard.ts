@@ -8,9 +8,18 @@ export interface StudentProfileData {
   grade: string | null
   language: string | null
   subjects: string[]
+  age: number | null
+  parentEmail: string | null
 }
 
-export const EMPTY_PROFILE_DATA: StudentProfileData = { board: null, grade: null, language: null, subjects: [] }
+export const EMPTY_PROFILE_DATA: StudentProfileData = {
+  board: null,
+  grade: null,
+  language: null,
+  subjects: [],
+  age: null,
+  parentEmail: null,
+}
 
 export interface ProfileCompletenessResult {
   complete: boolean
@@ -114,6 +123,8 @@ export async function checkProfileCompleteness(studentId: string): Promise<Profi
         grade: user.grade ?? null,
         language: user.language ? String(user.language) : null,
         subjects: Array.isArray(user.subjects) ? user.subjects : [],
+        age: user.age ?? null,
+        parentEmail: user.parentEmail ?? null,
       },
     }
   } catch {
