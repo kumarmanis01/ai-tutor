@@ -20,12 +20,15 @@ export interface ProfileCompletenessResult {
 
 /**
  * Pure function: returns true only when all four academic profile fields are filled.
+ * Handles null subjects at runtime (Prisma String[] returns null for pre-migration rows).
  */
 export function isProfileComplete(user: StudentProfileData): boolean {
   if (!user.board || String(user.board).trim() === '') return false
   if (!user.grade || String(user.grade).trim() === '') return false
   if (!user.language || String(user.language).trim() === '') return false
-  if (user.subjects.length === 0) return false
+  // subjects may be null at runtime for pre-migration rows -- treat null as empty
+  const subs: unknown = user.subjects
+  if (!Array.isArray(subs) || subs.length === 0) return false
   return true
 }
 
@@ -74,7 +77,9 @@ export async function checkProfileCompleteness(studentId: string): Promise<Profi
       missingFields.push('board')
     }
 
-    if (user.subjects.length === 0) {
+    // subjects may be null at runtime for pre-migration rows
+    const subjectsArr: unknown = user.subjects
+    if (!Array.isArray(subjectsArr) || subjectsArr.length === 0) {
       missingFields.push('subjects')
     }
 
@@ -108,7 +113,7 @@ export async function checkProfileCompleteness(studentId: string): Promise<Profi
         board: user.board ?? null,
         grade: user.grade ?? null,
         language: user.language ? String(user.language) : null,
-        subjects: user.subjects,
+        subjects: Array.isArray(user.subjects) ? user.subjects : [],
       },
     }
   } catch {
