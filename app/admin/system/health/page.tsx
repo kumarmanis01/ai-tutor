@@ -166,9 +166,10 @@ export default async function SystemHealthPage() {
     ? `Connected -- ${health.dependencies.redis.latencyMs}ms${redisMemMb !== null ? ` -- ${redisMemMb} MB` : ''}`
     : 'Unreachable'
 
+  // This page rendered, so the web process is obviously up -- always healthy
   const webDetail = webWorker
     ? `${webWorker.type} pid ${webWorker.pid ?? '?'} on ${webWorker.host ?? '?'}`
-    : 'No RUNNING web process'
+    : 'Responding (not registered in WorkerLifecycle)'
   const workerDetail = taskWorker
     ? `${taskWorker.type} pid ${taskWorker.pid ?? '?'} on ${taskWorker.host ?? '?'}`
     : 'No RUNNING task worker'
@@ -193,7 +194,7 @@ export default async function SystemHealthPage() {
           <ServiceRow label="Redis" status={redisStatus} detail={redisDetail} />
           <ServiceRow
             label="Web process"
-            status={webWorker ? 'healthy' : 'unhealthy'}
+            status="healthy"
             detail={webDetail}
           />
           <ServiceRow

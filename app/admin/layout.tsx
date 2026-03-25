@@ -43,20 +43,23 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   }
 
   // Badge counts -- all run in parallel; individual failures fall back to 0
-  const [pendingReview, runningJobs, failedJobs, safetyAlerts] = await Promise.all([
-    // Content pending review: draft topics awaiting approval
-    prisma.topicDef
-      .count({ where: { status: 'draft', lifecycle: 'active' } })
+  const [pendingReview, activeJobs, failedJobs, safetyAlerts] = await Promise.all([
+    // Content pending review: sum all draft content types
+    Promise.all([
+      prisma.chapterDef.count({ where: { status: 'draft', lifecycle: 'active' } }),
+      prisma.topicDef.count({ where: { status: 'draft', lifecycle: 'active' } }),
+      prisma.topicNote.count({ where: { status: 'draft', lifecycle: 'active' } }),
+      prisma.generatedTest.count({ where: { status: 'draft', lifecycle: 'active' } }),
+    ]).then(([c, t, n, gt]) => c + t + n + gt).catch(() => 0),
+
+    // Root hydration jobs currently running or failed (hierarchyLevel 0 = pipeline root)
+    prisma.hydrationJob
+      .count({ where: { hierarchyLevel: 0, status: { in: ['running', 'failed'] } } })
       .catch(() => 0),
 
-    // Root hydration jobs currently running (hierarchyLevel 0 = pipeline root)
+    // Failed root jobs (separate for badge colour differentiation in sidebar)
     prisma.hydrationJob
-      .count({ where: { status: 'running', hierarchyLevel: 0 } })
-      .catch(() => 0),
-
-    // Root hydration jobs in failed state
-    prisma.hydrationJob
-      .count({ where: { status: 'failed', hierarchyLevel: 0 } })
+      .count({ where: { hierarchyLevel: 0, status: 'failed' } })
       .catch(() => 0),
 
     // Unresolved safety events
@@ -78,7 +81,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
             <div className="flex h-screen overflow-hidden bg-gray-50 dark:bg-gray-950">
               <AdminSidebar
                 pendingReview={pendingReview}
-                runningJobs={runningJobs}
+                activeJobs={activeJobs}
                 failedJobs={failedJobs}
                 safetyAlerts={safetyAlerts}
               />

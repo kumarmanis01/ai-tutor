@@ -57,6 +57,26 @@ function RedisStatusChip() {
 }
 
 // ---------------------------------------------------------------------------
+// Running jobs chip -- self-fetches active job count
+// ---------------------------------------------------------------------------
+
+function RunningJobsChip() {
+  const [count, setCount] = useState<number>(0);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch('/api/admin/jobs/active-count')
+      .then((r) => r.json())
+      .then((d) => { if (!cancelled) setCount(d.count ?? 0); })
+      .catch(() => { if (!cancelled) setCount(0); });
+    return () => { cancelled = true; };
+  }, []);
+
+  if (count === 0) return null;
+  return <Chip label={`${count} job${count === 1 ? '' : 's'} running`} variant="warn" />;
+}
+
+// ---------------------------------------------------------------------------
 // Admin avatar stub
 // ---------------------------------------------------------------------------
 
@@ -72,7 +92,7 @@ function AdminAvatar() {
 // Main component
 // ---------------------------------------------------------------------------
 
-export function AdminTopbar({ title, runningJobs = 0, children }: AdminTopbarProps) {
+export function AdminTopbar({ title, runningJobs, children }: AdminTopbarProps) {
   return (
     <div className="flex items-center justify-between gap-4 px-6 py-3.5 border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 sticky top-0 z-10">
       {/* Left: page title */}
@@ -82,11 +102,13 @@ export function AdminTopbar({ title, runningJobs = 0, children }: AdminTopbarPro
       <div className="flex items-center gap-2 flex-shrink-0">
         <Chip label="Production live" variant="ok" />
         <RedisStatusChip />
-        {runningJobs > 0 && (
-          <Chip
-            label={`${runningJobs} job${runningJobs === 1 ? '' : 's'} running`}
-            variant="warn"
-          />
+        {/* If caller passes runningJobs explicitly, use that; otherwise self-fetch */}
+        {runningJobs !== undefined ? (
+          runningJobs > 0 ? (
+            <Chip label={`${runningJobs} job${runningJobs === 1 ? '' : 's'} running`} variant="warn" />
+          ) : null
+        ) : (
+          <RunningJobsChip />
         )}
         {children}
         <AdminAvatar />

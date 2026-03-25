@@ -220,13 +220,7 @@ interface NavItem {
 // Navigation sections -- organised by workflow; all hrefs must match app/admin route segments
 const contentGenerationLinks: NavItem[] = [
   { href: '/admin', label: 'Home', icon: 'Dashboard' },
-  {
-    href: '/admin/content',
-    label: 'Coverage & Hydrate',
-    icon: 'Rocket',
-    badge: 'Pipeline',
-    badgeColor: 'bg-green-500',
-  },
+  { href: '/admin/content', label: 'Coverage & Hydrate', icon: 'Rocket' },
   { href: '/admin/content-approval', label: 'Content Review', icon: 'CheckCircle' },
 ];
 
@@ -266,14 +260,27 @@ const generalAdminLinks: NavItem[] = [
   { href: '/admin/challenge', label: 'Challenges', icon: 'Trophy' },
 ];
 
+interface AdminSidebarProps {
+  pendingReview: number;
+  activeJobs: number;
+  failedJobs: number;
+  safetyAlerts: number;
+}
+
+interface DynamicBadge {
+  count: number;
+  red?: boolean;
+}
+
 interface NavSectionProps {
   title: string;
   items: NavItem[];
   pathname: string;
+  badgeCounts?: Record<string, DynamicBadge>;
   defaultExpanded?: boolean;
 }
 
-function NavSection({ title, items, pathname, defaultExpanded = true }: NavSectionProps) {
+function NavSection({ title, items, pathname, badgeCounts, defaultExpanded = true }: NavSectionProps) {
   const [isExpanded, setIsExpanded] = useState(defaultExpanded);
 
   return (
@@ -319,6 +326,13 @@ function NavSection({ title, items, pathname, defaultExpanded = true }: NavSecti
                     {item.badge}
                   </span>
                 )}
+                {badgeCounts?.[item.href] && badgeCounts[item.href].count > 0 && (
+                  <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-medium text-white ${
+                    badgeCounts[item.href].red ? 'bg-[#E24B4A]' : 'bg-[#534AB7]'
+                  }`}>
+                    {badgeCounts[item.href].count > 99 ? '99+' : badgeCounts[item.href].count}
+                  </span>
+                )}
               </Link>
             );
           })}
@@ -353,7 +367,7 @@ function AdminProfile() {
   );
 }
 
-export default function AdminSidebar() {
+export function AdminSidebar({ pendingReview, activeJobs, failedJobs, safetyAlerts }: AdminSidebarProps) {
   const pathname = usePathname();
 
   return (
@@ -386,11 +400,26 @@ export default function AdminSidebar() {
 
       {/* Navigation */}
       <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-1">
-        <NavSection title="Content Generation" items={contentGenerationLinks} pathname={pathname} />
+        <NavSection
+          title="Content Generation"
+          items={contentGenerationLinks}
+          pathname={pathname}
+          badgeCounts={{ '/admin/content-approval': { count: pendingReview, red: false } }}
+        />
         <NavSection title="Content Management" items={contentManagementLinks} pathname={pathname} />
         <NavSection title="Learning & Quality" items={learningAndQualityLinks} pathname={pathname} />
-        <NavSection title="Jobs & Retries" items={jobsAndRetriesLinks} pathname={pathname} />
-        <NavSection title="System Monitoring" items={systemMonitoringLinks} pathname={pathname} />
+        <NavSection
+          title="Jobs & Retries"
+          items={jobsAndRetriesLinks}
+          pathname={pathname}
+          badgeCounts={{ '/admin/jobs': { count: activeJobs, red: failedJobs > 0 } }}
+        />
+        <NavSection
+          title="System Monitoring"
+          items={systemMonitoringLinks}
+          pathname={pathname}
+          badgeCounts={{ '/admin/safety': { count: safetyAlerts, red: true } }}
+        />
         <NavSection
           title="General Admin"
           items={generalAdminLinks}
@@ -409,3 +438,5 @@ export default function AdminSidebar() {
     </aside>
   );
 }
+
+export default AdminSidebar;

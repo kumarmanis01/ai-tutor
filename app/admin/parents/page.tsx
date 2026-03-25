@@ -45,16 +45,6 @@ export default async function ParentsPage() {
     ])
   )
 
-  // Avg readiness across all linked students
-  const avgReadiness =
-    masteryRows.length > 0
-      ? Math.round(
-          masteryRows.reduce((acc, r) => acc + (r._avg.mastery ?? 0), 0) /
-            masteryRows.length *
-            100
-        )
-      : 0
-
   const rows: ParentRowData[] = links.map(l => ({
     id: l.id,
     parentId: l.parentId,
@@ -68,6 +58,12 @@ export default async function ParentsPage() {
     avgMastery: masteryMap.get(l.studentId) ?? 0,
   }))
 
+  // Avg readiness across linked students (null when no parents linked)
+  const avgReadiness: number | null =
+    rows.length > 0
+      ? Math.round(rows.reduce((acc, r) => acc + r.avgMastery, 0) / rows.length)
+      : null
+
   return (
     <>
       <AdminTopbar title="Parents" />
@@ -76,7 +72,11 @@ export default async function ParentsPage() {
         {/* Stats */}
         <div className="grid grid-cols-3 gap-3">
           <StatCard label="Linked parents" value={totalLinked} />
-          <StatCard label="Avg child readiness" value={`${avgReadiness}%`} variant={avgReadiness >= 70 ? 'green' : 'amber'} />
+          <StatCard
+            label="Avg child readiness"
+            value={avgReadiness !== null ? `${avgReadiness}%` : 'N/A'}
+            variant={avgReadiness !== null ? (avgReadiness >= 70 ? 'green' : 'amber') : 'default'}
+          />
           <StatCard label="Last digest sent" value="N/A" />
         </div>
 

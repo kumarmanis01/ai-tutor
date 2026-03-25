@@ -162,9 +162,22 @@ export function ParentsTable({ rows }: { rows: ParentRowData[] }) {
       {/* Table */}
       <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl overflow-hidden">
         {rows.length === 0 ? (
-          <p className="text-[12px] text-gray-400 py-10 text-center">
-            No linked parents yet
-          </p>
+          <div className="flex flex-col items-center justify-center py-12 text-center px-6">
+            <div className="w-10 h-10 rounded-full bg-[#EEEDFE] flex items-center justify-center text-[#534AB7] text-lg font-bold mb-3">
+              P
+            </div>
+            <p className="text-[13px] font-medium text-gray-700 dark:text-gray-300 mb-1">
+              No parents linked yet
+            </p>
+            <p className="text-[11px] text-gray-400 max-w-xs mb-3">
+              Parents link via the parent verification flow when a student under 13 adds a parent email during onboarding.
+            </p>
+            <div className="text-[10px] text-gray-400 space-y-0.5 text-left">
+              <p>1. Student age &lt; 13 -- parent email required</p>
+              <p>2. Parent receives OTP email -- verifies</p>
+              <p>3. Link created with status &quot;active&quot;</p>
+            </div>
+          </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-[11px]">
