@@ -51,13 +51,13 @@ export default function WeeklyChallenge() {
 
   return (
     <div className="bg-white dark:bg-gray-900 p-4 rounded-lg shadow">
-      <h4 className="font-semibold text-indigo-700 dark:text-yellow-200 mb-2">{challenge.title}</h4>
+      <h4 className="font-semibold text-[#534AB7] dark:text-yellow-200 mb-2">{challenge.title}</h4>
       <p className="text-sm text-gray-600 dark:text-gray-300 mb-3">{challenge.description}</p>
       <div className="flex gap-2">
         <button
           onClick={join}
           disabled={joined || loading}
-          className="px-3 py-1 rounded bg-indigo-600 text-white"
+          className="px-3 py-1 rounded bg-[#534AB7] text-white"
         >
           {joined ? 'Joined' : 'Join'}
         </button>

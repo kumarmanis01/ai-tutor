@@ -37,7 +37,7 @@ const STATUS_ICON: Record<TopicStatus, React.ReactNode> = {
 const STATUS_LABEL_COLOR: Record<TopicStatus, string> = {
   mastered:       'text-green-600',
   understood:     'text-green-500',
-  in_progress:    'text-indigo-600',
+  in_progress:    'text-[#534AB7]',
   needs_practice: 'text-amber-600',
   getting_there:  'text-blue-500',
   upcoming:       'text-gray-400',
@@ -70,7 +70,7 @@ export default function TopicStatusRow({
       {isActionable && (
         <Link
           href={href}
-          className="shrink-0 text-xs font-medium text-indigo-600 hover:text-indigo-800 hover:underline ml-1"
+          className="shrink-0 text-xs font-medium text-[#534AB7] hover:text-indigo-800 hover:underline ml-1"
         >
           {status === 'in_progress' ? 'Continue →' : status === 'needs_practice' ? 'Revise →' : 'Start →'}
         </Link>

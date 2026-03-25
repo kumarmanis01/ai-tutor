@@ -138,7 +138,7 @@ export default function AdminCreateChallenge() {
         <button
           type="submit"
           disabled={loading}
-          className="px-3 py-1 rounded bg-indigo-600 text-white"
+          className="px-3 py-1 rounded bg-[#534AB7] text-white"
         >
           {loading ? 'Creating...' : 'Create'}
         </button>

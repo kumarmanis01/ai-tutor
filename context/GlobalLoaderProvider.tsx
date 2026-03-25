@@ -1,7 +1,6 @@
 'use client';
 
 import React, { createContext, useContext, useState, useCallback } from 'react';
-import PageLoader from '@/components/UI/PageLoader';
 
 type LoaderContextType = {
   startLoading: (label?: string) => void;
@@ -46,7 +45,14 @@ export function GlobalLoaderProvider({ children }: { children: React.ReactNode }
   return (
     <GlobalLoaderContext.Provider value={value}>
       {children}
-      {value.loading && <PageLoader label={value.label} />}
+      {value.loading && (
+        <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm">
+          <div className="w-8 h-8 rounded-full border-4 border-[#534AB7] border-t-transparent animate-spin" />
+          {value.label && (
+            <p className="mt-3 text-sm font-medium text-gray-700 dark:text-gray-300">{value.label}</p>
+          )}
+        </div>
+      )}
     </GlobalLoaderContext.Provider>
   );
 }

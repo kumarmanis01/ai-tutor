@@ -40,11 +40,11 @@ export default function CreateRoomPage() {
       {/* Use this in all admin child pages (e.g., create, moderate, etc.) */}
       <button
         onClick={() => router.push('/rooms?tab=admin')}
-        className="mb-4 flex items-center text-indigo-600 dark:text-yellow-300 hover:underline"
+        className="mb-4 flex items-center text-[#534AB7] dark:text-yellow-300 hover:underline"
       >
         ← Back to Admin Panel
       </button>
-      <h2 className="text-2xl font-bold mb-6 text-indigo-700 dark:text-yellow-300">
+      <h2 className="text-2xl font-bold mb-6 text-[#534AB7] dark:text-yellow-300">
         Create a Study Room
       </h2>
       <input
@@ -83,7 +83,7 @@ export default function CreateRoomPage() {
       <button
         onClick={handleCreate}
         disabled={loading || !name || !subject || !grade}
-        className="w-full px-5 py-2 bg-indigo-600 text-white rounded font-semibold hover:bg-indigo-700 transition"
+        className="w-full px-5 py-2 bg-[#534AB7] text-white rounded font-semibold hover:bg-[#3C3489] transition"
       >
         {loading ? 'Creating...' : 'Create Room'}
       </button>

@@ -67,7 +67,7 @@ export default function ParentOTPGate({ maskedEmail }: ParentOTPGateProps) {
     <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/70 px-4">
       <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
         <div className="mb-4 flex items-center gap-2">
-          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-indigo-100 text-indigo-600">
+          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#EEEDFE] text-[#534AB7]">
             <span className="text-lg">🔒</span>
           </div>
           <h1 className="text-lg font-semibold text-gray-900">One more step</h1>
@@ -86,7 +86,7 @@ export default function ParentOTPGate({ maskedEmail }: ParentOTPGateProps) {
           type="button"
           onClick={handleSendCode}
           disabled={sending}
-          className="mb-4 w-full rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm disabled:cursor-not-allowed disabled:bg-gray-300"
+          className="mb-4 w-full rounded-lg bg-[#534AB7] px-4 py-2 text-sm font-semibold text-white shadow-sm disabled:cursor-not-allowed disabled:bg-gray-300"
         >
           {sending ? 'Sending...' : 'Send Code'}
         </button>

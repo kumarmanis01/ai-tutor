@@ -55,7 +55,7 @@ export default function ParentProgressDetail({
       <div>
         <a
           href="/parent/dashboard"
-          className="mb-3 inline-flex items-center gap-1 text-sm text-indigo-600 hover:underline dark:text-indigo-400"
+          className="mb-3 inline-flex items-center gap-1 text-sm text-[#534AB7] hover:underline dark:text-indigo-400"
         >
           ← My children
         </a>

@@ -145,7 +145,7 @@ export default function NotesTab() {
         <button
           type="button"
           onClick={clearSelection}
-          className="inline-flex items-center gap-1 text-sm text-indigo-600 hover:text-indigo-800"
+          className="inline-flex items-center gap-1 text-sm text-[#534AB7] hover:text-indigo-800"
         >
           <ChevronLeftIcon />
           Back to topics
@@ -188,7 +188,7 @@ export default function NotesTab() {
                 onClick={() => router.push(`/session/${t.topicId}`)}
                 className="text-left rounded-xl border border-indigo-100 bg-gradient-to-br from-indigo-50 to-white p-4 shadow-sm hover:shadow-md transition-shadow"
               >
-                <p className="text-xs font-semibold uppercase tracking-wide text-indigo-600">
+                <p className="text-xs font-semibold uppercase tracking-wide text-[#534AB7]">
                   {PHASE_LABELS[t.phase] ?? t.phase}
                 </p>
                 <h3 className="mt-1 text-base font-bold text-gray-900 truncate">
@@ -258,7 +258,7 @@ export default function NotesTab() {
 
 function SectionHeading({ title, accent }: { title: string; accent: string }) {
   const colors: Record<string, string> = {
-    indigo: 'bg-indigo-500',
+    indigo: 'bg-[#534AB7]',
     amber: 'bg-amber-500',
     gray: 'bg-gray-400',
   };
@@ -360,7 +360,7 @@ function ChapterAccordion({
                 key={t.id}
                 type="button"
                 onClick={() => onSelectTopic(t.id, t.name)}
-                className="w-full text-left px-3 py-2 rounded-md text-sm text-gray-700 hover:bg-indigo-50 hover:text-indigo-700 transition-colors"
+                className="w-full text-left px-3 py-2 rounded-md text-sm text-gray-700 hover:bg-[#EEEDFE] hover:text-[#534AB7] transition-colors"
               >
                 {t.name}
               </button>
@@ -436,8 +436,8 @@ function NoteRenderer({ content, title }: { content: unknown; title: string }) {
           ))}
 
           {obj.keyPoints && Array.isArray(obj.keyPoints) && (
-            <div className="rounded-lg bg-indigo-50 border border-indigo-100 p-4">
-              <h3 className="text-sm font-semibold text-indigo-700 mb-2">Key Points</h3>
+            <div className="rounded-lg bg-[#EEEDFE] border border-indigo-100 p-4">
+              <h3 className="text-sm font-semibold text-[#534AB7] mb-2">Key Points</h3>
               <ul className="list-disc list-inside space-y-1 text-sm text-indigo-800">
                 {(obj.keyPoints as string[]).map((k, i) => (
                   <li key={i}>{k}</li>

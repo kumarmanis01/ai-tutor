@@ -226,7 +226,7 @@ export default function StreakWidget({ onClose }: Props) {
                 className={[
                   'w-full aspect-square rounded-xl transition-colors',
                   isActive
-                    ? 'bg-[#534AB7] dark:bg-indigo-600'
+                    ? 'bg-[#534AB7] dark:bg-[#534AB7]'
                     : isToday
                     ? 'bg-gray-100 dark:bg-gray-800 ring-2 ring-[#1D9E75] ring-offset-1 ring-offset-white dark:ring-offset-gray-900'
                     : 'bg-gray-100 dark:bg-gray-800',
