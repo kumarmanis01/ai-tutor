@@ -73,11 +73,22 @@ function getISOWeekBoundaries() {
 // Handle all Prisma/Neon return shapes for String[] columns.
 // Neon serverless driver sometimes returns Postgres wire-format "{a,b,c}".
 function parseEnrolledSubjects(raw: unknown): string[] {
-  if (Array.isArray(raw)) return (raw as string[]).filter(Boolean)
+  if (Array.isArray(raw)) return (raw as string[]).filter(Boolean).map(normaliseSubjectSlug)
   if (typeof raw === 'string' && raw.length > 0) {
-    return raw.replace(/^\{/, '').replace(/\}$/, '').split(',').map((s) => s.trim()).filter(Boolean)
+    return raw.replace(/^\{/, '').replace(/\}$/, '').split(',').map((s) => normaliseSubjectSlug(s.trim())).filter(Boolean)
   }
   return []
+}
+
+// Normalise legacy slug aliases stored in user profiles to canonical DB slugs.
+const SLUG_ALIASES: Record<string, string> = {
+  math:   'mathematics',
+  maths:  'mathematics',
+  sci:    'science',
+  sst:    'social-science',
+};
+function normaliseSubjectSlug(slug: string): string {
+  return SLUG_ALIASES[slug] ?? slug;
 }
 
 // ── Page ──────────────────────────────────────────────────────────────────────

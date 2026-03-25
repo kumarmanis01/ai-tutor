@@ -157,6 +157,32 @@ async function seedSubjectDefs() {
   console.log(`[seed-taxonomy]   ${total} SubjectDef rows upserted ✓`);
 }
 
+// Subjects that are mandatory core (isCore=true) for every board+grade.
+// Everything not in this list is optional (isCore=false).
+const CORE_SUBJECT_SLUGS = new Set([
+  'english', 'mathematics', 'science', 'social-science',
+  'hindi', 'physics', 'chemistry', 'biology',
+]);
+
+async function seedBoardSubjectConfig() {
+  console.log('[seed-taxonomy] ── Phase 4: BoardSubjectConfig ──');
+  const allSubjects = await prisma.subjectDef.findMany({
+    where: { lifecycle: 'active' },
+    select: { id: true, slug: true },
+  });
+  let upserted = 0;
+  for (const subj of allSubjects) {
+    const isCore = CORE_SUBJECT_SLUGS.has(subj.slug);
+    await prisma.boardSubjectConfig.upsert({
+      where: { subjectDefId: subj.id },
+      update: { isCore },
+      create: { subjectDefId: subj.id, isCore },
+    });
+    upserted++;
+  }
+  console.log(`[seed-taxonomy]   ${upserted} BoardSubjectConfig rows upserted ✓`);
+}
+
 // ── main ─────────────────────────────────────────────────────────────────────
 
 async function main() {
@@ -165,11 +191,13 @@ async function main() {
     await seedBoards();
     await seedClassLevels();
     await seedSubjectDefs();
+    await seedBoardSubjectConfig();
 
-    const [boards, classLevels, subjects] = await Promise.all([
+    const [boards, classLevels, subjects, boardSubjectConfigs] = await Promise.all([
       prisma.board.count(),
       prisma.classLevel.count(),
       prisma.subjectDef.count(),
+      prisma.boardSubjectConfig.count(),
     ]);
 
     console.log('[seed-taxonomy]');
@@ -177,6 +205,7 @@ async function main() {
     console.log(`[seed-taxonomy]    Boards: ${boards}`);
     console.log(`[seed-taxonomy]    ClassLevels: ${classLevels}`);
     console.log(`[seed-taxonomy]    SubjectDefs: ${subjects}`);
+    console.log(`[seed-taxonomy]    BoardSubjectConfigs: ${boardSubjectConfigs}`);
   } catch (err) {
     console.error('[seed-taxonomy] ❌ Failed:', err.message || err);
     process.exit(1);
