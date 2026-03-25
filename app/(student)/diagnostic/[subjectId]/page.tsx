@@ -105,6 +105,7 @@ export default async function DiagnosticPage({
 
   // Generate (or retrieve cached) diagnostic questions
   let rawQuestions: Awaited<ReturnType<typeof generateSubjectDiagnosticTest>>['questions'] = [];
+  let questionsReady = true;
   try {
     const diagnosticTest = await generateSubjectDiagnosticTest({
       boardSlug: student.board,
@@ -113,11 +114,36 @@ export default async function DiagnosticPage({
       languageCode: student.language ?? undefined,
     });
     rawQuestions = diagnosticTest.questions;
+    if (rawQuestions.length === 0) questionsReady = false;
   } catch {
-    redirect('/dashboard');
+    questionsReady = false;
   }
 
-  if (rawQuestions.length === 0) redirect('/dashboard');
+  // Content not ready: topics exist but questions haven't been generated yet.
+  // Show "Vidya is getting ready" rather than bouncing to dashboard.
+  if (!questionsReady) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-white dark:bg-gray-950 px-6">
+        <div className="max-w-sm text-center">
+          <div className="w-16 h-16 rounded-2xl bg-[#EEEDFE] flex items-center justify-center text-3xl mx-auto mb-5">
+            📚
+          </div>
+          <h1 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-3">
+            Vidya is getting ready
+          </h1>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">
+            We are preparing your content. Check back in a few minutes.
+          </p>
+          <a
+            href="/dashboard"
+            className="inline-block px-5 py-2.5 bg-[#534AB7] hover:bg-[#3C3489] text-white text-sm font-medium rounded-xl transition-colors"
+          >
+            Back to dashboard
+          </a>
+        </div>
+      </div>
+    );
+  }
 
   // Map service question shape → DiagnosticFlow question shape
   const questions: DiagnosticQuestion[] = rawQuestions.map((q) => {

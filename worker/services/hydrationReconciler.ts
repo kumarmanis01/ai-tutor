@@ -248,10 +248,10 @@ export class HydrationReconciler {
       return;
     }
 
-    // Get all topics created by the syllabus worker
+    // Get all topics created by the syllabus worker (only active chapters)
     const topics = await prisma.topicDef.findMany({
       where: {
-        chapter: { subjectId },
+        chapter: { subjectId, lifecycle: 'active' },
         lifecycle: 'active',
       },
       include: { chapter: { select: { id: true } } },
@@ -319,7 +319,7 @@ export class HydrationReconciler {
 
     const topics = await prisma.topicDef.findMany({
       where: {
-        chapter: { subjectId: rootJob.subjectId },
+        chapter: { subjectId: rootJob.subjectId, lifecycle: 'active' },
         lifecycle: 'active',
       },
       include: { chapter: { select: { id: true } } },
