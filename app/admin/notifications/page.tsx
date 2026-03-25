@@ -1,161 +1,174 @@
-"use client";
+/**
+ * /admin/notifications -- Broadcast composer + scheduled jobs + recent sends
+ *
+ * Server component wrapper. Computes all audience counts server-side
+ * to avoid loading states; passes to NotificationComposer client component.
+ */
+import React from 'react'
+import { prisma } from '@/lib/prisma'
+import { AdminTopbar } from '@/components/admin/AdminTopbar'
+import { NotificationComposer, type AudienceCounts } from './NotificationComposer'
 
-import React, { useState } from 'react';
-import useSWR from 'swr';
+const SCHEDULED = [
+  { label: 'Weekly digest', schedule: 'Every Sunday 18:00 IST', status: 'Active' },
+  { label: 'Inactive student nudge', schedule: 'Every Monday 09:00 IST', status: 'Active' },
+]
 
-const fetcher = (url: string) => fetch(url).then(r => r.json());
-
-type AudienceType = 'all' | 'grade' | 'inactive';
-
-interface AudienceFilter {
-  type: AudienceType;
-  grade?: number;
-  days?: number;
+function statusBadge(status: string, failedCount: number) {
+  if (status === 'sent' && failedCount === 0) {
+    return <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded-full bg-[#EAF3DE] text-[#27500A]">Sent</span>
+  }
+  if (status === 'sent' && failedCount > 0) {
+    return <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded-full bg-[#FAEEDA] text-[#633806]">Partial ({failedCount} failed)</span>
+  }
+  if (status === 'queued') {
+    return <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded-full bg-[#E6F1FB] text-[#0C447C]">Queued</span>
+  }
+  return <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded-full bg-[#FCEBEB] text-[#791F1F]">Failed</span>
 }
 
-export default function NotificationsPage() {
-  const [audienceType, setAudienceType] = useState<AudienceType>('all');
-  const [grade, setGrade] = useState<number>(6);
-  const [inactiveDays, setInactiveDays] = useState<number>(7);
-  const [notifType, setNotifType] = useState<'push' | 'email'>('push');
-  const [title, setTitle] = useState('');
-  const [body, setBody] = useState('');
-  const [sending, setSending] = useState(false);
-  const [sent, setSent] = useState<{ queued: number } | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [confirm, setConfirm] = useState(false);
+export default async function NotificationsPage() {
+  const now = new Date()
+  const since7d = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
 
-  const audience: AudienceFilter =
-    audienceType === 'grade'
-      ? { type: 'grade', grade }
-      : audienceType === 'inactive'
-      ? { type: 'inactive', days: inactiveDays }
-      : { type: 'all' };
+  const [
+    allStudents,
+    inactive7d,
+    grade10,
+    paidSubscribers,
+    studentsWithDiag,
+    recentLogs,
+  ] = await Promise.all([
+    prisma.user.count({ where: { role: 'user' } }).catch(() => 0),
+    prisma.user.count({
+      where: { role: 'user', lastSessionDate: { lt: since7d } },
+    }).catch(() => 0),
+    prisma.user.count({ where: { role: 'user', grade: '10' } }).catch(() => 0),
+    prisma.user.count({
+      where: { role: 'user', subscriptionStatus: { not: 'free' } },
+    }).catch(() => 0),
+    prisma.diagnosticSession.findMany({
+      select: { studentId: true },
+      distinct: ['studentId'],
+    }).then(rows => rows.length).catch(() => 0),
 
-  const countKey = `/api/admin/notifications/audience-count?audience=${encodeURIComponent(JSON.stringify(audience))}`;
-  const { data: countData } = useSWR(countKey, fetcher, { keepPreviousData: true });
+    prisma.notificationLog.findMany({
+      orderBy: { sentAt: 'desc' },
+      take: 10,
+      select: { id: true, audience: true, channel: true, title: true, sentTo: true, sentAt: true, status: true, failedCount: true },
+    }).catch(() => [] as { id: string; audience: string; channel: string; title: string; sentTo: number; sentAt: Date; status: string; failedCount: number }[]),
+  ])
 
-  const handleSend = async () => {
-    if (!confirm) { setConfirm(true); return; }
-    setSending(true);
-    setError(null);
-    try {
-      const res = await fetch('/api/admin/notifications/broadcast', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ audience, type: notifType, title, body }),
-      });
-      const data = await res.json();
-      if (!res.ok) { setError(data.message || 'Failed to send'); }
-      else { setSent(data); setTitle(''); setBody(''); setConfirm(false); }
-    } finally {
-      setSending(false);
-    }
-  };
+  const noDiagnostic = Math.max(0, allStudents - studentsWithDiag)
 
-  const canSend = title.trim().length > 0 && body.trim().length > 0;
+  const counts: AudienceCounts = {
+    all_students:    allStudents,
+    inactive_7d:     inactive7d,
+    grade_10:        grade10,
+    no_diagnostic:   noDiagnostic,
+    paid_subscribers: paidSubscribers,
+  }
 
   return (
-    <div className="max-w-2xl mx-auto p-6">
-      <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-6">Broadcast Notification</h1>
+    <>
+      <AdminTopbar title="Notifications" />
 
-      {sent && (
-        <div className="mb-6 bg-green-50 border border-green-200 rounded-lg p-4 text-green-800 text-sm">
-          Notification queued for {sent.queued} user{sent.queued !== 1 ? 's' : ''}.
+      <div className="p-5 space-y-5">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+          {/* Composer */}
+          <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-5">
+            <h2 className="text-[13px] font-semibold text-gray-800 dark:text-gray-200 mb-4">
+              Broadcast message
+            </h2>
+            <NotificationComposer counts={counts} />
+          </div>
+
+          {/* Right column */}
+          <div className="space-y-4">
+            {/* Audience overview */}
+            <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-5">
+              <h2 className="text-[13px] font-semibold text-gray-800 dark:text-gray-200 mb-3">
+                Audience overview
+              </h2>
+              <div className="space-y-2">
+                {(Object.entries(counts) as [string, number][]).map(([key, count]) => {
+                  const labels: Record<string, string> = {
+                    all_students:    'All students',
+                    inactive_7d:     'Inactive 7+ days',
+                    grade_10:        'Grade 10',
+                    no_diagnostic:   'No diagnostic',
+                    paid_subscribers: 'Paid subscribers',
+                  }
+                  return (
+                    <div key={key} className="flex justify-between text-[11px]">
+                      <span className="text-gray-600 dark:text-gray-400">{labels[key] ?? key}</span>
+                      <span className="font-medium text-gray-800 dark:text-gray-200">{count}</span>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+
+            {/* Scheduled jobs */}
+            <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-5">
+              <h2 className="text-[13px] font-semibold text-gray-800 dark:text-gray-200 mb-3">
+                Scheduled sends
+              </h2>
+              <div className="space-y-2">
+                {SCHEDULED.map(s => (
+                  <div key={s.label} className="flex items-start gap-2">
+                    <span className="mt-0.5 w-2 h-2 rounded-full bg-[#1D9E75] shrink-0" />
+                    <div>
+                      <p className="text-[11px] font-medium text-gray-700 dark:text-gray-300">{s.label}</p>
+                      <p className="text-[10px] text-gray-400">{s.schedule}</p>
+                    </div>
+                    <span className="ml-auto text-[9px] font-semibold px-1.5 py-0.5 rounded-full bg-[#EAF3DE] text-[#27500A]">
+                      {s.status}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
         </div>
-      )}
-
-      {error && (
-        <div className="mb-6 bg-red-50 border border-red-200 rounded-lg p-4 text-red-700 text-sm">{error}</div>
-      )}
-
-      {/* Audience */}
-      <section className="mb-6">
-        <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">Audience</h2>
-        <div className="flex gap-2 mb-3 flex-wrap">
-          {(['all', 'grade', 'inactive'] as const).map(t => (
-            <button
-              key={t}
-              onClick={() => { setAudienceType(t); setConfirm(false); }}
-              className={`px-3 py-1.5 rounded text-sm min-h-[36px] ${audienceType === t ? 'bg-indigo-600 text-white' : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300'}`}
-            >
-              {t === 'all' ? 'All students' : t === 'grade' ? 'By grade' : 'Inactive students'}
-            </button>
-          ))}
-        </div>
-
-        {audienceType === 'grade' && (
-          <div className="flex items-center gap-2">
-            <label className="text-sm text-gray-600">Grade</label>
-            <select value={grade} onChange={e => { setGrade(Number(e.target.value)); setConfirm(false); }} className="border rounded px-2 py-1 text-sm dark:bg-gray-800 dark:border-gray-600">
-              {[6, 7, 8, 9, 10, 11, 12].map(g => <option key={g} value={g}>{g}</option>)}
-            </select>
+        {/* Send history */}
+        {recentLogs.length > 0 && (
+          <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl overflow-hidden">
+            <div className="px-5 py-3.5 border-b border-gray-100 dark:border-gray-800">
+              <h2 className="text-[13px] font-semibold text-gray-800 dark:text-gray-200">
+                Recent sends
+              </h2>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-[11px]">
+                <thead>
+                  <tr className="bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800">
+                    {['Title', 'Audience', 'Channel', 'Sent to', 'Status', 'When'].map(h => (
+                      <th key={h} className="text-left px-3 py-2.5 font-medium text-gray-500 dark:text-gray-400 whitespace-nowrap">
+                        {h}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {recentLogs.map(log => (
+                    <tr key={log.id} className="border-b border-gray-100 dark:border-gray-800 last:border-0">
+                      <td className="px-3 py-2.5 max-w-[180px] truncate text-gray-700 dark:text-gray-300">{log.title}</td>
+                      <td className="px-3 py-2.5 text-gray-500">{log.audience}</td>
+                      <td className="px-3 py-2.5 text-gray-500">{log.channel}</td>
+                      <td className="px-3 py-2.5 font-medium text-gray-700 dark:text-gray-300">{log.sentTo}</td>
+                      <td className="px-3 py-2.5">{statusBadge(log.status, log.failedCount)}</td>
+                      <td className="px-3 py-2.5 text-gray-400 whitespace-nowrap">
+                        {new Date(log.sentAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         )}
-
-        {audienceType === 'inactive' && (
-          <div className="flex items-center gap-2">
-            <label className="text-sm text-gray-600">No session in last</label>
-            <select value={inactiveDays} onChange={e => { setInactiveDays(Number(e.target.value)); setConfirm(false); }} className="border rounded px-2 py-1 text-sm dark:bg-gray-800 dark:border-gray-600">
-              {[3, 5, 7, 14, 30].map(d => <option key={d} value={d}>{d} days</option>)}
-            </select>
-          </div>
-        )}
-
-        <div className="mt-3 text-sm text-gray-500">
-          {countData?.count !== undefined
-            ? `This will reach ${countData.count} student${countData.count !== 1 ? 's' : ''}`
-            : 'Loading audience size...'}
-        </div>
-      </section>
-
-      {/* Type */}
-      <section className="mb-6">
-        <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">Delivery</h2>
-        <div className="flex gap-2">
-          {(['push', 'email'] as const).map(t => (
-            <button
-              key={t}
-              onClick={() => { setNotifType(t); setConfirm(false); }}
-              className={`px-3 py-1.5 rounded text-sm min-h-[36px] ${notifType === t ? 'bg-indigo-600 text-white' : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300'}`}
-            >
-              {t === 'push' ? 'Push notification' : 'Email'}
-            </button>
-          ))}
-        </div>
-      </section>
-
-      {/* Message */}
-      <section className="mb-6">
-        <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">Message</h2>
-        <input
-          value={title}
-          onChange={e => { setTitle(e.target.value); setConfirm(false); }}
-          placeholder="Title"
-          className="w-full border rounded px-3 py-2 text-sm mb-3 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-100"
-        />
-        <textarea
-          value={body}
-          onChange={e => { setBody(e.target.value); setConfirm(false); }}
-          placeholder="Message body"
-          rows={4}
-          className="w-full border rounded px-3 py-2 text-sm dark:bg-gray-800 dark:border-gray-600 dark:text-gray-100"
-        />
-      </section>
-
-      {confirm && (
-        <div className="mb-4 bg-amber-50 border border-amber-200 rounded-lg p-3 text-sm text-amber-800">
-          Send to {countData?.count ?? '?'} users? Click Send again to confirm.
-        </div>
-      )}
-
-      <button
-        disabled={!canSend || sending}
-        onClick={handleSend}
-        className="px-6 py-2 bg-indigo-600 text-white rounded disabled:opacity-50 min-h-[44px] text-sm font-medium"
-      >
-        {sending ? 'Sending...' : confirm ? 'Confirm Send' : 'Send Notification'}
-      </button>
-    </div>
-  );
+      </div>
+    </>
+  )
 }

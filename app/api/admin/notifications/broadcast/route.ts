@@ -62,6 +62,19 @@ export async function POST(req: NextRequest) {
   try {
     const userIds = await resolveUserIds(audience);
 
+    // Record this broadcast for audit history (best effort -- do not fail the send if log creation fails)
+    void prisma.notificationLog.create({
+      data: {
+        audience: audience.type,
+        channel: type,
+        title,
+        body: msgBody,
+        sentTo: userIds.length,
+        status: 'sent',
+        adminId: session.user.id,
+      },
+    }).catch(() => {});
+
     // Fire-and-forget per-user sends (best effort; errors are suppressed per sendPushSafe/sendMailSafe contract)
     if (type === 'push') {
       for (const userId of userIds) {

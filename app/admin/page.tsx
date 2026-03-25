@@ -1,204 +1,437 @@
-'use client';
-
-/**
- * Admin home: descriptive dashboard reflecting current system state,
- * failure counts, recent failed jobs with links to details/retry, and quick actions.
- */
-
 import React from 'react';
-import useSWR from 'swr';
 import Link from 'next/link';
+import { prisma } from '@/lib/prisma';
+import { AdminTopbar } from '@/components/admin/AdminTopbar';
+import { timeSince } from '@/lib/admin/formatters';
 
-const fetcher = (url: string) => fetch(url).then((r) => r.json());
+// ---------------------------------------------------------------------------
+// Types
+// ---------------------------------------------------------------------------
 
-export default function AdminHome() {
-  const { data: summary, error: summaryErr } = useSWR('/api/admin/content-engine/summary', fetcher, {
-    refreshInterval: 30_000,
-  });
-  const { data: failedData } = useSWR(
-    '/api/admin/content-engine/jobs?status=failed&limit=5',
-    fetcher,
-    { refreshInterval: 30_000 }
-  );
-  const failedJobs = failedData?.jobs ?? [];
+type ActivityStatus = 'done' | 'running' | 'failed' | 'pending';
 
-  return (
-    <div className="space-y-8">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Admin Home</h1>
-        <p className="mt-1 text-gray-600 dark:text-gray-400">
-          Control Tower overview: job counts, recent failures, and quick links to jobs, logs, and
-          retry actions.
-        </p>
-      </div>
-
-      {/* Quick stats */}
-      <section className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-6">
-        <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Job summary</h2>
-        {summaryErr && (
-          <p className="text-sm text-amber-600">Could not load summary. Check Engine status.</p>
-        )}
-        {!summaryErr && summary && (
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-            <StatCard
-              label="Queued"
-              value={summary.queued ?? 0}
-              sub={summary.hydration?.pending != null ? `Hydration: ${summary.hydration.pending}` : undefined}
-            />
-            <StatCard
-              label="Running"
-              value={summary.running ?? 0}
-              sub={summary.hydration?.running != null ? `Hydration: ${summary.hydration.running}` : undefined}
-            />
-            <StatCard
-              label="Failed"
-              value={summary.failed ?? 0}
-              sub={summary.hydration?.failed != null ? `Hydration: ${summary.hydration.failed}` : undefined}
-              highlight
-            />
-            <StatCard label="Completed today" value={summary.completedToday ?? 0} />
-          </div>
-        )}
-      </section>
-
-      {/* Recent failures + retry hint */}
-      <section className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-6">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Recent failed jobs</h2>
-          <Link
-            href="/admin/content-engine/jobs?status=failed"
-            className="text-sm text-blue-600 dark:text-blue-400 hover:underline"
-          >
-            View all failed jobs →
-          </Link>
-        </div>
-        <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
-          Failures are logged per job. Open a job to see the error and use <strong>Retry</strong> or{' '}
-          <strong>Requeue</strong>. For Hydrate All, use the pipeline Monitor tab and retry failed
-          child jobs from there.
-        </p>
-        {failedJobs.length === 0 ? (
-          <p className="text-sm text-gray-500 dark:text-gray-400">No failed jobs in the list.</p>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="min-w-full text-sm">
-              <thead>
-                <tr className="border-b border-gray-200 dark:border-gray-600">
-                  <th className="text-left py-2 pr-4 text-gray-600 dark:text-gray-400">Job ID</th>
-                  <th className="text-left py-2 pr-4 text-gray-600 dark:text-gray-400">Type</th>
-                  <th className="text-left py-2 pr-4 text-gray-600 dark:text-gray-400">Entity</th>
-                  <th className="text-left py-2 pr-4 text-gray-600 dark:text-gray-400">Created</th>
-                  <th className="text-left py-2 text-gray-600 dark:text-gray-400">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {failedJobs.map((job: any) => (
-                  <tr key={job.id} className="border-b border-gray-100 dark:border-gray-700">
-                    <td className="py-2 pr-4 font-mono text-xs truncate max-w-[140px]">
-                      <Link
-                        href={`/admin/content-engine/jobs/${job.id}`}
-                        className="text-blue-600 dark:text-blue-400 hover:underline"
-                      >
-                        {job.id}
-                      </Link>
-                    </td>
-                    <td className="py-2 pr-4">{job.jobType ?? '--'}</td>
-                    <td className="py-2 pr-4">
-                      {job.entityType}
-                      {job.entityId ? ` (${String(job.entityId).slice(0, 8)}...)` : ''}
-                    </td>
-                    <td className="py-2 pr-4 text-gray-500 dark:text-gray-400">
-                      {job.createdAt ? new Date(job.createdAt).toLocaleString() : '--'}
-                    </td>
-                    <td className="py-2">
-                      <Link
-                        href={`/admin/content-engine/jobs/${job.id}`}
-                        className="inline-block px-2 py-1 rounded bg-gray-200 dark:bg-gray-600 text-gray-800 dark:text-gray-200 text-xs font-medium hover:bg-gray-300 dark:hover:bg-gray-500"
-                      >
-                        View / Retry
-                      </Link>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </section>
-
-      {/* Quick links */}
-      <section className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-6">
-        <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Quick links</h2>
-        <ul className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <QuickLink href="/admin/content-engine/jobs" label="Execution jobs" desc="List, filter, view details, Retry / Cancel / Requeue" />
-          <QuickLink href="/admin/content-engine/hydrate-all" label="Hydrate All" desc="Submit and monitor pipeline; retry failed child jobs from Monitor" />
-          <QuickLink href="/admin/content-engine/audit-logs" label="Engine audit logs" desc="Content engine execution and job events" />
-          <QuickLink href="/admin/regeneration-jobs" label="Regeneration jobs" desc="Legacy regeneration job list" />
-          <QuickLink href="/admin/system/alerts" label="System alerts" desc="Active and resolved alerts" />
-        </ul>
-      </section>
-
-      {/* System behaviour */}
-      <section className="rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 p-6">
-        <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">System behaviour</h2>
-        <ul className="text-sm text-gray-700 dark:text-gray-300 space-y-2 list-disc list-inside">
-          <li>All AI content starts as draft and requires approval (Content Review).</li>
-          <li>Execution and Hydrate All jobs are logged; failures store <code className="bg-gray-200 dark:bg-gray-700 px-1 rounded">lastError</code> and timeline events.</li>
-          <li>From <strong>Execution Jobs</strong>: open a failed job to see the error and use <strong>Retry</strong> or <strong>Requeue</strong>.</li>
-          <li>From <strong>Hydrate All</strong> Monitor tab: failed child jobs show in the Failed panel with per-job and &quot;Retry all&quot; actions.</li>
-          <li>Engine audit logs and Platform audit logs are available from the sidebar for deeper traces.</li>
-        </ul>
-      </section>
-    </div>
-  );
+interface ActivityItem {
+  id: string;
+  label: string;
+  detail: string;
+  timestamp: Date;
+  status: ActivityStatus;
 }
 
-function StatCard({
+// ---------------------------------------------------------------------------
+// Pure helpers
+// ---------------------------------------------------------------------------
+
+function formatCostUsd(usd: number): string {
+  if (usd === 0) return '$0.00';
+  if (usd < 0.01) return `$${usd.toFixed(4)}`;
+  return `$${usd.toFixed(2)}`;
+}
+
+const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'] as const;
+
+function buildSparkline(
+  sessions: { startedAt: Date }[],
+  startOfToday: Date,
+): { day: string; count: number }[] {
+  const buckets = Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(startOfToday);
+    d.setDate(d.getDate() - (6 - i));
+    return { day: DAY_NAMES[d.getDay()], count: 0, ms: d.getTime() };
+  });
+
+  for (const s of sessions) {
+    const sd = new Date(s.startedAt);
+    sd.setHours(0, 0, 0, 0);
+    const bucket = buckets.find(b => b.ms === sd.getTime());
+    if (bucket) bucket.count++;
+  }
+
+  return buckets.map(({ day, count }) => ({ day, count }));
+}
+
+function buildActivityFeed(
+  jobs: { id: string; status: string; jobType: string; subject: string | null; updatedAt: Date }[],
+  signups: { id: string; createdAt: Date }[],
+  safetyEvents: { id: string; triggerType: string; severity: string; createdAt: Date }[],
+  ingests: { id: string; fileSource: string | null; chunksCreated: number; errors: number; runAt: Date }[],
+): ActivityItem[] {
+  const items: ActivityItem[] = [
+    ...jobs.map(j => ({
+      id: j.id,
+      label: `Hydration ${j.jobType}`,
+      detail: j.subject ?? 'system',
+      timestamp: j.updatedAt,
+      status: (j.status === 'completed' ? 'done' : 'failed') as ActivityStatus,
+    })),
+    ...signups.map(u => ({
+      id: u.id,
+      label: 'New student registered',
+      detail: 'User account created',
+      timestamp: u.createdAt,
+      status: 'done' as ActivityStatus,
+    })),
+    ...safetyEvents.map(e => ({
+      id: e.id,
+      label: `Safety: ${e.triggerType}`,
+      detail: e.severity,
+      timestamp: e.createdAt,
+      status: 'failed' as ActivityStatus,
+    })),
+    ...ingests.map(r => ({
+      id: r.id,
+      label: 'Content ingest',
+      detail: r.fileSource ? (r.fileSource.split('/').pop() ?? 'file') : 'unknown source',
+      timestamp: r.runAt,
+      status: (r.errors > 0 ? 'failed' : 'done') as ActivityStatus,
+    })),
+  ];
+
+  items.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
+  return items.slice(0, 10);
+}
+
+// ---------------------------------------------------------------------------
+// Sub-components
+// ---------------------------------------------------------------------------
+
+function KpiCard({
   label,
   value,
   sub,
-  highlight,
+  href,
 }: {
   label: string;
-  value: number;
+  value: string | number;
   sub?: string;
-  highlight?: boolean;
+  href?: string;
 }) {
-  return (
-    <div
-      className={`rounded-lg border p-4 ${
-        highlight
-          ? 'border-red-200 dark:border-red-800 bg-red-50/50 dark:bg-red-900/20'
-          : 'border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/50'
-      }`}
-    >
-      <div className="text-xs font-medium text-gray-500 dark:text-gray-400">{label}</div>
-      <div className={`text-2xl font-bold mt-1 ${highlight ? 'text-red-700 dark:text-red-400' : 'text-gray-900 dark:text-white'}`}>
+  const body = (
+    <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-4 h-full">
+      <p className="text-[11px] font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">
+        {label}
+      </p>
+      <p className="text-2xl font-semibold text-gray-900 dark:text-white mt-1 leading-none">
         {value}
-      </div>
-      {sub && <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">{sub}</div>}
+      </p>
+      {sub && (
+        <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-1.5">{sub}</p>
+      )}
     </div>
+  );
+
+  if (href) {
+    return (
+      <Link href={href} className="block hover:opacity-80 transition-opacity h-full">
+        {body}
+      </Link>
+    );
+  }
+  return body;
+}
+
+function StatusBadge({ status }: { status: ActivityStatus }) {
+  const cfg: Record<ActivityStatus, { bg: string; text: string; label: string }> = {
+    done:    { bg: 'bg-[#EAF3DE]', text: 'text-[#27500A]', label: 'Done' },
+    running: { bg: 'bg-[#E6F1FB]', text: 'text-[#0C447C]', label: 'Running' },
+    failed:  { bg: 'bg-[#FCEBEB]', text: 'text-[#791F1F]', label: 'Failed' },
+    pending: { bg: 'bg-[#FAEEDA]', text: 'text-[#633806]', label: 'Pending' },
+  };
+  const { bg, text, label } = cfg[status];
+  return (
+    <span className={`inline-flex items-center text-[9px] font-semibold px-1.5 py-0.5 rounded-full ${bg} ${text}`}>
+      {label}
+    </span>
   );
 }
 
-function QuickLink({
+function SessionSparkline({ data }: { data: { day: string; count: number }[] }) {
+  const max = Math.max(...data.map(d => d.count), 1);
+  const BAR_AREA_H = 36;
+
+  return (
+    <svg viewBox="0 0 280 54" className="w-full h-20" aria-label="Sessions last 7 days">
+      {data.map((d, i) => {
+        const barH = Math.max((d.count / max) * BAR_AREA_H, d.count > 0 ? 2 : 1);
+        const x = i * 40 + 6;
+        const y = BAR_AREA_H - barH + 4;
+        return (
+          <g key={i}>
+            <rect
+              x={x} y={y} width={28} height={barH}
+              rx="3"
+              fill="#534AB7"
+              opacity={d.count > 0 ? 0.85 : 0.12}
+            />
+            {d.count > 0 && (
+              <text x={x + 14} y={y - 3} textAnchor="middle" fontSize="7" fill="#534AB7">
+                {d.count}
+              </text>
+            )}
+            <text x={x + 14} y={50} textAnchor="middle" fontSize="8" fill="#9ca3af">
+              {d.day}
+            </text>
+          </g>
+        );
+      })}
+    </svg>
+  );
+}
+
+function QuickActionBtn({
   href,
   label,
-  desc,
+  danger,
 }: {
   href: string;
   label: string;
-  desc: string;
+  danger?: boolean;
 }) {
   return (
-    <li>
-      <Link
-        href={href}
-        className="block p-3 rounded-lg border border-gray-200 dark:border-gray-700 hover:border-blue-400 dark:hover:border-blue-500 hover:bg-blue-50/50 dark:hover:bg-blue-900/20 transition-colors"
+    <Link
+      href={href}
+      className={`flex items-center justify-between px-3 py-2.5 rounded-lg border text-[12px] font-medium min-h-[44px] transition-colors ${
+        danger
+          ? 'border-[#f9d7d7] bg-[#FCEBEB] text-[#791F1F] hover:bg-[#f9d7d7]'
+          : 'border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800'
+      }`}
+    >
+      {label}
+      <svg
+        className="w-3.5 h-3.5 opacity-40 flex-shrink-0 ml-2"
+        fill="none"
+        stroke="currentColor"
+        viewBox="0 0 24 24"
       >
-        <span className="font-medium text-gray-900 dark:text-white">{label}</span>
-        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{desc}</p>
-      </Link>
-    </li>
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+      </svg>
+    </Link>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Page
+// ---------------------------------------------------------------------------
+
+export default async function AdminDashboardPage() {
+  const now = new Date();
+  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const since24h = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+  const since7d = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+
+  const [
+    activeStudentsToday,
+    sessionsToday,
+    costRow,
+    subjectCounts,
+    rawSessions7d,
+    recentJobs,
+    recentSignups,
+    recentSafetyEvents,
+    recentIngests,
+    pendingReview,
+    safetyAlerts,
+    runningJobs,
+  ] = await Promise.all([
+    prisma.user
+      .count({ where: { role: 'user', lastSessionDate: { gte: startOfToday } } })
+      .catch(() => 0),
+
+    prisma.structuredSession
+      .count({ where: { startedAt: { gte: startOfToday } } })
+      .catch(() => 0),
+
+    prisma.dailyCostMetric
+      .findFirst({ where: { date: { gte: startOfToday } }, select: { totalCostUsd: true } })
+      .catch(() => null),
+
+    Promise.all([
+      prisma.subjectDef
+        .count({
+          where: {
+            lifecycle: 'active',
+            chapters: { some: { status: 'approved', lifecycle: 'active' } },
+          },
+        })
+        .catch(() => 0),
+      prisma.subjectDef
+        .count({ where: { lifecycle: 'active' } })
+        .catch(() => 0),
+    ]),
+
+    prisma.structuredSession
+      .findMany({ where: { startedAt: { gte: since7d } }, select: { startedAt: true } })
+      .catch(() => []),
+
+    prisma.hydrationJob
+      .findMany({
+        where: {
+          status: { in: ['completed', 'failed'] },
+          hierarchyLevel: 0,
+          updatedAt: { gte: since24h },
+        },
+        select: { id: true, status: true, jobType: true, subject: true, updatedAt: true },
+        orderBy: { updatedAt: 'desc' },
+        take: 10,
+      })
+      .catch(() => []),
+
+    prisma.user
+      .findMany({
+        where: { role: 'user', createdAt: { gte: since24h } },
+        select: { id: true, createdAt: true },
+        orderBy: { createdAt: 'desc' },
+        take: 10,
+      })
+      .catch(() => []),
+
+    prisma.safetyEvent
+      .findMany({
+        where: { createdAt: { gte: since24h } },
+        select: { id: true, triggerType: true, severity: true, createdAt: true },
+        orderBy: { createdAt: 'desc' },
+        take: 10,
+      })
+      .catch(() => []),
+
+    prisma.ingestRunLog
+      .findMany({
+        where: { runAt: { gte: since24h } },
+        select: { id: true, fileSource: true, chunksCreated: true, errors: true, runAt: true },
+        orderBy: { runAt: 'desc' },
+        take: 10,
+      })
+      .catch(() => []),
+
+    prisma.topicDef
+      .count({ where: { status: 'draft', lifecycle: 'active' } })
+      .catch(() => 0),
+
+    prisma.safetyEvent
+      .count({ where: { resolvedAt: null } })
+      .catch(() => 0),
+
+    prisma.hydrationJob
+      .count({ where: { status: 'running', hierarchyLevel: 0 } })
+      .catch(() => 0),
+  ]);
+
+  const [hydratedSubjects, totalSubjects] = subjectCounts;
+  const costToday = costRow?.totalCostUsd ?? 0;
+  const sparklineData = buildSparkline(rawSessions7d, startOfToday);
+  const activity = buildActivityFeed(recentJobs, recentSignups, recentSafetyEvents, recentIngests);
+
+  return (
+    <>
+      <AdminTopbar title="Dashboard" runningJobs={runningJobs} />
+
+      <div className="p-5 space-y-4">
+        {/* KPI row */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          <KpiCard
+            label="Active students today"
+            value={activeStudentsToday}
+            sub="With a session today"
+          />
+          <KpiCard
+            label="Sessions today"
+            value={sessionsToday}
+            sub="Structured sessions started"
+          />
+          <KpiCard
+            label="AI cost today"
+            value={formatCostUsd(costToday)}
+            sub="From DailyCostMetric"
+          />
+          <KpiCard
+            label="Content ready"
+            value={`${hydratedSubjects} / ${totalSubjects}`}
+            sub="Subjects with approved chapters"
+            href="/admin/content"
+          />
+        </div>
+
+        {/* Sparkline + Quick Actions */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
+          <div className="lg:col-span-2 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-4">
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-[12px] font-medium text-gray-700 dark:text-gray-300">
+                Sessions -- last 7 days
+              </p>
+              <Link
+                href="/admin/learning-analytics"
+                className="text-[11px] text-[#534AB7] dark:text-[#7B74D6] hover:underline"
+              >
+                Full analytics
+              </Link>
+            </div>
+            <SessionSparkline data={sparklineData} />
+          </div>
+
+          <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-4">
+            <p className="text-[12px] font-medium text-gray-700 dark:text-gray-300 mb-3">
+              Quick actions
+            </p>
+            <div className="space-y-2">
+              <QuickActionBtn href="/admin/content" label="Trigger content hydration" />
+              <QuickActionBtn
+                href="/admin/content-approval"
+                label={pendingReview > 0 ? `Review ${pendingReview} pending items` : 'Review content'}
+              />
+              <QuickActionBtn
+                href="/admin/safety"
+                label={
+                  safetyAlerts > 0
+                    ? `${safetyAlerts} safety alert${safetyAlerts === 1 ? '' : 's'}`
+                    : 'Safety & alerts'
+                }
+                danger={safetyAlerts > 0}
+              />
+              <QuickActionBtn href="/admin/notifications" label="Send broadcast" />
+            </div>
+          </div>
+        </div>
+
+        {/* Activity feed */}
+        <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-4">
+          <div className="flex items-center justify-between mb-3">
+            <p className="text-[12px] font-medium text-gray-700 dark:text-gray-300">
+              Recent activity
+            </p>
+            <span className="text-[10px] text-gray-400">Last 24 h</span>
+          </div>
+
+          {activity.length === 0 ? (
+            <p className="text-[12px] text-gray-400 dark:text-gray-500 py-6 text-center">
+              No activity in the last 24 hours -- system is quiet.
+            </p>
+          ) : (
+            <div className="divide-y divide-gray-100 dark:divide-gray-800">
+              {activity.map(item => (
+                <div
+                  key={item.id}
+                  className="flex items-center gap-3 py-2.5 first:pt-0 last:pb-0"
+                >
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[12px] font-medium text-gray-800 dark:text-gray-200 truncate">
+                      {item.label}
+                    </p>
+                    <p className="text-[11px] text-gray-400 dark:text-gray-500 truncate">
+                      {item.detail}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    <StatusBadge status={item.status} />
+                    <span className="text-[10px] text-gray-400 whitespace-nowrap">
+                      {timeSince(item.timestamp)}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </>
   );
 }

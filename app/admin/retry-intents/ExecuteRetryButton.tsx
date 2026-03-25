@@ -18,7 +18,7 @@ export default function ExecuteRetryButton({ intentId }: { intentId: string }) {
       }
       const jobId = body?.job?.id
       if (jobId) {
-        window.location.href = `/admin/regeneration-jobs/${jobId}`
+        window.location.href = `/admin/content-engine/jobs/${jobId}`
         return
       }
       // fallback: reload

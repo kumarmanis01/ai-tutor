@@ -220,79 +220,67 @@ interface NavItem {
 // Navigation sections -- organised by workflow; all hrefs must match app/admin route segments
 const contentGenerationLinks: NavItem[] = [
   { href: '/admin', label: 'Home', icon: 'Dashboard' },
-  { href: '/admin/ai-dashboard', label: 'AI Dashboard', icon: 'Chart' },
-  { href: '/admin/content-engine/control-panel', label: 'AI Generation', icon: 'Generate' },
-  {
-    href: '/admin/content-engine/hydrate-all',
-    label: 'Hydrate All',
-    icon: 'Rocket',
-    badge: 'Pipeline',
-    badgeColor: 'bg-green-500',
-  },
+  { href: '/admin/content', label: 'Coverage & Hydrate', icon: 'Rocket' },
+  { href: '/admin/content-approval', label: 'Content Review', icon: 'CheckCircle' },
 ];
 
 const contentManagementLinks: NavItem[] = [
-  { href: '/admin/content', label: 'Coverage & Hydrate', icon: 'Generate' },
-  {
-    href: '/admin/content-approval',
-    label: 'Content Review',
-    icon: 'CheckCircle',
-    badge: 'Unified',
-    badgeColor: 'bg-blue-500',
-  },
-  { href: '/admin/content-central', label: 'Content Central', icon: 'Folder' },
   { href: '/admin/content-engine/rollbacks', label: 'Rollbacks', icon: 'Rewind' },
   { href: '/admin/syllabi', label: 'Syllabi', icon: 'Book' },
   { href: '/admin/catalog', label: 'Content Catalog', icon: 'Folder' },
-];
-
-// Jobs, failure logs, retries -- single place for execution and HydrateAll jobs + retry actions
-const jobsAndRetriesLinks: NavItem[] = [
-  { href: '/admin/content-engine/jobs', label: 'Execution Jobs', icon: 'Briefcase' },
-  { href: '/admin/content-engine/hydrate-all', label: 'Hydrate All Jobs', icon: 'Rocket' },
-  { href: '/admin/regeneration-jobs', label: 'Regeneration Jobs', icon: 'Rewind' },
-];
-
-const systemMonitoringLinks: NavItem[] = [
-  { href: '/admin/content-engine/workers', label: 'Workers', icon: 'Server' },
-  { href: '/admin/content-engine/queue', label: 'Queue', icon: 'Queue' },
-  { href: '/admin/content-engine/redis', label: 'Redis', icon: 'Database' },
-  { href: '/admin/system/metrics', label: 'System Metrics', icon: 'Chart' },
-  { href: '/admin/system/alerts', label: 'System Alerts', icon: 'Bell' },
-  { href: '/admin/safety', label: 'Safety Events', icon: 'Shield' },
-  { href: '/admin/content-engine/audit-logs', label: 'Engine Audit Logs', icon: 'ClipboardList' },
-];
-
-const learningAndQualityLinks: NavItem[] = [
-  { href: '/admin/weak-topics', label: 'Weak Topic Monitoring', icon: 'Book' },
-  { href: '/admin/student-learning', label: 'Student Learning', icon: 'Users' },
-  { href: '/admin/student-risk', label: 'Student Risk', icon: 'Bell' },
-  { href: '/admin/learning-funnel', label: 'Learning Funnel', icon: 'Chart' },
-  { href: '/admin/learning-outcomes', label: 'Learning Outcomes', icon: 'Chart' },
-  { href: '/admin/recommendation-performance', label: 'Recommendation Performance', icon: 'Chart' },
-  { href: '/admin/curriculum-difficulty', label: 'Curriculum Difficulty', icon: 'Book' },
-  { href: '/admin/parent-reporting', label: 'Parent Reporting', icon: 'ClipboardList' },
   { href: '/admin/content-readiness', label: 'Content Readiness', icon: 'Folder' },
   { href: '/admin/content-quality', label: 'Content Quality', icon: 'CheckCircle' },
 ];
 
+// Jobs & retries -- unified jobs page + legacy detail view
+const jobsAndRetriesLinks: NavItem[] = [
+  { href: '/admin/jobs', label: 'Jobs', icon: 'Briefcase' },
+  { href: '/admin/content-engine/jobs', label: 'Job Detail (legacy)', icon: 'Queue' },
+];
+
+const systemMonitoringLinks: NavItem[] = [
+  { href: '/admin/system/health', label: 'System Health', icon: 'Server' },
+  { href: '/admin/system/alerts', label: 'System Alerts', icon: 'Bell' },
+  { href: '/admin/content-engine/workers', label: 'Workers', icon: 'Database' },
+  { href: '/admin/content-engine/audit-logs', label: 'Engine Audit Logs', icon: 'ClipboardList' },
+  { href: '/admin/safety', label: 'Safety Events', icon: 'Shield' },
+];
+
+const learningAndQualityLinks: NavItem[] = [
+  { href: '/admin/learning-analytics', label: 'Learning Analytics', icon: 'Chart' },
+  { href: '/admin/users', label: 'Students', icon: 'Users' },
+  { href: '/admin/parents', label: 'Parents', icon: 'ClipboardList' },
+];
+
 const generalAdminLinks: NavItem[] = [
-  { href: '/admin/users', label: 'User Management', icon: 'Users' },
+  { href: '/admin/costs', label: 'Costs & Usage', icon: 'Chart' },
   { href: '/admin/notifications', label: 'Notifications', icon: 'Bell' },
   { href: '/admin/audit-logs', label: 'Platform Audit Logs', icon: 'ClipboardList' },
-  { href: '/admin/api-usage', label: 'API Usage', icon: 'Chart' },
   { href: '/admin/payments/success', label: 'Payments', icon: 'CreditCard' },
   { href: '/admin/challenge', label: 'Challenges', icon: 'Trophy' },
 ];
+
+interface AdminSidebarProps {
+  pendingReview: number;
+  activeJobs: number;
+  failedJobs: number;
+  safetyAlerts: number;
+}
+
+interface DynamicBadge {
+  count: number;
+  red?: boolean;
+}
 
 interface NavSectionProps {
   title: string;
   items: NavItem[];
   pathname: string;
+  badgeCounts?: Record<string, DynamicBadge>;
   defaultExpanded?: boolean;
 }
 
-function NavSection({ title, items, pathname, defaultExpanded = true }: NavSectionProps) {
+function NavSection({ title, items, pathname, badgeCounts, defaultExpanded = true }: NavSectionProps) {
   const [isExpanded, setIsExpanded] = useState(defaultExpanded);
 
   return (
@@ -338,6 +326,13 @@ function NavSection({ title, items, pathname, defaultExpanded = true }: NavSecti
                     {item.badge}
                   </span>
                 )}
+                {badgeCounts?.[item.href] && badgeCounts[item.href].count > 0 && (
+                  <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-medium text-white ${
+                    badgeCounts[item.href].red ? 'bg-[#E24B4A]' : 'bg-[#534AB7]'
+                  }`}>
+                    {badgeCounts[item.href].count > 99 ? '99+' : badgeCounts[item.href].count}
+                  </span>
+                )}
               </Link>
             );
           })}
@@ -372,7 +367,7 @@ function AdminProfile() {
   );
 }
 
-export default function AdminSidebar() {
+export function AdminSidebar({ pendingReview, activeJobs, failedJobs, safetyAlerts }: AdminSidebarProps) {
   const pathname = usePathname();
 
   return (
@@ -405,11 +400,26 @@ export default function AdminSidebar() {
 
       {/* Navigation */}
       <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-1">
-        <NavSection title="Content Generation" items={contentGenerationLinks} pathname={pathname} />
+        <NavSection
+          title="Content Generation"
+          items={contentGenerationLinks}
+          pathname={pathname}
+          badgeCounts={{ '/admin/content-approval': { count: pendingReview, red: false } }}
+        />
         <NavSection title="Content Management" items={contentManagementLinks} pathname={pathname} />
         <NavSection title="Learning & Quality" items={learningAndQualityLinks} pathname={pathname} />
-        <NavSection title="Jobs & Retries" items={jobsAndRetriesLinks} pathname={pathname} />
-        <NavSection title="System Monitoring" items={systemMonitoringLinks} pathname={pathname} />
+        <NavSection
+          title="Jobs & Retries"
+          items={jobsAndRetriesLinks}
+          pathname={pathname}
+          badgeCounts={{ '/admin/jobs': { count: activeJobs, red: failedJobs > 0 } }}
+        />
+        <NavSection
+          title="System Monitoring"
+          items={systemMonitoringLinks}
+          pathname={pathname}
+          badgeCounts={{ '/admin/safety': { count: safetyAlerts, red: true } }}
+        />
         <NavSection
           title="General Admin"
           items={generalAdminLinks}
@@ -428,3 +438,5 @@ export default function AdminSidebar() {
     </aside>
   );
 }
+
+export default AdminSidebar;

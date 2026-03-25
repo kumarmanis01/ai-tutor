@@ -2259,3 +2259,19 @@ enum DiagnosticStatus {
   COMPLETED
   ABANDONED
 }
+
+/// Tracks admin broadcast notifications for audit and history display.
+model NotificationLog {
+  id          String   @id @default(cuid())
+  audience    String
+  channel     String
+  title       String
+  body        String
+  sentTo      Int
+  sentAt      DateTime @default(now())
+  status      String   @default("queued")
+  failedCount Int      @default(0)
+  adminId     String?
+
+  @@index([sentAt])
+}
