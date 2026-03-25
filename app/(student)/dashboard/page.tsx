@@ -399,7 +399,7 @@ export default async function StudentHomeDashboardPage() {
             },
           },
           orderBy: { name: 'asc' },
-          select: { id: true, name: true },
+          select: { id: true, name: true, slug: true },
         })
       : [];
 

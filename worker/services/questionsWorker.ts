@@ -400,6 +400,15 @@ export async function handleQuestionsJob(jobId: string): Promise<void> {
     return;
   }
 
+  // hierarchyLevel guard: questions jobs are Level 3 (reconciler-created) or Level 0 (manually enqueued).
+  // null/undefined = unset (legacy or test stub) -- allowed. Any other level is a routing bug.
+  if (job.hierarchyLevel != null && job.hierarchyLevel !== 0 && job.hierarchyLevel !== 3) {
+    logger.error('handleQuestionsJob: wrong hierarchyLevel -- refusing to process', {
+      jobId, hierarchyLevel: job.hierarchyLevel,
+    });
+    await markJobFailed(job.id, 'wrong_hierarchy_level');
+    return;
+  }
   const topicId = job.topicId;
   if (!topicId) {
     await markJobFailed(job.id, 'missing_topicId');

@@ -169,14 +169,20 @@ export class HydrationReconciler {
       await this.createLevel2Jobs(rootJob); // Notes per topic
     }
 
-    // Level 2 (Notes): Once all topic notes are done, create Level 3 (questions).
-    const level2Complete = await this.isLevelComplete(rootJob.id, 2);
+    // Level 2 (Notes): Once all topic notes are done (or subject has 0 topics),
+    // create Level 3 (questions).
+    // allowEmpty=rootJob.contentReady ensures 0-topic subjects cascade correctly.
+    const level2Complete = rootJob.contentReady
+      && await this.isLevelComplete(rootJob.id, 2, true);
     if (level2Complete) {
-      await this.createLevel3Jobs(rootJob); // Questions per topic × difficulty
+      await this.createLevel3Jobs(rootJob); // Questions per topic x difficulty
     }
 
-    // Level 3 (Questions): Once all questions are done, finalize the root job.
-    const level3Complete = await this.isLevelComplete(rootJob.id, 3);
+    // Level 3 (Questions): Once all question jobs are done (or level 2 produced
+    // no topics), finalize the root job.
+    // allowEmpty=level2Complete propagates the "empty is complete" rule.
+    const level3Complete = level2Complete
+      && await this.isLevelComplete(rootJob.id, 3, true);
     if (level3Complete) {
       await this.finalizeRootJob(rootJob);
     }
@@ -189,7 +195,12 @@ export class HydrationReconciler {
   // Level Completion Checks
   // ============================================
 
-  private async isLevelComplete(rootJobId: string, level: number): Promise<boolean> {
+  /**
+   * Returns true when all jobs at `level` are in a terminal state.
+   * When `allowEmpty` is true and no jobs exist at this level, returns true
+   * (empty level is trivially complete -- handles subjects with 0 topics).
+   */
+  private async isLevelComplete(rootJobId: string, level: number, allowEmpty = false): Promise<boolean> {
     // Check if all jobs at this level are in terminal state
     const counts = await prisma.hydrationJob.groupBy({
       by: ['status'],
@@ -205,8 +216,8 @@ export class HydrationReconciler {
       .filter((c) => ['completed', 'failed', 'cancelled'].includes(c.status))
       .reduce((sum, c) => sum + c._count, 0);
 
-    // If no jobs at this level yet, it's not complete
-    if (totalJobs === 0) return false;
+    // If no jobs at this level: complete only if caller explicitly allows empty levels
+    if (totalJobs === 0) return allowEmpty;
 
     // All jobs must be in terminal state
     return totalJobs === terminalJobs;

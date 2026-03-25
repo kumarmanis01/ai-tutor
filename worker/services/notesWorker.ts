@@ -164,6 +164,15 @@ export async function handleNotesJob(jobId: string): Promise<void> {
     return;
   }
 
+  // hierarchyLevel guard: notes jobs are Level 2 (reconciler-created) or Level 0 (manually enqueued).
+  // null/undefined = unset (legacy or test stub) -- allowed. Any other level is a routing bug.
+  if (job.hierarchyLevel != null && job.hierarchyLevel !== 0 && job.hierarchyLevel !== 2) {
+    logger.error('handleNotesJob: wrong hierarchyLevel -- refusing to process', {
+      jobId, hierarchyLevel: job.hierarchyLevel,
+    });
+    await prisma.hydrationJob.update({ where: { id: job.id }, data: { status: JobStatus.Failed, lastError: 'wrong_hierarchy_level' } });
+    return;
+  }
   const topicId = job.topicId;
   if (!topicId) {
     const { formatLastError, FailureCode } = await import('@/lib/failureCodes');
