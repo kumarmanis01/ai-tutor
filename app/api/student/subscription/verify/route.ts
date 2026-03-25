@@ -13,6 +13,7 @@ import { getServerSessionForHandlers } from '@/lib/session';
 import { prisma } from '@/lib/prisma';
 import { logger } from '@/lib/logger';
 import { sendEmail } from '@/lib/mailer';
+import { paymentReceiptHtml } from '@/lib/email/templates';
 import { sendSms } from '@/lib/sms';
 import { PLANS } from '@/lib/subscription/plans';
 import type { PlanId } from '@/lib/subscription/plans';
@@ -118,20 +119,14 @@ export async function POST(req: Request) {
   if (user?.email) {
     sendEmail({
       to: user.email,
-      subject: 'Your Spinzy subscription is active 🎉',
-      html: `
-        <div style="font-family:sans-serif;max-width:520px;margin:auto;padding:24px;">
-          <h2 style="color:#534AB7;margin-bottom:8px;">You're all set, ${user.name ?? 'Student'}!</h2>
-          <p style="color:#374151;">Your <strong>${plan.label}</strong> subscription is now active.</p>
-          <table style="border-collapse:collapse;margin:16px 0;font-size:14px;color:#374151;">
-            <tr><td style="padding:4px 12px 4px 0">Plan</td><td><strong>${plan.label} (${plan.perMonthDisplay})</strong></td></tr>
-            <tr><td style="padding:4px 12px 4px 0">Billed today</td><td><strong>₹${plan.billedRupees}</strong></td></tr>
-            <tr><td style="padding:4px 12px 4px 0">Renews on</td><td>${renewalDate}</td></tr>
-          </table>
-          <p style="color:#6B7280;font-size:13px;">Questions? Reply to this email or reach us at support@spinzy.in</p>
-          <p style="color:#374151;">Happy learning!<br><strong>Team Spinzy</strong></p>
-        </div>
-      `,
+      subject: 'Payment confirmed -- Spinzy Academy',
+      html: paymentReceiptHtml({
+        studentName: user.name ?? 'Student',
+        plan: plan.label,
+        amountRupees: plan.billedRupees,
+        billingCycle: plan.perMonthDisplay,
+        renewalDate,
+      }),
     }).catch((err) => {
       logger.error('Receipt email failed', { event: 'subscription.verify.email_error', context: { userId }, err });
     });

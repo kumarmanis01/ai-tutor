@@ -63,7 +63,7 @@ export default function SubjectSection({
           {/* Compact progress bar */}
           <div className="w-24 h-1.5 rounded-full bg-gray-100 overflow-hidden">
             <div
-              className="h-full rounded-full bg-indigo-500 transition-all"
+              className="h-full rounded-full bg-[#534AB7] transition-all"
               style={{
                 width: totalTopics > 0
                   ? `${Math.round((completedTopics / totalTopics) * 100)}%`

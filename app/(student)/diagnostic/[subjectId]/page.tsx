@@ -22,13 +22,13 @@ export const dynamic = 'force-dynamic';
 export default async function DiagnosticPage({
   params,
 }: {
-  params: { subjectId: string };
+  params: Promise<{ subjectId: string }>;
 }) {
   const authSession = await requireActiveSession();
   if (!authSession) redirect('/');
 
   const userId = (authSession.user as { id: string }).id;
-  const { subjectId } = params;
+  const { subjectId } = await params;
 
   // Fetch student profile -- need board slug, grade, language for question generation
   const student = await prisma.user.findUnique({
@@ -80,8 +80,8 @@ export default async function DiagnosticPage({
             Vidya is getting ready
           </h1>
           <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">
-            We&apos;re preparing your {subjectDef.name} diagnostic. This usually takes a few
-            minutes. Check back shortly.
+            We&apos;re getting your personalised content ready.
+            This usually takes a few minutes -- check back shortly.
           </p>
           <Link
             href="/dashboard"

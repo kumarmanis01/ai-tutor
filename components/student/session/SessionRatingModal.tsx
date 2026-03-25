@@ -73,7 +73,7 @@ export default function SessionRatingModal(props: { sessionId: string; onClose: 
             placeholder="What could be better? (optional)"
             maxLength={280}
             rows={3}
-            className="mt-1 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            className="mt-1 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#534AB7]"
           />
           <div className="mt-1 text-right text-[11px] text-gray-500">{remaining} left</div>
         </div>
@@ -92,7 +92,7 @@ export default function SessionRatingModal(props: { sessionId: string; onClose: 
             type="button"
             onClick={handleSubmit}
             disabled={!canSubmit}
-            className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm disabled:cursor-not-allowed disabled:bg-gray-300"
+            className="rounded-lg bg-[#534AB7] px-4 py-2 text-sm font-semibold text-white shadow-sm disabled:cursor-not-allowed disabled:bg-gray-300"
           >
             {submitting ? 'Submitting...' : 'Submit'}
           </button>

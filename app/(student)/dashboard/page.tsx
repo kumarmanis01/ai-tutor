@@ -68,6 +68,18 @@ function getISOWeekBoundaries() {
   return { monday, sunday };
 }
 
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+// Handle all Prisma/Neon return shapes for String[] columns.
+// Neon serverless driver sometimes returns Postgres wire-format "{a,b,c}".
+function parseEnrolledSubjects(raw: unknown): string[] {
+  if (Array.isArray(raw)) return (raw as string[]).filter(Boolean)
+  if (typeof raw === 'string' && raw.length > 0) {
+    return raw.replace(/^\{/, '').replace(/\}$/, '').split(',').map((s) => s.trim()).filter(Boolean)
+  }
+  return []
+}
+
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default async function StudentHomeDashboardPage() {
@@ -249,12 +261,12 @@ export default async function StudentHomeDashboardPage() {
   ]);
 
   // ── Onboarding gates ──────────────────────────────────────────────────────
+  const enrolledSubjects = parseEnrolledSubjects(studentProfile?.subjects)
   const needsProfile =
     !studentProfile?.board ||
     !studentProfile?.grade ||
     !studentProfile?.language ||
-    !Array.isArray(studentProfile.subjects) ||
-    studentProfile.subjects.length === 0;
+    enrolledSubjects.length === 0;
 
   // age guard: only under-DPDP_MINOR_AGE users require the phone OTP gate.
   // accountStatus alone is not sufficient -- stale 'pending_parent_verification' on
@@ -269,7 +281,7 @@ export default async function StudentHomeDashboardPage() {
   if (needsProfile) {
     return (
       <main className="max-w-lg mx-auto px-4 py-6">
-        <TodaysLearningCard type="empty" />
+        <TodaysLearningCard type="empty" diagnosticHref="/student/onboarding" />
       </main>
     );
   }
@@ -361,29 +373,37 @@ export default async function StudentHomeDashboardPage() {
     }));
 
   // ── Subject readiness ─────────────────────────────────────────────────────
-  // Fetch subjects from the student's enrolled ClassLevel (grade + board) to
-  // avoid duplicates from the OR name/slug match and stale subjects[] array.
+  // Only show readiness cards for the subjects the student enrolled in,
+  // not all subjects available for their grade+board.
+  // enrolledSubjects is already parsed above (wire-format safe).
   const subjectDefs =
-    studentProfile?.grade && studentProfile?.board
+    studentProfile?.grade && studentProfile?.board && enrolledSubjects.length > 0
       ? await prisma.subjectDef.findMany({
           where: {
             lifecycle: 'active',
-            classLevel: {
-              grade: studentProfile.grade,
+            slug: { in: enrolledSubjects },
+            class: {
+              grade: parseInt(String(studentProfile.grade), 10),
               board: { slug: studentProfile.board },
             },
           },
-          distinct: ['name'],
           orderBy: { name: 'asc' },
           select: { id: true, name: true },
         })
       : [];
+
   const readinessResults = await Promise.all(
     subjectDefs.map(async (subj) => {
       const result = await computeReadinessScore(userId, subj.id).catch(() => null);
       return { subjectId: subj.id, subjectName: subj.name, score: result?.score ?? 0 };
     }),
   );
+
+  // href for the "Take diagnostic test" CTA in the empty/onboarding card.
+  // Uses the first enrolled subject resolved against DB so the link is always valid.
+  const diagnosticHref = subjectDefs[0]?.id
+    ? `/diagnostic/${subjectDefs[0].id}`
+    : '/student/onboarding';
 
   // ── Render ────────────────────────────────────────────────────────────────
   return (
@@ -413,6 +433,7 @@ export default async function StudentHomeDashboardPage() {
             {/* ② TodaysLearningCard */}
             <TodaysLearningCard
               type={cardType}
+              diagnosticHref={diagnosticHref}
               recommendation={recommendation}
               session={
                 activeSession

@@ -44,7 +44,7 @@ export default function ParentDashboard({ children }: ParentDashboardProps) {
         </p>
         <a
           href="/parent/link-child"
-          className="mt-5 inline-block rounded-lg bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-400"
+          className="mt-5 inline-block rounded-lg bg-[#534AB7] px-5 py-2.5 text-sm font-semibold text-white hover:bg-[#3C3489] dark:bg-[#534AB7] dark:hover:bg-indigo-400"
         >
           Link a child
         </a>
@@ -79,7 +79,7 @@ export default function ParentDashboard({ children }: ParentDashboardProps) {
 
             <a
               href={`/parent/progress/${child.studentId}`}
-              className="shrink-0 rounded-md border border-indigo-200 px-3 py-1.5 text-xs font-medium text-indigo-700 hover:bg-indigo-50 dark:border-indigo-700 dark:text-indigo-400 dark:hover:bg-indigo-950"
+              className="shrink-0 rounded-md border border-indigo-200 px-3 py-1.5 text-xs font-medium text-[#534AB7] hover:bg-[#EEEDFE] dark:border-indigo-700 dark:text-indigo-400 dark:hover:bg-indigo-950"
             >
               View full report
             </a>

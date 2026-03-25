@@ -38,11 +38,11 @@ export default function RoomJoinPage() {
       {/* Back button to rooms list */}
       <button
         onClick={() => router.push('/rooms')}
-        className="mb-4 flex items-center text-indigo-600 dark:text-yellow-300 hover:underline"
+        className="mb-4 flex items-center text-[#534AB7] dark:text-yellow-300 hover:underline"
       >
         ← Back to Rooms
       </button>
-      <h2 className="text-2xl font-bold mb-6 text-indigo-700 dark:text-yellow-300">Join a Room</h2>
+      <h2 className="text-2xl font-bold mb-6 text-[#534AB7] dark:text-yellow-300">Join a Room</h2>
       <input
         className="block w-full mb-4 px-3 py-2 rounded border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-yellow-200"
         placeholder="Enter Room Code"
@@ -52,7 +52,7 @@ export default function RoomJoinPage() {
       <button
         onClick={handleJoin}
         disabled={loading || !code}
-        className="w-full px-5 py-2 bg-indigo-600 text-white rounded font-semibold hover:bg-indigo-700 transition"
+        className="w-full px-5 py-2 bg-[#534AB7] text-white rounded font-semibold hover:bg-[#3C3489] transition"
       >
         {loading ? 'Joining...' : 'Join Room'}
       </button>

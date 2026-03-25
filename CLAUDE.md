@@ -287,6 +287,24 @@ This must be the LAST step of every task, not optional.
 
 ---
 
+## Pre-existing errors policy
+NEVER say "pre-existing errors -- proceeding anyway."
+NEVER skip errors because they existed before your change.
+If a build or test fails:
+1. Fix ALL errors, not just the ones you introduced
+2. If an error is genuinely unrelated (e.g. excluded integration tests
+   with stale fixtures) -- say exactly WHY it is safe to ignore
+   with: file path + reason + proof it does not affect production
+3. "Pre-existing" is not a reason to ignore. It means it was never
+   fixed -- fix it now.
+The only acceptable skip categories:
+- Integration tests explicitly excluded from CI in jest.config.ts
+  (these require live DB/Redis and are documented as manual-only)
+- Type errors in scripts/ folder (excluded from tsconfig.json scope)
+Everything else must be green before committing.
+
+---
+
 ## Running SQL on VPS -- Canonical Pattern
 ALWAYS use scripts/db-exec.sh for SQL. NEVER use --stdin or here-strings.
 

@@ -7,6 +7,8 @@ import { DPDP_MINOR_AGE } from '@/lib/constants/age';
 import { prisma } from '@/lib/prisma';
 import { getDailyTask } from '@/lib/dailyHabit';
 import { enqueueDiagnosticBootstrapJob } from '@/jobs/diagnosticBootstrap';
+import { sendMailSafe } from '@/lib/mailer';
+import { welcomeEmailHtml } from '@/lib/email/templates';
 
 export async function POST(req: NextRequest) {
   const start = Date.now();
@@ -305,6 +307,29 @@ export async function POST(req: NextRequest) {
       }
     } catch (err) {
       logger.warn('/api/user/onboarding: failed to trigger diagnostic bootstrap', { className: 'api.user.onboarding', methodName: 'POST', error: err });
+    }
+
+    // Welcome email: send once after the first onboarding profile save.
+    // Uses sendMailSafe so a Resend failure never blocks the 200 response.
+    // The welcomeEmailSent flag (already set by lib/auth.ts on first login for some
+    // auth providers) prevents double-sending across both trigger points.
+    if (!updatedUser.welcomeEmailSent && updatedUser.email) {
+      sendMailSafe({
+        to: updatedUser.email,
+        subject: 'Welcome to Spinzy Academy!',
+        html: welcomeEmailHtml(updatedUser.name ?? 'there'),
+      }).then(() =>
+        prisma.user.update({
+          where: { id: updatedUser.id },
+          data: { welcomeEmailSent: true },
+        }).catch((e) =>
+          logger.warn('/api/user/onboarding: failed to set welcomeEmailSent', {
+            className: 'api.user.onboarding', methodName: 'POST', error: e,
+          }),
+        ),
+      ).catch(() => {
+        // sendMailSafe never throws; this catch is defence-in-depth
+      });
     }
 
     res = NextResponse.json({ ok: true, user: { id: updatedUser.id, name: updatedUser.name, phone: updatedUser.phone } });

@@ -89,11 +89,11 @@ export default function RoomClient({ roomId }: Props) {
       <div className="flex-1 flex flex-col items-center">
         <button
           onClick={() => router.push('/rooms')}
-          className="mb-6 self-start flex items-center text-indigo-600 dark:text-yellow-300 hover:underline"
+          className="mb-6 self-start flex items-center text-[#534AB7] dark:text-yellow-300 hover:underline"
         >
           ← Back to Rooms
         </button>
-        <h2 className="text-2xl font-bold mb-4 text-indigo-700 dark:text-yellow-300 text-center">
+        <h2 className="text-2xl font-bold mb-4 text-[#534AB7] dark:text-yellow-300 text-center">
           {room?.name} {room?.subject && <span>({room.subject})</span>}
           {room?.grade && (
             <span className="ml-2 text-base text-gray-500 dark:text-gray-400">
@@ -102,13 +102,13 @@ export default function RoomClient({ roomId }: Props) {
           )}
         </h2>
         <div className="w-full max-w-xl mb-6 bg-white dark:bg-gray-900 p-4 rounded-lg shadow flex flex-col">
-          <h3 className="font-semibold text-lg mb-2 text-indigo-700 dark:text-yellow-200">
+          <h3 className="font-semibold text-lg mb-2 text-[#534AB7] dark:text-yellow-200">
             Group Chat
           </h3>
           <div className="mb-4 max-h-64 overflow-y-auto">
             {messages.map((msg) => (
               <div key={msg.id} className="mb-2">
-                <b className="text-indigo-700 dark:text-yellow-300">{msg.sender ?? msg.senderId}</b>
+                <b className="text-[#534AB7] dark:text-yellow-300">{msg.sender ?? msg.senderId}</b>
                 : <span className="text-gray-800 dark:text-yellow-100">{msg.content}</span>
               </div>
             ))}
@@ -122,7 +122,7 @@ export default function RoomClient({ roomId }: Props) {
             />
             <button
               onClick={sendMessage}
-              className="px-4 py-2 bg-indigo-600 text-white rounded font-semibold hover:bg-indigo-700 transition"
+              className="px-4 py-2 bg-[#534AB7] text-white rounded font-semibold hover:bg-[#3C3489] transition"
               disabled={!input}
             >
               Send
@@ -131,20 +131,20 @@ export default function RoomClient({ roomId }: Props) {
         </div>
         {/* Badges & Achievements */}
         <div className="w-full max-w-xl mb-6 bg-gray-50 dark:bg-gray-900 p-4 rounded-lg shadow flex flex-col">
-          <h3 className="font-semibold text-lg mb-2 text-indigo-700 dark:text-yellow-200">
+          <h3 className="font-semibold text-lg mb-2 text-[#534AB7] dark:text-yellow-200">
             Badges
           </h3>
           <div className="flex gap-3 mb-4 flex-wrap">
             {BADGES.map((badge) => (
               <span
                 key={badge.id}
-                className="flex items-center gap-1 px-3 py-1 bg-indigo-100 dark:bg-gray-700 rounded text-indigo-700 dark:text-yellow-200 font-medium"
+                className="flex items-center gap-1 px-3 py-1 bg-[#EEEDFE] dark:bg-gray-700 rounded text-[#534AB7] dark:text-yellow-200 font-medium"
               >
                 <span>{badge.icon}</span> {badge.name}
               </span>
             ))}
           </div>
-          <h3 className="font-semibold text-lg mb-2 text-indigo-700 dark:text-yellow-200">
+          <h3 className="font-semibold text-lg mb-2 text-[#534AB7] dark:text-yellow-200">
             Achievements
           </h3>
           <ul>
@@ -158,7 +158,7 @@ export default function RoomClient({ roomId }: Props) {
       </div>
       {/* Right Side Panel */}
       <aside className="w-80 bg-gray-100 dark:bg-gray-800 p-4 rounded-lg shadow flex flex-col">
-        <h3 className="font-semibold text-lg mb-4 text-indigo-700 dark:text-yellow-200">Members</h3>
+        <h3 className="font-semibold text-lg mb-4 text-[#534AB7] dark:text-yellow-200">Members</h3>
         <ul className="mb-6">
           {room?.members?.map((member: RoomMember) => (
             <li key={member.id} className="mb-1 text-gray-700 dark:text-yellow-100">
@@ -166,7 +166,7 @@ export default function RoomClient({ roomId }: Props) {
             </li>
           ))}
         </ul>
-        <h3 className="font-semibold text-lg mb-2 text-indigo-700 dark:text-yellow-200">
+        <h3 className="font-semibold text-lg mb-2 text-[#534AB7] dark:text-yellow-200">
           Leaderboard
         </h3>
         <ol className="mb-6 list-decimal pl-5">
@@ -185,7 +185,7 @@ export default function RoomClient({ roomId }: Props) {
             </li>
           ))}
         </ol>
-        <h3 className="font-semibold text-lg mb-2 text-indigo-700 dark:text-yellow-200">
+        <h3 className="font-semibold text-lg mb-2 text-[#534AB7] dark:text-yellow-200">
           Invite Friends
         </h3>
         <div className="flex gap-2 items-center mb-2">
@@ -196,7 +196,7 @@ export default function RoomClient({ roomId }: Props) {
           />
           <button
             onClick={handleCopyInvite}
-            className="px-3 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 transition"
+            className="px-3 py-2 bg-[#534AB7] text-white rounded hover:bg-[#3C3489] transition"
           >
             {copied ? 'Copied!' : 'Copy'}
           </button>
@@ -212,7 +212,7 @@ export default function RoomClient({ roomId }: Props) {
           />
           <button
             onClick={handleSendInvite}
-            className="px-3 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 transition"
+            className="px-3 py-2 bg-[#534AB7] text-white rounded hover:bg-[#3C3489] transition"
             disabled={!inviteEmail || inviteStatus === 'sending'}
           >
             {inviteStatus === 'sending'

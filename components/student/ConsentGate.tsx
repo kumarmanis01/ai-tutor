@@ -85,7 +85,7 @@ export default function ConsentGate() {
             href="/privacy"
             target="_blank"
             rel="noopener noreferrer"
-            className="underline hover:text-indigo-600 dark:hover:text-indigo-400"
+            className="underline hover:text-[#534AB7] dark:hover:text-indigo-400"
           >
             Learn more
           </a>
@@ -122,9 +122,9 @@ export default function ConsentGate() {
         <button
           onClick={handleAgree}
           disabled={!bothChecked || loading}
-          className="w-full rounded-lg bg-indigo-600 px-4 py-3 text-sm font-semibold text-white
-            transition-colors hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-40
-            dark:bg-indigo-500 dark:hover:bg-indigo-400"
+          className="w-full rounded-lg bg-[#534AB7] px-4 py-3 text-sm font-semibold text-white
+            transition-colors hover:bg-[#3C3489] disabled:cursor-not-allowed disabled:opacity-40
+            dark:bg-[#534AB7] dark:hover:bg-indigo-400"
         >
           {loading ? 'Saving...' : 'I agree'}
         </button>

@@ -300,7 +300,7 @@ function SubjectProgressCard({ subject }: { subject: SubjectProgressData }) {
         <div className="flex items-center gap-3">
           <div className="w-24 bg-gray-200 rounded-full h-2">
             <div
-              className="h-2 rounded-full bg-indigo-500"
+              className="h-2 rounded-full bg-[#534AB7]"
               style={{ width: `${Math.min(subject.coveragePercent, 100)}%` }}
             />
           </div>
@@ -386,7 +386,7 @@ function StudentDetailPanel({ studentId, onClose }: { studentId: string; onClose
     return (
       <div className="bg-white dark:bg-slate-800 rounded-xl shadow-lg p-6 text-center">
         <p className="text-gray-500">Unable to load progress data.</p>
-        <button onClick={onClose} className="mt-2 text-indigo-600 hover:underline text-sm">Close</button>
+        <button onClick={onClose} className="mt-2 text-[#534AB7] hover:underline text-sm">Close</button>
       </div>
     );
   }
@@ -401,7 +401,7 @@ function StudentDetailPanel({ studentId, onClose }: { studentId: string; onClose
             onClick={() => setActiveTab(tab)}
             className={`flex-1 py-3 text-sm font-medium text-center transition-colors ${
               activeTab === tab
-                ? 'text-indigo-600 border-b-2 border-indigo-600'
+                ? 'text-[#534AB7] border-b-2 border-[#534AB7]'
                 : 'text-gray-500 hover:text-gray-700'
             }`}
           >
@@ -621,7 +621,7 @@ function LinkStudentForm({ onSuccess }: { onSuccess: () => void }) {
           type="button"
           onClick={() => setMode('email')}
           className={`flex-1 py-1.5 text-sm rounded-lg transition-colors ${
-            mode === 'email' ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400' : 'bg-gray-100 text-gray-600 dark:bg-slate-700 dark:text-gray-400'
+            mode === 'email' ? 'bg-[#EEEDFE] text-[#534AB7] dark:bg-indigo-900/30 dark:text-indigo-400' : 'bg-gray-100 text-gray-600 dark:bg-slate-700 dark:text-gray-400'
           }`}
         >
           By Email
@@ -630,7 +630,7 @@ function LinkStudentForm({ onSuccess }: { onSuccess: () => void }) {
           type="button"
           onClick={() => setMode('code')}
           className={`flex-1 py-1.5 text-sm rounded-lg transition-colors ${
-            mode === 'code' ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400' : 'bg-gray-100 text-gray-600 dark:bg-slate-700 dark:text-gray-400'
+            mode === 'code' ? 'bg-[#EEEDFE] text-[#534AB7] dark:bg-indigo-900/30 dark:text-indigo-400' : 'bg-gray-100 text-gray-600 dark:bg-slate-700 dark:text-gray-400'
           }`}
         >
           By Invite Code
@@ -648,12 +648,12 @@ function LinkStudentForm({ onSuccess }: { onSuccess: () => void }) {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="student@email.com"
-              className="flex-1 px-4 py-2 border border-gray-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+              className="flex-1 px-4 py-2 border border-gray-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-[#534AB7] focus:border-transparent"
             />
             <button
               type="submit"
               disabled={loading || !email.trim()}
-              className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              className="px-4 py-2 bg-[#534AB7] text-white rounded-lg hover:bg-[#3C3489] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               {loading ? '...' : 'Link'}
             </button>
@@ -671,12 +671,12 @@ function LinkStudentForm({ onSuccess }: { onSuccess: () => void }) {
               onChange={(e) => setCode(e.target.value.toUpperCase())}
               placeholder="Enter 8-digit code"
               maxLength={8}
-              className="flex-1 px-4 py-2 border border-gray-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent font-mono text-center tracking-widest"
+              className="flex-1 px-4 py-2 border border-gray-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-[#534AB7] focus:border-transparent font-mono text-center tracking-widest"
             />
             <button
               type="submit"
               disabled={loading || code.length < 8}
-              className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              className="px-4 py-2 bg-[#534AB7] text-white rounded-lg hover:bg-[#3C3489] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               {loading ? '...' : 'Link'}
             </button>
@@ -740,7 +740,7 @@ export default function ParentDashboardClient() {
       <div className="min-h-screen bg-gray-50 dark:bg-slate-900 flex items-center justify-center">
         <div className="text-center">
           <p className="text-red-500 mb-4">{error}</p>
-          <button onClick={fetchData} className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">
+          <button onClick={fetchData} className="px-4 py-2 bg-[#534AB7] text-white rounded-lg hover:bg-[#3C3489]">
             Retry
           </button>
         </div>
@@ -770,7 +770,7 @@ export default function ParentDashboardClient() {
             </div>
             <button
               onClick={() => router.push('/dashboard')}
-              className="text-sm text-indigo-600 dark:text-indigo-400 hover:underline"
+              className="text-sm text-[#534AB7] dark:text-indigo-400 hover:underline"
             >
               &larr; Back to Dashboard
             </button>
@@ -847,9 +847,9 @@ export default function ParentDashboardClient() {
                 </div>
 
                 <div className="p-5 grid grid-cols-2 gap-3">
-                  <div className="rounded-xl bg-indigo-50 dark:bg-indigo-900/20 p-3">
+                  <div className="rounded-xl bg-[#EEEDFE] dark:bg-indigo-900/20 p-3">
                     <div className="text-xs text-gray-500 dark:text-gray-400">Study time (12w)</div>
-                    <div className="text-2xl font-bold text-indigo-700 dark:text-indigo-300">
+                    <div className="text-2xl font-bold text-[#534AB7] dark:text-indigo-300">
                       {formatDuration((selected.weekly ?? []).reduce((sum, w) => sum + (w.totalMinutes ?? 0), 0))}
                     </div>
                   </div>
@@ -907,7 +907,7 @@ export default function ParentDashboardClient() {
                 </p>
                 <button
                   onClick={() => setDrilldownStudentId(selected.studentId)}
-                  className="mt-3 w-full px-4 py-2 rounded-xl bg-indigo-600 text-white hover:bg-indigo-700 transition-colors"
+                  className="mt-3 w-full px-4 py-2 rounded-xl bg-[#534AB7] text-white hover:bg-[#3C3489] transition-colors"
                 >
                   Open detailed view
                 </button>

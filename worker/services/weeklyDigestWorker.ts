@@ -13,7 +13,7 @@
 
 import { prisma } from '../../lib/prisma.js'
 import { logger } from '../../lib/logger.js'
-import { sendEmail } from '../../lib/mailer.js'
+import { sendMailSafe } from '../../lib/mailer.js'
 import { callLLM } from '../../lib/callLLM.js'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -233,7 +233,7 @@ export async function processWeeklyDigest(): Promise<void> {
         dashboardUrl: `${appUrl}/parent/dashboard`,
       })
 
-      await sendEmail({ to: parent.email, subject, html, text: subject })
+      await sendMailSafe({ to: parent.email, subject, html, text: subject })
       sent++
       logger.info('[weeklyDigest] sent', { parentEmail: parent.email, childName: child.name })
     } catch (err) {

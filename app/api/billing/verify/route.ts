@@ -5,6 +5,7 @@ import { getServerSessionForHandlers } from '@/lib/session';
 import { prisma } from '@/lib/prisma';
 import { SessionUser } from '@/lib/types';
 import { sendMail } from '@/lib/mailer';
+import { paymentReceiptHtml } from '@/lib/email/templates';
 import { logApiUsage } from '@/utils/logApiUsage';
 
 async function sendPaymentSuccessEmail(
@@ -16,23 +17,14 @@ async function sendPaymentSuccessEmail(
 ) {
   await sendMail({
     to,
-    subject: 'Payment Successful - Spinzy Academy',
-    html: `
-      <h2 style="color:#2d6cdf;">Thank You for Your Payment!</h2>
-      <p>Hi ${name},</p>
-      <p>We're excited to confirm that your payment for the <strong>${plan}</strong> plan (${billingCycle}) has been received successfully.</p>
-      <p>
-        <strong>Amount Paid:</strong> ₹${amount}<br>
-        <strong>Plan:</strong> ${plan}<br>
-        <strong>Billing Cycle:</strong> ${billingCycle}
-      </p>
-      <p>Your subscription is now active. You can start enjoying all the features and benefits of Spinzy Academy right away!</p>
-      <hr>
-      <p>If you have any questions or need assistance, feel free to reply to this email or contact our support team.</p>
-      <br>
-      <p>Thank you for choosing Spinzy Academy.<br>
-      The Spinzy Academy Team</p>
-    `,
+    subject: 'Payment confirmed -- Spinzy Academy',
+    html: paymentReceiptHtml({
+      studentName: name,
+      plan,
+      amountRupees: amount,
+      billingCycle,
+      renewalDate: '',
+    }),
   });
 }
 

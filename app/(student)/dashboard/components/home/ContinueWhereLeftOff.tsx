@@ -24,7 +24,7 @@ const ACTIVITY_CONFIG: Record<string, { icon: string; label: string; color: stri
   notes: { icon: '📖', label: 'Notes', color: 'bg-purple-500/10 text-purple-600' },
   practice: { icon: '🎯', label: 'Practice', color: 'bg-green-500/10 text-green-600' },
   doubt_solving: { icon: '❓', label: 'Doubt', color: 'bg-amber-500/10 text-amber-600' },
-  lesson: { icon: '📚', label: 'Lesson', color: 'bg-indigo-500/10 text-indigo-600' },
+  lesson: { icon: '📚', label: 'Lesson', color: 'bg-[#534AB7]/10 text-[#534AB7]' },
   video: { icon: '🎬', label: 'Video', color: 'bg-red-500/10 text-red-600' },
 };
 

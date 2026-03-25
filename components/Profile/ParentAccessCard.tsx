@@ -78,7 +78,7 @@ export default function ParentAccessCard() {
           type="button"
           onClick={generate}
           disabled={busy}
-          className="px-4 py-2 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-60"
+          className="px-4 py-2 rounded-lg bg-[#534AB7] text-white hover:bg-[#3C3489] disabled:opacity-60"
         >
           {busy ? 'Working...' : 'Generate code'}
         </button>

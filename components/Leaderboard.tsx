@@ -14,7 +14,7 @@ export default function Leaderboard() {
 
   return (
     <div className="bg-white dark:bg-gray-900 rounded-lg p-4 shadow">
-      <h3 className="font-semibold mb-3 text-indigo-700 dark:text-yellow-200">Leaderboard</h3>
+      <h3 className="font-semibold mb-3 text-[#534AB7] dark:text-yellow-200">Leaderboard</h3>
       <ol className="list-decimal pl-5">
         {rows.map((u, i) => (
           <li key={u.id} className="flex justify-between items-center mb-2">

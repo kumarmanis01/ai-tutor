@@ -264,7 +264,37 @@ export async function GET(request: NextRequest) {
       take: 50,
     });
 
+    // Enrich jobs that are missing board/grade/subject from SubjectDef
+    const subjectIdsToEnrich = jobs
+      .filter((j) => (!j.board || !j.grade || !j.subject) && j.subjectId)
+      .map((j) => j.subjectId as string);
+
+    const enrichedSubjects: Record<string, { board: string; grade: number; subject: string }> = {};
+    if (subjectIdsToEnrich.length > 0) {
+      const subjectDefs = await prisma.subjectDef.findMany({
+        where: { id: { in: subjectIdsToEnrich } },
+        select: {
+          id: true,
+          name: true,
+          class: {
+            select: {
+              grade: true,
+              board: { select: { slug: true } },
+            },
+          },
+        },
+      });
+      for (const sd of subjectDefs) {
+        enrichedSubjects[sd.id] = {
+          board: sd.class.board.slug,
+          grade: sd.class.grade,
+          subject: sd.name,
+        };
+      }
+    }
+
     const jobSummaries = jobs.map((job) => {
+      const enriched = job.subjectId ? enrichedSubjects[job.subjectId] : undefined;
       const chaptersExp = job.chaptersExpected || 0;
       const topicsExp = job.topicsExpected || 0;
       const notesExp = job.notesExpected || 0;
@@ -282,14 +312,20 @@ export async function GET(request: NextRequest) {
         id: job.id,
         status: job.status,
         metadata: {
-          board: job.board || 'unknown',
-          grade: job.grade || 0,
-          subject: job.subject || 'unknown',
+          board: job.board || enriched?.board || 'unknown',
+          grade: job.grade || enriched?.grade || 0,
+          subject: job.subject || enriched?.subject || 'unknown',
           language: job.language || 'en',
         },
         createdAt: job.createdAt.toISOString(),
         completedAt: job.completedAt?.toISOString() || null,
-        progress: { overall },
+        progress: {
+          overall,
+          chapters: { expected: chaptersExp, completed: chaptersComp },
+          topics: { expected: topicsExp, completed: topicsComp },
+          notes: { expected: notesExp, completed: notesComp },
+          questions: { expected: questionsExp, completed: questionsComp },
+        },
         cost: { actual: job.actualCostUsd || null },
       };
     });

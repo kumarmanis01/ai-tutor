@@ -16,7 +16,7 @@
 import type { Job } from 'bullmq'
 import { prisma } from '@/lib/prisma.js'
 import { logger } from '@/lib/logger.js'
-import { sendEmail } from '@/lib/mailer.js'
+import { sendMail } from '@/lib/mailer.js'
 import type { DistressNotificationJobData } from '../../jobs/distressNotification.js'
 
 function buildParentEmailHtml(params: {
@@ -109,7 +109,8 @@ export async function processDistressNotification(
     const childName = parentLink.student?.name ?? 'your child'
     const parentEmail = parentLink.parent.email
 
-    await sendEmail({
+    // sendMail (not sendMailSafe) -- distress alerts must never be silently dropped
+    await sendMail({
       to: parentEmail,
       subject: `Important: ${childName} may need support`,
       html: buildParentEmailHtml({ childName, severity }),

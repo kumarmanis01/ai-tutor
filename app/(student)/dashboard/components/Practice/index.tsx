@@ -137,7 +137,7 @@ export default function PracticeTab() {
             className={[
               'shrink-0 rounded-full px-4 py-1.5 text-sm font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500',
               activeSection === s.id
-                ? 'bg-indigo-600 text-white shadow-sm'
+                ? 'bg-[#534AB7] text-white shadow-sm'
                 : 'bg-gray-100 text-gray-600 hover:bg-gray-200',
             ].join(' ')}
           >
@@ -155,7 +155,7 @@ export default function PracticeTab() {
             <RecommendedSkeleton />
           ) : recommended ? (
             <div className="rounded-2xl border border-indigo-100 bg-gradient-to-br from-indigo-50 via-white to-violet-50 p-6 shadow-sm">
-              <span className="inline-block rounded-full bg-indigo-100 px-3 py-0.5 text-xs font-semibold text-indigo-600 mb-3">
+              <span className="inline-block rounded-full bg-[#EEEDFE] px-3 py-0.5 text-xs font-semibold text-[#534AB7] mb-3">
                 {recommended.reason}
               </span>
               <h2 className="text-xl font-bold text-gray-900 leading-snug">
@@ -166,7 +166,7 @@ export default function PracticeTab() {
               </p>
               <Link
                 href={practiceHref(recommended.topicId)}
-                className="inline-flex items-center gap-2 mt-5 px-5 py-2.5 bg-indigo-600 text-white text-sm font-semibold rounded-xl hover:bg-indigo-700 transition-colors shadow-sm"
+                className="inline-flex items-center gap-2 mt-5 px-5 py-2.5 bg-[#534AB7] text-white text-sm font-semibold rounded-xl hover:bg-[#3C3489] transition-colors shadow-sm"
               >
                 <PlayIcon />
                 Start Practice
@@ -255,7 +255,7 @@ export default function PracticeTab() {
                   className={[
                     'rounded-full px-3 py-1 text-sm font-medium transition-colors',
                     customDifficulty === d.value
-                      ? 'bg-indigo-600 text-white'
+                      ? 'bg-[#534AB7] text-white'
                       : 'bg-gray-100 text-gray-600 hover:bg-gray-200',
                   ].join(' ')}
                 >
@@ -290,7 +290,7 @@ export default function PracticeTab() {
 
           {/* CTA bar -- shown once a topic is selected */}
           {customTopicId ? (
-            <div className="rounded-xl border border-indigo-100 bg-indigo-50 p-4 flex items-center justify-between gap-3">
+            <div className="rounded-xl border border-indigo-100 bg-[#EEEDFE] p-4 flex items-center justify-between gap-3">
               <p className="text-sm text-gray-700 truncate">
                 <span className="font-semibold">{customTopicName}</span>
                 {customDifficulty && (
@@ -300,7 +300,7 @@ export default function PracticeTab() {
               <button
                 type="button"
                 onClick={startCustomTest}
-                className="shrink-0 inline-flex items-center gap-1.5 px-4 py-2 bg-indigo-600 text-white text-sm font-semibold rounded-lg hover:bg-indigo-700 transition-colors"
+                className="shrink-0 inline-flex items-center gap-1.5 px-4 py-2 bg-[#534AB7] text-white text-sm font-semibold rounded-lg hover:bg-[#3C3489] transition-colors"
               >
                 <PlayIcon />
                 Start Test
@@ -411,8 +411,8 @@ function ChapterBlock({
                   className={[
                     'w-full text-left flex items-center justify-between px-3 py-2 rounded-md text-sm transition-colors',
                     isSelected
-                      ? 'bg-indigo-100 text-indigo-700 font-medium'
-                      : 'text-gray-700 hover:bg-indigo-50 hover:text-indigo-700',
+                      ? 'bg-[#EEEDFE] text-[#534AB7] font-medium'
+                      : 'text-gray-700 hover:bg-[#EEEDFE] hover:text-[#534AB7]',
                   ].join(' ')}
                 >
                   <span>{t.name}</span>
@@ -450,7 +450,7 @@ function EmptyState({ message, hint }: { message: string; hint?: string }) {
 function RecommendedSkeleton() {
   return (
     <div className="rounded-2xl border border-indigo-100 p-6 animate-pulse space-y-3">
-      <div className="h-4 w-32 bg-indigo-100 rounded-full" />
+      <div className="h-4 w-32 bg-[#EEEDFE] rounded-full" />
       <div className="h-6 w-56 bg-gray-200 rounded" />
       <div className="h-4 w-40 bg-gray-100 rounded" />
       <div className="h-9 w-36 bg-indigo-200 rounded-xl mt-2" />
@@ -501,7 +501,7 @@ function ChevronIcon({ open }: { open: boolean }) {
 
 function CheckIcon() {
   return (
-    <svg className="w-4 h-4 text-indigo-600" viewBox="0 0 20 20" fill="currentColor" aria-hidden>
+    <svg className="w-4 h-4 text-[#534AB7]" viewBox="0 0 20 20" fill="currentColor" aria-hidden>
       <path
         fillRule="evenodd"
         d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"

@@ -1,5 +1,5 @@
 import React, { Suspense } from 'react';
-import { Inter, Nunito } from 'next/font/google';
+import localFont from 'next/font/local';
 import { getServerSessionForHandlers } from '@/lib/session';
 import { notFound } from 'next/navigation';
 import AdminSidebar from '@/components/Admin/AdminSidebar';
@@ -11,8 +11,9 @@ import GoogleTagManagerClient from '@/components/ClientOnly/GoogleTagManagerClie
 import AppModalClient from '@/components/ClientOnly/AppModalClient';
 import '@/styles/index.css';
 
-const inter = Inter({ subsets: ['latin'], variable: '--font-inter', display: 'swap' });
-const nunito = Nunito({ subsets: ['latin'], weight: ['600', '700'], variable: '--font-nunito', display: 'swap' });
+// Self-hosted fonts -- no build-time network dependency on fonts.googleapis.com
+const inter = localFont({ src: '../../public/fonts/inter-latin-variable.woff2', variable: '--font-inter', display: 'swap' });
+const nunito = localFont({ src: '../../public/fonts/nunito-variable-latin.woff2', variable: '--font-nunito', display: 'swap' });
 
 export const viewport = {
   width: 'device-width',

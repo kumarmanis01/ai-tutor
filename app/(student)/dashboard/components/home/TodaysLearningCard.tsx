@@ -23,7 +23,7 @@ export interface TodaysLearningCardProps {
 }
 
 const TASK_TYPE_CONFIG: Record<string, { label: string; color: string; icon: string; cta: string }> = {
-  learn: { label: 'Learn', color: 'bg-indigo-500/15 text-indigo-600', icon: '📖', cta: 'Start New Topic' },
+  learn: { label: 'Learn', color: 'bg-[#534AB7]/15 text-[#534AB7]', icon: '📖', cta: 'Start New Topic' },
   practice: { label: 'Practice', color: 'bg-green-500/15 text-green-600', icon: '🎯', cta: 'Practice Now' },
   revise: { label: 'Revise', color: 'bg-amber-500/15 text-amber-600', icon: '🔄', cta: 'Quick Revision' },
   fix_gap: { label: 'Build Up', color: 'bg-orange-500/15 text-orange-600', icon: '💪', cta: 'Strengthen Topic' },

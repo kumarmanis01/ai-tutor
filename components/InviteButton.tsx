@@ -59,7 +59,7 @@ export default function InviteButton() {
     <div className="flex gap-2 items-center">
       <button
         onClick={create}
-        className="px-3 py-1 rounded bg-indigo-600 text-white disabled:opacity-70"
+        className="px-3 py-1 rounded bg-[#534AB7] text-white disabled:opacity-70"
         disabled={loading}
       >
         {loading ? 'Creating...' : link ? 'Regenerate' : 'Create Invite'}

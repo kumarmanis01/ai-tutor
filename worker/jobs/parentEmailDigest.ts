@@ -10,7 +10,7 @@
 
 import { prisma } from '../../lib/prisma.js';
 import { logger } from '../../lib/logger.js';
-import { sendEmail } from '../../lib/mailer.js';
+import { sendMailSafe } from '../../lib/mailer.js';
 import { sendWhatsAppMessage, buildWeeklyWhatsAppMessage } from '../../lib/whatsapp.js';
 
 /**
@@ -115,7 +115,7 @@ export async function sendParentDigests(): Promise<number> {
       const html = buildDigestHtml(parent.name, childSections);
       const text = `Weekly Learning Summary for your children on Spinzy Academy.`;
 
-      await sendEmail({
+      await sendMailSafe({
         to: parent.email,
         subject: `Weekly Learning Summary - Spinzy Academy`,
         html,

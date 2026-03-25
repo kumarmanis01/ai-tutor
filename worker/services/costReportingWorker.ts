@@ -14,7 +14,7 @@
 
 import { prisma } from '@/lib/prisma.js'
 import { logger } from '@/lib/logger.js'
-import { sendEmail } from '@/lib/mailer.js'
+import { sendMailSafe } from '@/lib/mailer.js'
 import { sendPushSafe } from '@/lib/push/send.js'
 import { PUSH_NOTIFICATIONS } from '@/lib/push/notifications.js'
 
@@ -272,7 +272,7 @@ export async function runDailyCostReport(): Promise<CostReportResult> {
           ? `\nCache hit rate: ${(cacheHitRate * 100).toFixed(1)}% (target >${(CACHE_HIT_RATE_TARGET * 100).toFixed(0)}%)${isCacheWarn ? ' ⚠️ below target' : ''}`
           : ''
         const rollingText = rollingAvg !== null ? `\n7-day avg cost/session: $${rollingAvg.toFixed(5)}` : ''
-        await sendEmail({
+        await sendMailSafe({
           to: oncallEmail,
           subject: alertSubject,
           html: buildAlertHtml({ dateLabel, sessions, totalCostUsd, costPerSession, trendingDoubts }),

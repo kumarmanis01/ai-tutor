@@ -1,0 +1,68 @@
+/**
+ * POST /api/admin/test-email
+ *
+ * Sends a test email via Resend to verify the mailer is wired correctly.
+ * Admin-only. Used during deploy verification -- not exposed in UI.
+ *
+ * Body: { to: string, template?: "welcome" | "magic-link" | "receipt" | "otp" }
+ */
+import { NextRequest, NextResponse } from 'next/server';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth';
+import { sendMail } from '@/lib/mailer';
+import {
+  welcomeEmailHtml,
+  magicLinkHtml,
+  paymentReceiptHtml,
+  parentOtpHtml,
+} from '@/lib/email/templates';
+
+export async function POST(req: NextRequest) {
+  const session = await getServerSession(authOptions);
+  if ((session?.user as { role?: string })?.role !== 'admin') {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  }
+
+  const body = await req.json().catch(() => ({}));
+  const to = typeof body.to === 'string' ? body.to.trim() : '';
+  if (!to || !to.includes('@')) {
+    return NextResponse.json({ error: '"to" must be a valid email address' }, { status: 400 });
+  }
+
+  const template = typeof body.template === 'string' ? body.template : 'welcome';
+
+  const templateMap: Record<string, { subject: string; html: string }> = {
+    welcome: {
+      subject: 'Spinzy Academy -- email test (welcome)',
+      html: welcomeEmailHtml('Test User'),
+    },
+    'magic-link': {
+      subject: 'Spinzy Academy -- email test (magic link)',
+      html: magicLinkHtml('https://spinzyacademy.com/auth/signin?token=test'),
+    },
+    receipt: {
+      subject: 'Spinzy Academy -- email test (receipt)',
+      html: paymentReceiptHtml({
+        studentName: 'Test Student',
+        plan: 'Monthly',
+        amountRupees: 99,
+        billingCycle: 'per month',
+        renewalDate: '24 April 2026',
+      }),
+    },
+    otp: {
+      subject: 'Spinzy Academy -- email test (parent OTP)',
+      html: parentOtpHtml('123456', 'Test Student'),
+    },
+  };
+
+  const tpl = templateMap[template] ?? templateMap['welcome'];
+
+  try {
+    const id = await sendMail({ to, ...tpl });
+    return NextResponse.json({ ok: true, messageId: id, template });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    return NextResponse.json({ ok: false, error: message }, { status: 500 });
+  }
+}

@@ -90,7 +90,7 @@ export default function HierarchyActions({ selection: propSelection }: Props) {
       <div className="flex flex-col gap-2">
         <button className="px-3 py-2 bg-blue-600 text-white rounded" disabled={submitting} onClick={() => enqueueJob("GENERATE_NOTES")}>Generate Notes</button>
         <button className="px-3 py-2 bg-green-600 text-white rounded" disabled={submitting} onClick={() => enqueueJob("GENERATE_QUESTIONS")}>Generate Questions</button>
-        <button className="px-3 py-2 bg-indigo-600 text-white rounded" disabled={submitting} onClick={() => enqueueJob("GENERATE_TEST")}>Generate Test</button>
+        <button className="px-3 py-2 bg-[#534AB7] text-white rounded" disabled={submitting} onClick={() => enqueueJob("GENERATE_TEST")}>Generate Test</button>
         <hr className="my-2" />
         <button className="px-3 py-2 bg-yellow-600 text-white rounded" disabled={submitting} onClick={() => enqueueJob("SYLLABUS")}>Generate Syllabus (hydrate)</button>
         <div className="text-sm text-gray-600 mt-2">

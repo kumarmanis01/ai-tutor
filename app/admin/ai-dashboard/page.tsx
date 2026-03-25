@@ -217,11 +217,18 @@ export default function AIDashboard() {
                 <td className="py-2 text-gray-500">{job.metadata?.board} Gr.{job.metadata?.grade}</td>
                 <td className="py-2">{(job.metadata?.language || "en").toUpperCase()}</td>
                 <td className="py-2">
-                  <div className="flex items-center gap-1">
-                    <div className="w-20 bg-gray-200 rounded-full h-1.5">
-                      <div className="bg-blue-600 h-1.5 rounded-full" style={{ width: `${job.progress?.overall || 0}%` }} />
+                  <div className="flex flex-col gap-0.5">
+                    <div className="flex items-center gap-1">
+                      <div className="w-20 bg-gray-200 rounded-full h-1.5">
+                        <div className="bg-blue-600 h-1.5 rounded-full" style={{ width: `${job.progress?.overall || 0}%` }} />
+                      </div>
+                      <span className="text-xs text-gray-500">{job.progress?.overall || 0}%</span>
                     </div>
-                    <span className="text-xs text-gray-500">{job.progress?.overall || 0}%</span>
+                    <div className="text-xs text-gray-400">
+                      Ch {job.progress?.chapters?.completed ?? 0}/{job.progress?.chapters?.expected ?? 0}
+                      {' · '}Notes {job.progress?.notes?.completed ?? 0}/{job.progress?.notes?.expected ?? 0}
+                      {' · '}Q {job.progress?.questions?.completed ?? 0}/{job.progress?.questions?.expected ?? 0}
+                    </div>
                   </div>
                 </td>
                 <td className="py-2">

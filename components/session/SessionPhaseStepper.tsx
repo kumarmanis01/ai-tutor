@@ -60,7 +60,7 @@ export default function SessionPhaseStepper({
               aria-current={isActive ? 'step' : undefined}
               className={`w-full h-2 rounded-full transition-colors ${
                 isDone
-                  ? 'bg-indigo-600 cursor-pointer hover:bg-indigo-700'
+                  ? 'bg-[#534AB7] cursor-pointer hover:bg-[#3C3489]'
                   : isActive
                   ? 'bg-indigo-400 cursor-default'
                   : 'bg-gray-200 cursor-default'
@@ -71,7 +71,7 @@ export default function SessionPhaseStepper({
               className={`text-[11px] text-center leading-tight truncate w-full px-0.5 ${
                 isDone || isActive
                   ? isActive
-                    ? 'text-indigo-700 font-semibold'
+                    ? 'text-[#534AB7] font-semibold'
                     : 'text-indigo-500 font-medium'
                   : 'text-gray-400'
               }`}

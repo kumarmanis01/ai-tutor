@@ -21,7 +21,9 @@ import Link from 'next/link';
 import { useSession } from 'next-auth/react';
 import { useTopicProgress } from '@/hooks/useTopicProgress';
 import TopicCompletionIndicator, { getCompletionStatus } from '@/components/TopicCompletionIndicator';
-import ProgressBar, { calculateProgress } from '@/components/ProgressBar';
+function calculateProgress(completed: number, total: number): number {
+  return total > 0 ? Math.round((completed / total) * 100) : 0;
+}
 
 export interface Lesson {
   id: string;
@@ -87,13 +89,13 @@ export default function LessonListClient({
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
             <Link
               href="/auth/signin"
-              className="px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-lg transition-colors"
+              className="px-6 py-3 bg-[#534AB7] hover:bg-[#3C3489] text-white font-semibold rounded-lg transition-colors"
             >
               Sign In
             </Link>
             <Link
               href="/auth/signin?mode=signup"
-              className="px-6 py-3 border border-indigo-300 dark:border-indigo-600 text-indigo-600 dark:text-indigo-400 font-semibold rounded-lg hover:bg-indigo-50 dark:hover:bg-indigo-900/30 transition-colors"
+              className="px-6 py-3 border border-indigo-300 dark:border-[#534AB7] text-[#534AB7] dark:text-indigo-400 font-semibold rounded-lg hover:bg-[#EEEDFE] dark:hover:bg-indigo-900/30 transition-colors"
             >
               Create Account
             </Link>
@@ -127,11 +129,12 @@ export default function LessonListClient({
       {/* Progress Bar */}
       {lessons.length > 0 && (
         <div className="mt-4 mb-6">
-          <ProgressBar 
-            progress={overallProgress} 
-            variant={overallProgress >= 100 ? 'success' : 'default'}
-            size="md"
-          />
+          <div className="w-full h-2 rounded-full bg-gray-100 dark:bg-gray-700 overflow-hidden">
+            <div
+              className={`h-full rounded-full transition-all duration-300 ${overallProgress >= 100 ? 'bg-[#1D9E75]' : 'bg-[#534AB7]'}`}
+              style={{ width: `${overallProgress}%` }}
+            />
+          </div>
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
             {completedCount} of {lessons.length} {isSubject ? 'chapters' : 'lessons'} completed
           </p>

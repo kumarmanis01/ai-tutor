@@ -28,7 +28,10 @@ jest.mock('@/lib/prisma', () => ({
 
 // ── Mailer mock ────────────────────────────────────────────────────────────────
 const mockSendEmail = jest.fn()
-jest.mock('@/lib/mailer', () => ({ sendEmail: (...a: any[]) => mockSendEmail(...a) }))
+jest.mock('@/lib/mailer', () => ({
+  sendEmail: (...a: any[]) => mockSendEmail(...a),
+  sendMailSafe: (...a: any[]) => mockSendEmail(...a),
+}))
 
 beforeEach(() => {
   mockFindMany.mockReset()
