@@ -177,9 +177,10 @@ export async function POST(req: Request) {
     });
 
     // Fallback response when LLM is not available
+    const topicLabel = studentTopic || studentSubject || 'this topic';
     aiResponse = {
-      response: `Great question about ${studentTopic || studentSubject}! Let me help you understand this better.\n\nThis is a topic that many students find interesting. To get the best answer, try breaking your question into smaller parts and reviewing the notes on this topic first. The key concepts will help you build a strong foundation.`,
-      followUpQuestion: `What specific part of ${studentTopic || studentSubject} would you like to explore further?`,
+      response: `I am having a little trouble connecting right now, so I cannot give you a full explanation of ${topicLabel} at this moment.\n\nPlease try asking again in a few seconds -- I want to give you a proper, detailed answer with examples, not a quick summary. Your question deserves a real explanation!`,
+      followUpQuestion: `Could you try asking again? I want to make sure I explain ${topicLabel} properly with examples.`,
       confidenceLevel: 'low',
     };
   }
