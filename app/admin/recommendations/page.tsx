@@ -36,7 +36,6 @@ export default function RecommendationTracesPage() {
   const { data, error, isLoading } = useSWR<{ traces: Trace[]; count: number }>(
     `/api/admin/recommendations/traces?${params.toString()}`,
     fetcher,
-    { refreshInterval: 10_000 },
   );
 
   const traces = data?.traces ?? [];
@@ -212,7 +211,7 @@ export default function RecommendationTracesPage() {
       )}
 
       <div className="text-xs text-gray-400 dark:text-gray-500">
-        Showing {traces.length} trace{traces.length !== 1 ? 's' : ''} &mdash; auto-refreshes every 10s
+        Showing {traces.length} trace{traces.length !== 1 ? 's' : ''}
       </div>
     </div>
   );

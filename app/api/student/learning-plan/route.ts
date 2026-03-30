@@ -3,8 +3,12 @@ import { getServerSessionForHandlers } from '@/lib/session'
 import { prisma } from '@/lib/prisma'
 import { getNextConcept } from '@/lib/student/learningPlan'
 import { logger } from '@/lib/logger'
+import { cacheGet, cacheSet } from '@/lib/cache'
 
 export const dynamic = 'force-dynamic'
+
+const CACHE_TTL_S = 120
+const cacheKey = (userId: string) => `lplan:v1:${userId}`
 
 export async function GET(req: Request) {
   const start = Date.now()
@@ -12,6 +16,15 @@ export async function GET(req: Request) {
   const userId = (session?.user as { id?: string })?.id
   if (!userId) {
     const res = NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    logger.logAPI(req, res, { className: 'LearningPlanAPI', methodName: 'GET' }, start)
+    return res
+  }
+
+  // Cache check
+  const cached = await cacheGet<object>(cacheKey(userId))
+  if (cached) {
+    const res = NextResponse.json(cached)
+    res.headers.set('X-Cache', 'HIT')
     logger.logAPI(req, res, { className: 'LearningPlanAPI', methodName: 'GET' }, start)
     return res
   }
@@ -63,31 +76,34 @@ export async function GET(req: Request) {
       }
     : null
 
-  const recentlyCompleted = await Promise.all(
-    plan.items.map(async (item) => {
-      const concept = await prisma.concept.findUnique({
-        where: { id: item.conceptId },
-        select: { name: true },
+  // Batch concept lookup -- avoids N+1 (one query for all 3 recent items)
+  const recentConceptIds = plan.items.map((i) => i.conceptId)
+  const recentConcepts = recentConceptIds.length
+    ? await prisma.concept.findMany({
+        where: { id: { in: recentConceptIds } },
+        select: { id: true, name: true },
       })
-      return {
-        conceptName: concept?.name ?? '',
-        completedAt: item.completedAt ? item.completedAt.toISOString() : '',
-      }
-    }),
-  )
+    : []
+  const conceptNameById = new Map(recentConcepts.map((c) => [c.id, c.name]))
+  const recentlyCompleted = plan.items.map((item) => ({
+    conceptName: conceptNameById.get(item.conceptId) ?? '',
+    completedAt: item.completedAt ? item.completedAt.toISOString() : '',
+  }))
 
-  const res = NextResponse.json(
-    {
-      planId: plan.id,
-      subjectName,
-      totalConcepts,
-      completedConcepts: completedCount,
-      progressPercent,
-      nextConcept: nextConceptPayload,
-      recentlyCompleted,
-    },
-    { status: 200 },
-  )
+  const payload = {
+    planId: plan.id,
+    subjectName,
+    totalConcepts,
+    completedConcepts: completedCount,
+    progressPercent,
+    nextConcept: nextConceptPayload,
+    recentlyCompleted,
+  }
+
+  await cacheSet(cacheKey(userId), payload, CACHE_TTL_S)
+
+  const res = NextResponse.json(payload, { status: 200 })
+  res.headers.set('X-Cache', 'MISS')
   logger.logAPI(req, res, { className: 'LearningPlanAPI', methodName: 'GET' }, start)
   return res
 }
