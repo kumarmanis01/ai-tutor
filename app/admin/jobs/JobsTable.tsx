@@ -124,7 +124,7 @@ function JobActions({ job, onRefresh }: { job: EnrichedJob; onRefresh: () => voi
         </>
       )}
       <Link
-        href={`/admin/content-engine/jobs/${id}`}
+        href={`/admin/jobs/${id}`}
         className="inline-flex text-[10px] px-2 py-1 rounded border border-gray-300 text-gray-600 hover:bg-gray-50 min-h-[28px] items-center"
       >
         Details

@@ -224,9 +224,13 @@ function RowActions({
 
       {s === 'generating' && row.jobId && (
         <>
-          <ProgressBar completed={row.chaptersCompleted} expected={row.chaptersExpected} />
+          <div className="flex items-center gap-1.5 text-[10px] text-gray-500">
+            <span className="text-[#27500A] font-medium">{row.chapterCount}ch</span>
+            <span className="text-gray-400">/</span>
+            <span className="text-gray-500">{row.topicCount}t</span>
+          </div>
           <Link
-            href={`/admin/content-engine/jobs/${row.jobId}`}
+            href={`/admin/jobs/${row.jobId}`}
             className="text-[10px] text-[#534AB7] hover:underline"
           >
             View job
@@ -237,7 +241,7 @@ function RowActions({
       {s === 'failed' && row.jobId && (
         <>
           <Link
-            href={`/admin/content-engine/jobs/${row.jobId}`}
+            href={`/admin/jobs/${row.jobId}`}
             className="inline-flex items-center text-[10px] px-2 py-1 rounded border border-gray-300 text-gray-600 hover:bg-gray-50 min-h-[28px]"
           >
             View error
@@ -386,7 +390,7 @@ export function PipelineSection({ jobs }: { jobs: PipelineJobData[] }) {
             <div className="flex items-center gap-2">
               <span className="text-[10px] text-gray-400">{timeSince(new Date(job.createdAt))}</span>
               <Link
-                href={`/admin/content-engine/jobs/${job.id}`}
+                href={`/admin/jobs/${job.id}`}
                 className="text-[10px] text-[#534AB7] hover:underline"
               >
                 View job

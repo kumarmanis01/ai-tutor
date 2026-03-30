@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useTransition } from 'react'
+import React, { useState, useTransition, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 
 // ---------------------------------------------------------------------------
@@ -23,6 +23,216 @@ export interface ReviewItemData {
   createdAt: string
 }
 
+// ---------------------------------------------------------------------------
+// Preview modal
+// ---------------------------------------------------------------------------
+
+type PreviewState =
+  | { phase: 'idle' }
+  | { phase: 'loading'; id: string; type: ReviewItemType }
+  | { phase: 'loaded'; data: Record<string, unknown> }
+  | { phase: 'error'; message: string }
+
+function NoteContentBlock({ contentJson }: { contentJson: unknown }) {
+  if (!contentJson || typeof contentJson !== 'object') {
+    return <p className="text-[11px] text-gray-500 italic">No content</p>
+  }
+  const obj = contentJson as Record<string, unknown>
+  // Render top-level text fields if available
+  const sections = obj.sections as Array<{ heading?: string; body?: string }> | undefined
+  if (sections && Array.isArray(sections)) {
+    return (
+      <div className="space-y-3">
+        {sections.map((s, i) => (
+          <div key={i}>
+            {s.heading && <p className="text-[11px] font-semibold text-gray-700">{s.heading}</p>}
+            {s.body && <p className="text-[11px] text-gray-600 whitespace-pre-wrap">{s.body}</p>}
+          </div>
+        ))}
+      </div>
+    )
+  }
+  // Fallback: render raw JSON
+  return (
+    <pre className="text-[10px] text-gray-500 whitespace-pre-wrap bg-gray-50 rounded p-2 max-h-48 overflow-y-auto">
+      {JSON.stringify(contentJson, null, 2)}
+    </pre>
+  )
+}
+
+function PreviewModal({
+  state,
+  onClose,
+}: {
+  state: PreviewState
+  onClose: () => void
+}) {
+  // Close on Escape
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') onClose()
+    }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [onClose])
+
+  if (state.phase === 'idle') return null
+
+  const data = state.phase === 'loaded' ? state.data : null
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      {/* Backdrop */}
+      <div
+        className="absolute inset-0 bg-black/40"
+        onClick={onClose}
+      />
+      {/* Panel */}
+      <div className="relative z-10 w-full max-w-lg bg-white dark:bg-gray-900 rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[85vh]">
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 dark:border-gray-800">
+          <h2 className="text-[13px] font-semibold text-gray-800 dark:text-gray-100">
+            Content Preview
+            {data && (
+              <span className="ml-2 text-[10px] font-normal text-gray-400 capitalize">
+                ({String(data.type)})
+              </span>
+            )}
+          </h2>
+          <button
+            onClick={onClose}
+            className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 p-1 rounded min-h-[32px] min-w-[32px] flex items-center justify-center"
+            aria-label="Close preview"
+          >
+            &times;
+          </button>
+        </div>
+
+        {/* Body */}
+        <div className="overflow-y-auto flex-1 px-5 py-4 space-y-4">
+          {state.phase === 'loading' && (
+            <p className="text-[12px] text-gray-500 py-8 text-center">Loading content...</p>
+          )}
+          {state.phase === 'error' && (
+            <p className="text-[12px] text-[#E24B4A] py-8 text-center">
+              {state.message} -- please try again.
+            </p>
+          )}
+
+          {data && (
+            <>
+              {/* Breadcrumb */}
+              <div>
+                <p className="text-[10px] text-gray-400">
+                  {[data.subject, data.chapter, data.topic]
+                    .filter(Boolean)
+                    .join(' / ')}
+                </p>
+                <p className="text-[10px] text-gray-400">
+                  {String(data.board ?? '')} &middot; Grade {String(data.grade ?? '')}
+                  {data.language ? ` \u00b7 ${String(data.language).toUpperCase()}` : ''}
+                  {data.difficulty ? ` \u00b7 ${String(data.difficulty)}` : ''}
+                </p>
+              </div>
+
+              <h3 className="text-[15px] font-semibold text-gray-800 dark:text-gray-100">
+                {String(data.title ?? '')}
+              </h3>
+
+              {/* Chapter topics list */}
+              {data.type === 'chapter' && Array.isArray(data.topics) && (
+                <div>
+                  <p className="text-[11px] font-medium text-gray-600 mb-1.5">
+                    Topics ({(data.topics as unknown[]).length})
+                  </p>
+                  <ul className="space-y-1">
+                    {(data.topics as Array<{ name: string; status: string }>).map((t, i) => (
+                      <li key={i} className="flex items-center gap-2 text-[11px] text-gray-700">
+                        <span className="w-4 text-gray-400">{i + 1}.</span>
+                        <span className="flex-1">{t.name}</span>
+                        <span className="text-[9px] text-gray-400 capitalize">{t.status}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {/* Topic notes list */}
+              {data.type === 'topic' && Array.isArray(data.notes) && (
+                <div>
+                  <p className="text-[11px] font-medium text-gray-600 mb-1.5">
+                    Notes ({(data.notes as unknown[]).length})
+                  </p>
+                  {(data.notes as Array<{ title: string; language: string; status: string }>).length === 0
+                    ? <p className="text-[11px] text-gray-400 italic">No notes generated yet</p>
+                    : (
+                      <ul className="space-y-1">
+                        {(data.notes as Array<{ title: string; language: string; status: string }>).map((n, i) => (
+                          <li key={i} className="flex items-center gap-2 text-[11px] text-gray-700">
+                            <span className="flex-1">{n.title}</span>
+                            <span className="text-[9px] text-gray-400 uppercase">{n.language}</span>
+                            <span className="text-[9px] text-gray-400 capitalize">{n.status}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                </div>
+              )}
+
+              {/* Note content */}
+              {data.type === 'note' && (
+                <div>
+                  <p className="text-[11px] font-medium text-gray-600 mb-1.5">Content</p>
+                  <NoteContentBlock contentJson={data.contentJson} />
+                </div>
+              )}
+
+              {/* Test questions */}
+              {data.type === 'test' && Array.isArray(data.questions) && (
+                <div>
+                  <p className="text-[11px] font-medium text-gray-600 mb-2">
+                    Questions ({(data.questions as unknown[]).length})
+                  </p>
+                  <ol className="space-y-4">
+                    {(data.questions as Array<{
+                      type: string
+                      question: string
+                      options: unknown
+                      answer: string
+                      explanation: string | null
+                    }>).map((q, i) => (
+                      <li key={i} className="border border-gray-100 rounded-lg p-3 space-y-2">
+                        <p className="text-[11px] font-medium text-gray-700">
+                          {i + 1}. {q.question}
+                        </p>
+                        {q.options && Array.isArray(q.options) && (
+                          <ul className="space-y-0.5 pl-3">
+                            {(q.options as string[]).map((opt, oi) => (
+                              <li key={oi} className="text-[10px] text-gray-600">
+                                {String.fromCharCode(65 + oi)}. {opt}
+                              </li>
+                            ))}
+                          </ul>
+                        )}
+                        <p className="text-[10px] text-[#1D9E75] font-medium">
+                          Answer: {q.answer}
+                        </p>
+                        {q.explanation && (
+                          <p className="text-[10px] text-gray-500 italic">{q.explanation}</p>
+                        )}
+                      </li>
+                    ))}
+                  </ol>
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+    </>
+  )
+}
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
@@ -64,9 +274,11 @@ async function approveItem(id: string, type: ReviewItemType, action: 'approve' |
 function ReviewRow({
   item,
   onRefresh,
+  onPreview,
 }: {
   item: ReviewItemData
   onRefresh: () => void
+  onPreview: (id: string, type: ReviewItemType) => void
 }) {
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState<string | null>(null)
@@ -117,6 +329,12 @@ function ReviewRow({
         <div className="flex items-center gap-1.5">
           {err && <span className="text-[9px] text-[#E24B4A]">{err}</span>}
           <button
+            onClick={() => onPreview(item.id, item.type)}
+            className="inline-flex text-[10px] px-2 py-1 rounded border border-gray-300 text-gray-600 hover:bg-gray-50 min-h-[28px] transition-colors"
+          >
+            Preview
+          </button>
+          <button
             onClick={() => act('approve')}
             disabled={busy}
             className="inline-flex text-[10px] px-2 py-1 rounded border border-[#c8e6c9] bg-[#EAF3DE] text-[#27500A] hover:bg-[#d9edd9] disabled:opacity-50 min-h-[28px] transition-colors"
@@ -146,10 +364,25 @@ export function ContentReviewTable({ items }: { items: ReviewItemData[] }) {
   const [typeFilter, setTypeFilter] = useState<ReviewItemType | 'all'>('all')
   const [subjectFilter, setSubjectFilter] = useState('all')
   const [bulkBusy, setBulkBusy] = useState(false)
+  const [previewState, setPreviewState] = useState<PreviewState>({ phase: 'idle' })
 
   function refresh() {
     startTransition(() => router.refresh())
   }
+
+  const openPreview = useCallback(async (id: string, type: ReviewItemType) => {
+    setPreviewState({ phase: 'loading', id, type })
+    try {
+      const r = await fetch(`/api/admin/content-approval/preview?type=${type}&id=${id}`)
+      const data = await r.json()
+      if (!r.ok) throw new Error(data.error ?? 'Failed')
+      setPreviewState({ phase: 'loaded', data })
+    } catch (e) {
+      setPreviewState({ phase: 'error', message: e instanceof Error ? e.message : 'Error' })
+    }
+  }, [])
+
+  const closePreview = useCallback(() => setPreviewState({ phase: 'idle' }), [])
 
   const subjects = [...new Set(items.map(i => i.subjectName))].sort()
 
@@ -172,6 +405,8 @@ export function ContentReviewTable({ items }: { items: ReviewItemData[] }) {
   }
 
   return (
+    <>
+    <PreviewModal state={previewState} onClose={closePreview} />
     <div className="space-y-3">
       {/* Filter bar */}
       <div className="flex flex-wrap items-center gap-2">
@@ -233,7 +468,7 @@ export function ContentReviewTable({ items }: { items: ReviewItemData[] }) {
               </thead>
               <tbody>
                 {visible.map(item => (
-                  <ReviewRow key={item.id} item={item} onRefresh={refresh} />
+                  <ReviewRow key={item.id} item={item} onRefresh={refresh} onPreview={openPreview} />
                 ))}
               </tbody>
             </table>
