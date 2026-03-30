@@ -475,5 +475,6 @@ export function ContentReviewTable({ items }: { items: ReviewItemData[] }) {
         )}
       </div>
     </div>
+    </>
   )
 }
