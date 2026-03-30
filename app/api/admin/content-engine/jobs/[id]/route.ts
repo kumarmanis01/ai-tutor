@@ -12,10 +12,10 @@ import { prisma } from '@/lib/prisma';
 import { logger } from '@/lib/logger';
 import { requireAdminOrModerator } from '@/lib/auth';
 
-export async function GET(req: Request, { params }: { params: { id: string } }) {
+export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     await requireAdminOrModerator();
-    const { id } = params;
+    const { id } = await params;
     if (!id) return NextResponse.json({ error: 'missing id' }, { status: 400 });
 
     const job = await prisma.executionJob.findUnique({ where: { id } });
@@ -98,9 +98,9 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
 }
 
 // GET timeline: /api/admin/content-engine/jobs/[id]/timeline
-export async function timeline(req: Request, { params }: { params: { id: string } }) {
+export async function timeline(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const { id } = params;
+    const { id } = await params;
     if (!id) return NextResponse.json({ error: 'missing id' }, { status: 400 });
     const logs = await prisma.jobExecutionLog.findMany({ where: { jobId: id }, orderBy: { createdAt: 'asc' } });
     return NextResponse.json({ logs });
