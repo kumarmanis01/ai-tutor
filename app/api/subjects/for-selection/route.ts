@@ -68,11 +68,20 @@ export async function GET(req: Request) {
         id: true,
         name: true,
         slug: true,
+        boardSubjectConfigs: { select: { isCore: true }, take: 1 },
       },
       orderBy: { name: 'asc' },
     });
 
-    return NextResponse.json({ subjects });
+    const response = subjects.map(s => ({
+      id: s.id,
+      name: s.name,
+      slug: s.slug,
+      isMandatory: s.boardSubjectConfigs[0]?.isCore ?? true,
+      isDefault: s.boardSubjectConfigs[0]?.isCore ?? true,
+    }));
+
+    return NextResponse.json({ subjects: response });
   } catch (err) {
     logger.error('/api/subjects/for-selection error', { error: err });
     return NextResponse.json({ error: 'internal' }, { status: 500 });

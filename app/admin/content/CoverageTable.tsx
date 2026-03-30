@@ -28,6 +28,7 @@ export interface CoverageRowData {
   chapterCount: number
   topicCount: number
   questionCount: number
+  noteCount: number
   ragChunks: number
   status: ContentStatus
   jobId: string | null
@@ -170,6 +171,15 @@ function RowActions({
     await call('/api/admin/content/retry', { jobId: row.jobId })
   }
 
+  async function handleCompletePipeline() {
+    await call('/api/admin/content/complete-pipeline', {
+      subjectId: row.subjectId,
+      board: row.boardSlug,
+      grade: row.grade,
+      language: row.language,
+    })
+  }
+
   async function handleReset() {
     // Two-step: first fetch counts, then confirm
     const r = await fetch('/api/admin/content/reset', {
@@ -206,7 +216,8 @@ function RowActions({
 
       {s === 'syllabus_only' && (
         <>
-          <Btn onClick={handleGenerate} disabled={busy} variant="primary">Generate all</Btn>
+          <Btn onClick={handleCompletePipeline} disabled={busy} variant="primary">Complete pipeline</Btn>
+          <Btn onClick={handleGenerate} disabled={busy} variant="default">Generate all</Btn>
           <Btn onClick={handleReset} disabled={busy} variant="danger">Reset</Btn>
         </>
       )}
@@ -238,6 +249,7 @@ function RowActions({
 
       {s === 'ready' && (
         <>
+          <Btn onClick={handleCompletePipeline} disabled={busy} variant="warn">Fill gaps</Btn>
           <Link
             href={`/admin/content-engine/jobs?subjectId=${row.subjectId}`}
             className="inline-flex items-center text-[10px] px-2 py-1 rounded border border-gray-300 text-gray-600 hover:bg-gray-50 min-h-[28px]"
@@ -306,7 +318,7 @@ export function CoverageTable({ rows }: { rows: CoverageRowData[] }) {
         <table className="w-full text-[11px]">
           <thead>
             <tr className="border-b border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900">
-              {['Subject', 'Grade', 'Board', 'Chapters', 'Topics', 'Questions', 'RAG chunks', 'Status', 'Actions'].map(h => (
+              {['Subject', 'Grade', 'Board', 'Chapters', 'Topics', 'Notes', 'Questions', 'RAG chunks', 'Status', 'Actions'].map(h => (
                 <th key={h} className="text-left px-3 py-2.5 font-medium text-gray-500 dark:text-gray-400 whitespace-nowrap">
                   {h}
                 </th>
@@ -325,6 +337,7 @@ export function CoverageTable({ rows }: { rows: CoverageRowData[] }) {
                 </td>
                 <td className="px-3 py-2.5 text-gray-700 dark:text-gray-300">{row.chapterCount}</td>
                 <td className="px-3 py-2.5 text-gray-700 dark:text-gray-300">{row.topicCount}</td>
+                <td className="px-3 py-2.5 text-gray-700 dark:text-gray-300">{row.noteCount}</td>
                 <td className="px-3 py-2.5 text-gray-700 dark:text-gray-300">{row.questionCount}</td>
                 <td className="px-3 py-2.5 text-gray-500">{row.ragChunks}</td>
                 <td className="px-3 py-2.5">

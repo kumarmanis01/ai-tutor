@@ -65,12 +65,21 @@ export default async function ContentPage() {
   )
 
   // ── 2. Batch lookups ────────────────────────────────────────────────────
-  const [questionGroups, ragGroups, activeJobs, pipelineJobs, recentRuns] = await Promise.all([
+  const [questionGroups, ragGroups, noteGroups, activeJobs, pipelineJobs, recentRuns] = await Promise.all([
     // Questions per topic (ACTIVE status)
     allTopicIds.length
       ? prisma.question.groupBy({
           by: ['topicId'],
           where: { status: 'ACTIVE', topicId: { in: allTopicIds } },
+          _count: { id: true },
+        })
+      : Promise.resolve([]),
+
+    // Notes per topic (ACTIVE lifecycle)
+    allTopicIds.length
+      ? prisma.topicNote.groupBy({
+          by: ['topicId'],
+          where: { lifecycle: 'active', topicId: { in: allTopicIds } },
           _count: { id: true },
         })
       : Promise.resolve([]),
@@ -145,16 +154,26 @@ export default async function ContentPage() {
     questionGroups.map(g => [g.topicId as string, g._count.id]),
   )
 
+  // Topic ID → note count
+  const noteByTopic = new Map<string, number>(
+    noteGroups.map(g => [g.topicId as string, g._count.id]),
+  )
+
   // SubjectId → question count (via topics)
   const questionBySubject = new Map<string, number>()
+  // SubjectId → note count (via topics)
+  const noteBySubject = new Map<string, number>()
   for (const s of subjects) {
-    let count = 0
+    let qCount = 0
+    let nCount = 0
     for (const ch of s.chapters) {
       for (const t of ch.topics) {
-        count += questionByTopic.get(t.id) ?? 0
+        qCount += questionByTopic.get(t.id) ?? 0
+        nCount += noteByTopic.get(t.id) ?? 0
       }
     }
-    questionBySubject.set(s.id, count)
+    questionBySubject.set(s.id, qCount)
+    noteBySubject.set(s.id, nCount)
   }
 
   // Subject name (lowercase) → RAG chunk count
@@ -170,6 +189,7 @@ export default async function ContentPage() {
     const topicCount = s.chapters.reduce((n, ch) => n + ch.topics.length, 0)
     const chapterCount = s.chapters.length
     const questionCount = questionBySubject.get(s.id) ?? 0
+    const noteCount = noteBySubject.get(s.id) ?? 0
     const ragChunks = ragBySubjectName.get(s.name.toLowerCase()) ?? 0
     const job = jobBySubject.get(s.id) ?? null
     const status = deriveStatus({
@@ -187,6 +207,7 @@ export default async function ContentPage() {
       chapterCount,
       topicCount,
       questionCount,
+      noteCount,
       ragChunks,
       status,
       jobId: job?.id ?? null,

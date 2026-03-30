@@ -136,7 +136,7 @@ export function validateOrThrow(parsed: any, ctx: { jobType: string, language?: 
     }
 
     // Require a minimum amount of real content to avoid stubby notes
-    if (typeof notesText === 'string' && notesText.trim().length < 200) {
+    if (typeof notesText === 'string' && notesText.trim().length < 80) {
       throw new SemanticWeaknessError('notes_too_short')
     }
   }

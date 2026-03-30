@@ -164,6 +164,15 @@ export async function handleNotesJob(jobId: string): Promise<void> {
     return;
   }
 
+  // hierarchyLevel guard: notes jobs are Level 2 (reconciler-created) or Level 0 (manually enqueued).
+  // null/undefined = unset (legacy or test stub) -- allowed. Any other level is a routing bug.
+  if (job.hierarchyLevel != null && job.hierarchyLevel !== 0 && job.hierarchyLevel !== 2) {
+    logger.error('handleNotesJob: wrong hierarchyLevel -- refusing to process', {
+      jobId, hierarchyLevel: job.hierarchyLevel,
+    });
+    await prisma.hydrationJob.update({ where: { id: job.id }, data: { status: JobStatus.Failed, lastError: 'wrong_hierarchy_level' } });
+    return;
+  }
   const topicId = job.topicId;
   if (!topicId) {
     const { formatLastError, FailureCode } = await import('@/lib/failureCodes');
@@ -277,9 +286,9 @@ export async function handleNotesJob(jobId: string): Promise<void> {
   // Call LLM and attempt to parse JSON with retries/extraction heuristics
   let parsed: any;
   let llmResult: any = null;
+  const llmMeta = { promptType: 'notes', board, grade, subject: subjectName, topic: topic.name, language, schemaHash: rendered.schemaHash, promptVersion: rendered.version };
   try {
-    const meta = { promptType: 'notes', board, grade, subject: subjectName, topic: topic.name, language, schemaHash: rendered.schemaHash, promptVersion: rendered.version };
-    const res = await callAndParseJSON(prompt, meta, 2);
+    const res = await callAndParseJSON(prompt, llmMeta, 2);
     parsed = res.parsed;
     llmResult = res.llmResult;
   } catch (err: any) {
@@ -322,23 +331,45 @@ export async function handleNotesJob(jobId: string): Promise<void> {
       }
     } catch { /* non-fatal */ }
   } catch (vErr: any) {
-    // Failure contract: mark HydrationJob failed, persist AIContentLog, emit jobExecutionLog, then rethrow
-    const reason = vErr?.type || vErr?.message || 'validation_failed'
-    const { formatLastError, FailureCode } = await import('@/lib/failureCodes');
-    const le = formatLastError(FailureCode.VALIDATION_FAILED, String(reason));
-    try {
-      await prisma.hydrationJob.update({ where: { id: job.id }, data: { status: JobStatus.Failed, lastError: le } });
-    } catch {}
-    try {
-      const linkedExec = await prisma.executionJob.findFirst({ where: { payload: { path: ['hydrationJobId'], equals: job.id } } });
-      if (linkedExec) {
-        await prisma.jobExecutionLog.create({ data: { jobId: linkedExec.id, event: 'VALIDATION_FAILED', prevStatus: linkedExec.status, newStatus: linkedExec.status, message: le, meta: { hydrationJobId: job.id, error: vErr?.details || null } } }).catch(() => {});
+    // notes_too_short: retry once with an explicit length hint before failing
+    const isShort = vErr?.type === 'notes_too_short' || String(vErr?.message ?? '').includes('notes_too_short');
+    if (isShort) {
+      try {
+        logger.warn('[notesWorker] notes_too_short on first attempt -- retrying LLM with length hint', { jobId: job.id });
+        const retryPrompt = `${prompt}\n\nIMPORTANT: Your previous response contained insufficient content. Please provide detailed notes with at least 80 characters of substantive text per topic.`;
+        const retryRes = await callAndParseJSON(retryPrompt, { ...llmMeta, retry: 1 }, 1);
+        validateOrThrow(retryRes.parsed, { jobType: 'notes', language, subject: subjectName, topic: topic.name, grade, difficulty: job.difficulty });
+        parsed = retryRes.parsed;
+        llmResult = retryRes.llmResult;
+        // Retry succeeded -- fall through to persist
+      } catch (retryErr: any) {
+        // Both attempts failed -- apply failure contract below
+        const retryReason = retryErr?.type || retryErr?.message || 'validation_failed';
+        const { formatLastError, FailureCode } = await import('@/lib/failureCodes');
+        const le = formatLastError(FailureCode.VALIDATION_FAILED, String(retryReason));
+        try { await prisma.hydrationJob.update({ where: { id: job.id }, data: { status: JobStatus.Failed, lastError: le } }); } catch {}
+        try { await prisma.aIContentLog.create({ data: { model: 'llm', promptType: 'notes', language: job.language || 'en', success: false, status: 'failed', error: le, requestBody: { jobId: job.id }, responseBody: parsed } }); } catch {}
+        throw retryErr;
       }
-    } catch {}
-    try {
-      await prisma.aIContentLog.create({ data: { model: 'llm', promptType: 'notes', language: job.language || 'en', success: false, status: 'failed', error: le, requestBody: { jobId: job.id }, responseBody: parsed } });
-    } catch {}
-    throw vErr;
+    } else {
+      // Failure contract: mark HydrationJob failed, persist AIContentLog, emit jobExecutionLog, then rethrow
+      const reason = vErr?.type || vErr?.message || 'validation_failed'
+      const { formatLastError, FailureCode } = await import('@/lib/failureCodes');
+      const le = formatLastError(FailureCode.VALIDATION_FAILED, String(reason));
+      try {
+        await prisma.hydrationJob.update({ where: { id: job.id }, data: { status: JobStatus.Failed, lastError: le } });
+      } catch {}
+      try {
+        const linkedExec = await prisma.executionJob.findFirst({ where: { payload: { path: ['hydrationJobId'], equals: job.id } } });
+        if (linkedExec) {
+          await prisma.jobExecutionLog.create({ data: { jobId: linkedExec.id, event: 'VALIDATION_FAILED', prevStatus: linkedExec.status, newStatus: linkedExec.status, message: le, meta: { hydrationJobId: job.id, error: vErr?.details || null } } }).catch(() => {});
+        }
+      } catch {}
+      try {
+        await prisma.aIContentLog.create({ data: { model: 'llm', promptType: 'notes', language: job.language || 'en', success: false, status: 'failed', error: le, requestBody: { jobId: job.id }, responseBody: parsed } });
+      } catch {}
+      throw vErr;
+    }
   }
 
   // Persist notes

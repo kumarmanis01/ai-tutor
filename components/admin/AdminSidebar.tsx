@@ -209,12 +209,12 @@ export function AdminSidebar({
           isActive={isActive('/admin/content-approval')}
         />
         <NavItem
-          href="/admin/content-engine/jobs"
+          href="/admin/jobs"
           icon={<IconClock />}
           label="Jobs"
           badge={jobsBadge}
           badgeVariant={failedJobs > 0 ? 'error' : 'warn'}
-          isActive={isActive('/admin/content-engine/jobs')}
+          isActive={isActive('/admin/jobs')}
         />
 
         {/* USERS */}

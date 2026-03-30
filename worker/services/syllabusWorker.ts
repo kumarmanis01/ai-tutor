@@ -260,8 +260,9 @@ export async function handleSyllabusJob(jobId: string) {
 
     // To avoid long-lived interactive transactions (which can fail under certain DB poolers),
     // perform per-chapter transactions and a short final transaction for logging/completion.
+    let failedChapterCount = 0;
     for (const ch of parsed.chapters) {
-      await runTxWithRetry(async (tx) => {
+      try { await runTxWithRetry(async (tx) => {
         const slug = toSlug(ch.title);
         const exists = await tx.chapterDef.findFirst({ where: { subjectId: subjectId as string, slug } });
         if (exists) return;
@@ -296,7 +297,12 @@ export async function handleSyllabusJob(jobId: string) {
             createdTopicIds.push(topic.id);
           }
         }
-      });
+      }); } catch (chErr: any) {
+        failedChapterCount++;
+        logger.warn('[syllabusWorker] chapter transaction failed, skipping chapter', {
+          jobId: job.id, chapter: ch.title, error: chErr?.message || String(chErr),
+        });
+      }
     }
 
     // Short final transaction: persist AIContentLog and mark hydration job completed.
