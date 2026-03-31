@@ -29,15 +29,18 @@ async function fetchRedisMemoryMb(): Promise<number | null> {
   }
 }
 
-async function fetchPendingMigrations(): Promise<number> {
+async function fetchPendingMigrations(): Promise<{ count: number; names: string[] }> {
   try {
-    const rows = await prisma.$queryRaw<{ count: bigint }[]>`
-      SELECT COUNT(*) as count FROM "_prisma_migrations"
+    const rows = await prisma.$queryRaw<{ migration_name: string }[]>`
+      SELECT migration_name FROM "_prisma_migrations"
       WHERE applied_steps_count = 0
+        AND rolled_back_at IS NULL
+        AND finished_at IS NULL
+      ORDER BY started_at
     `
-    return Number(rows[0]?.count ?? 0)
+    return { count: rows.length, names: rows.map(r => r.migration_name) }
   } catch {
-    return 0
+    return { count: 0, names: [] }
   }
 }
 
@@ -45,6 +48,7 @@ async function fetchTotalMigrations(): Promise<number> {
   try {
     const rows = await prisma.$queryRaw<{ count: bigint }[]>`
       SELECT COUNT(*) as count FROM "_prisma_migrations"
+      WHERE applied_steps_count > 0
     `
     return Number(rows[0]?.count ?? 0)
   } catch {
@@ -138,7 +142,7 @@ function UsageBar({
 // ---------------------------------------------------------------------------
 
 export default async function SystemHealthPage() {
-  const [health, redisMemMb, pendingMig, totalMig, dbConns, webWorker, taskWorker] =
+  const [health, redisMemMb, migResult, totalMig, dbConns, webWorker, taskWorker] =
     await Promise.all([
       systemHealth().catch(() => null),
       fetchRedisMemoryMb(),
@@ -148,6 +152,8 @@ export default async function SystemHealthPage() {
       fetchWorkerRow('web'),
       fetchWorkerRow('worker'),
     ])
+  const pendingMig = migResult.count
+  const pendingMigNames = migResult.names
 
   const dbStatus: HealthStatus = health?.dependencies.database.status ?? 'unhealthy'
   const redisStatus: HealthStatus = health?.dependencies.redis.status ?? 'unhealthy'
@@ -175,7 +181,7 @@ export default async function SystemHealthPage() {
     : 'No RUNNING task worker'
 
   const migDetail = pendingMig > 0
-    ? `${pendingMig} migration${pendingMig === 1 ? '' : 's'} pending`
+    ? `${pendingMig} migration${pendingMig === 1 ? '' : 's'} pending: ${pendingMigNames.join(', ')}`
     : `All ${totalMig} migrations applied`
 
   return (
