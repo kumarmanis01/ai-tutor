@@ -11,6 +11,7 @@ import { prisma } from '@/lib/prisma'
 import { getRedis } from '@/lib/redis'
 import { AdminTopbar } from '@/components/admin/AdminTopbar'
 import { RefreshButton } from './RefreshButton'
+import { UnstickAllButton } from './UnstickAllButton'
 
 export const dynamic = 'force-dynamic'
 
@@ -187,7 +188,10 @@ export default async function SystemHealthPage() {
   return (
     <>
       <AdminTopbar title="System Health">
-        <RefreshButton />
+        <div className="flex items-start gap-2">
+          <UnstickAllButton />
+          <RefreshButton />
+        </div>
       </AdminTopbar>
 
       <div className="p-5 space-y-5">
@@ -219,6 +223,21 @@ export default async function SystemHealthPage() {
             detail={health?.overall ?? 'unknown'}
           />
         </div>
+
+        {/* PM2 hint when task worker is down */}
+        {!taskWorker && (
+          <div className="bg-[#FAEEDA] border border-[#EF9F27] rounded-xl px-4 py-3 text-[12px] text-[#633806] space-y-1">
+            <p className="font-semibold">Task worker is not running</p>
+            <p>BullMQ jobs will not be processed and no new content will be generated until it is restarted.</p>
+            <p className="mt-1 font-medium">To restart on the VPS:</p>
+            <pre className="mt-1 bg-[#f5d193] rounded px-3 py-2 text-[11px] font-mono whitespace-pre-wrap">
+{`ssh your-vps
+pm2 status          # find the worker process name
+pm2 restart <name>  # e.g. pm2 restart ai-tutor-worker`}
+            </pre>
+            <p className="mt-1">If a job is stuck in RUNNING state after restart, use the <strong>Unstick all stuck jobs</strong> button above to reset it to pending.</p>
+          </div>
+        )}
 
         {/* Resource usage */}
         <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-5 space-y-4">
