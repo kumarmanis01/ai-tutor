@@ -7,14 +7,14 @@ const VALID_FLAGS = new Set<string>(Object.values(QualityFlag))
 
 export async function POST(
   req: NextRequest,
-  { params }: { params: { sessionId: string } },
+  { params }: { params: Promise<{ sessionId: string }> },
 ) {
   const session = await getServerSessionForHandlers()
   if (!session?.user?.id || session.user.role !== 'admin') {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
-  const { sessionId } = params
+  const { sessionId } = await params
   const body = await req.json().catch(() => ({}))
   const { turnId, flag, note } = body as { turnId?: string; flag?: string; note?: string }
 

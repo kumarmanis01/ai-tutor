@@ -8,14 +8,14 @@ const AUTO_QUARANTINE_THRESHOLD = 3
 
 export async function POST(
   req: NextRequest,
-  { params }: { params: { questionId: string } },
+  { params }: { params: Promise<{ questionId: string }> },
 ) {
   const session = await getServerSessionForHandlers()
   if (!session?.user?.id) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  const { questionId } = params
+  const { questionId } = await params
   const body = await req.json().catch(() => ({}))
   const reason: string = body.reason ?? ''
   const details: string | undefined = typeof body.details === 'string' ? body.details : undefined

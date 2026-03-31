@@ -3,12 +3,13 @@ import { NextResponse } from "next/server";
 import { getServerSessionForHandlers } from '@/lib/session';
 export async function POST(
   req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params;
   const { reason } = await req.json()
 
   const chapter = await prisma.chapterDef.findFirst({
-    where: { id: params.id, lifecycle: "active" },
+    where: { id, lifecycle: "active" },
   })
 
   if (!chapter) return NextResponse.json({ error: "Not found" }, { status: 404 })
@@ -31,19 +32,19 @@ export async function POST(
 
   await prisma.$transaction([
     prisma.chapterDef.update({
-      where: { id: params.id },
+      where: { id },
       data: { status: "rejected" },
     }),
     prisma.approvalAudit.create({
       data: {
         entityType: "chapter",
-        entityId: params.id,
+        entityId: id,
         fromStatus: chapter.status,
         toStatus: "rejected",
         reason,
       },
     }),
-    prisma.auditLog.create({ data: { adminId, targetEntity: 'ChapterDef', targetId: params.id, action: 'CONTENT_REJECT', previousValue: { status: chapter.status }, newValue: { status: 'rejected' }, reason: reason ?? null } })
+    prisma.auditLog.create({ data: { adminId, targetEntity: 'ChapterDef', targetId: id, action: 'CONTENT_REJECT', previousValue: { status: chapter.status }, newValue: { status: 'rejected' }, reason: reason ?? null } })
   ])
 
   return NextResponse.json({ success: true })

@@ -4,8 +4,9 @@ import { ApprovalStatus } from '@/lib/ai-engine/types'
 
 export async function POST(
   _: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params;
   const session = await getServerSessionForHandlers();
   // Resolve DB user id for audit; fall back to null when not resolvable.
   let adminId: string | null = null;
@@ -22,12 +23,12 @@ export async function POST(
     adminId = null;
   }
 
-  const topic = await prisma.topicDef.findUnique({ where: { id: params.id } })
+  const topic = await prisma.topicDef.findUnique({ where: { id } })
   if (!topic) return Response.json({ error: 'Not found' }, { status: 404 })
 
   await prisma.$transaction([
-    prisma.topicDef.update({ where: { id: params.id }, data: { status: ApprovalStatus.Approved } }),
-    prisma.auditLog.create({ data: { adminId, targetEntity: 'TopicDef', targetId: params.id, action: 'CONTENT_APPROVE', previousValue: { status: topic.status }, newValue: { status: 'approved' } } })
+    prisma.topicDef.update({ where: { id }, data: { status: ApprovalStatus.Approved } }),
+    prisma.auditLog.create({ data: { adminId, targetEntity: 'TopicDef', targetId: id, action: 'CONTENT_APPROVE', previousValue: { status: topic.status }, newValue: { status: 'approved' } } })
   ])
 
   return Response.json({ approved: true })

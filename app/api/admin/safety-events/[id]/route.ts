@@ -7,7 +7,7 @@ import { z } from 'zod'
 
 export const dynamic = 'force-dynamic'
 
-export async function PATCH(req: Request, { params }: { params: { id: string } }) {
+export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const start = Date.now()
   try {
     const session = await getServerSessionForHandlers()
@@ -23,7 +23,8 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
     const schema = z.object({ resolved: z.boolean() })
     const body = schema.parse(bodyRaw)
 
-    const id = String(params.id || '').trim()
+    const { id: rawId } = await params
+    const id = String(rawId || '').trim()
     if (!id) {
       const res = new Response(JSON.stringify({ error: 'Missing id', code: 'BAD_REQUEST' }), {
         status: 400,
