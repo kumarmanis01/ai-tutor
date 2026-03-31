@@ -181,8 +181,93 @@ function Btn({
 }
 
 // ---------------------------------------------------------------------------
-// Bulk cancel
+// Bulk operations
 // ---------------------------------------------------------------------------
+
+function BulkRetryFailed({ jobs, onRefresh }: { jobs: EnrichedJob[]; onRefresh: () => void }) {
+  const failedIds = jobs.filter(j => j.status === 'failed').map(j => j.id)
+  const [busy, setBusy] = useState(false)
+  const [done, setDone] = useState(false)
+  const [err, setErr] = useState<string | null>(null)
+
+  if (failedIds.length === 0) return null
+
+  async function retryAll() {
+    if (!confirm(`Retry all ${failedIds.length} failed jobs?`)) return
+    setBusy(true)
+    setErr(null)
+    try {
+      const results = await Promise.allSettled(
+        failedIds.map(id =>
+          fetch('/api/admin/content/retry', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ jobId: id }),
+          })
+        )
+      )
+      const numFailed = results.filter(r => r.status === 'rejected').length
+      if (numFailed > 0) setErr(`${numFailed} retries failed`)
+      setDone(true)
+      onRefresh()
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : 'Error')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <div className="flex items-center gap-1.5">
+      {err && <span className="text-[9px] text-[#E24B4A]">{err}</span>}
+      <button
+        onClick={retryAll}
+        disabled={busy || done}
+        className="text-[10px] px-2.5 py-1.5 rounded border border-[#c8e6c9] bg-[#EAF3DE] text-[#27500A] hover:bg-[#d9edd9] disabled:opacity-50 transition-colors min-h-[30px]"
+      >
+        {done ? 'Retried' : busy ? 'Retrying...' : `Retry all ${failedIds.length} failed`}
+      </button>
+    </div>
+  )
+}
+
+function BulkClearStale({ onRefresh }: { onRefresh: () => void }) {
+  const [busy, setBusy] = useState(false)
+  const [result, setResult] = useState<string | null>(null)
+  const [err, setErr] = useState<string | null>(null)
+
+  async function clearStale() {
+    if (!confirm('Delete all completed, cancelled, and failed jobs from the database? This cannot be undone.')) return
+    setBusy(true)
+    setErr(null)
+    setResult(null)
+    try {
+      const r = await fetch('/api/admin/jobs/bulk-clear', { method: 'POST' })
+      const data = await r.json().catch(() => ({}))
+      if (!r.ok) throw new Error(data.error ?? 'Failed')
+      setResult(data.message ?? `Cleared ${data.deleted} jobs`)
+      onRefresh()
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : 'Error')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <div className="flex items-center gap-1.5">
+      {result && <span className="text-[9px] text-[#1D9E75]">{result}</span>}
+      {err && <span className="text-[9px] text-[#E24B4A]">{err}</span>}
+      <button
+        onClick={clearStale}
+        disabled={busy}
+        className="text-[10px] px-2.5 py-1.5 rounded border border-gray-300 bg-white text-gray-500 hover:bg-gray-100 hover:text-gray-700 disabled:opacity-50 transition-colors min-h-[30px]"
+      >
+        {busy ? 'Clearing...' : 'Clear stale'}
+      </button>
+    </div>
+  )
+}
 
 function BulkCancelPending({ jobs, onRefresh }: { jobs: EnrichedJob[]; onRefresh: () => void }) {
   const pendingIds = jobs.filter(j => j.status === 'pending').map(j => j.id)
@@ -278,6 +363,8 @@ export function JobsTable({ jobs }: { jobs: EnrichedJob[] }) {
         </select>
         <span className="text-[11px] text-gray-400">{visible.length} jobs</span>
         <BulkCancelPending jobs={visible} onRefresh={refresh} />
+        <BulkRetryFailed jobs={visible} onRefresh={refresh} />
+        <BulkClearStale onRefresh={refresh} />
         <button
           onClick={refresh}
           className="ml-auto text-[11px] text-[#534AB7] hover:underline"

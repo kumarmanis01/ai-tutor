@@ -126,6 +126,7 @@ interface Args {
   lang: string
   urlOverride: string | null
   dryRun: boolean
+  runId: string | null  // IngestRunLog ID created by the API -- update it instead of creating new
 }
 
 function parseArgs(): Args {
@@ -173,6 +174,7 @@ function parseArgs(): Args {
     lang:  (flag('lang')  ?? 'en').toLowerCase(),
     urlOverride,
     dryRun: argv.includes('--dry-run'),
+    runId: flag('run-id'),
   }
 }
 
@@ -459,23 +461,29 @@ async function writeRunLog(
     errors: number
     startMs: number
     errorDetails?: unknown
+    runId?: string | null  // if set, UPDATE this record; otherwise CREATE a new one
   },
 ): Promise<void> {
+  const data = {
+    fileSource:          opts.fileSource,
+    board:               opts.board,
+    subjectId:           opts.subjectId ?? undefined,
+    chunksCreated:       opts.chunksCreated,
+    chunksUpdated:       opts.chunksUpdated,
+    embeddingsGenerated: opts.embeddingsGenerated,
+    errors:              opts.errors,
+    durationMs:          Date.now() - opts.startMs,
+    errorDetails:        opts.errorDetails ? (opts.errorDetails as object) : undefined,
+  }
   try {
-    await prisma.ingestRunLog.create({
-      data: {
-        fileSource:          opts.fileSource,
-        board:               opts.board,
-        subjectId:           opts.subjectId ?? undefined,
-        chunksCreated:       opts.chunksCreated,
-        chunksUpdated:       opts.chunksUpdated,
-        embeddingsGenerated: opts.embeddingsGenerated,
-        errors:              opts.errors,
-        durationMs:          Date.now() - opts.startMs,
-        errorDetails:        opts.errorDetails ? (opts.errorDetails as object) : undefined,
-      },
-    })
-    console.log('[scrape-ncert] IngestRunLog written.')
+    if (opts.runId) {
+      // Update the record pre-created by the API so admin sees live results on the same row
+      await prisma.ingestRunLog.update({ where: { id: opts.runId }, data })
+      console.log('[scrape-ncert] IngestRunLog updated.')
+    } else {
+      await prisma.ingestRunLog.create({ data })
+      console.log('[scrape-ncert] IngestRunLog written.')
+    }
   } catch (err) {
     console.warn('[scrape-ncert] Could not write IngestRunLog:', err)
   }
@@ -596,6 +604,7 @@ async function runForGrade(
     errors:              embeds.errors,
     startMs,
     errorDetails:        embeds.errorDetails.length > 0 ? embeds.errorDetails : undefined,
+    runId:               args.runId,
   })
 
   // ── Step 8: Output summary ────────────────────────────────────────────────
