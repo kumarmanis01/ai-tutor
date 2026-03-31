@@ -18,7 +18,7 @@ export default async function JobsPage() {
     prisma.hydrationJob.findMany({
       where: { hierarchyLevel: 0 },
       orderBy: { createdAt: 'desc' },
-      take: 50,
+      take: 100,
       select: {
         id: true,
         jobType: true,
@@ -28,6 +28,8 @@ export default async function JobsPage() {
         board: true,
         status: true,
         lastError: true,
+        lockedAt: true,
+        hierarchyLevel: true,
         chaptersExpected: true,
         chaptersCompleted: true,
         notesExpected: true,
@@ -42,7 +44,7 @@ export default async function JobsPage() {
     prisma.hydrationJob.count({ where: { hierarchyLevel: 0, status: 'running' } }).catch(() => 0),
     prisma.hydrationJob.count({ where: { hierarchyLevel: 0, status: 'pending' } }).catch(() => 0),
     prisma.hydrationJob.count({ where: { hierarchyLevel: 0, status: 'completed', updatedAt: { gte: startOfToday } } }).catch(() => 0),
-    prisma.hydrationJob.count({ where: { hierarchyLevel: 0, status: 'failed', updatedAt: { gte: startOfToday } } }).catch(() => 0),
+    prisma.hydrationJob.count({ where: { hierarchyLevel: 0, status: 'failed' } }).catch(() => 0),
   ])
 
   // Enrich with SubjectDef name/grade/board
@@ -70,6 +72,7 @@ export default async function JobsPage() {
       boardSlug: sub?.class.board.slug ?? j.board ?? '',
       status: j.status,
       lastError: j.lastError ?? null,
+      lockedAt: j.lockedAt?.toISOString() ?? null,
       chaptersExpected: j.chaptersExpected,
       chaptersCompleted: j.chaptersCompleted,
       notesExpected: j.notesExpected,
@@ -91,7 +94,7 @@ export default async function JobsPage() {
           <StatCard label="Running" value={statRunning} variant="blue" />
           <StatCard label="Pending" value={statPending} variant="amber" />
           <StatCard label="Completed today" value={statDone} variant="green" />
-          <StatCard label="Failed today" value={statFailed} variant={statFailed > 0 ? 'red' : 'default'} />
+          <StatCard label="Failed" value={statFailed} variant={statFailed > 0 ? 'red' : 'default'} />
         </div>
 
         {/* Table */}
