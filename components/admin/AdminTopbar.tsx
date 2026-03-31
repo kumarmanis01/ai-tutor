@@ -57,6 +57,26 @@ function RedisStatusChip() {
 }
 
 // ---------------------------------------------------------------------------
+// Worker status chip -- polls /api/admin/system/worker-status
+// ---------------------------------------------------------------------------
+
+function WorkerStatusChip() {
+  const [alive, setAlive] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch('/api/admin/system/worker-status')
+      .then((r) => r.json())
+      .then((d) => { if (!cancelled) setAlive(d.alive ?? false); })
+      .catch(() => { if (!cancelled) setAlive(false); });
+    return () => { cancelled = true; };
+  }, []);
+
+  if (alive === null) return null;
+  return <Chip label={alive ? 'Worker running' : 'Worker down'} variant={alive ? 'ok' : 'err'} />;
+}
+
+// ---------------------------------------------------------------------------
 // Running jobs chip -- self-fetches active job count
 // ---------------------------------------------------------------------------
 
@@ -102,6 +122,7 @@ export function AdminTopbar({ title, runningJobs, children }: AdminTopbarProps) 
       <div className="flex items-center gap-2 flex-shrink-0">
         <Chip label="Production live" variant="ok" />
         <RedisStatusChip />
+        <WorkerStatusChip />
         {/* If caller passes runningJobs explicitly, use that; otherwise self-fetch */}
         {runningJobs !== undefined ? (
           runningJobs > 0 ? (

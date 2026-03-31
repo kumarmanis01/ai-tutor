@@ -12,6 +12,7 @@ import { getRedis } from '@/lib/redis'
 import { AdminTopbar } from '@/components/admin/AdminTopbar'
 import { RefreshButton } from './RefreshButton'
 import { UnstickAllButton } from './UnstickAllButton'
+import { RestartWorkerButton } from './RestartWorkerButton'
 
 export const dynamic = 'force-dynamic'
 
@@ -68,9 +69,24 @@ async function fetchDbConnections(): Promise<number | null> {
   }
 }
 
-async function fetchWorkerRow(contains: string) {
+async function fetchWorkerRow(role: 'web' | 'worker') {
+  if (role === 'web') {
+    // Web process registers with a type containing 'web'
+    return prisma.workerLifecycle.findFirst({
+      where: { type: { contains: 'web' } },
+      orderBy: { lastHeartbeatAt: 'desc' },
+      select: { type: true, lastHeartbeatAt: true, host: true, pid: true },
+    }).catch(() => null)
+  }
+  // Task worker registers with type='content-hydration' (the BullMQ queue name),
+  // NOT a string containing 'worker'. Use heartbeat-based detection instead:
+  // find any non-web row that heartbeated within 60s.
+  const cutoff = new Date(Date.now() - 60_000)
   return prisma.workerLifecycle.findFirst({
-    where: { status: 'RUNNING', type: { contains: contains } },
+    where: {
+      lastHeartbeatAt: { gte: cutoff },
+      NOT: { type: { contains: 'web' } },
+    },
     orderBy: { lastHeartbeatAt: 'desc' },
     select: { type: true, lastHeartbeatAt: true, host: true, pid: true },
   }).catch(() => null)
@@ -236,6 +252,7 @@ pm2 status          # find the worker process name
 pm2 restart <name>  # e.g. pm2 restart ai-tutor-worker`}
             </pre>
             <p className="mt-1">If a job is stuck in RUNNING state after restart, use the <strong>Unstick all stuck jobs</strong> button above to reset it to pending.</p>
+            <RestartWorkerButton />
           </div>
         )}
 

@@ -247,6 +247,9 @@ function RowActions({
             View error
           </Link>
           <Btn onClick={handleRetry} disabled={busy} variant="success">Retry</Btn>
+          {row.chapterCount > 0 && (
+            <Btn onClick={handleCompletePipeline} disabled={busy} variant="primary">Complete pipeline</Btn>
+          )}
           <Btn onClick={handleReset} disabled={busy} variant="danger">Reset</Btn>
         </>
       )}
