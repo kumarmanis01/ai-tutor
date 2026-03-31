@@ -97,12 +97,12 @@ export async function enqueueSyllabusHydration(input: {
   }
 
   // 4️⃣ Enqueue job (use string literals to match Prisma schema).
-  // Generate an id and set rootJobId atomically at create time to ensure
-  // the DB invariant `rootJobId IS NOT NULL` is preserved.
+  // rootJobId is intentionally null for root syllabus jobs -- the schema allows
+  // it (String?) and the reconciler queries rootJobId: null to find root jobs.
   const jobId = randomUUID()
   const jobData: any = {
     id: jobId,
-    rootJobId: jobId,
+    rootJobId: null,
     jobType: 'syllabus',
     board: input.board,
     grade: input.grade,
