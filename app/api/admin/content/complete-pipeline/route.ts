@@ -68,10 +68,10 @@ export async function POST(req: Request) {
     })).map(r => r.topicId),
   )
 
-  // Find topics that already have active questions
+  // Find topics that already have approved generated questions (GeneratedTest, not the legacy Question model)
   const topicsWithQuestions = new Set(
-    (await prisma.question.findMany({
-      where: { topicId: { in: topicIds }, status: 'ACTIVE' },
+    (await prisma.generatedTest.findMany({
+      where: { topicId: { in: topicIds }, status: 'approved' },
       select: { topicId: true },
       distinct: ['topicId'],
     })).map(r => r.topicId),
@@ -84,7 +84,7 @@ export async function POST(req: Request) {
     if (!topicsWithNotes.has(topic.id)) {
       try {
         const result = await enqueueNotesHydration({ topicId: topic.id, language: language as 'en' | 'hi' })
-        if (result.enqueued) notesEnqueued++
+        if (result.created) notesEnqueued++
       } catch (err) {
         logger.warn('[complete-pipeline] failed to enqueue notes job', {
           event: 'enqueue_notes_failed',
@@ -96,7 +96,7 @@ export async function POST(req: Request) {
     if (!topicsWithQuestions.has(topic.id)) {
       try {
         const result = await enqueueQuestionsHydration({ topicId: topic.id, language: language as 'en' | 'hi', difficulty: 'medium' })
-        if (result.enqueued) questionsEnqueued++
+        if (result.created) questionsEnqueued++
       } catch (err) {
         logger.warn('[complete-pipeline] failed to enqueue questions job', {
           event: 'enqueue_questions_failed',
