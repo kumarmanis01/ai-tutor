@@ -47,11 +47,55 @@ export async function aggregateWeeklySummaries(): Promise<number> {
   const sunday = new Date(monday);
   sunday.setUTCDate(monday.getUTCDate() + 7);
 
+  // Batch-fetch all students' week data in 3 queries instead of 3N
+  const [allSessions, allTestResults, allMasteryData] = await Promise.all([
+    prisma.learningSession.findMany({
+      where: { studentId: { in: studentIds }, startedAt: { gte: monday, lt: sunday } },
+      select: { studentId: true, duration: true, activityType: true },
+    }),
+    prisma.testResult.findMany({
+      where: { studentId: { in: studentIds }, createdAt: { gte: monday, lt: sunday } },
+      select: { studentId: true, score: true },
+    }),
+    prisma.studentTopicMastery.findMany({
+      where: { studentId: { in: studentIds }, lastAttemptedAt: { gte: monday, lt: sunday } },
+      select: { studentId: true, subject: true },
+    }),
+  ]);
+
+  // Group by studentId for O(1) lookup inside the loop
+  const sessionsByStudent = new Map<string, { duration: number | null; activityType: string }[]>();
+  for (const s of allSessions) {
+    const arr = sessionsByStudent.get(s.studentId) ?? [];
+    arr.push({ duration: s.duration, activityType: s.activityType });
+    sessionsByStudent.set(s.studentId, arr);
+  }
+
+  const testsByStudent = new Map<string, { score: number | null }[]>();
+  for (const t of allTestResults) {
+    const arr = testsByStudent.get(t.studentId) ?? [];
+    arr.push({ score: t.score });
+    testsByStudent.set(t.studentId, arr);
+  }
+
+  const masteryByStudent = new Map<string, { subject: string }[]>();
+  for (const m of allMasteryData) {
+    const arr = masteryByStudent.get(m.studentId) ?? [];
+    arr.push({ subject: m.subject });
+    masteryByStudent.set(m.studentId, arr);
+  }
+
   let count = 0;
 
   for (const studentId of studentIds) {
     try {
-      await aggregateForStudent(studentId, monday, sunday);
+      await aggregateForStudent(
+        studentId,
+        monday,
+        sessionsByStudent.get(studentId) ?? [],
+        testsByStudent.get(studentId) ?? [],
+        masteryByStudent.get(studentId) ?? [],
+      );
       count++;
     } catch (err) {
       logger.error('weeklyParentSummary: student aggregation failed', {
@@ -65,38 +109,14 @@ export async function aggregateWeeklySummaries(): Promise<number> {
   return count;
 }
 
-async function aggregateForStudent(studentId: string, weekStart: Date, weekEnd: Date) {
-  // Fetch this week's learning sessions
-  const sessions = await prisma.learningSession.findMany({
-    where: {
-      studentId,
-      startedAt: { gte: weekStart, lt: weekEnd },
-    },
-    select: {
-      duration: true,
-      activityType: true,
-    },
-  });
-
-  // Fetch this week's test results
-  const testResults = await prisma.testResult.findMany({
-    where: {
-      studentId,
-      createdAt: { gte: weekStart, lt: weekEnd },
-    },
-    select: {
-      score: true,
-    },
-  });
-
-  // Fetch mastery data for distinct subjects active this week
-  const masteryData = await prisma.studentTopicMastery.findMany({
-    where: {
-      studentId,
-      lastAttemptedAt: { gte: weekStart, lt: weekEnd },
-    },
-    select: { subject: true },
-  });
+async function aggregateForStudent(
+  studentId: string,
+  weekStart: Date,
+  sessions: { duration: number | null; activityType: string }[],
+  testResults: { score: number | null }[],
+  masteryData: { subject: string }[],
+) {
+  // Data is pre-fetched by the caller -- no per-student reads needed here
 
   const subjectsActive = [...new Set(masteryData.map((m) => m.subject))];
   const topicsCovered = masteryData.length;

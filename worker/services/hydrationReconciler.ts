@@ -175,7 +175,7 @@ export class HydrationReconciler {
     const level2Complete = rootJob.contentReady
       && await this.isLevelComplete(rootJob.id, 2, true);
     if (level2Complete) {
-      await this.createLevel3Jobs(rootJob); // Questions per topic x difficulty
+      await this.createLevel3Jobs(rootJob); // One questions job per topic (worker handles all difficulties)
     }
 
     // Level 3 (Questions): Once all question jobs are done (or level 2 produced
@@ -305,7 +305,8 @@ export class HydrationReconciler {
   }
 
   /**
-   * Level 3: Create question generation jobs for each topic × difficulty (capped per chapter in validation runs)
+   * Level 3: Create one question generation job per topic (capped per chapter in validation runs).
+   * Each job processes all difficulty levels internally -- do not create per-difficulty jobs.
    */
   private async createLevel3Jobs(rootJob: any): Promise<void> {
     const existingLevel3 = await prisma.hydrationJob.count({
@@ -359,28 +360,28 @@ export class HydrationReconciler {
       }
     }
 
-    const totalJobs = cappedTopics.length * difficulties.length;
+    // One job per topic -- questionsWorker handles all difficulties internally per job.
+    // Do NOT create one job per difficulty: that causes 3 concurrent workers to upsert
+    // the same GeneratedTest rows, producing Neon transaction conflicts and persistence_failed errors.
+    const totalJobs = cappedTopics.length;
     logger.info(`[VALIDATION] Creating ${totalJobs} Level 3 jobs (questions) for root job ${rootJob.id}`, {
       rootJobId: rootJob.id,
       topicCount: cappedTopics.length,
-      difficulties,
       topicsPerChapterCap,
       questionsPerDifficulty: genLimits?.questionsPerDifficulty ?? 'uncapped',
     });
 
     for (const topic of cappedTopics) {
-      for (const difficulty of difficulties) {
-        await this.createChildJob({
-          rootJobId: rootJob.id,
-          level: 3,
-          jobType: JobType.questions,
-          topicId: topic.id,
-          chapterId: topic.chapter.id,
-          language: rootJob.language,
-          difficulty,
-          questionsPerDifficulty: genLimits?.questionsPerDifficulty,
-        });
-      }
+      await this.createChildJob({
+        rootJobId: rootJob.id,
+        level: 3,
+        jobType: JobType.questions,
+        topicId: topic.id,
+        chapterId: topic.chapter.id,
+        language: rootJob.language,
+        difficulty: difficulties[0] ?? 'easy', // informational only -- worker processes all difficulties
+        questionsPerDifficulty: genLimits?.questionsPerDifficulty,
+      });
     }
   }
 

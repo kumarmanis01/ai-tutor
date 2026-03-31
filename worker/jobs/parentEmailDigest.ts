@@ -61,6 +61,79 @@ export async function sendParentDigests(): Promise<number> {
   monday.setUTCDate(now.getUTCDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1));
   monday.setUTCHours(0, 0, 0, 0);
 
+  const lastWeekMonday = new Date(monday);
+  lastWeekMonday.setUTCDate(lastWeekMonday.getUTCDate() - 7);
+
+  // Collect every child ID across all parents for batch fetching
+  const allChildIds = Object.values(parentMap).flatMap((p) => p.children.map((c) => c.id));
+
+  // Batch-fetch all per-child data in 6 queries instead of 6N
+  const [
+    allSummaries,
+    allLastWeekSummaries,
+    allFlags,
+    allReadiness,
+    allStrengths,
+    allStreaks,
+  ] = await Promise.all([
+    prisma.weeklyStudentSummary.findMany({
+      where: { studentId: { in: allChildIds }, weekStart: monday },
+    }),
+    prisma.weeklyStudentSummary.findMany({
+      where: { studentId: { in: allChildIds }, weekStart: lastWeekMonday },
+    }),
+    prisma.attentionFlag.findMany({
+      where: { studentId: { in: allChildIds }, resolved: false },
+    }),
+    prisma.readinessStatus.findMany({
+      where: { studentId: { in: allChildIds } },
+      orderBy: { readinessScore: 'asc' },
+    }),
+    prisma.studentTopicMastery.findMany({
+      where: {
+        studentId: { in: allChildIds },
+        masteryLevel: { in: ['advanced', 'expert'] },
+        updatedAt: { gte: monday },
+      },
+    }),
+    prisma.studentStreak.findMany({
+      where: { studentId: { in: allChildIds }, kind: 'daily' },
+    }),
+  ]);
+
+  // Build lookup maps keyed by studentId
+  const summaryByStudent = new Map<string, (typeof allSummaries)[number]>(
+    allSummaries.map((s) => [s.studentId, s]),
+  );
+  const lastWeekByStudent = new Map<string, (typeof allLastWeekSummaries)[number]>(
+    allLastWeekSummaries.map((s) => [s.studentId, s]),
+  );
+
+  const flagsByStudent = new Map<string, typeof allFlags>();
+  for (const f of allFlags) {
+    const arr = flagsByStudent.get(f.studentId) ?? [];
+    arr.push(f);
+    flagsByStudent.set(f.studentId, arr);
+  }
+
+  const readinessByStudent = new Map<string, typeof allReadiness>();
+  for (const r of allReadiness) {
+    const arr = readinessByStudent.get(r.studentId) ?? [];
+    arr.push(r);
+    readinessByStudent.set(r.studentId, arr);
+  }
+
+  const strengthsByStudent = new Map<string, typeof allStrengths>();
+  for (const s of allStrengths) {
+    const arr = strengthsByStudent.get(s.studentId) ?? [];
+    arr.push(s);
+    strengthsByStudent.set(s.studentId, arr);
+  }
+
+  const streakByStudent = new Map<string, (typeof allStreaks)[number]>(
+    allStreaks.map((s) => [s.studentId, s]),
+  );
+
   let sentCount = 0;
 
   for (const [parentId, parent] of Object.entries(parentMap)) {
@@ -68,45 +141,12 @@ export async function sendParentDigests(): Promise<number> {
       const childSections: string[] = [];
 
       for (const child of parent.children) {
-        // Fetch weekly summary
-        const summary = await prisma.weeklyStudentSummary.findUnique({
-          where: { studentId_weekStart: { studentId: child.id, weekStart: monday } },
-        });
-
-        // Fetch attention flags
-        const flags = await prisma.attentionFlag.findMany({
-          where: { studentId: child.id, resolved: false },
-          take: 5,
-        });
-
-        // Fetch readiness
-        const readiness = await prisma.readinessStatus.findMany({
-          where: { studentId: child.id },
-          orderBy: { readinessScore: 'asc' },
-          take: 5,
-        });
-
-        // Fetch last week's summary for improvement trend
-        const lastWeekMonday = new Date(monday);
-        lastWeekMonday.setUTCDate(lastWeekMonday.getUTCDate() - 7);
-        const lastWeekSummary = await prisma.weeklyStudentSummary.findUnique({
-          where: { studentId_weekStart: { studentId: child.id, weekStart: lastWeekMonday } },
-        });
-
-        // Fetch newly mastered topics this week (strengths unlocked)
-        const newStrengths = await prisma.studentTopicMastery.findMany({
-          where: {
-            studentId: child.id,
-            masteryLevel: { in: ['advanced', 'expert'] },
-            updatedAt: { gte: monday },
-          },
-          take: 5,
-        });
-
-        // Fetch streak data
-        const streak = await prisma.studentStreak.findFirst({
-          where: { studentId: child.id, kind: 'daily' },
-        });
+        const summary = summaryByStudent.get(child.id) ?? null;
+        const lastWeekSummary = lastWeekByStudent.get(child.id) ?? null;
+        const flags = (flagsByStudent.get(child.id) ?? []).slice(0, 5);
+        const readiness = (readinessByStudent.get(child.id) ?? []).slice(0, 5);
+        const newStrengths = (strengthsByStudent.get(child.id) ?? []).slice(0, 5);
+        const streak = streakByStudent.get(child.id) ?? null;
 
         const trustSignals = buildTrustSignals(summary, lastWeekSummary, newStrengths, streak, flags);
         childSections.push(buildChildSection(child, summary, flags, readiness, trustSignals));
@@ -125,24 +165,12 @@ export async function sendParentDigests(): Promise<number> {
       sentCount++;
       logger.info('parentEmailDigest: sent', { parentId, childCount: parent.children.length });
 
-      // WhatsApp delivery (fire-and-forget, non-blocking)
+      // WhatsApp delivery (fire-and-forget, non-blocking) -- uses pre-fetched maps
       if (parent.phone && parent.children.length > 0) {
         const firstChild = parent.children[0];
-        const waSummary = await prisma.weeklyStudentSummary.findUnique({
-          where: { studentId_weekStart: { studentId: firstChild.id, weekStart: monday } },
-        });
-
-        // Derive improved/struggling from mastery data
-        const waStrengths = await prisma.studentTopicMastery.findMany({
-          where: { studentId: firstChild.id, masteryLevel: { in: ['advanced', 'expert'] }, updatedAt: { gte: monday } },
-          take: 1,
-          select: { subject: true },
-        });
-        const waFlags = await prisma.attentionFlag.findMany({
-          where: { studentId: firstChild.id, resolved: false },
-          take: 1,
-          select: { subject: true },
-        });
+        const waSummary = summaryByStudent.get(firstChild.id) ?? null;
+        const waStrengths = strengthsByStudent.get(firstChild.id) ?? [];
+        const waFlags = flagsByStudent.get(firstChild.id) ?? [];
 
         const whatsappMsg = buildWeeklyWhatsAppMessage(
           parent.name,

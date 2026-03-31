@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server'
 
-export async function GET(_req: Request, { params }: { params: { syllabusId: string } }) {
+export async function GET(_req: Request, { params }: { params: Promise<{ syllabusId: string }> }) {
   const db = (global as any).__TEST_PRISMA__ ?? (await import('../../../../lib/prisma')).prisma
-  const { syllabusId } = params
+  const { syllabusId } = await params
   const rows = await db.coursePackage.findMany({
     where: { syllabusId, status: 'PUBLISHED' },
     orderBy: { version: 'desc' },

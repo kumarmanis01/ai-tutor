@@ -3,7 +3,8 @@ import { NextResponse } from "next/server";
 import { getServerSessionForHandlers } from '@/lib/session';
 import { ApprovalStatus } from '@/lib/ai-engine/types';
 
-export async function POST(req: Request, { params }: { params: { id: string } }) {
+export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   const session = await getServerSessionForHandlers();
   // Resolve canonical DB user id for audit safety; fall back to null
   let adminId: string | null = null;
@@ -20,12 +21,12 @@ export async function POST(req: Request, { params }: { params: { id: string } })
     adminId = null;
   }
 
-  const test = await prisma.generatedTest.findUnique({ where: { id: params.id } });
+  const test = await prisma.generatedTest.findUnique({ where: { id } });
   if (!test) return NextResponse.json({ error: 'Not found' }, { status: 404 });
 
   await prisma.$transaction([
-    prisma.generatedTest.update({ where: { id: params.id }, data: { status: ApprovalStatus.Approved } }),
-    prisma.auditLog.create({ data: { adminId, targetEntity: 'GeneratedTest', targetId: params.id, action: 'CONTENT_APPROVE', previousValue: { status: test.status }, newValue: { status: 'approved' } } })
+    prisma.generatedTest.update({ where: { id }, data: { status: ApprovalStatus.Approved } }),
+    prisma.auditLog.create({ data: { adminId, targetEntity: 'GeneratedTest', targetId: id, action: 'CONTENT_APPROVE', previousValue: { status: test.status }, newValue: { status: 'approved' } } })
   ]);
 
   return NextResponse.json({ approved: true });

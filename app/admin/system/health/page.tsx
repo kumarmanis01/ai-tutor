@@ -11,6 +11,8 @@ import { prisma } from '@/lib/prisma'
 import { getRedis } from '@/lib/redis'
 import { AdminTopbar } from '@/components/admin/AdminTopbar'
 import { RefreshButton } from './RefreshButton'
+import { UnstickAllButton } from './UnstickAllButton'
+import { RestartWorkerButton } from './RestartWorkerButton'
 
 export const dynamic = 'force-dynamic'
 
@@ -29,15 +31,18 @@ async function fetchRedisMemoryMb(): Promise<number | null> {
   }
 }
 
-async function fetchPendingMigrations(): Promise<number> {
+async function fetchPendingMigrations(): Promise<{ count: number; names: string[] }> {
   try {
-    const rows = await prisma.$queryRaw<{ count: bigint }[]>`
-      SELECT COUNT(*) as count FROM "_prisma_migrations"
+    const rows = await prisma.$queryRaw<{ migration_name: string }[]>`
+      SELECT migration_name FROM "_prisma_migrations"
       WHERE applied_steps_count = 0
+        AND rolled_back_at IS NULL
+        AND finished_at IS NULL
+      ORDER BY started_at
     `
-    return Number(rows[0]?.count ?? 0)
+    return { count: rows.length, names: rows.map(r => r.migration_name) }
   } catch {
-    return 0
+    return { count: 0, names: [] }
   }
 }
 
@@ -45,6 +50,7 @@ async function fetchTotalMigrations(): Promise<number> {
   try {
     const rows = await prisma.$queryRaw<{ count: bigint }[]>`
       SELECT COUNT(*) as count FROM "_prisma_migrations"
+      WHERE applied_steps_count > 0
     `
     return Number(rows[0]?.count ?? 0)
   } catch {
@@ -63,9 +69,24 @@ async function fetchDbConnections(): Promise<number | null> {
   }
 }
 
-async function fetchWorkerRow(contains: string) {
+async function fetchWorkerRow(role: 'web' | 'worker') {
+  if (role === 'web') {
+    // Web process registers with a type containing 'web'
+    return prisma.workerLifecycle.findFirst({
+      where: { type: { contains: 'web' } },
+      orderBy: { lastHeartbeatAt: 'desc' },
+      select: { type: true, lastHeartbeatAt: true, host: true, pid: true },
+    }).catch(() => null)
+  }
+  // Task worker registers with type='content-hydration' (the BullMQ queue name),
+  // NOT a string containing 'worker'. Use heartbeat-based detection instead:
+  // find any non-web row that heartbeated within 60s.
+  const cutoff = new Date(Date.now() - 60_000)
   return prisma.workerLifecycle.findFirst({
-    where: { status: 'RUNNING', type: { contains: contains } },
+    where: {
+      lastHeartbeatAt: { gte: cutoff },
+      NOT: { type: { contains: 'web' } },
+    },
     orderBy: { lastHeartbeatAt: 'desc' },
     select: { type: true, lastHeartbeatAt: true, host: true, pid: true },
   }).catch(() => null)
@@ -138,7 +159,7 @@ function UsageBar({
 // ---------------------------------------------------------------------------
 
 export default async function SystemHealthPage() {
-  const [health, redisMemMb, pendingMig, totalMig, dbConns, webWorker, taskWorker] =
+  const [health, redisMemMb, migResult, totalMig, dbConns, webWorker, taskWorker] =
     await Promise.all([
       systemHealth().catch(() => null),
       fetchRedisMemoryMb(),
@@ -148,6 +169,8 @@ export default async function SystemHealthPage() {
       fetchWorkerRow('web'),
       fetchWorkerRow('worker'),
     ])
+  const pendingMig = migResult.count
+  const pendingMigNames = migResult.names
 
   const dbStatus: HealthStatus = health?.dependencies.database.status ?? 'unhealthy'
   const redisStatus: HealthStatus = health?.dependencies.redis.status ?? 'unhealthy'
@@ -175,13 +198,16 @@ export default async function SystemHealthPage() {
     : 'No RUNNING task worker'
 
   const migDetail = pendingMig > 0
-    ? `${pendingMig} migration${pendingMig === 1 ? '' : 's'} pending`
+    ? `${pendingMig} migration${pendingMig === 1 ? '' : 's'} pending: ${pendingMigNames.join(', ')}`
     : `All ${totalMig} migrations applied`
 
   return (
     <>
       <AdminTopbar title="System Health">
-        <RefreshButton />
+        <div className="flex items-start gap-2">
+          <UnstickAllButton />
+          <RefreshButton />
+        </div>
       </AdminTopbar>
 
       <div className="p-5 space-y-5">
@@ -213,6 +239,22 @@ export default async function SystemHealthPage() {
             detail={health?.overall ?? 'unknown'}
           />
         </div>
+
+        {/* PM2 hint when task worker is down */}
+        {!taskWorker && (
+          <div className="bg-[#FAEEDA] border border-[#EF9F27] rounded-xl px-4 py-3 text-[12px] text-[#633806] space-y-1">
+            <p className="font-semibold">Task worker is not running</p>
+            <p>BullMQ jobs will not be processed and no new content will be generated until it is restarted.</p>
+            <p className="mt-1 font-medium">To restart on the VPS:</p>
+            <pre className="mt-1 bg-[#f5d193] rounded px-3 py-2 text-[11px] font-mono whitespace-pre-wrap">
+{`ssh your-vps
+pm2 status          # find the worker process name
+pm2 restart <name>  # e.g. pm2 restart ai-tutor-worker`}
+            </pre>
+            <p className="mt-1">If a job is stuck in RUNNING state after restart, use the <strong>Unstick all stuck jobs</strong> button above to reset it to pending.</p>
+            <RestartWorkerButton />
+          </div>
+        )}
 
         {/* Resource usage */}
         <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-5 space-y-4">

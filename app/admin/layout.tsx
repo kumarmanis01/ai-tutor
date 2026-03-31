@@ -6,6 +6,7 @@ import { prisma } from '@/lib/prisma';
 import { AdminSidebar } from '@/components/admin/AdminSidebar';
 import Providers from '@/app/providers';
 import { GlobalLoaderProvider } from '@/context/GlobalLoaderProvider';
+import { NavigationProgress } from '@/components/NavigationProgress';
 import AuthSessionLoader from '@/components/AuthSessionLoader';
 import ToastHost from '@/components/ToastHost';
 import GoogleTagManagerClient from '@/components/ClientOnly/GoogleTagManagerClient';
@@ -73,6 +74,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       <body className="font-sans antialiased h-full">
         <Providers>
           <GlobalLoaderProvider>
+            <NavigationProgress />
             <AuthSessionLoader />
             <Suspense fallback={null}>
               <GoogleTagManagerClient />

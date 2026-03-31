@@ -3,15 +3,16 @@ import { requireAdminOrModerator } from '@/lib/auth'
 import { AuditEvents } from '@/lib/audit/events'
 import { logAuditEvent } from '@/lib/audit/log'
 
-export async function POST(req: Request, { params }: { params: { id?: string; jobId?: string } }) {
+export async function POST(req: Request, { params }: { params: Promise<{ id?: string; jobId?: string }> }) {
+  const resolvedParams = await params;
   try {
     const session = await requireAdminOrModerator()
-    const jobId = params?.id ?? params?.jobId
+    const jobId = resolvedParams?.id ?? resolvedParams?.jobId
     return await handleTrigger(req, jobId, session?.user?.id ?? null)
   } catch {
     // Allow tests to call handler directly when auth is not available
     if (process.env.NODE_ENV === 'test') {
-      const jobId = params?.id ?? params?.jobId
+      const jobId = resolvedParams?.id ?? resolvedParams?.jobId
       return await handleTrigger(req, jobId, null)
     }
     return new Response(JSON.stringify({ error: 'forbidden' }), { status: 403 })

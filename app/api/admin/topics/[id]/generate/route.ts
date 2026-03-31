@@ -3,9 +3,9 @@ import { prisma } from '@/lib/prisma';
 
 export async function POST(
   _: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  const topicId = params.id;
+  const { id: topicId } = await params;
   if (!topicId) return Response.json({ error: 'missing id' }, { status: 400 });
 
   // Ensure topic exists (ID-first enforcement)

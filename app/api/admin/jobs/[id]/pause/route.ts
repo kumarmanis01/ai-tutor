@@ -8,13 +8,13 @@ import { getServerSessionForHandlers } from '@/lib/session'
 import { prisma } from '@/lib/prisma'
 import { logger } from '@/lib/logger'
 
-export async function POST(_req: Request, { params }: { params: { id: string } }) {
+export async function POST(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   const session = await getServerSessionForHandlers()
   if (!session || session.user?.role !== 'admin') {
     return NextResponse.json({ error: 'forbidden' }, { status: 401 })
   }
 
-  const { id } = params
+  const { id } = await params
 
   const job = await prisma.hydrationJob.findUnique({
     where: { id },

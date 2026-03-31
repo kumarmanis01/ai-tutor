@@ -35,8 +35,14 @@ import { getNudgeMessage } from '@/lib/dashboard/nudgeMessage';
 import { getOrderedTopicsForStudent } from '@/lib/homeEngine/getOrderedTopicsForStudent';
 import { isSessionEngineEnabled } from '@/lib/session/sessionEngine';
 import { logger } from '@/lib/logger';
+import { cacheGet, cacheSet } from '@/lib/cache';
 
 export const dynamic = 'force-dynamic';
+
+// Cache TTL: 60 s. Short enough that streak/homework stay current.
+// Key includes a version suffix so shape changes auto-invalidate.
+const CACHE_TTL_S = 60;
+const cacheKey = (userId: string) => `dash:v1:${userId}`;
 
 const DAY_LABELS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 const DEFAULT_WEEKLY_GOAL = 3;
@@ -66,6 +72,15 @@ export async function GET(_req: Request) {
   const { monday, sunday } = getISOWeekBoundaries();
 
   try {
+    // ── Redis cache check ─────────────────────────────────────────────────
+    const cached = await cacheGet<object>(cacheKey(userId));
+    if (cached) {
+      const res = NextResponse.json(cached);
+      res.headers.set('Cache-Control', 'private, max-age=60');
+      res.headers.set('X-Cache', 'HIT');
+      return res;
+    }
+
     // ── Parallel data fetches ─────────────────────────────────────────────
     const [
       activeSession,
@@ -276,8 +291,14 @@ export async function GET(_req: Request) {
       weeklyGoalSessions: weeklyGoal,
     };
 
+    // ── Cache result ──────────────────────────────────────────────────────
+    await cacheSet(cacheKey(userId), response, CACHE_TTL_S);
+
     logger.info('[DASHBOARD_API]', { userId, durationMs: Date.now() - start });
-    return NextResponse.json(response);
+    const apiRes = NextResponse.json(response);
+    apiRes.headers.set('Cache-Control', 'private, max-age=60');
+    apiRes.headers.set('X-Cache', 'MISS');
+    return apiRes;
   } catch (error) {
     logger.error('[DASHBOARD_API_ERROR]', { userId, error });
     return NextResponse.json({ error: 'Internal error' }, { status: 500 });

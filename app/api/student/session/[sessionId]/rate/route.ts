@@ -3,9 +3,9 @@ import { getServerSessionForHandlers } from '@/lib/session'
 import { prisma } from '@/lib/prisma'
 import { logger } from '@/lib/logger'
 
-export async function POST(req: Request, { params }: { params: { sessionId: string } }) {
+export async function POST(req: Request, { params }: { params: Promise<{ sessionId: string }> }) {
   const start = Date.now()
-  const { sessionId } = params
+  const { sessionId } = await params
   try {
     const session = await getServerSessionForHandlers()
     const userId = (session?.user as { id?: string })?.id

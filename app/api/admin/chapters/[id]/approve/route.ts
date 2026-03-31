@@ -4,8 +4,9 @@ import { ApprovalStatus } from '@/lib/ai-engine/types'
 
 export async function POST(
   req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params;
   // Resolve session identity to canonical DB user id for audit safety
   const session = await (await import('@/lib/session')).getServerSessionForHandlers();
   let adminId: string | null = null;
@@ -24,7 +25,7 @@ export async function POST(
 
   const chapter = await prisma.chapterDef.findFirst({
     where: {
-      id: params.id,
+      id,
       lifecycle: "active",
     },
   })
@@ -39,19 +40,19 @@ export async function POST(
 
   await prisma.$transaction([
     prisma.chapterDef.update({
-      where: { id: params.id },
+      where: { id },
       data: { status: "approved" },
     }),
     prisma.approvalAudit.create({
       data: {
         entityType: "chapter",
-        entityId: params.id,
+        entityId: id,
         fromStatus: chapter.status,
         toStatus: "approved",
         actorId: adminId,
       },
     }),
-    prisma.auditLog.create({ data: { adminId, targetEntity: 'ChapterDef', targetId: params.id, action: 'CONTENT_APPROVE', previousValue: { status: chapter.status }, newValue: { status: 'approved' } } })
+    prisma.auditLog.create({ data: { adminId, targetEntity: 'ChapterDef', targetId: id, action: 'CONTENT_APPROVE', previousValue: { status: chapter.status }, newValue: { status: 'approved' } } })
   ])
 
   return NextResponse.json({ success: true })

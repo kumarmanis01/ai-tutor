@@ -3,13 +3,13 @@ import { prisma } from '@/lib/prisma'
 import { getServerSessionForHandlers } from '@/lib/session'
 import { QuestionStatus, AdminActionType } from '@prisma/client'
 
-export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
+export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getServerSessionForHandlers()
   if (!session?.user?.id || session.user.role !== 'admin') {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
-  const { id } = params
+  const { id } = await params
   const body = await req.json().catch(() => ({}))
   const { status } = body as { status?: string }
 

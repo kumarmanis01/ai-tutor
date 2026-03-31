@@ -22,6 +22,7 @@ import type { AppSession } from '@/lib/types/auth'
 import '@/styles/index.css'
 import ParentLogoutButton from '@/components/parent/ParentLogoutButton'
 import Logo from '@/components/Logo'
+import { NavigationProgress } from '@/components/NavigationProgress'
 
 // Self-hosted fonts -- no build-time network dependency on fonts.googleapis.com
 const inter = localFont({ src: '../../public/fonts/inter-latin-variable.woff2', variable: '--font-inter', display: 'swap' })
@@ -63,6 +64,7 @@ export default async function ParentLayout({ children }: { children: React.React
   return (
     <html lang="en" className={`h-full ${inter.variable} ${nunito.variable}`}>
       <body className="font-sans antialiased min-h-screen bg-gray-50 dark:bg-gray-950">
+        <NavigationProgress />
 
         {/* ── Top nav ────────────────────────────────────────────────────── */}
         <nav className="sticky top-0 z-30 border-b border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900">

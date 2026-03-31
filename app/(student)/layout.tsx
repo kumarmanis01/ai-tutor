@@ -4,6 +4,7 @@ import GoogleTagManagerClient from '@/components/ClientOnly/GoogleTagManagerClie
 import AppModalClient from '@/components/ClientOnly/AppModalClient';
 import Providers from '@/app/providers';
 import { GlobalLoaderProvider } from '@/context/GlobalLoaderProvider';
+import { NavigationProgress } from '@/components/NavigationProgress';
 import AuthSessionLoader from '@/components/AuthSessionLoader';
 import ToastHost from '@/components/ToastHost';
 import Topbar from '@/components/student/layout/Topbar';
@@ -172,6 +173,7 @@ export default async function StudentLayout({ children }: { children: React.Reac
       <body className="font-sans antialiased min-h-screen h-full">
         <Providers>
           <GlobalLoaderProvider>
+            <NavigationProgress />
             <AuthSessionLoader />
             <Suspense fallback={null}>
               <GoogleTagManagerClient />

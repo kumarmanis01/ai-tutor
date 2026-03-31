@@ -1,9 +1,7 @@
 import { NextResponse } from 'next/server';
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '@/lib/prisma';
 import { exec } from 'child_process';
 import { hostname } from 'os';
-
-const prisma = new PrismaClient();
 
 export async function POST(req: Request) {
   try {
@@ -23,24 +21,21 @@ export async function POST(req: Request) {
     const pid = worker.pid;
     if (!pid) return NextResponse.json({ error: 'no pid for worker' }, { status: 400 });
 
-    // Attempt to gracefully kill the process. Use platform-appropriate command on Windows.
+    // Attempt to gracefully kill the process.
     const isWin = process.platform === 'win32';
     const cmd = isWin ? `taskkill /PID ${pid} /T /F` : `kill -TERM ${pid}`;
 
     await new Promise<void>((resolve, reject) => {
-      exec(cmd, (err, stdout, stderr) => {
+      exec(cmd, (err, _stdout, stderr) => {
         if (err) return reject(new Error(stderr || (err?.message ?? String(err))));
         resolve();
       });
     });
 
-    // Mark worker record as stopped
     await prisma.workerLifecycle.update({ where: { id }, data: { status: 'stopped', stoppedAt: new Date() } });
 
     return NextResponse.json({ ok: true });
   } catch (e) {
     return NextResponse.json({ error: (e as Error).message }, { status: 500 });
-  } finally {
-    try { await prisma.$disconnect(); } catch {}
   }
 }

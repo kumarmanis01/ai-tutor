@@ -81,6 +81,7 @@ export async function POST(req: Request) {
     '--grade', String(grade),
     '--subject', subjectSlug,
     '--lang', lang,
+    '--run-id', runLog.id,  // scraper updates this record instead of creating a new one
   ]
 
   const child = spawn(tsxBin, args, {

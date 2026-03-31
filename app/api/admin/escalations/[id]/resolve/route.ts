@@ -12,14 +12,14 @@ const VALID_RESOLUTION_TYPES = new Set([
 
 export async function POST(
   req: NextRequest,
-  { params }: { params: { id: string } },
+  { params }: { params: Promise<{ id: string }> },
 ) {
   const session = await getServerSessionForHandlers()
   if (!session?.user?.id || session.user.role !== 'admin') {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
-  const { id } = params
+  const { id } = await params
   const body = await req.json()
   const resolutionType: string | undefined = body.resolutionType
   const resolutionNote: string | undefined = body.resolutionNote

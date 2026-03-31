@@ -17,9 +17,9 @@ async function buildAiInsight(
   return `You answered ${correctAnswers}/${totalQuestions} questions correctly on ${name} -- nice work, keep going.`
 }
 
-export async function POST(req: Request, { params }: { params: { sessionId: string } }) {
+export async function POST(req: Request, { params }: { params: Promise<{ sessionId: string }> }) {
   const start = Date.now()
-  const { sessionId } = params
+  const { sessionId } = await params
   try {
     const session = await getServerSessionForHandlers()
     const userId = session?.user?.id as string | undefined

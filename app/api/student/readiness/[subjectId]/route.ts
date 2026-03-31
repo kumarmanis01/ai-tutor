@@ -20,7 +20,7 @@ export const dynamic = 'force-dynamic'
  */
 export async function GET(
   req: Request,
-  { params }: { params: { subjectId: string } },
+  { params }: { params: Promise<{ subjectId: string }> },
 ) {
   const start = Date.now()
   const session = await getServerSessionForHandlers()
@@ -31,7 +31,7 @@ export async function GET(
     return res
   }
 
-  const { subjectId } = params
+  const { subjectId } = await params
   if (!subjectId?.trim()) {
     const res = NextResponse.json({ error: 'subjectId required' }, { status: 400 })
     logger.logAPI(req, res, { className: 'ReadinessAPI', methodName: 'GET' }, start)

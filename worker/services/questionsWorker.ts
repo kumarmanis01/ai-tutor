@@ -666,10 +666,13 @@ export async function handleQuestionsJob(jobId: string): Promise<void> {
       let lastErr: any = null;
       for (let i = 0; i < attempts; i++) {
         try {
-          return await prisma.$transaction(work);
+          // timeout: 30s -- Neon default is 5s which is too short for 10+ operations per topic
+          // Cast needed: (tx: any) signature makes TS resolve to the array overload which omits timeout
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          return await (prisma.$transaction as any)(work, { timeout: 30000 });
         } catch (err) {
           lastErr = err;
-          const msg = String(err?.message || '');
+          const msg = String((err as any)?.message || '');
           if (/Transaction not found|Transaction API error/i.test(msg)) {
             const backoff = (i + 1) * 500;
             await new Promise((r) => setTimeout(r, backoff));
@@ -751,12 +754,17 @@ export async function handleQuestionsJob(jobId: string): Promise<void> {
       createdTestIds.push(id);
     }
   } catch (err) {
+    const errMsg = (err as any)?.message ?? String(err);
+    const errCode = (err as any)?.code ?? '';
     logger.error('[VALIDATION_DEFENSIVE] handleQuestionsJob: DB write failed during test persistence', {
       jobId,
       topicId,
-      error: (err as any)?.message ?? String(err),
+      error: errMsg,
+      prismaCode: errCode,
+      stack: String((err as any)?.stack ?? '').split('\n').slice(0, 4).join(' | '),
     });
-    await markJobFailed(job.id, 'persistence_failed');
+    // Store the actual Prisma error so it appears in the admin UI, not just PM2 logs
+    await markJobFailed(job.id, `persistence_failed -- ${errCode ? errCode + ': ' : ''}${errMsg}`.slice(0, 250));
     throw err;
   }
 
