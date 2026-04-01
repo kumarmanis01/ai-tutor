@@ -65,7 +65,7 @@ export default async function ContentPage() {
   )
 
   // ── 2. Batch lookups ────────────────────────────────────────────────────
-  const [generatedTestGroups, ragGroups, noteGroups, activeJobs, pipelineJobs, recentRuns] = await Promise.all([
+  const [generatedTestGroups, noteGroups, ragGroups, activeJobs, pipelineJobs, recentRuns] = await Promise.all([
     // GeneratedTests per topic (any approval status, active lifecycle).
     // The QUESTIONS hydration job produces GeneratedTest rows -- not the legacy
     // Question model. Counting GeneratedTest gives an accurate "questions generated"

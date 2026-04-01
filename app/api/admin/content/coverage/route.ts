@@ -78,18 +78,19 @@ export async function GET() {
       }
     }
 
-    // Batch 2: question counts per subjectId via topic→chapter→subject chain
-    const questionCounts = await prisma.question.groupBy({
+    // Batch 2: GeneratedTest counts per subjectId via topic→chapter→subject chain.
+    // The AI pipeline produces GeneratedTest rows -- not the legacy Question model.
+    const generatedTestCounts = await prisma.generatedTest.groupBy({
       by: ['topicId'],
       where: {
-        status: 'ACTIVE',
+        lifecycle: 'active',
         topicId: { not: null },
       },
       _count: { id: true },
     })
 
     // Resolve topicId → subjectId via one query
-    const topicIds = questionCounts.map((r) => r.topicId).filter(Boolean) as string[]
+    const topicIds = generatedTestCounts.map((r) => r.topicId).filter(Boolean) as string[]
     const topics = topicIds.length
       ? await prisma.topicDef.findMany({
           where: { id: { in: topicIds } },
@@ -102,7 +103,7 @@ export async function GET() {
 
     const topicToSubject = new Map(topics.map((t) => [t.id, t.chapter.subjectId]))
     const questionsBySubject = new Map<string, number>()
-    for (const row of questionCounts) {
+    for (const row of generatedTestCounts) {
       if (!row.topicId) continue
       const sid = topicToSubject.get(row.topicId)
       if (!sid) continue
