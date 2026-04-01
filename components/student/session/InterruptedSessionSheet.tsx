@@ -71,8 +71,14 @@ export default function InterruptedSessionSheet({
         setBusy(false);
         return;
       }
+      const sessionId = (json as { sessionId?: string }).sessionId;
       onDismissed();
-      router.push(`/session/${encodeURIComponent(topicId)}`);
+      if (sessionId) {
+        const url = `/session/${encodeURIComponent(topicId)}?sid=${encodeURIComponent(sessionId)}&cid=${encodeURIComponent(conceptId)}`;
+        router.push(url);
+      } else {
+        router.push(`/session/${encodeURIComponent(topicId)}`);
+      }
     } catch {
       setError('Network error. Please check your connection.');
       setBusy(false);
@@ -126,7 +132,7 @@ export default function InterruptedSessionSheet({
             <span className="font-medium text-gray-700 dark:text-gray-300">
               {phaseLabel}
             </span>{' '}
-            -- stage {session.phaseNumber} of 5, about {session.minutesIn}{' '}
+            -- stage {session.phaseNumber} of 7, about {session.minutesIn}{' '}
             {session.minutesIn === 1 ? 'minute' : 'minutes'} in.
           </p>
 

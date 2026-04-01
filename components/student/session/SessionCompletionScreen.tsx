@@ -44,10 +44,13 @@ interface NextAction {
 export interface SessionCompletionScreenProps {
   sessionId: string;
   topicName: string;
+  /** Number of hints the student used (from AI tutor session). Replaces '--' in stats row. */
+  hintsUsed?: number;
   sessionSummary?: {
     tag: string;
     stage: string;
     turnNumber: number;
+    hintsUsed?: number;
   };
   onNext?: () => void;
 }
@@ -223,10 +226,12 @@ function StatsRow({
   totalQuestions,
   correctAnswers,
   sessionDurationMinutes,
+  hintsUsed,
 }: {
   totalQuestions: number;
   correctAnswers: number;
   sessionDurationMinutes: number;
+  hintsUsed?: number;
 }) {
   const pct =
     totalQuestions > 0 ? Math.round((correctAnswers / totalQuestions) * 100) : 0;
@@ -234,7 +239,7 @@ function StatsRow({
   const chips = [
     { label: 'Attempted', value: String(totalQuestions) },
     { label: '% Correct', value: `${pct}%` },
-    { label: 'Hints', value: '--' },
+    { label: 'Hints', value: hintsUsed != null ? String(hintsUsed) : '--' },
     { label: 'Minutes', value: sessionDurationMinutes > 0 ? String(sessionDurationMinutes) : '<1' },
   ];
 
@@ -389,6 +394,7 @@ function StarRating({ sessionId }: { sessionId: string }) {
 export const SessionCompletionScreen: React.FC<SessionCompletionScreenProps> = ({
   sessionId,
   topicName,
+  hintsUsed,
   onNext,
 }) => {
   const router = useRouter();
@@ -466,7 +472,8 @@ export const SessionCompletionScreen: React.FC<SessionCompletionScreenProps> = (
       return;
     }
     if (nextAction?.topicId) {
-      router.push(`/session/${encodeURIComponent(nextAction.topicId)}`);
+      // Route through pre-session screen so hook prefetch and prereq check run.
+      router.push(`/session/pre/${encodeURIComponent(nextAction.topicId)}`);
     }
   }
 
@@ -529,6 +536,7 @@ export const SessionCompletionScreen: React.FC<SessionCompletionScreenProps> = (
             totalQuestions={d.totalQuestions}
             correctAnswers={d.correctAnswers}
             sessionDurationMinutes={d.sessionDurationMinutes}
+            hintsUsed={hintsUsed}
           />
 
           {/* 5. Mastery delta */}

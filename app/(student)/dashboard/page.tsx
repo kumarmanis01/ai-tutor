@@ -132,6 +132,7 @@ export default async function StudentHomeDashboardPage() {
         totalXp: true,
         level: true,
         name: true,
+        examDate: true,
       },
     }),
 
@@ -416,10 +417,40 @@ export default async function StudentHomeDashboardPage() {
     ? `/diagnostic/${subjectDefs[0].id}`
     : '/student/onboarding';
 
+  // ── Crunch mode (daysToExam <= 14) ──────────────────────────────────────
+  const examDate = studentProfile?.examDate ?? null;
+  const daysToExam = examDate
+    ? Math.ceil((examDate.getTime() - Date.now()) / 86_400_000)
+    : null;
+  const crunchMode = daysToExam !== null && daysToExam >= 0 && daysToExam <= 14;
+
   // ── Render ────────────────────────────────────────────────────────────────
   return (
     <>
       <div className="px-4 py-5 max-w-5xl mx-auto">
+
+        {/* Crunch mode countdown banner -- shown when daysToExam <= 14 */}
+        {crunchMode && daysToExam !== null && (
+          <div className="mb-5 rounded-xl bg-[#FCEBEB] dark:bg-[#E24B4A]/10 border border-[#E24B4A]/30 px-4 py-3">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs font-semibold text-[#791F1F] dark:text-red-300 uppercase tracking-wide">
+                Board exam countdown
+              </span>
+              <span className="text-base font-bold text-[#E24B4A]">
+                {daysToExam === 0 ? 'Today!' : `${daysToExam} day${daysToExam !== 1 ? 's' : ''}`}
+              </span>
+            </div>
+            <div className="h-1.5 w-full rounded-full bg-[#E24B4A]/20 overflow-hidden">
+              <div
+                className="h-full rounded-full bg-[#E24B4A]"
+                style={{ width: `${Math.max(4, Math.round((1 - daysToExam / 14) * 100))}%` }}
+              />
+            </div>
+            <p className="mt-1.5 text-[10px] text-[#A32D2D] dark:text-red-400">
+              Focus mode -- prioritising your highest-weight topics
+            </p>
+          </div>
+        )}
 
         {/* Freemium upgrade gate / banner */}
         {userSub?.subscriptionStatus === 'free' && freeTierStatus.sessionsRemaining === 0 && (
@@ -430,6 +461,11 @@ export default async function StudentHomeDashboardPage() {
                 <UpgradeFlow
                   studentName={userSub.name}
                   studentEmail={userSub.email}
+                  freeTierUsage={{
+                    sessionsUsed: freeTierStatus.sessionsUsed,
+                    sessionsRemaining: freeTierStatus.sessionsRemaining,
+                    periodStart: freeTierStatus.periodStart.toISOString(),
+                  }}
                 />
               </section>
             )
@@ -444,6 +480,7 @@ export default async function StudentHomeDashboardPage() {
             {/* ② TodaysLearningCard */}
             <TodaysLearningCard
               type={cardType}
+              ctaLabel={crunchMode && cardType === 'start' ? 'Study for exam' : undefined}
               diagnosticHref={diagnosticHref}
               recommendation={recommendation}
               session={
@@ -527,7 +564,7 @@ export default async function StudentHomeDashboardPage() {
                   id="weak-topics-heading"
                   className="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-3"
                 >
-                  Needs more practice
+                  Focus areas
                 </h3>
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                   {weakTopicsRaw.slice(0, 2).map((t) => (

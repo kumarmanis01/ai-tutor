@@ -227,12 +227,37 @@ export default function ProfileCompletionGate({
   // In standalone mode we don't use a portal so no hydration issue -- skip the mounted guard.
   if (!mounted && !standalone) return null;
 
-  const progressPct = Math.round(((step + (canAdvance() ? 1 : 0)) / totalSteps) * 100);
-
   const mandatoryNote =
     board === 'cbse' && grade >= 9 && grade <= 10
       ? `Maths & Science are mandatory for CBSE Class ${grade}.`
       : null;
+
+  // Checklist display helpers
+  const MAIN_STEPS: StepKey[] = ['language', 'board', 'grade', 'subjects'];
+  const stepLabels: Record<StepKey, { label: string; value: string }> = {
+    language: {
+      label: 'Medium',
+      value: language === 'hi' ? 'Hindi' : language === 'en' ? 'English' : '',
+    },
+    board: {
+      label: 'Board',
+      value: BOARD_OPTIONS.find((b) => b.slug === board)?.label ?? '',
+    },
+    grade: { label: 'Class', value: grade > 0 ? `Class ${grade}` : '' },
+    subjects: {
+      label: 'Subjects',
+      value: subjects.length > 0 ? `${subjects.length} subject${subjects.length !== 1 ? 's' : ''}` : '',
+    },
+    parentEmail: { label: 'Parent email', value: parentEmail ? 'Added' : '' },
+  };
+  const mainDoneCount = MAIN_STEPS.filter((s) => stepLabels[s].value !== '').length;
+
+  function isStepDone(sk: StepKey): boolean {
+    return stepLabels[sk].value !== '';
+  }
+  function isStepActive(sk: StepKey): boolean {
+    return steps[step] === sk;
+  }
 
   const formCard = (
     <div className="w-full max-w-lg bg-white dark:bg-gray-900 rounded-2xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col">
@@ -252,25 +277,73 @@ export default function ProfileCompletionGate({
                 Complete your profile
               </h2>
               <p className="text-indigo-200 text-sm leading-tight">
-                Help Vidya personalise your learning
+                {mainDoneCount} of {MAIN_STEPS.length} complete
               </p>
             </div>
           </div>
-
-          {/* Progress bar */}
-          <div className="mt-4 h-2 rounded-full bg-white/20 overflow-hidden">
-            <div
-              className="h-full rounded-full bg-white transition-all duration-500"
-              style={{ width: `${progressPct}%` }}
-            />
-          </div>
-          <p className="mt-1.5 text-xs text-indigo-200">
-            {step + 1} of {totalSteps}
-          </p>
         </div>
 
         {/* Scrollable form body */}
         <div className="overflow-y-auto flex-1 px-6 py-5">
+
+          {/* Checklist -- all 4 main items always visible */}
+          <div className="mb-5 space-y-2">
+            {MAIN_STEPS.map((sk) => {
+              const done = isStepDone(sk);
+              const active = isStepActive(sk);
+              const stepIdx = steps.indexOf(sk);
+              const clickable = done && !active && stepIdx !== -1;
+              return (
+                <button
+                  key={sk}
+                  type="button"
+                  disabled={saving || (!done && !active)}
+                  onClick={() => {
+                    if (clickable) setStep(stepIdx);
+                  }}
+                  className={[
+                    'flex items-center gap-3 w-full min-h-[44px] rounded-xl px-3 py-2 text-left transition-colors',
+                    active
+                      ? 'bg-[#EEEDFE] dark:bg-[#534AB7]/15 border-2 border-[#534AB7]'
+                      : done
+                      ? 'bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 hover:bg-gray-100 dark:hover:bg-slate-700 cursor-pointer'
+                      : 'bg-gray-50 dark:bg-slate-800 border border-gray-100 dark:border-slate-700 opacity-50 cursor-default',
+                  ].join(' ')}
+                >
+                  {/* Status indicator */}
+                  {done ? (
+                    <span className="w-5 h-5 rounded-full bg-[#1D9E75] flex items-center justify-center flex-shrink-0">
+                      <svg className="w-3 h-3 text-white" viewBox="0 0 12 12" fill="currentColor" aria-hidden>
+                        <path d="M10 3L5 8.5 2 5.5" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+                      </svg>
+                    </span>
+                  ) : active ? (
+                    <span className="w-5 h-5 rounded-full bg-[#534AB7] flex items-center justify-center flex-shrink-0">
+                      <span className="text-white text-[10px] font-bold">→</span>
+                    </span>
+                  ) : (
+                    <span className="w-5 h-5 rounded-full border-2 border-gray-300 dark:border-slate-500 flex-shrink-0" />
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <p className={`text-sm font-medium ${active ? 'text-[#534AB7] dark:text-indigo-300' : done ? 'text-gray-800 dark:text-gray-200' : 'text-gray-400 dark:text-gray-500'}`}>
+                      {stepLabels[sk].label}
+                    </p>
+                    {done && (
+                      <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                        {stepLabels[sk].value}
+                      </p>
+                    )}
+                  </div>
+                  {done && !active && (
+                    <span className="text-xs text-gray-400 dark:text-gray-500 flex-shrink-0">Edit</span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Divider */}
+          <div className="h-px bg-gray-100 dark:bg-slate-800 mb-5" />
 
           {/* ── Language ──────────────────────────────────────────────── */}
           {currentStepKey === 'language' && (
@@ -507,7 +580,7 @@ export default function ProfileCompletionGate({
               {saving
                 ? 'Saving...'
                 : isLastStep
-                ? 'Save & continue'
+                ? 'Save'
                 : 'Continue →'}
             </button>
           </div>

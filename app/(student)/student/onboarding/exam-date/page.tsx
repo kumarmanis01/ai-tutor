@@ -124,7 +124,7 @@ export default function ExamDatePage() {
   const hasValidDate = parsedDate !== null;
   const dateError =
     examDateRaw.trim() && !hasValidDate
-      ? 'Enter a future date, e.g. "15 March 2027".'
+      ? 'Please select a future date.'
       : '';
 
   return (
@@ -156,7 +156,7 @@ export default function ExamDatePage() {
             </label>
             <input
               id="exam-date"
-              type="text"
+              type="date"
               value={examDateRaw}
               onChange={(e) => setExamDateRaw(e.target.value)}
               placeholder="e.g. 15 March 2027"

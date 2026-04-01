@@ -29,15 +29,17 @@ import { prisma } from '@/lib/prisma';
 import { getServerSessionForHandlers } from '@/lib/session';
 import { SessionContainer } from '@/components/session/SessionContainer';
 import { hasDiagnosticForSubject } from '@/lib/student/diagnosticGuard';
+import { isAiTutorEnabledForStudent } from '@/lib/features/aiTutor';
+import AITutorSessionShell from '@/components/student/session/AITutorSessionShell';
 
 interface Props {
   params: Promise<{ topicId: string }>;
-  searchParams: Promise<{ reason?: string; time?: string }>;
+  searchParams: Promise<{ reason?: string; time?: string; sid?: string; cid?: string }>;
 }
 
 export default async function SessionPage({ params, searchParams }: Props) {
   const { topicId: id } = await params;
-  const { reason, time } = await searchParams;
+  const { reason, time, sid, cid } = await searchParams;
 
   // ── Legacy sessionId redirect ─────────────────────────────────────────────
   //
@@ -74,8 +76,35 @@ export default async function SessionPage({ params, searchParams }: Props) {
     if (!hasDiag) redirect(`/student/diagnostic/${subjectId}`);
   }
 
-  // Pass topicId directly to SessionContainer as a prop
-  // (no useParams/useSearchParams needed in the client component).
+  // ── AI tutor path (sid + cid present) ───────────────────────────────────────
+  //
+  // sid = tutor session ID from /api/tutor/session/start
+  // cid = conceptId from the pre-session screen
+  if (sid && cid) {
+    const [isAIEnabled, concept] = await Promise.all([
+      isAiTutorEnabledForStudent(auth.user.id),
+      prisma.concept.findUnique({
+        where: { id: cid },
+        select: {
+          name: true,
+          topic: { select: { chapter: { select: { subject: { select: { name: true } } } } } },
+        },
+      }),
+    ]);
+
+    return (
+      <AITutorSessionShell
+        sessionId={sid}
+        conceptId={cid}
+        topicId={id}
+        conceptName={concept?.name ?? ''}
+        subjectName={concept?.topic?.chapter?.subject?.name ?? ''}
+        isAITutorEnabled={isAIEnabled}
+      />
+    );
+  }
+
+  // ── V1 MCQ path ───────────────────────────────────────────────────────────
   const reasonLabel = reason ?? null;
   const estimatedTimeMin = time ? Number(time) : undefined;
 

@@ -59,6 +59,8 @@ export interface TodaysLearningCardProps {
   // href for the "Take diagnostic test" CTA shown in the empty/onboarding state.
   // Should be /diagnostic/[firstSubjectId]. Defaults to /dashboard if not provided.
   diagnosticHref?: string;
+  // Override the primary CTA label (e.g. "Study for exam" in crunch mode).
+  ctaLabel?: string;
 }
 
 // ── Main component ────────────────────────────────────────────────────────────
@@ -69,17 +71,18 @@ export default function TodaysLearningCard({
   session,
   homework,
   diagnosticHref,
+  ctaLabel,
 }: TodaysLearningCardProps) {
   if (type === 'resume' && session) return <ResumeState session={session} />;
   if (type === 'homework' && homework) return <HomeworkState homework={homework} />;
-  if (type === 'start' && recommendation) return <StartState rec={recommendation} />;
+  if (type === 'start' && recommendation) return <StartState rec={recommendation} ctaLabel={ctaLabel} />;
   if (type === 'ahead') return <AheadState />;
   return <EmptyState diagnosticHref={diagnosticHref ?? '/dashboard'} />;
 }
 
 // ── Start state ───────────────────────────────────────────────────────────────
 
-function StartState({ rec }: { rec: TodaysLearningCardRecommendation }) {
+function StartState({ rec, ctaLabel }: { rec: TodaysLearningCardRecommendation; ctaLabel?: string }) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
 
@@ -129,7 +132,7 @@ function StartState({ rec }: { rec: TodaysLearningCardRecommendation }) {
             </>
           ) : (
             <>
-              Start today&apos;s session
+              {ctaLabel ?? "Start today's session"}
               <svg className="w-4 h-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden>
                 <path fillRule="evenodd" d="M10.293 3.293a1 1 0 011.414 0l6 6a1 1 0 010 1.414l-6 6a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-4.293-4.293a1 1 0 010-1.414z" clipRule="evenodd" />
               </svg>

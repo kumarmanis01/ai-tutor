@@ -606,13 +606,14 @@ export default function DiagnosticFlow({
             )}
           </button>
 
+          {/* Plain text link -- saves directly without a confirm dialog */}
           <button
             type="button"
-            onClick={() => setShowAbandon(true)}
-            disabled={submitting}
+            onClick={handleSaveAndLeave}
+            disabled={submitting || savingPartial}
             className="flex w-full min-h-[44px] items-center justify-center text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 transition-colors disabled:opacity-50"
           >
-            Save and continue later
+            {savingPartial ? 'Saving...' : 'Save and continue later'}
           </button>
         </div>
       </div>
