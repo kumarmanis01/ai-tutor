@@ -271,7 +271,7 @@ const THIN_CONTENT_NS = {
   concept: 'Cells are the unit.',
   explanation: 'Very short here.',
   example: 'N/A.',
-  keyPoints: ['Has membrane', 'Has nucleus', 'Has DNA'],
+  keyPoints: ['Has membrane', 'Has nucleus', 'Has DNA', 'Has cytoplasm'],
   commonMistakes: ['Wrong.', 'Also wrong.'],
 };
 
