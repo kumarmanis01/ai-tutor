@@ -59,7 +59,9 @@ export async function handleSyllabusJob(jobId: string) {
 
   const paused = await prisma.systemSetting.findUnique({ where: { key: "HYDRATION_PAUSED" } })
   if (isSystemSettingEnabled(paused?.value)) {
-    await prisma.hydrationJob.update({ where: { id: job.id }, data: { status: JobStatus.Pending } })
+    // Use Paused status so the resume route can find and re-enqueue this job
+    await prisma.hydrationJob.update({ where: { id: job.id }, data: { status: JobStatus.Paused, lockedAt: null } })
+    logger.info('[syllabusWorker] hydration paused, setting job to paused', { jobId })
     return
   }
 

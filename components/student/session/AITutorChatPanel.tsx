@@ -41,7 +41,7 @@ export interface AITutorChatPanelProps {
   subjectName: string;
   initialStage: string;
   isAITutorEnabled: boolean;
-  onSessionComplete: (summary: { tag: string; stage: string; turnNumber: number }) => void;
+  onSessionComplete: (summary: { tag: string; stage: string; turnNumber: number; hintsUsed: number }) => void;
 }
 
 type TutorTurnCompleteEvent = {
@@ -426,6 +426,7 @@ export const AITutorChatPanel: React.FC<AITutorChatPanelProps> = ({
           tag: payload.tag,
           stage: payload.stage,
           turnNumber: payload.turnNumber,
+          hintsUsed: 3 - payload.hintsRemaining,
         });
       } else {
         scheduleInactivity();

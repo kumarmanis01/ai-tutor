@@ -51,11 +51,11 @@ export async function handleAssembleJob(jobId: string): Promise<void> {
     return;
   }
 
-  // Check global pause
+  // Check global pause -- use Paused status so the resume route can find and re-enqueue this job
   const paused = await prisma.systemSetting.findUnique({ where: { key: 'HYDRATION_PAUSED' } });
   if (isSystemSettingEnabled(paused?.value)) {
-    await prisma.hydrationJob.update({ where: { id: job.id }, data: { status: JobStatus.Pending } });
-    logger.info('handleAssembleJob: paused, returning to pending', { jobId });
+    await prisma.hydrationJob.update({ where: { id: job.id }, data: { status: JobStatus.Paused, lockedAt: null } });
+    logger.info('handleAssembleJob: hydration paused, setting job to paused', { jobId });
     return;
   }
 

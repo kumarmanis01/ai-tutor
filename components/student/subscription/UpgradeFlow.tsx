@@ -37,9 +37,14 @@ declare global {
 interface UpgradeFlowProps {
   studentName?: string | null;
   studentEmail?: string | null;
+  freeTierUsage?: {
+    sessionsUsed: number;
+    sessionsRemaining: number;
+    periodStart: string; // ISO string from server
+  } | null;
 }
 
-export function UpgradeFlow({ studentName, studentEmail }: UpgradeFlowProps) {
+export function UpgradeFlow({ studentName, studentEmail, freeTierUsage }: UpgradeFlowProps) {
   const [step, setStep] = useState<Step>('gate');
   const [planId, setPlanId] = useState<PlanId>('quarterly');
   const [method, setMethod] = useState<PaymentMethod>('upi');
@@ -157,7 +162,31 @@ export function UpgradeFlow({ studentName, studentEmail }: UpgradeFlowProps) {
         <p className="mb-4 text-sm text-gray-600 dark:text-gray-300">
           Keep learning with Teacher Vidya -- unlimited AI tutor sessions, personalised to you.
         </p>
-        <p className="mb-5 text-xl font-bold text-[#534AB7]">From ₹74/month</p>
+
+        {/* Usage counter grid */}
+        {freeTierUsage && (() => {
+          const resetDate = new Date(freeTierUsage.periodStart);
+          resetDate.setMonth(resetDate.getMonth() + 1);
+          const resetLabel = resetDate.toLocaleDateString('en-IN', { month: 'short', day: 'numeric' });
+          return (
+            <div className="mb-4 grid grid-cols-3 divide-x divide-[#534AB7]/15 rounded-xl bg-white dark:bg-slate-800/50 border border-[#534AB7]/20 overflow-hidden">
+              <div className="py-3 text-center">
+                <p className="text-xl font-bold text-gray-900 dark:text-gray-100">{freeTierUsage.sessionsUsed}</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400">used</p>
+              </div>
+              <div className="py-3 text-center">
+                <p className="text-xl font-bold text-[#E24B4A]">{freeTierUsage.sessionsRemaining}</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400">left</p>
+              </div>
+              <div className="py-3 text-center">
+                <p className="text-sm font-bold text-gray-700 dark:text-gray-300">{resetLabel}</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400">resets</p>
+              </div>
+            </div>
+          );
+        })()}
+
+        <p className="mb-5 text-xl font-bold text-[#534AB7]">₹99/month</p>
         <div className="flex flex-col gap-3 sm:flex-row">
           <button
             type="button"

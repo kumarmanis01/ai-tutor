@@ -17,7 +17,7 @@
  * Copy rules: no "broke", "missed", "failed" -- forward-looking tone only.
  */
 
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import InterruptedSessionSheet from './InterruptedSessionSheet';
@@ -113,6 +113,29 @@ export default function PreSessionScreen({
   const [showSheet, setShowSheet] = useState(interruptedSession !== null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  // Prefetch: start the AI tutor session in the background so first AI response
+  // arrives faster after the student taps "Start session".
+  const prefetchedSessionIdRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch('/api/tutor/session/start', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ conceptId, subjectId }),
+    })
+      .then((r) => r.json())
+      .then((json: { sessionId?: string }) => {
+        if (!cancelled && json?.sessionId) {
+          prefetchedSessionIdRef.current = json.sessionId;
+        }
+      })
+      .catch(() => {
+        // best-effort -- fresh fetch will run on button click
+      });
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const unmetPrereqs = prerequisites.filter((p) => p.masteryScore < 0.7);
   const hasUnmetPrereqs = unmetPrereqs.length > 0;
@@ -122,18 +145,31 @@ export default function PreSessionScreen({
     setError('');
     setBusy(true);
     try {
-      const res = await fetch('/api/tutor/session/start', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ conceptId, subjectId }),
-      });
-      const json = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        setError(json?.error ?? 'Could not start session. Please try again.');
+      // Use prefetched sessionId if available; otherwise do a fresh fetch.
+      let sessionId = prefetchedSessionIdRef.current;
+      if (!sessionId) {
+        const res = await fetch('/api/tutor/session/start', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ conceptId, subjectId }),
+        });
+        const json = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          setError(json?.error ?? 'Could not start session. Please try again.');
+          setBusy(false);
+          return;
+        }
+        sessionId = (json as { sessionId?: string }).sessionId ?? null;
+      }
+      if (!sessionId) {
+        setError('Could not start session. Please try again.');
         setBusy(false);
         return;
       }
-      router.push(`/session/${encodeURIComponent(topicId)}`);
+      // Pass sid (tutor session ID) and cid (concept ID) so the session page
+      // can render AITutorSessionShell instead of the V1 SessionContainer.
+      const url = `/session/${encodeURIComponent(topicId)}?sid=${encodeURIComponent(sessionId)}&cid=${encodeURIComponent(conceptId)}`;
+      router.push(url);
     } catch {
       setError('Network error. Please check your connection.');
       setBusy(false);

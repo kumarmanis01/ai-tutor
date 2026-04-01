@@ -4,7 +4,7 @@
  * Server component:
  * 1. Checks auth -- redirects to /login if unauthenticated.
  * 2. Fetches concepts due for revision (nextReviewAt <= now).
- * 3. For each concept, fetches up to 3 MCQ questions via topicId.
+ * 3. For each concept, fetches up to 5 MCQ questions via topicId.
  * 4. If 0 due: shows empty state.
  * 5. If due > 0: renders RevisionFlow (client component).
  */
@@ -17,7 +17,7 @@ import Link from 'next/link'
 import RevisionFlow, { type RevisionCard } from '@/components/student/revision/RevisionFlow'
 
 const MAX_CARDS = 20
-const QUESTIONS_PER_CONCEPT = 3
+const QUESTIONS_PER_CONCEPT = 5
 
 export const dynamic = 'force-dynamic'
 

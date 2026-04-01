@@ -139,7 +139,9 @@ export async function enqueueNotesHydration(input: TopicHydrationInput): Promise
     status: JobStatus.Pending
   };
   const generatedId = randomUUID();
-  const job = await prisma.hydrationJob.create({ data: { id: generatedId, rootJobId: generatedId, ...jobData } });
+  // rootJobId is null for standalone directly-enqueued jobs (no parent pipeline).
+  // Reconciler-created children set rootJobId to the syllabus root job's id.
+  const job = await prisma.hydrationJob.create({ data: { id: generatedId, rootJobId: null, ...jobData } });
   if (HYDRATION_DEBUG) logger.debug('[hydration][DEBUG] created HydrationJob for notes', { jobId: job.id });
 
   // 6️⃣ Create Outbox row for reliable enqueue
@@ -238,7 +240,8 @@ export async function enqueueQuestionsHydration(input: TopicHydrationInput): Pro
     status: JobStatus.Pending
   };
   const generatedId = randomUUID();
-  const job = await prisma.hydrationJob.create({ data: { id: generatedId, rootJobId: generatedId, ...jobData } });
+  // rootJobId is null for standalone directly-enqueued jobs (no parent pipeline).
+  const job = await prisma.hydrationJob.create({ data: { id: generatedId, rootJobId: null, ...jobData } });
   if (HYDRATION_DEBUG) logger.debug('[hydration][DEBUG] created HydrationJob for questions', { jobId: job.id });
 
   // 6️⃣ Create Outbox row for reliable enqueue
@@ -324,7 +327,8 @@ export async function enqueueTestsHydration(input: TopicHydrationInput): Promise
     status: JobStatus.Pending
   };
   const generatedId = randomUUID();
-  const job = await prisma.hydrationJob.create({ data: { id: generatedId, rootJobId: generatedId, ...jobData } });
+  // rootJobId is null for standalone directly-enqueued jobs (no parent pipeline).
+  const job = await prisma.hydrationJob.create({ data: { id: generatedId, rootJobId: null, ...jobData } });
   if (HYDRATION_DEBUG) logger.debug('[hydration][DEBUG] created HydrationJob for tests', { jobId: job.id });
 
   // 5️⃣ Create Outbox row for reliable enqueue

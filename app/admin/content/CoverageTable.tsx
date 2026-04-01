@@ -128,10 +128,12 @@ function RowActions({
 }) {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [msg, setMsg] = useState<string | null>(null)
 
   async function call(url: string, body: Record<string, unknown>) {
     setBusy(true)
     setError(null)
+    setMsg(null)
     try {
       const r = await fetch(url, {
         method: 'POST',
@@ -139,7 +141,7 @@ function RowActions({
         body: JSON.stringify(body),
       })
       const data = await r.json()
-      if (!r.ok) throw new Error(data.error ?? 'Request failed')
+      if (!r.ok) throw new Error(data.message ?? data.error ?? 'Request failed')
       onRefresh()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error')
@@ -172,12 +174,24 @@ function RowActions({
   }
 
   async function handleCompletePipeline() {
-    await call('/api/admin/content/complete-pipeline', {
-      subjectId: row.subjectId,
-      board: row.boardSlug,
-      grade: row.grade,
-      language: row.language,
-    })
+    setBusy(true)
+    setError(null)
+    setMsg(null)
+    try {
+      const r = await fetch('/api/admin/content/complete-pipeline', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ subjectId: row.subjectId, board: row.boardSlug, grade: row.grade, language: row.language }),
+      })
+      const data = await r.json()
+      if (!r.ok) throw new Error(data.message ?? data.error ?? 'Request failed')
+      if (data.message) setMsg(data.message)
+      onRefresh()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error')
+    } finally {
+      setBusy(false)
+    }
   }
 
   async function handleReset() {
@@ -204,7 +218,10 @@ function RowActions({
   return (
     <div className="flex items-center flex-wrap gap-1.5">
       {error && (
-        <span className="text-[9px] text-[#E24B4A]">{error}</span>
+        <span className="text-[9px] text-[#E24B4A] w-full">{error}</span>
+      )}
+      {msg && !error && (
+        <span className="text-[9px] text-[#1D9E75] w-full">{msg}</span>
       )}
 
       {(s === 'not_started' || s === 'ncert_only') && (
@@ -320,43 +337,61 @@ export function CoverageTable({ rows }: { rows: CoverageRowData[] }) {
   }
 
   return (
-    <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl overflow-hidden">
-      <div className="overflow-x-auto">
-        <table className="w-full text-[11px]">
-          <thead>
-            <tr className="border-b border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900">
-              {['Subject', 'Grade', 'Board', 'Chapters', 'Topics', 'Notes', 'Questions', 'RAG chunks', 'Status', 'Actions'].map(h => (
-                <th key={h} className="text-left px-3 py-2.5 font-medium text-gray-500 dark:text-gray-400 whitespace-nowrap">
-                  {h}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
-            {rows.map(row => (
-              <tr key={row.subjectId} className="hover:bg-gray-50/50 dark:hover:bg-gray-800/30">
-                <td className="px-3 py-2.5 font-medium text-gray-800 dark:text-gray-200 whitespace-nowrap">
-                  {row.subjectName}
-                </td>
-                <td className="px-3 py-2.5 text-gray-600 dark:text-gray-400">{row.grade}</td>
-                <td className="px-3 py-2.5 text-gray-600 dark:text-gray-400 uppercase text-[10px]">
-                  {row.boardSlug}
-                </td>
-                <td className="px-3 py-2.5 text-gray-700 dark:text-gray-300">{row.chapterCount}</td>
-                <td className="px-3 py-2.5 text-gray-700 dark:text-gray-300">{row.topicCount}</td>
-                <td className="px-3 py-2.5 text-gray-700 dark:text-gray-300">{row.noteCount}</td>
-                <td className="px-3 py-2.5 text-gray-700 dark:text-gray-300">{row.questionCount}</td>
-                <td className="px-3 py-2.5 text-gray-500">{row.ragChunks}</td>
-                <td className="px-3 py-2.5">
-                  <ContentStatusBadge status={row.status} />
-                </td>
-                <td className="px-3 py-2.5">
-                  <RowActions row={row} onRefresh={refresh} />
-                </td>
+    <div className="space-y-2">
+      <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-[11px]">
+            <thead>
+              <tr className="border-b border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900">
+                {['Subject', 'Grade', 'Board', 'Chapters', 'Topics', 'Notes', 'Questions', 'RAG chunks', 'Status', 'Actions'].map(h => (
+                  <th key={h} className="text-left px-3 py-2.5 font-medium text-gray-500 dark:text-gray-400 whitespace-nowrap">
+                    {h}
+                  </th>
+                ))}
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
+              {rows.map(row => (
+                <tr key={row.subjectId} className="hover:bg-gray-50/50 dark:hover:bg-gray-800/30">
+                  <td className="px-3 py-2.5 font-medium text-gray-800 dark:text-gray-200 whitespace-nowrap">
+                    {row.subjectName}
+                  </td>
+                  <td className="px-3 py-2.5 text-gray-600 dark:text-gray-400">{row.grade}</td>
+                  <td className="px-3 py-2.5 text-gray-600 dark:text-gray-400 uppercase text-[10px]">
+                    {row.boardSlug}
+                  </td>
+                  <td className="px-3 py-2.5 text-gray-700 dark:text-gray-300">{row.chapterCount}</td>
+                  <td className="px-3 py-2.5 text-gray-700 dark:text-gray-300">{row.topicCount}</td>
+                  <td className="px-3 py-2.5 text-gray-700 dark:text-gray-300">{row.noteCount}</td>
+                  <td className="px-3 py-2.5 text-gray-700 dark:text-gray-300">{row.questionCount}</td>
+                  <td className="px-3 py-2.5 text-gray-500">{row.ragChunks}</td>
+                  <td className="px-3 py-2.5">
+                    <ContentStatusBadge status={row.status} />
+                  </td>
+                  <td className="px-3 py-2.5">
+                    <RowActions row={row} onRefresh={refresh} />
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* Action button legend */}
+      <div className="flex flex-wrap gap-x-5 gap-y-1.5 px-1 pt-0.5">
+        <div className="flex items-center gap-1.5">
+          <span className="inline-flex items-center text-[9px] px-1.5 py-0.5 rounded border border-[#534AB7] bg-[#EEEDFE] text-[#3C3489] font-medium">Complete pipeline</span>
+          <span className="text-[10px] text-gray-500">-- Gap-fill: queue notes + questions for topics that are missing them (safe to re-run)</span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <span className="inline-flex items-center text-[9px] px-1.5 py-0.5 rounded border border-gray-300 bg-white text-gray-600 font-medium">Generate all</span>
+          <span className="text-[10px] text-gray-500">-- Run the full syllabus pipeline from scratch (chapters + topics + notes + questions)</span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <span className="inline-flex items-center text-[9px] px-1.5 py-0.5 rounded border border-[#f9d7d7] bg-[#FCEBEB] text-[#791F1F] font-medium">Reset</span>
+          <span className="text-[10px] text-gray-500">-- Delete all AI-generated content for this subject (requires confirmation, irreversible)</span>
+        </div>
       </div>
     </div>
   )

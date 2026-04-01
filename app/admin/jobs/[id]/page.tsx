@@ -87,7 +87,7 @@ export default function JobDetailPage() {
   const [actionErr, setActionErr] = useState<string | null>(null);
   const [actionMsg, setActionMsg] = useState<string | null>(null);
 
-  async function doAction(action: 'pause' | 'resume' | 'cancel' | 'unstick') {
+  async function doAction(action: 'pause' | 'resume' | 'cancel' | 'unstick' | 'requeue') {
     setActionBusy(true);
     setActionErr(null);
     setActionMsg(null);
@@ -115,6 +115,7 @@ export default function JobDetailPage() {
 
   const { job } = data;
   const isRunning = job.status === 'running';
+  const isPending = job.status === 'pending';
   const isPaused = job.status === 'paused';
   const isFailed = job.status === 'failed';
 
@@ -184,8 +185,14 @@ export default function JobDetailPage() {
             <ActionBtn onClick={() => doAction('cancel')} disabled={actionBusy} v="danger">Cancel</ActionBtn>
           </>
         )}
+        {isPending && (
+          <>
+            <ActionBtn onClick={() => doAction('requeue')} disabled={actionBusy} v="primary">Requeue</ActionBtn>
+            <ActionBtn onClick={() => doAction('cancel')} disabled={actionBusy} v="danger">Cancel</ActionBtn>
+          </>
+        )}
         {isFailed && (
-          <ActionBtn onClick={() => doAction('resume')} disabled={actionBusy} v="primary">Retry</ActionBtn>
+          <ActionBtn onClick={() => doAction('requeue')} disabled={actionBusy} v="primary">Retry</ActionBtn>
         )}
       </div>
 

@@ -12,6 +12,7 @@ import { NextResponse } from 'next/server'
 import { getServerSessionForHandlers } from '@/lib/session'
 import { prisma } from '@/lib/prisma'
 import { logger } from '@/lib/logger'
+import { CONTENT_HYDRATION_QUEUE } from '@/lib/queues/constants'
 
 const STUCK_THRESHOLD_MS = 10 * 60 * 1000
 
@@ -50,10 +51,28 @@ export async function POST(
     )
   }
 
+  const unstuckJob = await prisma.hydrationJob.findUnique({
+    where: { id },
+    select: { id: true, jobType: true },
+  })
+
   await prisma.hydrationJob.update({
     where: { id },
     data: { status: 'pending', lockedAt: null },
   })
+
+  // Re-create an Outbox row so the dispatcher re-enqueues to BullMQ.
+  // The original Outbox row already has sentAt set and won't be re-dispatched.
+  if (unstuckJob) {
+    const jobTypeName = String(unstuckJob.jobType).toUpperCase()
+    await prisma.outbox.create({
+      data: {
+        queue: CONTENT_HYDRATION_QUEUE,
+        payload: { type: jobTypeName, payload: { jobId: id } },
+        meta: { hydrationJobId: id, source: 'unstick' },
+      },
+    }).catch((e) => logger.warn('[admin/jobs/unstick] failed to create outbox row', { jobId: id, error: e }))
+  }
 
   logger.info('[admin/jobs/unstick] reset stuck running job to pending', {
     event: 'unstick_job',

@@ -14,6 +14,7 @@ import { getServerSessionForHandlers } from '@/lib/session'
 import { prisma } from '@/lib/prisma'
 import { enqueueNotesHydration } from '@/lib/execution-pipeline/enqueueTopicHydration'
 import { enqueueQuestionsHydration } from '@/lib/execution-pipeline/enqueueTopicHydration'
+import { isSystemSettingEnabled } from '@/lib/systemSettings'
 import { logger } from '@/lib/logger'
 
 export async function POST(req: Request) {
@@ -21,6 +22,15 @@ export async function POST(req: Request) {
   const session = await getServerSessionForHandlers()
   if (!session || session.user?.role !== 'admin') {
     return NextResponse.json({ error: 'forbidden' }, { status: 401 })
+  }
+
+  // Upfront HYDRATION_PAUSED guard -- fail fast with a clear message
+  const pausedSetting = await prisma.systemSetting.findUnique({ where: { key: 'HYDRATION_PAUSED' } })
+  if (isSystemSettingEnabled(pausedSetting?.value)) {
+    return NextResponse.json(
+      { error: 'hydration_paused', message: 'Hydration is globally paused (HYDRATION_PAUSED=true). Resume hydration in System Settings before enqueueing jobs.' },
+      { status: 409 },
+    )
   }
 
   let body: { subjectId?: string; board?: string; grade?: number; language?: string }
@@ -111,5 +121,9 @@ export async function POST(req: Request) {
     context: { subjectId, notesEnqueued, questionsEnqueued, adminId: session.user?.id },
   })
 
-  return NextResponse.json({ ok: true, notesEnqueued, questionsEnqueued })
+  const message = notesEnqueued === 0 && questionsEnqueued === 0
+    ? 'No new jobs created -- all topics already have content or active jobs queued.'
+    : `Queued ${notesEnqueued} notes job${notesEnqueued !== 1 ? 's' : ''} and ${questionsEnqueued} questions job${questionsEnqueued !== 1 ? 's' : ''}. Workers will pick them up within 5 s.`
+
+  return NextResponse.json({ ok: true, notesEnqueued, questionsEnqueued, message })
 }
