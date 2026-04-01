@@ -219,8 +219,22 @@ export async function handleNotesJob(jobId: string): Promise<void> {
   const grade = topic.chapter.subject.class.grade;
   const subjectName = topic.chapter.subject.name;
   const language = job.language || 'en';
+  const difficultyLevel: 'foundation' | 'standard' | 'advanced' = grade <= 8 ? 'foundation' : grade <= 10 ? 'standard' : 'advanced'
 
-  const _studentAge = grade + 5; // Approximate age based on grade (unused by design)
+  // Query sibling topics with lower order to build priorTopics list
+  const priorTopics: string[] = []
+  try {
+    const siblings = await prisma.topicDef.findMany({
+      where: {
+        chapterId: (topic as any).chapterId,
+        order: { lt: (topic as any).order ?? 0 },
+      },
+      select: { name: true },
+      orderBy: { order: 'asc' },
+      take: 5,
+    })
+    priorTopics.push(...siblings.map((s) => s.name))
+  } catch { /* non-fatal -- priorTopics will be empty */ }
 
   // ── Ground notes in NCERT CurriculumChunk content when available ─────────────
   let ncertContext: string | undefined
@@ -259,7 +273,17 @@ export async function handleNotesJob(jobId: string): Promise<void> {
   }
 
   // Use centralized prompt renderer to produce deterministic prompt and schema fingerprint
-  const rendered = renderTemplate('topic-notes', { topicName: topic.name, grade, maxWords: 400, language: language as any, ncertContext });
+  const rendered = renderTemplate('topic-notes', {
+    topicName: topic.name,
+    grade,
+    board,
+    subject: subjectName,
+    chapter: topic.chapter?.name ?? '',
+    priorTopics,
+    difficultyLevel,
+    language: (language === 'hi' ? 'hi-en' : 'en') as any,
+    ncertContext,
+  });
   const prompt = rendered.prompt
 
   // Always use next version number so new jobs create v1, v2, v3... (versioned content, never overwrite).
@@ -331,12 +355,15 @@ export async function handleNotesJob(jobId: string): Promise<void> {
       }
     } catch { /* non-fatal */ }
   } catch (vErr: any) {
-    // notes_too_short: retry once with an explicit length hint before failing
-    const isShort = vErr?.type === 'notes_too_short' || String(vErr?.message ?? '').includes('notes_too_short');
-    if (isShort) {
+    // Semantic weakness errors: retry once with an explicit quality hint before failing
+    const SEMANTIC_WEAKNESS_TYPES = ['notes_too_short', 'notes_missing_required_section', 'notes_too_few_examples', 'notes_missing_bridge']
+    const isSemanticWeakness = SEMANTIC_WEAKNESS_TYPES.some(t => vErr?.type === t || String(vErr?.message ?? '').includes(t))
+    if (isSemanticWeakness) {
+      const weaknessType = vErr?.type || 'notes_quality'
+      const weaknessDetail = vErr?.details ? JSON.stringify(vErr.details) : ''
       try {
-        logger.warn('[notesWorker] notes_too_short on first attempt -- retrying LLM with length hint', { jobId: job.id });
-        const retryPrompt = `${prompt}\n\nIMPORTANT: Your previous response contained insufficient content. Please provide detailed notes with at least 80 characters of substantive text per topic.`;
+        logger.warn('[notesWorker] semantic weakness on first attempt -- retrying LLM with quality hint', { jobId: job.id, weaknessType });
+        const retryPrompt = `${prompt}\n\nIMPORTANT: Your previous response failed quality validation (${weaknessType}${weaknessDetail ? ': ' + weaknessDetail : ''}). Requirements: minimum 7 sections including hook/concept/worked_example/summary; at least 2 worked_example sections; every section content minimum 80 words; bridgeToNext sentence required.`;
         const retryRes = await callAndParseJSON(retryPrompt, { ...llmMeta, retry: 1 }, 1);
         validateOrThrow(retryRes.parsed, { jobType: 'notes', language, subject: subjectName, topic: topic.name, grade, difficulty: job.difficulty });
         parsed = retryRes.parsed;
@@ -344,7 +371,7 @@ export async function handleNotesJob(jobId: string): Promise<void> {
         // Retry succeeded -- fall through to persist
       } catch (retryErr: any) {
         // Both attempts failed -- apply failure contract below
-        const retryReason = retryErr?.type || retryErr?.message || 'validation_failed';
+        const retryReason = retryErr?.type || retryErr?.message || 'validation_failed'
         const { formatLastError, FailureCode } = await import('@/lib/failureCodes');
         const le = formatLastError(FailureCode.VALIDATION_FAILED, String(retryReason));
         try { await prisma.hydrationJob.update({ where: { id: job.id }, data: { status: JobStatus.Failed, lastError: le } }); } catch {}
@@ -400,7 +427,7 @@ export async function handleNotesJob(jobId: string): Promise<void> {
       await tx.topicNote.upsert({
         where: { topicId_language_version: { topicId, language, version } },
         update: {
-          title: parsed.title,
+          title: (parsed.metadata?.topic ?? parsed.title) as string,
           contentJson,
           source: 'ai',
           status: ApprovalStatus.Draft
@@ -409,7 +436,7 @@ export async function handleNotesJob(jobId: string): Promise<void> {
           topicId,
           language,
           version,
-          title: parsed.title,
+          title: (parsed.metadata?.topic ?? parsed.title) as string,
           contentJson,
           source: 'ai',
           status: ApprovalStatus.Draft

@@ -257,7 +257,7 @@ export default async function SystemHealthPage() {
           <ServiceRow
             label="BullMQ queue"
             status={queueStatus}
-            detail={`${health?.jobs.pending ?? '--'} pending, ${health?.jobs.running ?? '--'} running, ${health?.queue.depth ?? '--'} depth`}
+            detail={`${health?.queue.waiting ?? '--'} waiting, ${health?.queue.active ?? '--'} active, ${health?.queue.depth ?? '--'} depth`}
           />
           <ServiceRow
             label="Overall"

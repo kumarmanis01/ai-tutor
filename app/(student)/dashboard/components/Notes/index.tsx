@@ -374,6 +374,197 @@ function ChapterAccordion({
 
 // ── Note renderer ────────────────────────────────────────────────────────
 
+type VidyaSection = {
+  type: string;
+  title: string;
+  content: string;
+  blackboardNotes?: string[];
+  visualHint?: string | null;
+  formulaLatex?: string | null;
+  exampleSteps?: Array<{
+    stepNumber: number;
+    expression: string;
+    teacherComment: string;
+    isCommonMistakePoint: boolean;
+  }> | null;
+  conceptCheck?: { question: string; hint: string; answer: string } | null;
+}
+
+const SECTION_STYLES: Record<string, { bg: string; border: string; label: string; labelColor: string }> = {
+  hook:           { bg: 'bg-[#EEEDFE]',  border: 'border-indigo-200', label: 'Hook',            labelColor: 'text-[#534AB7]' },
+  concept:        { bg: 'bg-white',       border: 'border-gray-200',   label: 'Concept',         labelColor: 'text-gray-600' },
+  worked_example: { bg: 'bg-white',       border: 'border-indigo-100', label: 'Worked Example',  labelColor: 'text-[#534AB7]' },
+  concept_check:  { bg: 'bg-[#EAF3DE]',  border: 'border-green-200',  label: 'Concept Check',   labelColor: 'text-[#1D9E75]' },
+  common_mistake: { bg: 'bg-[#FCEBEB]',  border: 'border-red-200',    label: 'Common Mistake',  labelColor: 'text-[#E24B4A]' },
+  memory_aid:     { bg: 'bg-[#EAF3DE]',  border: 'border-green-200',  label: 'Memory Aid',      labelColor: 'text-[#1D9E75]' },
+  summary:        { bg: 'bg-[#FAEEDA]',  border: 'border-amber-200',  label: 'Summary',         labelColor: 'text-[#BA7517]' },
+}
+
+function ConceptCheckCard({ check }: { check: NonNullable<VidyaSection['conceptCheck']> }) {
+  const [showHint, setShowHint] = useState(false)
+  const [showAnswer, setShowAnswer] = useState(false)
+  return (
+    <div className="mt-3 rounded-lg border border-green-200 bg-white p-3 space-y-2">
+      <p className="text-sm font-medium text-gray-800">{check.question}</p>
+      <div className="flex gap-2 flex-wrap">
+        <button
+          type="button"
+          onClick={() => setShowHint((v) => !v)}
+          className="min-h-[44px] min-w-[44px] px-3 text-xs font-medium rounded-md border border-green-300 text-[#1D9E75] hover:bg-[#EAF3DE] transition-colors"
+        >
+          {showHint ? 'Hide hint' : 'Show hint'}
+        </button>
+        <button
+          type="button"
+          onClick={() => setShowAnswer((v) => !v)}
+          className="min-h-[44px] min-w-[44px] px-3 text-xs font-medium rounded-md border border-indigo-300 text-[#534AB7] hover:bg-[#EEEDFE] transition-colors"
+        >
+          {showAnswer ? 'Hide answer' : 'Reveal answer'}
+        </button>
+      </div>
+      {showHint && (
+        <p className="text-xs text-gray-600 bg-green-50 rounded px-3 py-2">
+          <span className="font-semibold">Hint: </span>{check.hint}
+        </p>
+      )}
+      {showAnswer && (
+        <p className="text-xs text-gray-700 bg-indigo-50 rounded px-3 py-2">
+          <span className="font-semibold">Answer: </span>{check.answer}
+        </p>
+      )}
+    </div>
+  )
+}
+
+function VidyaSectionCard({ sec }: { sec: VidyaSection }) {
+  const style = SECTION_STYLES[sec.type] ?? SECTION_STYLES.concept
+  return (
+    <div className={`rounded-xl border ${style.border} ${style.bg} p-4 space-y-3`}>
+      <div className="flex items-center gap-2">
+        <span className={`text-xs font-bold uppercase tracking-wide ${style.labelColor}`}>
+          {style.label}
+        </span>
+      </div>
+      <h3 className="text-base font-bold text-gray-900">{sec.title}</h3>
+      <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">{sec.content}</p>
+
+      {sec.formulaLatex && (
+        <div className="rounded-md bg-gray-900 px-4 py-2 overflow-x-auto">
+          <code className="text-sm text-green-300 font-mono">{sec.formulaLatex}</code>
+        </div>
+      )}
+
+      {sec.visualHint && (
+        <div className="rounded-md border border-dashed border-gray-300 bg-gray-50 px-3 py-2">
+          <p className="text-xs text-gray-500 italic">{sec.visualHint}</p>
+        </div>
+      )}
+
+      {Array.isArray(sec.exampleSteps) && sec.exampleSteps.length > 0 && (
+        <div className="space-y-2">
+          {sec.exampleSteps.map((step) => (
+            <div
+              key={step.stepNumber}
+              className={`rounded-md border px-3 py-2 text-sm ${step.isCommonMistakePoint ? 'border-red-200 bg-[#FCEBEB]' : 'border-gray-100 bg-white'}`}
+            >
+              <div className="flex items-start gap-2">
+                <span className="shrink-0 w-5 h-5 rounded-full bg-[#534AB7] text-white text-xs font-bold flex items-center justify-center mt-0.5">
+                  {step.stepNumber}
+                </span>
+                <div className="space-y-1">
+                  <code className="block font-mono text-xs text-gray-800">{step.expression}</code>
+                  {step.teacherComment && (
+                    <p className="text-xs text-gray-500 italic">{step.teacherComment}</p>
+                  )}
+                  {step.isCommonMistakePoint && (
+                    <p className="text-xs font-semibold text-[#E24B4A]">Watch out -- common mistake point!</p>
+                  )}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {sec.conceptCheck && <ConceptCheckCard check={sec.conceptCheck} />}
+
+      {Array.isArray(sec.blackboardNotes) && sec.blackboardNotes.length > 0 && (
+        <div className="rounded-md bg-gray-900 px-3 py-2">
+          <p className="text-xs font-semibold text-gray-400 mb-1">Blackboard</p>
+          <ul className="space-y-0.5">
+            {sec.blackboardNotes.map((note, i) => (
+              <li key={i} className="text-xs font-mono text-yellow-200">{note}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function VidyaNoteRenderer({ obj }: { obj: Record<string, unknown> }) {
+  const sections = obj.sections as VidyaSection[]
+  const keyConcepts = obj.keyConcepts as Array<{ term: string; definition: string; formula: string | null }> | undefined
+  const examTips = obj.examTips as string[] | undefined
+  const bridgeToNext = obj.bridgeToNext as string | undefined
+  const metadata = obj.metadata as Record<string, unknown> | undefined
+
+  return (
+    <article className="space-y-4">
+      {metadata && (
+        <div className="flex flex-wrap gap-2 text-xs text-gray-500">
+          {metadata.board && <span className="rounded-full bg-gray-100 px-2 py-0.5">{String(metadata.board)}</span>}
+          {metadata.grade && <span className="rounded-full bg-gray-100 px-2 py-0.5">Grade {String(metadata.grade)}</span>}
+          {metadata.difficultyLevel && <span className="rounded-full bg-gray-100 px-2 py-0.5 capitalize">{String(metadata.difficultyLevel)}</span>}
+          {metadata.estimatedReadingMinutes && (
+            <span className="rounded-full bg-gray-100 px-2 py-0.5">{String(metadata.estimatedReadingMinutes)} min read</span>
+          )}
+        </div>
+      )}
+
+      {sections.map((sec, i) => <VidyaSectionCard key={i} sec={sec} />)}
+
+      {Array.isArray(keyConcepts) && keyConcepts.length > 0 && (
+        <div className="rounded-xl border border-indigo-200 bg-[#EEEDFE] p-4 space-y-3">
+          <h3 className="text-sm font-bold uppercase tracking-wide text-[#534AB7]">Key Concepts</h3>
+          <div className="grid gap-3 sm:grid-cols-2">
+            {keyConcepts.map((kc, i) => (
+              <div key={i} className="rounded-lg bg-white border border-indigo-100 p-3">
+                <p className="text-sm font-bold text-gray-900">{kc.term}</p>
+                <p className="text-xs text-gray-600 mt-1">{kc.definition}</p>
+                {kc.formula && (
+                  <code className="block text-xs font-mono text-[#534AB7] mt-1">{kc.formula}</code>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {Array.isArray(examTips) && examTips.length > 0 && (
+        <div className="rounded-xl border border-amber-200 bg-[#FAEEDA] p-4 space-y-2">
+          <h3 className="text-sm font-bold uppercase tracking-wide text-[#BA7517]">Exam Tips</h3>
+          <ul className="space-y-1">
+            {examTips.map((tip, i) => (
+              <li key={i} className="flex items-start gap-2 text-sm text-amber-900">
+                <span className="shrink-0 text-[#BA7517] font-bold mt-0.5">{i + 1}.</span>
+                {tip}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {bridgeToNext && (
+        <div className="rounded-xl border border-indigo-200 bg-[#EEEDFE] p-4">
+          <p className="text-xs font-bold uppercase tracking-wide text-[#534AB7] mb-1">Up Next</p>
+          <p className="text-sm text-indigo-800">{bridgeToNext}</p>
+        </div>
+      )}
+    </article>
+  )
+}
+
 function NoteRenderer({ content, title }: { content: unknown; title: string }) {
   if (!content) {
     return (
@@ -396,23 +587,15 @@ function NoteRenderer({ content, title }: { content: unknown; title: string }) {
   if (typeof content === 'object' && content !== null) {
     const obj = content as Record<string, unknown>;
 
-    // Handle array-of-sections format
+    // VidyaNotesSchema: sections array where each item has a `type` field
+    if (Array.isArray(obj.sections) && obj.sections.length > 0 && typeof (obj.sections[0] as any)?.type === 'string') {
+      return <VidyaNoteRenderer obj={obj} />
+    }
+
+    // Legacy sections format: heading/content/points
     if (Array.isArray(obj.sections)) {
       return (
         <article className="space-y-6 rounded-lg border bg-white p-6">
-          {obj.objectives && Array.isArray(obj.objectives) && (
-            <div>
-              <h3 className="text-sm font-semibold text-gray-600 uppercase tracking-wide mb-2">
-                Learning Objectives
-              </h3>
-              <ul className="list-disc list-inside space-y-1 text-sm text-gray-700">
-                {(obj.objectives as string[]).map((o, i) => (
-                  <li key={i}>{o}</li>
-                ))}
-              </ul>
-            </div>
-          )}
-
           {(obj.sections as Array<Record<string, unknown>>).map((sec, i) => (
             <div key={i}>
               {sec.heading && (
@@ -447,6 +630,42 @@ function NoteRenderer({ content, title }: { content: unknown; title: string }) {
           )}
         </article>
       );
+    }
+
+    // Flat NoteSchema format (title/concept/explanation/example/keyPoints/commonMistakes)
+    if (typeof obj.explanation === 'string' || typeof obj.concept === 'string') {
+      return (
+        <article className="space-y-4 rounded-lg border bg-white p-6">
+          {obj.concept && (
+            <p className="text-sm text-gray-700 leading-relaxed">{String(obj.concept)}</p>
+          )}
+          {obj.explanation && (
+            <div className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">{String(obj.explanation)}</div>
+          )}
+          {obj.example && (
+            <div className="rounded-md bg-gray-50 border border-gray-200 p-3">
+              <p className="text-xs font-semibold text-gray-500 mb-1 uppercase tracking-wide">Examples</p>
+              <div className="text-sm text-gray-700 whitespace-pre-wrap">{String(obj.example)}</div>
+            </div>
+          )}
+          {Array.isArray(obj.keyPoints) && obj.keyPoints.length > 0 && (
+            <div className="rounded-lg bg-[#EEEDFE] border border-indigo-100 p-4">
+              <h3 className="text-sm font-semibold text-[#534AB7] mb-2">Key Points</h3>
+              <ul className="list-disc list-inside space-y-1 text-sm text-indigo-800">
+                {(obj.keyPoints as string[]).map((k, i) => <li key={i}>{k}</li>)}
+              </ul>
+            </div>
+          )}
+          {Array.isArray(obj.commonMistakes) && obj.commonMistakes.length > 0 && (
+            <div className="rounded-lg bg-[#FCEBEB] border border-red-100 p-4">
+              <h3 className="text-sm font-semibold text-[#E24B4A] mb-2">Common Mistakes</h3>
+              <ul className="list-disc list-inside space-y-1 text-sm text-red-900">
+                {(obj.commonMistakes as string[]).map((m, i) => <li key={i}>{m}</li>)}
+              </ul>
+            </div>
+          )}
+        </article>
+      )
     }
 
     // Fallback: render as formatted JSON

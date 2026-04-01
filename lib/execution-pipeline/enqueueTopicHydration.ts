@@ -40,6 +40,8 @@ interface TopicHydrationInput {
   topicId: string;
   language?: string;
   difficulty?: string;
+  /** When true, bypass the content_exists idempotency check so new versions are generated for topics that already have approved notes. */
+  force?: boolean;
 }
 
 /**
@@ -79,10 +81,10 @@ async function resolveTopicWithContext(topicId: string) {
  * - Notes hydration is TOPIC-scoped
  */
 export async function enqueueNotesHydration(input: TopicHydrationInput): Promise<HydrationResult> {
-  const { topicId } = input;
+  const { topicId, force = false } = input;
   const language = normalizeLanguage(input.language) ?? 'en';
 
-  if (HYDRATION_DEBUG) logger.debug('[hydration][DEBUG] enqueueNotesHydration called', { topicId, language });
+  if (HYDRATION_DEBUG) logger.debug('[hydration][DEBUG] enqueueNotesHydration called', { topicId, language, force });
 
   // 1️⃣ Global pause guard
   const paused = await prisma.systemSetting.findUnique({ where: { key: 'HYDRATION_PAUSED' } });
@@ -98,17 +100,16 @@ export async function enqueueNotesHydration(input: TopicHydrationInput): Promise
     return { created: false, reason: 'resolve_not_found' };
   }
 
-  // 3️⃣ Idempotency: if approved notes exist for this topic+language, skip
-  const existingNotes = await prisma.topicNote.findFirst({
-    where: {
-      topicId,
-      language,
-      status: 'approved'
+  // 3️⃣ Idempotency: if approved notes exist for this topic+language, skip -- unless force=true
+  if (!force) {
+    const existingNotes = await prisma.topicNote.findFirst({
+      where: { topicId, language, status: 'approved' },
+      select: { id: true }
+    });
+    if (existingNotes) {
+      if (HYDRATION_DEBUG) logger.info('[hydration][DEBUG] aborted: notes_exist', { topicId, language });
+      return { created: false, reason: 'content_exists' };
     }
-  });
-  if (existingNotes) {
-    if (HYDRATION_DEBUG) logger.info('[hydration][DEBUG] aborted: notes_exist', { topicId, language });
-    return { created: false, reason: 'content_exists' };
   }
 
   // 4️⃣ Prevent duplicate queued/running jobs for the same topic/language

@@ -30,6 +30,7 @@ import { sendPushSafe } from '../lib/push/send.js';
 import { PUSH_NOTIFICATIONS } from '../lib/push/notifications.js';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import os from 'os';
 
 const HYDRATION_RECONCILER_INTERVAL_MS = 2 * 60 * 1000; // 2 minutes
 const MARK_IGNORED_INTERVAL_MS = 24 * 60 * 60 * 1000; // 24 hours
@@ -373,6 +374,9 @@ export async function startScheduler() {
     costReportFirstRun: new Date(Date.now() + delayCostReport).toISOString(),
   });
 
+  // Register this process in WorkerLifecycle so the health page can detect it
+  await registerSchedulerHeartbeat();
+
   // Hydration reconciler: run immediately then every 2 minutes
   runHydrationReconciler();
 
@@ -392,12 +396,70 @@ export async function startScheduler() {
   logger.info('scheduler.started');
 }
 
+let _schedulerLifecycleId: string | null = null;
+let _heartbeatTimer: ReturnType<typeof setInterval> | null = null;
+
+async function registerSchedulerHeartbeat(): Promise<void> {
+  const id = `scheduler-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
+  try {
+    await prisma.workerLifecycle.create({
+      data: {
+        id,
+        type: 'scheduler',
+        host: os.hostname(),
+        pid: process.pid,
+        status: 'RUNNING',
+        startedAt: new Date(),
+        lastHeartbeatAt: new Date(),
+      },
+    });
+    _schedulerLifecycleId = id;
+
+    _heartbeatTimer = setInterval(async () => {
+      if (!_schedulerLifecycleId) return;
+      try {
+        await prisma.workerLifecycle.update({
+          where: { id: _schedulerLifecycleId },
+          data: { lastHeartbeatAt: new Date() },
+        });
+      } catch (err) {
+        logger.error('scheduler.heartbeat.failed', {
+          error: err instanceof Error ? err.message : String(err),
+        });
+      }
+    }, 60_000);
+  } catch (err) {
+    // Non-fatal: health page will show no heartbeat, but scheduler still runs
+    logger.error('scheduler.lifecycle.registerFailed', {
+      error: err instanceof Error ? err.message : String(err),
+    });
+  }
+}
+
+async function stopSchedulerHeartbeat(): Promise<void> {
+  if (_heartbeatTimer) {
+    clearInterval(_heartbeatTimer);
+    _heartbeatTimer = null;
+  }
+  if (_schedulerLifecycleId) {
+    try {
+      await prisma.workerLifecycle.update({
+        where: { id: _schedulerLifecycleId },
+        data: { status: 'STOPPED', stoppedAt: new Date() },
+      });
+    } catch {
+      // best-effort
+    }
+    _schedulerLifecycleId = null;
+  }
+}
+
 /**
  * Graceful shutdown handler
  */
 function shutdown() {
   logger.info('scheduler.shutdown');
-  process.exit(0);
+  stopSchedulerHeartbeat().finally(() => process.exit(0));
 }
 
 process.on('SIGINT', shutdown);

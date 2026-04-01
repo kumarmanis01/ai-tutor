@@ -174,6 +174,27 @@ function RowActions({
     await call('/api/admin/content/retry', { jobId: row.jobId })
   }
 
+  async function handleRegenNotes() {
+    setBusy(true)
+    setError(null)
+    setMsg(null)
+    try {
+      const r = await fetch('/api/admin/content-engine/notes-rehyd', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ subjectId: row.subjectId, language: row.language }),
+      })
+      const data = await r.json()
+      if (!r.ok) throw new Error(data.message ?? data.error ?? 'Request failed')
+      setMsg(data.message ?? `Queued ${data.enqueued} notes jobs.`)
+      onRefresh()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error')
+    } finally {
+      setBusy(false)
+    }
+  }
+
   async function handleCompletePipeline() {
     setBusy(true)
     setError(null)
@@ -250,6 +271,9 @@ function RowActions({
         <>
           <Btn onClick={handleCompletePipeline} disabled={busy} variant="primary">Complete pipeline</Btn>
           <Btn onClick={handleGenerate} disabled={busy} variant="default">Generate all</Btn>
+          {row.topicCount > 0 && (
+            <Btn onClick={handleRegenNotes} disabled={busy} variant="warn">Regen notes</Btn>
+          )}
           <Btn onClick={handleReset} disabled={busy} variant="danger">Reset</Btn>
         </>
       )}
@@ -282,12 +306,16 @@ function RowActions({
           {row.chapterCount > 0 && (
             <Btn onClick={handleCompletePipeline} disabled={busy} variant="primary">Complete pipeline</Btn>
           )}
+          {row.topicCount > 0 && (
+            <Btn onClick={handleRegenNotes} disabled={busy} variant="warn">Regen notes</Btn>
+          )}
           <Btn onClick={handleReset} disabled={busy} variant="danger">Reset</Btn>
         </>
       )}
 
       {s === 'ready' && (
         <>
+          <Btn onClick={handleRegenNotes} disabled={busy} variant="primary">Regen notes</Btn>
           <Btn onClick={handleCompletePipeline} disabled={busy} variant="warn">Fill gaps</Btn>
           <Link
             href={`/admin/content-engine/jobs?subjectId=${row.subjectId}`}
@@ -398,6 +426,10 @@ export function CoverageTable({ rows }: { rows: CoverageRowData[] }) {
         <div className="flex items-center gap-1.5">
           <span className="inline-flex items-center text-[9px] px-1.5 py-0.5 rounded border border-[#534AB7] bg-[#EEEDFE] text-[#3C3489] font-medium">Complete pipeline</span>
           <span className="text-[10px] text-gray-500">-- Gap-fill: queue notes + questions for topics that are missing them (safe to re-run)</span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <span className="inline-flex items-center text-[9px] px-1.5 py-0.5 rounded border border-[#534AB7] bg-[#EEEDFE] text-[#3C3489] font-medium">Regen notes</span>
+          <span className="text-[10px] text-gray-500">-- Queue new notes for every topic (uses latest prompt; creates new draft versions, does not delete approved notes)</span>
         </div>
         <div className="flex items-center gap-1.5">
           <span className="inline-flex items-center text-[9px] px-1.5 py-0.5 rounded border border-gray-300 bg-white text-gray-600 font-medium">Generate all</span>
