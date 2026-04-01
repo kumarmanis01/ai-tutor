@@ -64,7 +64,12 @@ export function validateOrThrow(parsed: any, ctx: { jobType: string, language?: 
   // Schema validation: prefer Zod strict schemas for new prompt types
   try {
     if (ctx.jobType === 'notes') {
-      zodSchemas.NoteSchema.parse(parsed)
+      // Auto-detect format: VidyaNotesSchema (sections array) vs legacy NoteSchema (flat fields)
+      if (Array.isArray(parsed.sections)) {
+        zodSchemas.VidyaNotesSchema.parse(parsed)
+      } else {
+        zodSchemas.NoteSchema.parse(parsed)
+      }
     } else if (ctx.jobType === 'questions' || ctx.jobType === 'tests') {
       zodSchemas.QuestionsSchema.parse(parsed)
     } else if (ctx.jobType === 'bilingual') {
@@ -108,38 +113,45 @@ export function validateOrThrow(parsed: any, ctx: { jobType: string, language?: 
   const placeholder = scanForPlaceholders(parsed)
   if (placeholder) throw new PlaceholderContentError('PLACEHOLDER_CONTENT_DETECTED', { snippet: placeholder })
 
-  // Semantic checks (simple heuristics)
+  // Semantic checks
   if (ctx.jobType === 'notes') {
-    // Support both legacy `notes` field and the new schema-first NoteSchema
-    let notesText = ''
+    if (Array.isArray(parsed.sections)) {
+      // ---- VidyaNotesSchema quality gates ----
+      const sections = parsed.sections as Array<{ type: string; content: string; blackboardNotes?: string[] }>
 
-    // Legacy shape: single `notes` string
-    if (typeof parsed.notes === 'string') {
-      notesText += ` ${parsed.notes}`
-    }
+      // Total content volume check
+      const totalText = sections.map(s => s.content ?? '').join(' ')
+      if (totalText.trim().length < 600) throw new SemanticWeaknessError('notes_too_short')
 
-    // New schema-first shape (see lib/ai/prompts/schemas.ts: NoteSchema)
-    if (typeof parsed.explanation === 'string') {
-      notesText += ` ${parsed.explanation}`
-    }
-    if (typeof parsed.concept === 'string') {
-      notesText += ` ${parsed.concept}`
-    }
-    if (typeof parsed.example === 'string') {
-      notesText += ` ${parsed.example}`
-    }
-    if (Array.isArray(parsed.keyPoints)) {
-      notesText += ` ${parsed.keyPoints.join(' ')}`
-    }
-    if (Array.isArray(parsed.commonMistakes)) {
-      notesText += ` ${parsed.commonMistakes.join(' ')}`
-    }
+      // Required section types
+      const sectionTypes = sections.map(s => s.type)
+      for (const required of ['hook', 'concept', 'worked_example', 'summary']) {
+        if (!sectionTypes.includes(required)) {
+          throw new SemanticWeaknessError('notes_missing_required_section', { missing: required })
+        }
+      }
 
-    // Require a minimum amount of real content to avoid stubby notes.
-    // 600 chars is a conservative floor -- a genuine classroom-quality explanation
-    // with one worked example should easily exceed this.
-    if (typeof notesText === 'string' && notesText.trim().length < 600) {
-      throw new SemanticWeaknessError('notes_too_short')
+      // Minimum 2 worked examples
+      if (sectionTypes.filter(t => t === 'worked_example').length < 2) {
+        throw new SemanticWeaknessError('notes_too_few_examples')
+      }
+
+      // bridgeToNext must be present and non-empty
+      if (!parsed.bridgeToNext || String(parsed.bridgeToNext).trim().length < 20) {
+        throw new SemanticWeaknessError('notes_missing_bridge')
+      }
+    } else {
+      // ---- Legacy flat NoteSchema semantic checks ----
+      let notesText = ''
+      if (typeof parsed.notes === 'string') notesText += ` ${parsed.notes}`
+      if (typeof parsed.explanation === 'string') notesText += ` ${parsed.explanation}`
+      if (typeof parsed.concept === 'string') notesText += ` ${parsed.concept}`
+      if (typeof parsed.example === 'string') notesText += ` ${parsed.example}`
+      if (Array.isArray(parsed.keyPoints)) notesText += ` ${parsed.keyPoints.join(' ')}`
+      if (Array.isArray(parsed.commonMistakes)) notesText += ` ${parsed.commonMistakes.join(' ')}`
+
+      // 600 chars is a conservative floor -- genuine classroom notes easily exceed this.
+      if (notesText.trim().length < 600) throw new SemanticWeaknessError('notes_too_short')
     }
   }
 

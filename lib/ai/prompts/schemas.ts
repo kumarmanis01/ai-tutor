@@ -1,5 +1,9 @@
 import { z } from 'zod'
 
+// ---------------------------------------------------------------------------
+// Old flat schema -- kept for BilingualNotesSchema backward compat.
+// New generations use VidyaNotesSchema below.
+// ---------------------------------------------------------------------------
 export const NoteSchema = z.object({
   title: z.string(),
   concept: z.string(),
@@ -8,6 +12,61 @@ export const NoteSchema = z.object({
   keyPoints: z.array(z.string()).min(4).max(7),
   commonMistakes: z.array(z.string()).min(2).max(4)
 })
+
+// ---------------------------------------------------------------------------
+// Rich classroom-quality schema (Vidya notes v2)
+// ---------------------------------------------------------------------------
+const ExampleStepSchema = z.object({
+  stepNumber: z.number(),
+  expression: z.string(),
+  teacherComment: z.string(),
+  isCommonMistakePoint: z.boolean(),
+})
+
+const ConceptCheckSchema = z.object({
+  question: z.string(),
+  hint: z.string(),
+  answer: z.string(),
+})
+
+export const NoteSectionSchema = z.object({
+  type: z.enum(['hook', 'concept', 'worked_example', 'concept_check', 'common_mistake', 'memory_aid', 'summary']),
+  title: z.string(),
+  content: z.string().min(50),
+  blackboardNotes: z.array(z.string()),
+  visualHint: z.string().nullable(),
+  formulaLatex: z.string().nullable(),
+  exampleSteps: z.array(ExampleStepSchema).nullable(),
+  conceptCheck: ConceptCheckSchema.nullable(),
+})
+
+const KeyConceptSchema = z.object({
+  term: z.string(),
+  definition: z.string(),
+  formula: z.string().nullable(),
+})
+
+const NoteMetadataSchema = z.object({
+  board: z.string(),
+  grade: z.number(),
+  subject: z.string(),
+  chapter: z.string(),
+  topic: z.string(),
+  estimatedReadingMinutes: z.number(),
+  difficultyLevel: z.string(),
+  conceptsIntroduced: z.array(z.string()),
+})
+
+export const VidyaNotesSchema = z.object({
+  metadata: NoteMetadataSchema,
+  sections: z.array(NoteSectionSchema).min(5),
+  keyConcepts: z.array(KeyConceptSchema).min(1),
+  examTips: z.array(z.string()).min(1),
+  bridgeToNext: z.string().min(10),
+})
+
+export type VidyaNotes = z.infer<typeof VidyaNotesSchema>
+export type NoteSection = z.infer<typeof NoteSectionSchema>
 
 export const QuestionsItemSchema = z.object({
   question: z.string(),
@@ -52,6 +111,7 @@ export type Questions = z.infer<typeof QuestionsSchema>
 
 const PromptSchemas = {
   NoteSchema,
+  VidyaNotesSchema,
   QuestionsSchema,
   BilingualNotesSchema,
   SyllabusSchema,
