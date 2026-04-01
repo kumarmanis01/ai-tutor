@@ -89,12 +89,18 @@ export async function POST(req: Request) {
 
   let notesEnqueued = 0
   let questionsEnqueued = 0
+  let notesAlreadyQueued = 0
+  let questionsAlreadyQueued = 0
 
   for (const topic of topics) {
     if (!topicsWithNotes.has(topic.id)) {
       try {
         const result = await enqueueNotesHydration({ topicId: topic.id, language: language as 'en' | 'hi' })
-        if (result.created) notesEnqueued++
+        if (result.created) {
+          notesEnqueued++
+        } else if (!result.created && result.reason === 'job_already_queued') {
+          notesAlreadyQueued++
+        }
       } catch (err) {
         logger.warn('[complete-pipeline] failed to enqueue notes job', {
           event: 'enqueue_notes_failed',
@@ -106,7 +112,11 @@ export async function POST(req: Request) {
     if (!topicsWithQuestions.has(topic.id)) {
       try {
         const result = await enqueueQuestionsHydration({ topicId: topic.id, language: language as 'en' | 'hi', difficulty: 'medium' })
-        if (result.created) questionsEnqueued++
+        if (result.created) {
+          questionsEnqueued++
+        } else if (!result.created && result.reason === 'job_already_queued') {
+          questionsAlreadyQueued++
+        }
       } catch (err) {
         logger.warn('[complete-pipeline] failed to enqueue questions job', {
           event: 'enqueue_questions_failed',
@@ -118,12 +128,22 @@ export async function POST(req: Request) {
 
   logger.info('[admin/content/complete-pipeline] gap-fill enqueued', {
     event: 'complete_pipeline_enqueued',
-    context: { subjectId, notesEnqueued, questionsEnqueued, adminId: session.user?.id },
+    context: { subjectId, notesEnqueued, questionsEnqueued, notesAlreadyQueued, questionsAlreadyQueued, adminId: session.user?.id },
   })
 
-  const message = notesEnqueued === 0 && questionsEnqueued === 0
-    ? 'No new jobs created -- all topics already have content or active jobs queued.'
-    : `Queued ${notesEnqueued} notes job${notesEnqueued !== 1 ? 's' : ''} and ${questionsEnqueued} questions job${questionsEnqueued !== 1 ? 's' : ''}. Workers will pick them up within 5 s.`
+  let message: string
+  const totalEnqueued = notesEnqueued + questionsEnqueued
+  const totalStuck = notesAlreadyQueued + questionsAlreadyQueued
 
-  return NextResponse.json({ ok: true, notesEnqueued, questionsEnqueued, message })
+  if (totalEnqueued > 0 && totalStuck === 0) {
+    message = `Queued ${notesEnqueued} notes job${notesEnqueued !== 1 ? 's' : ''} and ${questionsEnqueued} questions job${questionsEnqueued !== 1 ? 's' : ''}. Workers will pick them up within 5 s.`
+  } else if (totalEnqueued > 0 && totalStuck > 0) {
+    message = `Queued ${notesEnqueued} notes and ${questionsEnqueued} questions jobs. ${totalStuck} topic${totalStuck !== 1 ? 's' : ''} already have jobs pending -- check the Jobs page if they are not progressing.`
+  } else if (totalStuck > 0) {
+    message = `No new jobs created. ${totalStuck} topic${totalStuck !== 1 ? 's' : ''} already have jobs in the queue that have not run yet -- check the Jobs page for stuck or pending jobs.`
+  } else {
+    message = 'No new jobs created -- all topics already have generated content.'
+  }
+
+  return NextResponse.json({ ok: true, notesEnqueued, questionsEnqueued, notesAlreadyQueued, questionsAlreadyQueued, message })
 }

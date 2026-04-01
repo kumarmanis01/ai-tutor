@@ -129,6 +129,7 @@ function RowActions({
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [msg, setMsg] = useState<string | null>(null)
+  const [stuckJobs, setStuckJobs] = useState(0)
 
   async function call(url: string, body: Record<string, unknown>) {
     setBusy(true)
@@ -186,6 +187,7 @@ function RowActions({
       const data = await r.json()
       if (!r.ok) throw new Error(data.message ?? data.error ?? 'Request failed')
       if (data.message) setMsg(data.message)
+      setStuckJobs((data.notesAlreadyQueued ?? 0) + (data.questionsAlreadyQueued ?? 0))
       onRefresh()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error')
@@ -221,7 +223,20 @@ function RowActions({
         <span className="text-[9px] text-[#E24B4A] w-full">{error}</span>
       )}
       {msg && !error && (
-        <span className="text-[9px] text-[#1D9E75] w-full">{msg}</span>
+        <span className="text-[9px] text-[#1D9E75] w-full">
+          {msg}
+          {stuckJobs > 0 && (
+            <>
+              {' '}
+              <Link
+                href="/admin/content-engine/jobs"
+                className="underline text-[#534AB7]"
+              >
+                View stuck jobs
+              </Link>
+            </>
+          )}
+        </span>
       )}
 
       {(s === 'not_started' || s === 'ncert_only') && (
@@ -343,7 +358,7 @@ export function CoverageTable({ rows }: { rows: CoverageRowData[] }) {
           <table className="w-full text-[11px]">
             <thead>
               <tr className="border-b border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900">
-                {['Subject', 'Grade', 'Board', 'Chapters', 'Topics', 'Notes', 'Questions', 'RAG chunks', 'Status', 'Actions'].map(h => (
+                {['Subject', 'Grade', 'Board', 'Chapters', 'Topics', 'Notes', 'Gen. Tests', 'RAG chunks', 'Status', 'Actions'].map(h => (
                   <th key={h} className="text-left px-3 py-2.5 font-medium text-gray-500 dark:text-gray-400 whitespace-nowrap">
                     {h}
                   </th>

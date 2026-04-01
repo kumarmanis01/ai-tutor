@@ -87,29 +87,20 @@ export default async function SafetyPage() {
         {/* Stats */}
         <div className="grid grid-cols-3 gap-3">
           <StatCard
-            label="Unresolved"
+            label="Unresolved alerts"
             value={unresolvedCount}
             variant={unresolvedCount > 0 ? 'red' : 'default'}
-          />
-          <StatCard
-            label="High severity"
-            value={highSeverityCount}
-            variant={highSeverityCount > 0 ? 'red' : 'default'}
           />
           <StatCard
             label="Resolved this week"
             value={resolvedThisWeek}
             variant="green"
           />
-        </div>
-
-        <div className="flex items-center gap-2 text-[11px] text-gray-500">
-          <span className="bg-[#FAEEDA] text-[#633806] px-2 py-0.5 rounded-full font-medium">
-            {totalFlags} question flag{totalFlags === 1 ? '' : 's'} pending
-          </span>
-          <span className="bg-gray-100 dark:bg-gray-800 text-gray-500 px-2 py-0.5 rounded-full">
-            {safetyEvents.length} safety event{safetyEvents.length === 1 ? '' : 's'} unresolved
-          </span>
+          <StatCard
+            label="Questions flagged"
+            value={totalFlags}
+            variant={totalFlags > 0 ? 'amber' : 'default'}
+          />
         </div>
 
         <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-4">
@@ -130,11 +121,12 @@ function StatCard({
 }: {
   label: string
   value: number
-  variant?: 'red' | 'green' | 'default'
+  variant?: 'red' | 'green' | 'amber' | 'default'
 }) {
   const textCls = {
     red:     'text-[#791F1F]',
     green:   'text-[#27500A]',
+    amber:   'text-[#633806]',
     default: 'text-gray-900 dark:text-white',
   }[variant]
   return (
