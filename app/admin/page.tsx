@@ -100,11 +100,13 @@ function KpiCard({
   value,
   sub,
   href,
+  progressPct,
 }: {
   label: string;
   value: string | number;
   sub?: string;
   href?: string;
+  progressPct?: number;
 }) {
   const body = (
     <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-4 h-full">
@@ -116,6 +118,14 @@ function KpiCard({
       </p>
       {sub && (
         <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-1.5">{sub}</p>
+      )}
+      {progressPct !== undefined && (
+        <div className="mt-2 h-1.5 rounded-full bg-gray-200 dark:bg-gray-700 overflow-hidden">
+          <div
+            className="h-full rounded-full bg-[#534AB7] transition-all"
+            style={{ width: `${Math.min(100, Math.max(0, progressPct))}%` }}
+          />
+        </div>
       )}
     </div>
   );
@@ -348,6 +358,7 @@ export default async function AdminDashboardPage() {
             value={`${hydratedSubjects} / ${totalSubjects}`}
             sub="Subjects with approved chapters"
             href="/admin/content"
+            progressPct={totalSubjects > 0 ? Math.round((hydratedSubjects / totalSubjects) * 100) : 0}
           />
         </div>
 

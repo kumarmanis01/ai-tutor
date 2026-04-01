@@ -53,7 +53,8 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
         if (topicIds.length > 0) {
           const [noteCount, questionCount] = await Promise.all([
             prisma.topicNote.count({ where: { topicId: { in: topicIds }, lifecycle: 'active' } }),
-            prisma.question.count({ where: { topicId: { in: topicIds }, status: 'ACTIVE' } }),
+            // Count GeneratedTest rows -- the AI pipeline produces GeneratedTest, not Question records.
+            prisma.generatedTest.count({ where: { topicId: { in: topicIds }, lifecycle: 'active' } }),
           ])
           actualNotes = noteCount
           actualQuestions = questionCount

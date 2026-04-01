@@ -65,12 +65,15 @@ export default async function ContentPage() {
   )
 
   // ── 2. Batch lookups ────────────────────────────────────────────────────
-  const [questionGroups, ragGroups, noteGroups, activeJobs, pipelineJobs, recentRuns] = await Promise.all([
-    // Questions per topic (ACTIVE status)
+  const [generatedTestGroups, noteGroups, ragGroups, activeJobs, pipelineJobs, recentRuns] = await Promise.all([
+    // GeneratedTests per topic (any approval status, active lifecycle).
+    // The QUESTIONS hydration job produces GeneratedTest rows -- not the legacy
+    // Question model. Counting GeneratedTest gives an accurate "questions generated"
+    // signal that matches what complete-pipeline considers done.
     allTopicIds.length
-      ? prisma.question.groupBy({
+      ? prisma.generatedTest.groupBy({
           by: ['topicId'],
-          where: { status: 'ACTIVE', topicId: { in: allTopicIds } },
+          where: { lifecycle: 'active', topicId: { in: allTopicIds } },
           _count: { id: true },
         })
       : Promise.resolve([]),
@@ -149,9 +152,9 @@ export default async function ContentPage() {
 
   // ── 3. Build lookup maps ────────────────────────────────────────────────
 
-  // Topic ID → question count
-  const questionByTopic = new Map<string, number>(
-    questionGroups.map(g => [g.topicId as string, g._count.id]),
+  // Topic ID → generated test count
+  const generatedTestByTopic = new Map<string, number>(
+    generatedTestGroups.map(g => [g.topicId as string, g._count.id]),
   )
 
   // Topic ID → note count
@@ -159,20 +162,20 @@ export default async function ContentPage() {
     noteGroups.map(g => [g.topicId as string, g._count.id]),
   )
 
-  // SubjectId → question count (via topics)
-  const questionBySubject = new Map<string, number>()
+  // SubjectId → generated test count (via topics)
+  const generatedTestBySubject = new Map<string, number>()
   // SubjectId → note count (via topics)
   const noteBySubject = new Map<string, number>()
   for (const s of subjects) {
-    let qCount = 0
+    let gtCount = 0
     let nCount = 0
     for (const ch of s.chapters) {
       for (const t of ch.topics) {
-        qCount += questionByTopic.get(t.id) ?? 0
+        gtCount += generatedTestByTopic.get(t.id) ?? 0
         nCount += noteByTopic.get(t.id) ?? 0
       }
     }
-    questionBySubject.set(s.id, qCount)
+    generatedTestBySubject.set(s.id, gtCount)
     noteBySubject.set(s.id, nCount)
   }
 
@@ -188,7 +191,7 @@ export default async function ContentPage() {
   const coverageRows: CoverageRowData[] = subjects.map(s => {
     const topicCount = s.chapters.reduce((n, ch) => n + ch.topics.length, 0)
     const chapterCount = s.chapters.length
-    const questionCount = questionBySubject.get(s.id) ?? 0
+    const questionCount = generatedTestBySubject.get(s.id) ?? 0
     const noteCount = noteBySubject.get(s.id) ?? 0
     const ragChunks = ragBySubjectName.get(s.name.toLowerCase()) ?? 0
     const job = jobBySubject.get(s.id) ?? null

@@ -301,17 +301,61 @@ export async function processContentJob(job: Job) {
 
     return { success: true }
   } catch (err: any) {
-    // Mark HydrationJob failed and persist AIContentLog for observability.
+    let thrownForRetry = false;
     try {
-      const { formatLastError, inferFailureCodeFromMessage } = await import('@/lib/failureCodes');
+      const { formatLastError, inferFailureCodeFromMessage, isTransientFailure } = await import('@/lib/failureCodes');
       const code = inferFailureCodeFromMessage(String(err?.message ?? ''));
       const le = formatLastError(code, String(err?.message ?? err));
-      await prisma.hydrationJob.update({ where: { id: hydrationJobId }, data: { status: JobStatus.Failed, lastError: le, lockedAt: null } })
-      try {
-        await prisma.aIContentLog.create({ data: { model: 'none', promptType: 'dispatcher', language: 'en', success: false, status: 'failed', error: le, requestBody: job.data?.payload ?? null, responseBody: { error: String(err?.message ?? err) } } });
-      } catch {}
+
+      if (isTransientFailure(code)) {
+        // Transient error (LLM_TIMEOUT / LLM_RATE_LIMIT): reset to pending and
+        // re-throw so Bull can use its built-in retry/backoff logic.
+        await prisma.hydrationJob.update({
+          where: { id: hydrationJobId },
+          data: { status: JobStatus.Pending, lockedAt: null, lastError: le },
+        }).catch(() => {});
+        thrownForRetry = true;
+      } else {
+        // Permanent failure: mark the job failed and alert the admin immediately.
+        await prisma.hydrationJob.update({
+          where: { id: hydrationJobId },
+          data: { status: JobStatus.Failed, lastError: le, lockedAt: null },
+        });
+        try {
+          await prisma.aIContentLog.create({
+            data: {
+              model: 'none',
+              promptType: 'dispatcher',
+              language: 'en',
+              success: false,
+              status: 'failed',
+              error: le,
+              requestBody: job.data?.payload ?? null,
+              responseBody: { error: String(err?.message ?? err) },
+            },
+          });
+        } catch { /* observability only -- ignore */ }
+
+        // Send admin alert for permanent failures (no retry scheduled).
+        try {
+          const { sendJobFailureAlert } = await import('@/lib/contentJobAlerts');
+          const row = await prisma.hydrationJob.findUnique({
+            where: { id: hydrationJobId },
+            select: { subject: true, grade: true, board: true },
+          }).catch(() => null);
+          await sendJobFailureAlert({
+            hydrationJobId,
+            lastError: le,
+            subject: row?.subject ?? 'Unknown',
+            grade: row?.grade ?? 0,
+            board: row?.board ?? '',
+          });
+        } catch (alertErr) {
+          logger?.warn?.('worker: failed to send permanent-failure alert', { err: alertErr, hydrationJobId });
+        }
+      }
     } catch (e) {
-      logger?.warn?.('worker: failed to mark HydrationJob FAILED', { err: e, hydrationJobId })
+      logger?.warn?.('worker: failed to handle job error', { err: e, hydrationJobId });
     }
 
     // If we had an ExecutionJob context, emit FAILED JobExecutionLog for observability (do not mutate ExecutionJob state here)
@@ -326,7 +370,11 @@ export async function processContentJob(job: Job) {
       }
     }
 
-    // Swallow exception so the Bull job is not automatically retried for the same HydrationJob.
+    if (thrownForRetry) {
+      // Re-throw so Bull decrements attempts and schedules a retry.
+      throw err;
+    }
+
     logger.error('handler failed; HydrationJob marked failed', { hydrationJobId, error: String(err?.message ?? err) });
     return { success: false };
   }
@@ -353,6 +401,50 @@ export function startContentWorker(opts?: { concurrency?: number }) {
 
         const possibleHydration = await prisma.hydrationJob.findUnique({ where: { id: String(incomingId) } })
         if (possibleHydration) {
+          const hydrationJob = possibleHydration;
+
+          // For transient errors that have exhausted all Bull attempts, schedule
+          // a 24h delayed auto-retry tracked in Redis (max MAX_AUTO_RETRIES times).
+          try {
+            const { inferFailureCodeFromMessage, isTransientFailure, formatLastError } = await import('@/lib/failureCodes');
+            const code = inferFailureCodeFromMessage(String(err?.message ?? ''));
+            if (isTransientFailure(code) && job) {
+              const le = formatLastError(code, String(err?.message ?? err));
+              const { scheduleAutoRetry, sendJobFailureAlert } = await import('@/lib/contentJobAlerts');
+              const { scheduled, retryNumber } = await scheduleAutoRetry(
+                hydrationJob.id,
+                job,
+                hydrationJob.subject ?? 'Unknown',
+                hydrationJob.grade ?? 0,
+                le,
+              );
+              const willRetryAt = scheduled ? new Date(Date.now() + 24 * 60 * 60 * 1000) : undefined;
+              if (!scheduled) {
+                // Cap reached -- mark permanently failed before alerting.
+                await prisma.hydrationJob.update({
+                  where: { id: hydrationJob.id },
+                  data: { status: JobStatus.Failed, lastError: le },
+                }).catch(() => {});
+              }
+              await sendJobFailureAlert({
+                hydrationJobId: hydrationJob.id,
+                lastError: le,
+                subject: hydrationJob.subject ?? 'Unknown',
+                grade: hydrationJob.grade ?? 0,
+                board: hydrationJob.board ?? '',
+                willRetryAt,
+              });
+              logger.info('worker.failed: auto-retry decision', {
+                hydrationJobId: hydrationJob.id,
+                scheduled,
+                retryNumber,
+                willRetryAt,
+              });
+            }
+          } catch (retryErr) {
+            logger?.warn?.('worker.failed: auto-retry scheduling error', { err: retryErr, hydrationJobId: hydrationJob.id });
+          }
+
           // Find ExecutionJob that links to this hydration id and emit FAILED log
           const linkedExec = await prisma.executionJob.findFirst({ where: { payload: { path: ['hydrationJobId'], equals: possibleHydration.id } } })
           if (linkedExec) {
@@ -360,9 +452,9 @@ export function startContentWorker(opts?: { concurrency?: number }) {
               const { formatLastError, inferFailureCodeFromMessage } = await import('@/lib/failureCodes');
               const code = inferFailureCodeFromMessage(String(err?.message ?? ''));
               const le = formatLastError(code, String(err?.message ?? err));
-              await prisma.jobExecutionLog.create({ data: { jobId: String(linkedExec.id), event: 'FAILED', prevStatus: linkedExec.status, newStatus: linkedExec.status, message: le, meta: { hydrationJobId: possibleHydration.id, bullJobId: job.id, error: le } } })
+              await prisma.jobExecutionLog.create({ data: { jobId: String(linkedExec.id), event: 'FAILED', prevStatus: linkedExec.status, newStatus: linkedExec.status, message: le, meta: { hydrationJobId: possibleHydration.id, bullJobId: job?.id, error: le } } })
             } catch {
-              await prisma.jobExecutionLog.create({ data: { jobId: String(linkedExec.id), event: 'FAILED', prevStatus: linkedExec.status, newStatus: linkedExec.status, message: String(err?.message ?? err), meta: { hydrationJobId: possibleHydration.id, bullJobId: job.id, error: String(err?.message ?? err) } } })
+              await prisma.jobExecutionLog.create({ data: { jobId: String(linkedExec.id), event: 'FAILED', prevStatus: linkedExec.status, newStatus: linkedExec.status, message: String(err?.message ?? err), meta: { hydrationJobId: possibleHydration.id, bullJobId: job?.id, error: String(err?.message ?? err) } } })
             }
           }
         } else {
@@ -372,9 +464,9 @@ export function startContentWorker(opts?: { concurrency?: number }) {
             const code = inferFailureCodeFromMessage(String(err?.message ?? ''));
             const le = formatLastError(code, String(err?.message ?? err));
             // Emit FAILED log for legacy ExecutionJob id; do not update its state here.
-            await prisma.jobExecutionLog.create({ data: { jobId: executionJobId, event: 'FAILED', prevStatus: 'running', newStatus: 'running', message: le, meta: { bullJobId: job.id, error: le } } }).catch(() => {})
+            await prisma.jobExecutionLog.create({ data: { jobId: executionJobId, event: 'FAILED', prevStatus: 'running', newStatus: 'running', message: le, meta: { bullJobId: job?.id, error: le } } }).catch(() => {})
           } catch {
-            await prisma.jobExecutionLog.create({ data: { jobId: executionJobId, event: 'FAILED', prevStatus: 'running', newStatus: 'running', message: String(err?.message ?? err), meta: { bullJobId: job.id, error: String(err?.message ?? err) } } }).catch(() => {})
+            await prisma.jobExecutionLog.create({ data: { jobId: executionJobId, event: 'FAILED', prevStatus: 'running', newStatus: 'running', message: String(err?.message ?? err), meta: { bullJobId: job?.id, error: String(err?.message ?? err) } } }).catch(() => {})
           }
         }
     } catch (e) {

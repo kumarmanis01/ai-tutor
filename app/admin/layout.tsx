@@ -83,7 +83,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
             <div className="flex h-screen overflow-hidden bg-gray-50 dark:bg-gray-950">
               <AdminSidebar
                 pendingReview={pendingReview}
-                activeJobs={activeJobs}
+                runningJobs={activeJobs}
                 failedJobs={failedJobs}
                 safetyAlerts={safetyAlerts}
               />
