@@ -13,7 +13,7 @@ export interface SystemHealth {
   };
   workers: { running: number; stale: number; failed: number; lastHeartbeatAgeSec?: number };
   jobs: { pending: number; running: number; failedLast5m: number; stuckRunning: number };
-  queue: { depth: number; oldestJobAgeSec?: number };
+  queue: { depth: number; waiting: number; active: number; oldestJobAgeSec?: number };
   raw?: any;
 }
 
@@ -22,7 +22,9 @@ const MAX_JOB_RUNTIME_MS = Number(process.env.MAX_JOB_RUNTIME_MS || 1000 * 60 * 
 function classifyLatency(ms?: number) {
   if (ms === undefined) return 'unhealthy' as HealthStatus;
   if (ms < 200) return 'healthy' as HealthStatus;
-  if (ms < 1000) return 'degraded' as HealthStatus;
+  if (ms < 3000) return 'degraded' as HealthStatus;
+  // Only truly unreachable (>= 3s) counts as unhealthy -- Neon cold starts
+  // routinely exceed 1000ms but the connection is still healthy.
   return 'unhealthy' as HealthStatus;
 }
 
@@ -80,11 +82,15 @@ export async function systemHealth(): Promise<SystemHealth> {
 
   // Queue (BullMQ)
   let depth = 0;
+  let waiting = 0;
+  let active = 0;
   let oldestJobAgeSec: number | undefined = undefined;
   try {
     const queue = getContentQueue();
     const counts = await queue.getJobCounts('waiting', 'active', 'delayed');
-    depth = (counts.waiting || 0) + (counts.active || 0) + (counts.delayed || 0);
+    waiting = counts.waiting || 0;
+    active = counts.active || 0;
+    depth = waiting + active + (counts.delayed || 0);
     const jobs = await queue.getJobs(['waiting', 'active'], 0, 0, true);
     if (jobs && jobs.length > 0) {
       const job = jobs[0];
@@ -111,7 +117,7 @@ export async function systemHealth(): Promise<SystemHealth> {
     },
     workers: { running, stale, failed, lastHeartbeatAgeSec },
     jobs: { pending, running: runningJobs, failedLast5m, stuckRunning },
-    queue: { depth, oldestJobAgeSec },
+    queue: { depth, waiting, active, oldestJobAgeSec },
     raw: { workersRaw },
   };
 

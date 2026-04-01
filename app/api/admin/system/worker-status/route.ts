@@ -16,7 +16,10 @@ export async function GET() {
   const worker = await prisma.workerLifecycle.findFirst({
     where: {
       lastHeartbeatAt: { gte: cutoff },
-      NOT: { type: { contains: 'web' } },
+      NOT: [
+        { type: { contains: 'web' } },
+        { type: { contains: 'scheduler' } },
+      ],
     },
     orderBy: { lastHeartbeatAt: 'desc' },
     select: { type: true, lastHeartbeatAt: true },
