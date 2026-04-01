@@ -10,7 +10,7 @@ import { AdminTopbar } from '@/components/admin/AdminTopbar'
 import { ParentsTable, type ParentRowData } from './ParentsTable'
 
 export default async function ParentsPage() {
-  const [links, masteryRows, totalLinked] = await Promise.all([
+  const [links, masteryRows, totalLinked, lastDigest] = await Promise.all([
     prisma.parentStudent.findMany({
       where: { status: 'active' },
       include: {
@@ -35,6 +35,19 @@ export default async function ParentsPage() {
     }).catch(() => []),
 
     prisma.parentStudent.count({ where: { status: 'active' } }).catch(() => 0),
+
+    // Most recent notification log that was a parent weekly digest
+    prisma.notificationLog.findFirst({
+      where: {
+        OR: [
+          { audience: { contains: 'parent' } },
+          { title: { contains: 'digest', mode: 'insensitive' } },
+        ],
+        status: 'sent',
+      },
+      orderBy: { sentAt: 'desc' },
+      select: { sentAt: true, sentTo: true },
+    }).catch(() => null),
   ])
 
   // Build mastery map: studentId -> avgMastery 0-100
@@ -77,7 +90,19 @@ export default async function ParentsPage() {
             value={avgReadiness !== null ? `${avgReadiness}%` : 'N/A'}
             variant={avgReadiness !== null ? (avgReadiness >= 70 ? 'green' : 'amber') : 'default'}
           />
-          <StatCard label="Last digest sent" value="N/A" />
+          <StatCard
+            label="Last digest sent"
+            value={
+              lastDigest
+                ? new Date(lastDigest.sentAt).toLocaleDateString('en-IN', {
+                    weekday: 'short',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                  })
+                : 'Never'
+            }
+            sub={lastDigest ? `${lastDigest.sentTo} emails delivered` : undefined}
+          />
         </div>
 
         <ParentsTable rows={rows} />
@@ -89,10 +114,12 @@ export default async function ParentsPage() {
 function StatCard({
   label,
   value,
+  sub,
   variant = 'default',
 }: {
   label: string
   value: string | number
+  sub?: string
   variant?: 'green' | 'amber' | 'default'
 }) {
   const textCls = {
@@ -104,6 +131,7 @@ function StatCard({
     <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-4">
       <p className="text-[11px] font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">{label}</p>
       <p className={`text-2xl font-semibold mt-1 ${textCls}`}>{value}</p>
+      {sub && <p className="text-[10px] text-gray-400 mt-0.5">{sub}</p>}
     </div>
   )
 }

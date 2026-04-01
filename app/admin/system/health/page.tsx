@@ -69,7 +69,7 @@ async function fetchDbConnections(): Promise<number | null> {
   }
 }
 
-async function fetchWorkerRow(role: 'web' | 'worker') {
+async function fetchWorkerRow(role: 'web' | 'worker' | 'scheduler') {
   if (role === 'web') {
     // Web process registers with a type containing 'web'
     return prisma.workerLifecycle.findFirst({
@@ -78,14 +78,29 @@ async function fetchWorkerRow(role: 'web' | 'worker') {
       select: { type: true, lastHeartbeatAt: true, host: true, pid: true },
     }).catch(() => null)
   }
+  if (role === 'scheduler') {
+    // Scheduler registers with type containing 'scheduler'
+    const cutoff = new Date(Date.now() - 120_000)
+    return prisma.workerLifecycle.findFirst({
+      where: {
+        type: { contains: 'scheduler' },
+        lastHeartbeatAt: { gte: cutoff },
+      },
+      orderBy: { lastHeartbeatAt: 'desc' },
+      select: { type: true, lastHeartbeatAt: true, host: true, pid: true },
+    }).catch(() => null)
+  }
   // Task worker registers with type='content-hydration' (the BullMQ queue name),
   // NOT a string containing 'worker'. Use heartbeat-based detection instead:
-  // find any non-web row that heartbeated within 60s.
+  // find any non-web, non-scheduler row that heartbeated within 60s.
   const cutoff = new Date(Date.now() - 60_000)
   return prisma.workerLifecycle.findFirst({
     where: {
       lastHeartbeatAt: { gte: cutoff },
-      NOT: { type: { contains: 'web' } },
+      NOT: [
+        { type: { contains: 'web' } },
+        { type: { contains: 'scheduler' } },
+      ],
     },
     orderBy: { lastHeartbeatAt: 'desc' },
     select: { type: true, lastHeartbeatAt: true, host: true, pid: true },
@@ -159,7 +174,7 @@ function UsageBar({
 // ---------------------------------------------------------------------------
 
 export default async function SystemHealthPage() {
-  const [health, redisMemMb, migResult, totalMig, dbConns, webWorker, taskWorker] =
+  const [health, redisMemMb, migResult, totalMig, dbConns, webWorker, taskWorker, schedulerWorker] =
     await Promise.all([
       systemHealth().catch(() => null),
       fetchRedisMemoryMb(),
@@ -168,6 +183,7 @@ export default async function SystemHealthPage() {
       fetchDbConnections(),
       fetchWorkerRow('web'),
       fetchWorkerRow('worker'),
+      fetchWorkerRow('scheduler'),
     ])
   const pendingMig = migResult.count
   const pendingMigNames = migResult.names
@@ -196,6 +212,11 @@ export default async function SystemHealthPage() {
   const workerDetail = taskWorker
     ? `${taskWorker.type} pid ${taskWorker.pid ?? '?'} on ${taskWorker.host ?? '?'}`
     : 'No RUNNING task worker'
+
+  const schedulerStatus: HealthStatus = schedulerWorker ? 'healthy' : 'unhealthy'
+  const schedulerDetail = schedulerWorker
+    ? `${schedulerWorker.type} pid ${schedulerWorker.pid ?? '?'} on ${schedulerWorker.host ?? '?'}`
+    : 'No heartbeat within 2 min'
 
   const migDetail = pendingMig > 0
     ? `${pendingMig} migration${pendingMig === 1 ? '' : 's'} pending: ${pendingMigNames.join(', ')}`
@@ -227,6 +248,11 @@ export default async function SystemHealthPage() {
             label="Task worker"
             status={taskWorker ? 'healthy' : 'unhealthy'}
             detail={workerDetail}
+          />
+          <ServiceRow
+            label="Scheduler"
+            status={schedulerStatus}
+            detail={schedulerDetail}
           />
           <ServiceRow
             label="BullMQ queue"
