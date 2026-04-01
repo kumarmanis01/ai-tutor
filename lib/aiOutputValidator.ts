@@ -135,8 +135,10 @@ export function validateOrThrow(parsed: any, ctx: { jobType: string, language?: 
       notesText += ` ${parsed.commonMistakes.join(' ')}`
     }
 
-    // Require a minimum amount of real content to avoid stubby notes
-    if (typeof notesText === 'string' && notesText.trim().length < 80) {
+    // Require a minimum amount of real content to avoid stubby notes.
+    // 600 chars is a conservative floor -- a genuine classroom-quality explanation
+    // with one worked example should easily exceed this.
+    if (typeof notesText === 'string' && notesText.trim().length < 600) {
       throw new SemanticWeaknessError('notes_too_short')
     }
   }

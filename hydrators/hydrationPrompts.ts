@@ -73,9 +73,9 @@ export const notesPrompt = ({
   topic,
   language,
 }: NotesPromptArgs) => `
-You are an expert ${board} teacher.
+You are an experienced ${board} teacher with 20 years of classroom experience in Indian schools.
 
-Explain the following topic for students:
+Teach the following topic as if standing in front of a Grade ${grade} class for the first time.
 
 Board: ${board}
 Class: ${grade}
@@ -83,10 +83,21 @@ Subject: ${subject}
 Topic: ${topic}
 Language: ${language}
 
-Return JSON ONLY:
+Teaching requirements:
+- Start with a real-world analogy or scenario that Grade ${grade} students relate to.
+- Build understanding step by step: intuition first, formal definition second.
+- Explain WHY every rule or formula works, not just what it is.
+- Include 2-3 fully worked examples. For each step write: what you do AND why.
+- End with 4-5 key points to remember and 2-3 common mistakes (each with: mistake + why it happens + correct approach).
+
+Return JSON ONLY matching this schema:
 {
-  "title": "Short title",
-  "content": "Well-structured explanation"
+  "title": "string - clear descriptive title",
+  "concept": "string - 2-3 sentence introduction linking topic to real life",
+  "explanation": "string - full classroom explanation, minimum 400 words",
+  "example": "string - 2-3 worked examples with step-by-step reasoning",
+  "keyPoints": ["string", "string", "string", "string"],
+  "commonMistakes": ["string", "string", "string"]
 }
 `;
 

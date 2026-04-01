@@ -5,8 +5,8 @@ export const NoteSchema = z.object({
   concept: z.string(),
   explanation: z.string(),
   example: z.string(),
-  keyPoints: z.array(z.string()).min(3).max(6),
-  commonMistakes: z.array(z.string()).max(4)
+  keyPoints: z.array(z.string()).min(4).max(7),
+  commonMistakes: z.array(z.string()).min(2).max(4)
 })
 
 export const QuestionsItemSchema = z.object({

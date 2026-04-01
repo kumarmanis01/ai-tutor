@@ -261,18 +261,18 @@ const PLACEHOLDER_NOTE_NS = {
   concept: 'Genetics is the study of heredity and genetic variation in living organisms, examining how traits are passed from parents to offspring.',
   explanation: 'This topic will be discussed in detail in the upcoming classes. Content coming soon for this important unit covering genes, alleles, Mendelian inheritance, and modern genetic concepts.',
   example: 'Examples will be provided once content is finalized to illustrate dominant and recessive traits.',
-  keyPoints: ['DNA carries genetic information in sequences', 'Genes are segments of DNA encoding proteins', 'Alleles are different versions of the same gene'],
-  commonMistakes: ['Confusing genotype (genetic makeup) with phenotype (observable traits)'],
+  keyPoints: ['DNA carries genetic information in sequences', 'Genes are segments of DNA encoding proteins', 'Alleles are different versions of the same gene', 'Heredity follows predictable patterns'],
+  commonMistakes: ['Confusing genotype (genetic makeup) with phenotype (observable traits)', 'Assuming dominant traits are more common in a population'],
 };
 
-// NoteSchema-compatible thin content (triggers SemanticWeaknessError, combined text < 200 chars)
+// NoteSchema-compatible thin content (triggers SemanticWeaknessError -- combined text well under 600 chars)
 const THIN_CONTENT_NS = {
   title: 'Cell',
   concept: 'Cells are the unit.',
   explanation: 'Very short here.',
   example: 'N/A.',
   keyPoints: ['Has membrane', 'Has nucleus', 'Has DNA'],
-  commonMistakes: [],
+  commonMistakes: ['Wrong.', 'Also wrong.'],
 };
 
 // NoteSchema-compatible with language field (triggers ContextMismatchError)
@@ -283,7 +283,7 @@ const LANGUAGE_MISMATCH_NS = {
   explanation: 'Plants absorb sunlight using chlorophyll and use it to split water molecules, releasing oxygen and producing ATP and NADPH. The Calvin cycle then uses these energy carriers to fix carbon dioxide into glucose through enzyme-catalyzed reactions in the stroma of chloroplasts.',
   example: 'Aquatic plants like Elodea placed in sunlight produce visible oxygen bubbles, demonstrating oxygen release during the light-dependent reactions of photosynthesis.',
   keyPoints: ['Chlorophyll absorbs light energy from the sun', 'Water molecules are split releasing oxygen', 'Carbon dioxide is fixed into glucose in Calvin Cycle', 'Two stages: light-dependent reactions and dark reactions'],
-  commonMistakes: ['Confusing photosynthesis with cellular respiration'],
+  commonMistakes: ['Confusing photosynthesis with cellular respiration', 'Thinking plants only perform photosynthesis and not respiration'],
 };
 
 // ============================================================

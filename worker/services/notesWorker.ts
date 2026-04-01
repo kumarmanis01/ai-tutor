@@ -259,7 +259,7 @@ export async function handleNotesJob(jobId: string): Promise<void> {
   }
 
   // Use centralized prompt renderer to produce deterministic prompt and schema fingerprint
-  const rendered = renderTemplate('topic-notes', { topicName: topic.name, grade, maxWords: 400, language: language as any, ncertContext });
+  const rendered = renderTemplate('topic-notes', { topicName: topic.name, grade, maxWords: 1200, language: language as any, ncertContext });
   const prompt = rendered.prompt
 
   // Always use next version number so new jobs create v1, v2, v3... (versioned content, never overwrite).
