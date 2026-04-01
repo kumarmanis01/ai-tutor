@@ -265,6 +265,69 @@ export function costAnomalyHtml(data: {
   `;
 }
 
+export function contentJobFailureAlertHtml(data: {
+  hydrationJobId: string;
+  lastError: string;
+  subject: string;
+  grade: number;
+  board: string;
+  adminUrl: string;
+  willRetryAt?: Date;
+}): string {
+  const isRetrying = data.willRetryAt !== undefined;
+  const retryLabel = isRetrying
+    ? data.willRetryAt!.toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })
+    : null;
+  const headerBg = isRetrying ? '#FEF3C7' : '#FEE2E2';
+  const headerBorder = isRetrying ? '#F59E0B' : '#EF4444';
+  const headerColor = isRetrying ? '#B45309' : '#DC2626';
+  const headerText = isRetrying
+    ? `Content generation needs attention -- will retry at ${retryLabel}`
+    : 'Content generation needs attention -- action required';
+
+  return `
+    <div style="${BASE}">
+      <div style="background:${headerBg};border:1px solid ${headerBorder};
+                  border-radius:8px;padding:16px;margin-bottom:24px;">
+        <strong style="color:${headerColor};">${headerText}</strong>
+      </div>
+      <table width="100%" cellpadding="6" style="font-size:14px;border-top:1px solid #eee;">
+        <tr>
+          <td style="color:#666;width:120px;">Subject</td>
+          <td style="font-weight:600;">${data.subject}</td>
+        </tr>
+        <tr>
+          <td style="color:#666;">Grade / Board</td>
+          <td>Grade ${data.grade} -- ${data.board}</td>
+        </tr>
+        <tr>
+          <td style="color:#666;">Job ID</td>
+          <td style="font-family:monospace;font-size:12px;">${data.hydrationJobId}</td>
+        </tr>
+        <tr>
+          <td style="color:#666;">Error</td>
+          <td style="font-family:monospace;font-size:12px;color:#DC2626;">${data.lastError}</td>
+        </tr>
+        ${isRetrying ? `
+        <tr>
+          <td style="color:#666;">Auto-retry at</td>
+          <td style="font-weight:600;color:#B45309;">${retryLabel}</td>
+        </tr>` : `
+        <tr>
+          <td style="color:#666;">Status</td>
+          <td style="font-weight:600;color:#DC2626;">Auto-retries exhausted -- manual review needed</td>
+        </tr>`}
+      </table>
+      <div style="margin-top:24px;">
+        <a href="${data.adminUrl}" style="${BTN}">
+          ${isRetrying ? 'View job in admin' : 'Review and restart job'}
+        </a>
+      </div>
+      ${FOOTER}
+    </div>
+  `;
+}
+
 export function deletionConfirmHtml(): string {
   return `
     <div style="${BASE}">

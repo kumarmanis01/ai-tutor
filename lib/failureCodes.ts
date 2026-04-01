@@ -38,3 +38,13 @@ export function inferFailureCodeFromMessage(msg: string): FailureCode {
   // default
   return FailureCode.DB_WRITE_FAILED;
 }
+
+/**
+ * Returns true for transient LLM errors that are safe to retry automatically.
+ * LLM_TIMEOUT and LLM_RATE_LIMIT are recoverable -- the upstream service was
+ * temporarily unavailable. All other codes indicate a permanent problem with
+ * the job data or prompt and should not be retried.
+ */
+export function isTransientFailure(code: FailureCode): boolean {
+  return code === FailureCode.LLM_TIMEOUT || code === FailureCode.LLM_RATE_LIMIT;
+}
