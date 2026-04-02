@@ -38,17 +38,31 @@ function NoteContentBlock({ contentJson }: { contentJson: unknown }) {
     return <p className="text-[11px] text-gray-500 italic">No content</p>
   }
   const obj = contentJson as Record<string, unknown>
-  // Render top-level text fields if available
-  const sections = obj.sections as Array<{ heading?: string; body?: string }> | undefined
+  // Render top-level sections. Support both legacy shape (heading/body)
+  // and VidyaNotesSchema shape (title/content/blackboardNotes).
+  const sections = obj.sections as Array<Record<string, unknown>> | undefined
   if (sections && Array.isArray(sections)) {
     return (
       <div className="space-y-3">
-        {sections.map((s, i) => (
-          <div key={i}>
-            {s.heading && <p className="text-[11px] font-semibold text-gray-700">{s.heading}</p>}
-            {s.body && <p className="text-[11px] text-gray-600 whitespace-pre-wrap">{s.body}</p>}
-          </div>
-        ))}
+        {sections.map((s, i) => {
+          const title = (s && (s.heading ?? s.title ?? s.type)) as string | undefined
+          const body = (s && (s.body ?? s.content ?? s.text ?? s.explanation)) as string | undefined
+          const blackboard = (s && (s.blackboardNotes ?? s.blackboard ?? s.notes)) as string[] | undefined
+
+          return (
+            <div key={i}>
+              {title && <p className="text-[11px] font-semibold text-gray-700">{String(title)}</p>}
+              {body && <p className="text-[11px] text-gray-600 whitespace-pre-wrap">{String(body)}</p>}
+              {Array.isArray(blackboard) && blackboard.length > 0 && (
+                <ul className="mt-1 ml-3 list-disc list-inside text-[11px] text-gray-600">
+                  {blackboard.map((b, bi) => (
+                    <li key={bi}>{String(b)}</li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )
+        })}
       </div>
     )
   }
