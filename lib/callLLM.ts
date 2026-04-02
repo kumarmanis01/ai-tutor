@@ -235,6 +235,10 @@ export async function callLLM({ prompt, model, meta, timeoutMs }: CallLLMArgs) {
   let attempt = 0;
   let lastError: any = null;
 
+  // If true, write raw LLM output only to worker logs and DO NOT persist
+  // the raw text to `AIContentLog.responseBody`. Useful for transient debugging.
+  const LOG_RAW_LLM_OUTPUT_CONSOLE_ONLY = String(process.env.LOG_RAW_LLM_OUTPUT_CONSOLE_ONLY || '').toLowerCase() === 'true';
+
   while (attempt < maxAttempts) {
     attempt += 1;
     const attemptStart = Date.now();
@@ -285,6 +289,22 @@ export async function callLLM({ prompt, model, meta, timeoutMs }: CallLLMArgs) {
       try {
         const respBody: any = JSON.parse(JSON.stringify(response));
         if (AI_CONTENT_DEBUG) respBody._rawText = content;
+
+        // If the console-only flag is enabled, log a snippet to worker logs and
+        // redact the raw text from the persisted response body so it is not stored.
+        if (LOG_RAW_LLM_OUTPUT_CONSOLE_ONLY) {
+          try {
+            const snippet = typeof content === 'string' ? content.slice(0, 4000) : JSON.stringify(content).slice(0, 4000);
+            logger.info('[LLM_RAW_DEBUG] Raw LLM output (console-only mode)', { meta, snippet });
+          } catch (e) {}
+          try {
+            // Remove likely raw text fields from respBody before persisting
+            if (respBody && respBody.choices && Array.isArray(respBody.choices) && respBody.choices[0] && respBody.choices[0].message) {
+              respBody.choices[0].message.content = undefined;
+            }
+            if (respBody && typeof respBody._rawText !== 'undefined') delete respBody._rawText;
+          } catch (e) {}
+        }
 
         // Allow callers to suppress auto-logging and instead persist logs inside their transaction
         const suppressLog = !!meta?.suppressLog;

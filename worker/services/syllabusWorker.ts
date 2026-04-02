@@ -27,6 +27,27 @@ import { logger } from '@/lib/logger.js'
 import { JobStatus, ApprovalStatus } from '@/lib/ai-engine/types'
 // Per spec, workers must not enqueue child hydration jobs; orchestrator/reconciler handles downstream job creation.
 
+// If true, write raw LLM output only to worker logs (via logger) and DO NOT persist
+// the raw text to `AIContentLog.responseBody.raw`.
+const LOG_RAW_LLM_OUTPUT_CONSOLE_ONLY = String(process.env.LOG_RAW_LLM_OUTPUT_CONSOLE_ONLY || '').toLowerCase() === 'true';
+
+function getResponseBodyForDb(parsed: any, llmResult: any) {
+  if (LOG_RAW_LLM_OUTPUT_CONSOLE_ONLY) {
+    return parsed ? { parsed } : null;
+  }
+  return { parsed, raw: llmResult?.content };
+}
+
+function logRawToConsole(jobId: string, llmResult: any) {
+  if (!LOG_RAW_LLM_OUTPUT_CONSOLE_ONLY) return;
+  try {
+    const raw = llmResult?.content;
+    if (!raw) return;
+    const snippet = typeof raw === 'string' ? raw.slice(0, 4000) : JSON.stringify(raw).slice(0, 4000);
+    logger.info('[LLM_RAW_DEBUG] Raw LLM output (console-only mode)', { jobId, snippet });
+  } catch (e) {}
+}
+
 function validateSyllabusShape(raw: any) {
   if (!raw || typeof raw !== 'object') return false
   const { chapters } = raw
@@ -193,8 +214,12 @@ export async function handleSyllabusJob(jobId: string) {
     await prisma.hydrationJob.update({ where: { id: job.id }, data: { status: JobStatus.Failed, lastError: le } })
     // Persist failure AIContentLog
       if (aiLog?.id) {
-      try { await prisma.aIContentLog.update({ where: { id: aiLog.id }, data: { success: false, status: 'failed', error: le, responseBody: { raw: llmResult?.content } } }) } catch {}
-    }
+        try {
+          logRawToConsole(job.id, llmResult);
+          const responseBody = getResponseBodyForDb(null, llmResult);
+          await prisma.aIContentLog.update({ where: { id: aiLog.id }, data: { success: false, status: 'failed', error: le, responseBody } })
+        } catch {}
+      }
     // if we discovered a linked ExecutionJob, mark it failed and write a PARSE_FAILED audit entry
     if (linkedExec) {
       try {
@@ -311,6 +336,8 @@ export async function handleSyllabusJob(jobId: string) {
     await runTxWithRetry(async (tx) => {
       // Update AIContentLog as success
       if (aiLog?.id) {
+        const successResponseBody = getResponseBodyForDb(parsed, llmResult);
+        logRawToConsole(job.id, llmResult);
         await tx.aIContentLog.update({ where: { id: aiLog.id }, data: {
           model: llmResult?.model || 'llm',
           tokensIn: llmResult?.usage?.prompt_tokens ?? null,
@@ -319,7 +346,7 @@ export async function handleSyllabusJob(jobId: string) {
           costUsd: llmResult?.costUsd ?? null,
           success: true,
           status: 'success',
-          responseBody: { raw: llmResult?.content }
+          responseBody: successResponseBody
         } })
       }
 

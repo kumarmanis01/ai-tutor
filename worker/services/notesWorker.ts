@@ -28,6 +28,30 @@ import { logger } from '@/lib/logger.js';
 import { JobStatus, ApprovalStatus } from '@/lib/ai-engine/types';
 import { getNextVersion } from '@/lib/getNextVersion';
 
+// If true, write raw LLM output only to worker logs (via logger) and DO NOT persist
+// the raw text to `AIContentLog.responseBody.raw`. This is useful for transient
+// debugging on VPS without storing potentially sensitive raw outputs.
+const LOG_RAW_LLM_OUTPUT_CONSOLE_ONLY = String(process.env.LOG_RAW_LLM_OUTPUT_CONSOLE_ONLY || '').toLowerCase() === 'true';
+
+function getResponseBodyForDb(parsed: any, llmResult: any) {
+  if (LOG_RAW_LLM_OUTPUT_CONSOLE_ONLY) {
+    return parsed ? { parsed } : null;
+  }
+  return { parsed, raw: llmResult?.content };
+}
+
+function logRawToConsole(jobId: string, llmResult: any) {
+  if (!LOG_RAW_LLM_OUTPUT_CONSOLE_ONLY) return;
+  try {
+    const raw = llmResult?.content;
+    if (!raw) return;
+    const snippet = typeof raw === 'string' ? raw.slice(0, 4000) : JSON.stringify(raw).slice(0, 4000);
+    logger.info('[LLM_RAW_DEBUG] Raw LLM output (console-only mode)', { jobId, snippet });
+  } catch (e) {
+    // Never crash the worker for logging
+  }
+}
+
 /**
  * Validates the shape of the LLM response for notes.
  */
@@ -375,7 +399,12 @@ export async function handleNotesJob(jobId: string): Promise<void> {
         const { formatLastError, FailureCode } = await import('@/lib/failureCodes');
         const le = formatLastError(FailureCode.VALIDATION_FAILED, String(retryReason));
         try { await prisma.hydrationJob.update({ where: { id: job.id }, data: { status: JobStatus.Failed, lastError: le } }); } catch {}
-        try { await prisma.aIContentLog.create({ data: { model: 'llm', promptType: 'notes', language: job.language || 'en', success: false, status: 'failed', error: le, requestBody: { jobId: job.id }, responseBody: parsed } }); } catch {}
+        try {
+          // Optionally log raw output to worker logs for debugging when flag enabled
+          logRawToConsole(job.id, llmResult);
+          const responseBody = getResponseBodyForDb(parsed, llmResult);
+          await prisma.aIContentLog.create({ data: { model: 'llm', promptType: 'notes', language: job.language || 'en', success: false, status: 'failed', error: le, requestBody: { jobId: job.id }, responseBody } });
+        } catch {}
         throw retryErr;
       }
     } else {
@@ -393,7 +422,10 @@ export async function handleNotesJob(jobId: string): Promise<void> {
         }
       } catch {}
       try {
-        await prisma.aIContentLog.create({ data: { model: 'llm', promptType: 'notes', language: job.language || 'en', success: false, status: 'failed', error: le, requestBody: { jobId: job.id }, responseBody: parsed } });
+        // Optionally log raw output to worker logs for debugging when flag enabled
+        logRawToConsole(job.id, llmResult);
+        const responseBody = getResponseBodyForDb(parsed, llmResult);
+        await prisma.aIContentLog.create({ data: { model: 'llm', promptType: 'notes', language: job.language || 'en', success: false, status: 'failed', error: le, requestBody: { jobId: job.id }, responseBody } });
       } catch {}
       throw vErr;
     }
@@ -445,6 +477,9 @@ export async function handleNotesJob(jobId: string): Promise<void> {
 
       // Persist AIContentLog inside the transaction (success path)
       try {
+        const successResponseBody = getResponseBodyForDb(parsed, llmResult);
+        // Log raw if console-only mode enabled
+        logRawToConsole(job.id, llmResult);
         await tx.aIContentLog.create({ data: {
           model: llmResult?.model || 'llm',
           promptType: 'notes',
@@ -462,7 +497,7 @@ export async function handleNotesJob(jobId: string): Promise<void> {
           success: true,
           status: 'success',
           requestBody: { prompt },
-          responseBody: { raw: llmResult?.content }
+          responseBody: successResponseBody
         } });
       } catch (e) {
         throw e;
@@ -485,7 +520,10 @@ export async function handleNotesJob(jobId: string): Promise<void> {
   } catch (err: any) {
     // Failure path: persist failure AIContentLog outside transaction, then mark hydration job failed
     try {
-      await prisma.aIContentLog.create({ data: { model: llmResult?.model || 'llm', promptType: 'notes', language: job.language || 'en', success: false, status: 'failed', error: String(err.message || err), requestBody: { prompt }, responseBody: { raw: llmResult?.content } } });
+      // Optionally log raw output to worker logs for debugging when flag enabled
+      logRawToConsole(job.id, llmResult);
+      const responseBody = getResponseBodyForDb(parsed, llmResult);
+      await prisma.aIContentLog.create({ data: { model: llmResult?.model || 'llm', promptType: 'notes', language: job.language || 'en', success: false, status: 'failed', error: String(err.message || err), requestBody: { prompt }, responseBody } });
     } catch {}
     try {
       const { formatLastError, inferFailureCodeFromMessage } = await import('@/lib/failureCodes');
