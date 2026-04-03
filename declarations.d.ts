@@ -4,3 +4,7 @@ declare module '*.json' {
 }
 
 declare module '@sentry/nextjs';
+
+// Auto-declarations for third-party modules that may not ship TypeScript types
+declare module 'resend';
+declare module 'web-push';
