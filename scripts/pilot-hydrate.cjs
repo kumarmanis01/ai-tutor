@@ -23,7 +23,7 @@ const { randomUUID } = require('crypto')
 
 // NOTE: This script prefers environment variables provided by the VPS
 // runtime (NO dotenv). Required: DATABASE_URL. Workers must run with
-// OPENAI_API_KEY + ALLOW_LLM_CALLS for actual generation — this script only
+// OPENAI_API_KEY + ALLOW_LLM_CALLS for actual generation -- this script only
 // enqueues hydration jobs.
 
 function ensureDatabaseUrl() {
