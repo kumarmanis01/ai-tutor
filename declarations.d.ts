@@ -20,11 +20,13 @@ declare module 'resend' {
 
   export type ResendSendResult = { data?: { id?: string } | null; error?: { message?: string } | null };
 
-  export default class Resend {
+  export class Resend {
     constructor(apiKey?: string);
     emails: {
       send(opts: ResendEmailSendOptions): Promise<ResendSendResult>;
     };
   }
+
+  export default Resend;
 }
 declare module 'web-push';
