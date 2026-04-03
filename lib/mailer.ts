@@ -9,7 +9,7 @@
  * Verified sending domain: send.spinzyacademy.com (subdomain verified in Resend).
  * Free tier: 3,000 emails/month, 100/day.
  */
-import { Resend } from 'resend';
+import Resend from 'resend';
 
 // Lazy singleton -- avoids crash at module load time when RESEND_API_KEY is absent
 // (e.g. during Next.js build or unit tests that do not exercise email).
