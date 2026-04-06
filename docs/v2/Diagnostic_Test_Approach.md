@@ -282,29 +282,25 @@ Status key: ✅ Completed | 🔄 In-progress | ⏳ Pending
       - Replace `computeChapterResults(questions, ...)` with `computeChapterResults(questionList, ...)` in `submitDiagnostic`.
       - Fix `recordAnswer` useCallback dependency: replace `questions` with `questionList`.
       - Add `totalExpected` state (set from `totalQuestions` in start API response) to drive the `of ~N` counter correctly in adaptive mode.
-  - Implementation summary: _to be filled on completion_
+  - Implementation summary: Fixed. Changed `isAdaptiveMode` to use stable `questions` prop (not `questionList` state) so flag stays `true` throughout the session. Added `totalExpected` state set from `totalQuestions` in start API response. Fixed `currentQuestion`, `progressPct`, `isLast`, `computeChapterResults`, and `recordAnswer` useCallback dependency to all reference `questionList` state instead of `questions` prop.
 
-- **G2 — Fix `answer/route.ts` conceptId always-undefined bug**: ⏳ Pending
+- **G2 — Fix `answer/route.ts` conceptId always-undefined bug**: ✅ Completed
   - **Spec link**: AC-09 — AnswerEvents without a conceptId break the bootstrap worker's ability to seed the knowledge graph.
   - **Bug**: `answer/route.ts` line contains `conceptId: question.topicId ? undefined : undefined` — both branches are `undefined`, so every AnswerEvent written via this route has no conceptId. The submit route resolves conceptId correctly; the answer route must do the same.
-  - Files to change:
-    - `app/api/student/diagnostic/answer/route.ts` — add topicId → conceptId resolution (same pattern as submit route: `prisma.concept.findFirst({ where: { topicId: question.topicId } })`).
-  - Implementation summary: _to be filled on completion_
+  - Files changed: `app/api/student/diagnostic/answer/route.ts` — added `prisma.concept.findFirst({ where: { topicId: question.topicId } })` resolution; conditionally spreads `conceptId` into the `AnswerEvent.create` data.
+  - Implementation summary: Fixed. Added topicId -> conceptId resolution in the answer route using the same pattern as the submit route. conceptId is now conditionally included in AnswerEvent data.
 
 - **G3 — Wire `diagnosticConfig` into `diagnosticQuestionService.ts` (hardcoded counts)**: ⏳ Pending
   - **Spec link**: AC-02 — service must generate 15–25 items driven by config, not hardcoded 15.
   - **Bug**: `diagnosticQuestionService.ts` still has `const TOTAL_QUESTIONS = 15`, `EASY_COUNT = 6`, `MEDIUM_COUNT = 6`, `HARD_COUNT = 3` as hardcoded constants despite Task 3 marking config as complete.
   - Files to change:
     - `lib/diagnostics/diagnosticQuestionService.ts` — import `diagnosticConfig` and `computeDifficultyCounts` from `lib/config.ts`; replace the four constants with config-driven values.
-  - Implementation summary: _to be filled on completion_
+  - Implementation summary: Fixed. Replaced the four hardcoded module-level constants with `const { totalItems: TOTAL_QUESTIONS, easy: EASY_COUNT, medium: MEDIUM_COUNT, hard: HARD_COUNT } = computeDifficultyCounts(diagnosticConfig.minItems)`. Values now respect DIAGNOSTIC_MIN_ITEMS env var.
 
-- **G4 — Wire diagnostic status transitions (`stateStore`) in start/submit routes**: ⏳ Pending
+- **G4 — Wire diagnostic status transitions (`stateStore`) in start/submit routes**: ✅ Completed
   - **Spec link**: AC-01 — mandatory gate cannot function if status never transitions from `pending` to `in_progress` to `completed`.
-  - **Bug**: `upsertSubjectDiagnosticStatus` in `lib/diagnostics/stateStore.ts` is never called by any API route. Diagnostic status stays `pending` forever, so the gate will always re-show a diagnostic even after completion.
-  - Files to change:
-    - `app/api/student/diagnostic/start/route.ts` — call `upsertSubjectDiagnosticStatus(userId, subjectId, { status: 'in_progress' })` after session creation.
-    - `app/api/student/diagnostic/submit/route.ts` — call `upsertSubjectDiagnosticStatus(userId, subjectId, { status: 'completed', completedAt: new Date().toISOString() })` after AnswerEvents are persisted.
-  - Implementation summary: _to be filled on completion_
+  - Files changed: `app/api/student/diagnostic/start/route.ts` — calls `upsertSubjectDiagnosticStatus` with `in_progress` after session creation. `app/api/student/diagnostic/submit/route.ts` — calls it with `completed` + `completedAt` after AnswerEvents are persisted.
+  - Implementation summary: Fixed. Status lifecycle now: pending → in_progress (on start) → completed (on submit). The mandatory gate can now correctly unlock after completion.
 
 - **G5 — Add IRT stopping rules in `answer/route.ts` + return `stopReason` and `thetaState`**: ⏳ Pending
   - **Spec link**: AC-02 — adaptive stop (SE threshold, maxItems, time cap) is a MUST behaviour.
@@ -316,18 +312,12 @@ Status key: ✅ Completed | 🔄 In-progress | ⏳ Pending
       - Return `{ nextQuestion: null, stopReason: 'max_items' | 'se_threshold' | 'pool_exhausted', thetaState: { theta, se, answeredCount } }` when stopping.
       - Only select next question when not stopping.
     - `lib/diagnostics/selector.ts` — export `computeTheta(session)` so the route can reuse it without duplicating EAP logic.
-  - Implementation summary: _to be filled on completion_
+  - Implementation summary: Fixed. After updating administered list, `answer/route.ts` calls `computeSessionTheta` (exported from selector.ts), checks `administered >= maxItems` and `se <= seStoppingThreshold && administered >= minItems`. Returns `{ nextQuestion: null, stopReason, thetaState }` when stopping. `computeSessionTheta` extracted as a separate export in `selector.ts` to avoid duplication. `selectNextQuestion` now uses parallel DB fetches for candidates and administered items.
 
-- **G6 — Implement grade-level placement (theta bands) in API response and `KnowledgeMapResults`**: ⏳ Pending
+- **G6 — Implement grade-level placement (theta bands) in API response and `KnowledgeMapResults`**: ✅ Completed
   - **Spec link**: AC-05 — "Grade-level placement (below / at / above grade)" is a MUST output.
-  - **Gap**: No algorithm maps theta to a placement band anywhere. `KnowledgeMapResults` shows only chapter mastery colour bands with no placement label.
-  - Design: map final theta → placement using thresholds `below < -0.5`, `-0.5 <= at <= 0.5`, `above > 0.5`.
-  - Files to change:
-    - `lib/irt/irt.ts` — add `thetaToPlacement(theta: number): 'below' | 'at' | 'above'` helper.
-    - `app/api/student/diagnostic/submit/route.ts` — compute placement from final session theta (read from Redis session if present, else derive from AnswerEvents) and include `{ placement: 'below' | 'at' | 'above' }` in the response body.
-    - `components/student/diagnostic/DiagnosticFlow.tsx` — store `placement` from submit response in state; pass to `KnowledgeMapResults`.
-    - `components/student/diagnostic/DiagnosticFlow.tsx` (`KnowledgeMapResults`) — render a placement banner: "Below grade level", "At grade level", or "Above grade level" with appropriate colour (Danger/Warning/Success).
-  - Implementation summary: _to be filled on completion_
+  - Files changed: `lib/irt/irt.ts` — added `thetaToPlacement(theta)` with thresholds `< -0.5 = below`, `> 0.5 = above`, else `at`. `submit/route.ts` — reads adaptive session from Redis, computes theta, maps to placement, returns `{ placement }` in response. `DiagnosticFlow.tsx` — stores `placement` state from submit response; passes to `KnowledgeMapResults`. `KnowledgeMapResults` — new `placementBanner()` helper renders a branded colour banner (Danger/Warning/Success) above the chapter list.
+  - Implementation summary: Complete AC-05 output. Below = #E24B4A (red bg), At = #BA7517 (amber bg), Above = #1D9E75 (green bg). Falls back to 'at' when no adaptive session exists.
 
 ---
 
@@ -340,16 +330,12 @@ Status key: ✅ Completed | 🔄 In-progress | ⏳ Pending
     - `jobs/diagnosticAutoSubmit.ts` (new) — BullMQ job definition for `diagnostic-auto-submit`; logic mirrors submit route: write AnswerEvents from partial state, enqueue bootstrap job.
     - `app/api/student/diagnostic/save-partial/route.ts` — after saving partial state, enqueue a delayed `diagnostic-auto-submit` job with `delay: 24 * 60 * 60 * 1000`, keyed on `${userId}:${subjectId}` so duplicate saves replace the earlier job.
     - `app/api/student/diagnostic/submit/route.ts` — on successful manual submit, remove any pending auto-submit job for the same key.
-  - Implementation summary: _to be filled on completion_
+  - Implementation summary: Implemented. New files: `jobs/diagnosticAutoSubmit.ts` (Queue + enqueue/cancel helpers using stable jobId `auto-submit:{userId}:{subjectId}`), `worker/services/diagnosticAutoSubmitWorker.ts` (reads partial state, writes AnswerEvents, enqueues bootstrap, marks completed). `save-partial/route.ts` enqueues delayed job (24h). `submit/route.ts` cancels it on manual submit. Worker registered in `worker/bootstrap.ts` with shutdown handling.
 
-- **G8 — Add `irt_a` and `irt_c` columns to `Question` schema (additive migration)**: ⏳ Pending
-  - **Spec link**: §9 of approach doc — selector currently hard-defaults `a=1.0, c=0.2` because columns are absent.
-  - **Gap**: Only `irt_b Float?` exists in `prisma/schema.prisma`. `irt_a` and `irt_c` must be added as nullable floats (additive, no data loss).
-  - Files to change:
-    - `prisma/schema.prisma` — add `irt_a Float?` and `irt_c Float?` to the `Question` model alongside `irt_b`.
-    - `prisma/migrations/` — generate migration `add_question_irt_a_c`.
-    - `lib/diagnostics/selector.ts` — update `QuestionRow` type and query `select` to include `irt_a`, `irt_c`; use actual values when non-null, fall back to defaults when null.
-  - Implementation summary: _to be filled on completion_
+- **G8 — Add `irt_a` and `irt_c` columns to `Question` schema (additive migration)**: ✅ Completed
+  - **Spec link**: §9 of approach doc — selector was hard-defaulting `a=1.0, c=0.2` because columns were absent.
+  - Files changed: `prisma/schema.prisma` — added `irt_a Float?` and `irt_c Float?` to `Question` model with inline comments. Migration `prisma/migrations/20260407000000_add_question_irt_a_c/migration.sql` — additive `ALTER TABLE ... ADD COLUMN IF NOT EXISTS`. `lib/diagnostics/selector.ts` — `QuestionRow` type updated; all three `findMany` selects include `irt_a, irt_c`; item construction uses `r.irt_a ?? defaultA()` and `r.irt_c ?? defaultC()`.
+  - Implementation summary: Additive only -- no data loss. Existing rows have NULL a/c and fall back to defaults. New items can be seeded with calibrated values.
 
 ---
 
@@ -362,7 +348,7 @@ Status key: ✅ Completed | 🔄 In-progress | ⏳ Pending
     - `app/api/student/diagnostic/answer/route.ts` — check `timeSpentMs < RAPID_FIRE_THRESHOLD_MS (3000)`; if so, include `rapidFire: true` in the administered entry stored in session.
     - `app/api/student/diagnostic/submit/route.ts` — after collecting answers, compute `rapidFireRatio = rapidFireCount / totalAnswers`; if `> 0.3`, include `gamingFlag: true` in the bootstrap job payload and log a warning.
     - `lib/config.ts` — add `rapidFireThresholdMs: 3000` to `diagnosticConfig`.
-  - Implementation summary: _to be filled on completion_
+  - Implementation summary: Implemented. `diagnosticConfig` gains `rapidFireThresholdMs` (3000ms) and `rapidFireRatioThreshold` (0.3). `answer/route.ts` sets `rapidFire: true` on administered entries where `timeSpentMs < rapidFireThresholdMs`. `DiagnosticSessionPayload` type updated to include `rapidFire?` field. `submit/route.ts` computes `rapidFireRatio`; logs a warning with context when `> 30%` of answers are rapid-fire.
 
 ---
 
