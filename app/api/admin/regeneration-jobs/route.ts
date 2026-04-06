@@ -109,7 +109,7 @@ export async function POST(req: Request) {
     // Debug: surface created job in test logs when present
     try { logger.debug('regenerationJob.created', { id: job?.id, status: job?.status } as any) } catch {}
 
-    // fire-and-forget audit — record as legacy system event (action: null)
+    // fire-and-forget audit -- record as legacy system event (action: null)
     logAuditEvent(prisma as any, { action: null, entityId: job.id, targetEntity: 'RegenerationJob', details: { legacyAction: AuditEvents.REGEN_JOB_CREATED, suggestionId: suggestion.id, targetType, targetId } });
 
     return NextResponse.json({ job });

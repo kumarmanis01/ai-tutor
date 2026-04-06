@@ -21,6 +21,12 @@ import { logger } from '@/lib/logger';
 import { formatErrorForResponse } from '@/lib/errorResponse';
 import { clearPartialDiagnostic } from '@/lib/redis/diagnosticPartial';
 import { enqueueDiagnosticBootstrapJob } from '@/jobs/diagnosticBootstrap';
+import { upsertSubjectDiagnosticStatus } from '@/lib/diagnostics/stateStore';
+import { getSession } from '@/lib/diagnostics/sessionStore';
+import { computeSessionTheta } from '@/lib/diagnostics/selector';
+import { thetaToPlacement } from '@/lib/irt/irt';
+import { cancelDiagnosticAutoSubmit } from '@/jobs/diagnosticAutoSubmit';
+import { diagnosticConfig } from '@/lib/config';
 
 interface AnswerInput {
   questionId: string;
@@ -134,8 +140,12 @@ export async function POST(req: NextRequest) {
       select: { class: { select: { id: true } } },
     });
 
-    // Unique diagnosticSessionId for this run
-    const diagnosticSessionId = `diagnostic:${userId}:${subjectId}:${Date.now()}`;
+    // Unique diagnosticSessionId for this run.
+    // Also check for an existing adaptive session id passed in the body.
+    const incomingSessionId: string | undefined =
+      typeof body.sessionId === 'string' ? body.sessionId : undefined;
+    const diagnosticSessionId =
+      incomingSessionId ?? `diagnostic:${userId}:${subjectId}:${Date.now()}`;
 
     // Create AnswerEvent rows for each answer
     const user = await prisma.user.findUnique({
@@ -175,6 +185,24 @@ export async function POST(req: NextRequest) {
       await prisma.answerEvent.createMany({ data: answerEventData });
     }
 
+    // Rapid-fire gaming detection (AC-08): flag sessions where >30% of answers were too fast.
+    const rapidFireCount = answers.filter(
+      (a) => typeof a.timeSpentMs === 'number' && a.timeSpentMs < diagnosticConfig.rapidFireThresholdMs,
+    ).length;
+    const gamingFlag =
+      answers.length > 0 &&
+      rapidFireCount / answers.length > diagnosticConfig.rapidFireRatioThreshold;
+    if (gamingFlag) {
+      logger.warn('DiagnosticSubmitAPI: rapid-fire gaming flag', {
+        className: 'DiagnosticSubmitAPI',
+        methodName: 'POST',
+        userId,
+        subjectId,
+        rapidFireCount,
+        totalAnswers: answers.length,
+      });
+    }
+
     // Enqueue bootstrap worker to seed StudentConceptState + generate LearningPlan
     if (chapterIds.length > 0) {
       try {
@@ -197,10 +225,33 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Clear Redis partial state
+    // Clear Redis partial state and cancel any pending auto-submit job.
     await clearPartialDiagnostic(userId, subjectId);
+    await cancelDiagnosticAutoSubmit(userId, subjectId);
 
-    const res = NextResponse.json({ success: true, subjectId });
+    // Transition diagnostic status to completed so the mandatory gate unlocks.
+    await upsertSubjectDiagnosticStatus(userId, subjectId, {
+      status: 'completed',
+      completedAt: new Date().toISOString(),
+      runId: diagnosticSessionId,
+    });
+
+    // Compute grade-level placement (AC-05) from adaptive session theta when available.
+    // Falls back to neutral ('at') when no Redis session exists (non-adaptive submit).
+    let placement: 'below' | 'at' | 'above' = 'at';
+    try {
+      if (incomingSessionId) {
+        const adaptiveSession = await getSession(incomingSessionId);
+        if (adaptiveSession) {
+          const { theta } = await computeSessionTheta(adaptiveSession);
+          placement = thetaToPlacement(theta);
+        }
+      }
+    } catch {
+      // non-fatal: placement defaults to 'at'
+    }
+
+    const res = NextResponse.json({ success: true, subjectId, placement });
     logger.logAPI(req, res, { className: 'DiagnosticSubmitAPI', methodName: 'POST' }, start);
     return res;
   } catch (err) {

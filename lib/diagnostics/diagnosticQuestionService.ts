@@ -47,6 +47,7 @@
     questions: DiagnosticQuestion[];
   }
 
+  // Counts driven by diagnosticConfig so they respect env-var overrides.
   const { totalItems: TOTAL_QUESTIONS, easy: EASY_COUNT, medium: MEDIUM_COUNT, hard: HARD_COUNT } =
     computeDifficultyCounts(diagnosticConfig.minItems);
 
@@ -60,11 +61,22 @@
           : raw;
       if (!Array.isArray(value)) return [];
       return value
-        .map((c: any) => ({
-          key: String(c.key ?? c.id ?? c.value ?? ''),
-          label: String(c.label ?? c.text ?? c.value ?? ''),
-        }))
-        .filter((c) => c.key && c.label);
+        .map((c: unknown, idx: number) => {
+          // Plain string array format (most common): ["Option A", "Option B", ...]
+          if (typeof c === 'string') {
+            return { key: String(idx), label: c };
+          }
+          // Object format: { key, label } or { id, text } or similar
+          if (c !== null && typeof c === 'object') {
+            const obj = c as Record<string, unknown>;
+            return {
+              key: String(obj.key ?? obj.id ?? obj.value ?? idx),
+              label: String(obj.label ?? obj.text ?? obj.value ?? ''),
+            };
+          }
+          return { key: String(idx), label: String(c ?? '') };
+        })
+        .filter((c) => c.label.trim().length > 0);
     } catch {
       return [];
     }

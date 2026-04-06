@@ -49,4 +49,16 @@ export function eapEstimate(items: IRTItem[], responses: number[]) {
   return { theta: mean, se };
 }
 
-export default { p3pl, fisherInfo, eapEstimate };
+/**
+ * Map a theta estimate to a grade-level placement band (AC-05).
+ * Thresholds: below < -0.5, -0.5 <= at <= 0.5, above > 0.5
+ */
+export type GradePlacement = 'below' | 'at' | 'above';
+
+export function thetaToPlacement(theta: number): GradePlacement {
+  if (theta < -0.5) return 'below';
+  if (theta > 0.5) return 'above';
+  return 'at';
+}
+
+export default { p3pl, fisherInfo, eapEstimate, thetaToPlacement };

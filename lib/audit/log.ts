@@ -76,7 +76,7 @@ export function logAuditEvent(db: any, ev: AuditEvent) {
         // DB enum at runtime.
         if (isEnumError && ev.action && typeof ev.action === 'string') {
           try {
-            // Try adding the enum label; if it already exists this may error — ignore.
+            // Try adding the enum label; if it already exists this may error -- ignore.
             // Use $executeRawUnsafe to allow dynamic value insertion.
             // This operation is safe in test/dev; in production envs schema management
             // should be done via migrations.

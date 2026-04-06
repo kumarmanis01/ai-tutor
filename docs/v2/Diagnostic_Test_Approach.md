@@ -236,89 +236,134 @@ If you want, I can implement those quick fixes now in a short PR.
 
 ## Implementation Tasks & Progress
 
-The following implementation tasks map to the TODO plan and include file-level notes for the immediate quick-fixes and next steps. Status reflects current work in the repository (see TODO list managed by the engineering agent).
+Tasks are ordered by priority: HIGH (blocks AC marked MUST) → MEDIUM → LOW.
+Status key: ✅ Completed | 🔄 In-progress | ⏳ Pending
 
-- **Task 1 — Draft Diagnostic_Test_Approach.md**: **Completed**
-  - File: [docs/v2/Diagnostic_Test_Approach.md](docs/v2/Diagnostic_Test_Approach.md)
-  - Notes: Initial approach document created and committed. Serves as the canonical spec for F-STU-002 implementation.
+---
 
-- **Task 2 — Add `topicId` filter & debug logs in `selectQuestions`**: **Completed**
-  - Files changed:
-    - `lib/tests.ts`
-      - Added `...(filters.topicId ? { topicId: filters.topicId } : {}),` to the Prisma `where` object in `selectQuestions()` so topic-scoped queries are respected.
-      - Added debug logs:
-        - `logger.debug('selectQuestions.initial_pool', { filters, poolCount })` after the first `findMany()`.
-        - `logger.debug('selectQuestions.sync_from_generated.before', { filters, need })` and `logger.debug('selectQuestions.sync_from_generated.after', { filters, poolCount })` around the `syncFromGeneratedQuestions()` fallback.
-        - `logger.debug('selectQuestions.deduped', { filters, dedupedCount })` after de-duplication.
-      - Updated `syncFromGeneratedQuestions()` to `logger.debug('syncFromGeneratedQuestions.rows_empty', { filters, take })` when no generated rows are found.
-  - Rationale & verification:
-    - This fixes the per-topic round-robin correctness bug where `topicId` was not being applied to the primary DB query, and provides richer logs for debugging pool exhaustion and fallback paths.
-  - Next test steps (todo): add unit tests in `tests/unit/lib/tests.spec.ts` to assert topic-scoped selection and fallback behaviour.
+### Previously completed tasks
 
- - **Task 3 — Make diagnostic question count configurable (15–25)**: **Completed (config-driven)**
+- **Task 1 — Draft Diagnostic_Test_Approach.md**: ✅ Completed
+  - File: `docs/v2/Diagnostic_Test_Approach.md`
+
+- **Task 2 — Add `topicId` filter & debug logs in `selectQuestions`**: ✅ Completed
+  - Files: `lib/tests.ts`
+  - Added `topicId` filter to Prisma `where` clause in `selectQuestions()` and `syncFromGeneratedQuestions()`.
+  - Added debug logs at pool query, fallback sync, and dedup stages.
+
+- **Task 3 — Add `lib/config.ts` with `diagnosticConfig`**: ✅ Completed
+  - File: `lib/config.ts` — added `diagnosticConfig`, `featureFlags`, `computeDifficultyCounts()`.
+  - Note: `diagnosticQuestionService.ts` still uses hardcoded counts — fixed in G3 below.
+
+- **Task 4 — Enforce partial-abandon rule in bootstrap worker**: ✅ Completed
+  - File: `worker/services/diagnosticBootstrapWorker.ts`
+  - Seeds unanswered concepts with mastery 0.5 + variance 0.3 when answers < minAnswersForValidity.
+
+- **Task 5 — Server-side IRT API + Redis session model (initial)**: ✅ Completed
+  - Files added: `lib/irt/irt.ts`, `lib/diagnostics/sessionStore.ts`, `lib/diagnostics/selector.ts`
+  - API routes added: `start/route.ts`, `answer/route.ts`, `resume/route.ts`, `save-partial/route.ts`
+  - Implements basic session state + sequential-with-IRT-fallback next-item strategy.
+
+---
+
+### Gap-fix tasks (gap analysis 2026-04-06)
+
+---
+
+#### HIGH priority
+
+- **G1 — Fix DiagnosticFlow.tsx quiz-phase bug (uses `questions` prop instead of `questionList` state)**: ⏳ Pending
+  - **Spec link**: AC-02 — adaptive flow is completely broken in adaptive mode without this fix.
+  - **Bug**: In the quiz render block, `questions[currentIndex]`, `questions.length` (for `progressPct` and `isLast`), `computeChapterResults(questions, ...)`, and the `recordAnswer` useCallback dependency all reference the original `questions` prop. In adaptive mode the prop is an empty array (`[]`), so `currentQuestion` is `undefined` and the component returns `null` (blank screen) immediately after the first question is appended to `questionList` state.
   - Files to change:
-    - `lib/diagnostics/diagnosticQuestionService.ts` — replace `TOTAL_QUESTIONS` constant with a config-driven value: `getConfig().diagnostic.maxItems` with a fallback to 15. Also make `EASY_COUNT`, `MEDIUM_COUNT`, `HARD_COUNT` computed from the configured total.
-    - `components/student/diagnostic/DiagnosticFlow.tsx` — accept a `maxItems`/`minItems` prop or read from a platform config endpoint; display remaining hint/summary correctly.
-    - API: `app/api/tests/start/route.ts` — accept optional diagnostic config and forward to `generateSubjectDiagnosticTest`.
-  - Implementation notes:
-    - Added `lib/config.ts` with `diagnosticConfig` and `computeDifficultyCounts()`.
-    - Updated `lib/diagnostics/diagnosticQuestionService.ts` to compute `TOTAL_QUESTIONS`, `EASY_COUNT`, `MEDIUM_COUNT`, `HARD_COUNT` from `diagnosticConfig.minItems`.
-    - Next UI step: wire `DiagnosticFlow` to read diagnostic counts from platform config or props (still pending).
+    - `components/student/diagnostic/DiagnosticFlow.tsx`
+      - Replace `questions[currentIndex]` with `questionList[currentIndex]` in the quiz render.
+      - Replace `questions.length` with `questionList.length` for `progressPct` and `isLast`.
+      - Replace `computeChapterResults(questions, ...)` with `computeChapterResults(questionList, ...)` in `submitDiagnostic`.
+      - Fix `recordAnswer` useCallback dependency: replace `questions` with `questionList`.
+      - Add `totalExpected` state (set from `totalQuestions` in start API response) to drive the `of ~N` counter correctly in adaptive mode.
+  - Implementation summary: Fixed. Changed `isAdaptiveMode` to use stable `questions` prop (not `questionList` state) so flag stays `true` throughout the session. Added `totalExpected` state set from `totalQuestions` in start API response. Fixed `currentQuestion`, `progressPct`, `isLast`, `computeChapterResults`, and `recordAnswer` useCallback dependency to all reference `questionList` state instead of `questions` prop.
 
- - **Task 4 — Enforce partial-abandon rule in submit/bootstrap worker**: **Completed**
-  - Files changed:
-    - `worker/services/diagnosticBootstrapWorker.ts` — added detection for partial/abandoned diagnostics (uses `diagnosticConfig.minAnswersForValidity`). When fewer than the minimum valid answers are present, unanswered concepts are seeded with a `masteryScore` of `0.5` (grade-level start) and a higher `masteryVariance` of `0.3` to indicate uncertainty. A `partial_abandon` info log is emitted with counts.
-    - `app/api/student/diagnostic/submit/route.ts` — unchanged in behaviour (it already persists AnswerEvent rows and enqueues the bootstrap job); the worker now interprets low-answer counts accordingly.
-  - Rationale & verification:
-    - This implements the spec requirement to treat abandoned diagnostics with provisional grade-level defaults for untested concepts while preserving any answered concepts' evidence. The variance field helps downstream planners treat these seeds as lower-confidence.
+- **G2 — Fix `answer/route.ts` conceptId always-undefined bug**: ✅ Completed
+  - **Spec link**: AC-09 — AnswerEvents without a conceptId break the bootstrap worker's ability to seed the knowledge graph.
+  - **Bug**: `answer/route.ts` line contains `conceptId: question.topicId ? undefined : undefined` — both branches are `undefined`, so every AnswerEvent written via this route has no conceptId. The submit route resolves conceptId correctly; the answer route must do the same.
+  - Files changed: `app/api/student/diagnostic/answer/route.ts` — added `prisma.concept.findFirst({ where: { topicId: question.topicId } })` resolution; conditionally spreads `conceptId` into the `AnswerEvent.create` data.
+  - Implementation summary: Fixed. Added topicId -> conceptId resolution in the answer route using the same pattern as the submit route. conceptId is now conditionally included in AnswerEvent data.
 
-- **Task 5 — Design server-side IRT 3PL API + Redis session model**: **Not started**
-  - Files / artifacts to add:
-    - `lib/irt/irt.ts` — new IRT utilities (P(theta), Fisher info, EAP posterior grid routines).
-    - `lib/diagnostics/sessionStore.ts` — Redis session helpers for `diagnostic:session:{id}` with TTLs.
-    - API endpoints: `app/api/student/diagnostic/start/route.ts`, `app/api/student/diagnostic/answer/route.ts`, `app/api/student/diagnostic/resume/route.ts`.
- - **Task 5 — Design server-side IRT 3PL API + Redis session model**: **In-progress (initial implementation)**
-  - Files added:
-    - `lib/irt/irt.ts` — basic 3PL functions (`p3pl`, `fisherInfo`) and a grid-based `eapEstimate()` for initial theta estimation.
-    - `lib/diagnostics/sessionStore.ts` — Redis-backed session store with create/get/update/delete helpers.
-    - `app/api/student/diagnostic/start/route.ts` — endpoint to start a diagnostic and persist a session with the candidate pool.
-    - `app/api/student/diagnostic/answer/route.ts` — endpoint to submit a single answer, persist `AnswerEvent`, update session administered list, and return the next item from the candidate pool.
-  - Notes & next steps:
-    - Current API implements server-driven session state and a simple next-item strategy (sequential from preselected pool). This provides a stable foundation for switching to a Fisher-information-based selector later.
-    - Next: implement `resume` endpoint and replace sequential selection with an IRT selector using `lib/irt/irt.ts` when feature-flag `diagnostic_adaptive_v2` is enabled.
-
-- **Task 6 — Implement IRT core algorithm and item selection**: **Not started**
-  - Files to add/modify:
-    - `lib/irt/irt.ts` — core math and theta estimation.
-    - `lib/irt/selector.ts` — item selection functions using Fisher information + content constraints.
-    - Update `lib/tests.ts`/`lib/diagnostics` to integrate selector when feature flag `diagnostic_adaptive_v2` is enabled.
-
-- **Task 7 — Update `DiagnosticFlow` UI to use adaptivity endpoints**: **Not started**
+- **G3 — Wire `diagnosticConfig` into `diagnosticQuestionService.ts` (hardcoded counts)**: ⏳ Pending
+  - **Spec link**: AC-02 — service must generate 15–25 items driven by config, not hardcoded 15.
+  - **Bug**: `diagnosticQuestionService.ts` still has `const TOTAL_QUESTIONS = 15`, `EASY_COUNT = 6`, `MEDIUM_COUNT = 6`, `HARD_COUNT = 3` as hardcoded constants despite Task 3 marking config as complete.
   - Files to change:
-    - `components/student/diagnostic/DiagnosticFlow.tsx` — change flow to `start` + repeated `answer` calls instead of preloading a fixed 15-question batch. Maintain timer, pause/resume, and offline save behaviour.
-    - `app/(student)/diagnostic/[subjectId]/page.tsx` — adjust server props/resume logic accordingly.
+    - `lib/diagnostics/diagnosticQuestionService.ts` — import `diagnosticConfig` and `computeDifficultyCounts` from `lib/config.ts`; replace the four constants with config-driven values.
+  - Implementation summary: Fixed. Replaced the four hardcoded module-level constants with `const { totalItems: TOTAL_QUESTIONS, easy: EASY_COUNT, medium: MEDIUM_COUNT, hard: HARD_COUNT } = computeDifficultyCounts(diagnosticConfig.minItems)`. Values now respect DIAGNOSTIC_MIN_ITEMS env var.
 
-- **Task 8 — Add unit & integration tests for selection & adaptivity**: **Not started**
-  - Files to add:
-    - `tests/unit/lib/tests.spec.ts` (selectQuestions/ensureQuestions)
-    - `tests/unit/lib/diagnostics.spec.ts` (diagnosticQuestionService behaviours)
-    - `tests/integration/diagnostic_adaptive.test.ts` (start → answer → stop scenarios using in-memory Redis/test doubles)
+- **G4 — Wire diagnostic status transitions (`stateStore`) in start/submit routes**: ✅ Completed
+  - **Spec link**: AC-01 — mandatory gate cannot function if status never transitions from `pending` to `in_progress` to `completed`.
+  - Files changed: `app/api/student/diagnostic/start/route.ts` — calls `upsertSubjectDiagnosticStatus` with `in_progress` after session creation. `app/api/student/diagnostic/submit/route.ts` — calls it with `completed` + `completedAt` after AnswerEvents are persisted.
+  - Implementation summary: Fixed. Status lifecycle now: pending → in_progress (on start) → completed (on submit). The mandatory gate can now correctly unlock after completion.
 
-- **Task 9 — Deploy to staging and run end-to-end diagnostics**: **Not started**
-  - Steps: deploy feature-flagged release, run smoke tests, collect metrics (abandonment, avg items, SE distribution).
+- **G5 — Add IRT stopping rules in `answer/route.ts` + return `stopReason` and `thetaState`**: ⏳ Pending
+  - **Spec link**: AC-02 — adaptive stop (SE threshold, maxItems, time cap) is a MUST behaviour.
+  - **Gap**: `answer/route.ts` never checks stopping criteria. The diagnostic runs until the candidate pool is exhausted regardless of SE or item count. `stopReason` and theta/SE are absent from the response.
+  - Files to change:
+    - `app/api/student/diagnostic/answer/route.ts`
+      - After updating the administered list, compute `eapEstimate` over administered items.
+      - Check stop conditions: `administered.length >= maxItems` OR `se <= seStoppingThreshold && administered.length >= minItems`.
+      - Return `{ nextQuestion: null, stopReason: 'max_items' | 'se_threshold' | 'pool_exhausted', thetaState: { theta, se, answeredCount } }` when stopping.
+      - Only select next question when not stopping.
+    - `lib/diagnostics/selector.ts` — export `computeTheta(session)` so the route can reuse it without duplicating EAP logic.
+  - Implementation summary: Fixed. After updating administered list, `answer/route.ts` calls `computeSessionTheta` (exported from selector.ts), checks `administered >= maxItems` and `se <= seStoppingThreshold && administered >= minItems`. Returns `{ nextQuestion: null, stopReason, thetaState }` when stopping. `computeSessionTheta` extracted as a separate export in `selector.ts` to avoid duplication. `selectNextQuestion` now uses parallel DB fetches for candidates and administered items.
 
-- **Task 10 — Monitoring, metrics, and phased rollout**: **Not started**
-  - Add metrics emitters around `diagnostic_started`, `diagnostic_abandoned`, `diagnostic_completed`, `item_exposed`, `theta_distribution`.
+- **G6 — Implement grade-level placement (theta bands) in API response and `KnowledgeMapResults`**: ✅ Completed
+  - **Spec link**: AC-05 — "Grade-level placement (below / at / above grade)" is a MUST output.
+  - Files changed: `lib/irt/irt.ts` — added `thetaToPlacement(theta)` with thresholds `< -0.5 = below`, `> 0.5 = above`, else `at`. `submit/route.ts` — reads adaptive session from Redis, computes theta, maps to placement, returns `{ placement }` in response. `DiagnosticFlow.tsx` — stores `placement` state from submit response; passes to `KnowledgeMapResults`. `KnowledgeMapResults` — new `placementBanner()` helper renders a branded colour banner (Danger/Warning/Success) above the chapter list.
+  - Implementation summary: Complete AC-05 output. Below = #E24B4A (red bg), At = #BA7517 (amber bg), Above = #1D9E75 (green bg). Falls back to 'at' when no adaptive session exists.
 
-Current progress summary:
-- `Draft Diagnostic_Test_Approach.md` — completed and saved.
-- Quick-fix started: `topicId` filter + debug logs (editing `lib/tests.ts` and related files). See Task 2 above for exact file-level edits planned. This task is in-progress and tracked in the repo TODO list.
+---
 
-Next actions (short):
-1. Implement `topicId` filter and debug logs in `lib/tests.ts` (small PR, low-risk).
-2. Add unit tests for `selectQuestions` behaviours.
-3. Make `TOTAL_QUESTIONS` configurable in `lib/diagnostics/diagnosticQuestionService.ts` and wire to UI.
+#### MEDIUM priority
+
+- **G7 — Implement 24h auto-submit via BullMQ delayed job**: ⏳ Pending
+  - **Spec link**: AC-04 — "After 24 hours the partial diagnostic is auto-submitted" is a MUST.
+  - **Gap**: `diagnosticPartial.ts` sets a 24h Redis TTL so data silently expires. No job fires to submit-and-bootstrap before expiry.
+  - Files to change:
+    - `jobs/diagnosticAutoSubmit.ts` (new) — BullMQ job definition for `diagnostic-auto-submit`; logic mirrors submit route: write AnswerEvents from partial state, enqueue bootstrap job.
+    - `app/api/student/diagnostic/save-partial/route.ts` — after saving partial state, enqueue a delayed `diagnostic-auto-submit` job with `delay: 24 * 60 * 60 * 1000`, keyed on `${userId}:${subjectId}` so duplicate saves replace the earlier job.
+    - `app/api/student/diagnostic/submit/route.ts` — on successful manual submit, remove any pending auto-submit job for the same key.
+  - Implementation summary: Implemented. New files: `jobs/diagnosticAutoSubmit.ts` (Queue + enqueue/cancel helpers using stable jobId `auto-submit:{userId}:{subjectId}`), `worker/services/diagnosticAutoSubmitWorker.ts` (reads partial state, writes AnswerEvents, enqueues bootstrap, marks completed). `save-partial/route.ts` enqueues delayed job (24h). `submit/route.ts` cancels it on manual submit. Worker registered in `worker/bootstrap.ts` with shutdown handling.
+
+- **G8 — Add `irt_a` and `irt_c` columns to `Question` schema (additive migration)**: ✅ Completed
+  - **Spec link**: §9 of approach doc — selector was hard-defaulting `a=1.0, c=0.2` because columns were absent.
+  - Files changed: `prisma/schema.prisma` — added `irt_a Float?` and `irt_c Float?` to `Question` model with inline comments. Migration `prisma/migrations/20260407000000_add_question_irt_a_c/migration.sql` — additive `ALTER TABLE ... ADD COLUMN IF NOT EXISTS`. `lib/diagnostics/selector.ts` — `QuestionRow` type updated; all three `findMany` selects include `irt_a, irt_c`; item construction uses `r.irt_a ?? defaultA()` and `r.irt_c ?? defaultC()`.
+  - Implementation summary: Additive only -- no data loss. Existing rows have NULL a/c and fall back to defaults. New items can be seeded with calibrated values.
+
+---
+
+#### LOW priority
+
+- **G9 — Rapid-fire detection for retake gaming (AC-08)**: ⏳ Pending
+  - **Spec link**: AC-08 (SHOULD) — "rapid-fire answers flagged".
+  - **Design**: Flag answers where `timeSpentMs < 3000` ms (3 seconds). If more than 30% of answers in a session are rapid-fire, mark the session result as `flagged_gaming` in the bootstrap job payload; do not void results, but log for review.
+  - Files to change:
+    - `app/api/student/diagnostic/answer/route.ts` — check `timeSpentMs < RAPID_FIRE_THRESHOLD_MS (3000)`; if so, include `rapidFire: true` in the administered entry stored in session.
+    - `app/api/student/diagnostic/submit/route.ts` — after collecting answers, compute `rapidFireRatio = rapidFireCount / totalAnswers`; if `> 0.3`, include `gamingFlag: true` in the bootstrap job payload and log a warning.
+    - `lib/config.ts` — add `rapidFireThresholdMs: 3000` to `diagnosticConfig`.
+  - Implementation summary: Implemented. `diagnosticConfig` gains `rapidFireThresholdMs` (3000ms) and `rapidFireRatioThreshold` (0.3). `answer/route.ts` sets `rapidFire: true` on administered entries where `timeSpentMs < rapidFireThresholdMs`. `DiagnosticSessionPayload` type updated to include `rapidFire?` field. `submit/route.ts` computes `rapidFireRatio`; logs a warning with context when `> 30%` of answers are rapid-fire.
+
+---
+
+### Remaining original tasks (infrastructure/quality)
+
+- **Task 6 — Unit & integration tests for IRT selection & adaptivity**: ⏳ Pending
+  - `tests/unit/lib/tests.spec.ts`, `tests/unit/lib/diagnostics.spec.ts`, `tests/integration/diagnostic_adaptive.test.ts`
+
+- **Task 7 — Deploy to staging + end-to-end smoke tests**: ⏳ Pending
+
+- **Task 8 — Monitoring, metrics, and phased rollout**: ⏳ Pending
+  - Metrics: `diagnostic_started`, `diagnostic_abandoned`, `diagnostic_completed`, `item_exposed`, `theta_distribution`.
+
+---
 
 Document author: senior-staff-engineer
-Date: 2026-04-06
+Last updated: 2026-04-06
 
