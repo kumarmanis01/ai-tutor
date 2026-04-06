@@ -370,7 +370,7 @@ export async function handleNotesJob(jobId: string): Promise<void> {
 
   // Strict validation: may throw typed errors. On failure we must fail the HydrationJob and persist AIContentLog, then rethrow.
   try {
-    validateOrThrow(parsed, { jobType: 'notes', language, subject: subjectName, topic: topic.name, grade, difficulty: job.difficulty });
+    validateOrThrow(parsed, { jobType: 'notes', language, subject: subjectName, topic: topic.name, grade, difficulty: job.difficulty, difficultyLevel });
     // Log a validation-passed event for observability
     try {
       const linkedExec = await prisma.executionJob.findFirst({ where: { payload: { path: ['hydrationJobId'], equals: job.id } } });
@@ -382,7 +382,7 @@ export async function handleNotesJob(jobId: string): Promise<void> {
     // Decide whether this validation failure is a retryable semantic weakness.
     // Treat explicit semantic weakness types as-is, and map certain SchemaInvalid or Placeholder errors
     // into retryable weakness categories so we can attempt the one-time quality retry.
-    const SEMANTIC_WEAKNESS_TYPES = ['notes_too_short', 'notes_missing_required_section', 'notes_too_few_examples', 'notes_missing_bridge']
+    const SEMANTIC_WEAKNESS_TYPES = ['notes_too_short', 'notes_missing_required_section', 'notes_too_few_examples', 'notes_missing_bridge', 'notes_too_few_sections']
     let isSemanticWeakness = SEMANTIC_WEAKNESS_TYPES.some(t => vErr?.type === t || String(vErr?.message ?? '').includes(t))
     let weaknessType: string | undefined = vErr?.type || undefined
 
@@ -417,9 +417,10 @@ export async function handleNotesJob(jobId: string): Promise<void> {
       const weaknessDetail = vErr?.details ? JSON.stringify(vErr.details) : ''
       try {
         logger.warn('[notesWorker] semantic weakness on first attempt -- retrying LLM with quality hint', { jobId: job.id, weaknessType });
-        const retryPrompt = `${prompt}\n\nIMPORTANT: Your previous response failed quality validation (${weaknessType}${weaknessDetail ? ': ' + weaknessDetail : ''}). Requirements: minimum 7 sections including hook/concept/worked_example/summary; at least 2 worked_example sections; every section content minimum 80 words; bridgeToNext sentence required. Do NOT use placeholders such as 'TBD', 'placeholder', 'content coming soon', or [insert ...].`
+        const minSectionsRequired = difficultyLevel === 'advanced' ? 9 : 7
+        const retryPrompt = `${prompt}\n\nIMPORTANT: Your previous response failed quality validation (${weaknessType}${weaknessDetail ? ': ' + weaknessDetail : ''}). Requirements: minimum ${minSectionsRequired} sections including hook/concept/worked_example/summary; at least 2 worked_example sections; every section content minimum 80 words; bridgeToNext sentence required. Do NOT use placeholders such as 'TBD', 'placeholder', 'content coming soon', or [insert ...].`
         const retryRes = await callAndParseJSON(retryPrompt, { ...llmMeta, retry: 1 }, 1);
-        validateOrThrow(retryRes.parsed, { jobType: 'notes', language, subject: subjectName, topic: topic.name, grade, difficulty: job.difficulty });
+        validateOrThrow(retryRes.parsed, { jobType: 'notes', language, subject: subjectName, topic: topic.name, grade, difficulty: job.difficulty, difficultyLevel });
         parsed = retryRes.parsed;
         llmResult = retryRes.llmResult;
         // Retry succeeded -- fall through to persist
