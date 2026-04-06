@@ -220,7 +220,7 @@ export default async function StudentHomeDashboardPage() {
       _sum: { amount: true },
     }),
 
-    // 14. Latest learning plan (most recent generation) — used for examDate
+    // 14. Latest learning plan (most recent generation) -- used for examDate
     (async () => {
       try {
         return await prisma.learningPlan.findFirst({
