@@ -185,9 +185,9 @@ export default async function StudentHomeDashboardPage() {
     // 5. Total session count (WeakTopicsSection gate)
     prisma.structuredSession.count({ where: { studentId: userId } }),
 
-    // 6. Learning profile (weekly goal)
+    // 6. Learning profile (weekly goal + diagnostic status)
     prisma.studentLearningProfile
-      .findFirst({ where: { studentId: userId }, select: { studyDaysPerWeek: true } })
+      .findFirst({ where: { studentId: userId }, select: { studyDaysPerWeek: true, recommendations: true } })
       .catch(() => null),
 
     // 7. Weak topics (max 2)
@@ -372,12 +372,16 @@ export default async function StudentHomeDashboardPage() {
     : null;
 
   // ── Primary card type ─────────────────────────────────────────────────────
+  // 'plan_loading' is used when the diagnostic is complete but the bootstrap
+  // worker has not yet produced a learning plan recommendation. This prevents
+  // the "Take diagnostic test" CTA from reappearing after the student submits.
   const engineRuleId = rawAction?.ruleId;
   const cardType =
     engineRuleId === 'homework_pending' || pendingHomeworkRaw.length > 0 ? 'homework'
     : activeSession ? 'resume'
     : recommendation ? 'start'
     : aheadOfPlan ? 'ahead'
+    : diagnosticCompleted ? 'plan_loading'
     : 'empty';
 
   const oldestHw = pendingHomeworkRaw[0] ?? null;
@@ -429,6 +433,23 @@ export default async function StudentHomeDashboardPage() {
   const diagnosticHref = subjectDefs[0]?.id
     ? `/diagnostic/${subjectDefs[0].id}`
     : '/student/onboarding';
+
+  // Check if the student has completed the diagnostic for at least one enrolled subject.
+  // The diagnostic status is stored in StudentLearningProfile.recommendations.diagnostics[subjectId].
+  // This prevents the "Take diagnostic test" CTA from reappearing after completion.
+  const diagnosticRecs = ((): Record<string, { status?: string }> => {
+    const recs = (learningProfile as { recommendations?: unknown } | null)?.recommendations;
+    if (recs && typeof recs === 'object' && !Array.isArray(recs)) {
+      const d = (recs as Record<string, unknown>).diagnostics;
+      if (d && typeof d === 'object' && !Array.isArray(d)) {
+        return d as Record<string, { status?: string }>;
+      }
+    }
+    return {};
+  })();
+  const diagnosticCompleted = subjectDefs.some(
+    (s) => diagnosticRecs[s.id]?.status === 'completed',
+  );
 
   // ── Crunch mode (daysToExam <= 14) ──────────────────────────────────────
   // Prefer per-user examDate if present; otherwise fall back to most recent LearningPlan.examDate
