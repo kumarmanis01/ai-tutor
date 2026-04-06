@@ -9,6 +9,7 @@ export type AuditEvent = {
   previousValue?: Record<string, unknown>
   newValue?:     Record<string, unknown>
   reason?:       string
+  ipAddress?:    string | null          // optional client IP for admin actions
   details?:      Record<string, unknown> // legacy metadata / legacyAction for system events
 }
 
