@@ -59,7 +59,9 @@ const NoteMetadataSchema = z.object({
 
 export const VidyaNotesSchema = z.object({
   metadata: NoteMetadataSchema,
-  sections: z.array(NoteSectionSchema).min(5),
+  // Minimum 7 matches the prompt's floor for foundation/standard difficulty (grade <= 10).
+  // Advanced (grade 11-12) requires 9 -- enforced semantically in aiOutputValidator.
+  sections: z.array(NoteSectionSchema).min(7),
   keyConcepts: z.array(KeyConceptSchema).min(1),
   examTips: z.array(z.string()).min(1),
   bridgeToNext: z.string().min(10),

@@ -9,7 +9,9 @@ export interface SystemHealth {
   timestamp: string;
   dependencies: {
     database: { status: HealthStatus; latencyMs?: number; error?: string };
-    redis: { status: HealthStatus; latencyMs?: number; error?: string };
+    // `endpoint` contains a masked Redis URL (password replaced with ***)
+    // to aid debugging without revealing secrets in logs/UI.
+    redis: { status: HealthStatus; latencyMs?: number; error?: string; endpoint?: string };
   };
   workers: { running: number; stale: number; failed: number; lastHeartbeatAgeSec?: number };
   jobs: { pending: number; running: number; failedLast5m: number; stuckRunning: number };
@@ -31,6 +33,17 @@ function classifyLatency(ms?: number) {
 export async function systemHealth(): Promise<SystemHealth> {
   const now = Date.now();
 
+  function maskRedisUrl(url?: string) {
+    if (!url) return undefined;
+    try {
+      // Replace the password (if any) between the last ':' before the '@' and the '@'
+      // Example: redis://default:secret@host:6379 -> redis://default:***@host:6379
+      return url.replace(/\/\/([^@]*?:)([^@]+)@/, '//$1***@');
+    } catch {
+      return undefined;
+    }
+  }
+
   // DB health
   let dbLatencyMs: number | undefined;
   let dbStatus: HealthStatus = 'unhealthy';
@@ -46,8 +59,11 @@ export async function systemHealth(): Promise<SystemHealth> {
   // Redis health
   let redisLatencyMs: number | undefined;
   let redisStatus: HealthStatus = 'unhealthy';
+  let redisEndpoint: string | undefined = undefined;
   try {
     const redis = getRedis();
+    // Expose a masked endpoint for debugging (do not reveal credentials)
+    redisEndpoint = maskRedisUrl(process.env.REDIS_URL ?? undefined) ?? undefined;
     const s = Date.now();
     await redis.ping();
     redisLatencyMs = Date.now() - s;
@@ -113,7 +129,7 @@ export async function systemHealth(): Promise<SystemHealth> {
     timestamp: new Date().toISOString(),
     dependencies: {
       database: { status: dbStatus, latencyMs: dbLatencyMs },
-      redis: { status: redisStatus, latencyMs: redisLatencyMs },
+      redis: { status: redisStatus, latencyMs: redisLatencyMs, endpoint: redisEndpoint },
     },
     workers: { running, stale, failed, lastHeartbeatAgeSec },
     jobs: { pending, running: runningJobs, failedLast5m, stuckRunning },

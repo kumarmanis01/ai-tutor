@@ -19,7 +19,7 @@
 import { prisma } from '@/lib/prisma.js';
 import { callLLM } from '@/lib/callLLM.js';
 import { parseLlmJson } from '@/lib/llm/sanitizeJson';
-import { validateOrThrow } from '@/lib/aiOutputValidator';
+import { validateOrThrow, SchemaInvalidError, PlaceholderContentError } from '@/lib/aiOutputValidator';
 import _fs from 'fs';
 import _path from 'path';
 import { renderTemplate } from '@/prompts/index'
@@ -27,6 +27,30 @@ import { isSystemSettingEnabled } from '@/lib/systemSettings.js';
 import { logger } from '@/lib/logger.js';
 import { JobStatus, ApprovalStatus } from '@/lib/ai-engine/types';
 import { getNextVersion } from '@/lib/getNextVersion';
+
+// If true, write raw LLM output only to worker logs (via logger) and DO NOT persist
+// the raw text to `AIContentLog.responseBody.raw`. This is useful for transient
+// debugging on VPS without storing potentially sensitive raw outputs.
+const LOG_RAW_LLM_OUTPUT_CONSOLE_ONLY = String(process.env.LOG_RAW_LLM_OUTPUT_CONSOLE_ONLY || '').toLowerCase() === 'true';
+
+function getResponseBodyForDb(parsed: any, llmResult: any) {
+  if (LOG_RAW_LLM_OUTPUT_CONSOLE_ONLY) {
+    return parsed ? { parsed } : null;
+  }
+  return { parsed, raw: llmResult?.content };
+}
+
+function logRawToConsole(jobId: string, llmResult: any) {
+  if (!LOG_RAW_LLM_OUTPUT_CONSOLE_ONLY) return;
+  try {
+    const raw = llmResult?.content;
+    if (!raw) return;
+    const snippet = typeof raw === 'string' ? raw.slice(0, 4000) : JSON.stringify(raw).slice(0, 4000);
+    logger.info('[LLM_RAW_DEBUG] Raw LLM output (console-only mode)', { jobId, snippet });
+  } catch (e) {
+    // Never crash the worker for logging
+  }
+}
 
 /**
  * Validates the shape of the LLM response for notes.
@@ -346,7 +370,7 @@ export async function handleNotesJob(jobId: string): Promise<void> {
 
   // Strict validation: may throw typed errors. On failure we must fail the HydrationJob and persist AIContentLog, then rethrow.
   try {
-    validateOrThrow(parsed, { jobType: 'notes', language, subject: subjectName, topic: topic.name, grade, difficulty: job.difficulty });
+    validateOrThrow(parsed, { jobType: 'notes', language, subject: subjectName, topic: topic.name, grade, difficulty: job.difficulty, difficultyLevel });
     // Log a validation-passed event for observability
     try {
       const linkedExec = await prisma.executionJob.findFirst({ where: { payload: { path: ['hydrationJobId'], equals: job.id } } });
@@ -355,17 +379,48 @@ export async function handleNotesJob(jobId: string): Promise<void> {
       }
     } catch { /* non-fatal */ }
   } catch (vErr: any) {
-    // Semantic weakness errors: retry once with an explicit quality hint before failing
-    const SEMANTIC_WEAKNESS_TYPES = ['notes_too_short', 'notes_missing_required_section', 'notes_too_few_examples', 'notes_missing_bridge']
-    const isSemanticWeakness = SEMANTIC_WEAKNESS_TYPES.some(t => vErr?.type === t || String(vErr?.message ?? '').includes(t))
+    // Decide whether this validation failure is a retryable semantic weakness.
+    // Treat explicit semantic weakness types as-is, and map certain SchemaInvalid or Placeholder errors
+    // into retryable weakness categories so we can attempt the one-time quality retry.
+    const SEMANTIC_WEAKNESS_TYPES = ['notes_too_short', 'notes_missing_required_section', 'notes_too_few_examples', 'notes_missing_bridge', 'notes_too_few_sections']
+    let isSemanticWeakness = SEMANTIC_WEAKNESS_TYPES.some(t => vErr?.type === t || String(vErr?.message ?? '').includes(t))
+    let weaknessType: string | undefined = vErr?.type || undefined
+
+    // Map SchemaInvalid (Zod) details to semantic weakness where appropriate
+    try {
+      if (!isSemanticWeakness && (vErr instanceof SchemaInvalidError || String(vErr?.type) === 'SCHEMA_INVALID')) {
+        const details = vErr?.details
+        if (Array.isArray(details)) {
+          for (const d of details) {
+            const pathArr = Array.isArray(d.path) ? d.path : [d.path]
+            const pathStr = pathArr.filter(Boolean).join('.')
+            const msg = String(d.message || '')
+            if (pathStr.includes('bridgeToNext') || /bridgeToNext/i.test(msg)) { isSemanticWeakness = true; weaknessType = 'notes_missing_bridge'; break }
+            if (pathStr.includes('sections') || /sections/i.test(pathStr) || /section/i.test(msg)) { isSemanticWeakness = true; weaknessType = 'notes_missing_required_section'; break }
+            if (/length|too short|min/i.test(msg) || pathStr.includes('content')) { isSemanticWeakness = true; weaknessType = 'notes_too_short'; break }
+          }
+        } else {
+          // generic schema invalid -> treat as retryable once
+          isSemanticWeakness = true; weaknessType = 'schema_invalid_generic'
+        }
+      }
+    } catch (mapErr) {
+      // ignore mapping errors
+    }
+
+    // Placeholder content should be retried once with a strict 'no placeholder' hint
+    if (!isSemanticWeakness && (vErr instanceof PlaceholderContentError || String(vErr?.type) === 'PLACEHOLDER_CONTENT')) {
+      isSemanticWeakness = true; weaknessType = 'placeholder_content'
+    }
+
     if (isSemanticWeakness) {
-      const weaknessType = vErr?.type || 'notes_quality'
       const weaknessDetail = vErr?.details ? JSON.stringify(vErr.details) : ''
       try {
         logger.warn('[notesWorker] semantic weakness on first attempt -- retrying LLM with quality hint', { jobId: job.id, weaknessType });
-        const retryPrompt = `${prompt}\n\nIMPORTANT: Your previous response failed quality validation (${weaknessType}${weaknessDetail ? ': ' + weaknessDetail : ''}). Requirements: minimum 7 sections including hook/concept/worked_example/summary; at least 2 worked_example sections; every section content minimum 80 words; bridgeToNext sentence required.`;
+        const minSectionsRequired = difficultyLevel === 'advanced' ? 9 : 7
+        const retryPrompt = `${prompt}\n\nIMPORTANT: Your previous response failed quality validation (${weaknessType}${weaknessDetail ? ': ' + weaknessDetail : ''}). Requirements: minimum ${minSectionsRequired} sections including hook/concept/worked_example/summary; at least 2 worked_example sections; every section content minimum 80 words; bridgeToNext sentence required. Do NOT use placeholders such as 'TBD', 'placeholder', 'content coming soon', or [insert ...].`
         const retryRes = await callAndParseJSON(retryPrompt, { ...llmMeta, retry: 1 }, 1);
-        validateOrThrow(retryRes.parsed, { jobType: 'notes', language, subject: subjectName, topic: topic.name, grade, difficulty: job.difficulty });
+        validateOrThrow(retryRes.parsed, { jobType: 'notes', language, subject: subjectName, topic: topic.name, grade, difficulty: job.difficulty, difficultyLevel });
         parsed = retryRes.parsed;
         llmResult = retryRes.llmResult;
         // Retry succeeded -- fall through to persist
@@ -375,7 +430,12 @@ export async function handleNotesJob(jobId: string): Promise<void> {
         const { formatLastError, FailureCode } = await import('@/lib/failureCodes');
         const le = formatLastError(FailureCode.VALIDATION_FAILED, String(retryReason));
         try { await prisma.hydrationJob.update({ where: { id: job.id }, data: { status: JobStatus.Failed, lastError: le } }); } catch {}
-        try { await prisma.aIContentLog.create({ data: { model: 'llm', promptType: 'notes', language: job.language || 'en', success: false, status: 'failed', error: le, requestBody: { jobId: job.id }, responseBody: parsed } }); } catch {}
+        try {
+          // Optionally log raw output to worker logs for debugging when flag enabled
+          logRawToConsole(job.id, llmResult);
+          const responseBody = getResponseBodyForDb(parsed, llmResult);
+          await prisma.aIContentLog.create({ data: { model: 'llm', promptType: 'notes', language: job.language || 'en', success: false, status: 'failed', error: le, requestBody: { jobId: job.id }, responseBody } });
+        } catch {}
         throw retryErr;
       }
     } else {
@@ -393,7 +453,10 @@ export async function handleNotesJob(jobId: string): Promise<void> {
         }
       } catch {}
       try {
-        await prisma.aIContentLog.create({ data: { model: 'llm', promptType: 'notes', language: job.language || 'en', success: false, status: 'failed', error: le, requestBody: { jobId: job.id }, responseBody: parsed } });
+        // Optionally log raw output to worker logs for debugging when flag enabled
+        logRawToConsole(job.id, llmResult);
+        const responseBody = getResponseBodyForDb(parsed, llmResult);
+        await prisma.aIContentLog.create({ data: { model: 'llm', promptType: 'notes', language: job.language || 'en', success: false, status: 'failed', error: le, requestBody: { jobId: job.id }, responseBody } });
       } catch {}
       throw vErr;
     }
@@ -445,6 +508,9 @@ export async function handleNotesJob(jobId: string): Promise<void> {
 
       // Persist AIContentLog inside the transaction (success path)
       try {
+        const successResponseBody = getResponseBodyForDb(parsed, llmResult);
+        // Log raw if console-only mode enabled
+        logRawToConsole(job.id, llmResult);
         await tx.aIContentLog.create({ data: {
           model: llmResult?.model || 'llm',
           promptType: 'notes',
@@ -462,7 +528,7 @@ export async function handleNotesJob(jobId: string): Promise<void> {
           success: true,
           status: 'success',
           requestBody: { prompt },
-          responseBody: { raw: llmResult?.content }
+          responseBody: successResponseBody
         } });
       } catch (e) {
         throw e;
@@ -485,7 +551,10 @@ export async function handleNotesJob(jobId: string): Promise<void> {
   } catch (err: any) {
     // Failure path: persist failure AIContentLog outside transaction, then mark hydration job failed
     try {
-      await prisma.aIContentLog.create({ data: { model: llmResult?.model || 'llm', promptType: 'notes', language: job.language || 'en', success: false, status: 'failed', error: String(err.message || err), requestBody: { prompt }, responseBody: { raw: llmResult?.content } } });
+      // Optionally log raw output to worker logs for debugging when flag enabled
+      logRawToConsole(job.id, llmResult);
+      const responseBody = getResponseBodyForDb(parsed, llmResult);
+      await prisma.aIContentLog.create({ data: { model: llmResult?.model || 'llm', promptType: 'notes', language: job.language || 'en', success: false, status: 'failed', error: String(err.message || err), requestBody: { prompt }, responseBody } });
     } catch {}
     try {
       const { formatLastError, inferFailureCodeFromMessage } = await import('@/lib/failureCodes');

@@ -202,7 +202,7 @@ export default async function SystemHealthPage() {
     : 'Unreachable'
 
   const redisDetail = health?.dependencies.redis.latencyMs !== undefined
-    ? `Connected -- ${health.dependencies.redis.latencyMs}ms${redisMemMb !== null ? ` -- ${redisMemMb} MB` : ''}`
+    ? `Connected -- ${health.dependencies.redis.latencyMs}ms${redisMemMb !== null ? ` -- ${redisMemMb} MB` : ''}${health?.dependencies.redis.endpoint ? ` -- ${health.dependencies.redis.endpoint}` : ''}`
     : 'Unreachable'
 
   // This page rendered, so the web process is obviously up -- always healthy

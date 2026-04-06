@@ -116,6 +116,7 @@ export default async function StudentHomeDashboardPage() {
     freeTierStatus,
     userSub,
     xpThisWeekAgg,
+    latestPlanExam,
     planTodayResult,
     upgradeDismissed,
   ] = await Promise.all([
@@ -132,7 +133,6 @@ export default async function StudentHomeDashboardPage() {
         totalXp: true,
         level: true,
         name: true,
-        examDate: true,
       },
     }),
 
@@ -219,6 +219,19 @@ export default async function StudentHomeDashboardPage() {
       where: { studentId: userId, awardedAt: { gte: monday, lte: sunday } },
       _sum: { amount: true },
     }),
+
+    // 14. Latest learning plan (most recent generation) -- used for examDate
+    (async () => {
+      try {
+        return await prisma.learningPlan.findFirst({
+          where: { studentId: userId },
+          orderBy: { generatedAt: 'desc' },
+          select: { examDate: true },
+        });
+      } catch {
+        return null;
+      }
+    })(),
 
     // 14. Today's learning plan item
     (async () => {
@@ -418,7 +431,8 @@ export default async function StudentHomeDashboardPage() {
     : '/student/onboarding';
 
   // ── Crunch mode (daysToExam <= 14) ──────────────────────────────────────
-  const examDate = studentProfile?.examDate ?? null;
+  // Prefer per-user examDate if present; otherwise fall back to most recent LearningPlan.examDate
+  const examDate = studentProfile?.examDate ?? latestPlanExam?.examDate ?? null;
   const daysToExam = examDate
     ? Math.ceil((examDate.getTime() - Date.now()) / 86_400_000)
     : null;

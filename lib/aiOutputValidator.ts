@@ -59,7 +59,7 @@ function scanForPlaceholders(obj: any): string | null {
   return null
 }
 
-export function validateOrThrow(parsed: any, ctx: { jobType: string, language?: string, difficulty?: string, subject?: string, topic?: string, grade?: number }) {
+export function validateOrThrow(parsed: any, ctx: { jobType: string, language?: string, difficulty?: string, subject?: string, topic?: string, grade?: number, difficultyLevel?: 'foundation' | 'standard' | 'advanced' }) {
   if (!parsed) throw new SchemaInvalidError('empty_response')
   // Schema validation: prefer Zod strict schemas for new prompt types
   try {
@@ -118,6 +118,13 @@ export function validateOrThrow(parsed: any, ctx: { jobType: string, language?: 
     if (Array.isArray(parsed.sections)) {
       // ---- VidyaNotesSchema quality gates ----
       const sections = parsed.sections as Array<{ type: string; content: string; blackboardNotes?: string[] }>
+
+      // Section count floor: must match the prompt's per-difficulty target.
+      // Advanced (grade 11-12) requires 9; foundation/standard requires 7.
+      const minSections = ctx.difficultyLevel === 'advanced' ? 9 : 7
+      if (sections.length < minSections) {
+        throw new SemanticWeaknessError('notes_too_few_sections', { got: sections.length, min: minSections })
+      }
 
       // Total content volume check
       const totalText = sections.map(s => s.content ?? '').join(' ')
