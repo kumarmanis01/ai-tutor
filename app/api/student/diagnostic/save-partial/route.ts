@@ -19,6 +19,7 @@ import { getServerSessionForHandlers } from '@/lib/session';
 import { logger } from '@/lib/logger';
 import { formatErrorForResponse } from '@/lib/errorResponse';
 import { savePartialDiagnostic } from '@/lib/redis/diagnosticPartial';
+import { enqueueDiagnosticAutoSubmit } from '@/jobs/diagnosticAutoSubmit';
 
 export async function POST(req: NextRequest) {
   const start = Date.now();
@@ -54,6 +55,11 @@ export async function POST(req: NextRequest) {
       }));
 
     await savePartialDiagnostic(userId, subjectId, { answers, currentIndex });
+
+    // Schedule 24h auto-submit (AC-04). Idempotent: resets the clock on each save.
+    const sessionId: string | undefined =
+      typeof body.sessionId === 'string' ? body.sessionId : undefined;
+    await enqueueDiagnosticAutoSubmit({ userId, subjectId, sessionId });
 
     const res = NextResponse.json({ saved: true });
     logger.logAPI(req, res, { className: 'DiagnosticSavePartialAPI', methodName: 'POST' }, start);

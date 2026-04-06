@@ -16,6 +16,7 @@ export type DiagnosticSessionPayload = {
     selectedOption?: string;
     timeSpentMs?: number;
     timestamp?: string;
+    rapidFire?: boolean;
   }>;
   createdAt: string;
   updatedAt: string;

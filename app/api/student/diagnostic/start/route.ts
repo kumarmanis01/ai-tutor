@@ -3,6 +3,7 @@ import { getServerSessionForHandlers } from '@/lib/session';
 import { logger } from '@/lib/logger';
 import { generateSubjectDiagnosticTest } from '@/lib/diagnostics/diagnosticQuestionService';
 import { createSession } from '@/lib/diagnostics/sessionStore';
+import { upsertSubjectDiagnosticStatus } from '@/lib/diagnostics/stateStore';
 
 export const dynamic = 'force-dynamic';
 
@@ -41,6 +42,12 @@ export async function POST(req: Request) {
       administered: [],
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
+    });
+
+    // Transition diagnostic status to in_progress so the mandatory gate reflects active session.
+    await upsertSubjectDiagnosticStatus(user.id, test.subjectId, {
+      status: 'in_progress',
+      runId: sessionId,
     });
 
     const first = test.questions[0];

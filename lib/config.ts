@@ -7,8 +7,12 @@ export const diagnosticConfig = {
   maxItems: Number(process.env.DIAGNOSTIC_MAX_ITEMS ?? 25),
   // Minimum valid answers to consider a diagnostic "valid" (not partial/abandoned)
   minAnswersForValidity: Number(process.env.DIAGNOSTIC_MIN_ANSWERS ?? 10),
-  // Stopping threshold for posterior standard error (EAP) - configurable for future adaptivity
+  // Stopping threshold for posterior standard error (EAP)
   seStoppingThreshold: Number(process.env.DIAGNOSTIC_SE_THRESHOLD ?? 0.35),
+  // Rapid-fire detection: answers submitted under this ms threshold are flagged (AC-08)
+  rapidFireThresholdMs: Number(process.env.DIAGNOSTIC_RAPID_FIRE_MS ?? 3000),
+  // If this fraction of answers are rapid-fire, the session is flagged for gaming review
+  rapidFireRatioThreshold: Number(process.env.DIAGNOSTIC_RAPID_FIRE_RATIO ?? 0.3),
 };
 
 // Feature flags (runtime-configurable via env vars for now)
