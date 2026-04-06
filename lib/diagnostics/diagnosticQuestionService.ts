@@ -1,6 +1,7 @@
   import { prisma } from '@/lib/prisma';
   import { ensureQuestions, type QuestionFilters } from '@/lib/tests';
   import { logger } from '@/lib/logger';
+  import { diagnosticConfig, computeDifficultyCounts } from '@/lib/config';
 
   export type DiagnosticDifficulty = 'easy' | 'medium' | 'hard';
 
@@ -46,10 +47,9 @@
     questions: DiagnosticQuestion[];
   }
 
-  const TOTAL_QUESTIONS = 15;
-  const EASY_COUNT = 6; // 40% of 15
-  const MEDIUM_COUNT = 6; // 40% of 15
-  const HARD_COUNT = 3; // 20% of 15
+  // Counts driven by diagnosticConfig so they respect env-var overrides.
+  const { totalItems: TOTAL_QUESTIONS, easy: EASY_COUNT, medium: MEDIUM_COUNT, hard: HARD_COUNT } =
+    computeDifficultyCounts(diagnosticConfig.minItems);
 
   function parseChoices(raw: unknown): DiagnosticQuestionOption[] {
     try {
@@ -61,11 +61,22 @@
           : raw;
       if (!Array.isArray(value)) return [];
       return value
-        .map((c: any) => ({
-          key: String(c.key ?? c.id ?? c.value ?? ''),
-          label: String(c.label ?? c.text ?? c.value ?? ''),
-        }))
-        .filter((c) => c.key && c.label);
+        .map((c: unknown, idx: number) => {
+          // Plain string array format (most common): ["Option A", "Option B", ...]
+          if (typeof c === 'string') {
+            return { key: String(idx), label: c };
+          }
+          // Object format: { key, label } or { id, text } or similar
+          if (c !== null && typeof c === 'object') {
+            const obj = c as Record<string, unknown>;
+            return {
+              key: String(obj.key ?? obj.id ?? obj.value ?? idx),
+              label: String(obj.label ?? obj.text ?? obj.value ?? ''),
+            };
+          }
+          return { key: String(idx), label: String(c ?? '') };
+        })
+        .filter((c) => c.label.trim().length > 0);
     } catch {
       return [];
     }

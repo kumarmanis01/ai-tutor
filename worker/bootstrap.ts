@@ -50,6 +50,8 @@ import { DISTRESS_NOTIFICATION_QUEUE_NAME } from "../jobs/distressNotification.j
 import { processDistressNotification } from "./services/distressNotificationWorker.js";
 import { RETEACH_PLAN_QUEUE_NAME } from "../jobs/reteachPlan.js";
 import { processReteachPlan } from "./services/reteachPlanWorker.js";
+import { DIAGNOSTIC_AUTO_SUBMIT_QUEUE_NAME } from "../jobs/diagnosticAutoSubmit.js";
+import { processDiagnosticAutoSubmit } from "./services/diagnosticAutoSubmitWorker.js";
 
 const argv = minimist(process.argv.slice(2));
 
@@ -231,6 +233,12 @@ export async function bootstrapWorker() {
     { connection: redisConnection, concurrency: 2 },
   );
 
+  const diagnosticAutoSubmitWorker = new Worker(
+    DIAGNOSTIC_AUTO_SUBMIT_QUEUE_NAME,
+    async (job: Job) => processDiagnosticAutoSubmit(job as Job<import("../jobs/diagnosticAutoSubmit.js").DiagnosticAutoSubmitJobData>),
+    { connection: redisConnection, concurrency: 2 },
+  );
+
   // Debug events: active, stalled
     if (process.env.WORKER_DEBUG === '1') {
     worker.on('active', (job) => {
@@ -295,6 +303,7 @@ export async function bootstrapWorker() {
       await weeklyDigestWorker.close();
       await distressNotificationWorker.close();
       await reteachPlanWorker.close();
+      await diagnosticAutoSubmitWorker.close();
 
       await prisma.workerLifecycle.update({
         where: { id: lifecycleId },

@@ -1022,8 +1022,11 @@ model Question {
   topicId       String? /// canonical topic reference — backfilled for legacy rows
   type          String
   difficulty    String?
-  /// IRT difficulty (b-parameter): recall = -1.5 to -0.5, single-step = -0.5 to 0.5, multi-step = 0.5 to 2.0
-  irt_b         Float?
+  /// IRT 3PL parameters. a = discrimination (default 1.0), b = difficulty, c = guessing (default 0.2).
+  /// All nullable: selector falls back to defaults when null.
+  irt_a         Float? /// Discrimination; typical range 0.5–2.5
+  irt_b         Float? /// Difficulty: recall -1.5 to -0.5, single-step -0.5 to 0.5, multi-step 0.5 to 2.0
+  irt_c         Float? /// Pseudo-guessing; typical range 0.0–0.35
   prompt        String
   choices       Json?
   correctAnswer String?
@@ -1713,6 +1716,12 @@ enum AdminActionType {
   JOB_RESUME
   JOB_RETRY
   JOB_REQUEUE
+  REGEN_JOB_CREATED
+  REGEN_JOB_TRIGGERED
+  REGEN_JOB_STARTED
+  REGEN_JOB_COMPLETED
+  REGEN_JOB_FAILED
+  REGEN_JOB_LOCKED
   CONTENT_HYDRATE
   WORKER_START
   WORKER_STOP
