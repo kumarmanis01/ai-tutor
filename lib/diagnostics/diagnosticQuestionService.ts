@@ -1,6 +1,7 @@
   import { prisma } from '@/lib/prisma';
   import { ensureQuestions, type QuestionFilters } from '@/lib/tests';
   import { logger } from '@/lib/logger';
+  import { diagnosticConfig, computeDifficultyCounts } from '@/lib/config';
 
   export type DiagnosticDifficulty = 'easy' | 'medium' | 'hard';
 
@@ -46,10 +47,8 @@
     questions: DiagnosticQuestion[];
   }
 
-  const TOTAL_QUESTIONS = 15;
-  const EASY_COUNT = 6; // 40% of 15
-  const MEDIUM_COUNT = 6; // 40% of 15
-  const HARD_COUNT = 3; // 20% of 15
+  const { totalItems: TOTAL_QUESTIONS, easy: EASY_COUNT, medium: MEDIUM_COUNT, hard: HARD_COUNT } =
+    computeDifficultyCounts(diagnosticConfig.minItems);
 
   function parseChoices(raw: unknown): DiagnosticQuestionOption[] {
     try {

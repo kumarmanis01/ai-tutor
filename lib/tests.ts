@@ -32,12 +32,14 @@ export type QuestionFilters = {
  * Falls back to GeneratedQuestion (hydration pipeline) if the Question table is empty.
  */
 export async function selectQuestions(filters: QuestionFilters, count: number): Promise<Question[]> {
-  const where = {
+  const where: any = {
     status: 'ACTIVE' as const, // quarantined questions excluded -- do not remove this filter
-    ...(filters.subject ? { subject: filters.subject } : {}),
+    // Use case-insensitive matching for free-text fields to avoid slug vs display-name mismatches.
+    ...(filters.subject ? { subject: { equals: filters.subject, mode: 'insensitive' } } : {}),
+    ...(filters.topicId ? { topicId: filters.topicId } : {}),
     ...(filters.grade ? { grade: filters.grade } : {}),
-    ...(filters.board ? { board: filters.board } : {}),
-    ...(filters.chapter ? { chapter: filters.chapter } : {}),
+    ...(filters.board ? { board: { equals: filters.board, mode: 'insensitive' } } : {}),
+    ...(filters.chapter ? { chapter: { equals: filters.chapter, mode: 'insensitive' } } : {}),
     ...(filters.type ? { type: filters.type } : {}),
     ...(filters.difficulty ? { difficulty: filters.difficulty } : {}),
   };
@@ -48,11 +50,17 @@ export async function selectQuestions(filters: QuestionFilters, count: number): 
     take: count * 3,
   });
 
+  try {
+    logger.debug('selectQuestions.initial_pool', { filters, poolCount: pool.length });
+  } catch {
+    // best effort logging
+  }
+
   // Broaden if too few
   if (pool.length < count && filters.subject) {
     pool = await prisma.question.findMany({
       // quarantined questions excluded -- do not remove this filter
-      where: { status: 'ACTIVE', subject: filters.subject },
+      where: { status: 'ACTIVE', subject: { equals: filters.subject, mode: 'insensitive' } },
       orderBy: [{ difficulty: 'asc' }, { updatedAt: 'desc' }],
       take: count * 3,
     });
@@ -60,7 +68,13 @@ export async function selectQuestions(filters: QuestionFilters, count: number): 
 
   // Fallback: bridge from GeneratedQuestion (hydration pipeline) into Question table
   if (pool.length < count) {
+    try {
+      logger.debug('selectQuestions.sync_from_generated.before', { filters, need: count * 3 });
+    } catch {}
     pool = await syncFromGeneratedQuestions(filters, count * 3);
+    try {
+      logger.debug('selectQuestions.sync_from_generated.after', { filters, poolCount: pool.length });
+    } catch {}
   }
 
   // Deduplicate by prompt text to avoid showing the same question twice
@@ -73,6 +87,10 @@ export async function selectQuestions(filters: QuestionFilters, count: number): 
       deduped.push(q);
     }
   }
+
+  try {
+    logger.debug('selectQuestions.deduped', { filters, dedupedCount: deduped.length });
+  } catch {}
 
   // Simple sampling without replacement
   const selected: Question[] = [];
@@ -139,7 +157,12 @@ async function syncFromGeneratedQuestions(filters: QuestionFilters, take: number
     take,
   });
 
-  if (rows.length === 0) return [];
+  if (rows.length === 0) {
+    try {
+      logger.debug('syncFromGeneratedQuestions.rows_empty', { filters, take });
+    } catch {}
+    return [];
+  }
 
   // Upsert into Question table so AttemptQuestion FK constraints work
   const ids: string[] = [];

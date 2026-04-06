@@ -50,6 +50,10 @@ interface DiagnosticFlowProps {
   questions: DiagnosticQuestion[];
   initialAnswers: Array<{ questionId: string; selectedOption: string }>;
   initialIndex: number;
+  // Optional props used when running server-driven adaptive diagnostics
+  boardSlug?: string;
+  grade?: number | string;
+  subjectSlug?: string;
 }
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -286,6 +290,9 @@ export default function DiagnosticFlow({
   questions,
   initialAnswers,
   initialIndex,
+  boardSlug,
+  grade,
+  subjectSlug,
 }: DiagnosticFlowProps) {
   const router = useRouter();
 
@@ -294,6 +301,51 @@ export default function DiagnosticFlow({
     initialAnswers.map((a) => ({ ...a, timeSpentMs: 0 })),
   );
   const [currentIndex, setCurrentIndex] = useState(initialIndex);
+  const [sessionId, setSessionId] = useState<string | null>(null);
+  const [questionList, setQuestionList] = useState<DiagnosticQuestion[]>(questions);
+  const useAdaptive = questionList.length === 0 && !!boardSlug && !!subjectSlug;
+
+  // Bootstrap adaptive session: call start API to create server session and
+  // receive the first question. Runs once on mount when adaptive mode is active.
+  useEffect(() => {
+    let mounted = true;
+    async function bootstrap() {
+      if (!useAdaptive || sessionId) return;
+      if (!boardSlug || !subjectSlug) return;
+      setSubmitting(true);
+      try {
+        const res = await fetch('/api/student/diagnostic/start', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ boardSlug, grade, subjectSlug }),
+        });
+        if (!res.ok) return;
+        const json = await res.json();
+        if (!mounted) return;
+        if (json?.sessionId) setSessionId(json.sessionId);
+        if (json?.firstQuestion) {
+          const fq = json.firstQuestion as any;
+          const mapped: DiagnosticQuestion = {
+            id: fq.id,
+            prompt: fq.prompt,
+            choices: (fq.options ?? []).map((o: any) => (o?.label ? o.label : String(o))),
+            correctAnswer: '',
+            chapterId: fq.chapterId ?? '',
+            chapterName: fq.chapterName ?? '',
+            topicId: fq.topicId ?? '',
+          };
+          setQuestionList([mapped]);
+          setCurrentIndex(0);
+        }
+      } finally {
+        if (mounted) setSubmitting(false);
+      }
+    }
+    bootstrap();
+    return () => {
+      mounted = false;
+    };
+  }, [useAdaptive, sessionId, boardSlug, grade, subjectSlug]);
   const [selectedOption, setSelectedOption] = useState<string>('');
   const [secondsLeft, setSecondsLeft] = useState(TOTAL_SECONDS);
   const [showAbandon, setShowAbandon] = useState(false);
@@ -313,7 +365,7 @@ export default function DiagnosticFlow({
 
   // Pre-fill selection if resuming
   useEffect(() => {
-    const existing = answers.find((a) => a.questionId === questions[currentIndex]?.id);
+    const existing = answers.find((a) => a.questionId === questionList[currentIndex]?.id);
     setSelectedOption(existing?.selectedOption ?? '');
     questionStartRef.current = Date.now();
   }, [currentIndex]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -353,7 +405,7 @@ export default function DiagnosticFlow({
   const recordAnswer = useCallback(
     (option: string): PartialAnswer[] => {
       const timeSpentMs = Date.now() - questionStartRef.current;
-      const questionId = questions[currentIndex].id;
+      const questionId = questionList[currentIndex].id;
       const updated = answers.filter((a) => a.questionId !== questionId);
       updated.push({ questionId, selectedOption: option, timeSpentMs });
       return updated;
@@ -416,18 +468,69 @@ export default function DiagnosticFlow({
     setSelectedOption(option);
   }
 
-  function handleNext() {
+  async function handleNext() {
     if (!selectedOption) return;
-    const updatedAnswers = recordAnswer(selectedOption);
-    setAnswers(updatedAnswers);
+    setSubmitting(true);
+    setSubmitError('');
+    try {
+      const updatedAnswers = recordAnswer(selectedOption);
+      setAnswers(updatedAnswers);
 
-    if (currentIndex < questions.length - 1) {
-      setCurrentIndex((i) => i + 1);
-      setSelectedOption('');
-      questionStartRef.current = Date.now();
-    } else {
-      // Last question -- submit
-      submitDiagnostic(updatedAnswers);
+      if (useAdaptive) {
+        // Send to adaptive answer API and append nextQuestion if present
+        const questionId = questionList[currentIndex].id;
+        const timeSpentMs = Date.now() - questionStartRef.current;
+        const res = await fetch('/api/student/diagnostic/answer', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ sessionId, questionId, selectedOption, timeSpentMs }),
+        });
+        if (!res.ok) {
+          const json = await res.json().catch(() => ({}));
+          setSubmitError(json?.error ?? 'Could not record answer.');
+          setSubmitting(false);
+          return;
+        }
+        const json = await res.json();
+        // update sessionId if returned
+        if (json?.sessionState?.sessionId) setSessionId(json.sessionState.sessionId);
+
+        if (json.nextQuestion) {
+          const nq = json.nextQuestion as any;
+          const mapped: DiagnosticQuestion = {
+            id: nq.id,
+            prompt: nq.prompt,
+            choices: (nq.options ?? []).map((o: any) => (o?.label ? o.label : String(o))),
+            correctAnswer: '',
+            chapterId: nq.chapterId ?? '',
+            chapterName: nq.chapterName ?? '',
+            topicId: nq.topicId ?? '',
+          };
+          setQuestionList((q) => [...q, mapped]);
+          setCurrentIndex((i) => i + 1);
+          setSelectedOption('');
+          questionStartRef.current = Date.now();
+          setSubmitting(false);
+          return;
+        }
+
+        // No nextQuestion → diagnostic finished server-side
+        await submitDiagnostic(updatedAnswers);
+        setSubmitting(false);
+        return;
+      }
+
+      // Non-adaptive: proceed locally
+      if (currentIndex < questionList.length - 1) {
+        setCurrentIndex((i) => i + 1);
+        setSelectedOption('');
+        questionStartRef.current = Date.now();
+      } else {
+        // Last question -- submit
+        await submitDiagnostic(updatedAnswers);
+      }
+    } finally {
+      setSubmitting(false);
     }
   }
 

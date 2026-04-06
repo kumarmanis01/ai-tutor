@@ -39,7 +39,7 @@ async function handleTrigger(_req: Request, jobId?: string, actorId?: string | n
 
     // Fire-and-forget audit: do not block the response on audit write
     try {
-      logAuditEvent(prisma as any, { action: AuditEvents.REGEN_JOB_TRIGGERED, actorId: actorId ?? null, entityId: jobId, metadata: { jobId } })
+      logAuditEvent(prisma as any, { action: null, actorId: actorId ?? null, entityId: jobId, targetEntity: 'RegenerationJob', details: { legacyAction: AuditEvents.REGEN_JOB_TRIGGERED, jobId } })
     } catch {
       // ensure we never throw on audit failures
     }

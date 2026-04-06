@@ -12,6 +12,7 @@ import { redirect } from 'next/navigation';
 import { requireActiveSession } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { generateSubjectDiagnosticTest } from '@/lib/diagnostics/diagnosticQuestionService';
+import { featureFlags } from '@/lib/config';
 import { getPartialDiagnostic } from '@/lib/redis/diagnosticPartial';
 import DiagnosticFlow, {
   type DiagnosticQuestion,
@@ -103,20 +104,24 @@ export default async function DiagnosticPage({
     }
   }
 
-  // Generate (or retrieve cached) diagnostic questions
+  // If adaptive diagnostic feature is enabled, we do not pre-generate the full
+  // question batch on the page. The client will call the `start` API to bootstrap
+  // a server-driven adaptive session. Otherwise, generate the full test here.
   let rawQuestions: Awaited<ReturnType<typeof generateSubjectDiagnosticTest>>['questions'] = [];
   let questionsReady = true;
-  try {
-    const diagnosticTest = await generateSubjectDiagnosticTest({
-      boardSlug: student.board,
-      grade: student.grade,
-      subjectSlug: subjectDef.slug,
-      languageCode: student.language ?? undefined,
-    });
-    rawQuestions = diagnosticTest.questions;
-    if (rawQuestions.length === 0) questionsReady = false;
-  } catch {
-    questionsReady = false;
+  if (!featureFlags.adaptiveDiagnostic) {
+    try {
+      const diagnosticTest = await generateSubjectDiagnosticTest({
+        boardSlug: student.board,
+        grade: student.grade,
+        subjectSlug: subjectDef.slug,
+        languageCode: student.language ?? undefined,
+      });
+      rawQuestions = diagnosticTest.questions;
+      if (rawQuestions.length === 0) questionsReady = false;
+    } catch {
+      questionsReady = false;
+    }
   }
 
   // Content not ready: topics exist but questions haven't been generated yet.
@@ -174,6 +179,10 @@ export default async function DiagnosticPage({
       questions={questions}
       initialAnswers={initialAnswers}
       initialIndex={initialIndex}
+      // When running adaptive diagnostic, pass board/grade/subjectSlug so client can call start API
+      boardSlug={student.board}
+      grade={student.grade}
+      subjectSlug={subjectDef.slug}
     />
   );
 }

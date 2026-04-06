@@ -2,6 +2,7 @@ import type { Job } from 'bullmq'
 import { prisma } from '@/lib/prisma.js'
 import { logger } from '@/lib/logger.js'
 import { generateLearningPlan } from '@/lib/ai/learningPlan.js'
+import { diagnosticConfig } from '@/lib/config';
 
 export interface DiagnosticBootstrapJobData {
   studentId: string
@@ -60,6 +61,19 @@ export async function processDiagnosticBootstrap(job: Job<DiagnosticBootstrapJob
       answerByConcept.set(a.conceptId, a.isCorrect)
     }
 
+    const providedAnswersCount = answerByConcept.size
+    const minValid = Number(diagnosticConfig.minAnswersForValidity ?? 10)
+    const isPartialAbandon = providedAnswersCount < minValid
+    if (isPartialAbandon) {
+      logger.info('[diagnostic-bootstrap] partial_abandon_detected', {
+        jobId: job.id,
+        studentId,
+        diagnosticSessionId,
+        providedAnswersCount,
+        minValid,
+      })
+    }
+
     let seeded = 0
     let skipped = 0
 
@@ -71,8 +85,15 @@ export async function processDiagnosticBootstrap(job: Job<DiagnosticBootstrapJob
       let attemptCount = 0
 
       if (!answered) {
-        masteryScore = 0.3
-        attemptCount = 0
+        if (isPartialAbandon) {
+          // If the diagnostic is deemed a partial/abandoned run, assume grade-level start
+          // for unanswered concepts but mark them as higher-uncertainty using masteryVariance.
+          masteryScore = 0.5
+          attemptCount = 0
+        } else {
+          masteryScore = 0.3
+          attemptCount = 0
+        }
       } else if (isCorrect) {
         masteryScore = 0.6
         attemptCount = 1
@@ -101,6 +122,7 @@ export async function processDiagnosticBootstrap(job: Job<DiagnosticBootstrapJob
               masteryScore,
               lastInteraction: now,
               attemptCount,
+              masteryVariance: isPartialAbandon && !answered ? 0.3 : undefined,
             },
           })
           seeded += 1
@@ -116,6 +138,7 @@ export async function processDiagnosticBootstrap(job: Job<DiagnosticBootstrapJob
               masteryScore,
               lastInteraction: now,
               attemptCount: existing.attemptCount + attemptCount,
+              masteryVariance: isPartialAbandon && !answered ? 0.3 : undefined,
             },
           })
           seeded += 1
