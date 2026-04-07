@@ -5,6 +5,54 @@
 
 ---
 
+## F-STU-020 — Chapter Practice Test ✅
+
+**Problem:** Chapter tests had no question-type diversity (all questions treated as one pool), no time enforcement, no LLM explanations for wrong answers, and a low score produced no actionable follow-up.
+
+**Files changed:**
+- `lib/tests.ts` — Added `selectQuestionsWithMix()`: fetches MCQ/short/long_answer buckets in parallel, applies 40/30/30 distribution with backfill fallback, returns `{ questions, timeLimitSeconds }` (60s/MCQ, 120s/short, 300s/long). Added `addLLMExplanations()`: single batch LLM call to fill explanation field for all wrong answers without a pre-populated explanation.
+- `app/api/tests/start/route.ts` — Chapter tests (when `chapter` filter present) now use `selectQuestionsWithMix()`; response includes `timeLimitSeconds`. Quick-practice tests unchanged.
+- `components/Test/AttemptRunner.tsx` — Accepts `timeLimitSeconds?` prop; shows `MM:SS` countdown timer (red tint at ≤60s); auto-submits when timer reaches zero via `submitRef` pattern (no stale closure). Handles `long_answer`/`essay`/`long` question types with 6-row textarea. Min touch targets 44px on all interactive elements.
+- `components/Test/ChapterTests.tsx` — Stores `timeLimitSeconds` from API response and passes it to `AttemptRunner`.
+- `app/api/tests/submit/route.ts` — Calls `addLLMExplanations()` after grading (non-blocking, falls back silently). When `scorePercent < 40` and `topicId` is known, creates a `chapter_revision` `LearningSession` for the home engine to surface.
+- `tests/unit/lib/tests.selectQuestionsWithMix.test.ts` — 7 new tests: exact count, no overflow, time-limit formula, long_answer backfill, no duplicate IDs, filter passthrough, positive timeLimitSeconds.
+
+**Gate:** `build:workers` ✅ · `build` ✅ · 682 unit tests ✅ (7 new)
+
+---
+
+## F-STU-015 — AI Session Summary ✅
+
+**Problem:** Session close screen showed a static template message regardless of how the student performed, making every session feel identical.
+
+**Files changed:**
+- `lib/student/sessionInsight.ts` *(new)* — `buildSessionInsight()` calls `callTutorLLM('tutor:eval')` with a performance-adaptive prompt (≥75% celebrate, 50-74% acknowledge progress, <50% encourage review). 5s timeout; strips machine tags; falls back to static message on error. Never throws.
+- `app/api/student/session/[sessionId]/complete/route.ts` — Replaced template `buildAiInsight()` with `buildSessionInsight()`; now returns real AI-written closing sentence.
+- `tests/unit/lib/student/sessionInsight.test.ts` *(new)* — 9 tests covering all performance bands, fallback on timeout, empty content, zero-questions guard.
+
+**Gate:** `build:workers` ✅ · `build` ✅ · 682 unit tests ✅ (9 new)
+
+---
+
+## F-STU-031 — Levels 1–100 + Badge System ✅
+
+**Problem:** XP level cap was 10 with a quadratic formula that didn't reward long-term engagement. No badge system existed.
+
+**Files changed:**
+- `lib/student/xpLevels.ts` *(new)* — Pure module (no imports): 100-level threshold table, `getLevelFromXP()`, `getXPToNextLevel()`, `getProgressPercent()`, `getLevelTierName()` (Learner → Legend), `MAX_LEVEL = 100`.
+- `lib/student/xp.ts` — Replaced inline threshold array/functions with imports from `xpLevels.ts`; re-exports all for backward compat.
+- `components/student/dashboard/XPWidget.tsx` — Uses `LEVEL_THRESHOLDS` band calculation and displays `"Level N · TierName"`.
+- `lib/student/badges.ts` *(new)* — 8 badge definitions (streak milestones 7/14/30/60/100, consistency, comeback, chapter_master). `checkSessionBadges()` self-seeds Badge rows via upsert and creates `UserBadge` rows (skipDuplicates). Never throws.
+- `prisma/schema.prisma` — Additive: `Badge`, `UserBadge` models; `userBadges` relation on `User`.
+- `prisma/migrations/20260407000003_add_badge_system/migration.sql` *(new)* — Creates both tables.
+- `app/api/student/session/[sessionId]/complete/route.ts` — `await updateStreak()` (was fire-and-forget `void`); calls `checkSessionBadges()`; returns `badgesEarned[]`.
+- `tests/unit/lib/student/xp.test.ts` — Updated cap-at-100 tests; 11 `getLevelTierName` tests; 4 `LEVEL_THRESHOLDS` tests.
+- `tests/unit/lib/student/badges.test.ts` *(new)* — 5 pure-logic tests on `BADGE_DEFINITIONS`.
+
+**Gate:** `build:workers` ✅ · `build` ✅ · 682 unit tests ✅
+
+---
+
 ## F-STU-012 — 3-Tier Hint System ✅
 
 **Problem:** Hints had zero scaffolding. The hint button sent `__HINT_REQUEST__` to the LLM but the prompt had no instructions for what to do with it, so Vidya either ignored the request or gave a generic response. Three silent bugs compounded this: `hintsUsed` was hardcoded to `0` in both prompt assembly and the state machine, so the hint counter in Redis never incremented; the `__HINT_REQUEST__` sentinel was passed raw to safety checks and DoubtKb; and hint turns were logged as `tutor:teach` making per-concept analysis impossible.

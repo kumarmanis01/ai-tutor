@@ -4,6 +4,7 @@ import type { Question, TestResult } from '@prisma/client';
 const MasteryLevel = { beginner: 'beginner', intermediate: 'intermediate', advanced: 'advanced', expert: 'expert' } as const;
 type MasteryLevel = (typeof MasteryLevel)[keyof typeof MasteryLevel];
 import { createAIClient } from '@/lib/aiContext';
+import { callTutorLLM } from '@/lib/callLLM';
 import { logger } from '@/lib/logger';
 
 /**
@@ -253,6 +254,130 @@ export async function ensureQuestions(filters: QuestionFilters, count: number) {
   const needed = count - bank.length;
   const aiNew = await generateQuestionsAI(filters, needed);
   return [...bank, ...aiNew].slice(0, count);
+}
+
+// Seconds allowed per question type for chapter practice tests (F-STU-020 AC-03).
+const SECONDS_PER_TYPE: Record<string, number> = {
+  mcq: 60,
+  short: 120,
+  long_answer: 300,
+  long: 300,
+  essay: 300,
+}
+
+function timeForType(type: string): number {
+  return SECONDS_PER_TYPE[type.toLowerCase()] ?? 120
+}
+
+/**
+ * Select questions with a 40 / 30 / 30 type mix (MCQ / short / long_answer).
+ * Fractions are floored; any remainder goes to the short bucket.
+ * Each bucket is fetched independently; remaining slots are backfilled from
+ * whichever bucket has surplus questions so count is always honoured.
+ * Returns questions and the computed time-limit for the whole test.
+ *
+ * Used exclusively for chapter practice tests (F-STU-020 AC-02).
+ */
+export async function selectQuestionsWithMix(
+  filters: Omit<QuestionFilters, 'type'>,
+  count: number,
+): Promise<{ questions: Question[]; timeLimitSeconds: number }> {
+  const mcqTarget = Math.floor(count * 0.4)
+  const longTarget = Math.floor(count * 0.3)
+  const shortTarget = count - mcqTarget - longTarget // absorbs remainder
+
+  const [mcqPool, shortPool, longPool] = await Promise.all([
+    selectQuestions({ ...filters, type: 'mcq' }, mcqTarget * 3),
+    selectQuestions({ ...filters, type: 'short' }, shortTarget * 3),
+    selectQuestions({ ...filters, type: 'long_answer' }, longTarget * 3),
+  ])
+
+  function pickN(pool: Question[], n: number, exclude: Set<string>): Question[] {
+    const available = pool.filter((q) => !exclude.has(q.id))
+    const shuffled = [...available].sort(() => Math.random() - 0.5)
+    return shuffled.slice(0, n)
+  }
+
+  const used = new Set<string>()
+
+  const mcqSelected = pickN(mcqPool, mcqTarget, used)
+  mcqSelected.forEach((q) => used.add(q.id))
+
+  const longSelected = pickN(longPool, longTarget, used)
+  longSelected.forEach((q) => used.add(q.id))
+
+  let shortSelected = pickN(shortPool, shortTarget, used)
+  shortSelected.forEach((q) => used.add(q.id))
+
+  // Backfill: if long_answer pool was sparse, pull extras from short pool.
+  if (longSelected.length < longTarget) {
+    const extra = pickN(shortPool, longTarget - longSelected.length, used)
+    extra.forEach((q) => used.add(q.id))
+    // Push extras into shortSelected so they appear in the set; caller sees combined list.
+    shortSelected = [...shortSelected, ...extra]
+  }
+
+  // Final backfill: if still below count, draw from whichever pool has surplus.
+  const all = [...mcqSelected, ...longSelected, ...shortSelected]
+  if (all.length < count) {
+    const surplus = pickN([...mcqPool, ...shortPool, ...longPool], count - all.length, used)
+    surplus.forEach((q) => used.add(q.id))
+    all.push(...surplus)
+  }
+
+  const questions = all.slice(0, count)
+  const timeLimitSeconds = questions.reduce((acc, q) => acc + timeForType(q.type), 0)
+
+  return { questions, timeLimitSeconds }
+}
+
+const EXPLANATION_TIMEOUT_MS = 8_000
+
+/**
+ * Enrich wrong-answer graded results with LLM-generated explanations.
+ * Uses a single batch prompt for all wrong answers without an existing explanation.
+ * Returns the original array (with explanations filled in) unchanged on any error.
+ * Never throws.
+ */
+export async function addLLMExplanations(
+  graded: GradedResult[],
+  studentId: string,
+  attemptId: string,
+): Promise<GradedResult[]> {
+  const wrong = graded.filter((g) => !g.correct && !g.explanation && g.questionText)
+  if (wrong.length === 0) return graded
+
+  const lines = wrong.map(
+    (g, i) =>
+      `${i + 1}. questionId: "${g.questionId}"\n   Question: ${g.questionText}\n   Correct answer: ${g.correctAnswer ?? '(see working)'}`,
+  )
+
+  const prompt = [
+    'For each wrong answer below, write a brief 1-2 sentence explanation that helps the student understand the correct answer.',
+    'Return ONLY a valid JSON array: [{ "questionId": "...", "explanation": "..." }, ...]',
+    'Tone: encouraging, forward-looking. Never say "you were wrong" or "you failed".',
+    '',
+    ...lines,
+  ].join('\n')
+
+  try {
+    const result = await callTutorLLM(
+      prompt,
+      { callType: 'tutor:eval', studentId, sessionId: attemptId },
+      EXPLANATION_TIMEOUT_MS,
+    )
+    const text = (result?.content ?? '').trim()
+    const match = text.match(/\[[\s\S]*\]/)
+    if (!match) return graded
+    const parsed: Array<{ questionId: string; explanation: string }> = JSON.parse(match[0])
+    const byId = new Map(parsed.map((e) => [e.questionId, e.explanation]))
+    return graded.map((g) => ({
+      ...g,
+      explanation: g.explanation ?? byId.get(g.questionId),
+    }))
+  } catch {
+    return graded
+  }
 }
 
 export type GradedResult = {
