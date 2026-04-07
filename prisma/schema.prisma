@@ -102,6 +102,7 @@ model User {
   engagementProcessedSessions EngagementProcessedSession[]
   studentFeatureFlags         StudentFeatureFlag[]         @relation("StudentFeatureFlags")
   studentXpRecords            StudentXP[]
+  userBadges                  UserBadge[]
   learningPlans               LearningPlan[]
   consents                    Consent[]
   parentProfile               ParentProfile?
@@ -140,6 +141,31 @@ model StudentXP {
 
   @@index([studentId])
   @@index([studentId, awardedAt])
+}
+
+/// Badge definition -- one row per badge type. Auto-seeded on first award via upsert.
+model Badge {
+  id          String      @id @default(cuid())
+  key         String      @unique
+  name        String
+  description String
+  icon        String
+  createdAt   DateTime    @default(now())
+  userBadges  UserBadge[]
+}
+
+/// Badge awarded to a student. @@unique prevents double-awarding.
+model UserBadge {
+  id        String   @id @default(cuid())
+  studentId String
+  badgeKey  String
+  earnedAt  DateTime @default(now())
+
+  student User  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  badge   Badge @relation(fields: [badgeKey], references: [key])
+
+  @@unique([studentId, badgeKey])
+  @@index([studentId])
 }
 
 /// Per-student feature flags used for staged rollouts + kill switch gating.

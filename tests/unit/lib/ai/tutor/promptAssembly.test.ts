@@ -1,4 +1,8 @@
-import { assembleSystemPrompt, type PromptContext } from '@/lib/ai/tutor/promptAssembly'
+import {
+  assembleSystemPrompt,
+  buildStageInstructionsLayer,
+  type PromptContext,
+} from '@/lib/ai/tutor/promptAssembly'
 
 function makeCtx(overrides: Partial<PromptContext> = {}): PromptContext {
   return {
@@ -14,6 +18,7 @@ function makeCtx(overrides: Partial<PromptContext> = {}): PromptContext {
     stage: 'CORE_EXPLANATION',
     stageAttemptCount: 1,
     hintsUsed: 0,
+    isHintRequest: false,
     sessionSummary: 'Student recently revised algebra topics.',
     recentTurns: [
       { role: 'student', content: 'I am okay with algebra.' },
@@ -29,7 +34,7 @@ function makeCtx(overrides: Partial<PromptContext> = {}): PromptContext {
 }
 
 describe('assembleSystemPrompt', () => {
-  test('1. All 7 layers present in output when well within budget', () => {
+  test('1. All 8 layers present in output when well within budget', () => {
     const res = assembleSystemPrompt(makeCtx())
     const s = res.system
     expect(s).toContain('### PERSONA')
@@ -37,6 +42,7 @@ describe('assembleSystemPrompt', () => {
     expect(s).toContain('### PEDAGOGICAL_RULES')
     expect(s).toContain('### STUDENT_PROFILE')
     expect(s).toContain('### SESSION_STATE')
+    expect(s).toContain('### STAGE_INSTRUCTIONS')
     expect(s).toContain('### CURRICULUM_CONTEXT')
     expect(s).toContain('### RESPONSE_FORMAT')
     expect(res.layersIncluded).toEqual([
@@ -45,12 +51,13 @@ describe('assembleSystemPrompt', () => {
       'PEDAGOGICAL_RULES',
       'STUDENT_PROFILE',
       'SESSION_STATE',
+      'STAGE_INSTRUCTIONS',
       'CURRICULUM_CONTEXT',
       'RESPONSE_FORMAT',
     ])
   })
 
-  test('2. Layer order is PERSONA -> SAFETY -> PEDAGOGICAL_RULES -> STUDENT_PROFILE -> SESSION_STATE -> CURRICULUM_CONTEXT -> RESPONSE_FORMAT', () => {
+  test('2. Layer order is PERSONA -> SAFETY -> PEDAGOGICAL_RULES -> STUDENT_PROFILE -> SESSION_STATE -> STAGE_INSTRUCTIONS -> CURRICULUM_CONTEXT -> RESPONSE_FORMAT', () => {
     const s = assembleSystemPrompt(makeCtx()).system
     const idx = (marker: string) => s.indexOf(marker)
     const order = [
@@ -59,6 +66,7 @@ describe('assembleSystemPrompt', () => {
       '### PEDAGOGICAL_RULES',
       '### STUDENT_PROFILE',
       '### SESSION_STATE',
+      '### STAGE_INSTRUCTIONS',
       '### CURRICULUM_CONTEXT',
       '### RESPONSE_FORMAT',
     ]
@@ -153,6 +161,7 @@ describe('assembleSystemPrompt', () => {
       'PEDAGOGICAL_RULES',
       'STUDENT_PROFILE',
       'SESSION_STATE',
+      'STAGE_INSTRUCTIONS',
       'RESPONSE_FORMAT',
     ])
   })
@@ -183,6 +192,104 @@ describe('assembleSystemPrompt', () => {
     const profileSection = s.slice(profileIdx, sessionIdx)
     expect(profileSection).toMatch(/exam is in 10 days/i)
     expect(profileSection).toMatch(/prioritise exam-focused practice/i)
+  })
+
+  test('13. STAGE_INSTRUCTIONS present for non-practice stage (CORE_EXPLANATION)', () => {
+    const res = assembleSystemPrompt(makeCtx({ stage: 'CORE_EXPLANATION', isHintRequest: false }))
+    const s = res.system
+    expect(s).toContain('### STAGE_INSTRUCTIONS')
+    expect(s).toContain('CORE_EXPLANATION')
+    expect(res.layersIncluded).toContain('STAGE_INSTRUCTIONS')
+  })
+})
+
+describe('buildStageInstructionsLayer -- hint tiers', () => {
+  function makePracticeCtx(hintsUsed: number, isHintRequest: boolean, stage: PromptContext['stage'] = 'GUIDED_PRACTICE'): PromptContext {
+    return {
+      studentName: 'Priya',
+      grade: 9,
+      board: 'CBSE',
+      teachingLanguage: 'en',
+      examDateProximityDays: null,
+      learningStyle: null,
+      recentMisconceptions: [],
+      masteryBrief: 'moderate',
+      emotionalState: 'NEUTRAL',
+      stage,
+      stageAttemptCount: 0,
+      hintsUsed,
+      isHintRequest,
+      sessionSummary: null,
+      recentTurns: [],
+      activeMisconceptionName: null,
+      frustrationScore: 0,
+      ragChunks: [],
+      conceptName: 'Quadratic Equations',
+      subjectName: 'Mathematics',
+    }
+  }
+
+  test('should output Tier 1 Directional Nudge when hintsUsed=0 and isHintRequest=true', () => {
+    const layer = buildStageInstructionsLayer(makePracticeCtx(0, true))
+    expect(layer).toContain('Tier 1')
+    expect(layer).toContain('Directional Nudge')
+    expect(layer).toContain('[HINT_OFFER]')
+    expect(layer).not.toContain('Tier 2')
+    expect(layer).not.toContain('Tier 3')
+  })
+
+  test('should output Tier 2 Structural Hint when hintsUsed=1 and isHintRequest=true', () => {
+    const layer = buildStageInstructionsLayer(makePracticeCtx(1, true))
+    expect(layer).toContain('Tier 2')
+    expect(layer).toContain('Structural Hint')
+    expect(layer).toContain('[HINT_OFFER]')
+    expect(layer).not.toContain('Tier 1')
+    expect(layer).not.toContain('Tier 3')
+  })
+
+  test('should output Tier 3 Worked Scaffold when hintsUsed=2 and isHintRequest=true', () => {
+    const layer = buildStageInstructionsLayer(makePracticeCtx(2, true))
+    expect(layer).toContain('Tier 3')
+    expect(layer).toContain('Worked Scaffold')
+    expect(layer).toContain('[HINT_OFFER]')
+    expect(layer).not.toContain('Tier 1')
+    expect(layer).not.toContain('Tier 2')
+  })
+
+  test('should output full solution + isomorphic problem when hintsUsed=3 and isHintRequest=true', () => {
+    const layer = buildStageInstructionsLayer(makePracticeCtx(3, true))
+    expect(layer).toContain('ALL HINTS EXHAUSTED')
+    expect(layer).toContain('isomorphic')
+    expect(layer).toContain('[QUESTION]')
+    expect(layer).not.toContain('[HINT_OFFER]')
+  })
+
+  test('should NOT deliver hint instructions when isHintRequest=false even in practice stage', () => {
+    const layer = buildStageInstructionsLayer(makePracticeCtx(0, false))
+    expect(layer).not.toContain('Tier 1')
+    expect(layer).not.toContain('HINT REQUESTED')
+    // Should show normal practice guidance instead
+    expect(layer).toContain('GUIDED_PRACTICE')
+  })
+
+  test('should NOT show hint instructions for non-practice stages even when isHintRequest=true', () => {
+    const layer = buildStageInstructionsLayer(makePracticeCtx(0, true, 'CORE_EXPLANATION'))
+    expect(layer).not.toContain('Tier 1')
+    expect(layer).not.toContain('HINT REQUESTED')
+    expect(layer).toContain('CORE_EXPLANATION')
+  })
+
+  test('should work for INDEPENDENT_PRACTICE stage hint request', () => {
+    const layer = buildStageInstructionsLayer(makePracticeCtx(1, true, 'INDEPENDENT_PRACTICE'))
+    expect(layer).toContain('Tier 2')
+    expect(layer).toContain('[HINT_OFFER]')
+  })
+
+  test('should include STAGE_INSTRUCTIONS header in all cases', () => {
+    for (const stage of ['HOOK', 'PREREQ_BRIDGE', 'CORE_EXPLANATION', 'WORKED_EXAMPLE', 'GUIDED_PRACTICE', 'INDEPENDENT_PRACTICE', 'CONSOLIDATION'] as PromptContext['stage'][]) {
+      const layer = buildStageInstructionsLayer(makePracticeCtx(0, false, stage))
+      expect(layer).toContain('### STAGE_INSTRUCTIONS')
+    }
   })
 })
 

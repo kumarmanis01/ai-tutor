@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getServerSessionForHandlers } from '@/lib/session';
-import { applyGrading, SubmitPayload, updateTopicMastery } from '@/lib/tests';
+import { applyGrading, addLLMExplanations, SubmitPayload, updateTopicMastery } from '@/lib/tests';
 import { updateStudentTopicProgress } from '@/lib/learning/updateTopicProgress';
 import { updateLearningProfile } from '@/lib/recommendations/engine';
 import { adjustDifficultyAfterTest } from '@/lib/personalization/adaptDifficulty';
@@ -62,6 +62,14 @@ export async function POST(req: Request) {
   }
 
   const result = await applyGrading(attempt, payload);
+
+  // AC-05: Enrich wrong answers with LLM-generated explanations (F-STU-020).
+  // Non-blocking: graded result falls back to DB explanations or empty on failure.
+  try {
+    result.graded = await addLLMExplanations(result.graded, user.id, attempt.id);
+  } catch {
+    // non-fatal
+  }
 
   // Update topic mastery synchronously so the next call to /api/home/next-action
   // always reflects the latest accuracy and resolved AttentionFlags.
@@ -168,7 +176,55 @@ export async function POST(req: Request) {
     }
   }
 
-  res = NextResponse.json({ attemptId: attempt.id, ...result, difficultyFeedback });
+  // AC-06: Score < 40% → create a revision learning session (F-STU-020).
+  // Gives the home engine a pending 'chapter_revision' session to surface.
+  let needsRevision = false;
+  if (result.scorePercent < 40 && topicId) {
+    needsRevision = true;
+    try {
+      const topicMeta = await prisma.topicDef.findUnique({
+        where: { id: topicId },
+        select: {
+          chapter: {
+            select: {
+              name: true,
+              subject: { select: { name: true } },
+            },
+          },
+        },
+      });
+      await prisma.learningSession.create({
+        data: {
+          studentId: user.id,
+          activityType: 'chapter_revision',
+          activityRef: topicId,
+          difficultyLevel: 'easy',
+          isCompleted: false,
+          startedAt: new Date(),
+          meta: {
+            sourceAttemptId: attempt.id,
+            scorePercent: result.scorePercent,
+            chapter: topicMeta?.chapter?.name ?? null,
+            subject: topicMeta?.chapter?.subject?.name ?? null,
+            reason: 'score_below_40',
+          },
+        },
+      });
+      logger.info('revision.session.created', {
+        studentId: user.id,
+        topicId,
+        scorePercent: result.scorePercent,
+      });
+    } catch (err) {
+      logger.error('TestsSubmitAPI.createRevisionSession', {
+        userId: user.id,
+        topicId,
+        error: err,
+      });
+    }
+  }
+
+  res = NextResponse.json({ attemptId: attempt.id, ...result, difficultyFeedback, needsRevision });
   logger.logAPI(req, res, { className: 'TestsSubmitAPI', methodName: 'POST' }, start);
   return res;
 }

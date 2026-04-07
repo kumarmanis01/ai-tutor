@@ -155,6 +155,14 @@ export async function runTutorOrchestrator(args: {
   const { studentId, state, studentMessage, subjectId, conceptId } = args
   const sessionId = state.sessionId
 
+  // Detect the hint-request sentinel sent by the frontend hint bar / inactivity prompt.
+  // Replace with a clean phrase so safety checks and DoubtKb never see the raw sentinel.
+  const isHintRequest = studentMessage === '__HINT_REQUEST__'
+  const effectiveMessage = isHintRequest ? 'Please give me a hint.' : studentMessage
+
+  // Derive actual hintsUsed from persisted Redis state (hintsRemaining counts down from 3).
+  const hintsUsed = Math.max(0, 3 - state.hintsRemaining)
+
   await markTurnStarted(sessionId)
 
   try {
@@ -176,8 +184,8 @@ export async function runTutorOrchestrator(args: {
       turnId: `${sessionId}:${state.lastTurnNumber}`,
     }
 
-    // 2. Input safety
-    const inputSafety = checkInputSafety(studentMessage, safetyContext)
+    // 2. Input safety (use effectiveMessage so __HINT_REQUEST__ sentinel never reaches safety checks)
+    const inputSafety = checkInputSafety(effectiveMessage, safetyContext)
     const safetyEvents: (InputSafetyEvent | OutputSafetyEvent)[] = [...inputSafety.events].map((e) => {
       const trigger = String((e as any).triggerType ?? '').toUpperCase()
       if (trigger === 'PII' || trigger === 'JAILBREAK') {
@@ -303,7 +311,7 @@ export async function runTutorOrchestrator(args: {
       { topN: 4 },
     )
 
-    // 5. Prompt assembly — minimal but structured PromptContext
+    // 5. Prompt assembly — pass actual hintsUsed and isHintRequest for tier-aware hint delivery
     const prompt = assembleSystemPrompt({
       studentName: 'Student',
       grade: 10,
@@ -316,7 +324,8 @@ export async function runTutorOrchestrator(args: {
       emotionalState: frustration.emotionalState,
       stage: state.stage as TutorStage,
       stageAttemptCount: 0,
-      hintsUsed: 0,
+      hintsUsed,
+      isHintRequest,
       sessionSummary: null,
       recentTurns: [],
       activeMisconceptionName: activeMisconception,
@@ -332,11 +341,12 @@ export async function runTutorOrchestrator(args: {
       })
     }
 
-    // 5b. DoubtKb cache lookup (T26) — only for question/clarification turns
+    // 5b. DoubtKb cache lookup (T26) — skip for hint requests; only for question/clarification turns
     // Detect: message ends with '?' or contains common doubt indicators
     const isDoubtTurn =
-      redactedInput.endsWith('?') ||
-      /\b(what|why|how|explain|confused|don'?t understand|clarify|mean|means|help)\b/i.test(redactedInput)
+      !isHintRequest &&
+      (redactedInput.endsWith('?') ||
+        /\b(what|why|how|explain|confused|don'?t understand|clarify|mean|means|help)\b/i.test(redactedInput))
 
     if (isDoubtTurn) {
       const cachedAnswer = await lookupDoubt(redactedInput, subjectId)
@@ -374,10 +384,11 @@ export async function runTutorOrchestrator(args: {
     }
 
     // 6. Tutor LLM call with retry/backoff
+    // Use 'tutor:hint' callType for hint turns so hint dependency can be queried from AITutorTurnLog (AC-07).
     let llmContent: string
     let servedFromCache = false
     try {
-      const tutorCallType: TutorCallType = 'tutor:teach'
+      const tutorCallType: TutorCallType = isHintRequest ? 'tutor:hint' : 'tutor:teach'
 
       const lang: ExplanationLang = 'en'
       const stage = state.stage as TutorStage
@@ -436,7 +447,8 @@ export async function runTutorOrchestrator(args: {
     }
 
     // Doubt KB: after output safety passes, persist helpful Q&A for future context.
-    if (tag === 'QUESTION' || tag === 'HINT_OFFER') {
+    // Skip hint turns -- they carry the synthetic "Please give me a hint." message, not a real doubt.
+    if (!isHintRequest && (tag === 'QUESTION' || tag === 'HINT_OFFER')) {
       void saveDoubt({
         studentId,
         sessionId,
@@ -450,12 +462,12 @@ export async function runTutorOrchestrator(args: {
       }
     }
 
-    // 10. State machine transition — derive next stage + hint usage from tag
+    // 10. State machine transition -- pass actual hintsUsed so hint counter increments in Redis
     const nextCore = applyTagTransition(
       {
         stage: state.stage as TutorStage,
         stageAttemptCount: 0,
-        hintsUsed: 0,
+        hintsUsed,
         prereqRemediationActive: false,
         prereqReturnStage: null,
         consecutiveWrongAnswers: 0,
@@ -484,7 +496,7 @@ export async function runTutorOrchestrator(args: {
     await prisma.aITutorTurnLog.create({
       data: {
         sessionId,
-        callType: 'tutor:teach',
+        callType: isHintRequest ? 'tutor:hint' : 'tutor:teach',
         model: 'unknown',
         inputTokens: 0,
         outputTokens: 0,

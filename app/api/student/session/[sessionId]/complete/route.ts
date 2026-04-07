@@ -3,19 +3,11 @@ import { getServerSessionForHandlers } from '@/lib/session'
 import { prisma } from '@/lib/prisma'
 import { awardXP } from '@/lib/student/xp'
 import { updateStreak } from '@/lib/student/streak'
+import { buildSessionInsight } from '@/lib/student/sessionInsight'
+import { checkSessionBadges } from '@/lib/student/badges'
 import { logger } from '@/lib/logger'
 
 export const dynamic = 'force-dynamic'
-
-async function buildAiInsight(
-  correctAnswers: number,
-  totalQuestions: number,
-  conceptName: string | null,
-): Promise<string | null> {
-  if (!totalQuestions) return null
-  const name = conceptName ?? 'this concept'
-  return `You answered ${correctAnswers}/${totalQuestions} questions correctly on ${name} -- nice work, keep going.`
-}
 
 export async function POST(req: Request, { params }: { params: Promise<{ sessionId: string }> }) {
   const start = Date.now()
@@ -73,11 +65,12 @@ export async function POST(req: Request, { params }: { params: Promise<{ session
     const leveledUp = xpResult?.leveledUp ?? false
     const newLevel = xpResult?.newLevel ?? null
 
-    // Only award streak credit for sessions where the student answered enough
-    // questions to have meaningfully progressed through the learning stages.
-    // totalQuestions < 5 indicates a login/browse or heavily incomplete session.
+    // Award streak credit and capture result for badge checking.
+    // Awaited so currentStreak is up-to-date when checkSessionBadges runs below.
+    let currentStreak = 0
     if (totalQuestions >= 5) {
-      void updateStreak(userId)
+      const streakResult = await updateStreak(userId)
+      currentStreak = streakResult?.currentStreak ?? 0
     }
 
     const learningSession = await prisma.learningSession.findUnique({
@@ -92,12 +85,24 @@ export async function POST(req: Request, { params }: { params: Promise<{ session
       sessionDurationMinutes = Math.max(0, Math.round(ms / 60000))
     }
 
-    let aiInsight: string | null = null
-    try {
-      aiInsight = await buildAiInsight(correctAnswers, totalQuestions, conceptName)
-    } catch {
-      aiInsight = null
-    }
+    // AC-03 (F-STU-015 MUST): AI-generated personalised closing insight, not a template.
+    const aiInsight = await buildSessionInsight({
+      correctAnswers,
+      totalQuestions,
+      conceptName,
+      hintsUsed: 0, // hint count not tracked at LearningSession level; defaults to 0
+      masteryDelta,
+      studentId: userId,
+      sessionId,
+    })
+
+    // AC-04 (F-STU-031): check for newly earned badges this session.
+    const badgesEarned = await checkSessionBadges({
+      studentId: userId,
+      sessionId,
+      currentStreak,
+      masteryAfter,
+    })
 
     const res = NextResponse.json(
       {
@@ -107,7 +112,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ session
         newLevel,
         masteryDelta,
         masteryAfter,
-        badgesEarned: [] as { name: string; description: string }[],
+        badgesEarned: badgesEarned.map((b) => ({ name: b.name, description: b.description })),
         aiInsight,
         sessionDurationMinutes,
         correctAnswers,

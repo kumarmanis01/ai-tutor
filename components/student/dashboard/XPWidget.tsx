@@ -1,5 +1,7 @@
 'use client'
 
+import { getProgressPercent, getXPToNextLevel, LEVEL_THRESHOLDS, getLevelTierName } from '@/lib/student/xpLevels'
+
 export interface XPWidgetProps {
   totalXp?: number
   level?: number
@@ -40,10 +42,13 @@ export function XPWidget({
     )
   }
 
-  const threshold = Math.max(1, level * level * 50)
-  const xpInBand = totalXp % threshold
-  const remaining = threshold - xpInBand
-  const progressPct = Math.min(100, Math.round((xpInBand / threshold) * 100))
+  const currentThreshold = (LEVEL_THRESHOLDS[level - 1] ?? 0) as number
+  const nextThreshold = (LEVEL_THRESHOLDS[level] ?? LEVEL_THRESHOLDS[LEVEL_THRESHOLDS.length - 1]) as number
+  const xpInBand = totalXp - currentThreshold
+  const bandSize = Math.max(1, nextThreshold - currentThreshold)
+  const remaining = getXPToNextLevel(totalXp) ?? 0
+  const progressPct = getProgressPercent(totalXp)
+  const tierName = getLevelTierName(level)
 
   return (
     <section aria-label="XP progress" className="w-full max-w-full">
@@ -51,7 +56,7 @@ export function XPWidget({
         {/* Header row: level badge + xp this week */}
         <div className="flex items-center justify-between mb-3">
           <span className="inline-flex items-center px-2.5 py-1 rounded-lg bg-[#534AB7]/10 dark:bg-[#534AB7]/20 text-[#534AB7] dark:text-indigo-300 text-xs font-bold tracking-wide">
-            Level {level}
+            Level {level} · {tierName}
           </span>
           <span className="text-xs text-gray-500 dark:text-gray-400">
             XP this week: <span className="font-semibold text-gray-700 dark:text-gray-200">{xpThisWeek}</span>
@@ -61,7 +66,7 @@ export function XPWidget({
         {/* Progress bar */}
         <div className="mb-2">
           <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400 mb-1">
-            <span>{xpInBand} / {threshold} XP</span>
+            <span>{xpInBand} / {bandSize} XP</span>
             <span>{progressPct}%</span>
           </div>
           <div
@@ -69,7 +74,7 @@ export function XPWidget({
             role="progressbar"
             aria-valuenow={xpInBand}
             aria-valuemin={0}
-            aria-valuemax={threshold}
+            aria-valuemax={bandSize}
           >
             <div
               className="h-full rounded-full bg-[#534AB7] dark:bg-[#534AB7] transition-all duration-300"
