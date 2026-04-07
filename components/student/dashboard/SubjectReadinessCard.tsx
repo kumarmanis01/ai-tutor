@@ -8,6 +8,8 @@ export interface SubjectReadinessCardProps {
   subjectId: string
   loading?: boolean
   error?: boolean
+  /** True when the diagnostic has been submitted but readiness is not yet computed. */
+  diagnosticDone?: boolean
 }
 
 function ReadinessCardSkeleton() {
@@ -59,6 +61,7 @@ export function SubjectReadinessCard({
   subjectId,
   loading = false,
   error = false,
+  diagnosticDone = false,
 }: SubjectReadinessCardProps) {
   if (loading) return <ReadinessCardSkeleton />
 
@@ -70,8 +73,19 @@ export function SubjectReadinessCard({
     )
   }
 
-  // Empty state: score 0 = no data
+  // Empty state: score 0 = no data yet.
+  // If the diagnostic has been submitted, show a "preparing" message instead of the CTA.
   if (score === 0) {
+    if (diagnosticDone) {
+      return (
+        <div className="rounded-xl border border-[#534AB7]/20 bg-[#EEEDFE] dark:border-[#534AB7]/30 dark:bg-[#534AB7]/10 p-4">
+          <p className="text-sm font-medium text-gray-900 dark:text-gray-100 mb-1">{subjectName}</p>
+          <p className="text-xs text-gray-500 dark:text-gray-400">
+            Readiness is being calculated -- check back shortly.
+          </p>
+        </div>
+      )
+    }
     return (
       <div className="rounded-xl border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800 p-4">
         <p className="text-sm font-medium text-gray-900 dark:text-gray-100 mb-1">{subjectName}</p>

@@ -585,6 +585,7 @@ export default async function StudentHomeDashboardPage() {
                         subjectName={r.subjectName}
                         score={r.score}
                         subjectId={r.subjectId}
+                        diagnosticDone={diagnosticRecs[r.subjectId]?.status === 'completed'}
                       />
                     </a>
                   ))}
