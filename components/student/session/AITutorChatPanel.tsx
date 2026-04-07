@@ -42,6 +42,8 @@ export interface AITutorChatPanelProps {
   initialStage: string;
   isAITutorEnabled: boolean;
   onSessionComplete: (summary: { tag: string; stage: string; turnNumber: number; hintsUsed: number }) => void;
+  /** Called with the full text each time an AI message stream completes (F-STU-014 whiteboard). */
+  onAiMessage?: (content: string) => void;
 }
 
 type TutorTurnCompleteEvent = {
@@ -295,6 +297,7 @@ export const AITutorChatPanel: React.FC<AITutorChatPanelProps> = ({
   initialStage,
   isAITutorEnabled,
   onSessionComplete,
+  onAiMessage,
 }) => {
   const [items, setItems] = useState<MessageItem[]>([]);
   const [inputValue, setInputValue] = useState('');
@@ -309,10 +312,14 @@ export const AITutorChatPanel: React.FC<AITutorChatPanelProps> = ({
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const lastAiMsgIdRef = useRef<string | null>(null);
+  // Accumulates streaming AI content so finalizeAiMessage can fire onAiMessage (F-STU-014).
+  const lastAiContentRef = useRef('');
   const currentStageRef = useRef(initialStage);
   const inactivityTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const hasReceivedTokenRef = useRef(false); // first token received this turn?
+  const onAiMessageRef = useRef(onAiMessage);
+  onAiMessageRef.current = onAiMessage;
 
   // ── Scroll to bottom ───────────────────────────────────────────────────────
 
@@ -366,6 +373,7 @@ export const AITutorChatPanel: React.FC<AITutorChatPanelProps> = ({
   const startAiMessage = useCallback(() => {
     const id = makeId('ai');
     lastAiMsgIdRef.current = id;
+    lastAiContentRef.current = '';
     hasReceivedTokenRef.current = false;
     setIsTyping(true);
     const msg: ChatMessage = { id, role: 'ai', content: '', isStreaming: true };
@@ -379,6 +387,7 @@ export const AITutorChatPanel: React.FC<AITutorChatPanelProps> = ({
       hasReceivedTokenRef.current = true;
       setIsTyping(false); // first token → hide dots, show streaming bubble
     }
+    lastAiContentRef.current += chunk;
     setItems((prev) =>
       prev.map((item) =>
         item.kind === 'msg' && item.msg.id === id
@@ -399,7 +408,11 @@ export const AITutorChatPanel: React.FC<AITutorChatPanelProps> = ({
           : item,
       ),
     );
+    // Notify whiteboard panel with completed AI message content (F-STU-014).
+    const content = lastAiContentRef.current;
+    if (content) onAiMessageRef.current?.(content);
     lastAiMsgIdRef.current = null;
+    lastAiContentRef.current = '';
   }, []);
 
   // ── Stage transition ───────────────────────────────────────────────────────

@@ -5,6 +5,21 @@
 
 ---
 
+## F-STU-014 — Virtual Whiteboard ✅
+
+**Problem:** Maths/Physics/Chemistry sessions had no scratch-work space. Students had no way to show their reasoning and Vidya couldn't evaluate their working process.
+
+**Files changed:**
+- `components/student/session/WhiteboardPanel.tsx` *(new)* — HTML5 Canvas two-layer whiteboard. AI steps layer: text lines that reveal one by one via `@keyframes wb-step-in` CSS animation. Student canvas: freehand pencil/eraser using mouse + touch events (pointer-events on canvas, `e.preventDefault()` on touch). Toolbar: 5 colour swatches, pencil/eraser toggle, undo (ImageData snapshot stack ≤20), clear. Submit bar: POSTs canvas PNG data URL to evaluate API, shows Vidya's single-sentence feedback. All interactive elements ≥44px. No external canvas library — raw HTML5 Canvas API only.
+- `app/api/student/whiteboard/evaluate/route.ts` *(new)* — Auth-guarded POST endpoint. Calls `callTutorLLM('tutor:eval')` with a 8s timeout and an encouraging 20-word feedback prompt. Falls back to static message on error/timeout. Never exposes raw errors.
+- `components/student/session/AITutorChatPanel.tsx` — Added `onAiMessage?: (content: string) => void` prop. Added `lastAiContentRef` that accumulates streaming chunks; fires `onAiMessage` with complete content when `finalizeAiMessage` is called.
+- `components/student/session/AITutorSessionShell.tsx` — Added `needsWhiteboard(subjectName)` check (maths/physics/chemistry/geometry/algebra). When true: side-by-side layout (chat 60% / whiteboard 40% on md+, stacked on mobile). `handleAiMessage` splits AI content into non-empty lines → `aiSteps` → passed to `WhiteboardPanel` for step reveal.
+- `tests/unit/components/session/whiteboard.test.ts` *(new)* — 14 tests: needsWhiteboard (10 cases, case-insensitive, whitespace), extractSteps (4 cases).
+
+**Gate:** `build:workers` ✅ · `build` ✅ · 708 unit tests ✅ (14 new)
+
+---
+
 ## F-STU-033 — Progress Reports: Subject + Time-Range Filters ✅
 
 **Problem:** The progress report page was hardcoded to 30 days with no way to filter by subject or change the time window, making it hard to track recent or long-term improvement.
