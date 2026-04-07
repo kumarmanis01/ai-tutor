@@ -12,6 +12,7 @@
 import React from 'react';
 import { SessionHeader } from './SessionHeader';
 import { SessionFooter } from './SessionFooter';
+import { DoubtPanel } from './DoubtPanel';
 import type { SessionView, PhaseContent } from '@/lib/session/sessionEngine';
 
 export interface SessionLayoutFooterConfig {
@@ -33,10 +34,13 @@ interface SessionLayoutProps {
 }
 
 export function SessionLayout({ session, phase, children, footer, onStepClick }: SessionLayoutProps) {
+  const activePhase = session.currentPhase !== 'COMPLETE' && session.currentPhase !== 'EXPIRED';
+
   return (
     <div className="min-h-screen bg-background">
       <SessionHeader session={session} phase={phase} onStepClick={onStepClick} />
-      <main className={footer ? 'pb-20' : 'pb-6'}>{children}</main>
+      {/* pb-36 when footer present to clear both sticky footer and floating button */}
+      <main className={footer ? 'pb-36' : 'pb-24'}>{children}</main>
       {footer && (
         <SessionFooter
           nextLabel={footer.nextLabel}
@@ -45,6 +49,13 @@ export function SessionLayout({ session, phase, children, footer, onStepClick }:
           loading={footer.loading}
           showPrevious={footer.showPrevious}
           onPrevious={footer.onPrevious}
+        />
+      )}
+      {activePhase && (
+        <DoubtPanel
+          subject={session.subject}
+          chapter={session.chapter}
+          topicName={session.topicName}
         />
       )}
     </div>
