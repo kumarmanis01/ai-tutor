@@ -52,7 +52,7 @@ export interface TodaysLearningCardHomework {
 }
 
 export interface TodaysLearningCardProps {
-  type: 'start' | 'resume' | 'homework' | 'ahead' | 'empty';
+  type: 'start' | 'resume' | 'homework' | 'ahead' | 'empty' | 'plan_loading';
   recommendation?: TodaysLearningCardRecommendation | null;
   session?: TodaysLearningCardSession | null;
   homework?: TodaysLearningCardHomework | null;
@@ -77,6 +77,7 @@ export default function TodaysLearningCard({
   if (type === 'homework' && homework) return <HomeworkState homework={homework} />;
   if (type === 'start' && recommendation) return <StartState rec={recommendation} ctaLabel={ctaLabel} />;
   if (type === 'ahead') return <AheadState />;
+  if (type === 'plan_loading') return <PlanLoadingState />;
   return <EmptyState diagnosticHref={diagnosticHref ?? '/dashboard'} />;
 }
 
@@ -242,6 +243,29 @@ function AheadState() {
         <Link
           href="/learn/learning-path"
           className="inline-flex min-h-[44px] items-center rounded-xl border border-[#1D9E75] text-[#1D9E75] dark:text-[#1D9E75] px-5 text-sm font-semibold hover:bg-[#1D9E75]/10 transition-colors"
+        >
+          Explore topics →
+        </Link>
+      </div>
+    </article>
+  );
+}
+
+// ── Plan loading state (diagnostic complete, bootstrap job in progress) ────────
+
+function PlanLoadingState() {
+  return (
+    <article className="rounded-2xl border border-[#534AB7]/20 dark:border-[#534AB7]/30 bg-[#EEEDFE] dark:bg-[#534AB7]/10 border-l-4 border-l-[#534AB7] overflow-hidden">
+      <div className="p-5">
+        <p className="text-base font-semibold text-gray-900 dark:text-gray-100 mb-1">
+          Great work completing your diagnostic!
+        </p>
+        <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+          Teacher Vidya is building your personalised learning plan. It will be ready in moments -- refresh to see your first session.
+        </p>
+        <Link
+          href="/learn/learning-path"
+          className="inline-flex min-h-[44px] items-center rounded-xl border border-[#534AB7] text-[#534AB7] dark:text-indigo-300 px-5 text-sm font-semibold hover:bg-[#534AB7]/10 transition-colors"
         >
           Explore topics →
         </Link>

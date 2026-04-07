@@ -45,7 +45,7 @@ export async function processDiagnosticAutoSubmit(
       where: { id: { in: questionIds } },
       select: { id: true, correctAnswer: true, choices: true, topicId: true },
     });
-    const questionMap = new Map(questions.map((q) => [q.id, q]));
+    const questionMap = new Map<string, typeof questions[number]>(questions.map((q) => [q.id, q]));
 
     // Resolve topicId -> conceptId.
     const topicIds = [...new Set(questions.map((q) => q.topicId).filter((t): t is string => !!t))];
@@ -91,14 +91,14 @@ export async function processDiagnosticAutoSubmit(
 
     // Resolve chapter ids for bootstrap.
     const questionTopicIds = [...new Set(questions.map((q) => q.topicId).filter((t): t is string => !!t))];
-    const topics =
+    const topics: { id: string; chapterId: string }[] =
       questionTopicIds.length > 0
         ? await prisma.topicDef.findMany({
             where: { id: { in: questionTopicIds } },
             select: { id: true, chapterId: true },
           })
         : [];
-    const chapterIds = [...new Set(topics.map((t) => t.chapterId))];
+    const chapterIds: string[] = [...new Set(topics.map((t) => t.chapterId))];
 
     const user = await prisma.user.findUnique({
       where: { id: userId },

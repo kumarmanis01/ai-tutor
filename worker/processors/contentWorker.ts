@@ -18,6 +18,7 @@
 import { Worker, Job } from 'bullmq'
 import { redisConnection } from '@/lib/redis.js'
 import { prisma } from '@/lib/prisma.js'
+import { JobType as PrismaJobType, DifficultyLevel } from '@prisma/client'
 import { randomUUID } from 'crypto'
 import { isSystemSettingEnabled } from '@/lib/systemSettings.js'
 import { JobStatus } from '@/lib/ai-engine/types'
@@ -160,12 +161,13 @@ export async function processContentJob(job: Job) {
     if (!hydrate) {
       // jobData shape is dynamic -- typed at DB layer, safe to build as plain object
       const jobData = {
-        jobType: 'syllabus',
+        jobType: PrismaJobType.syllabus,
         subjectId: subjectId as string,
         language: resolvedMeta.language ?? execPayload?.language ?? 'en',
         board: resolvedMeta.board ?? execPayload?.board ?? null,
         grade: resolvedMeta.classLevel ?? execPayload?.grade ?? null,
         subject: resolvedMeta.entityName ?? execPayload?.subject ?? null,
+        difficulty: DifficultyLevel.medium,
         status: JobStatus.Pending,
       }
       const generatedId = randomUUID();

@@ -149,6 +149,9 @@
     count: number,
   ) {
     const results: DiagnosticQuestion[] = [];
+    // Track IDs already selected in this band to prevent within-band duplicates
+    // (e.g. same question returned on a second topic cycle when the bank is thin).
+    const seenIds = new Set<string>();
 
     // Round-robin across topics: try to pick at most one question per topic
     // before falling back to a broader subject-level selection.
@@ -174,11 +177,14 @@
         if (questions.length === 0) continue;
         const q = questions[0];
         if (!q.id || !q.prompt) continue;
+        // Skip if already selected in this difficulty band.
+        if (seenIds.has(q.id)) continue;
 
         const options = parseChoices(q.choices as unknown);
         // We require at least 2 options for a usable diagnostic MCQ.
         if (options.length < 2) continue;
 
+        seenIds.add(q.id);
         results.push({
           id: q.id,
           questionText: q.prompt,
@@ -208,8 +214,11 @@
       const extra = await ensureQuestions(filtersBase, remaining);
       for (const q of extra) {
         if (!q.id || !q.prompt) continue;
+        // Skip duplicates in the fallback path too.
+        if (seenIds.has(q.id)) continue;
         const options = parseChoices(q.choices as unknown);
         if (options.length < 2) continue;
+        seenIds.add(q.id);
         results.push({
           id: q.id,
           questionText: q.prompt,
@@ -288,7 +297,15 @@
       logger.warn('DiagnosticQuestionService.generate.logging_failed', { error: String(e) });
     }
 
-    const questions = [...easy, ...medium, ...hard];
+    // Post-hoc deduplication across bands: the three bands ran in parallel so they
+    // cannot share a seenIds set. Remove any cross-band duplicate by question ID,
+    // preserving the first occurrence (easy wins over medium wins over hard).
+    const crossBandSeen = new Set<string>();
+    const questions = [...easy, ...medium, ...hard].filter((q) => {
+      if (crossBandSeen.has(q.id)) return false;
+      crossBandSeen.add(q.id);
+      return true;
+    });
 
     // In the unlikely event that we could not source enough questions,
     // trim or pad as needed so callers always receive TOTAL_QUESTIONS.

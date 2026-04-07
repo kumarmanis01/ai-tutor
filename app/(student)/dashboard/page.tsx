@@ -185,9 +185,9 @@ export default async function StudentHomeDashboardPage() {
     // 5. Total session count (WeakTopicsSection gate)
     prisma.structuredSession.count({ where: { studentId: userId } }),
 
-    // 6. Learning profile (weekly goal)
+    // 6. Learning profile (weekly goal + diagnostic status)
     prisma.studentLearningProfile
-      .findFirst({ where: { studentId: userId }, select: { studyDaysPerWeek: true } })
+      .findFirst({ where: { studentId: userId }, select: { studyDaysPerWeek: true, recommendations: true } })
       .catch(() => null),
 
     // 7. Weak topics (max 2)
@@ -372,12 +372,33 @@ export default async function StudentHomeDashboardPage() {
     : null;
 
   // ── Primary card type ─────────────────────────────────────────────────────
+  // 'plan_loading' is used when the diagnostic is complete but the bootstrap
+  // worker has not yet produced a learning plan recommendation. This prevents
+  // the "Take diagnostic test" CTA from reappearing after the student submits.
+  // Computed here from learningProfile (already fetched) so it does not depend
+  // on subjectDefs (fetched later). Checks any subject -- if ANY is completed,
+  // the student has passed through the diagnostic gate.
+  const diagnosticRecs = ((): Record<string, { status?: string }> => {
+    const recs = (learningProfile as { recommendations?: unknown } | null)?.recommendations;
+    if (recs && typeof recs === 'object' && !Array.isArray(recs)) {
+      const d = (recs as Record<string, unknown>).diagnostics;
+      if (d && typeof d === 'object' && !Array.isArray(d)) {
+        return d as Record<string, { status?: string }>;
+      }
+    }
+    return {};
+  })();
+  const diagnosticCompleted = Object.values(diagnosticRecs).some(
+    (entry) => entry?.status === 'completed',
+  );
+
   const engineRuleId = rawAction?.ruleId;
   const cardType =
     engineRuleId === 'homework_pending' || pendingHomeworkRaw.length > 0 ? 'homework'
     : activeSession ? 'resume'
     : recommendation ? 'start'
     : aheadOfPlan ? 'ahead'
+    : diagnosticCompleted ? 'plan_loading'
     : 'empty';
 
   const oldestHw = pendingHomeworkRaw[0] ?? null;
@@ -564,6 +585,7 @@ export default async function StudentHomeDashboardPage() {
                         subjectName={r.subjectName}
                         score={r.score}
                         subjectId={r.subjectId}
+                        diagnosticDone={diagnosticRecs[r.subjectId]?.status === 'completed'}
                       />
                     </a>
                   ))}

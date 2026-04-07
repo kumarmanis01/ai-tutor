@@ -91,9 +91,67 @@ export default async function LearningPathPage() {
 
   const subjects: SubjectSnapshot[] = snapshotRes?.subjects ?? [];
 
-  // If learning-snapshot doesn't include topic-level data, we fall back to
-  // showing chapters with the chapter-level completion only (no topic rows).
-  // The full topic list comes from the curriculum graph in a future iteration.
+  // Fallback: when the learning plan hasn't been generated yet (bootstrap job
+  // still running), load the full curriculum from the DB so the student sees
+  // something useful rather than an empty screen.
+  type CurriculumSubject = {
+    subjectId: string;
+    subjectName: string;
+    chapters: { chapterId: string; chapterName: string; topics: { topicId: string; topicName: string }[] }[];
+  };
+  let curriculumFallback: CurriculumSubject[] = [];
+  if (subjects.length === 0) {
+    const studentProfile = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { board: true, grade: true, subjects: true },
+    });
+    const enrolledSlugs: string[] = Array.isArray(studentProfile?.subjects)
+      ? (studentProfile!.subjects as string[]).filter(Boolean)
+      : typeof studentProfile?.subjects === 'string'
+      ? (studentProfile!.subjects as string).replace(/^\{/, '').replace(/\}$/, '').split(',').map((s) => s.trim()).filter(Boolean)
+      : [];
+
+    if (studentProfile?.board && studentProfile?.grade && enrolledSlugs.length > 0) {
+      const subjectDefs = await prisma.subjectDef.findMany({
+        where: {
+          lifecycle: 'active',
+          slug: { in: enrolledSlugs },
+          class: {
+            grade: parseInt(String(studentProfile.grade), 10),
+            board: { slug: studentProfile.board },
+          },
+        },
+        orderBy: { name: 'asc' },
+        select: {
+          id: true,
+          name: true,
+          chapters: {
+            where: { lifecycle: 'active' },
+            orderBy: { order: 'asc' },
+            select: {
+              id: true,
+              name: true,
+              topics: {
+                where: { lifecycle: 'active' },
+                orderBy: { order: 'asc' },
+                select: { id: true, name: true },
+              },
+            },
+          },
+        },
+      });
+
+      curriculumFallback = subjectDefs.map((s) => ({
+        subjectId: s.id,
+        subjectName: s.name,
+        chapters: s.chapters.map((ch) => ({
+          chapterId: ch.id,
+          chapterName: ch.name,
+          topics: ch.topics.map((t) => ({ topicId: t.id, topicName: t.name })),
+        })),
+      }));
+    }
+  }
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-6">
@@ -113,17 +171,15 @@ export default async function LearningPathPage() {
         </div>
       </div>
 
-      {subjects.length === 0 ? (
+      {subjects.length === 0 && curriculumFallback.length === 0 ? (
         <div className="text-center py-16 text-gray-400">
-          <p className="text-sm">Your learning path is being set up.</p>
-          <p className="text-xs mt-1">Check back after completing your first session.</p>
+          <p className="text-sm">Your learning path is being prepared.</p>
+          <p className="text-xs mt-1">Check back in a moment once your plan is ready.</p>
         </div>
       ) : (
         <div className="space-y-4">
-          {subjects.map((subject) => {
-            // Build chapter entries with topic mastery enrichment
+          {(subjects.length > 0 ? subjects : null)?.map((subject) => {
             const chapters = subject.chapters.map((ch) => {
-              // If snapshot includes topic-level data, use it; otherwise show empty
               const topics = (ch.topics ?? []).map((t) => ({
                 topicId: t.topicId,
                 topicName: t.name,
@@ -131,12 +187,7 @@ export default async function LearningPathPage() {
                 isInProgress: inProgressMap.has(t.topicId),
                 sessionId: inProgressMap.get(t.topicId),
               }));
-
-              return {
-                chapterId: ch.chapterId,
-                chapterName: ch.name,
-                topics,
-              };
+              return { chapterId: ch.chapterId, chapterName: ch.name, topics };
             });
 
             return (
@@ -147,6 +198,33 @@ export default async function LearningPathPage() {
                 chapters={chapters}
                 completedTopics={subject.completedTopics}
                 totalTopics={subject.topicCount}
+              />
+            );
+          })}
+
+          {/* Curriculum fallback: show full topic list when learning plan not yet generated */}
+          {subjects.length === 0 && curriculumFallback.map((subject) => {
+            const totalTopics = subject.chapters.reduce((n, ch) => n + ch.topics.length, 0);
+            const chapters = subject.chapters.map((ch) => ({
+              chapterId: ch.chapterId,
+              chapterName: ch.chapterName,
+              topics: ch.topics.map((t) => ({
+                topicId: t.topicId,
+                topicName: t.topicName,
+                mastery: masteryMap.get(t.topicId) ?? null,
+                isInProgress: inProgressMap.has(t.topicId),
+                sessionId: inProgressMap.get(t.topicId),
+              })),
+            }));
+
+            return (
+              <SubjectSection
+                key={subject.subjectId}
+                subjectId={subject.subjectId}
+                subjectName={subject.name}
+                chapters={chapters}
+                completedTopics={0}
+                totalTopics={totalTopics}
               />
             );
           })}
