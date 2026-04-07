@@ -16,9 +16,10 @@ import type { SessionView, PhaseContent } from '@/lib/session/sessionEngine';
 interface SessionHeaderProps {
   session: SessionView;
   phase: PhaseContent;
+  onStepClick?: (phase: string) => void;
 }
 
-export function SessionHeader({ session, phase: _phase }: SessionHeaderProps) {
+export function SessionHeader({ session, phase: _phase, onStepClick }: SessionHeaderProps) {
   const { topicName, subject, chapter, phaseIndex, totalPhases, currentPhase } = session;
 
   return (
@@ -42,6 +43,7 @@ export function SessionHeader({ session, phase: _phase }: SessionHeaderProps) {
           currentPhase={currentPhase as import('@/lib/session/phaseConfig').SessionPhaseClient}
           phaseIndex={phaseIndex}
           totalPhases={totalPhases}
+          onStepClick={onStepClick}
         />
       </div>
     </div>

@@ -457,6 +457,51 @@ export async function getSessionView(
 }
 
 /**
+ * Navigate a session back to a previously completed phase.
+ *
+ * Rules:
+ *   - Target phase must be before the current phase in PHASE_ORDER (no skipping forward).
+ *   - COMPLETE and EXPIRED sessions cannot be navigated.
+ *   - No side-effects: no progress events, no phase-completion markers touched.
+ *
+ * Returns the SessionView with the updated phase so the client can reload content.
+ */
+export async function navigateSessionBack(
+  studentId: string,
+  sessionId: string,
+  targetPhase: SessionPhase,
+): Promise<SessionView> {
+  const session = await prisma.structuredSession.findFirst({
+    where: { id: sessionId, studentId },
+    include: topicInclude,
+  });
+
+  if (!session) throw new SessionError('Session not found', 404);
+  if (session.state === 'COMPLETE') throw new SessionError('Session already complete', 400);
+  if (session.state === 'EXPIRED') throw new SessionError('Session has expired', 410);
+
+  const currentIdx = PHASE_INDEX.get(session.state as SessionPhase) ?? 0;
+  const targetIdx = PHASE_INDEX.get(targetPhase);
+
+  if (targetIdx === undefined || targetIdx >= currentIdx) {
+    throw new SessionError('Cannot navigate to that phase', 400);
+  }
+
+  await prisma.structuredSession.update({
+    where: { id: sessionId },
+    data: { state: targetPhase },
+  });
+
+  // Re-fetch so toSessionView reflects the updated state.
+  const updated = await prisma.structuredSession.findFirst({
+    where: { id: sessionId, studentId },
+    include: topicInclude,
+  });
+
+  return toSessionView(updated!);
+}
+
+/**
  * Force-complete a session (e.g. student clicks "Finish early").
  *
  * Jumps directly to COMPLETE regardless of current phase.

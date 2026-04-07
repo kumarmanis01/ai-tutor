@@ -53,7 +53,7 @@ export function SessionContainer({ topicId, reasonLabel, estimatedTimeMin }: Ses
   const {
     session, phase, content,
     loading, error, submitting,
-    startSession, advancePhase, submitPractice, submitTest,
+    startSession, advancePhase, navigateToPhase, submitPractice, submitTest,
   } = useSession();
 
   const [phaseReadyToProceed, setPhaseReadyToProceed] = React.useState(false);
@@ -196,7 +196,7 @@ export function SessionContainer({ topicId, reasonLabel, estimatedTimeMin }: Ses
   };
 
   return (
-    <SessionLayout session={session} phase={phase} footer={footer}>
+    <SessionLayout session={session} phase={phase} footer={footer} onStepClick={navigateToPhase}>
       <PhaseComponent {...phaseProps} />
     </SessionLayout>
   );

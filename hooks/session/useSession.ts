@@ -14,6 +14,7 @@ import { useState, useCallback } from 'react';
 import {
   startSessionAction,
   advancePhaseAction,
+  navigateToPhaseAction,
   submitPracticeAction,
   submitTestAction,
   type SessionActionResult,
@@ -111,5 +112,21 @@ export function useSession() {
     [state.session?.sessionId],
   );
 
-  return { ...state, startSession, advancePhase, submitPractice, submitTest };
+  const navigateToPhase = useCallback(async (targetPhase: string) => {
+    const sessionId = state.session?.sessionId;
+    if (!sessionId) return;
+    setState((s) => ({ ...s, submitting: true, error: null }));
+    try {
+      const result = await navigateToPhaseAction(sessionId, targetPhase);
+      setState((s) => ({ ...s, ...applyResult(result), submitting: false }));
+    } catch (err) {
+      setState((s) => ({
+        ...s,
+        submitting: false,
+        error: err instanceof Error ? err.message : 'Failed to navigate',
+      }));
+    }
+  }, [state.session?.sessionId]);
+
+  return { ...state, startSession, advancePhase, navigateToPhase, submitPractice, submitTest };
 }

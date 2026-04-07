@@ -17,12 +17,14 @@ interface SessionProgressBarProps {
   currentPhase: SessionPhaseClient;
   phaseIndex: number;
   totalPhases: number;
+  onStepClick?: (phase: string) => void;
 }
 
 export function SessionProgressBar({
   currentPhase,
   phaseIndex,
   totalPhases,
+  onStepClick,
 }: SessionProgressBarProps) {
   if (currentPhase === 'COMPLETE' || currentPhase === 'EXPIRED') return null;
 
@@ -40,6 +42,17 @@ export function SessionProgressBar({
           const isCurrent = i === phaseIndex;
           const isUpcoming = i > phaseIndex;
 
+          const label = (
+            <>
+              <span className="flex-shrink-0 w-5 text-center" aria-hidden>
+                {isCompleted && <span className="text-green-600">✔</span>}
+                {isCurrent && <span className="text-primary">●</span>}
+                {isUpcoming && <span className="text-muted-foreground/50">○</span>}
+              </span>
+              <span>{config.label}</span>
+            </>
+          );
+
           return (
             <li
               key={phase}
@@ -52,12 +65,18 @@ export function SessionProgressBar({
               }`}
               aria-current={isCurrent ? 'step' : undefined}
             >
-              <span className="flex-shrink-0 w-5 text-center" aria-hidden>
-                {isCompleted && <span className="text-green-600">✔</span>}
-                {isCurrent && <span className="text-primary">●</span>}
-                {isUpcoming && <span className="text-muted-foreground/50">○</span>}
-              </span>
-              <span>{config.label}</span>
+              {isCompleted && onStepClick ? (
+                <button
+                  type="button"
+                  onClick={() => onStepClick(phase)}
+                  className="flex items-center gap-2.5 hover:text-foreground hover:underline cursor-pointer transition-colors min-h-[44px] w-full text-left"
+                  aria-label={`Go back to ${config.label}`}
+                >
+                  {label}
+                </button>
+              ) : (
+                <div className="flex items-center gap-2.5 min-h-[44px]">{label}</div>
+              )}
             </li>
           );
         })}

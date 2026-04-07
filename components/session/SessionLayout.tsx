@@ -28,12 +28,14 @@ interface SessionLayoutProps {
   phase: PhaseContent;
   children: React.ReactNode;
   footer?: SessionLayoutFooterConfig | null;
+  /** Called when student clicks a completed step to navigate back. */
+  onStepClick?: (phase: string) => void;
 }
 
-export function SessionLayout({ session, phase, children, footer }: SessionLayoutProps) {
+export function SessionLayout({ session, phase, children, footer, onStepClick }: SessionLayoutProps) {
   return (
     <div className="min-h-screen bg-background">
-      <SessionHeader session={session} phase={phase} />
+      <SessionHeader session={session} phase={phase} onStepClick={onStepClick} />
       <main className={footer ? 'pb-20' : 'pb-6'}>{children}</main>
       {footer && (
         <SessionFooter
