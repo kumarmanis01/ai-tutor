@@ -75,6 +75,7 @@ model User {
   parentRelations             ParentStudent[]              @relation("ParentRelations")
   studentRelations            ParentStudent[]              @relation("StudentRelations")
   payments                    Payment[]
+  invoices                    Invoice[]
   phoneOtps                   PhoneOtp[]
   referralsCreated            Referral[]                   @relation("ReferralCreator")
   redeemedReferrals           Referral[]                   @relation("ReferralRedeemer")
@@ -467,6 +468,37 @@ model Payment {
   billingCycle  String?
   meta          Json?
   user          User     @relation(fields: [userId], references: [id])
+  invoice       Invoice?
+}
+
+/// Invoice sequence used to allocate sequential invoice numbers.
+model InvoiceSequence {
+  id         String   @id
+  lastNumber Int      @default(0)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
+/// GST-compliant invoice record. The PDF is stored in object storage
+/// and referenced by `fileUrl`.
+model Invoice {
+  id            String   @id @default(cuid())
+  invoiceNumber Int      @unique
+  userId        String
+  paymentId     String?   @unique
+  studentId     String?
+  amount        Int
+  currency      String   @default("INR")
+  hsnCode       String?
+  gstin         String?
+  taxBreakdown  Json?
+  fileUrl       String?
+  createdAt     DateTime @default(now())
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  payment Payment? @relation(fields: [paymentId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
 }
 
 model AuditLog {

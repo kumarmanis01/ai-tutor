@@ -34,6 +34,11 @@ export interface MailOptions {
   text?: string;
   replyTo?: string;
   cc?: string | string[];
+  attachments?: Array<{
+    filename: string;
+    content: string | Buffer; // Buffer will be base64-encoded for the provider
+    contentType?: string;
+  }>;
 }
 
 /**
@@ -53,6 +58,14 @@ export async function sendMail(opts: MailOptions): Promise<string> {
     ...(opts.text && { text: opts.text }),
     ...(opts.replyTo && { reply_to: opts.replyTo }),
     ...(opts.cc && { cc: Array.isArray(opts.cc) ? opts.cc : [opts.cc] }),
+    ...(opts.attachments && {
+      attachments: opts.attachments.map((a) => ({
+        filename: a.filename,
+        // Resend expects base64 content for binary attachments in some SDK versions
+        content: Buffer.isBuffer(a.content) ? a.content.toString('base64') : a.content,
+        contentType: a.contentType,
+      })),
+    }),
   });
   if (error) {
     console.error('[mailer] Send failed:', {
