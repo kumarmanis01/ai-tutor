@@ -73,7 +73,8 @@ export default async function SessionPage({ params, searchParams }: Props) {
   const subjectId = topic?.chapter?.subjectId;
   if (subjectId) {
     const hasDiag = await hasDiagnosticForSubject(auth.user.id, subjectId);
-    if (!hasDiag) redirect(`/student/diagnostic/${subjectId}`);
+    // Route group (student) does not add a URL prefix -- correct path is /diagnostic/[id].
+    if (!hasDiag) redirect(`/diagnostic/${subjectId}`);
   }
 
   // ── AI tutor path (sid + cid present) ───────────────────────────────────────
