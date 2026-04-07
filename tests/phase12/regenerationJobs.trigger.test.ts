@@ -32,7 +32,7 @@ test('triggers PENDING job and writes audit', async () => {
   expect(res.status).toBe(200)
   const body = JSON.parse(await res.text())
   expect(body.job).toBeDefined()
-  expect(mockedLogAudit).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ action: AuditEvents.REGEN_JOB_TRIGGERED, entityId: 'job1' }))
+  expect(mockedLogAudit).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ entityId: 'job1', details: expect.objectContaining({ legacyAction: AuditEvents.REGEN_JOB_TRIGGERED }) }))
 })
 
 test('returns 404 when job not found', async () => {

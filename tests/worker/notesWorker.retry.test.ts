@@ -30,11 +30,13 @@ jest.mock('@/lib/callLLM.js', () => {
       const valid = {
         metadata: { board: 'CBSE', grade: 6, subject: 'Mathematics', chapter: 'Chapter', topic: 'Topic', estimatedReadingMinutes: 10, difficultyLevel: 'foundation', conceptsIntroduced: ['concept1'] },
         sections: [
-          { type: 'hook', title: 'Hook', content: 'A'.repeat(140), blackboardNotes: [] , visualHint: null, formulaLatex: null, exampleSteps: null, conceptCheck: null},
-          { type: 'concept', title: 'Concept', content: 'B'.repeat(140), blackboardNotes: [] , visualHint: null, formulaLatex: null, exampleSteps: null, conceptCheck: null},
-          { type: 'worked_example', title: 'Worked', content: 'C'.repeat(140), blackboardNotes: [] , visualHint: null, formulaLatex: null, exampleSteps: null, conceptCheck: null},
-          { type: 'worked_example', title: 'Worked2', content: 'D'.repeat(140), blackboardNotes: [] , visualHint: null, formulaLatex: null, exampleSteps: null, conceptCheck: null},
-          { type: 'summary', title: 'Summary', content: 'E'.repeat(140), blackboardNotes: [] , visualHint: null, formulaLatex: null, exampleSteps: null, conceptCheck: null}
+          { type: 'hook', title: 'Hook', content: 'A'.repeat(140), blackboardNotes: [], visualHint: null, formulaLatex: null, exampleSteps: null, conceptCheck: null },
+          { type: 'concept', title: 'Concept 1', content: 'B'.repeat(140), blackboardNotes: [], visualHint: null, formulaLatex: null, exampleSteps: null, conceptCheck: null },
+          { type: 'concept', title: 'Concept 2', content: 'C'.repeat(140), blackboardNotes: [], visualHint: null, formulaLatex: null, exampleSteps: null, conceptCheck: null },
+          { type: 'worked_example', title: 'Worked 1', content: 'D'.repeat(140), blackboardNotes: [], visualHint: null, formulaLatex: null, exampleSteps: null, conceptCheck: null },
+          { type: 'worked_example', title: 'Worked 2', content: 'E'.repeat(140), blackboardNotes: [], visualHint: null, formulaLatex: null, exampleSteps: null, conceptCheck: null },
+          { type: 'common_mistake', title: 'Common Mistakes', content: 'F'.repeat(140), blackboardNotes: [], visualHint: null, formulaLatex: null, exampleSteps: null, conceptCheck: null },
+          { type: 'summary', title: 'Summary', content: 'G'.repeat(140), blackboardNotes: [], visualHint: null, formulaLatex: null, exampleSteps: null, conceptCheck: null }
         ],
         keyConcepts: [{ term: 't', definition: 'd', formula: null }],
         examTips: ['tip1'],
