@@ -4,6 +4,7 @@ import { prisma } from '@/lib/prisma'
 import { awardXP } from '@/lib/student/xp'
 import { updateStreak } from '@/lib/student/streak'
 import { buildSessionInsight } from '@/lib/student/sessionInsight'
+import { checkSessionBadges } from '@/lib/student/badges'
 import { logger } from '@/lib/logger'
 
 export const dynamic = 'force-dynamic'
@@ -64,11 +65,12 @@ export async function POST(req: Request, { params }: { params: Promise<{ session
     const leveledUp = xpResult?.leveledUp ?? false
     const newLevel = xpResult?.newLevel ?? null
 
-    // Only award streak credit for sessions where the student answered enough
-    // questions to have meaningfully progressed through the learning stages.
-    // totalQuestions < 5 indicates a login/browse or heavily incomplete session.
+    // Award streak credit and capture result for badge checking.
+    // Awaited so currentStreak is up-to-date when checkSessionBadges runs below.
+    let currentStreak = 0
     if (totalQuestions >= 5) {
-      void updateStreak(userId)
+      const streakResult = await updateStreak(userId)
+      currentStreak = streakResult?.currentStreak ?? 0
     }
 
     const learningSession = await prisma.learningSession.findUnique({
@@ -94,6 +96,14 @@ export async function POST(req: Request, { params }: { params: Promise<{ session
       sessionId,
     })
 
+    // AC-04 (F-STU-031): check for newly earned badges this session.
+    const badgesEarned = await checkSessionBadges({
+      studentId: userId,
+      sessionId,
+      currentStreak,
+      masteryAfter,
+    })
+
     const res = NextResponse.json(
       {
         xpEarned,
@@ -102,7 +112,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ session
         newLevel,
         masteryDelta,
         masteryAfter,
-        badgesEarned: [] as { name: string; description: string }[],
+        badgesEarned: badgesEarned.map((b) => ({ name: b.name, description: b.description })),
         aiInsight,
         sessionDurationMinutes,
         correctAnswers,
