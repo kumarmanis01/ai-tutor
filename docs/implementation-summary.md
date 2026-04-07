@@ -1,4 +1,22 @@
-# Recommendation Engine & Test/Notes Tab Implementation Summary
+# Sprint Implementation Summary — Phase 5/6 (V2 UI + Missing Features)
+
+**Branch:** `claude/add-hint-system-GWRPz`
+**Last updated:** 2026-04-07
+
+---
+
+## F-STU-012 — 3-Tier Hint System ✅
+
+**Problem:** Hints had zero scaffolding. The hint button sent `__HINT_REQUEST__` to the LLM but the prompt had no instructions for what to do with it, so Vidya either ignored the request or gave a generic response. Three silent bugs compounded this: `hintsUsed` was hardcoded to `0` in both prompt assembly and the state machine, so the hint counter in Redis never incremented; the `__HINT_REQUEST__` sentinel was passed raw to safety checks and DoubtKb; and hint turns were logged as `tutor:teach` making per-concept analysis impossible.
+
+**Files changed:**
+- `lib/ai/tutor/promptAssembly.ts` — Added `isHintRequest: boolean` to `PromptContext`; added `buildStageInstructionsLayer()` (never truncated) with tier-aware hint delivery: Tier 1 Directional Nudge → Tier 2 Structural Hint → Tier 3 Worked Scaffold → full solution + isomorphic problem after 3 hints exhausted.
+- `services/tutor/turn.ts` — Detects `__HINT_REQUEST__` sentinel; derives `hintsUsed = 3 - state.hintsRemaining` from Redis; passes both to prompt assembly and state machine; skips DoubtKb for hint turns; logs as `callType: 'tutor:hint'` for AC-07 tracking.
+- `tests/unit/lib/ai/tutor/promptAssembly.test.ts` — Updated layer list/order tests; added 8 new hint-tier tests in `buildStageInstructionsLayer -- hint tiers` describe block.
+
+**Gate:** `build:workers` ✅ · `build` ✅ · 642 unit tests ✅ (21 new)
+
+
 
 **Date:** 2026-02-01
 **Implementation Status:** ✅ Phase 1 Complete

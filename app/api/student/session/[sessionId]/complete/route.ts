@@ -3,19 +3,10 @@ import { getServerSessionForHandlers } from '@/lib/session'
 import { prisma } from '@/lib/prisma'
 import { awardXP } from '@/lib/student/xp'
 import { updateStreak } from '@/lib/student/streak'
+import { buildSessionInsight } from '@/lib/student/sessionInsight'
 import { logger } from '@/lib/logger'
 
 export const dynamic = 'force-dynamic'
-
-async function buildAiInsight(
-  correctAnswers: number,
-  totalQuestions: number,
-  conceptName: string | null,
-): Promise<string | null> {
-  if (!totalQuestions) return null
-  const name = conceptName ?? 'this concept'
-  return `You answered ${correctAnswers}/${totalQuestions} questions correctly on ${name} -- nice work, keep going.`
-}
 
 export async function POST(req: Request, { params }: { params: Promise<{ sessionId: string }> }) {
   const start = Date.now()
@@ -92,12 +83,16 @@ export async function POST(req: Request, { params }: { params: Promise<{ session
       sessionDurationMinutes = Math.max(0, Math.round(ms / 60000))
     }
 
-    let aiInsight: string | null = null
-    try {
-      aiInsight = await buildAiInsight(correctAnswers, totalQuestions, conceptName)
-    } catch {
-      aiInsight = null
-    }
+    // AC-03 (F-STU-015 MUST): AI-generated personalised closing insight, not a template.
+    const aiInsight = await buildSessionInsight({
+      correctAnswers,
+      totalQuestions,
+      conceptName,
+      hintsUsed: 0, // hint count not tracked at LearningSession level; defaults to 0
+      masteryDelta,
+      studentId: userId,
+      sessionId,
+    })
 
     const res = NextResponse.json(
       {
