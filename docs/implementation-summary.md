@@ -5,6 +5,21 @@
 
 ---
 
+## F-STU-033 — Progress Reports: Subject + Time-Range Filters ✅
+
+**Problem:** The progress report page was hardcoded to 30 days with no way to filter by subject or change the time window, making it hard to track recent or long-term improvement.
+
+**Files changed:**
+- `lib/student/progressReport.ts` *(new)* — Pure helpers: `barConfig(days)` maps 7/30/90/0 to chart labels, period text, fetch window; `buildBucketCounts(sessions, cfg, now)` bins sessions into 4 equal-size chart buckets with all-time dynamic window support.
+- `components/student/progress/ProgressFilters.tsx` *(new)* — Client Component with subject `<select>` (only rendered when student studies > 1 subject) and time-range button group (7 days / 30 days / 90 days / All time). Uses `useRouter` + `useSearchParams` to push `?subject=&days=` params; no full page reload.
+- `app/(student)/student/progress/page.tsx` — Now reads `searchParams.subject` and `searchParams.days`; applies subject filter to chapter mastery data; applies date window to session chart and session history fetches; passes `barLabels` + `periodLabel` to `SessionsChart`; wraps `ProgressFilters` in `<Suspense>` as required by `useSearchParams`.
+- `components/student/progress/SessionsChart.tsx` — Added optional `barLabels?: [string,string,string,string]` and `periodLabel?: string` props; header now reads "Sessions" (not "Sessions this month") with dynamic period text below.
+- `tests/unit/lib/student/progressReport.test.ts` *(new)* — 12 tests: all 4 day configs, fallback to 30d, label length invariant, bucket placement (recent/old), future-date ignore, all-time dynamic window, total count integrity.
+
+**Gate:** `build:workers` ✅ · `build` ✅ · 694 unit tests ✅ (12 new)
+
+---
+
 ## F-STU-020 — Chapter Practice Test ✅
 
 **Problem:** Chapter tests had no question-type diversity (all questions treated as one pool), no time enforcement, no LLM explanations for wrong answers, and a low score produced no actionable follow-up.
