@@ -482,6 +482,10 @@ model AuditLog {
   reason        String? // required for destructive actions
   ipAddress     String?
   details       Json? // retained for legacy system-event metadata
+  // Archival metadata: set by archival worker only (allowed UPDATEs)
+  archived      Boolean?         @default(false)
+  archivedAt    DateTime?
+  archiveUrl    String?
   createdAt     DateTime         @default(now())
   admin         User?            @relation("AdminActions", fields: [adminId], references: [id])
 
