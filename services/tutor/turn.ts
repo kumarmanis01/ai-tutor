@@ -355,7 +355,7 @@ export async function runTutorOrchestrator(args: {
       subjectName,
     })
 
-    if (prompt.layersTruncated.length > 0) {
+    if (Array.isArray(prompt.layersTruncated) && prompt.layersTruncated.length > 0) {
       logger.warn('tutor.prompt.layersTruncated', {
         layersTruncated: prompt.layersTruncated,
       })
@@ -630,6 +630,29 @@ export async function runTutorOrchestrator(args: {
   } catch (err) {
     // Always mark turn completed on any error path
     await markTurnCompleted(args.state.sessionId)
+    // Ensure we record a turn log for telemetry even on error paths.
+    // Keep this best-effort so logging failures don't mask the original error.
+    try {
+      await prisma.aITutorTurnLog.create({
+        data: {
+          sessionId: args.state.sessionId,
+          callType: 'tutor:teach',
+          model: 'unknown',
+          inputTokens: 0,
+          outputTokens: 0,
+          costUsd: 0,
+          latencyMs: 0,
+          tag: 'QUESTION',
+          stage: args.state.stage,
+          safetyFlagged: false,
+          cached: false,
+          ragChunksUsed: [],
+          frustrationScore: null,
+        },
+      })
+    } catch (e) {
+      // swallow — we don't want logging failures to change control flow
+    }
     throw err
   }
 }

@@ -78,7 +78,14 @@ export async function getEmbeddingsBatch(
           input: inputs,
         })
         const batchEmbeddings = response.data.map((d) => d.embedding ?? null)
-        results.push(...batchEmbeddings)
+        // Ensure result length matches inputs length even if the provider
+        // returned fewer embeddings than requested (some mocks do this).
+        if (batchEmbeddings.length < inputs.length) {
+          const padded = inputs.map((_, idx) => (batchEmbeddings[idx] ?? null))
+          results.push(...padded)
+        } else {
+          results.push(...batchEmbeddings)
+        }
         // Analytics per batch (fire-and-forget)
         try {
           const totalInputChars = inputs.reduce((s, it) => s + (it?.length ?? 0), 0)
