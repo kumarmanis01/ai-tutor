@@ -7,6 +7,7 @@
 /// EDIT LOG:
 /// - 2026-02-21T00:00:00Z | copilot | added student learning profile fields
 /// - 2026-03-07T00:00:00Z | Manish Kumar | add OVERVIEW to SessionPhase; SESSION_OVERVIEW_VIEWED to SessionEventType
+/// - 2026-04-08T00:00:00Z | copilot | add MISCONCEPTION_HIGH_PREVALENCE alert type
 generator client {
   provider = "prisma-client-js"
 }
@@ -1945,6 +1946,7 @@ enum AlertType {
   WORKER_FAILED
   JOB_STUCK
   QUEUE_BACKLOG
+  MISCONCEPTION_HIGH_PREVALENCE
 }
 
 enum AlertSeverity {

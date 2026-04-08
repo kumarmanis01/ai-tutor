@@ -25,6 +25,7 @@ import { expireStaleTasks } from '../lib/dailyHabit.js';
 import { hydrationReconciler } from './services/hydrationReconciler.js';
 import { runDailyCostReport } from './services/costReportingWorker.js'
 import { runDataDeletionCycle } from './services/dataDeletionWorker.js';
+import { runMonthlyMisconceptionPrevalence } from './services/misconceptionPrevalenceWorker.js';
 import { prisma } from '../lib/prisma.js';
 import { sendPushSafe } from '../lib/push/send.js';
 import { PUSH_NOTIFICATIONS } from '../lib/push/notifications.js';
@@ -40,6 +41,7 @@ const DAILY_MAINTENANCE_INTERVAL_MS = 24 * 60 * 60 * 1000; // 24 hours
 const READINESS_PRECOMPUTE_INTERVAL_MS = 24 * 60 * 60 * 1000; // 24 hours
 const COST_REPORT_INTERVAL_MS = 24 * 60 * 60 * 1000; // 24 hours
 const DATA_DELETION_INTERVAL_MS = 24 * 60 * 60 * 1000; // 24 hours
+const MONTHLY_INTERVAL_MS = 30 * 24 * 60 * 60 * 1000; // approx 30 days
 
 /**
  * Calculate milliseconds until next scheduled time (2 AM UTC)
@@ -346,6 +348,31 @@ async function runDataDeletionJob() {
 }
 
 /**
+ * Calculate ms until next monthly run (1st of next month at targetHour UTC)
+ */
+function msUntilNextMonthlyRun(targetHour: number = 4): number {
+  const now = new Date();
+  const year = now.getUTCFullYear();
+  const month = now.getUTCMonth();
+  // first day of next month
+  const next = new Date(Date.UTC(year, month + 1, 1, targetHour, 0, 0));
+  return next.getTime() - now.getTime();
+}
+
+async function runMisconceptionPrevalenceJob() {
+  try {
+    logger.info('scheduler.misconceptionPrevalence.starting');
+    const res = await runMonthlyMisconceptionPrevalence();
+    logger.info('scheduler.misconceptionPrevalence.completed', res);
+  } catch (err) {
+    logger.error('scheduler.misconceptionPrevalence.error', { error: err instanceof Error ? err.message : String(err) });
+  }
+
+  // Schedule next run in ~30 days (approximate monthly cadence)
+  setTimeout(runMisconceptionPrevalenceJob, MONTHLY_INTERVAL_MS);
+}
+
+/**
  * Start the scheduler
  */
 export async function startScheduler() {
@@ -392,6 +419,11 @@ export async function startScheduler() {
   const delayDataDeletion = msUntilNextRun(20) + 30 * 60 * 1000
   logger.info('scheduler.scheduled.dataDeletion', { firstRun: new Date(Date.now() + delayDataDeletion).toISOString() })
   setTimeout(runDataDeletionJob, delayDataDeletion);
+
+  // Monthly misconception prevalence job (1st of next month at 04:00 UTC)
+  const delayMonthlyMisconception = msUntilNextMonthlyRun(4)
+  logger.info('scheduler.scheduled.misconceptionPrevalence', { firstRun: new Date(Date.now() + delayMonthlyMisconception).toISOString() })
+  setTimeout(runMisconceptionPrevalenceJob, delayMonthlyMisconception);
 
   logger.info('scheduler.started');
 }
