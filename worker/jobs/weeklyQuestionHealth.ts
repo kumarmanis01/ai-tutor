@@ -10,8 +10,8 @@
  * - 2026-04-08T00:00:00Z | copilot | created weekly question health job
  */
 
-import { prisma } from '../../lib/prisma.js'
-import { logger } from '../../lib/logger.js'
+import { prisma } from '../../lib/prisma'
+import { logger } from '../../lib/logger'
 
 const LOW_QUESTION_THRESHOLD = 5
 
