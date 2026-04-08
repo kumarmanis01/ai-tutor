@@ -17,6 +17,7 @@
  */
 
 import React, { useState, useCallback } from 'react';
+import { logger } from '@/lib/logger';
 import PlanSelector from './PlanSelector';
 import PaymentMethodSelector from './PaymentMethodSelector';
 import PaymentConfirmation from './PaymentConfirmation';
@@ -55,7 +56,8 @@ export function UpgradeFlow({ studentName, studentEmail, freeTierUsage }: Upgrad
   const handleDismiss = useCallback(async () => {
     try {
       await fetch('/api/student/subscription/dismiss', { method: 'POST' });
-    } catch {
+    } catch (err) {
+      logger.warn('handleDismiss failed', { component: 'UpgradeFlow', methodName: 'handleDismiss', error: String(err) });
       // non-blocking -- dismiss is UX-only
     }
     // Reload so dashboard shows banner instead of gate

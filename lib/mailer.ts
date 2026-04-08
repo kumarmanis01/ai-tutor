@@ -10,6 +10,7 @@
  * Free tier: 3,000 emails/month, 100/day.
  */
 import { Resend } from 'resend';
+import { logger } from '@/lib/logger';
 
 // Lazy singleton -- avoids crash at module load time when RESEND_API_KEY is absent
 // (e.g. during Next.js build or unit tests that do not exercise email).
@@ -68,15 +69,11 @@ export async function sendMail(opts: MailOptions): Promise<string> {
     }),
   });
   if (error) {
-    console.error('[mailer] Send failed:', {
-      error: error.message,
-      to: opts.to,
-      subject: opts.subject,
-    });
+    logger.error('[mailer] Send failed', { error: error.message, to: opts.to, subject: opts.subject });
     throw new Error(`[mailer] ${error.message}`);
   }
   const id = data?.id ?? '';
-  console.log('[mailer] Sent:', id, '->', opts.to);
+  logger.info('[mailer] Sent', { id, to: opts.to });
   return id;
 }
 
@@ -88,7 +85,7 @@ export async function sendMailSafe(opts: MailOptions): Promise<void> {
   try {
     await sendMail(opts);
   } catch (err) {
-    console.error('[mailer] sendMailSafe suppressed error:', err);
+    logger.error('[mailer] sendMailSafe suppressed error', { error: err });
   }
 }
 

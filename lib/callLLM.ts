@@ -268,12 +268,16 @@ export async function callLLM({ prompt, model, meta, timeoutMs }: CallLLMArgs) {
         logger.debug('[ai][DEBUG] callLLM prompt length', { promptLength: (prompt || '').length })
         logger.debug('[ai][DEBUG] callLLM response length', { responseLength: (content || '').length })
         logger.info('callLLM debug', { promptLength: (prompt || '').length, responseLength: (content || '').length, meta, model: selectedModel, latencyMs })
-      } catch {}
+      } catch (e) {
+        logger.warn('callLLM HYDRATION_DEBUG logging failed', { error: String(e) })
+      }
     }
 
       const AI_CONTENT_DEBUG = process.env.AI_CONTENT_DEBUG === '1'
       if (AI_CONTENT_DEBUG) {
-      try { logger.info('AI_CONTENT_DEBUG: raw LLM content', { rawContent: content, meta }) } catch {}
+      try { logger.info('AI_CONTENT_DEBUG: raw LLM content', { rawContent: content, meta }) } catch (e) {
+        logger.warn('callLLM AI_CONTENT_DEBUG logging failed', { error: String(e) })
+      }
     }
 
       if (WORKER_DEBUG) {
@@ -296,14 +300,18 @@ export async function callLLM({ prompt, model, meta, timeoutMs }: CallLLMArgs) {
           try {
             const snippet = typeof content === 'string' ? content.slice(0, 4000) : JSON.stringify(content).slice(0, 4000);
             logger.info('[LLM_RAW_DEBUG] Raw LLM output (console-only mode)', { meta, snippet });
-          } catch (e) {}
+          } catch (e) {
+            logger.warn('callLLM LOG_RAW_LLM_OUTPUT_CONSOLE_ONLY snippet logging failed', { error: String(e) })
+          }
           try {
             // Remove likely raw text fields from respBody before persisting
             if (respBody && respBody.choices && Array.isArray(respBody.choices) && respBody.choices[0] && respBody.choices[0].message) {
               respBody.choices[0].message.content = undefined;
             }
             if (respBody && typeof respBody._rawText !== 'undefined') delete respBody._rawText;
-          } catch (e) {}
+          } catch (e) {
+            logger.warn('callLLM LOG_RAW_LLM_OUTPUT_CONSOLE_ONLY redaction failed', { error: String(e) })
+          }
         }
 
         // Allow callers to suppress auto-logging and instead persist logs inside their transaction

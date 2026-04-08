@@ -28,5 +28,6 @@ export function computeDifficultyCounts(totalItems: number) {
   return { totalItems, easy, medium, hard };
 }
 
-export default { diagnosticConfig, computeDifficultyCounts };
+const Config = { diagnosticConfig, computeDifficultyCounts };
+export default Config;
 

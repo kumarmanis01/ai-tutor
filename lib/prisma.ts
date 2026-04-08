@@ -14,6 +14,7 @@
  */
 
 import { PrismaClient } from '@prisma/client';
+import { logger } from '@/lib/logger'
 
 /* eslint-disable no-var */
 declare global {
@@ -141,8 +142,9 @@ const prismaProxy = new Proxy(client, {
                     `
                     if (name === 'findFirst') return rows[0] ?? null
                     return rows
-                  } catch (rawErr) {
-                    // If raw fallback also fails, propagate original error for visibility.
+                  } catch (_rawErr) {
+                    // If raw fallback also fails, log the raw fallback error and propagate original error for visibility.
+                    logger.warn('prisma.auditLog raw fallback failed', { error: String(_rawErr) })
                     throw err
                   }
                 }
@@ -163,5 +165,9 @@ const prismaProxy = new Proxy(client, {
 export const prisma = prismaProxy as unknown as PrismaClient;
 
 process.on('exit', () => {
-  try { void (client as any).$disconnect(); } catch {}
+  try {
+    void (client as any).$disconnect();
+  } catch (err: any) {
+    logger.warn('prisma disconnect failed', { err: (err && err.message) || err });
+  }
 });

@@ -12,6 +12,7 @@ COPILOT INSTRUCTIONS FOLLOWED:
 
 EDIT LOG:
 - 2026-01-02T00:00:00Z | git-user | reorganized doc for clarity
+- 2026-04-08T00:00:00Z | copilot | add ESLint & style guardrails to reduce repeated lint violations
 -->
 
 # HARD GUARDRAILS — Copilot Instructions (Summary)
@@ -144,6 +145,39 @@ The project is structured as a monorepo with clear separation of concerns:
 ---
 
 For further questions, refer to the `README.md` or ask a team member.
+
+## ESLint & Style Guardrails (ENFORCED)
+
+These rules are added to reduce repeated lint failures and ensure consistent, production-ready code. Copilot MUST follow them when generating or modifying code.
+
+- **No raw console:** Never use `console.log`, `console.error`, `console.warn`, or other console methods in production code. Use the project's structured logger instead:
+
+  ```ts
+  import { logger } from '@/lib/logger'
+  logger.error('description', { error: err })
+  ```
+
+- **Use Next.js `Link` for internal navigation:** Do not use `<a href="/...">` for internal routes. Use `Link` from `next/link` for client-side navigation and accessibility.
+
+- **Do not pass `children` as a prop:** Always nest children between opening/closing tags. Example: `<ParentDashboard>{children}</ParentDashboard>` (not `<ParentDashboard children={children} />`).
+
+- **Prefer `next/image` for images:** Replace raw `<img>` with `next/image` for optimized loading. If a raw `<img>` is necessary, include `width`, `height`, `alt`, and a brief justification comment.
+
+- **Named default exports:** Assign objects to a `const` and export that const as default to avoid anonymous default exports. Example:
+
+  ```ts
+  const MyModule = { fn1, fn2 }
+  export default MyModule
+  ```
+
+- **Handle unused vars deliberately:** Prefix intentionally-unused variables with `_` (e.g., `_unused`) or remove them. This satisfies `@typescript-eslint/no-unused-vars` and documents intent.
+
+- **Guard ESLint exceptions:** If a rule must be bypassed, add an inline `eslint-disable-next-line` with a short justification and add the justification to the file's EDIT LOG.
+
+- **CI enforcement:** Ensure `npm run lint` and `npm run type-check` are run locally before committing. CI is configured to fail PRs with lint or type errors.
+
+These guardrails are minimal but critical to avoid cyclical lint fixes. Follow them for all edits and include the relevant rule references in the edit's header when applicable.
+
 
 ### Creating/ Updating code
 

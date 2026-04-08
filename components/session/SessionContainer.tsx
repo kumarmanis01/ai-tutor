@@ -20,6 +20,7 @@
  */
 
 import React, { useEffect, useRef, useCallback } from 'react';
+import Link from 'next/link';
 import { useSession } from '@/hooks/session/useSession';
 import { phaseRouter } from '@/lib/session/phaseRouter';
 import { SessionLayout } from './SessionLayout';
@@ -121,9 +122,9 @@ export function SessionContainer({ topicId, reasonLabel, estimatedTimeMin }: Ses
               ? 'Set ENABLE_SESSION_ENGINE=1 to enable structured sessions.'
               : error ?? 'Unable to load this session.'}
           </p>
-          <a href="/dashboard" className="inline-block px-5 py-2.5 bg-primary text-primary-foreground rounded-lg text-sm font-medium">
+          <Link href="/dashboard" className="inline-block px-5 py-2.5 bg-primary text-primary-foreground rounded-lg text-sm font-medium">
             Return to Dashboard
-          </a>
+          </Link>
         </div>
       </div>
     );

@@ -117,7 +117,8 @@ export async function POST(req: Request) {
       try {
         nextQuestion = await selectNextQuestion(updated as any);
       } catch (e) {
-        // selector failure: fall back to sequential below
+        // selector failure: log and fall back to sequential below
+        logger.warn('diagnostic.selector failed, falling back to sequential selector', { error: String(e) })
       }
     }
 
@@ -142,6 +143,7 @@ export async function POST(req: Request) {
     logger.logAPI(req, res, { className: 'DiagnosticAnswerAPI', methodName: 'POST' }, start);
     return res;
   } catch (err) {
+    logger.error('diagnostic.answer failed', { error: String(err) })
     const res = NextResponse.json({ error: 'Failed to record answer' }, { status: 500 });
     logger.logAPI(req, res, { className: 'DiagnosticAnswerAPI', methodName: 'POST' }, start);
     return res;

@@ -1,5 +1,6 @@
 "use client"
 import React, { useState, useCallback } from 'react'
+import { logger } from '@/lib/logger'
 
 function isObject(v: any) {
   return v !== null && typeof v === 'object'
@@ -73,7 +74,8 @@ export default function ReadOnlyJsonViewer({ data, collapsedByDefault = true }: 
       await navigator.clipboard.writeText(JSON.stringify(data, null, 2))
       setCopied(true)
       setTimeout(() => setCopied(false), 1500)
-    } catch {
+    } catch (e) {
+      logger.warn('navigator.clipboard.writeText failed in ReadOnlyJsonViewer', { component: 'ReadOnlyJsonViewer', error: e })
       setCopied(false)
     }
   }, [data])

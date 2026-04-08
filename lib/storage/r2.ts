@@ -42,4 +42,5 @@ export async function uploadBufferToR2(buffer: Buffer, key: string, contentType 
   return `${endpoint}/${bucketPart}/${key}`;
 }
 
-export default { uploadBufferToR2 };
+const R2 = { uploadBufferToR2 };
+export default R2;

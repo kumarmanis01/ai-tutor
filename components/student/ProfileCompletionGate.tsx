@@ -22,6 +22,8 @@
  */
 
 import React, { useEffect, useState } from 'react';
+import { logger } from '@/lib/logger';
+import AppImage from '@/components/UI/AppImage';
 import { createPortal } from 'react-dom';
 import { useRouter } from 'next/navigation';
 import { useAcademicHierarchy } from '@/hooks/useAcademicHierarchy';
@@ -145,7 +147,7 @@ export default function ProfileCompletionGate({
   const mandatory = getMandatorySubjects(board, grade);
   const currentStepKey = steps[step] as StepKey | undefined;
   const isLastStep = step === steps.length - 1;
-  const totalSteps = steps.length;
+  const _totalSteps = steps.length;
 
   function canAdvance(): boolean {
     if (currentStepKey === 'language') return language !== '';
@@ -192,7 +194,7 @@ export default function ProfileCompletionGate({
         body: JSON.stringify(payload),
       });
       if (!res.ok) {
-        const json = await res.json().catch(() => ({}));
+        const json = await res.json().catch((e) => { logger.warn('onboarding response.json() failed', { component: 'ProfileCompletionGate', error: e }); return {}; });
         setSaveError((json?.error as string | undefined) ?? "Couldn't save -- tap to retry.");
         return;
       }
@@ -202,7 +204,8 @@ export default function ProfileCompletionGate({
         // Modal mode: force server layout re-render so isProfileComplete() -> true -> gate unmounts
         router.refresh();
       }
-    } catch {
+    } catch (e) {
+      logger.warn('Failed to submit onboarding payload', { component: 'ProfileCompletionGate', error: e });
       setSaveError("Network error -- check your connection.");
     } finally {
       setSaving(false);
@@ -265,12 +268,12 @@ export default function ProfileCompletionGate({
         {/* Purple header with Vidya avatar */}
         <div className="bg-[#534AB7] px-6 py-5 flex-shrink-0">
           <div className="flex items-center gap-3">
-            <img
+            <AppImage
               src="/logos/vidya/vidya-avatar-64.png"
               alt="Vidya"
-              className="w-10 h-10 rounded-full bg-white/20 object-cover"
               width={40}
               height={40}
+              className="w-10 h-10 rounded-full bg-white/20 object-cover"
             />
             <div>
               <h2 className="text-white font-semibold text-lg leading-tight">
@@ -485,7 +488,7 @@ export default function ProfileCompletionGate({
                         key={subj.id}
                         type="button"
                         onClick={() => toggleSubject(subj.slug, isMandatory)}
-                        aria-pressed={selected}
+                        aria-pressed={selected ? 'true' : 'false'}
                         title={isMandatory ? 'Mandatory -- cannot be removed' : undefined}
                         className={[
                           'flex items-center gap-2 min-h-[44px] rounded-xl border-2 px-3 text-sm font-medium text-left transition-all',

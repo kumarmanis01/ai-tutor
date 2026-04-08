@@ -52,7 +52,7 @@ export default async function SafetyPage() {
   ])
 
   const unresolvedCount = safetyEvents.length
-  const highSeverityCount = safetyEvents.filter(
+  const _highSeverityCount = safetyEvents.filter(
     e => e.severity === 'HIGH' || e.severity === 'CRITICAL'
   ).length
 

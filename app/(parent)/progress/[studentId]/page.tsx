@@ -43,7 +43,7 @@ export default async function ParentProgressDetailPage({
   })
   if (!link || link.status !== 'active') notFound()
 
-  const monday = (() => {
+  const _monday = (() => {
     const now = new Date()
     const dow = now.getUTCDay()
     const d = new Date(now)

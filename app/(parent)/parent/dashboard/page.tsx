@@ -105,5 +105,5 @@ export default async function ParentDashboardPage() {
     (c): c is NonNullable<typeof c> => c !== null,
   )
 
-  return <ParentDashboard children={validChildren} />
+  return <ParentDashboard>{validChildren}</ParentDashboard>
 }

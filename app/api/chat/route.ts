@@ -178,14 +178,17 @@ export async function POST(req: Request) {
       if (parsed && typeof parsed.answerMarkdown === 'string') {
         answerMarkdown = parsed.answerMarkdown;
       }
-    } catch {
+    } catch (err) {
+      logger.warn('Failed to JSON.parse aiRaw; attempting fallback extraction', { className: 'api.chat', methodName: 'POST', error: String(err) });
       // try to extract a JSON object from the text
       const m = String(aiRaw).match(/\{[\s\S]*\}/);
       if (m) {
         try {
           const parsed = JSON.parse(m[0]);
           if (parsed && typeof parsed.answerMarkdown === 'string') answerMarkdown = parsed.answerMarkdown;
-        } catch {}
+        } catch (err2) {
+          logger.warn('Fallback JSON.parse of aiRaw failed', { className: 'api.chat', methodName: 'POST', error: String(err2) });
+        }
       }
     }
 
@@ -236,14 +239,17 @@ export async function POST(req: Request) {
           try {
             const parsed = JSON.parse(scontent);
             if (Array.isArray(parsed)) suggestions = parsed.filter((s: any) => typeof s === 'string').slice(0, 5);
-          } catch {
+          } catch (err) {
+            logger.warn('Failed to JSON.parse suggestions content; attempting array fallback', { className: 'api.chat', methodName: 'POST', error: String(err) });
             // try to extract a JSON array from text
             const m = String(scontent).match(/\[[\s\S]*\]/);
             if (m) {
               try {
                 const parsed = JSON.parse(m[0]);
                 if (Array.isArray(parsed)) suggestions = parsed.filter((s: any) => typeof s === 'string').slice(0, 5);
-              } catch {}
+              } catch (err2) {
+                logger.warn('Fallback JSON.parse of suggestions array failed', { className: 'api.chat', methodName: 'POST', error: String(err2) });
+              }
             }
           }
         }

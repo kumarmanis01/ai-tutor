@@ -2,6 +2,7 @@ import { prisma } from '@/lib/prisma'
 import { requireAdminOrModerator } from '@/lib/auth'
 import { AuditEvents } from '@/lib/audit/events'
 import { logAuditEvent } from '@/lib/audit/log'
+import { logger } from '@/lib/logger'
 
 export async function POST(req: Request, { params }: { params: Promise<{ id?: string; jobId?: string }> }) {
   const resolvedParams = await params;
@@ -37,11 +38,19 @@ async function handleTrigger(_req: Request, jobId?: string, actorId?: string | n
       return { status: 200, job: updatedJob }
     })
 
-    // Fire-and-forget audit: do not block the response on audit write
+    // Fire-and-forget audit: do not block the response on audit write.
+    // Do not silently swallow exceptions — log them for observability.
     try {
-      logAuditEvent(prisma as any, { action: null, actorId: actorId ?? null, entityId: jobId, targetEntity: 'RegenerationJob', details: { legacyAction: AuditEvents.REGEN_JOB_TRIGGERED, jobId } })
-    } catch {
-      // ensure we never throw on audit failures
+      // Emit the event as an explicit action so tests and callers can assert on it.
+      logAuditEvent(prisma as any, {
+        action: AuditEvents.REGEN_JOB_TRIGGERED as any,
+        actorId: actorId ?? null,
+        entityId: jobId,
+        targetEntity: 'RegenerationJob',
+        details: { jobId },
+      })
+    } catch (err: any) {
+      logger.warn('regeneration trigger: logAuditEvent failed', { err: (err && err.message) || err, jobId })
     }
 
     if (result?.status === 200) return new Response(JSON.stringify({ job: result.job }), { status: 200, headers: { 'Content-Type': 'application/json' } })

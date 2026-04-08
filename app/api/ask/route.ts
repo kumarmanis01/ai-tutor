@@ -74,7 +74,9 @@ export async function POST(req: Request) {
             if (hasWrongSubject && !hasCorrectSubject) {
               await prisma.chat.updateMany({ where: { userId: sessionUserId, conversationId }, data: { subject } });
             }
-          } catch {}
+          } catch (e) {
+            logger.warn('Failed to reconcile legacy conversation subject', { className: 'api.ask', methodName: 'POST', error: e });
+          }
           // Ensure Conversation exists for this user + conversationId
           try {
             await prisma.conversation.upsert({
@@ -82,7 +84,9 @@ export async function POST(req: Request) {
               update: {},
               create: { id: conversationId, userId: sessionUserId },
             });
-          } catch {}
+          } catch (e) {
+            logger.warn('Failed to upsert Conversation', { className: 'api.ask', methodName: 'POST', error: e });
+          }
           // Persist user message linked to Conversation; also set legacy subject for back-compat
           await prisma.chat.create({ data: { userId: sessionUserId, role: 'user', content: text, conversationId, subject } });
           } catch (e) {
@@ -138,7 +142,7 @@ export async function POST(req: Request) {
           })
             .then((r) => (r.ok ? r.json().catch(() => ({ caption: null })) : { caption: null }))
             .then((j) => (j && typeof j.caption === 'string' ? j.caption : null))
-            .catch(() => null),
+            .catch((e) => { logger.warn('Image caption request failed', { className: 'api.ask', methodName: 'POST', error: e }); return null; }),
         );
 
         captions = await Promise.all(captionPromises);
@@ -207,7 +211,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: `OpenAI error: ${resp.status} ${txt}` }, { status: 500 });
     }
 
-    const data = await resp.json().catch(() => null);
+    const data = await resp.json().catch((e) => { logger.warn('OpenAI response.json() failed', { className: 'api.ask', methodName: 'POST', error: e }); return null; });
     const content = data?.choices?.[0]?.message?.content;
     if (!content) return NextResponse.json({ error: 'Invalid response from LLM' }, { status: 500 });
 
@@ -215,13 +219,14 @@ export async function POST(req: Request) {
     let parsed: any = null;
     try {
       parsed = JSON.parse(content);
-    } catch {
+    } catch (e) {
+      logger.warn('Failed to JSON.parse AI content', { className: 'api.ask', methodName: 'POST', error: e });
       const jsonMatch = String(content).match(/\{[\s\S]*\}/);
       if (jsonMatch) {
         try {
           parsed = JSON.parse(jsonMatch[0]);
-        } catch {
-          // fall through
+        } catch (e2) {
+          logger.warn('Failed to JSON.parse AI content fallback match', { className: 'api.ask', methodName: 'POST', error: e2 });
         }
       }
     }
@@ -248,7 +253,8 @@ export async function POST(req: Request) {
       if (Array.isArray(parsed.suggestions)) {
         suggestions = parsed.suggestions.filter((s: any) => typeof s === 'string').slice(0, 5);
       }
-    } catch {
+    } catch (e) {
+      logger.warn('Failed to extract suggestions from parsed AI output', { className: 'api.ask', methodName: 'POST', error: e });
       suggestions = [];
     }
 

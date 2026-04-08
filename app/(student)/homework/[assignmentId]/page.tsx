@@ -10,7 +10,7 @@ interface PageProps {
   params: { assignmentId: string };
 }
 
-export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
+export async function generateMetadata(_params: PageProps): Promise<Metadata> {
   return { title: `Homework -- Spinzy Academy` };
 }
 

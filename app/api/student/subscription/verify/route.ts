@@ -81,9 +81,9 @@ export async function POST(req: Request) {
 
   try {
     // Idempotent transaction: update order, activate subscription and create Payment
-    let createdPayment: { id: string } | null = null;
+    let _createdPayment: { id: string } | null = null;
     try {
-      createdPayment = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+      _createdPayment = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
         if (order.status !== 'paid') {
           await tx.paymentOrder.update({
             where: { razorpayOrderId: orderId },
@@ -102,7 +102,7 @@ export async function POST(req: Request) {
             update: { periodStart: now, sessionsUsed: 0 },
             create: { studentId: userId, periodStart: now, sessionsUsed: 0 },
           })
-          .catch(() => {});
+          .catch((err) => { logger.warn('freeTierUsage.upsert failed', { event: 'subscription.verify.upsert', context: { userId }, error: String(err) }) });
 
         // Create a Payment record to persist transaction metadata
         const payment = await tx.payment.create({
@@ -142,11 +142,11 @@ export async function POST(req: Request) {
 
   // Send receipt email -- non-blocking, never throws to caller
   if (user?.email) {
-    try {
+      try {
       // Create invoice PDF, attach to email and upload to R2 (best-effort)
       const invoiceResult = await createInvoiceForPayment({
         userId,
-        paymentId: createdPayment?.id,
+        paymentId: _createdPayment?.id,
         studentId: order.studentId,
         amountPaise: order.amount,
         planLabel: plan.label,

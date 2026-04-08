@@ -38,6 +38,9 @@ const FOOTER: string = `
   </p>
 `;
 
+// Email templates require fully-qualified <img> tags for wide client compatibility.
+// These are intentionally raw HTML image tags (absolute URLs) and include
+// `alt` and size attributes for accessibility and predictable layout in mail clients.
 const LOGO: string = `
   <img src="https://spinzyacademy.com/icons/spinzy-navbar-source.png"
        alt="Spinzy Academy" height="40"

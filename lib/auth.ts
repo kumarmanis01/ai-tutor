@@ -9,7 +9,7 @@ import { welcomeEmailHtml, magicLinkHtml } from '@/lib/email/templates';
 import { logger } from '@/lib/logger';
 import { LanguageCode } from '@/lib/normalize';
 import { getServerSession } from 'next-auth/next';
-import { DPDP_MINOR_AGE } from '@/lib/constants/age';
+import { DPDP_MINOR_AGE as _DPDP_MINOR_AGE } from '@/lib/constants/age';
 import type { AppSession } from '@/lib/types/auth';
 
 export async function requireAdmin() {
