@@ -36,6 +36,12 @@ export async function GET(req: Request) {
     where: { email: sessionUser.email },
     include: {
       subscriptions: true,
+      userBadges: {
+        include: {
+          badge: { select: { name: true, description: true, icon: true } },
+        },
+        orderBy: { earnedAt: 'desc' },
+      },
     },
   });
 
@@ -63,6 +69,7 @@ export async function GET(req: Request) {
     plan: activeSub?.plan ?? '',
     billingCycle: activeSub?.billingCycle ?? '',
     subscriptionEnd: activeSub?.endDate ?? null,
+    userBadges: savedUser?.userBadges ?? [],
   });
   logger.logAPI(req, res, { className: 'UserProfileAPI', methodName: 'GET' }, start);
   return res;

@@ -1,4 +1,4 @@
-import { applyTagTransition, type TutorSessionState, type TutorStage, type TutorTag } from '@/lib/ai/tutor/stateMachine'
+import { applyTagTransition, applyTagTransitionWithRemediation, type TutorSessionState, type TutorStage, type TutorTag } from '@/lib/ai/tutor/stateMachine'
 
 function freeze<T extends object>(obj: T): T {
   return Object.freeze(obj)
@@ -296,6 +296,83 @@ describe('applyTagTransition', () => {
   test('MASTERY_CONFIRMED during remediation returns new object', () => {
     const s = baseState({ prereqRemediationActive: true, prereqReturnStage: 'CORE_EXPLANATION', stage: 'PREREQ_BRIDGE' })
     expect(applyTagTransition(s, 'MASTERY_CONFIRMED')).not.toBe(s)
+  })
+
+  test('VALIDATE resets consecutiveWrongAnswers to 0', () => {
+    const s = baseState({ stage: 'GUIDED_PRACTICE', consecutiveWrongAnswers: 2, stageAttemptCount: 2 })
+    expect(applyTagTransition(s, 'VALIDATE').consecutiveWrongAnswers).toBe(0)
+  })
+
+  test('STRUGGLE_DETECTED increments both consecutiveWrongAnswers and stageAttemptCount', () => {
+    const s = baseState({ stage: 'GUIDED_PRACTICE', consecutiveWrongAnswers: 1, stageAttemptCount: 1 })
+    const next = applyTagTransition(s, 'STRUGGLE_DETECTED')
+    expect(next.consecutiveWrongAnswers).toBe(2)
+    expect(next.stageAttemptCount).toBe(2)
+  })
+})
+
+// ── applyTagTransitionWithRemediation (AC-08, F-STU-011) ──────────────────────
+
+describe('applyTagTransitionWithRemediation', () => {
+  test('should return same result as applyTagTransition for non-STRUGGLE tags', () => {
+    const s = baseState({ stage: 'GUIDED_PRACTICE', stageAttemptCount: 1 })
+    const { next, effectiveTag } = applyTagTransitionWithRemediation(s, 'VALIDATE')
+    expect(effectiveTag).toBe('VALIDATE')
+    expect(next).toEqual(applyTagTransition(s, 'VALIDATE'))
+  })
+
+  test('should return STRUGGLE_DETECTED result when consecutiveWrongAnswers < 3', () => {
+    const s = baseState({ stage: 'GUIDED_PRACTICE', consecutiveWrongAnswers: 1, stageAttemptCount: 1 })
+    const { next, effectiveTag } = applyTagTransitionWithRemediation(s, 'STRUGGLE_DETECTED')
+    expect(effectiveTag).toBe('STRUGGLE_DETECTED')
+    expect(next.consecutiveWrongAnswers).toBe(2)
+    expect(next.stage).toBe('GUIDED_PRACTICE')
+    expect(next.prereqRemediationActive).toBe(false)
+  })
+
+  test('should auto-upgrade to PREREQ_FAIL when consecutiveWrongAnswers reaches 3', () => {
+    const s = baseState({ stage: 'GUIDED_PRACTICE', consecutiveWrongAnswers: 2, stageAttemptCount: 2 })
+    const { next, effectiveTag } = applyTagTransitionWithRemediation(s, 'STRUGGLE_DETECTED')
+    expect(effectiveTag).toBe('PREREQ_FAIL')
+    expect(next.stage).toBe('PREREQ_BRIDGE')
+    expect(next.prereqRemediationActive).toBe(true)
+    expect(next.prereqReturnStage).toBe('GUIDED_PRACTICE')
+    expect(next.consecutiveWrongAnswers).toBe(0)
+  })
+
+  test('should NOT auto-upgrade if already in remediation (no re-entry)', () => {
+    const s = baseState({
+      stage: 'PREREQ_BRIDGE',
+      consecutiveWrongAnswers: 2,
+      prereqRemediationActive: true,
+      prereqReturnStage: 'GUIDED_PRACTICE',
+      stageAttemptCount: 1,
+    })
+    const { next, effectiveTag } = applyTagTransitionWithRemediation(s, 'STRUGGLE_DETECTED')
+    expect(effectiveTag).toBe('STRUGGLE_DETECTED')
+    expect(next.prereqRemediationActive).toBe(true)
+    expect(next.stage).toBe('PREREQ_BRIDGE')
+  })
+
+  test('should auto-upgrade on exactly the 3rd consecutive wrong answer in INDEPENDENT_PRACTICE', () => {
+    const s = baseState({ stage: 'INDEPENDENT_PRACTICE', consecutiveWrongAnswers: 2, stageAttemptCount: 3 })
+    const { next, effectiveTag } = applyTagTransitionWithRemediation(s, 'STRUGGLE_DETECTED')
+    expect(effectiveTag).toBe('PREREQ_FAIL')
+    expect(next.prereqReturnStage).toBe('INDEPENDENT_PRACTICE')
+  })
+
+  test('should be idempotent: a second STRUGGLE after upgrade re-enters normally', () => {
+    // After remediation is active, further STRUGGLE_DETECTED should not re-trigger upgrade
+    const s = baseState({
+      stage: 'PREREQ_BRIDGE',
+      consecutiveWrongAnswers: 0,
+      prereqRemediationActive: true,
+      prereqReturnStage: 'GUIDED_PRACTICE',
+      stageAttemptCount: 0,
+    })
+    const { next, effectiveTag } = applyTagTransitionWithRemediation(s, 'STRUGGLE_DETECTED')
+    expect(effectiveTag).toBe('STRUGGLE_DETECTED')
+    expect(next.stage).toBe('PREREQ_BRIDGE')
   })
 })
 

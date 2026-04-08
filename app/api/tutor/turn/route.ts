@@ -166,6 +166,10 @@ export async function POST(req: Request) {
         stage: 'HOOK',
         hintsRemaining: 3,
         lastTurnNumber: 0,
+        consecutiveWrongAnswers: 0,
+        stageAttemptCount: 0,
+        prereqRemediationActive: false,
+        prereqReturnStage: null,
       } satisfies TutorSessionState)
 
     // Validate client-tracked turnNumber server-side (monotonic)

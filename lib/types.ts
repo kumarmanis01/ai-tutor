@@ -29,6 +29,12 @@ export interface User {
   billingCycle?: string | null;
   subscriptionEnd?: string | null;
   createdAt?: string | null;
+  userBadges?: Array<{
+    id: string;
+    badgeKey: string;
+    earnedAt?: string;
+    badge?: { name?: string | null; description?: string | null; icon?: string | null } | null;
+  }>;
 }
 
 // Backwards-compatible alias (optional).
