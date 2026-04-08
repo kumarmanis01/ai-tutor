@@ -1,3 +1,6 @@
+// Ensure embedding calls run in tests even when OPENAI_API_KEY isn't set in CI
+process.env.OPENAI_API_KEY = process.env.OPENAI_API_KEY || 'test'
+
 jest.mock('@/lib/prisma', () => ({
   prisma: { analyticsEvent: { create: jest.fn() } },
 }))

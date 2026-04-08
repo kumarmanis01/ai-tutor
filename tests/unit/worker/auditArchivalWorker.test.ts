@@ -23,6 +23,9 @@ jest.mock('@aws-sdk/client-s3', () => {
 })
 
 import { prisma } from '@/lib/prisma'
+// Ensure S3 bucket is present in test environment (CI may not set it)
+process.env.S3_BUCKET = process.env.S3_BUCKET || 'test-bucket'
+
 import runAuditArchivalCycle from '@/worker/services/auditArchivalWorker'
 
 describe('auditArchivalWorker', () => {
