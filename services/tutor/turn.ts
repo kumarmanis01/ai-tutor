@@ -17,7 +17,7 @@ import { parseTutorTag, stripTag } from '@/lib/ai/tutor/tagParser'
 import { checkOutputSafety, type SafetyEventCreate as OutputSafetyEvent } from '@/lib/ai/tutor/outputSafety'
 import { applyTagTransitionWithRemediation, type TutorTag, type TutorStage } from '@/lib/ai/tutor/stateMachine'
 import { retrieveRelevantChunks } from '@/lib/ai/tutor/rag'
-import { detectMisconceptions, loadMisconceptions } from '@/lib/ai/tutor/misconceptionDetector'
+import { detectMisconceptions, loadMisconceptions, logNovelMisconception } from '@/lib/ai/tutor/misconceptionDetector'
 import { saveDoubt, lookupDoubt, recordDoubt } from '@/lib/ai/tutor/doubtKb'
 import { getCachedExplanation, setCachedExplanation, type ExplanationLang, type ExplanationModality } from '@/lib/ai/tutor/explanationCache'
 import { detectDistress } from '@/lib/ai/tutor/distress'
@@ -301,7 +301,7 @@ export async function runTutorOrchestrator(args: {
     // Misconception detection using real subjectId + conceptId.
     const loadedMisconceptions = await loadMisconceptions(subjectId, conceptId)
     const detectedMisconceptions = detectMisconceptions(redactedInput, loadedMisconceptions)
-    const activeMisconception = detectedMisconceptions[0]?.name ?? null
+    const activeMisconception = detectedMisconceptions[0] ?? null
 
     if (detectedMisconceptions.length > 0) {
       const now = new Date()
@@ -336,6 +336,32 @@ export async function runTutorOrchestrator(args: {
           error: String((err as any)?.message ?? err),
         })
       }
+    } else if (redactedInput.trim().length > 20 && loadedMisconceptions.length > 0) {
+      // AC-05 (F-STU-013): input has meaningful content but matched nothing in the library.
+      // Log as a novel misconception signal for content team review.
+      logNovelMisconception(studentId, subjectId, conceptId, redactedInput)
+    }
+
+    // AC-04 (F-STU-013): load up to 3 recent known misconceptions for this concept
+    // to inject into the system prompt so Vidya stays alert to recurring patterns.
+    let recentMisconceptionNames: string[] = []
+    try {
+      const recentRows = await prisma.studentMisconception.findMany({
+        where: {
+          studentId,
+          misconception: { conceptId },
+        },
+        orderBy: { lastSeenAt: 'desc' },
+        take: 3,
+        select: { misconception: { select: { name: true } } },
+      })
+      recentMisconceptionNames = recentRows.map((r) => r.misconception.name)
+    } catch (err) {
+      logger.warn('studentMisconception.load.failed', {
+        studentId,
+        conceptId,
+        error: String((err as any)?.message ?? err),
+      })
     }
 
     // 3. Frustration score — use empty history for now (integration with real history is future work)
@@ -357,7 +383,7 @@ export async function runTutorOrchestrator(args: {
       teachingLanguage: 'en',
       examDateProximityDays: null,
       learningStyle,
-      recentMisconceptions: [],
+      recentMisconceptions: recentMisconceptionNames,
       masteryBrief: 'mastery_context_not_yet_wired',
       emotionalState: frustration.emotionalState,
       stage: state.stage as TutorStage,
@@ -368,7 +394,8 @@ export async function runTutorOrchestrator(args: {
       consecutiveWrongAnswers: state.consecutiveWrongAnswers,
       sessionSummary: null,
       recentTurns: [],
-      activeMisconceptionName: activeMisconception,
+      activeMisconceptionName: activeMisconception?.name ?? null,
+      activeMisconceptionCorrection: activeMisconception?.correction ?? null,
       frustrationScore: frustration.frustrationScore,
       ragChunks: ragContext.chunks.map((c) => c.content),
       conceptName,

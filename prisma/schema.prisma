@@ -118,6 +118,7 @@ model User {
   pushSubscriptions           PushSubscriptionRecord[]
   deletionRequest             DeletionRequest?
   diagnosticSessions          DiagnosticSession[]
+  studentMisconceptions       StudentMisconception[]
 }
 
 model PaymentOrder {
@@ -1601,16 +1602,36 @@ model FreeTierUsage {
 }
 
 model Misconception {
-  id              String   @id @default(cuid())
+  id              String                 @id @default(cuid())
   subjectId       String
   conceptId       String
   name            String
   description     String
   triggerPatterns String[]
   correction      String
-  createdAt       DateTime @default(now())
+  createdAt       DateTime               @default(now())
+  studentDetections StudentMisconception[]
 
   @@index([subjectId, conceptId])
+}
+
+/// AC-04 (F-STU-013): per-student misconception occurrence log.
+/// Upserted each time a known misconception is detected in a tutor turn.
+/// Injected into future session prompts for the same concept cluster.
+model StudentMisconception {
+  id              String        @id @default(cuid())
+  studentId       String
+  misconceptionId String
+  firstDetectedAt DateTime
+  lastSeenAt      DateTime
+  occurrenceCount Int           @default(1)
+
+  student         User          @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  misconception   Misconception @relation(fields: [misconceptionId], references: [id], onDelete: Cascade)
+
+  @@unique([studentId, misconceptionId])
+  @@index([studentId])
+  @@index([studentId, misconceptionId])
 }
 
 model ApprovalAudit {

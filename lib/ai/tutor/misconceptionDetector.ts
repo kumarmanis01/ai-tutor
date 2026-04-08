@@ -85,6 +85,35 @@ type LoadedMisconception = {
   correction: string
 }
 
+/**
+ * AC-05 (F-STU-013): Log a novel misconception signal for content team review.
+ * Called when the student's input has meaningful content but zero library matches.
+ * Uses structured JSON logging so the signal is queryable from server logs.
+ * Never throws -- analytics must not disrupt the tutor turn.
+ *
+ * @param studentId - The student whose input produced no match.
+ * @param subjectId - Subject being studied.
+ * @param conceptId - Concept being studied.
+ * @param studentInput - The raw (already redacted) student input.
+ */
+export function logNovelMisconception(
+  studentId: string,
+  subjectId: string,
+  conceptId: string,
+  studentInput: string,
+): void {
+  try {
+    logger.info('misconception.novel_detected', {
+      event: 'misconception.novel_detected',
+      context: { studentId, subjectId, conceptId },
+      // Trim to 200 chars -- enough for content review, avoids log bloat.
+      inputSnippet: studentInput.slice(0, 200),
+    })
+  } catch {
+    // never throw from analytics path
+  }
+}
+
 const misconceptionCache = new Map<string, LoadedMisconception[]>()
 
 /**
