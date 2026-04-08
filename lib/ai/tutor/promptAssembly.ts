@@ -25,6 +25,10 @@ export interface PromptContext {
 
   // STAGE_INSTRUCTIONS layer inputs
   isHintRequest: boolean // true when student explicitly pressed "Get a hint"
+  /** AC-04 (F-STU-011): student requested a re-explanation style. null = no request this turn. */
+  explainStyle?: 'simpler' | 'harder' | 'real_life_example' | null
+  /** AC-08 (F-STU-011): consecutive wrong answers this stage (drives remediation prompt). */
+  consecutiveWrongAnswers?: number
 
   // CURRICULUM_CONTEXT layer inputs -- RAG chunks, may be truncated
   ragChunks: string[] // ordered by relevance descending
@@ -189,11 +193,13 @@ export function buildSessionStateLayer(
   recentTurns: PromptContext['recentTurns'],
   sessionSummary: string | null,
 ): string {
+  const wrongCount = ctx.consecutiveWrongAnswers ?? 0
   const lines: string[] = [
     '### SESSION_STATE',
     `Current stage: ${ctx.stage}`,
     `Stage attempt count: ${ctx.stageAttemptCount}`,
     `Hints used this stage: ${ctx.hintsUsed}`,
+    `Consecutive wrong answers: ${wrongCount}`,
     `Frustration score (0-1): ${ctx.frustrationScore.toFixed(2)}`,
   ]
 
@@ -264,8 +270,40 @@ export function buildResponseFormatLayer(_ctx: PromptContext): string {
  */
 export function buildStageInstructionsLayer(ctx: PromptContext): string {
   const lines: string[] = ['### STAGE_INSTRUCTIONS']
-  const { stage, hintsUsed, isHintRequest } = ctx
+  const { stage, hintsUsed, isHintRequest, explainStyle } = ctx
+  const consecutiveWrongAnswers = ctx.consecutiveWrongAnswers ?? 0
   const isPracticeStage = stage === 'GUIDED_PRACTICE' || stage === 'INDEPENDENT_PRACTICE'
+
+  // AC-04 (F-STU-011 MUST): student requested re-explanation in a different style.
+  // Inject this directive before any stage-specific instructions.
+  if (explainStyle === 'simpler') {
+    lines.push(
+      'RE-EXPLAIN REQUEST -- Simpler:',
+      'The student asked for a simpler explanation. Re-explain the current concept using:',
+      '- Shorter sentences and basic vocabulary (avoid technical terms where possible)',
+      '- A very concrete everyday analogy (e.g., comparing photosynthesis to cooking food)',
+      '- Break into smaller steps than your previous explanation',
+      'Do NOT repeat the same wording from your last response.',
+    )
+  } else if (explainStyle === 'harder') {
+    lines.push(
+      'RE-EXPLAIN REQUEST -- Harder/Deeper:',
+      'The student asked for a deeper explanation. Re-explain the current concept by:',
+      '- Adding the underlying mechanism or "why it works"',
+      '- Connecting to adjacent concepts the student may know',
+      '- Using precise technical vocabulary and formal definitions',
+      'Do NOT repeat the same wording from your last response.',
+    )
+  } else if (explainStyle === 'real_life_example') {
+    lines.push(
+      'RE-EXPLAIN REQUEST -- Real-life example:',
+      'The student asked for a real-life example. Re-explain the current concept through:',
+      '- A specific, vivid real-world scenario from Indian daily life (cricket, trains, markets, festivals)',
+      '- Show exactly how the concept applies step by step in that scenario',
+      '- Then connect back to the abstract concept',
+      'Do NOT repeat the same wording from your last response.',
+    )
+  }
 
   if (isPracticeStage && isHintRequest) {
     if (hintsUsed === 0) {
@@ -307,9 +345,12 @@ export function buildStageInstructionsLayer(ctx: PromptContext): string {
   } else if (isPracticeStage) {
     lines.push(
       `Current stage: ${stage}. Hints available: ${Math.max(0, 3 - hintsUsed)}/3.`,
+      `Consecutive wrong answers this stage: ${consecutiveWrongAnswers}.`,
       'Present a practice problem or validate the student\'s attempt.',
       'NEVER give the answer directly. Guide with a question if the student is wrong.',
-      'Output tag: [QUESTION] for a new question, [VALIDATE] after checking an answer, [STRUGGLE_DETECTED] after 2+ wrong attempts.',
+      consecutiveWrongAnswers >= 2
+        ? 'WARNING: Student has given multiple wrong answers. If this answer is also wrong, output [PREREQ_FAIL] to trigger prerequisite remediation (AC-08).'
+        : 'Output tag: [QUESTION] for a new question, [VALIDATE] after checking an answer, [STRUGGLE_DETECTED] when the student gives a wrong answer.',
     )
   } else if (stage === 'HOOK') {
     lines.push(
