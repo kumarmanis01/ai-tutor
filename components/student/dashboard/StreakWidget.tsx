@@ -13,6 +13,7 @@
 
 import React, { useEffect, useRef } from 'react'
 import useSWR from 'swr'
+import { COSMETIC_ITEMS } from '@/lib/student/cosmetics'
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json())
 
@@ -20,6 +21,7 @@ type TopbarStats = {
   streak: number
   level: number
   shieldAvailable: boolean
+  cosmeticUnlocks: string[]
 }
 
 /** Returns the last 7 calendar dates as YYYY-MM-DD strings, ending with today (UTC). */
@@ -89,6 +91,7 @@ export default function StreakWidget({ onClose }: Props) {
 
   const streak = stats?.streak ?? 0
   const shieldAvailable = stats?.shieldAvailable ?? false
+  const unlockedKeys = new Set<string>(stats?.cosmeticUnlocks ?? [])
 
   const todayStr = new Date().toISOString().split('T')[0]
   const calendarDays = lastSevenDays(new Date())
@@ -248,6 +251,44 @@ export default function StreakWidget({ onClose }: Props) {
           🛡️ Shield ready -- keeps your streak if you need a day off
         </p>
       )}
+
+      {/* AC-06: milestone cosmetic rewards */}
+      <div className="mt-4 pt-3 border-t border-gray-100 dark:border-slate-800">
+        <p className="text-[10px] font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wide mb-2">
+          Milestone rewards
+        </p>
+        <div className="flex gap-1.5">
+          {COSMETIC_ITEMS.map((item) => {
+            const earned = unlockedKeys.has(item.key)
+            return (
+              <div
+                key={item.key}
+                title={earned ? item.description : `Unlock at ${item.streakMilestone}-day streak`}
+                className="flex-1 flex flex-col items-center gap-1"
+              >
+                <div
+                  className={[
+                    'w-full aspect-square rounded-lg flex items-center justify-center text-xs font-bold transition-colors',
+                    earned
+                      ? 'text-white'
+                      : 'bg-gray-100 dark:bg-slate-800 text-gray-300 dark:text-slate-600',
+                  ].join(' ')}
+                  style={earned ? { backgroundColor: item.colour } : undefined}
+                  aria-label={earned ? item.name : `Locked -- ${item.streakMilestone} days`}
+                >
+                  {item.streakMilestone}
+                </div>
+                <span className={[
+                  'text-[9px] leading-none text-center',
+                  earned ? 'text-gray-700 dark:text-gray-300' : 'text-gray-300 dark:text-slate-600',
+                ].join(' ')}>
+                  {item.streakMilestone}d
+                </span>
+              </div>
+            )
+          })}
+        </div>
+      </div>
     </div>
   )
 }

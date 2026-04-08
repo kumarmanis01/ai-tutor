@@ -26,7 +26,7 @@ export async function GET() {
   const [user, shieldAvail] = await Promise.all([
     prisma.user.findUnique({
       where: { id: userId },
-      select: { currentStreak: true, level: true },
+      select: { currentStreak: true, level: true, cosmeticUnlocks: true },
     }),
     isShieldAvailable(userId),
   ]);
@@ -35,5 +35,6 @@ export async function GET() {
     streak: user?.currentStreak ?? 0,
     level: user?.level ?? 1,
     shieldAvailable: shieldAvail,
+    cosmeticUnlocks: user?.cosmeticUnlocks ?? [],
   });
 }

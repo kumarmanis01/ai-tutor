@@ -1,4 +1,5 @@
 import { prisma } from '@/lib/prisma'
+import { unlockCosmeticsForStreak } from '@/lib/student/cosmetics'
 
 export interface BadgeDefinition {
   key: string
@@ -110,6 +111,14 @@ export async function checkSessionBadges(params: {
     }
 
     if (toAward.length === 0) return []
+
+    // AC-06 (F-STU-030): whenever a streak milestone badge is awarded, also unlock the
+    // corresponding cosmetic reward. Fire-and-forget -- cosmetic failure must not
+    // block badge awarding.
+    const awardingStreakBadge = toAward.some((b) => b.key.startsWith('streak_'))
+    if (awardingStreakBadge) {
+      void unlockCosmeticsForStreak(studentId, currentStreak)
+    }
 
     // Upsert badge definitions (auto-seed) then record awards atomically.
     await prisma.$transaction([
