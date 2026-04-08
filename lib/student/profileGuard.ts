@@ -10,6 +10,8 @@ export interface StudentProfileData {
   subjects: string[]
   age: number | null
   parentEmail: string | null
+  parentPhone: string | null
+  parentPhoneVerified: boolean
 }
 
 export const EMPTY_PROFILE_DATA: StudentProfileData = {
@@ -19,6 +21,8 @@ export const EMPTY_PROFILE_DATA: StudentProfileData = {
   subjects: [],
   age: null,
   parentEmail: null,
+  parentPhone: null,
+  parentPhoneVerified: false,
 }
 
 export interface ProfileCompletenessResult {
@@ -91,6 +95,7 @@ export async function checkProfileCompleteness(studentId: string): Promise<Profi
         age: true,
         parentEmail: true,
         parentPhone: true,
+        parentPhoneVerifiedAt: true,
       },
     })
 
@@ -166,6 +171,8 @@ export async function checkProfileCompleteness(studentId: string): Promise<Profi
         subjects: resolvedSubjects,
         age: user.age ?? null,
         parentEmail: user.parentEmail ?? null,
+        parentPhone: user.parentPhone ?? null,
+        parentPhoneVerified: user.parentPhoneVerifiedAt !== null,
       },
     }
   } catch {

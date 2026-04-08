@@ -5,12 +5,23 @@ import { updateSM18 } from '@/lib/ai/tutor/sm18.js'
 
 const BATCH_SIZE = 100
 const MS_PER_DAY = 86400000
+/** AC-07 (F-STU-022): use higher targetRetention when exam <= this many days away. */
+const PRE_EXAM_DAYS = 14
+const PRE_EXAM_TARGET_RETENTION = 0.92
 
 export async function processNightlySM18(_job?: Job): Promise<void> {
   const now = new Date()
   let totalProcessed = 0
   let totalUpdated = 0
   let totalErrors = 0
+
+  // AC-07: pre-load upcoming exams indexed by studentId for O(1) lookup per row
+  const preExamCutoff = new Date(now.getTime() + PRE_EXAM_DAYS * MS_PER_DAY)
+  const upcomingExams = await prisma.learningPlan.findMany({
+    where: { examDate: { gte: now, lte: preExamCutoff } },
+    select: { studentId: true },
+  })
+  const preExamStudentIds = new Set(upcomingExams.map((p) => p.studentId))
 
   try {
     for (;;) {
@@ -33,11 +44,15 @@ export async function processNightlySM18(_job?: Job): Promise<void> {
           const elapsedMs = now.getTime() - row.lastInteraction.getTime()
           const elapsedDays = elapsedMs / MS_PER_DAY
 
+          // AC-07: shorten intervals for students with exams within 14 days
+          const isPreExam = preExamStudentIds.has(row.studentId)
+
           const result = updateSM18({
             stability: row.stability,
             retention: row.retention,
             isCorrect: true,
             elapsedDays,
+            targetRetention: isPreExam ? PRE_EXAM_TARGET_RETENTION : undefined,
           })
 
           const nextReviewAt = new Date(now.getTime() + result.nextReviewInDays * MS_PER_DAY)

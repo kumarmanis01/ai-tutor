@@ -166,17 +166,24 @@ export async function runTutorOrchestrator(args: {
   await markTurnStarted(sessionId)
 
   try {
-    const concept = await prisma.concept.findUnique({
-      where: { id: conceptId },
-      select: { name: true, irt_b: true },
-    })
-    const subject = await prisma.subjectDef.findUnique({
-      where: { id: subjectId },
-      select: { name: true },
-    })
+    const [concept, subject, userProfile] = await Promise.all([
+      prisma.concept.findUnique({
+        where: { id: conceptId },
+        select: { name: true, irt_b: true },
+      }),
+      prisma.subjectDef.findUnique({
+        where: { id: subjectId },
+        select: { name: true },
+      }),
+      prisma.user.findUnique({
+        where: { id: studentId },
+        select: { learningStyle: true },
+      }),
+    ])
     const conceptName = concept?.name ?? 'this concept'
     const subjectName = subject?.name ?? 'Subject'
     const conceptDifficulty = typeof concept?.irt_b === 'number' && Number.isFinite(concept.irt_b) ? concept.irt_b : 0
+    const learningStyle = (userProfile as any)?.learningStyle ?? null
 
     const safetyContext = {
       studentId,
@@ -318,7 +325,7 @@ export async function runTutorOrchestrator(args: {
       board: 'CBSE',
       teachingLanguage: 'en',
       examDateProximityDays: null,
-      learningStyle: null,
+      learningStyle,
       recentMisconceptions: [],
       masteryBrief: 'mastery_context_not_yet_wired',
       emotionalState: frustration.emotionalState,
