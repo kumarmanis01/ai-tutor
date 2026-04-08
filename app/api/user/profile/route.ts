@@ -56,6 +56,7 @@ export async function GET(req: Request) {
     parentPhone: savedUser?.parentPhone ?? null,
     parentPhoneVerifiedAt: savedUser?.parentPhoneVerifiedAt ?? null,
     accountStatus: (savedUser as any)?.accountStatus ?? 'active',
+    learningStyle: (savedUser as any)?.learningStyle ?? null,
     createdAt: savedUser?.createdAt ?? null,
     role: savedUser?.role ?? '',
     parentEmail: savedUser?.parentEmail ?? '',
@@ -64,5 +65,49 @@ export async function GET(req: Request) {
     subscriptionEnd: activeSub?.endDate ?? null,
   });
   logger.logAPI(req, res, { className: 'UserProfileAPI', methodName: 'GET' }, start);
+  return res;
+}
+
+const VALID_LEARNING_STYLES = ['visual', 'verbal', 'practice', 'mixed'] as const;
+
+export async function PATCH(req: Request) {
+  const start = Date.now();
+  const session = await getServerSessionForHandlers();
+  let res: Response;
+  if (!session) {
+    res = new Response('Unauthorized', { status: 401 });
+    logger.logAPI(req, res, { className: 'UserProfileAPI', methodName: 'PATCH' }, start);
+    return res;
+  }
+
+  const userId = (session.user as SessionUser & { id?: string })?.id;
+  if (!userId) {
+    res = NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    logger.logAPI(req, res, { className: 'UserProfileAPI', methodName: 'PATCH' }, start);
+    return res;
+  }
+
+  const body = await req.json().catch(() => ({}));
+
+  // Only learningStyle is patchable via this endpoint.
+  // grade/board are immutable after first save -- strip from all PATCH handlers.
+  const rawStyle = typeof body.learningStyle === 'string' ? body.learningStyle.trim() : null;
+  if (!rawStyle || !VALID_LEARNING_STYLES.includes(rawStyle as (typeof VALID_LEARNING_STYLES)[number])) {
+    res = NextResponse.json(
+      { error: `learningStyle must be one of: ${VALID_LEARNING_STYLES.join(', ')}` },
+      { status: 400 },
+    );
+    logger.logAPI(req, res, { className: 'UserProfileAPI', methodName: 'PATCH' }, start);
+    return res;
+  }
+
+  await prisma.user.update({
+    where: { id: userId },
+    data: { learningStyle: rawStyle },
+    select: { id: true },
+  });
+
+  res = NextResponse.json({ ok: true, learningStyle: rawStyle });
+  logger.logAPI(req, res, { className: 'UserProfileAPI', methodName: 'PATCH' }, start);
   return res;
 }

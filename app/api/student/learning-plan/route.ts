@@ -1,14 +1,101 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { getServerSessionForHandlers } from '@/lib/session'
 import { prisma } from '@/lib/prisma'
 import { getNextConcept } from '@/lib/student/learningPlan'
 import { logger } from '@/lib/logger'
 import { cacheGet, cacheSet } from '@/lib/cache'
+import { generateLearningPlan } from '@/lib/ai/learningPlan'
+import { formatErrorForResponse } from '@/lib/errorResponse'
 
 export const dynamic = 'force-dynamic'
 
 const CACHE_TTL_S = 120
 const cacheKey = (userId: string) => `lplan:v1:${userId}`
+
+/**
+ * PATCH /api/student/learning-plan
+ * AC-07 (F-STU-003): Update exam date / study days per week and regenerate the plan.
+ * Body: { examDate?: string | null, studyDaysPerWeek?: number }
+ */
+export async function PATCH(req: NextRequest) {
+  const start = Date.now()
+  try {
+    const session = await getServerSessionForHandlers()
+    const userId = (session?.user as { id?: string })?.id
+    if (!userId) {
+      const res = NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      logger.logAPI(req, res, { className: 'LearningPlanAPI', methodName: 'PATCH' }, start)
+      return res
+    }
+
+    const body = await req.json().catch(() => ({}))
+
+    const studyDaysRaw = body.studyDaysPerWeek !== undefined ? Number(body.studyDaysPerWeek) : null
+    const studyDaysPerWeek =
+      studyDaysRaw !== null && Number.isInteger(studyDaysRaw) && studyDaysRaw >= 1 && studyDaysRaw <= 7
+        ? studyDaysRaw
+        : null
+
+    let examDate: Date | null = null
+    if (body.examDate && typeof body.examDate === 'string') {
+      const parsed = new Date(body.examDate)
+      if (!isNaN(parsed.getTime()) && parsed > new Date()) {
+        examDate = parsed
+      }
+    }
+
+    // Fetch all plans for the student so we can regenerate each subject
+    const plans = await prisma.learningPlan.findMany({
+      where: { studentId: userId },
+      select: { subjectId: true, weeklyGoal: true, examDate: true },
+    })
+
+    if (plans.length === 0) {
+      const res = NextResponse.json({ error: 'No learning plan found' }, { status: 404 })
+      logger.logAPI(req, res, { className: 'LearningPlanAPI', methodName: 'PATCH' }, start)
+      return res
+    }
+
+    // Update StudentLearningProfile if studyDaysPerWeek provided
+    if (studyDaysPerWeek !== null) {
+      await prisma.studentLearningProfile.upsert({
+        where: { studentId: userId },
+        update: { studyDaysPerWeek },
+        create: { studentId: userId, studyDaysPerWeek },
+      })
+    }
+
+    // Regenerate plan for each subject with updated params
+    const errors: string[] = []
+    for (const plan of plans) {
+      const resolvedDays = studyDaysPerWeek ?? plan.weeklyGoal
+      const resolvedExamDate = examDate ?? plan.examDate ?? undefined
+      try {
+        await generateLearningPlan(userId, plan.subjectId, {
+          examDate: resolvedExamDate instanceof Date ? resolvedExamDate : undefined,
+          weeklyGoal: resolvedDays,
+        })
+      } catch (err) {
+        errors.push(`subjectId=${plan.subjectId}: ${String(err)}`)
+        logger.warn('LearningPlanAPI PATCH: regen failed', {
+          event: 'learning_plan_regen_failed',
+          context: { userId, subjectId: plan.subjectId, error: String(err) },
+        })
+      }
+    }
+
+    const res = NextResponse.json({ ok: true, regenerated: plans.length - errors.length, errors })
+    logger.logAPI(req, res, { className: 'LearningPlanAPI', methodName: 'PATCH' }, start)
+    return res
+  } catch (err) {
+    logger.error('LearningPlanAPI PATCH error', {
+      className: 'LearningPlanAPI',
+      methodName: 'PATCH',
+      error: err,
+    })
+    return NextResponse.json({ error: formatErrorForResponse(err) }, { status: 500 })
+  }
+}
 
 export async function GET(req: Request) {
   const start = Date.now()

@@ -35,6 +35,7 @@ interface EndOfSessionCardProps {
 
 export function EndOfSessionCard({ topicName, subject: _subject, performance }: EndOfSessionCardProps) {
   const [nextAction, setNextAction] = useState<NextActionHint | null>(null);
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     fetch('/api/home/next-action')
@@ -52,6 +53,31 @@ export function EndOfSessionCard({ topicName, subject: _subject, performance }: 
       })
       .catch(() => {});
   }, []);
+
+  /** AC-06: build plain-text summary and copy to clipboard. */
+  function handleCopyShare() {
+    const lines: string[] = [
+      `I just completed "${topicName}" on Spinzy AI Tutor!`,
+    ];
+    if (performance?.accuracyPercent != null) {
+      lines.push(`Accuracy: ${performance.accuracyPercent}%`);
+    }
+    if (performance?.practiceCompleted != null) {
+      lines.push(`Questions completed: ${performance.practiceCompleted}`);
+    }
+    if (performance?.masteryLabel) {
+      lines.push(`Mastery: ${performance.masteryLabel}`);
+    }
+    lines.push('Keep learning at spinzy.com');
+    const text = lines.join('\n');
+
+    if (typeof navigator !== 'undefined' && navigator.clipboard) {
+      navigator.clipboard.writeText(text).then(() => {
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2500);
+      }).catch(() => {});
+    }
+  }
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-10 space-y-8">
@@ -94,7 +120,17 @@ export function EndOfSessionCard({ topicName, subject: _subject, performance }: 
         </dl>
       </div>
 
-      {/* 3. Next recommended topic card */}
+      {/* 3. AC-05: Study-again-tomorrow prompt */}
+      <div className="rounded-xl bg-[#EAF3DE] dark:bg-[#1D9E75]/10 border border-[#1D9E75]/30 px-4 py-3 text-center">
+        <p className="text-sm font-semibold text-[#1D9E75] dark:text-green-400 mb-0.5">
+          Great session! Come back tomorrow to keep growing.
+        </p>
+        <p className="text-xs text-gray-500 dark:text-gray-400">
+          Daily practice is how champions are made -- your best is still ahead.
+        </p>
+      </div>
+
+      {/* 4. Next recommended topic card */}
       {nextAction?.topicId && nextAction.topicName && (
         <div className="bg-gradient-to-br from-primary/10 to-primary/5 rounded-xl border border-primary/20 p-5 text-left">
           <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">
@@ -124,18 +160,42 @@ export function EndOfSessionCard({ topicName, subject: _subject, performance }: 
         </div>
       )}
 
-      {/* 4 & 5. CTAs */}
+      {/* 5 & 6. CTAs */}
       <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
         <Link
           href="/dashboard"
-          className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-3 border border-border bg-background hover:bg-muted/50 text-foreground font-medium rounded-xl transition-colors text-sm"
+          className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-3 border border-border bg-background hover:bg-muted/50 text-foreground font-medium rounded-xl transition-colors text-sm min-h-[44px]"
         >
-          <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
             <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
             <polyline points="9 22 9 12 15 12 15 22" />
           </svg>
           Return to Dashboard
         </Link>
+
+        {/* AC-06: copy-to-clipboard shareable summary */}
+        <button
+          type="button"
+          onClick={handleCopyShare}
+          className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-3 border border-[#534AB7]/40 bg-[#EEEDFE] dark:bg-[#534AB7]/15 hover:bg-[#534AB7]/20 text-[#534AB7] dark:text-indigo-300 font-medium rounded-xl transition-colors text-sm min-h-[44px]"
+        >
+          {copied ? (
+            <>
+              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+                <polyline points="20 6 9 17 4 12" />
+              </svg>
+              Copied!
+            </>
+          ) : (
+            <>
+              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+                <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+              </svg>
+              Share results
+            </>
+          )}
+        </button>
       </div>
     </div>
   );

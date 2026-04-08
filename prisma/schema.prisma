@@ -105,6 +105,12 @@ model User {
   userBadges                  UserBadge[]
   mockExamAttempts            MockExamAttempt[]  /// F-STU-021: back-relation
   learningPlans               LearningPlan[]
+  /// AC-06 (F-STU-030): keys of unlocked cosmetic items (avatar frames, profile themes).
+  /// Populated by unlockCosmeticsForStreak() when streak milestones are reached.
+  cosmeticUnlocks             String[]           @default([])
+  /// AC-06 (F-STU-004): self-reported learning style ('visual' | 'verbal' | 'practice' | 'mixed').
+  /// Used by Vidya to adapt explanations. Collected during onboarding profile setup.
+  learningStyle               String?
   consents                    Consent[]
   parentProfile               ParentProfile?
   doubtEscalations            DoubtEscalation[]

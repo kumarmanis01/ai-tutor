@@ -112,6 +112,14 @@ export const PUSH_NOTIFICATIONS = {
     tag: 'readiness',
   }),
 
+  /** AC-05 (F-STU-023): fired when readiness drops > 10 points since last check. */
+  readiness_drop: (subject: string, dropPoints: number): PushPayload => ({
+    title: `📉 ${subject} readiness needs attention`,
+    body: `Your score dropped ${dropPoints} points. A short revision session will get you back on track.`,
+    url: '/student/revisions',
+    tag: 'readiness-drop',
+  }),
+
   // ── Free tier ────────────────────────────────────────────────────────────
   free_tier_reset_soon: (daysLeft: number, subject: string): PushPayload => ({
     title: `🔄 Free sessions reset in ${daysLeft} days`,

@@ -34,6 +34,7 @@
     "worker/dev-entry.ts",
     "worker/dev-supervisor.ts",
     "lib/tests.ts",
+    "lib/mock/selectMockQuestions.ts",
     "lib/diagnostics/diagnosticQuestionService.ts",
     "lib/exporters/pdf.ts",
     "lib/aiContext.ts",

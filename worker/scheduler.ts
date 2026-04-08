@@ -25,6 +25,7 @@ import { expireStaleTasks } from '../lib/dailyHabit.js';
 import { hydrationReconciler } from './services/hydrationReconciler.js';
 import { runDailyCostReport } from './services/costReportingWorker.js'
 import { runDataDeletionCycle } from './services/dataDeletionWorker.js';
+import { weeklyPlanAdjust } from './jobs/weeklyPlanAdjust.js';
 import { prisma } from '../lib/prisma.js';
 import { sendPushSafe } from '../lib/push/send.js';
 import { PUSH_NOTIFICATIONS } from '../lib/push/notifications.js';
@@ -36,6 +37,7 @@ const HYDRATION_RECONCILER_INTERVAL_MS = 2 * 60 * 1000; // 2 minutes
 const MARK_IGNORED_INTERVAL_MS = 24 * 60 * 60 * 1000; // 24 hours
 const CLEANUP_INTERVAL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
 const WEEKLY_INTERVAL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
+const WEEKLY_PLAN_ADJUST_INTERVAL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
 const DAILY_MAINTENANCE_INTERVAL_MS = 24 * 60 * 60 * 1000; // 24 hours
 const READINESS_PRECOMPUTE_INTERVAL_MS = 24 * 60 * 60 * 1000; // 24 hours
 const COST_REPORT_INTERVAL_MS = 24 * 60 * 60 * 1000; // 24 hours
@@ -330,6 +332,23 @@ function msUntilNextWeeklyRun(targetDay: number, targetHour: number): number {
 }
 
 /**
+ * AC-05 (F-STU-003): Weekly learning plan auto-adjust (Sunday 5 AM UTC).
+ * Detects students behind their plan and regenerates to re-prioritise.
+ */
+async function runWeeklyPlanAdjustJob() {
+  try {
+    logger.info('scheduler.weeklyPlanAdjust.starting')
+    const { checked, adjusted } = await weeklyPlanAdjust()
+    logger.info('scheduler.weeklyPlanAdjust.completed', { checked, adjusted })
+  } catch (error) {
+    logger.error('scheduler.weeklyPlanAdjust.error', {
+      error: error instanceof Error ? error.message : String(error),
+    })
+  }
+  setTimeout(runWeeklyPlanAdjustJob, WEEKLY_PLAN_ADJUST_INTERVAL_MS)
+}
+
+/**
  * Nightly DPDP data deletion (02:00 AM IST = 20:30 UTC)
  */
 async function runDataDeletionJob() {
@@ -363,6 +382,7 @@ export async function startScheduler() {
   const delayDailyMaintenance = msUntilNextRun(1); // 1 AM UTC for task expiry + recovery
   const delayReadinessPrecompute = msUntilNextRun(21) + 30 * 60 * 1000; // 21:30 UTC = 3 AM IST
   const delayCostReport = msUntilNextRun(0) + 30 * 60 * 1000; // 00:30 UTC = 6 AM IST
+  const delayWeeklyPlanAdjust = msUntilNextWeeklyRun(0, 5); // Sunday 5 AM UTC
 
   logger.info('scheduler.scheduled', {
     hydrationReconcilerInterval: '2 minutes (starts immediately)',
@@ -387,6 +407,7 @@ export async function startScheduler() {
   setTimeout(runWeeklyParentJob, delayWeeklyParent);
   setTimeout(runReadinessPrecompute, delayReadinessPrecompute);
   setTimeout(runCostReportJob, delayCostReport);
+  setTimeout(runWeeklyPlanAdjustJob, delayWeeklyPlanAdjust);
 
   // Data deletion: 02:00 AM IST = 20:30 UTC
   const delayDataDeletion = msUntilNextRun(20) + 30 * 60 * 1000
