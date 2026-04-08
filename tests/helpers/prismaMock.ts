@@ -56,6 +56,11 @@ export const prismaMock = {
   syllabus: mockModel(),
   $transaction: jest.fn().mockName('$transaction'),
   $executeRaw: jest.fn().mockName('$executeRaw'),
+  $executeRawUnsafe: jest.fn().mockName('$executeRawUnsafe'),
+  $queryRaw: jest.fn().mockName('$queryRaw'),
+  $queryRawUnsafe: jest.fn().mockName('$queryRawUnsafe'),
+  $disconnect: jest.fn().mockName('$disconnect'),
+  ingestRunLog: mockModel(),
 };
 
 /** Reset all mock functions in prismaMock (call in beforeEach) */

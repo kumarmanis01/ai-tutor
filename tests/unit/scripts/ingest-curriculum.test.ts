@@ -46,15 +46,8 @@ describe('ingest-curriculum script', () => {
       prismaMock.ingestRunLog = { create: jest.fn().mockResolvedValue(true) } as any
       prismaMock.$disconnect = jest.fn().mockResolvedValue(undefined)
 
-      console.log('TEST DEBUG: about to require ingest-curriculum')
-      try {
-        const mod = require('@/scripts/ingest-curriculum')
-        console.log('TEST DEBUG: required ingest-curriculum module')
-        runIngest = () => mod.main(prismaMock)
-      } catch (e) {
-        console.error('TEST DEBUG: require error (run1):', e)
-        throw e
-      }
+      const mod = require('@/scripts/ingest-curriculum')
+      runIngest = () => mod.main(prismaMock)
     })
 
     try {
@@ -88,15 +81,8 @@ describe('ingest-curriculum script', () => {
       prismaMock.ingestRunLog = { create: jest.fn().mockResolvedValue(true) } as any
       prismaMock.$disconnect = jest.fn().mockResolvedValue(undefined)
 
-      console.log('TEST DEBUG: about to require ingest-curriculum (run2)')
-      try {
-        const mod = require('@/scripts/ingest-curriculum')
-        console.log('TEST DEBUG: required ingest-curriculum module (run2)')
-        runIngest2 = () => mod.main(prismaMock)
-      } catch (e) {
-        console.error('TEST DEBUG: require error (run2):', e)
-        throw e
-      }
+      const mod = require('@/scripts/ingest-curriculum')
+      runIngest2 = () => mod.main(prismaMock)
     })
 
     try {

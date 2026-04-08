@@ -1603,6 +1603,7 @@ model Misconception {
   triggerPatterns String[]
   correction      String
   createdAt       DateTime @default(now())
+  prevalenceRate  Float    @default(0)
 
   @@index([subjectId, conceptId])
 }
