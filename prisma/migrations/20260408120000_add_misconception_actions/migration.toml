@@ -1,0 +1,4 @@
+migrationId = "20260408120000_add_misconception_actions"
+name = "add_misconception_actions"
+checksum = "00000000000000000000000000000000"
+script = "migration.sql"

@@ -1920,6 +1920,8 @@ enum SuggestionStatus {
 
 /// Phase 12 — Regeneration job lifecycle and targets
 enum RegenerationJobStatus {
+  MISCONCEPTION_CREATE
+  MISCONCEPTION_UPDATE
   PENDING
   RUNNING
   COMPLETED

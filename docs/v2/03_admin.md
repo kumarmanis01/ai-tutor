@@ -145,6 +145,26 @@ AC-04
 Misconception prevalence_rate is updated automatically by a monthly analytics job: count of detections / total relevant attempts. High-prevalence misconceptions (> 30%) reviewed for curriculum chunk improvement.
 SHOULD
 
+Seeding Misconceptions
+---------------------
+
+The repository includes idempotent seed scripts for launch content: 20 misconceptions each for CBSE Grade 10 Mathematics and Science. Files:
+
+- prisma/seeds/misconceptions_cbse_grade10_mathematics.ts
+- prisma/seeds/misconceptions_cbse_grade10_science.ts
+
+Run (local/dev):
+
+```bash
+# Dry-run (no DB changes)
+node -r ts-node/register prisma/seeds/misconceptions_cbse_grade10_mathematics.ts --dry
+# Real run (uses @prisma/client)
+node prisma/seeds/misconceptions_cbse_grade10_mathematics.ts
+```
+
+The seed modules export both an array (for unit tests) and a `seedMisconceptions(prisma, {dryRun})` function. They perform idempotent upserts keyed by stable `id` values and write no audit logs; admin audit actions are created when using the admin UI to edit entries.
+
+
 
 
 3. AI Quality Monitoring
