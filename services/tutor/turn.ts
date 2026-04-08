@@ -25,6 +25,13 @@ import { enqueueDistressNotification } from '@/jobs/distressNotification'
 import { enqueueIRTUpdate } from '@/jobs/irtUpdate'
 import { updateStreak } from '@/lib/student/streak'
 import { logger } from '@/lib/logger'
+import {
+  classifyIntent,
+  processPrompt,
+  checkForHallucinations,
+  getSafeResponseForIntent,
+  formatResponseForStudent,
+} from '@/lib/ai/guardrails'
 
 export type TutorTurnRequest = {
   sessionId: string
@@ -207,6 +214,18 @@ export async function runTutorOrchestrator(args: {
 
     const redactedInput = inputSafety.redacted
 
+    // 2b. Intent classification + optional prompt rewrite (silent)
+    let intentClassification = classifyIntent(String(redactedInput), 10, subjectName)
+    let rewrittenPrompt = String(redactedInput)
+    try {
+      const rewrite = processPrompt(String(redactedInput), 10, subjectName)
+      if (rewrite && rewrite.wasRewritten && rewrite.prompt) {
+        rewrittenPrompt = rewrite.prompt
+      }
+    } catch (e) {
+      logger.warn('promptRewrite.failed', { error: String((e as any)?.message ?? e) })
+    }
+
     // Distress detection — gated by ENABLE_DISTRESS_DETECTION flag (currently false until T43 sign-off)
     if (process.env.ENABLE_DISTRESS_DETECTION === 'true') {
       const distressResult = detectDistress(redactedInput)
@@ -327,7 +346,8 @@ export async function runTutorOrchestrator(args: {
       hintsUsed,
       isHintRequest,
       sessionSummary: null,
-      recentTurns: [],
+      // Include the (possibly rewritten) student prompt as the most recent turn
+      recentTurns: [{ role: 'student', content: rewrittenPrompt }],
       activeMisconceptionName: activeMisconception,
       frustrationScore: frustration.frustrationScore,
       ragChunks: ragContext.chunks.map((c) => c.content),
@@ -427,10 +447,79 @@ export async function runTutorOrchestrator(args: {
     const outputSafety = checkOutputSafety(stripped, safetyContext)
     // Never store raw unsafe output; leave inputPreview unset for UNSAFE_OUTPUT events.
     safetyEvents.push(...outputSafety.events)
-    const answerText = outputSafety.text
+    let answerText = outputSafety.text
 
     if (safetyEvents.length) {
       await prisma.safetyEvent.createMany({ data: safetyEvents })
+      // Analytics event for safety triggers
+      try {
+        await prisma.analyticsEvent.create({
+          data: {
+            eventType: 'safety_triggered',
+            userId: studentId,
+            courseId: null,
+            lessonIdx: null,
+            metadata: {
+              sessionId,
+              turnId: safetyContext.turnId,
+              triggers: safetyEvents,
+            },
+          },
+        })
+      } catch (e) {
+        logger.warn('analyticsEvent.safety.create.failed', { error: String((e as any)?.message ?? e) })
+      }
+    }
+
+    // Hallucination detection & analytics
+    try {
+      const hallCtx = { grade: 10, board: 'CBSE', subject: subjectName, originalQuestion: String(redactedInput) }
+      const hall = checkForHallucinations(answerText, hallCtx as any)
+      if (hall && (hall.issues.length > 0 || hall.needsReview)) {
+        try {
+          await prisma.analyticsEvent.create({
+            data: {
+              eventType: 'hallucination_detected',
+              userId: studentId,
+              courseId: null,
+              lessonIdx: null,
+              metadata: {
+                sessionId,
+                turnId: safetyContext.turnId,
+                hallucination: hall,
+              },
+            },
+          })
+        } catch (e) {
+          logger.warn('analyticsEvent.hallucination.create.failed', { error: String((e as any)?.message ?? e) })
+        }
+      }
+
+      if (hall && hall.shouldBlock) {
+        try {
+          const safe = getSafeResponseForIntent(intentClassification.primaryIntent, 10, subjectName)
+          const safeText = formatResponseForStudent(safe)
+          await prisma.analyticsEvent.create({
+            data: {
+              eventType: 'hallucination_blocked',
+              userId: studentId,
+              courseId: null,
+              lessonIdx: null,
+              metadata: {
+                sessionId,
+                turnId: safetyContext.turnId,
+                reason: 'hallucination_should_block',
+                originalExcerpt: String(answerText).slice(0, 400),
+              },
+            },
+          })
+          answerText = safeText
+        } catch (e) {
+          logger.warn('analyticsEvent.hallucination_block.create.failed', { error: String((e as any)?.message ?? e) })
+        }
+      }
+    } catch (e) {
+      logger.warn('hallucinationDetector.failed', { error: String((e as any)?.message ?? e) })
     }
 
     // Explanation cache: only cache safe, non-replacement responses for the eligible stages.

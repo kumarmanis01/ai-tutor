@@ -1,7 +1,8 @@
 import runMonthlyMisconceptionPrevalence from '@/worker/services/misconceptionPrevalenceWorker'
 import { prismaMock } from '../../helpers/prismaMock'
 
-jest.mock('@/lib/prisma.js', () => ({ prisma: prismaMock }))
+// Use require inside mock factory to avoid jest hoisting initialization order issues
+jest.mock('@/lib/prisma.js', () => ({ prisma: require('../../helpers/prismaMock').prismaMock }))
 jest.mock('@/lib/logger.js', () => ({ logger: { info: jest.fn(), error: jest.fn() } }))
 
 describe('misconceptionPrevalenceWorker', () => {
