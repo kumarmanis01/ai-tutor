@@ -19,6 +19,7 @@ import { logger } from '../lib/logger.js';
 import { markIgnoredRecommendations, cleanupOldIgnoredRecommendations } from './jobs/markIgnoredRecommendations.js';
 import { aggregateWeeklySummaries } from './jobs/weeklyParentSummary.js';
 import { sendParentDigests } from './jobs/parentEmailDigest.js';
+import { runWeeklyQuestionHealth } from './jobs/weeklyQuestionHealth.js';
 import { runRecoveryCheck } from '../lib/failureRecovery.js'
 import { precomputeReadiness } from './jobs/precomputeReadiness.js';
 import { expireStaleTasks } from '../lib/dailyHabit.js';
@@ -108,6 +109,14 @@ async function runWeeklyParentJob() {
     logger.info('scheduler.parentEmailDigest.starting');
     const sent = await sendParentDigests();
     logger.info('scheduler.parentEmailDigest.completed', { sent });
+    // Run weekly question health check and emit analytics
+    try {
+      logger.info('scheduler.weeklyQuestionHealth.starting');
+      const lowCount = await runWeeklyQuestionHealth();
+      logger.info('scheduler.weeklyQuestionHealth.completed', { lowCount });
+    } catch (err) {
+      logger.error('scheduler.weeklyQuestionHealth.error', { error: err instanceof Error ? err.message : String(err) });
+    }
   } catch (error) {
     logger.error('scheduler.weeklyParentJob.error', {
       error: error instanceof Error ? error.message : String(error)
