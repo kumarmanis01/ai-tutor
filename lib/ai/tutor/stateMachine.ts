@@ -67,7 +67,7 @@ function resetPerStageCounters(s: TutorSessionState): TutorSessionState {
 
 export function applyTagTransition(state: TutorSessionState, tag: TutorTag): TutorSessionState {
   // Defensive copy (pure function guarantee)
-  const s: TutorSessionState = {
+  let s: TutorSessionState = {
     stage: state.stage,
     stageAttemptCount: clampInt(state.stageAttemptCount, 0, 10_000),
     hintsUsed: clampInt(state.hintsUsed, 0, 3),

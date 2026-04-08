@@ -199,9 +199,9 @@ describe('applyTagTransition', () => {
     expect(applyTagTransition(s, 'VALIDATE').hintsUsed).toBe(2)
   })
 
-  test('STRUGGLE_DETECTED does not change stageAttemptCount', () => {
+  test('STRUGGLE_DETECTED increments stageAttemptCount', () => {
     const s = baseState({ stageAttemptCount: 2 })
-    expect(applyTagTransition(s, 'STRUGGLE_DETECTED').stageAttemptCount).toBe(2)
+    expect(applyTagTransition(s, 'STRUGGLE_DETECTED').stageAttemptCount).toBe(3)
   })
 
   test('PREREQ_FAIL does not overwrite prereqReturnStage when already in remediation', () => {
