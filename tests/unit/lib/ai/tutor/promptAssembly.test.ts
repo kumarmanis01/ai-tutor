@@ -297,7 +297,7 @@ describe('buildStageInstructionsLayer -- hint tiers', () => {
     const ctx = makeCtx({ stage: 'CORE_EXPLANATION', explainStyle: 'simpler' })
     const layer = buildStageInstructionsLayer(ctx)
     expect(layer).toContain('RE-EXPLAIN REQUEST -- Simpler')
-    expect(layer).toContain('shorter sentences')
+    expect(layer).toContain('Shorter sentences')
   })
 
   test('should inject Harder directive when explainStyle is harder', () => {

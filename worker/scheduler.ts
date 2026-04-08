@@ -26,6 +26,7 @@ import { hydrationReconciler } from './services/hydrationReconciler.js';
 import { runDailyCostReport } from './services/costReportingWorker.js'
 import { runDataDeletionCycle } from './services/dataDeletionWorker.js';
 import { weeklyPlanAdjust } from './jobs/weeklyPlanAdjust.js';
+import { sendFreemiumResetNotifications } from './jobs/freemiumResetNotifications.js';
 import { prisma } from '../lib/prisma.js';
 import { sendPushSafe } from '../lib/push/send.js';
 import { PUSH_NOTIFICATIONS } from '../lib/push/notifications.js';
@@ -281,6 +282,28 @@ async function runRevisionDuePush(): Promise<void> {
 }
 
 /**
+ * AC-05 (F-STU-040): Send freemium reset push notifications.
+ * Checks calendar internally -- only sends on the day that is 3 days before
+ * the 1st of next month; no-ops on all other days.
+ */
+async function runFreemiumResetNotifications(): Promise<void> {
+  try {
+    const result = await sendFreemiumResetNotifications()
+    if (!result.skipped) {
+      logger.info('scheduler.freemiumResetNotifications.completed', {
+        daysLeft: result.daysLeft,
+        eligible: result.eligible,
+        sent: result.sent,
+      })
+    }
+  } catch (error) {
+    logger.error('scheduler.freemiumResetNotifications.error', {
+      error: error instanceof Error ? error.message : String(error),
+    })
+  }
+}
+
+/**
  * Run daily maintenance: expire stale tasks + recovery check
  */
 async function runDailyMaintenanceJob() {
@@ -303,6 +326,9 @@ async function runDailyMaintenanceJob() {
 
     // ── Push: revision due (only between 07:30-09:00 IST) ───────────────
     await runRevisionDuePush();
+
+    // ── Push: freemium reset reminder (only fires 3 days before month-end) ──
+    await runFreemiumResetNotifications();
   } catch (error) {
     logger.error('scheduler.dailyMaintenance.error', {
       error: error instanceof Error ? error.message : String(error),

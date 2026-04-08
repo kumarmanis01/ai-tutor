@@ -19,6 +19,12 @@ interface NextActionHint {
   estimatedTimeMin?: number;
 }
 
+interface FreeTierState {
+  sessionsRemaining: number;
+  sessionsUsed: number;
+  periodStart: string;
+}
+
 export interface SessionPerformanceSummary {
   accuracyPercent?: number;
   practiceCompleted?: number;
@@ -36,6 +42,7 @@ interface EndOfSessionCardProps {
 export function EndOfSessionCard({ topicName, subject: _subject, performance }: EndOfSessionCardProps) {
   const [nextAction, setNextAction] = useState<NextActionHint | null>(null);
   const [copied, setCopied] = useState(false);
+  const [freeTier, setFreeTier] = useState<FreeTierState | null>(null);
 
   useEffect(() => {
     fetch('/api/home/next-action')
@@ -48,6 +55,22 @@ export function EndOfSessionCard({ topicName, subject: _subject, performance }: 
             topicName: action.topicName,
             reasonLabel: action.reasonLabel ?? null,
             estimatedTimeMin: action.estimatedTimeMin,
+          });
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  // AC-03 (F-STU-040): Check cap AFTER session ends so we know if this was the last free session.
+  useEffect(() => {
+    fetch('/api/student/freemium/status')
+      .then((r) => r.json())
+      .then((data) => {
+        if (typeof data?.sessionsRemaining === 'number') {
+          setFreeTier({
+            sessionsRemaining: data.sessionsRemaining,
+            sessionsUsed: data.sessionsUsed,
+            periodStart: data.periodStart,
           });
         }
       })
@@ -159,6 +182,30 @@ export function EndOfSessionCard({ topicName, subject: _subject, performance }: 
           </Link>
         </div>
       )}
+
+      {/* AC-03 (F-STU-040): Upgrade nudge shown at session end when cap is hit.
+          Never interrupts an in-progress session -- only shown here in COMPLETE state. */}
+      {freeTier !== null && freeTier.sessionsRemaining === 0 && (() => {
+        const resetDate = new Date(freeTier.periodStart);
+        resetDate.setMonth(resetDate.getMonth() + 1);
+        const resetLabel = resetDate.toLocaleDateString('en-IN', { month: 'short', day: 'numeric' });
+        return (
+          <div className="rounded-xl border border-[#534AB7]/30 bg-[#EEEDFE] dark:bg-[#534AB7]/10 px-4 py-4">
+            <p className="text-sm font-semibold text-[#534AB7] dark:text-indigo-300 mb-1">
+              You&apos;ve used all {freeTier.sessionsUsed} free sessions this month
+            </p>
+            <p className="text-xs text-gray-600 dark:text-gray-400 mb-3">
+              Sessions reset on {resetLabel}. Upgrade for unlimited access to Teacher Vidya -- just &#8377;99/month.
+            </p>
+            <a
+              href="/dashboard#upgrade-section"
+              className="inline-flex min-h-[44px] items-center justify-center rounded-xl bg-[#534AB7] px-5 text-sm font-semibold text-white hover:bg-[#4338a3] transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#534AB7]"
+            >
+              See plans -- &#8377;99/month
+            </a>
+          </div>
+        );
+      })()}
 
       {/* 5 & 6. CTAs */}
       <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
