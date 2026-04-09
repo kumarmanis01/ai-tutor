@@ -3,8 +3,8 @@
  * to S3-compatible storage (Cloudflare R2) and mark rows archived (read-only).
  */
 
-import { prisma } from '@/lib/prisma.js'
-import { logger } from '@/lib/logger.js'
+import { prisma } from '@/lib/prisma'
+import { logger } from '@/lib/logger'
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3'
 import { getPresignCredentials } from '@/lib/awsSecrets'
 import { gzipSync } from 'zlib'
