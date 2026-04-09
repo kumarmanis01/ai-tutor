@@ -1,8 +1,25 @@
+/**
+ * FILE OBJECTIVE:
+ * - Confirm OTP for parent account verification and mark `parentVerifiedAt` on success.
+ *
+ * LINKED UNIT TEST:
+ * - tests/unit/api/verify-parent-confirm-otp.spec.ts
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - .github/copilot-instructions.md
+ * - /docs/COPILOT_GUARDRAILS.md
+ *
+ * EDIT LOG:
+ * - 2026-04-09T00:00:00Z | copilot | send welcome notifications upon successful verification
+ */
+
 import { NextResponse } from 'next/server'
 import { getServerSessionForHandlers } from '@/lib/session'
 import { getRedis } from '@/lib/redis'
 import { prisma } from '@/lib/prisma'
 import { logger } from '@/lib/logger'
+import { sendMailSafe } from '@/lib/mailer'
+import { sendSms } from '@/lib/sms'
 
 export const dynamic = 'force-dynamic'
 
@@ -73,6 +90,25 @@ export async function POST(req: Request) {
         where: { id: userId },
         data: { parentVerifiedAt: new Date() },
       })
+
+      // Send a welcome/confirmation notification to the parent (best-effort)
+      try {
+        const parent = await prisma.user.findUnique({ where: { id: userId }, select: { email: true, phone: true, name: true } })
+        const parentName = parent?.name ?? 'Parent'
+        if (parent?.email) {
+          await sendMailSafe({
+            to: parent.email,
+            subject: `Your parent account is confirmed`,
+            html: `<p>Hi ${parentName},</p><p>Your account is now verified as a parent on Spinzy Academy.</p>`,
+          })
+        }
+        if (parent?.phone) {
+          await sendSms(parent.phone, `Your Spinzy parent account is now verified.`)
+        }
+      } catch (err) {
+        logger.error('[verify-parent] welcome notification suppressed', { error: String(err) })
+      }
+
       const res = NextResponse.json({ verified: true })
       logger.logAPI(req, res, { className: 'VerifyParentConfirmOtpAPI', methodName: 'POST' }, start)
       return res
