@@ -68,6 +68,8 @@ export async function processPaymentDunning(): Promise<void> {
                   billingCycle: s.billingCycle,
                   meta: { subscriptionId: s.id, autoCharge: true, creditApplied: (s.creditBalance ?? 0) },
                 } })
+                // Audit event for credit-apply
+                await tx.paymentEvent.create({ data: { userId: s.userId, provider: 'credit', providerIdempotencyKey: idempotencyKey, eventType: 'charge.credit_applied', amount: 0, status: 'success', payload: { subscriptionId: s.id } } })
 
                 const planMonths = plan.durationMonths || 1
                 const currentEnd = s.endDate ? new Date(s.endDate) : new Date()
@@ -126,6 +128,8 @@ export async function processPaymentDunning(): Promise<void> {
                   billingCycle: s.billingCycle,
                   meta: { subscriptionId: s.id, autoCharge: true, creditApplied: (s.creditBalance ?? 0) },
                 } })
+                // Payment event audit
+                await tx.paymentEvent.create({ data: { userId: s.userId, provider: 'razorpay', providerIdempotencyKey: idempotencyKey, transactionId: paymentId, orderId: orderId ?? undefined, eventType: 'charge.succeeded', amount: netAmountPaise, status: 'success', payload: { subscriptionId: s.id, autoCharge: true } } })
 
                 const planMonths = plan.durationMonths || 1
                 const currentEnd = s.endDate ? new Date(s.endDate) : new Date()

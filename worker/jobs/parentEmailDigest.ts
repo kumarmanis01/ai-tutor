@@ -6,6 +6,7 @@
  * EDIT LOG:
  * - 2026-02-04 | claude | created parent email digest job
  * - 2026-02-04 | claude | integrated WhatsApp delivery alongside email
+ * - 2026-04-09 | copilot | respect excludeFromParentReport when selecting parent links
  */
 
 import { prisma } from '../../lib/prisma.js';
@@ -19,9 +20,9 @@ import { sendParentMilestoneNotification } from '../../lib/notifications/deliver
  * Send weekly email digest to all parents with active student links
  */
 export async function sendParentDigests(): Promise<number> {
-  // Find all parents with active links
+  // Find all parents with active links (exclude students opted out of parent reports)
   const parentLinks = await prisma.parentStudent.findMany({
-    where: { status: 'active' },
+    where: { status: 'active', excludeFromParentReport: false },
     include: {
       parent: { select: { id: true, email: true, name: true, phone: true, language: true } },
       student: { select: { id: true, name: true, grade: true, board: true } },

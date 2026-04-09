@@ -8,6 +8,7 @@
 // - 2026-02-21T00:00:00Z | copilot | added student learning profile fields
 // - 2026-03-07T00:00:00Z | Manish Kumar | add OVERVIEW to SessionPhase; SESSION_OVERVIEW_VIEWED to SessionEventType
 // - 2026-04-10T00:00:00Z | copilot | add PaymentCustomer & PaymentMethod models for stored payment methods
+// - 2026-04-09T00:00:00Z | copilot | add excludeFromParentReport to ParentStudent
 generator client {
   provider = "prisma-client-js"
 }
@@ -119,6 +120,7 @@ model PaymentOrder {
   amount          Int
   currency        String    @default("INR")
   status          String    @default("created")
+  providerIdempotencyKey String?
   planMonths      Int       @default(1)
   createdAt       DateTime  @default(now())
   paidAt          DateTime?
@@ -386,6 +388,32 @@ model Subscription {
   @@index([userId])
 }
 
+model Installment {
+  id                  String            @id @default(cuid())
+  subscriptionId      String
+  subscription        Subscription      @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+  number              Int               // installment index (1..n)
+  dueAt               DateTime
+  amount              Int               // amount in paise
+  currency            String            @default("INR")
+  status              InstallmentStatus @default(PENDING)
+  provider            String?           // e.g. 'razorpay'
+  providerPaymentId   String?           // provider payment/transaction id when paid
+  paymentId           String?           // local Payment.id when reconciled
+  attemptCount        Int               @default(0)
+  lastAttemptAt       DateTime?
+  paidAt              DateTime?
+  meta                Json?
+  createdAt           DateTime          @default(now())
+  updatedAt           DateTime          @updatedAt
+
+  payment             Payment?          @relation(fields: [paymentId], references: [id], onDelete: SetNull)
+
+  @@index([subscriptionId])
+  @@index([dueAt])
+  @@unique([subscriptionId, number])
+}
+
 /// Parent-defined controls per child: screen time, subject toggles, focus mode
 model ParentChildControl {
   id                String   @id @default(cuid())
@@ -483,6 +511,28 @@ model Payment {
   user          User     @relation(fields: [userId], references: [id])
   invoice       Invoice?
   @@unique([provider, providerIdempotencyKey], map: "uniq_payment_provider_idempotency")
+}
+
+/// PaymentEvent: immutable audit/events for payment lifecycle and gateway/webhook traces.
+model PaymentEvent {
+  id                       String   @id @default(cuid())
+  paymentId                String?  // optional link to Payment
+  userId                   String?
+  provider                 String   // e.g. 'razorpay' | 'credit' | 'stripe'
+  providerIdempotencyKey   String?
+  transactionId            String?
+  orderId                  String?
+  eventType                String   // e.g. 'order.created','charge.attempt','charge.succeeded','webhook.received'
+  payload                  Json?
+  amount                   Int?
+  status                   String?
+  createdAt                DateTime @default(now())
+
+  payment  Payment? @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+
+  @@index([provider, providerIdempotencyKey])
+  @@index([paymentId])
+  @@index([userId])
 }
 
 
@@ -719,6 +769,9 @@ model ParentStudent {
   /// Pause controls set by parent: when true, sessions during pause do not count
   /// against free-tier limits. `pausedUntil` is optional — null => paused indefinitely.
   isPaused    Boolean  @default(false)
+  /// When true, this student will be excluded from parent-facing reports/digests
+  /// (used for privacy / opt-out per child). Defaults to false.
+  excludeFromParentReport Boolean @default(false)
   pausedUntil DateTime?
   pauseReason String?
   createdAt  DateTime         @default(now())
@@ -2331,6 +2384,14 @@ enum FlagReason {
   OFF_TOPIC
   TOO_EASY
   TOO_HARD
+}
+
+/// Installment lifecycle for EMI payments (per-subscription)
+enum InstallmentStatus {
+  PENDING
+  PAID
+  FAILED
+  CANCELLED
 }
 
 /// Student flag on a session question (from the AI pipeline Question bank).

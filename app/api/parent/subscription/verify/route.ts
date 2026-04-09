@@ -87,7 +87,7 @@ export async function POST(req: Request) {
   }
 
   // Cross-check order belongs to this parent
-  const order = await prisma.paymentOrder.findUnique({ where: { razorpayOrderId: orderId }, select: { studentId: true, status: true, planMonths: true } });
+  const order = await prisma.paymentOrder.findUnique({ where: { razorpayOrderId: orderId }, select: { studentId: true, status: true, planMonths: true, providerIdempotencyKey: true } });
   if (!order || order.studentId !== userId) {
     return NextResponse.json({ error: 'Order not found' }, { status: 403 });
   }
@@ -129,6 +129,7 @@ export async function POST(req: Request) {
             userId,
             amount: order.amount,
             provider: 'razorpay',
+            providerIdempotencyKey: order.providerIdempotencyKey ?? undefined,
             status: 'success',
             transactionId: paymentId,
             orderId: orderId,
@@ -137,6 +138,9 @@ export async function POST(req: Request) {
             meta: { planId, childIds },
           },
         });
+
+        // Audit event
+        await tx.paymentEvent.create({ data: { paymentId: payment.id, userId, provider: 'razorpay', providerIdempotencyKey: order.providerIdempotencyKey ?? undefined, transactionId: paymentId, orderId, eventType: 'payment.parent_subscription_verified', amount: order.amount, status: 'success', payload: { planId, childIds } } })
 
         // Compute any prorated credit from existing active subscription and carry forward
         let carryForwardCredit = 0

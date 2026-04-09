@@ -23,6 +23,7 @@ import { sendMailSafe } from '@/lib/mailer';
 import { sendSms } from '@/lib/sms';
 import { getPaymentDunningQueue } from '@/jobs/paymentDunning';
 import Razorpay from 'razorpay';
+import { recordPaymentEvent } from '@/lib/payments/audit';
 
 function getWebhookSecret() {
   return process.env.RAZORPAY_WEBHOOK_SECRET ?? process.env.RAZORPAY_KEY_SECRET ?? '';
@@ -64,6 +65,20 @@ export async function POST(req: Request) {
       const paymentId = payment?.id;
       if (!orderId || !paymentId) return NextResponse.json({ ok: true }, { status: 200 });
 
+      // Audit: webhook received
+      try {
+        await recordPaymentEvent({
+          provider: 'razorpay',
+          providerIdempotencyKey: idempotencyHeader || undefined,
+          transactionId: paymentId,
+          orderId,
+          eventType: 'webhook.received',
+          payload,
+        })
+      } catch (err) {
+        logger.warn('Failed to write webhook.received event', { err })
+      }
+
       const orderRow = await prisma.paymentOrder.findUnique({ where: { razorpayOrderId: orderId }, select: { studentId: true, status: true } });
       if (!orderRow) {
         logger.warn('Webhook payment.captured for unknown order', { orderId });
@@ -99,11 +114,14 @@ export async function POST(req: Request) {
 
         if (!existing) {
           // create payment record
-          await tx.payment.create({ data: { userId: orderRow.studentId, amount: payment.amount, provider: 'razorpay', providerIdempotencyKey: idempotencyHeader || undefined, status: 'success', transactionId: paymentId, orderId, meta: { notes } } });
+          const newPayment = await tx.payment.create({ data: { userId: orderRow.studentId, amount: payment.amount, provider: 'razorpay', providerIdempotencyKey: idempotencyHeader || undefined, status: 'success', transactionId: paymentId, orderId, meta: { notes } } });
+          // Log event in the same transaction
+          await tx.paymentEvent.create({ data: { paymentId: newPayment.id, userId: orderRow.studentId, provider: 'razorpay', providerIdempotencyKey: idempotencyHeader || undefined, transactionId: paymentId, orderId, eventType: 'payment.created.webhook', payload: { notes }, amount: payment.amount, status: 'success' } })
         } else {
           // update existing payment status if needed
           if (existing.status !== 'success') {
             await tx.payment.update({ where: { id: existing.id }, data: { status: 'success', transactionId: paymentId, orderId, meta: { ...(existing.meta || {}), notes } } });
+            await tx.paymentEvent.create({ data: { paymentId: existing.id, userId: orderRow.studentId, provider: 'razorpay', providerIdempotencyKey: idempotencyHeader || undefined, transactionId: paymentId, orderId, eventType: 'payment.updated.webhook', payload: { notes }, amount: payment.amount, status: 'success' } })
           }
         }
 
@@ -158,10 +176,12 @@ export async function POST(req: Request) {
         }
 
         if (!existing) {
-          await tx.payment.create({ data: { userId: orderRow.studentId, amount: payment?.amount ?? orderRow.planMonths ?? 0, provider: 'razorpay', providerIdempotencyKey: idempotencyHeader || undefined, status: 'failed', transactionId: paymentId, orderId, meta: { reason } } });
+          const newPayment = await tx.payment.create({ data: { userId: orderRow.studentId, amount: payment?.amount ?? orderRow.planMonths ?? 0, provider: 'razorpay', providerIdempotencyKey: idempotencyHeader || undefined, status: 'failed', transactionId: paymentId, orderId, meta: { reason } } });
+          await tx.paymentEvent.create({ data: { paymentId: newPayment.id, userId: orderRow.studentId, provider: 'razorpay', providerIdempotencyKey: idempotencyHeader || undefined, transactionId: paymentId, orderId, eventType: 'payment.failed.webhook', payload: { reason }, amount: payment?.amount ?? orderRow.planMonths ?? 0, status: 'failed' } })
         } else {
           if (existing.status !== 'failed') {
             await tx.payment.update({ where: { id: existing.id }, data: { status: 'failed', meta: { ...(existing.meta || {}), reason } } });
+            await tx.paymentEvent.create({ data: { paymentId: existing.id, userId: orderRow.studentId, provider: 'razorpay', providerIdempotencyKey: idempotencyHeader || undefined, transactionId: paymentId, orderId, eventType: 'payment.updated_failed.webhook', payload: { reason }, amount: payment?.amount ?? orderRow.planMonths ?? 0, status: 'failed' } })
           }
         }
 

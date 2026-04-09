@@ -7,6 +7,7 @@
  *
  * EDIT LOG:
  * - 2026-02-04 | claude | created weekly parent summary aggregation job
+ * - 2026-04-09 | copilot | respect excludeFromParentReport when selecting linked students
  */
 
 import { prisma } from '../../lib/prisma.js';
@@ -24,9 +25,9 @@ export async function aggregateWeeklySummaries(): Promise<number> {
     return 0;
   }
 
-  // Find all students who have at least one active parent link
+  // Find all students who have at least one active parent link and are not excluded from parent reports
   const links = await prisma.parentStudent.findMany({
-    where: { status: 'active' },
+    where: { status: 'active', excludeFromParentReport: false },
     select: { studentId: true },
     distinct: ['studentId'],
   });

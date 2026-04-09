@@ -9,6 +9,9 @@
  *   3. Send email via lib/mailer.ts
  *
  * Never throws -- logs and continues on per-parent failures.
+ *
+ * EDIT LOG:
+ * - 2026-04-09 | copilot | respect excludeFromParentReport when selecting parent links
  */
 
 import { prisma } from '../../lib/prisma.js'
@@ -125,9 +128,9 @@ export async function processWeeklyDigest(): Promise<void> {
   const appUrl = (process.env.NEXTAUTH_URL ?? '').replace(/\/$/, '')
   const weekLabel = monday.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })
 
-  // All parents with at least one active link. Include parent timezone to compute per-parent delivery.
+  // All parents with at least one active link. Exclude students who opted out of parent reports.
   const allLinks = await prisma.parentStudent.findMany({
-    where: { status: 'active' },
+    where: { status: 'active', excludeFromParentReport: false },
     select: {
       parentId: true,
       studentId: true,
@@ -256,7 +259,7 @@ export async function processParentDigest(parentId: string, weekStartIso: string
   const monday = weekStartIso ? new Date(weekStartIso) : weekStart()
   try {
     // Load first active child for the parent
-    const link = await prisma.parentStudent.findFirst({ where: { parentId, status: 'active' }, select: { studentId: true, student: { select: { name: true } }, parent: { select: { name: true, email: true } } } })
+    const link = await prisma.parentStudent.findFirst({ where: { parentId, status: 'active', excludeFromParentReport: false }, select: { studentId: true, student: { select: { name: true } }, parent: { select: { name: true, email: true } } } })
     if (!link || !link.parent?.email) {
       logger.info('[parentDigest] no active child or email, skipping', { parentId })
       return

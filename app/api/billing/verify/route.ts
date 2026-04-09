@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server';
 import crypto from 'crypto';
 import { getServerSessionForHandlers } from '@/lib/session';
 import { prisma } from '@/lib/prisma';
+import { recordPaymentEvent } from '@/lib/payments/audit';
 import computeProratedCredit from '@/lib/subscription/proration';
 import { SessionUser } from '@/lib/types';
 import { sendMail } from '@/lib/mailer';
@@ -46,6 +47,8 @@ export async function POST(req: Request) {
     billingCycle,
     amount,
   } = body;
+  // Capture idempotency header if client provided one (used for both failure/success recording)
+  const idempotencyHeader = (req.headers.get('idempotency-key') || req.headers.get('x-idempotency-key') || '') as string;
   // Verify Razorpay signature
   const sign = crypto
     .createHmac('sha256', process.env.RAZORPAY_KEY_SECRET!)
@@ -53,21 +56,44 @@ export async function POST(req: Request) {
     .digest('hex');
 
   if (sign !== razorpay_signature) {
+    // Capture idempotency header if client provided one
+    const idempotencyHeader = (req.headers.get('idempotency-key') || req.headers.get('x-idempotency-key') || '') as string;
+
     // Record failed payment
-    await prisma.payment.create({
-      data: {
-        userId: sessionUser.id!,
-        amount: amount,
-        provider: 'razorpay',
-        status: 'failed',
-        createdAt: new Date(),
-        transactionId: razorpay_payment_id,
-        orderId: razorpay_subscription_id,
-        plan: String(plan),
-        billingCycle: String(billingCycle),
-        meta: { signature: razorpay_signature },
-      },
-    });
+      const failedPayment = await prisma.payment.create({
+        data: {
+          userId: sessionUser.id!,
+          amount: amount,
+          provider: 'razorpay',
+          providerIdempotencyKey: idempotencyHeader || undefined,
+          status: 'failed',
+          createdAt: new Date(),
+          transactionId: razorpay_payment_id,
+          orderId: razorpay_subscription_id,
+          plan: String(plan),
+          billingCycle: String(billingCycle),
+          meta: { signature: razorpay_signature },
+        },
+      });
+
+      // Audit event (best-effort)
+      try {
+        await recordPaymentEvent({
+          paymentId: failedPayment.id,
+          userId: sessionUser.id!,
+          provider: 'razorpay',
+          providerIdempotencyKey: idempotencyHeader || undefined,
+          transactionId: razorpay_payment_id,
+          orderId: razorpay_subscription_id,
+          eventType: 'payment.failed.client_verify',
+          amount,
+          status: 'failed',
+          payload: { signature: razorpay_signature },
+        })
+      } catch (err) {
+        // Non-fatal
+        logger.warn('recordPaymentEvent failed', { err })
+      }
     return NextResponse.json({ error: 'Invalid signature' }, { status: 400 });
   }
 
@@ -77,6 +103,7 @@ export async function POST(req: Request) {
       userId: sessionUser.id!,
       amount: amount,
       provider: 'razorpay',
+      providerIdempotencyKey: idempotencyHeader || undefined,
       status: 'success',
       createdAt: new Date(),
       transactionId: razorpay_payment_id,
@@ -86,6 +113,24 @@ export async function POST(req: Request) {
       meta: { signature: razorpay_signature },
     },
   });
+
+  // Audit event (best-effort)
+  try {
+    await recordPaymentEvent({
+      paymentId: payment.id,
+      userId: sessionUser.id!,
+      provider: 'razorpay',
+      providerIdempotencyKey: idempotencyHeader || undefined,
+      transactionId: razorpay_payment_id,
+      orderId: razorpay_subscription_id,
+      eventType: 'payment.success.client_verify',
+      amount,
+      status: 'success',
+    })
+  } catch (err) {
+    // non-fatal
+    logger.warn('recordPaymentEvent failed', { err })
+  }
 
   // Calculate subscription dates
   const startDate = new Date();
