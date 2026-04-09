@@ -20,7 +20,7 @@ CREATE TABLE IF NOT EXISTS "PaymentEvent" (
 );
 
 -- Foreign key to Payment (nullable)
-ALTER TABLE "PaymentEvent" ADD CONSTRAINT IF NOT EXISTS fk_paymentevent_payment FOREIGN KEY ("paymentId") REFERENCES "Payment"("id") ON DELETE CASCADE;
+ALTER TABLE "PaymentEvent" ADD CONSTRAINT fk_paymentevent_payment FOREIGN KEY ("paymentId") REFERENCES "Payment"("id") ON DELETE CASCADE;
 
 -- Indexes
 CREATE INDEX IF NOT EXISTS idx_paymentevent_provider_idempotency ON "PaymentEvent" ("provider", "providerIdempotencyKey");
