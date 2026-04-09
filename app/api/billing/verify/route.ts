@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server';
 import crypto from 'crypto';
 import { getServerSessionForHandlers } from '@/lib/session';
 import { prisma } from '@/lib/prisma';
+import computeProratedCredit from '@/lib/subscription/proration';
 import { SessionUser } from '@/lib/types';
 import { sendMail } from '@/lib/mailer';
 import { paymentReceiptHtml } from '@/lib/email/templates';
@@ -93,13 +94,33 @@ export async function POST(req: Request) {
       ? new Date(new Date().setFullYear(startDate.getFullYear() + 1))
       : new Date(new Date().setMonth(startDate.getMonth() + 1));
 
-  // Deactivate any existing subscriptions for this user
-  await prisma.subscription.updateMany({
+  // Compute prorated credit from any existing active subscription (if present)
+  let carryForwardCredit = 0;
+  const existingSub = await prisma.subscription.findFirst({
     where: { userId: sessionUser.id!, active: true },
-    data: { active: false },
+    select: { id: true, startDate: true, endDate: true, paymentId: true, creditBalance: true },
   });
 
-  // Create new active subscription and link to payment
+  if (existingSub) {
+    try {
+      const paid = existingSub.paymentId
+        ? await prisma.payment.findUnique({ where: { id: existingSub.paymentId }, select: { amount: true } })
+        : null;
+      const paidAmount = paid?.amount ?? 0;
+      const proration = computeProratedCredit(existingSub.startDate!, existingSub.endDate!, paidAmount);
+      const existingCredit = existingSub.creditBalance ?? 0;
+      carryForwardCredit = (existingCredit || 0) + (proration || 0);
+    } catch (err) {
+      // Non-fatal — proceed without proration if DB read fails
+      logger.warn('proration calculation failed', { event: 'billing.verify.proration', context: { userId: sessionUser.id! }, err });
+      carryForwardCredit = 0;
+    }
+  }
+
+  // Deactivate any existing subscriptions for this user
+  await prisma.subscription.updateMany({ where: { userId: sessionUser.id!, active: true }, data: { active: false } });
+
+  // Create new active subscription and link to payment (persist any carry-forward credit)
   await prisma.subscription.create({
     data: {
       userId: sessionUser.id!,
@@ -109,6 +130,7 @@ export async function POST(req: Request) {
       endDate,
       active: true,
       paymentId: payment.id, // Link to payment record
+      creditBalance: carryForwardCredit,
     },
   });
 

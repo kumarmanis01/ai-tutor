@@ -15,12 +15,16 @@ export default function ParentSettings() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [profile, setProfile] = useState<Profile | null>(null)
+  const [children, setChildren] = useState<Array<{ id: string; name: string; grade?: string | null; isPaused: boolean; pausedUntil?: string | null; pauseReason?: string | null }>>([])
   const [message, setMessage] = useState<string | null>(null)
 
   useEffect(() => {
     fetch('/api/parent/settings')
       .then((r) => r.json())
-      .then((data) => setProfile(data))
+      .then((data) => {
+        setProfile(data)
+        setChildren(data.children ?? [])
+      })
       .catch(() => setProfile({ digestOptOut: false, digestDay: 'Sunday', digestTime: '09:00', digestTimezone: null }))
       .finally(() => setLoading(false))
   }, [])
@@ -51,6 +55,37 @@ export default function ParentSettings() {
     }
   }
 
+  async function togglePause(studentId: string, pause: boolean) {
+    setSaving(true)
+    setMessage(null)
+    try {
+      let pauseReason: string | null = null
+      let pausedUntil: string | null = null
+      if (pause) {
+        // Ask for optional pause reason; keep UI minimal for MVP
+        // eslint-disable-next-line no-alert
+        pauseReason = window.prompt('Optional: reason for pause (e.g. vacation)') || null
+      }
+
+      const res = await fetch('/api/parent/pause', {
+        method: 'POST',
+        body: JSON.stringify({ studentId, action: pause ? 'pause' : 'unpause', pausedUntil, pauseReason }),
+        headers: { 'Content-Type': 'application/json' },
+      })
+      const data = await res.json()
+      if (res.ok && data.ok) {
+        setChildren((c) => c.map((ch) => (ch.id === studentId ? { ...ch, isPaused: pause, pausedUntil: data.link?.pausedUntil ?? null, pauseReason: data.link?.pauseReason ?? null } : ch)))
+        setMessage(pause ? 'Paused' : 'Unpaused')
+      } else {
+        setMessage('Action failed')
+      }
+    } catch (e) {
+      setMessage('Action failed')
+    } finally {
+      setSaving(false)
+    }
+  }
+
   if (loading) return <div className="p-4">Loading…</div>
 
   if (!profile) return <div className="p-4">Unable to load settings</div>
@@ -72,8 +107,32 @@ export default function ParentSettings() {
           ))}
         </select>
       </div>
+        <h2 className="text-md font-semibold">Children</h2>
+        {children.length === 0 ? (
+          <p className="text-sm text-gray-500">No linked children.</p>
+        ) : (
+          <div className="space-y-2">
+            {children.map((child) => (
+              <div key={child.id} className="flex items-center justify-between rounded border p-2">
+                <div>
+                  <div className="font-medium">{child.name}</div>
+                  {child.grade && <div className="text-xs text-gray-500">Grade {child.grade}</div>}
+                  {child.isPaused && (
+                    <div className="text-xs text-amber-700">Paused until {child.pausedUntil ?? 'indefinitely'}</div>
+                  )}
+                </div>
+                <div>
+                  <button onClick={() => togglePause(child.id, !child.isPaused)} disabled={saving} className="rounded border px-3 py-1 text-sm">
+                    {child.isPaused ? 'Unpause' : 'Pause'}
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
 
-      <div>
+      <div className="flex items-center gap-2">
         <label className="text-sm block mb-1">Delivery time</label>
         <input type="time" value={profile.digestTime} onChange={(e) => setProfile({ ...profile, digestTime: e.target.value })} className="w-full rounded border px-3 py-2" />
       </div>

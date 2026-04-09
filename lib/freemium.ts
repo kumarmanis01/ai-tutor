@@ -21,6 +21,8 @@ function getCurrentPeriodStart(): Date {
 async function isStudentPaused(studentId: string): Promise<boolean> {
   try {
     const now = new Date()
+
+    // Check explicit parent child control first (existing behavior)
     const control = await prisma.parentChildControl.findFirst({
       where: {
         studentId,
@@ -31,12 +33,28 @@ async function isStudentPaused(studentId: string): Promise<boolean> {
         ],
       },
     })
-    return !!control
+    if (control) return true
+
+    // Additionally consider parent-student links that may be paused (per-link pause)
+    const linkPause = await prisma.parentStudent.findFirst({
+      where: {
+        studentId,
+        status: 'active',
+        isPaused: true,
+        OR: [
+          { pausedUntil: null },
+          { pausedUntil: { gt: now } },
+        ],
+      },
+    })
+
+    return !!linkPause
   } catch (err) {
     // On error, assume not paused to avoid unintentionally allowing unlimited sessions
     return false
   }
 }
+
 
 /**
  * Check if student can start a new session.

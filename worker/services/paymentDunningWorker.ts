@@ -13,6 +13,7 @@ import { getRedis } from '@/lib/redis'
 import { createRazorpayTokenCharge } from '@/lib/payments'
 import { PLANS, rupeesToPaise } from '@/lib/subscription/plans'
 import { createInvoiceForPayment } from '@/lib/invoices'
+import applyCreditsToCharge from '@/lib/subscription/credits'
 
 function toIso(d: Date) { return d.toISOString() }
 
@@ -48,35 +49,24 @@ export async function processPaymentDunning(): Promise<void> {
             const plan = PLANS[planKey as any]
             const amountPaise = rupeesToPaise(plan.billedRupees)
 
+            // Apply any stored credits on the subscription before charging
+            const { netAmountPaise, remainingCreditPaise } = applyCreditsToCharge(amountPaise, s.creditBalance ?? 0)
+
             const idempotencyKey = `subscription:${s.id}:dunning:${attempts + 1}`
-            const resp = await createRazorpayTokenCharge({
-              amountPaise,
-              currency: 'INR',
-              customerId: pm.customer?.providerCustomerId,
-              token: pm.providerPaymentMethodId,
-              email: parent.email ?? '',
-              contact: parent.phone ?? '',
-              description: `Auto charge for subscription ${s.id}`,
-              notes: { subscriptionId: s.id, attempt: String(attempts + 1) },
-              idempotencyKey,
-            })
-
-            const paymentId = resp && (resp.id || resp.razorpay_payment_id || resp.payment_id || resp.transactionId) || null
-            const orderId = resp && (resp.order_id || resp.razorpay_order_id || resp.orderId) || null
-
-            if (paymentId) {
+            if (netAmountPaise === 0) {
+              // No gateway charge required — consume credits and extend subscription
               await prisma.$transaction(async (tx) => {
                 await tx.payment.create({ data: {
                   userId: s.userId,
-                  amount: amountPaise,
-                  provider: 'razorpay',
+                  amount: 0,
+                  provider: 'credit',
                   providerIdempotencyKey: idempotencyKey,
                   status: 'success',
-                  transactionId: paymentId,
-                  orderId: orderId ?? undefined,
+                  transactionId: `credit_applied_${Date.now()}`,
+                  orderId: undefined,
                   plan: s.plan,
                   billingCycle: s.billingCycle,
-                  meta: { subscriptionId: s.id, autoCharge: true },
+                  meta: { subscriptionId: s.id, autoCharge: true, creditApplied: (s.creditBalance ?? 0) },
                 } })
 
                 const planMonths = plan.durationMonths || 1
@@ -85,7 +75,66 @@ export async function processPaymentDunning(): Promise<void> {
                 const newEnd = new Date(currentEnd)
                 newEnd.setMonth(newEnd.getMonth() + planMonths)
 
-                await tx.subscription.update({ where: { id: s.id }, data: { dunningAttempts: 0, lastDunningAt: null, graceUntil: null, endDate: newEnd } })
+                await tx.subscription.update({ where: { id: s.id }, data: { dunningAttempts: 0, lastDunningAt: null, graceUntil: null, endDate: newEnd, creditBalance: remainingCreditPaise } })
+
+                const meta: any = s.meta || {}
+                const childIds: string[] = Array.isArray(meta?.childIds) ? meta.childIds : []
+                for (const cid of childIds) {
+                  await tx.user.update({ where: { id: cid }, data: { subscriptionStatus: 'active', subscriptionExpiry: newEnd } })
+                }
+              })
+
+              // Create invoice (zero amount) and notify
+              try {
+                await createInvoiceForPayment({ userId: s.userId, paymentId: undefined, studentId: undefined, amountPaise: 0, planLabel: plan.label, billingCycle: plan.perMonthDisplay })
+                const subject = `Payment applied from credits — Spinzy subscription`
+                const html = `<p>Hi ${parent.name ?? 'Parent'},</p><p>We've applied your available credits to renew your Spinzy subscription. Your next renewal is on ${new Date((s.endDate ?? now).getTime()).toLocaleDateString('en-IN')}.</p>`
+                await sendMailSafe({ to: parent.email ?? '', subject, html })
+              } catch (err) {
+                logger.warn('paymentDunning: invoice/email after credit-apply failed', { subscriptionId: s.id, err: String(err) })
+              }
+
+              charged = true
+            } else {
+              const resp = await createRazorpayTokenCharge({
+                amountPaise: netAmountPaise,
+                currency: 'INR',
+                customerId: pm.customer?.providerCustomerId,
+                token: pm.providerPaymentMethodId,
+                email: parent.email ?? '',
+                contact: parent.phone ?? '',
+                description: `Auto charge for subscription ${s.id}`,
+                notes: { subscriptionId: s.id, attempt: String(attempts + 1) },
+                idempotencyKey,
+              })
+
+              const paymentId = resp && (resp.id || resp.razorpay_payment_id || resp.payment_id || resp.transactionId) || null
+              const orderId = resp && (resp.order_id || resp.razorpay_order_id || resp.orderId) || null
+
+              if (paymentId) {
+              await prisma.$transaction(async (tx) => {
+                // Persist payment using net amount actually charged
+                await tx.payment.create({ data: {
+                  userId: s.userId,
+                  amount: netAmountPaise,
+                  provider: 'razorpay',
+                  providerIdempotencyKey: idempotencyKey,
+                  status: 'success',
+                  transactionId: paymentId,
+                  orderId: orderId ?? undefined,
+                  plan: s.plan,
+                  billingCycle: s.billingCycle,
+                  meta: { subscriptionId: s.id, autoCharge: true, creditApplied: (s.creditBalance ?? 0) },
+                } })
+
+                const planMonths = plan.durationMonths || 1
+                const currentEnd = s.endDate ? new Date(s.endDate) : new Date()
+                if (currentEnd.getTime() < now.getTime()) currentEnd.setTime(now.getTime())
+                const newEnd = new Date(currentEnd)
+                newEnd.setMonth(newEnd.getMonth() + planMonths)
+
+                // Update subscription end date and remaining credit balance
+                await tx.subscription.update({ where: { id: s.id }, data: { dunningAttempts: 0, lastDunningAt: null, graceUntil: null, endDate: newEnd, creditBalance: remainingCreditPaise } })
 
                 const meta: any = s.meta || {}
                 const childIds: string[] = Array.isArray(meta?.childIds) ? meta.childIds : []
@@ -99,7 +148,7 @@ export async function processPaymentDunning(): Promise<void> {
               charged = true
 
               try {
-                await createInvoiceForPayment({ userId: s.userId, paymentId: chargePaymentId, studentId: undefined, amountPaise: amountPaise, planLabel: plan.label, billingCycle: plan.perMonthDisplay })
+                await createInvoiceForPayment({ userId: s.userId, paymentId: chargePaymentId, studentId: undefined, amountPaise: netAmountPaise, planLabel: plan.label, billingCycle: plan.perMonthDisplay })
                 const subject = `Payment received — Spinzy subscription`
                 const html = `<p>Hi ${parent.name ?? 'Parent'},</p><p>We've successfully renewed your Spinzy subscription. Your next renewal is on ${new Date((s.endDate ?? now).getTime()).toLocaleDateString('en-IN')}.</p>`
                 await sendMailSafe({ to: parent.email ?? '', subject, html })

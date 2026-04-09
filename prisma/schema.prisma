@@ -1,13 +1,13 @@
-/// FILE OBJECTIVE:
-/// - Prisma schema defining application models for the project.
-///
-/// LINKED UNIT TEST:
-/// - tests/unit/prisma/schema.spec.ts
-///
-/// EDIT LOG:
-/// - 2026-02-21T00:00:00Z | copilot | added student learning profile fields
-/// - 2026-03-07T00:00:00Z | Manish Kumar | add OVERVIEW to SessionPhase; SESSION_OVERVIEW_VIEWED to SessionEventType
-/// - 2026-04-10T00:00:00Z | copilot | add PaymentCustomer & PaymentMethod models for stored payment methods
+// FILE OBJECTIVE:
+// - Prisma schema defining application models for the project.
+//
+// LINKED UNIT TEST:
+// - tests/unit/prisma/schema.spec.ts
+//
+// EDIT LOG:
+// - 2026-02-21T00:00:00Z | copilot | added student learning profile fields
+// - 2026-03-07T00:00:00Z | Manish Kumar | add OVERVIEW to SessionPhase; SESSION_OVERVIEW_VIEWED to SessionEventType
+// - 2026-04-10T00:00:00Z | copilot | add PaymentCustomer & PaymentMethod models for stored payment methods
 generator client {
   provider = "prisma-client-js"
 }
@@ -25,17 +25,14 @@ model User {
   emailVerified               DateTime?
   image                       String?
   parentEmail                 String?
-  /// Parent email OTP verified at (under-18 gate).
+  // Parent email OTP verified at (under-18 gate).
   parentVerifiedAt            DateTime?
   /// When true, student must complete parent verification regardless of age.
   requiresParentVerification  Boolean                      @default(false)
-  /// Self-reported age (integer). Used for under-13 / under-18 parent verification gates.
+  // Self-reported age (integer). Used for under-13 / under-18 parent verification gates.
   age                         Int?
-  /// Parent phone used for under-13 verification (not unique; families can share).
-  parentPhone                 String?
-  parentPhoneVerifiedAt       DateTime?
-  /// Account activation state (e.g. pending parent verification for under-13).
-  accountStatus               AccountStatus                @default(active)
+  // Parent phone used for under-13 verification (not unique; families can share).
+  
   role                        UserRole                     @default(user)
   country                     String?
   language                    LanguageCode
@@ -43,14 +40,14 @@ model User {
   board                       String?
   subjects                    String[]                     @default([])
   points                      Int                          @default(0)
-  /// Cumulative XP for level progression (1–10).
+  // Cumulative XP for level progression (1-10).
   totalXp                     Int                          @default(0)
-  /// Current level derived from totalXp (1–10).
+  // Current level derived from totalXp (1-10).
   level                       Int                          @default(1)
-  /// Consecutive days with ≥1 learning session.
+  // Consecutive days with >=1 learning session.
   currentStreak               Int                          @default(0)
   longestStreak               Int                          @default(0)
-  /// Date of last completed session (date-only; time ignored).
+  // Date of last completed session (date-only; time ignored).
   lastSessionDate             DateTime?
   welcomeEmailSent            Boolean                      @default(false)
   passwordHash                String?
@@ -370,6 +367,8 @@ model Subscription {
   billingCycle String /// monthly, annual
   startDate    DateTime
   endDate      DateTime
+  /// Credit balance in paise to apply on future invoices (prorated refunds/store credit)
+  creditBalance Int      @default(0)
   active       Boolean  @default(false)
   childSlots   Int      @default(1) /// number of child accounts included
   /// JSON meta for subscription: { childIds: string[] } etc.
@@ -483,9 +482,9 @@ model Payment {
   meta          Json?
   user          User     @relation(fields: [userId], references: [id])
   invoice       Invoice?
+  @@unique([provider, providerIdempotencyKey], map: "uniq_payment_provider_idempotency")
 }
 
-@@unique([provider, providerIdempotencyKey], map: "uniq_payment_provider_idempotency")
 
 model PaymentCustomer {
   id                   String   @id @default(cuid())
@@ -717,7 +716,13 @@ model ParentStudent {
   studentId  String
   status     ParentLinkStatus @default(active)
   inviteCode String?          @unique
+  /// Pause controls set by parent: when true, sessions during pause do not count
+  /// against free-tier limits. `pausedUntil` is optional — null => paused indefinitely.
+  isPaused    Boolean  @default(false)
+  pausedUntil DateTime?
+  pauseReason String?
   createdAt  DateTime         @default(now())
+  updatedAt  DateTime         @updatedAt
   parent     User             @relation("ParentRelations", fields: [parentId], references: [id], onDelete: Cascade)
   student    User             @relation("StudentRelations", fields: [studentId], references: [id], onDelete: Cascade)
 

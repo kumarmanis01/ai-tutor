@@ -35,6 +35,7 @@ export const prismaMock = {
   parentInvite: mockModel(),
   parentStudent: mockModel(),
   parentChildControl: mockModel(),
+  freeTierUsage: mockModel(),
   weeklyStudentSummary: mockModel(),
   subjectProgressSummary: mockModel(),
   attentionFlag: mockModel(),

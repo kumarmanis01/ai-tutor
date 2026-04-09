@@ -33,6 +33,7 @@ import { PLANS } from '@/lib/subscription/plans';
 import type { PlanId } from '@/lib/subscription/plans';
 import { createInvoiceForPayment } from '@/lib/invoices';
 import Razorpay from 'razorpay';
+import computeProratedCredit from '@/lib/subscription/proration';
 
 function verifySignature(orderId: string, paymentId: string, signature: string): boolean {
   const secret = process.env.RAZORPAY_KEY_SECRET;
@@ -137,6 +138,24 @@ export async function POST(req: Request) {
           },
         });
 
+        // Compute any prorated credit from existing active subscription and carry forward
+        let carryForwardCredit = 0
+        try {
+          const existing = await tx.subscription.findFirst({ where: { userId, active: true }, select: { startDate: true, endDate: true, paymentId: true, creditBalance: true } })
+          if (existing) {
+            const paid = existing.paymentId ? await tx.payment.findUnique({ where: { id: existing.paymentId }, select: { amount: true } }) : null
+            const paidAmount = paid?.amount ?? 0
+            const proration = computeProratedCredit(existing.startDate!, existing.endDate!, paidAmount)
+            const existingCredit = existing.creditBalance ?? 0
+            carryForwardCredit = (existingCredit || 0) + (proration || 0)
+            // Deactivate existing
+            await tx.subscription.updateMany({ where: { userId, active: true }, data: { active: false } })
+          }
+        } catch (err) {
+          logger.warn('parent.verify proration failed', { event: 'parent.subscription.verify.proration', context: { userId, orderId }, err })
+          carryForwardCredit = 0
+        }
+
         // Create parent subscription record
         await tx.subscription.create({
           data: {
@@ -149,6 +168,7 @@ export async function POST(req: Request) {
             childSlots: childIds?.length ?? 1,
             paymentId: payment.id,
             meta: { childIds },
+            creditBalance: carryForwardCredit,
           },
         });
 

@@ -30,11 +30,26 @@ export async function GET() {
     // Fallback defaults if no profile exists yet
     const timezone = profile?.digestTimezone ?? (await prisma.user.findUnique({ where: { id: userId }, select: { timezone: true } }))?.timezone ?? null
 
+    // Include linked children for the parent settings UI (id, name, pause status)
+    const links = await prisma.parentStudent.findMany({
+      where: { parentId: userId, status: 'active' },
+      include: { student: { select: { id: true, name: true, grade: true } } },
+      orderBy: { createdAt: 'desc' },
+    })
+
     return NextResponse.json({
       digestOptOut: profile?.digestOptOut ?? false,
       digestDay: profile?.digestDay ?? 'Sunday',
       digestTime: profile?.digestTime ?? '09:00',
       digestTimezone: profile?.digestTimezone ?? timezone,
+      children: links.map((l) => ({
+        id: l.student.id,
+        name: l.student.name ?? 'Student',
+        grade: l.student.grade ?? null,
+        isPaused: (l as any).isPaused ?? false,
+        pausedUntil: (l as any).pausedUntil ? (l as any).pausedUntil.toISOString() : null,
+        pauseReason: (l as any).pauseReason ?? null,
+      })),
     })
   } catch (err) {
     logger.error('GET /api/parent/settings error', { className: 'api.parent.settings', methodName: 'GET', error: err })
