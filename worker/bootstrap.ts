@@ -46,6 +46,8 @@ import { DIAGNOSTIC_BOOTSTRAP_QUEUE_NAME } from "../jobs/diagnosticBootstrap.js"
 import { processDiagnosticBootstrap } from "./services/diagnosticBootstrapWorker.js";
 import { WEEKLY_DIGEST_QUEUE_NAME, registerWeeklyDigestJob } from "../jobs/weeklyDigest.js";
 import { processWeeklyDigest } from "./services/weeklyDigestWorker.js";
+import { SUBSCRIPTION_RENEWAL_QUEUE_NAME, registerSubscriptionRenewalJob } from "../jobs/subscriptionRenewal.js";
+import { processRenewals } from "../workers/subscriptionRenewalWorker.js";
 import { DISTRESS_NOTIFICATION_QUEUE_NAME } from "../jobs/distressNotification.js";
 import { processDistressNotification } from "./services/distressNotificationWorker.js";
 import { RETEACH_PLAN_QUEUE_NAME } from "../jobs/reteachPlan.js";
@@ -211,6 +213,13 @@ export async function bootstrapWorker() {
     { connection: redisConnection, concurrency: 1 },
   );
   await registerWeeklyDigestJob();
+
+  const subscriptionRenewalWorker = new Worker(
+    SUBSCRIPTION_RENEWAL_QUEUE_NAME,
+    async (_job: Job) => processRenewals(),
+    { connection: redisConnection, concurrency: 1 },
+  );
+  await registerSubscriptionRenewalJob();
 
   const diagnosticBootstrapWorker = new Worker(
     DIAGNOSTIC_BOOTSTRAP_QUEUE_NAME,

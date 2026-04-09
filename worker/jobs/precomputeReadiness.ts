@@ -10,12 +10,12 @@
  * Never throws -- logs and continues on per-student errors.
  */
 
-import { prisma } from '../../lib/prisma.js'
-import { computeReadinessScore } from '../../lib/student/examReadiness.js'
-import { logger } from '../../lib/logger.js'
-import { getRedis } from '../../lib/redis.js'
-import { sendPushSafe } from '../../lib/push/send.js'
-import { PUSH_NOTIFICATIONS } from '../../lib/push/notifications.js'
+import { prisma } from '@/lib/prisma'
+import { computeReadinessScore } from '@/lib/student/examReadiness'
+import { logger } from '@/lib/logger'
+import { getRedis } from '@/lib/redis'
+import { sendPushSafe } from '@/lib/push/send'
+import { PUSH_NOTIFICATIONS } from '@/lib/push/notifications'
 
 const READINESS_NOTIFICATION_THRESHOLDS = [50, 70, 90]
 
@@ -81,6 +81,21 @@ export async function precomputeReadiness(): Promise<{ students: number; scores:
       try {
         const readiness = await computeReadinessScore(user.id, subjectId)
         totalScores++
+
+        // Persist a daily snapshot of readiness in Redis so downstream
+        // workers (e.g. readiness-drop detection) can compare history.
+        try {
+          const redis = getRedis()
+          if (redis) {
+            const dateLabel = new Date().toISOString().slice(0, 10) // YYYY-MM-DD
+            const key = `readiness:history:${user.id}:${subjectId}:${dateLabel}`
+            // Keep history for 120 days
+            await redis.set(key, String(Math.round(readiness.score)), 'EX', 120 * 24 * 60 * 60)
+          }
+        } catch (e) {
+          // best-effort, do not fail the precompute job
+          logger.error('precomputeReadiness.redisSnapshotFailed', { studentId: user.id, subjectId, err: String(e) })
+        }
 
         // Fire readiness milestone push if score crosses 50/70/90 for the first time
         const subjectName = subjectNameById.get(subjectId) ?? subjectId

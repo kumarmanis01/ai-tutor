@@ -96,18 +96,19 @@ export async function POST(req: Request) {
   const expiry = new Date(now);
   expiry.setMonth(expiry.getMonth() + plan.durationMonths);
 
-  // Fetch Razorpay order to read notes (childIds, isFamily)
+  // Fetch Razorpay order to read notes (childIds, isFamily, emiMonths)
   const client = getRazorpayClient();
   let childIds: string[] = [];
   let isFamily = false;
+  let rzNotes: any = {};
   try {
     if (client) {
       const rzOrder = await client.orders.fetch(orderId);
-      const notes = (rzOrder && (rzOrder as any).notes) || {};
-      if (notes?.childIds) {
-        try { childIds = JSON.parse(notes.childIds); } catch { childIds = [] }
+      rzNotes = (rzOrder && (rzOrder as any).notes) || {};
+      if (rzNotes?.childIds) {
+        try { childIds = JSON.parse(rzNotes.childIds); } catch { childIds = [] }
       }
-      isFamily = String(notes?.isFamily || '') === 'true';
+      isFamily = String(rzNotes?.isFamily || '') === 'true';
     }
   } catch (err) {
     logger.warn('Could not fetch Razorpay order notes', { event: 'parent.subscription.verify.fetch_notes', context: { userId, orderId }, err });
@@ -138,7 +139,7 @@ export async function POST(req: Request) {
         });
 
         // Create parent subscription record
-        await tx.subscription.create({
+        const subscription = await tx.subscription.create({
           data: {
             userId,
             plan: childIds && childIds.length > 1 ? 'family' : 'individual',
@@ -150,6 +151,29 @@ export async function POST(req: Request) {
             paymentId: payment.id,
           },
         });
+
+        // If EMI was requested (emiMonths in Razorpay notes), create installment placeholders
+        try {
+          const emiMonths = rzNotes?.emiMonths ? Number(rzNotes.emiMonths) : 0;
+          if (emiMonths && emiMonths > 1) {
+            const total = Number(order.amount); // paise
+            const base = Math.floor(total / emiMonths);
+            const remainder = total - base * emiMonths;
+
+            // Update the initial payment meta to mark installment 1
+            await tx.payment.update({ where: { id: payment.id }, data: { meta: { ...(payment.meta || {}), emi: true, installment: 1, totalInstallments: emiMonths, subscriptionId: subscription.id, dueDate: now.toISOString() } } });
+
+            // Create remaining installments as pending payments
+            for (let i = 2; i <= emiMonths; i++) {
+              const amt = i === emiMonths ? base + remainder : base;
+              const dueDate = new Date(now);
+              dueDate.setMonth(dueDate.getMonth() + (i - 1));
+              await tx.payment.create({ data: { userId, amount: amt, provider: 'razorpay', status: 'pending', plan: plan.label, billingCycle: plan.perMonthDisplay, meta: { emi: true, installment: i, totalInstallments: emiMonths, subscriptionId: subscription.id, dueDate: dueDate.toISOString() } } });
+            }
+          }
+        } catch (e) {
+          logger.warn('Could not create EMI installments', { event: 'parent.subscription.verify.emi_create', context: { userId, orderId }, err: e });
+        }
 
         // Apply subscription to each child (if any childIds provided), idempotent
         if (childIds && childIds.length > 0) {

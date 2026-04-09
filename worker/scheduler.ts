@@ -25,6 +25,8 @@ import { expireStaleTasks } from '../lib/dailyHabit.js';
 import { hydrationReconciler } from './services/hydrationReconciler.js';
 import { runDailyCostReport } from './services/costReportingWorker.js'
 import { runDataDeletionCycle } from './services/dataDeletionWorker.js';
+import { processParentInactivityAlerts } from './services/inactivityAlertWorker.js';
+import { processReadinessDropAlerts } from './services/readinessDropWorker.js';
 import { prisma } from '../lib/prisma.js';
 import { sendPushSafe } from '../lib/push/send.js';
 import { PUSH_NOTIFICATIONS } from '../lib/push/notifications.js';
@@ -295,6 +297,30 @@ async function runDailyMaintenanceJob() {
 
     // ── Push: inactivity reminders ──────────────────────────────────────
     await runInactivityPush();
+
+    // ── Parent alerts: inactivity & readiness-drop (daily) ──────────────
+    // Ensure readiness precompute has run so that historical snapshots and cache
+    // are available for the readiness-drop detector. This is best-effort and
+    // will not abort the rest of the maintenance job on failure.
+    try {
+      logger.info('scheduler.ensureReadinessPrecompute.starting')
+      await precomputeReadiness()
+      logger.info('scheduler.ensureReadinessPrecompute.completed')
+    } catch (e) {
+      logger.error('scheduler.ensureReadinessPrecompute.failed', { err: e instanceof Error ? e.message : String(e) })
+    }
+
+    try {
+      await processParentInactivityAlerts();
+    } catch (e) {
+      logger.error('scheduler.parentInactivity.failed', { err: e instanceof Error ? e.message : String(e) });
+    }
+
+    try {
+      await processReadinessDropAlerts();
+    } catch (e) {
+      logger.error('scheduler.readinessDrop.failed', { err: e instanceof Error ? e.message : String(e) });
+    }
 
     // ── Push: exam countdown reminders ──────────────────────────────────
     await runExamCountdownPush();
