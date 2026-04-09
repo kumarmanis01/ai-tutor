@@ -16,6 +16,29 @@ function getCurrentPeriodStart(): Date {
 }
 
 /**
+ * Returns true if any active parent control pauses this student now.
+ */
+async function isStudentPaused(studentId: string): Promise<boolean> {
+  try {
+    const now = new Date()
+    const control = await prisma.parentChildControl.findFirst({
+      where: {
+        studentId,
+        isPaused: true,
+        OR: [
+          { pausedUntil: null },
+          { pausedUntil: { gt: now } },
+        ],
+      },
+    })
+    return !!control
+  } catch (err) {
+    // On error, assume not paused to avoid unintentionally allowing unlimited sessions
+    return false
+  }
+}
+
+/**
  * Check if student can start a new session.
  * Resets counter if current period is a new calendar month.
  * Never throws -- returns allowed: false on any DB or subscription error.
@@ -71,7 +94,19 @@ export async function checkFreeTierCap(studentId: string): Promise<FreeTierStatu
       }
     }
 
+    // If a parent has paused this child, sessions during the pause do not count
+    // against free-tier limits. Report allowed=true and do not decrement usage.
+    const paused = await isStudentPaused(studentId)
     const sessionsRemaining = Math.max(0, FREE_TIER_SESSION_LIMIT - usage.sessionsUsed)
+    if (paused) {
+      return {
+        allowed: true,
+        sessionsUsed: usage.sessionsUsed,
+        sessionsRemaining,
+        periodStart: usage.periodStart,
+      }
+    }
+
     const allowed = usage.sessionsUsed < FREE_TIER_SESSION_LIMIT
 
     return {
@@ -95,6 +130,10 @@ export async function incrementFreeTierUsage(studentId: string): Promise<void> {
     // Premium students bypass cap entirely.
     const isPremium = await isPremiumUser(studentId)
     if (isPremium) return
+
+    // If paused by parent, do not count this session against free limits.
+    const paused = await isStudentPaused(studentId)
+    if (paused) return
 
     const currentPeriodStart = getCurrentPeriodStart()
 

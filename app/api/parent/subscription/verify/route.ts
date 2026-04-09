@@ -148,6 +148,7 @@ export async function POST(req: Request) {
             active: true,
             childSlots: childIds?.length ?? 1,
             paymentId: payment.id,
+            meta: { childIds },
           },
         });
 

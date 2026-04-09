@@ -7,6 +7,7 @@
 /// EDIT LOG:
 /// - 2026-02-21T00:00:00Z | copilot | added student learning profile fields
 /// - 2026-03-07T00:00:00Z | Manish Kumar | add OVERVIEW to SessionPhase; SESSION_OVERVIEW_VIEWED to SessionEventType
+/// - 2026-04-10T00:00:00Z | copilot | add PaymentCustomer & PaymentMethod models for stored payment methods
 generator client {
   provider = "prisma-client-js"
 }
@@ -371,6 +372,13 @@ model Subscription {
   endDate      DateTime
   active       Boolean  @default(false)
   childSlots   Int      @default(1) /// number of child accounts included
+  /// JSON meta for subscription: { childIds: string[] } etc.
+  meta         Json?
+  /// Dunning state: number of retry attempts performed (0..3)
+  dunningAttempts Int    @default(0)
+  lastDunningAt    DateTime?
+  /// If set, subscription remains active until this timestamp while parent is in grace period
+  graceUntil       DateTime?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
   paymentId    String?
@@ -389,6 +397,11 @@ model ParentChildControl {
   focusMode         String   @default("balanced") /// balanced, exam_prep, concept_focus
   studyHoursStart   String? /// e.g. "09:00" (24h format)
   studyHoursEnd     String? /// e.g. "21:00"
+  /// Pause controls set by parent: when true, sessions during pause do not count
+  /// against free-tier limits. `pausedUntil` is optional — null => paused indefinitely.
+  isPaused          Boolean  @default(false)
+  pausedUntil       DateTime?
+  pauseReason       String?
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
 
@@ -469,6 +482,45 @@ model Payment {
   meta          Json?
   user          User     @relation(fields: [userId], references: [id])
   invoice       Invoice?
+}
+
+model PaymentCustomer {
+  id                   String   @id @default(cuid())
+  userId               String
+  provider             String   // e.g. 'razorpay'
+  providerCustomerId   String?  @unique
+  meta                 Json?
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+  paymentMethods       PaymentMethod[] @relation("CustomerPaymentMethods")
+  user                 User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([provider])
+}
+
+model PaymentMethod {
+  id                       String   @id @default(cuid())
+  userId                   String
+  customerId               String?
+  provider                 String
+  providerPaymentMethodId  String?  @unique
+  type                     String   // 'card' | 'upi' | 'netbanking'
+  last4                    String?
+  cardBrand                String?
+  expiryMonth              Int?
+  expiryYear               Int?
+  isDefault                Boolean  @default(false)
+  verified                 Boolean  @default(false)
+  meta                     Json?
+  createdAt                DateTime @default(now())
+  updatedAt                DateTime @updatedAt
+
+  user     User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  customer PaymentCustomer? @relation("CustomerPaymentMethods", fields: [customerId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([provider])
 }
 
 /// Invoice sequence used to allocate sequential invoice numbers.

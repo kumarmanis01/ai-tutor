@@ -14,6 +14,7 @@ import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { logger } from '@/lib/logger';
+import { consumeShield } from '@/lib/student/streakShield';
 import { formatErrorForResponse } from '@/lib/errorResponse';
 import type { AppSession } from '@/lib/types/auth';
 
@@ -83,7 +84,18 @@ export async function PUT(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { studentId, dailyTimeLimitMin, allowedSubjects, focusMode, studyHoursStart, studyHoursEnd } = body;
+    const {
+      studentId,
+      dailyTimeLimitMin,
+      allowedSubjects,
+      focusMode,
+      studyHoursStart,
+      studyHoursEnd,
+      // Pause controls
+      isPaused,
+      pausedUntil,
+      pauseReason,
+    } = body;
 
     if (!studentId) {
       return NextResponse.json({ error: 'studentId required' }, { status: 400 });
@@ -120,6 +132,9 @@ export async function PUT(req: NextRequest) {
         ...(focusMode !== undefined && { focusMode }),
         ...(studyHoursStart !== undefined && { studyHoursStart }),
         ...(studyHoursEnd !== undefined && { studyHoursEnd }),
+        ...(isPaused !== undefined && { isPaused }),
+        ...(pausedUntil !== undefined && { pausedUntil: pausedUntil ? new Date(pausedUntil) : null }),
+        ...(pauseReason !== undefined && { pauseReason }),
       },
       create: {
         parentId,
@@ -129,8 +144,18 @@ export async function PUT(req: NextRequest) {
         focusMode: focusMode ?? 'balanced',
         studyHoursStart: studyHoursStart ?? null,
         studyHoursEnd: studyHoursEnd ?? null,
+        isPaused: isPaused ?? false,
+        pausedUntil: pausedUntil ? new Date(pausedUntil) : null,
+        pauseReason: pauseReason ?? null,
       },
     });
+
+    // If parent paused the child, consume the streak shield to preserve streaks for the month.
+    if (isPaused === true) {
+      consumeShield(studentId).catch((err) => {
+        logger.warn('streak shield consume failed during pause', { studentId, err: String(err) });
+      });
+    }
 
     // Audit
     await prisma.auditLog.create({

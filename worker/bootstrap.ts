@@ -45,7 +45,9 @@ import { SM18_SCHEDULER_QUEUE_NAME, registerNightlySM18Job } from "../jobs/sm18.
 import { DIAGNOSTIC_BOOTSTRAP_QUEUE_NAME } from "../jobs/diagnosticBootstrap.js";
 import { processDiagnosticBootstrap } from "./services/diagnosticBootstrapWorker.js";
 import { WEEKLY_DIGEST_QUEUE_NAME, registerWeeklyDigestJob } from "../jobs/weeklyDigest.js";
+import { PAYMENT_DUNNING_QUEUE_NAME, registerDailyDunningJob } from "../jobs/paymentDunning.js";
 import { processWeeklyDigest, processParentDigest } from "./services/weeklyDigestWorker.js";
+import { processPaymentDunning } from "./services/paymentDunningWorker.js";
 import { DISTRESS_NOTIFICATION_QUEUE_NAME } from "../jobs/distressNotification.js";
 import { processDistressNotification } from "./services/distressNotificationWorker.js";
 import { RETEACH_PLAN_QUEUE_NAME } from "../jobs/reteachPlan.js";
@@ -217,6 +219,19 @@ export async function bootstrapWorker() {
     { connection: redisConnection, concurrency: 1 },
   );
   await registerWeeklyDigestJob();
+  // Register daily payment dunning job
+  try {
+    await registerDailyDunningJob();
+  } catch (err) {
+    logger.error('registerDailyDunningJob failed', { error: String(err) });
+  }
+
+  const paymentDunningWorker = new Worker(
+    PAYMENT_DUNNING_QUEUE_NAME,
+    async (_job: Job) => processPaymentDunning(),
+    { connection: redisConnection, concurrency: 1 },
+  );
+
 
   const diagnosticBootstrapWorker = new Worker(
     DIAGNOSTIC_BOOTSTRAP_QUEUE_NAME,
