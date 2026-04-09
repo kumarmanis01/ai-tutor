@@ -16,28 +16,22 @@ import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { logger } from '@/lib/logger';
 import { toast } from '@/lib/toast';
-import {
-  ResponsiveContainer,
-  ComposedChart,
-  Area,
-  Bar,
-  Line,
-  XAxis,
-  YAxis,
-  Tooltip,
-  CartesianGrid,
-  PieChart,
-  Pie,
-  Cell,
-  Legend,
-  RadarChart,
-  PolarGrid,
-  PolarAngleAxis,
-  PolarRadiusAxis,
-  Radar,
-} from 'recharts';
+// Charts are lazy-loaded from components/parent via dynamic imports
 
 const CLASS_NAME = 'ParentDashboardClient';
+
+import dynamic from 'next/dynamic';
+import { LOCAL_STRINGS, predictMarkRange, masteryPercentFromAverage } from '@/lib/parent/dashboardHelpers';
+
+// Lazy-load heavy charts to reduce initial bundle size / improve load time
+const WeeklyTrendChart = dynamic(() => import('@/components/parent/WeeklyTrendChart'), {
+  ssr: false,
+  loading: () => <div className="h-64 animate-pulse bg-gray-100 rounded" />,
+});
+const SubjectRadar = dynamic(() => import('@/components/parent/SubjectRadar'), { ssr: false, loading: () => <div className="h-72 animate-pulse bg-gray-100 rounded" /> });
+const MasteryPie = dynamic(() => import('@/components/parent/MasteryPie'), { ssr: false, loading: () => <div className="h-64 animate-pulse bg-gray-100 rounded" /> });
+const AttentionBar = dynamic(() => import('@/components/parent/AttentionBar'), { ssr: false, loading: () => <div className="h-56 animate-pulse bg-gray-100 rounded" /> });
+
 
 // ─── Types (API v2) ────────────────────────────────────────────────────
 
@@ -230,6 +224,10 @@ function masteryLabel(level: string) {
 // ─── Readiness Badge ───────────────────────────────────────────────────
 
 function ReadinessBadge({ item }: { item: ReadinessItem }) {
+  const lang = typeof navigator !== 'undefined' && navigator.language?.startsWith('hi') ? 'hi' : 'en';
+  const L = LOCAL_STRINGS[lang] ?? LOCAL_STRINGS.en;
+  const [min, max] = predictMarkRange(item.readinessScore);
+
   return (
     <div className={`border rounded-lg p-3 ${readinessColor(item.readinessLabel)}`}>
       <div className="flex items-center justify-between mb-2">
@@ -249,6 +247,10 @@ function ReadinessBadge({ item }: { item: ReadinessItem }) {
       <div className="flex justify-between text-xs mt-1">
         <span>{item.topicsCovered}/{item.totalTopics} topics</span>
         <span className="capitalize">{friendlyReadinessLabel(item.readinessLabel)}</span>
+      </div>
+
+      <div className="text-xs text-gray-500 mt-2">
+        {L.predictedRangeLabel}: {min}–{max} out of 100
       </div>
     </div>
   );
@@ -320,9 +322,48 @@ function SubjectProgressCard({ subject }: { subject: SubjectProgressData }) {
               <div className="font-bold text-red-600">{subject.weakTopics}</div>
               <div className="text-gray-500">Weak</div>
             </div>
-            <div className="bg-purple-50 dark:bg-purple-900/20 rounded p-2">
-              <div className="font-bold text-purple-600">{subject.averageMastery.toFixed(1)}/4</div>
-              <div className="text-gray-500">Mastery</div>
+            <div className="bg-purple-50 dark:bg-purple-900/20 rounded p-2 text-left">
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="font-bold text-purple-600">{subject.averageMastery.toFixed(1)}/4</div>
+                  <div className="text-gray-500 flex items-center gap-2">
+                    <span>
+                      Mastery
+                    </span>
+                    {/* Info tooltip (native) - localized */}
+                    <span
+                      className="text-xs text-gray-400 cursor-help"
+                      title={(() => {
+                        try {
+                          const lang = typeof navigator !== 'undefined' && navigator.language?.startsWith('hi') ? 'hi' : 'en';
+                          const pct = masteryPercentFromAverage(subject.averageMastery);
+                          const prefix = LOCAL_STRINGS[lang]?.whatThisMeansPrefix ?? LOCAL_STRINGS.en.whatThisMeansPrefix;
+                          return `${prefix} ${pct}% mastery means your child has solidly learned ${subject.subject} syllabus.`;
+                        } catch (e) {
+                          return `What this means: ${Math.round((subject.averageMastery / 4) * 100)}% mastery`;
+                        }
+                      })()}
+                    >
+                      ⓘ
+                    </span>
+                  </div>
+                </div>
+              </div>
+              {/* Opt-in benchmarking copy (reads opt-in flag from localStorage) */}
+              {(() => {
+                try {
+                  if (typeof window === 'undefined') return null;
+                  const opt = localStorage.getItem('parent_benchmarking_optin') === '1';
+                  if (!opt) return null;
+                  const pct = masteryPercentFromAverage(subject.averageMastery);
+                  const anonPct = Math.round(pct * 0.95);
+                  const lang = navigator.language?.startsWith('hi') ? 'hi' : 'en';
+                  const tpl = LOCAL_STRINGS[lang]?.benchmarkingCopy ?? LOCAL_STRINGS.en.benchmarkingCopy;
+                  return <div className="text-xs text-gray-600 mt-1">{tpl.replace('{pct}', String(anonPct))}</div>;
+                } catch (e) {
+                  return null;
+                }
+              })()}
             </div>
           </div>
 
@@ -457,116 +498,7 @@ function StudentDetailPanel({ studentId, onClose }: { studentId: string; onClose
   );
 }
 
-// ─── Charts ─────────────────────────────────────────────────────────────
-
-function WeeklyTrendChart({ weekly }: { weekly: WeeklyPoint[] }) {
-  const data = [...weekly]
-    .sort((a, b) => new Date(a.weekStart).getTime() - new Date(b.weekStart).getTime())
-    .map((w) => ({
-      week: new Date(w.weekStart).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }),
-      minutes: w.totalMinutes,
-      topics: w.topicsCovered,
-      tests: w.testsTaken,
-      score: clamp(Math.round(w.averageScore), 0, 100),
-    }));
-
-  if (data.length === 0) {
-    return <div className="text-sm text-gray-500 dark:text-gray-400">No weekly data yet.</div>;
-  }
-
-  return (
-    <div className="h-64">
-      <ResponsiveContainer width="100%" height="100%">
-        <ComposedChart data={data} margin={{ top: 10, right: 18, left: 0, bottom: 0 }}>
-          <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
-          <XAxis dataKey="week" tick={{ fontSize: 12 }} />
-          <YAxis yAxisId="left" tick={{ fontSize: 12 }} />
-          <YAxis yAxisId="right" orientation="right" domain={[0, 100]} tick={{ fontSize: 12 }} />
-          <Tooltip />
-          <Legend />
-          <Area yAxisId="left" type="monotone" dataKey="minutes" name="Study minutes" stroke="#6366f1" fill="#6366f1" fillOpacity={0.18} />
-          <Bar yAxisId="left" dataKey="topics" name="Topics attempted" fill="#a78bfa" radius={[6, 6, 0, 0]} />
-          <Line yAxisId="right" type="monotone" dataKey="score" name="Avg score" stroke="#10b981" strokeWidth={2} dot={false} />
-        </ComposedChart>
-      </ResponsiveContainer>
-    </div>
-  );
-}
-
-function SubjectRadar({ subjects }: { subjects: SubjectSummary[] }) {
-  const data = subjects.map((s) => ({
-    subject: s.subject,
-    coverage: clamp(s.coveragePercent, 0, 100),
-    mastery: clamp(Math.round((s.averageMastery / 4) * 100), 0, 100),
-  }));
-
-  if (data.length === 0) {
-    return <div className="text-sm text-gray-500 dark:text-gray-400">No subject progress yet.</div>;
-  }
-
-  return (
-    <div className="h-72">
-      <ResponsiveContainer width="100%" height="100%">
-        <RadarChart data={data}>
-          <PolarGrid />
-          <PolarAngleAxis dataKey="subject" tick={{ fontSize: 12 }} />
-          <PolarRadiusAxis angle={30} domain={[0, 100]} tick={{ fontSize: 11 }} />
-          <Radar name="Coverage %" dataKey="coverage" stroke="#6366f1" fill="#6366f1" fillOpacity={0.16} />
-          <Radar name="Mastery %" dataKey="mastery" stroke="#10b981" fill="#10b981" fillOpacity={0.10} />
-          <Legend />
-          <Tooltip />
-        </RadarChart>
-      </ResponsiveContainer>
-    </div>
-  );
-}
-
-function MasteryPie({ distribution }: { distribution: MasteryDistribution[] }) {
-  const data = distribution
-    .filter((d) => d.count > 0)
-    .map((d) => ({ name: masteryLabel(d.masteryLevel), value: d.count, level: d.masteryLevel }));
-
-  if (data.length === 0) {
-    return <div className="text-sm text-gray-500 dark:text-gray-400">No mastery data yet.</div>;
-  }
-
-  return (
-    <div className="h-64">
-      <ResponsiveContainer width="100%" height="100%">
-        <PieChart>
-          <Pie data={data} dataKey="value" nameKey="name" innerRadius={55} outerRadius={85} paddingAngle={2}>
-            {data.map((entry) => (
-              <Cell key={entry.level} fill={PIE_COLORS[entry.level] || '#94a3b8'} />
-            ))}
-          </Pie>
-          <Tooltip />
-          <Legend />
-        </PieChart>
-      </ResponsiveContainer>
-    </div>
-  );
-}
-
-function AttentionBar({ items }: { items: AttentionBySubject[] }) {
-  const data = items.map((i) => ({ subject: i.subject, count: i.count }));
-  if (data.length === 0) {
-    return <div className="text-sm text-gray-500 dark:text-gray-400">No attention flags right now.</div>;
-  }
-
-  return (
-    <div className="h-56">
-      <ResponsiveContainer width="100%" height="100%">
-        <ComposedChart data={data} margin={{ top: 8, right: 10, left: 0, bottom: 0 }}>
-          <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
-          <XAxis dataKey="subject" tick={{ fontSize: 12 }} interval={0} angle={-10} height={42} />
-          <YAxis tick={{ fontSize: 12 }} allowDecimals={false} />
-          <Tooltip />
-          <Bar dataKey="count" name="Topics needing support" fill="#f59e0b" radius={[8, 8, 0, 0]} />
-        </ComposedChart>
-      </ResponsiveContainer>
-    </div>
-  );
-}
+// Charts are lazy-loaded above via dynamic imports to improve initial load-time.
 
 // ─── Link Student Form ─────────────────────────────────────────────────
 
@@ -697,6 +629,22 @@ export default function ParentDashboardClient() {
   const [error, setError] = useState<string | null>(null);
   const [activeStudentId, setActiveStudentId] = useState<string | null>(null);
   const [drilldownStudentId, setDrilldownStudentId] = useState<string | null>(null);
+  const [benchmarkingOptIn, setBenchmarkingOptIn] = useState<boolean>(false);
+
+  useEffect(() => {
+    try {
+      const v = localStorage.getItem('parent_benchmarking_optin') === '1';
+      setBenchmarkingOptIn(v);
+    } catch (e) {
+      // ignore
+    }
+  }, []);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('parent_benchmarking_optin', benchmarkingOptIn ? '1' : '0');
+    } catch (e) {}
+  }, [benchmarkingOptIn]);
 
   const fetchData = useCallback(async () => {
     try {
@@ -800,6 +748,24 @@ export default function ParentDashboardClient() {
                 <div className="text-sm opacity-90">Linked children</div>
                 <div className="text-3xl font-bold">{data.totalStudents}</div>
                 <div className="text-xs opacity-90 mt-1">Updated {new Date(data.generatedAt).toLocaleString()}</div>
+                <div className="mt-2 flex items-center gap-3 text-xs">
+                  <label className="flex items-center gap-2 text-white/90">
+                    <input
+                      type="checkbox"
+                      checked={benchmarkingOptIn}
+                      onChange={() => setBenchmarkingOptIn((v) => !v)}
+                      className="w-4 h-4 rounded bg-white/10"
+                    />
+                    <span>{LOCAL_STRINGS[navigator.language?.startsWith('hi') ? 'hi' : 'en'].benchmarkingOptInLabel}</span>
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => toast('Benchmarking is anonymous and opt-in')}
+                    className="text-xs text-white/80 underline"
+                  >
+                    Why?
+                  </button>
+                </div>
               </div>
               <div className="flex flex-wrap gap-2">
                 {data.students.map((s) => (
