@@ -1,8 +1,24 @@
+/**
+ * FILE OBJECTIVE:
+ * - Parent pause API: pause/unpause a linked child account.
+ *
+ * LINKED UNIT TEST:
+ * - tests/unit/api/parent-pause.test.ts
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - .github/copilot-instructions.md
+ * - /docs/COPILOT_GUARDRAILS.md
+ *
+ * EDIT LOG:
+ * - 2026-04-09T00:00:00Z | copilot | invoke streakShield.consumeShield when pausing to protect streaks
+ */
+
 import { NextResponse } from 'next/server'
 import { getServerSessionForHandlers } from '@/lib/session'
 import { prisma } from '@/lib/prisma'
 import { logger } from '@/lib/logger'
 import { formatErrorForResponse } from '@/lib/errorResponse'
+import { consumeShield } from '@/lib/student/streakShield'
 
 export const dynamic = 'force-dynamic'
 
@@ -77,6 +93,11 @@ export async function POST(req: Request) {
           details: { action: 'pause', pausedUntil: pausedUntil ? pausedUntil.toISOString() : null, pauseReason },
         },
       }).catch(() => {})
+
+      // Try to consume streak shield to preserve streaks for the pause period (non-fatal)
+      consumeShield(studentId).catch((err) => {
+        logger.warn('streak shield consume failed during pause', { studentId, err: String(err) })
+      })
 
       const res = NextResponse.json({ ok: true, link: { id: updated.id, isPaused: updated.isPaused, pausedUntil: updated.pausedUntil, pauseReason: updated.pauseReason } })
       logger.logAPI(req, res, { className: 'ParentPauseAPI', methodName: 'POST' }, start)

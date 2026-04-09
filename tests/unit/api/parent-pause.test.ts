@@ -1,8 +1,24 @@
+/*
+ * FILE OBJECTIVE:
+ * - Unit tests for Parent pause API (pause/unpause child linking).
+ *
+ * LINKED UNIT TEST:
+ * - tests/unit/api/parent-pause.test.ts
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - .github/copilot-instructions.md
+ * - /docs/COPILOT_GUARDRAILS.md
+ *
+ * EDIT LOG:
+ * - 2026-04-09T00:00:00Z | copilot | assert streakShield.consumeShield called on pause
+ */
+
 /* eslint-disable @typescript-eslint/no-require-imports, @typescript-eslint/no-explicit-any */
 
 jest.mock('@/lib/prisma', () => ({ prisma: require('../../helpers/prismaMock').prismaMock }));
 jest.mock('@/lib/auth', () => ({ authOptions: {} }));
 jest.mock('@/lib/logger', () => ({ logger: { info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn(), logAPI: jest.fn() } }));
+jest.mock('@/lib/student/streakShield', () => ({ consumeShield: jest.fn().mockResolvedValue(true) }));
 import { describe, it, expect, beforeEach, jest } from '@jest/globals'
 import { prismaMock, resetPrismaMock } from '../../helpers/prismaMock'
 import '../../helpers/mockSession'
@@ -24,6 +40,8 @@ describe('Parent pause API', () => {
 
     expect(data.ok).toBe(true)
     expect(prismaMock.parentStudent.update).toHaveBeenCalled()
+    const streakShield = await import('@/lib/student/streakShield')
+    expect(streakShield.consumeShield).toHaveBeenCalledWith('student-1')
   })
 
   it('POST returns 401 when not authenticated', async () => {
