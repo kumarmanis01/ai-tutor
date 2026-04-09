@@ -45,7 +45,7 @@ import { SM18_SCHEDULER_QUEUE_NAME, registerNightlySM18Job } from "../jobs/sm18.
 import { DIAGNOSTIC_BOOTSTRAP_QUEUE_NAME } from "../jobs/diagnosticBootstrap.js";
 import { processDiagnosticBootstrap } from "./services/diagnosticBootstrapWorker.js";
 import { WEEKLY_DIGEST_QUEUE_NAME, registerWeeklyDigestJob } from "../jobs/weeklyDigest.js";
-import { processWeeklyDigest } from "./services/weeklyDigestWorker.js";
+import { processWeeklyDigest, processParentDigest } from "./services/weeklyDigestWorker.js";
 import { DISTRESS_NOTIFICATION_QUEUE_NAME } from "../jobs/distressNotification.js";
 import { processDistressNotification } from "./services/distressNotificationWorker.js";
 import { RETEACH_PLAN_QUEUE_NAME } from "../jobs/reteachPlan.js";
@@ -143,6 +143,12 @@ async function processor(job: Job) {
         throw new Error("ASSEMBLE_TEST job missing jobId");
       }
       return handleAssembleJob(payload.jobId);
+
+    case "PARENT_DIGEST":
+      if (!payload?.parentId) {
+        throw new Error("PARENT_DIGEST job missing parentId");
+      }
+      return processParentDigest(payload.parentId, payload.weekStart);
 
     default:
       throw new Error(`UNKNOWN_JOB_TYPE: ${type}`);

@@ -89,6 +89,19 @@ async function dispatchBatch(): Promise<number> {
   const q = getQueue();
 
   for (const row of rows) {
+    // If the row has a scheduled delivery time in meta.deliverAt, skip until that time
+    try {
+      const metaAny = row.meta as any;
+      if (metaAny?.deliverAt) {
+        const deliverAt = new Date(metaAny.deliverAt);
+        if (deliverAt.getTime() > Date.now()) {
+          logger.info('[outbox-dispatcher] skipping scheduled row (not due yet)', { outboxId: row.id, deliverAt: metaAny.deliverAt });
+          continue;
+        }
+      }
+    } catch (err) {
+      // Non-fatal: if meta parsing fails, fall through and attempt dispatch
+    }
     // RISK-04: Exceeded max attempts -- move to dead-letter, skip dispatch
     if (row.attempts >= MAX_ATTEMPTS) {
       await moveToDeadLetter(row, 'max_attempts_exceeded');

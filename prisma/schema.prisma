@@ -2216,6 +2216,11 @@ model ParentProfile {
   userId    String   @unique
   createdAt DateTime @default(now())
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// Parent digest preferences
+  digestOptOut   Boolean  @default(false)
+  digestDay      String   @default("Sunday") // e.g., "Sunday", "Monday"
+  digestTime     String   @default("09:00") // 24h HH:mm in parent's timezone
+  digestTimezone String?  // IANA timezone (e.g., "Asia/Kolkata"); null => use `User.timezone` or UTC
 }
 
 /// DPDP right-to-erasure: one row per user, created on deletion request.
