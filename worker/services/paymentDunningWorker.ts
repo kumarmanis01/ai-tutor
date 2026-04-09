@@ -48,6 +48,7 @@ export async function processPaymentDunning(): Promise<void> {
             const plan = PLANS[planKey as any]
             const amountPaise = rupeesToPaise(plan.billedRupees)
 
+            const idempotencyKey = `subscription:${s.id}:dunning:${attempts + 1}`
             const resp = await createRazorpayTokenCharge({
               amountPaise,
               currency: 'INR',
@@ -57,7 +58,7 @@ export async function processPaymentDunning(): Promise<void> {
               contact: parent.phone ?? '',
               description: `Auto charge for subscription ${s.id}`,
               notes: { subscriptionId: s.id, attempt: String(attempts + 1) },
-              idempotencyKey: `subscription:${s.id}:dunning:${attempts + 1}`,
+              idempotencyKey,
             })
 
             const paymentId = resp && (resp.id || resp.razorpay_payment_id || resp.payment_id || resp.transactionId) || null
@@ -69,6 +70,7 @@ export async function processPaymentDunning(): Promise<void> {
                   userId: s.userId,
                   amount: amountPaise,
                   provider: 'razorpay',
+                  providerIdempotencyKey: idempotencyKey,
                   status: 'success',
                   transactionId: paymentId,
                   orderId: orderId ?? undefined,

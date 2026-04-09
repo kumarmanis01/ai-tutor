@@ -473,6 +473,7 @@ model Payment {
   userId        String
   amount        Int
   provider      String
+  providerIdempotencyKey String?
   status        String
   createdAt     DateTime @default(now())
   transactionId String?
@@ -483,6 +484,8 @@ model Payment {
   user          User     @relation(fields: [userId], references: [id])
   invoice       Invoice?
 }
+
+@@unique([provider, providerIdempotencyKey], map: "uniq_payment_provider_idempotency")
 
 model PaymentCustomer {
   id                   String   @id @default(cuid())

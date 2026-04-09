@@ -37,6 +37,7 @@ function getRazorpayClient() {
 
 export async function POST(req: Request) {
   const raw = await req.text();
+  const idempotencyHeader = req.headers.get('idempotency-key') || req.headers.get('x-idempotency-key') || req.headers.get('x-idempotency') || '';
   const signature = req.headers.get('x-razorpay-signature') || '';
   const secret = getWebhookSecret();
   if (!secret || !signature) {
@@ -83,10 +84,28 @@ export async function POST(req: Request) {
       const childIds = notes?.childIds ? (() => { try { return JSON.parse(notes.childIds); } catch { return [] } })() : [];
       const now = new Date();
 
-      // Simple activation: mark order paid and create a Payment record; do not duplicate heavy flows
+      // Reconciliation: mark order paid and create/update a Payment record (idempotent)
       await prisma.$transaction(async (tx) => {
         await tx.paymentOrder.update({ where: { razorpayOrderId: orderId }, data: { status: 'paid', paidAt: now } });
-        const paymentRow = await tx.payment.create({ data: { userId: orderRow.studentId, amount: payment.amount, provider: 'razorpay', status: 'success', transactionId: paymentId, orderId, meta: { notes } } });
+
+        // Try to find existing payment by transactionId or idempotency key
+        let existing = null as any;
+        if (paymentId) {
+          existing = await tx.payment.findFirst({ where: { provider: 'razorpay', transactionId: paymentId } });
+        }
+        if (!existing && idempotencyHeader) {
+          existing = await tx.payment.findFirst({ where: { provider: 'razorpay', providerIdempotencyKey: idempotencyHeader } });
+        }
+
+        if (!existing) {
+          // create payment record
+          await tx.payment.create({ data: { userId: orderRow.studentId, amount: payment.amount, provider: 'razorpay', providerIdempotencyKey: idempotencyHeader || undefined, status: 'success', transactionId: paymentId, orderId, meta: { notes } } });
+        } else {
+          // update existing payment status if needed
+          if (existing.status !== 'success') {
+            await tx.payment.update({ where: { id: existing.id }, data: { status: 'success', transactionId: paymentId, orderId, meta: { ...(existing.meta || {}), notes } } });
+          }
+        }
 
         // If childIds present, attempt to activate child subscriptions similarly to verify endpoint
         if (Array.isArray(childIds) && childIds.length > 0) {
@@ -128,7 +147,23 @@ export async function POST(req: Request) {
 
       await prisma.$transaction(async (tx) => {
         await tx.paymentOrder.update({ where: { razorpayOrderId: orderId }, data: { status: 'failed' } });
-        await tx.payment.create({ data: { userId: orderRow.studentId, amount: payment?.amount ?? orderRow.planMonths ?? 0, provider: 'razorpay', status: 'failed', transactionId: paymentId, orderId, meta: { reason } } });
+
+        // Try to reconcile existing payment by transactionId or idempotency key
+        let existing = null as any;
+        if (paymentId) {
+          existing = await tx.payment.findFirst({ where: { provider: 'razorpay', transactionId: paymentId } });
+        }
+        if (!existing && idempotencyHeader) {
+          existing = await tx.payment.findFirst({ where: { provider: 'razorpay', providerIdempotencyKey: idempotencyHeader } });
+        }
+
+        if (!existing) {
+          await tx.payment.create({ data: { userId: orderRow.studentId, amount: payment?.amount ?? orderRow.planMonths ?? 0, provider: 'razorpay', providerIdempotencyKey: idempotencyHeader || undefined, status: 'failed', transactionId: paymentId, orderId, meta: { reason } } });
+        } else {
+          if (existing.status !== 'failed') {
+            await tx.payment.update({ where: { id: existing.id }, data: { status: 'failed', meta: { ...(existing.meta || {}), reason } } });
+          }
+        }
 
         // If parent has an active subscription, seed dunning attempts so the daily job picks it up
         const sub = await tx.subscription.findFirst({ where: { userId: orderRow.studentId, active: true } });
