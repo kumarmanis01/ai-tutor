@@ -97,18 +97,21 @@ export async function POST(req: Request) {
   const expiry = new Date(now);
   expiry.setMonth(expiry.getMonth() + plan.durationMonths);
 
-  // Fetch Razorpay order to read notes (childIds, isFamily)
+  // Fetch Razorpay order to read notes (childIds, isFamily, emiMonths)
   const client = getRazorpayClient();
   let childIds: string[] = [];
   let isFamily = false;
+  let emiMonths = 0;
+  let rzNotes: any = {};
   try {
     if (client) {
       const rzOrder = await client.orders.fetch(orderId);
-      const notes = (rzOrder && (rzOrder as any).notes) || {};
-      if (notes?.childIds) {
-        try { childIds = JSON.parse(notes.childIds); } catch { childIds = [] }
+      rzNotes = (rzOrder && (rzOrder as any).notes) || {};
+      if (rzNotes?.childIds) {
+        try { childIds = JSON.parse(rzNotes.childIds); } catch { childIds = [] }
       }
-      isFamily = String(notes?.isFamily || '') === 'true';
+      isFamily = String(rzNotes?.isFamily || '') === 'true';
+      emiMonths = rzNotes?.emiMonths ? Number(rzNotes.emiMonths) : 0;
     }
   } catch (err) {
     logger.warn('Could not fetch Razorpay order notes', { event: 'parent.subscription.verify.fetch_notes', context: { userId, orderId }, err });
@@ -160,8 +163,8 @@ export async function POST(req: Request) {
           carryForwardCredit = 0
         }
 
-        // Create parent subscription record
-        await tx.subscription.create({
+        // Create parent subscription record and capture it for installment creation
+        const createdSub = await tx.subscription.create({
           data: {
             userId,
             plan: childIds && childIds.length > 1 ? 'family' : 'individual',
@@ -184,11 +187,56 @@ export async function POST(req: Request) {
               .upsert({ where: { studentId: sid }, update: { periodStart: now, sessionsUsed: 0 }, create: { studentId: sid, periodStart: now, sessionsUsed: 0 } })
               .catch((err) => { logger.warn('freeTierUsage.upsert failed (parent.verify)', { event: 'parent.subscription.verify.upsert', context: { sid }, error: String(err) }) });
           }
-        } else {
-          // Fallback: if no childIds, try to apply subscription to a sensible student (skip in MVP)
         }
 
-        return { id: payment.id };
+        // Create Installment schedule if EMI selected; first installment marked PAID as we just received payment
+        try {
+          const months = Number(emiMonths || 0);
+          if (months && months > 1) {
+            const totalPaise = order.amount || 0;
+            const base = Math.floor(totalPaise / months);
+            let remainder = totalPaise - base * months;
+            for (let i = 0; i < months; i++) {
+              const amount = base + (i === months - 1 ? remainder : 0);
+              const due = new Date(now);
+              due.setMonth(due.getMonth() + i);
+              await tx.installment.create({ data: {
+                subscriptionId: createdSub.id,
+                number: i + 1,
+                dueAt: due,
+                amount,
+                currency: 'INR',
+                status: i === 0 ? 'PAID' : 'PENDING',
+                provider: 'razorpay',
+                providerPaymentId: i === 0 ? paymentId : undefined,
+                paymentId: i === 0 ? payment.id : undefined,
+                attemptCount: i === 0 ? 1 : 0,
+                paidAt: i === 0 ? now : undefined,
+                meta: { autoCreated: true, planId },
+              } });
+            }
+          } else {
+            // Single paid installment
+            await tx.installment.create({ data: {
+              subscriptionId: createdSub.id,
+              number: 1,
+              dueAt: now,
+              amount: order.amount,
+              currency: 'INR',
+              status: 'PAID',
+              provider: 'razorpay',
+              providerPaymentId: paymentId,
+              paymentId: payment.id,
+              attemptCount: 1,
+              paidAt: now,
+              meta: { planId },
+            } });
+          }
+        } catch (err) {
+          logger.warn('parent.verify: failed to create installment schedule', { err });
+        }
+
+        return { paymentId: payment.id, subscriptionId: createdSub.id };
       });
     } catch (err) {
       logger.error('Failed to activate parent subscription', { event: 'parent.subscription.verify.activate_error', context: { userId, orderId }, err });

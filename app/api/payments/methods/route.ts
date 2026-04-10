@@ -60,6 +60,16 @@ export async function POST(req: Request) {
       await prisma.paymentMethod.updateMany({ where: { userId: user.id }, data: { isDefault: false } });
     }
 
+    // Resolve provided customerId (may be providerCustomerId or internal id)
+    let customerRefId: string | null = null;
+    if (customerId) {
+      const found = await prisma.paymentCustomer.findFirst({ where: { OR: [{ id: customerId }, { providerCustomerId: customerId }] }, select: { id: true } });
+      if (!found) {
+        return NextResponse.json({ error: 'Invalid customerId' }, { status: 400 });
+      }
+      customerRefId = found.id;
+    }
+
     // Upsert by providerPaymentMethodId to avoid duplicates
     const existing = await prisma.paymentMethod.findUnique({ where: { providerPaymentMethodId },
       include: { customer: true },
@@ -73,7 +83,7 @@ export async function POST(req: Request) {
     const created = await prisma.paymentMethod.create({
       data: {
         userId: user.id,
-        customerId: customerId ?? null,
+        customerId: customerRefId,
         provider: 'razorpay',
         providerPaymentMethodId,
         type,

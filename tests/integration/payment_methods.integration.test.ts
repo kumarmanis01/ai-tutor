@@ -31,7 +31,7 @@ if (!hasDb) {
       process.env.RAZORPAY_KEY_ID = process.env.RAZORPAY_KEY_ID ?? 'test-key-id';
       process.env.RAZORPAY_KEY_SECRET = process.env.RAZORPAY_KEY_SECRET ?? 'test-secret';
 
-      const user = await prisma.user.create({ data: { name: 'PM Test', email: 'pmtest@example.test', phone: '9999999999' } });
+      const user = await prisma.user.create({ data: { name: 'PM Test', email: 'pmtest@example.test', phone: '9999999999', language: 'en' } });
       userId = user.id;
     });
 

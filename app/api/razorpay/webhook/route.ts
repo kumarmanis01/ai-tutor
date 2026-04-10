@@ -181,6 +181,13 @@ export async function POST(req: Request) {
         return NextResponse.json({ ok: true }, { status: 200 });
       }
 
+      // Attempt to fetch Razorpay order notes (to identify subscription/installment metadata)
+      const client = getRazorpayClient();
+      let notes: any = {};
+      if (client) {
+        try { const rzOrder = await client.orders.fetch(orderId); notes = rzOrder?.notes || {}; } catch (err) { logger.warn('Could not fetch rz order in webhook (failed)', { orderId, err }); }
+      }
+
       const now = new Date();
 
       await prisma.$transaction(async (tx) => {
