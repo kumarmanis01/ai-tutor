@@ -16,7 +16,7 @@
 import { NextResponse } from 'next/server';
 import { getServerSessionForHandlers } from '@/lib/session';
 import { prisma } from '@/lib/prisma';
-import { createRazorpayTokenCharge } from '@/lib/payments';
+import { createRazorpayTokenCharge, getRazorpay } from '@/lib/payments';
 import { recordPaymentEvent } from '@/lib/payments/audit';
 import { randomUUID } from 'crypto';
 import { logger } from '@/lib/logger';
@@ -48,6 +48,45 @@ export async function POST(req: Request) {
 
     if (!method) return NextResponse.json({ error: 'Payment method not found' }, { status: 404 });
     if (method.userId !== user.id) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+
+    // If the stored providerPaymentMethodId refers to a Razorpay payment id
+    if (method.providerPaymentMethodId && String(method.providerPaymentMethodId).startsWith('pay_')) {
+      try {
+        const client = await getRazorpay();
+        const paymentFetch = await client.payments.fetch(String(method.providerPaymentMethodId));
+
+        if (!paymentFetch) {
+          return NextResponse.json({ success: false, error: 'Verification failed' }, { status: 400 });
+        }
+
+        // Try to extract a saved instrument / card id from the fetched payment
+        // Razorpay may return different fields depending on integrations; try common ones.
+        const pf: any = paymentFetch as any;
+        let promotedInstrumentId: string | null = null;
+        if (pf?.card) {
+          promotedInstrumentId = pf.card?.id ?? pf.card?.card_id ?? pf.card?.token_id ?? null;
+        }
+        promotedInstrumentId = promotedInstrumentId ?? pf?.token_id ?? pf?.instrument_id ?? null;
+
+        await prisma.$transaction(async (tx) => {
+          const p = await tx.payment.create({ data: { userId: user.id, amount: paymentFetch.amount ?? 0, provider: 'razorpay', providerIdempotencyKey: '', status: 'success', transactionId: String(method.providerPaymentMethodId), orderId: paymentFetch.order_id ?? null, meta: paymentFetch } });
+
+          const updateData: any = { verified: true, updatedAt: new Date() };
+          if (promotedInstrumentId && promotedInstrumentId !== method.providerPaymentMethodId) {
+            updateData.providerPaymentMethodId = String(promotedInstrumentId);
+            updateData.meta = { ...(method.meta ?? {}), promotedFrom: method.providerPaymentMethodId, promotedAt: new Date(), cardInfo: pf?.card ?? undefined };
+          }
+
+          await tx.paymentMethod.update({ where: { id: method.id }, data: updateData });
+          await recordPaymentEvent(tx, { paymentId: p.id, userId: user.id, provider: 'razorpay', providerIdempotencyKey: '', transactionId: String(method.providerPaymentMethodId), orderId: paymentFetch.order_id ?? null, eventType: 'payment.method_verification', amount: paymentFetch.amount ?? 0, status: 'success', payload: paymentFetch });
+        });
+
+        return NextResponse.json({ success: true }, { status: 200 });
+      } catch (err) {
+        logger.error('Failed to fetch Razorpay payment for verification', { event: 'payments.methods.verify.fetch', err });
+        return NextResponse.json({ success: false, error: 'Verification failed' }, { status: 400 });
+      }
+    }
 
     // Attempt a small charge (1 INR) to verify the method via tokenized charge
     const amountPaise = 100; // 1 INR

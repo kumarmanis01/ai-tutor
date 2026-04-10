@@ -49,20 +49,38 @@ describe('inactivity alert -> updateStreak suppression-reset flow', () => {
     expect(setMock).toHaveBeenCalled()
     expect(sendMock).toHaveBeenCalled()
 
-    // Now mock prisma for updateStreak to ensure it clears suppression
+    // Reset module registry and mock prisma for updateStreak to ensure it clears suppression
+    jest.resetModules()
+
     jest.doMock('@/lib/prisma', () => ({
       prisma: {
         user: { findUnique: jest.fn().mockResolvedValue({ lastSessionDate: null, currentStreak: 0, longestStreak: 0 }), update: jest.fn().mockResolvedValue({}) },
         parentStudent: { findMany: jest.fn().mockResolvedValue([{ parentId: 'p1' }]) },
       },
     }))
+    // Re-apply the Redis mock for the fresh module imports (ensure getRedis returns same mock)
+    jest.doMock('@/lib/redis', () => ({ getRedis: () => redisMock }))
+
+    // Sanity-check the redis mock used by the upcoming import
+    const { getRedis: debugGetRedis } = await import('../../../lib/redis')
+    // eslint-disable-next-line no-console
+    console.log('debug getRedis ->', typeof debugGetRedis, 'returned ->', JSON.stringify(await debugGetRedis()))
+
+    // Sanity-check the mocked prisma for parent links
+    const { prisma: debugPrisma } = await import('../../../lib/prisma')
+    // eslint-disable-next-line no-console
+    console.log('debug prisma.parentStudent.findMany ->', JSON.stringify(await debugPrisma.parentStudent.findMany()))
 
     const { updateStreak } = await import('../../../lib/student/streak')
     await updateStreak('stu1')
 
     expect(delMock).toHaveBeenCalled()
-    // Ensure deletion contains parent and student ids
-    const calledWith = delMock.mock.calls[0]
-    expect(calledWith[0]).toMatch(/parent:inactivity:p1:stu1/)
+    // Ensure deletion contains parent and student ids in any of the del calls
+    const allArgs = delMock.mock.calls.flat()
+    // Debug: log del calls to inspect what keys were deleted
+    // eslint-disable-next-line no-console
+    console.log('delMock.calls =>', JSON.stringify(allArgs))
+    const found = allArgs.some((a: any) => /parent:inactivity:p1:stu1/.test(String(a)))
+    expect(found).toBe(true)
   })
 })

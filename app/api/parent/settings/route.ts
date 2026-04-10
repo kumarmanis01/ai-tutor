@@ -39,6 +39,7 @@ export async function GET() {
 
     return NextResponse.json({
       digestOptOut: profile?.digestOptOut ?? false,
+      inactivityOptOut: (profile as any)?.inactivityOptOut ?? false,
       digestDay: profile?.digestDay ?? 'Sunday',
       digestTime: profile?.digestTime ?? '09:00',
       digestTimezone: profile?.digestTimezone ?? timezone,
@@ -65,8 +66,9 @@ export async function POST(req: Request) {
 
     const userId = (session.user as any).id
     const body = await req.json()
-    const { digestOptOut, digestDay, digestTime, digestTimezone } = body as {
+    const { digestOptOut, inactivityOptOut, digestDay, digestTime, digestTimezone } = body as {
       digestOptOut?: boolean
+      inactivityOptOut?: boolean
       digestDay?: string
       digestTime?: string
       digestTimezone?: string | null
@@ -75,6 +77,9 @@ export async function POST(req: Request) {
     // Basic validation
     if (digestOptOut !== undefined && typeof digestOptOut !== 'boolean') {
       return NextResponse.json({ error: 'invalid_digestOptOut' }, { status: 400 })
+    }
+    if (inactivityOptOut !== undefined && typeof inactivityOptOut !== 'boolean') {
+      return NextResponse.json({ error: 'invalid_inactivityOptOut' }, { status: 400 })
     }
     if (digestDay !== undefined && typeof digestDay !== 'string') {
       return NextResponse.json({ error: 'invalid_digestDay' }, { status: 400 })
@@ -86,6 +91,7 @@ export async function POST(req: Request) {
     const upsertData = {
       userId,
       digestOptOut: digestOptOut ?? false,
+      inactivityOptOut: inactivityOptOut ?? false,
       digestDay: digestDay ?? 'Sunday',
       digestTime: digestTime ?? '09:00',
       digestTimezone: digestTimezone ?? null,

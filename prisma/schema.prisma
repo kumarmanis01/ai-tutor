@@ -2341,6 +2341,8 @@ model ParentProfile {
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   /// Parent digest preferences
   digestOptOut   Boolean  @default(false)
+  /// Parent-level opt-out for inactivity alerts (separate from weekly digest)
+  inactivityOptOut Boolean @default(false)
   digestDay      String   @default("Sunday") // e.g., "Sunday", "Monday"
   digestTime     String   @default("09:00") // 24h HH:mm in parent's timezone
   digestTimezone String?  // IANA timezone (e.g., "Asia/Kolkata"); null => use `User.timezone` or UTC

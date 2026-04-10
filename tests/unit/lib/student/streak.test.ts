@@ -18,7 +18,7 @@ describe('lib/student/streak.updateStreak', () => {
 
   it('clears parent inactivity suppression keys after updating lastSessionDate', async () => {
     const redisDelMock = jest.fn().mockResolvedValue(2);
-    const redisMock = { del: redisDelMock };
+    const redisMock = { del: redisDelMock, get: jest.fn().mockResolvedValue(null) };
     jest.doMock('@/lib/redis', () => ({ getRedis: () => redisMock }));
 
     const userFind = jest.fn().mockResolvedValue({ lastSessionDate: null, currentStreak: 0, longestStreak: 0 });
@@ -74,7 +74,7 @@ describe('lib/student/streak updateStreak suppression-clear', () => {
       },
     }))
 
-    const { updateStreak } = await import('../../../lib/student/streak')
+    const { updateStreak } = await import('../../../../lib/student/streak')
     // Call updateStreak which should invoke redis.del for the two parent keys
     await updateStreak('student-xyz')
 
