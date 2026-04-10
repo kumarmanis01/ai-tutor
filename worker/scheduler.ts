@@ -19,6 +19,7 @@ import { logger } from '../lib/logger.js';
 import { markIgnoredRecommendations, cleanupOldIgnoredRecommendations } from './jobs/markIgnoredRecommendations.js';
 import { aggregateWeeklySummaries } from './jobs/weeklyParentSummary.js';
 import { sendParentDigests } from './jobs/parentEmailDigest.js';
+import { runInactivityAlerts } from './jobs/inactivityAlert.js';
 import { runRecoveryCheck } from '../lib/failureRecovery.js'
 import { precomputeReadiness } from './jobs/precomputeReadiness.js';
 import { expireStaleTasks } from '../lib/dailyHabit.js';
@@ -292,6 +293,11 @@ async function runDailyMaintenanceJob() {
     // Run failure recovery check
     const recoveryEvents = await runRecoveryCheck();
     logger.info('scheduler.dailyMaintenance.recoveryCheck', { recoveryEvents });
+
+    // Run parent inactivity alerts (email / SMS)
+    logger.info('scheduler.parentInactivityAlerts.starting');
+    const parentAlerts = await runInactivityAlerts();
+    logger.info('scheduler.parentInactivityAlerts.completed', { sent: parentAlerts });
 
     // ── Push: inactivity reminders ──────────────────────────────────────
     await runInactivityPush();
