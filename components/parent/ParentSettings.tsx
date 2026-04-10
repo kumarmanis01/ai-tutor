@@ -18,6 +18,9 @@ export default function ParentSettings() {
   const [profile, setProfile] = useState<Profile | null>(null)
   const [children, setChildren] = useState<Array<{ id: string; name: string; grade?: string | null; isPaused: boolean; pausedUntil?: string | null; pauseReason?: string | null; excludeFromParentReport?: boolean; inactivityOptOut?: boolean }>>([])
   const [message, setMessage] = useState<string | null>(null)
+  const [pauseDialogStudentId, setPauseDialogStudentId] = useState<string | null>(null)
+  const [pauseDialogReason, setPauseDialogReason] = useState<string>('')
+  const [pauseDialogDate, setPauseDialogDate] = useState<string>('')
   const [mutedLinkStudentId, setMutedLinkStudentId] = useState<string | null>(null)
 
   useEffect(() => {
@@ -69,27 +72,12 @@ export default function ParentSettings() {
     }
   }
 
-  async function togglePause(studentId: string, pause: boolean) {
+  async function togglePause(studentId: string, pause: boolean, pausedUntilParam?: string | null, pauseReasonParam?: string | null) {
     setSaving(true)
     setMessage(null)
     try {
-      let pauseReason: string | null = null
-      let pausedUntil: string | null = null
-      if (pause) {
-        // Ask for optional pause reason
-        // eslint-disable-next-line no-alert
-        pauseReason = window.prompt('Optional: reason for pause (e.g. vacation)') || null
-        // Ask for an optional pause-until date in YYYY-MM-DD. If blank, default 7 days.
-        // eslint-disable-next-line no-alert
-        const untilInput = window.prompt('Pause until date (YYYY-MM-DD). Leave blank for 7 days from today.') || ''
-        if (untilInput) {
-          const d = new Date(untilInput + 'T00:00:00')
-          if (!isNaN(d.getTime())) pausedUntil = d.toISOString()
-        } else {
-          // default 7 days
-          pausedUntil = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
-        }
-      }
+      const pausedUntil = pausedUntilParam ?? null
+      const pauseReason = pauseReasonParam ?? null
 
       const res = await fetch('/api/parent/pause', {
         method: 'POST',
@@ -107,7 +95,32 @@ export default function ParentSettings() {
       setMessage('Action failed')
     } finally {
       setSaving(false)
+      // reset any pause dialog state
+      setPauseDialogStudentId(null)
+      setPauseDialogReason('')
+      setPauseDialogDate('')
     }
+  }
+
+  function openPauseDialog(studentId: string) {
+    setPauseDialogStudentId(studentId)
+    // default date = 7 days from today
+    const defaultDate = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
+    const isoDate = defaultDate.toISOString().slice(0, 10)
+    setPauseDialogDate(isoDate)
+    setPauseDialogReason('')
+  }
+
+  function cancelPauseDialog() {
+    setPauseDialogStudentId(null)
+    setPauseDialogReason('')
+    setPauseDialogDate('')
+  }
+
+  async function confirmPauseDialog() {
+    if (!pauseDialogStudentId) return
+    const d = pauseDialogDate ? new Date(pauseDialogDate + 'T00:00:00') : new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
+    await togglePause(pauseDialogStudentId, true, d.toISOString(), pauseDialogReason || null)
   }
 
   async function toggleExclude(studentId: string, exclude: boolean) {
@@ -201,7 +214,7 @@ export default function ParentSettings() {
                 </div>
                 <div>
                   <div className="flex items-center gap-2">
-                    <button onClick={() => togglePause(child.id, !child.isPaused)} disabled={saving} className="rounded border px-3 py-1 text-sm">
+                    <button onClick={() => child.isPaused ? togglePause(child.id, false) : openPauseDialog(child.id)} disabled={saving} className="rounded border px-3 py-1 text-sm">
                       {child.isPaused ? 'Unpause' : 'Pause'}
                     </button>
                     <label className="flex items-center gap-2 text-sm">
@@ -215,6 +228,20 @@ export default function ParentSettings() {
                   </div>
                 </div>
               </div>
+              {pauseDialogStudentId === child.id && (
+                <div className="mt-2 p-2 bg-gray-50 border rounded">
+                  <div className="flex flex-col gap-2">
+                    <label className="text-xs">Reason (optional)</label>
+                    <input className="border rounded px-2 py-1 text-sm" value={pauseDialogReason} onChange={(e) => setPauseDialogReason(e.target.value)} />
+                    <label className="text-xs">Pause until</label>
+                    <input type="date" className="border rounded px-2 py-1 text-sm" value={pauseDialogDate} onChange={(e) => setPauseDialogDate(e.target.value)} />
+                    <div className="flex gap-2">
+                      <button onClick={confirmPauseDialog} className="rounded bg-[#534AB7] px-3 py-1 text-white text-sm">Confirm</button>
+                      <button onClick={cancelPauseDialog} className="rounded border px-3 py-1 text-sm">Cancel</button>
+                    </div>
+                  </div>
+                </div>
+              )}
             ))}
           </div>
         )}
