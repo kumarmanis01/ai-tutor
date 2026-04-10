@@ -38,8 +38,8 @@ export async function runInactivityAlerts(): Promise<number> {
     where: {
       role: 'student',
       OR: [
-        { lastSessionAt: { lt: cutoff } },
-        { lastSessionAt: null },
+        { lastSessionDate: { lt: cutoff } },
+        { lastSessionDate: null },
       ],
     },
     select: { id: true, name: true },
@@ -51,10 +51,46 @@ export async function runInactivityAlerts(): Promise<number> {
   for (const s of inactiveStudents) {
     try {
       // Find active linked parents
-      const links = await prisma.parentStudent.findMany({ where: { studentId: s.id, status: 'active' }, include: { parent: { select: { id: true, email: true, phone: true, name: true } } } })
+      const links = await prisma.parentStudent.findMany({
+        where: { studentId: s.id, status: 'active' },
+        include: {
+          parent: {
+            select: {
+              id: true,
+              email: true,
+              phone: true,
+              name: true,
+              parentProfile: { select: { digestOptOut: true } },
+            },
+          },
+        },
+      })
+
       for (const link of links) {
         const parent = link.parent
+        // Skip if parent has no contact methods
         if (!parent?.email && !parent?.phone) continue
+
+        // Respect parent's digest/notification opt-out
+        const parentOptOut = (parent as any)?.parentProfile?.digestOptOut ?? false
+        if (parentOptOut) {
+          logger.info('inactivityAlert: parent opted out', { parentId: parent.id, studentId: s.id })
+          continue
+        }
+
+        // Respect per-child pause/exclude settings
+        if ((link as any).excludeFromParentReport) {
+          logger.info('inactivityAlert: child excluded from parent report', { parentId: parent.id, studentId: s.id })
+          continue
+        }
+
+        if ((link as any).isPaused) {
+          const pausedUntil = (link as any).pausedUntil
+          if (pausedUntil && new Date(pausedUntil) > new Date()) {
+            logger.info('inactivityAlert: child paused by parent', { parentId: parent.id, studentId: s.id, pausedUntil })
+            continue
+          }
+        }
 
         // Use Redis key to prevent multiple alerts too frequently
         const key = `parent:inactivity:${parent.id}:${s.id}`
