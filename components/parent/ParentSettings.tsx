@@ -76,9 +76,19 @@ export default function ParentSettings() {
       let pauseReason: string | null = null
       let pausedUntil: string | null = null
       if (pause) {
-        // Ask for optional pause reason; keep UI minimal for MVP
+        // Ask for optional pause reason
         // eslint-disable-next-line no-alert
         pauseReason = window.prompt('Optional: reason for pause (e.g. vacation)') || null
+        // Ask for an optional pause-until date in YYYY-MM-DD. If blank, default 7 days.
+        // eslint-disable-next-line no-alert
+        const untilInput = window.prompt('Pause until date (YYYY-MM-DD). Leave blank for 7 days from today.') || ''
+        if (untilInput) {
+          const d = new Date(untilInput + 'T00:00:00')
+          if (!isNaN(d.getTime())) pausedUntil = d.toISOString()
+        } else {
+          // default 7 days
+          pausedUntil = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
+        }
       }
 
       const res = await fetch('/api/parent/pause', {
@@ -88,7 +98,7 @@ export default function ParentSettings() {
       })
       const data = await res.json()
       if (res.ok && data.ok) {
-        setChildren((c) => c.map((ch) => (ch.id === studentId ? { ...ch, isPaused: pause, pausedUntil: data.link?.pausedUntil ?? null, pauseReason: data.link?.pauseReason ?? null } : ch)))
+        setChildren((c) => c.map((ch) => (ch.id === studentId ? { ...ch, isPaused: pause, pausedUntil: data.link?.pausedUntil ?? pausedUntil ?? null, pauseReason: data.link?.pauseReason ?? pauseReason } : ch)))
         setMessage(pause ? 'Paused' : 'Unpaused')
       } else {
         setMessage('Action failed')
