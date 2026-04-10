@@ -38,6 +38,7 @@ export async function runInactivityAlerts(): Promise<number> {
     where: {
       role: 'student',
       OR: [
+  import { getLocalDateString, startOfLocalDayUtc } from '@/lib/engagement/timezone'
         { lastSessionDate: { lt: cutoff } },
         { lastSessionDate: null },
       ],
