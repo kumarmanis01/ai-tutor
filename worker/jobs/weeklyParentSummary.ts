@@ -25,14 +25,19 @@ export async function aggregateWeeklySummaries(): Promise<number> {
     return 0;
   }
 
-  // Find all students who have at least one active parent link and are not excluded from parent reports
-  const links = await prisma.parentStudent.findMany({
+  // Find all parent links for active students (we'll filter paused links client-side)
+  const rawLinks = await prisma.parentStudent.findMany({
     where: { status: 'active', excludeFromParentReport: false },
-    select: { studentId: true },
-    distinct: ['studentId'],
+    select: { studentId: true, isPaused: true, pausedUntil: true },
   });
 
-  const studentIds = links.map((l) => l.studentId);
+  // Include studentId if at least one non-paused link exists
+  const studentIdSet = new Set<string>()
+  for (const l of rawLinks) {
+    const paused = (l as any).isPaused && (l as any).pausedUntil && new Date((l as any).pausedUntil) > new Date()
+    if (!paused) studentIdSet.add(l.studentId)
+  }
+  const studentIds = Array.from(studentIdSet)
   if (!studentIds.length) {
     logger.info('weeklyParentSummary: no linked students, skipping');
     return 0;

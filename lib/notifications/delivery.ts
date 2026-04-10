@@ -5,13 +5,6 @@
  *
  * LINKED UNIT TEST:
  * - tests/unit/lib/notifications/delivery.spec.ts
- *
- * COPILOT INSTRUCTIONS FOLLOWED:
- * - .github/copilot-instructions.md
- * - /docs/COPILOT_GUARDRAILS.md
- *
- * EDIT LOG:
- * - 2026-04-09T00:00:00Z | copilot | created
  */
 
 import { getRedis } from '@/lib/redis'
@@ -20,6 +13,7 @@ import { sendSms } from '@/lib/sms'
 import { logger } from '@/lib/logger'
 import { prisma } from '@/lib/prisma'
 import { canSendNotification, recordSendNotification, NotificationType } from '@/lib/notifications/policy'
+import { incNotificationSent, incNotificationFailed } from '@/lib/metrics'
 
 export async function sendParentMilestoneNotification(
   parentId: string,
@@ -49,9 +43,12 @@ export async function sendParentMilestoneNotification(
       } catch (e) {
         logger.warn('[notifications] audit persist failed (no-redis path)', { parentId, error: String(e) })
       }
+      // record metric for best-effort success
+      incNotificationSent(type)
       return { sent: true }
     } catch (err) {
       logger.error('[notifications] fallback send failed', { error: String(err) })
+      incNotificationFailed(type, 'no-redis')
       return { sent: false, reason: 'no-redis' }
     }
   }
@@ -83,9 +80,11 @@ export async function sendParentMilestoneNotification(
       logger.warn('[notifications] audit persist failed', { parentId, error: String(e) })
     }
 
+    incNotificationSent(type)
     return { sent: true }
   } catch (err) {
     logger.error('[notifications] sendParentMilestoneNotification failed', { error: String(err) })
+    incNotificationFailed(type, 'error')
     return { sent: false, reason: 'error' }
   }
 }

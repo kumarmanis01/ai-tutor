@@ -48,9 +48,10 @@ interface SessionContainerProps {
   topicId: string;
   reasonLabel?: string | null;
   estimatedTimeMin?: number;
+  initialFocus?: { focus?: string; itemId?: string };
 }
 
-export function SessionContainer({ topicId, reasonLabel, estimatedTimeMin }: SessionContainerProps) {
+export function SessionContainer({ topicId, reasonLabel, estimatedTimeMin, initialFocus }: SessionContainerProps) {
   const {
     session, phase, content,
     loading, error, submitting,
@@ -63,8 +64,10 @@ export function SessionContainer({ topicId, reasonLabel, estimatedTimeMin }: Ses
   const testSubmitHandlerRef = useRef<(() => Promise<void>) | null>(null);
 
   useEffect(() => {
-    startSession(topicId);
-  }, [topicId]); // eslint-disable-line react-hooks/exhaustive-deps
+    // If a deep-link focus.itemId is provided (e.g., ?focus=next&itemId=...), prefer it.
+    const initialTopic = initialFocus?.itemId ?? topicId
+    startSession(initialTopic)
+  }, [topicId, initialFocus?.itemId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const currentPhaseKey = session?.currentPhase as SessionPhaseClient | undefined;
   useEffect(() => {

@@ -18,6 +18,7 @@ export default function ParentSettings() {
   const [profile, setProfile] = useState<Profile | null>(null)
   const [children, setChildren] = useState<Array<{ id: string; name: string; grade?: string | null; isPaused: boolean; pausedUntil?: string | null; pauseReason?: string | null; excludeFromParentReport?: boolean; inactivityOptOut?: boolean }>>([])
   const [message, setMessage] = useState<string | null>(null)
+  const [mutedLinkStudentId, setMutedLinkStudentId] = useState<string | null>(null)
 
   useEffect(() => {
     fetch('/api/parent/settings')
@@ -28,6 +29,18 @@ export default function ParentSettings() {
       })
       .catch(() => setProfile({ digestOptOut: false, inactivityOptOut: false, digestDay: 'Sunday', digestTime: '09:00', digestTimezone: null }))
       .finally(() => setLoading(false))
+  }, [])
+
+  // Detect tokenized mute redirect from alert links: ?muted=1&studentId=...
+  useEffect(() => {
+    try {
+      const params = new URLSearchParams(window.location.search)
+      if (params.get('muted') === '1') {
+        const sid = params.get('studentId')
+        setMessage('Inactivity alerts muted')
+        if (sid) setMutedLinkStudentId(sid)
+      }
+    } catch (e) {}
   }, [])
 
   function autoDetectTz() {
@@ -169,6 +182,9 @@ export default function ParentSettings() {
                 <div>
                   <div className="font-medium">{child.name}</div>
                   {child.grade && <div className="text-xs text-gray-500">Grade {child.grade}</div>}
+                  {mutedLinkStudentId === child.id && (
+                    <div className="text-xs text-green-700">Muted via alert link</div>
+                  )}
                   {child.isPaused && (
                     <div className="text-xs text-amber-700">Paused until {child.pausedUntil ?? 'indefinitely'}</div>
                   )}

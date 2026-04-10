@@ -1,4 +1,81 @@
 /**
+ * Unit tests for runInactivityAlerts - mocks Redis, Prisma and the notification sender
+ */
+
+describe('runInactivityAlerts (unit)', () => {
+  beforeEach(() => {
+    jest.resetModules()
+    jest.clearAllMocks()
+  })
+
+  it('sends alert when redis.set returns OK', async () => {
+    const fakeRedis = { set: jest.fn(async () => 'OK'), del: jest.fn(async () => 1) }
+    const sendMock = jest.fn(async () => ({ sent: true }))
+
+    const prismaMock = {
+      user: { findMany: jest.fn(async () => [{ id: 'student1', name: 'Sam', timezone: 'UTC', lastSessionDate: new Date(Date.now() - 6 * 24 * 60 * 60 * 1000) }]) },
+      parentStudent: { findMany: jest.fn(async () => [{ parent: { id: 'parent1', email: 'p@example.com', phone: null, name: 'Parent', parentProfile: { digestOptOut: false, inactivityOptOut: false } } }]) },
+      learningPlanItem: { findFirst: jest.fn(async () => ({ id: 'item1' })) },
+    }
+
+    jest.doMock('@/lib/redis', () => ({ getRedis: () => fakeRedis }))
+    jest.doMock('@/lib/prisma', () => ({ prisma: prismaMock }))
+    jest.doMock('@/lib/notifications/delivery', () => ({ sendParentMilestoneNotification: sendMock }))
+
+    const { runInactivityAlerts } = await import('@/worker/jobs/inactivityAlert')
+    const sent = await runInactivityAlerts()
+
+    expect(sendMock).toHaveBeenCalledTimes(1)
+    expect(fakeRedis.set).toHaveBeenCalled()
+    expect(sent).toBe(1)
+  })
+
+  it('skips when redis.set returns null (already claimed)', async () => {
+    jest.resetModules()
+    const fakeRedis = { set: jest.fn(async () => null), del: jest.fn() }
+    const sendMock = jest.fn()
+
+    const prismaMock = {
+      user: { findMany: jest.fn(async () => [{ id: 'student1', name: 'Sam', timezone: 'UTC', lastSessionDate: new Date(Date.now() - 6 * 24 * 60 * 60 * 1000) }]) },
+      parentStudent: { findMany: jest.fn(async () => [{ parent: { id: 'parent1', email: 'p@example.com', phone: null, name: 'Parent', parentProfile: { digestOptOut: false, inactivityOptOut: false } } }]) },
+      learningPlanItem: { findFirst: jest.fn(async () => ({ id: 'item1' })) },
+    }
+
+    jest.doMock('@/lib/redis', () => ({ getRedis: () => fakeRedis }))
+    jest.doMock('@/lib/prisma', () => ({ prisma: prismaMock }))
+    jest.doMock('@/lib/notifications/delivery', () => ({ sendParentMilestoneNotification: sendMock }))
+
+    const { runInactivityAlerts } = await import('@/worker/jobs/inactivityAlert')
+    const sent = await runInactivityAlerts()
+
+    expect(sendMock).not.toHaveBeenCalled()
+    expect(sent).toBe(0)
+  })
+
+  it('removes suppression key on send failure', async () => {
+    jest.resetModules()
+    const fakeRedis = { set: jest.fn(async () => 'OK'), del: jest.fn(async () => 1) }
+    const sendMock = jest.fn(async () => { throw new Error('send failed') })
+
+    const prismaMock = {
+      user: { findMany: jest.fn(async () => [{ id: 'student1', name: 'Sam', timezone: 'UTC', lastSessionDate: new Date(Date.now() - 6 * 24 * 60 * 60 * 1000) }]) },
+      parentStudent: { findMany: jest.fn(async () => [{ parent: { id: 'parent1', email: 'p@example.com', phone: null, name: 'Parent', parentProfile: { digestOptOut: false, inactivityOptOut: false } } }]) },
+      learningPlanItem: { findFirst: jest.fn(async () => ({ id: 'item1' })) },
+    }
+
+    jest.doMock('@/lib/redis', () => ({ getRedis: () => fakeRedis }))
+    jest.doMock('@/lib/prisma', () => ({ prisma: prismaMock }))
+    jest.doMock('@/lib/notifications/delivery', () => ({ sendParentMilestoneNotification: sendMock }))
+
+    const { runInactivityAlerts } = await import('@/worker/jobs/inactivityAlert')
+    const sent = await runInactivityAlerts()
+
+    expect(sendMock).toHaveBeenCalled()
+    expect(fakeRedis.del).toHaveBeenCalled()
+    expect(sent).toBe(0)
+  })
+})
+/**
  * FILE OBJECTIVE:
  * - Unit tests for worker/jobs/inactivityAlert.ts covering opt-out, pause, suppression behaviour
  *

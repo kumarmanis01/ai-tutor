@@ -40,6 +40,11 @@ export async function sendParentDigests(): Promise<number> {
   }> = {};
 
   for (const link of parentLinks) {
+    // Skip if child is currently paused by parent
+    if ((link as any).isPaused && (link as any).pausedUntil && new Date((link as any).pausedUntil) > new Date()) {
+      logger.info('parentEmailDigest: skipping paused child', { parentId: link.parent.id, studentId: link.student.id, pausedUntil: (link as any).pausedUntil })
+      continue
+    }
     if (!link.parent.email) continue;
     if (!parentMap[link.parent.id]) {
       parentMap[link.parent.id] = {

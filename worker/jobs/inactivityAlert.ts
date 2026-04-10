@@ -144,7 +144,9 @@ export async function runInactivityAlerts(): Promise<number> {
           // Resolve the student's next planned session for a deep-link (if available)
           const nextTopic = nextItem?.concept?.name ?? 'their next planned session'
           const baseUrl = process.env.NEXTAUTH_URL ?? 'https://spinzyacademy.com'
-          const deepLink = nextItem ? `${baseUrl}/student/session/${nextItem.id}` : `${baseUrl}/parent/progress/${s.id}`
+          const deepLink = nextItem
+            ? `${baseUrl}/student/session/${nextItem.id}?focus=next&itemId=${encodeURIComponent(nextItem.id)}`
+            : `${baseUrl}/parent/progress/${s.id}`
 
           const locale = parent.language ?? undefined
           const subject = t('inactivity.subject', { studentName: s.name }, locale)
