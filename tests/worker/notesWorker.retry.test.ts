@@ -32,8 +32,10 @@ jest.mock('@/lib/callLLM.js', () => {
         sections: [
           { type: 'hook', title: 'Hook', content: 'A'.repeat(140), blackboardNotes: [] , visualHint: null, formulaLatex: null, exampleSteps: null, conceptCheck: null},
           { type: 'concept', title: 'Concept', content: 'B'.repeat(140), blackboardNotes: [] , visualHint: null, formulaLatex: null, exampleSteps: null, conceptCheck: null},
+          { type: 'concept', title: 'Concept2', content: 'B'.repeat(140), blackboardNotes: [] , visualHint: null, formulaLatex: null, exampleSteps: null, conceptCheck: null},
           { type: 'worked_example', title: 'Worked', content: 'C'.repeat(140), blackboardNotes: [] , visualHint: null, formulaLatex: null, exampleSteps: null, conceptCheck: null},
           { type: 'worked_example', title: 'Worked2', content: 'D'.repeat(140), blackboardNotes: [] , visualHint: null, formulaLatex: null, exampleSteps: null, conceptCheck: null},
+          { type: 'worked_example', title: 'Worked3', content: 'D'.repeat(140), blackboardNotes: [] , visualHint: null, formulaLatex: null, exampleSteps: null, conceptCheck: null},
           { type: 'summary', title: 'Summary', content: 'E'.repeat(140), blackboardNotes: [] , visualHint: null, formulaLatex: null, exampleSteps: null, conceptCheck: null}
         ],
         keyConcepts: [{ term: 't', definition: 'd', formula: null }],

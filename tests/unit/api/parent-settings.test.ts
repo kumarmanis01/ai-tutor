@@ -11,6 +11,8 @@ describe('Parent settings API', () => {
   beforeEach(() => {
     resetPrismaMock()
     ;(global as any).__TEST_SESSION__ = { user: { id: 'parent-1', role: 'parent', email: 'parent@example.test' } }
+    // Ensure no linked children by default for GET
+    prismaMock.parentStudent.findMany.mockResolvedValue([])
   })
 
   it('GET returns profile defaults when profile missing', async () => {

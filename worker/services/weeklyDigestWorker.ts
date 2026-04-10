@@ -14,11 +14,11 @@
  * - 2026-04-09 | copilot | respect excludeFromParentReport when selecting parent links
  */
 
-import { prisma } from '../../lib/prisma.js'
-import { logger } from '../../lib/logger.js'
-import { sendMailSafe } from '../../lib/mailer.js'
-import { callLLM } from '../../lib/callLLM.js'
-import { getLocalDateString, startOfLocalDayUtc } from '../../lib/engagement/timezone.js'
+import { prisma } from '@/lib/prisma'
+import { logger } from '@/lib/logger'
+import { sendMailSafe } from '@/lib/mailer'
+import { callLLM } from '@/lib/callLLM'
+import { getLocalDateString, startOfLocalDayUtc } from '@/lib/engagement/timezone'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 

@@ -25,7 +25,7 @@ import { expireStaleTasks } from '../lib/dailyHabit.js';
 import { hydrationReconciler } from './services/hydrationReconciler.js';
 import { runDailyCostReport } from './services/costReportingWorker.js'
 import { runDataDeletionCycle } from './services/dataDeletionWorker.js';
-import { prisma } from '../lib/prisma.js';
+import { prisma } from '@/lib/prisma';
 import { sendPushSafe } from '../lib/push/send.js';
 import { PUSH_NOTIFICATIONS } from '../lib/push/notifications.js';
 import path from 'path';

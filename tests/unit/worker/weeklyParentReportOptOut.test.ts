@@ -10,26 +10,26 @@
  * - 2026-04-09T00:00:00Z | copilot | add tests for excludeFromParentReport behaviour
  */
 
-// Prisma mock
-const prismaMock = {
-  adminConfig: { findUnique: jest.fn() },
-  parentStudent: { findMany: jest.fn(), findFirst: jest.fn() },
-  learningSession: { findMany: jest.fn() },
-  testResult: { findMany: jest.fn() },
-  studentTopicMastery: { findMany: jest.fn() },
-  weeklyStudentSummary: { upsert: jest.fn() },
-}
+import { prismaMock, resetPrismaMock } from '../../helpers/prismaMock'
 
 jest.mock('@/lib/prisma', () => ({ prisma: prismaMock }))
 jest.mock('@/lib/logger', () => ({ logger: { info: jest.fn(), warn: jest.fn(), error: jest.fn() } }))
 
 beforeEach(() => {
+  resetPrismaMock()
   jest.clearAllMocks()
   prismaMock.adminConfig.findUnique.mockResolvedValue(null)
   prismaMock.learningSession.findMany.mockResolvedValue([])
   prismaMock.testResult.findMany.mockResolvedValue([])
   prismaMock.studentTopicMastery.findMany.mockResolvedValue([])
   prismaMock.weeklyStudentSummary.upsert.mockResolvedValue({})
+  prismaMock.weeklyStudentSummary.findMany.mockResolvedValue([])
+
+  // Ensure additional models used by sendParentDigests have safe defaults
+  prismaMock.attentionFlag.findMany.mockResolvedValue([])
+  prismaMock.readinessStatus.findMany.mockResolvedValue([])
+  prismaMock.studentStreak.findMany.mockResolvedValue([])
+  prismaMock.parentStudent.findMany.mockResolvedValue([])
 })
 
 describe('weekly parent report opt-out', () => {

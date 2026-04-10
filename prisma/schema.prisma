@@ -75,6 +75,9 @@ model User {
   studentRelations            ParentStudent[]              @relation("StudentRelations")
   payments                    Payment[]
   invoices                    Invoice[]
+  // Stored payment customers and methods for this user
+  paymentCustomers            PaymentCustomer[]
+  paymentMethods              PaymentMethod[]
   phoneOtps                   PhoneOtp[]
   referralsCreated            Referral[]                   @relation("ReferralCreator")
   redeemedReferrals           Referral[]                   @relation("ReferralRedeemer")
@@ -385,6 +388,9 @@ model Subscription {
   paymentId    String?
   user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  // Installments linked to this subscription (one-to-many)
+  installments  Installment[]
+
   @@index([userId])
 }
 
@@ -510,6 +516,10 @@ model Payment {
   meta          Json?
   user          User     @relation(fields: [userId], references: [id])
   invoice       Invoice?
+  // Link back to installments paid by this payment
+  installments  Installment[]
+  // Payment events/audit traces
+  events        PaymentEvent[]
   @@unique([provider, providerIdempotencyKey], map: "uniq_payment_provider_idempotency")
 }
 

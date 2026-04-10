@@ -118,4 +118,53 @@ describe('Razorpay webhook reconciliation (unit)', () => {
     // Queue enqueued
     expect(addMock).toHaveBeenCalled()
   })
+
+  it('reconciles Installment on payment.captured when Razorpay order notes indicate installment', async () => {
+    process.env.RAZORPAY_KEY_ID = 'k'
+    process.env.RAZORPAY_KEY_SECRET = 's'
+
+    const payload = {
+      event: 'payment.captured',
+      payload: { payment: { entity: { id: 'pay_inst_1', order_id: 'order_inst_1', amount: 50000 } } },
+    }
+    const raw = JSON.stringify(payload)
+    const sig = crypto.createHmac('sha256', process.env.RAZORPAY_WEBHOOK_SECRET!).update(raw).digest('hex')
+
+    const tx: any = {
+      paymentOrder: { update: jest.fn().mockResolvedValue(true) },
+      payment: { findFirst: jest.fn().mockResolvedValue(null), create: jest.fn().mockResolvedValue({ id: 'p_inst_1' }), update: jest.fn() },
+      installment: { findUnique: jest.fn().mockResolvedValue({ id: 'inst-1', subscriptionId: 'sub-1', number: 2 }), update: jest.fn().mockResolvedValue(true) },
+      user: { update: jest.fn().mockResolvedValue(true) },
+      subscription: { findFirst: jest.fn().mockResolvedValue(null), update: jest.fn().mockResolvedValue(true) },
+    }
+
+    const prismaMock: any = {
+      paymentOrder: { findUnique: jest.fn().mockResolvedValue({ studentId: 'parent-1', status: 'pending' }) },
+      payment: { findFirst: jest.fn() },
+      subscription: { findFirst: jest.fn() },
+      user: { findUnique: jest.fn() },
+      $transaction: jest.fn(async (fn: any) => { await fn(tx); }),
+    }
+
+    jest.doMock('@/lib/prisma', () => ({ prisma: prismaMock }))
+
+    // Mock Razorpay SDK orders.fetch to return notes with subscription/installment
+    jest.doMock('razorpay', () => ({ default: class { orders = { fetch: async (_: any) => ({ notes: { subscriptionId: 'sub-1', installmentNumber: '2' } }) } } }))
+
+    const mockSendMail = jest.fn()
+    const mockSendSms = jest.fn()
+    jest.doMock('@/lib/mailer', () => ({ sendMailSafe: (...a: any[]) => mockSendMail(...a) }))
+    jest.doMock('@/lib/sms', () => ({ sendSms: (...a: any[]) => mockSendSms(...a) }))
+
+    const route = await import('@/app/api/razorpay/webhook/route')
+
+    const req = new Request('http://localhost', { method: 'POST', headers: { 'x-razorpay-signature': sig, 'content-type': 'application/json' }, body: raw })
+    const res = await route.POST(req as any)
+    expect(res.status).toBe(200)
+
+    // Ensure payment record created and installment.update called
+    expect(tx.payment.create).toHaveBeenCalled()
+    expect(tx.installment.findUnique).toHaveBeenCalled()
+    expect(tx.installment.update).toHaveBeenCalled()
+  })
 })

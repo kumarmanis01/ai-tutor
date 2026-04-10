@@ -140,7 +140,7 @@ export async function POST(req: Request) {
         });
 
         // Audit event
-        await tx.paymentEvent.create({ data: { paymentId: payment.id, userId, provider: 'razorpay', providerIdempotencyKey: order.providerIdempotencyKey ?? undefined, transactionId: paymentId, orderId, eventType: 'payment.parent_subscription_verified', amount: order.amount, status: 'success', payload: { planId, childIds } } })
+        await recordPaymentEvent(tx, { paymentId: payment.id, userId, provider: 'razorpay', providerIdempotencyKey: order.providerIdempotencyKey ?? undefined, transactionId: paymentId, orderId, eventType: 'payment.parent_subscription_verified', amount: order.amount, status: 'success', payload: { planId, childIds } })
 
         // Compute any prorated credit from existing active subscription and carry forward
         let carryForwardCredit = 0

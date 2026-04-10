@@ -28,12 +28,14 @@ function mockModel() {
 
 export const prismaMock = {
   hydrationJob: mockModel(),
+  adminConfig: mockModel(),
   outbox: mockModel(),
   executionJob: mockModel(),
   jobExecutionLog: mockModel(),
   jobLock: mockModel(),
   parentInvite: mockModel(),
   parentStudent: mockModel(),
+  parentProfile: mockModel(),
   parentChildControl: mockModel(),
   freeTierUsage: mockModel(),
   weeklyStudentSummary: mockModel(),
@@ -41,6 +43,7 @@ export const prismaMock = {
   attentionFlag: mockModel(),
   readinessStatus: mockModel(),
   studentTopicMastery: mockModel(),
+  studentStreak: mockModel(),
   learningSession: mockModel(),
   testResult: mockModel(),
   board: mockModel(),
@@ -63,15 +66,34 @@ export const prismaMock = {
 
 /** Reset all mock functions in prismaMock (call in beforeEach) */
 export function resetPrismaMock(): void {
-  for (const value of Object.values(prismaMock)) {
-    if (typeof value === 'function' && 'mockReset' in value) {
-      (value as jest.Mock).mockReset();
-    } else if (typeof value === 'object' && value !== null) {
-      for (const fn of Object.values(value)) {
+  for (const [modelName, value] of Object.entries(prismaMock)) {
+    // Skip helper functions
+    if (modelName === '$transaction' || modelName === '$executeRaw') {
+      if (typeof value === 'function' && 'mockReset' in value) {
+        (value as jest.Mock).mockReset();
+      }
+      continue
+    }
+
+    if (typeof value === 'object' && value !== null) {
+      for (const [fnName, fn] of Object.entries(value)) {
         if (typeof fn === 'function' && 'mockReset' in fn) {
           (fn as jest.Mock).mockReset();
+
+          // Provide safe defaults so tests don't need to stub every single model method
+          if (fnName === 'findMany') {
+            (fn as jest.Mock).mockResolvedValue([])
+          } else if (fnName === 'findUnique' || fnName === 'findFirst') {
+            (fn as jest.Mock).mockResolvedValue(null)
+          } else if (fnName === 'upsert' || fnName === 'create' || fnName === 'update') {
+            (fn as jest.Mock).mockResolvedValue({})
+          } else {
+            // leave other methods as reset (undefined) unless a test overrides them
+          }
         }
       }
+    } else if (typeof value === 'function' && 'mockReset' in value) {
+      (value as jest.Mock).mockReset();
     }
   }
 }

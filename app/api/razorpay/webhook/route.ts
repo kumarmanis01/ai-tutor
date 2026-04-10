@@ -22,6 +22,7 @@ import { logger } from '@/lib/logger';
 import { sendMailSafe } from '@/lib/mailer';
 import { sendSms } from '@/lib/sms';
 import { getPaymentDunningQueue } from '@/jobs/paymentDunning';
+import { getInstallmentDunningQueue } from '@/jobs/installmentDunning';
 import Razorpay from 'razorpay';
 import { recordPaymentEvent } from '@/lib/payments/audit';
 
@@ -112,17 +113,36 @@ export async function POST(req: Request) {
           existing = await tx.payment.findFirst({ where: { provider: 'razorpay', providerIdempotencyKey: idempotencyHeader } });
         }
 
+        let paymentRecordId: string | null = null;
         if (!existing) {
           // create payment record
           const newPayment = await tx.payment.create({ data: { userId: orderRow.studentId, amount: payment.amount, provider: 'razorpay', providerIdempotencyKey: idempotencyHeader || undefined, status: 'success', transactionId: paymentId, orderId, meta: { notes } } });
+          paymentRecordId = newPayment.id;
           // Log event in the same transaction
-          await tx.paymentEvent.create({ data: { paymentId: newPayment.id, userId: orderRow.studentId, provider: 'razorpay', providerIdempotencyKey: idempotencyHeader || undefined, transactionId: paymentId, orderId, eventType: 'payment.created.webhook', payload: { notes }, amount: payment.amount, status: 'success' } })
+          await recordPaymentEvent(tx, { paymentId: newPayment.id, userId: orderRow.studentId, provider: 'razorpay', providerIdempotencyKey: idempotencyHeader || undefined, transactionId: paymentId, orderId, eventType: 'payment.created.webhook', payload: { notes }, amount: payment.amount, status: 'success' })
         } else {
+          paymentRecordId = existing.id;
           // update existing payment status if needed
           if (existing.status !== 'success') {
             await tx.payment.update({ where: { id: existing.id }, data: { status: 'success', transactionId: paymentId, orderId, meta: { ...(existing.meta || {}), notes } } });
-            await tx.paymentEvent.create({ data: { paymentId: existing.id, userId: orderRow.studentId, provider: 'razorpay', providerIdempotencyKey: idempotencyHeader || undefined, transactionId: paymentId, orderId, eventType: 'payment.updated.webhook', payload: { notes }, amount: payment.amount, status: 'success' } })
+            await recordPaymentEvent(tx, { paymentId: existing.id, userId: orderRow.studentId, provider: 'razorpay', providerIdempotencyKey: idempotencyHeader || undefined, transactionId: paymentId, orderId, eventType: 'payment.updated.webhook', payload: { notes }, amount: payment.amount, status: 'success' })
           }
+        }
+
+        // If this payment was for an installment (notes contain subscriptionId & installmentNumber), reconcile Installment row
+        try {
+          const subscriptionId = notes?.subscriptionId || notes?.subscription_id || notes?.subscription;
+          const installmentNumberRaw = notes?.installmentNumber || notes?.installment_no || notes?.installment || notes?.installmentIndex || notes?.installment_index;
+          const installmentNumber = installmentNumberRaw ? Number(installmentNumberRaw) : null;
+          if (subscriptionId && installmentNumber) {
+            const inst = await tx.installment.findUnique({ where: { subscriptionId_number: { subscriptionId: String(subscriptionId), number: Number(installmentNumber) } } });
+            if (inst) {
+              await tx.installment.update({ where: { id: inst.id }, data: { status: 'PAID', providerPaymentId: paymentId, paymentId: paymentRecordId ?? undefined, paidAt: now, attemptCount: { increment: 1 } } });
+            }
+          }
+        } catch (err) {
+          // Non-fatal: log and continue
+          logger.warn('Failed to reconcile installment on payment.captured', { err, orderId, paymentId });
         }
 
         // If childIds present, attempt to activate child subscriptions similarly to verify endpoint
@@ -175,24 +195,42 @@ export async function POST(req: Request) {
           existing = await tx.payment.findFirst({ where: { provider: 'razorpay', providerIdempotencyKey: idempotencyHeader } });
         }
 
+        let paymentRecordId: string | null = null;
         if (!existing) {
           const newPayment = await tx.payment.create({ data: { userId: orderRow.studentId, amount: payment?.amount ?? orderRow.planMonths ?? 0, provider: 'razorpay', providerIdempotencyKey: idempotencyHeader || undefined, status: 'failed', transactionId: paymentId, orderId, meta: { reason } } });
-          await tx.paymentEvent.create({ data: { paymentId: newPayment.id, userId: orderRow.studentId, provider: 'razorpay', providerIdempotencyKey: idempotencyHeader || undefined, transactionId: paymentId, orderId, eventType: 'payment.failed.webhook', payload: { reason }, amount: payment?.amount ?? orderRow.planMonths ?? 0, status: 'failed' } })
+          paymentRecordId = newPayment.id;
+          await recordPaymentEvent(tx, { paymentId: newPayment.id, userId: orderRow.studentId, provider: 'razorpay', providerIdempotencyKey: idempotencyHeader || undefined, transactionId: paymentId, orderId, eventType: 'payment.failed.webhook', payload: { reason }, amount: payment?.amount ?? orderRow.planMonths ?? 0, status: 'failed' })
         } else {
+          paymentRecordId = existing.id;
           if (existing.status !== 'failed') {
             await tx.payment.update({ where: { id: existing.id }, data: { status: 'failed', meta: { ...(existing.meta || {}), reason } } });
-            await tx.paymentEvent.create({ data: { paymentId: existing.id, userId: orderRow.studentId, provider: 'razorpay', providerIdempotencyKey: idempotencyHeader || undefined, transactionId: paymentId, orderId, eventType: 'payment.updated_failed.webhook', payload: { reason }, amount: payment?.amount ?? orderRow.planMonths ?? 0, status: 'failed' } })
+            await recordPaymentEvent(tx, { paymentId: existing.id, userId: orderRow.studentId, provider: 'razorpay', providerIdempotencyKey: idempotencyHeader || undefined, transactionId: paymentId, orderId, eventType: 'payment.updated_failed.webhook', payload: { reason }, amount: payment?.amount ?? orderRow.planMonths ?? 0, status: 'failed' })
           }
         }
 
-        // If parent has an active subscription, seed dunning attempts so the daily job picks it up
-        const sub = await tx.subscription.findFirst({ where: { userId: orderRow.studentId, active: true } });
-        if (sub) {
-          await tx.subscription.update({ where: { id: sub.id }, data: { dunningAttempts: { increment: 1 }, lastDunningAt: now } });
+        // If this failed payment corresponds to an Installment, update the installment row (attemptCount/status)
+        try {
+          const subscriptionId = notes?.subscriptionId || notes?.subscription_id || notes?.subscription;
+          const installmentNumberRaw = notes?.installmentNumber || notes?.installment_no || notes?.installment || notes?.installmentIndex || notes?.installment_index;
+          const installmentNumber = installmentNumberRaw ? Number(installmentNumberRaw) : null;
+          if (subscriptionId && installmentNumber) {
+            const inst = await tx.installment.findUnique({ where: { subscriptionId_number: { subscriptionId: String(subscriptionId), number: Number(installmentNumber) } } });
+            if (inst) {
+              await tx.installment.update({ where: { id: inst.id }, data: { status: 'FAILED', attemptCount: { increment: 1 }, lastAttemptAt: now } });
+            }
+          } else {
+            // Fallback to subscription-level dunning seed if no installment found
+            const sub = await tx.subscription.findFirst({ where: { userId: orderRow.studentId, active: true } });
+            if (sub) {
+              await tx.subscription.update({ where: { id: sub.id }, data: { dunningAttempts: { increment: 1 }, lastDunningAt: now } });
+            }
+          }
+        } catch (err) {
+          logger.warn('Failed to update installment on payment.failed', { err, orderId, paymentId });
         }
       });
 
-      // Notify parent (best-effort) and enqueue dunning job to run immediately
+      // Notify parent (best-effort) and enqueue dunning job to run immediately (installment-level preferred)
       const parent = await prisma.user.findUnique({ where: { id: orderRow.studentId }, select: { id: true, email: true, phone: true, name: true } });
       const retryLink = `${process.env.NEXTAUTH_URL ?? 'https://spinzyacademy.com'}/parent/billing`;
       if (parent?.email) {
@@ -205,10 +243,12 @@ export async function POST(req: Request) {
       }
 
       try {
-        const q = getPaymentDunningQueue();
-        await q.add('payment-dunning', {}, { removeOnComplete: true });
+        const q = getInstallmentDunningQueue();
+        // When webhook receives a failed payment for an installment, enqueue an immediate installment retry job.
+        // We pass notes so the worker can identify the installment if present.
+        await q.add('installment-dunning', { notes: notes || {}, orderId, paymentId }, { removeOnComplete: true });
       } catch (err) {
-        logger.error('Failed to enqueue payment dunning job from webhook', { err });
+        logger.error('Failed to enqueue installment dunning job from webhook', { err });
       }
 
       return NextResponse.json({ ok: true }, { status: 200 });

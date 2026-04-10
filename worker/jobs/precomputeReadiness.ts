@@ -10,12 +10,12 @@
  * Never throws -- logs and continues on per-student errors.
  */
 
-import { prisma } from '../../lib/prisma.js'
-import { computeReadinessScore } from '../../lib/student/examReadiness.js'
-import { logger } from '../../lib/logger.js'
-import { getRedis } from '../../lib/redis.js'
-import { sendPushSafe } from '../../lib/push/send.js'
-import { PUSH_NOTIFICATIONS } from '../../lib/push/notifications.js'
+import { prisma } from '@/lib/prisma'
+import { computeReadinessScore } from '@/lib/student/examReadiness'
+import { logger } from '@/lib/logger'
+import { getRedis } from '@/lib/redis'
+import { sendPushSafe } from '@/lib/push/send'
+import { PUSH_NOTIFICATIONS } from '@/lib/push/notifications'
 
 const READINESS_NOTIFICATION_THRESHOLDS = [50, 70, 90]
 

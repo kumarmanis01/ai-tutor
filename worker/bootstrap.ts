@@ -46,8 +46,10 @@ import { DIAGNOSTIC_BOOTSTRAP_QUEUE_NAME } from "../jobs/diagnosticBootstrap.js"
 import { processDiagnosticBootstrap } from "./services/diagnosticBootstrapWorker.js";
 import { WEEKLY_DIGEST_QUEUE_NAME, registerWeeklyDigestJob } from "../jobs/weeklyDigest.js";
 import { PAYMENT_DUNNING_QUEUE_NAME, registerDailyDunningJob } from "../jobs/paymentDunning.js";
+import { INSTALLMENT_DUNNING_QUEUE_NAME, registerDailyInstallmentDunningJob } from "../jobs/installmentDunning.js";
 import { processWeeklyDigest, processParentDigest } from "./services/weeklyDigestWorker.js";
 import { processPaymentDunning } from "./services/paymentDunningWorker.js";
+import { processInstallmentDunning } from "./services/installmentDunningWorker.js";
 import { DISTRESS_NOTIFICATION_QUEUE_NAME } from "../jobs/distressNotification.js";
 import { processDistressNotification } from "./services/distressNotificationWorker.js";
 import { RETEACH_PLAN_QUEUE_NAME } from "../jobs/reteachPlan.js";
@@ -222,6 +224,12 @@ export async function bootstrapWorker() {
   // Register daily payment dunning job
   try {
     await registerDailyDunningJob();
+    // Register daily installment-level dunning job
+    try {
+      await registerDailyInstallmentDunningJob();
+    } catch (err) {
+      logger.error('registerDailyInstallmentDunningJob failed', { error: String(err) });
+    }
   } catch (err) {
     logger.error('registerDailyDunningJob failed', { error: String(err) });
   }
@@ -229,6 +237,12 @@ export async function bootstrapWorker() {
   const paymentDunningWorker = new Worker(
     PAYMENT_DUNNING_QUEUE_NAME,
     async (_job: Job) => processPaymentDunning(),
+    { connection: redisConnection, concurrency: 1 },
+  );
+
+  const installmentDunningWorker = new Worker(
+    INSTALLMENT_DUNNING_QUEUE_NAME,
+    async (job: Job) => processInstallmentDunning(job.data),
     { connection: redisConnection, concurrency: 1 },
   );
 

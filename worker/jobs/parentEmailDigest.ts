@@ -9,12 +9,12 @@
  * - 2026-04-09 | copilot | respect excludeFromParentReport when selecting parent links
  */
 
-import { prisma } from '../../lib/prisma.js';
-import { logger } from '../../lib/logger.js';
-import { sendMailSafe } from '../../lib/mailer.js';
-import { sendWhatsAppMessage, buildWeeklyWhatsAppMessage } from '../../lib/whatsapp.js';
-import { generateParentReportAI } from '../../lib/ai/tools/generateParentReport.js';
-import { sendParentMilestoneNotification } from '../../lib/notifications/delivery.js';
+import { prisma } from '@/lib/prisma';
+import { logger } from '@/lib/logger';
+import { sendMailSafe } from '@/lib/mailer';
+import { sendWhatsAppMessage, buildWeeklyWhatsAppMessage } from '@/lib/whatsapp';
+import { generateParentReportAI } from '@/lib/ai/tools/generateParentReport';
+import { sendParentMilestoneNotification } from '@/lib/notifications/delivery';
 
 /**
  * Send weekly email digest to all parents with active student links

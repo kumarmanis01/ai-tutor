@@ -16,10 +16,10 @@
  */
 
 import { Queue } from 'bullmq';
-import { prisma } from '../lib/prisma.js';
-import { redisConnection } from '../lib/redis.js';
-import { logger } from '../lib/logger.js';
-import { CONTENT_HYDRATION_QUEUE } from '../lib/queues/constants.js';
+import { prisma } from '@/lib/prisma';
+import { redisConnection } from '@/lib/redis';
+import { logger } from '@/lib/logger';
+import { CONTENT_HYDRATION_QUEUE } from '@/lib/queues/constants';
 
 /** RISK-04: Max dispatch attempts before moving to dead-letter. Prevents infinite retry loops. */
 const MAX_ATTEMPTS = 10;

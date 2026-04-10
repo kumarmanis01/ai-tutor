@@ -10,8 +10,8 @@
  * - 2026-04-09 | copilot | respect excludeFromParentReport when selecting linked students
  */
 
-import { prisma } from '../../lib/prisma.js';
-import { logger } from '../../lib/logger.js';
+import { prisma } from '@/lib/prisma';
+import { logger } from '@/lib/logger';
 
 /**
  * Aggregate weekly summary for all linked students

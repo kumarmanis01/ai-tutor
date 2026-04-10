@@ -66,7 +66,7 @@ export async function POST(req: Request) {
       const p = await tx.payment.create({ data: { userId: user.id, amount: amountPaise, provider: 'razorpay', providerIdempotencyKey: providerIdempotencyKey, status: 'success', transactionId: resp.id ?? resp.razorpay_payment_id ?? null, orderId: resp.order_id ?? null, meta: resp } })
       await tx.paymentMethod.update({ where: { id: method.id }, data: { verified: true, updatedAt: new Date() } })
       // Audit
-      await tx.paymentEvent.create({ data: { paymentId: p.id, userId: user.id, provider: 'razorpay', providerIdempotencyKey: providerIdempotencyKey, transactionId: resp.id ?? resp.razorpay_payment_id ?? null, orderId: resp.order_id ?? null, eventType: 'payment.method_verification', amount: amountPaise, status: 'success', payload: resp } })
+      await recordPaymentEvent(tx, { paymentId: p.id, userId: user.id, provider: 'razorpay', providerIdempotencyKey: providerIdempotencyKey, transactionId: resp.id ?? resp.razorpay_payment_id ?? null, orderId: resp.order_id ?? null, eventType: 'payment.method_verification', amount: amountPaise, status: 'success', payload: resp })
     });
 
     return NextResponse.json({ success: true }, { status: 200 });

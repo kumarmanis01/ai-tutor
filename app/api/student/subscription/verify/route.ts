@@ -121,7 +121,7 @@ export async function POST(req: Request) {
         });
 
         // Audit event for subscription activation payment
-        await tx.paymentEvent.create({ data: { paymentId: payment.id, userId, provider: 'razorpay', providerIdempotencyKey: order.providerIdempotencyKey ?? undefined, transactionId: paymentId, orderId, eventType: 'payment.subscription_verified', amount: order.amount, status: 'success', payload: { planId } } })
+        await recordPaymentEvent(tx, { paymentId: payment.id, userId, provider: 'razorpay', providerIdempotencyKey: order.providerIdempotencyKey ?? undefined, transactionId: paymentId, orderId, eventType: 'payment.subscription_verified', amount: order.amount, status: 'success', payload: { planId } })
 
         return { id: payment.id };
       });

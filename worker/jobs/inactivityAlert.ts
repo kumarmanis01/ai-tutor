@@ -15,10 +15,10 @@
  * - 2026-04-09T00:00:00Z | copilot | created
  */
 
-import { prisma } from '../../lib/prisma.js'
-import { logger } from '../../lib/logger.js'
-import { getRedis } from '../../lib/redis.js'
-import { sendParentMilestoneNotification } from '../../lib/notifications/delivery.js'
+import { prisma } from '@/lib/prisma'
+import { logger } from '@/lib/logger'
+import { getRedis } from '@/lib/redis'
+import { sendParentMilestoneNotification } from '@/lib/notifications/delivery'
 
 // Configurable threshold (days) that triggers inactivity alert
 const DEFAULT_INACTIVITY_DAYS = Number(process.env.PARENT_INACTIVITY_DAYS ?? '3')
