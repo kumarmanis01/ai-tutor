@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 
 type Profile = {
   digestOptOut: boolean
+  inactivityOptOut?: boolean
   digestDay: string
   digestTime: string
   digestTimezone: string | null
@@ -15,7 +16,7 @@ export default function ParentSettings() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [profile, setProfile] = useState<Profile | null>(null)
-  const [children, setChildren] = useState<Array<{ id: string; name: string; grade?: string | null; isPaused: boolean; pausedUntil?: string | null; pauseReason?: string | null }>>([])
+  const [children, setChildren] = useState<Array<{ id: string; name: string; grade?: string | null; isPaused: boolean; pausedUntil?: string | null; pauseReason?: string | null; excludeFromParentReport?: boolean; inactivityOptOut?: boolean }>>([])
   const [message, setMessage] = useState<string | null>(null)
 
   useEffect(() => {
@@ -25,7 +26,7 @@ export default function ParentSettings() {
         setProfile(data)
         setChildren(data.children ?? [])
       })
-      .catch(() => setProfile({ digestOptOut: false, digestDay: 'Sunday', digestTime: '09:00', digestTimezone: null }))
+      .catch(() => setProfile({ digestOptOut: false, inactivityOptOut: false, digestDay: 'Sunday', digestTime: '09:00', digestTimezone: null }))
       .finally(() => setLoading(false))
   }, [])
 
@@ -86,6 +87,52 @@ export default function ParentSettings() {
     }
   }
 
+  async function toggleExclude(studentId: string, exclude: boolean) {
+    setSaving(true)
+    setMessage(null)
+    try {
+      const res = await fetch('/api/parent/settings', {
+        method: 'POST',
+        body: JSON.stringify({ children: [{ id: studentId, excludeFromParentReport: exclude }] }),
+        headers: { 'Content-Type': 'application/json' },
+      })
+      const data = await res.json()
+      if (res.ok && data.ok) {
+        setChildren((c) => c.map((ch) => (ch.id === studentId ? { ...ch, excludeFromParentReport: exclude } : ch)))
+        setMessage(exclude ? 'Excluded from reports' : 'Included in reports')
+      } else {
+        setMessage('Action failed')
+      }
+    } catch (e) {
+      setMessage('Action failed')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function toggleChildInactivity(studentId: string, optOut: boolean) {
+    setSaving(true)
+    setMessage(null)
+    try {
+      const res = await fetch('/api/parent/settings', {
+        method: 'POST',
+        body: JSON.stringify({ children: [{ id: studentId, inactivityOptOut: optOut }] }),
+        headers: { 'Content-Type': 'application/json' },
+      })
+      const data = await res.json()
+      if (res.ok && data.ok) {
+        setChildren((c) => c.map((ch) => (ch.id === studentId ? { ...ch, inactivityOptOut: optOut } : ch)))
+        setMessage(optOut ? 'Child muted for inactivity alerts' : 'Child will receive inactivity alerts')
+      } else {
+        setMessage('Action failed')
+      }
+    } catch (e) {
+      setMessage('Action failed')
+    } finally {
+      setSaving(false)
+    }
+  }
+
   if (loading) return <div className="p-4">Loading…</div>
 
   if (!profile) return <div className="p-4">Unable to load settings</div>
@@ -97,6 +144,11 @@ export default function ParentSettings() {
       <label className="flex items-center gap-2">
         <input type="checkbox" checked={profile.digestOptOut} onChange={(e) => setProfile({ ...profile, digestOptOut: e.target.checked })} />
         <span className="text-sm">Opt out of weekly digest emails</span>
+      </label>
+
+      <label className="flex items-center gap-2">
+        <input type="checkbox" checked={profile.inactivityOptOut ?? false} onChange={(e) => setProfile({ ...profile, inactivityOptOut: e.target.checked })} />
+        <span className="text-sm">Opt out of inactivity alerts (global)</span>
       </label>
 
       <div>
@@ -122,9 +174,19 @@ export default function ParentSettings() {
                   )}
                 </div>
                 <div>
-                  <button onClick={() => togglePause(child.id, !child.isPaused)} disabled={saving} className="rounded border px-3 py-1 text-sm">
-                    {child.isPaused ? 'Unpause' : 'Pause'}
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <button onClick={() => togglePause(child.id, !child.isPaused)} disabled={saving} className="rounded border px-3 py-1 text-sm">
+                      {child.isPaused ? 'Unpause' : 'Pause'}
+                    </button>
+                    <label className="flex items-center gap-2 text-sm">
+                      <input type="checkbox" checked={child.excludeFromParentReport ?? false} onChange={(e) => toggleExclude(child.id, e.target.checked)} />
+                      <span className="text-xs">Exclude from parent reports</span>
+                    </label>
+                    <label className="flex items-center gap-2 text-sm ml-2">
+                      <input type="checkbox" checked={child.inactivityOptOut ?? false} onChange={(e) => toggleChildInactivity(child.id, e.target.checked)} />
+                      <span className="text-xs">Mute inactivity alerts for this child</span>
+                    </label>
+                  </div>
                 </div>
               </div>
             ))}

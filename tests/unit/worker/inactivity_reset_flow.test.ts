@@ -39,8 +39,13 @@ describe('inactivity alert -> updateStreak suppression-reset flow', () => {
       },
     }))
 
-    // Mock notification delivery
-    const sendMock = jest.fn().mockResolvedValue({ sent: true })
+    // Mock notification delivery — simulate that the delivery helper also
+    // records a suppression key in Redis (policy would normally do this).
+    const sendMock = jest.fn().mockImplementation(async (_parentId: string, _opts: any) => {
+      // emulate recordSendNotification by setting the unified suppression key
+      await redisMock.set(`parent:notifications:suppression:inactivity:p1:stu1`, '1', 'NX', 'EX', 3 * 24 * 60 * 60)
+      return { sent: true }
+    })
     jest.doMock('@/lib/notifications/delivery', () => ({ sendParentMilestoneNotification: sendMock }))
 
     const { runInactivityAlerts } = await import('../../../worker/jobs/inactivityAlert')

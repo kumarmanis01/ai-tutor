@@ -18,23 +18,37 @@ import { getRedis } from '@/lib/redis'
 import { sendMailSafe } from '@/lib/mailer'
 import { sendSms } from '@/lib/sms'
 import { logger } from '@/lib/logger'
+import { prisma } from '@/lib/prisma'
+import { canSendNotification, recordSendNotification, NotificationType } from '@/lib/notifications/policy'
 
-const DEFAULT_WEEKLY_MILESTONE_CAP = 2
+export async function sendParentMilestoneNotification(
+  parentId: string,
+  opts: { email?: string; phone?: string; subject: string; html: string; text?: string; meta?: { studentId?: string; type?: NotificationType; channel?: string; locale?: string } },
+): Promise<{ sent: boolean; reason?: string }> {
+  const type = opts.meta?.type ?? 'milestone'
 
-function weekBucketKey(parentId: string): string {
-  // simple week bucket using Unix epoch weeks to avoid timezone issues
-  const now = Date.now()
-  const week = Math.floor(now / (7 * 24 * 60 * 60 * 1000))
-  return `parent:milestones:${parentId}:week:${week}`
-}
-
-export async function sendParentMilestoneNotification(parentId: string, opts: { email?: string; phone?: string; subject: string; html: string; text?: string; }): Promise<{ sent: boolean; reason?: string }> {
   const redis = getRedis()
   if (!redis) {
     // best-effort: try to send email without enforcement
     try {
       if (opts.email) await sendMailSafe({ to: opts.email, subject: opts.subject, html: opts.html, text: opts.text })
       if (opts.phone) await sendSms(opts.phone, opts.text ?? opts.subject)
+      // Persist audit if prisma available
+      try {
+        await prisma.parentNotification.create({
+          data: {
+            parentId,
+            studentId: opts.meta?.studentId ?? null,
+            type,
+            channel: opts.meta?.channel ?? (opts.email ? 'email' : opts.phone ? 'sms' : 'unknown'),
+            subject: opts.subject,
+            body: { html: opts.html, text: opts.text ?? null },
+            sentAt: new Date(),
+          },
+        })
+      } catch (e) {
+        logger.warn('[notifications] audit persist failed (no-redis path)', { parentId, error: String(e) })
+      }
       return { sent: true }
     } catch (err) {
       logger.error('[notifications] fallback send failed', { error: String(err) })
@@ -43,18 +57,32 @@ export async function sendParentMilestoneNotification(parentId: string, opts: { 
   }
 
   try {
-    const key = weekBucketKey(parentId)
-    const count = await redis.incr(key)
-    if (count === 1) {
-      // expire after 8 days to cover weekly boundary
-      await redis.expire(key, 8 * 24 * 60 * 60)
-    }
-    if (count > DEFAULT_WEEKLY_MILESTONE_CAP) {
-      return { sent: false, reason: 'cap-exceeded' }
-    }
+    const check = await canSendNotification(parentId, type, opts.meta?.studentId)
+    if (!check.allowed) return { sent: false, reason: check.reason }
 
     if (opts.email) await sendMailSafe({ to: opts.email, subject: opts.subject, html: opts.html, text: opts.text })
     if (opts.phone) await sendSms(opts.phone, opts.text ?? opts.subject)
+
+    // Record in redis policy layer (caps/suppression)
+    await recordSendNotification(parentId, type, opts.meta?.studentId)
+
+    // Persist audit record for compliance
+    try {
+      await prisma.parentNotification.create({
+        data: {
+          parentId,
+          studentId: opts.meta?.studentId ?? null,
+          type,
+          channel: opts.meta?.channel ?? (opts.email ? 'email' : opts.phone ? 'sms' : 'unknown'),
+          subject: opts.subject,
+          body: { html: opts.html, text: opts.text ?? null },
+          sentAt: new Date(),
+        },
+      })
+    } catch (e) {
+      logger.warn('[notifications] audit persist failed', { parentId, error: String(e) })
+    }
+
     return { sent: true }
   } catch (err) {
     logger.error('[notifications] sendParentMilestoneNotification failed', { error: String(err) })

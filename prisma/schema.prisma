@@ -790,6 +790,8 @@ model ParentStudent {
   /// When true, this student will be excluded from parent-facing reports/digests
   /// (used for privacy / opt-out per child). Defaults to false.
   excludeFromParentReport Boolean @default(false)
+  /// Per-child opt-out for inactivity alerts (parent can mute inactivity alerts for this child)
+  inactivityOptOut Boolean @default(false)
   pausedUntil DateTime?
   pauseReason String?
   createdAt  DateTime         @default(now())
@@ -1619,6 +1621,21 @@ model Outbox {
   updatedAt DateTime  @updatedAt
 
   @@index([queue, sentAt])
+}
+
+/// Parent-facing notification audit record for compliance and "last alert sent" views
+model ParentNotification {
+  id         String   @id @default(cuid())
+  parentId   String
+  studentId  String?  
+  type       String   // 'inactivity' | 'digest' | 'milestone'
+  channel    String   // 'email' | 'sms' | 'whatsapp' | 'unknown'
+  subject    String?
+  body       Json?
+  sentAt     DateTime @default(now())
+  createdAt  DateTime @default(now())
+
+  @@index([parentId, sentAt])
 }
 
 /// Dead-letter table for outbox rows that exceed MAX_ATTEMPTS (RISK-04).

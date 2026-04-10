@@ -132,7 +132,13 @@ export async function updateStreak(studentId: string): Promise<{
       if (redis) {
         const links = await prisma.parentStudent.findMany({ where: { studentId, status: 'active' }, select: { parentId: true } })
         if (links && links.length > 0) {
-          const keys = links.map((l) => `parent:inactivity:${l.parentId}:${studentId}`)
+          const keys: string[] = []
+          for (const l of links) {
+            // legacy suppression key
+            keys.push(`parent:inactivity:${l.parentId}:${studentId}`)
+            // new unified suppression key used by notification policy
+            keys.push(`parent:notifications:suppression:inactivity:${l.parentId}:${studentId}`)
+          }
           if (keys.length) await redis.del(...keys)
         }
       }

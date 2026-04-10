@@ -15,6 +15,7 @@ import { sendMailSafe } from '@/lib/mailer';
 import { sendWhatsAppMessage, buildWeeklyWhatsAppMessage } from '@/lib/whatsapp';
 import { generateParentReportAI } from '@/lib/ai/tools/generateParentReport';
 import { sendParentMilestoneNotification } from '@/lib/notifications/delivery';
+import { t } from '@/lib/i18n';
 
 /**
  * Send weekly email digest to all parents with active student links
@@ -195,9 +196,10 @@ export async function sendParentDigests(): Promise<number> {
       }
 
       const html = buildDigestHtml(parent.name, childSections);
-      const text = `Weekly Learning Summary for your children on Spinzy Academy.`;
+      const subject = t('digest.subject', undefined, parent.language)
+      const text = t('digest.fallback_text', undefined, parent.language)
       // Use centralized notification helper which enforces caps for milestone emails
-      await sendParentMilestoneNotification(parentId, { email: parent.email, phone: parent.phone ?? undefined, subject: `Weekly Learning Summary - Spinzy Academy`, html, text })
+      await sendParentMilestoneNotification(parentId, { email: parent.email, phone: parent.phone ?? undefined, subject, html, text, meta: { type: 'digest', channel: 'email', locale: parent.language } })
 
       sentCount++;
       logger.info('parentEmailDigest: sent', { parentId, childCount: parent.children.length });

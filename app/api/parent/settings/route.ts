@@ -50,6 +50,11 @@ export async function GET() {
         isPaused: (l as any).isPaused ?? false,
         pausedUntil: (l as any).pausedUntil ? (l as any).pausedUntil.toISOString() : null,
         pauseReason: (l as any).pauseReason ?? null,
+        // Per-child preferences
+        // When true, this child is excluded from parent-facing reports/alerts
+        excludeFromParentReport: (l as any).excludeFromParentReport ?? false,
+        // When true, parent will not receive inactivity alerts for this child
+        inactivityOptOut: (l as any).inactivityOptOut ?? false,
       })),
     })
   } catch (err) {
@@ -88,7 +93,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'invalid_digestTime' }, { status: 400 })
     }
 
-    const upsertData = {
+    const createData = {
       userId,
       digestOptOut: digestOptOut ?? false,
       inactivityOptOut: inactivityOptOut ?? false,
@@ -97,13 +102,64 @@ export async function POST(req: Request) {
       digestTimezone: digestTimezone ?? null,
     }
 
+    const updateData: any = {}
+    if (digestOptOut !== undefined) updateData.digestOptOut = digestOptOut
+    if (inactivityOptOut !== undefined) updateData.inactivityOptOut = inactivityOptOut
+    if (digestDay !== undefined) updateData.digestDay = digestDay
+    if (digestTime !== undefined) updateData.digestTime = digestTime
+    if (digestTimezone !== undefined) updateData.digestTimezone = digestTimezone
+
     const saved = await prisma.parentProfile.upsert({
       where: { userId },
-      create: upsertData,
-      update: upsertData,
+      create: createData,
+      update: updateData,
     })
 
-    return NextResponse.json({ ok: true, profile: saved })
+    // Optional: batch update per-child preferences if provided in the request body.
+    // Body shape: { children: [{ id: string, excludeFromParentReport?: boolean, inactivityOptOut?: boolean }] }
+    const childrenUpdates = (body as any)?.children
+    const updatedChildren: Array<{ id: string; excludeFromParentReport?: boolean; inactivityOptOut?: boolean }> = []
+    if (childrenUpdates !== undefined) {
+      if (!Array.isArray(childrenUpdates)) {
+        return NextResponse.json({ error: 'invalid_children' }, { status: 400 })
+      }
+
+      for (const c of childrenUpdates) {
+        const studentId = typeof c?.id === 'string' ? c.id.trim() : ''
+        const exclude = c?.excludeFromParentReport === undefined ? undefined : Boolean(c.excludeFromParentReport)
+        const inact = c?.inactivityOptOut === undefined ? undefined : Boolean(c.inactivityOptOut)
+        if (!studentId) continue
+        if (exclude === undefined && inact === undefined) continue
+
+        try {
+          const data: any = {}
+          if (exclude !== undefined) data.excludeFromParentReport = exclude
+          if (inact !== undefined) data.inactivityOptOut = inact
+
+          const updated = await prisma.parentStudent.update({
+            where: { parentId_studentId: { parentId: userId, studentId } },
+            data,
+          })
+          // non-fatal audit log
+          prisma.auditLog.create({
+            data: {
+              adminId: userId,
+              targetEntity: 'ParentStudent',
+              targetId: updated.id,
+              action: null,
+              details: { action: 'update_parent_child_preferences', changes: data },
+            },
+          }).catch(() => {})
+
+          updatedChildren.push({ id: studentId, excludeFromParentReport: updated.excludeFromParentReport, inactivityOptOut: updated.inactivityOptOut })
+        } catch (err) {
+          logger.warn('POST /api/parent/settings: update child preference failed', { parentId: userId, studentId, error: String(err) })
+          continue
+        }
+      }
+    }
+
+    return NextResponse.json({ ok: true, profile: saved, updatedChildren })
   } catch (err) {
     logger.error('POST /api/parent/settings error', { className: 'api.parent.settings', methodName: 'POST', error: err })
     return NextResponse.json({ error: 'server_error' }, { status: 500 })

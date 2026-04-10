@@ -30,7 +30,7 @@ describe('worker/jobs/inactivityAlert', () => {
   });
 
   it('skips sending when parent has inactivityOptOut', async () => {
-    const redisMock = { set: jest.fn().mockResolvedValue(null), setex: jest.fn().mockResolvedValue('OK') };
+    const redisMock = { set: jest.fn().mockResolvedValue(null), setex: jest.fn().mockResolvedValue('OK'), get: jest.fn().mockResolvedValue(null) };
     jest.doMock('@/lib/redis', () => ({ getRedis: () => redisMock }));
     jest.doMock('@/lib/logger', () => ({ logger: { info: jest.fn(), warn: jest.fn(), error: jest.fn() } }));
 
@@ -63,7 +63,7 @@ describe('worker/jobs/inactivityAlert', () => {
 
   it('skips when a lock cannot be acquired (suppression or concurrent run)', async () => {
     // Simulate inability to acquire short lock (SET NX returns null)
-    const redisMock = { set: jest.fn().mockResolvedValue(null), setex: jest.fn().mockResolvedValue('OK'), del: jest.fn().mockResolvedValue(0) };
+    const redisMock = { set: jest.fn().mockResolvedValue(null), setex: jest.fn().mockResolvedValue('OK'), del: jest.fn().mockResolvedValue(0), get: jest.fn().mockResolvedValue(null) };
     jest.doMock('@/lib/redis', () => ({ getRedis: () => redisMock }));
     jest.doMock('@/lib/logger', () => ({ logger: { info: jest.fn(), warn: jest.fn(), error: jest.fn() } }));
 
@@ -112,6 +112,38 @@ describe('worker/jobs/inactivityAlert', () => {
               excludeFromParentReport: true,
               isPaused: false,
               parent: { id: 'p3', email: 'p3@example.test', phone: null, name: 'Parent3', parentProfile: { digestOptOut: false } },
+            },
+          ]),
+        },
+      },
+    }));
+
+    const { runInactivityAlerts } = await import('../../../worker/jobs/inactivityAlert');
+    const sent = await runInactivityAlerts();
+
+    expect(sendMock).not.toHaveBeenCalled();
+    expect(sent).toBe(0);
+  });
+
+  it('skips when ParentStudent.inactivityOptOut is true (per-child)', async () => {
+    const redisMock = { get: jest.fn().mockResolvedValue(null), setex: jest.fn().mockResolvedValue('OK') };
+    jest.doMock('@/lib/redis', () => ({ getRedis: () => redisMock }));
+    jest.doMock('@/lib/logger', () => ({ logger: { info: jest.fn(), warn: jest.fn(), error: jest.fn() } }));
+
+    const sendMock = jest.fn().mockResolvedValue({ sent: true });
+    jest.doMock('@/lib/notifications/delivery', () => ({ sendParentMilestoneNotification: sendMock }));
+
+    jest.doMock('@/lib/prisma', () => ({
+      prisma: {
+        user: { findMany: jest.fn().mockResolvedValue([{ id: 's5', name: 'Ishaan' }]) },
+        parentStudent: {
+          findMany: jest.fn().mockResolvedValue([
+            {
+              studentId: 's5',
+              excludeFromParentReport: false,
+              isPaused: false,
+              inactivityOptOut: true,
+              parent: { id: 'p5', email: 'p5@example.test', phone: null, name: 'Parent5', parentProfile: { digestOptOut: false } },
             },
           ]),
         },
