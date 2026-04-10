@@ -108,6 +108,22 @@ export async function updateStreak(studentId: string): Promise<{
       },
     })
 
+    // Clear any parent inactivity suppression keys so alerts reset if the student
+    // studies after an inactivity alert was sent. This ensures "If student
+    // studies after first alert, alert resets" behavior.
+    try {
+      const redis = getRedis()
+      if (redis) {
+        const links = await prisma.parentStudent.findMany({ where: { studentId, status: 'active' }, select: { parentId: true } })
+        if (links && links.length > 0) {
+          const keys = links.map((l) => `parent:inactivity:${l.parentId}:${studentId}`)
+          if (keys.length) await redis.del(...keys)
+        }
+      }
+    } catch (err) {
+      logger.error('streak.clearInactivitySuppression.error', { studentId, error: String(err) })
+    }
+
     return {
       currentStreak,
       longestStreak,
