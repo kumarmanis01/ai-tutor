@@ -3,20 +3,27 @@
  *
  * Server component. Never paywalled -- all students see this regardless of subscription.
  *
+ * URL params:
+ *   ?subject=<name>  -- filter chapter mastery + session history to one subject
+ *   ?days=<7|30|90|0>  -- time window (0 = all time, default 30)
+ *
  * Sections (top to bottom):
+ *   0. Filter bar (ProgressFilters client component)
  *   1. AI Narrative Insight ("Vidya's insight") -- client widget, fetches independently
- *   2. Sessions Chart -- last 30 days grouped into 4 weeks, pure CSS bars
- *   3. Chapter Mastery Bars -- per subject, ordered lowest mastery first
- *   4. Test Score History -- last 10 completed sessions
+ *   2. Sessions Chart -- bucketed into 4 bars for the selected period
+ *   3. Chapter Mastery Bars -- per subject (or single subject when filtered)
+ *   4. Test Score History -- last 10 sessions in selected period
  *
  * Desktop layout (md:): left 60% = sections 1-2 | right 40% = sections 3-4
  *
  * EDIT LOG:
  * - 2026-03-15 | claude | created for Task 29 progress report page
+ * - 2026-04-07 | claude | F-STU-033 AC-02: subject + time-range filters via URL params
  */
 
 import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
+import { Suspense } from 'react';
 import { requireActiveSession } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { computeReadinessScore } from '@/lib/student/examReadiness';
@@ -29,6 +36,9 @@ import ChapterMasteryBars, {
 import TestScoreHistory, {
   type SessionRow,
 } from '@/components/student/progress/TestScoreHistory';
+import ProgressFilters from '@/components/student/progress/ProgressFilters';
+import ScoreTrendGraph, { type TrendPoint } from '@/components/student/progress/ScoreTrendGraph';
+import { barConfig, buildBucketCounts } from '@/lib/student/progressReport';
 
 export const dynamic = 'force-dynamic';
 
@@ -40,37 +50,51 @@ export const metadata: Metadata = {
 /** Estimate minutes per session (no explicit duration stored). */
 const AVG_SESSION_MINUTES = 20;
 
-/** Group 30-day sessions into 4 weekly buckets (index 0 = oldest week). */
-function buildWeeklyCounts(sessions: { startedAt: Date }[]): number[] {
-  const counts = [0, 0, 0, 0];
-  const now = Date.now();
-  for (const s of sessions) {
-    const daysAgo = Math.floor((now - s.startedAt.getTime()) / 86_400_000);
-    const weekIdx = Math.min(3, Math.floor(daysAgo / 7)); // most recent = 0
-    counts[3 - weekIdx]++; // reverse so index 0 = oldest
-  }
-  return counts;
-}
-
-export default async function ProgressPage() {
+export default async function ProgressPage({
+  searchParams,
+}: {
+  searchParams?: { subject?: string; days?: string };
+}) {
   const authSession = await requireActiveSession();
   if (!authSession) redirect('/');
 
   const userId = (authSession.user as { id: string }).id;
-  const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
 
-  // ── Parallel: student profile + chart sessions + completed sessions ─────────
-  const [studentProfile, chartSessions, completedSessions] = await Promise.all([
+  // Parse filter params -- default 30 days, no subject filter.
+  const rawDays = Number(searchParams?.days ?? 30);
+  const days = [7, 30, 90, 0].includes(rawDays) ? rawDays : 30;
+  const activeSubject = searchParams?.subject ?? '';
+
+  const cfg = barConfig(days);
+  const sinceDate = cfg.fetchDays > 0
+    ? new Date(Date.now() - cfg.fetchDays * 24 * 60 * 60 * 1000)
+    : null;
+
+  // ── Parallel: student profile + chart sessions + completed sessions + trend ──
+  const sessionDateFilter = sinceDate ? { gte: sinceDate } : undefined;
+
+  const subjectFilter = activeSubject
+    ? { subject: { equals: activeSubject, mode: 'insensitive' as const } }
+    : {};
+
+  const [studentProfile, chartSessions, completedSessions, trendRows] = await Promise.all([
     prisma.user.findUnique({
       where: { id: userId },
       select: { subjects: true },
     }),
     prisma.structuredSession.findMany({
-      where: { studentId: userId, startedAt: { gte: thirtyDaysAgo } },
+      where: {
+        studentId: userId,
+        ...(sessionDateFilter ? { startedAt: sessionDateFilter } : {}),
+      },
       select: { startedAt: true },
     }),
     prisma.structuredSession.findMany({
-      where: { studentId: userId, completedAt: { not: null } },
+      where: {
+        studentId: userId,
+        completedAt: { not: null },
+        ...(sessionDateFilter ? { completedAt: sessionDateFilter } : {}),
+      },
       select: {
         id: true,
         startedAt: true,
@@ -79,6 +103,27 @@ export default async function ProgressPage() {
         topic: { select: { name: true } },
       },
       orderBy: { completedAt: 'desc' },
+      take: 10,
+    }),
+    // AC-07: last 10 chapter practice test scores, oldest-first for the trend graph.
+    // A chapter practice test has at least one AttemptQuestion whose question has a
+    // non-null chapter.  Subject filter applied when ?subject= param is set.
+    prisma.testResult.findMany({
+      where: {
+        studentId: userId,
+        score: { not: null },
+        finishedAt: { not: null },
+        AttemptQuestions: {
+          some: {
+            question: {
+              chapter: { not: null },
+              ...subjectFilter,
+            },
+          },
+        },
+      },
+      select: { score: true, finishedAt: true },
+      orderBy: { finishedAt: 'asc' },
       take: 10,
     }),
   ]);
@@ -95,9 +140,16 @@ export default async function ProgressPage() {
       })
     : [];
 
+  // Apply subject filter to the mastery query.
+  const filteredSubjectDefs = activeSubject
+    ? subjectDefs.filter(
+        (s) => s.name.toLowerCase() === activeSubject.toLowerCase(),
+      )
+    : subjectDefs;
+
   // ── Readiness per subject (parallel, Redis-cached) ─────────────────────────
   const readinessResults = await Promise.all(
-    subjectDefs.map((subj) => computeReadinessScore(userId, subj.id)),
+    filteredSubjectDefs.map((subj) => computeReadinessScore(userId, subj.id)),
   );
 
   // ── Weakest concept per chapter (for chapter row links) ────────────────────
@@ -121,7 +173,6 @@ export default async function ProgressPage() {
       conceptStates.map((s) => [s.conceptId, s.masteryScore]),
     );
 
-    // Group concepts by chapterId
     const conceptsByChapter = new Map<string, string[]>();
     for (const c of concepts) {
       const chId = c.topic?.chapterId;
@@ -130,7 +181,6 @@ export default async function ProgressPage() {
       conceptsByChapter.get(chId)!.push(c.id);
     }
 
-    // Find lowest-mastery concept per chapter
     for (const [chapterId, conceptIds] of conceptsByChapter) {
       if (conceptIds.length === 0) continue;
       const sorted = conceptIds
@@ -144,7 +194,7 @@ export default async function ProgressPage() {
   }
 
   // ── Assemble subject mastery data ───────────────────────────────────────────
-  const subjectMasteryData: SubjectMasteryData[] = subjectDefs.map((subj, idx) => {
+  const subjectMasteryData: SubjectMasteryData[] = filteredSubjectDefs.map((subj, idx) => {
     const readiness = readinessResults[idx];
     const chapters: ChapterRow[] = readiness.chapters
       .map((ch) => ({
@@ -154,13 +204,13 @@ export default async function ProgressPage() {
         boardWeightPct: ch.boardWeightPct,
         weakestConceptId: chapterWeakestConceptMap.get(ch.chapterId) ?? null,
       }))
-      .sort((a, b) => a.masteryScore - b.masteryScore); // lowest first
+      .sort((a, b) => a.masteryScore - b.masteryScore);
 
     return { subjectId: subj.id, subjectName: subj.name, chapters };
   });
 
-  // ── Weekly chart ────────────────────────────────────────────────────────────
-  const weeklyCounts = buildWeeklyCounts(chartSessions);
+  // ── Chart ───────────────────────────────────────────────────────────────────
+  const bucketCounts = buildBucketCounts(chartSessions, cfg, Date.now());
   const totalSessions = chartSessions.length;
   const totalMinutes = totalSessions * AVG_SESSION_MINUTES;
 
@@ -180,19 +230,38 @@ export default async function ProgressPage() {
     };
   });
 
+  // ── Chapter practice test trend (AC-07) ────────────────────────────────────
+  const trendData: TrendPoint[] = trendRows.map((r) => ({
+    date: r.finishedAt!.toISOString(),
+    score: Math.round(r.score!),
+  }));
+
   // ── Render ──────────────────────────────────────────────────────────────────
   return (
     <main className="max-w-5xl mx-auto px-4 py-6">
-      <h1 className="text-xl font-bold text-gray-900 dark:text-gray-50 mb-6">My Progress</h1>
+      <h1 className="text-xl font-bold text-gray-900 dark:text-gray-50 mb-4">My Progress</h1>
+
+      {/* Filter bar */}
+      <div className="mb-6">
+        <Suspense>
+          <ProgressFilters
+            subjects={subjectNames}
+            activeSubject={activeSubject}
+            activeDays={days}
+          />
+        </Suspense>
+      </div>
 
       <div className="flex flex-col gap-6 md:flex-row md:items-start">
         {/* Left column -- narrative + chart (60%) */}
         <div className="flex flex-col gap-6 md:w-3/5">
           <AiNarrativeWidget />
           <SessionsChart
-            weeklyCounts={weeklyCounts}
+            weeklyCounts={bucketCounts}
             totalSessions={totalSessions}
             totalMinutes={totalMinutes}
+            barLabels={cfg.labels}
+            periodLabel={cfg.periodLabel}
           />
         </div>
 
@@ -200,6 +269,13 @@ export default async function ProgressPage() {
         <div className="flex flex-col gap-6 md:w-2/5">
           <ChapterMasteryBars subjects={subjectMasteryData} />
           <TestScoreHistory sessions={sessionRows} />
+          {/* AC-07: chapter practice test score trend */}
+          <article className="rounded-2xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-5">
+            <h2 className="text-sm font-semibold text-gray-800 dark:text-gray-100 mb-3">
+              Practice test trend
+            </h2>
+            <ScoreTrendGraph data={trendData} />
+          </article>
         </div>
       </div>
     </main>

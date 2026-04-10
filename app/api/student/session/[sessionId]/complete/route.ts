@@ -112,7 +112,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ session
         newLevel,
         masteryDelta,
         masteryAfter,
-        badgesEarned: badgesEarned.map((b) => ({ name: b.name, description: b.description })),
+        badgesEarned: badgesEarned.map((b) => ({ name: b.name, description: b.description, icon: b.icon })),
         aiInsight,
         sessionDurationMinutes,
         correctAnswers,

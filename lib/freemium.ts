@@ -1,7 +1,8 @@
 import { prisma } from '@/lib/prisma'
 import { isPremiumUser } from '@/lib/subscription'
 
-export const FREE_TIER_SESSION_LIMIT = 10
+// AC-01 (F-STU-040): 3 AI tutoring sessions per month on free tier
+export const FREE_TIER_SESSION_LIMIT = 3
 
 export interface FreeTierStatus {
   allowed: boolean
@@ -135,6 +136,52 @@ export async function checkFreeTierCap(studentId: string): Promise<FreeTierStatu
     }
   } catch {
     return fallback
+  }
+}
+
+/**
+ * Return the number of days until the 1st of next month (calendar reset day).
+ */
+export function daysUntilFreeTierReset(): number {
+  const now = new Date()
+  const firstOfNextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1)
+  return Math.ceil((firstOfNextMonth.getTime() - now.getTime()) / 86_400_000)
+}
+
+/**
+ * Find all free-tier students who have used at least 1 session this period
+ * and whose reset is exactly `targetDaysOut` days away.
+ * Returns array of studentIds.
+ * Never throws -- returns [] on error.
+ */
+export async function getStudentsNearingReset(targetDaysOut: number = 3): Promise<string[]> {
+  try {
+    const daysLeft = daysUntilFreeTierReset()
+    if (daysLeft !== targetDaysOut) return []
+
+    const currentPeriodStart = getCurrentPeriodStart()
+
+    const usageRows = await prisma.freeTierUsage.findMany({
+      where: {
+        periodStart: currentPeriodStart,
+        sessionsUsed: { gt: 0 },
+      },
+      select: { studentId: true },
+    })
+
+    if (usageRows.length === 0) return []
+
+    const studentIds = usageRows.map((r) => r.studentId)
+
+    // Only notify students who are still on the free tier
+    const freeStudents = await prisma.user.findMany({
+      where: { id: { in: studentIds }, subscriptionStatus: 'free' },
+      select: { id: true },
+    })
+
+    return freeStudents.map((u) => u.id)
+  } catch {
+    return []
   }
 }
 

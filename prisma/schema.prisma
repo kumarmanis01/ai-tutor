@@ -106,7 +106,14 @@ model User {
   studentFeatureFlags         StudentFeatureFlag[]         @relation("StudentFeatureFlags")
   studentXpRecords            StudentXP[]
   userBadges                  UserBadge[]
+  mockExamAttempts            MockExamAttempt[]  /// F-STU-021: back-relation
   learningPlans               LearningPlan[]
+  /// AC-06 (F-STU-030): keys of unlocked cosmetic items (avatar frames, profile themes).
+  /// Populated by unlockCosmeticsForStreak() when streak milestones are reached.
+  cosmeticUnlocks             String[]           @default([])
+  /// AC-06 (F-STU-004): self-reported learning style ('visual' | 'verbal' | 'practice' | 'mixed').
+  /// Used by Vidya to adapt explanations. Collected during onboarding profile setup.
+  learningStyle               String?
   consents                    Consent[]
   parentProfile               ParentProfile?
   doubtEscalations            DoubtEscalation[]
@@ -114,6 +121,7 @@ model User {
   pushSubscriptions           PushSubscriptionRecord[]
   deletionRequest             DeletionRequest?
   diagnosticSessions          DiagnosticSession[]
+  studentMisconceptions       StudentMisconception[]
 }
 
 model PaymentOrder {
@@ -1215,9 +1223,10 @@ model Question {
   status        QuestionStatus        @default(ACTIVE)
   createdAt     DateTime              @default(now())
   updatedAt     DateTime              @updatedAt
-  topic         TopicDef?             @relation(fields: [topicId], references: [id])
-  attempts      AttemptQuestion[]
-  sessionFlags  SessionQuestionFlag[]
+  topic            TopicDef?             @relation(fields: [topicId], references: [id])
+  attempts         AttemptQuestion[]
+  sessionFlags     SessionQuestionFlag[]
+  mockExamQuestions MockExamQuestion[]   /// F-STU-021: back-relation
 
   @@index([topicId])
   @@index([status])
@@ -1284,6 +1293,7 @@ model SubjectDef {
   concepts            Concept[]
   boardSubjectConfigs BoardSubjectConfig[]
   diagnosticSessions  DiagnosticSession[]
+  mockExams           MockExam[]           /// F-STU-021: back-relation
 
   @@unique([classId, slug], name: "classId_slug")
 }
@@ -1747,16 +1757,36 @@ model FreeTierUsage {
 }
 
 model Misconception {
-  id              String   @id @default(cuid())
+  id              String                 @id @default(cuid())
   subjectId       String
   conceptId       String
   name            String
   description     String
   triggerPatterns String[]
   correction      String
-  createdAt       DateTime @default(now())
+  createdAt       DateTime               @default(now())
+  studentDetections StudentMisconception[]
 
   @@index([subjectId, conceptId])
+}
+
+/// AC-04 (F-STU-013): per-student misconception occurrence log.
+/// Upserted each time a known misconception is detected in a tutor turn.
+/// Injected into future session prompts for the same concept cluster.
+model StudentMisconception {
+  id              String        @id @default(cuid())
+  studentId       String
+  misconceptionId String
+  firstDetectedAt DateTime
+  lastSeenAt      DateTime
+  occurrenceCount Int           @default(1)
+
+  student         User          @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  misconception   Misconception @relation(fields: [misconceptionId], references: [id], onDelete: Cascade)
+
+  @@unique([studentId, misconceptionId])
+  @@index([studentId])
+  @@index([studentId, misconceptionId])
 }
 
 model ApprovalAudit {
@@ -2479,4 +2509,94 @@ model NotificationLog {
   adminId     String?
 
   @@index([sentAt])
+}
+
+// ── F-STU-021: Full Syllabus Mock Exam ────────────────────────────────────────
+
+/// Board-pattern full mock exam. Each exam spans the full syllabus for a
+/// subject/grade/board and contains 3 sections (A=MCQ, B=short, C=long).
+model MockExam {
+  id          String    @id @default(cuid())
+  title       String
+  subjectId   String
+  grade       Int
+  board       String
+  totalMarks  Int       @default(80)
+  durationMin Int       @default(180)
+  version     Int       @default(1)
+  /// active | archived
+  status      String    @default("active")
+  createdAt   DateTime  @default(now())
+
+  subject  SubjectDef          @relation(fields: [subjectId], references: [id])
+  sections MockExamSection[]
+  attempts MockExamAttempt[]
+
+  @@index([subjectId, grade, board, status])
+}
+
+model MockExamSection {
+  id           String  @id @default(cuid())
+  mockExamId   String
+  title        String
+  order        Int
+  totalMarks   Int
+  instructions String?
+
+  mockExam        MockExam                 @relation(fields: [mockExamId], references: [id])
+  questions       MockExamQuestion[]
+  sectionAttempts MockExamSectionAttempt[]
+
+  @@index([mockExamId])
+}
+
+model MockExamQuestion {
+  id         String @id @default(cuid())
+  sectionId  String
+  questionId String
+  marks      Int    @default(1)
+  order      Int
+
+  section  MockExamSection @relation(fields: [sectionId], references: [id])
+  question Question        @relation(fields: [questionId], references: [id])
+
+  @@index([sectionId])
+  @@index([questionId])
+}
+
+/// One student attempt at a full mock exam.
+model MockExamAttempt {
+  id           String    @id @default(cuid())
+  mockExamId   String
+  studentId    String
+  startedAt    DateTime  @default(now())
+  finishedAt   DateTime?
+  scorePercent Float?
+  percentile   Float?
+  priorityPlan String?   /// AI-generated 2-week study plan (Markdown)
+  rawResult    Json?     /// { sectionId: { score, total, timeSpentSeconds } }
+
+  mockExam        MockExam                 @relation(fields: [mockExamId], references: [id])
+  student         User                     @relation(fields: [studentId], references: [id])
+  sectionAttempts MockExamSectionAttempt[]
+
+  @@index([studentId])
+  @@index([mockExamId])
+}
+
+/// Per-section answer record within a mock exam attempt.
+model MockExamSectionAttempt {
+  id          String    @id @default(cuid())
+  attemptId   String
+  sectionId   String
+  submittedAt DateTime?
+  scorePercent Float?
+  /// [{ questionId, answer, timeSpentSeconds }]
+  answers     Json?
+
+  attempt MockExamAttempt @relation(fields: [attemptId], references: [id])
+  section MockExamSection @relation(fields: [sectionId], references: [id])
+
+  @@unique([attemptId, sectionId])
+  @@index([attemptId])
 }

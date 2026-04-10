@@ -4,6 +4,7 @@ import type { Question, TestResult } from '@prisma/client';
 const MasteryLevel = { beginner: 'beginner', intermediate: 'intermediate', advanced: 'advanced', expert: 'expert' } as const;
 type MasteryLevel = (typeof MasteryLevel)[keyof typeof MasteryLevel];
 import { createAIClient } from '@/lib/aiContext';
+import { callTutorLLM } from '@/lib/callLLM';
 import { logger } from '@/lib/logger';
 
 /**
@@ -28,12 +29,51 @@ export type QuestionFilters = {
 };
 
 /**
+ * Returns question IDs the student has seen for the given chapter+subject in the past
+ * `windowDays` days (default 90). Used by selectQuestionsWithMix to avoid repeating
+ * recently seen questions (F-STU-020 AC-01).
+ */
+export async function getRecentlyUsedQuestionIds(
+  studentId: string,
+  chapter: string,
+  subject: string,
+  windowDays = 90,
+): Promise<Set<string>> {
+  const since = new Date();
+  since.setDate(since.getDate() - windowDays);
+  const rows = await prisma.attemptQuestion.findMany({
+    where: {
+      testResult: {
+        studentId,
+        createdAt: { gte: since },
+      },
+      question: {
+        chapter: { equals: chapter, mode: 'insensitive' },
+        subject: { equals: subject, mode: 'insensitive' },
+      },
+    },
+    select: { questionId: true },
+  });
+  return new Set(rows.map((r) => r.questionId));
+}
+
+/**
  * Selects questions from the bank using simple weighted filters.
  * Falls back to GeneratedQuestion (hydration pipeline) if the Question table is empty.
+ *
+ * @param excludeIds  Optional set of question IDs to skip (AC-01 90-day uniqueness).
  */
-export async function selectQuestions(filters: QuestionFilters, count: number): Promise<Question[]> {
+export async function selectQuestions(
+  filters: QuestionFilters,
+  count: number,
+  excludeIds?: Set<string>,
+): Promise<Question[]> {
+  const excludeClause =
+    excludeIds && excludeIds.size > 0 ? { id: { notIn: Array.from(excludeIds) } } : {};
+
   const where: any = {
     status: 'ACTIVE' as const, // quarantined questions excluded -- do not remove this filter
+    ...excludeClause,
     // Use case-insensitive matching for free-text fields to avoid slug vs display-name mismatches.
     ...(filters.subject ? { subject: { equals: filters.subject, mode: 'insensitive' } } : {}),
     ...(filters.topicId ? { topicId: filters.topicId } : {}),
@@ -60,7 +100,11 @@ export async function selectQuestions(filters: QuestionFilters, count: number): 
   if (pool.length < count && filters.subject) {
     pool = await prisma.question.findMany({
       // quarantined questions excluded -- do not remove this filter
-      where: { status: 'ACTIVE', subject: { equals: filters.subject, mode: 'insensitive' } },
+      where: {
+        status: 'ACTIVE',
+        ...excludeClause,
+        subject: { equals: filters.subject, mode: 'insensitive' },
+      },
       orderBy: [{ difficulty: 'asc' }, { updatedAt: 'desc' }],
       take: count * 3,
     });
@@ -253,6 +297,155 @@ export async function ensureQuestions(filters: QuestionFilters, count: number) {
   const needed = count - bank.length;
   const aiNew = await generateQuestionsAI(filters, needed);
   return [...bank, ...aiNew].slice(0, count);
+}
+
+// F-STU-020 AC-03: board-calibrated time-per-mark ratio.
+// marks awarded per question type (curriculum standard)
+const MARKS_PER_TYPE: Record<string, number> = {
+  mcq: 1,
+  short: 2,
+  long_answer: 5,
+  long: 5,
+  essay: 5,
+};
+
+// seconds per mark per board -- CBSE: 1 mark = 1 min; ICSE gives 20% more time per mark
+const BOARD_TIME_PER_MARK_SECONDS: Record<string, number> = {
+  cbse: 60,
+  icse: 72,
+  state: 60,
+};
+const DEFAULT_TIME_PER_MARK_SECONDS = 60;
+
+function timeForType(type: string, board?: string | null): number {
+  const marks = MARKS_PER_TYPE[type.toLowerCase()] ?? 2;
+  const boardKey = (board ?? '').toLowerCase().replace(/\s+/g, '');
+  const secPerMark = BOARD_TIME_PER_MARK_SECONDS[boardKey] ?? DEFAULT_TIME_PER_MARK_SECONDS;
+  return marks * secPerMark;
+}
+
+/**
+ * Select questions with a 40 / 30 / 30 type mix (MCQ / short / long_answer).
+ * Fractions are floored; any remainder goes to the short bucket.
+ * Each bucket is fetched independently; remaining slots are backfilled from
+ * whichever bucket has surplus questions so count is always honoured.
+ * Returns questions and the computed time-limit for the whole test.
+ *
+ * Used exclusively for chapter practice tests (F-STU-020 AC-02/AC-03).
+ *
+ * @param studentId  When provided, questions seen in the last 90 days are excluded (AC-01).
+ */
+export async function selectQuestionsWithMix(
+  filters: Omit<QuestionFilters, 'type'>,
+  count: number,
+  studentId?: string,
+): Promise<{ questions: Question[]; timeLimitSeconds: number }> {
+  // AC-01: fetch recently seen question IDs to avoid repeating them within 90 days.
+  const excludeIds: Set<string> =
+    studentId && filters.chapter && filters.subject
+      ? await getRecentlyUsedQuestionIds(studentId, filters.chapter, filters.subject)
+      : new Set<string>();
+
+  const mcqTarget = Math.floor(count * 0.4)
+  const longTarget = Math.floor(count * 0.3)
+  const shortTarget = count - mcqTarget - longTarget // absorbs remainder
+
+  const [mcqPool, shortPool, longPool] = await Promise.all([
+    selectQuestions({ ...filters, type: 'mcq' }, mcqTarget * 3, excludeIds),
+    selectQuestions({ ...filters, type: 'short' }, shortTarget * 3, excludeIds),
+    selectQuestions({ ...filters, type: 'long_answer' }, longTarget * 3, excludeIds),
+  ])
+
+  function pickN(pool: Question[], n: number, exclude: Set<string>): Question[] {
+    const available = pool.filter((q) => !exclude.has(q.id))
+    const shuffled = [...available].sort(() => Math.random() - 0.5)
+    return shuffled.slice(0, n)
+  }
+
+  const used = new Set<string>()
+
+  const mcqSelected = pickN(mcqPool, mcqTarget, used)
+  mcqSelected.forEach((q) => used.add(q.id))
+
+  const longSelected = pickN(longPool, longTarget, used)
+  longSelected.forEach((q) => used.add(q.id))
+
+  let shortSelected = pickN(shortPool, shortTarget, used)
+  shortSelected.forEach((q) => used.add(q.id))
+
+  // Backfill: if long_answer pool was sparse, pull extras from short pool.
+  if (longSelected.length < longTarget) {
+    const extra = pickN(shortPool, longTarget - longSelected.length, used)
+    extra.forEach((q) => used.add(q.id))
+    // Push extras into shortSelected so they appear in the set; caller sees combined list.
+    shortSelected = [...shortSelected, ...extra]
+  }
+
+  // Final backfill: if still below count, draw from whichever pool has surplus.
+  const all = [...mcqSelected, ...longSelected, ...shortSelected]
+  if (all.length < count) {
+    const surplus = pickN([...mcqPool, ...shortPool, ...longPool], count - all.length, used)
+    surplus.forEach((q) => used.add(q.id))
+    all.push(...surplus)
+  }
+
+  const questions = all.slice(0, count)
+  // AC-03: board-calibrated seconds = marks_per_type * board_time_per_mark
+  const timeLimitSeconds = questions.reduce(
+    (acc, q) => acc + timeForType(q.type, filters.board),
+    0,
+  )
+
+  return { questions, timeLimitSeconds }
+}
+
+const EXPLANATION_TIMEOUT_MS = 8_000
+
+/**
+ * Enrich wrong-answer graded results with LLM-generated explanations.
+ * Uses a single batch prompt for all wrong answers without an existing explanation.
+ * Returns the original array (with explanations filled in) unchanged on any error.
+ * Never throws.
+ */
+export async function addLLMExplanations(
+  graded: GradedResult[],
+  studentId: string,
+  attemptId: string,
+): Promise<GradedResult[]> {
+  const wrong = graded.filter((g) => !g.correct && !g.explanation && g.questionText)
+  if (wrong.length === 0) return graded
+
+  const lines = wrong.map(
+    (g, i) =>
+      `${i + 1}. questionId: "${g.questionId}"\n   Question: ${g.questionText}\n   Correct answer: ${g.correctAnswer ?? '(see working)'}`,
+  )
+
+  const prompt = [
+    'For each wrong answer below, write a brief 1-2 sentence explanation that helps the student understand the correct answer.',
+    'Return ONLY a valid JSON array: [{ "questionId": "...", "explanation": "..." }, ...]',
+    'Tone: encouraging, forward-looking. Never say "you were wrong" or "you failed".',
+    '',
+    ...lines,
+  ].join('\n')
+
+  try {
+    const result = await callTutorLLM(
+      prompt,
+      { callType: 'tutor:eval', studentId, sessionId: attemptId },
+      EXPLANATION_TIMEOUT_MS,
+    )
+    const text = (result?.content ?? '').trim()
+    const match = text.match(/\[[\s\S]*\]/)
+    if (!match) return graded
+    const parsed: Array<{ questionId: string; explanation: string }> = JSON.parse(match[0])
+    const byId = new Map(parsed.map((e) => [e.questionId, e.explanation]))
+    return graded.map((g) => ({
+      ...g,
+      explanation: g.explanation ?? byId.get(g.questionId),
+    }))
+  } catch {
+    return graded
+  }
 }
 
 export type GradedResult = {

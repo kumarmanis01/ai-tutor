@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { getServerSessionForHandlers } from '@/lib/session'
 import { prisma } from '@/lib/prisma'
 import { logger } from '@/lib/logger'
+import { getRevisionMinutesToday, isCapReached } from '@/lib/student/revisionCap'
 
 export const dynamic = 'force-dynamic'
 
@@ -24,6 +25,9 @@ export async function GET(req: Request) {
     }
 
     const now = new Date()
+
+    const minutesUsedToday = await getRevisionMinutesToday(userId)
+    const capReached = isCapReached(minutesUsedToday)
 
     const [states, totalDue] = await Promise.all([
       prisma.studentConceptState.findMany({
@@ -73,6 +77,8 @@ export async function GET(req: Request) {
       {
         revisions,
         totalDue,
+        capReached,
+        minutesUsedToday,
       },
       { status: 200 },
     )

@@ -18,6 +18,7 @@ export default function ChapterTests(props: {
 }) {
   const [attemptId, setAttemptId] = useState<string | null>(null);
   const [questions, setQuestions] = useState<any[]>([]);
+  const [timeLimitSeconds, setTimeLimitSeconds] = useState<number | undefined>(undefined);
 
   const chapters = props.chapters ?? [];
 
@@ -34,9 +35,10 @@ export default function ChapterTests(props: {
     }
     setAttemptId(json.attemptId);
     setQuestions(json.questions ?? []);
+    setTimeLimitSeconds(json.timeLimitSeconds ?? undefined);
   }
 
-  if (attemptId) return <AttemptRunner attemptId={attemptId} initialQuestions={questions} />;
+  if (attemptId) return <AttemptRunner attemptId={attemptId} initialQuestions={questions} timeLimitSeconds={timeLimitSeconds} />;
 
   if (chapters.length === 0) return null;
 
