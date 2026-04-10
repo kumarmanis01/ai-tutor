@@ -92,4 +92,68 @@ describe('worker/jobs/inactivityAlert', () => {
     expect(redisMock.get).toHaveBeenCalled();
     expect(sent).toBe(0);
   });
+
+  it('skips when ParentStudent.excludeFromParentReport is true', async () => {
+    const redisMock = { get: jest.fn().mockResolvedValue(null), setex: jest.fn().mockResolvedValue('OK') };
+    jest.doMock('@/lib/redis', () => ({ getRedis: () => redisMock }));
+    jest.doMock('@/lib/logger', () => ({ logger: { info: jest.fn(), warn: jest.fn(), error: jest.fn() } }));
+
+    const sendMock = jest.fn().mockResolvedValue({ sent: true });
+    jest.doMock('@/lib/notifications/delivery', () => ({ sendParentMilestoneNotification: sendMock }));
+
+    jest.doMock('@/lib/prisma', () => ({
+      prisma: {
+        user: { findMany: jest.fn().mockResolvedValue([{ id: 's3', name: 'Nisha' }]) },
+        parentStudent: {
+          findMany: jest.fn().mockResolvedValue([
+            {
+              studentId: 's3',
+              excludeFromParentReport: true,
+              isPaused: false,
+              parent: { id: 'p3', email: 'p3@example.test', phone: null, name: 'Parent3', parentProfile: { digestOptOut: false } },
+            },
+          ]),
+        },
+      },
+    }));
+
+    const { runInactivityAlerts } = await import('../../../worker/jobs/inactivityAlert');
+    const sent = await runInactivityAlerts();
+
+    expect(sendMock).not.toHaveBeenCalled();
+    expect(sent).toBe(0);
+  });
+
+  it('skips when ParentStudent.isPaused with pausedUntil in future', async () => {
+    const future = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+    const redisMock = { get: jest.fn().mockResolvedValue(null), setex: jest.fn().mockResolvedValue('OK') };
+    jest.doMock('@/lib/redis', () => ({ getRedis: () => redisMock }));
+    jest.doMock('@/lib/logger', () => ({ logger: { info: jest.fn(), warn: jest.fn(), error: jest.fn() } }));
+
+    const sendMock = jest.fn().mockResolvedValue({ sent: true });
+    jest.doMock('@/lib/notifications/delivery', () => ({ sendParentMilestoneNotification: sendMock }));
+
+    jest.doMock('@/lib/prisma', () => ({
+      prisma: {
+        user: { findMany: jest.fn().mockResolvedValue([{ id: 's4', name: 'Kabir' }]) },
+        parentStudent: {
+          findMany: jest.fn().mockResolvedValue([
+            {
+              studentId: 's4',
+              excludeFromParentReport: false,
+              isPaused: true,
+              pausedUntil: future,
+              parent: { id: 'p4', email: 'p4@example.test', phone: null, name: 'Parent4', parentProfile: { digestOptOut: false } },
+            },
+          ]),
+        },
+      },
+    }));
+
+    const { runInactivityAlerts } = await import('../../../worker/jobs/inactivityAlert');
+    const sent = await runInactivityAlerts();
+
+    expect(sendMock).not.toHaveBeenCalled();
+    expect(sent).toBe(0);
+  });
 });
