@@ -29,8 +29,8 @@ describe('worker/jobs/inactivityAlert', () => {
     expect(sent).toBe(0);
   });
 
-  it('skips sending when parent has digestOptOut', async () => {
-    const redisMock = { get: jest.fn().mockResolvedValue(null), setex: jest.fn().mockResolvedValue('OK') };
+  it('skips sending when parent has inactivityOptOut', async () => {
+    const redisMock = { set: jest.fn().mockResolvedValue(null), setex: jest.fn().mockResolvedValue('OK') };
     jest.doMock('@/lib/redis', () => ({ getRedis: () => redisMock }));
     jest.doMock('@/lib/logger', () => ({ logger: { info: jest.fn(), warn: jest.fn(), error: jest.fn() } }));
 
@@ -46,7 +46,7 @@ describe('worker/jobs/inactivityAlert', () => {
               studentId: 's1',
               excludeFromParentReport: false,
               isPaused: false,
-              parent: { id: 'p1', email: 'p@example.test', phone: null, name: 'Parent', parentProfile: { digestOptOut: true } },
+              parent: { id: 'p1', email: 'p@example.test', phone: null, name: 'Parent', parentProfile: { inactivityOptOut: true } },
             },
           ]),
         },
@@ -61,8 +61,9 @@ describe('worker/jobs/inactivityAlert', () => {
     expect(sent).toBe(0);
   });
 
-  it('skips when suppression key exists', async () => {
-    const redisMock = { get: jest.fn().mockResolvedValue('1'), setex: jest.fn().mockResolvedValue('OK') };
+  it('skips when a lock cannot be acquired (suppression or concurrent run)', async () => {
+    // Simulate inability to acquire short lock (SET NX returns null)
+    const redisMock = { set: jest.fn().mockResolvedValue(null), setex: jest.fn().mockResolvedValue('OK'), del: jest.fn().mockResolvedValue(0) };
     jest.doMock('@/lib/redis', () => ({ getRedis: () => redisMock }));
     jest.doMock('@/lib/logger', () => ({ logger: { info: jest.fn(), warn: jest.fn(), error: jest.fn() } }));
 
@@ -78,7 +79,7 @@ describe('worker/jobs/inactivityAlert', () => {
               studentId: 's2',
               excludeFromParentReport: false,
               isPaused: false,
-              parent: { id: 'p2', email: 'p2@example.test', phone: null, name: 'Parent2', parentProfile: { digestOptOut: false } },
+              parent: { id: 'p2', email: 'p2@example.test', phone: null, name: 'Parent2', parentProfile: { inactivityOptOut: false } },
             },
           ]),
         },
@@ -89,7 +90,7 @@ describe('worker/jobs/inactivityAlert', () => {
     const sent = await runInactivityAlerts();
 
     expect(sendMock).not.toHaveBeenCalled();
-    expect(redisMock.get).toHaveBeenCalled();
+    expect(redisMock.set).toHaveBeenCalled();
     expect(sent).toBe(0);
   });
 

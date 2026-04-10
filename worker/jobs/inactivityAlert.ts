@@ -60,7 +60,7 @@ export async function runInactivityAlerts(): Promise<number> {
               email: true,
               phone: true,
               name: true,
-              parentProfile: { select: { digestOptOut: true } },
+              parentProfile: { select: { digestOptOut: true, inactivityOptOut: true } },
             },
           },
         },
@@ -71,10 +71,12 @@ export async function runInactivityAlerts(): Promise<number> {
         // Skip if parent has no contact methods
         if (!parent?.email && !parent?.phone) continue
 
-        // Respect parent's digest/notification opt-out
-        const parentOptOut = (parent as any)?.parentProfile?.digestOptOut ?? false
-        if (parentOptOut) {
-          logger.info('inactivityAlert: parent opted out', { parentId: parent.id, studentId: s.id })
+        // Respect parent's digest/notification opt-out and inactivity-specific opt-out
+        const parentProfile = (parent as any)?.parentProfile ?? {}
+        const parentDigestOptOut = parentProfile?.digestOptOut ?? false
+        const parentInactivityOptOut = parentProfile?.inactivityOptOut ?? false
+        if (parentDigestOptOut || parentInactivityOptOut) {
+          logger.info('inactivityAlert: parent opted out (digest/inactivity)', { parentId: parent.id, studentId: s.id })
           continue
         }
 
@@ -92,18 +94,53 @@ export async function runInactivityAlerts(): Promise<number> {
           }
         }
 
-        // Use Redis key to prevent multiple alerts too frequently
-        const key = `parent:inactivity:${parent.id}:${s.id}`
-        const exists = await redis.get(key)
-        if (exists) continue // already alerted recently
+        // Atomic handling: acquire a short lock to avoid concurrent sends,
+        // then set a 3-day suppression key only after a successful send.
+        const suppressionKey = `parent:inactivity:${parent.id}:${s.id}`
+        const lockKey = `parent:inactivity:lock:${parent.id}:${s.id}`
 
-        const subject = `${s.name} hasn't been active recently — a quick nudge can help`
-        const html = `<p>Hi ${parent.name},</p><p>We noticed ${s.name} hasn't studied in the last ${DEFAULT_INACTIVITY_DAYS} days. A short 10–15 minute activity can help them get back on track. <a href="${process.env.NEXTAUTH_URL || 'https://spinzyacademy.com'}/parent/progress/${s.id}">Open their learning plan</a></p>`
+        // Try to acquire a short-lived lock (60s). If we fail, another
+        // worker is handling the notification for this parent/student pair.
+        let lockAcquired = false
+        try {
+          const lockRes = await (redis as any).set(lockKey, '1', 'EX', 60, 'NX')
+          if (!lockRes) continue
+          lockAcquired = true
 
-        await sendParentMilestoneNotification(parent.id, { email: parent.email ?? undefined, phone: parent.phone ?? undefined, subject, html })
-        // Set a 3-day suppression key so we don't spam parents
-        await redis.setex(key, 3 * 24 * 60 * 60, '1')
-        sent++
+          // Compose deep-link to student's next planned session if available
+          const nextItem = await prisma.learningPlanItem.findFirst({
+            where: { plan: { studentId: s.id }, status: 'UPCOMING' },
+            include: { concept: { select: { id: true, name: true } } },
+            orderBy: [{ weekNumber: 'asc' }, { orderInWeek: 'asc' }],
+          })
+
+            // Atomic suppression: attempt to set the suppression key with NX+EX.
+            // If it already exists (or another worker acquired it), skip sending.
+            const setRes = await redis.set(suppressionKey, '1', 'NX', 'EX', 3 * 24 * 60 * 60)
+            if (setRes !== 'OK') continue
+
+            // Resolve the student's next planned session for a deep-link (if available)
+            const nextTopic = nextItem?.concept?.name ?? 'their next planned session'
+            const baseUrl = process.env.NEXTAUTH_URL ?? 'https://spinzyacademy.com'
+            const deepLink = nextItem ? `${baseUrl}/student/session/${nextItem.id}` : `${baseUrl}/parent/progress/${s.id}`
+
+          const subject = `${s.name} hasn't been active recently — a quick nudge can help`
+          const html = `<p>Hi ${parent.name},</p><p>We noticed ${s.name} hasn't studied in the last ${DEFAULT_INACTIVITY_DAYS} days. A short 10–15 minute activity can help them get back on track. <a href="${deepLink}">Open their next session</a></p>`
+
+          await sendParentMilestoneNotification(parent.id, { email: parent.email ?? undefined, phone: parent.phone ?? undefined, subject, html })
+
+          // Replace short lock with long suppression TTL so we don't spam parents
+          try {
+            await redis.del(lockKey)
+          } catch {}
+          sent++
+        } catch (err) {
+          // Ensure lock is removed on error so alerts can be retried
+          if (lockAcquired) {
+            try { await redis.del(lockKey) } catch {}
+          }
+          logger.error('inactivityAlert: send_failed', { parentId: parent.id, studentId: s.id, error: String(err) })
+        }
       }
     } catch (err) {
       logger.error('inactivityAlert: error processing student', { studentId: s.id, error: String(err) })

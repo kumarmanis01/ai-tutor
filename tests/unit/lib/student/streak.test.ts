@@ -1,5 +1,45 @@
 /**
  * FILE OBJECTIVE:
+ * - Unit tests for lib/student/streak.ts ensuring suppression keys are cleared
+ *
+ * LINKED UNIT TEST:
+ * - tests/unit/lib/student/streak.test.ts
+ *
+ * EDIT LOG:
+ * - 2026-04-10T00:00:00Z | copilot | added test for clearing parent inactivity suppression keys
+ */
+
+/* eslint-disable @typescript-eslint/no-explicit-any */
+
+describe('lib/student/streak.updateStreak', () => {
+  beforeEach(() => {
+    jest.resetModules();
+  });
+
+  it('clears parent inactivity suppression keys after updating lastSessionDate', async () => {
+    const redisDelMock = jest.fn().mockResolvedValue(2);
+    const redisMock = { del: redisDelMock };
+    jest.doMock('@/lib/redis', () => ({ getRedis: () => redisMock }));
+
+    const userFind = jest.fn().mockResolvedValue({ lastSessionDate: null, currentStreak: 0, longestStreak: 0 });
+    const userUpdate = jest.fn().mockResolvedValue({});
+    const parentLinks = [{ parentId: 'pA' }, { parentId: 'pB' }];
+
+    jest.doMock('@/lib/prisma', () => ({
+      prisma: {
+        user: { findUnique: userFind, update: userUpdate },
+        parentStudent: { findMany: jest.fn().mockResolvedValue(parentLinks) },
+      },
+    }));
+
+    const { updateStreak } = await import('../../../../lib/student/streak');
+    await updateStreak('student-123');
+
+    expect(redisDelMock).toHaveBeenCalledWith('parent:inactivity:pA:student-123', 'parent:inactivity:pB:student-123');
+  });
+});
+/**
+ * FILE OBJECTIVE:
  * - Unit tests for lib/student/streak.ts ensuring suppression keys are cleared on activity
  *
  * LINKED UNIT TEST:
