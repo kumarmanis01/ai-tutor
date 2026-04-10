@@ -2,6 +2,7 @@ import { prisma } from '@/lib/prisma'
 import { getRedis } from '@/lib/redis'
 import { logger } from '@/lib/logger'
 import { isShieldAvailable, consumeShield } from '@/lib/student/streakShield'
+import { getLocalDateString, startOfLocalDayUtc } from '@/lib/engagement/timezone'
 
 const MS_PER_DAY = 86400000
 
@@ -19,14 +20,29 @@ function toMidnightUTC(d: Date): number {
 export function classifyStreakGap(
   lastSessionDate: Date | null,
   today: Date,
+  timezone?: string | null,
 ): 'same_day' | 'consecutive' | 'broken' {
   if (!lastSessionDate) return 'broken'
-  const lastMidnight = toMidnightUTC(lastSessionDate)
-  const todayMidnight = toMidnightUTC(today)
-  const diffDays = (todayMidnight - lastMidnight) / MS_PER_DAY
-  if (diffDays === 0) return 'same_day'
-  if (diffDays === 1) return 'consecutive'
-  return 'broken'
+
+  // Use student's local calendar date for streak calculations. Defaults to UTC.
+  try {
+    const lastLocal = getLocalDateString(lastSessionDate, timezone)
+    const todayLocal = getLocalDateString(today, timezone)
+    const lastStartUtc = startOfLocalDayUtc(lastLocal, timezone).getTime()
+    const todayStartUtc = startOfLocalDayUtc(todayLocal, timezone).getTime()
+    const diffDays = Math.round((todayStartUtc - lastStartUtc) / MS_PER_DAY)
+    if (diffDays === 0) return 'same_day'
+    if (diffDays === 1) return 'consecutive'
+    return 'broken'
+  } catch (err) {
+    // Fallback to UTC-based calculation on error
+    const lastMidnight = toMidnightUTC(lastSessionDate)
+    const todayMidnight = toMidnightUTC(today)
+    const diffDays = (todayMidnight - lastMidnight) / MS_PER_DAY
+    if (diffDays === 0) return 'same_day'
+    if (diffDays === 1) return 'consecutive'
+    return 'broken'
+  }
 }
 
 /**
@@ -55,12 +71,12 @@ export async function updateStreak(studentId: string): Promise<{
   try {
     const user = await prisma.user.findUnique({
       where: { id: studentId },
-      select: { lastSessionDate: true, currentStreak: true, longestStreak: true },
+      select: { lastSessionDate: true, currentStreak: true, longestStreak: true, timezone: true },
     })
     if (!user) return null
 
     const now = new Date()
-    const gap = classifyStreakGap(user.lastSessionDate, now)
+    const gap = classifyStreakGap(user.lastSessionDate, now, (user as any).timezone)
 
     let currentStreak: number
     let streakIncremented: boolean
