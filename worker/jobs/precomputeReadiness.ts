@@ -136,6 +136,30 @@ async function maybeFireReadinessDrop(
         event: 'readiness_drop_alert',
         context: { studentId, subjectId, prevScore, newScore: score, dropPoints },
       })
+      // Notify parents about readiness drop (best-effort)
+      try {
+        const parentLinks = await prisma.parentStudent.findMany({
+          where: { studentId, status: 'active' },
+          include: { parent: { select: { id: true, email: true, phone: true, name: true, language: true } } },
+        })
+
+        if (parentLinks.length > 0) {
+          const subject = `Readiness dropped: ${subjectName} — ${dropPoints} points`
+          const html = `<p>Hi,</p><p>Your child\'s readiness score for <strong>${subjectName}</strong> dropped by ${dropPoints} points. A short review session can help recover progress.</p>`
+          const sends = parentLinks.map((pl) =>
+            sendParentMilestoneNotification(pl.parent.id, {
+              email: pl.parent.email ?? undefined,
+              phone: pl.parent.phone ?? undefined,
+              subject,
+              html,
+              meta: { studentId, type: 'milestone', channel: pl.parent.email ? 'email' : pl.parent.phone ? 'sms' : 'unknown', locale: pl.parent.language },
+            }),
+          )
+          void Promise.allSettled(sends)
+        }
+      } catch (err) {
+        logger.warn('precomputeReadiness.parentNotify.drop failed', { studentId, subjectId, error: String(err) })
+      }
     }
   } catch {
     // Best-effort

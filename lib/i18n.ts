@@ -19,7 +19,7 @@ const translations: Record<Locale, Record<string, string>> = {
 export function t(key: string, vars?: Record<string, any>, locale?: string) {
 	const loc = (locale as Locale) || 'en';
 	const dict = translations[loc] ?? translations.en;
-	const template = dict[key] ?? key;
+	let template = dict[key] ?? key;
 	if (!vars) return template;
 	return Object.keys(vars).reduce((s, k) => s.replace(new RegExp(`\\{\\{${k}\\}\\}`, 'g'), String(vars[k])), template);
 }

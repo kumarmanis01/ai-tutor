@@ -307,6 +307,30 @@ export function buildStageInstructionsLayer(ctx: PromptContext): string {
     )
   }
 
+  // AC-03 (F-STU-013): contrastive explanation for active misconception.
+  // When a misconception is active, instruct Vidya to name it warmly, show
+  // why the wrong model fails with a counterexample, then show why the
+  // correct model works -- not just "that's wrong, here's right."
+  if (ctx.activeMisconceptionName && ctx.activeMisconceptionCorrection) {
+    lines.push(
+      'MISCONCEPTION DETECTED -- Contrastive Explanation Required:',
+      `The student appears to hold this misconception: "${ctx.activeMisconceptionName}"`,
+      'You MUST use contrastive explanation in this order:',
+      '1. Name it warmly: "It looks like you might be thinking [misconception] -- that is a very common confusion, and many students start there."',
+      '2. Show WHY the wrong model fails: give a specific counterexample that breaks the misconception.',
+      '3. Show WHY the correct model works: explain the correct mental model clearly.',
+      `Correct model to teach: ${ctx.activeMisconceptionCorrection}`,
+      'Do NOT just say "that is wrong, here is right." The counterexample step is mandatory.',
+      'After the contrastive explanation, ask one follow-up question to check the student has updated their mental model.',
+    )
+  } else if (ctx.activeMisconceptionName) {
+    lines.push(
+      'MISCONCEPTION DETECTED:',
+      `The student may be thinking: "${ctx.activeMisconceptionName}"`,
+      'Address this gently before continuing. Ask a probing question to surface the misconception before correcting it.',
+    )
+  }
+
   if (isPracticeStage && isHintRequest) {
     if (hintsUsed === 0) {
       lines.push(

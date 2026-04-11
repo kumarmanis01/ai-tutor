@@ -15,6 +15,8 @@
 
 import { prisma } from '@/lib/prisma'
 import { unlockCosmeticsForStreak } from '@/lib/student/cosmetics'
+import { sendParentMilestoneNotification } from '@/lib/notifications/delivery'
+import { logger } from '@/lib/logger'
 
 export interface BadgeDefinition {
   key: string

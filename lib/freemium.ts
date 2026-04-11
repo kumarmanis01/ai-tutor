@@ -144,8 +144,19 @@ export async function checkFreeTierCap(studentId: string): Promise<FreeTierStatu
  */
 export function daysUntilFreeTierReset(): number {
   const now = new Date()
-  const firstOfNextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1)
-  return Math.ceil((firstOfNextMonth.getTime() - now.getTime()) / 86_400_000)
+  // Use UTC-based arithmetic so this function is timezone-independent and
+  // deterministic in tests that mock global Date with UTC ISO strings.
+  const firstOfNextMonthUtc = Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1)
+  const nowUtc = Date.UTC(
+    now.getUTCFullYear(),
+    now.getUTCMonth(),
+    now.getUTCDate(),
+    now.getUTCHours(),
+    now.getUTCMinutes(),
+    now.getUTCSeconds(),
+    now.getUTCMilliseconds(),
+  )
+  return Math.ceil((firstOfNextMonthUtc - nowUtc) / 86_400_000)
 }
 
 /**

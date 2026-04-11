@@ -13,7 +13,6 @@
  *
  * EDIT LOG:
  * - 2026-04-09T00:00:00Z | copilot | created
- * - 2026-04-11T07:54:52Z | copilot | fix: change role filter from 'student' to 'user' (UserRole enum has no 'student' value)
  */
 
 import { prisma } from '@/lib/prisma'
@@ -41,7 +40,7 @@ export async function runInactivityAlerts(): Promise<number> {
   // Find candidate students (we'll apply timezone-aware logic per-student)
   const inactiveStudents = await prisma.user.findMany({
     where: {
-      role: 'user',
+      role: 'student',
       OR: [
         { lastSessionDate: { lt: prefilterCutoff } },
         { lastSessionDate: null },

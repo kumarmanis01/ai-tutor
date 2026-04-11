@@ -383,7 +383,7 @@ export async function runTutorOrchestrator(args: {
       teachingLanguage: 'en',
       examDateProximityDays: null,
       learningStyle,
-      recentMisconceptions: [],
+      recentMisconceptions: recentMisconceptionNames,
       masteryBrief: 'mastery_context_not_yet_wired',
       emotionalState: frustration.emotionalState,
       stage: state.stage as TutorStage,
@@ -596,19 +596,13 @@ export async function runTutorOrchestrator(args: {
       stage: newState.stage,
       hintsRemaining: newState.hintsRemaining,
       turnNumber: newState.lastTurnNumber,
-      // Session ends the moment the student enters CONSOLIDATION -- either because:
-      //   (a) state.stage was already CONSOLIDATION (the AI delivered the summary in THIS turn), or
-      //   (b) the state machine just advanced INTO CONSOLIDATION from INDEPENDENT_PRACTICE
-      //       (newState.stage === 'CONSOLIDATION' && state.stage !== 'CONSOLIDATION').
-      // In case (b) the UI must call onSessionComplete() immediately so the student
-      // does not need to send an extra message to trigger the consolidation summary.
-      // The consolidation content for case (b) is requested via a follow-up automated
-      // turn triggered by the UI (sessionComplete=true, stage=CONSOLIDATION).
-      sessionComplete: newState.stage === 'CONSOLIDATION',
+      // Session ends when the AI responds DURING the CONSOLIDATION stage (the summary
+      // and reflective question are delivered in that turn), not when entering it.
+      sessionComplete: state.stage === 'CONSOLIDATION',
     }
 
-    // Award streak credit as soon as CONSOLIDATION is entered -- covers both paths above.
-    if (newState.stage === 'CONSOLIDATION') {
+    // Award streak credit only after the student receives CONSOLIDATION content.
+    if (state.stage === 'CONSOLIDATION') {
       void updateStreak(studentId)
     }
 

@@ -145,7 +145,7 @@ export async function updateStreak(studentId: string): Promise<{
     } catch (err) {
       logger.error('streak.clearInactivitySuppression.error', { studentId, error: String(err) })
       try {
-        const m = await import('../metrics')
+        const m = await import('../lib/metrics')
         m.incSuppressionDeleteFailure()
       } catch {}
     }
