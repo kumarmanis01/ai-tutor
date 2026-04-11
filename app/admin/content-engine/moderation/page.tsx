@@ -20,6 +20,7 @@
 
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 
 /**
  * @deprecated This page has been consolidated into /admin/content-approval
@@ -44,7 +45,7 @@ export default function ModerationPageRedirect() {
         <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">Redirecting...</h2>
         <p className="text-sm text-gray-500 dark:text-gray-400">
           Content moderation has moved to the unified{' '}
-          <a href="/admin/content-approval" className="text-indigo-600 hover:underline">Content Review</a> page.
+          <Link href="/admin/content-approval" className="text-indigo-600 hover:underline">Content Review</Link> page.
         </p>
       </div>
     </div>

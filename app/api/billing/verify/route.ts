@@ -3,6 +3,8 @@ import { NextResponse } from 'next/server';
 import crypto from 'crypto';
 import { getServerSessionForHandlers } from '@/lib/session';
 import { prisma } from '@/lib/prisma';
+import { recordPaymentEvent } from '@/lib/payments/audit';
+import computeProratedCredit from '@/lib/subscription/proration';
 import { SessionUser } from '@/lib/types';
 import { sendMail } from '@/lib/mailer';
 import { paymentReceiptHtml } from '@/lib/email/templates';
@@ -45,6 +47,8 @@ export async function POST(req: Request) {
     billingCycle,
     amount,
   } = body;
+  // Capture idempotency header if client provided one (used for both failure/success recording)
+  const idempotencyHeader = (req.headers.get('idempotency-key') || req.headers.get('x-idempotency-key') || '') as string;
   // Verify Razorpay signature
   const sign = crypto
     .createHmac('sha256', process.env.RAZORPAY_KEY_SECRET!)
@@ -52,21 +56,44 @@ export async function POST(req: Request) {
     .digest('hex');
 
   if (sign !== razorpay_signature) {
+    // Capture idempotency header if client provided one
+    const idempotencyHeader = (req.headers.get('idempotency-key') || req.headers.get('x-idempotency-key') || '') as string;
+
     // Record failed payment
-    await prisma.payment.create({
-      data: {
-        userId: sessionUser.id!,
-        amount: amount,
-        provider: 'razorpay',
-        status: 'failed',
-        createdAt: new Date(),
-        transactionId: razorpay_payment_id,
-        orderId: razorpay_subscription_id,
-        plan: String(plan),
-        billingCycle: String(billingCycle),
-        meta: { signature: razorpay_signature },
-      },
-    });
+      const failedPayment = await prisma.payment.create({
+        data: {
+          userId: sessionUser.id!,
+          amount: amount,
+          provider: 'razorpay',
+          providerIdempotencyKey: idempotencyHeader || undefined,
+          status: 'failed',
+          createdAt: new Date(),
+          transactionId: razorpay_payment_id,
+          orderId: razorpay_subscription_id,
+          plan: String(plan),
+          billingCycle: String(billingCycle),
+          meta: { signature: razorpay_signature },
+        },
+      });
+
+      // Audit event (best-effort)
+      try {
+        await recordPaymentEvent({
+          paymentId: failedPayment.id,
+          userId: sessionUser.id!,
+          provider: 'razorpay',
+          providerIdempotencyKey: idempotencyHeader || undefined,
+          transactionId: razorpay_payment_id,
+          orderId: razorpay_subscription_id,
+          eventType: 'payment.failed.client_verify',
+          amount,
+          status: 'failed',
+          payload: { signature: razorpay_signature },
+        })
+      } catch (err) {
+        // Non-fatal
+        logger.warn('recordPaymentEvent failed', { err })
+      }
     return NextResponse.json({ error: 'Invalid signature' }, { status: 400 });
   }
 
@@ -76,6 +103,7 @@ export async function POST(req: Request) {
       userId: sessionUser.id!,
       amount: amount,
       provider: 'razorpay',
+      providerIdempotencyKey: idempotencyHeader || undefined,
       status: 'success',
       createdAt: new Date(),
       transactionId: razorpay_payment_id,
@@ -86,6 +114,24 @@ export async function POST(req: Request) {
     },
   });
 
+  // Audit event (best-effort)
+  try {
+    await recordPaymentEvent({
+      paymentId: payment.id,
+      userId: sessionUser.id!,
+      provider: 'razorpay',
+      providerIdempotencyKey: idempotencyHeader || undefined,
+      transactionId: razorpay_payment_id,
+      orderId: razorpay_subscription_id,
+      eventType: 'payment.success.client_verify',
+      amount,
+      status: 'success',
+    })
+  } catch (err) {
+    // non-fatal
+    logger.warn('recordPaymentEvent failed', { err })
+  }
+
   // Calculate subscription dates
   const startDate = new Date();
   const endDate =
@@ -93,13 +139,33 @@ export async function POST(req: Request) {
       ? new Date(new Date().setFullYear(startDate.getFullYear() + 1))
       : new Date(new Date().setMonth(startDate.getMonth() + 1));
 
-  // Deactivate any existing subscriptions for this user
-  await prisma.subscription.updateMany({
+  // Compute prorated credit from any existing active subscription (if present)
+  let carryForwardCredit = 0;
+  const existingSub = await prisma.subscription.findFirst({
     where: { userId: sessionUser.id!, active: true },
-    data: { active: false },
+    select: { id: true, startDate: true, endDate: true, paymentId: true, creditBalance: true },
   });
 
-  // Create new active subscription and link to payment
+  if (existingSub) {
+    try {
+      const paid = existingSub.paymentId
+        ? await prisma.payment.findUnique({ where: { id: existingSub.paymentId }, select: { amount: true } })
+        : null;
+      const paidAmount = paid?.amount ?? 0;
+      const proration = computeProratedCredit(existingSub.startDate!, existingSub.endDate!, paidAmount);
+      const existingCredit = existingSub.creditBalance ?? 0;
+      carryForwardCredit = (existingCredit || 0) + (proration || 0);
+    } catch (err) {
+      // Non-fatal — proceed without proration if DB read fails
+      logger.warn('proration calculation failed', { event: 'billing.verify.proration', context: { userId: sessionUser.id! }, err });
+      carryForwardCredit = 0;
+    }
+  }
+
+  // Deactivate any existing subscriptions for this user
+  await prisma.subscription.updateMany({ where: { userId: sessionUser.id!, active: true }, data: { active: false } });
+
+  // Create new active subscription and link to payment (persist any carry-forward credit)
   await prisma.subscription.create({
     data: {
       userId: sessionUser.id!,
@@ -109,6 +175,7 @@ export async function POST(req: Request) {
       endDate,
       active: true,
       paymentId: payment.id, // Link to payment record
+      creditBalance: carryForwardCredit,
     },
   });
 

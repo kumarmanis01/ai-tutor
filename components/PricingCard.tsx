@@ -13,7 +13,7 @@ type Props = {
   billing?: 'monthly' | 'annual';
 };
 
-export default function PricingCard({
+const PricingCard: React.FC<Props> = ({
   planKey,
   title,
   priceMonthly,
@@ -24,7 +24,7 @@ export default function PricingCard({
   onSelect,
   cta,
   billing = 'monthly',
-}: Props) {
+}: Props) => {
   const hasPrices = priceMonthly !== undefined || priceAnnual !== undefined;
   const displayPrice =
     billing === 'annual' ? (priceAnnual ?? priceMonthly) : (priceMonthly ?? priceAnnual);
@@ -65,7 +65,7 @@ export default function PricingCard({
       type="button"
       onClick={onSelect}
       data-plan={planKey}
-      aria-pressed={selected}
+      aria-pressed={selected ? 'true' : 'false'}
       className={`relative z-0 w-full text-left overflow-hidden rounded-2xl transition-all transform-gpu will-change-transform focus:outline-none focus:ring-2 focus:ring-blue-400
         ${
           selected
@@ -120,4 +120,6 @@ export default function PricingCard({
       {ctaNode && <div className="mt-6 flex items-center">{ctaNode}</div>}
     </button>
   );
-}
+};
+
+export default PricingCard;

@@ -50,6 +50,10 @@ interface DiagnosticFlowProps {
   questions: DiagnosticQuestion[];
   initialAnswers: Array<{ questionId: string; selectedOption: string }>;
   initialIndex: number;
+  // Optional props used when running server-driven adaptive diagnostics
+  boardSlug?: string;
+  grade?: number | string;
+  subjectSlug?: string;
 }
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -82,7 +86,10 @@ function checkCorrect(question: DiagnosticQuestion, selectedOption: string): boo
 
 /**
  * Compute per-chapter mastery from submitted answers.
- * unanswered = 0.3, correct = 0.6, wrong = 0.15
+ * Weights align with spec colour bands: Red < 40%, Amber 40-70%, Green > 70%.
+ *   correct    = 1.0  (full credit)
+ *   wrong      = 0.0  (no credit)
+ *   unanswered = 0.4  (grade-level start assumed per AC-07, neutral partial credit)
  */
 function computeChapterResults(
   questions: DiagnosticQuestion[],
@@ -119,7 +126,7 @@ function computeChapterResults(
     const total = stat.correct + stat.wrong + stat.unanswered;
     if (total === 0) continue;
     const avgMastery =
-      (stat.correct * 0.6 + stat.wrong * 0.15 + stat.unanswered * 0.3) / total;
+      (stat.correct * 1.0 + stat.wrong * 0.0 + stat.unanswered * 0.4) / total;
     results.push({ chapterId, chapterName: stat.chapterName, avgMastery, questionCount: total });
   }
 
@@ -195,12 +202,41 @@ function AbandonDialog({
 
 // ── KnowledgeMapResults ───────────────────────────────────────────────────────
 
+function placementBanner(placement: 'below' | 'at' | 'above') {
+  const map = {
+    below: {
+      label: 'Below grade level',
+      sub: "We'll build your foundation from the ground up.",
+      bg: 'bg-[#FCEBEB] dark:bg-[#E24B4A]/10',
+      text: 'text-[#E24B4A]',
+      subText: 'text-[#E24B4A]/80',
+    },
+    at: {
+      label: 'At grade level',
+      sub: "You're right where you need to be -- let's strengthen the gaps.",
+      bg: 'bg-[#FAEEDA] dark:bg-[#BA7517]/10',
+      text: 'text-[#BA7517]',
+      subText: 'text-[#BA7517]/80',
+    },
+    above: {
+      label: 'Above grade level',
+      sub: "You're ahead -- Vidya will keep pushing you further.",
+      bg: 'bg-[#EAF3DE] dark:bg-[#1D9E75]/10',
+      text: 'text-[#1D9E75]',
+      subText: 'text-[#1D9E75]/80',
+    },
+  };
+  return map[placement];
+}
+
 function KnowledgeMapResults({
   subjectName,
   results,
+  placement,
 }: {
   subjectName: string;
   results: ChapterResult[];
+  placement: 'below' | 'at' | 'above' | null;
 }) {
   const router = useRouter();
   const startHere = results[0]; // weakest chapter (sorted ascending)
@@ -220,6 +256,17 @@ function KnowledgeMapResults({
             Here&apos;s where you stand in {subjectName} -- no score, just your starting point.
           </p>
         </div>
+
+        {/* Grade-level placement banner (AC-05) */}
+        {placement && (() => {
+          const banner = placementBanner(placement);
+          return (
+            <div className={`rounded-2xl px-4 py-3 ${banner.bg}`}>
+              <p className={`text-sm font-bold ${banner.text}`}>{banner.label}</p>
+              <p className={`text-xs mt-0.5 ${banner.subText}`}>{banner.sub}</p>
+            </div>
+          );
+        })()}
 
         {/* Start here card */}
         {startHere && (
@@ -286,6 +333,9 @@ export default function DiagnosticFlow({
   questions,
   initialAnswers,
   initialIndex,
+  boardSlug,
+  grade,
+  subjectSlug,
 }: DiagnosticFlowProps) {
   const router = useRouter();
 
@@ -294,14 +344,71 @@ export default function DiagnosticFlow({
     initialAnswers.map((a) => ({ ...a, timeSpentMs: 0 })),
   );
   const [currentIndex, setCurrentIndex] = useState(initialIndex);
+  const [sessionId, setSessionId] = useState<string | null>(null);
+  const [questionList, setQuestionList] = useState<DiagnosticQuestion[]>(questions);
+  // Stable: derived from the original prop so it does not flip when questionList grows.
+  const isAdaptiveMode = questions.length === 0 && !!boardSlug && !!subjectSlug;
+  // Expected total from start API (used for progress bar in adaptive mode).
+  const [totalExpected, setTotalExpected] = useState<number>(questions.length || 0);
+
+  // Bootstrap adaptive session: call start API to create server session and
+  // receive the first question. Runs once on mount when adaptive mode is active.
+  useEffect(() => {
+    let mounted = true;
+    async function bootstrap() {
+      if (!isAdaptiveMode || sessionId) return;
+      if (!boardSlug || !subjectSlug) return;
+      setSubmitting(true);
+      try {
+        const res = await fetch('/api/student/diagnostic/start', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ boardSlug, grade, subjectSlug }),
+        });
+        if (!res.ok) {
+          const json = await res.json().catch(() => ({}));
+          if (res.status === 429 && json?.code === 'RETAKE_COOLDOWN') {
+            if (mounted) setStartError({ code: 'RETAKE_COOLDOWN', eligibleAt: json.eligibleAt });
+          }
+          return;
+        }
+        const json = await res.json();
+        if (!mounted) return;
+        if (json?.sessionId) setSessionId(json.sessionId);
+        if (typeof json?.totalQuestions === 'number') setTotalExpected(json.totalQuestions);
+        if (json?.firstQuestion) {
+          const fq = json.firstQuestion as any;
+          const mapped: DiagnosticQuestion = {
+            id: fq.id,
+            prompt: fq.prompt,
+            choices: (fq.options ?? []).map((o: any) => (o?.label ? o.label : String(o))),
+            correctAnswer: '',
+            chapterId: fq.chapterId ?? '',
+            chapterName: fq.chapterName ?? '',
+            topicId: fq.topicId ?? '',
+          };
+          setQuestionList([mapped]);
+          setCurrentIndex(0);
+        }
+      } finally {
+        if (mounted) setSubmitting(false);
+      }
+    }
+    bootstrap();
+    return () => {
+      mounted = false;
+    };
+  }, [isAdaptiveMode, sessionId, boardSlug, grade, subjectSlug]);
   const [selectedOption, setSelectedOption] = useState<string>('');
   const [secondsLeft, setSecondsLeft] = useState(TOTAL_SECONDS);
   const [showAbandon, setShowAbandon] = useState(false);
   const [savingPartial, setSavingPartial] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState('');
+  const [startError, setStartError] = useState<{ code: string; eligibleAt?: string } | null>(null);
   const [phase, setPhase] = useState<'quiz' | 'results'>('quiz');
   const [chapterResults, setChapterResults] = useState<ChapterResult[]>([]);
+  const [placement, setPlacement] = useState<'below' | 'at' | 'above' | null>(null);
 
   const questionStartRef = useRef(Date.now());
   const finalAnswersRef = useRef<PartialAnswer[]>(answers);
@@ -313,7 +420,7 @@ export default function DiagnosticFlow({
 
   // Pre-fill selection if resuming
   useEffect(() => {
-    const existing = answers.find((a) => a.questionId === questions[currentIndex]?.id);
+    const existing = answers.find((a) => a.questionId === questionList[currentIndex]?.id);
     setSelectedOption(existing?.selectedOption ?? '');
     questionStartRef.current = Date.now();
   }, [currentIndex]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -353,12 +460,12 @@ export default function DiagnosticFlow({
   const recordAnswer = useCallback(
     (option: string): PartialAnswer[] => {
       const timeSpentMs = Date.now() - questionStartRef.current;
-      const questionId = questions[currentIndex].id;
+      const questionId = questionList[currentIndex].id;
       const updated = answers.filter((a) => a.questionId !== questionId);
       updated.push({ questionId, selectedOption: option, timeSpentMs });
       return updated;
     },
-    [answers, currentIndex, questions],
+    [answers, currentIndex, questionList],
   );
 
   async function savePartial(currentAnswers: PartialAnswer[]): Promise<void> {
@@ -392,6 +499,7 @@ export default function DiagnosticFlow({
         body: JSON.stringify({
           subjectId,
           answers: finalAnswers,
+          ...(sessionId ? { sessionId } : {}),
         }),
       });
       if (!res.ok) {
@@ -401,7 +509,9 @@ export default function DiagnosticFlow({
         return;
       }
       // Compute chapter results from local data and switch to results view
-      const results = computeChapterResults(questions, finalAnswers);
+      const json = await res.json().catch(() => ({}));
+      if (json?.placement) setPlacement(json.placement as 'below' | 'at' | 'above');
+      const results = computeChapterResults(questionList, finalAnswers);
       setChapterResults(results);
       setPhase('results');
     } catch {
@@ -416,18 +526,69 @@ export default function DiagnosticFlow({
     setSelectedOption(option);
   }
 
-  function handleNext() {
+  async function handleNext() {
     if (!selectedOption) return;
-    const updatedAnswers = recordAnswer(selectedOption);
-    setAnswers(updatedAnswers);
+    setSubmitting(true);
+    setSubmitError('');
+    try {
+      const updatedAnswers = recordAnswer(selectedOption);
+      setAnswers(updatedAnswers);
 
-    if (currentIndex < questions.length - 1) {
-      setCurrentIndex((i) => i + 1);
-      setSelectedOption('');
-      questionStartRef.current = Date.now();
-    } else {
-      // Last question -- submit
-      submitDiagnostic(updatedAnswers);
+      if (isAdaptiveMode) {
+        // Send to adaptive answer API and append nextQuestion if present
+        const questionId = questionList[currentIndex].id;
+        const timeSpentMs = Date.now() - questionStartRef.current;
+        const res = await fetch('/api/student/diagnostic/answer', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ sessionId, questionId, selectedOption, timeSpentMs }),
+        });
+        if (!res.ok) {
+          const json = await res.json().catch(() => ({}));
+          setSubmitError(json?.error ?? 'Could not record answer.');
+          setSubmitting(false);
+          return;
+        }
+        const json = await res.json();
+        // update sessionId if returned
+        if (json?.sessionState?.sessionId) setSessionId(json.sessionState.sessionId);
+
+        if (json.nextQuestion) {
+          const nq = json.nextQuestion as any;
+          const mapped: DiagnosticQuestion = {
+            id: nq.id,
+            prompt: nq.prompt,
+            choices: (nq.options ?? []).map((o: any) => (o?.label ? o.label : String(o))),
+            correctAnswer: '',
+            chapterId: nq.chapterId ?? '',
+            chapterName: nq.chapterName ?? '',
+            topicId: nq.topicId ?? '',
+          };
+          setQuestionList((q) => [...q, mapped]);
+          setCurrentIndex((i) => i + 1);
+          setSelectedOption('');
+          questionStartRef.current = Date.now();
+          setSubmitting(false);
+          return;
+        }
+
+        // No nextQuestion → diagnostic finished server-side
+        await submitDiagnostic(updatedAnswers);
+        setSubmitting(false);
+        return;
+      }
+
+      // Non-adaptive: proceed locally
+      if (currentIndex < questionList.length - 1) {
+        setCurrentIndex((i) => i + 1);
+        setSelectedOption('');
+        questionStartRef.current = Date.now();
+      } else {
+        // Last question -- submit
+        await submitDiagnostic(updatedAnswers);
+      }
+    } finally {
+      setSubmitting(false);
     }
   }
 
@@ -441,23 +602,65 @@ export default function DiagnosticFlow({
     router.push('/dashboard');
   }
 
+  // ── Cooldown screen (AC-08: retake before 30-day window) ─────────────────
+
+  if (startError?.code === 'RETAKE_COOLDOWN') {
+    const eligibleDateStr = startError.eligibleAt
+      ? new Date(startError.eligibleAt).toLocaleDateString('en-IN', {
+          day: 'numeric',
+          month: 'long',
+          year: 'numeric',
+        })
+      : 'soon';
+    return (
+      <div className="fixed inset-0 z-[100] flex items-center justify-center bg-white dark:bg-slate-950 px-4">
+        <div className="max-w-sm w-full text-center">
+          <div className="w-16 h-16 rounded-2xl bg-[#FAEEDA] dark:bg-[#BA7517]/20 flex items-center justify-center mx-auto mb-5">
+            <svg viewBox="0 0 24 24" fill="none" stroke="#BA7517" strokeWidth="2" className="w-8 h-8" aria-hidden>
+              <circle cx="12" cy="12" r="10" />
+              <polyline points="12 6 12 12 16 14" />
+            </svg>
+          </div>
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">
+            Diagnostic completed
+          </h2>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">
+            Your next retake is available on
+          </p>
+          <p className="text-sm font-semibold text-[#BA7517] mb-6">{eligibleDateStr}</p>
+          <button
+            type="button"
+            onClick={() => router.push('/dashboard')}
+            className="flex w-full min-h-[44px] items-center justify-center rounded-xl bg-[#534AB7] text-white text-sm font-semibold hover:bg-[#4840a3] transition-colors"
+          >
+            Back to dashboard
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   // ── Results phase ─────────────────────────────────────────────────────────
 
   if (phase === 'results') {
     return (
       <div className="fixed inset-0 z-[100] overflow-y-auto bg-gray-50 dark:bg-slate-950">
-        <KnowledgeMapResults subjectName={subjectName} results={chapterResults} />
+        <KnowledgeMapResults subjectName={subjectName} results={chapterResults} placement={placement} />
       </div>
     );
   }
 
   // ── Quiz phase ────────────────────────────────────────────────────────────
 
-  const currentQuestion = questions[currentIndex];
+  const currentQuestion = questionList[currentIndex];
   if (!currentQuestion) return null;
 
-  const progressPct = Math.round(((currentIndex + 1) / questions.length) * 100);
-  const isLast = currentIndex === questions.length - 1;
+  // In adaptive mode totalExpected comes from the start API; in non-adaptive it is the
+  // fixed question list length. Guard against divide-by-zero with Math.max.
+  const denominator = Math.max(isAdaptiveMode ? totalExpected : questionList.length, 1);
+  const progressPct = Math.round(((currentIndex + 1) / denominator) * 100);
+  // In adaptive mode the server decides when to stop -- the button never says "Submit".
+  const isLast = isAdaptiveMode ? false : currentIndex === questionList.length - 1;
   const isAmber = secondsLeft <= AMBER_THRESHOLD;
 
   return (
@@ -493,7 +696,7 @@ export default function DiagnosticFlow({
               <span className="text-gray-900 dark:text-gray-100 font-bold">
                 {currentIndex + 1}
               </span>{' '}
-              of ~{questions.length}
+              of ~{isAdaptiveMode ? totalExpected : questionList.length}
             </p>
 
             {/* Timer */}

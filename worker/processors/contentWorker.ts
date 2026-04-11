@@ -18,6 +18,7 @@
 import { Worker, Job } from 'bullmq'
 import { redisConnection } from '@/lib/redis.js'
 import { prisma } from '@/lib/prisma.js'
+import { JobType as PrismaJobType, DifficultyLevel } from '@prisma/client'
 import { randomUUID } from 'crypto'
 import { isSystemSettingEnabled } from '@/lib/systemSettings.js'
 import { JobStatus } from '@/lib/ai-engine/types'
@@ -146,8 +147,10 @@ export async function processContentJob(job: Job) {
     const exec = await prisma.executionJob.findUnique({ where: { id: String(executionJobId) } })
     if (!exec) throw new Error('ExecutionJob not found for legacy payload')
 
-    // Extract resolvedMeta from execution payload or JobExecutionLog meta if present
-    const resolvedMeta = (exec.payload as any)?.resolvedMeta ?? (exec.payload as any) ?? {}
+    // ExecutionJob.payload is a Prisma.JsonValue (arbitrary JSON). The shape varies
+    // across legacy job formats, so `any` is required to read dynamic keys safely.
+    const execPayload = exec.payload as any
+    const resolvedMeta = execPayload?.resolvedMeta ?? execPayload ?? {}
 
     // Determine subjectId (prefer ExecutionJob.entity when SUB JECT)
     const subjectId = exec.entityType === 'SUBJECT' ? exec.entityId : (resolvedMeta.subjectId ?? null)
@@ -156,13 +159,15 @@ export async function processContentJob(job: Job) {
     // Idempotent: reuse pending/running hydration for same subject/board/grade
     let hydrate = await prisma.hydrationJob.findFirst({ where: { jobType: 'syllabus', subjectId: subjectId as string, status: { in: [JobStatus.Pending, JobStatus.Running] } } })
     if (!hydrate) {
-      const jobData: any = {
-        jobType: 'syllabus',
+      // jobData shape is dynamic -- typed at DB layer, safe to build as plain object
+      const jobData = {
+        jobType: PrismaJobType.syllabus,
         subjectId: subjectId as string,
-        language: resolvedMeta.language ?? (exec.payload as any)?.language ?? 'en',
-        board: resolvedMeta.board ?? (exec.payload as any)?.board ?? null,
-        grade: resolvedMeta.classLevel ?? (exec.payload as any)?.grade ?? null,
-        subject: resolvedMeta.entityName ?? (exec.payload as any)?.subject ?? null,
+        language: resolvedMeta.language ?? execPayload?.language ?? 'en',
+        board: resolvedMeta.board ?? execPayload?.board ?? null,
+        grade: resolvedMeta.classLevel ?? execPayload?.grade ?? null,
+        subject: resolvedMeta.entityName ?? execPayload?.subject ?? null,
+        difficulty: DifficultyLevel.medium,
         status: JobStatus.Pending,
       }
       const generatedId = randomUUID();
@@ -172,7 +177,8 @@ export async function processContentJob(job: Job) {
 
     // Persist link ExecutionJob -> HydrationJob for audit
     try {
-      await prisma.executionJob.update({ where: { id: String(executionJobId) }, data: { payload: { ...(exec.payload as any || {}), hydrationJobId } } })
+      // exec.payload is Prisma.JsonValue -- spread via execPayload (typed as any above)
+      await prisma.executionJob.update({ where: { id: String(executionJobId) }, data: { payload: { ...(execPayload || {}), hydrationJobId } } })
     } catch (e) {
       logger?.warn?.('worker: failed to attach hydrationJobId to ExecutionJob payload', { err: e, executionJobId })
     }
@@ -492,8 +498,10 @@ export function startContentWorker(opts?: { concurrency?: number }) {
       } else {
         // If payload was an ExecutionJob id, try to read its payload.hydrationJobId
         const execRow = await prisma.executionJob.findUnique({ where: { id: String(incomingId) } })
-        if (execRow && execRow.payload && (execRow.payload as any).hydrationJobId) {
-          resolvedHydrationId = String((execRow.payload as any).hydrationJobId)
+        // execRow.payload is Prisma.JsonValue -- cast to any to read dynamic hydrationJobId key
+        const execRowPayload = execRow?.payload as any
+        if (execRow && execRowPayload?.hydrationJobId) {
+          resolvedHydrationId = String(execRowPayload.hydrationJobId)
         }
       }
 

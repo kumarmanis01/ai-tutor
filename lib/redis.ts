@@ -51,12 +51,22 @@ export function getRedis() {
   const client = new IORedis(url, opts);
 
   // Attach lightweight logging for connection-level issues; avoid circular
-  // imports by using a dynamic import of the logger module.
+  // imports by using a dynamic import of the logger module. Emit richer
+  // context (error.code/name/address/port/stack and the client's options)
+  // so runtime errors are actionable instead of producing empty messages.
   client.on('error', (err: any) => {
     import('../lib/logger')
       .then(({ error }) => {
         try {
-          error('redis.client_error', { message: String(err?.message ?? err) });
+          error('redis.client_error', {
+            message: String(err?.message ?? err),
+            name: err?.name,
+            code: err?.code,
+            address: err?.address,
+            port: err?.port,
+            stack: err?.stack,
+            clientOptions: (client as any)?.options,
+          });
         } catch {
           // ignore secondary logging failures
         }
@@ -64,7 +74,51 @@ export function getRedis() {
       .catch(() => {
         // logger may not be available in some runtimes; ignore
       });
+
+    // Increment redis error metric (best-effort; avoid direct import cycles)
+    import('../lib/metrics')
+      .then(({ incRedisError }) => {
+        try { incRedisError() } catch {}
+      })
+      .catch(() => {})
   });
+
+  // Log successful connects so we can correlate which resolved endpoint the
+  // process is using (helpful when /etc/hosts or tunnels exist).
+  client.on('connect', () => {
+    import('../lib/logger')
+      .then(({ info }) => {
+        try {
+          info('redis.connected', { host: (client as any)?.options?.host, port: (client as any)?.options?.port });
+        } catch {
+          // ignore
+        }
+      })
+      .catch(() => {});
+  });
+
+  // Best-effort: query the server's memory info to capture the
+  // `maxmemory_policy` value in logs (providers sometimes block CONFIG).
+  // Failure is non-fatal and ignored.
+  client
+    .info('memory')
+    .then((infoStr: string) => {
+      try {
+        const m = infoStr.match(/maxmemory_policy:(\S+)/);
+        import('../lib/logger')
+          .then(({ info }) => {
+            try {
+              info('redis.info.memory', { maxmemory_policy: m?.[1] ?? 'unknown' });
+            } catch {}
+          })
+          .catch(() => {});
+      } catch {
+        // ignore parse errors
+      }
+    })
+    .catch(() => {
+      // info command may be blocked by provider; ignore
+    });
 
   _redis = client;
   return _redis;

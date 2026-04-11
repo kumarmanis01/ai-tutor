@@ -45,11 +45,19 @@ import { SM18_SCHEDULER_QUEUE_NAME, registerNightlySM18Job } from "../jobs/sm18.
 import { DIAGNOSTIC_BOOTSTRAP_QUEUE_NAME } from "../jobs/diagnosticBootstrap.js";
 import { processDiagnosticBootstrap } from "./services/diagnosticBootstrapWorker.js";
 import { WEEKLY_DIGEST_QUEUE_NAME, registerWeeklyDigestJob } from "../jobs/weeklyDigest.js";
-import { processWeeklyDigest } from "./services/weeklyDigestWorker.js";
+import { PAYMENT_DUNNING_QUEUE_NAME, registerDailyDunningJob } from "../jobs/paymentDunning.js";
+import { INSTALLMENT_DUNNING_QUEUE_NAME, registerDailyInstallmentDunningJob } from "../jobs/installmentDunning.js";
+import { processWeeklyDigest, processParentDigest } from "./services/weeklyDigestWorker.js";
+import { processPaymentDunning } from "./services/paymentDunningWorker.js";
+import { processInstallmentDunning } from "./services/installmentDunningWorker.js";
 import { DISTRESS_NOTIFICATION_QUEUE_NAME } from "../jobs/distressNotification.js";
 import { processDistressNotification } from "./services/distressNotificationWorker.js";
 import { RETEACH_PLAN_QUEUE_NAME } from "../jobs/reteachPlan.js";
 import { processReteachPlan } from "./services/reteachPlanWorker.js";
+import { DIAGNOSTIC_AUTO_SUBMIT_QUEUE_NAME } from "../jobs/diagnosticAutoSubmit.js";
+import { processDiagnosticAutoSubmit } from "./services/diagnosticAutoSubmitWorker.js";
+import { processAIRequest } from './services/aiRequestWorker.js';
+import { AI_REQUEST_QUEUE } from '../lib/queues/constants.js';
 
 const argv = minimist(process.argv.slice(2));
 
@@ -142,6 +150,12 @@ async function processor(job: Job) {
       }
       return handleAssembleJob(payload.jobId);
 
+    case "PARENT_DIGEST":
+      if (!payload?.parentId) {
+        throw new Error("PARENT_DIGEST job missing parentId");
+      }
+      return processParentDigest(payload.parentId, payload.weekStart);
+
     default:
       throw new Error(`UNKNOWN_JOB_TYPE: ${type}`);
   }
@@ -209,6 +223,31 @@ export async function bootstrapWorker() {
     { connection: redisConnection, concurrency: 1 },
   );
   await registerWeeklyDigestJob();
+  // Register daily payment dunning job
+  try {
+    await registerDailyDunningJob();
+    // Register daily installment-level dunning job
+    try {
+      await registerDailyInstallmentDunningJob();
+    } catch (err) {
+      logger.error('registerDailyInstallmentDunningJob failed', { error: String(err) });
+    }
+  } catch (err) {
+    logger.error('registerDailyDunningJob failed', { error: String(err) });
+  }
+
+  const paymentDunningWorker = new Worker(
+    PAYMENT_DUNNING_QUEUE_NAME,
+    async (_job: Job) => processPaymentDunning(),
+    { connection: redisConnection, concurrency: 1 },
+  );
+
+  const installmentDunningWorker = new Worker(
+    INSTALLMENT_DUNNING_QUEUE_NAME,
+    async (job: Job) => processInstallmentDunning(job.data),
+    { connection: redisConnection, concurrency: 1 },
+  );
+
 
   const diagnosticBootstrapWorker = new Worker(
     DIAGNOSTIC_BOOTSTRAP_QUEUE_NAME,
@@ -230,6 +269,26 @@ export async function bootstrapWorker() {
     async (job: Job) => processReteachPlan(job as Job<import("../jobs/reteachPlan.js").ReteachPlanJobData>),
     { connection: redisConnection, concurrency: 2 },
   );
+
+  const diagnosticAutoSubmitWorker = new Worker(
+    DIAGNOSTIC_AUTO_SUBMIT_QUEUE_NAME,
+    async (job: Job) => processDiagnosticAutoSubmit(job as Job<import("../jobs/diagnosticAutoSubmit.js").DiagnosticAutoSubmitJobData>),
+    { connection: redisConnection, concurrency: 2 },
+  );
+
+  const aiWorker = new Worker(
+    AI_REQUEST_QUEUE,
+    async (job: Job) => processAIRequest(job),
+    { connection: redisConnection, concurrency: Number(process.env.AI_WORKER_CONCURRENCY || 2) },
+  );
+
+  aiWorker.on('failed', (job, err) => {
+    logger.error(`[AI WORKER FAILED] jobId=${job?.id}`, { error: err?.message });
+  });
+
+  aiWorker.on('completed', (job) => {
+    logger.info(`[AI WORKER COMPLETED] jobId=${job.id}`);
+  });
 
   // Debug events: active, stalled
     if (process.env.WORKER_DEBUG === '1') {
@@ -295,6 +354,7 @@ export async function bootstrapWorker() {
       await weeklyDigestWorker.close();
       await distressNotificationWorker.close();
       await reteachPlanWorker.close();
+      await diagnosticAutoSubmitWorker.close();
 
       await prisma.workerLifecycle.update({
         where: { id: lifecycleId },

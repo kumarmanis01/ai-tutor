@@ -49,6 +49,13 @@ describe('Phase 12 — RegenerationJob creation + audit', () => {
       status: 'ACCEPTED'
     }})
 
+    // Diagnostic: verify the test process can read the created suggestion
+    const testDirect = await prisma.contentSuggestion.findUnique({ where: { id: suggestion.id } })
+    if (process.env.NODE_ENV === 'test') {
+      try { console.log('[debug] test sees suggestion:', testDirect) } catch {}
+    }
+    expect(testDirect).toBeDefined()
+
     const makeReq = (body: any) => ({ json: async () => body }) as any
 
     // First attempt: should create

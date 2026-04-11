@@ -13,6 +13,10 @@ COPY package.json package-lock.json* ./
 # We will prune dev deps after build to keep the final image lean.
 RUN npm ci --no-audit --progress=false --prefer-offline
 
+# Ensure Playwright browsers and dependencies are installed in the builder image
+# This makes Playwright rendering available at runtime (if Playwright package present).
+RUN npx playwright install --with-deps || true
+
 # Copy rest of the repo and build
 COPY . ./
 

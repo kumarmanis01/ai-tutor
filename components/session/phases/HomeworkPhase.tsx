@@ -75,10 +75,18 @@ export function HomeworkPhase({ content, onReadyToProceed, loading: _loading }: 
 
       {!isAlreadyDone && (
         <button
-          onClick={() => router.push(`/tests?homework=${content.assignmentId}`)}
-          className="w-full py-4 px-6 bg-muted hover:bg-muted/80 text-foreground font-semibold rounded-xl transition-colors flex items-center justify-center gap-2 border border-border"
+          onClick={() => router.push(`/homework/${content.assignmentId}`)}
+          className="w-full py-4 px-6 bg-[#534AB7] hover:bg-[#3C3489] text-white font-semibold rounded-xl transition-colors flex items-center justify-center gap-2"
         >
           Start Homework Now
+        </button>
+      )}
+      {isAlreadyDone && (
+        <button
+          onClick={() => router.push(`/homework/${content.assignmentId}`)}
+          className="w-full py-4 px-6 bg-muted hover:bg-muted/80 text-foreground font-semibold rounded-xl transition-colors flex items-center justify-center gap-2 border border-border"
+        >
+          Review Answers
         </button>
       )}
       {/* Primary CTA (Finish Session) is in SessionFooter */}

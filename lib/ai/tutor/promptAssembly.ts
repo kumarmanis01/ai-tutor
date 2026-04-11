@@ -17,11 +17,20 @@ export interface PromptContext {
   // SESSION_STATE layer inputs
   stage: TutorStage
   stageAttemptCount: number
-  hintsUsed: number
+  hintsUsed: number // 0-3; incremented each time a HINT_OFFER tag fires
   sessionSummary: string | null // compressed summary of earlier turns
   recentTurns: Array<{ role: 'student' | 'ai'; content: string }> // last 8 turns
   activeMisconceptionName: string | null
+  /** AC-03 (F-STU-013): correction text for the active misconception. Drives contrastive explanation. */
+  activeMisconceptionCorrection: string | null
   frustrationScore: number
+
+  // STAGE_INSTRUCTIONS layer inputs
+  isHintRequest: boolean // true when student explicitly pressed "Get a hint"
+  /** AC-04 (F-STU-011): student requested a re-explanation style. null = no request this turn. */
+  explainStyle?: 'simpler' | 'harder' | 'real_life_example' | null
+  /** AC-08 (F-STU-011): consecutive wrong answers this stage (drives remediation prompt). */
+  consecutiveWrongAnswers?: number
 
   // CURRICULUM_CONTEXT layer inputs -- RAG chunks, may be truncated
   ragChunks: string[] // ordered by relevance descending
@@ -186,11 +195,13 @@ export function buildSessionStateLayer(
   recentTurns: PromptContext['recentTurns'],
   sessionSummary: string | null,
 ): string {
+  const wrongCount = ctx.consecutiveWrongAnswers ?? 0
   const lines: string[] = [
     '### SESSION_STATE',
     `Current stage: ${ctx.stage}`,
     `Stage attempt count: ${ctx.stageAttemptCount}`,
     `Hints used this stage: ${ctx.hintsUsed}`,
+    `Consecutive wrong answers: ${wrongCount}`,
     `Frustration score (0-1): ${ctx.frustrationScore.toFixed(2)}`,
   ]
 
@@ -248,6 +259,137 @@ export function buildResponseFormatLayer(_ctx: PromptContext): string {
   ].join('\n')
 }
 
+/**
+ * Build the STAGE_INSTRUCTIONS layer: tells Vidya the concrete task for the current
+ * pedagogical stage. During practice stages with an active hint request, specifies
+ * which hint tier to deliver based on hintsUsed (0 = Tier 1, 1 = Tier 2, 2 = Tier 3,
+ * 3+ = full solution + isomorphic problem).
+ *
+ * This layer is NEVER truncated -- it is required for correct hint delivery.
+ *
+ * @param ctx - Prompt context including stage, hintsUsed, and isHintRequest.
+ * @returns STAGE_INSTRUCTIONS layer string.
+ */
+export function buildStageInstructionsLayer(ctx: PromptContext): string {
+  const lines: string[] = ['### STAGE_INSTRUCTIONS']
+  const { stage, hintsUsed, isHintRequest, explainStyle } = ctx
+  const consecutiveWrongAnswers = ctx.consecutiveWrongAnswers ?? 0
+  const isPracticeStage = stage === 'GUIDED_PRACTICE' || stage === 'INDEPENDENT_PRACTICE'
+
+  // AC-04 (F-STU-011 MUST): student requested re-explanation in a different style.
+  // Inject this directive before any stage-specific instructions.
+  if (explainStyle === 'simpler') {
+    lines.push(
+      'RE-EXPLAIN REQUEST -- Simpler:',
+      'The student asked for a simpler explanation. Re-explain the current concept using:',
+      '- Shorter sentences and basic vocabulary (avoid technical terms where possible)',
+      '- A very concrete everyday analogy (e.g., comparing photosynthesis to cooking food)',
+      '- Break into smaller steps than your previous explanation',
+      'Do NOT repeat the same wording from your last response.',
+    )
+  } else if (explainStyle === 'harder') {
+    lines.push(
+      'RE-EXPLAIN REQUEST -- Harder/Deeper:',
+      'The student asked for a deeper explanation. Re-explain the current concept by:',
+      '- Adding the underlying mechanism or "why it works"',
+      '- Connecting to adjacent concepts the student may know',
+      '- Using precise technical vocabulary and formal definitions',
+      'Do NOT repeat the same wording from your last response.',
+    )
+  } else if (explainStyle === 'real_life_example') {
+    lines.push(
+      'RE-EXPLAIN REQUEST -- Real-life example:',
+      'The student asked for a real-life example. Re-explain the current concept through:',
+      '- A specific, vivid real-world scenario from Indian daily life (cricket, trains, markets, festivals)',
+      '- Show exactly how the concept applies step by step in that scenario',
+      '- Then connect back to the abstract concept',
+      'Do NOT repeat the same wording from your last response.',
+    )
+  }
+
+  if (isPracticeStage && isHintRequest) {
+    if (hintsUsed === 0) {
+      lines.push(
+        'HINT REQUESTED -- Tier 1 (Directional Nudge):',
+        'Point the student toward the relevant concept or formula WITHOUT revealing the approach.',
+        'Example: "Think about what formula connects distance, speed, and time."',
+        'Do NOT solve or reveal the method. Ask exactly one guiding question.',
+        'Output tag: [HINT_OFFER]',
+      )
+    } else if (hintsUsed === 1) {
+      lines.push(
+        'HINT REQUESTED -- Tier 2 (Structural Hint):',
+        'Reveal the method or approach WITHOUT executing it. Ask the student to supply the components.',
+        'Example: "You will use the quadratic formula -- what goes into a, b, c here?"',
+        'Do NOT compute the answer. Make the student identify the key inputs.',
+        'Output tag: [HINT_OFFER]',
+      )
+    } else if (hintsUsed === 2) {
+      lines.push(
+        'HINT REQUESTED -- Tier 3 (Worked Scaffold):',
+        'Work through the FIRST STEP only, then stop. Student must complete the rest independently.',
+        'Example: "Step 1: substitute the values into the formula. Speed = 60 km/h, Time = 2 h. Now you try Step 2."',
+        'Show only one step. Do NOT complete the solution.',
+        'Output tag: [HINT_OFFER]',
+      )
+    } else {
+      // hintsUsed >= 3: all hints exhausted
+      lines.push(
+        'ALL HINTS EXHAUSTED -- Full Solution + Isomorphic Problem:',
+        'The student has used all 3 hints. Do the following in order:',
+        '1. Solve the original problem fully with clear step-by-step working.',
+        '2. Briefly explain the key insight the student missed.',
+        '3. Present a NEW isomorphic problem: same structure, different numbers or context.',
+        '4. Ask the student to attempt the new problem independently.',
+        'Output tag: [QUESTION]',
+      )
+    }
+  } else if (isPracticeStage) {
+    lines.push(
+      `Current stage: ${stage}. Hints available: ${Math.max(0, 3 - hintsUsed)}/3.`,
+      `Consecutive wrong answers this stage: ${consecutiveWrongAnswers}.`,
+      'Present a practice problem or validate the student\'s attempt.',
+      'NEVER give the answer directly. Guide with a question if the student is wrong.',
+      consecutiveWrongAnswers >= 2
+        ? 'WARNING: Student has given multiple wrong answers. If this answer is also wrong, output [PREREQ_FAIL] to trigger prerequisite remediation (AC-08).'
+        : 'Output tag: [QUESTION] for a new question, [VALIDATE] after checking an answer, [STRUGGLE_DETECTED] when the student gives a wrong answer.',
+    )
+  } else if (stage === 'HOOK') {
+    lines.push(
+      'Stage: HOOK. Goal: spark curiosity and connect to a real-world situation.',
+      'Ask one engaging question to anchor the concept. Keep it under 3 sentences.',
+      'Output tag: [QUESTION]',
+    )
+  } else if (stage === 'PREREQ_BRIDGE') {
+    lines.push(
+      'Stage: PREREQ_BRIDGE. Goal: confirm the student has the prerequisite knowledge.',
+      'Ask one targeted question about the prerequisite concept.',
+      'If they clearly lack the prereq: tag [PREREQ_FAIL]. If they demonstrate mastery: tag [MASTERY_CONFIRMED].',
+      'Output tag: [QUESTION], [PREREQ_FAIL], or [MASTERY_CONFIRMED]',
+    )
+  } else if (stage === 'CORE_EXPLANATION') {
+    lines.push(
+      'Stage: CORE_EXPLANATION. Goal: deliver a clear, structured explanation of the concept.',
+      'Use 2-3 short paragraphs. End with one comprehension check question.',
+      'Output tag: [QUESTION]',
+    )
+  } else if (stage === 'WORKED_EXAMPLE') {
+    lines.push(
+      'Stage: WORKED_EXAMPLE. Goal: walk through one complete worked example step by step.',
+      'Show full working for the example. After completing, ask the student to identify the key step.',
+      'Output tag: [QUESTION]',
+    )
+  } else if (stage === 'CONSOLIDATION') {
+    lines.push(
+      'Stage: CONSOLIDATION. Goal: summarise what the student has learned and celebrate progress.',
+      'Give a brief summary of the key concept. Ask one reflective question to confirm understanding.',
+      'Output tag: [STAGE_ADVANCE] or [QUESTION]',
+    )
+  }
+
+  return lines.join('\n')
+}
+
 function sentencesFromSummary(summary: string | null): string[] {
   if (!summary) return []
   return summary
@@ -287,11 +429,19 @@ export function assembleSystemPrompt(ctx: PromptContext): AssembledPrompt {
     const rules = buildPedagogicalRulesLayer(ctx)
     const studentProfile = buildStudentProfileLayer(ctx)
     const sessionState = buildSessionStateLayer(ctx, workingTurns, joinSummarySentences(summarySentences))
+    const stageInstructions = buildStageInstructionsLayer(ctx)
     const curriculum = buildCurriculumContextLayer(ctx, workingRag)
     const responseFormat = buildResponseFormatLayer(ctx)
 
-    const pieces = [persona, safety, rules, studentProfile, sessionState]
-    const layersIncluded: string[] = ['PERSONA', 'SAFETY', 'PEDAGOGICAL_RULES', 'STUDENT_PROFILE', 'SESSION_STATE']
+    const pieces = [persona, safety, rules, studentProfile, sessionState, stageInstructions]
+    const layersIncluded: string[] = [
+      'PERSONA',
+      'SAFETY',
+      'PEDAGOGICAL_RULES',
+      'STUDENT_PROFILE',
+      'SESSION_STATE',
+      'STAGE_INSTRUCTIONS',
+    ]
 
     if (curriculum) {
       pieces.push(curriculum)

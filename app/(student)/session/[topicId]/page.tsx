@@ -39,7 +39,7 @@ interface Props {
 
 export default async function SessionPage({ params, searchParams }: Props) {
   const { topicId: id } = await params;
-  const { reason, time, sid, cid } = await searchParams;
+  const { reason, time, sid, cid, focus, itemId } = await searchParams as any;
 
   // ── Legacy sessionId redirect ─────────────────────────────────────────────
   //
@@ -73,7 +73,8 @@ export default async function SessionPage({ params, searchParams }: Props) {
   const subjectId = topic?.chapter?.subjectId;
   if (subjectId) {
     const hasDiag = await hasDiagnosticForSubject(auth.user.id, subjectId);
-    if (!hasDiag) redirect(`/student/diagnostic/${subjectId}`);
+    // Route group (student) does not add a URL prefix -- correct path is /diagnostic/[id].
+    if (!hasDiag) redirect(`/diagnostic/${subjectId}`);
   }
 
   // ── AI tutor path (sid + cid present) ───────────────────────────────────────
@@ -113,6 +114,7 @@ export default async function SessionPage({ params, searchParams }: Props) {
       topicId={id}
       reasonLabel={reasonLabel}
       estimatedTimeMin={estimatedTimeMin}
+      initialFocus={{ focus: (focus as string) ?? undefined, itemId: (itemId as string) ?? undefined }}
     />
   );
 }

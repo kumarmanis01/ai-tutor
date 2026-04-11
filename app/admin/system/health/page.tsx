@@ -190,7 +190,7 @@ export default async function SystemHealthPage() {
 
   const dbStatus: HealthStatus = health?.dependencies.database.status ?? 'unhealthy'
   const redisStatus: HealthStatus = health?.dependencies.redis.status ?? 'unhealthy'
-  const workerStatus: HealthStatus =
+  const _workerStatus: HealthStatus =
     (health?.workers.stale ?? 0) > 0 ? 'degraded' :
     (health?.workers.running ?? 0) > 0 ? 'healthy' : 'unhealthy'
   const queueStatus: HealthStatus =
@@ -202,7 +202,7 @@ export default async function SystemHealthPage() {
     : 'Unreachable'
 
   const redisDetail = health?.dependencies.redis.latencyMs !== undefined
-    ? `Connected -- ${health.dependencies.redis.latencyMs}ms${redisMemMb !== null ? ` -- ${redisMemMb} MB` : ''}`
+    ? `Connected -- ${health.dependencies.redis.latencyMs}ms${redisMemMb !== null ? ` -- ${redisMemMb} MB` : ''}${health?.dependencies.redis.endpoint ? ` -- ${health.dependencies.redis.endpoint}` : ''}`
     : 'Unreachable'
 
   // This page rendered, so the web process is obviously up -- always healthy

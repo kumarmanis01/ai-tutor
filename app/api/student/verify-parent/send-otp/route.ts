@@ -86,7 +86,8 @@ export async function POST(req: Request) {
     })
     logger.logAPI(req, res, { className: 'VerifyParentSendOtpAPI', methodName: 'POST' }, start)
     return res
-  } catch {
+  } catch (err) {
+    logger.error('VerifyParentSendOtpAPI failed', { className: 'VerifyParentSendOtpAPI', methodName: 'POST', error: String(err) })
     const res = NextResponse.json(
       { error: 'Service unavailable' },
       { status: 503 },

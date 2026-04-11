@@ -5,9 +5,13 @@
  * Language: plain, avoids jargon -- written for low-digital-literacy parents.
  *
  * Props shape matches what app/(parent)/dashboard/page.tsx computes.
+ *
+ * EDIT LOG:
+ * - 2026-04-09T00:00:00Z | copilot | added dual timezone display per child
  */
 
 import SubjectReadinessCard from '@/components/student/dashboard/SubjectReadinessCard'
+import Link from 'next/link'
 
 interface ChildReadiness {
   subjectId: string
@@ -23,13 +27,15 @@ interface ChildData {
   streak: number
   sessionsThisWeek: number
   readiness: ChildReadiness[]
+  timezone?: string | null
 }
 
 interface ParentDashboardProps {
   children: ChildData[]
+  parentTimezone?: string | null
 }
 
-export default function ParentDashboard({ children }: ParentDashboardProps) {
+export default function ParentDashboard({ children, parentTimezone }: ParentDashboardProps) {
   // ── Empty state ──────────────────────────────────────────────────────────
   if (children.length === 0) {
     return (
@@ -42,12 +48,12 @@ export default function ParentDashboard({ children }: ParentDashboardProps) {
           Ask your child to share an invite link from the Spinzy app,
           then tap it to connect your accounts.
         </p>
-        <a
+        <Link
           href="/parent/link-child"
           className="mt-5 inline-block rounded-lg bg-[#534AB7] px-5 py-2.5 text-sm font-semibold text-white hover:bg-[#3C3489] dark:bg-[#534AB7] dark:hover:bg-indigo-400"
         >
           Link a child
-        </a>
+        </Link>
       </main>
     )
   }
@@ -75,14 +81,17 @@ export default function ParentDashboard({ children }: ParentDashboardProps) {
                   {[child.grade, child.board].filter(Boolean).join(' · ')}
                 </p>
               )}
+              <p className="mt-1 text-2xs text-gray-400 dark:text-gray-500">
+                Times shown: {parentTimezone ?? 'your timezone'} • Student: {child.timezone ?? 'student timezone'}
+              </p>
             </div>
 
-            <a
+            <Link
               href={`/parent/progress/${child.studentId}`}
               className="shrink-0 rounded-md border border-indigo-200 px-3 py-1.5 text-xs font-medium text-[#534AB7] hover:bg-[#EEEDFE] dark:border-indigo-700 dark:text-indigo-400 dark:hover:bg-indigo-950"
             >
               View full report
-            </a>
+            </Link>
           </div>
 
           {/* ── Stats row ──────────────────────────────────────────────── */}

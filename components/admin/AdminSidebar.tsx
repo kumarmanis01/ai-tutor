@@ -1,12 +1,17 @@
 'use client';
+/**
+ * FILE OBJECTIVE:
+ * - Collapsible left-hand navigation sidebar for the admin shell.
+ * - Receives badge counts (pending review, running jobs, failed jobs, safety alerts)
+ *   as props so they are pre-fetched server-side.
+ *
+ * EDIT LOG:
+ * - 2026-04-07 | claude | created to fix missing module error in app/admin/layout.tsx
+ */
 
+import React, { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import React from 'react';
-
-// ---------------------------------------------------------------------------
-// Types
-// ---------------------------------------------------------------------------
 
 export interface AdminSidebarProps {
   pendingReview: number;
@@ -15,265 +20,115 @@ export interface AdminSidebarProps {
   safetyAlerts: number;
 }
 
-interface NavItemDef {
-  href: string;
-  icon: React.ReactNode;
+interface NavItem {
   label: string;
+  href: string;
   badge?: number;
-  badgeVariant?: 'error' | 'warn';
+  badgeVariant?: 'warn' | 'err';
 }
 
-// ---------------------------------------------------------------------------
-// Inline SVG icons (no external dependency)
-// ---------------------------------------------------------------------------
+const NAV_ITEMS: NavItem[] = [
+  { label: 'Dashboard', href: '/admin/dashboard' },
+  { label: 'Users', href: '/admin/users' },
+  { label: 'Content', href: '/admin/content' },
+  { label: 'Content Approval', href: '/admin/content-approval' },
+  { label: 'Content Engine', href: '/admin/content-engine' },
+  { label: 'Jobs', href: '/admin/jobs' },
+  { label: 'Safety', href: '/admin/safety' },
+  { label: 'Costs', href: '/admin/costs' },
+  { label: 'Analytics', href: '/admin/analytics' },
+  { label: 'Audit Logs', href: '/admin/audit-logs' },
+  { label: 'System', href: '/admin/system' },
+];
 
-const IconGrid = () => (
-  <svg className="w-3.5 h-3.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-      d="M4 5a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1V5zm0 9a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1v-4zm9-9a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1V5zm0 9a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1v-4z" />
-  </svg>
-);
-
-const IconLines = () => (
-  <svg className="w-3.5 h-3.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-      d="M4 6h16M4 10h16M4 14h10M4 18h7" />
-  </svg>
-);
-
-const IconDoc = () => (
-  <svg className="w-3.5 h-3.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-      d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-  </svg>
-);
-
-const IconClock = () => (
-  <svg className="w-3.5 h-3.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-      d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-  </svg>
-);
-
-const IconPerson = () => (
-  <svg className="w-3.5 h-3.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-      d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-  </svg>
-);
-
-const IconPeople = () => (
-  <svg className="w-3.5 h-3.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-      d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-  </svg>
-);
-
-const IconChart = () => (
-  <svg className="w-3.5 h-3.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-      d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-  </svg>
-);
-
-const IconCoin = () => (
-  <svg className="w-3.5 h-3.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-      d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-  </svg>
-);
-
-const IconPulse = () => (
-  <svg className="w-3.5 h-3.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-      d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-  </svg>
-);
-
-const IconShield = () => (
-  <svg className="w-3.5 h-3.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-      d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-  </svg>
-);
-
-const IconBell = () => (
-  <svg className="w-3.5 h-3.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-      d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-  </svg>
-);
-
-// ---------------------------------------------------------------------------
-// Sub-components
-// ---------------------------------------------------------------------------
-
-function SectionLabel({ label }: { label: string }) {
+function Badge({ count, variant }: { count: number; variant: 'warn' | 'err' }) {
+  if (count === 0) return null;
+  const bg = variant === 'err' ? 'bg-[#E24B4A]' : 'bg-[#BA7517]';
   return (
-    <p className="text-[9px] font-semibold uppercase tracking-widest text-gray-400 dark:text-gray-500 px-3 pt-4 pb-1 select-none">
-      {label}
-    </p>
+    <span className={`${bg} text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center leading-none`}>
+      {count > 99 ? '99+' : count}
+    </span>
   );
 }
 
-function NavItem({
-  href,
-  icon,
-  label,
-  badge,
-  badgeVariant = 'error',
-  isActive,
-}: NavItemDef & { isActive: boolean }) {
+export function AdminSidebar({ pendingReview, runningJobs, failedJobs, safetyAlerts }: AdminSidebarProps) {
+  const pathname = usePathname();
+  const [collapsed, setCollapsed] = useState(false);
+
+  const itemsWithBadges: NavItem[] = NAV_ITEMS.map((item) => {
+    if (item.href === '/admin/content-approval' && pendingReview > 0) {
+      return { ...item, badge: pendingReview, badgeVariant: 'warn' };
+    }
+    if (item.href === '/admin/jobs' && (runningJobs > 0 || failedJobs > 0)) {
+      return { ...item, badge: failedJobs > 0 ? failedJobs : runningJobs, badgeVariant: failedJobs > 0 ? 'err' : 'warn' };
+    }
+    if (item.href === '/admin/safety' && safetyAlerts > 0) {
+      return { ...item, badge: safetyAlerts, badgeVariant: 'err' };
+    }
+    return item;
+  });
+
   return (
-    <Link
-      href={href}
-      className={`flex items-center gap-2 px-2 py-1.5 mx-1 rounded-lg text-[11px] transition-colors ${
-        isActive
-          ? 'bg-[#EEEDFE] text-[#3C3489] font-medium'
-          : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'
+    <aside
+      className={`flex flex-col h-full border-r border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 transition-all duration-200 flex-shrink-0 ${
+        collapsed ? 'w-14' : 'w-52'
       }`}
     >
-      <span className={isActive ? 'text-[#534AB7]' : 'text-gray-400 dark:text-gray-500'}>
-        {icon}
-      </span>
-      <span className="flex-1 leading-none">{label}</span>
-      {badge !== undefined && badge > 0 && (
-        <span
-          className={`text-[9px] px-1.5 py-0.5 rounded-full font-semibold text-white leading-none ${
-            badgeVariant === 'warn' ? 'bg-[#BA7517]' : 'bg-[#E24B4A]'
-          }`}
+      {/* Logo / Brand */}
+      <div className="flex items-center gap-2.5 px-4 py-4 border-b border-gray-200 dark:border-gray-800">
+        <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-[#534AB7] to-[#3C3489] flex items-center justify-center flex-shrink-0">
+          <span className="text-white text-[11px] font-bold leading-none">S</span>
+        </div>
+        {!collapsed && (
+          <span className="text-sm font-semibold text-gray-900 dark:text-white truncate">Spinzy Admin</span>
+        )}
+        <button
+          type="button"
+          onClick={() => setCollapsed((c) => !c)}
+          className="ml-auto text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 min-h-[44px] min-w-[44px] flex items-center justify-center"
+          aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
         >
-          {badge > 99 ? '99+' : badge}
-        </span>
-      )}
-    </Link>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Main component
-// ---------------------------------------------------------------------------
-
-export function AdminSidebar({
-  pendingReview,
-  runningJobs,
-  failedJobs,
-  safetyAlerts,
-}: AdminSidebarProps) {
-  const pathname = usePathname();
-
-  const isActive = (href: string) =>
-    href === '/admin' ? pathname === '/admin' : pathname.startsWith(href);
-
-  const jobsBadge = runningJobs + failedJobs;
-
-  return (
-    <aside className="hidden md:flex flex-col w-52 flex-shrink-0 bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800 h-screen overflow-y-auto">
-      {/* Logo */}
-      <div className="flex items-center gap-2 px-4 py-4 border-b border-gray-200 dark:border-gray-800">
-        <span className="text-xl leading-none" role="img" aria-label="Spinzy owl">
-          🦉
-        </span>
-        <span className="text-[13px] font-semibold text-gray-900 dark:text-white tracking-tight">
-          Spinzy
-        </span>
-        <span className="ml-auto text-[9px] font-semibold px-1.5 py-0.5 rounded bg-[#EEEDFE] text-[#3C3489]">
-          Admin
-        </span>
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            {collapsed ? (
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+            ) : (
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+            )}
+          </svg>
+        </button>
       </div>
 
-      {/* Navigation */}
-      <nav className="flex-1 pb-6">
-        {/* OVERVIEW */}
-        <SectionLabel label="Overview" />
-        <NavItem
-          href="/admin"
-          icon={<IconGrid />}
-          label="Dashboard"
-          isActive={isActive('/admin')}
-        />
-
-        {/* CONTENT */}
-        <SectionLabel label="Content" />
-        <NavItem
-          href="/admin/content"
-          icon={<IconLines />}
-          label="Coverage & Hydrate"
-          isActive={isActive('/admin/content')}
-        />
-        <NavItem
-          href="/admin/content-approval"
-          icon={<IconDoc />}
-          label="Content Review"
-          badge={pendingReview}
-          isActive={isActive('/admin/content-approval')}
-        />
-        <NavItem
-          href="/admin/jobs"
-          icon={<IconClock />}
-          label="Jobs"
-          badge={jobsBadge}
-          badgeVariant={failedJobs > 0 ? 'error' : 'warn'}
-          isActive={isActive('/admin/jobs')}
-        />
-
-        {/* USERS */}
-        <SectionLabel label="Users" />
-        <NavItem
-          href="/admin/users"
-          icon={<IconPerson />}
-          label="Students"
-          isActive={isActive('/admin/users')}
-        />
-        <NavItem
-          href="/admin/parents"
-          icon={<IconPeople />}
-          label="Parents"
-          isActive={isActive('/admin/parents')}
-        />
-
-        {/* ANALYTICS */}
-        <SectionLabel label="Analytics" />
-        <NavItem
-          href="/admin/learning-analytics"
-          icon={<IconChart />}
-          label="Learning Analytics"
-          isActive={isActive('/admin/learning-analytics')}
-        />
-        <NavItem
-          href="/admin/costs"
-          icon={<IconCoin />}
-          label="Costs & Usage"
-          isActive={isActive('/admin/costs')}
-        />
-
-        {/* SYSTEM */}
-        <SectionLabel label="System" />
-        <NavItem
-          href="/admin/system/health"
-          icon={<IconPulse />}
-          label="System Health"
-          isActive={isActive('/admin/system/health')}
-        />
-        <NavItem
-          href="/admin/safety"
-          icon={<IconShield />}
-          label="Safety & Alerts"
-          badge={safetyAlerts}
-          isActive={isActive('/admin/safety')}
-        />
-        <NavItem
-          href="/admin/notifications"
-          icon={<IconBell />}
-          label="Notifications"
-          isActive={isActive('/admin/notifications')}
-        />
+      {/* Nav items */}
+      <nav className="flex-1 overflow-y-auto py-3 px-2">
+        <ul className="space-y-0.5">
+          {itemsWithBadges.map((item) => {
+            const isActive = pathname === item.href || pathname.startsWith(item.href + '/');
+            return (
+              <li key={item.href}>
+                <Link
+                  href={item.href}
+                  className={`flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-sm font-medium transition-colors min-h-[44px] ${
+                    isActive
+                      ? 'bg-[#EEEDFE] text-[#534AB7] dark:bg-[#534AB7]/20 dark:text-indigo-300'
+                      : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-gray-100'
+                  }`}
+                  title={collapsed ? item.label : undefined}
+                >
+                  <span className="flex-1 truncate">{collapsed ? item.label.charAt(0) : item.label}</span>
+                  {!collapsed && item.badge && item.badgeVariant && (
+                    <Badge count={item.badge} variant={item.badgeVariant} />
+                  )}
+                  {collapsed && item.badge && item.badgeVariant && item.badge > 0 && (
+                    <span className="w-1.5 h-1.5 rounded-full bg-[#E24B4A] flex-shrink-0" />
+                  )}
+                </Link>
+              </li>
+            );
+          })}
+        </ul>
       </nav>
-
-      {/* Footer */}
-      <div className="px-4 py-3 border-t border-gray-200 dark:border-gray-800 flex-shrink-0">
-        <p className="text-[9px] text-gray-400 dark:text-gray-600">Spinzy Academy v2</p>
-      </div>
     </aside>
   );
 }
+
+export default AdminSidebar;

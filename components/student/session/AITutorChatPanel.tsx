@@ -13,6 +13,9 @@
  *   ⑦ Input bar       -- auto-resize textarea + circular send button (sticky)
  *
  * Copy rules: no "broke/missed/failed" -- forward-looking tone only.
+ *
+ * EDIT LOG:
+ * - 2026-04-07 | claude | fix: add object-cover to Vidya avatar image to prevent stretching in chat messages
  */
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
@@ -42,6 +45,8 @@ export interface AITutorChatPanelProps {
   initialStage: string;
   isAITutorEnabled: boolean;
   onSessionComplete: (summary: { tag: string; stage: string; turnNumber: number; hintsUsed: number }) => void;
+  /** Called with the full text each time an AI message stream completes (F-STU-014 whiteboard). */
+  onAiMessage?: (content: string) => void;
 }
 
 type TutorTurnCompleteEvent = {
@@ -95,6 +100,15 @@ const NO_HINT_STAGES = new Set<string>([
   'PREREQ_BRIDGE',
   'CORE_EXPLANATION',
   'WORKED_EXAMPLE',
+]);
+
+// AC-04 (F-STU-011 MUST): stages where the re-explain style selector is shown
+const RESTYLE_STAGES = new Set<string>([
+  'HOOK',
+  'CORE_EXPLANATION',
+  'WORKED_EXAMPLE',
+  'GUIDED_PRACTICE',
+  'INDEPENDENT_PRACTICE',
 ]);
 
 const INACTIVITY_MS = 90_000;
@@ -247,7 +261,7 @@ function AiMessageBubble({
             alt="Vidya"
             width={32}
             height={32}
-            className="rounded-full flex-shrink-0"
+            className="rounded-full flex-shrink-0 object-cover"
           />
           <span className="text-[10px] font-medium text-gray-400 dark:text-gray-500">
             Teacher Vidya
@@ -286,6 +300,40 @@ function StageDivider({ label }: { label: string }) {
   );
 }
 
+type ReExplainChip = { label: string; sentinel: string; ariaLabel: string };
+
+const RESTYLE_CHIPS: ReExplainChip[] = [
+  { label: 'Simpler \u2193', sentinel: '__EXPLAIN_SIMPLER__', ariaLabel: 'Explain it more simply' },
+  { label: 'Deeper \u2191', sentinel: '__EXPLAIN_HARDER__',  ariaLabel: 'Explain it in more depth' },
+  { label: 'Real-life example',  sentinel: '__EXPLAIN_EXAMPLE__', ariaLabel: 'Give a real-life example' },
+];
+
+const RESTYLE_DISPLAY: Record<string, string> = {
+  __EXPLAIN_SIMPLER__: 'Explain it more simply',
+  __EXPLAIN_HARDER__:  'Explain it in more depth',
+  __EXPLAIN_EXAMPLE__: 'Give me a real-life example',
+};
+
+function ReExplainBar({ onSelect, disabled }: { onSelect: (sentinel: string) => void; disabled: boolean }) {
+  return (
+    <div className="flex items-center gap-1.5 overflow-x-auto px-3 py-1.5 border-t border-gray-100 dark:border-slate-800 bg-white dark:bg-slate-900">
+      <span className="shrink-0 text-[10px] text-gray-400 dark:text-gray-500 mr-0.5">Re-explain:</span>
+      {RESTYLE_CHIPS.map((chip) => (
+        <button
+          key={chip.sentinel}
+          type="button"
+          aria-label={chip.ariaLabel}
+          disabled={disabled}
+          onClick={() => onSelect(chip.sentinel)}
+          className="shrink-0 min-h-[36px] rounded-full border border-[#534AB7]/30 dark:border-[#534AB7]/50 bg-[#EEEDFE] dark:bg-[#534AB7]/10 px-3 text-xs font-medium text-[#534AB7] dark:text-indigo-300 hover:bg-[#534AB7]/15 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed transition-all whitespace-nowrap"
+        >
+          {chip.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 // ── Main component ─────────────────────────────────────────────────────────────
 
 export const AITutorChatPanel: React.FC<AITutorChatPanelProps> = ({
@@ -295,6 +343,7 @@ export const AITutorChatPanel: React.FC<AITutorChatPanelProps> = ({
   initialStage,
   isAITutorEnabled,
   onSessionComplete,
+  onAiMessage,
 }) => {
   const [items, setItems] = useState<MessageItem[]>([]);
   const [inputValue, setInputValue] = useState('');
@@ -309,10 +358,14 @@ export const AITutorChatPanel: React.FC<AITutorChatPanelProps> = ({
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const lastAiMsgIdRef = useRef<string | null>(null);
+  // Accumulates streaming AI content so finalizeAiMessage can fire onAiMessage (F-STU-014).
+  const lastAiContentRef = useRef('');
   const currentStageRef = useRef(initialStage);
   const inactivityTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const hasReceivedTokenRef = useRef(false); // first token received this turn?
+  const onAiMessageRef = useRef(onAiMessage);
+  onAiMessageRef.current = onAiMessage;
 
   // ── Scroll to bottom ───────────────────────────────────────────────────────
 
@@ -366,6 +419,7 @@ export const AITutorChatPanel: React.FC<AITutorChatPanelProps> = ({
   const startAiMessage = useCallback(() => {
     const id = makeId('ai');
     lastAiMsgIdRef.current = id;
+    lastAiContentRef.current = '';
     hasReceivedTokenRef.current = false;
     setIsTyping(true);
     const msg: ChatMessage = { id, role: 'ai', content: '', isStreaming: true };
@@ -379,6 +433,7 @@ export const AITutorChatPanel: React.FC<AITutorChatPanelProps> = ({
       hasReceivedTokenRef.current = true;
       setIsTyping(false); // first token → hide dots, show streaming bubble
     }
+    lastAiContentRef.current += chunk;
     setItems((prev) =>
       prev.map((item) =>
         item.kind === 'msg' && item.msg.id === id
@@ -399,7 +454,11 @@ export const AITutorChatPanel: React.FC<AITutorChatPanelProps> = ({
           : item,
       ),
     );
+    // Notify whiteboard panel with completed AI message content (F-STU-014).
+    const content = lastAiContentRef.current;
+    if (content) onAiMessageRef.current?.(content);
     lastAiMsgIdRef.current = null;
+    lastAiContentRef.current = '';
   }, []);
 
   // ── Stage transition ───────────────────────────────────────────────────────
@@ -589,6 +648,17 @@ export const AITutorChatPanel: React.FC<AITutorChatPanelProps> = ({
     void sendMessageInternal('__HINT_REQUEST__', true);
   }
 
+  // ── Re-explain style action (AC-04, F-STU-011) ────────────────────────────
+
+  function handleReExplain(sentinel: string) {
+    if (isStreaming) return;
+    // Show as student message so the chat history reflects the request
+    const display = RESTYLE_DISPLAY[sentinel] ?? sentinel;
+    addStudentMessage(display);
+    startAiMessage();
+    void streamTutorTurn(sentinel);
+  }
+
   // ── Render: feature flag ───────────────────────────────────────────────────
 
   if (!isAITutorEnabled) return null;
@@ -606,6 +676,7 @@ export const AITutorChatPanel: React.FC<AITutorChatPanelProps> = ({
   });
 
   const showHintBar = !NO_HINT_STAGES.has(currentStage);
+  const showReExplainBar = RESTYLE_STAGES.has(currentStage);
 
   return (
     <>
@@ -670,6 +741,11 @@ export const AITutorChatPanel: React.FC<AITutorChatPanelProps> = ({
               {hintsRemaining <= 0 ? 'No hints remaining' : 'Get a hint'}
             </button>
           </div>
+        )}
+
+        {/* ④b Re-explain style bar (AC-04, F-STU-011) */}
+        {showReExplainBar && (
+          <ReExplainBar onSelect={handleReExplain} disabled={isStreaming} />
         )}
 
         {/* ⑤ Inactivity prompt */}

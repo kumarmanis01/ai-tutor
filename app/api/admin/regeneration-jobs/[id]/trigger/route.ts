@@ -1,7 +1,23 @@
+/**
+ * FILE OBJECTIVE:
+ * - POST handler to trigger (transition to RUNNING) a RegenerationJob by ID.
+ *
+ * LINKED UNIT TEST:
+ * - tests/unit/api/admin/regeneration-jobs/trigger.test.ts
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/COPILOT_GUARDRAILS.md
+ * - .github/copilot-instructions.md
+ *
+ * EDIT LOG:
+ * - 2026-04-11T07:36:56Z | copilot | fix: import formatErrorForResponse; use action:null + legacyAction for system audit events
+ */
 import { prisma } from '@/lib/prisma'
 import { requireAdminOrModerator } from '@/lib/auth'
 import { AuditEvents } from '@/lib/audit/events'
 import { logAuditEvent } from '@/lib/audit/log'
+import { logger } from '@/lib/logger'
+import { formatErrorForResponse } from '@/lib/errorResponse'
 
 export async function POST(req: Request, { params }: { params: Promise<{ id?: string; jobId?: string }> }) {
   const resolvedParams = await params;
@@ -37,11 +53,20 @@ async function handleTrigger(_req: Request, jobId?: string, actorId?: string | n
       return { status: 200, job: updatedJob }
     })
 
-    // Fire-and-forget audit: do not block the response on audit write
+    // Fire-and-forget audit: do not block the response on audit write.
+    // Do not silently swallow exceptions — log them for observability.
     try {
-      logAuditEvent(prisma as any, { action: AuditEvents.REGEN_JOB_TRIGGERED, actorId: actorId ?? null, entityId: jobId, metadata: { jobId } })
-    } catch {
-      // ensure we never throw on audit failures
+      // REGEN_JOB_TRIGGERED is a legacy string constant -- not an AdminActionType enum value.
+      // For system events, pass action: null and record the legacy string in details.legacyAction.
+      logAuditEvent(prisma as any, {
+        action: null,
+        actorId: actorId ?? null,
+        entityId: jobId,
+        targetEntity: 'RegenerationJob',
+        details: { jobId, legacyAction: AuditEvents.REGEN_JOB_TRIGGERED },
+      })
+    } catch (err: any) {
+      logger.warn('regeneration trigger: logAuditEvent failed', { err: (err && err.message) || err, jobId })
     }
 
     if (result?.status === 200) return new Response(JSON.stringify({ job: result.job }), { status: 200, headers: { 'Content-Type': 'application/json' } })

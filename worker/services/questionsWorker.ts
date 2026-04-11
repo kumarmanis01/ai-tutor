@@ -30,6 +30,26 @@ import { logger } from '@/lib/logger.js';
 import { JobStatus, ApprovalStatus } from '@/lib/ai-engine/types';
 import { getNextVersion } from '@/lib/getNextVersion';
 
+// If true, write raw LLM output only to worker logs (via logger) and DO NOT persist
+// the raw text to `AIContentLog.responseBody.raw`.
+const LOG_RAW_LLM_OUTPUT_CONSOLE_ONLY = String(process.env.LOG_RAW_LLM_OUTPUT_CONSOLE_ONLY || '').toLowerCase() === 'true';
+
+function getResponseBodyForDb(parsed: any, llmResult: any) {
+  if (LOG_RAW_LLM_OUTPUT_CONSOLE_ONLY) {
+    return parsed ? { parsed } : null;
+  }
+  return { parsed, raw: llmResult?.content };
+}
+
+function logRawToConsole(jobId: string, llmResult: any) {
+  if (!LOG_RAW_LLM_OUTPUT_CONSOLE_ONLY) return;
+  try {
+    const raw = llmResult?.content;
+    if (!raw) return;
+    const snippet = typeof raw === 'string' ? raw.slice(0, 4000) : JSON.stringify(raw).slice(0, 4000);
+    logger.info('[LLM_RAW_DEBUG] Raw LLM output (console-only mode)', { jobId, snippet });
+  } catch (e) {}
+}
 /** All difficulty levels to generate */
 const DIFFICULTY_LEVELS = ['easy', 'medium', 'hard'] as const;
 type DifficultyLevel = typeof DIFFICULTY_LEVELS[number];
@@ -559,7 +579,11 @@ export async function handleQuestionsJob(jobId: string): Promise<void> {
         topicId,
         rawContentLength: llmResult?.content?.length ?? 0,
       });
-      try { await prisma.aIContentLog.create({ data: { model: llmResult?.model || 'none', promptType: 'questions', language, success: false, status: 'failed', error: 'llm_parse_failed', requestBody: { jobId, difficulty }, responseBody: { raw: llmResult?.content } } }) } catch {}
+      try {
+        logRawToConsole(job.id, llmResult);
+        const responseBody = getResponseBodyForDb(null, llmResult);
+        await prisma.aIContentLog.create({ data: { model: llmResult?.model || 'none', promptType: 'questions', language, success: false, status: 'failed', error: 'llm_parse_failed', requestBody: { jobId, difficulty }, responseBody } })
+      } catch {}
       questionsFailed++;
       results.push({ difficulty, testId: null, questionCount: 0 });
       continue;
@@ -637,7 +661,11 @@ export async function handleQuestionsJob(jobId: string): Promise<void> {
         jobId,
         topicId,
       });
-      try { await prisma.aIContentLog.create({ data: { model: llmResult?.model || 'none', promptType: 'questions', language, success: false, status: 'failed', error: String(errorCode), requestBody: { jobId, difficulty }, responseBody: { raw: llmResult?.content } } }) } catch {}
+      try {
+        logRawToConsole(job.id, llmResult);
+        const responseBody = getResponseBodyForDb(null, llmResult);
+        await prisma.aIContentLog.create({ data: { model: llmResult?.model || 'none', promptType: 'questions', language, success: false, status: 'failed', error: String(errorCode), requestBody: { jobId, difficulty }, responseBody } })
+      } catch {}
       questionsFailed++;
       results.push({ difficulty, testId: null, questionCount: 0 });
     }
@@ -715,6 +743,8 @@ export async function handleQuestionsJob(jobId: string): Promise<void> {
         }
 
         if (typeof tx.aIContentLog?.create === 'function') {
+          const successResponseBody = getResponseBodyForDb(item.parsed, item.llmResult);
+          logRawToConsole(job.id, item.llmResult);
           await tx.aIContentLog.create({ data: {
             model: item.llmResult?.model || 'llm',
             promptType: 'questions',
@@ -731,7 +761,7 @@ export async function handleQuestionsJob(jobId: string): Promise<void> {
             success: true,
             status: 'success',
             requestBody: { difficulty: item.difficulty },
-            responseBody: { raw: item.llmResult?.content }
+            responseBody: successResponseBody
           } });
         }
 

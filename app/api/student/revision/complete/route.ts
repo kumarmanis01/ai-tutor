@@ -19,6 +19,7 @@ import { logger } from '@/lib/logger'
 import { awardXP } from '@/lib/student/xp'
 import { trackRevisionAndMaybeUpdateStreak } from '@/lib/student/streak'
 import { enqueueReteachPlan } from '@/jobs/reteachPlan'
+import { addRevisionMinutes } from '@/lib/student/revisionCap'
 
 export const dynamic = 'force-dynamic'
 
@@ -54,6 +55,8 @@ export async function POST(req: Request) {
     // Fire-and-forget side effects -- none can fail the response.
     void awardXP({ studentId: userId, amount: REVISION_XP, source: 'revision_complete' })
     void trackRevisionAndMaybeUpdateStreak(userId)
+    // AC-06 (F-STU-022): track ~2 min per revision concept toward daily 20-min cap
+    void addRevisionMinutes(userId, 2)
 
     if (score <= RETEACH_SCORE_THRESHOLD) {
       void enqueueReteachPlan({ studentId: userId, conceptId })

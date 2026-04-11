@@ -87,6 +87,30 @@ describe('computeNextReviewDays', () => {
   test('pure: same input same output', () => {
     expect(computeNextReviewDays(7)).toBe(computeNextReviewDays(7))
   })
+
+  test('AC-07 pre-exam mode (targetRetention=0.92) yields SHORTER interval than default (0.90)', () => {
+    // Higher targetRetention means we want to review sooner -- shorter interval.
+    // Formula: S * ln(tr) / ln(0.9). ln(0.92)/ln(0.9) ≈ 0.79 < 1 (shorter).
+    const stability = 50 // large enough that rounding does not mask the difference
+    const defaultInterval = computeNextReviewDays(stability, 0.9)
+    const preExamInterval = computeNextReviewDays(stability, 0.92)
+    expect(preExamInterval).toBeLessThan(defaultInterval)
+  })
+
+  test('lower targetRetention (e.g. 0.80) yields LONGER interval than default (0.90)', () => {
+    // Lower targetRetention means we are willing to wait longer before reviewing.
+    // Formula: S * ln(0.80) / ln(0.9). ln(0.80)/ln(0.9) ≈ 2.12 > 1 (longer).
+    const stability = 50
+    const defaultInterval = computeNextReviewDays(stability, 0.9)
+    const laxInterval = computeNextReviewDays(stability, 0.80)
+    expect(laxInterval).toBeGreaterThan(defaultInterval)
+  })
+
+  test('default targetRetention = 0.90 gives interval ≈ newStability (ratio = 1)', () => {
+    // ln(0.9)/ln(0.9) = 1 => interval = round(stability)
+    const stability = 10
+    expect(computeNextReviewDays(stability)).toBe(Math.round(stability))
+  })
 })
 
 describe('updateSM18', () => {

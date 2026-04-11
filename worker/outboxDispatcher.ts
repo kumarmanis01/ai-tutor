@@ -13,13 +13,15 @@
  * EDIT LOG:
  * - 2026-01-21T00:00:00Z | copilot-agent | created as worker-integrated outbox dispatcher
  * - 2026-03-07T00:00:00Z | RISK-04 | dead-letter queue, MAX_ATTEMPTS, poll 5s
+ * - 2026-04-11T07:36:56Z | copilot | fix: log warning on malformed deliverAt in catch block
  */
 
 import { Queue } from 'bullmq';
-import { prisma } from '../lib/prisma.js';
-import { redisConnection } from '../lib/redis.js';
-import { logger } from '../lib/logger.js';
-import { CONTENT_HYDRATION_QUEUE } from '../lib/queues/constants.js';
+import { prisma } from '@/lib/prisma';
+import { redisConnection } from '@/lib/redis';
+import { logger } from '@/lib/logger';
+import { CONTENT_HYDRATION_QUEUE } from '@/lib/queues/constants';
+import { incOutboxDeadLetter } from '@/lib/metrics';
 
 /** RISK-04: Max dispatch attempts before moving to dead-letter. Prevents infinite retry loops. */
 const MAX_ATTEMPTS = 10;
@@ -63,6 +65,7 @@ async function moveToDeadLetter(
       }),
       prisma.outbox.delete({ where: { id: row.id } }),
     ]);
+    try { incOutboxDeadLetter(row.queue ?? 'unknown', reason) } catch {}
     logger.warn('[outbox-dispatcher] moved to dead-letter', {
       outboxId: row.id,
       reason,
@@ -89,6 +92,24 @@ async function dispatchBatch(): Promise<number> {
   const q = getQueue();
 
   for (const row of rows) {
+    // If the row has a scheduled delivery time in meta.deliverAt, skip until that time
+    try {
+      const metaAny = row.meta as any;
+      if (metaAny?.deliverAt) {
+        const deliverAt = new Date(metaAny.deliverAt);
+        if (deliverAt.getTime() > Date.now()) {
+          logger.info('[outbox-dispatcher] skipping scheduled row (not due yet)', { outboxId: row.id, deliverAt: metaAny.deliverAt });
+          continue;
+        }
+      }
+    } catch (err) {
+      // Non-fatal: log a warning so malformed deliverAt values are observable, then attempt dispatch
+      logger.warn('[outbox-dispatcher] invalid or malformed deliverAt in meta; dispatching immediately', {
+        outboxId: row.id,
+        deliverAt: (row.meta as any)?.deliverAt,
+        error: err instanceof Error ? err.message : String(err),
+      });
+    }
     // RISK-04: Exceeded max attempts -- move to dead-letter, skip dispatch
     if (row.attempts >= MAX_ATTEMPTS) {
       await moveToDeadLetter(row, 'max_attempts_exceeded');

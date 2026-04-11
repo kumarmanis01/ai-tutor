@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useRef, type ReactElement } from 'react';
+import { logger } from '@/lib/logger';
 import { useSession } from 'next-auth/react';
 import type { AppSession } from '@/lib/types/auth';
 
@@ -62,7 +63,8 @@ export default function AuthRedeemOnSignIn(): ReactElement | null {
           track = ((mod as Record<string, unknown>).default as Record<string, unknown>)
             .trackEvent as TrackFn;
         }
-      } catch {
+      } catch (err) {
+        logger.warn('analytics client import failed', { component: 'AuthRedeemOnSignIn', methodName: 'init', error: String(err) });
         track = undefined; // best-effort analytics only
       }
 
@@ -75,8 +77,8 @@ export default function AuthRedeemOnSignIn(): ReactElement | null {
               code: referralCode,
               userId: s?.user?.id ?? null,
             });
-          } catch {
-            /* swallow analytics errors */
+          } catch (err) {
+            logger.warn('analytics track failed', { component: 'AuthRedeemOnSignIn', methodName: 'track_attempt', error: String(err) });
           }
         }
 
@@ -92,8 +94,8 @@ export default function AuthRedeemOnSignIn(): ReactElement | null {
         if (track) {
           try {
             void track('referral_redeem_result', { code: referralCode, status: res.status });
-          } catch {
-            /* swallow */
+          } catch (err) {
+            logger.warn('analytics track failed', { component: 'AuthRedeemOnSignIn', methodName: 'track_result', error: String(err) });
           }
         }
       } catch (err) {
@@ -106,8 +108,8 @@ export default function AuthRedeemOnSignIn(): ReactElement | null {
               status: isAbort ? 'timeout' : 'error',
               detail: String(err),
             });
-          } catch {
-            /* swallow */
+          } catch (err2) {
+            logger.warn('analytics track failed', { component: 'AuthRedeemOnSignIn', methodName: 'track_error', error: String(err2) });
           }
         }
       } finally {
@@ -117,16 +119,16 @@ export default function AuthRedeemOnSignIn(): ReactElement | null {
         // Best-effort: clear referral cookie and remove query params so we don't retry
         try {
           document.cookie = 'referral=; path=/; max-age=0';
-        } catch {
-          /* ignore */
+        } catch (err) {
+          logger.warn('failed to clear referral cookie', { component: 'AuthRedeemOnSignIn', methodName: 'cleanup', error: String(err) });
         }
         try {
           const url = new URL(window.location.href);
           url.searchParams.delete('ref');
           url.searchParams.delete('referral');
           window.history.replaceState({}, document.title, url.toString());
-        } catch {
-          /* ignore */
+        } catch (err) {
+          logger.warn('failed to clear referral query params', { component: 'AuthRedeemOnSignIn', methodName: 'cleanup', error: String(err) });
         }
       }
     })();

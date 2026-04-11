@@ -12,7 +12,9 @@ import { redirect } from 'next/navigation';
 import { requireActiveSession } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { generateSubjectDiagnosticTest } from '@/lib/diagnostics/diagnosticQuestionService';
+import { featureFlags } from '@/lib/config';
 import { getPartialDiagnostic } from '@/lib/redis/diagnosticPartial';
+import { getSubjectDiagnosticStatus } from '@/lib/diagnostics/stateStore';
 import DiagnosticFlow, {
   type DiagnosticQuestion,
 } from '@/components/student/diagnostic/DiagnosticFlow';
@@ -37,6 +39,49 @@ export default async function DiagnosticPage({
   });
 
   if (!student?.board || !student?.grade) redirect('/student/onboarding');
+
+  // AC-08: enforce 30-day retake cooldown at the page level so the student sees a
+  // clear "come back later" screen rather than loading the quiz UI and failing.
+  const diagnosticStatus = await getSubjectDiagnosticStatus(userId, subjectId);
+  if (diagnosticStatus.status === 'completed' && diagnosticStatus.completedAt) {
+    const cooldownMs = 30 * 24 * 60 * 60 * 1000; // 30 days
+    const eligibleAt = new Date(new Date(diagnosticStatus.completedAt).getTime() + cooldownMs);
+    if (Date.now() < eligibleAt.getTime()) {
+      const eligibleDateStr = eligibleAt.toLocaleDateString('en-IN', {
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric',
+      });
+      return (
+        <div className="min-h-screen flex items-center justify-center bg-white dark:bg-slate-950 px-4">
+          <div className="max-w-sm w-full text-center">
+            <div className="w-16 h-16 rounded-2xl bg-[#FAEEDA] dark:bg-[#BA7517]/20 flex items-center justify-center mx-auto mb-5">
+              <svg viewBox="0 0 24 24" fill="none" stroke="#BA7517" strokeWidth="2" className="w-8 h-8" aria-hidden>
+                <circle cx="12" cy="12" r="10" />
+                <polyline points="12 6 12 12 16 14" />
+              </svg>
+            </div>
+            <h1 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">
+              Diagnostic completed
+            </h1>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">
+              Your next retake is available on
+            </p>
+            <p className="text-sm font-semibold text-[#BA7517] mb-6">{eligibleDateStr}</p>
+            <p className="text-xs text-gray-400 dark:text-gray-500 mb-6">
+              Retakes use a fresh question set. Results update your knowledge map.
+            </p>
+            <Link
+              href="/dashboard"
+              className="inline-flex items-center justify-center w-full min-h-[44px] px-5 py-2.5 bg-[#534AB7] hover:bg-[#4840a3] text-white text-sm font-semibold rounded-xl transition-colors"
+            >
+              Back to dashboard
+            </Link>
+          </div>
+        </div>
+      );
+    }
+  }
 
   // Fetch SubjectDef with active chapters + topics so we can map topicId → chapterId/name
   const subjectDef = await prisma.subjectDef.findUnique({
@@ -103,20 +148,24 @@ export default async function DiagnosticPage({
     }
   }
 
-  // Generate (or retrieve cached) diagnostic questions
+  // If adaptive diagnostic feature is enabled, we do not pre-generate the full
+  // question batch on the page. The client will call the `start` API to bootstrap
+  // a server-driven adaptive session. Otherwise, generate the full test here.
   let rawQuestions: Awaited<ReturnType<typeof generateSubjectDiagnosticTest>>['questions'] = [];
   let questionsReady = true;
-  try {
-    const diagnosticTest = await generateSubjectDiagnosticTest({
-      boardSlug: student.board,
-      grade: student.grade,
-      subjectSlug: subjectDef.slug,
-      languageCode: student.language ?? undefined,
-    });
-    rawQuestions = diagnosticTest.questions;
-    if (rawQuestions.length === 0) questionsReady = false;
-  } catch {
-    questionsReady = false;
+  if (!featureFlags.adaptiveDiagnostic) {
+    try {
+      const diagnosticTest = await generateSubjectDiagnosticTest({
+        boardSlug: student.board,
+        grade: student.grade,
+        subjectSlug: subjectDef.slug,
+        languageCode: student.language ?? undefined,
+      });
+      rawQuestions = diagnosticTest.questions;
+      if (rawQuestions.length === 0) questionsReady = false;
+    } catch {
+      questionsReady = false;
+    }
   }
 
   // Content not ready: topics exist but questions haven't been generated yet.
@@ -174,6 +223,10 @@ export default async function DiagnosticPage({
       questions={questions}
       initialAnswers={initialAnswers}
       initialIndex={initialIndex}
+      // When running adaptive diagnostic, pass board/grade/subjectSlug so client can call start API
+      boardSlug={student.board}
+      grade={student.grade}
+      subjectSlug={subjectDef.slug}
     />
   );
 }

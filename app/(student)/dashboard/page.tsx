@@ -32,12 +32,14 @@ import { getMasteryLabel } from '@/lib/learning/masteryLabel';
 import { getOrderedTopicsForStudent } from '@/lib/homeEngine/getOrderedTopicsForStudent';
 import { isSessionEngineEnabled } from '@/lib/session/sessionEngine';
 import { computeReadinessScore } from '@/lib/student/examReadiness';
+import Link from 'next/link';
 
 import TodaysLearningCard from '@/components/student/dashboard/TodaysLearningCard';
 import WeeklyStudyStrip from '@/components/student/dashboard/WeeklyStudyStrip';
 import XPWidget from '@/components/student/dashboard/XPWidget';
 import RevisionWidget from '@/components/student/dashboard/RevisionWidget';
 import SubjectReadinessCard from '@/components/student/dashboard/SubjectReadinessCard';
+import FreemiumCounter from '@/components/student/dashboard/FreemiumCounter';
 import UpgradeFlow from '@/components/student/subscription/UpgradeFlow';
 import UpgradeBanner from '@/components/student/subscription/UpgradeBanner';
 import { checkFreeTierCap } from '@/lib/freemium';
@@ -116,6 +118,7 @@ export default async function StudentHomeDashboardPage() {
     freeTierStatus,
     userSub,
     xpThisWeekAgg,
+    latestPlanExam,
     planTodayResult,
     upgradeDismissed,
   ] = await Promise.all([
@@ -132,7 +135,6 @@ export default async function StudentHomeDashboardPage() {
         totalXp: true,
         level: true,
         name: true,
-        examDate: true,
       },
     }),
 
@@ -185,9 +187,9 @@ export default async function StudentHomeDashboardPage() {
     // 5. Total session count (WeakTopicsSection gate)
     prisma.structuredSession.count({ where: { studentId: userId } }),
 
-    // 6. Learning profile (weekly goal)
+    // 6. Learning profile (weekly goal + diagnostic status)
     prisma.studentLearningProfile
-      .findFirst({ where: { studentId: userId }, select: { studyDaysPerWeek: true } })
+      .findFirst({ where: { studentId: userId }, select: { studyDaysPerWeek: true, recommendations: true } })
       .catch(() => null),
 
     // 7. Weak topics (max 2)
@@ -219,6 +221,19 @@ export default async function StudentHomeDashboardPage() {
       where: { studentId: userId, awardedAt: { gte: monday, lte: sunday } },
       _sum: { amount: true },
     }),
+
+    // 14. Latest learning plan (most recent generation) -- used for examDate
+    (async () => {
+      try {
+        return await prisma.learningPlan.findFirst({
+          where: { studentId: userId },
+          orderBy: { generatedAt: 'desc' },
+          select: { examDate: true },
+        });
+      } catch {
+        return null;
+      }
+    })(),
 
     // 14. Today's learning plan item
     (async () => {
@@ -315,7 +330,7 @@ export default async function StudentHomeDashboardPage() {
   const xpThisWeek = xpThisWeekAgg._sum.amount ?? 0;
   const totalXp = studentProfile?.totalXp ?? 0;
   const currentLevel = studentProfile?.level ?? 1;
-  const studentName = studentProfile?.name ?? userSub?.name ?? 'Student';
+  const _studentName = studentProfile?.name ?? userSub?.name ?? 'Student';
   const streakCurrent = streakRow?.current ?? 0;
   const weeklyGoal = learningProfile?.studyDaysPerWeek ?? 5;
 
@@ -359,12 +374,33 @@ export default async function StudentHomeDashboardPage() {
     : null;
 
   // ── Primary card type ─────────────────────────────────────────────────────
+  // 'plan_loading' is used when the diagnostic is complete but the bootstrap
+  // worker has not yet produced a learning plan recommendation. This prevents
+  // the "Take diagnostic test" CTA from reappearing after the student submits.
+  // Computed here from learningProfile (already fetched) so it does not depend
+  // on subjectDefs (fetched later). Checks any subject -- if ANY is completed,
+  // the student has passed through the diagnostic gate.
+  const diagnosticRecs = ((): Record<string, { status?: string }> => {
+    const recs = (learningProfile as { recommendations?: unknown } | null)?.recommendations;
+    if (recs && typeof recs === 'object' && !Array.isArray(recs)) {
+      const d = (recs as Record<string, unknown>).diagnostics;
+      if (d && typeof d === 'object' && !Array.isArray(d)) {
+        return d as Record<string, { status?: string }>;
+      }
+    }
+    return {};
+  })();
+  const diagnosticCompleted = Object.values(diagnosticRecs).some(
+    (entry) => entry?.status === 'completed',
+  );
+
   const engineRuleId = rawAction?.ruleId;
   const cardType =
     engineRuleId === 'homework_pending' || pendingHomeworkRaw.length > 0 ? 'homework'
     : activeSession ? 'resume'
     : recommendation ? 'start'
     : aheadOfPlan ? 'ahead'
+    : diagnosticCompleted ? 'plan_loading'
     : 'empty';
 
   const oldestHw = pendingHomeworkRaw[0] ?? null;
@@ -418,7 +454,8 @@ export default async function StudentHomeDashboardPage() {
     : '/student/onboarding';
 
   // ── Crunch mode (daysToExam <= 14) ──────────────────────────────────────
-  const examDate = studentProfile?.examDate ?? null;
+  // Prefer per-user examDate if present; otherwise fall back to most recent LearningPlan.examDate
+  const examDate = studentProfile?.examDate ?? latestPlanExam?.examDate ?? null;
   const daysToExam = examDate
     ? Math.ceil((examDate.getTime() - Date.now()) / 86_400_000)
     : null;
@@ -450,6 +487,15 @@ export default async function StudentHomeDashboardPage() {
               Focus mode -- prioritising your highest-weight topics
             </p>
           </div>
+        )}
+
+        {/* AC-02 (F-STU-040): Session cap counter -- always visible for free users */}
+        {userSub?.subscriptionStatus === 'free' && freeTierStatus.sessionsRemaining > 0 && (
+          <FreemiumCounter
+            sessionsUsed={freeTierStatus.sessionsUsed}
+            sessionsRemaining={freeTierStatus.sessionsRemaining}
+            periodStart={freeTierStatus.periodStart.toISOString()}
+          />
         )}
 
         {/* Freemium upgrade gate / banner */}
@@ -541,7 +587,7 @@ export default async function StudentHomeDashboardPage() {
                 </h3>
                 <div className="space-y-3">
                   {readinessResults.map((r) => (
-                    <a
+                    <Link
                       key={r.subjectId}
                       href={`/student/progress/${r.subjectId}`}
                       className="block rounded-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-[#534AB7]"
@@ -550,8 +596,9 @@ export default async function StudentHomeDashboardPage() {
                         subjectName={r.subjectName}
                         score={r.score}
                         subjectId={r.subjectId}
+                        diagnosticDone={diagnosticRecs[r.subjectId]?.status === 'completed'}
                       />
-                    </a>
+                    </Link>
                   ))}
                 </div>
               </section>
@@ -578,12 +625,12 @@ export default async function StudentHomeDashboardPage() {
                       <p className="text-xs font-medium text-[#E24B4A] dark:text-red-400 mb-3">
                         {getMasteryLabel(t.mastery)}
                       </p>
-                      <a
+                      <Link
                         href={`/session/${t.topicId}`}
                         className="flex w-full min-h-[44px] items-center justify-center rounded-lg border border-[#534AB7]/30 bg-[#534AB7]/5 dark:bg-[#534AB7]/10 text-xs font-semibold text-[#534AB7] dark:text-indigo-300 hover:bg-[#534AB7]/10 dark:hover:bg-[#534AB7]/20 transition-colors"
                       >
                         Revise
-                      </a>
+                      </Link>
                     </article>
                   ))}
                 </div>
@@ -619,12 +666,12 @@ export default async function StudentHomeDashboardPage() {
                     </li>
                   ))}
                 </ul>
-                <a
+                <Link
                   href="/learn/learning-path"
                   className="mt-3 inline-flex min-h-[44px] items-center text-xs font-medium text-[#534AB7] dark:text-indigo-400 hover:underline"
                 >
                   View full learning path →
-                </a>
+                </Link>
               </section>
             )}
           </div>

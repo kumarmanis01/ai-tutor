@@ -1,5 +1,6 @@
 'use client';
 import { useState } from 'react';
+import { logger } from '@/lib/logger';
 
 type ShareResponse = {
   ok?: boolean;
@@ -27,10 +28,11 @@ export default function ShareBadge({ badgeId, title, description, url }: Props) 
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ badgeId }),
       });
-      const raw = await res.json().catch(() => ({}) as unknown);
+      const raw = await res.json().catch((e) => { logger.warn('badges/share response.json failed', { component: 'ShareBadge', error: e }); return {} as unknown });
       const data = raw as ShareResponse;
       return data.shareUrl ?? url ?? window.location.href;
-    } catch {
+    } catch (err) {
+      logger.warn('recordAndGetShareUrl failed', { component: 'ShareBadge', methodName: 'recordAndGetShareUrl', error: String(err) });
       return url ?? window.location.href;
     } finally {
       setLoading(false);
@@ -48,7 +50,8 @@ export default function ShareBadge({ badgeId, title, description, url }: Props) 
       try {
         await navigator.share({ title: 'Spinzy Achievement', text, url: shareUrl });
         return;
-      } catch {
+      } catch (e) {
+        logger.warn('navigator.share failed', { component: 'ShareBadge', error: e });
         // user cancelled or share failed -- fallback below
       }
     }

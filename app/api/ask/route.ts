@@ -74,7 +74,9 @@ export async function POST(req: Request) {
             if (hasWrongSubject && !hasCorrectSubject) {
               await prisma.chat.updateMany({ where: { userId: sessionUserId, conversationId }, data: { subject } });
             }
-          } catch {}
+          } catch (e) {
+            logger.warn('Failed to reconcile legacy conversation subject', { className: 'api.ask', methodName: 'POST', error: e });
+          }
           // Ensure Conversation exists for this user + conversationId
           try {
             await prisma.conversation.upsert({
@@ -82,7 +84,9 @@ export async function POST(req: Request) {
               update: {},
               create: { id: conversationId, userId: sessionUserId },
             });
-          } catch {}
+          } catch (e) {
+            logger.warn('Failed to upsert Conversation', { className: 'api.ask', methodName: 'POST', error: e });
+          }
           // Persist user message linked to Conversation; also set legacy subject for back-compat
           await prisma.chat.create({ data: { userId: sessionUserId, role: 'user', content: text, conversationId, subject } });
           } catch (e) {
@@ -138,7 +142,7 @@ export async function POST(req: Request) {
           })
             .then((r) => (r.ok ? r.json().catch(() => ({ caption: null })) : { caption: null }))
             .then((j) => (j && typeof j.caption === 'string' ? j.caption : null))
-            .catch(() => null),
+            .catch((e) => { logger.warn('Image caption request failed', { className: 'api.ask', methodName: 'POST', error: e }); return null; }),
         );
 
         captions = await Promise.all(captionPromises);
@@ -193,75 +197,31 @@ export async function POST(req: Request) {
       { role: 'user', content: userContentParts },
     ];
 
-    const resp = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${OPENAI_API_KEY}`,
-      },
-      body: JSON.stringify({ model, messages: messagesToSend, temperature: 0.35, max_tokens: 800 }),
-    });
-
-    if (!resp.ok) {
-      const txt = await resp.text().catch(() => '');
-      return NextResponse.json({ error: `OpenAI error: ${resp.status} ${txt}` }, { status: 500 });
-    }
-
-    const data = await resp.json().catch(() => null);
-    const content = data?.choices?.[0]?.message?.content;
-    if (!content) return NextResponse.json({ error: 'Invalid response from LLM' }, { status: 500 });
-
-    // Try to parse JSON from model output
-    let parsed: any = null;
+    // Enqueue AI request to worker queue. Worker will call LLM and persist validated
+    // structured output. We DO NOT call LLM from API handlers.
     try {
-      parsed = JSON.parse(content);
-    } catch {
-      const jsonMatch = String(content).match(/\{[\s\S]*\}/);
-      if (jsonMatch) {
-        try {
-          parsed = JSON.parse(jsonMatch[0]);
-        } catch {
-          // fall through
-        }
-      }
-    }
+      const { getAIRequestQueue } = await import('@/queues/aiQueue');
+      const q = getAIRequestQueue();
 
-    if (!parsed) {
-      // As a fallback, return a user-friendly message instead of raw JSON
-      const fallbackMsg =
-        'Sorry, I could not understand the AI response. Please try rephrasing your question or ask again.';
-      // Persist assistant reply if session present (best-effort)
-      if (sessionUserId) {
-        try {
-          await prisma.chat.create({ data: { userId: sessionUserId, role: 'assistant', content: fallbackMsg, conversationId, subject } });
-        } catch (e) {
-          logger.error('Failed to persist assistant reply for /api/ask (fallback)', { className: 'api.ask', methodName: 'POST', error: e });
-        }
-      }
-      return NextResponse.json({ language: undefined, answer: fallbackMsg });
-    }
+      const job = await q.add('AI_ASK', {
+        type: 'ASK',
+        payload: {
+          messages: messagesToSend,
+          model: process.env.OPENAI_MODEL || 'gpt-4o-mini',
+          meta: {
+            subject,
+            conversationId,
+            language: resolvedLang,
+            sessionUserId,
+          },
+        },
+      });
 
-    const language = parsed.language || parsed.lang || undefined;
-    const answer = parsed.answer || parsed.text || '';
-    let suggestions: string[] = [];
-    try {
-      if (Array.isArray(parsed.suggestions)) {
-        suggestions = parsed.suggestions.filter((s: any) => typeof s === 'string').slice(0, 5);
-      }
-    } catch {
-      suggestions = [];
+      return NextResponse.json({ status: 'queued', jobId: job.id, conversationId }, { status: 202 });
+    } catch (e) {
+      logger.error('Failed to enqueue AI request', { className: 'api.ask', methodName: 'POST', error: String(e) });
+      return NextResponse.json({ error: 'Could not enqueue AI request' }, { status: 500 });
     }
-
-    // Persist assistant reply when available
-    if (sessionUserId) {
-      try {
-        await prisma.chat.create({ data: { userId: sessionUserId, role: 'assistant', content: answer, conversationId, subject } });
-      } catch (e) {
-        logger.error('Failed to persist assistant reply for /api/ask', { className: 'api.ask', methodName: 'POST', error: e });
-      }
-    }
-
-    return NextResponse.json({ language, answer, suggestions, conversationId });
   } catch (err: any) {
     logger.error('/api/ask error', { className: 'api.ask', methodName: 'POST', error: err });
     return NextResponse.json({ error: formatErrorForResponse(err) }, { status: 500 });

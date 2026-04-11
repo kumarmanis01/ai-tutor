@@ -6,13 +6,36 @@
  * Thin shell that wraps AITutorChatPanel.
  * Switches to SessionCompletionScreen when onSessionComplete fires.
  *
+ * For whiteboard subjects (geometry / algebra / chemistry / physics / maths),
+ * renders a side-by-side layout: chat (left) + WhiteboardPanel (right) on md+.
+ * On narrow screens the whiteboard is stacked below the chat (F-STU-014 AC-01).
+ *
  * Used by /session/[topicId]?sid=...&cid=... (AI tutor path only).
  * The V1 MCQ path still uses SessionContainer directly.
+ *
+ * EDIT LOG:
+ * - 2026-04-07 | claude | F-STU-014: whiteboard integration for relevant subjects
  */
 
 import React, { useState } from 'react';
 import { AITutorChatPanel } from './AITutorChatPanel';
 import SessionCompletionScreen from './SessionCompletionScreen';
+import WhiteboardPanel from './WhiteboardPanel';
+
+// AC-01: subjects that auto-activate the whiteboard.
+const WHITEBOARD_SUBJECTS = new Set([
+  'mathematics',
+  'maths',
+  'math',
+  'physics',
+  'chemistry',
+  'geometry',
+  'algebra',
+]);
+
+function needsWhiteboard(subjectName: string): boolean {
+  return WHITEBOARD_SUBJECTS.has(subjectName.toLowerCase().trim());
+}
 
 interface AITutorSessionShellProps {
   sessionId: string;
@@ -39,6 +62,19 @@ export default function AITutorSessionShell({
   isAITutorEnabled,
 }: AITutorSessionShellProps) {
   const [summary, setSummary] = useState<SessionSummary | null>(null);
+  // AC-02: AI step lines for the whiteboard, updated on each completed AI message.
+  const [aiSteps, setAiSteps] = useState<string[]>([]);
+
+  const showWhiteboard = needsWhiteboard(subjectName);
+
+  function handleAiMessage(content: string) {
+    // Split AI message into non-empty lines for step-by-step reveal.
+    const lines = content
+      .split('\n')
+      .map((l) => l.trim())
+      .filter(Boolean);
+    if (lines.length > 0) setAiSteps(lines);
+  }
 
   if (summary) {
     return (
@@ -51,6 +87,39 @@ export default function AITutorSessionShell({
     );
   }
 
+  // ── Layout ───────────────────────────────────────────────────────────────────
+  // Mobile: single column, whiteboard below chat.
+  // md+: side-by-side (chat 60%, whiteboard 40%) when whiteboard is active.
+
+  if (showWhiteboard) {
+    return (
+      <div className="h-dvh flex flex-col md:flex-row overflow-hidden">
+        {/* Chat column */}
+        <div className="flex flex-col flex-1 min-h-0 md:w-3/5">
+          <AITutorChatPanel
+            sessionId={sessionId}
+            conceptName={conceptName}
+            subjectName={subjectName}
+            initialStage="HOOK"
+            isAITutorEnabled={isAITutorEnabled}
+            onSessionComplete={(s) => setSummary(s)}
+            onAiMessage={handleAiMessage}
+          />
+        </div>
+
+        {/* Whiteboard column */}
+        <div className="flex flex-col md:w-2/5 min-h-[300px] md:min-h-0 border-t md:border-t-0 md:border-l border-gray-200 dark:border-slate-700 p-2">
+          <WhiteboardPanel
+            sessionId={sessionId}
+            conceptName={conceptName}
+            aiSteps={aiSteps}
+          />
+        </div>
+      </div>
+    );
+  }
+
+  // No whiteboard: original full-width layout.
   return (
     <div className="h-dvh flex flex-col overflow-hidden">
       <AITutorChatPanel

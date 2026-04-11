@@ -1,6 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
+import { logger } from '@/lib/logger';
 
 type Theme = 'light' | 'dark';
 
@@ -30,8 +31,8 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
     try {
       localStorage.setItem('ai-tutor:theme', theme);
-    } catch {
-      // ignore
+    } catch (e) {
+      logger.warn('localStorage.setItem failed in ThemeProvider', { component: 'ThemeProvider', error: e });
     }
   }, [theme]);
 

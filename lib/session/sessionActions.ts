@@ -59,6 +59,20 @@ export async function submitPracticeAction(
   return data as SubmitActionResult;
 }
 
+export async function navigateToPhaseAction(
+  sessionId: string,
+  targetPhase: string,
+): Promise<SessionActionResult> {
+  const res = await fetch('/api/session/back', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ sessionId, targetPhase }),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error ?? 'Failed to navigate session');
+  return data as SessionActionResult;
+}
+
 export async function submitTestAction(
   sessionId: string,
   answers: { questionId: string; answer: string }[],
