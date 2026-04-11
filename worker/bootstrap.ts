@@ -56,6 +56,8 @@ import { RETEACH_PLAN_QUEUE_NAME } from "../jobs/reteachPlan.js";
 import { processReteachPlan } from "./services/reteachPlanWorker.js";
 import { DIAGNOSTIC_AUTO_SUBMIT_QUEUE_NAME } from "../jobs/diagnosticAutoSubmit.js";
 import { processDiagnosticAutoSubmit } from "./services/diagnosticAutoSubmitWorker.js";
+import { processAIRequest } from './services/aiRequestWorker.js';
+import { AI_REQUEST_QUEUE } from '../lib/queues/constants.js';
 
 const argv = minimist(process.argv.slice(2));
 
@@ -273,6 +275,20 @@ export async function bootstrapWorker() {
     async (job: Job) => processDiagnosticAutoSubmit(job as Job<import("../jobs/diagnosticAutoSubmit.js").DiagnosticAutoSubmitJobData>),
     { connection: redisConnection, concurrency: 2 },
   );
+
+  const aiWorker = new Worker(
+    AI_REQUEST_QUEUE,
+    async (job: Job) => processAIRequest(job),
+    { connection: redisConnection, concurrency: Number(process.env.AI_WORKER_CONCURRENCY || 2) },
+  );
+
+  aiWorker.on('failed', (job, err) => {
+    logger.error(`[AI WORKER FAILED] jobId=${job?.id}`, { error: err?.message });
+  });
+
+  aiWorker.on('completed', (job) => {
+    logger.info(`[AI WORKER COMPLETED] jobId=${job.id}`);
+  });
 
   // Debug events: active, stalled
     if (process.env.WORKER_DEBUG === '1') {

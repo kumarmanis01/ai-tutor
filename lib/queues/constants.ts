@@ -8,3 +8,6 @@
 
 /** Content hydration queue -- syllabus, notes, questions, tests. */
 export const CONTENT_HYDRATION_QUEUE = 'content-hydration';
+
+/** AI request queue -- enqueues requests that must be executed in worker runtime */
+export const AI_REQUEST_QUEUE = 'ai-requests';

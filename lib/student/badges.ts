@@ -1,5 +1,22 @@
+/**
+ * FILE OBJECTIVE:
+ * - Check and award session badges and notify parents for milestone badges.
+ *
+ * LINKED UNIT TEST:
+ * - tests/unit/lib/student/badges.spec.ts
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/COPILOT_GUARDRAILS.md
+ * - .github/copilot-instructions.md
+ *
+ * EDIT LOG:
+ * - 2026-04-11T00:00:00Z | copilot | wired parent milestone notifications; added tests
+ */
+
 import { prisma } from '@/lib/prisma'
 import { unlockCosmeticsForStreak } from '@/lib/student/cosmetics'
+import { sendParentMilestoneNotification } from '@/lib/notifications/delivery'
+import { logger } from '@/lib/logger'
 
 export interface BadgeDefinition {
   key: string
@@ -134,6 +151,36 @@ export async function checkSessionBadges(params: {
         skipDuplicates: true,
       }),
     ])
+
+    // Fire parent-facing milestone notifications (best-effort).
+    try {
+      const student = await prisma.user.findUnique({ where: { id: studentId }, select: { name: true } })
+      const parentLinks = await prisma.parentStudent.findMany({
+        where: { studentId, status: 'active' },
+        include: { parent: { select: { id: true, email: true, phone: true, name: true, language: true } } },
+      })
+
+      if (parentLinks.length > 0) {
+        const studentName = student?.name ?? 'Your child'
+        const badgeNames = toAward.map((b) => b.name).join(', ')
+        const subject = `${studentName} earned: ${badgeNames}`
+        const html = `<p>Hi,</p><p>${studentName} earned ${toAward.map((b) => `<strong>${b.name}</strong>`).join(', ')}.</p>`
+
+        const sends = parentLinks.map((pl) =>
+          sendParentMilestoneNotification(pl.parent.id, {
+            email: pl.parent.email ?? undefined,
+            phone: pl.parent.phone ?? undefined,
+            subject,
+            html,
+            meta: { studentId, type: 'milestone', channel: pl.parent.email ? 'email' : pl.parent.phone ? 'sms' : 'unknown', locale: pl.parent.language },
+          }),
+        )
+
+        await Promise.allSettled(sends)
+      }
+    } catch (err) {
+      logger.warn('badges: parent notification failed', { studentId, error: String(err) })
+    }
 
     return toAward
   } catch {

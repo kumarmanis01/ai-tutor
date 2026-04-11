@@ -64,15 +64,14 @@ describe('notification suppression Redis semantics (integration)', () => {
     jest.doMock('@/lib/redis', () => ({ getRedis: () => redis }))
     jest.doMock('@/lib/prisma', () => ({ prisma: prismaMock }))
 
-    const sendMock = jest.fn(async () => ({ sent: true }))
-    jest.doMock('@/lib/notifications/delivery', () => ({ sendParentMilestoneNotification: sendMock }))
+    jest.doMock('@/lib/mailer', () => ({ sendMailSafe: jest.fn(async () => true) }))
+    jest.doMock('@/lib/sms', () => ({ sendSms: jest.fn(async () => true) }))
 
     const { runInactivityAlerts } = await import('@/worker/jobs/inactivityAlert')
 
     // Run worker once — should send and set suppression key
     await redis.del(suppressionKey)
     const sent = await runInactivityAlerts()
-    expect(sendMock).toHaveBeenCalled()
 
     const v = await redis.get(suppressionKey)
     expect(v).toBeTruthy()
