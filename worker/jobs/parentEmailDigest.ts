@@ -182,6 +182,8 @@ export async function sendParentDigests(): Promise<number> {
         // Build AI-generated short paragraph for this child (best-effort)
         let aiParagraph = ''
         try {
+          // Snake_case keys match the LLM tool schema contract defined in
+          // lib/ai/tools/generateParentReport.ts (WeekSummaryInput).
           const weekSummary = {
             days_active: summary?.sessionsCount ?? 0,
             time_spent_min: summary?.totalMinutes ?? 0,

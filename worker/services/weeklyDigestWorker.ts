@@ -163,7 +163,8 @@ export async function processWeeklyDigest(): Promise<void> {
   const profiles = parentIds.length
     ? await prisma.parentProfile.findMany({ where: { userId: { in: parentIds } } })
     : []
-  const profileMap = new Map(profiles.map((p) => [p.userId, p]))
+  // Explicit typing ensures Map.get() returns the correct Prisma type, not unknown.
+  const profileMap = new Map<string, typeof profiles[0]>(profiles.map((p) => [p.userId, p]))
 
   let scheduled = 0
 

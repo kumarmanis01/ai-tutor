@@ -1,5 +1,5 @@
 import { prisma } from '@/lib/prisma'
-import { ConsentScope, AdminActionType, AccountStatus } from '@prisma/client'
+import { ConsentScope, AdminActionType } from '@prisma/client'
 
 export { ConsentScope }
 
@@ -83,7 +83,7 @@ export async function withdrawConsent(
       // Create request, deactivate account, and audit in a single transaction
       await prisma.$transaction([
         prisma.deletionRequest.create({ data: { userId } }),
-        prisma.user.update({ where: { id: userId }, data: { accountStatus: AccountStatus.deletion_pending } }),
+        prisma.user.update({ where: { id: userId }, data: { status: 'deletion_pending' } }),
         prisma.auditLog.create({
           data: {
             targetEntity: 'User',
@@ -96,7 +96,7 @@ export async function withdrawConsent(
       ])
     } else {
       // Ensure account is in deletion_pending state and audit the withdrawal
-      await prisma.user.update({ where: { id: userId }, data: { accountStatus: AccountStatus.deletion_pending } })
+      await prisma.user.update({ where: { id: userId }, data: { status: 'deletion_pending' } })
       await prisma.auditLog.create({
         data: {
           targetEntity: 'User',
