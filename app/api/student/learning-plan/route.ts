@@ -65,26 +65,30 @@ export async function PATCH(req: NextRequest) {
       })
     }
 
-    // Regenerate plan for each subject with updated params
+    // Regenerate plan for each subject with updated params.
+    // generateLearningPlan never throws -- it returns null on failure, so we
+    // must check the return value explicitly rather than relying on try/catch.
     const errors: string[] = []
+    let regenerated = 0
     for (const plan of plans) {
       const resolvedDays = studyDaysPerWeek ?? plan.weeklyGoal
       const resolvedExamDate = examDate ?? plan.examDate ?? undefined
-      try {
-        await generateLearningPlan(userId, plan.subjectId, {
-          examDate: resolvedExamDate instanceof Date ? resolvedExamDate : undefined,
-          weeklyGoal: resolvedDays,
-        })
-      } catch (err) {
-        errors.push(`subjectId=${plan.subjectId}: ${String(err)}`)
-        logger.warn('LearningPlanAPI PATCH: regen failed', {
+      const planId = await generateLearningPlan(userId, plan.subjectId, {
+        examDate: resolvedExamDate instanceof Date ? resolvedExamDate : undefined,
+        weeklyGoal: resolvedDays,
+      })
+      if (planId === null) {
+        errors.push(`subjectId=${plan.subjectId}: plan regeneration failed`)
+        logger.warn('LearningPlanAPI PATCH: regen returned null', {
           event: 'learning_plan_regen_failed',
-          context: { userId, subjectId: plan.subjectId, error: String(err) },
+          context: { userId, subjectId: plan.subjectId },
         })
+      } else {
+        regenerated++
       }
     }
 
-    const res = NextResponse.json({ ok: true, regenerated: plans.length - errors.length, errors })
+    const res = NextResponse.json({ ok: true, regenerated, errors })
     logger.logAPI(req, res, { className: 'LearningPlanAPI', methodName: 'PATCH' }, start)
     return res
   } catch (err) {

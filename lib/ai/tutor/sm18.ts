@@ -56,10 +56,18 @@ export function updateStability(stability: number, retention: number, isCorrect:
 }
 
 /**
- * Next review interval in days. Formula: newStability * ln(0.9) / ln(requestedRetention)
- * Default targetRetention = 0.90, so ratio = 1 -> interval = newStability, clamped [1, 180].
- * AC-07 (F-STU-022): pass targetRetention = 0.92 in pre-exam mode (<= 14 days to exam)
- * to shorten intervals and reinforce memory more aggressively.
+ * Next review interval in days.
+ *
+ * Derived from the retention decay model R = exp(-t / S):
+ *   t = -S * ln(targetRetention)
+ * Normalised by -ln(0.9) so that interval = newStability when targetRetention = 0.90.
+ * Formula: newStability * ln(targetRetention) / ln(0.9), clamped [1, 180].
+ *
+ * With default targetRetention = 0.90: ratio = ln(0.9)/ln(0.9) = 1  ->  interval = newStability.
+ * AC-07 (F-STU-022): pass targetRetention = 0.92 in pre-exam mode (<= 14 days to exam).
+ * Higher targetRetention produces a SHORTER interval (more frequent reviews):
+ *   0.92 -> ratio ≈ 0.79 (<1) -> shorter interval to reinforce memory aggressively.
+ *   0.80 -> ratio ≈ 2.12 (>1) -> longer interval when lower retention is acceptable.
  *
  * @param newStability - Stability after update, in days.
  * @param targetRetention - Desired retention at next review, default 0.9.
@@ -70,7 +78,8 @@ export function computeNextReviewDays(newStability: number, targetRetention = TA
   const tr = Number.isFinite(targetRetention) && targetRetention > 0 && targetRetention < 1
     ? targetRetention
     : TARGET_RETENTION
-  const interval = newStability * (Math.log(0.9) / Math.log(tr))
+  // ln(tr)/ln(0.9): higher tr (e.g. 0.92) -> ratio < 1 -> shorter interval (more frequent review)
+  const interval = newStability * (Math.log(tr) / Math.log(TARGET_RETENTION))
   const days = Math.max(NEXT_REVIEW_MIN_DAYS, Math.min(NEXT_REVIEW_MAX_DAYS, Math.round(interval)))
   return days
 }

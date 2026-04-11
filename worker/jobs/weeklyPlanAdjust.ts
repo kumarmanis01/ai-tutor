@@ -32,43 +32,85 @@ export async function weeklyPlanAdjust(): Promise<{ checked: number; adjusted: n
     },
   })
 
+  // Pre-compute currentWeek for each plan and filter to those where currentWeek >= 2
+  // (plans less than 1 week old cannot yet be behind).
+  interface PlanWithWeek {
+    id: string
+    studentId: string
+    subjectId: string
+    examDate: Date | null
+    weeklyGoal: number
+    currentWeek: number
+  }
+  const eligiblePlans: PlanWithWeek[] = plans
+    .map((plan) => ({
+      ...plan,
+      currentWeek: Math.floor((now.getTime() - plan.generatedAt.getTime()) / MS_PER_WEEK) + 1,
+    }))
+    .filter((p) => p.currentWeek >= 2)
+
+  // Batch query: count UPCOMING items behind schedule for all eligible plans in a single
+  // groupBy query -- eliminates the N+1 pattern of one count() per plan.
+  const behindGroups = eligiblePlans.length > 0
+    ? await prisma.learningPlanItem.groupBy({
+        by: ['planId'],
+        where: {
+          planId: { in: eligiblePlans.map((p) => p.id) },
+          status: 'UPCOMING',
+          weekNumber: {
+            lt: Math.max(...eligiblePlans.map((p) => p.currentWeek)),
+          },
+        },
+        _count: { _all: true },
+      })
+    : []
+
+  // Build a per-planId behind-count map so items with weekNumber >= their plan's
+  // currentWeek are filtered out below (the groupBy uses the global max as a
+  // conservative upper bound; plans where currentWeek is lower are filtered in-loop).
+  const behindCountById = new Map<string, number>(
+    behindGroups.map((g) => [g.planId, g._count._all]),
+  )
+
   let adjusted = 0
-  for (const plan of plans) {
-    // Week 1 is the first 7 days after generatedAt.
-    // currentWeek >= 2 means at least one full week has elapsed.
-    const currentWeek = Math.floor((now.getTime() - plan.generatedAt.getTime()) / MS_PER_WEEK) + 1
-
-    if (currentWeek < 2) {
-      // Plan is less than 1 week old -- skip, student is not yet behind
-      continue
+  for (const plan of eligiblePlans) {
+    // We used the global max as the upper bound for weekNumber in the batch query.
+    // Re-check per plan so plans with a lower currentWeek don't count items from
+    // future weeks of other plans as "behind".
+    const rawCount = behindCountById.get(plan.id) ?? 0
+    // Items with weekNumber >= plan.currentWeek are not yet behind for THIS plan.
+    // Because the batch query may have included extra rows (due to global-max upper bound),
+    // we perform an exact per-plan count only if the rough count is non-zero.
+    let behindCount = rawCount
+    if (rawCount > 0) {
+      behindCount = await prisma.learningPlanItem.count({
+        where: {
+          planId: plan.id,
+          weekNumber: { lt: plan.currentWeek },
+          status: 'UPCOMING',
+        },
+      })
     }
-
-    // Count UPCOMING items in weeks before the current week
-    const behindCount = await prisma.learningPlanItem.count({
-      where: {
-        planId: plan.id,
-        weekNumber: { lt: currentWeek },
-        status: 'UPCOMING',
-      },
-    })
 
     if (behindCount === 0) continue
 
     logger.info('weeklyPlanAdjust: student behind plan', {
       event: 'weekly_plan_adjust_triggered',
-      context: { studentId: plan.studentId, subjectId: plan.subjectId, behindCount, currentWeek },
+      context: { studentId: plan.studentId, subjectId: plan.subjectId, behindCount, currentWeek: plan.currentWeek },
     })
 
-    try {
-      await generateLearningPlan(plan.studentId, plan.subjectId, {
-        examDate: plan.examDate instanceof Date ? plan.examDate : undefined,
-        weeklyGoal: plan.weeklyGoal,
-      })
+    // generateLearningPlan never throws -- it returns null on failure.
+    // Only increment adjusted when regeneration actually succeeded (non-null planId).
+    const planId = await generateLearningPlan(plan.studentId, plan.subjectId, {
+      examDate: plan.examDate instanceof Date ? plan.examDate : undefined,
+      weeklyGoal: plan.weeklyGoal,
+    })
+    if (planId !== null) {
       adjusted++
-    } catch (err) {
-      logger.warn('weeklyPlanAdjust: generateLearningPlan failed', {
+    } else {
+      logger.warn('weeklyPlanAdjust: generateLearningPlan returned null', {
         event: 'weekly_plan_adjust_failed',
-        context: { studentId: plan.studentId, subjectId: plan.subjectId, error: String(err) },
+        context: { studentId: plan.studentId, subjectId: plan.subjectId },
       })
     }
   }

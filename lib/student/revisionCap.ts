@@ -25,15 +25,19 @@ function secondsUntilMidnightUTC(): number {
 
 /**
  * Increment the student's daily revision minutes by the given amount.
- * Silent no-op when Redis is unavailable.
+ * Silent no-op when Redis is unavailable or when minutes rounds to 0 or below.
  */
 export async function addRevisionMinutes(userId: string, minutes: number): Promise<void> {
   const redis = getRedis()
   if (!redis) return
+  // Clamp at 0: do not increment when the caller passes 0 or a negative value,
+  // otherwise a round-to-1 would incorrectly consume the daily cap.
+  const increment = Math.max(0, Math.round(minutes))
+  if (increment === 0) return
   try {
     const key = todayKey(userId)
     const ttl = secondsUntilMidnightUTC()
-    await redis.incrby(key, Math.max(1, Math.round(minutes)))
+    await redis.incrby(key, increment)
     await redis.expire(key, ttl)
   } catch {
     // Non-fatal: cap enforcement degrades gracefully when Redis is down
