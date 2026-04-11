@@ -13,6 +13,7 @@
  * EDIT LOG:
  * - 2026-01-21T00:00:00Z | copilot-agent | created as worker-integrated outbox dispatcher
  * - 2026-03-07T00:00:00Z | RISK-04 | dead-letter queue, MAX_ATTEMPTS, poll 5s
+ * - 2026-04-11T07:36:56Z | copilot | fix: log warning on malformed deliverAt in catch block
  */
 
 import { Queue } from 'bullmq';
@@ -102,7 +103,12 @@ async function dispatchBatch(): Promise<number> {
         }
       }
     } catch (err) {
-      // Non-fatal: if meta parsing fails, fall through and attempt dispatch
+      // Non-fatal: log a warning so malformed deliverAt values are observable, then attempt dispatch
+      logger.warn('[outbox-dispatcher] invalid or malformed deliverAt in meta; dispatching immediately', {
+        outboxId: row.id,
+        deliverAt: (row.meta as any)?.deliverAt,
+        error: err instanceof Error ? err.message : String(err),
+      });
     }
     // RISK-04: Exceeded max attempts -- move to dead-letter, skip dispatch
     if (row.attempts >= MAX_ATTEMPTS) {
