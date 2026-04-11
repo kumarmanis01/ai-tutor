@@ -176,7 +176,7 @@ export async function generateInvoicePdf(options: {
       logger.warn('[invoices] Playwright render failed, falling back to pdf-lib', { error: String((err as any)?.message ?? err) });
     }
   } else {
-    logger.info('[invoices] Playwright unavailable — using pdf-lib fallback');
+    logger.info('[invoices] Playwright unavailable -- using pdf-lib fallback');
   }
     const pdfDoc = await PDFDocument.create();
     const page = pdfDoc.addPage([595, 842]); // A4 approx
@@ -207,7 +207,6 @@ export async function generateInvoicePdf(options: {
     const pdfBytes = await pdfDoc.save();
     return Buffer.from(pdfBytes);
   }
-}
 
 /**
  * Create invoice DB record, generate PDF buffer and upload to R2.

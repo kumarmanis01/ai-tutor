@@ -183,7 +183,7 @@ export async function sendParentDigests(): Promise<number> {
         let aiParagraph = ''
         try {
           const weekSummary = {
-            days_active: summary?.daysActive ?? summary?.sessionsCount ?? 0,
+            days_active: summary?.sessionsCount ?? 0,
             time_spent_min: summary?.totalMinutes ?? 0,
             improved_topics: newStrengths.map((s) => s.subject).slice(0, 3),
             struggling_topics: flags.map((f) => `${f.subject}${f.chapter ? ' / ' + f.chapter : ''}`).slice(0, 3),
