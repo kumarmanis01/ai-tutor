@@ -1,25 +1,28 @@
 /**
- * Ingestion pipeline v2 -- embeds CurriculumChunk rows, skipping unchanged content.
- * Content-hash idempotency: re-embeds only if content changed (version bumped).
- * Writes an IngestRunLog entry on completion.
+ * FILE OBJECTIVE:
+ * - Idempotent curriculum chunk ingestion: embed CurriculumChunk rows and bump version when content changes.
  *
- * Usage:
- *   DATABASE_URL=<neon-url> OPENAI_API_KEY=<key> npx tsx scripts/ingest-curriculum.ts
- *   DATABASE_URL=<neon-url> OPENAI_API_KEY=<key> npx tsx scripts/ingest-curriculum.ts --retry-failed --run-id <id>
+ * LINKED UNIT TEST:
+ * - tests/unit/scripts/ingest-curriculum.test.ts
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - .github/copilot-instructions.md
+ * - /docs/COPILOT_GUARDRAILS.md
+ *
+ * EDIT LOG:
+ * - 2026-04-08T00:00:00Z | git-user | refactor for dependency-injection, add tests, remove debug logs
  */
 
 import { createHash } from 'crypto'
-import { PrismaClient } from '@prisma/client'
+import { prisma } from '@/lib/prisma.js'
 import { getEmbeddingsBatch } from '../lib/ai/embeddings'
-
-const prisma = new PrismaClient()
 const BATCH_SIZE = 20
 
 function sha256(text: string): string {
   return createHash('sha256').update(text, 'utf8').digest('hex')
 }
 
-async function main() {
+export async function main(prismaClient = prisma) {
   const args = process.argv.slice(2)
   const retryFailed = args.includes('--retry-failed')
   const runIdIdx = args.indexOf('--run-id')
@@ -29,32 +32,31 @@ async function main() {
   const startMs = Date.now()
 
   // Fetch all chunks (we'll do hash comparison in-process)
-  const chunks = (await prisma.$queryRawUnsafe(
+  const _chunks = await prismaClient.$queryRawUnsafe(
     `
       SELECT id, content, "contentHash", version
       FROM "CurriculumChunk"
       ORDER BY "createdAt" ASC
     `,
-  )) as { id: string; content: string | null; contentHash: string | null; version: number }[]
+  )
+  const chunks = (_chunks ?? []) as { id: string; content: string | null; contentHash: string | null; version: number }[]
 
   if (chunks.length === 0) {
     console.log('[ingest] No chunks found. Nothing to do.')
-    await prisma.$disconnect()
+    await prismaClient.$disconnect()
     return
   }
 
-  // Determine which chunks need embedding:
-  // - No contentHash (never ingested)
-  // - contentHash changed (content was updated)
-  // - No embedding (embedding IS NULL)
-  const chunksNeedingEmbed = (await prisma.$queryRawUnsafe(
+  // Determine which chunks need embedding (embedding IS NULL)
+  const _chunksNeedingEmbed = await prismaClient.$queryRawUnsafe(
     `
       SELECT id, content, "contentHash", version
       FROM "CurriculumChunk"
       WHERE embedding IS NULL
       ORDER BY "createdAt" ASC
     `,
-  )) as { id: string; content: string | null; contentHash: string | null; version: number }[]
+  )
+  const chunksNeedingEmbed = (_chunksNeedingEmbed ?? []) as { id: string; content: string | null; contentHash: string | null; version: number }[]
 
   // Compute hashes and check which need updating
   const toProcess: { id: string; content: string; newHash: string; needsVersionBump: boolean }[] = []
@@ -80,12 +82,13 @@ async function main() {
 
   if (toProcess.length === 0) {
     console.log('[ingest] All chunks already embedded with current content. Nothing to do.')
-    await writeRunLog({ chunksCreated: 0, chunksUpdated: 0, embeddingsGenerated: 0, errors: 0, startMs })
-    await prisma.$disconnect()
+    await writeRunLog({ chunksCreated: 0, chunksUpdated: 0, embeddingsGenerated: 0, errors: 0, startMs, _prismaClient: prismaClient })
+    await prismaClient.$disconnect()
     return
   }
 
   console.log(`[ingest] Found ${toProcess.length} chunks to embed (${toProcess.filter((c) => c.needsVersionBump).length} with content changes).`)
+  // production log only
 
   let embeddingsGenerated = 0
   let chunksUpdated = 0
@@ -112,7 +115,7 @@ async function main() {
       try {
         if (chunk.needsVersionBump) {
           // Bump version + update hash + embedding
-          await prisma.$executeRawUnsafe(
+          await prismaClient.$executeRawUnsafe(
             `UPDATE "CurriculumChunk"
              SET embedding = $1::vector, "contentHash" = $2, version = version + 1, "updatedAt" = NOW()
              WHERE id = $3`,
@@ -122,7 +125,7 @@ async function main() {
           )
         } else {
           // First-time embed -- set hash + embedding
-          await prisma.$executeRawUnsafe(
+          await prismaClient.$executeRawUnsafe(
             `UPDATE "CurriculumChunk"
              SET embedding = $1::vector, "contentHash" = $2, "updatedAt" = NOW()
              WHERE id = $3`,
@@ -152,14 +155,14 @@ async function main() {
     errors,
     startMs,
     errorDetails: errorDetails.length > 0 ? errorDetails : undefined,
+    _prismaClient: prismaClient,
   })
+  await prismaClient.$disconnect()
 
-  await prisma.$disconnect()
-
-  if (errors > 0) process.exit(1)
+  if (errors > 0 && typeof process !== 'undefined' && process.env.JEST_WORKER_ID === undefined) process.exit(1)
 }
 
-async function writeRunLog(opts: {
+export async function writeRunLog(opts: {
   chunksCreated: number
   chunksUpdated: number
   embeddingsGenerated: number
@@ -167,9 +170,11 @@ async function writeRunLog(opts: {
   startMs: number
   fileSource?: string
   errorDetails?: unknown
+  _prismaClient?: any
 }) {
   try {
-    await prisma.ingestRunLog.create({
+    const client = (opts as any)._prismaClient ?? prisma
+    await client.ingestRunLog.create({
       data: {
         chunksCreated: opts.chunksCreated,
         chunksUpdated: opts.chunksUpdated,
@@ -185,8 +190,11 @@ async function writeRunLog(opts: {
   }
 }
 
-main().catch((err) => {
-  console.error('[ingest] Fatal error:', err)
-  prisma.$disconnect()
-  process.exit(1)
-})
+// Only execute when not running under Jest (tests import this module)
+if (typeof process !== 'undefined' && process.env.JEST_WORKER_ID === undefined) {
+  main().catch((err) => {
+    console.error('[ingest] Fatal error:', err)
+    try { void prisma.$disconnect() } catch {}
+    process.exit(1)
+  })
+}

@@ -25,6 +25,13 @@ import { enqueueDistressNotification } from '@/jobs/distressNotification'
 import { enqueueIRTUpdate } from '@/jobs/irtUpdate'
 import { updateStreak } from '@/lib/student/streak'
 import { logger } from '@/lib/logger'
+import {
+  classifyIntent,
+  processPrompt,
+  checkForHallucinations,
+  getSafeResponseForIntent,
+  formatResponseForStudent,
+} from '@/lib/ai/guardrails'
 
 export type TutorTurnRequest = {
   sessionId: string
@@ -244,6 +251,18 @@ export async function runTutorOrchestrator(args: {
 
     const redactedInput = inputSafety.redacted
 
+    // 2b. Intent classification + optional prompt rewrite (silent)
+    let intentClassification = classifyIntent(String(redactedInput), 10, subjectName)
+    let rewrittenPrompt = String(redactedInput)
+    try {
+      const rewrite = processPrompt(String(redactedInput), 10, subjectName)
+      if (rewrite && rewrite.wasRewritten && rewrite.prompt) {
+        rewrittenPrompt = rewrite.prompt
+      }
+    } catch (e) {
+      logger.warn('promptRewrite.failed', { error: String((e as any)?.message ?? e) })
+    }
+
     // Distress detection — gated by ENABLE_DISTRESS_DETECTION flag (currently false until T43 sign-off)
     if (process.env.ENABLE_DISTRESS_DETECTION === 'true') {
       const distressResult = detectDistress(redactedInput)
@@ -393,7 +412,8 @@ export async function runTutorOrchestrator(args: {
       explainStyle,
       consecutiveWrongAnswers: state.consecutiveWrongAnswers,
       sessionSummary: null,
-      recentTurns: [],
+      // Include the (possibly rewritten) student prompt as the most recent turn
+      recentTurns: [{ role: 'student', content: rewrittenPrompt }],
       activeMisconceptionName: activeMisconception?.name ?? null,
       activeMisconceptionCorrection: activeMisconception?.correction ?? null,
       frustrationScore: frustration.frustrationScore,
@@ -402,7 +422,7 @@ export async function runTutorOrchestrator(args: {
       subjectName,
     })
 
-    if (prompt.layersTruncated.length > 0) {
+    if (Array.isArray(prompt.layersTruncated) && prompt.layersTruncated.length > 0) {
       logger.warn('tutor.prompt.layersTruncated', {
         layersTruncated: prompt.layersTruncated,
       })
@@ -495,10 +515,79 @@ export async function runTutorOrchestrator(args: {
     const outputSafety = checkOutputSafety(stripped, safetyContext)
     // Never store raw unsafe output; leave inputPreview unset for UNSAFE_OUTPUT events.
     safetyEvents.push(...outputSafety.events)
-    const answerText = outputSafety.text
+    let answerText = outputSafety.text
 
     if (safetyEvents.length) {
       await prisma.safetyEvent.createMany({ data: safetyEvents })
+      // Analytics event for safety triggers
+      try {
+        await prisma.analyticsEvent.create({
+          data: {
+            eventType: 'safety_triggered',
+            userId: studentId,
+            courseId: null,
+            lessonIdx: null,
+            metadata: {
+              sessionId,
+              turnId: safetyContext.turnId,
+              triggers: safetyEvents,
+            },
+          },
+        })
+      } catch (e) {
+        logger.warn('analyticsEvent.safety.create.failed', { error: String((e as any)?.message ?? e) })
+      }
+    }
+
+    // Hallucination detection & analytics
+    try {
+      const hallCtx = { grade: 10, board: 'CBSE', subject: subjectName, originalQuestion: String(redactedInput) }
+      const hall = checkForHallucinations(answerText, hallCtx as any)
+      if (hall && (hall.issues.length > 0 || hall.needsReview)) {
+        try {
+          await prisma.analyticsEvent.create({
+            data: {
+              eventType: 'hallucination_detected',
+              userId: studentId,
+              courseId: null,
+              lessonIdx: null,
+              metadata: {
+                sessionId,
+                turnId: safetyContext.turnId,
+                hallucination: hall,
+              },
+            },
+          })
+        } catch (e) {
+          logger.warn('analyticsEvent.hallucination.create.failed', { error: String((e as any)?.message ?? e) })
+        }
+      }
+
+      if (hall && hall.shouldBlock) {
+        try {
+          const safe = getSafeResponseForIntent(intentClassification.primaryIntent, 10, subjectName)
+          const safeText = formatResponseForStudent(safe)
+          await prisma.analyticsEvent.create({
+            data: {
+              eventType: 'hallucination_blocked',
+              userId: studentId,
+              courseId: null,
+              lessonIdx: null,
+              metadata: {
+                sessionId,
+                turnId: safetyContext.turnId,
+                reason: 'hallucination_should_block',
+                originalExcerpt: String(answerText).slice(0, 400),
+              },
+            },
+          })
+          answerText = safeText
+        } catch (e) {
+          logger.warn('analyticsEvent.hallucination_block.create.failed', { error: String((e as any)?.message ?? e) })
+        }
+      }
+    } catch (e) {
+      logger.warn('hallucinationDetector.failed', { error: String((e as any)?.message ?? e) })
     }
 
     // Explanation cache: only cache safe, non-replacement responses for the eligible stages.
@@ -622,6 +711,29 @@ export async function runTutorOrchestrator(args: {
   } catch (err) {
     // Always mark turn completed on any error path
     await markTurnCompleted(args.state.sessionId)
+    // Ensure we record a turn log for telemetry even on error paths.
+    // Keep this best-effort so logging failures don't mask the original error.
+    try {
+      await prisma.aITutorTurnLog.create({
+        data: {
+          sessionId: args.state.sessionId,
+          callType: 'tutor:teach',
+          model: 'unknown',
+          inputTokens: 0,
+          outputTokens: 0,
+          costUsd: 0,
+          latencyMs: 0,
+          tag: 'QUESTION',
+          stage: args.state.stage,
+          safetyFlagged: false,
+          cached: false,
+          ragChunksUsed: [],
+          frustrationScore: null,
+        },
+      })
+    } catch (e) {
+      // swallow — we don't want logging failures to change control flow
+    }
     throw err
   }
 }

@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
 import client from 'prom-client';
+// Ensure DoubtKb metrics are registered when metrics endpoint is loaded
+import '@/lib/ai/tutor/doubtKb'
 
 const registry = (client as any).register;
 

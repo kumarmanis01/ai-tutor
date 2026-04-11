@@ -380,6 +380,21 @@ export async function callLLM({ prompt, model, meta, timeoutMs }: CallLLMArgs) {
         }
         // Attach model and attempt to result for callers
         await recordSuccess()
+        // Fire-and-forget analytics event for this LLM call
+        try {
+          const metaForEvent = {
+            model: selectedModel,
+            call_type: callType,
+            input_tokens: Number(usage?.prompt_tokens ?? 0),
+            output_tokens: Number(usage?.completion_tokens ?? 0),
+            cost_usd: Number(costUsd ?? 0),
+            cache_hit: Boolean(meta?.cached ?? false),
+            sessionId: meta?.sessionId ?? null,
+          }
+          prisma.analyticsEvent.create({ data: { eventType: 'ai_call', userId: meta?.studentId ?? null, courseId: null, lessonIdx: null, metadata: metaForEvent } }).catch(() => {})
+        } catch (e) {
+          try { logger.warn('analyticsEvent.llm.create.failed', { error: String((e as any)?.message ?? e) }) } catch {}
+        }
         return { content, usage, costUsd, latencyMs, model: selectedModel, attempt }
       } catch (e) { logger.error('Failed to write AIContentLog', { error: String(e) }) }
 
@@ -414,6 +429,20 @@ export async function callLLM({ prompt, model, meta, timeoutMs }: CallLLMArgs) {
                 frustrationScore: typeof meta?.frustrationScore === 'number' ? meta.frustrationScore : null,
               },
             })
+            // Also emit a failed-call analytics event for observability
+            try {
+              const failedMeta = {
+                model: selectedModel,
+                call_type: callType,
+                input_tokens: 0,
+                output_tokens: 0,
+                cost_usd: 0,
+                cache_hit: Boolean(meta?.cached ?? false),
+                error: String(error?.message ?? error ?? '').slice(0, 200),
+                sessionId: meta?.sessionId ?? null,
+              }
+              prisma.analyticsEvent.create({ data: { eventType: 'ai_call', userId: meta?.studentId ?? null, courseId: null, lessonIdx: null, metadata: failedMeta } }).catch(() => {})
+            } catch (e) { try { logger.warn('analyticsEvent.llm.failed.create.failed', { error: String((e as any)?.message ?? e) }) } catch {} }
           } else {
             await prisma.aIContentLog.create({ data: {
               model: selectedModel,
@@ -429,6 +458,19 @@ export async function callLLM({ prompt, model, meta, timeoutMs }: CallLLMArgs) {
               status: 'failed',
               error: error?.message ?? String(error),
             } })
+            try {
+              const failedMeta2 = {
+                model: selectedModel,
+                call_type: callType,
+                input_tokens: 0,
+                output_tokens: 0,
+                cost_usd: 0,
+                cache_hit: Boolean(meta?.cached ?? false),
+                error: String(error?.message ?? error ?? '').slice(0, 200),
+                sessionId: meta?.sessionId ?? null,
+              }
+              prisma.analyticsEvent.create({ data: { eventType: 'ai_call', userId: meta?.studentId ?? null, courseId: null, lessonIdx: null, metadata: failedMeta2 } }).catch(() => {})
+            } catch (e) { try { logger.warn('analyticsEvent.llm.failed.create.failed', { error: String((e as any)?.message ?? e) }) } catch {} }
           }
         }
       } catch (e) { logger.error('Failed to write AIContentLog on error path', { error: String(e) }) }

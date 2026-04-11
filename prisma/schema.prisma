@@ -1,14 +1,15 @@
-// FILE OBJECTIVE:
-// - Prisma schema defining application models for the project.
-//
-// LINKED UNIT TEST:
-// - tests/unit/prisma/schema.spec.ts
-//
-// EDIT LOG:
-// - 2026-02-21T00:00:00Z | copilot | added student learning profile fields
-// - 2026-03-07T00:00:00Z | Manish Kumar | add OVERVIEW to SessionPhase; SESSION_OVERVIEW_VIEWED to SessionEventType
-// - 2026-04-10T00:00:00Z | copilot | add PaymentCustomer & PaymentMethod models for stored payment methods
-// - 2026-04-09T00:00:00Z | copilot | add excludeFromParentReport to ParentStudent
+/// FILE OBJECTIVE:
+/// - Prisma schema defining application models for the project.
+///
+/// LINKED UNIT TEST:
+/// - tests/unit/prisma/schema.spec.ts
+///
+/// EDIT LOG:
+/// - 2026-02-21T00:00:00Z | copilot | added student learning profile fields
+/// - 2026-03-07T00:00:00Z | Manish Kumar | add OVERVIEW to SessionPhase; SESSION_OVERVIEW_VIEWED to SessionEventType
+/// - 2026-04-08T00:00:00Z | copilot | add MISCONCEPTION_HIGH_PREVALENCE alert type
+/// - 2026-04-09T00:00:00Z | copilot | add excludeFromParentReport to ParentStudent
+/// - 2026-04-10T00:00:00Z | copilot | add PaymentCustomer & PaymentMethod models for stored payment methods
 generator client {
   provider = "prisma-client-js"
 }
@@ -634,6 +635,10 @@ model AuditLog {
   reason        String? // required for destructive actions
   ipAddress     String?
   details       Json? // retained for legacy system-event metadata
+  // Archival metadata: set by archival worker only (allowed UPDATEs)
+  archived      Boolean?         @default(false)
+  archivedAt    DateTime?
+  archiveUrl    String?
   createdAt     DateTime         @default(now())
   admin         User?            @relation("AdminActions", fields: [adminId], references: [id])
 
@@ -1781,8 +1786,13 @@ model Misconception {
   description     String
   triggerPatterns String[]
   correction      String
+<<<<<<< HEAD
+  createdAt       DateTime @default(now())
+  prevalenceRate  Float    @default(0)
+=======
   createdAt       DateTime               @default(now())
   studentDetections StudentMisconception[]
+>>>>>>> origin/master
 
   @@index([subjectId, conceptId])
 }
@@ -2117,6 +2127,8 @@ enum SuggestionStatus {
 
 /// Phase 12 — Regeneration job lifecycle and targets
 enum RegenerationJobStatus {
+  MISCONCEPTION_CREATE
+  MISCONCEPTION_UPDATE
   PENDING
   RUNNING
   COMPLETED
@@ -2143,6 +2155,7 @@ enum AlertType {
   WORKER_FAILED
   JOB_STUCK
   QUEUE_BACKLOG
+  MISCONCEPTION_HIGH_PREVALENCE
 }
 
 enum AlertSeverity {

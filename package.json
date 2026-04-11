@@ -53,8 +53,8 @@
     "lint:orig": "eslint . --max-warnings=0",
     "test:eslint-rules": "node ./eslint-rules/tests/run-rule-tests.cjs",
     "lint:fix": "eslint \"app/**\" \"components/**\" \"lib/**\" \"scripts/**\" \"src/**\" --fix",
-    "lint:quotes": "python3 scripts/fix-smart-quotes.py --check",
-    "fix:quotes": "python3 scripts/fix-smart-quotes.py",
+    "lint:quotes": "python scripts/fix-smart-quotes.py --check",
+    "fix:quotes": "python scripts/fix-smart-quotes.py",
     "format": "prettier --write \"src/**/*.ts\"",
     "format:orig": "prettier --write \"src/**/*.{ts,tsx,css,md,json}\"",
     "serve": "next start",
@@ -66,6 +66,9 @@
     "test:ci": "npm run lint:orig && npm run type-check:orig && npm run test:unit",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
+    "ci:run-tests": "npm run lint:orig && npm run type-check:orig && npm run test:coverage",
+    "ci": "npm run ci:run-tests",
+    "ci:unit": "npm run type-check:orig && jest --coverage --testPathPattern=tests/unit --runInBand",
     "health-check": "node scripts/health-check.js",
     "test:integration": "node tests/integration/audit-log.test.cjs",
     "test:integration:scenarios": "jest tests/integration/homeEngine.scenarios.withSeed.test.ts --testPathIgnorePatterns=\"\"",
@@ -75,6 +78,7 @@
     "test:integration:dry-run": "node tests/integration/alert-evaluator-dry-run.test.cjs",
     "test:integration:all": "npm run test:integration && npm run test:integration:scenarios && npm run test:integration:evaluator && npm run test:integration:dry-run",
     "metrics:server": "node -r ts-node/register/transpile-only scripts/metricsServer.ts",
+    "perf:doubtkb": "tsx scripts/perf/doubtkb_bench.ts",
     "render:diagrams": "npx @mermaid-js/mermaid-cli -i docs/diagrams/submit-enqueue.mmd -o docs/diagrams/submit-enqueue.png && npx @mermaid-js/mermaid-cli -i docs/diagrams/worker-claim-execute.mmd -o docs/diagrams/worker-claim-execute.png && npx @mermaid-js/mermaid-cli -i docs/diagrams/reconciler-aggregation.mmd -o docs/diagrams/reconciler-aggregation.png",
     "test:unit": "cross-env NODE_OPTIONS=--max-old-space-size=4096 jest --runInBand",
     "ci:check-playwright": "node -e \"(async()=>{try{await import('playwright'); console.log('playwright:ok'); process.exit(0);}catch(e){console.error('playwright:missing', String(e)); process.exit(2);}})()\"",
@@ -165,7 +169,7 @@
     "react-speech-recognition": "^4.0.1",
     "recharts": "^2.15.2",
     "rehype-sanitize": "^5.0.1",
-    "resend": "^6.9.4",
+    "resend": "^6.10.0",
     "sanscript": "^0.0.2",
     "serwist": "^9.5.7",
     "slugify": "^1.6.6",
@@ -223,7 +227,7 @@
   },
   "lint-staged": {
     "*.{ts,tsx,cjs,js,mjs}": [
-      "python3 scripts/fix-smart-quotes.py"
+      "python scripts/fix-smart-quotes.py"
     ]
   },
   "overrides": {

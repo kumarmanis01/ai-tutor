@@ -52,9 +52,11 @@ export const prismaMock = {
   chapterDef: mockModel(),
   topicDef: mockModel(),
   topicNote: mockModel(),
+  misconception: mockModel(),
   generatedTest: mockModel(),
   generatedQuestion: mockModel(),
   auditLog: mockModel(),
+  answerEvent: mockModel(),
   user: mockModel(),
   paymentCustomer: mockModel(),
   paymentMethod: mockModel(),
@@ -62,6 +64,11 @@ export const prismaMock = {
   syllabus: mockModel(),
   $transaction: jest.fn().mockName('$transaction'),
   $executeRaw: jest.fn().mockName('$executeRaw'),
+  $executeRawUnsafe: jest.fn().mockName('$executeRawUnsafe'),
+  $queryRaw: jest.fn().mockName('$queryRaw'),
+  $queryRawUnsafe: jest.fn().mockName('$queryRawUnsafe'),
+  $disconnect: jest.fn().mockName('$disconnect'),
+  ingestRunLog: mockModel(),
 };
 
 /** Reset all mock functions in prismaMock (call in beforeEach) */

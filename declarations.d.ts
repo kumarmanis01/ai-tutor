@@ -30,3 +30,4 @@ declare module 'resend' {
   export default Resend;
 }
 declare module 'web-push';
+declare module '@anthropic-ai/sdk';

@@ -20,6 +20,7 @@ import { logger } from '../lib/logger.js';
 import { markIgnoredRecommendations, cleanupOldIgnoredRecommendations } from './jobs/markIgnoredRecommendations.js';
 import { aggregateWeeklySummaries } from './jobs/weeklyParentSummary.js';
 import { sendParentDigests } from './jobs/parentEmailDigest.js';
+import { runWeeklyQuestionHealth } from './jobs/weeklyQuestionHealth.js';
 import { runInactivityAlerts } from './jobs/inactivityAlert.js';
 import { runRecoveryCheck } from '../lib/failureRecovery.js'
 import { precomputeReadiness } from './jobs/precomputeReadiness.js';
@@ -27,6 +28,7 @@ import { expireStaleTasks } from '../lib/dailyHabit.js';
 import { hydrationReconciler } from './services/hydrationReconciler.js';
 import { runDailyCostReport } from './services/costReportingWorker.js'
 import { runDataDeletionCycle } from './services/dataDeletionWorker.js';
+import { runMonthlyMisconceptionPrevalence } from './services/misconceptionPrevalenceWorker.js';
 import { weeklyPlanAdjust } from './jobs/weeklyPlanAdjust.js';
 import { sendFreemiumResetNotifications } from './jobs/freemiumResetNotifications.js';
 import { prisma } from '../lib/prisma.js';
@@ -45,6 +47,7 @@ const DAILY_MAINTENANCE_INTERVAL_MS = 24 * 60 * 60 * 1000; // 24 hours
 const READINESS_PRECOMPUTE_INTERVAL_MS = 24 * 60 * 60 * 1000; // 24 hours
 const COST_REPORT_INTERVAL_MS = 24 * 60 * 60 * 1000; // 24 hours
 const DATA_DELETION_INTERVAL_MS = 24 * 60 * 60 * 1000; // 24 hours
+const MONTHLY_INTERVAL_MS = 30 * 24 * 60 * 60 * 1000; // approx 30 days
 
 /**
  * Calculate milliseconds until next scheduled time (2 AM UTC)
@@ -111,6 +114,14 @@ async function runWeeklyParentJob() {
     logger.info('scheduler.parentEmailDigest.starting');
     const sent = await sendParentDigests();
     logger.info('scheduler.parentEmailDigest.completed', { sent });
+    // Run weekly question health check and emit analytics
+    try {
+      logger.info('scheduler.weeklyQuestionHealth.starting');
+      const lowCount = await runWeeklyQuestionHealth();
+      logger.info('scheduler.weeklyQuestionHealth.completed', { lowCount });
+    } catch (err) {
+      logger.error('scheduler.weeklyQuestionHealth.error', { error: err instanceof Error ? err.message : String(err) });
+    }
   } catch (error) {
     logger.error('scheduler.weeklyParentJob.error', {
       error: error instanceof Error ? error.message : String(error)
@@ -396,6 +407,31 @@ async function runDataDeletionJob() {
 }
 
 /**
+ * Calculate ms until next monthly run (1st of next month at targetHour UTC)
+ */
+function msUntilNextMonthlyRun(targetHour: number = 4): number {
+  const now = new Date();
+  const year = now.getUTCFullYear();
+  const month = now.getUTCMonth();
+  // first day of next month
+  const next = new Date(Date.UTC(year, month + 1, 1, targetHour, 0, 0));
+  return next.getTime() - now.getTime();
+}
+
+async function runMisconceptionPrevalenceJob() {
+  try {
+    logger.info('scheduler.misconceptionPrevalence.starting');
+    const res = await runMonthlyMisconceptionPrevalence();
+    logger.info('scheduler.misconceptionPrevalence.completed', res);
+  } catch (err) {
+    logger.error('scheduler.misconceptionPrevalence.error', { error: err instanceof Error ? err.message : String(err) });
+  }
+
+  // Schedule next run in ~30 days (approximate monthly cadence)
+  setTimeout(runMisconceptionPrevalenceJob, MONTHLY_INTERVAL_MS);
+}
+
+/**
  * Start the scheduler
  */
 export async function startScheduler() {
@@ -444,6 +480,11 @@ export async function startScheduler() {
   const delayDataDeletion = msUntilNextRun(20) + 30 * 60 * 1000
   logger.info('scheduler.scheduled.dataDeletion', { firstRun: new Date(Date.now() + delayDataDeletion).toISOString() })
   setTimeout(runDataDeletionJob, delayDataDeletion);
+
+  // Monthly misconception prevalence job (1st of next month at 04:00 UTC)
+  const delayMonthlyMisconception = msUntilNextMonthlyRun(4)
+  logger.info('scheduler.scheduled.misconceptionPrevalence', { firstRun: new Date(Date.now() + delayMonthlyMisconception).toISOString() })
+  setTimeout(runMisconceptionPrevalenceJob, delayMonthlyMisconception);
 
   logger.info('scheduler.started');
 }
