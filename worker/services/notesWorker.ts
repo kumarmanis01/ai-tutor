@@ -250,8 +250,8 @@ export async function handleNotesJob(jobId: string): Promise<void> {
   try {
     const siblings = await prisma.topicDef.findMany({
       where: {
-        chapterId: (topic as any).chapterId,
-        order: { lt: (topic as any).order ?? 0 },
+        chapterId: topic.chapterId,
+        order: { lt: topic.order ?? 0 },
       },
       select: { name: true },
       orderBy: { order: 'asc' },
@@ -264,7 +264,7 @@ export async function handleNotesJob(jobId: string): Promise<void> {
   let ncertContext: string | undefined
   try {
     const subjectSlug = subjectName.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')
-    const chapterOrder = (topic.chapter as any).order ?? 0
+    const chapterOrder = topic.chapter.order ?? 0
     if (chapterOrder > 0) {
       const chunks = await prisma.curriculumChunk.findMany({
         where: {
