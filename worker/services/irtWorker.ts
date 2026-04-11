@@ -5,6 +5,7 @@ import { updateTheta } from '@/lib/ai/tutor/irt.js'
 import type { IRTUpdateJobData } from '@/jobs/irtUpdate'
 import { sendPushSafe } from '@/lib/push/send.js'
 import { PUSH_NOTIFICATIONS } from '@/lib/push/notifications.js'
+import { sendParentMilestoneNotification } from '@/lib/notifications/delivery.js'
 
 const MASTERY_THRESHOLD = 0.75
 
@@ -163,6 +164,33 @@ async function checkChapterMastery(studentId: string, conceptId: string): Promis
     }
 
     await sendPushSafe(studentId, PUSH_NOTIFICATIONS.chapter_mastered(chapter.name))
+
+    // Notify linked parents about chapter mastery (best-effort)
+    try {
+      const parents = await prisma.parentStudent.findMany({
+        where: { studentId, status: 'active' },
+        include: { parent: { select: { id: true, email: true, phone: true, name: true, language: true } } },
+      })
+
+      if (parents.length > 0) {
+        const subject = `${chapter.name} mastered by your child`
+        const html = `<p>Hi,</p><p>Your child has mastered the chapter <strong>${chapter.name}</strong>. Great job!</p>`
+
+        const sends = parents.map((p) =>
+          sendParentMilestoneNotification(p.parent.id, {
+            email: p.parent.email ?? undefined,
+            phone: p.parent.phone ?? undefined,
+            subject,
+            html,
+            meta: { studentId, type: 'milestone', channel: p.parent.email ? 'email' : p.parent.phone ? 'sms' : 'unknown', locale: p.parent.language },
+          }),
+        )
+
+        void Promise.allSettled(sends)
+      }
+    } catch (err) {
+      logger.warn('[irt-worker] parent notification failed', { studentId, chapterId: chapter.id, error: String(err) })
+    }
   } catch {
     // Best-effort -- never affect the main IRT pipeline
   }

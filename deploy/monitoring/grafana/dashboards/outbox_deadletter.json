@@ -1,0 +1,38 @@
+{
+  "dashboard": {
+    "id": null,
+    "uid": null,
+    "title": "Outbox Dead Letters",
+    "schemaVersion": 36,
+    "version": 0,
+    "panels": [
+      {
+        "type": "stat",
+        "title": "Dead Letters (5m)",
+        "id": 1,
+        "targets": [
+          {
+            "expr": "sum by(queue) (increase(outbox_deadletter_total[5m]))",
+            "refId": "A",
+            "legendFormat": "{{queue}}"
+          }
+        ],
+        "gridPos": { "x": 0, "y": 0, "w": 12, "h": 6 }
+      },
+      {
+        "type": "graph",
+        "title": "Dead Letters over time",
+        "id": 2,
+        "targets": [
+          {
+            "expr": "sum by(queue) (increase(outbox_deadletter_total[1h]))",
+            "refId": "A",
+            "legendFormat": "{{queue}}"
+          }
+        ],
+        "gridPos": { "x": 12, "y": 0, "w": 12, "h": 6 }
+      }
+    ]
+  },
+  "overwrite": true
+}

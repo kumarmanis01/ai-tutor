@@ -20,6 +20,7 @@ import { getServerSession } from 'next-auth/next'
 import { authOptions } from '@/lib/auth'
 import type { AppSession } from '@/lib/types/auth'
 import '@/styles/index.css'
+import Link from 'next/link'
 import ParentLogoutButton from '@/components/parent/ParentLogoutButton'
 import Logo from '@/components/Logo'
 import { NavigationProgress } from '@/components/NavigationProgress'
@@ -71,22 +72,22 @@ export default async function ParentLayout({ children }: { children: React.React
           <div className="mx-auto flex max-w-3xl items-center justify-between px-4 py-3">
 
             {/* Logo */}
-            <a href="/parent/dashboard" className="flex items-center gap-2" aria-label="Parent dashboard">
+            <Link href="/parent/dashboard" className="flex items-center gap-2" aria-label="Parent dashboard">
               <span className="hidden sm:flex"><Logo variant="navbar" /></span>
               <span className="flex sm:hidden"><Logo variant="navbar-mobile" /></span>
               <span className="hidden text-xs font-medium text-gray-500 sm:inline dark:text-gray-400">
                 | Parent View
               </span>
-            </a>
+            </Link>
 
             {/* Nav links */}
             <div className="flex items-center gap-5">
-              <a
+              <Link
                 href="/parent/dashboard"
                 className="text-sm font-medium text-gray-700 hover:text-indigo-600 dark:text-gray-300 dark:hover:text-indigo-400"
               >
                 My children
-              </a>
+              </Link>
               <ParentLogoutButton />
             </div>
 

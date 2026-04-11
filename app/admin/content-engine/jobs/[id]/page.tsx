@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useMemo, useState } from 'react';
+import Link from 'next/link';
 import useSWR from 'swr';
 import JobActions from '@/components/Admin/JobActions';
 import { JobStatus as JobStatusConst } from '@/lib/ai-engine/types';
@@ -36,7 +37,7 @@ export default function JobDetailPage() {
 
   if (jobErr) return <div className="p-6 text-red-600">Failed to load job.</div>;
   if (!jobRes) return <div className="p-6">Loading...</div>;
-  if (!job) return <div className="p-6 text-red-600">Job not found. It may be a pipeline job -- <a href="/admin/jobs" className="underline text-blue-600">view all jobs</a>.</div>;
+  if (!job) return <div className="p-6 text-red-600">Job not found. It may be a pipeline job -- <Link href="/admin/jobs" className="underline text-blue-600">view all jobs</Link>.</div>;
 
   return (
     <div className="p-6 max-w-3xl mx-auto">
@@ -100,7 +101,7 @@ export default function JobDetailPage() {
       </div>
 
       <div className="mt-6">
-        <a href={`/admin/content-engine/audit-logs?jobId=${job.id}`} className="text-sm underline text-blue-600">View audit trail →</a>
+        <Link href={`/admin/content-engine/audit-logs?jobId=${job.id}`} className="text-sm underline text-blue-600">View audit trail →</Link>
       </div>
     </div>
   );

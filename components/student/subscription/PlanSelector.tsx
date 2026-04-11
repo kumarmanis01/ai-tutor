@@ -34,7 +34,7 @@ function PlanRow({
     <button
       type="button"
       onClick={onSelect}
-      aria-pressed={isSelected}
+      aria-pressed={isSelected ? 'true' : 'false'}
       className={[
         'w-full text-left rounded-xl px-4 py-4 min-h-[56px] flex items-center gap-4 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#534AB7]',
         isFeatured

@@ -16,15 +16,15 @@ export default function InviteButton() {
     setLoading(true);
     try {
       const res = await fetch('/api/referral/create', { method: 'POST' });
-      const raw = await res.json().catch(() => ({}) as unknown);
+      const raw = await res.json().catch((e) => { logger.warn('referral/create response.json() failed', { className: 'InviteButton', methodName: 'createReferral', error: e }); return {} as unknown });
       const data = raw as CreateResponse;
 
       if (data?.url) {
         setLink(data.url);
         try {
           await navigator.clipboard.writeText(data.url);
-        } catch {
-          // ignore clipboard errors
+        } catch (e) {
+          logger.warn('navigator.clipboard.writeText failed', { className: 'InviteButton', methodName: 'createReferral', error: e });
         }
       } else {
         logger.warn('Unexpected response from /api/referral/create', { className: 'InviteButton', methodName: 'createReferral', data });
@@ -46,7 +46,8 @@ export default function InviteButton() {
       try {
         await navigator.share({ title: 'Join Spinzy Academy', text, url: link });
         return;
-      } catch {
+      } catch (e) {
+        logger.warn('navigator.share failed', { className: 'InviteButton', methodName: 'share', error: e });
         // user cancelled or share failed -- fall back to web share links
       }
     }

@@ -9,6 +9,7 @@
  *
  * EDIT LOG:
  * - 2026-04-07 | claude | created to close F-STU-011 AC-03 gap
+ * - 2026-04-07 | claude | fix: add object-cover to avatars and use items-start on message rows to prevent avatar stretching
  */
 
 import React, { useRef, useEffect } from 'react';
@@ -157,7 +158,7 @@ export function DoubtPanel({ subject, chapter, topicName }: DoubtPanelProps) {
             alt=""
             width={24}
             height={24}
-            className="rounded-full"
+            className="rounded-full object-cover"
           />
           Ask Vidya
         </button>
@@ -189,7 +190,7 @@ export function DoubtPanel({ subject, chapter, topicName }: DoubtPanelProps) {
             alt="Teacher Vidya"
             width={36}
             height={36}
-            className="rounded-full flex-shrink-0"
+            className="rounded-full flex-shrink-0 object-cover"
           />
           <div className="flex-1 min-w-0">
             <p className="text-sm font-semibold text-foreground leading-tight">Teacher Vidya</p>
@@ -213,14 +214,14 @@ export function DoubtPanel({ subject, chapter, topicName }: DoubtPanelProps) {
           className="flex-1 overflow-y-auto px-4 py-4 space-y-4 min-h-0"
         >
           {messages.map((msg, i) => (
-            <div key={i} className={`flex gap-2.5 ${msg.role === 'student' ? 'flex-row-reverse' : 'flex-row'}`}>
-              {msg.role === 'vidya' && (
+            <div key={i} className={`flex items-start gap-2.5 ${msg.role === 'student' ? 'flex-row-reverse' : 'flex-row'}`}>
+                {msg.role === 'vidya' && (
                 <Image
                   src="/logos/vidya/vidya-avatar-64.png"
                   alt="Vidya"
                   width={28}
                   height={28}
-                  className="rounded-full flex-shrink-0 mt-0.5"
+                  className="rounded-full flex-shrink-0 mt-0.5 object-cover"
                 />
               )}
               <div className={`max-w-[80%] space-y-1.5 ${msg.role === 'student' ? 'items-end' : 'items-start'} flex flex-col`}>
@@ -245,13 +246,13 @@ export function DoubtPanel({ subject, chapter, topicName }: DoubtPanelProps) {
 
           {/* Loading indicator */}
           {loading && (
-            <div className="flex gap-2.5">
+            <div className="flex items-start gap-2.5">
               <Image
                 src="/logos/vidya/vidya-avatar-64.png"
                 alt="Vidya"
                 width={28}
                 height={28}
-                className="rounded-full flex-shrink-0 mt-0.5"
+                className="rounded-full flex-shrink-0 mt-0.5 object-cover"
               />
               <div className="bg-[#EEEDFE] dark:bg-[#534AB7]/15 px-3.5 py-3 rounded-2xl rounded-tl-sm">
                 <span className="flex gap-1 items-center">

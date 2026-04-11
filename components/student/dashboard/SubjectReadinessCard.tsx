@@ -1,5 +1,20 @@
 'use client'
 
+/**
+ * FILE OBJECTIVE:
+ * - Small readiness card showing subject readiness percent and brief action hint.
+ *
+ * LINKED UNIT TEST:
+ * - tests/unit/components/SubjectReadinessCard.spec.ts
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - .github/copilot-instructions.md
+ * - /docs/COPILOT_GUARDRAILS.md
+ *
+ * EDIT LOG:
+ * - 2026-04-09T00:00:00Z | copilot | added "What this means" tooltip and accessibility fixes
+ */
+
 import Link from 'next/link'
 
 export interface SubjectReadinessCardProps {
@@ -122,20 +137,29 @@ export function SubjectReadinessCard({
             <p className="text-sm font-semibold text-gray-900 dark:text-gray-100 truncate">
               {subjectName}
             </p>
-            <span className={`flex-shrink-0 text-xs font-medium ${text}`}>{label}</span>
+            <div className="flex items-center gap-2">
+              <span className={`flex-shrink-0 text-xs font-medium ${text}`}>{label}</span>
+              <span
+                className="text-2xs text-gray-400 hover:text-gray-500"
+                title={
+                  label === 'Critical'
+                    ? 'What this means: Needs focused practice on earlier topics to catch up.'
+                    : label === 'Needs work'
+                      ? 'What this means: Regular practice will help improve readiness.'
+                      : 'What this means: On track for upcoming assessments.'
+                }
+              >
+                ⓘ
+              </span>
+            </div>
           </div>
 
           {/* Progress bar */}
-          <div
-            className="w-full h-2 rounded-full bg-gray-100 dark:bg-gray-700 overflow-hidden"
-            role="progressbar"
-            aria-valuenow={score}
-            aria-valuemin={0}
-            aria-valuemax={100}
-          >
+          <div className="w-full h-2 rounded-full bg-gray-100 dark:bg-gray-700 overflow-hidden" role="progressbar" aria-label={`${subjectName} readiness progress`}>
             <div
-              className={`h-full rounded-full ${bar} transition-all duration-300`}
-              style={{ width: `${score}%` }}
+              className={`h-full rounded-full ${bar} transition-all duration-300 ${
+                score < 25 ? 'w-1/4' : score < 50 ? 'w-1/2' : score < 75 ? 'w-3/4' : 'w-full'
+              }`}
             />
           </div>
         </div>

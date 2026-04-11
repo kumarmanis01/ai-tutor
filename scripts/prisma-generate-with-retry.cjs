@@ -1,3 +1,16 @@
+/**
+ * FILE OBJECTIVE:
+ * - Robust cross-platform wrapper for `prisma generate` that retries on Windows EPERM locks and invokes the local Prisma entrypoint via Node.
+ *
+ * LINKED UNIT TEST:
+ * - tests/unit/scripts/prisma-generate-with-retry.spec.ts (N/A)
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - .github/copilot-instructions.md
+ *
+ * EDIT LOG:
+ * - 2026-04-09T06:00:00Z | copilot | Invoke Prisma via Node executable to avoid .bin wrapper issues on Windows; add header
+ */
 /* eslint-disable no-console */
 /**
  * Prisma generate wrapper with retry on Windows EPERM file locks.
@@ -24,10 +37,17 @@ function sleep(ms) {
   return new Promise((r) => setTimeout(r, ms));
 }
 
-const PRISMA_BIN = path.resolve(__dirname, '..', 'node_modules', '.bin', 'prisma');
+// On Windows the shell wrappers under node_modules/.bin may not be directly
+// executable via spawnSync when shell=false. To ensure a cross-platform,
+// deterministic invocation of the locally-installed Prisma, call the
+// Prisma JS entrypoint with the current Node executable. This avoids
+// relying on .cmd/.ps1/.sh wrapper scripts and keeps the "local prisma"
+// contract intact.
+const PRISMA_JS = path.resolve(__dirname, '..', 'node_modules', 'prisma', 'build', 'index.js');
 
 function runOnce() {
-  const res = spawnSync(PRISMA_BIN, ['generate'], {
+  const nodeExe = process.execPath || 'node';
+  const res = spawnSync(nodeExe, [PRISMA_JS, 'generate'], {
     stdio: 'inherit',
     shell: false,
     env: process.env,

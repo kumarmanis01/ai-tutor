@@ -36,7 +36,9 @@ const QuickInputBox: React.FC<QuickInputBoxProps> = ({ onReply, onError, initial
           setPreferredLang(initialPreferredLang);
           try {
             localStorage.setItem('ai-tutor:preferredLang', initialPreferredLang);
-          } catch {}
+          } catch (err) {
+            logger.warn('Failed to persist initialPreferredLang to localStorage', { className: 'QuickInputBox', methodName: 'mount', error: String(err) });
+          }
           return;
         }
 
@@ -49,7 +51,9 @@ const QuickInputBox: React.FC<QuickInputBoxProps> = ({ onReply, onError, initial
               return;
             }
           }
-        } catch {}
+        } catch (err) {
+          logger.warn('Failed to read preferredLang from localStorage', { className: 'QuickInputBox', methodName: 'mount', error: String(err) });
+        }
 
         // Fall back to server-provided persisted language
         async function loadFromServer() {
@@ -62,12 +66,18 @@ const QuickInputBox: React.FC<QuickInputBoxProps> = ({ onReply, onError, initial
               setPreferredLang(serverLang);
               try {
                 localStorage.setItem('ai-tutor:preferredLang', serverLang);
-              } catch {}
+              } catch (err) {
+                logger.warn('Failed to persist server preferredLang to localStorage', { className: 'QuickInputBox', methodName: 'loadFromServer', error: String(err) });
+              }
             }
-          } catch {}
+          } catch (err) {
+            logger.warn('Failed to load preferredLang from server', { className: 'QuickInputBox', methodName: 'loadFromServer', error: String(err) });
+          }
         }
         loadFromServer();
-      } catch {}
+      } catch (err) {
+        logger.warn('QuickInputBox mount effect failed', { className: 'QuickInputBox', methodName: 'mount', error: String(err) });
+      }
       return () => {
         cancelled = true;
       };
@@ -88,7 +98,9 @@ const QuickInputBox: React.FC<QuickInputBoxProps> = ({ onReply, onError, initial
           const parsed = JSON.parse(raw);
           if (Array.isArray(parsed)) setFavorites(parsed);
         }
-      } catch {}
+      } catch (err) {
+        logger.warn('Failed to load langFavorites from localStorage', { className: 'QuickInputBox', methodName: 'loadFavorites', error: String(err) });
+      }
     }, []);
 
     const toggleFavorite = (tag: string) => {
@@ -102,10 +114,14 @@ const QuickInputBox: React.FC<QuickInputBoxProps> = ({ onReply, onError, initial
           }
           try {
             localStorage.setItem('ai-tutor:langFavorites', JSON.stringify(next));
-          } catch {}
+          } catch (err) {
+            logger.warn('Failed to persist langFavorites to localStorage', { className: 'QuickInputBox', methodName: 'toggleFavorite', error: String(err) });
+          }
           return next;
         });
-      } catch {}
+      } catch (err) {
+        logger.warn('toggleFavorite failed', { className: 'QuickInputBox', methodName: 'toggleFavorite', error: String(err) });
+      }
     };
 
     const handleSelectorPick = (name: string) => {
@@ -114,11 +130,17 @@ const QuickInputBox: React.FC<QuickInputBoxProps> = ({ onReply, onError, initial
         setPreferredLang(tag);
         try {
           localStorage.setItem('ai-tutor:preferredLang', tag);
-        } catch {}
+        } catch (err) {
+          logger.warn('Failed to persist preferredLang to localStorage', { className: 'QuickInputBox', methodName: 'handleSelectorPick', error: String(err) });
+        }
         try {
-          fetch('/api/user/language', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ language: tag }) }).catch(() => {});
-        } catch {}
-      } catch {}
+          fetch('/api/user/language', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ language: tag }) }).catch((err) => { logger.warn('Failed to persist preferredLang to server', { className: 'QuickInputBox', methodName: 'handleSelectorPick', error: String(err) }) });
+        } catch (err) {
+          logger.warn('Failed to queue preferredLang persist request', { className: 'QuickInputBox', methodName: 'handleSelectorPick', error: String(err) });
+        }
+      } catch (err) {
+        logger.warn('handleSelectorPick failed', { className: 'QuickInputBox', methodName: 'handleSelectorPick', error: String(err) });
+      }
       setShowLangMenuText(false);
     };
 
@@ -718,9 +740,9 @@ const QuickInputBox: React.FC<QuickInputBoxProps> = ({ onReply, onError, initial
           <div className="mt-2 text-sm text-muted-foreground flex items-center gap-2" aria-live="polite" aria-busy="true" role="status">
             <span>Thinking</span>
             <span className="inline-flex gap-1">
-              <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground/70 animate-bounce" style={{ animationDelay: '0ms' }} />
-              <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground/70 animate-bounce" style={{ animationDelay: '150ms' }} />
-              <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground/70 animate-bounce" style={{ animationDelay: '300ms' }} />
+              <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground/70 animate-bounce" />
+              <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground/70 animate-bounce" />
+              <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground/70 animate-bounce" />
             </span>
           </div>
         )}
@@ -792,6 +814,7 @@ const QuickInputBox: React.FC<QuickInputBoxProps> = ({ onReply, onError, initial
         accept="image/*"
         className="hidden"
         onChange={handleFileChange}
+        aria-hidden="true"
       />
 
       {/* Thumbnails */}

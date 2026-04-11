@@ -6,20 +6,24 @@
  * EDIT LOG:
  * - 2026-02-04 | claude | created parent email digest job
  * - 2026-02-04 | claude | integrated WhatsApp delivery alongside email
+ * - 2026-04-09 | copilot | respect excludeFromParentReport when selecting parent links
  */
 
-import { prisma } from '../../lib/prisma.js';
-import { logger } from '../../lib/logger.js';
-import { sendMailSafe } from '../../lib/mailer.js';
-import { sendWhatsAppMessage, buildWeeklyWhatsAppMessage } from '../../lib/whatsapp.js';
+import { prisma } from '@/lib/prisma';
+import { logger } from '@/lib/logger';
+import { sendMailSafe } from '@/lib/mailer';
+import { sendWhatsAppMessage, buildWeeklyWhatsAppMessage } from '@/lib/whatsapp';
+import { generateParentReportAI } from '@/lib/ai/tools/generateParentReport';
+import { sendParentMilestoneNotification } from '@/lib/notifications/delivery';
+import { t } from '@/lib/i18n';
 
 /**
  * Send weekly email digest to all parents with active student links
  */
 export async function sendParentDigests(): Promise<number> {
-  // Find all parents with active links
+  // Find all parents with active links (exclude students opted out of parent reports)
   const parentLinks = await prisma.parentStudent.findMany({
-    where: { status: 'active' },
+    where: { status: 'active', excludeFromParentReport: false },
     include: {
       parent: { select: { id: true, email: true, name: true, phone: true, language: true } },
       student: { select: { id: true, name: true, grade: true, board: true } },
@@ -36,6 +40,11 @@ export async function sendParentDigests(): Promise<number> {
   }> = {};
 
   for (const link of parentLinks) {
+    // Skip if child is currently paused by parent
+    if ((link as any).isPaused && (link as any).pausedUntil && new Date((link as any).pausedUntil) > new Date()) {
+      logger.info('parentEmailDigest: skipping paused child', { parentId: link.parent.id, studentId: link.student.id, pausedUntil: (link as any).pausedUntil })
+      continue
+    }
     if (!link.parent.email) continue;
     if (!parentMap[link.parent.id]) {
       parentMap[link.parent.id] = {
@@ -138,6 +147,26 @@ export async function sendParentDigests(): Promise<number> {
 
   for (const [parentId, parent] of Object.entries(parentMap)) {
     try {
+      // Respect parent digest preferences (opt-out and scheduled day)
+      const profile = await prisma.parentProfile.findUnique({ where: { userId: parentId } })
+      if (profile?.digestOptOut) {
+        logger.info('parentEmailDigest: skipped due to opt-out', { parentId })
+        continue
+      }
+      const parentTimezone = profile?.digestTimezone ?? (await prisma.user.findUnique({ where: { id: parentId }, select: { timezone: true } }))?.timezone
+      const preferredDay = profile?.digestDay ?? 'Sunday'
+      if (parentTimezone) {
+        try {
+          const localDay = new Date().toLocaleString('en-US', { timeZone: parentTimezone, weekday: 'long' })
+          if (String(localDay).toLowerCase() !== String(preferredDay).toLowerCase()) {
+            logger.info('parentEmailDigest: skipping parent due to preferredDay mismatch', { parentId, preferredDay, localDay })
+            continue
+          }
+        } catch (err) {
+          // If timezone invalid, fall back to sending
+        }
+      }
+
       const childSections: string[] = [];
 
       for (const child of parent.children) {
@@ -149,18 +178,35 @@ export async function sendParentDigests(): Promise<number> {
         const streak = streakByStudent.get(child.id) ?? null;
 
         const trustSignals = buildTrustSignals(summary, lastWeekSummary, newStrengths, streak, flags);
-        childSections.push(buildChildSection(child, summary, flags, readiness, trustSignals));
+
+        // Build AI-generated short paragraph for this child (best-effort)
+        let aiParagraph = ''
+        try {
+          // Snake_case keys match the LLM tool schema contract defined in
+          // lib/ai/tools/generateParentReport.ts (WeekSummaryInput).
+          const weekSummary = {
+            days_active: summary?.sessionsCount ?? 0,
+            time_spent_min: summary?.totalMinutes ?? 0,
+            improved_topics: newStrengths.map((s) => s.subject).slice(0, 3),
+            struggling_topics: flags.map((f) => `${f.subject}${f.chapter ? ' / ' + f.chapter : ''}`).slice(0, 3),
+            streak_days: streak?.current ?? 0,
+            tests_taken: summary?.testsTaken ?? 0,
+          }
+          const ai = await generateParentReportAI(child.name, weekSummary as any, parent.language)
+          aiParagraph = ai.summary
+        } catch (err) {
+          logger.warn('parentEmailDigest: AI paragraph generation failed', { parentId, childId: child.id, error: String(err) })
+          aiParagraph = ''
+        }
+
+        childSections.push(buildChildSection(child, summary, flags, readiness, trustSignals, aiParagraph));
       }
 
       const html = buildDigestHtml(parent.name, childSections);
-      const text = `Weekly Learning Summary for your children on Spinzy Academy.`;
-
-      await sendMailSafe({
-        to: parent.email,
-        subject: `Weekly Learning Summary - Spinzy Academy`,
-        html,
-        text,
-      });
+      const subject = t('digest.subject', undefined, parent.language)
+      const text = t('digest.fallback_text', undefined, parent.language)
+      // Use centralized notification helper which enforces caps for milestone emails
+      await sendParentMilestoneNotification(parentId, { email: parent.email, phone: parent.phone ?? undefined, subject, html, text, meta: { type: 'digest', channel: 'email', locale: parent.language } })
 
       sentCount++;
       logger.info('parentEmailDigest: sent', { parentId, childCount: parent.children.length });
@@ -256,6 +302,7 @@ function buildChildSection(
   flags: any[],
   readiness: any[],
   trustSignals?: TrustSignals,
+  aiParagraph?: string,
 ): string {
   const gradeLabel = child.grade ? `Class ${child.grade}` : '';
   const boardLabel = child.board || '';
@@ -322,6 +369,12 @@ function buildChildSection(
     `;
   }
 
+  // AI paragraph (short, parent-friendly) - injected above trust signals when available
+  let aiHtml = ''
+  if (aiParagraph && aiParagraph.trim()) {
+    aiHtml = `<div style="margin-top:12px;padding:12px;background:#F8FAFC;border-radius:8px;border-left:3px solid #94A3B8;color:#334155;">${aiParagraph}</div>`
+  }
+
   // Trust signals section
   let trustHtml = '';
   if (trustSignals) {
@@ -376,11 +429,12 @@ function buildChildSection(
     `;
   }
 
-  return `
+    return `
     <div style="border:1px solid #E5E7EB;border-radius:12px;padding:16px;margin-bottom:16px;">
       <h3 style="margin:0 0 4px 0;color:#1F2937;">${child.name}</h3>
       ${subtitle ? `<p style="margin:0 0 12px 0;color:#6B7280;font-size:14px;">${subtitle}</p>` : ''}
       ${statsHtml}
+      ${aiHtml}
       ${trustHtml}
       ${flagsHtml}
       ${readinessHtml}

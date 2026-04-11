@@ -1,6 +1,7 @@
 "use client";
 
 import React from 'react';
+import Link from 'next/link';
 
 export default function DataSecurityPage() {
   return (
@@ -66,13 +67,13 @@ export default function DataSecurityPage() {
 
       <section aria-labelledby="contact" className="mb-8">
         <h2 id="contact" className="text-xl font-semibold">Contact & Reporting</h2>
-        <p className="mt-3 text-gray-800">If you have security questions or wish to report a vulnerability, please reach out via the <a href="/contact-us" className="text-blue-600 underline">contact page</a>.</p>
+        <p className="mt-3 text-gray-800">If you have security questions or wish to report a vulnerability, please reach out via the <Link href="/contact-us" className="text-blue-600 underline">contact page</Link>.</p>
       </section>
 
       <footer className="mt-12 border-t pt-6 text-sm text-gray-600">
         <p>
           This page summarizes current practices and may evolve as we improve security and compliance.
-          Refer to our <a href="/privacy" className="text-blue-600 underline">Privacy Policy</a> for more details.
+          Refer to our <Link href="/privacy" className="text-blue-600 underline">Privacy Policy</Link> for more details.
         </p>
       </footer>
     </main>

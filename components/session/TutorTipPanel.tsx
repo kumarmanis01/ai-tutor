@@ -7,6 +7,7 @@
  * EDIT LOG:
  * - 2026-03-08 | claude | created as proper component (was a static placeholder)
  * - 2026-04-07 | claude | replace lightbulb emoji with Vidya avatar; rebrand label
+ * - 2026-04-07 | claude | fix: ensure avatar uses object-cover to preserve aspect ratio
  */
 
 import React, { useState } from 'react';
@@ -29,7 +30,7 @@ export function TutorTipPanel({ tipText }: TutorTipPanelProps) {
         alt="Teacher Vidya"
         width={32}
         height={32}
-        className="flex-shrink-0 rounded-full mt-0.5"
+        className="flex-shrink-0 rounded-full mt-0.5 object-cover"
       />
       <div className="flex-1 min-w-0">
         <p className="text-xs font-semibold text-[#534AB7] dark:text-indigo-300 mb-0.5">Teacher Vidya</p>

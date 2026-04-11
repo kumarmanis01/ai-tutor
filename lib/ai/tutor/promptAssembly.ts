@@ -21,6 +21,8 @@ export interface PromptContext {
   sessionSummary: string | null // compressed summary of earlier turns
   recentTurns: Array<{ role: 'student' | 'ai'; content: string }> // last 8 turns
   activeMisconceptionName: string | null
+  /** AC-03 (F-STU-013): correction text for the active misconception. Drives contrastive explanation. */
+  activeMisconceptionCorrection: string | null
   frustrationScore: number
 
   // STAGE_INSTRUCTIONS layer inputs

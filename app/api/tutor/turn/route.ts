@@ -119,7 +119,7 @@ export async function POST(req: Request) {
       return res
     }
 
-    const bodyRaw = await req.json().catch(() => null)
+    const bodyRaw = await req.json().catch((e) => { logger.warn('Failed to parse request JSON', { className: 'TutorTurnAPI', methodName: 'POST', error: e }); return null })
     const parsed = parseBody(bodyRaw)
     if (!parsed) {
       const res = await streamSingleError(400, errorPayload('SESSION_NOT_FOUND', 'Invalid request body.', false))
@@ -181,7 +181,7 @@ export async function POST(req: Request) {
 
     // Set lastTurnNumber immediately to help reconnect flows (best-effort)
     const nextState: TutorSessionState = { ...state, lastTurnNumber: parsed.turnNumber }
-    await setTutorSession(nextState).catch(() => {})
+    await setTutorSession(nextState).catch((e) => { logger.warn('setTutorSession failed', { className: 'TutorTurnAPI', methodName: 'POST', error: e }) })
 
     const encoder = new TextEncoder()
 

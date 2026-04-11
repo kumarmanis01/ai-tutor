@@ -4,6 +4,8 @@
  * - Resizes to fit within maxWidth x maxHeight while preserving aspect ratio
  * - Exports a compressed Blob (JPEG by default) with the requested quality
  */
+import { logger } from '@/lib/logger';
+
 export type ResizeOptions = {
   maxWidth?: number;
   maxHeight?: number;
@@ -53,8 +55,8 @@ export async function resizeImageFile(file: File | Blob, opts: ResizeOptions = {
     if (file instanceof File && file.size <= 300 * 1024) {
       return file;
     }
-  } catch {
-    // ignore
+  } catch (err) {
+    logger.warn('Failed to read small-file quick path', { module: 'resizeImage', method: 'quickPath', error: String(err) });
   }
 
   // Create an image element to load the blob
@@ -127,7 +129,9 @@ export async function resizeImageFile(file: File | Blob, opts: ResizeOptions = {
   // cleanup image object URL
   try {
     URL.revokeObjectURL(url);
-  } catch {}
+  } catch (err) {
+    logger.warn('URL.revokeObjectURL failed', { module: 'resizeImage', method: 'cleanup', error: String(err) });
+  }
 
   // Convert canvas to Blob
   const blob: Blob | null = await new Promise((resolve) => {
@@ -155,8 +159,8 @@ export async function resizeImageFile(file: File | Blob, opts: ResizeOptions = {
     if (file instanceof File && blob.size >= file.size) {
       return file;
     }
-  } catch {
-    // ignore
+  } catch (err) {
+    logger.warn('Comparing resized blob with original failed', { module: 'resizeImage', method: 'sizeCompare', error: String(err) });
   }
 
   // Create a File using the same base name but with an appropriate extension
