@@ -29,7 +29,7 @@ interface CompletionData {
   newLevel: number | null;
   masteryDelta: number;
   masteryAfter: number;
-  badgesEarned: { name: string; description: string }[];
+  badgesEarned: { name: string; description: string; icon?: string }[];
   aiInsight: string | null;
   sessionDurationMinutes: number;
   correctAnswers: number;
@@ -93,6 +93,23 @@ const CONFETTI_PIECES = Array.from({ length: 18 }, (_, i) => ({
   delay: `${(i % 6) * 0.12}s`,
   size: i % 3 === 0 ? 10 : 7,
 }));
+
+// ── Badge icon map (icon key → emoji) ─────────────────────────────────────────
+
+const BADGE_EMOJI: Record<string, string> = {
+  fire:      '🔥',
+  trophy:    '🏆',
+  diamond:   '💎',
+  crown:     '👑',
+  lightning: '⚡',
+  muscle:    '💪',
+  star:      '⭐',
+}
+
+function badgeEmoji(icon?: string): string {
+  if (!icon) return '🏅'
+  return BADGE_EMOJI[icon] ?? '🏅'
+}
 
 // ── Sub-components ─────────────────────────────────────────────────────────────
 
@@ -185,6 +202,39 @@ function XpSection({
             style={{ width: `${barWidth}%` }}
           />
         </div>
+      </div>
+    </div>
+  );
+}
+
+function BadgesEarnedSection({
+  badges,
+}: {
+  badges: { name: string; description: string; icon?: string }[];
+}) {
+  if (badges.length === 0) return null;
+  return (
+    <div>
+      <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2.5">
+        Badges Earned
+      </p>
+      <div className="flex flex-col gap-2">
+        {badges.map((b) => (
+          <div
+            key={b.name}
+            className="flex items-center gap-3 rounded-xl bg-[#EEEDFE] dark:bg-[#534AB7]/20 px-4 py-3"
+          >
+            <span className="text-2xl leading-none" aria-hidden>{badgeEmoji(b.icon)}</span>
+            <div className="min-w-0">
+              <p className="text-sm font-semibold text-[#534AB7] dark:text-indigo-300 leading-tight truncate">
+                {b.name}
+              </p>
+              <p className="text-xs text-gray-600 dark:text-gray-400 leading-tight truncate">
+                {b.description}
+              </p>
+            </div>
+          </div>
+        ))}
       </div>
     </div>
   );
@@ -527,6 +577,11 @@ export const SessionCompletionScreen: React.FC<SessionCompletionScreenProps> = (
 
           {/* 2. XP section */}
           <XpSection xpEarned={d.xpEarned} totalXp={d.totalXp} />
+
+          {/* 3. Badges earned this session */}
+          {d.badgesEarned.length > 0 && (
+            <BadgesEarnedSection badges={d.badgesEarned} />
+          )}
 
           {/* Divider */}
           <div className="h-px bg-gray-200 dark:bg-slate-800" />

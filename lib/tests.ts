@@ -29,12 +29,51 @@ export type QuestionFilters = {
 };
 
 /**
+ * Returns question IDs the student has seen for the given chapter+subject in the past
+ * `windowDays` days (default 90). Used by selectQuestionsWithMix to avoid repeating
+ * recently seen questions (F-STU-020 AC-01).
+ */
+export async function getRecentlyUsedQuestionIds(
+  studentId: string,
+  chapter: string,
+  subject: string,
+  windowDays = 90,
+): Promise<Set<string>> {
+  const since = new Date();
+  since.setDate(since.getDate() - windowDays);
+  const rows = await prisma.attemptQuestion.findMany({
+    where: {
+      testResult: {
+        studentId,
+        createdAt: { gte: since },
+      },
+      question: {
+        chapter: { equals: chapter, mode: 'insensitive' },
+        subject: { equals: subject, mode: 'insensitive' },
+      },
+    },
+    select: { questionId: true },
+  });
+  return new Set(rows.map((r) => r.questionId));
+}
+
+/**
  * Selects questions from the bank using simple weighted filters.
  * Falls back to GeneratedQuestion (hydration pipeline) if the Question table is empty.
+ *
+ * @param excludeIds  Optional set of question IDs to skip (AC-01 90-day uniqueness).
  */
-export async function selectQuestions(filters: QuestionFilters, count: number): Promise<Question[]> {
+export async function selectQuestions(
+  filters: QuestionFilters,
+  count: number,
+  excludeIds?: Set<string>,
+): Promise<Question[]> {
+  const excludeClause =
+    excludeIds && excludeIds.size > 0 ? { id: { notIn: Array.from(excludeIds) } } : {};
+
   const where: any = {
     status: 'ACTIVE' as const, // quarantined questions excluded -- do not remove this filter
+    ...excludeClause,
     // Use case-insensitive matching for free-text fields to avoid slug vs display-name mismatches.
     ...(filters.subject ? { subject: { equals: filters.subject, mode: 'insensitive' } } : {}),
     ...(filters.topicId ? { topicId: filters.topicId } : {}),
@@ -61,7 +100,11 @@ export async function selectQuestions(filters: QuestionFilters, count: number): 
   if (pool.length < count && filters.subject) {
     pool = await prisma.question.findMany({
       // quarantined questions excluded -- do not remove this filter
-      where: { status: 'ACTIVE', subject: { equals: filters.subject, mode: 'insensitive' } },
+      where: {
+        status: 'ACTIVE',
+        ...excludeClause,
+        subject: { equals: filters.subject, mode: 'insensitive' },
+      },
       orderBy: [{ difficulty: 'asc' }, { updatedAt: 'desc' }],
       take: count * 3,
     });
@@ -256,17 +299,29 @@ export async function ensureQuestions(filters: QuestionFilters, count: number) {
   return [...bank, ...aiNew].slice(0, count);
 }
 
-// Seconds allowed per question type for chapter practice tests (F-STU-020 AC-03).
-const SECONDS_PER_TYPE: Record<string, number> = {
-  mcq: 60,
-  short: 120,
-  long_answer: 300,
-  long: 300,
-  essay: 300,
-}
+// F-STU-020 AC-03: board-calibrated time-per-mark ratio.
+// marks awarded per question type (curriculum standard)
+const MARKS_PER_TYPE: Record<string, number> = {
+  mcq: 1,
+  short: 2,
+  long_answer: 5,
+  long: 5,
+  essay: 5,
+};
 
-function timeForType(type: string): number {
-  return SECONDS_PER_TYPE[type.toLowerCase()] ?? 120
+// seconds per mark per board -- CBSE: 1 mark = 1 min; ICSE gives 20% more time per mark
+const BOARD_TIME_PER_MARK_SECONDS: Record<string, number> = {
+  cbse: 60,
+  icse: 72,
+  state: 60,
+};
+const DEFAULT_TIME_PER_MARK_SECONDS = 60;
+
+function timeForType(type: string, board?: string | null): number {
+  const marks = MARKS_PER_TYPE[type.toLowerCase()] ?? 2;
+  const boardKey = (board ?? '').toLowerCase().replace(/\s+/g, '');
+  const secPerMark = BOARD_TIME_PER_MARK_SECONDS[boardKey] ?? DEFAULT_TIME_PER_MARK_SECONDS;
+  return marks * secPerMark;
 }
 
 /**
@@ -276,20 +331,29 @@ function timeForType(type: string): number {
  * whichever bucket has surplus questions so count is always honoured.
  * Returns questions and the computed time-limit for the whole test.
  *
- * Used exclusively for chapter practice tests (F-STU-020 AC-02).
+ * Used exclusively for chapter practice tests (F-STU-020 AC-02/AC-03).
+ *
+ * @param studentId  When provided, questions seen in the last 90 days are excluded (AC-01).
  */
 export async function selectQuestionsWithMix(
   filters: Omit<QuestionFilters, 'type'>,
   count: number,
+  studentId?: string,
 ): Promise<{ questions: Question[]; timeLimitSeconds: number }> {
+  // AC-01: fetch recently seen question IDs to avoid repeating them within 90 days.
+  const excludeIds: Set<string> =
+    studentId && filters.chapter && filters.subject
+      ? await getRecentlyUsedQuestionIds(studentId, filters.chapter, filters.subject)
+      : new Set<string>();
+
   const mcqTarget = Math.floor(count * 0.4)
   const longTarget = Math.floor(count * 0.3)
   const shortTarget = count - mcqTarget - longTarget // absorbs remainder
 
   const [mcqPool, shortPool, longPool] = await Promise.all([
-    selectQuestions({ ...filters, type: 'mcq' }, mcqTarget * 3),
-    selectQuestions({ ...filters, type: 'short' }, shortTarget * 3),
-    selectQuestions({ ...filters, type: 'long_answer' }, longTarget * 3),
+    selectQuestions({ ...filters, type: 'mcq' }, mcqTarget * 3, excludeIds),
+    selectQuestions({ ...filters, type: 'short' }, shortTarget * 3, excludeIds),
+    selectQuestions({ ...filters, type: 'long_answer' }, longTarget * 3, excludeIds),
   ])
 
   function pickN(pool: Question[], n: number, exclude: Set<string>): Question[] {
@@ -326,7 +390,11 @@ export async function selectQuestionsWithMix(
   }
 
   const questions = all.slice(0, count)
-  const timeLimitSeconds = questions.reduce((acc, q) => acc + timeForType(q.type), 0)
+  // AC-03: board-calibrated seconds = marks_per_type * board_time_per_mark
+  const timeLimitSeconds = questions.reduce(
+    (acc, q) => acc + timeForType(q.type, filters.board),
+    0,
+  )
 
   return { questions, timeLimitSeconds }
 }

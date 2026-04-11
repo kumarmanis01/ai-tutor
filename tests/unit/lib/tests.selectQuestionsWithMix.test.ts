@@ -8,7 +8,7 @@
  *   - never returns more than requested count
  */
 
-import { selectQuestionsWithMix } from '@/lib/tests';
+import { selectQuestionsWithMix, getRecentlyUsedQuestionIds } from '@/lib/tests';
 
 // ── minimal Question factory ────────────────────────────────────────────────
 let _seq = 0;
@@ -41,10 +41,12 @@ jest.mock('@/lib/prisma', () => {
   const questionFindMany = jest.fn();
   const generatedFindMany = jest.fn();
   const questionUpsert = jest.fn();
+  const attemptQuestionFindMany = jest.fn().mockResolvedValue([]);
   return {
     prisma: {
       question: { findMany: questionFindMany, upsert: questionUpsert },
       generatedQuestion: { findMany: generatedFindMany },
+      attemptQuestion: { findMany: attemptQuestionFindMany },
     },
   };
 });
@@ -62,6 +64,11 @@ jest.mock('@/lib/aiContext', () => ({
 }));
 
 const { prisma } = require('@/lib/prisma');
+
+// Helper: configure attemptQuestion mock to return specific IDs as recently used.
+function mockRecentIds(ids: string[]) {
+  prisma.attemptQuestion.findMany.mockResolvedValue(ids.map((id) => ({ questionId: id })));
+}
 
 // Helper: make the findMany mock return different pools based on `where.type`.
 function mockBuckets(mcqCount: number, shortCount: number, longCount: number) {
@@ -140,5 +147,87 @@ describe('selectQuestionsWithMix', () => {
     mockBuckets(10, 10, 10);
     const { timeLimitSeconds } = await selectQuestionsWithMix({}, 10);
     expect(timeLimitSeconds).toBeGreaterThan(0);
+  });
+
+  it('should apply ICSE board time-per-mark ratio (72s/mark)', async () => {
+    // ICSE: mcq=72s, short=144s, long_answer=360s
+    mockBuckets(30, 30, 30);
+    const { timeLimitSeconds, questions } = await selectQuestionsWithMix({ board: 'icse' }, 10);
+    const expected = questions.reduce((acc, q) => {
+      if (q.type === 'mcq') return acc + 72;
+      if (q.type === 'long_answer') return acc + 360;
+      return acc + 144; // short: 2 marks * 72s
+    }, 0);
+    expect(timeLimitSeconds).toBe(expected);
+  });
+
+  it('should pass excludeIds to selectQuestions when studentId is provided', async () => {
+    mockBuckets(30, 30, 30);
+    // Simulate one recently-used question ID
+    mockRecentIds(['q-mcq-1']);
+    const { questions } = await selectQuestionsWithMix(
+      { chapter: 'Algebra', subject: 'Math' },
+      10,
+      'student-123',
+    );
+    // The excluded ID should not appear in selected questions
+    const ids = questions.map((q) => q.id);
+    expect(ids).not.toContain('q-mcq-1');
+  });
+
+  it('should skip exclusion when studentId is absent', async () => {
+    mockBuckets(30, 30, 30);
+    // Even if DB has recent IDs, they should not be queried
+    prisma.attemptQuestion.findMany.mockResolvedValue([{ questionId: 'q-mcq-1' }]);
+    // No studentId passed -- exclusion must not run
+    const { questions } = await selectQuestionsWithMix({ chapter: 'Algebra', subject: 'Math' }, 10);
+    // attemptQuestion.findMany should not have been called
+    expect(prisma.attemptQuestion.findMany).not.toHaveBeenCalled();
+    expect(questions).toHaveLength(10);
+  });
+});
+
+describe('getRecentlyUsedQuestionIds', () => {
+  beforeEach(() => jest.clearAllMocks());
+
+  it('should return an empty Set when no recent attempts exist', async () => {
+    prisma.attemptQuestion.findMany.mockResolvedValue([]);
+    const result = await getRecentlyUsedQuestionIds('student-1', 'Algebra', 'Math');
+    expect(result).toBeInstanceOf(Set);
+    expect(result.size).toBe(0);
+  });
+
+  it('should return a Set of question IDs from recent attempts', async () => {
+    prisma.attemptQuestion.findMany.mockResolvedValue([
+      { questionId: 'q1' },
+      { questionId: 'q2' },
+      { questionId: 'q3' },
+    ]);
+    const result = await getRecentlyUsedQuestionIds('student-1', 'Algebra', 'Math');
+    expect(result.size).toBe(3);
+    expect(result.has('q1')).toBe(true);
+    expect(result.has('q2')).toBe(true);
+    expect(result.has('q3')).toBe(true);
+  });
+
+  it('should deduplicate question IDs that appear in multiple attempts', async () => {
+    prisma.attemptQuestion.findMany.mockResolvedValue([
+      { questionId: 'q1' },
+      { questionId: 'q1' },
+      { questionId: 'q2' },
+    ]);
+    const result = await getRecentlyUsedQuestionIds('student-1', 'Algebra', 'Math');
+    expect(result.size).toBe(2);
+  });
+
+  it('should query with a date filter 90 days in the past by default', async () => {
+    prisma.attemptQuestion.findMany.mockResolvedValue([]);
+    const before = new Date();
+    before.setDate(before.getDate() - 90);
+    await getRecentlyUsedQuestionIds('student-1', 'Algebra', 'Math');
+    const call = prisma.attemptQuestion.findMany.mock.calls[0][0];
+    const since: Date = call.where.testResult.createdAt.gte;
+    // Allow 5-second clock drift in test runner
+    expect(Math.abs(since.getTime() - before.getTime())).toBeLessThan(5_000);
   });
 });

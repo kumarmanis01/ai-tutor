@@ -166,6 +166,10 @@ export async function POST(req: Request) {
         stage: 'HOOK',
         hintsRemaining: 3,
         lastTurnNumber: 0,
+        consecutiveWrongAnswers: 0,
+        stageAttemptCount: 0,
+        prereqRemediationActive: false,
+        prereqReturnStage: null,
       } satisfies TutorSessionState)
 
     // Validate client-tracked turnNumber server-side (monotonic)
@@ -184,6 +188,9 @@ export async function POST(req: Request) {
     const stream = new ReadableStream<Uint8Array>({
       async start(controller) {
         try {
+          // AC-04: first AI message must appear within 5 s of session start.
+          // Capture orchestrator latency so slow LLM calls surface in logs.
+          const orchestratorStart = Date.now()
           const { answerText, complete } = await runTutorOrchestrator({
             studentId: userId,
             state: nextState,
@@ -194,6 +201,13 @@ export async function POST(req: Request) {
             questionId: parsed.questionId,
             itemDifficulty: parsed.itemDifficulty,
           })
+          const orchestratorMs = Date.now() - orchestratorStart
+          if (orchestratorMs > 5000) {
+            logger.warn('TutorTurnAPI: slow first token', {
+              event: 'tutor_turn_slow_first_token',
+              context: { userId, orchestratorMs, thresholdMs: 5000 },
+            })
+          }
 
           for (const chunk of chunkText(answerText)) {
             controller.enqueue(encoder.encode(toSseEvent('token', { chunk })))

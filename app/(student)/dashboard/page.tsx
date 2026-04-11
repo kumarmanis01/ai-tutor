@@ -38,6 +38,7 @@ import WeeklyStudyStrip from '@/components/student/dashboard/WeeklyStudyStrip';
 import XPWidget from '@/components/student/dashboard/XPWidget';
 import RevisionWidget from '@/components/student/dashboard/RevisionWidget';
 import SubjectReadinessCard from '@/components/student/dashboard/SubjectReadinessCard';
+import FreemiumCounter from '@/components/student/dashboard/FreemiumCounter';
 import UpgradeFlow from '@/components/student/subscription/UpgradeFlow';
 import UpgradeBanner from '@/components/student/subscription/UpgradeBanner';
 import { checkFreeTierCap } from '@/lib/freemium';
@@ -485,6 +486,15 @@ export default async function StudentHomeDashboardPage() {
               Focus mode -- prioritising your highest-weight topics
             </p>
           </div>
+        )}
+
+        {/* AC-02 (F-STU-040): Session cap counter -- always visible for free users */}
+        {userSub?.subscriptionStatus === 'free' && freeTierStatus.sessionsRemaining > 0 && (
+          <FreemiumCounter
+            sessionsUsed={freeTierStatus.sessionsUsed}
+            sessionsRemaining={freeTierStatus.sessionsRemaining}
+            periodStart={freeTierStatus.periodStart.toISOString()}
+          />
         )}
 
         {/* Freemium upgrade gate / banner */}

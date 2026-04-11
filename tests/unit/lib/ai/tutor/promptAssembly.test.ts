@@ -291,5 +291,60 @@ describe('buildStageInstructionsLayer -- hint tiers', () => {
       expect(layer).toContain('### STAGE_INSTRUCTIONS')
     }
   })
+
+  // AC-04 (F-STU-011): re-explain style directives
+  test('should inject Simpler directive when explainStyle is simpler', () => {
+    const ctx = makeCtx({ stage: 'CORE_EXPLANATION', explainStyle: 'simpler' })
+    const layer = buildStageInstructionsLayer(ctx)
+    expect(layer).toContain('RE-EXPLAIN REQUEST -- Simpler')
+    expect(layer).toContain('Shorter sentences')
+  })
+
+  test('should inject Harder directive when explainStyle is harder', () => {
+    const ctx = makeCtx({ stage: 'CORE_EXPLANATION', explainStyle: 'harder' })
+    const layer = buildStageInstructionsLayer(ctx)
+    expect(layer).toContain('RE-EXPLAIN REQUEST -- Harder/Deeper')
+    expect(layer).toContain('underlying mechanism')
+  })
+
+  test('should inject real-life example directive when explainStyle is real_life_example', () => {
+    const ctx = makeCtx({ stage: 'WORKED_EXAMPLE', explainStyle: 'real_life_example' })
+    const layer = buildStageInstructionsLayer(ctx)
+    expect(layer).toContain('RE-EXPLAIN REQUEST -- Real-life example')
+    expect(layer).toContain('Indian daily life')
+  })
+
+  test('should not inject re-explain directive when explainStyle is null', () => {
+    const ctx = makeCtx({ stage: 'CORE_EXPLANATION', explainStyle: null })
+    const layer = buildStageInstructionsLayer(ctx)
+    expect(layer).not.toContain('RE-EXPLAIN REQUEST')
+  })
+
+  test('should not inject re-explain directive when explainStyle is undefined', () => {
+    const ctx = makeCtx({ stage: 'CORE_EXPLANATION' })
+    const layer = buildStageInstructionsLayer(ctx)
+    expect(layer).not.toContain('RE-EXPLAIN REQUEST')
+  })
+
+  // AC-08 (F-STU-011): wrong-answer threshold warning in practice stages
+  test('should show PREREQ_FAIL warning when consecutiveWrongAnswers >= 2 in practice stage', () => {
+    const ctx = makeCtx({ stage: 'GUIDED_PRACTICE', consecutiveWrongAnswers: 2, hintsUsed: 0, isHintRequest: false })
+    const layer = buildStageInstructionsLayer(ctx)
+    expect(layer).toContain('PREREQ_FAIL')
+    expect(layer).toContain('multiple wrong answers')
+  })
+
+  test('should NOT show PREREQ_FAIL warning when consecutiveWrongAnswers < 2 in practice stage', () => {
+    const ctx = makeCtx({ stage: 'GUIDED_PRACTICE', consecutiveWrongAnswers: 1, hintsUsed: 0, isHintRequest: false })
+    const layer = buildStageInstructionsLayer(ctx)
+    expect(layer).toContain('[STRUGGLE_DETECTED]')
+    expect(layer).not.toContain('multiple wrong answers')
+  })
+
+  test('should include consecutiveWrongAnswers in SESSION_STATE layer', () => {
+    const ctx = makeCtx({ consecutiveWrongAnswers: 2 })
+    const result = assembleSystemPrompt(ctx)
+    expect(result.system).toContain('Consecutive wrong answers: 2')
+  })
 })
 

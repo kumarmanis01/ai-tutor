@@ -29,22 +29,28 @@ function OverdueBadge({ overdueByDays }: { overdueByDays: number }) {
   )
 }
 
-function RetentionBadge({ retention }: { retention: number }) {
-  const pct = Math.round(retention * 100)
-  const isRed = retention < 0.5
-  const isAmber = retention >= 0.5 && retention <= 0.8
-  const isGreen = retention > 0.8
-  const classes = isRed
-    ? 'text-red-700 bg-red-50'
-    : isAmber
-      ? 'text-amber-700 bg-amber-50'
-      : isGreen
-        ? 'text-green-700 bg-green-50'
-        : 'text-gray-700 bg-gray-100'
+/** AC-05 (F-STU-022): Memory strength bar replacing the plain percentage badge. */
+function MemoryStrengthBar({ retention }: { retention: number }) {
+  const pct = Math.round(Math.max(0, Math.min(1, retention)) * 100)
+  const barColour =
+    pct < 50 ? 'bg-[#E24B4A]' : pct <= 80 ? 'bg-[#BA7517]' : 'bg-[#1D9E75]'
+  const labelColour =
+    pct < 50
+      ? 'text-[#E24B4A] dark:text-red-400'
+      : pct <= 80
+        ? 'text-[#BA7517] dark:text-amber-400'
+        : 'text-[#1D9E75] dark:text-green-400'
   return (
-    <span className={`inline-flex text-xs font-medium px-2 py-0.5 rounded ${classes}`}>
-      {pct}% retained
-    </span>
+    <div className="flex items-center gap-2 flex-shrink-0">
+      <div className="w-16 h-1.5 rounded-full bg-gray-200 dark:bg-slate-700 overflow-hidden">
+        <div
+          className={`h-full rounded-full transition-all ${barColour}`}
+          style={{ width: `${pct}%` }}
+          aria-label={`Memory strength ${pct}%`}
+        />
+      </div>
+      <span className={`text-xs font-medium tabular-nums ${labelColour}`}>{pct}%</span>
+    </div>
   )
 }
 
@@ -69,7 +75,7 @@ function RevisionRow({
       </div>
       <div className="flex flex-shrink-0 items-center gap-2 flex-wrap">
         <OverdueBadge overdueByDays={item.overdueByDays} />
-        <RetentionBadge retention={item.retention} />
+        <MemoryStrengthBar retention={item.retention} />
       </div>
       <button
         type="button"
@@ -101,7 +107,7 @@ function SkeletonCard() {
 
 export function RevisionWidget() {
   const router = useRouter()
-  const { revisions, totalDue, loading, error, retry } = useRevisionsDueToday()
+  const { revisions, totalDue, capReached, minutesUsedToday, loading, error, retry } = useRevisionsDueToday()
   const { nextReview, loading: upcomingLoading } = useRevisionsUpcoming()
 
   if (loading) {
@@ -153,13 +159,23 @@ export function RevisionWidget() {
 
   return (
     <section aria-label="Revisions due today" className="w-full max-w-full">
-      <div className="rounded-xl border border-gray-200 bg-white p-4">
+      <div className="rounded-xl border border-gray-200 bg-white dark:bg-gray-900 dark:border-gray-700 p-4">
         <div className="flex items-center justify-between mb-3">
-          <Link href="/student/revisions" className="text-base font-semibold text-gray-900 hover:underline">
+          <Link href="/student/revisions" className="text-base font-semibold text-gray-900 dark:text-gray-100 hover:underline">
             📚 {totalDue} cards due today
           </Link>
         </div>
-        <div className="divide-y divide-gray-100">
+
+        {/* AC-06: Daily cap reached banner */}
+        {capReached && (
+          <div className="mb-3 rounded-lg bg-[#EAF3DE] dark:bg-[#1D9E75]/10 px-3 py-2">
+            <p className="text-xs font-medium text-[#1D9E75] dark:text-green-400">
+              You have reached your 20-minute daily revision limit. Come back tomorrow to keep your streak going.
+            </p>
+          </div>
+        )}
+
+        <div className="divide-y divide-gray-100 dark:divide-gray-800">
           {displayItems.map((item) => (
             <RevisionRow
               key={item.conceptId}
@@ -169,7 +185,7 @@ export function RevisionWidget() {
           ))}
         </div>
         {showViewAll && (
-          <div className="mt-3 pt-3 border-t border-gray-100">
+          <div className="mt-3 pt-3 border-t border-gray-100 dark:border-gray-800">
             <Link
               href="/student/revisions"
               className="text-sm font-medium text-primary hover:underline"

@@ -67,7 +67,7 @@ function resetPerStageCounters(s: TutorSessionState): TutorSessionState {
 
 export function applyTagTransition(state: TutorSessionState, tag: TutorTag): TutorSessionState {
   // Defensive copy (pure function guarantee)
-  const s: TutorSessionState = {
+  let s: TutorSessionState = {
     stage: state.stage,
     stageAttemptCount: clampInt(state.stageAttemptCount, 0, 10_000),
     hintsUsed: clampInt(state.hintsUsed, 0, 3),
@@ -92,18 +92,23 @@ export function applyTagTransition(state: TutorSessionState, tag: TutorTag): Tut
     return s
   }
 
+  // AC-08 (F-STU-011 MUST): reset consecutive wrong counter on any correct signal
+  if (tag === 'STAGE_ADVANCE' || tag === 'MASTERY_CONFIRMED' || tag === 'VALIDATE') {
+    s = { ...s, consecutiveWrongAnswers: 0 }
+  }
+
   switch (tag) {
     case 'QUESTION':
       return s
 
     case 'VALIDATE':
-      return { ...s, stageAttemptCount: s.stageAttemptCount + 1 }
+      return { ...s, stageAttemptCount: s.stageAttemptCount + 1, consecutiveWrongAnswers: 0 }
 
     case 'HINT_OFFER':
       return { ...s, hintsUsed: clampInt(s.hintsUsed + 1, 0, 3) }
 
     case 'STRUGGLE_DETECTED':
-      return { ...s, consecutiveWrongAnswers: s.consecutiveWrongAnswers + 1 }
+      return { ...s, consecutiveWrongAnswers: s.consecutiveWrongAnswers + 1, stageAttemptCount: s.stageAttemptCount + 1 }
 
     case 'PREREQ_FAIL': {
       // Already in remediation: no-op (do not re-enter)
@@ -147,5 +152,29 @@ export function applyTagTransition(state: TutorSessionState, tag: TutorTag): Tut
       return { ...cleared, stage: n }
     }
   }
+}
+
+/**
+ * Apply a tag transition and auto-upgrade STRUGGLE_DETECTED to PREREQ_FAIL
+ * when the student reaches 3 consecutive wrong answers (AC-08, F-STU-011 MUST).
+ *
+ * This is the function used by the orchestrator -- prefer it over applyTagTransition.
+ */
+export function applyTagTransitionWithRemediation(
+  state: TutorSessionState,
+  tag: TutorTag,
+): { next: TutorSessionState; effectiveTag: TutorTag } {
+  const next = applyTagTransition(state, tag)
+
+  if (
+    tag === 'STRUGGLE_DETECTED' &&
+    next.consecutiveWrongAnswers >= 3 &&
+    !next.prereqRemediationActive
+  ) {
+    // AC-08: auto-upgrade -- student has given 3 consecutive wrong answers
+    return { next: applyTagTransition(next, 'PREREQ_FAIL'), effectiveTag: 'PREREQ_FAIL' }
+  }
+
+  return { next, effectiveTag: tag }
 }
 

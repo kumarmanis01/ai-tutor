@@ -86,7 +86,10 @@ function checkCorrect(question: DiagnosticQuestion, selectedOption: string): boo
 
 /**
  * Compute per-chapter mastery from submitted answers.
- * unanswered = 0.3, correct = 0.6, wrong = 0.15
+ * Weights align with spec colour bands: Red < 40%, Amber 40-70%, Green > 70%.
+ *   correct    = 1.0  (full credit)
+ *   wrong      = 0.0  (no credit)
+ *   unanswered = 0.4  (grade-level start assumed per AC-07, neutral partial credit)
  */
 function computeChapterResults(
   questions: DiagnosticQuestion[],
@@ -123,7 +126,7 @@ function computeChapterResults(
     const total = stat.correct + stat.wrong + stat.unanswered;
     if (total === 0) continue;
     const avgMastery =
-      (stat.correct * 0.6 + stat.wrong * 0.15 + stat.unanswered * 0.3) / total;
+      (stat.correct * 1.0 + stat.wrong * 0.0 + stat.unanswered * 0.4) / total;
     results.push({ chapterId, chapterName: stat.chapterName, avgMastery, questionCount: total });
   }
 
@@ -362,7 +365,13 @@ export default function DiagnosticFlow({
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ boardSlug, grade, subjectSlug }),
         });
-        if (!res.ok) return;
+        if (!res.ok) {
+          const json = await res.json().catch(() => ({}));
+          if (res.status === 429 && json?.code === 'RETAKE_COOLDOWN') {
+            if (mounted) setStartError({ code: 'RETAKE_COOLDOWN', eligibleAt: json.eligibleAt });
+          }
+          return;
+        }
         const json = await res.json();
         if (!mounted) return;
         if (json?.sessionId) setSessionId(json.sessionId);
@@ -396,6 +405,7 @@ export default function DiagnosticFlow({
   const [savingPartial, setSavingPartial] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState('');
+  const [startError, setStartError] = useState<{ code: string; eligibleAt?: string } | null>(null);
   const [phase, setPhase] = useState<'quiz' | 'results'>('quiz');
   const [chapterResults, setChapterResults] = useState<ChapterResult[]>([]);
   const [placement, setPlacement] = useState<'below' | 'at' | 'above' | null>(null);
@@ -590,6 +600,44 @@ export default function DiagnosticFlow({
 
   function handleAbandon() {
     router.push('/dashboard');
+  }
+
+  // ── Cooldown screen (AC-08: retake before 30-day window) ─────────────────
+
+  if (startError?.code === 'RETAKE_COOLDOWN') {
+    const eligibleDateStr = startError.eligibleAt
+      ? new Date(startError.eligibleAt).toLocaleDateString('en-IN', {
+          day: 'numeric',
+          month: 'long',
+          year: 'numeric',
+        })
+      : 'soon';
+    return (
+      <div className="fixed inset-0 z-[100] flex items-center justify-center bg-white dark:bg-slate-950 px-4">
+        <div className="max-w-sm w-full text-center">
+          <div className="w-16 h-16 rounded-2xl bg-[#FAEEDA] dark:bg-[#BA7517]/20 flex items-center justify-center mx-auto mb-5">
+            <svg viewBox="0 0 24 24" fill="none" stroke="#BA7517" strokeWidth="2" className="w-8 h-8" aria-hidden>
+              <circle cx="12" cy="12" r="10" />
+              <polyline points="12 6 12 12 16 14" />
+            </svg>
+          </div>
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">
+            Diagnostic completed
+          </h2>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">
+            Your next retake is available on
+          </p>
+          <p className="text-sm font-semibold text-[#BA7517] mb-6">{eligibleDateStr}</p>
+          <button
+            type="button"
+            onClick={() => router.push('/dashboard')}
+            className="flex w-full min-h-[44px] items-center justify-center rounded-xl bg-[#534AB7] text-white text-sm font-semibold hover:bg-[#4840a3] transition-colors"
+          >
+            Back to dashboard
+          </button>
+        </div>
+      </div>
+    );
   }
 
   // ── Results phase ─────────────────────────────────────────────────────────
