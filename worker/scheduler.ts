@@ -13,6 +13,7 @@
  *
  * EDIT LOG:
  * - 2026-02-01 | claude | created scheduler for ignored recommendations job
+ * - 2026-04-11T07:54:52Z | copilot | fix: remove non-existent 'accountStatus' from Prisma UserWhereInput
  */
 
 import { logger } from '../lib/logger.js';
@@ -183,7 +184,6 @@ async function runInactivityPush(): Promise<void> {
   const inactiveDay2 = await prisma.user.findMany({
     where: {
       role: 'user',
-      accountStatus: 'active',
       lastSessionDate: { gte: threeDaysAgo, lt: twoDaysAgo },
     },
     select: { id: true, currentStreak: true },
@@ -196,7 +196,6 @@ async function runInactivityPush(): Promise<void> {
   const inactiveDay3 = await prisma.user.findMany({
     where: {
       role: 'user',
-      accountStatus: 'active',
       lastSessionDate: { gte: fourDaysAgo, lt: threeDaysAgo },
     },
     select: { id: true },

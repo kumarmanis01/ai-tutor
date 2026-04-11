@@ -39,7 +39,6 @@ export async function runDataDeletionCycle(): Promise<{ pseudonymised: number; p
             email: `deleted_${req.id}@deleted.spinzy.com`,
             phone: null,
             age: null,
-            parentPhone: null,
             parentEmail: null,
           },
         }),
