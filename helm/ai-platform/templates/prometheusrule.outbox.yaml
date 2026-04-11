@@ -1,0 +1,32 @@
+{{- if .Values.metrics.enabled }}
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: {{ include "ai-platform.fullname" . }}-outbox-rules
+  labels:
+    app: {{ include "ai-platform.name" . }}
+spec:
+  groups:
+    - name: ai-platform-outbox.rules
+      rules:
+        - alert: OutboxDeadLetterDetected
+          expr: sum by (queue, reason) (increase(outbox_deadletter_total[5m])) > 0
+          for: 2m
+          labels:
+            severity: page
+            team: content-engineering
+          annotations:
+            summary: "Outbox dead-letter(s) detected for {{ '{{' }} $labels.queue {{ '}}' }} (reason={{ '{{' }} $labels.reason {{ '}}' }})"
+            description: |
+              Prometheus detected {{ '{{' }} $value {{ '}}' }} outbox dead-letter events in the last 5 minutes for
+              queue={{ '{{' }} $labels.queue {{ '}}' }}, reason={{ '{{' }} $labels.reason {{ '}}' }}.
+
+              Impact: jobs may be stuck or failing repeatedly.
+
+              Recommended actions:
+                - Inspect recent OutboxDeadLetter rows in Postgres (ordered by failedAt desc).
+                - Check worker logs for errors and restart job processors if necessary.
+                - Verify Redis and DB connectivity and retries.
+
+              Runbook: /docs/monitoring/outbox_deadletter.md
+{{- end }}
