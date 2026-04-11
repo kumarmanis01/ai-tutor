@@ -22,10 +22,17 @@ const redisErrors = new client.Counter({ name: 'redis_client_errors_total', help
 const suppressionSetFailures = new client.Counter({ name: 'notification_suppression_set_failures_total', help: 'Failures when setting suppression keys' })
 const suppressionDeleteFailures = new client.Counter({ name: 'notification_suppression_delete_failures_total', help: 'Failures deleting suppression keys' })
 
+// Outbox dead-letter metric
+const outboxDeadLetterTotal = new client.Counter({ name: 'outbox_deadletter_total', help: 'Total outbox rows moved to dead-letter', labelNames: ['queue', 'reason'] as const })
+
 export function incNotificationSent(type: string) { try { notificationsSent.labels(type).inc() } catch {} }
 export function incNotificationFailed(type: string, reason: string) { try { notificationsFailed.labels(type, reason).inc() } catch {} }
 export function incRedisError() { try { redisErrors.inc() } catch {} }
 export function incSuppressionSetFailure() { try { suppressionSetFailures.inc() } catch {} }
 export function incSuppressionDeleteFailure() { try { suppressionDeleteFailures.inc() } catch {} }
 
+export function incOutboxDeadLetter(queue: string, reason: string) { try { outboxDeadLetterTotal.labels(queue ?? 'unknown', reason ?? 'unknown').inc() } catch {} }
+
 export { register }
+
+// NOTE: added outbox dead-letter metric to surface failed dispatches

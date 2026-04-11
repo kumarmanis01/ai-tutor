@@ -20,6 +20,7 @@ import { prisma } from '@/lib/prisma';
 import { redisConnection } from '@/lib/redis';
 import { logger } from '@/lib/logger';
 import { CONTENT_HYDRATION_QUEUE } from '@/lib/queues/constants';
+import { incOutboxDeadLetter } from '@/lib/metrics';
 
 /** RISK-04: Max dispatch attempts before moving to dead-letter. Prevents infinite retry loops. */
 const MAX_ATTEMPTS = 10;
@@ -63,6 +64,7 @@ async function moveToDeadLetter(
       }),
       prisma.outbox.delete({ where: { id: row.id } }),
     ]);
+    try { incOutboxDeadLetter(row.queue ?? 'unknown', reason) } catch {}
     logger.warn('[outbox-dispatcher] moved to dead-letter', {
       outboxId: row.id,
       reason,
