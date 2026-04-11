@@ -37,6 +37,7 @@ import TestScoreHistory, {
   type SessionRow,
 } from '@/components/student/progress/TestScoreHistory';
 import ProgressFilters from '@/components/student/progress/ProgressFilters';
+import ScoreTrendGraph, { type TrendPoint } from '@/components/student/progress/ScoreTrendGraph';
 import { barConfig, buildBucketCounts } from '@/lib/student/progressReport';
 
 export const dynamic = 'force-dynamic';
@@ -69,10 +70,14 @@ export default async function ProgressPage({
     ? new Date(Date.now() - cfg.fetchDays * 24 * 60 * 60 * 1000)
     : null;
 
-  // ── Parallel: student profile + chart sessions + completed sessions ─────────
+  // ── Parallel: student profile + chart sessions + completed sessions + trend ──
   const sessionDateFilter = sinceDate ? { gte: sinceDate } : undefined;
 
-  const [studentProfile, chartSessions, completedSessions] = await Promise.all([
+  const subjectFilter = activeSubject
+    ? { subject: { equals: activeSubject, mode: 'insensitive' as const } }
+    : {};
+
+  const [studentProfile, chartSessions, completedSessions, trendRows] = await Promise.all([
     prisma.user.findUnique({
       where: { id: userId },
       select: { subjects: true },
@@ -98,6 +103,27 @@ export default async function ProgressPage({
         topic: { select: { name: true } },
       },
       orderBy: { completedAt: 'desc' },
+      take: 10,
+    }),
+    // AC-07: last 10 chapter practice test scores, oldest-first for the trend graph.
+    // A chapter practice test has at least one AttemptQuestion whose question has a
+    // non-null chapter.  Subject filter applied when ?subject= param is set.
+    prisma.testResult.findMany({
+      where: {
+        studentId: userId,
+        score: { not: null },
+        finishedAt: { not: null },
+        AttemptQuestions: {
+          some: {
+            question: {
+              chapter: { not: null },
+              ...subjectFilter,
+            },
+          },
+        },
+      },
+      select: { score: true, finishedAt: true },
+      orderBy: { finishedAt: 'asc' },
       take: 10,
     }),
   ]);
@@ -204,6 +230,12 @@ export default async function ProgressPage({
     };
   });
 
+  // ── Chapter practice test trend (AC-07) ────────────────────────────────────
+  const trendData: TrendPoint[] = trendRows.map((r) => ({
+    date: r.finishedAt!.toISOString(),
+    score: Math.round(r.score!),
+  }));
+
   // ── Render ──────────────────────────────────────────────────────────────────
   return (
     <main className="max-w-5xl mx-auto px-4 py-6">
@@ -237,6 +269,13 @@ export default async function ProgressPage({
         <div className="flex flex-col gap-6 md:w-2/5">
           <ChapterMasteryBars subjects={subjectMasteryData} />
           <TestScoreHistory sessions={sessionRows} />
+          {/* AC-07: chapter practice test score trend */}
+          <article className="rounded-2xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-5">
+            <h2 className="text-sm font-semibold text-gray-800 dark:text-gray-100 mb-3">
+              Practice test trend
+            </h2>
+            <ScoreTrendGraph data={trendData} />
+          </article>
         </div>
       </div>
     </main>

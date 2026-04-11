@@ -1,8 +1,26 @@
+/**
+ * FILE OBJECTIVE:
+ * - Endpoint to consume a student-generated invite token and link a parent
+ *   account to the student. Promotes the caller to `role=parent` when needed.
+ *
+ * LINKED UNIT TEST:
+ * - tests/unit/api/parent-link-child.spec.ts
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - .github/copilot-instructions.md
+ * - /docs/COPILOT_GUARDRAILS.md
+ *
+ * EDIT LOG:
+ * - 2026-04-09T00:00:00Z | copilot | enforce max-3 children server-side; send welcome notification
+ */
+
 import { NextResponse } from 'next/server'
 import { getServerSessionForHandlers } from '@/lib/session'
 import { getRedis } from '@/lib/redis'
 import { prisma } from '@/lib/prisma'
 import { logger } from '@/lib/logger'
+import { sendMailSafe } from '@/lib/mailer'
+import { sendSms } from '@/lib/sms'
 
 export const dynamic = 'force-dynamic'
 
@@ -75,6 +93,23 @@ export async function POST(req: Request) {
     select: { id: true, status: true },
   })
 
+  // Enforce server-side cap: max 3 active child links per parent
+  // If this link is already active, allow; otherwise, count other active links
+  const activeCount = await prisma.parentStudent.count({
+    where: {
+      parentId,
+      studentId: { not: studentId },
+      status: 'active',
+    },
+  })
+  if (!existing || existing.status === 'revoked') {
+    if (activeCount >= 3) {
+      const res = NextResponse.json({ error: 'Parent already has maximum linked children (3)' }, { status: 409 })
+      logger.logAPI(req, res, { className: 'LinkChildAPI', methodName: 'POST' }, start)
+      return res
+    }
+  }
+
   if (existing?.status === 'active') {
     // Already linked -- idempotent
   } else if (existing?.status === 'revoked') {
@@ -91,10 +126,12 @@ export async function POST(req: Request) {
   // Promote caller to parent role if they're still a regular user
   const parentUser = await prisma.user.findUnique({
     where: { id: parentId },
-    select: { role: true },
+    select: { role: true, email: true, phone: true, name: true },
   })
+  let promoted = false
   if (parentUser?.role === 'user') {
     await prisma.user.update({ where: { id: parentId }, data: { role: 'parent' } })
+    promoted = true
   }
 
   // Fetch student name for response
@@ -113,6 +150,27 @@ export async function POST(req: Request) {
       details: { legacyAction: 'parent_link_student', parentId, method: 'redis_invite_token' },
     },
   }).catch(() => {})
+
+  // Send welcome/confirmation notifications to the parent (best-effort)
+  try {
+    const parentEmail = parentUser?.email
+    const parentPhone = parentUser?.phone
+    const parentName = parentUser?.name ?? 'Parent'
+    const studentName = student?.name ?? 'your child'
+    if (parentEmail) {
+      await sendMailSafe({
+        to: parentEmail,
+        subject: `Welcome — linked to ${studentName}`,
+        html: `<p>Hi ${parentName},</p><p>You are now linked to ${studentName} on Spinzy.</p><p>If this wasn't you, contact support.</p>`,
+      })
+    }
+    if (parentPhone) {
+      await sendSms(parentPhone, `You're now linked to ${studentName} on Spinzy Academy.`)
+    }
+  } catch (err) {
+    // best-effort only
+    logger.error('[link-child] welcome notification suppressed', { error: err })
+  }
 
   const res = NextResponse.json(
     { linked: true, studentName: student?.name ?? 'Student' },

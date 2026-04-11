@@ -1,5 +1,6 @@
 'use client';
 import React, { useState, useEffect, useRef } from 'react';
+import { logger } from '@/lib/logger';
 
 const langs = ['English', 'Hindi', 'Tamil', 'Bengali', 'French', 'Spanish'];
 
@@ -53,7 +54,9 @@ export default function LanguageSelector({
     // Persist locally and attempt to persist to server (if authenticated)
     try {
       localStorage.setItem('ai-tutor:preferredLang', resolved);
-    } catch {}
+    } catch (e) {
+      logger.warn('localStorage.setItem failed', { component: 'LanguageSelector', error: e });
+    }
 
     // POST to save on server for logged-in users; show a small toast on failure
     try {
@@ -72,7 +75,8 @@ export default function LanguageSelector({
           setError('Failed to save language to your account');
           setTimeout(() => setError(null), 4000);
         });
-    } catch {
+    } catch (e) {
+      logger.warn('Failed to save language via fetch', { component: 'LanguageSelector', error: e });
       // swallow errors but show toast
       setError('Failed to save language to your account');
       setTimeout(() => setError(null), 4000);
@@ -88,11 +92,13 @@ export default function LanguageSelector({
         ref={btnRef}
         type="button"
         aria-haspopup="menu"
-        aria-expanded={open}
+        aria-expanded={open ? 'true' : 'false'}
         onClick={() => {
           try {
             // Always use sheet mode (mobile-style) on all screen sizes
-          } catch {}
+          } catch (e) {
+            logger.warn('LanguageSelector click handler failed', { component: 'LanguageSelector', error: e });
+          }
           setOpen((v) => !v);
         }}
         className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-300"

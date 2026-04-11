@@ -41,7 +41,12 @@ export async function POST(req: Request) {
     let timeLimitSeconds: number | null = null;
 
     if (chapter) {
-      const mix = await selectQuestionsWithMix({ subject, grade, board, chapter, difficulty }, count);
+      // Pass user.id so recently-seen questions (90 days) are excluded (AC-01).
+      const mix = await selectQuestionsWithMix(
+        { subject, grade, board, chapter, difficulty },
+        count,
+        user.id,
+      );
       questions = mix.questions;
       timeLimitSeconds = mix.timeLimitSeconds;
     } else {

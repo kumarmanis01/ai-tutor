@@ -20,6 +20,7 @@
  */
 
 import React, { useEffect, useRef, useCallback } from 'react';
+import Link from 'next/link';
 import { useSession } from '@/hooks/session/useSession';
 import { phaseRouter } from '@/lib/session/phaseRouter';
 import { SessionLayout } from './SessionLayout';
@@ -47,9 +48,10 @@ interface SessionContainerProps {
   topicId: string;
   reasonLabel?: string | null;
   estimatedTimeMin?: number;
+  initialFocus?: { focus?: string; itemId?: string };
 }
 
-export function SessionContainer({ topicId, reasonLabel, estimatedTimeMin }: SessionContainerProps) {
+export function SessionContainer({ topicId, reasonLabel, estimatedTimeMin, initialFocus }: SessionContainerProps) {
   const {
     session, phase, content,
     loading, error, submitting,
@@ -62,8 +64,10 @@ export function SessionContainer({ topicId, reasonLabel, estimatedTimeMin }: Ses
   const testSubmitHandlerRef = useRef<(() => Promise<void>) | null>(null);
 
   useEffect(() => {
-    startSession(topicId);
-  }, [topicId]); // eslint-disable-line react-hooks/exhaustive-deps
+    // If a deep-link focus.itemId is provided (e.g., ?focus=next&itemId=...), prefer it.
+    const initialTopic = initialFocus?.itemId ?? topicId
+    startSession(initialTopic)
+  }, [topicId, initialFocus?.itemId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const currentPhaseKey = session?.currentPhase as SessionPhaseClient | undefined;
   useEffect(() => {
@@ -121,9 +125,9 @@ export function SessionContainer({ topicId, reasonLabel, estimatedTimeMin }: Ses
               ? 'Set ENABLE_SESSION_ENGINE=1 to enable structured sessions.'
               : error ?? 'Unable to load this session.'}
           </p>
-          <a href="/dashboard" className="inline-block px-5 py-2.5 bg-primary text-primary-foreground rounded-lg text-sm font-medium">
+          <Link href="/dashboard" className="inline-block px-5 py-2.5 bg-primary text-primary-foreground rounded-lg text-sm font-medium">
             Return to Dashboard
-          </a>
+          </Link>
         </div>
       </div>
     );

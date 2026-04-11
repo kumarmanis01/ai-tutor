@@ -1,5 +1,6 @@
 "use client"
 import React, { useEffect, useState } from 'react'
+import { logger } from '@/lib/logger'
 import { CONTENT_HYDRATION_QUEUE } from '@/lib/queues/constants'
 
 type WorkerRow = {
@@ -41,8 +42,8 @@ export default function WorkerControl() {
         stoppedAt: r.stoppedAt ?? null,
         lastHeartbeatAt: r.lastHeartbeatAt ?? null,
       })) : [])
-    } catch {
-      // ignore
+    } catch (err) {
+      logger.warn('fetchWorkers failed', { component: 'WorkerControl', methodName: 'fetchWorkers', error: String(err) })
     }
   }
 
@@ -91,6 +92,7 @@ export default function WorkerControl() {
         fireToast('Copied to clipboard')
       }
     } catch {
+      logger.warn('copyToClipboard failed', { component: 'WorkerControl', methodName: 'copyToClipboard' })
       fireToast('Unable to copy')
     }
   }
@@ -122,7 +124,7 @@ export default function WorkerControl() {
       <h3 className="text-lg font-medium mb-2">Worker Control</h3>
       <div className="mb-3">
         <label className="block text-sm font-medium mb-1">Worker Type</label>
-        <input value={type} onChange={(e) => setType(e.target.value)} className="border px-2 py-1 w-full" />
+        <input placeholder="Worker type" aria-label="Worker type" value={type} onChange={(e) => setType(e.target.value)} className="border px-2 py-1 w-full" />
       </div>
       <div className="flex items-center gap-2 mb-4">
         <button disabled={loading} onClick={startWorker} className="bg-blue-600 text-white px-3 py-1 rounded">

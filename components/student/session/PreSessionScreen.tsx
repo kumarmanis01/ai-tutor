@@ -80,7 +80,7 @@ function prereqPillStyle(masteryScore: number): {
 
 // ── PrereqPillsSkeleton ────────────────────────────────────────────────────────
 
-function PrereqPillsSkeleton() {
+function _PrereqPillsSkeleton() {
   return (
     <div className="flex flex-wrap gap-2">
       {[80, 64, 96, 72].map((w) => (

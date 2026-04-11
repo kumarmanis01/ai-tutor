@@ -3,7 +3,8 @@ import { getServerSessionForHandlers } from '@/lib/session';
 import { logger } from '@/lib/logger';
 import { generateSubjectDiagnosticTest } from '@/lib/diagnostics/diagnosticQuestionService';
 import { createSession } from '@/lib/diagnostics/sessionStore';
-import { upsertSubjectDiagnosticStatus } from '@/lib/diagnostics/stateStore';
+import { upsertSubjectDiagnosticStatus, getSubjectDiagnosticStatus } from '@/lib/diagnostics/stateStore';
+import { enqueueDiagnosticAutoSubmit } from '@/jobs/diagnosticAutoSubmit';
 
 export const dynamic = 'force-dynamic';
 
@@ -26,7 +27,28 @@ export async function POST(req: Request) {
   }
 
   try {
+    // AC-08: enforce 30-day retake cooldown -- resolve subjectId via slug before checking.
+    // We resolve the test first to get the canonical subjectId for the state-store lookup.
     const test = await generateSubjectDiagnosticTest({ boardSlug, grade, subjectSlug, languageCode });
+
+    const existingStatus = await getSubjectDiagnosticStatus(user.id, test.subjectId);
+    if (existingStatus.status === 'completed' && existingStatus.completedAt) {
+      const completedMs = new Date(existingStatus.completedAt).getTime();
+      const cooldownMs = 30 * 24 * 60 * 60 * 1000; // 30 days
+      const eligibleAt = new Date(completedMs + cooldownMs);
+      if (Date.now() < eligibleAt.getTime()) {
+        const res = NextResponse.json(
+          {
+            code: 'RETAKE_COOLDOWN',
+            message: 'Diagnostic retake is available 30 days after completion.',
+            eligibleAt: eligibleAt.toISOString(),
+          },
+          { status: 429 },
+        );
+        logger.logAPI(req, res, { className: 'DiagnosticStartAPI', methodName: 'POST' }, start);
+        return res;
+      }
+    }
     const sessionId = `sess:${user.id}:${subjectSlug}:${Date.now()}`;
 
     // Persist session with candidate pool (IDs)
@@ -50,6 +72,10 @@ export async function POST(req: Request) {
       runId: sessionId,
     });
 
+    // AC-07: schedule 24h auto-submit at session start so partial diagnostics are always
+    // submitted even if the student never explicitly saves and closes the browser.
+    await enqueueDiagnosticAutoSubmit({ userId: user.id, subjectId: test.subjectId, sessionId });
+
     const first = test.questions[0];
     const payload = {
       sessionId,
@@ -69,6 +95,7 @@ export async function POST(req: Request) {
     logger.logAPI(req, res, { className: 'DiagnosticStartAPI', methodName: 'POST' }, start);
     return res;
   } catch (err) {
+    logger.warn('diagnostic.start failed', { error: String(err) })
     const res = NextResponse.json({ error: 'Failed to start diagnostic' }, { status: 500 });
     logger.logAPI(req, res, { className: 'DiagnosticStartAPI', methodName: 'POST' }, start);
     return res;

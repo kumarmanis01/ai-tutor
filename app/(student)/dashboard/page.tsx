@@ -32,12 +32,14 @@ import { getMasteryLabel } from '@/lib/learning/masteryLabel';
 import { getOrderedTopicsForStudent } from '@/lib/homeEngine/getOrderedTopicsForStudent';
 import { isSessionEngineEnabled } from '@/lib/session/sessionEngine';
 import { computeReadinessScore } from '@/lib/student/examReadiness';
+import Link from 'next/link';
 
 import TodaysLearningCard from '@/components/student/dashboard/TodaysLearningCard';
 import WeeklyStudyStrip from '@/components/student/dashboard/WeeklyStudyStrip';
 import XPWidget from '@/components/student/dashboard/XPWidget';
 import RevisionWidget from '@/components/student/dashboard/RevisionWidget';
 import SubjectReadinessCard from '@/components/student/dashboard/SubjectReadinessCard';
+import FreemiumCounter from '@/components/student/dashboard/FreemiumCounter';
 import UpgradeFlow from '@/components/student/subscription/UpgradeFlow';
 import UpgradeBanner from '@/components/student/subscription/UpgradeBanner';
 import { checkFreeTierCap } from '@/lib/freemium';
@@ -328,7 +330,7 @@ export default async function StudentHomeDashboardPage() {
   const xpThisWeek = xpThisWeekAgg._sum.amount ?? 0;
   const totalXp = studentProfile?.totalXp ?? 0;
   const currentLevel = studentProfile?.level ?? 1;
-  const studentName = studentProfile?.name ?? userSub?.name ?? 'Student';
+  const _studentName = studentProfile?.name ?? userSub?.name ?? 'Student';
   const streakCurrent = streakRow?.current ?? 0;
   const weeklyGoal = learningProfile?.studyDaysPerWeek ?? 5;
 
@@ -487,6 +489,15 @@ export default async function StudentHomeDashboardPage() {
           </div>
         )}
 
+        {/* AC-02 (F-STU-040): Session cap counter -- always visible for free users */}
+        {userSub?.subscriptionStatus === 'free' && freeTierStatus.sessionsRemaining > 0 && (
+          <FreemiumCounter
+            sessionsUsed={freeTierStatus.sessionsUsed}
+            sessionsRemaining={freeTierStatus.sessionsRemaining}
+            periodStart={freeTierStatus.periodStart.toISOString()}
+          />
+        )}
+
         {/* Freemium upgrade gate / banner */}
         {userSub?.subscriptionStatus === 'free' && freeTierStatus.sessionsRemaining === 0 && (
           upgradeDismissed
@@ -576,7 +587,7 @@ export default async function StudentHomeDashboardPage() {
                 </h3>
                 <div className="space-y-3">
                   {readinessResults.map((r) => (
-                    <a
+                    <Link
                       key={r.subjectId}
                       href={`/student/progress/${r.subjectId}`}
                       className="block rounded-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-[#534AB7]"
@@ -587,7 +598,7 @@ export default async function StudentHomeDashboardPage() {
                         subjectId={r.subjectId}
                         diagnosticDone={diagnosticRecs[r.subjectId]?.status === 'completed'}
                       />
-                    </a>
+                    </Link>
                   ))}
                 </div>
               </section>
@@ -614,12 +625,12 @@ export default async function StudentHomeDashboardPage() {
                       <p className="text-xs font-medium text-[#E24B4A] dark:text-red-400 mb-3">
                         {getMasteryLabel(t.mastery)}
                       </p>
-                      <a
+                      <Link
                         href={`/session/${t.topicId}`}
                         className="flex w-full min-h-[44px] items-center justify-center rounded-lg border border-[#534AB7]/30 bg-[#534AB7]/5 dark:bg-[#534AB7]/10 text-xs font-semibold text-[#534AB7] dark:text-indigo-300 hover:bg-[#534AB7]/10 dark:hover:bg-[#534AB7]/20 transition-colors"
                       >
                         Revise
-                      </a>
+                      </Link>
                     </article>
                   ))}
                 </div>
@@ -655,12 +666,12 @@ export default async function StudentHomeDashboardPage() {
                     </li>
                   ))}
                 </ul>
-                <a
+                <Link
                   href="/learn/learning-path"
                   className="mt-3 inline-flex min-h-[44px] items-center text-xs font-medium text-[#534AB7] dark:text-indigo-400 hover:underline"
                 >
                   View full learning path →
-                </a>
+                </Link>
               </section>
             )}
           </div>

@@ -112,7 +112,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ session
         newLevel,
         masteryDelta,
         masteryAfter,
-        badgesEarned: badgesEarned.map((b) => ({ name: b.name, description: b.description })),
+        badgesEarned: badgesEarned.map((b) => ({ name: b.name, description: b.description, icon: b.icon })),
         aiInsight,
         sessionDurationMinutes,
         correctAnswers,
@@ -122,7 +122,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ session
     )
     logger.logAPI(req, res, { className: 'StudentSessionCompleteAPI', methodName: 'POST' }, start)
     return res
-  } catch {
+  } catch (err) {
+    logger.error('StudentSessionCompleteAPI failed', { className: 'StudentSessionCompleteAPI', methodName: 'POST', error: String(err) })
     const res = NextResponse.json({ error: 'Internal error' }, { status: 500 })
     logger.logAPI(req, res, { className: 'StudentSessionCompleteAPI', methodName: 'POST' }, start)
     return res

@@ -136,7 +136,8 @@ export default function TestNudgePrompt({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ nudgeType: nudge.type, action: 'click' }),
       });
-    } catch {
+    } catch (error) {
+      logger.warn('Failed to record nudge click', { className: CLASS_NAME, methodName: 'handleClick', error: String(error) });
       // Don't block navigation on error
     }
   };

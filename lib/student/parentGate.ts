@@ -1,3 +1,19 @@
+/**
+ * FILE OBJECTIVE:
+ * - Determine whether a student requires parent verification and whether the
+ *   parent has already been verified.
+ *
+ * LINKED UNIT TEST:
+ * - tests/unit/lib/parentGate.spec.ts
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - .github/copilot-instructions.md
+ * - /docs/COPILOT_GUARDRAILS.md
+ *
+ * EDIT LOG:
+ * - 2026-04-09T00:00:00Z | copilot | align age gate threshold from <18 to <13 per spec
+ */
+
 import { prisma } from '@/lib/prisma'
 
 export interface ParentGateResult {
@@ -7,11 +23,13 @@ export interface ParentGateResult {
 }
 
 /**
- * Gate required when age is known and < 18. Null/unknown age = no gate.
+ * Gate required when age is known and < 13 (DPDP / product policy).
+ * Null/unknown age = no gate.
  */
 function requiresGateByAge(age: number | null | undefined): boolean {
   if (age == null || !Number.isFinite(age)) return false
-  return age < 18
+  // Product decision: parents required for children under 13.
+  return age < 13
 }
 
 /**

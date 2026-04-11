@@ -3,6 +3,8 @@ import { getServerSessionForHandlers } from '@/lib/session'
 import { prisma } from '@/lib/prisma'
 import { logger } from '@/lib/logger'
 import { createRazorpayOrder } from '@/lib/payments/razorpay'
+import { recordPaymentEvent } from '@/lib/payments/audit'
+import { randomUUID } from 'crypto'
 
 export async function POST(req: Request) {
   const start = Date.now()
@@ -26,6 +28,13 @@ export async function POST(req: Request) {
       return res
     }
 
+    // Ensure a provider idempotency key is created for this order. If the
+    // client provided an idempotency header, prefer that; otherwise generate
+    // a server-side UUID. This key will be used for downstream charges and
+    // webhook reconciliation.
+    const providedKey = (req.headers.get('idempotency-key') || req.headers.get('x-idempotency-key') || '') as string
+    const providerIdempotencyKey = providedKey || randomUUID()
+
     await prisma.paymentOrder.create({
       data: {
         studentId: userId,
@@ -34,8 +43,25 @@ export async function POST(req: Request) {
         currency: order.currency,
         status: 'created',
         planMonths,
+        providerIdempotencyKey,
       },
     })
+
+    // Audit: record order created event
+    try {
+      await recordPaymentEvent({
+        userId: userId,
+        provider: 'razorpay',
+        providerIdempotencyKey,
+        orderId: order.orderId,
+        eventType: 'order.created',
+        amount: order.amount,
+        payload: { planMonths },
+      })
+    } catch (err) {
+      // Non-fatal: don't fail order creation if audit write fails
+      logger.warn('recordPaymentEvent failed', { err })
+    }
 
     const res = NextResponse.json(
       {

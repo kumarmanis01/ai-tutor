@@ -18,7 +18,7 @@ export default function QuestionsPage() {
   const [acting, setActing] = useState<string | null>(null)
   const [toast, setToast] = useState<string | null>(null)
 
-  async function loadQuestions() {
+  async function _loadQuestions() {
     const res = await fetch('/api/admin/content-quality/pending')
     // Fallback: use direct question query via API
     if (!res.ok) {

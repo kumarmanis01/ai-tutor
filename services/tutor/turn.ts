@@ -15,9 +15,9 @@ import { computeFrustrationScore } from '@/lib/ai/tutor/signals'
 import { assembleSystemPrompt } from '@/lib/ai/tutor/promptAssembly'
 import { parseTutorTag, stripTag } from '@/lib/ai/tutor/tagParser'
 import { checkOutputSafety, type SafetyEventCreate as OutputSafetyEvent } from '@/lib/ai/tutor/outputSafety'
-import { applyTagTransition, type TutorTag, type TutorStage } from '@/lib/ai/tutor/stateMachine'
+import { applyTagTransitionWithRemediation, type TutorTag, type TutorStage } from '@/lib/ai/tutor/stateMachine'
 import { retrieveRelevantChunks } from '@/lib/ai/tutor/rag'
-import { detectMisconceptions, loadMisconceptions } from '@/lib/ai/tutor/misconceptionDetector'
+import { detectMisconceptions, loadMisconceptions, logNovelMisconception } from '@/lib/ai/tutor/misconceptionDetector'
 import { saveDoubt, lookupDoubt, recordDoubt } from '@/lib/ai/tutor/doubtKb'
 import { getCachedExplanation, setCachedExplanation, type ExplanationLang, type ExplanationModality } from '@/lib/ai/tutor/explanationCache'
 import { detectDistress } from '@/lib/ai/tutor/distress'
@@ -44,6 +44,11 @@ export type TutorSessionState = {
   stage: TutorStage
   hintsRemaining: number // 0-3
   lastTurnNumber: number
+  // AC-08 / AC-02 (F-STU-011): full machine state persisted across turns
+  consecutiveWrongAnswers: number
+  stageAttemptCount: number
+  prereqRemediationActive: boolean
+  prereqReturnStage: TutorStage | null
 }
 
 export type TutorTurnComplete = {
@@ -122,6 +127,10 @@ export async function getTutorSession(sessionId: string): Promise<TutorSessionSt
     stage: s.stage as TutorStage,
     hintsRemaining: s.hintsRemaining,
     lastTurnNumber: s.lastTurnNumber,
+    consecutiveWrongAnswers: typeof s.consecutiveWrongAnswers === 'number' ? s.consecutiveWrongAnswers : 0,
+    stageAttemptCount: typeof s.stageAttemptCount === 'number' ? s.stageAttemptCount : 0,
+    prereqRemediationActive: s.prereqRemediationActive === true,
+    prereqReturnStage: typeof s.prereqReturnStage === 'string' ? (s.prereqReturnStage as TutorStage) : null,
   }
 }
 
@@ -131,6 +140,10 @@ export async function setTutorSession(state: TutorSessionState): Promise<void> {
     stage: state.stage,
     hintsRemaining: state.hintsRemaining,
     lastTurnNumber: state.lastTurnNumber,
+    consecutiveWrongAnswers: state.consecutiveWrongAnswers,
+    stageAttemptCount: state.stageAttemptCount,
+    prereqRemediationActive: state.prereqRemediationActive,
+    prereqReturnStage: state.prereqReturnStage,
   }
   await setRedisTutorSession(state.sessionId, payload)
 }
@@ -162,10 +175,27 @@ export async function runTutorOrchestrator(args: {
   const { studentId, state, studentMessage, subjectId, conceptId } = args
   const sessionId = state.sessionId
 
-  // Detect the hint-request sentinel sent by the frontend hint bar / inactivity prompt.
-  // Replace with a clean phrase so safety checks and DoubtKb never see the raw sentinel.
+  // Detect sentinels sent by the frontend.
   const isHintRequest = studentMessage === '__HINT_REQUEST__'
-  const effectiveMessage = isHintRequest ? 'Please give me a hint.' : studentMessage
+  const isExplainSimpler = studentMessage === '__EXPLAIN_SIMPLER__'
+  const isExplainHarder = studentMessage === '__EXPLAIN_HARDER__'
+  const isExplainExample = studentMessage === '__EXPLAIN_EXAMPLE__'
+  const isStyleRequest = isExplainSimpler || isExplainHarder || isExplainExample
+
+  // AC-04 (F-STU-011 MUST): map sentinel to explainStyle for prompt injection
+  const explainStyle: 'simpler' | 'harder' | 'real_life_example' | null =
+    isExplainSimpler ? 'simpler'
+    : isExplainHarder ? 'harder'
+    : isExplainExample ? 'real_life_example'
+    : null
+
+  // Replace sentinels with clean phrases so safety checks never see raw values.
+  const effectiveMessage =
+    isHintRequest ? 'Please give me a hint.'
+    : isExplainSimpler ? 'Can you explain this more simply?'
+    : isExplainHarder ? 'Can you explain this in more depth?'
+    : isExplainExample ? 'Can you give me a real-life example?'
+    : studentMessage
 
   // Derive actual hintsUsed from persisted Redis state (hintsRemaining counts down from 3).
   const hintsUsed = Math.max(0, 3 - state.hintsRemaining)
@@ -173,17 +203,24 @@ export async function runTutorOrchestrator(args: {
   await markTurnStarted(sessionId)
 
   try {
-    const concept = await prisma.concept.findUnique({
-      where: { id: conceptId },
-      select: { name: true, irt_b: true },
-    })
-    const subject = await prisma.subjectDef.findUnique({
-      where: { id: subjectId },
-      select: { name: true },
-    })
+    const [concept, subject, userProfile] = await Promise.all([
+      prisma.concept.findUnique({
+        where: { id: conceptId },
+        select: { name: true, irt_b: true },
+      }),
+      prisma.subjectDef.findUnique({
+        where: { id: subjectId },
+        select: { name: true },
+      }),
+      prisma.user.findUnique({
+        where: { id: studentId },
+        select: { learningStyle: true },
+      }),
+    ])
     const conceptName = concept?.name ?? 'this concept'
     const subjectName = subject?.name ?? 'Subject'
     const conceptDifficulty = typeof concept?.irt_b === 'number' && Number.isFinite(concept.irt_b) ? concept.irt_b : 0
+    const learningStyle = (userProfile as any)?.learningStyle ?? null
 
     const safetyContext = {
       studentId,
@@ -283,7 +320,7 @@ export async function runTutorOrchestrator(args: {
     // Misconception detection using real subjectId + conceptId.
     const loadedMisconceptions = await loadMisconceptions(subjectId, conceptId)
     const detectedMisconceptions = detectMisconceptions(redactedInput, loadedMisconceptions)
-    const activeMisconception = detectedMisconceptions[0]?.name ?? null
+    const activeMisconception = detectedMisconceptions[0] ?? null
 
     if (detectedMisconceptions.length > 0) {
       const now = new Date()
@@ -318,6 +355,32 @@ export async function runTutorOrchestrator(args: {
           error: String((err as any)?.message ?? err),
         })
       }
+    } else if (redactedInput.trim().length > 20 && loadedMisconceptions.length > 0) {
+      // AC-05 (F-STU-013): input has meaningful content but matched nothing in the library.
+      // Log as a novel misconception signal for content team review.
+      logNovelMisconception(studentId, subjectId, conceptId, redactedInput)
+    }
+
+    // AC-04 (F-STU-013): load up to 3 recent known misconceptions for this concept
+    // to inject into the system prompt so Vidya stays alert to recurring patterns.
+    let recentMisconceptionNames: string[] = []
+    try {
+      const recentRows = await prisma.studentMisconception.findMany({
+        where: {
+          studentId,
+          misconception: { conceptId },
+        },
+        orderBy: { lastSeenAt: 'desc' },
+        take: 3,
+        select: { misconception: { select: { name: true } } },
+      })
+      recentMisconceptionNames = recentRows.map((r) => r.misconception.name)
+    } catch (err) {
+      logger.warn('studentMisconception.load.failed', {
+        studentId,
+        conceptId,
+        error: String((err as any)?.message ?? err),
+      })
     }
 
     // 3. Frustration score — use empty history for now (integration with real history is future work)
@@ -330,25 +393,29 @@ export async function runTutorOrchestrator(args: {
       { topN: 4 },
     )
 
-    // 5. Prompt assembly — pass actual hintsUsed and isHintRequest for tier-aware hint delivery
+    // 5. Prompt assembly — pass actual hintsUsed, isHintRequest, explainStyle, and
+    //    persisted machine state for tier-aware hint delivery and remediation context.
     const prompt = assembleSystemPrompt({
       studentName: 'Student',
       grade: 10,
       board: 'CBSE',
       teachingLanguage: 'en',
       examDateProximityDays: null,
-      learningStyle: null,
-      recentMisconceptions: [],
+      learningStyle,
+      recentMisconceptions: recentMisconceptionNames,
       masteryBrief: 'mastery_context_not_yet_wired',
       emotionalState: frustration.emotionalState,
       stage: state.stage as TutorStage,
-      stageAttemptCount: 0,
+      stageAttemptCount: state.stageAttemptCount,
       hintsUsed,
       isHintRequest,
+      explainStyle,
+      consecutiveWrongAnswers: state.consecutiveWrongAnswers,
       sessionSummary: null,
       // Include the (possibly rewritten) student prompt as the most recent turn
       recentTurns: [{ role: 'student', content: rewrittenPrompt }],
-      activeMisconceptionName: activeMisconception,
+      activeMisconceptionName: activeMisconception?.name ?? null,
+      activeMisconceptionCorrection: activeMisconception?.correction ?? null,
       frustrationScore: frustration.frustrationScore,
       ragChunks: ragContext.chunks.map((c) => c.content),
       conceptName,
@@ -365,6 +432,7 @@ export async function runTutorOrchestrator(args: {
     // Detect: message ends with '?' or contains common doubt indicators
     const isDoubtTurn =
       !isHintRequest &&
+      !isStyleRequest &&
       (redactedInput.endsWith('?') ||
         /\b(what|why|how|explain|confused|don'?t understand|clarify|mean|means|help)\b/i.test(redactedInput))
 
@@ -551,18 +619,22 @@ export async function runTutorOrchestrator(args: {
       }
     }
 
-    // 10. State machine transition -- pass actual hintsUsed so hint counter increments in Redis
-    const nextCore = applyTagTransition(
+    // 10. State machine transition -- uses persisted machine state so consecutive-wrong
+    //     counters and remediation flags survive across turns (AC-02, AC-08, F-STU-011).
+    const { next: nextCore, effectiveTag } = applyTagTransitionWithRemediation(
       {
         stage: state.stage as TutorStage,
-        stageAttemptCount: 0,
+        stageAttemptCount: state.stageAttemptCount,
         hintsUsed,
-        prereqRemediationActive: false,
-        prereqReturnStage: null,
-        consecutiveWrongAnswers: 0,
+        prereqRemediationActive: state.prereqRemediationActive,
+        prereqReturnStage: state.prereqReturnStage,
+        consecutiveWrongAnswers: state.consecutiveWrongAnswers,
       },
       tag,
     )
+
+    // Use effectiveTag for logging when auto-upgrade occurred (PREREQ_FAIL > STRUGGLE_DETECTED)
+    const logTag = effectiveTag
 
     const hintsRemaining = Math.max(0, 3 - nextCore.hintsUsed)
 
@@ -571,17 +643,25 @@ export async function runTutorOrchestrator(args: {
       stage: nextCore.stage,
       hintsRemaining,
       lastTurnNumber: state.lastTurnNumber,
+      consecutiveWrongAnswers: nextCore.consecutiveWrongAnswers,
+      stageAttemptCount: nextCore.stageAttemptCount,
+      prereqRemediationActive: nextCore.prereqRemediationActive,
+      prereqReturnStage: nextCore.prereqReturnStage,
     }
 
-    // 11–12. Persist session state and mark turn completed
+    // 11–12. Persist full machine state (stage, hints, and all AC-02/AC-08 counters)
     await updateTutorSession(sessionId, {
       stage: newState.stage,
       hintsRemaining: newState.hintsRemaining,
       lastTurnNumber: newState.lastTurnNumber,
+      consecutiveWrongAnswers: newState.consecutiveWrongAnswers,
+      stageAttemptCount: newState.stageAttemptCount,
+      prereqRemediationActive: newState.prereqRemediationActive,
+      prereqReturnStage: newState.prereqReturnStage,
     })
     await markTurnCompleted(sessionId)
 
-    // 13. Log tag to AITutorTurnLog.tag and rag chunk usage
+    // 13. Log effective tag (reflects auto-upgrade to PREREQ_FAIL when AC-08 fired)
     await prisma.aITutorTurnLog.create({
       data: {
         sessionId,
@@ -591,7 +671,7 @@ export async function runTutorOrchestrator(args: {
         outputTokens: 0,
         costUsd: 0,
         latencyMs: 0,
-        tag,
+        tag: logTag,
         stage: newState.stage,
         safetyFlagged: safetyEvents.length > 0,
         cached: servedFromCache,
@@ -601,20 +681,21 @@ export async function runTutorOrchestrator(args: {
     })
 
     const complete: TutorTurnComplete = {
-      tag,
+      tag: logTag,
       stage: newState.stage,
       hintsRemaining: newState.hintsRemaining,
       turnNumber: newState.lastTurnNumber,
-      sessionComplete: newState.stage === 'CONSOLIDATION',
+      // Session ends when the AI responds DURING the CONSOLIDATION stage (the summary
+      // and reflective question are delivered in that turn), not when entering it.
+      sessionComplete: state.stage === 'CONSOLIDATION',
     }
 
-    // Award streak credit only when student completes the full session
-    // (all 7 stages → CONSOLIDATION). Fire-and-forget; streak loss on crash is acceptable.
-    if (newState.stage === 'CONSOLIDATION') {
+    // Award streak credit only after the student receives CONSOLIDATION content.
+    if (state.stage === 'CONSOLIDATION') {
       void updateStreak(studentId)
     }
 
-    if (tag === 'VALIDATE') {
+    if (logTag === 'VALIDATE') {
       await enqueueIRTUpdate({
         studentId,
         conceptId,

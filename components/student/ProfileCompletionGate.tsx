@@ -22,6 +22,8 @@
  */
 
 import React, { useEffect, useState } from 'react';
+import { logger } from '@/lib/logger';
+import AppImage from '@/components/UI/AppImage';
 import { createPortal } from 'react-dom';
 import { useRouter } from 'next/navigation';
 import { useAcademicHierarchy } from '@/hooks/useAcademicHierarchy';
@@ -66,12 +68,13 @@ function getMandatorySubjects(board: string, grade: number): string[] {
 
 // ── Step helpers ───────────────────────────────────────────────────────────────
 
-// Steps in order. Parent email step is conditional: only when age is known.
-type StepKey = 'language' | 'board' | 'grade' | 'subjects' | 'parentEmail';
+// Steps in order. Parent steps are conditional on age < DPDP_MINOR_AGE.
+type StepKey = 'language' | 'board' | 'grade' | 'subjects' | 'parentEmail' | 'parentPhone';
 
-function buildSteps(showParentEmail: boolean): StepKey[] {
+function buildSteps(showParentEmail: boolean, showParentPhone: boolean): StepKey[] {
   const steps: StepKey[] = ['language', 'board', 'grade', 'subjects'];
   if (showParentEmail) steps.push('parentEmail');
+  if (showParentPhone) steps.push('parentPhone');
   return steps;
 }
 
@@ -91,6 +94,7 @@ function getInitialStep(
     grade: !iv.grade,
     subjects: !Array.isArray(iv.subjects) || iv.subjects.length === 0,
     parentEmail: !iv.parentEmail,
+    parentPhone: !iv.parentPhoneVerified,
   };
   for (let i = 0; i < steps.length; i++) {
     if (checks[steps[i]]) return i;
@@ -108,13 +112,14 @@ export default function ProfileCompletionGate({
   const router = useRouter();
   const [mounted, setMounted] = useState(false);
 
-  // Show the parent email step only for under-DPDP_MINOR_AGE (strictly < 13).
-  // Age 14+ must NOT see the field -- it is irrelevant for students above the threshold.
+  // Show parent email + phone OTP steps only for under-DPDP_MINOR_AGE (strictly < 13).
+  // Age 14+ must NOT see these fields -- irrelevant for students above the threshold.
   const ageNum = initialValues?.age ?? null;
   const parentEmailRequired = ageNum !== null && ageNum < DPDP_MINOR_AGE;
   const showParentEmail = parentEmailRequired;
+  const showParentPhone = parentEmailRequired;
 
-  const steps = buildSteps(showParentEmail);
+  const steps = buildSteps(showParentEmail, showParentPhone);
 
   // Pre-populate state from server-side profile data
   const [step, setStep] = useState(() => getInitialStep(initialValues, steps));
@@ -126,6 +131,13 @@ export default function ProfileCompletionGate({
   const [subjects, setSubjects] = useState<string[]>(initialValues?.subjects ?? []);
   const [parentEmail, setParentEmail] = useState(initialValues?.parentEmail ?? '');
   const [parentEmailError, setParentEmailError] = useState('');
+  const [parentPhone, setParentPhone] = useState(initialValues?.parentPhone ?? '');
+  const [parentOtpCode, setParentOtpCode] = useState('');
+  const [parentPhoneSubStep, setParentPhoneSubStep] = useState<'enterPhone' | 'enterOtp' | 'verified'>(
+    initialValues?.parentPhoneVerified ? 'verified' : 'enterPhone',
+  );
+  const [parentPhoneError, setParentPhoneError] = useState('');
+  const [parentPhoneBusy, setParentPhoneBusy] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
 
@@ -145,7 +157,7 @@ export default function ProfileCompletionGate({
   const mandatory = getMandatorySubjects(board, grade);
   const currentStepKey = steps[step] as StepKey | undefined;
   const isLastStep = step === steps.length - 1;
-  const totalSteps = steps.length;
+  const _totalSteps = steps.length;
 
   function canAdvance(): boolean {
     if (currentStepKey === 'language') return language !== '';
@@ -156,6 +168,7 @@ export default function ProfileCompletionGate({
       if (!parentEmailRequired) return true; // optional
       return parentEmail.trim().includes('@');
     }
+    if (currentStepKey === 'parentPhone') return parentPhoneSubStep === 'verified';
     return false;
   }
 
@@ -166,6 +179,63 @@ export default function ProfileCompletionGate({
       if (prev.length >= 6) return prev;
       return [...prev, slug];
     });
+  }
+
+  async function handleSendOtp() {
+    if (parentPhoneBusy) return;
+    const cleaned = parentPhone.replace(/\D/g, '');
+    if (!/^\d{7,15}$/.test(cleaned)) {
+      setParentPhoneError('Enter a valid phone number (7-15 digits)');
+      return;
+    }
+    setParentPhoneBusy(true);
+    setParentPhoneError('');
+    try {
+      const res = await fetch('/api/auth/parent/send-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ parentPhone: cleaned }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setParentPhoneError((json?.error as string | undefined) ?? "Couldn't send OTP. Please try again.");
+        return;
+      }
+      setParentPhoneSubStep('enterOtp');
+    } catch {
+      setParentPhoneError('Network error. Check your connection and try again.');
+    } finally {
+      setParentPhoneBusy(false);
+    }
+  }
+
+  async function handleVerifyOtp() {
+    if (parentPhoneBusy) return;
+    const cleaned = parentPhone.replace(/\D/g, '');
+    const code = parentOtpCode.trim();
+    if (!/^\d{4,6}$/.test(code)) {
+      setParentPhoneError('Enter the 6-digit code from the SMS');
+      return;
+    }
+    setParentPhoneBusy(true);
+    setParentPhoneError('');
+    try {
+      const res = await fetch('/api/auth/parent/verify-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ parentPhone: cleaned, code }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setParentPhoneError((json?.error as string | undefined) ?? 'Invalid or expired code. Please try again.');
+        return;
+      }
+      setParentPhoneSubStep('verified');
+    } catch {
+      setParentPhoneError('Network error. Check your connection and try again.');
+    } finally {
+      setParentPhoneBusy(false);
+    }
   }
 
   async function handleSubmit() {
@@ -192,7 +262,7 @@ export default function ProfileCompletionGate({
         body: JSON.stringify(payload),
       });
       if (!res.ok) {
-        const json = await res.json().catch(() => ({}));
+        const json = await res.json().catch((e) => { logger.warn('onboarding response.json() failed', { component: 'ProfileCompletionGate', error: e }); return {}; });
         setSaveError((json?.error as string | undefined) ?? "Couldn't save -- tap to retry.");
         return;
       }
@@ -202,7 +272,8 @@ export default function ProfileCompletionGate({
         // Modal mode: force server layout re-render so isProfileComplete() -> true -> gate unmounts
         router.refresh();
       }
-    } catch {
+    } catch (e) {
+      logger.warn('Failed to submit onboarding payload', { component: 'ProfileCompletionGate', error: e });
       setSaveError("Network error -- check your connection.");
     } finally {
       setSaving(false);
@@ -249,6 +320,7 @@ export default function ProfileCompletionGate({
       value: subjects.length > 0 ? `${subjects.length} subject${subjects.length !== 1 ? 's' : ''}` : '',
     },
     parentEmail: { label: 'Parent email', value: parentEmail ? 'Added' : '' },
+    parentPhone: { label: 'Parent phone', value: parentPhoneSubStep === 'verified' ? 'Verified' : '' },
   };
   const mainDoneCount = MAIN_STEPS.filter((s) => stepLabels[s].value !== '').length;
 
@@ -265,12 +337,12 @@ export default function ProfileCompletionGate({
         {/* Purple header with Vidya avatar */}
         <div className="bg-[#534AB7] px-6 py-5 flex-shrink-0">
           <div className="flex items-center gap-3">
-            <img
+            <AppImage
               src="/logos/vidya/vidya-avatar-64.png"
               alt="Vidya"
-              className="w-10 h-10 rounded-full bg-white/20 object-cover"
               width={40}
               height={40}
+              className="w-10 h-10 rounded-full bg-white/20 object-cover"
             />
             <div>
               <h2 className="text-white font-semibold text-lg leading-tight">
@@ -485,7 +557,7 @@ export default function ProfileCompletionGate({
                         key={subj.id}
                         type="button"
                         onClick={() => toggleSubject(subj.slug, isMandatory)}
-                        aria-pressed={selected}
+                        aria-pressed={selected ? 'true' : 'false'}
                         title={isMandatory ? 'Mandatory -- cannot be removed' : undefined}
                         className={[
                           'flex items-center gap-2 min-h-[44px] rounded-xl border-2 px-3 text-sm font-medium text-left transition-all',
@@ -564,26 +636,136 @@ export default function ProfileCompletionGate({
             </section>
           )}
 
+          {/* ── Parent Phone OTP ──────────────────────────────────────── */}
+          {currentStepKey === 'parentPhone' && (
+            <section>
+              <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100 mb-1">
+                {parentPhoneSubStep === 'verified' ? "Parent phone verified" : "Verify parent's phone"}
+              </h3>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+                {parentPhoneSubStep === 'enterPhone' && (
+                  "Required for students under 13. We'll send a one-time code to your parent's number."
+                )}
+                {parentPhoneSubStep === 'enterOtp' && (
+                  `Enter the 6-digit code we sent to ${parentPhone}.`
+                )}
+                {parentPhoneSubStep === 'verified' && (
+                  "Your parent's number is verified."
+                )}
+              </p>
+
+              {parentPhoneSubStep === 'enterPhone' && (
+                <div className="space-y-3">
+                  <div>
+                    <label
+                      htmlFor="gate-parent-phone"
+                      className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+                    >
+                      Parent mobile number <span className="text-[#E24B4A] ml-1">*</span>
+                    </label>
+                    <input
+                      id="gate-parent-phone"
+                      type="tel"
+                      value={parentPhone}
+                      onChange={(e) => { setParentPhone(e.target.value); if (parentPhoneError) setParentPhoneError(''); }}
+                      placeholder="+91 9876543210"
+                      className="w-full min-h-[44px] rounded-xl border-2 border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-2 text-sm text-gray-900 dark:text-gray-100 placeholder-gray-400 focus:outline-none focus:border-[#534AB7] dark:focus:border-indigo-400 transition-colors"
+                    />
+                  </div>
+                  {parentPhoneError && (
+                    <p role="alert" className="text-xs text-[#E24B4A] dark:text-red-400">{parentPhoneError}</p>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => { void handleSendOtp(); }}
+                    disabled={parentPhoneBusy}
+                    className="flex w-full min-h-[44px] items-center justify-center rounded-xl bg-[#534AB7] text-white text-sm font-semibold hover:bg-[#4840a3] active:scale-[0.98] disabled:opacity-50 transition-all shadow-md shadow-[#534AB7]/25"
+                  >
+                    {parentPhoneBusy ? 'Sending...' : 'Send OTP →'}
+                  </button>
+                </div>
+              )}
+
+              {parentPhoneSubStep === 'enterOtp' && (
+                <div className="space-y-3">
+                  <div>
+                    <label
+                      htmlFor="gate-parent-otp"
+                      className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+                    >
+                      6-digit verification code <span className="text-[#E24B4A] ml-1">*</span>
+                    </label>
+                    <input
+                      id="gate-parent-otp"
+                      type="text"
+                      inputMode="numeric"
+                      maxLength={6}
+                      value={parentOtpCode}
+                      onChange={(e) => { setParentOtpCode(e.target.value.replace(/\D/g, '')); if (parentPhoneError) setParentPhoneError(''); }}
+                      placeholder="123456"
+                      className="w-full min-h-[44px] rounded-xl border-2 border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-2 text-sm text-gray-900 dark:text-gray-100 placeholder-gray-400 focus:outline-none focus:border-[#534AB7] dark:focus:border-indigo-400 transition-colors tracking-widest text-center font-mono"
+                    />
+                  </div>
+                  {parentPhoneError && (
+                    <p role="alert" className="text-xs text-[#E24B4A] dark:text-red-400">{parentPhoneError}</p>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => { void handleVerifyOtp(); }}
+                    disabled={parentPhoneBusy || parentOtpCode.length < 4}
+                    className="flex w-full min-h-[44px] items-center justify-center rounded-xl bg-[#534AB7] text-white text-sm font-semibold hover:bg-[#4840a3] active:scale-[0.98] disabled:opacity-50 transition-all shadow-md shadow-[#534AB7]/25"
+                  >
+                    {parentPhoneBusy ? 'Verifying...' : 'Verify code →'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setParentPhoneSubStep('enterPhone'); setParentOtpCode(''); setParentPhoneError(''); }}
+                    className="w-full min-h-[44px] text-xs text-gray-500 dark:text-gray-400 hover:text-[#534AB7] dark:hover:text-indigo-300 text-center py-2"
+                  >
+                    Use a different number
+                  </button>
+                </div>
+              )}
+
+              {parentPhoneSubStep === 'verified' && (
+                <div className="flex items-center gap-3 rounded-xl bg-[#EAF3DE] dark:bg-[#1D9E75]/10 px-4 py-3">
+                  <span className="w-8 h-8 rounded-full bg-[#1D9E75] flex items-center justify-center flex-shrink-0">
+                    <svg className="w-4 h-4 text-white" viewBox="0 0 12 12" fill="none" aria-hidden="true">
+                      <path d="M10 3L5 8.5 2 5.5" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  </span>
+                  <div>
+                    <p className="text-sm font-semibold text-[#1D9E75] dark:text-green-400">Phone verified</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">{parentPhone}</p>
+                  </div>
+                </div>
+              )}
+            </section>
+          )}
+
           {saveError && (
             <p role="alert" className="mt-4 text-xs text-[#E24B4A] dark:text-red-400">
               {saveError}
             </p>
           )}
 
-          <div className="mt-6">
-            <button
-              type="button"
-              onClick={handleContinue}
-              disabled={!canAdvance() || saving}
-              className="flex w-full min-h-[44px] items-center justify-center rounded-xl bg-[#534AB7] text-white text-sm font-semibold hover:bg-[#4840a3] active:scale-[0.98] disabled:opacity-50 transition-all shadow-md shadow-[#534AB7]/25"
-            >
-              {saving
-                ? 'Saving...'
-                : isLastStep
-                ? 'Save'
-                : 'Continue →'}
-            </button>
-          </div>
+          {/* Main Continue/Save button -- hidden during phone OTP sub-steps (step has its own action buttons) */}
+          {currentStepKey !== 'parentPhone' || parentPhoneSubStep === 'verified' ? (
+            <div className="mt-6">
+              <button
+                type="button"
+                onClick={handleContinue}
+                disabled={!canAdvance() || saving}
+                className="flex w-full min-h-[44px] items-center justify-center rounded-xl bg-[#534AB7] text-white text-sm font-semibold hover:bg-[#4840a3] active:scale-[0.98] disabled:opacity-50 transition-all shadow-md shadow-[#534AB7]/25"
+              >
+                {saving
+                  ? 'Saving...'
+                  : isLastStep
+                  ? 'Save'
+                  : 'Continue →'}
+              </button>
+            </div>
+          ) : null}
 
         </div>
       </div>

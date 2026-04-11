@@ -49,8 +49,7 @@ export async function getEmbedding(text: string): Promise<number[] | null> {
     }
     return embedding
   } catch (err) {
-    // eslint-disable-next-line no-console
-    console.error('[embeddings] getEmbedding failed:', err)
+    logger.error('[embeddings] getEmbedding failed', { error: err })
     return null
   }
 }
@@ -113,8 +112,7 @@ export async function getEmbeddingsBatch(
         }
       }
     } catch (err) {
-      // eslint-disable-next-line no-console
-      console.error(`[embeddings] batch ${i}-${i + batchSize} failed:`, err)
+      logger.error(`[embeddings] batch ${i}-${i + batchSize} failed`, { error: err })
       results.push(...batch.map(() => null))
     }
     if (i + batchSize < texts.length) {

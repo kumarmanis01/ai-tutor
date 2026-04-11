@@ -16,10 +16,10 @@
  */
 
 import { Queue } from 'bullmq';
-import { prisma } from '../lib/prisma.js';
-import { redisConnection } from '../lib/redis.js';
-import { logger } from '../lib/logger.js';
-import { CONTENT_HYDRATION_QUEUE } from '../lib/queues/constants.js';
+import { prisma } from '@/lib/prisma';
+import { redisConnection } from '@/lib/redis';
+import { logger } from '@/lib/logger';
+import { CONTENT_HYDRATION_QUEUE } from '@/lib/queues/constants';
 
 /** RISK-04: Max dispatch attempts before moving to dead-letter. Prevents infinite retry loops. */
 const MAX_ATTEMPTS = 10;
@@ -89,6 +89,19 @@ async function dispatchBatch(): Promise<number> {
   const q = getQueue();
 
   for (const row of rows) {
+    // If the row has a scheduled delivery time in meta.deliverAt, skip until that time
+    try {
+      const metaAny = row.meta as any;
+      if (metaAny?.deliverAt) {
+        const deliverAt = new Date(metaAny.deliverAt);
+        if (deliverAt.getTime() > Date.now()) {
+          logger.info('[outbox-dispatcher] skipping scheduled row (not due yet)', { outboxId: row.id, deliverAt: metaAny.deliverAt });
+          continue;
+        }
+      }
+    } catch (err) {
+      // Non-fatal: if meta parsing fails, fall through and attempt dispatch
+    }
     // RISK-04: Exceeded max attempts -- move to dead-letter, skip dispatch
     if (row.attempts >= MAX_ATTEMPTS) {
       await moveToDeadLetter(row, 'max_attempts_exceeded');
