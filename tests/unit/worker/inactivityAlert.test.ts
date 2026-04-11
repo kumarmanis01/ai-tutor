@@ -1,7 +1,24 @@
 /**
- * Unit tests for runInactivityAlerts - mocks Redis, Prisma and the notification sender
+ * FILE OBJECTIVE:
+ * - Unit tests for worker/jobs/inactivityAlert.ts covering opt-out, pause, and suppression behaviour.
+ *
+ * LINKED UNIT TEST:
+ * - tests/unit/worker/inactivityAlert.test.ts (this file)
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/COPILOT_GUARDRAILS.md
+ * - .github/copilot-instructions.md
+ *
+ * EDIT LOG:
+ * - 2026-04-10T00:00:00Z | copilot | created tests for inactivity alerts
+ * - 2026-04-11T07:36:56Z | copilot | merged .spec.ts content; renamed to .test.ts for Jest discovery; removed duplicate header block
  */
 
+/* eslint-disable @typescript-eslint/no-explicit-any */
+
+// ---------------------------------------------------------------------------
+// Original suite: Redis lock / send behaviour
+// ---------------------------------------------------------------------------
 describe('runInactivityAlerts (unit)', () => {
   beforeEach(() => {
     jest.resetModules()
@@ -75,23 +92,10 @@ describe('runInactivityAlerts (unit)', () => {
     expect(sent).toBe(0)
   })
 })
-/**
- * FILE OBJECTIVE:
- * - Unit tests for worker/jobs/inactivityAlert.ts covering opt-out, pause, suppression behaviour
- *
- * LINKED UNIT TEST:
- * - tests/unit/worker/inactivityAlert.spec.ts
- *
- * COPILOT INSTRUCTIONS FOLLOWED:
- * - /docs/COPILOT_GUARDRAILS.md
- * - .github/copilot-instructions.md
- *
- * EDIT LOG:
- * - 2026-04-10T00:00:00Z | copilot | created tests for inactivity alerts
- */
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
-
+// ---------------------------------------------------------------------------
+// Extended suite: opt-out, pause, and excludeFromParentReport edge cases
+// ---------------------------------------------------------------------------
 describe('worker/jobs/inactivityAlert', () => {
   beforeEach(() => {
     jest.resetModules();
@@ -133,7 +137,7 @@ describe('worker/jobs/inactivityAlert', () => {
     const { runInactivityAlerts } = await import('../../../worker/jobs/inactivityAlert');
     const sent = await runInactivityAlerts();
 
-    // parent opted out -> nothing sent
+    // parent opted out -- nothing sent
     expect(sendMock).not.toHaveBeenCalled();
     expect(sent).toBe(0);
   });
