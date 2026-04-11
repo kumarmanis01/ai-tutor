@@ -37,12 +37,8 @@ export async function aggregateWeeklySummaries(): Promise<number> {
   // (indefinite pause) OR pausedUntil is in the future (timed pause).
   const studentIdSet = new Set<string>()
   for (const l of rawLinks) {
-    const isPaused = (l as any).isPaused === true
-    const pausedUntilRaw = (l as any).pausedUntil
-    // Treat as paused for: indefinite (null/undefined) or still-future expiry
-    const paused = isPaused && (
-      pausedUntilRaw == null || new Date(pausedUntilRaw) > new Date()
-    )
+    // Treat as paused for: indefinite (null) or still-future expiry
+    const paused = l.isPaused && (l.pausedUntil == null || l.pausedUntil > new Date())
     if (!paused) studentIdSet.add(l.studentId)
   }
   const studentIds = Array.from(studentIdSet)

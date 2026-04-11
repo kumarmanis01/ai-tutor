@@ -3,7 +3,7 @@
  * - Unit tests for worker/jobs/inactivityAlert.ts covering opt-out, pause, and suppression behaviour.
  *
  * LINKED UNIT TEST:
- * - tests/unit/worker/inactivityAlert.test.ts (this file)
+ * - tests/unit/worker/inactivityAlert.test.ts (this file tests worker/jobs/inactivityAlert.ts)
  *
  * COPILOT INSTRUCTIONS FOLLOWED:
  * - /docs/COPILOT_GUARDRAILS.md
