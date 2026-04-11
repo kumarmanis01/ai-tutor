@@ -150,6 +150,7 @@
     "next": "^16.1.6",
     "next-auth": "^4.24.11",
     "node-fetch": "^3.3.2",
+    "nodemailer": "^7.0.13",
     "openai": "^5.23.2",
     "pathe": "^2.0.3",
     "pdf-lib": "^1.17.1",
