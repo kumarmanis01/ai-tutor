@@ -118,24 +118,6 @@ async function renderHtmlToPdf(html: string): Promise<Buffer> {
   }
 }
 
-let _playwrightAvailable: boolean | null = null;
-
-/**
- * Returns whether Playwright can be imported in this runtime (cached).
- */
-export async function isPlaywrightAvailable(): Promise<boolean> {
-  if (_playwrightAvailable !== null) return _playwrightAvailable;
-  try {
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    await import('playwright');
-    _playwrightAvailable = true;
-  } catch (err) {
-    _playwrightAvailable = false;
-    logger.warn('[invoices] Playwright not available in this runtime', { error: String((err as any)?.message ?? err) });
-  }
-  return _playwrightAvailable;
-}
-
 export async function generateInvoicePdf(options: {
   invoiceNumber: number;
   userName?: string;
@@ -168,16 +150,12 @@ export async function generateInvoicePdf(options: {
     taxBreakdown: options.taxBreakdown,
   });
 
-  if (await isPlaywrightAvailable()) {
-    try {
-      const buf = await renderHtmlToPdf(html);
-      return buf;
-    } catch (err) {
-      logger.warn('[invoices] Playwright render failed, falling back to pdf-lib', { error: String((err as any)?.message ?? err) });
-    }
-  } else {
-    logger.info('[invoices] Playwright unavailable -- using pdf-lib fallback');
-  }
+  try {
+    const buf = await renderHtmlToPdf(html);
+    return buf;
+  } catch (_err) {
+    // Playwright render failed — log and fallback to simple pdf-lib text renderer when Playwright is not available
+    logger.warn('[invoices] Playwright render failed, falling back to pdf-lib', { error: String(_err) });
     const pdfDoc = await PDFDocument.create();
     const page = pdfDoc.addPage([595, 842]); // A4 approx
     const helvetica = await pdfDoc.embedFont(StandardFonts.Helvetica);
@@ -207,6 +185,7 @@ export async function generateInvoicePdf(options: {
     const pdfBytes = await pdfDoc.save();
     return Buffer.from(pdfBytes);
   }
+}
 
 /**
  * Create invoice DB record, generate PDF buffer and upload to R2.

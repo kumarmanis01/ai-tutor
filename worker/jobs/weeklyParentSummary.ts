@@ -8,7 +8,6 @@
  * EDIT LOG:
  * - 2026-02-04 | claude | created weekly parent summary aggregation job
  * - 2026-04-09 | copilot | respect excludeFromParentReport when selecting linked students
- * - 2026-04-11 | copilot | fix: treat isPaused:true + pausedUntil:null as indefinitely paused
  */
 
 import { prisma } from '@/lib/prisma';
@@ -32,13 +31,10 @@ export async function aggregateWeeklySummaries(): Promise<number> {
     select: { studentId: true, isPaused: true, pausedUntil: true },
   });
 
-  // Include studentId if at least one non-paused link exists.
-  // A link is paused when isPaused is true AND either pausedUntil is null/absent
-  // (indefinite pause) OR pausedUntil is in the future (timed pause).
+  // Include studentId if at least one non-paused link exists
   const studentIdSet = new Set<string>()
   for (const l of rawLinks) {
-    // Treat as paused for: indefinite (null) or still-future expiry
-    const paused = l.isPaused && (l.pausedUntil == null || l.pausedUntil > new Date())
+    const paused = (l as any).isPaused && (l as any).pausedUntil && new Date((l as any).pausedUntil) > new Date()
     if (!paused) studentIdSet.add(l.studentId)
   }
   const studentIds = Array.from(studentIdSet)

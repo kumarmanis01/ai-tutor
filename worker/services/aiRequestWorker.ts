@@ -112,9 +112,7 @@ export async function processAIRequest(job: Job<AIJobData>) {
           status: 'blocked',
           error: 'intent_block',
           requestBody: payload,
-          // structuredClone produces a plain JSON-serializable object,
-          // satisfying Prisma's InputJsonValue constraint for the responseBody column.
-          responseBody: structuredClone({ reason: 'intent_block', classification }) as object,
+          responseBody: { reason: 'intent_block', classification },
         } })
       } catch (e) {
         logger.warn('processAIRequest: failed to write AIContentLog for blocked intent', { error: String(e) })
