@@ -16,6 +16,7 @@ import { logger } from '@/lib/logger'
 import { getRedis } from '@/lib/redis'
 import { sendPushSafe } from '@/lib/push/send'
 import { PUSH_NOTIFICATIONS } from '@/lib/push/notifications'
+import { sendParentMilestoneNotification } from '@/lib/notifications/delivery'
 
 const READINESS_NOTIFICATION_THRESHOLDS = [50, 70, 90]
 /** AC-05 (F-STU-023): fire a drop alert when score falls by more than this many points. */
@@ -135,6 +136,30 @@ async function maybeFireReadinessDrop(
         event: 'readiness_drop_alert',
         context: { studentId, subjectId, prevScore, newScore: score, dropPoints },
       })
+      // Notify parents about readiness drop (best-effort)
+      try {
+        const parentLinks = await prisma.parentStudent.findMany({
+          where: { studentId, status: 'active' },
+          include: { parent: { select: { id: true, email: true, phone: true, name: true, language: true } } },
+        })
+
+        if (parentLinks.length > 0) {
+          const subject = `Readiness dropped: ${subjectName} — ${dropPoints} points`
+          const html = `<p>Hi,</p><p>Your child\'s readiness score for <strong>${subjectName}</strong> dropped by ${dropPoints} points. A short review session can help recover progress.</p>`
+          const sends = parentLinks.map((pl) =>
+            sendParentMilestoneNotification(pl.parent.id, {
+              email: pl.parent.email ?? undefined,
+              phone: pl.parent.phone ?? undefined,
+              subject,
+              html,
+              meta: { studentId, type: 'milestone', channel: pl.parent.email ? 'email' : pl.parent.phone ? 'sms' : 'unknown', locale: pl.parent.language },
+            }),
+          )
+          void Promise.allSettled(sends)
+        }
+      } catch (err) {
+        logger.warn('precomputeReadiness.parentNotify.drop failed', { studentId, subjectId, error: String(err) })
+      }
     }
   } catch {
     // Best-effort
@@ -162,6 +187,30 @@ async function maybeFireReadinessMilestone(
       if (alreadySent) continue
       await redis.set(key, '1', 'EX', 365 * 24 * 60 * 60) // 1 year TTL
       await sendPushSafe(studentId, PUSH_NOTIFICATIONS.readiness_milestone(score, subjectName))
+      // Notify parents about readiness milestone (best-effort)
+      try {
+        const parentLinks = await prisma.parentStudent.findMany({
+          where: { studentId, status: 'active' },
+          include: { parent: { select: { id: true, email: true, phone: true, name: true, language: true } } },
+        })
+
+        if (parentLinks.length > 0) {
+          const subject = `Readiness milestone: ${subjectName} — ${score}%`
+          const html = `<p>Hi,</p><p>Your child has reached a readiness score of <strong>${score}%</strong> in <strong>${subjectName}</strong>. Keep up the great work!</p>`
+          const sends = parentLinks.map((pl) =>
+            sendParentMilestoneNotification(pl.parent.id, {
+              email: pl.parent.email ?? undefined,
+              phone: pl.parent.phone ?? undefined,
+              subject,
+              html,
+              meta: { studentId, type: 'milestone', channel: pl.parent.email ? 'email' : pl.parent.phone ? 'sms' : 'unknown', locale: pl.parent.language },
+            }),
+          )
+          void Promise.allSettled(sends)
+        }
+      } catch (err) {
+        logger.warn('precomputeReadiness.parentNotify.milestone failed', { studentId, subjectId, threshold, error: String(err) })
+      }
       break // Only send the highest newly-crossed threshold
     }
   } catch {

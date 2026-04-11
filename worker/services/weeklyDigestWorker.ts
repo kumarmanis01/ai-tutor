@@ -17,6 +17,7 @@
 import { prisma } from '@/lib/prisma'
 import { logger } from '@/lib/logger'
 import { sendMailSafe } from '@/lib/mailer'
+import { sendParentMilestoneNotification } from '@/lib/notifications/delivery'
 import { callLLM } from '@/lib/callLLM'
 import { getLocalDateString, startOfLocalDayUtc } from '@/lib/engagement/timezone'
 
@@ -298,8 +299,8 @@ export async function processParentDigest(parentId: string, weekStartIso: string
     const appUrl = (process.env.NEXTAUTH_URL ?? '').replace(/\/$/, '')
     const html = buildEmailHtml({ parentName: parent.name, childName: child.name, sessionsThisWeek: sessions.length, streak: streak?.current ?? 0, readinessDelta, narrative, dashboardUrl: `${appUrl}/parent/dashboard` })
 
-    await sendMailSafe({ to: parent.email, subject, html, text: subject })
-    logger.info('[parentDigest] sent', { parentId, email: parent.email, childName: child.name })
+    await sendParentMilestoneNotification(parentId, { email: parent.email, subject, html, text: subject, meta: { type: 'digest', channel: 'email' } })
+    logger.info('[parentDigest] sent via delivery helper', { parentId, email: parent.email, childName: child.name })
   } catch (err) {
     logger.error('[parentDigest] failed', { parentId, error: err instanceof Error ? err.message : String(err) })
   }

@@ -1,3 +1,53 @@
+/**
+ * FILE OBJECTIVE:
+ * - Unit tests for `checkSessionBadges` to ensure parent milestone notifications
+ *   are invoked when badges are awarded.
+ *
+ * LINKED UNIT TEST:
+ * - tests/unit/lib/student/badges.test.ts
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/COPILOT_GUARDRAILS.md
+ * - .github/copilot-instructions.md
+ *
+ * EDIT LOG:
+ * - 2026-04-11T00:00:00Z | copilot | created tests for badge -> parent notify wiring
+ */
+
+/* eslint-disable @typescript-eslint/no-explicit-any */
+
+describe('checkSessionBadges', () => {
+  beforeEach(() => {
+    jest.resetModules()
+    jest.clearAllMocks()
+  })
+
+  it('awards streak badge and notifies parents', async () => {
+    const sendMock = jest.fn(async () => ({ sent: true }))
+
+    const prismaMock: any = {
+      userBadge: { findMany: jest.fn(async () => []) },
+      learningSession: { count: jest.fn(async () => 1) },
+      badge: { upsert: jest.fn(async () => ({})) },
+      user: { findUnique: jest.fn(async () => ({ name: 'Asha' })) },
+      parentStudent: { findMany: jest.fn(async () => [{ parent: { id: 'p1', email: 'p@example.test', phone: null, name: 'Parent', language: 'en' } }]) },
+      $transaction: jest.fn(async () => []),
+    }
+
+    // Minimal prisma mock used by the module
+    jest.doMock('@/lib/prisma', () => ({ prisma: prismaMock }))
+    jest.doMock('@/lib/notifications/delivery', () => ({ sendParentMilestoneNotification: sendMock }))
+
+    const { checkSessionBadges } = await import('@/lib/student/badges')
+
+    const awarded = await checkSessionBadges({ studentId: 's1', sessionId: 'sess1', currentStreak: 7, masteryAfter: 0 })
+
+    // Expect at least the 7-day streak to be awarded
+    expect(awarded.some((b: any) => b.key === 'streak_7')).toBe(true)
+    // Parent notification should be invoked
+    expect(sendMock).toHaveBeenCalled()
+  })
+})
 import { BADGE_DEFINITIONS } from '@/lib/student/badges'
 
 // Pure-logic tests: verify badge definitions are correct and complete.

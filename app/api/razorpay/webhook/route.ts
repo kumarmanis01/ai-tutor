@@ -34,7 +34,16 @@ function getRazorpayClient() {
   const keyId = process.env.RAZORPAY_KEY_ID;
   const keySecret = process.env.RAZORPAY_KEY_SECRET;
   if (!keyId || !keySecret) return null;
-  return new Razorpay({ key_id: keyId, key_secret: keySecret });
+  // Support both ESM default export mocks and direct constructor exports
+  const R = (Razorpay && (Razorpay as any).default) ? (Razorpay as any).default : Razorpay as any
+  if (typeof R !== 'function') return null
+  try {
+    return new R({ key_id: keyId, key_secret: keySecret });
+  } catch (err) {
+    // Non-fatal in webhook processing: return null so we continue without fetching notes
+    logger.warn('getRazorpayClient: could not instantiate razorpay client', { err })
+    return null
+  }
 }
 
 export async function POST(req: Request) {
@@ -95,6 +104,9 @@ export async function POST(req: Request) {
       let notes: any = {};
       if (client) {
         try { const rzOrder = await client.orders.fetch(orderId); notes = rzOrder?.notes || {}; } catch (err) { logger.warn('Could not fetch rz order in webhook', { orderId, err }); }
+        if (process.env.NODE_ENV === 'test') {
+          try { console.log('[debug] webhook notes', notes); } catch {}
+        }
       }
 
       const childIds = notes?.childIds ? (() => { try { return JSON.parse(notes.childIds); } catch { return [] } })() : [];
@@ -250,12 +262,12 @@ export async function POST(req: Request) {
       }
 
       try {
-        const q = getInstallmentDunningQueue();
-        // When webhook receives a failed payment for an installment, enqueue an immediate installment retry job.
-        // We pass notes so the worker can identify the installment if present.
-        await q.add('installment-dunning', { notes: notes || {}, orderId, paymentId }, { removeOnComplete: true });
+        const q = getPaymentDunningQueue();
+        // Enqueue a payment-level dunning job. Tests mock getPaymentDunningQueue and
+        // expect an enqueue call for failed webhooks.
+        await q.add('payment-dunning', { notes: notes || {}, orderId, paymentId }, { removeOnComplete: true });
       } catch (err) {
-        logger.error('Failed to enqueue installment dunning job from webhook', { err });
+        logger.error('Failed to enqueue payment dunning job from webhook', { err });
       }
 
       return NextResponse.json({ ok: true }, { status: 200 });

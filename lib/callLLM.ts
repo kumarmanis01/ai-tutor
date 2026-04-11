@@ -294,6 +294,11 @@ export async function callLLM({ prompt, model, meta, timeoutMs }: CallLLMArgs) {
         const respBody: any = JSON.parse(JSON.stringify(response));
         if (AI_CONTENT_DEBUG) respBody._rawText = content;
 
+        // Gate raw LLM persistence: by default we DO NOT persist full raw text
+        // unless explicitly allowed via env or caller meta flag. Persist a
+        // short snippet for auditing instead.
+        const allowRawPersistence = String(process.env.ALLOW_PERSIST_RAW_AI_OUTPUT || '').toLowerCase() === '1' || Boolean(meta?.persistRaw);
+
         // If the console-only flag is enabled, log a snippet to worker logs and
         // redact the raw text from the persisted response body so it is not stored.
         if (LOG_RAW_LLM_OUTPUT_CONSOLE_ONLY) {
@@ -311,6 +316,20 @@ export async function callLLM({ prompt, model, meta, timeoutMs }: CallLLMArgs) {
             if (respBody && typeof respBody._rawText !== 'undefined') delete respBody._rawText;
           } catch (e) {
             logger.warn('callLLM LOG_RAW_LLM_OUTPUT_CONSOLE_ONLY redaction failed', { error: String(e) })
+          }
+        }
+
+        if (!allowRawPersistence) {
+          try {
+            // Replace raw content with a short snippet for auditing so DB does not
+            // contain full LLM output unless explicitly permitted.
+            if (respBody && respBody.choices && Array.isArray(respBody.choices) && respBody.choices[0] && respBody.choices[0].message) {
+              respBody.choices[0].message.content = undefined;
+            }
+            respBody._snippet = typeof content === 'string' ? content.slice(0, 4000) : JSON.stringify(content).slice(0, 4000);
+            if (respBody && typeof respBody._rawText !== 'undefined') delete respBody._rawText;
+          } catch (e) {
+            logger.warn('callLLM redaction failed', { error: String(e) });
           }
         }
 
