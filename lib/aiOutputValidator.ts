@@ -126,7 +126,7 @@ export function validateOrThrow(parsed: any, ctx: { jobType: string, language?: 
         throw new SemanticWeaknessError('notes_too_few_sections', { got: sections.length, min: minSections })
       }
 
-      // Total content volume check
+      // Total content volume check (conservative floor)
       const totalText = sections.map(s => s.content ?? '').join(' ')
       if (totalText.trim().length < 600) throw new SemanticWeaknessError('notes_too_short')
 
@@ -143,9 +143,58 @@ export function validateOrThrow(parsed: any, ctx: { jobType: string, language?: 
         throw new SemanticWeaknessError('notes_too_few_examples')
       }
 
-      // bridgeToNext must be present and non-empty
+      // bridgeToNext must be present and non-empty (short sentence acceptable)
       if (!parsed.bridgeToNext || String(parsed.bridgeToNext).trim().length < 20) {
         throw new SemanticWeaknessError('notes_missing_bridge')
+      }
+
+      // Per-section quality checks mandated by the prompt contract
+      for (let i = 0; i < sections.length; i++) {
+        const s = sections[i] as any
+        const content = String(s.content ?? '').trim()
+        const wordCount = content.length === 0 ? 0 : content.split(/\s+/).filter(Boolean).length
+
+        // Every section must have at least one blackboard note
+        if (!Array.isArray(s.blackboardNotes) || s.blackboardNotes.length === 0) {
+          throw new SemanticWeaknessError('missing_blackboard_notes', { sectionIndex: i, sectionType: s.type })
+        }
+
+        // Content must be teacher-voice prose of reasonable length (>= 80 words)
+        if (wordCount < 80) {
+          throw new SemanticWeaknessError('section_too_short', { sectionIndex: i, sectionType: s.type, words: wordCount })
+        }
+
+        // Worked example sections require exampleSteps
+        if (s.type === 'worked_example') {
+          if (!Array.isArray(s.exampleSteps) || s.exampleSteps.length === 0) {
+            throw new SemanticWeaknessError('worked_example_missing_steps', { sectionIndex: i })
+          }
+          for (let si = 0; si < s.exampleSteps.length; si++) {
+            const step = s.exampleSteps[si]
+            if (!step || !String(step.expression || '').trim()) {
+              throw new SemanticWeaknessError('example_step_missing_expression', { sectionIndex: i, stepIndex: si })
+            }
+            if (!step || !String(step.teacherComment || '').trim()) {
+              throw new SemanticWeaknessError('example_step_missing_teacher_comment', { sectionIndex: i, stepIndex: si })
+            }
+          }
+        }
+
+        // Concept check sections must include a conceptCheck object with question/hint/answer
+        if (s.type === 'concept_check') {
+          const cc = s.conceptCheck
+          if (!cc || !String(cc.question || '').trim() || !String(cc.hint || '').trim() || !String(cc.answer || '').trim()) {
+            throw new SemanticWeaknessError('concept_check_missing', { sectionIndex: i })
+          }
+        }
+      }
+
+      // Key concepts and exam tips quality gates
+      if (!Array.isArray(parsed.keyConcepts) || parsed.keyConcepts.length < 2) {
+        throw new SemanticWeaknessError('too_few_key_concepts')
+      }
+      if (!Array.isArray(parsed.examTips) || parsed.examTips.length < 3) {
+        throw new SemanticWeaknessError('too_few_exam_tips')
       }
     } else {
       // ---- Legacy flat NoteSchema semantic checks ----
