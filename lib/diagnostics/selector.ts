@@ -117,4 +117,5 @@ export async function selectNextQuestion(session: DiagnosticSessionPayload) {
   } as const;
 }
 
-export default { selectNextQuestion };
+const DiagnosticsSelector = { selectNextQuestion };
+export default DiagnosticsSelector;

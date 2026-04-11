@@ -1,4 +1,5 @@
 import OpenAI from 'openai'
+import { logger } from '@/lib/logger'
 
 let _openai: OpenAI | null = null
 function getClient(): OpenAI {
@@ -25,8 +26,7 @@ export async function getEmbedding(text: string): Promise<number[] | null> {
     if (!embedding || !Array.isArray(embedding)) return null
     return embedding
   } catch (err) {
-    // eslint-disable-next-line no-console
-    console.error('[embeddings] getEmbedding failed:', err)
+    logger.error('[embeddings] getEmbedding failed', { error: err })
     return null
   }
 }
@@ -55,8 +55,7 @@ export async function getEmbeddingsBatch(
         results.push(...response.data.map((d) => d.embedding ?? null))
       }
     } catch (err) {
-      // eslint-disable-next-line no-console
-      console.error(`[embeddings] batch ${i}-${i + batchSize} failed:`, err)
+      logger.error(`[embeddings] batch ${i}-${i + batchSize} failed`, { error: err })
       results.push(...batch.map(() => null))
     }
     if (i + batchSize < texts.length) {

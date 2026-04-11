@@ -1,12 +1,14 @@
-/// FILE OBJECTIVE:
-/// - Prisma schema defining application models for the project.
-///
-/// LINKED UNIT TEST:
-/// - tests/unit/prisma/schema.spec.ts
-///
-/// EDIT LOG:
-/// - 2026-02-21T00:00:00Z | copilot | added student learning profile fields
-/// - 2026-03-07T00:00:00Z | Manish Kumar | add OVERVIEW to SessionPhase; SESSION_OVERVIEW_VIEWED to SessionEventType
+// FILE OBJECTIVE:
+// - Prisma schema defining application models for the project.
+//
+// LINKED UNIT TEST:
+// - tests/unit/prisma/schema.spec.ts
+//
+// EDIT LOG:
+// - 2026-02-21T00:00:00Z | copilot | added student learning profile fields
+// - 2026-03-07T00:00:00Z | Manish Kumar | add OVERVIEW to SessionPhase; SESSION_OVERVIEW_VIEWED to SessionEventType
+// - 2026-04-10T00:00:00Z | copilot | add PaymentCustomer & PaymentMethod models for stored payment methods
+// - 2026-04-09T00:00:00Z | copilot | add excludeFromParentReport to ParentStudent
 generator client {
   provider = "prisma-client-js"
 }
@@ -24,17 +26,14 @@ model User {
   emailVerified               DateTime?
   image                       String?
   parentEmail                 String?
-  /// Parent email OTP verified at (under-18 gate).
+  // Parent email OTP verified at (under-18 gate).
   parentVerifiedAt            DateTime?
   /// When true, student must complete parent verification regardless of age.
   requiresParentVerification  Boolean                      @default(false)
-  /// Self-reported age (integer). Used for under-13 / under-18 parent verification gates.
+  // Self-reported age (integer). Used for under-13 / under-18 parent verification gates.
   age                         Int?
-  /// Parent phone used for under-13 verification (not unique; families can share).
-  parentPhone                 String?
-  parentPhoneVerifiedAt       DateTime?
-  /// Account activation state (e.g. pending parent verification for under-13).
-  accountStatus               AccountStatus                @default(active)
+  // Parent phone used for under-13 verification (not unique; families can share).
+  
   role                        UserRole                     @default(user)
   country                     String?
   language                    LanguageCode
@@ -42,14 +41,14 @@ model User {
   board                       String?
   subjects                    String[]                     @default([])
   points                      Int                          @default(0)
-  /// Cumulative XP for level progression (1–10).
+  // Cumulative XP for level progression (1-10).
   totalXp                     Int                          @default(0)
-  /// Current level derived from totalXp (1–10).
+  // Current level derived from totalXp (1-10).
   level                       Int                          @default(1)
-  /// Consecutive days with ≥1 learning session.
+  // Consecutive days with >=1 learning session.
   currentStreak               Int                          @default(0)
   longestStreak               Int                          @default(0)
-  /// Date of last completed session (date-only; time ignored).
+  // Date of last completed session (date-only; time ignored).
   lastSessionDate             DateTime?
   welcomeEmailSent            Boolean                      @default(false)
   passwordHash                String?
@@ -75,6 +74,10 @@ model User {
   parentRelations             ParentStudent[]              @relation("ParentRelations")
   studentRelations            ParentStudent[]              @relation("StudentRelations")
   payments                    Payment[]
+  invoices                    Invoice[]
+  // Stored payment customers and methods for this user
+  paymentCustomers            PaymentCustomer[]
+  paymentMethods              PaymentMethod[]
   phoneOtps                   PhoneOtp[]
   referralsCreated            Referral[]                   @relation("ReferralCreator")
   redeemedReferrals           Referral[]                   @relation("ReferralRedeemer")
@@ -128,6 +131,7 @@ model PaymentOrder {
   amount          Int
   currency        String    @default("INR")
   status          String    @default("created")
+  providerIdempotencyKey String?
   planMonths      Int       @default(1)
   createdAt       DateTime  @default(now())
   paidAt          DateTime?
@@ -376,14 +380,52 @@ model Subscription {
   billingCycle String /// monthly, annual
   startDate    DateTime
   endDate      DateTime
+  /// Credit balance in paise to apply on future invoices (prorated refunds/store credit)
+  creditBalance Int      @default(0)
   active       Boolean  @default(false)
   childSlots   Int      @default(1) /// number of child accounts included
+  /// JSON meta for subscription: { childIds: string[] } etc.
+  meta         Json?
+  /// Dunning state: number of retry attempts performed (0..3)
+  dunningAttempts Int    @default(0)
+  lastDunningAt    DateTime?
+  /// If set, subscription remains active until this timestamp while parent is in grace period
+  graceUntil       DateTime?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
   paymentId    String?
   user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  // Installments linked to this subscription (one-to-many)
+  installments  Installment[]
+
   @@index([userId])
+}
+
+model Installment {
+  id                  String            @id @default(cuid())
+  subscriptionId      String
+  subscription        Subscription      @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+  number              Int               // installment index (1..n)
+  dueAt               DateTime
+  amount              Int               // amount in paise
+  currency            String            @default("INR")
+  status              InstallmentStatus @default(PENDING)
+  provider            String?           // e.g. 'razorpay'
+  providerPaymentId   String?           // provider payment/transaction id when paid
+  paymentId           String?           // local Payment.id when reconciled
+  attemptCount        Int               @default(0)
+  lastAttemptAt       DateTime?
+  paidAt              DateTime?
+  meta                Json?
+  createdAt           DateTime          @default(now())
+  updatedAt           DateTime          @updatedAt
+
+  payment             Payment?          @relation(fields: [paymentId], references: [id], onDelete: SetNull)
+
+  @@index([subscriptionId])
+  @@index([dueAt])
+  @@unique([subscriptionId, number])
 }
 
 /// Parent-defined controls per child: screen time, subject toggles, focus mode
@@ -396,6 +438,11 @@ model ParentChildControl {
   focusMode         String   @default("balanced") /// balanced, exam_prep, concept_focus
   studyHoursStart   String? /// e.g. "09:00" (24h format)
   studyHoursEnd     String? /// e.g. "21:00"
+  /// Pause controls set by parent: when true, sessions during pause do not count
+  /// against free-tier limits. `pausedUntil` is optional — null => paused indefinitely.
+  isPaused          Boolean  @default(false)
+  pausedUntil       DateTime?
+  pauseReason       String?
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
 
@@ -467,6 +514,7 @@ model Payment {
   userId        String
   amount        Int
   provider      String
+  providerIdempotencyKey String?
   status        String
   createdAt     DateTime @default(now())
   transactionId String?
@@ -475,6 +523,104 @@ model Payment {
   billingCycle  String?
   meta          Json?
   user          User     @relation(fields: [userId], references: [id])
+  invoice       Invoice?
+  // Link back to installments paid by this payment
+  installments  Installment[]
+  // Payment events/audit traces
+  events        PaymentEvent[]
+  @@unique([provider, providerIdempotencyKey], map: "uniq_payment_provider_idempotency")
+}
+
+/// PaymentEvent: immutable audit/events for payment lifecycle and gateway/webhook traces.
+model PaymentEvent {
+  id                       String   @id @default(cuid())
+  paymentId                String?  // optional link to Payment
+  userId                   String?
+  provider                 String   // e.g. 'razorpay' | 'credit' | 'stripe'
+  providerIdempotencyKey   String?
+  transactionId            String?
+  orderId                  String?
+  eventType                String   // e.g. 'order.created','charge.attempt','charge.succeeded','webhook.received'
+  payload                  Json?
+  amount                   Int?
+  status                   String?
+  createdAt                DateTime @default(now())
+
+  payment  Payment? @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+
+  @@index([provider, providerIdempotencyKey])
+  @@index([paymentId])
+  @@index([userId])
+}
+
+
+model PaymentCustomer {
+  id                   String   @id @default(cuid())
+  userId               String
+  provider             String   // e.g. 'razorpay'
+  providerCustomerId   String?  @unique
+  meta                 Json?
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+  paymentMethods       PaymentMethod[] @relation("CustomerPaymentMethods")
+  user                 User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([provider])
+}
+
+model PaymentMethod {
+  id                       String   @id @default(cuid())
+  userId                   String
+  customerId               String?
+  provider                 String
+  providerPaymentMethodId  String?  @unique
+  type                     String   // 'card' | 'upi' | 'netbanking'
+  last4                    String?
+  cardBrand                String?
+  expiryMonth              Int?
+  expiryYear               Int?
+  isDefault                Boolean  @default(false)
+  verified                 Boolean  @default(false)
+  meta                     Json?
+  createdAt                DateTime @default(now())
+  updatedAt                DateTime @updatedAt
+
+  user     User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  customer PaymentCustomer? @relation("CustomerPaymentMethods", fields: [customerId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([provider])
+}
+
+/// Invoice sequence used to allocate sequential invoice numbers.
+model InvoiceSequence {
+  id         String   @id
+  lastNumber Int      @default(0)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
+/// GST-compliant invoice record. The PDF is stored in object storage
+/// and referenced by `fileUrl`.
+model Invoice {
+  id            String   @id @default(cuid())
+  invoiceNumber Int      @unique
+  userId        String
+  paymentId     String?   @unique
+  studentId     String?
+  amount        Int
+  currency      String   @default("INR")
+  hsnCode       String?
+  gstin         String?
+  taxBreakdown  Json?
+  fileUrl       String?
+  createdAt     DateTime @default(now())
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  payment Payment? @relation(fields: [paymentId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
 }
 
 model AuditLog {
@@ -638,7 +784,18 @@ model ParentStudent {
   studentId  String
   status     ParentLinkStatus @default(active)
   inviteCode String?          @unique
+  /// Pause controls set by parent: when true, sessions during pause do not count
+  /// against free-tier limits. `pausedUntil` is optional — null => paused indefinitely.
+  isPaused    Boolean  @default(false)
+  /// When true, this student will be excluded from parent-facing reports/digests
+  /// (used for privacy / opt-out per child). Defaults to false.
+  excludeFromParentReport Boolean @default(false)
+  /// Per-child opt-out for inactivity alerts (parent can mute inactivity alerts for this child)
+  inactivityOptOut Boolean @default(false)
+  pausedUntil DateTime?
+  pauseReason String?
   createdAt  DateTime         @default(now())
+  updatedAt  DateTime         @updatedAt
   parent     User             @relation("ParentRelations", fields: [parentId], references: [id], onDelete: Cascade)
   student    User             @relation("StudentRelations", fields: [studentId], references: [id], onDelete: Cascade)
 
@@ -1466,6 +1623,21 @@ model Outbox {
   @@index([queue, sentAt])
 }
 
+/// Parent-facing notification audit record for compliance and "last alert sent" views
+model ParentNotification {
+  id         String   @id @default(cuid())
+  parentId   String
+  studentId  String?  
+  type       String   // 'inactivity' | 'digest' | 'milestone'
+  channel    String   // 'email' | 'sms' | 'whatsapp' | 'unknown'
+  subject    String?
+  body       Json?
+  sentAt     DateTime @default(now())
+  createdAt  DateTime @default(now())
+
+  @@index([parentId, sentAt])
+}
+
 /// Dead-letter table for outbox rows that exceed MAX_ATTEMPTS (RISK-04).
 model OutboxDeadLetter {
   id               String   @id @default(cuid())
@@ -2214,6 +2386,13 @@ model ParentProfile {
   userId    String   @unique
   createdAt DateTime @default(now())
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// Parent digest preferences
+  digestOptOut   Boolean  @default(false)
+  /// Parent-level opt-out for inactivity alerts (separate from weekly digest)
+  inactivityOptOut Boolean @default(false)
+  digestDay      String   @default("Sunday") // e.g., "Sunday", "Monday"
+  digestTime     String   @default("09:00") // 24h HH:mm in parent's timezone
+  digestTimezone String?  // IANA timezone (e.g., "Asia/Kolkata"); null => use `User.timezone` or UTC
 }
 
 /// DPDP right-to-erasure: one row per user, created on deletion request.
@@ -2264,6 +2443,14 @@ enum FlagReason {
   OFF_TOPIC
   TOO_EASY
   TOO_HARD
+}
+
+/// Installment lifecycle for EMI payments (per-subscription)
+enum InstallmentStatus {
+  PENDING
+  PAID
+  FAILED
+  CANCELLED
 }
 
 /// Student flag on a session question (from the AI pipeline Question bank).

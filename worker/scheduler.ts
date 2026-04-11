@@ -13,12 +13,14 @@
  *
  * EDIT LOG:
  * - 2026-02-01 | claude | created scheduler for ignored recommendations job
+ * - 2026-04-11T07:54:52Z | copilot | fix: remove non-existent 'accountStatus' from Prisma UserWhereInput
  */
 
 import { logger } from '../lib/logger.js';
 import { markIgnoredRecommendations, cleanupOldIgnoredRecommendations } from './jobs/markIgnoredRecommendations.js';
 import { aggregateWeeklySummaries } from './jobs/weeklyParentSummary.js';
 import { sendParentDigests } from './jobs/parentEmailDigest.js';
+import { runInactivityAlerts } from './jobs/inactivityAlert.js';
 import { runRecoveryCheck } from '../lib/failureRecovery.js'
 import { precomputeReadiness } from './jobs/precomputeReadiness.js';
 import { expireStaleTasks } from '../lib/dailyHabit.js';
@@ -182,7 +184,6 @@ async function runInactivityPush(): Promise<void> {
   const inactiveDay2 = await prisma.user.findMany({
     where: {
       role: 'user',
-      accountStatus: 'active',
       lastSessionDate: { gte: threeDaysAgo, lt: twoDaysAgo },
     },
     select: { id: true, currentStreak: true },
@@ -195,7 +196,6 @@ async function runInactivityPush(): Promise<void> {
   const inactiveDay3 = await prisma.user.findMany({
     where: {
       role: 'user',
-      accountStatus: 'active',
       lastSessionDate: { gte: fourDaysAgo, lt: threeDaysAgo },
     },
     select: { id: true },
@@ -317,6 +317,11 @@ async function runDailyMaintenanceJob() {
     // Run failure recovery check
     const recoveryEvents = await runRecoveryCheck();
     logger.info('scheduler.dailyMaintenance.recoveryCheck', { recoveryEvents });
+
+    // Run parent inactivity alerts (email / SMS)
+    logger.info('scheduler.parentInactivityAlerts.starting');
+    const parentAlerts = await runInactivityAlerts();
+    logger.info('scheduler.parentInactivityAlerts.completed', { sent: parentAlerts });
 
     // ── Push: inactivity reminders ──────────────────────────────────────
     await runInactivityPush();

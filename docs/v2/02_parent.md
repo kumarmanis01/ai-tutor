@@ -278,6 +278,13 @@ MUST
 AC-03
 Alert includes a direct deep-link to open the app at the student's next planned session (for platforms that support deep links in email/SMS).
 SHOULD
+AC-03.1
+Deep-link behaviour: inactivity alerts include a parameterised deep-link to open the app at the student's next planned session using `?focus=next&itemId=<id>` when available. Mobile and web clients should parse `focus`/`itemId` and navigate to the corresponding session or highlight the next plan item.
+SHOULD
+
+AC-03.2
+Reset semantics: when the student takes any qualifying activity (session completion or revision threshold), any active inactivity suppression keys are cleared so that the inactivity alert window resets immediately and future alerts may be sent again per policy.
+SHOULD
 AC-04
 Maximum 1 inactivity alert per 3-day period. No spam. If student studies after first alert, alert resets.
 MUST

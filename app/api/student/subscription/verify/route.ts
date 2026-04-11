@@ -11,12 +11,14 @@ import { NextResponse } from 'next/server';
 import crypto from 'crypto';
 import { getServerSessionForHandlers } from '@/lib/session';
 import { prisma } from '@/lib/prisma';
+import type { Prisma } from '@prisma/client';
 import { logger } from '@/lib/logger';
 import { sendEmail } from '@/lib/mailer';
 import { paymentReceiptHtml } from '@/lib/email/templates';
 import { sendSms } from '@/lib/sms';
 import { PLANS } from '@/lib/subscription/plans';
 import type { PlanId } from '@/lib/subscription/plans';
+import { createInvoiceForPayment } from '@/lib/invoices';
 
 function verifySignature(orderId: string, paymentId: string, signature: string): boolean {
   const secret = process.env.RAZORPAY_KEY_SECRET;
@@ -66,7 +68,7 @@ export async function POST(req: Request) {
   // Cross-check order belongs to this student
   const order = await prisma.paymentOrder.findUnique({
     where: { razorpayOrderId: orderId },
-    select: { studentId: true, status: true, planMonths: true },
+    select: { studentId: true, status: true, planMonths: true, providerIdempotencyKey: true },
   });
   if (!order || order.studentId !== userId) {
     return NextResponse.json({ error: 'Order not found' }, { status: 403 });
@@ -78,28 +80,55 @@ export async function POST(req: Request) {
   expiry.setMonth(expiry.getMonth() + plan.durationMonths);
 
   try {
-    // Idempotent transaction
-    await prisma.$transaction(async (tx) => {
-      if (order.status !== 'paid') {
-        await tx.paymentOrder.update({
-          where: { razorpayOrderId: orderId },
-          data: { status: 'paid', paidAt: now },
+    // Idempotent transaction: update order, activate subscription and create Payment
+    let _createdPayment: { id: string } | null = null;
+    try {
+      _createdPayment = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+        if (order.status !== 'paid') {
+          await tx.paymentOrder.update({
+            where: { razorpayOrderId: orderId },
+            data: { status: 'paid', paidAt: now },
+          });
+        }
+
+        await tx.user.update({
+          where: { id: userId },
+          data: { subscriptionStatus: 'active', subscriptionExpiry: expiry },
         });
-      }
 
-      await tx.user.update({
-        where: { id: userId },
-        data: { subscriptionStatus: 'active', subscriptionExpiry: expiry },
+        await tx.freeTierUsage
+          .upsert({
+            where: { studentId: userId },
+            update: { periodStart: now, sessionsUsed: 0 },
+            create: { studentId: userId, periodStart: now, sessionsUsed: 0 },
+          })
+          .catch((err) => { logger.warn('freeTierUsage.upsert failed', { event: 'subscription.verify.upsert', context: { userId }, error: String(err) }) });
+
+        // Create a Payment record to persist transaction metadata
+        const payment = await tx.payment.create({
+          data: {
+            userId,
+            amount: order.amount,
+            provider: 'razorpay',
+            providerIdempotencyKey: order.providerIdempotencyKey ?? undefined,
+            status: 'success',
+            transactionId: paymentId,
+            orderId: orderId,
+            plan: plan.label,
+            billingCycle: plan.perMonthDisplay,
+            meta: { planId },
+          },
+        });
+
+        // Audit event for subscription activation payment
+        await recordPaymentEvent(tx, { paymentId: payment.id, userId, provider: 'razorpay', providerIdempotencyKey: order.providerIdempotencyKey ?? undefined, transactionId: paymentId, orderId, eventType: 'payment.subscription_verified', amount: order.amount, status: 'success', payload: { planId } })
+
+        return { id: payment.id };
       });
-
-      await tx.freeTierUsage
-        .upsert({
-          where: { studentId: userId },
-          update: { periodStart: now, sessionsUsed: 0 },
-          create: { studentId: userId, periodStart: now, sessionsUsed: 0 },
-        })
-        .catch(() => {});
-    });
+    } catch (err) {
+      logger.error('Failed to activate subscription', { event: 'subscription.verify.activate_error', context: { userId, orderId }, err });
+      return NextResponse.json({ error: 'Could not activate subscription' }, { status: 500 });
+    }
   } catch (err) {
     logger.error('Failed to activate subscription', { event: 'subscription.verify.activate_error', context: { userId, orderId }, err });
     return NextResponse.json({ error: 'Could not activate subscription' }, { status: 500 });
@@ -117,25 +146,60 @@ export async function POST(req: Request) {
 
   // Send receipt email -- non-blocking, never throws to caller
   if (user?.email) {
-    sendEmail({
-      to: user.email,
-      subject: 'Payment confirmed -- Spinzy Academy',
-      html: paymentReceiptHtml({
-        studentName: user.name ?? 'Student',
-        plan: plan.label,
-        amountRupees: plan.billedRupees,
+      try {
+      // Create invoice PDF, attach to email and upload to R2 (best-effort)
+      const invoiceResult = await createInvoiceForPayment({
+        userId,
+        paymentId: _createdPayment?.id,
+        studentId: order.studentId,
+        amountPaise: order.amount,
+        planLabel: plan.label,
         billingCycle: plan.perMonthDisplay,
-        renewalDate,
-      }),
-    }).catch((err) => {
-      logger.error('Receipt email failed', { event: 'subscription.verify.email_error', context: { userId }, err });
-    });
+      });
+
+      await sendEmail({
+        to: user.email,
+        subject: 'Payment confirmed -- Spinzy Academy',
+        html: paymentReceiptHtml({
+          studentName: user.name ?? 'Student',
+          plan: plan.label,
+          amountRupees: plan.billedRupees,
+          billingCycle: plan.perMonthDisplay,
+          renewalDate,
+        }),
+        attachments: [
+          {
+            filename: `invoice-${invoiceResult.invoiceNumber}.pdf`,
+            content: invoiceResult.pdfBuffer,
+            contentType: 'application/pdf',
+          },
+        ],
+      } as any).catch((err: unknown) => {
+        logger.error('Receipt email failed', { event: 'subscription.verify.email_error', context: { userId }, err });
+      });
+      } catch (err: unknown) {
+      logger.error('Invoice generation/email failed', { event: 'subscription.verify.invoice_error', context: { userId, orderId }, err });
+      // Fallback: send receipt without attachment
+      sendEmail({
+        to: user.email,
+        subject: 'Payment confirmed -- Spinzy Academy',
+        html: paymentReceiptHtml({
+          studentName: user.name ?? 'Student',
+          plan: plan.label,
+          amountRupees: plan.billedRupees,
+          billingCycle: plan.perMonthDisplay,
+          renewalDate,
+        }),
+      }).catch((err2: unknown) => {
+        logger.error('Receipt email fallback failed', { event: 'subscription.verify.email_error', context: { userId }, err: err2 });
+      });
+    }
   }
 
   // Send receipt SMS -- non-blocking
   if (user?.phone) {
     const smsText = `Hi ${user.name ?? ''}! Your Spinzy ${plan.label} plan is active. Happy learning! - Team Spinzy`;
-    sendSms(user.phone, smsText).catch((err) => {
+    sendSms(user.phone, smsText).catch((err: unknown) => {
       logger.error('Receipt SMS failed', { event: 'subscription.verify.sms_error', context: { userId }, err });
     });
   }

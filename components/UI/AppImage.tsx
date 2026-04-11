@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import { logger } from '@/lib/logger';
 import Image from 'next/image';
 
 interface AppImageProps {
@@ -87,8 +88,8 @@ function AppImage({
               if (typeof onLoadingComplete === 'function') {
                 try {
                   onLoadingComplete(e.currentTarget as HTMLImageElement);
-                } catch {
-                  // swallow legacy handler errors
+                } catch (err) {
+                  logger.warn('onLoadingComplete threw', { component: 'AppImage', error: err });
                 }
               }
             }}
@@ -113,8 +114,8 @@ function AppImage({
           if (typeof onLoadingComplete === 'function') {
             try {
               onLoadingComplete(e.currentTarget as HTMLImageElement);
-            } catch {
-              /* ignore */
+            } catch (err) {
+              logger.warn('onLoadingComplete threw', { component: 'AppImage', error: err });
             }
           }
         }}
@@ -143,8 +144,8 @@ function AppImage({
       if (typeof onLoadingComplete === 'function') {
         try {
           onLoadingComplete(e.currentTarget as HTMLImageElement);
-        } catch {
-          /* ignore */
+        } catch (err) {
+          logger.warn('onLoadingComplete threw', { component: 'AppImage', error: err });
         }
       }
     },

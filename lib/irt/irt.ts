@@ -61,4 +61,5 @@ export function thetaToPlacement(theta: number): GradePlacement {
   return 'at';
 }
 
-export default { p3pl, fisherInfo, eapEstimate, thetaToPlacement };
+const IRT = { p3pl, fisherInfo, eapEstimate, thetaToPlacement };
+export default IRT;

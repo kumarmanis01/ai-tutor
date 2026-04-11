@@ -43,36 +43,36 @@ export default async function ParentProgressDetailPage({
   })
   if (!link || link.status !== 'active') notFound()
 
-  const monday = (() => {
-    const now = new Date()
-    const dow = now.getUTCDay()
-    const d = new Date(now)
-    d.setUTCDate(now.getUTCDate() - (dow === 0 ? 6 : dow - 1))
-    d.setUTCHours(0, 0, 0, 0)
-    return d
-  })()
+  // 30-day heatmap + last-10 sessions
+  const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000
+  const thirtyDaysAgo = new Date(Date.now() - THIRTY_DAYS_MS)
 
-  // ── Load student data (no transcript content) ──────────────────────────
-  const [student, sessions, subjectDefs] = await Promise.all([
+  // ── Load student data, recent sessions (30d for heatmap + last 10 for list), and subjects ──
+  const [student, sessions30, recentSessions, subjectDefs] = await Promise.all([
     prisma.user.findUnique({
       where: { id: studentId },
       select: { name: true, grade: true, board: true, subjects: true },
     }),
-    // Sessions last 7 days -- NO message/transcript fields
+    // Sessions in the last 30 days (for heatmap)
     prisma.structuredSession.findMany({
-      where: {
-        studentId,
-        startedAt: { gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) },
-      },
+      where: { studentId, startedAt: { gte: thirtyDaysAgo } },
+      select: { startedAt: true },
+      orderBy: { startedAt: 'desc' },
+      take: 500,
+    }),
+    // Last 10 sessions for the recent activity list (no transcript content)
+    prisma.structuredSession.findMany({
+      where: { studentId },
       select: {
         id: true,
         startedAt: true,
         completedAt: true,
         state: true,
+        topicId: true,
         topic: { select: { name: true, chapter: { select: { name: true, subject: { select: { name: true } } } } } },
       },
       orderBy: { startedAt: 'desc' },
-      take: 50,
+      take: 10,
     }),
     // resolve subjects
     (async () => {
@@ -102,10 +102,36 @@ export default async function ParentProgressDetailPage({
     }),
   )
 
-  // ── Format sessions for component (no transcript) ──────────────────────
-  const formattedSessions = sessions.map((s) => ({
+  // ── Build heatmap counts (30 days) ───────────────────────────────────
+  const countByDate: Record<string, number> = {}
+  for (const s of sessions30) {
+    const key = s.startedAt.toISOString().split('T')[0]
+    countByDate[key] = (countByDate[key] ?? 0) + 1
+  }
+
+  const now = new Date()
+  const heatmapDays = Array.from({ length: 30 }, (_, i) => {
+    const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()))
+    d.setUTCDate(d.getUTCDate() - (29 - i))
+    const key = d.toISOString().split('T')[0]
+    return { date: key, count: countByDate[key] ?? 0 }
+  })
+
+  // ── Resolve per-topic progress for the recent sessions (used to surface a mastery indicator) ──
+  const topicIds = Array.from(new Set(recentSessions.map((s) => s.topicId).filter(Boolean)))
+  const progresses = topicIds.length
+    ? await prisma.studentTopicProgress.findMany({
+        where: { studentId, topicId: { in: topicIds } },
+        select: { topicId: true, mastery: true, lastStudiedAt: true },
+      })
+    : []
+  const progressMap = new Map(progresses.map((p) => [p.topicId, p]))
+
+  // ── Format the last-10 sessions for the component (no transcript) ──────
+  const formattedSessions = recentSessions.map((s) => ({
     id: s.id,
     date: s.startedAt.toISOString(),
+    topicId: s.topicId,
     topicName: s.topic?.name ?? '',
     subjectName: s.topic?.chapter?.subject?.name ?? '',
     chapterName: s.topic?.chapter?.name ?? '',
@@ -113,6 +139,7 @@ export default async function ParentProgressDetailPage({
       ? Math.round((s.completedAt.getTime() - s.startedAt.getTime()) / 60_000)
       : null,
     completed: s.state === 'COMPLETE',
+    masteryAfter: progressMap.get(s.topicId as string)?.mastery ?? null,
   }))
 
   return (

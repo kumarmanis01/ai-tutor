@@ -48,6 +48,7 @@ export async function POST(req: Request) {
     logger.logAPI(req, res, { className: 'DiagnosticResumeAPI', methodName: 'POST' }, start);
     return res;
   } catch (err) {
+    logger.warn('diagnostic.resume failed', { error: String(err) })
     const res = NextResponse.json({ error: 'Failed to resume' }, { status: 500 });
     logger.logAPI(req, res, { className: 'DiagnosticResumeAPI', methodName: 'POST' }, start);
     return res;

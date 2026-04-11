@@ -100,20 +100,6 @@ function ContentStatusBadge({ status }: { status: ContentStatus }) {
 // Progress bar
 // ---------------------------------------------------------------------------
 
-function ProgressBar({ completed, expected }: { completed: number; expected: number }) {
-  const pct = expected > 0 ? Math.min(100, Math.round((completed / expected) * 100)) : 0
-  return (
-    <div className="flex items-center gap-1.5 text-[10px] text-gray-500">
-      <div className="w-16 h-1.5 rounded-full bg-gray-200 dark:bg-gray-700 overflow-hidden">
-        <div
-          className="h-full rounded-full bg-[#534AB7] transition-all"
-          style={{ width: `${pct}%` }}
-        />
-      </div>
-      <span>{completed}/{expected}</span>
-    </div>
-  )
-}
 
 // ---------------------------------------------------------------------------
 // Action buttons row per coverage row

@@ -17,9 +17,12 @@
  */
 
 import React, { useState, useCallback } from 'react';
+import { logger } from '@/lib/logger';
 import PlanSelector from './PlanSelector';
 import PaymentMethodSelector from './PaymentMethodSelector';
 import PaymentConfirmation from './PaymentConfirmation';
+import AddCard from './AddCard';
+import SavedPaymentMethods from './SavedPaymentMethods';
 import type { PlanId } from '@/lib/subscription/plans';
 import type { PaymentMethod } from './PaymentMethodSelector';
 
@@ -55,7 +58,8 @@ export function UpgradeFlow({ studentName, studentEmail, freeTierUsage }: Upgrad
   const handleDismiss = useCallback(async () => {
     try {
       await fetch('/api/student/subscription/dismiss', { method: 'POST' });
-    } catch {
+    } catch (err) {
+      logger.warn('handleDismiss failed', { component: 'UpgradeFlow', methodName: 'handleDismiss', error: String(err) });
       // non-blocking -- dismiss is UX-only
     }
     // Reload so dashboard shows banner instead of gate
@@ -235,6 +239,15 @@ export function UpgradeFlow({ studentName, studentEmail, freeTierUsage }: Upgrad
     return (
       <div className="rounded-2xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-5 py-6 space-y-5">
         <PaymentMethodSelector selected={method} onSelect={setMethod} />
+        {/* When user chooses card, surface saved methods and AddCard flow */}
+        {method === 'card' && (
+          <div className="pt-3">
+            <SavedPaymentMethods />
+            <div className="mt-3">
+              <AddCard email={studentEmail ?? undefined} />
+            </div>
+          </div>
+        )}
         <button
           type="button"
           onClick={() => setStep('confirm')}

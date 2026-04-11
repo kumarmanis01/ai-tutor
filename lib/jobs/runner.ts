@@ -2,6 +2,7 @@ import { listJobs, JobDefinition } from '@/lib/jobs/registry'
 import logAuditEvent from '@/lib/audit/log'
 import { prisma } from '@/lib/prisma'
 import { recordJobStart, recordJobSuccess, recordJobFailure } from '@/lib/metrics/jobs'
+import { logger } from '@/lib/logger'
 
 function stringToIntLock(s: string): number {
   let h = 2166136261 >>> 0
@@ -45,11 +46,11 @@ export async function runJob(job: JobDefinition): Promise<{ skipped?: true; dura
 
   // START audit + metrics
   logAuditEvent(prisma, { targetEntity: 'System', targetId: job.name, action: null, details: { legacyAction: 'JOB_RUN', status: 'STARTED', timestamp: new Date().toISOString() } })
-  try { recordJobStart(job.name) } catch {}
+  try { recordJobStart(job.name) } catch (err: any) { logger.warn('recordJobStart failed', { job: job.name, err: (err && err.message) || err }) }
 
   try {
     if (process.env.JOB_DRY_RUN === '1') {
-      try { const logger = (await import('@/lib/logger')).logger; logger?.info?.('job-runner: dry-run', { job: job.name }) } catch {}
+      try { logger.info('job-runner: dry-run', { job: job.name }) } catch (err: any) { logger.warn('job-runner: dry-run logging failed', { job: job.name, err: (err && err.message) || err }) }
       logAuditEvent(prisma, { targetEntity: 'System', targetId: job.name, action: null, details: { legacyAction: 'JOB_RUN', status: 'DRY_RUN' } })
       return
     }
@@ -62,13 +63,13 @@ export async function runJob(job: JobDefinition): Promise<{ skipped?: true; dura
 
     const durationMs = Date.now() - start
     logAuditEvent(prisma, { targetEntity: 'System', targetId: job.name, action: null, details: { legacyAction: 'JOB_RUN', status: 'SUCCESS', durationMs } })
-    try { recordJobSuccess(job.name, durationMs) } catch {}
+    try { recordJobSuccess(job.name, durationMs) } catch (err: any) { logger.warn('recordJobSuccess failed', { job: job.name, durationMs, err: (err && err.message) || err }) }
     return
   } catch (err: any) {
     const durationMs = Date.now() - start
     const message = String(err?.message ?? err)
     logAuditEvent(prisma, { targetEntity: 'System', targetId: job.name, action: null, details: { legacyAction: 'JOB_RUN', status: message === 'timeout' ? 'TIMED_OUT' : 'FAILED', error: message, durationMs } })
-    try { recordJobFailure(job.name, message) } catch {}
+    try { recordJobFailure(job.name, message) } catch (err: any) { logger.warn('recordJobFailure failed', { job: job.name, message, err: (err && err.message) || err }) }
     // Emit an alert for job failures (best-effort; router handles dedupe/rate-limit)
     try {
       const router = (global as any).alertRouter
@@ -77,14 +78,14 @@ export async function runJob(job: JobDefinition): Promise<{ skipped?: true; dura
         await router.route({ title: `JOB_FAILED: ${job.name}`, message: message, severity, timestamp: new Date().toISOString() })
       }
     } catch (e) {
-      try { const logger = (await import('@/lib/logger')).logger; logger?.warn?.('job-runner: alert routing failed', { job: job.name, err: String(e) }) } catch {}
+      try { logger.warn('job-runner: alert routing failed', { job: job.name, err: String(e) }) } catch (err: any) { logger.warn('job-runner: alert routing failed to log', { job: job.name, err: (err && err.message) || err }) }
     }
     throw err
   } finally {
     try {
       await (prisma as any).$executeRawUnsafe(`SELECT pg_advisory_unlock(${lockId})`)
     } catch (e) {
-      try { const logger = (await import('@/lib/logger')).logger; logger?.warn?.('job-runner: failed to release advisory lock', { job: job.name, err: String(e) }) } catch {}
+      try { logger.warn('job-runner: failed to release advisory lock', { job: job.name, err: String(e) }) } catch (err: any) { logger.warn('job-runner: failed to release advisory lock and failed to log', { job: job.name, err: (err && err.message) || err }) }
     }
   }
 }
@@ -95,7 +96,8 @@ export async function runAllRegistered(): Promise<Record<string, { skipped?: tru
   for (const j of entries) {
     try {
       out[j.name] = await runJob(j)
-    } catch {
+    } catch (err: any) {
+      logger.warn('runAllRegistered: job failed', { job: j.name, err: (err && err.message) || err })
       out[j.name] = { skipped: false as any }
     }
   }

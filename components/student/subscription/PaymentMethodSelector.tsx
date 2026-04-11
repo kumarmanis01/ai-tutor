@@ -58,7 +58,7 @@ export function PaymentMethodSelector({ selected, onSelect }: PaymentMethodSelec
               key={m.id}
               type="button"
               onClick={() => onSelect(m.id)}
-              aria-pressed={isSelected}
+              aria-pressed={isSelected ? 'true' : 'false'}
               className={[
                 'w-full text-left rounded-xl border px-4 py-3 min-h-[44px] flex items-center gap-3 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#534AB7]',
                 isSelected

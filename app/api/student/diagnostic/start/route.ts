@@ -95,6 +95,7 @@ export async function POST(req: Request) {
     logger.logAPI(req, res, { className: 'DiagnosticStartAPI', methodName: 'POST' }, start);
     return res;
   } catch (err) {
+    logger.warn('diagnostic.start failed', { error: String(err) })
     const res = NextResponse.json({ error: 'Failed to start diagnostic' }, { status: 500 });
     logger.logAPI(req, res, { className: 'DiagnosticStartAPI', methodName: 'POST' }, start);
     return res;

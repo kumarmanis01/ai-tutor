@@ -13,6 +13,9 @@
  *   ⑦ Input bar       -- auto-resize textarea + circular send button (sticky)
  *
  * Copy rules: no "broke/missed/failed" -- forward-looking tone only.
+ *
+ * EDIT LOG:
+ * - 2026-04-07 | claude | fix: add object-cover to Vidya avatar image to prevent stretching in chat messages
  */
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
@@ -258,7 +261,7 @@ function AiMessageBubble({
             alt="Vidya"
             width={32}
             height={32}
-            className="rounded-full flex-shrink-0"
+            className="rounded-full flex-shrink-0 object-cover"
           />
           <span className="text-[10px] font-medium text-gray-400 dark:text-gray-500">
             Teacher Vidya

@@ -78,66 +78,34 @@ export async function GET(req: Request) {
       }
     }
 
-    // Build narrative via GPT-4o-mini (direct fetch -- callLLM.ts is worker-only)
-    const apiKey = process.env.OPENAI_API_KEY;
-    if (!apiKey) {
+    // Enqueue a background job to generate the narrative (LLM calls are worker-only)
+    try {
+      const { getAIRequestQueue } = await import('@/queues/aiQueue');
+      const q = getAIRequestQueue();
+
+      const job = await q.add('AI_NARRATIVE', {
+        type: 'NARRATIVE',
+        payload: {
+          userId,
+          sessionCount,
+          subjectNames,
+          bestChapterName,
+          weakestChapterName,
+          timeframeDays: 30,
+          model: 'gpt-4o-mini',
+        },
+      });
+
+      res = NextResponse.json({ status: 'queued', jobId: job.id }, { status: 202 });
+      logger.logAPI(req, res, { className: 'ProgressNarrativeAPI', methodName: 'GET' }, start);
+      return res;
+    } catch (e) {
+      logger.error('Failed to enqueue narrative job', { event: 'progress_narrative_enqueue_error', context: { userId, error: String(e) } });
       res = NextResponse.json({ narrative: FALLBACK_NARRATIVE });
       logger.logAPI(req, res, { className: 'ProgressNarrativeAPI', methodName: 'GET' }, start);
       return res;
     }
-
-    const prompt =
-      `Write 2-3 encouraging sentences summarising this student's last 30 days. ` +
-      `Sessions: ${sessionCount}, top improved chapter: ${bestChapterName}, ` +
-      `weakest chapter: ${weakestChapterName}. ` +
-      `Tone: specific, encouraging, no jargon.`;
-
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 10_000);
-
-    let narrative = FALLBACK_NARRATIVE;
-    try {
-      const openAiRes = await fetch('https://api.openai.com/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${apiKey}`,
-        },
-        body: JSON.stringify({
-          model: 'gpt-4o-mini',
-          messages: [{ role: 'user', content: prompt }],
-          max_tokens: 150,
-          temperature: 0.7,
-        }),
-        signal: controller.signal,
-      });
-
-      if (openAiRes.ok) {
-        const data = (await openAiRes.json()) as {
-          choices?: Array<{ message?: { content?: string } }>;
-        };
-        const text = data?.choices?.[0]?.message?.content?.trim();
-        if (text) narrative = text;
-      } else {
-        logger.warn('OpenAI narrative request failed', {
-          event: 'progress_narrative_openai_error',
-          context: { status: openAiRes.status, userId },
-        });
-      }
-    } catch (err) {
-      // Timeout or network error -- use fallback silently
-      const isAbort = err instanceof Error && err.name === 'AbortError';
-      logger.warn('OpenAI narrative request aborted/errored', {
-        event: 'progress_narrative_fetch_error',
-        context: { isAbort, userId },
-      });
-    } finally {
-      clearTimeout(timeoutId);
-    }
-
-    res = NextResponse.json({ narrative });
-    logger.logAPI(req, res, { className: 'ProgressNarrativeAPI', methodName: 'GET' }, start);
-    return res;
+    
   } catch (err) {
     logger.error('ProgressNarrativeAPI unexpected error', {
       event: 'progress_narrative_error',

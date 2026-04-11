@@ -7,10 +7,12 @@
  *
  * EDIT LOG:
  * - 2026-02-04 | claude | created weekly parent summary aggregation job
+ * - 2026-04-09 | copilot | respect excludeFromParentReport when selecting linked students
+ * - 2026-04-11 | copilot | fix: treat isPaused:true + pausedUntil:null as indefinitely paused
  */
 
-import { prisma } from '../../lib/prisma.js';
-import { logger } from '../../lib/logger.js';
+import { prisma } from '@/lib/prisma';
+import { logger } from '@/lib/logger';
 
 /**
  * Aggregate weekly summary for all linked students
@@ -24,14 +26,22 @@ export async function aggregateWeeklySummaries(): Promise<number> {
     return 0;
   }
 
-  // Find all students who have at least one active parent link
-  const links = await prisma.parentStudent.findMany({
-    where: { status: 'active' },
-    select: { studentId: true },
-    distinct: ['studentId'],
+  // Find all parent links for active students (we'll filter paused links client-side)
+  const rawLinks = await prisma.parentStudent.findMany({
+    where: { status: 'active', excludeFromParentReport: false },
+    select: { studentId: true, isPaused: true, pausedUntil: true },
   });
 
-  const studentIds = links.map((l) => l.studentId);
+  // Include studentId if at least one non-paused link exists.
+  // A link is paused when isPaused is true AND either pausedUntil is null/absent
+  // (indefinite pause) OR pausedUntil is in the future (timed pause).
+  const studentIdSet = new Set<string>()
+  for (const l of rawLinks) {
+    // Treat as paused for: indefinite (null) or still-future expiry
+    const paused = l.isPaused && (l.pausedUntil == null || l.pausedUntil > new Date())
+    if (!paused) studentIdSet.add(l.studentId)
+  }
+  const studentIds = Array.from(studentIdSet)
   if (!studentIds.length) {
     logger.info('weeklyParentSummary: no linked students, skipping');
     return 0;
