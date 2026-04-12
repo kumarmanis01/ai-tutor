@@ -21,12 +21,36 @@ export async function sendParentMilestoneNotification(
 ): Promise<{ sent: boolean; reason?: string }> {
   const type = opts.meta?.type ?? 'milestone'
 
+  // Respect parent/child opt-outs before performing Redis-backed policy checks.
+  try {
+    const profile = await prisma.parentProfile.findUnique({ where: { userId: parentId } })
+    // Parent-level digest opt-out short-circuits
+    if (type === 'digest' && profile?.digestOptOut) return { sent: false, reason: 'parent_digest_opt_out' }
+    // Child-level inactivity opt-out short-circuits
+    if (type === 'inactivity' && opts.meta?.studentId) {
+      try {
+        const pp = await prisma.parentStudent.findFirst({ where: { parentId, studentId: opts.meta.studentId } })
+        if (pp?.inactivityOptOut) return { sent: false, reason: 'child_inactivity_opt_out' }
+      } catch (e) {
+        // ignore DB lookup issues here and continue to notification flow
+      }
+    }
+  } catch (e) {
+    // best-effort: ignore failures to fetch preferences and continue
+  }
+
   const redis = getRedis()
   if (!redis) {
-    // best-effort: try to send email without enforcement
+    // best-effort: try to send without enforcement
     try {
-      if (opts.email) await sendMailSafe({ to: opts.email, subject: opts.subject, html: opts.html, text: opts.text })
-      if (opts.phone) await sendSms(opts.phone, opts.text ?? opts.subject)
+      // honor explicit channel override in meta
+      const channel = opts.meta?.channel
+      if (!channel || channel === 'email') {
+        if (opts.email) await sendMailSafe({ to: opts.email, subject: opts.subject, html: opts.html, text: opts.text })
+      }
+      if (!channel || channel === 'sms') {
+        if (opts.phone) await sendSms(opts.phone, opts.text ?? opts.subject)
+      }
       // Persist audit if prisma available
       try {
         await prisma.parentNotification.create({
@@ -57,8 +81,14 @@ export async function sendParentMilestoneNotification(
     const check = await canSendNotification(parentId, type, opts.meta?.studentId)
     if (!check.allowed) return { sent: false, reason: check.reason }
 
-    if (opts.email) await sendMailSafe({ to: opts.email, subject: opts.subject, html: opts.html, text: opts.text })
-    if (opts.phone) await sendSms(opts.phone, opts.text ?? opts.subject)
+    // honor explicit channel override in meta when Redis is present
+    const channel = opts.meta?.channel
+    if (!channel || channel === 'email') {
+      if (opts.email) await sendMailSafe({ to: opts.email, subject: opts.subject, html: opts.html, text: opts.text })
+    }
+    if (!channel || channel === 'sms') {
+      if (opts.phone) await sendSms(opts.phone, opts.text ?? opts.subject)
+    }
 
     // Record in redis policy layer (caps/suppression)
     await recordSendNotification(parentId, type, opts.meta?.studentId)

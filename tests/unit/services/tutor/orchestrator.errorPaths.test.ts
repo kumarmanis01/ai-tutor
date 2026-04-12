@@ -6,6 +6,7 @@ jest.mock('@/lib/redis', () => ({ getRedis: jest.fn().mockReturnValue({ get: jes
 const prismaMock = {
   concept: { findUnique: jest.fn().mockResolvedValue({ name: 'Algebra', irt_b: 0.5 }) },
   subjectDef: { findUnique: jest.fn().mockResolvedValue({ name: 'Mathematics' }) },
+  user: { findUnique: jest.fn().mockResolvedValue({ learningStyle: 'visual' }) },
   safetyEvent: { createMany: jest.fn() },
   aITutorTurnLog: { create: jest.fn() },
   analyticsEvent: { create: jest.fn() },

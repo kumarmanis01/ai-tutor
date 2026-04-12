@@ -103,6 +103,11 @@ function invoiceHtml(opts: {
 
 async function renderHtmlToPdf(html: string): Promise<Buffer> {
   try {
+    // In test environments, avoid launching Playwright (browsers may not be installed)
+    // and force the caller to use the pdf-lib fallback quickly.
+    if (process.env.NODE_ENV === 'test' || process.env.JEST_WORKER_ID) {
+      throw new Error('Playwright disabled in test environment')
+    }
     // Dynamic import so Playwright is optional; fallback will be used when unavailable
     // eslint-disable-next-line @typescript-eslint/no-var-requires
     const pw = await import('playwright');

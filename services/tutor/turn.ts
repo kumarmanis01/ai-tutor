@@ -202,17 +202,30 @@ export async function runTutorOrchestrator(args: {
 
   await markTurnStarted(sessionId)
 
+  // Resolve prisma at runtime so tests that mock the module are honoured.
+  let prismaClient: any = undefined
+
   try {
+    const mod = await import('@/lib/prisma')
+    prismaClient = (mod && (mod.prisma as any)) || (prisma as any)
+    // Debug helper: record keys available on the runtime prisma to aid tests
+    try {
+      // logger may be mocked in tests so use console.log to ensure visibility
+      // when diagnosing module-mocking problems in CI/local runs.
+      // eslint-disable-next-line no-console
+      console.log('prismaClient.runtimeKeys', Object.keys(prismaClient || {}))
+    } catch (e) {}
+
     const [concept, subject, userProfile] = await Promise.all([
-      prisma.concept.findUnique({
+      prismaClient.concept.findUnique({
         where: { id: conceptId },
         select: { name: true, irt_b: true },
       }),
-      prisma.subjectDef.findUnique({
+      prismaClient.subjectDef.findUnique({
         where: { id: subjectId },
         select: { name: true },
       }),
-      prisma.user.findUnique({
+      prismaClient.user.findUnique({
         where: { id: studentId },
         select: { learningStyle: true },
       }),
@@ -285,7 +298,7 @@ export async function runTutorOrchestrator(args: {
             lastTurnNumber: state.lastTurnNumber,
           })
           await markTurnCompleted(sessionId)
-          await prisma.aITutorTurnLog.create({
+          await prismaClient.aITutorTurnLog.create({
             data: {
               sessionId,
               callType: 'tutor:teach',
@@ -327,7 +340,7 @@ export async function runTutorOrchestrator(args: {
       try {
         await Promise.all(
           detectedMisconceptions.map((m) =>
-            prisma.studentMisconception.upsert({
+            prismaClient.studentMisconception.upsert({
               where: {
                 studentId_misconceptionId: {
                   studentId,
@@ -365,7 +378,7 @@ export async function runTutorOrchestrator(args: {
     // to inject into the system prompt so Vidya stays alert to recurring patterns.
     let recentMisconceptionNames: string[] = []
     try {
-      const recentRows = await prisma.studentMisconception.findMany({
+      const recentRows = await prismaClient.studentMisconception.findMany({
         where: {
           studentId,
           misconception: { conceptId },
@@ -441,7 +454,7 @@ export async function runTutorOrchestrator(args: {
       if (cachedAnswer) {
         // Serve from DoubtKb — skip LLM call
         await markTurnCompleted(sessionId)
-        await prisma.aITutorTurnLog.create({
+        await prismaClient.aITutorTurnLog.create({
           data: {
             sessionId,
             callType: 'tutor:teach',
@@ -518,10 +531,10 @@ export async function runTutorOrchestrator(args: {
     let answerText = outputSafety.text
 
     if (safetyEvents.length) {
-      await prisma.safetyEvent.createMany({ data: safetyEvents })
+      await prismaClient.safetyEvent.createMany({ data: safetyEvents })
       // Analytics event for safety triggers
       try {
-        await prisma.analyticsEvent.create({
+        await prismaClient.analyticsEvent.create({
           data: {
             eventType: 'safety_triggered',
             userId: studentId,
@@ -545,7 +558,7 @@ export async function runTutorOrchestrator(args: {
       const hall = checkForHallucinations(answerText, hallCtx as any)
       if (hall && (hall.issues.length > 0 || hall.needsReview)) {
         try {
-          await prisma.analyticsEvent.create({
+          await prismaClient.analyticsEvent.create({
             data: {
               eventType: 'hallucination_detected',
               userId: studentId,
@@ -567,7 +580,7 @@ export async function runTutorOrchestrator(args: {
         try {
           const safe = getSafeResponseForIntent(intentClassification.primaryIntent, 10, subjectName)
           const safeText = formatResponseForStudent(safe)
-          await prisma.analyticsEvent.create({
+          await prismaClient.analyticsEvent.create({
             data: {
               eventType: 'hallucination_blocked',
               userId: studentId,
@@ -662,7 +675,7 @@ export async function runTutorOrchestrator(args: {
     await markTurnCompleted(sessionId)
 
     // 13. Log effective tag (reflects auto-upgrade to PREREQ_FAIL when AC-08 fired)
-    await prisma.aITutorTurnLog.create({
+    await prismaClient.aITutorTurnLog.create({
       data: {
         sessionId,
         callType: isHintRequest ? 'tutor:hint' : 'tutor:teach',
@@ -714,7 +727,9 @@ export async function runTutorOrchestrator(args: {
     // Ensure we record a turn log for telemetry even on error paths.
     // Keep this best-effort so logging failures don't mask the original error.
     try {
-      await prisma.aITutorTurnLog.create({
+      const mod2 = await import('@/lib/prisma')
+      const runtimePrisma = (mod2 && (mod2.prisma as any)) || (prisma as any)
+      await runtimePrisma.aITutorTurnLog.create({
         data: {
           sessionId: args.state.sessionId,
           callType: 'tutor:teach',

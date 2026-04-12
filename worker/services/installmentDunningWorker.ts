@@ -132,8 +132,8 @@ async function attemptInstallmentCharge(inst: any): Promise<void> {
     // Charge attempt failed: increment attemptCount and maybe start grace
     await prisma.installment.update({ where: { id: inst.id }, data: { attemptCount: { increment: 1 }, lastAttemptAt: now, status: 'FAILED' } })
 
-    const updated = await prisma.installment.findUnique({ where: { id: inst.id } })
-    const attempts = updated?.attemptCount ?? 0
+    // Compute attempts deterministically from known state rather than re-querying.
+    const attempts = (inst.attemptCount ?? 0) + 1
     if (attempts >= 3) {
       // Start subscription-level grace (per-installment graceful handling)
       const graceUntil = new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000)

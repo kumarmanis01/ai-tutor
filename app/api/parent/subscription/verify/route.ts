@@ -34,6 +34,7 @@ import type { PlanId } from '@/lib/subscription/plans';
 import { createInvoiceForPayment } from '@/lib/invoices';
 import Razorpay from 'razorpay';
 import computeProratedCredit from '@/lib/subscription/proration';
+import { recordPaymentEvent } from '@/lib/payments/audit';
 
 function verifySignature(orderId: string, paymentId: string, signature: string): boolean {
   const secret = process.env.RAZORPAY_KEY_SECRET;

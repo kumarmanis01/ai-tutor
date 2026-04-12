@@ -1,8 +1,8 @@
-import { prisma } from '@/lib/prisma.js'
-import logAuditEvent from '@/lib/audit/log.js'
-import { AuditEvents } from '@/lib/audit/events.js'
-import generatorAdapter from '@/regeneration/generatorAdapter.js'
-import { logger } from '@/lib/logger.js'
+import { prisma } from '@/lib/prisma'
+import logAuditEvent from '@/lib/audit/log'
+import { AuditEvents } from '@/lib/audit/events'
+import generatorAdapter from '@/regeneration/generatorAdapter'
+import { logger } from '@/lib/logger'
 
 let _running = false
 let _stopRequested = false
@@ -37,10 +37,11 @@ export async function processNextJob() {
   if (!claimed) return null
 
   try {
-    await prisma.auditLog.create({ data: { targetEntity: 'RegenerationJob', targetId: claimed.id, action: AuditEvents.REGEN_JOB_LOCKED as any, details: { jobId: claimed.id, legacyAction: AuditEvents.REGEN_JOB_LOCKED } as any } as any })
+    // Use centralized audit helper so tests can mock and assertions work.
+    logAuditEvent(prisma as any, { targetEntity: 'RegenerationJob', targetId: claimed.id, action: AuditEvents.REGEN_JOB_LOCKED as any, details: { jobId: claimed.id, legacyAction: AuditEvents.REGEN_JOB_LOCKED } as any })
   } catch {}
   try {
-    await prisma.auditLog.create({ data: { targetEntity: 'RegenerationJob', targetId: claimed.id, action: AuditEvents.REGEN_JOB_STARTED as any, details: { jobId: claimed.id, legacyAction: AuditEvents.REGEN_JOB_STARTED } as any } as any })
+    logAuditEvent(prisma as any, { targetEntity: 'RegenerationJob', targetId: claimed.id, action: AuditEvents.REGEN_JOB_STARTED as any, details: { jobId: claimed.id, legacyAction: AuditEvents.REGEN_JOB_STARTED } as any })
   } catch {}
 
   try {
@@ -77,7 +78,7 @@ export async function processNextJob() {
       const updated = await prisma.regenerationJob.updateMany({ where: { id: claimed.id, status: 'RUNNING' }, data: { status: 'COMPLETED', outputRef } as any })
       if ((updated as any).count > 0) {
         try {
-          await prisma.auditLog.create({ data: { targetEntity: 'RegenerationJob', targetId: claimed.id, action: AuditEvents.REGEN_JOB_COMPLETED as any, details: { jobId: claimed.id, legacyAction: AuditEvents.REGEN_JOB_COMPLETED, outputRef } as any } as any })
+          logAuditEvent(prisma as any, { targetEntity: 'RegenerationJob', targetId: claimed.id, action: AuditEvents.REGEN_JOB_COMPLETED as any, details: { jobId: claimed.id, legacyAction: AuditEvents.REGEN_JOB_COMPLETED, outputRef } as any })
         } catch {}
       }
     } catch {}
@@ -90,7 +91,7 @@ export async function processNextJob() {
     const errorJson = { message: String(err?.message ?? err), stack: err?.stack }
     try { await prisma.regenerationJob.update({ where: { id: claimed.id }, data: { status: 'FAILED', errorJson } }) } catch {}
     try {
-      await prisma.auditLog.create({ data: { targetEntity: 'RegenerationJob', targetId: claimed.id, action: AuditEvents.REGEN_JOB_FAILED as any, details: { jobId: claimed.id, legacyAction: AuditEvents.REGEN_JOB_FAILED, errorJson } as any } as any })
+      logAuditEvent(prisma as any, { targetEntity: 'RegenerationJob', targetId: claimed.id, action: AuditEvents.REGEN_JOB_FAILED as any, details: { jobId: claimed.id, legacyAction: AuditEvents.REGEN_JOB_FAILED, errorJson } as any })
     } catch {}
     return claimed
   }
