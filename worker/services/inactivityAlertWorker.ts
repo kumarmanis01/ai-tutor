@@ -24,6 +24,16 @@ function daysBetween(a: Date, b: Date) {
   return Math.floor((a.getTime() - b.getTime()) / (24 * 60 * 60 * 1000))
 }
 
+function escapeHtml(str: string) {
+  if (!str) return ''
+  return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;')
+}
+
+function escapeForSms(str: string) {
+  if (!str) return ''
+  return String(str).replace(/[\r\n<>]/g, ' ')
+}
+
 export async function processParentInactivityAlerts(now = new Date()): Promise<void> {
   const appUrl = (process.env.NEXTAUTH_URL ?? process.env.NEXT_PUBLIC_APP_URL ?? process.env.APP_URL ?? 'https://app.spinzyacademy.com').replace(/\/$/, '')
   try {
@@ -80,7 +90,7 @@ export async function processParentInactivityAlerts(now = new Date()): Promise<v
         const subject = oneChild
           ? `Reminder: ${inactiveChildren[0].name ?? 'Your child'} hasn't studied recently`
           : `Reminder: ${inactiveChildren.length} children haven't studied recently`
-        const html = `<!doctype html><html><body><p>Hi ${info.name ?? ''},</p><p>We noticed the following children haven't had a study session for at least ${DEFAULT_THRESHOLD_DAYS} day(s):</p><ul>${inactiveChildren.map(c => `<li>${c.name ?? 'Student'} — ${c.daysSince} day(s)</li>`).join('')}</ul><p>A short 20-minute session today will help keep their progress on track.</p><p><a href="${dashboardLink}">Open the parent dashboard</a> to see suggested next activities.</p><p>— Team Spinzy</p></body></html>`
+        const html = `<!doctype html><html><body><p>Hi ${escapeHtml(info.name ?? '')},</p><p>We noticed the following children haven't had a study session for at least ${DEFAULT_THRESHOLD_DAYS} day(s):</p><ul>${inactiveChildren.map(c => `<li>${escapeHtml(c.name ?? 'Student')} — ${c.daysSince} day(s)</li>`).join('')}</ul><p>A short 20-minute session today will help keep their progress on track.</p><p><a href="${dashboardLink}">Open the parent dashboard</a> to see suggested next activities.</p><p>— Team Spinzy</p></body></html>`
 
         // Send email and SMS (best-effort). Only set rate-limit key if at least one channel succeeds.
         let emailSent = false
@@ -100,9 +110,10 @@ export async function processParentInactivityAlerts(now = new Date()): Promise<v
         }
 
         if (info.phone) {
+          const smsName = escapeForSms(info.name ?? '')
           const smsText = oneChild
-            ? `Hi ${info.name ?? ''}, we noticed ${childNames} hasn't had a study session for at least ${inactiveChildren[0].daysSince} day(s). A short 20-minute session will help. Open: ${dashboardLink}`
-            : `Hi ${info.name ?? ''}, we noticed ${childNames} haven't had a study session for at least ${DEFAULT_THRESHOLD_DAYS} days. A short 20-minute session will help. Open: ${dashboardLink}`
+            ? `Hi ${smsName}, we noticed ${childNames} hasn't had a study session for at least ${inactiveChildren[0].daysSince} day(s). A short 20-minute session will help. Open: ${dashboardLink}`
+            : `Hi ${smsName}, we noticed ${childNames} haven't had a study session for at least ${DEFAULT_THRESHOLD_DAYS} days. A short 20-minute session will help. Open: ${dashboardLink}`
           try {
             await sendSms(info.phone, smsText)
             smsSent = true

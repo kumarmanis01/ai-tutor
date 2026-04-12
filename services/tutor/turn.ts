@@ -210,11 +210,11 @@ export async function runTutorOrchestrator(args: {
     prismaClient = (mod && (mod.prisma as any)) || (prisma as any)
     // Debug helper: record keys available on the runtime prisma to aid tests
     try {
-      // logger may be mocked in tests so use console.log to ensure visibility
-      // when diagnosing module-mocking problems in CI/local runs.
-      // eslint-disable-next-line no-console
-      console.log('prismaClient.runtimeKeys', Object.keys(prismaClient || {}))
-    } catch (e) {}
+      // Emit structured debug about runtime prisma keys to aid CI/module-mock diagnostics.
+      logger.debug('prismaClient.runtimeKeys', { keys: Object.keys(prismaClient || {}) });
+    } catch (e) {
+      // swallow
+    }
 
     const [concept, subject, userProfile] = await Promise.all([
       prismaClient.concept.findUnique({

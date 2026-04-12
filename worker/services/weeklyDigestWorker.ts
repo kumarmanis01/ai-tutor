@@ -15,6 +15,7 @@
  */
 
 import { prisma } from '@/lib/prisma'
+import type { ParentProfile } from '@prisma/client'
 import { logger } from '@/lib/logger'
 import { sendMailSafe } from '@/lib/mailer'
 import { sendParentMilestoneNotification } from '@/lib/notifications/delivery'
@@ -169,7 +170,7 @@ export async function processWeeklyDigest(): Promise<void> {
 
   for (const [parentId, parent] of parentMap.entries()) {
     try {
-      const profile = profileMap.get(parentId as string) ?? null
+      const profile = (profileMap.get(parentId as string) ?? null) as ParentProfile | null
 
       // Respect opt-out
       if (profile?.digestOptOut) {

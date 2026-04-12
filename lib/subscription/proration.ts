@@ -53,7 +53,7 @@ export function calculateProrationCredit(input: ProrationInput): ProrationResult
   const fraction = remainingMs / totalMs;
   const creditPaise = Math.floor(billedPaise * fraction);
 
-  const creditRupees = Math.round((creditPaise / 100) * 100) / 100;
+  const creditRupees = Number((creditPaise / 100).toFixed(2));
   return { totalDays, remainingDays, creditRupees };
 }
 

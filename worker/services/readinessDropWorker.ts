@@ -80,12 +80,13 @@ export async function processReadinessDropAlerts(now = new Date()): Promise<void
     for (const plan of plans) {
       try {
         if (!plan.subjectId) continue
+        const subjectId = plan.subjectId
         // Gate: exam within EXAM_WINDOW_DAYS
         if (!plan.examDate) continue
         const daysToExam = Math.ceil((plan.examDate.getTime() - now.getTime()) / (24 * 60 * 60 * 1000))
         if (daysToExam > EXAM_WINDOW_DAYS) continue
 
-        const curr = await computeReadinessScore(plan.studentId, plan.subjectId).catch(() => null)
+        const curr = await computeReadinessScore(plan.studentId, subjectId).catch(() => null)
         if (!curr) continue
         const currScore = Math.round(curr.score)
 
@@ -115,7 +116,7 @@ export async function processReadinessDropAlerts(now = new Date()): Promise<void
             if (already) continue
 
             const a = alertsByParent.get(p.parentId) ?? []
-            a.push({ studentId: plan.studentId, subjectId: plan.subjectId, subjectName: subjectNameById.get(plan.subjectId), prev: prevScore, curr: currScore, delta, examDate: plan.examDate })
+            a.push({ studentId: plan.studentId, subjectId, subjectName: subjectNameById.get(subjectId), prev: prevScore, curr: currScore, delta, examDate: plan.examDate })
             alertsByParent.set(p.parentId, a)
           }
         }
@@ -136,8 +137,14 @@ export async function processReadinessDropAlerts(now = new Date()): Promise<void
           try {
             // Avoid sending internal IDs to the LLM; provide non-identifying context instead.
             const prompt = `You are an experienced, gentle education coach writing for a parent with low technical familiarity. Subject: ${it.subjectName ?? 'the subject'}. Seven days ago readiness was ${it.prev}%. Now it is ${it.curr}%. In 2-3 short bullets (each 8-16 words) suggest a simple remediation plan that includes 3 targeted 20-minute sessions and one brief practice activity the parent can encourage. Use a warm, constructive tone; avoid alarmist language; give a one-line call-to-action at the end.`
-            const res = await callLLM({ prompt, model: process.env.MODEL_SMALL || 'gpt-4o-mini', meta: { promptType: 'parent_readiness_remediation', subject: it.subjectName ?? it.subjectId, daysAgo: LOOKBACK_DAYS } }).catch(() => null)
-            const raw = (res?.content && String(res.content).trim()) || `Try 3 targeted 20-minute sessions on the core topics and one short practice test.`
+            let raw: string
+            if (process.env.ALLOW_LLM_CALLS === '1') {
+              const res = await callLLM({ prompt, model: process.env.MODEL_SMALL || 'gpt-4o-mini', meta: { promptType: 'parent_readiness_remediation', subject: it.subjectName ?? it.subjectId, daysAgo: LOOKBACK_DAYS } }).catch(() => null)
+              raw = (res?.content && String(res.content).trim()) || `Try 3 targeted 20-minute sessions on the core topics and one short practice test.`
+            } else {
+              // Fallback when LLM calls are not allowed in this runtime
+              raw = `Try 3 targeted 20-minute sessions on the core topics and one short practice test.`
+            }
             const content = sanitizeTextForHtml(raw)
             remediationParts.push(`<h4>${escapeHtml(String(it.subjectName ?? it.subjectId))} (${it.delta} point drop)</h4><p>${content}</p>`)
           } catch (e) {
@@ -147,7 +154,7 @@ export async function processReadinessDropAlerts(now = new Date()): Promise<void
 
         const dashboardLink = `${appUrl}/parent/dashboard?child=${issues[0].studentId}`
         const subject = `Attention: readiness drop detected` 
-        const html = `<!doctype html><html><body><p>Hi ${parent.name ?? ''},</p><p>We detected a drop in exam readiness for the following subject(s):</p>${remediationParts.join('')}<p>Open the dashboard to see details: <a href="${dashboardLink}">View dashboard</a></p><p>— Team Spinzy</p></body></html>`
+        const html = `<!doctype html><html><body><p>Hi ${escapeHtml(parent.name ?? '')},</p><p>We detected a drop in exam readiness for the following subject(s):</p>${remediationParts.join('')}<p>Open the dashboard to see details: <a href="${dashboardLink}">View dashboard</a></p><p>— Team Spinzy</p></body></html>`
 
         // Send email and SMS, but only mark rate-limit if at least one channel succeeded
         let emailSent = false
