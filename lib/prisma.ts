@@ -119,7 +119,12 @@ const prismaProxy = new Proxy(client, {
                   return await (auditModel as any)[name](args)
                 } catch (err: any) {
                   const msg = err && (err.message || String(err)) || ''
-                  if (!msg.includes('invalid input value for enum')) throw err
+                  const lmsg = String(msg).toLowerCase()
+                  // Accept a few known Prisma validation message variants so
+                  // the raw-query fallback triggers for enum-validation errors
+                  // across Prisma/PG/localized message differences.
+                  const isEnumValidation = lmsg.includes('invalid input value for enum') || lmsg.includes('invalid value for argument') || lmsg.includes('expected adminactiontype')
+                  if (!isEnumValidation) throw err
 
                   // Extract action filter if present (support simple shapes)
                   const where = args && args.where ? args.where : undefined

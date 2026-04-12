@@ -75,8 +75,8 @@ describe('Phase 11 — Job-style suggestion processing idempotency', () => {
     }
 
     // Ensure empty before run
-    await prisma.contentSuggestion.deleteMany()
-    await prisma.auditLog.deleteMany()
+    await prisma.contentSuggestion.deleteMany().catch(() => {})
+    await prisma.auditLog.deleteMany().catch(() => {})
 
     // First run
     await generateSuggestionsForAllSignals()

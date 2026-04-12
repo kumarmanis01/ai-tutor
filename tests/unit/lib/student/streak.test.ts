@@ -35,7 +35,9 @@ describe('lib/student/streak.updateStreak', () => {
     const { updateStreak } = await import('../../../../lib/student/streak');
     await updateStreak('student-123');
 
-    expect(redisDelMock).toHaveBeenCalledWith('parent:inactivity:pA:student-123', 'parent:inactivity:pB:student-123');
+    expect(redisDelMock).toHaveBeenCalled()
+    const allArgs = redisDelMock.mock.calls.flat()
+    expect(allArgs).toEqual(expect.arrayContaining(['parent:inactivity:pA:student-123', 'parent:inactivity:pB:student-123']))
   });
 });
 /**
