@@ -55,9 +55,12 @@ export type TutorTurnComplete = {
   tag: TutorTag
   stage: TutorStage
   hintsRemaining: number
+  /** Number of hints used before this turn (pre-call). Helpful for client UI */
+  hintsUsedDuringTurn?: number
   turnNumber: number
   sessionComplete: boolean
 }
+
 
 export type TutorTurnErrorCode =
   | 'RATE_LIMITED'
@@ -180,13 +183,15 @@ export async function runTutorOrchestrator(args: {
   const isExplainSimpler = studentMessage === '__EXPLAIN_SIMPLER__'
   const isExplainHarder = studentMessage === '__EXPLAIN_HARDER__'
   const isExplainExample = studentMessage === '__EXPLAIN_EXAMPLE__'
-  const isStyleRequest = isExplainSimpler || isExplainHarder || isExplainExample
+  const isExplainDiagram = studentMessage === '__EXPLAIN_DIAGRAM__'
+  const isStyleRequest = isExplainSimpler || isExplainHarder || isExplainExample || isExplainDiagram
 
   // AC-04 (F-STU-011 MUST): map sentinel to explainStyle for prompt injection
-  const explainStyle: 'simpler' | 'harder' | 'real_life_example' | null =
+  const explainStyle: 'simpler' | 'harder' | 'real_life_example' | 'diagram' | null =
     isExplainSimpler ? 'simpler'
     : isExplainHarder ? 'harder'
     : isExplainExample ? 'real_life_example'
+    : isExplainDiagram ? 'diagram'
     : null
 
   // Replace sentinels with clean phrases so safety checks never see raw values.
@@ -697,6 +702,7 @@ export async function runTutorOrchestrator(args: {
       tag: logTag,
       stage: newState.stage,
       hintsRemaining: newState.hintsRemaining,
+      hintsUsedDuringTurn: hintsUsed,
       turnNumber: newState.lastTurnNumber,
       // Session ends when the AI responds DURING the CONSOLIDATION stage (the summary
       // and reflective question are delivered in that turn), not when entering it.

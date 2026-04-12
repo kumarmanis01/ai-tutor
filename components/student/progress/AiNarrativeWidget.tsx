@@ -83,7 +83,23 @@ export default function AiNarrativeWidget() {
           {"Teacher Vidya's insight"}
         </span>
         <button
-          onClick={() => toast('PDF download coming soon!')}
+          onClick={async () => {
+            try {
+              const res = await fetch('/api/student/progress/export')
+              if (!res.ok) throw new Error('Export failed')
+              const blob = await res.blob()
+              const url = URL.createObjectURL(blob)
+              const a = document.createElement('a')
+              a.href = url
+              a.download = 'progress-report.pdf'
+              document.body.appendChild(a)
+              a.click()
+              a.remove()
+              URL.revokeObjectURL(url)
+            } catch (e) {
+              toast('Could not generate PDF. Please try again later.')
+            }
+          }}
           className="text-xs font-medium text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 min-h-[44px] px-3 flex items-center rounded-lg transition-colors"
           aria-label="Download progress report as PDF"
         >

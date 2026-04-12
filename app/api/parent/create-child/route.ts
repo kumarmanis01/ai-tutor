@@ -11,6 +11,7 @@
  *
  * EDIT LOG:
  * - 2026-04-09T00:00:00Z | copilot | created
+ * - 2026-04-12T12:00:00Z | copilot | use FAMILY_MAX_CHILDREN constant from billing constants
  */
 
 import { NextResponse } from 'next/server'
@@ -19,6 +20,7 @@ import { prisma } from '@/lib/prisma'
 import { logger } from '@/lib/logger'
 import { sendMailSafe } from '@/lib/mailer'
 import { sendSms } from '@/lib/sms'
+import { FAMILY_MAX_CHILDREN } from '@/app/api/billing/constants'
 
 export const dynamic = 'force-dynamic'
 
@@ -43,10 +45,10 @@ export async function POST(req: Request) {
   }
 
   try {
-    // Enforce server-side cap: max 3 active child links per parent
+    // Enforce server-side cap: max FAMILY_MAX_CHILDREN active child links per parent
     const activeCount = await prisma.parentStudent.count({ where: { parentId, status: 'active' } })
-    if (activeCount >= 3) {
-      const res = NextResponse.json({ error: 'Parent already has maximum linked children (3)' }, { status: 409 })
+    if (activeCount >= FAMILY_MAX_CHILDREN) {
+      const res = NextResponse.json({ error: `Parent already has maximum linked children (${FAMILY_MAX_CHILDREN})` }, { status: 409 })
       logger.logAPI(req, res, { className: 'ParentCreateChildAPI', methodName: 'POST' }, start)
       return res
     }

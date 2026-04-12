@@ -305,6 +305,16 @@ export function buildStageInstructionsLayer(ctx: PromptContext): string {
       '- Then connect back to the abstract concept',
       'Do NOT repeat the same wording from your last response.',
     )
+  } else if (explainStyle === 'diagram') {
+    lines.push(
+      'RE-EXPLAIN REQUEST -- Diagram / Visual Explanation:',
+      'The student requested a diagram. Provide a clear step-by-step visual description that the student can draw themselves.',
+      '- Describe the diagram structure in numbered steps (e.g., "1. Draw an x-axis; 2. Mark point A at ...").',
+      '- Provide a short caption explaining how the diagram maps to the concept and key labels to include.',
+      '- If applicable, include a small ASCII schematic (no images) and a `visualHint` brief for the front-end to render a simple SVG or canvas drawing.',
+      '- End with one comprehension check: ask the student to label or explain one part of the diagram.',
+      'Do NOT provide the full text solution here; focus on visual scaffolding and labels.',
+    )
   }
 
   // AC-03 (F-STU-013): contrastive explanation for active misconception.

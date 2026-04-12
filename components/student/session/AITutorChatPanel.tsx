@@ -306,12 +306,14 @@ const RESTYLE_CHIPS: ReExplainChip[] = [
   { label: 'Simpler \u2193', sentinel: '__EXPLAIN_SIMPLER__', ariaLabel: 'Explain it more simply' },
   { label: 'Deeper \u2191', sentinel: '__EXPLAIN_HARDER__',  ariaLabel: 'Explain it in more depth' },
   { label: 'Real-life example',  sentinel: '__EXPLAIN_EXAMPLE__', ariaLabel: 'Give a real-life example' },
+  { label: 'Diagram', sentinel: '__EXPLAIN_DIAGRAM__', ariaLabel: 'Show a diagram' },
 ];
 
 const RESTYLE_DISPLAY: Record<string, string> = {
   __EXPLAIN_SIMPLER__: 'Explain it more simply',
   __EXPLAIN_HARDER__:  'Explain it in more depth',
   __EXPLAIN_EXAMPLE__: 'Give me a real-life example',
+  __EXPLAIN_DIAGRAM__: 'Show a diagram or visual explanation',
 };
 
 function ReExplainBar({ onSelect, disabled }: { onSelect: (sentinel: string) => void; disabled: boolean }) {
@@ -355,6 +357,7 @@ export const AITutorChatPanel: React.FC<AITutorChatPanelProps> = ({
   const [isReconnecting, setIsReconnecting] = useState(false);
   const [reconnectAttempts, setReconnectAttempts] = useState(0);
   const [showInactivityPrompt, setShowInactivityPrompt] = useState(false);
+  const [hintBanner, setHintBanner] = useState<{ tier: number; text: string } | null>(null);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const lastAiMsgIdRef = useRef<string | null>(null);
@@ -362,6 +365,7 @@ export const AITutorChatPanel: React.FC<AITutorChatPanelProps> = ({
   const lastAiContentRef = useRef('');
   const currentStageRef = useRef(initialStage);
   const inactivityTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const hintBannerTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const hasReceivedTokenRef = useRef(false); // first token received this turn?
   const onAiMessageRef = useRef(onAiMessage);
@@ -404,8 +408,11 @@ export const AITutorChatPanel: React.FC<AITutorChatPanelProps> = ({
   }, [clearInactivityTimer]);
 
   useEffect(() => {
+    // Schedule inactivity prompt on mount so quiet sessions show the offer after 90s
+    scheduleInactivity();
     return () => {
       clearInactivityTimer();
+      if (hintBannerTimerRef.current) clearTimeout(hintBannerTimerRef.current);
     };
   }, [clearInactivityTimer]);
 
@@ -474,6 +481,11 @@ export const AITutorChatPanel: React.FC<AITutorChatPanelProps> = ({
 
   const handleCompleteEvent = useCallback(
     (payload: TutorTurnCompleteEvent) => {
+      // Compute which hint tier was delivered. Prefer server-provided pre-call hintsUsed
+      const prevHintsRemaining = hintsRemaining;
+      const preHintsUsedLocal = Math.max(0, 3 - prevHintsRemaining);
+      const deliveredTier = typeof payload.hintsUsedDuringTurn === 'number' ? payload.hintsUsedDuringTurn + 1 : preHintsUsedLocal + 1;
+
       setHintsRemaining(payload.hintsRemaining);
       if (payload.stage && payload.stage !== currentStageRef.current) {
         insertStageDivider(payload.stage);
@@ -490,8 +502,21 @@ export const AITutorChatPanel: React.FC<AITutorChatPanelProps> = ({
       } else {
         scheduleInactivity();
       }
+
+      // If this turn was a hint offer, show a short banner indicating which tier
+      if (payload.tag === 'HINT_OFFER') {
+        let text = '';
+        if (deliveredTier === 1) text = 'Hint 1 — Directional nudge (points you to the right idea).';
+        else if (deliveredTier === 2) text = 'Hint 2 — Structural hint (shows the method, not the solution).';
+        else if (deliveredTier === 3) text = 'Hint 3 — Worked scaffold (first step shown).';
+        else text = 'All hints exhausted — full solution + isomorphic problem provided.';
+
+        setHintBanner({ tier: deliveredTier, text });
+        if (hintBannerTimerRef.current) clearTimeout(hintBannerTimerRef.current);
+        hintBannerTimerRef.current = setTimeout(() => setHintBanner(null), 6000);
+      }
     },
-    [onSessionComplete, scheduleInactivity, insertStageDivider],
+    [onSessionComplete, scheduleInactivity, insertStageDivider, hintsRemaining],
   );
 
   const handleErrorEvent = useCallback(
@@ -725,6 +750,14 @@ export const AITutorChatPanel: React.FC<AITutorChatPanelProps> = ({
 
           <div ref={messagesEndRef} />
         </div>
+
+        {/* ④ Hint tier banner (transient) */}
+        {hintBanner && (
+          <div className="mx-4 mb-2 flex items-center justify-between gap-3 rounded-xl border border-indigo-200 bg-indigo-50 px-3 py-2 dark:border-indigo-700/40 dark:bg-indigo-900/10">
+            <p className="text-xs text-indigo-800 dark:text-indigo-200">{hintBanner.text}</p>
+            <div className="text-xs text-indigo-600 dark:text-indigo-300">Tier {hintBanner.tier}</div>
+          </div>
+        )}
 
         {/* ④ Hint bar */}
         {showHintBar && (
