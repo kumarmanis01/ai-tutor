@@ -1,36 +1,83 @@
-import { processParentInactivityAlerts } from '@/worker/services/inactivityAlertWorker'
+/**
+ * FILE OBJECTIVE:
+ * - Integration-style test for worker/jobs/inactivityAlert to exercise the
+ *   Prisma + Redis + notification delivery interaction. Uses lightweight
+ *   in-memory mocks to emulate Redis and capture DB writes.
+ *
+ * LINKED UNIT TEST:
+ * - n/a (integration)
+ *
+ * EDIT LOG:
+ * - 2026-04-10T00:00:00Z | copilot | created
+ */
 
-const mockParentFind = jest.fn()
-jest.mock('@/lib/prisma', () => ({ prisma: { parentStudent: { findMany: (...a: any[]) => mockParentFind(...a) } } }))
+/* eslint-disable @typescript-eslint/no-explicit-any */
 
-const mockSendMail = jest.fn()
-jest.mock('@/lib/mailer', () => ({ sendMailSafe: (...a: any[]) => Promise.resolve(mockSendMail(...a)) }))
+describe('worker/jobs/inactivityAlert (integration-ish)', () => {
+  beforeEach(() => {
+    jest.resetModules()
+  })
 
-const mockSendSms = jest.fn()
-jest.mock('@/lib/sms', () => ({ sendSms: (...a: any[]) => Promise.resolve(mockSendSms(...a)) }))
+  it('sends inactivity alert and persists audit record', async () => {
+    // Simple in-memory redis mock
+    const store = new Map<string, any>()
+    const redisMock: any = {
+      get: jest.fn((k: string) => Promise.resolve(store.get(k) ?? null)),
+      set: jest.fn((k: string, v: any, ...rest: any[]) => {
+        // emulate set with NX/XX/EX variants by checking args
+        const nx = rest.includes('NX')
+        const xx = rest.includes('XX')
+        if (nx && store.has(k)) return Promise.resolve(null)
+        store.set(k, v)
+        return Promise.resolve('OK')
+      }),
+      del: jest.fn((k: string) => Promise.resolve(store.delete(k) ? 1 : 0)),
+      incr: jest.fn((k: string) => {
+        const v = Number(store.get(k) ?? 0) + 1
+        store.set(k, v)
+        return Promise.resolve(v)
+      }),
+      expire: jest.fn(() => Promise.resolve(1)),
+    }
 
-const mockRedisGet = jest.fn()
-const mockRedisSet = jest.fn()
-jest.mock('@/lib/redis', () => ({ getRedis: jest.fn(() => ({ get: mockRedisGet, set: mockRedisSet })) }))
+    jest.doMock('@/lib/redis', () => ({ getRedis: () => redisMock }))
 
-beforeEach(() => {
-  mockParentFind.mockReset()
-  mockSendMail.mockReset()
-  mockSendSms.mockReset()
-  mockRedisGet.mockReset()
-  mockRedisSet.mockReset()
-})
+    // Mock mailer so send attempt succeeds
+    jest.doMock('@/lib/mailer', () => ({ sendMailSafe: jest.fn().mockResolvedValue(true) }))
+    jest.doMock('@/lib/sms', () => ({ sendSms: jest.fn().mockResolvedValue(true) }))
 
-test('integration: parent inactivity alert flow', async () => {
-  const old = new Date(Date.now() - 5 * 24 * 60 * 60 * 1000)
-  mockParentFind.mockResolvedValueOnce([
-    { parentId: 'p1', studentId: 's1', parent: { name: 'Kiran', email: 'k@example.com', phone: '9000000001' }, student: { name: 'Sam', lastSessionDate: old } },
-  ])
-  mockRedisGet.mockResolvedValue(null)
+    // Capture prisma calls
+    const parentNotificationCreates: any[] = []
 
-  await processParentInactivityAlerts(new Date())
+    jest.doMock('@/lib/prisma', () => ({
+      prisma: {
+        user: { findMany: jest.fn().mockResolvedValue([{ id: 's1', name: 'Riya', timezone: 'Asia/Kolkata', lastSessionDate: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString() }]) },
+        parentStudent: {
+          findMany: jest.fn().mockResolvedValue([
+            {
+              id: 'link-1',
+              studentId: 's1',
+              excludeFromParentReport: false,
+              isPaused: false,
+              inactivityOptOut: false,
+              parent: { id: 'p1', email: 'parent@example.test', phone: null, name: 'Parent', parentProfile: { inactivityOptOut: false }, language: 'en' },
+            },
+          ]),
+        },
+        learningPlanItem: { findFirst: jest.fn().mockResolvedValue(null) },
+        parentNotification: {
+          create: jest.fn((args: any) => {
+            parentNotificationCreates.push(args)
+            return Promise.resolve({ id: 'pn1', ...args.data })
+          }),
+        },
+      },
+    }))
 
-  expect(mockSendMail).toHaveBeenCalled()
-  expect(mockSendSms).toHaveBeenCalled()
-  expect(mockRedisSet).toHaveBeenCalled()
+    const { runInactivityAlerts } = await import('../../../worker/jobs/inactivityAlert')
+    const sent = await runInactivityAlerts()
+
+    expect(sent).toBeGreaterThanOrEqual(1)
+    expect(parentNotificationCreates.length).toBeGreaterThanOrEqual(1)
+  })
 })

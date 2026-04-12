@@ -5,6 +5,84 @@
 
 ---
 
+## F-STU-014 — Virtual Whiteboard ✅
+
+**Problem:** Maths/Physics/Chemistry sessions had no scratch-work space. Students had no way to show their reasoning and Vidya couldn't evaluate their working process.
+
+**Files changed:**
+- `components/student/session/WhiteboardPanel.tsx` *(new)* — HTML5 Canvas two-layer whiteboard. AI steps layer: text lines that reveal one by one via `@keyframes wb-step-in` CSS animation. Student canvas: freehand pencil/eraser using mouse + touch events (pointer-events on canvas, `e.preventDefault()` on touch). Toolbar: 5 colour swatches, pencil/eraser toggle, undo (ImageData snapshot stack ≤20), clear. Submit bar: POSTs canvas PNG data URL to evaluate API, shows Vidya's single-sentence feedback. All interactive elements ≥44px. No external canvas library — raw HTML5 Canvas API only.
+- `app/api/student/whiteboard/evaluate/route.ts` *(new)* — Auth-guarded POST endpoint. Calls `callTutorLLM('tutor:eval')` with a 8s timeout and an encouraging 20-word feedback prompt. Falls back to static message on error/timeout. Never exposes raw errors.
+- `components/student/session/AITutorChatPanel.tsx` — Added `onAiMessage?: (content: string) => void` prop. Added `lastAiContentRef` that accumulates streaming chunks; fires `onAiMessage` with complete content when `finalizeAiMessage` is called.
+- `components/student/session/AITutorSessionShell.tsx` — Added `needsWhiteboard(subjectName)` check (maths/physics/chemistry/geometry/algebra). When true: side-by-side layout (chat 60% / whiteboard 40% on md+, stacked on mobile). `handleAiMessage` splits AI content into non-empty lines → `aiSteps` → passed to `WhiteboardPanel` for step reveal.
+- `tests/unit/components/session/whiteboard.test.ts` *(new)* — 14 tests: needsWhiteboard (10 cases, case-insensitive, whitespace), extractSteps (4 cases).
+
+**Gate:** `build:workers` ✅ · `build` ✅ · 708 unit tests ✅ (14 new)
+
+---
+
+## F-STU-033 — Progress Reports: Subject + Time-Range Filters ✅
+
+**Problem:** The progress report page was hardcoded to 30 days with no way to filter by subject or change the time window, making it hard to track recent or long-term improvement.
+
+**Files changed:**
+- `lib/student/progressReport.ts` *(new)* — Pure helpers: `barConfig(days)` maps 7/30/90/0 to chart labels, period text, fetch window; `buildBucketCounts(sessions, cfg, now)` bins sessions into 4 equal-size chart buckets with all-time dynamic window support.
+- `components/student/progress/ProgressFilters.tsx` *(new)* — Client Component with subject `<select>` (only rendered when student studies > 1 subject) and time-range button group (7 days / 30 days / 90 days / All time). Uses `useRouter` + `useSearchParams` to push `?subject=&days=` params; no full page reload.
+- `app/(student)/student/progress/page.tsx` — Now reads `searchParams.subject` and `searchParams.days`; applies subject filter to chapter mastery data; applies date window to session chart and session history fetches; passes `barLabels` + `periodLabel` to `SessionsChart`; wraps `ProgressFilters` in `<Suspense>` as required by `useSearchParams`.
+- `components/student/progress/SessionsChart.tsx` — Added optional `barLabels?: [string,string,string,string]` and `periodLabel?: string` props; header now reads "Sessions" (not "Sessions this month") with dynamic period text below.
+- `tests/unit/lib/student/progressReport.test.ts` *(new)* — 12 tests: all 4 day configs, fallback to 30d, label length invariant, bucket placement (recent/old), future-date ignore, all-time dynamic window, total count integrity.
+
+**Gate:** `build:workers` ✅ · `build` ✅ · 694 unit tests ✅ (12 new)
+
+---
+
+## F-STU-020 — Chapter Practice Test ✅
+
+**Problem:** Chapter tests had no question-type diversity (all questions treated as one pool), no time enforcement, no LLM explanations for wrong answers, and a low score produced no actionable follow-up.
+
+**Files changed:**
+- `lib/tests.ts` — Added `selectQuestionsWithMix()`: fetches MCQ/short/long_answer buckets in parallel, applies 40/30/30 distribution with backfill fallback, returns `{ questions, timeLimitSeconds }` (60s/MCQ, 120s/short, 300s/long). Added `addLLMExplanations()`: single batch LLM call to fill explanation field for all wrong answers without a pre-populated explanation.
+- `app/api/tests/start/route.ts` — Chapter tests (when `chapter` filter present) now use `selectQuestionsWithMix()`; response includes `timeLimitSeconds`. Quick-practice tests unchanged.
+- `components/Test/AttemptRunner.tsx` — Accepts `timeLimitSeconds?` prop; shows `MM:SS` countdown timer (red tint at ≤60s); auto-submits when timer reaches zero via `submitRef` pattern (no stale closure). Handles `long_answer`/`essay`/`long` question types with 6-row textarea. Min touch targets 44px on all interactive elements.
+- `components/Test/ChapterTests.tsx` — Stores `timeLimitSeconds` from API response and passes it to `AttemptRunner`.
+- `app/api/tests/submit/route.ts` — Calls `addLLMExplanations()` after grading (non-blocking, falls back silently). When `scorePercent < 40` and `topicId` is known, creates a `chapter_revision` `LearningSession` for the home engine to surface.
+- `tests/unit/lib/tests.selectQuestionsWithMix.test.ts` — 7 new tests: exact count, no overflow, time-limit formula, long_answer backfill, no duplicate IDs, filter passthrough, positive timeLimitSeconds.
+
+**Gate:** `build:workers` ✅ · `build` ✅ · 682 unit tests ✅ (7 new)
+
+---
+
+## F-STU-015 — AI Session Summary ✅
+
+**Problem:** Session close screen showed a static template message regardless of how the student performed, making every session feel identical.
+
+**Files changed:**
+- `lib/student/sessionInsight.ts` *(new)* — `buildSessionInsight()` calls `callTutorLLM('tutor:eval')` with a performance-adaptive prompt (≥75% celebrate, 50-74% acknowledge progress, <50% encourage review). 5s timeout; strips machine tags; falls back to static message on error. Never throws.
+- `app/api/student/session/[sessionId]/complete/route.ts` — Replaced template `buildAiInsight()` with `buildSessionInsight()`; now returns real AI-written closing sentence.
+- `tests/unit/lib/student/sessionInsight.test.ts` *(new)* — 9 tests covering all performance bands, fallback on timeout, empty content, zero-questions guard.
+
+**Gate:** `build:workers` ✅ · `build` ✅ · 682 unit tests ✅ (9 new)
+
+---
+
+## F-STU-031 — Levels 1–100 + Badge System ✅
+
+**Problem:** XP level cap was 10 with a quadratic formula that didn't reward long-term engagement. No badge system existed.
+
+**Files changed:**
+- `lib/student/xpLevels.ts` *(new)* — Pure module (no imports): 100-level threshold table, `getLevelFromXP()`, `getXPToNextLevel()`, `getProgressPercent()`, `getLevelTierName()` (Learner → Legend), `MAX_LEVEL = 100`.
+- `lib/student/xp.ts` — Replaced inline threshold array/functions with imports from `xpLevels.ts`; re-exports all for backward compat.
+- `components/student/dashboard/XPWidget.tsx` — Uses `LEVEL_THRESHOLDS` band calculation and displays `"Level N · TierName"`.
+- `lib/student/badges.ts` *(new)* — 8 badge definitions (streak milestones 7/14/30/60/100, consistency, comeback, chapter_master). `checkSessionBadges()` self-seeds Badge rows via upsert and creates `UserBadge` rows (skipDuplicates). Never throws.
+- `prisma/schema.prisma` — Additive: `Badge`, `UserBadge` models; `userBadges` relation on `User`.
+- `prisma/migrations/20260407000003_add_badge_system/migration.sql` *(new)* — Creates both tables.
+- `app/api/student/session/[sessionId]/complete/route.ts` — `await updateStreak()` (was fire-and-forget `void`); calls `checkSessionBadges()`; returns `badgesEarned[]`.
+- `tests/unit/lib/student/xp.test.ts` — Updated cap-at-100 tests; 11 `getLevelTierName` tests; 4 `LEVEL_THRESHOLDS` tests.
+- `tests/unit/lib/student/badges.test.ts` *(new)* — 5 pure-logic tests on `BADGE_DEFINITIONS`.
+
+**Gate:** `build:workers` ✅ · `build` ✅ · 682 unit tests ✅
+
+---
+
 ## F-STU-012 — 3-Tier Hint System ✅
 
 **Problem:** Hints had zero scaffolding. The hint button sent `__HINT_REQUEST__` to the LLM but the prompt had no instructions for what to do with it, so Vidya either ignored the request or gave a generic response. Three silent bugs compounded this: `hintsUsed` was hardcoded to `0` in both prompt assembly and the state machine, so the hint counter in Redis never incremented; the `__HINT_REQUEST__` sentinel was passed raw to safety checks and DoubtKb; and hint turns were logged as `tutor:teach` making per-concept analysis impossible.

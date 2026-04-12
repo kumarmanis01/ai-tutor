@@ -24,6 +24,16 @@ const LOOKBACK_DAYS = 7
 const RATE_LIMIT_DAYS = 7
 const EXAM_WINDOW_DAYS = 90
 
+function escapeHtml(str: string) {
+  if (!str) return ''
+  return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;')
+}
+
+function sanitizeTextForHtml(raw: string) {
+  const escaped = escapeHtml(raw)
+  return escaped.replace(/\n/g, '<br/>')
+}
+
 function dateLabelUTC(d: Date) {
   return d.toISOString().slice(0, 10)
 }
@@ -124,10 +134,12 @@ export async function processReadinessDropAlerts(now = new Date()): Promise<void
         const remediationParts: string[] = []
         for (const it of issues) {
           try {
-            const prompt = `You are an experienced, gentle education coach writing for a parent with low technical familiarity. Student: ${it.studentId}. Subject: ${it.subjectName ?? it.subjectId}. Seven days ago the readiness was ${it.prev}%. Now it is ${it.curr}%. In 2-3 short bullets (each 8-16 words) suggest a simple remediation plan that includes 3 targeted 20-minute sessions and one brief practice activity the parent can encourage. Use a warm, constructive tone; avoid alarmist language; give a one-line call-to-action at the end.`
-            const res = await callLLM({ prompt, model: process.env.MODEL_SMALL || 'gpt-4o-mini', meta: { promptType: 'parent_readiness_remediation', studentId: it.studentId, subjectId: it.subjectId } }).catch(() => null)
-            const content = (res?.content && String(res.content).trim()) || `Try 3 targeted 20-minute sessions on the core topics and one short practice test.`
-            remediationParts.push(`<h4>${it.subjectName ?? it.subjectId} (${it.delta} point drop)</h4><p>${content}</p>`)
+            // Avoid sending internal IDs to the LLM; provide non-identifying context instead.
+            const prompt = `You are an experienced, gentle education coach writing for a parent with low technical familiarity. Subject: ${it.subjectName ?? 'the subject'}. Seven days ago readiness was ${it.prev}%. Now it is ${it.curr}%. In 2-3 short bullets (each 8-16 words) suggest a simple remediation plan that includes 3 targeted 20-minute sessions and one brief practice activity the parent can encourage. Use a warm, constructive tone; avoid alarmist language; give a one-line call-to-action at the end.`
+            const res = await callLLM({ prompt, model: process.env.MODEL_SMALL || 'gpt-4o-mini', meta: { promptType: 'parent_readiness_remediation', subject: it.subjectName ?? it.subjectId, daysAgo: LOOKBACK_DAYS } }).catch(() => null)
+            const raw = (res?.content && String(res.content).trim()) || `Try 3 targeted 20-minute sessions on the core topics and one short practice test.`
+            const content = sanitizeTextForHtml(raw)
+            remediationParts.push(`<h4>${escapeHtml(String(it.subjectName ?? it.subjectId))} (${it.delta} point drop)</h4><p>${content}</p>`)
           } catch (e) {
             remediationParts.push(`<h4>${it.subjectName ?? it.subjectId} (${it.delta} point drop)</h4><p>Try 3 targeted 20-minute sessions on key topics and a short practice test.</p>`)
           }
@@ -137,22 +149,42 @@ export async function processReadinessDropAlerts(now = new Date()): Promise<void
         const subject = `Attention: readiness drop detected` 
         const html = `<!doctype html><html><body><p>Hi ${parent.name ?? ''},</p><p>We detected a drop in exam readiness for the following subject(s):</p>${remediationParts.join('')}<p>Open the dashboard to see details: <a href="${dashboardLink}">View dashboard</a></p><p>— Team Spinzy</p></body></html>`
 
-        // Send email
-        if (parent.email) await sendMailSafe({ to: parent.email, subject, html, text: subject })
-        // SMS (short)
+        // Send email and SMS, but only mark rate-limit if at least one channel succeeded
+        let emailSent = false
+        let smsSent = false
+        if (!parent.email && !parent.phone) {
+          logger.info('readinessDrop.noContactDetails', { parentId, count: issues.length })
+        }
+        if (parent.email) {
+          try {
+            await sendMailSafe({ to: parent.email, subject, html, text: subject })
+            emailSent = true
+          } catch (e) {
+            logger.error('readinessDrop.sendMailFailed', { err: String(e), parentId })
+          }
+        }
         if (parent.phone) {
           const smsText = `Alert: ${issues.length} readiness drop(s) detected for your child. Open: ${dashboardLink}`
-          sendSms(parent.phone, smsText).catch((e) => logger.error('readinessDrop.sendSmsFailed', { err: String(e), parentId }))
-        }
-
-        // Mark rate-limit keys for each issue
-        if (redis) {
-          for (const it of issues) {
-            try { await redis.set(`parent:alert:readiness:last_sent:${parentId}:${it.studentId}:${it.subjectId}`, '1', 'EX', RATE_LIMIT_DAYS * 24 * 60 * 60) } catch {}
+          try {
+            await sendSms(parent.phone, smsText)
+            smsSent = true
+          } catch (e) {
+            logger.error('readinessDrop.sendSmsFailed', { err: String(e), parentId })
           }
         }
 
-        logger.info('readinessDrop.alertSent', { parentId, count: issues.length })
+        const notificationSent = emailSent || smsSent
+        if (notificationSent && redis) {
+          for (const it of issues) {
+            try { await redis.set(`parent:alert:readiness:last_sent:${parentId}:${it.studentId}:${it.subjectId}`, '1', 'EX', RATE_LIMIT_DAYS * 24 * 60 * 60) } catch (e) { logger.warn('readinessDrop.rateLimitSetFailed', { err: String(e), parentId }) }
+          }
+        }
+
+        if (notificationSent) {
+          logger.info('readinessDrop.alertSent', { parentId, count: issues.length, emailSent, smsSent })
+        } else {
+          logger.info('readinessDrop.alertNotSent', { parentId, count: issues.length, hasEmail: Boolean(parent.email), hasPhone: Boolean(parent.phone) })
+        }
       } catch (err) {
         logger.error('readinessDrop.failedForParent', { parentId, err: err instanceof Error ? err.message : String(err) })
       }

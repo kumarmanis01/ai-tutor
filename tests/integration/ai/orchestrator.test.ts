@@ -28,6 +28,7 @@ const prismaMock = {
   concept: { findUnique: jest.fn() },
   subjectDef: { findUnique: jest.fn() },
   safetyEvent: { createMany: jest.fn() },
+    analyticsEvent: { create: jest.fn() },
   studentMisconception: { upsert: jest.fn() },
   aITutorTurnLog: { create: jest.fn() },
   doubtEscalation: { create: jest.fn() },
@@ -136,6 +137,7 @@ beforeEach(() => {
   redisMock.expire.mockResolvedValue(1);
   redisMock.setex.mockResolvedValue('OK');
   prismaMock.safetyEvent.createMany.mockResolvedValue({ count: 0 });
+  prismaMock.analyticsEvent.create.mockResolvedValue({ id: 'ae-1' });
   prismaMock.aITutorTurnLog.create.mockResolvedValue({ id: 'log-1' });
   prismaMock.doubtEscalation.create.mockResolvedValue({ id: 'esc-1' });
   prismaMock.concept.findUnique.mockResolvedValue({ name: 'Algebra', irt_b: 0.5 });
@@ -361,7 +363,32 @@ describe('Turn processing pipeline', () => {
     expect(callTutorLLM).not.toHaveBeenCalled();
     // Safety events should be persisted
     expect(prismaMock.safetyEvent.createMany).toHaveBeenCalled();
+    // Analytics should record safety trigger
+    expect(prismaMock.analyticsEvent.create).toHaveBeenCalled();
   });
+
+  it('writes analyticsEvent when hallucination detector flags response', async () => {
+    // Make LLM produce a factual-claimy response that the detector will flag
+    (callTutorLLM as jest.Mock).mockResolvedValueOnce({
+      content: 'This was discovered in 1999 and is the only known example. [QUESTION]',
+      usage: {},
+      costUsd: 0,
+      latencyMs: 50,
+      model: 'mock',
+    });
+
+    const res = await runTutorOrchestrator({
+      studentId: 'student-hall',
+      state: baseState,
+      studentMessage: 'Tell me about this topic',
+      subjectId: 'subj-1',
+      conceptId: 'concept-1',
+    })
+
+    // Should have logged a turn and an analytics event for hallucination
+    expect(prismaMock.aITutorTurnLog.create).toHaveBeenCalled()
+    expect(prismaMock.analyticsEvent.create).toHaveBeenCalled()
+  })
 
   it('marks turn as completed even on error', async () => {
     (callTutorLLM as jest.Mock).mockRejectedValueOnce(

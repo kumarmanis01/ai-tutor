@@ -21,7 +21,7 @@ import { prisma } from '@/lib/prisma';
 import { logger } from '@/lib/logger';
 import Razorpay from 'razorpay';
 import { PLANS, rupeesToPaise } from '@/lib/subscription/plans';
-import calculateProrationCredit from '@/lib/subscription/proration';
+import { calculateProrationCredit } from '@/lib/subscription/proration';
 import type { PlanId } from '@/lib/subscription/plans';
 
 function getRazorpayClient() {
@@ -120,7 +120,7 @@ export async function POST(req: Request) {
         }
       });
 
-      return NextResponse.json({ success: true, subscriptionExpiry: new Date(now).toISOString() }, { status: 200 });
+      return NextResponse.json({ success: true, subscriptionExpiry: expiry.toISOString() }, { status: 200 });
     }
 
     // Otherwise create a Razorpay order for netCharge

@@ -10,7 +10,7 @@
  */
 
 import { prisma } from '@/lib/prisma';
-import processRenewals from '@/workers/subscriptionRenewalWorker';
+import processRenewals from '@/worker/services/subscriptionRenewalWorker';
 
 // Skip DB-dependent tests when no DATABASE_URL is configured
 const hasDb = !!process.env.DATABASE_URL;

@@ -15,6 +15,8 @@ export interface RevisionDueItem {
 export interface RevisionsDueTodayData {
   revisions: RevisionDueItem[]
   totalDue: number
+  capReached: boolean
+  minutesUsedToday: number
 }
 
 const fetcher = async (url: string) => {
@@ -34,6 +36,8 @@ export function useRevisionsDueToday() {
   return {
     revisions: data?.revisions ?? [],
     totalDue: data?.totalDue ?? 0,
+    capReached: data?.capReached ?? false,
+    minutesUsedToday: data?.minutesUsedToday ?? 0,
     loading: isLoading,
     error: error ? (error as Error).message : null,
     retry: mutate,

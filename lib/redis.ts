@@ -74,6 +74,13 @@ export function getRedis() {
       .catch(() => {
         // logger may not be available in some runtimes; ignore
       });
+
+    // Increment redis error metric (best-effort; avoid direct import cycles)
+    import('../lib/metrics')
+      .then(({ incRedisError }) => {
+        try { incRedisError() } catch {}
+      })
+      .catch(() => {})
   });
 
   // Log successful connects so we can correlate which resolved endpoint the

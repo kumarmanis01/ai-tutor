@@ -17,6 +17,7 @@ import { formatErrorForResponse } from '@/lib/errorResponse';
 
 const ALLOWED_STATUSES = ['DEFERRED'] as const;
 type AllowedStatus = (typeof ALLOWED_STATUSES)[number];
+const ALLOWED_ACTIONS = ['reorder'] as const;
 
 interface Params {
   params: Promise<{ itemId: string }>;
@@ -39,11 +40,51 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     }
 
     const body = await req.json().catch(() => ({}));
+    const action: string = typeof body.action === 'string' ? body.action : '';
     const status: string = typeof body.status === 'string' ? body.status : '';
 
-    if (!ALLOWED_STATUSES.includes(status as AllowedStatus)) {
+    // ── AC-06: Reorder -- swap orderInWeek between two items in the same week ──
+    if (action === 'reorder') {
+      const targetItemId = typeof body.targetItemId === 'string' ? body.targetItemId.trim() : '';
+      if (!targetItemId) {
+        return NextResponse.json({ error: 'targetItemId is required for reorder' }, { status: 400 });
+      }
+      if (targetItemId === itemId) {
+        return NextResponse.json({ error: 'targetItemId must differ from itemId' }, { status: 400 });
+      }
+
+      const [srcItem, tgtItem] = await Promise.all([
+        prisma.learningPlanItem.findFirst({
+          where: { id: itemId, plan: { studentId: userId } },
+          select: { id: true, planId: true, weekNumber: true, orderInWeek: true },
+        }),
+        prisma.learningPlanItem.findFirst({
+          where: { id: targetItemId, plan: { studentId: userId } },
+          select: { id: true, planId: true, weekNumber: true, orderInWeek: true },
+        }),
+      ]);
+      if (!srcItem || !tgtItem) {
+        return NextResponse.json({ error: 'One or both items not found' }, { status: 404 });
+      }
+      if (srcItem.planId !== tgtItem.planId || srcItem.weekNumber !== tgtItem.weekNumber) {
+        return NextResponse.json({ error: 'Items must be in the same plan week to reorder' }, { status: 400 });
+      }
+
+      // Swap orderInWeek atomically
+      await prisma.$transaction([
+        prisma.learningPlanItem.update({ where: { id: srcItem.id }, data: { orderInWeek: tgtItem.orderInWeek } }),
+        prisma.learningPlanItem.update({ where: { id: tgtItem.id }, data: { orderInWeek: srcItem.orderInWeek } }),
+      ]);
+
+      const res = NextResponse.json({ ok: true });
+      logger.logAPI(req, res, { className: 'LearningPlanItemAPI', methodName: 'PATCH' }, start);
+      return res;
+    }
+
+    // ── Status update (DEFERRED etc.) ─────────────────────────────────────────
+    if (!status || !ALLOWED_STATUSES.includes(status as AllowedStatus)) {
       return NextResponse.json(
-        { error: `status must be one of: ${ALLOWED_STATUSES.join(', ')}` },
+        { error: `Provide action (${ALLOWED_ACTIONS.join(', ')}) or status (${ALLOWED_STATUSES.join(', ')})` },
         { status: 400 },
       );
     }

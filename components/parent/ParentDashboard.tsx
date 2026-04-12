@@ -5,6 +5,9 @@
  * Language: plain, avoids jargon -- written for low-digital-literacy parents.
  *
  * Props shape matches what app/(parent)/dashboard/page.tsx computes.
+ *
+ * EDIT LOG:
+ * - 2026-04-09T00:00:00Z | copilot | added dual timezone display per child
  */
 
 import SubjectReadinessCard from '@/components/student/dashboard/SubjectReadinessCard'
@@ -24,13 +27,15 @@ interface ChildData {
   streak: number
   sessionsThisWeek: number
   readiness: ChildReadiness[]
+  timezone?: string | null
 }
 
 interface ParentDashboardProps {
   children: ChildData[]
+  parentTimezone?: string | null
 }
 
-export default function ParentDashboard({ children }: ParentDashboardProps) {
+export default function ParentDashboard({ children, parentTimezone }: ParentDashboardProps) {
   // ── Empty state ──────────────────────────────────────────────────────────
   if (children.length === 0) {
     return (
@@ -76,6 +81,9 @@ export default function ParentDashboard({ children }: ParentDashboardProps) {
                   {[child.grade, child.board].filter(Boolean).join(' · ')}
                 </p>
               )}
+              <p className="mt-1 text-2xs text-gray-400 dark:text-gray-500">
+                Times shown: {parentTimezone ?? 'your timezone'} • Student: {child.timezone ?? 'student timezone'}
+              </p>
             </div>
 
             <Link

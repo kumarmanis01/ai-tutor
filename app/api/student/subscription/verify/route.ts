@@ -13,6 +13,7 @@ import { getServerSessionForHandlers } from '@/lib/session';
 import { prisma } from '@/lib/prisma';
 import type { Prisma } from '@prisma/client';
 import { logger } from '@/lib/logger';
+import { recordPaymentEvent } from '@/lib/payments/audit';
 import { sendEmail } from '@/lib/mailer';
 import { paymentReceiptHtml } from '@/lib/email/templates';
 import { sendSms } from '@/lib/sms';
@@ -68,7 +69,7 @@ export async function POST(req: Request) {
   // Cross-check order belongs to this student
   const order = await prisma.paymentOrder.findUnique({
     where: { razorpayOrderId: orderId },
-    select: { studentId: true, status: true, planMonths: true },
+    select: { studentId: true, status: true, planMonths: true, providerIdempotencyKey: true },
   });
   if (!order || order.studentId !== userId) {
     return NextResponse.json({ error: 'Order not found' }, { status: 403 });
@@ -110,6 +111,7 @@ export async function POST(req: Request) {
             userId,
             amount: order.amount,
             provider: 'razorpay',
+            providerIdempotencyKey: order.providerIdempotencyKey ?? undefined,
             status: 'success',
             transactionId: paymentId,
             orderId: orderId,
@@ -119,6 +121,8 @@ export async function POST(req: Request) {
           },
         });
 
+        // Audit event for subscription activation payment
+        await recordPaymentEvent(tx, { paymentId: payment.id, userId, provider: 'razorpay', providerIdempotencyKey: order.providerIdempotencyKey ?? undefined, transactionId: paymentId, orderId, eventType: 'payment.subscription_verified', amount: order.amount, status: 'success', payload: { planId } });
         return { id: payment.id };
       });
     } catch (err) {

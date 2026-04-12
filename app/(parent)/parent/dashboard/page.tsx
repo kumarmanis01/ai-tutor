@@ -9,6 +9,7 @@
  * EDIT LOG:
  *   2026-03-08 | claude | original 4-card client-polling dashboard
  *   2026-03-15 | claude | T38 -- rewritten as server component with multi-child view
+ *   2026-04-09 | copilot | pass parent/student timezones to ParentDashboard for dual-display
  */
 
 import type { Metadata } from 'next'
@@ -57,7 +58,7 @@ export default async function ParentDashboardPage() {
       const [student, streak, sessionsThisWeek] = await Promise.all([
         prisma.user.findUnique({
           where: { id: studentId },
-          select: { name: true, grade: true, board: true, subjects: true },
+          select: { name: true, grade: true, board: true, subjects: true, timezone: true },
         }),
         prisma.studentStreak.findFirst({
           where: { studentId, kind: 'daily' },
@@ -94,6 +95,7 @@ export default async function ParentDashboardPage() {
         name: student.name ?? 'Student',
         grade: student.grade ?? '',
         board: student.board ?? '',
+        timezone: student.timezone ?? null,
         streak: streak?.current ?? 0,
         sessionsThisWeek,
         readiness,
@@ -105,5 +107,9 @@ export default async function ParentDashboardPage() {
     (c): c is NonNullable<typeof c> => c !== null,
   )
 
-  return <ParentDashboard>{validChildren}</ParentDashboard>
+  // Parent timezone (if set on the user)
+  const parent = await prisma.user.findUnique({ where: { id: parentId }, select: { timezone: true } })
+  const parentTimezone = parent?.timezone ?? null
+
+  return <ParentDashboard children={validChildren} parentTimezone={parentTimezone} />
 }

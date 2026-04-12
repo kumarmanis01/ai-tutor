@@ -94,6 +94,17 @@ export async function POST(req: Request) {
       prereqs,
       freeTierUsage,
     })
+
+    // AC-04: session must load within 3 s on 4G -- log a warning when the API
+    // handler itself exceeds that threshold so slow paths surface in logs.
+    const elapsed = Date.now() - start
+    if (elapsed > 3000) {
+      logger.warn('TutorSessionStartAPI: slow response', {
+        event: 'session_start_slow',
+        context: { userId, elapsedMs: elapsed, thresholdMs: 3000 },
+      })
+    }
+
     logger.logAPI(req, res, { className: 'TutorSessionStartAPI', methodName: 'POST' }, start)
     return res
   } catch (err) {

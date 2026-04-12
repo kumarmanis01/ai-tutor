@@ -3,7 +3,16 @@ import logAuditEvent from '@/lib/audit/log'
 import { registerJob } from '@/lib/jobs/registry'
 
 /**
- * Delete AnalyticsEvent rows older than `days` days.
+ * Prune Analytics Events
+ *
+ * FILE OBJECTIVE:
+ * - Remove rows from `AnalyticsEvent` older than `days` days to enforce retention.
+ * - Record a best-effort audit entry summarising the prune.
+ *
+ * RETENTION POLICY:
+ * - Default: 90 days. This job is idempotent and safe to run repeatedly.
+ * - Acceptance: indexed queries exist on (eventType, createdAt) to support daily reports.
+ *
  * Returns the number of deleted rows.
  */
 export async function pruneOldAnalyticsEvents(days = 90): Promise<number> {

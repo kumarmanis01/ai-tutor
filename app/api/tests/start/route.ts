@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { Prisma } from '@prisma/client';
 import { getServerSessionForHandlers } from '@/lib/session';
-import { selectQuestions } from '@/lib/tests';
+import { selectQuestions, selectQuestionsWithMix } from '@/lib/tests';
 import { logger } from '@/lib/logger';
 
 export const dynamic = 'force-dynamic';
@@ -35,7 +35,24 @@ export async function POST(req: Request) {
   } = body ?? {};
 
   try {
-    const questions = await selectQuestions({ subject, grade, board, chapter, difficulty, type }, count);
+    // Chapter tests use the 40/30/30 type mix with a computed time limit (F-STU-020 AC-02/AC-03).
+    // Quick-practice tests (no chapter) use the existing single-type selector.
+    let questions: Awaited<ReturnType<typeof selectQuestions>>;
+    let timeLimitSeconds: number | null = null;
+
+    if (chapter) {
+      // Pass user.id so recently-seen questions (90 days) are excluded (AC-01).
+      const mix = await selectQuestionsWithMix(
+        { subject, grade, board, chapter, difficulty },
+        count,
+        user.id,
+      );
+      questions = mix.questions;
+      timeLimitSeconds = mix.timeLimitSeconds;
+    } else {
+      questions = await selectQuestions({ subject, grade, board, chapter, difficulty, type }, count);
+    }
+
     if (!questions.length) {
       res = NextResponse.json({ error: 'No questions available for selection' }, { status: 404 });
       logger.logAPI(req, res, { className: 'TestsStartAPI', methodName: 'POST' }, start);
@@ -73,7 +90,11 @@ export async function POST(req: Request) {
       difficulty: q.difficulty ?? null,
     }));
 
-    res = NextResponse.json({ attemptId: attempt.id, questions: payload });
+    res = NextResponse.json({
+      attemptId: attempt.id,
+      questions: payload,
+      ...(timeLimitSeconds !== null ? { timeLimitSeconds } : {}),
+    });
     logger.logAPI(req, res, { className: 'TestsStartAPI', methodName: 'POST' }, start);
     return res;
   } catch (err: any) {

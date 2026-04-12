@@ -8,6 +8,10 @@
  * LINKED UNIT TEST:
  * - tests/unit/prompts/topic-notes.spec.ts
  *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - .github/copilot-instructions.md
+ * - /docs/COPILOT_GUARDRAILS.md
+ *
  * EDIT LOG:
  * - 2026-02-18T00:00:00Z | copilot-agent | created
  * - 2026-04-01T00:00:00Z | claude        | v2: classroom-teacher depth

@@ -33,6 +33,7 @@ import { PLANS } from '@/lib/subscription/plans';
 import type { PlanId } from '@/lib/subscription/plans';
 import { createInvoiceForPayment } from '@/lib/invoices';
 import Razorpay from 'razorpay';
+import computeProratedCredit from '@/lib/subscription/proration';
 
 function verifySignature(orderId: string, paymentId: string, signature: string): boolean {
   const secret = process.env.RAZORPAY_KEY_SECRET;
@@ -86,7 +87,7 @@ export async function POST(req: Request) {
   }
 
   // Cross-check order belongs to this parent
-  const order = await prisma.paymentOrder.findUnique({ where: { razorpayOrderId: orderId }, select: { studentId: true, status: true, planMonths: true } });
+  const order = await prisma.paymentOrder.findUnique({ where: { razorpayOrderId: orderId }, select: { studentId: true, status: true, planMonths: true, providerIdempotencyKey: true } });
   if (!order || order.studentId !== userId) {
     return NextResponse.json({ error: 'Order not found' }, { status: 403 });
   }
@@ -100,6 +101,7 @@ export async function POST(req: Request) {
   const client = getRazorpayClient();
   let childIds: string[] = [];
   let isFamily = false;
+  let emiMonths = 0;
   let rzNotes: any = {};
   try {
     if (client) {
@@ -109,6 +111,7 @@ export async function POST(req: Request) {
         try { childIds = JSON.parse(rzNotes.childIds); } catch { childIds = [] }
       }
       isFamily = String(rzNotes?.isFamily || '') === 'true';
+      emiMonths = rzNotes?.emiMonths ? Number(rzNotes.emiMonths) : 0;
     }
   } catch (err) {
     logger.warn('Could not fetch Razorpay order notes', { event: 'parent.subscription.verify.fetch_notes', context: { userId, orderId }, err });
@@ -129,6 +132,7 @@ export async function POST(req: Request) {
             userId,
             amount: order.amount,
             provider: 'razorpay',
+            providerIdempotencyKey: order.providerIdempotencyKey ?? undefined,
             status: 'success',
             transactionId: paymentId,
             orderId: orderId,
@@ -138,8 +142,29 @@ export async function POST(req: Request) {
           },
         });
 
-        // Create parent subscription record
-        const subscription = await tx.subscription.create({
+        // Audit event
+        await recordPaymentEvent(tx, { paymentId: payment.id, userId, provider: 'razorpay', providerIdempotencyKey: order.providerIdempotencyKey ?? undefined, transactionId: paymentId, orderId, eventType: 'payment.parent_subscription_verified', amount: order.amount, status: 'success', payload: { planId, childIds } });
+
+        // Compute any prorated credit from existing active subscription and carry forward
+        let carryForwardCredit = 0;
+        try {
+          const existing = await tx.subscription.findFirst({ where: { userId, active: true }, select: { startDate: true, endDate: true, paymentId: true, creditBalance: true } });
+          if (existing) {
+            const paid = existing.paymentId ? await tx.payment.findUnique({ where: { id: existing.paymentId }, select: { amount: true } }) : null;
+            const paidAmount = paid?.amount ?? 0;
+            const proration = computeProratedCredit(existing.startDate!, existing.endDate!, paidAmount);
+            const existingCredit = existing.creditBalance ?? 0;
+            carryForwardCredit = (existingCredit || 0) + (proration || 0);
+            // Deactivate existing
+            await tx.subscription.updateMany({ where: { userId, active: true }, data: { active: false } });
+          }
+        } catch (err) {
+          logger.warn('parent.verify proration failed', { event: 'parent.subscription.verify.proration', context: { userId, orderId }, err });
+          carryForwardCredit = 0;
+        }
+
+        // Create parent subscription record and capture it for installment creation
+        const createdSub = await tx.subscription.create({
           data: {
             userId,
             plan: childIds && childIds.length > 1 ? 'family' : 'individual',
@@ -149,31 +174,10 @@ export async function POST(req: Request) {
             active: true,
             childSlots: childIds?.length ?? 1,
             paymentId: payment.id,
+            meta: { childIds },
+            creditBalance: carryForwardCredit,
           },
         });
-
-        // If EMI was requested (emiMonths in Razorpay notes), create installment placeholders
-        try {
-          const emiMonths = rzNotes?.emiMonths ? Number(rzNotes.emiMonths) : 0;
-          if (emiMonths && emiMonths > 1) {
-            const total = Number(order.amount); // paise
-            const base = Math.floor(total / emiMonths);
-            const remainder = total - base * emiMonths;
-
-            // Update the initial payment meta to mark installment 1
-            await tx.payment.update({ where: { id: payment.id }, data: { meta: { ...(payment.meta || {}), emi: true, installment: 1, totalInstallments: emiMonths, subscriptionId: subscription.id, dueDate: now.toISOString() } } });
-
-            // Create remaining installments as pending payments
-            for (let i = 2; i <= emiMonths; i++) {
-              const amt = i === emiMonths ? base + remainder : base;
-              const dueDate = new Date(now);
-              dueDate.setMonth(dueDate.getMonth() + (i - 1));
-              await tx.payment.create({ data: { userId, amount: amt, provider: 'razorpay', status: 'pending', plan: plan.label, billingCycle: plan.perMonthDisplay, meta: { emi: true, installment: i, totalInstallments: emiMonths, subscriptionId: subscription.id, dueDate: dueDate.toISOString() } } });
-            }
-          }
-        } catch (e) {
-          logger.warn('Could not create EMI installments', { event: 'parent.subscription.verify.emi_create', context: { userId, orderId }, err: e });
-        }
 
         // Apply subscription to each child (if any childIds provided), idempotent
         if (childIds && childIds.length > 0) {
@@ -181,13 +185,58 @@ export async function POST(req: Request) {
             await tx.user.update({ where: { id: sid }, data: { subscriptionStatus: 'active', subscriptionExpiry: expiry } });
             await tx.freeTierUsage
               .upsert({ where: { studentId: sid }, update: { periodStart: now, sessionsUsed: 0 }, create: { studentId: sid, periodStart: now, sessionsUsed: 0 } })
-              .catch((err) => { logger.warn('freeTierUsage.upsert failed (parent.verify)', { event: 'parent.subscription.verify.upsert', context: { sid }, error: String(err) }) });
+              .catch((err) => { logger.warn('freeTierUsage.upsert failed (parent.verify)', { event: 'parent.subscription.verify.upsert', context: { sid }, error: String(err) }); });
           }
-        } else {
-          // Fallback: if no childIds, try to apply subscription to a sensible student (skip in MVP)
         }
 
-        return { id: payment.id };
+        // Create Installment schedule if EMI selected; first installment marked PAID as we just received payment
+        try {
+          const months = Number(emiMonths || 0);
+          if (months && months > 1) {
+            const totalPaise = order.amount || 0;
+            const base = Math.floor(totalPaise / months);
+            let remainder = totalPaise - base * months;
+            for (let i = 0; i < months; i++) {
+              const amount = base + (i === months - 1 ? remainder : 0);
+              const due = new Date(now);
+              due.setMonth(due.getMonth() + i);
+              await tx.installment.create({ data: {
+                subscriptionId: createdSub.id,
+                number: i + 1,
+                dueAt: due,
+                amount,
+                currency: 'INR',
+                status: i === 0 ? 'PAID' : 'PENDING',
+                provider: 'razorpay',
+                providerPaymentId: i === 0 ? paymentId : undefined,
+                paymentId: i === 0 ? payment.id : undefined,
+                attemptCount: i === 0 ? 1 : 0,
+                paidAt: i === 0 ? now : undefined,
+                meta: { autoCreated: true, planId },
+              } });
+            }
+          } else {
+            // Single paid installment
+            await tx.installment.create({ data: {
+              subscriptionId: createdSub.id,
+              number: 1,
+              dueAt: now,
+              amount: order.amount,
+              currency: 'INR',
+              status: 'PAID',
+              provider: 'razorpay',
+              providerPaymentId: paymentId,
+              paymentId: payment.id,
+              attemptCount: 1,
+              paidAt: now,
+              meta: { planId },
+            } });
+          }
+        } catch (err) {
+          logger.warn('parent.verify: failed to create installment schedule', { err });
+        }
+
+        return { paymentId: payment.id, subscriptionId: createdSub.id };
       });
     } catch (err) {
       logger.error('Failed to activate parent subscription', { event: 'parent.subscription.verify.activate_error', context: { userId, orderId }, err });

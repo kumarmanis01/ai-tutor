@@ -25,6 +25,7 @@ function makeCtx(overrides: Partial<PromptContext> = {}): PromptContext {
       { role: 'ai', content: 'Great, let us start geometry.' },
     ],
     activeMisconceptionName: null,
+    activeMisconceptionCorrection: null,
     frustrationScore: 0.2,
     ragChunks: ['Chunk 1', 'Chunk 2'],
     conceptName: 'Similar Triangles',
@@ -222,6 +223,7 @@ describe('buildStageInstructionsLayer -- hint tiers', () => {
       sessionSummary: null,
       recentTurns: [],
       activeMisconceptionName: null,
+      activeMisconceptionCorrection: null,
       frustrationScore: 0,
       ragChunks: [],
       conceptName: 'Quadratic Equations',
@@ -290,6 +292,113 @@ describe('buildStageInstructionsLayer -- hint tiers', () => {
       const layer = buildStageInstructionsLayer(makePracticeCtx(0, false, stage))
       expect(layer).toContain('### STAGE_INSTRUCTIONS')
     }
+  })
+
+  // AC-04 (F-STU-011): re-explain style directives
+  test('should inject Simpler directive when explainStyle is simpler', () => {
+    const ctx = makeCtx({ stage: 'CORE_EXPLANATION', explainStyle: 'simpler' })
+    const layer = buildStageInstructionsLayer(ctx)
+    expect(layer).toContain('RE-EXPLAIN REQUEST -- Simpler')
+    expect(layer).toContain('Shorter sentences')
+  })
+
+  test('should inject Harder directive when explainStyle is harder', () => {
+    const ctx = makeCtx({ stage: 'CORE_EXPLANATION', explainStyle: 'harder' })
+    const layer = buildStageInstructionsLayer(ctx)
+    expect(layer).toContain('RE-EXPLAIN REQUEST -- Harder/Deeper')
+    expect(layer).toContain('underlying mechanism')
+  })
+
+  test('should inject real-life example directive when explainStyle is real_life_example', () => {
+    const ctx = makeCtx({ stage: 'WORKED_EXAMPLE', explainStyle: 'real_life_example' })
+    const layer = buildStageInstructionsLayer(ctx)
+    expect(layer).toContain('RE-EXPLAIN REQUEST -- Real-life example')
+    expect(layer).toContain('Indian daily life')
+  })
+
+  test('should not inject re-explain directive when explainStyle is null', () => {
+    const ctx = makeCtx({ stage: 'CORE_EXPLANATION', explainStyle: null })
+    const layer = buildStageInstructionsLayer(ctx)
+    expect(layer).not.toContain('RE-EXPLAIN REQUEST')
+  })
+
+  test('should not inject re-explain directive when explainStyle is undefined', () => {
+    const ctx = makeCtx({ stage: 'CORE_EXPLANATION' })
+    const layer = buildStageInstructionsLayer(ctx)
+    expect(layer).not.toContain('RE-EXPLAIN REQUEST')
+  })
+
+  // AC-08 (F-STU-011): wrong-answer threshold warning in practice stages
+  test('should show PREREQ_FAIL warning when consecutiveWrongAnswers >= 2 in practice stage', () => {
+    const ctx = makeCtx({ stage: 'GUIDED_PRACTICE', consecutiveWrongAnswers: 2, hintsUsed: 0, isHintRequest: false })
+    const layer = buildStageInstructionsLayer(ctx)
+    expect(layer).toContain('PREREQ_FAIL')
+    expect(layer).toContain('multiple wrong answers')
+  })
+
+  test('should NOT show PREREQ_FAIL warning when consecutiveWrongAnswers < 2 in practice stage', () => {
+    const ctx = makeCtx({ stage: 'GUIDED_PRACTICE', consecutiveWrongAnswers: 1, hintsUsed: 0, isHintRequest: false })
+    const layer = buildStageInstructionsLayer(ctx)
+    expect(layer).toContain('[STRUGGLE_DETECTED]')
+    expect(layer).not.toContain('multiple wrong answers')
+  })
+
+  test('should include consecutiveWrongAnswers in SESSION_STATE layer', () => {
+    const ctx = makeCtx({ consecutiveWrongAnswers: 2 })
+    const result = assembleSystemPrompt(ctx)
+    expect(result.system).toContain('Consecutive wrong answers: 2')
+  })
+
+  // AC-03 (F-STU-013): contrastive explanation
+  test('should inject MISCONCEPTION DETECTED contrastive block when both name and correction are set', () => {
+    const ctx = makeCtx({
+      stage: 'GUIDED_PRACTICE',
+      activeMisconceptionName: 'Quadratic has only one root',
+      activeMisconceptionCorrection: 'There are two roots: positive and negative.',
+    })
+    const layer = buildStageInstructionsLayer(ctx)
+    expect(layer).toContain('MISCONCEPTION DETECTED -- Contrastive Explanation Required')
+    expect(layer).toContain('Quadratic has only one root')
+    expect(layer).toContain('There are two roots: positive and negative.')
+    expect(layer).toContain('counterexample')
+    expect(layer).toContain('correct model')
+  })
+
+  test('should inject a softer MISCONCEPTION DETECTED block when name is set but correction is null', () => {
+    const ctx = makeCtx({
+      stage: 'CORE_EXPLANATION',
+      activeMisconceptionName: 'Quadratic has only one root',
+      activeMisconceptionCorrection: null,
+    })
+    const layer = buildStageInstructionsLayer(ctx)
+    expect(layer).toContain('MISCONCEPTION DETECTED')
+    expect(layer).toContain('Quadratic has only one root')
+    expect(layer).not.toContain('Contrastive Explanation Required')
+  })
+
+  test('should NOT inject misconception block when activeMisconceptionName is null', () => {
+    const ctx = makeCtx({
+      activeMisconceptionName: null,
+      activeMisconceptionCorrection: null,
+    })
+    const layer = buildStageInstructionsLayer(ctx)
+    expect(layer).not.toContain('MISCONCEPTION DETECTED')
+  })
+
+  test('contrastive block appears before hint tier instructions in layer output', () => {
+    const ctx = makeCtx({
+      stage: 'GUIDED_PRACTICE',
+      isHintRequest: true,
+      hintsUsed: 0,
+      activeMisconceptionName: 'Binomial square misconception',
+      activeMisconceptionCorrection: 'The correct expansion includes 2ab.',
+    })
+    const layer = buildStageInstructionsLayer(ctx)
+    const misconceptionIdx = layer.indexOf('MISCONCEPTION DETECTED')
+    const hintIdx = layer.indexOf('HINT REQUESTED')
+    expect(misconceptionIdx).toBeGreaterThanOrEqual(0)
+    expect(hintIdx).toBeGreaterThanOrEqual(0)
+    expect(misconceptionIdx).toBeLessThan(hintIdx)
   })
 })
 

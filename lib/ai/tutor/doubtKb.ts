@@ -1,6 +1,24 @@
 import { prisma } from '@/lib/prisma'
 import { logger } from '@/lib/logger'
 import { getEmbedding } from '@/lib/ai/embeddings'
+import client from 'prom-client'
+
+// Metrics for DoubtKb cache hit/miss monitoring (registered to global registry)
+export const doubtKbLookupTotal = new client.Counter({
+  name: 'doubtkb_lookup_total',
+  help: 'Total DoubtKb lookup attempts',
+  registers: [client.register],
+})
+export const doubtKbLookupHit = new client.Counter({
+  name: 'doubtkb_lookup_hit_total',
+  help: 'DoubtKb lookup cache hits',
+  registers: [client.register],
+})
+export const doubtKbLookupMiss = new client.Counter({
+  name: 'doubtkb_lookup_miss_total',
+  help: 'DoubtKb lookup cache misses',
+  registers: [client.register],
+})
 
 function normalizeQuestion(q: string): string {
   return (q ?? '')
@@ -105,6 +123,7 @@ export async function lookupDoubt(
 ): Promise<string | null> {
   if (!questionText?.trim() || !subjectId) return null
   try {
+    doubtKbLookupTotal.inc()
     const vec = await getEmbedding(questionText)
     if (!vec) return null
 
@@ -117,8 +136,8 @@ export async function lookupDoubt(
       FROM "DoubtKb"
       WHERE "subjectId" = $2
         AND embedding IS NOT NULL
-        AND "answerText" IS NOT NULL
-        AND 1 - (embedding <=> $1::vector) > $3
+          AND "answerText" IS NOT NULL
+          AND 1 - (embedding <=> $1::vector) >= $3
       ORDER BY similarity DESC
       LIMIT 1
       `,
@@ -127,13 +146,18 @@ export async function lookupDoubt(
       LOOKUP_THRESHOLD,
     )) as Row[]
 
-    if (!rows.length) return null
+    if (!rows.length) {
+      doubtKbLookupMiss.inc()
+      return null
+    }
 
     // Increment timesServed (fire-and-forget)
     prisma.doubtKb.update({
       where: { id: rows[0].id },
       data: { timesServed: { increment: 1 } },
     }).catch(() => {})
+
+    doubtKbLookupHit.inc()
 
     return rows[0].answerText
   } catch (err) {
@@ -172,7 +196,7 @@ export async function recordDoubt(
       FROM "DoubtKb"
       WHERE "subjectId" = $2
         AND embedding IS NOT NULL
-        AND 1 - (embedding <=> $1::vector) > $3
+          AND 1 - (embedding <=> $1::vector) >= $3
       ORDER BY similarity DESC
       LIMIT 1
       `,

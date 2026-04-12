@@ -1,19 +1,32 @@
 import { NextResponse } from 'next/server'
 
+// Canonical event types for learner analytics -- keep in sync with lib/analytics/client.ts
 const ALLOWED = new Set(['lesson_viewed', 'lesson_completed', 'quiz_attempted', 'quiz_passed'])
 
 import { formatErrorForResponse } from '@/lib/errorResponse';
 
+function normalizeEvent(raw: any) {
+  // Accept either `eventType`, legacy `type`, or `event` (from generic client)
+  const eventType = raw?.eventType ?? raw?.type ?? raw?.event ?? null
+  const userId = raw?.userId ?? null
+  const courseId = raw?.courseId ?? null
+  const lessonIdx = typeof raw?.lessonIdx === 'number' ? raw.lessonIdx : null
+  const metadata = (raw?.metadata && typeof raw.metadata === 'object') ? raw.metadata : (raw?.data && typeof raw.data === 'object' ? raw.data : {})
+  return { eventType, userId, courseId, lessonIdx, metadata }
+}
+
 export async function POST(req: Request) {
   try {
     const body = await req.json()
-    const events = Array.isArray(body) ? body : body?.events ?? []
-    if (!Array.isArray(events) || events.length === 0) {
+    const eventsRaw = Array.isArray(body) ? body : body?.events ?? []
+    if (!Array.isArray(eventsRaw) || eventsRaw.length === 0) {
       return NextResponse.json({ error: 'no_events' }, { status: 400 })
     }
 
+    const normalized = eventsRaw.map(normalizeEvent)
+
     // basic validation
-    for (const ev of events) {
+    for (const ev of normalized) {
       if (!ev?.eventType || typeof ev.eventType !== 'string' || !ALLOWED.has(ev.eventType)) {
         return NextResponse.json({ error: 'invalid_event_type', eventType: ev?.eventType ?? null }, { status: 400 })
       }
@@ -22,11 +35,11 @@ export async function POST(req: Request) {
     // Fire-and-forget: write to DB but don't block on it
     try {
       const db = (global as any).__TEST_PRISMA__ ?? (await import('@/lib/prisma')).prisma
-      const rows = events.map((ev: any) => ({
+      const rows = normalized.map((ev: any) => ({
         eventType: ev.eventType,
         userId: ev.userId ?? null,
         courseId: ev.courseId ?? null,
-        lessonIdx: typeof ev.lessonIdx === 'number' ? ev.lessonIdx : null,
+        lessonIdx: ev.lessonIdx ?? null,
         metadata: ev.metadata ?? {},
       }))
       // use createMany when available; swallow errors

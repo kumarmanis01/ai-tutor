@@ -170,8 +170,34 @@ export default function ParentUpgradeFlow({ childrenList }: ParentUpgradeFlowPro
   }
 
   if (step === 'confirm') {
+    const emiSchedule = useMemo(() => {
+      if (!emiMonths || planId !== 'annual') return null;
+      const per = Math.round((totalRupees / emiMonths) * 100) / 100;
+      const start = new Date();
+      return Array.from({ length: emiMonths }).map((_, i) => {
+        const d = new Date(start);
+        d.setMonth(d.getMonth() + i);
+        return { number: i + 1, due: d.toLocaleDateString('en-IN'), amount: per };
+      });
+    }, [emiMonths, totalRupees, planId]);
+
     return (
       <div>
+        {emiSchedule && (
+          <div className="rounded-xl border p-3 mb-4 bg-white">
+            <h4 className="text-sm font-semibold">EMI schedule preview</h4>
+            <div className="text-xs text-gray-600">Total ₹{totalRupees} over {emiMonths} months</div>
+            <ul className="mt-2 space-y-1">
+              {emiSchedule.map((s) => (
+                <li key={s.number} className="flex justify-between text-sm">
+                  <span>Installment {s.number} — {s.due}</span>
+                  <span>₹{s.amount}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
         <PaymentConfirmation planId={planId} paymentMethod={method} loading={payLoading} onConfirm={openRazorpay} onBack={() => setStep('method')} />
       </div>
     );

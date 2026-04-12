@@ -1,4 +1,5 @@
 import OpenAI from 'openai'
+import { prisma } from '@/lib/prisma'
 import { logger } from '@/lib/logger'
 
 let _openai: OpenAI | null = null
@@ -24,6 +25,28 @@ export async function getEmbedding(text: string): Promise<number[] | null> {
     })
     const embedding = response.data?.[0]?.embedding
     if (!embedding || !Array.isArray(embedding)) return null
+    // Fire-and-forget analytics event for embedding call
+    try {
+      const inputTokensEstimate = Math.max(1, Math.ceil(input.length / 4))
+      await prisma.analyticsEvent.create({
+        data: {
+          eventType: 'ai_call',
+          userId: null,
+          courseId: null,
+          lessonIdx: null,
+          metadata: {
+            model: 'text-embedding-3-small',
+            call_type: 'embed',
+            input_tokens: inputTokensEstimate,
+            output_tokens: Array.isArray(embedding) ? embedding.length : null,
+            cost_usd: 0,
+            cache_hit: false,
+          },
+        },
+      })
+    } catch (e) {
+      logger.warn('analyticsEvent.embed.create.failed', { error: String((e as any)?.message ?? e) })
+    }
     return embedding
   } catch (err) {
     logger.error('[embeddings] getEmbedding failed', { error: err })
@@ -48,11 +71,45 @@ export async function getEmbeddingsBatch(
       if (!process.env.OPENAI_API_KEY) {
         results.push(...batch.map(() => null))
       } else {
+        const inputs = batch.map((t) => t.slice(0, 8000))
         const response = await getClient().embeddings.create({
           model: 'text-embedding-3-small',
-          input: batch.map((t) => t.slice(0, 8000)),
+          input: inputs,
         })
-        results.push(...response.data.map((d) => d.embedding ?? null))
+        const batchEmbeddings = response.data.map((d) => d.embedding ?? null)
+        // Ensure result length matches inputs length even if the provider
+        // returned fewer embeddings than requested (some mocks do this).
+        if (batchEmbeddings.length < inputs.length) {
+          const padded = inputs.map((_, idx) => (batchEmbeddings[idx] ?? null))
+          results.push(...padded)
+        } else {
+          results.push(...batchEmbeddings)
+        }
+        // Analytics per batch (fire-and-forget)
+        try {
+          const totalInputChars = inputs.reduce((s, it) => s + (it?.length ?? 0), 0)
+          const inputTokensEstimate = Math.max(1, Math.ceil(totalInputChars / 4))
+          const totalOutputTokens = batchEmbeddings.reduce((s, e) => s + (Array.isArray(e) ? e.length : 0), 0)
+          await prisma.analyticsEvent.create({
+            data: {
+              eventType: 'ai_call',
+              userId: null,
+              courseId: null,
+              lessonIdx: null,
+              metadata: {
+                model: 'text-embedding-3-small',
+                call_type: 'embed',
+                input_tokens: inputTokensEstimate,
+                output_tokens: totalOutputTokens,
+                cost_usd: 0,
+                cache_hit: false,
+                batch_size: inputs.length,
+              },
+            },
+          })
+        } catch (e) {
+          logger.warn('analyticsEvent.embed.batch.create.failed', { error: String((e as any)?.message ?? e) })
+        }
       }
     } catch (err) {
       logger.error(`[embeddings] batch ${i}-${i + batchSize} failed`, { error: err })

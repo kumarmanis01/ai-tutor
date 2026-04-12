@@ -13,12 +13,15 @@
  *
  * EDIT LOG:
  * - 2026-02-01 | claude | created scheduler for ignored recommendations job
+ * - 2026-04-11T07:54:52Z | copilot | fix: remove non-existent 'accountStatus' from Prisma UserWhereInput
  */
 
 import { logger } from '../lib/logger.js';
 import { markIgnoredRecommendations, cleanupOldIgnoredRecommendations } from './jobs/markIgnoredRecommendations.js';
 import { aggregateWeeklySummaries } from './jobs/weeklyParentSummary.js';
 import { sendParentDigests } from './jobs/parentEmailDigest.js';
+import { runWeeklyQuestionHealth } from './jobs/weeklyQuestionHealth.js';
+import { runInactivityAlerts } from './jobs/inactivityAlert.js';
 import { runRecoveryCheck } from '../lib/failureRecovery.js'
 import { precomputeReadiness } from './jobs/precomputeReadiness.js';
 import { expireStaleTasks } from '../lib/dailyHabit.js';
@@ -27,6 +30,9 @@ import { runDailyCostReport } from './services/costReportingWorker.js'
 import { runDataDeletionCycle } from './services/dataDeletionWorker.js';
 import { processParentInactivityAlerts } from './services/inactivityAlertWorker.js';
 import { processReadinessDropAlerts } from './services/readinessDropWorker.js';
+import { runMonthlyMisconceptionPrevalence } from './services/misconceptionPrevalenceWorker.js';
+import { weeklyPlanAdjust } from './jobs/weeklyPlanAdjust.js';
+import { sendFreemiumResetNotifications } from './jobs/freemiumResetNotifications.js';
 import { prisma } from '../lib/prisma.js';
 import { sendPushSafe } from '../lib/push/send.js';
 import { PUSH_NOTIFICATIONS } from '../lib/push/notifications.js';
@@ -38,10 +44,12 @@ const HYDRATION_RECONCILER_INTERVAL_MS = 2 * 60 * 1000; // 2 minutes
 const MARK_IGNORED_INTERVAL_MS = 24 * 60 * 60 * 1000; // 24 hours
 const CLEANUP_INTERVAL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
 const WEEKLY_INTERVAL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
+const WEEKLY_PLAN_ADJUST_INTERVAL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
 const DAILY_MAINTENANCE_INTERVAL_MS = 24 * 60 * 60 * 1000; // 24 hours
 const READINESS_PRECOMPUTE_INTERVAL_MS = 24 * 60 * 60 * 1000; // 24 hours
 const COST_REPORT_INTERVAL_MS = 24 * 60 * 60 * 1000; // 24 hours
 const DATA_DELETION_INTERVAL_MS = 24 * 60 * 60 * 1000; // 24 hours
+const MONTHLY_INTERVAL_MS = 30 * 24 * 60 * 60 * 1000; // approx 30 days
 
 /**
  * Calculate milliseconds until next scheduled time (2 AM UTC)
@@ -108,6 +116,14 @@ async function runWeeklyParentJob() {
     logger.info('scheduler.parentEmailDigest.starting');
     const sent = await sendParentDigests();
     logger.info('scheduler.parentEmailDigest.completed', { sent });
+    // Run weekly question health check and emit analytics
+    try {
+      logger.info('scheduler.weeklyQuestionHealth.starting');
+      const lowCount = await runWeeklyQuestionHealth();
+      logger.info('scheduler.weeklyQuestionHealth.completed', { lowCount });
+    } catch (err) {
+      logger.error('scheduler.weeklyQuestionHealth.error', { error: err instanceof Error ? err.message : String(err) });
+    }
   } catch (error) {
     logger.error('scheduler.weeklyParentJob.error', {
       error: error instanceof Error ? error.message : String(error)
@@ -181,7 +197,6 @@ async function runInactivityPush(): Promise<void> {
   const inactiveDay2 = await prisma.user.findMany({
     where: {
       role: 'user',
-      accountStatus: 'active',
       lastSessionDate: { gte: threeDaysAgo, lt: twoDaysAgo },
     },
     select: { id: true, currentStreak: true },
@@ -194,7 +209,6 @@ async function runInactivityPush(): Promise<void> {
   const inactiveDay3 = await prisma.user.findMany({
     where: {
       role: 'user',
-      accountStatus: 'active',
       lastSessionDate: { gte: fourDaysAgo, lt: threeDaysAgo },
     },
     select: { id: true },
@@ -281,6 +295,28 @@ async function runRevisionDuePush(): Promise<void> {
 }
 
 /**
+ * AC-05 (F-STU-040): Send freemium reset push notifications.
+ * Checks calendar internally -- only sends on the day that is 3 days before
+ * the 1st of next month; no-ops on all other days.
+ */
+async function runFreemiumResetNotifications(): Promise<void> {
+  try {
+    const result = await sendFreemiumResetNotifications()
+    if (!result.skipped) {
+      logger.info('scheduler.freemiumResetNotifications.completed', {
+        daysLeft: result.daysLeft,
+        eligible: result.eligible,
+        sent: result.sent,
+      })
+    }
+  } catch (error) {
+    logger.error('scheduler.freemiumResetNotifications.error', {
+      error: error instanceof Error ? error.message : String(error),
+    })
+  }
+}
+
+/**
  * Run daily maintenance: expire stale tasks + recovery check
  */
 async function runDailyMaintenanceJob() {
@@ -294,6 +330,11 @@ async function runDailyMaintenanceJob() {
     // Run failure recovery check
     const recoveryEvents = await runRecoveryCheck();
     logger.info('scheduler.dailyMaintenance.recoveryCheck', { recoveryEvents });
+
+    // Run parent inactivity alerts (email / SMS)
+    logger.info('scheduler.parentInactivityAlerts.starting');
+    const parentAlerts = await runInactivityAlerts();
+    logger.info('scheduler.parentInactivityAlerts.completed', { sent: parentAlerts });
 
     // ── Push: inactivity reminders ──────────────────────────────────────
     await runInactivityPush();
@@ -327,6 +368,9 @@ async function runDailyMaintenanceJob() {
 
     // ── Push: revision due (only between 07:30-09:00 IST) ───────────────
     await runRevisionDuePush();
+
+    // ── Push: freemium reset reminder (only fires 3 days before month-end) ──
+    await runFreemiumResetNotifications();
   } catch (error) {
     logger.error('scheduler.dailyMaintenance.error', {
       error: error instanceof Error ? error.message : String(error),
@@ -356,6 +400,23 @@ function msUntilNextWeeklyRun(targetDay: number, targetHour: number): number {
 }
 
 /**
+ * AC-05 (F-STU-003): Weekly learning plan auto-adjust (Sunday 5 AM UTC).
+ * Detects students behind their plan and regenerates to re-prioritise.
+ */
+async function runWeeklyPlanAdjustJob() {
+  try {
+    logger.info('scheduler.weeklyPlanAdjust.starting')
+    const { checked, adjusted } = await weeklyPlanAdjust()
+    logger.info('scheduler.weeklyPlanAdjust.completed', { checked, adjusted })
+  } catch (error) {
+    logger.error('scheduler.weeklyPlanAdjust.error', {
+      error: error instanceof Error ? error.message : String(error),
+    })
+  }
+  setTimeout(runWeeklyPlanAdjustJob, WEEKLY_PLAN_ADJUST_INTERVAL_MS)
+}
+
+/**
  * Nightly DPDP data deletion (02:00 AM IST = 20:30 UTC)
  */
 async function runDataDeletionJob() {
@@ -369,6 +430,31 @@ async function runDataDeletionJob() {
     })
   }
   setTimeout(runDataDeletionJob, DATA_DELETION_INTERVAL_MS)
+}
+
+/**
+ * Calculate ms until next monthly run (1st of next month at targetHour UTC)
+ */
+function msUntilNextMonthlyRun(targetHour: number = 4): number {
+  const now = new Date();
+  const year = now.getUTCFullYear();
+  const month = now.getUTCMonth();
+  // first day of next month
+  const next = new Date(Date.UTC(year, month + 1, 1, targetHour, 0, 0));
+  return next.getTime() - now.getTime();
+}
+
+async function runMisconceptionPrevalenceJob() {
+  try {
+    logger.info('scheduler.misconceptionPrevalence.starting');
+    const res = await runMonthlyMisconceptionPrevalence();
+    logger.info('scheduler.misconceptionPrevalence.completed', res);
+  } catch (err) {
+    logger.error('scheduler.misconceptionPrevalence.error', { error: err instanceof Error ? err.message : String(err) });
+  }
+
+  // Schedule next run in ~30 days (approximate monthly cadence)
+  setTimeout(runMisconceptionPrevalenceJob, MONTHLY_INTERVAL_MS);
 }
 
 /**
@@ -389,6 +475,7 @@ export async function startScheduler() {
   const delayDailyMaintenance = msUntilNextRun(1); // 1 AM UTC for task expiry + recovery
   const delayReadinessPrecompute = msUntilNextRun(21) + 30 * 60 * 1000; // 21:30 UTC = 3 AM IST
   const delayCostReport = msUntilNextRun(0) + 30 * 60 * 1000; // 00:30 UTC = 6 AM IST
+  const delayWeeklyPlanAdjust = msUntilNextWeeklyRun(0, 5); // Sunday 5 AM UTC
 
   logger.info('scheduler.scheduled', {
     hydrationReconcilerInterval: '2 minutes (starts immediately)',
@@ -413,11 +500,17 @@ export async function startScheduler() {
   setTimeout(runWeeklyParentJob, delayWeeklyParent);
   setTimeout(runReadinessPrecompute, delayReadinessPrecompute);
   setTimeout(runCostReportJob, delayCostReport);
+  setTimeout(runWeeklyPlanAdjustJob, delayWeeklyPlanAdjust);
 
   // Data deletion: 02:00 AM IST = 20:30 UTC
   const delayDataDeletion = msUntilNextRun(20) + 30 * 60 * 1000
   logger.info('scheduler.scheduled.dataDeletion', { firstRun: new Date(Date.now() + delayDataDeletion).toISOString() })
   setTimeout(runDataDeletionJob, delayDataDeletion);
+
+  // Monthly misconception prevalence job (1st of next month at 04:00 UTC)
+  const delayMonthlyMisconception = msUntilNextMonthlyRun(4)
+  logger.info('scheduler.scheduled.misconceptionPrevalence', { firstRun: new Date(Date.now() + delayMonthlyMisconception).toISOString() })
+  setTimeout(runMisconceptionPrevalenceJob, delayMonthlyMisconception);
 
   logger.info('scheduler.started');
 }

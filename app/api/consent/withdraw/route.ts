@@ -38,7 +38,13 @@ export async function POST(req: Request) {
     return res
   }
 
-  await withdrawConsent(userId, scope as ConsentScope)
+  const ip =
+    req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ??
+    (req as any).ip ??
+    undefined
+  const userAgent = req.headers.get('user-agent') ?? undefined
+
+  await withdrawConsent(userId, scope as ConsentScope, { ipAddress: ip, userAgent })
 
   const res = NextResponse.json({ withdrawn: true }, { status: 200 })
   logger.logAPI(req, res, { className: 'ConsentWithdrawAPI', methodName: 'POST' }, start)

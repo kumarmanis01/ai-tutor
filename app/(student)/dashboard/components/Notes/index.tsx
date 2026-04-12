@@ -1,3 +1,17 @@
+'/**
+ * FILE OBJECTIVE:
+ * - Render and browse Topic Notes for students; supports Vidya and legacy note shapes.
+ *
+ * LINKED UNIT TEST:
+ * - tests/unit/app/student/dashboard/components/Notes/index.spec.ts
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - .github/copilot-instructions.md
+ * - /docs/COPILOT_GUARDRAILS.md
+ *
+ * EDIT LOG:
+ * - 2026-04-11T00:00:00Z | copilot | restore objectives rendering in legacy & flat renderers
+ */
 'use client';
 
 import React, { useEffect, useRef, useState, useCallback } from 'react';
@@ -618,6 +632,17 @@ function NoteRenderer({ content, title }: { content: unknown; title: string }) {
             </div>
           ))}
 
+          {obj.objectives && Array.isArray(obj.objectives) && obj.objectives.length > 0 && (
+            <div className="rounded-lg bg-[#EEEDFE] border border-indigo-100 p-4 mt-4">
+              <h3 className="text-sm font-semibold text-[#534AB7] mb-2">Learning Objectives</h3>
+              <ul className="list-disc list-inside space-y-1 text-sm text-indigo-800">
+                {(obj.objectives as string[]).map((o, i) => (
+                  <li key={i}>{o}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+
           {obj.keyPoints && Array.isArray(obj.keyPoints) && (
             <div className="rounded-lg bg-[#EEEDFE] border border-indigo-100 p-4">
               <h3 className="text-sm font-semibold text-[#534AB7] mb-2">Key Points</h3>
@@ -641,6 +666,16 @@ function NoteRenderer({ content, title }: { content: unknown; title: string }) {
           )}
           {obj.explanation && (
             <div className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">{String(obj.explanation)}</div>
+          )}
+          {obj.objectives && Array.isArray(obj.objectives) && obj.objectives.length > 0 && (
+            <div className="rounded-lg bg-[#EEEDFE] border border-indigo-100 p-4 mt-2">
+              <h3 className="text-sm font-semibold text-[#534AB7] mb-2">Learning Objectives</h3>
+              <ul className="list-disc list-inside space-y-1 text-sm text-indigo-800">
+                {(obj.objectives as string[]).map((o, i) => (
+                  <li key={i}>{o}</li>
+                ))}
+              </ul>
+            </div>
           )}
           {obj.example && (
             <div className="rounded-md bg-gray-50 border border-gray-200 p-3">

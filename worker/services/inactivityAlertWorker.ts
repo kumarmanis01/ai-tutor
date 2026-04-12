@@ -76,28 +76,51 @@ export async function processParentInactivityAlerts(now = new Date()): Promise<v
         // Build messages
         const childNames = inactiveChildren.map((c) => `${c.name ?? 'your child'} (${c.daysSince}d)`).join(', ')
         const dashboardLink = `${appUrl}/parent/dashboard?child=${inactiveChildren[0].studentId}`
-        const smsText = `Hi ${info.name ?? ''}, we noticed ${childNames} haven't had a study session in ${thresholdDays} days. A short 20-minute session today will help keep their progress. Open: ${dashboardLink}`
-        const subject = inactiveChildren.length === 1
+        const oneChild = inactiveChildren.length === 1
+        const subject = oneChild
           ? `Reminder: ${inactiveChildren[0].name ?? 'Your child'} hasn't studied recently`
           : `Reminder: ${inactiveChildren.length} children haven't studied recently`
-        const html = `<!doctype html><html><body><p>Hi ${info.name ?? ''},</p><p>We noticed the following children haven't had a study session in ${thresholdDays} days:</p><ul>${inactiveChildren.map(c => `<li>${c.name ?? 'Student'} — ${c.daysSince} day(s)</li>`).join('')}</ul><p>A short 20-minute session today will help keep their progress on track.</p><p><a href="${dashboardLink}">Open the parent dashboard</a> to see suggested next activities.</p><p>— Team Spinzy</p></body></html>`
+        const html = `<!doctype html><html><body><p>Hi ${info.name ?? ''},</p><p>We noticed the following children haven't had a study session for at least ${DEFAULT_THRESHOLD_DAYS} day(s):</p><ul>${inactiveChildren.map(c => `<li>${c.name ?? 'Student'} — ${c.daysSince} day(s)</li>`).join('')}</ul><p>A short 20-minute session today will help keep their progress on track.</p><p><a href="${dashboardLink}">Open the parent dashboard</a> to see suggested next activities.</p><p>— Team Spinzy</p></body></html>`
 
-        // Send email (best-effort)
+        // Send email and SMS (best-effort). Only set rate-limit key if at least one channel succeeds.
+        let emailSent = false
+        let smsSent = false
+
+        if (!info.email && !info.phone) {
+          logger.info('inactivityAlert.noContactDetails', { parentId, children: inactiveChildren.map(c => c.studentId) })
+        }
+
         if (info.email) {
-          await sendMailSafe({ to: info.email, subject, html, text: `${subject} — ${childNames}` })
+          try {
+            await sendMailSafe({ to: info.email, subject, html, text: `${subject} — ${childNames}` })
+            emailSent = true
+          } catch (e) {
+            logger.error('inactivityAlert.sendMailFailed', { err: String(e), parentId })
+          }
         }
 
         if (info.phone) {
-          // Fire-and-forget; sendSms returns a Promise
-          sendSms(info.phone, smsText).catch((e) => logger.error('inactivityAlert.sendSmsFailed', { err: String(e), parentId }))
+          const smsText = oneChild
+            ? `Hi ${info.name ?? ''}, we noticed ${childNames} hasn't had a study session for at least ${inactiveChildren[0].daysSince} day(s). A short 20-minute session will help. Open: ${dashboardLink}`
+            : `Hi ${info.name ?? ''}, we noticed ${childNames} haven't had a study session for at least ${DEFAULT_THRESHOLD_DAYS} days. A short 20-minute session will help. Open: ${dashboardLink}`
+          try {
+            await sendSms(info.phone, smsText)
+            smsSent = true
+          } catch (e) {
+            logger.error('inactivityAlert.sendSmsFailed', { err: String(e), parentId })
+          }
         }
 
-        // Mark rate-limit key
-        if (redis) {
-          await redis.set(`parent:alert:inactivity:last_sent:${parentId}`, '1', 'EX', RATE_LIMIT_DAYS * 24 * 60 * 60)
+        const notificationSent = emailSent || smsSent
+        if (notificationSent && redis) {
+          try { await redis.set(`parent:alert:inactivity:last_sent:${parentId}`, '1', 'EX', RATE_LIMIT_DAYS * 24 * 60 * 60) } catch (e) { logger.warn('inactivityAlert.rateLimitSetFailed', { err: String(e), parentId }) }
         }
 
-        logger.info('inactivityAlert.sent', { parentId, children: inactiveChildren.map(c => c.studentId), count: inactiveChildren.length })
+        if (notificationSent) {
+          logger.info('inactivityAlert.sent', { parentId, children: inactiveChildren.map(c => c.studentId), count: inactiveChildren.length, emailSent, smsSent })
+        } else {
+          logger.info('inactivityAlert.notSent', { parentId, children: inactiveChildren.map(c => c.studentId), count: inactiveChildren.length, hasEmail: Boolean(info.email), hasPhone: Boolean(info.phone) })
+        }
       } catch (err) {
         logger.error('inactivityAlert.failedForParent', { parentId, err: err instanceof Error ? err.message : String(err) })
       }
