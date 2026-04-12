@@ -92,7 +92,8 @@ export async function POST(req: Request) {
           try { console.log('[debug] regenerationJob.POST: suggestionId shape failed', e) } catch {}
         }
         try {
-          const raw = await (prisma as any).$queryRaw`SELECT id, courseId, targetId, message, status FROM "ContentSuggestion" WHERE id = ${suggestionId} LIMIT 1`
+          // Quote mixed-case column identifiers to avoid Postgres folding to lower-case
+          const raw = await (prisma as any).$queryRaw`SELECT id, "courseId", "targetId", message, status FROM "ContentSuggestion" WHERE id = ${suggestionId} LIMIT 1`
           try { console.log('[debug] regenerationJob.POST: raw SQL lookup result', raw) } catch {}
         } catch (e) {
           try { console.log('[debug] regenerationJob.POST: raw SQL lookup failed', e) } catch {}
@@ -146,8 +147,11 @@ export async function POST(req: Request) {
     try { logger.debug('regenerationJob.created', { id: job?.id, status: job?.status } as any) } catch {}
     if (process.env.NODE_ENV === 'test') try { console.log('[debug] regenerationJob.created', { id: job?.id, status: job?.status }) } catch {}
 
-    // fire-and-forget audit -- record as legacy system event (action: null)
-    logAuditEvent(prisma as any, { action: null, entityId: job.id, targetEntity: 'RegenerationJob', details: { legacyAction: AuditEvents.REGEN_JOB_CREATED, suggestionId: suggestion.id, targetType, targetId } });
+    // Record a typed admin action so integration tests can query `action`.
+    // Keep legacyAction in details for backward compatibility.
+    try {
+      await logAuditEvent(prisma as any, { action: AuditEvents.REGEN_JOB_CREATED as any, targetEntity: 'RegenerationJob', targetId: job.id, details: { legacyAction: AuditEvents.REGEN_JOB_CREATED, suggestionId: suggestion.id, targetType, targetId } });
+    } catch {}
 
     return NextResponse.json({ job });
   } catch (err: any) {

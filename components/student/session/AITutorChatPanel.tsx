@@ -53,8 +53,12 @@ type TutorTurnCompleteEvent = {
   tag: string;
   stage: string;
   hintsRemaining: number;
+  /** Optional: number of hints used during the call (pre-call hintsUsed) */
+  hintsUsedDuringTurn?: number;
   turnNumber: number;
   sessionComplete: boolean;
+  /** Optional visual hint brief (diagram) returned by the LLM */
+  visualHint?: string | null;
 };
 
 type TutorErrorEvent = {
@@ -138,6 +142,10 @@ const PANEL_STYLE = `
   background: currentColor;
   animation: v2-dot-bounce 1.1s ease-in-out infinite;
 }
+/* per-dot animation delays moved out of inline styles to satisfy lint */
+.v2-dot-delay-0 { animation-delay: 0ms; }
+.v2-dot-delay-200 { animation-delay: 200ms; }
+.v2-dot-delay-400 { animation-delay: 400ms; }
 @keyframes v2-cursor-blink {
   0%, 100% { opacity: 1; }
   50%       { opacity: 0; }
@@ -165,6 +173,8 @@ const PANEL_STYLE = `
 /* Hide scrollbar on stage strip */
 .v2-strip::-webkit-scrollbar { display: none; }
 .v2-strip { scrollbar-width: none; -ms-overflow-style: none; }
+/* safe-area aware input bar padding (avoid inline style) */
+.input-bar-safe { padding-bottom: max(8px, env(safe-area-inset-bottom)); }
 `;
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
@@ -236,9 +246,9 @@ function TypingIndicator() {
     <div className="v2-msg-appear mb-3 flex items-start">
       <div className="max-w-[85%] rounded-[4px_12px_12px_12px] bg-gray-100 px-3 py-2.5 dark:bg-gray-800">
         <div className="flex items-center gap-1 text-gray-400 dark:text-gray-500">
-          <span className="v2-dot" style={{ animationDelay: '0ms' }} aria-hidden />
-          <span className="v2-dot" style={{ animationDelay: '200ms' }} aria-hidden />
-          <span className="v2-dot" style={{ animationDelay: '400ms' }} aria-hidden />
+          <span className="v2-dot v2-dot-delay-0" aria-hidden />
+          <span className="v2-dot v2-dot-delay-200" aria-hidden />
+          <span className="v2-dot v2-dot-delay-400" aria-hidden />
         </div>
       </div>
     </div>
@@ -514,6 +524,13 @@ export const AITutorChatPanel: React.FC<AITutorChatPanelProps> = ({
         setHintBanner({ tier: deliveredTier, text });
         if (hintBannerTimerRef.current) clearTimeout(hintBannerTimerRef.current);
         hintBannerTimerRef.current = setTimeout(() => setHintBanner(null), 6000);
+      }
+
+      // If the server returned a visualHint (diagram brief), append it as an AI message
+      if (typeof (payload as any).visualHint === 'string' && String((payload as any).visualHint).trim()) {
+        const viz = String((payload as any).visualHint).trim();
+        const vizMsg: ChatMessage = { id: makeId('ai'), role: 'ai', content: viz, isStreaming: false };
+        setItems((prev) => [...prev, { kind: 'msg', msg: vizMsg }]);
       }
     },
     [onSessionComplete, scheduleInactivity, insertStageDivider, hintsRemaining],
@@ -839,10 +856,7 @@ export const AITutorChatPanel: React.FC<AITutorChatPanelProps> = ({
         )}
 
         {/* ⑦ Input bar */}
-        <div
-          className="border-t border-gray-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-3 py-2"
-          style={{ paddingBottom: 'max(8px, env(safe-area-inset-bottom))' }}
-        >
+            <div className="border-t border-gray-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-3 py-2 input-bar-safe">
           <div className="flex items-end gap-2">
             <textarea
               ref={textareaRef}

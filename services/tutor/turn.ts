@@ -15,6 +15,7 @@ import { computeFrustrationScore } from '@/lib/ai/tutor/signals'
 import { assembleSystemPrompt } from '@/lib/ai/tutor/promptAssembly'
 import { parseTutorTag, stripTag } from '@/lib/ai/tutor/tagParser'
 import { checkOutputSafety, type SafetyEventCreate as OutputSafetyEvent } from '@/lib/ai/tutor/outputSafety'
+import { parseLlmJson } from '@/lib/llm/sanitizeJson'
 import { applyTagTransitionWithRemediation, type TutorTag, type TutorStage } from '@/lib/ai/tutor/stateMachine'
 import { retrieveRelevantChunks } from '@/lib/ai/tutor/rag'
 import { detectMisconceptions, loadMisconceptions, logNovelMisconception } from '@/lib/ai/tutor/misconceptionDetector'
@@ -59,6 +60,7 @@ export type TutorTurnComplete = {
   hintsUsedDuringTurn?: number
   turnNumber: number
   sessionComplete: boolean
+  visualHint?: string | null
 }
 
 
@@ -535,6 +537,29 @@ export async function runTutorOrchestrator(args: {
     safetyEvents.push(...outputSafety.events)
     let answerText = outputSafety.text
 
+    // Attempt to extract structured JSON from LLM output (visualHint, explanation, etc.).
+    // Many prompts include a small JSON-like block with fields such as `visualHint` for
+    // front-end rendering of simple diagrams. Use a robust sanitizer to avoid throwing.
+    let extractedVisualHint: string | null = null
+    try {
+      const parsed = parseLlmJson(answerText)
+      if (parsed && typeof parsed === 'object') {
+        if (typeof (parsed as any).visualHint === 'string') {
+          extractedVisualHint = (parsed as any).visualHint
+        }
+        // Prefer explicit explanation/content fields when streaming human-friendly text
+        const preferFields = ['explanation', 'content', 'answer', 'text', 'body']
+        for (const f of preferFields) {
+          if (typeof (parsed as any)[f] === 'string' && String((parsed as any)[f]).trim().length > 0) {
+            answerText = String((parsed as any)[f])
+            break
+          }
+        }
+      }
+    } catch (e) {
+      // Not parseable JSON/structured output — ignore and continue with plain text answer
+    }
+
     if (safetyEvents.length) {
       await prismaClient.safetyEvent.createMany({ data: safetyEvents })
       // Analytics event for safety triggers
@@ -707,6 +732,7 @@ export async function runTutorOrchestrator(args: {
       // Session ends when the AI responds DURING the CONSOLIDATION stage (the summary
       // and reflective question are delivered in that turn), not when entering it.
       sessionComplete: state.stage === 'CONSOLIDATION',
+      visualHint: typeof extractedVisualHint === 'string' ? extractedVisualHint : null,
     }
 
     // Award streak credit only after the student receives CONSOLIDATION content.
