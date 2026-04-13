@@ -28,11 +28,15 @@ export async function runWeeklyQuestionHealth(): Promise<number> {
   const totalQuestions = await prisma.question.count()
 
   // Active questions grouped by topicId
-  const grouped = await prisma.question.groupBy({
+  // Prisma's generated groupBy types can be extremely deep and cause circular
+  // mapped-type errors in TS. Cast the `groupBy` call itself to `any` to
+  // avoid complex type resolution while still keeping a typed `topicCounts`
+  // result at runtime.
+  const grouped = await (prisma.question.groupBy as any)({
     by: ['topicId'],
     where: { status: 'ACTIVE' },
     _count: { id: true },
-  } as any)
+  })
 
   // Map topicId -> count
   const topicCounts = grouped
