@@ -41,7 +41,7 @@ export async function runInactivityAlerts(): Promise<number> {
   // Find candidate students (we'll apply timezone-aware logic per-student)
   const inactiveStudents = await prisma.user.findMany({
     where: {
-      role: UserRole.student,
+      role: UserRole.user,
       OR: [
         { lastSessionDate: { lt: prefilterCutoff } },
         { lastSessionDate: null },
