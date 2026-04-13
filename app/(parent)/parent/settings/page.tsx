@@ -1,5 +1,5 @@
 /**
- * Parent settings page — allows parents to update weekly digest preferences.
+ * Parent settings page -- allows parents to update weekly digest preferences.
  * Route: /parent/settings
  */
 

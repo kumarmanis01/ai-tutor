@@ -37,7 +37,7 @@ export default function ActivityHeatmap({ days }: ActivityHeatmapProps) {
         {days.map((d) => (
           <div
             key={d.date}
-            title={`${d.date} — ${d.count} session${d.count !== 1 ? 's' : ''}`}
+            title={`${d.date} -- ${d.count} session${d.count !== 1 ? 's' : ''}`}
             aria-label={`Activity ${d.date}: ${d.count}`}
             className={`h-6 w-6 rounded-sm ${colorClass(d.count)} flex items-center justify-center`}
           />

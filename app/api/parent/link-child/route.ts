@@ -160,7 +160,7 @@ export async function POST(req: Request) {
     if (parentEmail) {
       await sendMailSafe({
         to: parentEmail,
-        subject: `Welcome — linked to ${studentName}`,
+        subject: `Welcome -- linked to ${studentName}`,
         html: `<p>Hi ${parentName},</p><p>You are now linked to ${studentName} on Spinzy.</p><p>If this wasn't you, contact support.</p>`,
       })
     }

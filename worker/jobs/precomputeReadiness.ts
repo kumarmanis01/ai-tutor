@@ -160,7 +160,7 @@ async function maybeFireReadinessDrop(
         })
 
         if (parentLinks.length > 0) {
-          const subject = `Readiness dropped: ${subjectName} — ${dropPoints} points`
+          const subject = `Readiness dropped: ${subjectName} -- ${dropPoints} points`
           const html = `<p>Hi,</p><p>Your child\'s readiness score for <strong>${subjectName}</strong> dropped by ${dropPoints} points. A short review session can help recover progress.</p>`
           const sends = parentLinks.map((pl) =>
             sendParentMilestoneNotification(pl.parent.id, {
@@ -211,7 +211,7 @@ async function maybeFireReadinessMilestone(
         })
 
         if (parentLinks.length > 0) {
-          const subject = `Readiness milestone: ${subjectName} — ${score}%`
+          const subject = `Readiness milestone: ${subjectName} -- ${score}%`
           const html = `<p>Hi,</p><p>Your child has reached a readiness score of <strong>${score}%</strong> in <strong>${subjectName}</strong>. Keep up the great work!</p>`
           const sends = parentLinks.map((pl) =>
             sendParentMilestoneNotification(pl.parent.id, {

@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma'
 import { normalizeLanguage } from '@/lib/normalize'
 import { logger } from '@/lib/logger'
 import { isCircuitOpen, recordFailure, recordSuccess } from '@/lib/ai/tutor/circuitBreaker'
+import { redactPIIFromText, redactPIIFromMessages } from '@/lib/ai/piiRedaction'
 
 export type TutorCallType = 'tutor:teach' | 'tutor:hint' | 'tutor:eval'
 
@@ -92,6 +93,8 @@ async function callAnthropic(
   prompt: string,
   opts: { timeoutMs?: number } = {},
 ): Promise<{ content: string; usage: any; costUsd: number; latencyMs: number; model: string }> {
+  // F-ADM-040 AC-05: redact PII before sending to Anthropic (failover path).
+  prompt = redactPIIFromText(prompt)
   let Anthropic: any
   try {
     Anthropic = (await import('@anthropic-ai/sdk')).default
@@ -132,8 +135,13 @@ export async function createChatCompletion(input: any) {
   if (process.env.LLM_MODE === 'mock') {
     return { choices: [{ message: { content: JSON.stringify({ mock: true, input }) } }], usage: {} }
   }
+  // F-ADM-040 AC-05: redact PII from messages before sending to OpenAI.
+  const sanitised = {
+    ...input,
+    messages: input?.messages ? redactPIIFromMessages(input.messages) : input?.messages,
+  }
   const c = getClient()
-  return c.chat.completions.create(input)
+  return c.chat.completions.create(sanitised)
 }
 
 export async function createSpeech(input: any) {
@@ -207,6 +215,9 @@ export async function callLLM({ prompt, model, meta, timeoutMs }: CallLLMArgs) {
   if (['orchestration', 'workflow', 'reconciler'].includes(promptType) && selectedModel === envLarge) {
     throw new Error('forbidden_model_for_orchestration')
   }
+
+  // F-ADM-040 AC-05: redact PII from the assembled prompt before any provider call.
+  prompt = redactPIIFromText(prompt)
 
   // Optionally prepend a small RAG-lite context (board/chapter/topic names)
   if (meta?.useRag === true) {

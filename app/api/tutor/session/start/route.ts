@@ -6,6 +6,7 @@ import { formatErrorForResponse } from '@/lib/errorResponse'
 import { checkFreeTierCap, incrementFreeTierUsage } from '@/lib/freemium'
 import { isInAITutorRollout } from '@/lib/features/rollout'
 import { hasDiagnosticForSubject } from '@/lib/student/diagnosticGuard'
+import { prisma } from '@/lib/prisma'
 
 export const dynamic = 'force-dynamic'
 
@@ -44,6 +45,22 @@ export async function POST(req: Request) {
     }
 
     const { conceptId, subjectId } = parseResult.data
+
+    // F-ADM-013 AC-04: concept suspension gate -- admin can suspend a concept from AI
+    // teaching when a hallucination is confirmed. Block the session start so students
+    // see a clear message rather than a mid-session error.
+    const conceptCheck = await prisma.concept.findUnique({
+      where: { id: conceptId },
+      select: { isSuspended: true },
+    })
+    if (conceptCheck?.isSuspended) {
+      res = NextResponse.json(
+        { error: 'This topic is currently under review. Please try a different topic or check back soon.', code: 'CONCEPT_SUSPENDED' },
+        { status: 503 },
+      )
+      logger.logAPI(req, res, { className: 'TutorSessionStartAPI', methodName: 'POST' }, start)
+      return res
+    }
 
     // Diagnostic gate -- student must have completed the IRT bootstrap for this subject.
     const hasDiag = await hasDiagnosticForSubject(userId, subjectId)

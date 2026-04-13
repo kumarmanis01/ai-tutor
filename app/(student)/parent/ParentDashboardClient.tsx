@@ -250,7 +250,7 @@ function ReadinessBadge({ item }: { item: ReadinessItem }) {
       </div>
 
       <div className="text-xs text-gray-500 mt-2">
-        {L.predictedRangeLabel}: {min}–{max} out of 100
+        {L.predictedRangeLabel}: {min}-{max} out of 100
       </div>
     </div>
   );

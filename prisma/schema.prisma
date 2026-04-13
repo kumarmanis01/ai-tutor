@@ -1358,6 +1358,13 @@ model Concept {
   bloomLevel              String? /// e.g. remember, understand, apply
   prerequisiteConceptIds  String[]              @default([])
   commonlyConfusedWithIds String[]              @default([])
+  /// F-ADM-013 AC-04: admin can suspend a concept from AI teaching when hallucination confirmed.
+  /// Suspended concepts return CONCEPT_SUSPENDED to the session start gate; student sees a
+  /// "this topic is being reviewed" message. Admin must unsuspend explicitly after fixing the
+  /// curriculum chunk. Never relied on for student-facing mastery or billing logic.
+  isSuspended             Boolean               @default(false)
+  suspendedAt             DateTime?
+  suspendedReason         String?
   createdAt               DateTime              @default(now())
   updatedAt               DateTime              @updatedAt
   topic                   TopicDef              @relation(fields: [topicId], references: [id], onDelete: Cascade)
@@ -1961,6 +1968,8 @@ enum AdminActionType {
   CONTENT_HYDRATE
   WORKER_START
   WORKER_STOP
+  CONCEPT_SUSPEND
+  CONCEPT_UNSUSPEND
 }
 
 /// ⚠️ AI CONTENT ENGINE RULES
