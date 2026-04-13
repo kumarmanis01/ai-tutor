@@ -16,11 +16,14 @@
  *
  * EDIT LOG:
  * - 2026-04-07 | claude | fix: add object-cover to Vidya avatar image to prevent stretching in chat messages
+ * - 2026-04-13 | copilot | feat(F-STU-011): add session-level style selector (persist & immediate re-explain)
  */
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
 import { stripTag } from '@/lib/ai/tutor/tagParser';
+import VisualHintRenderer from './VisualHintRenderer';
+import MisconceptionCard from './MisconceptionCard';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -47,14 +50,20 @@ export interface AITutorChatPanelProps {
   onSessionComplete: (summary: { tag: string; stage: string; turnNumber: number; hintsUsed: number }) => void;
   /** Called with the full text each time an AI message stream completes (F-STU-014 whiteboard). */
   onAiMessage?: (content: string) => void;
+  /** Called when the server returns a structured visualHint (diagram) for the whiteboard. */
+  onVisualHint?: (visualHint: string) => void;
 }
 
 type TutorTurnCompleteEvent = {
   tag: string;
   stage: string;
   hintsRemaining: number;
+  /** Optional: number of hints used during the call (pre-call hintsUsed) */
+  hintsUsedDuringTurn?: number;
   turnNumber: number;
   sessionComplete: boolean;
+  /** Optional visual hint brief (diagram) returned by the LLM */
+  visualHint?: string | null;
 };
 
 type TutorErrorEvent = {
@@ -138,6 +147,10 @@ const PANEL_STYLE = `
   background: currentColor;
   animation: v2-dot-bounce 1.1s ease-in-out infinite;
 }
+/* per-dot animation delays moved out of inline styles to satisfy lint */
+.v2-dot-delay-0 { animation-delay: 0ms; }
+.v2-dot-delay-200 { animation-delay: 200ms; }
+.v2-dot-delay-400 { animation-delay: 400ms; }
 @keyframes v2-cursor-blink {
   0%, 100% { opacity: 1; }
   50%       { opacity: 0; }
@@ -165,6 +178,8 @@ const PANEL_STYLE = `
 /* Hide scrollbar on stage strip */
 .v2-strip::-webkit-scrollbar { display: none; }
 .v2-strip { scrollbar-width: none; -ms-overflow-style: none; }
+/* safe-area aware input bar padding (avoid inline style) */
+.input-bar-safe { padding-bottom: max(8px, env(safe-area-inset-bottom)); }
 `;
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
@@ -236,9 +251,9 @@ function TypingIndicator() {
     <div className="v2-msg-appear mb-3 flex items-start">
       <div className="max-w-[85%] rounded-[4px_12px_12px_12px] bg-gray-100 px-3 py-2.5 dark:bg-gray-800">
         <div className="flex items-center gap-1 text-gray-400 dark:text-gray-500">
-          <span className="v2-dot" style={{ animationDelay: '0ms' }} aria-hidden />
-          <span className="v2-dot" style={{ animationDelay: '200ms' }} aria-hidden />
-          <span className="v2-dot" style={{ animationDelay: '400ms' }} aria-hidden />
+          <span className="v2-dot v2-dot-delay-0" aria-hidden />
+          <span className="v2-dot v2-dot-delay-200" aria-hidden />
+          <span className="v2-dot v2-dot-delay-400" aria-hidden />
         </div>
       </div>
     </div>
@@ -252,6 +267,25 @@ function AiMessageBubble({
   msg: ChatMessage;
   showLabel: boolean;
 }) {
+  const content = msg.content ?? '';
+  let looksLikeJson = false;
+  try {
+    looksLikeJson = !!content.trim() && (content.trim().startsWith('{') || content.trim().startsWith('['));
+  } catch {
+    looksLikeJson = false;
+  }
+
+  const MIS_PREFIX = '__MISCONCEPTION__';
+  const isMisconception = typeof content === 'string' && content.startsWith(MIS_PREFIX);
+  let parsedMisconception: any = null;
+  if (isMisconception) {
+    try {
+      parsedMisconception = JSON.parse(content.slice(MIS_PREFIX.length))
+    } catch {
+      parsedMisconception = null
+    }
+  }
+
   return (
     <div className="v2-msg-appear mb-3 flex flex-col items-start">
       {showLabel && (
@@ -269,7 +303,13 @@ function AiMessageBubble({
         </div>
       )}
       <div className="max-w-[85%] rounded-[4px_12px_12px_12px] bg-[#EEEDFE] px-3 py-2.5 text-sm leading-relaxed text-[#3C3489] dark:bg-[#534AB7]/20 dark:text-[#EEEDFE] whitespace-pre-wrap break-words">
-        {msg.content || '\u200B' /* zero-width space keeps bubble visible when empty */}
+        {isMisconception && parsedMisconception ? (
+          <MisconceptionCard artifact={parsedMisconception} />
+        ) : looksLikeJson ? (
+          <VisualHintRenderer hint={content} />
+        ) : (
+          (msg.content || '\u200B') /* zero-width space keeps bubble visible when empty */
+        )}
         {msg.isStreaming && (
           <span className="v2-cursor text-[#534AB7]/50 dark:text-[#EEEDFE]/50">|</span>
         )}
@@ -306,12 +346,14 @@ const RESTYLE_CHIPS: ReExplainChip[] = [
   { label: 'Simpler \u2193', sentinel: '__EXPLAIN_SIMPLER__', ariaLabel: 'Explain it more simply' },
   { label: 'Deeper \u2191', sentinel: '__EXPLAIN_HARDER__',  ariaLabel: 'Explain it in more depth' },
   { label: 'Real-life example',  sentinel: '__EXPLAIN_EXAMPLE__', ariaLabel: 'Give a real-life example' },
+  { label: 'Diagram', sentinel: '__EXPLAIN_DIAGRAM__', ariaLabel: 'Show a diagram' },
 ];
 
 const RESTYLE_DISPLAY: Record<string, string> = {
   __EXPLAIN_SIMPLER__: 'Explain it more simply',
   __EXPLAIN_HARDER__:  'Explain it in more depth',
   __EXPLAIN_EXAMPLE__: 'Give me a real-life example',
+  __EXPLAIN_DIAGRAM__: 'Show a diagram or visual explanation',
 };
 
 function ReExplainBar({ onSelect, disabled }: { onSelect: (sentinel: string) => void; disabled: boolean }) {
@@ -355,6 +397,8 @@ export const AITutorChatPanel: React.FC<AITutorChatPanelProps> = ({
   const [isReconnecting, setIsReconnecting] = useState(false);
   const [reconnectAttempts, setReconnectAttempts] = useState(0);
   const [showInactivityPrompt, setShowInactivityPrompt] = useState(false);
+  const [hintBanner, setHintBanner] = useState<{ tier: number; text: string } | null>(null);
+  const [selectedStyle, setSelectedStyle] = useState<string | null>(null);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const lastAiMsgIdRef = useRef<string | null>(null);
@@ -362,10 +406,13 @@ export const AITutorChatPanel: React.FC<AITutorChatPanelProps> = ({
   const lastAiContentRef = useRef('');
   const currentStageRef = useRef(initialStage);
   const inactivityTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const hintBannerTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const hasReceivedTokenRef = useRef(false); // first token received this turn?
   const onAiMessageRef = useRef(onAiMessage);
   onAiMessageRef.current = onAiMessage;
+  const onVisualHintRef = useRef(onVisualHint);
+  onVisualHintRef.current = onVisualHint;
 
   // ── Scroll to bottom ───────────────────────────────────────────────────────
 
@@ -404,10 +451,30 @@ export const AITutorChatPanel: React.FC<AITutorChatPanelProps> = ({
   }, [clearInactivityTimer]);
 
   useEffect(() => {
+    // Schedule inactivity prompt on mount so quiet sessions show the offer after 90s
+    scheduleInactivity();
     return () => {
       clearInactivityTimer();
+      if (hintBannerTimerRef.current) clearTimeout(hintBannerTimerRef.current);
     };
   }, [clearInactivityTimer]);
+
+  // Load persisted session-level explainStyle (if any) so selector shows current value
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        const resp = await fetch(`/api/tutor/session/style?sessionId=${encodeURIComponent(sessionId)}`)
+        if (!resp.ok) return
+        const data = await resp.json()
+        if (!mounted) return
+        setSelectedStyle(data?.explainStyle ?? null)
+      } catch (e) {
+        // ignore failures (best-effort)
+      }
+    })()
+    return () => { mounted = false }
+  }, [sessionId])
 
   // ── Message helpers ────────────────────────────────────────────────────────
 
@@ -474,6 +541,11 @@ export const AITutorChatPanel: React.FC<AITutorChatPanelProps> = ({
 
   const handleCompleteEvent = useCallback(
     (payload: TutorTurnCompleteEvent) => {
+      // Compute which hint tier was delivered. Prefer server-provided pre-call hintsUsed
+      const prevHintsRemaining = hintsRemaining;
+      const preHintsUsedLocal = Math.max(0, 3 - prevHintsRemaining);
+      const deliveredTier = typeof payload.hintsUsedDuringTurn === 'number' ? payload.hintsUsedDuringTurn + 1 : preHintsUsedLocal + 1;
+
       setHintsRemaining(payload.hintsRemaining);
       if (payload.stage && payload.stage !== currentStageRef.current) {
         insertStageDivider(payload.stage);
@@ -490,8 +562,42 @@ export const AITutorChatPanel: React.FC<AITutorChatPanelProps> = ({
       } else {
         scheduleInactivity();
       }
+
+      // If this turn was a hint offer, show a short banner indicating which tier
+      if (payload.tag === 'HINT_OFFER') {
+        let text = '';
+        if (deliveredTier === 1) text = 'Hint 1 — Directional nudge (points you to the right idea).';
+        else if (deliveredTier === 2) text = 'Hint 2 — Structural hint (shows the method, not the solution).';
+        else if (deliveredTier === 3) text = 'Hint 3 — Worked scaffold (first step shown).';
+        else text = 'All hints exhausted — full solution + isomorphic problem provided.';
+
+        setHintBanner({ tier: deliveredTier, text });
+        if (hintBannerTimerRef.current) clearTimeout(hintBannerTimerRef.current);
+        hintBannerTimerRef.current = setTimeout(() => setHintBanner(null), 6000);
+      }
+
+      // If the server returned a visualHint (diagram brief), notify consumer and append as an AI message
+      // If the server returned a structured contrastiveExplanation, render
+      // it as a dedicated UI card in-chat so the student sees the correction clearly.
+      const contrast = (payload as any).contrastiveExplanation;
+      if (contrast && typeof contrast === 'object' && (contrast.name || contrast.correction)) {
+        // Encode artifact as a sentinel-wrapped JSON payload so existing message
+        // rendering pipeline can remain unchanged while we add a new card type.
+        const sentinel = '__MISCONCEPTION__';
+        const json = JSON.stringify(contrast);
+        const cMsg: ChatMessage = { id: makeId('ai'), role: 'ai', content: `${sentinel}${json}`, isStreaming: false };
+        setItems((prev) => [...prev, { kind: 'msg', msg: cMsg }]);
+      }
+
+      if (typeof (payload as any).visualHint === 'string' && String((payload as any).visualHint).trim()) {
+        const viz = String((payload as any).visualHint).trim();
+        // Inform whiteboard shell / panel so it can parse & replay the diagram
+        try { onVisualHintRef.current?.(viz); } catch {}
+        const vizMsg: ChatMessage = { id: makeId('ai'), role: 'ai', content: viz, isStreaming: false };
+        setItems((prev) => [...prev, { kind: 'msg', msg: vizMsg }]);
+      }
     },
-    [onSessionComplete, scheduleInactivity, insertStageDivider],
+    [onSessionComplete, scheduleInactivity, insertStageDivider, hintsRemaining],
   );
 
   const handleErrorEvent = useCallback(
@@ -659,6 +765,32 @@ export const AITutorChatPanel: React.FC<AITutorChatPanelProps> = ({
     void streamTutorTurn(sentinel);
   }
 
+  // Persist a session-level style preference and optionally trigger an immediate re-explain.
+  async function handleSetStyle(style: string | null) {
+    const s = style || null
+    setSelectedStyle(s)
+    try {
+      await fetch('/api/tutor/session/style', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sessionId, explainStyle: s }),
+      })
+    } catch (e) {
+      // best-effort; do not block UX on failures
+    }
+
+    const mapping: Record<string, string> = {
+      simpler: '__EXPLAIN_SIMPLER__',
+      harder: '__EXPLAIN_HARDER__',
+      real_life_example: '__EXPLAIN_EXAMPLE__',
+      diagram: '__EXPLAIN_DIAGRAM__',
+    }
+
+    if (s && mapping[s]) {
+      handleReExplain(mapping[s])
+    }
+  }
+
   // ── Render: feature flag ───────────────────────────────────────────────────
 
   if (!isAITutorEnabled) return null;
@@ -690,9 +822,25 @@ export const AITutorChatPanel: React.FC<AITutorChatPanelProps> = ({
             <h2 className="truncate text-sm font-semibold text-gray-900 dark:text-gray-100">
               {conceptName}
             </h2>
-            <span className="shrink-0 rounded-full bg-[#EEEDFE] dark:bg-[#534AB7]/20 px-2.5 py-0.5 text-xs font-semibold text-[#534AB7] dark:text-indigo-300">
-              {getStageLabel(currentStage)}
-            </span>
+            <div className="flex items-center gap-2">
+              <span className="shrink-0 rounded-full bg-[#EEEDFE] dark:bg-[#534AB7]/20 px-2.5 py-0.5 text-xs font-semibold text-[#534AB7] dark:text-indigo-300">
+                {getStageLabel(currentStage)}
+              </span>
+              <label className="sr-only">Explanation style</label>
+              <select
+                aria-label="Explanation style"
+                value={selectedStyle ?? ''}
+                onChange={(e) => handleSetStyle(e.target.value || null)}
+                disabled={isStreaming}
+                className="text-xs rounded-md border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-2 py-1 text-gray-700 dark:text-gray-100"
+              >
+                <option value="">Off</option>
+                <option value="simpler">Simpler</option>
+                <option value="harder">Deeper</option>
+                <option value="real_life_example">Real-life example</option>
+                <option value="diagram">Diagram</option>
+              </select>
+            </div>
           </div>
 
           {/* ② Stage strip */}
@@ -725,6 +873,14 @@ export const AITutorChatPanel: React.FC<AITutorChatPanelProps> = ({
 
           <div ref={messagesEndRef} />
         </div>
+
+        {/* ④ Hint tier banner (transient) */}
+        {hintBanner && (
+          <div className="mx-4 mb-2 flex items-center justify-between gap-3 rounded-xl border border-indigo-200 bg-indigo-50 px-3 py-2 dark:border-indigo-700/40 dark:bg-indigo-900/10">
+            <p className="text-xs text-indigo-800 dark:text-indigo-200">{hintBanner.text}</p>
+            <div className="text-xs text-indigo-600 dark:text-indigo-300">Tier {hintBanner.tier}</div>
+          </div>
+        )}
 
         {/* ④ Hint bar */}
         {showHintBar && (
@@ -806,10 +962,7 @@ export const AITutorChatPanel: React.FC<AITutorChatPanelProps> = ({
         )}
 
         {/* ⑦ Input bar */}
-        <div
-          className="border-t border-gray-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-3 py-2"
-          style={{ paddingBottom: 'max(8px, env(safe-area-inset-bottom))' }}
-        >
+            <div className="border-t border-gray-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-3 py-2 input-bar-safe">
           <div className="flex items-end gap-2">
             <textarea
               ref={textareaRef}

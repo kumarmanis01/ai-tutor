@@ -83,6 +83,7 @@ type LoadedMisconception = {
   name: string
   triggerPatterns: string[]
   correction: string
+  description?: string
 }
 
 /**
@@ -144,6 +145,7 @@ export async function loadMisconceptions(
         name: true,
         triggerPatterns: true,
         correction: true,
+        description: true,
       },
     })
 

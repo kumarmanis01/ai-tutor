@@ -1,5 +1,19 @@
-import { processReadinessDropAlerts } from '@/worker/services/readinessDropWorker'
+/**
+ * FILE OBJECTIVE:
+ * - Unit tests for readiness drop worker: ensure parent email/SMS and student push
+ *   notifications are triggered when readiness drops > threshold.
+ *
+ * LINKED UNIT TEST:
+ * - tests/unit/worker/services/readinessDropWorker.test.ts
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/COPILOT_GUARDRAILS.md
+ *
+ * EDIT LOG:
+ * - 2026-04-13T00:00:00Z | senior-engineer | add student push expectations and mocks
+ */
 
+let processReadinessDropAlerts: any
 const mockParentFind = jest.fn()
 const mockPlansFind = jest.fn()
 const mockSubjectDefsFind = jest.fn()
@@ -24,6 +38,16 @@ jest.mock('@/lib/mailer', () => ({ sendMailSafe: (...a: any[]) => mockSendMail(.
 const mockSendSms = jest.fn()
 jest.mock('@/lib/sms', () => ({ sendSms: (...a: any[]) => mockSendSms(...a) }))
 
+const mockSendPush = jest.fn()
+jest.mock('@/lib/push/send', () => ({ sendPushSafe: (...a: any[]) => mockSendPush(...a) }))
+
+beforeAll(() => {
+  // Require the module after mocks to ensure external clients (Prisma/Redis)
+  // are mocked and do not open real connections that keep Jest alive.
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  processReadinessDropAlerts = require('@/worker/services/readinessDropWorker').processReadinessDropAlerts
+})
+
 beforeEach(() => {
   mockParentFind.mockReset()
   mockPlansFind.mockReset()
@@ -33,6 +57,7 @@ beforeEach(() => {
   mockCompute.mockReset()
   mockSendMail.mockReset()
   mockSendSms.mockReset()
+  mockSendPush.mockReset()
 })
 
 test('detects readiness drop and notifies parent', async () => {
@@ -58,6 +83,8 @@ test('detects readiness drop and notifies parent', async () => {
 
   expect(mockSendMail).toHaveBeenCalled()
   expect(mockSendSms).toHaveBeenCalled()
-  // Rate-limit keys set
-  expect(mockRedisSet).toHaveBeenCalled()
+  // Student push should be sent
+  expect(mockSendPush).toHaveBeenCalledWith(studentId, expect.any(Object))
+  // Rate-limit keys set (parent + student)
+  expect(mockRedisSet.mock.calls.length).toBeGreaterThanOrEqual(1)
 })

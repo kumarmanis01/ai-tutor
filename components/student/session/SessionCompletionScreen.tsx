@@ -18,7 +18,10 @@
  */
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { getProgressPercent } from '@/lib/student/xpLevels'
 import { useRouter } from 'next/navigation';
+import { buildSessionSummary } from '@/lib/student/sessionSummary'
+import { buildWhatsAppShareUrl } from '@/lib/student/sessionShare'
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -156,15 +159,18 @@ function XpSection({
   useEffect(() => {
     const duration = 800;
     const startVal = totalXp - xpEarned;
-    // Progress bar: show XP earned as fraction of some tier (100 XP per level, cap at 100%)
-    const barTarget = Math.min((xpEarned / Math.max(totalXp, 100)) * 100, 100);
+    // Use centralized level thresholds to compute progress within level bands.
+    const prevTotal = Math.max(0, totalXp - xpEarned);
+    const startProgress = getProgressPercent(prevTotal);
+    const endProgress = getProgressPercent(totalXp);
+    const deltaProgress = endProgress - startProgress;
 
     const step = (ts: number) => {
       if (startRef.current == null) startRef.current = ts;
       const t = Math.min((ts - startRef.current) / duration, 1);
       const ease = easeOut(t);
       setDisplayXp(Math.round(startVal + xpEarned * ease));
-      setBarWidth(barTarget * ease);
+      setBarWidth(Math.min(100, Math.max(0, startProgress + deltaProgress * ease)));
       if (t < 1) {
         rafRef.current = requestAnimationFrame(step);
       }
@@ -173,8 +179,7 @@ function XpSection({
     return () => {
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [totalXp, xpEarned]);
 
   return (
     <div className="flex flex-col items-center gap-3 py-2">
@@ -453,6 +458,10 @@ export const SessionCompletionScreen: React.FC<SessionCompletionScreenProps> = (
   const [showLevelOverlay, setShowLevelOverlay] = useState(false);
   const [levelOverlayDone, setLevelOverlayDone] = useState(false);
   const [nextAction, setNextAction] = useState<NextAction | null>(null);
+  const [copied, setCopied] = useState(false)
+  const [copyError, setCopyError] = useState(false)
+  const [sharing, setSharing] = useState(false)
+  const [shareError, setShareError] = useState(false)
 
   // Fetch completion data
   useEffect(() => {
@@ -524,6 +533,77 @@ export const SessionCompletionScreen: React.FC<SessionCompletionScreenProps> = (
     if (nextAction?.topicId) {
       // Route through pre-session screen so hook prefetch and prereq check run.
       router.push(`/session/pre/${encodeURIComponent(nextAction.topicId)}`);
+    }
+  }
+
+  async function handleCopySummary() {
+    try {
+      if (!data) return;
+      const summary = buildSessionSummary({
+        topicName,
+        xpEarned: data.xpEarned,
+        correctAnswers: data.correctAnswers,
+        totalQuestions: data.totalQuestions,
+        masteryDelta: data.masteryDelta,
+        masteryAfter: data.masteryAfter,
+        sessionDurationMinutes: data.sessionDurationMinutes,
+        aiInsight: data.aiInsight,
+        badgesEarned: data.badgesEarned,
+      })
+
+      if (navigator?.clipboard?.writeText) {
+        await navigator.clipboard.writeText(summary)
+      } else {
+        const ta = document.createElement('textarea')
+        ta.value = summary
+        document.body.appendChild(ta)
+        ta.select()
+        document.execCommand('copy')
+        ta.remove()
+      }
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    } catch {
+      setCopyError(true)
+      setTimeout(() => setCopyError(false), 2000)
+    }
+  }
+
+  async function handleWhatsAppShare() {
+    if (!data) return
+    setSharing(true)
+    setShareError(false)
+    try {
+      const summary = buildSessionSummary({
+        topicName,
+        xpEarned: data.xpEarned,
+        correctAnswers: data.correctAnswers,
+        totalQuestions: data.totalQuestions,
+        masteryDelta: data.masteryDelta,
+        masteryAfter: data.masteryAfter,
+        sessionDurationMinutes: data.sessionDurationMinutes,
+        aiInsight: data.aiInsight,
+        badgesEarned: data.badgesEarned,
+      })
+
+      // Prefer the Web Share API when available (mobile native share sheets)
+      if ((navigator as any)?.share) {
+        try {
+          await (navigator as any).share({ title: 'Session summary', text: summary })
+          setSharing(false)
+          return
+        } catch (e) {
+          // fall back to WhatsApp link
+        }
+      }
+
+      const url = buildWhatsAppShareUrl(summary)
+      window.open(url, '_blank')
+      setSharing(false)
+    } catch (err) {
+      setSharing(false)
+      setShareError(true)
+      setTimeout(() => setShareError(false), 2000)
     }
   }
 
@@ -604,6 +684,27 @@ export const SessionCompletionScreen: React.FC<SessionCompletionScreenProps> = (
 
           {/* 7. Star rating */}
           <StarRating sessionId={sessionId} />
+
+          {/* Copy/share summary button */}
+          <div className="mt-3">
+            <button
+              type="button"
+              onClick={() => void handleCopySummary()}
+              className="flex w-full min-h-[44px] items-center justify-center rounded-xl border border-gray-200 dark:border-slate-700 text-sm font-medium hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors"
+            >
+              {copied ? 'Copied!' : copyError ? 'Copy failed' : 'Copy session summary'}
+            </button>
+          </div>
+
+          <div className="mt-2">
+            <button
+              type="button"
+              onClick={() => void handleWhatsAppShare()}
+              className="flex w-full min-h-[44px] items-center justify-center rounded-xl bg-[#25D366] text-white text-sm font-semibold hover:opacity-95 active:scale-[0.98] transition-all"
+            >
+              {sharing ? 'Sharing...' : shareError ? 'Share failed' : 'Share on WhatsApp'}
+            </button>
+          </div>
 
           {/* 8. CTAs */}
           <div className="flex flex-col gap-3 mt-1">

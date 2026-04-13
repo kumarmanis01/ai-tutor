@@ -9,6 +9,7 @@
  *
  * EDIT LOG:
  * - 2026-04-09T00:00:00Z | copilot | created readiness-drop worker
+ * - 2026-04-13T00:00:00Z | senior-engineer | send student push notifications on readiness drop; add student rate-limit
  */
 
 import { prisma } from '@/lib/prisma'
@@ -18,6 +19,8 @@ import { getRedis } from '@/lib/redis'
 import { callLLM } from '@/lib/callLLM'
 import { sendMailSafe } from '@/lib/mailer'
 import { sendSms } from '@/lib/sms'
+import { sendPushSafe } from '@/lib/push/send'
+import { PUSH_NOTIFICATIONS } from '@/lib/push/notifications'
 
 const READINESS_DROP_THRESHOLD = 10 // points (0-100)
 const LOOKBACK_DAYS = 7
@@ -107,6 +110,20 @@ export async function processReadinessDropAlerts(now = new Date()): Promise<void
 
         const delta = prevScore - currScore
         if (delta >= READINESS_DROP_THRESHOLD) {
+          // Send student notification (push) — rate-limited per student+subject
+          try {
+            const studentKey = `student:alert:readiness:last_sent:${plan.studentId}:${subjectId}`
+            let studentAlready = false
+            try { if (redis) { const v = await redis.get(studentKey); if (v) studentAlready = true } } catch (e) { logger.warn('readinessDrop.redisCheckFailed', { err: String(e), studentId: plan.studentId }) }
+            if (!studentAlready) {
+              const subjName = String(subjectNameById.get(subjectId) ?? 'the subject')
+              await sendPushSafe(String(plan.studentId), PUSH_NOTIFICATIONS.readiness_drop(subjName, delta))
+              try { if (redis) await redis.set(studentKey, '1', 'EX', RATE_LIMIT_DAYS * 24 * 60 * 60) } catch (e) { logger.warn('readinessDrop.studentRateLimitSetFailed', { err: String(e), studentId: plan.studentId }) }
+            }
+          } catch (e) {
+            logger.error('readinessDrop.sendStudentPushFailed', { err: String(e), studentId: plan.studentId, subjectId })
+          }
+
           // Notify all parents of this student (aggregate later per-parent)
           const parents = parentsByStudent.get(plan.studentId) ?? []
           for (const p of parents) {
@@ -116,7 +133,7 @@ export async function processReadinessDropAlerts(now = new Date()): Promise<void
             if (already) continue
 
             const a = alertsByParent.get(p.parentId) ?? []
-            a.push({ studentId: plan.studentId, subjectId, subjectName: subjectNameById.get(subjectId), prev: prevScore, curr: currScore, delta, examDate: plan.examDate })
+            a.push({ studentId: plan.studentId, subjectId, subjectName: subjectNameById.get(subjectId) as string | undefined, prev: prevScore, curr: currScore, delta, examDate: plan.examDate })
             alertsByParent.set(p.parentId, a)
           }
         }
@@ -154,7 +171,7 @@ export async function processReadinessDropAlerts(now = new Date()): Promise<void
 
         const dashboardLink = `${appUrl}/parent/dashboard?child=${issues[0].studentId}`
         const subject = `Attention: readiness drop detected` 
-        const html = `<!doctype html><html><body><p>Hi ${escapeHtml(parent.name ?? '')},</p><p>We detected a drop in exam readiness for the following subject(s):</p>${remediationParts.join('')}<p>Open the dashboard to see details: <a href="${dashboardLink}">View dashboard</a></p><p>— Team Spinzy</p></body></html>`
+        const html = `<!doctype html><html><body><p>Hi ${escapeHtml(parent.name ?? '')},</p><p>We detected a drop in exam readiness for the following subject(s):</p>${remediationParts.join('')}<p>Open the dashboard to see details: <a href="${dashboardLink}">View dashboard</a></p><p>-- Team Spinzy</p></body></html>`
 
         // Send email and SMS, but only mark rate-limit if at least one channel succeeded
         let emailSent = false

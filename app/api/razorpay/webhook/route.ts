@@ -9,7 +9,7 @@
  * - Provide a webhook endpoint to handle Razorpay asynchronous events.
  *
  * LINKED UNIT TEST:
- * - (none yet) – exercised indirectly by parent/student verify tests
+ * - (none yet) - exercised indirectly by parent/student verify tests
  *
  * EDIT LOG:
  * - 2026-04-08T00:00:00Z | copilot | added Razorpay webhook handler
@@ -104,7 +104,7 @@ export async function POST(req: Request) {
       if (client) {
         try { const rzOrder = await client.orders.fetch(orderId); notes = rzOrder?.notes || {}; } catch (err) { logger.warn('Could not fetch rz order in webhook', { orderId, err }); }
         if (process.env.NODE_ENV === 'test') {
-          try { console.log('[debug] webhook notes', notes); } catch {}
+          logger.debug('webhook.notes (test)', { notes });
         }
       }
 
@@ -251,7 +251,7 @@ export async function POST(req: Request) {
       const parent = await prisma.user.findUnique({ where: { id: orderRow.studentId }, select: { id: true, email: true, phone: true, name: true } });
       const retryLink = `${process.env.NEXTAUTH_URL ?? 'https://spinzyacademy.com'}/parent/billing`;
       if (parent?.email) {
-        const subject = `Payment failed — action required`;
+        const subject = `Payment failed -- action required`;
         const html = `<p>Hi ${parent.name ?? 'Parent'},</p><p>We couldn't complete your recent payment. Please update your payment method and retry here: <a href="${retryLink}">Update payment</a>. If you need help, contact ${process.env.SUPPORT_EMAIL ?? 'support@spinzyacademy.com'}.</p>`;
         await sendMailSafe({ to: parent.email, subject, html });
       }

@@ -1,4 +1,4 @@
-'/**
+/**
  * FILE OBJECTIVE:
  * - Render and browse Topic Notes for students; supports Vidya and legacy note shapes.
  *

@@ -1,28 +1,11 @@
-const logger = require('../../lib/logger');
-let playwrightAvailable = true;
-try {
-  require.resolve('@playwright/test');
-} catch {
-  playwrightAvailable = false;
-}
+import logger from '../../lib/logger';
+import { test, expect } from '@playwright/test';
 
-if (!playwrightAvailable) {
-  // If Playwright isn't installed in this environment, register a skipped Jest test.
-  // This keeps CI/dev runs stable when E2E tooling isn't present while marking the
-  // suite as intentionally skipped instead of failing due to zero tests.
-  // eslint-disable-next-line no-console
-  logger.warn('Skipping E2E onboarding.spec.ts: @playwright/test not installed');
-   
-  test.skip('skipped E2E onboarding: @playwright/test not installed', () => {});
-} else {
-  // Import lazily so the file can be parsed when Playwright is absent.
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const { test, expect } = require('@playwright/test');
-
-  // Basic e2e check: open/close onboarding modal via Profile page trigger
-  // Assumes the Profile page renders a button that calls useOnboarding().open({ force: true })
-  test.describe('Onboarding modal', () => {
-    test('opens from Profile and can be closed', async ({ page }) => {
+// Basic e2e check: open/close onboarding modal via Profile page trigger
+// Assumes the Profile page renders a button that calls useOnboarding().open({ force: true })
+test.describe('Onboarding modal', () => {
+  test('opens from Profile and can be closed', async ({ page }) => {
+    try {
       await page.goto('/profile');
 
       // Click the Update Profile button to open onboarding
@@ -41,6 +24,9 @@ if (!playwrightAvailable) {
 
       // Modal should disappear
       await expect(heading).toBeHidden();
-    });
+    } catch (err) {
+      logger.warn('E2E onboarding test encountered an error', { error: String(err) });
+      throw err;
+    }
   });
-}
+});

@@ -33,6 +33,9 @@ import { processReadinessDropAlerts } from './services/readinessDropWorker.js';
 import { runMonthlyMisconceptionPrevalence } from './services/misconceptionPrevalenceWorker.js';
 import { weeklyPlanAdjust } from './jobs/weeklyPlanAdjust.js';
 import { sendFreemiumResetNotifications } from './jobs/freemiumResetNotifications.js';
+import { runWeeklyRatingAggregation } from './jobs/weeklyRatingAggregation.js';
+import { runDailyLatencyReport } from './jobs/dailyLatencyReport.js';
+import { runDailyQuestionGenMetrics } from './jobs/dailyQuestionGenMetrics.js';
 import { prisma } from '../lib/prisma.js';
 import { sendPushSafe } from '../lib/push/send.js';
 import { PUSH_NOTIFICATIONS } from '../lib/push/notifications.js';
@@ -50,6 +53,9 @@ const READINESS_PRECOMPUTE_INTERVAL_MS = 24 * 60 * 60 * 1000; // 24 hours
 const COST_REPORT_INTERVAL_MS = 24 * 60 * 60 * 1000; // 24 hours
 const DATA_DELETION_INTERVAL_MS = 24 * 60 * 60 * 1000; // 24 hours
 const MONTHLY_INTERVAL_MS = 30 * 24 * 60 * 60 * 1000; // approx 30 days
+const WEEKLY_RATING_INTERVAL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
+const DAILY_LATENCY_INTERVAL_MS = 24 * 60 * 60 * 1000; // 24 hours
+const DAILY_QUESTION_GEN_INTERVAL_MS = 24 * 60 * 60 * 1000; // 24 hours
 
 /**
  * Calculate milliseconds until next scheduled time (2 AM UTC)
@@ -458,6 +464,54 @@ async function runMisconceptionPrevalenceJob() {
 }
 
 /**
+ * F-ADM-010 AC-06: Weekly session rating aggregation (Sunday 6 AM UTC)
+ */
+async function runWeeklyRatingAggregationJob() {
+  try {
+    logger.info('scheduler.weeklyRatingAggregation.starting')
+    const result = await runWeeklyRatingAggregation()
+    logger.info('scheduler.weeklyRatingAggregation.completed', { ...result })
+  } catch (error) {
+    logger.error('scheduler.weeklyRatingAggregation.error', {
+      error: error instanceof Error ? error.message : String(error),
+    })
+  }
+  setTimeout(runWeeklyRatingAggregationJob, WEEKLY_RATING_INTERVAL_MS)
+}
+
+/**
+ * F-ADM-032 AC-02: Daily p95 latency report (01:00 UTC = 6:30 AM IST)
+ */
+async function runDailyLatencyReportJob() {
+  try {
+    logger.info('scheduler.dailyLatencyReport.starting')
+    const result = await runDailyLatencyReport()
+    logger.info('scheduler.dailyLatencyReport.completed', { ...result })
+  } catch (error) {
+    logger.error('scheduler.dailyLatencyReport.error', {
+      error: error instanceof Error ? error.message : String(error),
+    })
+  }
+  setTimeout(runDailyLatencyReportJob, DAILY_LATENCY_INTERVAL_MS)
+}
+
+/**
+ * F-ADM-032 AC-03: Daily question-gen failure rate (01:30 UTC = 7 AM IST)
+ */
+async function runDailyQuestionGenMetricsJob() {
+  try {
+    logger.info('scheduler.dailyQuestionGenMetrics.starting')
+    const result = await runDailyQuestionGenMetrics()
+    logger.info('scheduler.dailyQuestionGenMetrics.completed', { ...result })
+  } catch (error) {
+    logger.error('scheduler.dailyQuestionGenMetrics.error', {
+      error: error instanceof Error ? error.message : String(error),
+    })
+  }
+  setTimeout(runDailyQuestionGenMetricsJob, DAILY_QUESTION_GEN_INTERVAL_MS)
+}
+
+/**
  * Start the scheduler
  */
 export async function startScheduler() {
@@ -511,6 +565,21 @@ export async function startScheduler() {
   const delayMonthlyMisconception = msUntilNextMonthlyRun(4)
   logger.info('scheduler.scheduled.misconceptionPrevalence', { firstRun: new Date(Date.now() + delayMonthlyMisconception).toISOString() })
   setTimeout(runMisconceptionPrevalenceJob, delayMonthlyMisconception);
+
+  // Weekly rating aggregation: Sunday 6 AM UTC
+  const delayWeeklyRating = msUntilNextWeeklyRun(0, 6)
+  logger.info('scheduler.scheduled.weeklyRatingAggregation', { firstRun: new Date(Date.now() + delayWeeklyRating).toISOString() })
+  setTimeout(runWeeklyRatingAggregationJob, delayWeeklyRating)
+
+  // Daily latency report: 01:00 UTC
+  const delayLatencyReport = msUntilNextRun(1)
+  logger.info('scheduler.scheduled.dailyLatencyReport', { firstRun: new Date(Date.now() + delayLatencyReport).toISOString() })
+  setTimeout(runDailyLatencyReportJob, delayLatencyReport)
+
+  // Daily question-gen metrics: 01:30 UTC
+  const delayQuestionGenMetrics = msUntilNextRun(1) + 30 * 60 * 1000
+  logger.info('scheduler.scheduled.dailyQuestionGenMetrics', { firstRun: new Date(Date.now() + delayQuestionGenMetrics).toISOString() })
+  setTimeout(runDailyQuestionGenMetricsJob, delayQuestionGenMetrics)
 
   logger.info('scheduler.started');
 }

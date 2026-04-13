@@ -17,7 +17,7 @@ import { formatErrorForResponse } from '@/lib/errorResponse';
 
 const ALLOWED_STATUSES = ['DEFERRED'] as const;
 type AllowedStatus = (typeof ALLOWED_STATUSES)[number];
-const ALLOWED_ACTIONS = ['reorder'] as const;
+const ALLOWED_ACTIONS = ['reorder', 'move'] as const;
 
 interface Params {
   params: Promise<{ itemId: string }>;
@@ -42,6 +42,41 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     const body = await req.json().catch(() => ({}));
     const action: string = typeof body.action === 'string' ? body.action : '';
     const status: string = typeof body.status === 'string' ? body.status : '';
+
+    // ── AC-06: Reorder/Move -- support moving an item relative to its neighbors
+    // New: action === 'move' with { direction: 'next' | 'prev' } will swap orderInWeek
+    if (action === 'move') {
+      // Move direction: 'next' or 'prev' (relative within same week)
+      const direction = typeof body.direction === 'string' ? body.direction : '';
+      if (!['next', 'prev'].includes(direction)) {
+        return NextResponse.json({ error: 'direction must be next or prev' }, { status: 400 });
+      }
+
+      const srcItem = await prisma.learningPlanItem.findFirst({
+        where: { id: itemId, plan: { studentId: userId } },
+        select: { id: true, planId: true, weekNumber: true, orderInWeek: true },
+      });
+      if (!srcItem) return NextResponse.json({ error: 'Item not found' }, { status: 404 });
+
+      const targetOrder = direction === 'next' ? srcItem.orderInWeek + 1 : srcItem.orderInWeek - 1;
+      const tgtItem = await prisma.learningPlanItem.findFirst({
+        where: { planId: srcItem.planId, weekNumber: srcItem.weekNumber, orderInWeek: targetOrder },
+        select: { id: true, planId: true, weekNumber: true, orderInWeek: true },
+      });
+      if (!tgtItem) {
+        return NextResponse.json({ error: 'No adjacent item to swap with' }, { status: 400 });
+      }
+
+      // Swap orderInWeek atomically
+      await prisma.$transaction([
+        prisma.learningPlanItem.update({ where: { id: srcItem.id }, data: { orderInWeek: tgtItem.orderInWeek } }),
+        prisma.learningPlanItem.update({ where: { id: tgtItem.id }, data: { orderInWeek: srcItem.orderInWeek } }),
+      ]);
+
+      const res = NextResponse.json({ ok: true });
+      logger.logAPI(req, res, { className: 'LearningPlanItemAPI', methodName: 'PATCH' }, start);
+      return res;
+    }
 
     // ── AC-06: Reorder -- swap orderInWeek between two items in the same week ──
     if (action === 'reorder') {

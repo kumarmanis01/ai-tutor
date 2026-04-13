@@ -196,7 +196,7 @@ export async function POST(req: Request) {
           if (months && months > 1) {
             const totalPaise = order.amount || 0;
             const base = Math.floor(totalPaise / months);
-            let remainder = totalPaise - base * months;
+            const remainder = totalPaise - base * months;
             for (let i = 0; i < months; i++) {
               const amount = base + (i === months - 1 ? remainder : 0);
               const due = new Date(now);
