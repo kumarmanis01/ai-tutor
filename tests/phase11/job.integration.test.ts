@@ -79,12 +79,17 @@ describe('Phase 11 — Job-style suggestion processing idempotency', () => {
     await prisma.auditLog.deleteMany().catch(() => {})
 
     // First run
+    const testStartTime = new Date()
     await generateSuggestionsForAllSignals()
 
     const allSuggestions = await prisma.contentSuggestion.findMany()
     expect(allSuggestions.length).toBe(2)
     const sourceIds = allSuggestions.map(s => s.sourceSignalId)
     expect(new Set(sourceIds).size).toBe(2)
+    // Use suggestion IDs to scope audit queries to only rows created for
+    // the suggestions produced in this test run. This is more robust than
+    // relying on `action` or createdAt windows when running against shared DBs.
+    const suggestionIds = allSuggestions.map(s => s.id)
 
     // Poll for SUGGESTION_CREATED audits (audit writes are non-blocking)
     const waitFor = async (checkFn: () => Promise<boolean>, timeout = 2000, interval = 50) => {
@@ -97,12 +102,12 @@ describe('Phase 11 — Job-style suggestion processing idempotency', () => {
     }
 
     const foundAudit = await waitFor(async () => {
-      const audits = await prisma.auditLog.findMany({ where: { action: 'SUGGESTION_CREATED' } })
-      return audits.length >= 2
+      const audits = await prisma.auditLog.findMany({ where: { targetEntity: 'ContentSuggestion', targetId: { in: suggestionIds } } })
+      return audits.length >= suggestionIds.length
     }, 2000, 50)
     expect(foundAudit).toBe(true)
 
-    const auditsAfterFirst = await prisma.auditLog.findMany({ where: { action: 'SUGGESTION_CREATED' } })
+    const auditsAfterFirst = await prisma.auditLog.findMany({ where: { targetEntity: 'ContentSuggestion', targetId: { in: suggestionIds } } })
 
     // Second run (idempotency)
     await generateSuggestionsForAllSignals()
@@ -113,10 +118,12 @@ describe('Phase 11 — Job-style suggestion processing idempotency', () => {
     const ids = allSuggestionsAfter.map(s => s.sourceSignalId)
     expect(new Set(ids).size).toBe(2)
 
-    const auditsAfterSecond = await prisma.auditLog.findMany({ where: { action: 'SUGGESTION_CREATED' } })
+    const suggestionIdsAfter = allSuggestionsAfter.map(s => s.id)
+    const auditsAfterSecond = await prisma.auditLog.findMany({ where: { targetEntity: 'ContentSuggestion', targetId: { in: suggestionIdsAfter } } })
+    try { console.log('AUDITS_AFTER_SECOND_DEBUG', auditsAfterSecond.map(a => ({ id: a.id, action: a.action, details: a.details, createdAt: a.createdAt, targetId: a.targetId }))) } catch {}
     // No new CREATED audit rows for duplicated processing of same signals
     expect(auditsAfterSecond.length).toBeGreaterThanOrEqual(auditsAfterFirst.length)
     // Ensure we didn't create more suggestion-created audits than suggestions (basic guard)
-    expect(auditsAfterSecond.length).toBeLessThanOrEqual( allSuggestionsAfter.length + 10 )
+    expect(auditsAfterSecond.length).toBeLessThanOrEqual(allSuggestionsAfter.length)
   }, 20000)
 })

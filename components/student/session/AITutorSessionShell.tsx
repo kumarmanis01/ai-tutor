@@ -64,6 +64,8 @@ export default function AITutorSessionShell({
   const [summary, setSummary] = useState<SessionSummary | null>(null);
   // AC-02: AI step lines for the whiteboard, updated on each completed AI message.
   const [aiSteps, setAiSteps] = useState<string[]>([]);
+  // Optional structured visual hint (JSON or structured text) from the LLM
+  const [visualHint, setVisualHint] = useState<string | null>(null);
 
   const showWhiteboard = needsWhiteboard(subjectName);
 
@@ -74,6 +76,10 @@ export default function AITutorSessionShell({
       .map((l) => l.trim())
       .filter(Boolean);
     if (lines.length > 0) setAiSteps(lines);
+  }
+
+  function handleVisualHint(viz: string) {
+    setVisualHint(viz);
   }
 
   if (summary) {
@@ -104,6 +110,7 @@ export default function AITutorSessionShell({
             isAITutorEnabled={isAITutorEnabled}
             onSessionComplete={(s) => setSummary(s)}
             onAiMessage={handleAiMessage}
+            onVisualHint={handleVisualHint}
           />
         </div>
 
@@ -113,6 +120,7 @@ export default function AITutorSessionShell({
             sessionId={sessionId}
             conceptName={conceptName}
             aiSteps={aiSteps}
+            visualHint={visualHint}
           />
         </div>
       </div>

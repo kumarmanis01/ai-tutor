@@ -37,11 +37,11 @@ export async function processNextJob() {
   if (!claimed) return null
 
   try {
-    // Use centralized audit helper so tests can mock and assertions work.
-    logAuditEvent(prisma as any, { targetEntity: 'RegenerationJob', targetId: claimed.id, action: AuditEvents.REGEN_JOB_LOCKED as any, details: { jobId: claimed.id, legacyAction: AuditEvents.REGEN_JOB_LOCKED } as any })
+    // Await audit writes in the worker so integration tests can observe them.
+    await logAuditEvent(prisma as any, { targetEntity: 'RegenerationJob', targetId: claimed.id, action: AuditEvents.REGEN_JOB_LOCKED as any, details: { jobId: claimed.id, legacyAction: AuditEvents.REGEN_JOB_LOCKED } as any })
   } catch {}
   try {
-    logAuditEvent(prisma as any, { targetEntity: 'RegenerationJob', targetId: claimed.id, action: AuditEvents.REGEN_JOB_STARTED as any, details: { jobId: claimed.id, legacyAction: AuditEvents.REGEN_JOB_STARTED } as any })
+    await logAuditEvent(prisma as any, { targetEntity: 'RegenerationJob', targetId: claimed.id, action: AuditEvents.REGEN_JOB_STARTED as any, details: { jobId: claimed.id, legacyAction: AuditEvents.REGEN_JOB_STARTED } as any })
   } catch {}
 
   try {
@@ -76,11 +76,11 @@ export async function processNextJob() {
 
     try {
       const updated = await prisma.regenerationJob.updateMany({ where: { id: claimed.id, status: 'RUNNING' }, data: { status: 'COMPLETED', outputRef } as any })
-      if ((updated as any).count > 0) {
-        try {
-          logAuditEvent(prisma as any, { targetEntity: 'RegenerationJob', targetId: claimed.id, action: AuditEvents.REGEN_JOB_COMPLETED as any, details: { jobId: claimed.id, legacyAction: AuditEvents.REGEN_JOB_COMPLETED, outputRef } as any })
-        } catch {}
-      }
+    if ((updated as any).count > 0) {
+      try {
+        await logAuditEvent(prisma as any, { targetEntity: 'RegenerationJob', targetId: claimed.id, action: AuditEvents.REGEN_JOB_COMPLETED as any, details: { jobId: claimed.id, legacyAction: AuditEvents.REGEN_JOB_COMPLETED, outputRef } as any })
+      } catch {}
+    }
     } catch {}
 
     return { ...claimed, outputRef }
@@ -91,7 +91,7 @@ export async function processNextJob() {
     const errorJson = { message: String(err?.message ?? err), stack: err?.stack }
     try { await prisma.regenerationJob.update({ where: { id: claimed.id }, data: { status: 'FAILED', errorJson } }) } catch {}
     try {
-      logAuditEvent(prisma as any, { targetEntity: 'RegenerationJob', targetId: claimed.id, action: AuditEvents.REGEN_JOB_FAILED as any, details: { jobId: claimed.id, legacyAction: AuditEvents.REGEN_JOB_FAILED, errorJson } as any })
+      await logAuditEvent(prisma as any, { targetEntity: 'RegenerationJob', targetId: claimed.id, action: AuditEvents.REGEN_JOB_FAILED as any, details: { jobId: claimed.id, legacyAction: AuditEvents.REGEN_JOB_FAILED, errorJson } as any })
     } catch {}
     return claimed
   }

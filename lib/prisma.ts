@@ -23,11 +23,15 @@ declare global {
 }
 /* eslint-enable no-var */
 
-const client = global.prisma ?? new PrismaClient({
+// Use `globalThis` rather than `global` so accidental client-side imports
+// don't throw "global is not defined" in browsers. `globalThis` is available
+// in Node and browser runtimes.
+const g: any = globalThis as any;
+const client = g.prisma ?? new PrismaClient({
   log: process.env.NODE_ENV === 'test' ? [] : ['query', 'info', 'warn', 'error'],
 });
 
-if (process.env.NODE_ENV !== 'production') global.prisma = client;
+if (process.env.NODE_ENV !== 'production') g.prisma = client;
 
 // Provide a compatibility proxy so older code/tests that reference legacy model
 // names (e.g. `analyticsSignal`) continue to work even if the schema renamed

@@ -2,8 +2,22 @@
  * POST /api/student/subscription/order
  *
  * Creates a Razorpay order for the chosen subscription plan.
+ * Supports optional EMI selection for eligible plans (annual: 3/6/12).
  * Returns orderId, amount (paise), currency, keyId.
  * Auth: session required -- 401 before any DB query.
+ *
+ * FILE OBJECTIVE:
+ * - Create Razorpay order for student subscription purchases with EMI support.
+ *
+ * LINKED UNIT TEST:
+ * - tests/unit/api/student/subscription/order.test.ts
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - .github/copilot-instructions.md
+ * - /docs/COPILOT_GUARDRAILS.md
+ *
+ * EDIT LOG:
+ * - 2026-04-13T05:20:00Z | copilot | add EMI support to student subscription order route
  */
 
 import { NextResponse } from 'next/server';
@@ -37,9 +51,20 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Invalid request body' }, { status: 400 });
   }
 
-  const planId = (body as { planId?: unknown })?.planId;
+  const b = body as Record<string, unknown>;
+  const planId = typeof b.planId === 'string' ? b.planId : '';
+  const emiMonths = typeof b.emiMonths === 'number' ? b.emiMonths : undefined;
+
   if (typeof planId !== 'string' || !VALID_PLAN_IDS.includes(planId as PlanId)) {
     return NextResponse.json({ error: 'Invalid planId' }, { status: 400 });
+  }
+
+  // EMI is only allowed for annual plan and only for specific tenors
+  if (emiMonths && planId !== 'annual') {
+    return NextResponse.json({ error: 'EMI is only available for annual plan' }, { status: 400 });
+  }
+  if (emiMonths && ![3, 6, 12].includes(emiMonths)) {
+    return NextResponse.json({ error: 'Invalid emiMonths (allowed: 3,6,12)' }, { status: 400 });
   }
 
   const plan = PLANS[planId as PlanId];
@@ -55,7 +80,12 @@ export async function POST(req: Request) {
     const order = await client.orders.create({
       amount: amountPaise,
       currency: 'INR',
-      notes: { studentId: userId, planId, durationMonths: String(plan.durationMonths) },
+      notes: {
+        studentId: userId,
+        planId,
+        durationMonths: String(plan.durationMonths),
+        emiMonths: emiMonths ? String(emiMonths) : '',
+      },
     });
 
     if (!order?.id) {

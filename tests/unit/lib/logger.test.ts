@@ -4,16 +4,19 @@ describe('logger module', () => {
   const oldEnv = { ...process.env }
   let consoleLogSpy: jest.SpyInstance
   let consoleErrSpy: jest.SpyInstance
+  let consoleWarnSpy: jest.SpyInstance
 
   beforeEach(() => {
     jest.resetModules()
     consoleLogSpy = jest.spyOn(console, 'log').mockImplementation(() => {})
     consoleErrSpy = jest.spyOn(console, 'error').mockImplementation(() => {})
+    consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {})
   })
 
   afterEach(() => {
     consoleLogSpy.mockRestore()
     consoleErrSpy.mockRestore()
+    consoleWarnSpy.mockRestore()
     process.env = { ...oldEnv }
   })
 
@@ -42,9 +45,8 @@ describe('logger module', () => {
     warn('warn.event', { some: 'value' })
     error('err.event', { some: 'value' })
 
+    expect(consoleWarnSpy).toHaveBeenCalled()
     expect(consoleErrSpy).toHaveBeenCalled()
-    // warn and error should call console.error
-    expect(consoleErrSpy.mock.calls.length).toBeGreaterThanOrEqual(2)
   })
 
   it('logger.subscribe and getLogs obey debug env', () => {

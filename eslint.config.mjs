@@ -91,7 +91,8 @@ try {
   });
 } catch (e) {
   // If local rule cannot be loaded, don't fail start; warn during lint runs
-  logger.warn('Could not load local ESLint ai-guards rules:', e && e.message);
+  // Use console.warn here because `logger` is not available in this module.
+  console.warn('Could not load local ESLint ai-guards rules:', e && e.message);
 }
 
 export default eslintConfig;
