@@ -190,7 +190,7 @@ export default function ParentUpgradeFlow({ childrenList }: ParentUpgradeFlowPro
             <ul className="mt-2 space-y-1">
               {emiSchedule.map((s) => (
                 <li key={s.number} className="flex justify-between text-sm">
-                  <span>Installment {s.number} — {s.due}</span>
+                  <span>Installment {s.number} -- {s.due}</span>
                   <span>₹{s.amount}</span>
                 </li>
               ))}

@@ -1,0 +1,58 @@
+/**
+ * PII redaction layer for AI provider payloads.
+ *
+ * F-ADM-040 AC-05: AI providers (OpenAI, Anthropic) must receive anonymised
+ * session content only -- no PII in prompts. This module is applied as a
+ * defence-in-depth layer inside callLLM before any text reaches the wire.
+ *
+ * Patterns matched (same as inputSafety.ts, but applied to assembled prompts):
+ *   - Indian mobile numbers: 6-9 followed by 9 digits
+ *   - Email addresses
+ *   - Aadhaar numbers: 12 digits (with optional spaces every 4)
+ *
+ * Returns the redacted string. Never throws.
+ */
+
+// Compiled once at module load -- mirrors patterns in inputSafety.ts.
+const MOBILE_RE = /\b[6-9]\d{9}\b/g
+const EMAIL_RE = /[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}/g
+const AADHAAR_RE = /\b\d{4}\s?\d{4}\s?\d{4}\b/g
+
+function resetLastIndex(re: RegExp): void {
+  try {
+    re.lastIndex = 0
+  } catch {
+    // ignore
+  }
+}
+
+/**
+ * Redact PII from a single string of text.
+ * Safe to call with any string, including assembled system prompts.
+ */
+export function redactPIIFromText(text: string): string {
+  if (!text || typeof text !== 'string') return text
+
+  let result = text
+  resetLastIndex(MOBILE_RE)
+  result = result.replace(MOBILE_RE, '[MOBILE]')
+  resetLastIndex(EMAIL_RE)
+  result = result.replace(EMAIL_RE, '[EMAIL]')
+  resetLastIndex(AADHAAR_RE)
+  result = result.replace(AADHAAR_RE, '[AADHAAR]')
+  return result
+}
+
+/**
+ * Redact PII from an OpenAI-style messages array in place (returns a new array).
+ * Used in createChatCompletion to scrub all message content before sending.
+ */
+export function redactPIIFromMessages(
+  messages: Array<{ role: string; content: string }>,
+): Array<{ role: string; content: string }> {
+  if (!Array.isArray(messages)) return messages
+  return messages.map((m) => ({
+    ...m,
+    content: typeof m.content === 'string' ? redactPIIFromText(m.content) : m.content,
+  }))
+}

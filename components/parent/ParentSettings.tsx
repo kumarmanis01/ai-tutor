@@ -169,7 +169,7 @@ export default function ParentSettings() {
     }
   }
 
-  if (loading) return <div className="p-4">Loading…</div>
+  if (loading) return <div className="p-4">Loading...</div>
 
   if (!profile) return <div className="p-4">Unable to load settings</div>
 
@@ -263,7 +263,7 @@ export default function ParentSettings() {
 
       <div className="flex items-center gap-2">
         <button onClick={save} disabled={saving} className="rounded bg-[#534AB7] px-4 py-2 text-white">
-          {saving ? 'Saving…' : 'Save'}
+          {saving ? 'Saving...' : 'Save'}
         </button>
         {message && <span className="text-sm text-gray-600">{message}</span>}
       </div>

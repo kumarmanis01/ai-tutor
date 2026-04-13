@@ -156,7 +156,7 @@ export async function POST(req: Request) {
       const existingCredit = existingSub.creditBalance ?? 0;
       carryForwardCredit = (existingCredit || 0) + (proration || 0);
     } catch (err) {
-      // Non-fatal — proceed without proration if DB read fails
+      // Non-fatal -- proceed without proration if DB read fails
       logger.warn('proration calculation failed', { event: 'billing.verify.proration', context: { userId: sessionUser.id! }, err });
       carryForwardCredit = 0;
     }

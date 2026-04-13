@@ -1295,6 +1295,7 @@ model SubjectDef {
   name                String
   slug                String
   classId             String
+  isAvailable         Boolean              @default(false) // F-ADM-002 AC-05: admin-controlled subject availability
   lifecycle           SoftDeleteStatus     @default(active)
   createdAt           DateTime             @default(now())
   chapters            ChapterDef[]
@@ -1358,6 +1359,13 @@ model Concept {
   bloomLevel              String? /// e.g. remember, understand, apply
   prerequisiteConceptIds  String[]              @default([])
   commonlyConfusedWithIds String[]              @default([])
+  /// F-ADM-013 AC-04: admin can suspend a concept from AI teaching when hallucination confirmed.
+  /// Suspended concepts return CONCEPT_SUSPENDED to the session start gate; student sees a
+  /// "this topic is being reviewed" message. Admin must unsuspend explicitly after fixing the
+  /// curriculum chunk. Never relied on for student-facing mastery or billing logic.
+  isSuspended             Boolean               @default(false)
+  suspendedAt             DateTime?
+  suspendedReason         String?
   createdAt               DateTime              @default(now())
   updatedAt               DateTime              @updatedAt
   topic                   TopicDef              @relation(fields: [topicId], references: [id], onDelete: Cascade)
@@ -1365,8 +1373,28 @@ model Concept {
   learningPlanItems       LearningPlanItem[]
   conceptStates           StudentConceptState[]
 
+  history ConceptHistory[]
+
   @@index([subjectId])
   @@index([topicId])
+}
+
+/// Audit history for admin edits to Concept IRT parameters and prerequisites. F-ADM-002 AC-03.
+model ConceptHistory {
+  id                     String   @id @default(cuid())
+  conceptId              String
+  adminId                String
+  reason                 String
+  previousIrtB           Float?
+  newIrtB                Float?
+  previousPrereqIds      String[]
+  newPrereqIds           String[]
+  createdAt              DateTime @default(now())
+
+  concept Concept @relation(fields: [conceptId], references: [id], onDelete: Cascade)
+
+  @@index([conceptId])
+  @@index([createdAt])
 }
 
 /// Per-chapter exam mark weight (e.g. CBSE Grade 10 Maths). Used for readiness score.
@@ -1521,10 +1549,11 @@ model AITutorTurnLog {
   safetyFlagged    Boolean      @default(false)
   cached           Boolean      @default(false)
   ragChunksUsed    String[]     @default([])
-  frustrationScore Float?
-  qualityFlag      QualityFlag?
-  qualityNote      String?
-  createdAt        DateTime     @default(now())
+  frustrationScore   Float?
+  groundednessScore  Float?  // 1 - riskScore from hallucinationDetector; null when cached or safety-blocked
+  qualityFlag        QualityFlag?
+  qualityNote        String?
+  createdAt          DateTime     @default(now())
 
   @@index([sessionId])
   @@index([callType])
@@ -1961,6 +1990,8 @@ enum AdminActionType {
   CONTENT_HYDRATE
   WORKER_START
   WORKER_STOP
+  CONCEPT_SUSPEND
+  CONCEPT_UNSUSPEND
 }
 
 /// ⚠️ AI CONTENT ENGINE RULES

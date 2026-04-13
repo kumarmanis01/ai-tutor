@@ -39,7 +39,7 @@ async function handleTrigger(_req: Request, jobId?: string, actorId?: string | n
     })
 
     // Fire-and-forget audit: do not block the response on audit write.
-    // Do not silently swallow exceptions — log them for observability.
+    // Do not silently swallow exceptions -- log them for observability.
     try {
       // Emit the event as an explicit action. Include the legacy label in
       // `details.legacyAction` so legacy consumers/tests can query by it
