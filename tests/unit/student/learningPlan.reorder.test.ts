@@ -3,7 +3,7 @@
  * - Unit tests for PATCH /api/student/learning-plan/[itemId] reorder/move actions.
  *
  * LINKED UNIT TEST:
- * - tests/unit/student/learningPlan.reorder.spec.ts
+ * - tests/unit/student/learningPlan.reorder.test.ts
  *
  * COPILOT INSTRUCTIONS FOLLOWED:
  * - /docs/COPILOT_GUARDRAILS.md
