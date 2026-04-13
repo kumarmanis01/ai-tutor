@@ -102,7 +102,6 @@ export async function POST(req: Request) {
       logger.warn('regenerationJob.POST: contentSuggestion count/findUnique failed', { error: e });
     }
   }
-  }
   if (!suggestion) return NextResponse.json({ error: 'suggestion_not_found' }, { status: 404 });
   if (suggestion.status !== 'ACCEPTED') return NextResponse.json({ error: 'suggestion_not_accepted' }, { status: 400 });
 
