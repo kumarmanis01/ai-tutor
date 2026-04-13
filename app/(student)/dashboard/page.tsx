@@ -723,7 +723,7 @@ export default async function StudentHomeDashboardPage() {
               </section>
             )}
 
-            {/* ⑧ UpcomingTopicsList -- inline simple rows */}
+            {/* (8) UpcomingTopicsList -- inline simple rows */}
             {upcomingTopics.length > 0 && (
               <section aria-labelledby="upcoming-heading">
                 <h3
@@ -756,7 +756,7 @@ export default async function StudentHomeDashboardPage() {
                   href="/learn/learning-path"
                   className="mt-3 inline-flex min-h-[44px] items-center text-xs font-medium text-[#534AB7] dark:text-indigo-400 hover:underline"
                 >
-                  View full learning path →
+                  View full learning path ->
                 </Link>
               </section>
             )}
