@@ -19,6 +19,7 @@ import { parseLlmJson } from '@/lib/llm/sanitizeJson'
 import { applyTagTransitionWithRemediation, type TutorTag, type TutorStage } from '@/lib/ai/tutor/stateMachine'
 import { retrieveRelevantChunks } from '@/lib/ai/tutor/rag'
 import { detectMisconceptions, loadMisconceptions, logNovelMisconception } from '@/lib/ai/tutor/misconceptionDetector'
+import generateContrastiveExplanation from '@/lib/ai/tutor/contrastive'
 import { saveDoubt, lookupDoubt, recordDoubt } from '@/lib/ai/tutor/doubtKb'
 import { getCachedExplanation, setCachedExplanation, type ExplanationLang, type ExplanationModality } from '@/lib/ai/tutor/explanationCache'
 import { detectDistress } from '@/lib/ai/tutor/distress'
@@ -61,6 +62,12 @@ export type TutorTurnComplete = {
   turnNumber: number
   sessionComplete: boolean
   visualHint?: string | null
+  /** Optional contrastive explanation for a detected misconception */
+  contrastiveExplanation?: {
+    misconceptionId: string
+    name: string
+    correction: string
+  } | null
 }
 
 
@@ -341,6 +348,10 @@ export async function runTutorOrchestrator(args: {
     const loadedMisconceptions = await loadMisconceptions(subjectId, conceptId)
     const detectedMisconceptions = detectMisconceptions(redactedInput, loadedMisconceptions)
     const activeMisconception = detectedMisconceptions[0] ?? null
+    // Find the full loaded misconception object to enrich the contrastive artifact
+    const loadedMatch = activeMisconception
+      ? loadedMisconceptions.find((lm) => lm.id === activeMisconception.misconceptionId)
+      : null
 
     if (detectedMisconceptions.length > 0) {
       const now = new Date()
@@ -374,6 +385,22 @@ export async function runTutorOrchestrator(args: {
           count: detectedMisconceptions.length,
           error: String((err as any)?.message ?? err),
         })
+      }
+    }
+
+    // If we have a detected misconception and the full loaded row, prepare an
+    // enriched contrastive artifact (deterministic, template-driven).
+    let contrastiveArtifact: any = null
+    if (activeMisconception && loadedMatch) {
+      try {
+        contrastiveArtifact = generateContrastiveExplanation(loadedMatch as any)
+      } catch (e) {
+        logger.warn('contrastive.generate.failed', { error: String((e as any)?.message ?? e) })
+        contrastiveArtifact = {
+          misconceptionId: activeMisconception.misconceptionId,
+          name: activeMisconception.name,
+          correction: activeMisconception.correction,
+        }
       }
     } else if (redactedInput.trim().length > 20 && loadedMisconceptions.length > 0) {
       // AC-05 (F-STU-013): input has meaningful content but matched nothing in the library.
@@ -733,6 +760,13 @@ export async function runTutorOrchestrator(args: {
       // and reflective question are delivered in that turn), not when entering it.
       sessionComplete: state.stage === 'CONSOLIDATION',
       visualHint: typeof extractedVisualHint === 'string' ? extractedVisualHint : null,
+      contrastiveExplanation: contrastiveArtifact ? contrastiveArtifact : activeMisconception
+        ? {
+            misconceptionId: activeMisconception.misconceptionId,
+            name: activeMisconception.name,
+            correction: activeMisconception.correction,
+          }
+        : null,
     }
 
     // Award streak credit only after the student receives CONSOLIDATION content.

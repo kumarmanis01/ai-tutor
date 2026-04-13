@@ -116,7 +116,19 @@ export async function POST(
       scorePercent: { lte: overallScore },
     },
   });
-  const percentile = cohortCount > 0 ? (belowCount / cohortCount) * 100 : 50;
+
+  // Only consider percentiles reliable when cohort reaches a minimum size.
+  const MIN_COHORT = Number(process.env.MOCK_COHORT_MIN ?? 10);
+  let percentile: number | null = null;
+  let percentileReliable = false;
+  if (cohortCount >= MIN_COHORT) {
+    percentile = cohortCount > 0 ? (belowCount / cohortCount) * 100 : 50;
+    percentileReliable = true;
+  } else {
+    // Not enough attempts to report a reliable percentile — store null in DB
+    percentile = null;
+    percentileReliable = false;
+  }
 
   // AC-05: Generate AI priority plan (fire non-blocking; complete stores result)
   const priorityPlan = await buildPriorityPlan({
@@ -150,9 +162,19 @@ export async function POST(
     attemptId,
     overallScore,
     percentile,
+    cohortCount,
+    percentileReliable,
   });
 
-  const res = NextResponse.json({ attemptId, scorePercent: overallScore, percentile, priorityPlan, rawResult });
+  const res = NextResponse.json({
+    attemptId,
+    scorePercent: overallScore,
+    percentile,
+    percentileReliable,
+    cohortCount,
+    priorityPlan,
+    rawResult,
+  });
   logger.logAPI(req, res, { className: 'MockCompleteAPI', methodName: 'POST' }, start);
   return res;
 }

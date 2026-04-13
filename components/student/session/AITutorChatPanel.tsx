@@ -21,6 +21,8 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
 import { stripTag } from '@/lib/ai/tutor/tagParser';
+import VisualHintRenderer from './VisualHintRenderer';
+import MisconceptionCard from './MisconceptionCard';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -47,6 +49,8 @@ export interface AITutorChatPanelProps {
   onSessionComplete: (summary: { tag: string; stage: string; turnNumber: number; hintsUsed: number }) => void;
   /** Called with the full text each time an AI message stream completes (F-STU-014 whiteboard). */
   onAiMessage?: (content: string) => void;
+  /** Called when the server returns a structured visualHint (diagram) for the whiteboard. */
+  onVisualHint?: (visualHint: string) => void;
 }
 
 type TutorTurnCompleteEvent = {
@@ -262,6 +266,25 @@ function AiMessageBubble({
   msg: ChatMessage;
   showLabel: boolean;
 }) {
+  const content = msg.content ?? '';
+  let looksLikeJson = false;
+  try {
+    looksLikeJson = !!content.trim() && (content.trim().startsWith('{') || content.trim().startsWith('['));
+  } catch {
+    looksLikeJson = false;
+  }
+
+  const MIS_PREFIX = '__MISCONCEPTION__';
+  const isMisconception = typeof content === 'string' && content.startsWith(MIS_PREFIX);
+  let parsedMisconception: any = null;
+  if (isMisconception) {
+    try {
+      parsedMisconception = JSON.parse(content.slice(MIS_PREFIX.length))
+    } catch {
+      parsedMisconception = null
+    }
+  }
+
   return (
     <div className="v2-msg-appear mb-3 flex flex-col items-start">
       {showLabel && (
@@ -279,7 +302,13 @@ function AiMessageBubble({
         </div>
       )}
       <div className="max-w-[85%] rounded-[4px_12px_12px_12px] bg-[#EEEDFE] px-3 py-2.5 text-sm leading-relaxed text-[#3C3489] dark:bg-[#534AB7]/20 dark:text-[#EEEDFE] whitespace-pre-wrap break-words">
-        {msg.content || '\u200B' /* zero-width space keeps bubble visible when empty */}
+        {isMisconception && parsedMisconception ? (
+          <MisconceptionCard artifact={parsedMisconception} />
+        ) : looksLikeJson ? (
+          <VisualHintRenderer hint={content} />
+        ) : (
+          (msg.content || '\u200B') /* zero-width space keeps bubble visible when empty */
+        )}
         {msg.isStreaming && (
           <span className="v2-cursor text-[#534AB7]/50 dark:text-[#EEEDFE]/50">|</span>
         )}
@@ -380,6 +409,8 @@ export const AITutorChatPanel: React.FC<AITutorChatPanelProps> = ({
   const hasReceivedTokenRef = useRef(false); // first token received this turn?
   const onAiMessageRef = useRef(onAiMessage);
   onAiMessageRef.current = onAiMessage;
+  const onVisualHintRef = useRef(onVisualHint);
+  onVisualHintRef.current = onVisualHint;
 
   // ── Scroll to bottom ───────────────────────────────────────────────────────
 
@@ -526,9 +557,23 @@ export const AITutorChatPanel: React.FC<AITutorChatPanelProps> = ({
         hintBannerTimerRef.current = setTimeout(() => setHintBanner(null), 6000);
       }
 
-      // If the server returned a visualHint (diagram brief), append it as an AI message
+      // If the server returned a visualHint (diagram brief), notify consumer and append as an AI message
+      // If the server returned a structured contrastiveExplanation, render
+      // it as a dedicated UI card in-chat so the student sees the correction clearly.
+      const contrast = (payload as any).contrastiveExplanation;
+      if (contrast && typeof contrast === 'object' && (contrast.name || contrast.correction)) {
+        // Encode artifact as a sentinel-wrapped JSON payload so existing message
+        // rendering pipeline can remain unchanged while we add a new card type.
+        const sentinel = '__MISCONCEPTION__';
+        const json = JSON.stringify(contrast);
+        const cMsg: ChatMessage = { id: makeId('ai'), role: 'ai', content: `${sentinel}${json}`, isStreaming: false };
+        setItems((prev) => [...prev, { kind: 'msg', msg: cMsg }]);
+      }
+
       if (typeof (payload as any).visualHint === 'string' && String((payload as any).visualHint).trim()) {
         const viz = String((payload as any).visualHint).trim();
+        // Inform whiteboard shell / panel so it can parse & replay the diagram
+        try { onVisualHintRef.current?.(viz); } catch {}
         const vizMsg: ChatMessage = { id: makeId('ai'), role: 'ai', content: viz, isStreaming: false };
         setItems((prev) => [...prev, { kind: 'msg', msg: vizMsg }]);
       }

@@ -18,6 +18,7 @@
  */
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { getProgressPercent } from '@/lib/student/xpLevels'
 import { useRouter } from 'next/navigation';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
@@ -156,15 +157,18 @@ function XpSection({
   useEffect(() => {
     const duration = 800;
     const startVal = totalXp - xpEarned;
-    // Progress bar: show XP earned as fraction of some tier (100 XP per level, cap at 100%)
-    const barTarget = Math.min((xpEarned / Math.max(totalXp, 100)) * 100, 100);
+    // Use centralized level thresholds to compute progress within level bands.
+    const prevTotal = Math.max(0, totalXp - xpEarned);
+    const startProgress = getProgressPercent(prevTotal);
+    const endProgress = getProgressPercent(totalXp);
+    const deltaProgress = endProgress - startProgress;
 
     const step = (ts: number) => {
       if (startRef.current == null) startRef.current = ts;
       const t = Math.min((ts - startRef.current) / duration, 1);
       const ease = easeOut(t);
       setDisplayXp(Math.round(startVal + xpEarned * ease));
-      setBarWidth(barTarget * ease);
+      setBarWidth(Math.min(100, Math.max(0, startProgress + deltaProgress * ease)));
       if (t < 1) {
         rafRef.current = requestAnimationFrame(step);
       }
@@ -173,8 +177,7 @@ function XpSection({
     return () => {
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [totalXp, xpEarned]);
 
   return (
     <div className="flex flex-col items-center gap-3 py-2">
