@@ -2,9 +2,23 @@
  * POST /api/student/subscription/verify
  *
  * Verifies Razorpay payment signature, activates subscription,
+ * creates student Subscription and Installment records (EMI support),
  * sends receipt email, and sends SMS if phone is available.
  * Auth: session required -- 401 before any DB query.
  * Idempotent: safe to retry if subscription is already active.
+ *
+ * FILE OBJECTIVE:
+ * - Verify student payments, activate subscription, and create installments for EMI flows.
+ *
+ * LINKED UNIT TEST:
+ * - tests/unit/api/student/subscription/verify.test.ts
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - .github/copilot-instructions.md
+ * - /docs/COPILOT_GUARDRAILS.md
+ *
+ * EDIT LOG:
+ * - 2026-04-13T05:26:00Z | copilot | add subscription + EMI handling to student verify route
  */
 
 import { NextResponse } from 'next/server';
@@ -20,7 +34,14 @@ import { sendSms } from '@/lib/sms';
 import { PLANS } from '@/lib/subscription/plans';
 import type { PlanId } from '@/lib/subscription/plans';
 import { createInvoiceForPayment } from '@/lib/invoices';
+import Razorpay from 'razorpay';
 
+function getRazorpayClient() {
+  const keyId = process.env.RAZORPAY_KEY_ID;
+  const keySecret = process.env.RAZORPAY_KEY_SECRET;
+  if (!keyId || !keySecret) return null;
+  return new Razorpay({ key_id: keyId, key_secret: keySecret });
+}
 function verifySignature(orderId: string, paymentId: string, signature: string): boolean {
   const secret = process.env.RAZORPAY_KEY_SECRET;
   if (!secret) return false;
@@ -82,8 +103,22 @@ export async function POST(req: Request) {
 
   try {
     // Idempotent transaction: update order, activate subscription and create Payment
-    let _createdPayment: { id: string } | null = null;
+    let _createdPayment: { id: string; subscriptionId?: string } | null = null;
     try {
+      // Fetch Razorpay order notes to inspect EMI selection (if any) before DB writes
+      const client = getRazorpayClient();
+      let emiMonths = 0;
+      let rzNotes: any = {};
+      try {
+        if (client) {
+          const rzOrder = await client.orders.fetch(orderId);
+          rzNotes = (rzOrder && (rzOrder as any).notes) || {};
+          emiMonths = rzNotes?.emiMonths ? Number(rzNotes.emiMonths) : 0;
+        }
+      } catch (err) {
+        logger.warn('Could not fetch Razorpay order notes', { event: 'subscription.verify.fetch_notes', context: { userId, orderId }, err });
+      }
+
       _createdPayment = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
         if (order.status !== 'paid') {
           await tx.paymentOrder.update({
@@ -117,13 +152,80 @@ export async function POST(req: Request) {
             orderId: orderId,
             plan: plan.label,
             billingCycle: plan.perMonthDisplay,
-            meta: { planId },
+            meta: { planId, emiMonths },
           },
         });
 
         // Audit event for subscription activation payment
-        await recordPaymentEvent(tx, { paymentId: payment.id, userId, provider: 'razorpay', providerIdempotencyKey: order.providerIdempotencyKey ?? undefined, transactionId: paymentId, orderId, eventType: 'payment.subscription_verified', amount: order.amount, status: 'success', payload: { planId } });
-        return { id: payment.id };
+        await recordPaymentEvent(tx, { paymentId: payment.id, userId, provider: 'razorpay', providerIdempotencyKey: order.providerIdempotencyKey ?? undefined, transactionId: paymentId, orderId, eventType: 'payment.subscription_verified', amount: order.amount, status: 'success', payload: { planId, emiMonths } });
+
+        // Deactivate any existing active subscription for this student
+        await tx.subscription.updateMany({ where: { userId, active: true }, data: { active: false } }).catch(() => {});
+
+        // Create subscription record for the student
+        const createdSub = await tx.subscription.create({
+          data: {
+            userId,
+            plan: 'individual',
+            billingCycle: planId,
+            startDate: now,
+            endDate: expiry,
+            active: true,
+            childSlots: 1,
+            paymentId: payment.id,
+            meta: {},
+            creditBalance: 0,
+          },
+        });
+
+        // Create Installment schedule if EMI selected; first installment marked PAID as we just received payment
+        try {
+          const months = Number(emiMonths || 0);
+          if (months && months > 1) {
+            const totalPaise = order.amount || 0;
+            const base = Math.floor(totalPaise / months);
+            let remainder = totalPaise - base * months;
+            for (let i = 0; i < months; i++) {
+              const amount = base + (i === months - 1 ? remainder : 0);
+              const due = new Date(now);
+              due.setMonth(due.getMonth() + i);
+              await tx.installment.create({ data: {
+                subscriptionId: createdSub.id,
+                number: i + 1,
+                dueAt: due,
+                amount,
+                currency: 'INR',
+                status: i === 0 ? 'PAID' : 'PENDING',
+                provider: 'razorpay',
+                providerPaymentId: i === 0 ? paymentId : undefined,
+                paymentId: i === 0 ? payment.id : undefined,
+                attemptCount: i === 0 ? 1 : 0,
+                paidAt: i === 0 ? now : undefined,
+                meta: { autoCreated: true, planId, emiMonths },
+              } });
+            }
+          } else {
+            // Single paid installment
+            await tx.installment.create({ data: {
+              subscriptionId: createdSub.id,
+              number: 1,
+              dueAt: now,
+              amount: order.amount,
+              currency: 'INR',
+              status: 'PAID',
+              provider: 'razorpay',
+              providerPaymentId: paymentId,
+              paymentId: payment.id,
+              attemptCount: 1,
+              paidAt: now,
+              meta: { planId },
+            } });
+          }
+        } catch (err) {
+          logger.warn('subscription.verify: failed to create installment schedule', { err });
+        }
+
+        return { id: payment.id, subscriptionId: createdSub.id };
       });
     } catch (err) {
       logger.error('Failed to activate subscription', { event: 'subscription.verify.activate_error', context: { userId, orderId }, err });

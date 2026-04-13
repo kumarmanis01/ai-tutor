@@ -1,4 +1,5 @@
 import type { TutorStage } from '@/lib/ai/tutor/stateMachine'
+import type { LearningStyle } from '@prisma/client'
 
 export interface PromptContext {
   // PERSONA layer inputs
@@ -9,7 +10,7 @@ export interface PromptContext {
 
   // STUDENT_PROFILE layer inputs
   examDateProximityDays: number | null // null = no exam set
-  learningStyle: string | null
+  learningStyle: LearningStyle | null
   recentMisconceptions: string[] // concept names, max 3
   masteryBrief: string // e.g. "strong in algebra, weak in geometry"
   emotionalState: 'NEUTRAL' | 'ENGAGED' | 'CONFUSED' | 'FRUSTRATED'

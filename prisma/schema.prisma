@@ -116,7 +116,7 @@ model User {
   cosmeticUnlocks             String[]           @default([])
   /// AC-06 (F-STU-004): self-reported learning style ('visual' | 'verbal' | 'practice' | 'mixed').
   /// Used by Vidya to adapt explanations. Collected during onboarding profile setup.
-  learningStyle               String?
+  learningStyle               LearningStyle?
   consents                    Consent[]
   parentProfile               ParentProfile?
   doubtEscalations            DoubtEscalation[]
@@ -2005,6 +2005,14 @@ enum SoftDeleteStatus {
 enum LanguageCode {
   en
   hi
+}
+
+/// Student-reported preferred learning style used by Tutor (Vidya).
+enum LearningStyle {
+  visual
+  verbal
+  practice
+  mixed
 }
 
 enum DifficultyLevel {

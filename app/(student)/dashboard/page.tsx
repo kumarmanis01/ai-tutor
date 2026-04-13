@@ -20,6 +20,7 @@
  * EDIT LOG:
  *   2026-03-15 | v2 migration | full rebuild; replaces v1 dashboard
  *   2026-03-15 | Task 28      | UpgradeFlow + UpgradeBanner replace PaymentButton gate
+ *   2026-04-13 | copilot      | Add exam crunch mode layout; extract computeCrunchMode helper
  */
 
 import type { Metadata } from 'next';
@@ -32,6 +33,7 @@ import { getMasteryLabel } from '@/lib/learning/masteryLabel';
 import { getOrderedTopicsForStudent } from '@/lib/homeEngine/getOrderedTopicsForStudent';
 import { isSessionEngineEnabled } from '@/lib/session/sessionEngine';
 import { computeReadinessScore } from '@/lib/student/examReadiness';
+import { computeCrunchMode } from '@/lib/dashboard/crunch';
 import Link from 'next/link';
 
 import TodaysLearningCard from '@/components/student/dashboard/TodaysLearningCard';
@@ -455,12 +457,9 @@ export default async function StudentHomeDashboardPage() {
     : '/student/onboarding';
 
   // ── Crunch mode (daysToExam <= 14) ──────────────────────────────────────
-  // Prefer per-user examDate if present; otherwise fall back to most recent LearningPlan.examDate
-  const examDate = studentProfile?.examDate ?? latestPlanExam?.examDate ?? null;
-  const daysToExam = examDate
-    ? Math.ceil((examDate.getTime() - Date.now()) / 86_400_000)
-    : null;
-  const crunchMode = daysToExam !== null && daysToExam >= 0 && daysToExam <= 14;
+  // Use helper so logic is testable and consistent across pages.
+  const { examDate: resolvedExamDate, daysToExam, crunchMode } =
+    computeCrunchMode(studentProfile?.examDate ?? null, latestPlanExam ?? null);
 
   // ── Render ────────────────────────────────────────────────────────────────
   return (
@@ -469,24 +468,28 @@ export default async function StudentHomeDashboardPage() {
 
         {/* Crunch mode countdown banner -- shown when daysToExam <= 14 */}
         {crunchMode && daysToExam !== null && (
-          <div className="mb-5 rounded-xl bg-[#FCEBEB] dark:bg-[#E24B4A]/10 border border-[#E24B4A]/30 px-4 py-3">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-xs font-semibold text-[#791F1F] dark:text-red-300 uppercase tracking-wide">
-                Board exam countdown
-              </span>
-              <span className="text-base font-bold text-[#E24B4A]">
-                {daysToExam === 0 ? 'Today!' : `${daysToExam} day${daysToExam !== 1 ? 's' : ''}`}
-              </span>
+          <div className="mb-5 rounded-xl bg-[#FCEBEB] dark:bg-[#E24B4A]/10 border border-[#E24B4A]/30 px-4 py-4">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+              <div>
+                <span className="text-xs font-semibold text-[#791F1F] dark:text-red-300 uppercase tracking-wide">
+                  Board exam countdown
+                </span>
+                <div className="mt-1 text-2xl font-extrabold text-[#E24B4A]">
+                  {daysToExam === 0 ? 'Today!' : `${daysToExam} day${daysToExam !== 1 ? 's' : ''}`}
+                </div>
+              </div>
+              <div className="flex-1">
+                <div className="h-2 w-full rounded-full bg-[#E24B4A]/20 overflow-hidden">
+                  <div
+                    className="h-full rounded-full bg-[#E24B4A]"
+                    style={{ width: `${Math.max(4, Math.round((1 - daysToExam / 14) * 100))}%` }}
+                  />
+                </div>
+                <p className="mt-2 text-[11px] text-[#A32D2D] dark:text-red-400">
+                  Focus mode — showing exam-relevant actions only
+                </p>
+              </div>
             </div>
-            <div className="h-1.5 w-full rounded-full bg-[#E24B4A]/20 overflow-hidden">
-              <div
-                className="h-full rounded-full bg-[#E24B4A]"
-                style={{ width: `${Math.max(4, Math.round((1 - daysToExam / 14) * 100))}%` }}
-              />
-            </div>
-            <p className="mt-1.5 text-[10px] text-[#A32D2D] dark:text-red-400">
-              Focus mode -- prioritising your highest-weight topics
-            </p>
           </div>
         )}
 
@@ -518,8 +521,90 @@ export default async function StudentHomeDashboardPage() {
             )
         )}
 
-        {/* Two-column desktop grid */}
-        <div className="flex flex-col gap-5 md:flex-row md:gap-6 md:items-start">
+        {/* Focused crunch mode layout: show only exam-relevant actions */}
+        {crunchMode ? (
+          <div className="flex flex-col gap-5 md:flex-row md:gap-6 md:items-start">
+            <div className="flex flex-col gap-5 md:w-3/5">
+              <TodaysLearningCard
+                type={cardType}
+                ctaLabel={cardType === 'start' ? 'Study for exam' : undefined}
+                diagnosticHref={diagnosticHref}
+                recommendation={recommendation}
+                session={
+                  activeSession
+                    ? {
+                        sessionId: activeSession.id,
+                        topicId: activeSession.topicId,
+                        topicName: activeSession.topic?.name ?? '',
+                        subject: activeSession.topic?.chapter?.subject?.name ?? '',
+                        chapter: activeSession.topic?.chapter?.name ?? '',
+                        currentPhase: activeSession.state,
+                      }
+                    : null
+                }
+                homework={
+                  oldestHw
+                    ? {
+                        id: oldestHw.id,
+                        topicName: oldestHw.topic?.name ?? '',
+                        questionCount: Array.isArray(oldestHw.questions)
+                          ? (oldestHw.questions as unknown[]).length
+                          : 0,
+                        dueDate: oldestHw.dueDate.toISOString(),
+                        status: oldestHw.status as 'PENDING' | 'OVERDUE',
+                      }
+                    : null
+                }
+              />
+
+              {/* RevisionWidget remains critical during crunch */}
+              <RevisionWidget />
+
+              <div>
+                <Link
+                  href="/mock"
+                  className="mt-2 inline-flex min-h-[44px] items-center justify-center rounded-lg border border-[#534AB7]/20 bg-[#534AB7]/6 text-sm font-semibold text-[#534AB7] hover:bg-[#534AB7]/10"
+                >
+                  Take a full mock exam →
+                </Link>
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-5 md:w-2/5">
+              {readinessResults.length > 0 && (
+                <section aria-labelledby="readiness-heading">
+                  <h3
+                    id="readiness-heading"
+                    className="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-3"
+                  >
+                    Exam priorities
+                  </h3>
+                  <div className="space-y-3">
+                    {readinessResults
+                      .slice()
+                      .sort((a, b) => a.score - b.score)
+                      .slice(0, 3)
+                      .map((r) => (
+                        <Link
+                          key={r.subjectId}
+                          href={`/student/progress/${r.subjectId}`}
+                          className="block rounded-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-[#534AB7]"
+                        >
+                          <SubjectReadinessCard
+                            subjectName={r.subjectName}
+                            score={r.score}
+                            subjectId={r.subjectId}
+                            diagnosticDone={diagnosticRecs[r.subjectId]?.status === 'completed'}
+                          />
+                        </Link>
+                      ))}
+                  </div>
+                </section>
+              )}
+            </div>
+          </div>
+        ) : (
+          <div className="flex flex-col gap-5 md:flex-row md:gap-6 md:items-start">
 
           {/* ── Left column (60%) -- sections 2-5 ── */}
           <div className="flex flex-col gap-5 md:w-3/5">
