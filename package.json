@@ -188,6 +188,8 @@
     "@netlify/plugin-nextjs": "^5.11.1",
     "@playwright/test": "^1.58.2",
     "@tailwindcss/postcss": "^4",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
     "@types/bcryptjs": "^2.4.2",
     "@types/express": "^5.0.6",
     "@types/jest": "^29.5.2",

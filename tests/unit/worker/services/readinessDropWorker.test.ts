@@ -13,8 +13,7 @@
  * - 2026-04-13T00:00:00Z | senior-engineer | add student push expectations and mocks
  */
 
-import { processReadinessDropAlerts } from '@/worker/services/readinessDropWorker'
-
+let processReadinessDropAlerts: any
 const mockParentFind = jest.fn()
 const mockPlansFind = jest.fn()
 const mockSubjectDefsFind = jest.fn()
@@ -41,6 +40,13 @@ jest.mock('@/lib/sms', () => ({ sendSms: (...a: any[]) => mockSendSms(...a) }))
 
 const mockSendPush = jest.fn()
 jest.mock('@/lib/push/send', () => ({ sendPushSafe: (...a: any[]) => mockSendPush(...a) }))
+
+beforeAll(() => {
+  // Require the module after mocks to ensure external clients (Prisma/Redis)
+  // are mocked and do not open real connections that keep Jest alive.
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  processReadinessDropAlerts = require('@/worker/services/readinessDropWorker').processReadinessDropAlerts
+})
 
 beforeEach(() => {
   mockParentFind.mockReset()

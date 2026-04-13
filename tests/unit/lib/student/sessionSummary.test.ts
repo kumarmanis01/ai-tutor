@@ -1,3 +1,41 @@
+import { buildSessionSummary } from '@/lib/student/sessionSummary'
+
+describe('buildSessionSummary', () => {
+  test('includes topic, xp, score, mastery, duration and insight', () => {
+    const s = buildSessionSummary({
+      topicName: 'Quadratic Equations',
+      xpEarned: 40,
+      correctAnswers: 8,
+      totalQuestions: 10,
+      masteryDelta: 0.12,
+      masteryAfter: 0.62,
+      sessionDurationMinutes: 22,
+      aiInsight: 'Focus on factoring methods',
+      badgesEarned: [{ name: '7-Day Streak' }],
+    })
+
+    expect(s).toContain('Quadratic Equations')
+    expect(s).toContain('XP: +40')
+    expect(s).toContain('Score: 8/10 (80%)')
+    expect(s).toContain('Mastery: +12% → 62%')
+    expect(s).toContain('Duration: 22 min')
+    expect(s).toContain('Badges: 7-Day Streak')
+    expect(s).toContain('Insight: Focus on factoring methods')
+  })
+
+  test('graceful when optional fields missing', () => {
+    const s = buildSessionSummary({ topicName: 'Geometry' })
+    expect(typeof s).toBe('string')
+    expect(s.length).toBeGreaterThan(0)
+    expect(s).toContain('Geometry')
+  })
+
+  test('fallback non-empty string when nothing provided', () => {
+    const s = buildSessionSummary({})
+    expect(typeof s).toBe('string')
+    expect(s.length).toBeGreaterThan(0)
+  })
+})
 import { buildShareableSessionSummary } from '@/lib/student/sessionSummary'
 
 describe('buildShareableSessionSummary', () => {

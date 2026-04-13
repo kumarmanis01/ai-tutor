@@ -1,4 +1,90 @@
 /**
+ * FILE OBJECTIVE:
+ * - Produce a concise, shareable text summary for a completed tutoring session.
+ *
+ * LINKED UNIT TEST:
+ * - tests/unit/lib/student/sessionSummary.test.ts
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/COPILOT_GUARDRAILS.md
+ * - .github/copilot-instructions.md
+ *
+ * EDIT LOG:
+ * - 2026-04-13T00:00:00Z | copilot | created session summary helper
+ */
+
+export interface SessionSummaryParams {
+  topicName?: string | null
+  xpEarned?: number
+  correctAnswers?: number
+  totalQuestions?: number
+  masteryDelta?: number
+  masteryAfter?: number
+  sessionDurationMinutes?: number
+  aiInsight?: string | null
+  badgesEarned?: { name: string }[]
+}
+
+/**
+ * Build a compact, human-readable session summary suitable for copy/share.
+ * Returns a single-line summary (pieces separated by ' · '). Never empty.
+ */
+export function buildSessionSummary(params: SessionSummaryParams): string {
+  const {
+    topicName,
+    xpEarned,
+    correctAnswers,
+    totalQuestions,
+    masteryDelta,
+    masteryAfter,
+    sessionDurationMinutes,
+    aiInsight,
+    badgesEarned,
+  } = params
+
+  const parts: string[] = []
+
+  if (topicName) parts.push(`Topic: ${topicName}`)
+  if (typeof xpEarned === 'number') parts.push(`XP: +${xpEarned}`)
+
+  if (
+    typeof correctAnswers === 'number' &&
+    typeof totalQuestions === 'number' &&
+    totalQuestions > 0
+  ) {
+    const pct = Math.round((correctAnswers / totalQuestions) * 100)
+    parts.push(`Score: ${correctAnswers}/${totalQuestions} (${pct}%)`)
+  }
+
+  if (typeof masteryDelta === 'number' || typeof masteryAfter === 'number') {
+    const md = typeof masteryDelta === 'number' ? Math.round(masteryDelta * 100) : null
+    const after = typeof masteryAfter === 'number' ? Math.round(masteryAfter * 100) : null
+    if (md !== null && after !== null) {
+      parts.push(`Mastery: ${md >= 0 ? '+' : ''}${md}% → ${after}%`)
+    } else if (after !== null) {
+      parts.push(`Mastery: ${after}%`)
+    }
+  }
+
+  if (typeof sessionDurationMinutes === 'number') {
+    parts.push(`Duration: ${sessionDurationMinutes} min`)
+  }
+
+  if (Array.isArray(badgesEarned) && badgesEarned.length > 0) {
+    parts.push(`Badges: ${badgesEarned.map((b) => b.name).join(', ')}`)
+  }
+
+  if (aiInsight && aiInsight.trim()) {
+    // Keep the insight short and inline
+    const inline = aiInsight.trim().replace(/\s+/g, ' ')
+    parts.push(`Insight: ${inline}`)
+  }
+
+  const summary = parts.join(' · ')
+  return summary || 'Session complete — great progress!'
+}
+
+/**
  * Build a compact, shareable plain-text summary for a completed session.
  * Used by the SessionCompletionScreen "Copy summary" CTA.
  */
@@ -43,4 +129,3 @@ export function buildShareableSessionSummary(p: ShareableSessionParams): string 
   return text.length > 800 ? text.slice(0, 780) + '\n...': text
 }
 
-export default buildShareableSessionSummary
