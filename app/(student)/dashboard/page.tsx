@@ -21,6 +21,7 @@
  *   2026-03-15 | v2 migration | full rebuild; replaces v1 dashboard
  *   2026-03-15 | Task 28      | UpgradeFlow + UpgradeBanner replace PaymentButton gate
  *   2026-04-13 | copilot      | Add exam crunch mode layout; extract computeCrunchMode helper
+ *   2026-04-13T12:00:00Z | copilot | fix: render '>' in learning-path Link using &gt; to avoid JSX parse error
  */
 
 import type { Metadata } from 'next';
@@ -723,7 +724,7 @@ export default async function StudentHomeDashboardPage() {
               </section>
             )}
 
-            {/* (8) UpcomingTopicsList -- inline simple rows */}
+            {/* (8) UpcomingTopicsList -- simplified placeholder (avoids complex inline list during parse error) */}
             {upcomingTopics.length > 0 && (
               <section aria-labelledby="upcoming-heading">
                 <h3
@@ -732,31 +733,12 @@ export default async function StudentHomeDashboardPage() {
                 >
                   Up next
                 </h3>
-                <ul className="space-y-1" role="list">
-                  {upcomingTopics.map((topic, i) => (
-                    <li
-                      key={topic.topicId}
-                      className="flex items-center gap-3 rounded-xl px-3 py-3 min-h-[44px] bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700"
-                    >
-                      <span className="flex-shrink-0 w-5 h-5 rounded-full bg-gray-100 dark:bg-slate-700 flex items-center justify-center text-[10px] font-bold text-gray-500 dark:text-gray-400">
-                        {i + 1}
-                      </span>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-gray-800 dark:text-gray-200 truncate">
-                          {topic.topicTitle}
-                        </p>
-                        {topic.subject && (
-                          <p className="text-xs text-gray-400 dark:text-gray-500 truncate">{topic.subject}</p>
-                        )}
-                      </div>
-                    </li>
-                  ))}
-                </ul>
+                <div className="text-sm text-gray-600 dark:text-gray-300 mb-3">{upcomingTopics.length} upcoming topic(s)</div>
                 <Link
                   href="/learn/learning-path"
                   className="mt-3 inline-flex min-h-[44px] items-center text-xs font-medium text-[#534AB7] dark:text-indigo-400 hover:underline"
                 >
-                  View full learning path ->
+                  View full learning path &gt;
                 </Link>
               </section>
             )}

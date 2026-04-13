@@ -1,9 +1,23 @@
+/**
+ * FILE OBJECTIVE:
+ * - Admin API: patch a misconception by id.
+ *
+ * LINKED UNIT TEST:
+ * - tests/unit/app/api/admin/misconceptions/id.route.spec.ts
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/COPILOT_GUARDRAILS.md
+ * - .github/copilot-instructions.md
+ *
+ * EDIT LOG:
+ * - 2026-04-13T00:00:00Z | copilot | fix: remove duplicate import and stray statement
+ */
+
 import { getServerSessionForHandlers } from '@/lib/session'
 import { requireAdmin } from '@/auth/adminGuard'
 import { prisma as dbClient } from '@/lib/prisma'
 import { logger } from '@/lib/logger'
 import { MisconceptionPatchSchema } from '@/lib/validators/misconception'
-import { logger } from '@/lib/logger'
 
 export async function PATCH(req: Request, { params }: { params: { id: string } }) {
   const session = await getServerSessionForHandlers()
@@ -16,8 +30,6 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
     return new Response(JSON.stringify({ error: 'invalid_payload', details: parsed.error.format() }), { status: 400 })
   }
   const body = parsed.data
-
-    logger.warn('audit log failed', { error: String(e) })
   if (body.subjectId) {
     const s = await dbClient.subjectDef.findUnique({ where: { id: body.subjectId } })
     if (!s) return new Response(JSON.stringify({ error: 'invalid_subject' }), { status: 400 })
