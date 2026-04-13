@@ -154,7 +154,7 @@ export async function processReadinessDropAlerts(now = new Date()): Promise<void
 
         const dashboardLink = `${appUrl}/parent/dashboard?child=${issues[0].studentId}`
         const subject = `Attention: readiness drop detected` 
-        const html = `<!doctype html><html><body><p>Hi ${escapeHtml(parent.name ?? '')},</p><p>We detected a drop in exam readiness for the following subject(s):</p>${remediationParts.join('')}<p>Open the dashboard to see details: <a href="${dashboardLink}">View dashboard</a></p><p>— Team Spinzy</p></body></html>`
+        const html = `<!doctype html><html><body><p>Hi ${escapeHtml(parent.name ?? '')},</p><p>We detected a drop in exam readiness for the following subject(s):</p>${remediationParts.join('')}<p>Open the dashboard to see details: <a href="${dashboardLink}">View dashboard</a></p><p>-- Team Spinzy</p></body></html>`
 
         // Send email and SMS, but only mark rate-limit if at least one channel succeeded
         let emailSent = false

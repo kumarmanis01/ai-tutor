@@ -57,7 +57,7 @@ export async function canSendNotification(parentId: string, type: NotificationTy
 
     return { allowed: true }
   } catch (err) {
-    logger.warn('notification.policy: canSend failed — permissive allow', { parentId, type, error: String(err) })
+    logger.warn('notification.policy: canSend failed -- permissive allow', { parentId, type, error: String(err) })
     return { allowed: true }
   }
 }

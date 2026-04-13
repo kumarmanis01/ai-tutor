@@ -92,7 +92,7 @@ export default function ParentProgressDetail({
       {/* ── Activity heatmap (30 days) ─────────────────────────────────── */}
       <section>
         <h2 className="mb-3 text-sm font-semibold text-gray-700 uppercase tracking-wide dark:text-gray-400">
-          Activity — last 30 days
+          Activity -- last 30 days
         </h2>
         {heatmapDays && heatmapDays.length > 0 ? (
           <ActivityHeatmap days={heatmapDays} />

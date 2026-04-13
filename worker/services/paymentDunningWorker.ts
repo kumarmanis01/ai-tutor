@@ -86,7 +86,7 @@ export async function processPaymentDunning(): Promise<void> {
 
               try {
                 await createInvoiceForPayment({ userId: s.userId, paymentId: undefined, studentId: undefined, amountPaise: 0, planLabel: plan.label, billingCycle: plan.perMonthDisplay })
-                const subject = `Payment applied from credits — Spinzy subscription`
+                const subject = `Payment applied from credits -- Spinzy subscription`
                 const html = `<p>Hi ${parent.name ?? 'Parent'},</p><p>We've applied your available credits to renew your Spinzy subscription. Your next renewal is on ${new Date((s.endDate ?? now).getTime()).toLocaleDateString('en-IN')}.</p>`
                 await sendMailSafe({ to: parent.email ?? '', subject, html })
               } catch (err) {
@@ -148,7 +148,7 @@ export async function processPaymentDunning(): Promise<void> {
 
                 try {
                   await createInvoiceForPayment({ userId: s.userId, paymentId: chargePaymentId, studentId: undefined, amountPaise: netAmountPaise, planLabel: plan.label, billingCycle: plan.perMonthDisplay })
-                  const subject = `Payment received — Spinzy subscription`
+                  const subject = `Payment received -- Spinzy subscription`
                   const html = `<p>Hi ${parent.name ?? 'Parent'},</p><p>We've successfully renewed your Spinzy subscription. Your next renewal is on ${new Date((s.endDate ?? now).getTime()).toLocaleDateString('en-IN')}.</p>`
                   await sendMailSafe({ to: parent.email ?? '', subject, html })
                 } catch (err) {
@@ -167,7 +167,7 @@ export async function processPaymentDunning(): Promise<void> {
         }
 
         // fallback: send reminder and bump attempts
-        const subject = `Payment retry reminder — Spinzy subscription`
+        const subject = `Payment retry reminder -- Spinzy subscription`
         const retryLink = `${process.env.NEXTAUTH_URL ?? 'https://spinzyacademy.com'}/parent/billing`
         const html = `<p>Hi ${parent.name ?? 'Parent'},</p><p>We attempted to renew your Spinzy subscription again but couldn't complete the payment. Please retry here: <a href="${retryLink}">Update payment & retry</a></p><p>If you need help, contact support at ${process.env.SUPPORT_EMAIL ?? 'support@spinzyacademy.com'}.</p>`
 
@@ -189,7 +189,7 @@ export async function processPaymentDunning(): Promise<void> {
 
         const parent = await prisma.user.findUnique({ where: { id: s.userId }, select: { id: true, email: true, phone: true, name: true } })
         if (!parent) continue
-        const subject = `Payment failed — grace period started`
+        const subject = `Payment failed -- grace period started`
         const html = `<p>Hi ${parent.name ?? 'Parent'},</p><p>We've been unable to charge your Spinzy subscription after multiple attempts. We've started a 3-day grace period until ${graceUntil.toLocaleString('en-IN')}. Your children will keep access during this time. Please update payment to avoid service interruption: <a href="${process.env.NEXTAUTH_URL ?? 'https://spinzyacademy.com'}/parent/billing">Update payment</a>.</p>`
         await sendMailSafe({ to: parent.email ?? '', subject, html })
         if (parent.phone) await sendSms(parent.phone, `Spinzy: grace period started until ${graceUntil.toLocaleDateString('en-IN')}. Update payment: ${process.env.NEXTAUTH_URL ?? 'https://spinzyacademy.com'}/parent/billing`)
@@ -237,7 +237,7 @@ export async function processPaymentDunning(): Promise<void> {
 
         const parent = await prisma.user.findUnique({ where: { id: s.userId }, select: { email: true, phone: true, name: true } })
         if (parent?.email) {
-          const subject = `Subscription expired — action required`
+          const subject = `Subscription expired -- action required`
           const html = `<p>Hi ${parent.name ?? 'Parent'},</p><p>Your Spinzy subscription has expired because payment could not be completed. You can renew here: <a href="${process.env.NEXTAUTH_URL ?? 'https://spinzyacademy.com'}/parent/billing">Renew subscription</a>.</p>`
           await sendMailSafe({ to: parent.email, subject, html })
         }

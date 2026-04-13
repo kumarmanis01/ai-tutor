@@ -90,7 +90,7 @@ export default function SavedPaymentMethods() {
     }
   }
 
-  if (loading) return <div className="text-sm text-gray-500">Loading saved payment methods…</div>;
+  if (loading) return <div className="text-sm text-gray-500">Loading saved payment methods...</div>;
   if (!methods || methods.length === 0) return <div className="text-sm text-gray-500">No saved payment methods.</div>;
 
   return (
@@ -108,7 +108,7 @@ export default function SavedPaymentMethods() {
           </div>
           <div className="flex items-center gap-2">
             {!m.verified && (
-              <button disabled={!!actionLoading} onClick={() => handleVerify(m.id)} className="text-sm px-3 py-1 rounded bg-[#534AB7] text-white">{actionLoading === m.id ? 'Verifying…' : 'Verify'}</button>
+              <button disabled={!!actionLoading} onClick={() => handleVerify(m.id)} className="text-sm px-3 py-1 rounded bg-[#534AB7] text-white">{actionLoading === m.id ? 'Verifying...' : 'Verify'}</button>
             )}
             {!m.isDefault && (
               <button disabled={!!actionLoading} onClick={() => handleSetDefault(m)} className="text-sm px-3 py-1 rounded border">Set default</button>

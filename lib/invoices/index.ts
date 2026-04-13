@@ -159,7 +159,7 @@ export async function generateInvoicePdf(options: {
     const buf = await renderHtmlToPdf(html);
     return buf;
   } catch (_err) {
-    // Playwright render failed — log and fallback to simple pdf-lib text renderer when Playwright is not available
+    // Playwright render failed -- log and fallback to simple pdf-lib text renderer when Playwright is not available
     logger.warn('[invoices] Playwright render failed, falling back to pdf-lib', { error: String(_err) });
     const pdfDoc = await PDFDocument.create();
     const page = pdfDoc.addPage([595, 842]); // A4 approx
