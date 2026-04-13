@@ -2601,6 +2601,7 @@ model MockExamAttempt {
   finishedAt   DateTime?
   scorePercent Float?
   percentile   Float?
+  cohortCount  Int?
   priorityPlan String?   /// AI-generated 2-week study plan (Markdown)
   rawResult    Json?     /// { sectionId: { score, total, timeSpentSeconds } }
 

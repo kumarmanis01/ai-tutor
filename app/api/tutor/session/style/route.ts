@@ -22,7 +22,7 @@
 
 import { NextResponse } from 'next/server'
 import { getServerSessionForHandlers } from '@/lib/session'
-import { updateTutorSession } from '@/lib/redis/tutorSession'
+import { updateTutorSession, getTutorSession } from '@/lib/redis/tutorSession'
 import { logger } from '@/lib/logger'
 
 const VALID = new Set(['simpler', 'harder', 'real_life_example', 'diagram'])
@@ -68,3 +68,27 @@ export async function POST(req: Request) {
 }
 
 export default POST
+
+export async function GET(req: Request) {
+  const start = Date.now()
+  try {
+    const session = await getServerSessionForHandlers()
+    const user = (session?.user as { id?: string } | null) ?? null
+    if (!user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+    const url = new URL(req.url)
+    const sessionId = String(url.searchParams.get('sessionId') ?? '')
+    if (!sessionId) return NextResponse.json({ error: 'Missing sessionId' }, { status: 400 })
+
+    const s = await getTutorSession(sessionId)
+    const explainStyle = s && typeof (s as any).explainStyle === 'string' ? (s as any).explainStyle : null
+
+    const res = NextResponse.json({ explainStyle })
+    logger.logAPI(req, res, { className: 'TutorSessionStyleAPI', methodName: 'GET' }, start)
+    return res
+  } catch (err) {
+    const res = NextResponse.json({ error: 'Server error' }, { status: 500 })
+    logger.logAPI(req, res, { className: 'TutorSessionStyleAPI', methodName: 'GET', error: String(err) }, start)
+    return res
+  }
+}

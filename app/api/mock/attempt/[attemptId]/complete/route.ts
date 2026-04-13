@@ -35,6 +35,7 @@ export async function POST(
   }
 
   const { attemptId } = await Promise.resolve(params);
+  const MIN_COHORT = Number(process.env.MOCK_COHORT_MIN ?? 10);
 
   const attempt = await prisma.mockExamAttempt.findFirst({
     where: { id: attemptId, studentId: user.id },
@@ -60,10 +61,13 @@ export async function POST(
 
   // Idempotent: already finished
   if (attempt.finishedAt) {
+    const percentileReliable = (attempt.cohortCount ?? 0) >= MIN_COHORT && typeof attempt.percentile === 'number';
     const res = NextResponse.json({
       attemptId,
       scorePercent: attempt.scorePercent,
       percentile: attempt.percentile,
+      percentileReliable,
+      cohortCount: attempt.cohortCount ?? undefined,
       priorityPlan: attempt.priorityPlan,
       rawResult: attempt.rawResult,
     });
@@ -105,27 +109,41 @@ export async function POST(
   const earnedMarks = sectionScores.reduce((s, ss) => s + ss.marksEarned, 0);
   const overallScore = totalMarks > 0 ? (earnedMarks / totalMarks) * 100 : 0;
 
-  // Percentile: fraction of completed attempts for this exam with score <= this score
+  // Percentile: fraction of completed attempts in the user's grade/board/subject
+  // for the same mock version within a recent time window (last 90 days).
+  const windowStart = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000);
   const cohortCount = await prisma.mockExamAttempt.count({
-    where: { mockExamId: attempt.mockExamId, finishedAt: { not: null } },
+    where: {
+      finishedAt: { not: null, gte: windowStart },
+      mockExam: {
+        subjectId: attempt.mockExam.subjectId,
+        grade: attempt.mockExam.grade,
+        board: attempt.mockExam.board,
+        version: attempt.mockExam.version,
+      },
+    },
   });
+
   const belowCount = await prisma.mockExamAttempt.count({
     where: {
-      mockExamId: attempt.mockExamId,
-      finishedAt: { not: null },
+      finishedAt: { not: null, gte: windowStart },
       scorePercent: { lte: overallScore },
+      mockExam: {
+        subjectId: attempt.mockExam.subjectId,
+        grade: attempt.mockExam.grade,
+        board: attempt.mockExam.board,
+        version: attempt.mockExam.version,
+      },
     },
   });
 
   // Only consider percentiles reliable when cohort reaches a minimum size.
-  const MIN_COHORT = Number(process.env.MOCK_COHORT_MIN ?? 10);
   let percentile: number | null = null;
   let percentileReliable = false;
   if (cohortCount >= MIN_COHORT) {
     percentile = cohortCount > 0 ? (belowCount / cohortCount) * 100 : 50;
     percentileReliable = true;
   } else {
-    // Not enough attempts to report a reliable percentile — store null in DB
     percentile = null;
     percentileReliable = false;
   }
@@ -152,6 +170,7 @@ export async function POST(
       finishedAt: new Date(),
       scorePercent: overallScore,
       percentile,
+      cohortCount,
       priorityPlan,
       rawResult: rawResult as any,
     },

@@ -459,6 +459,23 @@ export const AITutorChatPanel: React.FC<AITutorChatPanelProps> = ({
     };
   }, [clearInactivityTimer]);
 
+  // Load persisted session-level explainStyle (if any) so selector shows current value
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        const resp = await fetch(`/api/tutor/session/style?sessionId=${encodeURIComponent(sessionId)}`)
+        if (!resp.ok) return
+        const data = await resp.json()
+        if (!mounted) return
+        setSelectedStyle(data?.explainStyle ?? null)
+      } catch (e) {
+        // ignore failures (best-effort)
+      }
+    })()
+    return () => { mounted = false }
+  }, [sessionId])
+
   // ── Message helpers ────────────────────────────────────────────────────────
 
   const addStudentMessage = useCallback((content: string) => {

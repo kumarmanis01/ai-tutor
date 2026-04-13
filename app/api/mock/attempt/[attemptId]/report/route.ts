@@ -37,6 +37,10 @@ export async function GET(
           title: true,
           totalMarks: true,
           durationMin: true,
+          grade: true,
+          board: true,
+          version: true,
+          subjectId: true,
           subject: { select: { name: true } },
           sections: {
             orderBy: { order: 'asc' },
@@ -132,8 +136,17 @@ export async function GET(
   // Compute cohortCount to inform UI about percentile reliability
   try {
     const MIN_COHORT = Number(process.env.MOCK_COHORT_MIN ?? 10);
+    const windowStart = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000);
     const cohortCount = await prisma.mockExamAttempt.count({
-      where: { mockExamId: attempt.mockExamId, finishedAt: { not: null } },
+      where: {
+        finishedAt: { not: null, gte: windowStart },
+        mockExam: {
+          subjectId: attempt.mockExam.subjectId,
+          grade: attempt.mockExam.grade,
+          board: attempt.mockExam.board,
+          version: attempt.mockExam.version,
+        },
+      },
     });
     const percentileReliable = cohortCount >= MIN_COHORT && typeof attempt.percentile === 'number';
     (payload as any).cohortCount = cohortCount;

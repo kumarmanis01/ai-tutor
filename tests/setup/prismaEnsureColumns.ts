@@ -13,6 +13,7 @@ async function ensureColumns() {
     await prisma.$executeRawUnsafe('ALTER TABLE "RegenerationJob" ADD COLUMN IF NOT EXISTS "completedAt" TIMESTAMP NULL')
     await prisma.$executeRawUnsafe('ALTER TABLE "RegenerationJob" ADD COLUMN IF NOT EXISTS "retryOfJobId" TEXT NULL')
     await prisma.$executeRawUnsafe('ALTER TABLE "RegenerationJob" ADD COLUMN IF NOT EXISTS "retryIntentId" TEXT NULL')
+    await prisma.$executeRawUnsafe('ALTER TABLE "MockExamAttempt" ADD COLUMN IF NOT EXISTS "cohortCount" INTEGER')
   } catch {
     // Try SQLite-compatible ALTER (will throw if unsupported) — ignore errors
     try {
