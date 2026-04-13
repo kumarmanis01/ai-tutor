@@ -1373,8 +1373,28 @@ model Concept {
   learningPlanItems       LearningPlanItem[]
   conceptStates           StudentConceptState[]
 
+  history ConceptHistory[]
+
   @@index([subjectId])
   @@index([topicId])
+}
+
+/// Audit history for admin edits to Concept IRT parameters and prerequisites. F-ADM-002 AC-03.
+model ConceptHistory {
+  id                     String   @id @default(cuid())
+  conceptId              String
+  adminId                String
+  reason                 String
+  previousIrtB           Float?
+  newIrtB                Float?
+  previousPrereqIds      String[]
+  newPrereqIds           String[]
+  createdAt              DateTime @default(now())
+
+  concept Concept @relation(fields: [conceptId], references: [id], onDelete: Cascade)
+
+  @@index([conceptId])
+  @@index([createdAt])
 }
 
 /// Per-chapter exam mark weight (e.g. CBSE Grade 10 Maths). Used for readiness score.
