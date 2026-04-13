@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-require-imports, @typescript-eslint/no-explicit-any */
 /**
- * Tests for parent controls API (weeklyHoursTarget + schedulePreference, F-PAR-002 AC-02).
+ * Tests for parent controls API (weeklyHoursTarget + schedulePreference F-PAR-002 AC-02,
+ * topicFocusRequest F-PAR-002 AC-03).
  */
 
 jest.mock('@/lib/prisma', () => ({ prisma: require('../../helpers/prismaMock').prismaMock }));
@@ -25,7 +26,7 @@ function makeControls(overrides: any = {}) {
     id: 'ctrl-1', parentId: PARENT_ID, studentId: STUDENT_ID,
     dailyTimeLimitMin: null, allowedSubjects: [], focusMode: 'balanced',
     studyHoursStart: null, studyHoursEnd: null,
-    weeklyHoursTarget: null, schedulePreference: null,
+    weeklyHoursTarget: null, schedulePreference: null, topicFocusRequest: null,
     isPaused: false, pausedUntil: null, pauseReason: null,
     ...overrides,
   };
@@ -68,6 +69,7 @@ describe('GET /api/parent/controls', () => {
     const data = await res.json();
     expect(data.controls.weeklyHoursTarget).toBeNull();
     expect(data.controls.schedulePreference).toBeNull();
+    expect(data.controls.topicFocusRequest).toBeNull();
   });
 });
 
@@ -134,5 +136,43 @@ describe('PUT /api/parent/controls', () => {
       const res = await PUT(req as any);
       expect(res.status).toBe(200);
     }
+  });
+
+  it('should persist topicFocusRequest (F-PAR-002 AC-03)', async () => {
+    const saved = makeControls({ topicFocusRequest: 'Focus on algebra and quadratic equations' });
+    prismaMock.parentChildControl.upsert.mockResolvedValue(saved as any);
+    const { PUT } = await import('@/app/api/parent/controls/route');
+    const req = new Request('http://localhost', {
+      method: 'PUT',
+      body: JSON.stringify({ studentId: STUDENT_ID, topicFocusRequest: 'Focus on algebra and quadratic equations' }),
+      headers: { 'Content-Type': 'application/json' },
+    });
+    const res = await PUT(req as any);
+    expect(res.status).toBe(200);
+    const upsertCall = prismaMock.parentChildControl.upsert.mock.calls[0][0] as any;
+    expect(upsertCall.create.topicFocusRequest).toBe('Focus on algebra and quadratic equations');
+  });
+
+  it('should reject topicFocusRequest exceeding 500 characters', async () => {
+    const { PUT } = await import('@/app/api/parent/controls/route');
+    const req = new Request('http://localhost', {
+      method: 'PUT',
+      body: JSON.stringify({ studentId: STUDENT_ID, topicFocusRequest: 'x'.repeat(501) }),
+      headers: { 'Content-Type': 'application/json' },
+    });
+    const res = await PUT(req as any);
+    expect(res.status).toBe(400);
+  });
+
+  it('should accept topicFocusRequest set to null (clear request)', async () => {
+    prismaMock.parentChildControl.upsert.mockResolvedValue(makeControls() as any);
+    const { PUT } = await import('@/app/api/parent/controls/route');
+    const req = new Request('http://localhost', {
+      method: 'PUT',
+      body: JSON.stringify({ studentId: STUDENT_ID, topicFocusRequest: null }),
+      headers: { 'Content-Type': 'application/json' },
+    });
+    const res = await PUT(req as any);
+    expect(res.status).toBe(200);
   });
 });

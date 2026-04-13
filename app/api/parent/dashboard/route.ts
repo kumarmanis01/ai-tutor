@@ -82,6 +82,10 @@ type StudentDashboard = {
   subjectProgress: SubjectSummary[];
   readiness: ReadinessSummary[];
   masteryDistribution: MasteryDistribution[];
+  /** F-PAR-010 AC-05: student IANA timezone, included when it differs from parent timezone */
+  studentTimezone?: string | null;
+  /** F-PAR-010 AC-05: parent IANA timezone, included when it differs from student timezone */
+  parentTimezone?: string | null;
 };
 
 type ParentDashboardResponse = {
@@ -147,6 +151,7 @@ export async function GET(req: NextRequest) {
             grade: true,
             board: true,
             subjects: true,
+            timezone: true,
           },
         },
       },
@@ -176,6 +181,7 @@ export async function GET(req: NextRequest) {
       attentionCounts,
       masteryCounts,
       lastActiveRows,
+      parentUser,
     ] = await Promise.all([
       prisma.weeklyStudentSummary.findMany({
         where: { studentId: { in: studentIds }, weekStart: { gte: since } },
@@ -203,6 +209,10 @@ export async function GET(req: NextRequest) {
         by: ['studentId'],
         where: { studentId: { in: studentIds } },
         _max: { startedAt: true },
+      }),
+      prisma.user.findUnique({
+        where: { id: parentId },
+        select: { timezone: true },
       }),
     ]);
 
@@ -283,6 +293,11 @@ export async function GET(req: NextRequest) {
       const attentionBySubject = (attentionByStudent.get(s.id) ?? []).sort((a, b) => b.count - a.count);
       const masteryDistribution = masteryByStudent.get(s.id) ?? [];
 
+      // F-PAR-010 AC-05: include both timezone strings when parent and student are in different zones
+      const studentTz = (s as any).timezone ?? null;
+      const parentTz = parentUser?.timezone ?? null;
+      const timezonesdiffer = studentTz && parentTz && studentTz !== parentTz;
+
       return {
         studentId: s.id,
         studentName: s.name || 'Student',
@@ -297,6 +312,7 @@ export async function GET(req: NextRequest) {
         subjectProgress,
         readiness,
         masteryDistribution,
+        ...(timezonesdiffer ? { studentTimezone: studentTz, parentTimezone: parentTz } : {}),
       };
     });
 

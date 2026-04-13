@@ -63,6 +63,7 @@ export async function GET(req: NextRequest) {
         studyHoursEnd: null,
         weeklyHoursTarget: null,
         schedulePreference: null,
+        topicFocusRequest: null,
       },
     });
 
@@ -98,6 +99,8 @@ export async function PUT(req: NextRequest) {
       // F-PAR-002 AC-02: weekly hours target and preferred study schedule slot
       weeklyHoursTarget,
       schedulePreference,
+      // F-PAR-002 AC-03: topic-focus preference submitted by parent for AI to consider
+      topicFocusRequest,
       // Pause controls
       isPaused,
       pausedUntil,
@@ -146,6 +149,13 @@ export async function PUT(req: NextRequest) {
       }
     }
 
+    // Validate topicFocusRequest (F-PAR-002 AC-03): free-text, max 500 chars
+    if (topicFocusRequest !== null && topicFocusRequest !== undefined) {
+      if (typeof topicFocusRequest !== 'string' || topicFocusRequest.length > 500) {
+        return NextResponse.json({ error: 'topicFocusRequest must be a string up to 500 characters' }, { status: 400 });
+      }
+    }
+
     const controls = await prisma.parentChildControl.upsert({
       where: { parentId_studentId: { parentId, studentId } },
       update: {
@@ -156,6 +166,7 @@ export async function PUT(req: NextRequest) {
         ...(studyHoursEnd !== undefined && { studyHoursEnd }),
         ...(weeklyHoursTarget !== undefined && { weeklyHoursTarget: weeklyHoursTarget ?? null }),
         ...(schedulePreference !== undefined && { schedulePreference: schedulePreference ?? null }),
+        ...(topicFocusRequest !== undefined && { topicFocusRequest: topicFocusRequest ?? null }),
         ...(isPaused !== undefined && { isPaused }),
         ...(pausedUntil !== undefined && { pausedUntil: pausedUntil ? new Date(pausedUntil) : null }),
         ...(pauseReason !== undefined && { pauseReason }),
@@ -170,6 +181,7 @@ export async function PUT(req: NextRequest) {
         studyHoursEnd: studyHoursEnd ?? null,
         weeklyHoursTarget: weeklyHoursTarget ?? null,
         schedulePreference: schedulePreference ?? null,
+        topicFocusRequest: topicFocusRequest ?? null,
         isPaused: isPaused ?? false,
         pausedUntil: pausedUntil ? new Date(pausedUntil) : null,
         pauseReason: pauseReason ?? null,

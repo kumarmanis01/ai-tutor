@@ -173,18 +173,24 @@ export async function runInactivityAlerts(): Promise<number> {
 
           const locale = parent.language ?? undefined
           const subject = t('inactivity.subject', { studentName: s.name }, locale)
-          // Build a mute link token so parent can mute alerts for a period from the email
-          const muteDays = 7
-          let muteLink = ''
+
+          // F-PAR-021 AC-05: generate mute links for 3 configurable durations so the parent
+          // can choose how long to suppress alerts (school exams, travel, family events).
+          const MUTE_OPTIONS = [7, 14, 30] // days
+          const muteLinks: { days: number; url: string }[] = []
           try {
-            const token = generateMuteToken({ parentStudentId: link.id, studentId: s.id, muteDays })
-            const baseUrl = process.env.NEXTAUTH_URL ?? 'https://spinzyacademy.com'
-            muteLink = `${baseUrl}/api/parent/alerts/mute?t=${encodeURIComponent(token)}`
+            const muteBaseUrl = process.env.NEXTAUTH_URL ?? 'https://spinzyacademy.com'
+            for (const days of MUTE_OPTIONS) {
+              const token = generateMuteToken({ parentStudentId: link.id, studentId: s.id, muteDays: days })
+              muteLinks.push({ days, url: `${muteBaseUrl}/api/parent/alerts/mute?t=${encodeURIComponent(token)}` })
+            }
           } catch (e) {
-            logger.warn('inactivityAlert: failed to generate mute token', { parentId: parent.id, studentId: s.id, err: String(e) })
+            logger.warn('inactivityAlert: failed to generate mute tokens', { parentId: parent.id, studentId: s.id, err: String(e) })
           }
 
-          const muteHtml = muteLink ? ` <br/><small><a href="${muteLink}">Mute inactivity alerts for ${muteDays} days</a></small>` : ''
+          const muteHtml = muteLinks.length > 0
+            ? ` <br/><small>Mute alerts for: ${muteLinks.map((m) => `<a href="${m.url}">${m.days} days</a>`).join(' | ')}</small>`
+            : ''
 
           const bodyHtml = t('inactivity.body_html', { parentName: parent.name ?? 'Parent', studentName: s.name, days: String(DEFAULT_INACTIVITY_DAYS), deepLink }, locale) + muteHtml
 

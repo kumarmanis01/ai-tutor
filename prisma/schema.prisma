@@ -449,10 +449,12 @@ model ParentChildControl {
   pausedUntil       DateTime?
   pauseReason       String?
   // Weekly study hours target set by parent for this child (F-PAR-002 AC-02).
-  weeklyHoursTarget Int?
+  weeklyHoursTarget  Int?
   // Preferred study schedule slot: "morning" | "afternoon" | "evening" (F-PAR-002 AC-02).
   schedulePreference String?
-  createdAt         DateTime @default(now())
+  // Topic-focus preference submitted by parent for AI to consider on next plan adjustment (F-PAR-002 AC-03).
+  topicFocusRequest  String?
+  createdAt          DateTime @default(now())
   updatedAt         DateTime @updatedAt
 
   @@unique([parentId, studentId])
