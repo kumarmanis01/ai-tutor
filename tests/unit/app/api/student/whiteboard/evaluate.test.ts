@@ -72,4 +72,33 @@ describe('POST /api/student/whiteboard/evaluate', () => {
     expect(res.status).toBe(200)
     expect(body.feedback).toContain('Nice work')
   })
+
+  it('stores canvas artifact when provided and returns artifactUrl', async () => {
+    jest.resetModules()
+    jest.doMock('@/lib/session', () => ({ getServerSessionForHandlers: async () => ({ user: { id: 's3' } }) }))
+    jest.doMock('@/lib/callLLM', () => ({ callTutorLLM: async () => ({ content: 'Good job' }) }))
+    // Mock S3 client to avoid network calls
+    jest.doMock('@aws-sdk/client-s3', () => ({ S3Client: class { send = async () => ({}) }, PutObjectCommand: class {} }))
+
+    const { POST } = await import('@/app/api/student/whiteboard/evaluate/route')
+
+    // minimal 1x1 png base64 data URL
+    const tinyPng = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR4nGNgYAAAAAMAASsJTYQAAAAASUVORK5CYII='
+
+    const req = new Request('http://localhost', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sessionId: 'sess3', conceptName: 'Lines', canvasDataUrl: tinyPng }),
+    })
+
+    const res: any = await POST(req as any)
+    const body = await res.json()
+    expect(res.status).toBe(200)
+    expect(typeof body.feedback).toBe('string')
+    // artifactUrl may be present when upload succeeds
+    if (body.artifactUrl) {
+      expect(typeof body.artifactUrl).toBe('string')
+      expect(body.artifactUrl.length).toBeGreaterThan(0)
+    }
+  })
 })

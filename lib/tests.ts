@@ -362,7 +362,10 @@ export async function selectQuestionsWithMix(
     return shuffled.slice(0, n)
   }
 
-  const used = new Set<string>()
+  // Start `used` with recently-seen question IDs so they are excluded
+  // from selection. This ensures selectQuestionsWithMix honours the
+  // 90-day exclusion window (F-STU-020 AC-01).
+  const used = new Set<string>(excludeIds ? Array.from(excludeIds) : [])
 
   const mcqSelected = pickN(mcqPool, mcqTarget, used)
   mcqSelected.forEach((q) => used.add(q.id))

@@ -45,6 +45,7 @@ import { enqueueDistressNotification } from '@/jobs/distressNotification'
 import { enqueueIRTUpdate } from '@/jobs/irtUpdate'
 import { updateStreak } from '@/lib/student/streak'
 import { logger } from '@/lib/logger'
+import { checkFreeTierCap, incrementFreeTierUsage } from '@/lib/freemium'
 import {
   classifyIntent,
   processPrompt,
@@ -118,34 +119,16 @@ export async function enforceTutorFreemiumCap(studentId: string): Promise<void> 
   const premium = await isPremiumUser(studentId)
   if (premium) return
 
-  const DAILY_FREE_LIMIT = Number(process.env.NEXT_PUBLIC_DAILY_FREE_LIMIT ?? 3)
-  const txResult = await prisma.$transaction(async (tx) => {
-    const user = await tx.user.findUnique({ where: { id: studentId }, select: { todaysFreeQuestionsCount: true } })
-    if (!user) return { notFound: true } as const
-
-    if ((user.todaysFreeQuestionsCount ?? DAILY_FREE_LIMIT) <= 0) {
-      return { limitReached: true } as const
-    }
-
-    await tx.user.update({
-      where: { id: studentId },
-      data: { todaysFreeQuestionsCount: { decrement: 1 } },
-      select: { id: true },
-    })
-
-    return { ok: true } as const
-  })
-
-  if ('notFound' in txResult) {
-    const err = new Error('SESSION_NOT_FOUND')
-    ;(err as any).code = 'SESSION_NOT_FOUND'
-    throw err
-  }
-  if ('limitReached' in txResult) {
+  // Use canonical free-tier check (monthly period) from lib/freemium.
+  const status = await checkFreeTierCap(studentId)
+  if (!status.allowed) {
     const err = new Error('RATE_LIMITED')
     ;(err as any).code = 'RATE_LIMITED'
     throw err
   }
+
+  // Record usage (best-effort). incrementFreeTierUsage() swallows errors.
+  await incrementFreeTierUsage(studentId)
 }
 
 export async function getTutorSession(sessionId: string): Promise<TutorSessionState | null> {
