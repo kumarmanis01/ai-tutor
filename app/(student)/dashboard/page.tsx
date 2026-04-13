@@ -363,6 +363,7 @@ export default async function StudentHomeDashboardPage() {
         subject: planItem.concept?.subject?.name ?? '',
         estimatedTimeMin: 20,
         weekNumber: planItem.weekNumber,
+        planItemId: planItem.id,
       }
     : rawAction?.topicId
     ? {

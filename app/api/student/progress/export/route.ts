@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { getServerSessionForHandlers } from '@/lib/session'
 import { prisma } from '@/lib/prisma'
-import { PDFDocument, StandardFonts } from 'pdf-lib'
+import { exportProgressReportToPDF } from '@/lib/exporters/pdf'
 import { computeReadinessScore } from '@/lib/student/examReadiness'
 import { logger } from '@/lib/logger'
 
@@ -43,44 +43,14 @@ export async function GET(req: Request) {
     // Build a small narrative fallback
     const narrative = `Keep going! You completed ${sessionCount} session${sessionCount === 1 ? '' : 's'} in the last 30 days. Your current subject readiness: ${readinessRows.map(r => `${r.subject} ${r.score}%`).join('; ') || 'N/A'}.`;
 
-    // Generate PDF
-    const doc = await PDFDocument.create()
-    const font = await doc.embedFont(StandardFonts.Helvetica)
-    const page = doc.addPage([595, 842])
-    const margin = 40
-    let y = page.getHeight() - margin
-
-    page.drawText("Progress Report", { x: margin, y, size: 18, font })
-    y -= 28
-    page.drawText(`Student: ${userProfile?.name ?? 'Student'}`, { x: margin, y, size: 12, font })
-    y -= 18
-    page.drawText(`Date: ${new Date().toLocaleDateString()}`, { x: margin, y, size: 12, font })
-    y -= 22
-
-    page.drawText("Teacher Vidya's insight:", { x: margin, y, size: 12, font })
-    y -= 16
-    const narrativeLines = splitText(narrative, 90)
-    for (const line of narrativeLines) {
-      page.drawText(line, { x: margin, y, size: 11, font })
-      y -= 14
-    }
-    y -= 8
-
-    page.drawText('30-day summary:', { x: margin, y, size: 12, font })
-    y -= 16
-    page.drawText(`- Sessions in last 30 days: ${sessionCount}`, { x: margin + 8, y, size: 11, font })
-    y -= 14
-
-    if (readinessRows.length > 0) {
-      page.drawText('- Subject readiness:', { x: margin + 8, y, size: 11, font })
-      y -= 14
-      for (const r of readinessRows) {
-        page.drawText(`  • ${r.subject}: ${r.score}%`, { x: margin + 14, y, size: 10, font })
-        y -= 12
-      }
-    }
-
-    const pdfBytes = await doc.save()
+    // Generate PDF using shared exporter
+    const pdfBuffer = await exportProgressReportToPDF({
+      studentName: userProfile?.name ?? 'Student',
+      date: new Date().toLocaleDateString(),
+      narrative,
+      sessionCount,
+      readinessRows,
+    })
 
     // Audit export (best-effort)
     try {
@@ -91,7 +61,7 @@ export async function GET(req: Request) {
       // swallow
     }
 
-    return new NextResponse(Buffer.from(pdfBytes), {
+    return new NextResponse(Buffer.from(pdfBuffer), {
       headers: {
         'Content-Type': 'application/pdf',
         'Content-Disposition': `attachment; filename="progress-report.pdf"`,

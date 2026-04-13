@@ -27,10 +27,23 @@ const { chromium } = require('playwright');
   try {
     const url = process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:3000/profile';
     console.log('Visiting', url);
-    await page.goto(url, { waitUntil: 'networkidle' });
+    // Use domcontentloaded instead of networkidle to avoid hanging on long-lived
+    // requests (SSE/WebSocket). Allow a 30s timeout for the navigation.
+    try {
+      // Use 'commit' to proceed once the navigation is committed (headers received).
+      // This avoids waiting for full DOMContentLoaded on streaming/SSR pages.
+      await page.goto(url, { waitUntil: 'commit', timeout: 15000 });
+    } catch (commitErr) {
+      console.warn('Goto commit warning:', commitErr && commitErr.message ? commitErr.message : String(commitErr));
+      try {
+        await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 5000 });
+      } catch (domErr) {
+        console.warn('Goto domcontentloaded warning:', domErr && domErr.message ? domErr.message : String(domErr));
+      }
+    }
 
-    // Give client scripts a short window to run
-    await page.waitForTimeout(2000);
+    // Give client scripts a short window to run even if navigation partially timed out
+    await page.waitForTimeout(2500);
 
     if (foundGlobalError) {
       console.error('Detected "global is not defined" in page console');

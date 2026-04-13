@@ -1,3 +1,21 @@
+/**
+ * FILE OBJECTIVE:
+ * - Orchestrate a single AI Tutor turn: input safety, prompt assembly,
+ *   LLM invocation, output safety, state transitions, and persistence.
+ * - Persist and honour a session-level `explainStyle` preference so the
+ *   frontend can set a default re-explain style for subsequent turns.
+ *
+ * LINKED UNIT TEST:
+ * - tests/unit/services/tutor/orchestrator.errorPaths.test.ts
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - .github/copilot-instructions.md
+ * - /docs/COPILOT_GUARDRAILS.md
+ *
+ * EDIT LOG:
+ * - 2026-04-13T00:00:00Z | copilot | feat(F-STU-011): session-level explainStyle support
+ */
+
 import { prisma } from '@/lib/prisma'
 import { isPremiumUser } from '@/lib/subscription'
 import { isAiTutorEnabledForStudent } from '@/lib/features/aiTutor'
@@ -51,6 +69,8 @@ export type TutorSessionState = {
   stageAttemptCount: number
   prereqRemediationActive: boolean
   prereqReturnStage: TutorStage | null
+  /** Optional: persisted session-level explain style preference */
+  explainStyle?: 'simpler' | 'harder' | 'real_life_example' | 'diagram' | null
 }
 
 export type TutorTurnComplete = {
@@ -143,6 +163,7 @@ export async function getTutorSession(sessionId: string): Promise<TutorSessionSt
     stageAttemptCount: typeof s.stageAttemptCount === 'number' ? s.stageAttemptCount : 0,
     prereqRemediationActive: s.prereqRemediationActive === true,
     prereqReturnStage: typeof s.prereqReturnStage === 'string' ? (s.prereqReturnStage as TutorStage) : null,
+    explainStyle: typeof s.explainStyle === 'string' ? (s.explainStyle as any) : null,
   }
 }
 
@@ -156,6 +177,7 @@ export async function setTutorSession(state: TutorSessionState): Promise<void> {
     stageAttemptCount: state.stageAttemptCount,
     prereqRemediationActive: state.prereqRemediationActive,
     prereqReturnStage: state.prereqReturnStage,
+    explainStyle: typeof state.explainStyle === 'string' ? state.explainStyle : null,
   }
   await setRedisTutorSession(state.sessionId, payload)
 }
@@ -195,13 +217,21 @@ export async function runTutorOrchestrator(args: {
   const isExplainDiagram = studentMessage === '__EXPLAIN_DIAGRAM__'
   const isStyleRequest = isExplainSimpler || isExplainHarder || isExplainExample || isExplainDiagram
 
-  // AC-04 (F-STU-011 MUST): map sentinel to explainStyle for prompt injection
-  const explainStyle: 'simpler' | 'harder' | 'real_life_example' | 'diagram' | null =
+  // AC-04 (F-STU-011 MUST): prefer per-turn sentinel, otherwise use persisted session preference
+  const sessionExplainStyle: 'simpler' | 'harder' | 'real_life_example' | 'diagram' | null =
+    (state as any)?.explainStyle && typeof (state as any)?.explainStyle === 'string'
+      ? (state as any).explainStyle
+      : null
+
+  const explainStyleFromSentinel: 'simpler' | 'harder' | 'real_life_example' | 'diagram' | null =
     isExplainSimpler ? 'simpler'
     : isExplainHarder ? 'harder'
     : isExplainExample ? 'real_life_example'
     : isExplainDiagram ? 'diagram'
     : null
+
+  const explainStyle: 'simpler' | 'harder' | 'real_life_example' | 'diagram' | null =
+    isStyleRequest ? explainStyleFromSentinel : sessionExplainStyle
 
   // Replace sentinels with clean phrases so safety checks never see raw values.
   const effectiveMessage =

@@ -1,3 +1,17 @@
+/**
+ * FILE OBJECTIVE:
+ * - Provide PDF exporter utilities for course and progress report exports.
+ *
+ * LINKED UNIT TEST:
+ * - __tests__/lib/exporters/pdf.ts.test.ts
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - .github/copilot-instructions.md
+ *
+ * EDIT LOG:
+ * - 2026-04-13T00:00:00Z | copilot | added exportProgressReportToPDF and file header
+ */
+
 import { PDFDocument, StandardFonts } from 'pdf-lib'
 
 export async function exportCourseToPDF(coursePackage: any): Promise<Buffer> {
@@ -97,6 +111,65 @@ function splitText(text: string, maxChars = 80) {
 function newPage(doc: PDFDocument, pageSize: { width: number; height: number }, font: any, margin: number) {
   doc.addPage([pageSize.width, pageSize.height])
   return pageSize.height - margin
+}
+
+/**
+ * Build a compact progress-report PDF from structured report data.
+ * Keeps the concrete PDF generation logic in one place for reuse by API routes/UI.
+ */
+export async function exportProgressReportToPDF(report: {
+  studentName?: string
+  date?: string
+  narrative?: string
+  sessionCount?: number
+  readinessRows?: Array<{ subject: string; score: number }>
+}): Promise<Buffer> {
+  const doc = await PDFDocument.create()
+  const font = await doc.embedFont(StandardFonts.Helvetica)
+  const page = doc.addPage([595, 842])
+  const margin = 40
+  let y = page.getHeight() - margin
+
+  page.drawText('Progress Report', { x: margin, y, size: 18, font })
+  y -= 28
+  page.drawText(`Student: ${report.studentName ?? 'Student'}`, { x: margin, y, size: 12, font })
+  y -= 18
+  page.drawText(`Date: ${report.date ?? new Date().toLocaleDateString()}`, { x: margin, y, size: 12, font })
+  y -= 22
+
+  page.drawText("Teacher Vidya's insight:", { x: margin, y, size: 12, font })
+  y -= 16
+  const narrativeLines = splitText(report.narrative ?? '', 90)
+  for (const line of narrativeLines) {
+    if (y < margin + 40) {
+      const np = doc.addPage([595, 842])
+      y = np.getHeight() - margin
+    }
+    page.drawText(line, { x: margin, y, size: 11, font })
+    y -= 14
+  }
+  y -= 8
+
+  page.drawText('30-day summary:', { x: margin, y, size: 12, font })
+  y -= 16
+  page.drawText(`- Sessions in last 30 days: ${report.sessionCount ?? 0}`, { x: margin + 8, y, size: 11, font })
+  y -= 14
+
+  if (report.readinessRows && report.readinessRows.length > 0) {
+    page.drawText('- Subject readiness:', { x: margin + 8, y, size: 11, font })
+    y -= 14
+    for (const r of report.readinessRows) {
+      if (y < margin + 40) {
+        const np = doc.addPage([595, 842])
+        y = np.getHeight() - margin
+      }
+      page.drawText(`  • ${r.subject}: ${r.score}%`, { x: margin + 14, y, size: 10, font })
+      y -= 12
+    }
+  }
+
+  const uint8 = await doc.save()
+  return Buffer.from(uint8)
 }
 
 export default exportCourseToPDF

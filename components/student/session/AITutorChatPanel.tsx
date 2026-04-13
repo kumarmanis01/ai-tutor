@@ -16,6 +16,7 @@
  *
  * EDIT LOG:
  * - 2026-04-07 | claude | fix: add object-cover to Vidya avatar image to prevent stretching in chat messages
+ * - 2026-04-13 | copilot | feat(F-STU-011): add session-level style selector (persist & immediate re-explain)
  */
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
@@ -397,6 +398,7 @@ export const AITutorChatPanel: React.FC<AITutorChatPanelProps> = ({
   const [reconnectAttempts, setReconnectAttempts] = useState(0);
   const [showInactivityPrompt, setShowInactivityPrompt] = useState(false);
   const [hintBanner, setHintBanner] = useState<{ tier: number; text: string } | null>(null);
+  const [selectedStyle, setSelectedStyle] = useState<string | null>(null);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const lastAiMsgIdRef = useRef<string | null>(null);
@@ -746,6 +748,32 @@ export const AITutorChatPanel: React.FC<AITutorChatPanelProps> = ({
     void streamTutorTurn(sentinel);
   }
 
+  // Persist a session-level style preference and optionally trigger an immediate re-explain.
+  async function handleSetStyle(style: string | null) {
+    const s = style || null
+    setSelectedStyle(s)
+    try {
+      await fetch('/api/tutor/session/style', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sessionId, explainStyle: s }),
+      })
+    } catch (e) {
+      // best-effort; do not block UX on failures
+    }
+
+    const mapping: Record<string, string> = {
+      simpler: '__EXPLAIN_SIMPLER__',
+      harder: '__EXPLAIN_HARDER__',
+      real_life_example: '__EXPLAIN_EXAMPLE__',
+      diagram: '__EXPLAIN_DIAGRAM__',
+    }
+
+    if (s && mapping[s]) {
+      handleReExplain(mapping[s])
+    }
+  }
+
   // ── Render: feature flag ───────────────────────────────────────────────────
 
   if (!isAITutorEnabled) return null;
@@ -777,9 +805,25 @@ export const AITutorChatPanel: React.FC<AITutorChatPanelProps> = ({
             <h2 className="truncate text-sm font-semibold text-gray-900 dark:text-gray-100">
               {conceptName}
             </h2>
-            <span className="shrink-0 rounded-full bg-[#EEEDFE] dark:bg-[#534AB7]/20 px-2.5 py-0.5 text-xs font-semibold text-[#534AB7] dark:text-indigo-300">
-              {getStageLabel(currentStage)}
-            </span>
+            <div className="flex items-center gap-2">
+              <span className="shrink-0 rounded-full bg-[#EEEDFE] dark:bg-[#534AB7]/20 px-2.5 py-0.5 text-xs font-semibold text-[#534AB7] dark:text-indigo-300">
+                {getStageLabel(currentStage)}
+              </span>
+              <label className="sr-only">Explanation style</label>
+              <select
+                aria-label="Explanation style"
+                value={selectedStyle ?? ''}
+                onChange={(e) => handleSetStyle(e.target.value || null)}
+                disabled={isStreaming}
+                className="text-xs rounded-md border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-2 py-1 text-gray-700 dark:text-gray-100"
+              >
+                <option value="">Off</option>
+                <option value="simpler">Simpler</option>
+                <option value="harder">Deeper</option>
+                <option value="real_life_example">Real-life example</option>
+                <option value="diagram">Diagram</option>
+              </select>
+            </div>
           </div>
 
           {/* ② Stage strip */}
