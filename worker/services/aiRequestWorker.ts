@@ -112,7 +112,8 @@ export async function processAIRequest(job: Job<AIJobData>) {
           status: 'blocked',
           error: 'intent_block',
           requestBody: payload,
-          responseBody: { reason: 'intent_block', classification },
+          // Ensure stored JSON is a plain-serializable object
+          responseBody: { reason: 'intent_block', classification: JSON.parse(JSON.stringify(classification)) },
         } })
       } catch (e) {
         logger.warn('processAIRequest: failed to write AIContentLog for blocked intent', { error: String(e) })
@@ -181,7 +182,8 @@ export async function processAIRequest(job: Job<AIJobData>) {
         status: 'flagged',
         error: 'hallucination_detected',
         requestBody: { prompt },
-        responseBody: { snippet: content?.slice(0, 2000), hallucinationCheck },
+        // Make sure the hallucination check object is JSON-serializable
+        responseBody: { snippet: content?.slice(0, 2000), hallucinationCheck: JSON.parse(JSON.stringify(hallucinationCheck)) },
       } })
     } catch (e) {
       logger.warn('processAIRequest: failed to write AIContentLog for hallucination', { error: String(e) })

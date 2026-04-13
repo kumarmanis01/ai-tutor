@@ -71,8 +71,12 @@ function output(level: LogLevel, event: string, context?: any) {
   };
   // Use stdout for info/debug, stderr for warn/error
   const line = JSON.stringify(payload);
-  if (level === 'warn' || level === 'error') {
+  if (level === 'error') {
     console.error(line);
+  } else if (level === 'warn') {
+    // Route warnings to stderr via console.warn so they're clearly visible
+    // but not treated as fatal errors by tooling that watches stderr.
+    console.warn(line);
   } else {
     console.log(line);
   }

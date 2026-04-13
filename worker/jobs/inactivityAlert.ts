@@ -19,6 +19,7 @@
  */
 
 import { prisma } from '@/lib/prisma'
+import { UserRole } from '@prisma/client'
 import { logger } from '@/lib/logger'
 import { getRedis } from '@/lib/redis'
 import { sendParentMilestoneNotification } from '@/lib/notifications/delivery'
@@ -47,7 +48,7 @@ export async function runInactivityAlerts(): Promise<number> {
   // Find candidate students (we'll apply timezone-aware logic per-student)
   const inactiveStudents = await prisma.user.findMany({
     where: {
-      role: 'student',
+      role: UserRole.user,
       OR: [
         { lastSessionDate: { lt: prefilterCutoff } },
         { lastSessionDate: null },

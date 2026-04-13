@@ -58,8 +58,9 @@ export async function getServerSessionForHandlers() {
   // In tests we allow injecting a fake session via global.__TEST_SESSION__.
   // Use property presence so tests can set `__TEST_SESSION__ = null` to simulate
   // an unauthenticated request without calling the real NextAuth helper.
-  if (Object.prototype.hasOwnProperty.call(global, '__TEST_SESSION__')) {
-    return (global as any).__TEST_SESSION__
+  const g: any = globalThis as any;
+  if (Object.prototype.hasOwnProperty.call(g, '__TEST_SESSION__')) {
+    return g.__TEST_SESSION__
   }
   return getServerSession(authOptions);
 }

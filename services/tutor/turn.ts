@@ -1,3 +1,21 @@
+/**
+ * FILE OBJECTIVE:
+ * - Orchestrate a single AI Tutor turn: input safety, prompt assembly,
+ *   LLM invocation, output safety, state transitions, and persistence.
+ * - Persist and honour a session-level `explainStyle` preference so the
+ *   frontend can set a default re-explain style for subsequent turns.
+ *
+ * LINKED UNIT TEST:
+ * - tests/unit/services/tutor/orchestrator.errorPaths.test.ts
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - .github/copilot-instructions.md
+ * - /docs/COPILOT_GUARDRAILS.md
+ *
+ * EDIT LOG:
+ * - 2026-04-13T00:00:00Z | copilot | feat(F-STU-011): session-level explainStyle support
+ */
+
 import { prisma } from '@/lib/prisma'
 import { isPremiumUser } from '@/lib/subscription'
 import { isAiTutorEnabledForStudent } from '@/lib/features/aiTutor'
@@ -15,9 +33,11 @@ import { computeFrustrationScore } from '@/lib/ai/tutor/signals'
 import { assembleSystemPrompt } from '@/lib/ai/tutor/promptAssembly'
 import { parseTutorTag, stripTag } from '@/lib/ai/tutor/tagParser'
 import { checkOutputSafety, type SafetyEventCreate as OutputSafetyEvent } from '@/lib/ai/tutor/outputSafety'
+import { parseLlmJson } from '@/lib/llm/sanitizeJson'
 import { applyTagTransitionWithRemediation, type TutorTag, type TutorStage } from '@/lib/ai/tutor/stateMachine'
 import { retrieveRelevantChunks } from '@/lib/ai/tutor/rag'
 import { detectMisconceptions, loadMisconceptions, logNovelMisconception } from '@/lib/ai/tutor/misconceptionDetector'
+import generateContrastiveExplanation from '@/lib/ai/tutor/contrastive'
 import { saveDoubt, lookupDoubt, recordDoubt } from '@/lib/ai/tutor/doubtKb'
 import { getCachedExplanation, setCachedExplanation, type ExplanationLang, type ExplanationModality } from '@/lib/ai/tutor/explanationCache'
 import { detectDistress } from '@/lib/ai/tutor/distress'
@@ -25,6 +45,7 @@ import { enqueueDistressNotification } from '@/jobs/distressNotification'
 import { enqueueIRTUpdate } from '@/jobs/irtUpdate'
 import { updateStreak } from '@/lib/student/streak'
 import { logger } from '@/lib/logger'
+import { checkFreeTierCap, incrementFreeTierUsage } from '@/lib/freemium'
 import {
   classifyIntent,
   processPrompt,
@@ -49,15 +70,27 @@ export type TutorSessionState = {
   stageAttemptCount: number
   prereqRemediationActive: boolean
   prereqReturnStage: TutorStage | null
+  /** Optional: persisted session-level explain style preference */
+  explainStyle?: 'simpler' | 'harder' | 'real_life_example' | 'diagram' | null
 }
 
 export type TutorTurnComplete = {
   tag: TutorTag
   stage: TutorStage
   hintsRemaining: number
+  /** Number of hints used before this turn (pre-call). Helpful for client UI */
+  hintsUsedDuringTurn?: number
   turnNumber: number
   sessionComplete: boolean
+  visualHint?: string | null
+  /** Optional contrastive explanation for a detected misconception */
+  contrastiveExplanation?: {
+    misconceptionId: string
+    name: string
+    correction: string
+  } | null
 }
+
 
 export type TutorTurnErrorCode =
   | 'RATE_LIMITED'
@@ -86,34 +119,16 @@ export async function enforceTutorFreemiumCap(studentId: string): Promise<void> 
   const premium = await isPremiumUser(studentId)
   if (premium) return
 
-  const DAILY_FREE_LIMIT = Number(process.env.NEXT_PUBLIC_DAILY_FREE_LIMIT ?? 3)
-  const txResult = await prisma.$transaction(async (tx) => {
-    const user = await tx.user.findUnique({ where: { id: studentId }, select: { todaysFreeQuestionsCount: true } })
-    if (!user) return { notFound: true } as const
-
-    if ((user.todaysFreeQuestionsCount ?? DAILY_FREE_LIMIT) <= 0) {
-      return { limitReached: true } as const
-    }
-
-    await tx.user.update({
-      where: { id: studentId },
-      data: { todaysFreeQuestionsCount: { decrement: 1 } },
-      select: { id: true },
-    })
-
-    return { ok: true } as const
-  })
-
-  if ('notFound' in txResult) {
-    const err = new Error('SESSION_NOT_FOUND')
-    ;(err as any).code = 'SESSION_NOT_FOUND'
-    throw err
-  }
-  if ('limitReached' in txResult) {
+  // Use canonical free-tier check (monthly period) from lib/freemium.
+  const status = await checkFreeTierCap(studentId)
+  if (!status.allowed) {
     const err = new Error('RATE_LIMITED')
     ;(err as any).code = 'RATE_LIMITED'
     throw err
   }
+
+  // Record usage (best-effort). incrementFreeTierUsage() swallows errors.
+  await incrementFreeTierUsage(studentId)
 }
 
 export async function getTutorSession(sessionId: string): Promise<TutorSessionState | null> {
@@ -131,6 +146,7 @@ export async function getTutorSession(sessionId: string): Promise<TutorSessionSt
     stageAttemptCount: typeof s.stageAttemptCount === 'number' ? s.stageAttemptCount : 0,
     prereqRemediationActive: s.prereqRemediationActive === true,
     prereqReturnStage: typeof s.prereqReturnStage === 'string' ? (s.prereqReturnStage as TutorStage) : null,
+    explainStyle: typeof s.explainStyle === 'string' ? (s.explainStyle as any) : null,
   }
 }
 
@@ -144,6 +160,7 @@ export async function setTutorSession(state: TutorSessionState): Promise<void> {
     stageAttemptCount: state.stageAttemptCount,
     prereqRemediationActive: state.prereqRemediationActive,
     prereqReturnStage: state.prereqReturnStage,
+    explainStyle: typeof state.explainStyle === 'string' ? state.explainStyle : null,
   }
   await setRedisTutorSession(state.sessionId, payload)
 }
@@ -180,14 +197,24 @@ export async function runTutorOrchestrator(args: {
   const isExplainSimpler = studentMessage === '__EXPLAIN_SIMPLER__'
   const isExplainHarder = studentMessage === '__EXPLAIN_HARDER__'
   const isExplainExample = studentMessage === '__EXPLAIN_EXAMPLE__'
-  const isStyleRequest = isExplainSimpler || isExplainHarder || isExplainExample
+  const isExplainDiagram = studentMessage === '__EXPLAIN_DIAGRAM__'
+  const isStyleRequest = isExplainSimpler || isExplainHarder || isExplainExample || isExplainDiagram
 
-  // AC-04 (F-STU-011 MUST): map sentinel to explainStyle for prompt injection
-  const explainStyle: 'simpler' | 'harder' | 'real_life_example' | null =
+  // AC-04 (F-STU-011 MUST): prefer per-turn sentinel, otherwise use persisted session preference
+  const sessionExplainStyle: 'simpler' | 'harder' | 'real_life_example' | 'diagram' | null =
+    (state as any)?.explainStyle && typeof (state as any)?.explainStyle === 'string'
+      ? (state as any).explainStyle
+      : null
+
+  const explainStyleFromSentinel: 'simpler' | 'harder' | 'real_life_example' | 'diagram' | null =
     isExplainSimpler ? 'simpler'
     : isExplainHarder ? 'harder'
     : isExplainExample ? 'real_life_example'
+    : isExplainDiagram ? 'diagram'
     : null
+
+  const explainStyle: 'simpler' | 'harder' | 'real_life_example' | 'diagram' | null =
+    isStyleRequest ? explainStyleFromSentinel : sessionExplainStyle
 
   // Replace sentinels with clean phrases so safety checks never see raw values.
   const effectiveMessage =
@@ -334,6 +361,10 @@ export async function runTutorOrchestrator(args: {
     const loadedMisconceptions = await loadMisconceptions(subjectId, conceptId)
     const detectedMisconceptions = detectMisconceptions(redactedInput, loadedMisconceptions)
     const activeMisconception = detectedMisconceptions[0] ?? null
+    // Find the full loaded misconception object to enrich the contrastive artifact
+    const loadedMatch = activeMisconception
+      ? loadedMisconceptions.find((lm) => lm.id === activeMisconception.misconceptionId)
+      : null
 
     if (detectedMisconceptions.length > 0) {
       const now = new Date()
@@ -367,6 +398,22 @@ export async function runTutorOrchestrator(args: {
           count: detectedMisconceptions.length,
           error: String((err as any)?.message ?? err),
         })
+      }
+    }
+
+    // If we have a detected misconception and the full loaded row, prepare an
+    // enriched contrastive artifact (deterministic, template-driven).
+    let contrastiveArtifact: any = null
+    if (activeMisconception && loadedMatch) {
+      try {
+        contrastiveArtifact = generateContrastiveExplanation(loadedMatch as any)
+      } catch (e) {
+        logger.warn('contrastive.generate.failed', { error: String((e as any)?.message ?? e) })
+        contrastiveArtifact = {
+          misconceptionId: activeMisconception.misconceptionId,
+          name: activeMisconception.name,
+          correction: activeMisconception.correction,
+        }
       }
     } else if (redactedInput.trim().length > 20 && loadedMisconceptions.length > 0) {
       // AC-05 (F-STU-013): input has meaningful content but matched nothing in the library.
@@ -530,6 +577,29 @@ export async function runTutorOrchestrator(args: {
     safetyEvents.push(...outputSafety.events)
     let answerText = outputSafety.text
 
+    // Attempt to extract structured JSON from LLM output (visualHint, explanation, etc.).
+    // Many prompts include a small JSON-like block with fields such as `visualHint` for
+    // front-end rendering of simple diagrams. Use a robust sanitizer to avoid throwing.
+    let extractedVisualHint: string | null = null
+    try {
+      const parsed = parseLlmJson(answerText)
+      if (parsed && typeof parsed === 'object') {
+        if (typeof (parsed as any).visualHint === 'string') {
+          extractedVisualHint = (parsed as any).visualHint
+        }
+        // Prefer explicit explanation/content fields when streaming human-friendly text
+        const preferFields = ['explanation', 'content', 'answer', 'text', 'body']
+        for (const f of preferFields) {
+          if (typeof (parsed as any)[f] === 'string' && String((parsed as any)[f]).trim().length > 0) {
+            answerText = String((parsed as any)[f])
+            break
+          }
+        }
+      }
+    } catch (e) {
+      // Not parseable JSON/structured output — ignore and continue with plain text answer
+    }
+
     if (safetyEvents.length) {
       await prismaClient.safetyEvent.createMany({ data: safetyEvents })
       // Analytics event for safety triggers
@@ -553,9 +623,12 @@ export async function runTutorOrchestrator(args: {
     }
 
     // Hallucination detection & analytics
+    // groundednessScore = 1 - riskScore; captured here for AITutorTurnLog persistence below.
+    let groundednessScore: number | null = null
     try {
       const hallCtx = { grade: 10, board: 'CBSE', subject: subjectName, originalQuestion: String(redactedInput) }
       const hall = checkForHallucinations(answerText, hallCtx as any)
+      groundednessScore = typeof hall?.riskScore === 'number' ? Math.max(0, 1 - hall.riskScore) : null
       if (hall && (hall.issues.length > 0 || hall.needsReview)) {
         try {
           await prismaClient.analyticsEvent.create({
@@ -690,6 +763,7 @@ export async function runTutorOrchestrator(args: {
         cached: servedFromCache,
         ragChunksUsed: ragContext.chunkIds,
         frustrationScore: frustration.frustrationScore,
+        groundednessScore: servedFromCache ? null : groundednessScore,
       },
     })
 
@@ -697,10 +771,19 @@ export async function runTutorOrchestrator(args: {
       tag: logTag,
       stage: newState.stage,
       hintsRemaining: newState.hintsRemaining,
+      hintsUsedDuringTurn: hintsUsed,
       turnNumber: newState.lastTurnNumber,
       // Session ends when the AI responds DURING the CONSOLIDATION stage (the summary
       // and reflective question are delivered in that turn), not when entering it.
       sessionComplete: state.stage === 'CONSOLIDATION',
+      visualHint: typeof extractedVisualHint === 'string' ? extractedVisualHint : null,
+      contrastiveExplanation: contrastiveArtifact ? contrastiveArtifact : activeMisconception
+        ? {
+            misconceptionId: activeMisconception.misconceptionId,
+            name: activeMisconception.name,
+            correction: activeMisconception.correction,
+          }
+        : null,
     }
 
     // Award streak credit only after the student receives CONSOLIDATION content.

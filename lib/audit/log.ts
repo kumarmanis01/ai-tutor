@@ -56,8 +56,15 @@ export function logAuditEvent(db: any, ev: AuditEvent) {
 
     if (adminId != null) data.adminId = adminId
 
-    // Always use Prisma create to insert audit logs. This keeps behavior
-    // consistent across environments and avoids fragile raw SQL binding.
+    // Ensure the Prisma client has the auditLog model available before
+    // attempting to write. In some test/mocking scenarios the client may
+    // be partially mocked and `auditLog.create` could be undefined which
+    // would otherwise throw synchronously.
+    if (!db || !db.auditLog || typeof db.auditLog.create !== 'function') {
+      try { logger?.warn?.('logAuditEvent: prisma.auditLog.create not available; skipping audit', { event: ev }) } catch {}
+      return Promise.resolve(null)
+    }
+
     try {
       // Always write `action` as the explicit enum value or null. The
       // legacy action label (if any) remains inside `details.legacyAction`.
@@ -67,11 +74,12 @@ export function logAuditEvent(db: any, ev: AuditEvent) {
       }
       return p
     } catch (err) {
-      logger?.warn?.('logAuditEvent: create threw', { err, event: ev })
+      try { logger?.warn?.('logAuditEvent: create threw', { err, event: ev }) } catch {}
       return Promise.resolve(null)
     }
   } catch (err) {
-    logger?.warn?.('logAuditEvent: unexpected error', { err, event: ev })
+    try { logger?.warn?.('logAuditEvent: unexpected error', { err, event: ev }) } catch {}
+    return Promise.resolve(null)
   }
 }
 
