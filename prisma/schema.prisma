@@ -1295,6 +1295,7 @@ model SubjectDef {
   name                String
   slug                String
   classId             String
+  isAvailable         Boolean              @default(false) // F-ADM-002 AC-05: admin-controlled subject availability
   lifecycle           SoftDeleteStatus     @default(active)
   createdAt           DateTime             @default(now())
   chapters            ChapterDef[]

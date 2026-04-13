@@ -62,6 +62,20 @@ export async function POST(req: Request) {
       return res
     }
 
+    // F-ADM-002 AC-05: subject availability gate -- admin can disable a subject.
+    const subjectCheck = await prisma.subjectDef.findUnique({
+      where: { id: subjectId },
+      select: { isAvailable: true },
+    })
+    if (subjectCheck && !subjectCheck.isAvailable) {
+      res = NextResponse.json(
+        { error: 'This subject is not currently available. Please check back soon.', code: 'SUBJECT_UNAVAILABLE' },
+        { status: 503 },
+      )
+      logger.logAPI(req, res, { className: 'TutorSessionStartAPI', methodName: 'POST' }, start)
+      return res
+    }
+
     // Diagnostic gate -- student must have completed the IRT bootstrap for this subject.
     const hasDiag = await hasDiagnosticForSubject(userId, subjectId)
     if (!hasDiag) {
