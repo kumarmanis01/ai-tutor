@@ -235,7 +235,9 @@ export async function runDailyCostReport(): Promise<CostReportResult> {
   const isCeiling = totalCostUsd > DAILY_CEILING_USD
   const isDropout = sessions === 0 && (yesterdayMetric?.sessions ?? 0) > 10
   const isCacheWarn = cacheHitRate !== null && cacheHitRate < CACHE_HIT_RATE_TARGET
-  const needsAlert = isCostThreshold || isRollingAnomaly || isCeiling || isDropout
+  // F-ADM-011 AC-05: also alert when trending doubts surface, regardless of cost thresholds
+  const hasTrendingDoubts = trendingDoubts.length > 0
+  const needsAlert = isCostThreshold || isRollingAnomaly || isCeiling || isDropout || hasTrendingDoubts
 
   // Build alert subject
   let alertSubject = `⚠️ Spinzy AI cost alert: ₹${(costPerSession * USD_TO_INR).toFixed(2)} per session on ${dateLabel}`
@@ -245,7 +247,9 @@ export async function runDailyCostReport(): Promise<CostReportResult> {
     alertSubject = `⚠️ Daily cost ceiling reached: $${totalCostUsd.toFixed(2)} on ${dateLabel}`
   } else if (isRollingAnomaly && rollingAvg) {
     const multiple = (costPerSession / rollingAvg).toFixed(1)
-    alertSubject = `⚠️ Cost spike: ${multiple}× above 7-day average on ${dateLabel}`
+    alertSubject = `⚠️ Cost spike: ${multiple}x above 7-day average on ${dateLabel}`
+  } else if (hasTrendingDoubts && !isCostThreshold) {
+    alertSubject = `⚠️ Trending doubts alert: ${trendingDoubts.length} concept(s) with high escalations on ${dateLabel}`
   }
 
   logger.info('costReportingWorker.report', {

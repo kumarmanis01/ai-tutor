@@ -553,9 +553,12 @@ export async function runTutorOrchestrator(args: {
     }
 
     // Hallucination detection & analytics
+    // groundednessScore = 1 - riskScore; captured here for AITutorTurnLog persistence below.
+    let groundednessScore: number | null = null
     try {
       const hallCtx = { grade: 10, board: 'CBSE', subject: subjectName, originalQuestion: String(redactedInput) }
       const hall = checkForHallucinations(answerText, hallCtx as any)
+      groundednessScore = typeof hall?.riskScore === 'number' ? Math.max(0, 1 - hall.riskScore) : null
       if (hall && (hall.issues.length > 0 || hall.needsReview)) {
         try {
           await prismaClient.analyticsEvent.create({
@@ -690,6 +693,7 @@ export async function runTutorOrchestrator(args: {
         cached: servedFromCache,
         ragChunksUsed: ragContext.chunkIds,
         frustrationScore: frustration.frustrationScore,
+        groundednessScore: servedFromCache ? null : groundednessScore,
       },
     })
 

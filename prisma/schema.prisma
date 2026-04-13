@@ -1528,10 +1528,11 @@ model AITutorTurnLog {
   safetyFlagged    Boolean      @default(false)
   cached           Boolean      @default(false)
   ragChunksUsed    String[]     @default([])
-  frustrationScore Float?
-  qualityFlag      QualityFlag?
-  qualityNote      String?
-  createdAt        DateTime     @default(now())
+  frustrationScore   Float?
+  groundednessScore  Float?  // 1 - riskScore from hallucinationDetector; null when cached or safety-blocked
+  qualityFlag        QualityFlag?
+  qualityNote        String?
+  createdAt          DateTime     @default(now())
 
   @@index([sessionId])
   @@index([callType])
