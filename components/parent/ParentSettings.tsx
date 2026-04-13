@@ -195,6 +195,8 @@ export default function ParentSettings() {
           ))}
         </select>
       </div>
+
+      <div>
         <h2 className="text-md font-semibold">Children</h2>
         {children.length === 0 ? (
           <p className="text-sm text-gray-500">No linked children.</p>

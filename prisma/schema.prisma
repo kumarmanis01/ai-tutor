@@ -36,6 +36,11 @@ model User {
   // Self-reported age (integer). Used for under-13 / under-18 parent verification gates.
   age                         Int?
 
+  /// Parent account verified at (explicit parent user verification).
+  parentVerifiedAt            DateTime?
+  /// High-level account status used for gating and admin actions.
+  accountStatus               AccountStatus                 @default(active)
+
   
   role                        UserRole                     @default(user)
   country                     String?
