@@ -128,7 +128,8 @@ export async function exportProgressReportToPDF(report: {
   const font = await doc.embedFont(StandardFonts.Helvetica)
   const page = doc.addPage([595, 842])
   const margin = 40
-  let y = page.getHeight() - margin
+  // pdf-lib's PDFPage provides `getSize()` returning { width, height }
+  let y = page.getSize().height - margin
 
   page.drawText('Progress Report', { x: margin, y, size: 18, font })
   y -= 28
@@ -141,9 +142,9 @@ export async function exportProgressReportToPDF(report: {
   y -= 16
   const narrativeLines = splitText(report.narrative ?? '', 90)
   for (const line of narrativeLines) {
-    if (y < margin + 40) {
+      if (y < margin + 40) {
       const np = doc.addPage([595, 842])
-      y = np.getHeight() - margin
+      y = np.getSize().height - margin
     }
     page.drawText(line, { x: margin, y, size: 11, font })
     y -= 14
@@ -161,7 +162,7 @@ export async function exportProgressReportToPDF(report: {
     for (const r of report.readinessRows) {
       if (y < margin + 40) {
         const np = doc.addPage([595, 842])
-        y = np.getHeight() - margin
+        y = np.getSize().height - margin
       }
       page.drawText(`  • ${r.subject}: ${r.score}%`, { x: margin + 14, y, size: 10, font })
       y -= 12

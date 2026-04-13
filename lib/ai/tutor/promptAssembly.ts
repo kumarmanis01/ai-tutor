@@ -1,5 +1,9 @@
 import type { TutorStage } from '@/lib/ai/tutor/stateMachine'
-import type { LearningStyle } from '@prisma/client'
+
+// Local copy of the LearningStyle union to avoid TS import issues
+// with generated Prisma client types during local type-check.
+// Keep in sync with prisma/schema.prisma enum LearningStyle.
+type LearningStyle = 'visual' | 'verbal' | 'practice' | 'mixed'
 
 export interface PromptContext {
   // PERSONA layer inputs

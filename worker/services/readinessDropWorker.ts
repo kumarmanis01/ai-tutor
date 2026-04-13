@@ -116,8 +116,8 @@ export async function processReadinessDropAlerts(now = new Date()): Promise<void
             let studentAlready = false
             try { if (redis) { const v = await redis.get(studentKey); if (v) studentAlready = true } } catch (e) { logger.warn('readinessDrop.redisCheckFailed', { err: String(e), studentId: plan.studentId }) }
             if (!studentAlready) {
-              const subjName = subjectNameById.get(subjectId) ?? 'the subject'
-              await sendPushSafe(plan.studentId, PUSH_NOTIFICATIONS.readiness_drop(subjName, delta))
+              const subjName = String(subjectNameById.get(subjectId) ?? 'the subject')
+              await sendPushSafe(String(plan.studentId), PUSH_NOTIFICATIONS.readiness_drop(subjName, delta))
               try { if (redis) await redis.set(studentKey, '1', 'EX', RATE_LIMIT_DAYS * 24 * 60 * 60) } catch (e) { logger.warn('readinessDrop.studentRateLimitSetFailed', { err: String(e), studentId: plan.studentId }) }
             }
           } catch (e) {
@@ -133,7 +133,7 @@ export async function processReadinessDropAlerts(now = new Date()): Promise<void
             if (already) continue
 
             const a = alertsByParent.get(p.parentId) ?? []
-            a.push({ studentId: plan.studentId, subjectId, subjectName: subjectNameById.get(subjectId), prev: prevScore, curr: currScore, delta, examDate: plan.examDate })
+            a.push({ studentId: plan.studentId, subjectId, subjectName: subjectNameById.get(subjectId) as string | undefined, prev: prevScore, curr: currScore, delta, examDate: plan.examDate })
             alertsByParent.set(p.parentId, a)
           }
         }

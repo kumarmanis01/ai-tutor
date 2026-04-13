@@ -15,7 +15,15 @@
  */
 
 import { prisma } from '@/lib/prisma'
-import type { ParentProfile } from '@prisma/client'
+// Local minimal ParentProfile shape used for runtime checks and type-narrowing.
+// Keep this in sync with the Prisma model `ParentProfile` in prisma/schema.prisma.
+type ParentProfileLocal = {
+  userId: string
+  digestOptOut?: boolean
+  digestDay?: string
+  digestTime?: string
+  digestTimezone?: string
+}
 import { logger } from '@/lib/logger'
 import { sendMailSafe } from '@/lib/mailer'
 import { sendParentMilestoneNotification } from '@/lib/notifications/delivery'
@@ -170,7 +178,7 @@ export async function processWeeklyDigest(): Promise<void> {
 
   for (const [parentId, parent] of parentMap.entries()) {
     try {
-      const profile = (profileMap.get(parentId as string) ?? null) as ParentProfile | null
+      const profile = (profileMap.get(parentId as string) ?? null) as ParentProfileLocal | null
 
       // Respect opt-out
       if (profile?.digestOptOut) {
