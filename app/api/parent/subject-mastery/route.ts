@@ -2,77 +2,18 @@ export const dynamic = 'force-dynamic';
 
 /**
  * FILE OBJECTIVE:
- * - Returns per-subject average mastery for a linked student.
- * - Groups StudentTopicMastery rows by the denormalized `subject` field
- *   and computes AVG(accuracy) + topic count per group.
+ * - Returns per-subject mastery for a linked student with:
+ *   - Chapter-by-chapter breakdown (F-PAR-011 AC-01)
+ *   - Top 3 strongest / bottom 3 weakest chapters with "AI working" flag (F-PAR-011 AC-01)
+ *   - Predicted board mark range (F-PAR-011 AC-05)
+ *   - Plain-language "What this means" tooltip (F-PAR-011 AC-03)
  *
- * ── TABLE CHOICE: StudentTopicMastery, NOT StudentTopicProgress ─────────────
- *
- * The task originally referenced StudentTopicProgress for this query.
- * After codebase analysis, StudentTopicMastery is the correct table because:
- *
- * 1. StudentTopicProgress has NO `subject` field.
- *    Grouping by subject from StudentTopicProgress requires a 3-level join:
- *      StudentTopicProgress → TopicDef → ChapterDef → SubjectDef
- *    This join is expensive, not indexed at the join boundaries relevant here,
- *    and unnecessary given the dual-write pattern already in place.
- *
- * 2. StudentTopicMastery stores `subject` (and `chapter`) as denormalized
- *    string columns, written atomically alongside StudentTopicProgress in
- *    lib/learning/updateTopicProgress.ts. Both tables are always in sync.
- *
- * 3. StudentTopicMastery has @@index([subject, chapter]) designed for
- *    exactly this kind of subject-level grouping query.
- *
- * 4. StudentTopicMastery.accuracy is the authoritative per-topic accuracy
- *    score and is directly comparable to StudentTopicProgress.mastery
- *    (they track the same learning signal from different angles: mastery is
- *    the weighted composite; accuracy is the raw question-answer rate).
- *    For a per-subject summary shown to parents, accuracy is the right signal.
- *
- * ── QUERY PLAN ───────────────────────────────────────────────────────────────
- *
- * SQL equivalent:
- *
- *   SELECT
- *     subject,
- *     AVG(accuracy)           AS avgAccuracy,
- *     COUNT(*)                AS topicCount
- *   FROM  "StudentTopicMastery"
- *   WHERE "studentId" = $1
- *   GROUP BY subject
- *   ORDER BY subject ASC;
- *
- * Execution path (Postgres):
- *
- *   Index Scan on "StudentTopicMastery_studentId_masteryLevel_idx"
- *     → equality probe: studentId = $1       (index hit -- leading column)
- *     → heap fetch for every matched row
- *     → GROUP BY subject + AVG(accuracy)     (in-memory hash aggregate)
- *     → ORDER BY subject ASC                 (sort on aggregate output)
- *
- * The studentId probe narrows the scan to this student's rows only.
- * GROUP BY subject then runs in memory over those rows -- bounded by how
- * many topics the student has attempted (typically tens to low hundreds).
- *
- * Recommended index for optimal performance (not yet in schema):
- *
- *   @@index([studentId, subject])
- *
- *   This would let Postgres:
- *     - Probe studentId on the index.
- *     - Scan (studentId, subject) pairs in order, eliminating the sort step.
- *     - Fetch heap pages only for matched rows.
- *   Add when the table grows beyond ~1 000 rows per student or EXPLAIN ANALYZE
- *   shows a significant sort/hash-aggregate cost.
- *
- * SECURITY:
- * - Caller must be authenticated.
- * - parentId-studentId link verified (O(1) unique-index lookup) before any
- *   student data is read.
+ * LINKED UNIT TEST:
+ * - tests/unit/api/parent-subject-mastery.spec.ts
  *
  * EDIT LOG:
  * - 2026-03-08 | claude | created for Parent Progress Dashboard
+ * - 2026-04-14 | claude | added chapter breakdown, predicted marks, tooltip (F-PAR-011 AC-01/03/05)
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -81,48 +22,63 @@ import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { logger } from '@/lib/logger';
 import { formatErrorForResponse } from '@/lib/errorResponse';
+import { predictMarkRange, LOCAL_STRINGS } from '@/lib/parent/dashboardHelpers';
 import type { AppSession } from '@/lib/types/auth';
 
 const CLASS_NAME = 'ParentSubjectMasteryAPI';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
+interface ChapterMastery {
+  chapter: string;
+  avgAccuracy: number; // 0-1
+  topicCount: number;
+  /** True when this chapter appears in the student's current UPCOMING learning plan */
+  aiWorking: boolean;
+}
+
 interface SubjectMastery {
-  subject: string;    // e.g. "Mathematics"
-  avgAccuracy: number; // 0-1, rounded to 4 d.p.
-  topicCount: number;  // how many distinct topics contribute to this average
+  subject: string;
+  avgAccuracy: number;       // 0-1, rounded to 4 d.p.
+  topicCount: number;
+  /** Predicted board mark range [min, max] out of 100 (F-PAR-011 AC-05) */
+  predictedMarkRange: [number, number];
+  /** Plain-language tooltip for parent (F-PAR-011 AC-03) */
+  masteryExplanation: string;
+  /** All chapters sorted by avgAccuracy desc (F-PAR-011 AC-01) */
+  chapters: ChapterMastery[];
+  /** Top 3 strongest chapters (F-PAR-011 AC-01) */
+  topStrengths: ChapterMastery[];
+  /** Bottom 3 weakest chapters, with aiWorking=true (F-PAR-011 AC-01) */
+  topWeaknesses: ChapterMastery[];
 }
 
 // ── Route handler ─────────────────────────────────────────────────────────────
 
 /**
- * GET /api/parent/subject-mastery?studentId=<id>
+ * GET /api/parent/subject-mastery?studentId=<id>&locale=en
  *
- * Response shape:
- * SubjectMastery[]  -- one entry per subject the student has attempted,
- *                     ordered alphabetically.
- *
- * Returns an empty array when the student has no mastery data yet.
+ * Response shape: SubjectMastery[]  -- one per subject attempted, alphabetical.
  */
 export async function GET(req: NextRequest) {
   const start = Date.now();
-  const METHOD_NAME = 'GET';
 
   try {
-    // ── 1. Auth ───────────────────────────────────────────────────────────────
+    // 1. Auth
     const session = (await getServerSession(authOptions)) as AppSession | null;
     if (!session?.user?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
     const parentId = session.user.id;
 
-    // ── 2. Input validation ───────────────────────────────────────────────────
+    // 2. Input validation
     const studentId = req.nextUrl.searchParams.get('studentId');
     if (!studentId) {
       return NextResponse.json({ error: 'studentId is required' }, { status: 400 });
     }
+    const locale = (req.nextUrl.searchParams.get('locale') ?? 'en') === 'hi' ? 'hi' : 'en';
 
-    // ── 3. Parent-student link guard ──────────────────────────────────────────
+    // 3. Parent-student link guard
     const link = await prisma.parentStudent.findUnique({
       where: { parentId_studentId: { parentId, studentId } },
       select: { status: true },
@@ -131,19 +87,15 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'Student not linked' }, { status: 403 });
     }
 
-    // ── 4. Per-subject aggregate ──────────────────────────────────────────────
-    //
-    // groupBy is Prisma's typed aggregate API -- generates a single SQL GROUP BY
-    // query. No raw SQL needed here because the grouping key (`subject`) is a
-    // plain string column, not a computed expression.
-    //
-    // Prisma generates:
-    //   SELECT subject, AVG(accuracy), COUNT(*)
-    //   FROM "StudentTopicMastery"
-    //   WHERE "studentId" = $1
-    //   GROUP BY subject
-    //   ORDER BY subject ASC
-    const rows = await prisma.studentTopicMastery.groupBy({
+    // 4. Fetch student info for grade (used in tooltip copy)
+    const student = await prisma.user.findUnique({
+      where: { id: studentId },
+      select: { grade: true },
+    });
+    const gradeLabel = student?.grade ? `Class ${student.grade}` : 'their class';
+
+    // 5. Per-subject aggregate (subject level)
+    const subjectRows = await prisma.studentTopicMastery.groupBy({
       by: ['subject'],
       where: { studentId },
       _avg: { accuracy: true },
@@ -151,35 +103,97 @@ export async function GET(req: NextRequest) {
       orderBy: { subject: 'asc' },
     });
 
-    // ── 5. Shape response ─────────────────────────────────────────────────────
-    const subjectMastery: SubjectMastery[] = rows.map((r) => ({
-      subject:     r.subject,
-      // _avg.accuracy is null when there are no rows -- guard with ?? 0
-      avgAccuracy: Math.round((r._avg.accuracy ?? 0) * 10_000) / 10_000,
-      topicCount:  r._count.topicId,
-    }));
+    if (subjectRows.length === 0) {
+      logger.info('Parent subject mastery: no data yet', { className: CLASS_NAME, parentId, studentId });
+      return NextResponse.json([]);
+    }
 
-    const response = NextResponse.json(subjectMastery);
+    // 6. Chapter-level aggregate for all subjects in one query
+    const chapterRows = await prisma.studentTopicMastery.groupBy({
+      by: ['subject', 'chapter'],
+      where: { studentId },
+      _avg: { accuracy: true },
+      _count: { topicId: true },
+    });
+
+    // 7. Find chapters currently in UPCOMING learning plan items
+    //    (used to set aiWorking=true on weak chapters)
+    const upcomingItems = await prisma.learningPlanItem.findMany({
+      where: { plan: { studentId }, status: 'UPCOMING' },
+      include: { concept: { select: { chapter: true } } },
+    });
+    const activeChapterNames = new Set<string>(
+      upcomingItems
+        .map((i) => (i.concept as any)?.chapter as string | undefined)
+        .filter((c): c is string => Boolean(c))
+    );
+
+    // 8. Group chapter rows by subject
+    const chaptersBySubject = new Map<string, ChapterMastery[]>();
+    for (const row of chapterRows) {
+      const cm: ChapterMastery = {
+        chapter: row.chapter ?? 'Unknown',
+        avgAccuracy: Math.round((row._avg.accuracy ?? 0) * 10_000) / 10_000,
+        topicCount: row._count.topicId,
+        aiWorking: activeChapterNames.has(row.chapter ?? ''),
+      };
+      const arr = chaptersBySubject.get(row.subject) ?? [];
+      arr.push(cm);
+      chaptersBySubject.set(row.subject, arr);
+    }
+
+    // 9. Build response
+    const strings = LOCAL_STRINGS[locale] ?? LOCAL_STRINGS['en'];
+
+    const result: SubjectMastery[] = subjectRows.map((r) => {
+      const avgAccuracy = Math.round((r._avg.accuracy ?? 0) * 10_000) / 10_000;
+      const masteryPct = Math.round(avgAccuracy * 100);
+      const predictedMarkRange = predictMarkRange(masteryPct);
+
+      const chapters = (chaptersBySubject.get(r.subject) ?? []).sort(
+        (a, b) => b.avgAccuracy - a.avgAccuracy
+      );
+
+      // Bottom 3 are weaknesses; flag all bottom chapters as aiWorking regardless
+      // of plan membership (the AI will be planning to address them).
+      const topStrengths = chapters.slice(0, 3);
+      const topWeaknesses = chapters
+        .slice()
+        .sort((a, b) => a.avgAccuracy - b.avgAccuracy)
+        .slice(0, 3)
+        .map((c) => ({ ...c, aiWorking: true }));
+
+      // Plain-language explanation: "72% mastery means your child has solidly learned 72%
+      // of the Class 10 Maths syllabus." (F-PAR-011 AC-03)
+      const masteryExplanation =
+        `${strings.whatThisMeansPrefix} ${masteryPct}% mastery means your child has solidly ` +
+        `learned ${masteryPct}% of the ${gradeLabel} ${r.subject} syllabus.`;
+
+      return {
+        subject: r.subject,
+        avgAccuracy,
+        topicCount: r._count.topicId,
+        predictedMarkRange,
+        masteryExplanation,
+        chapters,
+        topStrengths,
+        topWeaknesses,
+      };
+    });
+
+    const response = NextResponse.json(result);
 
     logger.info('Parent subject mastery fetched', {
       className: CLASS_NAME,
-      methodName: METHOD_NAME,
       parentId,
       studentId,
-      subjectCount: subjectMastery.length,
+      subjectCount: result.length,
     });
 
-    logger.logAPI(req, response, { className: CLASS_NAME, methodName: METHOD_NAME }, start);
+    logger.logAPI(req, response, { className: CLASS_NAME, methodName: 'GET' }, start);
     return response;
   } catch (error) {
-    logger.error('Failed to fetch parent subject mastery', {
-      className: CLASS_NAME,
-      methodName: METHOD_NAME,
-      error,
-    });
-    return NextResponse.json(
-      { error: formatErrorForResponse(error) },
-      { status: 500 },
-    );
+    logger.error('Failed to fetch parent subject mastery', { className: CLASS_NAME, error });
+    return NextResponse.json({ error: formatErrorForResponse(error) }, { status: 500 });
   }
 }

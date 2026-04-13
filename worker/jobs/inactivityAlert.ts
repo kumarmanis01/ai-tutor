@@ -3,9 +3,11 @@
  * - Scheduled job to notify parents when a linked child has been inactive
  *   for a configurable threshold (default 3 days). Respects parent mute windows
  *   and ensures only one alert per 3-day window per parent.
+ * - Threshold is now per-parent from ParentProfile.inactivityThresholdDays (F-PAR-021 AC-01).
  *
  * LINKED UNIT TEST:
  * - tests/unit/worker/inactivityAlert.spec.ts
+ * - tests/unit/worker/inactivityAlert-threshold.spec.ts
  *
  * COPILOT INSTRUCTIONS FOLLOWED:
  * - .github/copilot-instructions.md
@@ -13,6 +15,7 @@
  *
  * EDIT LOG:
  * - 2026-04-09T00:00:00Z | copilot | created
+ * - 2026-04-14T00:00:00Z | claude | per-parent inactivityThresholdDays (F-PAR-021 AC-01)
  */
 
 import { prisma } from '@/lib/prisma'
@@ -24,8 +27,11 @@ import { getLocalDateString, startOfLocalDayUtc } from '@/lib/engagement/timezon
 import { t } from '@/lib/i18n'
 import { canSendNotification } from '@/lib/notifications/policy'
 
-// Configurable threshold (days) that triggers inactivity alert
+// Global fallback threshold (days). Per-parent value from ParentProfile.inactivityThresholdDays
+// takes precedence when available (F-PAR-021 AC-01).
 const DEFAULT_INACTIVITY_DAYS = Number(process.env.PARENT_INACTIVITY_DAYS ?? '3')
+// Widest possible threshold so the prefilter query never misses a parent with a long threshold.
+const MAX_INACTIVITY_DAYS = 7
 
 export async function runInactivityAlerts(): Promise<number> {
   const redis = getRedis()
@@ -34,8 +40,9 @@ export async function runInactivityAlerts(): Promise<number> {
     return 0
   }
 
-  // Prefilter candidates using a UTC cutoff (slightly larger window to be safe)
-  const prefilterCutoff = new Date(Date.now() - (DEFAULT_INACTIVITY_DAYS + 1) * 24 * 60 * 60 * 1000)
+  // Prefilter uses the widest threshold (7 days) so no parent's window is missed.
+  // Per-parent threshold is applied below in the per-parent check.
+  const prefilterCutoff = new Date(Date.now() - (MAX_INACTIVITY_DAYS + 1) * 24 * 60 * 60 * 1000)
 
   // Find candidate students (we'll apply timezone-aware logic per-student)
   const inactiveStudents = await prisma.user.findMany({
@@ -64,13 +71,14 @@ export async function runInactivityAlerts(): Promise<number> {
       const thresholdLocalDateStr = getLocalDateString(thresholdStartUtc, studentTz)
 
       // If the student's last local date is >= thresholdLocalDateStr they are not inactive
+      // by the widest threshold. Per-parent threshold is checked inside the parent loop below.
       if (lastLocalDateStr && lastLocalDateStr >= thresholdLocalDateStr) {
-        // Not inactive by local-days semantics
+        // Not inactive even by the widest threshold (7 days) -- skip entirely
         continue
       }
       // otherwise fall through and check linked parents
 
-      // Find active linked parents
+      // Find active linked parents (include inactivityThresholdDays for per-parent threshold)
       const links = await prisma.parentStudent.findMany({
         where: { studentId: s.id, status: 'active' },
         include: {
@@ -81,7 +89,13 @@ export async function runInactivityAlerts(): Promise<number> {
                 phone: true,
                 name: true,
                 language: true,
-                parentProfile: { select: { digestOptOut: true, inactivityOptOut: true } },
+                parentProfile: {
+                  select: {
+                    digestOptOut: true,
+                    inactivityOptOut: true,
+                    inactivityThresholdDays: true,
+                  },
+                },
               },
             },
         },
@@ -110,6 +124,15 @@ export async function runInactivityAlerts(): Promise<number> {
         // Respect per-child inactivity opt-out
         if ((link as any).inactivityOptOut) {
           logger.info('inactivityAlert: child opted out of inactivity alerts', { parentId: parent.id, studentId: s.id })
+          continue
+        }
+
+        // F-PAR-021 AC-01: apply per-parent threshold (overrides env default)
+        const parentThresholdDays: number = parentProfile?.inactivityThresholdDays ?? DEFAULT_INACTIVITY_DAYS
+        const parentThresholdStart = new Date(startOfTodayUtc.getTime() - parentThresholdDays * 24 * 60 * 60 * 1000)
+        const parentThresholdDateStr = getLocalDateString(parentThresholdStart, studentTz)
+        if (lastLocalDateStr && lastLocalDateStr >= parentThresholdDateStr) {
+          // Student is not inactive by THIS parent's threshold -- skip
           continue
         }
 

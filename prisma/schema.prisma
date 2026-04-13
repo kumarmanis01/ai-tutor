@@ -33,8 +33,10 @@ model User {
   requiresParentVerification  Boolean                      @default(false)
   // Self-reported age (integer). Used for under-13 / under-18 parent verification gates.
   age                         Int?
+  // Date of birth for child profiles created by a parent (F-PAR-002 AC-01).
+  dateOfBirth                 DateTime?
   // Parent phone used for under-13 verification (not unique; families can share).
-  
+
   role                        UserRole                     @default(user)
   country                     String?
   language                    LanguageCode
@@ -446,6 +448,10 @@ model ParentChildControl {
   isPaused          Boolean  @default(false)
   pausedUntil       DateTime?
   pauseReason       String?
+  // Weekly study hours target set by parent for this child (F-PAR-002 AC-02).
+  weeklyHoursTarget Int?
+  // Preferred study schedule slot: "morning" | "afternoon" | "evening" (F-PAR-002 AC-02).
+  schedulePreference String?
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
 
@@ -2400,10 +2406,13 @@ model ParentProfile {
   /// Parent digest preferences
   digestOptOut   Boolean  @default(false)
   /// Parent-level opt-out for inactivity alerts (separate from weekly digest)
-  inactivityOptOut Boolean @default(false)
-  digestDay      String   @default("Sunday") // e.g., "Sunday", "Monday"
-  digestTime     String   @default("09:00") // 24h HH:mm in parent's timezone
-  digestTimezone String?  // IANA timezone (e.g., "Asia/Kolkata"); null => use `User.timezone` or UTC
+  inactivityOptOut           Boolean @default(false)
+  digestDay                  String  @default("Sunday") // e.g., "Sunday", "Monday"
+  digestTime                 String  @default("09:00") // 24h HH:mm in parent's timezone
+  digestTimezone             String? // IANA timezone (e.g., "Asia/Kolkata"); null => use `User.timezone` or UTC
+  // Per-parent configurable inactivity alert threshold (days). F-PAR-021 AC-01.
+  // Parent can choose 2, 3, 5, or 7 days. Default 3.
+  inactivityThresholdDays    Int     @default(3)
 }
 
 /// DPDP right-to-erasure: one row per user, created on deletion request.

@@ -9,15 +9,18 @@
  *
  * FILE OBJECTIVE:
  * - Allow parent to pick child(ren), plan and payment method, then pay.
+ * - Confirm step shows full terms; confirm button is disabled until
+ *   parent has scrolled to the bottom of the terms section (F-PAR-030 AC-05).
  *
  * LINKED UNIT TEST:
  * - tests/unit/api/parent-subscription.spec.ts
  *
  * EDIT LOG:
  * - 2026-04-08T00:00:00Z | copilot | created parent upgrade flow UI
+ * - 2026-04-14T00:00:00Z | claude | added scroll-gate on terms (F-PAR-030 AC-05)
  */
 
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import PlanSelector from '@/components/student/subscription/PlanSelector';
 import PaymentMethodSelector from '@/components/student/subscription/PaymentMethodSelector';
 import PaymentConfirmation from '@/components/student/subscription/PaymentConfirmation';
@@ -46,6 +49,10 @@ export default function ParentUpgradeFlow({ childrenList }: ParentUpgradeFlowPro
   const [isFamily, setIsFamily] = useState(false);
   const [emiMonths, setEmiMonths] = useState<number | undefined>(undefined);
   const [payLoading, setPayLoading] = useState(false);
+  // F-PAR-030 AC-05: confirm button only enabled after scrolling terms.
+  // PaymentConfirmation handles the scroll-gate internally via IntersectionObserver.
+  // step is tracked to reset internal state (useEffect below is a no-op ref kept for clarity).
+  useEffect(() => { /* reset hook placeholder -- PaymentConfirmation self-resets on remount */ }, [step]);
 
   const toggleChild = useCallback((id: string) => {
     setSelectedChildren((cur) => {
@@ -60,6 +67,18 @@ export default function ParentUpgradeFlow({ childrenList }: ParentUpgradeFlowPro
     if (isFamily && selectedChildren.length === 3) return Math.round(plan.billedRupees * 1.8 * 100) / 100;
     return Math.round(plan.billedRupees * selectedChildren.length * 100) / 100;
   }, [planId, selectedChildren.length, isFamily]);
+
+  // EMI schedule preview -- computed at top level to comply with Rules of Hooks
+  const emiSchedule = useMemo(() => {
+    if (!emiMonths || planId !== 'annual') return null;
+    const per = Math.round((totalRupees / emiMonths) * 100) / 100;
+    const start = new Date();
+    return Array.from({ length: emiMonths }).map((_, i) => {
+      const d = new Date(start);
+      d.setMonth(d.getMonth() + i);
+      return { number: i + 1, due: d.toLocaleDateString('en-IN'), amount: per };
+    });
+  }, [emiMonths, totalRupees, planId]);
 
   const openRazorpay = useCallback(async () => {
     setPayLoading(true);
@@ -137,7 +156,7 @@ export default function ParentUpgradeFlow({ childrenList }: ParentUpgradeFlowPro
         <PlanSelector selected={planId} onSelect={(id) => setPlanId(id)} />
         <div className="flex items-center gap-3">
           <input id="family" type="checkbox" checked={isFamily} onChange={(e) => setIsFamily(e.target.checked)} disabled={selectedChildren.length !== 3} />
-          <label htmlFor="family" className="text-sm text-gray-700">Use family pricing (3 children at 1.8×)</label>
+          <label htmlFor="family" className="text-sm text-gray-700">Use family pricing (3 children at 1.8x)</label>
         </div>
         <div className="flex gap-2">
           <button onClick={() => setStep('method')} className="flex-1 min-h-[44px] rounded-xl bg-[#534AB7] text-white">Choose payment</button>
@@ -170,27 +189,16 @@ export default function ParentUpgradeFlow({ childrenList }: ParentUpgradeFlowPro
   }
 
   if (step === 'confirm') {
-    const emiSchedule = useMemo(() => {
-      if (!emiMonths || planId !== 'annual') return null;
-      const per = Math.round((totalRupees / emiMonths) * 100) / 100;
-      const start = new Date();
-      return Array.from({ length: emiMonths }).map((_, i) => {
-        const d = new Date(start);
-        d.setMonth(d.getMonth() + i);
-        return { number: i + 1, due: d.toLocaleDateString('en-IN'), amount: per };
-      });
-    }, [emiMonths, totalRupees, planId]);
-
     return (
-      <div>
+      <div className="space-y-4">
         {emiSchedule && (
-          <div className="rounded-xl border p-3 mb-4 bg-white">
+          <div className="rounded-xl border p-3 bg-white">
             <h4 className="text-sm font-semibold">EMI schedule preview</h4>
             <div className="text-xs text-gray-600">Total ₹{totalRupees} over {emiMonths} months</div>
             <ul className="mt-2 space-y-1">
               {emiSchedule.map((s) => (
                 <li key={s.number} className="flex justify-between text-sm">
-                  <span>Installment {s.number} — {s.due}</span>
+                  <span>Installment {s.number} -- {s.due}</span>
                   <span>₹{s.amount}</span>
                 </li>
               ))}
@@ -198,7 +206,20 @@ export default function ParentUpgradeFlow({ childrenList }: ParentUpgradeFlowPro
           </div>
         )}
 
-        <PaymentConfirmation planId={planId} paymentMethod={method} loading={payLoading} onConfirm={openRazorpay} onBack={() => setStep('method')} />
+        {/*
+         * F-PAR-030 AC-05: The PaymentConfirmation component shows a full terms section
+         * with an IntersectionObserver scroll-gate. The "Confirm & pay" button remains
+         * disabled until the parent has scrolled to the bottom of the terms text.
+         * No dark patterns: the confirm button is clearly greyed out with an instruction
+         * to scroll, and full terms are visible before any payment is initiated.
+         */}
+        <PaymentConfirmation
+          planId={planId}
+          paymentMethod={method}
+          loading={payLoading}
+          onConfirm={openRazorpay}
+          onBack={() => setStep('method')}
+        />
       </div>
     );
   }

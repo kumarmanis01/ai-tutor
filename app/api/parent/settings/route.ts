@@ -1,16 +1,18 @@
 /**
  * FILE OBJECTIVE:
  * - API endpoints to get and update Parent digest preferences (opt-out, day, time, timezone).
+ * - Also exposes/accepts inactivityThresholdDays (F-PAR-021 AC-01): 2, 3, 5, or 7 days.
  *
  * LINKED UNIT TEST:
  * - tests/unit/api/parent-settings.test.ts
  *
  * COPILOT INSTRUCTIONS FOLLOWED:
  * - /docs/COPILOT_GUARDRAILS.md
- * - .github/copilot-instructions.md
+ * - .github/copilot-instructions.com
  *
  * EDIT LOG:
  * - 2026-04-09T00:00:00Z | copilot | created GET/POST handlers for parent digest settings
+ * - 2026-04-14T00:00:00Z | claude | added inactivityThresholdDays (F-PAR-021 AC-01)
  */
 
 import { NextResponse } from 'next/server'
@@ -43,6 +45,8 @@ export async function GET() {
       digestDay: profile?.digestDay ?? 'Sunday',
       digestTime: profile?.digestTime ?? '09:00',
       digestTimezone: profile?.digestTimezone ?? timezone,
+      // F-PAR-021 AC-01: configurable inactivity alert threshold (days). Valid: 2, 3, 5, 7.
+      inactivityThresholdDays: (profile as any)?.inactivityThresholdDays ?? 3,
       children: links.map((l) => ({
         id: l.student.id,
         name: l.student.name ?? 'Student',
@@ -71,12 +75,13 @@ export async function POST(req: Request) {
 
     const userId = (session.user as any).id
     const body = await req.json()
-    const { digestOptOut, inactivityOptOut, digestDay, digestTime, digestTimezone } = body as {
+    const { digestOptOut, inactivityOptOut, digestDay, digestTime, digestTimezone, inactivityThresholdDays } = body as {
       digestOptOut?: boolean
       inactivityOptOut?: boolean
       digestDay?: string
       digestTime?: string
       digestTimezone?: string | null
+      inactivityThresholdDays?: number
     }
 
     // Basic validation
@@ -92,6 +97,11 @@ export async function POST(req: Request) {
     if (digestTime !== undefined && typeof digestTime !== 'string') {
       return NextResponse.json({ error: 'invalid_digestTime' }, { status: 400 })
     }
+    // F-PAR-021 AC-01: only allow 2, 3, 5, or 7 days
+    const VALID_THRESHOLDS = [2, 3, 5, 7]
+    if (inactivityThresholdDays !== undefined && !VALID_THRESHOLDS.includes(inactivityThresholdDays)) {
+      return NextResponse.json({ error: 'invalid_inactivityThresholdDays: must be 2, 3, 5, or 7' }, { status: 400 })
+    }
 
     const createData = {
       userId,
@@ -100,6 +110,7 @@ export async function POST(req: Request) {
       digestDay: digestDay ?? 'Sunday',
       digestTime: digestTime ?? '09:00',
       digestTimezone: digestTimezone ?? null,
+      inactivityThresholdDays: inactivityThresholdDays ?? 3,
     }
 
     const updateData: any = {}
@@ -108,6 +119,7 @@ export async function POST(req: Request) {
     if (digestDay !== undefined) updateData.digestDay = digestDay
     if (digestTime !== undefined) updateData.digestTime = digestTime
     if (digestTimezone !== undefined) updateData.digestTimezone = digestTimezone
+    if (inactivityThresholdDays !== undefined) updateData.inactivityThresholdDays = inactivityThresholdDays
 
     const saved = await prisma.parentProfile.upsert({
       where: { userId },
