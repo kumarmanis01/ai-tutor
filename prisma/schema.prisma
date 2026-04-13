@@ -93,6 +93,7 @@ model User {
   studentTopicProgress        StudentTopicProgress[]
   structuredSessions          StructuredSession[]
   homeworkAssignments         HomeworkAssignment[]
+  sessionArtifacts            SessionArtifact[]
   homeRecommendationDecisions HomeRecommendationDecision[]
   subscriptions               Subscription[]
   testResults                 TestResult[]
@@ -1066,10 +1067,28 @@ model StructuredSession {
   topic       TopicDef             @relation(fields: [topicId], references: [id])
   homework    HomeworkAssignment[]
   events      SessionEvent[]
+  artifacts   SessionArtifact[]
 
   @@index([studentId, state])
   @@index([studentId, completedAt])
   @@index([topicId])
+}
+
+model SessionArtifact {
+  id         String   @id @default(cuid())
+  studentId  String
+  sessionId  String?
+  type       String
+  url        String
+  meta       Json?
+  uploadedBy String?
+  createdAt  DateTime @default(now())
+
+  student    User?            @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  session    StructuredSession? @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([studentId])
+  @@index([sessionId])
 }
 
 model HomeworkAssignment {

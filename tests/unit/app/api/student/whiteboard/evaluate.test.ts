@@ -101,4 +101,33 @@ describe('POST /api/student/whiteboard/evaluate', () => {
       expect(body.artifactUrl.length).toBeGreaterThan(0)
     }
   })
+
+  it('persists artifact record in DB when upload succeeds', async () => {
+    jest.resetModules()
+    jest.doMock('@/lib/session', () => ({ getServerSessionForHandlers: async () => ({ user: { id: 's4' } }) }))
+    jest.doMock('@/lib/callLLM', () => ({ callTutorLLM: async () => ({ content: 'Nice job' }) }))
+    const createMock = jest.fn().mockResolvedValue({ id: 'artifact-db-1' })
+    jest.doMock('@/lib/prisma', () => ({ prisma: { sessionArtifact: { create: createMock } } }))
+    // Mock S3 client to avoid network calls
+    jest.doMock('@aws-sdk/client-s3', () => ({ S3Client: class { send = async () => ({}) }, PutObjectCommand: class {} }))
+
+    const { POST } = await import('@/app/api/student/whiteboard/evaluate/route')
+
+    const tinyPng = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR4nGNgYAAAAAMAASsJTYQAAAAASUVORK5CYII='
+
+    const req = new Request('http://localhost', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sessionId: 'sess4', conceptName: 'Angles', canvasDataUrl: tinyPng }),
+    })
+
+    const res: any = await POST(req as any)
+    const body = await res.json()
+    expect(res.status).toBe(200)
+    expect(typeof body.feedback).toBe('string')
+    // Ensure we attempted to persist the artifact
+    expect(createMock).toHaveBeenCalled()
+    // If DB create returned an id, API should include artifactId
+    expect(body.artifactId).toBe('artifact-db-1')
+  })
 })

@@ -2,6 +2,8 @@ import { getServerSessionForHandlers } from '@/lib/session'
 import { requireAdmin } from '@/auth/adminGuard'
 import { prisma as getPrismaClient } from '@/lib/prisma'
 import { MisconceptionCreateSchema } from '@/lib/validators/misconception'
+import { logger } from '@/lib/logger'
+import { logger } from '@/lib/logger'
 
 type CreateResult = { rows: any[]; total: number }
 
@@ -63,8 +65,9 @@ export async function POST(req: Request) {
   })
 
   try {
-    await db.auditLog.create({ data: { adminId: session?.user?.id ?? null, targetEntity: 'Misconception', targetId: created.id, action: 'MISCONCEPTION_CREATE', previousValue: null, newValue: created as any } })
-  } catch (e) { console.error('audit failed', e) }
+      await db.auditLog.create({ data: { adminId: session?.user?.id ?? null, targetEntity: 'Misconception', targetId: created.id, action: 'MISCONCEPTION_CREATE', previousValue: null, newValue: created as any } })
+    } catch (e) { logger.warn('audit failed', { error: String(e) }) }
+  } catch (e) { logger.warn('audit failed', { error: e }) }
 
   return new Response(JSON.stringify(created), { status: 201 })
 }

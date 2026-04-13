@@ -104,7 +104,7 @@ export async function POST(req: Request) {
       if (client) {
         try { const rzOrder = await client.orders.fetch(orderId); notes = rzOrder?.notes || {}; } catch (err) { logger.warn('Could not fetch rz order in webhook', { orderId, err }); }
         if (process.env.NODE_ENV === 'test') {
-          try { console.log('[debug] webhook notes', notes); } catch {}
+          logger.debug('webhook.notes (test)', { notes });
         }
       }
 

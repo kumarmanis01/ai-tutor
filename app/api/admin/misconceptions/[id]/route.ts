@@ -1,7 +1,9 @@
 import { getServerSessionForHandlers } from '@/lib/session'
 import { requireAdmin } from '@/auth/adminGuard'
 import { prisma as dbClient } from '@/lib/prisma'
+import { logger } from '@/lib/logger'
 import { MisconceptionPatchSchema } from '@/lib/validators/misconception'
+import { logger } from '@/lib/logger'
 
 export async function PATCH(req: Request, { params }: { params: { id: string } }) {
   const session = await getServerSessionForHandlers()
@@ -15,7 +17,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
   }
   const body = parsed.data
 
-  // If subjectId or conceptId provided, ensure they exist
+    logger.warn('audit log failed', { error: String(e) })
   if (body.subjectId) {
     const s = await dbClient.subjectDef.findUnique({ where: { id: body.subjectId } })
     if (!s) return new Response(JSON.stringify({ error: 'invalid_subject' }), { status: 400 })
@@ -53,8 +55,8 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
       },
     })
   } catch (e) {
-    // fail-safe: don't block main update on audit write
-    console.error('audit log failed', e)
+    // fail-safe: don't block main update on audit write but record warning
+    logger.warn('audit log failed', { error: e });
   }
 
   return new Response(JSON.stringify(updated), { status: 200 })

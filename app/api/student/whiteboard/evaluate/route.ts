@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getServerSessionForHandlers } from '@/lib/session';
 import { callTutorLLM } from '@/lib/callLLM';
 import { logger } from '@/lib/logger';
+import { prisma } from '@/lib/prisma';
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 
 export const dynamic = 'force-dynamic';
@@ -89,6 +90,7 @@ export async function POST(req: Request) {
     const llmPromise = callTutorLLM(prompt, { callType: 'tutor:eval', studentId: user.id, sessionId }, EVAL_TIMEOUT_MS)
 
     let artifactUrl: string | null = null
+    let artifactRecordId: string | null = null
     if (canvasDataUrl) {
       // fire-and-forget but await to include artifact URL when available
       try {
@@ -101,11 +103,32 @@ export async function POST(req: Request) {
       }
     }
 
+    // Persist artifact metadata to the DB (best-effort). Failure should not
+    // block the main evaluation flow.
+    if (artifactUrl) {
+      try {
+        const rec = await (prisma as any).sessionArtifact.create({
+          data: {
+            studentId: user.id,
+            sessionId: sessionId ?? null,
+            type: 'whiteboard',
+            url: artifactUrl,
+            meta: { source: 'whiteboard.evaluate' },
+            uploadedBy: user.id,
+          },
+        })
+        if (rec && rec.id) artifactRecordId = String(rec.id)
+      } catch (e) {
+        try { logger.warn('whiteboard.artifact.persist_error', { studentId: user.id, sessionId, error: String(e) }) } catch {}
+      }
+    }
+
     const result = await llmPromise
     const feedback = (result?.content ?? '').trim() || FALLBACK_FEEDBACK;
     logger.info('whiteboard.evaluated', { studentId: user.id, sessionId });
     const payload: any = { feedback }
     if (artifactUrl) payload.artifactUrl = artifactUrl
+    if (artifactRecordId) payload.artifactId = artifactRecordId
     const res = NextResponse.json(payload);
     logger.logAPI(req, res, { className: 'WhiteboardEvaluateAPI', methodName: 'POST' }, start);
     return res;
