@@ -58,8 +58,15 @@ describe('inactivityAlert per-parent threshold (F-PAR-021 AC-01)', () => {
   beforeEach(() => {
     resetPrismaMock();
     jest.clearAllMocks();
+    // Make date calculations deterministic: freeze system time to 2026-04-14
+    jest.useFakeTimers('modern');
+    jest.setSystemTime(new Date('2026-04-14T12:00:00Z'));
     // Default: getLocalDateString returns deterministic values
     (getLocalDateString as jest.Mock).mockImplementation((d: Date) => d.toISOString().slice(0, 10));
+  });
+
+  afterEach(() => {
+    jest.useRealTimers();
   });
 
   it('should send alert when student inactive beyond parent threshold of 5 days', async () => {
