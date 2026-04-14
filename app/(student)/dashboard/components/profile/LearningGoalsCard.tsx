@@ -61,15 +61,20 @@ export function LearningGoalsCard({ onGoalsUpdated }: LearningGoalsCardProps) {
   const handleSave = useCallback(async () => {
     setIsSaving(true);
     try {
-      // API call to save goals would go here
-      await fetch('/api/user/goals', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          dailyGoalMinutes: dailyGoal,
-          weeklyGoalDays: weeklyGoal,
+      // Save goals + trigger plan regeneration (F-STU-003 AC-07) in parallel.
+      await Promise.all([
+        fetch('/api/user/goals', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ dailyGoalMinutes: dailyGoal, weeklyGoalDays: weeklyGoal }),
         }),
-      });
+        fetch('/api/student/learning-plan', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          // studyDaysPerWeek change triggers full plan regeneration per F-STU-003 AC-07
+          body: JSON.stringify({ studyDaysPerWeek: weeklyGoal }),
+        }),
+      ]);
       onGoalsUpdated?.(dailyGoal, weeklyGoal);
       setIsEditing(false);
     } catch {
