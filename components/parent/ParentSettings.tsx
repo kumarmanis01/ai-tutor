@@ -8,6 +8,8 @@ type Profile = {
   digestDay: string
   digestTime: string
   digestTimezone: string | null
+  /** NFR language: UI language preference */
+  language?: 'en' | 'hi'
 }
 
 const DAYS = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday']
@@ -30,7 +32,7 @@ export default function ParentSettings() {
         setProfile(data)
         setChildren(data.children ?? [])
       })
-      .catch(() => setProfile({ digestOptOut: false, inactivityOptOut: false, digestDay: 'Sunday', digestTime: '09:00', digestTimezone: null }))
+      .catch(() => setProfile({ digestOptOut: false, inactivityOptOut: false, digestDay: 'Sunday', digestTime: '09:00', digestTimezone: null, language: 'en' }))
       .finally(() => setLoading(false))
   }, [])
 
@@ -253,8 +255,30 @@ export default function ParentSettings() {
         <p className="text-xs text-gray-500 mt-1">If blank, your account timezone will be used.</p>
       </div>
 
+      <div>
+        <label className="text-sm block mb-1">App language / भाषा</label>
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={() => setProfile({ ...profile, language: 'en' })}
+            className={`min-h-[44px] min-w-[44px] flex-1 rounded border px-3 py-2 text-sm font-medium transition-colors ${profile.language !== 'hi' ? 'bg-[#534AB7] text-white border-[#534AB7]' : 'bg-white text-gray-700 border-gray-300 dark:bg-gray-800 dark:text-gray-200'}`}
+            aria-pressed={profile.language !== 'hi'}
+          >
+            English
+          </button>
+          <button
+            type="button"
+            onClick={() => setProfile({ ...profile, language: 'hi' })}
+            className={`min-h-[44px] min-w-[44px] flex-1 rounded border px-3 py-2 text-sm font-medium transition-colors ${profile.language === 'hi' ? 'bg-[#534AB7] text-white border-[#534AB7]' : 'bg-white text-gray-700 border-gray-300 dark:bg-gray-800 dark:text-gray-200'}`}
+            aria-pressed={profile.language === 'hi'}
+          >
+            हिंदी
+          </button>
+        </div>
+      </div>
+
       <div className="flex items-center gap-2">
-        <button onClick={save} disabled={saving} className="rounded bg-[#534AB7] px-4 py-2 text-white">
+        <button onClick={save} disabled={saving} className="rounded bg-[#534AB7] px-4 py-2 text-white min-h-[44px] min-w-[44px]">
           {saving ? 'Saving...' : 'Save'}
         </button>
         {message && <span className="text-sm text-gray-600">{message}</span>}

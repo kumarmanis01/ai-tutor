@@ -566,10 +566,10 @@ export const AITutorChatPanel: React.FC<AITutorChatPanelProps> = ({
       // If this turn was a hint offer, show a short banner indicating which tier
       if (payload.tag === 'HINT_OFFER') {
         let text = '';
-        if (deliveredTier === 1) text = 'Hint 1 — Directional nudge (points you to the right idea).';
-        else if (deliveredTier === 2) text = 'Hint 2 — Structural hint (shows the method, not the solution).';
-        else if (deliveredTier === 3) text = 'Hint 3 — Worked scaffold (first step shown).';
-        else text = 'All hints exhausted — full solution + isomorphic problem provided.';
+        if (deliveredTier === 1) text = 'Hint 1 -- Directional nudge (points you to the right idea).';
+        else if (deliveredTier === 2) text = 'Hint 2 -- Structural hint (shows the method, not the solution).';
+        else if (deliveredTier === 3) text = 'Hint 3 -- Worked scaffold (first step shown).';
+        else text = 'All hints exhausted -- full solution + isomorphic problem provided.';
 
         setHintBanner({ tier: deliveredTier, text });
         if (hintBannerTimerRef.current) clearTimeout(hintBannerTimerRef.current);

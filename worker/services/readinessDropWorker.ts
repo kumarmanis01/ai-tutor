@@ -110,7 +110,7 @@ export async function processReadinessDropAlerts(now = new Date()): Promise<void
 
         const delta = prevScore - currScore
         if (delta >= READINESS_DROP_THRESHOLD) {
-          // Send student notification (push) — rate-limited per student+subject
+          // Send student notification (push) -- rate-limited per student+subject
           try {
             const studentKey = `student:alert:readiness:last_sent:${plan.studentId}:${subjectId}`
             let studentAlready = false

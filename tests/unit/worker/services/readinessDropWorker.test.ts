@@ -17,11 +17,17 @@ let processReadinessDropAlerts: any
 const mockParentFind = jest.fn()
 const mockPlansFind = jest.fn()
 const mockSubjectDefsFind = jest.fn()
+const mockAIContentLogCreate = jest.fn()
+const mockAnalyticsCreate = jest.fn()
+const mockAITutorTurnLogCreate = jest.fn()
 jest.mock('@/lib/prisma', () => ({
   prisma: {
     parentStudent: { findMany: (...a: any[]) => mockParentFind(...a) },
     learningPlan: { findMany: (...a: any[]) => mockPlansFind(...a) },
     subjectDef: { findMany: (...a: any[]) => mockSubjectDefsFind(...a) },
+    aIContentLog: { create: (...a: any[]) => mockAIContentLogCreate(...a) },
+    analyticsEvent: { create: (...a: any[]) => mockAnalyticsCreate(...a) },
+    aITutorTurnLog: { create: (...a: any[]) => mockAITutorTurnLogCreate(...a) },
   },
 }))
 
@@ -52,6 +58,9 @@ beforeEach(() => {
   mockParentFind.mockReset()
   mockPlansFind.mockReset()
   mockSubjectDefsFind.mockReset()
+  mockAIContentLogCreate.mockReset()
+  mockAnalyticsCreate.mockReset()
+  mockAITutorTurnLogCreate.mockReset()
   mockRedisGet.mockReset()
   mockRedisSet.mockReset()
   mockCompute.mockReset()

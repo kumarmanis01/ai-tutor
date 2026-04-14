@@ -3,9 +3,11 @@
  * - Scheduled job to notify parents when a linked child has been inactive
  *   for a configurable threshold (default 3 days). Respects parent mute windows
  *   and ensures only one alert per 3-day window per parent.
+ * - Threshold is now per-parent from ParentProfile.inactivityThresholdDays (F-PAR-021 AC-01).
  *
  * LINKED UNIT TEST:
  * - tests/unit/worker/inactivityAlert.spec.ts
+ * - tests/unit/worker/inactivityAlert-threshold.spec.ts
  *
  * COPILOT INSTRUCTIONS FOLLOWED:
  * - .github/copilot-instructions.md
@@ -13,6 +15,8 @@
  *
  * EDIT LOG:
  * - 2026-04-09T00:00:00Z | copilot | created
+ * - 2026-04-14T00:00:00Z | claude | per-parent inactivityThresholdDays (F-PAR-021 AC-01)
+ * - 2026-04-14T12:00:00Z | staff-engineer | fix: prefilter cutoff to include min threshold; use per-parent days in email
  */
 
 import { prisma } from '@/lib/prisma'
@@ -25,8 +29,13 @@ import { getLocalDateString, startOfLocalDayUtc } from '@/lib/engagement/timezon
 import { t } from '@/lib/i18n'
 import { canSendNotification } from '@/lib/notifications/policy'
 
-// Configurable threshold (days) that triggers inactivity alert
+// Global fallback threshold (days). Per-parent value from ParentProfile.inactivityThresholdDays
+// takes precedence when available (F-PAR-021 AC-01).
 const DEFAULT_INACTIVITY_DAYS = Number(process.env.PARENT_INACTIVITY_DAYS ?? '3')
+// Widest possible threshold so the prefilter query never misses a parent with a long threshold.
+const MAX_INACTIVITY_DAYS = 7
+// Minimum supported threshold (settings allow 2,3,5,7)
+const MIN_INACTIVITY_DAYS = 2
 
 export async function runInactivityAlerts(): Promise<number> {
   const redis = getRedis()
@@ -35,8 +44,10 @@ export async function runInactivityAlerts(): Promise<number> {
     return 0
   }
 
-  // Prefilter candidates using a UTC cutoff (slightly larger window to be safe)
-  const prefilterCutoff = new Date(Date.now() - (DEFAULT_INACTIVITY_DAYS + 1) * 24 * 60 * 60 * 1000)
+  // Prefilter uses the minimum supported threshold so we include anyone who could
+  // be considered inactive by any parent setting (avoid missing short thresholds).
+  // Per-parent threshold is applied below in the per-parent check.
+  const prefilterCutoff = new Date(Date.now() - (MIN_INACTIVITY_DAYS + 1) * 24 * 60 * 60 * 1000)
 
   // Find candidate students (we'll apply timezone-aware logic per-student)
   const inactiveStudents = await prisma.user.findMany({
@@ -61,17 +72,17 @@ export async function runInactivityAlerts(): Promise<number> {
       // start of local today UTC
       const todayLocalStr = getLocalDateString(new Date(), studentTz)
       const startOfTodayUtc = startOfLocalDayUtc(todayLocalStr, studentTz)
-      const thresholdStartUtc = new Date(startOfTodayUtc.getTime() - DEFAULT_INACTIVITY_DAYS * 24 * 60 * 60 * 1000)
-      const thresholdLocalDateStr = getLocalDateString(thresholdStartUtc, studentTz)
+      const minThresholdStartUtc = new Date(startOfTodayUtc.getTime() - MIN_INACTIVITY_DAYS * 24 * 60 * 60 * 1000)
+      const minThresholdLocalDateStr = getLocalDateString(minThresholdStartUtc, studentTz)
 
-      // If the student's last local date is >= thresholdLocalDateStr they are not inactive
-      if (lastLocalDateStr && lastLocalDateStr >= thresholdLocalDateStr) {
-        // Not inactive by local-days semantics
+      // If the student's last local date is >= minThresholdLocalDateStr they are not
+      // inactive even for the shortest configured parent threshold -- skip entirely.
+      if (lastLocalDateStr && lastLocalDateStr >= minThresholdLocalDateStr) {
         continue
       }
       // otherwise fall through and check linked parents
 
-      // Find active linked parents
+      // Find active linked parents (include inactivityThresholdDays for per-parent threshold)
       const links = await prisma.parentStudent.findMany({
         where: { studentId: s.id, status: 'active' },
         include: {
@@ -82,7 +93,13 @@ export async function runInactivityAlerts(): Promise<number> {
                 phone: true,
                 name: true,
                 language: true,
-                parentProfile: { select: { digestOptOut: true, inactivityOptOut: true } },
+                parentProfile: {
+                  select: {
+                    digestOptOut: true,
+                    inactivityOptOut: true,
+                    inactivityThresholdDays: true,
+                  },
+                },
               },
             },
         },
@@ -111,6 +128,15 @@ export async function runInactivityAlerts(): Promise<number> {
         // Respect per-child inactivity opt-out
         if ((link as any).inactivityOptOut) {
           logger.info('inactivityAlert: child opted out of inactivity alerts', { parentId: parent.id, studentId: s.id })
+          continue
+        }
+
+        // F-PAR-021 AC-01: apply per-parent threshold (overrides env default)
+        const parentThresholdDays: number = parentProfile?.inactivityThresholdDays ?? DEFAULT_INACTIVITY_DAYS
+        const parentThresholdStart = new Date(startOfTodayUtc.getTime() - parentThresholdDays * 24 * 60 * 60 * 1000)
+        const parentThresholdDateStr = getLocalDateString(parentThresholdStart, studentTz)
+        if (lastLocalDateStr && lastLocalDateStr >= parentThresholdDateStr) {
+          // Student is not inactive by THIS parent's threshold -- skip
           continue
         }
 
@@ -151,20 +177,26 @@ export async function runInactivityAlerts(): Promise<number> {
 
           const locale = parent.language ?? undefined
           const subject = t('inactivity.subject', { studentName: s.name }, locale)
-          // Build a mute link token so parent can mute alerts for a period from the email
-          const muteDays = 7
-          let muteLink = ''
+
+          // F-PAR-021 AC-05: generate mute links for 3 configurable durations so the parent
+          // can choose how long to suppress alerts (school exams, travel, family events).
+          const MUTE_OPTIONS = [7, 14, 30] // days
+          const muteLinks: { days: number; url: string }[] = []
           try {
-            const token = generateMuteToken({ parentStudentId: link.id, studentId: s.id, muteDays })
-            const baseUrl = process.env.NEXTAUTH_URL ?? 'https://spinzyacademy.com'
-            muteLink = `${baseUrl}/api/parent/alerts/mute?t=${encodeURIComponent(token)}`
+            const muteBaseUrl = process.env.NEXTAUTH_URL ?? 'https://spinzyacademy.com'
+            for (const days of MUTE_OPTIONS) {
+              const token = generateMuteToken({ parentStudentId: link.id, studentId: s.id, muteDays: days })
+              muteLinks.push({ days, url: `${muteBaseUrl}/api/parent/alerts/mute?t=${encodeURIComponent(token)}` })
+            }
           } catch (e) {
-            logger.warn('inactivityAlert: failed to generate mute token', { parentId: parent.id, studentId: s.id, err: String(e) })
+            logger.warn('inactivityAlert: failed to generate mute tokens', { parentId: parent.id, studentId: s.id, err: String(e) })
           }
 
-          const muteHtml = muteLink ? ` <br/><small><a href="${muteLink}">Mute inactivity alerts for ${muteDays} days</a></small>` : ''
+          const muteHtml = muteLinks.length > 0
+            ? ` <br/><small>Mute alerts for: ${muteLinks.map((m) => `<a href="${m.url}">${m.days} days</a>`).join(' | ')}</small>`
+            : ''
 
-          const bodyHtml = t('inactivity.body_html', { parentName: parent.name ?? 'Parent', studentName: s.name, days: String(DEFAULT_INACTIVITY_DAYS), deepLink }, locale) + muteHtml
+          const bodyHtml = t('inactivity.body_html', { parentName: parent.name ?? 'Parent', studentName: s.name, days: String(parentThresholdDays), deepLink }, locale) + muteHtml
 
           await sendParentMilestoneNotification(parent.id, { email: parent.email ?? undefined, phone: parent.phone ?? undefined, subject, html: bodyHtml, meta: { studentId: s.id, type: 'inactivity', channel: parent.email ? 'email' : parent.phone ? 'sms' : 'unknown', locale } })
 

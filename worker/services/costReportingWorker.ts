@@ -93,16 +93,22 @@ async function getTrendingEscalations(since: Date): Promise<TrendingDoubt[]> {
       HAVING COUNT(DISTINCT "studentId") > 5
       ORDER BY "studentCount" DESC
     `
-    if (!rows.length) return []
+    if (!rows || !rows.length) return []
 
-    const conceptIds = rows.map((r) => r.conceptId)
+    // defensive: ignore any rows that have a null/empty conceptId (mocked query results
+    // or transitional data could surface such rows). Only treat non-null conceptIds
+    // as valid trending doubts.
+    const nonNullRows = rows.filter((r) => r.conceptId != null)
+    if (!nonNullRows.length) return []
+
+    const conceptIds = nonNullRows.map((r) => r.conceptId)
     const concepts = await prisma.concept.findMany({
       where: { id: { in: conceptIds } },
       select: { id: true, name: true },
     })
     const nameMap = new Map(concepts.map((c) => [c.id, c.name]))
 
-    return rows.map((r) => ({
+    return nonNullRows.map((r) => ({
       conceptId: r.conceptId,
       conceptName: nameMap.get(r.conceptId) ?? r.conceptId,
       studentCount: Number(r.studentCount),
