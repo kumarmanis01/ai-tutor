@@ -16,6 +16,20 @@
  *   npx tsx scripts/scrape-ncert.ts --grade 10 --subject mathematics --url <pdf-url>
  *
  * Env required: DATABASE_URL, OPENAI_API_KEY
+ *
+ * FILE OBJECTIVE:
+ * - Ingest NCERT PDFs as CurriculumChunk rows tagged with canonical Concept UUIDs
+ *   for per-turn RAG retrieval in Vidya tutor sessions.
+ *
+ * LINKED UNIT TEST:
+ * - tests/unit/scripts/scrape-ncert.test.ts
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - .github/copilot-instructions.md
+ * - /docs/COPILOT_GUARDRAILS.md
+ *
+ * EDIT LOG:
+ * - 2026-04-14T00:00:00Z | copilot | fix conceptIds to store Concept UUIDs not positional tags
  */
 
 import { createHash } from 'crypto'
@@ -334,7 +348,11 @@ interface ChunkRecord {
   board: string
   subject: string
   grade: string
-  /** Tags stored in conceptIds: chapter:N, chunkIndex:I, source:ncert, lang:X */
+  /**
+   * Canonical Concept UUIDs from the taxonomy DB (Concept.id).
+   * Used by the RAG query: WHERE "conceptIds" && $2::text[]
+   * Empty when concepts are not yet seeded for this chapter.
+   */
   conceptIds: string[]
 }
 
@@ -427,6 +445,68 @@ async function embedChunks(prisma: PrismaClient, toEmbed: EmbedItem[]): Promise<
   }
 
   return { embedded, errors, errorDetails }
+}
+
+// ── Concept UUID lookup (for RAG: CurriculumChunk.conceptIds) ────────────────
+
+/**
+ * Returns the canonical Concept UUIDs for a given chapter.
+ * Resolution path: board slug → ClassLevel.grade → SubjectDef.slug → ChapterDef.order → TopicDef[] → Concept[]
+ * Returns empty array when concepts are not yet seeded (e.g. during initial bootstrap).
+ * Never throws -- callers fall back to empty conceptIds on any DB error.
+ */
+async function resolveConceptIdsForChapter(
+  prismaClient: PrismaClient,
+  board: string,
+  subject: string,
+  grade: number,
+  chapterOrder: number,
+): Promise<string[]> {
+  try {
+    // 1. Find board by slug (args.board arrives as uppercase e.g. 'CBSE')
+    const boardRow = await prismaClient.board.findFirst({
+      where: { slug: board.toLowerCase() },
+      select: { id: true },
+    })
+    if (!boardRow) return []
+
+    // 2. ClassLevel matching board + grade
+    const classLevel = await prismaClient.classLevel.findFirst({
+      where: { boardId: boardRow.id, grade },
+      select: { id: true },
+    })
+    if (!classLevel) return []
+
+    // 3. SubjectDef matching classLevel + subject slug
+    const subjectDef = await prismaClient.subjectDef.findFirst({
+      where: { classId: classLevel.id, slug: subject },
+      select: { id: true },
+    })
+    if (!subjectDef) return []
+
+    // 4. ChapterDef matching subjectDef + chapter order (1-based)
+    const chapterDef = await prismaClient.chapterDef.findFirst({
+      where: { subjectId: subjectDef.id, order: chapterOrder },
+      select: { id: true },
+    })
+    if (!chapterDef) return []
+
+    // 5. All Concept IDs that belong to any TopicDef in this chapter
+    const concepts = await prismaClient.concept.findMany({
+      where: {
+        topic: { chapterId: chapterDef.id },
+        isSuspended: false,
+      },
+      select: { id: true },
+    })
+    return concepts.map((c) => c.id)
+  } catch (err) {
+    console.warn(
+      `[scrape-ncert] resolveConceptIdsForChapter failed (board=${board} subject=${subject} grade=${grade} ch=${chapterOrder}) -- conceptIds will be empty:`,
+      err,
+    )
+    return []
+  }
 }
 
 // ── SubjectDef lookup (for IngestRunLog.subjectId) ────────────────────────────
@@ -553,20 +633,31 @@ async function runForGrade(
     const rawChunks = chunkText(text)
     console.log(`  Chapter ${chapter}: ${rawChunks.length} chunks`)
 
+    // Resolve Concept UUIDs for this chapter so RAG queries can retrieve these chunks.
+    // Returns [] if concepts are not yet seeded -- chunks will be untagged until backfilled.
+    const chapterConceptIds = await resolveConceptIdsForChapter(
+      prisma,
+      args.board,
+      args.subject,
+      grade,
+      chapter,
+    )
+    if (chapterConceptIds.length === 0) {
+      console.warn(
+        `  Chapter ${chapter}: no Concept UUIDs found in taxonomy -- chunks will be untagged (RAG won't retrieve them until concepts are seeded).`,
+      )
+    } else {
+      console.log(`  Chapter ${chapter}: tagged with ${chapterConceptIds.length} concept UUID(s).`)
+    }
+
     for (let i = 0; i < rawChunks.length; i++) {
-      // Step 3 tag: encode chapter + chunkIndex in conceptIds (schema has no metadata field)
       allRecords.push({
         content:     rawChunks[i],
         contentHash: sha256(rawChunks[i]),
         board:       args.board,
         subject:     args.subject,
         grade:       String(grade),
-        conceptIds:  [
-          `chapter:${chapter}`,
-          `chunkIndex:${i}`,
-          `source:ncert`,
-          `lang:${args.lang}`,
-        ],
+        conceptIds:  chapterConceptIds,
       })
     }
 

@@ -1,6 +1,25 @@
+/**
+ * FILE OBJECTIVE:
+ * - Provides embedding utilities (single + batch) using text-embedding-3-small.
+ *   Records accurate cost_usd per call to AnalyticsEvent for cost monitoring (F-ADM-012).
+ *
+ * LINKED UNIT TEST:
+ * - tests/unit/lib/ai/embeddings.test.ts
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - .github/copilot-instructions.md
+ * - /docs/COPILOT_GUARDRAILS.md
+ *
+ * EDIT LOG:
+ * - 2026-04-14T00:00:00Z | copilot | fix cost_usd from hardcoded 0 to computed value
+ */
+
 import OpenAI from 'openai'
 import { prisma } from '@/lib/prisma'
 import { logger } from '@/lib/logger'
+
+/** text-embedding-3-small pricing: $0.02 per 1 000 000 input tokens (as of 2024). */
+const EMBED_COST_USD_PER_TOKEN = 0.02 / 1_000_000
 
 let _openai: OpenAI | null = null
 function getClient(): OpenAI {
@@ -39,7 +58,7 @@ export async function getEmbedding(text: string): Promise<number[] | null> {
             call_type: 'embed',
             input_tokens: inputTokensEstimate,
             output_tokens: Array.isArray(embedding) ? embedding.length : null,
-            cost_usd: 0,
+            cost_usd: (inputTokensEstimate * EMBED_COST_USD_PER_TOKEN),
             cache_hit: false,
           },
         },
@@ -101,7 +120,7 @@ export async function getEmbeddingsBatch(
                 call_type: 'embed',
                 input_tokens: inputTokensEstimate,
                 output_tokens: totalOutputTokens,
-                cost_usd: 0,
+                cost_usd: (inputTokensEstimate * EMBED_COST_USD_PER_TOKEN),
                 cache_hit: false,
                 batch_size: inputs.length,
               },
