@@ -8,12 +8,13 @@
  * - tests/unit/lib/parent/dashboardHelpers.test.ts
  *
  * COPILOT INSTRUCTIONS FOLLOWED:
- * - .github/copilot-instructions.com
+ * - .github/copilot-instructions.md
  * - /docs/COPILOT_GUARDRAILS.md
  *
  * EDIT LOG:
  * - 2026-04-09T00:00:00Z | copilot | added helper utilities for parent dashboard
  * - 2026-04-14T00:00:00Z | claude | added predictDaysToReadiness (F-PAR-012 AC-05)
+ * - 2026-04-14T00:00:00Z | assistant | corrected Copilot instructions header path typo
  */
 
 export const LOCAL_STRINGS: Record<string, Record<string, string>> = {
