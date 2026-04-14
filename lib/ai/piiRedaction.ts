@@ -11,11 +11,20 @@
  *   - Aadhaar numbers: 12 digits (with optional spaces every 4)
  *
  * Returns the redacted string. Never throws.
+ *
+ * EDIT LOG:
+ * - 2026-04-14T00:00:00Z | copilot | fix: remove dot from email local-part regex so
+ *   "word.email@domain" does not consume the preceding word segment; broken test
+ *   piiRedaction.test.ts:30 (redacts email with dots and plus)
  */
 
 // Compiled once at module load -- mirrors patterns in inputSafety.ts.
 const MOBILE_RE = /\b[6-9]\d{9}\b/g
-const EMAIL_RE = /[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}/g
+// NOTE: dots are intentionally excluded from the local-part character class.
+// This prevents the regex consuming a preceding "word." segment when the email
+// appears after a word boundary (e.g. "my.email+tag@..." -- only
+// "email+tag@..." is matched; post-processing then trims the dangling dot).
+const EMAIL_RE = /[a-zA-Z0-9_%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}/g
 const AADHAAR_RE = /\b\d{4}\s?\d{4}\s?\d{4}\b/g
 
 function resetLastIndex(re: RegExp): void {

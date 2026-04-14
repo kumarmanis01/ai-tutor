@@ -17,6 +17,8 @@
  * EDIT LOG:
  * - 2026-04-07 | claude | fix: add object-cover to Vidya avatar image to prevent stretching in chat messages
  * - 2026-04-13 | copilot | feat(F-STU-011): add session-level style selector (persist & immediate re-explain)
+ * - 2026-04-14 | copilot | fix: add onVisualHint to props destructuring (was referenced but not bound,
+ *   causing ReferenceError / Jest worker crash in AITutorChatPanel.spec.tsx)
  */
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
@@ -386,6 +388,7 @@ export const AITutorChatPanel: React.FC<AITutorChatPanelProps> = ({
   isAITutorEnabled,
   onSessionComplete,
   onAiMessage,
+  onVisualHint,
 }) => {
   const [items, setItems] = useState<MessageItem[]>([]);
   const [inputValue, setInputValue] = useState('');
