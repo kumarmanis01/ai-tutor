@@ -74,6 +74,8 @@ export async function POST(req: NextRequest) {
     if (!preferredLanguage || String(preferredLanguage).trim() === '') fieldErrors.preferred_language = 'Preferred language is required';
     if (!subjects || subjects.length === 0) fieldErrors.subjects = 'Select at least 1 subject';
     if (subjects && subjects.length > 6) fieldErrors.subjects = 'You can select up to 6 subjects';
+    // Validate optional school name: trim already applied above; enforce max length
+    if (schoolName && schoolName.length > 120) fieldErrors.school_name = 'School name must be 120 characters or fewer';
     // Parent email is collected in a separate post-onboarding step -- not required here.
     // Under-DPDP_MINOR_AGE handling sets accountStatus below after the DB save.
     if (Object.keys(fieldErrors).length) {
@@ -133,7 +135,11 @@ export async function POST(req: NextRequest) {
     if (parentEmail !== undefined) updates.parentEmail = parentEmail || null;
     if (schoolName !== undefined) updates.schoolName = schoolName;
 
-    logger.info('/api/user/onboarding userId and updates', { className: 'api.user.onboarding', methodName: 'POST', userId, updates });
+    // Avoid logging user-supplied free-text (school names) in plain logs.
+    // Mask schoolName so operator logs don't retain school identifiers.
+    const maskedUpdates = { ...updates } as any;
+    if (maskedUpdates.schoolName !== undefined) maskedUpdates.schoolName = '***REDACTED***';
+    logger.info('/api/user/onboarding userId and updates', { className: 'api.user.onboarding', methodName: 'POST', userId, updates: maskedUpdates });
     let updatedUser;
     try {
       // First, ensure the user exists; if not, try to resolve via email or phone (without creating)

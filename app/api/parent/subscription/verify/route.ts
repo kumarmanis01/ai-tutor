@@ -18,6 +18,7 @@
  *
  * EDIT LOG:
  * - 2026-04-08T00:00:00Z | copilot | created parent verify endpoint
+ * - 2026-04-14T00:00:00Z | copilot | add timeout:30000/maxWait:10000 to $transaction to prevent P2028 on Neon
  */
 
 import { NextResponse } from 'next/server';
@@ -238,7 +239,7 @@ export async function POST(req: Request) {
         }
 
         return { paymentId: payment.id, subscriptionId: createdSub.id };
-      });
+      }, { timeout: 30000, maxWait: 10000 });
     } catch (err) {
       logger.error('Failed to activate parent subscription', { event: 'parent.subscription.verify.activate_error', context: { userId, orderId }, err });
       return NextResponse.json({ error: 'Could not activate subscription' }, { status: 500 });

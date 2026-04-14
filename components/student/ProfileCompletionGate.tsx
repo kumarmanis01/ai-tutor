@@ -4,7 +4,7 @@
  * ProfileCompletionGate -- V2 inline multi-step form
  *
  * Shows as a centred modal when board/grade/language/subjects are missing.
- * Steps: Language -> Board -> Grade -> Subjects -> [Parent Email if age known].
+ * Steps: Language -> Board -> Grade -> Subjects -> School Name -> [Parent Email if age known].
  *
  * Visual style:
  *   - Same board cards (radio dot inside), grade grid (min-h-[52px]),
@@ -68,7 +68,8 @@ function getMandatorySubjects(board: string, grade: number): string[] {
 
 // ── Step helpers ───────────────────────────────────────────────────────────────
 
-// Steps in order. Parent steps are conditional on age < DPDP_MINOR_AGE.
+// Steps in order (includes optional `schoolName` between `subjects` and parent steps).
+// Parent steps are conditional on age < DPDP_MINOR_AGE.
 type StepKey = 'language' | 'board' | 'grade' | 'subjects' | 'schoolName' | 'parentEmail' | 'parentPhone';
 
 function buildSteps(showParentEmail: boolean, showParentPhone: boolean): StepKey[] {

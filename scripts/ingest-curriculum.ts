@@ -11,6 +11,7 @@
  *
  * EDIT LOG:
  * - 2026-04-08T00:00:00Z | git-user | refactor for dependency-injection, add tests, remove debug logs
+ * - 2026-04-14T00:00:00Z | copilot | write contentHash even when embedding fails for idempotency correctness
  */
 
 import { createHash } from 'crypto'
@@ -105,6 +106,27 @@ export async function main(prismaClient = prisma) {
       const embedding = embeddings[j]
 
       if (!embedding) {
+        // Persist the content hash even when embedding fails so idempotency
+        // works on subsequent runs. The chunk stays in chunksNeedingEmbed (NULL embedding)
+        // and the next run will retry the embed without treating the content as "changed".
+        try {
+          if (chunk.needsVersionBump) {
+            await prismaClient.$executeRawUnsafe(
+              `UPDATE "CurriculumChunk" SET "contentHash" = $1, version = version + 1, "updatedAt" = NOW() WHERE id = $2`,
+              chunk.newHash,
+              chunk.id,
+            )
+            chunksUpdated++
+          } else {
+            await prismaClient.$executeRawUnsafe(
+              `UPDATE "CurriculumChunk" SET "contentHash" = $1, "updatedAt" = NOW() WHERE id = $2`,
+              chunk.newHash,
+              chunk.id,
+            )
+          }
+        } catch (hashErr) {
+          // Non-fatal: hash write failed on top of embedding failure
+        }
         console.error(`[ingest] ✗ Failed to embed chunk ${chunk.id}`)
         errors++
         errorDetails.push({ id: chunk.id, error: 'embedding_failed' })

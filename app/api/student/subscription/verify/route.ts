@@ -19,6 +19,7 @@
  *
  * EDIT LOG:
  * - 2026-04-13T05:26:00Z | copilot | add subscription + EMI handling to student verify route
+ * - 2026-04-14T00:00:00Z | copilot | add timeout:30000/maxWait:10000 to $transaction to prevent P2028 on Neon
  */
 
 import { NextResponse } from 'next/server';
@@ -101,9 +102,11 @@ export async function POST(req: Request) {
   const expiry = new Date(now);
   expiry.setMonth(expiry.getMonth() + plan.durationMonths);
 
+  // Declared outside the try block so email/SMS section can access it after activation.
+  let _createdPayment: { id: string; subscriptionId?: string } | null = null;
+
   try {
     // Idempotent transaction: update order, activate subscription and create Payment
-    let _createdPayment: { id: string; subscriptionId?: string } | null = null;
     try {
       // Fetch Razorpay order notes to inspect EMI selection (if any) before DB writes
       const client = getRazorpayClient();
@@ -226,7 +229,7 @@ export async function POST(req: Request) {
         }
 
         return { id: payment.id, subscriptionId: createdSub.id };
-      });
+      }, { timeout: 30000, maxWait: 10000 });
     } catch (err) {
       logger.error('Failed to activate subscription', { event: 'subscription.verify.activate_error', context: { userId, orderId }, err });
       return NextResponse.json({ error: 'Could not activate subscription' }, { status: 500 });
