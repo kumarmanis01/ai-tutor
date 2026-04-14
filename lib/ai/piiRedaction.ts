@@ -38,6 +38,9 @@ export function redactPIIFromText(text: string): string {
   result = result.replace(MOBILE_RE, '[MOBILE]')
   resetLastIndex(EMAIL_RE)
   result = result.replace(EMAIL_RE, '[EMAIL]')
+  // Preserve a preceding word when an email follows a word+dot (e.g. "my.email+tag@...")
+  // Convert "word.[EMAIL]" -> "word [EMAIL]" so surrounding text remains readable.
+  result = result.replace(/([A-Za-z0-9])\.?\[EMAIL\]/g, '$1 [EMAIL]')
   resetLastIndex(AADHAAR_RE)
   result = result.replace(AADHAAR_RE, '[AADHAAR]')
   return result

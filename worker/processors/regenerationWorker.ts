@@ -89,7 +89,11 @@ export async function processNextJob() {
       logger.debug('regenerationWorker: generator error', { error: String(err) })
     }
     const errorJson = { message: String(err?.message ?? err), stack: err?.stack }
-    try { await prisma.regenerationJob.update({ where: { id: claimed.id }, data: { status: 'FAILED', errorJson } }) } catch {}
+    try {
+      // Use updateMany to avoid exceptions when the row cannot be updated due to
+      // concurrent changes. updateMany returns a count and does not throw.
+      await prisma.regenerationJob.updateMany({ where: { id: claimed.id }, data: { status: 'FAILED', errorJson } as any })
+    } catch {}
     try {
       await logAuditEvent(prisma as any, { targetEntity: 'RegenerationJob', targetId: claimed.id, action: AuditEvents.REGEN_JOB_FAILED as any, details: { jobId: claimed.id, legacyAction: AuditEvents.REGEN_JOB_FAILED, errorJson } as any })
     } catch {}
