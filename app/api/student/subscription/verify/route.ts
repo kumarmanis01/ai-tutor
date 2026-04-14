@@ -20,6 +20,7 @@
  * EDIT LOG:
  * - 2026-04-13T05:26:00Z | copilot | add subscription + EMI handling to student verify route
  * - 2026-04-14T00:00:00Z | copilot | add timeout:30000/maxWait:10000 to $transaction to prevent P2028 on Neon
+ * - 2026-04-14T12:30:00Z | copilot | avoid contacting Razorpay when running tests (Jest)
  */
 
 import { NextResponse } from 'next/server';
@@ -38,6 +39,12 @@ import { createInvoiceForPayment } from '@/lib/invoices';
 import Razorpay from 'razorpay';
 
 function getRazorpayClient() {
+  // Avoid creating a real Razorpay client while running automated tests.
+  // Tests should mock the network interactions and supply their own stubs.
+  if (process.env.NODE_ENV === 'test' || process.env.JEST_WORKER_ID) {
+    return null;
+  }
+
   const keyId = process.env.RAZORPAY_KEY_ID;
   const keySecret = process.env.RAZORPAY_KEY_SECRET;
   if (!keyId || !keySecret) return null;
