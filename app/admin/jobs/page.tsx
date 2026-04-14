@@ -7,7 +7,7 @@
  */
 import React from 'react'
 import { prisma } from '@/lib/prisma'
-import { AdminTopbar } from '@/components/admin/AdminTopbar'
+import { AdminTopbar } from '../../../components/admin/AdminTopbar'
 import { JobsTable, type EnrichedJob } from './JobsTable'
 
 export default async function JobsPage() {

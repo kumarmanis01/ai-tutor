@@ -3,7 +3,7 @@
 import React, { useMemo, useState } from 'react';
 import Link from 'next/link';
 import useSWR from 'swr';
-import JobActions from '@/components/admin/JobActions';
+import JobActions from '../../../../../components/admin/JobActions';
 import { JobStatus as JobStatusConst } from '@/lib/ai-engine/types';
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json());

@@ -6,7 +6,7 @@
  */
 import React from 'react'
 import { prisma } from '@/lib/prisma'
-import { AdminTopbar } from '@/components/admin/AdminTopbar'
+import { AdminTopbar } from '../../../components/admin/AdminTopbar'
 import { ParentsTable, type ParentRowData } from './ParentsTable'
 
 export default async function ParentsPage() {

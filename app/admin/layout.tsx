@@ -6,11 +6,11 @@ import { prisma } from '@/lib/prisma';
 import { AdminSidebar } from '../../components/admin/AdminSidebar';
 import Providers from '@/app/providers';
 import { GlobalLoaderProvider } from '@/context/GlobalLoaderProvider';
-import { NavigationProgress } from '@/components/NavigationProgress';
-import AuthSessionLoader from '@/components/AuthSessionLoader';
-import ToastHost from '@/components/ToastHost';
-import GoogleTagManagerClient from '@/components/ClientOnly/GoogleTagManagerClient';
-import AppModalClient from '@/components/ClientOnly/AppModalClient';
+import { NavigationProgress } from '../../components/NavigationProgress';
+import AuthSessionLoader from '../../components/AuthSessionLoader';
+import ToastHost from '../../components/ToastHost';
+import GoogleTagManagerClient from '../../components/ClientOnly/GoogleTagManagerClient';
+import AppModalClient from '../../components/ClientOnly/AppModalClient';
 import '@/styles/index.css';
 
 // Self-hosted fonts -- no build-time network dependency on fonts.googleapis.com

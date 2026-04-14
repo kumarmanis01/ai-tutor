@@ -1,5 +1,5 @@
 import { getServerSessionForHandlers } from '@/lib/session';
-import AdminCreateChallenge from '@/components/AdminCreateChallenge';
+import AdminCreateChallenge from '../../../components/AdminCreateChallenge';
 import React from 'react';
 
 type SessionUserWithRole = {

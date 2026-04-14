@@ -1,5 +1,5 @@
 import { prisma } from '@/lib/prisma';
-import WorkersTable from '@/components/admin/WorkersTable';
+import WorkersTable from '../../../../components/admin/WorkersTable';
 
 export const dynamic = 'force-dynamic';
 

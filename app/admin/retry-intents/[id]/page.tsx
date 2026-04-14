@@ -3,7 +3,7 @@ import { requireAdminOrModerator } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 export const dynamic = 'force-dynamic'
 import ExecuteRetryButton from '@/app/admin/retry-intents/ExecuteRetryButton'
-import ReadOnlyJsonViewer from '@/components/UI/ReadOnlyJsonViewer'
+import ReadOnlyJsonViewer from '../../../../components/UI/ReadOnlyJsonViewer'
 
 type Props = { params: { id: string } }
 

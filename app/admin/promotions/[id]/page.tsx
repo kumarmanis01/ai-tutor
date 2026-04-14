@@ -2,8 +2,8 @@ import React from 'react'
 import { requireAdminOrModerator } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 export const dynamic = 'force-dynamic'
-import ReadOnlyJsonViewer from '@/components/UI/ReadOnlyJsonViewer'
-import ApproveRejectButtonsClient from '@/components/ClientOnly/ApproveRejectButtonsClient'
+import ReadOnlyJsonViewer from '../../../../components/UI/ReadOnlyJsonViewer'
+import ApproveRejectButtonsClient from '../../../../components/ClientOnly/ApproveRejectButtonsClient'
 
 type Props = { params: { id: string } }
 

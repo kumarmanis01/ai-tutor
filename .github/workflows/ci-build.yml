@@ -1,0 +1,101 @@
+name: CI — Build & Tests
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  build:
+    name: Build + Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: ai_tutor
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready -U postgres
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:7
+        ports:
+          - 6379:6379
+
+    env:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/ai_tutor
+      REDIS_URL: redis://127.0.0.1:6379
+      NEXTAUTH_SECRET: ci-secret
+      NEXTAUTH_URL: http://localhost:3000
+      OPENAI_API_KEY: ci-fake
+      GOOGLE_CLIENT_ID: ci-fake
+      GOOGLE_CLIENT_SECRET: ci-fake
+      RESEND_API_KEY: ci-fake
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Use Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci --include=dev
+
+      - name: Wait for Postgres to accept connections
+        run: |
+          echo "Waiting for Postgres..."
+          for i in {1..60}; do
+            if command -v pg_isready >/dev/null 2>&1; then
+              pg_isready -h 127.0.0.1 -p 5432 -U postgres && break
+            else
+              (echo > /dev/tcp/127.0.0.1/5432) >/dev/null 2>&1 && break || true
+            fi
+            sleep 1
+          done
+        shell: bash
+
+      - name: Prisma generate
+        run: npx prisma generate
+
+      - name: TypeScript check
+        run: npx tsc --noEmit --project tsconfig.json
+
+      - name: Build workers
+        run: npm run build:workers
+
+      - name: Next.js build (prod or fallback)
+        run: |
+          set -euo pipefail
+          npm run build:prod || npm run build
+        shell: bash
+
+      - name: Verify dist
+        run: node scripts/verify-dist.cjs
+
+      - name: Prompt eval
+        run: npx tsx scripts/run-prompt-eval.ts
+
+      - name: Integration tests
+        run: npx jest --config jest.integration.config.cjs tests/integration/ --passWithNoTests
+        env:
+          CI: true
+
+      - name: Upload logs on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-logs
+          path: logs/**
