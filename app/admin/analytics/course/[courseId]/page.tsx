@@ -1,7 +1,7 @@
 import React from 'react'
 import { getServerSessionForHandlers } from '@/lib/session'
 
-import Sparkline from '../../../../components/AdminAnalytics/Sparkline'
+import Sparkline from '../../../../../components/AdminAnalytics/Sparkline'
 
 export default async function Page({ params }: { params: { courseId: string } }) {
   const session = await getServerSessionForHandlers()
