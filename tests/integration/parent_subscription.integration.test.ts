@@ -16,6 +16,9 @@
 import crypto from 'crypto';
 import { prisma } from '@/lib/prisma';
 
+// Integration hooks may perform DB work; increase default timeout for this file.
+jest.setTimeout(30_000);
+
 // Skip integration if no DATABASE_URL configured
 const hasDb = !!process.env.DATABASE_URL;
 

@@ -40,7 +40,7 @@ describe('runInactivityAlerts (integration with Redis)', () => {
 
     const parentId = 'parent-int-1'
     const studentId = 'student-int-1'
-    const key = `parent:inactivity:${parentId}:${studentId}`
+    const key = `parent:notifications:suppression:inactivity:${parentId}:${studentId}`
 
     // Mock prisma to return one student and one parent link
     const prismaMock = {

@@ -22,9 +22,11 @@ export async function hasDiagnosticForSubject(
     // Fast path: check the diagnostic status flag set at submission time.
     const statusRecord = await getSubjectDiagnosticStatus(studentId, subjectId)
     if (
-      statusRecord.status === 'completed' ||
-      statusRecord.status === 'skipped' ||
-      statusRecord.status === 'not_applicable'
+      statusRecord && (
+        statusRecord.status === 'completed' ||
+        statusRecord.status === 'skipped' ||
+        statusRecord.status === 'not_applicable'
+      )
     ) {
       return true
     }
