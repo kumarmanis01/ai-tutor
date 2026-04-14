@@ -8,11 +8,12 @@
  *
  * COPILOT INSTRUCTIONS FOLLOWED:
  * - /docs/COPILOT_GUARDRAILS.md
- * - .github/copilot-instructions.com
+ * - .github/copilot-instructions.md
  *
  * EDIT LOG:
  * - 2026-04-09T00:00:00Z | copilot | created GET/POST handlers for parent digest settings
  * - 2026-04-14T00:00:00Z | claude | added inactivityThresholdDays (F-PAR-021 AC-01)
+ * - 2026-04-13T00:00:00Z | copilot | corrected Copilot instructions header reference from .com to .md
  */
 
 import { NextResponse } from 'next/server'
