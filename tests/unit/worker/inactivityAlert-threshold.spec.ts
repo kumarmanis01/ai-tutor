@@ -29,8 +29,6 @@ const mockRedis = {
   del: jest.fn().mockResolvedValue(1),
 };
 
-const TODAY = '2026-04-14';
-
 function makeStudent(lastSessionDate: string | null) {
   return { id: 'stu-1', name: 'Priya', timezone: 'Asia/Kolkata', lastSessionDate: lastSessionDate ? new Date(lastSessionDate) : null };
 }

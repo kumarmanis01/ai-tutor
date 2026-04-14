@@ -14,6 +14,7 @@
  * - 2026-04-09T00:00:00Z | copilot | created
  * - 2026-04-12T12:00:00Z | copilot | use FAMILY_MAX_CHILDREN constant from billing constants
  * - 2026-04-14T00:00:00Z | claude | added dateOfBirth, grade, board, medium fields (F-PAR-002 AC-01)
+ * - 2026-04-14T12:00:00Z | staff-engineer | fix: create child with role 'user', default language, remove unused const
  */
 
 import { NextResponse } from 'next/server'
@@ -23,10 +24,11 @@ import { logger } from '@/lib/logger'
 import { sendMailSafe } from '@/lib/mailer'
 import { sendSms } from '@/lib/sms'
 import { FAMILY_MAX_CHILDREN } from '@/app/api/billing/constants'
+import { Prisma } from '@prisma/client'
 
 export const dynamic = 'force-dynamic'
 
-const VALID_SCHEDULE_PREFS = ['morning', 'afternoon', 'evening']
+
 
 export async function POST(req: Request) {
   const start = Date.now()
@@ -71,15 +73,27 @@ export async function POST(req: Request) {
       return res
     }
 
+    // Fetch parent details to derive defaults (language) and for notifications
+    const parentUser = await prisma.user.findUnique({ where: { id: parentId }, select: { language: true, name: true, email: true, phone: true } })
+    const defaultLanguage = (parentUser?.language as any) ?? 'en'
+
     // Create child user and parentStudent link in a transaction
     const child = await prisma.$transaction(async (tx) => {
-      const userData: any = { name, email, phone, role: 'student' }
-      if (grade) userData.grade = grade
-      if (board) userData.board = board
-      if (medium) userData.language = medium
-      if (dateOfBirth) userData.dateOfBirth = dateOfBirth
+      const normalizedMedium = typeof medium === 'string' ? medium.toLowerCase() : ''
+      const resolvedLanguage = normalizedMedium === 'hi' || normalizedMedium === 'hindi' ? 'hi' : normalizedMedium === 'en' || normalizedMedium === 'english' ? 'en' : defaultLanguage
 
-      const created = await tx.user.create({ data: userData })
+      const userData: Prisma.UserCreateInput = {
+        name,
+        email,
+        phone,
+        role: 'user',
+        language: resolvedLanguage as any,
+      }
+      if (grade) (userData as any).grade = grade
+      if (board) (userData as any).board = board
+      if (dateOfBirth) (userData as any).dateOfBirth = dateOfBirth
+
+      const created = await tx.user.create({ data: userData as any })
       await tx.parentStudent.create({ data: { parentId, studentId: created.id, status: 'active' } })
       // promote parent role if necessary
       const p = await tx.user.findUnique({ where: { id: parentId }, select: { role: true } })
@@ -91,7 +105,7 @@ export async function POST(req: Request) {
 
     // Notify parent with enriched welcome content (F-PAR-001 AC-07)
     try {
-      const parent = await prisma.user.findUnique({ where: { id: parentId }, select: { email: true, phone: true, name: true } })
+      const parent = parentUser ?? await prisma.user.findUnique({ where: { id: parentId }, select: { email: true, phone: true, name: true } })
       const parentName = parent?.name ?? 'Parent'
       const childGrade = grade ? `Class ${grade}` : ''
       if (parent?.email) {

@@ -17,6 +17,7 @@ export const dynamic = 'force-dynamic';
  * - 2026-03-08 | claude | created for Parent Progress Dashboard
  * - 2026-04-14 | claude | chapter breakdown, predicted marks, tooltip (F-PAR-011 AC-01/03/05)
  * - 2026-04-14 | claude | readiness prediction + peer benchmarking (F-PAR-012 AC-05, F-PAR-011 AC-04)
+ * - 2026-04-14T12:00:00Z | staff-engineer | fix: require active link; batch peer benchmarking query; correct aiWorking flag
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -90,7 +91,8 @@ export async function GET(req: NextRequest) {
       where: { parentId_studentId: { parentId, studentId } },
       select: { status: true },
     });
-    if (!link || link.status === 'revoked') {
+    // Require an active link; pending or revoked links must not expose student mastery data.
+    if (!link || link.status !== 'active') {
       return NextResponse.json({ error: 'Student not linked' }, { status: 403 });
     }
 
@@ -157,20 +159,32 @@ export async function GET(req: NextRequest) {
     //     Done in one query per subject when benchmarking=true.
     const peerPercentileBySubject = new Map<string, number>();
     if (benchmarking && student?.grade) {
-      for (const sr of subjectRows) {
-        const subjectAvg = sr._avg.accuracy ?? 0;
-        // Count students in same grade who have data for this subject
-        const peersInGrade = await prisma.studentTopicMastery.groupBy({
-          by: ['studentId'],
+      // Optimize benchmarking by fetching peer averages for all subjects in a single query
+      const subjects = subjectRows.map((sr) => sr.subject);
+      if (subjects.length > 0) {
+        const peers = await prisma.studentTopicMastery.groupBy({
+          by: ['subject', 'studentId'],
           where: {
-            subject: sr.subject,
+            subject: { in: subjects },
             student: { grade: student.grade },
           },
           _avg: { accuracy: true },
         });
-        if (peersInGrade.length > 1) {
-          const below = peersInGrade.filter((p) => (p._avg.accuracy ?? 0) < subjectAvg).length;
-          peerPercentileBySubject.set(sr.subject, Math.round((below / (peersInGrade.length - 1)) * 100));
+
+        const peersBySubject = new Map<string, number[]>();
+        for (const p of peers) {
+          const arr = peersBySubject.get(p.subject) ?? [];
+          arr.push(p._avg.accuracy ?? 0);
+          peersBySubject.set(p.subject, arr);
+        }
+
+        for (const sr of subjectRows) {
+          const subjectAvg = sr._avg.accuracy ?? 0;
+          const arr = peersBySubject.get(sr.subject) ?? [];
+          if (arr.length > 1) {
+            const below = arr.filter((a) => a < subjectAvg).length;
+            peerPercentileBySubject.set(sr.subject, Math.round((below / (arr.length - 1)) * 100));
+          }
         }
       }
     }
@@ -206,7 +220,7 @@ export async function GET(req: NextRequest) {
         .slice()
         .sort((a, b) => a.avgAccuracy - b.avgAccuracy)
         .slice(0, 3)
-        .map((c) => ({ ...c, aiWorking: true }));
+        .map((c) => ({ ...c, aiWorking: activeChapterNames.has(c.chapter) }));
 
       const masteryExplanation =
         `${strings.whatThisMeansPrefix} ${masteryPct}% mastery means your child has solidly ` +

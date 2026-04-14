@@ -96,7 +96,7 @@ describe('PUT /api/parent/controls', () => {
     const data = await res.json();
     expect(data.ok).toBe(true);
     const upsertCall = prismaMock.parentChildControl.upsert.mock.calls[0][0] as any;
-    expect(upsertCall.update.weeklyHoursTarget).toBeNull(); // value: 15 but was undefined in spread...
+    expect(upsertCall.update.weeklyHoursTarget).toBe(15);
     // Actually verify via create path data
     expect(upsertCall.create.weeklyHoursTarget).toBe(15);
     expect(upsertCall.create.schedulePreference).toBe('evening');

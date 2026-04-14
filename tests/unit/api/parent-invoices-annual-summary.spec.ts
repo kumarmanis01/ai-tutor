@@ -86,12 +86,18 @@ describe('GET /api/parent/invoices/annual-summary', () => {
   it('should default to current financial year when fy not supplied', async () => {
     prismaMock.invoice.findMany.mockResolvedValue([makeInvoice()] as any);
     const { GET } = await import('@/app/api/parent/invoices/annual-summary/route');
+    // Make the test deterministic by setting system time to 2026-04-13 (start of FY 2026-27)
+    jest.useFakeTimers('modern');
+    jest.setSystemTime(new Date('2026-04-13T00:00:00Z'));
+
     const req = new Request('http://localhost');
     const res = await GET(req as any);
     expect(res.status).toBe(200);
     const data = await res.json();
-    // financialYear should match expected FY for April 2026 context (current date 2026-04-13)
+    // financialYear should match expected FY for April 2026 context
     expect(data.financialYear).toBe('2026-27');
+
+    jest.useRealTimers();
   });
 
   it('should query invoices with correct date range for supplied fy', async () => {

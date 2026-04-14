@@ -13,6 +13,7 @@
  * EDIT LOG:
  * - 2025-01-XX | copilot | created parent dashboard API
  * - 2026-03-03 | gpt | refactor to use summary tables + caching
+ * - 2026-04-14T12:00:00Z | staff-engineer | fix: rename timezonesdiffer to timezonesDiffer for consistency
  */
 
 export const dynamic = 'force-dynamic';
@@ -296,7 +297,7 @@ export async function GET(req: NextRequest) {
       // F-PAR-010 AC-05: include both timezone strings when parent and student are in different zones
       const studentTz = (s as any).timezone ?? null;
       const parentTz = parentUser?.timezone ?? null;
-      const timezonesdiffer = studentTz && parentTz && studentTz !== parentTz;
+      const timezonesDiffer = studentTz && parentTz && studentTz !== parentTz;
 
       return {
         studentId: s.id,
@@ -312,7 +313,7 @@ export async function GET(req: NextRequest) {
         subjectProgress,
         readiness,
         masteryDistribution,
-        ...(timezonesdiffer ? { studentTimezone: studentTz, parentTimezone: parentTz } : {}),
+        ...(timezonesDiffer ? { studentTimezone: studentTz, parentTimezone: parentTz } : {}),
       };
     });
 

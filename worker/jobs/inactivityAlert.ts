@@ -16,6 +16,7 @@
  * EDIT LOG:
  * - 2026-04-09T00:00:00Z | copilot | created
  * - 2026-04-14T00:00:00Z | claude | per-parent inactivityThresholdDays (F-PAR-021 AC-01)
+ * - 2026-04-14T12:00:00Z | staff-engineer | fix: prefilter cutoff to include min threshold; use per-parent days in email
  */
 
 import { prisma } from '@/lib/prisma'
@@ -33,6 +34,8 @@ import { canSendNotification } from '@/lib/notifications/policy'
 const DEFAULT_INACTIVITY_DAYS = Number(process.env.PARENT_INACTIVITY_DAYS ?? '3')
 // Widest possible threshold so the prefilter query never misses a parent with a long threshold.
 const MAX_INACTIVITY_DAYS = 7
+// Minimum supported threshold (settings allow 2,3,5,7)
+const MIN_INACTIVITY_DAYS = 2
 
 export async function runInactivityAlerts(): Promise<number> {
   const redis = getRedis()
@@ -41,9 +44,10 @@ export async function runInactivityAlerts(): Promise<number> {
     return 0
   }
 
-  // Prefilter uses the widest threshold (7 days) so no parent's window is missed.
+  // Prefilter uses the minimum supported threshold so we include anyone who could
+  // be considered inactive by any parent setting (avoid missing short thresholds).
   // Per-parent threshold is applied below in the per-parent check.
-  const prefilterCutoff = new Date(Date.now() - (MAX_INACTIVITY_DAYS + 1) * 24 * 60 * 60 * 1000)
+  const prefilterCutoff = new Date(Date.now() - (MIN_INACTIVITY_DAYS + 1) * 24 * 60 * 60 * 1000)
 
   // Find candidate students (we'll apply timezone-aware logic per-student)
   const inactiveStudents = await prisma.user.findMany({
@@ -68,13 +72,12 @@ export async function runInactivityAlerts(): Promise<number> {
       // start of local today UTC
       const todayLocalStr = getLocalDateString(new Date(), studentTz)
       const startOfTodayUtc = startOfLocalDayUtc(todayLocalStr, studentTz)
-      const thresholdStartUtc = new Date(startOfTodayUtc.getTime() - DEFAULT_INACTIVITY_DAYS * 24 * 60 * 60 * 1000)
-      const thresholdLocalDateStr = getLocalDateString(thresholdStartUtc, studentTz)
+      const minThresholdStartUtc = new Date(startOfTodayUtc.getTime() - MIN_INACTIVITY_DAYS * 24 * 60 * 60 * 1000)
+      const minThresholdLocalDateStr = getLocalDateString(minThresholdStartUtc, studentTz)
 
-      // If the student's last local date is >= thresholdLocalDateStr they are not inactive
-      // by the widest threshold. Per-parent threshold is checked inside the parent loop below.
-      if (lastLocalDateStr && lastLocalDateStr >= thresholdLocalDateStr) {
-        // Not inactive even by the widest threshold (7 days) -- skip entirely
+      // If the student's last local date is >= minThresholdLocalDateStr they are not
+      // inactive even for the shortest configured parent threshold -- skip entirely.
+      if (lastLocalDateStr && lastLocalDateStr >= minThresholdLocalDateStr) {
         continue
       }
       // otherwise fall through and check linked parents
@@ -193,7 +196,7 @@ export async function runInactivityAlerts(): Promise<number> {
             ? ` <br/><small>Mute alerts for: ${muteLinks.map((m) => `<a href="${m.url}">${m.days} days</a>`).join(' | ')}</small>`
             : ''
 
-          const bodyHtml = t('inactivity.body_html', { parentName: parent.name ?? 'Parent', studentName: s.name, days: String(DEFAULT_INACTIVITY_DAYS), deepLink }, locale) + muteHtml
+          const bodyHtml = t('inactivity.body_html', { parentName: parent.name ?? 'Parent', studentName: s.name, days: String(parentThresholdDays), deepLink }, locale) + muteHtml
 
           await sendParentMilestoneNotification(parent.id, { email: parent.email ?? undefined, phone: parent.phone ?? undefined, subject, html: bodyHtml, meta: { studentId: s.id, type: 'inactivity', channel: parent.email ? 'email' : parent.phone ? 'sms' : 'unknown', locale } })
 
