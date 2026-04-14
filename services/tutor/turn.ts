@@ -124,8 +124,10 @@ export async function enforceTutorFreemiumCap(studentId: string): Promise<void> 
   // transaction first; on any unexpected error, fall back to the canonical
   // monthly free-tier implementation below.
   try {
-    await prisma.$transaction(async (tx) => {
-      // If the User row exposes todaysFreeQuestionsCount, enforce and decrement it
+    // Attempt legacy per-day free-questions counter. The transaction returns
+    // a boolean indicating whether the legacy path applied. Only return
+    // early when it actually handled the request.
+    const legacyApplied = await prisma.$transaction(async (tx) => {
       const u = await (tx as any).user.findUnique({ where: { id: studentId }, select: { todaysFreeQuestionsCount: true } })
       if (u && typeof u.todaysFreeQuestionsCount === 'number') {
         if ((u as any).todaysFreeQuestionsCount <= 0) {
@@ -134,11 +136,14 @@ export async function enforceTutorFreemiumCap(studentId: string): Promise<void> 
           throw err
         }
         await (tx as any).user.update({ where: { id: studentId }, data: { todaysFreeQuestionsCount: (u as any).todaysFreeQuestionsCount - 1 } })
-        return
+        return true
       }
+      return false
     })
-    // If transaction completed without throwing RATE_LIMITED, we're done.
-    return
+
+    if (legacyApplied) {
+      return
+    }
   } catch (err: any) {
     if (err && err.code === 'RATE_LIMITED') throw err
     // otherwise fall through to canonical monthly freemium logic
