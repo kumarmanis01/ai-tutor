@@ -195,6 +195,20 @@ export async function setTutorSession(state: TutorSessionState): Promise<void> {
   await setRedisTutorSession(state.sessionId, payload)
 }
 /**
+ * Convert a raw mastery score (0–1) into a concise human-readable phrase
+ * for injection into the Vidya system prompt. Returns a fixed fallback when
+ * no prior StudentConceptState exists (first-time learner).
+ */
+export function computeMasteryBrief(score: number | null | undefined): string {
+  if (score == null) return 'no prior exposure to this concept'
+  if (score < 0.3) return 'limited exposure to this concept'
+  if (score < 0.5) return 'developing understanding, some gaps remain'
+  if (score < 0.7) return 'moderate grasp, working on depth'
+  if (score < 0.9) return 'strong understanding of this concept'
+  return 'near mastery of this concept'
+}
+
+/**
  * Orchestrate a single tutor turn:
  * 1. Mark turn started in Redis.
  * 2. Run input safety (PII + jailbreak).
@@ -277,7 +291,15 @@ export async function runTutorOrchestrator(args: {
       ? prismaClient.user.findUnique({ where: { id: studentId }, select: { learningStyle: true } })
       : Promise.resolve(null)
 
-    const [concept, subject, userProfile] = await Promise.all([
+    const conceptStatePromise =
+      prismaClient.studentConceptState && typeof prismaClient.studentConceptState.findUnique === 'function'
+        ? prismaClient.studentConceptState.findUnique({
+            where: { studentId_conceptId: { studentId, conceptId } },
+            select: { masteryScore: true },
+          })
+        : Promise.resolve(null)
+
+    const [concept, subject, userProfile, conceptState] = await Promise.all([
       prismaClient.concept.findUnique({
         where: { id: conceptId },
         select: { name: true, irt_b: true },
@@ -287,6 +309,7 @@ export async function runTutorOrchestrator(args: {
         select: { name: true },
       }),
       userProfilePromise,
+      conceptStatePromise,
     ])
     const conceptName = concept?.name ?? 'this concept'
     const subjectName = subject?.name ?? 'Subject'
@@ -506,7 +529,7 @@ export async function runTutorOrchestrator(args: {
       examDateProximityDays: null,
       learningStyle,
       recentMisconceptions: recentMisconceptionNames,
-      masteryBrief: 'mastery_context_not_yet_wired',
+      masteryBrief: computeMasteryBrief((conceptState as any)?.masteryScore ?? null),
       emotionalState: frustration.emotionalState,
       stage: state.stage as TutorStage,
       stageAttemptCount: state.stageAttemptCount,

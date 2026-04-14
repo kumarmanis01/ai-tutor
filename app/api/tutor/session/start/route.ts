@@ -51,7 +51,7 @@ export async function POST(req: Request) {
     // see a clear message rather than a mid-session error.
     const conceptCheck = await prisma.concept.findUnique({
       where: { id: conceptId },
-      select: { isSuspended: true },
+      select: { isSuspended: true, prerequisiteConceptIds: true },
     })
     if (conceptCheck?.isSuspended) {
       res = NextResponse.json(
@@ -99,24 +99,53 @@ export async function POST(req: Request) {
       return res
     }
 
-    // TODO: wire real session persistence once the Tutor Session model is finalized.
+    // Fetch pre-session mastery and prerequisite concept names concurrently.
+    const prerequisiteConceptIds = conceptCheck?.prerequisiteConceptIds ?? []
+    const [conceptStateResult, prereqConceptsResult] = await Promise.all([
+      prisma.studentConceptState
+        .findUnique({
+          where: { studentId_conceptId: { studentId: userId, conceptId } },
+          select: { masteryScore: true },
+        })
+        .catch(() => null),
+      prerequisiteConceptIds.length > 0
+        ? prisma.concept
+            .findMany({
+              where: { id: { in: prerequisiteConceptIds } },
+              select: { name: true },
+            })
+            .catch(() => [] as { name: string }[])
+        : Promise.resolve([] as { name: string }[]),
+    ])
+    const preSessionMastery: number | null = conceptStateResult?.masteryScore ?? null
+    const prereqs = prereqConceptsResult.map((c) => c.name)
+
+    // Generate a unique session ID and persist a LearningSession record so the
+    // completion handler can accurately compute masteryDelta and sessionDuration.
     const sessionId =
       typeof crypto !== 'undefined' && 'randomUUID' in crypto
         ? crypto.randomUUID()
         : `tutor_${Date.now().toString(36)}`
 
-    // TODO: use Redis-backed resume detection via hasIncompleteTurn(sessionId) when available.
+    await prisma.learningSession.create({
+      data: {
+        id: sessionId,
+        studentId: userId,
+        activityType: 'tutor',
+        activityRef: conceptId,
+        difficultyLevel: 'medium',
+        meta: { conceptId, preSessionMastery, hintsUsed: 0 },
+      },
+    })
+
+    // Resume context: Redis-backed incomplete-turn detection is not yet wired;
+    // placeholder ensures the client always gets a valid shape.
     const resumeContext = {
       hasIncompleteSession: false,
       lastStage: null as string | null,
     }
 
-    // TODO: fetch real prerequisites from ConceptPrereqs once available.
-    const prereqs: string[] = []
-    void conceptId
-    void subjectId
-
-    // Only increment after "session creation" is considered successful.
+    // Only increment after session is successfully persisted.
     await incrementFreeTierUsage(userId)
 
     res = NextResponse.json({
