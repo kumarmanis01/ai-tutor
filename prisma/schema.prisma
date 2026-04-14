@@ -48,6 +48,7 @@ model User {
   language                    LanguageCode
   grade                       String?
   board                       String?
+  schoolName                  String?
   subjects                    String[]                     @default([])
   points                      Int                          @default(0)
   // Cumulative XP for level progression (1-10).

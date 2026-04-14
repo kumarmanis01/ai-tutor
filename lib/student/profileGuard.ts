@@ -6,6 +6,7 @@ export type ProfileMissingField = 'grade' | 'board' | 'subjects' | 'language' | 
 export interface StudentProfileData {
   board: string | null
   grade: string | null
+  schoolName: string | null
   language: string | null
   subjects: string[]
   age: number | null
@@ -17,6 +18,7 @@ export interface StudentProfileData {
 export const EMPTY_PROFILE_DATA: StudentProfileData = {
   board: null,
   grade: null,
+  schoolName: null,
   language: null,
   subjects: [],
   age: null,
@@ -90,6 +92,7 @@ export async function checkProfileCompleteness(studentId: string): Promise<Profi
         name: true,
         grade: true,
         board: true,
+        schoolName: true,
         subjects: true,
         language: true,
         age: true,
@@ -167,6 +170,7 @@ export async function checkProfileCompleteness(studentId: string): Promise<Profi
       data: {
         board: user.board ?? null,
         grade: user.grade ?? null,
+        schoolName: user.schoolName ?? null,
         language: user.language ? String(user.language) : null,
         subjects: resolvedSubjects,
         age: user.age ?? null,
