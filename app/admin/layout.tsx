@@ -3,7 +3,7 @@ import localFont from 'next/font/local';
 import { redirect } from 'next/navigation';
 import { getServerSessionForHandlers } from '@/lib/session';
 import { prisma } from '@/lib/prisma';
-import { AdminSidebar } from '@/components/admin/AdminSidebar';
+import { AdminSidebar } from '../../components/admin/AdminSidebar';
 import Providers from '@/app/providers';
 import { GlobalLoaderProvider } from '@/context/GlobalLoaderProvider';
 import { NavigationProgress } from '@/components/NavigationProgress';

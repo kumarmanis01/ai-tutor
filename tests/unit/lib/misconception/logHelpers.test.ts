@@ -4,7 +4,7 @@
  *   truncation, redaction and non-string handling).
  *
  * LINKED UNIT TEST:
- * - tests/unit/lib/misconception/logHelpers.spec.ts
+ * - tests/unit/lib/misconception/logHelpers.test.ts
  *
  * COPILOT INSTRUCTIONS FOLLOWED:
  * - /docs/COPILOT_GUARDRAILS.md
