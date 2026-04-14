@@ -54,11 +54,11 @@ for (const t of tests) {
 write('\n=== SUMMARY ===');
 if (failures.length === 0) {
   write('ALL PASSED');
-  console.log('ALL PASSED — log:', logFile);
+  console.log('ALL PASSED -- log:', logFile);
   process.exit(0);
 } else {
   write('FAILED FILES:');
   for (const f of failures) write(JSON.stringify(f));
-  console.log('FAILED — see log:', logFile);
+  console.log('FAILED -- see log:', logFile);
   process.exit(1);
 }
