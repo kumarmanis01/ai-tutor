@@ -20,6 +20,10 @@ jest.mock('@/lib/prisma.js', () => ({ prisma: require('../../helpers/prismaMock'
 jest.mock('@/lib/ai/embeddings', () => ({ getEmbeddingsBatch: jest.fn() }))
 jest.mock('@/lib/logger.js', () => ({ logger: { info: jest.fn(), warn: jest.fn(), error: jest.fn() } }))
 
+// Ensure analyticsEvent mock exists on prismaMock for new telemetry writes
+const { prismaMock } = require('../../helpers/prismaMock')
+prismaMock.analyticsEvent = { create: jest.fn() }
+
 describe('ingest-curriculum script', () => {
   beforeEach(() => {
     jest.resetAllMocks()

@@ -556,13 +556,41 @@ async function writeRunLog(
     errorDetails:        opts.errorDetails ? (opts.errorDetails as object) : undefined,
   }
   try {
+    let result: any = null
     if (opts.runId) {
       // Update the record pre-created by the API so admin sees live results on the same row
-      await prisma.ingestRunLog.update({ where: { id: opts.runId }, data })
+      result = await prisma.ingestRunLog.update({ where: { id: opts.runId }, data })
       console.log('[scrape-ncert] IngestRunLog updated.')
     } else {
-      await prisma.ingestRunLog.create({ data })
+      result = await prisma.ingestRunLog.create({ data })
       console.log('[scrape-ncert] IngestRunLog written.')
+    }
+
+    // Emit analytics event for this ingest run so it appears in analytics.events
+    try {
+      const runId = result?.id ?? opts.runId ?? null
+      await prisma.analyticsEvent.create({
+        data: {
+          eventType: 'ingest_run',
+          userId: null,
+          courseId: null,
+          lessonIdx: null,
+          metadata: {
+            runId,
+            fileSource: data.fileSource,
+            board: data.board,
+            subjectId: data.subjectId ?? null,
+            chunksCreated: data.chunksCreated,
+            chunksUpdated: data.chunksUpdated,
+            embeddingsGenerated: data.embeddingsGenerated,
+            errors: data.errors,
+            durationMs: data.durationMs,
+            errorDetails: data.errorDetails ?? undefined,
+          },
+        },
+      })
+    } catch (ae) {
+      console.warn('[scrape-ncert] Could not write analyticsEvent for ingest_run:', ae)
     }
   } catch (err) {
     console.warn('[scrape-ncert] Could not write IngestRunLog:', err)

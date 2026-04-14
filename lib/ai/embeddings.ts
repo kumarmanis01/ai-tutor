@@ -41,7 +41,33 @@ export async function getEmbedding(text: string): Promise<number[] | null> {
     // Tests may run with --runInBand (no JEST_WORKER_ID), so also check
     // NODE_ENV === 'test'.
     if (process.env.JEST_WORKER_ID || process.env.NODE_ENV === 'test') {
-      return new Array(1536).fill(0.01)
+      // Deterministic fake embedding for tests, but still emit analytics
+      const fakeEmbedding = new Array(1536).fill(0.01)
+      try {
+        const input = text.slice(0, 8000)
+        const inputTokensEstimate = Math.max(1, Math.ceil(input.length / 4))
+        await prisma.analyticsEvent.create({
+          data: {
+            eventType: 'ai_call',
+            userId: null,
+            courseId: null,
+            lessonIdx: null,
+            metadata: {
+              model: 'text-embedding-3-small',
+              call_type: 'embed',
+              input_tokens: inputTokensEstimate,
+              output_tokens: fakeEmbedding.length,
+              cost_usd: (inputTokensEstimate * EMBED_COST_USD_PER_TOKEN),
+              cache_hit: false,
+              session_id: null,
+              concept_id: null,
+            },
+          },
+        })
+      } catch (e) {
+        logger.warn('analyticsEvent.embed.create.failed', { error: String((e as any)?.message ?? e) })
+      }
+      return fakeEmbedding
     }
 
     // If not under Jest and no API key is present, return null.
@@ -69,6 +95,8 @@ export async function getEmbedding(text: string): Promise<number[] | null> {
             output_tokens: Array.isArray(embedding) ? embedding.length : null,
             cost_usd: (inputTokensEstimate * EMBED_COST_USD_PER_TOKEN),
             cache_hit: false,
+                session_id: null,
+                concept_id: null,
           },
         },
       })
@@ -99,9 +127,36 @@ export async function getEmbeddingsBatch(
       // If running under Jest or NODE_ENV=test, always return deterministic
       // fake embeddings for integration tests that spawn child processes.
       if (process.env.JEST_WORKER_ID || process.env.NODE_ENV === 'test') {
-        const fake = new Array(1536).fill(0.01)
-        results.push(...batch.map(() => [...fake]))
-      } else if (!process.env.OPENAI_API_KEY) {
+          const fake = new Array(1536).fill(0.01)
+          results.push(...batch.map(() => [...fake]))
+          // Emit analytics for the fake batch as well so tests can assert metadata
+          try {
+            const totalInputChars = batch.reduce((s, it) => s + (it?.length ?? 0), 0)
+            const inputTokensEstimate = Math.max(1, Math.ceil(totalInputChars / 4))
+            const totalOutputTokens = batch.length * fake.length
+            await prisma.analyticsEvent.create({
+              data: {
+                eventType: 'ai_call',
+                userId: null,
+                courseId: null,
+                lessonIdx: null,
+                metadata: {
+                  model: 'text-embedding-3-small',
+                  call_type: 'embed',
+                  input_tokens: inputTokensEstimate,
+                  output_tokens: totalOutputTokens,
+                  cost_usd: (inputTokensEstimate * EMBED_COST_USD_PER_TOKEN),
+                  cache_hit: false,
+                  batch_size: batch.length,
+                  session_id: null,
+                  concept_id: null,
+                },
+              },
+            })
+          } catch (e) {
+            logger.warn('analyticsEvent.embed.batch.create.failed', { error: String((e as any)?.message ?? e) })
+          }
+        } else if (!process.env.OPENAI_API_KEY) {
         results.push(...batch.map(() => null))
       } else {
         const inputs = batch.map((t) => t.slice(0, 8000))
@@ -137,6 +192,8 @@ export async function getEmbeddingsBatch(
                 cost_usd: (inputTokensEstimate * EMBED_COST_USD_PER_TOKEN),
                 cache_hit: false,
                 batch_size: inputs.length,
+                session_id: null,
+                concept_id: null,
               },
             },
           })

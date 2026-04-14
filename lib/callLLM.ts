@@ -400,7 +400,8 @@ export async function callLLM({ prompt, model, meta, timeoutMs }: CallLLMArgs) {
             output_tokens: Number(usage?.completion_tokens ?? 0),
             cost_usd: Number(costUsd ?? 0),
             cache_hit: Boolean(meta?.cached ?? false),
-            sessionId: meta?.sessionId ?? null,
+            session_id: meta?.sessionId ?? null,
+            concept_id: meta?.conceptId ?? meta?.topicId ?? null,
           }
           prisma.analyticsEvent.create({ data: { eventType: 'ai_call', userId: meta?.studentId ?? null, courseId: null, lessonIdx: null, metadata: metaForEvent } }).catch(() => {})
         } catch (e) {
@@ -450,7 +451,8 @@ export async function callLLM({ prompt, model, meta, timeoutMs }: CallLLMArgs) {
                 cost_usd: 0,
                 cache_hit: Boolean(meta?.cached ?? false),
                 error: String(error?.message ?? error ?? '').slice(0, 200),
-                sessionId: meta?.sessionId ?? null,
+                session_id: meta?.sessionId ?? null,
+                concept_id: meta?.conceptId ?? meta?.topicId ?? null,
               }
               prisma.analyticsEvent.create({ data: { eventType: 'ai_call', userId: meta?.studentId ?? null, courseId: null, lessonIdx: null, metadata: failedMeta } }).catch(() => {})
             } catch (e) { try { logger.warn('analyticsEvent.llm.failed.create.failed', { error: String((e as any)?.message ?? e) }) } catch {} }
@@ -478,7 +480,8 @@ export async function callLLM({ prompt, model, meta, timeoutMs }: CallLLMArgs) {
                 cost_usd: 0,
                 cache_hit: Boolean(meta?.cached ?? false),
                 error: String(error?.message ?? error ?? '').slice(0, 200),
-                sessionId: meta?.sessionId ?? null,
+                session_id: meta?.sessionId ?? null,
+                concept_id: meta?.conceptId ?? meta?.topicId ?? null,
               }
               prisma.analyticsEvent.create({ data: { eventType: 'ai_call', userId: meta?.studentId ?? null, courseId: null, lessonIdx: null, metadata: failedMeta2 } }).catch(() => {})
             } catch (e) { try { logger.warn('analyticsEvent.llm.failed.create.failed', { error: String((e as any)?.message ?? e) }) } catch {} }

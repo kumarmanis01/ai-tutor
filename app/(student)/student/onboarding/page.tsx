@@ -46,6 +46,7 @@ export default async function StudentOnboardingPage() {
     grade: user?.grade ?? null,
     language: user?.language ?? null,
     subjects: parseSubjects(user?.subjects),
+    schoolName: user?.schoolName ?? null,
     age: user?.age ?? null,
     parentEmail: user?.parentEmail ?? null,
     parentPhone: user?.parentPhone ?? null,

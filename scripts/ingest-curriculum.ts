@@ -196,17 +196,42 @@ export async function writeRunLog(opts: {
 }) {
   try {
     const client = (opts as any)._prismaClient ?? prisma
-    await client.ingestRunLog.create({
+    const duration = Date.now() - opts.startMs
+    const created = await client.ingestRunLog.create({
       data: {
         chunksCreated: opts.chunksCreated,
         chunksUpdated: opts.chunksUpdated,
         embeddingsGenerated: opts.embeddingsGenerated,
         errors: opts.errors,
-        durationMs: Date.now() - opts.startMs,
+        durationMs: duration,
         fileSource: opts.fileSource ?? 'cli',
         errorDetails: opts.errorDetails ? (opts.errorDetails as object) : undefined,
       },
     })
+
+    // Emit a lightweight analytics event so ingestion runs appear in analytics.events
+    try {
+      await client.analyticsEvent.create({
+        data: {
+          eventType: 'ingest_run',
+          userId: null,
+          courseId: null,
+          lessonIdx: null,
+          metadata: {
+            runId: created.id,
+            chunksCreated: opts.chunksCreated,
+            chunksUpdated: opts.chunksUpdated,
+            embeddingsGenerated: opts.embeddingsGenerated,
+            errors: opts.errors,
+            durationMs: duration,
+            fileSource: opts.fileSource ?? 'cli',
+            errorDetails: opts.errorDetails ? opts.errorDetails : undefined,
+          },
+        },
+      })
+    } catch (e) {
+      console.warn('[ingest] Could not write analyticsEvent for ingest_run:', e)
+    }
   } catch (err) {
     console.warn('[ingest] Could not write IngestRunLog:', err)
   }
