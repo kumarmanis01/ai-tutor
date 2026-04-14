@@ -77,20 +77,24 @@ export async function GET() {
  * Every item includes meta.topicId / meta.chapterId / meta.subjectId.
  */
 async function getFallbackRecommendations(userId: string) {
-  const user = await prisma.user.findUnique({ where: { id: userId } });
+  // Fetch user profile and most recent incomplete session in parallel
+  const [user, incompleteSession] = await Promise.all([
+    prisma.user.findUnique({
+      where: { id: userId },
+      select: { subjects: true, board: true, grade: true },
+    }),
+    prisma.learningSession.findFirst({
+      where: { studentId: userId, isCompleted: false },
+      orderBy: { lastAccessed: 'desc' },
+      select: { activityRef: true, activityType: true, meta: true },
+    }),
+  ]);
+
   const subjects = (user?.subjects || []) as string[];
-  const _board = user?.board || '';
-  const _grade = user?.grade || '';
   const hasSubjects = subjects && subjects.length > 0;
   const items: any[] = [];
 
   // 1. Incomplete session → resume topic
-  const incompleteSession = await prisma.learningSession.findFirst({
-    where: { studentId: userId, isCompleted: false },
-    orderBy: { lastAccessed: 'desc' },
-    select: { activityRef: true, activityType: true, meta: true },
-  });
-
   if (incompleteSession) {
     const meta = (incompleteSession.meta && typeof incompleteSession.meta === 'object')
       ? incompleteSession.meta as Record<string, unknown>
@@ -99,7 +103,16 @@ async function getFallbackRecommendations(userId: string) {
     if (topicId) {
       const topic = await prisma.topicDef.findUnique({
         where: { id: topicId },
-        include: { chapter: { include: { subject: true } } },
+        select: {
+          name: true,
+          chapter: {
+            select: {
+              id: true,
+              name: true,
+              subject: { select: { id: true, name: true } },
+            },
+          },
+        },
       }).catch(() => null);
       items.push({
         id: `resume:${topicId}`,
@@ -135,7 +148,21 @@ async function getFallbackRecommendations(userId: string) {
   if (weakTestIds.length > 0) {
     const weakTest = await prisma.generatedTest.findFirst({
       where: { id: { in: weakTestIds as string[] } },
-      include: { topic: { include: { chapter: { include: { subject: true } } } } },
+      select: {
+        topic: {
+          select: {
+            id: true,
+            name: true,
+            chapter: {
+              select: {
+                id: true,
+                name: true,
+                subject: { select: { id: true, name: true } },
+              },
+            },
+          },
+        },
+      },
     }).catch(() => null);
     if (weakTest?.topic) {
       items.push({

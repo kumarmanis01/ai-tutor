@@ -46,45 +46,75 @@ export default async function ParentDashboardPage() {
   const parentId = session.user.id
   const monday = weekStart()
 
-  // 1. Load all active child links
-  const links = await prisma.parentStudent.findMany({
-    where: { parentId, status: 'active' },
-    select: { studentId: true },
-  })
+  // 1. Load all active child links + parent timezone in parallel
+  const [links, parent] = await Promise.all([
+    prisma.parentStudent.findMany({
+      where: { parentId, status: 'active' },
+      select: { studentId: true },
+    }),
+    prisma.user.findUnique({ where: { id: parentId }, select: { timezone: true } }),
+  ])
 
-  // 2. Per-child data (parallel)
+  const studentIds = links.map((l) => l.studentId)
+
+  // 2. Batch-load all student profiles, streaks, and session counts in parallel
+  const [students, streaks, sessionCounts] = await Promise.all([
+    prisma.user.findMany({
+      where: { id: { in: studentIds } },
+      select: { id: true, name: true, grade: true, board: true, subjects: true, timezone: true },
+    }),
+    prisma.studentStreak.findMany({
+      where: { studentId: { in: studentIds }, kind: 'daily' },
+      select: { studentId: true, current: true },
+    }),
+    prisma.structuredSession.groupBy({
+      by: ['studentId'],
+      where: { studentId: { in: studentIds }, startedAt: { gte: monday } },
+      _count: { _all: true },
+    }),
+  ])
+
+  // Build lookup maps
+  const studentMap = new Map(students.map((s) => [s.id, s]))
+  const streakMap = new Map(streaks.map((s) => [s.studentId, s.current]))
+  const sessionCountMap = new Map(sessionCounts.map((r) => [r.studentId, r._count._all]))
+
+  // 3. Resolve all unique subject names → SubjectDef IDs in one query
+  const allSubjectNames = [
+    ...new Set(
+      students.flatMap((s) => (s.subjects as string[]).filter(Boolean))
+    ),
+  ]
+  const subjectDefs = allSubjectNames.length
+    ? await prisma.subjectDef.findMany({
+        where: {
+          lifecycle: 'active',
+          OR: [{ name: { in: allSubjectNames } }, { slug: { in: allSubjectNames } }],
+        },
+        select: { id: true, name: true, slug: true },
+      })
+    : []
+
+  // Build name/slug → subjectDef map
+  const subjectDefByKey = new Map<string, { id: string; name: string }>()
+  for (const sd of subjectDefs) {
+    subjectDefByKey.set(sd.name, { id: sd.id, name: sd.name })
+    if (sd.slug) subjectDefByKey.set(sd.slug, { id: sd.id, name: sd.name })
+  }
+
+  // 4. Compute readiness per child in parallel (each child's subjects are parallel too)
   const children = await Promise.all(
-    links.map(async ({ studentId }) => {
-      const [student, streak, sessionsThisWeek] = await Promise.all([
-        prisma.user.findUnique({
-          where: { id: studentId },
-          select: { name: true, grade: true, board: true, subjects: true, timezone: true },
-        }),
-        prisma.studentStreak.findFirst({
-          where: { studentId, kind: 'daily' },
-          select: { current: true },
-        }),
-        prisma.structuredSession.count({
-          where: { studentId, startedAt: { gte: monday } },
-        }),
-      ])
-
+    studentIds.map(async (studentId) => {
+      const student = studentMap.get(studentId)
       if (!student) return null
 
-      // 3. Resolve subject names → SubjectDef IDs → readiness
       const subjectNames = (student.subjects as string[]).filter(Boolean)
-      const subjectDefs = subjectNames.length
-        ? await prisma.subjectDef.findMany({
-            where: {
-              lifecycle: 'active',
-              OR: [{ name: { in: subjectNames } }, { slug: { in: subjectNames } }],
-            },
-            select: { id: true, name: true },
-          })
-        : []
+      const resolvedDefs = subjectNames
+        .map((n) => subjectDefByKey.get(n))
+        .filter((sd): sd is { id: string; name: string } => sd !== undefined)
 
       const readiness = await Promise.all(
-        subjectDefs.map(async (sd) => {
+        resolvedDefs.map(async (sd) => {
           const result = await computeReadinessScore(studentId, sd.id).catch(() => null)
           return { subjectId: sd.id, subjectName: sd.name, score: result?.score ?? 0 }
         }),
@@ -96,8 +126,8 @@ export default async function ParentDashboardPage() {
         grade: student.grade ?? '',
         board: student.board ?? '',
         timezone: student.timezone ?? null,
-        streak: streak?.current ?? 0,
-        sessionsThisWeek,
+        streak: streakMap.get(studentId) ?? 0,
+        sessionsThisWeek: sessionCountMap.get(studentId) ?? 0,
         readiness,
       }
     }),
@@ -107,8 +137,6 @@ export default async function ParentDashboardPage() {
     (c): c is NonNullable<typeof c> => c !== null,
   )
 
-  // Parent timezone (if set on the user)
-  const parent = await prisma.user.findUnique({ where: { id: parentId }, select: { timezone: true } })
   const parentTimezone = parent?.timezone ?? null
 
   return <ParentDashboard children={validChildren} parentTimezone={parentTimezone} />

@@ -36,7 +36,7 @@ export async function getUniqueStudyDays(
     where,
     select: { completedAt: true },
     orderBy: { completedAt: 'desc' },
-    take: options.limit ?? 500,
+    take: options.limit ?? 100,
   });
 
   const dateSet = new Set<string>();

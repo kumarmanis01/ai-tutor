@@ -26,16 +26,17 @@ export async function GET(req: Request) {
 
     const subjectNames = (userProfile?.subjects ?? []).map((s) => String(s)).filter(Boolean)
 
-    // For each subject, compute readiness (best-effort)
+    // For each subject, compute readiness in parallel (best-effort)
     const readinessRows: Array<{ subject: string; score: number }> = []
     if (subjectNames.length > 0) {
       const subjectDefs = await prisma.subjectDef.findMany({ where: { OR: [{ name: { in: subjectNames } }, { slug: { in: subjectNames } }], lifecycle: 'active' }, select: { id: true, name: true } })
-      for (const sd of subjectDefs) {
-        try {
-          const r = await computeReadinessScore(userId, sd.id)
-          readinessRows.push({ subject: sd.name, score: Math.round(r.score) })
-        } catch {
-          // skip
+      const results = await Promise.allSettled(
+        subjectDefs.map((sd) => computeReadinessScore(userId, sd.id))
+      )
+      for (let i = 0; i < subjectDefs.length; i++) {
+        const r = results[i]
+        if (r.status === 'fulfilled') {
+          readinessRows.push({ subject: subjectDefs[i].name, score: Math.round(r.value.score) })
         }
       }
     }
