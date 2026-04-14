@@ -56,6 +56,8 @@ export async function POST(req: NextRequest) {
     const phone = rawPhone ? rawPhone.replace(/[^0-9+]/g, '') : undefined;
     const parentEmailRaw = typeof body.parent_email === 'string' ? body.parent_email.trim() : (typeof body.parentEmail === 'string' ? body.parentEmail.trim() : undefined);
     const parentEmail = parentEmailRaw && parentEmailRaw.includes('@') ? parentEmailRaw : undefined;
+    const schoolNameRaw = typeof body.school_name === 'string' ? body.school_name.trim() : undefined;
+    const schoolName = schoolNameRaw && schoolNameRaw.length > 0 ? schoolNameRaw : undefined;
 
     // Do not create users in onboarding. If there's no session user id, we will return 401 below.
 
@@ -129,6 +131,7 @@ export async function POST(req: NextRequest) {
     if (preferredLanguage) updates.language = preferredLanguage;
     if (token) updates.lastWidgetToken = token;
     if (parentEmail !== undefined) updates.parentEmail = parentEmail || null;
+    if (schoolName !== undefined) updates.schoolName = schoolName;
 
     logger.info('/api/user/onboarding userId and updates', { className: 'api.user.onboarding', methodName: 'POST', userId, updates });
     let updatedUser;

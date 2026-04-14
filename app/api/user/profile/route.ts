@@ -73,6 +73,7 @@ export async function GET(req: Request) {
     // include student-specific fields so clients can detect incomplete profiles
     grade: savedUser?.grade ?? null,
     board: savedUser?.board ?? null,
+    schoolName: savedUser?.schoolName ?? null,
     subjects: savedUser?.subjects ?? [],
     age: savedUser?.age ?? null,
     parentPhone: savedUser?.parentPhone ?? null,

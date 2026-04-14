@@ -7,6 +7,7 @@ export type OnboardingValues = {
   board: string | null;
   preferred_language: string | null;
   subjects: string[] | undefined;
+  school_name?: string | null;
   parent_email?: string | null;
   parent_phone?: string | null;
   parent_otp?: string | null;
@@ -17,6 +18,7 @@ export type OnboardingProfile = {
   age?: number | null;
   grade?: string;
   board?: string;
+  schoolName?: string | null;
   language?: string;
   subjects?: string[];
   parentEmail?: string | null;
