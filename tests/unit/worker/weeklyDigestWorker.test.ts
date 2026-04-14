@@ -30,6 +30,8 @@ describe('processParentDigest', () => {
 
     jest.doMock('@/lib/prisma', () => ({ prisma: prismaMock }))
     jest.doMock('@/lib/notifications/delivery', () => ({ sendParentMilestoneNotification: sendMock }))
+    // Prevent real OpenAI calls: ALLOW_LLM_CALLS=1 is set globally in forceTestNodeEnv.cjs
+    jest.doMock('@/lib/callLLM', () => ({ callLLM: jest.fn().mockRejectedValue(new Error('callLLM mocked in unit tests')) }))
 
     const { processParentDigest } = await import('../../../worker/services/weeklyDigestWorker')
 

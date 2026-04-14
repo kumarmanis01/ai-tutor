@@ -27,13 +27,13 @@ describe('subscription renewal worker', () => {
   beforeAll(async () => {
     const user = await prisma.user.create({ data: { name: 'Renewal Tester', email: `renewal-${Date.now()}@example.test`, language: 'en' } });
     userId = user.id;
-  });
+  }, 30_000);
 
   afterAll(async () => {
     await prisma.payment.deleteMany({ where: { userId } }).catch(() => {});
     await prisma.subscription.deleteMany({ where: { userId } }).catch(() => {});
     await prisma.user.deleteMany({ where: { id: userId } }).catch(() => {});
-  });
+  }, 30_000);
 
   test('retries then enters grace then revokes subscription', async () => {
     const now = new Date();

@@ -13,6 +13,11 @@
  * - 2026-04-13T00:00:00Z | senior-engineer | add student push expectations and mocks
  */
 
+// Prevent real OpenAI calls: callLLM is gated by ALLOW_LLM_CALLS=1 which is set in
+// forceTestNodeEnv.cjs. Mock the module so no HTTP requests are made during unit tests.
+const mockCallLLM = jest.fn()
+jest.mock('@/lib/callLLM', () => ({ callLLM: (...a: any[]) => mockCallLLM(...a) }))
+
 let processReadinessDropAlerts: any
 const mockParentFind = jest.fn()
 const mockPlansFind = jest.fn()
@@ -55,6 +60,8 @@ beforeAll(() => {
 })
 
 beforeEach(() => {
+  mockCallLLM.mockReset()
+  mockCallLLM.mockRejectedValue(new Error('callLLM mocked in unit tests'))
   mockParentFind.mockReset()
   mockPlansFind.mockReset()
   mockSubjectDefsFind.mockReset()
