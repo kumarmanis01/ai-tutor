@@ -74,6 +74,13 @@ describe('Parent subscription: order → verify integration', () => {
     childBId = childB.id;
 
     // Create ParentStudent links
+    // Ensure ParentStudent table has the expected columns (some test DBs may be behind migrations)
+    try {
+      await prisma.$executeRawUnsafe('ALTER TABLE "ParentStudent" ADD COLUMN IF NOT EXISTS "inactivityOptOut" BOOLEAN DEFAULT false');
+    } catch (err) {
+      // Non-fatal; we'll attempt to create rows and let Prisma surface any errors.
+    }
+
     await prisma.parentStudent.create({ data: { parentId, studentId: childAId } });
     await prisma.parentStudent.create({ data: { parentId, studentId: childBId } });
 

@@ -90,7 +90,7 @@ export async function POST(req: Request) {
   // Cross-check order belongs to this student
   const order = await prisma.paymentOrder.findUnique({
     where: { razorpayOrderId: orderId },
-    select: { studentId: true, status: true, planMonths: true, providerIdempotencyKey: true },
+    select: { studentId: true, status: true, planMonths: true, providerIdempotencyKey: true, amount: true },
   });
   if (!order || order.studentId !== userId) {
     return NextResponse.json({ error: 'Order not found' }, { status: 403 });

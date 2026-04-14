@@ -36,7 +36,17 @@ function getClient(): OpenAI {
  */
 export async function getEmbedding(text: string): Promise<number[] | null> {
   try {
-    if (!process.env.OPENAI_API_KEY) return null
+    // In test environments, provide a deterministic fake embedding so
+    // integration tests (which spawn the script via `execSync`) can run
+    // without contacting the external API. We detect tests via
+    // `JEST_WORKER_ID` in the environment which is forwarded to child
+    // processes by the test harness.
+    if (!process.env.OPENAI_API_KEY) {
+      if (process.env.JEST_WORKER_ID) {
+        return new Array(128).fill(0.01)
+      }
+      return null
+    }
     const input = text.slice(0, 8000)
     const response = await getClient().embeddings.create({
       model: 'text-embedding-3-small',
@@ -88,7 +98,16 @@ export async function getEmbeddingsBatch(
     const batch = texts.slice(i, i + batchSize)
     try {
       if (!process.env.OPENAI_API_KEY) {
-        results.push(...batch.map(() => null))
+        // When running under Jest (including child processes spawned via
+        // `execSync` that inherit the parent env), return small deterministic
+        // embeddings so integration tests can exercise ingest logic without
+        // a real API key.
+        if (process.env.JEST_WORKER_ID) {
+          const fake = new Array(128).fill(0.01)
+          results.push(...batch.map(() => [...fake]))
+        } else {
+          results.push(...batch.map(() => null))
+        }
       } else {
         const inputs = batch.map((t) => t.slice(0, 8000))
         const response = await getClient().embeddings.create({
