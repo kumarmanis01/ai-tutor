@@ -27,7 +27,7 @@ describe('Order → Verify → Invoice integration', () => {
 
   beforeAll(async () => {
     // Create a test user
-    const user = await prisma.user.create({ data: { name: 'Test Parent', email: 'parent-invoice@test.local' } });
+    const user = await prisma.user.create({ data: { name: 'Test Parent', email: 'parent-invoice@test.local', language: 'en' } });
     userId = user.id;
 
     // Create a paymentOrder row

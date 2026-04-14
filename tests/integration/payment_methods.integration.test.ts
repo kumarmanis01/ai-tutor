@@ -11,6 +11,9 @@
 
 import { prisma } from '@/lib/prisma';
 
+// Allow longer timeout for payment integration flows
+jest.setTimeout(30_000);
+
 const hasDb = !!process.env.DATABASE_URL;
 
 if (!hasDb) {

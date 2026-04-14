@@ -62,12 +62,12 @@ describe('Parent subscription: order → verify integration', () => {
     process.env.RAZORPAY_KEY_SECRET = process.env.RAZORPAY_KEY_SECRET ?? 'test-secret';
 
     // Create parent and two child users
-    const parent = await prisma.user.create({ data: { name: 'Parent Tester', email: 'parent-tester@example.test', role: 'parent' } });
+    const parent = await prisma.user.create({ data: { name: 'Parent Tester', email: 'parent-tester@example.test', role: 'parent', language: 'en' } });
     parentId = parent.id;
 
-    const childA = await prisma.user.create({ data: { name: 'Child A', email: 'child-a@example.test' } });
+    const childA = await prisma.user.create({ data: { name: 'Child A', email: 'child-a@example.test', language: 'en' } });
     childAId = childA.id;
-    const childB = await prisma.user.create({ data: { name: 'Child B', email: 'child-b@example.test' } });
+    const childB = await prisma.user.create({ data: { name: 'Child B', email: 'child-b@example.test', language: 'en' } });
     childBId = childB.id;
 
     // Create ParentStudent links

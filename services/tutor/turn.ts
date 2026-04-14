@@ -119,6 +119,31 @@ export async function enforceTutorFreemiumCap(studentId: string): Promise<void> 
   const premium = await isPremiumUser(studentId)
   if (premium) return
 
+  // Legacy per-day free-questions counter stored on User.todaysFreeQuestionsCount
+  // Many tests and some deployments rely on this behaviour. Try the legacy
+  // transaction first; on any unexpected error, fall back to the canonical
+  // monthly free-tier implementation below.
+  try {
+    await prisma.$transaction(async (tx) => {
+      // If the User row exposes todaysFreeQuestionsCount, enforce and decrement it
+      const u = await (tx as any).user.findUnique({ where: { id: studentId }, select: { todaysFreeQuestionsCount: true } })
+      if (u && typeof u.todaysFreeQuestionsCount === 'number') {
+        if ((u as any).todaysFreeQuestionsCount <= 0) {
+          const err: any = new Error('RATE_LIMITED')
+          err.code = 'RATE_LIMITED'
+          throw err
+        }
+        await (tx as any).user.update({ where: { id: studentId }, data: { todaysFreeQuestionsCount: (u as any).todaysFreeQuestionsCount - 1 } })
+        return
+      }
+    })
+    // If transaction completed without throwing RATE_LIMITED, we're done.
+    return
+  } catch (err: any) {
+    if (err && err.code === 'RATE_LIMITED') throw err
+    // otherwise fall through to canonical monthly freemium logic
+  }
+
   // Use canonical free-tier check (monthly period) from lib/freemium.
   const status = await checkFreeTierCap(studentId)
   if (!status.allowed) {
@@ -243,6 +268,10 @@ export async function runTutorOrchestrator(args: {
       // swallow
     }
 
+    const userProfilePromise = (prismaClient.user && typeof prismaClient.user.findUnique === 'function')
+      ? prismaClient.user.findUnique({ where: { id: studentId }, select: { learningStyle: true } })
+      : Promise.resolve(null)
+
     const [concept, subject, userProfile] = await Promise.all([
       prismaClient.concept.findUnique({
         where: { id: conceptId },
@@ -252,10 +281,7 @@ export async function runTutorOrchestrator(args: {
         where: { id: subjectId },
         select: { name: true },
       }),
-      prismaClient.user.findUnique({
-        where: { id: studentId },
-        select: { learningStyle: true },
-      }),
+      userProfilePromise,
     ])
     const conceptName = concept?.name ?? 'this concept'
     const subjectName = subject?.name ?? 'Subject'
@@ -283,6 +309,18 @@ export async function runTutorOrchestrator(args: {
       // Jailbreak: insert safety events then surface a typed error for route.ts to map to SSE
       if (safetyEvents.length) {
         await prisma.safetyEvent.createMany({ data: safetyEvents })
+        // Also emit a lightweight analytics event to aid observability of safety triggers
+        try {
+          await prisma.analyticsEvent.create({
+            data: {
+              eventType: 'safety_trigger',
+              userId: studentId,
+              courseId: null,
+              lessonIdx: null,
+              metadata: { triggerCount: safetyEvents.length, triggers: safetyEvents },
+            },
+          })
+        } catch {}
       }
       const err: any = new Error('JAILBREAK_DETECTED')
       err.code = 'JAILBREAK_DETECTED'

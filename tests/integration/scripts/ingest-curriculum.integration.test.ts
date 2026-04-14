@@ -15,7 +15,12 @@ describe('ingest-curriculum integration', () => {
     // Ensure minimal schema exists so tests can run without full migrations
     // Create a simple DOMAIN `vector` as text so the ingest script's `$1::vector`
     // casts succeed even when pgvector isn't installed in the test DB.
-    await prisma.$executeRawUnsafe(`CREATE DOMAIN IF NOT EXISTS vector AS text`)
+    try {
+      await prisma.$executeRawUnsafe(`CREATE DOMAIN IF NOT EXISTS vector AS text`)
+    } catch (err) {
+      // Some Postgres versions or managed DBs may not support `CREATE DOMAIN IF NOT EXISTS`.
+      // This is non-fatal for the test; continue if the statement fails.
+    }
 
     // Create CurriculumChunk table if missing (minimal columns used by script)
     await prisma.$executeRawUnsafe(`

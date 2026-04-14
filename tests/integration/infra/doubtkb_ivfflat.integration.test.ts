@@ -56,12 +56,18 @@ describe('DoubtKb IVFFLAT index and latency', () => {
     const values: string[] = []
     for (let i = 0; i < ROWS; i++) {
       const v = randomVectorLiteral(DIM)
-      values.push(`(gen_random_uuid(), '${subject}', '${v}')`)
+      // Provide required non-null columns (studentId, sessionId, question, answer)
+      // so the insert doesn't violate table constraints when the real table has
+      // additional non-nullable columns.
+      const studentId = `seed-student-${i}`
+      const sessionId = `seed-session-${i}`
+      const q = `synthetic question ${i}`.replace("'", "")
+      const a = `synthetic answer ${i}`.replace("'", "")
+      values.push(`(gen_random_uuid(), '${studentId}', '${sessionId}', '${q}', '${a}', '${subject}', '${v}')`)
     }
 
-    // Insert in one statement for speed. Use $executeRawUnsafe because Prisma
-    // does not support vector typed literals directly.
-    const insertSql = `INSERT INTO "DoubtKb" (id, "subjectId", embedding) VALUES ${values.join(',')} ON CONFLICT DO NOTHING`
+    // Insert specifying explicit columns to satisfy production schema.
+    const insertSql = `INSERT INTO "DoubtKb" (id, "studentId", "sessionId", question, answer, "subjectId", embedding) VALUES ${values.join(',')} ON CONFLICT DO NOTHING`
     await prisma.$executeRawUnsafe(insertSql)
 
     // Run several similarity queries and measure average time
