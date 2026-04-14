@@ -50,6 +50,7 @@ import { recordSessionEvents } from '@/lib/session/sessionEvents';
 import { normalizeAnswer } from '@/lib/tests';
 import { logger } from '@/lib/logger';
 import { detectMisconceptions, loadMisconceptions, logNovelMisconception } from '@/lib/ai/tutor/misconceptionDetector';
+import { normalizeStudentAnswerForLogging } from '@/lib/misconception/logHelpers';
 
 export const dynamic = 'force-dynamic';
 
@@ -308,12 +309,32 @@ export async function POST(
           where: { id: capturedTopicId },
           select: { chapter: { select: { subject: { select: { id: true } } } } },
         });
-        const subjectId = topicWithSubject?.chapter?.subject?.id ?? '';
-        const misconceptions = await loadMisconceptions(subjectId, capturedTopicId);
-        for (const wrong of wrongAnswers) {
-          const matches = detectMisconceptions(wrong.studentAnswer, misconceptions);
-          if (matches.length === 0) {
-            logNovelMisconception(capturedStudentId, subjectId, capturedTopicId, wrong.studentAnswer);
+        const subjectId = topicWithSubject?.chapter?.subject?.id;
+
+        // If subjectId cannot be resolved, skip logging to avoid noisy/false analytics
+        if (!subjectId) {
+          logger.info('Skipping novel misconception logging: missing subjectId', {
+            event: 'logNovelMisconception',
+            studentId: capturedStudentId,
+            topicId: capturedTopicId,
+          });
+        } else {
+          const misconceptions = await loadMisconceptions(subjectId, capturedTopicId);
+          for (const wrong of wrongAnswers) {
+            const answerText = typeof wrong.studentAnswer === 'string' ? wrong.studentAnswer : String(wrong.studentAnswer ?? '');
+            const matches = detectMisconceptions(answerText, misconceptions);
+            if (matches.length === 0) {
+              const snippet = normalizeStudentAnswerForLogging(answerText, 1000);
+              try {
+                await logNovelMisconception(capturedStudentId, subjectId, capturedTopicId, snippet);
+              } catch (err) {
+                logger.error('logNovelMisconception_failed', {
+                  error: (err as Error)?.message,
+                  studentId: capturedStudentId,
+                  topicId: capturedTopicId,
+                });
+              }
+            }
           }
         }
       } catch {
