@@ -1,9 +1,10 @@
-import { prisma } from '@/lib/prisma'
+import { PrismaClient } from '@prisma/client'
 
 // Ensure tests are resilient when new nullable timestamp columns were added to the schema.
 // This runs before each test file and will try to add missing columns if the DB supports it.
-// Use the application's Prisma singleton so tests reuse the same runtime client
-// and avoid accidentally pulling the browser-target client build.
+// Failures are swallowed so non-DB tests or locked CI DBs are unaffected.
+
+const prisma = new PrismaClient()
 
 async function ensureColumns() {
   try {
@@ -12,7 +13,6 @@ async function ensureColumns() {
     await prisma.$executeRawUnsafe('ALTER TABLE "RegenerationJob" ADD COLUMN IF NOT EXISTS "completedAt" TIMESTAMP NULL')
     await prisma.$executeRawUnsafe('ALTER TABLE "RegenerationJob" ADD COLUMN IF NOT EXISTS "retryOfJobId" TEXT NULL')
     await prisma.$executeRawUnsafe('ALTER TABLE "RegenerationJob" ADD COLUMN IF NOT EXISTS "retryIntentId" TEXT NULL')
-    await prisma.$executeRawUnsafe('ALTER TABLE "MockExamAttempt" ADD COLUMN IF NOT EXISTS "cohortCount" INTEGER')
   } catch {
     // Try SQLite-compatible ALTER (will throw if unsupported) — ignore errors
     try {
@@ -30,7 +30,7 @@ async function ensureColumns() {
     } catch {
       // ignore if DB doesn't support
     }
-    try { await prisma.$disconnect() } catch {}
+    await prisma.$disconnect()
   }
 }
 
