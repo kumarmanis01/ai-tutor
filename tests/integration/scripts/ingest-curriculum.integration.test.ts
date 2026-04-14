@@ -79,8 +79,9 @@ describe('ingest-curriculum integration', () => {
 
     const scriptPath = path.join(process.cwd(), 'scripts', 'ingest-curriculum.ts')
 
-    // First run: should write hash / embedding (embedding may be mocked in CI)
-    execSync(`npx tsx ${scriptPath}`, { stdio: 'pipe', env: process.env })
+    // First run: should write hash / embedding (run script in-process for
+    // integration tests to avoid cross-process env differences).
+    await (await import('@/scripts/ingest-curriculum')).main(prisma)
 
     const afterFirst = await prisma.curriculumChunk.findUnique({ where: { id: chunk.id } })
     expect(afterFirst).not.toBeNull()
@@ -88,7 +89,7 @@ describe('ingest-curriculum integration', () => {
     expect(firstHash).toBeTruthy()
 
     // Second run without changes: should not bump version or change hash
-    execSync(`npx tsx ${scriptPath}`, { stdio: 'pipe', env: process.env })
+    await (await import('@/scripts/ingest-curriculum')).main(prisma)
     const afterSecond = await prisma.curriculumChunk.findUnique({ where: { id: chunk.id } })
     expect(afterSecond).not.toBeNull()
     expect(afterSecond!.contentHash).toBe(firstHash)
@@ -96,7 +97,7 @@ describe('ingest-curriculum integration', () => {
 
     // Update content and run: version must increment and hash change
     await prisma.curriculumChunk.update({ where: { id: chunk.id }, data: { content: 'modified content' } })
-    execSync(`npx tsx ${scriptPath}`, { stdio: 'pipe', env: process.env })
+    await (await import('@/scripts/ingest-curriculum')).main(prisma)
     const afterThird = await prisma.curriculumChunk.findUnique({ where: { id: chunk.id } })
     expect(afterThird).not.toBeNull()
     expect(afterThird!.contentHash).not.toBe(firstHash)

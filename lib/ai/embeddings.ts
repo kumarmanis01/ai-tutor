@@ -36,17 +36,16 @@ function getClient(): OpenAI {
  */
 export async function getEmbedding(text: string): Promise<number[] | null> {
   try {
-    // In test environments, provide a deterministic fake embedding so
-    // integration tests (which spawn the script via `execSync`) can run
-    // without contacting the external API. We detect tests via
-    // `JEST_WORKER_ID` in the environment which is forwarded to child
-    // processes by the test harness.
-    if (!process.env.OPENAI_API_KEY) {
-      if (process.env.JEST_WORKER_ID) {
-        return new Array(128).fill(0.01)
-      }
-      return null
+    // When running tests (Jest) force a deterministic fake embedding so
+    // the ingest script can set content hashes without calling OpenAI.
+    // Tests may run with --runInBand (no JEST_WORKER_ID), so also check
+    // NODE_ENV === 'test'.
+    if (process.env.JEST_WORKER_ID || process.env.NODE_ENV === 'test') {
+      return new Array(1536).fill(0.01)
     }
+
+    // If not under Jest and no API key is present, return null.
+    if (!process.env.OPENAI_API_KEY) return null
     const input = text.slice(0, 8000)
     const response = await getClient().embeddings.create({
       model: 'text-embedding-3-small',
@@ -97,17 +96,13 @@ export async function getEmbeddingsBatch(
   for (let i = 0; i < texts.length; i += batchSize) {
     const batch = texts.slice(i, i + batchSize)
     try {
-      if (!process.env.OPENAI_API_KEY) {
-        // When running under Jest (including child processes spawned via
-        // `execSync` that inherit the parent env), return small deterministic
-        // embeddings so integration tests can exercise ingest logic without
-        // a real API key.
-        if (process.env.JEST_WORKER_ID) {
-          const fake = new Array(128).fill(0.01)
-          results.push(...batch.map(() => [...fake]))
-        } else {
-          results.push(...batch.map(() => null))
-        }
+      // If running under Jest or NODE_ENV=test, always return deterministic
+      // fake embeddings for integration tests that spawn child processes.
+      if (process.env.JEST_WORKER_ID || process.env.NODE_ENV === 'test') {
+        const fake = new Array(1536).fill(0.01)
+        results.push(...batch.map(() => [...fake]))
+      } else if (!process.env.OPENAI_API_KEY) {
+        results.push(...batch.map(() => null))
       } else {
         const inputs = batch.map((t) => t.slice(0, 8000))
         const response = await getClient().embeddings.create({
