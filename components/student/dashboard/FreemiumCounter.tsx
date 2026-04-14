@@ -4,7 +4,10 @@
  *
  * Shows: "2 of 3 free sessions used this month" with reset date pill.
  * Only rendered when sessionsRemaining > 0 (UpgradeFlow takes over at 0).
+ * "Upgrade" link navigates to /subscribe (F-STU-041 checkout page).
  */
+
+import Link from 'next/link'
 
 interface FreemiumCounterProps {
   sessionsUsed: number;
@@ -53,15 +56,23 @@ export function FreemiumCounter({ sessionsUsed, sessionsRemaining, periodStart }
         />
       </div>
 
-      <p className="text-sm text-gray-700 dark:text-gray-300">
-        <span className="font-bold text-gray-900 dark:text-gray-100">{sessionsUsed} of {total}</span>{' '}
-        free sessions used this month
-        {sessionsRemaining === 1 && (
-          <span className="ml-2 inline-flex items-center rounded-full bg-[#FAEEDA] dark:bg-[#BA7517]/20 px-2 py-0.5 text-xs font-medium text-[#BA7517]">
-            1 left
-          </span>
-        )}
-      </p>
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-sm text-gray-700 dark:text-gray-300">
+          <span className="font-bold text-gray-900 dark:text-gray-100">{sessionsUsed} of {total}</span>{' '}
+          free sessions used this month
+          {sessionsRemaining === 1 && (
+            <span className="ml-2 inline-flex items-center rounded-full bg-[#FAEEDA] dark:bg-[#BA7517]/20 px-2 py-0.5 text-xs font-medium text-[#BA7517]">
+              1 left
+            </span>
+          )}
+        </p>
+        <Link
+          href="/subscribe"
+          className="flex-shrink-0 text-xs font-semibold text-[#534AB7] dark:text-indigo-400 hover:underline min-h-[44px] flex items-center"
+        >
+          Upgrade
+        </Link>
+      </div>
     </div>
   );
 }

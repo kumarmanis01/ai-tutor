@@ -49,6 +49,8 @@ import { updateStudentTopicProgress } from '@/lib/learning/updateTopicProgress';
 import { recordSessionEvents } from '@/lib/session/sessionEvents';
 import { normalizeAnswer } from '@/lib/tests';
 import { logger } from '@/lib/logger';
+import { detectMisconceptions, loadMisconceptions, logNovelMisconception } from '@/lib/ai/tutor/misconceptionDetector';
+import { normalizeStudentAnswerForLogging } from '@/lib/misconception/logHelpers';
 
 export const dynamic = 'force-dynamic';
 
@@ -291,6 +293,54 @@ export async function POST(
         error: err,
       }),
     );
+  }
+
+  // ── F-STU-013 AC-05: Novel misconception analytics -- fire-and-forget ─────────
+  // For wrong answers, check against the misconception library. If there are
+  // wrong answers with no library match, log as a novel misconception signal.
+  const wrongAnswers = gradedAnswers.filter((ga) => !ga.isCorrect && ga.studentAnswer.trim().length > 0);
+  if (wrongAnswers.length > 0 && session.topicId) {
+    const capturedTopicId = session.topicId;
+    const capturedStudentId = user.id;
+    void (async () => {
+      try {
+        // Resolve subjectId via topic -> chapter -> subject hierarchy
+        const topicWithSubject = await prisma.topicDef.findUnique({
+          where: { id: capturedTopicId },
+          select: { chapter: { select: { subject: { select: { id: true } } } } },
+        });
+        const subjectId = topicWithSubject?.chapter?.subject?.id;
+
+        // If subjectId cannot be resolved, skip logging to avoid noisy/false analytics
+        if (!subjectId) {
+          logger.info('Skipping novel misconception logging: missing subjectId', {
+            event: 'logNovelMisconception',
+            studentId: capturedStudentId,
+            topicId: capturedTopicId,
+          });
+        } else {
+          const misconceptions = await loadMisconceptions(subjectId, capturedTopicId);
+          for (const wrong of wrongAnswers) {
+            const answerText = typeof wrong.studentAnswer === 'string' ? wrong.studentAnswer : String(wrong.studentAnswer ?? '');
+            const matches = detectMisconceptions(answerText, misconceptions);
+            if (matches.length === 0) {
+              const snippet = normalizeStudentAnswerForLogging(answerText, 1000);
+              try {
+                await logNovelMisconception(capturedStudentId, subjectId, capturedTopicId, snippet);
+              } catch (err) {
+                logger.error('logNovelMisconception_failed', {
+                  error: (err as Error)?.message,
+                  studentId: capturedStudentId,
+                  topicId: capturedTopicId,
+                });
+              }
+            }
+          }
+        }
+      } catch {
+        // never let analytics disrupt the response
+      }
+    })();
   }
 
   // ── Session events -- fire-and-forget ──────────────────────────────────────

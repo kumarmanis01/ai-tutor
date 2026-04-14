@@ -263,7 +263,20 @@ export default function MockExamRunner(props: MockExamRunnerProps) {
       const res = await fetch(`/api/mock/attempt/${attemptId}/complete`, { method: 'POST' });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || 'Failed to complete exam');
-      setReport(json);
+
+      // AC-04: Fetch full per-question time data from the GET report endpoint.
+      // The POST complete response only includes aggregated scores.
+      try {
+        const reportRes = await fetch(`/api/mock/attempt/${attemptId}/report`);
+        if (reportRes.ok) {
+          const fullReport = await reportRes.json();
+          setReport({ ...json, sections: fullReport.sections ?? [] });
+        } else {
+          setReport(json);
+        }
+      } catch {
+        setReport(json);
+      }
     } catch (e: any) {
       setError(e.message ?? 'Failed to complete exam. Please try again.');
     } finally {
