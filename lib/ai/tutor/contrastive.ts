@@ -36,7 +36,7 @@ export type ContrastiveArtifact = {
 
 /**
  * Build a deterministic contrastive explanation artifact from a library entry.
- * Avoids LLMs — uses only stored fields so output is auditable.
+ * Avoids LLMs -- uses only stored fields so output is auditable.
  */
 export function generateContrastiveExplanation(m: LoadedMisconception): ContrastiveArtifact {
   const safeName = String(m.name ?? '').trim()

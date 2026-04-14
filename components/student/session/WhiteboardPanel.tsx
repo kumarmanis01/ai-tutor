@@ -333,6 +333,16 @@ export default function WhiteboardPanel({
       // Draw student layer on top
       offCtx.drawImage(student, 0, 0, w, h);
       const dataUrl = off.toDataURL('image/png');
+
+      // AC-06: Persist whiteboard state as a SessionArtifact for session replay (fire-and-forget).
+      void fetch('/api/student/session-artifact', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sessionId, type: 'whiteboard', dataUrl }),
+      }).catch(() => {
+        // Non-critical: artifact save failure does not block evaluation
+      });
+
       const controller = new AbortController();
       const timer = setTimeout(() => controller.abort(), EVAL_TIMEOUT_MS);
       const res = await fetch('/api/student/whiteboard/evaluate', {

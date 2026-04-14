@@ -81,7 +81,7 @@ export function buildSessionSummary(params: SessionSummaryParams): string {
   }
 
   const summary = parts.join(' · ')
-  return summary || 'Session complete — great progress!'
+  return summary || 'Session complete -- great progress!'
 }
 
 /**
