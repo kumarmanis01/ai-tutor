@@ -114,12 +114,12 @@ export default async function StudentHomeDashboardPage() {
   // ── XP this week: total + source breakdown (F-STU-031 AC-01) ────────────────
   const [xpThisWeekResult, xpBySourceRaw] = await Promise.all([
     prisma.studentXP.aggregate({
-      where: { studentId: userId, createdAt: { gte: sevenDaysAgo } },
+      where: { studentId: userId, awardedAt: { gte: sevenDaysAgo } },
       _sum: { amount: true },
     }),
     prisma.studentXP.groupBy({
       by: ['source'],
-      where: { studentId: userId, createdAt: { gte: sevenDaysAgo } },
+      where: { studentId: userId, awardedAt: { gte: sevenDaysAgo } },
       _sum: { amount: true },
     }),
   ])
