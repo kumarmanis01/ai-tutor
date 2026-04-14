@@ -19,8 +19,7 @@
   },
   "include": [
     "worker/**/*.ts",
-    "lib/logger.ts",
-    "lib/redis.ts"
+    "lib/**/*.ts"
   ],
   "exclude": [
     "node_modules",
