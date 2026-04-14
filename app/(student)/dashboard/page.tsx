@@ -111,15 +111,23 @@ export default async function StudentHomeDashboardPage() {
   const latestPlan = user.learningPlans[0]
   const isCrunchMode = computeCrunchMode(latestPlan?.examDate)
 
-  // ── XP this week from StudentXP ledger ──────────────────────────────────────
-  const xpThisWeekResult = await prisma.studentXP.aggregate({
-    where: {
-      studentId: userId,
-      createdAt: { gte: sevenDaysAgo },
-    },
-    _sum: { amount: true },
-  })
+  // ── XP this week: total + source breakdown (F-STU-031 AC-01) ────────────────
+  const [xpThisWeekResult, xpBySourceRaw] = await Promise.all([
+    prisma.studentXP.aggregate({
+      where: { studentId: userId, createdAt: { gte: sevenDaysAgo } },
+      _sum: { amount: true },
+    }),
+    prisma.studentXP.groupBy({
+      by: ['source'],
+      where: { studentId: userId, createdAt: { gte: sevenDaysAgo } },
+      _sum: { amount: true },
+    }),
+  ])
   const xpThisWeek = xpThisWeekResult._sum.amount ?? 0
+  const xpBySource: Record<string, number> = {}
+  for (const row of xpBySourceRaw) {
+    xpBySource[row.source] = row._sum.amount ?? 0
+  }
 
   // ── Readiness scores per subject (parallel, best-effort) ───────────────────
   const readinessResults = await Promise.all(
@@ -224,8 +232,8 @@ export default async function StudentHomeDashboardPage() {
           {/* F-STU-032 AC-03: Primary CTA */}
           <TodaysLearningCard {...cardProps} />
 
-          {/* F-STU-031: XP + Level */}
-          <XPWidget totalXp={user.totalXp} level={user.level} xpThisWeek={xpThisWeek} />
+          {/* F-STU-031: XP + Level + source breakdown */}
+          <XPWidget totalXp={user.totalXp} level={user.level} xpThisWeek={xpThisWeek} xpBySource={xpBySource} />
 
           {/* Weekly activity strip */}
           <WeeklyStudyStrip data={weeklyStripData} />

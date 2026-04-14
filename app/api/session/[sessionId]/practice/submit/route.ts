@@ -49,6 +49,7 @@ import { updateStudentTopicProgress } from '@/lib/learning/updateTopicProgress';
 import { recordSessionEvents } from '@/lib/session/sessionEvents';
 import { normalizeAnswer } from '@/lib/tests';
 import { logger } from '@/lib/logger';
+import { detectMisconceptions, loadMisconceptions, logNovelMisconception } from '@/lib/ai/tutor/misconceptionDetector';
 
 export const dynamic = 'force-dynamic';
 
@@ -291,6 +292,34 @@ export async function POST(
         error: err,
       }),
     );
+  }
+
+  // ── F-STU-013 AC-05: Novel misconception analytics -- fire-and-forget ─────────
+  // For wrong answers, check against the misconception library. If there are
+  // wrong answers with no library match, log as a novel misconception signal.
+  const wrongAnswers = gradedAnswers.filter((ga) => !ga.isCorrect && ga.studentAnswer.trim().length > 0);
+  if (wrongAnswers.length > 0 && session.topicId) {
+    const capturedTopicId = session.topicId;
+    const capturedStudentId = user.id;
+    void (async () => {
+      try {
+        // Resolve subjectId via topic -> chapter -> subject hierarchy
+        const topicWithSubject = await prisma.topicDef.findUnique({
+          where: { id: capturedTopicId },
+          select: { chapter: { select: { subject: { select: { id: true } } } } },
+        });
+        const subjectId = topicWithSubject?.chapter?.subject?.id ?? '';
+        const misconceptions = await loadMisconceptions(subjectId, capturedTopicId);
+        for (const wrong of wrongAnswers) {
+          const matches = detectMisconceptions(wrong.studentAnswer, misconceptions);
+          if (matches.length === 0) {
+            logNovelMisconception(capturedStudentId, subjectId, capturedTopicId, wrong.studentAnswer);
+          }
+        }
+      } catch {
+        // never let analytics disrupt the response
+      }
+    })();
   }
 
   // ── Session events -- fire-and-forget ──────────────────────────────────────

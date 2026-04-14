@@ -498,7 +498,7 @@ export default function WhiteboardPanel({
       }
       playCommands(commands);
     } else {
-      // Not structured JSON — do nothing (visualHint may be natural-language guidance).
+      // Not structured JSON -- do nothing (visualHint may be natural-language guidance).
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [visualHint]);
