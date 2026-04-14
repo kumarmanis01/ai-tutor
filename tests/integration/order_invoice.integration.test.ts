@@ -121,7 +121,7 @@ describe('Order → Verify → Invoice integration', () => {
     expect(payment).toBeTruthy();
 
     // Find invoice linked to the payment (use raw query to avoid Prisma schema vs DB drift)
-    const rows: any[] = await prisma.$queryRawUnsafe(`SELECT * FROM "Invoice" WHERE paymentid = '${payment!.id}' LIMIT 1`);
+    const rows: any[] = await prisma.$queryRawUnsafe(`SELECT * FROM "Invoice" WHERE "paymentId" = '${payment!.id}' LIMIT 1`);
     const invoice = rows[0] ?? null;
 
     // Invoice creation may fail in some test DBs where migrations or optional
