@@ -15,7 +15,7 @@
  * - 2026-04-14T00:00:00Z | copilot | created reembed CLI to retry failed embeddings
  */
 
-import { PrismaClient } from '@prisma/client'
+import { prisma } from '@/lib/prisma'
 import { getEmbeddingsBatch } from '../lib/ai/embeddings'
 
 const BATCH_SIZE = 20
@@ -39,11 +39,9 @@ export async function main() {
     process.exit(1)
   }
 
-  const prisma = new PrismaClient()
   const startMs = Date.now()
 
-  try {
-    let chunkIds: string[] = []
+  let chunkIds: string[] = []
 
     if (args.runId) {
       const run = await prisma.ingestRunLog.findUnique({ where: { id: args.runId }, select: { id: true, errorDetails: true } })
@@ -156,9 +154,6 @@ export async function main() {
     } catch (e) {
       console.warn('Could not write ingestRunLog for reembed run:', e)
     }
-  } finally {
-    await prisma.$disconnect()
-  }
 }
 
 if (typeof process !== 'undefined' && process.env.JEST_WORKER_ID === undefined) {
