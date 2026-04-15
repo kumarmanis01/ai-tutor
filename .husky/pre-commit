@@ -1,9 +1,52 @@
 #!/usr/bin/env sh
 . "$(dirname -- "$0")/_/husky.sh"
 
+#!/usr/bin/env sh
+. "$(dirname -- "$0")/_/husky.sh"
+
+# Allow full bypass of hooks using standard env flags
+if [ "${SKIP_HOOKS:-}" = "1" ] || [ "${HUSKY_SKIP_HOOKS:-}" = "1" ]; then
+	echo "SKIP_HOOKS set — skipping all pre-commit checks"
+	exit 0
+fi
+
 # lint-staged runs fix-smart-quotes.py on staged files and re-stages the result.
-# This is the correct place to auto-fix: lint-staged handles the index update.
+# Run it first to auto-fix obvious issues in the index.
 npx --no-install lint-staged
 
-# Run typecheck on production code only
-npx tsc --noEmit --project tsconfig.json
+# Preflight smart-quote verification (repo-wide check)
+if [ "${SKIP_SMART_QUOTES:-}" = "1" ]; then
+	echo "SKIP_SMART_QUOTES=1 — skipping smart-quote preflight"
+else
+	npm run preflight:smart-quotes
+fi
+
+# Lint (full repo) — skip with SKIP_LINT=1
+if [ "${SKIP_LINT:-}" = "1" ]; then
+	echo "SKIP_LINT=1 — skipping lint"
+else
+	npm run preflight:lint
+fi
+
+# Type-check — skip with SKIP_TYPECHECK=1
+if [ "${SKIP_TYPECHECK:-}" = "1" ]; then
+	echo "SKIP_TYPECHECK=1 — skipping type-check"
+else
+	npm run preflight:type-check
+fi
+
+# Unit tests (fast gate) — skip with SKIP_UNIT_TESTS=1
+if [ "${SKIP_UNIT_TESTS:-}" = "1" ]; then
+	echo "SKIP_UNIT_TESTS=1 — skipping unit tests"
+else
+	echo "Running unit tests (pre-commit). This may take a while..."
+	npm run preflight:unit
+fi
+
+# Integration tests (heavy; skip with SKIP_INTEGRATION_TESTS=1)
+if [ "${SKIP_INTEGRATION_TESTS:-}" = "1" ]; then
+	echo "SKIP_INTEGRATION_TESTS=1 — skipping integration tests"
+else
+	echo "Running integration tests (pre-commit). This may take a while..."
+	npm run preflight:integration
+fi

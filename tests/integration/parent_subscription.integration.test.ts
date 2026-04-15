@@ -191,9 +191,9 @@ describe('Parent subscription: order → verify integration', () => {
         const rows: any[] = await prisma.$queryRaw`SELECT * FROM "Invoice" WHERE "paymentId" = ${payment!.id}`;
         invoice = rows && rows[0] ? rows[0] : null;
       } catch (e) {
-        // Last resort: try lowercase unquoted table/column names
+        // Last resort: try quoted identifiers via unsafe raw SQL
         try {
-          const rows2: any[] = await prisma.$queryRawUnsafe(`SELECT * FROM invoice WHERE paymentid = '${payment!.id}'`);
+          const rows2: any[] = await prisma.$queryRawUnsafe(`SELECT * FROM "Invoice" WHERE "paymentId" = '${payment!.id}'`);
           invoice = rows2 && rows2[0] ? rows2[0] : null;
         } catch (_e2) {
           invoice = null;

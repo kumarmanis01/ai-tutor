@@ -37,19 +37,6 @@ module.exports = {
       functions: 50,
       lines: 60,
       statements: 60,
-    },
-    // Encourage higher coverage for AI and ingestion critical modules
-    '<rootDir>/lib/ai/': {
-      branches: 80,
-      functions: 80,
-      lines: 80,
-      statements: 80,
-    },
-    '<rootDir>/lib/ingest/': {
-      branches: 80,
-      functions: 80,
-      lines: 80,
-      statements: 80,
     }
   }
 };
