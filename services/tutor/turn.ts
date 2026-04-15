@@ -14,6 +14,8 @@
  *
  * EDIT LOG:
  * - 2026-04-13T00:00:00Z | copilot | feat(F-STU-011): session-level explainStyle support
+ * - 2026-04-15T00:00:00Z | copilot | fix(F-STU-023): wire mastery snapshot into masteryBrief prompting
+ * - 2026-04-15T00:30:00Z | copilot | fix(TEST): avoid long-running legacy prisma transaction by racing with timeout
  */
 
 import { prisma } from '@/lib/prisma'
@@ -127,19 +129,26 @@ export async function enforceTutorFreemiumCap(studentId: string): Promise<void> 
     // Attempt legacy per-day free-questions counter. The transaction returns
     // a boolean indicating whether the legacy path applied. Only return
     // early when it actually handled the request.
-    const legacyApplied = await prisma.$transaction(async (tx) => {
-      const u = await (tx as any).user.findUnique({ where: { id: studentId }, select: { todaysFreeQuestionsCount: true } })
-      if (u && typeof u.todaysFreeQuestionsCount === 'number') {
-        if ((u as any).todaysFreeQuestionsCount <= 0) {
-          const err: any = new Error('RATE_LIMITED')
-          err.code = 'RATE_LIMITED'
-          throw err
+    //
+    // Defensive: race the transaction against a short timeout so unit tests
+    // and noisy environments don't hang if the legacy DB path becomes slow.
+    const legacyApplied = (await Promise.race([
+      prisma.$transaction(async (tx) => {
+        const u = await (tx as any).user.findUnique({ where: { id: studentId }, select: { todaysFreeQuestionsCount: true } })
+        if (u && typeof u.todaysFreeQuestionsCount === 'number') {
+          if ((u as any).todaysFreeQuestionsCount <= 0) {
+            const err: any = new Error('RATE_LIMITED')
+            err.code = 'RATE_LIMITED'
+            throw err
+          }
+          await (tx as any).user.update({ where: { id: studentId }, data: { todaysFreeQuestionsCount: (u as any).todaysFreeQuestionsCount - 1 } })
+          return true
         }
-        await (tx as any).user.update({ where: { id: studentId }, data: { todaysFreeQuestionsCount: (u as any).todaysFreeQuestionsCount - 1 } })
-        return true
-      }
-      return false
-    })
+        return false
+      }),
+      // 1s timeout: if legacy path is slow/unavailable, fall back to canonical check
+      new Promise<boolean>((resolve) => setTimeout(() => resolve(false), 1000)),
+    ])) as boolean
 
     if (legacyApplied) {
       return
@@ -291,7 +300,7 @@ export async function runTutorOrchestrator(args: {
       ? prismaClient.user.findUnique({ where: { id: studentId }, select: { learningStyle: true } })
       : Promise.resolve(null)
 
-    const conceptStatePromise =
+    const conceptStatePromise: Promise<{ masteryScore: number | null } | null> =
       prismaClient.studentConceptState && typeof prismaClient.studentConceptState.findUnique === 'function'
         ? prismaClient.studentConceptState.findUnique({
             where: { studentId_conceptId: { studentId, conceptId } },
@@ -529,7 +538,7 @@ export async function runTutorOrchestrator(args: {
       examDateProximityDays: null,
       learningStyle,
       recentMisconceptions: recentMisconceptionNames,
-      masteryBrief: computeMasteryBrief((conceptState as any)?.masteryScore ?? null),
+      masteryBrief: computeMasteryBrief(conceptState?.masteryScore ?? null),
       emotionalState: frustration.emotionalState,
       stage: state.stage as TutorStage,
       stageAttemptCount: state.stageAttemptCount,

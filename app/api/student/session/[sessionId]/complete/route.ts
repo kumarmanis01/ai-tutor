@@ -23,8 +23,22 @@ export async function POST(req: Request, { params }: { params: Promise<{ session
 
     await req.json().catch(() => null)
 
-    // Fire all session-level reads in parallel; none depend on each other.
-    const [correctAnswers, totalQuestions, hintsUsed, firstAnswer, learningSession] = await Promise.all([
+    // Ensure the requested learning session belongs to the authenticated user
+    // before reading any session-derived data. This prevents a caller from
+    // querying session-scoped artifacts for a session that does not belong to
+    // their account.
+    const learningSession = await prisma.learningSession.findFirst({
+      where: { id: sessionId, studentId: userId },
+      select: { startedAt: true, endedAt: true, meta: true },
+    })
+    if (!learningSession) {
+      const res = NextResponse.json({ error: 'Session not found' }, { status: 404 })
+      logger.logAPI(req, res, { className: 'StudentSessionCompleteAPI', methodName: 'POST' }, start)
+      return res
+    }
+
+    // Fire remaining session-level reads in parallel; none depend on each other.
+    const [correctAnswers, totalQuestions, hintsUsed, firstAnswer] = await Promise.all([
       prisma.answerEvent.count({ where: { studentId: userId, sessionId, isCorrect: true } }),
       prisma.answerEvent.count({ where: { studentId: userId, sessionId } }),
       prisma.aITutorTurnLog.count({ where: { sessionId, callType: 'tutor:hint' } }),
@@ -32,10 +46,6 @@ export async function POST(req: Request, { params }: { params: Promise<{ session
         where: { studentId: userId, sessionId },
         orderBy: { createdAt: 'asc' },
         select: { conceptId: true },
-      }),
-      prisma.learningSession.findUnique({
-        where: { id: sessionId },
-        select: { startedAt: true, endedAt: true, meta: true },
       }),
     ])
 

@@ -102,28 +102,25 @@ export async function POST(req: Request) {
 
     // Fetch pre-session mastery, prereq concept names, and prereq mastery scores concurrently.
     const prerequisiteConceptIds = conceptCheck?.prerequisiteConceptIds ?? []
+    // Intentionally allow Prisma errors to propagate to the outer try/catch so
+    // the request fails fast if DB queries are failing rather than creating a
+    // session with partial or misleading metadata.
     const [conceptStateResult, prereqConceptsResult, prereqStatesResult] = await Promise.all([
-      prisma.studentConceptState
-        .findUnique({
-          where: { studentId_conceptId: { studentId: userId, conceptId } },
-          select: { masteryScore: true },
-        })
-        .catch(() => null),
+      prisma.studentConceptState.findUnique({
+        where: { studentId_conceptId: { studentId: userId, conceptId } },
+        select: { masteryScore: true },
+      }),
       prerequisiteConceptIds.length > 0
-        ? prisma.concept
-            .findMany({
-              where: { id: { in: prerequisiteConceptIds } },
-              select: { id: true, name: true },
-            })
-            .catch(() => [] as { id: string; name: string }[])
+        ? prisma.concept.findMany({
+            where: { id: { in: prerequisiteConceptIds } },
+            select: { id: true, name: true },
+          })
         : Promise.resolve([] as { id: string; name: string }[]),
       prerequisiteConceptIds.length > 0
-        ? prisma.studentConceptState
-            .findMany({
-              where: { studentId: userId, conceptId: { in: prerequisiteConceptIds } },
-              select: { conceptId: true, masteryScore: true },
-            })
-            .catch(() => [] as { conceptId: string; masteryScore: number }[])
+        ? prisma.studentConceptState.findMany({
+            where: { studentId: userId, conceptId: { in: prerequisiteConceptIds } },
+            select: { conceptId: true, masteryScore: true },
+          })
         : Promise.resolve([] as { conceptId: string; masteryScore: number }[]),
     ])
 
