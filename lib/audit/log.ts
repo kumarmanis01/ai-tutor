@@ -51,7 +51,7 @@ export function logAuditEvent(db: any, ev: AuditEvent) {
     // Decide `action` value: prefer explicit `ev.action`. Do NOT write
     // legacy action strings into the typed `action` enum column. Preserve
     // legacyAction inside `details` for backward-compatible queries.
-    const legacyAction = (baseDetails as any)?.legacyAction
+    const _legacyAction = (baseDetails as any)?.legacyAction
     const finalAction = ev.action ?? null
 
     if (adminId != null) data.adminId = adminId

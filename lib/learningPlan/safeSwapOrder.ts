@@ -54,4 +54,5 @@ export async function safeSwapOrderInWeek(
   }
 }
 
-export default { safeSwapOrderInWeek }
+const SAFE_SWAP_ORDER = { safeSwapOrderInWeek }
+export default SAFE_SWAP_ORDER

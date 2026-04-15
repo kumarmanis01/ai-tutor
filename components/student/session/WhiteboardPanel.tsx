@@ -49,7 +49,7 @@ const WB_STYLE = `
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
-function getPos(e: MouseEvent | Touch, rect: DOMRect): Point {
+function _getPos(e: MouseEvent | Touch, rect: DOMRect): Point {
   return {
     x: (e.clientX - rect.left) * (rect.width === 0 ? 1 : 1),
     y: (e.clientY - rect.top) * (rect.height === 0 ? 1 : 1),

@@ -26,6 +26,7 @@ import Image from 'next/image';
 import { stripTag } from '@/lib/ai/tutor/tagParser';
 import VisualHintRenderer from './VisualHintRenderer';
 import MisconceptionCard from './MisconceptionCard';
+import { logger } from '@/lib/logger'
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -460,21 +461,21 @@ export const AITutorChatPanel: React.FC<AITutorChatPanelProps> = ({
       clearInactivityTimer();
       if (hintBannerTimerRef.current) clearTimeout(hintBannerTimerRef.current);
     };
-  }, [clearInactivityTimer]);
+  }, [scheduleInactivity, clearInactivityTimer]);
 
   // Load persisted session-level explainStyle (if any) so selector shows current value
   useEffect(() => {
     let mounted = true;
     (async () => {
       try {
-        const resp = await fetch(`/api/tutor/session/style?sessionId=${encodeURIComponent(sessionId)}`)
-        if (!resp.ok) return
-        const data = await resp.json()
-        if (!mounted) return
-        setSelectedStyle(data?.explainStyle ?? null)
-      } catch (e) {
-        // ignore failures (best-effort)
-      }
+          const resp = await fetch(`/api/tutor/session/style?sessionId=${encodeURIComponent(sessionId)}`)
+          if (!resp.ok) return
+          const data = await resp.json()
+          if (!mounted) return
+          setSelectedStyle(data?.explainStyle ?? null)
+        } catch (e) {
+          logger.debug('AITutorChatPanel: failed to load session style', { sessionId, error: String(e) })
+        }
     })()
     return () => { mounted = false }
   }, [sessionId])
@@ -779,7 +780,7 @@ export const AITutorChatPanel: React.FC<AITutorChatPanelProps> = ({
         body: JSON.stringify({ sessionId, explainStyle: s }),
       })
     } catch (e) {
-      // best-effort; do not block UX on failures
+      logger.debug('AITutorChatPanel: failed to persist style', { sessionId, explainStyle: s, error: String(e) })
     }
 
     const mapping: Record<string, string> = {

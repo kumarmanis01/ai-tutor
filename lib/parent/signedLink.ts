@@ -10,6 +10,7 @@
  */
 
 import crypto from 'crypto'
+import { logger } from '@/lib/logger'
 
 const SECRET = process.env.PARENT_ALERT_SIGNING_SECRET || process.env.NEXTAUTH_SECRET || ''
 
@@ -53,6 +54,7 @@ export function verifyMuteToken(token: string): MuteTokenPayload | null {
   try {
     payload = base64urlDecode(b64)
   } catch (e) {
+    logger.debug('verifyMuteToken: base64 decode failed', { error: String(e) })
     return null
   }
 

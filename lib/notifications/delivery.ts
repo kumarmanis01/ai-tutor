@@ -32,11 +32,12 @@ export async function sendParentMilestoneNotification(
         const pp = await prisma.parentStudent.findFirst({ where: { parentId, studentId: opts.meta.studentId } })
         if (pp?.inactivityOptOut) return { sent: false, reason: 'child_inactivity_opt_out' }
       } catch (e) {
-        // ignore DB lookup issues here and continue to notification flow
+        logger.debug('[notifications] parentStudent lookup failed (best-effort)', { parentId, studentId: opts.meta?.studentId, error: String(e) })
       }
     }
   } catch (e) {
-    // best-effort: ignore failures to fetch preferences and continue
+    // best-effort: ignore failures to fetch preferences and continue - log for visibility
+    logger.debug('[notifications] failed to load parent profile (best-effort)', { parentId, error: String(e) })
   }
 
   const redis = getRedis()

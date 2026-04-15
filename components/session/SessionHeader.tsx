@@ -22,8 +22,8 @@ interface SessionHeaderProps {
 export function SessionHeader({ session, phase: _phase, onStepClick }: SessionHeaderProps) {
   const { topicName, subject, chapter, phaseIndex, totalPhases, currentPhase } = session;
 
-  const [selectedStyle, setSelectedStyle] = useState<string | null>(null);
-  const [updatingStyle, setUpdatingStyle] = useState(false);
+  const [_selectedStyle, _setSelectedStyle] = useState<string | null>(null);
+  const [_updatingStyle, _setUpdatingStyle] = useState(false);
 
   useEffect(() => {
     let mounted = true;
@@ -33,7 +33,7 @@ export function SessionHeader({ session, phase: _phase, onStepClick }: SessionHe
         if (!resp.ok) return;
         const data = await resp.json();
         if (!mounted) return;
-        setSelectedStyle(data?.explainStyle ?? null);
+        _setSelectedStyle(data?.explainStyle ?? null);
       } catch {
         // best-effort: ignore failures
       }
@@ -41,10 +41,10 @@ export function SessionHeader({ session, phase: _phase, onStepClick }: SessionHe
     return () => { mounted = false };
   }, [session.sessionId]);
 
-  async function handleSetStyle(value: string | null) {
+  async function _handleSetStyle(value: string | null) {
     const s = value || null;
-    setSelectedStyle(s);
-    setUpdatingStyle(true);
+    _setSelectedStyle(s);
+    _setUpdatingStyle(true);
     try {
       await fetch('/api/tutor/session/style', {
         method: 'POST',
@@ -54,7 +54,7 @@ export function SessionHeader({ session, phase: _phase, onStepClick }: SessionHe
     } catch {
       // best-effort
     } finally {
-      setUpdatingStyle(false);
+      _setUpdatingStyle(false);
     }
   }
 

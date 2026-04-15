@@ -1,5 +1,6 @@
 import { prisma } from '@/lib/prisma'
 import { isPremiumUser } from '@/lib/subscription'
+import { logger } from '@/lib/logger'
 
 // AC-01 (F-STU-040): 3 AI tutoring sessions per month on free tier
 export const FREE_TIER_SESSION_LIMIT = 3
@@ -50,8 +51,10 @@ async function isStudentPaused(studentId: string): Promise<boolean> {
     })
 
     return !!linkPause
-  } catch (err) {
+  } catch (_err) {
     // On error, assume not paused to avoid unintentionally allowing unlimited sessions
+    // Log for visibility in diagnostics
+    try { logger.debug('isStudentPaused: DB lookup failed (best-effort)', { studentId, error: String(_err) }) } catch {}
     return false
   }
 }

@@ -7,8 +7,7 @@ import { logger } from '@/lib/logger'
 
 export const dynamic = 'force-dynamic'
 
-export async function GET(req: Request) {
-  const start = Date.now()
+export async function GET(_req: Request) {
   try {
     const session = await getServerSessionForHandlers()
     const userId = session?.user?.id
@@ -58,8 +57,8 @@ export async function GET(req: Request) {
       const db = (global as any).__TEST_PRISMA__ ?? (await import('@/lib/prisma')).prisma
       const { logAuditEvent } = await import('@/lib/audit/log')
       logAuditEvent(db, { actorId: userId, action: 'export_progress_pdf', entityType: 'PROGRESS_REPORT', entityId: userId })
-    } catch {
-      // swallow
+    } catch (err) {
+      logger.debug('Audit logging failed for progress export', { error: String(err) })
     }
 
     return new NextResponse(Buffer.from(pdfBuffer), {
@@ -74,7 +73,7 @@ export async function GET(req: Request) {
   }
 }
 
-function splitText(text: string, maxChars = 90) {
+function _splitText(text: string, maxChars = 90) {
   if (!text) return []
   const words = text.split(/\s+/)
   const lines: string[] = []
