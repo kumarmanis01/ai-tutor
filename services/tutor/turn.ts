@@ -15,6 +15,7 @@
  * EDIT LOG:
  * - 2026-04-13T00:00:00Z | copilot | feat(F-STU-011): session-level explainStyle support
  * - 2026-04-15T00:00:00Z | copilot | fix(F-STU-023): wire mastery snapshot into masteryBrief prompting
+ * - 2026-04-15T12:34:00Z | copilot | fix(F-STU-023): tighten conceptState typing; use optional chaining for masteryBrief computation
  * - 2026-04-15T00:30:00Z | copilot | fix(TEST): avoid long-running legacy prisma transaction by racing with timeout
  */
 
