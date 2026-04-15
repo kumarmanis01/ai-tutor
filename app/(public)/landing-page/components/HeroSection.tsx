@@ -37,7 +37,7 @@ const HeroSection = () => {
   };
 
   return (
-    <section className="relative min-h-screen flex items-center bg-gradient-to-br from-primary/5 via-background to-secondary/5 pt-20 md:pt-24">
+    <section className="relative min-h-screen flex items-center bg-gradient-to-br from-primary/5 via-background to-secondary/5">
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute top-20 right-10 w-64 h-64 bg-primary/10 rounded-full blur-3xl" />
         <div className="absolute bottom-20 left-10 w-80 h-80 bg-secondary/10 rounded-full blur-3xl" />

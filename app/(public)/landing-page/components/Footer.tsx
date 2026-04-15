@@ -48,7 +48,7 @@ const Footer = () => {
               </div>
             </div>
             <p className="font-body text-sm opacity-80 mb-4 max-w-sm">
-              AI-powered tutoring for Class 1-12 students. Affordable, personalised, and available
+              AI-powered Home Tuition for Class 1-12 students. Affordable, personalised, and available
               24×7 in Hindi and English. Aligned with CBSE, ICSE &amp; State Boards.
             </p>
             <div className="flex gap-3">
@@ -119,9 +119,22 @@ const Footer = () => {
         </div>
 
         <div className="border-t border-white/10 pt-8">
-          <p className="font-body text-sm opacity-80 text-center">
-            &copy; 2026 Spinzy Academy. All rights reserved. Made with ❤️ for Indian students.
-          </p>
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
+            <p className="font-body text-sm opacity-80 text-center sm:text-left">
+              &copy; 2026 Spinzy Academy. All rights reserved. Made with ❤️ for Indian students.
+            </p>
+            <p className="font-body text-xs opacity-80 text-center sm:text-right">
+              Powered by{' '}
+              <a
+                href="https://spinzydigital.com/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="italic text-xs text-primary font-medium hover:underline underline-offset-2"
+              >
+                Spinzy Digital
+              </a>
+            </p>
+          </div>
         </div>
       </div>
     </footer>
