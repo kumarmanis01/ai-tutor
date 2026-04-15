@@ -38,7 +38,7 @@ const HeroSection = () => {
   };
 
   return (
-    <section className="relative min-h-[70vh] flex items-center bg-gradient-to-br from-primary/5 via-background to-secondary/5">
+    <section className="relative bg-gradient-to-br from-[#F0EFFF] via-background to-background">
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute top-20 right-10 w-64 h-64 bg-primary/10 rounded-full blur-3xl" />
         <div className="absolute bottom-20 left-10 w-80 h-80 bg-secondary/10 rounded-full blur-3xl" />
@@ -47,9 +47,9 @@ const HeroSection = () => {
       <div className="relative w-full mx-auto px-4 md:px-6 lg:px-8 py-12 md:py-16">
         <div className="grid lg:grid-cols-2 gap-8 lg:gap-12 items-center max-w-7xl mx-auto">
           <div className="text-center lg:text-left space-y-6 md:space-y-8">
-            <div className="inline-flex items-center gap-2 px-4 py-2 bg-success/10 text-success rounded-full text-sm font-medium">
-              <Icon name="CheckBadgeIcon" size={20} variant="solid" />
-              <span>Trusted by thousands of Indian families</span>
+            <div className="inline-flex items-center gap-2 px-4 py-2 bg-[#1D9E75]/10 text-[#1D9E75] rounded-full text-sm font-semibold">
+              <Icon name="CheckBadgeIcon" size={18} variant="solid" />
+              <span>Trusted by 1 Lakh+ Indian families</span>
             </div>
 
             <div className="space-y-4">
@@ -129,7 +129,7 @@ const HeroSection = () => {
               <div className="absolute inset-0 bg-gradient-to-t from-secondary/20 to-transparent" />
             </div>
 
-            <div className="absolute -bottom-6 -left-6 bg-card rounded-xl shadow-xl p-4 border border-border max-w-[200px]">
+            <div className="hidden md:block absolute -bottom-6 -left-6 bg-card rounded-xl shadow-xl p-4 border border-border max-w-[200px]">
               <div className="flex items-center gap-3">
                 <div className="w-12 h-12 bg-success/10 rounded-full flex items-center justify-center">
                   <Icon name="AcademicCapIcon" size={24} variant="solid" className="text-success" />
@@ -141,7 +141,7 @@ const HeroSection = () => {
               </div>
             </div>
 
-            <div className="absolute -top-6 -right-6 bg-card rounded-xl shadow-xl p-4 border border-border max-w-[180px]">
+            <div className="hidden md:block absolute -top-6 -right-6 bg-card rounded-xl shadow-xl p-4 border border-border max-w-[180px]">
               <div className="flex items-center gap-3">
                 <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center">
                   <Icon

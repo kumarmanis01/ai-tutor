@@ -17,11 +17,24 @@ const LandingPageInteractive = () => {
         <TrustBar />
         <HowItWorksSection />
         <ProblemSection />
-        <OtpSignupForm />
         <TestimonialsSection />
         <PricingSection />
         <FAQSection />
-        <OtpSignupForm />
+        {/* Mid-funnel email capture -- after objections are handled */}
+        <section className="py-10 bg-[#EEEDFE]/50 border-y border-[#534AB7]/10">
+          <div className="mx-auto px-4 md:px-6 max-w-xl text-center">
+            <p className="font-headline font-bold text-xl text-secondary mb-1">
+              Ready to try it yourself?
+            </p>
+            <p className="font-accent text-sm text-[#534AB7] mb-5">
+              आज ही शुरू करें -- बिल्कुल मुफ्त
+            </p>
+            <OtpSignupForm />
+            <p className="text-xs text-muted-foreground mt-3">
+              3 free sessions every month. No credit card required.
+            </p>
+          </div>
+        </section>
         <FinalCTA />
       </main>
       <Footer />
