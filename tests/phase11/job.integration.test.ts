@@ -120,7 +120,6 @@ describe('Phase 11 — Job-style suggestion processing idempotency', () => {
 
     const suggestionIdsAfter = allSuggestionsAfter.map(s => s.id)
     const auditsAfterSecond = await prisma.auditLog.findMany({ where: { targetEntity: 'ContentSuggestion', targetId: { in: suggestionIdsAfter } } })
-    try { console.log('AUDITS_AFTER_SECOND_DEBUG', auditsAfterSecond.map(a => ({ id: a.id, action: a.action, details: a.details, createdAt: a.createdAt, targetId: a.targetId }))) } catch {}
     // No new CREATED audit rows for duplicated processing of same signals
     expect(auditsAfterSecond.length).toBeGreaterThanOrEqual(auditsAfterFirst.length)
     // Ensure we didn't create more suggestion-created audits than suggestions (basic guard)
