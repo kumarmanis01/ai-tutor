@@ -3,6 +3,8 @@ import { getServerSessionForHandlers } from '@/lib/session'
 import { prisma } from '@/lib/prisma'
 import { logger } from '@/lib/logger'
 import { activateSubscription, verifyPaymentSignature } from '@/lib/payments/razorpay'
+import { PLANS } from '@/lib/billing/plans'
+import type { PlanId } from '@/lib/billing/plans'
 
 export async function POST(req: Request) {
   const start = Date.now()
@@ -42,7 +44,9 @@ export async function POST(req: Request) {
       return res
     }
 
-    const ok = await activateSubscription(userId, orderId, order.planMonths)
+    // Use planId stored on the order; fall back to standard_monthly for legacy orders without planId.
+    const planId: PlanId = (order.planId && order.planId in PLANS) ? (order.planId as PlanId) : 'standard_monthly'
+    const ok = await activateSubscription(userId, orderId, planId)
     if (!ok) {
       const res = NextResponse.json({ error: 'Could not activate subscription' }, { status: 500 })
       logger.logAPI(req, res, { className: 'PaymentsVerifyAPI', methodName: 'POST' }, start)

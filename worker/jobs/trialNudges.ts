@@ -45,11 +45,12 @@ export async function runTrialNudges() {
     for (const t of trials) {
       try {
         const templateKey = d === 2 ? TRIAL_TEMPLATES.DAY_2.key : d === 5 ? TRIAL_TEMPLATES.DAY_5.key : TRIAL_TEMPLATES.DAY_12.key
+        const appUrl = (process.env.NEXT_PUBLIC_APP_URL ?? '').replace(/\/$/, '')
         const params = {
           count: 0,
-          strong: '—',
-          weak: '—',
-          link: `https://yourdomain.example/upgrade?trialId=${t.id}`,
+          strong: '-',
+          weak: '-',
+          link: `${appUrl}/upgrade?trialId=${t.id}`,
         }
         await sendTemplate(t.phone, templateKey, params)
         logger.info('[trialNudges] sent', { trialId: t.id, phone: t.phone, dayOffset: d })

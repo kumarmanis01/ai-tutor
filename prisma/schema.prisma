@@ -148,6 +148,8 @@ model PaymentOrder {
   status          String    @default("created")
   providerIdempotencyKey String?
   planMonths      Int       @default(1)
+  /// PlanId from lib/billing/plans.ts (e.g. 'standard_monthly'). Null for legacy orders created before Sprint A.
+  planId          String?
   createdAt       DateTime  @default(now())
   paidAt          DateTime?
 

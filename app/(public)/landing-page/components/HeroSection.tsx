@@ -57,7 +57,7 @@ const HeroSection = () => {
                 Turn doubts into confidence with Spinzy AI Tutor.
               </h1>
               <p className="font-body text-xl md:text-2xl text-foreground/80">
-                Adaptive practice, mastery checks, and guided hints that build conceptual fluency — no shortcuts.
+                Adaptive practice, mastery checks, and guided hints that build conceptual fluency -- no shortcuts.
               </p>
               <p className="font-body text-lg md:text-xl text-primary font-semibold">
                 Class 1-12 · CBSE / ICSE / State Board · Instant doubt solving in Hindi & English
