@@ -42,14 +42,28 @@ export async function runTrialNudges() {
     })
     logger.info('[trialNudges] found trials', { dayOffset: d, count: trials.length })
 
+    // Resolve absolute base URL. Worker processes may not have NEXT_PUBLIC_APP_URL set,
+    // so fall back through the same chain used by other workers.
+    const appUrl = (
+      process.env.NEXTAUTH_URL ??
+      process.env.NEXT_PUBLIC_APP_URL ??
+      process.env.APP_URL ??
+      ''
+    ).replace(/\/$/, '')
+
+    if (!appUrl) {
+      logger.warn('[trialNudges] no absolute base URL configured (set NEXTAUTH_URL or APP_URL) -- skipping all sends for this run')
+      break
+    }
+
     for (const t of trials) {
       try {
         const templateKey = d === 2 ? TRIAL_TEMPLATES.DAY_2.key : d === 5 ? TRIAL_TEMPLATES.DAY_5.key : TRIAL_TEMPLATES.DAY_12.key
         const params = {
           count: 0,
-          strong: '—',
-          weak: '—',
-          link: `https://yourdomain.example/upgrade?trialId=${t.id}`,
+          strong: '-',
+          weak: '-',
+          link: `${appUrl}/upgrade?trialId=${t.id}`,
         }
         await sendTemplate(t.phone, templateKey, params)
         logger.info('[trialNudges] sent', { trialId: t.id, phone: t.phone, dayOffset: d })

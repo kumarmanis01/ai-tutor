@@ -24,12 +24,8 @@ type Props = {
   features?: string[];
   selected?: boolean;
   compact?: boolean;
-                    <div className="text-sm mt-1 text-gray-600 dark:text-gray-400">
+  onSelect?: () => void;
   cta?: React.ReactNode;
-                    </div>
-                    {displayPrice && displayPrice > 0 && (
-                      <div className="text-xs text-gray-500 mt-1">Inclusive of all taxes. No hidden charges.</div>
-                    )}
   billing?: 'monthly' | 'annual';
 };
 

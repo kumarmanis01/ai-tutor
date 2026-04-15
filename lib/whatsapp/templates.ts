@@ -17,7 +17,7 @@
 export const TRIAL_TEMPLATES = {
   DAY_2: {
     key: 'TRIAL_DAY_2',
-    message: "Your child solved {{count}} questions in 2 days 🎉 Keep the streak going — try the 10‑minute Quick Practice now: {{link}}",
+    message: "Your child solved {{count}} questions in 2 days 🎉 Keep the streak going -- try the 10‑minute Quick Practice now: {{link}}",
     description: 'Progress nudge with link to quick practice',
   },
   DAY_5: {
