@@ -23,7 +23,7 @@ import PaymentMethodSelector from './PaymentMethodSelector';
 import PaymentConfirmation from './PaymentConfirmation';
 import AddCard from './AddCard';
 import SavedPaymentMethods from './SavedPaymentMethods';
-import type { PlanId } from '@/lib/subscription/plans';
+import type { PlanId } from '@/lib/billing/plans';
 import type { PaymentMethod } from './PaymentMethodSelector';
 
 type Step = 'gate' | 'plan' | 'method' | 'confirm' | 'success' | 'failure';
@@ -49,7 +49,7 @@ interface UpgradeFlowProps {
 
 export function UpgradeFlow({ studentName, studentEmail, freeTierUsage }: UpgradeFlowProps) {
   const [step, setStep] = useState<Step>('gate');
-  const [planId, setPlanId] = useState<PlanId>('quarterly');
+  const [planId, setPlanId] = useState<PlanId>('standard_monthly');
   const [method, setMethod] = useState<PaymentMethod>('upi');
   const [payLoading, setPayLoading] = useState(false);
   const [failureMsg, setFailureMsg] = useState('');

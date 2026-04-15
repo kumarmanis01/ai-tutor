@@ -1,4 +1,4 @@
-import applyCreditsToCharge from '@/lib/subscription/credits'
+import applyCreditsToCharge from '@/lib/billing/credits'
 
 describe('applyCreditsToCharge', () => {
   test('reduces amount by credit when credit < amount', () => {

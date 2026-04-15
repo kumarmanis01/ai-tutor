@@ -33,8 +33,8 @@ import { recordPaymentEvent } from '@/lib/payments/audit';
 import { sendEmail } from '@/lib/mailer';
 import { paymentReceiptHtml } from '@/lib/email/templates';
 import { sendSms } from '@/lib/sms';
-import { PLANS } from '@/lib/subscription/plans';
-import type { PlanId } from '@/lib/subscription/plans';
+import { PLANS } from '@/lib/billing/plans';
+import type { PlanId } from '@/lib/billing/plans';
 import { createInvoiceForPayment } from '@/lib/invoices';
 import Razorpay from 'razorpay';
 

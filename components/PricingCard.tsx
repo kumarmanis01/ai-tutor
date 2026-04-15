@@ -1,3 +1,19 @@
+/**
+ * FILE OBJECTIVE:
+ * - Reusable pricing card used on landing and billing screens.
+ * - Displays plan title, price (monthly/annual), features and CTA.
+ *
+ * LINKED UNIT TEST:
+ * - tests/unit/components/PricingCard.spec.tsx
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - .github/copilot-instructions.md
+ * - /docs/COPILOT_GUARDRAILS.md
+ *
+ * EDIT LOG:
+ * - 2026-04-15T00:00:00Z | copilot-planner | added inclusive pricing copy
+ */
+
 import React from 'react';
 
 type Props = {

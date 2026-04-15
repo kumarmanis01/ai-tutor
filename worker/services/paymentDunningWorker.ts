@@ -11,9 +11,9 @@ import { sendMailSafe } from '@/lib/mailer'
 import { sendSms } from '@/lib/sms'
 import { getRedis } from '@/lib/redis'
 import { createRazorpayTokenCharge } from '@/lib/payments'
-import { PLANS, rupeesToPaise } from '@/lib/subscription/plans'
+import { PLANS, rupeesToPaise } from '@/lib/billing/plans'
 import { createInvoiceForPayment } from '@/lib/invoices'
-import applyCreditsToCharge from '@/lib/subscription/credits'
+import applyCreditsToCharge from '@/lib/billing/credits'
 import { recordPaymentEvent } from '@/lib/payments/audit'
 
 function toIso(d: Date) { return d.toISOString() }
@@ -44,7 +44,16 @@ export async function processPaymentDunning(): Promise<void> {
 
         if (pm && pm.provider === 'razorpay') {
           try {
-            const planKey = (s.billingCycle || 'monthly') as keyof typeof PLANS
+            // resolve legacy billingCycle values to new plan keys when present
+            const rawKey = (s.billingCycle || 'standard_monthly') as string
+            const resolvePlanKey = (k: string): keyof typeof PLANS => {
+              if ((PLANS as any)[k]) return k as keyof typeof PLANS
+              if (k === 'monthly') return 'standard_monthly'
+              if (k === 'quarterly') return 'family_monthly'
+              if (k === 'annual') return 'standard_annual'
+              return 'standard_monthly'
+            }
+            const planKey = resolvePlanKey(rawKey)
             const plan = PLANS[planKey as any]
             const amountPaise = rupeesToPaise(plan.billedRupees)
 

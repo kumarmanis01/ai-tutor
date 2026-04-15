@@ -1,4 +1,4 @@
-import computeProratedCredit from '@/lib/subscription/proration'
+import computeProratedCredit from '@/lib/billing/proration'
 
 describe('computeProratedCredit', () => {
   test('returns 0 when no remaining time', () => {

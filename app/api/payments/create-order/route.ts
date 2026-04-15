@@ -5,6 +5,8 @@ import { logger } from '@/lib/logger'
 import { createRazorpayOrder } from '@/lib/payments/razorpay'
 import { recordPaymentEvent } from '@/lib/payments/audit'
 import { randomUUID } from 'crypto'
+import { PLANS } from '@/lib/billing/plans'
+import type { PlanId } from '@/lib/billing/plans'
 
 export async function POST(req: Request) {
   const start = Date.now()
@@ -18,10 +20,16 @@ export async function POST(req: Request) {
     }
 
     const body = await req.json().catch(() => null)
-    const planMonthsRaw = typeof body?.planMonths === 'number' ? body.planMonths : 1
-    const planMonths = Math.max(1, Math.min(Math.floor(planMonthsRaw || 1), 12))
+    // Accept a planId from the client; validate it against known plans; default to standard_monthly.
+    // Use an own-property check rather than `in` so inherited prototype keys (toString, __proto__)
+    // cannot be treated as valid plan identifiers.
+    const rawPlanId = body?.planId
+    const planId: PlanId =
+      typeof rawPlanId === 'string' && Object.prototype.hasOwnProperty.call(PLANS, rawPlanId)
+        ? (rawPlanId as PlanId)
+        : 'standard_monthly'
 
-    const order = await createRazorpayOrder(userId, planMonths)
+    const order = await createRazorpayOrder(userId, planId)
     if (!order) {
       const res = NextResponse.json({ error: 'Could not create payment order' }, { status: 500 })
       logger.logAPI(req, res, { className: 'PaymentsCreateOrderAPI', methodName: 'POST' }, start)
@@ -35,6 +43,7 @@ export async function POST(req: Request) {
     const providedKey = (req.headers.get('idempotency-key') || req.headers.get('x-idempotency-key') || '') as string
     const providerIdempotencyKey = providedKey || randomUUID()
 
+    const plan = PLANS[planId]
     await prisma.paymentOrder.create({
       data: {
         studentId: userId,
@@ -42,7 +51,8 @@ export async function POST(req: Request) {
         amount: order.amount,
         currency: order.currency,
         status: 'created',
-        planMonths,
+        planMonths: plan.durationMonths,
+        planId,
         providerIdempotencyKey,
       },
     })
@@ -56,7 +66,7 @@ export async function POST(req: Request) {
         orderId: order.orderId,
         eventType: 'order.created',
         amount: order.amount,
-        payload: { planMonths },
+        payload: { planId, durationMonths: plan.durationMonths },
       })
     } catch (err) {
       // Non-fatal: don't fail order creation if audit write fails
@@ -68,6 +78,7 @@ export async function POST(req: Request) {
         orderId: order.orderId,
         amount: order.amount,
         currency: order.currency,
+        planId,
         keyId: process.env.RAZORPAY_KEY_ID ?? '',
       },
       { status: 200 },
