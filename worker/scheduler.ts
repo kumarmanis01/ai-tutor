@@ -28,7 +28,6 @@ import { expireStaleTasks } from '../lib/dailyHabit.js';
 import { hydrationReconciler } from './services/hydrationReconciler.js';
 import { runDailyCostReport } from './services/costReportingWorker.js'
 import { runDataDeletionCycle } from './services/dataDeletionWorker.js';
-import { processParentInactivityAlerts } from './services/inactivityAlertWorker.js';
 import { processReadinessDropAlerts } from './services/readinessDropWorker.js';
 import { runMonthlyMisconceptionPrevalence } from './services/misconceptionPrevalenceWorker.js';
 import { weeklyPlanAdjust } from './jobs/weeklyPlanAdjust.js';
@@ -357,11 +356,9 @@ async function runDailyMaintenanceJob() {
       logger.error('scheduler.ensureReadinessPrecompute.failed', { err: e instanceof Error ? e.message : String(e) })
     }
 
-    try {
-      await processParentInactivityAlerts();
-    } catch (e) {
-      logger.error('scheduler.parentInactivity.failed', { err: e instanceof Error ? e.message : String(e) });
-    }
+    // Parent inactivity alerts are handled by `runInactivityAlerts()` above.
+    // Avoid calling `processParentInactivityAlerts()` here to prevent duplicate
+    // notifications and ensure centralized suppression policies are honored.
 
     try {
       await processReadinessDropAlerts();

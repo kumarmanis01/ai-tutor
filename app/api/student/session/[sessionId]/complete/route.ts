@@ -23,16 +23,32 @@ export async function POST(req: Request, { params }: { params: Promise<{ session
 
     await req.json().catch(() => null)
 
-    const [correctAnswers, totalQuestions] = await Promise.all([
+    // Ensure the requested learning session belongs to the authenticated user
+    // before reading any session-derived data. This prevents a caller from
+    // querying session-scoped artifacts for a session that does not belong to
+    // their account.
+    const learningSession = await prisma.learningSession.findFirst({
+      where: { id: sessionId, studentId: userId },
+      select: { startedAt: true, endedAt: true, meta: true },
+    })
+    if (!learningSession) {
+      const res = NextResponse.json({ error: 'Session not found' }, { status: 404 })
+      logger.logAPI(req, res, { className: 'StudentSessionCompleteAPI', methodName: 'POST' }, start)
+      return res
+    }
+
+    // Fire remaining session-level reads in parallel; none depend on each other.
+    const [correctAnswers, totalQuestions, hintsUsed, firstAnswer] = await Promise.all([
       prisma.answerEvent.count({ where: { studentId: userId, sessionId, isCorrect: true } }),
       prisma.answerEvent.count({ where: { studentId: userId, sessionId } }),
+      prisma.aITutorTurnLog.count({ where: { sessionId, callType: 'tutor:hint' } }),
+      prisma.answerEvent.findFirst({
+        where: { studentId: userId, sessionId },
+        orderBy: { createdAt: 'asc' },
+        select: { conceptId: true },
+      }),
     ])
 
-    const firstAnswer = await prisma.answerEvent.findFirst({
-      where: { studentId: userId, sessionId },
-      orderBy: { createdAt: 'asc' },
-      select: { conceptId: true },
-    })
     const conceptId = firstAnswer?.conceptId ?? null
 
     let masteryAfter = 0.3
@@ -49,7 +65,13 @@ export async function POST(req: Request, { params }: { params: Promise<{ session
       ])
       if (state) {
         masteryAfter = state.masteryScore
-        masteryDelta = masteryAfter - 0.3
+        // Use preSessionMastery stored at session start; fall back to 0.3 for
+        // sessions created before this fix was deployed.
+        const preSessionMastery: number =
+          typeof (learningSession?.meta as any)?.preSessionMastery === 'number'
+            ? (learningSession!.meta as any).preSessionMastery
+            : 0.3
+        masteryDelta = masteryAfter - preSessionMastery
       }
       conceptName = concept?.name ?? null
     }
@@ -73,11 +95,6 @@ export async function POST(req: Request, { params }: { params: Promise<{ session
       currentStreak = streakResult?.currentStreak ?? 0
     }
 
-    const learningSession = await prisma.learningSession.findUnique({
-      where: { id: sessionId },
-      select: { startedAt: true, endedAt: true },
-    })
-
     let sessionDurationMinutes = 0
     if (learningSession) {
       const end = learningSession.endedAt ?? new Date()
@@ -90,7 +107,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ session
       correctAnswers,
       totalQuestions,
       conceptName,
-      hintsUsed: 0, // hint count not tracked at LearningSession level; defaults to 0
+      hintsUsed,
       masteryDelta,
       studentId: userId,
       sessionId,
@@ -129,4 +146,3 @@ export async function POST(req: Request, { params }: { params: Promise<{ session
     return res
   }
 }
-

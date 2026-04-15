@@ -7,6 +7,7 @@ import { checkFreeTierCap, incrementFreeTierUsage } from '@/lib/freemium'
 import { isInAITutorRollout } from '@/lib/features/rollout'
 import { hasDiagnosticForSubject } from '@/lib/student/diagnosticGuard'
 import { prisma } from '@/lib/prisma'
+import { setTutorSession } from '@/lib/redis/tutorSession'
 
 export const dynamic = 'force-dynamic'
 
@@ -29,7 +30,7 @@ export async function POST(req: Request) {
       return res
     }
 
-    // Rollout gate: kill switch → per-user flag → percentage hash
+    // Rollout gate: kill switch -> per-user flag -> percentage hash
     if (!(await isInAITutorRollout(userId))) {
       res = NextResponse.json({ error: 'AI Tutor is not enabled for your account.', code: 'FEATURE_DISABLED' }, { status: 403 })
       logger.logAPI(req, res, { className: 'TutorSessionStartAPI', methodName: 'POST' }, start)
@@ -51,7 +52,7 @@ export async function POST(req: Request) {
     // see a clear message rather than a mid-session error.
     const conceptCheck = await prisma.concept.findUnique({
       where: { id: conceptId },
-      select: { isSuspended: true },
+      select: { isSuspended: true, prerequisiteConceptIds: true },
     })
     if (conceptCheck?.isSuspended) {
       res = NextResponse.json(
@@ -99,24 +100,84 @@ export async function POST(req: Request) {
       return res
     }
 
-    // TODO: wire real session persistence once the Tutor Session model is finalized.
+    // Fetch pre-session mastery, prereq concept names, and prereq mastery scores concurrently.
+    const prerequisiteConceptIds = conceptCheck?.prerequisiteConceptIds ?? []
+    // Intentionally allow Prisma errors to propagate to the outer try/catch so
+    // the request fails fast if DB queries are failing rather than creating a
+    // session with partial or misleading metadata.
+    const [conceptStateResult, prereqConceptsResult, prereqStatesResult] = await Promise.all([
+      prisma.studentConceptState.findUnique({
+        where: { studentId_conceptId: { studentId: userId, conceptId } },
+        select: { masteryScore: true },
+      }),
+      prerequisiteConceptIds.length > 0
+        ? prisma.concept.findMany({
+            where: { id: { in: prerequisiteConceptIds } },
+            select: { id: true, name: true },
+          })
+        : Promise.resolve([] as { id: string; name: string }[]),
+      prerequisiteConceptIds.length > 0
+        ? prisma.studentConceptState.findMany({
+            where: { studentId: userId, conceptId: { in: prerequisiteConceptIds } },
+            select: { conceptId: true, masteryScore: true },
+          })
+        : Promise.resolve([] as { conceptId: string; masteryScore: number }[]),
+    ])
+
+    const preSessionMastery: number | null = conceptStateResult?.masteryScore ?? null
+
+    // Build enriched prereq objects so the client can show per-prereq mastery status.
+    const prereqMasteryMap = new Map(prereqStatesResult.map((s) => [s.conceptId, s.masteryScore]))
+    const prereqs = prereqConceptsResult.map((c) => ({
+      conceptId: c.id,
+      name: c.name,
+      masteryScore: prereqMasteryMap.get(c.id) ?? null,
+    }))
+
+    // A prereq with no StudentConceptState (null) or masteryScore < 0.5 is considered unmet.
+    // Unmet prereqs cause the session to start in PREREQ_BRIDGE so Vidya bridges the gap first.
+    const hasUnmetPrereqs = prereqs.some((p) => (p.masteryScore ?? 0) < 0.5)
+    const initialStage = hasUnmetPrereqs ? 'PREREQ_BRIDGE' : 'HOOK'
+
+    // Generate a unique session ID and persist a LearningSession record so the
+    // completion handler can accurately compute masteryDelta and sessionDuration.
     const sessionId =
       typeof crypto !== 'undefined' && 'randomUUID' in crypto
         ? crypto.randomUUID()
         : `tutor_${Date.now().toString(36)}`
 
-    // TODO: use Redis-backed resume detection via hasIncompleteTurn(sessionId) when available.
+    await prisma.learningSession.create({
+      data: {
+        id: sessionId,
+        studentId: userId,
+        activityType: 'tutor',
+        activityRef: conceptId,
+        difficultyLevel: 'medium',
+        meta: { conceptId, preSessionMastery, hintsUsed: 0, initialStage },
+      },
+    })
+
+    // Seed the Redis session state so the first turn handler finds the correct starting
+    // stage without an extra DB round-trip. Redis failure is non-blocking.
+    await setTutorSession(sessionId, {
+      sessionId,
+      stage: initialStage,
+      hintsRemaining: 3,
+      lastTurnNumber: 0,
+      stageAttemptCount: 0,
+      consecutiveWrongAnswers: 0,
+      prereqRemediationActive: hasUnmetPrereqs,
+      prereqReturnStage: hasUnmetPrereqs ? 'CORE_EXPLANATION' : null,
+      lastTurnCompleted: true,
+    })
+
+    // Resume context: check Redis for an in-progress turn on this (newly created) session.
     const resumeContext = {
       hasIncompleteSession: false,
-      lastStage: null as string | null,
+      lastStage: initialStage,
     }
 
-    // TODO: fetch real prerequisites from ConceptPrereqs once available.
-    const prereqs: string[] = []
-    void conceptId
-    void subjectId
-
-    // Only increment after "session creation" is considered successful.
+    // Only increment after session is successfully persisted.
     await incrementFreeTierUsage(userId)
 
     res = NextResponse.json({
@@ -145,4 +206,3 @@ export async function POST(req: Request) {
     return res
   }
 }
-
