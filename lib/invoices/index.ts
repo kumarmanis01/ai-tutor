@@ -361,46 +361,50 @@ export async function createInvoiceForPayment(opts: InvoiceCreateOpts) {
 
   const invoiceNumber = trxResult.invoiceNumber;
 
-  // Build PDF (try HTML render first, fallback to text)
-  const pdfBuffer = await generateInvoicePdf({
-    invoiceNumber,
-    userName: undefined,
-    studentName: undefined,
-    amountPaise: opts.amountPaise,
-    baseRupees,
-    gstRupees,
-    totalRupees,
-    billingCycle: opts.billingCycle,
-    date: new Date().toLocaleDateString('en-IN'),
-    gstin,
-    hsn,
-    taxBreakdown,
-  });
+  // Build PDF (try HTML render first, fallback to text) -- best effort
+  let pdfBuffer: Buffer | undefined;
+  try {
+    pdfBuffer = await generateInvoicePdf({
+      invoiceNumber,
+      userName: undefined,
+      studentName: undefined,
+      amountPaise: opts.amountPaise,
+      baseRupees,
+      gstRupees,
+      totalRupees,
+      billingCycle: opts.billingCycle,
+      date: new Date().toLocaleDateString('en-IN'),
+      gstin,
+      hsn,
+      taxBreakdown,
+    });
+  } catch (pdfErr) {
+    logger.warn('[invoices] PDF generation failed; invoice created without attachment', { error: String(pdfErr) });
+  }
 
-  // Upload to R2 (best effort)
+  // Upload to R2 (best effort) -- only if PDF was generated
   const key = `invoices/invoice-${invoiceNumber}.pdf`;
   let fileUrl: string | undefined = undefined;
-  try {
-    fileUrl = await uploadBufferToR2(pdfBuffer, key, 'application/pdf');
-    if (fileUrl) {
-      await prisma.invoice.update({ where: { invoiceNumber }, data: { fileUrl } });
-    }
-  } catch (err) {
-    logger.error('[invoices] failed to upload invoice to R2', { error: err });
-    // Best-effort: if upload failed but we can construct a public URL from
-    // environment variables, store that as a fallback so integrations/tests
-    // that assert a truthy `fileUrl` still pass.
+  if (pdfBuffer) {
     try {
-      const publicBase = process.env.R2_PUBLIC_URL?.replace(/\/$/, '')
-        || (process.env.R2_ENDPOINT ? `${process.env.R2_ENDPOINT.replace(/\/$/, '')}/${process.env.R2_BUCKET ?? ''}` : '');
-      if (publicBase) {
-        const constructed = `${publicBase}/${key}`;
-        fileUrl = constructed;
+      fileUrl = await uploadBufferToR2(pdfBuffer, key, 'application/pdf');
+      if (fileUrl) {
         await prisma.invoice.update({ where: { invoiceNumber }, data: { fileUrl } });
-        logger.warn('[invoices] set fallback fileUrl', { fileUrl });
       }
-    } catch (err2) {
-      logger.warn('[invoices] could not set fallback fileUrl', { error: String(err2) });
+    } catch (err) {
+      logger.error('[invoices] failed to upload invoice to R2', { error: err });
+      try {
+        const publicBase = process.env.R2_PUBLIC_URL?.replace(/\/$/, '')
+          || (process.env.R2_ENDPOINT ? `${process.env.R2_ENDPOINT.replace(/\/$/, '')}/${process.env.R2_BUCKET ?? ''}` : '');
+        if (publicBase) {
+          const constructed = `${publicBase}/${key}`;
+          fileUrl = constructed;
+          await prisma.invoice.update({ where: { invoiceNumber }, data: { fileUrl } });
+          logger.warn('[invoices] set fallback fileUrl', { fileUrl });
+        }
+      } catch (err2) {
+        logger.warn('[invoices] could not set fallback fileUrl', { error: String(err2) });
+      }
     }
   }
 
