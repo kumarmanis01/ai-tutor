@@ -38,6 +38,15 @@ describe('Phase 11 — ContentSuggestion idempotency', () => {
       return
     }
 
+    // Verify the ContentSuggestion table exists (migration may not have been applied)
+    try {
+      await (prisma as any).contentSuggestion.findFirst()
+    } catch (e) {
+      logger.warn('Skipping Phase 11 idempotency test: ContentSuggestion table missing or schema drift', String(e))
+      SKIP_TEST = true
+      return
+    }
+
     // ensure clean slate
     await prisma.contentSuggestion.deleteMany().catch(() => {})
     await prisma.auditLog.deleteMany().catch(() => {})

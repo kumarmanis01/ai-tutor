@@ -13,9 +13,12 @@ module.exports = {
   moduleNameMapper: {
     // Avoid mapping generic relative ../lib/* patterns — they clash with node_modules internals.
     // Map project `@/` aliases explicitly. Prefer TypeScript sources for resolvability in tests.
+    // For explicit .js or .ts extension imports, strip and resolve as .ts
     '^@/lib/(.*)\\.js$': '<rootDir>/lib/$1.ts',
     '^@/lib/(.*)\\.ts$': '<rootDir>/lib/$1.ts',
-    '^@/lib/(.*)$': '<rootDir>/lib/$1.ts',
+    // For extensionless imports: try the .ts file first, then the directory index.
+    // This supports both `@/lib/foo` (-> lib/foo.ts) and `@/lib/ai/guardrails` (-> lib/ai/guardrails/index.ts).
+    '^@/lib/(.*)$': ['<rootDir>/lib/$1.ts', '<rootDir>/lib/$1/index.ts', '<rootDir>/lib/$1'],
     '^@/(.*)\\.js$': '<rootDir>/src/$1.ts',
     '^@/(.*)$': ['<rootDir>/src/$1', '<rootDir>/$1']
   },

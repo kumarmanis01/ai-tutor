@@ -51,7 +51,7 @@ describe('parent subscription verify route', () => {
     const payload = `${orderId}|${paymentId}`
     const signature = crypto.createHmac('sha256', process.env.RAZORPAY_KEY_SECRET!).update(payload).digest('hex')
 
-    const req: any = { json: async () => ({ orderId, paymentId, signature, planId: 'monthly' }) }
+    const req: any = { json: async () => ({ orderId, paymentId, signature, planId: 'standard_monthly' }) }
 
     const route = await import('@/app/api/parent/subscription/verify/route')
     const res = await route.POST(req as unknown as Request)

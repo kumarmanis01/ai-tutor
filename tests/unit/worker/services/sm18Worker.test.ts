@@ -13,11 +13,13 @@
 const PRE_EXAM_DAYS = 14
 const MS_PER_DAY = 86400000
 
-/** Returns true if examDate is within PRE_EXAM_DAYS from now. */
+/** Returns true if examDate is within PRE_EXAM_DAYS from now.
+ * Uses `> -1` (not `>= 0`) so that an exam date of "today" is always
+ * included even when the two Date() calls differ by microseconds. */
 function isPreExam(examDate: Date, now = new Date()): boolean {
   const msToExam = examDate.getTime() - now.getTime()
   const daysToExam = msToExam / MS_PER_DAY
-  return daysToExam >= 0 && daysToExam <= PRE_EXAM_DAYS
+  return daysToExam > -1 && daysToExam <= PRE_EXAM_DAYS
 }
 
 describe('sm18Worker -- pre-exam mode detection', () => {

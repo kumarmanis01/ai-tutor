@@ -78,7 +78,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
   }
 
-  if (!['monthly', 'quarterly', 'annual'].includes(planId)) {
+  if (!(planId in PLANS)) {
     return NextResponse.json({ error: 'Invalid planId' }, { status: 400 });
   }
 
