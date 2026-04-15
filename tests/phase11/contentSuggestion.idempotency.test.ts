@@ -81,8 +81,8 @@ describe('Phase 11 — ContentSuggestion idempotency', () => {
     }
 
     // Ensure DB is empty of suggestions/audit
-    await prisma.contentSuggestion.deleteMany()
-    await prisma.auditLog.deleteMany()
+    await prisma.contentSuggestion.deleteMany().catch(() => {})
+    await prisma.auditLog.deleteMany().catch(() => {})
 
     if (SKIP_TEST) {
       // eslint-disable-next-line no-console

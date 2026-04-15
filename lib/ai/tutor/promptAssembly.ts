@@ -1,5 +1,10 @@
 import type { TutorStage } from '@/lib/ai/tutor/stateMachine'
 
+// Local copy of the LearningStyle union to avoid TS import issues
+// with generated Prisma client types during local type-check.
+// Keep in sync with prisma/schema.prisma enum LearningStyle.
+type LearningStyle = 'visual' | 'verbal' | 'practice' | 'mixed'
+
 export interface PromptContext {
   // PERSONA layer inputs
   studentName: string
@@ -9,7 +14,7 @@ export interface PromptContext {
 
   // STUDENT_PROFILE layer inputs
   examDateProximityDays: number | null // null = no exam set
-  learningStyle: string | null
+  learningStyle: LearningStyle | null
   recentMisconceptions: string[] // concept names, max 3
   masteryBrief: string // e.g. "strong in algebra, weak in geometry"
   emotionalState: 'NEUTRAL' | 'ENGAGED' | 'CONFUSED' | 'FRUSTRATED'
@@ -304,6 +309,16 @@ export function buildStageInstructionsLayer(ctx: PromptContext): string {
       '- Show exactly how the concept applies step by step in that scenario',
       '- Then connect back to the abstract concept',
       'Do NOT repeat the same wording from your last response.',
+    )
+  } else if (explainStyle === 'diagram') {
+    lines.push(
+      'RE-EXPLAIN REQUEST -- Diagram / Visual Explanation:',
+      'The student requested a diagram. Provide a clear step-by-step visual description that the student can draw themselves.',
+      '- Describe the diagram structure in numbered steps (e.g., "1. Draw an x-axis; 2. Mark point A at ...").',
+      '- Provide a short caption explaining how the diagram maps to the concept and key labels to include.',
+      '- If applicable, include a small ASCII schematic (no images) and a `visualHint` brief for the front-end to render a simple SVG or canvas drawing.',
+      '- End with one comprehension check: ask the student to label or explain one part of the diagram.',
+      'Do NOT provide the full text solution here; focus on visual scaffolding and labels.',
     )
   }
 

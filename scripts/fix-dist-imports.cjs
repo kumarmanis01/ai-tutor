@@ -43,10 +43,27 @@ let patched = 0
 walk(ROOT, (file) => {
   try{
     let src = fs.readFileSync(file, 'utf8')
-    const out = src.replace(importRe, (m, prefix, q, imp, q2) => {
-      if (imp.endsWith('.js') || imp.endsWith('.mjs') || imp.endsWith('.cjs')) return m
-      return `${prefix}${q}${imp}.js${q2}`
-    })
+        const out = src.replace(importRe, (m, prefix, q, imp, q2) => {
+          if (imp.endsWith('.js') || imp.endsWith('.mjs') || imp.endsWith('.cjs')) return m
+
+          // Resolve candidate paths relative to the file to decide whether to
+          // append '.js' or '/index.js'. This avoids rewriting imports to
+          // '.../lib/invoices.js' when the compiled output is a directory
+          // containing 'index.js' (e.g., 'lib/invoices/index.js').
+          try {
+            const fileDir = path.dirname(file)
+            const candidateFile = path.resolve(fileDir, imp + '.js')
+            const candidateIndex = path.resolve(fileDir, imp, 'index.js')
+            if (fs.existsSync(candidateFile)) {
+              return `${prefix}${q}${imp}.js${q2}`
+            } else if (fs.existsSync(candidateIndex)) {
+              return `${prefix}${q}${imp}/index.js${q2}`
+            }
+          } catch (e) {
+            // On any error, fall back to appending .js to be conservative
+          }
+          return `${prefix}${q}${imp}.js${q2}`
+        })
     if (out !== src){
       fs.writeFileSync(file, out, 'utf8')
       patched++

@@ -70,7 +70,8 @@ export function computeNextReviewDays(newStability: number, targetRetention = TA
   const tr = Number.isFinite(targetRetention) && targetRetention > 0 && targetRetention < 1
     ? targetRetention
     : TARGET_RETENTION
-  const interval = newStability * (Math.log(0.9) / Math.log(tr))
+  // Formula: interval = stability * ln(targetRetention) / ln(0.9)
+  const interval = newStability * (Math.log(tr) / Math.log(0.9))
   const days = Math.max(NEXT_REVIEW_MIN_DAYS, Math.min(NEXT_REVIEW_MAX_DAYS, Math.round(interval)))
   return days
 }

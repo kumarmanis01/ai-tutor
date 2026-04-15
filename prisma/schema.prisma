@@ -27,19 +27,28 @@ model User {
   emailVerified               DateTime?
   image                       String?
   parentEmail                 String?
-  // Parent email OTP verified at (under-18 gate).
-  parentVerifiedAt            DateTime?
+  // Parent phone used for under-13 verification (not unique; families can share).
+  parentPhone                 String?
+  // Parent phone OTP verified at (under-18 gate).
+  parentPhoneVerifiedAt       DateTime?
   /// When true, student must complete parent verification regardless of age.
   requiresParentVerification  Boolean                      @default(false)
   // Self-reported age (integer). Used for under-13 / under-18 parent verification gates.
   age                         Int?
-  // Parent phone used for under-13 verification (not unique; families can share).
-  
+  // Date of birth for child profiles created by a parent (F-PAR-002 AC-01).
+  dateOfBirth                 DateTime?
+  /// Parent account verified at (explicit parent user verification).
+  parentVerifiedAt            DateTime?
+  /// High-level account status used for gating and admin actions.
+  accountStatus               AccountStatus                 @default(active)
+
+
   role                        UserRole                     @default(user)
   country                     String?
   language                    LanguageCode
   grade                       String?
   board                       String?
+  schoolName                  String?
   subjects                    String[]                     @default([])
   points                      Int                          @default(0)
   // Cumulative XP for level progression (1-10).
@@ -76,10 +85,12 @@ model User {
   studentRelations            ParentStudent[]              @relation("StudentRelations")
   payments                    Payment[]
   invoices                    Invoice[]
+  phoneOtps                   PhoneOtp[]
   // Stored payment customers and methods for this user
   paymentCustomers            PaymentCustomer[]
   paymentMethods              PaymentMethod[]
-  phoneOtps                   PhoneOtp[]
+  
+  
   referralsCreated            Referral[]                   @relation("ReferralCreator")
   redeemedReferrals           Referral[]                   @relation("ReferralRedeemer")
   Room                        Room[]
@@ -91,6 +102,7 @@ model User {
   studentTopicProgress        StudentTopicProgress[]
   structuredSessions          StructuredSession[]
   homeworkAssignments         HomeworkAssignment[]
+  sessionArtifacts            SessionArtifact[]
   homeRecommendationDecisions HomeRecommendationDecision[]
   subscriptions               Subscription[]
   testResults                 TestResult[]
@@ -114,7 +126,7 @@ model User {
   cosmeticUnlocks             String[]           @default([])
   /// AC-06 (F-STU-004): self-reported learning style ('visual' | 'verbal' | 'practice' | 'mixed').
   /// Used by Vidya to adapt explanations. Collected during onboarding profile setup.
-  learningStyle               String?
+  learningStyle               LearningStyle?
   consents                    Consent[]
   parentProfile               ParentProfile?
   doubtEscalations            DoubtEscalation[]
@@ -444,7 +456,13 @@ model ParentChildControl {
   isPaused          Boolean  @default(false)
   pausedUntil       DateTime?
   pauseReason       String?
-  createdAt         DateTime @default(now())
+  // Weekly study hours target set by parent for this child (F-PAR-002 AC-02).
+  weeklyHoursTarget  Int?
+  // Preferred study schedule slot: "morning" | "afternoon" | "evening" (F-PAR-002 AC-02).
+  schedulePreference String?
+  // Topic-focus preference submitted by parent for AI to consider on next plan adjustment (F-PAR-002 AC-03).
+  topicFocusRequest  String?
+  createdAt          DateTime @default(now())
   updatedAt         DateTime @updatedAt
 
   @@unique([parentId, studentId])
@@ -1064,10 +1082,28 @@ model StructuredSession {
   topic       TopicDef             @relation(fields: [topicId], references: [id])
   homework    HomeworkAssignment[]
   events      SessionEvent[]
+  artifacts   SessionArtifact[]
 
   @@index([studentId, state])
   @@index([studentId, completedAt])
   @@index([topicId])
+}
+
+model SessionArtifact {
+  id         String   @id @default(cuid())
+  studentId  String
+  sessionId  String?
+  type       String
+  url        String
+  meta       Json?
+  uploadedBy String?
+  createdAt  DateTime @default(now())
+
+  student    User?            @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  session    StructuredSession? @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([studentId])
+  @@index([sessionId])
 }
 
 model HomeworkAssignment {
@@ -1293,6 +1329,7 @@ model SubjectDef {
   name                String
   slug                String
   classId             String
+  isAvailable         Boolean              @default(false) // F-ADM-002 AC-05: admin-controlled subject availability
   lifecycle           SoftDeleteStatus     @default(active)
   createdAt           DateTime             @default(now())
   chapters            ChapterDef[]
@@ -1356,6 +1393,13 @@ model Concept {
   bloomLevel              String? /// e.g. remember, understand, apply
   prerequisiteConceptIds  String[]              @default([])
   commonlyConfusedWithIds String[]              @default([])
+  /// F-ADM-013 AC-04: admin can suspend a concept from AI teaching when hallucination confirmed.
+  /// Suspended concepts return CONCEPT_SUSPENDED to the session start gate; student sees a
+  /// "this topic is being reviewed" message. Admin must unsuspend explicitly after fixing the
+  /// curriculum chunk. Never relied on for student-facing mastery or billing logic.
+  isSuspended             Boolean               @default(false)
+  suspendedAt             DateTime?
+  suspendedReason         String?
   createdAt               DateTime              @default(now())
   updatedAt               DateTime              @updatedAt
   topic                   TopicDef              @relation(fields: [topicId], references: [id], onDelete: Cascade)
@@ -1363,8 +1407,28 @@ model Concept {
   learningPlanItems       LearningPlanItem[]
   conceptStates           StudentConceptState[]
 
+  history ConceptHistory[]
+
   @@index([subjectId])
   @@index([topicId])
+}
+
+/// Audit history for admin edits to Concept IRT parameters and prerequisites. F-ADM-002 AC-03.
+model ConceptHistory {
+  id                     String   @id @default(cuid())
+  conceptId              String
+  adminId                String
+  reason                 String
+  previousIrtB           Float?
+  newIrtB                Float?
+  previousPrereqIds      String[]
+  newPrereqIds           String[]
+  createdAt              DateTime @default(now())
+
+  concept Concept @relation(fields: [conceptId], references: [id], onDelete: Cascade)
+
+  @@index([conceptId])
+  @@index([createdAt])
 }
 
 /// Per-chapter exam mark weight (e.g. CBSE Grade 10 Maths). Used for readiness score.
@@ -1519,10 +1583,11 @@ model AITutorTurnLog {
   safetyFlagged    Boolean      @default(false)
   cached           Boolean      @default(false)
   ragChunksUsed    String[]     @default([])
-  frustrationScore Float?
-  qualityFlag      QualityFlag?
-  qualityNote      String?
-  createdAt        DateTime     @default(now())
+  frustrationScore   Float?
+  groundednessScore  Float?  // 1 - riskScore from hallucinationDetector; null when cached or safety-blocked
+  qualityFlag        QualityFlag?
+  qualityNote        String?
+  createdAt          DateTime     @default(now())
 
   @@index([sessionId])
   @@index([callType])
@@ -1786,13 +1851,9 @@ model Misconception {
   description     String
   triggerPatterns String[]
   correction      String
-<<<<<<< HEAD
   createdAt       DateTime @default(now())
   prevalenceRate  Float    @default(0)
-=======
-  createdAt       DateTime               @default(now())
   studentDetections StudentMisconception[]
->>>>>>> origin/master
 
   @@index([subjectId, conceptId])
 }
@@ -1963,6 +2024,8 @@ enum AdminActionType {
   CONTENT_HYDRATE
   WORKER_START
   WORKER_STOP
+  CONCEPT_SUSPEND
+  CONCEPT_UNSUSPEND
 }
 
 /// ⚠️ AI CONTENT ENGINE RULES
@@ -2007,6 +2070,14 @@ enum SoftDeleteStatus {
 enum LanguageCode {
   en
   hi
+}
+
+/// Student-reported preferred learning style used by Tutor (Vidya).
+enum LearningStyle {
+  visual
+  verbal
+  practice
+  mixed
 }
 
 enum DifficultyLevel {
@@ -2402,10 +2473,13 @@ model ParentProfile {
   /// Parent digest preferences
   digestOptOut   Boolean  @default(false)
   /// Parent-level opt-out for inactivity alerts (separate from weekly digest)
-  inactivityOptOut Boolean @default(false)
-  digestDay      String   @default("Sunday") // e.g., "Sunday", "Monday"
-  digestTime     String   @default("09:00") // 24h HH:mm in parent's timezone
-  digestTimezone String?  // IANA timezone (e.g., "Asia/Kolkata"); null => use `User.timezone` or UTC
+  inactivityOptOut           Boolean @default(false)
+  digestDay                  String  @default("Sunday") // e.g., "Sunday", "Monday"
+  digestTime                 String  @default("09:00") // 24h HH:mm in parent's timezone
+  digestTimezone             String? // IANA timezone (e.g., "Asia/Kolkata"); null => use `User.timezone` or UTC
+  // Per-parent configurable inactivity alert threshold (days). F-PAR-021 AC-01.
+  // Parent can choose 2, 3, 5, or 7 days. Default 3.
+  inactivityThresholdDays    Int     @default(3)
 }
 
 /// DPDP right-to-erasure: one row per user, created on deletion request.
@@ -2603,6 +2677,7 @@ model MockExamAttempt {
   finishedAt   DateTime?
   scorePercent Float?
   percentile   Float?
+  cohortCount  Int?
   priorityPlan String?   /// AI-generated 2-week study plan (Markdown)
   rawResult    Json?     /// { sectionId: { score, total, timeSpentSeconds } }
 

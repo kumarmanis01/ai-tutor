@@ -40,7 +40,7 @@ describe('runInactivityAlerts (integration with Redis)', () => {
 
     const parentId = 'parent-int-1'
     const studentId = 'student-int-1'
-    const key = `parent:inactivity:${parentId}:${studentId}`
+    const key = `parent:notifications:suppression:inactivity:${parentId}:${studentId}`
 
     // Mock prisma to return one student and one parent link
     const prismaMock = {
@@ -63,7 +63,17 @@ describe('runInactivityAlerts (integration with Redis)', () => {
     jest.doMock('@/lib/redis', () => ({ getRedis: () => redis }))
     jest.doMock('@/lib/prisma', () => ({ prisma: prismaMock }))
 
-    const sendMock = jest.fn(async () => ({ sent: true }))
+    const sendMock = jest.fn(async (parentId: string, opts: any) => {
+      // Simulate side-effect of recordSendNotification by setting the suppression key
+      const key = `parent:notifications:suppression:inactivity:${parentId}:${opts?.meta?.studentId}`
+      const ttlSeconds = Number(process.env.PARENT_INACTIVITY_SUPPRESSION_DAYS ?? '3') * 24 * 60 * 60
+      try {
+        await redis.set(key, '1', 'EX', ttlSeconds, 'NX')
+      } catch (e) {
+        // best-effort in test
+      }
+      return { sent: true }
+    })
     jest.doMock('@/lib/notifications/delivery', () => ({ sendParentMilestoneNotification: sendMock }))
 
     const { runInactivityAlerts } = await import('@/worker/jobs/inactivityAlert')

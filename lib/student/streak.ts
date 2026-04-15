@@ -3,6 +3,8 @@ import { getRedis } from '@/lib/redis'
 import { logger } from '@/lib/logger'
 import { isShieldAvailable, consumeShield } from '@/lib/student/streakShield'
 import { getLocalDateString, startOfLocalDayUtc } from '@/lib/engagement/timezone'
+import { sendPushSafe } from '@/lib/push/send'
+import { PUSH_NOTIFICATIONS } from '@/lib/push/notifications'
 
 const MS_PER_DAY = 86400000
 
@@ -106,6 +108,8 @@ export async function updateStreak(studentId: string): Promise<{
           event: 'streak_shield_activated',
           context: { studentId, previousStreak: user.currentStreak },
         })
+        // F-STU-030 AC-03: notify student when shield auto-activates
+        void sendPushSafe(studentId, PUSH_NOTIFICATIONS.streak_shield_used())
       } else {
         currentStreak = 1
         streakIncremented = true
@@ -145,8 +149,8 @@ export async function updateStreak(studentId: string): Promise<{
     } catch (err) {
       logger.error('streak.clearInactivitySuppression.error', { studentId, error: String(err) })
       try {
-        const m = await import('../lib/metrics')
-        m.incSuppressionDeleteFailure()
+        const m = await import('@/lib/metrics')
+        if (m && typeof (m as any).incSuppressionDeleteFailure === 'function') (m as any).incSuppressionDeleteFailure()
       } catch {}
     }
 

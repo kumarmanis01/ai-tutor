@@ -165,14 +165,18 @@ interface WhiteboardPanelProps {
   conceptName: string;
   /** Lines from AI messages, revealed one by one. */
   aiSteps: string[];
+  /** Optional structured visual hint (diagram) from the LLM. */
+  visualHint?: string | null;
 }
 
 export default function WhiteboardPanel({
   sessionId,
   conceptName,
   aiSteps,
+  visualHint,
 }: WhiteboardPanelProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const aiCanvasRef = useRef<HTMLCanvasElement>(null);
   const [tool, setTool] = useState<Tool>('pencil');
   const [color, setColor] = useState(PENCIL_COLORS[0]);
   const [snapshots, setSnapshots] = useState<ImageData[]>([]); // for undo
@@ -201,6 +205,14 @@ export default function WhiteboardPanel({
 
   function getContext() {
     const canvas = canvasRef.current;
+    if (!canvas) return null;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return null;
+    return { canvas, ctx };
+  }
+
+  function getAiContext() {
+    const canvas = aiCanvasRef.current;
     if (!canvas) return null;
     const ctx = canvas.getContext('2d');
     if (!ctx) return null;
@@ -295,6 +307,8 @@ export default function WhiteboardPanel({
     r.ctx.clearRect(0, 0, r.canvas.width, r.canvas.height);
     setSnapshots([]);
     setFeedback(null);
+    // Also clear AI-rendered diagram layer
+    clearAiCanvas();
   }
 
   // ── Submit working ────────────────────────────────────────────────────────
@@ -305,7 +319,30 @@ export default function WhiteboardPanel({
     setIsSubmitting(true);
     setFeedback(null);
     try {
-      const dataUrl = canvas.toDataURL('image/png');
+      // Merge AI layer (aiCanvas) and student canvas into a single image for evaluation.
+      const student = canvasRef.current!;
+      const ai = aiCanvasRef.current;
+      const w = student.width;
+      const h = student.height;
+      const off = document.createElement('canvas');
+      off.width = w;
+      off.height = h;
+      const offCtx = off.getContext('2d')!;
+      // Draw AI diagram first (if present)
+      if (ai) offCtx.drawImage(ai, 0, 0, w, h);
+      // Draw student layer on top
+      offCtx.drawImage(student, 0, 0, w, h);
+      const dataUrl = off.toDataURL('image/png');
+
+      // AC-06: Persist whiteboard state as a SessionArtifact for session replay (fire-and-forget).
+      void fetch('/api/student/session-artifact', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sessionId, type: 'whiteboard', dataUrl }),
+      }).catch(() => {
+        // Non-critical: artifact save failure does not block evaluation
+      });
+
       const controller = new AbortController();
       const timer = setTimeout(() => controller.abort(), EVAL_TIMEOUT_MS);
       const res = await fetch('/api/student/whiteboard/evaluate', {
@@ -323,6 +360,158 @@ export default function WhiteboardPanel({
       setIsSubmitting(false);
     }
   }
+
+  // ── Visual hint parsing & replay ─────────────────────────────────────────
+
+  type DPoint = { x: number; y: number };
+  type StrokeCommand = { type: 'stroke'; color?: string; width?: number; points: DPoint[] };
+  type LineCommand = { type: 'line'; from: DPoint; to: DPoint; color?: string; width?: number };
+  type CircleCommand = { type: 'circle'; center: DPoint; r: number; color?: string; width?: number };
+  type TextCommand = { type: 'text'; x: number; y: number; text: string; color?: string; size?: number };
+  type DrawingCommand = StrokeCommand | LineCommand | CircleCommand | TextCommand;
+
+  const replayTimers = useRef<number[]>([]);
+
+  function clearReplayTimers() {
+    for (const t of replayTimers.current) window.clearTimeout(t);
+    replayTimers.current = [];
+  }
+
+  function normalizePoint(p: any, w: number, h: number): DPoint {
+    if (typeof p !== 'object' || p === null) return { x: 0, y: 0 };
+    const x = Number(p.x ?? p[0] ?? 0);
+    const y = Number(p.y ?? p[1] ?? 0);
+    // If values look like 0..1 assume normalized, if 0..100 treat as percent, else pixels
+    const nx = x <= 1 ? x * w : x <= 100 ? (x / 100) * w : x;
+    const ny = y <= 1 ? y * h : y <= 100 ? (y / 100) * h : y;
+    return { x: nx, y: ny };
+  }
+
+  function parseVisualCommands(viz: string | null): DrawingCommand[] | null {
+    if (!viz) return null;
+    const trimmed = String(viz).trim();
+    // If looks like JSON, attempt parse
+    if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
+      try {
+        const parsed = JSON.parse(trimmed);
+        const arr = Array.isArray(parsed) ? parsed : parsed.commands ?? parsed.strokes ?? null;
+        if (!Array.isArray(arr)) return null;
+        // Map into normalized shape (points left as-is; normalization applied during drawing)
+        return arr as DrawingCommand[];
+      } catch {
+        return null;
+      }
+    }
+    return null;
+  }
+
+  function clearAiCanvas() {
+    const r = getAiContext();
+    if (!r) return;
+    r.ctx.clearRect(0, 0, r.canvas.width, r.canvas.height);
+  }
+
+  function playCommands(commands: DrawingCommand[] | null) {
+    clearReplayTimers();
+    clearAiCanvas();
+    if (!commands || commands.length === 0) return;
+    const aiCtxWrap = getAiContext();
+    if (!aiCtxWrap) return;
+    const { canvas: aiCanvas, ctx: aiCtx } = aiCtxWrap;
+    const w = aiCanvas.width;
+    const h = aiCanvas.height;
+
+    let delay = 0;
+    for (const cmd of commands) {
+      if (cmd.type === 'stroke') {
+        const stroke = cmd as StrokeCommand;
+        const pts = (stroke.points || []).map((p) => normalizePoint(p, w, h));
+        // Schedule incremental drawing of this stroke
+        const interval = 20; // ms per point
+        for (let i = 0; i < pts.length; i++) {
+          const pt = pts[i];
+          const t = window.setTimeout(() => {
+            if (i === 0) {
+              aiCtx.beginPath();
+              aiCtx.moveTo(pt.x, pt.y);
+              aiCtx.globalCompositeOperation = 'source-over';
+              aiCtx.strokeStyle = stroke.color ?? '#1a1a1a';
+              aiCtx.lineWidth = stroke.width ?? 2.5;
+              aiCtx.lineCap = 'round';
+              aiCtx.lineJoin = 'round';
+            } else {
+              aiCtx.lineTo(pt.x, pt.y);
+              aiCtx.stroke();
+            }
+          }, delay + i * interval);
+          replayTimers.current.push(t);
+        }
+        delay += Math.max(pts.length * 20, 120);
+      } else if (cmd.type === 'line') {
+        const c = cmd as LineCommand;
+        const from = normalizePoint((c as any).from, w, h);
+        const to = normalizePoint((c as any).to, w, h);
+        const t = window.setTimeout(() => {
+          aiCtx.beginPath();
+          aiCtx.moveTo(from.x, from.y);
+          aiCtx.lineTo(to.x, to.y);
+          aiCtx.strokeStyle = c.color ?? '#1a1a1a';
+          aiCtx.lineWidth = c.width ?? 2.5;
+          aiCtx.lineCap = 'round';
+          aiCtx.stroke();
+        }, delay);
+        replayTimers.current.push(t);
+        delay += 120;
+      } else if (cmd.type === 'circle') {
+        const c = cmd as CircleCommand;
+        const center = normalizePoint((c as any).center, w, h);
+        const t = window.setTimeout(() => {
+          aiCtx.beginPath();
+          aiCtx.arc(center.x, center.y, (c as any).r ?? 20, 0, Math.PI * 2);
+          aiCtx.strokeStyle = c.color ?? '#1a1a1a';
+          aiCtx.lineWidth = c.width ?? 2.5;
+          aiCtx.stroke();
+        }, delay);
+        replayTimers.current.push(t);
+        delay += 120;
+      } else if (cmd.type === 'text') {
+        const c = cmd as TextCommand;
+        const pos = normalizePoint({ x: c.x, y: c.y }, w, h);
+        const t = window.setTimeout(() => {
+          aiCtx.fillStyle = c.color ?? '#1a1a1a';
+          aiCtx.font = `${c.size ?? 14}px sans-serif`;
+          aiCtx.fillText(c.text, pos.x, pos.y);
+        }, delay);
+        replayTimers.current.push(t);
+        delay += 80;
+      }
+    }
+  }
+
+  // Auto-replay when visualHint prop changes
+  useEffect(() => {
+    if (!('visualHint' in ({} as any))) return; // type-narrow safety
+    // If visualHint is null/empty, clear AI canvas
+    if (!visualHint) {
+      clearReplayTimers();
+      clearAiCanvas();
+      return;
+    }
+    const commands = parseVisualCommands(visualHint ?? null);
+    if (commands) {
+      // Ensure ai canvas matches student canvas sizing
+      const st = canvasRef.current;
+      const ai = aiCanvasRef.current;
+      if (st && ai) {
+        ai.width = st.width;
+        ai.height = st.height;
+      }
+      playCommands(commands);
+    } else {
+      // Not structured JSON -- do nothing (visualHint may be natural-language guidance).
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [visualHint]);
 
   // ── Render ────────────────────────────────────────────────────────────────
 
@@ -354,6 +543,15 @@ export default function WhiteboardPanel({
         <div className="relative flex-1 bg-gray-50 dark:bg-slate-800 overflow-hidden min-h-0">
           {/* AC-02: AI steps layer */}
           <AiStepsList steps={aiSteps} visible={visibleSteps} />
+
+          {/* AC-03: AI drawing layer (replayed from visualHint) */}
+          <canvas
+            ref={aiCanvasRef}
+            width={600}
+            height={400}
+            className="absolute inset-0 w-full h-full touch-none pointer-events-none"
+            aria-hidden
+          />
 
           {/* AC-03: Student drawing layer */}
           <canvas

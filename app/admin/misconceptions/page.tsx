@@ -1,6 +1,6 @@
 "use client"
 import React, { useEffect, useState, useMemo } from 'react'
-import { AdminTopbar } from '@/components/admin/AdminTopbar'
+import { AdminTopbar } from '../../../components/admin/AdminTopbar'
 
 type Misconception = {
   id: string

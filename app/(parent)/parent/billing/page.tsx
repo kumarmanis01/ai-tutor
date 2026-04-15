@@ -58,14 +58,14 @@ export default async function ParentBillingPage() {
         <section className="mb-6 rounded-xl border bg-white p-4">
           <h2 className="text-sm font-semibold">Active subscription</h2>
           <div className="text-xs text-gray-600">Plan: {activeSubscription.plan} · {activeSubscription.billingCycle}</div>
-          <div className="mt-2 text-sm">Expires: {activeSubscription.endDate?.toLocaleDateString('en-IN') ?? '—'}</div>
+          <div className="mt-2 text-sm">Expires: {activeSubscription.endDate?.toLocaleDateString('en-IN') ?? '--'}</div>
           {activeSubscription.installments && activeSubscription.installments.length > 0 && (
             <div className="mt-3 text-sm">
               <div className="text-xs text-gray-500">EMI schedule</div>
               <ul className="mt-2 space-y-1">
                 {activeSubscription.installments.map((it) => (
                   <li key={it.id} className="flex justify-between text-sm">
-                    <span>Installment {it.number} — {new Date(it.dueAt).toLocaleDateString('en-IN')}</span>
+                    <span>Installment {it.number} -- {new Date(it.dueAt).toLocaleDateString('en-IN')}</span>
                     <span>{'₹' + (Math.round((it.amount ?? 0) / 100))} · {it.status}</span>
                   </li>
                 ))}
@@ -74,6 +74,7 @@ export default async function ParentBillingPage() {
           )}
         </section>
       )}
+
       <ParentUpgradeFlow childrenList={validChildren} />
     </main>
   );

@@ -8,6 +8,9 @@ import path from 'path'
 import { execSync } from 'child_process'
 import { PrismaClient } from '@prisma/client'
 
+// This script may run embedding-generation and other DB work; increase timeout.
+jest.setTimeout(180_000)
+
 const prisma = new PrismaClient()
 
 describe('ingest-curriculum integration', () => {
@@ -15,7 +18,12 @@ describe('ingest-curriculum integration', () => {
     // Ensure minimal schema exists so tests can run without full migrations
     // Create a simple DOMAIN `vector` as text so the ingest script's `$1::vector`
     // casts succeed even when pgvector isn't installed in the test DB.
-    await prisma.$executeRawUnsafe(`CREATE DOMAIN IF NOT EXISTS vector AS text`)
+    try {
+      await prisma.$executeRawUnsafe(`CREATE DOMAIN IF NOT EXISTS vector AS text`)
+    } catch (err) {
+      // Some Postgres versions or managed DBs may not support `CREATE DOMAIN IF NOT EXISTS`.
+      // This is non-fatal for the test; continue if the statement fails.
+    }
 
     // Create CurriculumChunk table if missing (minimal columns used by script)
     await prisma.$executeRawUnsafe(`
@@ -71,8 +79,9 @@ describe('ingest-curriculum integration', () => {
 
     const scriptPath = path.join(process.cwd(), 'scripts', 'ingest-curriculum.ts')
 
-    // First run: should write hash / embedding (embedding may be mocked in CI)
-    execSync(`node ${scriptPath}`, { stdio: 'pipe', env: process.env })
+    // First run: should write hash / embedding (run script in-process for
+    // integration tests to avoid cross-process env differences).
+    await (await import('@/scripts/ingest-curriculum')).main(prisma)
 
     const afterFirst = await prisma.curriculumChunk.findUnique({ where: { id: chunk.id } })
     expect(afterFirst).not.toBeNull()
@@ -80,7 +89,7 @@ describe('ingest-curriculum integration', () => {
     expect(firstHash).toBeTruthy()
 
     // Second run without changes: should not bump version or change hash
-    execSync(`node ${scriptPath}`, { stdio: 'pipe', env: process.env })
+    await (await import('@/scripts/ingest-curriculum')).main(prisma)
     const afterSecond = await prisma.curriculumChunk.findUnique({ where: { id: chunk.id } })
     expect(afterSecond).not.toBeNull()
     expect(afterSecond!.contentHash).toBe(firstHash)
@@ -88,7 +97,7 @@ describe('ingest-curriculum integration', () => {
 
     // Update content and run: version must increment and hash change
     await prisma.curriculumChunk.update({ where: { id: chunk.id }, data: { content: 'modified content' } })
-    execSync(`node ${scriptPath}`, { stdio: 'pipe', env: process.env })
+    await (await import('@/scripts/ingest-curriculum')).main(prisma)
     const afterThird = await prisma.curriculumChunk.findUnique({ where: { id: chunk.id } })
     expect(afterThird).not.toBeNull()
     expect(afterThird!.contentHash).not.toBe(firstHash)

@@ -23,6 +23,7 @@
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { toast } from '@/lib/toast';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -32,6 +33,8 @@ export interface TodaysLearningCardRecommendation {
   subject: string;
   estimatedTimeMin: number;
   weekNumber?: number;
+  // If present, this ties the recommendation back to a concrete LearningPlanItem
+  planItemId?: string;
 }
 
 export interface TodaysLearningCardSession {
@@ -86,6 +89,7 @@ export default function TodaysLearningCard({
 function StartState({ rec, ctaLabel }: { rec: TodaysLearningCardRecommendation; ctaLabel?: string }) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
+  const [moving, setMoving] = useState(false);
 
   function handleStart() {
     setLoading(true);
@@ -109,6 +113,63 @@ function StartState({ rec, ctaLabel }: { rec: TodaysLearningCardRecommendation; 
             <span className="inline-flex items-center rounded-full bg-gray-100 dark:bg-slate-700 px-3 py-1 text-xs font-medium text-gray-500 dark:text-gray-400">
               Week {rec.weekNumber}
             </span>
+          )}
+          {rec.planItemId && (
+            <div className="ml-auto inline-flex items-center gap-1">
+              <button
+                type="button"
+                onClick={async () => {
+                  if (moving) return;
+                  setMoving(true);
+                  try {
+                    const res = await fetch(`/api/student/learning-plan/${encodeURIComponent(rec.planItemId)}`, {
+                      method: 'PATCH',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ action: 'move', direction: 'prev' }),
+                    });
+                    const json = await res.json();
+                    if (!res.ok) throw new Error(json?.error || 'Move failed');
+                    // refresh server props
+                    router.refresh();
+                  } catch (err: any) {
+                    toast(String(err?.message || 'Could not move earlier'));
+                  } finally {
+                    setMoving(false);
+                  }
+                }}
+                aria-label="Move earlier in week"
+                disabled={moving}
+                className="inline-flex items-center justify-center w-8 h-8 rounded border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-600 hover:bg-gray-50 disabled:opacity-50"
+              >
+                ▲
+              </button>
+              <button
+                type="button"
+                onClick={async () => {
+                  if (moving) return;
+                  setMoving(true);
+                  try {
+                    const res = await fetch(`/api/student/learning-plan/${encodeURIComponent(rec.planItemId)}`, {
+                      method: 'PATCH',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ action: 'move', direction: 'next' }),
+                    });
+                    const json = await res.json();
+                    if (!res.ok) throw new Error(json?.error || 'Move failed');
+                    router.refresh();
+                  } catch (err: any) {
+                    toast(String(err?.message || 'Could not move later'));
+                  } finally {
+                    setMoving(false);
+                  }
+                }}
+                aria-label="Move later in week"
+                disabled={moving}
+                className="inline-flex items-center justify-center w-8 h-8 rounded border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-600 hover:bg-gray-50 disabled:opacity-50"
+              >
+                ▼
+              </button>
+            </div>
           )}
         </div>
 

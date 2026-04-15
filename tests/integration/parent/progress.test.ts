@@ -31,6 +31,7 @@ const prismaMock = {
     findUnique: jest.fn(),
     create: jest.fn(),
     update: jest.fn(),
+    count: jest.fn(),
   },
   auditLog: {
     create: jest.fn(),

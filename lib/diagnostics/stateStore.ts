@@ -1,4 +1,5 @@
 import { prisma } from '@/lib/prisma';
+import { logger } from '@/lib/logger'
 
 export type DiagnosticStatus =
   | 'pending'
@@ -66,10 +67,16 @@ export async function getSubjectDiagnosticStatus(
   studentId: string,
   subjectKey: string,
 ): Promise<SubjectDiagnosticStatus> {
-  const profile = await prisma.studentLearningProfile.findUnique({
-    where: { studentId },
-    select: { id: true, recommendations: true },
-  });
+  let profile: any = null
+  try {
+    profile = await prisma.studentLearningProfile.findUnique({
+      where: { studentId },
+      select: { id: true, recommendations: true },
+    })
+  } catch (err: any) {
+    try { logger.warn('getSubjectDiagnosticStatus: studentLearningProfile.findUnique failed', { error: String(err) }) } catch {}
+    profile = null
+  }
 
   const recommendations = toRecommendationsShape(profile?.recommendations ?? null);
   const diagnostics = toDiagnosticMap(recommendations.diagnostics);
@@ -87,14 +94,22 @@ export async function getSubjectDiagnosticStatus(
 
   // Derive a sensible default from existing mastery data when no explicit
   // diagnostic metadata has been stored.
-  const masteryCount = await prisma.studentTopicMastery.count({
-    where: {
-      studentId,
-      subject: subjectKey,
-    },
-  });
+  let masteryCount = 0
+  try {
+    masteryCount = await prisma.studentTopicMastery.count({
+      where: {
+        studentId,
+        subject: subjectKey,
+      },
+    })
+  } catch (err: any) {
+    try {
+      logger.warn('getSubjectDiagnosticStatus: studentTopicMastery.count failed, defaulting to 0', { error: String(err) })
+    } catch {}
+    masteryCount = 0
+  }
 
-  const derivedStatus: DiagnosticStatus = masteryCount > 0 ? 'not_applicable' : 'pending';
+  const derivedStatus: DiagnosticStatus = masteryCount > 0 ? 'not_applicable' : 'pending'
 
   return {
     subjectKey,

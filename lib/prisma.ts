@@ -23,11 +23,15 @@ declare global {
 }
 /* eslint-enable no-var */
 
-const client = global.prisma ?? new PrismaClient({
+// Use `globalThis` rather than `global` so accidental client-side imports
+// don't throw "global is not defined" in browsers. `globalThis` is available
+// in Node and browser runtimes.
+const g: any = globalThis as any;
+const client = g.prisma ?? new PrismaClient({
   log: process.env.NODE_ENV === 'test' ? [] : ['query', 'info', 'warn', 'error'],
 });
 
-if (process.env.NODE_ENV !== 'production') global.prisma = client;
+if (process.env.NODE_ENV !== 'production') g.prisma = client;
 
 // Provide a compatibility proxy so older code/tests that reference legacy model
 // names (e.g. `analyticsSignal`) continue to work even if the schema renamed
@@ -119,7 +123,12 @@ const prismaProxy = new Proxy(client, {
                   return await (auditModel as any)[name](args)
                 } catch (err: any) {
                   const msg = err && (err.message || String(err)) || ''
-                  if (!msg.includes('invalid input value for enum')) throw err
+                  const lmsg = String(msg).toLowerCase()
+                  // Accept a few known Prisma validation message variants so
+                  // the raw-query fallback triggers for enum-validation errors
+                  // across Prisma/PG/localized message differences.
+                  const isEnumValidation = lmsg.includes('invalid input value for enum') || lmsg.includes('invalid value for argument') || lmsg.includes('expected adminactiontype')
+                  if (!isEnumValidation) throw err
 
                   // Extract action filter if present (support simple shapes)
                   const where = args && args.where ? args.where : undefined

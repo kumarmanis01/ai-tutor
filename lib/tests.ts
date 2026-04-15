@@ -29,6 +29,35 @@ export type QuestionFilters = {
 };
 
 /**
+ * F-STU-020 AC-01: Lightweight Jaccard similarity approximation for semantic equivalence.
+ *
+ * Tokenises question prompts into word n-grams (unigrams) after lowercasing and stripping
+ * punctuation. Returns the Jaccard index (intersection / union) of the two token sets.
+ * A threshold >= 0.7 indicates the questions are likely semantically equivalent.
+ *
+ * This is a best-effort approximation; true embedding-based similarity requires pgvector
+ * (deferred to Phase 2 infrastructure).
+ */
+export function computeJaccardSimilarity(a: string, b: string): number {
+  const tokenise = (s: string) =>
+    new Set(
+      s
+        .toLowerCase()
+        .replace(/[^a-z0-9\s]/g, ' ')
+        .split(/\s+/)
+        .filter((t) => t.length > 2),
+    );
+  const setA = tokenise(a);
+  const setB = tokenise(b);
+  if (setA.size === 0 && setB.size === 0) return 1;
+  if (setA.size === 0 || setB.size === 0) return 0;
+  let intersection = 0;
+  setA.forEach((t) => { if (setB.has(t)) intersection++ });
+  const union = setA.size + setB.size - intersection;
+  return intersection / union;
+}
+
+/**
  * Returns question IDs the student has seen for the given chapter+subject in the past
  * `windowDays` days (default 90). Used by selectQuestionsWithMix to avoid repeating
  * recently seen questions (F-STU-020 AC-01).
@@ -55,6 +84,44 @@ export async function getRecentlyUsedQuestionIds(
     select: { questionId: true },
   });
   return new Set(rows.map((r) => r.questionId));
+}
+
+/**
+ * F-STU-020 AC-01: Returns the prompt text for recently attempted questions
+ * so Jaccard similarity can be computed against candidate questions.
+ * Limits to 200 rows to keep the payload bounded.
+ */
+export async function getRecentlyUsedQuestionPrompts(
+  studentId: string,
+  chapter: string,
+  subject: string,
+  windowDays = 90,
+): Promise<string[]> {
+  const since = new Date();
+  since.setDate(since.getDate() - windowDays);
+  const rows = await prisma.attemptQuestion.findMany({
+    where: {
+      testResult: { studentId, createdAt: { gte: since } },
+      question: {
+        chapter: { equals: chapter, mode: 'insensitive' },
+        subject: { equals: subject, mode: 'insensitive' },
+      },
+    },
+    select: { question: { select: { prompt: true } } },
+    take: 200,
+  });
+  return rows.map((r) => r.question.prompt);
+}
+
+/**
+ * F-STU-020 AC-01: Returns true when the candidate question is semantically equivalent
+ * (Jaccard >= 0.7) to any previously attempted question in the provided list.
+ */
+export function isSemanticallyDuplicate(candidatePrompt: string, usedPrompts: string[]): boolean {
+  for (const used of usedPrompts) {
+    if (computeJaccardSimilarity(candidatePrompt, used) >= 0.7) return true;
+  }
+  return false;
 }
 
 /**
@@ -340,11 +407,15 @@ export async function selectQuestionsWithMix(
   count: number,
   studentId?: string,
 ): Promise<{ questions: Question[]; timeLimitSeconds: number }> {
-  // AC-01: fetch recently seen question IDs to avoid repeating them within 90 days.
-  const excludeIds: Set<string> =
+  // AC-01: fetch recently seen question IDs and prompts for 90-day exclusion + semantic dedup.
+  const [excludeIds, usedPrompts] = await (
     studentId && filters.chapter && filters.subject
-      ? await getRecentlyUsedQuestionIds(studentId, filters.chapter, filters.subject)
-      : new Set<string>();
+      ? Promise.all([
+          getRecentlyUsedQuestionIds(studentId, filters.chapter, filters.subject),
+          getRecentlyUsedQuestionPrompts(studentId, filters.chapter, filters.subject),
+        ])
+      : Promise.resolve([new Set<string>(), [] as string[]])
+  );
 
   const mcqTarget = Math.floor(count * 0.4)
   const longTarget = Math.floor(count * 0.3)
@@ -357,12 +428,20 @@ export async function selectQuestionsWithMix(
   ])
 
   function pickN(pool: Question[], n: number, exclude: Set<string>): Question[] {
-    const available = pool.filter((q) => !exclude.has(q.id))
+    // F-STU-020 AC-01: additionally filter Jaccard-similar questions if prompts are available.
+    const available = pool.filter(
+      (q) =>
+        !exclude.has(q.id) &&
+        (usedPrompts.length === 0 || !isSemanticallyDuplicate(q.prompt, usedPrompts)),
+    )
     const shuffled = [...available].sort(() => Math.random() - 0.5)
     return shuffled.slice(0, n)
   }
 
-  const used = new Set<string>()
+  // Start `used` with recently-seen question IDs so they are excluded
+  // from selection. This ensures selectQuestionsWithMix honours the
+  // 90-day exclusion window (F-STU-020 AC-01).
+  const used = new Set<string>(excludeIds ? Array.from(excludeIds) : [])
 
   const mcqSelected = pickN(mcqPool, mcqTarget, used)
   mcqSelected.forEach((q) => used.add(q.id))

@@ -3,10 +3,12 @@ export const dynamic = 'force-dynamic'
 /**
  * FILE OBJECTIVE:
  * - Parent controls API: manage screen time, subject toggles, focus mode per child.
+ * - Also stores weekly study hours target and preferred schedule slot (F-PAR-002 AC-02).
  *
  * EDIT LOG:
  * - 2026-02-04 | claude | created parent controls API
  * - 2026-02-07 | copilot | added force-dynamic to prevent static render error
+ * - 2026-04-14 | claude | added weeklyHoursTarget + schedulePreference (F-PAR-002 AC-02)
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -59,6 +61,9 @@ export async function GET(req: NextRequest) {
         focusMode: 'balanced',
         studyHoursStart: null,
         studyHoursEnd: null,
+        weeklyHoursTarget: null,
+        schedulePreference: null,
+        topicFocusRequest: null,
       },
     });
 
@@ -91,6 +96,11 @@ export async function PUT(req: NextRequest) {
       focusMode,
       studyHoursStart,
       studyHoursEnd,
+      // F-PAR-002 AC-02: weekly hours target and preferred study schedule slot
+      weeklyHoursTarget,
+      schedulePreference,
+      // F-PAR-002 AC-03: topic-focus preference submitted by parent for AI to consider
+      topicFocusRequest,
       // Pause controls
       isPaused,
       pausedUntil,
@@ -124,6 +134,28 @@ export async function PUT(req: NextRequest) {
       }
     }
 
+    // Validate weeklyHoursTarget (F-PAR-002 AC-02)
+    if (weeklyHoursTarget !== null && weeklyHoursTarget !== undefined) {
+      if (typeof weeklyHoursTarget !== 'number' || weeklyHoursTarget < 1 || weeklyHoursTarget > 70) {
+        return NextResponse.json({ error: 'weeklyHoursTarget must be 1-70 hours' }, { status: 400 });
+      }
+    }
+
+    // Validate schedulePreference (F-PAR-002 AC-02)
+    const VALID_SCHEDULE_PREFS = ['morning', 'afternoon', 'evening'];
+    if (schedulePreference !== null && schedulePreference !== undefined) {
+      if (!VALID_SCHEDULE_PREFS.includes(schedulePreference)) {
+        return NextResponse.json({ error: 'schedulePreference must be morning, afternoon, or evening' }, { status: 400 });
+      }
+    }
+
+    // Validate topicFocusRequest (F-PAR-002 AC-03): free-text, max 500 chars
+    if (topicFocusRequest !== null && topicFocusRequest !== undefined) {
+      if (typeof topicFocusRequest !== 'string' || topicFocusRequest.length > 500) {
+        return NextResponse.json({ error: 'topicFocusRequest must be a string up to 500 characters' }, { status: 400 });
+      }
+    }
+
     const controls = await prisma.parentChildControl.upsert({
       where: { parentId_studentId: { parentId, studentId } },
       update: {
@@ -132,6 +164,9 @@ export async function PUT(req: NextRequest) {
         ...(focusMode !== undefined && { focusMode }),
         ...(studyHoursStart !== undefined && { studyHoursStart }),
         ...(studyHoursEnd !== undefined && { studyHoursEnd }),
+        ...(weeklyHoursTarget !== undefined && { weeklyHoursTarget: weeklyHoursTarget ?? null }),
+        ...(schedulePreference !== undefined && { schedulePreference: schedulePreference ?? null }),
+        ...(topicFocusRequest !== undefined && { topicFocusRequest: topicFocusRequest ?? null }),
         ...(isPaused !== undefined && { isPaused }),
         ...(pausedUntil !== undefined && { pausedUntil: pausedUntil ? new Date(pausedUntil) : null }),
         ...(pauseReason !== undefined && { pauseReason }),
@@ -144,6 +179,9 @@ export async function PUT(req: NextRequest) {
         focusMode: focusMode ?? 'balanced',
         studyHoursStart: studyHoursStart ?? null,
         studyHoursEnd: studyHoursEnd ?? null,
+        weeklyHoursTarget: weeklyHoursTarget ?? null,
+        schedulePreference: schedulePreference ?? null,
+        topicFocusRequest: topicFocusRequest ?? null,
         isPaused: isPaused ?? false,
         pausedUntil: pausedUntil ? new Date(pausedUntil) : null,
         pauseReason: pauseReason ?? null,

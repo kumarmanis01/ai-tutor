@@ -2,10 +2,22 @@
 
 import { getProgressPercent, getXPToNextLevel, LEVEL_THRESHOLDS, getLevelTierName } from '@/lib/student/xpLevels'
 
+/** Human-readable labels for XP source keys stored in StudentXP.source. */
+const XP_SOURCE_LABELS: Record<string, string> = {
+  session_correct: 'Correct answers',
+  streak_bonus: 'Streak bonus',
+  revision_complete: 'Revision cards',
+  badge: 'Badge earned',
+  session_complete: 'Session completion',
+  first_attempt: 'First-attempt bonus',
+}
+
 export interface XPWidgetProps {
   totalXp?: number
   level?: number
   xpThisWeek?: number
+  /** F-STU-031 AC-01: XP earned this week broken down by source. */
+  xpBySource?: Record<string, number>
   loading?: boolean
   error?: boolean
 }
@@ -27,6 +39,7 @@ export function XPWidget({
   totalXp = 0,
   level = 1,
   xpThisWeek = 0,
+  xpBySource,
   loading = false,
   error = false,
 }: XPWidgetProps) {
@@ -87,6 +100,32 @@ export function XPWidget({
         <p className="text-xs text-gray-500 dark:text-gray-400">
           {remaining} XP to level {level + 1}
         </p>
+
+        {/* F-STU-031 AC-01: XP source breakdown (shown when data available) */}
+        {xpBySource && Object.keys(xpBySource).length > 0 && (
+          <div className="mt-3 border-t border-gray-100 dark:border-gray-700 pt-2.5">
+            <p className="text-[11px] font-medium text-gray-400 dark:text-gray-500 mb-1.5 uppercase tracking-wide">
+              This week&apos;s XP breakdown
+            </p>
+            <ul className="flex flex-wrap gap-1.5">
+              {Object.entries(xpBySource)
+                .sort((a, b) => b[1] - a[1])
+                .map(([source, amount]) => (
+                  <li
+                    key={source}
+                    className="flex items-center gap-1 bg-[#534AB7]/10 dark:bg-[#534AB7]/20 rounded-full px-2 py-0.5"
+                  >
+                    <span className="text-[11px] text-[#534AB7] dark:text-indigo-300 font-medium">
+                      {XP_SOURCE_LABELS[source] ?? source}
+                    </span>
+                    <span className="text-[11px] font-bold text-[#534AB7] dark:text-indigo-300">
+                      +{amount}
+                    </span>
+                  </li>
+                ))}
+            </ul>
+          </div>
+        )}
       </div>
     </section>
   )

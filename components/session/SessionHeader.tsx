@@ -8,7 +8,7 @@
  * - 2026-03-08 | claude | refactored -- progress bar extracted to SessionProgressBar
  */
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { SessionProgressBar } from './SessionProgressBar';
 import type { SessionView, PhaseContent } from '@/lib/session/sessionEngine';
@@ -21,6 +21,42 @@ interface SessionHeaderProps {
 
 export function SessionHeader({ session, phase: _phase, onStepClick }: SessionHeaderProps) {
   const { topicName, subject, chapter, phaseIndex, totalPhases, currentPhase } = session;
+
+  const [selectedStyle, setSelectedStyle] = useState<string | null>(null);
+  const [updatingStyle, setUpdatingStyle] = useState(false);
+
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        const resp = await fetch(`/api/tutor/session/style?sessionId=${encodeURIComponent(session.sessionId)}`);
+        if (!resp.ok) return;
+        const data = await resp.json();
+        if (!mounted) return;
+        setSelectedStyle(data?.explainStyle ?? null);
+      } catch {
+        // best-effort: ignore failures
+      }
+    })();
+    return () => { mounted = false };
+  }, [session.sessionId]);
+
+  async function handleSetStyle(value: string | null) {
+    const s = value || null;
+    setSelectedStyle(s);
+    setUpdatingStyle(true);
+    try {
+      await fetch('/api/tutor/session/style', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sessionId: session.sessionId, explainStyle: s }),
+      });
+    } catch {
+      // best-effort
+    } finally {
+      setUpdatingStyle(false);
+    }
+  }
 
   return (
     <div className="sticky top-0 z-30 bg-background/95 backdrop-blur border-b border-border/50 px-4 py-3">

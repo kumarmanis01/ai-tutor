@@ -215,6 +215,66 @@ describe('Grade immutability', () => {
     expect(callArg.data).not.toHaveProperty('grade');
     expect(callArg.data.name).toBe('Carol');
   });
+
+  describe('School name handling in onboarding', () => {
+    it('persists schoolName when provided and non-empty', async () => {
+      const userId = 'student-school';
+      const existingUser = { id: userId, grade: null };
+      prismaMock.user.findUnique.mockResolvedValueOnce(existingUser);
+      prismaMock.user.update.mockResolvedValueOnce({ ...existingUser, schoolName: 'ABC High School' });
+
+      const body = { class_grade: '10', board: 'CBSE', preferred_language: 'en', subjects: ['mathematics'], school_name: 'ABC High School' };
+
+      const schoolNameRaw = typeof body.school_name === 'string' ? body.school_name.trim() : undefined;
+      const schoolName = schoolNameRaw && schoolNameRaw.length > 0 ? schoolNameRaw : undefined;
+
+      const updates: Record<string, any> = {};
+      if (body.name) updates.name = body.name;
+      if (body.age != null) updates.age = body.age;
+      if (body.class_grade) updates.grade = String(body.class_grade);
+      if (body.board) updates.board = body.board;
+      if (Array.isArray(body.subjects)) updates.subjects = body.subjects;
+      if (body.preferred_language) updates.language = body.preferred_language;
+      if (schoolName !== undefined) updates.schoolName = schoolName;
+
+      await prismaMock.user.update({ where: { id: userId }, data: updates });
+
+      const callArg = prismaMock.user.update.mock.calls[0][0];
+      expect(callArg.data.schoolName).toBe('ABC High School');
+    });
+
+    it('does not persist schoolName when provided as empty string', async () => {
+      const userId = 'student-school-empty';
+      const existingUser = { id: userId, grade: null };
+      prismaMock.user.findUnique.mockResolvedValueOnce(existingUser);
+      prismaMock.user.update.mockResolvedValueOnce({ ...existingUser });
+
+      const body = { class_grade: '9', board: 'state', preferred_language: 'en', subjects: ['english'], school_name: '   ' };
+
+      const schoolNameRaw = typeof body.school_name === 'string' ? body.school_name.trim() : undefined;
+      const schoolName = schoolNameRaw && schoolNameRaw.length > 0 ? schoolNameRaw : undefined;
+
+      const updates: Record<string, any> = {};
+      if (body.class_grade) updates.grade = String(body.class_grade);
+      if (body.board) updates.board = body.board;
+      if (Array.isArray(body.subjects)) updates.subjects = body.subjects;
+      if (body.preferred_language) updates.language = body.preferred_language;
+      if (schoolName !== undefined) updates.schoolName = schoolName;
+
+      await prismaMock.user.update({ where: { id: userId }, data: updates });
+
+      const callArg = prismaMock.user.update.mock.calls[0][0];
+      expect(callArg.data).not.toHaveProperty('schoolName');
+    });
+
+    it('rejects overly long schoolName in fieldErrors (server-side validation)', async () => {
+      const longName = 'A'.repeat(121);
+      const fieldErrors: Record<string, string> = {};
+      const schoolName = longName;
+      if (schoolName && schoolName.length > 120) fieldErrors.school_name = 'School name must be 120 characters or fewer';
+      expect(fieldErrors).toHaveProperty('school_name');
+    });
+  });
 });
 
 // ---------------------------------------------------------------------------

@@ -9,7 +9,7 @@
  * - Provide a webhook endpoint to handle Razorpay asynchronous events.
  *
  * LINKED UNIT TEST:
- * - (none yet) – exercised indirectly by parent/student verify tests
+ * - (none yet) - exercised indirectly by parent/student verify tests
  *
  * EDIT LOG:
  * - 2026-04-08T00:00:00Z | copilot | added Razorpay webhook handler
@@ -35,14 +35,14 @@ function getRazorpayClient() {
   const keySecret = process.env.RAZORPAY_KEY_SECRET;
   if (!keyId || !keySecret) return null;
   // Support both ESM default export mocks and direct constructor exports
-  const R = (Razorpay && (Razorpay as any).default) ? (Razorpay as any).default : Razorpay as any
-  if (typeof R !== 'function') return null
+  const R = (Razorpay && (Razorpay as any).default) ? (Razorpay as any).default : Razorpay as any;
+  if (typeof R !== 'function') return null;
   try {
     return new R({ key_id: keyId, key_secret: keySecret });
   } catch (err) {
     // Non-fatal in webhook processing: return null so we continue without fetching notes
-    logger.warn('getRazorpayClient: could not instantiate razorpay client', { err })
-    return null
+    logger.warn('getRazorpayClient: could not instantiate razorpay client', { err });
+    return null;
   }
 }
 
@@ -88,7 +88,6 @@ export async function POST(req: Request) {
       } catch (err) {
         logger.warn('Failed to write webhook.received event', { err })
       }
-
       const orderRow = await prisma.paymentOrder.findUnique({ where: { razorpayOrderId: orderId }, select: { studentId: true, status: true } });
       if (!orderRow) {
         logger.warn('Webhook payment.captured for unknown order', { orderId });
@@ -105,7 +104,7 @@ export async function POST(req: Request) {
       if (client) {
         try { const rzOrder = await client.orders.fetch(orderId); notes = rzOrder?.notes || {}; } catch (err) { logger.warn('Could not fetch rz order in webhook', { orderId, err }); }
         if (process.env.NODE_ENV === 'test') {
-          try { console.log('[debug] webhook notes', notes); } catch {}
+          logger.debug('webhook.notes (test)', { notes });
         }
       }
 
@@ -174,7 +173,6 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: true }, { status: 200 });
     }
   }
-
   if (ev === 'payment.failed') {
     try {
       const payment = payload?.payload?.payment?.entity;
@@ -253,7 +251,7 @@ export async function POST(req: Request) {
       const parent = await prisma.user.findUnique({ where: { id: orderRow.studentId }, select: { id: true, email: true, phone: true, name: true } });
       const retryLink = `${process.env.NEXTAUTH_URL ?? 'https://spinzyacademy.com'}/parent/billing`;
       if (parent?.email) {
-        const subject = `Payment failed — action required`;
+        const subject = `Payment failed -- action required`;
         const html = `<p>Hi ${parent.name ?? 'Parent'},</p><p>We couldn't complete your recent payment. Please update your payment method and retry here: <a href="${retryLink}">Update payment</a>. If you need help, contact ${process.env.SUPPORT_EMAIL ?? 'support@spinzyacademy.com'}.</p>`;
         await sendMailSafe({ to: parent.email, subject, html });
       }
@@ -276,7 +274,6 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: true }, { status: 200 });
     }
   }
-
   // For other events, acknowledge
   return NextResponse.json({ ok: true }, { status: 200 });
 }

@@ -119,7 +119,7 @@ async function attemptInstallmentCharge(inst: any): Promise<void> {
 
       try {
         await createInvoiceForPayment({ userId: subscription.userId, paymentId: undefined, studentId: undefined, amountPaise: inst.amount, planLabel: '', billingCycle: '' })
-        const subject = `Payment received — Spinzy installment paid`
+        const subject = `Payment received -- Spinzy installment paid`
         const html = `<p>Hi ${parent.name ?? 'Parent'},</p><p>We've successfully received payment for installment #${inst.number} of your subscription.</p>`
         await sendMailSafe({ to: parent.email ?? '', subject, html })
       } catch (err) {
@@ -132,14 +132,14 @@ async function attemptInstallmentCharge(inst: any): Promise<void> {
     // Charge attempt failed: increment attemptCount and maybe start grace
     await prisma.installment.update({ where: { id: inst.id }, data: { attemptCount: { increment: 1 }, lastAttemptAt: now, status: 'FAILED' } })
 
-    const updated = await prisma.installment.findUnique({ where: { id: inst.id } })
-    const attempts = updated?.attemptCount ?? 0
+    // Compute attempts deterministically from known state rather than re-querying.
+    const attempts = (inst.attemptCount ?? 0) + 1
     if (attempts >= 3) {
       // Start subscription-level grace (per-installment graceful handling)
       const graceUntil = new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000)
       await prisma.subscription.update({ where: { id: subscription.id }, data: { graceUntil } })
       try {
-        const subject = `Payment failed — grace period started`
+        const subject = `Payment failed -- grace period started`
         const html = `<p>Hi ${parent.name ?? 'Parent'},</p><p>We've been unable to collect the installment #${inst.number} for your Spinzy subscription after multiple attempts. We've started a 3-day grace period until ${graceUntil.toLocaleString('en-IN')}. Your children will keep access during this time. Please update payment to avoid service interruption: <a href="${process.env.NEXTAUTH_URL ?? 'https://spinzyacademy.com'}/parent/billing">Update payment</a>.</p>`
         await sendMailSafe({ to: parent.email ?? '', subject, html })
         if (parent.phone) await sendSms(parent.phone, `Spinzy: grace period started until ${graceUntil.toLocaleDateString('en-IN')}. Update payment: ${process.env.NEXTAUTH_URL ?? 'https://spinzyacademy.com'}/parent/billing`)

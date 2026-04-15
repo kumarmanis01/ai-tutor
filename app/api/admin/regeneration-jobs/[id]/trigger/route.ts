@@ -39,15 +39,18 @@ async function handleTrigger(_req: Request, jobId?: string, actorId?: string | n
     })
 
     // Fire-and-forget audit: do not block the response on audit write.
-    // Do not silently swallow exceptions — log them for observability.
+    // Do not silently swallow exceptions -- log them for observability.
     try {
-      // Emit the event as an explicit action so tests and callers can assert on it.
+      // Emit the event as an explicit action. Include the legacy label in
+      // `details.legacyAction` so legacy consumers/tests can query by it
+      // without forcing the typed `action` enum column to accept unknown
+      // labels.
       logAuditEvent(prisma as any, {
         action: AuditEvents.REGEN_JOB_TRIGGERED as any,
         actorId: actorId ?? null,
         entityId: jobId,
         targetEntity: 'RegenerationJob',
-        details: { jobId },
+        details: { jobId, legacyAction: AuditEvents.REGEN_JOB_TRIGGERED },
       })
     } catch (err: any) {
       logger.warn('regeneration trigger: logAuditEvent failed', { err: (err && err.message) || err, jobId })

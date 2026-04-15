@@ -1,3 +1,19 @@
+/**
+ * FILE OBJECTIVE:
+ * - API handlers for reading and updating the current user's profile.
+ *   Supports GET (read canonical profile) and PATCH (update learningStyle).
+ *
+ * LINKED UNIT TEST:
+ * - __tests__/app/api/user/profile/learningStyle.spec.ts
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - .github/copilot-instructions.md
+ * - /docs/COPILOT_GUARDRAILS.md
+ *
+ * EDIT LOG:
+ * - 2026-04-13T00:00:00Z | copilot | export VALID_LEARNING_STYLES for unit tests
+ */
+
 import { NextResponse } from 'next/server';
 import { getServerSessionForHandlers } from '@/lib/session';
 import { prisma } from '@/lib/prisma';
@@ -57,6 +73,7 @@ export async function GET(req: Request) {
     // include student-specific fields so clients can detect incomplete profiles
     grade: savedUser?.grade ?? null,
     board: savedUser?.board ?? null,
+    schoolName: savedUser?.schoolName ?? null,
     subjects: savedUser?.subjects ?? [],
     age: savedUser?.age ?? null,
     parentPhone: savedUser?.parentPhone ?? null,
@@ -75,7 +92,7 @@ export async function GET(req: Request) {
   return res;
 }
 
-const VALID_LEARNING_STYLES = ['visual', 'verbal', 'practice', 'mixed'] as const;
+export const VALID_LEARNING_STYLES = ['visual', 'verbal', 'practice', 'mixed'] as const;
 
 export async function PATCH(req: Request) {
   const start = Date.now();

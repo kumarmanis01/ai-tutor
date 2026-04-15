@@ -1,4 +1,4 @@
-import JsonViewer from '@/components/Admin/JsonViewer'
+import JsonViewer from '../../../../../components/admin/JsonViewer'
 
 type Props = { params: { syllabusId: string; version: string } }
 

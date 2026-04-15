@@ -16,34 +16,33 @@ export async function getNextConcept(studentId: string): Promise<{
   masteryScore: number
 } | null> {
   try {
+    // Single query: plan + first UPCOMING item + concept + chapter + subject
     const plan = await prisma.learningPlan.findFirst({
       where: { studentId },
       orderBy: { generatedAt: 'desc' },
-      select: { id: true },
-    })
-    if (!plan) return null
-
-    const item = await prisma.learningPlanItem.findFirst({
-      where: { planId: plan.id, status: 'UPCOMING' },
-      orderBy: [{ weekNumber: 'asc' }, { orderInWeek: 'asc' }],
-    })
-    if (!item) return null
-
-    const concept = await prisma.concept.findUnique({
-      where: { id: item.conceptId },
       select: {
-        name: true,
-        subjectId: true,
-        topic: { select: { chapter: { select: { name: true } } } },
+        items: {
+          where: { status: 'UPCOMING' },
+          orderBy: [{ weekNumber: 'asc' }, { orderInWeek: 'asc' }],
+          take: 1,
+          select: {
+            conceptId: true,
+            concept: {
+              select: {
+                name: true,
+                topic: { select: { chapter: { select: { name: true } } } },
+                subject: { select: { name: true } },
+              },
+            },
+          },
+        },
       },
     })
-    if (!concept) return null
 
-    const subject = await prisma.subjectDef.findUnique({
-      where: { id: concept.subjectId },
-      select: { name: true },
-    })
+    const item = plan?.items[0]
+    if (!item?.concept) return null
 
+    // Second query: mastery state (independent, run in parallel if more joins needed later)
     const state = await prisma.studentConceptState.findUnique({
       where: { studentId_conceptId: { studentId, conceptId: item.conceptId } },
       select: { masteryScore: true },
@@ -51,9 +50,9 @@ export async function getNextConcept(studentId: string): Promise<{
 
     return {
       conceptId: item.conceptId,
-      conceptName: concept.name,
-      chapterName: concept.topic?.chapter?.name ?? '',
-      subjectName: subject?.name ?? '',
+      conceptName: item.concept.name,
+      chapterName: item.concept.topic?.chapter?.name ?? '',
+      subjectName: item.concept.subject?.name ?? '',
       masteryScore: state?.masteryScore ?? 0,
     }
   } catch {

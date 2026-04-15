@@ -93,16 +93,22 @@ async function getTrendingEscalations(since: Date): Promise<TrendingDoubt[]> {
       HAVING COUNT(DISTINCT "studentId") > 5
       ORDER BY "studentCount" DESC
     `
-    if (!rows.length) return []
+    if (!rows || !rows.length) return []
 
-    const conceptIds = rows.map((r) => r.conceptId)
+    // defensive: ignore any rows that have a null/empty conceptId (mocked query results
+    // or transitional data could surface such rows). Only treat non-null conceptIds
+    // as valid trending doubts.
+    const nonNullRows = rows.filter((r) => r.conceptId != null)
+    if (!nonNullRows.length) return []
+
+    const conceptIds = nonNullRows.map((r) => r.conceptId)
     const concepts = await prisma.concept.findMany({
       where: { id: { in: conceptIds } },
       select: { id: true, name: true },
     })
     const nameMap = new Map(concepts.map((c) => [c.id, c.name]))
 
-    return rows.map((r) => ({
+    return nonNullRows.map((r) => ({
       conceptId: r.conceptId,
       conceptName: nameMap.get(r.conceptId) ?? r.conceptId,
       studentCount: Number(r.studentCount),
@@ -235,7 +241,9 @@ export async function runDailyCostReport(): Promise<CostReportResult> {
   const isCeiling = totalCostUsd > DAILY_CEILING_USD
   const isDropout = sessions === 0 && (yesterdayMetric?.sessions ?? 0) > 10
   const isCacheWarn = cacheHitRate !== null && cacheHitRate < CACHE_HIT_RATE_TARGET
-  const needsAlert = isCostThreshold || isRollingAnomaly || isCeiling || isDropout
+  // F-ADM-011 AC-05: also alert when trending doubts surface, regardless of cost thresholds
+  const hasTrendingDoubts = trendingDoubts.length > 0
+  const needsAlert = isCostThreshold || isRollingAnomaly || isCeiling || isDropout || hasTrendingDoubts
 
   // Build alert subject
   let alertSubject = `⚠️ Spinzy AI cost alert: ₹${(costPerSession * USD_TO_INR).toFixed(2)} per session on ${dateLabel}`
@@ -245,7 +253,9 @@ export async function runDailyCostReport(): Promise<CostReportResult> {
     alertSubject = `⚠️ Daily cost ceiling reached: $${totalCostUsd.toFixed(2)} on ${dateLabel}`
   } else if (isRollingAnomaly && rollingAvg) {
     const multiple = (costPerSession / rollingAvg).toFixed(1)
-    alertSubject = `⚠️ Cost spike: ${multiple}× above 7-day average on ${dateLabel}`
+    alertSubject = `⚠️ Cost spike: ${multiple}x above 7-day average on ${dateLabel}`
+  } else if (hasTrendingDoubts && !isCostThreshold) {
+    alertSubject = `⚠️ Trending doubts alert: ${trendingDoubts.length} concept(s) with high escalations on ${dateLabel}`
   }
 
   logger.info('costReportingWorker.report', {

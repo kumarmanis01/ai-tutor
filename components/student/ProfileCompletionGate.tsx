@@ -4,7 +4,7 @@
  * ProfileCompletionGate -- V2 inline multi-step form
  *
  * Shows as a centred modal when board/grade/language/subjects are missing.
- * Steps: Language -> Board -> Grade -> Subjects -> [Parent Email if age known].
+ * Steps: Language -> Board -> Grade -> Subjects -> School Name -> [Parent Email if age known].
  *
  * Visual style:
  *   - Same board cards (radio dot inside), grade grid (min-h-[52px]),
@@ -68,11 +68,12 @@ function getMandatorySubjects(board: string, grade: number): string[] {
 
 // ── Step helpers ───────────────────────────────────────────────────────────────
 
-// Steps in order. Parent steps are conditional on age < DPDP_MINOR_AGE.
-type StepKey = 'language' | 'board' | 'grade' | 'subjects' | 'parentEmail' | 'parentPhone';
+// Steps in order (includes optional `schoolName` between `subjects` and parent steps).
+// Parent steps are conditional on age < DPDP_MINOR_AGE.
+type StepKey = 'language' | 'board' | 'grade' | 'subjects' | 'schoolName' | 'parentEmail' | 'parentPhone';
 
 function buildSteps(showParentEmail: boolean, showParentPhone: boolean): StepKey[] {
-  const steps: StepKey[] = ['language', 'board', 'grade', 'subjects'];
+  const steps: StepKey[] = ['language', 'board', 'grade', 'subjects', 'schoolName'];
   if (showParentEmail) steps.push('parentEmail');
   if (showParentPhone) steps.push('parentPhone');
   return steps;
@@ -129,6 +130,7 @@ export default function ProfileCompletionGate({
   const [board, setBoard] = useState(initialValues?.board ?? '');
   const [grade, setGrade] = useState(() => parseGrade(initialValues?.grade));
   const [subjects, setSubjects] = useState<string[]>(initialValues?.subjects ?? []);
+  const [schoolName, setSchoolName] = useState(initialValues?.schoolName ?? '');
   const [parentEmail, setParentEmail] = useState(initialValues?.parentEmail ?? '');
   const [parentEmailError, setParentEmailError] = useState('');
   const [parentPhone, setParentPhone] = useState(initialValues?.parentPhone ?? '');
@@ -164,6 +166,7 @@ export default function ProfileCompletionGate({
     if (currentStepKey === 'board') return board !== '';
     if (currentStepKey === 'grade') return grade > 0;
     if (currentStepKey === 'subjects') return subjects.length > 0;
+    if (currentStepKey === 'schoolName') return true; // optional field
     if (currentStepKey === 'parentEmail') {
       if (!parentEmailRequired) return true; // optional
       return parentEmail.trim().includes('@');
@@ -253,6 +256,7 @@ export default function ProfileCompletionGate({
         class_grade: grade,
         subjects,
       };
+      if (schoolName.trim()) payload.school_name = schoolName.trim();
       if (showParentEmail && parentEmail.trim()) {
         payload.parent_email = parentEmail.trim();
       }
@@ -319,6 +323,7 @@ export default function ProfileCompletionGate({
       label: 'Subjects',
       value: subjects.length > 0 ? `${subjects.length} subject${subjects.length !== 1 ? 's' : ''}` : '',
     },
+    schoolName: { label: 'School', value: schoolName.trim() !== '' ? schoolName.trim() : '' },
     parentEmail: { label: 'Parent email', value: parentEmail ? 'Added' : '' },
     parentPhone: { label: 'Parent phone', value: parentPhoneSubStep === 'verified' ? 'Verified' : '' },
   };
@@ -587,6 +592,36 @@ export default function ProfileCompletionGate({
                   })}
                 </div>
               )}
+            </section>
+          )}
+
+          {/* ── School Name ───────────────────────────────────────────── */}
+          {currentStepKey === 'schoolName' && (
+            <section>
+              <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100 mb-1">
+                Which school do you go to?
+              </h3>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+                Optional -- helps Vidya personalise your experience.
+              </p>
+              <div>
+                <label
+                  htmlFor="gate-school-name"
+                  className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+                >
+                  School name
+                  <span className="text-gray-400 dark:text-gray-500 ml-1 text-xs">(optional)</span>
+                </label>
+                <input
+                  id="gate-school-name"
+                  type="text"
+                  value={schoolName}
+                  onChange={(e) => setSchoolName(e.target.value)}
+                  placeholder="e.g. Delhi Public School, Sector 45"
+                  maxLength={120}
+                  className="w-full min-h-[44px] rounded-xl border-2 border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-2 text-sm text-gray-900 dark:text-gray-100 placeholder-gray-400 focus:outline-none focus:border-[#534AB7] dark:focus:border-indigo-400 transition-colors"
+                />
+              </div>
             </section>
           )}
 

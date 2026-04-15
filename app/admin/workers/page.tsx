@@ -1,5 +1,5 @@
 import React from 'react'
-import WorkerControl from '@/components/Admin/WorkerControl'
+import WorkerControl from '../../../components/admin/WorkerControl'
 import { requireAdminOrModerator } from '@/lib/auth'
 
 export default async function Page() {

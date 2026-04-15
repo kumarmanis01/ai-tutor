@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma'
 import { normalizeLanguage } from '@/lib/normalize'
 import { logger } from '@/lib/logger'
 import { isCircuitOpen, recordFailure, recordSuccess } from '@/lib/ai/tutor/circuitBreaker'
+import { redactPIIFromText, redactPIIFromMessages } from '@/lib/ai/piiRedaction'
 
 export type TutorCallType = 'tutor:teach' | 'tutor:hint' | 'tutor:eval'
 
@@ -92,6 +93,8 @@ async function callAnthropic(
   prompt: string,
   opts: { timeoutMs?: number } = {},
 ): Promise<{ content: string; usage: any; costUsd: number; latencyMs: number; model: string }> {
+  // F-ADM-040 AC-05: redact PII before sending to Anthropic (failover path).
+  prompt = redactPIIFromText(prompt)
   let Anthropic: any
   try {
     Anthropic = (await import('@anthropic-ai/sdk')).default
@@ -132,8 +135,13 @@ export async function createChatCompletion(input: any) {
   if (process.env.LLM_MODE === 'mock') {
     return { choices: [{ message: { content: JSON.stringify({ mock: true, input }) } }], usage: {} }
   }
+  // F-ADM-040 AC-05: redact PII from messages before sending to OpenAI.
+  const sanitised = {
+    ...input,
+    messages: input?.messages ? redactPIIFromMessages(input.messages) : input?.messages,
+  }
   const c = getClient()
-  return c.chat.completions.create(input)
+  return c.chat.completions.create(sanitised)
 }
 
 export async function createSpeech(input: any) {
@@ -207,6 +215,9 @@ export async function callLLM({ prompt, model, meta, timeoutMs }: CallLLMArgs) {
   if (['orchestration', 'workflow', 'reconciler'].includes(promptType) && selectedModel === envLarge) {
     throw new Error('forbidden_model_for_orchestration')
   }
+
+  // F-ADM-040 AC-05: redact PII from the assembled prompt before any provider call.
+  prompt = redactPIIFromText(prompt)
 
   // Optionally prepend a small RAG-lite context (board/chapter/topic names)
   if (meta?.useRag === true) {
@@ -299,39 +310,39 @@ export async function callLLM({ prompt, model, meta, timeoutMs }: CallLLMArgs) {
         // short snippet for auditing instead.
         const allowRawPersistence = String(process.env.ALLOW_PERSIST_RAW_AI_OUTPUT || '').toLowerCase() === '1' || Boolean(meta?.persistRaw);
 
-        // If the console-only flag is enabled, log a snippet to worker logs and
-        // redact the raw text from the persisted response body so it is not stored.
-        if (LOG_RAW_LLM_OUTPUT_CONSOLE_ONLY) {
-          try {
-            const snippet = typeof content === 'string' ? content.slice(0, 4000) : JSON.stringify(content).slice(0, 4000);
-            logger.info('[LLM_RAW_DEBUG] Raw LLM output (console-only mode)', { meta, snippet });
-          } catch (e) {
-            logger.warn('callLLM LOG_RAW_LLM_OUTPUT_CONSOLE_ONLY snippet logging failed', { error: String(e) })
-          }
-          try {
-            // Remove likely raw text fields from respBody before persisting
-            if (respBody && respBody.choices && Array.isArray(respBody.choices) && respBody.choices[0] && respBody.choices[0].message) {
-              respBody.choices[0].message.content = undefined;
+          // If the console-only flag is enabled, log a snippet to worker logs and
+          // redact the raw text from the persisted response body so it is not stored.
+          if (LOG_RAW_LLM_OUTPUT_CONSOLE_ONLY) {
+            try {
+              const snippet = typeof content === 'string' ? content.slice(0, 4000) : JSON.stringify(content).slice(0, 4000);
+              logger.info('[LLM_RAW_DEBUG] Raw LLM output (console-only mode)', { meta, snippet });
+            } catch (e) {
+              logger.warn('callLLM LOG_RAW_LLM_OUTPUT_CONSOLE_ONLY snippet logging failed', { error: String(e) })
             }
-            if (respBody && typeof respBody._rawText !== 'undefined') delete respBody._rawText;
-          } catch (e) {
-            logger.warn('callLLM LOG_RAW_LLM_OUTPUT_CONSOLE_ONLY redaction failed', { error: String(e) })
+            try {
+              // Remove likely raw text fields from respBody before persisting
+              if (respBody && respBody.choices && Array.isArray(respBody.choices) && respBody.choices[0] && respBody.choices[0].message) {
+                respBody.choices[0].message.content = undefined;
+              }
+              if (respBody && typeof respBody._rawText !== 'undefined') delete respBody._rawText;
+            } catch (e) {
+              logger.warn('callLLM LOG_RAW_LLM_OUTPUT_CONSOLE_ONLY redaction failed', { error: String(e) })
+            }
           }
-        }
 
-        if (!allowRawPersistence) {
-          try {
-            // Replace raw content with a short snippet for auditing so DB does not
-            // contain full LLM output unless explicitly permitted.
-            if (respBody && respBody.choices && Array.isArray(respBody.choices) && respBody.choices[0] && respBody.choices[0].message) {
-              respBody.choices[0].message.content = undefined;
+          // If raw persistence is not allowed, replace full content with a short
+          // audit snippet before storing so DB never contains the full LLM text.
+          if (!allowRawPersistence) {
+            try {
+              if (respBody && respBody.choices && Array.isArray(respBody.choices) && respBody.choices[0] && respBody.choices[0].message) {
+                respBody.choices[0].message.content = undefined;
+              }
+              respBody._snippet = typeof content === 'string' ? content.slice(0, 4000) : JSON.stringify(content).slice(0, 4000);
+              if (respBody && typeof respBody._rawText !== 'undefined') delete respBody._rawText;
+            } catch (e) {
+              logger.warn('callLLM redaction failed', { error: String(e) });
             }
-            respBody._snippet = typeof content === 'string' ? content.slice(0, 4000) : JSON.stringify(content).slice(0, 4000);
-            if (respBody && typeof respBody._rawText !== 'undefined') delete respBody._rawText;
-          } catch (e) {
-            logger.warn('callLLM redaction failed', { error: String(e) });
           }
-        }
 
         // Allow callers to suppress auto-logging and instead persist logs inside their transaction
         const suppressLog = !!meta?.suppressLog;
@@ -389,7 +400,8 @@ export async function callLLM({ prompt, model, meta, timeoutMs }: CallLLMArgs) {
             output_tokens: Number(usage?.completion_tokens ?? 0),
             cost_usd: Number(costUsd ?? 0),
             cache_hit: Boolean(meta?.cached ?? false),
-            sessionId: meta?.sessionId ?? null,
+            session_id: meta?.sessionId ?? null,
+            concept_id: meta?.conceptId ?? meta?.topicId ?? null,
           }
           prisma.analyticsEvent.create({ data: { eventType: 'ai_call', userId: meta?.studentId ?? null, courseId: null, lessonIdx: null, metadata: metaForEvent } }).catch(() => {})
         } catch (e) {
@@ -439,7 +451,8 @@ export async function callLLM({ prompt, model, meta, timeoutMs }: CallLLMArgs) {
                 cost_usd: 0,
                 cache_hit: Boolean(meta?.cached ?? false),
                 error: String(error?.message ?? error ?? '').slice(0, 200),
-                sessionId: meta?.sessionId ?? null,
+                session_id: meta?.sessionId ?? null,
+                concept_id: meta?.conceptId ?? meta?.topicId ?? null,
               }
               prisma.analyticsEvent.create({ data: { eventType: 'ai_call', userId: meta?.studentId ?? null, courseId: null, lessonIdx: null, metadata: failedMeta } }).catch(() => {})
             } catch (e) { try { logger.warn('analyticsEvent.llm.failed.create.failed', { error: String((e as any)?.message ?? e) }) } catch {} }
@@ -467,7 +480,8 @@ export async function callLLM({ prompt, model, meta, timeoutMs }: CallLLMArgs) {
                 cost_usd: 0,
                 cache_hit: Boolean(meta?.cached ?? false),
                 error: String(error?.message ?? error ?? '').slice(0, 200),
-                sessionId: meta?.sessionId ?? null,
+                session_id: meta?.sessionId ?? null,
+                concept_id: meta?.conceptId ?? meta?.topicId ?? null,
               }
               prisma.analyticsEvent.create({ data: { eventType: 'ai_call', userId: meta?.studentId ?? null, courseId: null, lessonIdx: null, metadata: failedMeta2 } }).catch(() => {})
             } catch (e) { try { logger.warn('analyticsEvent.llm.failed.create.failed', { error: String((e as any)?.message ?? e) }) } catch {} }

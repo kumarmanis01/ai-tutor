@@ -33,6 +33,7 @@ const prismaMock = {
   aITutorTurnLog: { create: jest.fn() },
   doubtEscalation: { create: jest.fn() },
   $transaction: jest.fn(),
+  user: { findUnique: jest.fn() },
 };
 jest.mock('@/lib/prisma', () => ({ prisma: prismaMock }));
 
@@ -88,6 +89,17 @@ jest.mock('@/lib/ai/tutor/stateMachine', () => ({
     prereqReturnStage: null,
     consecutiveWrongAnswers: 0,
   }),
+  applyTagTransitionWithRemediation: jest.fn().mockImplementation(() => ({
+    next: {
+      stage: 'HOOK',
+      stageAttemptCount: 0,
+      hintsUsed: 0,
+      prereqRemediationActive: false,
+      prereqReturnStage: null,
+      consecutiveWrongAnswers: 0,
+    },
+    effectiveTag: 'QUESTION',
+  })),
 }));
 jest.mock('@/lib/ai/tutor/tagParser', () => ({
   parseTutorTag: jest.fn().mockReturnValue('QUESTION'),
@@ -142,6 +154,7 @@ beforeEach(() => {
   prismaMock.doubtEscalation.create.mockResolvedValue({ id: 'esc-1' });
   prismaMock.concept.findUnique.mockResolvedValue({ name: 'Algebra', irt_b: 0.5 });
   prismaMock.subjectDef.findUnique.mockResolvedValue({ name: 'Mathematics' });
+  prismaMock.user.findUnique.mockResolvedValue({ learningStyle: 'visual' });
 });
 
 // ---------------------------------------------------------------------------

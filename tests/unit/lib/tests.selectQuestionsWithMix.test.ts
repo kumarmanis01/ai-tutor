@@ -66,8 +66,12 @@ jest.mock('@/lib/aiContext', () => ({
 const { prisma } = require('@/lib/prisma');
 
 // Helper: configure attemptQuestion mock to return specific IDs as recently used.
+// NOTE: the query in lib/tests.ts uses `select: { question: { select: { prompt: true } } }`,
+// so the returned rows MUST include a nested `question` object with a `prompt` field.
 function mockRecentIds(ids: string[]) {
-  prisma.attemptQuestion.findMany.mockResolvedValue(ids.map((id) => ({ questionId: id })));
+  prisma.attemptQuestion.findMany.mockResolvedValue(
+    ids.map((id) => ({ questionId: id, question: { prompt: `mock prompt for ${id}` } })),
+  );
 }
 
 // Helper: make the findMany mock return different pools based on `where.type`.

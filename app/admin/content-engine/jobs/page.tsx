@@ -4,7 +4,7 @@ import React, { useMemo, useState, useEffect } from 'react';
 import useSWR from 'swr';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import JobActions from '@/components/Admin/JobActions';
+import JobActions from '../../../../components/admin/JobActions';
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
 

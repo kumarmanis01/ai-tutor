@@ -58,7 +58,8 @@ test('processNextJob marks FAILED and emits FAILED audit when generator throws',
   mockedPrisma.$transaction.mockImplementation(async (fn: any) => fn(tx))
 
   mockedGenerator.mockImplementation(async () => { throw new Error('boom') })
-  mockedPrisma.regenerationJob.update.mockResolvedValue({})
+  // Worker error path calls updateMany (not update) to avoid exceptions on concurrent changes
+  mockedPrisma.regenerationJob.updateMany.mockResolvedValue({ count: 1 })
 
   const res = await processNextJob()
   expect(res).toBeDefined()
@@ -66,8 +67,8 @@ test('processNextJob marks FAILED and emits FAILED audit when generator throws',
   // output not created
   expect(mockedPrisma.regenerationOutput.create).not.toHaveBeenCalled()
 
-  // job update to FAILED called
-  expect(mockedPrisma.regenerationJob.update).toHaveBeenCalled()
+  // job update to FAILED called via updateMany
+  expect(mockedPrisma.regenerationJob.updateMany).toHaveBeenCalled()
 
   // audit FAILED emitted
   const actions = mockedLogAudit.mock.calls.map((c: any) => c[1]?.details?.legacyAction || c[0]?.details?.legacyAction)

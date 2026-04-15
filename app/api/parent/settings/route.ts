@@ -1,6 +1,7 @@
 /**
  * FILE OBJECTIVE:
  * - API endpoints to get and update Parent digest preferences (opt-out, day, time, timezone).
+ * - Also exposes/accepts inactivityThresholdDays (F-PAR-021 AC-01): 2, 3, 5, or 7 days.
  *
  * LINKED UNIT TEST:
  * - tests/unit/api/parent-settings.test.ts
@@ -11,6 +12,8 @@
  *
  * EDIT LOG:
  * - 2026-04-09T00:00:00Z | copilot | created GET/POST handlers for parent digest settings
+ * - 2026-04-14T00:00:00Z | claude | added inactivityThresholdDays (F-PAR-021 AC-01)
+ * - 2026-04-13T00:00:00Z | copilot | corrected Copilot instructions header reference from .com to .md
  */
 
 import { NextResponse } from 'next/server'
@@ -28,7 +31,10 @@ export async function GET() {
     const profile = await prisma.parentProfile.findUnique({ where: { userId } })
 
     // Fallback defaults if no profile exists yet
-    const timezone = profile?.digestTimezone ?? (await prisma.user.findUnique({ where: { id: userId }, select: { timezone: true } }))?.timezone ?? null
+    const userRecord = await prisma.user.findUnique({ where: { id: userId }, select: { timezone: true, language: true } })
+    const timezone = profile?.digestTimezone ?? userRecord?.timezone ?? null
+    // NFR language: expose current UI language so the toggle can reflect the saved preference
+    const language = userRecord?.language ?? 'en'
 
     // Include linked children for the parent settings UI (id, name, pause status)
     const links = await prisma.parentStudent.findMany({
@@ -43,6 +49,10 @@ export async function GET() {
       digestDay: profile?.digestDay ?? 'Sunday',
       digestTime: profile?.digestTime ?? '09:00',
       digestTimezone: profile?.digestTimezone ?? timezone,
+      // F-PAR-021 AC-01: configurable inactivity alert threshold (days). Valid: 2, 3, 5, 7.
+      inactivityThresholdDays: (profile as any)?.inactivityThresholdDays ?? 3,
+      // NFR language: UI language preference ('en' or 'hi')
+      language,
       children: links.map((l) => ({
         id: l.student.id,
         name: l.student.name ?? 'Student',
@@ -71,12 +81,14 @@ export async function POST(req: Request) {
 
     const userId = (session.user as any).id
     const body = await req.json()
-    const { digestOptOut, inactivityOptOut, digestDay, digestTime, digestTimezone } = body as {
+    const { digestOptOut, inactivityOptOut, digestDay, digestTime, digestTimezone, inactivityThresholdDays, language } = body as {
       digestOptOut?: boolean
       inactivityOptOut?: boolean
       digestDay?: string
       digestTime?: string
       digestTimezone?: string | null
+      inactivityThresholdDays?: number
+      language?: string
     }
 
     // Basic validation
@@ -92,6 +104,16 @@ export async function POST(req: Request) {
     if (digestTime !== undefined && typeof digestTime !== 'string') {
       return NextResponse.json({ error: 'invalid_digestTime' }, { status: 400 })
     }
+    // F-PAR-021 AC-01: only allow 2, 3, 5, or 7 days
+    const VALID_THRESHOLDS = [2, 3, 5, 7]
+    if (inactivityThresholdDays !== undefined && !VALID_THRESHOLDS.includes(inactivityThresholdDays)) {
+      return NextResponse.json({ error: 'invalid_inactivityThresholdDays: must be 2, 3, 5, or 7' }, { status: 400 })
+    }
+    // NFR language: only 'en' or 'hi' are supported
+    const VALID_LANGUAGES = ['en', 'hi']
+    if (language !== undefined && !VALID_LANGUAGES.includes(language)) {
+      return NextResponse.json({ error: 'invalid_language: must be en or hi' }, { status: 400 })
+    }
 
     const createData = {
       userId,
@@ -100,6 +122,7 @@ export async function POST(req: Request) {
       digestDay: digestDay ?? 'Sunday',
       digestTime: digestTime ?? '09:00',
       digestTimezone: digestTimezone ?? null,
+      inactivityThresholdDays: inactivityThresholdDays ?? 3,
     }
 
     const updateData: any = {}
@@ -108,12 +131,21 @@ export async function POST(req: Request) {
     if (digestDay !== undefined) updateData.digestDay = digestDay
     if (digestTime !== undefined) updateData.digestTime = digestTime
     if (digestTimezone !== undefined) updateData.digestTimezone = digestTimezone
+    if (inactivityThresholdDays !== undefined) updateData.inactivityThresholdDays = inactivityThresholdDays
 
     const saved = await prisma.parentProfile.upsert({
       where: { userId },
       create: createData,
       update: updateData,
     })
+
+    // NFR language: update User.language when requested
+    if (language !== undefined) {
+      await prisma.user.update({
+        where: { id: userId },
+        data: { language: language as any },
+      })
+    }
 
     // Optional: batch update per-child preferences if provided in the request body.
     // Body shape: { children: [{ id: string, excludeFromParentReport?: boolean, inactivityOptOut?: boolean }] }

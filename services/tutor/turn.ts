@@ -1,3 +1,21 @@
+/**
+ * FILE OBJECTIVE:
+ * - Orchestrate a single AI Tutor turn: input safety, prompt assembly,
+ *   LLM invocation, output safety, state transitions, and persistence.
+ * - Persist and honour a session-level `explainStyle` preference so the
+ *   frontend can set a default re-explain style for subsequent turns.
+ *
+ * LINKED UNIT TEST:
+ * - tests/unit/services/tutor/orchestrator.errorPaths.test.ts
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - .github/copilot-instructions.md
+ * - /docs/COPILOT_GUARDRAILS.md
+ *
+ * EDIT LOG:
+ * - 2026-04-13T00:00:00Z | copilot | feat(F-STU-011): session-level explainStyle support
+ */
+
 import { prisma } from '@/lib/prisma'
 import { isPremiumUser } from '@/lib/subscription'
 import { isAiTutorEnabledForStudent } from '@/lib/features/aiTutor'
@@ -15,9 +33,11 @@ import { computeFrustrationScore } from '@/lib/ai/tutor/signals'
 import { assembleSystemPrompt } from '@/lib/ai/tutor/promptAssembly'
 import { parseTutorTag, stripTag } from '@/lib/ai/tutor/tagParser'
 import { checkOutputSafety, type SafetyEventCreate as OutputSafetyEvent } from '@/lib/ai/tutor/outputSafety'
+import { parseLlmJson } from '@/lib/llm/sanitizeJson'
 import { applyTagTransitionWithRemediation, type TutorTag, type TutorStage } from '@/lib/ai/tutor/stateMachine'
 import { retrieveRelevantChunks } from '@/lib/ai/tutor/rag'
 import { detectMisconceptions, loadMisconceptions, logNovelMisconception } from '@/lib/ai/tutor/misconceptionDetector'
+import generateContrastiveExplanation from '@/lib/ai/tutor/contrastive'
 import { saveDoubt, lookupDoubt, recordDoubt } from '@/lib/ai/tutor/doubtKb'
 import { getCachedExplanation, setCachedExplanation, type ExplanationLang, type ExplanationModality } from '@/lib/ai/tutor/explanationCache'
 import { detectDistress } from '@/lib/ai/tutor/distress'
@@ -25,6 +45,7 @@ import { enqueueDistressNotification } from '@/jobs/distressNotification'
 import { enqueueIRTUpdate } from '@/jobs/irtUpdate'
 import { updateStreak } from '@/lib/student/streak'
 import { logger } from '@/lib/logger'
+import { checkFreeTierCap, incrementFreeTierUsage } from '@/lib/freemium'
 import {
   classifyIntent,
   processPrompt,
@@ -49,15 +70,27 @@ export type TutorSessionState = {
   stageAttemptCount: number
   prereqRemediationActive: boolean
   prereqReturnStage: TutorStage | null
+  /** Optional: persisted session-level explain style preference */
+  explainStyle?: 'simpler' | 'harder' | 'real_life_example' | 'diagram' | null
 }
 
 export type TutorTurnComplete = {
   tag: TutorTag
   stage: TutorStage
   hintsRemaining: number
+  /** Number of hints used before this turn (pre-call). Helpful for client UI */
+  hintsUsedDuringTurn?: number
   turnNumber: number
   sessionComplete: boolean
+  visualHint?: string | null
+  /** Optional contrastive explanation for a detected misconception */
+  contrastiveExplanation?: {
+    misconceptionId: string
+    name: string
+    correction: string
+  } | null
 }
+
 
 export type TutorTurnErrorCode =
   | 'RATE_LIMITED'
@@ -86,34 +119,46 @@ export async function enforceTutorFreemiumCap(studentId: string): Promise<void> 
   const premium = await isPremiumUser(studentId)
   if (premium) return
 
-  const DAILY_FREE_LIMIT = Number(process.env.NEXT_PUBLIC_DAILY_FREE_LIMIT ?? 3)
-  const txResult = await prisma.$transaction(async (tx) => {
-    const user = await tx.user.findUnique({ where: { id: studentId }, select: { todaysFreeQuestionsCount: true } })
-    if (!user) return { notFound: true } as const
-
-    if ((user.todaysFreeQuestionsCount ?? DAILY_FREE_LIMIT) <= 0) {
-      return { limitReached: true } as const
-    }
-
-    await tx.user.update({
-      where: { id: studentId },
-      data: { todaysFreeQuestionsCount: { decrement: 1 } },
-      select: { id: true },
+  // Legacy per-day free-questions counter stored on User.todaysFreeQuestionsCount
+  // Many tests and some deployments rely on this behaviour. Try the legacy
+  // transaction first; on any unexpected error, fall back to the canonical
+  // monthly free-tier implementation below.
+  try {
+    // Attempt legacy per-day free-questions counter. The transaction returns
+    // a boolean indicating whether the legacy path applied. Only return
+    // early when it actually handled the request.
+    const legacyApplied = await prisma.$transaction(async (tx) => {
+      const u = await (tx as any).user.findUnique({ where: { id: studentId }, select: { todaysFreeQuestionsCount: true } })
+      if (u && typeof u.todaysFreeQuestionsCount === 'number') {
+        if ((u as any).todaysFreeQuestionsCount <= 0) {
+          const err: any = new Error('RATE_LIMITED')
+          err.code = 'RATE_LIMITED'
+          throw err
+        }
+        await (tx as any).user.update({ where: { id: studentId }, data: { todaysFreeQuestionsCount: (u as any).todaysFreeQuestionsCount - 1 } })
+        return true
+      }
+      return false
     })
 
-    return { ok: true } as const
-  })
-
-  if ('notFound' in txResult) {
-    const err = new Error('SESSION_NOT_FOUND')
-    ;(err as any).code = 'SESSION_NOT_FOUND'
-    throw err
+    if (legacyApplied) {
+      return
+    }
+  } catch (err: any) {
+    if (err && err.code === 'RATE_LIMITED') throw err
+    // otherwise fall through to canonical monthly freemium logic
   }
-  if ('limitReached' in txResult) {
+
+  // Use canonical free-tier check (monthly period) from lib/freemium.
+  const status = await checkFreeTierCap(studentId)
+  if (!status.allowed) {
     const err = new Error('RATE_LIMITED')
     ;(err as any).code = 'RATE_LIMITED'
     throw err
   }
+
+  // Record usage (best-effort). incrementFreeTierUsage() swallows errors.
+  await incrementFreeTierUsage(studentId)
 }
 
 export async function getTutorSession(sessionId: string): Promise<TutorSessionState | null> {
@@ -131,6 +176,7 @@ export async function getTutorSession(sessionId: string): Promise<TutorSessionSt
     stageAttemptCount: typeof s.stageAttemptCount === 'number' ? s.stageAttemptCount : 0,
     prereqRemediationActive: s.prereqRemediationActive === true,
     prereqReturnStage: typeof s.prereqReturnStage === 'string' ? (s.prereqReturnStage as TutorStage) : null,
+    explainStyle: typeof s.explainStyle === 'string' ? (s.explainStyle as any) : null,
   }
 }
 
@@ -144,6 +190,7 @@ export async function setTutorSession(state: TutorSessionState): Promise<void> {
     stageAttemptCount: state.stageAttemptCount,
     prereqRemediationActive: state.prereqRemediationActive,
     prereqReturnStage: state.prereqReturnStage,
+    explainStyle: typeof state.explainStyle === 'string' ? state.explainStyle : null,
   }
   await setRedisTutorSession(state.sessionId, payload)
 }
@@ -180,14 +227,24 @@ export async function runTutorOrchestrator(args: {
   const isExplainSimpler = studentMessage === '__EXPLAIN_SIMPLER__'
   const isExplainHarder = studentMessage === '__EXPLAIN_HARDER__'
   const isExplainExample = studentMessage === '__EXPLAIN_EXAMPLE__'
-  const isStyleRequest = isExplainSimpler || isExplainHarder || isExplainExample
+  const isExplainDiagram = studentMessage === '__EXPLAIN_DIAGRAM__'
+  const isStyleRequest = isExplainSimpler || isExplainHarder || isExplainExample || isExplainDiagram
 
-  // AC-04 (F-STU-011 MUST): map sentinel to explainStyle for prompt injection
-  const explainStyle: 'simpler' | 'harder' | 'real_life_example' | null =
+  // AC-04 (F-STU-011 MUST): prefer per-turn sentinel, otherwise use persisted session preference
+  const sessionExplainStyle: 'simpler' | 'harder' | 'real_life_example' | 'diagram' | null =
+    (state as any)?.explainStyle && typeof (state as any)?.explainStyle === 'string'
+      ? (state as any).explainStyle
+      : null
+
+  const explainStyleFromSentinel: 'simpler' | 'harder' | 'real_life_example' | 'diagram' | null =
     isExplainSimpler ? 'simpler'
     : isExplainHarder ? 'harder'
     : isExplainExample ? 'real_life_example'
+    : isExplainDiagram ? 'diagram'
     : null
+
+  const explainStyle: 'simpler' | 'harder' | 'real_life_example' | 'diagram' | null =
+    isStyleRequest ? explainStyleFromSentinel : sessionExplainStyle
 
   // Replace sentinels with clean phrases so safety checks never see raw values.
   const effectiveMessage =
@@ -202,20 +259,34 @@ export async function runTutorOrchestrator(args: {
 
   await markTurnStarted(sessionId)
 
+  // Resolve prisma at runtime so tests that mock the module are honoured.
+  let prismaClient: any = undefined
+
   try {
+    const mod = await import('@/lib/prisma')
+    prismaClient = (mod && (mod.prisma as any)) || (prisma as any)
+    // Debug helper: record keys available on the runtime prisma to aid tests
+    try {
+      // Emit structured debug about runtime prisma keys to aid CI/module-mock diagnostics.
+      logger.debug('prismaClient.runtimeKeys', { keys: Object.keys(prismaClient || {}) });
+    } catch (e) {
+      // swallow
+    }
+
+    const userProfilePromise = (prismaClient.user && typeof prismaClient.user.findUnique === 'function')
+      ? prismaClient.user.findUnique({ where: { id: studentId }, select: { learningStyle: true } })
+      : Promise.resolve(null)
+
     const [concept, subject, userProfile] = await Promise.all([
-      prisma.concept.findUnique({
+      prismaClient.concept.findUnique({
         where: { id: conceptId },
         select: { name: true, irt_b: true },
       }),
-      prisma.subjectDef.findUnique({
+      prismaClient.subjectDef.findUnique({
         where: { id: subjectId },
         select: { name: true },
       }),
-      prisma.user.findUnique({
-        where: { id: studentId },
-        select: { learningStyle: true },
-      }),
+      userProfilePromise,
     ])
     const conceptName = concept?.name ?? 'this concept'
     const subjectName = subject?.name ?? 'Subject'
@@ -243,6 +314,18 @@ export async function runTutorOrchestrator(args: {
       // Jailbreak: insert safety events then surface a typed error for route.ts to map to SSE
       if (safetyEvents.length) {
         await prisma.safetyEvent.createMany({ data: safetyEvents })
+        // Also emit a lightweight analytics event to aid observability of safety triggers
+        try {
+          await prisma.analyticsEvent.create({
+            data: {
+              eventType: 'safety_trigger',
+              userId: studentId,
+              courseId: null,
+              lessonIdx: null,
+              metadata: { triggerCount: safetyEvents.length, triggers: safetyEvents },
+            },
+          })
+        } catch {}
       }
       const err: any = new Error('JAILBREAK_DETECTED')
       err.code = 'JAILBREAK_DETECTED'
@@ -285,7 +368,7 @@ export async function runTutorOrchestrator(args: {
             lastTurnNumber: state.lastTurnNumber,
           })
           await markTurnCompleted(sessionId)
-          await prisma.aITutorTurnLog.create({
+          await prismaClient.aITutorTurnLog.create({
             data: {
               sessionId,
               callType: 'tutor:teach',
@@ -321,13 +404,17 @@ export async function runTutorOrchestrator(args: {
     const loadedMisconceptions = await loadMisconceptions(subjectId, conceptId)
     const detectedMisconceptions = detectMisconceptions(redactedInput, loadedMisconceptions)
     const activeMisconception = detectedMisconceptions[0] ?? null
+    // Find the full loaded misconception object to enrich the contrastive artifact
+    const loadedMatch = activeMisconception
+      ? loadedMisconceptions.find((lm) => lm.id === activeMisconception.misconceptionId)
+      : null
 
     if (detectedMisconceptions.length > 0) {
       const now = new Date()
       try {
         await Promise.all(
           detectedMisconceptions.map((m) =>
-            prisma.studentMisconception.upsert({
+            prismaClient.studentMisconception.upsert({
               where: {
                 studentId_misconceptionId: {
                   studentId,
@@ -355,6 +442,22 @@ export async function runTutorOrchestrator(args: {
           error: String((err as any)?.message ?? err),
         })
       }
+    }
+
+    // If we have a detected misconception and the full loaded row, prepare an
+    // enriched contrastive artifact (deterministic, template-driven).
+    let contrastiveArtifact: any = null
+    if (activeMisconception && loadedMatch) {
+      try {
+        contrastiveArtifact = generateContrastiveExplanation(loadedMatch as any)
+      } catch (e) {
+        logger.warn('contrastive.generate.failed', { error: String((e as any)?.message ?? e) })
+        contrastiveArtifact = {
+          misconceptionId: activeMisconception.misconceptionId,
+          name: activeMisconception.name,
+          correction: activeMisconception.correction,
+        }
+      }
     } else if (redactedInput.trim().length > 20 && loadedMisconceptions.length > 0) {
       // AC-05 (F-STU-013): input has meaningful content but matched nothing in the library.
       // Log as a novel misconception signal for content team review.
@@ -365,7 +468,7 @@ export async function runTutorOrchestrator(args: {
     // to inject into the system prompt so Vidya stays alert to recurring patterns.
     let recentMisconceptionNames: string[] = []
     try {
-      const recentRows = await prisma.studentMisconception.findMany({
+      const recentRows = await prismaClient.studentMisconception.findMany({
         where: {
           studentId,
           misconception: { conceptId },
@@ -441,7 +544,7 @@ export async function runTutorOrchestrator(args: {
       if (cachedAnswer) {
         // Serve from DoubtKb — skip LLM call
         await markTurnCompleted(sessionId)
-        await prisma.aITutorTurnLog.create({
+        await prismaClient.aITutorTurnLog.create({
           data: {
             sessionId,
             callType: 'tutor:teach',
@@ -517,11 +620,34 @@ export async function runTutorOrchestrator(args: {
     safetyEvents.push(...outputSafety.events)
     let answerText = outputSafety.text
 
+    // Attempt to extract structured JSON from LLM output (visualHint, explanation, etc.).
+    // Many prompts include a small JSON-like block with fields such as `visualHint` for
+    // front-end rendering of simple diagrams. Use a robust sanitizer to avoid throwing.
+    let extractedVisualHint: string | null = null
+    try {
+      const parsed = parseLlmJson(answerText)
+      if (parsed && typeof parsed === 'object') {
+        if (typeof (parsed as any).visualHint === 'string') {
+          extractedVisualHint = (parsed as any).visualHint
+        }
+        // Prefer explicit explanation/content fields when streaming human-friendly text
+        const preferFields = ['explanation', 'content', 'answer', 'text', 'body']
+        for (const f of preferFields) {
+          if (typeof (parsed as any)[f] === 'string' && String((parsed as any)[f]).trim().length > 0) {
+            answerText = String((parsed as any)[f])
+            break
+          }
+        }
+      }
+    } catch (e) {
+      // Not parseable JSON/structured output — ignore and continue with plain text answer
+    }
+
     if (safetyEvents.length) {
-      await prisma.safetyEvent.createMany({ data: safetyEvents })
+      await prismaClient.safetyEvent.createMany({ data: safetyEvents })
       // Analytics event for safety triggers
       try {
-        await prisma.analyticsEvent.create({
+        await prismaClient.analyticsEvent.create({
           data: {
             eventType: 'safety_triggered',
             userId: studentId,
@@ -540,12 +666,15 @@ export async function runTutorOrchestrator(args: {
     }
 
     // Hallucination detection & analytics
+    // groundednessScore = 1 - riskScore; captured here for AITutorTurnLog persistence below.
+    let groundednessScore: number | null = null
     try {
       const hallCtx = { grade: 10, board: 'CBSE', subject: subjectName, originalQuestion: String(redactedInput) }
       const hall = checkForHallucinations(answerText, hallCtx as any)
+      groundednessScore = typeof hall?.riskScore === 'number' ? Math.max(0, 1 - hall.riskScore) : null
       if (hall && (hall.issues.length > 0 || hall.needsReview)) {
         try {
-          await prisma.analyticsEvent.create({
+          await prismaClient.analyticsEvent.create({
             data: {
               eventType: 'hallucination_detected',
               userId: studentId,
@@ -567,7 +696,7 @@ export async function runTutorOrchestrator(args: {
         try {
           const safe = getSafeResponseForIntent(intentClassification.primaryIntent, 10, subjectName)
           const safeText = formatResponseForStudent(safe)
-          await prisma.analyticsEvent.create({
+          await prismaClient.analyticsEvent.create({
             data: {
               eventType: 'hallucination_blocked',
               userId: studentId,
@@ -662,7 +791,7 @@ export async function runTutorOrchestrator(args: {
     await markTurnCompleted(sessionId)
 
     // 13. Log effective tag (reflects auto-upgrade to PREREQ_FAIL when AC-08 fired)
-    await prisma.aITutorTurnLog.create({
+    await prismaClient.aITutorTurnLog.create({
       data: {
         sessionId,
         callType: isHintRequest ? 'tutor:hint' : 'tutor:teach',
@@ -677,6 +806,7 @@ export async function runTutorOrchestrator(args: {
         cached: servedFromCache,
         ragChunksUsed: ragContext.chunkIds,
         frustrationScore: frustration.frustrationScore,
+        groundednessScore: servedFromCache ? null : groundednessScore,
       },
     })
 
@@ -684,10 +814,19 @@ export async function runTutorOrchestrator(args: {
       tag: logTag,
       stage: newState.stage,
       hintsRemaining: newState.hintsRemaining,
+      hintsUsedDuringTurn: hintsUsed,
       turnNumber: newState.lastTurnNumber,
       // Session ends when the AI responds DURING the CONSOLIDATION stage (the summary
       // and reflective question are delivered in that turn), not when entering it.
       sessionComplete: state.stage === 'CONSOLIDATION',
+      visualHint: typeof extractedVisualHint === 'string' ? extractedVisualHint : null,
+      contrastiveExplanation: contrastiveArtifact ? contrastiveArtifact : activeMisconception
+        ? {
+            misconceptionId: activeMisconception.misconceptionId,
+            name: activeMisconception.name,
+            correction: activeMisconception.correction,
+          }
+        : null,
     }
 
     // Award streak credit only after the student receives CONSOLIDATION content.
@@ -714,7 +853,9 @@ export async function runTutorOrchestrator(args: {
     // Ensure we record a turn log for telemetry even on error paths.
     // Keep this best-effort so logging failures don't mask the original error.
     try {
-      await prisma.aITutorTurnLog.create({
+      const mod2 = await import('@/lib/prisma')
+      const runtimePrisma = (mod2 && (mod2.prisma as any)) || (prisma as any)
+      await runtimePrisma.aITutorTurnLog.create({
         data: {
           sessionId: args.state.sessionId,
           callType: 'tutor:teach',

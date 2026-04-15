@@ -26,8 +26,8 @@ describe('checkSessionBadges', () => {
     const sendMock = jest.fn(async () => ({ sent: true }))
 
     const prismaMock: any = {
-      userBadge: { findMany: jest.fn(async () => []) },
-      learningSession: { count: jest.fn(async () => 1) },
+      userBadge: { findMany: jest.fn(async () => []), createMany: jest.fn(async () => ({ count: 1 })) },
+      learningSession: { count: jest.fn(async () => 1), findFirst: jest.fn(async () => null) },
       badge: { upsert: jest.fn(async () => ({})) },
       user: { findUnique: jest.fn(async () => ({ name: 'Asha' })) },
       parentStudent: { findMany: jest.fn(async () => [{ parent: { id: 'p1', email: 'p@example.test', phone: null, name: 'Parent', language: 'en' } }]) },
@@ -42,6 +42,7 @@ describe('checkSessionBadges', () => {
 
     const awarded = await checkSessionBadges({ studentId: 's1', sessionId: 'sess1', currentStreak: 7, masteryAfter: 0 })
 
+    
     // Expect at least the 7-day streak to be awarded
     expect(awarded.some((b: any) => b.key === 'streak_7')).toBe(true)
     // Parent notification should be invoked

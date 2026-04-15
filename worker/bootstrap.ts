@@ -45,9 +45,11 @@ import { SM18_SCHEDULER_QUEUE_NAME, registerNightlySM18Job } from "../jobs/sm18.
 import { DIAGNOSTIC_BOOTSTRAP_QUEUE_NAME } from "../jobs/diagnosticBootstrap.js";
 import { processDiagnosticBootstrap } from "./services/diagnosticBootstrapWorker.js";
 import { WEEKLY_DIGEST_QUEUE_NAME, registerWeeklyDigestJob } from "../jobs/weeklyDigest.js";
+import { processWeeklyDigest, processParentDigest } from "./services/weeklyDigestWorker.js";
+import { SUBSCRIPTION_RENEWAL_QUEUE_NAME, registerSubscriptionRenewalJob } from "../jobs/subscriptionRenewal.js";
+import { processRenewals } from "./services/subscriptionRenewalWorker.js";
 import { PAYMENT_DUNNING_QUEUE_NAME, registerDailyDunningJob } from "../jobs/paymentDunning.js";
 import { INSTALLMENT_DUNNING_QUEUE_NAME, registerDailyInstallmentDunningJob } from "../jobs/installmentDunning.js";
-import { processWeeklyDigest, processParentDigest } from "./services/weeklyDigestWorker.js";
 import { processPaymentDunning } from "./services/paymentDunningWorker.js";
 import { processInstallmentDunning } from "./services/installmentDunningWorker.js";
 import { DISTRESS_NOTIFICATION_QUEUE_NAME } from "../jobs/distressNotification.js";
@@ -248,6 +250,13 @@ export async function bootstrapWorker() {
     { connection: redisConnection, concurrency: 1 },
   );
 
+
+  const subscriptionRenewalWorker = new Worker(
+    SUBSCRIPTION_RENEWAL_QUEUE_NAME,
+    async (_job: Job) => processRenewals(),
+    { connection: redisConnection, concurrency: 1 },
+  );
+  await registerSubscriptionRenewalJob();
 
   const diagnosticBootstrapWorker = new Worker(
     DIAGNOSTIC_BOOTSTRAP_QUEUE_NAME,

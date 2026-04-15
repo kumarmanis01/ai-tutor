@@ -2,77 +2,22 @@ export const dynamic = 'force-dynamic';
 
 /**
  * FILE OBJECTIVE:
- * - Returns per-subject average mastery for a linked student.
- * - Groups StudentTopicMastery rows by the denormalized `subject` field
- *   and computes AVG(accuracy) + topic count per group.
+ * - Returns per-subject mastery for a linked student with:
+ *   - Chapter-by-chapter breakdown (F-PAR-011 AC-01)
+ *   - Top 3 strongest / bottom 3 weakest chapters with "AI working" flag (F-PAR-011 AC-01)
+ *   - Predicted board mark range (F-PAR-011 AC-05)
+ *   - Plain-language "What this means" tooltip (F-PAR-011 AC-03)
+ *   - Predicted days to 80% readiness at current pace (F-PAR-012 AC-05)
+ *   - Anonymous peer percentile when benchmarking=true (F-PAR-011 AC-04)
  *
- * ── TABLE CHOICE: StudentTopicMastery, NOT StudentTopicProgress ─────────────
- *
- * The task originally referenced StudentTopicProgress for this query.
- * After codebase analysis, StudentTopicMastery is the correct table because:
- *
- * 1. StudentTopicProgress has NO `subject` field.
- *    Grouping by subject from StudentTopicProgress requires a 3-level join:
- *      StudentTopicProgress → TopicDef → ChapterDef → SubjectDef
- *    This join is expensive, not indexed at the join boundaries relevant here,
- *    and unnecessary given the dual-write pattern already in place.
- *
- * 2. StudentTopicMastery stores `subject` (and `chapter`) as denormalized
- *    string columns, written atomically alongside StudentTopicProgress in
- *    lib/learning/updateTopicProgress.ts. Both tables are always in sync.
- *
- * 3. StudentTopicMastery has @@index([subject, chapter]) designed for
- *    exactly this kind of subject-level grouping query.
- *
- * 4. StudentTopicMastery.accuracy is the authoritative per-topic accuracy
- *    score and is directly comparable to StudentTopicProgress.mastery
- *    (they track the same learning signal from different angles: mastery is
- *    the weighted composite; accuracy is the raw question-answer rate).
- *    For a per-subject summary shown to parents, accuracy is the right signal.
- *
- * ── QUERY PLAN ───────────────────────────────────────────────────────────────
- *
- * SQL equivalent:
- *
- *   SELECT
- *     subject,
- *     AVG(accuracy)           AS avgAccuracy,
- *     COUNT(*)                AS topicCount
- *   FROM  "StudentTopicMastery"
- *   WHERE "studentId" = $1
- *   GROUP BY subject
- *   ORDER BY subject ASC;
- *
- * Execution path (Postgres):
- *
- *   Index Scan on "StudentTopicMastery_studentId_masteryLevel_idx"
- *     → equality probe: studentId = $1       (index hit -- leading column)
- *     → heap fetch for every matched row
- *     → GROUP BY subject + AVG(accuracy)     (in-memory hash aggregate)
- *     → ORDER BY subject ASC                 (sort on aggregate output)
- *
- * The studentId probe narrows the scan to this student's rows only.
- * GROUP BY subject then runs in memory over those rows -- bounded by how
- * many topics the student has attempted (typically tens to low hundreds).
- *
- * Recommended index for optimal performance (not yet in schema):
- *
- *   @@index([studentId, subject])
- *
- *   This would let Postgres:
- *     - Probe studentId on the index.
- *     - Scan (studentId, subject) pairs in order, eliminating the sort step.
- *     - Fetch heap pages only for matched rows.
- *   Add when the table grows beyond ~1 000 rows per student or EXPLAIN ANALYZE
- *   shows a significant sort/hash-aggregate cost.
- *
- * SECURITY:
- * - Caller must be authenticated.
- * - parentId-studentId link verified (O(1) unique-index lookup) before any
- *   student data is read.
+ * LINKED UNIT TEST:
+ * - tests/unit/api/parent-subject-mastery.spec.ts
  *
  * EDIT LOG:
  * - 2026-03-08 | claude | created for Parent Progress Dashboard
+ * - 2026-04-14 | claude | chapter breakdown, predicted marks, tooltip (F-PAR-011 AC-01/03/05)
+ * - 2026-04-14 | claude | readiness prediction + peer benchmarking (F-PAR-012 AC-05, F-PAR-011 AC-04)
+ * - 2026-04-14T12:00:00Z | staff-engineer | fix: require active link; batch peer benchmarking query; correct aiWorking flag
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -81,69 +26,85 @@ import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { logger } from '@/lib/logger';
 import { formatErrorForResponse } from '@/lib/errorResponse';
+import {
+  predictMarkRange,
+  predictDaysToReadiness,
+  LOCAL_STRINGS,
+  PLATFORM_DEFAULT_GAIN_PER_SESSION,
+} from '@/lib/parent/dashboardHelpers';
 import type { AppSession } from '@/lib/types/auth';
 
 const CLASS_NAME = 'ParentSubjectMasteryAPI';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
+interface ChapterMastery {
+  chapter: string;
+  avgAccuracy: number; // 0-1
+  topicCount: number;
+  aiWorking: boolean;
+}
+
 interface SubjectMastery {
-  subject: string;    // e.g. "Mathematics"
-  avgAccuracy: number; // 0-1, rounded to 4 d.p.
-  topicCount: number;  // how many distinct topics contribute to this average
+  subject: string;
+  avgAccuracy: number;
+  topicCount: number;
+  predictedMarkRange: [number, number];
+  masteryExplanation: string;
+  chapters: ChapterMastery[];
+  topStrengths: ChapterMastery[];
+  topWeaknesses: ChapterMastery[];
+  /** Predicted days to reach 80% readiness at current pace (F-PAR-012 AC-05). null when pace unknown. */
+  predictedDaysTo80: number | null;
+  /** Predicted date string (ISO) when predictedDaysTo80 is known */
+  predictedReadyByDate: string | null;
+  /** Peer percentile (0-100): % of same-grade students with lower mastery. null when benchmarking=false */
+  peerPercentile: number | null;
 }
 
 // ── Route handler ─────────────────────────────────────────────────────────────
 
 /**
- * GET /api/parent/subject-mastery?studentId=<id>
- *
- * Response shape:
- * SubjectMastery[]  -- one entry per subject the student has attempted,
- *                     ordered alphabetically.
- *
- * Returns an empty array when the student has no mastery data yet.
+ * GET /api/parent/subject-mastery?studentId=<id>&locale=en&benchmarking=true
  */
 export async function GET(req: NextRequest) {
   const start = Date.now();
-  const METHOD_NAME = 'GET';
 
   try {
-    // ── 1. Auth ───────────────────────────────────────────────────────────────
+    // 1. Auth
     const session = (await getServerSession(authOptions)) as AppSession | null;
     if (!session?.user?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
     const parentId = session.user.id;
 
-    // ── 2. Input validation ───────────────────────────────────────────────────
+    // 2. Input
     const studentId = req.nextUrl.searchParams.get('studentId');
     if (!studentId) {
       return NextResponse.json({ error: 'studentId is required' }, { status: 400 });
     }
+    const locale = req.nextUrl.searchParams.get('locale') === 'hi' ? 'hi' : 'en';
+    const benchmarking = req.nextUrl.searchParams.get('benchmarking') === 'true';
 
-    // ── 3. Parent-student link guard ──────────────────────────────────────────
+    // 3. Parent-student link guard
     const link = await prisma.parentStudent.findUnique({
       where: { parentId_studentId: { parentId, studentId } },
       select: { status: true },
     });
-    if (!link || link.status === 'revoked') {
+    // Require an active link; pending or revoked links must not expose student mastery data.
+    if (!link || link.status !== 'active') {
       return NextResponse.json({ error: 'Student not linked' }, { status: 403 });
     }
 
-    // ── 4. Per-subject aggregate ──────────────────────────────────────────────
-    //
-    // groupBy is Prisma's typed aggregate API -- generates a single SQL GROUP BY
-    // query. No raw SQL needed here because the grouping key (`subject`) is a
-    // plain string column, not a computed expression.
-    //
-    // Prisma generates:
-    //   SELECT subject, AVG(accuracy), COUNT(*)
-    //   FROM "StudentTopicMastery"
-    //   WHERE "studentId" = $1
-    //   GROUP BY subject
-    //   ORDER BY subject ASC
-    const rows = await prisma.studentTopicMastery.groupBy({
+    // 4. Student grade (used in tooltip copy and peer benchmarking)
+    const student = await prisma.user.findUnique({
+      where: { id: studentId },
+      select: { grade: true },
+    });
+    const gradeLabel = student?.grade ? `Class ${student.grade}` : 'their class';
+
+    // 5. Subject-level aggregate
+    const subjectRows = await prisma.studentTopicMastery.groupBy({
       by: ['subject'],
       where: { studentId },
       _avg: { accuracy: true },
@@ -151,35 +112,163 @@ export async function GET(req: NextRequest) {
       orderBy: { subject: 'asc' },
     });
 
-    // ── 5. Shape response ─────────────────────────────────────────────────────
-    const subjectMastery: SubjectMastery[] = rows.map((r) => ({
-      subject:     r.subject,
-      // _avg.accuracy is null when there are no rows -- guard with ?? 0
-      avgAccuracy: Math.round((r._avg.accuracy ?? 0) * 10_000) / 10_000,
-      topicCount:  r._count.topicId,
-    }));
+    if (subjectRows.length === 0) {
+      logger.info('Parent subject mastery: no data yet', { className: CLASS_NAME, parentId, studentId });
+      return NextResponse.json([]);
+    }
 
-    const response = NextResponse.json(subjectMastery);
+    // 6. Chapter-level aggregate
+    const chapterRows = await prisma.studentTopicMastery.groupBy({
+      by: ['subject', 'chapter'],
+      where: { studentId },
+      _avg: { accuracy: true },
+      _count: { topicId: true },
+    });
 
+    // 7. Active UPCOMING plan chapters (for aiWorking flag)
+    const upcomingItems = await prisma.learningPlanItem.findMany({
+      where: { plan: { studentId }, status: 'UPCOMING' },
+      include: { concept: { select: { chapter: true } } },
+    });
+    const activeChapterNames = new Set<string>(
+      upcomingItems
+        .map((i) => (i.concept as any)?.chapter as string | undefined)
+        .filter((c): c is string => Boolean(c))
+    );
+
+    // 8. Readiness status per subject (for pace prediction, F-PAR-012 AC-05)
+    const readinessRows = await prisma.readinessStatus.findMany({
+      where: { studentId },
+      select: { subject: true, readinessScore: true },
+    });
+    const readinessBySubject = new Map(readinessRows.map((r) => [r.subject, r.readinessScore]));
+
+    // 9. Average weekly sessions over last 4 weeks (for pace prediction)
+    const fourWeeksAgo = new Date(Date.now() - 28 * 24 * 60 * 60 * 1000);
+    const weeklySummaries = await prisma.weeklyStudentSummary.findMany({
+      where: { studentId, weekStart: { gte: fourWeeksAgo } },
+      select: { sessionsCount: true },
+    });
+    const totalSessions = weeklySummaries.reduce((s, w) => s + w.sessionsCount, 0);
+    // Use number of completed weeks (1-4) as denominator so early students get fair estimate
+    const completedWeeks = Math.max(1, weeklySummaries.length);
+    const avgWeeklySessions = totalSessions / completedWeeks;
+
+    // 10. Peer benchmarking (F-PAR-011 AC-04) -- only when opt-in requested
+    //     Count students in same grade with lower avg accuracy per subject.
+    //     Done in one query per subject when benchmarking=true.
+    const peerPercentileBySubject = new Map<string, number>();
+    if (benchmarking && student?.grade) {
+      // Optimize benchmarking by fetching peer averages for all subjects in a single query
+      const subjects = subjectRows.map((sr) => sr.subject);
+      if (subjects.length > 0) {
+        const peers = await prisma.studentTopicMastery.groupBy({
+          by: ['subject', 'studentId'],
+          where: {
+            subject: { in: subjects },
+            student: { grade: student.grade },
+          },
+          _avg: { accuracy: true },
+        });
+
+        const peersBySubject = new Map<string, number[]>();
+        for (const p of peers) {
+          const arr = peersBySubject.get(p.subject) ?? [];
+          arr.push(p._avg.accuracy ?? 0);
+          peersBySubject.set(p.subject, arr);
+        }
+
+        for (const sr of subjectRows) {
+          const subjectAvg = sr._avg.accuracy ?? 0;
+          const arr = peersBySubject.get(sr.subject) ?? [];
+          if (arr.length > 1) {
+            const below = arr.filter((a) => a < subjectAvg).length;
+            peerPercentileBySubject.set(sr.subject, Math.round((below / (arr.length - 1)) * 100));
+          }
+        }
+      }
+    }
+
+    // 11. Group chapter rows by subject
+    const chaptersBySubject = new Map<string, ChapterMastery[]>();
+    for (const row of chapterRows) {
+      const cm: ChapterMastery = {
+        chapter: row.chapter ?? 'Unknown',
+        avgAccuracy: Math.round((row._avg.accuracy ?? 0) * 10_000) / 10_000,
+        topicCount: row._count.topicId,
+        aiWorking: activeChapterNames.has(row.chapter ?? ''),
+      };
+      const arr = chaptersBySubject.get(row.subject) ?? [];
+      arr.push(cm);
+      chaptersBySubject.set(row.subject, arr);
+    }
+
+    // 12. Build response
+    const strings = LOCAL_STRINGS[locale] ?? LOCAL_STRINGS['en'];
+    const now = new Date();
+
+    const result: SubjectMastery[] = subjectRows.map((r) => {
+      const avgAccuracy = Math.round((r._avg.accuracy ?? 0) * 10_000) / 10_000;
+      const masteryPct = Math.round(avgAccuracy * 100);
+      const predictedMarkRange = predictMarkRange(masteryPct);
+
+      const chapters = (chaptersBySubject.get(r.subject) ?? []).sort(
+        (a, b) => b.avgAccuracy - a.avgAccuracy
+      );
+      const topStrengths = chapters.slice(0, 3);
+      const topWeaknesses = chapters
+        .slice()
+        .sort((a, b) => a.avgAccuracy - b.avgAccuracy)
+        .slice(0, 3)
+        .map((c) => ({ ...c, aiWorking: activeChapterNames.has(c.chapter) }));
+
+      const masteryExplanation =
+        `${strings.whatThisMeansPrefix} ${masteryPct}% mastery means your child has solidly ` +
+        `learned ${masteryPct}% of the ${gradeLabel} ${r.subject} syllabus.`;
+
+      // Readiness pace prediction (F-PAR-012 AC-05)
+      const currentReadiness = readinessBySubject.get(r.subject) ?? masteryPct;
+      const prediction = predictDaysToReadiness(
+        currentReadiness,
+        80,
+        avgWeeklySessions,
+        PLATFORM_DEFAULT_GAIN_PER_SESSION,
+      );
+
+      let predictedDaysTo80: number | null = null;
+      let predictedReadyByDate: string | null = null;
+      if (prediction.feasible && prediction.estimatedDays !== null) {
+        predictedDaysTo80 = prediction.estimatedDays;
+        const targetDate = new Date(now.getTime() + predictedDaysTo80 * 24 * 60 * 60 * 1000);
+        predictedReadyByDate = targetDate.toISOString().slice(0, 10);
+      }
+
+      return {
+        subject: r.subject,
+        avgAccuracy,
+        topicCount: r._count.topicId,
+        predictedMarkRange,
+        masteryExplanation,
+        chapters,
+        topStrengths,
+        topWeaknesses,
+        predictedDaysTo80,
+        predictedReadyByDate,
+        peerPercentile: benchmarking ? (peerPercentileBySubject.get(r.subject) ?? null) : null,
+      };
+    });
+
+    const response = NextResponse.json(result);
     logger.info('Parent subject mastery fetched', {
       className: CLASS_NAME,
-      methodName: METHOD_NAME,
       parentId,
       studentId,
-      subjectCount: subjectMastery.length,
+      subjectCount: result.length,
     });
-
-    logger.logAPI(req, response, { className: CLASS_NAME, methodName: METHOD_NAME }, start);
+    logger.logAPI(req, response, { className: CLASS_NAME, methodName: 'GET' }, start);
     return response;
   } catch (error) {
-    logger.error('Failed to fetch parent subject mastery', {
-      className: CLASS_NAME,
-      methodName: METHOD_NAME,
-      error,
-    });
-    return NextResponse.json(
-      { error: formatErrorForResponse(error) },
-      { status: 500 },
-    );
+    logger.error('Failed to fetch parent subject mastery', { className: CLASS_NAME, error });
+    return NextResponse.json({ error: formatErrorForResponse(error) }, { status: 500 });
   }
 }

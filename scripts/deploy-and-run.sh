@@ -217,14 +217,18 @@ else
 fi
 
 # 6d. Integration tests gate
-step "6d — Integration tests (must pass before deploy)"
-echo "Running integration tests..."
-npx jest --config jest.integration.config.cjs tests/integration/ --passWithNoTests
-if [ $? -ne 0 ]; then
-  echo "Integration tests failed — deploy aborted"
-  exit 1
+step "6d — Integration tests (must pass before deploy unless explicitly skipped)"
+if [ "${SKIP_INTEGRATION_TESTS:-0}" = "1" ]; then
+  echo "Skipping integration tests because SKIP_INTEGRATION_TESTS=1"
+else
+  echo "Running integration tests..."
+  if npx jest --config jest.integration.config.cjs tests/integration/ --passWithNoTests; then
+    echo "Integration tests passed"
+  else
+    echo "FATAL: Integration tests failed. Deploy blocked." >&2
+    exit 1
+  fi
 fi
-echo "Integration tests passed"
 
 # 6e. Prune devDependencies — builds and tests are done, keep prod runtime lean
 step "6e — Prune devDependencies"

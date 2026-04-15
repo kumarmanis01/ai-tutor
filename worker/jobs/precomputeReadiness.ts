@@ -81,16 +81,43 @@ export async function precomputeReadiness(): Promise<{ students: number; scores:
     if (subjectIds.length === 0) continue
 
     processedStudents++
+
+    // Fetch parent links once per student (not once per subject)
+    let parentLinks: Array<{ parent: { id: string; email: string | null; phone: string | null; name: string | null; language: string | null } }> = []
+    try {
+      parentLinks = await prisma.parentStudent.findMany({
+        where: { studentId: user.id, status: 'active' },
+        select: { parent: { select: { id: true, email: true, phone: true, name: true, language: true } } },
+      })
+    } catch (err) {
+      logger.warn('precomputeReadiness.parentLinksFailed', { studentId: user.id, error: String(err) })
+    }
+
     for (const subjectId of subjectIds) {
       try {
         const readiness = await computeReadinessScore(user.id, subjectId)
         totalScores++
 
+        // Persist a daily snapshot of readiness in Redis so downstream
+        // workers (e.g. readiness-drop detection) can compare history.
+        try {
+          const redis = getRedis()
+          if (redis) {
+            const dateLabel = new Date().toISOString().slice(0, 10) // YYYY-MM-DD
+            const key = `readiness:history:${user.id}:${subjectId}:${dateLabel}`
+            // Keep history for 120 days
+            await redis.set(key, String(Math.round(readiness.score)), 'EX', 120 * 24 * 60 * 60)
+          }
+        } catch (e) {
+          // best-effort, do not fail the precompute job
+          logger.error('precomputeReadiness.redisSnapshotFailed', { studentId: user.id, subjectId, err: String(e) })
+        }
+
         const subjectName = subjectNameById.get(subjectId) ?? subjectId
         // Fire readiness milestone push if score crosses 50/70/90 for the first time
-        await maybeFireReadinessMilestone(user.id, subjectId, subjectName, readiness.score)
+        await maybeFireReadinessMilestone(user.id, subjectId, subjectName, readiness.score, parentLinks)
         // AC-05 (F-STU-023): fire drop alert when score drops > 10 points
-        await maybeFireReadinessDrop(user.id, subjectId, subjectName, readiness.score)
+        await maybeFireReadinessDrop(user.id, subjectId, subjectName, readiness.score, parentLinks)
       } catch (err) {
         logger.error('precomputeReadiness.scoreError', {
           studentId: user.id,
@@ -108,12 +135,14 @@ export async function precomputeReadiness(): Promise<{ students: number; scores:
  * AC-05 (F-STU-023): Compare current readiness score against stored previous score.
  * If the drop exceeds READINESS_DROP_THRESHOLD, fire a push notification.
  * Stores the new score with an 8-day TTL so daily runs can detect the delta.
+ * parentLinks are pre-fetched once per student by the caller.
  */
 async function maybeFireReadinessDrop(
   studentId: string,
   subjectId: string,
   subjectName: string,
   score: number,
+  parentLinks: Array<{ parent: { id: string; email: string | null; phone: string | null; name: string | null; language: string | null } }>,
 ): Promise<void> {
   try {
     const redis = getRedis()
@@ -136,16 +165,11 @@ async function maybeFireReadinessDrop(
         event: 'readiness_drop_alert',
         context: { studentId, subjectId, prevScore, newScore: score, dropPoints },
       })
-      // Notify parents about readiness drop (best-effort)
-      try {
-        const parentLinks = await prisma.parentStudent.findMany({
-          where: { studentId, status: 'active' },
-          include: { parent: { select: { id: true, email: true, phone: true, name: true, language: true } } },
-        })
-
-        if (parentLinks.length > 0) {
-          const subject = `Readiness dropped: ${subjectName} — ${dropPoints} points`
-          const html = `<p>Hi,</p><p>Your child\'s readiness score for <strong>${subjectName}</strong> dropped by ${dropPoints} points. A short review session can help recover progress.</p>`
+      // Notify parents about readiness drop (best-effort, using pre-fetched links)
+      if (parentLinks.length > 0) {
+        try {
+          const subject = `Readiness dropped: ${subjectName} -- ${dropPoints} points`
+          const html = `<p>Hi,</p><p>Your child's readiness score for <strong>${subjectName}</strong> dropped by ${dropPoints} points. A short review session can help recover progress.</p>`
           const sends = parentLinks.map((pl) =>
             sendParentMilestoneNotification(pl.parent.id, {
               email: pl.parent.email ?? undefined,
@@ -156,9 +180,9 @@ async function maybeFireReadinessDrop(
             }),
           )
           void Promise.allSettled(sends)
+        } catch (err) {
+          logger.warn('precomputeReadiness.parentNotify.drop failed', { studentId, subjectId, error: String(err) })
         }
-      } catch (err) {
-        logger.warn('precomputeReadiness.parentNotify.drop failed', { studentId, subjectId, error: String(err) })
       }
     }
   } catch {
@@ -169,12 +193,14 @@ async function maybeFireReadinessDrop(
 /**
  * Fire a readiness milestone push once per threshold per student per subject.
  * Uses Redis key readiness:notified:{studentId}:{subjectId}:{threshold} to prevent duplicates.
+ * parentLinks are pre-fetched once per student by the caller.
  */
 async function maybeFireReadinessMilestone(
   studentId: string,
   subjectId: string,
   subjectName: string,
   score: number,
+  parentLinks: Array<{ parent: { id: string; email: string | null; phone: string | null; name: string | null; language: string | null } }>,
 ): Promise<void> {
   try {
     const redis = getRedis()
@@ -187,15 +213,10 @@ async function maybeFireReadinessMilestone(
       if (alreadySent) continue
       await redis.set(key, '1', 'EX', 365 * 24 * 60 * 60) // 1 year TTL
       await sendPushSafe(studentId, PUSH_NOTIFICATIONS.readiness_milestone(score, subjectName))
-      // Notify parents about readiness milestone (best-effort)
-      try {
-        const parentLinks = await prisma.parentStudent.findMany({
-          where: { studentId, status: 'active' },
-          include: { parent: { select: { id: true, email: true, phone: true, name: true, language: true } } },
-        })
-
-        if (parentLinks.length > 0) {
-          const subject = `Readiness milestone: ${subjectName} — ${score}%`
+      // Notify parents about readiness milestone (best-effort, using pre-fetched links)
+      if (parentLinks.length > 0) {
+        try {
+          const subject = `Readiness milestone: ${subjectName} -- ${score}%`
           const html = `<p>Hi,</p><p>Your child has reached a readiness score of <strong>${score}%</strong> in <strong>${subjectName}</strong>. Keep up the great work!</p>`
           const sends = parentLinks.map((pl) =>
             sendParentMilestoneNotification(pl.parent.id, {
@@ -207,9 +228,9 @@ async function maybeFireReadinessMilestone(
             }),
           )
           void Promise.allSettled(sends)
+        } catch (err) {
+          logger.warn('precomputeReadiness.parentNotify.milestone failed', { studentId, subjectId, threshold, error: String(err) })
         }
-      } catch (err) {
-        logger.warn('precomputeReadiness.parentNotify.milestone failed', { studentId, subjectId, threshold, error: String(err) })
       }
       break // Only send the highest newly-crossed threshold
     }

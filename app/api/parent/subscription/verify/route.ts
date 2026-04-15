@@ -18,6 +18,7 @@
  *
  * EDIT LOG:
  * - 2026-04-08T00:00:00Z | copilot | created parent verify endpoint
+ * - 2026-04-14T00:00:00Z | copilot | add timeout:30000/maxWait:10000 to $transaction to prevent P2028 on Neon
  */
 
 import { NextResponse } from 'next/server';
@@ -34,6 +35,7 @@ import type { PlanId } from '@/lib/subscription/plans';
 import { createInvoiceForPayment } from '@/lib/invoices';
 import Razorpay from 'razorpay';
 import computeProratedCredit from '@/lib/subscription/proration';
+import { recordPaymentEvent } from '@/lib/payments/audit';
 
 function verifySignature(orderId: string, paymentId: string, signature: string): boolean {
   const secret = process.env.RAZORPAY_KEY_SECRET;
@@ -87,7 +89,7 @@ export async function POST(req: Request) {
   }
 
   // Cross-check order belongs to this parent
-  const order = await prisma.paymentOrder.findUnique({ where: { razorpayOrderId: orderId }, select: { studentId: true, status: true, planMonths: true, providerIdempotencyKey: true } });
+  const order = await prisma.paymentOrder.findUnique({ where: { razorpayOrderId: orderId }, select: { studentId: true, status: true, planMonths: true, providerIdempotencyKey: true, amount: true } });
   if (!order || order.studentId !== userId) {
     return NextResponse.json({ error: 'Order not found' }, { status: 403 });
   }
@@ -143,24 +145,24 @@ export async function POST(req: Request) {
         });
 
         // Audit event
-        await recordPaymentEvent(tx, { paymentId: payment.id, userId, provider: 'razorpay', providerIdempotencyKey: order.providerIdempotencyKey ?? undefined, transactionId: paymentId, orderId, eventType: 'payment.parent_subscription_verified', amount: order.amount, status: 'success', payload: { planId, childIds } })
+        await recordPaymentEvent(tx, { paymentId: payment.id, userId, provider: 'razorpay', providerIdempotencyKey: order.providerIdempotencyKey ?? undefined, transactionId: paymentId, orderId, eventType: 'payment.parent_subscription_verified', amount: order.amount, status: 'success', payload: { planId, childIds } });
 
         // Compute any prorated credit from existing active subscription and carry forward
-        let carryForwardCredit = 0
+        let carryForwardCredit = 0;
         try {
-          const existing = await tx.subscription.findFirst({ where: { userId, active: true }, select: { startDate: true, endDate: true, paymentId: true, creditBalance: true } })
+          const existing = await tx.subscription.findFirst({ where: { userId, active: true }, select: { startDate: true, endDate: true, paymentId: true, creditBalance: true } });
           if (existing) {
-            const paid = existing.paymentId ? await tx.payment.findUnique({ where: { id: existing.paymentId }, select: { amount: true } }) : null
-            const paidAmount = paid?.amount ?? 0
-            const proration = computeProratedCredit(existing.startDate!, existing.endDate!, paidAmount)
-            const existingCredit = existing.creditBalance ?? 0
-            carryForwardCredit = (existingCredit || 0) + (proration || 0)
+            const paid = existing.paymentId ? await tx.payment.findUnique({ where: { id: existing.paymentId }, select: { amount: true } }) : null;
+            const paidAmount = paid?.amount ?? 0;
+            const proration = computeProratedCredit(existing.startDate!, existing.endDate!, paidAmount);
+            const existingCredit = existing.creditBalance ?? 0;
+            carryForwardCredit = (existingCredit || 0) + (proration || 0);
             // Deactivate existing
-            await tx.subscription.updateMany({ where: { userId, active: true }, data: { active: false } })
+            await tx.subscription.updateMany({ where: { userId, active: true }, data: { active: false } });
           }
         } catch (err) {
-          logger.warn('parent.verify proration failed', { event: 'parent.subscription.verify.proration', context: { userId, orderId }, err })
-          carryForwardCredit = 0
+          logger.warn('parent.verify proration failed', { event: 'parent.subscription.verify.proration', context: { userId, orderId }, err });
+          carryForwardCredit = 0;
         }
 
         // Create parent subscription record and capture it for installment creation
@@ -185,7 +187,7 @@ export async function POST(req: Request) {
             await tx.user.update({ where: { id: sid }, data: { subscriptionStatus: 'active', subscriptionExpiry: expiry } });
             await tx.freeTierUsage
               .upsert({ where: { studentId: sid }, update: { periodStart: now, sessionsUsed: 0 }, create: { studentId: sid, periodStart: now, sessionsUsed: 0 } })
-              .catch((err) => { logger.warn('freeTierUsage.upsert failed (parent.verify)', { event: 'parent.subscription.verify.upsert', context: { sid }, error: String(err) }) });
+              .catch((err) => { logger.warn('freeTierUsage.upsert failed (parent.verify)', { event: 'parent.subscription.verify.upsert', context: { sid }, error: String(err) }); });
           }
         }
 
@@ -195,7 +197,7 @@ export async function POST(req: Request) {
           if (months && months > 1) {
             const totalPaise = order.amount || 0;
             const base = Math.floor(totalPaise / months);
-            let remainder = totalPaise - base * months;
+            const remainder = totalPaise - base * months;
             for (let i = 0; i < months; i++) {
               const amount = base + (i === months - 1 ? remainder : 0);
               const due = new Date(now);
@@ -237,7 +239,7 @@ export async function POST(req: Request) {
         }
 
         return { paymentId: payment.id, subscriptionId: createdSub.id };
-      });
+      }, { timeout: 30000, maxWait: 10000 });
     } catch (err) {
       logger.error('Failed to activate parent subscription', { event: 'parent.subscription.verify.activate_error', context: { userId, orderId }, err });
       return NextResponse.json({ error: 'Could not activate subscription' }, { status: 500 });

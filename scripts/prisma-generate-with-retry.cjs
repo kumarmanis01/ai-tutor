@@ -32,6 +32,7 @@
 
 const { spawnSync } = require('child_process');
 const path = require('path');
+const fs = require('fs');
 
 function sleep(ms) {
   return new Promise((r) => setTimeout(r, ms));
@@ -46,6 +47,28 @@ function sleep(ms) {
 const PRISMA_JS = path.resolve(__dirname, '..', 'node_modules', 'prisma', 'build', 'index.js');
 
 function runOnce() {
+  // Attempt to clean up leftover Prisma tmp files which can cause EPERM on Windows
+  try {
+    const prismaClientDir = path.resolve(__dirname, '..', 'node_modules', '.prisma', 'client');
+    if (fs.existsSync(prismaClientDir)) {
+      const files = fs.readdirSync(prismaClientDir);
+      for (const f of files) {
+        // Match temporary prisma engine files like query_engine-windows.dll.node.tmp12345
+        if (/\.tmp/.test(f)) {
+          const fp = path.join(prismaClientDir, f);
+          try {
+            fs.unlinkSync(fp);
+            console.error(`[prisma-generate] removed stale tmp file: ${fp}`);
+          } catch (e) {
+            // Be lenient; file may be in use. Log and continue.
+            console.error(`[prisma-generate] could not remove tmp file ${fp}: ${String(e)}`);
+          }
+        }
+      }
+    }
+  } catch (e) {
+    console.error('[prisma-generate] cleanup warning:', String(e));
+  }
   const nodeExe = process.execPath || 'node';
   const res = spawnSync(nodeExe, [PRISMA_JS, 'generate'], {
     stdio: 'inherit',

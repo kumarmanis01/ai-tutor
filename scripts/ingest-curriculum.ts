@@ -11,6 +11,7 @@
  *
  * EDIT LOG:
  * - 2026-04-08T00:00:00Z | git-user | refactor for dependency-injection, add tests, remove debug logs
+ * - 2026-04-14T00:00:00Z | copilot | write contentHash even when embedding fails for idempotency correctness
  */
 
 import { createHash } from 'crypto'
@@ -105,6 +106,27 @@ export async function main(prismaClient = prisma) {
       const embedding = embeddings[j]
 
       if (!embedding) {
+        // Persist the content hash even when embedding fails so idempotency
+        // works on subsequent runs. The chunk stays in chunksNeedingEmbed (NULL embedding)
+        // and the next run will retry the embed without treating the content as "changed".
+        try {
+          if (chunk.needsVersionBump) {
+            await prismaClient.$executeRawUnsafe(
+              `UPDATE "CurriculumChunk" SET "contentHash" = $1, version = version + 1, "updatedAt" = NOW() WHERE id = $2`,
+              chunk.newHash,
+              chunk.id,
+            )
+            chunksUpdated++
+          } else {
+            await prismaClient.$executeRawUnsafe(
+              `UPDATE "CurriculumChunk" SET "contentHash" = $1, "updatedAt" = NOW() WHERE id = $2`,
+              chunk.newHash,
+              chunk.id,
+            )
+          }
+        } catch (hashErr) {
+          // Non-fatal: hash write failed on top of embedding failure
+        }
         console.error(`[ingest] ✗ Failed to embed chunk ${chunk.id}`)
         errors++
         errorDetails.push({ id: chunk.id, error: 'embedding_failed' })
@@ -174,17 +196,42 @@ export async function writeRunLog(opts: {
 }) {
   try {
     const client = (opts as any)._prismaClient ?? prisma
-    await client.ingestRunLog.create({
+    const duration = Date.now() - opts.startMs
+    const created = await client.ingestRunLog.create({
       data: {
         chunksCreated: opts.chunksCreated,
         chunksUpdated: opts.chunksUpdated,
         embeddingsGenerated: opts.embeddingsGenerated,
         errors: opts.errors,
-        durationMs: Date.now() - opts.startMs,
+        durationMs: duration,
         fileSource: opts.fileSource ?? 'cli',
         errorDetails: opts.errorDetails ? (opts.errorDetails as object) : undefined,
       },
     })
+
+    // Emit a lightweight analytics event so ingestion runs appear in analytics.events
+    try {
+      await client.analyticsEvent.create({
+        data: {
+          eventType: 'ingest_run',
+          userId: null,
+          courseId: null,
+          lessonIdx: null,
+          metadata: {
+            runId: created.id,
+            chunksCreated: opts.chunksCreated,
+            chunksUpdated: opts.chunksUpdated,
+            embeddingsGenerated: opts.embeddingsGenerated,
+            errors: opts.errors,
+            durationMs: duration,
+            fileSource: opts.fileSource ?? 'cli',
+            errorDetails: opts.errorDetails ? opts.errorDetails : undefined,
+          },
+        },
+      })
+    } catch (e) {
+      console.warn('[ingest] Could not write analyticsEvent for ingest_run:', e)
+    }
   } catch (err) {
     console.warn('[ingest] Could not write IngestRunLog:', err)
   }

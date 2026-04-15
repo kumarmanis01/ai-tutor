@@ -37,6 +37,10 @@ export async function GET(
           title: true,
           totalMarks: true,
           durationMin: true,
+          grade: true,
+          board: true,
+          version: true,
+          subjectId: true,
           subject: { select: { name: true } },
           sections: {
             orderBy: { order: 'asc' },
@@ -116,12 +120,44 @@ export async function GET(
     subjectName: attempt.mockExam.subject.name,
     totalMarks: attempt.mockExam.totalMarks,
     scorePercent: attempt.scorePercent,
+    // Recompute cohort size and mark percentile as reliable only when cohort is large enough.
+    // This protects students from misleading percentiles when very few attempts exist.
     percentile: attempt.percentile,
+    // include cohortCount and a reliability flag in the report payload
+    // (consumer UI may override displayed percentile when unreliable)
+    cohortCount: undefined as number | undefined,
+    percentileReliable: undefined as boolean | undefined,
     priorityPlan: attempt.priorityPlan,
     startedAt: attempt.startedAt,
     finishedAt: attempt.finishedAt,
     sections: sectionsDetail,
   };
+
+  // Compute cohortCount to inform UI about percentile reliability
+  try {
+    const MIN_COHORT = Number(process.env.MOCK_COHORT_MIN ?? 10);
+    const windowStart = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000);
+    const cohortCount = await prisma.mockExamAttempt.count({
+      where: {
+        finishedAt: { not: null, gte: windowStart },
+        mockExam: {
+          subjectId: attempt.mockExam.subjectId,
+          grade: attempt.mockExam.grade,
+          board: attempt.mockExam.board,
+          version: attempt.mockExam.version,
+        },
+      },
+    });
+    const percentileReliable = cohortCount >= MIN_COHORT && typeof attempt.percentile === 'number';
+    (payload as any).cohortCount = cohortCount;
+    (payload as any).percentileReliable = percentileReliable;
+    if (!percentileReliable) {
+      // Hide percentile when not reliable
+      (payload as any).percentile = null;
+    }
+  } catch (e) {
+    // best-effort; if counting fails, leave cohortCount/percentileReliable undefined
+  }
 
   const res = NextResponse.json(payload);
   logger.logAPI(req, res, { className: 'MockReportAPI', methodName: 'GET' }, start);

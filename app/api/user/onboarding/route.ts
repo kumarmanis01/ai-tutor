@@ -56,6 +56,8 @@ export async function POST(req: NextRequest) {
     const phone = rawPhone ? rawPhone.replace(/[^0-9+]/g, '') : undefined;
     const parentEmailRaw = typeof body.parent_email === 'string' ? body.parent_email.trim() : (typeof body.parentEmail === 'string' ? body.parentEmail.trim() : undefined);
     const parentEmail = parentEmailRaw && parentEmailRaw.includes('@') ? parentEmailRaw : undefined;
+    const schoolNameRaw = typeof body.school_name === 'string' ? body.school_name.trim() : undefined;
+    const schoolName = schoolNameRaw && schoolNameRaw.length > 0 ? schoolNameRaw : undefined;
 
     // Do not create users in onboarding. If there's no session user id, we will return 401 below.
 
@@ -72,6 +74,8 @@ export async function POST(req: NextRequest) {
     if (!preferredLanguage || String(preferredLanguage).trim() === '') fieldErrors.preferred_language = 'Preferred language is required';
     if (!subjects || subjects.length === 0) fieldErrors.subjects = 'Select at least 1 subject';
     if (subjects && subjects.length > 6) fieldErrors.subjects = 'You can select up to 6 subjects';
+    // Validate optional school name: trim already applied above; enforce max length
+    if (schoolName && schoolName.length > 120) fieldErrors.school_name = 'School name must be 120 characters or fewer';
     // Parent email is collected in a separate post-onboarding step -- not required here.
     // Under-DPDP_MINOR_AGE handling sets accountStatus below after the DB save.
     if (Object.keys(fieldErrors).length) {
@@ -129,8 +133,13 @@ export async function POST(req: NextRequest) {
     if (preferredLanguage) updates.language = preferredLanguage;
     if (token) updates.lastWidgetToken = token;
     if (parentEmail !== undefined) updates.parentEmail = parentEmail || null;
+    if (schoolName !== undefined) updates.schoolName = schoolName;
 
-    logger.info('/api/user/onboarding userId and updates', { className: 'api.user.onboarding', methodName: 'POST', userId, updates });
+    // Avoid logging user-supplied free-text (school names) in plain logs.
+    // Mask schoolName so operator logs don't retain school identifiers.
+    const maskedUpdates = { ...updates } as any;
+    if (maskedUpdates.schoolName !== undefined) maskedUpdates.schoolName = '***REDACTED***';
+    logger.info('/api/user/onboarding userId and updates', { className: 'api.user.onboarding', methodName: 'POST', userId, updates: maskedUpdates });
     let updatedUser;
     try {
       // First, ensure the user exists; if not, try to resolve via email or phone (without creating)

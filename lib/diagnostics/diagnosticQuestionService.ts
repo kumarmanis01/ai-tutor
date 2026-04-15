@@ -83,13 +83,25 @@
   }
 
   async function getCurriculumTopics(params: GenerateDiagnosticTestParams) {
-    const subject = await prisma.subjectDef.findFirst({
+    // Explicit shape of the selected Subject with nested chapters/topics
+    type SubjectWithChapters = {
+      id: string;
+      name: string;
+      chapters: {
+        id: string;
+        name: string;
+        order: number;
+        topics: { id: string; name: string }[];
+      }[];
+    };
+
+      const subject = (await prisma.subjectDef.findFirst({
       where: {
         slug: params.subjectSlug,
         lifecycle: 'active',
         class: {
-          lifecycle: 'active',
-          grade: params.grade,
+            lifecycle: 'active',
+            grade: Number(params.grade),
           board: {
             lifecycle: 'active',
             slug: { equals: params.boardSlug, mode: 'insensitive' },
@@ -114,7 +126,7 @@
           },
         },
       },
-    });
+      })) as SubjectWithChapters | null;
 
     if (!subject) {
       throw new Error(

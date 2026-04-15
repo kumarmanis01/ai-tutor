@@ -6,7 +6,7 @@
  */
 import React from 'react'
 import { prisma } from '@/lib/prisma'
-import { AdminTopbar } from '@/components/admin/AdminTopbar'
+import { AdminTopbar } from '../../../components/admin/AdminTopbar'
 import { SafetyAlertList, type SafetyAlertData } from './SafetyAlertList'
 
 export const dynamic = 'force-dynamic'
