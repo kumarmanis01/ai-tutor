@@ -7,6 +7,7 @@
  *
  * LINKED UNIT TEST:
  * - tests/unit/services/tutor/orchestrator.errorPaths.test.ts
+ * - tests/unit/services/tutor/turn.spec.ts
  *
  * COPILOT INSTRUCTIONS FOLLOWED:
  * - .github/copilot-instructions.md
@@ -16,6 +17,7 @@
  * - 2026-04-13T00:00:00Z | copilot | feat(F-STU-011): session-level explainStyle support
  * - 2026-04-15T00:00:00Z | copilot | fix(F-STU-023): wire mastery snapshot into masteryBrief prompting
  * - 2026-04-15T12:34:00Z | copilot | fix(F-STU-023): tighten conceptState typing; use optional chaining for masteryBrief computation
+ * - 2026-04-15T12:50:00Z | copilot | refactor(F-STU-023): computeMasteryBrief returns concise tokens for Vidya system prompt
  * - 2026-04-15T00:30:00Z | copilot | fix(TEST): avoid long-running legacy prisma transaction by racing with timeout
  */
 
@@ -210,12 +212,15 @@ export async function setTutorSession(state: TutorSessionState): Promise<void> {
  * no prior StudentConceptState exists (first-time learner).
  */
 export function computeMasteryBrief(score: number | null | undefined): string {
-  if (score == null) return 'no prior exposure to this concept'
-  if (score < 0.3) return 'limited exposure to this concept'
-  if (score < 0.5) return 'developing understanding, some gaps remain'
-  if (score < 0.7) return 'moderate grasp, working on depth'
-  if (score < 0.9) return 'strong understanding of this concept'
-  return 'near mastery of this concept'
+  // Use short, stable tokens for injection into the system prompt so the
+  // system layer can reliably pattern-match and keep the prompt compact.
+  // The ranges are intentionally coarse and deterministic.
+  if (score == null) return 'mastery_context_not_yet_wired'
+  if (score >= 0.85) return 'mastered'
+  if (score >= 0.65) return 'strong_understanding'
+  if (score >= 0.4) return 'partial_understanding'
+  if (score >= 0.15) return 'needs_practice'
+  return 'novice'
 }
 
 /**
