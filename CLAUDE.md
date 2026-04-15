@@ -7,7 +7,7 @@
 ## PROJECT CONTEXT
 
 AI-powered home tutoring platform for Indian students (CBSE/ICSE Grades 6–12).
-AI tutor persona: Vidya. Price point: ₹99/month.
+AI tutor persona: Vidya. Price point: ₹399/month.
 North star metric: Weekly Active Learning Sessions > 5 per paid student.
 Target device: budget Android (360px, 4G, 2GB RAM). Desktop is secondary.
 

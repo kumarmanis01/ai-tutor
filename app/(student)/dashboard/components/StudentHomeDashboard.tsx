@@ -14,6 +14,7 @@
  * - 2025-01-23 | copilot | refactored for responsive design - mobile + desktop viewports
  * - 2025-01-22 | copilot | optimized for mobile-first with streamlined UX
  * - 2026-04-15T00:30:00Z | staff-engineer | removed page-level TopBar; use global Topbar in student layout
+ * - 2026-04-15T12:00:00Z | copilot | remove unused studentName (lint fix)
  */
 import React, { useState, useEffect, useCallback } from 'react';
 // TopBar removed in favor of global `components/student/layout/Topbar.tsx`.
@@ -37,7 +38,6 @@ const StudentHomeDashboard: React.FC<StudentHomeDashboardProps> = () => {
   const [activeTab, setActiveTab] = useState<TabId>('home');
   // Chat state removed for Home -- chat remains available in dedicated areas
   const { data: profile, loading } = useCurrentUser();
-  const studentName = profile?.name ?? 'Student';
   const { startLoading, stopLoading } = useGlobalLoader();
 
   // Read tab from URL search params (e.g. /dashboard?tab=notes&noteId=xxx)

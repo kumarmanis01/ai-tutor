@@ -1914,7 +1914,7 @@ FreemiumUpgradeGate → PlanSelector → PaymentMethodSelector → PaymentConfir
 
 1. PLAN SELECTOR (components/student/subscription/PlanSelector.tsx):
 Three plan rows:
-  Monthly: ₹99/month — "₹99 + GST ₹17.82"
+  Monthly: ₹399/month — "₹399 + GST ₹71.82"
   Quarterly: ₹89/month billed ₹267 — "Save 10%" — featured: border-2 border-[#534AB7] + "Most popular" badge
   Annual: ₹74/month billed ₹891 — "Save 25%"
 Featured plan: 2px border (ONLY exception to 0.5px border rule)

@@ -9,6 +9,7 @@
  * EDIT LOG:
  * - 2026-04-15T00:00:00Z | copilot-planner | created billing plan constants for Standard/Family/Lite
  * - 2026-04-15T00:00:00Z | staff-engineer  | added test_weekly; durationDays override for sub-monthly plans
+ * - 2026-04-15T12:00:00Z | copilot | replace anonymous default export with named variable
  */
 
 export type PlanId =
@@ -112,4 +113,6 @@ export function renewalDateStr(plan: SubscriptionPlan): string {
   return d.toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })
 }
 
-export default { PLANS, rupeesToPaise, planEndDate, renewalDateStr }
+const Billing = { PLANS, rupeesToPaise, planEndDate, renewalDateStr }
+
+export default Billing
