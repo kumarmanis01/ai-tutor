@@ -19,26 +19,25 @@ export async function isPremiumUser(userId: string): Promise<boolean> {
   });
   if (directSub) return true;
 
-  // Check if covered by parent's family plan
+  // Check if covered by a parent's family plan (single batch query)
   const parentLinks = await prisma.parentStudent.findMany({
     where: { studentId: userId, status: 'active' },
     select: { parentId: true },
   });
 
-  for (const link of parentLinks) {
-    const familySub = await prisma.subscription.findFirst({
-      where: {
-        userId: link.parentId,
-        active: true,
-        plan: 'family',
-        startDate: { lte: now },
-        endDate: { gte: now },
-      },
-    });
-    if (familySub) return true;
-  }
+  if (parentLinks.length === 0) return false;
 
-  return false;
+  const parentIds = parentLinks.map((l) => l.parentId);
+  const familySub = await prisma.subscription.findFirst({
+    where: {
+      userId: { in: parentIds },
+      active: true,
+      plan: 'family',
+      startDate: { lte: now },
+      endDate: { gte: now },
+    },
+  });
+  return familySub !== null;
 }
 
 /**

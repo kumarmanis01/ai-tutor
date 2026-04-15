@@ -181,7 +181,7 @@ async function main() {
   const total = results.length;
   const dbFails = results.filter(r => r.db && r.db.executed === false).length;
   const apiFails = results.filter(r => r.api && r.api.executed === false || (r.api && r.api.ok === false)).length;
-  console.log(`Processed ${total} checks — DB failures: ${dbFails}, API failures: ${apiFails}`);
+  console.log(`Processed ${total} checks -- DB failures: ${dbFails}, API failures: ${apiFails}`);
 
   process.exit(dbFails + apiFails > 0 ? 2 : 0);
 }

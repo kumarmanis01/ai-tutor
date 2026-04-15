@@ -1,4 +1,4 @@
-import logger from '../../lib/logger';
+import { logger } from '../../lib/logger';
 import { test, expect } from '@playwright/test';
 
 // Basic e2e check: open/close onboarding modal via Profile page trigger

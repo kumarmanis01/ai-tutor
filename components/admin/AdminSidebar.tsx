@@ -2,9 +2,14 @@
 
 /**
  * FILE OBJECTIVE:
- * - Collapsible left-hand navigation sidebar for the admin shell.
- * - Receives badge counts (pending review, running jobs, failed jobs, safety alerts)
- *   as props so they are pre-fetched server-side.
+ * - Admin sidebar navigation component showing key admin sections and badges.
+ *
+ * LINKED UNIT TEST:
+ * - tests/unit/components/admin/AdminSidebar.spec.ts
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/COPILOT_GUARDRAILS.md
+ * - .github/copilot-instructions.md
  *
  * LINKED UNIT TEST:
  * - tests/unit/components/admin/AdminSidebar.spec.ts
@@ -299,4 +304,4 @@ export function AdminSidebar({
   );
 }
 
-export default AdminSidebar;
+export default AdminSidebar

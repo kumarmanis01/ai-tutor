@@ -8,6 +8,7 @@
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
+
 /** Mirror of the PRE_EXAM_DAYS constant in sm18Worker. */
 const PRE_EXAM_DAYS = 14
 const MS_PER_DAY = 86400000
