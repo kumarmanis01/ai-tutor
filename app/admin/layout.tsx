@@ -53,9 +53,9 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       prisma.generatedTest.count({ where: { status: 'draft', lifecycle: 'active' } }),
     ]).then(([c, t, n, gt]) => c + t + n + gt).catch(() => 0),
 
-    // Root hydration jobs currently running or failed (hierarchyLevel 0 = pipeline root)
+    // Root hydration jobs currently running (hierarchyLevel 0 = pipeline root)
     prisma.hydrationJob
-      .count({ where: { hierarchyLevel: 0, status: { in: ['running', 'failed'] } } })
+      .count({ where: { hierarchyLevel: 0, status: 'running' } })
       .catch(() => 0),
 
     // Failed root jobs (separate for badge colour differentiation in sidebar)

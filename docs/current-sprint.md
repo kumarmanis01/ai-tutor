@@ -35,8 +35,8 @@ First student can: sign up -> onboard -> take diagnostic -> start AI session.
 - [x] Diagnostic page no-redirect (shows "Vidya is getting ready")
 - [x] Subject Readiness cards use correct SubjectDef.id
 - [x] "Take diagnostic test" CTA correct href
-- [ ] Language selector in onboarding form
-- [ ] Mandatory subjects locked in onboarding (Mathematics + Science)
+- [x] Language selector in onboarding form
+- [x] Mandatory subjects locked in onboarding (Mathematics + Science)
 - [ ] Diagnostic questions render correctly
 - [ ] Knowledge map shown after diagnostic
 - [ ] AI tutor session starts after knowledge map
@@ -51,7 +51,7 @@ First student can: sign up -> onboard -> take diagnostic -> start AI session.
 - [x] Job detail page -- fix infinite Loading... when job not found
 - [x] Details/View job links point to correct HydrationJob detail page
 - [x] Content preview modal on Content Review page
-- [ ] Sidebar badge counts match actual data
+- [x] Sidebar badge counts match actual data
 
 ---
 
@@ -96,7 +96,7 @@ First student can: sign up -> onboard -> take diagnostic -> start AI session.
 | Blocker | Owner | Notes |
 |---------|-------|-------|
 | Content not generated | Pipeline | Trigger Generate all from admin |
-| Language selector missing from onboarding | Claude Code | Part 5D not implemented |
+| Language selector missing from onboarding | Claude Code | Resolved -- ProfileCompletionGate.tsx has en/hi step |
 
 ---
 
