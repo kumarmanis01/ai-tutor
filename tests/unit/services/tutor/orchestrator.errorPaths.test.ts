@@ -7,6 +7,7 @@ const prismaMock = {
   concept: { findUnique: jest.fn().mockResolvedValue({ name: 'Algebra', irt_b: 0.5 }) },
   subjectDef: { findUnique: jest.fn().mockResolvedValue({ name: 'Mathematics' }) },
   user: { findUnique: jest.fn().mockResolvedValue({ learningStyle: 'visual' }) },
+  studentConceptState: { findUnique: jest.fn().mockResolvedValue({ masteryScore: 0.5 }) },
   safetyEvent: { createMany: jest.fn() },
   aITutorTurnLog: { create: jest.fn() },
   analyticsEvent: { create: jest.fn() },
