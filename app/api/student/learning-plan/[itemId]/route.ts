@@ -1,12 +1,17 @@
 /**
- * PATCH /api/student/learning-plan/[itemId]
+ * FILE OBJECTIVE:
+ * - PATCH handler for `/api/student/learning-plan/[itemId]`.
+ * - Supports moving/reordering items within a plan week and status updates (DEFERRED).
  *
- * Updates a LearningPlanItem's status for the authenticated student.
- * Currently supports: status = 'DEFERRED' (skip to next topic).
+ * LINKED UNIT TEST:
+ * - tests/unit/app/api/student/learningPlan.item.route.test.ts
  *
- * Body: { status: 'DEFERRED' }
- * Auth: session required -- 401 if missing.
- *       Item must belong to the current student -- 404 otherwise.
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - .github/copilot-instructions.md
+ * - /docs/COPILOT_GUARDRAILS.md
+ *
+ * EDIT LOG:
+ * - 2026-04-15T00:00:00Z | copilot | replaced two-update swap with safeSwapOrderInWeek to avoid transient unique constraint violations
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -14,6 +19,7 @@ import { getServerSessionForHandlers } from '@/lib/session';
 import { prisma } from '@/lib/prisma';
 import { logger } from '@/lib/logger';
 import { formatErrorForResponse } from '@/lib/errorResponse';
+import { safeSwapOrderInWeek } from '@/lib/learningPlan/safeSwapOrder';
 
 const ALLOWED_STATUSES = ['DEFERRED'] as const;
 type AllowedStatus = (typeof ALLOWED_STATUSES)[number];
@@ -67,11 +73,18 @@ export async function PATCH(req: NextRequest, { params }: Params) {
         return NextResponse.json({ error: 'No adjacent item to swap with' }, { status: 400 });
       }
 
-      // Swap orderInWeek atomically
-      await prisma.$transaction([
-        prisma.learningPlanItem.update({ where: { id: srcItem.id }, data: { orderInWeek: tgtItem.orderInWeek } }),
-        prisma.learningPlanItem.update({ where: { id: tgtItem.id }, data: { orderInWeek: srcItem.orderInWeek } }),
-      ]);
+      // Swap orderInWeek safely inside a transaction using a single-statement helper.
+      // Avoids transient unique-constraint duplicates by letting the DB compute final values.
+      await prisma.$transaction(async (tx) => {
+        await safeSwapOrderInWeek(tx, {
+          planId: srcItem.planId,
+          weekNumber: srcItem.weekNumber,
+          srcId: srcItem.id,
+          tgtId: tgtItem.id,
+          srcOrder: srcItem.orderInWeek,
+          tgtOrder: tgtItem.orderInWeek,
+        });
+      });
 
       const res = NextResponse.json({ ok: true });
       logger.logAPI(req, res, { className: 'LearningPlanItemAPI', methodName: 'PATCH' }, start);
@@ -105,11 +118,18 @@ export async function PATCH(req: NextRequest, { params }: Params) {
         return NextResponse.json({ error: 'Items must be in the same plan week to reorder' }, { status: 400 });
       }
 
-      // Swap orderInWeek atomically
-      await prisma.$transaction([
-        prisma.learningPlanItem.update({ where: { id: srcItem.id }, data: { orderInWeek: tgtItem.orderInWeek } }),
-        prisma.learningPlanItem.update({ where: { id: tgtItem.id }, data: { orderInWeek: srcItem.orderInWeek } }),
-      ]);
+      // Swap orderInWeek safely inside a transaction using a single-statement helper.
+      // Avoids transient unique-constraint duplicates by letting the DB compute final values.
+      await prisma.$transaction(async (tx) => {
+        await safeSwapOrderInWeek(tx, {
+          planId: srcItem.planId,
+          weekNumber: srcItem.weekNumber,
+          srcId: srcItem.id,
+          tgtId: tgtItem.id,
+          srcOrder: srcItem.orderInWeek,
+          tgtOrder: tgtItem.orderInWeek,
+        });
+      });
 
       const res = NextResponse.json({ ok: true });
       logger.logAPI(req, res, { className: 'LearningPlanItemAPI', methodName: 'PATCH' }, start);
