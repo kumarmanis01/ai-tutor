@@ -24,6 +24,15 @@ import Logo from '@/components/Logo';
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
 type TopbarStats = { streak: number; level: number; shieldAvailable: boolean };
+type UserProfile = {
+  id?: string;
+  name?: string | null;
+  grade?: string | null;
+  board?: string | null;
+  schoolName?: string | null;
+  plan?: string | null;
+  userBadges?: unknown[];
+};
 
 export default function Topbar() {
   const { data: session } = useSession();
@@ -34,6 +43,13 @@ export default function Topbar() {
 
   const { data: stats } = useSWR<TopbarStats>(
     session ? '/api/student/topbar-stats' : null,
+    fetcher,
+    { revalidateOnFocus: false, dedupingInterval: 60_000 },
+  );
+
+  // Fetch canonical user profile for display (name, school, grade, board, plan)
+  const { data: profile } = useSWR<UserProfile>(
+    session ? '/api/user/profile' : null,
     fetcher,
     { revalidateOnFocus: false, dedupingInterval: 60_000 },
   );
@@ -81,6 +97,17 @@ export default function Topbar() {
           <span className="hidden sm:flex"><Logo variant="navbar" /></span>
           <span className="flex sm:hidden"><Logo variant="navbar-mobile" /></span>
         </Link>
+
+        {/* Middle (md+): student name & meta (school, grade, board, plan) */}
+        <div className="hidden md:flex flex-col ml-3">
+          <span className="text-sm font-medium text-gray-900 dark:text-white">{profile?.name ?? name}</span>
+          <span className="text-xs text-gray-500 dark:text-gray-400">
+            {profile?.schoolName ? `${profile.schoolName}` : ''}
+            {profile?.grade ? ` · Grade ${profile.grade}` : ''}
+            {profile?.board ? ` · ${profile.board?.toUpperCase()}` : ''}
+            {profile?.plan ? ` · ${profile.plan}` : ''}
+          </span>
+        </div>
 
         {/* Right: badges + avatar */}
         <div className="flex items-center gap-2 flex-shrink-0">
