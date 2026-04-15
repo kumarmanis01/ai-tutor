@@ -22,9 +22,9 @@ const FAQSection = () => {
       questionEn: 'Will my child spend too much time on screen?',
       questionHi: 'क्या मेरा बच्चा स्क्रीन पर बहुत समय बिताएगा?',
       answerEn:
-        'AI Tutor is designed for quick doubt solving, not endless browsing. Average session is just 10-15 minutes. We provide parental controls to set daily time limits and track usage. Unlike social media, every minute spent here is productive learning.',
+        'Spinzy Academy is designed for quick doubt solving, not endless browsing. Average session is just 10-15 minutes. We provide parental controls to set daily time limits and track usage. Unlike social media, every minute spent here is productive learning.',
       answerHi:
-        'AI Tutor त्वरित doubt solving के लिए बनाया गया है, अंतहीन ब्राउज़िंग के लिए नहीं। औसत सत्र केवल 10-15 मिनट का है। हम दैनिक समय सीमा निर्धारित करने और उपयोग ट्रैक करने के लिए parental controls प्रदान करते हैं। सोशल मीडिया के विपरीत, यहां बिताया गया हर मिनट उत्पादक सीखना है।',
+        'Spinzy Academy त्वरित doubt solving के लिए बनाया गया है, अंतहीन ब्राउज़िंग के लिए नहीं। औसत सत्र केवल 10-15 मिनट का है। हम दैनिक समय सीमा निर्धारित करने और उपयोग ट्रैक करने के लिए parental controls प्रदान करते हैं। सोशल मीडिया के विपरीत, यहां बिताया गया हर मिनट उत्पादक सीखना है।',
       category: 'Usage',
     },
     {
@@ -39,12 +39,12 @@ const FAQSection = () => {
     },
     {
       id: 3,
-      questionEn: "Will AI Tutor really improve my child's grades?",
-      questionHi: 'क्या AI Tutor वास्तव में मेरे बच्चे के अंक सुधारेगा?',
+      questionEn: "Will Spinzy Academy really improve my child's grades?",
+      questionHi: 'क्या Spinzy Academy वास्तव में मेरे बच्चे के अंक सुधारेगा?',
       answerEn:
-        'Yes! Our data shows 78% of students improve grades within 3 months. AI Tutor provides instant explanations, helping students understand concepts immediately instead of waiting for next tuition class. Regular practice tests and personalized learning paths ensure consistent improvement.',
+        'Yes! Our data shows 78% of students improve grades within 3 months. Teacher Vidya provides instant explanations, helping students understand concepts immediately instead of waiting for next tuition class. Regular practice tests and personalized learning paths ensure consistent improvement.',
       answerHi:
-        'हां! हमारा डेटा दिखाता है कि 78% छात्र 3 महीने के भीतर अंक सुधारते हैं। AI Tutor तत्काल समाधान प्रदान करता है, जिससे छात्रों को अगली ट्यूशन कक्षा की प्रतीक्षा करने के बजाय तुरंत अवधारणाओं को समझने में मदद मिलती है। नियमित अभ्यास परीक्षण और व्यक्तिगत सीखने के रास्ते लगातार सुधार सुनिश्चित करते हैं।',
+        'हां! हमारा डेटा दिखाता है कि 78% छात्र 3 महीने के भीतर अंक सुधारते हैं। Teacher Vidya तत्काल समाधान प्रदान करती है, जिससे छात्रों को अगली ट्यूशन कक्षा की प्रतीक्षा करने के बजाय तुरंत अवधारणाओं को समझने में मदद मिलती है। नियमित अभ्यास परीक्षण और व्यक्तिगत सीखने के रास्ते लगातार सुधार सुनिश्चित करते हैं।',
       category: 'Effectiveness',
     },
     {
@@ -52,9 +52,9 @@ const FAQSection = () => {
       questionEn: "What if we don't have good internet connection?",
       questionHi: 'अगर हमारे पास अच्छा इंटरनेट कनेक्शन नहीं है तो क्या होगा?',
       answerEn:
-        "AI Tutor works on 2G/3G networks! We've optimized the app for slow internet. You can download NCERT notes and practice questions for offline use. Photo uploads are compressed automatically. Even with basic ₹5000 phones and limited data, your child can learn effectively.",
+        "Spinzy Academy works on 2G/3G networks! We've optimized the app for slow internet. You can download NCERT notes and practice questions for offline use. Photo uploads are compressed automatically. Even with basic ₹5000 phones and limited data, your child can learn effectively.",
       answerHi:
-        'AI Tutor 2G/3G नेटवर्क पर काम करता है! हमने धीमे इंटरनेट के लिए ऐप को अनुकूलित किया है। आप ऑफ़लाइन उपयोग के लिए NCERT नोट्स और अभ्यास प्रश्न डाउनलोड कर सकते हैं। फोटो अपलोड स्वचालित रूप से संकुचित हो जाते हैं। बुनियादी ₹5000 फोन और सीमित डेटा के साथ भी, आपका बच्चा प्रभावी ढंग से सीख सकता है।',
+        'Spinzy Academy 2G/3G नेटवर्क पर काम करता है! हमने धीमे इंटरनेट के लिए ऐप को अनुकूलित किया है। आप ऑफ़लाइन उपयोग के लिए NCERT नोट्स और अभ्यास प्रश्न डाउनलोड कर सकते हैं। फोटो अपलोड स्वचालित रूप से संकुचित हो जाते हैं। बुनियादी ₹5000 फोन और सीमित डेटा के साथ भी, आपका बच्चा प्रभावी ढंग से सीख सकता है।',
       category: 'Technical',
     },
     {
@@ -102,7 +102,7 @@ const FAQSection = () => {
             अक्सर पूछे जाने वाले प्रश्न
           </p>
           <p className="font-body text-lg text-muted-foreground">
-            Get answers to common parent concerns about AI Tutor
+            Get answers to common parent concerns about Spinzy Academy
           </p>
         </div>
 

@@ -29,8 +29,8 @@ const PricingSection = () => {
       price: '₹0',
       period: 'Forever',
       periodHi: 'हमेशा के लिए',
-      description: 'Try AI Tutor with limited features',
-      descriptionHi: 'सीमित सुविधाओं के साथ AI Tutor आज़माएं',
+      description: 'Try Spinzy Academy with limited features',
+      descriptionHi: 'सीमित सुविधाओं के साथ Spinzy Academy आज़माएं',
       features: [
         FREE_SESSIONS_TEXT,
         'Basic explanations',
@@ -194,13 +194,6 @@ const PricingSection = () => {
                       </div>
                     ))}
 
-                    {plan.featuresHi && plan.featuresHi.length > 0 && (
-                      <div className="mt-3 pt-2 border-t border-border">
-                        {plan.featuresHi.map((f, i) => (
-                          <p key={i} className="text-sm text-primary/90 italic mb-1">{f}</p>
-                        ))}
-                      </div>
-                    )}
                   </div>
 
                   <Link
@@ -251,13 +244,13 @@ const PricingSection = () => {
                 <div className="flex items-center justify-between p-4 bg-success/5 rounded-lg border border-success/20">
                   <div>
                     <p className="font-headline font-bold text-lg text-secondary">
-                      AI Tutor Individual
+                      Spinzy Academy Individual
                     </p>
                     <p className="font-body text-sm text-muted-foreground">
-                      Per month, unlimited access
+                      Per month, unlimited access (incl. GST)
                     </p>
                   </div>
-                  <p className="font-headline font-bold text-2xl text-success">₹99</p>
+                  <p className="font-headline font-bold text-2xl text-success">₹117</p>
                 </div>
 
                 <div className="flex items-center justify-between p-4 bg-primary/5 rounded-lg border border-primary/20">
@@ -265,7 +258,7 @@ const PricingSection = () => {
                     <p className="font-headline font-bold text-lg text-secondary">Your Savings</p>
                     <p className="font-body text-sm text-muted-foreground">Every single month</p>
                   </div>
-                  <p className="font-headline font-bold text-2xl text-primary">₹2900+</p>
+                  <p className="font-headline font-bold text-2xl text-primary">₹2883+</p>
                 </div>
               </div>
             </div>
@@ -287,7 +280,7 @@ const PricingSection = () => {
 
               <div className="bg-muted/50 rounded-xl p-6 border border-border">
                 <div className="flex items-start gap-3 mb-3">
-                  <Icon name="XCircleIcon" size={24} variant="solid" className="text-primary" />
+                  <Icon name="CheckCircleIcon" size={24} variant="solid" className="text-success" />
                   <div>
                     <h4 className="font-headline font-bold text-lg text-secondary mb-1">
                       Cancel Anytime
@@ -328,7 +321,7 @@ const PricingSection = () => {
               Check our FAQ
             </a>{' '}
             or{' '}
-            <a href="tel:+911234567890" className="text-primary hover:underline font-semibold">
+            <a href="tel:+918920754675" className="text-primary hover:underline font-semibold">
               call us
             </a>
           </p>

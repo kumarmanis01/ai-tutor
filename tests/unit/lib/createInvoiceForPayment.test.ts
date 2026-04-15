@@ -73,6 +73,20 @@ describe('createInvoiceForPayment integration', () => {
       invoice: { update: invoiceUpdateMock },
     }
 
+    // Return a minimal valid PDF Buffer so the test is independent of whether
+    // pdf-lib can generate real PDFs in the CI/test environment (no browser).
+    const fakePdfBuffer = Buffer.from('%PDF-1.4 fake')
+    jest.doMock('pdf-lib', () => ({
+      PDFDocument: {
+        create: jest.fn().mockResolvedValue({
+          addPage: jest.fn().mockReturnValue({ drawText: jest.fn() }),
+          embedFont: jest.fn().mockResolvedValue({ name: 'Helvetica' }),
+          save: jest.fn().mockResolvedValue(fakePdfBuffer),
+        }),
+      },
+      StandardFonts: { Helvetica: 'Helvetica' },
+    }))
+
     jest.doMock('@/lib/prisma', () => ({ prisma: prismaMock }))
     jest.doMock('@/lib/storage/r2', () => ({ uploadBufferToR2: uploadMock }))
     jest.doMock('@/lib/logger', () => ({ logger: { warn: jest.fn(), error: jest.fn(), info: jest.fn() } }))

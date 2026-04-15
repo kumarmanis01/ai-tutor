@@ -31,14 +31,14 @@ const steps = [
   },
 ];
 
-// Chat messages demo removed — AnimatedChatClient uses its own sample messages.
+// Chat messages demo removed -- AnimatedChatClient uses its own sample messages.
 
 const HowItWorksSection = () => {
   return (
-    <section id="how-it-works" className="py-16 md:py-24 bg-[#EEEDFE]/40">
+    <section id="how-it-works" className="py-10 md:py-14 bg-[#EEEDFE]/40">
       <div className="mx-auto px-4 md:px-6 lg:px-8 max-w-7xl">
         {/* Heading */}
-        <div className="text-center mb-12 md:mb-16">
+        <div className="text-center mb-8 md:mb-12">
           <div className="inline-flex items-center gap-2 px-4 py-2 bg-[#534AB7]/10 text-[#534AB7] rounded-full text-sm font-medium mb-4">
             <Icon name="SparklesIcon" size={20} variant="solid" />
             <span>How Teacher Vidya Works</span>
@@ -52,7 +52,7 @@ const HowItWorksSection = () => {
         </div>
 
         {/* Steps */}
-        <div className="grid md:grid-cols-3 gap-8 mb-16">
+        <div className="grid md:grid-cols-3 gap-8 mb-10">
           {steps.map((step) => (
             <div key={step.number} className="relative flex flex-col items-center text-center md:items-start md:text-left">
               <div className="w-14 h-14 rounded-2xl bg-[#534AB7] flex items-center justify-center mb-4 flex-shrink-0">
@@ -74,19 +74,6 @@ const HowItWorksSection = () => {
             <AnimatedChatClient />
       </div>
 
-      <style>{`
-        @keyframes fadeInChat {
-          from { opacity: 0; transform: translateY(8px); }
-          to   { opacity: 1; transform: translateY(0); }
-        }
-        @keyframes typingBounce {
-          0%, 80%, 100% { transform: translateY(0); opacity: 0.4; }
-          40%            { transform: translateY(-4px); opacity: 1; }
-        }
-        .typing-dot {
-          animation: typingBounce 1.2s ease-in-out infinite;
-        }
-      `}</style>
     </section>
   );
 };
