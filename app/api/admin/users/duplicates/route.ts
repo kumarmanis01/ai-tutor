@@ -24,7 +24,7 @@ interface DuplicateRow {
   count: bigint
 }
 
-export async function GET(req: Request) {
+export async function GET(_req: Request) {
   const session = await getServerSessionForHandlers()
   if (!session?.user?.id || (session.user as any).role !== 'admin') {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })

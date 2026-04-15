@@ -31,33 +31,7 @@ const steps = [
   },
 ];
 
-const chatMessages = [
-  {
-    sender: 'vidya' as const,
-    text: 'Before we start -- what do you already know about quadratic equations?',
-    textHi: 'शुरू करने से पहले -- quadratic equations के बारे में आप पहले से क्या जानते हैं?',
-  },
-  {
-    sender: 'student' as const,
-    text: 'I know it\'s ax² + bx + c = 0...',
-    textHi: 'मुझे पता है यह ax² + bx + c = 0 है...',
-  },
-  {
-    sender: 'vidya' as const,
-    text: 'Perfect start! Now, if a=1, b=−5, c=6 -- what\'s the discriminant?',
-    textHi: 'बढ़िया! अब, अगर a=1, b=−5, c=6 -- तो discriminant क्या होगा?',
-  },
-  {
-    sender: 'student' as const,
-    text: 'Is it b² − 4ac? So... 25 − 24 = 1?',
-    textHi: 'क्या यह b² − 4ac है? तो... 25 − 24 = 1?',
-  },
-  {
-    sender: 'vidya' as const,
-    text: 'Exactly right ✓  And what does D=1 tell you about the roots?',
-    textHi: 'बिल्कुल सही ✓  और D=1 roots के बारे में क्या बताता है?',
-  },
-];
+// Chat messages demo removed — AnimatedChatClient uses its own sample messages.
 
 const HowItWorksSection = () => {
   return (

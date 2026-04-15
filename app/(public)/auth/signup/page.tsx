@@ -4,6 +4,7 @@ import { Suspense, useState } from 'react'
 import { signIn } from 'next-auth/react'
 import { useSearchParams } from 'next/navigation'
 import Logo from '@/components/Logo'
+import { FREE_SESSIONS_TEXT } from '@/lib/constants/freeTier'
 
 function AuthContent() {
   const searchParams = useSearchParams()
@@ -132,7 +133,7 @@ function AuthContent() {
 
         {/* Trust line */}
         <p className="text-center text-xs text-gray-400">
-          3 free sessions every month · No credit card · Cancel anytime
+          {FREE_SESSIONS_TEXT} · No credit card · Cancel anytime
         </p>
       </div>
     </div>

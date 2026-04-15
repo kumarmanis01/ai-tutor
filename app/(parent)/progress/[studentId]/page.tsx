@@ -149,6 +149,7 @@ export default async function ParentProgressDetailPage({
       board={student.board ?? ''}
       sessions={formattedSessions}
       readiness={readiness}
+      heatmapDays={heatmapDays}
     />
   )
 }

@@ -1,5 +1,6 @@
-'import Link from 'next/link';
+import Link from 'next/link';
 import Icon from '@/components/UI/AppIcon';
+import { FREE_SESSIONS_TEXT, FREE_SESSIONS_TEXT_HI } from '@/lib/constants/freeTier';
 
 interface PricingPlan {
   id: string;
@@ -31,13 +32,13 @@ const PricingSection = () => {
       description: 'Try AI Tutor with limited features',
       descriptionHi: 'सीमित सुविधाओं के साथ AI Tutor आज़माएं',
       features: [
-        '3 free sessions every month',
+        FREE_SESSIONS_TEXT,
         'Basic explanations',
         'Hindi + English support',
         'NCERT notes access',
       ],
       featuresHi: [
-        'हर माह 3 मुफ्त सेशन',
+        FREE_SESSIONS_TEXT_HI,
         'बुनियादी समाधान',
         'हिंदी + अंग्रेजी सहायता',
         'NCERT नोट्स एक्सेस',

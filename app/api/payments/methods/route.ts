@@ -19,7 +19,7 @@ import { prisma } from '@/lib/prisma';
 import { logger } from '@/lib/logger';
 import { logApiUsage } from '@/utils/logApiUsage';
 
-export async function GET(req: Request) {
+export async function GET(_req: Request) {
   logApiUsage('/api/payments/methods', 'GET');
   const session = await getServerSessionForHandlers();
   const user = session?.user as { id?: string } | null;
@@ -29,7 +29,7 @@ export async function GET(req: Request) {
   return NextResponse.json({ methods }, { status: 200 });
 }
 
-export async function POST(req: Request) {
+export async function POST(_req: Request) {
   logApiUsage('/api/payments/methods', 'POST');
   const session = await getServerSessionForHandlers();
   const user = session?.user as { id?: string } | null;
@@ -104,7 +104,7 @@ export async function POST(req: Request) {
   }
 }
 
-export async function DELETE(req: Request) {
+export async function DELETE(_req: Request) {
   logApiUsage('/api/payments/methods', 'DELETE');
   const session = await getServerSessionForHandlers();
   const user = session?.user as { id?: string } | null;

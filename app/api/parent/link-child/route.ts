@@ -136,13 +136,17 @@ export async function POST(req: Request) {
     promoted = true
   }
 
+  if (promoted) {
+    logger.info('Promoted user to parent role', { className: 'LinkChildAPI', parentId })
+  }
+
   // Fetch student name for response
   const student = await prisma.user.findUnique({
     where: { id: studentId },
     select: { name: true },
   })
 
-  // Audit log (non-fatal)
+  // Audit log (non-fatal) — best-effort, log failures
   prisma.auditLog.create({
     data: {
       adminId: parentId,
@@ -151,7 +155,7 @@ export async function POST(req: Request) {
       action: null,
       details: { legacyAction: 'parent_link_student', parentId, method: 'redis_invite_token' },
     },
-  }).catch(() => {})
+  }).catch((err) => logger.debug('auditLog.create failed', { className: 'LinkChildAPI', error: String(err) }))
 
   // Send welcome/confirmation notifications to the parent (best-effort)
   try {

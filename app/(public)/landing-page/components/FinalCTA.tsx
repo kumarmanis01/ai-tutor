@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import Icon from '@/components/UI/AppIcon';
+import { FREE_SESSIONS_TEXT } from '@/lib/constants/freeTier';
 
 const FinalCTA = () => {
   return (
@@ -15,7 +16,7 @@ const FinalCTA = () => {
           </p>
 
           <p className="font-body text-lg md:text-xl opacity-90 max-w-2xl mx-auto">
-            3 free sessions every month. No credit card. Cancel anytime.
+            {FREE_SESSIONS_TEXT}. No credit card. Cancel anytime.
           </p>
 
           <div className="flex justify-center">

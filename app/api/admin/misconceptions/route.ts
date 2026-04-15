@@ -19,7 +19,7 @@ import { prisma as getPrismaClient } from '@/lib/prisma'
 import { MisconceptionCreateSchema } from '@/lib/validators/misconception'
 import { logger } from '@/lib/logger'
 
-type CreateResult = { rows: any[]; total: number }
+type _CreateResult = { rows: any[]; total: number }
 
 export async function GET(req: Request) {
   const session = await getServerSessionForHandlers()

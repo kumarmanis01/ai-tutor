@@ -22,7 +22,6 @@ import { logger } from '@/lib/logger';
 import { sendMailSafe } from '@/lib/mailer';
 import { sendSms } from '@/lib/sms';
 import { getPaymentDunningQueue } from '@/jobs/paymentDunning';
-import { getInstallmentDunningQueue } from '@/jobs/installmentDunning';
 import Razorpay from 'razorpay';
 import { recordPaymentEvent } from '@/lib/payments/audit';
 
@@ -212,13 +211,13 @@ export async function POST(req: Request) {
           existing = await tx.payment.findFirst({ where: { provider: 'razorpay', providerIdempotencyKey: idempotencyHeader } });
         }
 
-        let paymentRecordId: string | null = null;
+        let _paymentRecordId: string | null = null;
         if (!existing) {
           const newPayment = await tx.payment.create({ data: { userId: orderRow.studentId, amount: payment?.amount ?? orderRow.planMonths ?? 0, provider: 'razorpay', providerIdempotencyKey: idempotencyHeader || undefined, status: 'failed', transactionId: paymentId, orderId, meta: { reason } } });
-          paymentRecordId = newPayment.id;
+          _paymentRecordId = newPayment.id;
           await recordPaymentEvent(tx, { paymentId: newPayment.id, userId: orderRow.studentId, provider: 'razorpay', providerIdempotencyKey: idempotencyHeader || undefined, transactionId: paymentId, orderId, eventType: 'payment.failed.webhook', payload: { reason }, amount: payment?.amount ?? orderRow.planMonths ?? 0, status: 'failed' })
         } else {
-          paymentRecordId = existing.id;
+          _paymentRecordId = existing.id;
           if (existing.status !== 'failed') {
             await tx.payment.update({ where: { id: existing.id }, data: { status: 'failed', meta: { ...(existing.meta || {}), reason } } });
             await recordPaymentEvent(tx, { paymentId: existing.id, userId: orderRow.studentId, provider: 'razorpay', providerIdempotencyKey: idempotencyHeader || undefined, transactionId: paymentId, orderId, eventType: 'payment.updated_failed.webhook', payload: { reason }, amount: payment?.amount ?? orderRow.planMonths ?? 0, status: 'failed' })

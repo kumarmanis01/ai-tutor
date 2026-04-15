@@ -102,7 +102,7 @@ export async function POST(req: Request) {
   // Fetch Razorpay order to read notes (childIds, isFamily, emiMonths)
   const client = getRazorpayClient();
   let childIds: string[] = [];
-  let isFamily = false;
+  let _isFamily = false;
   let emiMonths = 0;
   let rzNotes: any = {};
   try {
@@ -112,7 +112,7 @@ export async function POST(req: Request) {
       if (rzNotes?.childIds) {
         try { childIds = JSON.parse(rzNotes.childIds); } catch { childIds = [] }
       }
-      isFamily = String(rzNotes?.isFamily || '') === 'true';
+      _isFamily = String(rzNotes?.isFamily || '') === 'true';
       emiMonths = rzNotes?.emiMonths ? Number(rzNotes.emiMonths) : 0;
     }
   } catch (err) {

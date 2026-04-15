@@ -1,5 +1,3 @@
-'use client';
-
 import Icon from '@/components/UI/AppIcon';
 
 const Footer = () => {

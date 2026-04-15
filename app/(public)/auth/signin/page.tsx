@@ -131,9 +131,7 @@ function AuthContent() {
         </div>
 
         {/* Trust line */}
-        <p className="text-center text-xs text-gray-400">
-          3 free sessions every month · No credit card · Cancel anytime
-        </p>
+        <p className="text-center text-xs text-gray-400">{FREE_SESSIONS_TEXT} · No credit card required</p>
       </div>
     </div>
   )

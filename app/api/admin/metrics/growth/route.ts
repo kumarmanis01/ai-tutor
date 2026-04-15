@@ -18,7 +18,7 @@ export const dynamic = 'force-dynamic'
 
 const PLAN_PRICE_INR = 99
 
-export async function GET(req: Request) {
+export async function GET(_req: Request) {
   const session = await getServerSessionForHandlers()
   if (!session?.user?.id || (session.user as any).role !== 'admin') {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })

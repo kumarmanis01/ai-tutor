@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import Icon from '@/components/UI/AppIcon';
+import { FREE_SESSIONS_TEXT, FREE_SESSIONS_TEXT_HI } from '@/lib/constants/freeTier';
 
 interface FAQ {
   id: number;
@@ -60,10 +61,8 @@ const FAQSection = () => {
       id: 5,
       questionEn: 'Can I try before paying?',
       questionHi: 'क्या मैं भुगतान करने से पहले आज़मा सकता हूं?',
-      answerEn:
-        'Yes! Start with our Free Plan (3 free sessions every month) to test the app. No credit card required. When ready, upgrade to unlimited access for just ₹99/month. Plus, we offer 30-day money-back guarantee on all paid plans.',
-      answerHi:
-        'हां! ऐप का परीक्षण करने के लिए हमारी Free Plan (हर माह 3 फ्री सेशन) से शुरू करें। कोई क्रेडिट कार्ड की आवश्यकता नहीं। तैयार होने पर, केवल ₹99/माह में असीमित एक्सेस में अपग्रेड करें। साथ ही, हम सभी paid plans पर 30-दिन की मनी-बैक गारंटी प्रदान करते हैं।',
+      answerEn: `Yes! Start with our Free Plan (${FREE_SESSIONS_TEXT}) to test the app. No credit card required. When ready, upgrade to unlimited access for just ₹99/month. Plus, we offer 30-day money-back guarantee on all paid plans.`,
+      answerHi: `हां! ऐप का परीक्षण करने के लिए हमारी Free Plan (${FREE_SESSIONS_TEXT_HI}) से शुरू करें। कोई क्रेडिट कार्ड की आवश्यकता नहीं। तैयार होने पर, केवल ₹99/माह में असीमित एक्सेस में अपग्रेड करें। साथ ही, हम सभी paid plans पर 30-दिन की मनी-बैक गारंटी प्रदान करते हैं।`,
       category: 'Pricing',
     },
     {

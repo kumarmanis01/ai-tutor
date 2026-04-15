@@ -155,8 +155,9 @@ export async function GET(
       // Hide percentile when not reliable
       (payload as any).percentile = null;
     }
-  } catch (e) {
+  } catch (err) {
     // best-effort; if counting fails, leave cohortCount/percentileReliable undefined
+    logger.debug('Failed to compute cohort count for mock report', { className: 'MockReportAPI', error: String(err) });
   }
 
   const res = NextResponse.json(payload);

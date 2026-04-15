@@ -206,14 +206,14 @@ function clamp(n: number, min: number, max: number) {
   return Math.max(min, Math.min(max, n));
 }
 
-const PIE_COLORS: Record<string, string> = {
+const _PIE_COLORS: Record<string, string> = {
   beginner: '#ef4444',
   intermediate: '#f59e0b',
   advanced: '#3b82f6',
   expert: '#10b981',
 };
 
-function masteryLabel(level: string) {
+function _masteryLabel(level: string) {
   if (level === 'beginner') return 'Beginner';
   if (level === 'intermediate') return 'Intermediate';
   if (level === 'advanced') return 'Advanced';
@@ -339,7 +339,8 @@ function SubjectProgressCard({ subject }: { subject: SubjectProgressData }) {
                           const pct = masteryPercentFromAverage(subject.averageMastery);
                           const prefix = LOCAL_STRINGS[lang]?.whatThisMeansPrefix ?? LOCAL_STRINGS.en.whatThisMeansPrefix;
                           return `${prefix} ${pct}% mastery means your child has solidly learned ${subject.subject} syllabus.`;
-                        } catch (e) {
+                        } catch (err) {
+                          logger.debug('Failed to compute mastery tooltip', { className: CLASS_NAME, error: String(err) });
                           return `What this means: ${Math.round((subject.averageMastery / 4) * 100)}% mastery`;
                         }
                       })()}
@@ -350,20 +351,21 @@ function SubjectProgressCard({ subject }: { subject: SubjectProgressData }) {
                 </div>
               </div>
               {/* Opt-in benchmarking copy (reads opt-in flag from localStorage) */}
-              {(() => {
-                try {
-                  if (typeof window === 'undefined') return null;
-                  const opt = localStorage.getItem('parent_benchmarking_optin') === '1';
-                  if (!opt) return null;
-                  const pct = masteryPercentFromAverage(subject.averageMastery);
-                  const anonPct = Math.round(pct * 0.95);
-                  const lang = navigator.language?.startsWith('hi') ? 'hi' : 'en';
-                  const tpl = LOCAL_STRINGS[lang]?.benchmarkingCopy ?? LOCAL_STRINGS.en.benchmarkingCopy;
-                  return <div className="text-xs text-gray-600 mt-1">{tpl.replace('{pct}', String(anonPct))}</div>;
-                } catch (e) {
-                  return null;
-                }
-              })()}
+                  {(() => {
+                    try {
+                      if (typeof window === 'undefined') return null;
+                      const opt = localStorage.getItem('parent_benchmarking_optin') === '1';
+                      if (!opt) return null;
+                      const pct = masteryPercentFromAverage(subject.averageMastery);
+                      const anonPct = Math.round(pct * 0.95);
+                      const lang = navigator.language?.startsWith('hi') ? 'hi' : 'en';
+                      const tpl = LOCAL_STRINGS[lang]?.benchmarkingCopy ?? LOCAL_STRINGS.en.benchmarkingCopy;
+                      return <div className="text-xs text-gray-600 mt-1">{tpl.replace('{pct}', String(anonPct))}</div>;
+                    } catch (err) {
+                      logger.debug('Failed to render benchmarking copy', { className: CLASS_NAME, error: String(err) });
+                      return null;
+                    }
+                  })()}
             </div>
           </div>
 
@@ -635,15 +637,17 @@ export default function ParentDashboardClient() {
     try {
       const v = localStorage.getItem('parent_benchmarking_optin') === '1';
       setBenchmarkingOptIn(v);
-    } catch (e) {
-      // ignore
+    } catch (err) {
+      logger.debug('Failed to read parent_benchmarking_optin from localStorage', { className: CLASS_NAME, error: String(err) });
     }
   }, []);
 
   useEffect(() => {
     try {
       localStorage.setItem('parent_benchmarking_optin', benchmarkingOptIn ? '1' : '0');
-    } catch (e) {}
+    } catch (err) {
+      logger.debug('Failed to write parent_benchmarking_optin to localStorage', { className: CLASS_NAME, error: String(err) });
+    }
   }, [benchmarkingOptIn]);
 
   const fetchData = useCallback(async () => {

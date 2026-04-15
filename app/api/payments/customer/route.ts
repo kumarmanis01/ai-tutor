@@ -20,7 +20,7 @@ import { getRazorpay } from '@/lib/payments';
 import { logger } from '@/lib/logger';
 import { logApiUsage } from '@/utils/logApiUsage';
 
-export async function POST(req: Request) {
+export async function POST(_req: Request) {
   logApiUsage('/api/payments/customer', 'POST');
   const session = await getServerSessionForHandlers();
   const user = session?.user as { id?: string; email?: string; name?: string; phone?: string } | null;
@@ -67,7 +67,7 @@ export async function POST(req: Request) {
   }
 }
 
-export async function GET(req: Request) {
+export async function GET(_req: Request) {
   logApiUsage('/api/payments/customer', 'GET');
   const session = await getServerSessionForHandlers();
   const user = session?.user as { id?: string } | null;

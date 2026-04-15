@@ -44,7 +44,8 @@ export async function POST(req: Request) {
         const p = parts[0];
         resolvedLang = p.region ? `${p.code}-${p.region}` : p.code;
       }
-    } catch (e) {
+    } catch (err) {
+      logger.debug('Failed to parse Accept-Language header', { className: 'api.chat', error: String(err) });
       resolvedLang = undefined;
     }
 

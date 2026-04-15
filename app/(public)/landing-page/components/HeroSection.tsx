@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import AppImage from '@/components/UI/AppImage';
 import Icon from '@/components/UI/AppIcon';
+import { FREE_SESSIONS_TEXT } from '@/lib/constants/freeTier';
 
 const HeroSection = () => {
   const [isHydrated, setIsHydrated] = useState(false);
@@ -83,7 +84,7 @@ const HeroSection = () => {
             <div className="flex flex-wrap items-center justify-center lg:justify-start gap-x-4 gap-y-2 text-sm md:text-base text-muted-foreground">
               <span className="flex items-center gap-1.5">
                 <Icon name="CheckCircleIcon" size={18} variant="solid" className="text-[#1D9E75]" />
-                3 free sessions every month
+                {FREE_SESSIONS_TEXT}
               </span>
               <span className="flex items-center gap-1.5">
                 <Icon name="CheckCircleIcon" size={18} variant="solid" className="text-[#1D9E75]" />
