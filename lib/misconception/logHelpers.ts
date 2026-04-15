@@ -4,7 +4,7 @@
  *   before they are stored or logged as part of novel-misconception analytics.
  *
  * LINKED UNIT TEST:
- * - tests/unit/lib/misconception/logHelpers.spec.ts
+ * - tests/unit/lib/misconception/logHelpers.test.ts
  *
  * COPILOT INSTRUCTIONS FOLLOWED:
  * - /docs/COPILOT_GUARDRAILS.md
