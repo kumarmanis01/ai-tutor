@@ -1,6 +1,6 @@
 <!--
 FILE OBJECTIVE:
-- Consolidated QA test cases for the ai-tutor project covering functional, integration, worker, AI, security, performance, accessibility, and regression tests.
+- Consolidated QA test cases for the ai-tutor project covering functional, integration, worker, AI, security, performance, accessibility, and regression tests. Expanded with role-specific test suites for Student, Parent, and Admin.
 
 LINKED UNIT TEST:
 - tests/unit/docs/qa_project_test_cases.spec.ts
@@ -11,18 +11,19 @@ COPILOT INSTRUCTIONS FOLLOWED:
 
 EDIT LOG:
 - 2026-04-15T00:00:00Z | copilot | created initial QA test cases document
+- 2026-04-15T12:00:00Z | copilot | expanded with role-based (Admin/Student/Parent) tests and DB validation examples
 -->
 
 # QA Test Cases — ai-tutor (Project-wide)
 
 ## Purpose & Scope
-- Objective: Provide a single, actionable test-case document QA can use to validate the entire ai-tutor product (frontend, backend, workers, AI integrations, infra, and non-functional requirements).
-- Scope: All user flows, APIs, background jobs, AI guardrails, integrations (OpenAI/Anthropic, Razorpay), and deployment/CI preflight checks.
+- Objective: Provide a single, actionable, role-segregated test-case document QA can use to validate the entire ai-tutor product (frontend, backend, workers, AI integrations, infra, and non-functional requirements).
+- Scope: All user flows, APIs, background jobs, AI guardrails, integrations (OpenAI/Anthropic, Razorpay), admin surfaces, parent workflows, and CI/deployment checks.
 
 ## How to use this document
-- Follow the **Test Case Template** when executing manual tests.
-- Execute automated tests where available (`npm test`, CI pipelines) and mark manual checks as pass/fail with logs attached.
-- For any blocked test, capture browser/devtools logs, server logs, and steps to reproduce.
+- Use the **Test Case Template** for each manual test case to ensure consistent reporting.
+- Execute automated tests where available (`npm test`, CI pipelines) and mark manual checks as pass/fail with logs and attachments.
+- For blocked tests, attach browser/devtools logs, server logs, worker logs, and precise reproduction steps.
 
 ## Test Types & Priority
 - Type: Functional, Integration, End-to-End (E2E), Regression, Performance, Security, Accessibility, Localization, Smoke.
@@ -31,11 +32,18 @@ EDIT LOG:
 ## Test Environment & Setup (QA checklist)
 - Node: use the project's required Node version (check `package.json`).
 - Install deps: `npm ci --include=dev`
-- DB: Run a dedicated test DB (Postgres/Neon). Create a disposable DB for QA.
-- Redis: Start Test Redis (Docker or provided compose).
-- Env: copy `.env.example` → `.env.test` and set required values (DB, REDIS, API keys). Do not use production secrets.
-- Migrations & seeds: `npx prisma migrate dev --name qa --schema=prisma/schema.prisma` or use provided seed scripts.
-- Start services: workers + web per repo guidelines:
+- DB: run a dedicated test Postgres/Neon instance; use disposable DBs for parallel runs.
+- Redis: run a test Redis instance (docker-compose or local container).
+- Env: copy `.env.example` → `.env.test` and set test values. Do not use production secrets.
+- Migrations & seeds: run migrations and seeds used for QA:
+
+```bash
+npx prisma migrate deploy --schema=prisma/schema.prisma
+# or for local iterative testing:
+npx prisma migrate dev --name qa --schema=prisma/schema.prisma
+```
+
+- Start services per repo guidance (web + workers):
 
 ```bash
 # build & tests gate (required by repo):
@@ -43,168 +51,335 @@ npm run build:workers && npm run build && npm test
 
 # dev example (QA interactive):
 npm run dev
-# start workers (project-specific script):
-# npm run start:workers  (if provided) or follow WORKER_README.md
+# start workers (project-specific script) - see WORKER_README.md
 ```
 
-- Verify preflight: run `npm run lint` and `npm run type-check` (CI requires these).
+- Verify preflight: `npm run lint` and `npm run type-check`.
 
 ## Test Data & Accounts
-- Prepare test accounts: student, parent, admin (distinct emails). Use non-production test values.
-- Create test subscription/payment test card credentials per Razorpay sandbox.
-- Provide example content: short list of questions, topics, and sample media to test uploads.
+- Prepare three canonical test accounts and credentials: `student@example.com`, `parent@example.com`, `admin@example.com` (use unique test UUIDs).
+- Use Razorpay sandbox/test cards for payments testing.
+- Seed content: add small set of questions/topics and a challenge for functional tests.
+- If necessary, create test data directly via SQL or Prisma for stable reproduction (examples below).
 
 ## Test Case Template (use for each manual case)
-- ID: QA-<MODULE>-<NNN>
+- ID: QA-<ROLE>-<MODULE>-<NNN> (e.g., QA-STU-CHAT-001)
 - Title: short descriptive title
-- Objective: what this verifies
-- Preconditions: accounts, env, data state
-- Steps: numbered steps to reproduce
-- Expected Result: exact expected behaviour / message
+- Role: Student | Parent | Admin | Cross-role
+- Module: Chat | Payments | Workers | API | UI | etc.
+- Objective: single-sentence test goal
+- Preconditions: accounts, env, seeded data
+- Steps: numbered step-by-step actions
+- Expected Result: exact expected behaviour or system response
+- DB Validation: SQL / Prisma snippet to validate persistence or side-effect
+- API Validation: curl or request example to validate API response
 - Priority: Critical/High/Medium/Low
 - Type: functional/integration/e2e/regression/security/performance
 - Notes / Attachments: logs, screenshots, recordings
 
 ---
 
-## Feature Test Matrix (high-level mapping)
-The following sections contain representative and required test cases. Expand them into individual entries using the Test Case Template.
+## Role-based Test Suites
+Below are detailed and representative test cases grouped by role. Each entry includes expected DB verification where applicable.
 
-### Authentication & Authorization
-- QA-AUTH-001: Sign up (student) — verify email validation, created record, grade locked after first save.
-- QA-AUTH-002: Sign in / session expiry — session invalidation, 401 on expired session for API routes.
-- QA-AUTH-003: Role-based access — admin-only pages return 403 to regular users.
-- QA-AUTH-004: Missing session on API route returns 401 before any DB query (verify no DB fetch when unauthenticated).
+-----------------
+STUDENT TEST SUITE
+-----------------
 
-### Profile & Onboarding
-- QA-PROF-001: Create profile, set grade & board (verify immutability on PATCH — grade/board ignored on update).
-- QA-PROF-002: DOB and profile gates — user blocked from certain flows until profile complete.
+QA-STU-001 — Sign up & Onboarding (Critical)
+- Objective: Verify student registration, profile create, and grade/board immutability.
+- Preconditions: Clean test DB.
+- Steps:
+  1. Register via UI with `student@example.com` and complete email verification (if enabled).
+  2. Complete onboarding: select `grade=8`, `board=CBSE`, fill required fields, save.
+  3. Attempt to update profile via PATCH: change `grade` to `9` and `name` to `New Name`.
+- Expected Result: The `name` change is accepted; `grade` and `board` remain the original values.
+- DB Validation (SQL):
 
-### Chat AI Tutor (Vidya) — Core flows
-- QA-AI-001: Start new chat session — initial greeting, language selection, TTS availability.
-- QA-AI-002: Prompt schema enforcement — invalid prompt should be rejected by Zod schema with friendly error.
-- QA-AI-003: No direct answers policy — when student asks for solution, Vidya should respond with guiding questions not direct answers.
-- QA-AI-004: Hallucination detection — intentionally query with a factual false premise; system should flag/transform or return a safe fallback.
-- QA-AI-005: Safe responses pipeline — verify AI output passes: intent classifier → prompt rewriter → hallucination detector → safeResponses → schema validation before saving.
-- QA-AI-006: Raw LLM text not stored — verify DB tables do not store raw text (search for `raw` or `llm_response` fields) and audit logs show processing steps instead.
-- QA-AI-007: Difficulty tuning deterministic — ask for difficulty change and verify deterministic rule-based output and logged reasoning.
+  -- Verify user exists and onboarding values
+  SELECT id, email, grade, board, created_at
+  FROM "User"
+  WHERE email = 'student@example.com';
 
-### Speech: Microphone (STT) & Text-to-Speech (TTS)
-- QA-SPEECH-001: Microphone capture on low-end Android viewport — audio recorded, STT result appears in chat input.
-- QA-SPEECH-002: TTS playback across major browsers and mobile — audio plays, volume acceptable, accessible controls present.
-- QA-SPEECH-003: Failure fallback — if STT or TTS service fails, app shows friendly error and allows manual input.
+  -- After attempted PATCH, confirm grade unchanged
+  SELECT grade FROM "User" WHERE id = '<user_id>';
 
-### Payments & Subscriptions (Razorpay)
-- QA-PAY-001: Purchase subscription — successful checkout, DB reflects subscription, receipt generated.
-- QA-PAY-002: Webhook handling — verify idempotency of webhook processing and no duplicated subscriptions.
-- QA-PAY-003: Payment failure handling — user-facing friendly error, no DB side effects.
+- Prisma example:
 
-### Mastery Snapshots, Learning Sessions & Streaks
-- QA-MAST-001: Mastery snapshot creation — verify snapshot written when session completes and persisted to DB.
-- QA-LEARN-001: Persist LearningSession — starting, resuming, and finishing sessions persist correct timestamps and results.
-- QA-STREAK-001: Streak update server-side — client cannot fake streak increments; server enforces rules.
+  const user = await prisma.user.findUnique({ where: { email: 'student@example.com' } });
+  // assert user.grade === '8'
 
-### Workers, Queues & Background Jobs (BullMQ)
-- QA-WORK-001: Job enqueue & processing — job created in queue, processed successfully.
-- QA-WORK-002: Idempotency — running the same job twice should leave state unchanged beyond intended side effects.
-- QA-WORK-003: Redis TTLs — cached items set with correct TTL, expired items removed.
-- QA-WORK-004: Retry behavior — failing jobs retried per policy and move to failed queue after threshold.
+Notes: If the system enforces immutability at API layer, ensure the API response does not echo changed grade.
 
-### API & Backend
-- QA-API-001: Student-facing APIs follow schema — responses conform to `lib/api/student/schemas.ts` (no free-form text in structured responses).
-- QA-API-002: Error responses format — `{ code, message }` shape and no stack traces returned to client.
-- QA-API-003: Rate limiting on sensitive endpoints (OTP, payments) — ensure limits enforced.
+QA-STU-002 — Sign-in & Session Expiry (High)
+- Objective: Verify authentication, token/cookie lifecycle, and 401 responses after expiry.
+- Steps:
+  1. Sign in as `student@example.com`, capture cookie/token.
+  2. Manually expire or delete the session server-side (or call sign-out).
+  3. Call a protected API (`GET /api/student/session`) with the expired token.
+- Expected Result: API returns 401; server performs no DB reads before auth rejection.
+- DB Validation (SQL):
 
-### Admin & Content Management
-- QA-ADMIN-001: AdminCreateChallenge flow — create challenge, validate fields, visibility toggles work.
-- QA-ADMIN-002: Audit trail viewer — admin can view audit events with no PII exposed.
+  SELECT * FROM "Session" WHERE user_id = '<user_id>' ORDER BY expires_at DESC LIMIT 5;
 
-### UI & Accessibility
-- QA-UI-001: Mobile-first layout at 360px — verify main screens render without horizontal scroll.
-- QA-UI-002: Min touch target — interactive elements meet 44x44px rule.
-- QA-UI-003: Keyboard navigation and ARIA attributes — critical pages reachable and usable by keyboard.
-- QA-UI-004: Color contrast & dark mode — ensure readable text and maintain design tokens.
+Notes: If using NextAuth, verify `Session` table contents match the expected expiry.
 
-### Localization & Copy rules
-- QA-I18N-001: Language switching — UI and AI prompts respect selected language (English/Hindi).
-- QA-COPY-001: Copy compliance — no banned terms (e.g., "broke", "failed") in streak or progress messages.
+QA-STU-003 — Chat: Start LearningSession & Persist (Critical)
+- Objective: Verify starting a chat creates a `LearningSession` and records messages.
+- Steps:
+  1. Start a chat with Vidya and send a simple question.
+  2. Confirm the UI shows the assistant response.
+  3. End session using the app's finish action.
+- Expected Result: A `LearningSession` record exists and includes start/finish timestamps and basic metadata.
+- DB Validation (SQL):
 
-### Performance & Scalability
-- QA-PERF-001: Load test chat endpoint — sustain N concurrent chat requests (define target with dev/infra team).
-- QA-PERF-002: Worker throughput — job processing rates within acceptable bounds.
+  SELECT id, user_id, status, started_at, finished_at
+  FROM "LearningSession"
+  WHERE user_id = '<user_id>'
+  ORDER BY created_at DESC LIMIT 1;
 
-### Security & Data Handling
-- QA-SEC-001: No PII in logs — verify logs do not include names/emails/phone/Aadhaar.
-- QA-SEC-002: Input validation — test SQL/command injection attempts are sanitized/blocked.
-- QA-SEC-003: Secrets handling — no `dotenv`, `ts-node`, `tsconfig-paths` in `dist/` after build (run grep check per deployment guardrail).
+  SELECT count(*) FROM "ChatMessage" WHERE session_id = '<session_id>';
 
-### CI / Build / Deployment Checks
-- QA-CI-001: Pre-commit gate — run `python3 scripts/fix-smart-quotes.py` then `npx tsc --noEmit --project tsconfig.json`.
-- QA-CI-002: Build gate — `npm run build:workers && npm run build && npm test` must pass.
-- QA-CI-003: Dist verification — grep `dist` for forbidden tokens (`dotenv`, `tsconfig-paths`) and expect none.
+- Prisma example:
+
+  const session = await prisma.learningSession.findFirst({ where: { userId }, orderBy: { createdAt: 'desc' } });
+
+Notes: Confirm that messages/summaries are stored as structured records (no raw LLM text fields persisted).
+
+QA-STU-004 — No Direct Answers Policy (Critical)
+- Objective: Ensure Vidya returns guiding prompts, not direct homework solutions.
+- Steps:
+  1. In chat, paste a homework question and explicitly ask "Give me the answer.".
+  2. Observe assistant reply.
+- Expected Result: Assistant asks clarifying questions or provides step hints, not the full solution.
+- DB / Audit Validation (SQL):
+
+  -- Verify guardrail steps logged in audit
+  SELECT id, event_type, payload, created_at
+  FROM "AuditEvent"
+  WHERE user_id = '<user_id>' AND event_type ILIKE '%ai%'
+  ORDER BY created_at DESC LIMIT 5;
+
+Notes: Confirm `intentClassifier` and `promptRewriter` steps were invoked (see audit payload).
+
+QA-STU-005 — Mastery Snapshot Creation (High)
+- Objective: When a learning session finishes, a `MasterySnapshot` is created and linked.
+- Steps:
+  1. Run a full learning session (complete items to trigger snapshot logic).
+  2. Observe completion flow and any UI snapshot confirmation.
+- Expected Result: `MasterySnapshot` record created with `user_id`, `session_id`, and mastery metrics.
+- DB Validation (SQL):
+
+  SELECT id, user_id, session_id, metrics, created_at
+  FROM "MasterySnapshot"
+  WHERE user_id = '<user_id>' ORDER BY created_at DESC LIMIT 1;
+
+Prisma example:
+
+  const snap = await prisma.masterySnapshot.findFirst({ where: { userId }, orderBy: { createdAt: 'desc' } });
+
+QA-STU-006 — Payments: Subscribe (Critical)
+- Objective: Verify subscription creation, webhook idempotency, and user access change.
+- Steps:
+  1. From student account, purchase subscription using Razorpay sandbox.
+  2. Validate UI shows premium access and receipt.
+  3. Re-send the same webhook payload to test idempotency.
+- Expected Result: Single subscription record created; duplicate webhook is ignored (idempotent).
+- DB Validation (SQL):
+
+  SELECT id, user_id, status, plan, started_at
+  FROM "Subscription"
+  WHERE user_id = '<user_id>' ORDER BY started_at DESC LIMIT 1;
+
+  SELECT count(*) FROM "PaymentWebhookLog" WHERE payment_id = '<payment_id>';
+
+Notes: Check `webhook` logs and ensure subscription status transitions are correct.
+
+QA-STU-007 — Streaks (High)
+- Objective: Verify server-enforced streak logic and that clients cannot increment arbitrarily.
+- Steps:
+  1. Complete an eligible action for today.
+  2. Trigger the server-side streak update logic (either via UI or worker).
+  3. Attempt to submit a fake client-side event to increment streak.
+- Expected Result: Only server-authorized events increment streak; invalid client attempts are rejected.
+- DB Validation:
+
+  SELECT streak_count, last_active_at FROM "Streak" WHERE user_id = '<user_id>';
+
+Notes: Confirm event provenance is logged in `AuditEvent`.
+
+QA-STU-008 — Accessibility & Mobile Layout (Medium)
+- Objective: Verify mobile-first layout (360px) and min touch targets.
+- Steps:
+  1. Open key flows on emulated 360px viewport; inspect touch targets and layout.
+  2. Test keyboard navigation and ARIA attributes.
+- Expected Result: No horizontal scroll; buttons meet 44x44px target; ARIA present.
+
+-----------------
+PARENT TEST SUITE
+-----------------
+
+QA-PAR-001 — Parent Sign-up & Link Child (Critical)
+- Objective: Verify parent account creation and linking to an existing child account.
+- Steps:
+  1. Register as `parent@example.com`.
+  2. Use the app flow to add/link a child (enter child's email or code).
+  3. Verify child receives notification and the link is established.
+- Expected Result: Parent-child relationship exists and parent can view child's summary.
+- DB Validation (SQL):
+
+  SELECT parent_id, child_id FROM "ParentChild" WHERE parent_id = '<parent_id>' AND child_id = '<child_id>';
+
+Prisma example:
+
+  const rel = await prisma.parentChild.findFirst({ where: { parentId: '<parent_id>', childId: '<child_id>' } });
+
+QA-PAR-002 — View Child Progress & Reports (High)
+- Objective: Parent can view child's learning sessions, mastery snapshots, and streaks.
+- Steps:
+  1. Login as parent and navigate to child's dashboard.
+  2. Inspect learning history, mastery snapshots, and streak information.
+- Expected Result: Data matches child's records with no PII leakage.
+- DB Validation:
+
+  SELECT ls.id, ls.started_at, ms.metrics
+  FROM "LearningSession" ls
+  JOIN "MasterySnapshot" ms ON ms.session_id = ls.id
+  WHERE ls.user_id = '<child_user_id>'
+  ORDER BY ls.started_at DESC LIMIT 20;
+
+QA-PAR-003 — Parent Purchase for Child (High)
+- Objective: Parent can pay for child's subscription and the subscription maps correctly.
+- Steps:
+  1. From parent account, purchase a subscription for the child.
+  2. Verify the child's account now has premium access.
+- Expected Result: Subscription record exists for the child, and access toggles accordingly.
+- DB Validation:
+
+  SELECT id, user_id, purchased_by_parent_id, status FROM "Subscription" WHERE user_id = '<child_id>' AND purchased_by_parent_id = '<parent_id>';
+
+-----------------
+ADMIN TEST SUITE
+-----------------
+
+QA-ADM-001 — Admin Access & RBAC (Critical)
+- Objective: Ensure admin-only pages and APIs are protected and reject non-admin users.
+- Steps:
+  1. Login as `admin@example.com` and access admin dashboard and APIs.
+  2. Login as regular user and attempt same requests.
+- Expected Result: Admin access allowed; regular user receives 403.
+- DB Validation:
+
+  SELECT id, email, role FROM "User" WHERE email IN ('admin@example.com', 'student@example.com');
+
+QA-ADM-002 — Create / Publish Content (High)
+- Objective: Admin can create a challenge and publish it; published content visible to students per rollout config.
+- Steps:
+  1. As admin, create a new challenge with unique title `QA: Test Challenge`.
+  2. Publish the challenge and set visibility flags.
+  3. As a student, verify visibility following rollout rules.
+- Expected Result: Challenge persisted and visible per rollout/feature-flag configuration.
+- DB Validation (SQL):
+
+  SELECT id, title, status, visibility FROM "Challenge" WHERE title = 'QA: Test Challenge';
+
+QA-ADM-003 — Audit Trail & Compliance (High)
+- Objective: Verify audit events for critical admin actions and ensure no PII leaks in audit logs.
+- Steps:
+  1. As admin, perform a content edit and a user role change.
+  2. Query audit logs for events and verify payload and context.
+- Expected Result: Audit events recorded with event_type, actor_id, target_id, and non-sensitive payload.
+- DB Validation:
+
+  SELECT id, event_type, actor_id, target_id, payload, created_at FROM "AuditEvent" WHERE actor_id = '<admin_id>' ORDER BY created_at DESC LIMIT 10;
+
+QA-ADM-004 — Workers & Job Orchestration (High)
+- Objective: Admin can requeue jobs and inspect worker health; jobs are idempotent.
+- Steps:
+  1. Create or requeue a job via admin UI/API.
+  2. Observe worker processing and job result.
+  3. Re-run the same job payload to test idempotency.
+- Expected Result: Job processed once with correct side-effects; duplicate execution does not create duplicate records.
+- DB Validation:
+
+  SELECT job_id, status, attempts, last_error FROM "JobLog" WHERE job_id = '<job_id>' ORDER BY created_at DESC LIMIT 10;
+
+QA-ADM-SEC-001 — Dist Forbidden Dependency Check (Critical)
+- Objective: Ensure production `dist/` contains no forbidden runtime dependencies.
+- Steps:
+  1. After running build, run:
+
+  ```bash
+  grep -R "dotenv" dist || echo OK
+  grep -R "tsconfig-paths" dist || echo OK
+  ```
+
+- Expected Result: `OK` output and no matches.
+
+-----------------
+CROSS-ROLE END-TO-END SCENARIOS
+-----------------
+
+E2E-01 — Full happy path (Critical)
+- Sign up student → complete onboarding → admin publishes a challenge → student attempts challenge → finishes session → mastery snapshot created → parent views child progress.
+- DB validations: verify `LearningSession`, `MasterySnapshot`, `Challenge` visibility, and `ParentChild` relation.
+
+E2E-02 — Payment and Access Change (Critical)
+- Student flows: start as free user → purchase subscription → verify premium endpoints accessible.
+- DB validations: `Subscription` state and `Access` toggles for user.
 
 ---
 
-## Representative Detailed Test Cases (examples)
+## DB Validation & Query Examples (Common entities)
+The following are canonical SQL and Prisma snippets QA can use to validate the most common entities. Replace `<user_id>` and `<session_id>` with real values from the test run.
 
-1) QA-AI-002 — No direct answers policy
-- Objective: Verify Vidya does not return direct answers on homework-dump requests.
-- Preconditions: Logged-in student, a sample homework question that expects an answer.
-- Steps:
-  1. Open chat and paste a direct homework question (e.g., "What's the answer to question X?").
-  2. Send message.
-- Expected Result: Vidya asks a guiding question, offers hints or asks the student to explain their approach. No full solution is provided.
-- Priority: Critical
-- Type: Functional
+User lookup (SQL):
 
-2) QA-WORK-002 — Job idempotency
-- Objective: Ensure repeated processing doesn't create duplicate side effects.
-- Preconditions: Known job payload; worker configured for test.
-- Steps:
-  1. Manually enqueue job J.
-  2. Force-run the job twice (simulate duplicate delivery).
-- Expected Result: Only one DB state change occurs; second run is a no-op or safely ignored.
-- Priority: High
-- Type: Integration
+  SELECT id, email, role, grade, board, created_at FROM "User" WHERE email = 'student@example.com';
 
-3) QA-SEC-003 — Dist forbidden dependency check
-- Objective: Ensure production build contains no forbidden runtime dependencies.
-- Preconditions: Build produced in `dist/`.
-- Steps:
-  1. Run grep: `grep -R "dotenv" dist || echo OK` and `grep -R "tsconfig-paths" dist || echo OK`.
-- Expected Result: Output `OK` and no matches found.
-- Priority: Critical
-- Type: Deployment/CI
+Prisma:
 
-4) QA-API-001 — API schema validation
-- Objective: Verify student API responses match defined schemas and contain no raw AI text fields.
-- Preconditions: API server running; test student authenticated.
-- Steps:
-  1. Call key student API endpoint (e.g., `/api/student/session`) with valid auth.
-  2. Validate response JSON against schema in `lib/api/student/schemas.ts`.
-- Expected Result: Response conforms; no unstructured LLM text fields included.
-- Priority: Critical
-- Type: Integration
+  const u = await prisma.user.findUnique({ where: { email: 'student@example.com' } });
 
----
+LearningSession (SQL):
 
-## End-to-End Scenarios (happy paths)
-- E2E-01 (Critical): Sign up → complete onboarding → start a learning session → finish session → verify mastery snapshot persisted and streak updated.
-- E2E-02 (Critical): Sign in → start AI tutoring session → follow suggested hint → attempt payment to upgrade → verify subscription and access change.
-- E2E-03 (High): Simulate AI upstream failure (OpenAI down) → verify failover to Anthropic or safe fallback path and user-facing message.
+  SELECT id, user_id, status, started_at, finished_at FROM "LearningSession" WHERE user_id = '<user_id>' ORDER BY created_at DESC LIMIT 1;
 
----
+MasterySnapshot (SQL):
 
-## Non-functional & Edge Cases
-- Test network throttling and offline recovery on mobile.
-- Test low-memory device behaviours and long-running background tasks.
-- Test large payloads (image/audio) upload and graceful rejection limits.
+  SELECT id, user_id, session_id, metrics FROM "MasterySnapshot" WHERE user_id = '<user_id>' ORDER BY created_at DESC LIMIT 1;
 
----
+Subscription (SQL):
+
+  SELECT id, user_id, plan, status, started_at FROM "Subscription" WHERE user_id = '<user_id>' ORDER BY started_at DESC LIMIT 1;
+
+Audit events (SQL):
+
+  SELECT id, event_type, actor_id, payload, created_at FROM "AuditEvent" WHERE actor_id = '<actor_id>' ORDER BY created_at DESC LIMIT 50;
+
+Generic column scan for LLM/raw fields (SQL):
+
+  SELECT table_name, column_name FROM information_schema.columns WHERE column_name ILIKE '%llm%' OR column_name ILIKE '%raw%';
+
+Notes: Use the generic scan to confirm no raw LLM text columns exist in production schemas. If fields are present, validate they are not populated with raw LLM outputs.
+
+## API Verification Examples
+- Protected API call (curl):
+
+  curl -H "Authorization: Bearer <token>" https://localhost:3000/api/student/session
+
+- Validate response shape against `lib/api/student/schemas.ts`. For automation, use a JSON schema validator in tests.
+
+## Worker / Queue Checks
+- Inspect job history via admin APIs or directly query `JobLog`/queue tables.
+- Verify retries, failures, and TTLs for Redis-backed caches.
+
+## Security & Compliance Checks
+- Confirm no PII in logs. Grep for sample PII patterns is not foolproof; prefer structured log review.
+- Validate rate limits for sensitive endpoints (OTP, payments).
 
 ## Regression Suite & Acceptance Criteria
-- Regression suite must run after each release candidate. Focus on all Critical and High test cases.
-- Acceptance: 100% critical tests pass; 95%+ high/medium tests pass per release policy.
+- Run the regression suite against the release candidate. Critical tests: 100% pass. High/Medium acceptance: 95%+.
 
 ## Bug Report Template (copy into issue)
 - Title: [QA][<Priority>] Short description
@@ -219,22 +394,13 @@ The following sections contain representative and required test cases. Expand th
 ---
 
 ## Handoff & Sign-off
-- When QA finishes the suite, attach a test-results summary with pass/fail counts and blocking issues.
-- Sign-off requires all Critical blockers resolved and a re-run of the acceptance regression suite.
-
----
-
-## Appendix: Useful Commands
-- Install: `npm ci --include=dev`
-- Lint: `npm run lint`
-- Type-check: `npm run type-check`
-- Build + workers + tests gate: `npm run build:workers && npm run build && npm test`
-- Dist forbidden deps grep (post-build): `grep -R "dotenv" dist || echo OK` etc.
+- When QA finishes, attach a test-results summary with pass/fail counts, logs, and blocking issues.
+- Sign-off: all Critical blockers resolved and acceptance regression re-run.
 
 ---
 
 If you want, I can:
-- convert each entry into individual test-case files under `tests/qa/`,
-- produce a CSV export for import into a test-management tool (TestRail, Zephyr), or
-- create a short checklist view for manual testers.
+- convert each role/test into individual test-case files under `tests/qa/` (YAML/JSON/Markdown),
+- export a CSV for TestRail/Zephyr import,
+- or scaffold automated Jest integration tests for selected critical flows.
 
