@@ -14,7 +14,7 @@
  * Mobile:        topbar shows brand + user stats; bottom nav handles page navigation.
  */
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
 import Link from 'next/link';
 import { useSession } from 'next-auth/react';
 import useSWR from 'swr';
@@ -27,7 +27,10 @@ type TopbarStats = { streak: number; level: number; shieldAvailable: boolean };
 
 export default function Topbar() {
   const { data: session } = useSession();
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
   const [streakOpen, setStreakOpen] = useState(false);
+  const streakBtnRef = useRef<HTMLButtonElement | null>(null);
 
   const { data: stats } = useSWR<TopbarStats>(
     session ? '/api/student/topbar-stats' : null,
@@ -43,12 +46,32 @@ export default function Topbar() {
   const level = stats?.level ?? 1;
   const shieldAvailable = stats?.shieldAvailable ?? false;
 
-  const closeStreak = useCallback(() => setStreakOpen(false), []);
+  const closeStreak = useCallback(() => {
+    setStreakOpen(false);
+    // return focus to the opener button when the popover closes
+    try {
+      streakBtnRef.current?.focus();
+    } catch {
+      // ignore
+    }
+  }, []);
 
   return (
     <header className="sticky top-0 z-50 bg-white dark:bg-gray-950 border-b border-gray-100 dark:border-slate-800 min-h-[44px]">
       <div className="px-4 h-full flex items-center justify-between gap-3 py-2">
 
+        {/* Mobile left: menu icon (only on small screens) */}
+        <button
+          data-testid="mobile-menu-button"
+          type="button"
+          onClick={() => setMenuOpen(true)}
+          aria-label="Open menu"
+          className="mr-2 md:hidden p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-800 min-h-[44px] min-w-[44px]"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor" aria-hidden>
+            <path fillRule="evenodd" d="M3 5h14a1 1 0 100-2H3a1 1 0 100 2zm14 6H3a1 1 0 100 2h14a1 1 0 100-2zm0 6H3a1 1 0 100 2h14a1 1 0 100-2z" clipRule="evenodd" />
+          </svg>
+        </button>
         {/* Left: logo */}
         <Link
           href="/dashboard"
@@ -66,6 +89,7 @@ export default function Topbar() {
           {(streak > 0 || shieldAvailable) && (
             <div className="relative">
               <button
+                ref={streakBtnRef}
                 type="button"
                 onClick={() => setStreakOpen((o) => !o)}
                 aria-label={`${streak} day streak -- tap for details`}
@@ -92,18 +116,62 @@ export default function Topbar() {
             Lv {level}
           </span>
 
-          {/* Avatar -- links to profile */}
+          {/* Avatar -- links to profile (desktop) */}
           <Link
             href="/profile"
-            className="w-8 h-8 min-w-[44px] min-h-[44px] flex items-center justify-center"
+            className="hidden md:flex w-8 h-8 min-w-[44px] min-h-[44px] items-center justify-center"
             aria-label="My profile"
           >
             <span className="w-8 h-8 rounded-full bg-[#534AB7] flex items-center justify-center">
               <span className="text-white font-semibold text-xs leading-none">{initial}</span>
             </span>
           </Link>
+
+          {/* Mobile right: profile icon button (only on small screens) */}
+          <button
+            data-testid="mobile-profile-button"
+            type="button"
+            onClick={() => setProfileOpen(true)}
+            aria-label="Open profile"
+            className="md:hidden p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-800 min-h-[44px] min-w-[44px]"
+          >
+            <span className="w-8 h-8 rounded-full bg-[#534AB7] flex items-center justify-center">
+              <span className="text-white font-semibold text-xs leading-none">{initial}</span>
+            </span>
+          </button>
         </div>
       </div>
+
+      {/* Mobile Menu Sheet */}
+      {menuOpen && (
+        <div data-testid="mobile-menu-sheet" className="fixed left-0 right-0 bottom-0 w-full bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 rounded-t-lg shadow z-50 p-2">
+          <div className="flex items-center justify-between mb-2 px-2">
+            <div className="text-sm font-semibold">Menu</div>
+            <button type="button" onClick={() => setMenuOpen(false)} className="text-gray-600">✕</button>
+          </div>
+          <nav>
+            <Link href="/dashboard" onClick={() => setMenuOpen(false)} className="block px-3 py-2 text-sm">Dashboard</Link>
+            <Link href="/learn" onClick={() => setMenuOpen(false)} className="block px-3 py-2 text-sm">Learn</Link>
+            <Link href="/rooms" onClick={() => setMenuOpen(false)} className="block px-3 py-2 text-sm">Rooms</Link>
+            <Link href="/profile" onClick={() => setMenuOpen(false)} className="block px-3 py-2 text-sm">Profile</Link>
+          </nav>
+        </div>
+      )}
+
+      {/* Mobile Profile Sheet */}
+      {profileOpen && (
+        <div data-testid="mobile-profile-sheet" className="fixed left-0 right-0 bottom-0 w-full bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 rounded-t-lg shadow z-50 p-2">
+          <div className="flex items-center justify-between mb-2 px-2">
+            <div className="text-sm font-semibold">Profile</div>
+            <button type="button" onClick={() => setProfileOpen(false)} className="text-gray-600">✕</button>
+          </div>
+          <nav>
+            <Link href="/profile" onClick={() => setProfileOpen(false)} className="block px-3 py-2 text-sm">View profile</Link>
+            <Link href="/settings" onClick={() => setProfileOpen(false)} className="block px-3 py-2 text-sm">Settings</Link>
+            <Link href="/help" onClick={() => setProfileOpen(false)} className="block px-3 py-2 text-sm">Help</Link>
+          </nav>
+        </div>
+      )}
     </header>
   );
 }

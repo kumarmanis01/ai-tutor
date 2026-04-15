@@ -86,6 +86,47 @@ export default function StreakWidget({ onClose }: Props) {
     return () => document.removeEventListener('keydown', handle)
   }, [onClose])
 
+  // Focus trap: keep focus inside the popover while open
+  useEffect(() => {
+    const node = ref.current
+    if (!node) return
+
+    const focusableSelector = 'a[href], button:not([disabled]), textarea, input, select, [tabindex]:not([tabindex="-1"])'
+    const focusable = Array.from(node.querySelectorAll<HTMLElement>(focusableSelector))
+    if (focusable.length) {
+      // move focus to the first focusable element inside the popover
+      try {
+        focusable[0].focus()
+      } catch {
+        // ignore
+      }
+    }
+
+    function handleKey(e: KeyboardEvent) {
+      if (e.key !== 'Tab') return
+      if (focusable.length === 0) {
+        e.preventDefault()
+        return
+      }
+      const first = focusable[0]
+      const last = focusable[focusable.length - 1]
+      if (e.shiftKey) {
+        if (document.activeElement === first) {
+          e.preventDefault()
+          last.focus()
+        }
+      } else {
+        if (document.activeElement === last) {
+          e.preventDefault()
+          first.focus()
+        }
+      }
+    }
+
+    node.addEventListener('keydown', handleKey)
+    return () => node.removeEventListener('keydown', handleKey)
+  }, [ref])
+
   const loading = !stats && !statsError
   const error = !!statsError || !!actError
 

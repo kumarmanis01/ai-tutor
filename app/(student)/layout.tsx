@@ -1,3 +1,18 @@
+/**
+ * FILE OBJECTIVE:
+ * - Student shell root layout: HTML document root and authenticated student layout.
+ *
+ * LINKED UNIT TEST:
+ * - tests/unit/layouts/student.layout.spec.ts
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - .github/copilot-instructions.md
+ * - /docs/COPILOT_GUARDRAILS.md
+ *
+ * EDIT LOG:
+ * - 2026-04-15T00:00:00Z | staff-engineer | add file header and top padding to avoid Topbar overlap
+ */
+
 import React, { Suspense } from 'react';
 import localFont from 'next/font/local';
 import GoogleTagManagerClient from '@/components/ClientOnly/GoogleTagManagerClient';
@@ -171,6 +186,14 @@ export default async function StudentLayout({ children }: { children: React.Reac
   return (
     <html lang="en" className={`h-full ${inter.variable} ${nunito.variable}`}>
       <body className="font-sans antialiased min-h-screen h-full">
+        {/* Skip link for keyboard users */}
+        <a
+          href="#student-main"
+          className="sr-only focus:not-sr-only focus:absolute top-2 left-2 z-50 bg-white dark:bg-gray-900 px-2 py-1 rounded text-sm"
+        >
+          Skip to content
+        </a>
+
         <Providers>
           <GlobalLoaderProvider>
             <NavigationProgress />
@@ -186,7 +209,7 @@ export default async function StudentLayout({ children }: { children: React.Reac
               showProfileGate={showProfileGate}
               initialProfileData={initialProfileData}
             >
-              <div className="pb-16 md:pb-0">
+              <div id="student-main" className="pt-[44px] pb-16 md:pb-0">
                 {children}
               </div>
             </StudentLayoutShell>
