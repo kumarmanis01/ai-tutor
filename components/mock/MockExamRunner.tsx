@@ -50,7 +50,7 @@ export interface MockExamRunnerProps {
   sections: ExamSection[];
 }
 
-type SectionState = 'active' | 'submitted' | 'locked';
+type _SectionState = 'active' | 'submitted' | 'locked';
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 

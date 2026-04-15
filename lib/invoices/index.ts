@@ -352,9 +352,10 @@ export async function createInvoiceForPayment(opts: InvoiceCreateOpts) {
       } else {
         throw err;
       }
-    } catch (innerErr) {
+    } catch (_innerErr) {
       // If the fallback also fails, re-throw the original error to be handled
-      // by the caller.
+      // by the caller. Log the inner failure for diagnostics.
+      try { logger.warn('[invoices] fallback transaction failed', { error: String(_innerErr) }) } catch {}
       throw err;
     }
   }

@@ -34,7 +34,7 @@ export default function AddCard({ email, phone }: { email?: string; phone?: stri
             // Save payment method server-side using the payment id returned by Checkout
             const saveRes = await fetch('/api/payments/methods', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ providerPaymentMethodId: resp.razorpay_payment_id, customerId: custJson.customerId, meta: resp }) });
             if (!saveRes.ok) throw new Error('save-failed');
-            const saveJson = await saveRes.json();
+            await saveRes.json();
             // Trigger verification which will fetch the payment details and mark verified
             await fetch('/api/payments/methods/verify', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ providerPaymentMethodId: resp.razorpay_payment_id }) });
             setLoading(false);

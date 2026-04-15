@@ -107,7 +107,7 @@ function SkeletonCard() {
 
 export function RevisionWidget() {
   const router = useRouter()
-  const { revisions, totalDue, capReached, minutesUsedToday, loading, error, retry } = useRevisionsDueToday()
+  const { revisions, totalDue, capReached, minutesUsedToday: _minutesUsedToday, loading, error, retry } = useRevisionsDueToday()
   const { nextReview, loading: upcomingLoading } = useRevisionsUpcoming()
 
   if (loading) {

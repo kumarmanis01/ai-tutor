@@ -1,6 +1,7 @@
-'use client'
+ 'use client'
 
 import { useEffect, useState } from 'react'
+import { logger } from '@/lib/logger'
 
 type Profile = {
   digestOptOut: boolean
@@ -32,7 +33,10 @@ export default function ParentSettings() {
         setProfile(data)
         setChildren(data.children ?? [])
       })
-      .catch(() => setProfile({ digestOptOut: false, inactivityOptOut: false, digestDay: 'Sunday', digestTime: '09:00', digestTimezone: null, language: 'en' }))
+      .catch((err) => {
+        logger.debug('Failed to load parent settings', { error: String(err) })
+        setProfile({ digestOptOut: false, inactivityOptOut: false, digestDay: 'Sunday', digestTime: '09:00', digestTimezone: null, language: 'en' })
+      })
       .finally(() => setLoading(false))
   }, [])
 
@@ -45,14 +49,18 @@ export default function ParentSettings() {
         setMessage('Inactivity alerts muted')
         if (sid) setMutedLinkStudentId(sid)
       }
-    } catch (e) {}
+    } catch (err) {
+      logger.debug('Failed to parse URL params in ParentSettings', { error: String(err) })
+    }
   }, [])
 
   function autoDetectTz() {
     try {
       const tz = Intl.DateTimeFormat().resolvedOptions().timeZone
       setProfile((p) => (p ? { ...p, digestTimezone: tz } : p))
-    } catch (e) {}
+    } catch (err) {
+      logger.debug('Auto-detect timezone failed', { error: String(err) })
+    }
   }
 
   async function save() {
@@ -67,7 +75,8 @@ export default function ParentSettings() {
       } else {
         setMessage('Save failed')
       }
-    } catch (e) {
+    } catch (err) {
+      logger.error('Failed to save parent settings', { error: String(err) })
       setMessage('Save failed')
     } finally {
       setSaving(false)
@@ -93,7 +102,8 @@ export default function ParentSettings() {
       } else {
         setMessage('Action failed')
       }
-    } catch (e) {
+    } catch (err) {
+      logger.error('Failed to toggle pause', { error: String(err), studentId })
       setMessage('Action failed')
     } finally {
       setSaving(false)
@@ -113,13 +123,13 @@ export default function ParentSettings() {
     setPauseDialogReason('')
   }
 
-  function cancelPauseDialog() {
+  function _cancelPauseDialog() {
     setPauseDialogStudentId(null)
     setPauseDialogReason('')
     setPauseDialogDate('')
   }
 
-  async function confirmPauseDialog() {
+  async function _confirmPauseDialog() {
     if (!pauseDialogStudentId) return
     const d = pauseDialogDate ? new Date(pauseDialogDate + 'T00:00:00') : new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
     await togglePause(pauseDialogStudentId, true, d.toISOString(), pauseDialogReason || null)
@@ -141,7 +151,8 @@ export default function ParentSettings() {
       } else {
         setMessage('Action failed')
       }
-    } catch (e) {
+    } catch (err) {
+      logger.error('Failed to toggle exclude from reports', { error: String(err), studentId })
       setMessage('Action failed')
     } finally {
       setSaving(false)
@@ -164,7 +175,8 @@ export default function ParentSettings() {
       } else {
         setMessage('Action failed')
       }
-    } catch (e) {
+    } catch (err) {
+      logger.error('Failed to toggle child inactivity opt-out', { error: String(err), studentId })
       setMessage('Action failed')
     } finally {
       setSaving(false)

@@ -36,8 +36,9 @@ export function classifyStreakGap(
     if (diffDays === 0) return 'same_day'
     if (diffDays === 1) return 'consecutive'
     return 'broken'
-  } catch (err) {
-    // Fallback to UTC-based calculation on error
+  } catch (_err) {
+    // Fallback to UTC-based calculation on error; log the original error for diagnostics
+    try { logger.debug('classifyStreakGap: local-date calculation failed, falling back to UTC', { error: String(_err) }) } catch {}
     const lastMidnight = toMidnightUTC(lastSessionDate)
     const todayMidnight = toMidnightUTC(today)
     const diffDays = (todayMidnight - lastMidnight) / MS_PER_DAY

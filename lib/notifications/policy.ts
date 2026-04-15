@@ -83,14 +83,14 @@ export async function recordSendNotification(parentId: string, type: Notificatio
         const setRes = await (redis as any).set(key, '1', 'EX', ttlSeconds, 'NX')
         // setRes is 'OK' when key was set, null when key already existed. If key exists
         // but has no TTL, attempt to ensure a TTL exists.
-        if (!setRes) {
+          if (!setRes) {
           try {
             const curTtl = await (redis as any).ttl(key)
             if (typeof curTtl === 'number' && curTtl < 0) {
               await (redis as any).expire(key, ttlSeconds)
             }
           } catch (e) {
-            // best-effort
+            logger.debug('notification.policy: failed to ensure TTL on suppression key', { parentId, studentId, type, error: String(e) })
           }
         }
       } catch (err) {

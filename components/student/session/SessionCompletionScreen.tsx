@@ -18,6 +18,7 @@
  */
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { logger } from '@/lib/logger'
 import { getProgressPercent } from '@/lib/student/xpLevels'
 import { useRouter } from 'next/navigation';
 import { buildSessionSummary } from '@/lib/student/sessionSummary'
@@ -593,7 +594,7 @@ export const SessionCompletionScreen: React.FC<SessionCompletionScreenProps> = (
           setSharing(false)
           return
         } catch (e) {
-          // fall back to WhatsApp link
+          logger.debug('Web share failed, falling back to WhatsApp', { error: String(e) })
         }
       }
 
@@ -601,6 +602,7 @@ export const SessionCompletionScreen: React.FC<SessionCompletionScreenProps> = (
       window.open(url, '_blank')
       setSharing(false)
     } catch (err) {
+      logger.debug('WhatsApp share failed', { error: String(err) })
       setSharing(false)
       setShareError(true)
       setTimeout(() => setShareError(false), 2000)

@@ -54,13 +54,13 @@ const HeroSection = () => {
 
             <div className="space-y-4">
               <h1 className="font-headline font-bold text-4xl md:text-5xl lg:text-6xl text-secondary leading-tight">
-                Meet Teacher Vidya -- Your Child&apos;s Personal AI Tutor. 24×7
+                Turn doubts into confidence with Spinzy AI Tutor.
               </h1>
               <p className="font-body text-xl md:text-2xl text-foreground/80">
-                Class 1-12 · CBSE / ICSE / State Board
+                Adaptive practice, mastery checks, and guided hints that build conceptual fluency — no shortcuts.
               </p>
               <p className="font-body text-lg md:text-xl text-primary font-semibold">
-                Instant doubt solving in Hindi & English for just ₹99/month
+                Class 1-12 · CBSE / ICSE / State Board · Instant doubt solving in Hindi & English
               </p>
             </div>
 
@@ -70,14 +70,14 @@ const HeroSection = () => {
                 className="inline-flex items-center justify-center gap-2 px-6 py-3 md:px-8 md:py-4 min-h-[44px] bg-[#534AB7] text-white font-cta font-semibold rounded-lg hover:bg-[#4239a0] transition-all duration-250 text-base md:text-lg shadow-lg"
               >
                 <Icon name="SparklesIcon" size={20} variant="solid" />
-                <span>Start Free</span>
+                <span>Get started</span>
               </Link>
               <button
                 onClick={handleSeeHow}
                 className="inline-flex items-center justify-center gap-2 px-6 py-3 md:px-8 md:py-4 min-h-[44px] bg-background border-2 border-secondary text-secondary font-cta font-semibold rounded-lg hover:bg-secondary hover:text-white transition-all duration-250 text-base md:text-lg"
               >
                 <Icon name="PlayCircleIcon" size={24} variant="solid" />
-                <span>Watch Vidya Teach</span>
+                <span>View sample lesson</span>
               </button>
             </div>
 

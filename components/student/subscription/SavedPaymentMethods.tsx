@@ -16,6 +16,7 @@
  */
 
 import React, { useEffect, useState } from 'react';
+import { logger } from '@/lib/logger'
 
 type Method = {
   id: string;
@@ -43,6 +44,7 @@ export default function SavedPaymentMethods() {
       const j = await res.json();
       setMethods(j.methods ?? []);
     } catch (err) {
+      logger.debug('SavedPaymentMethods: failed to load methods', { error: String(err) })
       setMethods([]);
     } finally {
       setLoading(false);
@@ -59,7 +61,8 @@ export default function SavedPaymentMethods() {
       const res = await fetch('/api/payments/methods/verify', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ methodId: id }) });
       if (!res.ok) throw new Error('verify-failed');
       await load();
-    } catch {
+    } catch (err) {
+      logger.debug('SavedPaymentMethods: verify failed', { methodId: id, error: String(err) })
       await load();
     } finally {
       setActionLoading(null);
@@ -71,7 +74,8 @@ export default function SavedPaymentMethods() {
     try {
       await fetch('/api/payments/methods', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ providerPaymentMethodId: m.providerPaymentMethodId, isDefault: true }) });
       await load();
-    } catch {
+    } catch (err) {
+      logger.debug('SavedPaymentMethods: set default failed', { methodId: m.id, error: String(err) })
       await load();
     } finally {
       setActionLoading(null);
@@ -83,7 +87,8 @@ export default function SavedPaymentMethods() {
     try {
       await fetch(`/api/payments/methods?id=${encodeURIComponent(id)}`, { method: 'DELETE' });
       await load();
-    } catch {
+    } catch (err) {
+      logger.debug('SavedPaymentMethods: delete failed', { methodId: id, error: String(err) })
       await load();
     } finally {
       setActionLoading(null);

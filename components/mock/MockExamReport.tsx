@@ -154,7 +154,7 @@ function SectionBar({ sec }: { sec: SectionScore }) {
 
 export default function MockExamReport({ report }: ReportProps) {
   const overallPct = Math.round(report.scorePercent ?? 0);
-  const { text, bg } = scoreColor(overallPct);
+  const { text } = scoreColor(overallPct);
   const sectionScores: SectionScore[] = report.rawResult?.sectionScores ?? [];
   const sectionDetailsMap = new Map<string, SectionDetail>(
     (report.sections ?? []).map((s) => [s.sectionId, s])

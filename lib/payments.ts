@@ -1,4 +1,5 @@
 let _razorpay: any = null;
+import { logger } from '@/lib/logger'
 
 export async function getRazorpay() {
   if (_razorpay) return _razorpay;
@@ -74,6 +75,7 @@ export async function createRazorpayTokenCharge(opts: {
     if (!res.ok) return null;
     return data;
   } catch (err) {
+    logger.debug('createRazorpayTokenCharge failed', { error: String(err) })
     return null;
   }
 }

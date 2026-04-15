@@ -77,7 +77,7 @@ function tryParseShapes(hint: string): Shape[] | null {
   return shapes.length ? shapes : null;
 }
 
-export default function VisualHintRenderer({ hint, width = 320, height = 160, className = '' }: VisualHintRendererProps) {
+export default function VisualHintRenderer({ hint, width: _width = 320, height = 160, className = '' }: VisualHintRendererProps) {
   const shapes = tryParseShapes(hint);
   if (!shapes) {
     return (

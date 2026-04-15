@@ -15,6 +15,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { toast } from '@/lib/toast';
+import { logger } from '@/lib/logger';
 
 type State = 'loading' | 'error' | 'populated';
 
@@ -105,7 +106,7 @@ export default function AiNarrativeWidget() {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json' },
                   body: JSON.stringify({ event: 'export_progress_pdf', data: { success: false, reason: 'rate_limited' } }),
-                }).catch(() => {})
+                }).catch((err) => logger.debug('analytics track failed', { error: String(err) }))
                 return
               }
 
@@ -135,13 +136,14 @@ export default function AiNarrativeWidget() {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ event: 'export_progress_pdf', data: { success: true, fileSize: (blob && (blob as any).size) ?? null } }),
               }).catch(() => {})
-            } catch (e) {
+                } catch (err) {
+              logger.error('Could not generate PDF (client)', { error: String(err) })
               toast('Could not generate PDF. Please try again later.')
               void fetch('/api/analytics/track', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ event: 'export_progress_pdf', data: { success: false, reason: 'network_error' } }),
-              }).catch(() => {})
+              }).catch((err2) => logger.debug('analytics track failed', { error: String(err2) }))
             } finally {
               setExporting(false)
             }

@@ -16,4 +16,5 @@
 export const FREE_SESSIONS_TEXT = '3 free sessions every month';
 export const FREE_SESSIONS_TEXT_HI = 'हर माह 3 मुफ्त सेशन';
 
-export default { FREE_SESSIONS_TEXT, FREE_SESSIONS_TEXT_HI };
+const FREE_TIER_COPY = { FREE_SESSIONS_TEXT, FREE_SESSIONS_TEXT_HI };
+export default FREE_TIER_COPY;
