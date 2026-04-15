@@ -279,13 +279,15 @@ export async function POST(req: Request) {
           billingCycle: plan.perMonthDisplay,
           renewalDate,
         }),
-        attachments: [
-          {
-            filename: `invoice-${invoiceResult.invoiceNumber}.pdf`,
-            content: invoiceResult.pdfBuffer,
-            contentType: 'application/pdf',
-          },
-        ],
+        ...(invoiceResult.pdfBuffer ? {
+          attachments: [
+            {
+              filename: `invoice-${invoiceResult.invoiceNumber}.pdf`,
+              content: invoiceResult.pdfBuffer,
+              contentType: 'application/pdf',
+            },
+          ],
+        } : {}),
       } as any).catch((err: unknown) => {
         logger.error('Receipt email failed', { event: 'subscription.verify.email_error', context: { userId }, err });
       });

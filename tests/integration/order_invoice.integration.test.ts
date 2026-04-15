@@ -129,7 +129,9 @@ describe('Order → Verify → Invoice integration', () => {
     // being sent as evidence that the receipt flow executed.
     // fileUrl may be null when PDF generation is restricted (Playwright disabled,
     // pdf-lib unavailable) -- that code path is covered by unit tests.
-    if (!invoice) {
+    if (invoice) {
+      expect(invoice.id).toBeTruthy();
+    } else {
       expect(mockSendEmail).toHaveBeenCalled();
     }
 
