@@ -23,8 +23,8 @@ import { NextResponse } from 'next/server';
 import { getServerSessionForHandlers } from '@/lib/session';
 import { prisma } from '@/lib/prisma';
 import { logger } from '@/lib/logger';
-import { PLANS, rupeesToPaise } from '@/lib/subscription/plans';
-import type { PlanId } from '@/lib/subscription/plans';
+import { PLANS, rupeesToPaise } from '@/lib/billing/plans';
+import type { PlanId } from '@/lib/billing/plans';
 import Razorpay from 'razorpay';
 
 function getRazorpayClient() {

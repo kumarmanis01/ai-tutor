@@ -1,4 +1,18 @@
 /**
+ * FILE OBJECTIVE:
+ * - Paise-based helper to apply stored credits to a charge.
+ *
+ * LINKED UNIT TEST:
+ * - tests/unit/lib/subscription/credits.test.ts (imports updated to this path)
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - .github/copilot-instructions.md
+ *
+ * EDIT LOG:
+ * - 2026-04-15T00:00:00Z | copilot | moved from lib/subscription/credits.ts
+ */
+
+/**
  * Helpers for applying stored credits to charges.
  * All amounts are integers in paise.
  */

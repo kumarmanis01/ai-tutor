@@ -25,9 +25,9 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import PlanSelector from '@/components/student/subscription/PlanSelector';
 import PaymentMethodSelector from '@/components/student/subscription/PaymentMethodSelector';
 import PaymentConfirmation from '@/components/student/subscription/PaymentConfirmation';
-import type { PlanId } from '@/lib/subscription/plans';
+import type { PlanId } from '@/lib/billing/plans';
 import type { PaymentMethod } from '@/components/student/subscription/PaymentMethodSelector';
-import { PLANS } from '@/lib/subscription/plans';
+import { PLANS } from '@/lib/billing/plans';
 import { logger } from '@/lib/logger';
 
 interface ChildInfo {
@@ -46,7 +46,7 @@ type Step = 'select' | 'plan' | 'method' | 'confirm' | 'success' | 'failure';
 export default function ParentUpgradeFlow({ childrenList }: ParentUpgradeFlowProps) {
   const [step, setStep] = useState<Step>('select');
   const [selectedChildren, setSelectedChildren] = useState<string[]>(childrenList.length ? [childrenList[0].studentId] : []);
-  const [planId, setPlanId] = useState<PlanId>('monthly');
+  const [planId, setPlanId] = useState<PlanId>('standard_monthly');
   const [method, setMethod] = useState<PaymentMethod>('upi');
   const [isFamily, setIsFamily] = useState(false);
   const [emiMonths, setEmiMonths] = useState<number | undefined>(undefined);
@@ -172,7 +172,7 @@ export default function ParentUpgradeFlow({ childrenList }: ParentUpgradeFlowPro
     return (
       <div className="space-y-4">
         <PaymentMethodSelector selected={method} onSelect={setMethod} />
-        {planId === 'annual' && (
+        {PLANS[planId].durationMonths === 12 && (
           <div>
             <label className="text-sm">EMI (optional)</label>
             <div className="flex gap-2 mt-2">

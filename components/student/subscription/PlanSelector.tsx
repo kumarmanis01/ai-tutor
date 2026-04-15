@@ -9,15 +9,16 @@
  */
 
 import React from 'react';
-import { PLANS } from '@/lib/subscription/plans';
-import type { PlanId, SubscriptionPlan } from '@/lib/subscription/plans';
+import { PLANS } from '@/lib/billing/plans';
+import type { PlanId, SubscriptionPlan } from '@/lib/billing/plans';
 
 interface PlanSelectorProps {
   selected: PlanId;
   onSelect: (id: PlanId) => void;
 }
 
-const PLAN_ORDER: PlanId[] = ['monthly', 'quarterly', 'annual'];
+// Show Standard (monthly), Family (monthly) and Annual (Standard) by default
+const PLAN_ORDER: PlanId[] = ['standard_monthly', 'family_monthly', 'standard_annual'];
 
 function PlanRow({
   plan,

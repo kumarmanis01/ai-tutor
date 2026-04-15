@@ -24,8 +24,8 @@ import { NextResponse } from 'next/server';
 import { getServerSessionForHandlers } from '@/lib/session';
 import { prisma } from '@/lib/prisma';
 import { logger } from '@/lib/logger';
-import { PLANS, rupeesToPaise } from '@/lib/subscription/plans';
-import type { PlanId } from '@/lib/subscription/plans';
+import { PLANS, rupeesToPaise } from '@/lib/billing/plans';
+import type { PlanId } from '@/lib/billing/plans';
 import Razorpay from 'razorpay';
 
 function getRazorpayClient() {
@@ -35,7 +35,7 @@ function getRazorpayClient() {
   return new Razorpay({ key_id: keyId, key_secret: keySecret });
 }
 
-const VALID_PLAN_IDS: PlanId[] = ['monthly', 'quarterly', 'annual'];
+const VALID_PLAN_IDS: PlanId[] = Object.keys(PLANS) as PlanId[];
 
 export async function POST(req: Request) {
   const session = await getServerSessionForHandlers();

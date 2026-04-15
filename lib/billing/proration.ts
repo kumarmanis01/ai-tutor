@@ -1,19 +1,13 @@
 /**
  * FILE OBJECTIVE:
- * - Proration helper utilities for subscriptions. Provides both a paise-based
- *   default helper used across the codebase and a rupee-friendly named helper
- *   used by legacy callers and tests.
+ * - Proration helper utilities for billing. Provides both paise-based and
+ *   rupee-friendly helpers used across the codebase.
  *
  * LINKED UNIT TEST:
- * - tests/unit/lib/proration.test.ts
- * - tests/unit/lib/subscription/proration.test.ts
- *
- * COPILOT INSTRUCTIONS FOLLOWED:
- * - .github/copilot-instructions.md
- * - /docs/COPILOT_GUARDRAILS.md
+ * - tests/unit/lib/subscription/proration.test.ts (imports updated to this path)
  *
  * EDIT LOG:
- * - 2026-04-12T00:00:00Z | copilot | resolved merge conflict; expose both paise and rupee helpers
+ * - 2026-04-15T00:00:00Z | copilot | moved from lib/subscription/proration.ts
  */
 
 export interface ProrationInput {
@@ -29,10 +23,6 @@ export interface ProrationResult {
   creditRupees: number;
 }
 
-/**
- * Rupee-friendly helper kept for tests and callers that expect a structured
- * result. Internally uses integer paise math to avoid floating point errors.
- */
 export function calculateProrationCredit(input: ProrationInput): ProrationResult {
   const now = input.now ? new Date(input.now) : new Date();
   const start = new Date(input.startDate);
@@ -48,7 +38,6 @@ export function calculateProrationCredit(input: ProrationInput): ProrationResult
 
   if (remainingMs <= 0) return { totalDays, remainingDays: 0, creditRupees: 0 };
 
-  // Convert to paise for integer arithmetic
   const billedPaise = Math.round(input.billedRupees * 100);
   const fraction = remainingMs / totalMs;
   const creditPaise = Math.floor(billedPaise * fraction);
@@ -57,10 +46,6 @@ export function calculateProrationCredit(input: ProrationInput): ProrationResult
   return { totalDays, remainingDays, creditRupees };
 }
 
-/**
- * Default paise-based helper used by services and lower-level code. Returns
- * integer paise credit for the unused portion of the period.
- */
 export function computeProratedCredit(
   startIso: string | Date,
   endIso: string | Date,

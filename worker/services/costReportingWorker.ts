@@ -371,7 +371,7 @@ async function runFreeTierResetPush(): Promise<void> {
 
     for (const usage of usages) {
       // Check they are still free tier (not premium)
-      const { isPremiumUser } = await import('@/lib/subscription.js')
+      const { isPremiumUser } = await import('@/lib/billing/subscription')
       const isPremium = await isPremiumUser(usage.studentId).catch(() => false)
       if (isPremium) continue
 
