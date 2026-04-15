@@ -13,9 +13,13 @@
  * - 2026-02-01 | claude | read URL tab param, pass onNavigate to FeatureGrid
  * - 2025-01-23 | copilot | refactored for responsive design - mobile + desktop viewports
  * - 2025-01-22 | copilot | optimized for mobile-first with streamlined UX
+ * - 2026-04-15T00:30:00Z | staff-engineer | removed page-level TopBar; use global Topbar in student layout
  */
 import React, { useState, useEffect, useCallback } from 'react';
-import TopBar from './TopBar';
+// TopBar removed in favor of global `components/student/layout/Topbar.tsx`.
+// This page-level TopBar caused duplicate headers; the global Topbar is rendered
+// by `app/(student)/layout.tsx` and provides the canonical navigation for
+// authenticated student routes.
 import useCurrentUser from '@/hooks/useCurrentUser';
 import { useGlobalLoader } from '@/context/GlobalLoaderProvider';
 import ProfilePage from '@/app/profile/page';
@@ -102,7 +106,7 @@ const StudentHomeDashboard: React.FC<StudentHomeDashboardProps> = () => {
 
   return (
     <div className="min-h-screen bg-background dark:bg-slate-900 flex flex-col">
-      <TopBar studentName={studentName} activeTab={activeTab} onTabChange={setActiveTab} />
+      {/* Page-level TopBar removed; global Topbar provides header */}
       <main className="flex-1 overflow-y-auto">
         {/* Responsive container: narrow on mobile, wide on desktop */}
         <div className="max-w-lg lg:max-w-6xl xl:max-w-7xl mx-auto px-3 sm:px-4 lg:px-6 xl:px-8 py-3 lg:py-6">
