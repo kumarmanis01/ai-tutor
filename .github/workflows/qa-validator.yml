@@ -1,0 +1,81 @@
+# FILE OBJECTIVE:
+# - Run the QA snippets validator against a staging environment and upload results.
+#
+# LINKED UNIT TEST:
+# - tests/unit/docs/qa-validator.spec.ts
+#
+# EDIT LOG:
+# - 2026-04-15T00:00:00Z | copilot | created
+
+name: QA Snippets Validator (staging)
+
+on:
+  workflow_dispatch:
+    inputs:
+      csv-file:
+        description: 'CSV file to validate (repo-relative)'
+        required: false
+        default: 'docs/QA/ADMIN_TEST_CASES.csv'
+      limit:
+        description: 'Max rows to validate (0 = no limit)'
+        required: false
+        default: '0'
+  schedule:
+    - cron: '0 2 * * *'
+  push:
+    branches:
+      - master
+
+jobs:
+  run-validator:
+    name: Run QA validator against staging
+    runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: ${{ secrets.STAGING_DATABASE_URL }}
+      API_BASE_URL: ${{ secrets.STAGING_API_BASE_URL }}
+      API_TOKEN: ${{ secrets.STAGING_API_TOKEN }}
+      STAGING_QA_VARS: ${{ secrets.STAGING_QA_VARS }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Prepare QA variables file
+        env:
+          STAGING_QA_VARS: ${{ secrets.STAGING_QA_VARS }}
+        run: |
+          mkdir -p tmp
+          if [ -n "$STAGING_QA_VARS" ]; then
+            printf '%s' "$STAGING_QA_VARS" > tmp/qa_vars.json
+            echo "Wrote vars from STAGING_QA_VARS secret to tmp/qa_vars.json"
+          else
+            cp scripts/qa/sample-vars.json tmp/qa_vars.json
+            echo "Copied sample-vars.json to tmp/qa_vars.json"
+          fi
+
+      - name: Install dependencies
+        run: |
+          npm ci
+          npx prisma generate || true
+
+      - name: Run validator
+        run: |
+          CSV_FILE="${{ github.event.inputs.csv-file }}"
+          if [ -z "$CSV_FILE" ]; then CSV_FILE="docs/QA/ADMIN_TEST_CASES.csv"; fi
+          LIMIT="${{ github.event.inputs.limit }}"
+          if [ -z "$LIMIT" ]; then LIMIT=0; fi
+          echo "Validating $CSV_FILE (limit=$LIMIT) against $API_BASE_URL"
+          node scripts/qa/validate_snippets.js --file "$CSV_FILE" --vars-file tmp/qa_vars.json --limit "$LIMIT"
+
+      - name: Upload QA validation report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: qa-validation-report
+          path: tmp/qa_validation_report_*.json
