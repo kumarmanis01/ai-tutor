@@ -21,8 +21,13 @@ export async function POST(req: Request) {
 
     const body = await req.json().catch(() => null)
     // Accept a planId from the client; validate it against known plans; default to standard_monthly.
+    // Use an own-property check rather than `in` so inherited prototype keys (toString, __proto__)
+    // cannot be treated as valid plan identifiers.
     const rawPlanId = body?.planId
-    const planId: PlanId = (rawPlanId && rawPlanId in PLANS) ? (rawPlanId as PlanId) : 'standard_monthly'
+    const planId: PlanId =
+      typeof rawPlanId === 'string' && Object.prototype.hasOwnProperty.call(PLANS, rawPlanId)
+        ? (rawPlanId as PlanId)
+        : 'standard_monthly'
 
     const order = await createRazorpayOrder(userId, planId)
     if (!order) {

@@ -44,8 +44,13 @@ export async function POST(req: Request) {
       return res
     }
 
-    // Use planId stored on the order; fall back to standard_monthly for legacy orders without planId.
-    const planId: PlanId = (order.planId && order.planId in PLANS) ? (order.planId as PlanId) : 'standard_monthly'
+    // Use the planId stored on the order when it is a valid own key on PLANS.
+    // Fall back to standard_monthly for legacy orders without planId or for any invalid value.
+    // Own-property check prevents prototype keys (toString, __proto__) from slipping through.
+    const hasValidStoredPlanId =
+      typeof order.planId === 'string' &&
+      Object.prototype.hasOwnProperty.call(PLANS, order.planId)
+    const planId: PlanId = hasValidStoredPlanId ? (order.planId as PlanId) : 'standard_monthly'
     const ok = await activateSubscription(userId, orderId, planId)
     if (!ok) {
       const res = NextResponse.json({ error: 'Could not activate subscription' }, { status: 500 })

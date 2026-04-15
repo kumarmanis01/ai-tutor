@@ -37,9 +37,12 @@ export async function POST(req: Request) {
   }
 
   // 2. Parse and validate planId
+  // Own-property check prevents prototype keys (toString, __proto__) from matching.
   const body = await req.json().catch(() => null)
-  const planIdRaw: string = body?.planId ?? ''
-  if (!planIdRaw || !(planIdRaw in PLANS)) {
+  const planIdRaw: unknown = body?.planId
+  const validPlanId =
+    typeof planIdRaw === 'string' && Object.prototype.hasOwnProperty.call(PLANS, planIdRaw)
+  if (!validPlanId) {
     const res = NextResponse.json({ code: 'INVALID_PLAN', message: 'Invalid plan' }, { status: 400 })
     logger.logAPI(req, res, { className: 'CreateSubscriptionAPI', methodName: 'POST' }, start)
     return res
