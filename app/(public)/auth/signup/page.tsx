@@ -72,7 +72,7 @@ function AuthContent() {
             <Logo variant="auth" className="mb-6" />
           </div>
           <div>
-            <h1 className="text-xl font-brand font-bold text-gray-900 dark:text-white">Welcome to Spinzy</h1>
+            <h1 className="text-xl font-brand font-bold text-gray-900 dark:text-white">Welcome to Spinzy Academy</h1>
             <p className="text-sm text-muted-foreground mt-1">AI home tutor · CBSE Grades 1-12</p>
           </div>
         </div>
@@ -132,7 +132,7 @@ function AuthContent() {
 
         {/* Trust line */}
         <p className="text-center text-xs text-gray-400">
-          Free 3 sessions/month · No credit card · Cancel anytime
+          3 free sessions every month · No credit card · Cancel anytime
         </p>
       </div>
     </div>

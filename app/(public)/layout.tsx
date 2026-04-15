@@ -29,7 +29,7 @@ export const metadata: Metadata = {
   appleWebApp: {
     capable: true,
     statusBarStyle: 'default',
-    title: 'Spinzy',
+    title: 'Spinzy Academy',
   },
   icons: {
     icon: [

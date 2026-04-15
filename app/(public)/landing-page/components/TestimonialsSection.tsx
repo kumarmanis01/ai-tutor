@@ -28,7 +28,7 @@ const TestimonialsSection = () => {
       name: 'Sunita Sharma',
       location: 'Jaipur, Rajasthan',
       role: 'Mother of Class 8 Student',
-      image: 'https://img.rocket.new/generatedImages/rocket_gen_img_1991a1fec-1763300922786.png',
+      image: '/logos/vidya/vidya-avatar-128.png',
       alt: 'Indian mother in traditional saree smiling warmly at camera in home setting',
       rating: 5,
       testimonialEn:
@@ -44,9 +44,9 @@ const TestimonialsSection = () => {
       name: 'Rajesh Kumar',
       location: 'Indore, Madhya Pradesh',
       role: 'Father of Class 10 Student',
-      image: 'https://img.rocket.new/generatedImages/rocket_gen_img_149bf6de3-1763295161377.png',
+      image: '/logos/vidya/vidya-avatar-128.png',
       alt: 'Indian father in casual shirt smiling confidently at camera in office environment',
-      rating: 5,
+      rating: 4,
       testimonialEn:
         "As a small business owner, I couldn't afford ₹4000 monthly tuition. AI Tutor at ₹99 is a blessing! My son now solves Math problems independently and his confidence has grown tremendously.",
       testimonialHi:
@@ -60,9 +60,9 @@ const TestimonialsSection = () => {
       name: 'Priya Patel',
       location: 'Lucknow, Uttar Pradesh',
       role: 'Mother of Class 3 & 9 Students',
-      image: 'https://img.rocket.new/generatedImages/rocket_gen_img_10ca1ffd3-1763301127083.png',
+      image: '/logos/vidya/vidya-avatar-128.png',
       alt: 'Indian mother in modern casual wear smiling happily at camera in bright home interior',
-      rating: 5,
+      rating: 4,
       testimonialEn:
         'Having two children in different classes was expensive with separate tutors. Family plan at ₹199 covers both kids! The 24×7 availability means they get help even at 11 PM before exams.',
       testimonialHi:
@@ -74,7 +74,7 @@ const TestimonialsSection = () => {
   ];
 
   return (
-    <section id="testimonials" className="py-16 md:py-24 bg-background">
+    <section id="testimonials" className="py-12 md:py-16 bg-background">
       <div className="mx-auto px-4 md:px-6 lg:px-8 max-w-7xl">
         <div className="text-center mb-12 md:mb-16">
           <div className="inline-flex items-center gap-2 px-4 py-2 bg-success/10 text-success rounded-full text-sm font-medium mb-4">
@@ -82,7 +82,7 @@ const TestimonialsSection = () => {
             <span>Real Parent Reviews</span>
           </div>
           <h2 className="font-headline font-bold text-3xl md:text-4xl lg:text-5xl text-secondary mb-4">
-            Parents & Students Love AI Tutor
+            Parents & Students Love Spinzy Academy
           </h2>
           <p className="font-accent text-xl md:text-2xl text-primary mb-2">
             माता-पिता और छात्रों को AI Tutor पसंद है
@@ -138,7 +138,7 @@ const TestimonialsSection = () => {
 
               <div className="grid grid-cols-3 gap-2 pt-3 border-t border-border">
                 <div className="text-center">
-                  <p className="font-headline font-bold text-lg text-error">
+                  <p className="font-headline font-bold text-lg text-muted-foreground">
                     {testimonial.beforeGrade}
                   </p>
                   <p className="font-body text-xs text-muted-foreground">Before</p>
@@ -208,9 +208,9 @@ const TestimonialsSection = () => {
                 </div>
                 <div className="flex items-center justify-between">
                   <div className="text-center">
-                    <p className="font-headline font-bold text-3xl text-error mb-1">
-                      {testimonials[activeTestimonial].beforeGrade}
-                    </p>
+                      <p className="font-headline font-bold text-3xl text-muted-foreground mb-1">
+                        {testimonials[activeTestimonial].beforeGrade}
+                      </p>
                     <p className="font-body text-sm text-muted-foreground">Before AI Tutor</p>
                   </div>
                   <Icon

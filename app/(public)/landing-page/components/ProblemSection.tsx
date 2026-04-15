@@ -64,19 +64,19 @@ const ProblemSection = () => {
   ];
 
   return (
-    <section className="py-16 md:py-24 bg-background">
+    <section className="py-12 md:py-16 bg-background">
       <div className="mx-auto px-4 md:px-6 lg:px-8 max-w-7xl">
-        <div className="text-center mb-12 md:mb-16">
+        <div className="text-center mb-8 md:mb-12">
           <h2 className="font-headline font-bold text-3xl md:text-4xl lg:text-5xl text-secondary mb-4">
-            Kya Aapke Bacche Ko Bhi Ye Problems Hain?
+            Do Your Children Face These Common Learning Challenges?
           </h2>
           <p className="font-body text-lg md:text-xl text-muted-foreground max-w-3xl mx-auto">
-            Do Your Children Face These Common Learning Challenges?
+            Kya Aapke Bacche Ko Bhi Ye Problems Hain?
           </p>
         </div>
 
         <div className="grid lg:grid-cols-2 gap-8 lg:gap-12 items-center">
-          <div className="space-y-4">
+          <div className="space-y-4 order-2 lg:order-1">
             {problems.map((problem, index) => (
               <button
                 key={problem.id}
@@ -119,7 +119,7 @@ const ProblemSection = () => {
             ))}
           </div>
 
-          <div className="relative">
+          <div className="relative order-1 lg:order-2">
             <div className="relative rounded-2xl overflow-hidden shadow-2xl border-4 border-white">
               <AppImage
                 src={problems[selectedProblem].image}

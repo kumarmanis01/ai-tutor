@@ -37,7 +37,7 @@ const HeroSection = () => {
   };
 
   return (
-    <section className="relative min-h-screen flex items-center bg-gradient-to-br from-primary/5 via-background to-secondary/5">
+    <section className="relative min-h-[70vh] flex items-center bg-gradient-to-br from-primary/5 via-background to-secondary/5">
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute top-20 right-10 w-64 h-64 bg-primary/10 rounded-full blur-3xl" />
         <div className="absolute bottom-20 left-10 w-80 h-80 bg-secondary/10 rounded-full blur-3xl" />
@@ -76,14 +76,14 @@ const HeroSection = () => {
                 className="inline-flex items-center justify-center gap-2 px-6 py-3 md:px-8 md:py-4 min-h-[44px] bg-background border-2 border-secondary text-secondary font-cta font-semibold rounded-lg hover:bg-secondary hover:text-white transition-all duration-250 text-base md:text-lg"
               >
                 <Icon name="PlayCircleIcon" size={24} variant="solid" />
-                <span>See How Teacher Vidya Teaches</span>
+                <span>Watch Vidya Teach</span>
               </button>
             </div>
 
             <div className="flex flex-wrap items-center justify-center lg:justify-start gap-x-4 gap-y-2 text-sm md:text-base text-muted-foreground">
               <span className="flex items-center gap-1.5">
                 <Icon name="CheckCircleIcon" size={18} variant="solid" className="text-[#1D9E75]" />
-                Free 3 sessions
+                3 free sessions every month
               </span>
               <span className="flex items-center gap-1.5">
                 <Icon name="CheckCircleIcon" size={18} variant="solid" className="text-[#1D9E75]" />
@@ -120,8 +120,8 @@ const HeroSection = () => {
 
             <div className="relative rounded-2xl overflow-hidden shadow-2xl border-8 border-border bg-card">
               <AppImage
-                src="https://images.unsplash.com/photo-1547567667-1aa64e6f58dc"
-                alt="Indian student girl in school uniform smiling while using smartphone for learning, sitting at study desk with books"
+                src="/images/landing_page_bg.jpg"
+                alt="Student learning at desk"
                 className="w-full h-auto"
               />
 

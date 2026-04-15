@@ -81,6 +81,7 @@ describe('createInvoiceForPayment integration', () => {
 
     const res = await invoices.createInvoiceForPayment({ userId: 'u1', paymentId: 'pay-1', amountPaise: 99900 })
 
+    
     expect(res).toBeDefined()
     expect(res.invoiceNumber).toBe(456)
     expect(Buffer.isBuffer(res.pdfBuffer)).toBe(true)

@@ -77,7 +77,7 @@ const TrustBar = () => {
     },
     {
       icon: 'AcademicCapIcon',
-      value: 'CBSE & ICSE',
+      value: 'CBSE, ICSE & State Boards',
       label: 'Curriculum Aligned',
       color: 'text-accent',
     },

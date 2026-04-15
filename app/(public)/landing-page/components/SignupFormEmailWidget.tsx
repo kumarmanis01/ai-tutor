@@ -128,7 +128,7 @@ export default function SignupFormEmailWidget() {
   return (
     <section
       id="signup-form-widget"
-      className="py-16 md:py-24 bg-gradient-to-br from-primary/5 to-secondary/5"
+      className="py-12 md:py-16 bg-gradient-to-br from-primary/5 to-secondary/5"
     >
       <div className="mx-auto px-4 md:px-6 lg:px-8 max-w-2xl">
         <div className="text-center mb-8 md:mb-12">

@@ -1,11 +1,9 @@
-'use client';
-
 import Link from 'next/link';
 import Icon from '@/components/UI/AppIcon';
 
 const FinalCTA = () => {
   return (
-    <section className="py-16 md:py-24 bg-gradient-to-br from-primary via-accent to-secondary">
+    <section className="py-12 md:py-16 bg-gradient-to-br from-primary via-accent to-secondary">
       <div className="mx-auto px-4 md:px-6 lg:px-8 max-w-3xl">
         <div className="text-center text-white space-y-6 md:space-y-8">
           <h2 className="font-headline font-bold text-3xl md:text-4xl lg:text-5xl">

@@ -13,7 +13,7 @@ interface FAQ {
 }
 
 const FAQSection = () => {
-  const [openFAQ, setOpenFAQ] = useState<number | null>(0);
+  const [openFAQ, setOpenFAQ] = useState<number | null>(1);
 
   const faqs: FAQ[] = [
     {
@@ -61,9 +61,9 @@ const FAQSection = () => {
       questionEn: 'Can I try before paying?',
       questionHi: 'क्या मैं भुगतान करने से पहले आज़मा सकता हूं?',
       answerEn:
-        'Yes! Start with our Free Plan (5 questions daily) to test the app. No credit card required. When ready, upgrade to unlimited access for just ₹99/month. Plus, we offer 30-day money-back guarantee on all paid plans.',
+        'Yes! Start with our Free Plan (3 free sessions every month) to test the app. No credit card required. When ready, upgrade to unlimited access for just ₹99/month. Plus, we offer 30-day money-back guarantee on all paid plans.',
       answerHi:
-        'हां! ऐप का परीक्षण करने के लिए हमारी Free Plan (प्रतिदिन 5 सवाल) से शुरू करें। कोई क्रेडिट कार्ड की आवश्यकता नहीं। तैयार होने पर, केवल ₹99/माह में असीमित एक्सेस में अपग्रेड करें। साथ ही, हम सभी paid plans पर 30-दिन की मनी-बैक गारंटी प्रदान करते हैं।',
+        'हां! ऐप का परीक्षण करने के लिए हमारी Free Plan (हर माह 3 फ्री सेशन) से शुरू करें। कोई क्रेडिट कार्ड की आवश्यकता नहीं। तैयार होने पर, केवल ₹99/माह में असीमित एक्सेस में अपग्रेड करें। साथ ही, हम सभी paid plans पर 30-दिन की मनी-बैक गारंटी प्रदान करते हैं।',
       category: 'Pricing',
     },
     {
@@ -89,7 +89,7 @@ const FAQSection = () => {
   ];
 
   return (
-    <section id="faq" className="py-16 md:py-24 bg-background">
+    <section id="faq" className="py-12 md:py-16 bg-background">
       <div className="mx-auto px-4 md:px-6 lg:px-8 max-w-4xl">
         <div className="text-center mb-12 md:mb-16">
           <div className="inline-flex items-center gap-2 px-4 py-2 bg-secondary/10 text-secondary rounded-full text-sm font-medium mb-4">

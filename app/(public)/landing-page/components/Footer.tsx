@@ -43,7 +43,7 @@ const Footer = () => {
                 </svg>
               </div>
               <div>
-                <span className="font-headline font-bold text-xl">Spinzy</span>
+                <span className="font-headline font-bold text-xl">Spinzy Academy</span>
                 <p className="font-accent text-sm opacity-80">भारत का शिक्षक</p>
               </div>
             </div>

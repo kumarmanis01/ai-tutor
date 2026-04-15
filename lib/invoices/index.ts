@@ -382,6 +382,19 @@ export async function createInvoiceForPayment(opts: InvoiceCreateOpts) {
     logger.warn('[invoices] PDF generation failed; invoice created without attachment', { error: String(pdfErr) });
   }
 
+    // Ensure pdfBuffer is a Node Buffer (pdf-lib may return Uint8Array)
+    if (pdfBuffer && !Buffer.isBuffer(pdfBuffer)) {
+      try {
+        // normalize ArrayBuffer/Uint8Array -> Buffer
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        pdfBuffer = Buffer.from(pdfBuffer as any);
+      } catch (e) {
+        logger.warn('[invoices] could not normalize pdfBuffer to Buffer', { error: String(e) });
+      }
+    }
+
+    
+
   // Upload to R2 (best effort) -- only if PDF was generated
   const key = `invoices/invoice-${invoiceNumber}.pdf`;
   let fileUrl: string | undefined = undefined;
@@ -407,6 +420,8 @@ export async function createInvoiceForPayment(opts: InvoiceCreateOpts) {
       }
     }
   }
+
+  
 
   return { invoiceNumber, pdfBuffer, fileUrl };
 }

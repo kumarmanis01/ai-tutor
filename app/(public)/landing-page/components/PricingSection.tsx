@@ -1,6 +1,4 @@
-'use client';
-
-import Link from 'next/link';
+'import Link from 'next/link';
 import Icon from '@/components/UI/AppIcon';
 
 interface PricingPlan {
@@ -33,13 +31,13 @@ const PricingSection = () => {
       description: 'Try AI Tutor with limited features',
       descriptionHi: 'सीमित सुविधाओं के साथ AI Tutor आज़माएं',
       features: [
-        '3 sessions per subject per month',
+        '3 free sessions every month',
         'Basic explanations',
         'Hindi + English support',
         'NCERT notes access',
       ],
       featuresHi: [
-        'प्रति विषय 3 sessions प्रति माह',
+        'हर माह 3 मुफ्त सेशन',
         'बुनियादी समाधान',
         'हिंदी + अंग्रेजी सहायता',
         'NCERT नोट्स एक्सेस',
@@ -98,7 +96,7 @@ const PricingSection = () => {
         'Family dashboard',
         'Parental controls',
         'Monthly progress reports',
-        'Dedicated support manager',
+        'Priority WhatsApp support',
         'Early access to new features',
       ],
       featuresHi: [
@@ -108,7 +106,7 @@ const PricingSection = () => {
         'परिवार डैशबोर्ड',
         'माता-पिता नियंत्रण',
         'मासिक प्रगति रिपोर्ट',
-        'समर्पित सहायता प्रबंधक',
+        'प्राथमिकता WhatsApp सहायता',
         'नई सुविधाओं तक पहली पहुंच',
       ],
       recommended: false,
@@ -121,7 +119,7 @@ const PricingSection = () => {
   return (
     <section
       id="pricing"
-      className="py-16 md:py-24 bg-gradient-to-br from-secondary/5 to-primary/5"
+      className="py-12 md:py-16 bg-gradient-to-br from-secondary/5 to-primary/5"
     >
       <div className="mx-auto px-4 md:px-6 lg:px-8 max-w-7xl">
         <div className="text-center mb-12 md:mb-16">
@@ -139,79 +137,93 @@ const PricingSection = () => {
         </div>
 
         <div className="grid md:grid-cols-3 gap-6 lg:gap-8 mb-6">
-          {plans.map((plan) => (
-            <div
-              key={plan.id}
-              className={`relative rounded-2xl border-2 transition-all duration-250 ${
-                plan.recommended
-                  ? 'border-primary bg-primary/5 shadow-2xl scale-105'
-                  : 'border-border bg-background hover:border-primary/30'
-              }`}
-            >
-              {plan.recommended && (
-                <div className="absolute -top-4 left-1/2 -translate-x-1/2 px-4 py-1 bg-primary text-white rounded-full text-sm font-bold shadow-lg">
-                  Recommended
-                </div>
-              )}
+          {plans.map((plan) => {
+            const basePrice = parseInt(plan.price.replace(/[^\d]/g, ''), 10) || 0;
+            const displayPrice = plan.id === 'free' ? '₹0' : `₹${Math.round(basePrice * 1.18)}`;
 
-              <div className="p-6 md:p-8">
-                <div className="text-center mb-6">
-                  <h3 className="font-headline font-bold text-2xl text-secondary mb-1">
-                    {plan.name}
-                  </h3>
-                  <p className="font-accent text-base text-primary mb-4">{plan.nameHi}</p>
-                  <div className="flex items-baseline justify-center gap-2 mb-2">
-                    <span className="font-headline font-bold text-5xl text-secondary">
-                      {plan.price}
-                    </span>
-                    <span className="font-body text-base text-muted-foreground">
-                      /{plan.period}
-                    </span>
+            return (
+              <div
+                key={plan.id}
+                className={`relative rounded-2xl border-2 transition-all duration-250 ${
+                  plan.recommended
+                    ? 'border-primary bg-primary/5 shadow-2xl scale-105'
+                    : 'border-border bg-background hover:border-primary/30'
+                }`}
+              >
+                {plan.recommended && (
+                  <div className="absolute -top-4 left-1/2 -translate-x-1/2 px-4 py-1 bg-primary text-white rounded-full text-sm font-bold shadow-lg">
+                    Recommended
                   </div>
-                  <p className="font-body text-sm text-muted-foreground">{plan.description}</p>
-                  {plan.savings && (
-                    <div className="mt-3 inline-flex items-center gap-2 px-3 py-1 bg-success/10 text-success rounded-full text-sm font-semibold">
-                      <Icon name="CheckCircleIcon" size={16} variant="solid" />
-                      <span>{plan.savings}</span>
-                    </div>
-                  )}
-                </div>
+                )}
 
-                <div className="space-y-3 mb-6">
-                  {plan.features.map((feature, index) => (
-                    <div key={index} className="flex items-start gap-3">
-                      <Icon
-                        name="CheckCircleIcon"
-                        size={20}
-                        variant="solid"
-                        className={plan.recommended ? 'text-primary' : 'text-success'}
-                      />
-                      <span className="font-body text-sm text-foreground flex-1">{feature}</span>
+                <div className="p-6 md:p-8">
+                  <div className="text-center mb-6">
+                    <h3 className="font-headline font-bold text-2xl text-secondary mb-1">
+                      {plan.name}
+                    </h3>
+                    <p className="font-accent text-base text-primary mb-4">{plan.nameHi}</p>
+                    <div className="flex items-baseline justify-center gap-2 mb-2">
+                      <span className="font-headline font-bold text-5xl text-secondary">
+                        {displayPrice}
+                      </span>
+                      <span className="font-body text-base text-muted-foreground">/{plan.period}</span>
                     </div>
-                  ))}
-                </div>
+                    {plan.id !== 'free' && (
+                      <p className="text-xs text-muted-foreground mt-1">{plan.price} base price · incl. 18% GST</p>
+                    )}
+                    <p className="font-body text-sm text-muted-foreground">{plan.description}</p>
+                    {plan.savings && (
+                      <div className="mt-3 inline-flex items-center gap-2 px-3 py-1 bg-success/10 text-success rounded-full text-sm font-semibold">
+                        <Icon name="CheckCircleIcon" size={16} variant="solid" />
+                        <span>{plan.savings}</span>
+                      </div>
+                    )}
+                  </div>
 
-                <Link
-                  href={plan.id === 'free' ? '/auth/signup' : '/pricing'}
-                  className={`w-full py-3 rounded-lg font-cta font-semibold transition-all duration-250 min-h-[44px] flex items-center justify-center ${
-                    plan.recommended
-                      ? 'bg-[#534AB7] text-white hover:bg-[#4239a0] shadow-lg'
-                      : 'bg-secondary text-white hover:bg-secondary/90'
-                  }`}
-                >
-                  {plan.ctaText}
-                </Link>
+                  <div className="space-y-3 mb-6">
+                    {plan.features.map((feature, index) => (
+                      <div key={index} className="flex items-start gap-3">
+                        <Icon
+                          name="CheckCircleIcon"
+                          size={20}
+                          variant="solid"
+                          className={plan.recommended ? 'text-primary' : 'text-success'}
+                        />
+                        <span className="font-body text-sm text-foreground flex-1">{feature}</span>
+                      </div>
+                    ))}
+
+                    {plan.featuresHi && plan.featuresHi.length > 0 && (
+                      <div className="mt-3 pt-2 border-t border-border">
+                        {plan.featuresHi.map((f, i) => (
+                          <p key={i} className="text-sm text-primary/90 italic mb-1">{f}</p>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  <Link
+                    href="/auth/signup"
+                    className={`w-full py-3 rounded-lg font-cta font-semibold transition-all duration-250 min-h-[44px] flex items-center justify-center ${
+                      plan.recommended
+                        ? 'bg-[#534AB7] text-white hover:bg-[#4239a0] shadow-lg'
+                        : 'bg-secondary text-white hover:bg-secondary/90'
+                    }`}
+                  >
+                    {plan.ctaText}
+                  </Link>
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
 
         {/* Payment trust badges */}
         <div className="text-center mb-10">
           <p className="text-sm text-muted-foreground">
-            🔒 Secure checkout &middot; UPI / Cards / Net Banking &middot; Powered by Razorpay
+            🔒 Secure checkout · UPI / Cards / Net Banking · Powered by Razorpay
           </p>
-          <p className="text-xs text-muted-foreground mt-1">All prices + 18% GST</p>
+          <p className="text-xs text-muted-foreground mt-1">Prices shown include 18% GST</p>
         </div>
 
         <div className="bg-background rounded-2xl border-2 border-border p-6 md:p-8 mb-12">

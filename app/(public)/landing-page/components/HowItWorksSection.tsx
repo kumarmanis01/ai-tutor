@@ -1,6 +1,5 @@
-'use client';
-
 import Icon from '@/components/UI/AppIcon';
+import AnimatedChatClient from './AnimatedChatClient';
 
 const steps = [
   {
@@ -90,61 +89,15 @@ const HowItWorksSection = () => {
               </div>
               <h3 className="font-headline font-bold text-xl text-secondary mb-1">{step.titleEn}</h3>
               <p className="font-accent text-sm text-[#534AB7] mb-3">{step.titleHi}</p>
-              <p className="font-body text-sm md:text-base text-muted-foreground leading-relaxed">
-                {step.descEn}
-              </p>
+                  <p className="font-body text-sm md:text-base text-muted-foreground leading-relaxed">
+                    {step.descEn}
+                  </p>
+                  <p className="font-accent text-sm text-[#534AB7] mt-2">{step.descHi}</p>
             </div>
           ))}
         </div>
-
-        {/* Animated chat demo */}
-        <div className="max-w-sm mx-auto">
-          <p className="text-center text-sm font-semibold text-[#534AB7] mb-3 tracking-wide uppercase">
-            This is how Teacher Vidya actually teaches
-          </p>
-
-          <div className="border border-border rounded-2xl bg-white dark:bg-gray-900 p-4 space-y-3 overflow-hidden">
-            {/* Teacher Vidya label */}
-            <p className="text-xs font-semibold text-[#534AB7] pl-1">Teacher Vidya</p>
-
-            {chatMessages.map((msg, i) => (
-              <div
-                key={i}
-                className={`flex ${msg.sender === 'student' ? 'justify-end' : 'justify-start'}`}
-                style={{
-                  animation: `fadeInChat 0.4s ease both`,
-                  animationDelay: `${i * 1.2}s`,
-                  animationIterationCount: 1,
-                }}
-              >
-                <div
-                  className={`max-w-[85%] px-3 py-2 text-sm leading-snug ${
-                    msg.sender === 'vidya'
-                      ? 'bg-[#EEEDFE] text-[#3C3489] rounded-[4px_12px_12px_12px]'
-                      : 'bg-[#534AB7] text-white rounded-[12px_4px_12px_12px]'
-                  }`}
-                >
-                  {msg.text}
-                </div>
-              </div>
-            ))}
-
-            {/* Typing indicator */}
-            <div
-              className="flex justify-start"
-              style={{
-                animation: `fadeInChat 0.4s ease both`,
-                animationDelay: `${chatMessages.length * 1.2}s`,
-              }}
-            >
-              <div className="bg-[#EEEDFE] rounded-[4px_12px_12px_12px] px-4 py-3 flex gap-1 items-center">
-                <span className="w-2 h-2 rounded-full bg-[#534AB7] typing-dot" style={{ animationDelay: '0s' }} />
-                <span className="w-2 h-2 rounded-full bg-[#534AB7] typing-dot" style={{ animationDelay: '0.2s' }} />
-                <span className="w-2 h-2 rounded-full bg-[#534AB7] typing-dot" style={{ animationDelay: '0.4s' }} />
-              </div>
-            </div>
-          </div>
-        </div>
+            {/* Animated chat demo (client) */}
+            <AnimatedChatClient />
       </div>
 
       <style>{`

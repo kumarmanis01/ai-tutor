@@ -1,5 +1,3 @@
-'use client';
-
 import HeroSection from './HeroSection';
 import TrustBar from './TrustBar';
 import HowItWorksSection from './HowItWorksSection';
