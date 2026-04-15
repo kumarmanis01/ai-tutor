@@ -252,7 +252,14 @@ export async function POST(req: Request) {
     if (parent?.email) {
       try {
         const invoiceResult = await createInvoiceForPayment({ userId, paymentId: _createdPayment?.id, studentId: childIds && childIds.length > 0 ? childIds[0] : undefined, amountPaise: order.amount, planLabel: plan.label, billingCycle: plan.perMonthDisplay });
-        await sendEmail({ to: parent.email, subject: 'Payment confirmed -- Spinzy Academy', html: paymentReceiptHtml({ studentName: parent.name ?? 'Student', plan: plan.label, amountRupees: plan.billedRupees, billingCycle: plan.perMonthDisplay, renewalDate, }), attachments: [{ filename: `invoice-${invoiceResult.invoiceNumber}.pdf`, content: invoiceResult.pdfBuffer, contentType: 'application/pdf' }], } as any).catch((err) => { logger.error('Receipt email failed (parent.verify)', { event: 'parent.subscription.verify.email_error', context: { userId }, err }); });
+        await sendEmail({
+          to: parent.email,
+          subject: 'Payment confirmed -- Spinzy Academy',
+          html: paymentReceiptHtml({ studentName: parent.name ?? 'Student', plan: plan.label, amountRupees: plan.billedRupees, billingCycle: plan.perMonthDisplay, renewalDate }),
+          ...(invoiceResult.pdfBuffer ? {
+            attachments: [{ filename: `invoice-${invoiceResult.invoiceNumber}.pdf`, content: invoiceResult.pdfBuffer, contentType: 'application/pdf' }],
+          } : {}),
+        } as any).catch((err) => { logger.error('Receipt email failed (parent.verify)', { event: 'parent.subscription.verify.email_error', context: { userId }, err }); });
       } catch (err) {
         logger.error('Invoice generation/email failed (parent.verify)', { event: 'parent.subscription.verify.invoice_error', context: { userId, orderId }, err });
       }
