@@ -16,7 +16,7 @@ const FinalCTA = () => {
           </p>
 
           <p className="font-body text-lg md:text-xl opacity-90 max-w-2xl mx-auto">
-            {FREE_SESSIONS_TEXT}. No credit card. Cancel anytime.
+            {FREE_SESSIONS_TEXT}. No credit card. 7-day refund policy.
           </p>
 
           <div className="flex justify-center">
@@ -25,7 +25,7 @@ const FinalCTA = () => {
               className="inline-flex items-center gap-2 px-8 py-4 md:px-10 md:py-5 min-h-[44px] bg-white text-[#534AB7] font-cta font-bold rounded-lg hover:bg-white/90 transition-all text-lg md:text-xl shadow-xl"
             >
               <Icon name="SparklesIcon" size={24} variant="solid" />
-              Start Free -- it takes 2 minutes
+                Get started -- it takes 2 minutes
             </Link>
           </div>
 

@@ -12,9 +12,10 @@ module.exports = {
   moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json', 'node'],
   moduleNameMapper: {
     // Avoid mapping generic relative ../lib/* patterns — they clash with node_modules internals.
-    // Map project `@/` aliases explicitly.
+    // Map project `@/` aliases explicitly. Prefer TypeScript sources for resolvability in tests.
     '^@/lib/(.*)\\.js$': '<rootDir>/lib/$1.ts',
-    '^@/lib/(.*)$': '<rootDir>/lib/$1',
+    '^@/lib/(.*)\\.ts$': '<rootDir>/lib/$1.ts',
+    '^@/lib/(.*)$': '<rootDir>/lib/$1.ts',
     '^@/(.*)\\.js$': '<rootDir>/src/$1.ts',
     '^@/(.*)$': ['<rootDir>/src/$1', '<rootDir>/$1']
   },
