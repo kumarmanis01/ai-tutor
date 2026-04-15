@@ -146,7 +146,7 @@ export async function POST(req: Request) {
     select: { name: true },
   })
 
-  // Audit log (non-fatal) — best-effort, log failures
+  // Audit log (non-fatal) -- best-effort, log failures
   prisma.auditLog.create({
     data: {
       adminId: parentId,
