@@ -441,12 +441,25 @@ model Subscription {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
   paymentId    String?
+  /// Razorpay subscription ID (e.g. sub_XXXX) for webhook reconciliation. Null for legacy one-time orders.
+  razorpaySubscriptionId String?
   user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   // Installments linked to this subscription (one-to-many)
   installments  Installment[]
 
   @@index([userId])
+  @@index([razorpaySubscriptionId])
+}
+
+/// Admin-managed whitelist of email addresses allowed to use the internal test plan (test_weekly).
+model TestPlanAccess {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  grantedAt DateTime @default(now())
+  grantedBy String   /// admin userId who granted access
+
+  @@index([email])
 }
 
 model Installment {
