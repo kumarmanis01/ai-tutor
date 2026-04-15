@@ -1,5 +1,23 @@
 'use client';
 
+/**
+ * FILE OBJECTIVE:
+ * - Collapsible left-hand navigation sidebar for the admin shell.
+ * - Receives badge counts (pending review, running jobs, failed jobs, safety alerts)
+ *   as props so they are pre-fetched server-side.
+ *
+ * LINKED UNIT TEST:
+ * - tests/unit/components/admin/AdminSidebar.spec.ts
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/COPILOT_GUARDRAILS.md
+ * - .github/copilot-instructions.md
+ *
+ * EDIT LOG:
+ * - 2026-04-07 | claude | created to fix missing module error in app/admin/layout.tsx
+ * - 2026-04-15 | copilot | add required file header and EDIT LOG entry for repo compliance
+ */
+
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import React from 'react';

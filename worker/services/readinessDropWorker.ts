@@ -17,6 +17,7 @@ import { logger } from '@/lib/logger'
 import { computeReadinessScore } from '@/lib/student/examReadiness'
 import { getRedis } from '@/lib/redis'
 import { callLLM } from '@/lib/callLLM'
+import { buildParentRemediationPrompt, parseParentRemediation } from '@/lib/ai/prompts/parentRemediation'
 import { sendMailSafe } from '@/lib/mailer'
 import { sendSms } from '@/lib/sms'
 import { sendPushSafe } from '@/lib/push/send'
@@ -152,18 +153,29 @@ export async function processReadinessDropAlerts(now = new Date()): Promise<void
         const remediationParts: string[] = []
         for (const it of issues) {
           try {
-            // Avoid sending internal IDs to the LLM; provide non-identifying context instead.
-            const prompt = `You are an experienced, gentle education coach writing for a parent with low technical familiarity. Subject: ${it.subjectName ?? 'the subject'}. Seven days ago readiness was ${it.prev}%. Now it is ${it.curr}%. In 2-3 short bullets (each 8-16 words) suggest a simple remediation plan that includes 3 targeted 20-minute sessions and one brief practice activity the parent can encourage. Use a warm, constructive tone; avoid alarmist language; give a one-line call-to-action at the end.`
-            let raw: string
+            // Use schema-first prompt builder for parent remediation suggestions.
+            const prompt = buildParentRemediationPrompt({ subjectName: String(it.subjectName ?? it.subjectId), prev: it.prev, curr: it.curr, daysAgo: LOOKBACK_DAYS })
+            let htmlFragment = `<p>Try 3 targeted 20-minute sessions on key topics and a short practice test.</p>`
+
             if (process.env.ALLOW_LLM_CALLS === '1') {
               const res = await callLLM({ prompt, model: process.env.MODEL_SMALL || 'gpt-4o-mini', meta: { promptType: 'parent_readiness_remediation', subject: it.subjectName ?? it.subjectId, daysAgo: LOOKBACK_DAYS } }).catch(() => null)
-              raw = (res?.content && String(res.content).trim()) || `Try 3 targeted 20-minute sessions on the core topics and one short practice test.`
-            } else {
-              // Fallback when LLM calls are not allowed in this runtime
-              raw = `Try 3 targeted 20-minute sessions on the core topics and one short practice test.`
+              const raw = res?.content ? String(res.content).trim() : ''
+              if (raw) {
+                const parsed = parseParentRemediation(raw)
+                if (parsed.valid && parsed.data) {
+                  const bulletsHtml = parsed.data.bullets.map((b) => `<li>${escapeHtml(b)}</li>`).join('')
+                  const practiceHtml = `<p>${escapeHtml(parsed.data.practice)}</p>`
+                  const ctaHtml = `<p>${escapeHtml(parsed.data.callToAction)}</p>`
+                  htmlFragment = `<ul>${bulletsHtml}</ul>${practiceHtml}${ctaHtml}`
+                } else {
+                  // fallback to sanitized raw string if parsing failed
+                  const safe = sanitizeTextForHtml(raw)
+                  htmlFragment = `<p>${safe}</p>`
+                }
+              }
             }
-            const content = sanitizeTextForHtml(raw)
-            remediationParts.push(`<h4>${escapeHtml(String(it.subjectName ?? it.subjectId))} (${it.delta} point drop)</h4><p>${content}</p>`)
+
+            remediationParts.push(`<h4>${escapeHtml(String(it.subjectName ?? it.subjectId))} (${it.delta} point drop)</h4>${htmlFragment}`)
           } catch (e) {
             remediationParts.push(`<h4>${it.subjectName ?? it.subjectId} (${it.delta} point drop)</h4><p>Try 3 targeted 20-minute sessions on key topics and a short practice test.</p>`)
           }

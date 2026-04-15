@@ -7,8 +7,13 @@
  * LINKED UNIT TEST:
  * - tests/unit/worker/services/inactivityAlertWorker.test.ts
  *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/COPILOT_GUARDRAILS.md
+ * - .github/copilot-instructions.md
+ *
  * EDIT LOG:
  * - 2026-04-09T00:00:00Z | copilot | created inactivity alert worker
+ * - 2026-04-15 | copilot | add COPILOT_INSTRUCTIONS_FOLLOWED header section for repo compliance
  */
 
 import { prisma } from '@/lib/prisma'
