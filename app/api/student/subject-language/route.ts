@@ -18,8 +18,9 @@ import { getServerSessionForHandlers } from '@/lib/session';
 import { prisma } from '@/lib/prisma';
 import { logger } from '@/lib/logger';
 
-const VALID_LANGUAGES = ['en', 'hi', 'hinglish'] as const;
-type SubjectLanguage = (typeof VALID_LANGUAGES)[number];
+// MVP supported content languages (AC-03): English + Hindi only
+const VALID_LANGUAGES = ['en', 'hi'] as const;
+type SubjectLanguage = (typeof VALID_LANGUAGES)[number] | 'auto';
 
 export async function GET(req: NextRequest) {
   const start = Date.now();
@@ -39,7 +40,11 @@ export async function GET(req: NextRequest) {
   const recommendations = (profile?.recommendations as Record<string, unknown>) ?? {};
   const subjectLanguages = (recommendations.subjectLanguages as Record<string, string>) ?? {};
 
-  const res = NextResponse.json({ subjectLanguages });
+  // Expose which languages are available for content. For MVP this is
+  // English and Hindi; clients may grey out other languages per-subject.
+  const availableLanguages = ['en', 'hi'];
+
+  const res = NextResponse.json({ subjectLanguages, availableLanguages });
   logger.logAPI(req, res, { className: 'SubjectLanguageAPI', methodName: 'GET' }, start);
   return res;
 }

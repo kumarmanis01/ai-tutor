@@ -18,6 +18,7 @@ import Avatar from '@/components/UI/Avatar';
 import LogoutButton from '@/components/Auth/LogoutButton';
 import type { User } from '@/lib/types';
 import ProfileWidgets from '@/components/ProfileWidgets';
+import LanguageSelector from '@/components/LanguageSelector';
 import { extractBadges } from '@/lib/extractBadge';
 import AuthRedeemOnSignIn from '@/components/AuthRedeemOnSignIn';
 import useCurrentUser from '@/hooks/useCurrentUser';
@@ -27,7 +28,7 @@ import Link from 'next/link';
 export default function ProfilePage() {
   const { data: session } = useSession();
   const sess = session as unknown as import('@/lib/types/auth').AppSession | null;
-  const { data: profile, loading } = useCurrentUser();
+  const { data: profile, loading, mutate } = useCurrentUser();
   const router = useRouter();
   const badges = extractBadges(profile as User | null);
 
@@ -126,12 +127,31 @@ export default function ProfilePage() {
             <div className="bg-gray-50 dark:bg-gray-800 p-6 rounded-lg border border-gray-200 dark:border-gray-700 space-y-4">
               <h3 className="font-semibold text-lg mb-3">Academic Preferences</h3>
               <div>
-                <span className="font-semibold">Language:</span>{' '}
-                {profile?.language ? (
-                  LANGUAGES.find(l => l.code === profile.language)?.name || profile.language
-                ) : (
-                  <span className="text-gray-400">Not set</span>
-                )}
+                <div className="flex items-center gap-3">
+                  <div>
+                    <span className="font-semibold">UI Shell Language:</span>
+                    <div className="text-xs text-muted-foreground">Used for UI labels and system text. Teaching language is configured per subject.</div>
+                  </div>
+                  <div>
+                    <LanguageSelector
+                      lang={profile?.language ? (LANGUAGES.find((l) => l.code === profile.language)?.name ?? profile.language) : 'English'}
+                      setLang={async (name: string) => {
+                        try {
+                          // Map display name back to code
+                          const found = LANGUAGES.find((x) => x.name === name || x.name.toLowerCase().includes(String(name).toLowerCase()) );
+                          const code = found ? found.code : 'en';
+                          const res = await fetch('/api/user/language', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ language: code }) });
+                          if (res.ok) {
+                            try { await mutate(); } catch {}
+                          }
+                        } catch (err) {
+                          // ignore; LanguageSelector already shows local toast on failure
+                        }
+                      }}
+                      availableCodes={LANGUAGES.map((l) => l.code)}
+                    />
+                  </div>
+                </div>
               </div>
               <div>
                 <span className="font-semibold">Board:</span>{' '}

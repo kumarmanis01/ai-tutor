@@ -8,6 +8,22 @@ import { diagnosticConfig } from '@/lib/config';
 import type { DiagnosticAutoSubmitJobData } from '@/jobs/diagnosticAutoSubmit.js';
 
 /**
+ * FILE OBJECTIVE:
+ * - Process delayed auto-submit jobs for partial/abandoned diagnostics (AC-04/AC-07).
+ *
+ * LINKED UNIT TEST:
+ * - tests/unit/worker/diagnosticAutoSubmitWorker.test.ts
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - .github/copilot-instructions.md
+ * - /docs/COPILOT_GUARDRAILS.md
+ *
+ * EDIT LOG:
+ * - 2026-04-16T00:00:00Z | copilot | fix: base isPartialAbandon on gradeable answer count not raw Redis count;
+ *   filter chapterDef query to lifecycle: 'active' only
+ */
+
+/**
  * Processes a delayed auto-submit job (AC-04: "After 24h the partial diagnostic is auto-submitted").
  * Idempotent: if the diagnostic is already completed or no partial state exists, exits cleanly.
  */
@@ -41,10 +57,7 @@ export async function processDiagnosticAutoSubmit(
 
     const questionIds = partial.answers.map((a) => a.questionId).filter(Boolean);
 
-    // Determine whether this is a partial/abandoned run (fewer than min valid answers).
-    const providedAnswersCount = partial.answers.length;
     const minValid = Number(diagnosticConfig.minAnswersForValidity ?? 10);
-    const isPartialAbandon = providedAnswersCount < minValid;
 
     // Fetch questions for grading and concept resolution.
     const questions = await prisma.question.findMany({
@@ -95,13 +108,22 @@ export async function processDiagnosticAutoSubmit(
       await prisma.answerEvent.createMany({ data: answerEventData as any[] });
     }
 
+    // Determine whether this is a partial/abandoned run based on the number of
+    // actually gradeable (persisted) answers, not the raw Redis answer count.
+    // This aligns with diagnosticBootstrapWorker which uses a derived valid-answer count.
+    const isPartialAbandon = answerEventData.length < minValid;
+
     // Resolve chapter ids for bootstrap.
     let chapterIds: string[] = [];
     if (isPartialAbandon) {
       // AC-07: when diagnostic is a partial/abandon (< min valid answers), assume
-      // grade-level start for unanswered chapters. Enqueue bootstrap for ALL
-      // chapters in the subject so unanswered concepts are seeded with grade-level defaults.
-      const allChapters = await prisma.chapterDef.findMany({ where: { subjectId }, select: { id: true } });
+      // grade-level start for unanswered chapters. Enqueue bootstrap only for
+      // active chapters in the subject so unanswered concepts are seeded from
+      // the current curriculum scope and do not include inactive/draft content.
+      const allChapters = await prisma.chapterDef.findMany({
+        where: { subjectId, lifecycle: 'active' },
+        select: { id: true },
+      });
       chapterIds = allChapters.map((c) => c.id);
     } else {
       const questionTopicIds = [...new Set(questions.map((q) => q.topicId).filter((t): t is string => !!t))];
