@@ -349,15 +349,24 @@ export async function POST(req: NextRequest) {
           // Use existing plan params from any current plan as defaults
           const ref = existingPlans[0];
           for (const subj of newSubjects) {
-            await generateLearningPlan(finalUserId, subj.id, {
-              examDate: ref.examDate instanceof Date ? ref.examDate : undefined,
-              weeklyGoal: ref.weeklyGoal,
-            }).catch((err) => {
+            try {
+              const planId = await generateLearningPlan(finalUserId, subj.id, {
+                examDate: ref.examDate instanceof Date ? ref.examDate : undefined,
+                weeklyGoal: ref.weeklyGoal,
+              });
+
+              if (planId === null) {
+                logger.warn('[onboarding] AC-07: failed to generate plan for new subject', {
+                  event: 'learning_plan_subject_regen_failed',
+                  context: { studentId: finalUserId, subjectId: subj.id, error: 'generateLearningPlan returned null' },
+                });
+              }
+            } catch (err) {
               logger.warn('[onboarding] AC-07: failed to generate plan for new subject', {
                 event: 'learning_plan_subject_regen_failed',
                 context: { studentId: finalUserId, subjectId: subj.id, error: String(err) },
               });
-            });
+            }
           }
         }).catch((err) => {
           logger.warn('[onboarding] AC-07: subject regen check failed', {
