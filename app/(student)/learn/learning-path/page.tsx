@@ -3,23 +3,12 @@
  *
  * Shows the student's full curriculum as a subject → chapter → topic grid.
  * Each topic shows its current mastery status using qualitative labels.
- *
- * This is a read-only reference view. It is NOT the primary navigation.
- * Students reach it via the "View full learning path" link on the dashboard.
- *
- * Design rules (UX architecture review):
- *   - List format, not cards -- low visual weight
- *   - Qualitative labels only (Mastered / Understood / Getting there / Needs practice)
- *   - No percentages shown
- *   - In-progress topics show "Continue →" link
- *   - Upcoming topics show "Start →" link
- *
- * Data source: GET /api/home/learning-snapshot (already exists, no new endpoint)
- * Mastery enrichment: cross-referenced with StudentTopicProgress and
- * StructuredSession (for in-progress detection)
+ * AC-04 (F-STU-003): also renders the visual study plan timeline with week-by-week
+ * chapter sequence and session counts above the curriculum map.
  *
  * EDIT LOG:
  *   2026-03-07 | UX implementation | created per UX architecture blueprint (Phase 3)
+ *   2026-04-16T00:00:00Z | copilot | AC-04 (F-STU-003): add plan timeline section
  */
 
 import type { Metadata } from 'next';
@@ -28,6 +17,8 @@ import Link from 'next/link';
 import { requireActiveSession } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import SubjectSection from '@/components/learning-path/SubjectSection';
+import { LearningPlanTimeline } from '@/components/student/LearningPlanTimeline';
+import type { TimelineResponse } from '@/app/api/student/learning-plan/timeline/route';
 
 export const dynamic = 'force-dynamic';
 
@@ -66,8 +57,8 @@ export default async function LearningPathPage() {
 
   const userId = (authSession.user as { id: string }).id;
 
-  // ── Fetch snapshot + mastery + active sessions in parallel ────────────────
-  const [snapshotRes, masteryRows, activeSessions] = await Promise.all([
+  // ── Fetch snapshot + mastery + active sessions + plan timeline in parallel ─
+  const [snapshotRes, masteryRows, activeSessions, rawPlanData] = await Promise.all([
     fetch(`${process.env.NEXTAUTH_URL ?? 'http://localhost:3000'}/api/home/learning-snapshot`, {
       cache: 'no-store',
       headers: { Cookie: '' }, // will use server-side auth via getServerSessionForHandlers
@@ -84,12 +75,100 @@ export default async function LearningPathPage() {
       where: { studentId: userId, state: { notIn: ['COMPLETE', 'EXPIRED'] } },
       select: { id: true, topicId: true },
     }),
+
+    // AC-04: plan timeline data (first plan only; no second round-trip needed)
+    prisma.learningPlan.findFirst({
+      where: { studentId: userId },
+      orderBy: { generatedAt: 'desc' },
+      select: {
+        id: true,
+        subjectId: true,
+        examDate: true,
+        weeklyGoal: true,
+        generatedAt: true,
+        items: {
+          orderBy: [{ weekNumber: 'asc' }, { orderInWeek: 'asc' }],
+          select: {
+            id: true,
+            conceptId: true,
+            weekNumber: true,
+            orderInWeek: true,
+            status: true,
+            concept: {
+              select: {
+                name: true,
+                topic: { select: { chapter: { select: { id: true, name: true } } } },
+              },
+            },
+          },
+        },
+      },
+    }).catch(() => null),
   ]);
 
   const masteryMap = new Map(masteryRows.map((r) => [r.topicId, r.mastery]));
   const inProgressMap = new Map(activeSessions.map((s) => [s.topicId, s.id]));
 
   const subjects: SubjectSnapshot[] = snapshotRes?.subjects ?? [];
+
+  // AC-04: build timeline payload from Prisma plan data
+  let timelineData: TimelineResponse | null = null;
+  if (rawPlanData) {
+    const weekMap = new Map<number, TimelineResponse['weeks'][number]['items']>();
+    for (const item of rawPlanData.items) {
+      const week = weekMap.get(item.weekNumber) ?? [];
+      week.push({
+        id: item.id,
+        conceptId: item.conceptId,
+        conceptName: item.concept.name,
+        chapterName: item.concept.topic.chapter.name,
+        chapterId: item.concept.topic.chapter.id,
+        orderInWeek: item.orderInWeek,
+        status: item.status as TimelineResponse['weeks'][number]['items'][number]['status'],
+        isMandatory: false,
+      });
+      weekMap.set(item.weekNumber, week);
+    }
+    const totalWeeks = weekMap.size > 0 ? Math.max(...weekMap.keys()) : 0;
+    const base = rawPlanData.generatedAt;
+    const weeks: TimelineResponse['weeks'] = Array.from(weekMap.entries())
+      .sort(([a], [b]) => a - b)
+      .map(([weekNumber, items]) => {
+        const chMap = new Map<string, number>();
+        for (const i of items) chMap.set(i.chapterName, (chMap.get(i.chapterName) ?? 0) + 1);
+        // Compute week start date (Monday)
+        const d = new Date(base);
+        const dow = d.getDay() === 0 ? 7 : d.getDay();
+        d.setDate(d.getDate() - dow + 1 + (weekNumber - 1) * 7);
+        d.setHours(0, 0, 0, 0);
+        return {
+          weekNumber,
+          startDate: d.toISOString().split('T')[0],
+          items,
+          chapterSummary: Array.from(chMap.entries()).map(([chapterName, sessionCount]) => ({
+            chapterName,
+            sessionCount,
+          })),
+        };
+      });
+
+    const subjectRecord = await prisma.subjectDef.findUnique({
+      where: { id: rawPlanData.subjectId },
+      select: { name: true },
+    });
+
+    timelineData = {
+      planId: rawPlanData.id,
+      subjectId: rawPlanData.subjectId,
+      subjectName: subjectRecord?.name ?? '',
+      examDate: rawPlanData.examDate ? rawPlanData.examDate.toISOString() : null,
+      weeklyGoal: rawPlanData.weeklyGoal,
+      totalWeeks,
+      totalConcepts: rawPlanData.items.length,
+      completedConcepts: rawPlanData.items.filter((i) => i.status === 'COMPLETED').length,
+      weeks,
+    };
+  }
 
   // Fallback: when the learning plan hasn't been generated yet (bootstrap job
   // still running), load the full curriculum from the DB so the student sees
@@ -170,6 +249,22 @@ export default async function LearningPathPage() {
           </p>
         </div>
       </div>
+
+      {/* AC-04: Study Plan Timeline section */}
+      {timelineData && (
+        <section className="mb-8">
+          <LearningPlanTimeline initialData={timelineData} />
+        </section>
+      )}
+
+      {/* Divider */}
+      {timelineData && (
+        <div className="flex items-center gap-3 mb-6">
+          <div className="flex-1 h-px bg-border" />
+          <span className="text-xs text-muted-foreground uppercase tracking-wide">Full curriculum map</span>
+          <div className="flex-1 h-px bg-border" />
+        </div>
+      )}
 
       {subjects.length === 0 && curriculumFallback.length === 0 ? (
         <div className="text-center py-16 text-gray-400">

@@ -13,6 +13,7 @@
  *
  * EDIT LOG:
  * - 2026-02-04 | claude | created LearningGoalsCard per PRD specifications
+ * - 2026-04-16T00:00:00Z | copilot | AC-02: show under-3-hrs/week warning when selection < 180 min/week
  */
 'use client';
 
@@ -220,6 +221,19 @@ export function LearningGoalsCard({ onGoalsUpdated }: LearningGoalsCardProps) {
             ))}
           </div>
         </div>
+
+        {/* AC-02: under-3-hrs/week warning (F-STU-003) */}
+        {weeklyGoal * dailyGoal < 180 && (
+          <div className="flex items-start gap-2 p-3 rounded-lg bg-[#FAEEDA] border border-amber-200 text-sm text-amber-800">
+            <span className="shrink-0 mt-0.5" aria-hidden>⚠️</span>
+            <span>
+              Your current selection adds up to{' '}
+              <strong>{Math.round((weeklyGoal * dailyGoal) / 60 * 10) / 10} hrs/week</strong>.
+              We recommend at least{' '}
+              <strong>3 hrs/week</strong> for steady progress.
+            </span>
+          </div>
+        )}
 
         {/* Action Buttons */}
         <div className="flex gap-2">

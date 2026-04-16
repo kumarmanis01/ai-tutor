@@ -9,6 +9,7 @@ import { getDailyTask } from '@/lib/dailyHabit';
 import { enqueueDiagnosticBootstrapJob } from '@/jobs/diagnosticBootstrap';
 import { sendMailSafe } from '@/lib/mailer';
 import { welcomeEmailHtml } from '@/lib/email/templates';
+import { generateLearningPlan } from '@/lib/ai/learningPlan';
 
 export async function POST(req: NextRequest) {
   const start = Date.now();
@@ -318,11 +319,59 @@ export async function POST(req: NextRequest) {
       logger.warn('/api/user/onboarding: failed to trigger diagnostic bootstrap', { className: 'api.user.onboarding', methodName: 'POST', error: err });
     }
 
+    // AC-07 (F-STU-003): when subjects change and plans already exist, generate
+    // plans for any newly-added subjects that lack one (non-blocking fire-and-forget).
+    if (subjects && subjects.length > 0) {
+      const finalUserId = updatedUser.id;
+      const finalGrade = updatedUser.grade ? Number(updatedUser.grade) : null;
+      const finalBoard = updatedUser.board ?? null;
+      if (finalGrade && finalBoard) {
+        prisma.learningPlan.findMany({
+          where: { studentId: finalUserId },
+          select: { subjectId: true, examDate: true, weeklyGoal: true },
+        }).then(async (existingPlans) => {
+          if (existingPlans.length === 0) return; // first-time onboarding; generate-plan handles it
+          const coveredSubjectIds = new Set(existingPlans.map((p) => p.subjectId));
+          const normSlugs = subjects.map((s) => String(s).toLowerCase().replace(/\s+/g, '-'));
+          const subjectDefs = await prisma.subjectDef.findMany({
+            where: {
+              slug: { in: normSlugs },
+              lifecycle: 'active',
+              class: {
+                grade: finalGrade,
+                board: { slug: { equals: finalBoard, mode: 'insensitive' } },
+              },
+            },
+            select: { id: true },
+          });
+          const newSubjects = subjectDefs.filter((s) => !coveredSubjectIds.has(s.id));
+          if (newSubjects.length === 0) return;
+          // Use existing plan params from any current plan as defaults
+          const ref = existingPlans[0];
+          for (const subj of newSubjects) {
+            await generateLearningPlan(finalUserId, subj.id, {
+              examDate: ref.examDate instanceof Date ? ref.examDate : undefined,
+              weeklyGoal: ref.weeklyGoal,
+            }).catch((err) => {
+              logger.warn('[onboarding] AC-07: failed to generate plan for new subject', {
+                event: 'learning_plan_subject_regen_failed',
+                context: { studentId: finalUserId, subjectId: subj.id, error: String(err) },
+              });
+            });
+          }
+        }).catch((err) => {
+          logger.warn('[onboarding] AC-07: subject regen check failed', {
+            event: 'learning_plan_subject_regen_check_failed',
+            context: { studentId: finalUserId, error: String(err) },
+          });
+        });
+      }
+    }
+
     // Welcome email: send once after the first onboarding profile save.
     // Uses sendMailSafe so a Resend failure never blocks the 200 response.
     // The welcomeEmailSent flag (already set by lib/auth.ts on first login for some
-    // auth providers) prevents double-sending across both trigger points.
-    if (!updatedUser.welcomeEmailSent && updatedUser.email) {
+    // auth providers) prevents double-sending across both trigger points.    if (!updatedUser.welcomeEmailSent && updatedUser.email) {
       sendMailSafe({
         to: updatedUser.email,
         subject: 'Welcome to Spinzy Academy!',
