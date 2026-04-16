@@ -4,6 +4,7 @@ import { Suspense, useState } from 'react'
 import { signIn } from 'next-auth/react'
 import { useSearchParams } from 'next/navigation'
 import Logo from '@/components/Logo'
+import { FREE_SESSIONS_TEXT } from '@/lib/constants/freeTier'
 
 function AuthContent() {
   const searchParams = useSearchParams()

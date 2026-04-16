@@ -21,6 +21,7 @@
  * - 2026-04-13T05:26:00Z | copilot | add subscription + EMI handling to student verify route
  * - 2026-04-14T00:00:00Z | copilot | add timeout:30000/maxWait:10000 to $transaction to prevent P2028 on Neon
  * - 2026-04-14T12:30:00Z | copilot | avoid contacting Razorpay when running tests (Jest)
+ * - 2026-04-16T03:30:00Z | copilot | resolve short plan ids and use planEndDate to compute expiry safely
  */
 
 import { NextResponse } from 'next/server';
@@ -33,7 +34,7 @@ import { recordPaymentEvent } from '@/lib/payments/audit';
 import { sendEmail } from '@/lib/mailer';
 import { paymentReceiptHtml } from '@/lib/email/templates';
 import { sendSms } from '@/lib/sms';
-import { PLANS } from '@/lib/billing/plans';
+import { PLANS, planEndDate, resolvePlanByShortId } from '@/lib/billing/plans';
 import type { PlanId } from '@/lib/billing/plans';
 import { createInvoiceForPayment } from '@/lib/invoices';
 import Razorpay from 'razorpay';
@@ -85,10 +86,6 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
   }
 
-  if (!['monthly', 'quarterly', 'annual'].includes(planId)) {
-    return NextResponse.json({ error: 'Invalid planId' }, { status: 400 });
-  }
-
   // Security gate -- verify signature before any DB write
   if (!verifySignature(orderId, paymentId, signature)) {
     logger.error('Invalid Razorpay signature', { event: 'subscription.verify.bad_sig', context: { userId, orderId } });
@@ -104,10 +101,15 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Order not found' }, { status: 403 });
   }
 
-  const plan = PLANS[planId as PlanId];
+  // Resolve requested plan id to a concrete plan object. Support short ids
+  // like 'annual' or full keys like 'standard_annual'.
+  const plan = resolvePlanByShortId(planId, false);
+  if (!plan) {
+    return NextResponse.json({ error: 'Invalid planId' }, { status: 400 });
+  }
+
   const now = new Date();
-  const expiry = new Date(now);
-  expiry.setMonth(expiry.getMonth() + plan.durationMonths);
+  const expiry = planEndDate(plan, now);
 
   // Declared outside the try block so email/SMS section can access it after activation.
   let _createdPayment: { id: string; subscriptionId?: string } | null = null;

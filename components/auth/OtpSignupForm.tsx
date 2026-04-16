@@ -33,7 +33,7 @@ export function OtpSignupForm() {
                    font-medium text-sm hover:bg-[#4338A0]
                    transition-colors whitespace-nowrap"
       >
-        Start Free →
+        Get started →
       </button>
     </form>
   )

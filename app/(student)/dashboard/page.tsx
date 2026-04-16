@@ -14,6 +14,7 @@
  * EDIT LOG:
  *   2026-03-15 | v2 migration | full rebuild; replaces v1 dashboard
  *   2026-04-14 | gap-fix P1   | restore full widget set, wire server data, freemium counter
+ *   2026-04-15 | copilot | filter dashboard subjects by student's learning plans when present
  */
 
 import type { Metadata } from 'next'
@@ -62,7 +63,7 @@ export default async function StudentHomeDashboardPage() {
     user,
     nextAction,
     freeTierUsage,
-    subjects,
+    learningPlans,
     weeklyActivity,
   ] = await Promise.all([
     prisma.user.findUnique({
@@ -73,6 +74,7 @@ export default async function StudentHomeDashboardPage() {
         totalXp: true,
         level: true,
         subscriptionStatus: true,
+        subjects: true,
         learningPlans: {
           select: { examDate: true, subjectId: true },
           orderBy: { generatedAt: 'desc' },
@@ -85,10 +87,10 @@ export default async function StudentHomeDashboardPage() {
       where: { studentId: userId },
       select: { sessionsUsed: true, periodStart: true },
     }),
-    prisma.subjectDef.findMany({
-      where: { lifecycle: 'active' },
-      select: { id: true, name: true },
-      take: 5,
+    // Fetch learning plans for this student (used to scope dashboard subjects)
+    prisma.learningPlan.findMany({
+      where: { studentId: userId },
+      select: { subjectId: true },
     }),
     prisma.structuredSession.findMany({
       where: {
@@ -129,7 +131,49 @@ export default async function StudentHomeDashboardPage() {
     xpBySource[row.source] = row._sum.amount ?? 0
   }
 
-  // ── Readiness scores per subject (parallel, best-effort) ───────────────────
+  // ── Readiness scores per subject (parallel, best-effort)
+  // Prefer subjects from the student's profile `subjects` (enrolled subjects),
+  // then fall back to subjects referenced by their learning plans, then active subjects.
+  let subjects = [] as { id: string; name: string }[]
+
+  // Resolve enrolled subjects from user.subjects (may be string[] or Postgres wire-format string)
+  let enrolledSubjects: string[] | null = null
+  if (user?.subjects) {
+    if (Array.isArray(user.subjects)) {
+      const arr = (user.subjects as string[]).filter(Boolean)
+      if (arr.length > 0) enrolledSubjects = arr
+    } else if (typeof user.subjects === 'string' && user.subjects.length > 0) {
+      const cleaned = (user.subjects as string).replace(/^\{/, '').replace(/\}$/, '').trim()
+      const parts = cleaned.length > 0 ? cleaned.split(',').map((s) => s.trim()).filter(Boolean) : []
+      if (parts.length > 0) enrolledSubjects = parts
+    }
+  }
+
+  if (enrolledSubjects && enrolledSubjects.length > 0) {
+    // Resolve enrolled subject names/slugs to SubjectDef IDs
+    subjects = await prisma.subjectDef.findMany({
+      where: {
+        lifecycle: 'active',
+        OR: [{ name: { in: enrolledSubjects } }, { slug: { in: enrolledSubjects } }],
+      },
+      select: { id: true, name: true },
+    })
+  } else {
+    const planSubjectIds = Array.from(new Set(learningPlans.map((p: { subjectId: string }) => p.subjectId)))
+    if (planSubjectIds.length > 0) {
+      subjects = await prisma.subjectDef.findMany({
+        where: { id: { in: planSubjectIds }, lifecycle: 'active' },
+        select: { id: true, name: true },
+      })
+    } else {
+      subjects = await prisma.subjectDef.findMany({
+        where: { lifecycle: 'active' },
+        select: { id: true, name: true },
+        take: 5,
+      })
+    }
+  }
+
   const readinessResults = await Promise.all(
     subjects.map(async (sub) => {
       const result = await computeReadinessScore(userId, sub.id).catch(() => ({ score: 0, label: 'critical' as const, chapters: [] }))

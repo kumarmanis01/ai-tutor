@@ -12,7 +12,7 @@ The platform mascot is the **Spinzy owl**.
 
 - **Domain:** https://spinzyacademy.com
 - **Package name:** `ai-tutor-india` (v0.1.0)
-- **Pricing:** ₹99/month freemium (free tier: 3 questions/day)
+- **Pricing:** ₹399/month freemium (free tier: 3 questions/day)
 - **Target device:** Budget Android, 360px viewport, 4G, 2 GB RAM. Desktop is secondary.
 
 ---

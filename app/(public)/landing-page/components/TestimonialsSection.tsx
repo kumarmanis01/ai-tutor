@@ -47,9 +47,9 @@ const TestimonialsSection = () => {
       role: 'Father of Class 10 Student',
       rating: 4,
       testimonialEn:
-        "As a small business owner, I couldn't afford ₹4000 monthly tuition. Spinzy Academy at ₹99 is a blessing! My son now solves Math problems independently and his confidence has grown tremendously.",
+        "As a small business owner, I couldn't afford ₹4000 monthly tuition. Spinzy Academy at ₹399 is a blessing! My son now solves Math problems independently and his confidence has grown tremendously.",
       testimonialHi:
-        'छोटे व्यवसायी होने के नाते मैं ₹4000 महीना ट्यूशन नहीं दे सकता था। ₹99 में Spinzy Academy एक वरदान है! मेरा बेटा अब Math के सवाल खुद हल करता है और उसका आत्मविश्वास बहुत बढ़ गया है।',
+        'छोटे व्यवसायी होने के नाते मैं ₹4000 महीना ट्यूशन नहीं दे सकता था। ₹399 में Spinzy Academy एक वरदान है! मेरा बेटा अब Math के सवाल खुद हल करता है और उसका आत्मविश्वास बहुत बढ़ गया है।',
       beforeGrade: '52%',
       afterGrade: '81%',
       savings: '₹3900/month',
