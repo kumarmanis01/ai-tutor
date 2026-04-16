@@ -17,13 +17,14 @@
  *
  * EDIT LOG:
  * - 2026-04-08T00:00:00Z | copilot | created parent order endpoint
+ * - 2026-04-16T03:30:00Z | copilot | support short plan ids (e.g. 'annual') and family variants to avoid undefined plan errors
  */
 
 import { NextResponse } from 'next/server';
 import { getServerSessionForHandlers } from '@/lib/session';
 import { prisma } from '@/lib/prisma';
 import { logger } from '@/lib/logger';
-import { PLANS, rupeesToPaise } from '@/lib/billing/plans';
+import { PLANS, rupeesToPaise, resolvePlanByShortId } from '@/lib/billing/plans';
 import type { PlanId } from '@/lib/billing/plans';
 import Razorpay from 'razorpay';
 
@@ -55,7 +56,7 @@ export async function POST(req: Request) {
   const isFamily = Boolean(b.isFamily);
   const emiMonths = typeof b.emiMonths === 'number' ? b.emiMonths : undefined;
 
-  if (!planId || !VALID_PLAN_IDS.includes(planId as PlanId)) {
+  if (!planId) {
     return NextResponse.json({ error: 'Invalid planId' }, { status: 400 });
   }
 
@@ -74,16 +75,29 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'One or more children are not linked to you' }, { status: 403 });
   }
 
-  const plan = PLANS[planId as PlanId];
-
-  // Pricing rules:
-  // - Individual purchase: plan.billedRupees per child
-  // - Multiple non-family children: plan.billedRupees × n
-  // - Family pricing (3 children): 1.8 × single-child price
-  let totalRupees = plan.billedRupees * childIds.length;
-  if (isFamily) {
-    totalRupees = Math.round(plan.billedRupees * 1.8 * 100) / 100;
+  // Resolve to an actual plan object. Support short ids like 'annual' or
+  // full keys like 'standard_annual'. When `isFamily` is requested prefer
+  // the family plan variant if available.
+  const plan = resolvePlanByShortId(planId, false);
+  if (!plan) {
+    return NextResponse.json({ error: 'Invalid planId' }, { status: 400 });
   }
+
+  // Determine billed amount. If family pricing is requested and a family plan
+  // exists use its billedRupees; otherwise apply the family multiplier.
+  let totalRupees: number;
+  if (isFamily) {
+    const familyPlanKey = (`family_${planId}`) as PlanId;
+    const familyPlan = (PLANS as any)[familyPlanKey] as typeof plan | undefined;
+    if (familyPlan) {
+      totalRupees = familyPlan.billedRupees;
+    } else {
+      totalRupees = Math.round(plan.billedRupees * 1.8 * 100) / 100;
+    }
+  } else {
+    totalRupees = plan.billedRupees * childIds.length;
+  }
+
   const amountPaise = rupeesToPaise(totalRupees);
 
   const client = getRazorpayClient();
@@ -93,6 +107,11 @@ export async function POST(req: Request) {
   }
 
   try {
+    // Choose durationMonths from family plan when applicable, else from resolved plan.
+    const familyPlanKey = (`family_${planId}`) as PlanId;
+    const familyPlan = (PLANS as any)[familyPlanKey] as typeof plan | undefined;
+    const durationMonths = familyPlan?.durationMonths ?? plan.durationMonths;
+
     const order = await client.orders.create({
       amount: amountPaise,
       currency: 'INR',
@@ -102,7 +121,7 @@ export async function POST(req: Request) {
         isFamily: String(Boolean(isFamily)),
         emiMonths: emiMonths ? String(emiMonths) : '',
         planId,
-        durationMonths: String(plan.durationMonths),
+        durationMonths: String(durationMonths),
       },
     });
 
@@ -116,7 +135,7 @@ export async function POST(req: Request) {
         amount: amountPaise,
         currency: 'INR',
         status: 'created',
-        planMonths: plan.durationMonths,
+        planMonths: durationMonths,
       },
     });
 
