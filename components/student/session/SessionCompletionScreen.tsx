@@ -544,6 +544,13 @@ export const SessionCompletionScreen: React.FC<SessionCompletionScreenProps> = (
         document.execCommand('copy')
         ta.remove()
       }
+      // Telemetry: record the copy action for analytics/debugging
+      try {
+        logger.info('session_summary_copied', { sessionId, topicName })
+      } catch (e) {
+        // non-blocking
+      }
+
       setCopied(true)
       setTimeout(() => setCopied(false), 2000)
     } catch {
@@ -673,6 +680,7 @@ export const SessionCompletionScreen: React.FC<SessionCompletionScreenProps> = (
             <button
               type="button"
               onClick={() => void handleCopySummary()}
+              aria-label={`Copy session summary for ${topicName ?? 'this session'}`}
               className="flex w-full min-h-[44px] items-center justify-center rounded-xl border border-gray-200 dark:border-slate-700 text-sm font-medium hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors"
             >
               {copied ? 'Copied!' : copyError ? 'Copy failed' : 'Copy session summary'}
@@ -683,10 +691,16 @@ export const SessionCompletionScreen: React.FC<SessionCompletionScreenProps> = (
             <button
               type="button"
               onClick={() => void handleWhatsAppShare()}
+              aria-label={`Share session summary on WhatsApp for ${topicName ?? 'this session'}`}
               className="flex w-full min-h-[44px] items-center justify-center rounded-xl bg-[#25D366] text-white text-sm font-semibold hover:opacity-95 active:scale-[0.98] transition-all"
             >
               {sharing ? 'Sharing...' : shareError ? 'Share failed' : 'Share on WhatsApp'}
             </button>
+          </div>
+
+          {/* Accessibility: polite live region for copy/share status */}
+          <div role="status" aria-live="polite" className="sr-only">
+            {copied ? 'Session summary copied to clipboard' : copyError ? 'Failed to copy session summary' : ''}
           </div>
 
           {/* 8. CTAs */}
