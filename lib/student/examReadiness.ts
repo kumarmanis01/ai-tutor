@@ -21,6 +21,7 @@ export interface ReadinessResult {
   score: number             // 0-100 integer
   label: ReadinessLabel
   chapters: ReadinessChapter[]
+  predictedRange?: PredictedScoreRange
 }
 
 export interface PredictedScoreRange {
@@ -100,7 +101,7 @@ export async function computeReadinessScore(
 
     const states = await prisma.studentConceptState.findMany({
       where: { studentId, conceptId: { in: allConceptIds } },
-      select: { conceptId: true, masteryScore: true },
+      select: { conceptId: true, masteryScore: true, retention: true },
     })
     const masteryMap = new Map<string, number>(
       states.map((s) => [s.conceptId, s.masteryScore]),
@@ -139,7 +140,27 @@ export async function computeReadinessScore(
       chapters: chapterBreakdown,
     }
 
-    // 5. Write to cache (fire-and-forget)
+    // 5. Compute predicted range using available signals (states + recent mock)
+    try {
+      const signalStates = states.map((s) => ({ conceptId: s.conceptId, retention: (s as any).retention }))
+      let lastMock: { finishedAt?: Date; scorePercent?: number } | undefined = undefined
+      try {
+        const m = await prisma.mockExamAttempt.findFirst({
+          where: { studentId, mockExam: { subjectId }, finishedAt: { not: null } },
+          orderBy: { finishedAt: 'desc' },
+          select: { finishedAt: true, scorePercent: true },
+        })
+        if (m && m.finishedAt) lastMock = { finishedAt: m.finishedAt, scorePercent: m.scorePercent ?? undefined }
+      } catch {
+        // ignore mock lookup failures
+      }
+
+      result.predictedRange = computePredictedScoreRange(result, { states: signalStates, lastMock, daysToExam: null })
+    } catch {
+      // non-fatal; keep result without predictedRange
+    }
+
+    // 6. Write to cache (fire-and-forget)
     try {
       const redis = getRedis()
       if (redis) {
@@ -165,8 +186,32 @@ export async function computeReadinessScore(
  */
 export function computePredictedScoreRange(
   readiness: ReadinessResult,
-  daysToExam?: number | null,
+  opts?:
+    | number
+    | {
+        daysToExam?: number | null
+        states?: Array<{ conceptId: string; retention?: number }>
+        studentId?: string
+        subjectId?: string
+      },
 ): PredictedScoreRange {
+  // Backwards-compatible: allow number as daysToExam
+  let daysToExam: number | null | undefined = undefined
+  let states: Array<{ conceptId: string; retention?: number }> | undefined = undefined
+  let studentId: string | undefined = undefined
+  let subjectId: string | undefined = undefined
+  let lastMock: { finishedAt?: Date; scorePercent?: number } | undefined = undefined
+  if (typeof opts === 'number') {
+    daysToExam = opts
+  } else if (opts && typeof opts === 'object') {
+    daysToExam = opts.daysToExam
+    states = opts.states
+    studentId = opts.studentId
+    subjectId = opts.subjectId
+    // support passing a lastMock object directly
+    ;(lastMock as any) = (opts as any).lastMock
+  }
+
   const score = Math.max(0, Math.min(100, Math.round(readiness.score)))
   const contribs = (readiness.chapters || []).map((c) => Number(c.contribution ?? 0))
   const n = Math.max(0, contribs.length)
@@ -182,7 +227,7 @@ export function computePredictedScoreRange(
   const sdContrib = Math.sqrt(variance)
 
   // Approximate SD of the sum of contributions: sd_sum = sd_contrib * sqrt(n)
-  const sdSum = sdContrib * Math.sqrt(n)
+  let sdSum = sdContrib * Math.sqrt(n)
 
   const z = 1.96 // 95% CI
 
@@ -190,6 +235,26 @@ export function computePredictedScoreRange(
   let scale = 1
   if (typeof daysToExam === 'number' && daysToExam !== null) {
     scale = Math.max(0.25, Math.min(1, daysToExam / 90))
+  }
+
+  // Incorporate spaced-repetition retention if provided via states
+  if (states && states.length > 0) {
+    const retentionVals = states.map((s) => Math.max(0, Math.min(2, Number(s.retention ?? 1))))
+    const avgRetention = retentionVals.reduce((a, b) => a + b, 0) / retentionVals.length
+    // If avgRetention < 1 → more uncertainty; >1 → a bit more confident
+    const retentionAdj = 1 - (avgRetention - 1) * 0.4 // small effect
+    sdSum = sdSum * Math.max(0.7, Math.min(1.3, 1 / retentionAdj))
+  }
+
+  // Incorporate last mock exam recency and score if provided in opts
+  if (lastMock && lastMock.finishedAt && typeof lastMock.scorePercent === 'number') {
+    const daysSince = Math.max(0, Math.ceil((Date.now() - lastMock.finishedAt.getTime()) / 86_400_000))
+    const recencyWeight = Math.max(0, 1 - daysSince / 180)
+    const scoreDiff = Math.abs((lastMock.scorePercent ?? score) - score) / 100
+    const mockEffect = recencyWeight * (1 - scoreDiff)
+    // If recent mock aligns with readiness → reduce SD up to 25%; else small increase
+    const mockAdj = 1 - (mockEffect * 0.25)
+    sdSum = sdSum * Math.max(0.7, Math.min(1.3, mockAdj))
   }
 
   const halfWidth = z * sdSum * scale

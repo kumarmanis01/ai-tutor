@@ -186,6 +186,7 @@ export default async function StudentHomeDashboardPage() {
         subjectId: sub.id,
         subjectName: sub.name,
         score: result.score,
+        predictedRange: (result as any).predictedRange ?? undefined,
         diagnosticDone: !!diagnostic,
       }
     }),
@@ -335,6 +336,7 @@ export default async function StudentHomeDashboardPage() {
                       subjectName={r.subjectName}
                       score={r.score}
                       diagnosticDone={r.diagnosticDone}
+                      predictedRange={r.predictedRange}
                     />
                   </Link>
                 ))}

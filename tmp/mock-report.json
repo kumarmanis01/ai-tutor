@@ -1,0 +1,1142 @@
+﻿{
+  "minPer": 5,
+  "groups": [
+    {
+      "subjectId": "cmn5wvdci001fhysljjvkmihi",
+      "subjectName": "English",
+      "grade": 1,
+      "board": "cbse",
+      "existing": 0,
+      "needed": 5
+    },
+    {
+      "subjectId": "cmn5wvfd7001hhysl376ajk2e",
+      "subjectName": "Hindi",
+      "grade": 1,
+      "board": "cbse",
+      "existing": 0,
+      "needed": 5
+    },
+    {
+      "subjectId": "cmn5wvgxo001jhysl95oatbmh",
+      "subjectName": "Mathematics",
+      "grade": 1,
+      "board": "cbse",
+      "existing": 0,
+      "needed": 5
+    },
+    {
+      "subjectId": "cmn5wvia2001lhyslcjxnrn3i",
+      "subjectName": "Environmental Studies",
+      "grade": 1,
+      "board": "cbse",
+      "existing": 0,
+      "needed": 5
+    },
+    {
+      "subjectId": "cmn5wvjmh001nhyslcid6t000",
+      "subjectName": "English",
+      "grade": 2,
+      "board": "cbse",
+      "existing": 0,
+      "needed": 5
+    },
+    {
+      "subjectId": "cmn5wvmcw001physla46qlbpz",
+      "subjectName": "Hindi",
+      "grade": 2,
+      "board": "cbse",
+      "existing": 0,
+      "needed": 5
+    },
+    {
+      "subjectId": "cmn5wvonx001rhysl8j13zoo8",
+      "subjectName": "Mathematics",
+      "grade": 2,
+      "board": "cbse",
+      "existing": 0,
+      "needed": 5
+    },
+    {
+      "subjectId": "cmn5wvq0a001thysl94s2wbk6",
+      "subjectName": "Environmental Studies",
+      "grade": 2,
+      "board": "cbse",
+      "existing": 0,
+      "needed": 5
+    },
+    {
+      "subjectId": "cmn5wvre7001vhyslwozixnj3",
+      "subjectName": "English",
+      "grade": 3,
+      "board": "cbse",
+      "existing": 0,
+      "needed": 5
+    },
+    {
+      "subjectId": "cmn5wvsyl001xhysllm0s9mby",
+      "subjectName": "Hindi",
+      "grade": 3,
+      "board": "cbse",
+      "existing": 0,
+      "needed": 5
+    },
+    {
+      "subjectId": "cmn5wvub1001zhysl9orj1k61",
+      "subjectName": "Mathematics",
+      "grade": 3,
+      "board": "cbse",
+      "existing": 0,
+      "needed": 5
+    },
+    {
+      "subjectId": "cmn5wvvng0021hyslvpk8g8d3",
+      "subjectName": "Environmental Studies",
+      "grade": 3,
+      "board": "cbse",
+      "existing": 0,
+      "needed": 5
+    },
+    {
+      "subjectId": "cmn5wvwzv0023hyslxhh31piq",
+      "subjectName": "English",
+      "grade": 4,
+      "board": "cbse",
+      "existing": 0,
+      "needed": 5
+    },
+    {
+      "subjectId": "cmn5wvyca0025hysljhx9bypy",
+      "subjectName": "Hindi",
+      "grade": 4,
+      "board": "cbse",
+      "existing": 0,
+      "needed": 5
+    },
+    {
+      "subjectId": "cmn5wvzoo0027hysl3uya1l02",
+      "subjectName": "Mathematics",
+      "grade": 4,
+      "board": "cbse",
+      "existing": 0,
+      "needed": 5
+    },
+    {
+      "subjectId": "cmn5ww1190029hyslanxggos3",
+      "subjectName": "Environmental Studies",
+      "grade": 4,
+      "board": "cbse",
+      "existing": 0,
+      "needed": 5
+    },
+    {
+      "subjectId": "cmn5ww2dp002bhyslfih3y7wh",
+      "subjectName": "English",
+      "grade": 5,
+      "board": "cbse",
+      "existing": 0,
+      "needed": 5
+    },
+    {
+      "subjectId": "cmn5ww3q5002dhysla9vmwmsw",
+      "subjectName": "Hindi",
+      "grade": 5,
+      "board": "cbse",
+      "existing": 0,
+      "needed": 5
+    },
+    {
+      "subjectId": "cmn5ww5ak002fhyslxsgji546",
+      "subjectName": "Mathematics",
+      "grade": 5,
+      "board": "cbse",
+      "existing": 0,
+      "needed": 5
+    },
+    {
+      "subjectId": "cmn5ww6n0002hhysly9crhkuj",
+      "subjectName": "Environmental Studies",
+      "grade": 5,
+      "board": "cbse",
+      "existing": 0,
+      "needed": 5
+    },
+    {
+      "subjectId": "cmn5ww7ze002jhysllt56c5m5",
+      "subjectName": "English",
+      "grade": 6,
+      "board": "cbse",
+      "existing": 0,
+      "needed": 5
+    },
+    {
+      "subjectId": "cmn5ww9bw002lhyslwgx50wub",
+      "subjectName": "Hindi",
+      "grade": 6,
+      "board": "cbse",
+      "existing": 0,
+      "needed": 5
+    },
+    {
+      "subjectId": "cmn5wwaob002nhyslfqfghg6c",
+      "subjectName": "Mathematics",
+      "grade": 6,
+      "board": "cbse",
+      "existing": 0,
+      "needed": 5
+    },
+    {
+      "subjectId": "cmn5wwc0q002physlep1hhpu4",
+      "subjectName": "Science",
+      "grade": 6,
+      "board": "cbse",
+      "existing": 0,
+      "needed": 5
+    },
+    {
+      "subjectId": "cmn5wwdd7002rhyslbmtb6dw9",
+      "subjectName": "Social Science",
+      "grade": 6,
+      "board": "cbse",
+      "existing": 0,
+      "needed": 5
+    },
+    {
+      "subjectId": "cmn5wwepm002thysl7yht4m7i",
+      "subjectName": "Sanskrit",
+      "grade": 6,
+      "board": "cbse",
+      "existing": 0,
+      "needed": 5
+    },
+    {
+      "subjectId": "cmn5wwg22002vhyslb47uo1n2",
+      "subjectName": "Urdu",
+      "grade": 6,
+      "board": "cbse",
+      "existing": 0,
+      "needed": 5
+    },
+    {
+      "subjectId": "cmn5wwhmj002xhyslwpjujwqm",
+      "subjectName": "English",
+      "grade": 7,
+      "board": "cbse",
+      "existing": 0,
+      "needed": 5
+    },
+    {
+      "subjectId": "cmn5wwiyx002zhyslu298xl9h",
+      "subjectName": "Hindi",
+      "grade": 7,
+      "board": "cbse",
+      "existing": 0,
+      "needed": 5
+    },
+    {
+      "subjectId": "cmn5wwkbi0031hyslsrppsrap",
+      "subjectName": "Mathematics",
+      "grade": 7,
+      "board": "cbse",
+      "existing": 0,
+      "needed": 5
+    },
+    {
+      "subjectId": "cmn5wwlwj0033hyslyy963apf",
+      "subjectName": "Science",
+      "grade": 7,
+      "board": "cbse",
+      "existing": 0,
+      "needed": 5
+    },
+    {
+      "subjectId": "cmn5wwnac0035hyslbhtmqfs1",
+      "subjectName": "Social Science",
+      "grade": 7,
+      "board": "cbse",
+      "existing": 0,
+      "needed": 5
+    },
+    {
+      "subjectId": "cmn5wwonx0037hyslsfgmm1te",
+      "subjectName": "Sanskrit",
+      "grade": 7,
+      "board": "cbse",
+      "existing": 0,
+      "needed": 5
+    },
+    {
+      "subjectId": "cmn5wwq0a0039hyslxndxc0fg",
+      "subjectName": "Urdu",
+      "grade": 7,
+      "board": "cbse",
+      "existing": 0,
+      "needed": 5
+    },
+    {
+      "subjectId": "cmn5wwre4003bhyslyksc08pf",
+      "subjectName": "English",
+      "grade": 8,
+      "board": "cbse",
+      "existing": 0,
+      "needed": 5
+    },
+    {
+      "subjectId": "cmn5wwsrx003dhyslyzvdzs16",
+      "subjectName": "Hindi",
+      "grade": 8,
+      "board": "cbse",
+      "existing": 0,
+      "needed": 5
+    },
+    {
+      "subjectId": "cmn5wwu5r003fhysliry1jiqo",
+      "subjectName": "Mathematics",
+      "grade": 8,
+      "board": "cbse",
+      "existing": 0,
+      "needed": 5
+    },
+    {
+      "subjectId": "cmn5wwvrg003hhysl64desuls",
+      "subjectName": "Science",
+      "grade": 8,
+      "board": "cbse",
+      "existing": 0,
+      "needed": 5
+    },
+    {
+      "subjectId": "cmn5wwx3t003jhysli2nk5dza",
+      "subjectName": "Social Science",
+      "grade": 8,
+      "board": "cbse",
+      "existing": 0,
+      "needed": 5
+    },
+    {
+      "subjectId": "cmn5wwyg9003lhysly2c2kz88",
+      "subjectName": "Sanskrit",
+      "grade": 8,
+      "board": "cbse",
+      "existing": 0,
+      "needed": 5
+    },
+    {
+      "subjectId": "cmn5wx00y003nhysl8bcbp5j6",
+      "subjectName": "Urdu",
+      "grade": 8,
+      "board": "cbse",
+      "existing": 0,
+      "needed": 5
+    },
+    {
+      "subjectId": "cmn5wx1es003physl9fp1sfmp",
+      "subjectName": "English",
+      "grade": 9,
+      "board": "cbse",
+      "existing": 0,
+      "needed": 5
+    },
+    {
+      "subjectId": "cmn5wx2sk003rhyslzye3lbd0",
+      "subjectName": "Hindi",
+      "grade": 9,
+      "board": "cbse",
+      "existing": 0,
+      "needed": 5
+    },
+    {
+      "subjectId": "cmn5wx46e003thysln8kj5sy4",
+      "subjectName": "Mathematics",
+      "grade": 9,
+      "board": "cbse",
+      "existing": 0,
+      "needed": 5
+    },
+    {
+      "subjectId": "cmn5wx5k7003vhyslzee07fkv",
+      "subjectName": "Science",
+      "grade": 9,
+      "board": "cbse",
+      "existing": 0,
+      "needed": 5
+    },
+    {
+      "subjectId": "cmn5wx6xz003xhysly0m5d4c0",
+      "subjectName": "Social Science",
+      "grade": 9,
+      "board": "cbse",
+      "existing": 0,
+      "needed": 5
+    },
+    {
+      "subjectId": "cmn5wx8br003zhysl9vts4xpu",
+      "subjectName": "Sanskrit",
+      "grade": 9,
+      "board": "cbse",
+      "existing": 0,
+      "needed": 5
+    },
+    {
+      "subjectId": "cmn5wx9pn0041hyslrwdfv68u",
+      "subjectName": "Information Technology",
+      "grade": 9,
+      "board": "cbse",
+      "existing": 0,
+      "needed": 5
+    },
+    {
+      "subjectId": "cmn5wxb3g0043hysl1cc15iau",
+      "subjectName": "Artificial Intelligence",
+      "grade": 9,
+      "board": "cbse",
+      "existing": 0,
+      "needed": 5
+    },
+    {
+      "subjectId": "cmn5wxcq20045hyslil7u64yw",
+      "subjectName": "English",
+      "grade": 10,
+      "board": "cbse",
+      "existing": 0,
+      "needed": 5
+    },
+    {
+      "subjectId": "cmn5wxe3v0047hysljjg65whx",
+      "subjectName": "Hindi",
+      "grade": 10,
+      "board": "cbse",
+      "existing": 0,
+      "needed": 5
+    },
+    {
+      "subjectId": "cmn5wxfhq0049hyslpeu66enz",
+      "subjectName": "Mathematics",
+      "grade": 10,
+      "board": "cbse",
+      "existing": 0,
+      "needed": 5
+    },
+    {
+      "subjectId": "cmn5wxgvj004bhyslx5ddlcxy",
+      "subjectName": "Science",
+      "grade": 10,
+      "board": "cbse",
+      "existing": 0,
+      "needed": 5
+    },
+    {
+      "subjectId": "cmn5wxi9d004dhyslzy1smjb1",
+      "subjectName": "Social Science",
+      "grade": 10,
+      "board": "cbse",
+      "existing": 0,
+      "needed": 5
+    },
+    {
+      "subjectId": "cmn5wxjn7004fhyslm1a8p33k",
+      "subjectName": "Sanskrit",
+      "grade": 10,
+      "board": "cbse",
+      "existing": 0,
+      "needed": 5
+    },
+    {
+      "subjectId": "cmn5wxl0z004hhysl7fcc69sf",
+      "subjectName": "Information Technology",
+      "grade": 10,
+      "board": "cbse",
+      "existing": 0,
+      "needed": 5
+    },
+    {
+      "subjectId": "cmn5wxmet004jhysloyyymwnj",
+      "subjectName": "Artificial Intelligence",
+      "grade": 10,
+      "board": "cbse",
+      "existing": 0,
+      "needed": 5
+    },
+    {
+      "subjectId": "cmn5wxnsn004lhysl25gp54ep",
+      "subjectName": "English",
+      "grade": 11,
+      "board": "cbse",
+      "existing": 0,
+      "needed": 5
+    },
+    {
+      "subjectId": "cmn5wxpet004nhyslzoa86kwf",
+      "subjectName": "Physics",
+      "grade": 11,
+      "board": "cbse",
+      "existing": 0,
+      "needed": 5
+    },
+    {
+      "subjectId": "cmn5wxqsn004physl03nv4a4y",
+      "subjectName": "Chemistry",
+      "grade": 11,
+      "board": "cbse",
+      "existing": 0,
+      "needed": 5
+    },
+    {
+      "subjectId": "cmn5wxs6i004rhysl9z76dd4j",
+      "subjectName": "Mathematics",
+      "grade": 11,
+      "board": "cbse",
+      "existing": 0,
+      "needed": 5
+    },
+    {
+      "subjectId": "cmn5wxtkb004thysl9aa808e5",
+      "subjectName": "Biology",
+      "grade": 11,
+      "board": "cbse",
+      "existing": 0,
+      "needed": 5
+    },
+    {
+      "subjectId": "cmn5wxuy5004vhyslms7n3wi3",
+      "subjectName": "Computer Science",
+      "grade": 11,
+      "board": "cbse",
+      "existing": 0,
+      "needed": 5
+    },
+    {
+      "subjectId": "cmn5wxwbz004xhysld8xll2xh",
+      "subjectName": "Physical Education",
+      "grade": 11,
+      "board": "cbse",
+      "existing": 0,
+      "needed": 5
+    },
+    {
+      "subjectId": "cmn5wxxps004zhyslxsrjh4k2",
+      "subjectName": "English",
+      "grade": 12,
+      "board": "cbse",
+      "existing": 0,
+      "needed": 5
+    },
+    {
+      "subjectId": "cmn5wxz3m0051hyslq8876ugs",
+      "subjectName": "Physics",
+      "grade": 12,
+      "board": "cbse",
+      "existing": 0,
+      "needed": 5
+    },
+    {
+      "subjectId": "cmn5wy0hf0053hyslgmd1djp2",
+      "subjectName": "Chemistry",
+      "grade": 12,
+      "board": "cbse",
+      "existing": 0,
+      "needed": 5
+    },
+    {
+      "subjectId": "cmn5wy23h0055hysl3w2bk89d",
+      "subjectName": "Mathematics",
+      "grade": 12,
+      "board": "cbse",
+      "existing": 0,
+      "needed": 5
+    },
+    {
+      "subjectId": "cmn5wy3h90057hyslytxjlc6u",
+      "subjectName": "Biology",
+      "grade": 12,
+      "board": "cbse",
+      "existing": 0,
+      "needed": 5
+    },
+    {
+      "subjectId": "cmn5wy4v40059hysl75hjxdkd",
+      "subjectName": "Computer Science",
+      "grade": 12,
+      "board": "cbse",
+      "existing": 0,
+      "needed": 5
+    },
+    {
+      "subjectId": "cmn5wy68x005bhyslflp30b5l",
+      "subjectName": "Physical Education",
+      "grade": 12,
+      "board": "cbse",
+      "existing": 0,
+      "needed": 5
+    },
+    {
+      "subjectId": "cmn5wy7mv005dhyslvmk5jmsk",
+      "subjectName": "English",
+      "grade": 1,
+      "board": "icse",
+      "existing": 0,
+      "needed": 5
+    },
+    {
+      "subjectId": "cmn5wy90n005fhyslcj2g5lpm",
+      "subjectName": "Hindi",
+      "grade": 1,
+      "board": "icse",
+      "existing": 0,
+      "needed": 5
+    },
+    {
+      "subjectId": "cmn5wyaef005hhysluk5shzee",
+      "subjectName": "Mathematics",
+      "grade": 1,
+      "board": "icse",
+      "existing": 0,
+      "needed": 5
+    },
+    {
+      "subjectId": "cmn5wybs6005jhyslxz6ubxc2",
+      "subjectName": "Environmental Studies",
+      "grade": 1,
+      "board": "icse",
+      "existing": 0,
+      "needed": 5
+    },
+    {
+      "subjectId": "cmn5wyd5y005lhysl0gonqy4q",
+      "subjectName": "English",
+      "grade": 2,
+      "board": "icse",
+      "existing": 0,
+      "needed": 5
+    },
+    {
+      "subjectId": "cmn5wyes3005nhyslzg0nie42",
+      "subjectName": "Hindi",
+      "grade": 2,
+      "board": "icse",
+      "existing": 0,
+      "needed": 5
+    },
+    {
+      "subjectId": "cmn5wyg5v005physl9gy01141",
+      "subjectName": "Mathematics",
+      "grade": 2,
+      "board": "icse",
+      "existing": 0,
+      "needed": 5
+    },
+    {
+      "subjectId": "cmn5wyhjp005rhyslpoq74tgj",
+      "subjectName": "Environmental Studies",
+      "grade": 2,
+      "board": "icse",
+      "existing": 0,
+      "needed": 5
+    },
+    {
+      "subjectId": "cmn5wyixj005thyslu137vy29",
+      "subjectName": "English",
+      "grade": 3,
+      "board": "icse",
+      "existing": 0,
+      "needed": 5
+    },
+    {
+      "subjectId": "cmn5wykbd005vhysl78z4eaaq",
+      "subjectName": "Hindi",
+      "grade": 3,
+      "board": "icse",
+      "existing": 0,
+      "needed": 5
+    },
+    {
+      "subjectId": "cmn5wylp8005xhysli5xj96un",
+      "subjectName": "Mathematics",
+      "grade": 3,
+      "board": "icse",
+      "existing": 0,
+      "needed": 5
+    },
+    {
+      "subjectId": "cmn5wyn32005zhyslcpt87bxc",
+      "subjectName": "Environmental Studies",
+      "grade": 3,
+      "board": "icse",
+      "existing": 0,
+      "needed": 5
+    },
+    {
+      "subjectId": "cmn5wyogw0061hysl5wo5zl5f",
+      "subjectName": "English",
+      "grade": 4,
+      "board": "icse",
+      "existing": 0,
+      "needed": 5
+    },
+    {
+      "subjectId": "cmn5wypuq0063hyslgnpy2fn0",
+      "subjectName": "Hindi",
+      "grade": 4,
+      "board": "icse",
+      "existing": 0,
+      "needed": 5
+    },
+    {
+      "subjectId": "cmn5wyrgv0065hyslao34io3a",
+      "subjectName": "Mathematics",
+      "grade": 4,
+      "board": "icse",
+      "existing": 0,
+      "needed": 5
+    },
+    {
+      "subjectId": "cmn5wysuu0067hysl6zd1prh1",
+      "subjectName": "Environmental Studies",
+      "grade": 4,
+      "board": "icse",
+      "existing": 0,
+      "needed": 5
+    },
+    {
+      "subjectId": "cmn5wyu8m0069hyslh0sfbdxr",
+      "subjectName": "English",
+      "grade": 5,
+      "board": "icse",
+      "existing": 0,
+      "needed": 5
+    },
+    {
+      "subjectId": "cmn5wyvmg006bhysl2p78bapl",
+      "subjectName": "Hindi",
+      "grade": 5,
+      "board": "icse",
+      "existing": 0,
+      "needed": 5
+    },
+    {
+      "subjectId": "cmn5wyx08006dhysl4z94kg9w",
+      "subjectName": "Mathematics",
+      "grade": 5,
+      "board": "icse",
+      "existing": 0,
+      "needed": 5
+    },
+    {
+      "subjectId": "cmn5wyye2006fhyslmhl1o3f3",
+      "subjectName": "Environmental Studies",
+      "grade": 5,
+      "board": "icse",
+      "existing": 0,
+      "needed": 5
+    },
+    {
+      "subjectId": "cmn5wyzrw006hhyslb1kz6jp3",
+      "subjectName": "English",
+      "grade": 6,
+      "board": "icse",
+      "existing": 0,
+      "needed": 5
+    },
+    {
+      "subjectId": "cmn5wz15q006jhysljqjrj8a8",
+      "subjectName": "Hindi",
+      "grade": 6,
+      "board": "icse",
+      "existing": 0,
+      "needed": 5
+    },
+    {
+      "subjectId": "cmn5wz2ji006lhyslhbrkeqek",
+      "subjectName": "Mathematics",
+      "grade": 6,
+      "board": "icse",
+      "existing": 0,
+      "needed": 5
+    },
+    {
+      "subjectId": "cmn5wz45o006nhyslft8rwoad",
+      "subjectName": "Science",
+      "grade": 6,
+      "board": "icse",
+      "existing": 0,
+      "needed": 5
+    },
+    {
+      "subjectId": "cmn5wz5ji006physlinp2zowt",
+      "subjectName": "Social Science",
+      "grade": 6,
+      "board": "icse",
+      "existing": 0,
+      "needed": 5
+    },
+    {
+      "subjectId": "cmn5wz6xb006rhyslnorbw93c",
+      "subjectName": "Sanskrit",
+      "grade": 6,
+      "board": "icse",
+      "existing": 0,
+      "needed": 5
+    },
+    {
+      "subjectId": "cmn5wz8b6006thyslhglmmdjl",
+      "subjectName": "Urdu",
+      "grade": 6,
+      "board": "icse",
+      "existing": 0,
+      "needed": 5
+    },
+    {
+      "subjectId": "cmn5wz9oz006vhyslc2qe1s0r",
+      "subjectName": "English",
+      "grade": 7,
+      "board": "icse",
+      "existing": 0,
+      "needed": 5
+    },
+    {
+      "subjectId": "cmn5wzb2r006xhyslqbvtb6ul",
+      "subjectName": "Hindi",
+      "grade": 7,
+      "board": "icse",
+      "existing": 0,
+      "needed": 5
+    },
+    {
+      "subjectId": "cmn5wzcgk006zhysltnffn8qk",
+      "subjectName": "Mathematics",
+      "grade": 7,
+      "board": "icse",
+      "existing": 0,
+      "needed": 5
+    },
+    {
+      "subjectId": "cmn5wzduf0071hysl7hjvvchd",
+      "subjectName": "Science",
+      "grade": 7,
+      "board": "icse",
+      "existing": 0,
+      "needed": 5
+    },
+    {
+      "subjectId": "cmn5wzf8c0073hyslgdsq3ebi",
+      "subjectName": "Social Science",
+      "grade": 7,
+      "board": "icse",
+      "existing": 0,
+      "needed": 5
+    },
+    {
+      "subjectId": "cmn5wzguc0075hyslcc1po9g7",
+      "subjectName": "Sanskrit",
+      "grade": 7,
+      "board": "icse",
+      "existing": 0,
+      "needed": 5
+    },
+    {
+      "subjectId": "cmn5wzi860077hysl5ftib257",
+      "subjectName": "Urdu",
+      "grade": 7,
+      "board": "icse",
+      "existing": 0,
+      "needed": 5
+    },
+    {
+      "subjectId": "cmn5wzjlx0079hyslc3xgbshf",
+      "subjectName": "English",
+      "grade": 8,
+      "board": "icse",
+      "existing": 0,
+      "needed": 5
+    },
+    {
+      "subjectId": "cmn5wzkzt007bhyslyczdsu8u",
+      "subjectName": "Hindi",
+      "grade": 8,
+      "board": "icse",
+      "existing": 0,
+      "needed": 5
+    },
+    {
+      "subjectId": "cmn5wzmdl007dhyslrqzhvfkn",
+      "subjectName": "Mathematics",
+      "grade": 8,
+      "board": "icse",
+      "existing": 0,
+      "needed": 5
+    },
+    {
+      "subjectId": "cmn5wznrf007fhysl09bk3o6d",
+      "subjectName": "Science",
+      "grade": 8,
+      "board": "icse",
+      "existing": 0,
+      "needed": 5
+    },
+    {
+      "subjectId": "cmn5wzp55007hhyslyk0s7b6p",
+      "subjectName": "Social Science",
+      "grade": 8,
+      "board": "icse",
+      "existing": 0,
+      "needed": 5
+    },
+    {
+      "subjectId": "cmn5wzqiz007jhysls3fcf1ak",
+      "subjectName": "Sanskrit",
+      "grade": 8,
+      "board": "icse",
+      "existing": 0,
+      "needed": 5
+    },
+    {
+      "subjectId": "cmn5wzrwv007lhyslqm64gemz",
+      "subjectName": "Urdu",
+      "grade": 8,
+      "board": "icse",
+      "existing": 0,
+      "needed": 5
+    },
+    {
+      "subjectId": "cmn5wztix007nhysl7hu6oro8",
+      "subjectName": "English",
+      "grade": 9,
+      "board": "icse",
+      "existing": 0,
+      "needed": 5
+    },
+    {
+      "subjectId": "cmn5wzuwr007physlquc6yzt3",
+      "subjectName": "Hindi",
+      "grade": 9,
+      "board": "icse",
+      "existing": 0,
+      "needed": 5
+    },
+    {
+      "subjectId": "cmn5wzwaj007rhysl8jzkjj4e",
+      "subjectName": "Mathematics",
+      "grade": 9,
+      "board": "icse",
+      "existing": 0,
+      "needed": 5
+    },
+    {
+      "subjectId": "cmn5wzxob007thyslsqipixn9",
+      "subjectName": "Science",
+      "grade": 9,
+      "board": "icse",
+      "existing": 0,
+      "needed": 5
+    },
+    {
+      "subjectId": "cmn5wzz26007vhysl249xbn68",
+      "subjectName": "Social Science",
+      "grade": 9,
+      "board": "icse",
+      "existing": 0,
+      "needed": 5
+    },
+    {
+      "subjectId": "cmn5x00g1007xhysl9130fe2w",
+      "subjectName": "Sanskrit",
+      "grade": 9,
+      "board": "icse",
+      "existing": 0,
+      "needed": 5
+    },
+    {
+      "subjectId": "cmn5x01tu007zhysl26pcqkc3",
+      "subjectName": "Information Technology",
+      "grade": 9,
+      "board": "icse",
+      "existing": 0,
+      "needed": 5
+    },
+    {
+      "subjectId": "cmn5x037n0081hyslt7fkaieu",
+      "subjectName": "Artificial Intelligence",
+      "grade": 9,
+      "board": "icse",
+      "existing": 0,
+      "needed": 5
+    },
+    {
+      "subjectId": "cmn5x04li0083hyslnlfl87wa",
+      "subjectName": "English",
+      "grade": 10,
+      "board": "icse",
+      "existing": 0,
+      "needed": 5
+    },
+    {
+      "subjectId": "cmn5x067l0085hysl70ggw9i6",
+      "subjectName": "Hindi",
+      "grade": 10,
+      "board": "icse",
+      "existing": 0,
+      "needed": 5
+    },
+    {
+      "subjectId": "cmn5x07ld0087hyslfzg6ww9p",
+      "subjectName": "Mathematics",
+      "grade": 10,
+      "board": "icse",
+      "existing": 0,
+      "needed": 5
+    },
+    {
+      "subjectId": "cmn5x08z60089hyslc8epgq5c",
+      "subjectName": "Science",
+      "grade": 10,
+      "board": "icse",
+      "existing": 0,
+      "needed": 5
+    },
+    {
+      "subjectId": "cmn5x0acy008bhyslec51vfmn",
+      "subjectName": "Social Science",
+      "grade": 10,
+      "board": "icse",
+      "existing": 0,
+      "needed": 5
+    },
+    {
+      "subjectId": "cmn5x0bqt008dhysldqo0hhn5",
+      "subjectName": "Sanskrit",
+      "grade": 10,
+      "board": "icse",
+      "existing": 0,
+      "needed": 5
+    },
+    {
+      "subjectId": "cmn5x0d4n008fhysl7rqoedi2",
+      "subjectName": "Information Technology",
+      "grade": 10,
+      "board": "icse",
+      "existing": 0,
+      "needed": 5
+    },
+    {
+      "subjectId": "cmn5x0eih008hhyslsuaol06q",
+      "subjectName": "Artificial Intelligence",
+      "grade": 10,
+      "board": "icse",
+      "existing": 0,
+      "needed": 5
+    },
+    {
+      "subjectId": "cmn5x0fwb008jhysleu9owpt3",
+      "subjectName": "English",
+      "grade": 11,
+      "board": "icse",
+      "existing": 0,
+      "needed": 5
+    },
+    {
+      "subjectId": "cmn5x0ha5008lhyslw7me4652",
+      "subjectName": "Physics",
+      "grade": 11,
+      "board": "icse",
+      "existing": 0,
+      "needed": 5
+    },
+    {
+      "subjectId": "cmn5x0iw8008nhysl3ngfok8c",
+      "subjectName": "Chemistry",
+      "grade": 11,
+      "board": "icse",
+      "existing": 0,
+      "needed": 5
+    },
+    {
+      "subjectId": "cmn5x0ka0008physlg150afdw",
+      "subjectName": "Mathematics",
+      "grade": 11,
+      "board": "icse",
+      "existing": 0,
+      "needed": 5
+    },
+    {
+      "subjectId": "cmn5x0lnt008rhyslz6w68cp4",
+      "subjectName": "Biology",
+      "grade": 11,
+      "board": "icse",
+      "existing": 0,
+      "needed": 5
+    },
+    {
+      "subjectId": "cmn5x0n1o008thyslicti05f3",
+      "subjectName": "Computer Science",
+      "grade": 11,
+      "board": "icse",
+      "existing": 0,
+      "needed": 5
+    },
+    {
+      "subjectId": "cmn5x0ofh008vhyslc8xx7me8",
+      "subjectName": "Physical Education",
+      "grade": 11,
+      "board": "icse",
+      "existing": 0,
+      "needed": 5
+    },
+    {
+      "subjectId": "cmn5x0pta008xhyslbl4ta27q",
+      "subjectName": "English",
+      "grade": 12,
+      "board": "icse",
+      "existing": 0,
+      "needed": 5
+    },
+    {
+      "subjectId": "cmn5x0r75008zhysl2xdztxqs",
+      "subjectName": "Physics",
+      "grade": 12,
+      "board": "icse",
+      "existing": 0,
+      "needed": 5
+    },
+    {
+      "subjectId": "cmn5x0sl00091hysl0ag5t08w",
+      "subjectName": "Chemistry",
+      "grade": 12,
+      "board": "icse",
+      "existing": 0,
+      "needed": 5
+    },
+    {
+      "subjectId": "cmn5x0tys0093hyslgq1paljo",
+      "subjectName": "Mathematics",
+      "grade": 12,
+      "board": "icse",
+      "existing": 0,
+      "needed": 5
+    },
+    {
+      "subjectId": "cmn5x0vl30095hyslokm0tdgl",
+      "subjectName": "Biology",
+      "grade": 12,
+      "board": "icse",
+      "existing": 0,
+      "needed": 5
+    },
+    {
+      "subjectId": "cmn5x0wyv0097hyslvugvhqgr",
+      "subjectName": "Computer Science",
+      "grade": 12,
+      "board": "icse",
+      "existing": 0,
+      "needed": 5
+    },
+    {
+      "subjectId": "cmn5x0ycn0099hyslif6gn2x8",
+      "subjectName": "Physical Education",
+      "grade": 12,
+      "board": "icse",
+      "existing": 0,
+      "needed": 5
+    }
+  ],
+  "totalNeeded": 710
+}
