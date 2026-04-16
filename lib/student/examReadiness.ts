@@ -1,3 +1,19 @@
+/**
+ * FILE OBJECTIVE:
+ * - Compute student exam readiness and predicted score ranges based on
+ *   chapter-weighted mastery and recent mock performance.
+ *
+ * LINKED UNIT TEST:
+ * - tests/unit/lib/student/examReadiness.spec.ts
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - .github/copilot-instructions.md
+ * - /docs/COPILOT_GUARDRAILS.md
+ *
+ * EDIT LOG:
+ * - 2026-04-16T12:30:00Z | copilot | allow passing `lastMock` via asserted options object to avoid TS excess-property error
+ */
+
 import { prisma } from '@/lib/prisma'
 import { getRedis } from '@/lib/redis'
 
@@ -155,7 +171,10 @@ export async function computeReadinessScore(
         // ignore mock lookup failures
       }
 
-      result.predictedRange = computePredictedScoreRange(result, { states: signalStates, lastMock, daysToExam: null })
+      // Build an options object and assert its type to avoid excess-property
+      // checks when passing `lastMock` into `computePredictedScoreRange`.
+      const _predictedOpts = ({ states: signalStates, lastMock, daysToExam: null } as unknown) as Parameters<typeof computePredictedScoreRange>[1]
+      result.predictedRange = computePredictedScoreRange(result, _predictedOpts)
     } catch {
       // non-fatal; keep result without predictedRange
     }
@@ -193,6 +212,7 @@ export function computePredictedScoreRange(
         states?: Array<{ conceptId: string; retention?: number }>
         studentId?: string
         subjectId?: string
+        lastMock?: { finishedAt?: Date; scorePercent?: number }
       },
 ): PredictedScoreRange {
   // Backwards-compatible: allow number as daysToExam

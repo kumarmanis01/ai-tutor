@@ -12,6 +12,7 @@ COPILOT_INSTRUCTIONS_FOLLOWED:
 
 EDIT LOG:
 - 2026-04-16T12:00:00Z | copilot | added Production Run & Deployment section; updated header
+- 2026-04-16T12:50:00Z | copilot | add Phase 2 backlog: admin-triggered mock seeding (API + worker), audit logs, admin UI, tests
 -->
 
 AI HOME TUTOR PLATFORM
@@ -868,5 +869,27 @@ grep -R "tsconfig-paths" dist || echo OK
 ```
 
 These steps describe the intended production run model and the operational checks required before release. Add infra-specific automation (CI/CD) to codify these steps in your pipeline.
+
+
+---
+
+### Phase 2 Backlog — Post-release Operational & Content Tasks
+
+- Rationale: operational safety and content coverage tasks that must be executed post-launch to ensure mock availability and auditable content generation.
+- Key items (post-release):
+	- Admin-triggered seeding job: implement an admin-only API to enqueue a background `seed-mocks` job (dry-run and real modes) to create missing `MockExam` rows per subject/grade/board.
+	- Worker handler & queue: background worker (BullMQ) to run `ensureMinimumMocks({ minPer })`, support LLM fallbacks safely, and persist detailed run results and errors.
+	- Audit logging & ExecutionJob: every seed run must create an `AuditLog`/`ExecutionJob` entry with operator id, parameters, dryRun flag, and a persisted JSON summary for post-run review.
+	- Admin UI controls: Dry-run preview, explicit backup confirmation, two-step “Run” with typed acknowledgement, and run history view with links to persisted summaries.
+	- DB safety / preflight: require an operator DB snapshot / restore point before any non-dry-run run; document canonical operator commands for dev and prod.
+	- Tests & CI: unit + integration tests for dry-run behavior, worker handler, audit records, and idempotency; add CI gating for these tests.
+	- Post-seed verification: automated validation job that samples counts per subject/grade/board and alerts if `minPer` not met or question bank shortages occur.
+	- Monitoring & retention: store run summaries (R2/S3) with retention policy, expose run metrics to operator dashboard, and surface errors to Sentry.
+
+Acceptance criteria:
+	- Admin API supports `dryRun=true` returning a concise preview and `dryRun=false` to enqueue an auditable background job.
+	- Every real run requires explicit backup confirmation in the UI and a persisted `AuditLog` row linking to stored summary JSON.
+	- Worker runs are idempotent and safe to retry; failures are logged and surfaced to operators.
+	- CI includes tests covering dry-run, enqueueing, worker execution (mocked), and audit persistence.
 
 

@@ -1476,6 +1476,9 @@ model StudentConceptState {
   theta           Float     @default(0.0)
   stability       Float     @default(1.0)
   retention       Float     @default(1.0)
+  /// Memory strength: aggregated retention-like metric used for the UI
+  /// and revision prioritisation. Range 0.0 - 1.0
+  memoryStrength  Float     @default(0.0)
 
   // Scheduling / review
   nextReviewAt    DateTime?

@@ -37,6 +37,13 @@ export async function GET(req: Request) {
         },
         orderBy: { nextReviewAt: 'asc' },
         take: LIMIT,
+        select: {
+          conceptId: true,
+          masteryScore: true,
+          retention: true,
+          nextReviewAt: true,
+          memoryStrength: true,
+        },
       }),
       prisma.studentConceptState.count({
         where: {
@@ -68,6 +75,7 @@ export async function GET(req: Request) {
         subjectName: meta?.subjectName ?? 'Unknown',
         masteryScore: s.masteryScore,
         retention: s.retention,
+        memoryStrength: (s as any).memoryStrength ?? 0,
         nextReviewAt: nextReviewAt.toISOString(),
         overdueByDays: Math.round(overdueByDays * 10) / 10,
       }

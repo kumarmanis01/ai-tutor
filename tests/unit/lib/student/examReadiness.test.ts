@@ -1,3 +1,25 @@
+/**
+ * FILE OBJECTIVE:
+ * - Smoke test to ensure `lib/student/examReadiness.ts` loads after TS shape fix.
+ *
+ * LINKED UNIT TEST:
+ * - tests/unit/lib/student/examReadiness.test.ts
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - .github/copilot-instructions.md
+ * - /docs/COPILOT_GUARDRAILS.md
+ *
+ * EDIT LOG:
+ * - 2026-04-16T12:35:00Z | copilot | added smoke test for examReadiness
+ */
+
+describe('lib/student/examReadiness (smoke)', () => {
+  it('module loads', () => {
+    // require to avoid static TS imports in the test harness
+    const mod = require('../../../../lib/student/examReadiness')
+    expect(mod).toBeDefined()
+  })
+})
 import {
   computeReadinessLabel,
   computeWeightedContribution,

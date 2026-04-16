@@ -28,6 +28,15 @@ async function main() {
     for (const c of result.created) {
       logger.info('ensure-mocks.created_item', c);
     }
+    // Also print a concise JSON summary to stdout for operator verification
+    // Print only first 100 created items to avoid huge output
+    const summary = {
+      minPer: result.minPer,
+      createdCount: result.created.length,
+      createdPreview: result.created.slice(0, 100),
+    };
+    // Use console.log so redirection captures this reliably
+    console.log(JSON.stringify(summary, null, 2));
   } catch (err) {
     logger.error('ensure-mocks.failed', { error: String(err) });
     process.exitCode = 2;

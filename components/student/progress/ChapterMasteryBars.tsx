@@ -25,6 +25,8 @@ export interface ChapterRow {
   boardWeightPct: number;
   /** conceptId for the lowest-mastery concept in this chapter, or null */
   weakestConceptId: string | null;
+  /** Average memory strength for the chapter (0-1) */
+  memoryStrength?: number;
 }
 
 export interface SubjectMasteryData {
@@ -77,6 +79,15 @@ function ChapterRowLink({ chapter }: { chapter: ChapterRow }) {
             className="h-full rounded-full"
             style={{ width: `${mastery100}%`, backgroundColor: bar }}
           />
+        </div>
+        {/* Memory strength (visual only) */}
+        <div className="mt-2">
+          <div className="h-1 rounded-full bg-gray-100 dark:bg-slate-700 overflow-hidden" aria-hidden>
+            <div
+              className="h-full rounded-full"
+              style={{ width: `${Math.round((chapter.memoryStrength ?? 0) * 100)}%`, backgroundColor: '#534AB7' }}
+            />
+          </div>
         </div>
       </div>
       <span className="flex-shrink-0 text-[10px] text-gray-400 dark:text-gray-500 bg-gray-100 dark:bg-slate-700 px-2 py-0.5 rounded-full">
