@@ -161,10 +161,19 @@ export async function POST(req: Request) {
     try { logger.error('regenerationJob.create error', { err: err }) } catch (e) { logger.warn('regenerationJob: logger.error failed', { error: e }); }
     try { logger.error('regenerationJob.create error stack', { stack: err && err.stack ? err.stack : String(err) }) } catch (e) { logger.warn('regenerationJob: logger.error fallback failed', { error: e }); }
     // If the create failed due to unique constraint, return the existing job (idempotent)
-    const isUniqueConstraint = err?.code === 'P2002' || (err?.message ?? String(err ?? '')).toLowerCase().includes('unique constraint failed')
+    const errMsg = String(err?.message ?? err ?? '')
+    const lc = errMsg.toLowerCase()
+    const isUniqueConstraint = err?.code === 'P2002' || err?.code === '23505' || lc.includes('unique constraint') || lc.includes('duplicate key') || lc.includes('unique') || lc.includes('already exists')
     if (isUniqueConstraint) {
-      const existing = await (prisma as any).regenerationJob.findFirst({ where: { suggestionId: suggestion.id, targetType: targetType as any, targetId } });
-      return NextResponse.json({ job: existing });
+      try {
+        const existing = await (prisma as any).regenerationJob.findFirst({ where: { suggestionId: suggestion.id, targetType: targetType as any, targetId } });
+        if (existing) return NextResponse.json({ job: existing });
+        // Fallback: if not found with full criteria, try by suggestionId alone
+        const fallback = await (prisma as any).regenerationJob.findFirst({ where: { suggestionId: suggestion.id } });
+        if (fallback) return NextResponse.json({ job: fallback });
+      } catch (e) {
+        try { logger.warn('regenerationJob: failed to fetch existing job after unique constraint', { error: e }) } catch {}
+      }
     }
     return NextResponse.json({ error: 'failed' }, { status: 500 });
   }

@@ -4,6 +4,7 @@ import { logger } from '@/lib/logger.js';
 import { getPartialDiagnostic, clearPartialDiagnostic } from '@/lib/redis/diagnosticPartial.js';
 import { enqueueDiagnosticBootstrapJob } from '@/jobs/diagnosticBootstrap.js';
 import { upsertSubjectDiagnosticStatus } from '@/lib/diagnostics/stateStore.js';
+import { diagnosticConfig } from '@/lib/config';
 import type { DiagnosticAutoSubmitJobData } from '@/jobs/diagnosticAutoSubmit.js';
 
 /**
@@ -39,6 +40,11 @@ export async function processDiagnosticAutoSubmit(
     }
 
     const questionIds = partial.answers.map((a) => a.questionId).filter(Boolean);
+
+    // Determine whether this is a partial/abandoned run (fewer than min valid answers).
+    const providedAnswersCount = partial.answers.length;
+    const minValid = Number(diagnosticConfig.minAnswersForValidity ?? 10);
+    const isPartialAbandon = providedAnswersCount < minValid;
 
     // Fetch questions for grading and concept resolution.
     const questions = await prisma.question.findMany({
@@ -90,15 +96,24 @@ export async function processDiagnosticAutoSubmit(
     }
 
     // Resolve chapter ids for bootstrap.
-    const questionTopicIds = [...new Set(questions.map((q) => q.topicId).filter((t): t is string => !!t))];
-    const topics: { id: string; chapterId: string }[] =
-      questionTopicIds.length > 0
-        ? await prisma.topicDef.findMany({
-            where: { id: { in: questionTopicIds } },
-            select: { id: true, chapterId: true },
-          })
-        : [];
-    const chapterIds: string[] = [...new Set(topics.map((t) => t.chapterId))];
+    let chapterIds: string[] = [];
+    if (isPartialAbandon) {
+      // AC-07: when diagnostic is a partial/abandon (< min valid answers), assume
+      // grade-level start for unanswered chapters. Enqueue bootstrap for ALL
+      // chapters in the subject so unanswered concepts are seeded with grade-level defaults.
+      const allChapters = await prisma.chapterDef.findMany({ where: { subjectId }, select: { id: true } });
+      chapterIds = allChapters.map((c) => c.id);
+    } else {
+      const questionTopicIds = [...new Set(questions.map((q) => q.topicId).filter((t): t is string => !!t))];
+      const topics: { id: string; chapterId: string }[] =
+        questionTopicIds.length > 0
+          ? await prisma.topicDef.findMany({
+              where: { id: { in: questionTopicIds } },
+              select: { id: true, chapterId: true },
+            })
+          : [];
+      chapterIds = [...new Set(topics.map((t) => t.chapterId))];
+    }
 
     const user = await prisma.user.findUnique({
       where: { id: userId },
