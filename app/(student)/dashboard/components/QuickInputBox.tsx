@@ -27,6 +27,8 @@ const QuickInputBox: React.FC<QuickInputBoxProps> = ({ onReply, onError, initial
     // Start with a deterministic server-safe value to avoid hydration mismatches.
     // We'll load the user's saved preference (localStorage) or server value on mount.
     const [preferredLang, setPreferredLang] = useState<string>('auto');
+    const [subjectAvailableCodes, setSubjectAvailableCodes] = useState<string[] | null>(null);
+    const [subjectTeachingLang, setSubjectTeachingLang] = useState<string | null>(null);
 
     // On client mount, prefer in-order: `initialPreferredLang` prop -> localStorage -> server
     useEffect(() => {
@@ -103,6 +105,34 @@ const QuickInputBox: React.FC<QuickInputBoxProps> = ({ onReply, onError, initial
       }
     }, []);
 
+    // When used in a subject context, load subject-specific availability and current selection
+    useEffect(() => {
+      let cancelled = false;
+      if (!subject) {
+        setSubjectAvailableCodes(null);
+        setSubjectTeachingLang(null);
+        return () => { cancelled = true; };
+      }
+
+      (async () => {
+        try {
+          const res = await fetch(`/api/student/subject-language?subjectId=${encodeURIComponent(subject)}`);
+          if (!res.ok) return;
+          const j = await res.json().catch(() => ({}));
+          if (cancelled) return;
+          const avail = Array.isArray(j?.availableLanguages) ? j.availableLanguages : null;
+          setSubjectAvailableCodes(avail);
+          const subjLangs = j?.subjectLanguages ?? {};
+          const current = typeof subjLangs === 'object' ? subjLangs[subject] : undefined;
+          if (current && typeof current === 'string') setSubjectTeachingLang(current);
+        } catch (err) {
+          logger.warn('Failed to load subject language availability', { className: 'QuickInputBox', methodName: 'loadSubjectLang', error: String(err), subject });
+        }
+      })();
+
+      return () => { cancelled = true; };
+    }, [subject]);
+
     const toggleFavorite = (tag: string) => {
       try {
         setFavorites((prev) => {
@@ -124,7 +154,20 @@ const QuickInputBox: React.FC<QuickInputBoxProps> = ({ onReply, onError, initial
       }
     };
 
-    const handleSelectorPick = (name: string) => {
+    const tagToShort = (tag: string) => {
+      try {
+        const t = String(tag || '').toLowerCase();
+        if (t.startsWith('hi')) return 'hi';
+        if (t.startsWith('ta')) return 'ta';
+        if (t.startsWith('bn')) return 'bn';
+        if (t.startsWith('fr')) return 'fr';
+        if (t.startsWith('es')) return 'es';
+        if (t.startsWith('en')) return 'en';
+      } catch {}
+      return 'en';
+    };
+
+    const handleSelectorPick = async (name: string) => {
       try {
         const tag = mapNameToTag(name);
         setPreferredLang(tag);
@@ -133,10 +176,28 @@ const QuickInputBox: React.FC<QuickInputBoxProps> = ({ onReply, onError, initial
         } catch (err) {
           logger.warn('Failed to persist preferredLang to localStorage', { className: 'QuickInputBox', methodName: 'handleSelectorPick', error: String(err) });
         }
-        try {
-          fetch('/api/user/language', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ language: tag }) }).catch((err) => { logger.warn('Failed to persist preferredLang to server', { className: 'QuickInputBox', methodName: 'handleSelectorPick', error: String(err) }) });
-        } catch (err) {
-          logger.warn('Failed to queue preferredLang persist request', { className: 'QuickInputBox', methodName: 'handleSelectorPick', error: String(err) });
+
+        // If a subject is active, persist as per-subject teaching language instead
+        if (subject) {
+          try {
+            const short = tagToShort(tag);
+            // Guard against unavailable languages for this subject
+            if (subjectAvailableCodes && !subjectAvailableCodes.includes(short)) {
+              try { toast('Selected language is not yet available for this subject.'); } catch {}
+            } else {
+              await fetch('/api/student/subject-language', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ subjectId: subject, language: short }) });
+              setSubjectTeachingLang(short);
+            }
+          } catch (err) {
+            logger.warn('Failed to persist subject teaching language', { className: 'QuickInputBox', methodName: 'handleSelectorPick', error: String(err), subject });
+          }
+        } else {
+          // Global UI shell language
+          try {
+            fetch('/api/user/language', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ language: tag }) }).catch((err) => { logger.warn('Failed to persist preferredLang to server', { className: 'QuickInputBox', methodName: 'handleSelectorPick', error: String(err) }) });
+          } catch (err) {
+            logger.warn('Failed to queue preferredLang persist request', { className: 'QuickInputBox', methodName: 'handleSelectorPick', error: String(err) });
+          }
         }
       } catch (err) {
         logger.warn('handleSelectorPick failed', { className: 'QuickInputBox', methodName: 'handleSelectorPick', error: String(err) });
@@ -662,17 +723,12 @@ const QuickInputBox: React.FC<QuickInputBoxProps> = ({ onReply, onError, initial
           {showLangMenuVoice && (
             <div className="absolute right-0 mt-2 z-50">
               <LanguageSelector
-                lang={mapTagToName(preferredLang)}
+                lang={mapTagToName(subjectTeachingLang ?? preferredLang)}
+                availableCodes={subjectAvailableCodes ?? undefined}
                 setLang={(name: string) => {
                   try {
-                    const tag = mapNameToTag(name);
-                    setPreferredLang(tag);
-                    try {
-                      localStorage.setItem('ai-tutor:preferredLang', tag);
-                    } catch {}
-                    try {
-                      fetch('/api/user/language', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ language: tag }) }).catch(() => {});
-                    } catch {}
+                    // Delegate to central handler which persists per-subject when `subject` is present
+                    void handleSelectorPick(name);
                   } catch {}
                   setShowLangMenuVoice(false);
                 }}
@@ -724,7 +780,7 @@ const QuickInputBox: React.FC<QuickInputBoxProps> = ({ onReply, onError, initial
       </div>
       {showLangMenuText && (
         <div className="absolute z-50">
-          <LanguageSelector lang={mapTagToName(preferredLang)} setLang={(name: string) => { handleSelectorPick(name); setShowLangMenuText(false); }} />
+          <LanguageSelector lang={mapTagToName(subjectTeachingLang ?? preferredLang)} availableCodes={subjectAvailableCodes ?? undefined} setLang={(name: string) => { void handleSelectorPick(name); setShowLangMenuText(false); }} />
         </div>
       )}
       <div className="mb-3">

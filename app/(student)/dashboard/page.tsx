@@ -27,6 +27,7 @@ import { computeReadinessScore } from '@/lib/student/examReadiness'
 import TodaysLearningCard, {
   type TodaysLearningCardProps,
 } from '@/components/student/dashboard/TodaysLearningCard'
+import SecondaryStartOptions from '@/components/student/dashboard/SecondaryStartOptions'
 import { XPWidget } from '@/components/student/dashboard/XPWidget'
 import WeeklyStudyStrip from '@/components/student/dashboard/WeeklyStudyStrip'
 import { RevisionWidget } from '@/components/student/dashboard/RevisionWidget'
@@ -275,6 +276,7 @@ export default async function StudentHomeDashboardPage() {
         <div className="flex flex-col gap-5 md:w-3/5">
           {/* F-STU-032 AC-03: Primary CTA */}
           <TodaysLearningCard {...cardProps} />
+          <SecondaryStartOptions todaysConceptId={cardProps.recommendation?.conceptId} />
 
           {/* F-STU-031: XP + Level + source breakdown */}
           <XPWidget totalXp={user.totalXp} level={user.level} xpThisWeek={xpThisWeek} xpBySource={xpBySource} />
