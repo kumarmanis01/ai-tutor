@@ -151,20 +151,21 @@ export async function POST(req: Request) {
         await recordPaymentEvent(tx, { paymentId: payment.id, userId, provider: 'razorpay', providerIdempotencyKey: order.providerIdempotencyKey ?? undefined, transactionId: paymentId, orderId, eventType: 'payment.parent_subscription_verified', amount: order.amount, status: 'success', payload: { planId, childIds } });
 
         // Compute any prorated credit from existing active subscription and carry forward
-          const existing = await tx.subscription.findFirst({ where: { userId, active: true }, select: { startDate: true, endDate: true, paymentId: true, creditBalance: true } });
-          if (existing) {
-            const paid = existing.paymentId ? await tx.payment.findUnique({ where: { id: existing.paymentId }, select: { amount: true } }) : null;
-            const paidAmount = paid?.amount ?? 0;
-            const proration = computeProratedCredit(existing.startDate!, existing.endDate!, paidAmount);
-            const existingCredit = existing.creditBalance ?? 0;
-            carryForwardCredit = (existingCredit || 0) + (proration || 0);
-            // Deactivate existing
-            await tx.subscription.updateMany({ where: { userId, active: true }, data: { active: false } });
+          try {
+            const existing = await tx.subscription.findFirst({ where: { userId, active: true }, select: { startDate: true, endDate: true, paymentId: true, creditBalance: true } });
+            if (existing) {
+              const paid = existing.paymentId ? await tx.payment.findUnique({ where: { id: existing.paymentId }, select: { amount: true } }) : null;
+              const paidAmount = paid?.amount ?? 0;
+              const proration = computeProratedCredit(existing.startDate!, existing.endDate!, paidAmount);
+              const existingCredit = existing.creditBalance ?? 0;
+              carryForwardCredit = (existingCredit || 0) + (proration || 0);
+              // Deactivate existing
+              await tx.subscription.updateMany({ where: { userId, active: true }, data: { active: false } });
+            }
+          } catch (err) {
+            logger.warn('parent.verify proration failed', { event: 'parent.subscription.verify.proration', context: { userId, orderId }, err });
+            carryForwardCredit = 0;
           }
-        } catch (err) {
-          logger.warn('parent.verify proration failed', { event: 'parent.subscription.verify.proration', context: { userId, orderId }, err });
-          carryForwardCredit = 0;
-        }
 
         // Create parent subscription record and capture it for installment creation
         const createdSub = await tx.subscription.create({
