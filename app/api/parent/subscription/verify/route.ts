@@ -121,8 +121,9 @@ export async function POST(req: Request) {
     logger.warn('Could not fetch Razorpay order notes', { event: 'parent.subscription.verify.fetch_notes', context: { userId, orderId }, err });
   }
 
-  try {
-    let _createdPayment: { id: string } | null = null;
+    try {
+      let _createdPayment: { id: string } | null = null;
+      let carryForwardCredit = 0;
     try {
       _createdPayment = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
         if (order.status !== 'paid') {
@@ -139,7 +140,6 @@ export async function POST(req: Request) {
             providerIdempotencyKey: order.providerIdempotencyKey ?? undefined,
             status: 'success',
             transactionId: paymentId,
-   * - 2026-04-16T03:40:00Z | copilot | remove unused PLANS/PlanId imports to satisfy lint
             orderId: orderId,
             plan: plan.label,
             billingCycle: plan.perMonthDisplay,
@@ -151,7 +151,6 @@ export async function POST(req: Request) {
         await recordPaymentEvent(tx, { paymentId: payment.id, userId, provider: 'razorpay', providerIdempotencyKey: order.providerIdempotencyKey ?? undefined, transactionId: paymentId, orderId, eventType: 'payment.parent_subscription_verified', amount: order.amount, status: 'success', payload: { planId, childIds } });
 
         // Compute any prorated credit from existing active subscription and carry forward
-  import { planEndDate, resolvePlanByShortId } from '@/lib/billing/plans';
           const existing = await tx.subscription.findFirst({ where: { userId, active: true }, select: { startDate: true, endDate: true, paymentId: true, creditBalance: true } });
           if (existing) {
             const paid = existing.paymentId ? await tx.payment.findUnique({ where: { id: existing.paymentId }, select: { amount: true } }) : null;
