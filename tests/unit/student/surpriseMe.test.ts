@@ -3,7 +3,7 @@
  * - Unit tests for GET /api/student/surprise-me
  *
  * LINKED UNIT TEST:
- * - tests/unit/student/surpriseMe.spec.ts
+ * - tests/unit/student/surpriseMe.test.ts
  */
 
 jest.mock('@/lib/prisma', () => ({
