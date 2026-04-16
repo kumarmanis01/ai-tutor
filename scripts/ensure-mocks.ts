@@ -20,9 +20,10 @@ import { logger } from '@/lib/logger';
 async function main() {
   const argv = minimist(process.argv.slice(2));
   const min = Number(argv.min ?? argv.m ?? 5);
+  const dryRun = !!argv['dry-run'] || !!argv['dry'] || !!argv.d;
   logger.info('ensure-mocks.start', { min });
   try {
-    const result = await ensureMinimumMocks({ minPer: min });
+    const result = await ensureMinimumMocks({ minPer: min, dryRun });
     logger.info('ensure-mocks.done', { createdCount: result.created.length, minPer: result.minPer });
     for (const c of result.created) {
       logger.info('ensure-mocks.created_item', c);

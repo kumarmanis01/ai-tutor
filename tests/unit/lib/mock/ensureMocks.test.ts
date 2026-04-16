@@ -48,13 +48,19 @@ jest.mock('@/lib/prisma', () => {
 });
 
 jest.mock('@/lib/mock/selectMockQuestions', () => ({
-  selectMockQuestions: jest.fn().mockResolvedValue([
-    { sectionDef: { title: 'Section A', marksPerQ: 1, instructions: 'A' }, questions: [{ id: 'q-a-1' }, { id: 'q-a-2' }] },
-    { sectionDef: { title: 'Section B', marksPerQ: 3, instructions: 'B' }, questions: [{ id: 'q-b-1' }] },
-    { sectionDef: { title: 'Section C', marksPerQ: 5, instructions: 'C' }, questions: [{ id: 'q-c-1' }] },
-  ]),
+  MOCK_SECTION_DEFS: [
+    { title: 'Section A', type: 'mcq', marksPerQ: 1, count: 2, instructions: 'A' },
+    { title: 'Section B', type: 'short', marksPerQ: 3, count: 1, instructions: 'B' },
+    { title: 'Section C', type: 'long_answer', marksPerQ: 5, count: 1, instructions: 'C' },
+  ],
   MOCK_TOTAL_MARKS: 80,
   MOCK_DURATION_MIN: 180,
+}));
+
+jest.mock('@/lib/tests', () => ({
+  ensureQuestions: jest.fn().mockImplementation((filters: any, count: number) =>
+    Promise.resolve(Array.from({ length: count }, (_, i) => ({ id: `q-${filters.type}-${i + 1}` })))
+  ),
 }));
 
 describe('ensureMinimumMocks', () => {

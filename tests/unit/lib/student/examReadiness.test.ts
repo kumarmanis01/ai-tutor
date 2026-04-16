@@ -48,4 +48,35 @@ describe('lib/student/examReadiness', () => {
       expect(computeWeightedContribution(1, 10, 0)).toBe(0)
     })
   })
+
+  describe('computePredictedScoreRange', () => {
+    const { computePredictedScoreRange } = require('@/lib/student/examReadiness')
+
+    test('fallback when no chapters returns small window', () => {
+      const r = { score: 50, label: 'critical', chapters: [] }
+      const p = computePredictedScoreRange(r)
+      expect(p.low).toBeGreaterThanOrEqual(0)
+      expect(p.high).toBeLessThanOrEqual(100)
+      expect(p.high - p.low).toBeGreaterThan(0)
+    })
+
+    test('closer exam narrows the interval', () => {
+      const readiness = {
+        score: 72,
+        label: 'on_track',
+        chapters: [
+          { chapterId: 'c1', chapterName: 'A', masteryScore: 0.8, boardWeightPct: 30, contribution: 24, status: 'on_track' },
+          { chapterId: 'c2', chapterName: 'B', masteryScore: 0.6, boardWeightPct: 40, contribution: 24, status: 'needs_work' },
+          { chapterId: 'c3', chapterName: 'C', masteryScore: 0.5, boardWeightPct: 30, contribution: 15, status: 'needs_work' },
+        ],
+      }
+
+      const far = computePredictedScoreRange(readiness, 180)
+      const near = computePredictedScoreRange(readiness, 7)
+
+      expect(near.high - near.low).toBeLessThanOrEqual(far.high - far.low)
+      expect(near.low).toBeLessThanOrEqual(readiness.score)
+      expect(near.high).toBeGreaterThanOrEqual(readiness.score)
+    })
+  })
 })

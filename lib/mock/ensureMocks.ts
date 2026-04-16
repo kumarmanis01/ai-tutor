@@ -15,7 +15,8 @@
  */
 
 import { prisma } from '@/lib/prisma';
-import { selectMockQuestions, MOCK_TOTAL_MARKS, MOCK_DURATION_MIN } from '@/lib/mock/selectMockQuestions';
+import { ensureQuestions } from '@/lib/tests';
+import { MOCK_SECTION_DEFS, MOCK_TOTAL_MARKS, MOCK_DURATION_MIN } from '@/lib/mock/selectMockQuestions';
 import { logger } from '@/lib/logger';
 
 /**
@@ -30,8 +31,9 @@ import { logger } from '@/lib/logger';
  *
  * This function is intended to be run offline by an operator prior to launch.
  */
-export async function ensureMinimumMocks(opts?: { minPer?: number }) {
+export async function ensureMinimumMocks(opts?: { minPer?: number; dryRun?: boolean }) {
   const minPer = opts?.minPer ?? 5;
+  const dryRun = !!opts?.dryRun;
   const created: Array<{ subjectId: string; subjectName: string; grade: number; board: string; examId: string }> = [];
 
   // Fetch active subjects that are enabled by admin
@@ -58,8 +60,17 @@ export async function ensureMinimumMocks(opts?: { minPer?: number }) {
     logger.info('ensureMocks.creating', { subjectId: s.id, subject: s.name, grade, board, need: target });
 
     while (target > 0) {
-      // Select questions for a new mock version
-      const sections = await selectMockQuestions({ subject: s.name, grade: String(grade), board });
+      // Select or generate questions for each section (ensureQuestions falls back to AI generation)
+      const sections = await Promise.all(
+        MOCK_SECTION_DEFS.map(async (sectionDef) => {
+          const questions = await ensureQuestions(
+            { subject: s.name, grade: String(grade), board, type: sectionDef.type },
+            sectionDef.count,
+          );
+          return { sectionDef, questions };
+        }),
+      );
+
       // Ensure we have at least one question per section; otherwise skip creation.
       const nonEmptySections = sections.filter((sec) => sec.questions && sec.questions.length > 0);
       if (nonEmptySections.length === 0) {
@@ -68,53 +79,61 @@ export async function ensureMinimumMocks(opts?: { minPer?: number }) {
       }
 
       // Determine new version number (simple increment over existing count)
-      const ver = (await prisma.mockExam.count({ where: { subjectId: s.id, grade, board: { equals: board, mode: 'insensitive' } } })) + 1;
+      const existingForVer = await prisma.mockExam.count({ where: { subjectId: s.id, grade, board: { equals: board, mode: 'insensitive' } } });
+      const ver = existingForVer + 1;
       const title = `${s.name} Full Mock -- Paper ${ver}`;
 
-      try {
-        const exam = await prisma.$transaction(async (tx) => {
-          const mockExam = await tx.mockExam.create({
-            data: {
-              title,
-              subjectId: s.id,
-              grade,
-              board,
-              totalMarks: MOCK_TOTAL_MARKS,
-              durationMin: MOCK_DURATION_MIN,
-              version: ver,
-              status: 'active',
-            },
-          });
-
-          for (const { sectionDef, questions } of sections) {
-            if (!questions || questions.length === 0) continue;
-            const section = await tx.mockExamSection.create({
+      if (dryRun) {
+        // Simulate creation without writing to DB
+        const simulatedId = `dryrun-${s.id}-${ver}-${Date.now()}`;
+        created.push({ subjectId: s.id, subjectName: s.name, grade, board, examId: simulatedId });
+        logger.info('ensureMocks.dryrun_created', { subject: s.name, grade, board, examId: simulatedId, title });
+      } else {
+        try {
+          const exam = await prisma.$transaction(async (tx) => {
+            const mockExam = await tx.mockExam.create({
               data: {
-                mockExamId: mockExam.id,
-                title: sectionDef.title,
-                order: ['Section A', 'Section B', 'Section C'].indexOf(sectionDef.title) + 1,
-                totalMarks: sectionDef.marksPerQ * questions.length,
-                instructions: sectionDef.instructions,
+                title,
+                subjectId: s.id,
+                grade,
+                board,
+                totalMarks: MOCK_TOTAL_MARKS,
+                durationMin: MOCK_DURATION_MIN,
+                version: ver,
+                status: 'active',
               },
             });
 
-            await tx.mockExamQuestion.createMany({
-              data: questions.map((q, idx) => ({
-                sectionId: section.id,
-                questionId: q.id,
-                marks: sectionDef.marksPerQ,
-                order: idx + 1,
-              })),
-            });
-          }
+            for (const { sectionDef, questions } of sections) {
+              if (!questions || questions.length === 0) continue;
+              const section = await tx.mockExamSection.create({
+                data: {
+                  mockExamId: mockExam.id,
+                  title: sectionDef.title,
+                  order: ['Section A', 'Section B', 'Section C'].indexOf(sectionDef.title) + 1,
+                  totalMarks: sectionDef.marksPerQ * questions.length,
+                  instructions: sectionDef.instructions,
+                },
+              });
 
-          return mockExam;
-        });
-        created.push({ subjectId: s.id, subjectName: s.name, grade, board, examId: exam.id });
-        logger.info('ensureMocks.created', { subject: s.name, grade, board, examId: exam.id });
-      } catch (err) {
-        logger.error('ensureMocks.create_failed', { subject: s.name, grade, board, error: String(err) });
-        break; // abort further attempts for this subject to avoid repeated failures
+              await tx.mockExamQuestion.createMany({
+                data: questions.map((q, idx) => ({
+                  sectionId: section.id,
+                  questionId: q.id,
+                  marks: sectionDef.marksPerQ,
+                  order: idx + 1,
+                })),
+              });
+            }
+
+            return mockExam;
+          });
+          created.push({ subjectId: s.id, subjectName: s.name, grade, board, examId: exam.id });
+          logger.info('ensureMocks.created', { subject: s.name, grade, board, examId: exam.id });
+        } catch (err) {
+          logger.error('ensureMocks.create_failed', { subject: s.name, grade, board, error: String(err) });
+          break; // abort further attempts for this subject to avoid repeated failures
+        }
       }
 
       target -= 1;

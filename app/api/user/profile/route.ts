@@ -86,6 +86,10 @@ export async function GET(req: Request) {
     plan: activeSub?.plan ?? '',
     billingCycle: activeSub?.billingCycle ?? '',
     subscriptionEnd: activeSub?.endDate ?? null,
+    // Engagement & cosmetic fields
+    currentStreak: (savedUser as any)?.currentStreak ?? 0,
+    longestStreak: (savedUser as any)?.longestStreak ?? 0,
+    cosmeticUnlocks: (savedUser as any)?.cosmeticUnlocks ?? [],
     userBadges: savedUser?.userBadges ?? [],
   });
   logger.logAPI(req, res, { className: 'UserProfileAPI', methodName: 'GET' }, start);

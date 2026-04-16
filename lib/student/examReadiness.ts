@@ -23,6 +23,13 @@ export interface ReadinessResult {
   chapters: ReadinessChapter[]
 }
 
+export interface PredictedScoreRange {
+  low: number
+  high: number
+  confidenceLevel: number // e.g. 95 for 95% CI
+  daysUsed?: number | null
+}
+
 function readinessLabel(score: number): ReadinessLabel {
   if (score < 40) return 'critical'
   if (score < 70) return 'needs_work'
@@ -146,6 +153,56 @@ export async function computeReadinessScore(
   } catch {
     return zero
   }
+}
+
+/**
+ * Compute a simple predicted score range (confidence interval) around the
+ * readiness `score` using the chapter contribution dispersion as a proxy for
+ * uncertainty. The interval is scaled by `daysToExam` so that confidence
+ * narrows as the exam approaches (smaller days -> narrower interval).
+ *
+ * This is intentionally conservative and deterministic (no external AI call).
+ */
+export function computePredictedScoreRange(
+  readiness: ReadinessResult,
+  daysToExam?: number | null,
+): PredictedScoreRange {
+  const score = Math.max(0, Math.min(100, Math.round(readiness.score)))
+  const contribs = (readiness.chapters || []).map((c) => Number(c.contribution ?? 0))
+  const n = Math.max(0, contribs.length)
+
+  // Fallback small window when we don't have enough granularity
+  if (n <= 1) {
+    const delta = 6
+    return { low: Math.max(0, score - delta), high: Math.min(100, score + delta), confidenceLevel: 80, daysUsed: daysToExam ?? null }
+  }
+
+  const mean = contribs.reduce((a, b) => a + b, 0) / n
+  const variance = contribs.reduce((a, b) => a + (b - mean) * (b - mean), 0) / n
+  const sdContrib = Math.sqrt(variance)
+
+  // Approximate SD of the sum of contributions: sd_sum = sd_contrib * sqrt(n)
+  const sdSum = sdContrib * Math.sqrt(n)
+
+  const z = 1.96 // 95% CI
+
+  // Scale CI by time horizon: farther exams -> wider CI. Clamp to [0.25, 1]
+  let scale = 1
+  if (typeof daysToExam === 'number' && daysToExam !== null) {
+    scale = Math.max(0.25, Math.min(1, daysToExam / 90))
+  }
+
+  const halfWidth = z * sdSum * scale
+  let low = Math.round(Math.max(0, score - halfWidth))
+  let high = Math.round(Math.min(100, score + halfWidth))
+
+  if (low === high) {
+    // Ensure a visible range
+    low = Math.max(0, low - 1)
+    high = Math.min(100, high + 1)
+  }
+
+  return { low, high, confidenceLevel: 95, daysUsed: daysToExam ?? null }
 }
 
 export interface ExamReadinessResult {

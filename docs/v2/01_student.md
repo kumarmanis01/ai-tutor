@@ -800,3 +800,73 @@ Concurrent sessions
 PM2 cluster x2, Redis-backed session state
 
 
+9. Production Run & Deployment
+
+Overview
+- The application runs as a Node.js production deployment managed by PM2. The web frontend (Next.js) and backend API are served from the compiled `dist/` output; background workers run from `dist/worker`.
+
+Key constraints & entry points
+- Node version: >= 20 (use the system Node or a version manager). Ensure `npm ci --include=dev` is run during CI to produce a reproducible install.
+- Build outputs:
+	- Web/server: `dist/server.js` (Next.js compiled server artifacts / server-side helpers).
+	- Worker entry: `dist/worker/entry.js` (workers compiled with `tsconfig.workers.json`).
+- PM2 processes: use `ecosystem.config.cjs` to declare processes. PM2 must run compiled JS from `dist/` only.
+- Environment injection: production environment variables MUST be provided via server env files or a secrets manager. Do NOT hard-code or use `dotenv` at runtime in production code; rely on PM2 `env_file` (e.g. `.env.production`) or native orchestrator secrets.
+
+Canonical deploy checklist (operator)
+1. Pull latest tag/commit on the deploy host.
+2. Ensure a DB snapshot is taken before running migrations (recommended): create a SQL dump or Neon restore point.
+3. Install dependencies and build:
+
+```bash
+npm ci --include=dev
+npm run build:prod
+node scripts/verify-dist.cjs    # repository verification (forbidden deps, entry points)
+```
+
+4. Apply DB migrations (production-safe):
+
+```bash
+npx prisma migrate deploy --schema=prisma/schema.prisma
+```
+
+5. Start / restart services with PM2 (reads `.env.production` or process env):
+
+```bash
+pm2 start ecosystem.config.cjs --env production
+pm2 restart --update-env
+pm2 status
+pm2 logs --lines 200
+```
+
+Operational notes
+- Verification: run `node scripts/verify-dist.cjs` and confirm there are no forbidden runtime dependencies in `dist/` (e.g., `dotenv`, `ts-node`, `tsconfig-paths`). The deployment pipeline should fail on any violation.
+- Workers: build workers with `tsconfig.workers.json` and start via PM2 entry `dist/worker/entry.js`. Workers must be idempotent and safe to restart.
+- Timeouts & fallbacks: All external calls (OpenAI, Redis, DB) must enforce timeouts and retries with safe fallbacks (see developer guardrails in `/docs/COPILOT_GUARDRAILS.md`).
+- Secrets: keep secrets out of source control. Use a secrets manager or `env_file` with restricted OS permissions. Ensure `NEXTAUTH_SECRET`, `DATABASE_URL`, `OPENAI_API_KEY`, `SENTRY_DSN` (optional) are present.
+- Monitoring & logging: configure Sentry (set `SENTRY_DSN`) and Prometheus exporters. Use `pm2 monit` and centralized log collection (e.g., CloudWatch/S3 + `pm2-logrotate`).
+- Health checks: expose a simple `/health` or `/api/health` endpoint returning 200; alert if the route fails.
+
+Rollback & emergency
+- Before migrations, snapshot DB and note the previous release's commit/tag.
+- If a migration is irreversible, restore DB snapshot then redeploy previous artifact.
+- Use graceful PM2 reloads when possible to drain requests: `pm2 reload ecosystem.config.cjs --only web`.
+
+Security & compliance
+- Do not commit `.env.production` or any secrets. Maintain an allowlist of deploy hosts with SSH key access.
+- Verify third-party services and DSP compliance for student data (India DPDP). Retention policy: session turns 90 days hot, archived to R2.
+
+Post-deploy verification commands
+
+```bash
+pm2 status
+pm2 logs --lines 200
+curl -fS https://localhost:3000/api/health || echo 'health failed'
+node scripts/verify-dist.cjs
+grep -R "dotenv" dist || echo OK
+grep -R "tsconfig-paths" dist || echo OK
+```
+
+These steps describe the intended production run model and the operational checks required before release. Add infra-specific automation (CI/CD) to codify these steps in your pipeline.
+
+
