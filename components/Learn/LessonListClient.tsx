@@ -21,6 +21,7 @@ import Link from 'next/link';
 import { useSession } from 'next-auth/react';
 import { useTopicProgress } from '@/hooks/useTopicProgress';
 import TopicCompletionIndicator, { getCompletionStatus } from '@/components/TopicCompletionIndicator';
+import SubjectLanguageControl from '@/components/student/SubjectLanguageControl';
 function calculateProgress(completed: number, total: number): number {
   return total > 0 ? Math.round((completed / total) * 100) : 0;
 }
@@ -124,6 +125,11 @@ export default function LessonListClient({
         ← Back to courses
       </Link>
       <h1 style={{ fontSize: 24, fontWeight: 600, marginTop: 12 }}>{courseTitle}</h1>
+      {isSubject && (
+        <div className="mt-3 mb-2">
+          <SubjectLanguageControl subjectId={courseId} />
+        </div>
+      )}
       {courseDescription && <p style={{ color: '#666', marginTop: 8 }}>{courseDescription}</p>}
 
       {/* Progress Bar */}

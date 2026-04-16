@@ -14,6 +14,7 @@
  *
  * EDIT LOG:
  * - 2026-04-16T00:00:00Z | copilot | created -- AC-04 (F-STU-003) visual timeline endpoint
+ * - 2026-04-16T00:30:00Z | copilot | set `isMandatory` when chapter has boardChapterWeights (AC-06)
  */
 
 import { NextRequest, NextResponse } from 'next/server'
@@ -135,7 +136,12 @@ export async function GET(req: NextRequest) {
             topic: {
               select: {
                 chapter: {
-                  select: { id: true, name: true },
+                  select: {
+                    id: true,
+                    name: true,
+                    // Include board chapter weight so we can mark mandatory topics
+                    boardChapterWeights: { select: { weightMarks: true }, take: 1 },
+                  },
                 },
               },
             },
@@ -154,6 +160,7 @@ export async function GET(req: NextRequest) {
     for (const item of rawItems) {
       const chapterId = item.concept.topic.chapter.id
       const chapterName = item.concept.topic.chapter.name
+      const chapterWeight = item.concept.topic.chapter.boardChapterWeights?.[0]?.weightMarks ?? 0
       const tItem: TimelineItem = {
         id: item.id,
         conceptId: item.conceptId,
@@ -162,7 +169,8 @@ export async function GET(req: NextRequest) {
         chapterId,
         orderInWeek: item.orderInWeek,
         status: item.status as TimelineItem['status'],
-        isMandatory: false, // mandatory concept lock is a Phase 2 enhancement (AC-06 SHOULD)
+        // Mark mandatory when the chapter has board weight marks (>0)
+        isMandatory: (chapterWeight ?? 0) > 0,
       }
       const existing = weekMap.get(item.weekNumber) ?? []
       existing.push(tItem)

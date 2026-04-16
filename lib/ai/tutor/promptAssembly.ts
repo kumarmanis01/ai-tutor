@@ -1,3 +1,20 @@
+/**
+ * FILE OBJECTIVE:
+ * - Assemble the system prompt layers for the AI Tutor (Vidya). Handles
+ *   persona, safety, pedagogical rules, session state, RAG curriculum context,
+ *   and stage-specific instructions used to drive deterministic LLM behaviour.
+ *
+ * LINKED UNIT TEST:
+ * - tests/unit/lib/ai/tutor/promptAssembly.test.ts
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - .github/copilot-instructions.md
+ * - /docs/COPILOT_GUARDRAILS.md
+ *
+ * EDIT LOG:
+ * - 2026-04-16T00:00:00Z | copilot | add optional boardChapterWeightMarks to PromptContext and stage cues for board mapping (AC-07)
+ */
+
 import type { TutorStage } from '@/lib/ai/tutor/stateMachine'
 
 // Local copy of the LearningStyle union to avoid TS import issues
@@ -43,6 +60,8 @@ export interface PromptContext {
   // Meta
   conceptName: string
   subjectName: string
+  /** Optional: chapter-level board weight (marks) when available. Used to cite board mapping in explanations (AC-07) */
+  boardChapterWeightMarks?: number | null
 }
 
 export interface AssembledPrompt {
@@ -410,20 +429,34 @@ export function buildStageInstructionsLayer(ctx: PromptContext): string {
     lines.push(
       'Stage: CORE_EXPLANATION. Goal: deliver a clear, structured explanation of the concept.',
       'Use 2-3 short paragraphs. End with one comprehension check question.',
-      'Output tag: [QUESTION]',
     )
+    // AC-07 (F-STU-011 SHOULD): when available, instruct Vidya to cite board exam objective + marks
+    if (typeof (ctx as any).boardChapterWeightMarks === 'number') {
+      lines.push(
+        `Board exam mapping: When relevant, begin the explanation with a single short sentence citing board mapping. Example: "This concept appears in ${ctx.board} Class ${ctx.grade} board exam — ${(ctx as any).boardChapterWeightMarks} marks."`,
+      )
+    }
+    lines.push('Output tag: [QUESTION]')
   } else if (stage === 'WORKED_EXAMPLE') {
     lines.push(
       'Stage: WORKED_EXAMPLE. Goal: walk through one complete worked example step by step.',
       'Show full working for the example. After completing, ask the student to identify the key step.',
-      'Output tag: [QUESTION]',
     )
+    if (typeof (ctx as any).boardChapterWeightMarks === 'number') {
+      lines.push(
+        'When giving a worked example, briefly mention the board mapping (if available) as a single-sentence preface to the example.',
+      )
+    }
+    lines.push('Output tag: [QUESTION]')
   } else if (stage === 'CONSOLIDATION') {
     lines.push(
       'Stage: CONSOLIDATION. Goal: summarise what the student has learned and celebrate progress.',
       'Give a brief summary of the key concept. Ask one reflective question to confirm understanding.',
-      'Output tag: [STAGE_ADVANCE] or [QUESTION]',
     )
+    if (typeof (ctx as any).boardChapterWeightMarks === 'number') {
+      lines.push('If applicable, include a short sentence noting the board marks weightage for this chapter to remind the student of exam relevance.')
+    }
+    lines.push('Output tag: [STAGE_ADVANCE] or [QUESTION]')
   }
 
   return lines.join('\n')

@@ -9,6 +9,7 @@
  * EDIT LOG:
  *   2026-03-07 | UX implementation | created per UX architecture blueprint (Phase 3)
  *   2026-04-16T00:00:00Z | copilot | AC-04 (F-STU-003): add plan timeline section
+ *   2026-04-16T00:30:00Z | copilot | mark mandatory timeline items from board chapter weights
  */
 
 import type { Metadata } from 'next';
@@ -97,7 +98,17 @@ export default async function LearningPathPage() {
             concept: {
               select: {
                 name: true,
-                topic: { select: { chapter: { select: { id: true, name: true } } } },
+                topic: {
+                  select: {
+                    chapter: {
+                      select: {
+                        id: true,
+                        name: true,
+                        boardChapterWeights: { select: { weightMarks: true }, take: 1 },
+                      },
+                    },
+                  },
+                },
               },
             },
           },
@@ -117,6 +128,7 @@ export default async function LearningPathPage() {
     const weekMap = new Map<number, TimelineResponse['weeks'][number]['items']>();
     for (const item of rawPlanData.items) {
       const week = weekMap.get(item.weekNumber) ?? [];
+      const chapterWeight = item.concept.topic.chapter.boardChapterWeights?.[0]?.weightMarks ?? 0;
       week.push({
         id: item.id,
         conceptId: item.conceptId,
@@ -125,7 +137,7 @@ export default async function LearningPathPage() {
         chapterId: item.concept.topic.chapter.id,
         orderInWeek: item.orderInWeek,
         status: item.status as TimelineResponse['weeks'][number]['items'][number]['status'],
-        isMandatory: false,
+        isMandatory: (chapterWeight ?? 0) > 0,
       });
       weekMap.set(item.weekNumber, week);
     }
