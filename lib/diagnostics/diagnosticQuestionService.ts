@@ -159,6 +159,7 @@
     topicIds: string[],
     difficulty: DiagnosticDifficulty,
     count: number,
+    excludeIds?: Set<string>,
   ) {
     const results: DiagnosticQuestion[] = [];
     // Track IDs already selected in this band to prevent within-band duplicates
@@ -185,7 +186,7 @@
       cycles += 1;
 
       try {
-        const questions = await ensureQuestions({ ...filtersBase, topicId }, 1);
+        const questions = await ensureQuestions({ ...filtersBase, topicId }, 1, excludeIds);
         if (questions.length === 0) continue;
         const q = questions[0];
         if (!q.id || !q.prompt) continue;
@@ -223,7 +224,7 @@
     // Fallback: subject-level selection to fill remaining slots.
     const remaining = count - results.length;
     try {
-      const extra = await ensureQuestions(filtersBase, remaining);
+      const extra = await ensureQuestions(filtersBase, remaining, excludeIds);
       for (const q of extra) {
         if (!q.id || !q.prompt) continue;
         // Skip duplicates in the fallback path too.
@@ -269,6 +270,7 @@
    */
   export async function generateSubjectDiagnosticTest(
     params: GenerateDiagnosticTestParams,
+    excludeQuestionIds?: Set<string>,
   ): Promise<DiagnosticTest> {
     logger.info('DiagnosticQuestionService.generate.start', { params });
 
@@ -291,9 +293,9 @@
     });
 
     const [easy, medium, hard] = await Promise.all([
-      pickQuestionsForDifficulty(normalizedParams, topicIds, 'easy', EASY_COUNT),
-      pickQuestionsForDifficulty(normalizedParams, topicIds, 'medium', MEDIUM_COUNT),
-      pickQuestionsForDifficulty(normalizedParams, topicIds, 'hard', HARD_COUNT),
+      pickQuestionsForDifficulty(normalizedParams, topicIds, 'easy', EASY_COUNT, excludeQuestionIds),
+      pickQuestionsForDifficulty(normalizedParams, topicIds, 'medium', MEDIUM_COUNT, excludeQuestionIds),
+      pickQuestionsForDifficulty(normalizedParams, topicIds, 'hard', HARD_COUNT, excludeQuestionIds),
     ]);
 
     try {

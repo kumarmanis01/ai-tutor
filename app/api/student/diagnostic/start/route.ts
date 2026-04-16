@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getServerSessionForHandlers } from '@/lib/session';
 import { logger } from '@/lib/logger';
 import { generateSubjectDiagnosticTest } from '@/lib/diagnostics/diagnosticQuestionService';
+import { prisma } from '@/lib/prisma';
 import { createSession } from '@/lib/diagnostics/sessionStore';
 import { upsertSubjectDiagnosticStatus, getSubjectDiagnosticStatus } from '@/lib/diagnostics/stateStore';
 import { enqueueDiagnosticAutoSubmit } from '@/jobs/diagnosticAutoSubmit';
@@ -28,8 +29,8 @@ export async function POST(req: Request) {
 
   try {
     // AC-08: enforce 30-day retake cooldown -- resolve subjectId via slug before checking.
-    // We resolve the test first to get the canonical subjectId for the state-store lookup.
-    const test = await generateSubjectDiagnosticTest({ boardSlug, grade, subjectSlug, languageCode });
+    // We first generate a test to resolve the canonical subjectId for the state-store lookup.
+    let test = await generateSubjectDiagnosticTest({ boardSlug, grade, subjectSlug, languageCode });
 
     const existingStatus = await getSubjectDiagnosticStatus(user.id, test.subjectId);
     if (existingStatus.status === 'completed' && existingStatus.completedAt) {
@@ -47,6 +48,20 @@ export async function POST(req: Request) {
         );
         logger.logAPI(req, res, { className: 'DiagnosticStartAPI', methodName: 'POST' }, start);
         return res;
+      }
+      // If eligible for retake, attempt to avoid reusing the same question set.
+      try {
+        const prevRunId = existingStatus.runId;
+        if (prevRunId) {
+          const prev = await prisma.answerEvent.findMany({ where: { studentId: user.id, sessionId: prevRunId }, select: { questionId: true } });
+          const prevIds = new Set(prev.map((p) => p.questionId).filter(Boolean));
+          if (prevIds.size > 0) {
+            // Regenerate test excluding previously-seen question IDs to ensure a different set.
+            test = await generateSubjectDiagnosticTest({ boardSlug, grade, subjectSlug, languageCode }, prevIds);
+          }
+        }
+      } catch (e) {
+        logger.warn('diagnostic.start: failed to exclude previous questions', { error: String(e) });
       }
     }
     const sessionId = `sess:${user.id}:${subjectSlug}:${Date.now()}`;
