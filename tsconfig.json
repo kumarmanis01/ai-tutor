@@ -39,8 +39,9 @@
     "lib/**/*.tsx",
     "worker/**/*.ts",
     "worker/**/*.tsx",
-    ".next/types/**/*.ts",
-    ".next/dev/types/**/*.ts"
+    // NOTE: Do not include generated Next build artifacts with code examples
+    // that may contain fenced JSX blocks. These are generated and can break
+    // `tsc --noEmit` during CI. Exclude .next dev types from the include list.
   ],
   "exclude": [
     "node_modules",

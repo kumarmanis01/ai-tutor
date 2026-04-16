@@ -102,6 +102,7 @@ model User {
   studentStreaks              StudentStreak[]
   studentTopicMastery         StudentTopicMastery[]
   studentTopicProgress        StudentTopicProgress[]
+  studentConceptStates        StudentConceptState[]
   structuredSessions          StructuredSession[]
   homeworkAssignments         HomeworkAssignment[]
   sessionArtifacts            SessionArtifact[]
@@ -1463,23 +1464,36 @@ model Concept {
   @@index([subjectId])
   @@index([topicId])
 }
-
 /// Per-student, per-concept persistent state used by the AI tutor and IRT
 model StudentConceptState {
-  id                  String    @id @default(cuid())
-  studentId           String
-  conceptId           String
-  masteryScore        Float?    @default(0)
+  id              String    @id @default(cuid())
+  studentId       String
+  conceptId       String
+
+  // Core mastery / IRT / spacing fields
+  masteryScore    Float     @default(0.0)
+  masteryVariance Float     @default(0.1)
+  theta           Float     @default(0.0)
+  stability       Float     @default(1.0)
+  retention       Float     @default(1.0)
+
+  // Scheduling / review
+  nextReviewAt    DateTime?
+  lastInteraction DateTime  @default(now())
+  attemptCount    Int       @default(0)
+
   // Hint usage counters (accumulated across sessions)
-  hintCount           Int       @default(0)
-  hintTier1           Int       @default(0)
-  hintTier2           Int       @default(0)
-  hintTier3           Int       @default(0)
-  lastHintAt          DateTime?
+  hintCount       Int       @default(0)
+  hintTier1       Int       @default(0)
+  hintTier2       Int       @default(0)
+  hintTier3       Int       @default(0)
+  lastHintAt      DateTime?
+
   // When true, the concept is flagged for consolidation and additional practice
-  needsConsolidation  Boolean   @default(false)
-  createdAt           DateTime  @default(now())
-  updatedAt           DateTime  @updatedAt
+  needsConsolidation Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   // Relations
   student  User    @relation(fields: [studentId], references: [id], onDelete: Cascade)
@@ -1488,6 +1502,7 @@ model StudentConceptState {
   @@unique([studentId, conceptId], name: "studentId_conceptId")
   @@index([studentId])
   @@index([conceptId])
+  @@index([nextReviewAt])
 }
 
 /// Audit history for admin edits to Concept IRT parameters and prerequisites. F-ADM-002 AC-03.
@@ -1814,28 +1829,7 @@ model StudentContentPreference {
   @@index([studentId])
 }
 
-model StudentConceptState {
-  id              String    @id @default(cuid())
-  studentId       String
-  conceptId       String
-  concept         Concept   @relation(fields: [conceptId], references: [id])
-  masteryScore    Float     @default(0.0)
-  nextReviewAt    DateTime?
-  lastInteraction DateTime  @default(now())
-  attemptCount    Int       @default(0)
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  masteryVariance Float @default(0.1)
-  theta           Float @default(0.0)
-  stability       Float @default(1.0)
-  retention       Float @default(1.0)
-
-  @@unique([studentId, conceptId])
-  @@index([studentId])
-  @@index([nextReviewAt])
-}
+// StudentConceptState consolidated earlier in this file; duplicate definition removed.
 
 model LearningPlan {
   id          String             @id @default(cuid())
