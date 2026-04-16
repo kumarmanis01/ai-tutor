@@ -1,10 +1,12 @@
 "use client";
 
-import React, { useState } from 'react';
-import { showAlert } from '@/lib/alerts';
+import React, { useState, useEffect, useMemo } from 'react';
+import { showAlert } from '../../lib/alerts';
 import AttemptRunner from './AttemptRunner';
 import ChapterTrend from './ChapterTrend';
-import ContentModal from '@/components/UI/ContentModal';
+import ContentModal from '../UI/ContentModal';
+import MiniSparkline from '../student/progress/MiniSparkline';
+import Link from 'next/link';
 
 /**
  * ChapterTests
@@ -23,7 +25,32 @@ export default function ChapterTests(props: {
   const [timeLimitSeconds, setTimeLimitSeconds] = useState<number | undefined>(undefined);
   const [modalChapter, setModalChapter] = useState<{ id: string; name: string } | null>(null);
 
-  const chapters = props.chapters ?? [];
+  const chapters = useMemo(() => props.chapters ?? [], [props.chapters]);
+  const [sparklineMap, setSparklineMap] = useState<Record<string, Array<{ date: string; score: number }>>>({});
+
+  useEffect(() => {
+    let mounted = true;
+    async function fetchSparklines() {
+      if (chapters.length === 0) return;
+      try {
+        const params = new URLSearchParams();
+        if (props.subject) params.set('subject', props.subject);
+        chapters.forEach((c) => params.append('chapter', c.name));
+        const res = await fetch(`/api/student/tests/trends?${params.toString()}`);
+        const json = await res.json();
+        if (!res.ok) throw new Error(json?.error || 'Failed to load sparklines');
+        if (!mounted) return;
+        setSparklineMap(json?.data ?? {});
+      } catch {
+        // ignore sparklines failure — sparklines are non-critical
+      }
+    }
+
+    fetchSparklines();
+    return () => {
+      mounted = false;
+    };
+  }, [chapters, props.subject]);
 
   async function startChapter(chapter: string) {
     const res = await fetch('/api/tests/start', {
@@ -51,10 +78,15 @@ export default function ChapterTests(props: {
       <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-3">
         {chapters.map((c) => (
           <div key={c.id} className="rounded border p-3">
-            <div className="flex items-center justify-between">
-              <div>
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex-1">
                 <p className="font-medium">{c.name}</p>
-                <p className="text-xs text-gray-600">10 Questions</p>
+                <div className="mt-2 flex items-center gap-3">
+                  <p className="text-xs text-gray-600">10 Questions</p>
+                  <div>
+                    <MiniSparkline chapter={c.name} subject={props.subject} trendData={sparklineMap[c.name]} />
+                  </div>
+                </div>
               </div>
               <div className="flex items-center gap-2">
                 <button
@@ -75,17 +107,27 @@ export default function ChapterTests(props: {
           </div>
         ))}
       </div>
-      <ContentModal
-        open={!!modalChapter}
-        title={modalChapter ? `Practice trend — ${modalChapter.name}` : 'Practice trend'}
-        onClose={() => setModalChapter(null)}
-      >
-        {modalChapter && (
+      {modalChapter && (
+        <ContentModal
+          open={!!modalChapter}
+          title={modalChapter ? `Practice trend — ${modalChapter.name}` : 'Practice trend'}
+          onClose={() => setModalChapter(null)}
+          footer={
+            <div className="flex justify-end">
+              <Link
+                href={`/student/tests/history?chapter=${encodeURIComponent(modalChapter.name)}`}
+                className="text-sm font-medium text-indigo-600"
+              >
+                View history
+              </Link>
+            </div>
+          }
+        >
           <div className="py-2">
             <ChapterTrend chapter={modalChapter.name} subject={props.subject} showSkeleton />
           </div>
-        )}
-      </ContentModal>
+        </ContentModal>
+      )}
     </div>
   );
 }

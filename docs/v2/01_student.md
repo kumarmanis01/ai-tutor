@@ -1,4 +1,19 @@
 
+<!--
+FILE OBJECTIVE:
+- Student actor approach document — requirements and acceptance criteria for student-facing features (MVP).
+
+LINKED UNIT TEST:
+- tests/unit/docs/01_student.spec.ts
+
+COPILOT_INSTRUCTIONS_FOLLOWED:
+- .github/copilot-instructions.md
+- docs/COPILOT_GUARDRAILS.md
+
+EDIT LOG:
+- 2026-04-16T12:00:00Z | copilot | added Production Run & Deployment section; updated header
+-->
+
 AI HOME TUTOR PLATFORM
 Student Actor
 Approach Document — Full Lifecycle Feature Specification
@@ -423,6 +438,19 @@ MUST
 AC-08
 Student can flag any question as "incorrect or ambiguous." Flagged question quarantined after 3 student flags pending admin review.
 SHOULD
+
+
+### Phase 2 — Chapter Trend UX & History
+
+- Rationale: make score history more discoverable on the chapter detail and provide full, paginated history for review and analytics.
+- Tasks:
+	- Add inline mini-sparkline + last-score badge on each chapter card (compact, mobile-first). (A)
+	- Implement a paginated history API endpoint and a dedicated history page for deep review. (B)
+	- Make the detail view adapt to a bottom-sheet on narrow viewports (mobile) while remaining a centered modal on larger screens. (C)
+- Acceptance criteria:
+	- Mini-sparkline displays recent trend and last-score on the chapter card without blocking layout.
+	- "View history" links to a paginated history page that returns `data`, `totalCount`, `limit`, `offset`.
+	- Modal adapts to bottom-sheet on small screens (rounded top, drag-to-dismiss optional) and remains accessible (focus trap, ESC closes, scroll lock).
 
 
 F-STU-021
