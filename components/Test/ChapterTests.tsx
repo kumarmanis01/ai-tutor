@@ -3,6 +3,8 @@
 import React, { useState } from 'react';
 import { showAlert } from '@/lib/alerts';
 import AttemptRunner from './AttemptRunner';
+import ChapterTrend from './ChapterTrend';
+import ContentModal from '@/components/UI/ContentModal';
 
 /**
  * ChapterTests
@@ -19,6 +21,7 @@ export default function ChapterTests(props: {
   const [attemptId, setAttemptId] = useState<string | null>(null);
   const [questions, setQuestions] = useState<any[]>([]);
   const [timeLimitSeconds, setTimeLimitSeconds] = useState<number | undefined>(undefined);
+  const [modalChapter, setModalChapter] = useState<{ id: string; name: string } | null>(null);
 
   const chapters = props.chapters ?? [];
 
@@ -47,20 +50,42 @@ export default function ChapterTests(props: {
       <h3 className="text-lg font-semibold">Chapter Tests</h3>
       <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-3">
         {chapters.map((c) => (
-          <div key={c.id} className="rounded border p-3 flex items-center justify-between">
-            <div>
-              <p className="font-medium">{c.name}</p>
-              <p className="text-xs text-gray-600">10 Questions</p>
+          <div key={c.id} className="rounded border p-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="font-medium">{c.name}</p>
+                <p className="text-xs text-gray-600">10 Questions</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  className="px-3 py-2 rounded bg-blue-600 text-white hover:bg-blue-700"
+                  onClick={() => startChapter(c.name)}
+                >
+                  Start
+                </button>
+                <button
+                  className="px-3 py-2 rounded border text-sm text-gray-700 hover:bg-gray-50"
+                  onClick={() => setModalChapter({ id: c.id, name: c.name })}
+                >
+                  Trend
+                </button>
+              </div>
             </div>
-            <button
-              className="px-3 py-2 rounded bg-blue-600 text-white hover:bg-blue-700"
-              onClick={() => startChapter(c.name)}
-            >
-              Start
-            </button>
+
           </div>
         ))}
       </div>
+      <ContentModal
+        open={!!modalChapter}
+        title={modalChapter ? `Practice trend — ${modalChapter.name}` : 'Practice trend'}
+        onClose={() => setModalChapter(null)}
+      >
+        {modalChapter && (
+          <div className="py-2">
+            <ChapterTrend chapter={modalChapter.name} subject={props.subject} showSkeleton />
+          </div>
+        )}
+      </ContentModal>
     </div>
   );
 }
