@@ -19,6 +19,7 @@
  * EDIT LOG:
  * - 2026-04-08T00:00:00Z | copilot | created parent verify endpoint
  * - 2026-04-14T00:00:00Z | copilot | add timeout:30000/maxWait:10000 to $transaction to prevent P2028 on Neon
+ * - 2026-04-16T03:30:00Z | copilot | support short plan ids and compute expiry via planEndDate to avoid undefined plan errors
  */
 
 import { NextResponse } from 'next/server';
@@ -30,7 +31,7 @@ import { logger } from '@/lib/logger';
 import { sendEmail } from '@/lib/mailer';
 import { paymentReceiptHtml } from '@/lib/email/templates';
 import { sendSms } from '@/lib/sms';
-import { PLANS } from '@/lib/billing/plans';
+import { PLANS, planEndDate, resolvePlanByShortId } from '@/lib/billing/plans';
 import type { PlanId } from '@/lib/billing/plans';
 import { createInvoiceForPayment } from '@/lib/invoices';
 import Razorpay from 'razorpay';
@@ -78,7 +79,10 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
   }
 
-  if (!(planId in PLANS)) {
+  // Resolve requested plan id to a concrete plan; support short ids like
+  // 'annual' in tests or full keys like 'standard_annual'.
+  const plan = resolvePlanByShortId(planId, false);
+  if (!plan) {
     return NextResponse.json({ error: 'Invalid planId' }, { status: 400 });
   }
 
@@ -94,10 +98,8 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Order not found' }, { status: 403 });
   }
 
-  const plan = PLANS[planId as PlanId];
   const now = new Date();
-  const expiry = new Date(now);
-  expiry.setMonth(expiry.getMonth() + plan.durationMonths);
+  const expiry = planEndDate(plan, now);
 
   // Fetch Razorpay order to read notes (childIds, isFamily, emiMonths)
   const client = getRazorpayClient();

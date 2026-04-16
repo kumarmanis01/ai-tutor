@@ -10,6 +10,7 @@
  * - 2026-04-15T00:00:00Z | copilot-planner | created billing plan constants for Standard/Family/Lite
  * - 2026-04-15T00:00:00Z | staff-engineer  | added test_weekly; durationDays override for sub-monthly plans
  * - 2026-04-15T12:00:00Z | copilot | replace anonymous default export with named variable
+ * - 2026-04-16T03:30:00Z | copilot | add resolvePlanByShortId helper to map short plan ids to PLANS entries
  */
 
 export type PlanId =
@@ -116,3 +117,26 @@ export function renewalDateStr(plan: SubscriptionPlan): string {
 const Billing = { PLANS, rupeesToPaise, planEndDate, renewalDateStr }
 
 export default Billing
+
+/**
+ * Resolve a short plan id (e.g. 'monthly', 'annual') to a concrete SubscriptionPlan
+ * in `PLANS`. If `isFamily` is true, prefer the family variant when available.
+ */
+export function resolvePlanByShortId(shortId: string, isFamily = false): SubscriptionPlan | undefined {
+  if (!shortId || typeof shortId !== 'string') return undefined;
+  // Exact match (allows callers to pass full keys like 'standard_annual')
+  if ((PLANS as any)[shortId]) return (PLANS as any)[shortId] as SubscriptionPlan;
+
+  // Try family/standard variants
+  const familyKey = (`family_${shortId}`) as PlanId;
+  const standardKey = (`standard_${shortId}`) as PlanId;
+  if (isFamily && (PLANS as any)[familyKey]) return (PLANS as any)[familyKey] as SubscriptionPlan;
+  if ((PLANS as any)[standardKey]) return (PLANS as any)[standardKey] as SubscriptionPlan;
+
+  // Fallback: find any plan whose key ends with _<shortId>
+  for (const k of Object.keys(PLANS)) {
+    if (k.endsWith(`_${shortId}`)) return PLANS[k as PlanId];
+  }
+
+  return undefined;
+}
