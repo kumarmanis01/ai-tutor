@@ -11,6 +11,7 @@
  *
  * EDIT LOG:
  * - 2026-04-16T00:00:00Z | copilot | create signup route that persists user and fires welcome email
+ * - 2026-04-16T03:40:00Z | copilot | log validation/duplicate/success events and use `start` for duration
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -37,12 +38,14 @@ export async function POST(req: NextRequest) {
     const password = typeof body.password === 'string' ? String(body.password) : undefined;
 
     if (!email || !isEmail(email) || !password || password.length < 6) {
+      logger.warn('/api/auth/signup validation failed', { className: 'api.auth.signup', methodName: 'POST', durationMs: Date.now() - start, reason: 'validation_failed' });
       return NextResponse.json({ error: 'validation_error', message: 'Invalid email or password' }, { status: 400 });
     }
 
     // Prevent account duplication
     const existing = await prisma.user.findUnique({ where: { email } });
     if (existing) {
+      logger.warn('/api/auth/signup duplicate', { className: 'api.auth.signup', methodName: 'POST', email, durationMs: Date.now() - start });
       return NextResponse.json({ error: 'user_exists', message: 'Account already exists' }, { status: 409 });
     }
 
@@ -70,6 +73,7 @@ export async function POST(req: NextRequest) {
         .catch((e) => logger.warn('/api/auth/signup: welcome email/update flag failed', { className: 'api.auth.signup', methodName: 'POST', error: String(e) }));
     }
 
+    logger.info('/api/auth/signup success', { className: 'api.auth.signup', methodName: 'POST', userId: created.id, durationMs: Date.now() - start });
     return NextResponse.json({ ok: true, user: { id: created.id, email: created.email } });
   } catch (err) {
     logger.error('/api/auth/signup error', { className: 'api.auth.signup', methodName: 'POST', error: String(err) });

@@ -60,7 +60,7 @@ export default function SubjectLanguageControl({ subjectId }: { subjectId: strin
   };
 
   return (
-    <div className="flex items-center gap-3">
+    <div className="flex items-center gap-3" aria-busy={loading}>
       <div className="text-sm">
         <div className="font-medium">Teaching language</div>
         <div className="text-xs text-muted-foreground">Used by the tutor for this subject. Change applies from the next session.</div>

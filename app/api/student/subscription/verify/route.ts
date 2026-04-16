@@ -22,6 +22,7 @@
  * - 2026-04-14T00:00:00Z | copilot | add timeout:30000/maxWait:10000 to $transaction to prevent P2028 on Neon
  * - 2026-04-14T12:30:00Z | copilot | avoid contacting Razorpay when running tests (Jest)
  * - 2026-04-16T03:30:00Z | copilot | resolve short plan ids and use planEndDate to compute expiry safely
+ * - 2026-04-16T03:40:00Z | copilot | remove unused PLANS/PlanId imports to satisfy lint
  */
 
 import { NextResponse } from 'next/server';
@@ -34,8 +35,7 @@ import { recordPaymentEvent } from '@/lib/payments/audit';
 import { sendEmail } from '@/lib/mailer';
 import { paymentReceiptHtml } from '@/lib/email/templates';
 import { sendSms } from '@/lib/sms';
-import { PLANS, planEndDate, resolvePlanByShortId } from '@/lib/billing/plans';
-import type { PlanId } from '@/lib/billing/plans';
+import { planEndDate, resolvePlanByShortId } from '@/lib/billing/plans';
 import { createInvoiceForPayment } from '@/lib/invoices';
 import Razorpay from 'razorpay';
 

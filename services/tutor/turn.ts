@@ -243,6 +243,8 @@ export async function runTutorOrchestrator(args: {
   studentMessage: string
   subjectId: string
   conceptId: string
+  /** Optional message id to mirror anomalyFlags to the Message row */
+  messageId?: string
   /** When tag is VALIDATE, used for IRT enqueue; from client or evaluator. */
   isCorrect?: boolean
   /** Question ID for AnswerEvent dedup; when absent, synthetic id is used. */
@@ -250,7 +252,7 @@ export async function runTutorOrchestrator(args: {
   /** Item difficulty (Concept.irt_b) for IRT; when absent, Concept.irt_b or 0 is used. */
   itemDifficulty?: number
 }): Promise<{ answerText: string; complete: TutorTurnComplete }> {
-  const { studentId, state, studentMessage, subjectId, conceptId } = args
+  const { studentId, state, studentMessage, subjectId, conceptId, messageId } = args
   const sessionId = state.sessionId
 
   // Detect sentinels sent by the frontend.
@@ -564,9 +566,24 @@ export async function runTutorOrchestrator(args: {
     )
 
     // AC-09 (F-STU-011): Detect copy-pasted or suspiciously perfect student answers
+    let detectionAnomaly: any = null
     try {
       const cp = detectCopyPaste(redactedInput, ragContext.chunks.map((c) => ({ chunkId: c.chunkId, content: c.content })))
       if (cp.flagged) {
+        // Build a concise anomaly object (redacted preview only)
+        const anomaly = {
+          type: 'copy_paste',
+          flagged: true,
+          score: typeof cp.score === 'number' ? cp.score : null,
+          reason: cp.reason ?? null,
+          matchedChunkId: cp.chunkId ?? null,
+          detector: 'copyPaste',
+          detectorVersion: process.env.COPY_PASTE_DETECTOR_VERSION ?? 'v1',
+          detectedAt: new Date().toISOString(),
+          preview: typeof redactedInput === 'string' ? String(redactedInput).slice(0, 300) : null,
+        }
+        detectionAnomaly = anomaly
+
         // Log and short-circuit with a probing follow-up question to encourage explanation in own words.
         await markTurnCompleted(sessionId)
         try {
@@ -586,8 +603,18 @@ export async function runTutorOrchestrator(args: {
               ragChunksUsed: ragContext.chunkIds,
               frustrationScore: frustration.frustrationScore,
               groundednessScore: null,
+              anomalyFlags: [anomaly],
             },
           })
+
+          // Mirror anomaly to the message row if caller provided a messageId
+          if (messageId && prismaClient.message && typeof prismaClient.message.update === 'function') {
+            try {
+              await prismaClient.message.update({ where: { id: messageId }, data: { anomalyFlags: [anomaly] } })
+            } catch (e) {
+              logger.warn('message.anomalyFlags.update.failed', { messageId, error: String((e as any)?.message ?? e) })
+            }
+          }
         } catch (e) {
           logger.warn('copyPaste.aITutorTurnLog.failed', { error: String((e as any)?.message ?? e) })
         }
@@ -940,8 +967,18 @@ export async function runTutorOrchestrator(args: {
         ragChunksUsed: ragContext.chunkIds,
         frustrationScore: frustration.frustrationScore,
         groundednessScore: servedFromCache ? null : groundednessScore,
+        anomalyFlags: detectionAnomaly ? [detectionAnomaly] : undefined,
       },
     })
+
+    // Mirror anomaly to the message row if caller provided a messageId (best-effort)
+    if (detectionAnomaly && messageId && prismaClient.message && typeof prismaClient.message.update === 'function') {
+      try {
+        await prismaClient.message.update({ where: { id: messageId }, data: { anomalyFlags: [detectionAnomaly] } })
+      } catch (e) {
+        logger.warn('message.anomalyFlags.update.failed', { messageId, error: String((e as any)?.message ?? e) })
+      }
+    }
 
     // AC-07: record hint usage on StudentConceptState and auto-flag for consolidation
     if (isHintRequest) {

@@ -19,6 +19,7 @@ import LogoutButton from '@/components/Auth/LogoutButton';
 import type { User } from '@/lib/types';
 import ProfileWidgets from '@/components/ProfileWidgets';
 import LanguageSelector from '@/components/LanguageSelector';
+import { logger } from '@/lib/logger';
 import { extractBadges } from '@/lib/extractBadge';
 import AuthRedeemOnSignIn from '@/components/AuthRedeemOnSignIn';
 import useCurrentUser from '@/hooks/useCurrentUser';
@@ -145,7 +146,8 @@ export default function ProfilePage() {
                             try { await mutate(); } catch {}
                           }
                         } catch (err) {
-                          // ignore; LanguageSelector already shows local toast on failure
+                          logger.warn('LanguageSelector setLang failed', { className: 'ProfilePage', methodName: 'LanguageSelector.setLang', error: String(err) });
+                          // LanguageSelector already shows local toast on failure
                         }
                       }}
                       availableCodes={LANGUAGES.map((l) => l.code)}

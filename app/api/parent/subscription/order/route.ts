@@ -18,6 +18,7 @@
  * EDIT LOG:
  * - 2026-04-08T00:00:00Z | copilot | created parent order endpoint
  * - 2026-04-16T03:30:00Z | copilot | support short plan ids (e.g. 'annual') and family variants to avoid undefined plan errors
+ * - 2026-04-16T03:40:00Z | copilot | remove unused VALID_PLAN_IDS constant to satisfy lint
  */
 
 import { NextResponse } from 'next/server';
@@ -34,8 +35,6 @@ function getRazorpayClient() {
   if (!keyId || !keySecret) return null;
   return new Razorpay({ key_id: keyId, key_secret: keySecret });
 }
-
-const VALID_PLAN_IDS: PlanId[] = ['monthly', 'quarterly', 'annual'];
 
 export async function POST(req: Request) {
   const session = await getServerSessionForHandlers();

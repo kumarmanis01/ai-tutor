@@ -19,6 +19,7 @@
 
 import React, { useState, useCallback } from 'react'
 import type { TimelineResponse, TimelineItem } from '@/app/api/student/learning-plan/timeline/route'
+import { logger } from '@/lib/logger'
 
 const STATUS_STYLES: Record<TimelineItem['status'], string> = {
   COMPLETED: 'bg-[#EAF3DE] text-[#1D9E75] border-[#1D9E75]',
@@ -232,7 +233,8 @@ export function LearningPlanTimeline({ initialData }: LearningPlanTimelineProps)
           })
           return { ...prev, weeks }
         })
-      } catch (_err) {
+      } catch (err) {
+        logger.warn('Could not reorder item', { event: 'learningPlan.move.failed', error: String(err), itemId });
         setError('Could not reorder — tap to retry.')
       }
     },

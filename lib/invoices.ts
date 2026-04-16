@@ -36,5 +36,7 @@ export type InvoiceResult = { invoiceNumber: number; pdfBuffer: Buffer; fileUrl?
 // Re-export the full implementation and types from the invoices submodule.
 // NOTE: Must use explicit './invoices/index' path — TypeScript would otherwise
 // resolve './invoices' back to this file itself (circular self-reference).
-export { InvoiceCreateOpts, generateInvoicePdf, createInvoiceForPayment } from './invoices/index';
+// Use `export type` for type-only re-exports to satisfy `isolatedModules`.
+export type { InvoiceCreateOpts } from './invoices/index';
+export { generateInvoicePdf, createInvoiceForPayment } from './invoices/index';
 export { default } from './invoices/index';

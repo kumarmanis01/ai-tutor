@@ -3,7 +3,7 @@
  * - Unit tests for `LearningPlanTimeline` component.
  *
  * LINKED UNIT TEST:
- * - tests/unit/components/student/LearningPlanTimeline.test.ts
+ * - tests/unit/components/student/LearningPlanTimeline.test.tsx
  *
  * EDIT LOG:
  * - 2026-04-16T00:00:00Z | copilot | add component unit tests for optimistic reorder

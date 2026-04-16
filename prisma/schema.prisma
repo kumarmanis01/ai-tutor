@@ -11,6 +11,7 @@
 /// - 2026-04-09T00:00:00Z | copilot | add excludeFromParentReport to ParentStudent
 /// - 2026-04-10T00:00:00Z | copilot | add PaymentCustomer & PaymentMethod models for stored payment methods
 /// - 2026-04-15T00:10:00Z | copilot | add Trial relation field to User to satisfy Prisma relation
+/// - 2026-04-16T10:00:00Z | copilot | add anomalyFlags Json? to Message and AITutorTurnLog
 generator client {
   provider = "prisma-client-js"
 }
@@ -570,6 +571,9 @@ model Message {
   content   String
   createdAt DateTime @default(now())
   aiMeta    Json?
+  /// anomalyFlags: JSONB object with detection/anomaly metadata for QA/analytics.
+  /// Example: [{ type: 'copy_paste', flagged: true, score: 0.97, reason: 'exact_match', matchedChunkId: 'chunk-1', detector: 'copyPaste_v1', detectedAt: '...' }]
+  anomalyFlags Json?
   room      Room     @relation(fields: [roomId], references: [id], onDelete: Cascade)
 
   @@index([roomId])
@@ -1660,6 +1664,8 @@ model AITutorTurnLog {
   groundednessScore  Float?  // 1 - riskScore from hallucinationDetector; null when cached or safety-blocked
   qualityFlag        QualityFlag?
   qualityNote        String?
+  /// anomalyFlags: optional JSONB metadata for detected anomalies (copy-paste, hallucination flags, etc.)
+  anomalyFlags       Json?
   createdAt          DateTime     @default(now())
 
   @@index([sessionId])

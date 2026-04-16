@@ -69,16 +69,18 @@ export default function LessonListClient({
     return p?.isCompleted;
   }).length;
   const overallProgress = calculateProgress(completedCount, lessons.length);
+  // Map overallProgress to a discrete width class (multiples of 5) to avoid inline styles
+  const progressClassWidth = `w-pct-${Math.min(100, Math.max(0, Math.round(overallProgress / 5) * 5))}`;
 
   // Show login prompt if not authenticated
   if (!isLoading && !isAuthenticated) {
     return (
-      <div style={{ padding: 16, maxWidth: 600, margin: '0 auto' }}>
-        <Link href="/learn" style={{ fontSize: 14, color: '#0070f3', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+      <div className="px-4 max-w-[600px] mx-auto">
+        <Link href="/learn" className="text-sm text-[#0070f3] inline-flex items-center gap-1">
           ← Back to courses
         </Link>
-        <h1 style={{ fontSize: 24, fontWeight: 600, marginTop: 12 }}>{courseTitle}</h1>
-        
+        <h1 className="text-2xl font-semibold mt-3">{courseTitle}</h1>
+
         <div className="mt-8 p-6 bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-indigo-900/20 dark:to-purple-900/20 rounded-xl border border-indigo-100 dark:border-indigo-800 text-center">
           <div className="text-4xl mb-4">🔐</div>
           <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
@@ -109,7 +111,7 @@ export default function LessonListClient({
   // Loading state
   if (isLoading) {
     return (
-      <div style={{ padding: 16, maxWidth: 600, margin: '0 auto' }}>
+      <div className="px-4 max-w-[600px] mx-auto">
         <div className="animate-pulse">
           <div className="h-4 w-24 bg-gray-200 rounded mb-4"></div>
           <div className="h-8 w-64 bg-gray-200 rounded mb-4"></div>
@@ -120,26 +122,25 @@ export default function LessonListClient({
   }
 
   return (
-    <div style={{ padding: 16, maxWidth: 600, margin: '0 auto' }}>
-      <Link href="/learn" style={{ fontSize: 14, color: '#0070f3', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+    <div className="px-4 max-w-[600px] mx-auto">
+      <Link href="/learn" className="text-sm text-[#0070f3] inline-flex items-center gap-1">
         ← Back to courses
       </Link>
-      <h1 style={{ fontSize: 24, fontWeight: 600, marginTop: 12 }}>{courseTitle}</h1>
+      <h1 className="text-2xl font-semibold mt-3">{courseTitle}</h1>
       {isSubject && (
         <div className="mt-3 mb-2">
           <SubjectLanguageControl subjectId={courseId} />
         </div>
       )}
-      {courseDescription && <p style={{ color: '#666', marginTop: 8 }}>{courseDescription}</p>}
+      {courseDescription && <p className="text-gray-600 mt-2">{courseDescription}</p>}
 
       {/* Progress Bar */}
       {lessons.length > 0 && (
         <div className="mt-4 mb-6">
           <div className="w-full h-2 rounded-full bg-gray-100 dark:bg-gray-700 overflow-hidden">
             <div
-              className={`h-full rounded-full transition-all duration-300 ${overallProgress >= 100 ? 'bg-[#1D9E75]' : 'bg-[#534AB7]'}`}
-              style={{ width: `${overallProgress}%` }}
-            />
+                className={`h-full rounded-full transition-all duration-300 ${overallProgress >= 100 ? 'bg-[#1D9E75]' : 'bg-[#534AB7]'} ${progressClassWidth}`}
+              />
           </div>
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
             {completedCount} of {lessons.length} {isSubject ? 'chapters' : 'lessons'} completed
@@ -147,16 +148,14 @@ export default function LessonListClient({
         </div>
       )}
 
-      <h2 style={{ fontSize: 18, fontWeight: 600, marginTop: 24, marginBottom: 12 }}>
-        {isSubject ? '📚 Chapters' : '📖 Lessons'}
-      </h2>
+      <h2 className="text-lg font-semibold mt-6 mb-3">{isSubject ? '📚 Chapters' : '📖 Lessons'}</h2>
       
       {lessons.length === 0 ? (
-        <div style={{ textAlign: 'center', padding: '20px', background: '#f9f9f9', borderRadius: 8 }}>
-          <p style={{ color: '#666' }}>No content available yet.</p>
+        <div className="text-center p-5 bg-gray-50 rounded-md">
+          <p className="text-gray-600">No content available yet.</p>
         </div>
       ) : (
-        <ul style={{ listStyle: 'none', padding: 0 }}>
+        <ul className="list-none p-0">
           {lessons.map((l, i) => {
             const topicId = l.id || `${courseId}-${l.lessonIndex ?? i}`;
             const lessonProgress = progress.find((p: { topicId: string }) => p.topicId === topicId);
@@ -167,50 +166,34 @@ export default function LessonListClient({
             );
 
             return (
-              <li key={l.id ?? i} style={{ marginBottom: 8 }}>
-                <Link 
-                  href={`/learn/${courseId}/lesson/${l.lessonIndex ?? i}`} 
-                  style={{ 
-                    textDecoration: 'none', 
-                    color: 'inherit',
-                    display: 'block',
-                    padding: 16,
-                    background: '#fff',
-                    borderRadius: 10,
-                    boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
-                    transition: 'box-shadow 0.2s'
-                  }}
-                  className="hover:shadow-md dark:bg-gray-800"
+              <li key={l.id ?? i} className="mb-2">
+                <Link
+                  href={`/learn/${courseId}/lesson/${l.lessonIndex ?? i}`}
+                  className="block p-4 bg-white rounded-xl shadow-sm transition-shadow hover:shadow-md dark:bg-gray-800 text-inherit"
                 >
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div className="flex justify-between items-center">
                     <div className="flex items-center gap-3">
                       {/* Progress Indicator */}
-                      <TopicCompletionIndicator 
+                      <TopicCompletionIndicator
                         status={completionStatus}
                         size="md"
                       />
                       <div>
-                        <div style={{ fontWeight: 600, fontSize: 15 }}>{l.title}</div>
+                        <div className="font-semibold text-[15px]">{l.title}</div>
                         {Array.isArray(l.objectives) && l.objectives.length > 0 && (
-                          <div style={{ fontSize: 13, color: '#666', marginTop: 4 }}>
+                          <div className="text-[13px] text-gray-600 mt-1">
                             {l.objectives.slice(0, 2).join(' · ')}
                           </div>
                         )}
                       </div>
                     </div>
-                    <div style={{ 
-                      fontSize: 13, 
-                      color: completionStatus === 'completed' ? '#10b981' : '#0070f3',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 4
-                    }}>
+                    <div className={`text-[13px] flex items-center gap-1 ${completionStatus === 'completed' ? 'text-green-500' : 'text-[#0070f3]'}`}>
                       {completionStatus === 'completed' ? 'Review' : completionStatus === 'in-progress' ? 'Continue' : 'Start'} →
                     </div>
                   </div>
                 </Link>
               </li>
-            );
+            )
           })}
         </ul>
       )}
