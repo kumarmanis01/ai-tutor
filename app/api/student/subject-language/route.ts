@@ -20,7 +20,7 @@ import { logger } from '@/lib/logger';
 
 // MVP supported content languages (AC-03): English + Hindi only
 const VALID_LANGUAGES = ['en', 'hi'] as const;
-type SubjectLanguage = (typeof VALID_LANGUAGES)[number] | 'auto';
+type SubjectLanguage = (typeof VALID_LANGUAGES)[number];
 
 export async function GET(req: NextRequest) {
   const start = Date.now();

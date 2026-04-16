@@ -60,9 +60,9 @@ export interface TimelineResponse {
 
 /**
  * Compute the Monday start date of a given week offset from a base date.
- * week 1 = the Monday on or after baseDate.
+ * week 1 = the Monday of the week containing baseDate.
  */
-function weekStartDate(baseDate: Date, weekNumber: number): string {
+export function weekStartDate(baseDate: Date, weekNumber: number): string {
   const base = new Date(baseDate)
   // Normalise to the Monday of that week
   const dayOfWeek = base.getDay() === 0 ? 7 : base.getDay() // Mon=1 … Sun=7

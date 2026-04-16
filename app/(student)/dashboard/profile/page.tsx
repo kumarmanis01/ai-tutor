@@ -136,18 +136,12 @@ export default function ProfilePage() {
                   <div>
                     <LanguageSelector
                       lang={profile?.language ? (LANGUAGES.find((l) => l.code === profile.language)?.name ?? profile.language) : 'English'}
-                      setLang={async (name: string) => {
+                      // LanguageSelector performs persistence; keep this callback UI-only to avoid duplicate POSTs
+                      setLang={async (_name: string) => {
                         try {
-                          // Map display name back to code
-                          const found = LANGUAGES.find((x) => x.name === name || x.name.toLowerCase().includes(String(name).toLowerCase()) );
-                          const code = found ? found.code : 'en';
-                          const res = await fetch('/api/user/language', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ language: code }) });
-                          if (res.ok) {
-                            try { await mutate(); } catch {}
-                          }
+                          try { await mutate(); } catch {}
                         } catch (err) {
                           logger.warn('LanguageSelector setLang failed', { className: 'ProfilePage', methodName: 'LanguageSelector.setLang', error: String(err) });
-                          // LanguageSelector already shows local toast on failure
                         }
                       }}
                       availableCodes={LANGUAGES.map((l) => l.code)}

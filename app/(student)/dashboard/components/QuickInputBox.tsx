@@ -361,13 +361,15 @@ const QuickInputBox: React.FC<QuickInputBoxProps> = ({ onReply, onError, initial
 
           setQuestionText(finalText);
           if (detectedLang) {
-            setDetectedLang(detectedLang);
-            // persist preferred language locally and server-side
+            // Normalize detected locale (e.g. 'hi-IN') to base code ('hi') for storage and server
+            const short = tagToShort(detectedLang);
+            setDetectedLang(short);
+            // persist preferred language locally and server-side (base code)
             try {
               try {
-                localStorage.setItem('ai-tutor:preferredLang', detectedLang);
+                localStorage.setItem('ai-tutor:preferredLang', short);
               } catch {}
-              fetch('/api/user/language', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ language: detectedLang }) }).catch(() => {});
+              fetch('/api/user/language', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ language: short }) }).catch(() => {});
             } catch {}
           }
           setInterimTranscript('');
@@ -544,21 +546,23 @@ const QuickInputBox: React.FC<QuickInputBoxProps> = ({ onReply, onError, initial
       logger.add(`AI reply: ${String(res.reply)}`, { className: 'QuickInputBox', methodName: 'handleAsk' });
       // update detected language from response if provided
       if (res.language) {
-        setDetectedLang(res.language);
+        // Normalize server-detected language to base code
+        const short = tagToShort(res.language);
+        setDetectedLang(short);
         try {
           try {
-            localStorage.setItem('ai-tutor:preferredLang', res.language);
+            localStorage.setItem('ai-tutor:preferredLang', short);
           } catch {}
-          fetch('/api/user/language', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ language: res.language }) }).catch(() => {});
+          fetch('/api/user/language', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ language: short }) }).catch(() => {});
         } catch {}
         // If server detected a language different from user's preference, prompt to switch
         try {
           const normPreferred = (preferredLang || 'auto').toLowerCase();
-          const normDetected = String(res.language).toLowerCase();
+          const normDetected = String(short).toLowerCase();
           if (normDetected && normPreferred !== normDetected) {
-            // find a label for the detected language
+            // find a label for the detected language; languageOptionsRef contains locale values like 'hi-IN'
             const match = languageOptionsRef.current.find((o) => o.value.toLowerCase() === normDetected || o.value.toLowerCase().startsWith(normDetected.split('-')[0]));
-            setDetectionPrompt({ lang: res.language, label: match ? match.label : res.language });
+            setDetectionPrompt({ lang: short, label: match ? match.label : mapTagToName(short) });
           }
         } catch {}
       }
@@ -566,8 +570,9 @@ const QuickInputBox: React.FC<QuickInputBoxProps> = ({ onReply, onError, initial
         onReply?.(res.reply, questionText.trim(), res.language, res.suggestions);
         // Auto-speak using detected language from response or recognition
         try {
-          const langToUse = (res as any).language || detectedLang || 'en-US';
-          Speech.speak(res.reply, { lang: langToUse });
+          const respLang = (res as any).language ? tagToShort((res as any).language) : undefined;
+          const ttsLang = codeToLocale(respLang ?? detectedLang ?? undefined, 'en-US');
+          Speech.speak(res.reply, { lang: ttsLang });
         } catch {
           // ignore TTS failures
         }
@@ -663,14 +668,29 @@ const QuickInputBox: React.FC<QuickInputBoxProps> = ({ onReply, onError, initial
     try {
       const n = String(name || '').toLowerCase();
       if (n === 'auto') return 'auto';
-      if (n.startsWith('hin') || n === 'hindi') return 'hi-IN';
-      if (n.startsWith('tam') || n === 'tamil') return 'ta-IN';
-      if (n.startsWith('ben') || n === 'bengali') return 'bn-IN';
-      if (n.startsWith('fre') || n === 'french') return 'fr-FR';
-      if (n.startsWith('spa') || n === 'spanish') return 'es-ES';
-      if (n.startsWith('eng') || n === 'english') return 'en-US';
+      // Return canonical base codes used across the app (no region)
+      if (n.startsWith('hin') || n === 'hindi') return 'hi';
+      if (n.startsWith('tam') || n === 'tamil') return 'ta';
+      if (n.startsWith('ben') || n === 'bengali') return 'bn';
+      if (n.startsWith('fre') || n === 'french') return 'fr';
+      if (n.startsWith('spa') || n === 'spanish') return 'es';
+      if (n.startsWith('eng') || n === 'english') return 'en';
     } catch {}
-    return 'en-US';
+    return 'en';
+  };
+
+  const codeToLocale = (codeOrLocale?: string, fallbackLocale = 'en-US') => {
+    if (!codeOrLocale) return fallbackLocale;
+    const t = String(codeOrLocale).toLowerCase();
+    // If already a locale (contains -), return as-is
+    if (t.includes('-')) return codeOrLocale;
+    if (t === 'hi') return 'hi-IN';
+    if (t === 'ta') return 'ta-IN';
+    if (t === 'bn') return 'bn-IN';
+    if (t === 'fr') return 'fr-FR';
+    if (t === 'es') return 'es-ES';
+    if (t === 'en') return 'en-US';
+    return fallbackLocale;
   };
 
   return (

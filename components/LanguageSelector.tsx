@@ -28,7 +28,7 @@ const LANGS: LangDef[] = [
   { code: 'es', name: 'Spanish', aliases: ['spanish', 'es', 'es-es'] },
 ];
 
-function normalizeToCode(v?: string | null): string | 'auto' {
+export function normalizeToCode(v?: string | null): string | 'auto' {
   if (!v) return 'en';
   const s = String(v).trim();
   if (s.toLowerCase() === 'auto') return 'auto';
@@ -49,10 +49,27 @@ function normalizeToCode(v?: string | null): string | 'auto' {
   return 'en';
 }
 
-function codeToName(code: string) {
+export function codeToName(code: string) {
   if (!code) return 'English';
   const l = LANGS.find((x) => x.code === code);
   return l ? l.name : code;
+}
+
+/**
+ * Prefer the first browser language whose base code exists in availableCodes.
+ * Falls back to the first availableCodes entry or 'en'.
+ */
+export function resolveAutoCode(availableCodes?: string[], browserLang?: string | string[]): string {
+  const langs = Array.isArray(browserLang) ? browserLang : (typeof browserLang === 'string' ? [browserLang] : (typeof navigator !== 'undefined' ? (navigator.languages || [navigator.language]) : []));
+  if (Array.isArray(langs)) {
+    for (const tag of langs) {
+      if (!tag) continue;
+      const base = String(tag).split('-')[0].toLowerCase();
+      if (!availableCodes || availableCodes.includes(base)) return base;
+    }
+  }
+  if (Array.isArray(availableCodes) && availableCodes.length > 0) return availableCodes[0];
+  return 'en';
 }
 
 export default function LanguageSelector({
@@ -68,6 +85,11 @@ export default function LanguageSelector({
   const [error, setError] = useState<string | null>(null);
   const btnRef = useRef<HTMLButtonElement | null>(null);
   const menuRef = useRef<HTMLDivElement | null>(null);
+  const [selectedCode, setSelectedCode] = useState<string>(() => normalizeToCode(lang) as string);
+
+  useEffect(() => {
+    setSelectedCode(normalizeToCode(lang) as string);
+  }, [lang]);
 
   useEffect(() => {
     function onDoc(e: MouseEvent) {
@@ -82,65 +104,54 @@ export default function LanguageSelector({
     return () => document.removeEventListener('click', onDoc);
   }, [open]);
 
-  function handleSelect(value: string | 'auto') {
-    // normalize to code for availability checks
-    const code = value === 'auto' ? 'auto' : normalizeToCode(value);
+  async function handleSelect(value: string | 'auto') {
+    // normalize to code for availability checks; 'auto' kept as selection mode
+    const code = value === 'auto' ? 'auto' : (normalizeToCode(value) as string);
     if (code !== 'auto' && availableCodes && !availableCodes.includes(code)) {
       setError('Coming soon — language not yet available for this content');
       setTimeout(() => setError(null), 3000);
       return;
     }
 
-    // Resolve 'auto' to browser locale display name
+    let persistedCode = code;
     if (code === 'auto') {
-      const nav = typeof navigator !== 'undefined' ? navigator.language : undefined;
-      const resolvedCode = normalizeToCode(nav) as string;
-      const display = codeToName(resolvedCode);
-      try {
-        localStorage.setItem('ai-tutor:preferredLang', display);
-      } catch {}
-      // attempt server save
-      fetch('/api/user/language', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ language: resolvedCode }) }).catch(() => {});
-      setLang(display);
-      setOpen(false);
-      return;
+      // Resolve auto preference to an available code
+      persistedCode = resolveAutoCode(availableCodes, typeof navigator !== 'undefined' ? navigator.languages || navigator.language : undefined);
     }
 
-    const display = codeToName(code);
+    const display = code === 'auto' ? `Auto (Browser)` : codeToName(persistedCode);
+
     try {
-      localStorage.setItem('ai-tutor:preferredLang', display);
+      // Persist stable code tag to localStorage for other components that read tag
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('ai-tutor:preferredLang', persistedCode);
+      }
     } catch (e) {
       logger.warn('localStorage.setItem failed', { component: 'LanguageSelector', error: e });
     }
 
-    // Persist to server
+    // Persist to server (LanguageSelector owns persistence)
     try {
-      fetch('/api/user/language', {
+      const res = await fetch('/api/user/language', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ language: code }),
-      })
-        .then((res) => {
-          if (!res.ok) {
-            setError('Failed to save language to your account');
-            setTimeout(() => setError(null), 4000);
-          }
-        })
-        .catch(() => {
-          setError('Failed to save language to your account');
-          setTimeout(() => setError(null), 4000);
-        });
+        body: JSON.stringify({ language: persistedCode }),
+      }).catch(() => null);
+      if (res && !res.ok) {
+        setError('Failed to save language to your account');
+        setTimeout(() => setError(null), 4000);
+      }
     } catch (e) {
       logger.warn('Failed to save language via fetch', { component: 'LanguageSelector', error: e });
       setError('Failed to save language to your account');
       setTimeout(() => setError(null), 4000);
     }
 
+    setSelectedCode(code === 'auto' ? 'auto' : persistedCode);
+    // setLang is a UI update callback; pass a human-friendly label
     setLang(display);
     setOpen(false);
   }
-
-  const selectedCode = normalizeToCode(lang);
 
   return (
     <div className="relative inline-block text-sm">
