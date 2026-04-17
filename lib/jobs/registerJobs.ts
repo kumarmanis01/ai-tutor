@@ -82,5 +82,23 @@ registerJob({
   },
 })
 
+// Metrics snapshot job: runs daily to persist LTV/CAC snapshot
+registerJob({
+  name: 'metrics_snapshot',
+  lockKey: 'metrics_snapshot',
+  timeoutMs: 10 * 60 * 1000,
+  schedule: { type: 'interval', everySec: 24 * 60 * 60 },
+  run: async () => {
+    const job = await import('@/jobs/metricsSnapshot')
+    if (typeof job.runSnapshot === 'function') {
+      await job.runSnapshot()
+      return
+    }
+    if (typeof job.default === 'function') {
+      await job.default()
+    }
+  },
+})
+
 // module intentionally has no runtime export; importing it registers jobs
 export const __jobs_registered = true

@@ -1,3 +1,5 @@
+/** @jest-environment jsdom */
+
 import React from 'react'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import RetryInstallmentButton from '@/components/parent/subscription/RetryInstallmentButton'

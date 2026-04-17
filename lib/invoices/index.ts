@@ -506,7 +506,9 @@ export async function generateAnnualInvoicesPdf(userId: string, fyStart: Date, f
 
     try {
       const donor = await PDFDocument.load(bytes as Uint8Array);
-      const pages = await outPdf.copyPages(donor, donor.getPageIndices());
+      // PDF-lib TypeScript definitions may not expose copyPages/getPageIndices in some versions.
+      // Cast to any to avoid type errors and preserve runtime behaviour.
+      const pages = await (outPdf as any).copyPages(donor as any, (donor as any).getPageIndices ? (donor as any).getPageIndices() : (donor as any).getPages().map((_: any, i: number) => i));
       for (const p of pages) outPdf.addPage(p);
     } catch (e) {
       logger.warn('[invoices] skipping invalid invoice PDF during merge', { invoiceId: inv.id, error: String(e) });

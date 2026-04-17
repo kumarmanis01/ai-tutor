@@ -18,6 +18,7 @@
  *
  * EDIT LOG:
  * - 2026-04-13T05:20:00Z | copilot | add EMI support to student subscription order route
+ * - 2026-04-17T12:00:00Z | copilot | include couponCode in Razorpay order notes and persist couponCode on PaymentOrder
  */
 
 import { NextResponse } from 'next/server';
@@ -25,6 +26,7 @@ import { getServerSessionForHandlers } from '@/lib/session';
 import { prisma } from '@/lib/prisma';
 import { logger } from '@/lib/logger';
 import { PLANS, rupeesToPaise } from '@/lib/billing/plans';
+import { validateCoupon } from '@/lib/coupon'
 import type { PlanId } from '@/lib/billing/plans';
 import Razorpay from 'razorpay';
 
@@ -106,6 +108,30 @@ export async function POST(req: Request) {
     logger.warn('referral discount check failed', { err: String(err) })
   }
 
+  // Optional coupon code from client — validate and apply discount (do not mark redeemed yet)
+  const couponCode = typeof b.couponCode === 'string' ? (b.couponCode as string).trim() : undefined
+  if (couponCode) {
+    try {
+      const v = await validateCoupon(prisma as any, couponCode, userId)
+      if (v.status !== 200 || !v.body.coupon) {
+        return NextResponse.json({ error: 'invalid_coupon', detail: v.body.error }, { status: 400 })
+      }
+      const c: any = v.body.coupon
+      if (c.type === 'FIXED') {
+        const discount = Number(c.amount) ?? 0
+        finalAmount = Math.max(1, finalAmount - discount)
+      } else {
+        // percent
+        const pct = Number(c.amount) ?? 0
+        const discount = Math.floor(amountPaise * (pct / 100))
+        finalAmount = Math.max(1, finalAmount - discount)
+      }
+    } catch (err) {
+      logger.warn('coupon validation failed', { err: String(err), userId, couponCode })
+      return NextResponse.json({ error: 'coupon_validation_error' }, { status: 400 })
+    }
+  }
+
   const client = getRazorpayClient();
   if (!client) {
     logger.error('Razorpay keys not configured', { event: 'subscription.order.no_client', context: { userId } });
@@ -124,6 +150,7 @@ export async function POST(req: Request) {
         emiMonths: emiMonths ? String(emiMonths) : '',
         referralCode: userPrefs && typeof userPrefs === 'object' ? (userPrefs as any).referredBy ?? '' : '',
         purchaserIp: purchaserIp ?? '',
+        couponCode: couponCode ?? '',
       },
     });
 
@@ -142,6 +169,7 @@ export async function POST(req: Request) {
         status: 'created',
         planMonths: plan.durationMonths,
         planId: planId,
+        couponCode: couponCode ?? null,
       },
     });
 

@@ -4,9 +4,9 @@
  */
 import React from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
-import { prismaMock, resetPrismaMock } from '../../helpers/prismaMock'
+import { prismaMock, resetPrismaMock } from '../../../../helpers/prismaMock'
 
-jest.mock('@/lib/prisma.js', () => ({ prisma: require('../../helpers/prismaMock').prismaMock }))
+jest.mock('@/lib/prisma.js', () => ({ prisma: require('../../../../helpers/prismaMock').prismaMock }))
 jest.mock('next-auth/next', () => ({ getServerSession: jest.fn() }))
 jest.mock('@/lib/auth', () => ({ authOptions: {} }))
 
@@ -31,7 +31,7 @@ describe('ParentBillingPage', () => {
     const html = renderToStaticMarkup(await ParentBillingPage())
     expect(html).toMatch(/EMI schedule/i)
     expect(html).toMatch(/Installment 1/)
-    expect(html).toMatch(/Retry payment/)
+    expect(html).toMatch(/Retry now/)
     expect(html).toMatch(/₹|INR|Rs\.?/) // currency present
   })
 })

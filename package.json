@@ -122,7 +122,11 @@
     "docker:build": "docker build -t edtech-backend .",
     "docker:up": "docker-compose up -d",
     "docker:down": "docker-compose down",
-    "seed:taxonomy": "node scripts/seed-taxonomy.cjs"
+    "seed:taxonomy": "node scripts/seed-taxonomy.cjs",
+    "ingest:cli": "node ingest.cjs",
+    "ingest:seed-cbse-grade10": "node scripts/seed-cbse-grade10.cjs",
+    "ingest:retry": "node ingest.cjs --retry-failed",
+    "ingest:scrape": "node ingest.cjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.78.0",

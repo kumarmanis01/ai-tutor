@@ -70,6 +70,19 @@ AC-07
 Failed chunks (embedding API error, parsing error) logged separately. Admin re-runs failed chunks by ID: node ingest.js --retry-failed --run-id <id>
 SHOULD
 
+Phase 2 — Ingestion Pipeline Enhancements (Planned)
+
+These enhancements are scoped for Phase 2 to increase reliability, observability, and admin ergonomics for the curriculum ingestion pipeline.
+
+- **Staging & CI-driven seed:** Add a guarded CI job to run the CBSE Grade 10 seed against a staging database with pre-flight checks (dry-run mode, cost-estimate, and feature-flag gating). Ensure `OPENAI_API_KEY` is scoped to non-production credentials.
+- **Integration tests & fixtures:** Add integration tests for `scripts/parse-pdf-cli.ts` and the seed runner using small PDF fixtures and mocked embedding responses to validate upsert/idempotency and `IngestRunLog` behaviours.
+- **Admin retry UI & tooling:** Small admin console (internal) to inspect `IngestRunLog` entries, view `errorDetails`, and re-run failed chunk batches by run id or chunk id with rate limits and dry-run preview.
+- **Partial re-ingest & backfill:** Support targeted re-ingestion by chapter/topic/concept with idempotent upserts and worker-based, rate-limited backfill utilities.
+- **Cost & observability:** Per-run embedding call counts, estimated cost, and alerts when a run exceeds configurable cost thresholds. Surface run metrics in `analytics.events` and a lightweight admin dashboard.
+- **Operational safety:** Require explicit audit/log entry and admin confirmation for any run targeting production datasets. Provide a `--dry` and `--preview` mode for all CLI commands.
+- **Performance tuning & resilience:** Add circuit-breakers, exponential backoff for embedding calls, and batch-size tuning tests to balance latency, cost, and reliability.
+
+
 
 F-ADM-002
 Concept Taxonomy Management

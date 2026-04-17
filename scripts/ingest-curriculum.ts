@@ -32,14 +32,43 @@ export async function main(prismaClient = prisma) {
   console.log('[ingest] Starting curriculum chunk ingestion v2...')
   const startMs = Date.now()
 
-  // Fetch all chunks (we'll do hash comparison in-process)
-  const _chunks = await prismaClient.$queryRawUnsafe(
-    `
-      SELECT id, content, "contentHash", version
-      FROM "CurriculumChunk"
-      ORDER BY "createdAt" ASC
-    `,
-  )
+  // If retrying failed chunks from a previous run, restrict the initial fetch
+  // to only the chunk IDs referenced in that run's errorDetails. Otherwise
+  // fetch the full table to compute diffs.
+  let _chunks: any[]
+  if (retryFailed && _runId) {
+    try {
+      const run = await prismaClient.ingestRunLog.findUnique({ where: { id: _runId } })
+      const failedIds: string[] = Array.isArray((run as any)?.errorDetails)
+        ? (run as any).errorDetails.map((d: any) => d && d.id).filter(Boolean)
+        : []
+
+      if (failedIds.length > 0) {
+        // Fetch only the referenced chunk rows
+        const idsList = failedIds.map((id) => `'${String(id).replace("'", "''")}'`).join(',')
+        _chunks = await prismaClient.$queryRawUnsafe(
+          `SELECT id, content, "contentHash", version FROM "CurriculumChunk" WHERE id IN (${idsList}) ORDER BY "createdAt" ASC`,
+        )
+      } else {
+        // Nothing to retry
+        console.log('[ingest] No failed chunk IDs found in specified run. Nothing to do.')
+        await prismaClient.$disconnect()
+        return
+      }
+    } catch (e) {
+      console.error('[ingest] Could not load IngestRunLog for retry:', e)
+      await prismaClient.$disconnect()
+      return
+    }
+  } else {
+    _chunks = await prismaClient.$queryRawUnsafe(
+      `
+        SELECT id, content, "contentHash", version
+        FROM "CurriculumChunk"
+        ORDER BY "createdAt" ASC
+      `,
+    )
+  }
   const chunks = (_chunks ?? []) as { id: string; content: string | null; contentHash: string | null; version: number }[]
 
   if (chunks.length === 0) {
@@ -61,10 +90,18 @@ export async function main(prismaClient = prisma) {
 
   // Compute hashes and check which need updating
   const toProcess: { id: string; content: string; newHash: string; needsVersionBump: boolean }[] = []
+  const isRetryMode = retryFailed && _runId
 
   for (const chunk of chunks) {
     const text = chunk.content ?? ''
     const newHash = sha256(text)
+
+    if (isRetryMode) {
+      // When retrying, attempt to re-embed all fetched (failed) chunks regardless
+      // of contentHash equality — they previously failed to embed.
+      toProcess.push({ id: chunk.id, content: text, newHash, needsVersionBump: chunk.contentHash !== null })
+      continue
+    }
 
     if (chunk.contentHash !== newHash) {
       // Content changed -- needs re-embed and version bump

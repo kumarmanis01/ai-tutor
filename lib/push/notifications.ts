@@ -155,4 +155,12 @@ export const PUSH_NOTIFICATIONS = {
     url: '/student/referrals',
     tag: 'referral',
   }),
+
+  // ── Doubt escalation resolution ───────────────────────────────────────
+  doubt_resolved: (): PushPayload => ({
+    title: '✅ Improved explanation available',
+    body: "We've updated our explanation for this topic — tap to view the improved answer.",
+    url: '/student/doubts',
+    tag: 'doubt-resolved',
+  }),
 }

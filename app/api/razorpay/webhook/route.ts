@@ -25,6 +25,7 @@ import { getPaymentDunningQueue } from '@/jobs/paymentDunning';
 import Razorpay from 'razorpay';
 import { recordPaymentEvent } from '@/lib/payments/audit';
 import { redeemReferral } from '@/lib/referral';
+import { redeemCoupon } from '@/lib/coupon';
 
 function getWebhookSecret() {
   return process.env.RAZORPAY_WEBHOOK_SECRET ?? process.env.RAZORPAY_KEY_SECRET ?? '';
@@ -143,6 +144,18 @@ export async function POST(req: Request) {
               if (redeemRes.status !== 200) {
                 logger.warn('auto-redeem referral returned non-200', { orderId, referralCode, res: redeemRes })
               }
+            }
+
+            // Coupon auto-redeem (if couponCode present in order notes). We already applied discount at order creation,
+            // so record redemption but skip applying credit to avoid double-credits.
+            try {
+              const couponCode = typeof notes?.couponCode === 'string' && notes.couponCode ? notes.couponCode : (typeof notes?.coupon === 'string' && notes.coupon ? notes.coupon : undefined)
+              if (couponCode) {
+                const cres = await redeemCoupon(tx, couponCode, orderRow.studentId, undefined, { applyAsCredit: false })
+                if (cres.status !== 200) logger.warn('auto-redeem coupon returned non-200', { orderId, couponCode, res: cres })
+              }
+            } catch (err) {
+              logger.warn('auto-redeem coupon failed', { err, orderId })
             }
           } catch (err) {
             logger.warn('auto-redeem referral failed', { err, orderId })
