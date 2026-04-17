@@ -112,12 +112,16 @@ export async function POST(req: Request) {
     logger.warn('Could not fetch Razorpay order notes', { event: 'parent.subscription.verify.fetch_notes', context: { userId, orderId }, err });
   }
 
-  // Resolve plan here (prefer explicit family variant when _isFamily)
+  // Resolve plan here. Prefer an explicit family variant when _isFamily **only**
+  // if the requested plan belongs to the `standard` product. This avoids
+  // incorrectly mapping other product variants (e.g., `lite_monthly`) to the
+  // `family_monthly` plan for the `standard` product.
   const suffix = typeof planId === 'string' && planId.includes('_') ? planId.split('_').slice(-1)[0] : planId;
   const basePlan = (PLANS as any)[planId] as any ?? resolvePlanByShortId(planId, false);
   const familyKey = (`family_${suffix}`) as any;
   const resolvedFamilyPlan = (PLANS as any)[familyKey] as any | undefined;
-  const appliedPlan = _isFamily ? (resolvedFamilyPlan ?? basePlan) : basePlan;
+  const useExplicitFamily = Boolean(_isFamily && resolvedFamilyPlan && typeof planId === 'string' && planId.startsWith('standard_'));
+  const appliedPlan = useExplicitFamily ? resolvedFamilyPlan : basePlan;
   const expiry = planEndDate(appliedPlan, now);
 
     try {

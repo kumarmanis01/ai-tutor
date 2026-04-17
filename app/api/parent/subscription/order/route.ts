@@ -74,7 +74,9 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'One or more children are not linked to you' }, { status: 403 });
   }
 
-  // Resolve requested plan and prefer an explicit family variant when `isFamily`.
+  // Resolve requested plan. Prefer an explicit family variant when `isFamily` **only
+  // for the standard plan family**. Avoid mapping brand-agnostic suffixes (e.g.
+  // `lite_monthly`) to the `family_monthly` plan belonging to the `standard` product.
   const suffix = typeof planId === 'string' && planId.includes('_') ? planId.split('_').slice(-1)[0] : planId;
   const basePlan = (PLANS as any)[planId] as typeof PLANS.standard_monthly | undefined ?? resolvePlanByShortId(planId, false);
   const familyKey = (`family_${suffix}`) as PlanId;
@@ -84,12 +86,16 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Invalid planId' }, { status: 400 });
   }
 
-  // Determine billed amount. If family pricing is requested, prefer explicit
-  // family plan price; otherwise fallback to applying the 1.8x multiplier.
+  // Family plan usage policy: only use the explicit `family_*` plan when the
+  // requested plan is the `standard` product (planId startsWith 'standard_') and
+  // an explicit family plan exists. Otherwise, fall back to applying the 1.8x
+  // multiplier to the requested plan's billed price.
+  const useExplicitFamily = Boolean(isFamily && familyPlan && typeof planId === 'string' && planId.startsWith('standard_'));
+
   let totalRupees: number;
   if (isFamily) {
-    if (familyPlan) {
-      totalRupees = familyPlan.billedRupees;
+    if (useExplicitFamily) {
+      totalRupees = familyPlan!.billedRupees;
     } else if (basePlan) {
       totalRupees = Math.round(basePlan.billedRupees * 1.8 * 100) / 100;
     } else {
@@ -136,6 +142,7 @@ export async function POST(req: Request) {
         currency: 'INR',
         status: 'created',
         planMonths: durationMonths,
+        planId: planId,
       },
     });
 

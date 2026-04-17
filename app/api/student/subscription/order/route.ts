@@ -141,6 +141,7 @@ export async function POST(req: Request) {
         currency: 'INR',
         status: 'created',
         planMonths: plan.durationMonths,
+        planId: planId,
       },
     });
 

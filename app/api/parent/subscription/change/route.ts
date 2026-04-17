@@ -62,13 +62,20 @@ export async function POST(req: Request) {
   try {
     const now = new Date();
 
-    // Pricing rules: prefer explicit family plan variant when requested
+    // Pricing rules: prefer explicit family plan variant when requested, but only
+    // when the requested plan belongs to the `standard` product. Otherwise fall
+    // back to applying the 1.8x multiplier to the requested plan's price.
     const suffix = typeof planId === 'string' && planId.includes('_') ? planId.split('_').slice(-1)[0] : planId;
     const familyKey = (`family_${suffix}`) as PlanId;
     const familyPlan = (PLANS as any)[familyKey] as typeof plan | undefined;
+    const useExplicitFamily = Boolean(isFamily && familyPlan && typeof planId === 'string' && planId.startsWith('standard_'));
     let totalRupees: number;
     if (isFamily) {
-      totalRupees = familyPlan ? familyPlan.billedRupees : Math.round(plan.billedRupees * 1.8 * 100) / 100;
+      if (useExplicitFamily) {
+        totalRupees = familyPlan!.billedRupees;
+      } else {
+        totalRupees = Math.round(plan.billedRupees * 1.8 * 100) / 100;
+      }
     } else {
       totalRupees = plan.billedRupees * childIds.length;
     }
@@ -137,7 +144,7 @@ export async function POST(req: Request) {
     const amountPaise = rupeesToPaise(netCharge);
     const order = await client.orders.create({ amount: amountPaise, currency: 'INR', notes: { parentId: user.id, childIds: JSON.stringify(childIds), isFamily: String(Boolean(isFamily)), planId, changeType: 'upgrade', previousExpiry: current?.endDate?.toISOString() || '', emiMonths: emiMonths ? String(emiMonths) : '' } });
 
-    await prisma.paymentOrder.create({ data: { studentId: user.id, razorpayOrderId: order.id, amount: amountPaise, currency: 'INR', status: 'created', planMonths: plan.durationMonths } });
+    await prisma.paymentOrder.create({ data: { studentId: user.id, razorpayOrderId: order.id, amount: amountPaise, currency: 'INR', status: 'created', planMonths: plan.durationMonths, planId } });
 
     return NextResponse.json({ orderId: order.id, amount: amountPaise, currency: 'INR', keyId: process.env.RAZORPAY_KEY_ID ?? '' }, { status: 200 });
   } catch (err) {
