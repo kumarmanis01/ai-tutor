@@ -12,6 +12,7 @@ COPILOT INSTRUCTIONS FOLLOWED:
 
 EDIT LOG:
 - 2026-04-17T00:00:00Z | assistant | Add Phase 2 timezone enhancement items and document implementation notes for F-PAR-010 (dual-timezone display); updated roadmap and tests/code references.
+ - 2026-04-17T09:50:00Z | copilot | Add Phase 2 enhancement items for F-PAR-020 (Weekly Progress Digest) and note QA send/testing status.
 -->
 
 AI HOME TUTOR PLATFORM
@@ -284,6 +285,22 @@ SHOULD
 AC-05
 Digest email is mobile-optimised HTML. Single-column. Loads without images on slow connections. Dark mode safe.
 MUST
+
+
+Phase 2 — Digest Enhancements (Planned)
+
+- P2-AC-01: Per-parent frequency & channel preferences — allow parents to choose Weekly / Bi-weekly / Monthly and preferred channels (Email / SMS / WhatsApp). Default: Weekly (MVP).
+- P2-AC-02: Multilingual narrative generation — produce digest in the parent's preferred language (Hindi, Tamil, Telugu, English) with schema validation and strict grade-appropriate tone enforcement.
+- P2-AC-03: WhatsApp Business API integration — offer WhatsApp-formatted templates + fallback to SMS for feature phones. Maintain single-message brevity and include deep-link to full report in app.
+- P2-AC-04: Personalisation & A/B testing — enable controlled experiments on narrative tone and CTA placement; capture opt-in analytics for opens and clicks.
+- P2-AC-05: Robust delivery & retry semantics — idempotent delivery, exponential backoff retries, and a dead-letter queue (DLQ) for persistent failures with operator alerts.
+- P2-AC-06: Rich deep-links & in-email quick actions — add secure one-click actions (Snooze, Mute, Change schedule) that deep-link to parent settings with prefilled context.
+- P2-AC-07: Analytics & observability — log send success, opens, dark-mode rendering verification, and parent actions taken from digest CTAs for later analysis.
+- P2-AC-08: Low-bandwidth & accessibility mode — provide a text-only digest variant (SMS-friendly) and validate colour contrast / dark-mode for assistive-readers.
+
+Notes:
+- Implementation summary: Mobile-first, dark-mode-safe HTML template and parent opt-out configuration have been implemented (AC-04, AC-05). A mailer-only QA send was executed and validated using Resend. The full worker-driven delivery path is pending a Prisma migration reconciliation before end-to-end DB-backed sends can be exercised.
+- Tests / Next steps: Add end-to-end worker integration test once DB migrations are resolved; add visual regression tests for email renderings (light/dark/no-images); instrument analytics for opens and CTA actions.
 
 
 F-PAR-021
