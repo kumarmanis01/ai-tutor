@@ -21,7 +21,7 @@ import { toast } from '@/lib/toast';
 const CLASS_NAME = 'ParentDashboardClient';
 
 import dynamic from 'next/dynamic';
-import { LOCAL_STRINGS, predictMarkRange, masteryPercentFromAverage } from '@/lib/parent/dashboardHelpers';
+import { LOCAL_STRINGS, predictMarkRange } from '@/lib/parent/dashboardHelpers';
 
 // Lazy-load heavy charts to reduce initial bundle size / improve load time
 const WeeklyTrendChart = dynamic(() => import('@/components/parent/WeeklyTrendChart'), {
@@ -365,6 +365,14 @@ function SubjectProgressCard({ subject }: { subject: SubjectProgressData }) {
               </div>
           </div>
 
+          {subject.predictedDaysTo80 !== null && (
+            <div className="text-xs text-gray-500 mt-2">
+              {subject.predictedDaysTo80 === 0
+                ? 'At or above 80% readiness already.'
+                : `Estimated to reach 80% in ${subject.predictedDaysTo80} day(s)${subject.predictedReadyByDate ? ` (by ${subject.predictedReadyByDate})` : ''} at current pace.`}
+            </div>
+          )}
+
           {subject.chapters.map((ch) => (
             <div key={ch.chapter} className="pl-2 border-l-2 border-indigo-200">
               <div className="flex items-center justify-between mb-1">
@@ -414,7 +422,7 @@ function StudentDetailPanel({ studentId, onClose, benchmarkingOptIn }: { student
       }
     }
     fetchDetail();
-  }, [studentId]);
+  }, [studentId, benchmarkingOptIn]);
 
   if (loading) {
     return (

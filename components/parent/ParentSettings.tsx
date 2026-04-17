@@ -6,6 +6,7 @@ import { logger } from '@/lib/logger'
 type Profile = {
   digestOptOut: boolean
   inactivityOptOut?: boolean
+  inactivityThresholdDays?: number
   digestDay: string
   digestTime: string
   digestTimezone: string | null
@@ -200,6 +201,23 @@ export default function ParentSettings() {
         <input type="checkbox" checked={profile.inactivityOptOut ?? false} onChange={(e) => setProfile({ ...profile, inactivityOptOut: e.target.checked })} />
         <span className="text-sm">Opt out of inactivity alerts (global)</span>
       </label>
+
+      <div>
+        <label className="text-sm block mb-1">Inactivity alert threshold</label>
+        <div className="flex gap-2">
+          {[2,3,5,7].map((d) => (
+            <button
+              key={d}
+              type="button"
+              onClick={() => setProfile((p) => (p ? { ...p, inactivityThresholdDays: d } : p))}
+              className={`min-h-[44px] min-w-[44px] flex-1 rounded border px-3 py-2 text-sm font-medium transition-colors ${profile.inactivityThresholdDays === d ? 'bg-[#534AB7] text-white border-[#534AB7]' : 'bg-white text-gray-700 border-gray-300 dark:bg-gray-800 dark:text-gray-200'}`}
+            >
+              {d} days
+            </button>
+          ))}
+        </div>
+        <p className="text-xs text-gray-500 mt-1">Parents will be notified if a child hasn't had a study session for the selected number of days.</p>
+      </div>
 
       <div>
         <label className="text-sm block mb-1">Delivery day</label>

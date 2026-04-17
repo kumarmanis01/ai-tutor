@@ -82,7 +82,18 @@ export default function ParentDashboard({ children, parentTimezone }: ParentDash
                 </p>
               )}
               <p className="mt-1 text-2xs text-gray-400 dark:text-gray-500">
-                Times shown: {parentTimezone ?? 'your timezone'} • Student: {child.timezone ?? 'student timezone'}
+                {(() => {
+                  const pTz = parentTimezone ?? null
+                  const sTz = child.timezone ?? null
+                  if (pTz && sTz) {
+                    // Show dual timezones only when they differ (NRI / cross-timezone case)
+                    if (pTz === sTz) return `Times shown: ${pTz}`
+                    return `Times shown: ${pTz} • Student: ${sTz}`
+                  }
+                  if (pTz) return `Times shown: ${pTz}`
+                  if (sTz) return `Times shown: Student: ${sTz}`
+                  return 'Times shown: your timezone'
+                })()}
               </p>
             </div>
 
