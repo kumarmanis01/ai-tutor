@@ -20,6 +20,7 @@ import { prisma } from '@/lib/prisma'
 import { logger } from '@/lib/logger'
 import { sendMailSafe } from '@/lib/mailer'
 import { sendSms } from '@/lib/sms'
+import { parentWelcomeHtml } from '@/lib/email/templates'
 
 export const dynamic = 'force-dynamic'
 
@@ -93,17 +94,28 @@ export async function POST(req: Request) {
 
       // Send a welcome/confirmation notification to the parent (best-effort)
       try {
-        const parent = await prisma.user.findUnique({ where: { id: userId }, select: { email: true, phone: true, name: true } })
-        const parentName = parent?.name ?? 'Parent'
-        if (parent?.email) {
+        // student record stores parent contact fields
+        const student = await prisma.user.findUnique({
+          where: { id: userId },
+          select: { parentEmail: true, parentPhone: true, name: true },
+        })
+        const studentName = student?.name ?? 'your child'
+        const parentEmail = student?.parentEmail?.trim() || null
+        const parentPhone = student?.parentPhone?.trim() || null
+
+        if (parentEmail) {
           await sendMailSafe({
-            to: parent.email,
-            subject: `Your parent account is confirmed`,
-            html: `<p>Hi ${parentName},</p><p>Your account is now verified as a parent on Spinzy Academy.</p>`,
+            to: parentEmail,
+            subject: `Parent access confirmed for ${studentName}`,
+            html: parentWelcomeHtml(null, studentName),
           })
         }
-        if (parent?.phone) {
-          await sendSms(parent.phone, `Your Spinzy parent account is now verified.`)
+        if (parentPhone) {
+          // Keep SMS short and point to email for details
+          await sendSms(
+            parentPhone,
+            `Your Spinzy parent account for ${studentName} is verified. You can view progress and weekly reports. See your email for privacy details.`,
+          )
         }
       } catch (err) {
         logger.error('[verify-parent] welcome notification suppressed', { error: String(err) })
