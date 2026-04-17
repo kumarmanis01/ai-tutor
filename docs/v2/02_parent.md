@@ -300,8 +300,19 @@ Phase 2 — Digest Enhancements (Planned)
 - P2-AC-08: Low-bandwidth & accessibility mode — provide a text-only digest variant (SMS-friendly) and validate colour contrast / dark-mode for assistive-readers.
 
 Notes:
-- Implementation summary: Mobile-first, dark-mode-safe HTML template and parent opt-out configuration have been implemented (AC-04, AC-05). A mailer-only QA send was executed and validated using Resend. The full worker-driven delivery path is pending a Prisma migration reconciliation before end-to-end DB-backed sends can be exercised.
-- Tests / Next steps: Add end-to-end worker integration test once DB migrations are resolved; add visual regression tests for email renderings (light/dark/no-images); instrument analytics for opens and CTA actions.
+- Implementation summary: Mobile-first, dark-mode-safe HTML template and parent opt-out configuration have been implemented and wired into the parent settings UI and API (covers AC-04 and AC-05). The worker-side digest builder (`sendParentDigests`) was updated to use the new responsive template; `buildDigestHtml()` was exported for testing. A focused unit test verifies viewport meta and dark-mode CSS. A Prisma migration adding `ParentNotification` and `ParentProfile.inactivityOptOut` was applied and the QA send was re-run to exercise the end-to-end delivery/audit path.
+- Tests / Next steps: Unit tests added for HTML output; full end-to-end worker integration tests and visual regression checks are still recommended.
+
+Planned Next Steps (Phase 2 enhancements)
+
+- Add visual-regression tests for email renderings (light, dark, no-images) using a snapshot tool (Percy/Playwright) and include in CI.
+- Add an end-to-end worker integration test that enqueues the digest job, runs the worker, and validates audit records + outbound sends in a sandboxed environment.
+- Instrument opens and CTA clicks (privacy-preserving) and wire analytics events to `METRICS_URL` for observability and A/B testing.
+- Multilingual narrative generation: add language fallbacks and schema-validated prompt templates for Hindi/Tamil/Telugu/English (P2-AC-02).
+- Channel & frequency preferences: expose per-parent frequency (weekly/bi-weekly/monthly) and channel selection (email/sms/whatsapp) with safe fallbacks and rate-limiting (P2-AC-01).
+- Low-bandwidth / accessibility variant: implement a text-only digest (SMS-friendly) and ensure colour contrast and screen-reader friendliness (P2-AC-08).
+- WhatsApp Business integration: implement templated WhatsApp messages + fallback to SMS for feature phones (P2-AC-03).
+
 
 
 F-PAR-021
