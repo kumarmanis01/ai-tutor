@@ -11,9 +11,44 @@ CREATE TABLE IF NOT EXISTS "ReferralReward" (
 );
 
 -- Foreign keys
-ALTER TABLE "ReferralReward" ADD CONSTRAINT IF NOT EXISTS fk_referralreward_referral FOREIGN KEY ("referralId") REFERENCES "Referral" (id) ON DELETE SET NULL;
-ALTER TABLE "ReferralReward" ADD CONSTRAINT IF NOT EXISTS fk_referralreward_user FOREIGN KEY ("userId") REFERENCES "User" (id) ON DELETE CASCADE;
+-- Foreign keys (use guarded DO blocks for compatibility with older Postgres)
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint WHERE conname = 'fk_referralreward_referral'
+  ) THEN
+    ALTER TABLE "ReferralReward" ADD CONSTRAINT fk_referralreward_referral FOREIGN KEY ("referralId") REFERENCES "Referral" (id) ON DELETE SET NULL;
+  END IF;
+END
+$$;
 
--- Indexes
-CREATE INDEX IF NOT EXISTS idx_referralreward_userid ON "ReferralReward" ("userId");
-CREATE INDEX IF NOT EXISTS idx_referralreward_status ON "ReferralReward" ("status");
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint WHERE conname = 'fk_referralreward_user'
+  ) THEN
+    ALTER TABLE "ReferralReward" ADD CONSTRAINT fk_referralreward_user FOREIGN KEY ("userId") REFERENCES "User" (id) ON DELETE CASCADE;
+  END IF;
+END
+$$;
+
+-- Indexes (guarded)
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_class WHERE relname = 'idx_referralreward_userid'
+  ) THEN
+    CREATE INDEX idx_referralreward_userid ON "ReferralReward" ("userId");
+  END IF;
+END
+$$;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_class WHERE relname = 'idx_referralreward_status'
+  ) THEN
+    CREATE INDEX idx_referralreward_status ON "ReferralReward" ("status");
+  END IF;
+END
+$$;
