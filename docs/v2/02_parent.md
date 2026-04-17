@@ -509,6 +509,16 @@ Phase 2 — Subscription Purchase Enhancements (Planned)
 - P2-AC-04: Admin tools — add reconciliation dashboard that surfaces `PaymentOrder.planId` mismatches, gateway refunds, and DLQ entries for failed deliveries.
 - P2-AC-05: Billing flexibility — allow mid-cycle child slot increases (upgrade proration) and scheduled decreases (downgrade on renewal) with clear UX and audit trail.
 
+- P2-AC-06: Promotions & Coupons — enhance coupon capabilities and operational tooling:
+	- Admin UI: coupon creation, batch import, scoped batch codes, per-student vs batch issuance, and audit trail for admin actions.
+	- Frontend: checkout coupon input, client-side validation, clear discount breakdown (fixed vs percent), and expiry display before confirmation.
+	- Integration tests: staging E2E flow exercising order creation with coupon, webhook reconciliation, `CouponRedemption` persistence, and `Subscription` activation.
+	- Accounting & reconciliation: reconciliation report for coupon redemptions, refunds, and applied credits; surface mismatches in admin dashboard.
+	- Lifecycle & enforcement: scheduled expiry job, enforcement of `maxUses` and `maxUsesPerUser`, and support for recurring (renewal) coupons.
+	- Observability & fraud detection: metrics for coupon usage by campaign, redemptions per IP/user, and alerts for anomalous redemption patterns.
+	- Backfill & migration: plan for migrating historical `PaymentOrder` rows with coupon metadata and reconciling prior promotions.
+	- Audit & receipts: include `couponCode` in invoice/receipt metadata and ensure all admin coupon changes are recorded in `AuditLog`.
+
 
 
 F-PAR-031
