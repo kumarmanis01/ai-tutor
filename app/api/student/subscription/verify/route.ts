@@ -174,7 +174,11 @@ export async function POST(req: Request) {
         // Deactivate any existing active subscription for this student
         await tx.subscription.updateMany({ where: { userId, active: true }, data: { active: false } }).catch(() => {});
 
-        // Create subscription record for the student
+        // Check for pending referral rewards for this user and include in creditBalance
+        const pendingRewards = await tx.referralReward.findMany({ where: { userId, status: 'PENDING' } });
+        const pendingSum = pendingRewards.reduce((s, r) => s + (r.amount || 0), 0);
+
+        // Create subscription record for the student. Apply pending referral rewards as creditBalance.
         const createdSub = await tx.subscription.create({
           data: {
             userId,
@@ -186,9 +190,15 @@ export async function POST(req: Request) {
             childSlots: 1,
             paymentId: payment.id,
             meta: {},
-            creditBalance: 0,
+            creditBalance: pendingSum,
           },
         });
+
+        // Mark pending referral rewards as applied (best-effort within the transaction)
+        if (pendingRewards.length > 0) {
+          const ids = pendingRewards.map((r) => r.id);
+          await tx.referralReward.updateMany({ where: { id: { in: ids } }, data: { status: 'APPLIED', appliedAt: new Date() } }).catch(() => {});
+        }
 
         // Create Installment schedule if EMI selected; first installment marked PAID as we just received payment
         try {

@@ -24,6 +24,7 @@ import { sendSms } from '@/lib/sms';
 import { getPaymentDunningQueue } from '@/jobs/paymentDunning';
 import Razorpay from 'razorpay';
 import { recordPaymentEvent } from '@/lib/payments/audit';
+import { redeemReferral } from '@/lib/referral';
 
 function getWebhookSecret() {
   return process.env.RAZORPAY_WEBHOOK_SECRET ?? process.env.RAZORPAY_KEY_SECRET ?? '';
@@ -130,12 +131,40 @@ export async function POST(req: Request) {
           paymentRecordId = newPayment.id;
           // Log event in the same transaction
           await recordPaymentEvent(tx, { paymentId: newPayment.id, userId: orderRow.studentId, provider: 'razorpay', providerIdempotencyKey: idempotencyHeader || undefined, transactionId: paymentId, orderId, eventType: 'payment.created.webhook', payload: { notes }, amount: payment.amount, status: 'success' })
+          // Attempt auto-redemption for referral (if user was invited and this is their first paid event)
+          try {
+            const userRow = await tx.user.findUnique({ where: { id: orderRow.studentId }, select: { preferences: true } });
+            const fromPrefs = (userRow?.preferences && typeof userRow.preferences === 'object') ? (userRow.preferences as any).referredBy : undefined
+            const referralCode = fromPrefs || notes?.referralCode || notes?.ref
+            if (typeof referralCode === 'string' && referralCode) {
+              const redeemRes = await redeemReferral(tx, referralCode, orderRow.studentId, null)
+              if (redeemRes.status !== 200) {
+                logger.warn('auto-redeem referral returned non-200', { orderId, referralCode, res: redeemRes })
+              }
+            }
+          } catch (err) {
+            logger.warn('auto-redeem referral failed', { err, orderId })
+          }
         } else {
           paymentRecordId = existing.id;
           // update existing payment status if needed
           if (existing.status !== 'success') {
             await tx.payment.update({ where: { id: existing.id }, data: { status: 'success', transactionId: paymentId, orderId, meta: { ...(existing.meta || {}), notes } } });
             await recordPaymentEvent(tx, { paymentId: existing.id, userId: orderRow.studentId, provider: 'razorpay', providerIdempotencyKey: idempotencyHeader || undefined, transactionId: paymentId, orderId, eventType: 'payment.updated.webhook', payload: { notes }, amount: payment.amount, status: 'success' })
+            // If an existing failed/updated payment now became successful, also attempt referral redemption
+            try {
+              const userRow = await tx.user.findUnique({ where: { id: orderRow.studentId }, select: { preferences: true } });
+              const fromPrefs = (userRow?.preferences && typeof userRow.preferences === 'object') ? (userRow.preferences as any).referredBy : undefined
+              const referralCode = fromPrefs || notes?.referralCode || notes?.ref
+              if (typeof referralCode === 'string' && referralCode) {
+                const redeemRes = await redeemReferral(tx, referralCode, orderRow.studentId, null)
+                if (redeemRes.status !== 200) {
+                  logger.warn('auto-redeem referral returned non-200 (updated payment)', { orderId, referralCode, res: redeemRes })
+                }
+              }
+            } catch (err) {
+              logger.warn('auto-redeem referral failed (updated payment)', { err, orderId })
+            }
           }
         }
 

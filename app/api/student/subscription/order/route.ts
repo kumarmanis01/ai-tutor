@@ -70,6 +70,28 @@ export async function POST(req: Request) {
   const plan = PLANS[planId as PlanId];
   const amountPaise = rupeesToPaise(plan.billedRupees);
 
+  // If this user was referred and the referral is still available, apply 20% off first month
+  let finalAmount = amountPaise
+  try {
+    const userRow = await prisma.user.findUnique({ where: { id: userId }, select: { preferences: true } })
+    const refCode = (userRow?.preferences && typeof userRow.preferences === 'object') ? (userRow.preferences as any).referredBy : undefined
+    if (typeof refCode === 'string' && refCode) {
+      // Only apply discount for monthly-duration plans (first month)
+      if ((plan.durationMonths || 0) === 1) {
+        // Verify referral exists and is not already redeemed
+        const r = await prisma.referral.findUnique({ where: { code: refCode }, select: { redeemedBy: true } })
+        if (r && !r.redeemedBy) {
+          const discount = Math.floor(amountPaise * 0.2)
+          finalAmount = Math.max(1, amountPaise - discount)
+        }
+      }
+    }
+  } catch (err) {
+    // Non-fatal; proceed with full amount
+    // eslint-disable-next-line no-console
+    console.warn('referral discount check failed', String(err))
+  }
+
   const client = getRazorpayClient();
   if (!client) {
     logger.error('Razorpay keys not configured', { event: 'subscription.order.no_client', context: { userId } });
@@ -78,13 +100,14 @@ export async function POST(req: Request) {
 
   try {
     const order = await client.orders.create({
-      amount: amountPaise,
+      amount: finalAmount,
       currency: 'INR',
       notes: {
         studentId: userId,
         planId,
         durationMonths: String(plan.durationMonths),
         emiMonths: emiMonths ? String(emiMonths) : '',
+        referralCode: (await prisma.user.findUnique({ where: { id: userId }, select: { preferences: true } }))?.preferences?.referredBy ?? '',
       },
     });
 

@@ -1,7 +1,23 @@
+/**
+ * FILE OBJECTIVE:
+ * - UI control to adjust the user's base font size preference.
+ *
+ * LINKED UNIT TEST:
+ * - tests/unit/components/UI/FontSizeToggle.spec.tsx
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/COPILOT_GUARDRAILS.md
+ * - .github/copilot-instructions.md
+ *
+ * EDIT LOG:
+ * - 2026-04-17T00:00:00Z | copilot | replace console.* with logger; add unit test
+ */
+
 'use client'
 
 import React, { useEffect, useState } from 'react'
 import useCurrentUser from '@/hooks/useCurrentUser'
+import { logger } from '@/lib/logger'
 
 const MAP: Record<string, number> = { small: 14, medium: 16, large: 18 }
 
@@ -23,7 +39,7 @@ export default function FontSizeToggle() {
     try {
       document.documentElement.style.setProperty('--font-size-base', `${px}px`)
       localStorage.setItem('fontSize', v)
-    } catch (err) {
+    } catch {
       // ignore
     }
   }
@@ -42,7 +58,7 @@ export default function FontSizeToggle() {
         mutate()
       }
     } catch (err) {
-      console.error('Failed to save font size', err)
+      logger.error('Failed to save font size', { error: err })
     } finally {
       setSaving(false)
     }

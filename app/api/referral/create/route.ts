@@ -19,11 +19,15 @@ export async function POST(req: NextRequest) {
   if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const creatorIp = getClientIp(req);
-  const code = nano();
-  const referral = await prisma.referral.create({
-    // F-STU-042 AC-05: store creator IP in metadata for fraud detection at redeem time
-    data: { code, createdBy: session.user.id, metadata: creatorIp ? { creatorIp } : undefined },
-  });
+  // Ensure each student has a single referral code — return existing if present
+  let referral = await prisma.referral.findFirst({ where: { createdBy: session.user.id } });
+  if (!referral) {
+    const code = nano();
+    referral = await prisma.referral.create({
+      // F-STU-042 AC-05: store creator IP in metadata for fraud detection at redeem time
+      data: { code, createdBy: session.user.id, metadata: creatorIp ? { creatorIp } : undefined },
+    });
+  }
 
   const base =
     process.env.NEXT_PUBLIC_BASE_URL || process.env.NEXTAUTH_URL || 'http://localhost:3000';
