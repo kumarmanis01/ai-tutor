@@ -123,6 +123,7 @@ export async function processDiagnosticBootstrap(job: Job<DiagnosticBootstrapJob
               lastInteraction: now,
               attemptCount,
               masteryVariance: isPartialAbandon && !answered ? 0.3 : undefined,
+              memoryStrength: Math.round((masteryScore * 1.0) * 1000) / 1000,
             },
           })
           seeded += 1
@@ -139,6 +140,7 @@ export async function processDiagnosticBootstrap(job: Job<DiagnosticBootstrapJob
               lastInteraction: now,
               attemptCount: existing.attemptCount + attemptCount,
               masteryVariance: isPartialAbandon && !answered ? 0.3 : undefined,
+              memoryStrength: Math.round((masteryScore * (existing.retention ?? 1)) * 1000) / 1000,
             },
           })
           seeded += 1

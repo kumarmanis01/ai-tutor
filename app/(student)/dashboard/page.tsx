@@ -34,6 +34,7 @@ import { RevisionWidget } from '@/components/student/dashboard/RevisionWidget'
 import { SubjectReadinessCard } from '@/components/student/dashboard/SubjectReadinessCard'
 import { FreemiumCounter } from '@/components/student/dashboard/FreemiumCounter'
 import { UpgradeFlow } from '@/components/student/subscription/UpgradeFlow'
+import CrunchModeToggle from '@/components/student/dashboard/CrunchModeToggle'
 
 export const dynamic = 'force-dynamic'
 
@@ -81,6 +82,7 @@ export default async function StudentHomeDashboardPage() {
           orderBy: { generatedAt: 'desc' },
           take: 1,
         },
+        preferences: true,
       },
     }),
     getNextAction(userId).catch(() => null),
@@ -112,7 +114,10 @@ export default async function StudentHomeDashboardPage() {
   const periodStart = freeTierUsage?.periodStart?.toISOString() ?? new Date(Date.now() - 15 * 86400000).toISOString()
 
   const latestPlan = user.learningPlans[0]
-  const isCrunchMode = computeCrunchMode(latestPlan?.examDate)
+  // Respect per-user preference: 'on' | 'off' | 'auto'
+  const prefCrunch = (user as any)?.preferences?.crunchMode ?? 'auto'
+  const autoCrunch = computeCrunchMode(latestPlan?.examDate)
+  const isCrunchMode = prefCrunch === 'on' ? true : prefCrunch === 'off' ? false : autoCrunch
 
   // ── XP this week: total + source breakdown (F-STU-031 AC-01) ────────────────
   const [xpThisWeekResult, xpBySourceRaw] = await Promise.all([
@@ -263,11 +268,18 @@ export default async function StudentHomeDashboardPage() {
     <main className="max-w-5xl mx-auto px-4 py-6">
       {/* Crunch mode banner (F-STU-032 AC-04) */}
       {isCrunchMode && latestPlan?.examDate && (
-        <div className="mb-4 rounded-xl bg-[#FCEBEB] dark:bg-[#E24B4A]/10 border border-[#E24B4A]/20 px-4 py-3 flex items-center gap-3">
-          <span className="text-lg leading-none" aria-hidden>⏰</span>
-          <div>
-            <p className="text-sm font-bold text-[#E24B4A]">Exam in {Math.ceil((latestPlan.examDate.getTime() - Date.now()) / 86400000)} days</p>
-            <p className="text-xs text-[#E24B4A]/80">Focus mode on -- only your most important topics are shown.</p>
+        <div className="mb-4 rounded-xl bg-[#FCEBEB] dark:bg-[#E24B4A]/10 border border-[#E24B4A]/20 px-4 py-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <div className="text-4xl font-extrabold text-[#E24B4A] leading-none" aria-hidden>
+                {Math.ceil((latestPlan.examDate.getTime() - Date.now()) / 86400000)}d
+              </div>
+              <div>
+                <p className="text-sm font-bold text-[#E24B4A]">Exam approaching</p>
+                <p className="text-xs text-[#E24B4A]/80">Focus mode on — only exam-relevant actions shown.</p>
+              </div>
+            </div>
+            <CrunchModeToggle />
           </div>
         </div>
       )}
@@ -276,14 +288,17 @@ export default async function StudentHomeDashboardPage() {
         {/* ── Left column (60%) ──────────────────────────────────────────── */}
         <div className="flex flex-col gap-5 md:w-3/5">
           {/* F-STU-032 AC-03: Primary CTA */}
+
           <TodaysLearningCard {...cardProps} />
-          <SecondaryStartOptions todaysConceptId={cardProps.recommendation?.conceptId} />
+          {!isCrunchMode && <SecondaryStartOptions todaysConceptId={cardProps.recommendation?.conceptId} />}
 
-          {/* F-STU-031: XP + Level + source breakdown */}
-          <XPWidget totalXp={user.totalXp} level={user.level} xpThisWeek={xpThisWeek} xpBySource={xpBySource} />
+          {/* F-STU-031: XP + Level + source breakdown (hidden in crunch mode) */}
+          {!isCrunchMode && (
+            <XPWidget totalXp={user.totalXp} level={user.level} xpThisWeek={xpThisWeek} xpBySource={xpBySource} />
+          )}
 
-          {/* Weekly activity strip */}
-          <WeeklyStudyStrip data={weeklyStripData} />
+          {/* Weekly activity strip (hidden in crunch mode) */}
+          {!isCrunchMode && <WeeklyStudyStrip data={weeklyStripData} />}
 
           {/* F-STU-032 AC-02: Active revision cards due today */}
           <RevisionWidget />

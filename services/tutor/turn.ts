@@ -986,6 +986,10 @@ export async function runTutorOrchestrator(args: {
         // Delivered tier is previous hintsUsed + 1 (cap to 3)
         const deliveredTier = Math.min(3, Math.max(1, (hintsUsed ?? 0) + 1))
         if (prismaClient.studentConceptState && typeof prismaClient.studentConceptState.upsert === 'function') {
+          const baseRetention = conceptState?.retention ?? 1
+          const baseMastery = conceptState?.masteryScore ?? 0
+          const hintMemoryStrength = Math.round((baseMastery * baseRetention) * 1000) / 1000
+
           const upsertRes: any = await prismaClient.studentConceptState.upsert({
             where: { studentId_conceptId: { studentId, conceptId } },
             create: {
@@ -997,6 +1001,7 @@ export async function runTutorOrchestrator(args: {
               hintTier2: deliveredTier === 2 ? 1 : 0,
               hintTier3: deliveredTier === 3 ? 1 : 0,
               lastHintAt: new Date(),
+              memoryStrength: hintMemoryStrength,
             },
             update: {
               hintCount: { increment: 1 },
@@ -1004,6 +1009,7 @@ export async function runTutorOrchestrator(args: {
               ...(deliveredTier === 2 ? { hintTier2: { increment: 1 } } : {}),
               ...(deliveredTier === 3 ? { hintTier3: { increment: 1 } } : {}),
               lastHintAt: new Date(),
+              memoryStrength: hintMemoryStrength,
             },
           })
 

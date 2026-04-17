@@ -19,7 +19,10 @@ module.exports = {
     // For extensionless imports: try the .ts file first, then the directory index.
     // This supports both `@/lib/foo` (-> lib/foo.ts) and `@/lib/ai/guardrails` (-> lib/ai/guardrails/index.ts).
     '^@/lib/(.*)$': ['<rootDir>/lib/$1.ts', '<rootDir>/lib/$1/index.ts', '<rootDir>/lib/$1'],
-    '^@/(.*)\\.js$': '<rootDir>/src/$1.ts',
+    '^@/(.*)\\.js$': ['<rootDir>/src/$1.ts', '<rootDir>/$1.ts'],
+    // Relative lib imports from nested folders (e.g. '../../lib/foo.js')
+    '^\\.\\.\\/\\.\\.\\/lib\\/(.*)\\.js$': '<rootDir>/lib/$1.ts',
+    '^\\.\\.\\/lib\\/(.*)\\.js$': '<rootDir>/lib/$1.ts',
     '^@/(.*)$': ['<rootDir>/src/$1', '<rootDir>/$1']
   },
   moduleDirectories: ['node_modules', '<rootDir>'],

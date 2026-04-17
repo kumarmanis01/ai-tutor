@@ -118,6 +118,8 @@ model User {
   parentInvitesConsumed       ParentInvite[]               @relation("ParentInvite_consumedByParent")
   /// IANA timezone for daily habit (e.g. Asia/Kolkata). Null => UTC.
   timezone                    String?
+  /// Per-user UI & accessibility preferences (fontSize, crunchMode overrides, etc.)
+  preferences                 Json?
   studentEngagementStats      StudentEngagementStats?
   engagementProcessedSessions EngagementProcessedSession[]
   studentFeatureFlags         StudentFeatureFlag[]         @relation("StudentFeatureFlags")

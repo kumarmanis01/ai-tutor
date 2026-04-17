@@ -80,6 +80,7 @@ export async function GET(req: Request) {
     parentPhoneVerifiedAt: savedUser?.parentPhoneVerifiedAt ?? null,
     accountStatus: (savedUser as any)?.accountStatus ?? 'active',
     learningStyle: (savedUser as any)?.learningStyle ?? null,
+    preferences: (savedUser as any)?.preferences ?? null,
     createdAt: savedUser?.createdAt ?? null,
     role: savedUser?.role ?? '',
     parentEmail: savedUser?.parentEmail ?? '',
@@ -117,25 +118,65 @@ export async function PATCH(req: Request) {
 
   const body = await req.json().catch(() => ({}));
 
-  // Only learningStyle is patchable via this endpoint.
+  // Support updating learningStyle and user preferences (partial merge).
   // grade/board are immutable after first save -- strip from all PATCH handlers.
+  const updates: any = {};
+
+  // learningStyle (existing behaviour)
   const rawStyle = typeof body.learningStyle === 'string' ? body.learningStyle.trim() : null;
-  if (!rawStyle || !VALID_LEARNING_STYLES.includes(rawStyle as (typeof VALID_LEARNING_STYLES)[number])) {
-    res = NextResponse.json(
-      { error: `learningStyle must be one of: ${VALID_LEARNING_STYLES.join(', ')}` },
-      { status: 400 },
-    );
+  if (rawStyle !== null && rawStyle !== '') {
+    if (!VALID_LEARNING_STYLES.includes(rawStyle as (typeof VALID_LEARNING_STYLES)[number])) {
+      res = NextResponse.json(
+        { error: `learningStyle must be one of: ${VALID_LEARNING_STYLES.join(', ')}` },
+        { status: 400 },
+      );
+      logger.logAPI(req, res, { className: 'UserProfileAPI', methodName: 'PATCH' }, start);
+      return res;
+    }
+    updates.learningStyle = rawStyle;
+  }
+
+  // preferences: allow partial updates; validate known keys
+  if (body.preferences && typeof body.preferences === 'object') {
+    const allowedCrunch = ['auto', 'on', 'off'];
+    const allowedFont = ['small', 'medium', 'large'];
+    const prefsToMerge: any = {};
+
+    if (typeof body.preferences.crunchMode === 'string') {
+      if (!allowedCrunch.includes(body.preferences.crunchMode)) {
+        res = NextResponse.json({ error: `crunchMode must be one of: ${allowedCrunch.join(', ')}` }, { status: 400 });
+        logger.logAPI(req, res, { className: 'UserProfileAPI', methodName: 'PATCH' }, start);
+        return res;
+      }
+      prefsToMerge.crunchMode = body.preferences.crunchMode;
+    }
+
+    if (typeof body.preferences.fontSize === 'string') {
+      if (!allowedFont.includes(body.preferences.fontSize)) {
+        res = NextResponse.json({ error: `fontSize must be one of: ${allowedFont.join(', ')}` }, { status: 400 });
+        logger.logAPI(req, res, { className: 'UserProfileAPI', methodName: 'PATCH' }, start);
+        return res;
+      }
+      prefsToMerge.fontSize = body.preferences.fontSize;
+    }
+
+    if (Object.keys(prefsToMerge).length > 0) {
+      // Merge with existing preferences atomically
+      const existing = await prisma.user.findUnique({ where: { id: userId }, select: { preferences: true } });
+      const merged = { ...(existing?.preferences as any || {}), ...prefsToMerge };
+      updates.preferences = merged;
+    }
+  }
+
+  if (Object.keys(updates).length === 0) {
+    res = NextResponse.json({ error: 'Nothing to update' }, { status: 400 });
     logger.logAPI(req, res, { className: 'UserProfileAPI', methodName: 'PATCH' }, start);
     return res;
   }
 
-  await prisma.user.update({
-    where: { id: userId },
-    data: { learningStyle: rawStyle },
-    select: { id: true },
-  });
+  const updated = await prisma.user.update({ where: { id: userId }, data: updates, select: { id: true, learningStyle: true, preferences: true } });
 
-  res = NextResponse.json({ ok: true, learningStyle: rawStyle });
+  res = NextResponse.json({ ok: true, learningStyle: updated.learningStyle ?? null, preferences: updated.preferences ?? null });
   logger.logAPI(req, res, { className: 'UserProfileAPI', methodName: 'PATCH' }, start);
   return res;
 }

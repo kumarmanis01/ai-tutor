@@ -26,6 +26,7 @@ import { LANGUAGES, _DIFFICULTY_LEVELS } from '@/components/CascadingFilters';
 import Link from 'next/link';
 import ParentAccessCard from '@/components/Profile/ParentAccessCard';
 import { useState } from 'react';
+import FontSizeToggle from '@/components/UI/FontSizeToggle';
 
 export default function ProfilePage() {
   const { data: session } = useSession();
@@ -188,6 +189,12 @@ export default function ProfilePage() {
               <div>
                 <span className="font-semibold">Parent Email:</span>{' '}
                 {profile?.parentEmail || <span className="text-gray-400">Not set</span>}
+              </div>
+              <div className="mt-4">
+                <h4 className="font-semibold mb-2">Display</h4>
+                <div className="flex items-center justify-between">
+                  <FontSizeToggle />
+                </div>
               </div>
             </div>
 

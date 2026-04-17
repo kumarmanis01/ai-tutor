@@ -156,6 +156,7 @@ export default async function ProgressPage({
   const allChapterIds = readinessResults.flatMap((r) => r.chapters.map((c) => c.chapterId));
 
   const chapterWeakestConceptMap = new Map<string, string>();
+  const conceptsByChapter = new Map<string, string[]>();
 
   if (allChapterIds.length > 0) {
     const concepts = await prisma.concept.findMany({
@@ -177,7 +178,6 @@ export default async function ProgressPage({
       conceptStates.map((s) => [s.conceptId, (s as any).memoryStrength ?? 0]),
     );
 
-    const conceptsByChapter = new Map<string, string[]>();
     for (const c of concepts) {
       const chId = c.topic?.chapterId;
       if (!chId) continue;

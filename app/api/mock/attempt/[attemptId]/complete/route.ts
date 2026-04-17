@@ -176,6 +176,23 @@ export async function POST(
     },
   });
 
+  // Award a one-time 'mock_complete' badge for students who finish their first
+  // full mock exam. Badge rows are upserted (auto-seed) and userBadge uses
+  // skipDuplicates to be idempotent.
+  try {
+    await prisma.$transaction([
+      prisma.badge.upsert({
+        where: { key: 'mock_complete' },
+        create: { key: 'mock_complete', name: 'Mock Champ', description: 'Completed your first full mock exam', icon: 'medal' },
+        update: {},
+      }),
+      prisma.userBadge.createMany({ data: [{ studentId: user.id, badgeKey: 'mock_complete' }], skipDuplicates: true }),
+    ])
+  } catch (err) {
+    // Non-blocking: don't fail the mock complete API if badge awarding fails
+    logger.warn('mock.complete: failed to award mock_complete badge', { studentId: user.id, error: String(err) })
+  }
+
   logger.info('mock.completed', {
     studentId: user.id,
     attemptId,
