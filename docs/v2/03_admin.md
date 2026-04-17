@@ -225,6 +225,23 @@ Trending topics in escalations (same concept escalated by > 5 different students
 MUST
 
 
+Phase 2 — Enhancements (Planned)
+
+These improvements are planned for Phase 2 to increase reliability, traceability, and administrator control for the doubt escalation workflow:
+
+- Admin UI & One-Click Notify: a small admin console to review escalations, preview cached resolution, and trigger immediate student notification.
+- Notification Preferences & Consent: store per-student / parent notification preferences and respect parental consent; include opt-out handling and audit trails.
+- Multi-channel Delivery & Retry: configurable retries and exponential backoff for fallback channels; add delivery metrics and support for additional gateways (WhatsApp/SMS) where permitted.
+- KB Traceability & Versioning: persist `doubtKbId` on escalations, surface KB revision history and source (admin edit / curriculum update) for auditability.
+- Audit & Delivery Metrics: emit structured events for notification attempts, delivery/fallback rates, and user clicks; surface in admin reports and alerting.
+- Admin-triggered Backfill Tool: safe, rate-limited backfill to populate `notifiedAt` for historical resolved escalations.
+- Admin API Harden & Audit: rate-limit and strengthen auth on the admin notify API; log admin actions to the audit_log table.
+- End-to-end Tests & Monitoring: integration tests for notification flow, idempotency under retries, and provider failures; dashboards for delivery health.
+- Performance & Safety: batch processing tuning, concurrency limits, idempotency guarantees, and circuit-breakers around external providers.
+
+Priority: SHOULD for user-facing reliability; MUST for auditability and consent.
+
+
 F-ADM-012
 LLM Cost Monitoring
 MVP
