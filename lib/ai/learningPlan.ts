@@ -26,13 +26,18 @@ export async function generateLearningPlan(
   try {
     const weeklyGoal = options?.weeklyGoal ?? 5
 
-    // 1. Load all concepts for the subject in curriculum order
+    // 1. Load all concepts for the subject in curriculum order. Include
+    // topic metadata so we can optionally bias ordering based on a
+    // parent-submitted `topicFocusRequest` (F-PAR-002 AC-03).
     const concepts = await prisma.concept.findMany({
       where: { subjectId },
       select: {
         id: true,
+        name: true,
         topic: {
           select: {
+            id: true,
+            name: true,
             order: true,
             chapter: {
               select: { order: true },
@@ -62,11 +67,39 @@ export async function generateLearningPlan(
       states.map((s) => [s.conceptId, s.masteryScore]),
     )
 
-    // 3. Sort: lowest mastery first, then curriculum order (stable sort preserves
-    //    the curriculum order from the DB query for equal mastery values)
+    // 3. Sort: lowest mastery first, then curriculum order. If a parent has
+    // provided a `topicFocusRequest`, boost concepts whose topic name matches
+    // the request to the front (without dropping the weakest-first principle).
+    // parentChildControl may not exist in some test mocks; guard access
+    let topicFocus: string | null = null
+    try {
+      const pcc = (prisma as any).parentChildControl
+      if (pcc && typeof pcc.findFirst === 'function') {
+        const control = await pcc.findFirst({
+          where: { studentId },
+          select: { topicFocusRequest: true },
+          orderBy: { updatedAt: 'desc' },
+        })
+        topicFocus = (control?.topicFocusRequest || '').trim().toLowerCase() || null
+      }
+    } catch (_e) {
+      // Best-effort: if lookup fails, ignore topic focus so plan generation remains robust
+      topicFocus = null
+    }
+
     const sorted = [...concepts].sort((a, b) => {
       const ma = masteryByConcept.get(a.id) ?? 0
       const mb = masteryByConcept.get(b.id) ?? 0
+
+      // If one concept belongs to the parent's requested topic and the other
+      // does not, prefer the requested-topic concept.
+      if (topicFocus) {
+        const aIsPreferred = !!(a.topic?.name && a.topic.name.toLowerCase().includes(topicFocus))
+        const bIsPreferred = !!(b.topic?.name && b.topic.name.toLowerCase().includes(topicFocus))
+        if (aIsPreferred && !bIsPreferred) return -1
+        if (bIsPreferred && !aIsPreferred) return 1
+      }
+
       if (ma !== mb) return ma - mb // ascending: weakest first
       // Tie-break: curriculum order (chapter.order → topic.order)
       const ca = a.topic?.chapter?.order ?? 0
