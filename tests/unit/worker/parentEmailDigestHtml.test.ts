@@ -6,7 +6,7 @@ jest.mock('@/lib/mailer', () => ({ sendMailSafe: jest.fn() }));
 jest.mock('@/lib/whatsapp', () => ({ sendWhatsAppMessage: jest.fn(), buildWeeklyWhatsAppMessage: jest.fn() }));
 jest.mock('@/lib/ai/tools/generateParentReport', () => ({ generateParentReportAI: jest.fn(async () => ({ summary: 'AI paragraph' })) }));
 jest.mock('@/lib/notifications/delivery', () => ({ sendParentMilestoneNotification: jest.fn() }));
-jest.mock('@/lib/i18n', () => ({ t: (key: string, params?: any, lang?: string) => (key === 'digest.subject' ? 'Weekly Update' : (key === 'digest.fallback_text' ? 'Fallback' : '')) }));
+jest.mock('@/lib/i18n', () => ({ t: (key: string, _params?: any, _lang?: string) => (key === 'digest.subject' ? 'Weekly Update' : (key === 'digest.fallback_text' ? 'Fallback' : '')) }));
 
 import { describe, it, expect, beforeEach } from '@jest/globals'
 

@@ -11,7 +11,7 @@
 
 import { prisma } from '@/lib/prisma';
 import { logger } from '@/lib/logger';
-import { sendMailSafe } from '@/lib/mailer';
+// mailer helpers are used by higher-level delivery utilities; avoid importing unused symbols here
 import { sendWhatsAppMessage, buildWeeklyWhatsAppMessage } from '@/lib/whatsapp';
 import { generateParentReportAI } from '@/lib/ai/tools/generateParentReport';
 import { sendParentMilestoneNotification } from '@/lib/notifications/delivery';
@@ -162,7 +162,7 @@ export async function sendParentDigests(): Promise<number> {
             logger.info('parentEmailDigest: skipping parent due to preferredDay mismatch', { parentId, preferredDay, localDay })
             continue
           }
-        } catch (err) {
+        } catch {
           // If timezone invalid, fall back to sending
         }
       }
