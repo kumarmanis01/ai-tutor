@@ -334,6 +334,19 @@ AC-05
 Parent can mute inactivity alerts for a specified period (e.g., school exam period, family event). Mute configurable from alert itself.
 SHOULD
 
+Phase 2 — Inactivity Enhancements (Planned)
+
+- P2-AC-01: Per-parent frequency & channel preferences — allow parents to choose frequency (Weekly / Bi-weekly / Monthly) and preferred channels (Email / SMS / WhatsApp) for inactivity alerts. Default: Weekly via parent's preferred channel.
+- P2-AC-02: In-alert quick actions — add one-click actions in emails/SMS/WhatsApp for `Mute 7/14/30 days` and `Snooze 24h`. Use tokenized HMAC links for mute actions (already implemented) and surface immediate acknowledgement in the UI.
+- P2-AC-03: Deep-link UX improvements — show both parent and student timezone labels, include ISO timestamps (copy-to-clipboard), and provide a safe fallback when the next plan item is unavailable (deep-link to parent dashboard).
+- P2-AC-04: Two-way WhatsApp integration — support parent acknowledgements and quick-reply commands (e.g., "Snooze", "Mute", "Report") via WhatsApp Business API, with idempotent backend handling and short human-readable confirmations.
+- P2-AC-05: Observability & delivery robustness — add idempotent send semantics, DLQ for persistent failures, exponential backoff retries, and telemetry for suppression/set/reset events to tune caps and UX.
+- P2-AC-06: Test & QA — add end-to-end worker integration tests covering: tokenized mute links, suppression semantics, deep-link navigation, and multi-channel delivery. Add visual regression tests for email renderings (light/dark/text-only).
+
+Notes:
+- Implementation status: deep-link parameterization (`?focus=next&itemId=<id>`), tokenized mute GET link handling, per-child pause (`ParentStudent.isPaused` / `pausedUntil`), and suppression-clear on qualifying activity are implemented and unit-tested. The service worker now delegates to the canonical job (`runInactivityAlerts`) to avoid duplicated logic.
+- Next steps (Phase 2): implement per-parent preferences UI, WhatsApp channel templating + quick-replies, DLQ monitoring + operator dashboard, and run full integration tests before promoting to production.
+
 
 F-PAR-022
 Milestone & Achievement Notifications

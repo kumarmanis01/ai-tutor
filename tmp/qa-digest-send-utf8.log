@@ -1,0 +1,32 @@
+﻿﻿Attempting QA digest send to spinzy.healthians@gmail.com
+prisma:info Starting a postgresql pool with 5 connections.
+prisma:query SELECT "public"."ParentProfile"."id", "public"."ParentProfile"."userId", "public"."ParentProfile"."createdAt", "public"."ParentProfile"."digestOptOut", "public"."ParentProfile"."inactivityOptOut", "public"."ParentProfile"."digestDay", "public"."ParentProfile"."digestTime", "public"."ParentProfile"."digestTimezone", "public"."ParentProfile"."inactivityThresholdDays" FROM "public"."ParentProfile" WHERE ("public"."ParentProfile"."userId" = $1 AND 1=1) LIMIT $2 OFFSET $3
+prisma:error 
+Invalid `prisma.parentProfile.findUnique()` invocation:
+
+
+The column `ParentProfile.inactivityOptOut` does not exist in the current database.
+{"timestamp":"2026-04-17T11:45:31.653Z","level":"info","event":"redis.connected","context":{"host":"127.0.0.1","port":6379}}
+{"timestamp":"2026-04-17T11:45:31.782Z","level":"info","event":"redis.info.memory","context":{"maxmemory_policy":"noeviction"}}
+npx : {"timestamp":"2026-04-17T11:45:34.047Z","level":"error","event":"[ERROR] 
+[mailer] Send failed","context":{"error":"The gnosiva.com domain is not 
+verified. Please, add and verify your domain on 
+https://resend.com/domains","to":"[REDACTED_EMAIL]","subject":"QA: weekly 
+digest test ΓÇö 2026-04-17T11:45:29.581Z"}}
+At line:1 char:127
++ ... Out-Null }; npx tsx -r tsconfig-paths/register scripts/send-test-dige ...
++                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: ({"timestamp":"2...1:45:29.581Z"}} 
+   :String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+{"timestamp":"2026-04-17T11:45:34.076Z","level":"error","event":"[ERROR] 
+[mailer] sendMailSafe suppressed error","context":{"error":{}}}
+prisma:query INSERT INTO "public"."ParentNotification" ("id","parentId","studentId","type","channel","subject","body","sentAt","createdAt") VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING "public"."ParentNotification"."id", "public"."ParentNotification"."parentId", "public"."ParentNotification"."studentId", "public"."ParentNotification"."type", "public"."ParentNotification"."channel", "public"."ParentNotification"."subject", "public"."ParentNotification"."body", "public"."ParentNotification"."sentAt", "public"."ParentNotification"."createdAt"
+prisma:error 
+Invalid `prisma.parentNotification.create()` invocation:
+
+
+The table `public.ParentNotification` does not exist in the current database.
+Result: { sent: true }
+

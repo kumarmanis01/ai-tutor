@@ -81,51 +81,95 @@ function buildEmailHtml(params: {
       ? `<p style="color:#DC2626;margin:4px 0;">📉 A few concepts need more practice</p>`
       : ''
 
+  // Mobile-first, image-fallback-friendly, and dark-mode-aware template.
+  // Use CSS variables and a small responsive layout so the email is readable
+  // without images and remains legible in dark-mode supporting clients.
   return `<!DOCTYPE html>
-<html>
-<head><meta charset="utf-8"></head>
-<body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;max-width:560px;margin:0 auto;padding:24px;color:#1F2937;">
-  <div style="text-align:center;margin-bottom:20px;">
-    <img src="https://spinzy.in/logos/logo-email.png" width="176" height="50" alt="Spinzy Academy" style="display:block;margin:0 auto">
-    <p style="color:#6B7280;margin:8px 0 0;font-size:13px;">Weekly learning update</p>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <style>
+    /* Base variables (light mode) */
+    :root {
+      --bg: #ffffff;
+      --text: #111827;
+      --muted: #6b7280;
+      --primary: #4f46e5;
+      --success: #16a34a;
+      --warning: #d97706;
+      --card-bg: #f9fafb;
+      --card-border: rgba(0,0,0,0.06);
+    }
+    /* Dark mode overrides for clients that respect prefers-color-scheme */
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #0b1220;
+        --text: #e6eef8;
+        --muted: #94a3b8;
+        --primary: #8b77ff;
+        --success: #34d399;
+        --warning: #f59e0b;
+        --card-bg: #071026;
+        --card-border: rgba(255,255,255,0.06);
+      }
+    }
+    body { background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin:0; padding:24px; }
+    .container { max-width:560px; margin:0 auto; }
+    .header { text-align:center; margin-bottom:18px; }
+    .logo { display:block; margin:0 auto 8px; }
+    .brand-fallback { font-weight:700; color:var(--primary); font-size:18px; }
+    .card { border:1px solid var(--card-border); background:var(--card-bg); border-radius:12px; padding:14px; margin:12px 0; }
+    .row { width:100%; display:flex; gap:8px; }
+    .stat { flex:1; text-align:center; padding:8px; border-radius:8px; }
+    .stat .num { font-size:20px; font-weight:700; }
+    .muted { color:var(--muted); font-size:12px; }
+    .narrative { margin-top:12px; padding:12px; border-radius:8px; background:transparent; }
+    .cta { text-align:center; margin-top:14px; }
+    .btn { display:inline-block; padding:12px 22px; background:var(--primary); color:#fff; text-decoration:none; border-radius:8px; font-weight:600; }
+    .footer { color:var(--muted); font-size:11px; text-align:center; margin-top:18px; }
+    /* Stack stats on narrow screens */
+    @media (max-width:480px) {
+      .row { flex-direction:column; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <img class="logo" src="https://spinzy.in/logos/logo-email.png" width="176" height="50" alt="Spinzy Academy" style="display:block;" />
+      <!-- Visible fallback in case images are blocked -->
+      <div class="brand-fallback">Spinzy Academy</div>
+      <div class="muted" style="margin-top:6px;font-size:13px;">Weekly learning update</div>
+    </div>
+
+    <p>Hi ${parentName},</p>
+
+    <div class="card">
+      <h2 style="margin:0 0 10px;font-size:16px;color:var(--text);">${childName}</h2>
+
+      <div class="row" role="group" aria-label="weekly-stats">
+        <div class="stat" style="background:rgba(79,70,229,0.06);">
+          <div class="num" style="color:var(--primary);">${sessionsThisWeek}</div>
+          <div class="muted">Sessions this week</div>
+        </div>
+        <div class="stat" style="background:rgba(217,119,6,0.06);">
+          <div class="num" style="color:var(--warning);">${streak}</div>
+          <div class="muted">Day streak</div>
+        </div>
+      </div>
+
+      ${deltaLine}
+
+      ${narrative ? `<div class="narrative" style="border-left:3px solid ${readinessDelta !== null && readinessDelta > 0.05 ? '#16A34A' : '#D1FAE5'}; background:transparent;"><p style="margin:0;color:var(--text);">${narrative}</p></div>` : ''}
+    </div>
+
+    <div class="cta">
+      <a class="btn" href="${dashboardUrl}">View full progress →</a>
+    </div>
+
+    <div class="footer">You're receiving this because you have linked student accounts on Spinzy.</div>
   </div>
-
-  <p>Hi ${parentName},</p>
-
-  <div style="border:1px solid #E5E7EB;border-radius:12px;padding:16px;margin:16px 0;">
-    <h2 style="margin:0 0 12px;font-size:16px;color:#1F2937;">${childName}</h2>
-
-    <table style="width:100%;border-collapse:collapse;margin-bottom:12px;">
-      <tr>
-        <td style="padding:8px;text-align:center;background:#EEF2FF;border-radius:8px;width:50%;">
-          <div style="font-size:22px;font-weight:bold;color:#4F46E5;">${sessionsThisWeek}</div>
-          <div style="font-size:12px;color:#6B7280;">Sessions this week</div>
-        </td>
-        <td style="padding:8px;text-align:center;background:#FEF3C7;border-radius:8px;width:50%;">
-          <div style="font-size:22px;font-weight:bold;color:#D97706;">🔥 ${streak}</div>
-          <div style="font-size:12px;color:#6B7280;">Day streak</div>
-        </td>
-      </tr>
-    </table>
-
-    ${deltaLine}
-
-    ${narrative
-      ? `<div style="margin-top:12px;padding:12px;background:#F0FDF4;border-radius:8px;border-left:3px solid #16A34A;">
-           <p style="margin:0;font-size:14px;color:#166534;">${narrative}</p>
-         </div>`
-      : ''}
-  </div>
-
-  <div style="text-align:center;margin-top:20px;">
-    <a href="${dashboardUrl}" style="display:inline-block;padding:12px 28px;background:#4F46E5;color:white;text-decoration:none;border-radius:8px;font-weight:600;font-size:14px;">
-      View full progress →
-    </a>
-  </div>
-
-  <p style="color:#9CA3AF;font-size:11px;text-align:center;margin-top:24px;">
-    You're receiving this because you have linked student accounts on Spinzy.
-  </p>
 </body>
 </html>`
 }
