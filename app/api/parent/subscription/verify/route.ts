@@ -31,7 +31,7 @@ import { logger } from '@/lib/logger';
 import { sendEmail } from '@/lib/mailer';
 import { paymentReceiptHtml } from '@/lib/email/templates';
 import { sendSms } from '@/lib/sms';
-import { planEndDate, resolvePlanByShortId } from '@/lib/billing/plans';
+import { PLANS, planEndDate, resolvePlanByShortId } from '@/lib/billing/plans';
 import { createInvoiceForPayment } from '@/lib/invoices';
 import Razorpay from 'razorpay';
 import computeProratedCredit from '@/lib/subscription/proration';
@@ -78,13 +78,6 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
   }
 
-  // Resolve requested plan id to a concrete plan; support short ids like
-  // 'annual' in tests or full keys like 'standard_annual'.
-  const plan = resolvePlanByShortId(planId, false);
-  if (!plan) {
-    return NextResponse.json({ error: 'Invalid planId' }, { status: 400 });
-  }
-
   // Security gate -- verify signature
   if (!verifySignature(orderId, paymentId, signature)) {
     logger.error('Invalid Razorpay signature (parent.verify)', { event: 'parent.subscription.verify.bad_sig', context: { userId, orderId } });
@@ -98,7 +91,6 @@ export async function POST(req: Request) {
   }
 
   const now = new Date();
-  const expiry = planEndDate(plan, now);
 
   // Fetch Razorpay order to read notes (childIds, isFamily, emiMonths)
   const client = getRazorpayClient();
@@ -120,6 +112,14 @@ export async function POST(req: Request) {
     logger.warn('Could not fetch Razorpay order notes', { event: 'parent.subscription.verify.fetch_notes', context: { userId, orderId }, err });
   }
 
+  // Resolve plan here (prefer explicit family variant when _isFamily)
+  const suffix = typeof planId === 'string' && planId.includes('_') ? planId.split('_').slice(-1)[0] : planId;
+  const basePlan = (PLANS as any)[planId] as any ?? resolvePlanByShortId(planId, false);
+  const familyKey = (`family_${suffix}`) as any;
+  const resolvedFamilyPlan = (PLANS as any)[familyKey] as any | undefined;
+  const appliedPlan = _isFamily ? (resolvedFamilyPlan ?? basePlan) : basePlan;
+  const expiry = planEndDate(appliedPlan, now);
+
     try {
       let _createdPayment: { id: string } | null = null;
       let carryForwardCredit = 0;
@@ -129,8 +129,10 @@ export async function POST(req: Request) {
           await tx.paymentOrder.update({ where: { razorpayOrderId: orderId }, data: { status: 'paid', paidAt: now } });
         }
 
+        // appliedPlan is resolved above (prefer explicit family variant when requested)
+
         // Activate parent subscription record (owner of payment)
-        // Create Subscription record for parent (family or individual)
+        // Create Payment record for the parent
         const payment = await tx.payment.create({
           data: {
             userId,
@@ -140,9 +142,9 @@ export async function POST(req: Request) {
             status: 'success',
             transactionId: paymentId,
             orderId: orderId,
-            plan: plan.label,
-            billingCycle: plan.perMonthDisplay,
-            meta: { planId, childIds },
+            plan: appliedPlan?.label ?? String(planId),
+            billingCycle: appliedPlan?.perMonthDisplay ?? '',
+            meta: { planId, childIds, isFamily: _isFamily },
           },
         });
 
@@ -170,12 +172,12 @@ export async function POST(req: Request) {
         const createdSub = await tx.subscription.create({
           data: {
             userId,
-            plan: childIds && childIds.length > 1 ? 'family' : 'individual',
+            plan: _isFamily ? 'family' : 'individual',
             billingCycle: planId,
             startDate: now,
-            endDate: expiry,
+            endDate: planEndDate(appliedPlan, now),
             active: true,
-            childSlots: childIds?.length ?? 1,
+            childSlots: _isFamily ? (appliedPlan?.childSlots ?? (childIds?.length ?? 1)) : (childIds?.length ?? 1),
             paymentId: payment.id,
             meta: { childIds },
             creditBalance: carryForwardCredit,
@@ -252,11 +254,11 @@ export async function POST(req: Request) {
 
     if (parent?.email) {
       try {
-        const invoiceResult = await createInvoiceForPayment({ userId, paymentId: _createdPayment?.id, studentId: childIds && childIds.length > 0 ? childIds[0] : undefined, amountPaise: order.amount, planLabel: plan.label, billingCycle: plan.perMonthDisplay });
+            const invoiceResult = await createInvoiceForPayment({ userId, paymentId: _createdPayment?.id, studentId: childIds && childIds.length > 0 ? childIds[0] : undefined, amountPaise: order.amount, planLabel: appliedPlan?.label ?? '', billingCycle: appliedPlan?.perMonthDisplay ?? '' });
         await sendEmail({
           to: parent.email,
           subject: 'Payment confirmed -- Spinzy Academy',
-          html: paymentReceiptHtml({ studentName: parent.name ?? 'Student', plan: plan.label, amountRupees: plan.billedRupees, billingCycle: plan.perMonthDisplay, renewalDate }),
+          html: paymentReceiptHtml({ studentName: parent.name ?? 'Student', plan: appliedPlan?.label ?? '', amountRupees: (order.amount ? (order.amount / 100) : appliedPlan?.billedRupees), billingCycle: appliedPlan?.perMonthDisplay ?? '', renewalDate }),
           ...(invoiceResult.pdfBuffer ? {
             attachments: [{ filename: `invoice-${invoiceResult.invoiceNumber}.pdf`, content: invoiceResult.pdfBuffer, contentType: 'application/pdf' }],
           } : {}),

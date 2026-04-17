@@ -88,8 +88,9 @@ function mkPlan(
 export const PLANS: Record<PlanId, SubscriptionPlan> = {
   standard_monthly: mkPlan('standard_monthly', 399, 1, 'Standard', '₹399/month', { featured: true }),
   standard_annual:  mkPlan('standard_annual', 3990, 12, 'Annual (Standard)', '₹332.50/month', { billedDisplay: 'billed ₹3,990', saveLabel: '2 months free' }),
-  family_monthly:   mkPlan('family_monthly', 599, 1, 'Family', '₹599/month', { childSlots: 2 }),
-  family_annual:    mkPlan('family_annual', 5990, 12, 'Annual (Family)', '₹499.17/month', { billedDisplay: 'billed ₹5,990', saveLabel: '2 months free', childSlots: 2 }),
+  // Family pricing: one subscription covers up to 3 children at 1.8x the standard price
+  family_monthly:   mkPlan('family_monthly', Math.round(399 * 1.8 * 100) / 100, 1, 'Family (up to 3 kids)', `₹${(Math.round(399 * 1.8 * 100) / 100).toFixed(2)}/month`, { childSlots: 3 }),
+  family_annual:    mkPlan('family_annual', Math.round(3990 * 1.8 * 100) / 100, 12, 'Annual (Family)', `₹${(Math.round(3990 * 1.8 * 100) / 100 / 12).toFixed(2)}/month`, { billedDisplay: `billed ₹${Math.round(3990 * 1.8)}`, saveLabel: '2 months free', childSlots: 3 }),
   lite_monthly:     mkPlan('lite_monthly', 249, 1, 'Lite', '₹249/month'),
   // Internal test plan: ₹1/week, visible only to whitelisted accounts.
   test_weekly:      mkPlan('test_weekly', 1, 0, 'Test (Weekly)', '₹1/week', { durationDays: 7, internal: true }),

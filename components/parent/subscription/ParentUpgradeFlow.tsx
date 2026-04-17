@@ -66,7 +66,15 @@ export default function ParentUpgradeFlow({ childrenList }: ParentUpgradeFlowPro
 
   const totalRupees = useMemo(() => {
     const plan = PLANS[planId];
-    if (isFamily && selectedChildren.length === 3) return Math.round(plan.billedRupees * 1.8 * 100) / 100;
+    // If family pricing selected, prefer an explicit family plan variant when available
+    if (isFamily) {
+      const suffix = planId.includes('_') ? planId.split('_').slice(-1)[0] : planId;
+      const familyKey = (`family_${suffix}`) as any;
+      const familyPlan = (PLANS as any)[familyKey] as typeof plan | undefined;
+      const applied = familyPlan ?? plan;
+      // Family pricing is a single billed amount (covers up to 3 children)
+      return Math.round(applied.billedRupees * 100) / 100;
+    }
     return Math.round(plan.billedRupees * selectedChildren.length * 100) / 100;
   }, [planId, selectedChildren.length, isFamily]);
 
@@ -157,8 +165,8 @@ export default function ParentUpgradeFlow({ childrenList }: ParentUpgradeFlowPro
       <div className="space-y-4">
         <PlanSelector selected={planId} onSelect={(id) => setPlanId(id)} />
         <div className="flex items-center gap-3">
-          <input id="family" type="checkbox" checked={isFamily} onChange={(e) => setIsFamily(e.target.checked)} disabled={selectedChildren.length !== 3} />
-          <label htmlFor="family" className="text-sm text-gray-700">Use family pricing (3 children at 1.8x)</label>
+          <input id="family" type="checkbox" checked={isFamily} onChange={(e) => setIsFamily(e.target.checked)} disabled={selectedChildren.length === 0} />
+          <label htmlFor="family" className="text-sm text-gray-700">Use family pricing (up to 3 children at 1.8× standard price)</label>
         </div>
         <div className="flex gap-2">
           <button onClick={() => setStep('method')} className="flex-1 min-h-[44px] rounded-xl bg-[#534AB7] text-white">Choose payment</button>

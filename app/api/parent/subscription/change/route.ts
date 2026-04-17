@@ -62,9 +62,16 @@ export async function POST(req: Request) {
   try {
     const now = new Date();
 
-    // Pricing rules same as order endpoint
-    let totalRupees = plan.billedRupees * childIds.length;
-    if (isFamily) totalRupees = Math.round(plan.billedRupees * 1.8 * 100) / 100;
+    // Pricing rules: prefer explicit family plan variant when requested
+    const suffix = typeof planId === 'string' && planId.includes('_') ? planId.split('_').slice(-1)[0] : planId;
+    const familyKey = (`family_${suffix}`) as PlanId;
+    const familyPlan = (PLANS as any)[familyKey] as typeof plan | undefined;
+    let totalRupees: number;
+    if (isFamily) {
+      totalRupees = familyPlan ? familyPlan.billedRupees : Math.round(plan.billedRupees * 1.8 * 100) / 100;
+    } else {
+      totalRupees = plan.billedRupees * childIds.length;
+    }
 
     // Fetch current active parent subscription (if any)
     const current = await prisma.subscription.findFirst({ where: { userId: user.id, active: true } });
