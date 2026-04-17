@@ -13,6 +13,7 @@ COPILOT_INSTRUCTIONS_FOLLOWED:
 EDIT LOG:
 - 2026-04-16T12:00:00Z | copilot | added Production Run & Deployment section; updated header
 - 2026-04-16T12:50:00Z | copilot | add Phase 2 backlog: admin-triggered mock seeding (API + worker), audit logs, admin UI, tests
+ - 2026-04-17T10:30:00Z | copilot | add Phase 2 referral backlog: referral dashboard UI, in-app notifications for voided rewards, fraud review tooling, E2E billing tests
 -->
 
 AI HOME TUTOR PLATFORM
@@ -81,6 +82,19 @@ Accessibility
 Voice Mode, Camera Input (OCR), Offline Mode
 Phase 2
 
+
+## Phase 2 — Referral & Rewards (Deferred)
+
+The backend billing and redemption logic for referrals is implemented in Phase 1 (see implementation summary in repo). The following items are intentionally deferred to Phase 2 (feature-flagged) to prioritise core learning flows and minimise launch scope:
+
+- **Referral Dashboard (Student):** UI that shows total referrals sent, converted (paid), rewards earned, and pending rewards with pagination and filters.
+- **Referral Management (Creator):** In-app screens for copying/sharing referral code, viewing referral history, and contest/limits UI.
+- **In-App Notifications for Voided Rewards:** Rich client notifications and UI flows that surface voided/refunded referral events to both referrer and redeemer. (Currently implemented as best-effort push/email sends server-side.)
+- **Fraud Review Tooling:** Admin console for reviewing flagged referrals (same IP/device fingerprints), marking false positives, and manual reward adjustments.
+- **Comprehensive E2E Tests:** Full integration tests covering order creation with referral discount, webhook reconciliation, auto-redemption, and credit application to billing flows.
+- **Analytics & Reporting:** Aggregated metrics for referral conversion rates, abuse signals, and cohort analyses.
+
+These items will be gated behind a feature flag and scheduled in Phase 2 once the core referral billing loop is validated in production.
 
 
 2. Onboarding & Personalisation
