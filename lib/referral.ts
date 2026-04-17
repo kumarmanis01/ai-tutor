@@ -11,6 +11,7 @@
  *
  * EDIT LOG:
  * - 2026-04-17T00:00:00Z | copilot | add referral service helper redeemReferral
+ * - 2026-04-17T14:40:00Z | copilot | fix: include required `icon` field when creating badge to satisfy Prisma types
  */
 
 import { Prisma } from '@prisma/client'
@@ -57,6 +58,7 @@ export async function redeemReferral(tx: Prisma.TransactionClient, code: string,
         key: 'referral_invite',
         name: 'Referral Inviter',
         description: 'Awarded for inviting friends to join.',
+        icon: 'referral_invite',
       },
     })
 
