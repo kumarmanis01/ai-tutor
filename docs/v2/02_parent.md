@@ -13,6 +13,7 @@ COPILOT INSTRUCTIONS FOLLOWED:
 EDIT LOG:
 - 2026-04-17T00:00:00Z | assistant | Add Phase 2 timezone enhancement items and document implementation notes for F-PAR-010 (dual-timezone display); updated roadmap and tests/code references.
  - 2026-04-17T09:50:00Z | copilot | Add Phase 2 enhancement items for F-PAR-020 (Weekly Progress Digest) and note QA send/testing status.
+ - 2026-04-17T12:00:00Z | copilot | Implement F-PAR-024 readiness-drop worker: enforce 90-day exam window, include AI remediation summary in parent notifications, add SMS/email plain-text fallback; update docs with Phase 2 planned enhancements.
 -->
 
 AI HOME TUTOR PLATFORM
@@ -433,6 +434,24 @@ SHOULD
 AC-04
 Alert only triggers if exam is within 90 days. No alert for readiness drops when exam is > 90 days away (less urgent).
 SHOULD
+
+Phase 2 — F-PAR-024 Enhancements
+PHASE 2
+Planned enhancements to improve delivery, safety, observability and parent controls for the Exam Readiness Score Drop Alert:
+- P2-AC-01: Per-parent readiness alert preferences — channel selection (Email/SMS/WhatsApp), severity threshold override (e.g., 15-point vs 10-point), and quiet hours. Defaults: Email+SMS, 10-point threshold, no quiet hours.
+- P2-AC-02: Localised WhatsApp templates & quick-replies — add templated remediation summary with buttons: "View Plan", "Mute 7 days", "Help", and deep-links to dashboard.
+- P2-AC-03: LLM observability & safe-fallbacks — log LLM response usage, parsing failures, and fallback activations; add metrics for LLM success rate and average remediation length. Store anonymised diagnostics for audits.
+- P2-AC-04: Per-tenant / per-parent LLM toggle — allow admins to disable LLM remediation generation or force safe-mode (non-LLM) workflows.
+- P2-AC-05: Delivery resilience & DLQ — ensure idempotent sends, DLQ for persistent delivery failures, and operator UI to replay alerts per parent (audit + last_sent timestamps).
+- P2-AC-06: Aggregation & digesting — group multiple readiness drops across siblings and/or subjects into a single digest with one actionable remediation to reduce noise.
+- P2-AC-07: E2E integration tests & observability dashboards — add worker integration tests that exercise precompute snapshots, readiness detection, remediation generation (mocked), and multi-channel delivery; instrument dashboards for fatigue metrics.
+- P2-AC-08: Accessibility & localisation — ensure remediation text is grade-appropriate, translated for regional languages, and respects the junior protection guardrails.
+
+Planned immediate Phase 2 work (prioritised):
+- Add unit tests asserting plain-text remediation presence in parent email and SMS (tests/unit/worker/services/readinessDropWorker.test.ts).
+- Add integration test harness for worker to exercise precompute + delivery pipelines with mocked channels.
+- Add config flagging so `ALLOW_LLM_CALLS=1` is present only for worker runtime (PM2/process env), not web processes.
+- Improve observability: add metrics for remediation-generated vs fallback responses and a small operator view to replay failed alerts.
 
 
 
