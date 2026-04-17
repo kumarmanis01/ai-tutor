@@ -40,7 +40,10 @@ export async function canSendNotification(parentId: string, type: NotificationTy
   if (!redis) return { allowed: true }
 
   try {
-    if (type === 'milestone' || type === 'digest') {
+    // Weekly cap applies only to milestone notifications. Digests are
+    // scheduled weekly by design and must not be suppressed by the
+    // milestone cap (AC F-PAR-020 must still deliver digests).
+    if (type === 'milestone') {
       const key = weekBucketKey(parentId, type)
       const count = await (redis as any).get(key)
       if (count && Number(count) >= DEFAULT_WEEKLY_CAP) return { allowed: false, reason: 'weekly-cap' }
@@ -67,7 +70,8 @@ export async function recordSendNotification(parentId: string, type: Notificatio
   if (!redis) return
 
   try {
-    if (type === 'milestone' || type === 'digest') {
+    // Only milestone notifications contribute to the weekly cap counter.
+    if (type === 'milestone') {
       const key = weekBucketKey(parentId, type)
       const n = await (redis as any).incr(key)
       if (n === 1) await (redis as any).expire(key, 8 * 24 * 60 * 60)

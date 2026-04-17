@@ -51,15 +51,18 @@ export async function redeemReferral(tx: Prisma.TransactionClient, code: string,
       await tx.user.update({ where: { id: referral.createdBy }, data: { points: { increment: REDEEM_POINTS } } })
     }
 
+    // Create payload for badge upsert (rely on inference to avoid stale Prisma type names)
+    const createBadge = {
+      key: 'referral_invite',
+      name: 'Referral Inviter',
+      description: 'Awarded for inviting friends to join.',
+      icon: 'referral_invite',
+    }
+
     const badge = await tx.badge.upsert({
       where: { key: 'referral_invite' },
       update: {},
-      create: {
-        key: 'referral_invite',
-        name: 'Referral Inviter',
-        description: 'Awarded for inviting friends to join.',
-        icon: 'referral_invite',
-      },
+      create: createBadge,
     })
 
     // Create a ReferralReward for the referrer (one month free). If the referrer

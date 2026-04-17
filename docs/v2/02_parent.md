@@ -356,6 +356,21 @@ AC-04
 Maximum 2 milestone notifications per week to avoid notification fatigue.
 SHOULD
 
+Phase 2 — Milestone Enhancements (Planned)
+
+- P2-AC-01: Per-parent notification preferences — allow parents to choose which milestone types to receive (streaks, chapter mastery, mock completions, readiness thresholds) and per-channel preference (Email / SMS / WhatsApp). Default: all on.
+- P2-AC-02: Milestone aggregation & digest — collapse multiple milestone events into a single daily/weekly milestone digest with highlights and one actionable suggestion to reduce noise.
+- P2-AC-03: Per-parent frequency control & quiet hours — allow parents to set max per-day / per-week caps and quiet hours for delivery; settings respected across channels and across siblings.
+- P2-AC-04: WhatsApp templates & two-way actions — add WhatsApp Business API templates for milestone notifications with quick-replies (Celebrate, Mute, Details) and deep-links back to the dashboard.
+- P2-AC-05: Advanced delivery semantics — idempotent send, DLQ for persistent failures, exponential backoff retries, and per-parent back-pressure handling to avoid gateway throttling.
+- P2-AC-06: Observability & analytics — instrument open/click events, milestone conversion (parent action taken), and fatigue metrics (opt-outs, mute rates) to tune caps and A/B test notification strategies.
+- P2-AC-07: Support tooling — add an operator `parent_notification_history` view and support UI for ops to replay or investigate notifications (audit trail, last_sent timestamps).
+- P2-AC-08: Personalisation guardrails — ensure all milestone narratives remain age-appropriate, non-judgmental, and schema-validated before sending (reuse hallucination & safe response guardrails already in place).
+
+Notes:
+- Implementation: Weekly milestone cap (2/week) is enforced in `lib/notifications/policy.ts` and covered by unit tests at `tests/unit/lib/notifications/policy_milestone.test.ts`. Digests are explicitly exempt from the milestone cap to guarantee weekly delivery (F-PAR-020).
+- Phase 2 next steps: design the per-parent preferences UI; implement WhatsApp channel templating and quick-replies; add DLQ monitoring + observability dashboards; implement E2E worker integration tests covering multi-channel delivery and fatigue metrics.
+
 
 F-PAR-023
 Payment & Account Notifications
@@ -441,6 +456,15 @@ MUST
 AC-06
 Payment confirmation within 5 seconds. If payment gateway times out, transaction status checked via webhook before showing success/failure.
 MUST
+
+Phase 2 — Subscription Purchase Enhancements (Planned)
+
+- P2-AC-01: Staging end-to-end validation — run a full purchase flow in a staging environment using Razorpay test keys, exercise: order creation, webhook reconciliation, `planId` persisted on `PaymentOrder`, `Subscription` activation for child slots, invoice generation, and receipt delivery. Add automated E2E job to CI that can run against test gateway keys (flagged off by default).
+- P2-AC-02: Family-plan UX improvements — allow explicit per-child seat assignment UI, async child invite flow for adding a third child post-purchase, and granular seat transfer audit logs.
+- P2-AC-03: Family plan analytics — record `family_plan_applied` event with `childSlots` and `perChildEffectivePrice` for later pricing experiments and A/B testing.
+- P2-AC-04: Admin tools — add reconciliation dashboard that surfaces `PaymentOrder.planId` mismatches, gateway refunds, and DLQ entries for failed deliveries.
+- P2-AC-05: Billing flexibility — allow mid-cycle child slot increases (upgrade proration) and scheduled decreases (downgrade on renewal) with clear UX and audit trail.
+
 
 
 F-PAR-031
