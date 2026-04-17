@@ -22,6 +22,7 @@
  */
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { toast } from '@/lib/toast';
 import PlanSelector from '@/components/student/subscription/PlanSelector';
 import PaymentMethodSelector from '@/components/student/subscription/PaymentMethodSelector';
 import PaymentConfirmation from '@/components/student/subscription/PaymentConfirmation';
@@ -129,6 +130,32 @@ export default function ParentUpgradeFlow({ childrenList }: ParentUpgradeFlowPro
       setPayLoading(false);
     }
   }, [planId, selectedChildren, isFamily, emiMonths]);
+
+  // Handle retryInstallment query param: if present, call API to enqueue retry
+  useEffect(() => {
+    try {
+      const params = new URLSearchParams(window.location.search)
+      const retry = params.get('retryInstallment')
+      if (retry) {
+        // Attempt to POST to API and show a brief notification
+        fetch('/api/parent/installment/retry', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ installmentId: retry }) })
+          .then((r) => r.json())
+          .then((j) => {
+            if (j?.success) {
+              // shallow UI indication: redirect back without param
+              params.delete('retryInstallment')
+              const url = window.location.pathname + (params.toString() ? `?${params.toString()}` : '')
+              window.history.replaceState({}, '', url)
+              toast('Retry request submitted. We will attempt to charge the installment shortly.')
+            } else {
+              toast('Could not submit retry request. Please contact support.')
+            }
+          }).catch(() => toast('Retry request failed'))
+      }
+    } catch (e) {
+      // ignore
+    }
+  }, [])
 
   if (step === 'select') {
     return (

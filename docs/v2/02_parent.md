@@ -14,6 +14,7 @@ EDIT LOG:
 - 2026-04-17T00:00:00Z | assistant | Add Phase 2 timezone enhancement items and document implementation notes for F-PAR-010 (dual-timezone display); updated roadmap and tests/code references.
  - 2026-04-17T09:50:00Z | copilot | Add Phase 2 enhancement items for F-PAR-020 (Weekly Progress Digest) and note QA send/testing status.
  - 2026-04-17T12:00:00Z | copilot | Implement F-PAR-024 readiness-drop worker: enforce 90-day exam window, include AI remediation summary in parent notifications, add SMS/email plain-text fallback; update docs with Phase 2 planned enhancements.
+ - 2026-04-17T14:00:00Z | copilot | Implement F-PAR-031 EMI schedule UI + retry flow: add client retry modal, toast notifications, inline banners, retry API + enqueue helper, and server-render unit tests; update docs with Phase 2 planned enhancements for subscription management.
 -->
 
 AI HOME TUTOR PLATFORM
@@ -536,6 +537,30 @@ MUST
 AC-06
 Annual plan with EMI: parent can view EMI schedule. Individual EMI failures handled same as subscription payment failure (grace period per instalment).
 SHOULD
+
+
+Phase 2 — Subscription Management Enhancements (Planned)
+
+- P2-AC-01: Staging end-to-end retry validation — exercise targeted retry flow (enqueue -> worker -> charge attempt) using Razorpay test keys; verify webhook reconciliation, invoice generation, and subscription state transitions.
+- P2-AC-02: UI polish & accessibility — confirmation modal for retry, toast notifications, inline success/error banners, improved i18n (Hindi + additional regional languages), and ARIA-compliant controls for EMI schedule interactions.
+- P2-AC-03: Worker integration & idempotency tests — add integration tests that simulate EMI failures, targeted retry jobs, idempotent charge attempts, DLQ replay, and observability hooks for failures and success metrics.
+- P2-AC-04: Observability & audit trail — instrument retry requests, job outcomes, payment attempts, and expose operator tooling to replay or inspect failed retry jobs with full audit context.
+- P2-AC-05: Security & abuse mitigation — rate-limit parent-initiated retries, add anti-fraud heuristics, and require recent ownership verification for high-risk retry attempts.
+- P2-AC-06: Billing & reconciliation — ensure invoices and PDF attachments remain consistent after retries; add reconciliation dashboards for payment gateway mismatches and DLQ investigation.
+- P2-AC-07: UX testing & coverage — add SSR unit tests for billing page, component tests for retry flows, and Playwright E2E tests for the overall parent billing + retry experience.
+
+Planned immediate Phase 2 work (prioritised):
+- Add worker integration tests to validate enqueue -> processing -> payment outcome flows.
+- Add Playwright E2E for the billing page and retry confirmation flow (including Hindi/English copy assertions).
+- Expose audit events for retry attempts and integrate with existing metrics dashboards.
+- Add operator DLQ view to the ops console for manual replays and failure analysis.
+
+Notes — recent implementation (summary):
+- EMI schedule UI: app/(parent)/parent/billing/page.tsx — shows per-installment amounts, due dates, and retry affordance.
+- Client retry surface: components/parent/subscription/RetryInstallmentButton.tsx — confirmation modal, i18n (EN/HI), POSTs to API, shows inline banner and calls `lib/toast.ts`.
+- Retry endpoint: app/api/parent/installment/retry/route.ts and helper lib/installment/retry.ts — enqueues targeted `installment-dunning` job.
+- Tests added: tests/unit/app/parent/billing/page.test.ts (SSR) and tests/unit/components/parent/subscription/RetryInstallmentButton.test.ts (client behavior).
+
 
 
 F-PAR-032
