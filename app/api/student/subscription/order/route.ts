@@ -70,6 +70,21 @@ export async function POST(req: Request) {
   const plan = PLANS[planId as PlanId];
   const amountPaise = rupeesToPaise(plan.billedRupees);
 
+  // Extract client IP for fraud checks and to store with the order notes so
+  // webhooks can use the same IP when auto-redeeming referrals.
+  function getClientIp(req: Request): string | null {
+    try {
+      // Standard proxy header
+      const forwarded = req.headers.get('x-forwarded-for');
+      if (forwarded) return forwarded.split(',')[0].trim();
+      return req.headers.get('x-real-ip') ?? null;
+    } catch (err) {
+      return null;
+    }
+  }
+
+  const purchaserIp = getClientIp(req);
+
   // If this user was referred and the referral is still available, apply 20% off first month
   let finalAmount = amountPaise
   try {
@@ -88,8 +103,7 @@ export async function POST(req: Request) {
     }
   } catch (err) {
     // Non-fatal; proceed with full amount
-    // eslint-disable-next-line no-console
-    console.warn('referral discount check failed', String(err))
+    logger.warn('referral discount check failed', { err: String(err) })
   }
 
   const client = getRazorpayClient();
@@ -99,6 +113,7 @@ export async function POST(req: Request) {
   }
 
   try {
+    const userPrefs = (await prisma.user.findUnique({ where: { id: userId }, select: { preferences: true } }))?.preferences ?? undefined;
     const order = await client.orders.create({
       amount: finalAmount,
       currency: 'INR',
@@ -107,7 +122,8 @@ export async function POST(req: Request) {
         planId,
         durationMonths: String(plan.durationMonths),
         emiMonths: emiMonths ? String(emiMonths) : '',
-        referralCode: (await prisma.user.findUnique({ where: { id: userId }, select: { preferences: true } }))?.preferences?.referredBy ?? '',
+        referralCode: userPrefs && typeof userPrefs === 'object' ? (userPrefs as any).referredBy ?? '' : '',
+        purchaserIp: purchaserIp ?? '',
       },
     });
 
@@ -120,7 +136,8 @@ export async function POST(req: Request) {
       data: {
         studentId: userId,
         razorpayOrderId: order.id,
-        amount: amountPaise,
+        // Persist the actual amount we sent to Razorpay (may include referral discount)
+        amount: finalAmount,
         currency: 'INR',
         status: 'created',
         planMonths: plan.durationMonths,

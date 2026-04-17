@@ -137,7 +137,9 @@ export async function POST(req: Request) {
             const fromPrefs = (userRow?.preferences && typeof userRow.preferences === 'object') ? (userRow.preferences as any).referredBy : undefined
             const referralCode = fromPrefs || notes?.referralCode || notes?.ref
             if (typeof referralCode === 'string' && referralCode) {
-              const redeemRes = await redeemReferral(tx, referralCode, orderRow.studentId, null)
+              // Use purchaser IP saved in order notes to enable same-IP fraud detection
+              const redeemerIp = typeof notes?.purchaserIp === 'string' && notes.purchaserIp ? notes.purchaserIp : (typeof notes?.purchaser_ip === 'string' && notes.purchaser_ip ? notes.purchaser_ip : (typeof notes?.buyerIp === 'string' && notes.buyerIp ? notes.buyerIp : (typeof notes?.buyer_ip === 'string' && notes.buyer_ip ? notes.buyer_ip : null)));
+              const redeemRes = await redeemReferral(tx, referralCode, orderRow.studentId, redeemerIp)
               if (redeemRes.status !== 200) {
                 logger.warn('auto-redeem referral returned non-200', { orderId, referralCode, res: redeemRes })
               }
@@ -152,19 +154,20 @@ export async function POST(req: Request) {
             await tx.payment.update({ where: { id: existing.id }, data: { status: 'success', transactionId: paymentId, orderId, meta: { ...(existing.meta || {}), notes } } });
             await recordPaymentEvent(tx, { paymentId: existing.id, userId: orderRow.studentId, provider: 'razorpay', providerIdempotencyKey: idempotencyHeader || undefined, transactionId: paymentId, orderId, eventType: 'payment.updated.webhook', payload: { notes }, amount: payment.amount, status: 'success' })
             // If an existing failed/updated payment now became successful, also attempt referral redemption
-            try {
-              const userRow = await tx.user.findUnique({ where: { id: orderRow.studentId }, select: { preferences: true } });
-              const fromPrefs = (userRow?.preferences && typeof userRow.preferences === 'object') ? (userRow.preferences as any).referredBy : undefined
-              const referralCode = fromPrefs || notes?.referralCode || notes?.ref
-              if (typeof referralCode === 'string' && referralCode) {
-                const redeemRes = await redeemReferral(tx, referralCode, orderRow.studentId, null)
-                if (redeemRes.status !== 200) {
-                  logger.warn('auto-redeem referral returned non-200 (updated payment)', { orderId, referralCode, res: redeemRes })
+              try {
+                const userRow = await tx.user.findUnique({ where: { id: orderRow.studentId }, select: { preferences: true } });
+                const fromPrefs = (userRow?.preferences && typeof userRow.preferences === 'object') ? (userRow.preferences as any).referredBy : undefined
+                const referralCode = fromPrefs || notes?.referralCode || notes?.ref
+                if (typeof referralCode === 'string' && referralCode) {
+                  const redeemerIp = typeof notes?.purchaserIp === 'string' && notes.purchaserIp ? notes.purchaserIp : (typeof notes?.purchaser_ip === 'string' && notes.purchaser_ip ? notes.purchaser_ip : (typeof notes?.buyerIp === 'string' && notes.buyerIp ? notes.buyerIp : (typeof notes?.buyer_ip === 'string' && notes.buyer_ip ? notes.buyer_ip : null)));
+                  const redeemRes = await redeemReferral(tx, referralCode, orderRow.studentId, redeemerIp)
+                  if (redeemRes.status !== 200) {
+                    logger.warn('auto-redeem referral returned non-200 (updated payment)', { orderId, referralCode, res: redeemRes })
+                  }
                 }
+              } catch (err) {
+                logger.warn('auto-redeem referral failed (updated payment)', { err, orderId })
               }
-            } catch (err) {
-              logger.warn('auto-redeem referral failed (updated payment)', { err, orderId })
-            }
           }
         }
 
