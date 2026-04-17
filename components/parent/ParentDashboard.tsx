@@ -31,13 +31,13 @@ interface ChildData {
 }
 
 interface ParentDashboardProps {
-  children: ChildData[]
+  childrenData: ChildData[]
   parentTimezone?: string | null
 }
 
-export default function ParentDashboard({ children, parentTimezone }: ParentDashboardProps) {
+export default function ParentDashboard({ childrenData, parentTimezone }: ParentDashboardProps) {
   // ── Empty state ──────────────────────────────────────────────────────────
-  if (children.length === 0) {
+  if (childrenData.length === 0) {
     return (
       <main className="mx-auto max-w-2xl px-4 py-10 text-center">
         <p className="text-4xl">👨‍👩‍👧</p>
@@ -65,7 +65,7 @@ export default function ParentDashboard({ children, parentTimezone }: ParentDash
         My children
       </h1>
 
-      {children.map((child) => (
+      {childrenData.map((child) => (
         <section
           key={child.studentId}
           className="rounded-xl border border-gray-200 bg-white px-5 py-5 shadow-sm dark:border-gray-700 dark:bg-gray-900"

@@ -139,9 +139,5 @@ export default async function ParentDashboardPage() {
 
   const parentTimezone = parent?.timezone ?? null
 
-  return (
-    <ParentDashboard parentTimezone={parentTimezone}>
-      {validChildren}
-    </ParentDashboard>
-  )
+  return <ParentDashboard parentTimezone={parentTimezone} childrenData={validChildren} />
 }

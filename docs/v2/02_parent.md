@@ -1,4 +1,19 @@
 
+<!--
+FILE OBJECTIVE:
+- Parent actor approach document covering monitoring, trust and subscription management; includes Parent Dashboard (F-PAR-010) requirements.
+
+LINKED UNIT TEST:
+- tests/unit/docs/parent_docs.spec.ts
+
+COPILOT INSTRUCTIONS FOLLOWED:
+- /docs/COPILOT_GUARDRAILS.md
+- .github/copilot-instructions.md
+
+EDIT LOG:
+- 2026-04-17T00:00:00Z | assistant | Add Phase 2 timezone enhancement items and document implementation notes for F-PAR-010 (dual-timezone display); updated roadmap and tests/code references.
+-->
+
 AI HOME TUTOR PLATFORM
 Parent Actor
 Approach Document — Monitoring, Trust & Subscription Management
@@ -178,6 +193,16 @@ SHOULD
 AC-06
 Dashboard loads in < 2 seconds. No empty states — always shows something meaningful even in the first week.
 MUST
+
+Phase 2 — Timezone & UX enhancements (planned)
+
+- P2-AC-01: Timezone toggle — allow parent to choose display mode per-child: `Parent time`, `Student time`, or `Both` (default: `Both` when zones differ).
+- P2-AC-02: Detailed session timestamps — show both local timestamps on the last-10 sessions list and in the session detail view when timezones differ, with hover/copy-to-clipboard ISO timestamp.
+- P2-AC-03: Digest scheduling resilience — support DST changes and automatic parent timezone detection with optional manual override in account settings.
+- P2-AC-04: Notification preview — include a small timezone label in weekly digest emails and SMS: "Times shown in your timezone (Asia/Kolkata) — view in student timezone" deep link.
+- P2-AC-05: Accessibility — ensure timezone labels have `aria-label` descriptions and are localised (Hindi + English) for parents with low digital literacy.
+- P2-AC-06: Telemetry & audit — log timezone mismatch events (parent != student) to help evaluate NRI/remote parent usage and prioritise perf/UI follow-ups.
+
 
 
 F-PAR-011
