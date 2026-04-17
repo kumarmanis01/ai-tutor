@@ -106,6 +106,36 @@ export function parentOtpHtml(otp: string, studentName: string): string {
   `;
 }
 
+export function parentWelcomeHtml(parentName: string | null, studentName: string): string {
+  const displayName = parentName ? parentName : `Parent of ${studentName}`;
+  return `
+    <div style="${BASE}">
+      ${LOGO}
+      <h2 style="color:#534AB7;">Welcome — your parent account is confirmed</h2>
+      <p>Hi ${displayName},</p>
+      <p>Thanks for verifying your parent access for <strong>${studentName}</strong>. You can now:
+      </p>
+      <ul style="line-height:1.6;color:#374151;">
+        <li>View weekly learning reports and session summaries for ${studentName}.</li>
+        <li>See readiness scores, streaks, and topic-wise progress.</li>
+        <li>Receive optional weekly digests and inactivity alerts (configurable in your parent settings).</li>
+      </ul>
+
+      <h3 style="color:#534AB7;font-size:16px;margin-top:18px;">Privacy summary</h3>
+      <p style="color:#374151;line-height:1.6;">
+        We collect and store learning analytics (sessions, answers, progress scores) to personalise instruction and show progress. We do not share personal data with third parties except vendors required to operate the service. Raw session transcripts used for model evaluation are pseudonymised and access-restricted. You can request data export or deletion by contacting support@spinzy.in.
+      </p>
+
+      <a href="https://spinzyacademy.com/parent/dashboard" style="${BTN}">Open parent dashboard</a>
+
+      <p style="color:#888;font-size:13px;margin-top:16px;">
+        Questions? Reply to this email or reach us at support@spinzy.in
+      </p>
+      ${FOOTER}
+    </div>
+  `;
+}
+
 export function paymentReceiptHtml(data: {
   studentName: string;
   plan: string;
