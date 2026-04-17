@@ -11,6 +11,7 @@
  *
  * EDIT LOG:
  * - 2026-04-14T13:00:00Z | copilot | add fallback DB fileUrl when R2 upload fails to satisfy integration tests
+ * - 2026-04-17T00:00:00Z | copilot | add generateAnnualInvoicesPdf to merge per-invoice PDFs for annual summary
  */
 
 import { PDFDocument, StandardFonts } from 'pdf-lib';
@@ -429,3 +430,89 @@ export async function createInvoiceForPayment(opts: InvoiceCreateOpts) {
 
 const Invoices = { generateInvoicePdf, createInvoiceForPayment };
 export default Invoices;
+
+/**
+ * Generate a single merged PDF containing all invoices for a user
+ * between fyStart and fyEnd (inclusive). Uses per-invoice `fileUrl`
+ * when available, falling back to regenerating the invoice PDF.
+ */
+export async function generateAnnualInvoicesPdf(userId: string, fyStart: Date, fyEnd: Date): Promise<Buffer> {
+  // Lazy-import prisma so simple PDF generation callers don't pull the client
+  const { prisma } = await import('@/lib/prisma');
+
+  const rows = await prisma.invoice.findMany({
+    where: { userId, createdAt: { gte: fyStart, lte: fyEnd } },
+    orderBy: { invoiceNumber: 'asc' },
+    select: {
+      id: true,
+      invoiceNumber: true,
+      amount: true,
+      currency: true,
+      fileUrl: true,
+      createdAt: true,
+      taxBreakdown: true,
+      hsnCode: true,
+      gstin: true,
+    },
+  });
+
+  if (!rows || rows.length === 0) {
+    throw new Error('no invoices found for requested financial year');
+  }
+
+  const outPdf = await PDFDocument.create();
+
+  for (const inv of rows) {
+    let bytes: Uint8Array | Buffer;
+
+    if (inv.fileUrl) {
+      try {
+        const resp = await fetch(inv.fileUrl);
+        if (!resp.ok) throw new Error(`failed to download ${inv.fileUrl}`);
+        const ab = await resp.arrayBuffer();
+        bytes = Buffer.from(ab);
+      } catch (e) {
+        logger.warn('[invoices] failed to download invoice PDF, regenerating', { invoiceId: inv.id, error: String(e) });
+        bytes = await generateInvoicePdf({
+          invoiceNumber: inv.invoiceNumber,
+          amountPaise: inv.amount,
+          totalRupees: Math.round(inv.amount) / 100,
+          baseRupees: undefined,
+          gstRupees: undefined,
+          billingCycle: undefined,
+          date: inv.createdAt?.toISOString().slice(0, 10),
+          gstin: inv.gstin ?? null,
+          hsn: inv.hsnCode ?? null,
+          taxBreakdown: inv.taxBreakdown,
+        });
+      }
+    } else {
+      bytes = await generateInvoicePdf({
+        invoiceNumber: inv.invoiceNumber,
+        amountPaise: inv.amount,
+        totalRupees: Math.round(inv.amount) / 100,
+        baseRupees: undefined,
+        gstRupees: undefined,
+        billingCycle: undefined,
+        date: inv.createdAt?.toISOString().slice(0, 10),
+        gstin: inv.gstin ?? null,
+        hsn: inv.hsnCode ?? null,
+        taxBreakdown: inv.taxBreakdown,
+      });
+    }
+
+    // Normalize to Buffer
+    if (!Buffer.isBuffer(bytes)) bytes = Buffer.from(bytes as any);
+
+    try {
+      const donor = await PDFDocument.load(bytes as Uint8Array);
+      const pages = await outPdf.copyPages(donor, donor.getPageIndices());
+      for (const p of pages) outPdf.addPage(p);
+    } catch (e) {
+      logger.warn('[invoices] skipping invalid invoice PDF during merge', { invoiceId: inv.id, error: String(e) });
+    }
+  }
+
+  const merged = await outPdf.save();
+  return Buffer.from(merged);
+}
