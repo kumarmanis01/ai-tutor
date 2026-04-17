@@ -770,6 +770,36 @@ F-STU-P2-008
 ARIA compliance, dyslexia font, extended time mode. Important but not blocking initial launch.
 
 
+Additional Phase 2 — Freemium Observability & Tests
+
+- Feature: Freemium job observability
+	Code: F-STU-P2-009
+	Why Deferred: Requires metrics & dashboard work (Prometheus / StatsD + Grafana) and alerting rules. Not required for MVP delivery of freemium UX but important for operational reliability at scale.
+	Acceptance Criteria:
+	- Emit per-run metrics from `worker/jobs/freemiumResetNotifications`:
+		- `freemium.reset_notifications.eligible` (count of eligible students)
+		- `freemium.reset_notifications.sent` (count of notifications sent)
+		- `freemium.reset_notifications.failures` (count of failed sends)
+	- Dashboards display 7d/30d trends and a firing alert when failures rate > 5% over 1h.
+	- Unit tests exercise metric emission using a metrics mock.
+
+- Feature: Freemium integration test (end-to-end)
+	Code: F-STU-P2-010
+	Why Deferred: Requires test harness seeding and controlled push send mocks. Valuable for regression coverage but not blocking the initial job implementation.
+	Acceptance Criteria:
+	- Integration test seeds `FreeTierUsage` rows for a small set of students with `sessionsUsed > 0` and `subscriptionStatus='free'`.
+	- Run job in test harness and assert that `sendPushSafe` was called expected number of times and DB unchanged (idempotent).
+	- Test included under `tests/integration/worker/` and runnable in CI with a test DB.
+
+- Feature: Scheduler smoke test (CI dry-run)
+	Code: F-STU-P2-011
+	Why Deferred: Running the full scheduler in CI can be noisy; a lightweight smoke test that imports `worker/scheduler` and runs `runFreemiumResetNotifications()` in dry-run mode validates wiring.
+	Acceptance Criteria:
+	- A CI-only test imports the scheduler or job module and invokes the freemium job with push sending mocked.
+	- Test verifies no uncaught exceptions and that the job returns a valid `FreemiumResetResult` object.
+	- Marked as `ciOnly` and excluded from slower integration gates until infra available.
+
+
 
 8. Non-Functional Requirements
 Requirement
