@@ -23,9 +23,9 @@ module.exports = {
     // NOTE: avoid overly-broad 'lib/' fallback mappings — they accidentally
     // remap node_modules internal paths (e.g. jose/dist/.../lib/*.js).
     // Explicit relative patterns below handle the common cases we need.
-    // Relative lib imports from nested folders (e.g. '../../lib/foo.js')
-    '^\\.\\.\\/\\.\\.\\/lib\\/(.*)\\.js$': '<rootDir>/lib/$1.ts',
-    '^\\.\\.\\/lib\\/(.*)\\.js$': '<rootDir>/lib/$1.ts',
+      // NOTE: do not map generic relative `../lib/*.js` imports — they
+      // accidentally match internal relative imports inside node_modules
+      // packages (e.g. openai, jose) and break Jest resolution.
     '^@/(.*)$': ['<rootDir>/src/$1', '<rootDir>/$1']
   },
   moduleDirectories: ['node_modules', '<rootDir>'],

@@ -16,8 +16,6 @@
  * - 2026-04-16T00:00:00Z | copilot | created — addresses PR review comments on unique-constraint handling
  */
 
-import { POST } from '../../../../../../app/api/admin/regeneration-jobs/route';
-
 // ── Mocks ────────────────────────────────────────────────────────────────────
 
 jest.mock('@/lib/auth', () => ({ requireAdminOrModerator: jest.fn() }));
@@ -29,6 +27,7 @@ jest.mock('@/regeneration/targetMap', () => ({
   getCandidatesFor: jest.fn(() => []),
 }));
 
+// Create mock objects first, then register the prisma mock at runtime
 const mockRegenerationJob = {
   create: jest.fn(),
   findFirst: jest.fn(),
@@ -39,7 +38,8 @@ const mockContentSuggestion = {
   findMany: jest.fn(),
 };
 
-jest.mock('@/lib/prisma', () => ({
+// Use doMock (not hoisted) so the factory can reference the local mock objects
+jest.doMock('@/lib/prisma', () => ({
   prisma: {
     contentSuggestion: mockContentSuggestion,
     regenerationJob: mockRegenerationJob,
@@ -47,6 +47,10 @@ jest.mock('@/lib/prisma', () => ({
     $queryRaw: jest.fn(async () => []),
   },
 }));
+
+// Import the route AFTER setting up the runtime mocks to ensure the module
+// under test receives the mocked prisma instance.
+const { POST } = require('../../../../../../app/api/admin/regeneration-jobs/route');
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 

@@ -723,6 +723,22 @@ AC-07
 Family plan: one subscription covers up to 3 child profiles. Price is 1.8x single price. Managed from parent account.
 SHOULD
 
+Phase 2 — Family Plan Enhancements
+
+The following enhancements are planned for Phase 2 to expand and harden the Family plan experience. These are out of MVP scope but should be implemented once the core billing loop is validated in production.
+
+- **Family seat management:** allow parents to add/remove child profiles (invite flow), transfer seats between parent accounts, and view seat audit logs. Include email/OTP verification for seat claims.
+- **Flexible slot options & pricing experiments:** support configurable slot counts (4+ children) and per-child add‑ons; run A/B pricing experiments to validate the 1.8x multiplier and alternatives.
+- **Upgrade/downgrade proration rules:** implement deterministic proration math, immediate-apply vs scheduled-change options, and safe credit/refund flows. Provide unit and integration tests for edge cases.
+- **Referral & promo integration:** enable referral discounts and promo codes to apply correctly to family subscriptions, with fraud detection and safe rollback paths.
+- **Billing metadata & reconciliation:** extend order metadata schema (Razorpay `notes`) for family subscriptions and implement reconciliation jobs to surface mismatches and auto-retry logic.
+- **Admin tooling & manual adjustments:** admin console to view/modify family subscriptions, revoke seats, apply credits, and inspect referral audits.
+- **End-to-end billing tests:** CI‑gated integration tests for order creation, webhook verification, refund/proration, and referral credit application, including mock payment gateway fixtures.
+- **Migration & data hygiene:** one-time migration script to normalise existing subscriptions to the canonical family schema (childSlots=3, multiplier=1.8) with dry-run and rollback support.
+- **Monitoring & alerts:** metrics and alerts for family churn, failed family payments, reconciliation failures, and suspicious referral activity.
+
+Each Phase 2 item must include acceptance tests (happy, edge, error paths), UI mocks, and an owner assigned in the backlog.
+
 
 F-STU-042
 Referral Programme
