@@ -396,6 +396,36 @@ AC-07
 LTV / CAC ratio: tracked manually from MRR data + marketing spend. Target > 3:1 by Month 6.
 SHOULD
 
+Implementation Status — AC-07 (Automated LTV/CAC): COMPLETED
+
+- Summary: Implemented automation for LTV/CAC (F-ADM-030) to replace the previous manual process. Key deliverables:
+	- Prisma models: `MarketingSpend`, `LtvSnapshot` and SQL migrations under `prisma/migrations/20260417020000_add_marketing_spend` and `prisma/migrations/20260417030000_add_ltv_snapshot`.
+	- Scheduled snapshot job: `jobs/metricsSnapshot.ts` (exports `runSnapshot(createdBy?)`) and registration in `lib/jobs/registerJobs.ts` for daily snapshots.
+	- On-demand metrics API: `app/api/admin/metrics/ltv-cac/route.ts` (month-to-date by default) and history API at `app/api/admin/metrics/ltv-cac/history/route.ts`.
+	- Admin UI: minimal dashboard at `app/admin/metrics/ltv-cac/page.tsx` showing current metrics and recent snapshots.
+	- Admin CLI: `scripts/insert-marketing-spend.ts` to insert monthly marketing spend entries (paise-based amounts).
+	- Unit tests: basic test coverage for the metrics API at `tests/unit/app/api/admin/metrics_ltv_cac.spec.ts`.
+
+Notes / Outstanding dev tasks (pre-flight before production runs):
+- Apply database migrations and generate Prisma client: `npx prisma migrate dev --name add_marketing_and_ltv_snapshot` then `npx prisma generate`.
+- Resolve Prisma schema validation tooling warning: CI/type-check flagged `datasource.url` deprecation (may be a Prisma CLI/tooling mismatch vs project lockfile). Align local Prisma CLI version or adapt `prisma.config.ts` as required.
+- Add integration tests for `jobs/metricsSnapshot` persistence and for `scripts/insert-marketing-spend` CLI behavior.
+- Verify worker/orchestrator scheduling and run a one-off `runSnapshot()` to create initial snapshot row.
+
+Phase 2 — Growth Metrics Enhancements (Planned)
+
+These are recommended Phase 2 items to make the LTV/CAC pipeline production-ready and more useful to ops and business stakeholders:
+
+- Centralize metric SQL: move duplicated raw SQL aggregators into a shared helper (`lib/metrics/aggregator.ts`) used by API, job, and admin page to ensure consistency and single-source-of-truth.
+- End-to-end tests: add an integration test that runs the snapshot job against a test DB, asserts `LtvSnapshot` creation, and validates basic calculations (ARPU, churn, LTV, CAC, ratio).
+- Metrics dashboard & alerts: build a lightweight admin dashboard (Grafana/Prometheus or internal UI) with time series of `ltv_paise`, `cac_paise`, `ltv_cac_ratio`; add alerting rules (e.g., `ltv_cac_ratio < 2` triggers warning).
+- Marketing spend UI: expose a simple admin form to add/edit monthly `MarketingSpend` entries with validation and audit logging (createdBy + notes). Enforce TTL/soft-delete policies for historical spend edits.
+- Channel breakdowns & attribution: extend snapshots to include `marketing_spend_by_channel` and CAC per-channel; add endpoint to query CAC by channel and time window.
+- Backfill tooling & idempotency: provide safe backfill scripts and idempotent snapshot runner to re-compute historical snapshots where marketing spend was entered retrospectively.
+- Observability & provenance: log inputs to snapshot runs (start/end dates, source of marketing spend) and persist `createdBy` and `notes` to `LtvSnapshot` for auditability.
+- CI gates & coverage: require unit + integration tests for job and CLI in CI; add a smoke job that runs snapshot in a staging DB during deploy pre-flight.
+
+
 
 F-ADM-031
 Learning Outcome Metrics
