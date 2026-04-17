@@ -12,6 +12,8 @@
 /// - 2026-04-10T00:00:00Z | copilot | add PaymentCustomer & PaymentMethod models for stored payment methods
 /// - 2026-04-15T00:10:00Z | copilot | add Trial relation field to User to satisfy Prisma relation
 /// - 2026-04-16T10:00:00Z | copilot | add anomalyFlags Json? to Message and AITutorTurnLog
+/// - 2026-04-17T12:00:00Z | copilot | add couponCode to PaymentOrder to persist coupon metadata with payment orders
+/// - 2026-04-17T12:10:00Z | copilot | add opposite relation fields: couponRedemptions (User, Subscription), doubtEscalations (DoubtKb)
 generator client {
   provider = "prisma-client-js"
 }
@@ -135,6 +137,7 @@ model User {
   consents                    Consent[]
   parentProfile               ParentProfile?
   doubtEscalations            DoubtEscalation[]
+  couponRedemptions           CouponRedemption[]
   sessionQuestionFlags        SessionQuestionFlag[]
   pushSubscriptions           PushSubscriptionRecord[]
   deletionRequest             DeletionRequest?
@@ -153,6 +156,8 @@ model PaymentOrder {
   planMonths             Int       @default(1)
   /// PlanId from lib/billing/plans.ts (e.g. 'standard_monthly'). Null for legacy orders created before Sprint A.
   planId                 String?
+  /// Optional coupon code applied to this order (persisted so webhooks and reconciliation can reference it)
+  couponCode             String?
   createdAt              DateTime  @default(now())
   paidAt                 DateTime?
 
@@ -449,7 +454,8 @@ model Subscription {
   user                   User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   // Installments linked to this subscription (one-to-many)
-  installments Installment[]
+  installments      Installment[]
+  couponRedemptions CouponRedemption[]
 
   @@index([userId])
   @@index([razorpaySubscriptionId])
@@ -713,29 +719,29 @@ enum RecurrenceType {
 }
 
 model Coupon {
-  id              String        @id @default(cuid())
-  code            String        @unique
-  description     String?
-  type            CouponType
+  id             String         @id @default(cuid())
+  code           String         @unique
+  description    String?
+  type           CouponType
   /// For FIXED: amount in paise. For PERCENT: percent as integer (e.g. 20 => 20%).
-  amount          Int
-  currency        String        @default("INR")
-  recurrence      RecurrenceType @default(ONE_TIME)
-  scope           CouponScope   @default(GLOBAL)
-  studentId       String?
-  batchId         String?
-  maxUses         Int?
-  uses            Int           @default(0)
-  maxUsesPerUser  Int?
-  validFrom       DateTime?
-  validUntil      DateTime?
-  active          Boolean       @default(true)
-  createdBy       String?
-  createdAt       DateTime      @default(now())
-  updatedAt       DateTime      @updatedAt
-  metadata        Json?
+  amount         Int
+  currency       String         @default("INR")
+  recurrence     RecurrenceType @default(ONE_TIME)
+  scope          CouponScope    @default(GLOBAL)
+  studentId      String?
+  batchId        String?
+  maxUses        Int?
+  uses           Int            @default(0)
+  maxUsesPerUser Int?
+  validFrom      DateTime?
+  validUntil     DateTime?
+  active         Boolean        @default(true)
+  createdBy      String?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  metadata       Json?
 
-  redemptions     CouponRedemption[]
+  redemptions CouponRedemption[]
 
   @@index([code])
   @@index([studentId])
@@ -751,9 +757,9 @@ model CouponRedemption {
   metadata       Json?
   createdAt      DateTime @default(now())
 
-  coupon        Coupon       @relation(fields: [couponId], references: [id], onDelete: Cascade)
-  user          User?        @relation(fields: [userId], references: [id], onDelete: SetNull)
-  subscription  Subscription? @relation(fields: [subscriptionId], references: [id], onDelete: SetNull)
+  coupon       Coupon        @relation(fields: [couponId], references: [id], onDelete: Cascade)
+  user         User?         @relation(fields: [userId], references: [id], onDelete: SetNull)
+  subscription Subscription? @relation(fields: [subscriptionId], references: [id], onDelete: SetNull)
 
   @@index([couponId])
   @@index([userId])
@@ -797,7 +803,7 @@ model MarketingSpend {
   periodStart DateTime
   periodEnd   DateTime
   channel     String?
-  amount      Int      // paise
+  amount      Int // paise
   currency    String   @default("INR")
   notes       String?
   createdBy   String?
@@ -806,6 +812,26 @@ model MarketingSpend {
 
   @@index([periodStart])
   @@index([periodEnd])
+}
+
+/// Monthly snapshots of LTV/CAC metrics for trend analysis.
+model LtvSnapshot {
+  id                    String    @id @default(cuid())
+  snapshotAt            DateTime  @default(now())
+  windowStart           DateTime?
+  windowEnd             DateTime?
+  mrr_paise             Int       @default(0)
+  active_subscriptions  Int       @default(0)
+  arpu_paise            Int       @default(0)
+  ltv_paise             Int       @default(0)
+  marketing_spend_paise Int       @default(0)
+  new_customers         Int       @default(0)
+  cac_paise             Int?
+  ltv_cac_ratio         Float?
+  createdBy             String?
+  createdAt             DateTime  @default(now())
+
+  @@index([snapshotAt])
 }
 
 model ApiUsage {
@@ -2007,6 +2033,7 @@ model DoubtKb {
   timesServed        Int                          @default(1)
   alternatePhrasings String[]                     @default([])
   updatedAt          DateTime                     @default(now()) @updatedAt
+  doubtEscalations   DoubtEscalation[]
 
   @@index([studentId, conceptId])
   @@index([conceptId])
