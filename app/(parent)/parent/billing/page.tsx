@@ -39,13 +39,15 @@ export default async function ParentBillingPage() {
 
   const links = await prisma.parentStudent.findMany({ where: { parentId, status: 'active' }, select: { studentId: true } });
 
-  const children = await Promise.all(
-    links.map(async ({ studentId }) => {
-      const student = await prisma.user.findUnique({ where: { id: studentId }, select: { id: true, name: true, grade: true, board: true } });
-      if (!student) return null;
-      return { studentId: student.id, name: student.name ?? 'Student', grade: student.grade ?? '', board: student.board ?? '' };
-    }),
-  );
+  const children: Array<{ studentId: string; name: string; grade: string; board: string } | null> = []
+  for (const { studentId } of links) {
+    const student = await prisma.user.findUnique({ where: { id: studentId }, select: { id: true, name: true, grade: true, board: true } });
+    if (!student) {
+      children.push(null)
+      continue
+    }
+    children.push({ studentId: student.id, name: student.name ?? 'Student', grade: student.grade ?? '', board: student.board ?? '' })
+  }
 
   const validChildren = children.filter((c): c is NonNullable<typeof c> => c !== null);
 

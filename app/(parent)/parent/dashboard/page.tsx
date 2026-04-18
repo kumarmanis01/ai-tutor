@@ -102,36 +102,43 @@ export default async function ParentDashboardPage() {
     if (sd.slug) subjectDefByKey.set(sd.slug, { id: sd.id, name: sd.name })
   }
 
-  // 4. Compute readiness per child in parallel (each child's subjects are parallel too)
-  const children = await Promise.all(
-    studentIds.map(async (studentId) => {
-      const student = studentMap.get(studentId)
-      if (!student) return null
+  // 4. Compute readiness per child sequentially to avoid DB connection bursts
+  const children: Array<{
+    studentId: string
+    name: string
+    grade: string
+    board: string
+    timezone: string | null
+    streak: number
+    sessionsThisWeek: number
+    readiness: Array<{ subjectId: string; subjectName: string; score: number }>
+  }> = []
+  for (const studentId of studentIds) {
+    const student = studentMap.get(studentId)
+    if (!student) continue
 
-      const subjectNames = (student.subjects as string[]).filter(Boolean)
-      const resolvedDefs = subjectNames
-        .map((n) => subjectDefByKey.get(n))
-        .filter((sd): sd is { id: string; name: string } => sd !== undefined)
+    const subjectNames = (student.subjects as string[]).filter(Boolean)
+    const resolvedDefs = subjectNames
+      .map((n) => subjectDefByKey.get(n))
+      .filter((sd): sd is { id: string; name: string } => sd !== undefined)
 
-      const readiness = await Promise.all(
-        resolvedDefs.map(async (sd) => {
-          const result = await computeReadinessScore(studentId, sd.id).catch(() => null)
-          return { subjectId: sd.id, subjectName: sd.name, score: result?.score ?? 0 }
-        }),
-      )
+    const readiness: Array<{ subjectId: string; subjectName: string; score: number }> = []
+    for (const sd of resolvedDefs) {
+      const result = await computeReadinessScore(studentId, sd.id).catch(() => null)
+      readiness.push({ subjectId: sd.id, subjectName: sd.name, score: result?.score ?? 0 })
+    }
 
-      return {
-        studentId,
-        name: student.name ?? 'Student',
-        grade: student.grade ?? '',
-        board: student.board ?? '',
-        timezone: student.timezone ?? null,
-        streak: streakMap.get(studentId) ?? 0,
-        sessionsThisWeek: sessionCountMap.get(studentId) ?? 0,
-        readiness,
-      }
-    }),
-  )
+    children.push({
+      studentId,
+      name: student.name ?? 'Student',
+      grade: student.grade ?? '',
+      board: student.board ?? '',
+      timezone: student.timezone ?? null,
+      streak: streakMap.get(studentId) ?? 0,
+      sessionsThisWeek: sessionCountMap.get(studentId) ?? 0,
+      readiness,
+    })
+  }
 
   const validChildren = children.filter(
     (c): c is NonNullable<typeof c> => c !== null,

@@ -180,22 +180,21 @@ export default async function StudentHomeDashboardPage() {
     }
   }
 
-  const readinessResults = await Promise.all(
-    subjects.map(async (sub) => {
-      const result = await computeReadinessScore(userId, sub.id).catch(() => ({ score: 0, label: 'critical' as const, chapters: [] }))
-      const diagnostic = await prisma.diagnosticSession.findFirst({
-        where: { studentId: userId, subjectId: sub.id, status: 'COMPLETED' },
-        select: { id: true },
-      }).catch(() => null)
-      return {
-        subjectId: sub.id,
-        subjectName: sub.name,
-        score: result.score,
-        predictedRange: (result as any).predictedRange ?? undefined,
-        diagnosticDone: !!diagnostic,
-      }
-    }),
-  )
+  const readinessResults: Array<{ subjectId: string; subjectName: string; score: number; predictedRange?: any; diagnosticDone: boolean }> = []
+  for (const sub of subjects) {
+    const result = await computeReadinessScore(userId, sub.id).catch(() => ({ score: 0, label: 'critical' as const, chapters: [] }))
+    const diagnostic = await prisma.diagnosticSession.findFirst({
+      where: { studentId: userId, subjectId: sub.id, status: 'COMPLETED' },
+      select: { id: true },
+    }).catch(() => null)
+    readinessResults.push({
+      subjectId: sub.id,
+      subjectName: sub.name,
+      score: result.score,
+      predictedRange: (result as any).predictedRange ?? undefined,
+      diagnosticDone: !!diagnostic,
+    })
+  }
 
   // ── Weekly study strip data ──────────────────────────────────────────────────
   const DAY_LABELS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
