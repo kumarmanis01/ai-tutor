@@ -276,7 +276,7 @@ export default async function StudentHomeDashboardPage() {
               </div>
               <div>
                 <p className="text-sm font-bold text-[#E24B4A]">Exam approaching</p>
-                <p className="text-xs text-[#E24B4A]/80">Focus mode on — only exam-relevant actions shown.</p>
+                <p className="text-xs text-[#E24B4A]/80">Focus mode on -- only exam-relevant actions shown.</p>
               </div>
             </div>
             <CrunchModeToggle />

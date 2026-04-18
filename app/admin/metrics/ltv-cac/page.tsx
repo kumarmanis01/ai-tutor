@@ -71,13 +71,13 @@ export default async function Page() {
   const snapshots = await fetchSnapshots(30)
 
   const formatINR = (paise: number | null | undefined) => {
-    if (paise == null) return '—'
+    if (paise == null) return '--'
     return `₹${(paise/100).toFixed(2)}`
   }
 
   return (
     <div className="p-6">
-      <h1 className="text-2xl font-semibold mb-4">LTV / CAC — Metrics</h1>
+      <h1 className="text-2xl font-semibold mb-4">LTV / CAC -- Metrics</h1>
       <div className="grid grid-cols-3 gap-4 mb-6">
         <div className="p-4 border rounded bg-white dark:bg-gray-800">
           <div className="text-sm text-gray-500">MRR</div>
@@ -89,7 +89,7 @@ export default async function Page() {
         </div>
         <div className="p-4 border rounded bg-white dark:bg-gray-800">
           <div className="text-sm text-gray-500">LTV / CAC Ratio</div>
-          <div className="text-xl font-bold">{metrics.ltv_cac_ratio == null ? '—' : Number(metrics.ltv_cac_ratio).toFixed(2)}</div>
+          <div className="text-xl font-bold">{metrics.ltv_cac_ratio == null ? '--' : Number(metrics.ltv_cac_ratio).toFixed(2)}</div>
         </div>
       </div>
 
@@ -113,8 +113,8 @@ export default async function Page() {
                 <td>{formatINR(s.mrr_paise)}</td>
                 <td>{formatINR(s.marketing_spend_paise)}</td>
                 <td>{s.new_customers}</td>
-                <td>{s.cac_paise == null ? '—' : formatINR(s.cac_paise)}</td>
-                <td>{s.ltv_cac_ratio == null ? '—' : Number(s.ltv_cac_ratio).toFixed(2)}</td>
+                <td>{s.cac_paise == null ? '--' : formatINR(s.cac_paise)}</td>
+                <td>{s.ltv_cac_ratio == null ? '--' : Number(s.ltv_cac_ratio).toFixed(2)}</td>
               </tr>
             ))}
           </tbody>

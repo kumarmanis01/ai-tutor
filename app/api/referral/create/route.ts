@@ -19,7 +19,7 @@ export async function POST(req: NextRequest) {
   if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const creatorIp = getClientIp(req);
-  // Ensure each student has a single referral code — return existing if present
+  // Ensure each student has a single referral code -- return existing if present
   let referral = await prisma.referral.findFirst({ where: { createdBy: session.user.id } });
   if (!referral) {
     const code = nano();

@@ -108,7 +108,7 @@ export async function POST(req: Request) {
     logger.warn('referral discount check failed', { err: String(err) })
   }
 
-  // Optional coupon code from client — validate and apply discount (do not mark redeemed yet)
+  // Optional coupon code from client -- validate and apply discount (do not mark redeemed yet)
   const couponCode = typeof b.couponCode === 'string' ? (b.couponCode as string).trim() : undefined
   if (couponCode) {
     try {

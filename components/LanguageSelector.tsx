@@ -108,7 +108,7 @@ export default function LanguageSelector({
     // normalize to code for availability checks; 'auto' kept as selection mode
     const code = value === 'auto' ? 'auto' : (normalizeToCode(value) as string);
     if (code !== 'auto' && availableCodes && !availableCodes.includes(code)) {
-      setError('Coming soon — language not yet available for this content');
+      setError('Coming soon -- language not yet available for this content');
       setTimeout(() => setError(null), 3000);
       return;
     }

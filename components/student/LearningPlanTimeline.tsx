@@ -143,7 +143,7 @@ function WeekCard({ week, onMoveItem, isCurrentWeek }: WeekCardProps) {
                     onClick={() => handleMove(item, 'prev')}
                     className="min-h-[28px] min-w-[28px] flex items-center justify-center rounded border border-border bg-card hover:bg-muted disabled:opacity-30 disabled:cursor-not-allowed text-xs"
                   >
-                    {movingId === item.id ? '…' : '↑'}
+                    {movingId === item.id ? '...' : '↑'}
                   </button>
                   <button
                     type="button"
@@ -152,7 +152,7 @@ function WeekCard({ week, onMoveItem, isCurrentWeek }: WeekCardProps) {
                     onClick={() => handleMove(item, 'next')}
                     className="min-h-[28px] min-w-[28px] flex items-center justify-center rounded border border-border bg-card hover:bg-muted disabled:opacity-30 disabled:cursor-not-allowed text-xs"
                   >
-                    {movingId === item.id ? '…' : '↓'}
+                    {movingId === item.id ? '...' : '↓'}
                   </button>
                 </div>
               )}
@@ -215,7 +215,7 @@ export function LearningPlanTimeline({ initialData }: LearningPlanTimelineProps)
         })
         if (!resp.ok) {
           const json = await resp.json().catch(() => ({}))
-          setError((json as { error?: string }).error ?? 'Could not reorder — please try again.')
+          setError((json as { error?: string }).error ?? 'Could not reorder -- please try again.')
           return
         }
         // Optimistically swap the items in local state
@@ -235,7 +235,7 @@ export function LearningPlanTimeline({ initialData }: LearningPlanTimelineProps)
         })
       } catch (err) {
         logger.warn('Could not reorder item', { event: 'learningPlan.move.failed', error: String(err), itemId });
-        setError('Could not reorder — tap to retry.')
+        setError('Could not reorder -- tap to retry.')
       }
     },
     [],
@@ -282,7 +282,7 @@ export function LearningPlanTimeline({ initialData }: LearningPlanTimelineProps)
       {/* Week cards */}
       {data.weeks.length === 0 ? (
         <div className="text-center py-12 text-muted-foreground">
-          <p className="text-lg">Your plan is being prepared…</p>
+          <p className="text-lg">Your plan is being prepared...</p>
           <p className="text-sm mt-1">Check back in a moment.</p>
         </div>
       ) : (

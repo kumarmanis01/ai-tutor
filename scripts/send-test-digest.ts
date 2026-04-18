@@ -13,7 +13,7 @@ import { sendParentMilestoneNotification } from '@/lib/notifications/delivery'
 
 async function main() {
   const qa = process.env.QA_EMAIL ?? 'spinzy.healthians@gmail.com'
-  const subject = `QA: weekly digest test — ${new Date().toISOString()}`
+  const subject = `QA: weekly digest test -- ${new Date().toISOString()}`
   const html = `<p>This is a QA test of the weekly digest rendering.</p><p>If you received this, the worker's delivery path was exercised.</p>`
 
   console.log('Attempting QA digest send to', qa)

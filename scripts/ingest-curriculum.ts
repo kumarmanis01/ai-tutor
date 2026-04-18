@@ -98,7 +98,7 @@ export async function main(prismaClient = prisma) {
 
     if (isRetryMode) {
       // When retrying, attempt to re-embed all fetched (failed) chunks regardless
-      // of contentHash equality — they previously failed to embed.
+      // of contentHash equality -- they previously failed to embed.
       toProcess.push({ id: chunk.id, content: text, newHash, needsVersionBump: chunk.contentHash !== null })
       continue
     }

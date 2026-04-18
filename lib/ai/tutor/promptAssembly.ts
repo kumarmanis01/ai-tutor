@@ -433,7 +433,7 @@ export function buildStageInstructionsLayer(ctx: PromptContext): string {
     // AC-07 (F-STU-011 SHOULD): when available, instruct Vidya to cite board exam objective + marks
     if (typeof (ctx as any).boardChapterWeightMarks === 'number') {
       lines.push(
-        `Board exam mapping: When relevant, begin the explanation with a single short sentence citing board mapping. Example: "This concept appears in ${ctx.board} Class ${ctx.grade} board exam — ${(ctx as any).boardChapterWeightMarks} marks."`,
+        `Board exam mapping: When relevant, begin the explanation with a single short sentence citing board mapping. Example: "This concept appears in ${ctx.board} Class ${ctx.grade} board exam -- ${(ctx as any).boardChapterWeightMarks} marks."`,
       )
     }
     lines.push('Output tag: [QUESTION]')

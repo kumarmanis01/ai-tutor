@@ -187,7 +187,7 @@ export async function POST(req: Request) {
       try {
         const existing = await (prisma as any).regenerationJob.findFirst({ where: { suggestionId: suggestion.id, targetType: targetType as any, targetId } });
         if (existing) return NextResponse.json({ job: existing });
-        // No matching job found for the original uniqueness key — treat as a real error.
+        // No matching job found for the original uniqueness key -- treat as a real error.
         logger.error('regenerationJob: unique constraint hit but no matching job found for the original key', {
           suggestionId: suggestion.id,
           targetType,

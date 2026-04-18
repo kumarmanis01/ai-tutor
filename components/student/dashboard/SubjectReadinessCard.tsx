@@ -140,7 +140,7 @@ export function SubjectReadinessCard({
             </p>
             {predictedRange && (
               <div className="text-right text-xs text-gray-500 dark:text-gray-400">
-                Likely: {predictedRange.low}–{predictedRange.high} ({predictedRange.confidenceLevel}% CI)
+                Likely: {predictedRange.low}-{predictedRange.high} ({predictedRange.confidenceLevel}% CI)
               </div>
             )}
             <div className="flex items-center gap-2">

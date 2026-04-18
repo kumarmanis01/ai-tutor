@@ -42,7 +42,7 @@ export default function ChapterTests(props: {
         if (!mounted) return;
         setSparklineMap(json?.data ?? {});
       } catch {
-        // ignore sparklines failure — sparklines are non-critical
+        // ignore sparklines failure -- sparklines are non-critical
       }
     }
 
@@ -110,7 +110,7 @@ export default function ChapterTests(props: {
       {modalChapter && (
         <ContentModal
           open={!!modalChapter}
-          title={modalChapter ? `Practice trend — ${modalChapter.name}` : 'Practice trend'}
+          title={modalChapter ? `Practice trend -- ${modalChapter.name}` : 'Practice trend'}
           onClose={() => setModalChapter(null)}
           footer={
             <div className="flex justify-end">

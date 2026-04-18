@@ -111,7 +111,7 @@ export function parentWelcomeHtml(parentName: string | null, studentName: string
   return `
     <div style="${BASE}">
       ${LOGO}
-      <h2 style="color:#534AB7;">Welcome — your parent account is confirmed</h2>
+      <h2 style="color:#534AB7;">Welcome -- your parent account is confirmed</h2>
       <p>Hi ${displayName},</p>
       <p>Thanks for verifying your parent access for <strong>${studentName}</strong>. You can now:
       </p>
