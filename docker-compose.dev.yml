@@ -72,7 +72,7 @@ services:
   web:
     build:
       context: .
-      dockerfile: Dockerfile.prod
+      dockerfile: Dockerfile.dev
     image: ai-tutor-web:dev
     working_dir: /app
     restart: unless-stopped
@@ -103,7 +103,7 @@ services:
   worker:
     build:
       context: .
-      dockerfile: Dockerfile.prod
+      dockerfile: Dockerfile.dev
     image: ai-tutor-worker:dev
     working_dir: /app
     restart: unless-stopped
@@ -126,7 +126,7 @@ services:
   scheduler:
     build:
       context: .
-      dockerfile: Dockerfile.prod
+      dockerfile: Dockerfile.dev
     image: ai-tutor-scheduler:dev
     working_dir: /app
     restart: unless-stopped
