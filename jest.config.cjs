@@ -33,7 +33,7 @@ module.exports = {
     '^.+\\.tsx?$': ['ts-jest', { tsconfig: 'tsconfig.json' }],
   },
   setupFiles: ['<rootDir>/tests/setup/forceTestNodeEnv.cjs'],
-  setupFilesAfterEnv: ['<rootDir>/tests/setup/jsdomPolyfills.ts', '<rootDir>/tests/setup/normalizePaths.cjs', '<rootDir>/tests/setup/normalizePaths.ts', '<rootDir>/tests/setup/prismaEnsureColumns.ts', '<rootDir>/tests/setup/loggerTeardown.ts'],
+  setupFilesAfterEnv: ['<rootDir>/tests/setup/redis-monitor.ts', '<rootDir>/tests/setup/jsdomPolyfills.ts', '<rootDir>/tests/setup/normalizePaths.cjs', '<rootDir>/tests/setup/normalizePaths.ts', '<rootDir>/tests/setup/prismaEnsureColumns.ts', '<rootDir>/tests/setup/loggerTeardown.ts'],
   // Force exit after tests to avoid intermittent open-handle failures in CI
   // This is a pragmatic fix; ideally open handles should be tracked down.
   forceExit: true,
