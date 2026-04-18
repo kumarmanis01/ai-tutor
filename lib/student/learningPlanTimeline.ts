@@ -49,7 +49,7 @@ export interface TimelineResponse {
  */
 export function weekStartDate(baseDate: Date | string, weekNumber: number): string {
   const base = new Date(baseDate)
-  const dayOfWeek = base.getDay() === 0 ? 7 : base.getDay() // Mon=1 … Sun=7
+  const dayOfWeek = base.getDay() === 0 ? 7 : base.getDay() // Mon=1 ... Sun=7
   const monday = new Date(base)
   monday.setDate(base.getDate() - dayOfWeek + 1 + (weekNumber - 1) * 7)
   monday.setHours(0, 0, 0, 0)
