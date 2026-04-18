@@ -11,6 +11,7 @@
  *
  * EDIT LOG:
  * - 2026-04-18T00:00:00Z | copilot | created lazy Redis client wrapper to reduce connection leaks in tests
+ * - 2026-04-18T18:00:00Z | copilot | remove client=null on close; resetting the singleton on every disconnect caused two clients to reconnect simultaneously (ERR max clients)
  */
 
 import Redis from 'ioredis'
@@ -39,9 +40,14 @@ export function getRedis(): Redis {
 
   client.on('close', () => {
     try {
-      logger.info('[redis] connection closed')
+      logger.info('[redis] connection closed — ioredis will reconnect automatically')
     } catch {}
-    client = null
+    // DO NOT reset client to null here. Setting client = null on close would
+    // destroy the singleton on every TCP drop: getRedis() would then create a
+    // second IORedis instance, and both the old one (auto-reconnecting) and the
+    // new one would compete to reconnect — doubling open connection attempts and
+    // triggering ERR max number of clients reached under Redis load.
+    // IORedis handles reconnection transparently; the singleton stays valid.
   })
 
   return client
@@ -51,7 +57,7 @@ export async function disconnectRedis(): Promise<void> {
   if (!client) return
   try {
     await client.quit()
-  } catch (_err) {
+  } catch {
     try {
       client.disconnect()
     } catch {
