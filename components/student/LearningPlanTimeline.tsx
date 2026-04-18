@@ -14,11 +14,12 @@
  *
  * EDIT LOG:
  * - 2026-04-16T00:00:00Z | copilot | created -- AC-04 + AC-06 (F-STU-003) timeline + reorder UI
+ * - 2026-04-18T00:00:00Z | copilot | import timeline types from shared lib
  */
 'use client'
 
 import React, { useState, useCallback } from 'react'
-import type { TimelineResponse, TimelineItem } from '@/app/api/student/learning-plan/timeline/route'
+import type { TimelineResponse, TimelineItem } from '@/lib/student/learningPlanTimeline'
 import { logger } from '@/lib/logger'
 
 const STATUS_STYLES: Record<TimelineItem['status'], string> = {
