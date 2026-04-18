@@ -17,7 +17,7 @@
 
 import { Queue } from 'bullmq';
 import { prisma } from '@/lib/prisma';
-import { redisConnection } from '@/lib/redis';
+import { getSharedConnection } from '@/lib/redis';
 import { logger } from '@/lib/logger';
 import { CONTENT_HYDRATION_QUEUE } from '@/lib/queues/constants';
 
@@ -34,7 +34,7 @@ let intervalId: ReturnType<typeof setInterval> | null = null;
 
 function getQueue(): Queue {
   if (!queue) {
-    queue = new Queue(CONTENT_HYDRATION_QUEUE, { connection: redisConnection });
+    queue = new Queue(CONTENT_HYDRATION_QUEUE, { connection: getSharedConnection() });
   }
   return queue;
 }

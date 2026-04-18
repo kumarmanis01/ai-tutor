@@ -14,7 +14,7 @@
  */
 
 import { Queue } from 'bullmq'
-import { redisConnection } from '@/lib/redis'
+import { getSharedConnection } from '@/lib/redis'
 import { logger } from '@/lib/logger'
 
 export const INSTALLMENT_DUNNING_QUEUE_NAME = 'installment-dunning'
@@ -27,7 +27,7 @@ let installmentQueue: Queue | null = null
 export function getInstallmentDunningQueue(): Queue {
   if (!installmentQueue) {
     installmentQueue = new Queue(INSTALLMENT_DUNNING_QUEUE_NAME, {
-      connection: redisConnection,
+      connection: getSharedConnection(),
       defaultJobOptions: {
         attempts: 1,
         removeOnComplete: 10,

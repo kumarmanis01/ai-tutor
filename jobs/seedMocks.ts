@@ -1,5 +1,5 @@
 import { Queue } from 'bullmq'
-import { redisConnection } from '@/lib/redis'
+import { getSharedConnection } from '@/lib/redis'
 import { logger } from '@/lib/logger'
 
 export const SEED_MOCKS_QUEUE_NAME = 'seed-mocks'
@@ -16,7 +16,7 @@ let seedMocksQueue: Queue<SeedMocksJobData> | null = null
 function getSeedMocksQueue() {
   if (!seedMocksQueue) {
     seedMocksQueue = new Queue(SEED_MOCKS_QUEUE_NAME, {
-      connection: redisConnection,
+      connection: getSharedConnection(),
       defaultJobOptions: {
         attempts: 1,
         backoff: { type: 'fixed', delay: 5000 },

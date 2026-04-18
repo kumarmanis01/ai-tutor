@@ -1,5 +1,5 @@
 import { Queue } from 'bullmq'
-import { redisConnection } from '@/lib/redis'
+import { getSharedConnection } from '@/lib/redis'
 import { logger } from '@/lib/logger'
 
 export interface IRTUpdateJobData {
@@ -19,7 +19,7 @@ let irtUpdateQueue: Queue<IRTUpdateJobData> | null = null
 export function getIRTUpdateQueue(): Queue<IRTUpdateJobData> {
   if (!irtUpdateQueue) {
     irtUpdateQueue = new Queue<IRTUpdateJobData>(IRT_UPDATE_QUEUE_NAME, {
-      connection: redisConnection,
+      connection: getSharedConnection(),
       defaultJobOptions: {
         attempts: 5,
         backoff: {

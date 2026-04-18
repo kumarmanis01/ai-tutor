@@ -3,7 +3,7 @@
  */
 
 import { Queue } from 'bullmq'
-import { redisConnection } from '@/lib/redis'
+import { getSharedConnection } from '@/lib/redis'
 import { logger } from '@/lib/logger'
 
 export const PAYMENT_DUNNING_QUEUE_NAME = 'payment-dunning'
@@ -16,7 +16,7 @@ let dunningQueue: Queue | null = null
 export function getPaymentDunningQueue(): Queue {
   if (!dunningQueue) {
     dunningQueue = new Queue(PAYMENT_DUNNING_QUEUE_NAME, {
-      connection: redisConnection,
+      connection: getSharedConnection(),
       defaultJobOptions: {
         attempts: 1,
         removeOnComplete: 10,

@@ -1,3 +1,20 @@
+/**
+ * FILE OBJECTIVE:
+ * - Single shared IORedis singleton for the application. Exports `getRedis()` for
+ *   general use and `getSharedConnection()` for BullMQ Queue constructors so all
+ *   Queue instances share one TCP connection instead of opening one each.
+ *
+ * LINKED UNIT TEST:
+ * - tests/unit/lib/redis.spec.ts
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/COPILOT_GUARDRAILS.md
+ * - .github/copilot-instructions.md
+ *
+ * EDIT LOG:
+ * - 2026-04-18T18:00:00Z | copilot | add getSharedConnection() to fix ERR max number of clients reached
+ */
+
 // src/lib/redis.ts
 import IORedis from "ioredis";
 import type { ConnectionOptions } from 'bullmq';
@@ -122,6 +139,27 @@ export function getRedis() {
 
   _redis = client;
   return _redis;
+}
+
+/**
+ * Returns the shared IORedis instance for use as a BullMQ **Queue** `connection`.
+ *
+ * WHY: When `Queue` receives a plain `ConnectionOptions` object it calls
+ * `new IORedis(url)` internally, opening a fresh TCP connection per Queue.
+ * With 17 Queue instances per worker process that wastes 17 connections.
+ * Passing the existing singleton instance tells BullMQ to reuse the one
+ * already open connection, reducing per-process Redis client count by ~17.
+ *
+ * Falls back to `redisConnection` (ConnectionOptions) when no shared client
+ * exists yet (build time, unit tests without REDIS_URL).
+ *
+ * IMPORTANT: Never pass this to `new Worker()`.  BullMQ Workers require a
+ * dedicated blocking connection for BRPOP/LMOVE; passing a shared client
+ * would block it.  Workers should keep using `redisConnection` (options).
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function getSharedConnection(): any {
+  return getRedis() ?? redisConnection;
 }
 
 export function _resetRedisForTests() {
