@@ -25,8 +25,8 @@ try {
 
   class TrackingRedis extends OriginalRedis {
     constructor(...args: any[]) {
-        // @ts-expect-error TODO: fix types - forward to parent constructor
-        super(...args)
+      // @ts-ignore - forward to parent constructor
+      super(...args)
       createdClients.add(this)
       try {
         this.once?.('close', () => createdClients.delete(this))
