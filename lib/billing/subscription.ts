@@ -1,6 +1,5 @@
 /**
  * FILE OBJECTIVE:
-<<<<<<<< HEAD:lib/subscription.ts
  * - Small subscription helper utilities (e.g. `isPremiumUser`) used across the app and tests.
  *
  * LINKED UNIT TEST:
@@ -12,15 +11,6 @@
  *
  * EDIT LOG:
  * - 2026-04-15T00:00:00Z | copilot | add minimal subscription helpers
-========
- * - Billing-related subscription helpers (isPremiumUser, usage counters).
- *
- * LINKED UNIT TEST:
- * - __tests__/lib/subscription.ts.test.ts (updated to check new path)
- *
- * EDIT LOG:
- * - 2026-04-15T00:00:00Z | copilot | moved helpers from lib/subscription.ts
->>>>>>>> pr/142:lib/billing/subscription.ts
  */
 
 import { prisma } from '@/lib/prisma'
@@ -30,7 +20,6 @@ import { prisma } from '@/lib/prisma'
  * Conservative: treat any `subscriptionStatus` not equal to `'free'` as premium.
  */
 export async function isPremiumUser(userId: string): Promise<boolean> {
-<<<<<<<< HEAD:lib/subscription.ts
   try {
     const u = await prisma.user.findUnique({ where: { id: userId }, select: { subscriptionStatus: true } })
     if (!u || !u.subscriptionStatus) return false
@@ -45,58 +34,3 @@ const Subscription = {
 }
 
 export default Subscription
-========
-  const now = new Date()
-
-  // Direct subscription
-  const directSub = await prisma.subscription.findFirst({
-    where: {
-      userId,
-      active: true,
-      plan: { not: 'free' },
-      startDate: { lte: now },
-      endDate: { gte: now },
-    },
-  })
-  if (directSub) return true
-
-  // Check if covered by a parent's family plan (single batch query)
-  const parentLinks = await prisma.parentStudent.findMany({
-    where: { studentId: userId, status: 'active' },
-    select: { parentId: true },
-  })
-
-  if (parentLinks.length === 0) return false
-
-  const parentIds = parentLinks.map((l) => l.parentId)
-  const familySub = await prisma.subscription.findFirst({
-    where: {
-      userId: { in: parentIds },
-      active: true,
-      plan: 'family',
-      startDate: { lte: now },
-      endDate: { gte: now },
-    },
-  })
-  return familySub !== null
-}
-
-/**
- * Count today's asked questions (for free tier enforcement).
- */
-export async function getTodaysQuestionCount(userId: string): Promise<number> {
-  const today = new Date()
-  today.setHours(0, 0, 0, 0)
-
-  const count = await prisma.chat.count({
-    where: {
-      userId,
-      createdAt: { gte: today },
-    },
-  })
-
-  return count
-}
-
-export default { isPremiumUser, getTodaysQuestionCount }
->>>>>>>> pr/142:lib/billing/subscription.ts
