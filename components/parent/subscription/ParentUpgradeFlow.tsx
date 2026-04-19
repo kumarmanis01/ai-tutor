@@ -22,6 +22,7 @@
  */
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { toast } from '@/lib/toast';
 import PlanSelector from '@/components/student/subscription/PlanSelector';
 import PaymentMethodSelector from '@/components/student/subscription/PaymentMethodSelector';
 import PaymentConfirmation from '@/components/student/subscription/PaymentConfirmation';
@@ -66,7 +67,15 @@ export default function ParentUpgradeFlow({ childrenList }: ParentUpgradeFlowPro
 
   const totalRupees = useMemo(() => {
     const plan = PLANS[planId];
-    if (isFamily && selectedChildren.length === 3) return Math.round(plan.billedRupees * 1.8 * 100) / 100;
+    // If family pricing selected, prefer an explicit family plan variant when available
+    if (isFamily) {
+      const suffix = planId.includes('_') ? planId.split('_').slice(-1)[0] : planId;
+      const familyKey = (`family_${suffix}`) as any;
+      const familyPlan = (PLANS as any)[familyKey] as typeof plan | undefined;
+      const applied = familyPlan ?? plan;
+      // Family pricing is a single billed amount (covers up to 3 children)
+      return Math.round(applied.billedRupees * 100) / 100;
+    }
     return Math.round(plan.billedRupees * selectedChildren.length * 100) / 100;
   }, [planId, selectedChildren.length, isFamily]);
 
@@ -122,6 +131,32 @@ export default function ParentUpgradeFlow({ childrenList }: ParentUpgradeFlowPro
     }
   }, [planId, selectedChildren, isFamily, emiMonths]);
 
+  // Handle retryInstallment query param: if present, call API to enqueue retry
+  useEffect(() => {
+    try {
+      const params = new URLSearchParams(window.location.search)
+      const retry = params.get('retryInstallment')
+      if (retry) {
+        // Attempt to POST to API and show a brief notification
+        fetch('/api/parent/installment/retry', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ installmentId: retry }) })
+          .then((r) => r.json())
+          .then((j) => {
+            if (j?.success) {
+              // shallow UI indication: redirect back without param
+              params.delete('retryInstallment')
+              const url = window.location.pathname + (params.toString() ? `?${params.toString()}` : '')
+              window.history.replaceState({}, '', url)
+              toast('Retry request submitted. We will attempt to charge the installment shortly.')
+            } else {
+              toast('Could not submit retry request. Please contact support.')
+            }
+          }).catch(() => toast('Retry request failed'))
+      }
+    } catch (e) {
+      // ignore
+    }
+  }, [])
+
   if (step === 'select') {
     return (
       <div className="space-y-4">
@@ -157,8 +192,8 @@ export default function ParentUpgradeFlow({ childrenList }: ParentUpgradeFlowPro
       <div className="space-y-4">
         <PlanSelector selected={planId} onSelect={(id) => setPlanId(id)} />
         <div className="flex items-center gap-3">
-          <input id="family" type="checkbox" checked={isFamily} onChange={(e) => setIsFamily(e.target.checked)} disabled={selectedChildren.length !== 3} />
-          <label htmlFor="family" className="text-sm text-gray-700">Use family pricing (3 children at 1.8x)</label>
+          <input id="family" type="checkbox" checked={isFamily} onChange={(e) => setIsFamily(e.target.checked)} disabled={selectedChildren.length === 0} />
+          <label htmlFor="family" className="text-sm text-gray-700">Use family pricing (up to 3 children at 1.8× standard price)</label>
         </div>
         <div className="flex gap-2">
           <button onClick={() => setStep('method')} className="flex-1 min-h-[44px] rounded-xl bg-[#534AB7] text-white">Choose payment</button>

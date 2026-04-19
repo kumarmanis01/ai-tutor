@@ -87,164 +87,146 @@ export async function GET(req: Request) {
     select: { studentId: true },
   })
 
-  const children = await Promise.all(
-    links.map(async ({ studentId }) => {
-      // ── Core data in parallel ─────────────────────────────────────────
-      const [student, streak, sessionsThisWeek, learningPlans] = await Promise.all([
-        prisma.user.findUnique({
-          where: { id: studentId },
-          select: { name: true, grade: true, board: true, subjects: true },
-        }),
-        prisma.studentStreak.findFirst({
-          where: { studentId, kind: 'daily' },
-          select: { current: true, lastActive: true },
-        }),
-        prisma.structuredSession.findMany({
-          where: { studentId, startedAt: { gte: monday } },
-          select: { startedAt: true, completedAt: true },
-        }),
-        prisma.learningPlan.findMany({
-          where: { studentId },
-          select: { subjectId: true, examDate: true },
-        }),
-      ])
+  // Compute children sequentially to avoid overloading DB connections
+  const children: Array<ReturnType<typeof Promise.resolve> | null> = []
+  for (const { studentId } of links) {
+    // ── Core data in parallel (small set of parallel queries per student)
+    const [student, streak, sessionsThisWeek, learningPlans] = await Promise.all([
+      prisma.user.findUnique({
+        where: { id: studentId },
+        select: { name: true, grade: true, board: true, subjects: true },
+      }),
+      prisma.studentStreak.findFirst({
+        where: { studentId, kind: 'daily' },
+        select: { current: true, lastActive: true },
+      }),
+      prisma.structuredSession.findMany({
+        where: { studentId, startedAt: { gte: monday } },
+        select: { startedAt: true, completedAt: true },
+      }),
+      prisma.learningPlan.findMany({
+        where: { studentId },
+        select: { subjectId: true, examDate: true },
+      }),
+    ])
 
-      if (!student) return null
+    if (!student) {
+      children.push(null)
+      continue
+    }
 
-      // ── Study time this week (minutes) ────────────────────────────────
-      const studyTimeThisWeekMinutes = sessionsThisWeek.reduce((sum, s) => {
-        if (!s.completedAt) return sum
-        const mins = (s.completedAt.getTime() - s.startedAt.getTime()) / 60_000
-        return sum + Math.max(0, mins)
-      }, 0)
+    // ── Study time this week (minutes)
+    const studyTimeThisWeekMinutes = sessionsThisWeek.reduce((sum, s) => {
+      if (!s.completedAt) return sum
+      const mins = (s.completedAt.getTime() - s.startedAt.getTime()) / 60_000
+      return sum + Math.max(0, mins)
+    }, 0)
 
-      // ── Resolve subjects → SubjectDef IDs ────────────────────────────
-      const subjectNames = (student.subjects as string[]).filter(Boolean)
-      const subjectDefs = subjectNames.length
-        ? await prisma.subjectDef.findMany({
-            where: {
-              lifecycle: 'active',
-              OR: [{ name: { in: subjectNames } }, { slug: { in: subjectNames } }],
-            },
-            select: { id: true, name: true },
-          })
-        : []
+    // Resolve subjects → SubjectDef IDs
+    const subjectNames = (student.subjects as string[]).filter(Boolean)
+    const subjectDefs = subjectNames.length
+      ? await prisma.subjectDef.findMany({
+          where: {
+            lifecycle: 'active',
+            OR: [{ name: { in: subjectNames } }, { slug: { in: subjectNames } }],
+          },
+          select: { id: true, name: true },
+        })
+      : []
 
-      // Exam-date map by subjectId
-      const examDateMap = new Map<string, Date | null>()
-      for (const lp of learningPlans) {
-        if (!examDateMap.has(lp.subjectId)) {
-          examDateMap.set(lp.subjectId, lp.examDate ?? null)
-        }
+    // Exam-date map by subjectId
+    const examDateMap = new Map<string, Date | null>()
+    for (const lp of learningPlans) {
+      if (!examDateMap.has(lp.subjectId)) {
+        examDateMap.set(lp.subjectId, lp.examDate ?? null)
       }
+    }
 
-      // ── Per-subject readiness + mastery delta ─────────────────────────
-      const subjects: SubjectResult[] = await Promise.all(
-        subjectDefs.map(async (sd) => {
-          // Readiness score (Redis-cached)
-          const readiness = await computeReadinessScore(studentId, sd.id).catch(() => null)
-          const readinessScore = readiness?.score ?? 0
+    // Per-subject readiness + mastery delta (sequential per-subject)
+    const subjects: SubjectResult[] = []
+    for (const sd of subjectDefs) {
+      const readiness = await computeReadinessScore(studentId, sd.id).catch(() => null)
+      const readinessScore = readiness?.score ?? 0
 
-          // Days to exam
-          const examDate = examDateMap.get(sd.id) ?? null
-          const daysToExam = examDate
-            ? Math.ceil((examDate.getTime() - Date.now()) / 86_400_000)
-            : null
+      const examDate = examDateMap.get(sd.id) ?? null
+      const daysToExam = examDate ? Math.ceil((examDate.getTime() - Date.now()) / 86_400_000) : null
 
-          // Mastery delta -- avg score of concepts updated in last 7 days
-          // compared to the overall subject average (proxy delta)
-          const [recentStates, allStates] = await Promise.all([
-            prisma.studentConceptState.findMany({
-              where: {
-                studentId,
-                updatedAt: { gte: sevenDaysAgo },
-                concept: { subjectId: sd.id },
-              },
-              select: { masteryScore: true },
-            }),
-            prisma.studentConceptState.findMany({
-              where: { studentId, concept: { subjectId: sd.id } },
-              select: { masteryScore: true },
-            }),
-          ])
-
-          let recentMasteryChange: number | null = null
-          if (recentStates.length > 0 && allStates.length > 0) {
-            const allAvg = allStates.reduce((s, r) => s + r.masteryScore, 0) / allStates.length
-            const recentAvg =
-              recentStates.reduce((s, r) => s + r.masteryScore, 0) / recentStates.length
-            // Positive = recent concepts scoring above average (improvement signal)
-            recentMasteryChange = Math.round((recentAvg - allAvg) * 1000) / 1000
-          }
-
-          return {
-            subjectId: sd.id,
-            subjectName: sd.name,
-            readinessScore,
-            daysToExam,
-            recentMasteryChange,
-          }
-        }),
-      )
-
-      // ── Alerts ────────────────────────────────────────────────────────
-      const recentAlerts: RecentAlert[] = []
-      const now = new Date()
-
-      // streak_break: streak went to 0 and lastActive was within 3 days
-      if (streak && streak.current === 0 && streak.lastActive) {
-        const daysSince = Math.floor(
-          (now.getTime() - streak.lastActive.getTime()) / 86_400_000,
-        )
-        if (daysSince <= 3) {
-          recentAlerts.push({
-            type: 'streak_break',
-            message: 'Study streak ended -- encourage getting back on track',
-            occurredAt: streak.lastActive.toISOString(),
-          })
-        }
-      }
-
-      // readiness_drop: any subject with recentMasteryChange < -0.1
-      for (const s of subjects) {
-        if (s.recentMasteryChange !== null && s.recentMasteryChange < -0.1) {
-          recentAlerts.push({
-            type: 'readiness_drop',
-            message: `${s.subjectName} readiness may have dropped -- recent concepts below average`,
-            occurredAt: sevenDaysAgo.toISOString(),
-          })
-        }
-      }
-
-      // milestone: any concept reached masteryScore >= 0.9 this week
-      const milestoneCount = await prisma.studentConceptState.count({
+      const recentStates = await prisma.studentConceptState.findMany({
         where: {
           studentId,
-          masteryScore: { gte: 0.9 },
-          updatedAt: { gte: monday },
+          updatedAt: { gte: sevenDaysAgo },
+          concept: { subjectId: sd.id },
         },
+        select: { masteryScore: true },
       })
-      if (milestoneCount > 0) {
-        recentAlerts.push({
-          type: 'milestone',
-          message: `Mastered ${milestoneCount} concept${milestoneCount > 1 ? 's' : ''} this week!`,
-          occurredAt: now.toISOString(),
-        })
+      const allStates = await prisma.studentConceptState.findMany({
+        where: { studentId, concept: { subjectId: sd.id } },
+        select: { masteryScore: true },
+      })
+
+      let recentMasteryChange: number | null = null
+      if (recentStates.length > 0 && allStates.length > 0) {
+        const allAvg = allStates.reduce((s, r) => s + r.masteryScore, 0) / allStates.length
+        const recentAvg = recentStates.reduce((s, r) => s + r.masteryScore, 0) / recentStates.length
+        recentMasteryChange = Math.round((recentAvg - allAvg) * 1000) / 1000
       }
 
-      return {
-        studentId,
-        name: student.name ?? 'Student',
-        grade: student.grade ?? '',
-        board: student.board ?? '',
-        streakDays: streak?.current ?? 0,
-        sessionsThisWeek: sessionsThisWeek.length,
-        studyTimeThisWeekMinutes: Math.round(studyTimeThisWeekMinutes),
-        subjects,
-        recentAlerts,
+      subjects.push({
+        subjectId: sd.id,
+        subjectName: sd.name,
+        readinessScore,
+        daysToExam,
+        recentMasteryChange,
+      })
+    }
+
+    // Alerts
+    const recentAlerts: RecentAlert[] = []
+    const now = new Date()
+    if (streak && streak.current === 0 && streak.lastActive) {
+      const daysSince = Math.floor((now.getTime() - streak.lastActive.getTime()) / 86_400_000)
+      if (daysSince <= 3) {
+        recentAlerts.push({
+          type: 'streak_break',
+          message: 'Study streak ended -- encourage getting back on track',
+          occurredAt: streak.lastActive.toISOString(),
+        })
       }
-    }),
-  )
+    }
+
+    for (const s of subjects) {
+      if (s.recentMasteryChange !== null && s.recentMasteryChange < -0.1) {
+        recentAlerts.push({
+          type: 'readiness_drop',
+          message: `${s.subjectName} readiness may have dropped -- recent concepts below average`,
+          occurredAt: sevenDaysAgo.toISOString(),
+        })
+      }
+    }
+
+    const milestoneCount = await prisma.studentConceptState.count({
+      where: { studentId, masteryScore: { gte: 0.9 }, updatedAt: { gte: monday } },
+    })
+    if (milestoneCount > 0) {
+      recentAlerts.push({
+        type: 'milestone',
+        message: `Mastered ${milestoneCount} concept${milestoneCount > 1 ? 's' : ''} this week!`,
+        occurredAt: now.toISOString(),
+      })
+    }
+
+    children.push({
+      studentId,
+      name: student.name ?? 'Student',
+      grade: student.grade ?? '',
+      board: student.board ?? '',
+      streakDays: streak?.current ?? 0,
+      sessionsThisWeek: sessionsThisWeek.length,
+      studyTimeThisWeekMinutes: Math.round(studyTimeThisWeekMinutes),
+      subjects,
+      recentAlerts,
+    })
+  }
 
   const validChildren = children.filter(
     (c): c is NonNullable<typeof c> => c !== null,

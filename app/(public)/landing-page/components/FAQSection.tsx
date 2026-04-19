@@ -61,8 +61,8 @@ const FAQSection = () => {
       id: 5,
       questionEn: 'Can I try before paying?',
       questionHi: 'क्या मैं भुगतान करने से पहले आज़मा सकता हूं?',
-      answerEn: `Yes — try Spinzy Academy with no credit card required. When ready, upgrade to unlimited access for just ${PLANS.standard_monthly.perMonthDisplay}. Refunds are available within 7 days of purchase.`,
-      answerHi: `हां — बिना क्रेडिट कार्ड के Spinzy Academy आज़माएं। तैयार होने पर, केवल ${PLANS.standard_monthly.perMonthDisplay} में असीमित एक्सेस में अपग्रेड करें। खरीद के 7 दिनों के भीतर रिफंड उपलब्ध हैं।`,
+      answerEn: `Yes -- try Spinzy Academy with no credit card required. When ready, upgrade to unlimited access for just ${PLANS.standard_monthly.perMonthDisplay}. Refunds are available within 7 days of purchase.`,
+      answerHi: `हां -- बिना क्रेडिट कार्ड के Spinzy Academy आज़माएं। तैयार होने पर, केवल ${PLANS.standard_monthly.perMonthDisplay} में असीमित एक्सेस में अपग्रेड करें। खरीद के 7 दिनों के भीतर रिफंड उपलब्ध हैं।`,
       category: 'Pricing',
     },
     {

@@ -8,10 +8,10 @@
  * - tests/unit/worker/freemiumResetNotifications.test.ts
  */
 
-import { logger } from '../../lib/logger.js'
-import { getStudentsNearingReset, daysUntilFreeTierReset } from '../../lib/freemium.js'
-import { sendPushSafe } from '../../lib/push/send.js'
-import { PUSH_NOTIFICATIONS } from '../../lib/push/notifications.js'
+import { logger } from '@/lib/logger'
+import { getStudentsNearingReset, daysUntilFreeTierReset } from '@/lib/freemium'
+import { sendPushSafe } from '@/lib/push/send'
+import { PUSH_NOTIFICATIONS } from '@/lib/push/notifications'
 
 export interface FreemiumResetResult {
   daysLeft: number

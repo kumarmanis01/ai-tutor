@@ -58,6 +58,7 @@ export const prismaMock = {
   auditLog: mockModel(),
   answerEvent: mockModel(),
   user: mockModel(),
+  subscription: mockModel(),
   paymentCustomer: mockModel(),
   paymentMethod: mockModel(),
   systemSetting: mockModel(),

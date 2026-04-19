@@ -143,6 +143,8 @@ export async function updateStreak(studentId: string): Promise<{
             keys.push(`parent:inactivity:${l.parentId}:${studentId}`)
             // new unified suppression key used by notification policy
             keys.push(`parent:notifications:suppression:inactivity:${l.parentId}:${studentId}`)
+            // legacy/simple worker rate-limit key (per-parent) -- clear so activity resets alert window
+            keys.push(`parent:alert:inactivity:last_sent:${l.parentId}`)
           }
           if (keys.length) await redis.del(...keys)
         }

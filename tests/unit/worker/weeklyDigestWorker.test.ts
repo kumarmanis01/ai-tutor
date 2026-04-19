@@ -41,6 +41,37 @@ describe('processParentDigest', () => {
 
     expect(sendMock).toHaveBeenCalled()
   })
+
+  it('produces mobile-friendly, image-fallback and dark-mode-aware HTML', async () => {
+    const captured: any = {}
+    const sendMock = jest.fn(async (_parentId: string, opts: any) => {
+      captured.html = opts.html
+      return { sent: true }
+    })
+
+    const prismaMock: any = {
+      parentStudent: { findFirst: jest.fn(async () => ({ studentId: 's1', student: { name: 'Asha' }, parent: { name: 'Parent', email: 'p@example.test' } })) },
+      structuredSession: { findMany: jest.fn(async () => [{ id: 'sess1' }]) },
+      studentStreak: { findFirst: jest.fn(async () => ({ current: 4 })) },
+      studentConceptState: { findFirst: jest.fn(async () => null), findMany: jest.fn(async () => []) },
+    }
+
+    jest.doMock('@/lib/prisma', () => ({ prisma: prismaMock }))
+    jest.doMock('@/lib/notifications/delivery', () => ({ sendParentMilestoneNotification: sendMock }))
+    jest.doMock('@/lib/callLLM', () => ({ callLLM: jest.fn().mockRejectedValue(new Error('callLLM mocked in unit tests')) }))
+
+    const { processParentDigest } = await import('../../../worker/services/weeklyDigestWorker')
+
+    await processParentDigest('p1', null)
+
+    expect(sendMock).toHaveBeenCalled()
+    expect(typeof captured.html).toBe('string')
+    // Mobile viewport and dark-mode media query should be present
+    expect(captured.html).toMatch(/<meta[^>]*name=["']viewport["']/i)
+    expect(captured.html).toContain('prefers-color-scheme')
+    // Fallback brand text must be present so email is readable without images
+    expect(captured.html).toContain('Spinzy Academy')
+  })
 })
 
 describe('processWeeklyDigest -- suppression', () => {

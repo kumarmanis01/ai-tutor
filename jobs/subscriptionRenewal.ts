@@ -11,7 +11,7 @@
  */
 
 import { Queue } from 'bullmq'
-import { redisConnection } from '@/lib/redis'
+import { getSharedConnection } from '@/lib/redis'
 import { logger } from '@/lib/logger'
 
 export const SUBSCRIPTION_RENEWAL_QUEUE_NAME = 'subscription-renewal'
@@ -24,7 +24,7 @@ let renewalQueue: Queue | null = null
 export function getSubscriptionRenewalQueue(): Queue {
   if (!renewalQueue) {
     renewalQueue = new Queue(SUBSCRIPTION_RENEWAL_QUEUE_NAME, {
-      connection: redisConnection,
+      connection: getSharedConnection(),
       defaultJobOptions: {
         attempts: 1,
         removeOnComplete: 20,

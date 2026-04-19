@@ -124,6 +124,7 @@ export async function processNightlySM18(_job?: Job): Promise<void> {
               stability: result.newStability,
               retention: result.newRetention,
               nextReviewAt,
+              memoryStrength: Math.round((result.newRetention * (row.masteryScore ?? 0)) * 1000) / 1000,
             },
           })
           totalUpdated += 1

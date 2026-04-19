@@ -18,6 +18,7 @@
  * EDIT LOG:
  * - 2026-04-08T00:00:00Z | copilot | created parent order endpoint
  * - 2026-04-16T03:30:00Z | copilot | support short plan ids (e.g. 'annual') and family variants to avoid undefined plan errors
+ * - 2026-04-16T03:40:00Z | copilot | remove unused VALID_PLAN_IDS constant to satisfy lint
  */
 
 import { NextResponse } from 'next/server';
@@ -34,8 +35,6 @@ function getRazorpayClient() {
   if (!keyId || !keySecret) return null;
   return new Razorpay({ key_id: keyId, key_secret: keySecret });
 }
-
-const VALID_PLAN_IDS: PlanId[] = ['monthly', 'quarterly', 'annual'];
 
 export async function POST(req: Request) {
   const session = await getServerSessionForHandlers();
@@ -64,9 +63,9 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Invalid childIds (must select 1-3 children)' }, { status: 400 });
   }
 
-  // If family pricing requested, enforce exactly 3 children (MVP rule)
-  if (isFamily && childIds.length !== 3) {
-    return NextResponse.json({ error: 'Family pricing requires exactly 3 children' }, { status: 400 });
+  // Family pricing allowed for up to 3 children
+  if (isFamily && childIds.length > 3) {
+    return NextResponse.json({ error: 'Family pricing allows up to 3 children' }, { status: 400 });
   }
 
   // Verify parent-child links
@@ -75,27 +74,35 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'One or more children are not linked to you' }, { status: 403 });
   }
 
-  // Resolve to an actual plan object. Support short ids like 'annual' or
-  // full keys like 'standard_annual'. When `isFamily` is requested prefer
-  // the family plan variant if available.
-  const plan = resolvePlanByShortId(planId, false);
-  if (!plan) {
+  // Resolve requested plan. Prefer an explicit family variant when `isFamily` **only
+  // for the standard plan family**. Avoid mapping brand-agnostic suffixes (e.g.
+  // `lite_monthly`) to the `family_monthly` plan belonging to the `standard` product.
+  const suffix = typeof planId === 'string' && planId.includes('_') ? planId.split('_').slice(-1)[0] : planId;
+  const basePlan = (PLANS as any)[planId] as typeof PLANS.standard_monthly | undefined ?? resolvePlanByShortId(planId, false);
+  const familyKey = (`family_${suffix}`) as PlanId;
+  const familyPlan = (PLANS as any)[familyKey] as typeof basePlan | undefined;
+
+  if (!basePlan && !familyPlan) {
     return NextResponse.json({ error: 'Invalid planId' }, { status: 400 });
   }
 
-  // Determine billed amount. If family pricing is requested and a family plan
-  // exists use its billedRupees; otherwise apply the family multiplier.
+  // Family plan usage policy: only use the explicit `family_*` plan when the
+  // requested plan is the `standard` product (planId startsWith 'standard_') and
+  // an explicit family plan exists. Otherwise, fall back to applying the 1.8x
+  // multiplier to the requested plan's billed price.
+  const useExplicitFamily = Boolean(isFamily && familyPlan && typeof planId === 'string' && planId.startsWith('standard_'));
+
   let totalRupees: number;
   if (isFamily) {
-    const familyPlanKey = (`family_${planId}`) as PlanId;
-    const familyPlan = (PLANS as any)[familyPlanKey] as typeof plan | undefined;
-    if (familyPlan) {
-      totalRupees = familyPlan.billedRupees;
+    if (useExplicitFamily) {
+      totalRupees = familyPlan!.billedRupees;
+    } else if (basePlan) {
+      totalRupees = Math.round(basePlan.billedRupees * 1.8 * 100) / 100;
     } else {
-      totalRupees = Math.round(plan.billedRupees * 1.8 * 100) / 100;
+      totalRupees = 0;
     }
   } else {
-    totalRupees = plan.billedRupees * childIds.length;
+    totalRupees = (basePlan?.billedRupees ?? 0) * childIds.length;
   }
 
   const amountPaise = rupeesToPaise(totalRupees);
@@ -108,9 +115,8 @@ export async function POST(req: Request) {
 
   try {
     // Choose durationMonths from family plan when applicable, else from resolved plan.
-    const familyPlanKey = (`family_${planId}`) as PlanId;
-    const familyPlan = (PLANS as any)[familyPlanKey] as typeof plan | undefined;
-    const durationMonths = familyPlan?.durationMonths ?? plan.durationMonths;
+    // Choose durationMonths from family plan when applicable, else from resolved plan.
+    const durationMonths = (familyPlan?.durationMonths ?? basePlan?.durationMonths) as number;
 
     const order = await client.orders.create({
       amount: amountPaise,
@@ -136,6 +142,7 @@ export async function POST(req: Request) {
         currency: 'INR',
         status: 'created',
         planMonths: durationMonths,
+        planId: planId,
       },
     });
 

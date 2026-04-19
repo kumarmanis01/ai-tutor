@@ -21,6 +21,7 @@ import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useSession } from 'next-auth/react';
 import { useTopicProgress } from '@/hooks/useTopicProgress';
+import SubjectLanguageControl from '@/components/student/SubjectLanguageControl';
 
 export interface LessonConcept {
   title: string;
@@ -150,7 +151,12 @@ export default function LessonViewClient({
 
       {/* Header with completion badge */}
       <div className="flex items-start justify-between mt-3">
-        <h1 className="text-2xl font-semibold text-foreground">{lesson.title}</h1>
+        <div>
+          <h1 className="text-2xl font-semibold text-foreground">{lesson.title}</h1>
+          <div className="mt-2">
+            <SubjectLanguageControl subjectId={courseId} />
+          </div>
+        </div>
         {isCompleted && (
           <span className="flex items-center gap-1 text-sm text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/30 px-2 py-1 rounded-full">
             <span>✓</span> Completed

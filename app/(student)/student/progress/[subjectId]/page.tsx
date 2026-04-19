@@ -26,6 +26,7 @@ import TestScoreHistory, {
   type SessionRow,
 } from '@/components/student/progress/TestScoreHistory';
 import Link from 'next/link';
+import SubjectLanguageControl from '@/components/student/SubjectLanguageControl';
 
 export const dynamic = 'force-dynamic';
 
@@ -183,6 +184,10 @@ export default async function SubjectProgressPage({ params }: Props) {
       <h1 className="text-xl font-bold text-gray-900 dark:text-gray-50 mb-6">
         {subjectDef.name} -- Progress
       </h1>
+
+      <div className="mb-4">
+        <SubjectLanguageControl subjectId={subjectDef.id} />
+      </div>
 
       <div className="flex flex-col gap-6 md:flex-row md:items-start">
         {/* Left column -- narrative + chart (60%) */}

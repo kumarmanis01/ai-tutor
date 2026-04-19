@@ -18,6 +18,7 @@ import { getSubjectDiagnosticStatus } from '@/lib/diagnostics/stateStore';
 import DiagnosticFlow, {
   type DiagnosticQuestion,
 } from '@/components/student/diagnostic/DiagnosticFlow';
+import SubjectLanguageControl from '@/components/student/SubjectLanguageControl';
 
 export const dynamic = 'force-dynamic';
 
@@ -217,16 +218,30 @@ export default async function DiagnosticPage({
   );
 
   return (
-    <DiagnosticFlow
-      subjectId={subjectId}
-      subjectName={subjectDef.name}
-      questions={questions}
-      initialAnswers={initialAnswers}
-      initialIndex={initialIndex}
-      // When running adaptive diagnostic, pass board/grade/subjectSlug so client can call start API
-      boardSlug={student.board}
-      grade={student.grade}
-      subjectSlug={subjectDef.slug}
-    />
+    <div className="min-h-screen bg-white dark:bg-slate-950">
+      <div className="max-w-3xl mx-auto px-4 py-6">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h1 className="text-2xl font-semibold text-gray-900 dark:text-gray-100">{subjectDef.name}</h1>
+            <p className="text-sm text-gray-500 dark:text-gray-400">Diagnostic assessment for {subjectDef.name}</p>
+          </div>
+          <div>
+            <SubjectLanguageControl subjectId={subjectId} />
+          </div>
+        </div>
+      </div>
+
+      <DiagnosticFlow
+        subjectId={subjectId}
+        subjectName={subjectDef.name}
+        questions={questions}
+        initialAnswers={initialAnswers}
+        initialIndex={initialIndex}
+        // When running adaptive diagnostic, pass board/grade/subjectSlug so client can call start API
+        boardSlug={student.board}
+        grade={student.grade}
+        subjectSlug={subjectDef.slug}
+      />
+    </div>
   );
 }

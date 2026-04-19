@@ -1,5 +1,5 @@
 import { Queue } from 'bullmq'
-import { redisConnection } from '@/lib/redis'
+import { getSharedConnection } from '@/lib/redis'
 import { logger } from '@/lib/logger'
 import type { DiagnosticBootstrapJobData } from '@/worker/services/diagnosticBootstrapWorker'
 
@@ -10,7 +10,7 @@ let diagnosticBootstrapQueue: Queue<DiagnosticBootstrapJobData> | null = null
 export function getDiagnosticBootstrapQueue() {
   if (!diagnosticBootstrapQueue) {
     diagnosticBootstrapQueue = new Queue<DiagnosticBootstrapJobData>(DIAGNOSTIC_BOOTSTRAP_QUEUE_NAME, {
-      connection: redisConnection,
+      connection: getSharedConnection(),
       defaultJobOptions: {
         attempts: 3,
         backoff: {

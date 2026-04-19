@@ -21,7 +21,7 @@ import { toast } from '@/lib/toast';
 const CLASS_NAME = 'ParentDashboardClient';
 
 import dynamic from 'next/dynamic';
-import { LOCAL_STRINGS, predictMarkRange, masteryPercentFromAverage } from '@/lib/parent/dashboardHelpers';
+import { LOCAL_STRINGS, predictMarkRange } from '@/lib/parent/dashboardHelpers';
 
 // Lazy-load heavy charts to reduce initial bundle size / improve load time
 const WeeklyTrendChart = dynamic(() => import('@/components/parent/WeeklyTrendChart'), {
@@ -99,20 +99,25 @@ type DashboardData = {
   students: StudentDashboard[];
 };
 
+interface ChapterMastery {
+  chapter: string;
+  avgAccuracy: number; // 0-1
+  topicCount: number;
+  aiWorking: boolean;
+}
+
 interface SubjectProgressData {
   subject: string;
-  totalTopics: number;
-  topicsCovered: number;
-  coveragePercent: number;
-  averageMastery: number;
-  strongTopics: number;
-  weakTopics: number;
-  chapters: {
-    chapter: string;
-    topics: { topicId: string; masteryLevel: string; accuracy: number; questionsAttempted: number }[];
-    averageMastery: number;
-    topicCount: number;
-  }[];
+  avgAccuracy: number; // 0-1
+  topicCount: number;
+  predictedMarkRange: [number, number];
+  masteryExplanation: string;
+  chapters: ChapterMastery[];
+  topStrengths: ChapterMastery[];
+  topWeaknesses: ChapterMastery[];
+  predictedDaysTo80: number | null;
+  predictedReadyByDate: string | null;
+  peerPercentile: number | null;
 }
 
 interface AttentionItem {
@@ -322,52 +327,51 @@ function SubjectProgressCard({ subject }: { subject: SubjectProgressData }) {
               <div className="font-bold text-red-600">{subject.weakTopics}</div>
               <div className="text-gray-500">Weak</div>
             </div>
-            <div className="bg-purple-50 dark:bg-purple-900/20 rounded p-2 text-left">
-              <div className="flex items-center justify-between">
-                <div>
-                  <div className="font-bold text-purple-600">{subject.averageMastery.toFixed(1)}/4</div>
-                  <div className="text-gray-500 flex items-center gap-2">
-                    <span>
-                      Mastery
-                    </span>
-                    {/* Info tooltip (native) - localized */}
-                    <span
-                      className="text-xs text-gray-400 cursor-help"
-                      title={(() => {
-                        try {
-                          const lang = typeof navigator !== 'undefined' && navigator.language?.startsWith('hi') ? 'hi' : 'en';
-                          const pct = masteryPercentFromAverage(subject.averageMastery);
-                          const prefix = LOCAL_STRINGS[lang]?.whatThisMeansPrefix ?? LOCAL_STRINGS.en.whatThisMeansPrefix;
-                          return `${prefix} ${pct}% mastery means your child has solidly learned ${subject.subject} syllabus.`;
-                        } catch (err) {
-                          logger.debug('Failed to compute mastery tooltip', { className: CLASS_NAME, error: String(err) });
-                          return `What this means: ${Math.round((subject.averageMastery / 4) * 100)}% mastery`;
-                        }
-                      })()}
-                    >
-                      ⓘ
-                    </span>
+              <div className="bg-purple-50 dark:bg-purple-900/20 rounded p-2 text-left">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className="font-bold text-purple-600">{Math.round(subject.avgAccuracy * 4 * 10) / 10}/4</div>
+                    <div className="text-gray-500 flex items-center gap-2">
+                      <span>
+                        Mastery
+                      </span>
+                      {/* Info tooltip (server provided) */}
+                      <span
+                        className="text-xs text-gray-400 cursor-help"
+                        title={subject.masteryExplanation}
+                      >
+                        ⓘ
+                      </span>
+                    </div>
                   </div>
                 </div>
+
+                {/* Opt-in benchmarking copy (uses server-provided peerPercentile) */}
+                {(() => {
+                  try {
+                    if (typeof window === 'undefined') return null;
+                    const opt = localStorage.getItem('parent_benchmarking_optin') === '1';
+                    if (!opt) return null;
+                    const pct = subject.peerPercentile ?? null;
+                    if (pct === null) return null;
+                    const lang = navigator.language?.startsWith('hi') ? 'hi' : 'en';
+                    const tpl = LOCAL_STRINGS[lang]?.benchmarkingCopy ?? LOCAL_STRINGS.en.benchmarkingCopy;
+                    return <div className="text-xs text-gray-600 mt-1">{tpl.replace('{pct}', String(pct))}</div>;
+                  } catch (err) {
+                    logger.debug('Failed to render benchmarking copy', { className: CLASS_NAME, error: String(err) });
+                    return null;
+                  }
+                })()}
               </div>
-              {/* Opt-in benchmarking copy (reads opt-in flag from localStorage) */}
-                  {(() => {
-                    try {
-                      if (typeof window === 'undefined') return null;
-                      const opt = localStorage.getItem('parent_benchmarking_optin') === '1';
-                      if (!opt) return null;
-                      const pct = masteryPercentFromAverage(subject.averageMastery);
-                      const anonPct = Math.round(pct * 0.95);
-                      const lang = navigator.language?.startsWith('hi') ? 'hi' : 'en';
-                      const tpl = LOCAL_STRINGS[lang]?.benchmarkingCopy ?? LOCAL_STRINGS.en.benchmarkingCopy;
-                      return <div className="text-xs text-gray-600 mt-1">{tpl.replace('{pct}', String(anonPct))}</div>;
-                    } catch (err) {
-                      logger.debug('Failed to render benchmarking copy', { className: CLASS_NAME, error: String(err) });
-                      return null;
-                    }
-                  })()}
-            </div>
           </div>
+
+          {subject.predictedDaysTo80 !== null && (
+            <div className="text-xs text-gray-500 mt-2">
+              {subject.predictedDaysTo80 === 0
+                ? 'At or above 80% readiness already.'
+                : `Estimated to reach 80% in ${subject.predictedDaysTo80} day(s)${subject.predictedReadyByDate ? ` (by ${subject.predictedReadyByDate})` : ''} at current pace.`}
+            </div>
+          )}
 
           {subject.chapters.map((ch) => (
             <div key={ch.chapter} className="pl-2 border-l-2 border-indigo-200">
@@ -396,7 +400,7 @@ function SubjectProgressCard({ subject }: { subject: SubjectProgressData }) {
 
 // ─── Student Detail Panel ──────────────────────────────────────────────
 
-function StudentDetailPanel({ studentId, onClose }: { studentId: string; onClose: () => void }) {
+function StudentDetailPanel({ studentId, onClose, benchmarkingOptIn }: { studentId: string; onClose: () => void; benchmarkingOptIn: boolean }) {
   const [data, setData] = useState<StudentDetailData | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'progress' | 'attention' | 'readiness'>('progress');
@@ -404,9 +408,12 @@ function StudentDetailPanel({ studentId, onClose }: { studentId: string; onClose
   useEffect(() => {
     async function fetchDetail() {
       try {
-        const res = await fetch(`/api/parent/progress?studentId=${studentId}`);
+        const locale = typeof navigator !== 'undefined' && navigator.language?.startsWith('hi') ? 'hi' : 'en';
+        const res = await fetch(`/api/parent/subject-mastery?studentId=${studentId}&benchmarking=${benchmarkingOptIn ? 'true' : 'false'}&locale=${locale}`);
         if (res.ok) {
-          setData(await res.json());
+          const json = await res.json();
+          // API returns array of SubjectMastery objects
+          setData({ studentId, subjectProgress: json, attentionFlags: [], readiness: [] });
         }
       } catch (err) {
         logger.error('Fetch student detail failed', { error: String(err) });
@@ -415,7 +422,7 @@ function StudentDetailPanel({ studentId, onClose }: { studentId: string; onClose
       }
     }
     fetchDetail();
-  }, [studentId]);
+  }, [studentId, benchmarkingOptIn]);
 
   if (loading) {
     return (
@@ -918,8 +925,8 @@ export default function ParentDashboardClient() {
         {/* Student Detail Panel (drill-down) */}
         {drilldownStudentId && (
           <div className="mt-6">
-            {/* Keep existing drill-down panel for now (uses /api/parent/progress) */}
-            <StudentDetailPanel studentId={drilldownStudentId} onClose={() => setDrilldownStudentId(null)} />
+            {/* Keep existing drill-down panel for now (uses /api/parent/subject-mastery) */}
+            <StudentDetailPanel studentId={drilldownStudentId} onClose={() => setDrilldownStudentId(null)} benchmarkingOptIn={benchmarkingOptIn} />
           </div>
         )}
       </main>

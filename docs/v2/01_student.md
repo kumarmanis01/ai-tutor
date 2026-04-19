@@ -1,4 +1,21 @@
 
+<!--
+FILE OBJECTIVE:
+- Student actor approach document — requirements and acceptance criteria for student-facing features (MVP).
+
+LINKED UNIT TEST:
+- tests/unit/docs/01_student.spec.ts
+
+COPILOT_INSTRUCTIONS_FOLLOWED:
+- .github/copilot-instructions.md
+- docs/COPILOT_GUARDRAILS.md
+
+EDIT LOG:
+- 2026-04-16T12:00:00Z | copilot | added Production Run & Deployment section; updated header
+- 2026-04-16T12:50:00Z | copilot | add Phase 2 backlog: admin-triggered mock seeding (API + worker), audit logs, admin UI, tests
+ - 2026-04-17T10:30:00Z | copilot | add Phase 2 referral backlog: referral dashboard UI, in-app notifications for voided rewards, fraud review tooling, E2E billing tests
+-->
+
 AI HOME TUTOR PLATFORM
 Student Actor
 Approach Document — Full Lifecycle Feature Specification
@@ -65,6 +82,19 @@ Accessibility
 Voice Mode, Camera Input (OCR), Offline Mode
 Phase 2
 
+
+## Phase 2 — Referral & Rewards (Deferred)
+
+The backend billing and redemption logic for referrals is implemented in Phase 1 (see implementation summary in repo). The following items are intentionally deferred to Phase 2 (feature-flagged) to prioritise core learning flows and minimise launch scope:
+
+- **Referral Dashboard (Student):** UI that shows total referrals sent, converted (paid), rewards earned, and pending rewards with pagination and filters.
+- **Referral Management (Creator):** In-app screens for copying/sharing referral code, viewing referral history, and contest/limits UI.
+- **In-App Notifications for Voided Rewards:** Rich client notifications and UI flows that surface voided/refunded referral events to both referrer and redeemer. (Currently implemented as best-effort push/email sends server-side.)
+- **Fraud Review Tooling:** Admin console for reviewing flagged referrals (same IP/device fingerprints), marking false positives, and manual reward adjustments.
+- **Comprehensive E2E Tests:** Full integration tests covering order creation with referral discount, webhook reconciliation, auto-redemption, and credit application to billing flows.
+- **Analytics & Reporting:** Aggregated metrics for referral conversion rates, abuse signals, and cohort analyses.
+
+These items will be gated behind a feature flag and scheduled in Phase 2 once the core referral billing loop is validated in production.
 
 
 2. Onboarding & Personalisation
@@ -425,6 +455,19 @@ Student can flag any question as "incorrect or ambiguous." Flagged question quar
 SHOULD
 
 
+### Phase 2 — Chapter Trend UX & History
+
+- Rationale: make score history more discoverable on the chapter detail and provide full, paginated history for review and analytics.
+- Tasks:
+	- Add inline mini-sparkline + last-score badge on each chapter card (compact, mobile-first). (A)
+	- Implement a paginated history API endpoint and a dedicated history page for deep review. (B)
+	- Make the detail view adapt to a bottom-sheet on narrow viewports (mobile) while remaining a centered modal on larger screens. (C)
+- Acceptance criteria:
+	- Mini-sparkline displays recent trend and last-score on the chapter card without blocking layout.
+	- "View history" links to a paginated history page that returns `data`, `totalCount`, `limit`, `offset`.
+	- Modal adapts to bottom-sheet on small screens (rounded top, drag-to-dismiss optional) and remains accessible (focus trap, ESC closes, scroll lock).
+
+
 F-STU-021
 Full Syllabus Mock Exam
 MVP
@@ -680,6 +723,22 @@ AC-07
 Family plan: one subscription covers up to 3 child profiles. Price is 1.8x single price. Managed from parent account.
 SHOULD
 
+Phase 2 — Family Plan Enhancements
+
+The following enhancements are planned for Phase 2 to expand and harden the Family plan experience. These are out of MVP scope but should be implemented once the core billing loop is validated in production.
+
+- **Family seat management:** allow parents to add/remove child profiles (invite flow), transfer seats between parent accounts, and view seat audit logs. Include email/OTP verification for seat claims.
+- **Flexible slot options & pricing experiments:** support configurable slot counts (4+ children) and per-child add‑ons; run A/B pricing experiments to validate the 1.8x multiplier and alternatives.
+- **Upgrade/downgrade proration rules:** implement deterministic proration math, immediate-apply vs scheduled-change options, and safe credit/refund flows. Provide unit and integration tests for edge cases.
+- **Referral & promo integration:** enable referral discounts and promo codes to apply correctly to family subscriptions, with fraud detection and safe rollback paths.
+- **Billing metadata & reconciliation:** extend order metadata schema (Razorpay `notes`) for family subscriptions and implement reconciliation jobs to surface mismatches and auto-retry logic.
+- **Admin tooling & manual adjustments:** admin console to view/modify family subscriptions, revoke seats, apply credits, and inspect referral audits.
+- **End-to-end billing tests:** CI‑gated integration tests for order creation, webhook verification, refund/proration, and referral credit application, including mock payment gateway fixtures.
+- **Migration & data hygiene:** one-time migration script to normalise existing subscriptions to the canonical family schema (childSlots=3, multiplier=1.8) with dry-run and rollback support.
+- **Monitoring & alerts:** metrics and alerts for family churn, failed family payments, reconciliation failures, and suspicious referral activity.
+
+Each Phase 2 item must include acceptance tests (happy, edge, error paths), UI mocks, and an owner assigned in the backlog.
+
 
 F-STU-042
 Referral Programme
@@ -741,6 +800,36 @@ F-STU-P2-008
 ARIA compliance, dyslexia font, extended time mode. Important but not blocking initial launch.
 
 
+Additional Phase 2 — Freemium Observability & Tests
+
+- Feature: Freemium job observability
+	Code: F-STU-P2-009
+	Why Deferred: Requires metrics & dashboard work (Prometheus / StatsD + Grafana) and alerting rules. Not required for MVP delivery of freemium UX but important for operational reliability at scale.
+	Acceptance Criteria:
+	- Emit per-run metrics from `worker/jobs/freemiumResetNotifications`:
+		- `freemium.reset_notifications.eligible` (count of eligible students)
+		- `freemium.reset_notifications.sent` (count of notifications sent)
+		- `freemium.reset_notifications.failures` (count of failed sends)
+	- Dashboards display 7d/30d trends and a firing alert when failures rate > 5% over 1h.
+	- Unit tests exercise metric emission using a metrics mock.
+
+- Feature: Freemium integration test (end-to-end)
+	Code: F-STU-P2-010
+	Why Deferred: Requires test harness seeding and controlled push send mocks. Valuable for regression coverage but not blocking the initial job implementation.
+	Acceptance Criteria:
+	- Integration test seeds `FreeTierUsage` rows for a small set of students with `sessionsUsed > 0` and `subscriptionStatus='free'`.
+	- Run job in test harness and assert that `sendPushSafe` was called expected number of times and DB unchanged (idempotent).
+	- Test included under `tests/integration/worker/` and runnable in CI with a test DB.
+
+- Feature: Scheduler smoke test (CI dry-run)
+	Code: F-STU-P2-011
+	Why Deferred: Running the full scheduler in CI can be noisy; a lightweight smoke test that imports `worker/scheduler` and runs `runFreemiumResetNotifications()` in dry-run mode validates wiring.
+	Acceptance Criteria:
+	- A CI-only test imports the scheduler or job module and invokes the freemium job with push sending mocked.
+	- Test verifies no uncaught exceptions and that the job returns a valid `FreemiumResetResult` object.
+	- Marked as `ciOnly` and excluded from slower integration gates until infra available.
+
+
 
 8. Non-Functional Requirements
 Requirement
@@ -770,5 +859,97 @@ Redis session state. Zero progress loss on network drop.
 Concurrent sessions
 1,000 target at MVP
 PM2 cluster x2, Redis-backed session state
+
+
+9. Production Run & Deployment
+
+Overview
+- The application runs as a Node.js production deployment managed by PM2. The web frontend (Next.js) and backend API are served from the compiled `dist/` output; background workers run from `dist/worker`.
+
+Key constraints & entry points
+- Node version: >= 20 (use the system Node or a version manager). Ensure `npm ci --include=dev` is run during CI to produce a reproducible install.
+- Build outputs:
+	- Web/server: `dist/server.js` (Next.js compiled server artifacts / server-side helpers).
+	- Worker entry: `dist/worker/entry.js` (workers compiled with `tsconfig.workers.json`).
+- PM2 processes: use `ecosystem.config.cjs` to declare processes. PM2 must run compiled JS from `dist/` only.
+- Environment injection: production environment variables MUST be provided via server env files or a secrets manager. Do NOT hard-code or use `dotenv` at runtime in production code; rely on PM2 `env_file` (e.g. `.env.production`) or native orchestrator secrets.
+
+Canonical deploy checklist (operator)
+1. Pull latest tag/commit on the deploy host.
+2. Ensure a DB snapshot is taken before running migrations (recommended): create a SQL dump or Neon restore point.
+3. Install dependencies and build:
+
+```bash
+npm ci --include=dev
+npm run build:prod
+node scripts/verify-dist.cjs    # repository verification (forbidden deps, entry points)
+```
+
+4. Apply DB migrations (production-safe):
+
+```bash
+npx prisma migrate deploy --schema=prisma/schema.prisma
+```
+
+5. Start / restart services with PM2 (reads `.env.production` or process env):
+
+```bash
+pm2 start ecosystem.config.cjs --env production
+pm2 restart --update-env
+pm2 status
+pm2 logs --lines 200
+```
+
+Operational notes
+- Verification: run `node scripts/verify-dist.cjs` and confirm there are no forbidden runtime dependencies in `dist/` (e.g., `dotenv`, `ts-node`, `tsconfig-paths`). The deployment pipeline should fail on any violation.
+- Workers: build workers with `tsconfig.workers.json` and start via PM2 entry `dist/worker/entry.js`. Workers must be idempotent and safe to restart.
+- Timeouts & fallbacks: All external calls (OpenAI, Redis, DB) must enforce timeouts and retries with safe fallbacks (see developer guardrails in `/docs/COPILOT_GUARDRAILS.md`).
+- Secrets: keep secrets out of source control. Use a secrets manager or `env_file` with restricted OS permissions. Ensure `NEXTAUTH_SECRET`, `DATABASE_URL`, `OPENAI_API_KEY`, `SENTRY_DSN` (optional) are present.
+- Monitoring & logging: configure Sentry (set `SENTRY_DSN`) and Prometheus exporters. Use `pm2 monit` and centralized log collection (e.g., CloudWatch/S3 + `pm2-logrotate`).
+- Health checks: expose a simple `/health` or `/api/health` endpoint returning 200; alert if the route fails.
+
+Rollback & emergency
+- Before migrations, snapshot DB and note the previous release's commit/tag.
+- If a migration is irreversible, restore DB snapshot then redeploy previous artifact.
+- Use graceful PM2 reloads when possible to drain requests: `pm2 reload ecosystem.config.cjs --only web`.
+
+Security & compliance
+- Do not commit `.env.production` or any secrets. Maintain an allowlist of deploy hosts with SSH key access.
+- Verify third-party services and DSP compliance for student data (India DPDP). Retention policy: session turns 90 days hot, archived to R2.
+
+Post-deploy verification commands
+
+```bash
+pm2 status
+pm2 logs --lines 200
+curl -fS https://localhost:3000/api/health || echo 'health failed'
+node scripts/verify-dist.cjs
+grep -R "dotenv" dist || echo OK
+grep -R "tsconfig-paths" dist || echo OK
+```
+
+These steps describe the intended production run model and the operational checks required before release. Add infra-specific automation (CI/CD) to codify these steps in your pipeline.
+
+
+---
+
+### Phase 2 Backlog — Post-release Operational & Content Tasks
+
+- Rationale: operational safety and content coverage tasks that must be executed post-launch to ensure mock availability and auditable content generation.
+- Key items (post-release):
+	- Admin-triggered seeding job: implement an admin-only API to enqueue a background `seed-mocks` job (dry-run and real modes) to create missing `MockExam` rows per subject/grade/board.
+	- Worker handler & queue: background worker (BullMQ) to run `ensureMinimumMocks({ minPer })`, support LLM fallbacks safely, and persist detailed run results and errors.
+	- Audit logging & ExecutionJob: every seed run must create an `AuditLog`/`ExecutionJob` entry with operator id, parameters, dryRun flag, and a persisted JSON summary for post-run review.
+	- Admin UI controls: Dry-run preview, explicit backup confirmation, two-step “Run” with typed acknowledgement, and run history view with links to persisted summaries.
+	- DB safety / preflight: require an operator DB snapshot / restore point before any non-dry-run run; document canonical operator commands for dev and prod.
+	- Tests & CI: unit + integration tests for dry-run behavior, worker handler, audit records, and idempotency; add CI gating for these tests.
+	- Post-seed verification: automated validation job that samples counts per subject/grade/board and alerts if `minPer` not met or question bank shortages occur.
+	- Monitoring & retention: store run summaries (R2/S3) with retention policy, expose run metrics to operator dashboard, and surface errors to Sentry.
+
+Acceptance criteria:
+	- Admin API supports `dryRun=true` returning a concise preview and `dryRun=false` to enqueue an auditable background job.
+	- Every real run requires explicit backup confirmation in the UI and a persisted `AuditLog` row linking to stored summary JSON.
+	- Worker runs are idempotent and safe to retry; failures are logged and surfaced to operators.
+	- CI includes tests covering dry-run, enqueueing, worker execution (mocked), and audit persistence.
 
 

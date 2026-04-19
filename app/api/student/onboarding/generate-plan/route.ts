@@ -3,10 +3,15 @@
  *
  * Saves examDate + studyDaysPerWeek to StudentLearningProfile then kicks off
  * LearningPlan generation for every subject the student has enrolled in.
- * Returns { ok: true, firstSubjectId } on success.
+ * Returns { ok: true, firstSubjectId, belowMinimumHours?, weeklyMinutes? } on success.
+ *
+ * F-STU-003 AC-02: belowMinimumHours is true when computed weekly study time < 180 min (3 hrs).
  *
  * Body: { examDate?: string | null, studyDaysPerWeek: number }
  * Auth: session required -- 401 if missing.
+ *
+ * EDIT LOG:
+ * - 2026-04-16T00:00:00Z | copilot | AC-02: add belowMinimumHours warning to response
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -41,6 +46,15 @@ export async function POST(req: NextRequest) {
         examDate = parsed;
       }
     }
+
+    // AC-02: load existing dailyTargetMin to compute weekly study minutes
+    const existingProfile = await prisma.studentLearningProfile.findUnique({
+      where: { studentId: userId },
+      select: { dailyTargetMin: true },
+    });
+    const dailyTargetMin = existingProfile?.dailyTargetMin ?? 30; // default 30 min/day
+    const weeklyMinutes = studyDaysPerWeek * dailyTargetMin;
+    const belowMinimumHours = weeklyMinutes < 180; // 3 hrs = 180 min
 
     // 1. Upsert StudentLearningProfile with study preference
     await prisma.studentLearningProfile.upsert({
@@ -117,7 +131,7 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    const res = NextResponse.json({ ok: true, firstSubjectId });
+    const res = NextResponse.json({ ok: true, firstSubjectId, belowMinimumHours, weeklyMinutes });
     logger.logAPI(req, res, { className: 'GeneratePlanAPI', methodName: 'POST' }, start);
     return res;
   } catch (err) {

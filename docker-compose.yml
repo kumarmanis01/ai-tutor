@@ -1,6 +1,9 @@
 services:
   postgres:
-    image: postgres:15-alpine
+    build:
+      context: ./docker/postgres
+      dockerfile: Dockerfile
+    image: ai-tutor-postgres:15-pgvector
     restart: unless-stopped
     env_file:
       - .env.production
@@ -10,6 +13,7 @@ services:
       POSTGRES_DB: ${POSTGRES_DB:-ai_dev}
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      - ./docker/postgres/initdb:/docker-entrypoint-initdb.d:ro
     ports:
       - "${POSTGRES_PORT:-5432}:5432"
     healthcheck:

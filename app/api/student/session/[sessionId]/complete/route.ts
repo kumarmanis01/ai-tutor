@@ -114,11 +114,16 @@ export async function POST(req: Request, { params }: { params: Promise<{ session
     })
 
     // AC-04 (F-STU-031): check for newly earned badges this session.
+    const accuracy = totalQuestions > 0 ? correctAnswers / totalQuestions : 0
+    const avgTimeSeconds = totalQuestions > 0 ? (sessionDurationMinutes * 60) / totalQuestions : 0
+
     const badgesEarned = await checkSessionBadges({
       studentId: userId,
       sessionId,
       currentStreak,
       masteryAfter,
+      accuracy,
+      avgTimeSeconds,
     })
 
     const res = NextResponse.json(

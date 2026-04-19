@@ -70,6 +70,19 @@ AC-07
 Failed chunks (embedding API error, parsing error) logged separately. Admin re-runs failed chunks by ID: node ingest.js --retry-failed --run-id <id>
 SHOULD
 
+Phase 2 — Ingestion Pipeline Enhancements (Planned)
+
+These enhancements are scoped for Phase 2 to increase reliability, observability, and admin ergonomics for the curriculum ingestion pipeline.
+
+- **Staging & CI-driven seed:** Add a guarded CI job to run the CBSE Grade 10 seed against a staging database with pre-flight checks (dry-run mode, cost-estimate, and feature-flag gating). Ensure `OPENAI_API_KEY` is scoped to non-production credentials.
+- **Integration tests & fixtures:** Add integration tests for `scripts/parse-pdf-cli.ts` and the seed runner using small PDF fixtures and mocked embedding responses to validate upsert/idempotency and `IngestRunLog` behaviours.
+- **Admin retry UI & tooling:** Small admin console (internal) to inspect `IngestRunLog` entries, view `errorDetails`, and re-run failed chunk batches by run id or chunk id with rate limits and dry-run preview.
+- **Partial re-ingest & backfill:** Support targeted re-ingestion by chapter/topic/concept with idempotent upserts and worker-based, rate-limited backfill utilities.
+- **Cost & observability:** Per-run embedding call counts, estimated cost, and alerts when a run exceeds configurable cost thresholds. Surface run metrics in `analytics.events` and a lightweight admin dashboard.
+- **Operational safety:** Require explicit audit/log entry and admin confirmation for any run targeting production datasets. Provide a `--dry` and `--preview` mode for all CLI commands.
+- **Performance tuning & resilience:** Add circuit-breakers, exponential backoff for embedding calls, and batch-size tuning tests to balance latency, cost, and reliability.
+
+
 
 F-ADM-002
 Concept Taxonomy Management
@@ -225,6 +238,23 @@ Trending topics in escalations (same concept escalated by > 5 different students
 MUST
 
 
+Phase 2 — Enhancements (Planned)
+
+These improvements are planned for Phase 2 to increase reliability, traceability, and administrator control for the doubt escalation workflow:
+
+- Admin UI & One-Click Notify: a small admin console to review escalations, preview cached resolution, and trigger immediate student notification.
+- Notification Preferences & Consent: store per-student / parent notification preferences and respect parental consent; include opt-out handling and audit trails.
+- Multi-channel Delivery & Retry: configurable retries and exponential backoff for fallback channels; add delivery metrics and support for additional gateways (WhatsApp/SMS) where permitted.
+- KB Traceability & Versioning: persist `doubtKbId` on escalations, surface KB revision history and source (admin edit / curriculum update) for auditability.
+- Audit & Delivery Metrics: emit structured events for notification attempts, delivery/fallback rates, and user clicks; surface in admin reports and alerting.
+- Admin-triggered Backfill Tool: safe, rate-limited backfill to populate `notifiedAt` for historical resolved escalations.
+- Admin API Harden & Audit: rate-limit and strengthen auth on the admin notify API; log admin actions to the audit_log table.
+- End-to-end Tests & Monitoring: integration tests for notification flow, idempotency under retries, and provider failures; dashboards for delivery health.
+- Performance & Safety: batch processing tuning, concurrency limits, idempotency guarantees, and circuit-breakers around external providers.
+
+Priority: SHOULD for user-facing reliability; MUST for auditability and consent.
+
+
 F-ADM-012
 LLM Cost Monitoring
 MVP
@@ -365,6 +395,36 @@ MUST
 AC-07
 LTV / CAC ratio: tracked manually from MRR data + marketing spend. Target > 3:1 by Month 6.
 SHOULD
+
+Implementation Status — AC-07 (Automated LTV/CAC): COMPLETED
+
+- Summary: Implemented automation for LTV/CAC (F-ADM-030) to replace the previous manual process. Key deliverables:
+	- Prisma models: `MarketingSpend`, `LtvSnapshot` and SQL migrations under `prisma/migrations/20260417020000_add_marketing_spend` and `prisma/migrations/20260417030000_add_ltv_snapshot`.
+	- Scheduled snapshot job: `jobs/metricsSnapshot.ts` (exports `runSnapshot(createdBy?)`) and registration in `lib/jobs/registerJobs.ts` for daily snapshots.
+	- On-demand metrics API: `app/api/admin/metrics/ltv-cac/route.ts` (month-to-date by default) and history API at `app/api/admin/metrics/ltv-cac/history/route.ts`.
+	- Admin UI: minimal dashboard at `app/admin/metrics/ltv-cac/page.tsx` showing current metrics and recent snapshots.
+	- Admin CLI: `scripts/insert-marketing-spend.ts` to insert monthly marketing spend entries (paise-based amounts).
+	- Unit tests: basic test coverage for the metrics API at `tests/unit/app/api/admin/metrics_ltv_cac.spec.ts`.
+
+Notes / Outstanding dev tasks (pre-flight before production runs):
+- Apply database migrations and generate Prisma client: `npx prisma migrate dev --name add_marketing_and_ltv_snapshot` then `npx prisma generate`.
+- Resolve Prisma schema validation tooling warning: CI/type-check flagged `datasource.url` deprecation (may be a Prisma CLI/tooling mismatch vs project lockfile). Align local Prisma CLI version or adapt `prisma.config.ts` as required.
+- Add integration tests for `jobs/metricsSnapshot` persistence and for `scripts/insert-marketing-spend` CLI behavior.
+- Verify worker/orchestrator scheduling and run a one-off `runSnapshot()` to create initial snapshot row.
+
+Phase 2 — Growth Metrics Enhancements (Planned)
+
+These are recommended Phase 2 items to make the LTV/CAC pipeline production-ready and more useful to ops and business stakeholders:
+
+- Centralize metric SQL: move duplicated raw SQL aggregators into a shared helper (`lib/metrics/aggregator.ts`) used by API, job, and admin page to ensure consistency and single-source-of-truth.
+- End-to-end tests: add an integration test that runs the snapshot job against a test DB, asserts `LtvSnapshot` creation, and validates basic calculations (ARPU, churn, LTV, CAC, ratio).
+- Metrics dashboard & alerts: build a lightweight admin dashboard (Grafana/Prometheus or internal UI) with time series of `ltv_paise`, `cac_paise`, `ltv_cac_ratio`; add alerting rules (e.g., `ltv_cac_ratio < 2` triggers warning).
+- Marketing spend UI: expose a simple admin form to add/edit monthly `MarketingSpend` entries with validation and audit logging (createdBy + notes). Enforce TTL/soft-delete policies for historical spend edits.
+- Channel breakdowns & attribution: extend snapshots to include `marketing_spend_by_channel` and CAC per-channel; add endpoint to query CAC by channel and time window.
+- Backfill tooling & idempotency: provide safe backfill scripts and idempotent snapshot runner to re-compute historical snapshots where marketing spend was entered retrospectively.
+- Observability & provenance: log inputs to snapshot runs (start/end dates, source of marketing spend) and persist `createdBy` and `notes` to `LtvSnapshot` for auditability.
+- CI gates & coverage: require unit + integration tests for job and CLI in CI; add a smoke job that runs snapshot in a staging DB during deploy pre-flight.
+
 
 
 F-ADM-031

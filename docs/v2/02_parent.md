@@ -1,4 +1,22 @@
 
+<!--
+FILE OBJECTIVE:
+- Parent actor approach document covering monitoring, trust and subscription management; includes Parent Dashboard (F-PAR-010) requirements.
+
+LINKED UNIT TEST:
+- tests/unit/docs/parent_docs.spec.ts
+
+COPILOT INSTRUCTIONS FOLLOWED:
+- /docs/COPILOT_GUARDRAILS.md
+- .github/copilot-instructions.md
+
+EDIT LOG:
+- 2026-04-17T00:00:00Z | assistant | Add Phase 2 timezone enhancement items and document implementation notes for F-PAR-010 (dual-timezone display); updated roadmap and tests/code references.
+ - 2026-04-17T09:50:00Z | copilot | Add Phase 2 enhancement items for F-PAR-020 (Weekly Progress Digest) and note QA send/testing status.
+ - 2026-04-17T12:00:00Z | copilot | Implement F-PAR-024 readiness-drop worker: enforce 90-day exam window, include AI remediation summary in parent notifications, add SMS/email plain-text fallback; update docs with Phase 2 planned enhancements.
+ - 2026-04-17T14:00:00Z | copilot | Implement F-PAR-031 EMI schedule UI + retry flow: add client retry modal, toast notifications, inline banners, retry API + enqueue helper, and server-render unit tests; update docs with Phase 2 planned enhancements for subscription management.
+-->
+
 AI HOME TUTOR PLATFORM
 Parent Actor
 Approach Document — Monitoring, Trust & Subscription Management
@@ -179,6 +197,16 @@ AC-06
 Dashboard loads in < 2 seconds. No empty states — always shows something meaningful even in the first week.
 MUST
 
+Phase 2 — Timezone & UX enhancements (planned)
+
+- P2-AC-01: Timezone toggle — allow parent to choose display mode per-child: `Parent time`, `Student time`, or `Both` (default: `Both` when zones differ).
+- P2-AC-02: Detailed session timestamps — show both local timestamps on the last-10 sessions list and in the session detail view when timezones differ, with hover/copy-to-clipboard ISO timestamp.
+- P2-AC-03: Digest scheduling resilience — support DST changes and automatic parent timezone detection with optional manual override in account settings.
+- P2-AC-04: Notification preview — include a small timezone label in weekly digest emails and SMS: "Times shown in your timezone (Asia/Kolkata) — view in student timezone" deep link.
+- P2-AC-05: Accessibility — ensure timezone labels have `aria-label` descriptions and are localised (Hindi + English) for parents with low digital literacy.
+- P2-AC-06: Telemetry & audit — log timezone mismatch events (parent != student) to help evaluate NRI/remote parent usage and prioritise perf/UI follow-ups.
+
+
 
 F-PAR-011
 Subject Mastery View
@@ -261,6 +289,33 @@ Digest email is mobile-optimised HTML. Single-column. Loads without images on sl
 MUST
 
 
+Phase 2 — Digest Enhancements (Planned)
+
+- P2-AC-01: Per-parent frequency & channel preferences — allow parents to choose Weekly / Bi-weekly / Monthly and preferred channels (Email / SMS / WhatsApp). Default: Weekly (MVP).
+- P2-AC-02: Multilingual narrative generation — produce digest in the parent's preferred language (Hindi, Tamil, Telugu, English) with schema validation and strict grade-appropriate tone enforcement.
+- P2-AC-03: WhatsApp Business API integration — offer WhatsApp-formatted templates + fallback to SMS for feature phones. Maintain single-message brevity and include deep-link to full report in app.
+- P2-AC-04: Personalisation & A/B testing — enable controlled experiments on narrative tone and CTA placement; capture opt-in analytics for opens and clicks.
+- P2-AC-05: Robust delivery & retry semantics — idempotent delivery, exponential backoff retries, and a dead-letter queue (DLQ) for persistent failures with operator alerts.
+- P2-AC-06: Rich deep-links & in-email quick actions — add secure one-click actions (Snooze, Mute, Change schedule) that deep-link to parent settings with prefilled context.
+- P2-AC-07: Analytics & observability — log send success, opens, dark-mode rendering verification, and parent actions taken from digest CTAs for later analysis.
+- P2-AC-08: Low-bandwidth & accessibility mode — provide a text-only digest variant (SMS-friendly) and validate colour contrast / dark-mode for assistive-readers.
+
+Notes:
+- Implementation summary: Mobile-first, dark-mode-safe HTML template and parent opt-out configuration have been implemented and wired into the parent settings UI and API (covers AC-04 and AC-05). The worker-side digest builder (`sendParentDigests`) was updated to use the new responsive template; `buildDigestHtml()` was exported for testing. A focused unit test verifies viewport meta and dark-mode CSS. A Prisma migration adding `ParentNotification` and `ParentProfile.inactivityOptOut` was applied and the QA send was re-run to exercise the end-to-end delivery/audit path.
+- Tests / Next steps: Unit tests added for HTML output; full end-to-end worker integration tests and visual regression checks are still recommended.
+
+Planned Next Steps (Phase 2 enhancements)
+
+- Add visual-regression tests for email renderings (light, dark, no-images) using a snapshot tool (Percy/Playwright) and include in CI.
+- Add an end-to-end worker integration test that enqueues the digest job, runs the worker, and validates audit records + outbound sends in a sandboxed environment.
+- Instrument opens and CTA clicks (privacy-preserving) and wire analytics events to `METRICS_URL` for observability and A/B testing.
+- Multilingual narrative generation: add language fallbacks and schema-validated prompt templates for Hindi/Tamil/Telugu/English (P2-AC-02).
+- Channel & frequency preferences: expose per-parent frequency (weekly/bi-weekly/monthly) and channel selection (email/sms/whatsapp) with safe fallbacks and rate-limiting (P2-AC-01).
+- Low-bandwidth / accessibility variant: implement a text-only digest (SMS-friendly) and ensure colour contrast and screen-reader friendliness (P2-AC-08).
+- WhatsApp Business integration: implement templated WhatsApp messages + fallback to SMS for feature phones (P2-AC-03).
+
+
+
 F-PAR-021
 Inactivity Alert
 MVP
@@ -292,6 +347,19 @@ AC-05
 Parent can mute inactivity alerts for a specified period (e.g., school exam period, family event). Mute configurable from alert itself.
 SHOULD
 
+Phase 2 — Inactivity Enhancements (Planned)
+
+- P2-AC-01: Per-parent frequency & channel preferences — allow parents to choose frequency (Weekly / Bi-weekly / Monthly) and preferred channels (Email / SMS / WhatsApp) for inactivity alerts. Default: Weekly via parent's preferred channel.
+- P2-AC-02: In-alert quick actions — add one-click actions in emails/SMS/WhatsApp for `Mute 7/14/30 days` and `Snooze 24h`. Use tokenized HMAC links for mute actions (already implemented) and surface immediate acknowledgement in the UI.
+- P2-AC-03: Deep-link UX improvements — show both parent and student timezone labels, include ISO timestamps (copy-to-clipboard), and provide a safe fallback when the next plan item is unavailable (deep-link to parent dashboard).
+- P2-AC-04: Two-way WhatsApp integration — support parent acknowledgements and quick-reply commands (e.g., "Snooze", "Mute", "Report") via WhatsApp Business API, with idempotent backend handling and short human-readable confirmations.
+- P2-AC-05: Observability & delivery robustness — add idempotent send semantics, DLQ for persistent failures, exponential backoff retries, and telemetry for suppression/set/reset events to tune caps and UX.
+- P2-AC-06: Test & QA — add end-to-end worker integration tests covering: tokenized mute links, suppression semantics, deep-link navigation, and multi-channel delivery. Add visual regression tests for email renderings (light/dark/text-only).
+
+Notes:
+- Implementation status: deep-link parameterization (`?focus=next&itemId=<id>`), tokenized mute GET link handling, per-child pause (`ParentStudent.isPaused` / `pausedUntil`), and suppression-clear on qualifying activity are implemented and unit-tested. The service worker now delegates to the canonical job (`runInactivityAlerts`) to avoid duplicated logic.
+- Next steps (Phase 2): implement per-parent preferences UI, WhatsApp channel templating + quick-replies, DLQ monitoring + operator dashboard, and run full integration tests before promoting to production.
+
 
 F-PAR-022
 Milestone & Achievement Notifications
@@ -313,6 +381,21 @@ MUST
 AC-04
 Maximum 2 milestone notifications per week to avoid notification fatigue.
 SHOULD
+
+Phase 2 — Milestone Enhancements (Planned)
+
+- P2-AC-01: Per-parent notification preferences — allow parents to choose which milestone types to receive (streaks, chapter mastery, mock completions, readiness thresholds) and per-channel preference (Email / SMS / WhatsApp). Default: all on.
+- P2-AC-02: Milestone aggregation & digest — collapse multiple milestone events into a single daily/weekly milestone digest with highlights and one actionable suggestion to reduce noise.
+- P2-AC-03: Per-parent frequency control & quiet hours — allow parents to set max per-day / per-week caps and quiet hours for delivery; settings respected across channels and across siblings.
+- P2-AC-04: WhatsApp templates & two-way actions — add WhatsApp Business API templates for milestone notifications with quick-replies (Celebrate, Mute, Details) and deep-links back to the dashboard.
+- P2-AC-05: Advanced delivery semantics — idempotent send, DLQ for persistent failures, exponential backoff retries, and per-parent back-pressure handling to avoid gateway throttling.
+- P2-AC-06: Observability & analytics — instrument open/click events, milestone conversion (parent action taken), and fatigue metrics (opt-outs, mute rates) to tune caps and A/B test notification strategies.
+- P2-AC-07: Support tooling — add an operator `parent_notification_history` view and support UI for ops to replay or investigate notifications (audit trail, last_sent timestamps).
+- P2-AC-08: Personalisation guardrails — ensure all milestone narratives remain age-appropriate, non-judgmental, and schema-validated before sending (reuse hallucination & safe response guardrails already in place).
+
+Notes:
+- Implementation: Weekly milestone cap (2/week) is enforced in `lib/notifications/policy.ts` and covered by unit tests at `tests/unit/lib/notifications/policy_milestone.test.ts`. Digests are explicitly exempt from the milestone cap to guarantee weekly delivery (F-PAR-020).
+- Phase 2 next steps: design the per-parent preferences UI; implement WhatsApp channel templating and quick-replies; add DLQ monitoring + observability dashboards; implement E2E worker integration tests covering multi-channel delivery and fatigue metrics.
 
 
 F-PAR-023
@@ -364,6 +447,24 @@ AC-04
 Alert only triggers if exam is within 90 days. No alert for readiness drops when exam is > 90 days away (less urgent).
 SHOULD
 
+Phase 2 — F-PAR-024 Enhancements
+PHASE 2
+Planned enhancements to improve delivery, safety, observability and parent controls for the Exam Readiness Score Drop Alert:
+- P2-AC-01: Per-parent readiness alert preferences — channel selection (Email/SMS/WhatsApp), severity threshold override (e.g., 15-point vs 10-point), and quiet hours. Defaults: Email+SMS, 10-point threshold, no quiet hours.
+- P2-AC-02: Localised WhatsApp templates & quick-replies — add templated remediation summary with buttons: "View Plan", "Mute 7 days", "Help", and deep-links to dashboard.
+- P2-AC-03: LLM observability & safe-fallbacks — log LLM response usage, parsing failures, and fallback activations; add metrics for LLM success rate and average remediation length. Store anonymised diagnostics for audits.
+- P2-AC-04: Per-tenant / per-parent LLM toggle — allow admins to disable LLM remediation generation or force safe-mode (non-LLM) workflows.
+- P2-AC-05: Delivery resilience & DLQ — ensure idempotent sends, DLQ for persistent delivery failures, and operator UI to replay alerts per parent (audit + last_sent timestamps).
+- P2-AC-06: Aggregation & digesting — group multiple readiness drops across siblings and/or subjects into a single digest with one actionable remediation to reduce noise.
+- P2-AC-07: E2E integration tests & observability dashboards — add worker integration tests that exercise precompute snapshots, readiness detection, remediation generation (mocked), and multi-channel delivery; instrument dashboards for fatigue metrics.
+- P2-AC-08: Accessibility & localisation — ensure remediation text is grade-appropriate, translated for regional languages, and respects the junior protection guardrails.
+
+Planned immediate Phase 2 work (prioritised):
+- Add unit tests asserting plain-text remediation presence in parent email and SMS (tests/unit/worker/services/readinessDropWorker.test.ts).
+- Add integration test harness for worker to exercise precompute + delivery pipelines with mocked channels.
+- Add config flagging so `ALLOW_LLM_CALLS=1` is present only for worker runtime (PM2/process env), not web processes.
+- Improve observability: add metrics for remediation-generated vs fallback responses and a small operator view to replay failed alerts.
+
 
 
 4.1 Phase 2 — WhatsApp Integration
@@ -400,6 +501,25 @@ AC-06
 Payment confirmation within 5 seconds. If payment gateway times out, transaction status checked via webhook before showing success/failure.
 MUST
 
+Phase 2 — Subscription Purchase Enhancements (Planned)
+
+- P2-AC-01: Staging end-to-end validation — run a full purchase flow in a staging environment using Razorpay test keys, exercise: order creation, webhook reconciliation, `planId` persisted on `PaymentOrder`, `Subscription` activation for child slots, invoice generation, and receipt delivery. Add automated E2E job to CI that can run against test gateway keys (flagged off by default).
+- P2-AC-02: Family-plan UX improvements — allow explicit per-child seat assignment UI, async child invite flow for adding a third child post-purchase, and granular seat transfer audit logs.
+- P2-AC-03: Family plan analytics — record `family_plan_applied` event with `childSlots` and `perChildEffectivePrice` for later pricing experiments and A/B testing.
+- P2-AC-04: Admin tools — add reconciliation dashboard that surfaces `PaymentOrder.planId` mismatches, gateway refunds, and DLQ entries for failed deliveries.
+- P2-AC-05: Billing flexibility — allow mid-cycle child slot increases (upgrade proration) and scheduled decreases (downgrade on renewal) with clear UX and audit trail.
+
+- P2-AC-06: Promotions & Coupons — enhance coupon capabilities and operational tooling:
+	- Admin UI: coupon creation, batch import, scoped batch codes, per-student vs batch issuance, and audit trail for admin actions.
+	- Frontend: checkout coupon input, client-side validation, clear discount breakdown (fixed vs percent), and expiry display before confirmation.
+	- Integration tests: staging E2E flow exercising order creation with coupon, webhook reconciliation, `CouponRedemption` persistence, and `Subscription` activation.
+	- Accounting & reconciliation: reconciliation report for coupon redemptions, refunds, and applied credits; surface mismatches in admin dashboard.
+	- Lifecycle & enforcement: scheduled expiry job, enforcement of `maxUses` and `maxUsesPerUser`, and support for recurring (renewal) coupons.
+	- Observability & fraud detection: metrics for coupon usage by campaign, redemptions per IP/user, and alerts for anomalous redemption patterns.
+	- Backfill & migration: plan for migrating historical `PaymentOrder` rows with coupon metadata and reconciling prior promotions.
+	- Audit & receipts: include `couponCode` in invoice/receipt metadata and ensure all admin coupon changes are recorded in `AuditLog`.
+
+
 
 F-PAR-031
 Subscription Management
@@ -427,6 +547,30 @@ MUST
 AC-06
 Annual plan with EMI: parent can view EMI schedule. Individual EMI failures handled same as subscription payment failure (grace period per instalment).
 SHOULD
+
+
+Phase 2 — Subscription Management Enhancements (Planned)
+
+- P2-AC-01: Staging end-to-end retry validation — exercise targeted retry flow (enqueue -> worker -> charge attempt) using Razorpay test keys; verify webhook reconciliation, invoice generation, and subscription state transitions.
+- P2-AC-02: UI polish & accessibility — confirmation modal for retry, toast notifications, inline success/error banners, improved i18n (Hindi + additional regional languages), and ARIA-compliant controls for EMI schedule interactions.
+- P2-AC-03: Worker integration & idempotency tests — add integration tests that simulate EMI failures, targeted retry jobs, idempotent charge attempts, DLQ replay, and observability hooks for failures and success metrics.
+- P2-AC-04: Observability & audit trail — instrument retry requests, job outcomes, payment attempts, and expose operator tooling to replay or inspect failed retry jobs with full audit context.
+- P2-AC-05: Security & abuse mitigation — rate-limit parent-initiated retries, add anti-fraud heuristics, and require recent ownership verification for high-risk retry attempts.
+- P2-AC-06: Billing & reconciliation — ensure invoices and PDF attachments remain consistent after retries; add reconciliation dashboards for payment gateway mismatches and DLQ investigation.
+- P2-AC-07: UX testing & coverage — add SSR unit tests for billing page, component tests for retry flows, and Playwright E2E tests for the overall parent billing + retry experience.
+
+Planned immediate Phase 2 work (prioritised):
+- Add worker integration tests to validate enqueue -> processing -> payment outcome flows.
+- Add Playwright E2E for the billing page and retry confirmation flow (including Hindi/English copy assertions).
+- Expose audit events for retry attempts and integrate with existing metrics dashboards.
+- Add operator DLQ view to the ops console for manual replays and failure analysis.
+
+Notes — recent implementation (summary):
+- EMI schedule UI: app/(parent)/parent/billing/page.tsx — shows per-installment amounts, due dates, and retry affordance.
+- Client retry surface: components/parent/subscription/RetryInstallmentButton.tsx — confirmation modal, i18n (EN/HI), POSTs to API, shows inline banner and calls `lib/toast.ts`.
+- Retry endpoint: app/api/parent/installment/retry/route.ts and helper lib/installment/retry.ts — enqueues targeted `installment-dunning` job.
+- Tests added: tests/unit/app/parent/billing/page.test.ts (SSR) and tests/unit/components/parent/subscription/RetryInstallmentButton.test.ts (client behavior).
+
 
 
 F-PAR-032
