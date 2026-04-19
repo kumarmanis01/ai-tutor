@@ -21,8 +21,6 @@ import { logger } from '@/lib/logger';
 import PlanSelector from './PlanSelector';
 import PaymentMethodSelector from './PaymentMethodSelector';
 import PaymentConfirmation from './PaymentConfirmation';
-import AddCard from './AddCard';
-import SavedPaymentMethods from './SavedPaymentMethods';
 import type { PlanId } from '@/lib/billing/plans';
 import type { PaymentMethod } from './PaymentMethodSelector';
 
@@ -242,10 +240,7 @@ export function UpgradeFlow({ studentName, studentEmail, freeTierUsage }: Upgrad
         {/* When user chooses card, surface saved methods and AddCard flow */}
         {method === 'card' && (
           <div className="pt-3">
-            <SavedPaymentMethods />
-            <div className="mt-3">
-              <AddCard email={studentEmail ?? undefined} />
-            </div>
+            <p className="text-sm text-muted-foreground">Card payments are temporarily unavailable. Please choose another payment method.</p>
           </div>
         )}
         <button
