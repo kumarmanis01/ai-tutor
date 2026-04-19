@@ -58,13 +58,13 @@ describe('LearningPlanTimeline component', () => {
 
   beforeEach(() => {
     // Reset global.fetch mock
-    // @ts-expect-error TODO: fix types
+    // @ts-ignore
     global.fetch = jest.fn()
   })
 
   it('optimistically swaps items when move succeeds', async () => {
     // Mock fetch to return OK
-    // @ts-expect-error TODO: fix types
+    // @ts-ignore
     global.fetch.mockResolvedValue({ ok: true, json: async () => ({ ok: true }) })
 
     render(<LearningPlanTimeline initialData={initialData as any} />)
@@ -87,10 +87,10 @@ describe('LearningPlanTimeline component', () => {
     })
 
     // Ensure fetch was called with PATCH and correct body
-    // @ts-expect-error TODO: fix types
+    // @ts-ignore
     expect(global.fetch).toHaveBeenCalled()
     // Check last call payload
-    // @ts-expect-error TODO: fix types
+    // @ts-ignore
     const lastCall = global.fetch.mock.calls[0]
     expect(lastCall[0]).toMatch(/\/api\/student\/learning-plan\//)
     const fetchOptions = lastCall[1]

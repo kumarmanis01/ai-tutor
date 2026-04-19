@@ -1,7 +1,7 @@
 const logger = require('../../../lib/logger');
 /* eslint-disable */
 const { spawn } = require('child_process');
-const { prisma } = require('../../../lib/prisma');
+const { PrismaClient } = require('@prisma/client');
 
 (async function main() {
   if (!process.env.DATABASE_URL) {
@@ -9,7 +9,7 @@ const { prisma } = require('../../../lib/prisma');
     process.exit(0);
   }
 
-  
+  const prisma = new PrismaClient();
   try {
     // Create test concept id
     const conceptId = `int-test-concept-${Date.now()}`;

@@ -82,7 +82,7 @@ export async function generateLearningPlan(
         })
         topicFocus = (control?.topicFocusRequest || '').trim().toLowerCase() || null
       }
-    } catch {
+    } catch (_e) {
       // Best-effort: if lookup fails, ignore topic focus so plan generation remains robust
       topicFocus = null
     }

@@ -32,7 +32,8 @@ if (!process.env.DATABASE_URL) {
     }
   }
 }
-const { prisma } = require('../lib/prisma');
+
+const { PrismaClient } = require('@prisma/client')
 
 const FLAG_MAP = {
   H: 'HALLUCINATION',
@@ -91,7 +92,7 @@ function prompt(question) {
     process.exit(1)
   }
 
-  
+  const prisma = new PrismaClient()
 
   try {
     const { start, end } = getIstBoundsForDate(dateStr)

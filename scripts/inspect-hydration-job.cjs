@@ -7,7 +7,7 @@
 "use strict"
 const fs = require('fs')
 const path = require('path')
-const { prisma } = require('../lib/prisma');
+const { PrismaClient } = require('@prisma/client')
 
 function ensureDatabaseUrl() {
   if (process.env.DATABASE_URL) return
@@ -24,7 +24,7 @@ function ensureDatabaseUrl() {
 
 ensureDatabaseUrl()
 
-
+const prisma = new PrismaClient()
 
 async function inspectJob(jobId) {
   const jid = String(jobId).replace(/'/g, "''")
@@ -69,7 +69,7 @@ async function main() {
           console.log('\nOutbox row (id match):')
           console.log(JSON.stringify(out, null, 2))
         }
-      } catch (_e) {}
+      } catch (e) {}
 
       const outMatches = await prisma.$queryRawUnsafe(`SELECT "id", "queue", "payload", "meta", "createdAt" FROM "Outbox" WHERE "payload"::text ILIKE '%${String(j).replace(/'/g, "''")}%' LIMIT 20`)
       if (outMatches && outMatches.length > 0) {

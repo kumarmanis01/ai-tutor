@@ -72,14 +72,6 @@ export const AdminActionType = {
 } as const
 export type AdminActionType = typeof AdminActionType[keyof typeof AdminActionType]
 
-// Consent scopes used by the consent APIs and tests
-export const ConsentScope = {
-  AI_INTERACTION: 'AI_INTERACTION',
-  DATA_PROCESSING: 'DATA_PROCESSING',
-  MARKETING: 'MARKETING',
-} as const
-export type ConsentScope = typeof ConsentScope[keyof typeof ConsentScope]
-
 export const JobType = {
   syllabus: 'syllabus',
   notes: 'notes',
@@ -94,3 +86,9 @@ export const JobStatus = {
   failed: 'failed',
 } as const
 export type JobStatus = typeof JobStatus[keyof typeof JobStatus]
+
+export const ConsentScope = {
+  AI_INTERACTION: 'AI_INTERACTION',
+  DATA_PROCESSING: 'DATA_PROCESSING',
+} as const
+export type ConsentScope = typeof ConsentScope[keyof typeof ConsentScope]

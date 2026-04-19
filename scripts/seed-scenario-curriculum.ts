@@ -14,9 +14,10 @@
  *
  * Run: npx tsx scripts/seed-scenario-curriculum.ts
  */
-import { prisma } from '../lib/prisma';
 
+import { PrismaClient } from '@prisma/client';
 
+const prisma = new PrismaClient();
 
 /** UTC midnight today for DailyTask date */
 function utcMidnightToday(): Date {

@@ -6,9 +6,10 @@
  * - Concepts with null description for launch slice (CBSE Grade 10 Maths + Science).
  * - CurriculumChunk rows with empty conceptIds (if table is in use).
  */
-import { prisma } from '../lib/prisma';
 
+import { PrismaClient } from "@prisma/client";
 
+const prisma = new PrismaClient();
 
 async function main() {
   const cbse = await prisma.board.findFirst({ where: { slug: "cbse" } });

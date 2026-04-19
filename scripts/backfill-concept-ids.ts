@@ -20,8 +20,7 @@
  * Env required: DATABASE_URL
  */
 
-import type { PrismaClient } from '@prisma/client'
-import { prisma } from '../lib/prisma'
+import { PrismaClient } from '@prisma/client'
 
 const CUID_RE = /^c[a-z0-9]{24}$/i
 
@@ -92,7 +91,7 @@ async function main() {
   const dryRun = process.argv.includes('--dry-run')
   if (dryRun) console.log('[backfill-concept-ids] DRY RUN -- no writes will be performed.')
 
-  // Use shared singleton Prisma client from lib/prisma
+  const prisma = new PrismaClient()
   let updated = 0
   let skipped = 0
   let noConceptsFound = 0

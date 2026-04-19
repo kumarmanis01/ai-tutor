@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { prisma } from '../lib/prisma';
+import { PrismaClient } from '@prisma/client'
 
 async function main() {
   const args = process.argv.slice(2)
@@ -10,7 +10,7 @@ async function main() {
     console.error('Usage: node scripts/inspect-hydration-dump.js <hydrationId> <executionId> <subjectId>')
     process.exit(2)
   }
-  
+  const prisma = new PrismaClient()
   try {
     // Find a RESPONSE_RECEIVED log for this execution job to get a timestamp
     const respLog = await prisma.jobExecutionLog.findFirst({ where: { jobId: executionId, event: 'RESPONSE_RECEIVED' }, orderBy: { createdAt: 'desc' } })

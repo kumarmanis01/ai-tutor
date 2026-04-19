@@ -12,7 +12,6 @@
  * EDIT LOG:
  * - 2026-04-13T00:00:00Z | senior-engineer | add student push expectations and mocks
  */
-/* eslint-disable @typescript-eslint/no-require-imports */
 
 // Prevent real OpenAI calls: callLLM is gated by ALLOW_LLM_CALLS=1 which is set in
 // forceTestNodeEnv.cjs. Mock the module so no HTTP requests are made during unit tests.

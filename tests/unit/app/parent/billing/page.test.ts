@@ -2,7 +2,6 @@
  * Unit test for ParentBillingPage server component. Mocks prisma and session
  * and verifies EMI schedule and Retry link are rendered in the generated HTML.
  */
-/* eslint-disable @typescript-eslint/no-require-imports */
 import React from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { prismaMock, resetPrismaMock } from '../../../../helpers/prismaMock'

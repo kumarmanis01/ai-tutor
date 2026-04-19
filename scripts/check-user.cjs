@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-const { prisma } = require('../lib/prisma');
+const { PrismaClient } = require('@prisma/client');
 
 (async () => {
   const email = process.argv[2];
@@ -7,7 +7,7 @@ const { prisma } = require('../lib/prisma');
     console.error('Usage: node scripts/check-user.cjs <email>');
     process.exit(1);
   }
-  
+  const prisma = new PrismaClient();
   try {
     const u = await prisma.user.findUnique({ where: { email } });
     console.log(JSON.stringify(u, null, 2));

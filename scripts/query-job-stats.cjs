@@ -1,7 +1,7 @@
-const { prisma } = require('../lib/prisma');
+const { PrismaClient } = require('@prisma/client');
 
 (async function main(){
-  
+  const prisma = new PrismaClient();
   try{
     const res = await prisma.$queryRawUnsafe('SELECT "status", count(*) FROM "HydrationJob" GROUP BY "status";');
     console.log('HydrationJob counts by status:');

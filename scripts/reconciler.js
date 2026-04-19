@@ -1,11 +1,11 @@
 #!/usr/bin/env node
-import { prisma } from '../lib/prisma';
+import { PrismaClient } from '@prisma/client'
 
 // Reconciler: find HydrationJobs where contentReady=true and linked ExecutionJob not completed,
 // and mark ExecutionJob completed. Run periodically (cron/PM2) or manually.
 
 async function main() {
-  
+  const prisma = new PrismaClient()
   try {
     const pending = await prisma.hydrationJob.findMany({ where: { contentReady: true } })
     for (const h of pending) {

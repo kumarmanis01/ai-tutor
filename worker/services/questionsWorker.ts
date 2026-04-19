@@ -48,7 +48,7 @@ function logRawToConsole(jobId: string, llmResult: any) {
     if (!raw) return;
     const snippet = typeof raw === 'string' ? raw.slice(0, 4000) : JSON.stringify(raw).slice(0, 4000);
     logger.info('[LLM_RAW_DEBUG] Raw LLM output (console-only mode)', { jobId, snippet });
-  } catch (_e) {}
+  } catch (e) {}
 }
 /** All difficulty levels to generate */
 const DIFFICULTY_LEVELS = ['easy', 'medium', 'hard'] as const;

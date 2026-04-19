@@ -3,10 +3,10 @@
  * - Unit tests for `LanguageSelector` component.
  *
  * LINKED UNIT TEST:
- * - tests/unit/components/LanguageSelector.spec.tsx
+ * - tests/unit/components/LanguageSelector.spec.ts
  *
  * EDIT LOG:
- * - 2026-04-18T00:00:00Z | copilot | rename to .tsx and use @ts-expect-error
+ * - 2026-04-18T00:00:00Z | copilot | add basic persistence & callback test
  */
 
 import React from 'react'
@@ -17,14 +17,14 @@ import LanguageSelector from '@/components/LanguageSelector'
 
 describe('LanguageSelector', () => {
   beforeEach(() => {
-    // @ts-expect-error TODO: fix types
+    // @ts-ignore
     global.fetch = jest.fn()
     // Clear localStorage
-    try { global.localStorage?.clear?.() } catch (_e) {}
+    try { global.localStorage?.clear?.() } catch (e) {}
   })
 
   it('persists selection and calls setLang', async () => {
-    // @ts-expect-error TODO: fix types
+    // @ts-ignore
     global.fetch.mockResolvedValue({ ok: true, json: async () => ({ ok: true }) })
 
     const setLang = jest.fn()

@@ -34,7 +34,8 @@ if (!process.env.DATABASE_URL) {
     }
   }
 }
-const { prisma } = require('../lib/prisma');
+
+const { PrismaClient } = require('@prisma/client')
 
 function parseArgs(argv) {
   const args = {}
@@ -68,7 +69,7 @@ function parseArgs(argv) {
     process.exit(1)
   }
 
-  
+  const prisma = new PrismaClient()
 
   try {
     const result = await prisma.studentFeatureFlag.upsert({

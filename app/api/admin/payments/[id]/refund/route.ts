@@ -72,7 +72,7 @@ export async function POST(
         adminId: session.user.id,
         targetEntity: 'Payment',
         targetId: id,
-        action: (AdminActionType?.SUBSCRIPTION_REFUND) ?? 'SUBSCRIPTION_REFUND',
+        action: AdminActionType.SUBSCRIPTION_REFUND,
         previousValue: { status: previousStatus },
         newValue: { status: 'refunded' },
         reason,

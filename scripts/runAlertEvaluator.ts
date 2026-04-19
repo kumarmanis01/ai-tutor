@@ -1,5 +1,4 @@
-import { Prisma } from '@prisma/client';
-import { prisma } from '../lib/prisma';
+import { PrismaClient, Prisma } from '@prisma/client';
 let evaluateAlerts: any;
 let AlertRouter: any;
 let DryRunSink: any;
@@ -13,6 +12,7 @@ let RedisDeduper: any;
 let SinkWrapper: any;
 let sendEmail: any;
 
+const prisma = new PrismaClient();
 
 const LOCK_KEY = Number(process.env.EVALUATOR_PG_LOCK_KEY || '987654321');
 const INTERVAL_SEC = Number(process.env.EVALUATOR_INTERVAL_SEC || '60');

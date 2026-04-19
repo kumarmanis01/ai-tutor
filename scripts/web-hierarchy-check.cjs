@@ -1,6 +1,5 @@
-const { SoftDeleteStatus, ApprovalStatus } = require('@prisma/client');
-const { prisma } = require('../lib/prisma');
-const p = prisma;
+const { PrismaClient, SoftDeleteStatus, ApprovalStatus } = require('@prisma/client');
+const p = new PrismaClient();
 (async () => {
   try {
     const boards = await p.board.findMany({

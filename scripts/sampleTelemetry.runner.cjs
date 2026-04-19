@@ -6,11 +6,11 @@
   - Writes idempotent rows to TelemetrySample
 */
 const crypto = require('crypto');
-const { prisma } = require('../lib/prisma');
+const { PrismaClient } = require('@prisma/client');
 const IORedis = require('ioredis');
 const { Queue } = require('bullmq');
 
-
+const prisma = new PrismaClient();
 
 function startOfMinute(d) {
   return new Date(d.getFullYear(), d.getMonth(), d.getDate(), d.getHours(), d.getMinutes(), 0, 0);

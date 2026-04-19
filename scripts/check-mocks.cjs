@@ -1,5 +1,7 @@
-'use strict';const { prisma } = require('../lib/prisma');
+'use strict';
 
+const { PrismaClient } = require('@prisma/client');
+const prisma = new PrismaClient();
 
 (async () => {
   try {

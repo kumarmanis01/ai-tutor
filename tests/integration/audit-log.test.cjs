@@ -1,6 +1,6 @@
 const logger = require('../../lib/logger');
 /* eslint-disable */
-const { prisma } = require('../../lib/prisma');
+const { PrismaClient } = require('@prisma/client');
 
 (async function main() {
   if (!process.env.DATABASE_URL) {
@@ -8,7 +8,7 @@ const { prisma } = require('../../lib/prisma');
     process.exit(0);
   }
 
-  
+  const prisma = new PrismaClient();
   try {
     // Create a temporary topic and supporting academic hierarchy
     const ids = await ensureChapter(prisma);

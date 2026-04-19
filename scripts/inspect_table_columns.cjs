@@ -17,8 +17,8 @@ function loadEnvFile(file) {
   } catch {}
 }
 loadEnvFile(path.resolve(process.cwd(), '.env.production'));
-const { prisma } = require('../lib/prisma');
-
+const { PrismaClient } = require('@prisma/client');
+const prisma = new PrismaClient();
 (async ()=>{
   try {
     const table = process.argv[2] || 'JobExecutionLog';

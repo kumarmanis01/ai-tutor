@@ -33,7 +33,7 @@
  */
 
 import { createHash } from 'crypto'
-import { prisma } from '../lib/prisma'
+import { PrismaClient } from '@prisma/client'
 import { getEmbeddingsBatch } from '../lib/ai/embeddings'
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -763,7 +763,7 @@ async function main() {
     )
   }
 
-  // Use shared prisma singleton from lib/prisma
+  const prisma = new PrismaClient()
   let totalErrors = 0
 
   try {

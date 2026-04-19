@@ -404,7 +404,7 @@ export async function runTutorOrchestrator(args: {
     const redactedInput = inputSafety.redacted
 
     // 2b. Intent classification + optional prompt rewrite (silent)
-    const intentClassification = classifyIntent(String(redactedInput), 10, subjectName)
+    let intentClassification = classifyIntent(String(redactedInput), 10, subjectName)
     let rewrittenPrompt = String(redactedInput)
     try {
       const rewrite = processPrompt(String(redactedInput), 10, subjectName)

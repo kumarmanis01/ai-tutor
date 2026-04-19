@@ -1,6 +1,6 @@
 require('dotenv').config({ path: '.env.production' })
-const { prisma } = require('../lib/prisma');
-
+const { PrismaClient } = require('@prisma/client')
+const prisma = new PrismaClient()
 
 async function main() {
   const failedHydrations = await prisma.hydrationJob.findMany({ where: { status: 'failed' } })

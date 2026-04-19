@@ -1,4 +1,4 @@
-import { Prisma, PrismaClient } from '@prisma/client';
+import { PrismaClient, Prisma } from '@prisma/client'
 import { logAuditEvent } from '../audit/log'
 
 export type CreateRetryIntentInput = {

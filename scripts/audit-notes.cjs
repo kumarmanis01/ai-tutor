@@ -1,5 +1,4 @@
 #!/usr/bin/env node
-import { prisma } from '../lib/prisma';
 const fs = require('fs')
 const path = require('path')
 
@@ -44,7 +43,7 @@ async function main() {
     process.exit(3);
   }
 
-  
+  const prisma = new PrismaClient()
   try {
     await prisma.$connect()
 

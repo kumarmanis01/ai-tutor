@@ -2,9 +2,10 @@
  * Quick local check to reproduce the Prisma grade-type error.
  * Run with: npx tsx scripts/check-grade-prisma.ts
  */
-import { prisma } from '../lib/prisma';
 
+import { PrismaClient } from '@prisma/client';
 
+const prisma = new PrismaClient();
 
 async function main() {
   console.log('=== Prisma grade check ===');

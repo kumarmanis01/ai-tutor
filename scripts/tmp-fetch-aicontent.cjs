@@ -1,8 +1,7 @@
 #!/usr/bin/env node
-import { prisma } from '../lib/prisma';
 const jobId = process.argv[2]
 if (!jobId) { console.error('Usage: node scripts/tmp-fetch-aicontent.cjs <hydrationJobId>'); process.exit(2) }
-const pkg = require('@prisma/client'); const { PrismaClient } = pkg; 
+const pkg = require('@prisma/client'); const { PrismaClient } = pkg; const prisma = new PrismaClient()
 ;(async ()=>{
   try{
     const logs = await prisma.aIContentLog.findMany({ where: { requestBody: { path: ['jobId'], equals: jobId } }, orderBy: { createdAt: 'desc' }, take: 20 })

@@ -160,28 +160,6 @@ export async function PATCH(req: Request) {
       prefsToMerge.fontSize = body.preferences.fontSize;
     }
 
-    // badgeShowcase: array of badge ids (max 5) - used by ProfileWidgets showcase
-    if (body.preferences.badgeShowcase !== undefined) {
-      if (!Array.isArray(body.preferences.badgeShowcase)) {
-        res = NextResponse.json({ error: 'badgeShowcase must be an array' }, { status: 400 });
-        logger.logAPI(req, res, { className: 'UserProfileAPI', methodName: 'PATCH' }, start);
-        return res;
-      }
-      const arr = body.preferences.badgeShowcase as any[];
-      if (arr.length > 5) {
-        res = NextResponse.json({ error: 'badgeShowcase may contain at most 5 items' }, { status: 400 });
-        logger.logAPI(req, res, { className: 'UserProfileAPI', methodName: 'PATCH' }, start);
-        return res;
-      }
-      if (!arr.every((v) => typeof v === 'string')) {
-        res = NextResponse.json({ error: 'badgeShowcase must be an array of strings' }, { status: 400 });
-        logger.logAPI(req, res, { className: 'UserProfileAPI', methodName: 'PATCH' }, start);
-        return res;
-      }
-      // de-dupe while preserving order
-      prefsToMerge.badgeShowcase = Array.from(new Set(arr.map((v) => String(v))));
-    }
-
     if (Object.keys(prefsToMerge).length > 0) {
       // Merge with existing preferences atomically
       const existing = await prisma.user.findUnique({ where: { id: userId }, select: { preferences: true } });

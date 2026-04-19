@@ -10,5 +10,4 @@ export async function enqueueInstallmentRetry(opts: { subscriptionId: string; in
   await queue.add('installment-dunning-target', { notes: { subscriptionId: opts.subscriptionId, installmentId: opts.installmentId, installmentNumber: opts.installmentId } }, { attempts: 1 })
 }
 
-const InstallmentRetry = { enqueueInstallmentRetry }
-export default InstallmentRetry
+export default { enqueueInstallmentRetry }

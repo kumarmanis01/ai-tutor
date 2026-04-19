@@ -1,7 +1,7 @@
-import { prisma } from '../lib/prisma';
+import { PrismaClient } from '@prisma/client';
 import { logger } from '@/lib/logger';
 
-
+const prisma = new PrismaClient();
 
 async function main() {
   const confirm = process.env.CONFIRM === 'true';

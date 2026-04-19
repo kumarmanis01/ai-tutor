@@ -1,7 +1,7 @@
-const { prisma } = require('../lib/prisma');
+const { PrismaClient } = require('@prisma/client');
 
 (async function main(){
-  
+  const prisma = new PrismaClient();
   try{
     const rows = await prisma.hydrationJob.findMany({ where: { status: 'failed' }, orderBy: { updatedAt: 'desc' }, take: 20 });
     for(const r of rows){

@@ -22,7 +22,7 @@ import CrunchModeToggle from '@/components/student/dashboard/CrunchModeToggle'
 
 describe('CrunchModeToggle component', () => {
   beforeEach(() => {
-    // @ts-expect-error TODO: fix types
+    // @ts-ignore
     global.fetch = jest.fn().mockResolvedValue({ ok: true, json: async () => ({}) })
   })
 
@@ -33,7 +33,7 @@ describe('CrunchModeToggle component', () => {
     fireEvent.change(select, { target: { value: 'on' } })
 
     await waitFor(() => {
-      // @ts-expect-error TODO: fix types
+      // @ts-ignore
       expect(global.fetch).toHaveBeenCalled()
     })
   })

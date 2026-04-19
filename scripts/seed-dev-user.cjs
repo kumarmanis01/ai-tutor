@@ -1,7 +1,7 @@
-const { prisma } = require('../lib/prisma');
+const { PrismaClient } = require('@prisma/client');
 
 async function main() {
-  
+  const prisma = new PrismaClient();
   try {
     const email = process.argv[2] || 'dev.student@example.com';
     const user = await prisma.user.upsert({

@@ -11,8 +11,9 @@
  * EDIT LOG:
  * - 2026-02-23T00:00:00Z | copilot | created audit script
  */
-const { prisma } = require('../lib/prisma');
 
+const { PrismaClient } = require('@prisma/client');
+const prisma = new PrismaClient();
 
 async function main() {
   console.log('Starting curriculum depth audit...');

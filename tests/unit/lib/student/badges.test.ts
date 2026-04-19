@@ -29,7 +29,7 @@ describe('checkSessionBadges', () => {
       userBadge: { findMany: jest.fn(async () => []), createMany: jest.fn(async () => ({ count: 1 })) },
       learningSession: { count: jest.fn(async () => 1), findFirst: jest.fn(async () => null) },
       badge: { upsert: jest.fn(async () => ({})) },
-      user: { findUnique: jest.fn(async () => ({ name: 'Asha', cosmeticUnlocks: [] })), update: jest.fn(async () => ({})) },
+      user: { findUnique: jest.fn(async () => ({ name: 'Asha' })) },
       parentStudent: { findMany: jest.fn(async () => [{ parent: { id: 'p1', email: 'p@example.test', phone: null, name: 'Parent', language: 'en' } }]) },
       $transaction: jest.fn(async () => []),
     }

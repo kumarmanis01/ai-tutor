@@ -57,7 +57,7 @@ export default function RetryInstallmentButton({ installmentId }: Props) {
         setBanner({ type: 'error', message: t.error })
         toast(t.error)
       }
-    } catch {
+    } catch (e) {
       setBanner({ type: 'error', message: t.error })
       toast(t.error)
     } finally {

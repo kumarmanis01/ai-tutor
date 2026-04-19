@@ -14,8 +14,9 @@
  */
 
 'use strict';
-const { prisma } = require('../lib/prisma');
 
+const { PrismaClient } = require('@prisma/client');
+const prisma = new PrismaClient();
 const path = require('path');
 const { spawnSync } = require('child_process');
 

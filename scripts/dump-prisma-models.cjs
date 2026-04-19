@@ -1,6 +1,6 @@
-const { prisma } = require('../lib/prisma');
+const { PrismaClient } = require('@prisma/client');
 async function main(){
-  const p = prisma;
+  const p = new PrismaClient();
   try{
     console.log(Object.keys(p).filter(k=>typeof p[k] !== 'function'));
     console.log('--- full keys ---');

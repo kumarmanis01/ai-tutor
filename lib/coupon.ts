@@ -12,9 +12,10 @@
  * EDIT LOG:
  * - 2026-04-17T00:00:00Z | copilot | created initial coupon helper module
  */
-import { Prisma, PrismaClient } from '@prisma/client';
+
+import { Prisma, PrismaClient } from '@prisma/client'
 import { logger } from '@/lib/logger'
-import { rupeesToPaise, resolvePlanByShortId } from '@/lib/billing/plans'
+import { PLANS, rupeesToPaise, resolvePlanByShortId } from '@/lib/billing/plans'
 
 export type CreateCouponInput = {
   code: string
@@ -123,7 +124,7 @@ export async function redeemCoupon(
     const applyAsCredit = options?.applyAsCredit ?? true
 
     // Record redemption and update coupon usage
-    await tx.coupon.update({ where: { id: coupon.id }, data: { uses: { increment: 1 } } })
+    const updated = await tx.coupon.update({ where: { id: coupon.id }, data: { uses: { increment: 1 } } })
 
     let amountAppliedPaise: number | undefined
     let percentApplied: number | undefined
@@ -169,5 +170,4 @@ export async function redeemCoupon(
   }
 }
 
-const Coupon = { createCoupon, getCouponByCode, validateCoupon, redeemCoupon }
-export default Coupon
+export default { createCoupon, getCouponByCode, validateCoupon, redeemCoupon }

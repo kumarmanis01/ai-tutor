@@ -9,7 +9,7 @@ export const CONTENT_QUEUE = "content-engine";
  * IMPORTANT:
  * Pass the shared IORedis instance (not ConnectionOptions) so BullMQ reuses
  * the existing connection rather than opening a new one per Queue.
- * Workers must keep using ConnectionOptions -- they need dedicated blocking connections.
+ * Workers must keep using ConnectionOptions — they need dedicated blocking connections.
  */
 export function createContentQueue() {
   if (!process.env.REDIS_URL) {

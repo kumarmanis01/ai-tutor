@@ -99,7 +99,7 @@ async function main() {
 
   let prisma;
   try {
-const { prisma } = require('../../lib/prisma');
+    const { PrismaClient } = require('@prisma/client');
     prisma = new PrismaClient();
     await prisma.$connect();
   } catch (e) {

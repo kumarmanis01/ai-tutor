@@ -19,8 +19,8 @@ function loadEnvFile(file) {
 loadEnvFile(path.resolve(process.cwd(), '.env.production'));
 // Ensure Prisma/DEBUG logs are disabled for cleaner CLI output
 process.env.DEBUG = '';
-const { prisma } = require('../lib/prisma');
-
+const { PrismaClient } = require('@prisma/client');
+const prisma = new PrismaClient({ log: [] });
 (async ()=>{
   try {
     const execId = process.argv[2] || 'cmklbxb6800044acsnwfjmaf4';

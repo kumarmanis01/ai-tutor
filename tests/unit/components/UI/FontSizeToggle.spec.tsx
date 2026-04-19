@@ -23,7 +23,7 @@ import FontSizeToggle from '@/components/UI/FontSizeToggle'
 
 describe('FontSizeToggle component', () => {
   beforeEach(() => {
-    // @ts-expect-error TODO: fix types
+    // @ts-ignore
     global.fetch = jest.fn().mockResolvedValue({ ok: true, json: async () => ({}) })
   })
 
@@ -34,7 +34,7 @@ describe('FontSizeToggle component', () => {
     fireEvent.click(largeButton)
 
     await waitFor(() => {
-      // @ts-expect-error TODO: fix types
+      // @ts-ignore
       expect(global.fetch).toHaveBeenCalled()
     })
   })

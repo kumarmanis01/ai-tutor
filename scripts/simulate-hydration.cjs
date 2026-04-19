@@ -7,8 +7,8 @@
  */
 
 require('dotenv').config({ path: '.env.local' });
-const { prisma } = require('../lib/prisma');
-const p = prisma;
+const { PrismaClient } = require('@prisma/client');
+const p = new PrismaClient();
 
 // Simulated syllabus data for CBSE Grade 10 Math
 const MOCK_CHAPTERS = [

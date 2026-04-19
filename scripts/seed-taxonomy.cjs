@@ -15,8 +15,9 @@ require('dotenv').config({
  *
  * Usage: node scripts/seed-taxonomy.cjs
  */
-const { prisma } = require('../lib/prisma');
 
+const { PrismaClient } = require('@prisma/client');
+const prisma = new PrismaClient();
 
 // ── data constants ───────────────────────────────────────────────────────────
 

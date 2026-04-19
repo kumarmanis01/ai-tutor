@@ -7,16 +7,10 @@ RUN apk add --no-cache --repository=https://dl-cdn.alpinelinux.org/alpine/v3.19/
     python3 make g++ bash
 
 # Copy package manifests first to leverage Docker cache for deps
-# Copy package manifests first to leverage Docker cache for deps
 COPY package.json package-lock.json* ./
 
 # Install all deps (including dev) so Prisma/Next build and tools are available
 RUN npm ci --no-audit --progress=false --prefer-offline
-
-# Copy the prisma schema (schema.prisma and related files) so `prisma generate`
-# can run before copying the full repository. This keeps cache layers efficient
-# and ensures the schema is present during the builder stage.
-COPY prisma ./prisma
 
 # Run Prisma generate here so schema issues surface at image build time for dev
 RUN npx prisma generate --schema=prisma/schema.prisma

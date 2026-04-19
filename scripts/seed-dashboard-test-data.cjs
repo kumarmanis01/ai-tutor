@@ -95,7 +95,7 @@ loadEnv();
 const DRY_RUN = process.argv.includes('--dry-run');
 let prisma = null;
 if (!DRY_RUN) {
-const { prisma } = require('../lib/prisma');
+  const { PrismaClient } = require('@prisma/client');
   prisma = new PrismaClient();
 }
 

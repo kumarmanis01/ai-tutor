@@ -9,10 +9,11 @@
  *   ts-node scripts/drop_topics.ts        # actually perform deletions
  *   ts-node scripts/drop_topics.ts --dry-run
  */
-import { prisma } from '../lib/prisma';
+
+import { PrismaClient } from '@prisma/client';
 import { logger } from '@/lib/logger';
 
-
+const prisma = new PrismaClient();
 
 async function main() {
   const dryRun = process.argv.includes('--dry-run');

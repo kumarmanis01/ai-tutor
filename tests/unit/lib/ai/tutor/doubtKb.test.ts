@@ -2,8 +2,6 @@ import { recordDoubt } from '@/lib/ai/tutor/doubtKb'
 import { getEmbedding } from '@/lib/ai/embeddings'
 import { logger } from '@/lib/logger'
 
-/* eslint-disable @typescript-eslint/no-require-imports */
-
 // Use the test helper prismaMock so tests never hit a real DB
 jest.mock('@/lib/prisma.js', () => ({ prisma: require('../../../../helpers/prismaMock').prismaMock }))
 jest.mock('@/lib/ai/embeddings')

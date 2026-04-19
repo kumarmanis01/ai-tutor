@@ -16,9 +16,10 @@
  * - Never overwrites approved / edited content
  * - Safe after crashes / partial runs
  */
-import { prisma } from '../lib/prisma';
 
+import { PrismaClient } from "@prisma/client"
 
+const prisma = new PrismaClient()
 
 type SubjectSeed = {
   name: string

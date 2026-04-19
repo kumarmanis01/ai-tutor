@@ -92,7 +92,7 @@ function processFile(file) {
 }
 
 function main() {
-  console.log('replace-new-redis codemod --', APPLY ? 'APPLYING' : 'dry-run');
+  console.log('replace-new-redis codemod —', APPLY ? 'APPLYING' : 'dry-run');
   walk(ROOT);
   console.log('Done');
 }

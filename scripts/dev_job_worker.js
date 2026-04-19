@@ -7,8 +7,9 @@
  *
  * This is strictly a development helper and MUST NOT be used in production.
  */
-const { prisma } = require('../lib/prisma');
 
+const { PrismaClient } = require('@prisma/client');
+const prisma = new PrismaClient();
 
 const WORKER_ID = `dev-worker-${Date.now()}`;
 

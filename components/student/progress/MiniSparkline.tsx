@@ -45,7 +45,7 @@ export default function MiniSparkline({
         const rows = Array.isArray(json?.data) ? json.data : [];
         const points: TrendPoint[] = rows.map((r: any) => ({ date: r.date, score: Math.round(r.score) }));
         if (mounted) setData(points);
-      } catch {
+      } catch (err) {
         if (!mounted) return;
         setData([]);
       } finally {

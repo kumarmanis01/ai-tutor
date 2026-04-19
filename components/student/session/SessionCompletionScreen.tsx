@@ -547,7 +547,7 @@ export const SessionCompletionScreen: React.FC<SessionCompletionScreenProps> = (
       // Telemetry: record the copy action for analytics/debugging
       try {
         logger.info('session_summary_copied', { sessionId, topicName })
-      } catch {
+      } catch (e) {
         // non-blocking
       }
 

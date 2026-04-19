@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 import { spawnSync } from 'child_process'
-import { prisma } from '../../lib/prisma';
+import { PrismaClient } from '@prisma/client'
 
 async function main() {
-  
+  const prisma = new PrismaClient()
 
   // Create two ExecutionJobs: one missing metadata (should be skipped), one complete (should create HydrationJob)
   const missing = await prisma.executionJob.create({ data: { jobType: 'syllabus', entityType: 'SUBJECT', entityId: 'test-subject-1', status: 'pending', payload: {} } })

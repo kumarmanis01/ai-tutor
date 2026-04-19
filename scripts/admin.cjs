@@ -41,7 +41,8 @@ if (!process.env.DATABASE_URL) {
     }
   }
 }
-const { prisma } = require('../lib/prisma');
+
+const { PrismaClient } = require('@prisma/client')
 
 // ── Arg parsing ──────────────────────────────────────────────────────────────
 
@@ -366,7 +367,7 @@ async function changeGrade(prisma, args) {
     process.exit(1)
   }
 
-  
+  const prisma = new PrismaClient()
 
   try {
     switch (command) {
