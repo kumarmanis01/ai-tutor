@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import Icon from '@/components/UI/AppIcon';
-import { PLANS } from '@/lib/billing/plans';
+import { FREE_SESSIONS_TEXT, FREE_SESSIONS_TEXT_HI } from '@/lib/constants/freeTier';
 
 interface FAQ {
   id: number;

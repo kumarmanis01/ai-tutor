@@ -26,7 +26,7 @@ const HeroSection = () => {
 
   const testimonials = [
     'Meri beti ke marks 45% se 78% ho gaye! - Sunita, Jaipur',
-    '₹3000 tuition se ₹399 mein better results! - Rajesh, Indore',
+    '₹3000 tuition se ₹99 mein better results! - Rajesh, Indore',
     '24×7 doubt solving, amazing! - Priya, Lucknow',
   ];
 
