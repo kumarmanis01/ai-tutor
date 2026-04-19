@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import Icon from '@/components/UI/AppIcon';
 import { PLANS } from '@/lib/billing/plans';
+import { FREE_SESSIONS_TEXT, FREE_SESSIONS_TEXT_HI } from '@/lib/constants/freeTier';
 
 interface PricingPlan {
   id: string;
@@ -22,6 +23,31 @@ interface PricingPlan {
 const PricingSection = () => {
 
   const plans: PricingPlan[] = [
+    {
+      id: 'free',
+      name: 'Free Plan',
+      nameHi: 'मुफ्त योजना',
+      price: '₹0',
+      period: 'Forever',
+      periodHi: 'हमेशा के लिए',
+      description: 'Try Spinzy Academy with limited features',
+      descriptionHi: 'सीमित सुविधाओं के साथ Spinzy Academy आज़माएं',
+      features: [
+        FREE_SESSIONS_TEXT,
+        'Basic explanations',
+        'Hindi + English support',
+        'NCERT notes access',
+      ],
+      featuresHi: [
+        FREE_SESSIONS_TEXT_HI,
+        'बुनियादी समाधान',
+        'हिंदी + अंग्रेजी सहायता',
+        'NCERT नोट्स एक्सेस',
+      ],
+      recommended: false,
+      ctaText: 'Start Free',
+      ctaTextHi: 'मुफ्त शुरू करें',
+    },
     {
       id: 'individual',
       name: 'Individual Plan',
@@ -225,10 +251,17 @@ const PricingSection = () => {
                       Spinzy Academy Individual
                     </p>
                     <p className="font-body text-sm text-muted-foreground">
+<<<<<<< HEAD
                       Per month, unlimited access (incl. taxes)
                     </p>
                   </div>
                   <p className="font-headline font-bold text-2xl text-success">{spinzyPriceDisplay}</p>
+=======
+                      Per month, unlimited access (incl. GST)
+                    </p>
+                  </div>
+                  <p className="font-headline font-bold text-2xl text-success">₹117</p>
+>>>>>>> pr/141
                 </div>
 
                 <div className="flex items-center justify-between p-4 bg-primary/5 rounded-lg border border-primary/20">
@@ -236,7 +269,11 @@ const PricingSection = () => {
                     <p className="font-headline font-bold text-lg text-secondary">Your Savings</p>
                     <p className="font-body text-sm text-muted-foreground">Every single month</p>
                   </div>
+<<<<<<< HEAD
                   <p className="font-headline font-bold text-2xl text-primary">{savingsText}</p>
+=======
+                  <p className="font-headline font-bold text-2xl text-primary">₹2883+</p>
+>>>>>>> pr/141
                 </div>
               </div>
             </div>
