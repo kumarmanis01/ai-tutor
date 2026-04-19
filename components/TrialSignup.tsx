@@ -12,7 +12,6 @@
  *
  * EDIT LOG:
  * - 2026-04-15T00:00:00Z | copilot-planner | created trial signup UI component
- * - 2026-04-15T12:00:00Z | copilot | remove unused catch param to satisfy lint
  */
 
 import React, { useState } from 'react'
@@ -56,7 +55,7 @@ export default function TrialSignup({ onSuccess }: Props) {
         setSchoolName('')
         if (js?.trialId && onSuccess) onSuccess(js.trialId)
       }
-    } catch {
+    } catch (err) {
       setError('Network error')
     } finally {
       setLoading(false)
@@ -85,7 +84,7 @@ export default function TrialSignup({ onSuccess }: Props) {
       {success && <div className="text-sm text-green-600 mb-2">{success}</div>}
       <div className="flex items-center gap-2">
         <button disabled={loading} type="submit" className="inline-flex items-center px-4 py-2 rounded-md bg-indigo-600 text-white">
-          {loading ? 'Starting...' : 'Start 14-day trial'}
+          {loading ? 'Starting...' : 'Start 14-day free trial'}
         </button>
         <div className="text-sm text-gray-600">Inclusive of all taxes. No card required.</div>
       </div>

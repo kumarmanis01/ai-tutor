@@ -1,5 +1,18 @@
 /**
  * FILE OBJECTIVE:
+<<<<<<<< HEAD:lib/subscription.ts
+ * - Small subscription helper utilities (e.g. `isPremiumUser`) used across the app and tests.
+ *
+ * LINKED UNIT TEST:
+ * - tests/auto/lib/subscription.ts.test.ts
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - .github/copilot-instructions.md
+ * - /docs/COPILOT_GUARDRAILS.md
+ *
+ * EDIT LOG:
+ * - 2026-04-15T00:00:00Z | copilot | add minimal subscription helpers
+========
  * - Billing-related subscription helpers (isPremiumUser, usage counters).
  *
  * LINKED UNIT TEST:
@@ -7,16 +20,32 @@
  *
  * EDIT LOG:
  * - 2026-04-15T00:00:00Z | copilot | moved helpers from lib/subscription.ts
- * - 2026-04-15T12:00:00Z | copilot | replace anonymous default export with named const
+>>>>>>>> pr/142:lib/billing/subscription.ts
  */
 
 import { prisma } from '@/lib/prisma'
 
 /**
- * Check if a user has an active premium subscription.
- * Also checks if user is covered by a parent's family plan.
+ * Return true if the given userId is considered a paid/premium subscriber.
+ * Conservative: treat any `subscriptionStatus` not equal to `'free'` as premium.
  */
 export async function isPremiumUser(userId: string): Promise<boolean> {
+<<<<<<<< HEAD:lib/subscription.ts
+  try {
+    const u = await prisma.user.findUnique({ where: { id: userId }, select: { subscriptionStatus: true } })
+    if (!u || !u.subscriptionStatus) return false
+    return u.subscriptionStatus !== 'free'
+  } catch {
+    return false
+  }
+}
+
+const Subscription = {
+  isPremiumUser,
+}
+
+export default Subscription
+========
   const now = new Date()
 
   // Direct subscription
@@ -69,6 +98,5 @@ export async function getTodaysQuestionCount(userId: string): Promise<number> {
   return count
 }
 
-const SubscriptionHelpers = { isPremiumUser, getTodaysQuestionCount }
-
-export default SubscriptionHelpers
+export default { isPremiumUser, getTodaysQuestionCount }
+>>>>>>>> pr/142:lib/billing/subscription.ts

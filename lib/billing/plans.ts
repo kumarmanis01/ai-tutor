@@ -9,8 +9,6 @@
  * EDIT LOG:
  * - 2026-04-15T00:00:00Z | copilot-planner | created billing plan constants for Standard/Family/Lite
  * - 2026-04-15T00:00:00Z | staff-engineer  | added test_weekly; durationDays override for sub-monthly plans
- * - 2026-04-15T12:00:00Z | copilot | replace anonymous default export with named variable
- * - 2026-04-16T03:30:00Z | copilot | add resolvePlanByShortId helper to map short plan ids to PLANS entries
  */
 
 export type PlanId =
@@ -88,9 +86,8 @@ function mkPlan(
 export const PLANS: Record<PlanId, SubscriptionPlan> = {
   standard_monthly: mkPlan('standard_monthly', 399, 1, 'Standard', '₹399/month', { featured: true }),
   standard_annual:  mkPlan('standard_annual', 3990, 12, 'Annual (Standard)', '₹332.50/month', { billedDisplay: 'billed ₹3,990', saveLabel: '2 months free' }),
-  // Family pricing: one subscription covers up to 3 children at 1.8x the standard price
-  family_monthly:   mkPlan('family_monthly', Math.round(399 * 1.8 * 100) / 100, 1, 'Family (up to 3 kids)', `₹${(Math.round(399 * 1.8 * 100) / 100).toFixed(2)}/month`, { childSlots: 3 }),
-  family_annual:    mkPlan('family_annual', Math.round(3990 * 1.8 * 100) / 100, 12, 'Annual (Family)', `₹${(Math.round(3990 * 1.8 * 100) / 100 / 12).toFixed(2)}/month`, { billedDisplay: `billed ₹${Math.round(3990 * 1.8)}`, saveLabel: '2 months free', childSlots: 3 }),
+  family_monthly:   mkPlan('family_monthly', 599, 1, 'Family', '₹599/month', { childSlots: 2 }),
+  family_annual:    mkPlan('family_annual', 5990, 12, 'Annual (Family)', '₹499.17/month', { billedDisplay: 'billed ₹5,990', saveLabel: '2 months free', childSlots: 2 }),
   lite_monthly:     mkPlan('lite_monthly', 249, 1, 'Lite', '₹249/month'),
   // Internal test plan: ₹1/week, visible only to whitelisted accounts.
   test_weekly:      mkPlan('test_weekly', 1, 0, 'Test (Weekly)', '₹1/week', { durationDays: 7, internal: true }),
@@ -115,29 +112,4 @@ export function renewalDateStr(plan: SubscriptionPlan): string {
   return d.toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })
 }
 
-const Billing = { PLANS, rupeesToPaise, planEndDate, renewalDateStr }
-
-export default Billing
-
-/**
- * Resolve a short plan id (e.g. 'monthly', 'annual') to a concrete SubscriptionPlan
- * in `PLANS`. If `isFamily` is true, prefer the family variant when available.
- */
-export function resolvePlanByShortId(shortId: string, isFamily = false): SubscriptionPlan | undefined {
-  if (!shortId || typeof shortId !== 'string') return undefined;
-  // Exact match (allows callers to pass full keys like 'standard_annual')
-  if ((PLANS as any)[shortId]) return (PLANS as any)[shortId] as SubscriptionPlan;
-
-  // Try family/standard variants
-  const familyKey = (`family_${shortId}`) as PlanId;
-  const standardKey = (`standard_${shortId}`) as PlanId;
-  if (isFamily && (PLANS as any)[familyKey]) return (PLANS as any)[familyKey] as SubscriptionPlan;
-  if ((PLANS as any)[standardKey]) return (PLANS as any)[standardKey] as SubscriptionPlan;
-
-  // Fallback: find any plan whose key ends with _<shortId>
-  for (const k of Object.keys(PLANS)) {
-    if (k.endsWith(`_${shortId}`)) return PLANS[k as PlanId];
-  }
-
-  return undefined;
-}
+export default { PLANS, rupeesToPaise, planEndDate, renewalDateStr }

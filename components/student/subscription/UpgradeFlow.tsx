@@ -16,15 +16,15 @@
  * Razorpay SDK loaded globally via app/providers.tsx -- no re-load here.
  */
 
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback } from 'react';
 import { logger } from '@/lib/logger';
 import PlanSelector from './PlanSelector';
 import PaymentMethodSelector from './PaymentMethodSelector';
 import PaymentConfirmation from './PaymentConfirmation';
-// Saved payment methods are no longer shown. Razorpay handles payment storage.
+import AddCard from './AddCard';
+import SavedPaymentMethods from './SavedPaymentMethods';
 import type { PlanId } from '@/lib/billing/plans';
 import type { PaymentMethod } from './PaymentMethodSelector';
-import { PLANS } from '@/lib/billing/plans';
 
 type Step = 'gate' | 'plan' | 'method' | 'confirm' | 'success' | 'failure';
 
@@ -150,16 +150,6 @@ export function UpgradeFlow({ studentName, studentEmail, freeTierUsage }: Upgrad
     setStep('confirm');
   }, [retryCount]);
 
-  // Display the Standard monthly plan price in the gate view
-  const standardMonthlyDisplay = useMemo(() => {
-    try {
-      const plan = PLANS.standard_monthly;
-      return plan?.perMonthDisplay ?? '₹399/month';
-    } catch {
-      return '₹399/month';
-    }
-  }, []);
-
   // ── Step: gate ──────────────────────────────────────────────────────────────
   if (step === 'gate') {
     return (
@@ -171,7 +161,7 @@ export function UpgradeFlow({ studentName, studentEmail, freeTierUsage }: Upgrad
           id="upgrade-gate-heading"
           className="mb-2 text-lg font-bold text-gray-900 dark:text-gray-100"
         >
-          Have you used all your free sessions?
+          You&apos;ve used all your free sessions
         </h2>
         <p className="mb-4 text-sm text-gray-600 dark:text-gray-300">
           Keep learning with Teacher Vidya -- unlimited AI tutor sessions, personalised to you.
@@ -200,14 +190,14 @@ export function UpgradeFlow({ studentName, studentEmail, freeTierUsage }: Upgrad
           );
         })()}
 
-        <p className="mb-5 text-xl font-bold text-[#534AB7]">{standardMonthlyDisplay}</p>
+        <p className="mb-5 text-xl font-bold text-[#534AB7]">₹99/month</p>
         <div className="flex flex-col gap-3 sm:flex-row">
           <button
             type="button"
             onClick={() => setStep('plan')}
             className="flex-1 min-h-[44px] rounded-xl bg-[#534AB7] text-sm font-semibold text-white hover:bg-[#4338a3] transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#534AB7]"
           >
-            View plans
+            See plans
           </button>
           <button
             type="button"
@@ -249,8 +239,15 @@ export function UpgradeFlow({ studentName, studentEmail, freeTierUsage }: Upgrad
     return (
       <div className="rounded-2xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-5 py-6 space-y-5">
         <PaymentMethodSelector selected={method} onSelect={setMethod} />
-        {/* Payment method selected; do not surface saved cards or card-entry UI.
-            All payment instrument storage is managed by the payment partner (Razorpay). */}
+        {/* When user chooses card, surface saved methods and AddCard flow */}
+        {method === 'card' && (
+          <div className="pt-3">
+            <SavedPaymentMethods />
+            <div className="mt-3">
+              <AddCard email={studentEmail ?? undefined} />
+            </div>
+          </div>
+        )}
         <button
           type="button"
           onClick={() => setStep('confirm')}

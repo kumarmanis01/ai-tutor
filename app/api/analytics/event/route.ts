@@ -4,7 +4,7 @@
  * - Writes events into `AnalyticsEvent` table for downstream aggregation.
  *
  * LINKED UNIT TEST:
- * - tests/api/analytics.event.test.ts
+ * - tests/unit/app/api/analytics.event.spec.ts
  *
  * COPILOT INSTRUCTIONS FOLLOWED:
  * - .github/copilot-instructions.md
@@ -12,7 +12,6 @@
  *
  * EDIT LOG:
  * - 2026-04-15T00:00:00Z | copilot-planner | added analytics batch endpoint
- * - 2026-04-16T00:00:00Z | copilot | return 202 on success; 400 when all events invalid; add eventType allowlist
  */
 
 import { NextResponse } from 'next/server'
@@ -20,28 +19,8 @@ import { z } from 'zod'
 import { prisma } from '@/lib/prisma'
 import { logger } from '@/lib/logger'
 
-/** Canonical list of valid client-emitted event types. */
-const VALID_EVENT_TYPES = new Set([
-  'lesson_viewed',
-  'lesson_completed',
-  'session_started',
-  'session_completed',
-  'quiz_submitted',
-  'doubt_asked',
-  'streak_updated',
-  'xp_earned',
-  'badge_unlocked',
-  'hint_requested',
-  'diagnostic_started',
-  'diagnostic_completed',
-  'page_view',
-])
-
 const EventSchema = z.object({
-  eventType: z.string().refine(
-    (v) => VALID_EVENT_TYPES.has(v),
-    (v) => ({ message: `Unknown eventType: ${v}` }),
-  ),
+  eventType: z.string(),
   userId: z.string().nullable().optional(),
   courseId: z.string().nullable().optional(),
   lessonIdx: z.number().nullable().optional(),
@@ -74,7 +53,7 @@ export async function POST(req: Request) {
     }
 
     if (toCreate.length === 0) {
-      return NextResponse.json({ ok: false, error: 'No valid events in batch' }, { status: 400 })
+      return NextResponse.json({ ok: true, inserted: 0 })
     }
 
     // createMany for bulk insert
@@ -88,7 +67,7 @@ export async function POST(req: Request) {
       }
     }
 
-    const res = NextResponse.json({ ok: true, inserted: toCreate.length }, { status: 202 })
+    const res = NextResponse.json({ ok: true, inserted: toCreate.length })
     logger.logAPI(req, res, { className: 'AnalyticsAPI', methodName: 'POST' }, start)
     return res
   } catch (err) {
