@@ -30,7 +30,7 @@ import { logger } from '@/lib/logger';
 import { sendEmail } from '@/lib/mailer';
 import { paymentReceiptHtml } from '@/lib/email/templates';
 import { sendSms } from '@/lib/sms';
-import { PLANS } from '@/lib/billing/plans';
+import { PLANS, planEndDate, resolvePlanByShortId } from '@/lib/billing/plans';
 import type { PlanId } from '@/lib/billing/plans';
 import { createInvoiceForPayment } from '@/lib/invoices';
 import Razorpay from 'razorpay';
@@ -94,10 +94,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Order not found' }, { status: 403 });
   }
 
-  const plan = PLANS[planId as PlanId];
   const now = new Date();
-  const expiry = new Date(now);
-  expiry.setMonth(expiry.getMonth() + plan.durationMonths);
 
   // Fetch Razorpay order to read notes (childIds, isFamily, emiMonths)
   const client = getRazorpayClient();

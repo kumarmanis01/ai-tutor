@@ -1,4 +1,4 @@
-'/**
+/**
  * FILE OBJECTIVE:
  * - Render FAQ section on the public landing page.
  *
