@@ -1,8 +1,23 @@
+'/**
+ * FILE OBJECTIVE:
+ * - Render FAQ section on the public landing page.
+ *
+ * LINKED UNIT TEST:
+ * - tests/unit/app/(public)/landing-page/components/faq-section.spec.tsx
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/COPILOT_GUARDRAILS.md
+ * - .github/copilot-instructions.md
+ *
+ * EDIT LOG:
+ * - 2026-04-19T00:00:00Z | copilot | fix(lint): alias unused imports to _-prefixed vars
+ */
+
 'use client';
 
 import { useState } from 'react';
 import Icon from '@/components/UI/AppIcon';
-import { FREE_SESSIONS_TEXT, FREE_SESSIONS_TEXT_HI } from '@/lib/constants/freeTier';
+import { FREE_SESSIONS_TEXT as _FREE_SESSIONS_TEXT, FREE_SESSIONS_TEXT_HI as _FREE_SESSIONS_TEXT_HI } from '@/lib/constants/freeTier';
 
 interface FAQ {
   id: number;

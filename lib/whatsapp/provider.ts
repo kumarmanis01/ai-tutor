@@ -12,6 +12,7 @@
  * - /docs/COPILOT_GUARDRAILS.md
  *
  * EDIT LOG:
+ * - 2026-04-19T00:00:00Z | copilot | fix(lint): use named const before default export
  * - 2026-04-15T00:00:00Z | copilot-planner | added mock whatsapp provider adapter
  */
 
@@ -24,4 +25,6 @@ export async function sendTemplate(to: string, templateKey: string, params: Reco
   return { ok: true }
 }
 
-export default { sendTemplate }
+const WhatsAppProvider = { sendTemplate }
+
+export default WhatsAppProvider

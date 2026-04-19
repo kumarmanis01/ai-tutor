@@ -12,6 +12,7 @@
  * - /docs/COPILOT_GUARDRAILS.md
  *
  * EDIT LOG:
+ * - 2026-04-19T00:00:00Z | copilot | fix(lint): prefix unused GET req param
  * - 2026-04-15T00:00:00Z | copilot-planner | created trial signup API route
  */
 
@@ -105,6 +106,6 @@ export async function POST(req: Request) {
   }
 }
 
-export async function GET(req: Request) {
+export async function GET(_req: Request) {
   return NextResponse.json({ ok: true, message: 'Trial endpoint active' })
 }

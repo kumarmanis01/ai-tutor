@@ -11,6 +11,7 @@
  * - /docs/COPILOT_GUARDRAILS.md
  *
  * EDIT LOG:
+ * - 2026-04-19T00:00:00Z | copilot | fix(lint): prefix unused catch param in handleSubmit
  * - 2026-04-15T00:00:00Z | copilot-planner | created trial signup UI component
  */
 
@@ -55,7 +56,7 @@ export default function TrialSignup({ onSuccess }: Props) {
         setSchoolName('')
         if (js?.trialId && onSuccess) onSuccess(js.trialId)
       }
-    } catch (err) {
+    } catch (_err) {
       setError('Network error')
     } finally {
       setLoading(false)
