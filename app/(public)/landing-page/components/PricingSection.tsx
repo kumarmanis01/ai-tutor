@@ -1,4 +1,4 @@
-﻿﻿import Link from 'next/link';
+import Link from 'next/link';
 import Icon from '@/components/UI/AppIcon';
 import { FREE_SESSIONS_TEXT, FREE_SESSIONS_TEXT_HI } from '@/lib/constants/freeTier';
 
@@ -25,12 +25,12 @@ const PricingSection = () => {
     {
       id: 'free',
       name: 'Free Plan',
-      nameHi: 'αñ«αÑüαñ½αÑìαññ αñ»αÑïαñ£αñ¿αñ╛',
-      price: 'Γé╣0',
+      nameHi: 'मुफ्त योजना',
+      price: '₹0',
       period: 'Forever',
-      periodHi: 'αñ╣αñ«αÑçαñ╢αñ╛ αñòαÑç αñ▓αñ┐αñÅ',
+      periodHi: 'हमेशा के लिए',
       description: 'Try Spinzy Academy with limited features',
-      descriptionHi: 'αñ╕αÑÇαñ«αñ┐αññ αñ╕αÑüαñ╡αñ┐αñºαñ╛αñôαñé αñòαÑç αñ╕αñ╛αñÑ Spinzy Academy αñåαñ£αñ╝αñ«αñ╛αñÅαñé',
+      descriptionHi: 'सीमित सुविधाओं के साथ Spinzy Academy आज़माएं',
       features: [
         FREE_SESSIONS_TEXT,
         'Basic explanations',
@@ -39,23 +39,23 @@ const PricingSection = () => {
       ],
       featuresHi: [
         FREE_SESSIONS_TEXT_HI,
-        'αñ¼αÑüαñ¿αñ┐αñ»αñ╛αñªαÑÇ αñ╕αñ«αñ╛αñºαñ╛αñ¿',
-        'αñ╣αñ┐αñéαñªαÑÇ + αñàαñéαñùαÑìαñ░αÑçαñ£αÑÇ αñ╕αñ╣αñ╛αñ»αññαñ╛',
-        'NCERT αñ¿αÑïαñƒαÑìαñ╕ αñÅαñòαÑìαñ╕αÑçαñ╕',
+        'बुनियादी समाधान',
+        'हिंदी + अंग्रेजी सहायता',
+        'NCERT नोट्स एक्सेस',
       ],
       recommended: false,
       ctaText: 'Start Free',
-      ctaTextHi: 'αñ«αÑüαñ½αÑìαññ αñ╢αÑüαñ░αÑé αñòαñ░αÑçαñé',
+      ctaTextHi: 'मुफ्त शुरू करें',
     },
     {
       id: 'individual',
       name: 'Individual Plan',
-      nameHi: 'αñ╡αÑìαñ»αñòαÑìαññαñ┐αñùαññ αñ»αÑïαñ£αñ¿αñ╛',
-      price: 'Γé╣99',
+      nameHi: 'व्यक्तिगत योजना',
+      price: '₹99',
       period: 'per month',
-      periodHi: 'αñ¬αÑìαñ░αññαñ┐ αñ«αñ╛αñ╣',
+      periodHi: 'प्रति माह',
       description: 'Perfect for one student',
-      descriptionHi: 'αñÅαñò αñ¢αñ╛αññαÑìαñ░ αñòαÑç αñ▓αñ┐αñÅ αñ¼αñ┐αñ▓αÑìαñòαÑüαñ▓ αñ╕αñ╣αÑÇ',
+      descriptionHi: 'एक छात्र के लिए बिल्कुल सही',
       features: [
         'Unlimited questions',
         'Detailed step-by-step solutions',
@@ -67,29 +67,29 @@ const PricingSection = () => {
         'Progress tracking',
       ],
       featuresHi: [
-        'αñàαñ╕αÑÇαñ«αñ┐αññ αñ╕αñ╡αñ╛αñ▓',
-        'αñ╡αñ┐αñ╕αÑìαññαÑâαññ αñ╕αÑìαñƒαÑçαñ¬-αñ¼αñ╛αñ»-αñ╕αÑìαñƒαÑçαñ¬ αñ╕αñ«αñ╛αñºαñ╛αñ¿',
-        'αñåαñ╡αñ╛αñ£ αñ«αÑçαñé αñ╕αñ«αñ¥αñ╛αñ¿αñ╛',
-        'αñàαñ¡αÑìαñ»αñ╛αñ╕ αñƒαÑçαñ╕αÑìαñƒ αñöαñ░ αñ╡αñ░αÑìαñòαñ╢αÑÇαñƒ',
-        '30 αñ╕αÑçαñòαñéαñí αñ«αÑçαñé doubt solving',
-        'αñ╕αñ¡αÑÇ αñ╡αñ┐αñ╖αñ» (αñòαñòαÑìαñ╖αñ╛ 1-12)',
-        'αñ¬αÑìαñ░αñ╛αñÑαñ«αñ┐αñòαññαñ╛ αñ╕αñ╣αñ╛αñ»αññαñ╛',
-        'αñ¬αÑìαñ░αñùαññαñ┐ αñƒαÑìαñ░αÑêαñòαñ┐αñéαñù',
+        'असीमित सवाल',
+        'विस्तृत स्टेप-बाय-स्टेप समाधान',
+        'आवाज में समझाना',
+        'अभ्यास टेस्ट और वर्कशीट',
+        '30 सेकंड में doubt solving',
+        'सभी विषय (कक्षा 1-12)',
+        'प्राथमिकता सहायता',
+        'प्रगति ट्रैकिंग',
       ],
       recommended: true,
-      savings: 'Save Γé╣2900 vs tuition',
+      savings: 'Save ₹2900 vs tuition',
       ctaText: 'Start Free Trial',
-      ctaTextHi: 'αñ«αÑüαñ½αÑìαññ αñ¬αñ░αÑÇαñòαÑìαñ╖αñú αñ╢αÑüαñ░αÑé αñòαñ░αÑçαñé',
+      ctaTextHi: 'मुफ्त परीक्षण शुरू करें',
     },
     {
       id: 'family',
       name: 'Family Plan',
-      nameHi: 'αñ¬αñ░αñ┐αñ╡αñ╛αñ░ αñ»αÑïαñ£αñ¿αñ╛',
-      price: 'Γé╣199',
+      nameHi: 'परिवार योजना',
+      price: '₹199',
       period: 'per month',
-      periodHi: 'αñ¬αÑìαñ░αññαñ┐ αñ«αñ╛αñ╣',
+      periodHi: 'प्रति माह',
       description: 'Best value for multiple children',
-      descriptionHi: 'αñòαñê αñ¼αñÜαÑìαñÜαÑïαñé αñòαÑç αñ▓αñ┐αñÅ αñ╕αñ░αÑìαñ╡αÑïαññαÑìαññαñ« αñ«αÑéαñ▓αÑìαñ»',
+      descriptionHi: 'कई बच्चों के लिए सर्वोत्तम मूल्य',
       features: [
         'Everything in Individual Plan',
         'Up to 3 children',
@@ -101,19 +101,19 @@ const PricingSection = () => {
         'Early access to new features',
       ],
       featuresHi: [
-        'Individual Plan αñòαÑÇ αñ╕αñ¡αÑÇ αñ╕αÑüαñ╡αñ┐αñºαñ╛αñÅαñé',
-        '3 αñ¼αñÜαÑìαñÜαÑïαñé αññαñò',
-        'αñàαñ▓αñù αñ¬αÑìαñ░αñùαññαñ┐ αñƒαÑìαñ░αÑêαñòαñ┐αñéαñù',
-        'αñ¬αñ░αñ┐αñ╡αñ╛αñ░ αñíαÑêαñ╢αñ¼αÑïαñ░αÑìαñí',
-        'αñ«αñ╛αññαñ╛-αñ¬αñ┐αññαñ╛ αñ¿αñ┐αñ»αñéαññαÑìαñ░αñú',
-        'αñ«αñ╛αñ╕αñ┐αñò αñ¬αÑìαñ░αñùαññαñ┐ αñ░αñ┐αñ¬αÑïαñ░αÑìαñƒ',
-        'αñ¬αÑìαñ░αñ╛αñÑαñ«αñ┐αñòαññαñ╛ WhatsApp αñ╕αñ╣αñ╛αñ»αññαñ╛',
-        'αñ¿αñê αñ╕αÑüαñ╡αñ┐αñºαñ╛αñôαñé αññαñò αñ¬αñ╣αñ▓αÑÇ αñ¬αñ╣αÑüαñéαñÜ',
+        'Individual Plan की सभी सुविधाएं',
+        '3 बच्चों तक',
+        'अलग प्रगति ट्रैकिंग',
+        'परिवार डैशबोर्ड',
+        'माता-पिता नियंत्रण',
+        'मासिक प्रगति रिपोर्ट',
+        'प्राथमिकता WhatsApp सहायता',
+        'नई सुविधाओं तक पहली पहुंच',
       ],
       recommended: false,
-      savings: 'Save Γé╣5000+ vs multiple tutors',
+      savings: 'Save ₹5000+ vs multiple tutors',
       ctaText: 'Start Free Trial',
-      ctaTextHi: 'αñ«αÑüαñ½αÑìαññ αñ¬αñ░αÑÇαñòαÑìαñ╖αñú αñ╢αÑüαñ░αÑé αñòαñ░αÑçαñé',
+      ctaTextHi: 'मुफ्त परीक्षण शुरू करें',
     },
   ];
 
@@ -131,7 +131,7 @@ const PricingSection = () => {
           <h2 className="font-headline font-bold text-3xl md:text-4xl lg:text-5xl text-secondary mb-4">
             Choose Your Perfect Plan
           </h2>
-          <p className="font-accent text-xl md:text-2xl text-primary mb-2">αñàαñ¬αñ¿αÑÇ αñ╕αñ╣αÑÇ αñ»αÑïαñ£αñ¿αñ╛ αñÜαÑüαñ¿αÑçαñé</p>
+          <p className="font-accent text-xl md:text-2xl text-primary mb-2">अपनी सही योजना चुनें</p>
           <p className="font-body text-lg md:text-xl text-muted-foreground max-w-3xl mx-auto">
             No hidden charges. Cancel anytime. 30-day money-back guarantee.
           </p>
@@ -140,7 +140,7 @@ const PricingSection = () => {
         <div className="grid md:grid-cols-3 gap-6 lg:gap-8 mb-6">
           {plans.map((plan) => {
             const basePrice = parseInt(plan.price.replace(/[^\d]/g, ''), 10) || 0;
-            const displayPrice = plan.id === 'free' ? 'Γé╣0' : `Γé╣${Math.round(basePrice * 1.18)}`;
+            const displayPrice = plan.id === 'free' ? '₹0' : `₹${Math.round(basePrice * 1.18)}`;
 
             return (
               <div
@@ -170,7 +170,7 @@ const PricingSection = () => {
                       <span className="font-body text-base text-muted-foreground">/{plan.period}</span>
                     </div>
                     {plan.id !== 'free' && (
-                      <p className="text-xs text-muted-foreground mt-1">{plan.price} base price ┬╖ incl. 18% GST</p>
+                      <p className="text-xs text-muted-foreground mt-1">{plan.price} base price · incl. 18% GST</p>
                     )}
                     <p className="font-body text-sm text-muted-foreground">{plan.description}</p>
                     {plan.savings && (
@@ -215,7 +215,7 @@ const PricingSection = () => {
         {/* Payment trust badges */}
         <div className="text-center mb-10">
           <p className="text-sm text-muted-foreground">
-            ≡ƒöÆ Secure checkout ┬╖ UPI / Cards / Net Banking ┬╖ Powered by Razorpay
+            🔒 Secure checkout · UPI / Cards / Net Banking · Powered by Razorpay
           </p>
           <p className="text-xs text-muted-foreground mt-1">Prices shown include 18% GST</p>
         </div>
@@ -238,7 +238,7 @@ const PricingSection = () => {
                     </p>
                     <p className="font-body text-sm text-muted-foreground">Per month, per child</p>
                   </div>
-                  <p className="font-headline font-bold text-2xl text-error">Γé╣3000-5000</p>
+                  <p className="font-headline font-bold text-2xl text-error">₹3000-5000</p>
                 </div>
 
                 <div className="flex items-center justify-between p-4 bg-success/5 rounded-lg border border-success/20">
@@ -250,7 +250,7 @@ const PricingSection = () => {
                       Per month, unlimited access (incl. GST)
                     </p>
                   </div>
-                  <p className="font-headline font-bold text-2xl text-success">Γé╣117</p>
+                  <p className="font-headline font-bold text-2xl text-success">₹117</p>
                 </div>
 
                 <div className="flex items-center justify-between p-4 bg-primary/5 rounded-lg border border-primary/20">
@@ -258,7 +258,7 @@ const PricingSection = () => {
                     <p className="font-headline font-bold text-lg text-secondary">Your Savings</p>
                     <p className="font-body text-sm text-muted-foreground">Every single month</p>
                   </div>
-                  <p className="font-headline font-bold text-2xl text-primary">Γé╣2883+</p>
+                  <p className="font-headline font-bold text-2xl text-primary">₹2883+</p>
                 </div>
               </div>
             </div>
