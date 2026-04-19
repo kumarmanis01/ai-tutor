@@ -4,10 +4,10 @@ module.exports = {
   testEnvironment: 'node',
   // run only unit tests by default; integration tests are excluded
   testMatch: [
-    '**/tests/unit/**/*.test.ts',
-    '**/tests/unit/**/*.test.tsx',
-    '**/tests/unit/**/*.spec.ts',
-    '**/tests/unit/**/*.spec.tsx',
+    '**/tests/**/*.test.ts',
+    '**/tests/**/*.test.tsx',
+    '**/tests/**/*.spec.ts',
+    '**/tests/**/*.spec.tsx',
   ],
   testPathIgnorePatterns: [
     '/tests/integration/',
