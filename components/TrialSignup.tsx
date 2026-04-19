@@ -56,7 +56,7 @@ export default function TrialSignup({ onSuccess }: Props) {
         setSchoolName('')
         if (js?.trialId && onSuccess) onSuccess(js.trialId)
       }
-    } catch (_err) {
+    } catch {
       setError('Network error')
     } finally {
       setLoading(false)
