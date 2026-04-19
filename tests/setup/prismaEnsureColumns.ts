@@ -56,7 +56,7 @@ if (_isNode && _LocalPrismaClient && typeof _LocalPrismaClient === 'function') {
 
     // Clear prepared-statement cache to avoid "cached plan must not change result type".
     try { await _localClient.$executeRawUnsafe('DISCARD ALL') } catch {}
-  })
+  }, 20000)
 
   /**
    * afterAll: disconnect the dedicated local client.

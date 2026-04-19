@@ -157,8 +157,7 @@ export function getRedis() {
  * dedicated blocking connection for BRPOP/LMOVE; passing a shared client
  * would block it.  Workers should keep using `redisConnection` (options).
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function getSharedConnection(): any {
+export function getSharedConnection(): InstanceType<typeof IORedis> | ConnectionOptions {
   return getRedis() ?? redisConnection;
 }
 

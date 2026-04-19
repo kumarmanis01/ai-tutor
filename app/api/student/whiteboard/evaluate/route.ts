@@ -14,8 +14,14 @@ const FALLBACK_FEEDBACK =
 
 async function uploadDataUrlToS3(dataUrl: string, keyPrefix: string): Promise<string | null> {
   try {
-    const bucket = process.env.S3_BUCKET ?? process.env.NEXT_PUBLIC_S3_BUCKET ?? 'test-bucket'
-    if (!bucket) return null
+    // Require a server-only S3_BUCKET in non-test runtimes. For unit tests
+    // allow NEXT_PUBLIC_S3_BUCKET or a test fallback so tests can exercise
+    // upload code without requiring real credentials.
+    const bucket = process.env.S3_BUCKET ?? (process.env.NODE_ENV === 'test' ? (process.env.NEXT_PUBLIC_S3_BUCKET ?? 'test-bucket') : undefined)
+    if (!bucket) {
+      try { logger.error('whiteboard.upload.missing_bucket', {}) } catch {}
+      return null
+    }
     const match = String(dataUrl || '').match(/^data:(.+);base64,(.*)$/)
     if (!match) return null
     const mime = match[1] || 'image/png'

@@ -44,10 +44,11 @@ function relImport(fromFile) {
 }
 
 function alreadyHasGetRedisImport(text) {
-  return /import\s+\{\s*getRedis\s*\}/.test(text) ||
-    /require\(['"].*lib\/redis['"]\)/.test(text) ||
-    /const\s+\{\s*getRedis\s*\}/.test(text) ||
-    /getRedis\(/.test(text);
+  // Match explicit `import { getRedis } from '...';` or
+  // `const { getRedis } = require('...')` or `const getRedis = require('...').getRedis`
+  return /import\s+\{\s*getRedis\s*\}\s+from\s+['"][^'"]+['"]/.test(text) ||
+    /const\s+\{\s*getRedis\s*\}\s*=\s*require\(\s*['"][^'"]+['"]\s*\)/.test(text) ||
+    /const\s+getRedis\s*=\s*require\(\s*['"][^'"]+['"]\s*\)\.getRedis\b/.test(text);
 }
 
 function shouldSkip(rel) {
@@ -71,9 +72,14 @@ function processFile(file) {
     const shebangMatch = out.match(/^#!.*\n/);
     const insertPos = shebangMatch ? shebangMatch[0].length : 0;
     const ext = path.extname(file).toLowerCase();
+    // If the target file lives under a worker directory or is ESM-like, prefer
+    // the .js extension for the imported module so runtime resolution after
+    // compilation remains consistent with other worker files.
+    const isWorkerTarget = /(^|\\/)worker(\\/|$)/.test(rel) || /(^|\\/)workers(\\/|$)/.test(rel);
+    const libPathWithExt = (ext !== '.cjs' && isWorkerTarget) ? `${libPath}.js` : libPath;
     const importStmt = ext === '.cjs'
-      ? `const { getRedis } = require('${libPath}');\n` 
-      : `import { getRedis } from '${libPath}';\n`;
+      ? `const { getRedis } = require('${libPathWithExt}');\n` 
+      : `import { getRedis } from '${libPathWithExt}';\n`;
     out = out.slice(0, insertPos) + importStmt + out.slice(insertPos);
   }
 
