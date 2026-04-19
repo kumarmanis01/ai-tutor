@@ -31,7 +31,6 @@ import { sendEmail } from '@/lib/mailer';
 import { paymentReceiptHtml } from '@/lib/email/templates';
 import { sendSms } from '@/lib/sms';
 import { PLANS, planEndDate, resolvePlanByShortId } from '@/lib/billing/plans';
-import type { PlanId } from '@/lib/billing/plans';
 import { createInvoiceForPayment } from '@/lib/invoices';
 import Razorpay from 'razorpay';
 import computeProratedCredit from '@/lib/subscription/proration';

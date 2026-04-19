@@ -8,7 +8,7 @@
  * Selected plan highlighted; state lifted to parent via onSelect.
  */
 
-import React, { useMemo } from 'react';
+import React from 'react';
 import { PLANS } from '@/lib/billing/plans';
 import type { PlanId, SubscriptionPlan } from '@/lib/billing/plans';
 
