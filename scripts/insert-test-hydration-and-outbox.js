@@ -13,11 +13,10 @@ COPILOT INSTRUCTIONS FOLLOWED:
 EDIT LOG:
 - 2026-01-21T00:00:00Z | copilot-agent | created test helper to insert hydration job + outbox
 */
-
-import { PrismaClient } from '@prisma/client'
+import { prisma } from '../lib/prisma';
 
 async function main() {
-  const prisma = new PrismaClient()
+  
   try {
     // Insert a minimal HydrationJob using raw SQL to avoid schema drift between Prisma client and DB
     const id = 'test-' + Date.now()

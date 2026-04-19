@@ -12,10 +12,8 @@
  * - 2026-01-23T04:30:00Z | copilot | Created for hydration pipeline validation
  */
 
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '../lib/prisma';
 import { submitJob } from '../lib/execution-pipeline/submitJob';
-
-const prisma = new PrismaClient();
 
 async function main() {
   // Get CBSE Grade 6 Mathematics

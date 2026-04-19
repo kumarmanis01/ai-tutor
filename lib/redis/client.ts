@@ -40,12 +40,12 @@ export function getRedis(): Redis {
 
   client.on('close', () => {
     try {
-      logger.info('[redis] connection closed — ioredis will reconnect automatically')
+      logger.info('[redis] connection closed -- ioredis will reconnect automatically')
     } catch {}
     // DO NOT reset client to null here. Setting client = null on close would
     // destroy the singleton on every TCP drop: getRedis() would then create a
     // second IORedis instance, and both the old one (auto-reconnecting) and the
-    // new one would compete to reconnect — doubling open connection attempts and
+    // new one would compete to reconnect -- doubling open connection attempts and
     // triggering ERR max number of clients reached under Redis load.
     // IORedis handles reconnection transparently; the singleton stays valid.
   })

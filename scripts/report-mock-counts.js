@@ -9,11 +9,9 @@
  *
  * EDIT LOG:
  * - 2026-04-16T12:00:00Z | copilot | created report-mock-counts helper
- */
+ */import { prisma } from '../lib/prisma';
 
-import { PrismaClient } from '@prisma/client';
 
-const prisma = new PrismaClient();
 
 async function main() {
   const minPer = Number(process.env.MIN_MOCKS_PER_GROUP ?? process.env.MIN_PER ?? 5);

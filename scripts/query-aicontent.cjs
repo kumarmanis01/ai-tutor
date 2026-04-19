@@ -1,11 +1,11 @@
-const { PrismaClient } = require('@prisma/client');
+const { prisma } = require('../lib/prisma');
 async function main() {
   const jobId = process.argv[2];
   if (!jobId) {
     console.error('Usage: node scripts/query-aicontent.cjs <hydrationJobId>');
     process.exit(2);
   }
-  const p = new PrismaClient();
+  const p = prisma;
   try {
     // Query latest aIContentLog entries and filter in JS to avoid schema mismatches
     const rows = await p.aIContentLog.findMany({

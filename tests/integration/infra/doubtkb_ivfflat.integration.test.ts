@@ -5,9 +5,9 @@
  * This test only runs when the `vector` extension (pgvector) is present in
  * the test database. If pgvector is missing the test is skipped.
  */
-import { PrismaClient } from '@prisma/client'
+import { prisma } from '../../../lib/prisma';
 
-const prisma = new PrismaClient()
+
 
 function randomVectorLiteral(dim: number) {
   const values = Array.from({ length: dim }, () => (Math.random() * 2 - 1).toFixed(6))

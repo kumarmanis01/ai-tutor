@@ -14,10 +14,8 @@
  * - 2026-01-22T17:00:00Z | copilot | Created for bulk notes hydration
  */
 
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '../lib/prisma';
 import { enqueueNotesHydration } from '../lib/execution-pipeline/enqueueTopicHydration';
-
-const prisma = new PrismaClient();
 
 async function main() {
   console.log('🚀 Starting bulk notes hydration...\n');

@@ -3,7 +3,12 @@ module.exports = {
   preset: 'ts-jest',
   testEnvironment: 'node',
   // run only unit tests by default; integration tests are excluded
-  testMatch: ['**/tests/**/*.test.ts'],
+  testMatch: [
+    '**/tests/**/*.test.ts',
+    '**/tests/**/*.test.tsx',
+    '**/tests/**/*.spec.ts',
+    '**/tests/**/*.spec.tsx',
+  ],
   testPathIgnorePatterns: [
     '/tests/integration/',
     // phase12 and regenerationWorker DB integration tests re-enabled — they self-skip

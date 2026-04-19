@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '../lib/prisma';
 
 async function main() {
   const args = process.argv.slice(2);
@@ -9,7 +9,7 @@ async function main() {
     console.error('Usage: node scripts/dump-ai-log.js <aiLogId> [hydrationJobId]');
     process.exit(2);
   }
-  const prisma = new PrismaClient();
+  
   try {
     if (id) {
       const a = await prisma.aIContentLog.findUnique({ where: { id } });

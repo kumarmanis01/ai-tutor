@@ -11,6 +11,7 @@
  *
  * EDIT LOG:
  * - 2026-01-24T12:00:00Z | copilot | replace ESM createRequire logic with universal PrismaClient singleton to support Jest/CJS
+ * - 2026-04-18T00:00:00Z | copilot | remove speculative eager-connect for test env; root fix is in prismaEnsureColumns.ts
  */
 
 import { PrismaClient } from '@prisma/client';
@@ -32,7 +33,6 @@ const client = g.prisma ?? new PrismaClient({
 });
 
 if (process.env.NODE_ENV !== 'production') g.prisma = client;
-
 // Provide a compatibility proxy so older code/tests that reference legacy model
 // names (e.g. `analyticsSignal`) continue to work even if the schema renamed
 // the model to `analyticsEvent`.

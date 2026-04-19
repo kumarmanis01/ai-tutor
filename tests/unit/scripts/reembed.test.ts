@@ -1,6 +1,7 @@
 /**
  * Unit test for scripts/reembed.ts
  */
+/* eslint-disable @typescript-eslint/no-require-imports */
 jest.mock('@/lib/prisma', () => ({ prisma: require('../../helpers/prismaMock').prismaMock }))
 jest.mock('@/lib/ai/embeddings', () => ({ getEmbeddingsBatch: jest.fn() }))
 

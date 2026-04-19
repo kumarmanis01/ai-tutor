@@ -49,9 +49,8 @@ function loadEnvFileIfPresent() {
   }
 }
 loadEnvFileIfPresent();
+const { prisma } = require('../lib/prisma');
 
-const { PrismaClient } = require('@prisma/client');
-const prisma = new PrismaClient();
 
 async function main() {
   console.log('=== seed-home-engine-test-data ===\n');

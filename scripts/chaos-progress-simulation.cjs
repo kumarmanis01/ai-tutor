@@ -44,9 +44,8 @@ function loadEnv() {
   }
 }
 loadEnv();
+const { prisma } = require('../lib/prisma');
 
-const { PrismaClient } = require('@prisma/client');
-const prisma = new PrismaClient();
 
 const BASE_URL = (process.env.BASE_URL || process.env.NEXTAUTH_URL || 'http://localhost:3000').replace(/\/$/, '');
 const NEXTAUTH_SECRET = process.env.NEXTAUTH_SECRET;

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-require-imports */
 import runMonthlyMisconceptionPrevalence from '@/worker/services/misconceptionPrevalenceWorker'
 import { prismaMock } from '../../helpers/prismaMock'
 

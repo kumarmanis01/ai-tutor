@@ -80,6 +80,21 @@ export default function ProfilePage() {
                   <span className="text-gray-400 ml-1">(best {profile?.longestStreak ?? 0}d)</span>
                 </span>
               </div>
+              {profile?.preferences?.badgeShowcase && badges && badges.length > 0 && (
+                <div className="inline-flex items-center gap-2">
+                  <span className="text-xs text-gray-400">Showcase:</span>
+                  <div className="inline-flex gap-1 flex-wrap">
+                    {((profile.preferences.badgeShowcase as string[]) || [])
+                      .map((id) => badges.find((b) => b.id === id))
+                      .filter(Boolean)
+                      .map((b) => (
+                        <span key={b!.id} className="px-2 py-0.5 bg-primary/10 text-primary rounded text-xs">
+                          {b!.icon ?? '🏅'}
+                        </span>
+                      ))}
+                  </div>
+                </div>
+              )}
               {profile?.cosmeticUnlocks && profile.cosmeticUnlocks.length > 0 && (
                 <div className="inline-flex items-center gap-2">
                   <span className="text-xs text-gray-400">Unlocked:</span>

@@ -2,8 +2,8 @@
  * Fetch recent AIContentLog rows to inspect LLM responses.
  */
 require('dotenv').config({ path: '.env.production' });
-const { PrismaClient } = require('@prisma/client');
-const prisma = new PrismaClient();
+const { prisma } = require('../lib/prisma');
+
 
 (async () => {
   try {

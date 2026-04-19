@@ -13,8 +13,7 @@
  * - 2026-04-17T00:00:00Z | senior-engineer | add marketing spend CLI
  */
 
-import { z } from 'zod'
-import { PrismaClient } from '@prisma/client'
+import { z } from 'zod'import { prisma } from '../lib/prisma';
 
 const argv = process.argv.slice(2)
 
@@ -57,7 +56,7 @@ async function main() {
     process.exit(2)
   }
 
-  const prisma = new PrismaClient()
+  
   try {
     const rec = await prisma.marketingSpend.create({ data: {
       periodStart: new Date(parsed.data.start),

@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { prisma } from '../lib/prisma';
 const jobId = process.argv[2]
 if (!jobId) {
   console.error('Usage: node scripts/tmp-list-children.cjs <rootHydrationJobId>')
@@ -9,7 +10,7 @@ if (!jobId) {
   try{
     const pkg = require('@prisma/client')
     const { PrismaClient } = pkg
-    const prisma = new PrismaClient()
+    
 
     const children = await prisma.hydrationJob.findMany({ where: { rootJobId: jobId }, orderBy: { createdAt: 'asc' } })
     console.log('CHILD_HYDRATION_JOBS count=', children.length)

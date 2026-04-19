@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { prisma } from '../lib/prisma';
 const jobId = process.argv[2]
 if (!jobId) {
   console.error('Usage: node scripts/tmp-debug-job.cjs <hydrationJobId>')
@@ -9,7 +10,7 @@ if (!jobId) {
   try {
     const pkg = require('@prisma/client')
     const { PrismaClient } = pkg
-    const prisma = new PrismaClient()
+    
 
     const hj = await prisma.hydrationJob.findUnique({ where: { id: jobId } })
     console.log('\nHYDRATION_JOB:\n', JSON.stringify(hj, null, 2))

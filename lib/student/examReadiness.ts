@@ -218,16 +218,16 @@ export function computePredictedScoreRange(
   // Backwards-compatible: allow number as daysToExam
   let daysToExam: number | null | undefined = undefined
   let states: Array<{ conceptId: string; retention?: number }> | undefined = undefined
-  let studentId: string | undefined = undefined
-  let subjectId: string | undefined = undefined
+  let _studentId: string | undefined = undefined
+  let _subjectId: string | undefined = undefined
   let lastMock: { finishedAt?: Date; scorePercent?: number } | undefined = undefined
   if (typeof opts === 'number') {
     daysToExam = opts
   } else if (opts && typeof opts === 'object') {
     daysToExam = opts.daysToExam
     states = opts.states
-    studentId = opts.studentId
-    subjectId = opts.subjectId
+    _studentId = opts.studentId
+    _subjectId = opts.subjectId
     // support passing a lastMock object directly
     ;(lastMock as any) = (opts as any).lastMock
   }

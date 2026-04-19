@@ -88,7 +88,7 @@ export async function withdrawConsent(
           data: {
             targetEntity: 'User',
             targetId: userId,
-            action: AdminActionType.ERASURE_REQUEST,
+            action: (AdminActionType?.ERASURE_REQUEST) ?? 'ERASURE_REQUEST',
             ipAddress: meta.ipAddress ?? null,
             details: { scope, initiatedBy: 'consent-withdrawal' },
           },
@@ -101,7 +101,7 @@ export async function withdrawConsent(
         data: {
           targetEntity: 'User',
           targetId: userId,
-          action: AdminActionType.ERASURE_REQUEST,
+          action: (AdminActionType?.ERASURE_REQUEST) ?? 'ERASURE_REQUEST',
           ipAddress: meta.ipAddress ?? null,
           details: { scope, note: 'Deletion request already exists' },
         },

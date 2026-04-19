@@ -1,6 +1,6 @@
-const { PrismaClient } = require('@prisma/client');
+const { prisma } = require('../lib/prisma');
 (async () => {
-  const p = new PrismaClient();
+  const p = prisma;
   try {
     const contentCatalogCount = await p.contentCatalog.count();
     const chapterDefCount = await p.chapterDef.count();

@@ -30,10 +30,8 @@ try {
   // ignore
 }
 
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '../lib/prisma';
 import { getNextAction } from '../lib/homeEngine/getNextAction';
-
-const prisma = new PrismaClient();
 
 const SCENARIO_EMAILS = [
   { scenario: 'A -- Fresh', email: 'fresh@scenario.test', expectedRule: 'next_new_topic', phase2: false },

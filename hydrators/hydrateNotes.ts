@@ -50,11 +50,20 @@ export async function hydrateNotes(
       // The helper itself imports the LLM and prisma; tests that run in NODE_ENV=test
       // will still use jest.mock on those modules.
       // Dynamically import the test helper so this file has no static imports of the helper/prisma
-      const helper = await import('./testLegacyHydrateHelpers')
+      // Try local-relative import first, then fall back to absolute path alias which
+      // some test transforms may require.
+      let helper: any
+      try {
+        helper = await import('./testLegacyHydrateHelpers')
+      } catch (e) {
+        helper = await import('@/hydrators/testLegacyHydrateHelpers')
+      }
       await helper.runLegacyNotesHydrate(topicId, language)
       return { enqueued: false }
-    } catch (err) {
-      logger.error('hydrateNotes (test) failed', { error: err })
+    } catch (err: any) {
+      // Ensure the actual error message/stack are captured as enumerable fields
+      // so test output and CI logs show useful debugging information.
+      logger.error('hydrateNotes (test) failed', { error: String(err), stack: err?.stack ? String(err.stack) : undefined })
       return { enqueued: false, reason: 'llm_error' }
     }
   }
