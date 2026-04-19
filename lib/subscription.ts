@@ -29,6 +29,7 @@ export async function isPremiumUser(userId: string): Promise<boolean> {
   }
 }
 
-export default {
+const subscriptionHelpers = {
   isPremiumUser,
 }
+export default subscriptionHelpers

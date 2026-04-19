@@ -18,7 +18,7 @@
 
 const fs = require('fs')
 const path = require('path')
-const { PrismaClient } = require('@prisma/client')
+const { prisma } = require('../lib/prisma');
 const { randomUUID } = require('crypto')
 
 // NOTE: This script prefers environment variables provided by the VPS
@@ -41,7 +41,7 @@ function ensureDatabaseUrl() {
 
 ensureDatabaseUrl()
 
-const prisma = new PrismaClient()
+
 
 function parseCli() {
   const argv = process.argv.slice(2)
@@ -274,7 +274,7 @@ async function main() {
     console.error('Pilot hydrate failed:', String(err?.message || err))
     process.exit(1)
   } finally {
-    try { await prisma.$disconnect() } catch (e) {}
+    try { await prisma.$disconnect() } catch (_e) {}
   }
 }
 

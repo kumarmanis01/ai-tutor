@@ -70,9 +70,8 @@ function loadEnv() {
   }
 }
 loadEnv();
+const { prisma } = require('../lib/prisma');
 
-const { PrismaClient } = require('@prisma/client');
-const prisma = new PrismaClient();
 
 // ── Config ────────────────────────────────────────────────────────────────────
 const BASE_URL = (process.env.BASE_URL || process.env.NEXTAUTH_URL || 'http://localhost:3000')

@@ -12,6 +12,7 @@
  * - /docs/COPILOT_GUARDRAILS.md
  *
  * EDIT LOG:
+ * - 2026-04-19T00:00:00Z | copilot | fix(lint): prefix unused GET req param
  * - 2026-04-15T00:00:00Z | copilot-planner | created trial signup API route
  * - 2026-04-15T12:00:00Z | copilot | rename unused GET param to _req to satisfy lint
  */

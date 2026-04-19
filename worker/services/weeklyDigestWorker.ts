@@ -285,7 +285,7 @@ export function computeNextDeliveryUtc(weekdayName: string, timeHHmm: string, ti
   const currentWeekdayName = new Intl.DateTimeFormat('en-US', { weekday: 'long', timeZone: tz }).format(now)
   const currentIndex = weekdays.indexOf(currentWeekdayName)
   const targetIndex = Math.max(0, weekdays.indexOf(weekdayName))
-  let deltaDays = (targetIndex - currentIndex + 7) % 7
+  const deltaDays = (targetIndex - currentIndex + 7) % 7
 
   // Local date string for today in TZ
   const todayLocal = getLocalDateString(now, tz) // YYYY-MM-DD

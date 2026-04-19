@@ -17,6 +17,7 @@
  * - /docs/COPILOT_GUARDRAILS.md
  *
  * EDIT LOG:
+ * - 2026-04-19T00:00:00Z | copilot | fix(lint): prefix unused catch param in getClientIp
  * - 2026-04-13T05:20:00Z | copilot | add EMI support to student subscription order route
  * - 2026-04-17T12:00:00Z | copilot | include couponCode in Razorpay order notes and persist couponCode on PaymentOrder
  */
@@ -79,9 +80,9 @@ export async function POST(req: Request) {
       const forwarded = req.headers.get('x-forwarded-for');
       if (forwarded) return forwarded.split(',')[0].trim();
       return req.headers.get('x-real-ip') ?? null;
-    } catch (err) {
-      return null;
-    }
+      } catch {
+        return null;
+      }
   }
 
   const purchaserIp = getClientIp(req);

@@ -39,8 +39,8 @@ function loadEnvFile(file) {
 loadEnvFile(path.resolve(process.cwd(), '.env.production'));
 // Silence Prisma client debug output for CLI scripts
 process.env.DEBUG = '';
-const { PrismaClient } = require('@prisma/client');
-const prisma = new PrismaClient({ log: [] });
+const { prisma } = require('../lib/prisma');
+
 
 (async () => {
   try {

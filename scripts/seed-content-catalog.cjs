@@ -1,6 +1,6 @@
-const { PrismaClient } = require('@prisma/client');
+const { prisma } = require('../lib/prisma');
 
-const prisma = new PrismaClient();
+
 
 async function main() {
   console.log('🌱 [START] Seeding ContentCatalog from ChapterDef...');

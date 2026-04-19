@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '../lib/prisma';
 
 async function main() {
   const args = process.argv.slice(2);
@@ -9,7 +9,7 @@ async function main() {
     console.error('Usage: node scripts/query-job.js <hydrationId> [executionId]');
     process.exit(2);
   }
-  const prisma = new PrismaClient();
+  
   try {
     if (hydrationId) {
       const h = await prisma.hydrationJob.findUnique({ where: { id: hydrationId } });

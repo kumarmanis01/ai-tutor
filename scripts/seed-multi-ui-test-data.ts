@@ -1,10 +1,10 @@
-import { PrismaClient } from '@prisma/client'
+import { prisma } from '../lib/prisma';
 
 // Local alias for the MasteryLevel enum to avoid depending on a freshly
 // generated Prisma client during editor/type-check time.
 type MasteryLevel = 'beginner' | 'intermediate' | 'advanced' | 'expert'
 
-const prisma = new PrismaClient()
+
 
 function daysAgo(days: number) {
   const d = new Date()

@@ -55,8 +55,8 @@
     console.log('POST result:', postResult);
 
     // Verify in DB using Prisma
-    const { PrismaClient } = require('@prisma/client');
-    const prisma = new PrismaClient();
+const { prisma } = require('../lib/prisma');
+    
     const job = await prisma.executionJob.findFirst({ where: { entityId: subject.id }, orderBy: { createdAt: 'desc' } });
     console.log('DB job found:', job ? { id: job.id, jobType: job.jobType, status: job.status } : null);
     await prisma.$disconnect();

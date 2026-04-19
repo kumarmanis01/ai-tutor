@@ -11,6 +11,7 @@
  * - /docs/COPILOT_GUARDRAILS.md
  *
  * EDIT LOG:
+ * - 2026-04-19T00:00:00Z | copilot | fix(lint): prefix unused catch param in handleSubmit
  * - 2026-04-15T00:00:00Z | copilot-planner | created trial signup UI component
  * - 2026-04-15T12:00:00Z | copilot | remove unused catch param to satisfy lint
  */

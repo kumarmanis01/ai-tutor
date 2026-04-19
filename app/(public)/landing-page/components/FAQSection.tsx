@@ -1,3 +1,18 @@
+/**
+ * FILE OBJECTIVE:
+ * - Render FAQ section on the public landing page.
+ *
+ * LINKED UNIT TEST:
+ * - tests/unit/app/(public)/landing-page/components/faq-section.spec.tsx
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/COPILOT_GUARDRAILS.md
+ * - .github/copilot-instructions.md
+ *
+ * EDIT LOG:
+ * - 2026-04-19T00:00:00Z | copilot | fix(lint): alias unused imports to _-prefixed vars
+ */
+
 'use client';
 
 import { useState } from 'react';
@@ -90,9 +105,9 @@ const FAQSection = () => {
       questionEn: 'What is Spinzy AI Tutor and how does Teacher Vidya work?',
       questionHi: 'Spinzy AI Tutor क्या है और Teacher Vidya कैसे काम करती है?',
       answerEn:
-        'Spinzy AI Tutor provides curriculum-aligned, AI-powered guidance. Teacher Vidya is an AI persona that offers stepwise hints and explanations to help students learn — to promote mastery, Vidya does not provide direct answers to practice problems. We process minimal usage data to deliver and improve the service; see our Privacy Policy for details. Spinzy AI Tutor is not a substitute for professional educational advice.',
+        'Spinzy AI Tutor provides curriculum-aligned, AI-powered guidance. Teacher Vidya is an AI persona that offers stepwise hints and explanations to help students learn -- to promote mastery, Vidya does not provide direct answers to practice problems. We process minimal usage data to deliver and improve the service; see our Privacy Policy for details. Spinzy AI Tutor is not a substitute for professional educational advice.',
       answerHi:
-        'Spinzy AI Tutor पाठ्यक्रम-संगत, AI-आधारित मार्गदर्शन प्रदान करता है। Teacher Vidya एक AI persona है जो चरणबद्ध hints और explanations देती है ताकि छात्र समझें और महारत हासिल कर सकें — इसलिए Vidya अभ्यास समस्याओं के सीधे उत्तर नहीं देती। सेवा प्रदान करने और सुधारने के लिए हम न्यूनतम उपयोग डेटा संसाधित करते हैं; विवरण के लिए हमारी Privacy Policy देखें। Spinzy AI Tutor पेशेवर शैक्षणिक सलाह का विकल्प नहीं है।',
+        'Spinzy AI Tutor पाठ्यक्रम-संगत, AI-आधारित मार्गदर्शन प्रदान करता है। Teacher Vidya एक AI persona है जो चरणबद्ध hints और explanations देती है ताकि छात्र समझें और महारत हासिल कर सकें -- इसलिए Vidya अभ्यास समस्याओं के सीधे उत्तर नहीं देती। सेवा प्रदान करने और सुधारने के लिए हम न्यूनतम उपयोग डेटा संसाधित करते हैं; विवरण के लिए हमारी Privacy Policy देखें। Spinzy AI Tutor पेशेवर शैक्षणिक सलाह का विकल्प नहीं है।',
       category: 'Product',
     },
   ];

@@ -1,7 +1,7 @@
-const { PrismaClient } = require('@prisma/client');
+const { prisma } = require('../lib/prisma');
 
 async function main() {
-  const prisma = new PrismaClient();
+  
   try {
     const rows = [];
     rows.push(['Board', await prisma.board.count()]);

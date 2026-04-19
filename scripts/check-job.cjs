@@ -1,6 +1,6 @@
 require('dotenv').config({ path: '.env.local' });
-const { PrismaClient } = require('@prisma/client');
-const p = new PrismaClient();
+const { prisma } = require('../lib/prisma');
+const p = prisma;
 
 async function main() {
   const job = await p.hydrationJob.findFirst({

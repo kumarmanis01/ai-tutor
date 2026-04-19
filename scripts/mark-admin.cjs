@@ -38,15 +38,14 @@ function loadEnvFileIfPresent() {
 }
 
 loadEnvFileIfPresent();
-
-const { PrismaClient } = require('@prisma/client');
+const { prisma } = require('../lib/prisma');
 
 const logger = {
   info: (...args) => console.log('[INFO]', ...args),
   error: (...args) => console.error('[ERROR]', ...args),
 };
 
-const prisma = new PrismaClient();
+
 
 async function main() {
   const email = process.argv[2];

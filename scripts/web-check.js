@@ -1,5 +1,5 @@
-const {PrismaClient} = require('@prisma/client');
-const p = new PrismaClient();
+const { prisma } = require('../lib/prisma');
+const p = prisma;
 (async () => {
   try {
     console.log(JSON.stringify({ DATABASE_URL: process.env.DATABASE_URL }));

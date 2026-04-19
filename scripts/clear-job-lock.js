@@ -1,7 +1,7 @@
 #!/usr/bin/env node
-const { PrismaClient } = require('@prisma/client')
+const { prisma } = require('../lib/prisma');
 ;(async () => {
-  const prisma = new PrismaClient()
+  
   try {
     const res = await prisma.jobLock.deleteMany({ where: { jobName: 'analytics_jobs' } })
     console.log('cleared job lock', res)

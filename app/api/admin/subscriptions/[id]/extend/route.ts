@@ -69,7 +69,7 @@ export async function POST(
         adminId: session.user.id,
         targetEntity: 'Subscription',
         targetId: id,
-        action: AdminActionType.SUBSCRIPTION_EXTEND,
+        action: (AdminActionType?.SUBSCRIPTION_EXTEND) ?? 'SUBSCRIPTION_EXTEND',
         previousValue: { endDate: previousEndDate.toISOString() },
         newValue: { endDate: newEndDate.toISOString(), days, reason },
         reason,

@@ -1,7 +1,7 @@
 (async () => {
   try {
-    const { PrismaClient } = require('@prisma/client');
-    const prisma = new PrismaClient();
+const { prisma } = require('../lib/prisma');
+    
 
     const board = await prisma.board.findFirst({ where: { lifecycle: 'active' }, include: { classes: true } });
     if (!board) throw new Error('No active board found');

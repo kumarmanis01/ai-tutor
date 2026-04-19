@@ -11,10 +11,9 @@
  * EDIT LOG:
  * - 2025-01-XX | copilot | Created for hydration debugging
  */
+import { prisma } from '../lib/prisma';
 
-import { PrismaClient } from '@prisma/client';
 
-const prisma = new PrismaClient();
 
 async function main() {
   console.log('=== HYDRATION JOBS ===\n');

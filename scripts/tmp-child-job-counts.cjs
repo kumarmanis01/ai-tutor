@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { prisma } from '../lib/prisma';
 const jobId = process.argv[2]
 if (!jobId) {
   console.error('Usage: node scripts/tmp-child-job-counts.cjs <hydrationJobId>')
@@ -9,7 +10,7 @@ if (!jobId) {
   try {
     const pkg = require('@prisma/client')
     const { PrismaClient } = pkg
-    const prisma = new PrismaClient()
+    
 
     const level2Count = await prisma.hydrationJob.count({ where: { rootJobId: jobId, hierarchyLevel: 2 } })
     const level3Count = await prisma.hydrationJob.count({ where: { rootJobId: jobId, hierarchyLevel: 3 } })

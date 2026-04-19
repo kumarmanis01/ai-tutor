@@ -157,6 +157,7 @@ export default async function ProgressPage({
 
   const chapterWeakestConceptMap = new Map<string, string>();
   const conceptsByChapter = new Map<string, string[]>();
+  let memoryStrengthByConceptId = new Map<string, number>();
 
   if (allChapterIds.length > 0) {
     const concepts = await prisma.concept.findMany({
@@ -174,7 +175,7 @@ export default async function ProgressPage({
       conceptStates.map((s) => [s.conceptId, s.masteryScore]),
     );
 
-    const memoryStrengthByConceptId = new Map<string, number>(
+    memoryStrengthByConceptId = new Map<string, number>(
       conceptStates.map((s) => [s.conceptId, (s as any).memoryStrength ?? 0]),
     );
 
@@ -185,7 +186,7 @@ export default async function ProgressPage({
       conceptsByChapter.get(chId)!.push(c.id);
     }
 
-    for (const [chapterId, conceptIds] of conceptsByChapter) {
+      for (const [chapterId, conceptIds] of conceptsByChapter) {
       if (conceptIds.length === 0) continue;
       const sorted = conceptIds
         .slice()
@@ -196,7 +197,7 @@ export default async function ProgressPage({
       chapterWeakestConceptMap.set(chapterId, sorted[0]);
       // compute average memoryStrength for the chapter
       const msVals = conceptIds.map((id) => memoryStrengthByConceptId.get(id) ?? 0);
-      const avgMs = msVals.length > 0 ? msVals.reduce((a, b) => a + b, 0) / msVals.length : 0;
+      const _avgMs = msVals.length > 0 ? msVals.reduce((a, b) => a + b, 0) / msVals.length : 0;
       // store as a temporary map on chapterWeakestConceptMap via Map of maps? We'll attach later when assembling chapters.
     }
   }

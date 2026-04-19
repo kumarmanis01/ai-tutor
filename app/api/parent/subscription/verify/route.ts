@@ -19,7 +19,6 @@
  * EDIT LOG:
  * - 2026-04-08T00:00:00Z | copilot | created parent verify endpoint
  * - 2026-04-14T00:00:00Z | copilot | add timeout:30000/maxWait:10000 to $transaction to prevent P2028 on Neon
- * - 2026-04-16T03:30:00Z | copilot | support short plan ids and compute expiry via planEndDate to avoid undefined plan errors
  */
 
 import { NextResponse } from 'next/server';
@@ -32,7 +31,6 @@ import { sendEmail } from '@/lib/mailer';
 import { paymentReceiptHtml } from '@/lib/email/templates';
 import { sendSms } from '@/lib/sms';
 import { PLANS, planEndDate, resolvePlanByShortId } from '@/lib/billing/plans';
-import type { PlanId } from '@/lib/billing/plans';
 import { createInvoiceForPayment } from '@/lib/invoices';
 import Razorpay from 'razorpay';
 import computeProratedCredit from '@/lib/subscription/proration';
@@ -77,6 +75,10 @@ export async function POST(req: Request) {
 
   if (!orderId || !paymentId || !signature || !planId) {
     return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
+  }
+
+  if (!['monthly', 'quarterly', 'annual'].includes(planId)) {
+    return NextResponse.json({ error: 'Invalid planId' }, { status: 400 });
   }
 
   // Security gate -- verify signature

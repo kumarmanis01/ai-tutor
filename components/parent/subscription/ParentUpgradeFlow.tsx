@@ -152,7 +152,7 @@ export default function ParentUpgradeFlow({ childrenList }: ParentUpgradeFlowPro
             }
           }).catch(() => toast('Retry request failed'))
       }
-    } catch (e) {
+    } catch {
       // ignore
     }
   }, [])

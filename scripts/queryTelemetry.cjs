@@ -1,6 +1,6 @@
-const { PrismaClient } = require('@prisma/client');
+const { prisma } = require('../lib/prisma');
 (async ()=>{
-  const prisma = new PrismaClient();
+  
   try{
     const rows = await prisma.telemetrySample.findMany({ orderBy: { createdAt: 'desc' }, take: 20 });
     console.log('Last TelemetrySample rows:');

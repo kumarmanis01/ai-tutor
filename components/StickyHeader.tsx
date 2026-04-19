@@ -45,20 +45,20 @@ const navigationItems: NavigationItem[] = [
   },
 ];
 
+// UI-friendly short names (used by various legacy comparisons)
+const CODE_TO_PLAIN: Record<string, string> = {
+  en: 'English',
+  hi: 'Hindi',
+  ta: 'Tamil',
+  bn: 'Bengali',
+  fr: 'French',
+  es: 'Spanish',
+};
+
 const StickyHeader = ({ activeSection = '', onSectionChange }: StickyHeaderProps) => {
   const { data: session } = useSession();
   const [isScrolled, setIsScrolled] = useState(false);
-  // UI-friendly short names (used by various legacy comparisons)
-  const CODE_TO_PLAIN: Record<string, string> = {
-    en: 'English',
-    hi: 'Hindi',
-    ta: 'Tamil',
-    bn: 'Bengali',
-    fr: 'French',
-    es: 'Spanish',
-  };
-
-  const [lang, setLang] = useState<string>('English');
+  const [_lang, setLang] = useState<string>('English');
   // TODO Phase 2: re-add language toggle when Hindi content is live
 
   useEffect(() => {
@@ -72,7 +72,7 @@ const StickyHeader = ({ activeSection = '', onSectionChange }: StickyHeaderProps
 
   // Initialize language state from canonical code stored in localStorage.
   useEffect(() => {
-    try {
+        try {
       const stored = typeof window !== 'undefined' ? localStorage.getItem('ai-tutor:preferredLang') : null;
       if (stored) {
         const s = String(stored).trim();
@@ -101,14 +101,14 @@ const StickyHeader = ({ activeSection = '', onSectionChange }: StickyHeaderProps
           const code = normalizeToCode(s);
           setLang(CODE_TO_PLAIN[code] ?? 'English');
           return;
-        } catch (_) {
+        } catch {
           setLang('English');
         }
       } else if (typeof navigator !== 'undefined') {
         const t = (navigator.language || '').toLowerCase();
         if (t.startsWith('hi')) setLang('Hindi');
       }
-    } catch (err) {
+        } catch (err) {
       logger?.warn?.('StickyHeader: failed to read preferred language', { error: err });
     }
   }, []);

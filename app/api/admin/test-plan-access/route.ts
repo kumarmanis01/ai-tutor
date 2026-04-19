@@ -15,6 +15,7 @@
  * - .github/copilot-instructions.md
  *
  * EDIT LOG:
+ * - 2026-04-19T00:00:00Z | copilot | fix(lint): prefix unused req param in requireAdmin
  * - 2026-04-18T00:00:00Z | copilot | add required header sections for CI documentation enforcement
  * - 2026-04-15T00:00:00Z | staff-engineer | created for Sprint A C1 test plan gating
  * - 2026-04-15T12:00:00Z | copilot | rename unused param to _req to satisfy lint

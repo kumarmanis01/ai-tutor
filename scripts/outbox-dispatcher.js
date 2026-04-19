@@ -13,8 +13,7 @@ COPILOT INSTRUCTIONS FOLLOWED:
 EDIT LOG:
 - 2026-01-21T00:00:00Z | copilot-agent | added header and documentation
 */
-
-import { PrismaClient } from '@prisma/client'
+import { prisma } from '../lib/prisma';
 import { Queue } from 'bullmq'
 
 // Dispatcher reads unsent Outbox rows and enqueues them to Bull
@@ -23,7 +22,7 @@ import { Queue } from 'bullmq'
 async function sleep(ms) { return new Promise((r) => setTimeout(r, ms)) }
 
 async function main() {
-  const prisma = new PrismaClient()
+  
   const redisUrl = process.env.REDIS_URL
   if (!redisUrl) {
     console.error('REDIS_URL not set; cannot dispatch outbox')

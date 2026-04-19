@@ -207,12 +207,12 @@ export function EndOfSessionCard({ topicName, subject: _subject, performance }: 
               <p className="text-xs text-gray-600 dark:text-gray-400 mb-3">
               Sessions reset on {resetLabel}. Upgrade for unlimited access to Teacher Vidya -- {standardMonthlyDisplay}.
             </p>
-            <a
+            <Link
               href="/dashboard#upgrade-section"
               className="inline-flex min-h-[44px] items-center justify-center rounded-xl bg-[#534AB7] px-5 text-sm font-semibold text-white hover:bg-[#4338a3] transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#534AB7]"
             >
               View plans -- {standardMonthlyDisplay}
-            </a>
+            </Link>
           </div>
         );
       })()}

@@ -13,6 +13,8 @@
  * - 2026-04-08T00:00:00Z | git-user | adapt tests to inject prismaMock and stabilize module loading
  */
 
+/* eslint-disable @typescript-eslint/no-require-imports */
+
 import { prismaMock } from '../../helpers/prismaMock'
 import crypto from 'crypto'
 
