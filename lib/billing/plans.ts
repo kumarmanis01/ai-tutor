@@ -112,4 +112,23 @@ export function renewalDateStr(plan: SubscriptionPlan): string {
   return d.toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })
 }
 
-export default { PLANS, rupeesToPaise, planEndDate, renewalDateStr }
+export function resolvePlanByShortId(shortId: string, isFamily = false): SubscriptionPlan | undefined {
+  if (!shortId || typeof shortId !== 'string') return undefined
+
+  // Exact key match (allows callers to pass full keys like 'standard_annual')
+  if ((PLANS as any)[shortId]) return (PLANS as any)[shortId] as SubscriptionPlan
+
+  // Try family/standard variants for short ids like 'monthly' or 'annual'
+  const familyKey = (`family_${shortId}`) as PlanId
+  const standardKey = (`standard_${shortId}`) as PlanId
+
+  if (isFamily && (PLANS as any)[familyKey]) return (PLANS as any)[familyKey] as SubscriptionPlan
+  if ((PLANS as any)[standardKey]) return (PLANS as any)[standardKey] as SubscriptionPlan
+  if ((PLANS as any)[familyKey]) return (PLANS as any)[familyKey] as SubscriptionPlan
+
+  return undefined
+}
+
+const Billing = { PLANS, rupeesToPaise, planEndDate, renewalDateStr, resolvePlanByShortId }
+
+export default Billing
