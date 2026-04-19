@@ -5,7 +5,7 @@
  * Returns:
  *   das          - Daily Active Students (distinct students with a session today IST)
  *   was          - Weekly Active Students (distinct students with a session in last 7 days)
- *   mrrInr       - Monthly Recurring Revenue in INR (active subscriptions * ₹99)
+ *   mrrInr       - Monthly Recurring Revenue in INR (active subscriptions * ₹399)
  *   conversionRate - paid students / total registered students (0..1)
  *   churnRate    - subscriptions deactivated in last 30 days / active at start of period (0..1)
  *   sessionsPerStudentPerWeek - total sessions last 7 days / distinct students last 7 days
@@ -16,7 +16,7 @@ import { getServerSessionForHandlers } from '@/lib/session'
 
 export const dynamic = 'force-dynamic'
 
-const PLAN_PRICE_INR = 99
+const PLAN_PRICE_INR = 399
 
 export async function GET(_req: Request) {
   const session = await getServerSessionForHandlers()

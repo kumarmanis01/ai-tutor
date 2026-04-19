@@ -4,6 +4,8 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useSession } from 'next-auth/react';
 import Logo from '@/components/Logo';
+import { normalizeToCode } from '@/components/LanguageSelector';
+import { logger } from '@/lib/logger';
 
 
 interface NavigationItem {
@@ -46,6 +48,17 @@ const navigationItems: NavigationItem[] = [
 const StickyHeader = ({ activeSection = '', onSectionChange }: StickyHeaderProps) => {
   const { data: session } = useSession();
   const [isScrolled, setIsScrolled] = useState(false);
+  // UI-friendly short names (used by various legacy comparisons)
+  const CODE_TO_PLAIN: Record<string, string> = {
+    en: 'English',
+    hi: 'Hindi',
+    ta: 'Tamil',
+    bn: 'Bengali',
+    fr: 'French',
+    es: 'Spanish',
+  };
+
+  const [lang, setLang] = useState<string>('English');
   // TODO Phase 2: re-add language toggle when Hindi content is live
 
   useEffect(() => {
@@ -55,6 +68,49 @@ const StickyHeader = ({ activeSection = '', onSectionChange }: StickyHeaderProps
 
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  // Initialize language state from canonical code stored in localStorage.
+  useEffect(() => {
+    try {
+      const stored = typeof window !== 'undefined' ? localStorage.getItem('ai-tutor:preferredLang') : null;
+      if (stored) {
+        const s = String(stored).trim();
+        const low = s.toLowerCase();
+        // handle direct codes and 'auto'
+        if (low === 'auto') {
+          const browser = typeof navigator !== 'undefined' ? (navigator.language || 'en') : 'en';
+          const base = String(browser).split('-')[0].toLowerCase();
+          setLang(CODE_TO_PLAIN[base] ?? 'English');
+          return;
+        }
+        if (CODE_TO_PLAIN[low]) {
+          setLang(CODE_TO_PLAIN[low]);
+          return;
+        }
+
+        // If value looks like a display name (e.g. "हिंदी (Hindi)"), try to extract
+        const m = s.match(/\(([^)]+)\)/);
+        if (m && m[1]) {
+          setLang(m[1]);
+          return;
+        }
+
+        // Fallback: try normalizing via LanguageSelector helper
+        try {
+          const code = normalizeToCode(s);
+          setLang(CODE_TO_PLAIN[code] ?? 'English');
+          return;
+        } catch (_) {
+          setLang('English');
+        }
+      } else if (typeof navigator !== 'undefined') {
+        const t = (navigator.language || '').toLowerCase();
+        if (t.startsWith('hi')) setLang('Hindi');
+      }
+    } catch (err) {
+      logger?.warn?.('StickyHeader: failed to read preferred language', { error: err });
+    }
   }, []);
 
   const handleSmoothScroll = (target: string, id: string) => {
@@ -120,7 +176,7 @@ const StickyHeader = ({ activeSection = '', onSectionChange }: StickyHeaderProps
                 href="/auth/signup"
                 className="px-4 py-2 md:px-6 md:py-2.5 bg-[#534AB7] hover:bg-[#4338A0] text-white rounded-lg text-sm font-semibold transition-colors"
               >
-                Start Free
+                Get started
               </Link>
             </div>
           </div>

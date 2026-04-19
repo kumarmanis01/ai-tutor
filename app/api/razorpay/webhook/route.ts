@@ -24,6 +24,8 @@ import { sendSms } from '@/lib/sms';
 import { getPaymentDunningQueue } from '@/jobs/paymentDunning';
 import Razorpay from 'razorpay';
 import { recordPaymentEvent } from '@/lib/payments/audit';
+import { redeemReferral } from '@/lib/referral';
+import { redeemCoupon } from '@/lib/coupon';
 
 function getWebhookSecret() {
   return process.env.RAZORPAY_WEBHOOK_SECRET ?? process.env.RAZORPAY_KEY_SECRET ?? '';
@@ -130,12 +132,55 @@ export async function POST(req: Request) {
           paymentRecordId = newPayment.id;
           // Log event in the same transaction
           await recordPaymentEvent(tx, { paymentId: newPayment.id, userId: orderRow.studentId, provider: 'razorpay', providerIdempotencyKey: idempotencyHeader || undefined, transactionId: paymentId, orderId, eventType: 'payment.created.webhook', payload: { notes }, amount: payment.amount, status: 'success' })
+          // Attempt auto-redemption for referral (if user was invited and this is their first paid event)
+          try {
+            const userRow = await tx.user.findUnique({ where: { id: orderRow.studentId }, select: { preferences: true } });
+            const fromPrefs = (userRow?.preferences && typeof userRow.preferences === 'object') ? (userRow.preferences as any).referredBy : undefined
+            const referralCode = fromPrefs || notes?.referralCode || notes?.ref
+            if (typeof referralCode === 'string' && referralCode) {
+              // Use purchaser IP saved in order notes to enable same-IP fraud detection
+              const redeemerIp = typeof notes?.purchaserIp === 'string' && notes.purchaserIp ? notes.purchaserIp : (typeof notes?.purchaser_ip === 'string' && notes.purchaser_ip ? notes.purchaser_ip : (typeof notes?.buyerIp === 'string' && notes.buyerIp ? notes.buyerIp : (typeof notes?.buyer_ip === 'string' && notes.buyer_ip ? notes.buyer_ip : null)));
+              const redeemRes = await redeemReferral(tx, referralCode, orderRow.studentId, redeemerIp)
+              if (redeemRes.status !== 200) {
+                logger.warn('auto-redeem referral returned non-200', { orderId, referralCode, res: redeemRes })
+              }
+            }
+
+            // Coupon auto-redeem (if couponCode present in order notes). We already applied discount at order creation,
+            // so record redemption but skip applying credit to avoid double-credits.
+            try {
+              const couponCode = typeof notes?.couponCode === 'string' && notes.couponCode ? notes.couponCode : (typeof notes?.coupon === 'string' && notes.coupon ? notes.coupon : undefined)
+              if (couponCode) {
+                const cres = await redeemCoupon(tx, couponCode, orderRow.studentId, undefined, { applyAsCredit: false })
+                if (cres.status !== 200) logger.warn('auto-redeem coupon returned non-200', { orderId, couponCode, res: cres })
+              }
+            } catch (err) {
+              logger.warn('auto-redeem coupon failed', { err, orderId })
+            }
+          } catch (err) {
+            logger.warn('auto-redeem referral failed', { err, orderId })
+          }
         } else {
           paymentRecordId = existing.id;
           // update existing payment status if needed
           if (existing.status !== 'success') {
             await tx.payment.update({ where: { id: existing.id }, data: { status: 'success', transactionId: paymentId, orderId, meta: { ...(existing.meta || {}), notes } } });
             await recordPaymentEvent(tx, { paymentId: existing.id, userId: orderRow.studentId, provider: 'razorpay', providerIdempotencyKey: idempotencyHeader || undefined, transactionId: paymentId, orderId, eventType: 'payment.updated.webhook', payload: { notes }, amount: payment.amount, status: 'success' })
+            // If an existing failed/updated payment now became successful, also attempt referral redemption
+              try {
+                const userRow = await tx.user.findUnique({ where: { id: orderRow.studentId }, select: { preferences: true } });
+                const fromPrefs = (userRow?.preferences && typeof userRow.preferences === 'object') ? (userRow.preferences as any).referredBy : undefined
+                const referralCode = fromPrefs || notes?.referralCode || notes?.ref
+                if (typeof referralCode === 'string' && referralCode) {
+                  const redeemerIp = typeof notes?.purchaserIp === 'string' && notes.purchaserIp ? notes.purchaserIp : (typeof notes?.purchaser_ip === 'string' && notes.purchaser_ip ? notes.purchaser_ip : (typeof notes?.buyerIp === 'string' && notes.buyerIp ? notes.buyerIp : (typeof notes?.buyer_ip === 'string' && notes.buyer_ip ? notes.buyer_ip : null)));
+                  const redeemRes = await redeemReferral(tx, referralCode, orderRow.studentId, redeemerIp)
+                  if (redeemRes.status !== 200) {
+                    logger.warn('auto-redeem referral returned non-200 (updated payment)', { orderId, referralCode, res: redeemRes })
+                  }
+                }
+              } catch (err) {
+                logger.warn('auto-redeem referral failed (updated payment)', { err, orderId })
+              }
           }
         }
 

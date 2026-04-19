@@ -23,7 +23,7 @@ import Logo from '@/components/Logo';
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
-type TopbarStats = { streak: number; level: number; shieldAvailable: boolean };
+type TopbarStats = { streak: number; longestStreak?: number; level: number; shieldAvailable: boolean };
 type UserProfile = {
   id?: string;
   name?: string | null;

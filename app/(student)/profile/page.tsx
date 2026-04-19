@@ -18,6 +18,7 @@ import Avatar from '@/components/UI/Avatar';
 import LogoutButton from '@/components/Auth/LogoutButton';
 import type { User } from '@/lib/types';
 import ProfileWidgets from '@/components/ProfileWidgets';
+import { COSMETIC_ITEMS } from '@/lib/student/cosmetics';
 import { extractBadges } from '@/lib/extractBadge';
 import AuthRedeemOnSignIn from '@/components/AuthRedeemOnSignIn';
 import useCurrentUser from '@/hooks/useCurrentUser';
@@ -25,6 +26,7 @@ import { LANGUAGES, _DIFFICULTY_LEVELS } from '@/components/CascadingFilters';
 import Link from 'next/link';
 import ParentAccessCard from '@/components/Profile/ParentAccessCard';
 import { useState } from 'react';
+import FontSizeToggle from '@/components/UI/FontSizeToggle';
 
 export default function ProfilePage() {
   const { data: session } = useSession();
@@ -70,6 +72,25 @@ export default function ProfilePage() {
             />
             <h1 className="text-3xl font-bold mt-2">{profile?.name ?? session?.user?.name}</h1>
             <p className="text-gray-500 dark:text-gray-400">{profile?.email ?? session?.user?.email}</p>
+            <div className="mt-2 flex gap-3 items-center text-sm text-gray-600 dark:text-gray-300">
+              <div className="inline-flex items-center gap-2">
+                <span className="text-lg">🔥</span>
+                <span>
+                  {profile?.currentStreak ?? 0}d
+                  <span className="text-gray-400 ml-1">(best {profile?.longestStreak ?? 0}d)</span>
+                </span>
+              </div>
+              {profile?.cosmeticUnlocks && profile.cosmeticUnlocks.length > 0 && (
+                <div className="inline-flex items-center gap-2">
+                  <span className="text-xs text-gray-400">Unlocked:</span>
+                  <div className="inline-flex gap-1 flex-wrap">
+                    {COSMETIC_ITEMS.filter(ci => (profile.cosmeticUnlocks ?? []).includes(ci.key)).map(ci => (
+                      <span key={ci.key} className="px-2 py-0.5 bg-primary/10 text-primary rounded text-xs">{ci.name}</span>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
             <Link
               href="/student/onboarding"
               className="mt-4 inline-block px-5 py-2 min-h-[44px] leading-[28px] bg-[#534AB7] text-white text-sm font-semibold rounded-xl hover:bg-[#4840a3] transition-colors"
@@ -168,6 +189,12 @@ export default function ProfilePage() {
               <div>
                 <span className="font-semibold">Parent Email:</span>{' '}
                 {profile?.parentEmail || <span className="text-gray-400">Not set</span>}
+              </div>
+              <div className="mt-4">
+                <h4 className="font-semibold mb-2">Display</h4>
+                <div className="flex items-center justify-between">
+                  <FontSizeToggle />
+                </div>
               </div>
             </div>
 

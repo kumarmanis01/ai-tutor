@@ -20,9 +20,9 @@ import { getServerSessionForHandlers } from '@/lib/session';
 import { prisma } from '@/lib/prisma';
 import { logger } from '@/lib/logger';
 import Razorpay from 'razorpay';
-import { PLANS, rupeesToPaise } from '@/lib/subscription/plans';
+import { PLANS, rupeesToPaise } from '@/lib/billing/plans';
 import { calculateProrationCredit } from '@/lib/subscription/proration';
-import type { PlanId } from '@/lib/subscription/plans';
+import type { PlanId } from '@/lib/billing/plans';
 
 function getRazorpayClient() {
   const keyId = process.env.RAZORPAY_KEY_ID;
@@ -31,7 +31,7 @@ function getRazorpayClient() {
   return new Razorpay({ key_id: keyId, key_secret: keySecret });
 }
 
-const VALID_PLAN_IDS: PlanId[] = ['monthly', 'quarterly', 'annual'];
+const VALID_PLAN_IDS: PlanId[] = Object.keys(PLANS) as PlanId[];
 
 export async function POST(req: Request) {
   const session = await getServerSessionForHandlers();
@@ -62,9 +62,23 @@ export async function POST(req: Request) {
   try {
     const now = new Date();
 
-    // Pricing rules same as order endpoint
-    let totalRupees = plan.billedRupees * childIds.length;
-    if (isFamily) totalRupees = Math.round(plan.billedRupees * 1.8 * 100) / 100;
+    // Pricing rules: prefer explicit family plan variant when requested, but only
+    // when the requested plan belongs to the `standard` product. Otherwise fall
+    // back to applying the 1.8x multiplier to the requested plan's price.
+    const suffix = typeof planId === 'string' && planId.includes('_') ? planId.split('_').slice(-1)[0] : planId;
+    const familyKey = (`family_${suffix}`) as PlanId;
+    const familyPlan = (PLANS as any)[familyKey] as typeof plan | undefined;
+    const useExplicitFamily = Boolean(isFamily && familyPlan && typeof planId === 'string' && planId.startsWith('standard_'));
+    let totalRupees: number;
+    if (isFamily) {
+      if (useExplicitFamily) {
+        totalRupees = familyPlan!.billedRupees;
+      } else {
+        totalRupees = Math.round(plan.billedRupees * 1.8 * 100) / 100;
+      }
+    } else {
+      totalRupees = plan.billedRupees * childIds.length;
+    }
 
     // Fetch current active parent subscription (if any)
     const current = await prisma.subscription.findFirst({ where: { userId: user.id, active: true } });
@@ -130,7 +144,7 @@ export async function POST(req: Request) {
     const amountPaise = rupeesToPaise(netCharge);
     const order = await client.orders.create({ amount: amountPaise, currency: 'INR', notes: { parentId: user.id, childIds: JSON.stringify(childIds), isFamily: String(Boolean(isFamily)), planId, changeType: 'upgrade', previousExpiry: current?.endDate?.toISOString() || '', emiMonths: emiMonths ? String(emiMonths) : '' } });
 
-    await prisma.paymentOrder.create({ data: { studentId: user.id, razorpayOrderId: order.id, amount: amountPaise, currency: 'INR', status: 'created', planMonths: plan.durationMonths } });
+    await prisma.paymentOrder.create({ data: { studentId: user.id, razorpayOrderId: order.id, amount: amountPaise, currency: 'INR', status: 'created', planMonths: plan.durationMonths, planId } });
 
     return NextResponse.json({ orderId: order.id, amount: amountPaise, currency: 'INR', keyId: process.env.RAZORPAY_KEY_ID ?? '' }, { status: 200 });
   } catch (err) {

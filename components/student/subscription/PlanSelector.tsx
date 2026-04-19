@@ -9,15 +9,16 @@
  */
 
 import React from 'react';
-import { PLANS } from '@/lib/subscription/plans';
-import type { PlanId, SubscriptionPlan } from '@/lib/subscription/plans';
+import { PLANS } from '@/lib/billing/plans';
+import type { PlanId, SubscriptionPlan } from '@/lib/billing/plans';
 
 interface PlanSelectorProps {
   selected: PlanId;
   onSelect: (id: PlanId) => void;
 }
 
-const PLAN_ORDER: PlanId[] = ['monthly', 'quarterly', 'annual'];
+// Show Standard (monthly), Family (monthly) and Annual (Standard) by default
+const PLAN_ORDER: PlanId[] = ['standard_monthly', 'family_monthly', 'standard_annual'];
 
 function PlanRow({
   plan,
@@ -34,7 +35,6 @@ function PlanRow({
     <button
       type="button"
       onClick={onSelect}
-      aria-pressed={isSelected ? 'true' : 'false'}
       className={[
         'w-full text-left rounded-xl px-4 py-4 min-h-[56px] flex items-center gap-4 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#534AB7]',
         isFeatured
@@ -91,18 +91,33 @@ function PlanRow({
 }
 
 export function PlanSelector({ selected, onSelect }: PlanSelectorProps) {
+  const plans = useMemo(() => {
+    try {
+      const arr = Object.values(PLANS).filter((p) => !p.internal) as SubscriptionPlan[];
+      arr.sort((a, b) => {
+        const fa = a.featured ? 1 : 0;
+        const fb = b.featured ? 1 : 0;
+        if (fa !== fb) return fb - fa; // featured plans first
+        return a.billedRupees - b.billedRupees; // then by price ascending
+      });
+      return arr;
+    } catch {
+      return [] as SubscriptionPlan[];
+    }
+  }, []);
+
   return (
     <div className="space-y-3">
       <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100">
         Choose your plan
       </h2>
       <div className="space-y-2">
-        {PLAN_ORDER.map((id) => (
+        {plans.map((plan) => (
           <PlanRow
-            key={id}
-            plan={PLANS[id]}
-            isSelected={selected === id}
-            onSelect={() => onSelect(id)}
+            key={plan.id}
+            plan={plan}
+            isSelected={selected === plan.id}
+            onSelect={() => onSelect(plan.id)}
           />
         ))}
       </div>

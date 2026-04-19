@@ -165,4 +165,66 @@ describe('generateSubjectDiagnosticTest', () => {
       expect(Array.isArray(q.options)).toBe(true);
     }
   });
+
+  // ── Exclusion-set tests ────────────────────────────────────────────────────
+
+  it('passes the exclusion set through to ensureQuestions on every call', async () => {
+    const excludeIds = new Set(['existing-q-1', 'existing-q-2']);
+
+    ensureQuestions.mockImplementation(
+      async (filters: { topicId?: string; difficulty?: string }, count: number) => {
+        const topicId = filters.topicId ?? 'subject';
+        const diff = filters.difficulty ?? 'easy';
+        return Array.from({ length: count }, (_, i) => makeQuestion(`${diff}-${topicId}-${i}`, topicId, diff));
+      },
+    );
+
+    await generateSubjectDiagnosticTest(BASE_PARAMS, excludeIds);
+
+    // Every ensureQuestions call must receive the exclusion set as the third argument
+    for (const call of ensureQuestions.mock.calls) {
+      expect(call[2]).toBe(excludeIds);
+    }
+  });
+
+  it('never returns a question whose ID is in the exclusion set', async () => {
+    const EXCLUDED_ID = 'excluded-q-1';
+    const excludeIds = new Set([EXCLUDED_ID]);
+
+    ensureQuestions.mockImplementation(
+      async (filters: { topicId?: string; difficulty?: string }, count: number, _excludes?: Set<string>) => {
+        const topicId = filters.topicId ?? 'subject';
+        const diff = filters.difficulty ?? 'easy';
+        // Simulate a bank that always tries to return the excluded question first,
+        // then falls back to a valid alternative — the service must honour the exclusion.
+        return Array.from({ length: count }, (_, i) => {
+          const id = i === 0 ? EXCLUDED_ID : `${diff}-${topicId}-${i}`;
+          return makeQuestion(id, topicId, diff);
+        }).filter((q) => !(_excludes?.has(q.id)));
+      },
+    );
+
+    const result = await generateSubjectDiagnosticTest(BASE_PARAMS, excludeIds);
+
+    const ids = result.questions.map((q) => q.id);
+    expect(ids).not.toContain(EXCLUDED_ID);
+  });
+
+  it('works correctly when excludeQuestionIds is undefined (no exclusion)', async () => {
+    ensureQuestions.mockImplementation(
+      async (filters: { topicId?: string; difficulty?: string }, count: number) => {
+        const topicId = filters.topicId ?? 'subject';
+        const diff = filters.difficulty ?? 'easy';
+        return Array.from({ length: count }, (_, i) => makeQuestion(`${diff}-${topicId}-${i}`, topicId, diff));
+      },
+    );
+
+    // No exclusion set passed — should behave identically to the original call
+    const result = await generateSubjectDiagnosticTest(BASE_PARAMS, undefined);
+    expect(Array.isArray(result.questions)).toBe(true);
+    // Verify ensureQuestions was called with undefined as the third arg (not an empty Set)
+    for (const call of ensureQuestions.mock.calls) {
+      expect(call[2]).toBeUndefined();
+    }
+  });
 });

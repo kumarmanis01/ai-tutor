@@ -19,6 +19,7 @@
  * - 2026-04-15T12:34:00Z | copilot | fix(F-STU-023): tighten conceptState typing; use optional chaining for masteryBrief computation
  * - 2026-04-15T12:50:00Z | copilot | refactor(F-STU-023): computeMasteryBrief returns concise tokens for Vidya system prompt
  * - 2026-04-15T00:30:00Z | copilot | fix(TEST): avoid long-running legacy prisma transaction by racing with timeout
+ * - 2026-04-16T00:00:00Z | copilot | feat(F-STU-011): add copy-paste detection and include board chapter weight in prompts (AC-09, AC-07)
  */
 
 import { prisma } from '@/lib/prisma'
@@ -41,6 +42,7 @@ import { checkOutputSafety, type SafetyEventCreate as OutputSafetyEvent } from '
 import { parseLlmJson } from '@/lib/llm/sanitizeJson'
 import { applyTagTransitionWithRemediation, type TutorTag, type TutorStage } from '@/lib/ai/tutor/stateMachine'
 import { retrieveRelevantChunks } from '@/lib/ai/tutor/rag'
+import detectCopyPaste from '@/lib/ai/tutor/copyPasteDetector'
 import { detectMisconceptions, loadMisconceptions, logNovelMisconception } from '@/lib/ai/tutor/misconceptionDetector'
 import generateContrastiveExplanation from '@/lib/ai/tutor/contrastive'
 import { saveDoubt, lookupDoubt, recordDoubt } from '@/lib/ai/tutor/doubtKb'
@@ -241,6 +243,8 @@ export async function runTutorOrchestrator(args: {
   studentMessage: string
   subjectId: string
   conceptId: string
+  /** Optional message id to mirror anomalyFlags to the Message row */
+  messageId?: string
   /** When tag is VALIDATE, used for IRT enqueue; from client or evaluator. */
   isCorrect?: boolean
   /** Question ID for AnswerEvent dedup; when absent, synthetic id is used. */
@@ -248,7 +252,7 @@ export async function runTutorOrchestrator(args: {
   /** Item difficulty (Concept.irt_b) for IRT; when absent, Concept.irt_b or 0 is used. */
   itemDifficulty?: number
 }): Promise<{ answerText: string; complete: TutorTurnComplete }> {
-  const { studentId, state, studentMessage, subjectId, conceptId } = args
+  const { studentId, state, studentMessage, subjectId, conceptId, messageId } = args
   const sessionId = state.sessionId
 
   // Detect sentinels sent by the frontend.
@@ -303,7 +307,11 @@ export async function runTutorOrchestrator(args: {
     }
 
     const userProfilePromise = (prismaClient.user && typeof prismaClient.user.findUnique === 'function')
-      ? prismaClient.user.findUnique({ where: { id: studentId }, select: { learningStyle: true } })
+      ? prismaClient.user.findUnique({ where: { id: studentId }, select: { learningStyle: true, language: true } })
+      : Promise.resolve(null)
+
+    const studentLearningProfilePromise = (prismaClient.studentLearningProfile && typeof prismaClient.studentLearningProfile.findUnique === 'function')
+      ? prismaClient.studentLearningProfile.findUnique({ where: { studentId }, select: { recommendations: true } })
       : Promise.resolve(null)
 
     const conceptStatePromise: Promise<{ masteryScore: number | null } | null> =
@@ -314,10 +322,14 @@ export async function runTutorOrchestrator(args: {
           })
         : Promise.resolve(null)
 
-    const [concept, subject, userProfile, conceptState] = await Promise.all([
+    const [concept, subject, userProfile, conceptState, studentLearningProfile] = await Promise.all([
       prismaClient.concept.findUnique({
         where: { id: conceptId },
-        select: { name: true, irt_b: true },
+        select: {
+          name: true,
+          irt_b: true,
+          topic: { select: { chapterId: true, chapter: { select: { id: true, name: true } } } },
+        },
       }),
       prismaClient.subjectDef.findUnique({
         where: { id: subjectId },
@@ -330,6 +342,25 @@ export async function runTutorOrchestrator(args: {
     const subjectName = subject?.name ?? 'Subject'
     const conceptDifficulty = typeof concept?.irt_b === 'number' && Number.isFinite(concept.irt_b) ? concept.irt_b : 0
     const learningStyle = (userProfile as any)?.learningStyle ?? null
+    const uiLanguage = (userProfile as any)?.language ?? null
+    const recommendations = (studentLearningProfile as any)?.recommendations ?? null
+
+    // Determine teaching language preference: per-subject override -> user UI language -> default 'en'
+    let teachingLanguageRaw: string | null = null
+    try {
+      if (recommendations && typeof recommendations === 'object') {
+        const subjectLangs = (recommendations.subjectLanguages ?? {}) as Record<string, any>
+        const subj = subjectLangs?.[subjectId]
+        if (typeof subj === 'string' && subj.length > 0) teachingLanguageRaw = subj
+      }
+    } catch (e) {
+      // ignore and fall back
+    }
+    if (!teachingLanguageRaw && typeof uiLanguage === 'string' && uiLanguage.length > 0) teachingLanguageRaw = uiLanguage
+    if (!teachingLanguageRaw) teachingLanguageRaw = 'en'
+
+    // Normalize to supported ExplanationLang ('en' | 'hi') for downstream caches/calls
+    const teachingLanguage = (teachingLanguageRaw === 'hi' ? 'hi' : 'en') as any
 
     const safetyContext = {
       studentId,
@@ -534,13 +565,103 @@ export async function runTutorOrchestrator(args: {
       { topN: 4 },
     )
 
+    // AC-09 (F-STU-011): Detect copy-pasted or suspiciously perfect student answers
+    let detectionAnomaly: any = null
+    try {
+      const cp = detectCopyPaste(redactedInput, ragContext.chunks.map((c) => ({ chunkId: c.chunkId, content: c.content })))
+      if (cp.flagged) {
+        // Build a concise anomaly object (redacted preview only)
+        const anomaly = {
+          type: 'copy_paste',
+          flagged: true,
+          score: typeof cp.score === 'number' ? cp.score : null,
+          reason: cp.reason ?? null,
+          matchedChunkId: cp.chunkId ?? null,
+          detector: 'copyPaste',
+          detectorVersion: process.env.COPY_PASTE_DETECTOR_VERSION ?? 'v1',
+          detectedAt: new Date().toISOString(),
+          preview: typeof redactedInput === 'string' ? String(redactedInput).slice(0, 300) : null,
+        }
+        detectionAnomaly = anomaly
+
+        // Log and short-circuit with a probing follow-up question to encourage explanation in own words.
+        await markTurnCompleted(sessionId)
+        try {
+          await prismaClient.aITutorTurnLog.create({
+            data: {
+              sessionId,
+              callType: 'tutor:probe',
+              model: 'copy_paste_detector',
+              inputTokens: 0,
+              outputTokens: 0,
+              costUsd: 0,
+              latencyMs: 0,
+              tag: 'QUESTION',
+              stage: state.stage,
+              safetyFlagged: false,
+              cached: false,
+              ragChunksUsed: ragContext.chunkIds,
+              frustrationScore: frustration.frustrationScore,
+              groundednessScore: null,
+              anomalyFlags: [anomaly],
+            },
+          })
+
+          // Mirror anomaly to the message row if caller provided a messageId
+          if (messageId && prismaClient.message && typeof prismaClient.message.update === 'function') {
+            try {
+              await prismaClient.message.update({ where: { id: messageId }, data: { anomalyFlags: [anomaly] } })
+            } catch (e) {
+              logger.warn('message.anomalyFlags.update.failed', { messageId, error: String((e as any)?.message ?? e) })
+            }
+          }
+        } catch (e) {
+          logger.warn('copyPaste.aITutorTurnLog.failed', { error: String((e as any)?.message ?? e) })
+        }
+        try {
+          await prismaClient.analyticsEvent.create({
+            data: {
+              eventType: 'copy_paste_detected',
+              userId: studentId,
+              metadata: { sessionId, reason: cp.reason, score: cp.score, chunkId: cp.chunkId },
+            },
+          })
+        } catch (e) {
+          logger.warn('copyPaste.analytics.failed', { error: String((e as any)?.message ?? e) })
+        }
+        return {
+          answerText: "Great — can you explain in your own words why that works?",
+          complete: {
+            tag: 'QUESTION' as TutorTag,
+            stage: state.stage,
+            hintsRemaining: state.hintsRemaining,
+            turnNumber: state.lastTurnNumber,
+            sessionComplete: false,
+          },
+        }
+      }
+    } catch (e) {
+      logger.warn('copyPaste.detect.failed', { error: String((e as any)?.message ?? e) })
+    }
+
     // 5. Prompt assembly — pass actual hintsUsed, isHintRequest, explainStyle, and
     //    persisted machine state for tier-aware hint delivery and remediation context.
+    // Fetch chapter-level board weight (if available) to surface in prompts (AC-07)
+    let boardChapterWeightMarks: number | null = null
+    try {
+      const chapterId = (concept as any)?.topic?.chapter?.id ?? (concept as any)?.topic?.chapterId ?? null
+      if (chapterId) {
+        const bw = await prismaClient.boardChapterWeight.findUnique({ where: { chapterId }, select: { weightMarks: true } })
+        boardChapterWeightMarks = bw?.weightMarks ?? null
+      }
+    } catch (e) {
+      logger.warn('boardChapterWeight.load.failed', { conceptId, error: String((e as any)?.message ?? e) })
+    }
     const prompt = assembleSystemPrompt({
       studentName: 'Student',
       grade: 10,
       board: 'CBSE',
-      teachingLanguage: 'en',
+      teachingLanguage: teachingLanguage,
       examDateProximityDays: null,
       learningStyle,
       recentMisconceptions: recentMisconceptionNames,
@@ -559,6 +680,7 @@ export async function runTutorOrchestrator(args: {
       activeMisconceptionCorrection: activeMisconception?.correction ?? null,
       frustrationScore: frustration.frustrationScore,
       ragChunks: ragContext.chunks.map((c) => c.content),
+      boardChapterWeightMarks,
       conceptName,
       subjectName,
     })
@@ -619,7 +741,7 @@ export async function runTutorOrchestrator(args: {
     try {
       const tutorCallType: TutorCallType = isHintRequest ? 'tutor:hint' : 'tutor:teach'
 
-      const lang: ExplanationLang = 'en'
+      const lang: ExplanationLang = teachingLanguage as ExplanationLang
       const stage = state.stage as TutorStage
       const modality: ExplanationModality | null =
         stage === 'CORE_EXPLANATION' ? 'text' : stage === 'WORKED_EXAMPLE' ? 'worked_example' : null
@@ -763,7 +885,7 @@ export async function runTutorOrchestrator(args: {
       const stage = state.stage as TutorStage
       const modality: ExplanationModality | null =
         stage === 'CORE_EXPLANATION' ? 'text' : stage === 'WORKED_EXAMPLE' ? 'worked_example' : null
-      const lang: ExplanationLang = 'en'
+      const lang: ExplanationLang = teachingLanguage as ExplanationLang
 
       if (modality && !servedFromCache && outputSafety.safe) {
         await setCachedExplanation(conceptId, lang, modality, answerText)
@@ -845,8 +967,95 @@ export async function runTutorOrchestrator(args: {
         ragChunksUsed: ragContext.chunkIds,
         frustrationScore: frustration.frustrationScore,
         groundednessScore: servedFromCache ? null : groundednessScore,
+        anomalyFlags: detectionAnomaly ? [detectionAnomaly] : undefined,
       },
     })
+
+    // Mirror anomaly to the message row if caller provided a messageId (best-effort)
+    if (detectionAnomaly && messageId && prismaClient.message && typeof prismaClient.message.update === 'function') {
+      try {
+        await prismaClient.message.update({ where: { id: messageId }, data: { anomalyFlags: [detectionAnomaly] } })
+      } catch (e) {
+        logger.warn('message.anomalyFlags.update.failed', { messageId, error: String((e as any)?.message ?? e) })
+      }
+    }
+
+    // AC-07: record hint usage on StudentConceptState and auto-flag for consolidation
+    if (isHintRequest) {
+      try {
+        // Delivered tier is previous hintsUsed + 1 (cap to 3)
+        const deliveredTier = Math.min(3, Math.max(1, (hintsUsed ?? 0) + 1))
+        if (prismaClient.studentConceptState && typeof prismaClient.studentConceptState.upsert === 'function') {
+          const baseRetention = conceptState?.retention ?? 1
+          const baseMastery = conceptState?.masteryScore ?? 0
+          const hintMemoryStrength = Math.round((baseMastery * baseRetention) * 1000) / 1000
+
+          const upsertRes: any = await prismaClient.studentConceptState.upsert({
+            where: { studentId_conceptId: { studentId, conceptId } },
+            create: {
+              studentId,
+              conceptId,
+              masteryScore: conceptState?.masteryScore ?? 0,
+              hintCount: 1,
+              hintTier1: deliveredTier === 1 ? 1 : 0,
+              hintTier2: deliveredTier === 2 ? 1 : 0,
+              hintTier3: deliveredTier === 3 ? 1 : 0,
+              lastHintAt: new Date(),
+              memoryStrength: hintMemoryStrength,
+            },
+            update: {
+              hintCount: { increment: 1 },
+              ...(deliveredTier === 1 ? { hintTier1: { increment: 1 } } : {}),
+              ...(deliveredTier === 2 ? { hintTier2: { increment: 1 } } : {}),
+              ...(deliveredTier === 3 ? { hintTier3: { increment: 1 } } : {}),
+              lastHintAt: new Date(),
+              memoryStrength: hintMemoryStrength,
+            },
+          })
+
+          // configurable threshold (env) or default 5 hints
+          const threshold = Number(process.env.HINT_DEPENDENCY_THRESHOLD ?? '5')
+          const totalHints = typeof upsertRes?.hintCount === 'number' ? upsertRes.hintCount : null
+          if (totalHints != null && totalHints >= threshold && !upsertRes?.needsConsolidation) {
+            // Mark the concept state as needing consolidation
+            try {
+              await prismaClient.studentConceptState.update({ where: { id: upsertRes.id }, data: { needsConsolidation: true } })
+            } catch (e) {
+              logger.warn('studentConceptState.markConsolidation.failed', { studentId, conceptId, error: String((e as any)?.message ?? e) })
+            }
+
+            // Create an AttentionFlag for the topic to allocate additional practice (best-effort)
+            try {
+              const topicId = (concept as any)?.topic?.id ?? null
+              if (topicId) {
+                await prismaClient.attentionFlag.upsert({
+                  where: { studentId_topicId: { studentId, topicId } },
+                  create: {
+                    studentId,
+                    topicId,
+                    subject: subjectName,
+                    chapter: (concept as any)?.topic?.chapter?.name ?? '',
+                    masteryLevel: 'beginner',
+                    accuracy: 0,
+                    reason: 'high_hint_dependency',
+                    resolved: false,
+                  },
+                  update: {
+                    reason: 'high_hint_dependency',
+                    updatedAt: new Date(),
+                    resolved: false,
+                  },
+                })
+              }
+            } catch (e) {
+              logger.warn('attentionFlag.upsert.failed', { studentId, conceptId, error: String((e as any)?.message ?? e) })
+            }
+          }
+        }
+      } catch (e) {
+        logger.warn('studentConceptState.hintUpdate.failed', { studentId, conceptId, error: String((e as any)?.message ?? e) })
+      }
+    }
 
     const complete: TutorTurnComplete = {
       tag: logTag,

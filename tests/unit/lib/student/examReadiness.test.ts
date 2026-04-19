@@ -1,3 +1,25 @@
+/**
+ * FILE OBJECTIVE:
+ * - Smoke test to ensure `lib/student/examReadiness.ts` loads after TS shape fix.
+ *
+ * LINKED UNIT TEST:
+ * - tests/unit/lib/student/examReadiness.test.ts
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - .github/copilot-instructions.md
+ * - /docs/COPILOT_GUARDRAILS.md
+ *
+ * EDIT LOG:
+ * - 2026-04-16T12:35:00Z | copilot | added smoke test for examReadiness
+ */
+
+describe('lib/student/examReadiness (smoke)', () => {
+  it('module loads', () => {
+    // require to avoid static TS imports in the test harness
+    const mod = require('../../../../lib/student/examReadiness')
+    expect(mod).toBeDefined()
+  })
+})
 import {
   computeReadinessLabel,
   computeWeightedContribution,
@@ -46,6 +68,37 @@ describe('lib/student/examReadiness', () => {
     test('totalMarks = 0 → score = 0 (no divide-by-zero)', () => {
       expect(computeWeightedContribution(0.5, 0, 0)).toBe(0)
       expect(computeWeightedContribution(1, 10, 0)).toBe(0)
+    })
+  })
+
+  describe('computePredictedScoreRange', () => {
+    const { computePredictedScoreRange } = require('@/lib/student/examReadiness')
+
+    test('fallback when no chapters returns small window', () => {
+      const r = { score: 50, label: 'critical', chapters: [] }
+      const p = computePredictedScoreRange(r)
+      expect(p.low).toBeGreaterThanOrEqual(0)
+      expect(p.high).toBeLessThanOrEqual(100)
+      expect(p.high - p.low).toBeGreaterThan(0)
+    })
+
+    test('closer exam narrows the interval', () => {
+      const readiness = {
+        score: 72,
+        label: 'on_track',
+        chapters: [
+          { chapterId: 'c1', chapterName: 'A', masteryScore: 0.8, boardWeightPct: 30, contribution: 24, status: 'on_track' },
+          { chapterId: 'c2', chapterName: 'B', masteryScore: 0.6, boardWeightPct: 40, contribution: 24, status: 'needs_work' },
+          { chapterId: 'c3', chapterName: 'C', masteryScore: 0.5, boardWeightPct: 30, contribution: 15, status: 'needs_work' },
+        ],
+      }
+
+      const far = computePredictedScoreRange(readiness, 180)
+      const near = computePredictedScoreRange(readiness, 7)
+
+      expect(near.high - near.low).toBeLessThanOrEqual(far.high - far.low)
+      expect(near.low).toBeLessThanOrEqual(readiness.score)
+      expect(near.high).toBeGreaterThanOrEqual(readiness.score)
     })
   })
 })

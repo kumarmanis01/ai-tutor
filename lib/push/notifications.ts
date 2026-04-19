@@ -1,3 +1,16 @@
+/**
+ * FILE OBJECTIVE:
+ * - Centralize push notification templates and copy used across the app.
+ *
+ * LINKED UNIT TEST:
+ * - tests/unit/lib/push/notifications.test.ts
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - .github/copilot-instructions.md
+ *
+ * EDIT LOG:
+ * - 2026-04-17T00:00:00Z | copilot | add referral-voided push templates
+ */
 import type { PushPayload } from './send'
 
 /**
@@ -126,5 +139,28 @@ export const PUSH_NOTIFICATIONS = {
     body: `${subject} sessions will refresh on the 1st. Use them before they reset.`,
     url: '/dashboard',
     tag: 'free-tier',
+  }),
+
+  // Referral: voided notifications (AC-05)
+  referral_voided_redeemer: (code: string): PushPayload => ({
+    title: 'Referral not eligible',
+    body: `We couldn't validate your referral code ${code}. If this seems wrong, contact support.`,
+    url: '/support',
+    tag: 'referral',
+  }),
+
+  referral_voided_creator: (code: string): PushPayload => ({
+    title: 'Referral marked ineligible',
+    body: `A referral using ${code} was marked ineligible and no reward was issued.`,
+    url: '/student/referrals',
+    tag: 'referral',
+  }),
+
+  // ── Doubt escalation resolution ───────────────────────────────────────
+  doubt_resolved: (): PushPayload => ({
+    title: '✅ Improved explanation available',
+    body: "We've updated our explanation for this topic -- tap to view the improved answer.",
+    url: '/student/doubts',
+    tag: 'doubt-resolved',
   }),
 }

@@ -125,7 +125,8 @@ export async function POST(req: Request) {
   }
 
   try {
-    const key = `parent:alerts:mute:${parentId}`
+    // Use the 'muted' key naming to match worker checks (parent:alerts:muted:<parentId>)
+    const key = `parent:alerts:muted:${parentId}`
     await redis.setex(key, Math.ceil(minutes * 60), '1')
     const res = NextResponse.json({ ok: true })
     logger.logAPI(req, res, { className: 'ParentMuteAlertsAPI', methodName: 'POST' }, start)

@@ -35,6 +35,8 @@ export const BADGE_DEFINITIONS: readonly BadgeDefinition[] = [
   { key: 'consistency',    name: 'Consistent',     description: '5 sessions completed in 7 days',   icon: 'lightning' },
   { key: 'comeback',       name: 'Comeback',       description: 'Returned to learning after a break', icon: 'muscle' },
   { key: 'chapter_master', name: 'Chapter Master', description: 'Mastered a chapter concept',       icon: 'star' },
+  { key: 'mock_complete',  name: 'Mock Champ',     description: 'Completed your first full mock exam', icon: 'medal' },
+  { key: 'speedster',      name: 'Speedster',      description: 'High accuracy with fast completion', icon: 'zap' },
 ]
 
 const BADGE_BY_KEY = new Map(BADGE_DEFINITIONS.map((b) => [b.key, b]))
@@ -69,8 +71,11 @@ export async function checkSessionBadges(params: {
   sessionId: string
   currentStreak: number
   masteryAfter: number
+  // Optional performance signals for speed badge detection
+  accuracy?: number // 0..1
+  avgTimeSeconds?: number
 }): Promise<BadgeDefinition[]> {
-  const { studentId, sessionId, currentStreak, masteryAfter } = params
+  const { studentId, sessionId, currentStreak, masteryAfter, accuracy, avgTimeSeconds } = params
 
   try {
     const existing = await prisma.userBadge.findMany({
@@ -125,6 +130,16 @@ export async function checkSessionBadges(params: {
     if (!heldKeys.has('chapter_master') && masteryAfter >= 0.8) {
       const defn = BADGE_BY_KEY.get('chapter_master')
       if (defn) toAward.push(defn)
+    }
+
+    // 5. Speedster: high accuracy with fast completion (heuristic)
+    // Only check when caller provided accuracy and avgTimeSeconds.
+    if (!heldKeys.has('speedster') && typeof accuracy === 'number' && typeof avgTimeSeconds === 'number') {
+      // Award if >=90% accuracy and average time per question < 60s
+      if (accuracy >= 0.9 && avgTimeSeconds <= 60) {
+        const defn = BADGE_BY_KEY.get('speedster')
+        if (defn) toAward.push(defn)
+      }
     }
 
     if (toAward.length === 0) return []

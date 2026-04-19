@@ -1,5 +1,5 @@
 import { Queue } from 'bullmq';
-import { redisConnection } from '@/lib/redis';
+import { getSharedConnection } from '@/lib/redis';
 import { logger } from '@/lib/logger';
 
 export const DIAGNOSTIC_AUTO_SUBMIT_QUEUE_NAME = 'diagnostic-auto-submit';
@@ -18,7 +18,7 @@ function getAutoSubmitQueue() {
     autoSubmitQueue = new Queue<DiagnosticAutoSubmitJobData>(
       DIAGNOSTIC_AUTO_SUBMIT_QUEUE_NAME,
       {
-        connection: redisConnection,
+        connection: getSharedConnection(),
         defaultJobOptions: {
           attempts: 2,
           backoff: { type: 'exponential', delay: 10_000 },

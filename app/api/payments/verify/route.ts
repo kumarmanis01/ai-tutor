@@ -3,6 +3,8 @@ import { getServerSessionForHandlers } from '@/lib/session'
 import { prisma } from '@/lib/prisma'
 import { logger } from '@/lib/logger'
 import { activateSubscription, verifyPaymentSignature } from '@/lib/payments/razorpay'
+import { PLANS } from '@/lib/billing/plans'
+import type { PlanId } from '@/lib/billing/plans'
 
 export async function POST(req: Request) {
   const start = Date.now()
@@ -42,7 +44,14 @@ export async function POST(req: Request) {
       return res
     }
 
-    const ok = await activateSubscription(userId, orderId, order.planMonths)
+    // Use the planId stored on the order when it is a valid own key on PLANS.
+    // Fall back to standard_monthly for legacy orders without planId or for any invalid value.
+    // Own-property check prevents prototype keys (toString, __proto__) from slipping through.
+    const hasValidStoredPlanId =
+      typeof order.planId === 'string' &&
+      Object.prototype.hasOwnProperty.call(PLANS, order.planId)
+    const planId: PlanId = hasValidStoredPlanId ? (order.planId as PlanId) : 'standard_monthly'
+    const ok = await activateSubscription(userId, orderId, planId)
     if (!ok) {
       const res = NextResponse.json({ error: 'Could not activate subscription' }, { status: 500 })
       logger.logAPI(req, res, { className: 'PaymentsVerifyAPI', methodName: 'POST' }, start)

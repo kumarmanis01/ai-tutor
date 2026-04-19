@@ -6,7 +6,7 @@
  */
 
 import { Queue } from 'bullmq'
-import { redisConnection } from '@/lib/redis'
+import { getSharedConnection } from '@/lib/redis'
 import { logger } from '@/lib/logger'
 
 export const WEEKLY_DIGEST_QUEUE_NAME = 'weekly-parent-digest'
@@ -19,7 +19,7 @@ let digestQueue: Queue | null = null
 export function getWeeklyDigestQueue(): Queue {
   if (!digestQueue) {
     digestQueue = new Queue(WEEKLY_DIGEST_QUEUE_NAME, {
-      connection: redisConnection,
+      connection: getSharedConnection(),
       defaultJobOptions: {
         attempts: 3,
         backoff: { type: 'exponential', delay: 30_000 },

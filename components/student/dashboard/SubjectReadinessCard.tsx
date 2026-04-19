@@ -25,6 +25,7 @@ export interface SubjectReadinessCardProps {
   error?: boolean
   /** True when the diagnostic has been submitted but readiness is not yet computed. */
   diagnosticDone?: boolean
+  predictedRange?: { low: number; high: number; confidenceLevel: number; daysUsed?: number | null }
 }
 
 function ReadinessCardSkeleton() {
@@ -137,6 +138,11 @@ export function SubjectReadinessCard({
             <p className="text-sm font-semibold text-gray-900 dark:text-gray-100 truncate">
               {subjectName}
             </p>
+            {predictedRange && (
+              <div className="text-right text-xs text-gray-500 dark:text-gray-400">
+                Likely: {predictedRange.low}-{predictedRange.high} ({predictedRange.confidenceLevel}% CI)
+              </div>
+            )}
             <div className="flex items-center gap-2">
               <span className={`flex-shrink-0 text-xs font-medium ${text}`}>{label}</span>
               <span

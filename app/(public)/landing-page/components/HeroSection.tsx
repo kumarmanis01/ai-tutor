@@ -26,7 +26,7 @@ const HeroSection = () => {
 
   const testimonials = [
     'Meri beti ke marks 45% se 78% ho gaye! - Sunita, Jaipur',
-    '₹3000 tuition se ₹99 mein better results! - Rajesh, Indore',
+    '₹3000 tuition se ₹399 mein better results! - Rajesh, Indore',
     '24×7 doubt solving, amazing! - Priya, Lucknow',
   ];
 
@@ -57,7 +57,7 @@ const HeroSection = () => {
                 Turn doubts into confidence with Spinzy AI Tutor.
               </h1>
               <p className="font-body text-xl md:text-2xl text-foreground/80">
-                Adaptive practice, mastery checks, and guided hints that build conceptual fluency — no shortcuts.
+                Adaptive practice, mastery checks, and guided hints that build conceptual fluency -- no shortcuts.
               </p>
               <p className="font-body text-lg md:text-xl text-primary font-semibold">
                 Class 1-12 · CBSE / ICSE / State Board · Instant doubt solving in Hindi & English

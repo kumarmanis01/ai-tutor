@@ -326,7 +326,7 @@ Every component listed below must handle four states unless marked otherwise. Mi
 |-----------|------|
 | Trigger | Shown instead of session start when `FreeTierUsage.count >= 3` for that subject this month. Never mid-session. |
 | Layout | Full-card overlay (not toast). Cannot be dismissed without choosing an option. |
-| Content | "You've used all 3 free sessions for [Subject] this month." Session counter ("3 of 3 used"). Plan preview: Monthly ₹99, Quarterly ₹267 (10% off), Annual ₹891 (25% off). |
+| Content | "You've used all 3 free sessions for [Subject] this month." Session counter ("3 of 3 used"). Plan preview: Monthly ₹399, Quarterly ₹267 (10% off), Annual ₹891 (25% off). |
 | CTAs | "Upgrade Now" (primary). "Remind me later" (secondary — closes and shows a sticky upgrade banner on dashboard). |
 | Copy | Must NOT reference referral programme until that feature is live. |
 | Reset notice | "Your free sessions reset on [1st of next month]." |
@@ -868,9 +868,9 @@ data: {
 ```typescript
 {
   orderId: string                // Razorpay order ID
-  amount: number                 // in paise (₹99 = 9900)
+  amount: number                 // in paise (₹399 = 39900)
   currency: 'INR'
-  planLabel: string              // "Monthly – ₹99/month"
+  planLabel: string              // "Monthly – ₹399/month"
   gstAmount: number              // in paise
   totalAmount: number            // amount + gstAmount
   renewalDate: string            // ISO date (first renewal)

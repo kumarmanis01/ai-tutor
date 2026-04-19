@@ -134,7 +134,7 @@ export default function SignupFormEmailWidget() {
         <div className="text-center mb-8 md:mb-12">
           <div className="inline-flex items-center gap-2 px-4 py-2 bg-success/10 text-success rounded-full text-sm font-medium mb-4">
             <Icon name="RocketLaunchIcon" size={20} variant="solid" />
-            <span>Start Your Free Trial</span>
+            <span>Start Trial</span>
           </div>
           <h2 className="font-headline font-bold text-3xl md:text-4xl lg:text-5xl text-secondary mb-4">
             Begin Your Learning Journey
@@ -143,7 +143,7 @@ export default function SignupFormEmailWidget() {
             अपनी सीखने की यात्रा शुरू करें
           </p>
           <p className="font-body text-lg text-muted-foreground">
-            No credit card required • 100% safe & private • Cancel anytime
+            No credit card required • 100% safe & private • 7-day refund policy
           </p>
         </div>
 

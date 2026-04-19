@@ -1,5 +1,5 @@
 import { Queue } from 'bullmq'
-import { redisConnection } from '@/lib/redis'
+import { getSharedConnection } from '@/lib/redis'
 import { logger } from '@/lib/logger'
 
 export interface ReteachPlanJobData {
@@ -14,7 +14,7 @@ let reteachPlanQueue: Queue<ReteachPlanJobData> | null = null
 export function getReteachPlanQueue(): Queue<ReteachPlanJobData> {
   if (!reteachPlanQueue) {
     reteachPlanQueue = new Queue<ReteachPlanJobData>(RETEACH_PLAN_QUEUE_NAME, {
-      connection: redisConnection,
+      connection: getSharedConnection(),
       defaultJobOptions: {
         attempts: 3,
         backoff: { type: 'exponential', delay: 5000 },

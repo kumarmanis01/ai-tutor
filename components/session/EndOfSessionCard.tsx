@@ -9,8 +9,9 @@
  * - 2026-03-08 | claude | extracted from components/Session/phases/CompletePhase.tsx
  */
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import Link from 'next/link';
+import { PLANS } from '@/lib/billing/plans';
 
 interface NextActionHint {
   topicId: string | null;
@@ -75,6 +76,15 @@ export function EndOfSessionCard({ topicName, subject: _subject, performance }: 
         }
       })
       .catch(() => {});
+  }, []);
+
+  const standardMonthlyDisplay = useMemo(() => {
+    try {
+      const plan = PLANS.standard_monthly;
+      return plan?.perMonthDisplay ?? '₹399/month';
+    } catch {
+      return '₹399/month';
+    }
   }, []);
 
   /** AC-06: build plain-text summary and copy to clipboard. */
@@ -194,14 +204,14 @@ export function EndOfSessionCard({ topicName, subject: _subject, performance }: 
             <p className="text-sm font-semibold text-[#534AB7] dark:text-indigo-300 mb-1">
               You&apos;ve used all {freeTier.sessionsUsed} free sessions this month
             </p>
-            <p className="text-xs text-gray-600 dark:text-gray-400 mb-3">
-              Sessions reset on {resetLabel}. Upgrade for unlimited access to Teacher Vidya -- just &#8377;99/month.
+              <p className="text-xs text-gray-600 dark:text-gray-400 mb-3">
+              Sessions reset on {resetLabel}. Upgrade for unlimited access to Teacher Vidya -- {standardMonthlyDisplay}.
             </p>
             <a
               href="/dashboard#upgrade-section"
               className="inline-flex min-h-[44px] items-center justify-center rounded-xl bg-[#534AB7] px-5 text-sm font-semibold text-white hover:bg-[#4338a3] transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#534AB7]"
             >
-              See plans -- &#8377;99/month
+              View plans -- {standardMonthlyDisplay}
             </a>
           </div>
         );

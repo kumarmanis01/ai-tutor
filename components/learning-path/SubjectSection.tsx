@@ -10,6 +10,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import SubjectLanguageControl from '@/components/student/SubjectLanguageControl';
 import TopicStatusRow from './TopicStatusRow';
 import { getMasteryLabel, getTopicStatus } from '@/lib/learning/masteryLabel';
 
@@ -36,6 +37,7 @@ export interface SubjectSectionProps {
 }
 
 export default function SubjectSection({
+  subjectId,
   subjectName,
   chapters,
   completedTopics,
@@ -45,44 +47,49 @@ export default function SubjectSection({
 
   return (
     <section className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
-      {/* Subject header */}
-      <button
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        className="w-full flex items-center justify-between px-5 py-4 text-left hover:bg-gray-50 transition-colors"
-        aria-expanded={open}
-      >
-        <div>
-          <h2 className="text-base font-semibold text-gray-900">{subjectName}</h2>
-          <p className="text-xs text-gray-400 mt-0.5">
-            {completedTopics} of {totalTopics} topics complete
-          </p>
-        </div>
-
-        <div className="flex items-center gap-3">
-          {/* Compact progress bar */}
-          <div className="w-24 h-1.5 rounded-full bg-gray-100 overflow-hidden">
-            <div
-              className="h-full rounded-full bg-[#534AB7] transition-all"
-              style={{
-                width: totalTopics > 0
-                  ? `${Math.round((completedTopics / totalTopics) * 100)}%`
-                  : '0%',
-              }}
-            />
+      <div className="w-full flex items-center justify-between px-5 py-4">
+        <button
+          type="button"
+          onClick={() => setOpen((v) => !v)}
+          className="flex-1 flex items-center justify-between text-left hover:bg-gray-50 transition-colors"
+          aria-expanded={open}
+        >
+          <div>
+            <h2 className="text-base font-semibold text-gray-900">{subjectName}</h2>
+            <p className="text-xs text-gray-400 mt-0.5">
+              {completedTopics} of {totalTopics} topics complete
+            </p>
           </div>
-          <svg
-            className={`w-4 h-4 text-gray-400 transition-transform ${open ? "rotate-180" : ""}`}
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-            strokeWidth={2}
-            aria-hidden
-          >
-            <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-          </svg>
+
+          <div className="flex items-center gap-3">
+            {/* Compact progress bar */}
+            <div className="w-24 h-1.5 rounded-full bg-gray-100 overflow-hidden">
+              <div
+                className="h-full rounded-full bg-[#534AB7] transition-all"
+                style={{
+                  width: totalTopics > 0
+                    ? `${Math.round((completedTopics / totalTopics) * 100)}%`
+                    : '0%',
+                }}
+              />
+            </div>
+            <svg
+              className={`w-4 h-4 text-gray-400 transition-transform ${open ? "rotate-180" : ""}`}
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeWidth={2}
+              aria-hidden
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+            </svg>
+          </div>
+        </button>
+
+        <div className="ml-4">
+          <SubjectLanguageControl subjectId={subjectId} />
         </div>
-      </button>
+      </div>
 
       {/* Chapter list */}
       {open && (

@@ -1,6 +1,8 @@
 import Razorpay from 'razorpay'
 import crypto from 'crypto'
 import { prisma } from '@/lib/prisma'
+import { PLANS, rupeesToPaise } from '@/lib/billing/plans'
+import type { PlanId } from '@/lib/billing/plans'
 
 const RAZORPAY_KEY_ID = process.env.RAZORPAY_KEY_ID
 const RAZORPAY_KEY_SECRET = process.env.RAZORPAY_KEY_SECRET
@@ -16,20 +18,21 @@ function getClient() {
 }
 
 /**
- * Create a Razorpay order for ₹99/month.
+ * Create a Razorpay order for the given plan.
+ * Amount is derived from lib/billing/plans.ts -- never hardcoded.
  * Returns razorpayOrderId to pass to frontend SDK.
  * Never throws -- returns null on error.
  */
 export async function createRazorpayOrder(
   studentId: string,
-  planMonths: number = 1,
-): Promise<{ orderId: string; amount: number; currency: string } | null> {
+  planId: PlanId = 'standard_monthly',
+): Promise<{ orderId: string; amount: number; currency: string; planId: PlanId } | null> {
   try {
     const client = getClient()
     if (!client) return null
 
-    const safeMonths = Math.max(1, Math.min(Math.floor(planMonths || 1), 12))
-    const amount = 9900 * safeMonths // in paise
+    const plan = PLANS[planId]
+    const amount = rupeesToPaise(plan.billedRupees) // paise
     const currency = 'INR'
 
     const order = await client.orders.create({
@@ -37,13 +40,14 @@ export async function createRazorpayOrder(
       currency,
       notes: {
         studentId,
-        planMonths: String(safeMonths),
+        planId,
+        durationMonths: String(plan.durationMonths),
       },
     })
 
     if (!order?.id) return null
 
-    return { orderId: order.id, amount, currency }
+    return { orderId: order.id, amount, currency, planId }
   } catch {
     return null
   }
@@ -78,7 +82,7 @@ export async function verifyPaymentSignature(params: {
  * Activate subscription after verified payment.
  * 1. Update PaymentOrder.status = 'paid', paidAt = now()
  * 2. Update User.subscriptionStatus = 'active'
- * 3. Set User.subscriptionExpiry = now() + planMonths * 30 days
+ * 3. Set User.subscriptionExpiry = now() + plan.durationMonths * 30 days
  * 4. Reset FreeTierUsage for the student
  * All in a Prisma transaction.
  * Never throws -- returns false on error.
@@ -86,12 +90,13 @@ export async function verifyPaymentSignature(params: {
 export async function activateSubscription(
   studentId: string,
   razorpayOrderId: string,
-  planMonths: number,
+  planId: PlanId = 'standard_monthly',
 ): Promise<boolean> {
   try {
-    const safeMonths = Math.max(1, Math.min(Math.floor(planMonths || 1), 12))
+    const plan = PLANS[planId]
+    const durationMonths = plan.durationMonths
     const now = new Date()
-    const expiry = new Date(now.getTime() + safeMonths * 30 * 24 * 60 * 60 * 1000)
+    const expiry = new Date(now.getTime() + durationMonths * 30 * 24 * 60 * 60 * 1000)
 
     await prisma.$transaction(async (tx) => {
       const order = await tx.paymentOrder.findUnique({

@@ -18,14 +18,15 @@
  *
  * EDIT LOG:
  * - 2026-04-13T05:20:00Z | copilot | add EMI support to student subscription order route
+ * - 2026-04-17T12:00:00Z | copilot | include couponCode in Razorpay order notes and persist couponCode on PaymentOrder
  */
 
 import { NextResponse } from 'next/server';
 import { getServerSessionForHandlers } from '@/lib/session';
 import { prisma } from '@/lib/prisma';
 import { logger } from '@/lib/logger';
-import { PLANS, rupeesToPaise } from '@/lib/subscription/plans';
-import type { PlanId } from '@/lib/subscription/plans';
+import { PLANS, rupeesToPaise } from '@/lib/billing/plans';
+import type { PlanId } from '@/lib/billing/plans';
 import Razorpay from 'razorpay';
 
 function getRazorpayClient() {
@@ -35,7 +36,7 @@ function getRazorpayClient() {
   return new Razorpay({ key_id: keyId, key_secret: keySecret });
 }
 
-const VALID_PLAN_IDS: PlanId[] = ['monthly', 'quarterly', 'annual'];
+const VALID_PLAN_IDS: PlanId[] = Object.keys(PLANS) as PlanId[];
 
 export async function POST(req: Request) {
   const session = await getServerSessionForHandlers();
@@ -70,6 +71,66 @@ export async function POST(req: Request) {
   const plan = PLANS[planId as PlanId];
   const amountPaise = rupeesToPaise(plan.billedRupees);
 
+  // Extract client IP for fraud checks and to store with the order notes so
+  // webhooks can use the same IP when auto-redeeming referrals.
+  function getClientIp(req: Request): string | null {
+    try {
+      // Standard proxy header
+      const forwarded = req.headers.get('x-forwarded-for');
+      if (forwarded) return forwarded.split(',')[0].trim();
+      return req.headers.get('x-real-ip') ?? null;
+    } catch (err) {
+      return null;
+    }
+  }
+
+  const purchaserIp = getClientIp(req);
+
+  // If this user was referred and the referral is still available, apply 20% off first month
+  let finalAmount = amountPaise
+  try {
+    const userRow = await prisma.user.findUnique({ where: { id: userId }, select: { preferences: true } })
+    const refCode = (userRow?.preferences && typeof userRow.preferences === 'object') ? (userRow.preferences as any).referredBy : undefined
+    if (typeof refCode === 'string' && refCode) {
+      // Only apply discount for monthly-duration plans (first month)
+      if ((plan.durationMonths || 0) === 1) {
+        // Verify referral exists and is not already redeemed
+        const r = await prisma.referral.findUnique({ where: { code: refCode }, select: { redeemedBy: true } })
+        if (r && !r.redeemedBy) {
+          const discount = Math.floor(amountPaise * 0.2)
+          finalAmount = Math.max(1, amountPaise - discount)
+        }
+      }
+    }
+  } catch (err) {
+    // Non-fatal; proceed with full amount
+    logger.warn('referral discount check failed', { err: String(err) })
+  }
+
+  // Optional coupon code from client -- validate and apply discount (do not mark redeemed yet)
+  const couponCode = typeof b.couponCode === 'string' ? (b.couponCode as string).trim() : undefined
+  if (couponCode) {
+    try {
+      const v = await validateCoupon(prisma as any, couponCode, userId)
+      if (v.status !== 200 || !v.body.coupon) {
+        return NextResponse.json({ error: 'invalid_coupon', detail: v.body.error }, { status: 400 })
+      }
+      const c: any = v.body.coupon
+      if (c.type === 'FIXED') {
+        const discount = Number(c.amount) ?? 0
+        finalAmount = Math.max(1, finalAmount - discount)
+      } else {
+        // percent
+        const pct = Number(c.amount) ?? 0
+        const discount = Math.floor(amountPaise * (pct / 100))
+        finalAmount = Math.max(1, finalAmount - discount)
+      }
+    } catch (err) {
+      logger.warn('coupon validation failed', { err: String(err), userId, couponCode })
+      return NextResponse.json({ error: 'coupon_validation_error' }, { status: 400 })
+    }
+  }
+
   const client = getRazorpayClient();
   if (!client) {
     logger.error('Razorpay keys not configured', { event: 'subscription.order.no_client', context: { userId } });
@@ -77,14 +138,18 @@ export async function POST(req: Request) {
   }
 
   try {
+    const userPrefs = (await prisma.user.findUnique({ where: { id: userId }, select: { preferences: true } }))?.preferences ?? undefined;
     const order = await client.orders.create({
-      amount: amountPaise,
+      amount: finalAmount,
       currency: 'INR',
       notes: {
         studentId: userId,
         planId,
         durationMonths: String(plan.durationMonths),
         emiMonths: emiMonths ? String(emiMonths) : '',
+        referralCode: userPrefs && typeof userPrefs === 'object' ? (userPrefs as any).referredBy ?? '' : '',
+        purchaserIp: purchaserIp ?? '',
+        couponCode: couponCode ?? '',
       },
     });
 
@@ -97,10 +162,13 @@ export async function POST(req: Request) {
       data: {
         studentId: userId,
         razorpayOrderId: order.id,
-        amount: amountPaise,
+        // Persist the actual amount we sent to Razorpay (may include referral discount)
+        amount: finalAmount,
         currency: 'INR',
         status: 'created',
         planMonths: plan.durationMonths,
+        planId: planId,
+        couponCode: couponCode ?? null,
       },
     });
 

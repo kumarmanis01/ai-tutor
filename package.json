@@ -78,6 +78,7 @@
     "test:integration": "node tests/integration/audit-log.test.cjs",
     "test:integration:scenarios": "jest tests/integration/homeEngine.scenarios.withSeed.test.ts --testPathIgnorePatterns=\"\"",
     "seed:scenarios": "npx tsx scripts/seed-scenario-curriculum.ts",
+    "ensure-mocks": "npx tsx scripts/ensure-mocks.ts",
     "validate:scenarios": "npx tsx scripts/validate-recommendation-scenarios.ts",
     "test:integration:evaluator": "node --loader ts-node/esm tests/integration/alert-evaluator.test.ts",
     "test:integration:dry-run": "node tests/integration/alert-evaluator-dry-run.test.cjs",
@@ -121,7 +122,11 @@
     "docker:build": "docker build -t edtech-backend .",
     "docker:up": "docker-compose up -d",
     "docker:down": "docker-compose down",
-    "seed:taxonomy": "node scripts/seed-taxonomy.cjs"
+    "seed:taxonomy": "node scripts/seed-taxonomy.cjs",
+    "ingest:cli": "node ingest.cjs",
+    "ingest:seed-cbse-grade10": "node scripts/seed-cbse-grade10.cjs",
+    "ingest:retry": "node ingest.cjs --retry-failed",
+    "ingest:scrape": "node ingest.cjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.78.0",

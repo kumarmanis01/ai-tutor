@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { getServerSessionForHandlers } from '@/lib/session'
 import { prisma } from '@/lib/prisma'
-import { computeReadinessScore } from '@/lib/student/examReadiness'
+import { computeReadinessScore, computePredictedScoreRange } from '@/lib/student/examReadiness'
 import { logger } from '@/lib/logger'
 
 export const dynamic = 'force-dynamic'
@@ -65,6 +65,7 @@ export async function GET(
       subjectName: subject?.name ?? '',
       overallScore: readiness.score,
       label: readiness.label,
+      predictedRange: computePredictedScoreRange(readiness, daysToExam),
       isCrunchMode,
       daysToExam,
       chapters: readiness.chapters,

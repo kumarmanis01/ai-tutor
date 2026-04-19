@@ -19,6 +19,8 @@ module.exports = {
     '^@/lib/(.*)\\.js$': '<rootDir>/lib/$1.ts',
     '^@/lib/(.*)$': '<rootDir>/lib/$1',
     '^@/(.*)\\.js$': '<rootDir>/src/$1.ts',
+    // NOTE: avoid broad 'lib/' fallbacks — they can accidentally remap
+    // node_modules internal lib/* imports (e.g. jose/dist/.../lib/*.js).
     '^@/(.*)$': ['<rootDir>/src/$1', '<rootDir>/$1'],
   },
   moduleDirectories: ['node_modules', '<rootDir>'],

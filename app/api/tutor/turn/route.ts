@@ -54,6 +54,7 @@ export type TutorTurnRequest = {
   isCorrect?: boolean
   questionId?: string
   itemDifficulty?: number
+  messageId?: string
 }
 
 function parseBody(body: any): TutorTurnRequest | null {
@@ -66,6 +67,7 @@ function parseBody(body: any): TutorTurnRequest | null {
   const isCorrect = body.isCorrect
   const questionId = body.questionId
   const itemDifficulty = body.itemDifficulty
+  const messageId = body.messageId
 
   if (typeof sessionId !== 'string' || !sessionId.trim()) return null
   if (typeof studentMessage !== 'string') return null
@@ -86,6 +88,7 @@ function parseBody(body: any): TutorTurnRequest | null {
   if (typeof isCorrect === 'boolean') parsed.isCorrect = isCorrect
   if (typeof questionId === 'string' && questionId.trim()) parsed.questionId = questionId.trim()
   if (typeof itemDifficulty === 'number' && Number.isFinite(itemDifficulty)) parsed.itemDifficulty = itemDifficulty
+  if (typeof messageId === 'string' && messageId.trim()) parsed.messageId = messageId.trim()
 
   return parsed
 }
@@ -197,6 +200,7 @@ export async function POST(req: Request) {
             studentMessage: parsed.studentMessage,
             conceptId: parsed.conceptId,
             subjectId: parsed.subjectId,
+            messageId: parsed.messageId,
             isCorrect: parsed.isCorrect,
             questionId: parsed.questionId,
             itemDifficulty: parsed.itemDifficulty,

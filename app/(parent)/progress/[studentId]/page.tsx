@@ -95,12 +95,11 @@ export default async function ParentProgressDetailPage({
   if (!student) notFound()
 
   // ── Readiness per subject ──────────────────────────────────────────────
-  const readiness = await Promise.all(
-    subjectDefs.map(async (sd) => {
-      const r = await computeReadinessScore(studentId, sd.id).catch(() => null)
-      return { subjectId: sd.id, subjectName: sd.name, score: r?.score ?? 0 }
-    }),
-  )
+  const readiness: Array<{ subjectId: string; subjectName: string; score: number }> = []
+  for (const sd of subjectDefs) {
+    const r = await computeReadinessScore(studentId, sd.id).catch(() => null)
+    readiness.push({ subjectId: sd.id, subjectName: sd.name, score: r?.score ?? 0 })
+  }
 
   // ── Build heatmap counts (30 days) ───────────────────────────────────
   const countByDate: Record<string, number> = {}

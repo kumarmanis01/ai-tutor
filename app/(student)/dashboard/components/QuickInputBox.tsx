@@ -27,6 +27,8 @@ const QuickInputBox: React.FC<QuickInputBoxProps> = ({ onReply, onError, initial
     // Start with a deterministic server-safe value to avoid hydration mismatches.
     // We'll load the user's saved preference (localStorage) or server value on mount.
     const [preferredLang, setPreferredLang] = useState<string>('auto');
+    const [subjectAvailableCodes, setSubjectAvailableCodes] = useState<string[] | null>(null);
+    const [subjectTeachingLang, setSubjectTeachingLang] = useState<string | null>(null);
 
     // On client mount, prefer in-order: `initialPreferredLang` prop -> localStorage -> server
     useEffect(() => {
@@ -103,6 +105,34 @@ const QuickInputBox: React.FC<QuickInputBoxProps> = ({ onReply, onError, initial
       }
     }, []);
 
+    // When used in a subject context, load subject-specific availability and current selection
+    useEffect(() => {
+      let cancelled = false;
+      if (!subject) {
+        setSubjectAvailableCodes(null);
+        setSubjectTeachingLang(null);
+        return () => { cancelled = true; };
+      }
+
+      (async () => {
+        try {
+          const res = await fetch(`/api/student/subject-language?subjectId=${encodeURIComponent(subject)}`);
+          if (!res.ok) return;
+          const j = await res.json().catch(() => ({}));
+          if (cancelled) return;
+          const avail = Array.isArray(j?.availableLanguages) ? j.availableLanguages : null;
+          setSubjectAvailableCodes(avail);
+          const subjLangs = j?.subjectLanguages ?? {};
+          const current = typeof subjLangs === 'object' ? subjLangs[subject] : undefined;
+          if (current && typeof current === 'string') setSubjectTeachingLang(current);
+        } catch (err) {
+          logger.warn('Failed to load subject language availability', { className: 'QuickInputBox', methodName: 'loadSubjectLang', error: String(err), subject });
+        }
+      })();
+
+      return () => { cancelled = true; };
+    }, [subject]);
+
     const toggleFavorite = (tag: string) => {
       try {
         setFavorites((prev) => {
@@ -124,7 +154,20 @@ const QuickInputBox: React.FC<QuickInputBoxProps> = ({ onReply, onError, initial
       }
     };
 
-    const handleSelectorPick = (name: string) => {
+    const tagToShort = (tag: string) => {
+      try {
+        const t = String(tag || '').toLowerCase();
+        if (t.startsWith('hi')) return 'hi';
+        if (t.startsWith('ta')) return 'ta';
+        if (t.startsWith('bn')) return 'bn';
+        if (t.startsWith('fr')) return 'fr';
+        if (t.startsWith('es')) return 'es';
+        if (t.startsWith('en')) return 'en';
+      } catch {}
+      return 'en';
+    };
+
+    const handleSelectorPick = async (name: string) => {
       try {
         const tag = mapNameToTag(name);
         setPreferredLang(tag);
@@ -133,10 +176,28 @@ const QuickInputBox: React.FC<QuickInputBoxProps> = ({ onReply, onError, initial
         } catch (err) {
           logger.warn('Failed to persist preferredLang to localStorage', { className: 'QuickInputBox', methodName: 'handleSelectorPick', error: String(err) });
         }
-        try {
-          fetch('/api/user/language', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ language: tag }) }).catch((err) => { logger.warn('Failed to persist preferredLang to server', { className: 'QuickInputBox', methodName: 'handleSelectorPick', error: String(err) }) });
-        } catch (err) {
-          logger.warn('Failed to queue preferredLang persist request', { className: 'QuickInputBox', methodName: 'handleSelectorPick', error: String(err) });
+
+        // If a subject is active, persist as per-subject teaching language instead
+        if (subject) {
+          try {
+            const short = tagToShort(tag);
+            // Guard against unavailable languages for this subject
+            if (subjectAvailableCodes && !subjectAvailableCodes.includes(short)) {
+              try { toast('Selected language is not yet available for this subject.'); } catch {}
+            } else {
+              await fetch('/api/student/subject-language', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ subjectId: subject, language: short }) });
+              setSubjectTeachingLang(short);
+            }
+          } catch (err) {
+            logger.warn('Failed to persist subject teaching language', { className: 'QuickInputBox', methodName: 'handleSelectorPick', error: String(err), subject });
+          }
+        } else {
+          // Global UI shell language
+          try {
+            fetch('/api/user/language', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ language: tag }) }).catch((err) => { logger.warn('Failed to persist preferredLang to server', { className: 'QuickInputBox', methodName: 'handleSelectorPick', error: String(err) }) });
+          } catch (err) {
+            logger.warn('Failed to queue preferredLang persist request', { className: 'QuickInputBox', methodName: 'handleSelectorPick', error: String(err) });
+          }
         }
       } catch (err) {
         logger.warn('handleSelectorPick failed', { className: 'QuickInputBox', methodName: 'handleSelectorPick', error: String(err) });
@@ -300,13 +361,15 @@ const QuickInputBox: React.FC<QuickInputBoxProps> = ({ onReply, onError, initial
 
           setQuestionText(finalText);
           if (detectedLang) {
-            setDetectedLang(detectedLang);
-            // persist preferred language locally and server-side
+            // Normalize detected locale (e.g. 'hi-IN') to base code ('hi') for storage and server
+            const short = tagToShort(detectedLang);
+            setDetectedLang(short);
+            // persist preferred language locally and server-side (base code)
             try {
               try {
-                localStorage.setItem('ai-tutor:preferredLang', detectedLang);
+                localStorage.setItem('ai-tutor:preferredLang', short);
               } catch {}
-              fetch('/api/user/language', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ language: detectedLang }) }).catch(() => {});
+              fetch('/api/user/language', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ language: short }) }).catch(() => {});
             } catch {}
           }
           setInterimTranscript('');
@@ -483,21 +546,23 @@ const QuickInputBox: React.FC<QuickInputBoxProps> = ({ onReply, onError, initial
       logger.add(`AI reply: ${String(res.reply)}`, { className: 'QuickInputBox', methodName: 'handleAsk' });
       // update detected language from response if provided
       if (res.language) {
-        setDetectedLang(res.language);
+        // Normalize server-detected language to base code
+        const short = tagToShort(res.language);
+        setDetectedLang(short);
         try {
           try {
-            localStorage.setItem('ai-tutor:preferredLang', res.language);
+            localStorage.setItem('ai-tutor:preferredLang', short);
           } catch {}
-          fetch('/api/user/language', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ language: res.language }) }).catch(() => {});
+          fetch('/api/user/language', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ language: short }) }).catch(() => {});
         } catch {}
         // If server detected a language different from user's preference, prompt to switch
         try {
           const normPreferred = (preferredLang || 'auto').toLowerCase();
-          const normDetected = String(res.language).toLowerCase();
+          const normDetected = String(short).toLowerCase();
           if (normDetected && normPreferred !== normDetected) {
-            // find a label for the detected language
+            // find a label for the detected language; languageOptionsRef contains locale values like 'hi-IN'
             const match = languageOptionsRef.current.find((o) => o.value.toLowerCase() === normDetected || o.value.toLowerCase().startsWith(normDetected.split('-')[0]));
-            setDetectionPrompt({ lang: res.language, label: match ? match.label : res.language });
+            setDetectionPrompt({ lang: short, label: match ? match.label : mapTagToName(short) });
           }
         } catch {}
       }
@@ -505,8 +570,9 @@ const QuickInputBox: React.FC<QuickInputBoxProps> = ({ onReply, onError, initial
         onReply?.(res.reply, questionText.trim(), res.language, res.suggestions);
         // Auto-speak using detected language from response or recognition
         try {
-          const langToUse = (res as any).language || detectedLang || 'en-US';
-          Speech.speak(res.reply, { lang: langToUse });
+          const respLang = (res as any).language ? tagToShort((res as any).language) : undefined;
+          const ttsLang = codeToLocale(respLang ?? detectedLang ?? undefined, 'en-US');
+          Speech.speak(res.reply, { lang: ttsLang });
         } catch {
           // ignore TTS failures
         }
@@ -602,14 +668,29 @@ const QuickInputBox: React.FC<QuickInputBoxProps> = ({ onReply, onError, initial
     try {
       const n = String(name || '').toLowerCase();
       if (n === 'auto') return 'auto';
-      if (n.startsWith('hin') || n === 'hindi') return 'hi-IN';
-      if (n.startsWith('tam') || n === 'tamil') return 'ta-IN';
-      if (n.startsWith('ben') || n === 'bengali') return 'bn-IN';
-      if (n.startsWith('fre') || n === 'french') return 'fr-FR';
-      if (n.startsWith('spa') || n === 'spanish') return 'es-ES';
-      if (n.startsWith('eng') || n === 'english') return 'en-US';
+      // Return canonical base codes used across the app (no region)
+      if (n.startsWith('hin') || n === 'hindi') return 'hi';
+      if (n.startsWith('tam') || n === 'tamil') return 'ta';
+      if (n.startsWith('ben') || n === 'bengali') return 'bn';
+      if (n.startsWith('fre') || n === 'french') return 'fr';
+      if (n.startsWith('spa') || n === 'spanish') return 'es';
+      if (n.startsWith('eng') || n === 'english') return 'en';
     } catch {}
-    return 'en-US';
+    return 'en';
+  };
+
+  const codeToLocale = (codeOrLocale?: string, fallbackLocale = 'en-US') => {
+    if (!codeOrLocale) return fallbackLocale;
+    const t = String(codeOrLocale).toLowerCase();
+    // If already a locale (contains -), return as-is
+    if (t.includes('-')) return codeOrLocale;
+    if (t === 'hi') return 'hi-IN';
+    if (t === 'ta') return 'ta-IN';
+    if (t === 'bn') return 'bn-IN';
+    if (t === 'fr') return 'fr-FR';
+    if (t === 'es') return 'es-ES';
+    if (t === 'en') return 'en-US';
+    return fallbackLocale;
   };
 
   return (
@@ -662,17 +743,12 @@ const QuickInputBox: React.FC<QuickInputBoxProps> = ({ onReply, onError, initial
           {showLangMenuVoice && (
             <div className="absolute right-0 mt-2 z-50">
               <LanguageSelector
-                lang={mapTagToName(preferredLang)}
+                lang={mapTagToName(subjectTeachingLang ?? preferredLang)}
+                availableCodes={subjectAvailableCodes ?? undefined}
                 setLang={(name: string) => {
                   try {
-                    const tag = mapNameToTag(name);
-                    setPreferredLang(tag);
-                    try {
-                      localStorage.setItem('ai-tutor:preferredLang', tag);
-                    } catch {}
-                    try {
-                      fetch('/api/user/language', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ language: tag }) }).catch(() => {});
-                    } catch {}
+                    // Delegate to central handler which persists per-subject when `subject` is present
+                    void handleSelectorPick(name);
                   } catch {}
                   setShowLangMenuVoice(false);
                 }}
@@ -724,7 +800,7 @@ const QuickInputBox: React.FC<QuickInputBoxProps> = ({ onReply, onError, initial
       </div>
       {showLangMenuText && (
         <div className="absolute z-50">
-          <LanguageSelector lang={mapTagToName(preferredLang)} setLang={(name: string) => { handleSelectorPick(name); setShowLangMenuText(false); }} />
+          <LanguageSelector lang={mapTagToName(subjectTeachingLang ?? preferredLang)} availableCodes={subjectAvailableCodes ?? undefined} setLang={(name: string) => { void handleSelectorPick(name); setShowLangMenuText(false); }} />
         </div>
       )}
       <div className="mb-3">

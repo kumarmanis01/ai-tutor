@@ -35,6 +35,11 @@ export interface User {
     earnedAt?: string;
     badge?: { name?: string | null; description?: string | null; icon?: string | null } | null;
   }>;
+  /** Optional persisted user preferences (UI & accessibility) */
+  preferences?: {
+    crunchMode?: 'auto' | 'on' | 'off';
+    fontSize?: 'small' | 'medium' | 'large';
+  } | null;
 }
 
 // Backwards-compatible alias (optional).

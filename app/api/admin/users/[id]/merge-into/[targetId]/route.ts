@@ -111,6 +111,7 @@ export async function POST(
           theta: src.theta,
           stability: src.stability,
           retention: src.retention,
+          memoryStrength: Math.round((src.masteryScore * (src.retention ?? 1)) * 1000) / 1000,
         },
       })
       await prisma.studentConceptState.delete({ where: { id: src.id } })

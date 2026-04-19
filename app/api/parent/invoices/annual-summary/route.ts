@@ -17,12 +17,14 @@ export const dynamic = 'force-dynamic';
  *
  * EDIT LOG:
  * - 2026-04-14 | claude | created for F-PAR-032 AC-05
+ * - 2026-04-17 | copilot | add PDF download support (?format=pdf) and 404 handling when no invoices
  */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
+import { generateAnnualInvoicesPdf } from '@/lib/invoices';
 import { logger } from '@/lib/logger';
 import { formatErrorForResponse } from '@/lib/errorResponse';
 import type { AppSession } from '@/lib/types/auth';
@@ -149,6 +151,27 @@ export async function GET(req: NextRequest) {
       fy: fyLabel,
       invoiceCount: invoices.length,
     });
+
+    // If the client requested a merged PDF, generate and return it.
+    const format = req.nextUrl.searchParams.get('format');
+    if (format === 'pdf') {
+      try {
+        const pdfBuf = await generateAnnualInvoicesPdf(parentId, fyStart, fyEnd);
+        const headers = new Headers();
+        headers.set('Content-Type', 'application/pdf');
+        headers.set('Content-Disposition', `attachment; filename="invoices-${fyLabel}.pdf"`);
+        const pdfRes = new Response(pdfBuf, { status: 200, headers });
+        logger.logAPI(req, pdfRes, { className: CLASS_NAME, methodName: 'GET' }, start);
+        return pdfRes;
+      } catch (e: any) {
+        logger.error('Failed to generate merged PDF', { className: CLASS_NAME, error: String(e) });
+        // If no invoices were found for the FY, return a 404 JSON response instead
+        if (String(e).toLowerCase().includes('no invoices')) {
+          return NextResponse.json({ error: 'No invoices found for requested financial year' }, { status: 404 });
+        }
+        return NextResponse.json({ error: formatErrorForResponse(e) }, { status: 500 });
+      }
+    }
 
     const response = NextResponse.json(payload);
     logger.logAPI(req, response, { className: CLASS_NAME, methodName: 'GET' }, start);

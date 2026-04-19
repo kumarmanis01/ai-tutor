@@ -1,6 +1,22 @@
 'use client';
 
 /**
+ * FILE OBJECTIVE:
+ * - Render the session completion summary UI and provide copy/share CTAs for parents.
+ *
+ * LINKED UNIT TEST:
+ * - tests/unit/components/session/SessionCompletionScreen.spec.tsx
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/COPILOT_GUARDRAILS.md
+ * - .github/copilot-instructions.md
+ *
+ * EDIT LOG:
+ * - 2026-04-16T12:00:00Z | copilot | add multi-line copy-to-clipboard share (buildShareableSessionSummary)
+ * - 2026-04-16T12:30:00Z | copilot | move confetti/levelup keyframes to CSS module; add eslint-disable-next-line for dynamic progress bar width with justification
+ */
+
+/**
  * SessionCompletionScreen -- v2
  *
  * Full-screen scrollable celebration screen shown after a session ends.
@@ -21,7 +37,8 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { logger } from '@/lib/logger'
 import { getProgressPercent } from '@/lib/student/xpLevels'
 import { useRouter } from 'next/navigation';
-import { buildSessionSummary } from '@/lib/student/sessionSummary'
+import { buildShareableSessionSummary } from '@/lib/student/sessionSummary'
+import styles from './SessionCompletionScreen.module.css'
 import { buildWhatsAppShareUrl } from '@/lib/student/sessionShare'
 
 // ── Types ──────────────────────────────────────────────────────────────────────
@@ -65,29 +82,7 @@ function easeOut(t: number): number {
   return 1 - Math.pow(1 - t, 3);
 }
 
-// ── CSS Confetti (pure CSS keyframes via style tag) ───────────────────────────
-
-const CONFETTI_STYLE = `
-@keyframes confetti-fall {
-  0%   { transform: translateY(-20px) rotate(0deg); opacity: 1; }
-  100% { transform: translateY(80px) rotate(720deg); opacity: 0; }
-}
-.confetti-piece {
-  position: absolute;
-  width: 8px;
-  height: 8px;
-  border-radius: 2px;
-  animation: confetti-fall 1.2s ease-out forwards;
-}
-@keyframes levelup-pop {
-  0%   { transform: scale(0.7); opacity: 0; }
-  60%  { transform: scale(1.08); opacity: 1; }
-  100% { transform: scale(1); opacity: 1; }
-}
-.levelup-pop {
-  animation: levelup-pop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
-}
-`;
+// Confetti and level-up keyframes/styles moved to SessionCompletionScreen.module.css
 
 const CONFETTI_COLORS = ['#534AB7', '#1D9E75', '#BA7517', '#E24B4A', '#F5C842', '#60A5FA'];
 const CONFETTI_PIECES = Array.from({ length: 18 }, (_, i) => ({
@@ -120,19 +115,11 @@ function badgeEmoji(icon?: string): string {
 function ConfettiHeader({ topicName, durationMinutes }: { topicName: string; durationMinutes: number }) {
   return (
     <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#534AB7] to-[#6D63D4] px-5 pt-8 pb-6 text-center text-white">
-      {/* Confetti pieces */}
+      {/* Confetti pieces (styles moved to CSS module) */}
       {CONFETTI_PIECES.map((p) => (
         <span
           key={p.id}
-          className="confetti-piece"
-          style={{
-            left: p.left,
-            top: 0,
-            width: p.size,
-            height: p.size,
-            backgroundColor: p.color,
-            animationDelay: p.delay,
-          }}
+          className={`${styles.confettiPiece} ${styles['p' + p.id]}`}
           aria-hidden
         />
       ))}
@@ -200,14 +187,9 @@ function XpSection({
         Total XP:{' '}
         <span className="font-semibold text-gray-800 dark:text-gray-100">{displayXp}</span>
       </p>
-      {/* Progress bar */}
+      {/* Progress bar (native element styled via CSS module to avoid inline styles) */}
       <div className="w-full max-w-[280px]">
-        <div className="h-2 rounded-full bg-gray-100 dark:bg-slate-800 overflow-hidden">
-          <div
-            className="h-full rounded-full bg-[#534AB7] transition-none"
-            style={{ width: `${barWidth}%` }}
-          />
-        </div>
+        <progress className={styles.progressBar} value={barWidth} max={100} />
       </div>
     </div>
   );
@@ -261,7 +243,7 @@ function LevelUpOverlay({
       aria-modal="true"
       aria-label="Level up celebration"
     >
-      <div className="levelup-pop text-center px-8">
+      <div className={`${styles.levelupPop} text-center px-8`}>
         <div className="text-6xl mb-4" aria-hidden>⭐</div>
         <p className="text-xs font-semibold uppercase tracking-widest text-amber-300 mb-2">
           Level Up!
@@ -540,16 +522,16 @@ export const SessionCompletionScreen: React.FC<SessionCompletionScreenProps> = (
   async function handleCopySummary() {
     try {
       if (!data) return;
-      const summary = buildSessionSummary({
-        topicName,
+      const summary = buildShareableSessionSummary({
+        topicName: topicName ?? null,
         xpEarned: data.xpEarned,
+        sessionDurationMinutes: data.sessionDurationMinutes,
         correctAnswers: data.correctAnswers,
         totalQuestions: data.totalQuestions,
-        masteryDelta: data.masteryDelta,
         masteryAfter: data.masteryAfter,
-        sessionDurationMinutes: data.sessionDurationMinutes,
         aiInsight: data.aiInsight,
-        badgesEarned: data.badgesEarned,
+        badges: (data.badgesEarned || []).map((b) => ({ name: b.name })),
+        hintsUsed: hintsUsed ?? null,
       })
 
       if (navigator?.clipboard?.writeText) {
@@ -562,6 +544,13 @@ export const SessionCompletionScreen: React.FC<SessionCompletionScreenProps> = (
         document.execCommand('copy')
         ta.remove()
       }
+      // Telemetry: record the copy action for analytics/debugging
+      try {
+        logger.info('session_summary_copied', { sessionId, topicName })
+      } catch (e) {
+        // non-blocking
+      }
+
       setCopied(true)
       setTimeout(() => setCopied(false), 2000)
     } catch {
@@ -575,16 +564,16 @@ export const SessionCompletionScreen: React.FC<SessionCompletionScreenProps> = (
     setSharing(true)
     setShareError(false)
     try {
-      const summary = buildSessionSummary({
-        topicName,
+      const summary = buildShareableSessionSummary({
+        topicName: topicName ?? null,
         xpEarned: data.xpEarned,
+        sessionDurationMinutes: data.sessionDurationMinutes,
         correctAnswers: data.correctAnswers,
         totalQuestions: data.totalQuestions,
-        masteryDelta: data.masteryDelta,
         masteryAfter: data.masteryAfter,
-        sessionDurationMinutes: data.sessionDurationMinutes,
         aiInsight: data.aiInsight,
-        badgesEarned: data.badgesEarned,
+        badges: (data.badgesEarned || []).map((b) => ({ name: b.name })),
+        hintsUsed: hintsUsed ?? null,
       })
 
       // Prefer the Web Share API when available (mobile native share sheets)
@@ -640,8 +629,7 @@ export const SessionCompletionScreen: React.FC<SessionCompletionScreenProps> = (
 
   return (
     <>
-      {/* Inject keyframes */}
-      <style>{CONFETTI_STYLE}</style>
+      {/* Keyframes and confetti styles are provided by the CSS module */}
 
       {/* Level-up overlay -- rendered above everything */}
       {showLevelOverlay && d.leveledUp && d.newLevel != null && (
@@ -692,6 +680,7 @@ export const SessionCompletionScreen: React.FC<SessionCompletionScreenProps> = (
             <button
               type="button"
               onClick={() => void handleCopySummary()}
+              aria-label={`Copy session summary for ${topicName ?? 'this session'}`}
               className="flex w-full min-h-[44px] items-center justify-center rounded-xl border border-gray-200 dark:border-slate-700 text-sm font-medium hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors"
             >
               {copied ? 'Copied!' : copyError ? 'Copy failed' : 'Copy session summary'}
@@ -702,10 +691,16 @@ export const SessionCompletionScreen: React.FC<SessionCompletionScreenProps> = (
             <button
               type="button"
               onClick={() => void handleWhatsAppShare()}
+              aria-label={`Share session summary on WhatsApp for ${topicName ?? 'this session'}`}
               className="flex w-full min-h-[44px] items-center justify-center rounded-xl bg-[#25D366] text-white text-sm font-semibold hover:opacity-95 active:scale-[0.98] transition-all"
             >
               {sharing ? 'Sharing...' : shareError ? 'Share failed' : 'Share on WhatsApp'}
             </button>
+          </div>
+
+          {/* Accessibility: polite live region for copy/share status */}
+          <div role="status" aria-live="polite" className="sr-only">
+            {copied ? 'Session summary copied to clipboard' : copyError ? 'Failed to copy session summary' : ''}
           </div>
 
           {/* 8. CTAs */}
