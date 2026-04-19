@@ -7,7 +7,15 @@
  *
  * Access: requires session.user.role === 'admin'.
  *
+ * LINKED UNIT TEST:
+ * - tests/unit/app/api/admin/test-plan-access/route.spec.ts
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/COPILOT_GUARDRAILS.md
+ * - .github/copilot-instructions.md
+ *
  * EDIT LOG:
+ * - 2026-04-18T00:00:00Z | copilot | add required header sections for CI documentation enforcement
  * - 2026-04-15T00:00:00Z | staff-engineer | created for Sprint A C1 test plan gating
  */
 
