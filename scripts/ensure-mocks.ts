@@ -16,6 +16,7 @@
 import minimist from 'minimist';
 import ensureMinimumMocks from '@/lib/mock/ensureMocks';
 import { logger } from '@/lib/logger';
+import { fileURLToPath } from 'url';
 
 async function main() {
   const argv = minimist(process.argv.slice(2));
@@ -43,7 +44,15 @@ async function main() {
   }
 }
 
-if ((import.meta as any).main) {
+const __isNodeEntry = (() => {
+  try {
+    return fileURLToPath(import.meta.url) === process.argv[1];
+  } catch {
+    return false;
+  }
+})();
+
+if (__isNodeEntry) {
   main().catch((e) => {
     logger.error('ensure-mocks.unhandled', { error: String(e) });
     process.exit(1);

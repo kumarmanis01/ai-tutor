@@ -69,7 +69,7 @@ export async function POST(
         adminId: session.user.id,
         targetEntity: 'Concept',
         targetId: id,
-        action: AdminActionType.CONCEPT_SUSPEND,
+        action: (AdminActionType?.CONCEPT_SUSPEND) ?? 'CONCEPT_SUSPEND',
         previousValue: { isSuspended: false },
         newValue: { isSuspended: true, suspendedAt: now.toISOString() },
         reason,

@@ -36,4 +36,5 @@ export function statusLabel(s: unknown) {
   }
 }
 
-export default { formatINR, statusLabel }
+const CurrencyFormat = { formatINR, statusLabel }
+export default CurrencyFormat

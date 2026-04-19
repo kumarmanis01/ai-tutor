@@ -95,13 +95,14 @@ export async function unlockCosmeticsForStreak(
     });
     if (!user) return [];
 
-    const existing = new Set(user.cosmeticUnlocks);
+    const existingList: string[] = Array.isArray(user.cosmeticUnlocks) ? user.cosmeticUnlocks : [];
+    const existing = new Set(existingList);
     const newKeys = eligible.map((c) => c.key).filter((k) => !existing.has(k));
     if (newKeys.length === 0) return [];
 
     await prisma.user.update({
       where: { id: studentId },
-      data: { cosmeticUnlocks: [...user.cosmeticUnlocks, ...newKeys] },
+      data: { cosmeticUnlocks: [...existingList, ...newKeys] },
     });
 
     logger.info('cosmetics.unlocked', {

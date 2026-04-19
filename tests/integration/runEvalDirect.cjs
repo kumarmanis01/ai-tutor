@@ -6,8 +6,8 @@ require('ts-node/register/transpile-only');
 (async () => {
   // allow legacy requires in this small helper
   // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const { PrismaClient } = require('@prisma/client');
-  const prisma = new PrismaClient();
+const { prisma } = require('../../lib/prisma');
+  
   try {
     await prisma.$connect();
     const mod = await import('../../lib/alertEvaluator');

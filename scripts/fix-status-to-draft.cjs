@@ -3,8 +3,8 @@
  * so the Content Review page shows pending items.
  */
 require('dotenv').config({ path: '.env.local' });
-const { PrismaClient } = require('@prisma/client');
-const p = new PrismaClient();
+const { prisma } = require('../lib/prisma');
+const p = prisma;
 
 async function main() {
   const chapters = await p.chapterDef.updateMany({

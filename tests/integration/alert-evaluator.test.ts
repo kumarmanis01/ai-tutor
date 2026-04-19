@@ -1,6 +1,6 @@
 import logger from '../../lib/logger';
 ﻿/* eslint-disable */
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '../../lib/prisma';
 import evaluateAlerts from '@/lib/alertEvaluator.js';
 
 (async function main() {
@@ -9,7 +9,7 @@ import evaluateAlerts from '@/lib/alertEvaluator.js';
     process.exit(0);
   }
 
-  const prisma = new PrismaClient();
+  
   try {
     await prisma.$connect();
     const now = new Date();

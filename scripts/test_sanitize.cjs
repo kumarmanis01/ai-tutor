@@ -1,6 +1,6 @@
 require('dotenv').config({ path: '.env.production' })
-const { PrismaClient } = require('@prisma/client')
-const prisma = new PrismaClient()
+const { prisma } = require('../lib/prisma');
+
 
 function sanitizeLLMOutput(content) {
   if (!content || typeof content !== 'string') return content

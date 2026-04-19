@@ -5,7 +5,7 @@ import ProblemSection from './ProblemSection';
 import TestimonialsSection from './TestimonialsSection';
 import PricingSection from './PricingSection';
 import FAQSection from './FAQSection';
-import OtpSignupForm from '@/components/auth/OtpSignupForm';
+import OtpSignupForm from '@/components/Auth/OtpSignupForm';
 import FinalCTA from './FinalCTA';
 import Footer from './Footer';
 

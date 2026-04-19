@@ -1,7 +1,7 @@
 ﻿/**
  * Evaluate telemetry and create/update system alerts used by integration tests.
  */
-import { PrismaClient } from '@prisma/client';
+import type { PrismaClient } from '@prisma/client';
 
 export type EvalOptions = {
   dryRun?: boolean;

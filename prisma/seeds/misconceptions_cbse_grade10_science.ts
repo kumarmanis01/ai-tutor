@@ -1,4 +1,5 @@
-import { PrismaClient } from '@prisma/client'
+import type { PrismaClient } from '@prisma/client'
+import { prisma } from '../../lib/prisma'
 
 export const MISCONCEPTIONS_SCIENCE_GRADE10 = [
   {
@@ -212,7 +213,6 @@ export async function seedMisconceptions(prisma: PrismaClient, opts?: { dryRun?:
 }
 
 if (require.main === module) {
-  const prisma = new PrismaClient()
   ;(async () => {
     try {
       await seedMisconceptions(prisma)
@@ -221,7 +221,7 @@ if (require.main === module) {
       console.error('Seed failed', err)
       process.exit(1)
     } finally {
-      await prisma.$disconnect()
+      try { await prisma.$disconnect() } catch {}
     }
   })()
 }

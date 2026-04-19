@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
+/* eslint-disable @typescript-eslint/no-require-imports */
 // Unit tests for paymentDunningWorker auto-charge path
 
 // Mock prisma and logger before importing worker

@@ -1,6 +1,6 @@
 // Simple script to list boards via Prisma (for debugging)
-const { PrismaClient } = require('@prisma/client');
-const p = new PrismaClient();
+const { prisma } = require('../lib/prisma');
+const p = prisma;
 
 (async () => {
   try {

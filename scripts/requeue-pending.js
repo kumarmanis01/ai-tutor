@@ -9,7 +9,7 @@
 
 import fs from 'fs'
 import path from 'path'
-import { PrismaClient } from '@prisma/client'
+import { prisma } from '../lib/prisma';
 import { Queue } from 'bullmq'
 import { randomUUID } from 'crypto'
 
@@ -27,7 +27,7 @@ function loadRedisUrl() {
 }
 
 async function main() {
-  const prisma = new PrismaClient()
+  
   const REDIS_URL = loadRedisUrl()
   const q = new Queue('content-hydration', { connection: { url: REDIS_URL } })
 

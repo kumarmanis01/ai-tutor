@@ -143,9 +143,13 @@ function parseLevel(s?: string | null): Level {
   return 'error';
 }
 
-// Server log level via env; default to 'error' to preserve production visibility for errors
-// If `WORKER_DEBUG` is set, force server-level logs to `debug` for very verbose job traces.
-const serverMinLevel = isWorkerDebug ? levelWeight.debug : levelWeight[parseLevel(process.env.LOG_LEVEL)];
+// Server log level via env; default behaviour:
+// - If `WORKER_DEBUG` is set, force server-level logs to `debug` for verbose job traces.
+// - In development, default to `debug` so local tests and dev runs see informative logs.
+// - Otherwise, derive from `LOG_LEVEL` (fallback handled by `parseLevel`).
+const serverMinLevel = isWorkerDebug
+  ? levelWeight.debug
+  : (ENV === 'development' ? levelWeight.debug : levelWeight[parseLevel(process.env.LOG_LEVEL)]);
 // Client min level: allow error logs even when debug is off; otherwise gate by NEXT_PUBLIC_DEBUG_MODE
 const clientMinLevel = isDebug ? levelWeight.debug : levelWeight.error;
 

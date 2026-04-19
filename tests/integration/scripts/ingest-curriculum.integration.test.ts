@@ -6,12 +6,12 @@
  */
 import path from 'path'
 import { execSync } from 'child_process'
-import { PrismaClient } from '@prisma/client'
+import { prisma } from '../../../lib/prisma';
 
 // This script may run embedding-generation and other DB work; increase timeout.
 jest.setTimeout(180_000)
 
-const prisma = new PrismaClient()
+
 
 describe('ingest-curriculum integration', () => {
   beforeAll(async () => {

@@ -1,5 +1,5 @@
 import { saveCoursePackage } from '@/lib/course/package/store'
-import { PrismaClient } from '@prisma/client'
+import { prisma } from '../../lib/prisma';
 
 const makePkg = () => ({
   id: 'pkg1',

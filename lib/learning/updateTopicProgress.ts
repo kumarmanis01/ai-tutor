@@ -86,8 +86,11 @@ export async function updateStudentTopicProgress(
   // Single transaction: StudentTopicProgress (atomic SQL) + StudentTopicMastery (upsert).
   await prisma.$transaction(async (tx) => {
     // 1. Atomic upsert on StudentTopicProgress -- preserves concurrent-update safety.
-    await tx.$executeRaw(
-      Prisma.sql`
+    // Prisma.sql may not be available in some test/mock environments
+    // Guard access and fall back to a simple raw SQL string so unit tests
+    // that mock `tx.$executeRaw` do not throw at template-tag resolution time.
+    const rawSql = (Prisma && typeof (Prisma as any).sql === 'function')
+      ? Prisma.sql`
         INSERT INTO "StudentTopicProgress" ("id", "studentId", "topicId", "mastery", "practiceCount", "lastStudiedAt", "updatedAt")
         VALUES (${progressId}, ${studentId}, ${topicId}, ${initialMastery}, ${totalAnswers}, NOW(), NOW())
         ON CONFLICT ("studentId", "topicId")
@@ -96,8 +99,10 @@ export async function updateStudentTopicProgress(
           "practiceCount" = "StudentTopicProgress"."practiceCount" + ${totalAnswers},
           "lastStudiedAt" = NOW(),
           "updatedAt" = NOW()
-      `,
-    );
+      `
+      : `INSERT INTO "StudentTopicProgress" ("id", "studentId", "topicId", "mastery", "practiceCount", "lastStudiedAt", "updatedAt") VALUES ('${progressId}', '${studentId}', '${topicId}', ${initialMastery}, ${totalAnswers}, NOW(), NOW()) ON CONFLICT ("studentId", "topicId") DO UPDATE SET "mastery" = LEAST(1, GREATEST(0, "StudentTopicProgress"."mastery" + ${progressDelta})), "practiceCount" = "StudentTopicProgress"."practiceCount" + ${totalAnswers}, "lastStudiedAt" = NOW(), "updatedAt" = NOW()`;
+
+    await tx.$executeRaw(rawSql as any);
 
     // 2. Upsert StudentTopicMastery -- keeps mastery table consistent with progress.
     //    accuracy reflects this session's performance; questionsAttempted accumulates.

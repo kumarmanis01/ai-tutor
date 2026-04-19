@@ -18,8 +18,8 @@ function loadEnvFile(file) {
 }
 loadEnvFile(path.resolve(process.cwd(), '.env.production'));
 process.env.DEBUG = '';
-const { PrismaClient } = require('@prisma/client');
-const prisma = new PrismaClient({ log: [] });
+const { prisma } = require('../lib/prisma');
+
 (async ()=>{
   try{
     const id = process.argv[2] || 'cmkldminn000e4acsktlqwkl1'

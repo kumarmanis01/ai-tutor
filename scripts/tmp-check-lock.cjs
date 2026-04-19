@@ -1,7 +1,8 @@
 #!/usr/bin/env node
+import { prisma } from '../lib/prisma';
 const pkg = require('@prisma/client')
 const { PrismaClient } = pkg
-const prisma = new PrismaClient()
+
 
 ;(async ()=>{
   try{

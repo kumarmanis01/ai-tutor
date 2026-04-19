@@ -65,7 +65,7 @@ export default function ContentModal({ open, title = '', onClose, children, clas
       document.body.style.overflow = prevOverflow;
       try {
         prevActiveRef.current?.focus();
-      } catch (_) {
+      } catch {
         /* ignore */
       }
     };

@@ -1,6 +1,6 @@
 require('dotenv').config({ path: '.env.local' });
-const { PrismaClient } = require('@prisma/client');
-const p = new PrismaClient();
+const { prisma } = require('../lib/prisma');
+const p = prisma;
 
 async function main() {
   const rootId = process.argv[2];
@@ -34,6 +34,6 @@ async function main() {
 
 main().catch(async (e) => {
   console.error('ERROR:', e && e.message ? e.message : e);
-  try { await p.$disconnect(); } catch (err) {}
+  try { await p.$disconnect(); } catch (_err) {}
   process.exit(1);
 });

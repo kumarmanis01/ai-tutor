@@ -9,10 +9,9 @@
  * Run after: seed-taxonomy.cjs (Board/ClassLevel/SubjectDef must exist).
  * Idempotent: safe to rerun.
  */
+import { prisma } from '../lib/prisma';
 
-import { PrismaClient } from "@prisma/client";
 
-const prisma = new PrismaClient();
 
 /** Core subjects per board+grade (mandatory for exam). Others are optional. */
 const CORE_SUBJECT_SLUGS = new Set([

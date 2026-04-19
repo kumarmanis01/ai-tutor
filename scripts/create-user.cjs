@@ -1,4 +1,4 @@
-const { PrismaClient } = require('@prisma/client');
+const { prisma } = require('../lib/prisma');
 
 const logger = console;
 const email = process.argv[2];
@@ -9,7 +9,7 @@ if (!email) {
   process.exit(1);
 }
 
-const prisma = new PrismaClient();
+
 
 async function main() {
   const existing = await prisma.user.findUnique({ where: { email } });
