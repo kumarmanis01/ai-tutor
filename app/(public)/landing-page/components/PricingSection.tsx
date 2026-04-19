@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import Icon from '@/components/UI/AppIcon';
-import { PLANS } from '@/lib/billing/plans';
+import { FREE_SESSIONS_TEXT, FREE_SESSIONS_TEXT_HI } from '@/lib/constants/freeTier';
 
 interface PricingPlan {
   id: string;
@@ -23,10 +23,35 @@ const PricingSection = () => {
 
   const plans: PricingPlan[] = [
     {
+      id: 'free',
+      name: 'Free Plan',
+      nameHi: 'मुफ्त योजना',
+      price: '₹0',
+      period: 'Forever',
+      periodHi: 'हमेशा के लिए',
+      description: 'Try Spinzy Academy with limited features',
+      descriptionHi: 'सीमित सुविधाओं के साथ Spinzy Academy आज़माएं',
+      features: [
+        FREE_SESSIONS_TEXT,
+        'Basic explanations',
+        'Hindi + English support',
+        'NCERT notes access',
+      ],
+      featuresHi: [
+        FREE_SESSIONS_TEXT_HI,
+        'बुनियादी समाधान',
+        'हिंदी + अंग्रेजी सहायता',
+        'NCERT नोट्स एक्सेस',
+      ],
+      recommended: false,
+      ctaText: 'Start Free',
+      ctaTextHi: 'मुफ्त शुरू करें',
+    },
+    {
       id: 'individual',
       name: 'Individual Plan',
       nameHi: 'व्यक्तिगत योजना',
-      price: `₹${PLANS.standard_monthly.billedRupees}`,
+      price: '₹99',
       period: 'per month',
       periodHi: 'प्रति माह',
       description: 'Perfect for one student',
@@ -53,14 +78,14 @@ const PricingSection = () => {
       ],
       recommended: true,
       savings: 'Save ₹2900 vs tuition',
-      ctaText: 'Get started',
-      ctaTextHi: 'शुरू करें',
+      ctaText: 'Start Free Trial',
+      ctaTextHi: 'मुफ्त परीक्षण शुरू करें',
     },
     {
       id: 'family',
       name: 'Family Plan',
       nameHi: 'परिवार योजना',
-      price: `₹${PLANS.family_monthly.billedRupees}`,
+      price: '₹199',
       period: 'per month',
       periodHi: 'प्रति माह',
       description: 'Best value for multiple children',
@@ -87,16 +112,10 @@ const PricingSection = () => {
       ],
       recommended: false,
       savings: 'Save ₹5000+ vs multiple tutors',
-      ctaText: 'Get started',
-      ctaTextHi: 'शुरू करें',
+      ctaText: 'Start Free Trial',
+      ctaTextHi: 'मुफ्त परीक्षण शुरू करें',
     },
   ];
-
-  const standardPlan = PLANS.standard_monthly;
-  const spinzyPriceDisplay = `₹${standardPlan.billedRupees}`;
-  const traditionalMin = 3000;
-  const savingsMin = traditionalMin - standardPlan.billedRupees;
-  const savingsText = `₹${savingsMin}+`;
 
   return (
     <section
@@ -114,13 +133,14 @@ const PricingSection = () => {
           </h2>
           <p className="font-accent text-xl md:text-2xl text-primary mb-2">अपनी सही योजना चुनें</p>
           <p className="font-body text-lg md:text-xl text-muted-foreground max-w-3xl mx-auto">
-            No hidden charges. Cancel anytime. 7-day refund policy.
+            No hidden charges. Cancel anytime. 30-day money-back guarantee.
           </p>
         </div>
 
         <div className="grid md:grid-cols-3 gap-6 lg:gap-8 mb-6">
           {plans.map((plan) => {
-            const displayPrice = plan.price;
+            const basePrice = parseInt(plan.price.replace(/[^\d]/g, ''), 10) || 0;
+            const displayPrice = plan.id === 'free' ? '₹0' : `₹${Math.round(basePrice * 1.18)}`;
 
             return (
               <div
@@ -149,7 +169,9 @@ const PricingSection = () => {
                       </span>
                       <span className="font-body text-base text-muted-foreground">/{plan.period}</span>
                     </div>
-                    {/* Prices shown are inclusive of taxes */}
+                    {plan.id !== 'free' && (
+                      <p className="text-xs text-muted-foreground mt-1">{plan.price} base price · incl. 18% GST</p>
+                    )}
                     <p className="font-body text-sm text-muted-foreground">{plan.description}</p>
                     {plan.savings && (
                       <div className="mt-3 inline-flex items-center gap-2 px-3 py-1 bg-success/10 text-success rounded-full text-sm font-semibold">
@@ -195,7 +217,7 @@ const PricingSection = () => {
           <p className="text-sm text-muted-foreground">
             🔒 Secure checkout · UPI / Cards / Net Banking · Powered by Razorpay
           </p>
-          <p className="text-xs text-muted-foreground mt-1">All prices inclusive of taxes</p>
+          <p className="text-xs text-muted-foreground mt-1">Prices shown include 18% GST</p>
         </div>
 
         <div className="bg-background rounded-2xl border-2 border-border p-6 md:p-8 mb-12">
@@ -225,10 +247,10 @@ const PricingSection = () => {
                       Spinzy Academy Individual
                     </p>
                     <p className="font-body text-sm text-muted-foreground">
-                      Per month, unlimited access (incl. taxes)
+                      Per month, unlimited access (incl. GST)
                     </p>
                   </div>
-                  <p className="font-headline font-bold text-2xl text-success">{spinzyPriceDisplay}</p>
+                  <p className="font-headline font-bold text-2xl text-success">₹117</p>
                 </div>
 
                 <div className="flex items-center justify-between p-4 bg-primary/5 rounded-lg border border-primary/20">
@@ -236,7 +258,7 @@ const PricingSection = () => {
                     <p className="font-headline font-bold text-lg text-secondary">Your Savings</p>
                     <p className="font-body text-sm text-muted-foreground">Every single month</p>
                   </div>
-                  <p className="font-headline font-bold text-2xl text-primary">{savingsText}</p>
+                  <p className="font-headline font-bold text-2xl text-primary">₹2883+</p>
                 </div>
               </div>
             </div>
@@ -247,10 +269,10 @@ const PricingSection = () => {
                   <Icon name="ShieldCheckIcon" size={24} variant="solid" className="text-success" />
                   <div>
                     <h4 className="font-headline font-bold text-lg text-secondary mb-1">
-                      7-Day Refund Policy
+                      30-Day Money-Back Guarantee
                     </h4>
                     <p className="font-body text-sm text-muted-foreground">
-                      Refunds available within 7 days of purchase.
+                      Not satisfied? Get 100% refund, no questions asked
                     </p>
                   </div>
                 </div>
@@ -273,17 +295,17 @@ const PricingSection = () => {
               <div className="bg-muted/50 rounded-xl p-6 border border-border">
                 <div className="flex items-start gap-3 mb-3">
                   <Icon
-                    name="ShieldCheckIcon"
+                    name="CreditCardIcon"
                     size={24}
                     variant="solid"
                     className="text-secondary"
                   />
                   <div>
                     <h4 className="font-headline font-bold text-lg text-secondary mb-1">
-                      Secure Payments
+                      No Credit Card for Trial
                     </h4>
                     <p className="font-body text-sm text-muted-foreground">
-                      Secure checkout · UPI / Cards / Net Banking · Powered by Razorpay
+                      Start free trial without entering payment details
                     </p>
                   </div>
                 </div>

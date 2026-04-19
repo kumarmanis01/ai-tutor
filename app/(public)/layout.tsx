@@ -23,7 +23,7 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-  title: 'Spinzy AI Tutor -- Teacher Vidya, Your Child\'s AI Home Tutor',
+  title: 'Spinzy AI Tutor — Teacher Vidya, Your Child\'s AI Home Tutor',
   description:
     'Turn doubts into confidence with Spinzy AI Tutor. Adaptive practice, mastery checks, and guided hints for Class 1-12 students. CBSE, ICSE & State Boards.',
   manifest: '/manifest.json',

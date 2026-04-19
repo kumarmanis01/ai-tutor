@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import Icon from '@/components/UI/AppIcon';
-import { PLANS } from '@/lib/billing/plans';
+import { FREE_SESSIONS_TEXT, FREE_SESSIONS_TEXT_HI } from '@/lib/constants/freeTier';
 
 interface FAQ {
   id: number;
@@ -61,8 +61,8 @@ const FAQSection = () => {
       id: 5,
       questionEn: 'Can I try before paying?',
       questionHi: 'क्या मैं भुगतान करने से पहले आज़मा सकता हूं?',
-      answerEn: `Yes -- try Spinzy Academy with no credit card required. When ready, upgrade to unlimited access for just ${PLANS.standard_monthly.perMonthDisplay}. Refunds are available within 7 days of purchase.`,
-      answerHi: `हां -- बिना क्रेडिट कार्ड के Spinzy Academy आज़माएं। तैयार होने पर, केवल ${PLANS.standard_monthly.perMonthDisplay} में असीमित एक्सेस में अपग्रेड करें। खरीद के 7 दिनों के भीतर रिफंड उपलब्ध हैं।`,
+      answerEn: `Yes! Start with our Free Plan (${FREE_SESSIONS_TEXT}) to test the app. No credit card required. When ready, upgrade to unlimited access for just ₹99/month. Plus, we offer 30-day money-back guarantee on all paid plans.`,
+      answerHi: `हां! ऐप का परीक्षण करने के लिए हमारी Free Plan (${FREE_SESSIONS_TEXT_HI}) से शुरू करें। कोई क्रेडिट कार्ड की आवश्यकता नहीं। तैयार होने पर, केवल ₹99/माह में असीमित एक्सेस में अपग्रेड करें। साथ ही, हम सभी paid plans पर 30-दिन की मनी-बैक गारंटी प्रदान करते हैं।`,
       category: 'Pricing',
     },
     {
@@ -90,9 +90,9 @@ const FAQSection = () => {
       questionEn: 'What is Spinzy AI Tutor and how does Teacher Vidya work?',
       questionHi: 'Spinzy AI Tutor क्या है और Teacher Vidya कैसे काम करती है?',
       answerEn:
-        'Spinzy AI Tutor provides curriculum-aligned, AI-powered guidance. Teacher Vidya is an AI persona that offers stepwise hints and explanations to help students learn -- to promote mastery, Vidya does not provide direct answers to practice problems. We process minimal usage data to deliver and improve the service; see our Privacy Policy for details. Spinzy AI Tutor is not a substitute for professional educational advice.',
+        'Spinzy AI Tutor provides curriculum-aligned, AI-powered guidance. Teacher Vidya is an AI persona that offers stepwise hints and explanations to help students learn — to promote mastery, Vidya does not provide direct answers to practice problems. We process minimal usage data to deliver and improve the service; see our Privacy Policy for details. Spinzy AI Tutor is not a substitute for professional educational advice.',
       answerHi:
-        'Spinzy AI Tutor पाठ्यक्रम-संगत, AI-आधारित मार्गदर्शन प्रदान करता है। Teacher Vidya एक AI persona है जो चरणबद्ध hints और explanations देती है ताकि छात्र समझें और महारत हासिल कर सकें -- इसलिए Vidya अभ्यास समस्याओं के सीधे उत्तर नहीं देती। सेवा प्रदान करने और सुधारने के लिए हम न्यूनतम उपयोग डेटा संसाधित करते हैं; विवरण के लिए हमारी Privacy Policy देखें। Spinzy AI Tutor पेशेवर शैक्षणिक सलाह का विकल्प नहीं है।',
+        'Spinzy AI Tutor पाठ्यक्रम-संगत, AI-आधारित मार्गदर्शन प्रदान करता है। Teacher Vidya एक AI persona है जो चरणबद्ध hints और explanations देती है ताकि छात्र समझें और महारत हासिल कर सकें — इसलिए Vidya अभ्यास समस्याओं के सीधे उत्तर नहीं देती। सेवा प्रदान करने और सुधारने के लिए हम न्यूनतम उपयोग डेटा संसाधित करते हैं; विवरण के लिए हमारी Privacy Policy देखें। Spinzy AI Tutor पेशेवर शैक्षणिक सलाह का विकल्प नहीं है।',
       category: 'Product',
     },
   ];

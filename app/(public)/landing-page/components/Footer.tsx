@@ -39,8 +39,8 @@ const Footer = () => {
             </div>
 
             <p className="text-sm leading-relaxed opacity-80 mb-4 max-w-md">
-              <strong>Spinzy AI Tutor</strong> (Teacher Vidya) -- adaptive practice and guided hints for
-              Class 1-12 students. Fast, curriculum-aligned help in Hindi &amp; English.
+              <strong>Spinzy AI Tutor</strong> (Teacher Vidya) — adaptive practice and guided hints for
+              Class 1–12 students. Fast, curriculum-aligned help in Hindi &amp; English.
             </p>
 
             <div className="flex flex-wrap gap-3 items-center mb-4">
@@ -134,7 +134,7 @@ const Footer = () => {
         <div className="border-t border-white/10 mt-8 pt-6 flex flex-col md:flex-row items-center justify-between gap-3">
           <p className="text-sm opacity-80">&copy; 2026 Spinzy Academy. All rights reserved.</p>
           <p className="text-sm opacity-70 max-w-md text-center md:text-right">
-            Teacher Vidya is an AI assistant -- not a human tutor.
+            Teacher Vidya is an AI assistant — not a human tutor.
           </p>
         </div>
       </div>
