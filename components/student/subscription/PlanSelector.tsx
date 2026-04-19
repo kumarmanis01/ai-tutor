@@ -8,7 +8,7 @@
  * Selected plan highlighted; state lifted to parent via onSelect.
  */
 
-import React from 'react';
+import React, { useMemo } from 'react';
 import { PLANS } from '@/lib/billing/plans';
 import type { PlanId, SubscriptionPlan } from '@/lib/billing/plans';
 
@@ -17,8 +17,7 @@ interface PlanSelectorProps {
   onSelect: (id: PlanId) => void;
 }
 
-// Show Standard (monthly), Family (monthly) and Annual (Standard) by default
-const PLAN_ORDER: PlanId[] = ['standard_monthly', 'family_monthly', 'standard_annual'];
+// By default show all non-internal plans. Order: featured first, then by billed price.
 
 function PlanRow({
   plan,

@@ -10,7 +10,8 @@
  * - /docs/COPILOT_GUARDRAILS.md
  *
  * EDIT LOG:
- * - 2026-04-15T00:00:00Z | copilot | add minimal subscription helpers
+ * - 2026-04-15T00:00:00Z | copilot | moved helpers from lib/subscription.ts
+ * - 2026-04-15T12:00:00Z | copilot | replace anonymous default export with named const
  */
 
 import { prisma } from '@/lib/prisma'
