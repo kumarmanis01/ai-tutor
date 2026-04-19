@@ -1,54 +1,71 @@
-// Ensure tests are resilient when new nullable timestamp columns were added to the schema.
-// This runs before each test file and will try to add missing columns if the DB supports it.
-// Failures are swallowed so non-DB tests or locked CI DBs are unaffected.
+/**
+ * FILE OBJECTIVE:
+ * - Ensure nullable columns added to RegenerationJob exist before DB-backed tests run.
+ * - Uses a DEDICATED local PrismaClient (never the shared singleton) so this setup
+ *   can safely disconnect without affecting any running test.
+ * - Registered via beforeAll/afterAll so Jest properly awaits it — eliminates the
+ *   fire-and-forget race that previously caused "Engine is not yet connected" failures.
+ *
+ * EDIT LOG:
+ * - 2026-04-18T00:00:00Z | copilot | rewrite: use local client + beforeAll/afterAll to fix engine race
+ */
 
-// When running under `jsdom` (React unit tests) the environment exposes a
-// global `window` and Prisma's browser bundle may be selected by the resolver,
-// which cannot run here. Skip schema-prep in that case.
+// Skip in browser (jsdom) environments where Prisma's Node engine cannot run.
+const _isNode = typeof (globalThis as any).window === 'undefined'
 
-let PrismaClient: any | undefined
-try {
-  // Use dynamic require so missing/generated Prisma client doesn't blow up tests.
-  // Some CI/test environments may not have the generated client present in node_modules/.prisma
-  // which would cause static imports to fail. Using require() lets us detect that and skip.
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
-  const pkg = require('@prisma/client')
-  PrismaClient = pkg && pkg.PrismaClient
-} catch {
-  PrismaClient = undefined
+let _LocalPrismaClient: any | undefined
+if (_isNode) {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const pkg = require('@prisma/client')
+    _LocalPrismaClient = pkg && pkg.PrismaClient
+  } catch {
+    _LocalPrismaClient = undefined
+  }
 }
 
-if (typeof (globalThis as any).window === 'undefined' && PrismaClient && typeof PrismaClient === 'function') {
-  const prisma = new PrismaClient()
+if (_isNode && _LocalPrismaClient && typeof _LocalPrismaClient === 'function') {
+  let _localClient: any | null = null
 
-  async function ensureColumns() {
+  /**
+   * beforeAll: create a dedicated client, run schema migrations, then disconnect it.
+   * Using beforeAll means Jest AWAITS this before any test in the file runs —
+   * no race condition with the shared prisma singleton.
+   */
+  beforeAll(async () => {
     try {
-      // Postgres: add columns if not exists
-      await prisma.$executeRawUnsafe('ALTER TABLE "RegenerationJob" ADD COLUMN IF NOT EXISTS "lockedAt" TIMESTAMP NULL')
-      await prisma.$executeRawUnsafe('ALTER TABLE "RegenerationJob" ADD COLUMN IF NOT EXISTS "completedAt" TIMESTAMP NULL')
-      await prisma.$executeRawUnsafe('ALTER TABLE "RegenerationJob" ADD COLUMN IF NOT EXISTS "retryOfJobId" TEXT NULL')
-      await prisma.$executeRawUnsafe('ALTER TABLE "RegenerationJob" ADD COLUMN IF NOT EXISTS "retryIntentId" TEXT NULL')
+      _localClient = new _LocalPrismaClient()
     } catch {
-      // Try SQLite-compatible ALTER (will throw if unsupported) — ignore errors
-      try {
-        await prisma.$executeRawUnsafe('ALTER TABLE RegenerationJob ADD COLUMN lockedAt TEXT')
-        await prisma.$executeRawUnsafe('ALTER TABLE RegenerationJob ADD COLUMN completedAt TEXT')
-        await prisma.$executeRawUnsafe('ALTER TABLE RegenerationJob ADD COLUMN retryOfJobId TEXT')
-        await prisma.$executeRawUnsafe('ALTER TABLE RegenerationJob ADD COLUMN retryIntentId TEXT')
-      } catch {
-        // ignore — some test DB setups (managed CI) may not allow schema changes here
-      }
-    } finally {
-      // Clear prepared plans which can cause Postgres "cached plan must not change result type"
-      try {
-        await prisma.$executeRawUnsafe('DISCARD ALL')
-      } catch {
-        // ignore if DB doesn't support
-      }
-      await prisma.$disconnect()
+      // Cannot instantiate — skip schema prep silently.
+      return
     }
-  }
 
-  // Run async but do not block test runner if it errors — tests will surface DB schema issues.
-  void ensureColumns()
+    try {
+      // Postgres: add nullable columns if they don't exist yet.
+      await _localClient.$executeRawUnsafe('ALTER TABLE "RegenerationJob" ADD COLUMN IF NOT EXISTS "lockedAt" TIMESTAMP NULL')
+      await _localClient.$executeRawUnsafe('ALTER TABLE "RegenerationJob" ADD COLUMN IF NOT EXISTS "completedAt" TIMESTAMP NULL')
+      await _localClient.$executeRawUnsafe('ALTER TABLE "RegenerationJob" ADD COLUMN IF NOT EXISTS "retryOfJobId" TEXT NULL')
+      await _localClient.$executeRawUnsafe('ALTER TABLE "RegenerationJob" ADD COLUMN IF NOT EXISTS "retryIntentId" TEXT NULL')
+    } catch {
+      // SQLite or locked CI DB — try the simpler form, ignore all errors.
+      try { await _localClient.$executeRawUnsafe('ALTER TABLE RegenerationJob ADD COLUMN lockedAt TEXT') } catch {}
+      try { await _localClient.$executeRawUnsafe('ALTER TABLE RegenerationJob ADD COLUMN completedAt TEXT') } catch {}
+      try { await _localClient.$executeRawUnsafe('ALTER TABLE RegenerationJob ADD COLUMN retryOfJobId TEXT') } catch {}
+      try { await _localClient.$executeRawUnsafe('ALTER TABLE RegenerationJob ADD COLUMN retryIntentId TEXT') } catch {}
+    }
+
+    // Clear prepared-statement cache to avoid "cached plan must not change result type".
+    try { await _localClient.$executeRawUnsafe('DISCARD ALL') } catch {}
+  })
+
+  /**
+   * afterAll: disconnect the dedicated local client.
+   * This NEVER touches the shared `prisma` singleton.
+   */
+  afterAll(async () => {
+    if (_localClient) {
+      try { await _localClient.$disconnect() } catch {}
+      _localClient = null
+    }
+  }, 20000)
 }

@@ -23,6 +23,26 @@ Key files:
 - Gap analysis:         PreLaunch_Gap_Analysis_v2.md
 - Post-launch backlog:  post_launch_backlog.md (do not implement during sprint)
 - Validation checklist: validation_checklist.md
+- Engineering practices: docs/ENGINEERING_PRACTICES.md  ← READ BEFORE WRITING ANY CODE
+
+---
+
+## ENGINEERING PRACTICES (MANDATORY)
+
+Before writing or modifying any code, read and internalize:
+  docs/ENGINEERING_PRACTICES.md
+
+This document defines:
+- Standard code-writing practices (TypeScript strictness, async patterns, module imports)
+- Prisma schema conventions (additive-only, query discipline, enum import rules)
+- Error handling and try/catch guidance (tight catch scope, typed errors, no silent swallows)
+- Variable, function, and file organisation rules
+- Naming conventions (quick-reference table included)
+- Comments in code (when required, JSDoc for public APIs, no restating-what-code-does)
+- Code review checklist (author pre-review + reviewer checklist + blocking vs non-blocking)
+- Production readiness gates (lint, type-check, unit tests, integration tests, coverage thresholds, CI gate sequence)
+
+Violations of practices in that document are code-review blockers.
 
 ---
 

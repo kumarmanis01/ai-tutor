@@ -1,11 +1,12 @@
 import { Queue } from "bullmq";
+import { getSharedConnection } from "../../lib/redis.js";
 
 let _contentQueue: Queue | null = null;
 
 export function getContentQueue() {
   if (_contentQueue) return _contentQueue
   _contentQueue = new Queue('content-queue', {
-    connection: { url: process.env.REDIS_URL! },
+    connection: getSharedConnection(),
   })
   return _contentQueue
 }

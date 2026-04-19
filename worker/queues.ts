@@ -1,4 +1,5 @@
 import { Queue } from "bullmq";
+import { getSharedConnection } from "../lib/redis.js";
 
 export const CONTENT_QUEUE = "content-engine";
 
@@ -6,8 +7,9 @@ export const CONTENT_QUEUE = "content-engine";
  * Create and return a Queue configured for content processing.
  *
  * IMPORTANT:
- * BullMQ expects *connection options*, NOT an ioredis instance.
- * Never pass a Redis client here.
+ * Pass the shared IORedis instance (not ConnectionOptions) so BullMQ reuses
+ * the existing connection rather than opening a new one per Queue.
+ * Workers must keep using ConnectionOptions — they need dedicated blocking connections.
  */
 export function createContentQueue() {
   if (!process.env.REDIS_URL) {
@@ -15,9 +17,7 @@ export function createContentQueue() {
   }
 
   return new Queue(CONTENT_QUEUE, {
-    connection: {
-      url: process.env.REDIS_URL,
-    },
+    connection: getSharedConnection(),
     defaultJobOptions: {
       attempts: 3,
       backoff: {

@@ -1,5 +1,5 @@
 import { Queue } from 'bullmq'
-import { redisConnection } from '@/lib/redis'
+import { getSharedConnection } from '@/lib/redis'
 import { logger } from '@/lib/logger'
 
 export const SM18_SCHEDULER_QUEUE_NAME = 'sm18-scheduler'
@@ -11,7 +11,7 @@ let sm18Queue: Queue | null = null
 export function getSM18Queue(): Queue {
   if (!sm18Queue) {
     sm18Queue = new Queue(SM18_SCHEDULER_QUEUE_NAME, {
-      connection: redisConnection,
+      connection: getSharedConnection(),
       defaultJobOptions: {
         attempts: 3,
         backoff: {

@@ -17,13 +17,13 @@ import ChapterTests from '@/components/Test/ChapterTests';
 
 describe('ChapterTrend (ChapterTests integration)', () => {
   beforeEach(() => {
-    // @ts-ignore
+    // @ts-expect-error TODO: fix types
     global.fetch = jest.fn();
   });
 
   it('fetches and shows per-chapter trend when Trend is toggled', async () => {
     // Mock the trend API response
-    // @ts-ignore
+    // @ts-expect-error TODO: fix types
     global.fetch.mockResolvedValueOnce({ ok: true, json: async () => ({ data: [{ date: '2026-04-01T00:00:00Z', score: 80 }] }) });
 
     render(
@@ -43,7 +43,7 @@ describe('ChapterTrend (ChapterTests integration)', () => {
     await waitFor(() => expect(screen.getByText('80%')).toBeInTheDocument());
 
     // Ensure fetch was called to the trend endpoint
-    // @ts-ignore
+    // @ts-expect-error TODO: fix types
     expect(global.fetch).toHaveBeenCalled();
   });
 });

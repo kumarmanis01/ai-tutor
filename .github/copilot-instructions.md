@@ -13,9 +13,29 @@ COPILOT INSTRUCTIONS FOLLOWED:
 EDIT LOG:
 - 2026-01-02T00:00:00Z | git-user | reorganized doc for clarity
 - 2026-04-08T00:00:00Z | copilot | add ESLint & style guardrails to reduce repeated lint violations
+- 2026-04-18T00:00:00Z | copilot | add reference to ENGINEERING_PRACTICES.md as primary code-quality source of truth
 -->
 
 # HARD GUARDRAILS — Copilot Instructions (Summary)
+
+## Engineering Practices — Source of Truth
+
+Before generating or modifying ANY code, read:
+  `/docs/ENGINEERING_PRACTICES.md`
+
+This document is the canonical source of truth for:
+- TypeScript strictness, async patterns, module import rules
+- Prisma schema conventions (additive-only, query discipline, enum imports)
+- Try/catch guidance (tight scope, typed errors, no silent swallows)
+- Variable, function & file organisation
+- Naming conventions (full quick-reference table)
+- When and how to write comments (why not what; JSDoc for public APIs)
+- Code review checklist with blocking vs non-blocking categories
+- Production readiness gates: lint, type-check, unit tests, integration tests, coverage thresholds, smart-quote check, build verification, CI gate sequence
+
+All rules in that document are **code-review blockers when violated**.
+
+---
 
 Copilot MUST obey these rules when generating or modifying code related to the AI Content Engine.
 
