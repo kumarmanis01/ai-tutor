@@ -7,6 +7,7 @@
  *
  * EDIT LOG:
  * - 2026-04-15T00:00:00Z | copilot | moved helpers from lib/subscription.ts
+ * - 2026-04-15T12:00:00Z | copilot | replace anonymous default export with named const
  */
 
 import { prisma } from '@/lib/prisma'
@@ -68,4 +69,6 @@ export async function getTodaysQuestionCount(userId: string): Promise<number> {
   return count
 }
 
-export default { isPremiumUser, getTodaysQuestionCount }
+const SubscriptionHelpers = { isPremiumUser, getTodaysQuestionCount }
+
+export default SubscriptionHelpers

@@ -17,6 +17,7 @@
  * EDIT LOG:
  * - 2026-04-18T00:00:00Z | copilot | add required header sections for CI documentation enforcement
  * - 2026-04-15T00:00:00Z | staff-engineer | created for Sprint A C1 test plan gating
+ * - 2026-04-15T12:00:00Z | copilot | rename unused param to _req to satisfy lint
  */
 
 import { NextResponse } from 'next/server'
@@ -27,7 +28,7 @@ import { logger } from '@/lib/logger'
 
 const EmailSchema = z.object({ email: z.string().email() })
 
-async function requireAdmin(req: Request): Promise<{ userId: string } | NextResponse> {
+async function requireAdmin(_req: Request): Promise<{ userId: string } | NextResponse> {
   const session = await getServerSessionForHandlers()
   const userId = (session?.user as { id?: string })?.id
   const role = (session?.user as { role?: string })?.role
