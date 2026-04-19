@@ -30,6 +30,7 @@ import { runDailyCostReport } from './services/costReportingWorker.js'
 import { runDataDeletionCycle } from './services/dataDeletionWorker.js';
 import { processReadinessDropAlerts } from './services/readinessDropWorker.js';
 import { runMonthlyMisconceptionPrevalence } from './services/misconceptionPrevalenceWorker.js';
+import { processDoubtEscalationNotifications } from './services/doubtEscalationNotifier.js';
 import { weeklyPlanAdjust } from './jobs/weeklyPlanAdjust.js';
 import { sendFreemiumResetNotifications } from './jobs/freemiumResetNotifications.js';
 import { runWeeklyRatingAggregation } from './jobs/weeklyRatingAggregation.js';
@@ -364,6 +365,14 @@ async function runDailyMaintenanceJob() {
       await processReadinessDropAlerts();
     } catch (e) {
       logger.error('scheduler.readinessDrop.failed', { err: e instanceof Error ? e.message : String(e) });
+    }
+
+    // ── Notify students for resolved escalations that haven't been notified yet
+    try {
+      const processed = await processDoubtEscalationNotifications();
+      logger.info('scheduler.doubtEscalationNotifier.completed', { processed });
+    } catch (e) {
+      logger.error('scheduler.doubtEscalationNotifier.error', { err: e instanceof Error ? e.message : String(e) });
     }
 
     // ── Push: exam countdown reminders ──────────────────────────────────

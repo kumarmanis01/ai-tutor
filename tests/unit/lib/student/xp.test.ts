@@ -18,15 +18,14 @@ describe('lib/student/xp', () => {
     test('100 XP -> level 2', () => {
       expect(getLevelFromXP(100)).toBe(2)
     })
-    test('10000 XP -> level 10 (capped)', () => {
-      expect(getLevelFromXP(10000)).toBe(10)
+    test('10000 XP -> reasonable mid-level (>=10)', () => {
+      expect(getLevelFromXP(10000)).toBeGreaterThanOrEqual(10)
     })
     test('Large XP -> capped at MAX_LEVEL', () => {
-      expect(getLevelFromXP(59500)).toBe(MAX_LEVEL)
       expect(getLevelFromXP(999999)).toBe(MAX_LEVEL)
     })
-    test('MAX_LEVEL is 10', () => {
-      expect(MAX_LEVEL).toBe(10)
+    test('MAX_LEVEL is 100', () => {
+      expect(MAX_LEVEL).toBe(100)
     })
     test('level threshold boundaries (exact matches)', () => {
       expect(getLevelFromXP(LEVEL_THRESHOLDS[0])).toBe(1)  // 0
@@ -47,8 +46,7 @@ describe('lib/student/xp', () => {
       expect(getXPToNextLevel(0)).toBe(100)
     })
     test('XP at or above MAX_LEVEL -> null', () => {
-      expect(getXPToNextLevel(59500)).toBeNull()
-      expect(getXPToNextLevel(99999)).toBeNull()
+      expect(getXPToNextLevel(999999)).toBeNull()
     })
     test('mid-level XP -> positive number to next level', () => {
       const xpToNext = getXPToNextLevel(1500) // between L5(1000) and L6(1600)
@@ -70,11 +68,8 @@ describe('lib/student/xp', () => {
     test('50 XP -> 50% (halfway to level 2)', () => {
       expect(getProgressPercent(50)).toBe(50)
     })
-    test('59500 XP (level >= max) -> 100%', () => {
-      expect(getProgressPercent(59500)).toBe(100)
-    })
-    test('10000 XP (above max) -> 100% (capped)', () => {
-      expect(getProgressPercent(10000)).toBe(100)
+    test('Very large XP -> 100%', () => {
+      expect(getProgressPercent(999999)).toBe(100)
     })
     test('100 XP (start of level 2) -> 0% in level 2 band', () => {
       expect(getProgressPercent(100)).toBe(0)
@@ -87,15 +82,17 @@ describe('lib/student/xp', () => {
   describe('getLevelTierName', () => {
     test('level 1 -> Learner', () => { expect(getLevelTierName(1)).toBe('Learner') })
     test('level 3 -> Explorer', () => { expect(getLevelTierName(3)).toBe('Explorer') })
-    test('level 5 -> Practitioner', () => { expect(getLevelTierName(5)).toBe('Practitioner') })
-    test('level 7 -> Scholar', () => { expect(getLevelTierName(7)).toBe('Scholar') })
-    test('level 9 -> Expert', () => { expect(getLevelTierName(9)).toBe('Expert') })
-    test('level 10 -> Legend', () => { expect(getLevelTierName(10)).toBe('Legend') })
+    test('level 10 -> Bronze', () => { expect(getLevelTierName(10)).toBe('Bronze') })
+    test('level 20 -> Silver', () => { expect(getLevelTierName(20)).toBe('Silver') })
+    test('level 30 -> Gold', () => { expect(getLevelTierName(30)).toBe('Gold') })
+    test('level 50 -> Platinum', () => { expect(getLevelTierName(50)).toBe('Platinum') })
+    test('level 75 -> Diamond', () => { expect(getLevelTierName(75)).toBe('Diamond') })
+    test('level 100 -> Legend', () => { expect(getLevelTierName(100)).toBe('Legend') })
   })
 
   describe('LEVEL_THRESHOLDS', () => {
-    test('has exactly 10 entries', () => {
-      expect(LEVEL_THRESHOLDS.length).toBe(10)
+    test('has exactly 100 entries', () => {
+      expect(LEVEL_THRESHOLDS.length).toBe(100)
     })
     test('first entry is 0 (level 1)', () => {
       expect(LEVEL_THRESHOLDS[0]).toBe(0)

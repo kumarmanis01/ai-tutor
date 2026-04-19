@@ -136,7 +136,7 @@ export default function AiNarrativeWidget() {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ event: 'export_progress_pdf', data: { success: true, fileSize: (blob && (blob as any).size) ?? null } }),
               }).catch(() => {})
-                } catch (err) {
+            } catch (err) {
               logger.error('Could not generate PDF (client)', { error: String(err) })
               toast('Could not generate PDF. Please try again later.')
               void fetch('/api/analytics/track', {

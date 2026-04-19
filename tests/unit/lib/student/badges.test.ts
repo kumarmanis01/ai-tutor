@@ -55,7 +55,7 @@ import { BADGE_DEFINITIONS } from '@/lib/student/badges'
 // checkSessionBadges() is DB-dependent and covered by integration tests.
 
 describe('BADGE_DEFINITIONS', () => {
-  test('should contain all 8 required badge types', () => {
+  test('should contain all required badge types', () => {
     const keys = BADGE_DEFINITIONS.map((b) => b.key)
     expect(keys).toContain('streak_7')
     expect(keys).toContain('streak_14')
@@ -65,6 +65,8 @@ describe('BADGE_DEFINITIONS', () => {
     expect(keys).toContain('consistency')
     expect(keys).toContain('comeback')
     expect(keys).toContain('chapter_master')
+    expect(keys).toContain('mock_complete')
+    expect(keys).toContain('speedster')
   })
 
   test('every badge has non-empty key, name, description, and icon', () => {

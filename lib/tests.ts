@@ -358,8 +358,8 @@ export async function generateQuestionsAI(filters: QuestionFilters, count: numbe
  * Hook to select or generate questions ensuring minimum count.
  * Attempts bank first; falls back to AI generation.
  */
-export async function ensureQuestions(filters: QuestionFilters, count: number) {
-  const bank = await selectQuestions(filters, count);
+export async function ensureQuestions(filters: QuestionFilters, count: number, excludeIds?: Set<string>) {
+  const bank = await selectQuestions(filters, count, excludeIds);
   if (bank.length >= count) return bank.slice(0, count);
   const needed = count - bank.length;
   const aiNew = await generateQuestionsAI(filters, needed);

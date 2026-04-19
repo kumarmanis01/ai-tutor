@@ -156,6 +156,7 @@ export default async function ProgressPage({
   const allChapterIds = readinessResults.flatMap((r) => r.chapters.map((c) => c.chapterId));
 
   const chapterWeakestConceptMap = new Map<string, string>();
+  const conceptsByChapter = new Map<string, string[]>();
 
   if (allChapterIds.length > 0) {
     const concepts = await prisma.concept.findMany({
@@ -166,14 +167,17 @@ export default async function ProgressPage({
     const allConceptIds = concepts.map((c) => c.id);
     const conceptStates = await prisma.studentConceptState.findMany({
       where: { studentId: userId, conceptId: { in: allConceptIds } },
-      select: { conceptId: true, masteryScore: true },
+      select: { conceptId: true, masteryScore: true, memoryStrength: true },
     });
 
     const masteryByConceptId = new Map<string, number>(
       conceptStates.map((s) => [s.conceptId, s.masteryScore]),
     );
 
-    const conceptsByChapter = new Map<string, string[]>();
+    const memoryStrengthByConceptId = new Map<string, number>(
+      conceptStates.map((s) => [s.conceptId, (s as any).memoryStrength ?? 0]),
+    );
+
     for (const c of concepts) {
       const chId = c.topic?.chapterId;
       if (!chId) continue;
@@ -190,6 +194,10 @@ export default async function ProgressPage({
             (masteryByConceptId.get(a) ?? 0) - (masteryByConceptId.get(b) ?? 0),
         );
       chapterWeakestConceptMap.set(chapterId, sorted[0]);
+      // compute average memoryStrength for the chapter
+      const msVals = conceptIds.map((id) => memoryStrengthByConceptId.get(id) ?? 0);
+      const avgMs = msVals.length > 0 ? msVals.reduce((a, b) => a + b, 0) / msVals.length : 0;
+      // store as a temporary map on chapterWeakestConceptMap via Map of maps? We'll attach later when assembling chapters.
     }
   }
 
@@ -203,6 +211,11 @@ export default async function ProgressPage({
         masteryScore: ch.masteryScore,
         boardWeightPct: ch.boardWeightPct,
         weakestConceptId: chapterWeakestConceptMap.get(ch.chapterId) ?? null,
+        memoryStrength: (() => {
+          const cIds = (conceptsByChapter.get(ch.chapterId) ?? [] as string[])
+          const vals = cIds.map((id) => memoryStrengthByConceptId.get(id) ?? 0)
+          return vals.length > 0 ? vals.reduce((a, b) => a + b, 0) / vals.length : 0
+        })(),
       }))
       .sort((a, b) => a.masteryScore - b.masteryScore);
 

@@ -19,6 +19,7 @@ const fetcher = (url: string) => fetch(url).then((r) => r.json())
 
 type TopbarStats = {
   streak: number
+  longestStreak?: number
   level: number
   shieldAvailable: boolean
   cosmeticUnlocks: string[]
@@ -131,6 +132,7 @@ export default function StreakWidget({ onClose }: Props) {
   const error = !!statsError || !!actError
 
   const streak = stats?.streak ?? 0
+  const best = stats?.longestStreak ?? streak
   const shieldAvailable = stats?.shieldAvailable ?? false
   const unlockedKeys = new Set<string>(stats?.cosmeticUnlocks ?? [])
 
@@ -283,7 +285,7 @@ export default function StreakWidget({ onClose }: Props) {
 
       {/* Best streak */}
       <p className="text-xs text-gray-500 dark:text-gray-400 text-center">
-        Your best streak: <span className="font-semibold text-gray-700 dark:text-gray-200">{streak} days</span>
+        Your best streak: <span className="font-semibold text-gray-700 dark:text-gray-200">{best} days</span>
       </p>
 
       {/* Shield info */}

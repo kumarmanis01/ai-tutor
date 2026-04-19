@@ -85,10 +85,12 @@ export async function processReadinessDropAlerts(now = new Date()): Promise<void
       try {
         if (!plan.subjectId) continue
         const subjectId = plan.subjectId
-        // Gate: exam within EXAM_WINDOW_DAYS
+        // Gate: exam within EXAM_WINDOW_DAYS (only upcoming exams within window)
         if (!plan.examDate) continue
-        const daysToExam = Math.ceil((plan.examDate.getTime() - now.getTime()) / (24 * 60 * 60 * 1000))
-        if (daysToExam > EXAM_WINDOW_DAYS) continue
+        const msPerDay = 24 * 60 * 60 * 1000
+        const daysToExam = Math.ceil((plan.examDate.getTime() - now.getTime()) / msPerDay)
+        // Skip if exam already passed or is beyond the configured window
+        if (daysToExam < 0 || daysToExam > EXAM_WINDOW_DAYS) continue
 
         const curr = await computeReadinessScore(plan.studentId, subjectId).catch(() => null)
         if (!curr) continue
@@ -149,13 +151,16 @@ export async function processReadinessDropAlerts(now = new Date()): Promise<void
         const parent = parentById.get(parentId)
         if (!parent) continue
 
-        // Build remediation using LLM per issue (best-effort)
-        const remediationParts: string[] = []
+        // Build remediation using LLM per issue (best-effort). Produce both
+        // HTML fragments for email and a short plain-text summary for SMS/text.
+        const remediationHtmlParts: string[] = []
+        const remediationTextParts: string[] = []
         for (const it of issues) {
           try {
-            // Use schema-first prompt builder for parent remediation suggestions.
             const prompt = buildParentRemediationPrompt({ subjectName: String(it.subjectName ?? it.subjectId), prev: it.prev, curr: it.curr, daysAgo: LOOKBACK_DAYS })
-            let htmlFragment = `<p>Try 3 targeted 20-minute sessions on key topics and a short practice test.</p>`
+            const defaultText = 'Try 3 targeted 20-minute sessions on key topics and a short practice test.'
+            let htmlFragment = `<p>${escapeHtml(defaultText)}</p>`
+            let textFragment = defaultText
 
             if (process.env.ALLOW_LLM_CALLS === '1') {
               const res = await callLLM({ prompt, model: process.env.MODEL_SMALL || 'gpt-4o-mini', meta: { promptType: 'parent_readiness_remediation', subject: it.subjectName ?? it.subjectId, daysAgo: LOOKBACK_DAYS } }).catch(() => null)
@@ -167,23 +172,33 @@ export async function processReadinessDropAlerts(now = new Date()): Promise<void
                   const practiceHtml = `<p>${escapeHtml(parsed.data.practice)}</p>`
                   const ctaHtml = `<p>${escapeHtml(parsed.data.callToAction)}</p>`
                   htmlFragment = `<ul>${bulletsHtml}</ul>${practiceHtml}${ctaHtml}`
+
+                  const bulletsText = parsed.data.bullets.join('; ')
+                  textFragment = `${bulletsText}. Practice: ${parsed.data.practice}. ${parsed.data.callToAction}`
                 } else {
                   // fallback to sanitized raw string if parsing failed
                   const safe = sanitizeTextForHtml(raw)
                   htmlFragment = `<p>${safe}</p>`
+                  const cleaned = raw.replace(/```/g, '').replace(/\n+/g, ' ').trim()
+                  textFragment = cleaned || defaultText
                 }
               }
             }
 
-            remediationParts.push(`<h4>${escapeHtml(String(it.subjectName ?? it.subjectId))} (${it.delta} point drop)</h4>${htmlFragment}`)
+            remediationHtmlParts.push(`<h4>${escapeHtml(String(it.subjectName ?? it.subjectId))} (${it.delta} point drop)</h4>${htmlFragment}`)
+            remediationTextParts.push(`${it.subjectName ?? it.subjectId} (${it.delta} point drop): ${textFragment}`)
           } catch (e) {
-            remediationParts.push(`<h4>${it.subjectName ?? it.subjectId} (${it.delta} point drop)</h4><p>Try 3 targeted 20-minute sessions on key topics and a short practice test.</p>`)
+            remediationHtmlParts.push(`<h4>${it.subjectName ?? it.subjectId} (${it.delta} point drop)</h4><p>${escapeHtml('Try 3 targeted 20-minute sessions on key topics and a short practice test.')}</p>`)
+            remediationTextParts.push(`${it.subjectName ?? it.subjectId} (${it.delta} point drop): Try 3 targeted 20-minute sessions on key topics and a short practice test.`)
           }
         }
 
         const dashboardLink = `${appUrl}/parent/dashboard?child=${issues[0].studentId}`
         const subject = `Attention: readiness drop detected` 
-        const html = `<!doctype html><html><body><p>Hi ${escapeHtml(parent.name ?? '')},</p><p>We detected a drop in exam readiness for the following subject(s):</p>${remediationParts.join('')}<p>Open the dashboard to see details: <a href="${dashboardLink}">View dashboard</a></p><p>-- Team Spinzy</p></body></html>`
+        const remediationHtml = remediationHtmlParts.join('')
+        const remediationPlain = remediationTextParts.join(' | ')
+
+        const html = `<!doctype html><html><body><p>Hi ${escapeHtml(parent.name ?? '')},</p><p>We detected a drop in exam readiness for the following subject(s):</p>${remediationHtml}<p>Open the dashboard to see details: <a href="${dashboardLink}">View dashboard</a></p><p>-- Team Spinzy</p></body></html>`
 
         // Send email and SMS, but only mark rate-limit if at least one channel succeeded
         let emailSent = false
@@ -193,14 +208,18 @@ export async function processReadinessDropAlerts(now = new Date()): Promise<void
         }
         if (parent.email) {
           try {
-            await sendMailSafe({ to: parent.email, subject, html, text: subject })
+            // Provide a readable plain-text fallback that includes the remediation summary
+            const textFallback = `${subject}\n\n${remediationPlain}\n\nView dashboard: ${dashboardLink}`
+            await sendMailSafe({ to: parent.email, subject, html, text: textFallback })
             emailSent = true
           } catch (e) {
             logger.error('readinessDrop.sendMailFailed', { err: String(e), parentId })
           }
         }
         if (parent.phone) {
-          const smsText = `Alert: ${issues.length} readiness drop(s) detected for your child. Open: ${dashboardLink}`
+          // Short SMS-friendly summary with remediation snippet (trimmed)
+          const smsSnippet = remediationPlain.length > 140 ? remediationPlain.slice(0, 137) + '...' : remediationPlain
+          const smsText = `Alert: ${issues.length} readiness drop(s) detected for your child. Suggestion: ${smsSnippet} Open: ${dashboardLink}`
           try {
             await sendSms(parent.phone, smsText)
             smsSent = true

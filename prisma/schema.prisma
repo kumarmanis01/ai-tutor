@@ -21,79 +21,78 @@ datasource db {
 }
 
 model User {
-  id                          String                       @id @default(cuid())
-  name                        String?
-  email                       String?                      @unique
-  phone                       String?                      @unique
-  emailVerified               DateTime?
-  image                       String?
-  parentEmail                 String?
+  id                         String        @id @default(cuid())
+  name                       String?
+  email                      String?       @unique
+  phone                      String?       @unique
+  emailVerified              DateTime?
+  image                      String?
+  parentEmail                String?
   // Parent phone used for under-13 verification (not unique; families can share).
-  parentPhone                 String?
+  parentPhone                String?
   // Parent phone OTP verified at (under-18 gate).
-  parentPhoneVerifiedAt       DateTime?
+  parentPhoneVerifiedAt      DateTime?
   /// When true, student must complete parent verification regardless of age.
-  requiresParentVerification  Boolean                      @default(false)
+  requiresParentVerification Boolean       @default(false)
   // Self-reported age (integer). Used for under-13 / under-18 parent verification gates.
-  age                         Int?
+  age                        Int?
   // Date of birth for child profiles created by a parent (F-PAR-002 AC-01).
-  dateOfBirth                 DateTime?
+  dateOfBirth                DateTime?
   /// Parent account verified at (explicit parent user verification).
-  parentVerifiedAt            DateTime?
+  parentVerifiedAt           DateTime?
   /// High-level account status used for gating and admin actions.
-  accountStatus               AccountStatus                 @default(active)
+  accountStatus              AccountStatus @default(active)
 
-
-  role                        UserRole                     @default(user)
-  country                     String?
-  language                    LanguageCode
-  grade                       String?
-  board                       String?
-  schoolName                  String?
-  subjects                    String[]                     @default([])
-  points                      Int                          @default(0)
+  role                     UserRole                 @default(user)
+  country                  String?
+  language                 LanguageCode
+  grade                    String?
+  board                    String?
+  schoolName               String?
+  subjects                 String[]                 @default([])
+  points                   Int                      @default(0)
   // Cumulative XP for level progression (1-10).
-  totalXp                     Int                          @default(0)
+  totalXp                  Int                      @default(0)
   // Current level derived from totalXp (1-10).
-  level                       Int                          @default(1)
+  level                    Int                      @default(1)
   // Consecutive days with >=1 learning session.
-  currentStreak               Int                          @default(0)
-  longestStreak               Int                          @default(0)
+  currentStreak            Int                      @default(0)
+  longestStreak            Int                      @default(0)
   // Date of last completed session (date-only; time ignored).
-  lastSessionDate             DateTime?
-  welcomeEmailSent            Boolean                      @default(false)
-  passwordHash                String?
-  todaysFreeQuestionsCount    Int                          @default(3)
-  subscriptionStatus          String                       @default("free")
-  subscriptionExpiry          DateTime?
-  status                      String?
-  createdAt                   DateTime                     @default(now())
-  accounts                    Account[]
-  apiUsages                   ApiUsage[]
-  approvalAudits              ApprovalAudit[]
-  adminActions                AuditLog[]                   @relation("AdminActions")
-  bookmarks                   Bookmark[]
-  challengeParticipations     ChallengeParticipation[]
-  chats                       Chat[]
-  chatHistories               ChatHistory[]
-  contentRecommendations      ContentRecommendation[]
-  conversations               Conversation[]
-  events                      Event[]
-  learningSessions            LearningSession[]
-  notes                       Note[]
-  noteDownloads               NoteDownload[]
-  parentRelations             ParentStudent[]              @relation("ParentRelations")
-  studentRelations            ParentStudent[]              @relation("StudentRelations")
-  payments                    Payment[]
-  invoices                    Invoice[]
-  phoneOtps                   PhoneOtp[]
+  lastSessionDate          DateTime?
+  welcomeEmailSent         Boolean                  @default(false)
+  passwordHash             String?
+  todaysFreeQuestionsCount Int                      @default(3)
+  subscriptionStatus       String                   @default("free")
+  subscriptionExpiry       DateTime?
+  status                   String?
+  createdAt                DateTime                 @default(now())
+  accounts                 Account[]
+  apiUsages                ApiUsage[]
+  approvalAudits           ApprovalAudit[]
+  adminActions             AuditLog[]               @relation("AdminActions")
+  bookmarks                Bookmark[]
+  challengeParticipations  ChallengeParticipation[]
+  chats                    Chat[]
+  chatHistories            ChatHistory[]
+  contentRecommendations   ContentRecommendation[]
+  conversations            Conversation[]
+  events                   Event[]
+  learningSessions         LearningSession[]
+  notes                    Note[]
+  noteDownloads            NoteDownload[]
+  parentRelations          ParentStudent[]          @relation("ParentRelations")
+  studentRelations         ParentStudent[]          @relation("StudentRelations")
+  payments                 Payment[]
+  invoices                 Invoice[]
+  phoneOtps                PhoneOtp[]
   // Stored payment customers and methods for this user
-  paymentCustomers            PaymentCustomer[]
-  paymentMethods              PaymentMethod[]
-  
-  
+  paymentCustomers         PaymentCustomer[]
+  paymentMethods           PaymentMethod[]
+
   referralsCreated            Referral[]                   @relation("ReferralCreator")
   redeemedReferrals           Referral[]                   @relation("ReferralRedeemer")
+  referralRewards             ReferralReward[]
   Room                        Room[]
   sessions                    Session[]
   studentLearningProfile      StudentLearningProfile?
@@ -101,6 +100,7 @@ model User {
   studentStreaks              StudentStreak[]
   studentTopicMastery         StudentTopicMastery[]
   studentTopicProgress        StudentTopicProgress[]
+  studentConceptStates        StudentConceptState[]
   structuredSessions          StructuredSession[]
   homeworkAssignments         HomeworkAssignment[]
   sessionArtifacts            SessionArtifact[]
@@ -116,22 +116,25 @@ model User {
   parentInvitesConsumed       ParentInvite[]               @relation("ParentInvite_consumedByParent")
   /// IANA timezone for daily habit (e.g. Asia/Kolkata). Null => UTC.
   timezone                    String?
+  /// Per-user UI & accessibility preferences (fontSize, crunchMode overrides, etc.)
+  preferences                 Json?
   studentEngagementStats      StudentEngagementStats?
   engagementProcessedSessions EngagementProcessedSession[]
   studentFeatureFlags         StudentFeatureFlag[]         @relation("StudentFeatureFlags")
   studentXpRecords            StudentXP[]
   userBadges                  UserBadge[]
-  mockExamAttempts            MockExamAttempt[]  /// F-STU-021: back-relation
+  mockExamAttempts            MockExamAttempt[] /// F-STU-021: back-relation
   learningPlans               LearningPlan[]
   /// AC-06 (F-STU-030): keys of unlocked cosmetic items (avatar frames, profile themes).
   /// Populated by unlockCosmeticsForStreak() when streak milestones are reached.
-  cosmeticUnlocks             String[]           @default([])
+  cosmeticUnlocks             String[]                     @default([])
   /// AC-06 (F-STU-004): self-reported learning style ('visual' | 'verbal' | 'practice' | 'mixed').
   /// Used by Vidya to adapt explanations. Collected during onboarding profile setup.
   learningStyle               LearningStyle?
   consents                    Consent[]
   parentProfile               ParentProfile?
   doubtEscalations            DoubtEscalation[]
+  couponRedemptions           CouponRedemption[]
   sessionQuestionFlags        SessionQuestionFlag[]
   pushSubscriptions           PushSubscriptionRecord[]
   deletionRequest             DeletionRequest?
@@ -140,12 +143,12 @@ model User {
 }
 
 model PaymentOrder {
-  id              String    @id @default(cuid())
-  studentId       String
-  razorpayOrderId String    @unique
-  amount          Int
-  currency        String    @default("INR")
-  status          String    @default("created")
+  id                     String    @id @default(cuid())
+  studentId              String
+  razorpayOrderId        String    @unique
+  amount                 Int
+  currency               String    @default("INR")
+  status                 String    @default("created")
   providerIdempotencyKey String?
   planMonths      Int       @default(1)
   /// PlanId from lib/billing/plans.ts (e.g. 'standard_monthly'). Null for legacy orders created before Sprint A.
@@ -421,21 +424,21 @@ model RegenerationOutput {
 }
 
 model Subscription {
-  id           String   @id @default(cuid())
-  userId       String
-  plan         String /// individual, family
-  billingCycle String /// monthly, annual
-  startDate    DateTime
-  endDate      DateTime
+  id                     String    @id @default(cuid())
+  userId                 String
+  plan                   String /// individual, family
+  billingCycle           String /// monthly, annual
+  startDate              DateTime
+  endDate                DateTime
   /// Credit balance in paise to apply on future invoices (prorated refunds/store credit)
-  creditBalance Int      @default(0)
-  active       Boolean  @default(false)
-  childSlots   Int      @default(1) /// number of child accounts included
+  creditBalance          Int       @default(0)
+  active                 Boolean   @default(false)
+  childSlots             Int       @default(1) /// number of child accounts included
   /// JSON meta for subscription: { childIds: string[] } etc.
-  meta         Json?
+  meta                   Json?
   /// Dunning state: number of retry attempts performed (0..3)
-  dunningAttempts Int    @default(0)
-  lastDunningAt    DateTime?
+  dunningAttempts        Int       @default(0)
+  lastDunningAt          DateTime?
   /// If set, subscription remains active until this timestamp while parent is in grace period
   graceUntil       DateTime?
   createdAt    DateTime @default(now())
@@ -446,7 +449,8 @@ model Subscription {
   user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   // Installments linked to this subscription (one-to-many)
-  installments  Installment[]
+  installments      Installment[]
+  couponRedemptions CouponRedemption[]
 
   @@index([userId])
   @@index([razorpaySubscriptionId])
@@ -463,54 +467,54 @@ model TestPlanAccess {
 }
 
 model Installment {
-  id                  String            @id @default(cuid())
-  subscriptionId      String
-  subscription        Subscription      @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
-  number              Int               // installment index (1..n)
-  dueAt               DateTime
-  amount              Int               // amount in paise
-  currency            String            @default("INR")
-  status              InstallmentStatus @default(PENDING)
-  provider            String?           // e.g. 'razorpay'
-  providerPaymentId   String?           // provider payment/transaction id when paid
-  paymentId           String?           // local Payment.id when reconciled
-  attemptCount        Int               @default(0)
-  lastAttemptAt       DateTime?
-  paidAt              DateTime?
-  meta                Json?
-  createdAt           DateTime          @default(now())
-  updatedAt           DateTime          @updatedAt
+  id                String            @id @default(cuid())
+  subscriptionId    String
+  subscription      Subscription      @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+  number            Int // installment index (1..n)
+  dueAt             DateTime
+  amount            Int // amount in paise
+  currency          String            @default("INR")
+  status            InstallmentStatus @default(PENDING)
+  provider          String? // e.g. 'razorpay'
+  providerPaymentId String? // provider payment/transaction id when paid
+  paymentId         String? // local Payment.id when reconciled
+  attemptCount      Int               @default(0)
+  lastAttemptAt     DateTime?
+  paidAt            DateTime?
+  meta              Json?
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
 
-  payment             Payment?          @relation(fields: [paymentId], references: [id], onDelete: SetNull)
+  payment Payment? @relation(fields: [paymentId], references: [id], onDelete: SetNull)
 
+  @@unique([subscriptionId, number])
   @@index([subscriptionId])
   @@index([dueAt])
-  @@unique([subscriptionId, number])
 }
 
 /// Parent-defined controls per child: screen time, subject toggles, focus mode
 model ParentChildControl {
-  id                String   @id @default(cuid())
-  parentId          String
-  studentId         String
-  dailyTimeLimitMin Int? /// null = unlimited
-  allowedSubjects   String[] @default([]) /// empty = all subjects allowed
-  focusMode         String   @default("balanced") /// balanced, exam_prep, concept_focus
-  studyHoursStart   String? /// e.g. "09:00" (24h format)
-  studyHoursEnd     String? /// e.g. "21:00"
+  id                 String    @id @default(cuid())
+  parentId           String
+  studentId          String
+  dailyTimeLimitMin  Int? /// null = unlimited
+  allowedSubjects    String[]  @default([]) /// empty = all subjects allowed
+  focusMode          String    @default("balanced") /// balanced, exam_prep, concept_focus
+  studyHoursStart    String? /// e.g. "09:00" (24h format)
+  studyHoursEnd      String? /// e.g. "21:00"
   /// Pause controls set by parent: when true, sessions during pause do not count
   /// against free-tier limits. `pausedUntil` is optional — null => paused indefinitely.
-  isPaused          Boolean  @default(false)
-  pausedUntil       DateTime?
-  pauseReason       String?
+  isPaused           Boolean   @default(false)
+  pausedUntil        DateTime?
+  pauseReason        String?
   // Weekly study hours target set by parent for this child (F-PAR-002 AC-02).
   weeklyHoursTarget  Int?
   // Preferred study schedule slot: "morning" | "afternoon" | "evening" (F-PAR-002 AC-02).
   schedulePreference String?
   // Topic-focus preference submitted by parent for AI to consider on next plan adjustment (F-PAR-002 AC-03).
   topicFocusRequest  String?
-  createdAt          DateTime @default(now())
-  updatedAt         DateTime @updatedAt
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
 
   @@unique([parentId, studentId])
   @@index([studentId])
@@ -561,98 +565,101 @@ model Room {
 }
 
 model Message {
-  id        String   @id @default(cuid())
-  roomId    String
-  senderId  String?
-  sender    String?
-  role      String
-  type      String?
-  content   String
-  createdAt DateTime @default(now())
-  aiMeta    Json?
-  room      Room     @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  id           String   @id @default(cuid())
+  roomId       String
+  senderId     String?
+  sender       String?
+  role         String
+  type         String?
+  content      String
+  createdAt    DateTime @default(now())
+  aiMeta       Json?
+  /// anomalyFlags: JSONB object with detection/anomaly metadata for QA/analytics.
+  /// Example: [{ type: 'copy_paste', flagged: true, score: 0.97, reason: 'exact_match', matchedChunkId: 'chunk-1', detector: 'copyPaste_v1', detectedAt: '...' }]
+  anomalyFlags Json?
+  room         Room     @relation(fields: [roomId], references: [id], onDelete: Cascade)
 
   @@index([roomId])
 }
 
 model Payment {
-  id            String   @id @default(cuid())
-  userId        String
-  amount        Int
-  provider      String
+  id                     String         @id @default(cuid())
+  userId                 String
+  amount                 Int
+  provider               String
   providerIdempotencyKey String?
-  status        String
-  createdAt     DateTime @default(now())
-  transactionId String?
-  orderId       String?
-  plan          String?
-  billingCycle  String?
-  meta          Json?
-  user          User     @relation(fields: [userId], references: [id])
-  invoice       Invoice?
+  status                 String
+  createdAt              DateTime       @default(now())
+  transactionId          String?
+  orderId                String?
+  plan                   String?
+  billingCycle           String?
+  meta                   Json?
+  user                   User           @relation(fields: [userId], references: [id])
+  invoice                Invoice?
   // Link back to installments paid by this payment
-  installments  Installment[]
+  installments           Installment[]
   // Payment events/audit traces
-  events        PaymentEvent[]
+  events                 PaymentEvent[]
+
   @@unique([provider, providerIdempotencyKey], map: "uniq_payment_provider_idempotency")
 }
 
 /// PaymentEvent: immutable audit/events for payment lifecycle and gateway/webhook traces.
 model PaymentEvent {
-  id                       String   @id @default(cuid())
-  paymentId                String?  // optional link to Payment
-  userId                   String?
-  provider                 String   // e.g. 'razorpay' | 'credit' | 'stripe'
-  providerIdempotencyKey   String?
-  transactionId            String?
-  orderId                  String?
-  eventType                String   // e.g. 'order.created','charge.attempt','charge.succeeded','webhook.received'
-  payload                  Json?
-  amount                   Int?
-  status                   String?
-  createdAt                DateTime @default(now())
+  id                     String   @id @default(cuid())
+  paymentId              String? // optional link to Payment
+  userId                 String?
+  provider               String // e.g. 'razorpay' | 'credit' | 'stripe'
+  providerIdempotencyKey String?
+  transactionId          String?
+  orderId                String?
+  eventType              String // e.g. 'order.created','charge.attempt','charge.succeeded','webhook.received'
+  payload                Json?
+  amount                 Int?
+  status                 String?
+  createdAt              DateTime @default(now())
 
-  payment  Payment? @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+  payment Payment? @relation(fields: [paymentId], references: [id], onDelete: Cascade)
 
   @@index([provider, providerIdempotencyKey])
   @@index([paymentId])
   @@index([userId])
 }
 
-
 model PaymentCustomer {
-  id                   String   @id @default(cuid())
-  userId               String
-  provider             String   // e.g. 'razorpay'
-  providerCustomerId   String?  @unique
-  meta                 Json?
-  createdAt            DateTime @default(now())
-  updatedAt            DateTime @updatedAt
-  paymentMethods       PaymentMethod[] @relation("CustomerPaymentMethods")
-  user                 User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id                 String          @id @default(cuid())
+  userId             String
+  provider           String // e.g. 'razorpay'
+  providerCustomerId String?         @unique
+  meta               Json?
+  createdAt          DateTime        @default(now())
+  updatedAt          DateTime        @updatedAt
+  paymentMethods     PaymentMethod[] @relation("CustomerPaymentMethods")
+  user               User            @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([provider])
 }
 
 model PaymentMethod {
-  id                       String   @id @default(cuid())
-  userId                   String
-  customerId               String?
-  provider                 String
-  providerPaymentMethodId  String?  @unique
-  type                     String   // 'card' | 'upi' | 'netbanking'
-  last4                    String?
-  cardBrand                String?
-  expiryMonth              Int?
-  expiryYear               Int?
-  isDefault                Boolean  @default(false)
-  verified                 Boolean  @default(false)
-  meta                     Json?
-  createdAt                DateTime @default(now())
-  updatedAt                DateTime @updatedAt
+  id                      String   @id @default(cuid())
+  userId                  String
+  customerId              String?
+  provider                String
+  providerPaymentMethodId String?  @unique
+  type                    String // 'card' | 'upi' | 'netbanking'
+  last4                   String?
+  cardBrand               String?
+  expiryMonth             Int?
+  expiryYear              Int?
+  isDefault               Boolean  @default(false)
+  verified                Boolean  @default(false)
+  meta                    Json?
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
 
-  user     User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user     User             @relation(fields: [userId], references: [id], onDelete: Cascade)
   customer PaymentCustomer? @relation("CustomerPaymentMethods", fields: [customerId], references: [id], onDelete: SetNull)
 
   @@index([userId])
@@ -673,7 +680,7 @@ model Invoice {
   id            String   @id @default(cuid())
   invoiceNumber Int      @unique
   userId        String
-  paymentId     String?   @unique
+  paymentId     String?  @unique
   studentId     String?
   amount        Int
   currency      String   @default("INR")
@@ -683,10 +690,75 @@ model Invoice {
   fileUrl       String?
   createdAt     DateTime @default(now())
 
-  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   payment Payment? @relation(fields: [paymentId], references: [id], onDelete: SetNull)
 
   @@index([userId])
+}
+
+/// Coupon / Promotion system for billing adjustments and discounts
+enum CouponType {
+  PERCENT
+  FIXED
+}
+
+enum CouponScope {
+  GLOBAL
+  STUDENT
+  BATCH
+}
+
+enum RecurrenceType {
+  ONE_TIME
+  RECURRING
+}
+
+model Coupon {
+  id             String         @id @default(cuid())
+  code           String         @unique
+  description    String?
+  type           CouponType
+  /// For FIXED: amount in paise. For PERCENT: percent as integer (e.g. 20 => 20%).
+  amount         Int
+  currency       String         @default("INR")
+  recurrence     RecurrenceType @default(ONE_TIME)
+  scope          CouponScope    @default(GLOBAL)
+  studentId      String?
+  batchId        String?
+  maxUses        Int?
+  uses           Int            @default(0)
+  maxUsesPerUser Int?
+  validFrom      DateTime?
+  validUntil     DateTime?
+  active         Boolean        @default(true)
+  createdBy      String?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  metadata       Json?
+
+  redemptions CouponRedemption[]
+
+  @@index([code])
+  @@index([studentId])
+}
+
+model CouponRedemption {
+  id             String   @id @default(cuid())
+  couponId       String
+  userId         String?
+  subscriptionId String?
+  amountApplied  Int?
+  percentApplied Int?
+  metadata       Json?
+  createdAt      DateTime @default(now())
+
+  coupon       Coupon        @relation(fields: [couponId], references: [id], onDelete: Cascade)
+  user         User?         @relation(fields: [userId], references: [id], onDelete: SetNull)
+  subscription Subscription? @relation(fields: [subscriptionId], references: [id], onDelete: SetNull)
+
+  @@index([couponId])
+  @@index([userId])
+  @@index([subscriptionId])
 }
 
 model AuditLog {
@@ -719,6 +791,44 @@ model AdminConfig {
   updatedAt DateTime @updatedAt
 }
 
+/// Marketing spend entries recorded by admins for CAC calculations.
+/// Amounts are stored in paise (integer) to avoid floating point drift.
+model MarketingSpend {
+  id          String   @id @default(cuid())
+  periodStart DateTime
+  periodEnd   DateTime
+  channel     String?
+  amount      Int // paise
+  currency    String   @default("INR")
+  notes       String?
+  createdBy   String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([periodStart])
+  @@index([periodEnd])
+}
+
+/// Monthly snapshots of LTV/CAC metrics for trend analysis.
+model LtvSnapshot {
+  id                    String    @id @default(cuid())
+  snapshotAt            DateTime  @default(now())
+  windowStart           DateTime?
+  windowEnd             DateTime?
+  mrr_paise             Int       @default(0)
+  active_subscriptions  Int       @default(0)
+  arpu_paise            Int       @default(0)
+  ltv_paise             Int       @default(0)
+  marketing_spend_paise Int       @default(0)
+  new_customers         Int       @default(0)
+  cac_paise             Int?
+  ltv_cac_ratio         Float?
+  createdBy             String?
+  createdAt             DateTime  @default(now())
+
+  @@index([snapshotAt])
+}
+
 model ApiUsage {
   id       String   @id @default(cuid())
   userId   String?
@@ -733,15 +843,34 @@ model ApiUsage {
 }
 
 model Referral {
-  id         String    @id @default(cuid())
-  code       String    @unique
+  id         String           @id @default(cuid())
+  code       String           @unique
   createdBy  String
   redeemedBy String?
   redeemedAt DateTime?
-  createdAt  DateTime  @default(now())
+  createdAt  DateTime         @default(now())
   metadata   Json?
-  creator    User      @relation("ReferralCreator", fields: [createdBy], references: [id])
-  redeemer   User?     @relation("ReferralRedeemer", fields: [redeemedBy], references: [id])
+  creator    User             @relation("ReferralCreator", fields: [createdBy], references: [id])
+  redeemer   User?            @relation("ReferralRedeemer", fields: [redeemedBy], references: [id])
+  rewards    ReferralReward[]
+}
+
+/// Rewards issued to referrers when a referred friend converts to paid.
+model ReferralReward {
+  id         String    @id @default(cuid())
+  referralId String?
+  userId     String
+  amount     Int // amount in paise
+  status     String    @default("PENDING") // PENDING | APPLIED | VOIDED
+  appliedAt  DateTime?
+  metadata   Json?
+  createdAt  DateTime  @default(now())
+
+  referral Referral? @relation(fields: [referralId], references: [id])
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([status])
 }
 
 model CoursePackage {
@@ -849,25 +978,25 @@ model QuestionFlag {
 }
 
 model ParentStudent {
-  id         String           @id @default(cuid())
-  parentId   String
-  studentId  String
-  status     ParentLinkStatus @default(active)
-  inviteCode String?          @unique
+  id                      String           @id @default(cuid())
+  parentId                String
+  studentId               String
+  status                  ParentLinkStatus @default(active)
+  inviteCode              String?          @unique
   /// Pause controls set by parent: when true, sessions during pause do not count
   /// against free-tier limits. `pausedUntil` is optional — null => paused indefinitely.
-  isPaused    Boolean  @default(false)
+  isPaused                Boolean          @default(false)
   /// When true, this student will be excluded from parent-facing reports/digests
   /// (used for privacy / opt-out per child). Defaults to false.
-  excludeFromParentReport Boolean @default(false)
+  excludeFromParentReport Boolean          @default(false)
   /// Per-child opt-out for inactivity alerts (parent can mute inactivity alerts for this child)
-  inactivityOptOut Boolean @default(false)
-  pausedUntil DateTime?
-  pauseReason String?
-  createdAt  DateTime         @default(now())
-  updatedAt  DateTime         @updatedAt
-  parent     User             @relation("ParentRelations", fields: [parentId], references: [id], onDelete: Cascade)
-  student    User             @relation("StudentRelations", fields: [studentId], references: [id], onDelete: Cascade)
+  inactivityOptOut        Boolean          @default(false)
+  pausedUntil             DateTime?
+  pauseReason             String?
+  createdAt               DateTime         @default(now())
+  updatedAt               DateTime         @updatedAt
+  parent                  User             @relation("ParentRelations", fields: [parentId], references: [id], onDelete: Cascade)
+  student                 User             @relation("StudentRelations", fields: [studentId], references: [id], onDelete: Cascade)
 
   @@unique([parentId, studentId])
   @@index([studentId])
@@ -1146,8 +1275,8 @@ model SessionArtifact {
   uploadedBy String?
   createdAt  DateTime @default(now())
 
-  student    User?            @relation(fields: [studentId], references: [id], onDelete: Cascade)
-  session    StructuredSession? @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  student User?              @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  session StructuredSession? @relation(fields: [sessionId], references: [id], onDelete: Cascade)
 
   @@index([studentId])
   @@index([sessionId])
@@ -1293,30 +1422,30 @@ model Bookmark {
 }
 
 model Question {
-  id            String                @id @default(cuid())
-  subject       String?
-  chapter       String?
-  grade         String?
-  board         String?
-  topicId       String? /// canonical topic reference — backfilled for legacy rows
-  type          String
-  difficulty    String?
+  id                String                @id @default(cuid())
+  subject           String?
+  chapter           String?
+  grade             String?
+  board             String?
+  topicId           String? /// canonical topic reference — backfilled for legacy rows
+  type              String
+  difficulty        String?
   /// IRT 3PL parameters. a = discrimination (default 1.0), b = difficulty, c = guessing (default 0.2).
   /// All nullable: selector falls back to defaults when null.
-  irt_a         Float? /// Discrimination; typical range 0.5–2.5
-  irt_b         Float? /// Difficulty: recall -1.5 to -0.5, single-step -0.5 to 0.5, multi-step 0.5 to 2.0
-  irt_c         Float? /// Pseudo-guessing; typical range 0.0–0.35
-  prompt        String
-  choices       Json?
-  correctAnswer String?
-  source        String?
-  status        QuestionStatus        @default(ACTIVE)
-  createdAt     DateTime              @default(now())
-  updatedAt     DateTime              @updatedAt
-  topic            TopicDef?             @relation(fields: [topicId], references: [id])
-  attempts         AttemptQuestion[]
-  sessionFlags     SessionQuestionFlag[]
-  mockExamQuestions MockExamQuestion[]   /// F-STU-021: back-relation
+  irt_a             Float? /// Discrimination; typical range 0.5–2.5
+  irt_b             Float? /// Difficulty: recall -1.5 to -0.5, single-step -0.5 to 0.5, multi-step 0.5 to 2.0
+  irt_c             Float? /// Pseudo-guessing; typical range 0.0–0.35
+  prompt            String
+  choices           Json?
+  correctAnswer     String?
+  source            String?
+  status            QuestionStatus        @default(ACTIVE)
+  createdAt         DateTime              @default(now())
+  updatedAt         DateTime              @updatedAt
+  topic             TopicDef?             @relation(fields: [topicId], references: [id])
+  attempts          AttemptQuestion[]
+  sessionFlags      SessionQuestionFlag[]
+  mockExamQuestions MockExamQuestion[] /// F-STU-021: back-relation
 
   @@index([topicId])
   @@index([status])
@@ -1384,7 +1513,7 @@ model SubjectDef {
   concepts            Concept[]
   boardSubjectConfigs BoardSubjectConfig[]
   diagnosticSessions  DiagnosticSession[]
-  mockExams           MockExam[]           /// F-STU-021: back-relation
+  mockExams           MockExam[] /// F-STU-021: back-relation
 
   @@unique([classId, slug], name: "classId_slug")
 }
@@ -1460,17 +1589,61 @@ model Concept {
   @@index([topicId])
 }
 
+/// Per-student, per-concept persistent state used by the AI tutor and IRT
+model StudentConceptState {
+  id        String @id @default(cuid())
+  studentId String
+  conceptId String
+
+  // Core mastery / IRT / spacing fields
+  masteryScore    Float @default(0.0)
+  masteryVariance Float @default(0.1)
+  theta           Float @default(0.0)
+  stability       Float @default(1.0)
+  retention       Float @default(1.0)
+  /// Memory strength: aggregated retention-like metric used for the UI
+  /// and revision prioritisation. Range 0.0 - 1.0
+  memoryStrength  Float @default(0.0)
+
+  // Scheduling / review
+  nextReviewAt    DateTime?
+  lastInteraction DateTime  @default(now())
+  attemptCount    Int       @default(0)
+
+  // Hint usage counters (accumulated across sessions)
+  hintCount  Int       @default(0)
+  hintTier1  Int       @default(0)
+  hintTier2  Int       @default(0)
+  hintTier3  Int       @default(0)
+  lastHintAt DateTime?
+
+  // When true, the concept is flagged for consolidation and additional practice
+  needsConsolidation Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  student User    @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  concept Concept @relation(fields: [conceptId], references: [id], onDelete: Cascade)
+
+  @@unique([studentId, conceptId], name: "studentId_conceptId")
+  @@index([studentId])
+  @@index([conceptId])
+  @@index([nextReviewAt])
+}
+
 /// Audit history for admin edits to Concept IRT parameters and prerequisites. F-ADM-002 AC-03.
 model ConceptHistory {
-  id                     String   @id @default(cuid())
-  conceptId              String
-  adminId                String
-  reason                 String
-  previousIrtB           Float?
-  newIrtB                Float?
-  previousPrereqIds      String[]
-  newPrereqIds           String[]
-  createdAt              DateTime @default(now())
+  id                String   @id @default(cuid())
+  conceptId         String
+  adminId           String
+  reason            String
+  previousIrtB      Float?
+  newIrtB           Float?
+  previousPrereqIds String[]
+  newPrereqIds      String[]
+  createdAt         DateTime @default(now())
 
   concept Concept @relation(fields: [conceptId], references: [id], onDelete: Cascade)
 
@@ -1617,24 +1790,26 @@ model AIContentLog {
 }
 
 model AITutorTurnLog {
-  id               String       @id @default(cuid())
-  sessionId        String
-  callType         String // 'tutor:teach' | 'tutor:hint' | 'tutor:eval'
-  model            String
-  inputTokens      Int
-  outputTokens     Int
-  costUsd          Float
-  latencyMs        Int
-  tag              String?
-  stage            String?
-  safetyFlagged    Boolean      @default(false)
-  cached           Boolean      @default(false)
-  ragChunksUsed    String[]     @default([])
-  frustrationScore   Float?
-  groundednessScore  Float?  // 1 - riskScore from hallucinationDetector; null when cached or safety-blocked
-  qualityFlag        QualityFlag?
-  qualityNote        String?
-  createdAt          DateTime     @default(now())
+  id                String       @id @default(cuid())
+  sessionId         String
+  callType          String // 'tutor:teach' | 'tutor:hint' | 'tutor:eval'
+  model             String
+  inputTokens       Int
+  outputTokens      Int
+  costUsd           Float
+  latencyMs         Int
+  tag               String?
+  stage             String?
+  safetyFlagged     Boolean      @default(false)
+  cached            Boolean      @default(false)
+  ragChunksUsed     String[]     @default([])
+  frustrationScore  Float?
+  groundednessScore Float? // 1 - riskScore from hallucinationDetector; null when cached or safety-blocked
+  qualityFlag       QualityFlag?
+  qualityNote       String?
+  /// anomalyFlags: optional JSONB metadata for detected anomalies (copy-paste, hallucination flags, etc.)
+  anomalyFlags      Json?
+  createdAt         DateTime     @default(now())
 
   @@index([sessionId])
   @@index([callType])
@@ -1742,15 +1917,15 @@ model Outbox {
 
 /// Parent-facing notification audit record for compliance and "last alert sent" views
 model ParentNotification {
-  id         String   @id @default(cuid())
-  parentId   String
-  studentId  String?  
-  type       String   // 'inactivity' | 'digest' | 'milestone'
-  channel    String   // 'email' | 'sms' | 'whatsapp' | 'unknown'
-  subject    String?
-  body       Json?
-  sentAt     DateTime @default(now())
-  createdAt  DateTime @default(now())
+  id        String   @id @default(cuid())
+  parentId  String
+  studentId String?
+  type      String // 'inactivity' | 'digest' | 'milestone'
+  channel   String // 'email' | 'sms' | 'whatsapp' | 'unknown'
+  subject   String?
+  body      Json?
+  sentAt    DateTime @default(now())
+  createdAt DateTime @default(now())
 
   @@index([parentId, sentAt])
 }
@@ -1782,28 +1957,7 @@ model StudentContentPreference {
   @@index([studentId])
 }
 
-model StudentConceptState {
-  id              String    @id @default(cuid())
-  studentId       String
-  conceptId       String
-  concept         Concept   @relation(fields: [conceptId], references: [id])
-  masteryScore    Float     @default(0.0)
-  nextReviewAt    DateTime?
-  lastInteraction DateTime  @default(now())
-  attemptCount    Int       @default(0)
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  masteryVariance Float @default(0.1)
-  theta           Float @default(0.0)
-  stability       Float @default(1.0)
-  retention       Float @default(1.0)
-
-  @@unique([studentId, conceptId])
-  @@index([studentId])
-  @@index([nextReviewAt])
-}
+// StudentConceptState consolidated earlier in this file; duplicate definition removed.
 
 model LearningPlan {
   id          String             @id @default(cuid())
@@ -1874,6 +2028,7 @@ model DoubtKb {
   timesServed        Int                          @default(1)
   alternatePhrasings String[]                     @default([])
   updatedAt          DateTime                     @default(now()) @updatedAt
+  doubtEscalations   DoubtEscalation[]
 
   @@index([studentId, conceptId])
   @@index([conceptId])
@@ -1891,15 +2046,15 @@ model FreeTierUsage {
 }
 
 model Misconception {
-  id              String                 @id @default(cuid())
-  subjectId       String
-  conceptId       String
-  name            String
-  description     String
-  triggerPatterns String[]
-  correction      String
-  createdAt       DateTime @default(now())
-  prevalenceRate  Float    @default(0)
+  id                String                 @id @default(cuid())
+  subjectId         String
+  conceptId         String
+  name              String
+  description       String
+  triggerPatterns   String[]
+  correction        String
+  createdAt         DateTime               @default(now())
+  prevalenceRate    Float                  @default(0)
   studentDetections StudentMisconception[]
 
   @@index([subjectId, conceptId])
@@ -1909,15 +2064,15 @@ model Misconception {
 /// Upserted each time a known misconception is detected in a tutor turn.
 /// Injected into future session prompts for the same concept cluster.
 model StudentMisconception {
-  id              String        @id @default(cuid())
+  id              String   @id @default(cuid())
   studentId       String
   misconceptionId String
   firstDetectedAt DateTime
   lastSeenAt      DateTime
-  occurrenceCount Int           @default(1)
+  occurrenceCount Int      @default(1)
 
-  student         User          @relation(fields: [studentId], references: [id], onDelete: Cascade)
-  misconception   Misconception @relation(fields: [misconceptionId], references: [id], onDelete: Cascade)
+  student       User          @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  misconception Misconception @relation(fields: [misconceptionId], references: [id], onDelete: Cascade)
 
   @@unique([studentId, misconceptionId])
   @@index([studentId])
@@ -2513,20 +2668,20 @@ enum ConsentScope {
 /// Parent-specific profile record — one per parent user.
 /// Exists once a user is promoted to the parent role.
 model ParentProfile {
-  id        String   @id @default(cuid())
-  userId    String   @unique
-  createdAt DateTime @default(now())
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id                      String   @id @default(cuid())
+  userId                  String   @unique
+  createdAt               DateTime @default(now())
+  user                    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   /// Parent digest preferences
-  digestOptOut   Boolean  @default(false)
+  digestOptOut            Boolean  @default(false)
   /// Parent-level opt-out for inactivity alerts (separate from weekly digest)
-  inactivityOptOut           Boolean @default(false)
-  digestDay                  String  @default("Sunday") // e.g., "Sunday", "Monday"
-  digestTime                 String  @default("09:00") // 24h HH:mm in parent's timezone
-  digestTimezone             String? // IANA timezone (e.g., "Asia/Kolkata"); null => use `User.timezone` or UTC
+  inactivityOptOut        Boolean  @default(false)
+  digestDay               String   @default("Sunday") // e.g., "Sunday", "Monday"
+  digestTime              String   @default("09:00") // 24h HH:mm in parent's timezone
+  digestTimezone          String? // IANA timezone (e.g., "Asia/Kolkata"); null => use `User.timezone` or UTC
   // Per-parent configurable inactivity alert threshold (days). F-PAR-021 AC-01.
   // Parent can choose 2, 3, 5, or 7 days. Default 3.
-  inactivityThresholdDays    Int     @default(3)
+  inactivityThresholdDays Int      @default(3)
 }
 
 /// DPDP right-to-erasure: one row per user, created on deletion request.
@@ -2553,6 +2708,9 @@ model DoubtEscalation {
   doubtText      String
   aiAttempts     Json // Array of { turnId, aiResponse } — last 3 attempts
   resolvedAt     DateTime?
+  notifiedAt     DateTime?
+  doubtKbId      String?
+  doubtKb        DoubtKb?  @relation(fields: [doubtKbId], references: [id], onDelete: SetNull)
   resolutionType String? // 'chunk_updated' | 'misconception_added' | 'prompt_fix' | 'cached_answer'
   resolutionNote String?
   createdAt      DateTime  @default(now())
@@ -2667,19 +2825,19 @@ model NotificationLog {
 /// Board-pattern full mock exam. Each exam spans the full syllabus for a
 /// subject/grade/board and contains 3 sections (A=MCQ, B=short, C=long).
 model MockExam {
-  id          String    @id @default(cuid())
+  id          String   @id @default(cuid())
   title       String
   subjectId   String
   grade       Int
   board       String
-  totalMarks  Int       @default(80)
-  durationMin Int       @default(180)
-  version     Int       @default(1)
+  totalMarks  Int      @default(80)
+  durationMin Int      @default(180)
+  version     Int      @default(1)
   /// active | archived
-  status      String    @default("active")
-  createdAt   DateTime  @default(now())
+  status      String   @default("active")
+  createdAt   DateTime @default(now())
 
-  subject  SubjectDef          @relation(fields: [subjectId], references: [id])
+  subject  SubjectDef        @relation(fields: [subjectId], references: [id])
   sections MockExamSection[]
   attempts MockExamAttempt[]
 
@@ -2725,8 +2883,8 @@ model MockExamAttempt {
   scorePercent Float?
   percentile   Float?
   cohortCount  Int?
-  priorityPlan String?   /// AI-generated 2-week study plan (Markdown)
-  rawResult    Json?     /// { sectionId: { score, total, timeSpentSeconds } }
+  priorityPlan String? /// AI-generated 2-week study plan (Markdown)
+  rawResult    Json? /// { sectionId: { score, total, timeSpentSeconds } }
 
   mockExam        MockExam                 @relation(fields: [mockExamId], references: [id])
   student         User                     @relation(fields: [studentId], references: [id])
@@ -2738,13 +2896,13 @@ model MockExamAttempt {
 
 /// Per-section answer record within a mock exam attempt.
 model MockExamSectionAttempt {
-  id          String    @id @default(cuid())
-  attemptId   String
-  sectionId   String
-  submittedAt DateTime?
+  id           String    @id @default(cuid())
+  attemptId    String
+  sectionId    String
+  submittedAt  DateTime?
   scorePercent Float?
   /// [{ questionId, answer, timeSpentSeconds }]
-  answers     Json?
+  answers      Json?
 
   attempt MockExamAttempt @relation(fields: [attemptId], references: [id])
   section MockExamSection @relation(fields: [sectionId], references: [id])

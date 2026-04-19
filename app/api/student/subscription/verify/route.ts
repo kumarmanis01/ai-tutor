@@ -22,6 +22,7 @@
  * - 2026-04-14T00:00:00Z | copilot | add timeout:30000/maxWait:10000 to $transaction to prevent P2028 on Neon
  * - 2026-04-14T12:30:00Z | copilot | avoid contacting Razorpay when running tests (Jest)
  * - 2026-04-16T03:30:00Z | copilot | resolve short plan ids and use planEndDate to compute expiry safely
+ * - 2026-04-16T03:40:00Z | copilot | remove unused PLANS/PlanId imports to satisfy lint
  */
 
 import { NextResponse } from 'next/server';
@@ -174,7 +175,11 @@ export async function POST(req: Request) {
         // Deactivate any existing active subscription for this student
         await tx.subscription.updateMany({ where: { userId, active: true }, data: { active: false } }).catch(() => {});
 
-        // Create subscription record for the student
+        // Check for pending referral rewards for this user and include in creditBalance
+        const pendingRewards = await tx.referralReward.findMany({ where: { userId, status: 'PENDING' } });
+        const pendingSum = pendingRewards.reduce((s, r) => s + (r.amount || 0), 0);
+
+        // Create subscription record for the student. Apply pending referral rewards as creditBalance.
         const createdSub = await tx.subscription.create({
           data: {
             userId,
@@ -186,9 +191,15 @@ export async function POST(req: Request) {
             childSlots: 1,
             paymentId: payment.id,
             meta: {},
-            creditBalance: 0,
+            creditBalance: pendingSum,
           },
         });
+
+        // Mark pending referral rewards as applied (best-effort within the transaction)
+        if (pendingRewards.length > 0) {
+          const ids = pendingRewards.map((r) => r.id);
+          await tx.referralReward.updateMany({ where: { id: { in: ids } }, data: { status: 'APPLIED', appliedAt: new Date() } }).catch(() => {});
+        }
 
         // Create Installment schedule if EMI selected; first installment marked PAID as we just received payment
         try {

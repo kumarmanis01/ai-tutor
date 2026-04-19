@@ -64,6 +64,7 @@ export async function processIRTUpdate(job: Job<IRTUpdateJobData>): Promise<void
         masteryVariance: newVariance,
         attemptCount: current.attemptCount + 1,
         lastInteraction: now,
+        memoryStrength: Math.round((result.newMastery * (current.retention ?? 1)) * 1000) / 1000,
       },
     })
 

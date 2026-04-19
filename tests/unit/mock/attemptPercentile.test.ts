@@ -34,7 +34,7 @@ jest.mock('@/lib/session', () => ({
 
 jest.mock('@/lib/mock/buildPriorityPlan', () => ({ buildPriorityPlan: jest.fn() }));
 jest.mock('@/lib/mock/selectMockQuestions', () => ({ computeSectionScores: jest.fn() }));
-jest.mock('@/lib/logger', () => ({ logger: { info: jest.fn(), logAPI: jest.fn() } }));
+jest.mock('@/lib/logger', () => ({ logger: { info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn(), logAPI: jest.fn() } }));
 
 import { POST } from '@/app/api/mock/attempt/[attemptId]/complete/route';
 import { GET } from '@/app/api/mock/attempt/[attemptId]/report/route';

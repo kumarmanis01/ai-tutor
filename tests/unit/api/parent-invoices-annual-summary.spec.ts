@@ -113,4 +113,47 @@ describe('GET /api/parent/invoices/annual-summary', () => {
     expect(lte.getUTCFullYear()).toBe(2026);
     expect(lte.getUTCMonth()).toBe(2); // March = month index 2
   });
+
+  it('should return 404 JSON when requesting PDF and no invoices exist', async () => {
+    prismaMock.invoice.findMany.mockResolvedValue([]);
+    const { GET } = await import('@/app/api/parent/invoices/annual-summary/route');
+    const req = new Request('http://localhost?fy=2025-26&format=pdf');
+    const res = await GET(req as any);
+    expect(res.status).toBe(404);
+    const data = await res.json();
+    expect(data.error).toMatch(/no invoices found/i);
+  });
+
+  it('should return a merged PDF when format=pdf is requested', async () => {
+    // Create two small PDF bytes to be returned by mocked fetch
+    const { PDFDocument } = require('pdf-lib');
+    const a = await PDFDocument.create();
+    a.addPage([300, 200]);
+    const aBytes = await a.save();
+
+    const b = await PDFDocument.create();
+    b.addPage([300, 200]);
+    const bBytes = await b.save();
+
+    prismaMock.invoice.findMany.mockResolvedValue([
+      makeInvoice({ invoiceNumber: 1, fileUrl: 'https://r2.example.com/invoices/inv-1.pdf' }),
+      makeInvoice({ invoiceNumber: 2, fileUrl: 'https://r2.example.com/invoices/inv-2.pdf' }),
+    ] as any);
+
+    const mockFetch = jest.fn().mockImplementation(async (url: string) => {
+      if (url.includes('inv-1')) return { ok: true, arrayBuffer: async () => aBytes };
+      if (url.includes('inv-2')) return { ok: true, arrayBuffer: async () => bBytes };
+      return { ok: false };
+    });
+    (global as any).fetch = mockFetch;
+
+    const { GET } = await import('@/app/api/parent/invoices/annual-summary/route');
+    const req = new Request('http://localhost?fy=2025-26&format=pdf');
+    const res = await GET(req as any);
+    expect(res.status).toBe(200);
+    expect(res.headers.get('content-type')).toContain('application/pdf');
+    const buf = Buffer.from(await res.arrayBuffer());
+    expect(buf.length).toBeGreaterThan(0);
+    expect(mockFetch).toHaveBeenCalledTimes(2);
+  });
 });

@@ -11,7 +11,7 @@
 // ---------------------------------------------------------------------------
 
 const prismaMock = {
-  studentLearningProfile: { upsert: jest.fn() },
+  studentLearningProfile: { upsert: jest.fn(), findUnique: jest.fn() },
   user: { findUnique: jest.fn() },
   subjectDef: { findMany: jest.fn() },
 };
@@ -46,6 +46,7 @@ function makeRequest(body: object): NextRequest {
 beforeEach(() => {
   jest.clearAllMocks();
   prismaMock.studentLearningProfile.upsert.mockResolvedValue({});
+  prismaMock.studentLearningProfile.findUnique.mockResolvedValue(null);
 });
 
 // ---------------------------------------------------------------------------
@@ -112,7 +113,8 @@ describe('generate-plan -- SubjectDef grade+board filter', () => {
     ]);
 
     const req = makeRequest({ studyDaysPerWeek: 5 });
-    await POST(req);
+    const postRes = await POST(req);
+    const postJson = await postRes.json();
 
     const findManyCall = prismaMock.subjectDef.findMany.mock.calls[0][0];
     // Query slugs must be lowercase

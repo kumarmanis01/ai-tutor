@@ -1,6 +1,18 @@
 /**
- * Admin-only, read-only list endpoint for RegenerationJobs
- * Returns minimal metadata sorted by createdAt DESC
+ * FILE OBJECTIVE:
+ * - Admin API for listing and creating RegenerationJobs with idempotent creation.
+ *
+ * LINKED UNIT TEST:
+ * - tests/unit/app/api/admin/regeneration-jobs/route.idempotency.test.ts
+ * - tests/phase12/regeneration_job.integration.test.ts
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - .github/copilot-instructions.md
+ * - /docs/COPILOT_GUARDRAILS.md
+ *
+ * EDIT LOG:
+ * - 2026-04-16T00:00:00Z | copilot | fix: tighten unique-constraint detection; remove broad lc.includes('unique')/
+ *   'already exists' matches; remove unsafe fallback-by-suggestionId-alone lookup
  */
 import { prisma } from '@/lib/prisma';
 import { requireAdminOrModerator } from '@/lib/auth';
@@ -161,10 +173,29 @@ export async function POST(req: Request) {
     try { logger.error('regenerationJob.create error', { err: err }) } catch (e) { logger.warn('regenerationJob: logger.error failed', { error: e }); }
     try { logger.error('regenerationJob.create error stack', { stack: err && err.stack ? err.stack : String(err) }) } catch (e) { logger.warn('regenerationJob: logger.error fallback failed', { error: e }); }
     // If the create failed due to unique constraint, return the existing job (idempotent)
-    const isUniqueConstraint = err?.code === 'P2002' || (err?.message ?? String(err ?? '')).toLowerCase().includes('unique constraint failed')
+    const errMsg = String(err?.message ?? err ?? '')
+    const lc = errMsg.toLowerCase()
+    // Only treat as a unique-constraint violation when we have a known DB error code
+    // or a well-scoped message. Avoid broad matches like 'unique' / 'already exists'
+    // that can misclassify unrelated errors and mask real failures.
+    const isUniqueConstraint =
+      err?.code === 'P2002' ||
+      err?.code === '23505' ||
+      lc.includes('unique constraint') ||
+      lc.includes('duplicate key')
     if (isUniqueConstraint) {
-      const existing = await (prisma as any).regenerationJob.findFirst({ where: { suggestionId: suggestion.id, targetType: targetType as any, targetId } });
-      return NextResponse.json({ job: existing });
+      try {
+        const existing = await (prisma as any).regenerationJob.findFirst({ where: { suggestionId: suggestion.id, targetType: targetType as any, targetId } });
+        if (existing) return NextResponse.json({ job: existing });
+        // No matching job found for the original uniqueness key -- treat as a real error.
+        logger.error('regenerationJob: unique constraint hit but no matching job found for the original key', {
+          suggestionId: suggestion.id,
+          targetType,
+          targetId,
+        });
+      } catch (e) {
+        try { logger.warn('regenerationJob: failed to fetch existing job after unique constraint', { error: e }) } catch {}
+      }
     }
     return NextResponse.json({ error: 'failed' }, { status: 500 });
   }

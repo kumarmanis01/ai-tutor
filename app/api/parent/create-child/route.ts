@@ -128,7 +128,7 @@ export async function POST(req: Request) {
   <li>Build a personalised learning plan for board exams</li>
 </ul>
 <p><strong>Privacy:</strong> Your child's AI tutoring conversations are private to them. You see a summary, not the transcript.</p>
-<p>You can view our full privacy policy at <a href="https://spinzyacademy.com/privacy">spinzyacademy.com/privacy</a>. It's written in plain language.</p>
+<p>You can view our full privacy policy at <a href="/privacy">spinzyacademy.com/privacy</a>. It's written in plain language and available in English and Hindi.</p>
 <p>Happy learning!<br/>Team Spinzy</p>`,
         })
       }

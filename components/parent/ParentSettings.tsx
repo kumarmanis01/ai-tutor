@@ -6,6 +6,7 @@ import { logger } from '@/lib/logger'
 type Profile = {
   digestOptOut: boolean
   inactivityOptOut?: boolean
+  inactivityThresholdDays?: number
   digestDay: string
   digestTime: string
   digestTimezone: string | null
@@ -202,8 +203,25 @@ export default function ParentSettings() {
       </label>
 
       <div>
-        <label className="text-sm block mb-1">Delivery day</label>
-        <select value={profile.digestDay} onChange={(e) => setProfile({ ...profile, digestDay: e.target.value })} className="w-full rounded border px-3 py-2">
+        <label className="text-sm block mb-1">Inactivity alert threshold</label>
+        <div className="flex gap-2">
+          {[2,3,5,7].map((d) => (
+            <button
+              key={d}
+              type="button"
+              onClick={() => setProfile((p) => (p ? { ...p, inactivityThresholdDays: d } : p))}
+              className={`min-h-[44px] min-w-[44px] flex-1 rounded border px-3 py-2 text-sm font-medium transition-colors ${profile.inactivityThresholdDays === d ? 'bg-[#534AB7] text-white border-[#534AB7]' : 'bg-white text-gray-700 border-gray-300 dark:bg-gray-800 dark:text-gray-200'}`}
+            >
+              {d} days
+            </button>
+          ))}
+        </div>
+        <p className="text-xs text-gray-500 mt-1">Parents will be notified if a child hasn't had a study session for the selected number of days.</p>
+      </div>
+
+      <div>
+        <label htmlFor="digestDay" className="text-sm block mb-1">Delivery day</label>
+        <select id="digestDay" value={profile.digestDay} onChange={(e) => setProfile({ ...profile, digestDay: e.target.value })} className="w-full rounded border px-3 py-2">
           {DAYS.map((d) => (
             <option key={d} value={d}>{d}</option>
           ))}
@@ -254,8 +272,8 @@ export default function ParentSettings() {
       </div>
 
       <div className="flex items-center gap-2">
-        <label className="text-sm block mb-1">Delivery time</label>
-        <input type="time" value={profile.digestTime} onChange={(e) => setProfile({ ...profile, digestTime: e.target.value })} className="w-full rounded border px-3 py-2" />
+        <label htmlFor="digestTime" className="text-sm block mb-1">Delivery time</label>
+        <input id="digestTime" type="time" value={profile.digestTime} onChange={(e) => setProfile({ ...profile, digestTime: e.target.value })} className="w-full rounded border px-3 py-2" />
       </div>
 
       <div>
@@ -274,7 +292,6 @@ export default function ParentSettings() {
             type="button"
             onClick={() => setProfile({ ...profile, language: 'en' })}
             className={`min-h-[44px] min-w-[44px] flex-1 rounded border px-3 py-2 text-sm font-medium transition-colors ${profile.language !== 'hi' ? 'bg-[#534AB7] text-white border-[#534AB7]' : 'bg-white text-gray-700 border-gray-300 dark:bg-gray-800 dark:text-gray-200'}`}
-            aria-pressed={profile.language !== 'hi'}
           >
             English
           </button>
@@ -282,7 +299,6 @@ export default function ParentSettings() {
             type="button"
             onClick={() => setProfile({ ...profile, language: 'hi' })}
             className={`min-h-[44px] min-w-[44px] flex-1 rounded border px-3 py-2 text-sm font-medium transition-colors ${profile.language === 'hi' ? 'bg-[#534AB7] text-white border-[#534AB7]' : 'bg-white text-gray-700 border-gray-300 dark:bg-gray-800 dark:text-gray-200'}`}
-            aria-pressed={profile.language === 'hi'}
           >
             हिंदी
           </button>

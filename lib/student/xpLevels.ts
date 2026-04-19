@@ -1,30 +1,37 @@
 /**
  * XP level progression constants and pure computation functions.
- * Simplified 10-level progression for F-STU-031.
+ * Expanded to a 100-level progression to support finer-grained leveling.
  * No imports -- safe to use in both server code and client components.
  *
  * LEVEL_THRESHOLDS: minimum cumulative XP required to reach that level
- * (index 0 = level 1). The system exposes `MAX_LEVEL = 10` for UI and
+ * (index 0 = level 1). The system exposes `MAX_LEVEL = 100` for UI and
  * progression logic.
  *
- * Tier names map to small-level bands suitable for a 10-level system.
+ * Tier names map to larger bands with visual frame changes at levels
+ * 10, 20, 30, 50, 75, and 100 as requested in F-STU-031.
  */
 
-// Threshold = minimum cumulative XP to reach that level (index 0 = level 1).
-export const LEVEL_THRESHOLDS: readonly number[] = [
-  0,    // L1
-  100,  // L2
-  300,  // L3
-  600,  // L4
-  1000, // L5
-  1600, // L6
-  2200, // L7
-  3000, // L8
-  4200, // L9
-  6000, // L10
-]
+// Base thresholds for levels 1..10 (preserve original small-level curve)
+const BASE_THRESHOLDS = [0, 100, 300, 600, 1000, 1600, 2200, 3000, 4200, 6000]
 
-export const MAX_LEVEL = LEVEL_THRESHOLDS.length // 10
+// Generate thresholds for levels 1..100. We preserve the original first
+// 10 thresholds for compatibility and then increase the gaps progressively
+// so higher levels require more cumulative XP.
+const generateThresholds = (): number[] => {
+  const thresholds: number[] = [...BASE_THRESHOLDS]
+  // Continue from level 11 (index 10) through level 100 (index 99)
+  for (let lvl = 11; lvl <= 100; lvl++) {
+    const prev = thresholds[thresholds.length - 1]
+    // Gap grows linearly with level (100 * level) to keep growth predictable
+    const gap = 100 * lvl
+    thresholds.push(prev + gap)
+  }
+  return thresholds
+}
+
+export const LEVEL_THRESHOLDS: readonly number[] = generateThresholds()
+
+export const MAX_LEVEL = LEVEL_THRESHOLDS.length // 100
 
 /**
  * Returns level 1..MAX_LEVEL from total XP. Capped at MAX_LEVEL.
@@ -66,13 +73,16 @@ export function getProgressPercent(totalXp: number): number {
 }
 
 /**
- * Returns the tier name for a given level in the 10-level model.
+ * Returns the tier name for a given level. Tier breaks at levels:
+ * 10, 20, 30, 50, 75, 100 -> mapping to frame changes.
  */
 export function getLevelTierName(level: number): string {
-  if (level >= MAX_LEVEL) return 'Legend'
-  if (level >= 9) return 'Expert'
-  if (level >= 7) return 'Scholar'
-  if (level >= 5) return 'Practitioner'
+  if (level >= 100) return 'Legend'
+  if (level >= 75) return 'Diamond'
+  if (level >= 50) return 'Platinum'
+  if (level >= 30) return 'Gold'
+  if (level >= 20) return 'Silver'
+  if (level >= 10) return 'Bronze'
   if (level >= 3) return 'Explorer'
   return 'Learner'
 }

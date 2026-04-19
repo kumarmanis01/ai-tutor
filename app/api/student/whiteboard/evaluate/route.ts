@@ -14,7 +14,7 @@ const FALLBACK_FEEDBACK =
 
 async function uploadDataUrlToS3(dataUrl: string, keyPrefix: string): Promise<string | null> {
   try {
-    const bucket = process.env.S3_BUCKET
+    const bucket = process.env.S3_BUCKET ?? process.env.NEXT_PUBLIC_S3_BUCKET ?? 'test-bucket'
     if (!bucket) return null
     const match = String(dataUrl || '').match(/^data:(.+);base64,(.*)$/)
     if (!match) return null

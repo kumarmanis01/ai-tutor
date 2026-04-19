@@ -1,0 +1,4 @@
+﻿
+> ai-tutor-india@0.1.0 ensure-mocks
+> npx tsx scripts/ensure-mocks.ts
+

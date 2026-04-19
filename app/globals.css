@@ -40,3 +40,27 @@ body,
   background: rgba(99, 102, 241, 0.35);
   border-radius: 8px;
 }
+
+/* Discrete width utility classes for progress bars (multiples of 5%)
+   Used to avoid inline style width attributes and satisfy lint rules. */
+.w-pct-0 { width: 0%; }
+.w-pct-5 { width: 5%; }
+.w-pct-10 { width: 10%; }
+.w-pct-15 { width: 15%; }
+.w-pct-20 { width: 20%; }
+.w-pct-25 { width: 25%; }
+.w-pct-30 { width: 30%; }
+.w-pct-35 { width: 35%; }
+.w-pct-40 { width: 40%; }
+.w-pct-45 { width: 45%; }
+.w-pct-50 { width: 50%; }
+.w-pct-55 { width: 55%; }
+.w-pct-60 { width: 60%; }
+.w-pct-65 { width: 65%; }
+.w-pct-70 { width: 70%; }
+.w-pct-75 { width: 75%; }
+.w-pct-80 { width: 80%; }
+.w-pct-85 { width: 85%; }
+.w-pct-90 { width: 90%; }
+.w-pct-95 { width: 95%; }
+.w-pct-100 { width: 100%; }

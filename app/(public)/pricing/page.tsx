@@ -1,4 +1,15 @@
-'use client';
+"use client";
+
+/**
+ * FILE OBJECTIVE:
+ * - Public pricing page showing available subscription tiers (Standard, Family, Lite).
+ *
+ * LINKED UNIT TEST:
+ * - tests/unit/app/pricing.page.spec.ts
+ *
+ * EDIT LOG:
+ * - 2026-04-17T00:00:00Z | copilot | update copy to reflect family childSlots and remove inline styles to satisfy lint
+ */
 
 import { useState } from 'react';
 import { toast } from '@/lib/toast';

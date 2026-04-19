@@ -4,14 +4,19 @@
  * Use `getAIRequestQueue()` from API handlers to enqueue work that must run
  * in worker context (LLM calls are restricted to workers).
  */
+/**
+ * EDIT LOG:
+ * - 2026-04-18T18:00:00Z | copilot | use getSharedConnection() to share IORedis singleton
+ */
 import { Queue } from 'bullmq'
-import { redisConnection } from '@/lib/redis'
+import { getSharedConnection } from '@/lib/redis'
 import { AI_REQUEST_QUEUE } from '@/lib/queues/constants'
 
 let _aiQueue: Queue | null = null
 
 function getConnection() {
-  return redisConnection
+  // Returns the shared IORedis singleton rather than ConnectionOptions.
+  return getSharedConnection()
 }
 
 export function getAIRequestQueue() {

@@ -15,7 +15,11 @@ const cacheKey = (userId: string) => `lplan:v1:${userId}`
 /**
  * PATCH /api/student/learning-plan
  * AC-07 (F-STU-003): Update exam date / study days per week and regenerate the plan.
+ * AC-02 (F-STU-003): Returns belowMinimumHours=true when weekly study time < 180 min (3 hrs).
  * Body: { examDate?: string | null, studyDaysPerWeek?: number }
+ *
+ * EDIT LOG:
+ * - 2026-04-16T00:00:00Z | copilot | AC-02: add belowMinimumHours warning to PATCH response
  */
 export async function PATCH(req: NextRequest) {
   const start = Date.now()
@@ -43,6 +47,16 @@ export async function PATCH(req: NextRequest) {
         examDate = parsed
       }
     }
+
+    // AC-02: compute weekly study minutes for the under-3-hrs warning
+    const profile = await prisma.studentLearningProfile.findUnique({
+      where: { studentId: userId },
+      select: { dailyTargetMin: true, studyDaysPerWeek: true },
+    });
+    const resolvedDailyMin = profile?.dailyTargetMin ?? 30;
+    const resolvedStudyDays = studyDaysPerWeek ?? profile?.studyDaysPerWeek ?? 5;
+    const weeklyMinutes = resolvedStudyDays * resolvedDailyMin;
+    const belowMinimumHours = weeklyMinutes < 180; // 3 hrs = 180 min
 
     // Fetch all plans for the student so we can regenerate each subject
     const plans = await prisma.learningPlan.findMany({
@@ -84,7 +98,7 @@ export async function PATCH(req: NextRequest) {
       }
     }
 
-    const res = NextResponse.json({ ok: true, regenerated: plans.length - errors.length, errors })
+    const res = NextResponse.json({ ok: true, regenerated: plans.length - errors.length, errors, belowMinimumHours, weeklyMinutes })
     logger.logAPI(req, res, { className: 'LearningPlanAPI', methodName: 'PATCH' }, start)
     return res
   } catch (err) {

@@ -589,6 +589,9 @@ export interface StudentPreferences {
   readonly soundEnabled: boolean;
   readonly hintsEnabled: boolean;
   readonly difficultyMode: 'manual' | 'adaptive';
+  /** UI preferences persisted per-user */
+  readonly crunchMode?: 'auto' | 'on' | 'off';
+  readonly fontSize?: 'small' | 'medium' | 'large';
 }
 
 export interface SubscriptionInfo {

@@ -13,8 +13,8 @@
 import { prisma } from '@/lib/prisma'
 
 /**
- * Check if a user has an active premium subscription.
- * Also checks if user is covered by a parent's family plan.
+ * Return true if the given userId is considered a paid/premium subscriber.
+ * Conservative: treat any `subscriptionStatus` not equal to `'free'` as premium.
  */
 export async function isPremiumUser(userId: string): Promise<boolean> {
   const now = new Date()
