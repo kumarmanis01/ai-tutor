@@ -35,7 +35,8 @@ import { recordPaymentEvent } from '@/lib/payments/audit';
 import { sendEmail } from '@/lib/mailer';
 import { paymentReceiptHtml } from '@/lib/email/templates';
 import { sendSms } from '@/lib/sms';
-import { planEndDate, resolvePlanByShortId } from '@/lib/billing/plans';
+import { PLANS } from '@/lib/billing/plans';
+import type { PlanId } from '@/lib/billing/plans';
 import { createInvoiceForPayment } from '@/lib/invoices';
 import Razorpay from 'razorpay';
 

@@ -11,9 +11,6 @@
 /// - 2026-04-09T00:00:00Z | copilot | add excludeFromParentReport to ParentStudent
 /// - 2026-04-10T00:00:00Z | copilot | add PaymentCustomer & PaymentMethod models for stored payment methods
 /// - 2026-04-15T00:10:00Z | copilot | add Trial relation field to User to satisfy Prisma relation
-/// - 2026-04-16T10:00:00Z | copilot | add anomalyFlags Json? to Message and AITutorTurnLog
-/// - 2026-04-17T12:00:00Z | copilot | add couponCode to PaymentOrder to persist coupon metadata with payment orders
-/// - 2026-04-17T12:10:00Z | copilot | add opposite relation fields: couponRedemptions (User, Subscription), doubtEscalations (DoubtKb)
 generator client {
   provider = "prisma-client-js"
 }
@@ -153,13 +150,11 @@ model PaymentOrder {
   currency               String    @default("INR")
   status                 String    @default("created")
   providerIdempotencyKey String?
-  planMonths             Int       @default(1)
+  planMonths      Int       @default(1)
   /// PlanId from lib/billing/plans.ts (e.g. 'standard_monthly'). Null for legacy orders created before Sprint A.
-  planId                 String?
-  /// Optional coupon code applied to this order (persisted so webhooks and reconciliation can reference it)
-  couponCode             String?
-  createdAt              DateTime  @default(now())
-  paidAt                 DateTime?
+  planId          String?
+  createdAt       DateTime  @default(now())
+  paidAt          DateTime?
 
   @@index([studentId])
   @@index([razorpayOrderId])
@@ -256,19 +251,19 @@ enum TrialStatus {
 }
 
 model Trial {
-  id          String      @id @default(cuid())
-  userId      String?
-  phone       String
-  parentName  String?
-  childClass  String?
-  schoolName  String?
-  utmSource   String?     @map("utm_source")
-  utmMedium   String?     @map("utm_medium")
-  utmCampaign String?     @map("utm_campaign")
-  startAt     DateTime    @default(now())
-  expiresAt   DateTime
-  status      TrialStatus @default(ACTIVE)
-  createdAt   DateTime    @default(now())
+  id         String      @id @default(cuid())
+  userId     String?     
+  phone      String
+  parentName String?
+  childClass String?
+  schoolName String?
+  utmSource  String?     @map("utm_source")
+  utmMedium  String?     @map("utm_medium")
+  utmCampaign String?    @map("utm_campaign")
+  startAt    DateTime    @default(now())
+  expiresAt  DateTime
+  status     TrialStatus @default(ACTIVE)
+  createdAt  DateTime    @default(now())
 
   user User? @relation(fields: [userId], references: [id])
 
@@ -445,13 +440,13 @@ model Subscription {
   dunningAttempts        Int       @default(0)
   lastDunningAt          DateTime?
   /// If set, subscription remains active until this timestamp while parent is in grace period
-  graceUntil             DateTime?
-  createdAt              DateTime  @default(now())
-  updatedAt              DateTime  @updatedAt
-  paymentId              String?
+  graceUntil       DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  paymentId    String?
   /// Razorpay subscription ID (e.g. sub_XXXX) for webhook reconciliation. Null for legacy one-time orders.
   razorpaySubscriptionId String?
-  user                   User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   // Installments linked to this subscription (one-to-many)
   installments      Installment[]
@@ -466,7 +461,7 @@ model TestPlanAccess {
   id        String   @id @default(cuid())
   email     String   @unique
   grantedAt DateTime @default(now())
-  grantedBy String /// admin userId who granted access
+  grantedBy String   /// admin userId who granted access
 
   @@index([email])
 }

@@ -26,7 +26,6 @@ import { getServerSessionForHandlers } from '@/lib/session';
 import { prisma } from '@/lib/prisma';
 import { logger } from '@/lib/logger';
 import { PLANS, rupeesToPaise } from '@/lib/billing/plans';
-import { validateCoupon } from '@/lib/coupon'
 import type { PlanId } from '@/lib/billing/plans';
 import Razorpay from 'razorpay';
 

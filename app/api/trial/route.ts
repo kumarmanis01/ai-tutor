@@ -13,7 +13,6 @@
  *
  * EDIT LOG:
  * - 2026-04-15T00:00:00Z | copilot-planner | created trial signup API route
- * - 2026-04-15T12:00:00Z | copilot | rename unused GET param to _req to satisfy lint
  */
 
 import { NextResponse } from 'next/server'
@@ -106,6 +105,6 @@ export async function POST(req: Request) {
   }
 }
 
-export async function GET(_req: Request) {
+export async function GET(req: Request) {
   return NextResponse.json({ ok: true, message: 'Trial endpoint active' })
 }

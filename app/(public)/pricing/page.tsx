@@ -145,7 +145,7 @@ export default function PricingPage() {
   return (
     <div className="max-w-5xl mx-auto py-10 px-4 bg-white dark:bg-gray-950 transition-colors">
       {/* Title */}
-      <h1 className="text-3xl font-bold text-center mb-2 text-[#534AB7]">
+      <h1 className="text-3xl font-bold text-center mb-2" style={{ color: '#534AB7' }}>
         Simple, transparent pricing
       </h1>
       <p className="text-center text-gray-500 dark:text-gray-400 mb-8">
@@ -159,9 +159,10 @@ export default function PricingPage() {
           onClick={() => setBillingCycle('monthly')}
           className={`min-h-[44px] px-4 py-1 rounded-full text-sm font-medium transition ${
             billingCycle === 'monthly'
-              ? 'bg-[#534AB7] text-white'
+              ? 'text-white'
               : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
           }`}
+          style={billingCycle === 'monthly' ? { backgroundColor: '#534AB7' } : {}}
         >
           Monthly
         </button>
@@ -170,7 +171,6 @@ export default function PricingPage() {
           <input
             type="checkbox"
             className="sr-only peer"
-            aria-label="Toggle annual billing"
             checked={billingCycle === 'annual'}
             onChange={() => setBillingCycle(c => c === 'monthly' ? 'annual' : 'monthly')}
           />
@@ -184,9 +184,10 @@ export default function PricingPage() {
           onClick={() => setBillingCycle('annual')}
           className={`min-h-[44px] px-4 py-1 rounded-full text-sm font-medium transition ${
             billingCycle === 'annual'
-              ? 'bg-[#534AB7] text-white'
+              ? 'text-white'
               : 'text-gray-700 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
           }`}
+          style={billingCycle === 'annual' ? { backgroundColor: '#534AB7' } : {}}
         >
           Annual
           <span className="ml-2 text-xs bg-[#EAF3DE] text-[#1D9E75] px-2 py-0.5 rounded font-semibold">
@@ -212,9 +213,10 @@ export default function PricingPage() {
             ]}
             billing={billingCycle}
             cta={
-                <button
+              <button
                 type="button"
-                  className="min-h-[44px] w-full py-2 rounded-lg font-semibold text-white transition hover:opacity-90 disabled:opacity-60 bg-[#534AB7]"
+                className="min-h-[44px] w-full py-2 rounded-lg font-semibold text-white transition hover:opacity-90 disabled:opacity-60"
+                style={{ backgroundColor: '#534AB7' }}
                 onClick={() => handleSubscribe('lite_monthly')}
                 disabled={loadingPlan !== null}
               >
@@ -242,7 +244,8 @@ export default function PricingPage() {
           cta={
             <button
               type="button"
-              className="min-h-[44px] w-full py-2 rounded-lg font-semibold text-white transition hover:opacity-90 disabled:opacity-60 bg-[#534AB7]"
+              className="min-h-[44px] w-full py-2 rounded-lg font-semibold text-white transition hover:opacity-90 disabled:opacity-60"
+              style={{ backgroundColor: '#534AB7' }}
               onClick={() => handleSubscribe(standardPlanId)}
               disabled={loadingPlan !== null}
             >
@@ -263,7 +266,7 @@ export default function PricingPage() {
           priceAnnual={PLANS.family_annual.billedRupees}
           features={[
             'Everything in Standard',
-            `${PLANS.family_monthly.childSlots} child accounts`,
+            '2 child accounts',
             'Family progress dashboard',
             'CBSE/ICSE Grades 6-12',
             'Priority processing',
@@ -272,7 +275,8 @@ export default function PricingPage() {
           cta={
             <button
               type="button"
-              className="min-h-[44px] w-full py-2 rounded-lg font-semibold transition hover:opacity-90 disabled:opacity-60 border border-[#534AB7] text-[#534AB7]"
+              className="min-h-[44px] w-full py-2 rounded-lg font-semibold transition hover:opacity-90 disabled:opacity-60 border"
+              style={{ borderColor: '#534AB7', color: '#534AB7' }}
               onClick={() => handleSubscribe(familyPlanId)}
               disabled={loadingPlan !== null}
             >

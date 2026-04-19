@@ -21,7 +21,8 @@ import { logger } from '@/lib/logger';
 import PlanSelector from './PlanSelector';
 import PaymentMethodSelector from './PaymentMethodSelector';
 import PaymentConfirmation from './PaymentConfirmation';
-// Saved payment methods are no longer shown. Razorpay handles payment storage.
+import AddCard from './AddCard';
+import SavedPaymentMethods from './SavedPaymentMethods';
 import type { PlanId } from '@/lib/billing/plans';
 import type { PaymentMethod } from './PaymentMethodSelector';
 import { PLANS } from '@/lib/billing/plans';

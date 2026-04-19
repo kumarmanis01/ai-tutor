@@ -7,14 +7,13 @@
  *
  * EDIT LOG:
  * - 2026-04-15T00:00:00Z | copilot | moved helpers from lib/subscription.ts
- * - 2026-04-15T12:00:00Z | copilot | replace anonymous default export with named const
  */
 
 import { prisma } from '@/lib/prisma'
 
 /**
- * Check if a user has an active premium subscription.
- * Also checks if user is covered by a parent's family plan.
+ * Return true if the given userId is considered a paid/premium subscriber.
+ * Conservative: treat any `subscriptionStatus` not equal to `'free'` as premium.
  */
 export async function isPremiumUser(userId: string): Promise<boolean> {
   const now = new Date()
@@ -69,6 +68,4 @@ export async function getTodaysQuestionCount(userId: string): Promise<number> {
   return count
 }
 
-const SubscriptionHelpers = { isPremiumUser, getTodaysQuestionCount }
-
-export default SubscriptionHelpers
+export default { isPremiumUser, getTodaysQuestionCount }
