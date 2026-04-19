@@ -27,6 +27,8 @@ module.exports = {
       // accidentally match internal relative imports inside node_modules
       // packages (e.g. openai, jose) and break Jest resolution.
     '^@/(.*)$': ['<rootDir>/src/$1', '<rootDir>/$1']
+    ,
+    '^@prisma/client$': '<rootDir>/tests/mocks/prismaClientMock.ts'
   },
   moduleDirectories: ['node_modules', '<rootDir>'],
   transform: {
