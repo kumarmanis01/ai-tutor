@@ -1,0 +1,416 @@
+,,Here is the full gap analysis. Status key: ✅ Implemented · ⚠️ Partial · ❌ Missing · 🔒 Blocked (env flag/legal),,
+,,,,
+,,ACTOR 1 — STUDENT,,
+,Done,F-STU-001 Registration & Account Setup,,
+Priority,Status,AC#,Criterion,Notes
+MUST,✅,AC-01,"Mobile OTP, Google OAuth, email+password","MSG91, NextAuth, /api/auth routes"
+MUST,✅,AC-02,"Collect Name, Age, Grade, Board, Medium",Onboarding routes + profile schema
+MUST,✅,AC-03,"Age < 13 → parent OTP mandatory, cannot bypass",Task 1 & 2 complete
+MUST,✅,AC-04,INCOMPLETE profile blocks all learning features,Task 3 — ProfileCompletionGate wired
+MUST,✅,AC-05,Up to 6 subjects; core subjects pre-selected,Task 27 — onboarding flow built
+MUST,✅,AC-06,Grade immutable post-registration,Task 5 — strip in PATCH handler
+SHOULD,✅,AC-07,All other fields editable from Profile screen,/api/user/profile PATCH
+SHOULD,⚠️,AC-08,Welcome email + 3-step onboarding checklist shown,Checklist UI done (Task 6); welcome email not confirmed wired to signup event
+,Done,F-STU-002 Diagnostic Assessment,,
+Priority,Status,AC#,Criterion,Notes
+MUST,✅,AC-01,Mandatory per subject before first session,Task 4 — diagnostic hard gate
+MUST,✅,AC-02,"Adaptive 15–25 questions, IRT 3PL","lib/irt/, services/diagnostic/engine.ts"
+MUST,✅,AC-03,Questions span full grade syllabus,Seeded concept taxonomy
+MUST,✅,AC-04,"30-min soft cap, pause/resume within 24 h","Task 24 — DiagnosticFlow, auto-submit worker"
+MUST,✅,AC-05,"Output: mastery % per chapter, grade placement, recommended chapter",diagnosticBootstrapWorker
+MUST,✅,AC-06,"Visual Knowledge Map — colour only, no numeric score",Task 24 — results screen
+SHOULD,⚠️,AC-07,< 10 questions answered → partial data + grade-level start,Auto-submit worker exists; grade-level fallback not confirmed
+SHOULD,❌,AC-08,"Retake after 30 days, different question set, rapid-fire detection",No retake cooldown or score-gaming detection implemented
+MUST,✅,AC-09,Bootstrap StudentConceptState on completion,diagnosticBootstrapWorker
+,Done,F-STU-003 Learning Path Generation,,
+Priority,Status,AC#,Criterion,Notes
+MUST,✅,AC-01,Exam date drives plan urgency,Task 8 — LearningPlan + exam date screen
+MUST,⚠️,AC-02,Weekly hours target; warn if < 3 hrs/week,Weekly goal stored; under-3-hr warning not confirmed
+MUST,✅,AC-03,"Weak chapters first, mandatory board topics locked, 2-week revision buffer",lib/ai/learningPlan.ts
+MUST,❌,AC-04,Visual timeline — calendar view + chapter sequence with session count,Plan data exists; no calendar/timeline UI screen built
+MUST,✅,AC-05,Plan auto-adjusts weekly on progress,worker/jobs/weeklyPlanAdjust.ts
+SHOULD,❌,AC-06,Student can manually reorder topics within a week,No drag-reorder UI or PATCH endpoint for item reordering
+MUST,⚠️,AC-07,Plan regenerated on board/grade/exam date change,Diagnostic bootstrap re-runs plan; change-triggered regen not confirmed
+MUST,✅,AC-08,"""Today's Plan"" widget reflects current recommendation",Task 9 — TodaysLearningCard wired
+,Done,F-STU-004 Language & Learning Style Preference,,
+Priority,Status,AC#,Criterion,Notes
+MUST,✅,AC-01,Teaching language selectable per subject,"/api/tutor/session/style, StudentContentPreference"
+MUST,⚠️,AC-02,"Unavailable languages greyed out with ""Coming soon""","Language stored; UI ""Coming soon"" label not confirmed"
+MUST,✅,AC-03,MVP: English + Hindi,Prompt system supports both
+MUST,✅,AC-04,Language switch takes effect from next session,Style route updates preference
+SHOULD,❌,AC-05,UI shell language separate from teaching language,Single language setting; no separate shell-language selector
+SHOULD,⚠️,AC-06,Learning style: Visual / Reading / Kinesthetic; AI uses it,StudentContentPreference schema has it; AI prompt injection not confirmed
+MUST,✅,AC-07,"Code-switched input (Hinglish, Tanglish) accepted",Prompt instructs AI to accept it
+,Done,F-STU-010 Session Initiation,,
+Priority,Status,AC#,Criterion,Notes
+MUST,✅,AC-01,"Primary CTA ""Continue where you left off""",TodaysLearningCard / ContinueLearning
+MUST,⚠️,AC-02,"Secondary: Today's topic, Browse, ""Surprise me""","Today's topic + browse exist; ""Surprise me"" (highest-priority weak concept) not confirmed"
+MUST,✅,AC-03,"Pre-session: topic, duration, prerequisite check",Task 23 — PreSessionScreen
+MUST,✅,AC-04,Session loads < 3 s; first AI message < 5 s,Perf requirement; SSE streaming in place
+MUST,✅,AC-05,Interrupted session: Resume / Restart / Skip,Task 23 — InterruptedSessionSheet
+MUST,✅,AC-06,Auto-save state every 60 s,Redis session state
+,Done,F-STU-011 AI Teach Mode — Pedagogical Flow,,
+Priority,Status,AC#,Criterion,Notes
+MUST,✅,AC-01,7-stage flow: Hook → Bridge → Explain → Example → Guided → Independent → Consolidation,"Task 26 — stage strip, AI engine"
+MUST,✅,AC-02,Stage advances only on exit criterion; 2 failures → prereq remediation,AI engine orchestrator
+MUST,✅,AC-03,Student can interrupt for doubt; AI pauses + resolves + offers resume,DoubtPanel wired
+MUST,✅,AC-04,Re-explanation in different style on demand,Style route; prompt supports it
+MUST,✅,AC-05,AI never gives direct answers — 3-tier hint only,Core product rule; prompt eval gate
+MUST,✅,AC-06,"Culturally relevant analogies (cricket, trains, markets)",Base context prompt
+SHOULD,⚠️,AC-07,Every explanation cites board exam objective + marks weightage,BoardChapterWeight data exists; cite-in-response not confirmed in prompts
+MUST,✅,AC-08,3 consecutive wrong → prerequisite remediation sub-flow,AI engine detects struggle
+SHOULD,❌,AC-09,Copy-paste / suspiciously perfect answer → probing follow-up,No copy-paste detection implemented
+SHOULD,✅,AC-10,Tone calibrated by grade (Grade 6–8 sibling / 9–10 peer / 11–12 mentor),Grade-based tone in system prompts
+,Done,F-STU-012 3-Tier Hint System,,
+Priority,Status,AC#,Criterion,Notes
+MUST,✅,AC-01,"Tier 1 — Directional nudge (concept/formula, no approach)",AI hint logic
+MUST,✅,AC-02,"Tier 2 — Structural hint (method revealed, student fills components)",
+MUST,✅,AC-03,Tier 3 — Worked scaffold (first step only),
+MUST,✅,AC-04,"90 s inactivity → ""Still working on it?"" prompt, never auto-delivers hint",Task 26 — inactivity nudge
+MUST,✅,AC-05,Student must request each hint; counter (0/3) visible,Task 26 — hint counter UI
+MUST,✅,AC-06,All 3 hints exhausted + still wrong → full solution + isomorphic problem,AI engine
+SHOULD,⚠️,AC-07,"High hint dependency → ""needs consolidation"" flag + extra practice",StudentConceptState has hint tracking; auto-flag logic not confirmed
+,Done,F-STU-013 Misconception Detection & Correction,,
+Priority,Status,AC#,Criterion,Notes
+MUST,✅,AC-01,Misconception library per subject; wrong-answer patterns mapped,Misconception model; misconceptionPrevalenceWorker
+MUST,✅,AC-02,Matched misconception → named + corrected by AI,Wired into AI orchestrator
+MUST,✅,AC-03,Contrastive explanation (counterexample → correct model),Prompt fragment per misconception
+MUST,✅,AC-04,Detected misconceptions logged to student profile; injected in future prompts,StudentMisconception model
+SHOULD,✅,AC-05,Novel misconceptions → queued for content team review,ContentSuggestion table
+MUST,✅,AC-06,MVP seed: ≥ 20 misconceptions per subject (Math + Science CBSE 10),Seed scripts in prisma/seeds/
+,,F-STU-014 Virtual Whiteboard Mode,,
+Priority,Status,AC#,Criterion,Notes
+MUST,❌,AC-01,"Auto-activates for geometry, algebra, chemistry equations, physics diagrams",No auto-trigger logic; whiteboard API routes exist as stubs
+MUST,❌,AC-02,"AI draws incrementally, steps timed to narration pace",No incremental drawing pipeline
+MUST,❌,AC-03,Student has separate canvas layer for drawing/annotation,No canvas UI component
+MUST,⚠️,AC-04,"""Submit my working"" → AI evaluates drawing",/api/student/whiteboard/evaluate route exists; canvas UI absent
+MUST,❌,AC-05,Student can erase/redo; re-evaluate only on explicit submit,No canvas UI
+SHOULD,⚠️,AC-06,Whiteboard state saved as session artifact; replayable,/api/student/whiteboard/save exists; replay not confirmed
+,,,,
+,,F-STU-014 is the largest single unimplemented MVP MUST feature.,,
+,,,,
+,Done,F-STU-015 Session Completion & Summary,,
+Priority,Status,AC#,Criterion,Notes
+MUST,✅,AC-01,"Summary: concepts, % correct, time, mastery change, next session",Task 25 — SessionCompletionScreen
+MUST,✅,AC-02,XP animation + milestone celebrations before summary,"Task 25 — CSS confetti, level-up overlay"
+MUST,✅,AC-03,AI-generated personalised closing insight,Task 25 — AI insight widget
+SHOULD,✅,AC-04,1–5 star rating (optional free text),Task 25 — inline star rating
+SHOULD,⚠️,AC-05,"""Schedule next session"" with AI-recommended time slot","""Start next session"" CTA exists; AI time-slot recommendation absent"
+SHOULD,❌,AC-06,Shareable to parent via copy-to-clipboard (MVP),No share-to-clipboard action on summary screen
+,Done,F-STU-020 Chapter Practice Test,,
+Priority,Status,AC#,Criterion,Notes
+MUST,✅,AC-01,AI-generated unique tests; no semantic duplicates within 90 days,"questionsWorker, embedding similarity check"
+MUST,⚠️,AC-02,40% MCQ / 30% short answer / 30% long answer mix,Question types exist; enforced mix ratio not confirmed
+MUST,✅,AC-03,Time limit at board exam ratio; countdown; auto-submit,Test runner
+MUST,✅,AC-04,No answer view during test,
+MUST,✅,AC-05,Post-submission: full step-by-step + specific error explanation,
+MUST,✅,AC-06,Score < 40% → chapter flagged + revision session inserted in 24 h,reteachPlanWorker
+MUST,⚠️,AC-07,Score history + improvement trend graph per chapter,History stored; trend graph UI not confirmed
+SHOULD,✅,AC-08,Student can flag question as incorrect/ambiguous; quarantine on 3 flags,/api/student/question/[id]/flag + quarantine logic
+,Done,F-STU-021 Full Syllabus Mock Exam,,
+Priority,Status,AC#,Criterion,Notes
+MUST,✅,AC-01,"UI replicates board exam paper format (section headings, mark allocation)",MockExamRunner
+MUST,✅,AC-02,Real exam duration enforced; no pause except accessibility mode,
+MUST,✅,AC-03,Free navigation within section; mark for review; cannot cross sections,
+MUST,⚠️,AC-04,"Post-exam report: section-wise, time-per-question heatmap, percentile vs cohort",MockExamReport exists; cohort percentile not confirmed implemented
+MUST,⚠️,AC-05,"AI-generated ""Next 2 Weeks Priority Plan"" post-mock",lib/mock/buildPriorityPlan.ts exists; wiring into post-exam report unclear
+MUST,❌,AC-06,≥ 5 unique mocks per subject per grade at launch,Mock generation infrastructure exists; content seeding status unknown — must verify before launch
+SHOULD,⚠️,AC-07,PDF download (questions only) for offline paper practice,Export routes exist; mock-specific PDF not confirmed
+,Done,F-STU-022 Spaced Repetition & Revision Scheduling,,
+Priority,Status,AC#,Criterion,Notes
+MUST,✅,AC-01,SM-18 revision dates for mastery > 0.75,sm18Worker
+MUST,✅,AC-02,"Revision cards in daily plan; cannot permanently dismiss, 1-day snooze only","RevisionWidget, RevisionFlow"
+MUST,✅,AC-03,"5-question revision session, ~5 min",
+MUST,✅,AC-04,Score > 80% → interval extends; score ≤ 80% → reset + reteach,SM-18 logic
+SHOULD,❌,AC-05,Memory strength indicator per concept in knowledge map,No memory-strength bar UI on knowledge map
+MUST,✅,AC-06,Daily revision cap: 20 minutes; oldest due prioritised,
+SHOULD,❌,AC-07,"Pre-exam mode: 14 days before exam → threshold raised to 92%, student notified",No pre-exam mode logic or notification
+,Done,F-STU-023 Exam Readiness Score,,
+Priority,Status,AC#,Criterion,Notes
+MUST,✅,AC-01,Score 0–100 from chapter mastery (board weights) + mock performance + SRS + recency,Task 10 — computeReadinessScore
+MUST,✅,AC-02,Score updates after every session + test submission,
+MUST,✅,AC-03,Score breakdown by chapter,SubjectReadinessCard
+MUST,❌,AC-04,AI-predicted score range with confidence interval,No predicted score range — only current score shown
+SHOULD,✅,AC-05,Drop > 10 pts in a week → student + parent notification,readinessDropWorker
+,Done,F-STU-030 Daily Learning Streak,,
+Priority,Status,AC#,Criterion,Notes
+MUST,✅,AC-01,Active day = 1 full session OR ≥ 10 revision cards,Task 30
+MUST,✅,AC-02,Streak counter on home screen; milestone badges 7/14/30/60/100,"StreakWidget, Badge model"
+MUST,✅,AC-03,1 streak shield/month; auto-activates on first missed day,Task 30
+MUST,✅,AC-04,"Streak break → forward-looking motivational message, never guilt",Copy rules enforced
+SHOULD,⚠️,AC-05,Longest streak ever displayed on profile,StudentStreak has longestStreak; profile page display not confirmed
+SHOULD,❌,AC-06,Streak milestones unlock cosmetic avatar rewards,Badge model exists; avatar item / profile theme cosmetics not built
+,Done,"F-STU-031 XP, Levels & Badges",,
+Priority,Status,AC#,Criterion,Notes
+MUST,✅,AC-01,"XP for: session, correct answers, streak multiplier, first-attempt bonus, revision","StudentXP, XP award logic"
+MUST,✅,AC-02,XP never deducted; wrong = 0 XP,
+MUST,⚠️,AC-03,Level 1–100; frame changes at 10/20/30/50/75/100,Level model exists; visual frame changes per tier not confirmed in UI
+MUST,⚠️,AC-04,"Badges for mastery, streak, mock, speed, consistency, comeback",Badge model + UserBadge exist; all 6 badge types not confirmed seeded/triggered
+SHOULD,❌,AC-05,Badge showcase — student curates 5 public badges,No badge showcase UI on profile
+MUST,✅,AC-06,"Level-up: full-screen celebration, cannot be suppressed, min 1.5 s",Task 25 — level-up overlay
+,Done,F-STU-032 Student Dashboard,,
+Priority,Status,AC#,Criterion,Notes
+MUST,✅,AC-01,Dashboard is only post-login screen — always personalised,
+MUST,✅,AC-02,"Shows: today's plan, streak+XP, readiness per subject, last 3 sessions, due revision cards","Tasks 7, 9, 21"
+MUST,✅,AC-03,"""Continue Learning"" CTA — one tap, never buried",
+SHOULD,❌,AC-04,"Exam crunch mode ≤ 14 days: countdown prominent, only exam actions",No exam crunch mode UI switch
+MUST,✅,AC-05,Dashboard loads < 2 s,"Promise.all fetches, Redis cache"
+SHOULD,⚠️,AC-06,Dark mode; adjustable font size (S/M/L),Dark mode: ✅. Font size toggle: not confirmed
+,Done,F-STU-033 Progress Reports,,
+Priority,Status,AC#,Criterion,Notes
+MUST,✅,AC-01,"Sessions trend, mastery per chapter, test scores, weekly heatmap, concepts mastered","Progress routes, AiNarrativeWidget, ChapterMasteryBars"
+MUST,✅,AC-02,Filterable by subject + time range (7/30/90/all),
+MUST,✅,AC-03,"AI-generated specific, data-driven insight at top",AiNarrativeWidget
+SHOULD,✅,AC-04,Report downloadable as PDF,/api/student/progress/export
+MUST,✅,AC-05,Progress reports accessible on free tier — never paywalled,
+,Done,F-STU-040 Freemium Access Control,,
+Priority,Status,AC#,Criterion,Notes
+MUST,✅,AC-01,"Free: 3 sessions/subject/month (20 min each), 1 chapter test/subject/month; diagnostic/plan/reports always free",Task 28 — FreeTierUsage
+MUST,✅,AC-02,Session cap counter visible always,FreemiumCounter
+MUST,✅,AC-03,Upgrade prompt at session end only — never mid-session,Task 28
+MUST,✅,AC-04,Free users get same AI quality,
+SHOULD,⚠️,AC-05,Reset on 1st of month; notification 3 days before reset,Reset logic exists; 3-day advance notification job (freemiumResetNotifications.ts) exists but wiring not confirmed
+,Done,F-STU-041 Subscription Purchase,,
+Priority,Status,AC#,Criterion,Notes
+MUST,✅,AC-01,Monthly / Quarterly (-10%) / Annual (-25%); INR + GST breakdown,Task 28
+MUST,✅,AC-02,"UPI (PhonePe/GPay/Paytm), card, net banking, EMI on annual",Razorpay integration
+MUST,✅,AC-03,Payment confirmation before charge; no dark patterns,Scroll-to-confirm
+MUST,✅,AC-04,"Success: instant access, SMS+email receipt, AI welcome message",Razorpay webhook
+MUST,✅,AC-05,"Failed: 3 auto-retries over 3 days, grace period, then free reversion",paymentDunningWorker
+MUST,✅,AC-06,"Cancel: access to end of period, no partial refund, status visible",
+SHOULD,⚠️,AC-07,Family plan: 1 subscription for up to 3 children at 1.8× price,ParentStudent + family plan option in UI; 1.8× pricing and 3-child cap enforcement not confirmed
+,Done,F-STU-042 Referral Programme,,
+Priority,Status,AC#,Criterion,Notes
+MUST/SHOULD,🔒,AC-01–05,All referral features,"Backend built (/api/referral/*, Referral model). Must not surface in any user-facing copy until explicitly unblocked. Not a gap — correctly gated."
+,,,,
+,,ACTOR 2 — PARENT,,
+,Done,F-PAR-001 Parent Account Registration,,
+Priority,Status,AC#,Criterion,Notes
+MUST,✅,AC-01,Register independently or prompted during student signup (age < 13),Task 12
+MUST,✅,AC-02,"Mobile OTP, name, relationship (Father/Mother/Guardian)",ParentProfile
+MUST,✅,AC-03,Age < 13 → parent mandatory gate before student account activates,
+MUST,✅,AC-04,"Age ≥ 13 → parent linking optional, student can invite from profile","/api/parent/link-child, /api/student/invite-parent"
+MUST,✅,AC-05,Parent can link up to 3 child profiles,ParentStudent
+MUST,✅,AC-06,Parent account separate; cannot access student learning sessions,Role-based layout guards
+SHOULD,⚠️,AC-07,"SMS + welcome email on activation with: what they can see, privacy summary",SMS on OTP verify exists; welcome email with privacy summary content not confirmed
+,Done,F-PAR-002 Child Profile Management,,
+Priority,Status,AC#,Criterion,Notes
+MUST,✅,AC-01,"Parent creates child profile: name, DOB, grade, board, medium",/api/parent/create-child
+MUST,✅,AC-02,"Parent sets/updates exam date, weekly hours, study schedule preference","/api/parent/exam-date, /api/parent/controls"
+SHOULD,⚠️,AC-03,Parent can view (not modify) learning plan; submit topic focus preference,View: likely via progress detail. Preference submission: /api/parent/controls exists but AI uptake not confirmed
+SHOULD,⚠️,AC-04,Pause child account; sessions don't count against free tier; shield auto-activates,/api/parent/pause exists; freeze-freemium-counter + shield auto-trigger not confirmed
+MUST,✅,AC-05,Multiple children as tabs on parent dashboard,ParentDashboard tabs
+,Done,F-PAR-003 Consent & Safety,,
+Priority,Status,AC#,Criterion,Notes
+MUST,✅,AC-01,"Explicit consent: data processing, AI interaction, safety policy","Task 11 — Consent model, ConsentGate.tsx"
+MUST,✅,AC-02,Consent stored: timestamp + IP for DPDP compliance,
+MUST,✅,AC-03,"Withdraw consent → data deletion initiated, account deactivated immediately","/api/consent/withdraw, dataDeletionWorker"
+SHOULD,⚠️,AC-04,Privacy policy in plain language; Hindi + English at MVP,/privacy page exists; Hindi translation not confirmed
+,Done,F-PAR-010 Parent Dashboard — Overview,,
+Priority,Status,AC#,Criterion,Notes
+MUST,✅,AC-01,Parent dashboard separate; no session transcripts visible,"app/(parent)/dashboard, server-side transcript block"
+MUST,✅,AC-02,"Per child: sessions this week, time, streak, 3 subject cards, exam countdown + readiness",Task 13
+MUST,✅,AC-03,Multiple children as horizontal tabs,
+MUST,✅,AC-04,Plain language — no jargon,Copy rules
+SHOULD,❌,AC-05,Both timezones shown if parent ≠ student timezone (NRI use case),Single timezone display; no dual-timezone logic
+MUST,✅,AC-06,Loads < 2 s; never blank in week 1,
+,Done,F-PAR-011 Subject Mastery View,,
+Priority,Status,AC#,Criterion,Notes
+MUST,✅,AC-01,"Per subject: overall mastery %, chapter bars, top 3 + bottom 3 chapters",ParentProgressDetail
+MUST,✅,AC-02,"Progress bars — visual trend, not numbers only",
+MUST,❌,AC-03,"""What this means"" tooltip: plain-language mastery explanation",No tooltip explaining mastery % in parent-friendly language
+SHOULD,❌,AC-04,Anonymous benchmarking vs platform cohort (opt-in),No cohort benchmarking — data not aggregated
+MUST,✅,AC-05,Exam readiness per subject + predicted mark range,Readiness score shown; predicted mark range: ❌ (same gap as F-STU-023 AC-04)
+,Done,F-PAR-012 Study Activity History,,
+Priority,Status,AC#,Criterion,Notes
+MUST,✅,AC-01,"Activity calendar heatmap, last 30 days",ActivityHeatmap
+MUST,✅,AC-02,"Weekly summary: sessions, time, subjects, tests, scores",WeeklyTrendChart
+MUST,✅,AC-03,"Last 10 sessions: date, subject, topic, duration, mastery change; no transcript",/api/parent/progress
+SHOULD,⚠️,AC-04,Inactivity alert threshold visible and configurable by parent,Default threshold in inactivityAlertWorker; parent-facing settings UI to change it not confirmed
+SHOULD,❌,AC-05,"""Predicted time to 80% readiness"" at current pace",/api/parent/improvement-trend exists; 80%-by-date projection not confirmed
+,Done,F-PAR-020 Weekly Progress Digest,,
+Priority,Status,AC#,Criterion,Notes
+MUST,✅,AC-01,Every Sunday 9 AM parent timezone; email + SMS,Task 13 — weeklyDigestWorker
+MUST,✅,AC-02,"Contains: study summary, mastery highlights, readiness trend, one AI suggestion",
+MUST,✅,AC-03,Narrative-first AI paragraph (not data table),GPT-4o-mini generation
+SHOULD,⚠️,AC-04,Parent can opt out of digest; cannot opt out of payment/safety,/api/parent/settings exists; UI toggle not confirmed wired
+MUST,⚠️,AC-05,Mobile-optimised HTML; loads without images; dark-mode safe,Email template exists; dark-mode-safe CSS not confirmed
+,Done,F-PAR-021 Inactivity Alert,,
+Priority,Status,AC#,Criterion,Notes
+MUST,✅,AC-01,Default: 3 days no qualifying session; configurable 2/3/5/7 days,inactivityAlertWorker
+MUST,✅,AC-02,"Warm, constructive message (not alarming)",Copy reviewed
+SHOULD,⚠️,AC-03.1,Deep-link to next planned session using ?focus=next&itemId=<id>,Alert exists; deep-link parameter generation not confirmed
+SHOULD,⚠️,AC-03.2,Reset suppression keys on qualifying activity,Worker resets; Redis key cleanup on qualifying activity not confirmed
+MUST,✅,AC-04,Max 1 alert per 3-day period,
+SHOULD,⚠️,AC-05,Parent can mute for a period from the alert itself,/api/parent/alerts/mute exists; mute-from-email CTA not confirmed
+,Done,F-PAR-022 Milestone & Achievement Notifications,,
+Priority,Status,AC#,Criterion,Notes
+MUST,✅,AC-01,"Notify on: streak milestones, chapter mastery, mock completion, level up, readiness 50%/70%/90%","ParentNotification, outbox workers"
+MUST,✅,AC-02,Message gives parent a specific action,
+MUST,✅,AC-03,Positive framing only; no score shaming,
+SHOULD,⚠️,AC-04,Max 2 milestone notifications per week,Rate limit not confirmed in notification worker
+,Done,F-PAR-023 Payment & Account Notifications,,
+Priority,Status,AC#,Criterion,Notes
+MUST,✅,AC-01,Payment success: SMS + email within 60 s,Razorpay webhook
+MUST,✅,AC-02,Payment failure: immediate SMS + email,paymentDunningWorker
+MUST,✅,AC-03,Renewal reminder: 7 days before,subscriptionRenewalWorker
+MUST,✅,AC-04,Cancellation confirmation immediately,
+MUST,✅,AC-05,GST invoice PDF attached to payment email,"Invoice, lib/invoices/"
+MUST,✅,AC-06,"OTP for any login, child account change, subscription change",MSG91 OTP
+,Done,F-PAR-024 Exam Readiness Score Drop Alert,,
+Priority,Status,AC#,Criterion,Notes
+MUST,✅,AC-01,Alert when readiness drops > 10 pts in 7 days,readinessDropWorker
+MUST,✅,AC-02,"Informative, non-alarming message",
+SHOULD,⚠️,AC-03,Alert includes AI remediation plan summary,Alert fires; remediation plan text in the notification not confirmed
+SHOULD,⚠️,AC-04,Only triggers if exam is within 90 days,Distance-to-exam check in alert not confirmed
+,Done,F-PAR-030 Subscription Purchase (Parent-Initiated),,
+Priority,Status,AC#,Criterion,Notes
+MUST,✅,AC-01,Purchase from parent dashboard; applied to selected child,/api/parent/subscription/*
+MUST,✅,AC-02,Monthly / Quarterly / Annual with discount labels; INR+GST,
+MUST,⚠️,AC-03,Family plan: 3 children at 1.8×,Option shown; 1.8× enforcement + 3-child cap not confirmed
+MUST,✅,AC-04,UPI default; all payment methods available,
+MUST,✅,AC-05,Scroll-to-terms required before confirm,
+MUST,✅,AC-06,Payment confirmation < 5 s; webhook fallback on timeout,
+,Done,F-PAR-031 Subscription Management,,
+Priority,Status,AC#,Criterion,Notes
+MUST,✅,AC-01,"Per-child: plan, billing cycle, renewal date, payment method, invoice history","/api/parent/subscription/schedule, billing routes"
+MUST,✅,AC-02,"Upgrade: prorated credit, effective immediately",/api/parent/subscription/change
+MUST,✅,AC-03,"Downgrade/cancel: access to end of period, effective on renewal",
+MUST,✅,AC-04,Failed payment: 3 retries day 0/1/3 → 3-day grace → free tier,installmentDunningWorker
+MUST,✅,AC-05,Update payment method; validate new before removing old,/api/parent/payment-methods
+SHOULD,⚠️,AC-06,Annual EMI: parent can view schedule; per-instalment grace period,Installment model exists; EMI schedule view on parent billing page not confirmed
+,Done,F-PAR-032 Invoice & Tax Management,,
+Priority,Status,AC#,Criterion,Notes
+MUST,✅,AC-01,Auto-generated invoice per payment; available in billing history,"Invoice, R2 storage"
+MUST,✅,AC-02,"GST-compliant format: HSN code, GSTIN, tax breakdown, sequential number",InvoiceSequence
+MUST,✅,AC-03,Invoice emailed automatically as PDF,
+MUST,✅,AC-04,Historical invoices downloadable indefinitely,R2 permanent storage
+SHOULD,⚠️,AC-05,Annual invoice summary: single PDF for all invoices in financial year,/api/parent/invoices/annual-summary route exists; PDF generation not confirmed
+,,ACTOR 3 — ADMIN,,
+,Done,F-ADM-001 Curriculum Ingestion Pipeline,,
+Priority,Status,AC#,Criterion,Notes
+MUST,⚠️,AC-01,CLI script: node ingest.js --file … --board … --subject … --grade … --lang,/api/admin/content/ingest-ncert API route exists; CLI wrapper not confirmed
+MUST,✅,AC-02,PDF → chunk → tag → embed → pgvector,Content engine pipeline
+MUST,✅,AC-03,Idempotent: re-run does not create duplicates,
+MUST,⚠️,AC-04,MVP seed: CBSE Grade 10 Math + Science (English),Pipeline in place; content actually seeded on Neon not confirmed
+MUST,✅,AC-05,Ingestion run log in analytics.events,IngestRunLog model
+MUST,✅,AC-06,Taxonomy pre-seeded before ingestion,SQL seed scripts
+SHOULD,⚠️,AC-07,Retry failed chunks by ID,content-engine/retry route exists; chunk-level retry by run ID not confirmed
+,Done,F-ADM-002 Concept Taxonomy Management,,
+Priority,Status,AC#,Criterion,Notes
+MUST,✅,AC-01,Taxonomy via SQL: board→subject→chapter→topic→concept with codes,Full hierarchy models
+MUST,✅,AC-02,"Concepts have: bloom_level, prerequisite_ids[], commonly_confused_with_ids[]",Concept model fields
+SHOULD,✅,AC-03,Taxonomy changes versioned; historical versions retained,ConceptHistory model
+MUST,✅,AC-04,New subject live only when: taxonomy complete + chunks ingested + ≥ 5 questions/concept,content-readiness checks
+MUST,✅,AC-05,"Subject availability controlled per (board, subject, grade) feature flag",/api/admin/subjects/[id]/availability
+,Done,F-ADM-003 Question Bank Management,,
+Priority,Status,AC#,Criterion,Notes
+MUST,✅,AC-01,AI-generated questions; admin handles exceptions only,
+MUST,✅,AC-02,Quarantine on 3rd student flag; excluded immediately,/api/student/question/[id]/flag + quarantine
+MUST,✅,AC-03,Admin reviews quarantined via Prisma Studio: approve/reject/edit,Admin questions routes
+SHOULD,✅,AC-04,Manual seed script for expert-authored questions (tagged source=manual),Admin questions POST with source field
+MUST,✅,AC-05,IRT validation: 50 responses → nightly 3PL fit → promotes to validated,irtWorker
+SHOULD,✅,AC-06,Weekly question health report: < 5 active questions per concept flagged,worker/jobs/weeklyQuestionHealth.ts
+,Done,F-ADM-004 Misconception Library Management,,
+Priority,Status,AC#,Criterion,Notes
+MUST,✅,AC-01,"Library via SQL: id, subject, concept_ids, description, diagnostic_signals, correction_prompt, contrastive_example, prevalence",Misconception model
+MUST,✅,AC-02,MVP ≥ 20 per subject; each with ≥ 2 signals + correction + contrastive,Seed scripts prisma/seeds/
+MUST,✅,AC-03,Novel misconceptions from 3-failure escalations queued for weekly review,Escalation queue → review table
+SHOULD,✅,AC-04,Monthly prevalence_rate update job; high-prevalence reviewed,misconceptionPrevalenceWorker
+,Done,F-ADM-010 Session Quality Sampling,,
+Priority,Status,AC#,Criterion,Notes
+MUST,✅,AC-01,All session transcripts stored and queryable,AITutorTurnLog
+MUST,✅,AC-02,Daily random sample of 10 sessions from previous day,/api/admin/sessions/sample
+MUST,✅,AC-03,Quality flag field: hallucination/incorrect/poor_pedagogy/off_topic/safety,/api/admin/sessions/[id]/flag
+MUST,✅,AC-04,Safety flags: reviewed within 2 h; other flags: 48 h,
+SHOULD,✅,AC-05,Flagged sessions used as negative examples; correction note linked,
+MUST,✅,AC-06,Weekly avg session rating per subject/concept queried; < 3 stars → content review,worker/jobs/weeklyRatingAggregation.ts
+,Done,F-ADM-011 Doubt Escalation Queue,,
+Priority,Status,AC#,Criterion,Notes
+MUST,✅,AC-01,Escalation after 3 AI failures → escalations table,"DoubtEscalation model, doubtKbWorker"
+MUST,✅,AC-02,Admin queries unresolved escalations weekly,/api/admin/escalations
+MUST,✅,AC-03,"Resolution actions: re-ingest, add misconception, cache direct resolution",Admin escalation resolve route
+SHOULD,⚠️,AC-04,Student notified when doubt resolved with improved answer,Resolution stored; student notification on resolution not confirmed
+MUST,✅,AC-05,"Trending (> 5 students, same concept, 1 week) → content priority alert",Trend detection in worker
+,Done,F-ADM-012 LLM Cost Monitoring,,
+Priority,Status,AC#,Criterion,Notes
+MUST,✅,AC-01,"Every LLM call logs: model, tokens, cost_usd, call_type, concept_id, session_id","AITutorTurnLog, ApiUsage"
+MUST,✅,AC-02,"Daily cost report by call_type, model, subject",Task 18 — DailyCostMetric
+MUST,✅,AC-03,Cost anomaly: daily > 1.5× 7-day average → email alert,costReportingWorker
+MUST,✅,AC-04,Cost per session tracked; alert if outside $0.15–$0.25 range,
+SHOULD,✅,AC-05,Cache hit rate: (cache hits / total teach calls) > 55% target,AITutorTurnLog.cached field
+,Done,F-ADM-013 Hallucination & Safety Flag Review,,
+Priority,Status,AC#,Criterion,Notes
+MUST,✅,AC-01,Safety layer in every session prompt; safety_event written on trigger,"SafetyEvent, lib/safety/, lib/guardrails.ts"
+MUST,✅,AC-02,Admin queries safety events daily; reviewed within 2 h,/api/admin/safety-events
+MUST,✅,AC-03,Low-groundedness responses flagged; admin reviews weekly summary,/api/admin/sessions/groundedness-summary
+MUST,✅,AC-04,Hallucination detected → concept suspended (feature flag) until fixed,/api/admin/concepts/[id]/suspend
+MUST,✅,AC-05,Student jailbreak detected → admin can suspend account,/api/admin/users/[id] suspend action
+,Done,F-ADM-020 User Account Operations,,
+Priority,Status,AC#,Criterion,Notes
+MUST,✅,AC-01,"View any user: profile, subscription, sessions, knowledge graph, payments",/api/admin/users/[id]
+MUST,✅,AC-02,Suspend (temporary) or deactivate (permanent + DPDP deletion),
+MUST,✅,AC-03,Manual grade change with audit log entry; triggers diagnostic reset,Audit log wired; grade change endpoint
+MUST,✅,AC-04,Reset diagnostic for a subject; audit logged; student notified,/api/admin/users/[id]/reset-diagnostic
+SHOULD,✅,AC-05,Duplicate account detection (same mobile/device fingerprint),/api/admin/users/duplicates
+SHOULD,✅,AC-06,Merge two accounts (preserve better subscription + higher mastery + full history),/api/admin/users/[id]/merge-into/[targetId]
+,Done,F-ADM-021 Subscription & Payment Operations,,
+Priority,Status,AC#,Criterion,Notes
+MUST,✅,AC-01,Extend subscription by N days with reason; audit logged,/api/admin/subscriptions/[id]/extend
+MUST,✅,AC-02,Manual refund: mark in system + Razorpay dashboard step required,/api/admin/payments/[id]/refund
+SHOULD,⚠️,AC-03,"Custom discount coupon: % or fixed, one-time or recurring, expiry, per-student or batch",PromotionCandidate model; coupon code system not confirmed fully built
+MUST,✅,AC-04,Full payment event history per student; all webhook events,PaymentEvent model
+MUST,✅,AC-05,"Subscription analytics: MRR, ARR, churn, trial-to-paid, avg duration",/api/admin/metrics/growth
+,Done,F-ADM-030 Core Growth Metrics,,
+Priority,Status,AC#,Criterion,Notes
+MUST,✅,AC-01–06,"DAS, WAS, sessions/student/week, conversion, MRR, churn","/api/admin/metrics/growth, saved query infrastructure"
+SHOULD,⚠️,AC-07,LTV/CAC tracked manually,MRR data available; LTV/CAC calculation not automated
+,Done,F-ADM-031 Learning Outcome Metrics,,
+Priority,Status,AC#,Criterion,Notes
+MUST,✅,AC-01,Avg mastery gain per session > 0.05 target,/api/admin/metrics/learning-outcomes
+MUST,✅,AC-02,Chapter completion rate > 60%,
+MUST,✅,AC-03,Mock exam score improvement: > 70% students show positive trend,
+SHOULD,✅,AC-04,Hint dependency rate; > 80% all-3-hints → content review,/api/admin/metrics/hint-dependency
+SHOULD,✅,AC-05,SRS compliance: % due cards completed on schedule > 65%,/api/admin/metrics/srs-compliance
+,Done,F-ADM-032 Platform Health Metrics,,
+Priority,Status,AC#,Criterion,Notes
+MUST,✅,AC-01–06,"Session error rate, AI p95 latency, question gen failure, Neon pool, Redis memory, VPS CPU/mem","SystemMetricSample, SystemAlert, /api/admin/system/*, heartbeatWatchdog"
+,Done,F-ADM-040 DPDP Compliance,,
+Priority,Status,AC#,Criterion,Notes
+MUST,✅,AC-01–06,"Parental consent, data minimisation, right to erasure, data localisation, no PII to AI, breach response","Consent, DeletionRequest, dataDeletionWorker, PII redaction layer"
+,Done,F-ADM-041 Audit Logging,,
+Priority,Status,AC#,Criterion,Notes
+MUST,✅,AC-01,"All admin actions logged: admin_id, action, entity, old/new value, timestamp, IP",AuditLog
+MUST,✅,AC-02,Append-only; no admin can delete,
+MUST,✅,AC-03,"Security events: failed logins, role changes, subscription adjustments, suspensions",
+MUST,✅,AC-04,Retained 7 years; after 1 year archived to R2,auditArchivalWorker
+,,SUMMARY — GAPS BY PRIORITY,,
+,,❌ Missing — MUST-priority (launch-blocking),,
+AC#,Gap,#,Feature,
+AC-01–05,Entire interactive canvas UI absent; backend stubs only,1,F-STU-014 Virtual Whiteboard,
+AC-04,AI-predicted score range not implemented,2,F-STU-023 Exam Readiness,
+AC-06,≥ 5 unique mocks per subject seeded on Neon — needs verification/action,3,F-STU-021 Mock Exam,
+AC-03,"""What this means"" tooltip absent on parent dashboard",4,F-PAR-011 Subject Mastery View,
+,,❌ Missing — SHOULD-priority (post-launch or deferred acceptable),,
+AC#,Gap,#,Feature,
+AC-04,Visual calendar timeline UI not built,5,F-STU-003 Learning Path,
+AC-06,Manual topic reorder within a week not built,6,F-STU-003 Learning Path,
+AC-05,Memory strength bar per concept in knowledge map,7,F-STU-022 SRS,
+AC-07,Pre-exam mode (14-day threshold change + notification),8,F-STU-022 SRS,
+AC-04,Exam crunch mode UI switch (≤ 14 days),9,F-STU-032 Dashboard,
+AC-05,Badge showcase (curate 5 public badges) on profile,10,F-STU-031 XP/Badges,
+AC-06,Copy-to-clipboard share on summary screen,11,F-STU-015 Session Summary,
+AC-05,Dual timezone display (NRI use case),12,F-PAR-010 Parent Dashboard,
+AC-05,"""Predicted time to 80% readiness"" projection",13,F-PAR-012 Study History,
+AC-04,Anonymous cohort benchmarking (opt-in),14,F-PAR-011 Mastery View,
+,,⚠️ Partial — MUST-priority (needs verification/completion before launch),,
+AC#,Gap,#,Feature,
+AC-08,Welcome email not confirmed wired to signup,15,F-STU-001 Registration,
+AC-07,Partial diagnostic grade-level fallback not confirmed,16,F-STU-002 Diagnostic,
+AC-02,40/30/30 question type mix ratio not confirmed enforced,17,F-STU-020 Chapter Test,
+AC-04,Cohort percentile in exam report not confirmed,18,F-STU-021 Mock Exam,
+AC-05,Post-mock priority plan wiring into report not confirmed,19,F-STU-021 Mock Exam,
+AC-01,CLI script wrapper (vs API route) not confirmed,20,F-ADM-001 Ingestion,
+AC-04,CBSE Grade 10 Math + Science actually seeded on Neon — needs verification,21,F-ADM-001 Ingestion,
+,,,,
+,,"Now, moving straight to integration test stabilization.",,

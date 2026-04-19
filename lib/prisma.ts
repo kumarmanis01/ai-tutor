@@ -12,6 +12,7 @@
  * EDIT LOG:
  * - 2026-01-24T12:00:00Z | copilot | replace ESM createRequire logic with universal PrismaClient singleton to support Jest/CJS
  * - 2026-04-18T00:00:00Z | copilot | remove speculative eager-connect for test env; root fix is in prismaEnsureColumns.ts
+ * - 2026-04-19T00:00:00Z | copilot | add Prisma middleware to fire welcome email on User.create (safe, lazy-loaded)
  */
 
 import { PrismaClient } from '@prisma/client';
@@ -33,6 +34,46 @@ const client = g.prisma ?? new PrismaClient({
 });
 
 if (process.env.NODE_ENV !== 'production') g.prisma = client;
+// Middleware: send a welcome email for every newly-created User record.
+// Guarded so it is safe in unit tests (Prisma mock may not implement $use).
+try {
+  if (typeof (client as any).$use === 'function') {
+    (client as any).$use(async (params: any, next: any) => {
+      // Execute the DB operation first
+      const result = await next(params);
+
+      try {
+        if (params.model === 'User' && params.action === 'create' && result && result.email) {
+          // Fire-and-forget: lazy-import mailer & templates to avoid module-load side-effects.
+          (async () => {
+            try {
+              const mailer = await import('@/lib/mailer').then((m) => m.sendMailSafe).catch(() => undefined);
+              const tpl = await import('@/lib/email/templates').then((m) => m.welcomeEmailHtml).catch(() => undefined);
+              if (typeof mailer === 'function' && typeof tpl === 'function') {
+                await mailer({
+                  to: result.email,
+                  subject: 'Welcome to Spinzy Academy!',
+                  html: tpl(result.name ?? 'there'),
+                });
+              }
+            } catch (err) {
+              logger.warn('[prisma.middleware] welcome email send failed', { error: String(err), email: result?.email });
+            }
+          })();
+        }
+      } catch (err) {
+        logger.warn('[prisma.middleware] welcome email middleware error', { err: String(err) });
+      }
+
+      return result;
+    });
+  } else {
+    logger.info('prisma middleware: $use not available; skipping welcome-email middleware (likely test/mock env)');
+  }
+} catch (err) {
+  // Non-fatal: do not crash module initialization if middleware setup fails.
+  logger.warn('prisma middleware setup failed', { err: String(err) });
+}
 // Provide a compatibility proxy so older code/tests that reference legacy model
 // names (e.g. `analyticsSignal`) continue to work even if the schema renamed
 // the model to `analyticsEvent`.
