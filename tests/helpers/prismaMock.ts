@@ -46,6 +46,7 @@ export const prismaMock = {
   studentStreak: mockModel(),
   learningSession: mockModel(),
   testResult: mockModel(),
+  learningPlan: mockModel(),
   board: mockModel(),
   classLevel: mockModel(),
   subjectDef: mockModel(),

@@ -19,6 +19,7 @@ import { getServerSessionForHandlers } from '@/lib/session';
 import { prisma } from '@/lib/prisma';
 import { SessionUser } from '@/lib/types';
 import { logger } from '@/lib/logger';
+import { generateLearningPlan } from '@/lib/ai/learningPlan';
 
 export async function GET(req: Request) {
   const start = Date.now();
@@ -190,15 +191,60 @@ export async function PATCH(req: Request) {
     }
   }
 
+  // Support updating examDate (optional). Accepts a ISO string or null to clear.
+  if (Object.prototype.hasOwnProperty.call(body, 'examDate')) {
+    const raw = (body as any).examDate
+    if (raw === null) {
+      updates.examDate = null
+    } else if (typeof raw === 'string' && raw.trim() !== '') {
+      const parsed = new Date(raw)
+      if (Number.isNaN(parsed.getTime())) {
+        res = NextResponse.json({ error: 'Invalid examDate' }, { status: 400 })
+        if (typeof logger.logAPI === 'function') logger.logAPI(req, res, { className: 'UserProfileAPI', methodName: 'PATCH' }, start)
+        return res
+      }
+      updates.examDate = parsed
+    } else {
+      res = NextResponse.json({ error: 'Invalid examDate' }, { status: 400 })
+      if (typeof logger.logAPI === 'function') logger.logAPI(req, res, { className: 'UserProfileAPI', methodName: 'PATCH' }, start)
+      return res
+    }
+  }
+
   if (Object.keys(updates).length === 0) {
     res = NextResponse.json({ error: 'Nothing to update' }, { status: 400 });
     logger.logAPI(req, res, { className: 'UserProfileAPI', methodName: 'PATCH' }, start);
     return res;
   }
 
-  const updated = await prisma.user.update({ where: { id: userId }, data: updates, select: { id: true, learningStyle: true, preferences: true } });
+  const updated = await prisma.user.update({ where: { id: userId }, data: updates, select: { id: true, learningStyle: true, preferences: true, examDate: true } });
 
   res = NextResponse.json({ ok: true, learningStyle: updated.learningStyle ?? null, preferences: updated.preferences ?? null });
   logger.logAPI(req, res, { className: 'UserProfileAPI', methodName: 'PATCH' }, start);
+
+  // If examDate was updated, regenerate any existing learning plans for the student (non-blocking).
+  if (Object.prototype.hasOwnProperty.call(updates, 'examDate')) {
+    const lpModel = (prisma as any).learningPlan
+    if (lpModel && typeof lpModel.findMany === 'function') {
+      const studentId = updated.id
+      const exam = updates.examDate instanceof Date ? updates.examDate : null
+      lpModel
+        .findMany({ where: { studentId }, select: { subjectId: true, weeklyGoal: true } })
+        .then(async (plans: Array<{ subjectId: string; weeklyGoal: number }>) => {
+          if (!plans || plans.length === 0) return
+          for (const p of plans) {
+            try {
+              await generateLearningPlan(studentId, p.subjectId, { examDate: exam ?? undefined, weeklyGoal: p.weeklyGoal })
+            } catch (err) {
+              logger.warn('UserProfileAPI: regenerate learning plan failed', { className: 'UserProfileAPI', methodName: 'PATCH', studentId, subjectId: p.subjectId, error: String(err) })
+            }
+          }
+        })
+        .catch((err: any) => {
+          logger.warn('UserProfileAPI: failed to fetch learning plans for regen', { className: 'UserProfileAPI', methodName: 'PATCH', studentId: updated.id, error: String(err) })
+        })
+    }
+  }
+
   return res;
 }
