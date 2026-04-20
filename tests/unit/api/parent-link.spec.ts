@@ -1,7 +1,8 @@
 /* eslint-disable @typescript-eslint/no-require-imports, @typescript-eslint/no-explicit-any */
 /**
  * Tests for POST /api/parent/link (F-PAR-001 AC-07):
- * welcome email + SMS sent on new link via invite-code and email-link paths.
+ * welcome email sent on new link via invite-code, legacy invite-code, and email-link paths.
+ * SMS is intentionally not tested: sendSms uses MSG91 OTP API and cannot send arbitrary text.
  */
 
 jest.mock('next-auth/next', () => ({ getServerSession: jest.fn() }));
@@ -17,7 +18,6 @@ jest.mock('@/lib/parent/inviteService', () => ({
   PARENT_INVITE_TTL_DAYS: 7,
 }));
 jest.mock('@/lib/mailer', () => ({ sendMailSafe: jest.fn().mockResolvedValue(undefined) }));
-jest.mock('@/lib/sms', () => ({ sendSms: jest.fn().mockResolvedValue(undefined) }));
 jest.mock('@/lib/email/templates', () => ({ parentWelcomeHtml: jest.fn().mockReturnValue('<html>welcome</html>') }));
 
 import { describe, it, expect, beforeEach } from '@jest/globals';
@@ -39,7 +39,6 @@ describe('POST /api/parent/link — F-PAR-001 AC-07 welcome notifications', () =
   let redeemParentInviteAndLink: jest.Mock;
   let linkParentToStudentByEmail: jest.Mock;
   let sendMailSafe: jest.Mock;
-  let sendSms: jest.Mock;
 
   beforeEach(() => {
     resetPrismaMock();
@@ -51,9 +50,7 @@ describe('POST /api/parent/link — F-PAR-001 AC-07 welcome notifications', () =
     linkParentToStudentByEmail = require('@/lib/parent/inviteService').linkParentToStudentByEmail;
 
     sendMailSafe = require('@/lib/mailer').sendMailSafe;
-    sendSms = require('@/lib/sms').sendSms;
     sendMailSafe.mockClear();
-    sendSms.mockClear();
   });
 
   it('should return 401 when unauthenticated', async () => {
@@ -76,10 +73,10 @@ describe('POST /api/parent/link — F-PAR-001 AC-07 welcome notifications', () =
   });
 
   describe('invite-code path (AC-07)', () => {
-    it('should send welcome email + SMS when invite-code link succeeds (status=linked)', async () => {
+    it('should send welcome email when invite-code link succeeds (status=linked)', async () => {
       redeemParentInviteAndLink.mockResolvedValue({ status: 'linked', studentId: STUDENT_ID });
       prismaMock.user.findUnique
-        .mockResolvedValueOnce({ name: 'Test Parent', email: 'parent@example.test', phone: '+919876543210' })
+        .mockResolvedValueOnce({ name: 'Test Parent', email: 'parent@example.test' })
         .mockResolvedValueOnce({ name: 'Test Student' });
 
       const { POST } = await import('@/app/api/parent/link/route');
@@ -91,7 +88,6 @@ describe('POST /api/parent/link — F-PAR-001 AC-07 welcome notifications', () =
       expect(sendMailSafe).toHaveBeenCalledWith(
         expect.objectContaining({ to: 'parent@example.test', subject: expect.stringContaining('Spinzy') }),
       );
-      expect(sendSms).toHaveBeenCalledWith('+919876543210', expect.stringContaining('Test Student'));
     });
 
     it('should NOT send welcome email when invite-code link returns already_linked', async () => {
@@ -103,41 +99,78 @@ describe('POST /api/parent/link — F-PAR-001 AC-07 welcome notifications', () =
       const data = await res.json();
       expect(data.status).toBe('already_linked');
       expect(sendMailSafe).not.toHaveBeenCalled();
-      expect(sendSms).not.toHaveBeenCalled();
-    });
-
-    it('should send email but skip SMS when parent has no phone', async () => {
-      redeemParentInviteAndLink.mockResolvedValue({ status: 'linked', studentId: STUDENT_ID });
-      prismaMock.user.findUnique
-        .mockResolvedValueOnce({ name: 'Test Parent', email: 'parent@example.test', phone: null })
-        .mockResolvedValueOnce({ name: 'Test Student' });
-
-      const { POST } = await import('@/app/api/parent/link/route');
-      await POST(makeRequest({ action: 'link', inviteCode: 'ABCD1234' }) as any);
-
-      expect(sendMailSafe).toHaveBeenCalledTimes(1);
-      expect(sendSms).not.toHaveBeenCalled();
     });
 
     it('should skip email if parent has no email address', async () => {
       redeemParentInviteAndLink.mockResolvedValue({ status: 'linked', studentId: STUDENT_ID });
       prismaMock.user.findUnique
-        .mockResolvedValueOnce({ name: 'Test Parent', email: null, phone: '+919876543210' })
+        .mockResolvedValueOnce({ name: 'Test Parent', email: null })
         .mockResolvedValueOnce({ name: 'Test Student' });
 
       const { POST } = await import('@/app/api/parent/link/route');
       await POST(makeRequest({ action: 'link', inviteCode: 'ABCD1234' }) as any);
 
       expect(sendMailSafe).not.toHaveBeenCalled();
-      expect(sendSms).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('legacy invite-code fallback path (AC-07)', () => {
+    it('should send welcome email when legacy invite code creates a new link', async () => {
+      redeemParentInviteAndLink.mockRejectedValue(new Error('not found'));
+      prismaMock.parentStudent.findUnique
+        // legacy record lookup
+        .mockResolvedValueOnce({
+          id: 'legacy-1',
+          studentId: STUDENT_ID,
+          parentId: 'other-parent',
+          status: 'pending',
+          createdAt: new Date(),
+        })
+        // existing link check
+        .mockResolvedValueOnce(null);
+      prismaMock.parentStudent.update.mockResolvedValue({ id: 'legacy-1' } as any);
+      prismaMock.user.findUnique
+        .mockResolvedValueOnce({ name: 'Test Parent', email: 'parent@example.test' })
+        .mockResolvedValueOnce({ name: 'Test Student' });
+
+      const { POST } = await import('@/app/api/parent/link/route');
+      const res = await POST(makeRequest({ action: 'link', inviteCode: 'LEGACY01' }) as any);
+
+      expect(res.status).toBe(200);
+      const data = await res.json();
+      expect(data.status).toBe('linked');
+      expect(sendMailSafe).toHaveBeenCalledWith(
+        expect.objectContaining({ to: 'parent@example.test' }),
+      );
+    });
+
+    it('should NOT send welcome email when legacy code resolves to already_linked', async () => {
+      redeemParentInviteAndLink.mockRejectedValue(new Error('not found'));
+      prismaMock.parentStudent.findUnique
+        .mockResolvedValueOnce({
+          id: 'legacy-1',
+          studentId: STUDENT_ID,
+          parentId: 'other-parent',
+          status: 'pending',
+          createdAt: new Date(),
+        })
+        .mockResolvedValueOnce({ id: 'existing-1', status: 'active' });
+      prismaMock.parentStudent.update.mockResolvedValue({} as any);
+
+      const { POST } = await import('@/app/api/parent/link/route');
+      const res = await POST(makeRequest({ action: 'link', inviteCode: 'LEGACY01' }) as any);
+
+      const data = await res.json();
+      expect(data.status).toBe('already_linked');
+      expect(sendMailSafe).not.toHaveBeenCalled();
     });
   });
 
   describe('email-link path (AC-07)', () => {
-    it('should send welcome email + SMS when email-link succeeds (status=linked)', async () => {
+    it('should send welcome email when email-link succeeds (status=linked)', async () => {
       linkParentToStudentByEmail.mockResolvedValue({ status: 'linked', studentId: STUDENT_ID });
       prismaMock.user.findUnique
-        .mockResolvedValueOnce({ name: 'Test Parent', email: 'parent@example.test', phone: '+919876543210' })
+        .mockResolvedValueOnce({ name: 'Test Parent', email: 'parent@example.test' })
         .mockResolvedValueOnce({ name: 'Test Student' });
 
       const { POST } = await import('@/app/api/parent/link/route');
@@ -149,7 +182,6 @@ describe('POST /api/parent/link — F-PAR-001 AC-07 welcome notifications', () =
       expect(sendMailSafe).toHaveBeenCalledWith(
         expect.objectContaining({ to: 'parent@example.test' }),
       );
-      expect(sendSms).toHaveBeenCalledWith('+919876543210', expect.stringContaining('Test Student'));
     });
 
     it('should NOT send welcome email when email-link returns already_linked', async () => {

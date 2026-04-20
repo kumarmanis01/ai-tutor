@@ -5,7 +5,7 @@
  * - Small readiness card showing subject readiness percent and brief action hint.
  *
  * LINKED UNIT TEST:
- * - tests/unit/components/SubjectReadinessCard.spec.ts
+ * - tests/unit/components/SubjectReadinessCard.spec.tsx
  *
  * COPILOT INSTRUCTIONS FOLLOWED:
  * - .github/copilot-instructions.md
