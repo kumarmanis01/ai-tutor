@@ -26,7 +26,7 @@ interface Props {
   showSkeleton?: boolean;
 }
 
-export default function ChapterTrend({ chapter, subject, className = '' }: Props) {
+export default function ChapterTrend({ chapter, subject, className = '', showSkeleton = false }: Props) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [data, setData] = useState<TrendPoint[]>([]);

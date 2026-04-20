@@ -22,9 +22,9 @@ describe('ChapterTrend (ChapterTests integration)', () => {
   });
 
   it('fetches and shows per-chapter trend when Trend is toggled', async () => {
-    // Mock the trend API response
+    // Mock the trend API response for any fetch calls made by the component
     // @ts-expect-error TODO: fix types
-    global.fetch.mockResolvedValueOnce({ ok: true, json: async () => ({ data: [{ date: '2026-04-01T00:00:00Z', score: 80 }] }) });
+    global.fetch.mockResolvedValue({ ok: true, json: async () => ({ data: [{ date: '2026-04-01T00:00:00Z', score: 80 }] }) });
 
     render(
       <ChapterTests

@@ -297,9 +297,9 @@ The 3-tier hint system is implemented end-to-end: server detects explicit hint r
 | Priority | Status | AC# | Criterion | CSV Status | Code Status | Evidence | Action |
 |----------|--------|-----|-----------|------------|-------------|----------|--------|
 | MUST | ✅ | AC-01 | AI-generated unique tests; no semantic duplicates | ✅ | ✅ | `questionsWorker`, embedding similarity | None |
-| MUST | ⚠️ | AC-02 | 40% MCQ / 30% short / 30% long mix | ⚠️ | ⚠️ | Question types exist; enforced mix ratio not confirmed | Verify ratio enforcement in question selection |
+| MUST | ✅ | AC-02 | 40% MCQ / 30% short / 30% long mix | ✅ | ✅ | `lib/tests.ts:selectQuestionsWithMix()` enforces 40/30/30 distribution; `tests/unit/lib/tests.selectQuestionsWithMix.test.ts` verifies backfill, counts and timeLimitSeconds | None |
 | MUST | ✅ | AC-03–06 | Timer, no-answer-view, full answer review, reteach | ✅ | ✅ | Test runner, `reteachPlanWorker` | None |
-| MUST | ⚠️ | AC-07 | Score history + improvement trend graph per chapter | ⚠️ | ⚠️ | History stored; trend graph UI not confirmed | Confirm or build trend graph component |
+| MUST | ✅ | AC-07 | Score history + improvement trend graph per chapter | ✅ | ✅ | `app/api/student/tests/trend/route.ts` (API), `components/student/progress/ScoreTrendGraph.tsx` (SVG chart), `components/Test/ChapterTrend.tsx` (client fetch + modal) — unit test: `tests/unit/components/Test/ChapterTrend.test.tsx` | None |
 | SHOULD | ✅ | AC-08 | Flag question; quarantine on 3 flags | ✅ | ✅ | `/api/student/question/[id]/flag` | None |
 
 ---
