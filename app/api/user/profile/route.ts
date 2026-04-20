@@ -228,6 +228,20 @@ export async function PATCH(req: Request) {
     if (lpModel && typeof lpModel.findMany === 'function') {
       const studentId = updated.id
       const exam = updates.examDate instanceof Date ? updates.examDate : null
+      // Lightweight audit/event for observability (fire-and-forget). Attach to student record.
+      const eventModel = (prisma as any).event
+      if (eventModel && typeof eventModel.create === 'function') {
+        eventModel.create({
+          data: {
+            userId: studentId,
+            type: 'examDate.regen.triggered',
+            metadata: { triggeredBy: userId ?? null, trigger: 'profile', examDate: exam instanceof Date ? exam.toISOString() : null },
+            timestamp: new Date(),
+          },
+        }).catch((evErr: any) => {
+          logger.warn('UserProfileAPI: failed to persist regen event', { className: 'UserProfileAPI', methodName: 'PATCH', error: String(evErr) })
+        })
+      }
       lpModel
         .findMany({ where: { studentId }, select: { subjectId: true, weeklyGoal: true } })
         .then(async (plans: Array<{ subjectId: string; weeklyGoal: number }>) => {

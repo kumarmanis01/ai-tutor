@@ -63,6 +63,20 @@ export async function POST(req: Request) {
     // Guard access because test prisma mock may not include the `learningPlan` model.
     const lpModel = (prisma as any).learningPlan
     if (lpModel && typeof lpModel.findMany === 'function') {
+      // Lightweight audit/event for observability (fire-and-forget). Attach to student record.
+      const eventModel = (prisma as any).event
+      if (eventModel && typeof eventModel.create === 'function') {
+        eventModel.create({
+          data: {
+            userId: studentId,
+            type: 'examDate.regen.triggered',
+            metadata: { triggeredBy: parentId ?? null, trigger: 'parent', examDate: examDate.toISOString() },
+            timestamp: new Date(),
+          },
+        }).catch((evErr: any) => {
+          logger.warn('ParentSetExamDateAPI: failed to persist regen event', { className: 'ParentSetExamDateAPI', methodName: 'POST', error: String(evErr) })
+        })
+      }
       lpModel
         .findMany({ where: { studentId }, select: { subjectId: true, weeklyGoal: true } })
         .then(async (plans: Array<{ subjectId: string; weeklyGoal: number }>) => {
