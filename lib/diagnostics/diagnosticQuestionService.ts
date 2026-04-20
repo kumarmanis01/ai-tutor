@@ -2,6 +2,7 @@
   import { ensureQuestions, type QuestionFilters } from '@/lib/tests';
   import { logger } from '@/lib/logger';
   import { diagnosticConfig, computeDifficultyCounts } from '@/lib/config';
+  import OpenAI from 'openai';
 
   export type DiagnosticDifficulty = 'easy' | 'medium' | 'hard';
 
@@ -37,6 +38,12 @@
      * Optional for now; the underlying question bank may fall back gracefully.
      */
     languageCode?: string;
+    /**
+     * When the caller already holds the SubjectDef.id (e.g. the diagnostic page),
+     * pass it here to bypass the slug/board/grade re-lookup in getCurriculumTopics.
+     * This prevents failures caused by ClassLevel.lifecycle mismatches.
+     */
+    subjectId?: string;
   }
 
   export interface DiagnosticTest {
@@ -95,43 +102,82 @@
       }[];
     };
 
-      const subject = (await prisma.subjectDef.findFirst({
-      where: {
-        slug: params.subjectSlug,
-        lifecycle: 'active',
-        class: {
-            lifecycle: 'active',
-            grade: Number(params.grade),
-          board: {
-            lifecycle: 'active',
-            slug: { equals: params.boardSlug, mode: 'insensitive' },
+    const subjectSelect = {
+      id: true,
+      name: true,
+      chapters: {
+        where: { lifecycle: 'active' as const },
+        orderBy: { order: 'asc' as const },
+        select: {
+          id: true,
+          name: true,
+          order: true,
+          topics: {
+            where: { lifecycle: 'active' as const },
+            orderBy: { order: 'asc' as const },
+            select: { id: true, name: true },
           },
         },
       },
-      select: {
-        id: true,
-        name: true,
-        chapters: {
-          where: { lifecycle: 'active' },
-          orderBy: { order: 'asc' },
-          select: {
-            id: true,
-            name: true,
-            order: true,
-            topics: {
-              where: { lifecycle: 'active' },
-              orderBy: { order: 'asc' },
-              select: { id: true, name: true },
+    };
+
+    let subject: SubjectWithChapters | null = null;
+
+    // Fast path: caller already holds the SubjectDef.id -- skip the slug/board/grade
+    // re-lookup that can fail when ClassLevel.lifecycle is not 'active'.
+    if (params.subjectId) {
+      subject = (await prisma.subjectDef.findUnique({
+        where: { id: params.subjectId },
+        select: subjectSelect,
+      })) as SubjectWithChapters | null;
+
+      if (!subject) {
+        throw new Error(
+          `DiagnosticQuestionService: SubjectDef not found for id=${params.subjectId}`,
+        );
+      }
+    } else {
+      // Slug-based lookup -- requires ClassLevel.lifecycle = 'active'.
+      // Tries exact match first; falls back to relaxed ClassLevel lifecycle filter
+      // to handle cases where ClassLevel was not explicitly activated after seeding.
+      subject = (await prisma.subjectDef.findFirst({
+        where: {
+          slug: params.subjectSlug,
+          lifecycle: 'active',
+          class: {
+            lifecycle: 'active',
+            grade: Number(params.grade),
+            board: {
+              lifecycle: 'active',
+              slug: { equals: params.boardSlug, mode: 'insensitive' },
             },
           },
         },
-      },
+        select: subjectSelect,
       })) as SubjectWithChapters | null;
 
-    if (!subject) {
-      throw new Error(
-        `DiagnosticQuestionService: Subject not found for board=${params.boardSlug}, grade=${params.grade}, subject=${params.subjectSlug}`,
-      );
+      if (!subject) {
+        // Fallback: ignore ClassLevel lifecycle -- some seeds omit it
+        subject = (await prisma.subjectDef.findFirst({
+          where: {
+            slug: params.subjectSlug,
+            lifecycle: 'active',
+            class: {
+              grade: Number(params.grade),
+              board: {
+                slug: { equals: params.boardSlug, mode: 'insensitive' },
+              },
+            },
+          },
+          select: subjectSelect,
+        })) as SubjectWithChapters | null;
+      }
+
+      if (!subject) {
+        throw new Error(
+          `DiagnosticQuestionService: Subject not found for board=${params.boardSlug}, grade=${params.grade}, subject=${params.subjectSlug}`,
+        );
+      }
     }
 
     const topicIds: string[] = [];
@@ -342,6 +388,43 @@
         grade: Number(normalizedParams.grade),
         questionIds: questions.map((q) => q.id).slice(0, 100),
       });
+
+      // Last-resort: generate questions on-demand via LLM when the bank is completely empty.
+      // This ensures the student always sees a test rather than a "not ready" screen.
+      // Generated questions are persisted so subsequent loads are instant.
+      if (questions.length === 0) {
+        try {
+          logger.info('DiagnosticQuestionService.onDemandGeneration.start', {
+            subjectId, subjectName, grade: normalizedParams.grade, boardSlug: normalizedParams.boardSlug,
+          });
+          const onDemand = await generateDiagnosticQuestionsOnDemand({
+            subjectId,
+            subjectName,
+            boardSlug: normalizedParams.boardSlug,
+            grade: Number(normalizedParams.grade),
+            topicIds,
+            languageCode: normalizedParams.languageCode,
+            totalCount: TOTAL_QUESTIONS,
+          });
+          if (onDemand.length > 0) {
+            logger.info('DiagnosticQuestionService.onDemandGeneration.success', {
+              generated: onDemand.length,
+            });
+            return {
+              subjectId,
+              subjectName,
+              boardSlug: params.boardSlug,
+              grade: Number(normalizedParams.grade),
+              questions: onDemand,
+            };
+          }
+        } catch (genErr) {
+          logger.error('DiagnosticQuestionService.onDemandGeneration.failed', {
+            error: String(genErr),
+            subjectId,
+          });
+        }
+      }
     }
 
     const sampleQuestions = questions.slice(0, 10).map((q) => ({
@@ -367,5 +450,173 @@
       grade: Number(normalizedParams.grade),
       questions,
     };
+  }
+
+  // ── On-demand LLM question generation ────────────────────────────────────────
+
+  interface OnDemandParams {
+    subjectId: string;
+    subjectName: string;
+    boardSlug: string;
+    grade: number;
+    topicIds: string[];
+    languageCode?: string;
+    totalCount: number;
+  }
+
+  /**
+   * Generates diagnostic MCQ questions via LLM when the question bank is empty.
+   *
+   * Makes a single OpenAI call for all required questions (no per-topic loop).
+   * Persists each question to the Question table so future loads hit the bank.
+   * Returns up to totalCount questions; returns [] on any failure.
+   *
+   * Uses gpt-4o-mini (fast, cheap) with a 30s timeout.
+   * Falls back gracefully: any parse/persist error is skipped, not thrown.
+   */
+  async function generateDiagnosticQuestionsOnDemand(
+    params: OnDemandParams,
+  ): Promise<DiagnosticQuestion[]> {
+    if (process.env.LLM_MODE === 'mock') {
+      return [];
+    }
+    if (!process.env.OPENAI_API_KEY) {
+      logger.warn('DiagnosticQuestionService.onDemand.noApiKey');
+      return [];
+    }
+
+    const { subjectId, subjectName, boardSlug, grade, topicIds, languageCode, totalCount } = params;
+
+    // Fetch topic names for context (up to 20 topics)
+    const topicNames = await prisma.topicDef
+      .findMany({
+        where: { id: { in: topicIds.slice(0, 20) } },
+        select: { id: true, name: true },
+      })
+      .then((rows) => rows.map((r) => r.name).join(', '))
+      .catch(() => '');
+
+    const langNote = languageCode && languageCode !== 'en'
+      ? `Write all questions in ${languageCode === 'hi' ? 'Hindi' : languageCode} language.`
+      : '';
+
+    const { easy: easyCount, medium: mediumCount, hard: hardCount } = computeDifficultyCounts(totalCount);
+
+    const prompt = [
+      `You are generating a diagnostic assessment for an Indian ${boardSlug.toUpperCase()} Grade ${grade} ${subjectName} student.`,
+      langNote,
+      `Generate exactly ${totalCount} multiple-choice questions (MCQs):`,
+      `- ${easyCount} easy questions`,
+      `- ${mediumCount} medium questions`,
+      `- ${hardCount} hard questions`,
+      `Topics to cover: ${topicNames || subjectName}`,
+      '',
+      'Rules:',
+      '- Each question must have exactly 4 options labelled A, B, C, D',
+      '- correctAnswer must be exactly one of: "A", "B", "C", or "D"',
+      '- Questions must be curriculum-appropriate for the grade level',
+      '- No trick questions -- test genuine understanding',
+      '',
+      'Return ONLY a valid JSON array with no markdown:',
+      '[{"prompt":"question text","choices":["Option A","Option B","Option C","Option D"],"correctAnswer":"A","difficulty":"easy"},...]',
+    ].filter(Boolean).join('\n');
+
+    const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+
+    let rawText = '';
+    try {
+      const completion = await Promise.race([
+        openai.chat.completions.create({
+          model: process.env.MODEL_SMALL ?? 'gpt-4o-mini',
+          messages: [{ role: 'user', content: prompt }],
+          temperature: 0.7,
+          max_tokens: 4000,
+        }),
+        new Promise<never>((_, rej) =>
+          setTimeout(() => rej(new Error('onDemand_llm_timeout')), 30_000),
+        ),
+      ]) as Awaited<ReturnType<typeof openai.chat.completions.create>>;
+      rawText = completion.choices?.[0]?.message?.content ?? '';
+    } catch (llmErr) {
+      logger.error('DiagnosticQuestionService.onDemand.llmCallFailed', { error: String(llmErr) });
+      return [];
+    }
+
+    let parsed: unknown[];
+    try {
+      const match = rawText.match(/\[[\s\S]*\]/);
+      if (!match) return [];
+      parsed = JSON.parse(match[0]);
+      if (!Array.isArray(parsed)) return [];
+    } catch {
+      logger.warn('DiagnosticQuestionService.onDemand.parseError', { rawText: rawText.slice(0, 300) });
+      return [];
+    }
+
+    const results: DiagnosticQuestion[] = [];
+    const topicIdsCycle = topicIds.length > 0 ? topicIds : [null];
+
+    for (let i = 0; i < parsed.length && results.length < totalCount; i++) {
+      const item = parsed[i] as Record<string, unknown>;
+      const questionText = typeof item.prompt === 'string' ? item.prompt.trim() : '';
+      const rawChoices = Array.isArray(item.choices) ? item.choices : [];
+      const correctAnswer = typeof item.correctAnswer === 'string' ? item.correctAnswer.trim() : '';
+      const difficulty = (['easy', 'medium', 'hard'].includes(String(item.difficulty ?? ''))
+        ? String(item.difficulty)
+        : 'medium') as DiagnosticDifficulty;
+
+      if (!questionText || rawChoices.length < 2 || !correctAnswer) continue;
+
+      const options: DiagnosticQuestionOption[] = rawChoices.map((c: unknown, idx: number) => ({
+        key: ['A', 'B', 'C', 'D'][idx] ?? String(idx),
+        label: String(c ?? ''),
+      })).filter((o) => o.label.trim().length > 0);
+
+      if (options.length < 2) continue;
+
+      // Assign to a topic in round-robin fashion
+      const topicId = topicIdsCycle[i % topicIdsCycle.length] ?? null;
+
+      try {
+        const persisted = await prisma.question.create({
+          data: {
+            type: 'mcq',
+            prompt: questionText,
+            choices: JSON.stringify(rawChoices),
+            correctAnswer,
+            difficulty,
+            subject: subjectName,
+            grade: String(grade),
+            board: boardSlug,
+            topicId,
+            source: 'ai',
+          } as any,
+        });
+        results.push({
+          id: persisted.id,
+          questionText,
+          options,
+          correctAnswer,
+          topicId: topicId ?? '',
+          difficulty,
+        });
+      } catch (persistErr) {
+        // Skip individual persist errors -- include the question anyway with a temp ID
+        logger.warn('DiagnosticQuestionService.onDemand.persistFailed', {
+          error: String(persistErr),
+          questionText: questionText.slice(0, 80),
+        });
+        results.push({
+          id: `tmp-${Date.now()}-${i}`,
+          questionText,
+          options,
+          correctAnswer,
+          topicId: topicId ?? '',
+          difficulty,
+        });
+      }
+    }
+
+    return results;
   }
 

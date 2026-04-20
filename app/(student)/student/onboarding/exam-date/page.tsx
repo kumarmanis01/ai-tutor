@@ -16,7 +16,7 @@
  *   - "No upcoming exam -- set a 6-month plan" -- same but examDate = null
  */
 
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 
 const STUDY_DAY_OPTIONS = [3, 4, 5, 6, 7];
@@ -83,10 +83,31 @@ export default function ExamDatePage() {
   const [studyDays, setStudyDays] = useState(DEFAULT_STUDY_DAYS);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  // When the API returns diagnosticReady:false the page switches to a waiting view
+  const [waitingForDiagnostic, setWaitingForDiagnostic] = useState<{
+    subjectId: string;
+    notifyState: 'idle' | 'loading' | 'done' | 'error';
+  } | null>(null);
 
   const parsedDate = useMemo(() => parseExamDate(examDateRaw), [examDateRaw]);
   const weeks = useMemo(() => weeksUntil(parsedDate), [parsedDate]);
   const estimate = useMemo(() => computeEstimate(studyDays, weeks), [studyDays, weeks]);
+
+  const sendNotifyRequest = useCallback(async (subjectId: string) => {
+    setWaitingForDiagnostic((prev) => prev ? { ...prev, notifyState: 'loading' } : null);
+    try {
+      const res = await fetch('/api/student/diagnostic/notify-ready', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ subjectId }),
+      });
+      setWaitingForDiagnostic((prev) =>
+        prev ? { ...prev, notifyState: res.ok ? 'done' : 'error' } : null,
+      );
+    } catch {
+      setWaitingForDiagnostic((prev) => prev ? { ...prev, notifyState: 'error' } : null);
+    }
+  }, []);
 
   async function generatePlan(includeExamDate: boolean) {
     setError('');
@@ -105,15 +126,23 @@ export default function ExamDatePage() {
         setError(json?.error ?? 'Something went wrong. Please try again.');
         return;
       }
-      // Both exam and no-exam paths go to diagnostic when subjects exist.
-      // Fallback to /dashboard only when generate-plan returns no firstSubjectId
-      // (i.e. student has no enrolled subjects at all).
       const firstSubjectId: string | null = json?.firstSubjectId ?? null;
-      if (firstSubjectId) {
-        router.push(`/diagnostic/${firstSubjectId}`);
-      } else {
+      const diagnosticReady: boolean = json?.diagnosticReady ?? true;
+
+      if (!firstSubjectId) {
+        // No subjects resolved -- go to dashboard so the student can complete profile
         router.push('/dashboard');
+        return;
       }
+
+      if (!diagnosticReady) {
+        // Content pipeline is still running -- show waiting screen instead of
+        // redirecting to a broken diagnostic page
+        setWaitingForDiagnostic({ subjectId: firstSubjectId, notifyState: 'idle' });
+        return;
+      }
+
+      router.push(`/diagnostic/${firstSubjectId}`);
     } catch {
       setError('Network error. Please check your connection.');
     } finally {
@@ -126,6 +155,73 @@ export default function ExamDatePage() {
     examDateRaw.trim() && !hasValidDate
       ? 'Please select a future date.'
       : '';
+
+  // Waiting screen: content pipeline still running, diagnostic not yet available
+  if (waitingForDiagnostic) {
+    const { subjectId, notifyState } = waitingForDiagnostic;
+    return (
+      <div className="min-h-screen bg-gray-50 dark:bg-slate-950 px-4 py-8 flex flex-col items-center justify-center">
+        <div className="max-w-sm w-full text-center">
+          <div className="w-16 h-16 rounded-2xl bg-[#EEEDFE] dark:bg-[#534AB7]/20 flex items-center justify-center mx-auto mb-5">
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="#534AB7"
+              strokeWidth="2"
+              className="w-8 h-8 animate-spin"
+              aria-hidden
+            >
+              <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
+            </svg>
+          </div>
+          <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100 mb-2">
+            Your plan is being built
+          </h1>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">
+            Teacher Vidya is preparing your diagnostic questions. This usually takes a few minutes.
+            Your learning plan is saved -- you can return any time to start your assessment.
+          </p>
+
+          {notifyState === 'idle' && (
+            <button
+              type="button"
+              onClick={() => sendNotifyRequest(subjectId)}
+              className="flex w-full min-h-[44px] items-center justify-center rounded-xl bg-[#534AB7] text-white text-sm font-semibold hover:bg-[#4840a3] active:scale-[0.98] transition-all shadow-md shadow-[#534AB7]/25 mb-3"
+            >
+              Email me when ready
+            </button>
+          )}
+
+          {notifyState === 'loading' && (
+            <p className="text-sm text-[#534AB7] dark:text-indigo-300 mb-3">Saving your preference&hellip;</p>
+          )}
+
+          {notifyState === 'done' && (
+            <p className="text-sm text-[#1D9E75] dark:text-green-400 mb-3">
+              We will email you as soon as your diagnostic is ready.
+            </p>
+          )}
+
+          {notifyState === 'error' && (
+            <button
+              type="button"
+              onClick={() => sendNotifyRequest(subjectId)}
+              className="flex w-full min-h-[44px] items-center justify-center rounded-xl bg-[#534AB7] text-white text-sm font-semibold hover:bg-[#4840a3] mb-3 transition-all"
+            >
+              Try again
+            </button>
+          )}
+
+          <a
+            href="/dashboard"
+            className="inline-flex w-full min-h-[44px] items-center justify-center rounded-xl border border-gray-200 dark:border-slate-700 text-gray-600 dark:text-gray-400 text-sm font-medium hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors"
+          >
+            Go to dashboard
+          </a>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-slate-950 px-4 py-8 flex flex-col">

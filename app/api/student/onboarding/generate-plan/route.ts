@@ -20,6 +20,7 @@ import { prisma } from '@/lib/prisma';
 import { logger } from '@/lib/logger';
 import { formatErrorForResponse } from '@/lib/errorResponse';
 import { generateLearningPlan } from '@/lib/ai/learningPlan';
+import { getRedis } from '@/lib/redis/client';
 
 export async function POST(req: NextRequest) {
   const start = Date.now();
@@ -95,20 +96,69 @@ export async function POST(req: NextRequest) {
     // Without the grade+board filter the query would return SubjectDef rows for
     // the wrong grade (e.g. Grade 1 English for a Grade 6 student) because the
     // same slug exists for every grade.
-    const subjectDefs =
-      normalisedSlugs.length > 0 && studentGrade && studentBoard
-        ? await prisma.subjectDef.findMany({
-            where: {
-              slug: { in: normalisedSlugs },
-              lifecycle: 'active',
-              class: {
-                grade: studentGrade,
-                board: { slug: { equals: studentBoard, mode: 'insensitive' } },
-              },
-            },
-            select: { id: true, slug: true },
-          })
-        : [];
+    // Try slug-match first; fall back to name-match (case-insensitive) in case
+    // the student's stored subject label differs from the SubjectDef.slug.
+    let subjectDefs: { id: string; slug: string; name: string }[] = [];
+
+    if (normalisedSlugs.length > 0 && studentGrade && studentBoard) {
+      const classFilter = {
+        grade: studentGrade,
+        board: { slug: { equals: studentBoard, mode: 'insensitive' as const } },
+      };
+
+      // Primary: slug match + ClassLevel lifecycle active
+      subjectDefs = await prisma.subjectDef.findMany({
+        where: {
+          slug: { in: normalisedSlugs },
+          lifecycle: 'active',
+          class: { ...classFilter, lifecycle: 'active' },
+        },
+        select: { id: true, slug: true, name: true },
+      });
+
+      // Fallback 1: slug match, relax ClassLevel lifecycle (handles unseeded lifecycle)
+      if (subjectDefs.length === 0) {
+        subjectDefs = await prisma.subjectDef.findMany({
+          where: {
+            slug: { in: normalisedSlugs },
+            lifecycle: 'active',
+            class: classFilter,
+          },
+          select: { id: true, slug: true, name: true },
+        });
+      }
+
+      // Fallback 2: name match (case-insensitive) for subjects stored as display names
+      if (subjectDefs.length === 0) {
+        const rawSubjects = Array.isArray(user?.subjects) ? (user!.subjects as string[]) : [];
+        subjectDefs = await prisma.subjectDef.findMany({
+          where: {
+            name: { in: rawSubjects, mode: 'insensitive' },
+            lifecycle: 'active',
+            class: classFilter,
+          },
+          select: { id: true, slug: true, name: true },
+        });
+      }
+
+      if (subjectDefs.length === 0) {
+        logger.warn('[generate-plan] no SubjectDef rows resolved after all fallbacks', {
+          className: 'GeneratePlanAPI',
+          methodName: 'POST',
+          studentId: userId,
+          normalisedSlugs,
+          grade: studentGrade,
+          board: studentBoard,
+        });
+      } else {
+        logger.info('[generate-plan] resolved subjects', {
+          className: 'GeneratePlanAPI',
+          methodName: 'POST',
+          studentId: userId,
+          subjects: subjectDefs.map((s) => ({ id: s.id, slug: s.slug })),
+        });
+      }
+    }
 
     // 3. Generate a LearningPlan for each subject (fire sequentially to avoid overload)
     let firstSubjectId: string | null = null;
@@ -131,7 +181,84 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    const res = NextResponse.json({ ok: true, firstSubjectId, belowMinimumHours, weeklyMinutes });
+    // 4. Check whether the first subject already has diagnostic questions available.
+    // This lets the client decide whether to redirect to the diagnostic immediately
+    // or show a "Vidya is preparing" waiting screen.
+    let diagnosticReady = false;
+    if (firstSubjectId) {
+      try {
+        const topicCount = await prisma.topicDef.count({
+          where: {
+            chapter: { subjectId: firstSubjectId, lifecycle: 'active' },
+            lifecycle: 'active',
+          },
+        });
+        if (topicCount > 0) {
+          // Check for at least one usable question (Question table or GeneratedQuestion)
+          const qCount = await prisma.question.count({
+            where: {
+              status: 'ACTIVE',
+              topicId: {
+                in: await prisma.topicDef.findMany({
+                  where: {
+                    chapter: { subjectId: firstSubjectId, lifecycle: 'active' },
+                    lifecycle: 'active',
+                  },
+                  select: { id: true },
+                }).then((rows) => rows.map((r) => r.id)),
+              },
+            },
+          });
+          if (qCount === 0) {
+            // Fallback: check GeneratedQuestion pipeline
+            const gqCount = await prisma.generatedQuestion.count({
+              where: {
+                test: {
+                  lifecycle: 'active',
+                  topic: {
+                    lifecycle: 'active',
+                    chapter: { lifecycle: 'active', subjectId: firstSubjectId },
+                  },
+                },
+              },
+            });
+            diagnosticReady = gqCount > 0;
+          } else {
+            diagnosticReady = true;
+          }
+        }
+      } catch (readinessErr) {
+        // Non-fatal: default to false -- client will show waiting screen
+        logger.warn('[generate-plan] diagnosticReady check failed', {
+          className: 'GeneratePlanAPI',
+          methodName: 'POST',
+          studentId: userId,
+          firstSubjectId,
+          error: String(readinessErr),
+        });
+      }
+
+      // If diagnostic is not ready, register a notification preference in Redis
+      // so the dailyMaintenance job can email the student when content is available.
+      if (!diagnosticReady) {
+        try {
+          const redis = getRedis();
+          const key = `diagnostic:notify:${userId}:${firstSubjectId}`;
+          // 30 day TTL -- if content is not ready within 30 days something is wrong
+          await (redis as any).set(key, '1', 'EX', 30 * 24 * 60 * 60);
+        } catch (redisErr) {
+          // Non-fatal -- student still sees the waiting screen
+          logger.warn('[generate-plan] failed to store notify-ready request', {
+            className: 'GeneratePlanAPI',
+            methodName: 'POST',
+            studentId: userId,
+            error: String(redisErr),
+          });
+        }
+      }
+    }
+
+    const res = NextResponse.json({ ok: true, firstSubjectId, diagnosticReady, belowMinimumHours, weeklyMinutes });
     logger.logAPI(req, res, { className: 'GeneratePlanAPI', methodName: 'POST' }, start);
     return res;
   } catch (err) {

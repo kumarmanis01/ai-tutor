@@ -19,6 +19,7 @@ import DiagnosticFlow, {
   type DiagnosticQuestion,
 } from '@/components/student/diagnostic/DiagnosticFlow';
 import SubjectLanguageControl from '@/components/student/SubjectLanguageControl';
+import DiagnosticWaitingScreen from '@/components/student/diagnostic/DiagnosticWaitingScreen';
 
 export const dynamic = 'force-dynamic';
 
@@ -119,25 +120,11 @@ export default async function DiagnosticPage({
   });
   if (topicCount === 0) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-white dark:bg-gray-950">
-        <div className="max-w-sm text-center px-6">
-          <div className="w-16 h-16 rounded-2xl bg-[#EEEDFE] flex items-center justify-center text-3xl mx-auto mb-5">
-            📚
-          </div>
-          <h1 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-3">
-            Vidya is getting ready
-          </h1>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">
-            We are preparing your content. Check back in a few minutes.
-          </p>
-          <Link
-            href="/dashboard"
-            className="inline-block px-5 py-2.5 bg-[#534AB7] hover:bg-[#3C3489] text-white text-sm font-medium rounded-xl transition-colors min-h-[44px]"
-          >
-            Back to dashboard
-          </Link>
-        </div>
-      </div>
+      <DiagnosticWaitingScreen
+        subjectId={subjectId}
+        subjectName={subjectDef.name}
+        reason="topics"
+      />
     );
   }
 
@@ -161,6 +148,8 @@ export default async function DiagnosticPage({
         grade: student.grade,
         subjectSlug: subjectDef.slug,
         languageCode: student.language ?? undefined,
+        // Pass the already-resolved SubjectDef.id to bypass the slug/lifecycle re-lookup
+        subjectId: subjectDef.id,
       });
       rawQuestions = diagnosticTest.questions;
       if (rawQuestions.length === 0) questionsReady = false;
@@ -170,28 +159,13 @@ export default async function DiagnosticPage({
   }
 
   // Content not ready: topics exist but questions haven't been generated yet.
-  // Show "Vidya is getting ready" rather than bouncing to dashboard.
   if (!questionsReady) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-white dark:bg-gray-950 px-6">
-        <div className="max-w-sm text-center">
-          <div className="w-16 h-16 rounded-2xl bg-[#EEEDFE] flex items-center justify-center text-3xl mx-auto mb-5">
-            📚
-          </div>
-          <h1 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-3">
-            Vidya is getting ready
-          </h1>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">
-            We are preparing your content. Check back in a few minutes.
-          </p>
-          <a
-            href="/dashboard"
-            className="inline-block px-5 py-2.5 bg-[#534AB7] hover:bg-[#3C3489] text-white text-sm font-medium rounded-xl transition-colors"
-          >
-            Back to dashboard
-          </a>
-        </div>
-      </div>
+      <DiagnosticWaitingScreen
+        subjectId={subjectId}
+        subjectName={subjectDef.name}
+        reason="questions"
+      />
     );
   }
 

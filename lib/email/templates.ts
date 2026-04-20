@@ -361,6 +361,31 @@ export function contentJobFailureAlertHtml(data: {
   `;
 }
 
+export function diagnosticReadyEmailHtml(data: {
+  studentName: string;
+  subjectName: string;
+  diagnosticUrl: string;
+}): string {
+  return `
+    <div style="${BASE}">
+      ${LOGO}
+      <h2 style="color:#534AB7;">Your ${data.subjectName} diagnostic is ready!</h2>
+      <p>Hi ${data.studentName},</p>
+      <p>
+        Teacher Vidya has finished preparing your ${data.subjectName} diagnostic.
+        It takes about 15 minutes and helps Vidya build a personalised learning plan just for you.
+      </p>
+      <a href="${data.diagnosticUrl}" style="${BTN}">
+        Start diagnostic now
+      </a>
+      <p style="color:#888;font-size:13px;margin-top:16px;">
+        Questions? Reply to this email or reach us at support@spinzy.in
+      </p>
+      ${FOOTER}
+    </div>
+  `;
+}
+
 export function deletionConfirmHtml(): string {
   return `
     <div style="${BASE}">
