@@ -18,6 +18,7 @@ EDIT LOG:
  - 2026-04-19T00:00:00Z | copilot | wired welcome-email to createUser via Prisma middleware; updated AC-08 status
  - 2026-04-20T00:00:00Z | claude | verify: F-STU-002 all 9 ACs confirmed implemented and tested; AC-07 and AC-08 status promoted to full -- 22 unit tests passing, TypeScript clean
  - 2026-04-20T00:00:00Z | claude | F-STU-011: AC-07 promoted ⚠️ -> ✅ (as-any cast removed, 12 unit tests added, WORKED_EXAMPLE marks count added); AC-09 promoted ❌ -> ✅ (CSV was stale -- detectCopyPaste already implemented and integration-tested)
+ - 2026-04-20T12:45:00Z | copilot | F-STU-022 Spaced Repetition & Revision Scheduling: all ACs verified ✅; updated evidence refs, confirmed unit tests for pre-exam detection, and reconciled CSV entries
  - 2026-04-20T00:00:00Z | claude | F-STU-021: AC-04 promoted ⚠️ -> ✅ (percentile computation confirmed in complete/route.ts:115-149; heatmap in report/route.ts:86-115; 15+ edge-case tests added across complete.test.ts + report.test.ts + attemptPercentile.test.ts); AC-05 promoted ⚠️ -> ✅ (buildPriorityPlan call chain confirmed in complete/route.ts:152; 8 dedicated unit tests in buildPriorityPlan.test.ts); AC-07 promoted ⚠️ -> ✅ (export/route.ts confirmed mock-specific pdf-lib PDF); AC-06 remains ⚠️ operational -- seeding tooling complete, Neon DB row count must be verified pre-launch
 -->
 
