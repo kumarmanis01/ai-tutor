@@ -88,10 +88,20 @@ EDIT LOG:
 | MUST | ~~❌~~→✅ | AC-04 | Visual timeline — calendar view + chapter sequence | ❌ | ✅ | `components/student/LearningPlanTimeline.tsx` — `WeekCard` renders week header + item list + status pills | None — CSV was stale |
 | MUST | ✅ | AC-05 | Plan auto-adjusts weekly | ✅ | ✅ | `worker/jobs/weeklyPlanAdjust.ts` | None |
 | SHOULD | ~~❌~~→✅ | AC-06 | Student can manually reorder topics within a week | ❌ | ✅ | `LearningPlanTimeline.tsx` — up/down reorder buttons; `app/api/student/learning-plan/[itemId]/route.ts` — `action=move` + `safeSwapOrderInWeek` | None — CSV was stale |
-| MUST | ⚠️ | AC-07 | Plan regenerated on board/grade/exam date change | ⚠️ | ⚠️ | `diagnosticBootstrap` re-runs on grade change; explicit re-trigger on exam-date change not confirmed | Verify event handler for exam-date PATCH in `app/api/student/onboarding/` |
+| MUST | ✅ | AC-07 | Plan regenerated on board/grade/exam date change | ✅ | ✅ | `app/api/parent/exam-date/route.ts`, `app/api/user/profile/route.ts`, `app/api/user/onboarding/route.ts` — non-blocking regeneration now triggers on parent `examDate` updates, profile `examDate`/board changes, and onboarding board changes; guarded audit events added; unit tests: `tests/unit/api/parent-exam-date.spec.ts`, `tests/unit/api/user-profile-exam-date.spec.ts` | None |
 | MUST | ✅ | AC-08 | "Today's Plan" widget reflects current recommendation | ✅ | ✅ | `TodaysLearningCard` | None |
 
 ---
+
+**Phase 2 — Planned Enhancements (F-STU-003 Learning Path Generation)**
+
+- Add an integration/e2e test that runs the full flow: `diagnosticBootstrap` → `generateLearningPlan` (worker + API) against a test DB fixture; assert audit events, idempotency, and correct plan updates.
+- Improve observability: emit metrics for `regen.trigger.count`, `regen.duration_ms`, and `regen.failures`; add dashboards/alerts for spikes or sustained failures.
+- Move regen work into a retryable background queue (BullMQ) with deduplication keys, concurrency limits and exponential backoff to protect AI generation endpoints; ensure idempotency.
+- Add a lightweight UI notification for students/parents when a plan is regenerated with a "View updated plan" CTA and reason (examDate/board change).
+- Expand tests to cover all codepaths that can change `board`/`grade` (parent edits, admin tools) and add integration assertions for generated plans and audit events.
+- Add a scheduled reconciliation task that scans for stale or mismatched `learningPlan` entries and enqueues regeneration as a safety net.
+
 
 ### F-STU-004 Language & Learning Style Preference
 

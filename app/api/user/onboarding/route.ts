@@ -177,7 +177,17 @@ export async function POST(req: NextRequest) {
       updatedUser = await prisma.user.update({ where: { id: userId }, data: updates });
       // If the user's board changed, regenerate existing learning plans to match the new board's curriculum.
       try {
-        const prevBoard = existingById?.board ?? null;
+        let prevBoard: string | null = null;
+        if (existingById && existingById.board != null) {
+          prevBoard = existingById.board
+        } else {
+          try {
+            const prev = await prisma.user.findUnique({ where: { id: userId }, select: { board: true } }).catch(() => null)
+            prevBoard = prev?.board ?? null
+          } catch (e) {
+            prevBoard = null
+          }
+        }
         const newBoard = updatedUser.board ?? null;
         if (prevBoard && newBoard && prevBoard !== newBoard) {
           const lpModel = (prisma as any).learningPlan;

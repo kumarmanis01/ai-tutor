@@ -12,7 +12,7 @@ import '../../helpers/mockSession'
 describe('User profile PATCH (examDate) API', () => {
   beforeEach(() => {
     resetPrismaMock()
-    ;(global as any).__TEST_SESSION__ = { user: { id: 'student-1', role: 'student', email: 'student@example.test' } }
+    ;(global as any).__TEST_SESSION__ = { user: { id: 'student-1', role: 'user', email: 'student@example.test' } }
   })
 
   it('updates examDate and triggers learning plan regen when plans exist', async () => {

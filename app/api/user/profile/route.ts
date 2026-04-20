@@ -191,7 +191,7 @@ export async function PATCH(req: Request) {
     }
   }
 
-  // Support updating examDate (optional). Accepts a ISO string or null to clear.
+  // Support updating examDate (optional). Accepts an ISO string or null to clear.
   if (Object.prototype.hasOwnProperty.call(body, 'examDate')) {
     const raw = (body as any).examDate
     if (raw === null) {

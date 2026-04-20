@@ -34,14 +34,15 @@ export async function POST(req: Request) {
   const body = await req.json().catch(() => ({})) as any
   const studentId = typeof body.studentId === 'string' ? body.studentId : ''
   const examDateRaw = typeof body.examDate === 'string' ? body.examDate : ''
-    if (!studentId || !examDateRaw) {
+
+  if (!studentId || !examDateRaw) {
     const res = NextResponse.json({ error: 'studentId and examDate required' }, { status: 400 })
     if (typeof logger.logAPI === 'function') logger.logAPI(req, res, { className: 'ParentSetExamDateAPI', methodName: 'POST' }, start)
     return res
   }
 
   const examDate = new Date(examDateRaw)
-    if (Number.isNaN(examDate.getTime())) {
+  if (Number.isNaN(examDate.getTime())) {
     const res = NextResponse.json({ error: 'Invalid examDate' }, { status: 400 })
     if (typeof logger.logAPI === 'function') logger.logAPI(req, res, { className: 'ParentSetExamDateAPI', methodName: 'POST' }, start)
     return res
