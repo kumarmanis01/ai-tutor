@@ -161,7 +161,7 @@ No breaking changes. All wired endpoints functional.
 | Priority | Status | AC# | Criterion | CSV Status | Code Status | Evidence | Action |
 |----------|--------|-----|-----------|------------|-------------|----------|--------|
 | MUST | ✅ | AC-01 | Primary CTA "Continue where you left off" | ✅ | ✅ | `TodaysLearningCard` / `ContinueLearning` | None |
-| MUST | ~~⚠️~~→✅ | AC-02 | Secondary: Today's topic, Browse, "Surprise me" | ⚠️ | ✅ | `app/api/student/surprise-me/route.ts` — returns highest-priority weak concept; `components/student/dashboard/SecondaryStartOptions.tsx` calls it | None — CSV was stale |
+| MUST | ✅ | AC-02 | Secondary: Today's topic, Browse, "Surprise me" | ✅ | ✅ | `app/api/student/surprise-me/route.ts` — returns highest-priority weak concept; `components/student/dashboard/SecondaryStartOptions.tsx` calls it | None |
 | MUST | ✅ | AC-03 | Pre-session: topic, duration, prerequisite check | ✅ | ✅ | `PreSessionScreen` | None |
 | MUST | ✅ | AC-04 | Session loads < 3s; first AI message < 5s | ✅ | ✅ | SSE streaming in place | None |
 | MUST | ✅ | AC-05 | Interrupted session: Resume/Restart/Skip | ✅ | ✅ | `InterruptedSessionSheet` | None |
