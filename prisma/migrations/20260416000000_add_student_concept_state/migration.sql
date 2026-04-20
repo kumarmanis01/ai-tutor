@@ -1,4 +1,22 @@
--- Migration: add_student_concept_state
+-- FILE OBJECTIVE:
+-- - Create the StudentConceptState table to persist per-student, per-concept
+--   mastery and hint-usage state. All DDL is fully idempotent (IF NOT EXISTS +
+--   DO $$ guards on FKs) so this migration is safe to re-run if partially applied.
+--
+-- LINKED UNIT TEST:
+-- - tests/unit/prisma/migrations/20260416000000_add_student_concept_state.spec.ts
+--
+-- EDIT LOG:
+-- - 2026-04-16T00:00:00Z | dev     | initial version — FKs were not guarded;
+--                                    failed with error 42710 when run after the
+--                                    table already existed (constraint already exists).
+-- - 2026-04-20T00:00:00Z | copilot | wrapped both FK statements in DO $$ blocks.
+--
+-- NOTE FOR PRODUCTION:
+-- If prisma migrate deploy reports P3009 for this migration, run
+-- scripts/fix_prod_migrations.sql against production DB to recover.
+
+-- 1. Table (idempotent)
 -- Adds StudentConceptState table to persist per-student per-concept state
 
 CREATE TABLE IF NOT EXISTS "StudentConceptState" (
@@ -22,8 +40,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS "StudentConceptState_studentId_conceptId_key" 
 CREATE INDEX IF NOT EXISTS "StudentConceptState_studentId_idx" ON "StudentConceptState"("studentId");
 CREATE INDEX IF NOT EXISTS "StudentConceptState_conceptId_idx" ON "StudentConceptState"("conceptId");
 
--- Foreign keys
--- Foreign keys (idempotent)
+-- 2. Foreign keys (guarded — see EDIT LOG for why DO blocks are required here)
 DO $$
 BEGIN
     IF NOT EXISTS (
