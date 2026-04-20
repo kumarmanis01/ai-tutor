@@ -1,3 +1,5 @@
+/** @jest-environment jsdom */
+
 /**
  * FILE OBJECTIVE:
  * - Unit tests for `LanguageSelector` component.
