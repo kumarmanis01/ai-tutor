@@ -428,10 +428,13 @@ describe('buildStageInstructionsLayer -- board chapter weight (AC-07)', () => {
     expect(layer).toContain('Class 10')
   })
 
-  test('should inject board marks weightage sentence in CONSOLIDATION when boardChapterWeightMarks is a number', () => {
-    const ctx = makeCtx({ stage: 'CONSOLIDATION', boardChapterWeightMarks: 8 })
+  test('should inject board exam reminder with marks count in CONSOLIDATION when boardChapterWeightMarks is a number', () => {
+    const ctx = makeCtx({ stage: 'CONSOLIDATION', grade: 10, board: 'CBSE', boardChapterWeightMarks: 8 })
     const layer = buildStageInstructionsLayer(ctx)
-    expect(layer).toContain('board marks weightage')
+    expect(layer).toContain('Board exam reminder')
+    expect(layer).toContain('8 marks')
+    expect(layer).toContain('CBSE')
+    expect(layer).toContain('Class 10')
   })
 
   test('should NOT inject board mapping in CORE_EXPLANATION when boardChapterWeightMarks is null', () => {
@@ -452,10 +455,10 @@ describe('buildStageInstructionsLayer -- board chapter weight (AC-07)', () => {
     expect(layer).not.toContain('board exam preface')
   })
 
-  test('should NOT inject board marks weightage in CONSOLIDATION when boardChapterWeightMarks is null', () => {
+  test('should NOT inject board exam reminder in CONSOLIDATION when boardChapterWeightMarks is null', () => {
     const ctx = makeCtx({ stage: 'CONSOLIDATION', boardChapterWeightMarks: null })
     const layer = buildStageInstructionsLayer(ctx)
-    expect(layer).not.toContain('board marks weightage')
+    expect(layer).not.toContain('Board exam reminder')
   })
 
   test('should NOT inject board mapping in HOOK stage even when boardChapterWeightMarks is set', () => {
@@ -481,7 +484,8 @@ describe('buildStageInstructionsLayer -- board chapter weight (AC-07)', () => {
   test('board weight marks propagate into assembled system prompt for CONSOLIDATION', () => {
     const ctx = makeCtx({ stage: 'CONSOLIDATION', boardChapterWeightMarks: 6 })
     const result = assembleSystemPrompt(ctx)
-    expect(result.system).toContain('board marks weightage')
+    expect(result.system).toContain('Board exam reminder')
+    expect(result.system).toContain('6 marks')
   })
 })
 

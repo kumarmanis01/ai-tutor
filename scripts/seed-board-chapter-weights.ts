@@ -1,22 +1,27 @@
 /**
- * Seeds BoardChapterWeight for ALL active chapters across ALL boards, grades (6-12),
- * and subjects. Each chapter already belongs to exactly one board via the chain:
- *   ChapterDef -> SubjectDef -> ClassLevel -> Board
- * so one weight row per chapter implicitly covers the correct board.
+ * FILE OBJECTIVE:
+ * - Seed BoardChapterWeight for ALL active chapters across ALL boards (CBSE + ICSE),
+ *   grades 6-12, and subjects, using equal-distribution of 80 theory marks as a default.
+ * - Support idempotent create-only, force-overwrite, and dry-run execution modes.
  *
- * Default marks: 80 theory marks per subject divided equally across its chapters
- * (standard CBSE/ICSE full-paper theory allocation). Minimum 1 mark per chapter.
- * Replace individual rows in the DB with official marking-scheme figures once available.
+ * LINKED UNIT TEST:
+ * - None (seed script; verified by --dry-run output against live DB).
  *
- * Idempotent: uses upsert -- safe to rerun without creating duplicates.
- * Existing rows are NOT overwritten unless --force flag is passed.
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - .github/copilot-instructions.md
+ * - /docs/ENGINEERING_PRACTICES.md
+ *
+ * EDIT LOG:
+ * - 2026-04-20T00:00:00Z | claude | created -- full-coverage seed for all boards/grades/subjects
  *
  * Usage:
- *   npx tsx scripts/seed-board-chapter-weights.ts            # upsert-create only
+ *   npx tsx scripts/seed-board-chapter-weights.ts            # create-only (skip existing)
  *   npx tsx scripts/seed-board-chapter-weights.ts --force    # overwrite existing rows
  *   npx tsx scripts/seed-board-chapter-weights.ts --dry-run  # report without writing
  *
  * Run after: seed-taxonomy.cjs (Board/ClassLevel/SubjectDef/ChapterDef must exist).
+ * Default marks: 80 / chapter count per subject (minimum 1). Replace with official
+ * marking-scheme figures via direct DB update or --force after editing this script.
  */
 
 import { prisma } from '../lib/prisma'
@@ -44,41 +49,31 @@ async function seedBoardChapterWeights(): Promise<void> {
 
   const boards = await prisma.board.findMany({
     where: { slug: { in: ['cbse', 'icse'] }, lifecycle: 'active' },
-    include: {
+    select: {
+      slug: true,
       classes: {
         where: { grade: { gte: 6, lte: 12 } },
-        include: {
+        select: {
+          grade: true,
           subjects: {
             where: { lifecycle: 'active', isAvailable: true },
-            include: {
+            select: {
+              id: true,
+              name: true,
+              slug: true,
               chapters: {
                 where: { lifecycle: 'active' },
                 select: { id: true, name: true, slug: true },
               },
             },
-            select: {
-              id: true,
-              name: true,
-              slug: true,
-              chapters: true,
-            },
           },
         },
-        select: {
-          grade: true,
-          subjects: true,
-        },
       },
-    },
-    select: {
-      slug: true,
-      classes: true,
     },
   })
 
   if (!boards.length) {
-    console.error('No active CBSE/ICSE boards found. Run seed-taxonomy.cjs first.')
-    process.exit(1)
+    throw new Error('No active CBSE/ICSE boards found. Run seed-taxonomy.cjs first.')
   }
 
   // Collect all existing chapterId rows to avoid unnecessary upserts
@@ -177,7 +172,7 @@ async function seedBoardChapterWeights(): Promise<void> {
   if (isDryRun) {
     console.log('\nDry-run complete -- no rows written.')
   } else {
-    console.log(`\nDone. BoardChapterWeight rows are live.`)
+    console.log('\nDone. BoardChapterWeight rows are live.')
     console.log('Note: marks are equally distributed defaults (80 / chapter count).')
     console.log('Replace individual rows with official marking-scheme figures when available.')
   }
@@ -186,7 +181,7 @@ async function seedBoardChapterWeights(): Promise<void> {
 seedBoardChapterWeights()
   .catch((err) => {
     console.error('Seed failed:', err)
-    process.exit(1)
+    process.exitCode = 1
   })
   .finally(async () => {
     await prisma.$disconnect()
