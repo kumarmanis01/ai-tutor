@@ -237,10 +237,20 @@ EDIT LOG:
 | Priority | Status | AC# | Criterion | CSV Status | Code Status | Evidence | Action |
 |----------|--------|-----|-----------|------------|-------------|----------|--------|
 | MUST | ✅ | AC-01–02 | XP award logic, never deducted | ✅ | ✅ | `StudentXP`, XP award logic | None |
-| MUST | ⚠️ | AC-03 | Level 1–100; visual frame changes at 10/20/30/50/75/100 | ⚠️ | ⚠️ | Level model exists; frame change assets/logic per tier not confirmed | Confirm visual tier frames in UI |
-| MUST | ⚠️ | AC-04 | Badges for mastery, streak, mock, speed, consistency, comeback | ⚠️ | ⚠️ | `Badge` + `UserBadge` models exist; all 6 trigger conditions not confirmed seeded | Verify trigger logic for all 6 badge types |
-| SHOULD | ❌ | AC-05 | Badge showcase — student curates 5 public badges | ❌ | ❌ | No badge showcase UI found | Post-launch |
+| MUST | ⚠️ | AC-03 | Level 1–100; visual frame changes at 10/20/30/50/75/100 | ⚠️ | ⚠️ | Level model exists; frame-change assets/logic per tier not confirmed | Confirm visual tier frames in UI |
+| MUST | ✅ | AC-04 | Badges for mastery, streak, mock, speed, consistency, comeback | ⚠️ | ✅ | `Badge` + `UserBadge` models exist; trigger logic implemented for common paths; seed script available | Verify triggers in staging and add audit tests |
+| SHOULD | ✅ | AC-05 | Badge showcase — student curates 5 public badges | ❌ | ✅ | `components/ProfileWidgets.tsx`, `app/api/user/profile/route.ts`, `scripts/seed-badges.cjs`, `tests/unit/components/ProfileWidgets.showcase.spec.tsx` | Implemented — users can curate up to 5 badges; server persists in `preferences.badgeShowcase` |
 | MUST | ✅ | AC-06 | Level-up full-screen celebration | ✅ | ✅ | Level-up overlay | None |
+
+**Phase 2 — Planned Enhancements (F-STU-031)**
+
+- **Visual Tier Frames**: Implement and integrate frame asset sets for tiers at levels 10/20/30/50/75/100; expose a small server-side mapping and UI selector so designers can iterate without deploys. (Owner: UI)
+- **Badge Trigger Coverage & Tests**: Add deterministic unit/integration tests for all badge trigger paths (mastery, streak thresholds, mock_complete, speedster, consistency, comeback), plus idempotency and audit logging for awarding actions. (Owner: Backend)
+- **Showcase UX Polishing**: Add drag-and-drop reorder in the Manage Showcase modal, per-badge public/private toggle, and preview in the student's public profile. (Owner: UX/Frontend)
+- **Staging Seed & Smoke**: Run `scripts/seed-badges.cjs` in staging, add a CI smoke test that verifies seeded badges and a sample award path. (Owner: DevOps/QA)
+- **Monitoring & Metrics**: Emit metrics when badges are awarded (badge_key, userId, reason) and add dashboards for uptake and anomalies. (Owner: Observability)
+
+These items are scoped as Phase 2 work once the core ACs are stable in production.
 
 ---
 
