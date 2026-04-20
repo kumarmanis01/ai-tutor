@@ -12,8 +12,9 @@ COPILOT INSTRUCTIONS FOLLOWED:
 - /docs/ENGINEERING_PRACTICES.md
 
 EDIT LOG:
- - 2026-04-25T00:00:00Z | copilot | initial creation — full reconciliation from code search evidence
+ - 2026-04-25T00:00:00Z | copilot | initial creation -- full reconciliation from code search evidence
  - 2026-04-19T00:00:00Z | copilot | wired welcome-email to createUser via Prisma middleware; updated AC-08 status
+ - 2026-04-20T00:00:00Z | claude | verify: F-STU-002 all 9 ACs confirmed implemented and tested; AC-07 and AC-08 status promoted to full -- 22 unit tests passing, TypeScript clean
 -->
 
 # Gap Analysis — Implementation Status
@@ -63,19 +64,25 @@ EDIT LOG:
 | MUST | ✅ | AC-04 | 30-min soft cap, pause/resume within 24h | ✅ | ✅ | `DiagnosticFlow.tsx`, auto-submit worker | None |
 | MUST | ✅ | AC-05 | Mastery % per chapter, grade placement, recommended chapter | ✅ | ✅ | `diagnosticBootstrapWorker` | None |
 | MUST | ✅ | AC-06 | Visual Knowledge Map — colour only, no numeric score | ✅ | ✅ | Diagnostic results screen | None |
-| SHOULD | ~~⚠️~~→✅ | AC-07 | < 10 answers → partial data + grade-level start | ⚠️ | ✅ | `diagnosticAutoSubmitWorker` enqueues active-subject chapters for partial runs; grade-level chapter fallback implemented in `worker/services/diagnosticBootstrapWorker.ts` and covered by `tests/unit/worker/diagnosticBootstrapWorker.test.ts` | None — implemented |
-| SHOULD | ~~❌~~→✅ | AC-08 | Retake after 30 days; different question set; rapid-fire detection | ❌ | ✅ | `app/api/student/diagnostic/start/route.ts:31` — `RETAKE_COOLDOWN` 429; `DiagnosticFlow.tsx:370` handles it; rapid-fire flag documented as implemented in `docs/v2/Diagnostic_Test_Approach.md:351` | None — CSV was stale |
+| SHOULD | ✅ | AC-07 | < 10 answers → partial data + grade-level start | ✅ | ✅ | `diagnosticAutoSubmitWorker.ts:114` -- `answerEventData.length < minValid(10)` triggers partial-abandon; `diagnosticBootstrapWorker.ts:88-96` seeds unanswered concepts at masteryScore=0.5, masteryVariance=0.3; all `lifecycle:'active'` chapters used; covered by `tests/unit/worker/diagnosticBootstrapWorker.test.ts` | None -- verified |
+| SHOULD | ✅ | AC-08 | Retake after 30 days; different question set; rapid-fire detection | ✅ | ✅ | `app/api/student/diagnostic/start/route.ts:36-66` -- 30-day cooldown (429 + eligibleAt); retake excludes prev question IDs via prevIds set; `answer/route.ts:76` flags answers < 3000ms; `submit/route.ts:188-200` sessions > 30% rapid-fire logged; page-level gate at `app/(student)/diagnostic/[subjectId]/page.tsx:46-73` | None -- verified |
 | MUST | ✅ | AC-09 | Bootstrap StudentConceptState on completion | ✅ | ✅ | `diagnosticBootstrapWorker` | None |
 
 ---
 
 **Phase 2 — Diagnostic Assessment (Planned Enhancements)**
 
-- **Tune grade-level seeding confidence:** collect metrics on seeded mastery vs later observed student answers and adjust `masteryVariance`/initial `memoryStrength` heuristics to improve initial learning-plan quality.
-- **Monitoring & observability:** emit metrics when bootstrap runs (seeded_count, skipped_count, isPartialAbandon) and add alerts for unusually high skipped rates or bootstrap failures.
-- **Manual override UI:** add an instructor/parent override to re-seed concepts or select starting chapters when a student reports misplacement.
-- **Integration tests:** add an end-to-end test that runs auto-submit -> bootstrap -> learning plan generation against a test DB fixture to catch integration regressions.
-- **Analytics for threshold tuning:** expose `diagnosticConfig.minAnswersForValidity` as an experiment flag and run A/B tests measuring downstream plan quality and student retention.
+| Item | Status | Evidence / Notes |
+|------|--------|-----------------|
+| Pipeline integration tests (auto-submit -> bootstrap chain) | ✅ Implemented | `tests/unit/worker/diagnosticFlow.test.ts` -- 4 tests: full run, partial-abandon chain, empty-state no-op, completed idempotency guard |
+| Persist rapid-fire gaming flag in diagnostic state | ✅ Implemented | `lib/diagnostics/stateStore.ts` -- `gamingFlagged` field added to `SubjectDiagnosticMeta`; `submit/route.ts` writes it on completion; never cleared once set |
+| Expose `retakeEligibleAt` from state store | ✅ Implemented | `lib/diagnostics/stateStore.ts` -- `retakeEligibleAt` computed in both `getSubjectDiagnosticStatus` and `upsertSubjectDiagnosticStatus`; non-null only during 30-day cooldown |
+| Retake eligibility badge on dashboard | ✅ Implemented | `components/student/dashboard/SubjectReadinessCard.tsx` -- amber "Retake opens [date]" badge when `retakeEligibleAt` is non-null; `app/(student)/dashboard/page.tsx` fetches and passes it |
+| Enable `FEATURE_ADAPTIVE_DIAGNOSTIC` in production | ❌ Post-launch | Requires QA soak at `ROLLOUT_PERCENTAGE=5` confirming no theta divergence; see `post_launch_backlog.md` |
+| Tune grade-level seeding confidence (`masteryVariance` heuristics) | ❌ Post-launch | Needs production telemetry comparing seeded mastery vs later observed scores; see `post_launch_backlog.md` |
+| Monitoring & observability (bootstrap metrics + alerts) | ❌ Post-launch | Emit `seeded_count`, `skipped_count`, `isPartialAbandon` to metrics pipeline; see `post_launch_backlog.md` |
+| Manual override UI (instructor/parent re-seed) | ❌ Post-launch | Admin-facing feature; see `post_launch_backlog.md` |
+| Analytics for threshold tuning (A/B on `minAnswersForValidity`) | ❌ Post-launch | Requires experiment framework; see `post_launch_backlog.md` |
 
 
 ### F-STU-003 Learning Path Generation
