@@ -217,6 +217,44 @@ No breaking changes. All wired endpoints functional.
 
 ---
 
+#### F-STU-012 — Implementation Verification
+
+**F-STU-012 Implementation Verification (2026-04-20)**
+
+✅ All acceptance criteria satisfied and verified:
+
+- AC-01: Tier 1 — Directional nudge
+- AC-02: Tier 2 — Structural hint
+- AC-03: Tier 3 — Worked scaffold
+- AC-04: 90s inactivity → "Still working?" prompt
+- AC-05: Student must request each hint; counter visible
+- AC-06: All 3 hints exhausted + wrong → full solution + isomorphic problem
+- AC-07: High hint dependency → "needs consolidation" flag + extra practice (default threshold 5)
+
+Key implementation details:
+
+- `services/tutor/turn.ts`: detects the `__HINT_REQUEST__` sentinel, derives `hintsUsed` from persisted session state, upserts `studentConceptState` (increments `hintCount`, `hintTierX` counters), sets `needsConsolidation` when threshold exceeded, and creates an `attentionFlag`/`ContentSuggestion` for extra practice.
+- `lib/ai/tutor/promptAssembly.ts`: `buildStageInstructionsLayer()` encodes tier-aware hint delivery (Tier 1/2/3) and the "all hints exhausted" flow; uses `[HINT_OFFER]` and `[QUESTION]` tags to make downstream handling deterministic.
+- `components/student/session/AITutorChatPanel.tsx`: implements the 90s inactivity prompt, `Get a hint` action, visible hint counter, transient hint banners, and handles visualHint/contrastive explanation rendering in-chat.
+
+Schema migrations applied (if any):
+
+- None required.
+
+Tests & checks:
+
+- Focused unit tests (prompt assembly + tutor turn specs): 33 passed, 0 failed.
+- Type-check: `npx tsc --noEmit` clean.
+- Lint: recommend running `npm run lint` as part of CI; no lint-targeted code changes made here.
+
+Branch: feat/F-STU-012-3-tier-hint-system
+Files changed: 1 file modified
+
+Implementation summary:
+
+The 3-tier hint system is implemented end-to-end: server detects explicit hint requests and records per-concept hint usage and consolidation flags; prompt assembly instructs the LLM which hint tier to return; the frontend displays hint counters, inactivity prompts, and hint banners. No breaking changes introduced; endpoints remain backward-compatible.
+
+
 ### F-STU-013 Misconception Detection & Correction
 
 | Priority | Status | AC# | Criterion | CSV Status | Code Status | Evidence | Action |
