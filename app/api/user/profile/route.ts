@@ -89,6 +89,8 @@ export async function GET(req: Request) {
     billingCycle: activeSub?.billingCycle ?? '',
     subscriptionEnd: activeSub?.endDate ?? null,
     // Engagement & cosmetic fields
+    level: (savedUser as any)?.level ?? 1,
+    totalXp: (savedUser as any)?.totalXp ?? 0,
     currentStreak: (savedUser as any)?.currentStreak ?? 0,
     longestStreak: (savedUser as any)?.longestStreak ?? 0,
     cosmeticUnlocks: (savedUser as any)?.cosmeticUnlocks ?? [],

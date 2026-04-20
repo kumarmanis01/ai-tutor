@@ -20,6 +20,7 @@ import { useSession } from 'next-auth/react';
 import useSWR from 'swr';
 import StreakWidget from '@/components/student/dashboard/StreakWidget';
 import Logo from '@/components/Logo';
+import { getTierColor } from '@/lib/student/xpLevels';
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
@@ -149,7 +150,10 @@ export default function Topbar() {
             className="hidden md:flex w-8 h-8 min-w-[44px] min-h-[44px] items-center justify-center"
             aria-label="My profile"
           >
-            <span className="w-8 h-8 rounded-full bg-[#534AB7] flex items-center justify-center">
+            <span
+              className="w-8 h-8 rounded-full bg-[#534AB7] flex items-center justify-center"
+              style={{ outline: `3px solid ${getTierColor(level)}`, outlineOffset: '2px' }}
+            >
               <span className="text-white font-semibold text-xs leading-none">{initial}</span>
             </span>
           </Link>
@@ -162,7 +166,10 @@ export default function Topbar() {
             aria-label="Open profile"
             className="md:hidden p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-800 min-h-[44px] min-w-[44px]"
           >
-            <span className="w-8 h-8 rounded-full bg-[#534AB7] flex items-center justify-center">
+            <span
+              className="w-8 h-8 rounded-full bg-[#534AB7] flex items-center justify-center"
+              style={{ outline: `3px solid ${getTierColor(level)}`, outlineOffset: '2px' }}
+            >
               <span className="text-white font-semibold text-xs leading-none">{initial}</span>
             </span>
           </button>

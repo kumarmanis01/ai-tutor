@@ -6,12 +6,13 @@ import {
   getXPToNextLevel,
   getProgressPercent,
   getLevelTierName,
+  getTierColor,
   LEVEL_THRESHOLDS,
   MAX_LEVEL,
 } from '@/lib/student/xpLevels'
 
 // Re-export pure level functions and constants for existing callers.
-export { getLevelFromXP, getXPToNextLevel, getProgressPercent, getLevelTierName, LEVEL_THRESHOLDS, MAX_LEVEL }
+export { getLevelFromXP, getXPToNextLevel, getProgressPercent, getLevelTierName, getTierColor, LEVEL_THRESHOLDS, MAX_LEVEL }
 
 export type StudentXPSource =
   | 'session_correct'

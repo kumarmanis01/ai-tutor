@@ -37,6 +37,10 @@ export interface User {
   }>;
   schoolName?: string | null;
   learningStyle?: string | null;
+  /** Current level (1-100) derived from totalXp */
+  level?: number;
+  /** Cumulative XP across all sessions */
+  totalXp?: number;
   /** Daily learning streak count */
   currentStreak?: number;
   /** All-time longest streak ever achieved */

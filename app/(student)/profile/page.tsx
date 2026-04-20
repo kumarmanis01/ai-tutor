@@ -19,6 +19,7 @@ import LogoutButton from '@/components/Auth/LogoutButton';
 import type { User } from '@/lib/types';
 import ProfileWidgets from '@/components/ProfileWidgets';
 import { COSMETIC_ITEMS } from '@/lib/student/cosmetics';
+import { getTierColor } from '@/lib/student/xpLevels';
 import { extractBadges } from '@/lib/extractBadge';
 import AuthRedeemOnSignIn from '@/components/AuthRedeemOnSignIn';
 import useCurrentUser from '@/hooks/useCurrentUser';
@@ -66,9 +67,10 @@ export default function ProfilePage() {
           <div className="flex flex-col items-center mb-8">
             <Avatar
               src={profile?.image ?? session?.user?.image ?? undefined}
-                alt={profile?.name ?? session?.user?.name ?? session?.user?.email ?? 'User avatar'}
+              alt={profile?.name ?? session?.user?.name ?? session?.user?.email ?? 'User avatar'}
               size={80}
               fallback={fallback}
+              tierColor={getTierColor(profile?.level ?? 1)}
             />
             <h1 className="text-3xl font-bold mt-2">{profile?.name ?? session?.user?.name}</h1>
             <p className="text-gray-500 dark:text-gray-400">{profile?.email ?? session?.user?.email}</p>
