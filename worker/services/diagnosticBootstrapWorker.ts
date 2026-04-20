@@ -13,10 +13,44 @@ export interface DiagnosticBootstrapJobData {
 }
 
 export async function processDiagnosticBootstrap(job: Job<DiagnosticBootstrapJobData>): Promise<void> {
-  const { studentId, diagnosticSessionId, chapterIds } = job.data
+  const { studentId, diagnosticSessionId } = job.data
+  // Accept chapterIds if provided; otherwise attempt a grade-level fallback
+  let chapterIds: string[] = Array.isArray(job.data.chapterIds) ? job.data.chapterIds : []
+  const boardId = job.data.boardId
+  const gradeId = job.data.gradeId
 
-  if (!studentId || !diagnosticSessionId || !Array.isArray(chapterIds) || chapterIds.length === 0) {
+  if (!studentId || !diagnosticSessionId) {
     logger.warn('[diagnostic-bootstrap] invalid job data', { jobId: job.id, data: job.data })
+    return
+  }
+
+  // If no chapterIds were provided, attempt to resolve active chapters for the
+  // student's grade/class (grade-level fallback). This mirrors the onboarding
+  // and auto-submit behaviour which enqueues grade-level chapter lists.
+  if ((!chapterIds || chapterIds.length === 0) && boardId && gradeId) {
+    try {
+      const subjectRows = await prisma.subjectDef.findMany({
+        where: { classId: gradeId, lifecycle: 'active' },
+        select: { id: true },
+      })
+      const subjectIds = subjectRows.map((s) => s.id)
+      if (subjectIds.length > 0) {
+        const chapters = await prisma.chapterDef.findMany({
+          where: { subjectId: { in: subjectIds }, lifecycle: 'active' },
+          select: { id: true },
+        })
+        chapterIds = chapters.map((c) => c.id)
+        logger.info('[diagnostic-bootstrap] grade-level chapter fallback', { jobId: job.id, studentId, chapterCount: chapterIds.length })
+      } else {
+        logger.warn('[diagnostic-bootstrap] grade-level fallback: no subjects found for class', { jobId: job.id, gradeId, boardId })
+      }
+    } catch (err) {
+      logger.warn('[diagnostic-bootstrap] grade-level fallback failed', { jobId: job.id, error: String((err as any)?.message ?? err) })
+    }
+  }
+
+  if (!Array.isArray(chapterIds) || chapterIds.length === 0) {
+    logger.warn('[diagnostic-bootstrap] invalid job data - no chapters resolved', { jobId: job.id, data: job.data })
     return
   }
 

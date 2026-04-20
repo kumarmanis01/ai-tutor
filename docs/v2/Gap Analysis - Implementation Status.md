@@ -63,11 +63,20 @@ EDIT LOG:
 | MUST | ✅ | AC-04 | 30-min soft cap, pause/resume within 24h | ✅ | ✅ | `DiagnosticFlow.tsx`, auto-submit worker | None |
 | MUST | ✅ | AC-05 | Mastery % per chapter, grade placement, recommended chapter | ✅ | ✅ | `diagnosticBootstrapWorker` | None |
 | MUST | ✅ | AC-06 | Visual Knowledge Map — colour only, no numeric score | ✅ | ✅ | Diagnostic results screen | None |
-| SHOULD | ⚠️ | AC-07 | < 10 answers → partial data + grade-level start | ⚠️ | ⚠️ | Auto-submit worker exists; grade-level fallback path not confirmed in bootstrap | Verify fallback branch in `diagnosticBootstrapWorker` |
+| SHOULD | ~~⚠️~~→✅ | AC-07 | < 10 answers → partial data + grade-level start | ⚠️ | ✅ | `diagnosticAutoSubmitWorker` enqueues active-subject chapters for partial runs; grade-level chapter fallback implemented in `worker/services/diagnosticBootstrapWorker.ts` and covered by `tests/unit/worker/diagnosticBootstrapWorker.test.ts` | None — implemented |
 | SHOULD | ~~❌~~→✅ | AC-08 | Retake after 30 days; different question set; rapid-fire detection | ❌ | ✅ | `app/api/student/diagnostic/start/route.ts:31` — `RETAKE_COOLDOWN` 429; `DiagnosticFlow.tsx:370` handles it; rapid-fire flag documented as implemented in `docs/v2/Diagnostic_Test_Approach.md:351` | None — CSV was stale |
 | MUST | ✅ | AC-09 | Bootstrap StudentConceptState on completion | ✅ | ✅ | `diagnosticBootstrapWorker` | None |
 
 ---
+
+**Phase 2 — Diagnostic Assessment (Planned Enhancements)**
+
+- **Tune grade-level seeding confidence:** collect metrics on seeded mastery vs later observed student answers and adjust `masteryVariance`/initial `memoryStrength` heuristics to improve initial learning-plan quality.
+- **Monitoring & observability:** emit metrics when bootstrap runs (seeded_count, skipped_count, isPartialAbandon) and add alerts for unusually high skipped rates or bootstrap failures.
+- **Manual override UI:** add an instructor/parent override to re-seed concepts or select starting chapters when a student reports misplacement.
+- **Integration tests:** add an end-to-end test that runs auto-submit -> bootstrap -> learning plan generation against a test DB fixture to catch integration regressions.
+- **Analytics for threshold tuning:** expose `diagnosticConfig.minAnswersForValidity` as an experiment flag and run A/B tests measuring downstream plan quality and student retention.
+
 
 ### F-STU-003 Learning Path Generation
 

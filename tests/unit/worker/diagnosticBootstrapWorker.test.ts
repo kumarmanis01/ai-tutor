@@ -141,6 +141,59 @@ describe('processDiagnosticBootstrap', () => {
     )
   })
 
+  it('should fallback to active grade-level chapters when chapterIds empty and boardId/gradeId provided', async () => {
+    const createMock = jest.fn(async () => ({}))
+
+    const prismaMock: any = {
+      subjectDef: { findMany: jest.fn(async () => [{ id: 'sub-1' }]) },
+      chapterDef: {
+        findMany: jest.fn(async () => [{ id: 'chap-fallback-1' }]),
+        findUnique: jest.fn(async () => ({ subjectId: 'sub-1' })),
+      },
+      concept: {
+        findMany: jest.fn(async () => [
+          { id: 'cf1', irt_b: 0.0, bloomLevel: 'apply' },
+        ]),
+      },
+      answerEvent: {
+        // Only 1 answer provided; minValid = 10 -> partial abandon
+        findMany: jest.fn(async () => [{ conceptId: 'cf1', isCorrect: true }]),
+      },
+      studentConceptState: {
+        findUnique: jest.fn(async () => null),
+        create: createMock,
+        update: jest.fn(async () => ({})),
+      },
+      learningPlanItem: { count: jest.fn(async () => 0) },
+    }
+
+    jest.doMock('@/lib/prisma', () => ({ prisma: prismaMock }))
+    jest.doMock('@/lib/logger', () => ({ logger: { info: jest.fn(), warn: jest.fn(), error: jest.fn() } }))
+    jest.doMock('@/lib/config', () => ({ diagnosticConfig: { minAnswersForValidity: 10 } }))
+    jest.doMock('@/lib/ai/learningPlan.js', () => ({ generateLearningPlan: jest.fn().mockResolvedValue(null) }))
+
+    const { processDiagnosticBootstrap } = await import('@/worker/services/diagnosticBootstrapWorker')
+
+    // Use job with empty chapterIds but include boardId and gradeId
+    await processDiagnosticBootstrap(makeJob({ chapterIds: [], boardId: 'board-X', gradeId: 'class-1' }))
+
+    // grade-level fallback should query subjectDef and chapterDef
+    expect(prismaMock.subjectDef.findMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: expect.objectContaining({ classId: 'class-1', lifecycle: 'active' }),
+      select: { id: true },
+    }))
+
+    expect(prismaMock.chapterDef.findMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: expect.objectContaining({ subjectId: { in: expect.any(Array) }, lifecycle: 'active' }),
+      select: { id: true },
+    }))
+
+    // Seeded concept from fallback chapter (answered -> 0.6)
+    expect(createMock).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ conceptId: 'cf1', masteryScore: 0.6 }) }),
+    )
+  })
+
   it('should skip update when existing mastery is already higher (idempotency)', async () => {
     const updateMock = jest.fn(async () => ({}))
     const createMock = jest.fn(async () => ({}))
