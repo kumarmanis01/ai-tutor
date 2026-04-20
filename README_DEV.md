@@ -33,7 +33,7 @@ make migrate
 4. Attach VS Code debugger (Run > Attach to Next.js / Worker / Scheduler)
 
 Notes
-- The Compose setup mounts your workspace into `/workspace` in each container. The Dockerfiles cache `node_modules` and a pnpm store in named volumes so you get much faster rebuilds.
+- The Compose setup mounts your workspace into `/workspace` in each container. The Dockerfiles cache `node_modules` and the npm cache in the configured named volumes so you get much faster rebuilds.
 - If your worker/scheduler package.json scripts use different names, either add `dev:worker` / `dev:scheduler` scripts or override `command:` in `docker-compose.yml` for those services.
 
 Performance tips (macOS / Windows)
@@ -47,7 +47,7 @@ Performance tips (macOS / Windows)
   - Keep your repository inside the WSL filesystem (not on the Windows C:\ drive) to avoid slow bind mounts.
 
 - General:
-  - Use named volumes for `node_modules` and the pnpm store (already configured) to avoid re-installing when containers restart.
+  - Use the configured named volumes for `node_modules` and the npm cache to avoid re-installing dependencies when containers restart.
   - Avoid heavy file watchers on host (IDE plugins that watch everything) — prefer project-scoped watchers.
 
 Troubleshooting
