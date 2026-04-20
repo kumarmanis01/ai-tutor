@@ -454,7 +454,9 @@ export function buildStageInstructionsLayer(ctx: PromptContext): string {
       'Give a brief summary of the key concept. Ask one reflective question to confirm understanding.',
     )
     if (typeof ctx.boardChapterWeightMarks === 'number') {
-      lines.push('If applicable, include a short sentence noting the board marks weightage for this chapter to remind the student of exam relevance.')
+      lines.push(
+        `Board exam reminder: When summarising, include one sentence noting exam relevance. Example: "This chapter carries ${ctx.boardChapterWeightMarks} marks in the ${ctx.board} Class ${ctx.grade} board exam -- strong mastery here directly boosts your score."`,
+      )
     }
     lines.push('Output tag: [STAGE_ADVANCE] or [QUESTION]')
   }
