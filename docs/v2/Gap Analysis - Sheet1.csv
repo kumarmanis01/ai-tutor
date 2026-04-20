@@ -44,7 +44,7 @@ MUST,✅,AC-07,"Code-switched input (Hinglish, Tanglish) accepted",Prompt instru
 ,Done,F-STU-010 Session Initiation,,
 Priority,Status,AC#,Criterion,Notes
 MUST,✅,AC-01,"Primary CTA ""Continue where you left off""",TodaysLearningCard / ContinueLearning
-MUST,⚠️,AC-02,"Secondary: Today's topic, Browse, ""Surprise me""","Today's topic + browse exist; ""Surprise me"" (highest-priority weak concept) not confirmed"
+MUST,✅,AC-02,"Secondary: Today's topic, Browse, ""Surprise me""","Today's topic + browse exist; ""Surprise me"" (highest-priority weak concept) confirmed — app/api/student/surprise-me/route.ts + components/student/dashboard/SecondaryStartOptions.tsx"
 MUST,✅,AC-03,"Pre-session: topic, duration, prerequisite check",Task 23 — PreSessionScreen
 MUST,✅,AC-04,Session loads < 3 s; first AI message < 5 s,Perf requirement; SSE streaming in place
 MUST,✅,AC-05,Interrupted session: Resume / Restart / Skip,Task 23 — InterruptedSessionSheet

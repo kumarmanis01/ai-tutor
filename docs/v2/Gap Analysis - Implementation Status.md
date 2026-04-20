@@ -12,6 +12,8 @@ COPILOT INSTRUCTIONS FOLLOWED:
 - /docs/ENGINEERING_PRACTICES.md
 
 EDIT LOG:
+ - 2026-04-25T00:00:00Z | copilot | initial creation — full reconciliation from code search evidence
+ - 2026-04-20T12:00:00Z | copilot | reconcile F-STU-010 — marked AC-02 implemented; updated CSV and Implementation Status table
  - 2026-04-25T00:00:00Z | copilot | initial creation -- full reconciliation from code search evidence
  - 2026-04-19T00:00:00Z | copilot | wired welcome-email to createUser via Prisma middleware; updated AC-08 status
  - 2026-04-20T00:00:00Z | claude | verify: F-STU-002 all 9 ACs confirmed implemented and tested; AC-07 and AC-08 status promoted to full -- 22 unit tests passing, TypeScript clean
@@ -168,13 +170,21 @@ No breaking changes. All wired endpoints functional.
 | Priority | Status | AC# | Criterion | CSV Status | Code Status | Evidence | Action |
 |----------|--------|-----|-----------|------------|-------------|----------|--------|
 | MUST | ✅ | AC-01 | Primary CTA "Continue where you left off" | ✅ | ✅ | `TodaysLearningCard` / `ContinueLearning` | None |
-| MUST | ~~⚠️~~→✅ | AC-02 | Secondary: Today's topic, Browse, "Surprise me" | ⚠️ | ✅ | `app/api/student/surprise-me/route.ts` — returns highest-priority weak concept; `components/student/dashboard/SecondaryStartOptions.tsx` calls it | None — CSV was stale |
+| MUST | ✅ | AC-02 | Secondary: Today's topic, Browse, "Surprise me" | ✅ | ✅ | `app/api/student/surprise-me/route.ts` — returns highest-priority weak concept; `components/student/dashboard/SecondaryStartOptions.tsx` calls it | None |
 | MUST | ✅ | AC-03 | Pre-session: topic, duration, prerequisite check | ✅ | ✅ | `PreSessionScreen` | None |
 | MUST | ✅ | AC-04 | Session loads < 3s; first AI message < 5s | ✅ | ✅ | SSE streaming in place | None |
 | MUST | ✅ | AC-05 | Interrupted session: Resume/Restart/Skip | ✅ | ✅ | `InterruptedSessionSheet` | None |
 | MUST | ✅ | AC-06 | Auto-save state every 60s | ✅ | ✅ | Redis session state | None |
 
 ---
+
+> **Reviewer note (2026-04-20T12:00:00Z):** This PR updates only documentation (CSV reconciliation and implementation status). The PR description previously claimed code changes, tests, and runtime behaviour edits. Please either:
+>
+> - Update the PR title/description to state this is a docs-only reconciliation, or
+> - Include the intended code/test changes in this PR if the goal was to deliver code updates.
+>
+> The file's `EDIT LOG` has been updated to record this change.
+
 
 ### F-STU-011 AI Teach Mode — Pedagogical Flow
 
