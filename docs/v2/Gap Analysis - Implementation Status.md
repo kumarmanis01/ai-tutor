@@ -17,6 +17,7 @@ EDIT LOG:
  - 2026-04-25T00:00:00Z | copilot | initial creation -- full reconciliation from code search evidence
  - 2026-04-19T00:00:00Z | copilot | wired welcome-email to createUser via Prisma middleware; updated AC-08 status
  - 2026-04-20T00:00:00Z | claude | verify: F-STU-002 all 9 ACs confirmed implemented and tested; AC-07 and AC-08 status promoted to full -- 22 unit tests passing, TypeScript clean
+ - 2026-04-20T00:00:00Z | claude | F-STU-011: AC-07 promoted ⚠️ -> ✅ (as-any cast removed, 12 unit tests added, WORKED_EXAMPLE marks count added); AC-09 promoted ❌ -> ✅ (CSV was stale -- detectCopyPaste already implemented and integration-tested)
 -->
 
 # Gap Analysis — Implementation Status
@@ -196,9 +197,9 @@ No breaking changes. All wired endpoints functional.
 | MUST | ✅ | AC-04 | Re-explanation in different style on demand | ✅ | ✅ | Style route; prompt | None |
 | MUST | ✅ | AC-05 | AI never gives direct answers — 3-tier hint only | ✅ | ✅ | Core prompt eval gate | None |
 | MUST | ✅ | AC-06 | Culturally relevant analogies | ✅ | ✅ | Base context prompt | None |
-| SHOULD | ⚠️ | AC-07 | Every explanation cites board exam objective + marks weightage | ⚠️ | ⚠️ | `BoardChapterWeight` data exists; injection into response not confirmed | Verify prompt builder injects board weight context |
+| SHOULD | ✅ | AC-07 | Every explanation cites board exam objective + marks weightage | ⚠️ | ✅ | `boardChapterWeightMarks` fetched in `turn.ts:650-659`; injected into CORE_EXPLANATION, WORKED_EXAMPLE, CONSOLIDATION stage instructions in `promptAssembly.ts`; 12 unit tests added `2026-04-20` | None -- requires `BoardChapterWeight` rows seeded on Neon per chapter |
 | MUST | ✅ | AC-08 | 3 consecutive wrong → prerequisite remediation sub-flow | ✅ | ✅ | AI engine detects struggle | None |
-| SHOULD | ❌ | AC-09 | Copy-paste / suspiciously perfect answer → probing follow-up | ❌ | ❌ | No copy-paste detection in `services/tutor/turn.ts` or guardrails — only in spec docs | Post-launch: implement copy-paste probe in turn handler |
+| SHOULD | ✅ | AC-09 | Copy-paste / suspiciously perfect answer → probing follow-up | ❌ | ✅ | `detectCopyPaste()` in `turn.ts:568-645`; logs `anomalyFlags` to `AITutorTurnLog` + `Message`; returns probing question; integration-tested in `orchestrator.errorPaths.test.ts:62-90` -- CSV was stale | None |
 
 ---
 
@@ -646,7 +647,7 @@ These items were marked ❌ or ⚠️ in the CSV but are fully implemented in th
 
 | # | Feature | AC | Priority | Gap | Recommendation |
 |---|---------|-----|----------|-----|---------------|
-| 1 | F-STU-011 | AC-09 | SHOULD | Copy-paste / suspiciously-perfect answer detection; probing follow-up | Post-launch: add similarity check in `services/tutor/turn.ts` against known solutions |
+| 1 | F-STU-011 | AC-09 | SHOULD | ~~Copy-paste / suspiciously-perfect answer detection~~ | ~~Post-launch~~ -- **RESOLVED 2026-04-20**: `detectCopyPaste()` implemented and integration-tested |
 | 2 | F-STU-021 | AC-06 | MUST | ≥ 5 unique mock exams per subject/grade seeded on Neon | **LAUNCH BLOCKER**: verify with DB query; seed mocks if count < 5 |
 | 3 | F-STU-030 | AC-06 | SHOULD | Streak milestone cosmetic avatar rewards | Post-launch |
 | 4 | F-STU-031 | AC-05 | SHOULD | Badge showcase (curate 5 public badges on profile) | Post-launch |
@@ -664,7 +665,7 @@ These items were marked ❌ or ⚠️ in the CSV but are fully implemented in th
 | 3 | F-STU-003 | AC-07 | MUST | Grade-change triggers re-run | Explicit exam-date change → plan regen trigger |
 | 4 | F-STU-004 | AC-02 | MUST | Language stored | "Coming soon" grey-out UI for unsupported languages |
 | 5 | F-STU-004 | AC-06 | SHOULD | `learningStyle` schema field | AI prompt builder injecting it |
-| 6 | F-STU-011 | AC-07 | SHOULD | `BoardChapterWeight` data | Cite-in-response injection in prompt builder |
+| 6 | F-STU-011 | AC-07 | SHOULD | ~~`BoardChapterWeight` data~~ | ~~Cite-in-response injection in prompt builder~~ -- **RESOLVED 2026-04-20**: injection confirmed + 12 tests; pending: seed `BoardChapterWeight` rows on Neon |
 | 7 | F-STU-014 | AC-06 | SHOULD | Save route (`/api/student/whiteboard/save`) | Replay viewer UI |
 | 8 | F-STU-020 | AC-02 | MUST | Question types exist | 40/30/30 mix ratio enforcement confirmed |
 | 9 | F-STU-020 | AC-07 | MUST | Score history stored | Trend graph UI per chapter |
