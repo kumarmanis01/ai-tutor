@@ -1,0 +1,45 @@
+# Multi-stage development Dockerfile for Next.js (App Router) in a pnpm monorepo
+# - Cached dependency stage
+# - Dev stage copies deps and uses bind mounts for source
+
+FROM node:20-bullseye AS deps
+WORKDIR /app
+
+# Use Corepack to ensure pnpm is available and consistent
+RUN corepack enable && corepack prepare pnpm@8.8.0 --activate
+
+# Copy only manifest files to leverage Docker layer caching for installs
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+
+# Configure pnpm store to a path that we mount as a named volume in compose
+RUN pnpm config set store /pnpm-store \
+  && pnpm install --frozen-lockfile
+
+
+FROM node:20-bullseye AS dev
+WORKDIR /app
+
+# Install small tooling we use at runtime for health/wait scripts
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends postgresql-client redis-tools ca-certificates \
+  && rm -rf /var/lib/apt/lists/*
+
+RUN useradd --uid 1000 --create-home node || true
+ENV HOME=/home/node
+ENV PNPM_STORE=/pnpm-store
+ENV PATH=$HOME/.local/share/pnpm:$PATH
+
+# Copy node_modules from deps stage to avoid re-installing on build
+COPY --from=deps /app/node_modules ./node_modules
+COPY --from=deps /app/.pnpm-store /pnpm-store || true
+
+# Copy source (overridden at runtime by compose bind mount)
+COPY . .
+RUN chown -R node:node /app
+USER node
+
+EXPOSE 3000 9229
+
+# By default: run Prisma generate (safe) then Next dev bound to 0.0.0.0
+# Inspector enabled when INSPECT=1 in env (docker-compose or .env)
+CMD ["sh","-c","if [ \"$INSPECT\" = \"1\" ]; then export NODE_OPTIONS='--inspect=0.0.0.0:9229'; fi; pnpm prisma generate --schema=prisma/schema.prisma || true; pnpm dev -H 0.0.0.0"]

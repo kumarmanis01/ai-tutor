@@ -1,0 +1,24 @@
+# Development Dockerfile for Next.js web
+# Multi-stage: deps layer caches node_modules; bind-mount provides hot-reload without rebuild.
+# Uses npm (project lock file is package-lock.json).
+
+FROM node:20-bullseye-slim AS deps
+WORKDIR /workspace
+# python3 + build-essential needed for any native addons (e.g. sharp, bcrypt)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ca-certificates git python3 build-essential \
+    && rm -rf /var/lib/apt/lists/*
+COPY package.json package-lock.json ./
+# npm ci installs the exact locked dependency tree
+RUN npm ci --prefer-offline
+
+FROM node:20-bullseye-slim AS dev
+WORKDIR /workspace
+ENV NODE_ENV=development
+ENV PORT=3000
+# Copy pre-installed node_modules from deps; Compose bind-mounts source on top
+COPY --from=deps /workspace/node_modules ./node_modules
+EXPOSE 3000 9229
+# Generate Prisma client on every start (safe, idempotent), then launch Next.js dev.
+# -H 0.0.0.0 ensures the server is reachable from outside the container.
+CMD ["sh","-c","node scripts/prisma-generate-with-retry.cjs && npm run dev -- -H 0.0.0.0 -p 3000"]

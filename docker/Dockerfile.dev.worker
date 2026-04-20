@@ -1,0 +1,20 @@
+# Development Dockerfile for worker (BullMQ consumer via worker:dev script)
+# Uses npm (project lock file is package-lock.json).
+
+FROM node:20-bullseye-slim AS deps
+WORKDIR /workspace
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ca-certificates git python3 build-essential \
+    && rm -rf /var/lib/apt/lists/*
+COPY package.json package-lock.json ./
+RUN npm ci --prefer-offline
+
+FROM node:20-bullseye-slim AS dev
+WORKDIR /workspace
+ENV NODE_ENV=development
+# NODE_OPTIONS is overridden by Compose environment but set here as a safe fallback
+ENV NODE_OPTIONS=--inspect=0.0.0.0:9230
+COPY --from=deps /workspace/node_modules ./node_modules
+EXPOSE 9230
+# worker:dev runs tsx worker/dev-supervisor.ts (from package.json)
+CMD ["sh","-c","node scripts/prisma-generate-with-retry.cjs && npm run worker:dev"]
