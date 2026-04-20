@@ -88,7 +88,7 @@ describe('GET /api/user/profile', () => {
       country: 'IN',
       language: 'en',
       createdAt: null,
-      role: 'student',
+      role: 'user',
       currentStreak: 7,
       longestStreak: 14,
       cosmeticUnlocks: ['frame_flame'],
@@ -124,7 +124,7 @@ describe('GET /api/user/profile', () => {
       country: 'IN',
       language: 'en',
       createdAt: null,
-      role: 'student',
+      role: 'user',
     }
 
     jest.doMock('@/lib/session', () => ({ getServerSessionForHandlers: async () => ({ user: { email: 'nostreak@example.com' } }) }))
