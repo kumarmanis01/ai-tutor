@@ -8,6 +8,7 @@
  * EDIT LOG:
  * - 2026-02-04 | claude | created parent link management API
  * - 2026-03-03 | gpt | migrate to ParentInvite + harden privacy
+ * - 2026-04-20 | claude | F-PAR-001 AC-07: send parentWelcomeHtml on new link (invite-code + email paths)
  */
 
 export const dynamic = 'force-dynamic';
@@ -25,6 +26,9 @@ import {
   redeemParentInviteAndLink,
   PARENT_INVITE_TTL_DAYS,
 } from '@/lib/parent/inviteService';
+import { sendMailSafe } from '@/lib/mailer';
+import { sendSms } from '@/lib/sms';
+import { parentWelcomeHtml } from '@/lib/email/templates';
 
 const CLASS_NAME = 'ParentLinkAPI';
 
@@ -98,6 +102,31 @@ async function handleLink(parentId: string, parentEmail: string | null, body: an
   if (inviteCode) {
     try {
       const result = await redeemParentInviteAndLink({ prisma, parentId, parentEmail, code: inviteCode });
+
+      // F-PAR-001 AC-07: send welcome email + SMS on new link only (not already_linked)
+      if (result.status === 'linked') {
+        try {
+          const [parent, student] = await Promise.all([
+            prisma.user.findUnique({ where: { id: parentId }, select: { name: true, email: true, phone: true } }),
+            prisma.user.findUnique({ where: { id: result.studentId }, select: { name: true } }),
+          ]);
+          const pName = parent?.name ?? null;
+          const sName = student?.name ?? '';
+          if (parent?.email) {
+            await sendMailSafe({
+              to: parent.email,
+              subject: 'Welcome to Spinzy -- your account is linked',
+              html: parentWelcomeHtml(pName, sName),
+            });
+          }
+          if (parent?.phone) {
+            await sendSms(parent.phone, `Hi ${pName ?? 'there'}, you are now linked to ${sName} on Spinzy Academy.`);
+          }
+        } catch (e) {
+          logger.warn('Parent welcome notification failed (invite code)', { className: CLASS_NAME, parentId, err: String(e) });
+        }
+      }
+
       const response = NextResponse.json({ ok: true, studentId: result.studentId, status: result.status });
       logger.logAPI(req, response, { className: CLASS_NAME, methodName: 'handleLink' }, start);
       return response;
@@ -174,6 +203,31 @@ async function handleLink(parentId: string, parentEmail: string | null, body: an
   } else {
     try {
       const result = await linkParentToStudentByEmail({ prisma, parentId, parentEmail, studentEmail });
+
+      // F-PAR-001 AC-07: send welcome email + SMS on new link only
+      if (result.status === 'linked') {
+        try {
+          const [parent, student] = await Promise.all([
+            prisma.user.findUnique({ where: { id: parentId }, select: { name: true, email: true, phone: true } }),
+            prisma.user.findUnique({ where: { id: result.studentId }, select: { name: true } }),
+          ]);
+          const pName = parent?.name ?? null;
+          const sName = student?.name ?? '';
+          if (parent?.email) {
+            await sendMailSafe({
+              to: parent.email,
+              subject: 'Welcome to Spinzy -- your account is linked',
+              html: parentWelcomeHtml(pName, sName),
+            });
+          }
+          if (parent?.phone) {
+            await sendSms(parent.phone, `Hi ${pName ?? 'there'}, you are now linked to ${sName} on Spinzy Academy.`);
+          }
+        } catch (e) {
+          logger.warn('Parent welcome notification failed (email link)', { className: CLASS_NAME, parentId, err: String(e) });
+        }
+      }
+
       const response = NextResponse.json({ ok: true, studentId: result.studentId, status: result.status });
       logger.logAPI(req, response, { className: CLASS_NAME, methodName: 'handleLink' }, start);
       return response;
