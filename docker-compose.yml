@@ -58,10 +58,11 @@ services:
       - postgres
       - redis
     healthcheck:
-      test: ["CMD-SHELL", "curl -f http://127.0.0.1:3000/ || exit 1"]
-      interval: 10s
-      timeout: 5s
+      test: ["CMD-SHELL", "curl -sf http://127.0.0.1:3000/api/health/redis || exit 1"]
+      interval: 30s
+      timeout: 10s
       retries: 5
+      start_period: 60m
 
   worker:
     build:

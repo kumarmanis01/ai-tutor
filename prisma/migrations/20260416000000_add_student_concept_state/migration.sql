@@ -23,5 +23,23 @@ CREATE INDEX IF NOT EXISTS "StudentConceptState_studentId_idx" ON "StudentConcep
 CREATE INDEX IF NOT EXISTS "StudentConceptState_conceptId_idx" ON "StudentConceptState"("conceptId");
 
 -- Foreign keys
-ALTER TABLE "StudentConceptState" ADD CONSTRAINT "StudentConceptState_studentId_fkey" FOREIGN KEY ("studentId") REFERENCES "User"("id") ON DELETE CASCADE;
-ALTER TABLE "StudentConceptState" ADD CONSTRAINT "StudentConceptState_conceptId_fkey" FOREIGN KEY ("conceptId") REFERENCES "Concept"("id") ON DELETE CASCADE;
+-- Foreign keys (idempotent)
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint WHERE conname = 'StudentConceptState_studentId_fkey'
+    ) THEN
+        EXECUTE 'ALTER TABLE "StudentConceptState" ADD CONSTRAINT "StudentConceptState_studentId_fkey" FOREIGN KEY ("studentId") REFERENCES "User"("id") ON DELETE CASCADE';
+    END IF;
+END;
+$$;
+
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint WHERE conname = 'StudentConceptState_conceptId_fkey'
+    ) THEN
+        EXECUTE 'ALTER TABLE "StudentConceptState" ADD CONSTRAINT "StudentConceptState_conceptId_fkey" FOREIGN KEY ("conceptId") REFERENCES "Concept"("id") ON DELETE CASCADE';
+    END IF;
+END;
+$$;
