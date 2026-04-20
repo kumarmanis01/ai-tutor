@@ -13,6 +13,7 @@
  *
  * EDIT LOG:
  * - 2026-04-16T00:00:00Z | copilot | created component for per-chapter trend (F-STU-020 AC-07)
+ * - 2026-04-20T12:08:00Z | copilot | default `showSkeleton` to false to avoid ReferenceError in tests
  */
 
 import React, { useEffect, useState } from 'react';
@@ -26,7 +27,7 @@ interface Props {
   showSkeleton?: boolean;
 }
 
-export default function ChapterTrend({ chapter, subject, className = '' }: Props) {
+export default function ChapterTrend({ chapter, subject, className = '', showSkeleton = false }: Props) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [data, setData] = useState<TrendPoint[]>([]);
