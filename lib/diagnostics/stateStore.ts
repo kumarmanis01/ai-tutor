@@ -25,10 +25,24 @@ export interface SubjectDiagnosticMeta {
    * structure can be handled without losing historical state.
    */
   version?: number;
+  /**
+   * True when the submit route detected rapid-fire gaming (>30% of answers
+   * under 3 s). Stored so admins can surface flagged sessions without
+   * re-scanning AnswerEvent rows.
+   */
+  gamingFlagged?: boolean;
 }
+
+const RETAKE_COOLDOWN_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
 
 export interface SubjectDiagnosticStatus extends SubjectDiagnosticMeta {
   subjectKey: string;
+  /**
+   * ISO timestamp of when the next retake becomes available.
+   * Null when the diagnostic has not been completed or is already retakeable.
+   * Consumers (dashboard, notification layer) can show "Retake available from X".
+   */
+  retakeEligibleAt: string | null;
 }
 
 type DiagnosticMap = Record<string, SubjectDiagnosticMeta>;
@@ -83,12 +97,18 @@ export async function getSubjectDiagnosticStatus(
   const existing = diagnostics[subjectKey];
 
   if (existing) {
+    const completedAt = existing.completedAt ?? null;
+    const eligibleMs = completedAt ? new Date(completedAt).getTime() + RETAKE_COOLDOWN_MS : null;
+    const retakeEligibleAt =
+      eligibleMs && Date.now() < eligibleMs ? new Date(eligibleMs).toISOString() : null;
     return {
       subjectKey,
       status: existing.status,
       runId: existing.runId ?? null,
-      completedAt: existing.completedAt ?? null,
+      completedAt,
       version: typeof existing.version === 'number' ? existing.version : undefined,
+      gamingFlagged: existing.gamingFlagged === true ? true : undefined,
+      retakeEligibleAt,
     };
   }
 
@@ -116,6 +136,7 @@ export async function getSubjectDiagnosticStatus(
     status: derivedStatus,
     runId: null,
     completedAt: null,
+    retakeEligibleAt: null,
   };
 }
 
@@ -162,6 +183,8 @@ export async function upsertSubjectDiagnosticStatus(
         : typeof previous.version === 'number'
           ? previous.version
           : undefined,
+    // Once flagged, always flagged -- never clear the gaming flag once set.
+    gamingFlagged: meta.gamingFlagged === true ? true : previous.gamingFlagged === true ? true : undefined,
   };
 
   const nextDiagnostics: DiagnosticMap = {
@@ -188,9 +211,19 @@ export async function upsertSubjectDiagnosticStatus(
     });
   }
 
+  const completedAtFinal = nextMeta.completedAt ?? null;
+  const eligibleMsFinal = completedAtFinal
+    ? new Date(completedAtFinal).getTime() + RETAKE_COOLDOWN_MS
+    : null;
+  const retakeEligibleAt =
+    eligibleMsFinal && Date.now() < eligibleMsFinal
+      ? new Date(eligibleMsFinal).toISOString()
+      : null;
+
   return {
     subjectKey,
     ...nextMeta,
+    retakeEligibleAt,
   };
 }
 

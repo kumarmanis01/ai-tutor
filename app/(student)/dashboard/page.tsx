@@ -32,6 +32,7 @@ import { XPWidget } from '@/components/student/dashboard/XPWidget'
 import WeeklyStudyStrip from '@/components/student/dashboard/WeeklyStudyStrip'
 import { RevisionWidget } from '@/components/student/dashboard/RevisionWidget'
 import { SubjectReadinessCard } from '@/components/student/dashboard/SubjectReadinessCard'
+import { getSubjectDiagnosticStatus } from '@/lib/diagnostics/stateStore'
 import { FreemiumCounter } from '@/components/student/dashboard/FreemiumCounter'
 import { UpgradeFlow } from '@/components/student/subscription/UpgradeFlow'
 import CrunchModeToggle from '@/components/student/dashboard/CrunchModeToggle'
@@ -180,19 +181,21 @@ export default async function StudentHomeDashboardPage() {
     }
   }
 
-  const readinessResults: Array<{ subjectId: string; subjectName: string; score: number; predictedRange?: any; diagnosticDone: boolean }> = []
+  const readinessResults: Array<{ subjectId: string; subjectName: string; score: number; predictedRange?: any; diagnosticDone: boolean; retakeEligibleAt: string | null }> = []
   for (const sub of subjects) {
     const result = await computeReadinessScore(userId, sub.id).catch(() => ({ score: 0, label: 'critical' as const, chapters: [] }))
     const diagnostic = await prisma.diagnosticSession.findFirst({
       where: { studentId: userId, subjectId: sub.id, status: 'COMPLETED' },
       select: { id: true },
     }).catch(() => null)
+    const diagStatus = await getSubjectDiagnosticStatus(userId, sub.id).catch(() => null)
     readinessResults.push({
       subjectId: sub.id,
       subjectName: sub.name,
       score: result.score,
       predictedRange: (result as any).predictedRange ?? undefined,
       diagnosticDone: !!diagnostic,
+      retakeEligibleAt: diagStatus?.retakeEligibleAt ?? null,
     })
   }
 
@@ -351,6 +354,7 @@ export default async function StudentHomeDashboardPage() {
                       score={r.score}
                       diagnosticDone={r.diagnosticDone}
                       predictedRange={r.predictedRange}
+                      retakeEligibleAt={r.retakeEligibleAt}
                     />
                   </Link>
                 ))}
