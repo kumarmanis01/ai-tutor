@@ -175,6 +175,47 @@ export async function POST(req: NextRequest) {
       }
 
       updatedUser = await prisma.user.update({ where: { id: userId }, data: updates });
+      // If the user's board changed, regenerate existing learning plans to match the new board's curriculum.
+      try {
+        let prevBoard: string | null = null;
+        if (existingById && existingById.board != null) {
+          prevBoard = existingById.board
+        } else {
+          try {
+            const prev = await prisma.user.findUnique({ where: { id: userId }, select: { board: true } }).catch(() => null)
+            prevBoard = prev?.board ?? null
+          } catch (e) {
+            prevBoard = null
+          }
+        }
+        const newBoard = updatedUser.board ?? null;
+        if (prevBoard && newBoard && prevBoard !== newBoard) {
+          const lpModel = (prisma as any).learningPlan;
+          if (lpModel && typeof lpModel.findMany === 'function') {
+            // fetch current plans and regenerate using existing plan params
+            lpModel
+              .findMany({ where: { studentId: updatedUser.id }, select: { subjectId: true, weeklyGoal: true, examDate: true } })
+              .then(async (plans: Array<{ subjectId: string; weeklyGoal: number; examDate?: Date | null }>) => {
+                if (!plans || plans.length === 0) return;
+                for (const p of plans) {
+                  try {
+                    await generateLearningPlan(updatedUser.id, p.subjectId, {
+                      examDate: p.examDate instanceof Date ? p.examDate : undefined,
+                      weeklyGoal: p.weeklyGoal,
+                    });
+                  } catch (err) {
+                    logger.warn('[onboarding] board-change regen failed', { event: 'learning_plan_regen_failed', context: { studentId: updatedUser.id, subjectId: p.subjectId, error: String(err) } });
+                  }
+                }
+              })
+              .catch((err: any) => {
+                logger.warn('[onboarding] failed to fetch learning plans for board-change regen', { event: 'learning_plan_regen_failed', context: { studentId: updatedUser.id, error: String(err) } });
+              });
+          }
+        }
+      } catch (err) {
+        logger.warn('[onboarding] board-change regen check failed', { event: 'learning_plan_regen_failed', context: { studentId: updatedUser.id, error: String(err) } });
+      }
       logger.info('/api/user/onboarding updated user', { className: 'api.user.onboarding', methodName: 'POST', id: updatedUser.id, name: updatedUser.name, phone: updatedUser.phone });
     } catch (updErr: any) {
       if (updErr?.code === 'P2022') {
