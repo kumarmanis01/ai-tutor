@@ -1,6 +1,17 @@
 /**
- * Unit tests for lib/mock/buildPriorityPlan.ts
- * Covers AC-05: AI-generated "Next 2 Weeks Priority Plan" post-mock.
+ * FILE OBJECTIVE:
+ * - Verify `lib/mock/buildPriorityPlan.ts` returns an AI-generated or fallback
+ *   "Next 2 Weeks Priority Plan" based on section performance and LLM outcomes.
+ *
+ * LINKED UNIT TEST:
+ * - tests/unit/lib/mock/buildPriorityPlan.test.ts
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/COPILOT_GUARDRAILS.md
+ * - .github/copilot-instructions.md
+ *
+ * EDIT LOG:
+ * - 2026-04-20T00:00:00Z | copilot | replace non-standard test header with repo-standard audit header
  */
 
 jest.mock('@/lib/callLLM', () => ({ callTutorLLM: jest.fn() }));
