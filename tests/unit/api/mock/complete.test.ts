@@ -1,14 +1,17 @@
 /**
- * Edge-case unit tests for POST /api/mock/attempt/[attemptId]/complete
+ * FILE OBJECTIVE:
+ * - Edge-case unit tests for POST /api/mock/attempt/[attemptId]/complete.
+ * - Covers AC-04 (percentile) and AC-05 (buildPriorityPlan wiring) branches not covered by tests/unit/mock/attemptPercentile.test.ts, including 401 unauthenticated, 404 attempt not found / wrong student, idempotent completion, small-cohort percentile handling, buildPriorityPlan wiring, and auto-submit of unsubmitted sections with score 0.
  *
- * Covers AC-04 (percentile) and AC-05 (buildPriorityPlan wiring) branches
- * NOT covered by tests/unit/mock/attemptPercentile.test.ts:
- *   - 401 unauthenticated
- *   - 404 attempt not found / wrong student
- *   - Idempotent path (finishedAt already set)
- *   - Small-cohort path (cohortCount < MIN_COHORT -> percentileReliable = false)
- *   - buildPriorityPlan called with correct subjectName + sectionScores
- *   - Auto-submit of unsubmitted sections with score 0
+ * LINKED UNIT TEST:
+ * - tests/unit/api/mock/complete.test.ts
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/COPILOT_GUARDRAILS.md
+ * - .github/copilot-instructions.md
+ *
+ * EDIT LOG:
+ * - 2026-04-20T00:00:00Z | copilot | replace non-standard test header with repository-standard documentation block for consistency and traceability
  */
 
 jest.mock('@/lib/prisma', () => ({
