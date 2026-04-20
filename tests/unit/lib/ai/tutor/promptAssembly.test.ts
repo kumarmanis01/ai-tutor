@@ -419,10 +419,13 @@ describe('buildStageInstructionsLayer -- board chapter weight (AC-07)', () => {
     expect(layer).toContain('12 marks')
   })
 
-  test('should inject board mapping preface in WORKED_EXAMPLE when boardChapterWeightMarks is a number', () => {
-    const ctx = makeCtx({ stage: 'WORKED_EXAMPLE', boardChapterWeightMarks: 10 })
+  test('should inject board exam preface with marks count in WORKED_EXAMPLE when boardChapterWeightMarks is a number', () => {
+    const ctx = makeCtx({ stage: 'WORKED_EXAMPLE', grade: 10, board: 'CBSE', boardChapterWeightMarks: 10 })
     const layer = buildStageInstructionsLayer(ctx)
-    expect(layer).toContain('board mapping')
+    expect(layer).toContain('board exam preface')
+    expect(layer).toContain('10 marks')
+    expect(layer).toContain('CBSE')
+    expect(layer).toContain('Class 10')
   })
 
   test('should inject board marks weightage sentence in CONSOLIDATION when boardChapterWeightMarks is a number', () => {
@@ -443,10 +446,10 @@ describe('buildStageInstructionsLayer -- board chapter weight (AC-07)', () => {
     expect(layer).not.toContain('Board exam mapping')
   })
 
-  test('should NOT inject board mapping in WORKED_EXAMPLE when boardChapterWeightMarks is null', () => {
+  test('should NOT inject board exam preface in WORKED_EXAMPLE when boardChapterWeightMarks is null', () => {
     const ctx = makeCtx({ stage: 'WORKED_EXAMPLE', boardChapterWeightMarks: null })
     const layer = buildStageInstructionsLayer(ctx)
-    expect(layer).not.toContain('board mapping')
+    expect(layer).not.toContain('board exam preface')
   })
 
   test('should NOT inject board marks weightage in CONSOLIDATION when boardChapterWeightMarks is null', () => {

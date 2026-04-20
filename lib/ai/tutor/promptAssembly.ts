@@ -444,7 +444,7 @@ export function buildStageInstructionsLayer(ctx: PromptContext): string {
     )
     if (typeof ctx.boardChapterWeightMarks === 'number') {
       lines.push(
-        'When giving a worked example, briefly mention the board mapping (if available) as a single-sentence preface to the example.',
+        `When giving a worked example, begin with a single-sentence board exam preface: "This concept appears in ${ctx.board} Class ${ctx.grade} board exam -- ${ctx.boardChapterWeightMarks} marks." Then proceed with the example.`,
       )
     }
     lines.push('Output tag: [QUESTION]')
