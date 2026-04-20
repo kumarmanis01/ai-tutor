@@ -1,13 +1,16 @@
 /**
- * Edge-case unit tests for GET /api/mock/attempt/[attemptId]/report
+ * FILE OBJECTIVE:
+ * - Validate edge-case behavior for GET /api/mock/attempt/[attemptId]/report, including authentication failures, missing attempts, small-cohort percentile suppression, per-question time heatmap mapping, and priority-plan payload wiring.
  *
- * Covers AC-04: section-wise breakdown, per-question time heatmap, percentile.
- * Branches NOT covered by tests/unit/mock/attemptPercentile.test.ts:
- *   - 401 unauthenticated
- *   - 404 attempt not found
- *   - Small-cohort path: percentile hidden when cohortCount < MIN_COHORT
- *   - Time heatmap: timeSpentSeconds surfaced per question from answers JSON
- *   - priorityPlan returned in payload (AC-05 wired end-to-end)
+ * LINKED UNIT TEST:
+ * - tests/unit/api/mock/report.test.ts
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/COPILOT_GUARDRAILS.md
+ * - .github/copilot-instructions.md
+ *
+ * EDIT LOG:
+ * - 2026-04-20T00:00:00Z | copilot | replace ad-hoc test comment with standard repository header block to satisfy CodeQL/header policy
  */
 
 jest.mock('@/lib/prisma', () => ({
