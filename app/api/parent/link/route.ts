@@ -8,6 +8,8 @@
  * EDIT LOG:
  * - 2026-02-04 | claude | created parent link management API
  * - 2026-03-03 | gpt | migrate to ParentInvite + harden privacy
+ * - 2026-04-20 | claude | F-PAR-001 AC-07: send parentWelcomeHtml on new link (invite-code + email paths)
+ * - 2026-04-20 | claude | refactor: extract sendParentWelcomeNotifications; cover legacy path; drop SMS (OTP API only)
  */
 
 export const dynamic = 'force-dynamic';
@@ -25,8 +27,35 @@ import {
   redeemParentInviteAndLink,
   PARENT_INVITE_TTL_DAYS,
 } from '@/lib/parent/inviteService';
+import { sendMailSafe } from '@/lib/mailer';
+import { parentWelcomeHtml } from '@/lib/email/templates';
 
 const CLASS_NAME = 'ParentLinkAPI';
+
+/**
+ * F-PAR-001 AC-07: send welcome email on new parent-student link.
+ * SMS is intentionally omitted: sendSms uses the MSG91 OTP API which
+ * only supports pre-approved OTP templates and ignores arbitrary message
+ * text in production. Transactional SMS requires a separate MSG91 flow
+ * (post-launch). Best-effort -- errors are logged as warnings, never thrown.
+ */
+async function sendParentWelcomeNotifications(parentId: string, studentId: string) {
+  try {
+    const [parent, student] = await Promise.all([
+      prisma.user.findUnique({ where: { id: parentId }, select: { name: true, email: true } }),
+      prisma.user.findUnique({ where: { id: studentId }, select: { name: true } }),
+    ]);
+    if (parent?.email) {
+      await sendMailSafe({
+        to: parent.email,
+        subject: 'Welcome to Spinzy -- your account is linked',
+        html: parentWelcomeHtml(parent.name ?? null, student?.name ?? ''),
+      });
+    }
+  } catch (e) {
+    logger.warn('Parent welcome notification failed', { className: CLASS_NAME, parentId, studentId, err: String(e) });
+  }
+}
 
 /**
  * POST /api/parent/link
@@ -98,6 +127,12 @@ async function handleLink(parentId: string, parentEmail: string | null, body: an
   if (inviteCode) {
     try {
       const result = await redeemParentInviteAndLink({ prisma, parentId, parentEmail, code: inviteCode });
+
+      // F-PAR-001 AC-07: send welcome email on new link only (not already_linked)
+      if (result.status === 'linked') {
+        await sendParentWelcomeNotifications(parentId, result.studentId);
+      }
+
       const response = NextResponse.json({ ok: true, studentId: result.studentId, status: result.status });
       logger.logAPI(req, response, { className: CLASS_NAME, methodName: 'handleLink' }, start);
       return response;
@@ -167,6 +202,9 @@ async function handleLink(parentId: string, parentEmail: string | null, body: an
         })
         .catch(() => {});
 
+      // F-PAR-001 AC-07: send welcome email on new link via legacy invite code path
+      await sendParentWelcomeNotifications(parentId, legacy.studentId);
+
       const response = NextResponse.json({ ok: true, studentId: legacy.studentId, status: 'linked' });
       logger.logAPI(req, response, { className: CLASS_NAME, methodName: 'handleLink' }, start);
       return response;
@@ -174,6 +212,12 @@ async function handleLink(parentId: string, parentEmail: string | null, body: an
   } else {
     try {
       const result = await linkParentToStudentByEmail({ prisma, parentId, parentEmail, studentEmail });
+
+      // F-PAR-001 AC-07: send welcome email on new link only
+      if (result.status === 'linked') {
+        await sendParentWelcomeNotifications(parentId, result.studentId);
+      }
+
       const response = NextResponse.json({ ok: true, studentId: result.studentId, status: result.status });
       logger.logAPI(req, response, { className: CLASS_NAME, methodName: 'handleLink' }, start);
       return response;
