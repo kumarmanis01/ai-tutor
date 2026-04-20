@@ -252,7 +252,7 @@ No breaking changes. All wired endpoints functional.
 | SHOULD | ⚠️ | AC-05 | "Schedule next session" with AI-recommended time slot | ⚠️ | ⚠️ | "Start next session" CTA exists; AI time-slot recommendation absent | Post-launch |
 | SHOULD | ~~❌~~→✅ | AC-06 | Shareable to parent via copy-to-clipboard (MVP) | ❌ | ✅ | `SessionCompletionScreen.tsx:40` — `buildShareableSessionSummary()`; `handleCopySummary()` uses `navigator.clipboard.writeText`; WhatsApp share via `buildWhatsAppShareUrl` from `lib/student/sessionShare` | None — CSV was stale |
 
-✅ All acceptance criteria satisfied and verified (2026-04-20):
+✅ All ACs except AC-05 satisfied and verified (2026-04-20). AC-05 (AI time-slot scheduling) is intentionally deferred -- Post-launch:
 
 - AC-01: `SessionCompletionScreen` renders `StatsRow` (attempted/% correct/hints/minutes), `MasteryDelta`, topic, and next-session CTA fetched from `/api/home/next-action`.
 - AC-02: 18-piece CSS confetti animation (1.2s, 6 brand colors, staggered delays); `XpSection` animated progress bar (easeOut 800ms); `LevelUpOverlay` with cubic-bezier pop + 3s auto-dismiss.
