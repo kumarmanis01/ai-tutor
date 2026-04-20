@@ -66,6 +66,15 @@ export default function ProfilePage() {
             />
             <h1 className="text-3xl font-bold mt-2">{profile?.name ?? session?.user?.name}</h1>
             <p className="text-gray-500 dark:text-gray-400">{profile?.email ?? session?.user?.email}</p>
+            <div className="mt-2 flex gap-3 items-center text-sm text-gray-600 dark:text-gray-300">
+              <div className="inline-flex items-center gap-2">
+                <span className="text-lg">🔥</span>
+                <span>
+                  {profile?.currentStreak ?? 0}d
+                  <span className="text-gray-400 ml-1">(best {profile?.longestStreak ?? 0}d)</span>
+                </span>
+              </div>
+            </div>
             <Link
               href="/student/onboarding"
               className="mt-4 inline-block px-5 py-2 min-h-[44px] leading-[28px] bg-[#534AB7] text-white text-sm font-semibold rounded-xl hover:bg-[#4840a3] transition-colors"

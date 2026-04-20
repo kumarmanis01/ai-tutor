@@ -35,10 +35,19 @@ export interface User {
     earnedAt?: string;
     badge?: { name?: string | null; description?: string | null; icon?: string | null } | null;
   }>;
+  schoolName?: string | null;
+  learningStyle?: string | null;
+  /** Daily learning streak count */
+  currentStreak?: number;
+  /** All-time longest streak ever achieved */
+  longestStreak?: number;
+  /** Keys of cosmetic items unlocked via streak milestones */
+  cosmeticUnlocks?: string[];
   /** Optional persisted user preferences (UI & accessibility) */
   preferences?: {
     crunchMode?: 'auto' | 'on' | 'off';
     fontSize?: 'small' | 'medium' | 'large';
+    badgeShowcase?: string[];
   } | null;
 }
 
