@@ -171,13 +171,18 @@ docker compose logs -f web
    ```powershell
    docker compose restart web
    ```
-4. **For schema changes** — create a migration file, then run deploy:
+3. **For schema changes** — create a migration file, then run deploy:
    ```powershell
-   # Never run prisma migrate dev in this project — create SQL manually
+   # Recommended (production-like): author SQL migrations and deploy them
    # 1. Create: prisma/migrations/YYYYMMDDHHMMSS_description/migration.sql
    # 2. Deploy:
    docker compose run --rm web npx prisma migrate deploy --schema=prisma/schema.prisma
    ```
+
+   Guidance on `prisma migrate dev`:
+   - Prefer `npx prisma migrate deploy` inside Docker/CI and production (it only applies committed migration SQL).
+   - If you need to *generate* migration SQL locally, you may use `npx prisma migrate dev` *locally outside Docker* to create the migration files, but you MUST review and edit the generated SQL before committing. Treat any migration file as immutable after it is committed — fixes must be shipped as a new migration.
+   - Never run `npx prisma migrate dev` inside CI, inside production containers, or on production databases.
 
 ---
 
@@ -233,7 +238,7 @@ docker compose up -d
 
 ## Things you MUST NOT do
 
-- **Never run `npx prisma migrate dev`** — this project uses `migrate deploy` only (production-safe, never creates new migrations automatically).
+- **Never run `npx prisma migrate dev` in CI or in production containers.** If used locally to generate SQL, review the generated SQL thoroughly and commit the migration SQL file; do not rely on ephemeral database state. Prefer `npx prisma migrate deploy` for applying migrations in Docker/CI/production.
 - **Never upgrade Prisma** beyond v6.19.1. The project is pinned by policy in CLAUDE.md.
 - **Never edit .env.production vars** like `ENABLE_DISTRESS_DETECTION` or `NEXT_PUBLIC_CONSENT_LIVE` — they are gated by explicit approval.
 - **Never push directly to `develop` or `master`** — always branch and open a PR.

@@ -19,6 +19,16 @@
 -- failed run from the original (broken) SQL.  Run scripts/fix_prod_migrations.sql
 -- against the production DB to recover before deploying.
 
+-- IMMUTABILITY NOTE:
+-- - This migration was edited in-place on branch feat/f-adm-admin-fixes to
+--   correct invalid FK syntax and add guarded DO $$ blocks. Editing committed
+--   migrations after they have been applied can cause Prisma checksum mismatches
+--   (P3009) and prevent safe deployment.
+-- - Preferred remediation is to ship a forward migration with the corrected DDL
+--   or, if the production schema has already been corrected manually, mark the
+--   migration as applied using `npx prisma migrate resolve --applied <migration>`.
+-- - Avoid inserting or fabricating migration checksums into `_prisma_migrations`.
+
 -- 1. Table (idempotent)
 CREATE TABLE IF NOT EXISTS "ReferralReward" (
   "id"         text        PRIMARY KEY NOT NULL,

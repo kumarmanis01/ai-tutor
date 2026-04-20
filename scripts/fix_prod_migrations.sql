@@ -143,20 +143,30 @@ $$;
 --         two migrations (there may be 1-3 rows each, all with
 --         applied_steps_count = 0 or finished_at IS NULL).
 -- ============================================================
+-- IMPORTANT: prefer using Prisma's CLI to mark migrations as applied.
+-- Recommended safe recovery flow (preferred):
+-- 1) Ensure the DB schema is correct (tables/constraints exist as expected).
+-- 2) From a machine with access to the codebase, run:
+--      npx prisma migrate resolve --applied 20260416000000_add_student_concept_state
+--      npx prisma migrate resolve --applied 20260417_add_referral_reward
+--    This marks the migrations as applied in Prisma's migration table without
+--    fabricating checksums.
 
+-- If you cannot use `prisma migrate resolve` in your environment (rare), you
+-- can manually clean up `_prisma_migrations`. This is a destructive and
+-- sensitive operation. The commented SQL below shows the manual steps; only
+-- run them after taking a verified DB backup and with operator approval.
+
+-- NOTE: gen_random_uuid() requires the pgcrypto extension. Create it if missing:
+-- (uncomment if you will run the manual insert below)
+-- CREATE EXTENSION IF NOT EXISTS pgcrypto;
+
+/*
 DELETE FROM _prisma_migrations
 WHERE migration_name IN (
   '20260416000000_add_student_concept_state',
   '20260417_add_referral_reward'
 );
-
--- ============================================================
--- STEP 4: Re-insert both migrations as cleanly applied.
---         The checksum is set to 'manually-applied' which Prisma
---         will accept for already-finished migrations.
---         After this, `prisma migrate deploy` will skip both and
---         apply any genuinely new migrations only.
--- ============================================================
 
 INSERT INTO _prisma_migrations
   (id, checksum, finished_at, migration_name, logs, rolled_back_at, started_at, applied_steps_count)
@@ -181,6 +191,7 @@ VALUES
     now() - INTERVAL '5 seconds',
     1
   );
+*/
 
 -- ============================================================
 -- STEP 5: Verify

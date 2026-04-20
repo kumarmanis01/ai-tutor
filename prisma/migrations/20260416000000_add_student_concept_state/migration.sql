@@ -16,6 +16,17 @@
 -- If prisma migrate deploy reports P3009 for this migration, run
 -- scripts/fix_prod_migrations.sql against production DB to recover.
 
+-- IMMUTABILITY NOTE:
+-- - This migration was edited in-place on branch feat/f-adm-admin-fixes to add
+--   defensive guards around FK creation. Editing a committed migration file
+--   after it has been applied in other environments can cause Prisma checksum
+--   mismatches (P3009) and deployment failures.
+-- - Recommended workflow for fixes: create a new (forward) migration with the
+--   corrective DDL and deploy that, or if the production schema was already
+--   corrected manually, use `npx prisma migrate resolve --applied <migration>`
+--   to mark the migration as applied. Do NOT rely on editing this file to
+--   repair production databases; treat committed migrations as immutable.
+
 -- 1. Table (idempotent)
 -- Adds StudentConceptState table to persist per-student per-concept state
 
