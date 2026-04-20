@@ -18,6 +18,7 @@ EDIT LOG:
  - 2026-04-19T00:00:00Z | copilot | wired welcome-email to createUser via Prisma middleware; updated AC-08 status
  - 2026-04-20T00:00:00Z | claude | verify: F-STU-002 all 9 ACs confirmed implemented and tested; AC-07 and AC-08 status promoted to full -- 22 unit tests passing, TypeScript clean
  - 2026-04-20T00:00:00Z | claude | F-STU-011: AC-07 promoted ⚠️ -> ✅ (as-any cast removed, 12 unit tests added, WORKED_EXAMPLE marks count added); AC-09 promoted ❌ -> ✅ (CSV was stale -- detectCopyPaste already implemented and integration-tested)
+ - 2026-04-20T00:00:00Z | claude | F-STU-021: AC-04 promoted ⚠️ -> ✅ (percentile computation confirmed in complete/route.ts:115-149; heatmap in report/route.ts:86-115; 15+ edge-case tests added across complete.test.ts + report.test.ts + attemptPercentile.test.ts); AC-05 promoted ⚠️ -> ✅ (buildPriorityPlan call chain confirmed in complete/route.ts:152; 8 dedicated unit tests in buildPriorityPlan.test.ts); AC-07 promoted ⚠️ -> ✅ (export/route.ts confirmed mock-specific pdf-lib PDF); AC-06 remains ⚠️ operational -- seeding tooling complete, Neon DB row count must be verified pre-launch
 -->
 
 # Gap Analysis — Implementation Status
@@ -329,10 +330,10 @@ Schema migrations applied (if any):
 | Priority | Status | AC# | Criterion | CSV Status | Code Status | Evidence | Action |
 |----------|--------|-----|-----------|------------|-------------|----------|--------|
 | MUST | ✅ | AC-01–03 | Board exam paper format, real duration, navigation | ✅ | ✅ | `MockExamRunner` | None |
-| MUST | ⚠️ | AC-04 | Post-exam report: section-wise, heatmap, percentile vs cohort | ⚠️ | ⚠️ | `MockExamAttempt` schema has `percentile` and `cohortCount` columns (`ai_dev_dump.sql:3735`); `MockExamReport` exists; whether percentile is computed in post-exam flow not confirmed | Verify cohort percentile computation in mock submit handler |
-| MUST | ⚠️ | AC-05 | AI-generated "Next 2 Weeks Priority Plan" post-mock | ⚠️ | ⚠️ | `lib/mock/buildPriorityPlan.ts` exists; wiring from mock submission into the student plan not confirmed | Trace mock submit → `buildPriorityPlan` call chain |
-| MUST | ❌ | AC-06 | ≥ 5 unique mocks per subject/grade seeded at launch | ❌ | ❌ | Mock generation infrastructure exists; content actually seeded on Neon DB is unknown — must be verified with DB query before launch | **LAUNCH BLOCKER**: run `SELECT COUNT(*) FROM "MockExam" GROUP BY "subjectId","grade"` on Neon and seed if < 5 per group |
-| SHOULD | ⚠️ | AC-07 | PDF download (questions only) for offline practice | ⚠️ | ⚠️ | Export routes exist; mock-specific PDF not confirmed | Verify or build mock PDF export |
+| MUST | ~~⚠️~~→✅ | AC-04 | Post-exam report: section-wise, heatmap, percentile vs cohort | ⚠️ | ✅ | `app/api/mock/attempt/[attemptId]/complete/route.ts:115-149` -- cohort percentile computed (90-day window, grade/board/subject/version); `report/route.ts:86-115` -- section-wise detail with per-question `timeSpentSeconds` heatmap; `components/mock/MockExamReport.tsx` -- section bars + time heatmap + percentile badge rendered; `MockExamAttempt.percentile` and `cohortCount` persisted; `tests/unit/mock/attemptPercentile.test.ts` + `tests/unit/api/mock/complete.test.ts` + `tests/unit/api/mock/report.test.ts` | None -- fully verified |
+| MUST | ~~⚠️~~→✅ | AC-05 | AI-generated "Next 2 Weeks Priority Plan" post-mock | ⚠️ | ✅ | `app/api/mock/attempt/[attemptId]/complete/route.ts:152-158` -- `buildPriorityPlan(...)` called with `studentId`, `attemptId`, `subjectName`, `overallScore`, `sectionScores`; result stored in `MockExamAttempt.priorityPlan`; returned by report endpoint; displayed in `MockExamReport.tsx`; `tests/unit/lib/mock/buildPriorityPlan.test.ts` (8 tests: happy path, fallback on error, empty content, null result, forbidden-word check) | None -- fully verified |
+| MUST | ⚠️ | AC-06 | ≥ 5 unique mocks per subject/grade seeded at launch | ❌ | ⚠️ | All seeding tooling implemented: `lib/mock/ensureMocks.ts` (`ensureMinimumMocks()`), `scripts/ensure-mocks.ts` (CLI -- `npm run ensure-mocks`), `jobs/seedMocks.ts` (BullMQ), `worker/services/seedMocksWorker.ts`, `app/api/admin/mock/ensure/route.ts` (admin POST), `tests/unit/lib/mock/ensureMocks.test.ts`; actual Neon DB row count unverified in this session | **LAUNCH BLOCKER**: run `npm run ensure-mocks` on VPS (or POST `/api/admin/mock/ensure` with `{"minPer":5}`) to seed Neon; then verify with `SELECT COUNT(*) FROM "MockExam" GROUP BY "subjectId","grade"` |
+| SHOULD | ~~⚠️~~→✅ | AC-07 | PDF download (questions only) for offline practice | ⚠️ | ✅ | `app/api/mock/[examId]/export/route.ts` -- `pdf-lib` PDF with exam title, subject, section headers, numbered questions (marks badge); rate-limited (5/60s per user); audit log non-blocking; `Content-Disposition: attachment`; `tests/unit/api/mock/export.test.ts` | None -- fully verified |
 
 ---
 
@@ -727,9 +728,9 @@ These items were marked ❌ or ⚠️ in the CSV but are fully implemented in th
 | 7 | F-STU-014 | AC-06 | SHOULD | Save route (`/api/student/whiteboard/save`) | Replay viewer UI |
 | 8 | F-STU-020 | AC-02 | MUST | Question types exist | 40/30/30 mix ratio enforcement confirmed |
 | 9 | F-STU-020 | AC-07 | MUST | Score history stored | Trend graph UI per chapter |
-| 10 | F-STU-021 | AC-04 | MUST | `percentile` + `cohortCount` DB columns | Percentile computation in mock submit handler |
-| 11 | F-STU-021 | AC-05 | MUST | `lib/mock/buildPriorityPlan.ts` | Call chain from mock submit → plan creation |
-| 12 | F-STU-021 | AC-07 | SHOULD | PDF export routes | Mock-specific PDF confirmed |
+| 10 | ~~F-STU-021~~ | ~~AC-04~~ | ~~MUST~~ | ~~`percentile` + `cohortCount` DB columns~~ | ~~Percentile computation in mock submit handler~~ -- **RESOLVED 2026-04-20**: percentile fully computed in `complete/route.ts:115-149`; heatmap in `report/route.ts`; 15+ tests added |
+| 11 | ~~F-STU-021~~ | ~~AC-05~~ | ~~MUST~~ | ~~`lib/mock/buildPriorityPlan.ts`~~ | ~~Call chain from mock submit → plan creation~~ -- **RESOLVED 2026-04-20**: `complete/route.ts:152` calls `buildPriorityPlan`; 8 unit tests in `buildPriorityPlan.test.ts` |
+| 12 | ~~F-STU-021~~ | ~~AC-07~~ | ~~SHOULD~~ | ~~PDF export routes~~ | ~~Mock-specific PDF confirmed~~ -- **RESOLVED 2026-04-20**: `app/api/mock/[examId]/export/route.ts` confirmed mock-specific with pdf-lib |
 | 13 | F-STU-030 | AC-05 | SHOULD | `longestStreak` field | Display on Profile screen |
 | 14 | F-STU-031 | AC-03 | MUST | Level model | Visual frame assets per tier (10/20/30/50/75/100) |
 | 15 | F-STU-031 | AC-04 | MUST | Badge + UserBadge models | All 6 badge trigger conditions verified and seeded |
@@ -764,10 +765,10 @@ Items that must be resolved before launch (MUST-priority confirmed gaps or unver
 
 | Priority | Item | Action |
 |----------|------|--------|
-| 🔴 CRITICAL | **F-STU-021 AC-06**: ≥ 5 mocks per subject/grade on Neon | Verify with `SELECT COUNT(*) FROM "MockExam" GROUP BY "subjectId","grade"` then seed |
+| 🔴 CRITICAL | **F-STU-021 AC-06**: ≥ 5 mocks per subject/grade on Neon | Run `npm run ensure-mocks` on VPS (or POST `/api/admin/mock/ensure` `{"minPer":5}`); verify with `SELECT COUNT(*) FROM "MockExam" GROUP BY "subjectId","grade"` |
 | 🔴 CRITICAL | **F-ADM-001 AC-04**: CBSE Grade 10 Math+Science chunks on Neon | Verify with `SELECT COUNT(*) FROM "ContentChunk" WHERE board='CBSE' AND grade=10` |
-| 🟠 HIGH | **F-STU-021 AC-04**: Cohort percentile computation | Trace `MockExamAttempt.percentile` population in submit handler |
-| 🟠 HIGH | **F-STU-021 AC-05**: Post-mock priority plan wiring | Trace `lib/mock/buildPriorityPlan.ts` call from mock submit |
+| ~~🟠 HIGH~~ | ~~**F-STU-021 AC-04**: Cohort percentile computation~~ | ~~Trace `MockExamAttempt.percentile` population in submit handler~~ -- **RESOLVED 2026-04-20** |
+| ~~🟠 HIGH~~ | ~~**F-STU-021 AC-05**: Post-mock priority plan wiring~~ | ~~Trace `lib/mock/buildPriorityPlan.ts` call from mock submit~~ -- **RESOLVED 2026-04-20** |
 | 🟠 HIGH | **F-STU-020 AC-02**: 40/30/30 question mix enforced | Verify question selection logic in test generation |
 | 🟠 HIGH | **F-STU-031 AC-03–04**: Level frames + badge triggers | Verify visual tier frames and all 6 badge trigger conditions |
 | 🟡 MEDIUM | **F-STU-003 AC-07**: Plan regen on exam-date change | Verify PATCH handler for exam date |
