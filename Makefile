@@ -1,6 +1,4 @@
-﻿SHELL := /bin/bash
-
-.PHONY: up down down-volumes restart logs logs-svc ps shell-web shell-worker migrate migrate-force seed prisma-studio
+﻿.PHONY: up down down-volumes restart logs logs-svc ps shell-web shell-worker migrate migrate-force seed prisma-studio
 
 up:
 	docker compose up --build

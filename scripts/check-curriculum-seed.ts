@@ -12,25 +12,27 @@
  *
  * EDIT LOG:
  * - 2026-04-20T00:00:00Z | copilot | created script to check curriculum chunk counts
+ * - 2026-04-21T00:00:00Z | copilot | made script testable (export helpers + guard main); updated usage text
  */
 
 import { prisma } from '../lib/prisma'
 import { logger } from '../lib/logger'
 
-function getFlag(name: string) {
+export function getFlag(name: string) {
   const idx = process.argv.indexOf(name)
   if (idx === -1) return undefined
   return process.argv[idx + 1]
 }
 
-async function main() {
+export async function main() {
   const board = getFlag('--board') || getFlag('-b')
   const grade = getFlag('--grade') || getFlag('-g')
   const subjectsRaw = getFlag('--subjects') || getFlag('-s')
   const expectedRaw = getFlag('--expected')
 
   if (!board || !grade) {
-    console.error('Usage: node scripts/check-curriculum-seed.ts --board CBSE --grade 10 [--subjects math,science] [--expected 100]')
+    console.error('Usage: npx tsx scripts/check-curriculum-seed.ts --board CBSE --grade 10 [--subjects math,science] [--expected 100]')
+    console.error('Or: npm run check-curriculum-seed (if provided)')
     process.exit(2)
   }
 
@@ -70,7 +72,10 @@ async function main() {
   await prisma.$disconnect()
 }
 
-main().catch((err) => {
-  logger.error('check-curriculum-seed failed', { err: String(err) })
-  process.exit(1)
-})
+// Run main only when executed directly (not when imported by tests)
+if (typeof require !== 'undefined' && require.main === module) {
+  main().catch((err) => {
+    logger.error('check-curriculum-seed failed', { err: String(err) })
+    process.exit(1)
+  })
+}

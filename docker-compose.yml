@@ -7,7 +7,7 @@ version: '3.9'
 
 services:
   postgres:
-    image: postgres:15-alpine
+    image: pgvector/pgvector:pg15
     container_name: ai_tutor_postgres
     restart: unless-stopped
     environment:
@@ -51,14 +51,13 @@ services:
       DATABASE_URL: "postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-pass}@postgres:5432/${POSTGRES_DB:-ai_dev}"
       REDIS_URL: "redis://redis:6379"
       NEXTAUTH_URL: "http://localhost:3000"
-      # Inspector bound to 0.0.0.0 so VS Code can attach from host on port 9229
-      NODE_OPTIONS: "--inspect=0.0.0.0:9229"
+      # Inspector disabled by default. To enable, set NODE_OPTIONS in your .env (example: "--inspect=127.0.0.1:9229").
+      NODE_OPTIONS: "${NODE_OPTIONS:-}"
     volumes:
       - ./:/workspace:cached
       - node_modules_web:/workspace/node_modules
     ports:
       - "3000:3000"
-      - "9229:9229"
     depends_on:
       postgres:
         condition: service_healthy
@@ -79,12 +78,11 @@ services:
       # Override: inside containers these must reach the 'web' service, not 127.0.0.1
       METRICS_URL: "http://web:3000/api/metrics"
       JOBS_STATUS_URL: "http://web:3000/api/admin/jobs/status"
-      NODE_OPTIONS: "--inspect=0.0.0.0:9230"
+      # Inspector disabled by default; set NODE_OPTIONS in .env to enable
+      NODE_OPTIONS: "${NODE_OPTIONS:-}"
     volumes:
       - ./:/workspace:cached
       - node_modules_worker:/workspace/node_modules
-    ports:
-      - "9230:9230"
     depends_on:
       postgres:
         condition: service_healthy
@@ -104,12 +102,11 @@ services:
       REDIS_URL: "redis://redis:6379"
       METRICS_URL: "http://web:3000/api/metrics"
       JOBS_STATUS_URL: "http://web:3000/api/admin/jobs/status"
-      NODE_OPTIONS: "--inspect=0.0.0.0:9231"
+      NODE_OPTIONS: "${NODE_OPTIONS:-}"
     volumes:
       - ./:/workspace:cached
       - node_modules_scheduler:/workspace/node_modules
-    ports:
-      - "9231:9231"
+    # scheduler does not expose an inspector port by default
     depends_on:
       postgres:
         condition: service_healthy

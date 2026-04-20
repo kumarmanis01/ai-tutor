@@ -7,14 +7,15 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates git python3 build-essential \
     && rm -rf /var/lib/apt/lists/*
 COPY package.json package-lock.json ./
-RUN npm ci --prefer-offline
+# Disable Husky hook installation inside the image build to avoid failures
+RUN HUSKY=0 HUSKY_SKIP_INSTALL=1 npm ci --prefer-offline
 
+# dev stage
 FROM node:20-bullseye-slim AS dev
 WORKDIR /workspace
 ENV NODE_ENV=development
-# NODE_OPTIONS is overridden by Compose environment but set here as a safe fallback
-ENV NODE_OPTIONS=--inspect=0.0.0.0:9230
+# Do not enable the Node inspector by default inside the image; Compose controls runtime flags
+ENV NODE_OPTIONS=""
 COPY --from=deps /workspace/node_modules ./node_modules
-EXPOSE 9230
 # worker:dev runs tsx worker/dev-supervisor.ts (from package.json)
 CMD ["sh","-c","node scripts/prisma-generate-with-retry.cjs && npm run worker:dev"]

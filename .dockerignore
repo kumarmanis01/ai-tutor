@@ -15,3 +15,5 @@ docker-compose.override.yml
 .git
 docs
 tests
+__tests__
+.github
