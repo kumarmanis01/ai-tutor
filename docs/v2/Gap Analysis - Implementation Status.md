@@ -13,8 +13,8 @@ COPILOT INSTRUCTIONS FOLLOWED:
 
 EDIT LOG:
  - 2026-04-25T00:00:00Z | copilot | initial creation — full reconciliation from code search evidence
+ - 2026-04-20T12:08:00Z | copilot | mark F-STU-020 AC-02 and AC-07 as implemented; added evidence refs to `lib/tests.ts` and `tests/unit/components/Test/ChapterTrend.test.tsx`
  - 2026-04-20T12:00:00Z | copilot | reconcile F-STU-010 — marked AC-02 implemented; updated CSV and Implementation Status table
- - 2026-04-25T00:00:00Z | copilot | initial creation -- full reconciliation from code search evidence
  - 2026-04-19T00:00:00Z | copilot | wired welcome-email to createUser via Prisma middleware; updated AC-08 status
  - 2026-04-20T00:00:00Z | claude | verify: F-STU-002 all 9 ACs confirmed implemented and tested; AC-07 and AC-08 status promoted to full -- 22 unit tests passing, TypeScript clean
  - 2026-04-20T00:00:00Z | claude | F-STU-011: AC-07 promoted ⚠️ -> ✅ (as-any cast removed, 12 unit tests added, WORKED_EXAMPLE marks count added); AC-09 promoted ❌ -> ✅ (CSV was stale -- detectCopyPaste already implemented and integration-tested)
