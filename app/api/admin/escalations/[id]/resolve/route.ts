@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getServerSessionForHandlers } from '@/lib/session'
 import { AdminActionType } from '@prisma/client'
+import { logger } from '@/lib/logger'
 
 const VALID_RESOLUTION_TYPES = new Set([
   'chunk_updated',
@@ -59,6 +60,20 @@ export async function POST(
       },
     }),
   ])
+
+  // Best-effort: trigger immediate notification to the student so they are
+  // informed of the resolution without waiting for the scheduled worker.
+  try {
+    const notifier = await import('@/worker/services/doubtEscalationNotifier')
+    try {
+      await notifier.processSingleDoubtEscalationNotification(id)
+    } catch (e) {
+      logger.warn('[admin/escalations/resolve] notify_enqueue_failed', { escalationId: id, err: String((e as any)?.message ?? e) })
+    }
+  } catch (e) {
+    // If dynamic import fails, log and continue — resolution is still recorded.
+    logger.warn('[admin/escalations/resolve] notify_import_failed', { escalationId: id, err: String((e as any)?.message ?? e) })
+  }
 
   return NextResponse.json({ resolved: true })
 }

@@ -11,108 +11,130 @@
 #
 # EDIT LOG:
 # - 2026-04-20T16:35:00Z | copilot | add header and adjust web healthcheck start_period
-#
+
+## Development docker-compose for ai-tutor
+## Project uses npm (not pnpm). Scripts match package.json exactly.
+## Hot-reload: source bind-mounted; node_modules in named volumes (avoids Windows/macOS inode conflicts).
+## Healthchecks guard start order: web/worker/scheduler wait for healthy postgres + redis.
+
+version: '3.9'
 services:
   postgres:
-    build:
-      context: ./docker/postgres
-      dockerfile: Dockerfile
-    image: ai-tutor-postgres:15-pgvector
+    image: pgvector/pgvector:pg15
+    container_name: ai_tutor_postgres
     restart: unless-stopped
-    env_file:
-      - .env.production
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-pass}
       POSTGRES_DB: ${POSTGRES_DB:-ai_dev}
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-      - ./docker/postgres/initdb:/docker-entrypoint-initdb.d:ro
     ports:
       - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres}"]
-      interval: 10s
+      interval: 5s
       timeout: 5s
       retries: 5
 
   redis:
     image: redis:7-alpine
+    container_name: ai_tutor_redis
     restart: unless-stopped
-    env_file:
-      - .env.production
-    command: ["redis-server", "--save", "60", "1", "--appendonly", "yes"]
-    volumes:
-      - redis_data:/data
     ports:
       - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis_data:/data
     healthcheck:
-      test: ["CMD", "redis-cli", "-h", "127.0.0.1", "ping"]
-      interval: 10s
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
       timeout: 5s
       retries: 5
 
   web:
     build:
       context: .
-      dockerfile: Dockerfile.prod
-    image: ai-tutor-web:prod
-    working_dir: /app
-    restart: unless-stopped
+      dockerfile: docker/Dockerfile.dev.web
+      target: dev
+    container_name: ai_tutor_web
+    # env_file loads .env; environment block below overrides keys that differ inside Docker networking
+    env_file: .env
     environment:
-      - NODE_ENV=production
-      - HUSKY_SKIP_INSTALL=1
-      - SERVICE=web
-    env_file:
-      - .env.production
-      - .env.local
+      NODE_ENV: development
+      DATABASE_URL: "postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-pass}@postgres:5432/${POSTGRES_DB:-ai_dev}"
+      REDIS_URL: "redis://redis:6379"
+      NEXTAUTH_URL: "http://localhost:3000"
+      # Inspector disabled by default. To enable, set NODE_OPTIONS in your .env (example: "--inspect=127.0.0.1:9229").
+      NODE_OPTIONS: "${NODE_OPTIONS:-}"
+    volumes:
+      - ./:/workspace:cached
+      - node_modules_web:/workspace/node_modules
     ports:
       - "3000:3000"
     depends_on:
-      - postgres
-      - redis
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "curl -sf http://127.0.0.1:3000/api/health/redis || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 5
-      start_period: 60m
+      start_period: 60s
 
   worker:
     build:
       context: .
-      dockerfile: Dockerfile.prod
-    image: ai-tutor-worker:prod
-    working_dir: /app
-    restart: unless-stopped
-    env_file:
-      - .env.production
-      - .env.local
+      dockerfile: docker/Dockerfile.dev.worker
+      target: dev
+    container_name: ai_tutor_worker
+    env_file: .env
     environment:
-      - NODE_ENV=production
-      - HUSKY_SKIP_INSTALL=1
-      - SERVICE=worker
+      NODE_ENV: development
+      DATABASE_URL: "postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-pass}@postgres:5432/${POSTGRES_DB:-ai_dev}"
+      REDIS_URL: "redis://redis:6379"
+      # Override: inside containers these must reach the 'web' service, not 127.0.0.1
+      METRICS_URL: "http://web:3000/api/metrics"
+      JOBS_STATUS_URL: "http://web:3000/api/admin/jobs/status"
+      # Inspector disabled by default; set NODE_OPTIONS in .env to enable
+      NODE_OPTIONS: "${NODE_OPTIONS:-}"
+    volumes:
+      - ./:/workspace:cached
+      - node_modules_worker:/workspace/node_modules
     depends_on:
-      - postgres
-      - redis
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
 
   scheduler:
     build:
       context: .
-      dockerfile: Dockerfile.prod
-    image: ai-tutor-scheduler:prod
-    working_dir: /app
-    restart: unless-stopped
-    env_file:
-      - .env.production
-      - .env.local
+      dockerfile: docker/Dockerfile.dev.scheduler
+      target: dev
+    container_name: ai_tutor_scheduler
+    env_file: .env
     environment:
-      - NODE_ENV=production
-      - HUSKY_SKIP_INSTALL=1
-      - SERVICE=scheduler
+      NODE_ENV: development
+      DATABASE_URL: "postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-pass}@postgres:5432/${POSTGRES_DB:-ai_dev}"
+      REDIS_URL: "redis://redis:6379"
+      METRICS_URL: "http://web:3000/api/metrics"
+      JOBS_STATUS_URL: "http://web:3000/api/admin/jobs/status"
+      NODE_OPTIONS: "${NODE_OPTIONS:-}"
+    volumes:
+      - ./:/workspace:cached
+      - node_modules_scheduler:/workspace/node_modules
+    # scheduler does not expose an inspector port by default
     depends_on:
-      - postgres
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
 
 volumes:
   postgres_data:
   redis_data:
+  node_modules_web:
+  node_modules_worker:
+  node_modules_scheduler:

@@ -9,6 +9,8 @@ interface AvatarProps {
   size?: number; // px
   fallback?: string; // initials or icon
   className?: string;
+  /** Hex color for a level-tier ring frame (e.g. from getTierColor). Rendered as an outline outside the circle. */
+  tierColor?: string;
 }
 
 export default function Avatar({
@@ -17,6 +19,7 @@ export default function Avatar({
   size = 32,
   fallback,
   className = '',
+  tierColor,
 }: AvatarProps) {
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState(false);
@@ -40,7 +43,11 @@ export default function Avatar({
   return (
     <div
       className={`bg-gray-200 rounded-full flex items-center justify-center border relative overflow-hidden ${!loaded && src ? 'border-blue-500' : 'border'} ${className}`}
-      style={{ width: size, height: size }}
+      style={{
+        width: size,
+        height: size,
+        ...(tierColor ? { outline: `3px solid ${tierColor}`, outlineOffset: '2px' } : {}),
+      }}
     >
       {/* Optimized Image */}
       {src && !error && (

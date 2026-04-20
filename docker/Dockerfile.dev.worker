@@ -1,0 +1,21 @@
+# Development Dockerfile for worker (BullMQ consumer via worker:dev script)
+# Uses npm (project lock file is package-lock.json).
+
+FROM node:20-bullseye-slim AS deps
+WORKDIR /workspace
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ca-certificates git python3 build-essential \
+    && rm -rf /var/lib/apt/lists/*
+COPY package.json package-lock.json ./
+# Disable Husky hook installation inside the image build to avoid failures
+RUN HUSKY=0 HUSKY_SKIP_INSTALL=1 npm ci --prefer-offline
+
+# dev stage
+FROM node:20-bullseye-slim AS dev
+WORKDIR /workspace
+ENV NODE_ENV=development
+# Do not enable the Node inspector by default inside the image; Compose controls runtime flags
+ENV NODE_OPTIONS=""
+COPY --from=deps /workspace/node_modules ./node_modules
+# worker:dev runs tsx worker/dev-supervisor.ts (from package.json)
+CMD ["sh","-c","node scripts/prisma-generate-with-retry.cjs && npm run worker:dev"]

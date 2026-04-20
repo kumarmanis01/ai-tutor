@@ -27,6 +27,8 @@ import { PLANS, rupeesToPaise } from '@/lib/billing/plans';
 import type { PlanId } from '@/lib/billing/plans';
 import Razorpay from 'razorpay';
 
+const VALID_PLAN_IDS: PlanId[] = Object.keys(PLANS) as PlanId[];
+
 function getRazorpayClient() {
   const keyId = process.env.RAZORPAY_KEY_ID;
   const keySecret = process.env.RAZORPAY_KEY_SECRET;

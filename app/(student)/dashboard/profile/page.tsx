@@ -25,6 +25,8 @@ import AuthRedeemOnSignIn from '@/components/AuthRedeemOnSignIn';
 import useCurrentUser from '@/hooks/useCurrentUser';
 import { LANGUAGES, _DIFFICULTY_LEVELS } from '@/components/CascadingFilters';
 import Link from 'next/link';
+import { getTierColor } from '@/lib/student/xpLevels';
+import FontSizeToggle from '@/components/UI/FontSizeToggle';
 
 export default function ProfilePage() {
   const { data: session } = useSession();
@@ -60,12 +62,22 @@ export default function ProfilePage() {
           <div className="flex flex-col items-center mb-8">
             <Avatar
               src={profile?.image ?? session?.user?.image ?? undefined}
-                alt={profile?.name ?? session?.user?.name ?? session?.user?.email ?? 'User avatar'}
+              alt={profile?.name ?? session?.user?.name ?? session?.user?.email ?? 'User avatar'}
               size={80}
               fallback={fallback}
+              tierColor={getTierColor(profile?.level ?? 1)}
             />
             <h1 className="text-3xl font-bold mt-2">{profile?.name ?? session?.user?.name}</h1>
             <p className="text-gray-500 dark:text-gray-400">{profile?.email ?? session?.user?.email}</p>
+            <div className="mt-2 flex gap-3 items-center text-sm text-gray-600 dark:text-gray-300">
+              <div className="inline-flex items-center gap-2">
+                <span className="text-lg">🔥</span>
+                <span>
+                  {profile?.currentStreak ?? 0}d
+                  <span className="text-gray-400 ml-1">(best {profile?.longestStreak ?? 0}d)</span>
+                </span>
+              </div>
+            </div>
             <Link
               href="/student/onboarding"
               className="mt-4 inline-block px-5 py-2 min-h-[44px] leading-[28px] bg-[#534AB7] text-white text-sm font-semibold rounded-xl hover:bg-[#4840a3] transition-colors"
@@ -178,6 +190,12 @@ export default function ProfilePage() {
               <div>
                 <span className="font-semibold">Parent Email:</span>{' '}
                 {profile?.parentEmail || <span className="text-gray-400">Not set</span>}
+              </div>
+              <div className="mt-4">
+                <h4 className="font-semibold mb-2">Display</h4>
+                <div className="flex items-center justify-between">
+                  <FontSizeToggle />
+                </div>
               </div>
             </div>
           </div>

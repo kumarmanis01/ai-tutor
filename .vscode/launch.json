@@ -2,6 +2,44 @@
   "version": "0.2.0",
   "configurations": [
     {
+      "name": "Attach to Next.js (web)",
+      "type": "node",
+      "request": "attach",
+      "port": 9229,
+      "address": "localhost",
+      "localRoot": "${workspaceFolder}",
+      "remoteRoot": "/workspace",
+      "protocol": "inspector",
+      "restart": true
+    },
+    {
+      "name": "Attach to Worker",
+      "type": "node",
+      "request": "attach",
+      "port": 9230,
+      "address": "localhost",
+      "localRoot": "${workspaceFolder}",
+      "remoteRoot": "/workspace",
+      "protocol": "inspector",
+      "restart": true
+    },
+    {
+      "name": "Attach to Scheduler",
+      "type": "node",
+      "request": "attach",
+      "port": 9231,
+      "address": "localhost",
+      "localRoot": "${workspaceFolder}",
+      "remoteRoot": "/workspace",
+      "protocol": "inspector",
+      "restart": true
+    }
+  ]
+}
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
       "name": "Launch Chrome against localhost",
       "type": "chrome",
       "request": "launch",
