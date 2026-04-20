@@ -4,6 +4,7 @@ import {
   getXPToNextLevel,
   getProgressPercent,
   getLevelTierName,
+  getTierColor,
   MAX_LEVEL,
 } from '@/lib/student/xp'
 
@@ -88,6 +89,27 @@ describe('lib/student/xp', () => {
     test('level 50 -> Platinum', () => { expect(getLevelTierName(50)).toBe('Platinum') })
     test('level 75 -> Diamond', () => { expect(getLevelTierName(75)).toBe('Diamond') })
     test('level 100 -> Legend', () => { expect(getLevelTierName(100)).toBe('Legend') })
+  })
+
+  describe('getTierColor', () => {
+    test('level 1 -> gray (#9CA3AF)', () => { expect(getTierColor(1)).toBe('#9CA3AF') })
+    test('level 3 -> blue (#3B82F6)', () => { expect(getTierColor(3)).toBe('#3B82F6') })
+    test('level 10 -> bronze (#B45309)', () => { expect(getTierColor(10)).toBe('#B45309') })
+    test('level 20 -> silver (#94A3B8)', () => { expect(getTierColor(20)).toBe('#94A3B8') })
+    test('level 30 -> gold (#D97706)', () => { expect(getTierColor(30)).toBe('#D97706') })
+    test('level 50 -> platinum (#0EA5E9)', () => { expect(getTierColor(50)).toBe('#0EA5E9') })
+    test('level 75 -> diamond (#8B5CF6)', () => { expect(getTierColor(75)).toBe('#8B5CF6') })
+    test('level 100 -> legend (#F97316)', () => { expect(getTierColor(100)).toBe('#F97316') })
+    test('level 9 is still Explorer color', () => { expect(getTierColor(9)).toBe('#3B82F6') })
+    test('level 99 is still Diamond color', () => { expect(getTierColor(99)).toBe('#8B5CF6') })
+    test('tier changes at exact boundaries', () => {
+      expect(getTierColor(9)).toBe('#3B82F6')  // Explorer until 10
+      expect(getTierColor(10)).toBe('#B45309') // Bronze from 10
+      expect(getTierColor(19)).toBe('#B45309') // Bronze until 20
+      expect(getTierColor(20)).toBe('#94A3B8') // Silver from 20
+      expect(getTierColor(29)).toBe('#94A3B8') // Silver until 30
+      expect(getTierColor(30)).toBe('#D97706') // Gold from 30
+    })
   })
 
   describe('LEVEL_THRESHOLDS', () => {

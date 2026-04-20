@@ -86,3 +86,18 @@ export function getLevelTierName(level: number): string {
   if (level >= 3) return 'Explorer'
   return 'Learner'
 }
+
+/**
+ * Returns the hex color for the avatar tier ring at each tier boundary.
+ * Frame changes at levels 10/20/30/50/75/100 per F-STU-031 AC-03.
+ */
+export function getTierColor(level: number): string {
+  if (level >= 100) return '#F97316' // Legend -- orange/fire
+  if (level >= 75)  return '#8B5CF6' // Diamond -- violet
+  if (level >= 50)  return '#0EA5E9' // Platinum -- sky blue
+  if (level >= 30)  return '#D97706' // Gold -- amber
+  if (level >= 20)  return '#94A3B8' // Silver -- slate
+  if (level >= 10)  return '#B45309' // Bronze -- warm brown
+  if (level >= 3)   return '#3B82F6' // Explorer -- blue
+  return '#9CA3AF'                    // Learner -- gray
+}
