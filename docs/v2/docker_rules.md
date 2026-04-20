@@ -1,3 +1,18 @@
+<!--
+FILE OBJECTIVE:
+- Provide Docker dev-stack troubleshooting and runbook for junior developers.
+
+LINKED UNIT TEST:
+- tests/unit/docs/docker_rules.spec.ts
+
+COPILOT INSTRUCTIONS FOLLOWED:
+- .github/copilot-instructions.md
+- /docs/ENGINEERING_PRACTICES.md
+
+EDIT LOG:
+- 2026-04-20T16:36:00Z | copilot | add runbook and headers after migration fix
+-->
+
 Ran terminal command: Start-Sleep -Seconds 5; docker compose ps 2>&1
 
 Here is a complete, step-by-step guide for a junior developer to pick this up and keep it running.

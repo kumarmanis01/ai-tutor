@@ -1,3 +1,17 @@
+# FILE OBJECTIVE:
+# - Docker Compose for local development: orchestrate web, worker, scheduler,
+#   Postgres (pgvector), and Redis services.
+#
+# LINKED UNIT TEST:
+# - tests/unit/docs/docker_compose.spec.ts
+#
+# COPILOT INSTRUCTIONS FOLLOWED:
+# - .github/copilot-instructions.md
+# - /docs/ENGINEERING_PRACTICES.md
+#
+# EDIT LOG:
+# - 2026-04-20T16:35:00Z | copilot | add header and adjust web healthcheck start_period
+#
 services:
   postgres:
     build:
