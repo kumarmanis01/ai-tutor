@@ -431,9 +431,9 @@ export function buildStageInstructionsLayer(ctx: PromptContext): string {
       'Use 2-3 short paragraphs. End with one comprehension check question.',
     )
     // AC-07 (F-STU-011 SHOULD): when available, instruct Vidya to cite board exam objective + marks
-    if (typeof (ctx as any).boardChapterWeightMarks === 'number') {
+    if (typeof ctx.boardChapterWeightMarks === 'number') {
       lines.push(
-        `Board exam mapping: When relevant, begin the explanation with a single short sentence citing board mapping. Example: "This concept appears in ${ctx.board} Class ${ctx.grade} board exam -- ${(ctx as any).boardChapterWeightMarks} marks."`,
+        `Board exam mapping: When relevant, begin the explanation with a single short sentence citing board mapping. Example: "This concept appears in ${ctx.board} Class ${ctx.grade} board exam -- ${ctx.boardChapterWeightMarks} marks."`,
       )
     }
     lines.push('Output tag: [QUESTION]')
@@ -442,7 +442,7 @@ export function buildStageInstructionsLayer(ctx: PromptContext): string {
       'Stage: WORKED_EXAMPLE. Goal: walk through one complete worked example step by step.',
       'Show full working for the example. After completing, ask the student to identify the key step.',
     )
-    if (typeof (ctx as any).boardChapterWeightMarks === 'number') {
+    if (typeof ctx.boardChapterWeightMarks === 'number') {
       lines.push(
         'When giving a worked example, briefly mention the board mapping (if available) as a single-sentence preface to the example.',
       )
@@ -453,7 +453,7 @@ export function buildStageInstructionsLayer(ctx: PromptContext): string {
       'Stage: CONSOLIDATION. Goal: summarise what the student has learned and celebrate progress.',
       'Give a brief summary of the key concept. Ask one reflective question to confirm understanding.',
     )
-    if (typeof (ctx as any).boardChapterWeightMarks === 'number') {
+    if (typeof ctx.boardChapterWeightMarks === 'number') {
       lines.push('If applicable, include a short sentence noting the board marks weightage for this chapter to remind the student of exam relevance.')
     }
     lines.push('Output tag: [STAGE_ADVANCE] or [QUESTION]')

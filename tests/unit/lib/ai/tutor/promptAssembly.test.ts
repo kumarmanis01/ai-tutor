@@ -402,3 +402,83 @@ describe('buildStageInstructionsLayer -- hint tiers', () => {
   })
 })
 
+// AC-07 (F-STU-011 SHOULD): board chapter weight citation in stage instructions
+describe('buildStageInstructionsLayer -- board chapter weight (AC-07)', () => {
+  test('should inject board exam mapping sentence in CORE_EXPLANATION when boardChapterWeightMarks is a number', () => {
+    const ctx = makeCtx({ stage: 'CORE_EXPLANATION', boardChapterWeightMarks: 15 })
+    const layer = buildStageInstructionsLayer(ctx)
+    expect(layer).toContain('Board exam mapping')
+    expect(layer).toContain('15 marks')
+  })
+
+  test('should include grade and board in CORE_EXPLANATION board mapping example', () => {
+    const ctx = makeCtx({ stage: 'CORE_EXPLANATION', grade: 10, board: 'CBSE', boardChapterWeightMarks: 12 })
+    const layer = buildStageInstructionsLayer(ctx)
+    expect(layer).toContain('CBSE')
+    expect(layer).toContain('Class 10')
+    expect(layer).toContain('12 marks')
+  })
+
+  test('should inject board mapping preface in WORKED_EXAMPLE when boardChapterWeightMarks is a number', () => {
+    const ctx = makeCtx({ stage: 'WORKED_EXAMPLE', boardChapterWeightMarks: 10 })
+    const layer = buildStageInstructionsLayer(ctx)
+    expect(layer).toContain('board mapping')
+  })
+
+  test('should inject board marks weightage sentence in CONSOLIDATION when boardChapterWeightMarks is a number', () => {
+    const ctx = makeCtx({ stage: 'CONSOLIDATION', boardChapterWeightMarks: 8 })
+    const layer = buildStageInstructionsLayer(ctx)
+    expect(layer).toContain('board marks weightage')
+  })
+
+  test('should NOT inject board mapping in CORE_EXPLANATION when boardChapterWeightMarks is null', () => {
+    const ctx = makeCtx({ stage: 'CORE_EXPLANATION', boardChapterWeightMarks: null })
+    const layer = buildStageInstructionsLayer(ctx)
+    expect(layer).not.toContain('Board exam mapping')
+  })
+
+  test('should NOT inject board mapping in CORE_EXPLANATION when boardChapterWeightMarks is undefined', () => {
+    const ctx = makeCtx({ stage: 'CORE_EXPLANATION' })
+    const layer = buildStageInstructionsLayer(ctx)
+    expect(layer).not.toContain('Board exam mapping')
+  })
+
+  test('should NOT inject board mapping in WORKED_EXAMPLE when boardChapterWeightMarks is null', () => {
+    const ctx = makeCtx({ stage: 'WORKED_EXAMPLE', boardChapterWeightMarks: null })
+    const layer = buildStageInstructionsLayer(ctx)
+    expect(layer).not.toContain('board mapping')
+  })
+
+  test('should NOT inject board marks weightage in CONSOLIDATION when boardChapterWeightMarks is null', () => {
+    const ctx = makeCtx({ stage: 'CONSOLIDATION', boardChapterWeightMarks: null })
+    const layer = buildStageInstructionsLayer(ctx)
+    expect(layer).not.toContain('board marks weightage')
+  })
+
+  test('should NOT inject board mapping in HOOK stage even when boardChapterWeightMarks is set', () => {
+    const ctx = makeCtx({ stage: 'HOOK', boardChapterWeightMarks: 10 })
+    const layer = buildStageInstructionsLayer(ctx)
+    expect(layer).not.toContain('Board exam mapping')
+    expect(layer).not.toContain('board marks weightage')
+  })
+
+  test('should NOT inject board mapping in GUIDED_PRACTICE even when boardChapterWeightMarks is set', () => {
+    const ctx = makeCtx({ stage: 'GUIDED_PRACTICE', boardChapterWeightMarks: 10, hintsUsed: 0, isHintRequest: false })
+    const layer = buildStageInstructionsLayer(ctx)
+    expect(layer).not.toContain('Board exam mapping')
+  })
+
+  test('board weight marks propagate into assembled system prompt for CORE_EXPLANATION', () => {
+    const ctx = makeCtx({ stage: 'CORE_EXPLANATION', boardChapterWeightMarks: 20 })
+    const result = assembleSystemPrompt(ctx)
+    expect(result.system).toContain('20 marks')
+    expect(result.system).toContain('Board exam mapping')
+  })
+
+  test('board weight marks propagate into assembled system prompt for CONSOLIDATION', () => {
+    const ctx = makeCtx({ stage: 'CONSOLIDATION', boardChapterWeightMarks: 6 })
+    const result = assembleSystemPrompt(ctx)
+    expect(result.system).toContain('board marks weightage')
+  })
+})
+
