@@ -26,6 +26,12 @@ export interface SubjectReadinessCardProps {
   /** True when the diagnostic has been submitted but readiness is not yet computed. */
   diagnosticDone?: boolean
   predictedRange?: { low: number; high: number; confidenceLevel: number; daysUsed?: number | null }
+  /**
+   * ISO timestamp of when the diagnostic retake becomes available (30-day cooldown).
+   * Non-null only during the cooldown window -- shows a "Retake opens on [date]" badge
+   * so students know without navigating to the diagnostic page.
+   */
+  retakeEligibleAt?: string | null
 }
 
 function ReadinessCardSkeleton() {
@@ -78,6 +84,8 @@ export function SubjectReadinessCard({
   loading = false,
   error = false,
   diagnosticDone = false,
+  predictedRange,
+  retakeEligibleAt,
 }: SubjectReadinessCardProps) {
   if (loading) return <ReadinessCardSkeleton />
 
@@ -168,6 +176,17 @@ export function SubjectReadinessCard({
               }`}
             />
           </div>
+
+          {/* Retake eligibility badge -- shown only during 30-day cooldown window */}
+          {retakeEligibleAt && (
+            <p className="mt-1.5 text-[10px] text-[#BA7517] dark:text-[#BA7517]/80 font-medium">
+              Retake opens{' '}
+              {new Date(retakeEligibleAt).toLocaleDateString('en-IN', {
+                day: 'numeric',
+                month: 'short',
+              })}
+            </p>
+          )}
         </div>
       </div>
     </div>

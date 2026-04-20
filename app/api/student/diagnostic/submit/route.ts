@@ -230,10 +230,13 @@ export async function POST(req: NextRequest) {
     await cancelDiagnosticAutoSubmit(userId, subjectId);
 
     // Transition diagnostic status to completed so the mandatory gate unlocks.
+    // Persist gamingFlagged so the admin layer can surface flagged sessions
+    // without re-scanning AnswerEvent rows.
     await upsertSubjectDiagnosticStatus(userId, subjectId, {
       status: 'completed',
       completedAt: new Date().toISOString(),
       runId: diagnosticSessionId,
+      gamingFlagged: gamingFlag || undefined,
     });
 
     // Compute grade-level placement (AC-05) from adaptive session theta when available.
