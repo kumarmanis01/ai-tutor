@@ -184,33 +184,54 @@ export default async function StudentHomeDashboardPage() {
     }
   }
 
-  // ── Round 2: readiness + diagnostic status -- all subjects run concurrently ──
-  // Each subject fetches its three data points in an inner Promise.all so no
-  // operation within a subject blocks another subject.
-  const readinessResults = await Promise.all(
-    subjects.map(async (sub) => {
-      const [result, diagnostic, diagStatus] = await Promise.all([
-        computeReadinessScore(userId, sub.id).catch(() => ({
-          score: 0,
-          label: 'critical' as const,
-          chapters: [],
-        })),
-        prisma.diagnosticSession.findFirst({
-          where: { studentId: userId, subjectId: sub.id, status: 'COMPLETED' },
-          select: { id: true },
-        }).catch(() => null),
-        getSubjectDiagnosticStatus(userId, sub.id).catch(() => null),
-      ])
-      return {
-        subjectId: sub.id,
-        subjectName: sub.name,
-        score: result.score,
-        predictedRange: (result as any).predictedRange ?? undefined,
-        diagnosticDone: !!diagnostic,
-        retakeEligibleAt: diagStatus?.retakeEligibleAt ?? null,
-      }
-    }),
-  )
+  // ── Round 2: readiness + diagnostic status -- subjects batched for pool safety ──
+  // User.subjects is an unbounded String[], so we cap at SUBJECT_CAP and process
+  // SUBJECT_CONCURRENCY subjects at a time to avoid a burst of concurrent Neon
+  // connections that would saturate the connection pool and cause tail-latency spikes.
+  // Within each batch, the three per-subject queries run in an inner Promise.all.
+  const SUBJECT_CAP = 5
+  const SUBJECT_CONCURRENCY = 3
+
+  type ReadinessRow = {
+    subjectId: string
+    subjectName: string
+    score: number
+    predictedRange?: any
+    diagnosticDone: boolean
+    retakeEligibleAt: string | null
+  }
+
+  const cappedSubjects = subjects.slice(0, SUBJECT_CAP)
+  const readinessResults: ReadinessRow[] = []
+
+  for (let i = 0; i < cappedSubjects.length; i += SUBJECT_CONCURRENCY) {
+    const batch = cappedSubjects.slice(i, i + SUBJECT_CONCURRENCY)
+    const batchRows = await Promise.all(
+      batch.map(async (sub): Promise<ReadinessRow> => {
+        const [result, diagnostic, diagStatus] = await Promise.all([
+          computeReadinessScore(userId, sub.id).catch(() => ({
+            score: 0,
+            label: 'critical' as const,
+            chapters: [],
+          })),
+          prisma.diagnosticSession.findFirst({
+            where: { studentId: userId, subjectId: sub.id, status: 'COMPLETED' },
+            select: { id: true },
+          }).catch(() => null),
+          getSubjectDiagnosticStatus(userId, sub.id).catch(() => null),
+        ])
+        return {
+          subjectId: sub.id,
+          subjectName: sub.name,
+          score: result.score,
+          predictedRange: (result as any).predictedRange ?? undefined,
+          diagnosticDone: !!diagnostic,
+          retakeEligibleAt: diagStatus?.retakeEligibleAt ?? null,
+        }
+      }),
+    )
+    readinessResults.push(...batchRows)
+  }
 
   // ── Weekly study strip data ──────────────────────────────────────────────────
   const DAY_LABELS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']

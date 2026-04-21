@@ -71,6 +71,13 @@ export const prismaMock = {
   $queryRawUnsafe: jest.fn().mockName('$queryRawUnsafe'),
   $disconnect: jest.fn().mockName('$disconnect'),
   ingestRunLog: mockModel(),
+  structuredSession: mockModel(),
+  studentXP: mockModel(),
+  diagnosticSession: mockModel(),
+  studentConceptState: mockModel(),
+  mockExamAttempt: mockModel(),
+  studentLearningProfile: mockModel(),
+  homeworkAssignment: mockModel(),
 };
 
 /** Reset all mock functions in prismaMock (call in beforeEach) */
