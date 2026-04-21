@@ -225,6 +225,22 @@ export async function POST(req: NextRequest) {
         logger.warn('[onboarding] board-change regen check failed', { event: 'learning_plan_regen_failed', context: { studentId: updatedUser.id, error: String(err) } });
       }
       logger.info('/api/user/onboarding updated user', { className: 'api.user.onboarding', methodName: 'POST', id: updatedUser.id, name: updatedUser.name, phone: updatedUser.phone });
+
+      // Fire-and-forget: emit subject_selected analytics event when subjects are updated.
+      if (subjects && subjects.length > 0) {
+        const previousSubjects = Array.isArray(existingById?.subjects) ? existingById.subjects : []
+        prisma.analyticsEvent.create({
+          data: {
+            eventType: 'subject_selected',
+            userId: updatedUser.id,
+            metadata: {
+              subjects,
+              previous_subjects: previousSubjects,
+              source: 'onboarding',
+            },
+          },
+        }).catch(() => {})
+      }
     } catch (updErr: any) {
       if (updErr?.code === 'P2022') {
         logger.error('/api/user/onboarding: prisma schema mismatch on update P2022', { className: 'api.user.onboarding', methodName: 'POST', error: updErr });

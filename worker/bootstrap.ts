@@ -59,7 +59,9 @@ import { processReteachPlan } from "./services/reteachPlanWorker.js";
 import { DIAGNOSTIC_AUTO_SUBMIT_QUEUE_NAME } from "../jobs/diagnosticAutoSubmit.js";
 import { processDiagnosticAutoSubmit } from "./services/diagnosticAutoSubmitWorker.js";
 import { processAIRequest } from './services/aiRequestWorker.js';
-import { AI_REQUEST_QUEUE } from '../lib/queues/constants.js';
+import { AI_REQUEST_QUEUE, ANALYTICS_INGEST_QUEUE } from '../lib/queues/constants.js';
+import { processAnalyticsIngest } from './services/analyticsIngestWorker.js';
+import type { AnalyticsIngestPayload } from './services/analyticsIngestWorker.js';
 
 const argv = minimist(process.argv.slice(2));
 
@@ -289,6 +291,17 @@ export async function bootstrapWorker() {
     AI_REQUEST_QUEUE,
     async (job: Job) => processAIRequest(job),
     { connection: redisConnection, concurrency: Number(process.env.AI_WORKER_CONCURRENCY || 2) },
+  );
+
+  const analyticsIngestWorker = new Worker<AnalyticsIngestPayload>(
+    ANALYTICS_INGEST_QUEUE,
+    async (job: Job<AnalyticsIngestPayload>) => processAnalyticsIngest(job),
+    {
+      connection: redisConnection,
+      concurrency: Number(process.env.ANALYTICS_INGEST_BATCH_SIZE || 500),
+      removeOnComplete: { count: 200 },
+      removeOnFail: { count: 50 },
+    },
   );
 
   aiWorker.on('failed', (job, err) => {

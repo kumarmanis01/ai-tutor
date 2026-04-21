@@ -1,7 +1,8 @@
 /**
  * FILE OBJECTIVE:
  * - Server endpoint to accept batched analytics events from client (sendBeacon/fetch).
- * - Writes events into `AnalyticsEvent` table for downstream aggregation.
+ * - Enqueues valid events to BullMQ analytics-ingest queue and returns 202 immediately.
+ * - Falls back to direct DB write when Redis is unavailable (dev/test environments).
  *
  * LINKED UNIT TEST:
  * - tests/api/analytics.event.test.ts
@@ -13,15 +14,18 @@
  * EDIT LOG:
  * - 2026-04-15T00:00:00Z | copilot-planner | added analytics batch endpoint
  * - 2026-04-16T00:00:00Z | copilot | return 202 on success; 400 when all events invalid; add eventType allowlist
+ * - 2026-04-21T00:00:00Z | staff-engineer | Task D: enqueue to BullMQ for non-blocking ingestion; DB fallback when Redis absent
  */
 
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
+import { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
 import { logger } from '@/lib/logger'
+import { getAnalyticsQueue } from '@/lib/queues/analyticsQueue'
 
 /** Canonical list of valid client-emitted event types. */
-const VALID_EVENT_TYPES = new Set([
+export const VALID_EVENT_TYPES = new Set([
   'lesson_viewed',
   'lesson_completed',
   'session_started',
@@ -35,6 +39,7 @@ const VALID_EVENT_TYPES = new Set([
   'diagnostic_started',
   'diagnostic_completed',
   'page_view',
+  'subject_selected',
 ])
 
 const EventSchema = z.object({
@@ -56,7 +61,7 @@ export async function POST(req: Request) {
 
     const events = Array.isArray(body) ? body : [body]
 
-    const toCreate = [] as any[]
+    const toCreate: Array<{ eventType: string; userId: string | null; courseId: string | null; lessonIdx: number | null; metadata: Prisma.InputJsonValue }> = []
     for (const e of events) {
       try {
         const parsed = EventSchema.parse(e)
@@ -68,7 +73,6 @@ export async function POST(req: Request) {
           metadata: parsed.metadata ?? {},
         })
       } catch (pe) {
-        // skip invalid event but continue processing
         logger.warn('analytics.endpoint: invalid event skipped', { error: String(pe), event: e })
       }
     }
@@ -77,23 +81,43 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: 'No valid events in batch' }, { status: 400 })
     }
 
-    // createMany for bulk insert
-    try {
-      await prisma.analyticsEvent.createMany({ data: toCreate })
-    } catch (dbErr) {
-      // Fallback to creating one-by-one if createMany fails
-      logger.warn('analytics.endpoint: createMany failed, falling back', { error: String(dbErr) })
-      for (const r of toCreate) {
-        try { await prisma.analyticsEvent.create({ data: r }) } catch (inner) { logger.warn('analytics.endpoint: single insert failed', { error: String(inner) }) }
+    // Prefer enqueue to BullMQ so the response is returned before any DB write.
+    // Falls back to direct DB write when Redis is unavailable (non-worker envs).
+    const queue = getAnalyticsQueue()
+    if (queue) {
+      try {
+        await queue.addBulk(
+          toCreate.map((ev) => ({ name: 'analytics.ingest', data: ev })),
+        )
+      } catch (qErr) {
+        logger.warn('analytics.endpoint: queue unavailable, falling back to direct write', { error: String(qErr) })
+        await writeDirect(toCreate)
       }
+    } else {
+      await writeDirect(toCreate)
     }
 
-    const res = NextResponse.json({ ok: true, inserted: toCreate.length }, { status: 202 })
+    const res = NextResponse.json({ ok: true, queued: toCreate.length }, { status: 202 })
     logger.logAPI(req, res, { className: 'AnalyticsAPI', methodName: 'POST' }, start)
     return res
   } catch (err) {
     const res = NextResponse.json({ ok: false, error: String(err) }, { status: 500 })
     logger.logAPI(req, res, { className: 'AnalyticsAPI', methodName: 'POST', error: String(err) }, start)
     return res
+  }
+}
+
+async function writeDirect(rows: Array<{ eventType: string; userId: string | null; courseId: string | null; lessonIdx: number | null; metadata: Prisma.InputJsonValue }>) {
+  try {
+    await prisma.analyticsEvent.createMany({ data: rows })
+  } catch (dbErr) {
+    logger.warn('analytics.endpoint: createMany failed, falling back to single inserts', { error: String(dbErr) })
+    for (const r of rows) {
+      try {
+        await prisma.analyticsEvent.create({ data: r })
+      } catch (inner) {
+        logger.warn('analytics.endpoint: single insert failed', { error: String(inner) })
+      }
+    }
   }
 }

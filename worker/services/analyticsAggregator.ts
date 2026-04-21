@@ -44,12 +44,13 @@ export async function aggregateDay(date: Date) {
   for (const [courseId, agg] of byCourse.entries()) {
     const avgTime = agg.timeCount > 0 ? agg.timeSum / agg.timeCount : null
     const completionRate = agg.views > 0 ? agg.completions / agg.views : null
+    const uniqueUsers = agg.users.size
     // upsert by courseId + day
     try {
       await db.analyticsDailyAggregate.upsert({
-        where: { courseId_day: { courseId, day: start } as any },
-        update: { totalViews: agg.views, totalCompletions: agg.completions, avgTimePerLesson: avgTime, completionRate },
-        create: { courseId, day: start, totalViews: agg.views, totalCompletions: agg.completions, avgTimePerLesson: avgTime, completionRate }
+        where: { courseId_day: { courseId, day: start } },
+        update: { totalViews: agg.views, totalCompletions: agg.completions, avgTimePerLesson: avgTime, completionRate, uniqueUsers },
+        create: { courseId, day: start, totalViews: agg.views, totalCompletions: agg.completions, avgTimePerLesson: avgTime, completionRate, uniqueUsers }
       })
     } catch (e) {
       // swallow to keep job resilient; log if logger present
