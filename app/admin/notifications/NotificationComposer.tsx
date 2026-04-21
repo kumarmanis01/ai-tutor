@@ -139,7 +139,8 @@ export function NotificationComposer({ counts }: { counts: AudienceCounts }) {
           <div className="mt-2 rounded-lg bg-[#EAF3DE] dark:bg-[#1D9E75]/10 px-3 py-2">
             <p className="text-[10px] text-[#27500A] dark:text-green-400 font-medium">
               WhatsApp reaches only users who provided a number at onboarding.
-              Broadcasts are sent as text messages -- no template approval required for admin sends.
+              Admin broadcasts are sent as free-form text messages and typically deliver only within WhatsApp&apos;s
+              24-hour customer-service window. Outside that window, a pre-approved template message is required.
             </p>
           </div>
         )}
