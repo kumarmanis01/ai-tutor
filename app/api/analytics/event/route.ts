@@ -35,6 +35,7 @@ const VALID_EVENT_TYPES = new Set([
   'diagnostic_started',
   'diagnostic_completed',
   'page_view',
+  'subject_selected',
 ])
 
 const EventSchema = z.object({
