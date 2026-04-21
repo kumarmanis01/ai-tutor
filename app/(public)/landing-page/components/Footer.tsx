@@ -133,9 +133,16 @@ const Footer = () => {
 
         <div className="border-t border-white/10 mt-8 pt-6 flex flex-col md:flex-row items-center justify-between gap-3">
           <p className="text-sm opacity-80">&copy; 2026 Spinzy Academy. All rights reserved.</p>
-          <p className="text-sm opacity-70 max-w-md text-center md:text-right">
-            Teacher Vidya is an AI assistant -- not a human tutor.
-          </p>
+            <p className="text-sm opacity-70 max-w-md text-center md:text-right italic">
+            Teacher Vidya is an AI assistant -- Powered by{' '}
+            <a
+              href="https://spinzydigital.com"
+              className="hover:opacity-100 transition-colors underline"
+            >
+              SpinzyDigital
+            </a>
+            .
+            </p>
         </div>
       </div>
     </footer>
