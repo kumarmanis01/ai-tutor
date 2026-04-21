@@ -150,73 +150,46 @@ $$;
 --      npx prisma migrate resolve --applied 20260416000000_add_student_concept_state
 --      npx prisma migrate resolve --applied 20260417_add_referral_reward
 --    This marks the migrations as applied in Prisma's migration table without
---    fabricating checksums.
-
--- If you cannot use `prisma migrate resolve` in your environment (rare), you
--- can manually clean up `_prisma_migrations`. This is a destructive and
--- sensitive operation. The commented SQL below shows the manual steps; only
--- run them after taking a verified DB backup and with operator approval.
-
--- NOTE: gen_random_uuid() requires the pgcrypto extension. Create it if missing:
--- (uncomment if you will run the manual insert below)
--- CREATE EXTENSION IF NOT EXISTS pgcrypto;
-
-/*
-DELETE FROM _prisma_migrations
-WHERE migration_name IN (
-  '20260416000000_add_student_concept_state',
-  '20260417_add_referral_reward'
-);
-
-INSERT INTO _prisma_migrations
-  (id, checksum, finished_at, migration_name, logs, rolled_back_at, started_at, applied_steps_count)
-VALUES
-  (
-    gen_random_uuid()::text,
-    'manually-applied-20260420',
-    now(),
-    '20260416000000_add_student_concept_state',
-    NULL,
-    NULL,
-    now() - INTERVAL '10 seconds',
-    1
-  ),
-  (
-    gen_random_uuid()::text,
-    'manually-applied-20260420',
-    now(),
-    '20260417_add_referral_reward',
-    NULL,
-    NULL,
-    now() - INTERVAL '5 seconds',
-    1
-  );
-*/
-
--- ============================================================
--- STEP 5: Verify
+-- STEP 3: Inspect existing _prisma_migrations rows only.
+--         Do NOT delete/re-insert migration history or write an
+--         arbitrary checksum here; Prisma validates checksums
+--         against the migration files on future deploys.
 -- ============================================================
 
 SELECT
   migration_name,
+  checksum,
   applied_steps_count,
-  finished_at IS NOT NULL AS done,
-  logs IS NULL             AS no_error
+  finished_at,
+  rolled_back_at,
+  started_at,
+  logs
 FROM _prisma_migrations
 WHERE migration_name IN (
   '20260416000000_add_student_concept_state',
   '20260417_add_referral_reward'
 )
-ORDER BY migration_name;
+ORDER BY migration_name, started_at NULLS LAST, finished_at NULLS LAST;
 
--- Expected output:
---                migration_name                | applied_steps_count | done | no_error
--- -------------------------------------------+---------------------+------+----------
---  20260416000000_add_student_concept_state   |                   1 | t    | t
---  20260417_add_referral_reward               |                   1 | t    | t
---
--- If the output matches, commit the transaction and then run:
---   npx prisma migrate deploy --schema=prisma/schema.prisma
--- If anything looks wrong, ROLLBACK and investigate before retrying.
+-- ============================================================
+-- STEP 4: Commit the manual schema repair only.
+--         After COMMIT, mark each repaired migration as applied
+--         using Prisma's supported workflow so the stored
+--         checksum/history remains consistent with Prisma.
+-- ============================================================
 
 COMMIT;
+
+-- ============================================================
+-- STEP 5: Post-commit Prisma recovery commands
+-- ============================================================
+--
+-- Run these commands AFTER this transaction commits successfully:
+--
+--   npx prisma migrate resolve --applied 20260416000000_add_student_concept_state --schema=prisma/schema.prisma
+--   npx prisma migrate resolve --applied 20260417_add_referral_reward --schema=prisma/schema.prisma
+--   npx prisma migrate deploy --schema=prisma/schema.prisma
+--
+-- If anything looks wrong before COMMIT, ROLLBACK and investigate
+-- before retrying. Do not manually fabricate `_prisma_migrations`
+-- checksums in SQL.
