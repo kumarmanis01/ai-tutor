@@ -20,7 +20,6 @@ import { prisma } from '@/lib/prisma';
 import { logger } from '@/lib/logger';
 import { formatErrorForResponse } from '@/lib/errorResponse';
 import { generateLearningPlan } from '@/lib/ai/learningPlan';
-import { getRedis } from '@/lib/redis/client';
 
 export async function POST(req: NextRequest) {
   const start = Date.now();
@@ -184,33 +183,26 @@ export async function POST(req: NextRequest) {
     // 4. Check whether the first subject already has diagnostic questions available.
     // This lets the client decide whether to redirect to the diagnostic immediately
     // or show a "Vidya is preparing" waiting screen.
+    // Notification registration is intentionally omitted here -- it is strictly
+    // user-initiated via POST /api/student/diagnostic/notify-ready.
     let diagnosticReady = false;
     if (firstSubjectId) {
       try {
-        const topicCount = await prisma.topicDef.count({
-          where: {
-            chapter: { subjectId: firstSubjectId, lifecycle: 'active' },
-            lifecycle: 'active',
-          },
-        });
-        if (topicCount > 0) {
-          // Check for at least one usable question (Question table or GeneratedQuestion)
-          const qCount = await prisma.question.count({
+        const topicIds = await prisma.topicDef
+          .findMany({
             where: {
-              status: 'ACTIVE',
-              topicId: {
-                in: await prisma.topicDef.findMany({
-                  where: {
-                    chapter: { subjectId: firstSubjectId, lifecycle: 'active' },
-                    lifecycle: 'active',
-                  },
-                  select: { id: true },
-                }).then((rows) => rows.map((r) => r.id)),
-              },
+              chapter: { subjectId: firstSubjectId, lifecycle: 'active' },
+              lifecycle: 'active',
             },
+            select: { id: true },
+          })
+          .then((rows) => rows.map((r) => r.id));
+
+        if (topicIds.length > 0) {
+          const qCount = await prisma.question.count({
+            where: { status: 'ACTIVE', topicId: { in: topicIds } },
           });
           if (qCount === 0) {
-            // Fallback: check GeneratedQuestion pipeline
             const gqCount = await prisma.generatedQuestion.count({
               where: {
                 test: {
@@ -236,25 +228,6 @@ export async function POST(req: NextRequest) {
           firstSubjectId,
           error: String(readinessErr),
         });
-      }
-
-      // If diagnostic is not ready, register a notification preference in Redis
-      // so the dailyMaintenance job can email the student when content is available.
-      if (!diagnosticReady) {
-        try {
-          const redis = getRedis();
-          const key = `diagnostic:notify:${userId}:${firstSubjectId}`;
-          // 30 day TTL -- if content is not ready within 30 days something is wrong
-          await (redis as any).set(key, '1', 'EX', 30 * 24 * 60 * 60);
-        } catch (redisErr) {
-          // Non-fatal -- student still sees the waiting screen
-          logger.warn('[generate-plan] failed to store notify-ready request', {
-            className: 'GeneratePlanAPI',
-            methodName: 'POST',
-            studentId: userId,
-            error: String(redisErr),
-          });
-        }
       }
     }
 

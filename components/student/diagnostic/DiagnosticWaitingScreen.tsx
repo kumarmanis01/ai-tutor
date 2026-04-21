@@ -19,6 +19,7 @@
  */
 
 import React, { useEffect, useState, useCallback } from 'react';
+import Link from 'next/link';
 
 const REFRESH_SECONDS = 30;
 
@@ -115,12 +116,12 @@ export default function DiagnosticWaitingScreen({ subjectId, subjectName, reason
           </p>
         )}
 
-        <a
+        <Link
           href="/dashboard"
           className="inline-flex w-full min-h-[44px] items-center justify-center rounded-xl border border-gray-200 dark:border-slate-700 text-gray-600 dark:text-gray-400 text-sm font-medium hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors"
         >
           Back to dashboard
-        </a>
+        </Link>
       </div>
     </div>
   );

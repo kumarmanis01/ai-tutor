@@ -18,6 +18,7 @@
 
 import React, { useMemo, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 
 const STUDY_DAY_OPTIONS = [3, 4, 5, 6, 7];
 const DEFAULT_STUDY_DAYS = 5;
@@ -212,12 +213,12 @@ export default function ExamDatePage() {
             </button>
           )}
 
-          <a
+          <Link
             href="/dashboard"
             className="inline-flex w-full min-h-[44px] items-center justify-center rounded-xl border border-gray-200 dark:border-slate-700 text-gray-600 dark:text-gray-400 text-sm font-medium hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors"
           >
             Go to dashboard
-          </a>
+          </Link>
         </div>
       </div>
     );

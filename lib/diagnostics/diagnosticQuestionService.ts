@@ -390,9 +390,11 @@
       });
 
       // Last-resort: generate questions on-demand via LLM when the bank is completely empty.
-      // This ensures the student always sees a test rather than a "not ready" screen.
-      // Generated questions are persisted so subsequent loads are instant.
-      if (questions.length === 0) {
+      // Gated behind FEATURE_ONDEMAND_DIAGNOSTIC=true to avoid latency in the synchronous
+      // request path and to prevent concurrent OpenAI calls when multiple students hit an
+      // empty bank simultaneously. When disabled, the student sees the auto-refreshing
+      // waiting screen (DiagnosticWaitingScreen) which polls every 30 s.
+      if (questions.length === 0 && process.env.FEATURE_ONDEMAND_DIAGNOSTIC === 'true') {
         try {
           logger.info('DiagnosticQuestionService.onDemandGeneration.start', {
             subjectId, subjectName, grade: normalizedParams.grade, boardSlug: normalizedParams.boardSlug,
@@ -535,8 +537,10 @@
         new Promise<never>((_, rej) =>
           setTimeout(() => rej(new Error('onDemand_llm_timeout')), 30_000),
         ),
-      ]) as Awaited<ReturnType<typeof openai.chat.completions.create>>;
-      rawText = completion.choices?.[0]?.message?.content ?? '';
+      ]);
+      // Promise.race returns a union including Stream<...> which lacks .choices.
+      // We always call create() without stream:true so the runtime value is ChatCompletion.
+      rawText = (completion as any).choices?.[0]?.message?.content ?? '';
     } catch (llmErr) {
       logger.error('DiagnosticQuestionService.onDemand.llmCallFailed', { error: String(llmErr) });
       return [];

@@ -14,7 +14,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSessionForHandlers } from '@/lib/session';
-import { getRedis } from '@/lib/redis/client';
+import { getRedis } from '@/lib/redis';
 import { logger } from '@/lib/logger';
 
 const TTL_SECONDS = 30 * 24 * 60 * 60; // 30 days
@@ -38,8 +38,16 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'subjectId is required' }, { status: 400 });
   }
 
+  const redis = getRedis();
+  if (!redis) {
+    logger.warn('[notify-ready] Redis unavailable -- cannot store preference', {
+      event: 'diagnostic.notify_ready.no_redis',
+      context: { studentId: userId, subjectId },
+    });
+    return NextResponse.json({ error: 'Notification service unavailable' }, { status: 503 });
+  }
+
   try {
-    const redis = getRedis();
     const key = `diagnostic:notify:${userId}:${subjectId}`;
     await (redis as any).set(key, '1', 'EX', TTL_SECONDS);
     logger.info('[notify-ready] preference stored', { event: 'diagnostic.notify_ready.stored', context: { studentId: userId, subjectId } });
