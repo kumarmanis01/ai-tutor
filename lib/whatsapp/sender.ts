@@ -1,20 +1,20 @@
 /**
- * lib/whatsapp/sender.ts
- * WhatsApp Business API sender -- Meta Cloud API (graph.facebook.com)
+ * FILE OBJECTIVE:
+ * - Provide a production-safe WhatsApp Business API sender for the Meta Cloud API.
+ * - Supports pre-approved template messages for outbound nudges and text messages for admin sends within the 24-hour session window.
+ * - Retries failed requests up to 2 times with exponential backoff (1s, 2s), never throws, and returns `{ ok, messageId?, error? }`.
+ * - Required env vars: `WHATSAPP_API_URL` (defaults to `https://graph.facebook.com/v18.0`), `WHATSAPP_API_TOKEN`, `WHATSAPP_PHONE_ID`, and `WHATSAPP_ENABLED` (`"1"` to enable).
+ * - Callers must enforce per-user rate limits as referenced by `lib/notifications/policy.ts`.
  *
- * Supports:
- *   - Template messages (pre-approved by Meta) for outbound system nudges
- *   - Text messages for admin custom sends (within 24h session window)
+ * LINKED UNIT TEST:
+ * - tests/unit/lib/whatsapp/sender.spec.ts
  *
- * Retry: up to 2 retries with exponential backoff (1s, 2s).
- * Rate: callers must enforce per-user limits (see lib/notifications/policy.ts).
- * Never throws -- returns { ok, messageId?, error? }.
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/COPILOT_GUARDRAILS.md
+ * - .github/copilot-instructions.md
  *
- * Required env vars:
- *   WHATSAPP_API_URL       https://graph.facebook.com/v18.0
- *   WHATSAPP_API_TOKEN     Permanent system user token from Meta Developer console
- *   WHATSAPP_PHONE_ID      Phone number ID (not the phone number itself)
- *   WHATSAPP_ENABLED       "1" to enable; anything else disables
+ * EDIT LOG:
+ * - 2026-04-21T00:00:00Z | copilot | aligned top-of-file documentation header with repository standard template
  */
 
 import { logger } from '@/lib/logger'
