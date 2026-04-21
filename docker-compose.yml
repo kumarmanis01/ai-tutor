@@ -1,10 +1,23 @@
+# FILE OBJECTIVE:
+# - Docker Compose for local development: orchestrate web, worker, scheduler,
+#   Postgres (pgvector), and Redis services.
+#
+# LINKED UNIT TEST:
+# - tests/unit/docs/docker_compose.spec.ts
+#
+# COPILOT INSTRUCTIONS FOLLOWED:
+# - .github/copilot-instructions.md
+# - /docs/ENGINEERING_PRACTICES.md
+#
+# EDIT LOG:
+# - 2026-04-20T16:35:00Z | copilot | add header and adjust web healthcheck start_period
+
 ## Development docker-compose for ai-tutor
 ## Project uses npm (not pnpm). Scripts match package.json exactly.
 ## Hot-reload: source bind-mounted; node_modules in named volumes (avoids Windows/macOS inode conflicts).
 ## Healthchecks guard start order: web/worker/scheduler wait for healthy postgres + redis.
 
 version: '3.9'
-
 services:
   postgres:
     image: pgvector/pgvector:pg15
@@ -63,6 +76,12 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://127.0.0.1:3000/api/health/redis || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
 
   worker:
     build:

@@ -1,0 +1,29 @@
+## FILE OBJECTIVE:
+# - Override environment settings for local development compose (web/worker/scheduler)
+#
+# LINKED UNIT TEST:
+# - tests/unit/docs/docker_compose_override.spec.ts
+#
+# COPILOT INSTRUCTIONS FOLLOWED:
+# - .github/copilot-instructions.md
+# - /docs/ENGINEERING_PRACTICES.md
+#
+# EDIT LOG:
+# - 2026-04-20T16:35:00Z | copilot | remove obsolete version attribute and add header
+#
+services:
+  web:
+    environment:
+      - DATABASE_URL=postgresql://postgres:pass@postgres:5432/ai_dev
+      - REDIS_URL=redis://redis:6379
+      - UPSTASH_REDIS_REST_URL=
+  worker:
+    environment:
+      - DATABASE_URL=postgresql://postgres:pass@postgres:5432/ai_dev
+      - REDIS_URL=redis://redis:6379
+      - UPSTASH_REDIS_REST_URL=
+  scheduler:
+    environment:
+      - DATABASE_URL=postgresql://postgres:pass@postgres:5432/ai_dev
+      - REDIS_URL=redis://redis:6379
+      - UPSTASH_REDIS_REST_URL=

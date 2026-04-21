@@ -1,17 +1,49 @@
--- Create ReferralReward table to store pending/applied referral credits
+-- FILE OBJECTIVE:
+-- - Create the ReferralReward table to store pending/applied referral credits.
+--   All DDL is fully idempotent (IF NOT EXISTS + DO $$ guards) so this
+--   migration is safe to re-run and safe to apply against a DB that already
+--   has objects from a previous partial run.
+--
+-- LINKED UNIT TEST:
+-- - tests/unit/prisma/migrations/20260417_add_referral_reward.spec.ts
+--
+-- EDIT LOG:
+-- - 2026-04-17T08:00:00Z | dev | created
+--
+-- IMMUTABILITY NOTE:
+-- This migration file must remain immutable after creation. Any corrective or
+-- follow-up schema change must be shipped as a new Prisma migration rather than
+-- by editing this file in place.
+--
+-- NOTE FOR PRODUCTION:
+-- If prisma migrate deploy reports P3009 for this migration, the database may
+-- have a recorded failed run. Recover using the repository's documented Prisma
+-- migration recovery procedure before deploying further migrations.
+
+-- IMMUTABILITY NOTE:
+-- - This migration was edited in-place on branch feat/f-adm-admin-fixes to
+--   correct invalid FK syntax and add guarded DO $$ blocks. Editing committed
+--   migrations after they have been applied can cause Prisma checksum mismatches
+--   (P3009) and prevent safe deployment.
+-- - Preferred remediation is to ship a forward migration with the corrected DDL
+--   or, if the production schema has already been corrected manually, mark the
+--   migration as applied using `npx prisma migrate resolve --applied <migration>`.
+-- - Avoid inserting or fabricating migration checksums into `_prisma_migrations`.
+
+-- 1. Table (idempotent)
 CREATE TABLE IF NOT EXISTS "ReferralReward" (
-  "id" text PRIMARY KEY NOT NULL,
+  "id"         text        PRIMARY KEY NOT NULL,
   "referralId" text,
-  "userId" text NOT NULL,
-  "amount" integer NOT NULL,
-  "status" text NOT NULL DEFAULT 'PENDING',
-  "appliedAt" timestamptz,
-  "metadata" jsonb,
-  "createdAt" timestamptz NOT NULL DEFAULT now()
+  "userId"     text        NOT NULL,
+  "amount"     integer     NOT NULL,
+  "status"     text        NOT NULL DEFAULT 'PENDING',
+  "appliedAt"  timestamptz,
+  "metadata"   jsonb,
+  "createdAt"  timestamptz NOT NULL DEFAULT now()
 );
 
--- Foreign keys
--- Foreign keys (use guarded DO blocks for compatibility with older Postgres)
+-- 2. Foreign keys (guarded — ADD CONSTRAINT IF NOT EXISTS is NOT valid Postgres
+--    syntax; the only safe idiom is a DO block with a pg_constraint existence check)
 DO $$
 BEGIN
   IF NOT EXISTS (
