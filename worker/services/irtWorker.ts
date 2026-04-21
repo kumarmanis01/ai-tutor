@@ -170,7 +170,7 @@ async function checkChapterMastery(studentId: string, conceptId: string): Promis
     try {
       const parents = await prisma.parentStudent.findMany({
         where: { studentId, status: 'active' },
-        include: { parent: { select: { id: true, email: true, phone: true, name: true, language: true } } },
+        include: { parent: { select: { id: true, email: true, whatsappPhone: true, name: true, language: true } } },
       })
 
       if (parents.length > 0) {
@@ -180,10 +180,10 @@ async function checkChapterMastery(studentId: string, conceptId: string): Promis
         const sends = parents.map((p) =>
           sendParentMilestoneNotification(p.parent.id, {
             email: p.parent.email ?? undefined,
-            phone: p.parent.phone ?? undefined,
+            whatsappPhone: p.parent.whatsappPhone ?? undefined,
             subject,
             html,
-            meta: { studentId, type: 'milestone', channel: p.parent.email ? 'email' : p.parent.phone ? 'sms' : 'unknown', locale: p.parent.language },
+            meta: { studentId, type: 'milestone', locale: p.parent.language },
           }),
         )
 

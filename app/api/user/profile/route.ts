@@ -79,7 +79,7 @@ export async function GET(req: Request) {
     age: savedUser?.age ?? null,
     parentPhone: savedUser?.parentPhone ?? null,
     parentPhoneVerifiedAt: savedUser?.parentPhoneVerifiedAt ?? null,
-    whatsappPhone: (savedUser as any)?.whatsappPhone ?? null,
+    whatsappPhone: savedUser?.whatsappPhone ?? null,
     accountStatus: (savedUser as any)?.accountStatus ?? 'active',
     learningStyle: (savedUser as any)?.learningStyle ?? null,
     preferences: (savedUser as any)?.preferences ?? null,

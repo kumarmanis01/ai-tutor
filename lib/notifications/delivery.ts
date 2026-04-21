@@ -1,10 +1,12 @@
 /**
  * FILE OBJECTIVE:
  * - Centralized helper for sending parent-facing notifications.
- * - Primary channels: email + WhatsApp.
- * - SMS is available as an explicit opt-in channel only (not sent by default).
+ * - Primary channels: email + WhatsApp (via approved Meta templates for system nudges).
+ * - SMS deliberately excluded: lib/sms.sendSms() is an OTP-only endpoint (MSG91 v5)
+ *   and cannot carry transactional notification messages. Keeping it here would produce
+ *   silent non-delivery. A general-purpose SMS sender can be added later if needed.
  * - Enforces weekly caps via Redis-backed policy layer.
- * - All sends are audited in ParentNotification table.
+ * - All sends are audited in ParentNotification -- one row per channel actually sent.
  *
  * LINKED UNIT TEST:
  * - tests/unit/lib/notifications/delivery.spec.ts
@@ -12,22 +14,24 @@
 
 import { getRedis } from '@/lib/redis'
 import { sendMailSafe } from '@/lib/mailer'
-import { sendWhatsAppSafe } from '@/lib/whatsapp/sender'
+import { sendWhatsAppTemplate, sendWhatsAppText } from '@/lib/whatsapp/sender'
+import type { WaTemplateMessage } from '@/lib/whatsapp/sender'
 import { logger } from '@/lib/logger'
 import { prisma } from '@/lib/prisma'
 import { canSendNotification, recordSendNotification, NotificationType } from '@/lib/notifications/policy'
 import { incNotificationSent, incNotificationFailed } from '@/lib/metrics'
 
-// Channels that are treated as primary (sent by default when no channel override).
-// SMS is deliberately excluded from defaults -- too noisy, low open rate.
-const PRIMARY_CHANNELS = ['email', 'whatsapp'] as const
+export type { WaTemplateMessage }
 
 export async function sendParentMilestoneNotification(
   parentId: string,
   opts: {
     email?: string
-    phone?: string
     whatsappPhone?: string
+    // Provide a pre-built WaTemplateMessage for system nudges (inactivity, digest, milestone, trial).
+    // If absent the delivery layer falls back to free-form text -- only valid for admin sends
+    // that arrive within the 24-hour customer service window.
+    whatsappTemplate?: WaTemplateMessage
     subject: string
     html: string
     text?: string
@@ -58,24 +62,15 @@ export async function sendParentMilestoneNotification(
   }
 
   const channelOverride = opts.meta?.channel ?? null
-  // Determine which channels to use for this send.
   const useEmail    = !channelOverride || channelOverride === 'email'
   const useWhatsApp = !channelOverride || channelOverride === 'whatsapp'
-  // SMS only sent when explicitly requested via channel override.
-  const useSms      = channelOverride === 'sms'
 
   const redis = getRedis()
 
   if (!redis) {
-    // Best-effort: send without rate-limit enforcement, log the gap.
     try {
-      if (useEmail && opts.email)         await sendMailSafe({ to: opts.email, subject: opts.subject, html: opts.html, text: opts.text })
-      if (useWhatsApp && opts.whatsappPhone) await sendWhatsAppSafe(opts.whatsappPhone, opts.text ?? opts.subject)
-      if (useSms && opts.phone) {
-        const { sendSms } = await import('@/lib/sms')
-        await sendSms(opts.phone, opts.text ?? opts.subject)
-      }
-      await persistAudit(parentId, opts, type, channelOverride)
+      const sentChannels = await doSend(opts, useEmail, useWhatsApp)
+      await persistAuditMulti(parentId, opts, type, sentChannels)
       incNotificationSent(type)
       return { sent: true }
     } catch (err) {
@@ -89,15 +84,9 @@ export async function sendParentMilestoneNotification(
     const check = await canSendNotification(parentId, type, opts.meta?.studentId)
     if (!check.allowed) return { sent: false, reason: check.reason }
 
-    if (useEmail && opts.email)            await sendMailSafe({ to: opts.email, subject: opts.subject, html: opts.html, text: opts.text })
-    if (useWhatsApp && opts.whatsappPhone) await sendWhatsAppSafe(opts.whatsappPhone, opts.text ?? opts.subject)
-    if (useSms && opts.phone) {
-      const { sendSms } = await import('@/lib/sms')
-      await sendSms(opts.phone, opts.text ?? opts.subject)
-    }
-
+    const sentChannels = await doSend(opts, useEmail, useWhatsApp)
     await recordSendNotification(parentId, type, opts.meta?.studentId)
-    await persistAudit(parentId, opts, type, channelOverride)
+    await persistAuditMulti(parentId, opts, type, sentChannels)
     incNotificationSent(type)
     return { sent: true }
   } catch (err) {
@@ -107,30 +96,60 @@ export async function sendParentMilestoneNotification(
   }
 }
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
+// ── Internal helpers ──────────────────────────────────────────────────────────
 
-async function persistAudit(
+async function doSend(
+  opts: Parameters<typeof sendParentMilestoneNotification>[1],
+  useEmail: boolean,
+  useWhatsApp: boolean,
+): Promise<string[]> {
+  const sent: string[] = []
+
+  if (useEmail && opts.email) {
+    await sendMailSafe({ to: opts.email, subject: opts.subject, html: opts.html, text: opts.text })
+    sent.push('email')
+  }
+
+  if (useWhatsApp && opts.whatsappPhone) {
+    if (opts.whatsappTemplate) {
+      // System nudge: use pre-approved Meta template to guarantee delivery
+      await sendWhatsAppTemplate(opts.whatsappPhone, opts.whatsappTemplate)
+    } else {
+      // Admin custom send: free-form text (valid only within 24h customer service window)
+      await sendWhatsAppText(opts.whatsappPhone, opts.text ?? opts.subject)
+    }
+    sent.push('whatsapp')
+  }
+
+  return sent
+}
+
+/** Write one ParentNotification audit row per channel that was actually sent. */
+async function persistAuditMulti(
   parentId: string,
   opts: Parameters<typeof sendParentMilestoneNotification>[1],
   type: NotificationType,
-  channelOverride: string | null,
+  sentChannels: string[],
 ): Promise<void> {
-  const channel = channelOverride ?? (opts.email ? 'email' : opts.whatsappPhone ? 'whatsapp' : 'unknown')
-  try {
-    await prisma.parentNotification.create({
-      data: {
-        parentId,
-        studentId: opts.meta?.studentId ?? null,
-        type,
-        channel,
-        subject: opts.subject,
-        body: { html: opts.html, text: opts.text ?? null },
-        sentAt: new Date(),
-      },
-    })
-  } catch (e) {
-    logger.warn('[notifications] audit persist failed', { parentId, error: String(e) })
-  }
+  if (sentChannels.length === 0) return
+  const now = new Date()
+  await Promise.allSettled(
+    sentChannels.map((channel) =>
+      prisma.parentNotification.create({
+        data: {
+          parentId,
+          studentId: opts.meta?.studentId ?? null,
+          type,
+          channel,
+          subject: opts.subject,
+          body: { html: opts.html, text: opts.text ?? null },
+          sentAt: now,
+        },
+      }).catch((e) => {
+        logger.warn('[notifications] audit persist failed', { parentId, channel, error: String(e) })
+      }),
+    ),
+  )
 }
 
-export { PRIMARY_CHANNELS }
+export const PRIMARY_CHANNELS = ['email', 'whatsapp'] as const

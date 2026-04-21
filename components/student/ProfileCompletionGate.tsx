@@ -173,7 +173,11 @@ export default function ProfileCompletionGate({
     if (currentStepKey === 'grade') return grade > 0;
     if (currentStepKey === 'subjects') return subjects.length > 0;
     if (currentStepKey === 'schoolName') return true; // optional
-    if (currentStepKey === 'whatsappPhone') return true; // optional
+    if (currentStepKey === 'whatsappPhone') {
+      // Optional: empty is fine. If filled, must be a plausible phone number.
+      if (!whatsappPhone.trim()) return true
+      return whatsappPhoneError === '' && /^\+?\d{7,15}$/.test(whatsappPhone.replace(/[\s\-()]/g, ''))
+    }
     if (currentStepKey === 'parentEmail') {
       if (!parentEmailRequired) return true; // optional
       return parentEmail.trim().includes('@');
@@ -670,8 +674,18 @@ export default function ProfileCompletionGate({
                     type="tel"
                     value={whatsappPhone}
                     onChange={(e) => {
-                      setWhatsappPhone(e.target.value);
-                      if (whatsappPhoneError) setWhatsappPhoneError('');
+                      const val = e.target.value
+                      setWhatsappPhone(val)
+                      if (!val.trim()) {
+                        setWhatsappPhoneError('')
+                      } else {
+                        const cleaned = val.replace(/[\s\-()]/g, '')
+                        setWhatsappPhoneError(
+                          /^\+?\d{7,15}$/.test(cleaned)
+                            ? ''
+                            : 'Enter a valid number with country code (e.g. +91 9876543210)'
+                        )
+                      }
                     }}
                     placeholder="+91 9876543210"
                     maxLength={16}

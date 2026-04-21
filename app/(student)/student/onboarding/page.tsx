@@ -51,7 +51,7 @@ export default async function StudentOnboardingPage() {
     parentEmail: user?.parentEmail ?? null,
     parentPhone: user?.parentPhone ?? null,
     parentPhoneVerified: user?.parentPhoneVerifiedAt !== null && user?.parentPhoneVerifiedAt !== undefined,
-    whatsappPhone: (user as any)?.whatsappPhone ?? null,
+    whatsappPhone: user?.whatsappPhone ?? null,
   };
 
   return <OnboardingGateShell initialValues={initialValues} />;
