@@ -36,6 +36,7 @@ import { sendFreemiumResetNotifications } from './jobs/freemiumResetNotification
 import { runWeeklyRatingAggregation } from './jobs/weeklyRatingAggregation.js';
 import { runDailyLatencyReport } from './jobs/dailyLatencyReport.js';
 import { runDailyQuestionGenMetrics } from './jobs/dailyQuestionGenMetrics.js';
+import { runDiagnosticReadinessCheck } from './jobs/diagnosticReadinessCheck.js';
 import { prisma } from '../lib/prisma.js';
 import { sendPushSafe } from '../lib/push/send.js';
 import { PUSH_NOTIFICATIONS } from '../lib/push/notifications.js';
@@ -373,6 +374,14 @@ async function runDailyMaintenanceJob() {
       logger.info('scheduler.doubtEscalationNotifier.completed', { processed });
     } catch (e) {
       logger.error('scheduler.doubtEscalationNotifier.error', { err: e instanceof Error ? e.message : String(e) });
+    }
+
+    // ── Notify students waiting for their diagnostic to become available ──────
+    try {
+      const { checked, notified } = await runDiagnosticReadinessCheck();
+      logger.info('scheduler.diagnosticReadinessCheck.completed', { checked, notified });
+    } catch (e) {
+      logger.error('scheduler.diagnosticReadinessCheck.error', { err: e instanceof Error ? e.message : String(e) });
     }
 
     // ── Push: exam countdown reminders ──────────────────────────────────
