@@ -34,11 +34,19 @@ export default async function DiagnosticPage({
   const userId = (authSession.user as { id: string }).id;
   const { subjectId } = await params;
 
-  // Fetch student profile -- need board slug, grade, language for question generation
-  const student = await prisma.user.findUnique({
-    where: { id: userId },
-    select: { board: true, grade: true, language: true },
-  });
+  // Fetch student profile and completed diagnostics in parallel.
+  // board/grade/language are needed for question generation; completedSubjectIds is
+  // used to identify pending diagnostic subjects for the post-submit nudge toast.
+  const [student, completedDiagnostics] = await Promise.all([
+    prisma.user.findUnique({
+      where: { id: userId },
+      select: { board: true, grade: true, language: true },
+    }),
+    prisma.diagnosticSession.findMany({
+      where: { studentId: userId, status: 'COMPLETED' },
+      select: { subjectId: true },
+    }),
+  ]);
 
   if (!student?.board || !student?.grade) redirect('/student/onboarding');
 
@@ -183,8 +191,25 @@ export default async function DiagnosticPage({
     };
   });
 
-  // Resume partial state from Redis (non-fatal if Redis is unavailable)
-  const partial = await getPartialDiagnostic(userId, subjectId);
+  // Resume partial state + pending subject list in parallel.
+  // pendingSubjects: other subjects for this board/grade without a completed diagnostic
+  // (used to show a nudge toast on the results screen).
+  const completedSubjectIdSet = new Set(completedDiagnostics.map((d) => d.subjectId));
+  const [partial, pendingSubjectRows] = await Promise.all([
+    getPartialDiagnostic(userId, subjectId),
+    prisma.subjectDef.findMany({
+      where: {
+        lifecycle: 'active',
+        id: { notIn: [...completedSubjectIdSet, subjectId] },
+        class: {
+          grade: Number(student.grade),
+          board: { slug: { equals: student.board!, mode: 'insensitive' } },
+        },
+      },
+      select: { name: true },
+    }),
+  ]);
+  const pendingDiagnosticSubjectNames = pendingSubjectRows.map((s) => s.name);
   const initialAnswers = partial?.answers ?? [];
   const initialIndex = Math.min(
     partial?.currentIndex ?? 0,
@@ -215,6 +240,7 @@ export default async function DiagnosticPage({
         boardSlug={student.board}
         grade={student.grade}
         subjectSlug={subjectDef.slug}
+        pendingDiagnosticSubjectNames={pendingDiagnosticSubjectNames}
       />
     </div>
   );

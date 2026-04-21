@@ -18,6 +18,7 @@
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { toast } from '@/lib/toast';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -54,6 +55,8 @@ interface DiagnosticFlowProps {
   boardSlug?: string;
   grade?: number | string;
   subjectSlug?: string;
+  // Names of other subjects the student still needs to diagnose (for post-submit nudge)
+  pendingDiagnosticSubjectNames?: string[];
 }
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -233,10 +236,12 @@ function KnowledgeMapResults({
   subjectName,
   results,
   placement,
+  pendingDiagnosticSubjectNames = [],
 }: {
   subjectName: string;
   results: ChapterResult[];
   placement: 'below' | 'at' | 'above' | null;
+  pendingDiagnosticSubjectNames?: string[];
 }) {
   const router = useRouter();
   const startHere = results[0]; // weakest chapter (sorted ascending)
@@ -315,7 +320,13 @@ function KnowledgeMapResults({
         {/* CTA */}
         <button
           type="button"
-          onClick={() => router.push('/dashboard')}
+          onClick={() => {
+            if (pendingDiagnosticSubjectNames.length > 0) {
+              const list = pendingDiagnosticSubjectNames.join(', ');
+              toast(`Complete diagnostics for ${list} to unlock your full learning plan.`, 6000);
+            }
+            router.push('/dashboard');
+          }}
           className="flex w-full min-h-[44px] items-center justify-center rounded-xl bg-[#534AB7] text-white text-sm font-semibold hover:bg-[#4840a3] active:scale-[0.98] transition-all shadow-md shadow-[#534AB7]/25"
         >
           Start learning →
@@ -336,6 +347,7 @@ export default function DiagnosticFlow({
   boardSlug,
   grade,
   subjectSlug,
+  pendingDiagnosticSubjectNames = [],
 }: DiagnosticFlowProps) {
   const router = useRouter();
 
@@ -645,7 +657,7 @@ export default function DiagnosticFlow({
   if (phase === 'results') {
     return (
       <div className="fixed inset-0 z-[100] overflow-y-auto bg-gray-50 dark:bg-slate-950">
-        <KnowledgeMapResults subjectName={subjectName} results={chapterResults} placement={placement} />
+        <KnowledgeMapResults subjectName={subjectName} results={chapterResults} placement={placement} pendingDiagnosticSubjectNames={pendingDiagnosticSubjectNames} />
       </div>
     );
   }

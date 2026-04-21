@@ -7,9 +7,11 @@ import { DPDP_MINOR_AGE } from '@/lib/constants/age';
 import { prisma } from '@/lib/prisma';
 import { getDailyTask } from '@/lib/dailyHabit';
 import { enqueueDiagnosticBootstrapJob } from '@/jobs/diagnosticBootstrap';
+import { enqueueSubjectHydration } from '@/lib/diagnostics/enqueueSubjectHydration';
 import { sendMailSafe } from '@/lib/mailer';
 import { welcomeEmailHtml } from '@/lib/email/templates';
 import { generateLearningPlan } from '@/lib/ai/learningPlan';
+import { LanguageCode } from '@prisma/client';
 
 export async function POST(req: NextRequest) {
   const start = Date.now();
@@ -340,8 +342,15 @@ export async function POST(req: NextRequest) {
       logger.warn('/api/user/onboarding: failed to seed initial daily task', { className: 'api.user.onboarding', methodName: 'POST', error: err });
     });
 
-    // Trigger diagnostic bootstrap (non-blocking): seeds baseline StudentConceptState for selected chapters.
-    // This is the onboarding completion trigger point.
+    // Proactive content seeding + diagnostic bootstrap (both non-blocking).
+    //
+    // For every selected subject that has no content yet, immediately enqueue
+    // a HydrationJob so the content pipeline (syllabus -> notes -> questions)
+    // runs in the background. By the time the student navigates to a diagnostic
+    // page the content is either ready or nearly ready, avoiding the waiting screen.
+    //
+    // The diagnostic bootstrap (StudentConceptState seeding) runs only when
+    // chapters already exist (it needs curriculum rows to seed against).
     try {
       const gradeNum = Number(grade);
       if (board && Number.isFinite(gradeNum) && subjects && subjects.length > 0) {
@@ -353,6 +362,7 @@ export async function POST(req: NextRequest) {
           select: { id: true, boardId: true },
         }).then(async (cl) => {
           if (!cl) return;
+
           const subjectPrefs = new Set(subjects.map((s) => String(s).toLowerCase()));
           const subjectRows = await prisma.subjectDef.findMany({
             where: { classId: cl.id, lifecycle: 'active' },
@@ -362,26 +372,58 @@ export async function POST(req: NextRequest) {
             .filter((s) => subjectPrefs.has(String(s.slug).toLowerCase()) || subjectPrefs.has(String(s.name).toLowerCase()))
             .map((s) => s.id);
           if (subjectIds.length === 0) return;
-          const chapters = await prisma.chapterDef.findMany({
-            where: { subjectId: { in: subjectIds }, lifecycle: 'active' },
-            select: { id: true },
-          });
-          const chapterIds = chapters.map((c) => c.id);
-          if (chapterIds.length === 0) return;
 
-          await enqueueDiagnosticBootstrapJob({
-            studentId: updatedUser.id,
-            diagnosticSessionId: `bootstrap:${updatedUser.id}`,
-            chapterIds,
-            boardId: cl.boardId,
-            gradeId: cl.id,
+          // Proactively enqueue hydration for every subject missing content.
+          // enqueueSubjectHydration is idempotent: it skips subjects that already
+          // have topics or that already have a pending/running HydrationJob.
+          const language: LanguageCode = (updatedUser.language as LanguageCode) ?? LanguageCode.en;
+          const hydrationResults = await Promise.allSettled(
+            subjectIds.map((subjectId) =>
+              enqueueSubjectHydration(subjectId, language, 'onboarding'),
+            ),
+          );
+          hydrationResults.forEach((r, i) => {
+            if (r.status === 'rejected') {
+              logger.warn('[onboarding] failed to enqueue subject hydration', {
+                event: 'diagnostic.hydration.onboarding_enqueue_failed',
+                context: { studentId: updatedUser.id, subjectId: subjectIds[i], error: String(r.reason) },
+              });
+            }
           });
+
+          // Diagnostic bootstrap: seeds baseline StudentConceptState rows.
+          // Requires chapters to exist, so runs only when the syllabus is already seeded.
+          // Isolated try/catch so a bootstrap failure does not mask hydration errors in logs.
+          try {
+            const chapters = await prisma.chapterDef.findMany({
+              where: { subjectId: { in: subjectIds }, lifecycle: 'active' },
+              select: { id: true },
+            });
+            const chapterIds = chapters.map((c) => c.id);
+            if (chapterIds.length === 0) return;
+
+            await enqueueDiagnosticBootstrapJob({
+              studentId: updatedUser.id,
+              diagnosticSessionId: `bootstrap:${updatedUser.id}`,
+              chapterIds,
+              boardId: cl.boardId,
+              gradeId: cl.id,
+            });
+          } catch (bootstrapErr) {
+            logger.warn('[onboarding] failed to enqueue diagnostic bootstrap', {
+              event: 'diagnostic.bootstrap.enqueue_failed',
+              context: { studentId: updatedUser.id, error: String(bootstrapErr) },
+            });
+          }
         }).catch((err) => {
-          logger.warn('/api/user/onboarding: failed to enqueue diagnostic bootstrap', { className: 'api.user.onboarding', methodName: 'POST', error: err });
+          logger.warn('[onboarding] background content seeding setup failed', {
+            event: 'diagnostic.seeding.setup_failed',
+            context: { studentId: updatedUser.id, error: String(err) },
+          });
         });
       }
     } catch (err) {
-      logger.warn('/api/user/onboarding: failed to trigger diagnostic bootstrap', { className: 'api.user.onboarding', methodName: 'POST', error: err });
+      logger.warn('/api/user/onboarding: failed to trigger content seeding', { className: 'api.user.onboarding', methodName: 'POST', error: err });
     }
 
     // AC-07 (F-STU-003): when subjects change and plans already exist, generate

@@ -1,6 +1,11 @@
 /* eslint-disable @typescript-eslint/no-require-imports, @typescript-eslint/no-explicit-any */
 /**
  * Unit tests for POST /api/student/diagnostic/trigger-generation
+ *
+ * The route delegates all idempotency + job creation to enqueueSubjectHydration,
+ * which is mocked here. Its own behaviour is covered in
+ * tests/unit/lib/diagnostics/enqueueSubjectHydration.spec.ts
+ *
  * See: docs/v2/on-demand-generator.md
  */
 
@@ -9,22 +14,15 @@ jest.mock('@/lib/prisma', () => ({ prisma: require('../../helpers/prismaMock').p
 jest.mock('@/lib/logger', () => ({
   logger: { info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn() },
 }));
-jest.mock('@/lib/queues/constants', () => ({ CONTENT_HYDRATION_QUEUE: 'content-hydration' }));
+jest.mock('@/lib/diagnostics/enqueueSubjectHydration', () => ({
+  enqueueSubjectHydration: jest.fn(),
+}));
 
 import { describe, it, expect, beforeEach } from '@jest/globals';
 import { prismaMock, resetPrismaMock } from '../../helpers/prismaMock';
 
 const USER_ID = 'student-1';
 const SUBJECT_ID = 'subject-abc';
-
-const SUBJECT_DEF = {
-  id: SUBJECT_ID,
-  slug: 'mathematics',
-  class: {
-    grade: 10,
-    board: { slug: 'cbse' },
-  },
-};
 
 function makeRequest(body: Record<string, unknown>) {
   return new Request('http://localhost/api/student/diagnostic/trigger-generation', {
@@ -36,11 +34,14 @@ function makeRequest(body: Record<string, unknown>) {
 
 describe('POST /api/student/diagnostic/trigger-generation', () => {
   let getServerSessionForHandlers: jest.Mock;
+  let enqueueSubjectHydration: jest.Mock;
 
   beforeEach(() => {
     resetPrismaMock();
     getServerSessionForHandlers = require('@/lib/session').getServerSessionForHandlers;
     getServerSessionForHandlers.mockResolvedValue({ user: { id: USER_ID } });
+    enqueueSubjectHydration = require('@/lib/diagnostics/enqueueSubjectHydration').enqueueSubjectHydration;
+    enqueueSubjectHydration.mockReset();
   });
 
   it('should return 401 when unauthenticated', async () => {
@@ -51,13 +52,15 @@ describe('POST /api/student/diagnostic/trigger-generation', () => {
   });
 
   it('should return 400 when subjectId is missing', async () => {
+    prismaMock.user.findUnique.mockResolvedValue({ language: 'en' });
     const { POST } = await import('@/app/api/student/diagnostic/trigger-generation/route');
     const res = await POST(makeRequest({}) as any);
     expect(res.status).toBe(400);
   });
 
-  it('should return phase "questions" when topics already exist', async () => {
-    prismaMock.topicDef.count.mockResolvedValue(10);
+  it('should return phase "questions" when helper returns topics_exist', async () => {
+    prismaMock.user.findUnique.mockResolvedValue({ language: 'en' });
+    enqueueSubjectHydration.mockResolvedValue({ triggered: false, jobId: null, reason: 'topics_exist' });
     const { POST } = await import('@/app/api/student/diagnostic/trigger-generation/route');
     const res = await POST(makeRequest({ subjectId: SUBJECT_ID }) as any);
     expect(res.status).toBe(200);
@@ -65,9 +68,20 @@ describe('POST /api/student/diagnostic/trigger-generation', () => {
     expect(body).toEqual({ triggered: false, phase: 'questions' });
   });
 
-  it('should return existing jobId when hydration is already in flight', async () => {
-    prismaMock.topicDef.count.mockResolvedValue(0);
-    prismaMock.hydrationJob.findFirst.mockResolvedValue({ id: 'existing-job-1' });
+  it('should return triggered:true with jobId when helper creates a new job', async () => {
+    prismaMock.user.findUnique.mockResolvedValue({ language: 'en' });
+    enqueueSubjectHydration.mockResolvedValue({ triggered: true, jobId: 'new-job-1', reason: 'created' });
+    const { POST } = await import('@/app/api/student/diagnostic/trigger-generation/route');
+    const res = await POST(makeRequest({ subjectId: SUBJECT_ID }) as any);
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body).toEqual({ triggered: true, phase: 'topics', jobId: 'new-job-1' });
+    expect(enqueueSubjectHydration).toHaveBeenCalledWith(SUBJECT_ID, 'en', 'student_on_demand');
+  });
+
+  it('should return triggered:false with existing jobId when a job is already running', async () => {
+    prismaMock.user.findUnique.mockResolvedValue({ language: 'hi' });
+    enqueueSubjectHydration.mockResolvedValue({ triggered: false, jobId: 'existing-job-1', reason: 'job_running' });
     const { POST } = await import('@/app/api/student/diagnostic/trigger-generation/route');
     const res = await POST(makeRequest({ subjectId: SUBJECT_ID }) as any);
     expect(res.status).toBe(200);
@@ -75,61 +89,24 @@ describe('POST /api/student/diagnostic/trigger-generation', () => {
     expect(body).toEqual({ triggered: false, phase: 'topics', jobId: 'existing-job-1' });
   });
 
-  it('should return 404 when SubjectDef is not found', async () => {
-    prismaMock.topicDef.count.mockResolvedValue(0);
-    prismaMock.hydrationJob.findFirst.mockResolvedValue(null);
-    prismaMock.subjectDef.findUnique.mockResolvedValue(null);
+  it('should return 404 when helper finds no SubjectDef', async () => {
+    prismaMock.user.findUnique.mockResolvedValue({ language: 'en' });
+    enqueueSubjectHydration.mockResolvedValue({ triggered: false, jobId: null, reason: 'subject_not_found' });
     const { POST } = await import('@/app/api/student/diagnostic/trigger-generation/route');
     const res = await POST(makeRequest({ subjectId: SUBJECT_ID }) as any);
     expect(res.status).toBe(404);
   });
 
-  it('should create HydrationJob and return triggered:true when no topics exist', async () => {
-    prismaMock.topicDef.count.mockResolvedValue(0);
-    prismaMock.hydrationJob.findFirst.mockResolvedValue(null);
-    prismaMock.subjectDef.findUnique.mockResolvedValue(SUBJECT_DEF);
-    prismaMock.user.findUnique.mockResolvedValue({ language: 'en' });
-    prismaMock.$transaction.mockImplementation(async (fn: any) =>
-      fn({
-        hydrationJob: { create: jest.fn().mockResolvedValue({ id: 'new-job-1' }) },
-        outbox: { create: jest.fn().mockResolvedValue({}) },
-      }),
-    );
-
-    const { POST } = await import('@/app/api/student/diagnostic/trigger-generation/route');
-    const res = await POST(makeRequest({ subjectId: SUBJECT_ID }) as any);
-    expect(res.status).toBe(200);
-    const body = await res.json();
-    expect(body.triggered).toBe(true);
-    expect(body.phase).toBe('topics');
-    expect(body.jobId).toBe('new-job-1');
-  });
-
   it('should default language to en when student has no language set', async () => {
-    prismaMock.topicDef.count.mockResolvedValue(0);
-    prismaMock.hydrationJob.findFirst.mockResolvedValue(null);
-    prismaMock.subjectDef.findUnique.mockResolvedValue(SUBJECT_DEF);
     prismaMock.user.findUnique.mockResolvedValue({ language: null });
-
-    let capturedJobData: any;
-    prismaMock.$transaction.mockImplementation(async (fn: any) => {
-      const mockCreate = jest.fn().mockImplementation((args: any) => {
-        capturedJobData = args.data;
-        return Promise.resolve({ id: 'new-job-2' });
-      });
-      return fn({
-        hydrationJob: { create: mockCreate },
-        outbox: { create: jest.fn().mockResolvedValue({}) },
-      });
-    });
-
+    enqueueSubjectHydration.mockResolvedValue({ triggered: true, jobId: 'job-x', reason: 'created' });
     const { POST } = await import('@/app/api/student/diagnostic/trigger-generation/route');
     await POST(makeRequest({ subjectId: SUBJECT_ID }) as any);
-    expect(capturedJobData?.language).toBe('en');
+    expect(enqueueSubjectHydration).toHaveBeenCalledWith(SUBJECT_ID, 'en', 'student_on_demand');
   });
 
   it('should return 500 when DB throws', async () => {
-    prismaMock.topicDef.count.mockRejectedValue(new Error('DB error'));
+    prismaMock.user.findUnique.mockRejectedValue(new Error('DB error'));
     const { POST } = await import('@/app/api/student/diagnostic/trigger-generation/route');
     const res = await POST(makeRequest({ subjectId: SUBJECT_ID }) as any);
     expect(res.status).toBe(500);
