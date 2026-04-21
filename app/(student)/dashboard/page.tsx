@@ -15,6 +15,8 @@
  *   2026-03-15 | v2 migration | full rebuild; replaces v1 dashboard
  *   2026-04-14 | gap-fix P1   | restore full widget set, wire server data, freemium counter
  *   2026-04-15 | copilot | filter dashboard subjects by student's learning plans when present
+ *   2026-04-21 | perf fix     | eliminate sequential for-loop; merge XP round-trip into
+ *                               first Promise.all; subjects run fully concurrent
  */
 
 import type { Metadata } from 'next'
@@ -59,15 +61,18 @@ export default async function StudentHomeDashboardPage() {
 
   const userId = (authSession.user as { id: string }).id
 
-  // ── All data fetched in a single Promise.all (F-STU-032 AC-05: <2s target) ──
   const sevenDaysAgo = new Date(Date.now() - 7 * 86400000)
 
+  // ── Round 1: all independent queries in a single parallel fetch ──────────────
+  // XP aggregates merged here so there is no second sequential Promise.all below.
   const [
     user,
     nextAction,
     freeTierUsage,
     learningPlans,
     weeklyActivity,
+    xpThisWeekResult,
+    xpBySourceRaw,
   ] = await Promise.all([
     prisma.user.findUnique({
       where: { id: userId },
@@ -105,6 +110,16 @@ export default async function StudentHomeDashboardPage() {
       select: { startedAt: true },
       orderBy: { startedAt: 'asc' },
     }),
+    // XP this week (was previously a second sequential Promise.all -- merged here)
+    prisma.studentXP.aggregate({
+      where: { studentId: userId, awardedAt: { gte: sevenDaysAgo } },
+      _sum: { amount: true },
+    }),
+    prisma.studentXP.groupBy({
+      by: ['source'],
+      where: { studentId: userId, awardedAt: { gte: sevenDaysAgo } },
+      _sum: { amount: true },
+    }),
   ])
 
   if (!user) redirect('/')
@@ -120,25 +135,14 @@ export default async function StudentHomeDashboardPage() {
   const autoCrunch = computeCrunchMode(latestPlan?.examDate)
   const isCrunchMode = prefCrunch === 'on' ? true : prefCrunch === 'off' ? false : autoCrunch
 
-  // ── XP this week: total + source breakdown (F-STU-031 AC-01) ────────────────
-  const [xpThisWeekResult, xpBySourceRaw] = await Promise.all([
-    prisma.studentXP.aggregate({
-      where: { studentId: userId, awardedAt: { gte: sevenDaysAgo } },
-      _sum: { amount: true },
-    }),
-    prisma.studentXP.groupBy({
-      by: ['source'],
-      where: { studentId: userId, awardedAt: { gte: sevenDaysAgo } },
-      _sum: { amount: true },
-    }),
-  ])
+  // ── XP breakdown ─────────────────────────────────────────────────────────────
   const xpThisWeek = xpThisWeekResult._sum.amount ?? 0
   const xpBySource: Record<string, number> = {}
   for (const row of xpBySourceRaw) {
     xpBySource[row.source] = row._sum.amount ?? 0
   }
 
-  // ── Readiness scores per subject (parallel, best-effort)
+  // ── Subject resolution (depends on Round 1 data -- unavoidable sequential step) ──
   // Prefer subjects from the student's profile `subjects` (enrolled subjects),
   // then fall back to subjects referenced by their learning plans, then active subjects.
   let subjects = [] as { id: string; name: string }[]
@@ -157,7 +161,6 @@ export default async function StudentHomeDashboardPage() {
   }
 
   if (enrolledSubjects && enrolledSubjects.length > 0) {
-    // Resolve enrolled subject names/slugs to SubjectDef IDs
     subjects = await prisma.subjectDef.findMany({
       where: {
         lifecycle: 'active',
@@ -181,23 +184,33 @@ export default async function StudentHomeDashboardPage() {
     }
   }
 
-  const readinessResults: Array<{ subjectId: string; subjectName: string; score: number; predictedRange?: any; diagnosticDone: boolean; retakeEligibleAt: string | null }> = []
-  for (const sub of subjects) {
-    const result = await computeReadinessScore(userId, sub.id).catch(() => ({ score: 0, label: 'critical' as const, chapters: [] }))
-    const diagnostic = await prisma.diagnosticSession.findFirst({
-      where: { studentId: userId, subjectId: sub.id, status: 'COMPLETED' },
-      select: { id: true },
-    }).catch(() => null)
-    const diagStatus = await getSubjectDiagnosticStatus(userId, sub.id).catch(() => null)
-    readinessResults.push({
-      subjectId: sub.id,
-      subjectName: sub.name,
-      score: result.score,
-      predictedRange: (result as any).predictedRange ?? undefined,
-      diagnosticDone: !!diagnostic,
-      retakeEligibleAt: diagStatus?.retakeEligibleAt ?? null,
-    })
-  }
+  // ── Round 2: readiness + diagnostic status -- all subjects run concurrently ──
+  // Each subject fetches its three data points in an inner Promise.all so no
+  // operation within a subject blocks another subject.
+  const readinessResults = await Promise.all(
+    subjects.map(async (sub) => {
+      const [result, diagnostic, diagStatus] = await Promise.all([
+        computeReadinessScore(userId, sub.id).catch(() => ({
+          score: 0,
+          label: 'critical' as const,
+          chapters: [],
+        })),
+        prisma.diagnosticSession.findFirst({
+          where: { studentId: userId, subjectId: sub.id, status: 'COMPLETED' },
+          select: { id: true },
+        }).catch(() => null),
+        getSubjectDiagnosticStatus(userId, sub.id).catch(() => null),
+      ])
+      return {
+        subjectId: sub.id,
+        subjectName: sub.name,
+        score: result.score,
+        predictedRange: (result as any).predictedRange ?? undefined,
+        diagnosticDone: !!diagnostic,
+        retakeEligibleAt: diagStatus?.retakeEligibleAt ?? null,
+      }
+    }),
+  )
 
   // ── Weekly study strip data ──────────────────────────────────────────────────
   const DAY_LABELS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
@@ -337,7 +350,7 @@ export default async function StudentHomeDashboardPage() {
                   href="/student/progress"
                   className="text-xs font-medium text-[#534AB7] dark:text-indigo-400 hover:underline"
                 >
-                  Full report →
+                  Full report &rarr;
                 </Link>
               </div>
               <div className="flex flex-col gap-3">
