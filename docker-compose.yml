@@ -11,6 +11,7 @@
 #
 # EDIT LOG:
 # - 2026-04-20T16:35:00Z | copilot | add header and adjust web healthcheck start_period
+# - 2026-04-21T03:48:00Z | copilot | mount .next to named volume `next_cache` and add curl to dev image for reliable healthchecks on Windows hosts
 
 ## Development docker-compose for ai-tutor
 ## Project uses npm (not pnpm). Scripts match package.json exactly.
@@ -69,8 +70,9 @@ services:
     volumes:
       - ./:/workspace:cached
       - node_modules_web:/workspace/node_modules
+      - next_cache:/workspace/.next
     ports:
-      - "3000:3000"
+      - "3001:3000"
     depends_on:
       postgres:
         condition: service_healthy
@@ -138,3 +140,4 @@ volumes:
   node_modules_web:
   node_modules_worker:
   node_modules_scheduler:
+  next_cache:
