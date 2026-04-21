@@ -11,10 +11,9 @@
 
 import { prisma } from '@/lib/prisma';
 import { logger } from '@/lib/logger';
-// mailer helpers are used by higher-level delivery utilities; avoid importing unused symbols here
-import { sendWhatsAppMessage, buildWeeklyWhatsAppMessage } from '@/lib/whatsapp';
 import { generateParentReportAI } from '@/lib/ai/tools/generateParentReport';
 import { sendParentMilestoneNotification } from '@/lib/notifications/delivery';
+import { buildDigestTemplate } from '@/lib/whatsapp/templates';
 import { t } from '@/lib/i18n';
 
 /**
@@ -25,7 +24,7 @@ export async function sendParentDigests(): Promise<number> {
   const parentLinks = await prisma.parentStudent.findMany({
     where: { status: 'active', excludeFromParentReport: false },
     include: {
-      parent: { select: { id: true, email: true, name: true, phone: true, language: true } },
+      parent: { select: { id: true, email: true, name: true, phone: true, whatsappPhone: true, language: true } },
       student: { select: { id: true, name: true, grade: true, board: true } },
     },
   });
@@ -35,6 +34,7 @@ export async function sendParentDigests(): Promise<number> {
     email: string;
     name: string;
     phone: string | null;
+    whatsappPhone: string | null;
     language: string;
     children: { id: string; name: string; grade: string | null; board: string | null }[];
   }> = {};
@@ -51,6 +51,7 @@ export async function sendParentDigests(): Promise<number> {
         email: link.parent.email,
         name: link.parent.name || 'Parent',
         phone: link.parent.phone || null,
+        whatsappPhone: link.parent.whatsappPhone || null,
         language: link.parent.language || 'en',
         children: [],
       };
@@ -204,32 +205,39 @@ export async function sendParentDigests(): Promise<number> {
       const html = buildDigestHtml(parent.name, childSections);
       const subject = t('digest.subject', undefined, parent.language)
       const text = t('digest.fallback_text', undefined, parent.language)
-      // Use centralized notification helper which enforces caps for milestone emails
-      await sendParentMilestoneNotification(parentId, { email: parent.email, phone: parent.phone ?? undefined, subject, html, text, meta: { type: 'digest', channel: 'email', locale: parent.language } })
+      const baseUrl = process.env.NEXTAUTH_URL ?? 'https://spinzyacademy.com'
+      const reportUrl = `${baseUrl}/parent/dashboard`
+
+      // Build WhatsApp digest template using data for the first child (most relevant)
+      const waTemplate = parent.whatsappPhone && parent.children.length > 0
+        ? (() => {
+            const firstChild = parent.children[0]
+            const waSummary = summaryByStudent.get(firstChild.id) ?? null
+            const waStreak = streakByStudent.get(firstChild.id) ?? null
+            const waStrengths = strengthsByStudent.get(firstChild.id) ?? []
+            return buildDigestTemplate(
+              parent.name,
+              firstChild.name,
+              waSummary?.sessionsCount ?? 0,
+              waStreak?.current ?? 0,
+              waStrengths[0]?.subject ?? 'all subjects',
+              reportUrl,
+            )
+          })()
+        : undefined
+
+      await sendParentMilestoneNotification(parentId, {
+        email: parent.email,
+        whatsappPhone: parent.whatsappPhone ?? undefined,
+        whatsappTemplate: waTemplate,
+        subject,
+        html,
+        text,
+        meta: { type: 'digest', locale: parent.language },
+      })
 
       sentCount++;
       logger.info('parentEmailDigest: sent', { parentId, childCount: parent.children.length });
-
-      // WhatsApp delivery (fire-and-forget, non-blocking) -- uses pre-fetched maps
-      if (parent.phone && parent.children.length > 0) {
-        const firstChild = parent.children[0];
-        const waSummary = summaryByStudent.get(firstChild.id) ?? null;
-        const waStrengths = strengthsByStudent.get(firstChild.id) ?? [];
-        const waFlags = flagsByStudent.get(firstChild.id) ?? [];
-
-        const whatsappMsg = buildWeeklyWhatsAppMessage(
-          parent.name,
-          firstChild.name,
-          waSummary?.sessionsCount ?? 0,
-          waStrengths[0]?.subject ?? null,
-          waFlags[0]?.subject ?? null,
-          parent.language,
-        );
-
-        sendWhatsAppMessage(parent.phone, whatsappMsg, parentId).catch((err) => {
-          logger.warn('parentEmailDigest: whatsapp failed', { parentId, error: String(err) });
-        });
-      }
     } catch (err) {
       logger.error('parentEmailDigest: failed for parent', {
         parentId,

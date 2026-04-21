@@ -3,12 +3,14 @@ import { getServerSessionForHandlers } from '@/lib/session';
 import { prisma } from '@/lib/prisma';
 import { sendPushSafe } from '@/lib/push/send';
 import { sendMailSafe } from '@/lib/mailer';
+import { sendWhatsAppSafe } from '@/lib/whatsapp/sender';
+import { adminBroadcastEmailHtml } from '@/lib/email/templates';
 import { logger } from '@/lib/logger';
 import { z } from 'zod';
 
 const schema = z.object({
   userId: z.string().min(1),
-  type: z.enum(['push', 'email']),
+  type: z.enum(['push', 'email', 'whatsapp']),
   title: z.string().min(1).max(200),
   body: z.string().min(1).max(1000),
 });
@@ -29,17 +31,27 @@ export async function POST(req: NextRequest) {
   try {
     const user = await prisma.user.findUnique({
       where: { id: userId },
-      select: { id: true, email: true },
+      select: { id: true, email: true, whatsappPhone: true },
     });
     if (!user) return NextResponse.json({ code: 'NOT_FOUND', message: 'User not found' }, { status: 404 });
 
     if (type === 'push') {
       await sendPushSafe(userId, { title, body: msgBody });
-    } else {
+    } else if (type === 'email') {
       if (!user.email) {
         return NextResponse.json({ code: 'NO_EMAIL', message: 'User has no email address' }, { status: 400 });
       }
-      await sendMailSafe({ to: user.email, subject: title, html: `<p>${msgBody}</p>` });
+      await sendMailSafe({
+        to: user.email,
+        subject: title,
+        html: adminBroadcastEmailHtml({ title, body: msgBody }),
+      });
+    } else {
+      // whatsapp
+      if (!user.whatsappPhone) {
+        return NextResponse.json({ code: 'NO_WHATSAPP', message: 'User has no WhatsApp number on file' }, { status: 400 });
+      }
+      await sendWhatsAppSafe(user.whatsappPhone, `${title}\n\n${msgBody}`);
     }
 
     await prisma.auditLog.create({

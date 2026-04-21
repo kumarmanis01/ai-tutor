@@ -71,7 +71,7 @@ export async function POST(
       logger.warn('[admin/escalations/resolve] notify_enqueue_failed', { escalationId: id, err: String((e as any)?.message ?? e) })
     }
   } catch (e) {
-    // If dynamic import fails, log and continue — resolution is still recorded.
+    // If dynamic import fails, log and continue -- resolution is still recorded.
     logger.warn('[admin/escalations/resolve] notify_import_failed', { escalationId: id, err: String((e as any)?.message ?? e) })
   }
 
