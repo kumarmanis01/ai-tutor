@@ -6,14 +6,19 @@ import { logger } from '@/lib/logger'
 import { isCircuitOpen, recordFailure, recordSuccess } from '@/lib/ai/tutor/circuitBreaker'
 import { redactPIIFromText, redactPIIFromMessages } from '@/lib/ai/piiRedaction'
 
-/** Hash a prompt for audit without storing the raw text. */
-function hashPrompt(text: string): string {
+/** Hash a prompt for audit without storing the raw text. Exported for testing. */
+export function hashPrompt(text: string): string {
   return crypto.createHash('sha256').update(text).digest('hex')
 }
 
-/** Return up to 200 chars of a prompt for debugging -- never the full text. */
-function redactedPreview(text: string): string {
+/** Return up to 200 chars of a prompt for debugging -- never the full text. Exported for testing. */
+export function redactedPreview(text: string): string {
   return text.slice(0, 200)
+}
+
+/** Build the requestBody shape stored in AIContentLog -- never the raw prompt. Exported for testing. */
+export function buildPromptRequestBody(prompt: string): { prompt_hash: string; prompt_redacted_preview: string } {
+  return { prompt_hash: hashPrompt(prompt), prompt_redacted_preview: redactedPreview(prompt) }
 }
 
 export type TutorCallType = 'tutor:teach' | 'tutor:hint' | 'tutor:eval'
@@ -395,7 +400,7 @@ export async function callLLM({ prompt, model, meta, timeoutMs }: CallLLMArgs) {
                 success: true,
                 status: 'success',
                 // Never persist the raw prompt -- store hash + short preview only.
-                requestBody: { prompt_hash: hashPrompt(prompt), prompt_redacted_preview: redactedPreview(prompt) },
+                requestBody: buildPromptRequestBody(prompt),
                 responseBody: respBody,
               },
             })

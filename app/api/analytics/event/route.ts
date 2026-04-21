@@ -19,6 +19,7 @@
 
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
+import { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
 import { logger } from '@/lib/logger'
 import { getAnalyticsQueue } from '@/lib/queues/analyticsQueue'
@@ -60,7 +61,7 @@ export async function POST(req: Request) {
 
     const events = Array.isArray(body) ? body : [body]
 
-    const toCreate: Array<{ eventType: string; userId: string | null; courseId: string | null; lessonIdx: number | null; metadata: unknown }> = []
+    const toCreate: Array<{ eventType: string; userId: string | null; courseId: string | null; lessonIdx: number | null; metadata: Prisma.InputJsonValue }> = []
     for (const e of events) {
       try {
         const parsed = EventSchema.parse(e)
@@ -106,7 +107,7 @@ export async function POST(req: Request) {
   }
 }
 
-async function writeDirect(rows: Array<{ eventType: string; userId: string | null; courseId: string | null; lessonIdx: number | null; metadata: unknown }>) {
+async function writeDirect(rows: Array<{ eventType: string; userId: string | null; courseId: string | null; lessonIdx: number | null; metadata: Prisma.InputJsonValue }>) {
   try {
     await prisma.analyticsEvent.createMany({ data: rows })
   } catch (dbErr) {

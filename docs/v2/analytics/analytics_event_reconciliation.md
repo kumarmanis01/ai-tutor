@@ -1,3 +1,20 @@
+<!--
+FILE OBJECTIVE:
+- Reconciliation between server-emitted analytics events and the client
+  VALID_EVENT_TYPES allowlist; recommended allowlist updates and action items.
+
+LINKED UNIT TEST:
+- tests/unit/docs/analytics_master.spec.ts
+
+COPILOT INSTRUCTIONS FOLLOWED:
+- /docs/COPILOT_GUARDRAILS.md
+- .github/copilot-instructions.md
+
+EDIT LOG:
+- 2026-04-21T00:00:00Z | copilot | created event reconciliation doc
+- 2026-04-21T00:00:00Z | staff-engineer | review fix: add standard FILE OBJECTIVE header
+-->
+
 # Analytics Event Reconciliation
 
 Summary: compare server-emitted events (from CSV) against the client `VALID_EVENT_TYPES` allowlist in `app/api/analytics/event/route.ts` and recommend actions.

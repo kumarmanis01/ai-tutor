@@ -12,12 +12,15 @@
  * EDIT LOG:
  * - 2026-04-16T00:00:00Z | copilot | fix prisma mocking (use jest.doMock) to prevent timeout
  * - 2026-04-21T00:00:00Z | staff-engineer | Task D: mock analytics queue; add allowlist tests
+ * - 2026-04-21T00:00:00Z | staff-engineer | review fix: remove jest.mock() from beforeEach (unreliable after resetModules)
  */
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
-// Mock the analytics queue so tests never require a live Redis connection.
-// getAnalyticsQueue returns null -> endpoint falls back to direct DB write.
+// Top-level jest.mock is hoisted before any imports and reliably applied for all tests.
+// Each test uses jest.doMock + dynamic import after jest.resetModules() so each test
+// gets a fresh module instance with its own Prisma mock.
+// The queue mock here ensures no live Redis connection is needed in any test.
 jest.mock('@/lib/queues/analyticsQueue', () => ({
   getAnalyticsQueue: jest.fn().mockReturnValue(null),
 }))
@@ -26,8 +29,8 @@ describe('Analytics event ingestion', () => {
   beforeEach(() => {
     jest.resetModules()
     jest.clearAllMocks()
-    // Re-apply queue mock after module reset
-    jest.mock('@/lib/queues/analyticsQueue', () => ({
+    // Re-apply queue mock via doMock so it is honoured after resetModules.
+    jest.doMock('@/lib/queues/analyticsQueue', () => ({
       getAnalyticsQueue: jest.fn().mockReturnValue(null),
     }))
   })
