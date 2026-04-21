@@ -368,6 +368,24 @@ model AnalyticsEvent {
   @@index([courseId])
 }
 
+/// Daily rollup produced by analyticsAggregator worker.
+/// Keyed on courseId + day; upserted nightly.
+model AnalyticsDailyAggregate {
+  id               String   @id @default(cuid())
+  courseId         String
+  day              DateTime
+  totalViews       Int      @default(0)
+  totalCompletions Int      @default(0)
+  avgTimePerLesson Float?
+  completionRate   Float?
+  uniqueUsers      Int      @default(0)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@unique([courseId, day], name: "courseId_day")
+  @@index([day])
+}
+
 model ContentSuggestion {
   id             String             @id @default(cuid())
   courseId       String
