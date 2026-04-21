@@ -1,20 +1,3 @@
-<!--
-FILE OBJECTIVE:
-- Zero-impact instrumentation strategy: client batching, enqueueing, worker
-  bulk writes, sampling, backpressure and SLOs for the analytics pipeline.
-
-LINKED UNIT TEST:
-- tests/unit/docs/analytics_master.spec.ts
-
-COPILOT INSTRUCTIONS FOLLOWED:
-- /docs/COPILOT_GUARDRAILS.md
-- .github/copilot-instructions.md
-
-EDIT LOG:
-- 2026-04-21T10:40:00Z | copilot | created performance & instrumentation strategy doc
-- 2026-04-21T00:00:00Z | staff-engineer | review fix: add standard FILE OBJECTIVE header
--->
-
 # Analytics Performance & Zero-Impact Instrumentation Strategy
 
 Goal
