@@ -405,3 +405,146 @@ export function deletionConfirmHtml(): string {
     </div>
   `;
 }
+
+/**
+ * Inactivity nudge to parent: student has not studied in N days.
+ * Copy rules: no "missed"; forward-looking tone.
+ */
+export function inactivityNudgeHtml(data: {
+  parentName: string;
+  studentName: string;
+  inactiveDays: number;
+  lastStudiedLabel: string;
+  dashboardUrl?: string;
+}): string {
+  const url = data.dashboardUrl ?? 'https://spinzyacademy.com/dashboard';
+  return `
+    <div style="${BASE}">
+      ${LOGO}
+      <h2 style="color:#534AB7;">Time to get back to learning, ${data.studentName}!</h2>
+      <p>Hi ${data.parentName},</p>
+      <p>It has been <strong>${data.inactiveDays} day${data.inactiveDays !== 1 ? 's' : ''}</strong> since
+         ${data.studentName} last had a study session${data.lastStudiedLabel ? ` (last active: ${data.lastStudiedLabel})` : ''}.
+         A short 10-minute session today is all it takes to build the habit back.</p>
+
+      <div style="background:#EEEDFE;border-radius:12px;padding:20px;margin:20px 0;text-align:center;">
+        <p style="margin:0 0 8px;color:#534AB7;font-weight:600;font-size:15px;">
+          Even 10 minutes counts.
+        </p>
+        <p style="margin:0;color:#666;font-size:13px;">
+          Teacher Vidya has a personalised lesson waiting.
+        </p>
+      </div>
+
+      <a href="${url}" style="${BTN}">Resume learning now</a>
+
+      <p style="color:#888;font-size:13px;margin-top:16px;">
+        You can turn off these reminders from your parent dashboard settings.
+      </p>
+      ${FOOTER}
+    </div>
+  `;
+}
+
+/**
+ * Milestone notification to parent: student achieved something worth celebrating.
+ */
+export function milestoneEmailHtml(data: {
+  parentName: string;
+  studentName: string;
+  milestoneLabel: string;
+  milestoneDetail?: string;
+  dashboardUrl?: string;
+}): string {
+  const url = data.dashboardUrl ?? 'https://spinzyacademy.com/parent/dashboard';
+  return `
+    <div style="${BASE}">
+      ${LOGO}
+      <h2 style="color:#534AB7;">${data.studentName} just hit a new milestone!</h2>
+      <p>Hi ${data.parentName},</p>
+
+      <div style="background:#EAF3DE;border:1px solid #A7D7A1;border-radius:12px;
+                  padding:20px;margin:20px 0;text-align:center;">
+        <p style="margin:0 0 6px;font-size:32px;">&#127881;</p>
+        <p style="margin:0;color:#166534;font-weight:700;font-size:17px;">
+          ${data.milestoneLabel}
+        </p>
+        ${data.milestoneDetail ? `
+        <p style="margin:8px 0 0;color:#4B7A45;font-size:13px;">${data.milestoneDetail}</p>
+        ` : ''}
+      </div>
+
+      <p>Every milestone is a step closer to exam confidence. Keep encouraging
+         ${data.studentName} to study a little every day -- consistency is the key.</p>
+
+      <a href="${url}" style="${BTN}">View progress</a>
+
+      ${FOOTER}
+    </div>
+  `;
+}
+
+/**
+ * Admin-composed broadcast email -- wraps free-form admin message in brand template.
+ * Used when admin sends a custom message via the notification composer.
+ */
+export function adminBroadcastEmailHtml(data: {
+  title: string;
+  body: string;
+  ctaLabel?: string;
+  ctaUrl?: string;
+}): string {
+  const cta = data.ctaUrl ? `
+    <div style="margin:24px 0;">
+      <a href="${data.ctaUrl}" style="${BTN}">${data.ctaLabel ?? 'Open Spinzy'}</a>
+    </div>
+  ` : '';
+  return `
+    <div style="${BASE}">
+      ${LOGO}
+      <h2 style="color:#534AB7;">${data.title}</h2>
+      <div style="color:#374151;line-height:1.7;white-space:pre-wrap;">${data.body}</div>
+      ${cta}
+      ${FOOTER}
+    </div>
+  `;
+}
+
+/**
+ * Trial ending reminder to student/parent.
+ */
+export function trialEndingHtml(data: {
+  name: string;
+  daysLeft: number;
+  upgradeUrl: string;
+}): string {
+  return `
+    <div style="${BASE}">
+      ${LOGO}
+      <h2 style="color:#534AB7;">Your trial ends in ${data.daysLeft} day${data.daysLeft !== 1 ? 's' : ''}</h2>
+      <p>Hi ${data.name},</p>
+      <p>Your free trial is almost over -- but your learning journey is just getting started.
+         Continue with a full Spinzy Academy subscription for just <strong>&#8377;399/month</strong>.</p>
+
+      <div style="background:#EEEDFE;border-radius:12px;padding:16px 20px;margin:20px 0;">
+        <table width="100%" cellpadding="6" style="font-size:14px;">
+          <tr>
+            <td style="color:#534AB7;">Subscription</td>
+            <td style="text-align:right;font-weight:600;color:#534AB7;">&#8377;399 / month</td>
+          </tr>
+          <tr>
+            <td style="color:#666;font-size:13px;">Unlimited AI sessions with Teacher Vidya</td>
+            <td></td>
+          </tr>
+        </table>
+      </div>
+
+      <a href="${data.upgradeUrl}" style="${BTN}">Upgrade now</a>
+
+      <p style="color:#888;font-size:13px;margin-top:16px;">
+        No hidden charges. Cancel any time.
+      </p>
+      ${FOOTER}
+    </div>
+  `;
+}

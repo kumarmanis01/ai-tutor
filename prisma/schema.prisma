@@ -32,6 +32,8 @@ model User {
   parentPhone                String?
   // Parent phone OTP verified at (under-18 gate).
   parentPhoneVerifiedAt      DateTime?
+  // WhatsApp contact number for notification delivery. Collected at onboarding; immutable after first save.
+  whatsappPhone              String?
   /// When true, student must complete parent verification regardless of age.
   requiresParentVerification Boolean       @default(false)
   // Self-reported age (integer). Used for under-13 / under-18 parent verification gates.

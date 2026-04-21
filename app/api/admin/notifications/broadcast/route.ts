@@ -3,6 +3,8 @@ import { getServerSessionForHandlers } from '@/lib/session';
 import { prisma } from '@/lib/prisma';
 import { sendPushSafe } from '@/lib/push/send';
 import { sendMailSafe } from '@/lib/mailer';
+import { sendWhatsAppSafe } from '@/lib/whatsapp/sender';
+import { adminBroadcastEmailHtml } from '@/lib/email/templates';
 import { logger } from '@/lib/logger';
 import { z } from 'zod';
 
@@ -14,7 +16,7 @@ const audienceSchema = z.union([
 
 const schema = z.object({
   audience: audienceSchema,
-  type: z.enum(['push', 'email']),
+  type: z.enum(['push', 'email', 'whatsapp']),
   title: z.string().min(1).max(200),
   body: z.string().min(1).max(1000),
 });
@@ -62,7 +64,6 @@ export async function POST(req: NextRequest) {
   try {
     const userIds = await resolveUserIds(audience);
 
-    // Record this broadcast for audit history (best effort -- do not fail the send if log creation fails)
     void prisma.notificationLog.create({
       data: {
         audience: audience.type,
@@ -75,19 +76,30 @@ export async function POST(req: NextRequest) {
       },
     }).catch(() => {});
 
-    // Fire-and-forget per-user sends (best effort; errors are suppressed per sendPushSafe/sendMailSafe contract)
     if (type === 'push') {
       for (const userId of userIds) {
         void sendPushSafe(userId, { title, body: msgBody });
       }
-    } else {
+    } else if (type === 'email') {
       const users = await prisma.user.findMany({
         where: { id: { in: userIds }, email: { not: null } },
         select: { email: true },
       });
+      const html = adminBroadcastEmailHtml({ title, body: msgBody });
       for (const user of users) {
         if (user.email) {
-          void sendMailSafe({ to: user.email, subject: title, html: `<p>${msgBody}</p>` });
+          void sendMailSafe({ to: user.email, subject: title, html });
+        }
+      }
+    } else {
+      // whatsapp broadcast -- only reaches users who have provided a number
+      const users = await prisma.user.findMany({
+        where: { id: { in: userIds }, whatsappPhone: { not: null } },
+        select: { whatsappPhone: true },
+      });
+      for (const user of users) {
+        if (user.whatsappPhone) {
+          void sendWhatsAppSafe(user.whatsappPhone, `${title}\n\n${msgBody}`);
         }
       }
     }
