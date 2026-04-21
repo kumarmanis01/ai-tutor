@@ -22,6 +22,31 @@ interface PricingPlan {
 const PricingSection = () => {
 
   const plans: PricingPlan[] = [
+        {
+      id: 'free',
+      name: 'Free Plan',
+      nameHi: 'मुफ्त योजना',
+      price: '₹0',
+      period: 'Forever',
+      periodHi: 'हमेशा के लिए',
+      description: 'Try AI Tutor with limited features',
+      descriptionHi: 'सीमित सुविधाओं के साथ AI Tutor आज़माएं',
+      features: [
+        '5 questions per day',
+        'Basic explanations',
+        'Hindi + English support',
+        'NCERT notes access',
+      ],
+      featuresHi: [
+        'प्रतिदिन 5 सवाल',
+        'बुनियादी समाधान',
+        'हिंदी + अंग्रेजी सहायता',
+        'NCERT नोट्स एक्सेस',
+      ],
+      recommended: false,
+      ctaText: 'Start Free',
+      ctaTextHi: 'मुफ्त शुरू करें',
+    },
     {
       id: 'individual',
       name: 'Individual Plan',
