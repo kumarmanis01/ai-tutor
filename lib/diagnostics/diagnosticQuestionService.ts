@@ -497,7 +497,15 @@
     const redis = getRedis();
     const lockKey = `diagnostic:gen-lock:${subjectId}`;
     let lockAcquired = false;
-    if (redis) {
+    if (!redis) {
+      // Without Redis the concurrency guard is inactive. Multiple simultaneous
+      // students hitting an empty subject will each make a separate OpenAI call.
+      // This is safe (questions are deduplicated at persist time) but wasteful.
+      logger.warn('DiagnosticQuestionService.onDemand.no_redis_lock', {
+        event: 'diagnostic.on_demand.concurrency_guard_disabled',
+        context: { subjectId },
+      });
+    } else {
       const acquired = await (redis as any).set(lockKey, '1', 'NX', 'EX', 90);
       if (!acquired) {
         logger.info('DiagnosticQuestionService.onDemand.skipped_concurrent', { subjectId });

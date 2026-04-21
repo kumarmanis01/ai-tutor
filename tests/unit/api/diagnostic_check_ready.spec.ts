@@ -56,7 +56,6 @@ describe('GET /api/student/diagnostic/check-ready', () => {
 
   it('should return phase "questions" when topics exist but no questions', async () => {
     prismaMock.topicDef.count.mockResolvedValue(5);
-    prismaMock.topicDef.findMany.mockResolvedValue([{ id: 't1' }, { id: 't2' }]);
     prismaMock.question.count.mockResolvedValue(0);
     prismaMock.generatedQuestion.count.mockResolvedValue(0);
     const { GET } = await import('@/app/api/student/diagnostic/check-ready/route');
@@ -68,7 +67,6 @@ describe('GET /api/student/diagnostic/check-ready', () => {
 
   it('should return ready when active Question rows exist', async () => {
     prismaMock.topicDef.count.mockResolvedValue(5);
-    prismaMock.topicDef.findMany.mockResolvedValue([{ id: 't1' }]);
     prismaMock.question.count.mockResolvedValue(15);
     const { GET } = await import('@/app/api/student/diagnostic/check-ready/route');
     const res = await GET(makeRequest(SUBJECT_ID) as any);
@@ -79,7 +77,6 @@ describe('GET /api/student/diagnostic/check-ready', () => {
 
   it('should return ready when GeneratedQuestion rows exist (no Question rows)', async () => {
     prismaMock.topicDef.count.mockResolvedValue(5);
-    prismaMock.topicDef.findMany.mockResolvedValue([{ id: 't1' }]);
     prismaMock.question.count.mockResolvedValue(0);
     prismaMock.generatedQuestion.count.mockResolvedValue(12);
     const { GET } = await import('@/app/api/student/diagnostic/check-ready/route');

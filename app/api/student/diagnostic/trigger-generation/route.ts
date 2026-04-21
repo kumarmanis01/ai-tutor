@@ -5,9 +5,8 @@
  * for subjects that have no pre-seeded content.
  *
  * Behaviour:
- *   phase "ready"     -- content already in DB; client should navigate immediately
- *   phase "questions" -- topics exist; FEATURE_ONDEMAND_DIAGNOSTIC handles generation
- *                        on next page load; no action needed here
+ *   phase "questions" -- topics already exist; FEATURE_ONDEMAND_DIAGNOSTIC handles
+ *                        question generation on the next page load; no action needed here
  *   phase "topics"    -- syllabus missing; creates a HydrationJob + Outbox so the
  *                        content-hydration worker generates ChapterDef/TopicDef/Questions
  *
@@ -64,10 +63,13 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ triggered: false, phase: 'questions' });
     }
 
-    // Idempotency: reuse an in-flight job for this subject.
+    // Idempotency: reuse only the root syllabus job for this subject so we
+    // don't accidentally block on a non-syllabus or child HydrationJob.
     const existingJob = await prisma.hydrationJob.findFirst({
       where: {
         subjectId,
+        jobType: JobType.syllabus,
+        hierarchyLevel: 0,
         status: { in: [JobStatus.pending, JobStatus.running] },
       },
       select: { id: true },

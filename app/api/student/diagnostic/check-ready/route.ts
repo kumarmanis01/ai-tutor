@@ -2,7 +2,9 @@
  * GET /api/student/diagnostic/check-ready?subjectId={id}
  *
  * Lightweight readiness check for DiagnosticWaitingScreen polling.
- * Called every 5 s by the client -- no DB writes, index-only counts.
+ * Called every 5 s by the client -- no DB writes, three COUNT queries only.
+ * All question counts use relation filters (topic -> chapter -> subjectId) so
+ * no intermediate ID fetch is required.
  *
  * Response: { ready: boolean, phase: "topics" | "questions" | "ready" }
  *   phase "topics"    -- syllabus pipeline has not completed (no TopicDef rows)
@@ -42,18 +44,13 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ ready: false, phase: 'topics' });
     }
 
-    const topicIds = await prisma.topicDef
-      .findMany({
-        where: {
-          chapter: { subjectId, lifecycle: 'active' },
-          lifecycle: 'active',
-        },
-        select: { id: true },
-      })
-      .then((rows) => rows.map((r) => r.id));
-
+    // Use relation filters in both count queries to avoid a separate findMany
+    // for topic IDs -- three COUNT queries total, no intermediate data fetch.
     const qCount = await prisma.question.count({
-      where: { status: 'ACTIVE', topicId: { in: topicIds } },
+      where: {
+        status: 'ACTIVE',
+        topic: { lifecycle: 'active', chapter: { lifecycle: 'active', subjectId } },
+      },
     });
 
     if (qCount > 0) {

@@ -23,7 +23,7 @@
  * See: docs/v2/on-demand-generator.md
  */
 
-import React, { useEffect, useRef, useState, useCallback } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 
 const POLL_INTERVAL_MS = 5_000;
@@ -44,13 +44,7 @@ export default function DiagnosticWaitingScreen({ subjectId, subjectName, reason
   const [notifyState, setNotifyState] = useState<NotifyState>('idle');
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const triggeredRef = useRef(false);
-
-  const stopPolling = useCallback(() => {
-    if (pollRef.current !== null) {
-      clearInterval(pollRef.current);
-      pollRef.current = null;
-    }
-  }, []);
+  const inFlightRef = useRef(false);
 
   // Trigger content generation once on mount.
   useEffect(() => {
@@ -67,8 +61,20 @@ export default function DiagnosticWaitingScreen({ subjectId, subjectName, reason
   }, [subjectId]);
 
   // Poll check-ready every 5 s; auto-reload when content is in DB.
+  // Recursive setTimeout prevents overlapping fetches: the next poll is
+  // only scheduled after the current fetch resolves, regardless of how
+  // long the server takes. An in-flight guard provides extra safety.
   useEffect(() => {
+    let cancelled = false;
+
+    const scheduleNext = () => {
+      if (cancelled) return;
+      pollRef.current = setTimeout(poll, POLL_INTERVAL_MS) as unknown as ReturnType<typeof setInterval>;
+    };
+
     const poll = async () => {
+      if (inFlightRef.current || cancelled) return;
+      inFlightRef.current = true;
       try {
         const res = await fetch(
           `/api/student/diagnostic/check-ready?subjectId=${encodeURIComponent(subjectId)}`,
@@ -79,7 +85,7 @@ export default function DiagnosticWaitingScreen({ subjectId, subjectName, reason
         setPollFailures(0);
 
         if (data.ready) {
-          stopPolling();
+          cancelled = true;
           window.location.reload();
           return;
         }
@@ -87,15 +93,23 @@ export default function DiagnosticWaitingScreen({ subjectId, subjectName, reason
         setPhase(data.phase);
       } catch {
         setPollFailures((f) => f + 1);
+      } finally {
+        inFlightRef.current = false;
+        scheduleNext();
       }
     };
 
-    pollRef.current = setInterval(poll, POLL_INTERVAL_MS);
-    // Run immediately so the student doesn't wait 5 s for the first check.
+    // Run immediately so the student doesn't wait POLL_INTERVAL_MS for the first check.
     void poll();
 
-    return stopPolling;
-  }, [subjectId, stopPolling]);
+    return () => {
+      cancelled = true;
+      if (pollRef.current !== null) {
+        clearTimeout(pollRef.current as unknown as ReturnType<typeof setTimeout>);
+        pollRef.current = null;
+      }
+    };
+  }, [subjectId]);
 
   const handleNotify = useCallback(async () => {
     setNotifyState('loading');
