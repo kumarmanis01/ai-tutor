@@ -1,3 +1,16 @@
+# FILE OBJECTIVE:
+# - Development Dockerfile for the Next.js `web` service used in local development.
+#
+# LINKED UNIT TEST:
+# - tests/unit/docs/docker_dev_file.spec.ts
+#
+# COPILOT INSTRUCTIONS FOLLOWED:
+# - .github/copilot-instructions.md
+# - /docs/ENGINEERING_PRACTICES.md
+#
+# EDIT LOG:
+# - 2026-04-21T03:48:00Z | copilot | install curl in dev image to enable container healthcheck and add notes
+#
 # Development Dockerfile for Next.js web
 # Multi-stage: deps layer caches node_modules; bind-mount provides hot-reload without rebuild.
 # Uses npm (project lock file is package-lock.json).
@@ -17,6 +30,8 @@ FROM node:20-bullseye-slim AS dev
 WORKDIR /workspace
 ENV NODE_ENV=development
 ENV PORT=3000
+RUN apt-get update && apt-get install -y --no-install-recommends curl ca-certificates \ 
+    && rm -rf /var/lib/apt/lists/*
 # Copy pre-installed node_modules from deps; Compose bind-mounts source on top
 COPY --from=deps /workspace/node_modules ./node_modules
 EXPOSE 3000
