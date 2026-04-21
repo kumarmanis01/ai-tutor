@@ -83,6 +83,8 @@ export default async function StudentHomeDashboardPage() {
         level: true,
         subscriptionStatus: true,
         subjects: true,
+        board: true,
+        grade: true,
         learningPlans: {
           select: { examDate: true, subjectId: true },
           orderBy: { generatedAt: 'desc' },
@@ -161,9 +163,14 @@ export default async function StudentHomeDashboardPage() {
   }
 
   if (enrolledSubjects && enrolledSubjects.length > 0) {
+    // Scope to the student's own board + grade to avoid cross-grade/board duplicates
+    // when multiple active SubjectDef rows share the same display name.
     subjects = await prisma.subjectDef.findMany({
       where: {
         lifecycle: 'active',
+        ...(user.board && user.grade
+          ? { class: { grade: user.grade, board: { slug: { equals: user.board, mode: 'insensitive' as const } } } }
+          : {}),
         OR: [{ name: { in: enrolledSubjects } }, { slug: { in: enrolledSubjects } }],
       },
       select: { id: true, name: true },
@@ -182,6 +189,18 @@ export default async function StudentHomeDashboardPage() {
         take: 5,
       })
     }
+  }
+
+  // Deduplicate by lowercase name -- prefer the subject that is in a learning plan so
+  // that "Start Diagnostic" always links to the subject the student actually enrolled in.
+  {
+    const planSubjectIdSet = new Set(learningPlans.map((p: { subjectId: string }) => p.subjectId))
+    const seen = new Map<string, { id: string; name: string }>()
+    for (const s of subjects) {
+      const key = s.name.toLowerCase()
+      if (!seen.has(key) || planSubjectIdSet.has(s.id)) seen.set(key, s)
+    }
+    subjects = Array.from(seen.values())
   }
 
   // ── Round 2: readiness + diagnostic status -- subjects batched for pool safety ──
@@ -259,7 +278,13 @@ export default async function StudentHomeDashboardPage() {
   }
 
   // ── Build TodaysLearningCard props from getNextAction result ─────────────────
-  let cardProps: TodaysLearningCardProps = { type: 'empty', diagnosticHref: '/diagnostic' }
+  // Prefer the subject from the latest learning plan; fall back to the first enrolled subject.
+  // /diagnostic (no subjectId) returns 404 -- the route only exists as /diagnostic/[subjectId].
+  const firstDiagSubjectId = latestPlan?.subjectId ?? subjects[0]?.id
+  let cardProps: TodaysLearningCardProps = {
+    type: 'empty',
+    diagnosticHref: firstDiagSubjectId ? `/diagnostic/${firstDiagSubjectId}` : '/dashboard',
+  }
 
   if (nextAction) {
     if (nextAction.ruleId === 'resume_session' && nextAction.sessionId) {
