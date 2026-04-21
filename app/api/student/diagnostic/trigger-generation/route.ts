@@ -43,43 +43,38 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    // Fast-path: topics exist -- Path A (FEATURE_ONDEMAND_DIAGNOSTIC) generates questions
-    // on the next page load. Nothing to do here.
-    const topicCount = await prisma.topicDef.count({
-      where: {
-        chapter: { subjectId, lifecycle: 'active' },
-        lifecycle: 'active',
-      },
-    });
-    if (topicCount > 0) {
-      logger.info('[trigger-generation] topics exist, no action needed', {
-        event: 'diagnostic.trigger_generation.topics_exist',
-        context: { studentId: userId, subjectId },
-      });
-      return NextResponse.json({ triggered: false, phase: 'questions' });
-    }
-
-    // Student language for the HydrationJob content pipeline.
+    // Fetch student language before delegating to the helper.
+    // Language is required only for job creation (Rule 4) but the query is a
+    // single-field primary-key lookup -- the cost is negligible even when the
+    // helper short-circuits at Rule 1 (topics already exist).
     const student = await prisma.user.findUnique({
       where: { id: userId },
       select: { language: true },
     });
     const language: LanguageCode = (student?.language as LanguageCode) ?? LanguageCode.en;
 
-    // Delegate idempotency + job creation to shared helper.
+    // Delegate all idempotency checks and job creation to the shared helper.
+    // The helper runs: topicDef.count (Rule 1) -> job-in-flight check (Rule 2)
+    //   -> SubjectDef lookup (Rule 3) -> atomic HydrationJob + Outbox create (Rule 4).
     const result = await enqueueSubjectHydration(subjectId, language, 'student_on_demand');
 
-    if (result.triggered) {
-      return NextResponse.json({ triggered: true, phase: 'topics', jobId: result.jobId });
-    }
+    switch (result.reason) {
+      case 'topics_exist':
+        logger.info('[trigger-generation] topics exist, no action needed', {
+          event: 'diagnostic.trigger_generation.topics_exist',
+          context: { studentId: userId, subjectId },
+        });
+        return NextResponse.json({ triggered: false, phase: 'questions' });
 
-    if (result.jobId) {
-      // Job was already pending/running -- return its ID so the client can track it.
-      return NextResponse.json({ triggered: false, phase: 'topics', jobId: result.jobId });
-    }
+      case 'created':
+        return NextResponse.json({ triggered: true, phase: 'topics', jobId: result.jobId });
 
-    // Helper returned triggered:false with no jobId -- SubjectDef was not found.
-    return NextResponse.json({ error: 'Subject not found' }, { status: 404 });
+      case 'job_running':
+        return NextResponse.json({ triggered: false, phase: 'topics', jobId: result.jobId });
+
+      case 'subject_not_found':
+        return NextResponse.json({ error: 'Subject not found' }, { status: 404 });
+    }
   } catch (err) {
     logger.error('[trigger-generation] failed', {
       event: 'diagnostic.trigger_generation.error',

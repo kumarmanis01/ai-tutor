@@ -300,9 +300,11 @@ export default async function StudentHomeDashboardPage() {
   }
 
   // ── Build TodaysLearningCard props from getNextAction result ─────────────────
-  // Prefer the subject from the latest learning plan; fall back to the first enrolled subject.
-  // /diagnostic (no subjectId) returns 404 -- the route only exists as /diagnostic/[subjectId].
-  const firstDiagSubjectId = latestPlan?.subjectId ?? subjects[0]?.id
+  // diagnosticHref should point to the FIRST subject that still needs a diagnostic
+  // so the "Take diagnostic test" CTA never sends the student to a completed subject.
+  const firstPendingDiagSubject = readinessResults.find((r) => !r.diagnosticDone)
+  const firstDiagSubjectId =
+    firstPendingDiagSubject?.subjectId ?? latestPlan?.subjectId ?? subjects[0]?.id
   let cardProps: TodaysLearningCardProps = {
     type: 'empty',
     diagnosticHref: firstDiagSubjectId ? `/diagnostic/${firstDiagSubjectId}` : '/dashboard',

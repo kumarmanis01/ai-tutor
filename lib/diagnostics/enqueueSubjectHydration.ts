@@ -12,7 +12,8 @@
  *   3. SubjectDef not found  → skip (log warning), return triggered:false, jobId:null
  *   4. Otherwise             → create HydrationJob + Outbox, return triggered:true, jobId:<new>
  *
- * Never throws -- callers are free to use fire-and-forget (.catch) patterns.
+ * May propagate Prisma/database errors -- callers using fire-and-forget patterns
+ * must attach .catch() (or otherwise handle promise rejection) explicitly.
  *
  * See: docs/v2/on-demand-generator.md
  */
@@ -22,9 +23,16 @@ import { logger } from '@/lib/logger';
 import { LanguageCode, DifficultyLevel, JobStatus, JobType } from '@prisma/client';
 import { CONTENT_HYDRATION_QUEUE } from '@/lib/queues/constants';
 
+export type HydrationEnqueueReason =
+  | 'topics_exist'
+  | 'job_running'
+  | 'subject_not_found'
+  | 'created';
+
 export interface HydrationEnqueueResult {
   triggered: boolean;
   jobId: string | null;
+  reason: HydrationEnqueueReason;
 }
 
 export async function enqueueSubjectHydration(
@@ -40,10 +48,15 @@ export async function enqueueSubjectHydration(
     },
   });
   if (topicCount > 0) {
-    return { triggered: false, jobId: null };
+    return { triggered: false, jobId: null, reason: 'topics_exist' };
   }
 
   // Rule 2: reuse an existing pending/running root syllabus job.
+  // NOTE: there is a TOCTOU window between this check and the create in Rule 4.
+  // True idempotency at this level requires a DB-level unique partial index on
+  // (subjectId, jobType, hierarchyLevel) for pending/running status. That is a
+  // future migration task; the practical impact here is low given the expected
+  // low concurrency per subject.
   const existingJob = await prisma.hydrationJob.findFirst({
     where: {
       subjectId,
@@ -59,7 +72,7 @@ export async function enqueueSubjectHydration(
       event: 'diagnostic.hydration.already_running',
       context: { subjectId, jobId: existingJob.id, triggeredBy },
     });
-    return { triggered: false, jobId: existingJob.id };
+    return { triggered: false, jobId: existingJob.id, reason: 'job_running' };
   }
 
   // Rule 3: guard against a missing SubjectDef (should not happen in normal flow).
@@ -81,7 +94,7 @@ export async function enqueueSubjectHydration(
       event: 'diagnostic.hydration.subject_not_found',
       context: { subjectId, triggeredBy },
     });
-    return { triggered: false, jobId: null };
+    return { triggered: false, jobId: null, reason: 'subject_not_found' };
   }
 
   const boardSlug = subjectDef.class.board.slug;
@@ -142,5 +155,5 @@ export async function enqueueSubjectHydration(
     context: { subjectId, jobId: job.id, boardSlug, grade, subjectSlug, triggeredBy },
   });
 
-  return { triggered: true, jobId: job.id };
+  return { triggered: true, jobId: job.id, reason: 'created' };
 }

@@ -377,22 +377,33 @@ export async function POST(req: NextRequest) {
 
           // Diagnostic bootstrap: seeds baseline StudentConceptState rows.
           // Requires chapters to exist, so runs only when the syllabus is already seeded.
-          const chapters = await prisma.chapterDef.findMany({
-            where: { subjectId: { in: subjectIds }, lifecycle: 'active' },
-            select: { id: true },
-          });
-          const chapterIds = chapters.map((c) => c.id);
-          if (chapterIds.length === 0) return;
+          // Isolated try/catch so a bootstrap failure does not mask hydration errors in logs.
+          try {
+            const chapters = await prisma.chapterDef.findMany({
+              where: { subjectId: { in: subjectIds }, lifecycle: 'active' },
+              select: { id: true },
+            });
+            const chapterIds = chapters.map((c) => c.id);
+            if (chapterIds.length === 0) return;
 
-          await enqueueDiagnosticBootstrapJob({
-            studentId: updatedUser.id,
-            diagnosticSessionId: `bootstrap:${updatedUser.id}`,
-            chapterIds,
-            boardId: cl.boardId,
-            gradeId: cl.id,
-          });
+            await enqueueDiagnosticBootstrapJob({
+              studentId: updatedUser.id,
+              diagnosticSessionId: `bootstrap:${updatedUser.id}`,
+              chapterIds,
+              boardId: cl.boardId,
+              gradeId: cl.id,
+            });
+          } catch (bootstrapErr) {
+            logger.warn('[onboarding] failed to enqueue diagnostic bootstrap', {
+              event: 'diagnostic.bootstrap.enqueue_failed',
+              context: { studentId: updatedUser.id, error: String(bootstrapErr) },
+            });
+          }
         }).catch((err) => {
-          logger.warn('/api/user/onboarding: failed to enqueue diagnostic bootstrap', { className: 'api.user.onboarding', methodName: 'POST', error: err });
+          logger.warn('[onboarding] background content seeding setup failed', {
+            event: 'diagnostic.seeding.setup_failed',
+            context: { studentId: updatedUser.id, error: String(err) },
+          });
         });
       }
     } catch (err) {
