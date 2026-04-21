@@ -1,6 +1,18 @@
 /**
- * Smoke tests for the StudentHomeDashboardPage server component.
+ * FILE OBJECTIVE:
+ * - Smoke tests for the StudentHomeDashboardPage server component.
  *
+ * LINKED UNIT TEST:
+ * - tests/unit/app/student/dashboard/page.test.ts
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - .github/copilot-instructions.md
+ * - /docs/COPILOT_GUARDRAILS.md
+ *
+ * EDIT LOG:
+ * - 2026-04-21T12:00:00Z | staff-engineer | added tests for grade parsing, dedup preference, and diagnosticHref
+ */
+/**
  * Tests verify:
  * 1. Happy path: page renders without throwing, all Prisma models queried.
  * 2. Auth gate: redirect('/') is called when session is null.
@@ -55,7 +67,9 @@ jest.mock('@/lib/logger', () => ({
 // ── UI components (client components -- mock to avoid hook errors in SSR) ────
 jest.mock('@/components/student/dashboard/TodaysLearningCard', () => ({
   __esModule: true,
-  default: () => React.createElement('div', { 'data-testid': 'TodaysLearningCard' }),
+  // Render props as JSON inside the mock so tests can assert on values
+  // such as `diagnosticHref` without coupling to the real component.
+  default: (props: any) => React.createElement('div', { 'data-testid': 'TodaysLearningCard' }, JSON.stringify(props)),
 }))
 jest.mock('@/components/student/dashboard/SecondaryStartOptions', () => ({
   __esModule: true,
@@ -169,6 +183,88 @@ describe('StudentHomeDashboardPage', () => {
       }),
     )
     expect(getSubjectDiagnosticStatusMock).toHaveBeenCalledWith(MOCK_USER_ID, 'sub-math')
+  })
+
+  it('should scope subject query to parsed integer grade when board and grade present', async () => {
+    requireActiveSessionMock.mockResolvedValue(makeSession())
+    getNextActionMock.mockResolvedValue(null)
+    computeReadinessScoreMock.mockResolvedValue(makeReadinessResult())
+    getSubjectDiagnosticStatusMock.mockResolvedValue(makeDiagnosticStatus('sub-math'))
+
+    prismaMock.user.findUnique.mockResolvedValue(
+      makeUser({ board: 'CBSE', grade: '10', subjects: ['Mathematics'] }),
+    )
+    prismaMock.freeTierUsage.findUnique.mockResolvedValue(null)
+    prismaMock.learningPlan.findMany.mockResolvedValue([])
+    prismaMock.structuredSession.findMany.mockResolvedValue([])
+    prismaMock.studentXP.aggregate.mockResolvedValue({ _sum: { amount: 0 } })
+    prismaMock.studentXP.groupBy.mockResolvedValue([])
+    prismaMock.subjectDef.findMany.mockResolvedValue([{ id: 'sub-math', name: 'Mathematics' }])
+    prismaMock.diagnosticSession.findFirst.mockResolvedValue(null)
+
+    const { default: Page } = require('@/app/(student)/dashboard/page')
+    await Page()
+
+    expect(prismaMock.subjectDef.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          class: expect.objectContaining({
+            grade: 10,
+            board: expect.objectContaining({ slug: expect.objectContaining({ equals: 'CBSE' }) }),
+          }),
+        }),
+      }),
+    )
+  })
+
+  it('should prefer subject from learning plan when deduplicating by name', async () => {
+    requireActiveSessionMock.mockResolvedValue(makeSession())
+    getNextActionMock.mockResolvedValue(null)
+    computeReadinessScoreMock.mockResolvedValue(makeReadinessResult())
+    getSubjectDiagnosticStatusMock.mockResolvedValue(makeDiagnosticStatus('plan-sub-math'))
+
+    prismaMock.user.findUnique.mockResolvedValue(
+      makeUser({ board: 'CBSE', grade: '10', subjects: ['Mathematics'] }),
+    )
+    prismaMock.freeTierUsage.findUnique.mockResolvedValue(null)
+    prismaMock.learningPlan.findMany.mockResolvedValue([{ subjectId: 'plan-sub-math' }])
+    prismaMock.structuredSession.findMany.mockResolvedValue([])
+    prismaMock.studentXP.aggregate.mockResolvedValue({ _sum: { amount: 0 } })
+    prismaMock.studentXP.groupBy.mockResolvedValue([])
+    prismaMock.subjectDef.findMany.mockResolvedValue([
+      { id: 'other-sub', name: 'Mathematics' },
+      { id: 'plan-sub-math', name: 'Mathematics' },
+    ])
+    prismaMock.diagnosticSession.findFirst.mockResolvedValue(null)
+
+    const { default: Page } = require('@/app/(student)/dashboard/page')
+    await Page()
+
+    // computeReadinessScore should be called for the plan subject id, not the other duplicate
+    expect(computeReadinessScoreMock).toHaveBeenCalledWith(MOCK_USER_ID, 'plan-sub-math')
+    expect(computeReadinessScoreMock).not.toHaveBeenCalledWith(MOCK_USER_ID, 'other-sub')
+  })
+
+  it('should set diagnosticHref to /diagnostic/[subjectId] when a subject exists', async () => {
+    requireActiveSessionMock.mockResolvedValue(makeSession())
+    getNextActionMock.mockResolvedValue(null)
+    computeReadinessScoreMock.mockResolvedValue(makeReadinessResult())
+    getSubjectDiagnosticStatusMock.mockResolvedValue(makeDiagnosticStatus('sub-math'))
+
+    prismaMock.user.findUnique.mockResolvedValue(makeUser({ subjects: ['Mathematics'] }))
+    prismaMock.freeTierUsage.findUnique.mockResolvedValue(null)
+    prismaMock.learningPlan.findMany.mockResolvedValue([])
+    prismaMock.structuredSession.findMany.mockResolvedValue([])
+    prismaMock.studentXP.aggregate.mockResolvedValue({ _sum: { amount: 0 } })
+    prismaMock.studentXP.groupBy.mockResolvedValue([])
+    prismaMock.subjectDef.findMany.mockResolvedValue([{ id: 'sub-math', name: 'Mathematics' }])
+    prismaMock.diagnosticSession.findFirst.mockResolvedValue(null)
+
+    const { default: Page } = require('@/app/(student)/dashboard/page')
+    const element = await Page()
+    const html = renderToStaticMarkup(element)
+
+    expect(html).toContain('/diagnostic/sub-math')
   })
 
   it('should call computeReadinessScore for every resolved subject', async () => {

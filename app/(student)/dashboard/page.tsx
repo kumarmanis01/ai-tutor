@@ -15,8 +15,10 @@
  *   2026-03-15 | v2 migration | full rebuild; replaces v1 dashboard
  *   2026-04-14 | gap-fix P1   | restore full widget set, wire server data, freemium counter
  *   2026-04-15 | copilot | filter dashboard subjects by student's learning plans when present
- *   2026-04-21 | perf fix     | eliminate sequential for-loop; merge XP round-trip into
- *                               first Promise.all; subjects run fully concurrent
+  *   2026-04-21T12:00:00Z | staff-engineer | fix: parse `user.grade` to integer before using in Prisma
+  *                               `class.grade` filter; prefer learning-plan subject when
+  *                               deduplicating by name; use `/diagnostic/[subjectId]`
+  *                               for diagnostic CTA; add unit tests covering behaviors
  */
 
 import type { Metadata } from 'next'
@@ -83,6 +85,8 @@ export default async function StudentHomeDashboardPage() {
         level: true,
         subscriptionStatus: true,
         subjects: true,
+        board: true,
+        grade: true,
         learningPlans: {
           select: { examDate: true, subjectId: true },
           orderBy: { generatedAt: 'desc' },
@@ -161,9 +165,34 @@ export default async function StudentHomeDashboardPage() {
   }
 
   if (enrolledSubjects && enrolledSubjects.length > 0) {
+    // Parse user.grade to an integer because SubjectDef.class.grade is an Int in
+    // the Prisma schema while `user.grade` is stored as a string on the User row.
+    // Only apply class scoping when the parsed grade is a valid integer to avoid
+    // silently passing an incorrect filter to Prisma.
+    const parsedUserGrade =
+      typeof user?.grade === 'string'
+        ? (() => {
+            const normalizedGrade = user.grade.trim()
+            if (normalizedGrade.length === 0) return null
+            const numericGrade = Number(normalizedGrade)
+            return Number.isInteger(numericGrade) ? numericGrade : null
+          })()
+        : null
+
+    // Scope to the student's own board + grade to avoid cross-grade/board duplicates
+    // when multiple active SubjectDef rows share the same display name.
+    // Only apply class scoping when we have both a board and a parsed numeric grade.
     subjects = await prisma.subjectDef.findMany({
       where: {
         lifecycle: 'active',
+        ...(user.board && parsedUserGrade !== null
+          ? {
+              class: {
+                grade: parsedUserGrade,
+                board: { slug: { equals: user.board, mode: 'insensitive' as const } },
+              },
+            }
+          : {}),
         OR: [{ name: { in: enrolledSubjects } }, { slug: { in: enrolledSubjects } }],
       },
       select: { id: true, name: true },
@@ -182,6 +211,18 @@ export default async function StudentHomeDashboardPage() {
         take: 5,
       })
     }
+  }
+
+  // Deduplicate by lowercase name -- prefer the subject that is in a learning plan so
+  // that "Start Diagnostic" always links to the subject the student actually enrolled in.
+  {
+    const planSubjectIdSet = new Set(learningPlans.map((p: { subjectId: string }) => p.subjectId))
+    const seen = new Map<string, { id: string; name: string }>()
+    for (const s of subjects) {
+      const key = s.name.toLowerCase()
+      if (!seen.has(key) || planSubjectIdSet.has(s.id)) seen.set(key, s)
+    }
+    subjects = Array.from(seen.values())
   }
 
   // ── Round 2: readiness + diagnostic status -- subjects batched for pool safety ──
@@ -259,7 +300,13 @@ export default async function StudentHomeDashboardPage() {
   }
 
   // ── Build TodaysLearningCard props from getNextAction result ─────────────────
-  let cardProps: TodaysLearningCardProps = { type: 'empty', diagnosticHref: '/diagnostic' }
+  // Prefer the subject from the latest learning plan; fall back to the first enrolled subject.
+  // /diagnostic (no subjectId) returns 404 -- the route only exists as /diagnostic/[subjectId].
+  const firstDiagSubjectId = latestPlan?.subjectId ?? subjects[0]?.id
+  let cardProps: TodaysLearningCardProps = {
+    type: 'empty',
+    diagnosticHref: firstDiagSubjectId ? `/diagnostic/${firstDiagSubjectId}` : '/dashboard',
+  }
 
   if (nextAction) {
     if (nextAction.ruleId === 'resume_session' && nextAction.sessionId) {
