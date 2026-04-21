@@ -1,9 +1,20 @@
+import crypto from 'crypto'
 import OpenAI from 'openai'
 import { prisma } from '@/lib/prisma'
 import { normalizeLanguage } from '@/lib/normalize'
 import { logger } from '@/lib/logger'
 import { isCircuitOpen, recordFailure, recordSuccess } from '@/lib/ai/tutor/circuitBreaker'
 import { redactPIIFromText, redactPIIFromMessages } from '@/lib/ai/piiRedaction'
+
+/** Hash a prompt for audit without storing the raw text. */
+function hashPrompt(text: string): string {
+  return crypto.createHash('sha256').update(text).digest('hex')
+}
+
+/** Return up to 200 chars of a prompt for debugging -- never the full text. */
+function redactedPreview(text: string): string {
+  return text.slice(0, 200)
+}
 
 export type TutorCallType = 'tutor:teach' | 'tutor:hint' | 'tutor:eval'
 
@@ -383,7 +394,8 @@ export async function callLLM({ prompt, model, meta, timeoutMs }: CallLLMArgs) {
                 costUsd,
                 success: true,
                 status: 'success',
-                requestBody: { prompt },
+                // Never persist the raw prompt -- store hash + short preview only.
+                requestBody: { prompt_hash: hashPrompt(prompt), prompt_redacted_preview: redactedPreview(prompt) },
                 responseBody: respBody,
               },
             })
