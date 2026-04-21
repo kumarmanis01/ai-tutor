@@ -2,6 +2,7 @@
   import { ensureQuestions, type QuestionFilters } from '@/lib/tests';
   import { logger } from '@/lib/logger';
   import { diagnosticConfig, computeDifficultyCounts } from '@/lib/config';
+  import { getRedis } from '@/lib/redis';
   import OpenAI from 'openai';
 
   export type DiagnosticDifficulty = 'easy' | 'medium' | 'hard';
@@ -489,6 +490,23 @@
 
     const { subjectId, subjectName, boardSlug, grade, topicIds, languageCode, totalCount } = params;
 
+    // Concurrency guard: one OpenAI call per subject at a time.
+    // If another request is already generating for this subject, return [] immediately.
+    // The DiagnosticWaitingScreen polls check-ready every 5 s and will auto-navigate
+    // when the first caller's results land in DB.
+    const redis = getRedis();
+    const lockKey = `diagnostic:gen-lock:${subjectId}`;
+    let lockAcquired = false;
+    if (redis) {
+      const acquired = await (redis as any).set(lockKey, '1', 'NX', 'EX', 90);
+      if (!acquired) {
+        logger.info('DiagnosticQuestionService.onDemand.skipped_concurrent', { subjectId });
+        return [];
+      }
+      lockAcquired = true;
+    }
+
+    try {
     // Fetch topic names for context (up to 20 topics)
     const topicNames = await prisma.topicDef
       .findMany({
@@ -622,5 +640,10 @@
     }
 
     return results;
+    } finally {
+      if (lockAcquired && redis) {
+        await (redis as any).del(lockKey).catch(() => {});
+      }
+    }
   }
 

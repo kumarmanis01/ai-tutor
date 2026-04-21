@@ -19,7 +19,7 @@
 
 import { prisma } from '../../lib/prisma.js';
 import { getRedis } from '../../lib/redis.js';
-import { sendMailSafe } from '../../lib/mailer.js';
+import { sendMail } from '../../lib/mailer.js';
 import { diagnosticReadyEmailHtml } from '../../lib/email/templates.js';
 import { logger } from '../../lib/logger.js';
 
@@ -89,20 +89,28 @@ export async function runDiagnosticReadinessCheck(): Promise<{ checked: number; 
 
           const html = diagnosticReadyEmailHtml({ studentName, subjectName, diagnosticUrl });
 
-          await sendMailSafe({
-            to: student.email,
-            subject: `Your ${subjectName} diagnostic is ready -- start now`,
-            html,
-          });
-
-          // Delete the key so we don't send again
-          await (redis as any).del(key);
-          notified++;
-
-          logger.info('[diagnosticReadinessCheck] notification sent', {
-            event: 'diagnostic.ready_notification.sent',
-            context: { studentId: userId, subjectId, subjectName },
-          });
+          // Use sendMail (throws on failure) so we only delete the key after a
+          // confirmed send. sendMailSafe would suppress errors and cause the key
+          // to be deleted even when the email never reached the student.
+          try {
+            await sendMail({
+              to: student.email,
+              subject: `Your ${subjectName} diagnostic is ready -- start now`,
+              html,
+            });
+            await (redis as any).del(key);
+            notified++;
+            logger.info('[diagnosticReadinessCheck] notification sent', {
+              event: 'diagnostic.ready_notification.sent',
+              context: { studentId: userId, subjectId, subjectName },
+            });
+          } catch (mailErr) {
+            // Leave the key intact so the next daily run retries.
+            logger.error('[diagnosticReadinessCheck] email send failed -- key preserved for retry', {
+              event: 'diagnostic.ready_notification.email_failed',
+              context: { studentId: userId, subjectId, error: String(mailErr) },
+            });
+          }
         } catch (keyErr) {
           logger.error('[diagnosticReadinessCheck] error processing key', {
             event: 'diagnostic.ready_notification.key_error',
