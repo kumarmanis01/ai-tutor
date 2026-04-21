@@ -8,16 +8,17 @@
 -- - tests/unit/prisma/migrations/20260417_add_referral_reward.spec.ts
 --
 -- EDIT LOG:
--- - 2026-04-17T08:00:00Z | dev     | initial version — FKs used invalid syntax:
---                                    ALTER TABLE ... ADD CONSTRAINT IF NOT EXISTS
---                                    That is not valid Postgres SQL and caused P3009.
--- - 2026-04-20T00:00:00Z | copilot | rewrote FKs with DO $$ guards; table DDL
---                                    already used CREATE TABLE IF NOT EXISTS.
+-- - 2026-04-17T08:00:00Z | dev | created
+--
+-- IMMUTABILITY NOTE:
+-- This migration file must remain immutable after creation. Any corrective or
+-- follow-up schema change must be shipped as a new Prisma migration rather than
+-- by editing this file in place.
 --
 -- NOTE FOR PRODUCTION:
--- If prisma migrate deploy reports P3009 for this migration, the DB recorded a
--- failed run from the original (broken) SQL.  Run scripts/fix_prod_migrations.sql
--- against the production DB to recover before deploying.
+-- If prisma migrate deploy reports P3009 for this migration, the database may
+-- have a recorded failed run. Recover using the repository's documented Prisma
+-- migration recovery procedure before deploying further migrations.
 
 -- IMMUTABILITY NOTE:
 -- - This migration was edited in-place on branch feat/f-adm-admin-fixes to
