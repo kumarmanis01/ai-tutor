@@ -6,11 +6,15 @@
  *   - POST /api/student/diagnostic/trigger-generation (DiagnosticWaitingScreen mount)
  *   - POST /api/user/onboarding (proactive background seeding for all selected subjects)
  *
- * Idempotency rules (in order):
+ * Idempotency rules (in order, all within a single Postgres transaction):
  *   1. Topics already exist  → skip (no work needed), return triggered:false, jobId:null
  *   2. Root syllabus job already pending/running → skip, return triggered:false, jobId:<existing>
  *   3. SubjectDef not found  → skip (log warning), return triggered:false, jobId:null
  *   4. Otherwise             → create HydrationJob + Outbox, return triggered:true, jobId:<new>
+ *
+ * Rules 2-4 run inside a single Postgres transaction guarded by a per-subject
+ * advisory lock (pg_advisory_xact_lock) so concurrent callers for the same
+ * subject serialise at the DB level rather than racing through the check+create.
  *
  * May propagate Prisma/database errors -- callers using fire-and-forget patterns
  * must attach .catch() (or otherwise handle promise rejection) explicitly.
@@ -35,12 +39,29 @@ export interface HydrationEnqueueResult {
   reason: HydrationEnqueueReason;
 }
 
+/**
+ * Deterministic, non-negative PostgreSQL bigint lock key for a subjectId string.
+ * Uses a polynomial hash clamped to [0, 2^63-1] so it fits in a Postgres bigint.
+ */
+function subjectAdvisoryLockKey(subjectId: string): bigint {
+  let h = 0n;
+  for (const c of subjectId) {
+    h = (h * 31n + BigInt(c.charCodeAt(0))) & 0x7fffffffffffffffn;
+  }
+  return h;
+}
+
+type TxOutcome =
+  | { outcome: 'job_running'; jobId: string }
+  | { outcome: 'subject_not_found' }
+  | { outcome: 'created'; jobId: string; boardSlug: string; grade: number; subjectSlug: string };
+
 export async function enqueueSubjectHydration(
   subjectId: string,
   language: LanguageCode,
   triggeredBy = 'system',
 ): Promise<HydrationEnqueueResult> {
-  // Rule 1: skip when topics already exist -- pipeline already ran for this subject.
+  // Rule 1: fast path -- skip when topics already exist (no transaction needed).
   const topicCount = await prisma.topicDef.count({
     where: {
       chapter: { subjectId, lifecycle: 'active' },
@@ -51,58 +72,55 @@ export async function enqueueSubjectHydration(
     return { triggered: false, jobId: null, reason: 'topics_exist' };
   }
 
-  // Rule 2: reuse an existing pending/running root syllabus job.
-  // NOTE: there is a TOCTOU window between this check and the create in Rule 4.
-  // True idempotency at this level requires a DB-level unique partial index on
-  // (subjectId, jobType, hierarchyLevel) for pending/running status. That is a
-  // future migration task; the practical impact here is low given the expected
-  // low concurrency per subject.
-  const existingJob = await prisma.hydrationJob.findFirst({
-    where: {
-      subjectId,
-      jobType: JobType.syllabus,
-      hierarchyLevel: 0,
-      status: { in: [JobStatus.pending, JobStatus.running] },
-    },
-    select: { id: true },
-    orderBy: { createdAt: 'desc' },
-  });
-  if (existingJob) {
-    logger.info('[enqueueSubjectHydration] root syllabus job already in flight', {
-      event: 'diagnostic.hydration.already_running',
-      context: { subjectId, jobId: existingJob.id, triggeredBy },
-    });
-    return { triggered: false, jobId: existingJob.id, reason: 'job_running' };
-  }
+  // Rules 2-4 run inside a single transaction protected by a per-subject advisory
+  // lock. pg_advisory_xact_lock blocks concurrent callers for the same subjectId
+  // until the first caller commits, eliminating the TOCTOU race between the
+  // "no in-flight job" check and the HydrationJob create.
+  const lockKey = subjectAdvisoryLockKey(subjectId);
 
-  // Rule 3: guard against a missing SubjectDef (should not happen in normal flow).
-  const subjectDef = await prisma.subjectDef.findUnique({
-    where: { id: subjectId },
-    select: {
-      id: true,
-      slug: true,
-      class: {
-        select: {
-          grade: true,
-          board: { select: { slug: true } },
+  const txResult = await prisma.$transaction(async (tx) => {
+    // Acquire the advisory lock. Concurrent calls for the same subjectId wait here;
+    // the lock is released automatically when the transaction ends.
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(${lockKey})`;
+
+    // Rule 2: reuse an existing pending/running root syllabus job.
+    const inFlight = await tx.hydrationJob.findFirst({
+      where: {
+        subjectId,
+        jobType: JobType.syllabus,
+        hierarchyLevel: 0,
+        status: { in: [JobStatus.pending, JobStatus.running] },
+      },
+      select: { id: true },
+      orderBy: { createdAt: 'desc' },
+    });
+    if (inFlight) {
+      return { outcome: 'job_running' as const, jobId: inFlight.id };
+    }
+
+    // Rule 3: guard against a missing SubjectDef (should not happen in normal flow).
+    const subjectDef = await tx.subjectDef.findUnique({
+      where: { id: subjectId },
+      select: {
+        id: true,
+        slug: true,
+        class: {
+          select: {
+            grade: true,
+            board: { select: { slug: true } },
+          },
         },
       },
-    },
-  });
-  if (!subjectDef) {
-    logger.warn('[enqueueSubjectHydration] SubjectDef not found -- skipping', {
-      event: 'diagnostic.hydration.subject_not_found',
-      context: { subjectId, triggeredBy },
     });
-    return { triggered: false, jobId: null, reason: 'subject_not_found' };
-  }
+    if (!subjectDef) {
+      return { outcome: 'subject_not_found' as const };
+    }
 
-  const boardSlug = subjectDef.class.board.slug;
-  const grade = subjectDef.class.grade;
-  const subjectSlug = subjectDef.slug;
+    const boardSlug = subjectDef.class.board.slug;
+    const grade = subjectDef.class.grade;
+    const subjectSlug = subjectDef.slug;
 
-  // Rule 4: create HydrationJob + Outbox atomically.
-  const job = await prisma.$transaction(async (tx) => {
+    // Rule 4: create HydrationJob + Outbox atomically.
     const created = await tx.hydrationJob.create({
       data: {
         jobType: JobType.syllabus,
@@ -147,13 +165,35 @@ export async function enqueueSubjectHydration(
       },
     });
 
-    return created;
+    return { outcome: 'created' as const, jobId: created.id, boardSlug, grade, subjectSlug };
   });
+
+  if (txResult.outcome === 'job_running') {
+    logger.info('[enqueueSubjectHydration] root syllabus job already in flight', {
+      event: 'diagnostic.hydration.already_running',
+      context: { subjectId, jobId: txResult.jobId, triggeredBy },
+    });
+    return { triggered: false, jobId: txResult.jobId, reason: 'job_running' };
+  }
+
+  if (txResult.outcome === 'subject_not_found') {
+    logger.warn('[enqueueSubjectHydration] SubjectDef not found -- skipping', {
+      event: 'diagnostic.hydration.subject_not_found',
+      context: { subjectId, triggeredBy },
+    });
+    return { triggered: false, jobId: null, reason: 'subject_not_found' };
+  }
 
   logger.info('[enqueueSubjectHydration] created root syllabus HydrationJob', {
     event: 'diagnostic.hydration.created',
-    context: { subjectId, jobId: job.id, boardSlug, grade, subjectSlug, triggeredBy },
+    context: {
+      subjectId,
+      jobId: txResult.jobId,
+      boardSlug: txResult.boardSlug,
+      grade: txResult.grade,
+      subjectSlug: txResult.subjectSlug,
+      triggeredBy,
+    },
   });
-
-  return { triggered: true, jobId: job.id, reason: 'created' };
+  return { triggered: true, jobId: txResult.jobId, reason: 'created' };
 }
