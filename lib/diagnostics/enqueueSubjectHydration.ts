@@ -24,7 +24,8 @@
 
 import { prisma } from '@/lib/prisma';
 import { logger } from '@/lib/logger';
-import { LanguageCode, DifficultyLevel, JobStatus, JobType } from '@prisma/client';
+import { LanguageCode } from '@prisma/client';
+import { JobStatus } from '@/lib/ai-engine/types';
 import { CONTENT_HYDRATION_QUEUE } from '@/lib/queues/constants';
 
 export type HydrationEnqueueReason =
@@ -87,9 +88,9 @@ export async function enqueueSubjectHydration(
     const inFlight = await tx.hydrationJob.findFirst({
       where: {
         subjectId,
-        jobType: JobType.syllabus,
+        jobType: 'syllabus',
         hierarchyLevel: 0,
-        status: { in: [JobStatus.pending, JobStatus.running] },
+        status: { in: [JobStatus.Pending, JobStatus.Running] },
       },
       select: { id: true },
       orderBy: { createdAt: 'desc' },
@@ -123,7 +124,7 @@ export async function enqueueSubjectHydration(
     // Rule 4: create HydrationJob + Outbox atomically.
     const created = await tx.hydrationJob.create({
       data: {
-        jobType: JobType.syllabus,
+        jobType: 'syllabus',
         board: boardSlug,
         grade,
         subject: subjectSlug,
@@ -131,8 +132,8 @@ export async function enqueueSubjectHydration(
         rootJobId: null,
         parentJobId: null,
         language,
-        difficulty: DifficultyLevel.medium,
-        status: JobStatus.pending,
+        difficulty: 'medium',
+        status: JobStatus.Pending,
         attempts: 0,
         maxAttempts: 3,
         contentReady: false,
