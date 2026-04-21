@@ -16,6 +16,8 @@
 import { prisma } from '@/lib/prisma'
 import { unlockCosmeticsForStreak } from '@/lib/student/cosmetics'
 import { sendParentMilestoneNotification } from '@/lib/notifications/delivery'
+import { buildMilestoneTemplate } from '@/lib/whatsapp/templates'
+import { milestoneEmailHtml } from '@/lib/email/templates'
 import { logger } from '@/lib/logger'
 
 export interface BadgeDefinition {
@@ -172,24 +174,35 @@ export async function checkSessionBadges(params: {
       const student = await prisma.user.findUnique({ where: { id: studentId }, select: { name: true } })
       const parentLinks = await prisma.parentStudent.findMany({
         where: { studentId, status: 'active' },
-        include: { parent: { select: { id: true, email: true, phone: true, name: true, language: true } } },
+        include: { parent: { select: { id: true, email: true, phone: true, whatsappPhone: true, name: true, language: true } } },
       })
 
       if (parentLinks.length > 0) {
         const studentName = student?.name ?? 'Your child'
         const badgeNames = toAward.map((b) => b.name).join(', ')
-        const subject = `${studentName} earned: ${badgeNames}`
-        const html = `<p>Hi,</p><p>${studentName} earned ${toAward.map((b) => `<strong>${b.name}</strong>`).join(', ')}.</p>`
+        const subject = `${studentName} just earned a new badge!`
+        const baseUrl = process.env.NEXTAUTH_URL ?? 'https://spinzyacademy.com'
+        const dashboardUrl = `${baseUrl}/parent/dashboard`
 
-        const sends = parentLinks.map((pl) =>
-          sendParentMilestoneNotification(pl.parent.id, {
+        const sends = parentLinks.map((pl) => {
+          const brandedHtml = milestoneEmailHtml({
+            parentName: pl.parent.name ?? 'Parent',
+            studentName,
+            milestoneLabel: badgeNames,
+            dashboardUrl,
+          })
+          const waTemplate = pl.parent.whatsappPhone
+            ? buildMilestoneTemplate(pl.parent.name ?? 'Parent', studentName, badgeNames, dashboardUrl)
+            : undefined
+          return sendParentMilestoneNotification(pl.parent.id, {
             email: pl.parent.email ?? undefined,
-            phone: pl.parent.phone ?? undefined,
+            whatsappPhone: pl.parent.whatsappPhone ?? undefined,
+            whatsappTemplate: waTemplate,
             subject,
-            html,
-            meta: { studentId, type: 'milestone', channel: pl.parent.email ? 'email' : pl.parent.phone ? 'sms' : 'unknown', locale: pl.parent.language },
-          }),
-        )
+            html: brandedHtml,
+            meta: { studentId, type: 'milestone', locale: pl.parent.language },
+          })
+        })
 
         await Promise.allSettled(sends)
       }

@@ -83,11 +83,11 @@ export async function precomputeReadiness(): Promise<{ students: number; scores:
     processedStudents++
 
     // Fetch parent links once per student (not once per subject)
-    let parentLinks: Array<{ parent: { id: string; email: string | null; phone: string | null; name: string | null; language: string | null } }> = []
+    let parentLinks: Array<{ parent: { id: string; email: string | null; whatsappPhone: string | null; name: string | null; language: string | null } }> = []
     try {
       parentLinks = await prisma.parentStudent.findMany({
         where: { studentId: user.id, status: 'active' },
-        select: { parent: { select: { id: true, email: true, phone: true, name: true, language: true } } },
+        select: { parent: { select: { id: true, email: true, whatsappPhone: true, name: true, language: true } } },
       })
     } catch (err) {
       logger.warn('precomputeReadiness.parentLinksFailed', { studentId: user.id, error: String(err) })
@@ -142,7 +142,7 @@ async function maybeFireReadinessDrop(
   subjectId: string,
   subjectName: string,
   score: number,
-  parentLinks: Array<{ parent: { id: string; email: string | null; phone: string | null; name: string | null; language: string | null } }>,
+  parentLinks: Array<{ parent: { id: string; email: string | null; whatsappPhone: string | null; name: string | null; language: string | null } }>,
 ): Promise<void> {
   try {
     const redis = getRedis()
@@ -173,10 +173,10 @@ async function maybeFireReadinessDrop(
           const sends = parentLinks.map((pl) =>
             sendParentMilestoneNotification(pl.parent.id, {
               email: pl.parent.email ?? undefined,
-              phone: pl.parent.phone ?? undefined,
+              whatsappPhone: pl.parent.whatsappPhone ?? undefined,
               subject,
               html,
-              meta: { studentId, type: 'milestone', channel: pl.parent.email ? 'email' : pl.parent.phone ? 'sms' : 'unknown', locale: pl.parent.language },
+              meta: { studentId, type: 'milestone', locale: pl.parent.language },
             }),
           )
           void Promise.allSettled(sends)
@@ -200,7 +200,7 @@ async function maybeFireReadinessMilestone(
   subjectId: string,
   subjectName: string,
   score: number,
-  parentLinks: Array<{ parent: { id: string; email: string | null; phone: string | null; name: string | null; language: string | null } }>,
+  parentLinks: Array<{ parent: { id: string; email: string | null; whatsappPhone: string | null; name: string | null; language: string | null } }>,
 ): Promise<void> {
   try {
     const redis = getRedis()
@@ -221,10 +221,10 @@ async function maybeFireReadinessMilestone(
           const sends = parentLinks.map((pl) =>
             sendParentMilestoneNotification(pl.parent.id, {
               email: pl.parent.email ?? undefined,
-              phone: pl.parent.phone ?? undefined,
+              whatsappPhone: pl.parent.whatsappPhone ?? undefined,
               subject,
               html,
-              meta: { studentId, type: 'milestone', channel: pl.parent.email ? 'email' : pl.parent.phone ? 'sms' : 'unknown', locale: pl.parent.language },
+              meta: { studentId, type: 'milestone', locale: pl.parent.language },
             }),
           )
           void Promise.allSettled(sends)

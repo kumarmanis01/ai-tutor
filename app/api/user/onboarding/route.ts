@@ -28,6 +28,7 @@ export async function POST(req: NextRequest) {
       const masked = { ...body } as any;
       if (typeof masked.token === 'string') masked.token = `***${String(masked.token).slice(-8)}`;
       if (typeof masked.phone === 'string') masked.phone = String(masked.phone).replace(/\d(?=\d{4})/g, '*');
+      if (typeof masked.whatsapp_phone === 'string') masked.whatsapp_phone = String(masked.whatsapp_phone).replace(/\d(?=\d{4})/g, '*');
       logger.info('/api/user/onboarding received payload (masked)', { className: 'api.user.onboarding', methodName: 'POST', masked });
       const debugEnabled = String(process.env.DEBUG_ONBOARDING || '').toLowerCase() === '1' || String(process.env.DEBUG_ONBOARDING || '').toLowerCase() === 'true';
       if (debugEnabled) {
@@ -55,6 +56,8 @@ export async function POST(req: NextRequest) {
     const token = typeof body.token === 'string' ? body.token : undefined;
     const rawPhone = typeof body.phone === 'string' ? body.phone.trim() : undefined;
     const phone = rawPhone ? rawPhone.replace(/[^0-9+]/g, '') : undefined;
+    const rawWhatsappPhone = typeof body.whatsapp_phone === 'string' ? body.whatsapp_phone.trim() : undefined;
+    const whatsappPhone = rawWhatsappPhone ? rawWhatsappPhone.replace(/[^0-9+]/g, '') : undefined;
     const parentEmailRaw = typeof body.parent_email === 'string' ? body.parent_email.trim() : (typeof body.parentEmail === 'string' ? body.parentEmail.trim() : undefined);
     const parentEmail = parentEmailRaw && parentEmailRaw.includes('@') ? parentEmailRaw : undefined;
     const schoolNameRaw = typeof body.school_name === 'string' ? body.school_name.trim() : undefined;
@@ -135,6 +138,7 @@ export async function POST(req: NextRequest) {
     if (token) updates.lastWidgetToken = token;
     if (parentEmail !== undefined) updates.parentEmail = parentEmail || null;
     if (schoolName !== undefined) updates.schoolName = schoolName;
+    // whatsappPhone is immutable after first save -- only written when not already set (enforced below after DB lookup)
 
     // Avoid logging user-supplied free-text (school names) in plain logs.
     // Mask schoolName so operator logs don't retain school identifiers.
@@ -168,10 +172,14 @@ export async function POST(req: NextRequest) {
         userId = resolvedUserId as string;
       }
 
-      // grade is immutable after first save -- never accept from client
-      const gradeRow = existingById ?? await prisma.user.findUnique({ where: { id: userId }, select: { grade: true } }).catch(() => null);
+      // grade/board immutable after first save -- strip from all PATCH handlers
+      const gradeRow = existingById ?? await prisma.user.findUnique({ where: { id: userId }, select: { grade: true, whatsappPhone: true } }).catch(() => null);
       if (gradeRow?.grade != null) {
         delete updates.grade
+      }
+      // whatsappPhone immutable after first save -- only write when not already set
+      if (whatsappPhone && !(gradeRow as any)?.whatsappPhone) {
+        updates.whatsappPhone = whatsappPhone;
       }
 
       updatedUser = await prisma.user.update({ where: { id: userId }, data: updates });

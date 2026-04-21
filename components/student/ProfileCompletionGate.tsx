@@ -68,12 +68,12 @@ function getMandatorySubjects(board: string, grade: number): string[] {
 
 // ── Step helpers ───────────────────────────────────────────────────────────────
 
-// Steps in order (includes optional `schoolName` between `subjects` and parent steps).
+// Steps in order (includes optional `schoolName` and `whatsappPhone` between `subjects` and parent steps).
 // Parent steps are conditional on age < DPDP_MINOR_AGE.
-type StepKey = 'language' | 'board' | 'grade' | 'subjects' | 'schoolName' | 'parentEmail' | 'parentPhone';
+type StepKey = 'language' | 'board' | 'grade' | 'subjects' | 'schoolName' | 'whatsappPhone' | 'parentEmail' | 'parentPhone';
 
 function buildSteps(showParentEmail: boolean, showParentPhone: boolean): StepKey[] {
-  const steps: StepKey[] = ['language', 'board', 'grade', 'subjects', 'schoolName'];
+  const steps: StepKey[] = ['language', 'board', 'grade', 'subjects', 'schoolName', 'whatsappPhone'];
   if (showParentEmail) steps.push('parentEmail');
   if (showParentPhone) steps.push('parentPhone');
   return steps;
@@ -94,6 +94,8 @@ function getInitialStep(
     board: !iv.board,
     grade: !iv.grade,
     subjects: !Array.isArray(iv.subjects) || iv.subjects.length === 0,
+    // whatsappPhone is optional -- never blocks step progression
+    whatsappPhone: false,
     parentEmail: !iv.parentEmail,
     parentPhone: !iv.parentPhoneVerified,
   };
@@ -131,6 +133,10 @@ export default function ProfileCompletionGate({
   const [grade, setGrade] = useState(() => parseGrade(initialValues?.grade));
   const [subjects, setSubjects] = useState<string[]>(initialValues?.subjects ?? []);
   const [schoolName, setSchoolName] = useState(initialValues?.schoolName ?? '');
+  // whatsappPhone is immutable after first save. If already set, we show a locked display.
+  const [whatsappPhone, setWhatsappPhone] = useState(initialValues?.whatsappPhone ?? '');
+  const whatsappPhoneLocked = Boolean(initialValues?.whatsappPhone);
+  const [whatsappPhoneError, setWhatsappPhoneError] = useState('');
   const [parentEmail, setParentEmail] = useState(initialValues?.parentEmail ?? '');
   const [parentEmailError, setParentEmailError] = useState('');
   const [parentPhone, setParentPhone] = useState(initialValues?.parentPhone ?? '');
@@ -166,7 +172,12 @@ export default function ProfileCompletionGate({
     if (currentStepKey === 'board') return board !== '';
     if (currentStepKey === 'grade') return grade > 0;
     if (currentStepKey === 'subjects') return subjects.length > 0;
-    if (currentStepKey === 'schoolName') return true; // optional field
+    if (currentStepKey === 'schoolName') return true; // optional
+    if (currentStepKey === 'whatsappPhone') {
+      // Optional: empty is fine. If filled, must be a plausible phone number.
+      if (!whatsappPhone.trim()) return true
+      return whatsappPhoneError === '' && /^\+?\d{7,15}$/.test(whatsappPhone.replace(/[\s\-()]/g, ''))
+    }
     if (currentStepKey === 'parentEmail') {
       if (!parentEmailRequired) return true; // optional
       return parentEmail.trim().includes('@');
@@ -257,6 +268,10 @@ export default function ProfileCompletionGate({
         subjects,
       };
       if (schoolName.trim()) payload.school_name = schoolName.trim();
+      // whatsappPhone is immutable after first save; only include when not already locked
+      if (!whatsappPhoneLocked && whatsappPhone.trim()) {
+        payload.whatsapp_phone = whatsappPhone.trim();
+      }
       if (showParentEmail && parentEmail.trim()) {
         payload.parent_email = parentEmail.trim();
       }
@@ -324,6 +339,7 @@ export default function ProfileCompletionGate({
       value: subjects.length > 0 ? `${subjects.length} subject${subjects.length !== 1 ? 's' : ''}` : '',
     },
     schoolName: { label: 'School', value: schoolName.trim() !== '' ? schoolName.trim() : '' },
+    whatsappPhone: { label: 'WhatsApp', value: whatsappPhone.trim() !== '' ? 'Added' : '' },
     parentEmail: { label: 'Parent email', value: parentEmail ? 'Added' : '' },
     parentPhone: { label: 'Parent phone', value: parentPhoneSubStep === 'verified' ? 'Verified' : '' },
   };
@@ -622,6 +638,69 @@ export default function ProfileCompletionGate({
                   className="w-full min-h-[44px] rounded-xl border-2 border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-2 text-sm text-gray-900 dark:text-gray-100 placeholder-gray-400 focus:outline-none focus:border-[#534AB7] dark:focus:border-indigo-400 transition-colors"
                 />
               </div>
+            </section>
+          )}
+
+          {/* ── WhatsApp Number ───────────────────────────────────────── */}
+          {currentStepKey === 'whatsappPhone' && (
+            <section>
+              <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100 mb-1">
+                WhatsApp number for updates
+              </h3>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+                Optional -- we send progress nudges and weekly reports over WhatsApp.
+                This cannot be changed after saving.
+              </p>
+
+              {whatsappPhoneLocked ? (
+                <div className="flex items-center gap-3 rounded-xl bg-[#EAF3DE] dark:bg-[#1D9E75]/10 px-4 py-3">
+                  <span className="text-xl">💬</span>
+                  <div>
+                    <p className="text-sm font-semibold text-[#1D9E75] dark:text-green-400">WhatsApp number saved</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">{whatsappPhone}</p>
+                  </div>
+                </div>
+              ) : (
+                <div>
+                  <label
+                    htmlFor="gate-whatsapp-phone"
+                    className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+                  >
+                    WhatsApp number
+                    <span className="text-gray-400 dark:text-gray-500 ml-1 text-xs">(optional)</span>
+                  </label>
+                  <input
+                    id="gate-whatsapp-phone"
+                    type="tel"
+                    value={whatsappPhone}
+                    onChange={(e) => {
+                      const val = e.target.value
+                      setWhatsappPhone(val)
+                      if (!val.trim()) {
+                        setWhatsappPhoneError('')
+                      } else {
+                        const cleaned = val.replace(/[\s\-()]/g, '')
+                        setWhatsappPhoneError(
+                          /^\+?\d{7,15}$/.test(cleaned)
+                            ? ''
+                            : 'Enter a valid number with country code (e.g. +91 9876543210)'
+                        )
+                      }
+                    }}
+                    placeholder="+91 9876543210"
+                    maxLength={16}
+                    className="w-full min-h-[44px] rounded-xl border-2 border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-2 text-sm text-gray-900 dark:text-gray-100 placeholder-gray-400 focus:outline-none focus:border-[#534AB7] dark:focus:border-indigo-400 transition-colors"
+                  />
+                  {whatsappPhoneError && (
+                    <p role="alert" className="mt-1 text-xs text-[#E24B4A] dark:text-red-400">
+                      {whatsappPhoneError}
+                    </p>
+                  )}
+                  <p className="mt-2 text-[11px] text-gray-400 dark:text-gray-500">
+                    Enter with country code, e.g. +91 for India. Once saved, this cannot be changed.
+                  </p>
+                </div>
+              )}
             </section>
           )}
 

@@ -21,12 +21,20 @@ export interface AudienceCounts {
   paid_subscribers: number
 }
 
+type ChannelType = 'push' | 'email' | 'whatsapp'
+
 const AUDIENCE_LABELS: Record<AudienceKey, string> = {
   all_students:    'All students',
   inactive_7d:     'Inactive 7+ days',
   grade_10:        'Grade 10 students',
   no_diagnostic:   'No diagnostic yet',
   paid_subscribers: 'Paid subscribers',
+}
+
+const CHANNEL_META: Record<ChannelType, { label: string; icon: string; note: string }> = {
+  push:     { label: 'Push',     icon: '🔔', note: 'Requires app installed + notifications enabled' },
+  email:    { label: 'Email',    icon: '✉️',  note: 'Delivered to registered email address' },
+  whatsapp: { label: 'WhatsApp', icon: '💬', note: 'Delivered to WhatsApp number collected at onboarding' },
 }
 
 // Maps our named audiences to the existing broadcast API format
@@ -42,7 +50,7 @@ function audienceToApiPayload(audience: AudienceKey) {
 
 export function NotificationComposer({ counts }: { counts: AudienceCounts }) {
   const [audience, setAudience] = useState<AudienceKey>('all_students')
-  const [channel, setChannel] = useState<'push' | 'email'>('push')
+  const [channel, setChannel] = useState<ChannelType>('email')
   const [title, setTitle] = useState('')
   const [message, setMessage] = useState('')
   const [preview, setPreview] = useState(false)
@@ -109,26 +117,39 @@ export function NotificationComposer({ counts }: { counts: AudienceCounts }) {
           Channel
         </label>
         <div className="flex gap-2">
-          {(['push', 'email'] as const).map(c => (
+          {(Object.keys(CHANNEL_META) as ChannelType[]).map(c => (
             <button
               key={c}
               onClick={() => setChannel(c)}
-              className={`flex-1 py-2 text-[12px] rounded-xl min-h-[36px] font-medium transition-colors ${
+              className={`flex-1 py-2 text-[11px] rounded-xl min-h-[36px] font-medium transition-colors ${
                 channel === c
                   ? 'bg-[#534AB7] text-white'
                   : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300'
               }`}
             >
-              {c === 'push' ? 'Push notification' : 'Email'}
+              <span className="mr-1">{CHANNEL_META[c].icon}</span>
+              {CHANNEL_META[c].label}
             </button>
           ))}
         </div>
+        <p className="mt-1.5 text-[10px] text-gray-400 dark:text-gray-500">
+          {CHANNEL_META[channel].note}
+        </p>
+        {channel === 'whatsapp' && (
+          <div className="mt-2 rounded-lg bg-[#EAF3DE] dark:bg-[#1D9E75]/10 px-3 py-2">
+            <p className="text-[10px] text-[#27500A] dark:text-green-400 font-medium">
+              WhatsApp reaches only users who provided a number at onboarding.
+              Admin broadcasts are sent as free-form text messages and typically deliver only within WhatsApp&apos;s
+              24-hour customer-service window. Outside that window, a pre-approved template message is required.
+            </p>
+          </div>
+        )}
       </div>
 
       {/* Title */}
       <div>
         <label className="block text-[11px] font-medium text-gray-600 dark:text-gray-400 mb-1.5">
-          Title
+          Title {channel === 'whatsapp' && <span className="text-gray-400">(used as message heading on WhatsApp)</span>}
         </label>
         <input
           value={title}
@@ -158,10 +179,26 @@ export function NotificationComposer({ counts }: { counts: AudienceCounts }) {
       {preview && title && message && (
         <div className="rounded-xl border border-[#534AB7]/30 bg-[#EEEDFE] p-4">
           <p className="text-[10px] font-semibold text-[#534AB7] mb-1 uppercase tracking-wide">
-            Preview ({channel})
+            Preview ({CHANNEL_META[channel].label})
           </p>
-          <p className="text-[12px] font-semibold text-gray-800">{title}</p>
-          <p className="text-[11px] text-gray-600 mt-0.5">{message}</p>
+          {channel === 'email' ? (
+            <>
+              <p className="text-[12px] font-semibold text-gray-800">{title}</p>
+              <p className="text-[11px] text-gray-600 mt-0.5 whitespace-pre-wrap">{message}</p>
+              <p className="text-[10px] text-gray-400 mt-2">Wrapped in Spinzy brand email template on delivery.</p>
+            </>
+          ) : channel === 'whatsapp' ? (
+            <div className="bg-white rounded-lg p-3 text-[12px] font-sans">
+              <p className="font-semibold text-gray-800">{title}</p>
+              <p className="text-gray-600 mt-0.5 whitespace-pre-wrap">{message}</p>
+              <p className="text-[10px] text-gray-400 mt-1.5">-- Spinzy Academy</p>
+            </div>
+          ) : (
+            <>
+              <p className="text-[12px] font-semibold text-gray-800">{title}</p>
+              <p className="text-[11px] text-gray-600 mt-0.5">{message}</p>
+            </>
+          )}
         </div>
       )}
 

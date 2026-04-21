@@ -13,6 +13,8 @@ export interface StudentProfileData {
   parentEmail: string | null
   parentPhone: string | null
   parentPhoneVerified: boolean
+  // WhatsApp number for notifications. Immutable after first save.
+  whatsappPhone: string | null
 }
 
 export const EMPTY_PROFILE_DATA: StudentProfileData = {
@@ -25,6 +27,7 @@ export const EMPTY_PROFILE_DATA: StudentProfileData = {
   parentEmail: null,
   parentPhone: null,
   parentPhoneVerified: false,
+  whatsappPhone: null,
 }
 
 export interface ProfileCompletenessResult {
@@ -99,6 +102,7 @@ export async function checkProfileCompleteness(studentId: string): Promise<Profi
         parentEmail: true,
         parentPhone: true,
         parentPhoneVerifiedAt: true,
+        whatsappPhone: true,
       },
     })
 
@@ -177,6 +181,7 @@ export async function checkProfileCompleteness(studentId: string): Promise<Profi
         parentEmail: user.parentEmail ?? null,
         parentPhone: user.parentPhone ?? null,
         parentPhoneVerified: user.parentPhoneVerifiedAt !== null,
+        whatsappPhone: user.whatsappPhone ?? null,
       },
     }
   } catch {

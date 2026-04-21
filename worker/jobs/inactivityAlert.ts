@@ -24,6 +24,8 @@ import { UserRole } from '@prisma/client'
 import { logger } from '@/lib/logger'
 import { getRedis } from '@/lib/redis'
 import { sendParentMilestoneNotification } from '@/lib/notifications/delivery'
+import { buildInactivityTemplate } from '@/lib/whatsapp/templates'
+import { inactivityNudgeHtml } from '@/lib/email/templates'
 import { generateMuteToken } from '@/lib/parent/signedLink'
 import { getLocalDateString, startOfLocalDayUtc } from '@/lib/engagement/timezone'
 import { t } from '@/lib/i18n'
@@ -91,6 +93,7 @@ export async function runInactivityAlerts(): Promise<number> {
                 id: true,
                 email: true,
                 phone: true,
+                whatsappPhone: true,
                 name: true,
                 language: true,
                 parentProfile: {
@@ -108,7 +111,7 @@ export async function runInactivityAlerts(): Promise<number> {
       for (const link of links) {
         const parent = link.parent
         // Skip if parent has no contact methods
-        if (!parent?.email && !parent?.phone) continue
+        if (!parent?.email && !parent?.whatsappPhone) continue
 
         // Respect parent's digest/notification opt-out and inactivity-specific opt-out
         const parentProfile = (parent as any)?.parentProfile ?? {}
@@ -196,9 +199,35 @@ export async function runInactivityAlerts(): Promise<number> {
             ? ` <br/><small>Mute alerts for: ${muteLinks.map((m) => `<a href="${m.url}">${m.days} days</a>`).join(' | ')}</small>`
             : ''
 
-          const bodyHtml = t('inactivity.body_html', { parentName: parent.name ?? 'Parent', studentName: s.name, days: String(parentThresholdDays), deepLink }, locale) + muteHtml
+          const lastStudiedLabel = s.lastSessionDate
+            ? new Date(s.lastSessionDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })
+            : ''
+          const brandedHtml = inactivityNudgeHtml({
+            parentName: parent.name ?? 'Parent',
+            studentName: s.name ?? 'your child',
+            inactiveDays: parentThresholdDays,
+            lastStudiedLabel,
+            dashboardUrl: deepLink,
+          }) + muteHtml
 
-          await sendParentMilestoneNotification(parent.id, { email: parent.email ?? undefined, phone: parent.phone ?? undefined, subject, html: bodyHtml, meta: { studentId: s.id, type: 'inactivity', channel: parent.email ? 'email' : parent.phone ? 'sms' : 'unknown', locale } })
+          const waTemplate = parent.whatsappPhone
+            ? buildInactivityTemplate(
+                parent.name ?? 'Parent',
+                s.name ?? 'your child',
+                parentThresholdDays,
+                deepLink,
+              )
+            : undefined
+
+          await sendParentMilestoneNotification(parent.id, {
+            email: parent.email ?? undefined,
+            whatsappPhone: parent.whatsappPhone ?? undefined,
+            whatsappTemplate: waTemplate,
+            subject,
+            html: brandedHtml,
+            text: t('inactivity.body_html', { parentName: parent.name ?? 'Parent', studentName: s.name, days: String(parentThresholdDays), deepLink }, locale),
+            meta: { studentId: s.id, type: 'inactivity', locale },
+          })
 
           sent++
         } catch (err) {

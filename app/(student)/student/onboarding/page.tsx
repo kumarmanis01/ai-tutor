@@ -34,7 +34,7 @@ export default async function StudentOnboardingPage() {
 
   const user = await prisma.user.findUnique({
     where: { id: userId },
-    select: { board: true, grade: true, language: true, subjects: true, age: true, parentEmail: true, parentPhone: true, parentPhoneVerifiedAt: true },
+    select: { board: true, grade: true, language: true, subjects: true, age: true, parentEmail: true, parentPhone: true, parentPhoneVerifiedAt: true, whatsappPhone: true },
   });
 
   if (user && isProfileComplete(user)) {
@@ -51,6 +51,7 @@ export default async function StudentOnboardingPage() {
     parentEmail: user?.parentEmail ?? null,
     parentPhone: user?.parentPhone ?? null,
     parentPhoneVerified: user?.parentPhoneVerifiedAt !== null && user?.parentPhoneVerifiedAt !== undefined,
+    whatsappPhone: user?.whatsappPhone ?? null,
   };
 
   return <OnboardingGateShell initialValues={initialValues} />;
