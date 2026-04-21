@@ -11,14 +11,25 @@
  *
  * EDIT LOG:
  * - 2026-04-16T00:00:00Z | copilot | fix prisma mocking (use jest.doMock) to prevent timeout
+ * - 2026-04-21T00:00:00Z | staff-engineer | Task D: mock analytics queue; add allowlist tests
  */
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
+
+// Mock the analytics queue so tests never require a live Redis connection.
+// getAnalyticsQueue returns null -> endpoint falls back to direct DB write.
+jest.mock('@/lib/queues/analyticsQueue', () => ({
+  getAnalyticsQueue: jest.fn().mockReturnValue(null),
+}))
 
 describe('Analytics event ingestion', () => {
   beforeEach(() => {
     jest.resetModules()
     jest.clearAllMocks()
+    // Re-apply queue mock after module reset
+    jest.mock('@/lib/queues/analyticsQueue', () => ({
+      getAnalyticsQueue: jest.fn().mockReturnValue(null),
+    }))
   })
 
   it('accepts a batch of valid events and returns 202', async () => {
@@ -98,4 +109,3 @@ describe('Analytics event ingestion', () => {
     }
   })
 })
-
