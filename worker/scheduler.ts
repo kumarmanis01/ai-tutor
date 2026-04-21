@@ -37,6 +37,7 @@ import { runWeeklyRatingAggregation } from './jobs/weeklyRatingAggregation.js';
 import { runDailyLatencyReport } from './jobs/dailyLatencyReport.js';
 import { runDailyQuestionGenMetrics } from './jobs/dailyQuestionGenMetrics.js';
 import { runDiagnosticReadinessCheck } from './jobs/diagnosticReadinessCheck.js';
+import { aggregateDay } from './services/analyticsAggregator.js';
 import { prisma } from '../lib/prisma.js';
 import { sendPushSafe } from '../lib/push/send.js';
 import { PUSH_NOTIFICATIONS } from '../lib/push/notifications.js';
@@ -57,6 +58,7 @@ const MONTHLY_INTERVAL_MS = 30 * 24 * 60 * 60 * 1000; // approx 30 days
 const WEEKLY_RATING_INTERVAL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
 const DAILY_LATENCY_INTERVAL_MS = 24 * 60 * 60 * 1000; // 24 hours
 const DAILY_QUESTION_GEN_INTERVAL_MS = 24 * 60 * 60 * 1000; // 24 hours
+const ANALYTICS_AGGREGATE_INTERVAL_MS = 24 * 60 * 60 * 1000; // 24 hours
 
 /**
  * Calculate milliseconds until next scheduled time (2 AM UTC)
@@ -527,6 +529,26 @@ async function runDailyQuestionGenMetricsJob() {
 }
 
 /**
+ * Daily analytics aggregation: rolls up AnalyticsEvent rows into
+ * AnalyticsDailyAggregate. Runs at 03:30 UTC (9 AM IST) for the previous day.
+ */
+async function runAnalyticsAggregatorJob() {
+  try {
+    logger.info('scheduler.analyticsAggregator.starting')
+    // Aggregate yesterday so all events for the day are fully ingested
+    const yesterday = new Date()
+    yesterday.setUTCDate(yesterday.getUTCDate() - 1)
+    const courses = await aggregateDay(yesterday)
+    logger.info('scheduler.analyticsAggregator.completed', { coursesProcessed: courses.length })
+  } catch (error) {
+    logger.error('scheduler.analyticsAggregator.error', {
+      error: error instanceof Error ? error.message : String(error),
+    })
+  }
+  setTimeout(runAnalyticsAggregatorJob, ANALYTICS_AGGREGATE_INTERVAL_MS)
+}
+
+/**
  * Start the scheduler
  */
 export async function startScheduler() {
@@ -595,6 +617,11 @@ export async function startScheduler() {
   const delayQuestionGenMetrics = msUntilNextRun(1) + 30 * 60 * 1000
   logger.info('scheduler.scheduled.dailyQuestionGenMetrics', { firstRun: new Date(Date.now() + delayQuestionGenMetrics).toISOString() })
   setTimeout(runDailyQuestionGenMetricsJob, delayQuestionGenMetrics)
+
+  // Analytics daily aggregation: 03:30 UTC (9 AM IST) -- aggregate previous day's events
+  const delayAnalyticsAggregate = msUntilNextRun(3) + 30 * 60 * 1000
+  logger.info('scheduler.scheduled.analyticsAggregator', { firstRun: new Date(Date.now() + delayAnalyticsAggregate).toISOString() })
+  setTimeout(runAnalyticsAggregatorJob, delayAnalyticsAggregate)
 
   logger.info('scheduler.started');
 }
