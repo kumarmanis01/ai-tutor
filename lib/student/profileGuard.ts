@@ -181,7 +181,7 @@ export async function checkProfileCompleteness(studentId: string): Promise<Profi
         parentEmail: user.parentEmail ?? null,
         parentPhone: user.parentPhone ?? null,
         parentPhoneVerified: user.parentPhoneVerifiedAt !== null,
-        whatsappPhone: (user as any).whatsappPhone ?? null,
+        whatsappPhone: user.whatsappPhone ?? null,
       },
     }
   } catch {
