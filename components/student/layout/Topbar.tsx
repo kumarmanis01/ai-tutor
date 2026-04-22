@@ -13,6 +13,8 @@
  * Desktop (md+): topbar is the only persistent navigation -- bottom nav is hidden.
  * Mobile:        topbar shows brand + user stats; bottom nav handles page navigation.
  */
+// EDIT LOG:
+// - 2026-04-22T14:30:00Z | copilot | feat(theme): replace hard-coded primary color usages with CSS tokens
 
 import React, { useState, useCallback, useRef } from 'react';
 import Link from 'next/link';
@@ -122,7 +124,7 @@ export default function Topbar() {
                 onClick={() => setStreakOpen((o) => !o)}
                 aria-label={`${streak} day streak -- tap for details`}
                 aria-expanded={streakOpen}
-                className="inline-flex items-center gap-1 rounded-full bg-orange-100 dark:bg-orange-900/40 px-2.5 py-1 text-xs font-semibold text-orange-700 dark:text-orange-300 min-h-[44px] min-w-[44px] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#534AB7]"
+                className="inline-flex items-center gap-1 rounded-full bg-orange-100 dark:bg-orange-900/40 px-2.5 py-1 text-xs font-semibold text-orange-700 dark:text-orange-300 min-h-[44px] min-w-[44px] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)]"
               >
                 🔥 {streak}
                 {shieldAvailable && (
@@ -138,7 +140,7 @@ export default function Topbar() {
 
           {/* Level badge */}
           <span
-            className="inline-flex items-center rounded-full bg-[#534AB7]/10 dark:bg-[#534AB7]/20 px-2.5 py-1 text-xs font-semibold text-[#534AB7] dark:text-indigo-300"
+            className="inline-flex items-center rounded-full bg-[rgba(var(--color-primary-rgb),0.1)] dark:bg-[rgba(var(--color-primary-rgb),0.2)] px-2.5 py-1 text-xs font-semibold text-[var(--color-primary)] dark:text-indigo-300"
             aria-label={`Level ${level}`}
           >
             Lv {level}
@@ -151,7 +153,7 @@ export default function Topbar() {
             aria-label="My profile"
           >
             <span
-              className="w-8 h-8 rounded-full bg-[#534AB7] flex items-center justify-center"
+              className="w-8 h-8 rounded-full bg-[var(--color-primary)] flex items-center justify-center"
               style={{ outline: `3px solid ${getTierColor(level)}`, outlineOffset: '2px' }}
             >
               <span className="text-white font-semibold text-xs leading-none">{initial}</span>
@@ -166,10 +168,10 @@ export default function Topbar() {
             aria-label="Open profile"
             className="md:hidden p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-800 min-h-[44px] min-w-[44px]"
           >
-            <span
-              className="w-8 h-8 rounded-full bg-[#534AB7] flex items-center justify-center"
-              style={{ outline: `3px solid ${getTierColor(level)}`, outlineOffset: '2px' }}
-            >
+              <span
+                className="w-8 h-8 rounded-full bg-[var(--color-primary)] flex items-center justify-center"
+                style={{ outline: `3px solid ${getTierColor(level)}`, outlineOffset: '2px' }}
+              >
               <span className="text-white font-semibold text-xs leading-none">{initial}</span>
             </span>
           </button>
