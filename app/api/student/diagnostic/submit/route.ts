@@ -27,6 +27,7 @@ import { computeSessionTheta } from '@/lib/diagnostics/selector';
 import { thetaToPlacement } from '@/lib/irt/irt';
 import { cancelDiagnosticAutoSubmit } from '@/jobs/diagnosticAutoSubmit';
 import { diagnosticConfig } from '@/lib/config';
+import { getAnalyticsQueue } from '@/lib/queues/analyticsQueue';
 
 interface AnswerInput {
   questionId: string;
@@ -252,6 +253,37 @@ export async function POST(req: NextRequest) {
       }
     } catch {
       // non-fatal: placement defaults to 'at'
+    }
+
+    // Analytics: emit `diagnostic_completed` (best-effort)
+    try {
+      const analyticsQueue = getAnalyticsQueue();
+      const totalQuestions = answers.length;
+      const answeredCount = answerEventData.length;
+      const correctCount = answerEventData.filter((a) => !!a.isCorrect).length;
+      const metadata = {
+        subjectId,
+        sessionId: diagnosticSessionId,
+        totalQuestions,
+        answeredCount,
+        correctCount,
+        gamingFlag: !!gamingFlag,
+        placement,
+      } as const;
+
+      if (analyticsQueue) {
+        await analyticsQueue.add('analytics.ingest', {
+          eventType: 'diagnostic_completed',
+          userId,
+          courseId: null,
+          lessonIdx: null,
+          metadata,
+        });
+      } else {
+        await prisma.analyticsEvent.create({ data: { eventType: 'diagnostic_completed', userId, courseId: null, lessonIdx: null, metadata } });
+      }
+    } catch (analyticsErr) {
+      try { logger.warn('diagnostic.submit: analytics emit failed', { className: 'DiagnosticSubmitAPI', methodName: 'POST', error: String(analyticsErr) }); } catch {}
     }
 
     const res = NextResponse.json({ success: true, subjectId, placement });
