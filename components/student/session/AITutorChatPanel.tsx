@@ -1,25 +1,23 @@
-'use client';
-
-/**
- * AITutorChatPanel -- v2
+'/**
+ * FILE OBJECTIVE:
+ * - Render the AI tutor chat panel including stage strip, message history, input bar, and hint controls.
  *
- * Full-height flex-column layout:
- *   ① Session header  -- topic name + stage badge (sticky)
- *   ② Stage strip     -- 7 chips, scrollable, done/active/pending states
- *   ③ Chat history    -- flex-1, overflow-y-auto, smooth scroll to bottom
- *   ④ Hint bar        -- hidden during non-practice stages
- *   ⑤ Inactivity prompt -- pulsing banner after 90s silence
- *   ⑥ SSE error banner -- reconnecting spinner / refresh fallback
- *   ⑦ Input bar       -- auto-resize textarea + circular send button (sticky)
+ * LINKED UNIT TEST:
+ * - tests/unit/components/student/session/AITutorChatPanel.spec.tsx
  *
- * Copy rules: no "broke/missed/failed" -- forward-looking tone only.
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/COPILOT_GUARDRAILS.md
+ * - .github/copilot-instructions.md
  *
  * EDIT LOG:
  * - 2026-04-07 | claude | fix: add object-cover to Vidya avatar image to prevent stretching in chat messages
  * - 2026-04-13 | copilot | feat(F-STU-011): add session-level style selector (persist & immediate re-explain)
  * - 2026-04-14 | copilot | fix: add onVisualHint to props destructuring (was referenced but not bound,
  *   causing ReferenceError / Jest worker crash in AITutorChatPanel.spec.tsx)
+ * - 2026-04-22 | copilot | chore(theme): PoC replace high-impact hard-coded hex values with CSS variable tokens
  */
+
+'use client';
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
@@ -228,13 +226,13 @@ function StageStrip({ currentStage }: { currentStage: string }) {
   const activeIdx = getStageIndex(currentStage);
   return (
     <div className="v2-strip flex gap-1.5 overflow-x-auto px-3 pb-2 pt-1">
-      {STAGE_ORDER.map((s, i) => {
+        {STAGE_ORDER.map((s, i) => {
         const done = i < activeIdx;
         const active = i === activeIdx;
         const cls = done
-          ? 'bg-[#EAF3DE] text-[#1D9E75] dark:bg-[#1D9E75]/15 dark:text-green-300'
+          ? 'bg-[var(--color-background)] text-[var(--color-success)] dark:bg-[var(--color-success)]/15 dark:text-[var(--color-success)]'
           : active
-          ? 'bg-[#534AB7] text-white'
+          ? 'bg-[var(--color-primary)] text-[var(--color-surface)]'
           : 'bg-gray-100 dark:bg-slate-800 text-gray-400 dark:text-gray-500';
         return (
           <span
@@ -305,7 +303,7 @@ function AiMessageBubble({
           </span>
         </div>
       )}
-      <div className="max-w-[85%] rounded-[4px_12px_12px_12px] bg-[#EEEDFE] px-3 py-2.5 text-sm leading-relaxed text-[#3C3489] dark:bg-[#534AB7]/20 dark:text-[#EEEDFE] whitespace-pre-wrap break-words">
+      <div className="max-w-[85%] rounded-[4px_12px_12px_12px] bg-[var(--color-background)] px-3 py-2.5 text-sm leading-relaxed text-[var(--color-primary)] dark:bg-[var(--color-primary)]/20 dark:text-[var(--color-surface)] whitespace-pre-wrap break-words">
         {isMisconception && parsedMisconception ? (
           <MisconceptionCard artifact={parsedMisconception} />
         ) : looksLikeJson ? (
@@ -314,7 +312,7 @@ function AiMessageBubble({
           (msg.content || '\u200B') /* zero-width space keeps bubble visible when empty */
         )}
         {msg.isStreaming && (
-          <span className="v2-cursor text-[#534AB7]/50 dark:text-[#EEEDFE]/50">|</span>
+          <span className="v2-cursor text-[var(--color-primary)] dark:text-[var(--color-surface)]">|</span>
         )}
       </div>
     </div>
@@ -324,7 +322,7 @@ function AiMessageBubble({
 function StudentMessageBubble({ msg }: { msg: ChatMessage }) {
   return (
     <div className="v2-msg-appear mb-3 flex justify-end">
-      <div className="max-w-[75%] rounded-[12px_4px_12px_12px] bg-[#534AB7] px-3 py-2.5 text-sm leading-relaxed text-white whitespace-pre-wrap break-words">
+      <div className="max-w-[75%] rounded-[12px_4px_12px_12px] bg-[var(--color-primary)] px-3 py-2.5 text-sm leading-relaxed text-[var(--color-surface)] whitespace-pre-wrap break-words">
         {msg.content}
       </div>
     </div>

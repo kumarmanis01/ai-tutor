@@ -1,3 +1,45 @@
+/**
+ * FILE OBJECTIVE:
+ * - Basic unit test for `AITutorChatPanel` to ensure the component renders without crashing.
+ *
+ * LINKED UNIT TEST:
+ * - tests/unit/components/student/session/AITutorChatPanel.spec.tsx
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/COPILOT_GUARDRAILS.md
+ * - .github/copilot-instructions.md
+ *
+ * EDIT LOG:
+ * - 2026-04-22 | copilot | add basic render test for AITutorChatPanel PoC
+ */
+
+import React from 'react';
+import { render } from '@testing-library/react';
+
+// Mock child components and heavy deps to keep test deterministic
+jest.mock('@/components/student/session/VisualHintRenderer', () => ({ __esModule: true, default: () => <div data-testid="visual-hint" /> }));
+jest.mock('@/components/student/session/MisconceptionCard', () => ({ __esModule: true, default: () => <div data-testid="misconception" /> }));
+jest.mock('next/image', () => ({ __esModule: true, default: (props: any) => <img {...props} /> }));
+jest.mock('@/lib/logger', () => ({ logger: { info: () => {}, warn: () => {}, error: () => {} } }));
+
+import { AITutorChatPanel } from '@/components/student/session/AITutorChatPanel';
+
+describe('AITutorChatPanel (PoC)', () => {
+  it('renders without crashing', () => {
+    const { container } = render(
+      <AITutorChatPanel
+        sessionId="s1"
+        conceptName="Quadratic Equations"
+        subjectName="Mathematics"
+        initialStage="HOOK"
+        isAITutorEnabled={true}
+        onSessionComplete={() => {}}
+      />
+    );
+
+    expect(container).toBeTruthy();
+  });
+});
 /** @jest-environment jsdom */
 import React from 'react'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
