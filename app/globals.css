@@ -5,7 +5,7 @@
  *   to ensure they are available to layouts that import `styles/index.css`.
  *
  * LINKED UNIT TEST:
- * - tests/unit/components/loaders/FullScreenLoader.spec.ts
+ * - tests/unit/components/loaders/FullScreenLoader.spec.tsx
  *
  * COPILOT INSTRUCTIONS FOLLOWED:
  * - /docs/COPILOT_GUARDRAILS.md
