@@ -16,6 +16,7 @@ import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { logger } from '@/lib/logger';
 import { toast } from '@/lib/toast';
+import { DotPulseLoader, SpinnerLoader, CardSkeleton } from '@/components/UI/loaders';
 // Charts are lazy-loaded from components/parent via dynamic imports
 
 const CLASS_NAME = 'ParentDashboardClient';
@@ -26,11 +27,11 @@ import { LOCAL_STRINGS, predictMarkRange } from '@/lib/parent/dashboardHelpers';
 // Lazy-load heavy charts to reduce initial bundle size / improve load time
 const WeeklyTrendChart = dynamic(() => import('@/components/parent/WeeklyTrendChart'), {
   ssr: false,
-  loading: () => <div className="h-64 animate-pulse bg-gray-100 rounded" />,
+  loading: () => <CardSkeleton />,
 });
-const SubjectRadar = dynamic(() => import('@/components/parent/SubjectRadar'), { ssr: false, loading: () => <div className="h-72 animate-pulse bg-gray-100 rounded" /> });
-const MasteryPie = dynamic(() => import('@/components/parent/MasteryPie'), { ssr: false, loading: () => <div className="h-64 animate-pulse bg-gray-100 rounded" /> });
-const AttentionBar = dynamic(() => import('@/components/parent/AttentionBar'), { ssr: false, loading: () => <div className="h-56 animate-pulse bg-gray-100 rounded" /> });
+const SubjectRadar = dynamic(() => import('@/components/parent/SubjectRadar'), { ssr: false, loading: () => <CardSkeleton /> });
+const MasteryPie = dynamic(() => import('@/components/parent/MasteryPie'), { ssr: false, loading: () => <CardSkeleton /> });
+const AttentionBar = dynamic(() => import('@/components/parent/AttentionBar'), { ssr: false, loading: () => <CardSkeleton /> });
 
 
 // ─── Types (API v2) ────────────────────────────────────────────────────
@@ -594,9 +595,12 @@ function LinkStudentForm({ onSuccess }: { onSuccess: () => void }) {
             <button
               type="submit"
               disabled={loading || !email.trim()}
-              className="px-4 py-2 bg-[#534AB7] text-white rounded-lg hover:bg-[#3C3489] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              className="min-h-[44px] px-4 py-2 bg-[#534AB7] text-white rounded-lg hover:bg-[#3C3489] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
-              {loading ? '...' : 'Link'}
+              <span className="flex items-center gap-2">
+                {loading && <SpinnerLoader size="small" color="#ffffff" />}
+                {loading ? 'Linking...' : 'Link'}
+              </span>
             </button>
           </div>
         </>
@@ -617,9 +621,12 @@ function LinkStudentForm({ onSuccess }: { onSuccess: () => void }) {
             <button
               type="submit"
               disabled={loading || code.length < 8}
-              className="px-4 py-2 bg-[#534AB7] text-white rounded-lg hover:bg-[#3C3489] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              className="min-h-[44px] px-4 py-2 bg-[#534AB7] text-white rounded-lg hover:bg-[#3C3489] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
-              {loading ? '...' : 'Link'}
+              <span className="flex items-center gap-2">
+                {loading && <SpinnerLoader size="small" color="#ffffff" />}
+                {loading ? 'Linking...' : 'Link'}
+              </span>
             </button>
           </div>
         </>
@@ -689,7 +696,7 @@ export default function ParentDashboardClient() {
   if (status === 'loading' || loading) {
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-slate-900 flex items-center justify-center">
-        <div className="animate-pulse text-gray-400">Loading...</div>
+        <DotPulseLoader size="large" />
       </div>
     );
   }

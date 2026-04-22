@@ -1,6 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useState, useCallback } from 'react';
+import { DotPulseLoader } from '@/components/UI/loaders';
 
 type LoaderContextType = {
   startLoading: (label?: string) => void;
@@ -46,10 +47,10 @@ export function GlobalLoaderProvider({ children }: { children: React.ReactNode }
     <GlobalLoaderContext.Provider value={value}>
       {children}
       {value.loading && (
-        <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm">
-          <div className="w-8 h-8 rounded-full border-4 border-[#534AB7] border-t-transparent animate-spin" />
+        <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-white/90 dark:bg-gray-900/90 backdrop-blur-sm loader-animate-in">
+          <DotPulseLoader size="large" />
           {value.label && (
-            <p className="mt-3 text-sm font-medium text-gray-700 dark:text-gray-300">{value.label}</p>
+            <p className="mt-4 text-sm font-medium text-gray-700 dark:text-gray-300">{value.label}</p>
           )}
         </div>
       )}

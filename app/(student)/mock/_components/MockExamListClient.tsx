@@ -13,6 +13,7 @@
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { showAlert } from '@/lib/alerts';
+import { SpinnerLoader } from '@/components/UI/loaders';
 
 interface MockItem {
   id: string;
@@ -87,7 +88,10 @@ export default function MockExamListClient({ mocks, subjects, grade, board }: Pr
               disabled={generating || !selectedSubject}
               className="min-h-[44px] px-5 rounded-lg bg-[#534AB7] text-white text-sm font-semibold disabled:opacity-50 transition-colors hover:bg-[#4339a6] whitespace-nowrap"
             >
-              {generating ? 'Generating...' : '+ New Paper'}
+              <span className="flex items-center justify-center gap-2">
+                {generating && <SpinnerLoader size="small" color="#ffffff" />}
+                {generating ? 'Generating...' : '+ New Paper'}
+              </span>
             </button>
           </div>
           <p className="text-xs text-gray-400 dark:text-gray-500 mt-2">
