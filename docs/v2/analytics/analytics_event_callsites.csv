@@ -24,3 +24,5 @@ scripts/scrape-ncert.ts,572,AnalyticsEvent,ingest_run,System,"Emit 'ingest_run' 
 scripts/reembed.ts,137,AnalyticsEvent,ingest_run_retry,System,"Emit 'ingest_run_retry' for re-embed/ops retry runs"
 scripts/ingest-curriculum.ts,251,AnalyticsEvent,ingest_run,System,"Emit 'ingest_run' from CLI/ingest script (client variable)"
 app/api/challenge/submit/route.ts,56,Event,challenge_completed,Student,"Transactionally record challenge completion and emit 'challenge_completed' event (tx.event.create)"
+app/api/student/diagnostic/start/route.ts,125,AnalyticsEvent,diagnostic_started,Student,"Emit 'diagnostic_started' at analytics callsite on diagnostic start (metadata: sessionId, subjectId, subjectName, boardSlug, grade, totalQuestions)"
+app/api/student/diagnostic/submit/route.ts,290,AnalyticsEvent,diagnostic_completed,Student,"Emit 'diagnostic_completed' at analytics callsite on diagnostic submit (metadata: sessionId, subjectId, totalQuestions, answeredCount, correctCount, gamingFlag, placement)"

@@ -1,3 +1,20 @@
+/**
+ * FILE OBJECTIVE:
+ * - Start a subject diagnostic for a student: generate questions, persist a session
+ *   placeholder, mark status `in_progress`, and schedule auto-submit.
+ *
+ * LINKED UNIT TEST:
+ * - tests/unit/app/api/student/diagnostic/start/route.test.ts
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/COPILOT_GUARDRAILS.md
+ * - .github/copilot-instructions.md
+ *
+ * EDIT LOG:
+ * - 2026-04-16T00:00:00Z | copilot | created
+ * - 2026-04-22T09:20:00Z | staff-engineer | emit `diagnostic_started` analytics event on session start
+ */
+
 import { NextResponse } from 'next/server';
 import { getServerSessionForHandlers } from '@/lib/session';
 import { logger } from '@/lib/logger';
@@ -6,6 +23,7 @@ import { prisma } from '@/lib/prisma';
 import { createSession } from '@/lib/diagnostics/sessionStore';
 import { upsertSubjectDiagnosticStatus, getSubjectDiagnosticStatus } from '@/lib/diagnostics/stateStore';
 import { enqueueDiagnosticAutoSubmit } from '@/jobs/diagnosticAutoSubmit';
+import { getAnalyticsQueue } from '@/lib/queues/analyticsQueue';
 
 export const dynamic = 'force-dynamic';
 
@@ -90,6 +108,67 @@ export async function POST(req: Request) {
     // AC-07: schedule 24h auto-submit at session start so partial diagnostics are always
     // submitted even if the student never explicitly saves and closes the browser.
     await enqueueDiagnosticAutoSubmit({ userId: user.id, subjectId: test.subjectId, sessionId });
+
+    // Analytics: emit `diagnostic_started` for ingestion (best-effort, non-blocking).
+    try {
+      const analyticsQueue = getAnalyticsQueue();
+      const metadata = {
+        subjectId: test.subjectId,
+        subjectName: test.subjectName ?? null,
+        boardSlug: boardSlug ?? null,
+        grade: Number(grade),
+        sessionId,
+        totalQuestions: candidateQuestionIds.length,
+      } as const;
+
+      const analyticsEventData = {
+        eventType: 'diagnostic_started',
+        userId: user.id,
+        courseId: null,
+        lessonIdx: null,
+        metadata,
+      } as const;
+
+      if (analyticsQueue) {
+        try {
+          // Job name follows analytics ingestion convention used elsewhere
+          await analyticsQueue.add('analytics.ingest', analyticsEventData);
+        } catch (enqueueErr) {
+          logger.warn('diagnostic.start: analytics enqueue failed; falling back to direct DB write', {
+            className: 'DiagnosticStartAPI',
+            methodName: 'POST',
+            error: String(enqueueErr),
+          });
+          try {
+            await prisma.analyticsEvent.create({ data: analyticsEventData });
+          } catch (dbErr) {
+            logger.warn('diagnostic.start: analytics fallback DB write failed', {
+              className: 'DiagnosticStartAPI',
+              methodName: 'POST',
+              error: String(dbErr),
+            });
+          }
+        }
+      } else {
+        try {
+          // Fallback: write directly to DB (best-effort)
+          await prisma.analyticsEvent.create({ data: analyticsEventData });
+        } catch (dbErr) {
+          logger.warn('diagnostic.start: analytics DB write failed', {
+            className: 'DiagnosticStartAPI',
+            methodName: 'POST',
+            error: String(dbErr),
+          });
+        }
+      }
+    } catch (analyticsErr) {
+      // Isolate analytics failures from user flow; log the issue (logger handles serialization).
+      logger.warn('diagnostic.start: analytics emit failed', {
+        className: 'DiagnosticStartAPI',
+        methodName: 'POST',
+        error: String(analyticsErr),
+      });
+    }
 
     const first = test.questions[0];
     const payload = {
