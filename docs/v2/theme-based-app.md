@@ -145,3 +145,28 @@ Estimated total (1 engineer full-time): 6–12 weeks depending on component coun
 
 ---
 If you'd like, I can (a) produce the audit report (component list + counts of hard-coded styles), or (b) open the initial PR scaffold for Phase 1. Which should I do next?
+
+## Infra Design — Phase 1 PR (scaffold)
+
+This PR will establish the infrastructure needed for the theme migration without touching production UI yet. It includes:
+
+- A small configuration file to opt-out paths (docs) from automated tokenization: `theme.config.json`.
+- A lightweight JS helper that exposes `designTokens` to application code (`lib/ui/theme.ts`). This is useful for canvas drawing, JS color arrays, and any runtime code that cannot read CSS variables directly.
+- A unit test stub for the helper (`tests/unit/lib/ui/theme.spec.ts`) to satisfy the repository's file-level testing requirements for incremental changes.
+- A brief NOTE in this document to record the PR plan and scope.
+
+Why this PR first?
+- Minimizes risk: adds non-invasive infra and tests.
+- Enables subsequent PRs to safely replace hard-coded colors with token reads (JS or CSS) without introducing visual regressions.
+- Explicitly excludes `/docs/**` from automated replacement to preserve wireframes and documentation.
+
+Planned follow-ups (after this PR merges):
+
+1. Mount `UIVariantProvider` at app root and ensure `ThemeWrapper` applies CSS variables at runtime (small PR).
+2. Replace one high-priority component (e.g., `AITutorChatPanel`) with token-backed classes as a proof-of-concept PR.
+3. Add a CLI script to perform controlled token replacements, respecting `theme.config.json` ignore paths.
+
+PR name suggestion: `feat(theme): add theme infra scaffold (config + token helper + tests)`
+
+---
+<!-- NOTE: `/docs/**` is intentionally excluded from tokenization and automated replacements. -->
