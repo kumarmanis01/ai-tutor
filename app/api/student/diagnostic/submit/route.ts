@@ -257,8 +257,23 @@ export async function POST(req: NextRequest) {
 
     // Analytics: emit `diagnostic_completed` (best-effort)
     try {
-      const analyticsQueue = getAnalyticsQueue();
-      const totalQuestions = answers.length;
+      // Prefer authoritative totalQuestions from adaptive session when present
+      let totalQuestions = answers.length;
+      if (incomingSessionId) {
+        try {
+          const s = await getSession(incomingSessionId);
+          if (s?.candidateQuestionIds && Array.isArray(s.candidateQuestionIds)) {
+            totalQuestions = s.candidateQuestionIds.length;
+          }
+        } catch (sessErr) {
+          logger.warn('diagnostic.submit: failed to load session for analytics totalQuestions', {
+            className: 'DiagnosticSubmitAPI',
+            methodName: 'POST',
+            error: String(sessErr),
+          });
+        }
+      }
+
       const answeredCount = answerEventData.length;
       const correctCount = answerEventData.filter((a) => !!a.isCorrect).length;
       const metadata = {
@@ -271,19 +286,51 @@ export async function POST(req: NextRequest) {
         placement,
       } as const;
 
+      const analyticsEventData = {
+        eventType: 'diagnostic_completed',
+        userId,
+        courseId: null,
+        lessonIdx: null,
+        metadata,
+      } as const;
+
+      const analyticsQueue = getAnalyticsQueue();
       if (analyticsQueue) {
-        await analyticsQueue.add('analytics.ingest', {
-          eventType: 'diagnostic_completed',
-          userId,
-          courseId: null,
-          lessonIdx: null,
-          metadata,
-        });
+        try {
+          await analyticsQueue.add('analytics.ingest', analyticsEventData);
+        } catch (enqueueErr) {
+          logger.warn('diagnostic.submit: analytics enqueue failed; falling back to direct DB write', {
+            className: 'DiagnosticSubmitAPI',
+            methodName: 'POST',
+            error: String(enqueueErr),
+          });
+          try {
+            await prisma.analyticsEvent.create({ data: analyticsEventData });
+          } catch (dbErr) {
+            logger.warn('diagnostic.submit: analytics fallback DB write failed', {
+              className: 'DiagnosticSubmitAPI',
+              methodName: 'POST',
+              error: String(dbErr),
+            });
+          }
+        }
       } else {
-        await prisma.analyticsEvent.create({ data: { eventType: 'diagnostic_completed', userId, courseId: null, lessonIdx: null, metadata } });
+        try {
+          await prisma.analyticsEvent.create({ data: analyticsEventData });
+        } catch (dbErr) {
+          logger.warn('diagnostic.submit: analytics DB write failed', {
+            className: 'DiagnosticSubmitAPI',
+            methodName: 'POST',
+            error: String(dbErr),
+          });
+        }
       }
     } catch (analyticsErr) {
-      try { logger.warn('diagnostic.submit: analytics emit failed', { className: 'DiagnosticSubmitAPI', methodName: 'POST', error: String(analyticsErr) }); } catch {}
+      logger.warn('diagnostic.submit: analytics emit failed', {
+        className: 'DiagnosticSubmitAPI',
+        methodName: 'POST',
+        error: String(analyticsErr),
+      });
     }
 
     const res = NextResponse.json({ success: true, subjectId, placement });

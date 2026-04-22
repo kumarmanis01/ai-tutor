@@ -121,31 +121,53 @@ export async function POST(req: Request) {
         totalQuestions: candidateQuestionIds.length,
       } as const;
 
+      const analyticsEventData = {
+        eventType: 'diagnostic_started',
+        userId: user.id,
+        courseId: null,
+        lessonIdx: null,
+        metadata,
+      } as const;
+
       if (analyticsQueue) {
-        // Job name follows analytics ingestion convention used elsewhere
-        await analyticsQueue.add('analytics.ingest', {
-          eventType: 'diagnostic_started',
-          userId: user.id,
-          courseId: null,
-          lessonIdx: null,
-          metadata,
-        });
+        try {
+          // Job name follows analytics ingestion convention used elsewhere
+          await analyticsQueue.add('analytics.ingest', analyticsEventData);
+        } catch (enqueueErr) {
+          logger.warn('diagnostic.start: analytics enqueue failed; falling back to direct DB write', {
+            className: 'DiagnosticStartAPI',
+            methodName: 'POST',
+            error: String(enqueueErr),
+          });
+          try {
+            await prisma.analyticsEvent.create({ data: analyticsEventData });
+          } catch (dbErr) {
+            logger.warn('diagnostic.start: analytics fallback DB write failed', {
+              className: 'DiagnosticStartAPI',
+              methodName: 'POST',
+              error: String(dbErr),
+            });
+          }
+        }
       } else {
-        // Fallback: write directly to DB (best-effort)
-        await prisma.analyticsEvent.create({
-          data: {
-            eventType: 'diagnostic_started',
-            userId: user.id,
-            courseId: null,
-            lessonIdx: null,
-            metadata,
-          },
-        });
+        try {
+          // Fallback: write directly to DB (best-effort)
+          await prisma.analyticsEvent.create({ data: analyticsEventData });
+        } catch (dbErr) {
+          logger.warn('diagnostic.start: analytics DB write failed', {
+            className: 'DiagnosticStartAPI',
+            methodName: 'POST',
+            error: String(dbErr),
+          });
+        }
       }
     } catch (analyticsErr) {
-      try {
-        logger.warn('diagnostic.start: analytics emit failed', { className: 'DiagnosticStartAPI', methodName: 'POST', error: String(analyticsErr) });
-      } catch {}
+      // Isolate analytics failures from user flow; log the issue (logger handles serialization).
+      logger.warn('diagnostic.start: analytics emit failed', {
+        className: 'DiagnosticStartAPI',
+        methodName: 'POST',
+        error: String(analyticsErr),
+      });
     }
 
     const first = test.questions[0];

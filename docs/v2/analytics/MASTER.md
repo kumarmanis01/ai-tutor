@@ -71,14 +71,14 @@ Notes
 - **Overview:** Events flow from client instrumentation into the batch endpoint, are enqueued to BullMQ, consumed by a worker and written into the `AnalyticsEvent` table. Server/business audit events use the separate `Event` table via `logEvent()`.
 
 - **Canonical callsites & modules:**
-  - **Client helpers:** [lib/analyticsClient.ts](lib/analyticsClient.ts#L1-L120) and [lib/analytics/client.ts](lib/analytics/client.ts#L1-L120).
-  - **Batch ingestion endpoint:** [app/api/analytics/event/route.ts](app/api/analytics/event/route.ts#L1-L124).
-  - **Single-event endpoint (quick verification):** [app/api/analytics/track/route.ts](app/api/analytics/track/route.ts#L1-L34).
-  - **Queue & worker:** [lib/queues/analyticsQueue.ts](lib/queues/analyticsQueue.ts#L1-L80), queue name in [lib/queues/constants.ts](lib/queues/constants.ts#L1-L20), and worker at [worker/services/analyticsIngestWorker.ts](worker/services/analyticsIngestWorker.ts#L1-L120).
-  - **DB model:** `AnalyticsEvent` in [prisma/schema.prisma](prisma/schema.prisma#L350-L368).
-  - **Audit/business events:** `logEvent()` → `Event` model via [utils/logEvent.ts](utils/logEvent.ts#L1-L49).
+  - **Client helpers:** [/lib/analyticsClient.ts](/lib/analyticsClient.ts#L1-L120) and [/lib/analytics/client.ts](/lib/analytics/client.ts#L1-L120).
+  - **Batch ingestion endpoint:** [/app/api/analytics/event/route.ts](/app/api/analytics/event/route.ts#L1-L124).
+  - **Single-event endpoint (quick verification):** [/app/api/analytics/track/route.ts](/app/api/analytics/track/route.ts#L1-L34).
+  - **Queue & worker:** [/lib/queues/analyticsQueue.ts](/lib/queues/analyticsQueue.ts#L1-L80), queue name in [/lib/queues/constants.ts](/lib/queues/constants.ts#L1-L20), and worker at [/worker/services/analyticsIngestWorker.ts](/worker/services/analyticsIngestWorker.ts#L1-L120).
+  - **DB model:** `AnalyticsEvent` in [/prisma/schema.prisma](/prisma/schema.prisma#L350-L368).
+  - **Audit/business events:** `logEvent()` → `Event` model via [/utils/logEvent.ts](/utils/logEvent.ts#L1-L49).
 
-- **Retention & aggregation:** A retention job prunes `AnalyticsEvent` rows after 90 days ([lib/jobs/retention.ts](lib/jobs/retention.ts#L1-L80)). Nightly aggregation/rollups are produced into `AnalyticsDailyAggregate` (see Prisma schema).
+-- **Retention & aggregation:** A retention job prunes `AnalyticsEvent` rows after 90 days ([/lib/jobs/retention.ts](/lib/jobs/retention.ts#L1-L80)). Nightly aggregation/rollups are produced into `AnalyticsDailyAggregate` (see Prisma schema).
 
 - **Allowlist & tests:** Client-emitted event types are controlled by `VALID_EVENT_TYPES` in [app/api/analytics/event/route.ts](app/api/analytics/event/route.ts#L1-L124). Update `tests/unit/api/analytics.allowlist.test.ts` when modifying this list and update `tests/api/analytics.event.test.ts` to cover ingestion behaviour.
 
@@ -89,11 +89,11 @@ Notes
 2. If client-emitted:
   - Add the event name to `VALID_EVENT_TYPES` in [app/api/analytics/event/route.ts](app/api/analytics/event/route.ts#L1-L124).
   - Update `tests/unit/api/analytics.allowlist.test.ts` expected set.
-  - Add instrumentation in the client helper ([lib/analytics/client.ts](lib/analytics/client.ts#L1-L120)) by adding to the ALLOWED set and (optionally) a convenience function.
+  - Add instrumentation in the client helper ([/lib/analytics/client.ts](/lib/analytics/client.ts#L1-L120)) by adding to the ALLOWED set and (optionally) a convenience function.
   - Call the helper from the UI or client code where the interaction occurs.
 
 3. If server-emitted:
-  - Prefer enqueueing via `getAnalyticsQueue()` ([lib/queues/analyticsQueue.ts](lib/queues/analyticsQueue.ts#L1-L80)) for non-blocking ingestion.
+  - Prefer enqueueing via `getAnalyticsQueue()` ([/lib/queues/analyticsQueue.ts](/lib/queues/analyticsQueue.ts#L1-L80)) for non-blocking ingestion.
   - Fallback to `prisma.analyticsEvent.create()` when needed (the ingestion endpoint already falls back similarly).
   - For audit/business events (low volume), use `await logEvent('my_event', metadata)` to record to the `Event` model ([utils/logEvent.ts](utils/logEvent.ts#L1-L49)).
 
@@ -108,7 +108,7 @@ Notes
 
 6. Privacy & retention:
   - Never store PII in `AnalyticsEvent.metadata`. Use `userId` or anonymised tokens instead.
-  - Be aware of the default 90-day prune job ([lib/jobs/retention.ts](lib/jobs/retention.ts#L1-L80)); plan for archival or longer retention via separate storage/rollups if required.
+  - Be aware of the default 90-day prune job ([/lib/jobs/retention.ts](/lib/jobs/retention.ts#L1-L80)); plan for archival or longer retention via separate storage/rollups if required.
 
 ### Quick PR checklist
 
