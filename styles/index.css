@@ -1,3 +1,19 @@
+/*
+ * FILE OBJECTIVE:
+ * - Global site styles including Tailwind layers and app-level utilities.
+ * - Consolidated loader keyframes/classes (moved here from app/globals.css) so
+ *   loader animations are available to layouts that import `styles/index.css`.
+ *
+ * LINKED UNIT TEST:
+ * - tests/unit/components/loaders/FullScreenLoader.spec.ts
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/COPILOT_GUARDRAILS.md
+ * - .github/copilot-instructions.md
+ *
+ * EDIT LOG:
+ * - 2026-04-22T00:00:00Z | copilot | moved loader keyframes & helpers from app/globals.css
+ */
 @import './tailwind.css';
 
 /* Subtle shimmer effect for high-priority CTAs.
@@ -19,4 +35,57 @@
 @media (prefers-reduced-motion: reduce) {
 	.btn-shimmer { animation: none; }
 }
+
+/* ── Global Loader keyframes & helper classes (consolidated) ───────────── */
+@keyframes loader-dot-bounce {
+	0%, 80%, 100% { transform: translateY(0); opacity: 0.5; }
+	40%           { transform: translateY(-8px); opacity: 1; }
+}
+
+@keyframes loader-spin {
+	to { transform: rotate(360deg); }
+}
+
+@keyframes loader-book-page {
+	0%, 100% { transform: scaleX(1); }
+	50%       { transform: scaleX(-1); }
+}
+
+@keyframes loader-shimmer {
+	0%   { background-position: -200% 0; }
+	100% { background-position:  200% 0; }
+}
+
+@keyframes loader-mascot-bounce {
+	0%, 100% { transform: translateY(0); }
+	50%      { transform: translateY(-12px); }
+}
+
+@keyframes loader-fade-in {
+	from { opacity: 0; }
+	to   { opacity: 1; }
+}
+
+@keyframes loader-fade-out {
+	from { opacity: 1; }
+	to   { opacity: 0; }
+}
+
+/* Shimmer utility for skeleton loaders */
+.loader-shimmer {
+	background: linear-gradient(90deg, #f3f4f6 25%, #e5e7eb 50%, #f3f4f6 75%);
+	background-size: 200% 100%;
+	animation: loader-shimmer 1.5s ease-in-out infinite;
+}
+
+.dark .loader-shimmer {
+	background: linear-gradient(90deg, #1f2937 25%, #374151 50%, #1f2937 75%);
+	background-size: 200% 100%;
+}
+
+/* Animation helpers used by loader components */
+.loader-book-page-anim     { animation: loader-book-page    1.4s ease-in-out infinite; }
+.loader-mascot-bounce-anim { animation: loader-mascot-bounce 0.8s ease-in-out infinite; }
+.loader-animate-in         { animation: loader-fade-in  0.2s  ease forwards; }
+.loader-animate-out        { animation: loader-fade-out 0.25s ease forwards; }
 
