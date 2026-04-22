@@ -59,22 +59,18 @@ export function SessionHeader({ session, phase: _phase, onStepClick }: SessionHe
   }
 
   return (
-    <div className="sticky top-0 z-30 bg-background/95 backdrop-blur border-b border-border/50 px-4 py-3">
-      {/* Breadcrumb */}
-      <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-2 max-w-2xl mx-auto">
-        <Link href="/dashboard" className="hover:text-foreground transition-colors">
-          Home
-        </Link>
-        <span>/</span>
-        <span>{subject}</span>
-        <span>/</span>
-        <span>{chapter}</span>
-        <span>/</span>
-        <span className="text-foreground font-medium truncate">{topicName}</span>
-      </div>
-
-      {/* Progress bar */}
+    <div className="sticky top-0 z-30 bg-background/95 backdrop-blur border-b border-border/50 px-4 pt-2 pb-1">
       <div className="max-w-2xl mx-auto">
+        {/* Breadcrumb -- single truncated line so it never wraps */}
+        <div className="flex items-center gap-1 text-xs text-muted-foreground mb-1.5 min-w-0">
+          <Link href="/dashboard" className="hover:text-foreground transition-colors shrink-0">
+            Home
+          </Link>
+          <span className="shrink-0">/</span>
+          <span className="truncate">{subject} / {chapter} / {topicName}</span>
+        </div>
+
+        {/* Horizontal phase strip */}
         <SessionProgressBar
           currentPhase={currentPhase as import('@/lib/session/phaseConfig').SessionPhaseClient}
           phaseIndex={phaseIndex}
