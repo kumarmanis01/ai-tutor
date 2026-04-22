@@ -1,0 +1,356 @@
+[
+  {
+    "file": "components/student/ConsentGate.tsx",
+    "hex_count": 4,
+    "inline_style_count": 0,
+    "sample_snippets": [
+      "className=\"underline hover:text-[#534AB7] dark:hover:text-indigo-400\"",
+      "className=\"w-full rounded-lg bg-[#534AB7] px-4 py-3 text-sm font-semibold text-white",
+      "dark:bg-[#534AB7] dark:hover:bg-indigo-400\""
+    ],
+    "remediation_priority": "medium"
+  },
+  {
+    "file": "components/student/dashboard/FreemiumCounter.tsx",
+    "hex_count": 12,
+    "inline_style_count": 1,
+    "sample_snippets": [
+      "sessionsRemaining === 1 ? 'bg-[#BA7517]' : 'bg-[#534AB7]';",
+      "className=\"mb-5 rounded-xl border border-[#534AB7]/20 bg-[#EEEDFE] dark:bg-[#534AB7]/10 px-4 py-3\"",
+      "<p className=\"text-xs font-semibold text-[#534AB7] dark:text-indigo-300 uppercase tracking-wide\">"
+    ],
+    "remediation_priority": "high"
+  },
+  {
+    "file": "components/student/dashboard/RevisionWidget.tsx",
+    "hex_count": 9,
+    "inline_style_count": 1,
+    "sample_snippets": [
+      "pct < 50 ? 'bg-[#E24B4A]' : pct <= 80 ? 'bg-[#BA7517]' : 'bg-[#1D9E75]'",
+      "? 'text-[#E24B4A] dark:text-red-400'",
+      "? 'text-[#BA7517] dark:text-amber-400'"
+    ],
+    "remediation_priority": "medium"
+  },
+  {
+    "file": "components/student/dashboard/SecondaryStartOptions.tsx",
+    "hex_count": 2,
+    "inline_style_count": 0,
+    "sample_snippets": [
+      "className=\"inline-flex items-center justify-center px-4 py-2 min-h-[44px] rounded-xl bg-[#534AB7] text-white text-sm font-medium hover:bg-[#4840a3] disabled:opacity-60\""
+    ],
+    "remediation_priority": "low"
+  },
+  {
+    "file": "components/student/dashboard/StreakWidget.tsx",
+    "hex_count": 8,
+    "inline_style_count": 0,
+    "sample_snippets": [
+      "className=\"text-sm font-semibold text-[#534AB7] min-h-[44px] min-w-[44px] px-4\"",
+      "? 'bg-gray-100 dark:bg-gray-800 ring-2 ring-[#1D9E75] ring-offset-1 ring-offset-white dark:ring-offset-gray-900'",
+      "className=\"block text-center text-sm font-semibold text-white bg-[#534AB7] rounded-xl py-3 min-h-[44px] flex items-center justify-center\""
+    ],
+    "remediation_priority": "medium"
+  },
+  {
+    "file": "components/student/dashboard/SubjectReadinessCard.tsx",
+    "hex_count": 18,
+    "inline_style_count": 0,
+    "sample_snippets": [
+      "border: 'border-[#E24B4A]',",
+      "bar: 'bg-[#E24B4A]',",
+      "border: 'border-[#BA7517]',"
+    ],
+    "remediation_priority": "high"
+  },
+  {
+    "file": "components/student/dashboard/TodaysLearningCard.tsx",
+    "hex_count": 40,
+    "inline_style_count": 0,
+    "sample_snippets": [
+      "*   - Purple left border accent: border-l-4 border-[#534AB7]",
+      "<article className=\"rounded-2xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 border-l-4 border-l-[#534AB7] overflow-hidden shadow-sm\">",
+      "<span className=\"inline-flex items-center rounded-full bg-[#534AB7]/10 dark:bg-[#534AB7]/20 px-3 py-1 text-xs font-semibold text-[#534AB7] dark:text-indigo-300\">"
+    ],
+    "remediation_priority": "high"
+  },
+  {
+    "file": "components/student/dashboard/WeeklyStudyStrip.tsx",
+    "hex_count": 5,
+    "inline_style_count": 0,
+    "sample_snippets": [
+      "*   - Filled purple (#534AB7) = session completed that day",
+      "? 'bg-[#534AB7]'",
+      "? 'bg-gray-100 dark:bg-slate-700 ring-2 ring-[#1D9E75]'"
+    ],
+    "remediation_priority": "medium"
+  },
+  {
+    "file": "components/student/dashboard/XPWidget.tsx",
+    "hex_count": 9,
+    "inline_style_count": 1,
+    "sample_snippets": [
+      "<span className=\"inline-flex items-center px-2.5 py-1 rounded-lg bg-[#534AB7]/10 dark:bg-[#534AB7]/20 text-[#534AB7] dark:text-indigo-300 text-xs font-bold tracking-wide\">",
+      "className=\"h-full rounded-full bg-[#534AB7] dark:bg-[#534AB7] transition-all duration-300\"",
+      "className=\"flex items-center gap-1 bg-[#534AB7]/10 dark:bg-[#534AB7]/20 rounded-full px-2 py-0.5\""
+    ],
+    "remediation_priority": "medium"
+  },
+  {
+    "file": "components/student/diagnostic/DiagnosticFlow.tsx",
+    "hex_count": 54,
+    "inline_style_count": 1,
+    "sample_snippets": [
+      "return { label: 'Strong', colorClass: 'bg-[#EAF3DE] text-[#1D9E75]' };",
+      "return { label: 'Partial', colorClass: 'bg-[#FAEEDA] text-[#BA7517]' };",
+      "return { label: 'Needs work', colorClass: 'bg-[#FCEBEB] text-[#E24B4A]' };"
+    ],
+    "remediation_priority": "high"
+  },
+  {
+    "file": "components/student/diagnostic/DiagnosticWaitingScreen.tsx",
+    "hex_count": 14,
+    "inline_style_count": 0,
+    "sample_snippets": [
+      "<div className=\"w-16 h-16 rounded-2xl bg-[#EEEDFE] dark:bg-[#534AB7]/20 flex items-center justify-center mx-auto mb-5\">",
+      "stroke=\"#534AB7\"",
+      "<p className=\"text-xs text-[#E24B4A] dark:text-red-400 mb-6\">"
+    ],
+    "remediation_priority": "high"
+  },
+  {
+    "file": "components/student/layout/BottomNav.tsx",
+    "hex_count": 2,
+    "inline_style_count": 1,
+    "sample_snippets": [
+      "* Active item: icon + label in #534AB7",
+      "? 'text-[#534AB7]'"
+    ],
+    "remediation_priority": "low"
+  },
+  {
+    "file": "components/student/layout/Topbar.tsx",
+    "hex_count": 6,
+    "inline_style_count": 2,
+    "sample_snippets": [
+      "className=\"inline-flex items-center gap-1 rounded-full bg-orange-100 dark:bg-orange-900/40 px-2.5 py-1 text-xs font-semibold text-orange-700 dark:text-orange-300 min-h-[44px] min-w-[44px] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#534AB7]\"",
+      "className=\"inline-flex items-center rounded-full bg-[#534AB7]/10 dark:bg-[#534AB7]/20 px-2.5 py-1 text-xs font-semibold text-[#534AB7] dark:text-indigo-300\"",
+      "className=\"w-8 h-8 rounded-full bg-[#534AB7] flex items-center justify-center\""
+    ],
+    "remediation_priority": "medium"
+  },
+  {
+    "file": "components/student/LearningPlanTimeline.tsx",
+    "hex_count": 17,
+    "inline_style_count": 1,
+    "sample_snippets": [
+      "COMPLETED: 'bg-[#EAF3DE] text-[#1D9E75] border-[#1D9E75]',",
+      "IN_PROGRESS: 'bg-[#EEEDFE] text-[#534AB7] border-[#534AB7]',",
+      "DEFERRED: 'bg-[#FCEBEB] text-[#E24B4A] border-[#E24B4A]',"
+    ],
+    "remediation_priority": "high"
+  },
+  {
+    "file": "components/student/ParentOTPGate.tsx",
+    "hex_count": 7,
+    "inline_style_count": 0,
+    "sample_snippets": [
+      "<div className=\"flex h-8 w-8 items-center justify-center rounded-full bg-[#EEEDFE] text-[#534AB7]\">",
+      "className=\"mb-5 w-full min-h-[44px] rounded-xl bg-[#534AB7] px-4 py-2 text-sm font-semibold text-white shadow-sm disabled:cursor-not-allowed disabled:opacity-60\"",
+      "className=\"h-12 w-10 rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-center text-xl font-bold text-gray-900 dark:text-gray-100 focus:border-[#534AB7] focus:outline-none focus:ring-2 focus:ring-[#534AB7]/30 transition-colors\""
+    ],
+    "remediation_priority": "medium"
+  },
+  {
+    "file": "components/student/ProfileCompletionGate.tsx",
+    "hex_count": 64,
+    "inline_style_count": 0,
+    "sample_snippets": [
+      "<div className=\"bg-[#534AB7] px-6 py-5 flex-shrink-0\">",
+      "? 'bg-[#EEEDFE] dark:bg-[#534AB7]/15 border-2 border-[#534AB7]'",
+      "<span className=\"w-5 h-5 rounded-full bg-[#1D9E75] flex items-center justify-center flex-shrink-0\">"
+    ],
+    "remediation_priority": "high"
+  },
+  {
+    "file": "components/student/progress/AiNarrativeWidget.tsx",
+    "hex_count": 7,
+    "inline_style_count": 0,
+    "sample_snippets": [
+      "className=\"underline text-[#534AB7] dark:text-[#9B96E0] min-h-[44px] inline-flex items-center\"",
+      "<article className=\"rounded-2xl border border-[#534AB7]/20 bg-[#EEEDFE] dark:bg-[#534AB7]/10 p-4\">",
+      "<span className=\"text-xs font-semibold uppercase tracking-wider text-[#534AB7] dark:text-[#9B96E0]\">"
+    ],
+    "remediation_priority": "medium"
+  },
+  {
+    "file": "components/student/progress/ChapterMasteryBars.tsx",
+    "hex_count": 12,
+    "inline_style_count": 2,
+    "sample_snippets": [
+      "*   >70% mastery → green  (#1D9E75)",
+      "*   <40%         → red    (#E24B4A)",
+      "if (mastery100 > 70) return { bar: '#1D9E75', text: 'text-[#1D9E75]' };"
+    ],
+    "remediation_priority": "high"
+  },
+  {
+    "file": "components/student/progress/MiniSparkline.tsx",
+    "hex_count": 3,
+    "inline_style_count": 0,
+    "sample_snippets": [
+      "const PRIMARY = '#534AB7';",
+      "<rect x={0} y={0} width={W} height={H} fill=\"#F8FAFC\" />"
+    ],
+    "remediation_priority": "medium"
+  },
+  {
+    "file": "components/student/progress/ProgressFilters.tsx",
+    "hex_count": 2,
+    "inline_style_count": 0,
+    "sample_snippets": [
+      "className=\"min-h-[44px] rounded-lg border border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-800 text-sm text-gray-800 dark:text-gray-100 px-3 pr-8 py-2 focus:outline-none focus:ring-2 focus:ring-[#534AB7]\"",
+      "? 'bg-[#534AB7] text-white'"
+    ],
+    "remediation_priority": "low"
+  },
+  {
+    "file": "components/student/progress/ScoreTrendGraph.tsx",
+    "hex_count": 4,
+    "inline_style_count": 0,
+    "sample_snippets": [
+      "* Brand primary #534AB7 for the line and dots; neutral greys for grid/labels.",
+      "const PRIMARY = '#534AB7';",
+      "const LABEL = '#9CA3AF';"
+    ],
+    "remediation_priority": "medium"
+  },
+  {
+    "file": "components/student/progress/SessionsChart.tsx",
+    "hex_count": 1,
+    "inline_style_count": 1,
+    "sample_snippets": [
+      "? 'bg-[#534AB7]'"
+    ],
+    "remediation_priority": "low"
+  },
+  {
+    "file": "components/student/progress/TestScoreHistory.tsx",
+    "hex_count": 5,
+    "inline_style_count": 0,
+    "sample_snippets": [
+      "className=\"inline-flex items-center min-h-[44px] text-sm font-medium text-[#534AB7] dark:text-[#9B96E0] underline\"",
+      "? 'text-[#1D9E75] font-semibold'",
+      "? 'text-[#BA7517] font-semibold'"
+    ],
+    "remediation_priority": "medium"
+  },
+  {
+    "file": "components/student/revision/RevisionFlow.tsx",
+    "hex_count": 44,
+    "inline_style_count": 1,
+    "sample_snippets": [
+      "className=\"inline-flex items-center justify-center rounded-xl bg-[#534AB7] text-white text-sm font-semibold px-6 min-h-[44px]\"",
+      "<div className=\"w-full rounded-2xl bg-[#EAF3DE] dark:bg-[#1D9E75]/10 p-5 text-center\">",
+      "<p className=\"text-base font-semibold text-[#1D9E75] mb-1\">"
+    ],
+    "remediation_priority": "high"
+  },
+  {
+    "file": "components/student/session/AITutorChatPanel.tsx",
+    "hex_count": 16,
+    "inline_style_count": 0,
+    "sample_snippets": [
+      "className=\"shrink-0 min-h-[36px] rounded-full border border-[#534AB7]/30 dark:border-[#534AB7]/50 bg-[#EEEDFE] dark:bg-[#534AB7]/10 px-3 text-xs font-medium text-[#534AB7] dark:text-indigo-300 hover:bg-[#534AB7]/15 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed transition-all whitespace-nowrap\"",
+      "<span className=\"shrink-0 rounded-full bg-[#EEEDFE] dark:bg-[#534AB7]/20 px-2.5 py-0.5 text-xs font-semibold text-[#534AB7] dark:text-indigo-300\">",
+      "className=\"min-h-[44px] px-3 text-xs font-semibold text-[#534AB7] dark:text-indigo-300 disabled:cursor-not-allowed disabled:text-gray-400 dark:disabled:text-gray-600\""
+    ],
+    "remediation_priority": "high"
+  },
+  {
+    "file": "components/student/session/InterruptedSessionSheet.tsx",
+    "hex_count": 7,
+    "inline_style_count": 0,
+    "sample_snippets": [
+      "className=\"flex items-center gap-4 w-full min-h-[56px] px-4 rounded-xl border-2 border-[#534AB7] bg-[#EEEDFE] dark:bg-[#534AB7]/15 text-left transition-colors hover:bg-[#534AB7]/10 disabled:opacity-60\"",
+      "<span className=\"text-[#534AB7] text-lg shrink-0\">▶</span>",
+      "<p className=\"text-sm font-semibold text-[#534AB7] dark:text-indigo-300\">"
+    ],
+    "remediation_priority": "medium"
+  },
+  {
+    "file": "components/student/session/PreSessionScreen.tsx",
+    "hex_count": 20,
+    "inline_style_count": 1,
+    "sample_snippets": [
+      "'bg-[#EAF3DE] text-[#1D9E75] dark:bg-[#1D9E75]/15 dark:text-green-300',",
+      "'bg-[#FAEEDA] text-[#BA7517] dark:bg-[#BA7517]/15 dark:text-amber-300',",
+      "'bg-[#FCEBEB] text-[#E24B4A] dark:bg-[#E24B4A]/15 dark:text-red-300',"
+    ],
+    "remediation_priority": "high"
+  },
+  {
+    "file": "components/student/session/SessionCompletionScreen.tsx",
+    "hex_count": 33,
+    "inline_style_count": 0,
+    "sample_snippets": [
+      "const CONFETTI_COLORS = ['#534AB7', '#1D9E75', '#BA7517', '#E24B4A', '#F5C842', '#60A5FA'];",
+      "<div className=\"relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#534AB7] to-[#6D63D4] px-5 pt-8 pb-6 text-center text-white\">",
+      "<div className=\"flex h-20 w-20 items-center justify-center rounded-full border-4 border-[#534AB7] bg-[#EEEDFE] dark:bg-[#534AB7]/20\">"
+    ],
+    "remediation_priority": "high"
+  },
+  {
+    "file": "components/student/session/SessionRatingModal.tsx",
+    "hex_count": 2,
+    "inline_style_count": 0,
+    "sample_snippets": [
+      "className=\"mt-1 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#534AB7]\"",
+      "className=\"rounded-lg bg-[#534AB7] px-4 py-2 text-sm font-semibold text-white shadow-sm disabled:cursor-not-allowed disabled:bg-gray-300\""
+    ],
+    "remediation_priority": "low"
+  },
+  {
+    "file": "components/student/session/VisualHintRenderer.tsx",
+    "hex_count": 8,
+    "inline_style_count": 0,
+    "sample_snippets": [
+      "<circle cx={cx} cy={cy} r={r} fill=\"#EEEDFE\" stroke=\"#534AB7\" />",
+      "<text x={cx} y={cy + r + 3} fontSize={3.5} textAnchor=\"middle\" fill=\"#3C3489\">",
+      "<rect x={x} y={y} width={w} height={h} fill=\"#EAF3DE\" stroke=\"#1D9E75\" />"
+    ],
+    "remediation_priority": "medium"
+  },
+  {
+    "file": "components/student/session/WhiteboardPanel.tsx",
+    "hex_count": 12,
+    "inline_style_count": 2,
+    "sample_snippets": [
+      "const DEFAULT_PENCIL_COLORS = ['#1a1a1a', '#534AB7', '#E24B4A', '#1D9E75', '#BA7517'];",
+      "const resolved = ['#1a1a1a', primary, error, success, warning];",
+      "aiCtx.strokeStyle = stroke.color ?? '#1a1a1a';"
+    ],
+    "remediation_priority": "high"
+  },
+  {
+    "file": "components/student/subscription/PaymentMethodSelector.tsx",
+    "hex_count": 7,
+    "inline_style_count": 0,
+    "sample_snippets": [
+      "'w-full text-left rounded-xl border px-4 py-3 min-h-[44px] flex items-center gap-3 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#534AB7]',",
+      "? 'border-[#534AB7] bg-[#EEEDFE] dark:bg-[#534AB7]/20 dark:border-[#534AB7]'",
+      "? 'border-[#534AB7] bg-[#534AB7]'"
+    ],
+    "remediation_priority": "medium"
+  },
+  {
+    "file": "components/student/subscription/UpgradeFlow.tsx",
+    "hex_count": 4,
+    "inline_style_count": 0,
+    "sample_snippets": [
+      "theme: { color: '#F97316' },",
+      "className=\"w-full min-h-[44px] rounded-xl bg-[#534AB7] text-sm font-semibold text-white hover:bg-[#4338a3] transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#534AB7]\""
+    ],
+    "remediation_priority": "medium"
+  }
+]
