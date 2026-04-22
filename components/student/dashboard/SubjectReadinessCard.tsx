@@ -102,15 +102,15 @@ export function SubjectReadinessCard({
   if (score === 0) {
     if (diagnosticDone) {
       return (
-        <div className="rounded-xl border border-[#534AB7]/20 bg-[#EEEDFE] dark:border-[#534AB7]/30 dark:bg-[#534AB7]/10 p-4">
+        <div className="rounded-xl border border-[#1D9E75]/20 bg-[#EAF3DE] dark:border-[#1D9E75]/30 dark:bg-[#1D9E75]/10 p-4">
           <div className="flex items-center justify-between mb-1">
             <p className="text-sm font-medium text-gray-900 dark:text-gray-100">{subjectName}</p>
-            <span className="text-xs font-medium text-[#534AB7] dark:text-indigo-400">
-              Show result →
+            <span className="text-xs font-medium text-[#1D9E75] dark:text-green-400">
+              Diagnostic completed
             </span>
           </div>
           <p className="text-xs text-gray-500 dark:text-gray-400">
-            Readiness is being calculated -- check back shortly.
+            Readiness score is being calculated -- check back shortly.
           </p>
         </div>
       )

@@ -249,16 +249,12 @@ export default async function StudentHomeDashboardPage() {
     const batch = cappedSubjects.slice(i, i + SUBJECT_CONCURRENCY)
     const batchRows = await Promise.all(
       batch.map(async (sub): Promise<ReadinessRow> => {
-        const [result, diagnostic, diagStatus] = await Promise.all([
+        const [result, diagStatus] = await Promise.all([
           computeReadinessScore(userId, sub.id).catch(() => ({
             score: 0,
             label: 'critical' as const,
             chapters: [],
           })),
-          prisma.diagnosticSession.findFirst({
-            where: { studentId: userId, subjectId: sub.id, status: 'COMPLETED' },
-            select: { id: true },
-          }).catch(() => null),
           getSubjectDiagnosticStatus(userId, sub.id).catch(() => null),
         ])
         return {
@@ -266,7 +262,9 @@ export default async function StudentHomeDashboardPage() {
           subjectName: sub.name,
           score: result.score,
           predictedRange: (result as any).predictedRange ?? undefined,
-          diagnosticDone: !!diagnostic,
+          // Diagnostic status lives in StudentLearningProfile.recommendations
+          // (lowercase 'completed'), not in the DiagnosticSession Prisma model.
+          diagnosticDone: diagStatus?.status === 'completed',
           retakeEligibleAt: diagStatus?.retakeEligibleAt ?? null,
         }
       }),
