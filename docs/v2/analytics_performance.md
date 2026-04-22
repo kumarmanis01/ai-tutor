@@ -1,3 +1,15 @@
+<!--
+FILE OBJECTIVE:
+- Zero-impact analytics instrumentation strategy: async batching, client-side
+  delivery patterns, and backpressure guidelines for Spinzy AI Tutor.
+
+This file has moved. See [docs/v2/analytics/analytics_performance.md](analytics/analytics_performance.md).
+
+EDIT LOG:
+ - 2026-04-21T00:00:00Z | copilot | created performance strategy doc
+ - 2026-04-22T00:00:00Z | claude  | add FILE OBJECTIVE header per doc standards
+-->
+
 # Analytics Performance & Zero-Impact Instrumentation Strategy
 
 Goal

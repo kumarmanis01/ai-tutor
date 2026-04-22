@@ -33,7 +33,6 @@ interface DoubtPanelProps {
   chapter: string;
   topicName: string;
   isOpen: boolean;
-  onOpen: () => void;
   onClose: () => void;
 }
 

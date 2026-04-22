@@ -1,3 +1,15 @@
+<!--
+FILE OBJECTIVE:
+- Reconcile server-emitted analytics events against the client VALID_EVENT_TYPES
+  allowlist; identify gaps and recommend actions.
+
+This file has moved. See [docs/v2/analytics/analytics_event_reconciliation.md](analytics/analytics_event_reconciliation.md).
+
+EDIT LOG:
+ - 2026-04-21T00:00:00Z | copilot | created event reconciliation report
+ - 2026-04-22T00:00:00Z | claude  | add FILE OBJECTIVE header per doc standards
+-->
+
 # Analytics Event Reconciliation
 
 Summary: compare server-emitted events (from CSV) against the client `VALID_EVENT_TYPES` allowlist in `app/api/analytics/event/route.ts` and recommend actions.

@@ -82,7 +82,6 @@ export function SessionLayout({ session, phase, children, footer, onStepClick }:
             chapter={session.chapter}
             topicName={session.topicName}
             isOpen={isDoubtOpen}
-            onOpen={() => setIsDoubtOpen(true)}
             onClose={() => setIsDoubtOpen(false)}
           />
         </>
