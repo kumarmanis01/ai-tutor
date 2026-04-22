@@ -9,8 +9,8 @@
  */
 
 import { Queue } from 'bullmq'
-import { getSharedConnection } from '../redis.js'
-import { ANALYTICS_INGEST_QUEUE } from './constants.js'
+import { getSharedConnection } from '../redis'
+import { ANALYTICS_INGEST_QUEUE } from './constants'
 
 let _queue: Queue | null = null
 
