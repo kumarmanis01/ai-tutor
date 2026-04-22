@@ -14,6 +14,7 @@
  * EDIT LOG:
  * - 2026-04-16T12:00:00Z | copilot | add multi-line copy-to-clipboard share (buildShareableSessionSummary)
  * - 2026-04-16T12:30:00Z | copilot | move confetti/levelup keyframes to CSS module; add eslint-disable-next-line for dynamic progress bar width with justification
+ * - 2026-04-22T15:05:00Z | copilot | feat(theme): replace several hard-coded colors with CSS token classes and rgb tokens
  */
 
 /**
@@ -84,7 +85,7 @@ function easeOut(t: number): number {
 
 // Confetti and level-up keyframes/styles moved to SessionCompletionScreen.module.css
 
-const CONFETTI_COLORS = ['#534AB7', '#1D9E75', '#BA7517', '#E24B4A', '#F5C842', '#60A5FA'];
+const CONFETTI_COLORS = ['var(--color-primary)', 'var(--color-success)', 'var(--color-warning)', 'var(--color-error)', '#F5C842', '#60A5FA'];
 const CONFETTI_PIECES = Array.from({ length: 18 }, (_, i) => ({
   id: i,
   color: CONFETTI_COLORS[i % CONFETTI_COLORS.length],
@@ -114,7 +115,7 @@ function badgeEmoji(icon?: string): string {
 
 function ConfettiHeader({ topicName, durationMinutes }: { topicName: string; durationMinutes: number }) {
   return (
-    <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#534AB7] to-[#6D63D4] px-5 pt-8 pb-6 text-center text-white">
+    <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[var(--color-primary)] to-[var(--color-primary-hover)] px-5 pt-8 pb-6 text-center text-white">
       {/* Confetti pieces (styles moved to CSS module) */}
       {CONFETTI_PIECES.map((p) => (
         <span
@@ -172,12 +173,12 @@ function XpSection({
   return (
     <div className="flex flex-col items-center gap-3 py-2">
       {/* XP circle */}
-      <div className="flex h-20 w-20 items-center justify-center rounded-full border-4 border-[#534AB7] bg-[#EEEDFE] dark:bg-[#534AB7]/20">
+      <div className="flex h-20 w-20 items-center justify-center rounded-full border-4 border-[var(--color-primary)] bg-[rgba(var(--color-primary-rgb),0.06)] dark:bg-[rgba(var(--color-primary-rgb),0.2)]">
         <div className="text-center">
-          <p className="text-lg font-extrabold text-[#534AB7] dark:text-indigo-300 leading-none">
+          <p className="text-lg font-extrabold text-[var(--color-primary)] dark:text-indigo-300 leading-none">
             +{xpEarned}
           </p>
-          <p className="text-[10px] font-medium text-[#534AB7]/70 dark:text-indigo-400 uppercase tracking-wide">
+          <p className="text-[10px] font-medium text-[var(--color-primary)]/70 dark:text-indigo-400 uppercase tracking-wide">
             XP
           </p>
         </div>
@@ -206,15 +207,15 @@ function BadgesEarnedSection({
       <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2.5">
         Badges Earned
       </p>
-      <div className="flex flex-col gap-2">
+        <div className="flex flex-col gap-2">
         {badges.map((b) => (
           <div
             key={b.name}
-            className="flex items-center gap-3 rounded-xl bg-[#EEEDFE] dark:bg-[#534AB7]/20 px-4 py-3"
+            className="flex items-center gap-3 rounded-xl bg-[rgba(var(--color-primary-rgb),0.06)] dark:bg-[rgba(var(--color-primary-rgb),0.2)] px-4 py-3"
           >
             <span className="text-2xl leading-none" aria-hidden>{badgeEmoji(b.icon)}</span>
             <div className="min-w-0">
-              <p className="text-sm font-semibold text-[#534AB7] dark:text-indigo-300 leading-tight truncate">
+              <p className="text-sm font-semibold text-[var(--color-primary)] dark:text-indigo-300 leading-tight truncate">
                 {b.name}
               </p>
               <p className="text-xs text-gray-600 dark:text-gray-400 leading-tight truncate">
@@ -349,21 +350,21 @@ function AiInsightCard({ insight }: { insight: string | null }) {
     insight && insight.trim() ? insight : 'Great work this session -- your consistency is building strong foundations!';
 
   return (
-    <div className="rounded-xl border border-[#EEEDFE] dark:border-[#534AB7]/30 bg-[#EEEDFE]/50 dark:bg-[#534AB7]/10 px-4 py-3">
+    <div className="rounded-xl border border-[rgba(var(--color-primary-rgb),0.12)] dark:border-[rgba(var(--color-primary-rgb),0.3)] bg-[rgba(var(--color-primary-rgb),0.06)] dark:bg-[rgba(var(--color-primary-rgb),0.1)] px-4 py-3">
       <div className="flex items-center gap-2 mb-2">
         <span className="text-sm" aria-hidden>💡</span>
-        <p className="text-xs font-semibold text-[#534AB7] dark:text-indigo-300 uppercase tracking-wide">
+        <p className="text-xs font-semibold text-[var(--color-primary)] dark:text-indigo-300 uppercase tracking-wide">
           Teacher Vidya's insight
         </p>
       </div>
       {!visible ? (
         <div className="space-y-2" aria-label="Loading insight">
-          <div className="h-3 w-10/12 rounded-full bg-[#534AB7]/10 dark:bg-[#534AB7]/20 animate-pulse" />
-          <div className="h-3 w-9/12 rounded-full bg-[#534AB7]/10 dark:bg-[#534AB7]/20 animate-pulse" />
-          <div className="h-3 w-7/12 rounded-full bg-[#534AB7]/10 dark:bg-[#534AB7]/20 animate-pulse" />
-        </div>
-      ) : (
-        <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">
+          <div className="h-3 w-10/12 rounded-full bg-[rgba(var(--color-primary-rgb),0.1)] dark:bg-[rgba(var(--color-primary-rgb),0.2)] animate-pulse" />
+          <div className="h-3 w-10/12 rounded-full bg-[rgba(var(--color-primary-rgb),0.1)] dark:bg-[rgba(var(--color-primary-rgb),0.2)] animate-pulse" />
+          <div className="h-3 w-9/12 rounded-full bg-[rgba(var(--color-primary-rgb),0.1)] dark:bg-[rgba(var(--color-primary-rgb),0.2)] animate-pulse" />
+          <div className="h-3 w-9/12 rounded-full bg-[rgba(var(--color-primary-rgb),0.1)] dark:bg-[rgba(var(--color-primary-rgb),0.2)] animate-pulse" />
+          <div className="h-3 w-7/12 rounded-full bg-[rgba(var(--color-primary-rgb),0.1)] dark:bg-[rgba(var(--color-primary-rgb),0.2)] animate-pulse" />
+          <div className="h-3 w-7/12 rounded-full bg-[rgba(var(--color-primary-rgb),0.1)] dark:bg-[rgba(var(--color-primary-rgb),0.2)] animate-pulse" />
           {text}
         </p>
       )}
@@ -709,7 +710,7 @@ export const SessionCompletionScreen: React.FC<SessionCompletionScreenProps> = (
               type="button"
               onClick={handleStartNext}
               disabled={!levelOverlayDone}
-              className="flex w-full min-h-[52px] items-center justify-center gap-2 rounded-xl bg-[#534AB7] text-white text-sm font-semibold hover:bg-[#4840a3] active:scale-[0.98] disabled:opacity-60 transition-all shadow-md shadow-[#534AB7]/25"
+              className="flex w-full min-h-[52px] items-center justify-center gap-2 rounded-xl bg-[var(--color-primary)] text-white text-sm font-semibold hover:bg-[var(--color-primary-hover)] active:scale-[0.98] disabled:opacity-60 transition-all shadow-md shadow-[rgba(var(--color-primary-rgb),0.25)]"
             >
               {nextAction?.topicName
                 ? `Start: ${nextAction.topicName} →`
