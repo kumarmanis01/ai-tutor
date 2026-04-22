@@ -1,20 +1,18 @@
 'use client'
 
 /**
- * RevisionFlow -- Task 31 (v2 Screen 13)
+ * FILE OBJECTIVE:
+ * - Render the revision card flow UI for student spaced repetition.
  *
- * Full-screen revision card flow (SM-18 spaced repetition).
+ * LINKED UNIT TEST:
+ * - tests/unit/components/student/revision/RevisionFlow.spec.tsx
  *
- * States per card:
- *   answering → correct feedback → next | wrong feedback + explanation → next
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/COPILOT_GUARDRAILS.md
+ * - .github/copilot-instructions.md
  *
- * After all cards:
- *   Summary: N/N correct
- *   > 80%: green card "Great work! Your memory of this topic is strengthening."
- *   ≤ 80%: amber card "We'll add a re-teach session to your plan."
- *         → fires POST /api/student/revision/complete (non-blocking)
- *
- * Copy rules: never "broke / missed / failed / lost". Forward-looking tone.
+ * EDIT LOG:
+ * - 2026-04-22T15:00:00Z | copilot | feat(theme): replace hard-coded colors with CSS tokens for token-based theming
  */
 
 import React, { useCallback, useRef, useState } from 'react'
@@ -163,7 +161,7 @@ export default function RevisionFlow({ cards, totalDue }: RevisionFlowProps) {
         </p>
         <Link
           href="/dashboard"
-          className="inline-flex items-center justify-center rounded-xl bg-[#534AB7] text-white text-sm font-semibold px-6 min-h-[44px]"
+          className="inline-flex items-center justify-center rounded-xl bg-[var(--color-primary)] text-white text-sm font-semibold px-6 min-h-[44px]"
         >
           Back to dashboard
         </Link>
@@ -231,7 +229,7 @@ export default function RevisionFlow({ cards, totalDue }: RevisionFlowProps) {
           {/* CTA */}
           <Link
             href="/dashboard"
-            className="w-full inline-flex items-center justify-center rounded-xl bg-[#534AB7] text-white text-sm font-semibold min-h-[44px] hover:bg-[#4840a3] transition-colors"
+            className="w-full inline-flex items-center justify-center rounded-xl bg-[var(--color-primary)] text-white text-sm font-semibold min-h-[44px] hover:bg-[var(--color-primary-hover)] transition-colors"
           >
             Back to dashboard
           </Link>
@@ -283,7 +281,7 @@ export default function RevisionFlow({ cards, totalDue }: RevisionFlowProps) {
         </div>
         <div className="h-1.5 bg-gray-100 dark:bg-slate-800 rounded-full overflow-hidden">
           <div
-            className="h-full bg-[#534AB7] rounded-full transition-all duration-300"
+            className="h-full bg-[var(--color-primary)] rounded-full transition-all duration-300"
             style={{ width: `${Math.max(4, (completedCount / totalCards) * 100)}%` }}
           />
         </div>
@@ -325,12 +323,12 @@ export default function RevisionFlow({ cards, totalDue }: RevisionFlowProps) {
 
             if (!submitted) {
               optionClass += isSelected
-                ? ' border-[#534AB7] bg-[#EEEDFE] dark:bg-[#534AB7]/20 text-[#534AB7] dark:text-indigo-300 font-medium'
-                : ' border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-gray-800 dark:text-gray-200 hover:border-[#534AB7]/40 hover:bg-[#EEEDFE]/30 dark:hover:bg-[#534AB7]/5'
+                ? ' border-[var(--color-primary)] bg-[rgba(var(--color-primary-rgb),0.06)] dark:bg-[rgba(var(--color-primary-rgb),0.2)] text-[var(--color-primary)] dark:text-indigo-300 font-medium'
+                : ' border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-gray-800 dark:text-gray-200 hover:border-[rgba(var(--color-primary-rgb),0.4)] hover:bg-[rgba(var(--color-primary-rgb),0.12)] dark:hover:bg-[rgba(var(--color-primary-rgb),0.05)]'
             } else if (isCorrectChoice) {
-              optionClass += ' border-[#1D9E75] bg-[#EAF3DE] dark:bg-[#1D9E75]/10 text-[#1D9E75] font-medium'
+              optionClass += ' border-[var(--color-success)] bg-[rgba(var(--color-success-rgb),0.08)] dark:bg-[rgba(var(--color-success-rgb),0.12)] text-[var(--color-success)] font-medium'
             } else if (isSelected && !isCorrectChoice) {
-              optionClass += ' border-[#E24B4A] bg-[#FCEBEB] dark:bg-[#E24B4A]/10 text-[#E24B4A] font-medium'
+              optionClass += ' border-[var(--color-error)] bg-[rgba(var(--color-error-rgb),0.08)] dark:bg-[rgba(var(--color-error-rgb),0.12)] text-[var(--color-error)] font-medium'
             } else {
               optionClass += ' border-gray-100 dark:border-slate-800 bg-white dark:bg-slate-900 text-gray-400 dark:text-gray-500'
             }
@@ -389,7 +387,7 @@ export default function RevisionFlow({ cards, totalDue }: RevisionFlowProps) {
             type="button"
             onClick={handleSubmit}
             disabled={!selectedOption}
-            className="w-full min-h-[44px] rounded-xl bg-[#534AB7] text-white text-sm font-semibold disabled:opacity-50 hover:bg-[#4840a3] active:scale-[0.98] transition-all shadow-md shadow-[#534AB7]/25"
+            className="w-full min-h-[44px] rounded-xl bg-[var(--color-primary)] text-white text-sm font-semibold disabled:opacity-50 hover:bg-[var(--color-primary-hover)] active:scale-[0.98] transition-all shadow-md shadow-[rgba(var(--color-primary-rgb),0.25)]"
           >
             Check answer
           </button>
@@ -397,7 +395,7 @@ export default function RevisionFlow({ cards, totalDue }: RevisionFlowProps) {
           <button
             type="button"
             onClick={handleNext}
-            className="w-full min-h-[44px] rounded-xl bg-[#534AB7] text-white text-sm font-semibold hover:bg-[#4840a3] active:scale-[0.98] transition-all shadow-md shadow-[#534AB7]/25"
+            className="w-full min-h-[44px] rounded-xl bg-[var(--color-primary)] text-white text-sm font-semibold hover:bg-[var(--color-primary-hover)] active:scale-[0.98] transition-all shadow-md shadow-[rgba(var(--color-primary-rgb),0.25)]"
           >
             {currentIndex + 1 >= totalCards ? 'See results' : 'Next card'}
           </button>
