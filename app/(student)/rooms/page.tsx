@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 import { toast } from '@/lib/toast';
 import Link from 'next/link';
+import { SpinnerLoader } from '@/components/UI/loaders';
 import { Room, UserRole, RoomMember } from '@/types/rooms';
 import Leaderboard from '@/components/Leaderboard';
 import WeeklyChallenge from '@/components/WeeklyChallenge';
@@ -432,11 +433,14 @@ export default function RoomsPage() {
                 <li className="text-gray-500 dark:text-gray-400 flex items-center gap-4">
                   No rooms found.
                   <button
-                    className="ml-4 px-3 py-1 bg-[#534AB7] text-white rounded hover:bg-[#3C3489] transition"
+                    className="ml-4 px-3 py-1 min-h-[44px] bg-[#534AB7] text-white rounded hover:bg-[#3C3489] transition"
                     onClick={handleRequestClassroom}
                     disabled={requestingClassroom}
                   >
-                    {requestingClassroom ? 'Requesting...' : 'Request Room'}
+                    <span className="flex items-center gap-2">
+                      {requestingClassroom && <SpinnerLoader size="small" color="#ffffff" />}
+                      {requestingClassroom ? 'Requesting...' : 'Request Room'}
+                    </span>
                   </button>
                 </li>
               )}
@@ -479,11 +483,14 @@ export default function RoomsPage() {
                     </Link>
                   ) : room.isPrivate ? (
                     <button
-                      className="ml-4 px-3 py-1 bg-yellow-600 text-white rounded hover:bg-yellow-700 transition"
+                      className="ml-4 px-3 py-1 min-h-[44px] bg-yellow-600 text-white rounded hover:bg-yellow-700 transition"
                       onClick={() => handleRequestJoin(room.id)}
                       disabled={requestingRoomId === room.id}
                     >
-                      {requestingRoomId === room.id ? 'Requesting...' : 'Request to Join'}
+                      <span className="flex items-center gap-2">
+                        {requestingRoomId === room.id && <SpinnerLoader size="small" color="#ffffff" />}
+                        {requestingRoomId === room.id ? 'Requesting...' : 'Request to Join'}
+                      </span>
                     </button>
                   ) : (
                     <Link
