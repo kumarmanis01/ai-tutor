@@ -19,6 +19,8 @@
  *
  * EDIT LOG:
  * - 2026-04-07 | claude | created for F-STU-014
+ * - 2026-04-22T12:53:00Z | copilot | chore(theme): resolve token-backed primary/success/error colors at runtime for canvas + swatches
+ * - 2026-04-22T14:10:00Z | copilot | feat(theme): use CSS token for Submit button and ensure swatches read runtime tokens; add unit-test coverage
  */
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
@@ -34,7 +36,7 @@ interface Point {
 
 // ── Constants ──────────────────────────────────────────────────────────────────
 
-const PENCIL_COLORS = ['#1a1a1a', '#534AB7', '#E24B4A', '#1D9E75', '#BA7517'];
+const DEFAULT_PENCIL_COLORS = ['#1a1a1a', '#534AB7', '#E24B4A', '#1D9E75', '#BA7517'];
 const STEP_REVEAL_MS = 600; // delay between each AI step appearing
 const EVAL_TIMEOUT_MS = 10_000;
 
@@ -78,6 +80,7 @@ function AiStepsList({ steps, visible }: { steps: string[]; visible: number }) {
 interface ToolbarProps {
   tool: Tool;
   color: string;
+  colors: string[];
   onToolChange: (t: Tool) => void;
   onColorChange: (c: string) => void;
   onUndo: () => void;
@@ -85,7 +88,7 @@ interface ToolbarProps {
   canUndo: boolean;
 }
 
-function Toolbar({ tool, color, onToolChange, onColorChange, onUndo, onClear, canUndo }: ToolbarProps) {
+function Toolbar({ tool, color, colors, onToolChange, onColorChange, onUndo, onClear, canUndo }: ToolbarProps) {
   return (
     <div className="flex items-center gap-2 px-3 py-2 border-b border-gray-200 dark:border-slate-700 flex-wrap">
       {/* Pencil */}
@@ -93,7 +96,7 @@ function Toolbar({ tool, color, onToolChange, onColorChange, onUndo, onClear, ca
         onClick={() => onToolChange('pencil')}
         className={`min-h-[44px] min-w-[44px] px-2 rounded text-xs font-medium transition-colors ${
           tool === 'pencil'
-            ? 'bg-[#534AB7] text-white'
+            ? 'bg-[var(--color-primary)] text-white'
             : 'bg-gray-100 dark:bg-slate-700 text-gray-600 dark:text-gray-300'
         }`}
         aria-pressed={tool === 'pencil'}
@@ -107,7 +110,7 @@ function Toolbar({ tool, color, onToolChange, onColorChange, onUndo, onClear, ca
         onClick={() => onToolChange('eraser')}
         className={`min-h-[44px] min-w-[44px] px-2 rounded text-xs font-medium transition-colors ${
           tool === 'eraser'
-            ? 'bg-[#534AB7] text-white'
+            ? 'bg-[var(--color-primary)] text-white'
             : 'bg-gray-100 dark:bg-slate-700 text-gray-600 dark:text-gray-300'
         }`}
         aria-pressed={tool === 'eraser'}
@@ -119,14 +122,14 @@ function Toolbar({ tool, color, onToolChange, onColorChange, onUndo, onClear, ca
       {/* Color swatches -- only for pencil */}
       {tool === 'pencil' && (
         <div className="flex gap-1.5">
-          {PENCIL_COLORS.map((c) => (
+          {colors.map((c) => (
             <button
               key={c}
               onClick={() => onColorChange(c)}
               className="w-6 h-6 rounded-full border-2 transition-transform hover:scale-110"
               style={{
                 backgroundColor: c,
-                borderColor: color === c ? '#534AB7' : 'transparent',
+                borderColor: color === c ? 'var(--color-primary)' : 'transparent',
               }}
               aria-label={`Color ${c}`}
             />
@@ -178,7 +181,8 @@ export default function WhiteboardPanel({
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const aiCanvasRef = useRef<HTMLCanvasElement>(null);
   const [tool, setTool] = useState<Tool>('pencil');
-  const [color, setColor] = useState(PENCIL_COLORS[0]);
+  const [pencilColors, setPencilColors] = useState<string[]>(DEFAULT_PENCIL_COLORS);
+  const [color, setColor] = useState<string>(DEFAULT_PENCIL_COLORS[0]);
   const [snapshots, setSnapshots] = useState<ImageData[]>([]); // for undo
   const [isDrawing, setIsDrawing] = useState(false);
   const [visibleSteps, setVisibleSteps] = useState(0);
@@ -200,6 +204,19 @@ export default function WhiteboardPanel({
       setVisibleSteps(0); // re-animate from the start for the latest message
     }
   }, [aiSteps.length]);
+
+  // Resolve runtime token-backed colors (CSS variables) for use in canvas and swatches.
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const s = getComputedStyle(document.documentElement);
+    const primary = s.getPropertyValue('--color-primary').trim() || DEFAULT_PENCIL_COLORS[1];
+    const success = s.getPropertyValue('--color-success').trim() || DEFAULT_PENCIL_COLORS[3];
+    const warning = s.getPropertyValue('--color-warning').trim() || DEFAULT_PENCIL_COLORS[4];
+    const error = s.getPropertyValue('--color-error').trim() || DEFAULT_PENCIL_COLORS[2];
+    const resolved = ['#1a1a1a', primary, error, success, warning];
+    setPencilColors(resolved);
+    setColor((c) => (c === DEFAULT_PENCIL_COLORS[1] ? primary : c));
+  }, []);
 
   // ── Drawing event handlers ─────────────────────────────────────────────────
 
@@ -532,6 +549,7 @@ export default function WhiteboardPanel({
         <Toolbar
           tool={tool}
           color={color}
+          colors={pencilColors}
           onToolChange={setTool}
           onColorChange={setColor}
           onUndo={handleUndo}
@@ -573,14 +591,15 @@ export default function WhiteboardPanel({
         {/* AC-04: Submit bar */}
         <div className="px-3 py-2 border-t border-gray-100 dark:border-slate-700">
           {feedback && (
-            <p className="text-xs text-[#534AB7] dark:text-[#9B96E0] mb-2 leading-relaxed">
+            <p className="text-xs text-[var(--color-primary)] dark:text-[var(--color-primary-hover)] mb-2 leading-relaxed">
               {feedback}
             </p>
           )}
           <button
             onClick={handleSubmit}
             disabled={isSubmitting}
-            className="w-full min-h-[44px] rounded-lg bg-[#534AB7] text-white text-sm font-medium disabled:opacity-50 transition-colors hover:bg-[#4339a6]"
+            className="w-full min-h-[44px] rounded-lg text-white text-sm font-medium disabled:opacity-50 transition-colors bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)]"
+            style={{ backgroundColor: undefined }}
           >
             {isSubmitting ? 'Checking your working...' : 'Submit my working'}
           </button>

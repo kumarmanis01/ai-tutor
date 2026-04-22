@@ -1,5 +1,20 @@
 'use client'
 
+/**
+ * FILE OBJECTIVE:
+ * - Render XP progress widget with level, progress bar and weekly breakdown.
+ *
+ * LINKED UNIT TEST:
+ * - tests/unit/components/student/dashboard/XPWidget.spec.tsx
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - .github/copilot-instructions.md
+ * - /docs/ENGINEERING_PRACTICES.md
+ *
+ * EDIT LOG:
+ * - 2026-04-22T14:25:00Z | copilot | feat(theme): replace hard-coded colors with CSS tokens
+ */
+
 import { getProgressPercent, getXPToNextLevel, LEVEL_THRESHOLDS, getLevelTierName } from '@/lib/student/xpLevels'
 
 /** Human-readable labels for XP source keys stored in StudentXP.source. */
@@ -68,7 +83,7 @@ export function XPWidget({
       <div className="rounded-xl border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800 p-4">
         {/* Header row: level badge + xp this week */}
         <div className="flex items-center justify-between mb-3">
-          <span className="inline-flex items-center px-2.5 py-1 rounded-lg bg-[#534AB7]/10 dark:bg-[#534AB7]/20 text-[#534AB7] dark:text-indigo-300 text-xs font-bold tracking-wide">
+          <span className="inline-flex items-center px-2.5 py-1 rounded-lg bg-[rgba(var(--color-primary-rgb),0.1)] dark:bg-[rgba(var(--color-primary-rgb),0.2)] text-[var(--color-primary)] dark:text-indigo-300 text-xs font-bold tracking-wide">
             Level {level} · {tierName}
           </span>
           <span className="text-xs text-gray-500 dark:text-gray-400">
@@ -90,7 +105,7 @@ export function XPWidget({
             aria-valuemax={bandSize}
           >
             <div
-              className="h-full rounded-full bg-[#534AB7] dark:bg-[#534AB7] transition-all duration-300"
+              className="h-full rounded-full bg-[var(--color-primary)] dark:bg-[var(--color-primary)] transition-all duration-300"
               style={{ width: `${progressPct}%` }}
             />
           </div>
@@ -113,12 +128,12 @@ export function XPWidget({
                 .map(([source, amount]) => (
                   <li
                     key={source}
-                    className="flex items-center gap-1 bg-[#534AB7]/10 dark:bg-[#534AB7]/20 rounded-full px-2 py-0.5"
+                    className="flex items-center gap-1 bg-[rgba(var(--color-primary-rgb),0.1)] dark:bg-[rgba(var(--color-primary-rgb),0.2)] rounded-full px-2 py-0.5"
                   >
-                    <span className="text-[11px] text-[#534AB7] dark:text-indigo-300 font-medium">
+                    <span className="text-[11px] text-[var(--color-primary)] dark:text-indigo-300 font-medium">
                       {XP_SOURCE_LABELS[source] ?? source}
                     </span>
-                    <span className="text-[11px] font-bold text-[#534AB7] dark:text-indigo-300">
+                    <span className="text-[11px] font-bold text-[var(--color-primary)] dark:text-indigo-300">
                       +{amount}
                     </span>
                   </li>

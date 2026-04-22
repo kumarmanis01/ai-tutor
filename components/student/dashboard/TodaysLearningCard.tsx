@@ -7,8 +7,8 @@
  * app/(student)/dashboard/page.tsx (no client-side fetch).
  *
  * Visual spec:
- *   - Purple left border accent: border-l-4 border-[#534AB7]
- *   - Subject badge: purple pill
+ *   - Purple left border accent: border-l-4 border-[var(--color-primary)]
+ *   - Subject badge: token-backed primary pill
  *   - Duration chip: grey pill
  *   - CTA: full-width "Start today's session" → /student/session/[conceptId]
  *
@@ -18,6 +18,9 @@
  *   - 'homework' -- pending homework must be done first
  *   - 'ahead'    -- plan exists but no item this week
  *   - 'empty'    -- no plan + no diagnostic taken yet (onboarding checklist)
+ *
+ * EDIT LOG:
+ * - 2026-04-22T14:20:00Z | copilot | feat(theme): replace hard-coded colors with CSS tokens for dashboard widgets
  */
 
 import React, { useState } from 'react';
@@ -97,12 +100,12 @@ function StartState({ rec, ctaLabel }: { rec: TodaysLearningCardRecommendation; 
   }
 
   return (
-    <article className="rounded-2xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 border-l-4 border-l-[#534AB7] overflow-hidden shadow-sm">
+    <article className="rounded-2xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 border-l-4 border-l-[var(--color-primary)] overflow-hidden shadow-sm">
       <div className="p-5">
         {/* Badges row */}
         <div className="flex flex-wrap items-center gap-2 mb-3">
           {rec.subject && (
-            <span className="inline-flex items-center rounded-full bg-[#534AB7]/10 dark:bg-[#534AB7]/20 px-3 py-1 text-xs font-semibold text-[#534AB7] dark:text-indigo-300">
+            <span className="inline-flex items-center rounded-full bg-[rgba(var(--color-primary-rgb),0.1)] dark:bg-[rgba(var(--color-primary-rgb),0.2)] px-3 py-1 text-xs font-semibold text-[var(--color-primary)] dark:text-indigo-300">
               {rec.subject}
             </span>
           )}
@@ -183,7 +186,7 @@ function StartState({ rec, ctaLabel }: { rec: TodaysLearningCardRecommendation; 
           type="button"
           onClick={handleStart}
           disabled={loading}
-          className="w-full min-h-[44px] rounded-xl bg-[#534AB7] hover:bg-[#4840a3] active:scale-[0.98] disabled:opacity-60 text-white text-sm font-semibold transition-all flex items-center justify-center gap-2 shadow-md shadow-[#534AB7]/25"
+          className="w-full min-h-[44px] rounded-xl bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] active:scale-[0.98] disabled:opacity-60 text-white text-sm font-semibold transition-all flex items-center justify-center gap-2 shadow-md shadow-[rgba(var(--color-primary-rgb),0.25)]"
         >
           {loading ? (
             <>
@@ -212,10 +215,10 @@ function ResumeState({ session }: { session: TodaysLearningCardSession }) {
   const router = useRouter();
 
   return (
-    <article className="rounded-2xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 border-l-4 border-l-[#534AB7] overflow-hidden shadow-sm">
+    <article className="rounded-2xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 border-l-4 border-l-[var(--color-primary)] overflow-hidden shadow-sm">
       <div className="p-5">
         <div className="flex flex-wrap items-center gap-2 mb-3">
-          <span className="inline-flex items-center rounded-full bg-[#534AB7]/10 dark:bg-[#534AB7]/20 px-3 py-1 text-xs font-semibold text-[#534AB7] dark:text-indigo-300">
+          <span className="inline-flex items-center rounded-full bg-[rgba(var(--color-primary-rgb),0.1)] dark:bg-[rgba(var(--color-primary-rgb),0.2)] px-3 py-1 text-xs font-semibold text-[var(--color-primary)] dark:text-indigo-300">
             {session.subject}
           </span>
           <span className="inline-flex items-center rounded-full bg-amber-100 dark:bg-amber-900/30 px-3 py-1 text-xs font-medium text-amber-700 dark:text-amber-400">
@@ -230,7 +233,7 @@ function ResumeState({ session }: { session: TodaysLearningCardSession }) {
         <button
           type="button"
           onClick={() => router.push(`/session/${session.topicId}`)}
-          className="w-full min-h-[44px] rounded-xl bg-[#534AB7] hover:bg-[#4840a3] active:scale-[0.98] text-white text-sm font-semibold transition-all flex items-center justify-center gap-2 shadow-md shadow-[#534AB7]/25"
+          className="w-full min-h-[44px] rounded-xl bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] active:scale-[0.98] text-white text-sm font-semibold transition-all flex items-center justify-center gap-2 shadow-md shadow-[rgba(var(--color-primary-rgb),0.25)]"
         >
           Continue session
           <svg className="w-4 h-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden>
@@ -256,7 +259,7 @@ function HomeworkState({ homework }: { homework: TodaysLearningCardHomework }) {
     : `Due in ${diffDays} days`;
 
   return (
-    <article className="rounded-2xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 border-l-4 border-l-[#BA7517] overflow-hidden shadow-sm">
+    <article className="rounded-2xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 border-l-4 border-l-[var(--color-warning)] overflow-hidden shadow-sm">
       <div className="p-5">
         <div className="flex flex-wrap items-center gap-2 mb-3">
           <span className="inline-flex items-center rounded-full bg-amber-100 dark:bg-amber-900/30 px-3 py-1 text-xs font-semibold text-amber-700 dark:text-amber-400">
@@ -277,7 +280,7 @@ function HomeworkState({ homework }: { homework: TodaysLearningCardHomework }) {
         <button
           type="button"
           onClick={() => router.push(`/homework/${homework.id}`)}
-          className="w-full min-h-[44px] rounded-xl bg-[#BA7517] hover:bg-amber-700 active:scale-[0.98] text-white text-sm font-semibold transition-all flex items-center justify-center gap-2"
+          className="w-full min-h-[44px] rounded-xl bg-[var(--color-warning)] hover:bg-[var(--color-warning)] active:scale-[0.98] text-white text-sm font-semibold transition-all flex items-center justify-center gap-2"
         >
           Complete homework
           <svg className="w-4 h-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden>
@@ -293,7 +296,7 @@ function HomeworkState({ homework }: { homework: TodaysLearningCardHomework }) {
 
 function AheadState() {
   return (
-    <article className="rounded-2xl border border-[#1D9E75]/30 dark:border-[#1D9E75]/20 bg-[#1D9E75]/5 dark:bg-[#1D9E75]/10 border-l-4 border-l-[#1D9E75] overflow-hidden">
+    <article className="rounded-2xl border border-[rgba(var(--color-success-rgb),0.3)] dark:border-[rgba(var(--color-success-rgb),0.2)] bg-[rgba(var(--color-success-rgb),0.05)] dark:bg-[rgba(var(--color-success-rgb),0.1)] border-l-4 border-l-[var(--color-success)] overflow-hidden">
       <div className="p-5">
         <p className="text-base font-semibold text-gray-900 dark:text-gray-100 mb-1">
           You&apos;re ahead of your plan this week! 🎉
@@ -303,7 +306,7 @@ function AheadState() {
         </p>
         <Link
           href="/learn/learning-path"
-          className="inline-flex min-h-[44px] items-center rounded-xl border border-[#1D9E75] text-[#1D9E75] dark:text-[#1D9E75] px-5 text-sm font-semibold hover:bg-[#1D9E75]/10 transition-colors"
+          className="inline-flex min-h-[44px] items-center rounded-xl border border-[var(--color-success)] text-[var(--color-success)] dark:text-[var(--color-success)] px-5 text-sm font-semibold hover:bg-[rgba(var(--color-success-rgb),0.1)] transition-colors"
         >
           Explore topics →
         </Link>
@@ -316,7 +319,7 @@ function AheadState() {
 
 function PlanLoadingState() {
   return (
-    <article className="rounded-2xl border border-[#534AB7]/20 dark:border-[#534AB7]/30 bg-[#EEEDFE] dark:bg-[#534AB7]/10 border-l-4 border-l-[#534AB7] overflow-hidden">
+    <article className="rounded-2xl border border-[rgba(var(--color-primary-rgb),0.2)] dark:border-[rgba(var(--color-primary-rgb),0.3)] bg-[rgba(var(--color-primary-rgb),0.06)] dark:bg-[rgba(var(--color-primary-rgb),0.1)] border-l-4 border-l-[var(--color-primary)] overflow-hidden">
       <div className="p-5">
         <p className="text-base font-semibold text-gray-900 dark:text-gray-100 mb-1">
           Great work completing your diagnostic!
@@ -326,7 +329,7 @@ function PlanLoadingState() {
         </p>
         <Link
           href="/learn/learning-path"
-          className="inline-flex min-h-[44px] items-center rounded-xl border border-[#534AB7] text-[#534AB7] dark:text-indigo-300 px-5 text-sm font-semibold hover:bg-[#534AB7]/10 transition-colors"
+          className="inline-flex min-h-[44px] items-center rounded-xl border border-[var(--color-primary)] text-[var(--color-primary)] dark:text-indigo-300 px-5 text-sm font-semibold hover:bg-[rgba(var(--color-primary-rgb),0.1)] transition-colors"
         >
           Browse curriculum →
         </Link>
@@ -357,13 +360,13 @@ function EmptyState({ diagnosticHref }: { diagnosticHref: string }) {
           ].map((step) => (
             <li key={step.label} className="flex items-center gap-2 text-sm">
               {step.done ? (
-                <span className="text-[#1D9E75]" aria-hidden>✓</span>
+                <span className="text-[var(--color-success)]" aria-hidden>✓</span>
               ) : step.active ? (
-                <span className="text-[#534AB7]" aria-hidden>→</span>
+                <span className="text-[var(--color-primary)]" aria-hidden>→</span>
               ) : (
                 <span className="text-gray-300 dark:text-gray-600" aria-hidden>○</span>
               )}
-              <span className={step.active ? 'font-medium text-[#534AB7] dark:text-indigo-400' : step.done ? 'text-gray-500 dark:text-gray-400' : 'text-gray-300 dark:text-gray-600'}>
+              <span className={step.active ? 'font-medium text-[var(--color-primary)] dark:text-indigo-400' : step.done ? 'text-gray-500 dark:text-gray-400' : 'text-gray-300 dark:text-gray-600'}>
                 {step.label}
               </span>
             </li>
@@ -372,7 +375,7 @@ function EmptyState({ diagnosticHref }: { diagnosticHref: string }) {
 
         <Link
           href={diagnosticHref}
-          className="flex w-full min-h-[44px] items-center justify-center rounded-xl bg-[#534AB7] text-white text-sm font-semibold hover:bg-[#4840a3] transition-colors"
+          className="flex w-full min-h-[44px] items-center justify-center rounded-xl bg-[var(--color-primary)] text-white text-sm font-semibold hover:bg-[var(--color-primary-hover)] transition-colors"
         >
           Take diagnostic test
         </Link>
