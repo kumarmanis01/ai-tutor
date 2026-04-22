@@ -346,6 +346,15 @@ export default async function StudentHomeDashboardPage() {
     }
   }
 
+  // When all enrolled subjects have a completed diagnostic but no learning plan
+  // is ready yet, show the plan-loading state instead of the onboarding checklist.
+  // This prevents "Take diagnostic test" from appearing after all tests are done.
+  const allDiagnosticsComplete =
+    readinessResults.length > 0 && readinessResults.every((r) => r.diagnosticDone)
+  if (cardProps.type === 'empty' && allDiagnosticsComplete) {
+    cardProps = { type: 'plan_loading' }
+  }
+
   // ── Render ──────────────────────────────────────────────────────────────────
   return (
     <main className="max-w-5xl mx-auto px-4 py-6">
