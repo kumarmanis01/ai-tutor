@@ -228,8 +228,14 @@ export default async function LearningPathPage() {
 
       {subjects.length === 0 && curriculumFallback.length === 0 ? (
         <div className="text-center py-16 text-gray-400">
-          <p className="text-sm">Your learning path is being prepared.</p>
-          <p className="text-xs mt-1">Check back in a moment once your plan is ready.</p>
+          <p className="text-sm">Teacher Vidya is building your personalised plan.</p>
+          <p className="text-xs mt-1">This usually takes a few minutes -- go back to the dashboard and refresh to check.</p>
+          <Link
+            href="/dashboard"
+            className="inline-flex min-h-[44px] items-center justify-center mt-4 rounded-xl border border-[#534AB7] text-[#534AB7] dark:text-indigo-300 px-5 text-sm font-semibold hover:bg-[#534AB7]/10 transition-colors"
+          >
+            Back to dashboard
+          </Link>
         </div>
       ) : (
         <div className="space-y-4">
