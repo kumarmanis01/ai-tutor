@@ -55,7 +55,7 @@ export function ListSkeleton({ count = 4 }: { count?: number }) {
           </div>
         </li>
       ))}
-      <span className="sr-only">Loading list...</span>
+      <li className="sr-only">Loading list...</li>
     </ul>
   );
 }

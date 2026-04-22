@@ -1,4 +1,21 @@
 /** @jest-environment jsdom */
+
+/**
+ * FILE OBJECTIVE:
+ * - Unit tests for useLoading hook: start/stop, minimum display time,
+ *   withLoading promise wrapping, progress clamping, and timer cleanup.
+ *
+ * LINKED UNIT TEST:
+ * - tests/unit/components/loaders/useLoading.spec.ts
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/COPILOT_GUARDRAILS.md
+ * - .github/copilot-instructions.md
+ *
+ * EDIT LOG:
+ * - 2026-04-22T00:00:00Z | claude | created for global loader system
+ */
+
 import { renderHook, act } from '@testing-library/react';
 import { useLoading } from '@/components/UI/loaders/useLoading';
 

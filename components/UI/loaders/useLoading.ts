@@ -1,3 +1,20 @@
+/**
+ * FILE OBJECTIVE:
+ * - Custom React hook for managing loading state with a configurable minimum
+ *   display time to prevent flashing on fast responses.
+ * - Exposes start/stop helpers, a promise-wrapping utility, and a progress value.
+ *
+ * LINKED UNIT TEST:
+ * - tests/unit/components/loaders/useLoading.spec.ts
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/COPILOT_GUARDRAILS.md
+ * - .github/copilot-instructions.md
+ *
+ * EDIT LOG:
+ * - 2026-04-22T00:00:00Z | claude | created for global loader system
+ */
+
 'use client';
 
 import { useState, useCallback, useRef, useEffect } from 'react';
@@ -25,6 +42,12 @@ export function useLoading(minimumDisplayTime = 300): UseLoadingReturn {
   }, []);
 
   const stopLoading = useCallback(() => {
+    // Always cancel any in-flight stop timer before scheduling a new one,
+    // preventing multiple calls from stacking up deferred setIsLoading(false).
+    if (stopTimerRef.current) {
+      clearTimeout(stopTimerRef.current);
+      stopTimerRef.current = null;
+    }
     if (showTimeRef.current === null) {
       setIsLoading(false);
       return;

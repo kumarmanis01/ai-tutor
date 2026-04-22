@@ -1,4 +1,21 @@
 /** @jest-environment jsdom */
+
+/**
+ * FILE OBJECTIVE:
+ * - Unit tests for all loader variant components: DotPulseLoader, SpinnerLoader,
+ *   BookLoader, ProgressLoader (clamping + aria), and MascotLoader.
+ *
+ * LINKED UNIT TEST:
+ * - tests/unit/components/loaders/LoaderVariants.spec.tsx
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/COPILOT_GUARDRAILS.md
+ * - .github/copilot-instructions.md
+ *
+ * EDIT LOG:
+ * - 2026-04-22T00:00:00Z | claude | created for global loader system
+ */
+
 import React from 'react';
 import { render, screen } from '@testing-library/react';
 import '@testing-library/jest-dom';

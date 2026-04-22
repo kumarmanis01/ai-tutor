@@ -1,4 +1,21 @@
 /** @jest-environment jsdom */
+
+/**
+ * FILE OBJECTIVE:
+ * - Unit tests for FullScreenLoader: visibility, ARIA attributes, message
+ *   rendering, minimum display time enforcement, and variant switching.
+ *
+ * LINKED UNIT TEST:
+ * - tests/unit/components/loaders/FullScreenLoader.spec.tsx
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/COPILOT_GUARDRAILS.md
+ * - .github/copilot-instructions.md
+ *
+ * EDIT LOG:
+ * - 2026-04-22T00:00:00Z | claude | created for global loader system
+ */
+
 import React from 'react';
 import { render, screen, act } from '@testing-library/react';
 import '@testing-library/jest-dom';

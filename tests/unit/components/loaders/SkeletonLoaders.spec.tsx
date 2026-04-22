@@ -1,4 +1,21 @@
 /** @jest-environment jsdom */
+
+/**
+ * FILE OBJECTIVE:
+ * - Unit tests for skeleton loader components: LessonSkeleton, CardSkeleton,
+ *   ListSkeleton, and QuestionSkeleton -- render correctness and a11y text.
+ *
+ * LINKED UNIT TEST:
+ * - tests/unit/components/loaders/SkeletonLoaders.spec.tsx
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/COPILOT_GUARDRAILS.md
+ * - .github/copilot-instructions.md
+ *
+ * EDIT LOG:
+ * - 2026-04-22T00:00:00Z | claude | created for global loader system
+ */
+
 import React from 'react';
 import { render, screen } from '@testing-library/react';
 import '@testing-library/jest-dom';
@@ -36,12 +53,12 @@ describe('CardSkeleton', () => {
 describe('ListSkeleton', () => {
   it('should render default 4 items', () => {
     const { container } = render(<ListSkeleton />);
-    expect(container.querySelectorAll('li').length).toBe(4);
+    expect(container.querySelectorAll('li:not(.sr-only)').length).toBe(4);
   });
 
   it('should render custom item count', () => {
     const { container } = render(<ListSkeleton count={3} />);
-    expect(container.querySelectorAll('li').length).toBe(3);
+    expect(container.querySelectorAll('li:not(.sr-only)').length).toBe(3);
   });
 
   it('should render without crash', () => {

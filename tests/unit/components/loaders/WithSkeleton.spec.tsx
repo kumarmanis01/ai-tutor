@@ -1,4 +1,21 @@
 /** @jest-environment jsdom */
+
+/**
+ * FILE OBJECTIVE:
+ * - Unit tests for WithSkeleton HOC: shows skeleton while loading, respects
+ *   minimum delay before revealing children, and handles rapid state flips.
+ *
+ * LINKED UNIT TEST:
+ * - tests/unit/components/loaders/WithSkeleton.spec.tsx
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/COPILOT_GUARDRAILS.md
+ * - .github/copilot-instructions.md
+ *
+ * EDIT LOG:
+ * - 2026-04-22T00:00:00Z | claude | created for global loader system
+ */
+
 import React from 'react';
 import { render, screen, act } from '@testing-library/react';
 import '@testing-library/jest-dom';

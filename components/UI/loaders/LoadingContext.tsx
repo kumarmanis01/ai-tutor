@@ -1,3 +1,20 @@
+/**
+ * FILE OBJECTIVE:
+ * - Global loading context and provider that lets any component trigger the
+ *   full-screen loader from anywhere in the tree without prop drilling.
+ * - Exposes showLoader / hideLoader / updateProgress via useGlobalLoader hook.
+ *
+ * LINKED UNIT TEST:
+ * - tests/unit/components/loaders/FullScreenLoader.spec.tsx
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/COPILOT_GUARDRAILS.md
+ * - .github/copilot-instructions.md
+ *
+ * EDIT LOG:
+ * - 2026-04-22T00:00:00Z | claude | created for global loader system
+ */
+
 'use client';
 
 import { createContext, useContext, useState, useCallback } from 'react';
