@@ -1,15 +1,17 @@
 'use client';
 /**
  * FILE OBJECTIVE:
- * - Floating "Ask Vidya" button + slide-up doubt panel for any session phase.
+ * - Slide-up doubt panel for any session phase.
  * - F-STU-011 AC-03 (MUST): student can interrupt at any point to ask a doubt.
  * - Calls POST /api/doubts with session context. Maintains conversation history
  *   for follow-up questions within the same panel session.
  * - AI pauses the current phase implicitly; student closes panel to resume.
+ * - Controlled externally via isOpen / onClose -- trigger lives in SessionBottomBar.
  *
  * EDIT LOG:
  * - 2026-04-07 | claude | created to close F-STU-011 AC-03 gap
  * - 2026-04-07 | claude | fix: add object-cover to avatars and use items-start on message rows to prevent avatar stretching
+ * - 2026-04-22 | redesign | remove internal floating FAB; accept isOpen/onClose props
  */
 
 import React, { useRef, useEffect } from 'react';
@@ -30,10 +32,11 @@ interface DoubtPanelProps {
   subject: string;
   chapter: string;
   topicName: string;
+  isOpen: boolean;
+  onClose: () => void;
 }
 
-export function DoubtPanel({ subject, chapter, topicName }: DoubtPanelProps) {
-  const [isOpen, setIsOpen] = React.useState(false);
+export function DoubtPanel({ subject, chapter, topicName, isOpen, onClose }: DoubtPanelProps) {
   const [messages, setMessages] = React.useState<Message[]>([]);
   const [input, setInput] = React.useState('');
   const [loading, setLoading] = React.useState(false);
@@ -48,15 +51,10 @@ export function DoubtPanel({ subject, chapter, topicName }: DoubtPanelProps) {
     }
   }, [messages]);
 
-  // Focus input when panel opens
+  // Focus input and seed greeting when panel opens
   useEffect(() => {
-    if (isOpen && inputRef.current) {
-      setTimeout(() => inputRef.current?.focus(), 100);
-    }
-  }, [isOpen]);
-
-  function open() {
-    setIsOpen(true);
+    if (!isOpen) return;
+    if (inputRef.current) setTimeout(() => inputRef.current?.focus(), 100);
     if (messages.length === 0) {
       setMessages([
         {
@@ -65,11 +63,7 @@ export function DoubtPanel({ subject, chapter, topicName }: DoubtPanelProps) {
         },
       ]);
     }
-  }
-
-  function close() {
-    setIsOpen(false);
-  }
+  }, [isOpen, topicName, messages.length]);
 
   function buildHistory(): ConversationMessage[] {
     return messages
@@ -145,30 +139,11 @@ export function DoubtPanel({ subject, chapter, topicName }: DoubtPanelProps) {
 
   return (
     <>
-      {/* Floating button -- always visible during active session phases */}
-      {!isOpen && (
-        <button
-          type="button"
-          onClick={open}
-          aria-label="Ask Teacher Vidya a doubt"
-          className="fixed bottom-24 right-4 z-40 flex items-center gap-2 min-h-[44px] px-4 py-2.5 rounded-full bg-[#534AB7] text-white text-sm font-semibold shadow-lg shadow-[#534AB7]/30 hover:bg-[#3C3489] transition-colors"
-        >
-          <Image
-            src="/logos/vidya/vidya-avatar-64.png"
-            alt=""
-            width={24}
-            height={24}
-            className="rounded-full object-cover"
-          />
-          Ask Vidya
-        </button>
-      )}
-
       {/* Backdrop */}
       {isOpen && (
         <div
           className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm"
-          onClick={close}
+          onClick={onClose}
           aria-hidden="true"
         />
       )}
@@ -198,7 +173,7 @@ export function DoubtPanel({ subject, chapter, topicName }: DoubtPanelProps) {
           </div>
           <button
             type="button"
-            onClick={close}
+            onClick={onClose}
             aria-label="Close doubt panel"
             className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
           >
@@ -215,7 +190,7 @@ export function DoubtPanel({ subject, chapter, topicName }: DoubtPanelProps) {
         >
           {messages.map((msg, i) => (
             <div key={i} className={`flex items-start gap-2.5 ${msg.role === 'student' ? 'flex-row-reverse' : 'flex-row'}`}>
-                {msg.role === 'vidya' && (
+              {msg.role === 'vidya' && (
                 <Image
                   src="/logos/vidya/vidya-avatar-64.png"
                   alt="Vidya"
@@ -234,7 +209,6 @@ export function DoubtPanel({ subject, chapter, topicName }: DoubtPanelProps) {
                 >
                   {msg.text}
                 </div>
-                {/* Follow-up question from Vidya */}
                 {msg.role === 'vidya' && msg.followUp && (
                   <p className="text-xs text-[#534AB7] dark:text-indigo-300 px-1">
                     {msg.followUp}
@@ -244,7 +218,6 @@ export function DoubtPanel({ subject, chapter, topicName }: DoubtPanelProps) {
             </div>
           ))}
 
-          {/* Loading indicator */}
           {loading && (
             <div className="flex items-start gap-2.5">
               <Image

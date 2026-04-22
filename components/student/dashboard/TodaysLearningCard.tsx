@@ -322,13 +322,13 @@ function PlanLoadingState() {
           Great work completing your diagnostic!
         </p>
         <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-          Teacher Vidya is building your personalised learning plan. It will be ready in moments -- refresh to see your first session.
+          Teacher Vidya is building your personalised learning plan. This usually takes a few minutes -- refresh this page to check if your first session is ready.
         </p>
         <Link
           href="/learn/learning-path"
           className="inline-flex min-h-[44px] items-center rounded-xl border border-[#534AB7] text-[#534AB7] dark:text-indigo-300 px-5 text-sm font-semibold hover:bg-[#534AB7]/10 transition-colors"
         >
-          Explore topics →
+          Browse curriculum →
         </Link>
       </div>
     </article>

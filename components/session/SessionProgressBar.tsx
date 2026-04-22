@@ -1,15 +1,17 @@
 'use client';
 /**
  * FILE OBJECTIVE:
- * - Displays the 5 learning steps with clear completed / current / upcoming states.
- * - Derives state from currentPhase and PHASE_ORDER; UI-only, no session logic changes.
+ * - Displays the 5 learning steps as a compact horizontal scrollable pill strip.
+ * - Completed steps are green pills (tappable to go back); current step is
+ *   filled primary blue; upcoming steps are muted.
+ * - Strip auto-scrolls to keep the current step centred when the phase changes.
  *
  * EDIT LOG:
  * - 2026-03-08 | claude | extracted from components/Session/SessionHeader.tsx
- * - (date) | UX      | step list: ✔ completed, ● current, ○ upcoming
+ * - 2026-04-22 | redesign | vertical overlay list -> horizontal scrollable strip
  */
 
-import React from 'react';
+import React, { useRef, useEffect } from 'react';
 import { PHASE_ORDER, PHASE_UI_CONFIG } from '@/lib/session/phaseConfig';
 import type { SessionPhaseClient } from '@/lib/session/phaseConfig';
 
@@ -29,58 +31,73 @@ export function SessionProgressBar({
   if (currentPhase === 'COMPLETE' || currentPhase === 'EXPIRED') return null;
 
   const steps = PHASE_ORDER.slice(0, totalPhases);
+  const stripRef = useRef<HTMLDivElement>(null);
+
+  // Keep the active pill in view whenever the phase advances.
+  useEffect(() => {
+    const active = stripRef.current?.querySelector<HTMLElement>('[aria-current="step"]');
+    active?.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+  }, [phaseIndex]);
 
   return (
-    <div className="space-y-1">
-      <p className="text-xs text-muted-foreground mb-2">
-        Step {phaseIndex + 1} of {totalPhases}
-      </p>
-      <ul className="flex flex-col gap-1.5" aria-label="Session progress">
-        {steps.map((phase, i) => {
-          const config = PHASE_UI_CONFIG[phase];
-          const isCompleted = i < phaseIndex;
-          const isCurrent = i === phaseIndex;
-          const isUpcoming = i > phaseIndex;
+    <div
+      ref={stripRef}
+      className="flex items-center gap-1 overflow-x-auto"
+      // Hide the scrollbar visually; swipe gesture still works.
+      style={{ scrollbarWidth: 'none' } as React.CSSProperties}
+      aria-label="Session progress"
+      role="list"
+    >
+      {steps.map((phase, i) => {
+        const config = PHASE_UI_CONFIG[phase];
+        const isCompleted = i < phaseIndex;
+        const isCurrent = i === phaseIndex;
 
-          const label = (
-            <>
-              <span className="flex-shrink-0 w-5 text-center" aria-hidden>
-                {isCompleted && <span className="text-green-600">✔</span>}
-                {isCurrent && <span className="text-primary">●</span>}
-                {isUpcoming && <span className="text-muted-foreground/50">○</span>}
-              </span>
-              <span>{config.label}</span>
-            </>
-          );
+        const pillBase =
+          'flex-shrink-0 inline-flex items-center gap-1.5 min-h-[44px] px-3 rounded-full text-sm whitespace-nowrap transition-colors';
+        const pillVariant = isCurrent
+          ? 'bg-[#534AB7] text-white font-semibold'
+          : isCompleted
+            ? 'bg-[#EAF3DE] text-[#1D9E75] font-medium'
+            : 'bg-transparent text-muted-foreground/50';
 
+        const icon = isCompleted ? '✔' : isCurrent ? '●' : '○';
+
+        const inner = (
+          <>
+            <span aria-hidden className="text-xs leading-none">
+              {icon}
+            </span>
+            <span>{config.label}</span>
+          </>
+        );
+
+        if (isCompleted && onStepClick) {
           return (
-            <li
+            <button
               key={phase}
-              className={`flex items-center gap-2.5 text-sm ${
-                isCurrent
-                  ? 'text-foreground font-semibold'
-                  : isCompleted
-                    ? 'text-muted-foreground'
-                    : 'text-muted-foreground/70'
-              }`}
-              aria-current={isCurrent ? 'step' : undefined}
+              type="button"
+              role="listitem"
+              onClick={() => onStepClick(phase)}
+              className={`${pillBase} ${pillVariant} hover:opacity-80 cursor-pointer`}
+              aria-label={`Go back to ${config.label}`}
             >
-              {isCompleted && onStepClick ? (
-                <button
-                  type="button"
-                  onClick={() => onStepClick(phase)}
-                  className="flex items-center gap-2.5 hover:text-foreground hover:underline cursor-pointer transition-colors min-h-[44px] w-full text-left"
-                  aria-label={`Go back to ${config.label}`}
-                >
-                  {label}
-                </button>
-              ) : (
-                <div className="flex items-center gap-2.5 min-h-[44px]">{label}</div>
-              )}
-            </li>
+              {inner}
+            </button>
           );
-        })}
-      </ul>
+        }
+
+        return (
+          <div
+            key={phase}
+            role="listitem"
+            className={`${pillBase} ${pillVariant}`}
+            aria-current={isCurrent ? 'step' : undefined}
+          >
+            {inner}
+          </div>
+        );
+      })}
     </div>
   );
 }
