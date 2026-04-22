@@ -2,16 +2,26 @@
 /**
  * FILE OBJECTIVE:
  * - Provides the consistent UI frame for every session phase.
- * - SessionHeader (sticky top) + children + optional SessionFooter (sticky bottom).
- * - Per architecture spec: every phase automatically gets the same UX shell.
+ * - SessionHeader (sticky top) + children + optional SessionFooter (sticky above
+ *   bottom bar) + SessionBottomBar (fixed at very bottom) + DoubtPanel (slide-up).
+ *
+ * Layout:
+ *   sticky top   : SessionHeader  (~80px)
+ *   scroll        : <main> children
+ *   sticky bottom : SessionFooter (optional, ~68px, clears SessionBottomBar)
+ *   fixed bottom  : SessionBottomBar (64px + safe area)
+ *   z-50 overlay  : DoubtPanel slide-up dialog
  *
  * EDIT LOG:
  * - 2026-03-08 | claude | created for Session Architecture refactor
+ * - 2026-04-22 | redesign | add SessionBottomBar, lift DoubtPanel open state,
+ *                           adjust padding-bottom for layered sticky/fixed bottom
  */
 
-import React from 'react';
+import React, { useState } from 'react';
 import { SessionHeader } from './SessionHeader';
 import { SessionFooter } from './SessionFooter';
+import { SessionBottomBar } from './SessionBottomBar';
 import { DoubtPanel } from './DoubtPanel';
 import type { SessionView, PhaseContent } from '@/lib/session/sessionEngine';
 
@@ -35,12 +45,20 @@ interface SessionLayoutProps {
 
 export function SessionLayout({ session, phase, children, footer, onStepClick }: SessionLayoutProps) {
   const activePhase = session.currentPhase !== 'COMPLETE' && session.currentPhase !== 'EXPIRED';
+  const [isDoubtOpen, setIsDoubtOpen] = useState(false);
+
+  // Padding-bottom must clear:
+  //   active + footer  : SessionFooter (~68px) + SessionBottomBar (64px) + gap = ~148px
+  //   active, no footer: SessionBottomBar (64px) + gap = ~80px
+  //   complete/expired : no bottom bars = 24px
+  const mainPb = !activePhase ? 'pb-6' : footer ? 'pb-40' : 'pb-24';
 
   return (
     <div className="min-h-screen bg-background">
       <SessionHeader session={session} phase={phase} onStepClick={onStepClick} />
-      {/* pb-36 when footer present to clear both sticky footer and floating button */}
-      <main className={footer ? 'pb-36' : 'pb-24'}>{children}</main>
+
+      <main className={mainPb}>{children}</main>
+
       {footer && (
         <SessionFooter
           nextLabel={footer.nextLabel}
@@ -51,12 +69,23 @@ export function SessionLayout({ session, phase, children, footer, onStepClick }:
           onPrevious={footer.onPrevious}
         />
       )}
+
       {activePhase && (
-        <DoubtPanel
-          subject={session.subject}
-          chapter={session.chapter}
-          topicName={session.topicName}
-        />
+        <>
+          <SessionBottomBar
+            onAskVidya={() => setIsDoubtOpen(true)}
+            sessionId={session.sessionId}
+            currentPhase={session.currentPhase}
+          />
+          <DoubtPanel
+            subject={session.subject}
+            chapter={session.chapter}
+            topicName={session.topicName}
+            isOpen={isDoubtOpen}
+            onOpen={() => setIsDoubtOpen(true)}
+            onClose={() => setIsDoubtOpen(false)}
+          />
+        </>
       )}
     </div>
   );
