@@ -83,11 +83,18 @@ function parseStories(md) {
     const labelsLine = block.match(/\*\*Labels:\*\*(.*)/);
     const phaseLine = block.match(/\*\*Phase:\*\*(.*)/);
 
-    const labels = labelsLine
+    let labels = labelsLine
       ? labelsLine[1].split(",").map((l) => l.trim()).filter(Boolean)
       : [];
 
     const phase = phaseLine ? phaseLine[1].trim() : null;
+    let phaseLabel = null;
+    if (phase) {
+      phaseLabel = `phase:${normalizePhase(phase)}`;
+      // Remove any existing phase:... label and add the normalized one
+      labels = labels.filter(l => !/^phase:/.test(l));
+      labels.push(phaseLabel);
+    }
 
     return {
       id,
@@ -95,6 +102,7 @@ function parseStories(md) {
       priority,
       labels,
       phase,
+      phaseLabel,
       body: `
 ## ${title}
 
@@ -138,8 +146,8 @@ const systemLabels = ["P0", "P1", "P2", "epic"];
 const dynamicPhaseLabels = new Set();
 
 stories.forEach((s) => {
-  if (s.phase) {
-    dynamicPhaseLabels.add(`phase:${normalizePhase(s.phase)}`);
+  if (s.phaseLabel) {
+    dynamicPhaseLabels.add(s.phaseLabel);
   }
 });
 
@@ -339,10 +347,8 @@ for (const story of stories) {
     run(`gh issue edit ${issueNumber} --repo ${REPO} --add-label "${l}"`);
   });
 
-  if (story.phase) {
-    const phaseLabel = `phase:${normalizePhase(story.phase)}`;
-
-    run(`gh issue edit ${issueNumber} --repo ${REPO} --add-label "${phaseLabel}"`);
+  if (story.phase && story.phaseLabel) {
+    run(`gh issue edit ${issueNumber} --repo ${REPO} --add-label "${story.phaseLabel}"`);
 
     const epic = getOrCreateEpic(story.phase);
 
