@@ -1,4 +1,5 @@
 ## A0.1 | P0 | Super Admin Creates Admin Accounts
+**ID:** A0.1
 **Labels:** P0, phase:onboarding
 **Phase:** Onboarding
 
@@ -36,6 +37,7 @@ As a Super Admin, I want to create admin accounts with specific roles via a secu
 - [ ] Table displays correctly
 
 ## A0.2 | P0 | Admin Accepts Invite & Sets Up Account
+**ID:** A0.2
 **Labels:** P0, phase:onboarding
 **Phase:** Onboarding
 
@@ -81,6 +83,7 @@ As a newly invited admin, I want to receive an invite email, click a setup link,
 - [ ] Expired token shows clear error
 
 ## A0.3 | P0 | Admin Login with MFA
+**ID:** A0.3
 **Labels:** P0, phase:onboarding
 **Phase:** Onboarding
 
@@ -129,6 +132,7 @@ As an admin, I want to log in via a dedicated subdomain with email, password, an
 - [ ] IP whitelist blocks unauthorized IPs
 
 ## A0.4 | P1 | Admin Role-Based Access Control (RBAC) Enforcement
+**ID:** A0.4
 **Labels:** P1, phase:onboarding
 **Phase:** Onboarding
 
@@ -173,6 +177,7 @@ As a Super Admin, I want granular permissions enforced server-side for every adm
 - [ ] Direct API calls without permission return 403
 
 ## A1.1 | P0 | Content Moderation Dashboard
+**ID:** A1.1
 **Labels:** P0, phase:content-moderation
 **Phase:** Content Moderation
 

@@ -6,6 +6,7 @@
 - [ ] Error state: Google popup blocked → shows manual sign-in fallback
 
 ## P0.2 | P1 | Referral Landing Page Variant
+**ID:** P0.2
 **Labels:** P1, phase:discovery
 **Phase:** Phase 0: Discovery & Acquisition
 
@@ -28,6 +29,7 @@ So that I feel social proof and understand the benefit of signing up.
 - [ ] Reward auto-applied as subscription extension (not coupon code)
 
 ## P0.3 | P1 | School Partnership Landing Page Variant
+**ID:** P0.3
 **Labels:** P1, phase:discovery
 **Phase:** Phase 0: Discovery & Acquisition
 
@@ -50,6 +52,7 @@ So that I trust the platform and feel confident signing up.
 - [ ] Invalid school_id shows standard landing page (no error)
 
 ## P1.1-P | P0 | Add Child Profile — Parent-Initiated
+**ID:** P1.1-P
 **Labels:** P0, phase:parent-setup
 **Phase:** Phase 1: Parent-Initiated Child Setup
 
@@ -85,6 +88,7 @@ So that Spinzy can personalize the learning experience immediately.
 - [ ] Child immediately visible in Parent Dashboard
 
 ## P1.2-P | P0 | DPDP Consent Screen — Parent-Initiated
+**ID:** P1.2-P
 **Labels:** P0, phase:parent-setup
 **Phase:** Phase 1: Parent-Initiated Child Setup
 
@@ -122,6 +126,7 @@ So that I provide informed consent as required by Indian DPDP law.
 - [ ] Consent logged correctly in audit trail
 
 ## P1.3-P | P1 | Share App Link to Child's Device
+**ID:** P1.3-P
 **Labels:** P1, phase:parent-setup
 **Phase:** Phase 1: Parent-Initiated Child Setup
 
@@ -149,6 +154,7 @@ So that they can start learning immediately without me typing URLs.
 - [ ] Skip option returns to Dashboard
 
 ## P1.4-P | P2 | Add Sibling — Additional Child with Discount
+**ID:** P1.4-P
 **Labels:** P2, phase:parent-setup
 **Phase:** Phase 1: Parent-Initiated Child Setup
 
@@ -174,6 +180,7 @@ So that all my children can use Spinzy under one account at a reduced cost.
 - [ ] Dashboard toggle shows both children
 
 ## P1.1-R | P0 | Parent Receives Unsolicited Consent Request (WhatsApp)
+**ID:** P1.1-R
 **Labels:** P0, phase:child-consent
 **Phase:** Phase 1-R: Child-Initiated Consent (Parent Responds)
 
@@ -205,6 +212,7 @@ So that I don't dismiss it as spam and can approve or deny in seconds.
 - [ ] Non-delivery: Retry 2x, then log for manual review
 
 ## P1.2-R | P0 | Parent Receives Unsolicited Consent Request (Email)
+**ID:** P1.2-R
 **Labels:** P0, phase:child-consent
 **Phase:** Phase 1-R: Child-Initiated Consent (Parent Responds)
 

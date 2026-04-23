@@ -5,7 +5,8 @@
 ---
 
 ## B1.1 | P0 | Core Prisma Schema — All Models & Migrations
-**Labels:** P0, phase:database
+**ID:** B1.1
+**Labels:** P0, phase:database-foundation
 **Phase:** Database Foundation
 
 ### User Story
@@ -41,7 +42,8 @@ As a backend developer, I want a complete, normalized Prisma schema with all mod
 ---
 
 ## B1.2 | P0 | Database Connection Pooling & Redis Setup
-**Labels:** P0, phase:database
+**ID:** B1.2
+**Labels:** P0, phase:database-foundation
 **Phase:** Database Foundation
 
 ### User Story
@@ -71,6 +73,7 @@ As a backend developer, I want Prisma connection pooling with PgBouncer and a Re
 ---
 
 ## B2.1 | P0 | JWT-Based Authentication Service
+**ID:** B2.1
 **Labels:** P0, phase:auth
 **Phase:** Authentication & Authorization
 
@@ -101,6 +104,7 @@ As a backend developer, I want a centralized JWT authentication service with acc
 ---
 
 ## B2.2 | P0 | Google OAuth Integration Service
+**ID:** B2.2
 **Labels:** P0, phase:auth
 **Phase:** Authentication & Authorization
 
@@ -130,6 +134,7 @@ As a backend developer, I want a Google OAuth service that validates ID tokens a
 ---
 
 ## B2.3 | P1 | MFA (TOTP) Service for Admin
+**ID:** B2.3
 **Labels:** P1, phase:auth
 **Phase:** Authentication & Authorization
 
@@ -156,6 +161,7 @@ As a backend developer, I want a TOTP-based MFA service for admin accounts using
 ---
 
 ## B2.4 | P1 | RBAC Middleware for Admin API
+**ID:** B2.4
 **Labels:** P1, phase:auth
 **Phase:** Authentication & Authorization
 
@@ -181,6 +187,7 @@ As a backend developer, I want a role-based access control middleware that check
 ---
 
 ## B3.1 | P0 | WhatsApp Cloud API Integration
+**ID:** B3.1
 **Labels:** P0, phase:communication
 **Phase:** Communication Services
 
@@ -213,6 +220,7 @@ As a backend developer, I want a WhatsApp Cloud API service that sends consent r
 ---
 
 ## B3.2 | P0 | Email Service
+**ID:** B3.2
 **Labels:** P0, phase:communication
 **Phase:** Communication Services
 
@@ -245,6 +253,7 @@ As a backend developer, I want a transactional email service using React Email t
 ---
 
 ## B3.3 | P1 | Push Notification Service (FCM)
+**ID:** B3.3
 **Labels:** P1, phase:communication
 **Phase:** Communication Services
 
@@ -272,6 +281,7 @@ As a backend developer, I want a Firebase Cloud Messaging service for sending pu
 ---
 
 ## B4.1 | P0 | AI Content Generation Worker
+**ID:** B4.1
 **Labels:** P0, phase:ai-pipeline
 **Phase:** AI Content Generation Pipeline
 
@@ -311,6 +321,7 @@ As a backend developer, I want a BullMQ worker that processes content generation
 ---
 
 ## B4.2 | P0 | Duplicate Generation Request Merging
+**ID:** B4.2
 **Labels:** P0, phase:ai-pipeline
 **Phase:** AI Content Generation Pipeline
 
@@ -338,6 +349,7 @@ As a backend developer, I want duplicate generation requests for the same topic 
 ---
 
 ## B4.3 | P1 | Content Streaming via Server-Sent Events (SSE)
+**ID:** B4.3
 **Labels:** P1, phase:ai-pipeline
 **Phase:** AI Content Generation Pipeline
 
@@ -368,6 +380,7 @@ As a backend developer, I want an SSE endpoint that streams AI-generated content
 ---
 
 ## B5.1 | P0 | WebSocket Server with Socket.IO
+**ID:** B5.1
 **Labels:** P0, phase:realtime
 **Phase:** Real-Time Communication
 
@@ -403,6 +416,7 @@ As a backend developer, I want a Socket.IO server that handles real-time events 
 ---
 
 ## B5.2 | P1 | Event Bus (Internal Pub/Sub)
+**ID:** B5.2
 **Labels:** P1, phase:realtime
 **Phase:** Real-Time Communication
 
@@ -428,6 +442,7 @@ As a backend developer, I want an internal event bus that decouples services and
 ---
 
 ## B6.1 | P1 | Razorpay Integration — Orders & Subscriptions
+**ID:** B6.1
 **Labels:** P1, phase:payments
 **Phase:** Payment Integration
 
@@ -461,6 +476,7 @@ As a backend developer, I want Razorpay integration for creating orders, process
 ---
 
 ## B6.2 | P2 | Invoice PDF Generation
+**ID:** B6.2
 **Labels:** P2, phase:payments
 **Phase:** Payment Integration
 
@@ -486,6 +502,7 @@ As a backend developer, I want automatic PDF invoice generation and email delive
 ---
 
 ## B7.1 | P1 | Rate Limiting Middleware
+**ID:** B7.1
 **Labels:** P1, phase:security
 **Phase:** Rate Limiting & Security
 

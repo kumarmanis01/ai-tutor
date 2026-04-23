@@ -1,5 +1,6 @@
 ```markdown
 ## S0.1 | P0 | Student-Initiated Registration with Age Gate
+**ID:** S0.1
 **Labels:** P0, phase:onboarding
 **Phase:** Onboarding
 
@@ -53,6 +54,7 @@ So that I can get started immediately without waiting for my parent to set every
 - [ ] Back button on each step returns to previous step without data loss
 
 ## S0.2 | P1 | Over-18 Student — Direct Learning Map Access
+**ID:** S0.2
 **Labels:** P1, phase:onboarding
 **Phase:** Onboarding
 
@@ -86,6 +88,7 @@ So that I face no unnecessary friction since I'm legally an adult under DPDP.
 - [ ] No parent-related UI anywhere in the app for adult students
 
 ## S0.3 | P0 | Student Explore Mode — Learning While Waiting
+**ID:** S0.3
 **Labels:** P0, phase:onboarding
 **Phase:** Onboarding
 
@@ -141,6 +144,7 @@ So that I stay engaged and don't delete the app while waiting for my parent.
 - [ ] Rate limiting on resend (max 3 reminders per consent request)
 
 ## S0.4 | P1 | Student Re-Sends or Changes Consent Request
+**ID:** S0.4
 **Labels:** P1, phase:onboarding
 **Phase:** Onboarding
 
@@ -169,6 +173,7 @@ So that I'm never stuck waiting indefinitely.
 - [ ] Expired allows immediate re-send (no cooldown)
 
 ## S1.1 | P0 | Student Confirms Board & Grade (Post-Consent or Adult)
+**ID:** S1.1
 **Labels:** P0, phase:onboarding
 **Phase:** Onboarding
 

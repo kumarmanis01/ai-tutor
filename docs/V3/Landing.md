@@ -1,4 +1,5 @@
 ## LP-1.1 | P0 | Landing Page Shell with Consistent Layout
+**ID:** LP-1.1
 **Labels:** P0, phase:onboarding
 **Phase:** Onboarding
 
@@ -32,6 +33,7 @@ So that I can browse the entire page without frustration or layout breaks.
 - [ ] Hindi text renders without tofu (square boxes).
 
 ## LP-1.2 | P1 | Google Sign-In Integration on Landing Page
+**ID:** LP-1.2
 **Labels:** P1, phase:onboarding
 **Phase:** Onboarding
 
@@ -64,6 +66,7 @@ So that I can start the setup flow without creating a new password or filling lo
 - [ ] Test on incognito (fresh sign-in flow).
 
 ## LP-2.1 | P0 | Hero Section — Parent-Trust Headline & Visual
+**ID:** LP-2.1
 **Labels:** P0, phase:onboarding
 **Phase:** Onboarding
 
@@ -98,6 +101,7 @@ So that my #1 fear (child safety) is addressed within 5 seconds, and I scroll fu
 - [ ] CTA button is tap-friendly (48px+ on mobile).
 
 ## LP-3.1 | P0 | Trust Moat — DPDP & Safety Icons Grid
+**ID:** LP-3.1
 **Labels:** P0, phase:onboarding
 **Phase:** Onboarding
 
@@ -135,6 +139,7 @@ So that my anxiety is reduced and I'm willing to try the product.
 - [ ] Section is visually distinct from adjacent sections.
 
 ## LP-4.1 | P0 | How It Works — Student + Parent Parallel Journey
+**ID:** LP-4.1
 **Labels:** P0, phase:onboarding
 **Phase:** Onboarding
 
@@ -173,6 +178,7 @@ So that I see value for me (control, insights) not just for my child (learning).
 - [ ] Animation does not cause layout shift (CLS = 0).
 
 ## LP-5.1 | P1 | Parent-Targeted Testimonial (Trust Focus)
+**ID:** LP-5.1
 **Labels:** P1, phase:onboarding
 **Phase:** Onboarding
 
@@ -204,6 +210,7 @@ So that I feel social proof that Spinzy is safe and parent-approved.
 - [ ] Cards are visually balanced on all screen sizes.
 
 ## LP-5.2 | P2 | Social Proof Metrics Bar (Animated Counters)
+**ID:** LP-5.2
 **Labels:** P2, phase:onboarding
 **Phase:** Onboarding
 
@@ -235,6 +242,7 @@ So that I feel the scale and momentum of the platform.
 - [ ] Grid layout responsive on all screen sizes
 
 ## LP-6.1 | P0 | Pricing Section — Feature Comparison Table
+**ID:** LP-6.1
 **Labels:** P0, phase:onboarding
 **Phase:** Onboarding
 
@@ -281,6 +289,7 @@ So that I understand the value and can make an informed decision.
 - [ ] Hindi text in plan names/descriptions renders correctly.
 
 ## LP-6.2 | P1 | Pricing — Traditional Tuition Comparison
+**ID:** LP-6.2
 **Labels:** P1, phase:onboarding
 **Phase:** Onboarding
 
@@ -310,6 +319,7 @@ So that I'm motivated to switch to Spinzy.
 - [ ] Annual savings figure displays correctly
 
 ## LP-7.1 | P1 | FAQ — Parent-Focused Questions
+**ID:** LP-7.1
 **Labels:** P1, phase:onboarding
 **Phase:** Onboarding
 
@@ -345,6 +355,7 @@ So that my remaining doubts are resolved before I commit.
 - [ ] SEO structured data validates in Google Rich Results Test.
 
 ## LP-8.1 | P1 | Schools Partnership Banner
+**ID:** LP-8.1
 **Labels:** P1, phase:onboarding
 **Phase:** Onboarding
 
@@ -375,6 +386,7 @@ So that I can explore a B2B relationship for my institution.
 - [ ] Section is visually distinct.
 
 ## LP-8.2 | P2 | School Partnership Inquiry Form
+**ID:** LP-8.2
 **Labels:** P2, phase:onboarding
 **Phase:** Onboarding
 
@@ -405,6 +417,7 @@ So that I don't have to switch to email and can submit my details quickly.
 - [ ] Email is delivered.
 
 ## LP-9.1 | P1 | Final CTA Section & Footer
+**ID:** LP-9.1
 **Labels:** P1, phase:onboarding
 **Phase:** Onboarding
 
