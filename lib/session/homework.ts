@@ -27,6 +27,7 @@
  *   2026-03-07 | Manish Kumar | add Strategy 3 (chapter fallback), guaranteed
  *                               stub creation, internal retry, HomeworkResult type.
  *                               Fixes RISK-01: permanent dead-end in HOMEWORK phase.
+ *   2026-04-23T00:00:00Z | copilot | fix(strict): add local types for generated tests/questions to avoid implicit-any callbacks
  */
 
 import { Prisma } from '@prisma/client';
@@ -201,7 +202,18 @@ async function gatherQuestions(topicId: string): Promise<HomeworkQuestion[]> {
   }
 
   // ── Strategy 2: GeneratedQuestion via GeneratedTest (same topic) ─────────
-  const genTests = await prisma.generatedTest.findMany({
+  // Define local shapes for the generated test rows so callbacks are typed.
+  type GenQuestionRow = {
+    id: string
+    type?: string | null
+    question: string
+    options?: unknown
+    answer?: unknown
+    explanation?: string | null
+  }
+  type GenTestRow = { questions: GenQuestionRow[] }
+
+  const genTests = (await prisma.generatedTest.findMany({
     where: { topicId, lifecycle: 'active' },
     include: {
       questions: {
@@ -216,9 +228,9 @@ async function gatherQuestions(topicId: string): Promise<HomeworkQuestion[]> {
       },
     },
     take: 3,
-  });
+  })) as GenTestRow[];
 
-  const genQuestions = genTests.flatMap((t) => t.questions);
+  const genQuestions = genTests.flatMap((t: GenTestRow) => t.questions);
 
   const combined = [
     ...bankQuestions.map((q) => ({
@@ -230,7 +242,7 @@ async function gatherQuestions(topicId: string): Promise<HomeworkQuestion[]> {
       explanation: null as string | null,
       difficulty: q.difficulty,
     })),
-    ...genQuestions.map((gq) => ({
+    ...genQuestions.map((gq: GenQuestionRow) => ({
       id: gq.id,
       type: gq.type || 'mcq',
       prompt: gq.question,
@@ -277,7 +289,7 @@ async function gatherQuestions(topicId: string): Promise<HomeworkQuestion[]> {
     const siblingIds = siblingTopics.map((t) => t.id);
 
     if (siblingIds.length > 0) {
-      const siblingTests = await prisma.generatedTest.findMany({
+      const siblingTests = (await prisma.generatedTest.findMany({
         where: { topicId: { in: siblingIds }, lifecycle: 'active' },
         include: {
           questions: {
@@ -292,13 +304,13 @@ async function gatherQuestions(topicId: string): Promise<HomeworkQuestion[]> {
           },
         },
         take: 3,
-      });
+      })) as GenTestRow[];
 
       // Deduplicate against the topic-level questions already in `seen`.
       const siblingQuestions = siblingTests
-        .flatMap((t) => t.questions)
-        .filter((gq) => !seen.has(gq.id))
-        .map((gq) => ({
+        .flatMap((t: GenTestRow) => t.questions)
+        .filter((gq: GenQuestionRow) => !seen.has(gq.id))
+        .map((gq: GenQuestionRow) => ({
           id: gq.id,
           type: gq.type || 'mcq',
           prompt: gq.question,
