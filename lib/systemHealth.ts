@@ -64,10 +64,14 @@ export async function systemHealth(): Promise<SystemHealth> {
     const redis = getRedis();
     // Expose a masked endpoint for debugging (do not reveal credentials)
     redisEndpoint = maskRedisUrl(process.env.REDIS_URL ?? undefined) ?? undefined;
-    const s = Date.now();
-    await redis.ping();
-    redisLatencyMs = Date.now() - s;
-    redisStatus = classifyLatency(redisLatencyMs);
+    if (!redis) {
+      redisStatus = 'unhealthy';
+    } else {
+      const s = Date.now();
+      await redis.ping();
+      redisLatencyMs = Date.now() - s;
+      redisStatus = classifyLatency(redisLatencyMs);
+    }
   } catch {
     redisStatus = 'unhealthy';
   }
