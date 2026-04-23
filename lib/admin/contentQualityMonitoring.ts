@@ -129,7 +129,7 @@ export async function getHistoryForEntity(
     },
   });
 
-  return rows.map((r) => ({
+  return rows.map((r: { id: string; entityType: string; entityId: string; fromStatus: string; toStatus: string; reason: string | null; actorId: string | null; createdAt: Date }) => ({
     id: r.id,
     entityType: r.entityType,
     entityId: r.entityId,
