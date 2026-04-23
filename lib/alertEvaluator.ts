@@ -1,6 +1,18 @@
 ﻿/**
- * Evaluate telemetry and create/update system alerts used by integration tests.
+ * FILE OBJECTIVE:
+ * - Evaluate telemetry samples and create/update system alerts used by integration tests.
+ *
+ * LINKED UNIT TEST:
+ * - tests/unit/lib/alertEvaluator.spec.ts
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/COPILOT_GUARDRAILS.md
+ * - .github/copilot-instructions.md
+ *
+ * EDIT LOG:
+ * - 2026-04-23T00:00:00Z | copilot | fix(strict): type telemetry sample rows to remove implicit-any in callbacks
  */
+
 import type { PrismaClient } from '@prisma/client';
 
 export type EvalOptions = {
@@ -30,7 +42,9 @@ export async function evaluateAlerts(prisma: PrismaClient, opts: EvalOptions = {
   });
 
   const samples30 = await prisma.telemetrySample.findMany({ where: { key: 'queue.depth.value', timestamp: { gte: window30From } }, select: { value: true } });
-  const max30 = samples30.length ? Math.max(...samples30.map(s => Number((s as any).value))) : 0;
+  type TelemetrySampleRow = { value: number | string }
+  const samples30Typed = samples30 as TelemetrySampleRow[]
+  const max30 = samples30Typed.length ? Math.max(...samples30Typed.map((s) => Number(s.value))) : 0;
 
   const decision1 = (cnt5 >= 3) ? (max30 > Math.max(qThreshold, 200) ? 'CRITICAL' : 'WARNING') : 'OK';
 
@@ -57,10 +71,12 @@ export async function evaluateAlerts(prisma: PrismaClient, opts: EvalOptions = {
   const baselineFrom = new Date(now.getTime() - 15 * 60 * 1000);
 
   const recentSamples = await prisma.telemetrySample.findMany({ where: { key: 'jobs.failed.count', timestamp: { gte: recentFrom } }, select: { value: true } });
-  const recentSum = recentSamples.reduce((s, r) => s + Number((r as any).value), 0);
+  const recentSamplesTyped = recentSamples as TelemetrySampleRow[]
+  const recentSum = recentSamplesTyped.reduce((s, r) => s + Number(r.value), 0);
 
   const baselineSamples = await prisma.telemetrySample.findMany({ where: { key: 'jobs.failed.count', timestamp: { gte: baselineFrom, lt: recentFrom } }, select: { value: true } });
-  const baselineAvg = baselineSamples.length ? (baselineSamples.reduce((s, r) => s + Number((r as any).value), 0) / baselineSamples.length) : 0;
+  const baselineSamplesTyped = baselineSamples as TelemetrySampleRow[]
+  const baselineAvg = baselineSamplesTyped.length ? (baselineSamplesTyped.reduce((s, r) => s + Number(r.value), 0) / baselineSamplesTyped.length) : 0;
 
   const triggered = recentSum >= minAbs && (baselineAvg === 0 ? recentSum >= minAbs * spikeMult : recentSum > baselineAvg * spikeMult);
 
