@@ -1,3 +1,19 @@
+
+/**
+ * FILE OBJECTIVE:
+ * - Builds parent-facing student progress report with subject mastery and recent activity.
+ *
+ * LINKED UNIT TEST:
+ * - tests/unit/lib/parent/progressReport.spec.ts
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/COPILOT_GUARDRAILS.md
+ * - .github/copilot-instructions.md
+ *
+ * EDIT LOG:
+ * - 2026-04-23T00:00:00Z | copilot | strict-mode: add local row types, annotate callbacks, file header
+ */
+
 import { prisma } from '@/lib/prisma'
 import { computeExamReadiness } from '@/lib/student/examReadiness'
 
@@ -72,11 +88,26 @@ export async function buildProgressReport(
   studentId: string,
 ): Promise<ParentProgressReport | null> {
   try {
+
+    // Local row types for strict mode
+    type LinkRow = { id: string } | null;
+    type StudentRow = {
+      id: string;
+      name?: string | null;
+      grade?: string | number | null;
+      board?: string | null;
+      subjects?: unknown;
+      currentStreak?: number | null;
+      longestStreak?: number | null;
+      level?: number | null;
+      totalXp?: number | null;
+    } | null;
+
     const [link, student] = await Promise.all([
       prisma.parentStudent.findFirst({
         where: { parentId, studentId, status: 'active' },
         select: { id: true },
-      }),
+      }) as Promise<LinkRow>,
       prisma.user.findUnique({
         where: { id: studentId },
         select: {
@@ -90,7 +121,7 @@ export async function buildProgressReport(
           level: true,
           totalXp: true,
         },
-      }),
+      }) as Promise<StudentRow>,
     ])
 
     if (!student) return null
@@ -126,11 +157,14 @@ export async function buildProgressReport(
         }),
       ])
 
+
+    // Local row type for learningSession
+    type SessionRow = { duration: number | null; actualTimeSpent: number };
     const minutesThisWeekRows = await prisma.learningSession.findMany({
       where: { studentId, startedAt: { gte: weekStart } },
       select: { duration: true, actualTimeSpent: true },
-    })
-    const minutesThisWeek = minutesThisWeekRows.reduce((sum, s) => sum + minutesForSession(s), 0)
+    }) as SessionRow[]
+    const minutesThisWeek = minutesThisWeekRows.reduce((sum: number, s: SessionRow) => sum + minutesForSession(s), 0)
 
     const accuracyPercent =
       questionsAttempted > 0 ? Math.round((correctAnswers / questionsAttempted) * 100) : 0
@@ -148,13 +182,16 @@ export async function buildProgressReport(
       : []
 
     const masteryBySubject: ParentProgressReport['masteryBySubject'] = []
-    for (const subj of subjectDefs) {
+
+    // Local row type for subjectDef
+    type SubjectDefRow = { id: string; name: string };
+    for (const subj of subjectDefs as SubjectDefRow[]) {
       const readiness = await computeExamReadiness(studentId, subj.id)
       if (!readiness) continue
       const weak = [...readiness.chapterBreakdown]
-        .sort((a, b) => a.masteryScore - b.masteryScore)
+        .sort((a: any, b: any) => a.masteryScore - b.masteryScore)
         .slice(0, 3)
-        .map((c) => ({ chapterName: c.chapterName, avgMastery: c.masteryScore }))
+        .map((c: any) => ({ chapterName: c.chapterName, avgMastery: c.masteryScore }))
 
       masteryBySubject.push({
         subjectName: subj.name,
@@ -165,17 +202,22 @@ export async function buildProgressReport(
     }
 
     const recentActivity: ParentProgressReport['recentActivity'] = []
-    for (const s of recentSessions) {
+
+    // Local row types for recentSessions, answerEvent, studentXP
+    type RecentSessionRow = { id: string; startedAt: Date; duration: number | null; actualTimeSpent: number };
+    type ConceptRow = { conceptId: string };
+    type XpAggRow = { _sum: { amount: number | null } };
+    for (const s of recentSessions as RecentSessionRow[]) {
       const [conceptRows, xpAgg] = await Promise.all([
         prisma.answerEvent.findMany({
           where: { sessionId: s.id },
           select: { conceptId: true },
           distinct: ['conceptId'],
-        }),
+        }) as Promise<ConceptRow[]>,
         prisma.studentXP.aggregate({
           where: { sessionId: s.id, studentId },
           _sum: { amount: true },
-        }),
+        }) as Promise<XpAggRow>,
       ])
 
       recentActivity.push({
