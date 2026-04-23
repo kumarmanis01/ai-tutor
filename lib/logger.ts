@@ -14,7 +14,7 @@ function now() {
 }
 
 // Basic sanitizers
-function sanitizeValue(v: any) {
+function sanitizeValue(v: unknown): unknown {
   if (v == null) return v;
   if (typeof v === 'string') {
     // redact JWT-looking strings (three segments separated by dots, length heuristics)
@@ -27,30 +27,30 @@ function sanitizeValue(v: any) {
     if (/\b(answer|rawanswer|raw_answer)\b/i.test(v)) return '[REDACTED_ANSWER]';
     return v;
   }
-  if (Array.isArray(v)) return v.map(sanitizeValue);
-  if (typeof v === 'object') return sanitizeObject(v);
+  if (Array.isArray(v)) return (v as unknown[]).map(sanitizeValue);
+  if (typeof v === 'object') return sanitizeObject(v as Record<string, unknown>);
   return v;
 }
-
-function sanitizeObject(obj: any) {
+function sanitizeObject(obj: Record<string, unknown> | null | undefined): unknown {
   if (!obj) return obj;
-  const out: any = Array.isArray(obj) ? [] : {};
+  const out: Record<string, unknown> | unknown[] = Array.isArray(obj) ? [] : {};
   for (const k of Object.keys(obj)) {
     const lk = k.toLowerCase();
-    const val = obj[k];
-    if (lk.includes('token') || lk.includes('jwt') || lk.includes('session') || lk.includes('password') || lk.includes('secret') ) {
-      out[k] = '[REDACTED]';
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+    const val = (obj as any)[k];
+    if (lk.includes('token') || lk.includes('jwt') || lk.includes('session') || lk.includes('password') || lk.includes('secret')) {
+      (out as Record<string, unknown>)[k] = '[REDACTED]';
       continue;
     }
     if (lk.includes('email')) {
-      out[k] = '[REDACTED_EMAIL]';
+      (out as Record<string, unknown>)[k] = '[REDACTED_EMAIL]';
       continue;
     }
     if (lk.includes('answer') || lk.includes('rawanswer') || lk.includes('raw_answer')) {
-      out[k] = '[REDACTED_ANSWER]';
+      (out as Record<string, unknown>)[k] = '[REDACTED_ANSWER]';
       continue;
     }
-    out[k] = sanitizeValue(val);
+    (out as Record<string, unknown>)[k] = sanitizeValue(val as unknown);
   }
   return out;
 }
