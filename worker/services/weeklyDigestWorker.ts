@@ -193,6 +193,14 @@ export async function processWeeklyDigest(): Promise<void> {
   const weekLabel = monday.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })
 
   // All parents with at least one active link. Exclude students who opted out of parent reports.
+
+  // Local row type for parentStudent link
+  type ParentStudentLinkRowStrict = {
+    parentId: string;
+    studentId: string;
+    parent: { name: string | null; email: string | null; timezone?: string | null };
+    student: { name: string | null };
+  };
   const allLinks = await prisma.parentStudent.findMany({
     where: { status: 'active', excludeFromParentReport: false },
     select: {
@@ -201,7 +209,7 @@ export async function processWeeklyDigest(): Promise<void> {
       parent: { select: { name: true, email: true, timezone: true } },
       student: { select: { name: true } },
     },
-  }) as ParentStudentLinkRow[]
+  }) as ParentStudentLinkRowStrict[]
 
   // Group children by parent
   const parentMap = new Map<string, { name: string; email: string; timezone?: string; children: { studentId: string; name: string }[] }>()
@@ -223,10 +231,13 @@ export async function processWeeklyDigest(): Promise<void> {
 
   // Bulk-load parent profiles (digest prefs)
   const parentIds = Array.from(parentMap.keys())
+
+  // Local row type for parentProfile
+  type ParentProfileRowStrict = ParentProfileLocal;
   const profiles = parentIds.length
-    ? await prisma.parentProfile.findMany({ where: { userId: { in: parentIds } } }) as ParentProfileRow[]
+    ? await prisma.parentProfile.findMany({ where: { userId: { in: parentIds } } }) as ParentProfileRowStrict[]
     : []
-  const profileMap = new Map(profiles.map((p: ParentProfileRow) => [p.userId, p]))
+  const profileMap = new Map(profiles.map((p: ParentProfileRowStrict) => [p.userId, p]))
 
   let scheduled = 0
 
@@ -251,7 +262,9 @@ export async function processWeeklyDigest(): Promise<void> {
       // Dedup key for this parent-week to avoid duplicate outbox rows
       const dedupKey = `weeklyDigest:${parentId}:${monday.toISOString().slice(0, 10)}`
 
-      const existing = await prisma.outbox.findFirst({ where: { meta: { path: ['dedupKey'], equals: dedupKey } } })
+      // Local row type for outbox
+      type OutboxRowStrict = { meta: { path: string[]; equals: string } } | null;
+      const existing = await prisma.outbox.findFirst({ where: { meta: { path: ['dedupKey'], equals: dedupKey } } }) as OutboxRowStrict
       if (existing) {
         logger.info('[weeklyDigest] outbox exists, skipping create', { parentId, dedupKey })
         continue
@@ -323,7 +336,9 @@ export async function processParentDigest(parentId: string, weekStartIso: string
   const monday = weekStartIso ? new Date(weekStartIso) : weekStart()
   try {
     // Load first active child for the parent
-    const link = await prisma.parentStudent.findFirst({ where: { parentId, status: 'active', excludeFromParentReport: false }, select: { studentId: true, student: { select: { name: true } }, parent: { select: { name: true, email: true } } } })
+    // Local row type for parentStudent link (single)
+    type ParentStudentLinkSingleRow = { studentId: string; student: { name: string | null }; parent: { name: string | null; email: string | null } } | null;
+    const link = await prisma.parentStudent.findFirst({ where: { parentId, status: 'active', excludeFromParentReport: false }, select: { studentId: true, student: { select: { name: true } }, parent: { select: { name: true, email: true } } } }) as ParentStudentLinkSingleRow
     if (!link || !link.parent?.email) {
       logger.info('[parentDigest] no active child or email, skipping', { parentId })
       return
@@ -333,26 +348,34 @@ export async function processParentDigest(parentId: string, weekStartIso: string
     const child = { studentId: link.studentId, name: link.student?.name ?? 'Student' }
 
     // Sessions this week
-    const sessions = await prisma.structuredSession.findMany({ where: { studentId: child.studentId, startedAt: { gte: monday } }, select: { id: true } })
+    // Local row type for structuredSession
+    type StructuredSessionRow = { id: string };
+    const sessions = await prisma.structuredSession.findMany({ where: { studentId: child.studentId, startedAt: { gte: monday } }, select: { id: true } }) as StructuredSessionRow[]
 
     // Streak
-    const streak = await prisma.studentStreak.findFirst({ where: { studentId: child.studentId, kind: 'daily' }, select: { current: true } })
+    // Local row type for studentStreak
+    type StudentStreakRow = { current: number | null } | null;
+    const streak = await prisma.studentStreak.findFirst({ where: { studentId: child.studentId, kind: 'daily' }, select: { current: true } }) as StudentStreakRow
 
     // Top subject (most recent activity)
     const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
-    const recentState = await prisma.studentConceptState.findFirst({ where: { studentId: child.studentId, updatedAt: { gte: sevenDaysAgo } }, orderBy: { masteryScore: 'desc' }, select: { concept: { select: { subject: { select: { name: true } } } } } })
+    // Local row type for studentConceptState
+    type StudentConceptStateRow = { concept?: { subject?: { name?: string | null } | null } | null } | null;
+    const recentState = await prisma.studentConceptState.findFirst({ where: { studentId: child.studentId, updatedAt: { gte: sevenDaysAgo } }, orderBy: { masteryScore: 'desc' }, select: { concept: { select: { subject: { select: { name: true } } } } } }) as StudentConceptStateRow
     const topSubject = recentState?.concept?.subject?.name ?? null
 
     // Mastery delta (proxy)
+    // Local row type for studentConceptState mastery
+    type StudentConceptStateMasteryRow = { masteryScore: number };
     const [recentStates, allStates] = await Promise.all([
-      prisma.studentConceptState.findMany({ where: { studentId: child.studentId, updatedAt: { gte: sevenDaysAgo } }, select: { masteryScore: true } }),
-      prisma.studentConceptState.findMany({ where: { studentId: child.studentId }, select: { masteryScore: true } }),
+      prisma.studentConceptState.findMany({ where: { studentId: child.studentId, updatedAt: { gte: sevenDaysAgo } }, select: { masteryScore: true } }) as Promise<StudentConceptStateMasteryRow[]>,
+      prisma.studentConceptState.findMany({ where: { studentId: child.studentId }, select: { masteryScore: true } }) as Promise<StudentConceptStateMasteryRow[]>,
     ])
 
     let readinessDelta: number | null = null
     if (recentStates.length > 0 && allStates.length > 0) {
-      const allAvg = allStates.reduce((s, r) => s + r.masteryScore, 0) / allStates.length
-      const recentAvg = recentStates.reduce((s, r) => s + r.masteryScore, 0) / recentStates.length
+      const allAvg = allStates.reduce((s: number, r: StudentConceptStateMasteryRow) => s + r.masteryScore, 0) / allStates.length
+      const recentAvg = recentStates.reduce((s: number, r: StudentConceptStateMasteryRow) => s + r.masteryScore, 0) / recentStates.length
       readinessDelta = recentAvg - allAvg
     }
 
