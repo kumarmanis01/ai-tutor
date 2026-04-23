@@ -182,7 +182,7 @@ So that all my children can use Spinzy under one account at a reduced cost.
 ## P1.1-R | P0 | Parent Receives Unsolicited Consent Request (WhatsApp)
 **ID:** P1.1-R
 **Labels:** P0, phase:child-consent
-**Phase:** Phase 1-R: Child-Initiated Consent (Parent Responds)
+**Phase:** Phase 1-R: Child-Initiated Consent
 
 ### User Story
 As a parent who did NOT sign up for Spinzy, but whose child has independently created an account,
@@ -214,7 +214,7 @@ So that I don't dismiss it as spam and can approve or deny in seconds.
 ## P1.2-R | P0 | Parent Receives Unsolicited Consent Request (Email)
 **ID:** P1.2-R
 **Labels:** P0, phase:child-consent
-**Phase:** Phase 1-R: Child-Initiated Consent (Parent Responds)
+**Phase:** Phase 1-R: Child-Initiated Consent
 
 ### User Story
 As a parent who received a consent request via email,
@@ -247,7 +247,7 @@ So that I can approve my child's access from my email inbox.
 
 ## P1.3-R | P0 | Parent Approves via Consent Mini-Page
 **Labels:** P0, phase:child-consent
-**Phase:** Phase 1-R: Child-Initiated Consent (Parent Responds)
+**Phase:** Phase 1-R: Child-Initiated Consent
 
 ### User Story
 As a parent who tapped the approval link from WhatsApp or email,
@@ -293,7 +293,7 @@ So that I don't have to download an app or remember a password.
 
 ## P1.4-R | P1 | Parent Approves via WhatsApp "YES" Reply
 **Labels:** P1, phase:child-consent
-**Phase:** Phase 1-R: Child-Initiated Consent (Parent Responds)
+**Phase:** Phase 1-R: Child-Initiated Consent
 
 ### User Story
 As a parent who received a WhatsApp consent request,
@@ -332,7 +332,7 @@ So that I can approve in under 5 seconds during a busy day.
 
 ## P1.5-R | P1 | New Parent Account Creation Post-Consent
 **Labels:** P1, phase:child-consent
-**Phase:** Phase 1-R: Child-Initiated Consent (Parent Responds)
+**Phase:** Phase 1-R: Child-Initiated Consent
 
 ### User Story
 As a parent who just approved my child via WhatsApp reply or OTP, and who does NOT have a Spinzy account,
@@ -359,7 +359,7 @@ So that I can access the Parent Dashboard when I'm ready.
 
 ## P1.6-R | P1 | Parent Declines Consent
 **Labels:** P1, phase:child-consent
-**Phase:** Phase 1-R: Child-Initiated Consent (Parent Responds)
+**Phase:** Phase 1-R: Child-Initiated Consent
 
 ### User Story
 As a parent who does not want my child to use Spinzy,
@@ -392,7 +392,7 @@ So that my child's data is not processed and I'm not contacted again.
 
 ## P1.7-R | P1 | Parent Handles Consent for Existing Account (2nd Child)
 **Labels:** P1, phase:child-consent
-**Phase:** Phase 1-R: Child-Initiated Consent (Parent Responds)
+**Phase:** Phase 1-R: Child-Initiated Consent
 
 ### User Story
 As a parent who already has a Spinzy account with one child,
@@ -631,7 +631,7 @@ So that I don't abandon the upgrade.
 
 ## P4.0 | P1 | Parent Profile PIN Protection
 **Labels:** P1, phase:dashboard
-**Phase:** Phase 4: Active Premium Parenting — The Dashboard
+**Phase:** Phase 4: Active Premium Parenting
 
 ### User Story
 As a parent sharing a device with my child,
@@ -654,7 +654,7 @@ So that my child cannot access billing, settings, or sibling data.
 
 ## P4.1 | P1 | Parent Dashboard — Core Metrics
 **Labels:** P1, phase:dashboard
-**Phase:** Phase 4: Active Premium Parenting — The Dashboard
+**Phase:** Phase 4: Active Premium Parenting
 
 ### User Story
 As a premium parent,
@@ -675,7 +675,7 @@ So that I can monitor progress and identify weak areas.
 
 ## P4.2 | P1 | Weak Topics Identification & Action
 **Labels:** P1, phase:dashboard
-**Phase:** Phase 4: Active Premium Parenting — The Dashboard
+**Phase:** Phase 4: Active Premium Parenting
 
 ### User Story
 As a premium parent,
@@ -705,7 +705,7 @@ So that I can support my child's improvement actively.
 
 ## P4.3 | P2 | Screen Time Management
 **Labels:** P2, phase:dashboard
-**Phase:** Phase 4: Active Premium Parenting — The Dashboard
+**Phase:** Phase 4: Active Premium Parenting
 
 ### User Story
 As a parent,
@@ -727,7 +727,7 @@ So that I can prevent excessive screen time.
 
 ## P4.4 | P2 | Subject Blocker
 **Labels:** P2, phase:dashboard
-**Phase:** Phase 4: Active Premium Parenting — The Dashboard
+**Phase:** Phase 4: Active Premium Parenting
 
 ### User Story
 As a parent,
@@ -748,7 +748,7 @@ So that I can control what they focus on.
 
 ## P4.5 | P1 | Weekly Report — Premium Variant
 **Labels:** P1, phase:dashboard
-**Phase:** Phase 4: Active Premium Parenting — The Dashboard
+**Phase:** Phase 4: Active Premium Parenting
 
 ### User Story
 As a premium parent,
@@ -759,7 +759,7 @@ So that I feel the premium value.
 
 ## P4.6 | P2 | Multi-Child Dashboard Toggle
 **Labels:** P2, phase:dashboard
-**Phase:** Phase 4: Active Premium Parenting — The Dashboard
+**Phase:** Phase 4: Active Premium Parenting
 
 ### User Story
 As a parent with multiple children,

@@ -380,7 +380,7 @@ As a Support Admin, I want to view all pending, approved, denied, and expired co
 - [ ] Timeline shows all events
 - [ ] Masked data for Content Admin (no PII)
 
-## A2.2-R | P1 | Admin Handles "Parent Didn't Receive Consent" Support Ticket
+## A2.2-R | P1 | Admin Handles -Parent Didn't Receive Consent- Support Ticket
 **Labels:** P1, phase:consent-management
 **Phase:** Consent Management
 
