@@ -15,6 +15,16 @@
  */
 
 import { prisma } from '@/lib/prisma'
+
+// Local row types for strict mode
+type ParentStudentLinkRow = {
+  parentId: string;
+  studentId: string;
+  parent: { name: string | null; email: string | null; timezone?: string | null };
+  student: { name: string | null };
+};
+type ParentProfileRow = ParentProfileLocal;
+type OutboxRow = { meta: { path: string[]; equals: string } };
 // Local minimal ParentProfile shape used for runtime checks and type-narrowing.
 // Keep this in sync with the Prisma model `ParentProfile` in prisma/schema.prisma.
 type ParentProfileLocal = {
@@ -191,11 +201,11 @@ export async function processWeeklyDigest(): Promise<void> {
       parent: { select: { name: true, email: true, timezone: true } },
       student: { select: { name: true } },
     },
-  })
+  }) as ParentStudentLinkRow[]
 
   // Group children by parent
   const parentMap = new Map<string, { name: string; email: string; timezone?: string; children: { studentId: string; name: string }[] }>()
-  for (const link of allLinks) {
+  for (const link of allLinks as ParentStudentLinkRow[]) {
     if (!link.parent.email) continue
     if (!parentMap.has(link.parentId)) {
       parentMap.set(link.parentId, {
@@ -214,9 +224,9 @@ export async function processWeeklyDigest(): Promise<void> {
   // Bulk-load parent profiles (digest prefs)
   const parentIds = Array.from(parentMap.keys())
   const profiles = parentIds.length
-    ? await prisma.parentProfile.findMany({ where: { userId: { in: parentIds } } })
+    ? await prisma.parentProfile.findMany({ where: { userId: { in: parentIds } } }) as ParentProfileRow[]
     : []
-  const profileMap = new Map(profiles.map((p) => [p.userId, p]))
+  const profileMap = new Map(profiles.map((p: ParentProfileRow) => [p.userId, p]))
 
   let scheduled = 0
 
@@ -265,7 +275,7 @@ export async function processWeeklyDigest(): Promise<void> {
       logger.error('[weeklyDigest] scheduling failed for parent', {
         parentId,
         email: parent.email,
-        error: err instanceof Error ? err.message : String(err),
+        error: err instanceof Error ? (err as Error).message : String(err),
       })
     }
   }
