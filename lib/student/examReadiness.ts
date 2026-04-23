@@ -12,6 +12,7 @@
  *
  * EDIT LOG:
  * - 2026-04-16T12:30:00Z | copilot | allow passing `lastMock` via asserted options object to avoid TS excess-property error
+ * - 2026-04-23T04:00:00Z | copilot | fix(strict): add local row types and explicit callback param types to remove implicit-any
  */
 
 import { prisma } from '@/lib/prisma'
@@ -19,6 +20,26 @@ import { getRedis } from '@/lib/redis'
 
 const BASELINE_MASTERY = 0.3
 const READINESS_CACHE_TTL = 3600 // 1 hour
+
+// Local DB row types to provide stable typings for Prisma `select` shapes
+type ChapterRow = {
+  id: string
+  name: string
+  boardChapterWeights: { weightMarks: number }[]
+  topics: { concepts: { id: string }[] }[]
+}
+
+type StudentConceptStateRow = { conceptId: string; masteryScore: number; retention?: number | null }
+
+type WeeklyMockRow = { finishedAt?: Date | null; scorePercent?: number | null }
+
+type ConceptRow = {
+  id: string
+  topic?: { chapterId?: string | null; chapter?: { id?: string | null; name?: string | null } | null } | null
+}
+
+type BoardChapterWeightRow = { chapterId: string; weightMarks: number }
+
 
 // ── New typed result shape (Domain 7 §7.8) ───────────────────────────────────
 
@@ -99,7 +120,7 @@ export async function computeReadinessScore(
           },
         },
       },
-    })
+    }) as ChapterRow[]
 
     if (chapters.length === 0) return zero
 
@@ -110,7 +131,7 @@ export async function computeReadinessScore(
     if (totalWeightMarks <= 0) return zero
 
     // 3. Gather all concept IDs for a single bulk state fetch
-    const allConceptIds = chapters.flatMap((ch) =>
+    const allConceptIds = chapters.flatMap((ch: ChapterRow) =>
       ch.topics.flatMap((t) => t.concepts.map((c) => c.id)),
     )
     if (allConceptIds.length === 0) return zero
@@ -118,9 +139,9 @@ export async function computeReadinessScore(
     const states = await prisma.studentConceptState.findMany({
       where: { studentId, conceptId: { in: allConceptIds } },
       select: { conceptId: true, masteryScore: true, retention: true },
-    })
+    }) as StudentConceptStateRow[]
     const masteryMap = new Map<string, number>(
-      states.map((s) => [s.conceptId, s.masteryScore]),
+      states.map((s: StudentConceptStateRow) => [s.conceptId, s.masteryScore] as [string, number]),
     )
 
     // 4. Compute per-chapter contribution
@@ -133,7 +154,7 @@ export async function computeReadinessScore(
       const masteries = conceptIds.map((id) => masteryMap.get(id) ?? 0)
       const avgMastery =
         masteries.length > 0
-          ? masteries.reduce((a, b) => a + b, 0) / masteries.length
+          ? masteries.reduce((a: number, b: number) => a + b, 0) / masteries.length
           : 0
       const boardWeightPct = (weightMarks / totalWeightMarks) * 100
       const contribution = avgMastery * boardWeightPct
@@ -158,7 +179,7 @@ export async function computeReadinessScore(
 
     // 5. Compute predicted range using available signals (states + recent mock)
     try {
-      const signalStates = states.map((s) => ({ conceptId: s.conceptId, retention: (s as any).retention }))
+      const signalStates = states.map((s: StudentConceptStateRow) => ({ conceptId: s.conceptId, retention: s.retention }))
       let lastMock: { finishedAt?: Date; scorePercent?: number } | undefined = undefined
       try {
         const m = await prisma.mockExamAttempt.findFirst({
@@ -267,10 +288,11 @@ export function computePredictedScoreRange(
   }
 
   // Incorporate last mock exam recency and score if provided in opts
-  if (lastMock && lastMock.finishedAt && typeof lastMock.scorePercent === 'number') {
-    const daysSince = Math.max(0, Math.ceil((Date.now() - lastMock.finishedAt.getTime()) / 86_400_000))
+  if (lastMock && (lastMock as WeeklyMockRow).finishedAt && typeof (lastMock as WeeklyMockRow).scorePercent === 'number') {
+    const lm = lastMock as WeeklyMockRow
+    const daysSince = Math.max(0, Math.ceil((Date.now() - lm.finishedAt!.getTime()) / 86_400_000))
     const recencyWeight = Math.max(0, 1 - daysSince / 180)
-    const scoreDiff = Math.abs((lastMock.scorePercent ?? score) - score) / 100
+    const scoreDiff = Math.abs((lm.scorePercent ?? score) - score) / 100
     const mockEffect = recencyWeight * (1 - scoreDiff)
     // If recent mock aligns with readiness → reduce SD up to 25%; else small increase
     const mockAdj = 1 - (mockEffect * 0.25)
@@ -343,12 +365,12 @@ export async function computeExamReadiness(
         topicId: true,
         topic: { select: { chapterId: true, chapter: { select: { id: true, name: true } } } },
       },
-    })
+    }) as ConceptRow[]
 
     if (concepts.length === 0) return null
 
     const conceptIds = concepts.map((c) => c.id)
-    const [states, weights] = await Promise.all([
+    const _res2 = await Promise.all([
       prisma.studentConceptState.findMany({
         where: { studentId, conceptId: { in: conceptIds } },
         select: { conceptId: true, masteryScore: true },
@@ -359,7 +381,9 @@ export async function computeExamReadiness(
         },
         select: { chapterId: true, weightMarks: true },
       }),
-    ])
+    ]) as [StudentConceptStateRow[], BoardChapterWeightRow[]]
+    const states = _res2[0]
+    const weights = _res2[1]
 
     const masteryByConcept = new Map<string, number>(
       states.map((s) => [s.conceptId, s.masteryScore] as [string, number]),
