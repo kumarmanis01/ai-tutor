@@ -1,5 +1,23 @@
+/**
+ * FILE OBJECTIVE:
+ * - Compute per-topic difficulty index from mastery and progress signals.
+ *
+ * LINKED UNIT TEST:
+ * - tests/unit/lib/admin/curriculumDifficultyIntelligence.spec.ts
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - .github/copilot-instructions.md
+ * - /docs/COPILOT_GUARDRAILS.md
+ *
+ * EDIT LOG:
+ * - 2026-04-23T05:45:00Z | copilot | fix(strict): add explicit TopicRow type and cast Prisma results to remove implicit-any in callbacks
+ */
+
 import { prisma } from '@/lib/prisma';
 import { Prisma } from '@prisma/client';
+
+// Local DB row typings
+type TopicRow = { id: string; name: string; chapter?: { name?: string | null; subject?: { name?: string | null } | null } | null };
 
 export interface TopicDifficultyRow {
   topicId: string;
@@ -59,7 +77,7 @@ export async function getTopicDifficultyList(opts: {
   const limit = Math.min(opts.limit ?? 100, 500);
 
   // 1) Base topic + hierarchy list (active topics only)
-  const topics = await prisma.topicDef.findMany({
+  const topics = (await prisma.topicDef.findMany({
     where: {
       lifecycle: 'active',
       ...(opts.subjectId ? { chapter: { subjectId: opts.subjectId } } : {}),
@@ -74,7 +92,7 @@ export async function getTopicDifficultyList(opts: {
         },
       },
     },
-  });
+  })) as TopicRow[];
 
   if (topics.length === 0) {
     return { from, to, items: [] };
