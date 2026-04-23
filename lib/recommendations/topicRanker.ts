@@ -36,6 +36,7 @@
  *                                  exclusively by getNextAction P1 (StructuredSession
  *                                  query) before rankTopics is ever called -- so
  *                                  rankTopics never runs while a session is active
+ * - 2026-04-23T00:00:00Z | copilot        | fix(strict): guard redis in cache invalidation and add typed progress rows
  */
 
 import { prisma } from '@/lib/prisma';
@@ -125,8 +126,12 @@ export interface RankTopicsOptions {
 export async function invalidateTopicRankerCache(studentId: string): Promise<void> {
   try {
     const redis = getRedis();
-    await redis.del(`${CACHE_PREFIX}${studentId}`);
-    logger.debug('[TOPIC_RANKER_CACHE] invalidated', { studentId });
+    if (redis) {
+      await redis.del(`${CACHE_PREFIX}${studentId}`);
+      logger.debug('[TOPIC_RANKER_CACHE] invalidated', { studentId });
+    } else {
+      logger.debug('[TOPIC_RANKER_CACHE] no-redis, skipping invalidation', { studentId });
+    }
   } catch (err) {
     logger.warn('[TOPIC_RANKER_CACHE] invalidation error', { studentId, error: String(err) });
   }
@@ -186,14 +191,23 @@ export async function rankTopics(
   if (curriculumTopics.length === 0) return [];
 
   // ── Build lookup maps ──────────────────────────────────────────────────────
-  type ProgressRow = (typeof allProgress)[number];
+  // Local row shape for StudentTopicProgress (avoid importing Prisma client types here)
+  type StudentTopicProgressRow = {
+    topicId: string;
+    mastery: number;
+    practiceCount: number;
+    lastStudiedAt?: Date | null;
+  };
+
+  const allProgressTyped = allProgress as StudentTopicProgressRow[];
+  type ProgressRow = StudentTopicProgressRow;
   const progressByTopic = new Map<string, ProgressRow>(
-    allProgress.map((p) => [p.topicId, p]),
+    allProgressTyped.map((p) => [p.topicId, p]),
   );
 
   // For prerequisite checks: topics with sufficient mastery (>= 0.4, practiceCount > 0).
   const sufficientlyMasteredIds = new Set<string>(
-    allProgress
+    allProgressTyped
       .filter((p) => p.mastery >= MASTERY_THRESHOLD_SUFFICIENT && p.practiceCount > 0)
       .map((p) => p.topicId),
   );
