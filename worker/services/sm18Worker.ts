@@ -59,21 +59,35 @@ export async function processNightlySM18(_job?: Job): Promise<void> {
 
   // AC-07: pre-load upcoming exams indexed by studentId for O(1) lookup per row
   const preExamCutoff = new Date(now.getTime() + PRE_EXAM_DAYS * MS_PER_DAY)
+
+  // Local row types for strict mode
+  type ExamRow = { studentId: string; subjectId: string };
+  type SubjectDefRow = { id: string; name: string };
+  type StudentConceptStateRow = {
+    id: string;
+    studentId: string;
+    conceptId: string;
+    stability: number;
+    retention: number;
+    lastInteraction: Date;
+    masteryScore?: number | null;
+  };
+
   const upcomingExams = await prisma.learningPlan.findMany({
     where: { examDate: { gte: now, lte: preExamCutoff } },
     select: { studentId: true, subjectId: true },
-  })
-  const preExamStudentIds = new Set(upcomingExams.map((p) => p.studentId))
+  }) as ExamRow[]
+  const preExamStudentIds = new Set((upcomingExams as ExamRow[]).map((p: ExamRow) => p.studentId))
 
   // Look up subject names for the notifications (best-effort -- no subject = no name)
-  const subjectIds = [...new Set(upcomingExams.map((e) => e.subjectId))]
+  const subjectIds = [...new Set((upcomingExams as ExamRow[]).map((e: ExamRow) => e.subjectId))]
   const subjectDefs = subjectIds.length
     ? await prisma.subjectDef.findMany({
         where: { id: { in: subjectIds } },
         select: { id: true, name: true },
-      })
+      }) as SubjectDefRow[]
     : []
-  const subjectNameById = new Map(subjectDefs.map((s) => [s.id, s.name]))
+  const subjectNameById = new Map((subjectDefs as SubjectDefRow[]).map((s: SubjectDefRow) => [s.id, s.name]))
 
   // AC-07: notify students entering pre-exam mode (fire-and-forget, never throws)
   void notifyPreExamStudents(
@@ -95,11 +109,11 @@ export async function processNightlySM18(_job?: Job): Promise<void> {
         },
         take: BATCH_SIZE,
         orderBy: { id: 'asc' },
-      })
+      }) as StudentConceptStateRow[]
 
       if (batch.length === 0) break
 
-      for (const row of batch) {
+      for (const row of batch as StudentConceptStateRow[]) {
         totalProcessed += 1
         try {
           const elapsedMs = now.getTime() - row.lastInteraction.getTime()
