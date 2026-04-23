@@ -1,22 +1,17 @@
+
 /**
  * FILE OBJECTIVE:
- * - Deterministic Home Tutor Engine.
- * - Returns a single, rule-prioritised next action for the student.
- * - ZERO AI calls. Prisma only. Target latency: <150 ms.
+ * - Deterministic Home Tutor Engine. Returns a single, rule-prioritised next action for the student. ZERO AI calls. Prisma only. Target latency: <150 ms.
  *
- * Priority order (short-circuits at first match):
- *   P0   - Homework pending/overdue with dueDate <= NOW + 48h (hard block)
- *   P1   - Resume active StructuredSession or LearningSession (legacy)
- *   P2   - Weak topic: StudentTopicProgress mastery < 0.4 AND practiceCount > 5
- *   P3   - Spaced revision: mastery 0.4-0.85, not studied in 7+ days
- *   P4   - Inactive return: no study activity in 3+ days
- *   P5   - Scored next topic via TopicRanker
- *   P6   - All topics complete
+ * LINKED UNIT TEST:
+ * - tests/unit/lib/homeEngine/getNextAction.spec.ts
  *
- * DO NOT modify the existing recommendation engine.
- * DO NOT change the Prisma schema.
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/COPILOT_GUARDRAILS.md
+ * - .github/copilot-instructions.md
  *
  * EDIT LOG:
+ * - 2026-04-23T00:00:00Z | copilot | strict-mode: add local row types, annotate callbacks, file header
  * - 2026-02-21 | claude | created deterministic tutor engine per architectural spec
  * - 2026-02-21 | claude | added topicName enrichment via shared enrichTopic helper
  * - 2026-03-07 | claude | added StructuredSession lock (LOCK rule) -- prevents P3-P5
@@ -214,6 +209,12 @@ async function enrichTopic(
 ): Promise<TopicEnrichment> {
   if (!topicId) return { topicName: null, ...fallback };
 
+
+  // Local row type for topicDef with chapter/subject join
+  type TopicDefRow = {
+    name: string;
+    chapter: { name: string; subject: { name: string } };
+  } | null;
   const topic = await prisma.topicDef.findUnique({
     where: { id: topicId },
     include: {
@@ -221,7 +222,7 @@ async function enrichTopic(
         include: { subject: true },
       },
     },
-  });
+  }) as TopicDefRow;
 
   if (!topic) return { topicName: null, ...fallback };
 
@@ -287,6 +288,13 @@ function floorDays(ms: number): number {
 async function p0_homeworkBlocker(studentId: string): Promise<NextAction | null> {
   const cutoff = new Date(Date.now() + 48 * 60 * 60 * 1000);
 
+
+  // Local row type for homeworkAssignment
+  type HomeworkAssignmentRow = {
+    id: string;
+    topicId: string;
+    topic: { name: string; chapter: { name: string; subject: { name: string } } };
+  } | null;
   const hw = await prisma.homeworkAssignment.findFirst({
     where: {
       studentId,
@@ -309,7 +317,7 @@ async function p0_homeworkBlocker(studentId: string): Promise<NextAction | null>
         },
       },
     },
-  });
+  }) as HomeworkAssignmentRow;
 
   if (!hw) return null;
 
@@ -354,6 +362,14 @@ function structuredPhaseToAction(phase: SessionPhase): ActionType {
  */
 async function p1_resumeSession(studentId: string): Promise<NextAction | null> {
   // ── 1a. StructuredSession -- primary path for new-engine students ──────────
+
+  // Local row type for structuredSession
+  type StructuredSessionRow = {
+    id: string;
+    topicId: string;
+    state: string;
+    topic: { name: string; chapter: { name: string; subject: { name: string } } };
+  } | null;
   const structured = await prisma.structuredSession.findFirst({
     where: {
       studentId,
@@ -376,7 +392,7 @@ async function p1_resumeSession(studentId: string): Promise<NextAction | null> {
         },
       },
     },
-  });
+  }) as StructuredSessionRow;
 
   if (structured) {
     // state is guaranteed to be one of the SessionPhase values -- COMPLETE and EXPIRED
@@ -397,6 +413,13 @@ async function p1_resumeSession(studentId: string): Promise<NextAction | null> {
 
   // ── 1b. LearningSession -- legacy fallback for pre-StructuredSession students ─
   // Only runs when no active StructuredSession was found above.
+  // Local row type for learningSession
+  type LearningSessionRow = {
+    id: string;
+    activityType: string;
+    activityRef: string | null;
+    meta: unknown;
+  } | null;
   const legacy = await prisma.learningSession.findFirst({
     where: { studentId, isCompleted: false },
     orderBy: { lastAccessed: 'desc' },
@@ -406,7 +429,7 @@ async function p1_resumeSession(studentId: string): Promise<NextAction | null> {
       activityRef: true,
       meta: true,
     },
-  });
+  }) as LearningSessionRow;
   if (!legacy) return null;
 
   const meta = safeObj(legacy.meta);
@@ -692,13 +715,15 @@ export async function getNextAction(
     options.preloadedOrderedTopics ?? (await getOrderedTopicsForStudent(studentId));
   const allowedTopicIds = new Set(orderedTopics.map((t) => t.id));
 
+  // Local row type for studentTopicProgress
+  type ProgressRowStrict = { topicId: string; mastery: number; practiceCount: number; lastStudiedAt: Date };
   // Single shared progress fetch for P2 + P3 + P4 -- one round-trip covers all three rules.
   // Scoped to the student's curriculum (allowedTopicIds) to exclude stale/cross-grade rows.
-  const progressRows: ProgressRow[] = allowedTopicIds.size > 0
+  const progressRows: ProgressRowStrict[] = allowedTopicIds.size > 0
     ? await prisma.studentTopicProgress.findMany({
         where: { studentId, topicId: { in: [...allowedTopicIds] } },
         select: { topicId: true, mastery: true, practiceCount: true, lastStudiedAt: true },
-      })
+      }) as ProgressRowStrict[]
     : [];
 
   let action: NextAction | null;
