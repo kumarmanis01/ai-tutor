@@ -84,7 +84,7 @@ export function getYesterdayIstBounds(): { start: Date; end: Date; dateLabel: st
 async function getTrendingEscalations(since: Date): Promise<TrendingDoubt[]> {
   try {
     type Row = { conceptId: string; studentCount: bigint }
-    const rows = await prisma.$queryRaw<Row[]>`
+    const rawRows = await prisma.$queryRaw`
       SELECT "conceptId", COUNT(DISTINCT "studentId")::bigint AS "studentCount"
       FROM "DoubtEscalation"
       WHERE "createdAt" >= ${since}
@@ -93,6 +93,7 @@ async function getTrendingEscalations(since: Date): Promise<TrendingDoubt[]> {
       HAVING COUNT(DISTINCT "studentId") > 5
       ORDER BY "studentCount" DESC
     `
+    const rows = rawRows as Row[]
     if (!rows || !rows.length) return []
 
     // defensive: ignore any rows that have a null/empty conceptId (mocked query results
@@ -102,10 +103,11 @@ async function getTrendingEscalations(since: Date): Promise<TrendingDoubt[]> {
     if (!nonNullRows.length) return []
 
     const conceptIds = nonNullRows.map((r) => r.conceptId)
-    const concepts = await prisma.concept.findMany({
+    const conceptsRaw = await prisma.concept.findMany({
       where: { id: { in: conceptIds } },
       select: { id: true, name: true },
     })
+    const concepts = conceptsRaw as Array<{ id: string; name: string }>
     const nameMap = new Map(concepts.map((c) => [c.id, c.name]))
 
     return nonNullRows.map((r) => ({
@@ -183,7 +185,7 @@ export async function runDailyCostReport(): Promise<CostReportResult> {
   const sevenDaysAgo = new Date(start.getTime() - 6 * 24 * 60 * 60 * 1000)
 
   // Count distinct sessions, sum costs, trending escalations, rolling avg history, cache stats in parallel
-  const [distinctSessionRows, agg, trendingDoubts, last7Metrics, cacheStats, yesterdayMetric] = await Promise.all([
+  const _res = await Promise.all([
     prisma.aITutorTurnLog.findMany({
       where: { createdAt: { gte: start, lt: end } },
       distinct: ['sessionId'],
@@ -200,12 +202,12 @@ export async function runDailyCostReport(): Promise<CostReportResult> {
       take: 7,
     }),
     // Cache hit rate: count cached=true vs total for yesterday
-    prisma.$queryRaw<[{ total: bigint; cached: bigint }]>`
+    (prisma.$queryRaw`
       SELECT COUNT(*)::bigint AS total,
              COUNT(*) FILTER (WHERE cached = true)::bigint AS cached
       FROM "AITutorTurnLog"
       WHERE "createdAt" >= ${start} AND "createdAt" < ${end}
-    `,
+    `) as Array<{ total: bigint; cached: bigint }>,
     // Previous day metric for dropout detection
     prisma.dailyCostMetric.findFirst({
       where: { date: { gte: sevenDaysAgo, lt: start } },
@@ -213,8 +215,15 @@ export async function runDailyCostReport(): Promise<CostReportResult> {
     }),
   ])
 
+  const distinctSessionRows = _res[0] as Array<{ sessionId: string }>
+  const agg = _res[1] as { _sum: { costUsd: number | null } }
+  const trendingDoubts = _res[2] as TrendingDoubt[]
+  const last7Metrics = _res[3] as Array<{ costPerSession: number }>
+  const cacheStats = _res[4] as Array<{ total: bigint; cached: bigint }>
+  const yesterdayMetric = _res[5] as { sessions: number } | null
+
   const sessions = distinctSessionRows.length
-  const totalCostUsd = agg._sum.costUsd ?? 0
+  const totalCostUsd = Number(agg._sum.costUsd ?? 0)
   const costPerSession = sessions > 0 ? totalCostUsd / sessions : 0
 
   // Upsert DailyCostMetric for the reporting date (use start = yesterday IST midnight UTC)
@@ -316,7 +325,6 @@ export async function runDailyCostReport(): Promise<CostReportResult> {
   if (dayOfWeekIst === 0) {
     const sevenDaysAgoForQuality = new Date(start.getTime() - 6 * 24 * 60 * 60 * 1000)
     try {
-      type FlagRow = { qualityFlag: string; _count: number }
       const flagGroups = await prisma.aITutorTurnLog.groupBy({
         by: ['qualityFlag'],
         where: {
@@ -325,13 +333,16 @@ export async function runDailyCostReport(): Promise<CostReportResult> {
         },
         _count: { qualityFlag: true },
       })
-      qualityFlags = flagGroups.map((g) => ({
+      type FlagRow = { qualityFlag: string; _count: { qualityFlag: number } }
+      const flagGroupsTyped = flagGroups as FlagRow[]
+      const qFlags = flagGroupsTyped.map((g) => ({
         flag: g.qualityFlag as string,
         count: g._count.qualityFlag,
       }))
-      if (qualityFlags.length > 0) {
-        const directAnswerCount = qualityFlags.find((f) => f.flag === 'DIRECT_ANSWER_GIVEN')?.count ?? 0
-        const summaryLines = qualityFlags.map((f) => `${f.flag}: ${f.count}`).join(', ')
+      qualityFlags = qFlags
+      if (qFlags.length > 0) {
+        const directAnswerCount = qFlags.find((f) => f.flag === 'DIRECT_ANSWER_GIVEN')?.count ?? 0
+        const summaryLines = qFlags.map((f) => `${f.flag}: ${f.count}`).join(', ')
         logger.warn('costReportingWorker.qualityFlags', { summaryLines, directAnswerCount })
         if (directAnswerCount > 0) {
           logger.error('costReportingWorker.CRITICAL_DIRECT_ANSWER_GIVEN', { count: directAnswerCount })
