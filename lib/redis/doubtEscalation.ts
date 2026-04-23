@@ -1,3 +1,18 @@
+/**
+ * FILE OBJECTIVE:
+ * - Manage per-session doubt attempt counters and rolling history in Redis.
+ *
+ * LINKED UNIT TEST:
+ * - tests/unit/lib/redis/doubtEscalation.spec.ts
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/COPILOT_GUARDRAILS.md
+ * - .github/copilot-instructions.md
+ *
+ * EDIT LOG:
+ * - 2026-04-23T00:00:00Z | copilot | fix(strict): guard getRedis() null and return safe defaults
+ */
+
 import { createHash } from 'crypto'
 import { getRedis } from '@/lib/redis'
 
@@ -39,6 +54,7 @@ export async function trackDoubtAttempt(
 ): Promise<{ count: number; history: DoubtAttemptEntry[] }> {
   try {
     const redis = getRedis()
+    if (!redis) return { count: 0, history: [] }
     const cKey = counterKey(sessionId, doubtHash)
     const hKey = historyKey(sessionId, doubtHash)
 
@@ -70,6 +86,7 @@ export async function trackDoubtAttempt(
 export async function resetDoubtCounter(sessionId: string, doubtHash: string): Promise<void> {
   try {
     const redis = getRedis()
+    if (!redis) return
     await redis.del(counterKey(sessionId, doubtHash))
     await redis.del(historyKey(sessionId, doubtHash))
   } catch {
