@@ -28,6 +28,7 @@
  *                               stub creation, internal retry, HomeworkResult type.
  *                               Fixes RISK-01: permanent dead-end in HOMEWORK phase.
  *   2026-04-23T00:00:00Z | copilot | fix(strict): add local types for generated tests/questions to avoid implicit-any callbacks
+ *   2026-04-23T05:30:00Z | copilot | fix(strict): coalesce `explanation` to null and annotate sibling topic mapping to remove implicit-any
  */
 
 import { Prisma } from '@prisma/client';
@@ -232,7 +233,7 @@ async function gatherQuestions(topicId: string): Promise<HomeworkQuestion[]> {
 
   const genQuestions = genTests.flatMap((t: GenTestRow) => t.questions);
 
-  const combined = [
+  const combined: HomeworkQuestion[] = [
     ...bankQuestions.map((q) => ({
       id: q.id,
       type: q.type,
@@ -249,7 +250,7 @@ async function gatherQuestions(topicId: string): Promise<HomeworkQuestion[]> {
       choices: gq.options,
       correctAnswer:
         typeof gq.answer === 'string' ? gq.answer : JSON.stringify(gq.answer),
-      explanation: gq.explanation,
+      explanation: gq.explanation ?? null,
       difficulty: null as string | null,
     })),
   ];
@@ -277,16 +278,16 @@ async function gatherQuestions(topicId: string): Promise<HomeworkQuestion[]> {
   });
 
   if (topicDef?.chapterId) {
-    const siblingTopics = await prisma.topicDef.findMany({
+    const siblingTopics = (await prisma.topicDef.findMany({
       where: {
         chapterId: topicDef.chapterId,
         lifecycle: 'active',
         id: { not: topicId },
       },
       select: { id: true },
-    });
+    })) as { id: string }[];
 
-    const siblingIds = siblingTopics.map((t) => t.id);
+    const siblingIds = siblingTopics.map((t: { id: string }) => t.id);
 
     if (siblingIds.length > 0) {
       const siblingTests = (await prisma.generatedTest.findMany({
@@ -307,7 +308,7 @@ async function gatherQuestions(topicId: string): Promise<HomeworkQuestion[]> {
       })) as GenTestRow[];
 
       // Deduplicate against the topic-level questions already in `seen`.
-      const siblingQuestions = siblingTests
+      const siblingQuestions: HomeworkQuestion[] = siblingTests
         .flatMap((t: GenTestRow) => t.questions)
         .filter((gq: GenQuestionRow) => !seen.has(gq.id))
         .map((gq: GenQuestionRow) => ({
@@ -319,7 +320,7 @@ async function gatherQuestions(topicId: string): Promise<HomeworkQuestion[]> {
             typeof gq.answer === 'string'
               ? gq.answer
               : JSON.stringify(gq.answer),
-          explanation: gq.explanation,
+          explanation: gq.explanation ?? null,
           difficulty: null as string | null,
         }));
 
