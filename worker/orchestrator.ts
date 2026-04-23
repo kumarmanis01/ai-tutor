@@ -85,12 +85,12 @@ async function pollAndSpawn() {
             await prisma.auditLog.create({ data: { targetEntity: 'Worker', targetId: r.id, action: null, details: { legacyAction: 'WORKER_FAILED', code, signal } } })
           }
         } catch (err) {
-          logger.error('[orchestrator] failed to update lifecycle on exit', err)
+          logger.error('[orchestrator] failed to update lifecycle on exit', err instanceof Error ? { error: err.message, stack: err.stack } : { error: String(err) })
         }
       })
     }
   } catch (err) {
-    logger.error('[orchestrator] poll error', err)
+    logger.error('[orchestrator] poll error', err instanceof Error ? { error: err.message, stack: err.stack } : { error: String(err) })
   }
 }
 
@@ -101,11 +101,11 @@ async function watchForDrains() {
       const entry = children.get(r.id)
       if (entry) {
         logger.info('[orchestrator] sending SIGINT to', { id: r.id })
-        try { entry.proc.kill('SIGINT') } catch (e) { logger.error(e) }
+        try { entry.proc.kill('SIGINT') } catch (e) { logger.error('[orchestrator] failed to send SIGINT', e instanceof Error ? { error: e.message, stack: e.stack } : { error: String(e) }) }
       }
     }
   } catch (err) {
-    logger.error('[orchestrator] drain watch error', err)
+    logger.error('[orchestrator] drain watch error', err instanceof Error ? { error: err.message, stack: err.stack } : { error: String(err) })
   }
 }
 
@@ -124,7 +124,7 @@ async function main() {
 
   // write initial status
   const status = { pid: process.pid, startedAt: new Date().toISOString(), lastHeartbeat: new Date().toISOString(), host: os.hostname(), mode: K8S_MODE ? 'k8s' : 'local' }
-  try { fs.writeFileSync(STATUS_FILE, JSON.stringify(status, null, 2)) } catch (err) { logger.error('failed to write status file', err) }
+  try { fs.writeFileSync(STATUS_FILE, JSON.stringify(status, null, 2)) } catch (err) { logger.error('failed to write status file', err instanceof Error ? { error: err.message, stack: err.stack } : { error: String(err) }) }
 
   logger.info('[orchestrator] starting', { pollMs: POLL_MS, mode: K8S_MODE ? 'k8s' : 'local' })
 
@@ -134,12 +134,12 @@ async function main() {
       const s = { ...status, lastHeartbeat: new Date().toISOString() }
       fs.writeFileSync(STATUS_FILE, JSON.stringify(s, null, 2))
     } catch (err) {
-      logger.error('failed to update status file', err)
+      logger.error('failed to update status file', err instanceof Error ? { error: err.message, stack: err.stack } : { error: String(err) })
     }
   }, Math.max(2000, POLL_MS))
 
   // start metrics server in both modes
-  try { startMetricsServer() } catch (e) { logger.error('failed to start metrics server', e) }
+  try { startMetricsServer() } catch (e) { logger.error('failed to start metrics server', e instanceof Error ? { error: e.message, stack: e.stack } : { error: String(e) }) }
 
   // Optional: schedule daily analytics job (disabled by default)
   try {
@@ -152,7 +152,7 @@ async function main() {
           const res = await runAnalyticsJobs()
           logger.info('analytics job result', { success: res.success, durationMs: res.durationMs, error: res.error ?? null })
         } catch (e) {
-          logger.error('[orchestrator] scheduled analytics job failed', e)
+          logger.error('[orchestrator] scheduled analytics job failed', e instanceof Error ? { error: e.message, stack: e.stack } : { error: String(e) })
         }
       }
 
@@ -169,7 +169,7 @@ async function main() {
       }, firstDelay)
     }
   } catch (e) {
-    logger.error('[orchestrator] failed to schedule analytics job', e)
+    logger.error('[orchestrator] failed to schedule analytics job', e instanceof Error ? { error: e.message, stack: e.stack } : { error: String(e) })
   }
 
   // Schedule daily free question reset (runs at midnight UTC by default)
@@ -179,7 +179,7 @@ async function main() {
       scheduleDailyFreeQuestionReset();
     }
   } catch (e) {
-    logger.error('[orchestrator] failed to schedule daily free question reset', e);
+    logger.error('[orchestrator] failed to schedule daily free question reset', e instanceof Error ? { error: e.message, stack: e.stack } : { error: String(e) });
   }
 
   if (!K8S_MODE) {
@@ -199,7 +199,7 @@ async function main() {
         if (Array.isArray(res) && res.length > 0) return !!res[0].acquired
         if (res && typeof res.acquired !== 'undefined') return !!res.acquired
       } catch (err) {
-        logger.error('advisory lock check failed', err)
+        logger.error('advisory lock check failed', err instanceof Error ? { error: err.message, stack: err.stack } : { error: String(err) })
       }
       return false
     }
@@ -219,18 +219,18 @@ async function main() {
             await prisma.auditLog.create({ data: { targetEntity: 'Worker', targetId: r.id, action: null, details: { legacyAction: 'WORKER_SPAWN_K8S' } } })
             incJobsSpawned()
             } catch (e) {
-            logger.error('[orchestrator:k8s] failed to create job', e)
+            logger.error('[orchestrator:k8s] failed to create job', e instanceof Error ? { error: e.message, stack: e.stack } : { error: String(e) })
           }
         }
       } catch (e) {
-        logger.error('[orchestrator:k8s] reconcile error', e)
+        logger.error('[orchestrator:k8s] reconcile error', e instanceof Error ? { error: e.message, stack: e.stack } : { error: String(e) })
       }
     }, POLL_MS)
   }
 }
 
 if (require.main === module) {
-  main().catch((err) => { logger.error(err); process.exit(2) })
+  main().catch((err) => { logger.error('[orchestrator] fatal error', err instanceof Error ? { error: err.message, stack: err.stack } : { error: String(err) }); process.exit(2) })
 }
 
 export { main }
