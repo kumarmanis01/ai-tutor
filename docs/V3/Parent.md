@@ -1,940 +1,949 @@
-<!--
-FILE OBJECTIVE:
-- Jira tasks for the Parent Journey: implementable, testable, and trackable work items with acceptance criteria.
 
-LINKED UNIT TEST:
-- tests/unit/docs/V3/Parent.spec.ts
+- [ ] Page loads on ₹8,000 Android phone (Chrome) without layout shift
+- [ ] Google Sign-In works on mobile Chrome (pre-signed-in device → one tap)
+- [ ] Google Sign-In works on incognito (fresh login flow)
+- [ ] Return user → Redirected to Parent Dashboard (not onboarding)
+- [ ] Error state: Google popup blocked → shows manual sign-in fallback
 
-COPILOT INSTRUCTIONS FOLLOWED:
-- /docs/COPILOT_GUARDRAILS.md
-- .github/copilot-instructions.md
+## P0.2 | P1 | Referral Landing Page Variant
+**Labels:** P1, phase:discovery
+**Phase:** Phase 0: Discovery & Acquisition
 
-EDIT LOG:
-- 2026-04-23T12:00:00Z | copilot | add standard file header
--->
+### User Story
+As a parent arriving via a friend's referral link,
+I want to see a personalized landing page acknowledging my friend and the mutual reward,
+So that I feel social proof and understand the benefit of signing up.
 
-# Jira Tasks: Parent Journey (Complete)
+### Acceptance Criteria
+- [ ] URL ?ref=parent_id loads variant landing page
+- [ ] Hero text: "Your friend Neha Sharma thinks your child will love Spinzy!"
+- [ ] Reward callout: "You both get 1 month of Premium free when you subscribe."
+- [ ] Referrer name pulled from DB. No avatar (privacy)
+- [ ] Google Sign-In CTA remains identical
+- [ ] Referral code stored in session. Applied at checkout if user upgrades
+- [ ] Referral tracking: Referral table — referrer_id, referred_email, status (SIGNED_UP, SUBSCRIBED, REWARDED)
 
-Here are **all Parent Journey tasks** formatted for direct Jira import, organized by epic with acceptance criteria, story points, dependencies, and technical specifications.
+### QA
+- [ ] Referral link tracks correctly through sign-up → subscription
+- [ ] Reward auto-applied as subscription extension (not coupon code)
 
----
+## P0.3 | P1 | School Partnership Landing Page Variant
+**Labels:** P1, phase:discovery
+**Phase:** Phase 0: Discovery & Acquisition
 
-## Epic: Parent Onboarding & Discovery
+### User Story
+As a parent arriving via school circular or QR code,
+I want to see a co-branded landing page confirming my school's recommendation,
+So that I trust the platform and feel confident signing up.
 
-**Epic Goal:** Convert parents from landing page to account creation with child setup.
-
----
-
-### TASK-PARENT-001: Landing Page with Google Sign-In
-
-| Field | Value |
-|-------|-------|
-| **Summary** | Build mobile-optimized landing page with one-tap Google Sign-In |
-| **Story Points** | 5 |
-| **Priority** | P0 |
-| **Dependencies** | None |
-
-**Acceptance Criteria:**
-- [ ] Page loads in <3 seconds on 4G (Lighthouse performance score ≥80)
-- [ ] Headline visible above fold: "Unlimited Learning. Zero Pressure. Complete Control."
-- [ ] Three value prop icons with labels: "All Boards" / "Parental Control" / "Free to Start"
-- [ ] Primary CTA: "Start Free — Sign in with Google" (#FF6B35, 48px min height, full width on mobile)
-- [ ] Secondary link: "Learn more" (scrolls to feature section)
-- [ ] No pricing or credit card fields visible
-- [ ] Google OAuth popup on CTA click → redirect to `/add-child` on success
-- [ ] On OAuth failure: "Unable to sign in. Please try again."
-
-**Technical Notes:**
-- Use existing Google OAuth configuration
-- Store `auth_provider = 'google'` in users table
-- Set session expiry: 30 days
-
-**QA Checklist:**
-- [ ] Lighthouse mobile score ≥80
-- [ ] CTA triggers Google OAuth
-- [ ] New user → redirects to `/add-child`
-- [ ] Existing user with child → redirects to `/dashboard`
-
----
-
-### TASK-PARENT-002: Referral Landing Page Variant
-
-| Field | Value |
-|-------|-------|
-| **Summary** | Create referral-aware landing page variant with friend's name |
-| **Story Points** | 3 |
-| **Priority** | P1 |
-| **Dependencies** | TASK-PARENT-001 |
-
-**Acceptance Criteria:**
-- [ ] URL param `?ref={parent_id}` triggers variant
-- [ ] Header: "Your friend [Friend Name] invited you to Spinzy Academy!"
-- [ ] Friend name from `profiles.name` where `user_id = parent_id` and `role = 'parent'`
-- [ ] Reward callout: "You both get 1 month of Premium free when you subscribe"
-- [ ] Fallback to standard landing page if invalid ref ID
-- [ ] Store `referral_code` in session storage
-- [ ] Apply referral credit at first premium purchase
-
-**Technical Notes:**
-- Referral credit expires in 30 days
-- No avatar photos displayed for privacy
-
-**QA Checklist:**
-- [ ] Valid ref param shows friend's name
-- [ ] Invalid ref param falls back to standard page
-- [ ] Referral credit applied on upgrade
-
----
-
-### TASK-PARENT-003: School Partnership Landing Page Variant
-
-| Field | Value |
-|-------|-------|
-| **Summary** | Create co-branded landing page for school referrals |
-| **Story Points** | 3 |
-| **Priority** | P1 |
-| **Dependencies** | TASK-PARENT-001 |
-
-**Acceptance Criteria:**
-- [ ] URL param `?school={school_id}` or QR code triggers variant
-- [ ] Displays school name and logo (from `schools` table)
+### Acceptance Criteria
+- [ ] URL ?school=school_id loads school-specific variant
+- [ ] Page displays: School name, school logo (pre-approved)
 - [ ] Text: "Your school recommends Spinzy Academy for supplementary learning."
-- [ ] 14-day free trial for partner school parents (vs default 7-day)
-- [ ] Default board pre-selected based on school's curriculum
-- [ ] School ID logged in `users.school_partner` field
+- [ ] Students from partner schools: 14-day free trial (extended from 7 days)
+- [ ] School-specific curriculum mapping pre-selected (e.g., ICSE school → ICSE default)
+- [ ] Admin dashboard: School partnership tracking (SchoolPartner model)
 
-**Technical Notes:**
-- Table: `schools` (id, name, logo_url, board, is_active)
-- Admin panel to manage partner schools (TASK-ADMIN-xxx)
+### QA
+- [ ] Correct school name and logo displayed
+- [ ] Extended trial applied on sign-up
+- [ ] Invalid school_id shows standard landing page (no error)
 
-**QA Checklist:**
-- [ ] Valid school_id shows school logo and name
-- [ ] Free trial shows 14 days instead of 7
-- [ ] Board pre-selected correctly
+## P1.1-P | P0 | Add Child Profile — Parent-Initiated
+**Labels:** P0, phase:parent-setup
+**Phase:** Phase 1: Parent-Initiated Child Setup
 
----
+### User Story
+As a parent who just signed up,
+I want to add my child's first name, grade, and board through a simple form,
+So that Spinzy can personalize the learning experience immediately.
 
-## Epic: Parental Consent & Child Setup (DPDP Compliance)
+### Acceptance Criteria
+- [ ] Screen shown immediately after Google sign-up (if new user)
+- [ ] Title: "Who will be learning with Spinzy?"
+- [ ] Fields: First Name (text, required, max 30 chars)
+- [ ] Grade (dropdown: 1-12, required)
+- [ ] Board (dropdown: CBSE, ICSE, State Boards, required)
+- [ ] No photo upload. No last name. No location (data minimization for DPDP)
+- [ ] "+ Add Another Child" link below form (text link, opens second form inline)
+- [ ] On submit: Child profile created with status: ACTIVE (parent-initiated = pre-approved)
+- [ ] consent_status: GRANTED_BY_PARENT
+- [ ] No external consent request needed (parent is already authenticated)
+- [ ] Success screen: "Aarav's account is ready! 🎉" → Option to share app link via WhatsApp (Story P1.3-P)
+- [ ] Backend: POST /api/v1/parent/children — Creates StudentProfile with parent_user_id
+- [ ] Backend: StudentProfile fields: first_name, grade, board, status: ACTIVE, consent_status: GRANTED_BY_PARENT
 
-**Epic Goal:** Legally compliant child account creation under 5 minutes.
+### Dev Tasks
+- [ ] Create AddChildForm component
+- [ ] Support multiple children (array of forms)
+- [ ] API integration
 
----
+### QA
+- [ ] Single child added successfully
+- [ ] Multiple children added (form expands)
+- [ ] All fields required validation
+- [ ] Child immediately visible in Parent Dashboard
 
-### TASK-PARENT-004: Add Child Profile Form
+## P1.2-P | P0 | DPDP Consent Screen — Parent-Initiated
+**Labels:** P0, phase:parent-setup
+**Phase:** Phase 1: Parent-Initiated Child Setup
 
-| Field | Value |
-|-------|-------|
-| **Summary** | Parent adds child's name, grade, board to create profile |
-| **Story Points** | 5 |
-| **Priority** | P0 |
-| **Dependencies** | TASK-PARENT-001 |
+### User Story
+As a parent adding my child,
+I want to see a plain-language consent screen explaining data usage before activation,
+So that I provide informed consent as required by Indian DPDP law.
 
-**Acceptance Criteria:**
-- [ ] Screen title: "Who will be learning with Spinzy?"
-- [ ] Fields:
-  - First Name (text, required, max 50 chars)
-  - Grade (dropdown: 1-12, required)
-  - Board (dropdown: CBSE/ICSE/State Board/Other, required)
-- [ ] "Add Another Child" link (text link, not primary button)
-- [ ] No photo upload, no last name (data minimization)
-- [ ] Submit button: "Continue to Consent"
-- [ ] On submit: Insert into `profiles` with `role='student'`, `status='pending_consent'`
-- [ ] Redirect to DPDP consent screen
-
-**Technical Notes:**
-- Schema: `profiles(id, user_id, name, grade, board, role, status, created_at)`
-- Prevent duplicate active child profiles with same name (warning only, not block)
-
-**QA Checklist:**
-- [ ] All fields required — validation works
-- [ ] Submit creates pending consent record
-- [ ] Redirects to consent screen
-
----
-
-### TASK-PARENT-005: DPDP Consent Screen (Plain Language)
-
-| Field | Value |
-|-------|-------|
-| **Summary** | Parent reads plain-language consent disclosure and grants/denies |
-| **Story Points** | 5 |
-| **Priority** | P0 |
-| **Dependencies** | TASK-PARENT-004 |
-
-**Acceptance Criteria:**
-- [ ] Screen title: "Before [Child Name] can start, we need your consent."
-- [ ] Checklist with icons:
-  - ✅ Child can access unlimited study notes and videos
-  - ✅ Child's learning activity visible only to you
+### Acceptance Criteria
+- [ ] Shown after child profile creation (Story P1.1-P)
+- [ ] Checklist format with clear ✅ permissions and ❌ restrictions:
+  - ✅ Aarav can access unlimited study notes and videos
+  - ✅ Aarav's learning activity (time spent, quiz scores) visible only to you
   - ✅ You can set screen time limits and block subjects
-  - ❌ No ads or targeted recommendations
-  - ❌ No data shared with third parties
-  - ❌ No social features (chat, friends)
-- [ ] Primary button: "I Consent — Activate [Child Name]'s Account"
-- [ ] Secondary link: "I Need More Information" (opens FAQ modal)
-- [ ] FAQ modal links to full Privacy Policy
-- [ ] On consent: Update `profiles.status = 'active'`, set `consent_granted_at = NOW()`
-- [ ] Insert into `consent_audit_log` (immutable record)
-- [ ] Redirect to freemium config screen
+  - ❌ Aarav will NOT be shown ads or targeted recommendations
+  - ❌ Aarav's data will NOT be shared with third parties
+  - ❌ Aarav will NOT have social features (no chat, no friend requests)
+- [ ] Two buttons: Primary: "I Consent — Activate Aarav's Account" (Tangerine, full width)
+- [ ] Secondary: "I Need More Information" → Opens in-app FAQ modal (privacy policy summary)
+- [ ] On consent: StudentProfile.consent_status = GRANTED_BY_PARENT
+- [ ] consent_timestamp = now()
+- [ ] consent_method = DIRECT_PARENT_SETUP
+- [ ] Event logged in immutable audit trail
+- [ ] FAQ modal includes link to full Privacy Policy PDF
 
-**Technical Notes:**
-- Table: `consent_audit_log` (id, profile_id, action, timestamp, ip_address)
-- DPDP compliance: Keep audit trail for 7 years
+### Dev Tasks
+- [ ] Create DPDPConsentScreen component
+- [ ] Create ConsentFAQModal component
+- [ ] API: POST /api/v1/parent/consent/grant — Body: { child_id }
+- [ ] Backend: Audit trail logging
 
-**QA Checklist:**
-- [ ] Child name appears correctly in title
-- [ ] Consent creates audit log entry
-- [ ] Redirects to freemium config
+### QA
+- [ ] All checklist items clearly readable on mobile
+- [ ] FAQ modal opens and closes smoothly
+- [ ] Consent logged correctly in audit trail
 
----
+## P1.3-P | P1 | Share App Link to Child's Device
+**Labels:** P1, phase:parent-setup
+**Phase:** Phase 1: Parent-Initiated Child Setup
 
-### TASK-PARENT-006: DPDP Consent Denial Flow
+### User Story
+As a parent who just set up my child's account,
+I want to send the app download link to my child's device via WhatsApp,
+So that they can start learning immediately without me typing URLs.
 
-| Field | Value |
-|-------|-------|
-| **Summary** | Parent can deny consent with anonymization of child data |
-| **Story Points** | 3 |
-| **Priority** | P1 |
-| **Dependencies** | TASK-PARENT-005 |
+### Acceptance Criteria
+- [ ] Screen after consent: "Aarav's account is ready! 🎉"
+- [ ] Instructions: "Hand the device to Aarav, or send the app to their phone."
+- [ ] Primary CTA: "Send App Link via WhatsApp"
+- [ ] Opens WhatsApp with pre-filled message: "Aarav, your Spinzy Academy learning app is ready! Download: [Deep Link]. Your profile is already set up — just open and start learning."
+- [ ] Secondary CTA: "I'll set it up later" → Go to Parent Dashboard
+- [ ] Deep link auto-fills child's profile on first app open (no re-login)
 
-**Acceptance Criteria:**
-- [ ] Parent taps "I Need More Information" → Reads FAQ → Taps "Decline"
-- [ ] On decline: Update `profiles.status = 'denied'`
-- [ ] Anonymize child profile: `name = NULL`, keep only grade/board for aggregate analytics
-- [ ] Display: "You've declined consent. [Child Name]'s profile will not be activated."
-- [ ] Log event in `consent_audit_log` with `action='denied'`
-- [ ] No further emails about this child
-- [ ] Parent can reverse decision in Settings (P2)
+### Dev Tasks
+- [ ] Create SetupComplete component
+- [ ] Generate deep link with child_profile_id token
+- [ ] WhatsApp share intent (universal link: https://wa.me/?text=...)
 
-**QA Checklist:**
-- [ ] Denial anonymizes child name
-- [ ] Audit log records denial
-- [ ] No further emails sent
+### QA
+- [ ] WhatsApp opens with pre-filled message
+- [ ] Deep link correctly auto-logs-in child on fresh install
+- [ ] Skip option returns to Dashboard
 
----
+## P1.4-P | P2 | Add Sibling — Additional Child with Discount
+**Labels:** P2, phase:parent-setup
+**Phase:** Phase 1: Parent-Initiated Child Setup
 
-### TASK-PARENT-007: Freemium Configuration Screen
+### User Story
+As a parent with multiple children,
+I want to add a second child from my dashboard and receive a sibling discount,
+So that all my children can use Spinzy under one account at a reduced cost.
 
-| Field | Value |
-|-------|-------|
-| **Summary** | Parent sees free tier limits and premium upsell before child starts |
-| **Story Points** | 3 |
-| **Priority** | P0 |
-| **Dependencies** | TASK-PARENT-005 |
+### Acceptance Criteria
+- [ ] Dashboard card: "+ Add Another Learner" (visible if ≥1 active child)
+- [ ] Tapping opens same Add Child flow (P1.1-P), pre-fills parent info
+- [ ] After consent, pricing card appears for premium parents: "Sibling Discount: 25% off for Anaya."
+- [ ] Premium benefits shared across siblings (one subscription covers all)
+- [ ] Free-tier parents: No discount prompt (already free)
+- [ ] Dashboard supports toggling between children (Story P4.8)
+- [ ] Backend: Subscription check: Family Plan includes up to 3 children
+- [ ] If on Individual Plan: Upgrade prompt. "Upgrade to Family Plan (₹599/mo) to add more children."
+- [ ] Sibling discount auto-applied on upgrade
 
-**Acceptance Criteria:**
-- [ ] Screen title: "Set [Child Name]'s daily learning limits."
-- [ ] Three feature cards:
-  - Practice Questions: "5 per topic per day (Free)" / "Unlimited (Premium)" — visually locked
-  - AI Tutor Prompts: "3 per day (Free)" / "Unlimited (Premium)" — visually locked
-  - Lesson Content: "Unlimited (Free)" — always unlocked
-- [ ] Premium preview card at bottom:
-  - Text: "Unlock unlimited practice, mock tests, and your real-time parent dashboard."
-  - Primary button: "Start 7-Day Free Premium Trial"
-  - Secondary link: "Continue with Free" (grey, smaller)
-- [ ] "Continue with Free" → redirect to setup complete
-- [ ] "Start Trial" → redirect to payment flow
+### QA
+- [ ] Second child added successfully
+- [ ] Discount correctly applied on upgrade
+- [ ] Dashboard toggle shows both children
 
-**QA Checklist:**
-- [ ] Free tier limits displayed correctly
-- [ ] Premium features visually locked
-- [ ] Both CTAs work
+## P1.1-R | P0 | Parent Receives Unsolicited Consent Request (WhatsApp)
+**Labels:** P0, phase:child-consent
+**Phase:** Phase 1-R: Child-Initiated Consent (Parent Responds)
 
----
+### User Story
+As a parent who did NOT sign up for Spinzy, but whose child has independently created an account,
+I want to receive a trustworthy WhatsApp message explaining what Spinzy is and what I'm approving,
+So that I don't dismiss it as spam and can approve or deny in seconds.
 
-### TASK-PARENT-008: Setup Complete & WhatsApp Share
+### Acceptance Criteria
+- [ ] WhatsApp Message Template sender: Spinzy Academy (verified WhatsApp Business account)
+- [ ] Message content includes: child name, grade, board, value props, controls, and deep link
+- [ ] Reply "YES" parses via webhook and auto-approves
+- [ ] Triggered by child registration (Student Journey S0.1, Step 5a)
+- [ ] WhatsApp Cloud API message send
+- [ ] Check if parent phone matches existing User. If yes: Message includes "You have a Spinzy account. Sign in to manage."
+- [ ] ConsentRequest record: channel: WHATSAPP, status: SENT
 
-| Field | Value |
-|-------|-------|
-| **Summary** | Parent shares app deep link to child's device via WhatsApp |
-| **Story Points** | 3 |
-| **Priority** | P1 |
-| **Dependencies** | TASK-PARENT-007 |
+### Dev Tasks
+- [ ] WhatsApp Cloud API integration (Meta Developer Console)
+- [ ] Message template submission & approval (Meta requirement)
+- [ ] Webhook setup: POST /api/v1/webhooks/whatsapp (receive replies)
 
-**Acceptance Criteria:**
-- [ ] Screen title: "[Child Name]'s account is ready! 🎉"
-- [ ] Instruction: "Hand the device to [Child Name] now, or install Spinzy on their device."
-- [ ] Primary CTA: "Send app link via WhatsApp"
-  - Opens WhatsApp with pre-filled message: "[Child Name], your Spinzy Academy learning app is ready! Download here: [Deep Link]. Your profile is already set up."
-- [ ] Secondary CTA: "I'll set it up later" → returns to Parent Dashboard
-- [ ] Deep link auto-authenticates child (no login required)
-- [ ] Track share event in analytics
+### QA
+- [ ] Message delivers within 10 seconds of child registration
+- [ ] Message renders correctly on WhatsApp (Android + iOS)
+- [ ] "YES" reply correctly triggers approval
+- [ ] Deep link opens consent mini-page
+- [ ] Existing parent message shows correct account hint
+- [ ] Non-delivery: Retry 2x, then log for manual review
 
-**Technical Notes:**
-- Deep link format: `spinzy://app/child/{profile_id}/{consent_token}`
-- Consent token expires in 7 days
+## P1.2-R | P0 | Parent Receives Unsolicited Consent Request (Email)
+**Labels:** P0, phase:child-consent
+**Phase:** Phase 1-R: Child-Initiated Consent (Parent Responds)
 
-**QA Checklist:**
-- [ ] WhatsApp share opens with correct message
-- [ ] Deep link auto-authenticates child
-- [ ] Share event tracked
+### User Story
+As a parent who received a consent request via email,
+I want a clear, trustworthy email with a one-click approval button,
+So that I can approve my child's access from my email inbox.
 
----
+### Acceptance Criteria
+- [ ] Email Template Subject: "Aarav wants to learn with Spinzy Academy — Your Approval Needed"
+- [ ] From: hello@spinzyacademy.com
+- [ ] Body includes: Child's name, grade, board, bullet list of parent controls
+- [ ] Approve Button: Large, Tangerine, "Approve & Set Limits" → Links to consent mini-page
+- [ ] Deny Link: Small, grey, "Deny Access"
+- [ ] Expiry notice: "Link expires in 48 hours."
+- [ ] Compliance footer: DPDP notice, contact info, privacy policy link
+- [ ] Email renders on: Gmail app (Android/iOS), Outlook, Apple Mail
+- [ ] Triggered by child registration when channel: EMAIL
+- [ ] Email service: AWS SES or SendGrid
+- [ ] ConsentRequest record: channel: EMAIL, status: SENT
 
-### TASK-PARENT-009: Add Sibling with Discount
+### Dev Tasks
+- [ ] Create email template using React Email (packages/email-templates/src/consent-request.tsx)
+- [ ] Email service integration
 
-| Field | Value |
-|-------|-------|
-| **Summary** | Parent adds second child with sibling discount prompt |
-| **Story Points** | 5 |
-| **Priority** | P2 |
-| **Dependencies** | TASK-PARENT-004 |
+### QA
+- [ ] Email delivers within 60 seconds
+- [ ] Renders correctly on Gmail mobile app
+- [ ] Approve button links to correct consent page
+- [ ] Deny link works correctly
+- [ ] Expired token link shows appropriate error
 
-**Acceptance Criteria:**
-- [ ] Dashboard card: "+ Add Another Learner" (visible to parents with ≥1 active child)
-- [ ] Reuse Add Child flow but pre-fill parent email
-- [ ] After consent for second child: Show pricing card "Sibling Discount: 25% off for [Second Child Name]"
-- [ ] Discount applied at next billing cycle (not retroactive)
-- [ ] All children under same parent share one premium subscription
-- [ ] Dashboard child toggle supports multiple children
+## P1.3-R | P0 | Parent Approves via Consent Mini-Page
+**Labels:** P0, phase:child-consent
+**Phase:** Phase 1-R: Child-Initiated Consent (Parent Responds)
 
-**QA Checklist:**
-- [ ] Add Another Learner visible
-- [ ] Sibling discount appears
-- [ ] Discount applied correctly on next billing
+### User Story
+As a parent who tapped the approval link from WhatsApp or email,
+I want to see a simple, mobile-optimized page where I can approve via Google sign-in or OTP,
+So that I don't have to download an app or remember a password.
 
----
+### Acceptance Criteria
+- [ ] Mini-Page URL: https://spinzyacademy.com/parent/approve?token={consent_token}
+- [ ] On load: Validate token via API. Show loading spinner
+- [ ] Valid token → Show consent page with child's name, grade, board, DPDP checklist
+- [ ] Primary: "Approve via Google" button
+- [ ] Secondary: "Approve with OTP" button (for parents who don't use Google)
+- [ ] Tertiary: "Deny Access" (small grey link)
+- [ ] Approve via Google: Google OAuth popup/redirect. On success: Consent granted. Account created/linked if parent email exists
+- [ ] Success screen: "Approved! Aarav can now access Spinzy." Link: "Manage Settings" → Parent Dashboard (if account exists) or "Create Parent Account" (Story P1.5-R)
+- [ ] Approve with OTP: Send 6-digit OTP to same WhatsApp/Email (based on original channel)
+- [ ] OTP input (6 separate boxes, auto-advance, paste support)
+- [ ] Valid OTP → Consent granted. Invalid OTP → Error message. Max 3 attempts
+- [ ] Deny Access: Confirmation modal → On confirm: consent_status: DENIED. Screen: "Access Denied. Your child will be notified."
+- [ ] Expired Token Screen: "This approval link has expired. Ask your child to send a new request."
+- [ ] Invalid Token Screen: "Invalid link. Please check the message or contact support."
+- [ ] Backend: GET /api/v1/consent/validate?token={token} — Returns child info + expiry status
+- [ ] Backend: POST /api/v1/consent/approve — Body: { token, method: 'google' | 'otp', otp_code? }
+- [ ] Backend: POST /api/v1/consent/send-otp — Body: { token }. Sends OTP to parent contact
+- [ ] Backend: POST /api/v1/consent/deny — Body: { token }
+- [ ] On approval: StudentProfile.status = ACTIVE, consent_status = GRANTED_VIA_LINK, consent_method = GOOGLE_OAUTH | WHATSAPP_OTP | EMAIL_OTP
+- [ ] WebSocket push to student: { event: 'consent_approved' }
 
-## Epic: Passive Observation (First Week Trust Building)
+### Dev Tasks
+- [ ] Create ParentApprovalPage component (Next.js, no auth required)
+- [ ] Create OTPInput component (6-digit, pasteable)
+- [ ] Implement Google OAuth on mini-page
+- [ ] API: Consent validation, approval, denial, OTP send
 
-**Epic Goal:** Keep parents informed without requiring app opens.
+### QA
+- [ ] Page loads correctly inside WhatsApp in-app browser
+- [ ] Google OAuth works in WhatsApp browser popup
+- [ ] OTP delivers within 10 seconds
+- [ ] OTP paste works (especially for SMS/WhatsApp notification auto-read)
+- [ ] Invalid OTP shows error. 3 wrong attempts → OTP invalidated
+- [ ] Deny flow works. Student app updates within 15 seconds
+- [ ] Expired/invalid token shows clear messaging
 
----
+## P1.4-R | P1 | Parent Approves via WhatsApp "YES" Reply
+**Labels:** P1, phase:child-consent
+**Phase:** Phase 1-R: Child-Initiated Consent (Parent Responds)
 
-### TASK-PARENT-010: First Session Push Notification
+### User Story
+As a parent who received a WhatsApp consent request,
+I want to reply "YES" to approve without clicking any links,
+So that I can approve in under 5 seconds during a busy day.
 
-| Field | Value |
-|-------|-------|
-| **Summary** | Parent receives push when child completes first lesson |
-| **Story Points** | 3 |
-| **Priority** | P1 |
-| **Dependencies** | Student Journey TASK-010 |
+### Acceptance Criteria
+- [ ] Parent replies "YES" (case-insensitive: "yes", "Yes", "YES", "yes please" all valid)
+- [ ] WhatsApp webhook receives and parses reply
+- [ ] System verifies incoming phone number matches a pending ConsentRequest.parent_phone
+- [ ] ConsentRequest status is AWAITING and not expired
+- [ ] On match: Consent auto-approved. StudentProfile.status = ACTIVE, consent_method = WHATSAPP_REPLY
+- [ ] WebSocket push to student
+- [ ] Reply to parent: "✅ Approved! Aarav can now use Spinzy Academy. Set screen time limits & track progress here: [Dashboard Link]"
+- [ ] If parent has no Spinzy account: Dashboard link redirects to account creation (P1.5-R)
+- [ ] If no matching consent request found: Reply: "We couldn't find a pending approval request for this number. Ask your child to send a new request from the Spinzy app."
+- [ ] If consent already approved/denied: Reply: "This request has already been processed. Check the Spinzy parent dashboard or contact support."
+- [ ] Backend: WhatsApp webhook: Parse incoming message body
+- [ ] Regex match: /\b(yes|haan|ji|ok)\b/i for broader Indian language support
+- [ ] Lookup ConsentRequest by parent_phone + status: AWAITING + token_expires_at > now()
+- [ ] Security: Log all webhook events for fraud detection
 
-**Acceptance Criteria:**
-- [ ] Trigger: Child completes first lesson (100% viewed OR ≥1 practice question)
-- [ ] Notification text: "[Child Name] just completed their first lesson: '[Lesson Title]'. They got [Score]/5 practice questions right! 🎉"
-- [ ] Tapping notification opens Parent Dashboard (premium) or session summary (free)
+### Dev Tasks
+- [ ] Webhook handler: apps/api/src/webhooks/whatsapp.webhook.ts
+- [ ] Service: ConsentService.approveViaReply(phone, message)
+- [ ] Reply template via WhatsApp Cloud API
+
+### QA
+- [ ] "YES" → Consent approved within 5 seconds
+- [ ] "yes" → Approved
+- [ ] "YES please" → Approved
+- [ ] "Haan" → Approved (Hindi support)
+- [ ] Random message ("hello", "kya hai yeh") → NOT approved. Correct error reply sent
+- [ ] Reply from unknown number → Correct error reply
+- [ ] Expired consent → Correct error reply
+
+## P1.5-R | P1 | New Parent Account Creation Post-Consent
+**Labels:** P1, phase:child-consent
+**Phase:** Phase 1-R: Child-Initiated Consent (Parent Responds)
+
+### User Story
+As a parent who just approved my child via WhatsApp reply or OTP, and who does NOT have a Spinzy account,
+I want to be prompted to create a parent account or skip and do it later,
+So that I can access the Parent Dashboard when I'm ready.
+
+### Acceptance Criteria
+- [ ] After consent approval: System checks if parent_phone or parent_email matches an existing User
+- [ ] If NO match (new parent): WhatsApp reply includes: "Set up your free parent account to control Aarav's screen time & track progress: [Link]"
+- [ ] Consent mini-page success screen includes: "Create your parent account to manage Aarav's learning." Button: "Set Up Parent Account" (Google sign-in)
+- [ ] Parent account creation: Google sign-in (pre-fill email if available). Account auto-linked to approved child. No re-consent needed. Lands on Parent Dashboard
+- [ ] If parent skips account creation: Student still gets full access. Parent still receives weekly reports via original channel (WhatsApp/Email)
+- [ ] Parent can create account later using same phone/email. On creation, existing children auto-linked
+- [ ] Admin dashboard flag: parent_account_created: boolean on StudentProfile
+- [ ] 7 days after approval, if no parent account: Reminder message: "Set up your parent account to see Aarav's progress! [Link]"
+- [ ] Backend: POST /api/v1/parent/claim — Body: { phone?, email?, google_token? }. Links parent account to existing child profiles
+- [ ] Cron job: Send reminder to unlinked parents after 7 days
+
+### QA
+- [ ] New parent creates account post-consent → Child correctly linked
+- [ ] Parent skips account creation → Child still has full access
+- [ ] Weekly reports deliver to unlinked parent via WhatsApp/Email
+- [ ] Parent creates account later → Existing children auto-linked
+
+## P1.6-R | P1 | Parent Declines Consent
+**Labels:** P1, phase:child-consent
+**Phase:** Phase 1-R: Child-Initiated Consent (Parent Responds)
+
+### User Story
+As a parent who does not want my child to use Spinzy,
+I want to decline the consent request clearly,
+So that my child's data is not processed and I'm not contacted again.
+
+### Acceptance Criteria
+- [ ] From consent mini-page: Tap "Deny Access" → Confirmation modal → Confirm
+- [ ] From WhatsApp: Reply "NO" (or "no", "nahi") → Webhook parses → Consent denied
+- [ ] From Email: Click "Deny Access" link → Confirmation page → Confirm
+- [ ] On denial: StudentProfile.consent_status = DENIED, StudentProfile.status = INACTIVE
+- [ ] Student profile anonymized (name removed, only grade/board retained as aggregate stat)
+- [ ] Student receives push/WebSocket: "Access Not Approved. Talk to your parent."
+- [ ] Parent confirmation: "Access Denied. Aarav's profile has been deactivated. You can change this in Parent Settings if you change your mind."
+- [ ] No further consent requests sent for this child
+- [ ] Parent can reverse denial within 90 days via Parent Settings → Reactivate
+- [ ] 72-hour device cooldown for student to re-request with a DIFFERENT parent contact
+- [ ] All denial events logged in audit trail
+- [ ] Backend: POST /api/v1/consent/deny — Body: { token }
+- [ ] WhatsApp webhook: Match "NO", "nahi", "nahi chahiye"
+- [ ] StudentProfile.anonymize() method: Clears name, sets is_anonymized: true
+
+### QA
+- [ ] Denial via each channel works (mini-page, WhatsApp, Email)
+- [ ] Student app updates within 15 seconds
+- [ ] Student cannot re-request to same parent for 72 hours
+- [ ] Student CAN re-request to different parent immediately
+- [ ] Parent can reverse denial in Settings
+- [ ] Anonymized data not visible in analytics
+
+## P1.7-R | P1 | Parent Handles Consent for Existing Account (2nd Child)
+**Labels:** P1, phase:child-consent
+**Phase:** Phase 1-R: Child-Initiated Consent (Parent Responds)
+
+### User Story
+As a parent who already has a Spinzy account with one child,
+I want to receive and manage a consent request when my second child independently signs up,
+So that both children are linked under my existing account without duplication.
+
+### Acceptance Criteria
+- [ ] When consent request is sent to phone/email matching existing parent: WhatsApp/Email content includes "You already have a Spinzy account. Aarav's access request is linked to your account."
+- [ ] Approval link leads to existing Parent Dashboard (not new account creation)
+- [ ] On approval: Second child added to existing account automatically
+- [ ] Parent Dashboard shows both children
+- [ ] If parent is on Individual Plan: Prompt to upgrade to Family Plan. "You're on Individual Plan (1 child). Upgrade to Family Plan (₹599/mo) to add Aarav."
+- [ ] If parent is on Family Plan: Second child added immediately, no additional cost
+- [ ] No duplicate account created
+- [ ] Backend: Before sending consent request: SELECT FROM User WHERE phone = ? OR email = ?
+- [ ] If match: Link consent to existing user_id. No new User created
+
+### QA
+- [ ] Second child approval links to existing account
+- [ ] Dashboard shows both children after approval
+- [ ] Upgrade prompt shown if on Individual Plan
+- [ ] No duplicate User record
+
+## P2.1 | P1 | First Session Push Notification
+**Labels:** P1, phase:observation
+**Phase:** Phase 2: Passive Observation (First Week)
+
+### User Story
+As a parent of a newly activated learner,
+I want to receive a push notification when my child completes their first lesson,
+So that I feel informed and reassured the platform is being used.
+
+### Acceptance Criteria
+- [ ] Trigger: Child completes first lesson (content viewed ≥90% OR 1+ practice question answered)
+- [ ] Notification: "Aarav just completed their first lesson: 'Introduction to Fractions.' They got 4/5 practice questions right! 🎉"
+- [ ] Tapping notification → Opens Parent Dashboard (premium) or lightweight session summary screen (free)
 - [ ] Sent only once per child (not per lesson)
-- [ ] Parent can disable in Settings (opt-out, not opt-in)
+- [ ] Opt-out toggle in Settings (default: ON)
+- [ ] Delivered via Firebase Cloud Messaging (FCM) for Android, APNs for iOS
 
-**Technical Notes:**
-- Use web push (VAPID) or Firebase Cloud Messaging
-- Store `first_lesson_notification_sent` flag in `profiles`
+### Dev Tasks
+- [ ] Configure FCM/APNs
+- [ ] Create notification service
+- [ ] API: POST /api/v1/parent/notifications/register-device
 
-**QA Checklist:**
-- [ ] Notification triggers on first lesson completion
-- [ ] Not sent again for same child
-- [ ] Disable setting works
+### QA
+- [ ] Notification delivers within 30 seconds of child action
+- [ ] Tapping opens correct screen
+- [ ] Opt-out toggle works
 
----
+## P2.2 | P0 | Weekly Progress Email — Automated Sunday Report
+**Labels:** P0, phase:observation
+**Phase:** Phase 2: Passive Observation (First Week)
 
-### TASK-PARENT-011: Weekly Progress Email
+### User Story
+As a parent (free or premium),
+I want to receive an automated email every Sunday at 6 PM IST summarizing my child's weekly activity,
+So that I can track progress without logging in daily.
 
-| Field | Value |
-|-------|-------|
-| **Summary** | Automated weekly email with child's learning summary |
-| **Story Points** | 8 |
-| **Priority** | P0 |
-| **Dependencies** | Student Journey TASK-011, TASK-013 |
+### Acceptance Criteria
+- [ ] Sent every Sunday at 18:00 IST (cron job, timezone-aware)
+- [ ] Email fields: Child's name, Total time spent this week (hours/minutes), Topics covered (list, max 5), Average accuracy % (across all practice questions), XP earned this week, Current streak (🔥 + days)
+- [ ] For Free-tier parents: Premium teaser: "Want to see which topics Aarav is struggling with? Upgrade to Premium for real-time dashboard + weak topic alerts." CTA: "Upgrade Now" → Pricing page
+- [ ] For Premium parents: Weak Topics section (topics with accuracy < 60%), "Assign extra practice" button (links to Dashboard). No upgrade CTA
+- [ ] If child had zero activity: "Aarav didn't log in this week. Here's a fun topic they might enjoy: [Suggested Topic]"
+- [ ] Email uses Template T4 (designed in PRD)
+- [ ] Unsubscribe link in footer
+- [ ] Backend: Cron job: WeeklyReportWorker runs Sunday 18:00 IST
+- [ ] Aggregates: Time spent, topics, accuracy, XP, streak from StudentActivity table
+- [ ] Generates and sends email to all active parents
 
-**Acceptance Criteria:**
-- [ ] Cron job runs Sunday 18:00 IST
-- [ ] Email fields for each child:
-  - Child name
-  - Total time spent (hours/minutes)
-  - Topics covered (list, max 5)
-  - Average accuracy %
-  - XP earned this week
-  - Current streak (days)
-- [ ] Premium teaser section (if free parent):
-  - "Want to see which topics [Child] is struggling with? Upgrade to Premium for weak topic alerts."
-  - CTA: "Upgrade Now" → links to pricing
-- [ ] Zero activity variant: "[Child] didn't log in this week. Here's a fun topic they might enjoy: [Suggested Topic]"
-- [ ] Unsubscribe link at bottom
-- [ ] Template T4 from PRD
+### Dev Tasks
+- [ ] Create WeeklyReportWorker (BullMQ repeatable job)
+- [ ] Create email template using React Email
+- [ ] Query: Aggregate student activity by week
 
-**Technical Notes:**
-- Use node-cron / AWS EventBridge
-- Query `practice_attempts`, `lesson_completions` for past 7 days
-- Rate limit: Max 1 email per parent per week
+### QA
+- [ ] Email delivers at 18:00 IST on Sunday
+- [ ] All fields populated correctly
+- [ ] Free vs Premium variant renders correctly
+- [ ] Zero activity email sends correctly
+- [ ] Email renders on Gmail mobile app
 
-**QA Checklist:**
-- [ ] Email sends at correct time
-- [ ] Data matches child's actual activity
-- [ ] Upgrade CTA links correctly
-- [ ] Unsubscribe works
+## P2.3 | P1 | Monthly Progress Summary Email (Premium)
+**Labels:** P1, phase:observation
+**Phase:** Phase 2: Passive Observation (First Week)
 
----
+### User Story
+As a premium parent,
+I want a detailed monthly email with trend data showing improvement over time,
+So that I can see if my child is progressing or plateauing.
 
-### TASK-PARENT-012: Monthly Progress Summary (Premium)
+### Acceptance Criteria
+- [ ] Sent on the 1st of every month
+- [ ] Includes: Month-over-month accuracy change (↑ or ↓ %), Topics mastered count, Total hours learned, Average streak, Weak topic trends: "Long Division has been weak for 3 consecutive weeks."
+- [ ] Celebratory element: "Aarav improved by 12% this month! 🎉 Share this win:" → WhatsApp share button
+- [ ] Premium only. Free parents don't receive this
 
-| Field | Value |
-|-------|-------|
-| **Summary** | Premium parents receive detailed monthly trend email |
-| **Story Points** | 5 |
-| **Priority** | P1 |
-| **Dependencies** | TASK-PARENT-011 |
-
-**Acceptance Criteria:**
-- [ ] Sent on 1st of every month
-- [ ] Includes:
-  - Month-over-month accuracy change (↑ or ↓ %)
-  - Topics mastered count (accuracy ≥80% with ≥10 attempts)
-  - Total hours this month
-  - Average streak length
-  - Weak topic trends: "[Topic] has been weak for 3 weeks"
-- [ ] Celebratory element if improvement ≥10%: Share to WhatsApp button
-- [ ] Only sent to parents with `subscription.status = 'active'`
-
-**QA Checklist:**
-- [ ] Only premium parents receive
-- [ ] Trend data calculated correctly
+### QA
+- [ ] Delivers on 1st of month
+- [ ] Accuracy trend calculated correctly
 - [ ] Share button works
 
----
+## P3.1 | P1 | Child-Initiated Premium Request — Push Notification
+**Labels:** P1, phase:upgrade
+**Phase:** Phase 3: The Upgrade Moment
 
-## Epic: Upgrade Flow (Child-Initiated Conversion)
+### User Story
+As a parent of a free-tier child who hit the Freemium Wall,
+I want to receive a push notification when my child requests premium access,
+So that I can approve instantly and keep their learning momentum going.
 
-**Epic Goal:** Convert free parents to premium when child hits paywall.
+### Acceptance Criteria
+- [ ] Trigger: Child taps "Ask Parent to Unlock" on Freemium Wall (Student Journey S2.4)
+- [ ] Notification: "Aarav wants unlimited practice. Tap to upgrade."
+- [ ] Specific context: "Aarav used all 5 free practice questions and wants to take the Fractions Chapter Quiz."
+- [ ] Tapping notification → Opens upgrade flow (Story P3.2)
+- [ ] In-app badge on Parent Dashboard: "1 pending request from Aarav."
+- [ ] If parent doesn't respond in 48 hours: One follow-up notification
+- [ ] Cooldown: Child cannot send another request for 24 hours
+- [ ] Backend: POST /api/v1/parent/notifications/upgrade-request — Triggered by S2.4
+- [ ] Push notification via FCM/APNs
+- [ ] UpgradeRequest record: child_id, parent_id, feature, status: PENDING, created_at
 
----
+### QA
+- [ ] Notification delivers within 30 seconds
+- [ ] 48-hour follow-up sends correctly
+- [ ] Cooldown prevents spam
 
-### TASK-PARENT-013: Child-Initiated Premium Request
+## P3.2 | P1 | Upgrade Flow — Plan Selection Screen
+**Labels:** P1, phase:upgrade
+**Phase:** Phase 3: The Upgrade Moment
 
-| Field | Value |
-|-------|-------|
-| **Summary** | Parent receives push notification when child requests premium feature |
-| **Story Points** | 3 |
-| **Priority** | P1 |
-| **Dependencies** | Student Journey TASK-012 |
+### User Story
+As a parent arriving from a child's upgrade request,
+I want to see a simple, transparent pricing screen with feature comparison,
+So that I can make an informed purchase decision quickly.
 
-**Acceptance Criteria:**
-- [ ] Trigger: Child taps "Ask a Parent to Unlock" on freemium wall
-- [ ] Insert into `parent_requests` table (profile_id, feature_requested, status='pending', created_at)
-- [ ] Push notification text: "[Child Name] wants to take the '[Feature Name]'. Tap to unlock unlimited practice."
-- [ ] Deeplink: `spinzy://upgrade?child_id={id}&feature={feature}`
-- [ ] If push disabled: Show in-app badge on next login: "1 pending request from [Child Name]"
-- [ ] Follow-up notification after 48 hours if no response (once only)
+### Acceptance Criteria
+- [ ] Screen: "Upgrade Aarav's Learning"
+- [ ] Two plans: Individual: ₹399/month. Unlimited practice, AI tutor, tests, parent dashboard. Family: ₹599/month. Everything + up to 3 children. (Best Value badge.)
+- [ ] Annual toggle: Individual ₹3,999/year (Save ₹789). Family ₹5,999/year (Save ₹1,189)
+- [ ] Feature comparison table (from Landing Page LP-6.1)
+- [ ] 7-day free trial: "First 7 days free. Cancel anytime."
+- [ ] Trust signals: 🔒 Razorpay secure. UPI/Cards/NetBanking. No auto-renewal without reminder
+- [ ] FAQ accordion: "Can I cancel? Refund policy? Sibling discount?"
+- [ ] Tap plan → Payment screen (P3.3)
 
-**Technical Notes:**
-- Table: `parent_requests` (id, profile_id, feature, status, created_at, responded_at)
-- Max 3 pending requests per child (oldest auto-expires)
+### Dev Tasks
+- [ ] Create UpgradeScreen component
+- [ ] Create PlanCard sub-component
+- [ ] Monthly/Yearly toggle
+- [ ] FAQ accordion
 
-**QA Checklist:**
-- [ ] Push notification received
-- [ ] Deeplink opens upgrade flow
-- [ ] In-app badge appears if push disabled
+### QA
+- [ ] Both plans display correctly
+- [ ] Toggle switches prices
+- [ ] Feature comparison matches actual product
 
----
+## P3.3 | P1 | Payment Screen — UPI First
+**Labels:** P1, phase:upgrade
+**Phase:** Phase 3: The Upgrade Moment
 
-### TASK-PARENT-014: Plan Selection Screen
+### User Story
+As a parent ready to subscribe,
+I want to pay via UPI (Google Pay/PhonePe) as the default option,
+So that I can complete payment in under 30 seconds without entering card details.
 
-| Field | Value |
-|-------|-------|
-| **Summary** | Parent sees simple pricing screen with comparison |
-| **Story Points** | 5 |
-| **Priority** | P1 |
-| **Dependencies** | TASK-PARENT-013 |
+### Acceptance Criteria
+- [ ] UPI is the PRIMARY and FIRST payment option
+- [ ] UPI flow: Option A: Enter UPI ID (e.g., parent@okhdfcbank) → Verify → Pay. Option B: Select app (Google Pay/PhonePe intent) → Opens app → Pay
+- [ ] Card option as secondary: Card number, expiry, CVV
+- [ ] Saved payment method for renewals (tokenized via Razorpay)
+- [ ] Processing: "Confirming payment..." (max 10 seconds)
+- [ ] On success: Confetti animation: "Aarav now has unlimited practice! 🎉", Child session updates in real-time (WebSocket), Invoice emailed within 5 minutes
+- [ ] On failure: Clear error message. Retry button. "Your bank declined. Try another method?"
+- [ ] No page refresh during payment
+- [ ] Backend: Razorpay integration: Orders API, Payments API, Subscriptions API
+- [ ] Webhook: POST /api/v1/webhooks/razorpay — Payment success/failure
+- [ ] On success: Update User.subscription_status = PREMIUM, subscription_plan, expires_at
+- [ ] Generate invoice PDF, email to parent
 
-**Acceptance Criteria:**
-- [ ] Screen title: "Upgrade [Child Name]'s Learning."
-- [ ] Max 2 plans:
-  - Monthly: ₹299/month. Includes: Unlimited practice, tests, AI tutor, parent dashboard.
-  - Annual: ₹1,999/year (Save 44%). Includes: All monthly + offline access + priority content generation.
-- [ ] Annual plan highlighted as "Best Value" (subtle badge)
-- [ ] 7-day free trial banner on both: "7 days free. Cancel anytime."
-- [ ] Trust signals: "Secured by [Gateway]. No auto-renewal without reminder."
-- [ ] FAQ accordion: "Can I cancel? When do I get charged? Sibling discount?"
-- [ ] Tapping plan proceeds to payment
+### Dev Tasks
+- [ ] Integrate Razorpay SDK
+- [ ] Create PaymentScreen component
+- [ ] Implement UPI intent (Google Pay/PhonePe)
+- [ ] Razorpay webhook handler
+- [ ] Invoice generation (PDF)
 
-**QA Checklist:**
-- [ ] Plans display correctly
-- [ ] Annual shows savings calculation
-- [ ] FAQ accordion works
+### QA
+- [ ] UPI payment works end-to-end
+- [ ] Card payment works
+- [ ] Payment failure handled gracefully
+- [ ] Webhook updates subscription correctly
+- [ ] Invoice delivered
 
----
+## P3.4 | P1 | Post-Payment — Child Session Update
+**Labels:** P1, phase:upgrade
+**Phase:** Phase 3: The Upgrade Moment
 
-### TASK-PARENT-015: Payment Integration (UPI + Card)
+### User Story
+As a parent who just completed payment,
+I want my child's active session to update in real-time without re-login,
+So that they can immediately access the feature they requested.
 
-| Field | Value |
-|-------|-------|
-| **Summary** | Parent pays via UPI or credit/debit card |
-| **Story Points** | 8 |
-| **Priority** | P1 |
-| **Dependencies** | TASK-PARENT-014 |
-
-**Acceptance Criteria:**
-- [ ] UPI as default first option
-- [ ] UPI flow: Parent enters UPI ID OR selects app (Google Pay/PhonePe intent)
-- [ ] Card option: Card number, expiry, CVV. Save card checkbox.
-- [ ] Processing indicator: "Confirming payment..." (max 10 seconds)
-- [ ] On success: Confetti animation + "[Child Name] now has unlimited practice! 🎉"
-- [ ] Update `subscriptions` table: status='active', plan, start_date, end_date
-- [ ] Generate invoice PDF
-- [ ] Email invoice to parent within 5 minutes
-- [ ] On failure: Clear error message with retry button (no generic "Error 500")
-
-**Technical Notes:**
-- Integration with: Razorpay / Cashfree / PhonePe
-- Webhook for payment confirmation
-- Table: `subscriptions` (id, profile_id, plan, status, start_date, end_date, payment_gateway_id)
-
-**QA Checklist:**
-- [ ] UPI flow works
-- [ ] Card flow works
-- [ ] Subscription record created
-- [ ] Invoice emailed
-- [ ] Failure shows actionable error
-
----
-
-### TASK-PARENT-016: Post-Payment Child Session Update
-
-| Field | Value |
-|-------|-------|
-| **Summary** | Child's active session reflects premium status immediately |
-| **Story Points** | 3 |
-| **Priority** | P1 |
-| **Dependencies** | TASK-PARENT-015 |
-
-**Acceptance Criteria:**
-- [ ] On payment success: Server emits WebSocket event to child's session
-- [ ] Child sees toast: "Your parent unlocked Premium! 🎉 Redirecting to your quiz..."
-- [ ] Freemium wall auto-dismisses
-- [ ] Child lands on requested feature
+### Acceptance Criteria
+- [ ] On payment success → WebSocket push to child: { event: 'premium_activated' }
+- [ ] Child's Freemium Wall auto-dismisses with toast: "Premium unlocked! 🎉 Redirecting..."
 - [ ] If child offline: Premium status updates on next app open (token refresh)
+- [ ] Parent sees confirmation: "Aarav's session updated. They can now access everything."
 
-**QA Checklist:**
-- [ ] WebSocket event triggers
-- [ ] Child sees toast notification
-- [ ] Offline sync works on next open
+### QA
+- [ ] Child session updates within 5 seconds of parent payment
+- [ ] Offline child gets premium on next app open
 
----
+## P3.5 | P2 | Payment Failure Recovery
+**Labels:** P2, phase:upgrade
+**Phase:** Phase 3: The Upgrade Moment
 
-### TASK-PARENT-017: Payment Failure Recovery
+### User Story
+As a parent whose payment failed,
+I want clear guidance and a retry path,
+So that I don't abandon the upgrade.
 
-| Field | Value |
-|-------|-------|
-| **Summary** | Graceful recovery with retry and email reminders |
-| **Story Points** | 3 |
-| **Priority** | P2 |
-| **Dependencies** | TASK-PARENT-015 |
+### Acceptance Criteria
+- [ ] Failure screen: Specific reason (e.g., "Insufficient balance," "Timeout")
+- [ ] Retry button prominent
+- [ ] Change payment method link
+- [ ] If parent closes without retrying: Email reminder after 24 hours: "Aarav's premium access is waiting! Complete your payment: [link]"
+- [ ] Max 2 reminders. No reminders after 7 days
 
-**Acceptance Criteria:**
-- [ ] Failure screen shows specific reason: "Insufficient balance" / "Bank timeout" / "Invalid UPI PIN"
-- [ ] Retry button prominent. "Change payment method" link visible.
-- [ ] If parent closes: Send reminder email after 24 hours:
-  - "[Child Name]'s premium access is waiting! Complete your payment to unlock unlimited practice."
-  - Direct payment link (no re-selecting plan)
-- [ ] Max 2 reminders. Stop after 7 days.
-- [ ] Abandoned cart logged for analytics
+### QA
+- [ ] Failure reason displays correctly
+- [ ] Reminder email sends
+- [ ] Direct payment link works
 
-**QA Checklist:**
-- [ ] Error message specific to failure type
-- [ ] Reminder emails sent with correct cadence
-- [ ] Abandoned cart logged
+## P4.0 | P1 | Parent Profile PIN Protection
+**Labels:** P1, phase:dashboard
+**Phase:** Phase 4: Active Premium Parenting — The Dashboard
 
----
+### User Story
+As a parent sharing a device with my child,
+I want to enter a 4-digit PIN to access my Parent Profile,
+So that my child cannot access billing, settings, or sibling data.
 
-## Epic: Premium Parent Dashboard
+### Acceptance Criteria
+- [ ] Profile Picker: Tapping "Parent" → PIN entry screen
+- [ ] 4-digit PIN input (4 separate boxes, masked)
+- [ ] PIN set during parent account creation or first dashboard access
+- [ ] PIN stored hashed (bcrypt)
+- [ ] 3 wrong attempts → 5-minute lockout
+- [ ] "Forgot PIN?" → Resets via email OTP
+- [ ] Option to use biometric (fingerprint/face) if device supports (P2)
 
-**Epic Goal:** Real-time visibility and active coaching tools.
+### QA
+- [ ] PIN protects parent profile
+- [ ] Lockout works
+- [ ] Reset via email works
 
----
+## P4.1 | P1 | Parent Dashboard — Core Metrics
+**Labels:** P1, phase:dashboard
+**Phase:** Phase 4: Active Premium Parenting — The Dashboard
 
-### TASK-PARENT-018: Parent Profile Switcher with PIN
+### User Story
+As a premium parent,
+I want to switch to Parent Profile (secured by PIN) and see a real-time dashboard,
+So that I can monitor progress and identify weak areas.
 
-| Field | Value |
-|-------|-------|
-| **Summary** | Parent accesses dashboard via profile picker + 4-digit PIN |
-| **Story Points** | 5 |
-| **Priority** | P1 |
-| **Dependencies** | TASK-PARENT-009 |
+### Acceptance Criteria
+- [ ] Access: Profile Picker → Parent Profile → 4-digit PIN (Story P4.0)
+- [ ] Dashboard for selected child: Overall Accuracy % with trend arrow (↑ ↓ vs last week), Time Spent This Week (hours/minutes), Topics Mastered (count), XP Earned, Current Streak 🔥
+- [ ] Pull-to-refresh
+- [ ] Mobile-responsive (portrait + tablet landscape)
+- [ ] Data refreshes on app open
 
-**Acceptance Criteria:**
-- [ ] Profile picker shows: Parent name + "Parent" badge, each child name + avatar
-- [ ] Selecting parent profile prompts 4-digit PIN
-- [ ] PIN stored as hash in `users.parent_pin_hash`
-- [ ] 3 incorrect attempts → lockout for 5 minutes
-- [ ] "Forgot PIN" → resets via email OTP
-- [ ] Child profiles have NO PIN (direct access)
+### Dev Tasks
+- [ ] Create ParentDashboard component
+- [ ] Create MetricsGrid sub-component
+- [ ] API: GET /api/v1/parent/dashboard?child_id={id}
 
-**Technical Notes:**
-- Hash PIN with bcrypt before storing
-- Lockout stored in Redis with TTL
+## P4.2 | P1 | Weak Topics Identification & Action
+**Labels:** P1, phase:dashboard
+**Phase:** Phase 4: Active Premium Parenting — The Dashboard
 
-**QA Checklist:**
-- [ ] PIN prompt appears
-- [ ] Wrong PIN shows error, counts attempts
-- [ ] Lockout after 3 failures
-- [ ] Forgot PIN resets via email
+### User Story
+As a premium parent,
+I want to see highlighted "Weak Topics" (accuracy < 60%) and assign practice with one tap,
+So that I can support my child's improvement actively.
 
----
+### Acceptance Criteria
+- [ ] Weak Topics section: Any topic with ≥3 attempts and accuracy < 60%
+- [ ] Each card: Topic name, accuracy %, trend
+- [ ] Primary Action: "Assign Practice" → 10-question set generated
+- [ ] Secondary Action: "Request Better Notes" → Adds to on-demand AI queue with priority
+- [ ] Child receives notification: "Mom assigned 10 Long Division questions. Complete for 50 Bonus XP!"
+- [ ] Assignment visible on child's Learning Map as glowing star node
+- [ ] On completion: Parent notified. "Aarav scored 8/10 on Long Division (↑ from 42%)."
+- [ ] Assignment history: Past assignments with scores and dates
 
-### TASK-PARENT-019: Dashboard Core Metrics
+### Dev Tasks
+- [ ] Create WeakTopics component
+- [ ] API: POST /api/v1/parent/assignments/create
+- [ ] API: GET /api/v1/parent/assignments/history
 
-| Field | Value |
-|-------|-------|
-| **Summary** | Premium parent sees real-time learning metrics for selected child |
-| **Story Points** | 8 |
-| **Priority** | P1 |
-| **Dependencies** | TASK-PARENT-018 |
-
-**Acceptance Criteria:**
-- [ ] Dashboard displays for currently selected child (toggle if multiple)
-- [ ] Core metrics cards:
-  - Overall Accuracy % (trend arrow vs last week)
-  - Total Time Spent This Week (hours/minutes)
-  - Topics Mastered This Week (count)
-  - XP Earned This Week
-- [ ] Pull-to-refresh updates data
-- [ ] Data refreshes every 30 seconds (polling) or via WebSocket
-- [ ] Responsive: Mobile and tablet
-
-**Technical Notes:**
-- API endpoint: `GET /api/parent/dashboard/{child_profile_id}`
-- Cache for 15 seconds (Redis)
-
-**QA Checklist:**
-- [ ] All metrics display correctly
-- [ ] Trend arrows show correct direction
-- [ ] Refresh works
-- [ ] Responsive on all devices
-
----
-
-### TASK-PARENT-020: Weak Topics Identification
-
-| Field | Value |
-|-------|-------|
-| **Summary** | Dashboard highlights topics with accuracy <60% |
-| **Story Points** | 5 |
-| **Priority** | P1 |
-| **Dependencies** | TASK-PARENT-019 |
-
-**Acceptance Criteria:**
-- [ ] Threshold: ≥3 attempts AND accuracy <60%
-- [ ] Each weak topic card shows:
-  - Topic name
-  - Accuracy % (e.g., "42%")
-  - Primary button: "Assign Practice"
-  - Secondary link: "Request Better Notes" (priority AI generation)
-- [ ] Empty state: "No weak topics detected this week. Great job, [Child]! 🎉"
-
-**Technical Notes:**
-- Query aggregates from `practice_attempts` joined with `topics`
-- Recalculate on dashboard load and after each practice session
-
-**QA Checklist:**
-- [ ] Weak topics appear correctly
-- [ ] Threshold (3 attempts + <60%) works
-- [ ] Empty state shows encouragement
-
----
-
-### TASK-PARENT-021: Assign Extra Practice
-
-| Field | Value |
-|-------|-------|
-| **Summary** | Parent can assign custom practice set to child |
-| **Story Points** | 5 |
-| **Priority** | P1 |
-| **Dependencies** | TASK-PARENT-020 |
-
-**Acceptance Criteria:**
-- [ ] Tapping "Assign Practice" generates 10-question set (same topic, varied difficulty)
-- [ ] Confirmation toast: "10 [Topic] questions assigned to [Child Name]"
-- [ ] Child receives push notification: "[Parent Name] assigned you extra practice on [Topic]. Complete it to earn 50 Bonus XP!"
-- [ ] Assigned practice appears as glowing node on child's Learning Map
-- [ ] On completion: Parent push notification "[Child] completed [Topic] practice. Accuracy: [X]% (↑ from [Y]%)"
-- [ ] Assignment history in dashboard: "Assigned: Long Division (Apr 23). Completed: Apr 24. Score: 7/10"
-
-**Technical Notes:**
-- Table: `parent_assignments` (id, parent_profile_id, child_profile_id, topic_id, questions_json, status, assigned_at, completed_at, score)
-
-**QA Checklist:**
+### QA
+- [ ] Weak topics correctly identified
 - [ ] Assignment generates 10 questions
 - [ ] Child receives notification
-- [ ] Glowing node appears on Learning Map
-- [ ] Completion notification sent to parent
-- [ ] History recorded correctly
+- [ ] Completion notification to parent
 
----
+## P4.3 | P2 | Screen Time Management
+**Labels:** P2, phase:dashboard
+**Phase:** Phase 4: Active Premium Parenting — The Dashboard
 
-### TASK-PARENT-022: Screen Time Management
+### User Story
+As a parent,
+I want to set daily time limits for each child,
+So that I can prevent excessive screen time.
 
-| Field | Value |
-|-------|-------|
-| **Summary** | Parent sets daily learning time limits per child |
-| **Story Points** | 5 |
-| **Priority** | P2 |
-| **Dependencies** | TASK-PARENT-019 |
+### Acceptance Criteria
+- [ ] Settings → "Daily Learning Limit"
+- [ ] Options: 30 / 60 / 90 / 120 mins / Unlimited
+- [ ] Default: 90 min (under 12), 120 min (12+)
+- [ ] Child hits limit → Study Buddy screen: "Great work today! Come back tomorrow." + Parent Override button (needs PIN)
+- [ ] Weekday vs Weekend: Different limits configurable (P2)
+- [ ] Active session time tracked (not idle/background)
 
-**Acceptance Criteria:**
-- [ ] Dashboard Settings tab: "Daily Learning Limit"
-- [ ] Options: 30 min / 60 min / 90 min / 120 min / Unlimited
-- [ ] Default: 90 min (age <12) / 120 min (age 12+)
-- [ ] Child hits limit → Study Buddy screen: "Great work today! You've studied for [X] minutes. Come back tomorrow!"
-- [ ] "Parent Override" button (requires parent PIN on child's device)
-- [ ] Separate limits for weekdays vs weekends
-- [ ] Time tracking uses active session time (not background)
+### QA
+- [ ] Limit enforced correctly
+- [ ] Override works with PIN
+- [ ] Idle time not counted
 
-**Technical Notes:**
-- Store limits in `child_settings` table
-- Track active time via session start/end events
+## P4.4 | P2 | Subject Blocker
+**Labels:** P2, phase:dashboard
+**Phase:** Phase 4: Active Premium Parenting — The Dashboard
 
-**QA Checklist:**
-- [ ] Limit options saved correctly
-- [ ] Child locked out after hitting limit
-- [ ] Parent override works with PIN
-- [ ] Weekday/weekend separate limits work
+### User Story
+As a parent,
+I want to temporarily hide subjects from my child's Learning Map,
+So that I can control what they focus on.
 
----
+### Acceptance Criteria
+- [ ] Settings → "Subject Access Control"
+- [ ] Toggle per subject (Math, Science, English, SST, etc.)
+- [ ] OFF → Subject nodes hidden from child's Learning Map
+- [ ] Child search for blocked subject → "Math is resting. Ask your parent."
+- [ ] Schedule option: "Block Math from April 1 to June 15." (P2)
 
-### TASK-PARENT-023: Multi-Child Dashboard Toggle
+### QA
+- [ ] Subject blocking works instantly
+- [ ] Child cannot access blocked content
+- [ ] Scheduling works
 
-| Field | Value |
-|-------|-------|
-| **Summary** | Parent toggles between children's dashboards |
-| **Story Points** | 3 |
-| **Priority** | P2 |
-| **Dependencies** | TASK-PARENT-009, TASK-PARENT-019 |
+## P4.5 | P1 | Weekly Report — Premium Variant
+**Labels:** P1, phase:dashboard
+**Phase:** Phase 4: Active Premium Parenting — The Dashboard
 
-**Acceptance Criteria:**
-- [ ] Dashboard top bar: Horizontal scrollable child tabs (e.g., "Aarav | Anaya")
-- [ ] Current child tab highlighted (#FF6B35)
-- [ ] Tapping tab switches all dashboard data (metrics, weak topics, assignments)
-- [ ] No sibling comparison charts (prevents unhealthy competition)
+### User Story
+As a premium parent,
+I want the Sunday report to include richer data (subject breakdowns, weak topics, recommendations),
+So that I feel the premium value.
 
-**QA Checklist:**
-- [ ] All children appear as tabs
-- [ ] Tab switching updates all dashboard sections
-- [ ] No sibling comparison visible
+(Covered in P2.2 — Premium variant of weekly email.)
 
----
+## P4.6 | P2 | Multi-Child Dashboard Toggle
+**Labels:** P2, phase:dashboard
+**Phase:** Phase 4: Active Premium Parenting — The Dashboard
 
-## Epic: Exam Season (Parent as Coach)
+### User Story
+As a parent with multiple children,
+I want to toggle between children's dashboards seamlessly,
+So that I can monitor all children from one place.
 
-**Epic Goal:** Help parents prepare children for exams.
+### Acceptance Criteria
+- [ ] Top bar: Horizontal tabs — one per child (name + avatar)
+- [ ] Current tab highlighted
+- [ ] Tapping switches all data instantly
+- [ ] No sibling comparison (each child independent, no ranking)
 
----
+### QA
+- [ ] Toggle works
+- [ ] Each child's data isolated
+- [ ] No sibling comparison UI
 
-### TASK-PARENT-024: Exam Warrior Mode Activation
+## P5.1 | P2 | Exam Mode Activation
+**Labels:** P2, phase:exam-season
+**Phase:** Phase 5: Exam Season — Parent as Coach
 
-| Field | Value |
-|-------|-------|
-| **Summary** | Parent activates distraction-free exam mode from dashboard |
-| **Story Points** | 5 |
-| **Priority** | P2 |
-| **Dependencies** | TASK-PARENT-019 |
+### User Story
+As a parent approaching exam season,
+I want to activate "Exam Warrior Mode" from my dashboard,
+So that my child's app switches to a focused, distraction-free revision environment.
 
-**Acceptance Criteria:**
-- [ ] Dashboard card appears Feb 1 (auto) or admin-set date: "Final Exams approaching! Activate Exam Warrior Mode?"
-- [ ] Toggle ON:
-  - Child's app switches to Dark Theme
-  - Gamification minimized (no coin animations)
-  - Home screen shows exam countdown timer
-  - Practice defaults to timed mock test format
-- [ ] Toggle OFF: Returns to standard Learning Map
-- [ ] Manual toggle available anytime
+### Acceptance Criteria
+- [ ] Dashboard card (auto-appears Feb 1 or admin-set): "Final Exams approaching! Activate Exam Warrior Mode?"
+- [ ] Toggle ON → Child app: Dark theme, minimal gamification, exam countdown, mock test format
+- [ ] Toggle OFF → Returns to standard mode
+- [ ] Manual toggle anytime
 
-**Technical Notes:**
-- Admin-configurable date range
-- Settings stored in `child_settings.exam_mode`
+### QA
+- [ ] Toggle changes child's app
+- [ ] Auto-prompt at correct date
 
-**QA Checklist:**
-- [ ] Card appears on correct date
-- [ ] Toggle changes child's app theme
-- [ ] Countdown timer visible
-- [ ] Manual toggle works
+## P5.2 | P2 | Mock Test Scheduler
+**Labels:** P2, phase:exam-season
+**Phase:** Phase 5: Exam Season — Parent as Coach
 
----
+### User Story
+As a parent during exam season,
+I want to schedule mock tests on specific dates/times,
+So that my child practices under exam conditions and I receive performance reports.
 
-### TASK-PARENT-025: Mock Test Scheduler
+### Acceptance Criteria
+- [ ] Dashboard → Mock Tests → Schedule
+- [ ] Select: Subject, Chapters, Date, Time window, Duration
+- [ ] Child notified at scheduled time
+- [ ] Test locks other features during exam
+- [ ] Post-test: Auto-graded. Parent receives report (section accuracy, time per question, improvement)
 
-| Field | Value |
-|-------|-------|
-| **Summary** | Parent schedules timed mock tests for child |
-| **Story Points** | 8 |
-| **Priority** | P2 |
-| **Dependencies** | Student Journey TASK-008 |
+### QA
+- [ ] Scheduling works
+- [ ] Child experience works
+- [ ] Report accurate
 
-**Acceptance Criteria:**
-- [ ] Dashboard tab: "Mock Tests"
-- [ ] Parent selects: Subject, Chapters, Date, Time Window, Duration (1hr/2hr/3hr)
-- [ ] At scheduled time: Child push notification "Your [Subject] Mock Test starts now!"
-- [ ] Test locks other app features during exam window
-- [ ] Auto-graded on completion
-- [ ] Parent push: "[Child]'s [Subject] Mock Test scores are ready"
-- [ ] Report: Section-wise accuracy, time per question, comparison to previous
+## P5.3 | P2 | Revision Plan Generator
+**Labels:** P2, phase:exam-season
+**Phase:** Phase 5: Exam Season — Parent as Coach
 
-**Technical Notes:**
-- Table: `mock_tests` (id, parent_id, child_id, subject, chapters, scheduled_at, duration, status, score)
+### User Story
+As a parent,
+I want to input exam dates and receive an auto-generated daily revision plan for my child,
+So that they cover all topics systematically.
 
-**QA Checklist:**
-- [ ] Schedule creates mock test record
-- [ ] Notification triggers at scheduled time
-- [ ] Test locks other features
-- [ ] Auto-grading works
-- [ ] Report shows correctly
+### Acceptance Criteria
+- [ ] Input: Subject + Exam Date
+- [ ] System generates daily plan based on: Topics in curriculum, child's accuracy, days remaining
+- [ ] Plan appears on child's Learning Map as daily quests
+- [ ] Adapts if child misses a day
 
----
+### QA
+- [ ] Plan generated correctly
+- [ ] Plan adapts to misses
 
-### TASK-PARENT-026: Revision Plan Generator
+## P5.4 | P2 | Post-Exam Summary
+**Labels:** P2, phase:exam-season
+**Phase:** Phase 5: Exam Season — Parent as Coach
 
-| Field | Value |
-|-------|-------|
-| **Summary** | Auto-generate daily revision plan based on exam date and weak topics |
-| **Story Points** | 8 |
-| **Priority** | P2 |
-| **Dependencies** | TASK-PARENT-020, TASK-PARENT-025 |
+### User Story
+As a parent after exams,
+I want a final summary and prompt to switch to summer mode,
+So that my child can relax while preventing learning loss.
 
-**Acceptance Criteria:**
-- [ ] Dashboard tool: "Revision Plan Generator"
-- [ ] Parent inputs: Subject + Exam Date
-- [ ] System analyzes:
-  - All topics in curriculum for that subject
-  - Child's accuracy on each topic (from practice history)
-  - Days remaining
-- [ ] Generates daily plan: "Day 1: Revise Long Division (weak). Day 2: Practice Fractions (strong)..."
-- [ ] Plan appears as daily quests on child's Learning Map
-- [ ] Plan adapts: If child misses a day, redistribute remaining topics
+### Acceptance Criteria
+- [ ] Push: "Exams are over! Aarav completed 12 mock tests. Avg improvement: 22%."
+- [ ] Dashboard card: "Switch to Summer Mode?"
+- [ ] Exam summary email: All mock scores, improvement trend
+- [ ] Toggle OFF Exam Mode → Summer Brain Gain challenge
 
-**Technical Notes:**
-- Algorithm: Prioritize weak topics, space repetition logic
-- Store plan in `revision_plans` table
+### QA
+- [ ] Notification sends
+- [ ] Summary email accurate
 
-**QA Checklist:**
-- [ ] Plan generates correctly based on weak topics
-- [ ] Daily quests appear on Learning Map
-- [ ] Plan adapts if child misses days
+## P6.1 | P2 | Referral Program
+**Labels:** P2, phase:retention
+**Phase:** Phase 6: Long-Term Partnership
 
----
+### User Story
+As a premium parent,
+I want to refer friends via WhatsApp and earn free months,
+So that I save money and share a useful tool.
 
-## Epic: Retention & Advocacy
-
-**Epic Goal:** Reduce churn, encourage referrals, handle cancellation gracefully.
-
----
-
-### TASK-PARENT-027: Referral Program
-
-| Field | Value |
-|-------|-------|
-| **Summary** | Parent invites friends via WhatsApp and tracks rewards |
-| **Story Points** | 5 |
-| **Priority** | P2 |
-| **Dependencies** | TASK-PARENT-001 |
-
-**Acceptance Criteria:**
+### Acceptance Criteria
 - [ ] Dashboard card: "Invite a friend. You both get 1 month free."
-- [ ] Share sheet opens WhatsApp with pre-filled message + referral link
-- [ ] Referral dashboard shows:
-  - Invited: X
-  - Joined: Y (signed up via link)
-  - Subscribed: Z (converted to premium)
-  - Reward earned: Z free months
+- [ ] WhatsApp share with pre-filled message + referral link
+- [ ] Tracking dashboard: Invited, Joined, Subscribed, Rewards earned
 - [ ] Reward auto-applied as subscription extension
 
-**Technical Notes:**
-- Table: `referrals` (id, referrer_user_id, referred_email, status, reward_applied_at)
-- Unique referral code per user
+### QA
+- [ ] Referral link tracks correctly
+- [ ] Reward auto-applied on friend subscription
 
-**QA Checklist:**
-- [ ] WhatsApp share opens with correct link
-- [ ] Referral tracking counts correctly
-- [ ] Reward auto-applies when referred user subscribes
+## P6.2 | P2 | Annual Renewal Flow
+**Labels:** P2, phase:retention
+**Phase:** Phase 6: Long-Term Partnership
 
----
+### User Story
+As a parent with expiring subscription,
+I want timely, non-aggressive renewal reminders,
+So that my child's access continues uninterrupted.
 
-### TASK-PARENT-028: Annual Renewal Reminders
-
-| Field | Value |
-|-------|-------|
-| **Summary** | Timely, non-aggressive reminders before subscription expires |
-| **Story Points** | 3 |
-| **Priority** | P2 |
-| **Dependencies** | TASK-PARENT-015 |
-
-**Acceptance Criteria:**
-- [ ] 30 days before expiry: Email "Your Spinzy Premium year is ending soon"
-- [ ] 14 days before: In-app banner (non-dismissible)
+### Acceptance Criteria
+- [ ] 30 days before: Email (price-lock guarantee)
+- [ ] 14 days before: In-app banner
 - [ ] 7 days before: Push notification
 - [ ] 1 day before: Email + Push
-- [ ] Expiry day: Child sees freemium wall with "Ask Mom to renew!"
-- [ ] Renewal is one-tap (saved payment method)
+- [ ] Expiry day: Child sees Freemium Wall with "Ask Mom to renew!"
+- [ ] Renewal: One-tap (saved payment method)
 
-**QA Checklist:**
-- [ ] Reminders send at correct intervals
-- [ ] In-app banner appears
-- [ ] One-tap renewal works
+### QA
+- [ ] Reminders at correct intervals
+- [ ] Renewal one-tap works
 
----
+## P6.3 | P2 | Sibling Discount on Renewal
+**Labels:** P2, phase:retention
+**Phase:** Phase 6: Long-Term Partnership
 
-### TASK-PARENT-029: Cancellation Flow with Win-Back
+### User Story
+As a parent renewing with multiple children,
+I want sibling discount auto-applied,
+So that I don't need to enter coupon codes.
 
-| Field | Value |
-|-------|-------|
-| **Summary** | Friction-minimal cancellation with win-back offers |
-| **Story Points** | 5 |
-| **Priority** | P1 |
-| **Dependencies** | TASK-PARENT-015 |
+### Acceptance Criteria
+- [ ] System detects multiple active children
+- [ ] Renewal price: 25% discount for 2nd+ child
+- [ ] Auto-calculated. No manual entry
 
-**Acceptance Criteria:**
-- [ ] Settings → Manage Subscription → Cancel Subscription
-- [ ] Exit survey (single screen, not multiple modals):
-  - Options: Too expensive / Child not using / Found alternative / Taking a break / Other
-- [ ] If "Too expensive": Offer 50% off for 3 months. "Would you stay at ₹149/month?"
-- [ ] If "Child not using": Offer pause for up to 3 months (no charge)
-- [ ] If other: Confirm cancellation. No dark patterns (no "Are you sure?" x3)
-- [ ] Post-cancellation screen: "Download [Child]'s learning history before you go."
-- [ ] 30 days post-cancellation: One re-engagement email
+### QA
+- [ ] Discount applied correctly
 
-**QA Checklist:**
-- [ ] Cancellation completes in ≤3 taps
-- [ ] Win-back offer appears for "Too expensive"
-- [ ] Pause option for "Child not using"
-- [ ] Re-engagement email sends once
+## P6.4 | P1 | Cancellation Flow with Win-Back
+**Labels:** P1, phase:retention
+**Phase:** Phase 6: Long-Term Partnership
 
----
+### User Story
+As a parent who wants to cancel,
+I want a respectful, friction-minimal process with an option to pause or get a discount,
+So that I leave with a positive impression.
 
-### TASK-PARENT-030: Learning History Export (PDF)
+### Acceptance Criteria
+- [ ] Settings → Manage Subscription → Cancel
+- [ ] Exit survey: "Why are you leaving?" (Too expensive / Child not using / Found alternative / Break / Other)
+- [ ] If "Too expensive" → Offer 50% off for 3 months
+- [ ] If "Child not using" → Offer pause (up to 3 months, no charge, data preserved)
+- [ ] No dark patterns. No "Are you sure?" x3
+- [ ] Post-cancellation: "Download Aarav's learning history" (PDF)
+- [ ] 30 days post: One re-engagement email: "Come back anytime. Aarav's progress is saved."
 
-| Field | Value |
-|-------|-------|
-| **Summary** | Parent downloads complete learning history as PDF |
-| **Story Points** | 5 |
-| **Priority** | P2 |
-| **Dependencies** | TASK-PARENT-019 |
+### QA
+- [ ] Exit survey works
+- [ ] Discount/pause offers work
+- [ ] PDF download works
+- [ ] Re-engagement email sends
 
-**Acceptance Criteria:**
-- [ ] Settings → Download Learning History
-- [ ] PDF includes:
-  - Child name, grade, board
-  - Subscription period (if any)
-  - All topics studied with accuracy %
-  - Weak topics summary
-  - Total XP, streak history
-  - Mock test scores (if any)
-- [ ] Generated server-side, emailed within 5 minutes
+## P6.5 | P2 | Data Export — Learning History PDF
+**Labels:** P2, phase:retention
+**Phase:** Phase 6: Long-Term Partnership
+
+### User Story
+As a parent,
+I want to download a PDF of my child's complete learning history,
+So that I have a record for school or personal archives.
+
+### Acceptance Criteria
+- [ ] Settings → "Download Learning History"
+- [ ] PDF: Child name, grade, board. All topics studied with accuracy %. Weak topics. XP. Streak history. Total hours
+- [ ] Generated server-side. Emailed within 5 minutes
 - [ ] Available for 90 days post-cancellation
 
-**Technical Notes:**
-- Use PDFKit or Puppeteer for PDF generation
-- Queue for async generation
-
-**QA Checklist:**
-- [ ] PDF contains all required fields
-- [ ] Emailed within 5 minutes
-- [ ] Available post-cancellation for 90 days
-
----
-
-## Summary: All Parent Journey Tasks
-
-| Task ID | Summary | Points | Priority |
-|---------|---------|--------|----------|
-| PARENT-001 | Landing page with Google Sign-In | 5 | P0 |
-| PARENT-002 | Referral landing page variant | 3 | P1 |
-| PARENT-003 | School partnership landing page | 3 | P1 |
-| PARENT-004 | Add child profile form | 5 | P0 |
+### QA
+- [ ] PDF generated correctly
+- [ ] Emailed
+```

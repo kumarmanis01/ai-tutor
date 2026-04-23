@@ -1,760 +1,803 @@
-<!--
-FILE OBJECTIVE:
-- Jira tasks for the Admin Journey: implementable, testable, and trackable work items with acceptance criteria.
-
-LINKED UNIT TEST:
-- tests/unit/docs/V3/Admin.spec.ts
-
-COPILOT INSTRUCTIONS FOLLOWED:
-- /docs/COPILOT_GUARDRAILS.md
-- .github/copilot-instructions.md
-
-EDIT LOG:
-- 2026-04-23T12:00:00Z | copilot | add standard file header
--->
-
-# Jira Tasks: Admin Journey (Implementable & Trackable)
-
-Here are your Jira tasks broken down by epic, ready for import. Each task includes acceptance criteria, story points, dependencies, and technical notes.
-
----
-
-## Epic: Admin Access Control & Security
-
-**Epic Goal:** Secure, role-based admin access with MFA and audit trails.
-
----
-
-### TASK-ADMIN-001: Super Admin Creates Admin Accounts
-
-| Field | Value |
-|-------|-------|
-| **Summary** | Super Admin can create admin accounts with specific roles via secure interface |
-| **Story Points** | 5 |
-| **Priority** | P0 |
-| **Dependencies** | None |
-
-**Acceptance Criteria:**
-- [ ] Admin panel at `admin.spinzy.academy/team` accessible only to Super Admin
-- [ ] "Add Admin" button opens modal with fields: Email (work domain only, block Gmail/Yahoo), Name, Role dropdown (Content Admin / Support Admin)
-- [ ] Email validation: No existing admin account with same email; No parent account with same email (block with message)
-- [ ] On submit: Create admin record with `status='invited'`, generate unique invite token (expires 24 hours)
-- [ ] Send invite email with setup link: `admin.spinzy.academy/setup?token=xxx`
-- [ ] Invite email includes: Admin name, role, expiry warning, company logo
-- [ ] Log action in `admin_audit_log` with `action='admin.create'`
-
-**Technical notes:**
-- Table: `admins` (id, email, name, role, status, password_hash, mfa_secret, created_by, created_at, last_login_at)
-- Table: `admin_invites` (id, email, token, expires_at, used_at)
-- Email template: Admin Invite (with 24-hour expiry)
-
----
-
-### TASK-ADMIN-002: Admin Account Setup & MFA Enrollment
-
-| Field | Value |
-|-------|-------|
-| **Summary** | Invited admin sets up password and MFA via time-limited link |
-| **Story Points** | 3 |
-| **Priority** | P0 |
-| **Dependencies** | TASK-ADMIN-001 |
-
-**Acceptance Criteria:**
-- [ ] Setup link loads page with token validation (404 if expired/invalid)
-- [ ] Step 1: Set password (min 12 chars, 1 uppercase, 1 lowercase, 1 number, 1 special)
-- [ ] Step 2: Show QR code for TOTP (Google Authenticator / Microsoft Authenticator)
-- [ ] Step 3: Verify TOTP code (6 digits, 30-second window)
-- [ ] On success: Update admin `status='active'`, store `mfa_secret` (encrypted), set `password_changed_at`
-- [ ] Redirect to admin login page with success message
-- [ ] Backup codes generated (8 codes, single-use, store hashed)
-- [ ] Require backup codes download before completing setup
-
-**Technical notes:**
-- Use `speakeasy` or `otplib` for TOTP
-- Backup codes: Generate 8 random 8-character codes, hash before storing
-
----
-
-### TASK-ADMIN-003: Admin Login with MFA
-
-| Field | Value |
-|-------|-------|
-| **Summary** | Admin logs in via dedicated subdomain with email, password, and TOTP |
-| **Story Points** | 5 |
-| **Priority** | P0 |
-| **Dependencies** | TASK-ADMIN-002 |
-
-**Acceptance Criteria:**
-- [ ] Login page ONLY at `admin.spinzy.academy` (separate subdomain)
-- [ ] Fields: Email, Password, TOTP code (6 digits)
-- [ ] "Remember this device" checkbox (skips MFA for 30 days on same browser/IP)
-- [ ] Failed attempts: 3 failures → 15-minute lockout; 5 failures → alert Super Admin via email
-- [ ] On success: Create session with 30-minute timeout, update `last_login_at`, `last_login_ip`
-- [ ] On any failure: Generic error "Invalid credentials" (no user enumeration)
-- [ ] Session stored in `admin_sessions` table with `session_token` (HTTP-only cookie, Secure flag)
-- [ ] Log `action='admin.login'` in audit log (success and failure attempts)
-
-**Technical notes:**
-- Rate limiting: 5 attempts per 15 minutes per IP + per email
-- Session refresh on activity (extend expiry)
-- IP whitelist check: Optional env `ADMIN_ALLOWED_IPS` (comma-separated)
-
----
-
-### TASK-ADMIN-004: Role-Based Access Control (RBAC)
-
-| Field | Value |
-|-------|-------|
-| **Summary** | Granular permissions enforced per admin role across all endpoints and UI |
-| **Story Points** | 8 |
-| **Priority** | P1 |
-| **Dependencies** | TASK-ADMIN-003 |
-
-**Acceptance Criteria:**
-- [ ] Permission matrix implemented in middleware:
-
-| Permission | Content Admin | Support Admin | Super Admin |
-|------------|---------------|---------------|-------------|
-| View analytics dashboard | ✅ | ✅ | ✅ |
-| Approve/reject content | ✅ | ❌ | ✅ |
-| Edit pre-generated content | ✅ | ❌ | ✅ |
-| Delete content | ❌ | ❌ | ✅ |
-| View user profiles (full) | ❌ (anonymized) | ✅ | ✅ |
-| Manual user verification | ❌ | ✅ | ✅ |
-| Consent dispute resolution | ❌ | ✅ | ✅ |
-| View billing/revenue | ❌ | ❌ | ✅ |
-| Create/delete admin accounts | ❌ | ❌ | ✅ |
-| View audit logs | ❌ | ❌ | ✅ |
-
-- [ ] API endpoints return `403 Forbidden` with `{"error": "Insufficient permissions"}`
-- [ ] UI elements (buttons, tabs, menu items) hidden based on role (not just disabled)
-- [ ] Super Admin can override any permission temporarily (logged in audit)
-- [ ] Role change triggers email notification to affected admin
-
-**Technical notes:**
-- Middleware: `requirePermission(permission: string)`
-- Cache permissions in Redis for 5 minutes
-
----
-
-### TASK-ADMIN-005: Admin Action Audit Log
-
-| Field | Value |
-|-------|-------|
-| **Summary** | Immutable, searchable audit log of all admin actions |
-| **Story Points** | 5 |
-| **Priority** | P2 |
-| **Dependencies** | TASK-ADMIN-003 |
-
-**Acceptance Criteria:**
-- [ ] Audit log table: `admin_audit_log` with fields: id, admin_id, admin_email, action, target_type, target_id, details (JSON), ip_address, user_agent, created_at
-- [ ] Action types logged: `admin.login`, `admin.logout`, `admin.create`, `admin.delete`, `admin.role_change`, `user.manual_verify`, `consent.override`, `content.approve`, `content.reject`, `content.edit`, `content.delete`, `broadcast.send`
-- [ ] Audit log view at `admin.spinzy.academy/audit` (Super Admin only)
-- [ ] Search/filter by: Admin, Action Type, Target, Date Range
-- [ ] Export as CSV or PDF
-- [ ] Log is append-only (no DELETE/UPDATE on audit table)
-- [ ] Retention: 7 years (DPDP compliance)
-
-**Technical notes:**
-- Use database trigger to prevent updates/deletes on audit table
-- Separate database user for audit writes with limited permissions
-
----
-
-## Epic: Content Moderation
-
-**Epic Goal:** Efficient review and management of pre-generated and AI-generated content.
-
----
-
-### TASK-ADMIN-006: Content Moderation Dashboard
-
-| Field | Value |
-|-------|-------|
-| **Summary** | Prioritized dashboard of content requiring review |
-| **Story Points** | 8 |
-| **Priority** | P0 |
-| **Dependencies** | Student Journey TASK-016 |
-
-**Acceptance Criteria:**
-- [ ] Dashboard URL: `admin.spinzy.academy/content/moderation`
-- [ ] Default sort: "Pending Review" by "Student Request Count" descending
-- [ ] Table columns: Topic Name, Subject, Grade, Board, Content Type, Request Count, Status, Date Generated, Generator Type
-- [ ] Filters: Subject, Grade, Board, Content Type (AI/Pre-gen), Status (Pending/Approved/Rejected)
-- [ ] Search: By topic name or keyword (full-text)
-- [ ] Batch actions: Checkbox select → "Approve Selected" / "Reject Selected" modal with reason
-- [ ] Pagination: 25/50/100 per page
-- [ ] Auto-refresh every 60 seconds (optional toggle)
-
-**Technical notes:**
-- API: `GET /api/admin/content/pending?sort=request_count&order=desc`
-- Request count from `content_requests` table (students requesting topic)
-
----
-
-### TASK-ADMIN-007: Content Review Interface (Side-by-Side)
-
-| Field | Value |
-|-------|-------|
-| **Summary** | Rich preview with edit capabilities for content review |
-| **Story Points** | 8 |
-| **Priority** | P0 |
-| **Dependencies** | TASK-ADMIN-006 |
-
-**Acceptance Criteria:**
-- [ ] Split-panel layout:
-  - Left panel: Rendered content preview (exactly as student sees)
-  - Right panel: Markdown/HTML editor with source
-- [ ] Editor toolbar: Bold, Italic, Headings (H2/H3), Lists (UL/OL), Tables, Image upload, LaTeX ($$...$$)
-- [ ] AI-generated content shows badge: "🤖 AI-Generated - Beta" at top of preview
-- [ ] Three sticky action buttons at bottom:
-  - **Approve** (Green) → Moves to `status='published'`, removes Beta badge, sends notification to requesting students
-  - **Reject** (Red) → Opens reason modal (Inaccurate/Inappropriate/Duplicate/Other), hides from students, notifies requester
-  - **Request Revision** (Amber) → Opens notes field, sends back to AI queue with admin notes
-- [ ] "Save Draft" button for partial edits (status unchanged)
-- [ ] Changes logged in content version history
-
-**Technical notes:**
-- Use TipTap or Toast UI Editor for Markdown editing
-- LaTeX rendering: KaTeX or MathJax
-
----
-
-### TASK-ADMIN-008: Bulk Content Upload (CSV/JSON)
-
-| Field | Value |
-|-------|-------|
-| **Summary** | Bulk upload pre-generated content via CSV/JSON with validation |
-| **Story Points** | 8 |
-| **Priority** | P1 |
-| **Dependencies** | None |
-
-**Acceptance Criteria:**
-- [ ] Upload interface: `admin.spinzy.academy/content/upload`
-- [ ] Accepted formats: CSV, JSON, ZIP of Markdown files
-- [ ] CSV template downloadable from interface
-- [ ] CSV columns: board, grade, subject, chapter, topic, content_markdown, tags (pipe-separated)
-- [ ] Validation before import:
-  - Required fields check (board, grade, subject, topic, content)
-  - Duplicate check: Same board/grade/subject/topic → flag with warning
-  - Markdown validity check (no unclosed tags, valid LaTeX)
-  - Grade validation (1-12 integer)
-- [ ] Valid rows: Import with `status='published'`, `source='admin_upload'`
-- [ ] Invalid rows: Show error report with row number + reason, downloadable as CSV
-- [ ] Progress bar for large files (max 50MB, max 5,000 rows)
-- [ ] Email notification on upload completion (success/failure)
-
-**Technical notes:**
-- Use `multer` for file upload (Node.js) or `paper_trail` (Rails)
-- Process in background queue (Bull/Redis)
-
----
-
-### TASK-ADMIN-009: Content Version History & Rollback
-
-| Field | Value |
-|-------|-------|
-| **Summary** | View version history and roll back to any previous version |
-| **Story Points** | 5 |
-| **Priority** | P1 |
-| **Dependencies** | TASK-ADMIN-007 |
-
-**Acceptance Criteria:**
-- [ ] "Version History" tab in content review interface
-- [ ] Each version shows: Version number, Editor (Admin email or "AI-v1.2"), Timestamp, Change summary (first 100 chars)
-- [ ] Current version highlighted with green badge
-- [ ] "Restore This Version" button for any past version
-- [ ] Restoring creates NEW version (preserves full history)
-- [ ] Live version always marked `is_current=true`
-- [ ] Diff view between versions (optional, P2)
-
-**Technical notes:**
-- Table: `content_versions` (id, content_id, version_number, content_markdown, created_by, created_at, change_summary, is_current)
-- Use JSON diff library for change detection
-
----
-
-### TASK-ADMIN-010: Content Flagging by Users
-
-| Field | Value |
-|-------|-------|
-| **Summary** | Students/Parents can flag content; Admin reviews and resolves |
-| **Story Points** | 5 |
-| **Priority** | P2 |
-| **Dependencies** | TASK-ADMIN-007 |
-
-**Acceptance Criteria:**
-- [ ] Student/Parent sees flag icon on every content piece: "Report an issue"
-- [ ] Options: Factual Error / Typo/Grammar / Too Difficult / Too Easy / Inappropriate / Other
-- [ ] Optional text field: "Describe the issue"
-- [ ] Flagged content appears in moderation dashboard under filter "Flagged by Users"
-- [ ] Flag count badge on content card (e.g., "Flagged 3 times")
-- [ ] Resolution actions:
-  - **Dismiss Flag** (if inaccurate report) → Flag status='resolved', resolution='dismissed'
-  - **Acknowledge & Edit** → Opens editor, after save flag status='resolved', resolution='fixed'
-- [ ] Reporter receives email notification when flag resolved (optional opt-out)
-- [ ] Table: `content_flags` (id, content_id, user_id, flag_reason, description, status, resolved_by, resolved_at)
-
----
-
-## Epic: User Support & Escalations
-
-**Epic Goal:** Efficient user issue resolution without engineering intervention.
-
----
-
-### TASK-ADMIN-011: User Search & Profile View
-
-| Field | Value |
-|-------|-------|
-| **Summary** | Search users by email/phone/child name with role-based visibility |
-| **Story Points** | 8 |
-| **Priority** | P0 |
-| **Dependencies** | TASK-ADMIN-004 |
-
-**Acceptance Criteria:**
-- [ ] Search bar at top of admin panel (Support Admin + Super Admin)
-- [ ] Search by: Email, Phone (partial), Parent name, Child name
-- [ ] Results table: Account status, Parent name, Child name(s), Created date, Last active
-- [ ] Click user → Detailed profile view:
-
-| Section | Content Admin (anonymized) | Support Admin (full) |
-|---------|---------------------------|---------------------|
-| Account Info | Email masked (a***@domain.com) | Full email + phone |
-| Child Profiles | Name, Grade, Board, Consent Status | + Last active, Total time, Accuracy % |
-| Activity Log | ❌ Not visible | Last 20 actions |
-| Subscription | Active/Expired only | + Plan type, payment history |
-
-- [ ] "Export User Data" button (GDPR/DPDP compliance)
-- [ ] "Suspend Account" button (Support Admin+)
-
-**Technical notes:**
-- API: `GET /api/admin/users/search?q=...`
-- Full-text search on `users.email`, `profiles.name`
-- Masking: `email.replace(/(.{2}).*(@.*)/, '$1***$2')`
-
----
-
-### TASK-ADMIN-012: Manual Login Verification (OTP Bypass)
-
-| Field | Value |
-|-------|-------|
-| **Summary** | Support Admin can manually verify account for 15 minutes |
-| **Story Points** | 3 |
-| **Priority** | P1 |
-| **Dependencies** | TASK-ADMIN-011 |
-
-**Acceptance Criteria:**
-- [ ] User profile → "Actions" dropdown → "Verify Account Manually"
-- [ ] Confirmation modal: "This will bypass email OTP for 15 minutes. Confirm?" + Reason text field (required)
-- [ ] On confirm: Set `users.manual_verification_expires_at = NOW() + 15 minutes`
-- [ ] User can now log in without OTP for 15 minutes
-- [ ] Action logged in `admin_audit_log` with: admin_id, user_id, reason, timestamp
-- [ ] Super Admin alert if any admin performs >10 manual verifications in 24 hours (fraud detection)
-- [ ] After expiry, OTP requirement resumes automatically
-
-**Technical notes:**
-- Login middleware checks: `manual_verification_expires_at > NOW()` before requiring OTP
-
----
-
-### TASK-ADMIN-013: Consent Dispute Resolution
-
-| Field | Value |
-|-------|-------|
-| **Summary** | Handle consent disputes with audit-compliant overrides |
-| **Story Points** | 5 |
-| **Priority** | P1 |
-| **Dependencies** | TASK-ADMIN-011 |
-
-**Acceptance Criteria:**
-- [ ] User profile → "Consent" section → "Resolve Dispute" button (Support Admin+)
-- [ ] Three resolution paths:
-  1. **Re-send Consent Email** → Trigger new consent email to parent (logged)
-  2. **Override Denial** → Set `consent_status='granted'`. Requires: Admin notes, Parent confirmation via email reply, Super Admin approval
-  3. **Revoke Consent** → Set `consent_status='revoked'`, freeze child profile immediately
-- [ ] All actions require reason text and logged in `consent_audit_log` with admin_id
-- [ ] Monthly DPDP audit report includes all consent overrides
-- [ ] Parent receives email notification of any consent status change
-
-**Technical notes:**
-- Table: `consent_audit_log` (id, profile_id, previous_status, new_status, reason, admin_id, created_at, parent_confirmation_flag)
-
----
-
-### TASK-ADMIN-014: Bulk User Notification (Email/Push)
-
-| Field | Value |
-|-------|-------|
-| **Summary** | Send targeted communications to user segments (requires Super Admin approval) |
-| **Story Points** | 8 |
-| **Priority** | P2 |
-| **Dependencies** | TASK-ADMIN-004 |
-
-**Acceptance Criteria:**
-- [ ] Feature at `admin.spinzy.academy/communications`
-- [ ] Requires Super Admin approval workflow: Draft → Submit for Approval → Approve/Reject
-- [ ] Target segments:
-  - By Board: CBSE / ICSE / State Board
-  - By Grade: 1-12 (multi-select)
-  - By Subscription: Free / Premium / Trial / Expired
-  - By Activity: Active last 7 days / Inactive >30 days
-- [ ] Compose: Subject, Body (HTML supported), Preview with template variables: `{{parent_name}}`, `{{child_name}}`
-- [ ] "Send Test" to admin's own email before broadcast
-- [ ] Scheduling: Send now or schedule date/time (IST timezone)
-- [ ] Rate limiting: Max 1 broadcast per segment per week
-- [ ] Unsubscribe link auto-appended to all emails
-- [ ] Delivery tracking: Sent count, open rate, click rate (optional, P3)
-
-**Technical notes:**
-- Use existing email service + push notification service
-- Queue broadcast jobs to avoid rate limits
-
----
-
-## Epic: Analytics & Platform Health
-
-**Epic Goal:** Data-driven decision making for growth and quality.
-
----
-
-### TASK-ADMIN-015: Executive Dashboard (Core KPIs)
-
-| Field | Value |
-|-------|-------|
-| **Summary** | Real-time dashboard with key platform metrics |
-| **Story Points** | 8 |
-| **Priority** | P0 |
-| **Dependencies** | Student Journey, Parent Journey completion |
-
-**Acceptance Criteria:**
-- [ ] Dashboard URL: `admin.spinzy.academy/analytics`
-- [ ] Time filter: Today / This Week / This Month / Custom Range
-- [ ] Metric cards (refresh every 30 seconds, manual refresh button):
-
-| Metric | Definition |
-|--------|------------|
-| Total Accounts | Unique parent accounts |
-| Total Active Students | Child profiles with ≥1 session in period |
-| DAU | Students active today |
-| WAU | Students active this week |
-| Free → Premium Conversion % | Free parents who upgraded |
-| Churn Rate | Premium parents who cancelled |
-| Avg. Session Duration | Average time per student session |
-| Content Pieces Generated | AI content generated in period |
-| Content Approval Rate | % of AI content approved vs rejected |
-| Top 5 Most Requested Topics | Highest on-demand request count |
-| Flagged Content Count | Unresolved flags |
-
-- [ ] Each metric card clickable → drill-down to detailed view
-- [ ] Export dashboard as PDF (Schedule: weekly email to Super Admin)
-
-**Technical notes:**
-- Pre-aggregate daily metrics into `daily_platform_metrics` table
-- Use Chart.js or Recharts for visualizations
-
----
-
-### TASK-ADMIN-016: Content Performance Analytics
-
-| Field | Value |
-|-------|-------|
-| **Summary** | Analyze which content pieces are most/least effective |
-| **Story Points** | 5 |
-| **Priority** | P1 |
-| **Dependencies** | TASK-ADMIN-015 |
-
-**Acceptance Criteria:**
-- [ ] Table: Topic Name, Views, Avg. Time Spent, Avg. Practice Accuracy, Flag Count, Status
-- [ ] Sort by: "Lowest Avg. Accuracy" (identify confusing content)
-- [ ] Filters: AI-Generated vs Pre-Generated, Subject, Grade
-- [ ] "Edit" button directly from table for underperforming content
-- [ ] Export as CSV
-- [ ] Content Health Score: Weighted formula (Accuracy * 0.5 + Views * 0.3 + Flag inverse * 0.2)
-
-**Technical notes:**
-- Aggregate from `lesson_views`, `practice_attempts`, `content_flags`
-
----
-
-### TASK-ADMIN-017: Revenue Dashboard (Super Admin Only)
-
-| Field | Value |
-|-------|-------|
-| **Summary** | View revenue, subscription metrics, payment failures |
-| **Story Points** | 5 |
-| **Priority** | P1 |
-| **Dependencies** | TASK-ADMIN-015, Parent Journey TASK-015 |
-
-**Acceptance Criteria:**
-- [ ] Strictly Super Admin only (403 for other roles)
-- [ ] Metrics:
-  - MRR (Monthly Recurring Revenue)
-  - ARR (Annual Run Rate)
-  - ARPU (Avg Revenue Per User)
-  - LTV estimate (Avg subscription duration × ARPU)
-  - Plan distribution: Monthly vs Annual (pie chart)
-  - Active vs Expired vs Trial subscriptions
-- [ ] Payment failure rate: % of failed payments, broken down by UPI / Card
-- [ ] Refund rate: % of payments refunded, with reason categorization
-- [ ] Chart: Revenue trend (last 12 months)
-- [ ] Export as CSV for finance team
-
-**Technical notes:**
-- Data from `subscriptions`, `payments`, `refunds` tables
-
----
-
-### TASK-ADMIN-018: DPDP Compliance Audit Dashboard
-
-| Field | Value |
-|-------|-------|
-| **Summary** | Compliance metrics and report generation for DPDP Act |
-| **Story Points** | 8 |
-| **Priority** | P2 |
-| **Dependencies** | Parent Journey TASK-005, TASK-006 |
-
-**Acceptance Criteria:**
-- [ ] Dashboard at `admin.spinzy.academy/compliance`
-- [ ] Metrics displayed:
-  - Total consent requests sent
-  - Consent approval rate %
-  - Consent denial rate %
-  - Avg time to consent (request → approval)
-  - Data deletion requests received and fulfilled
-  - User data export requests received and fulfilled
-  - Flagged content by reason category (bar chart)
-  - Consent overrides by admins (count, with audit drill-down)
-- [ ] "Generate Compliance Report" button → PDF with:
-  - All metrics for selected date range
-  - Full audit log summary
-  - Digital signature (hash of report stored in DB)
-- [ ] Report retention: Minimum 7 years
-- [ ] Schedule: Auto-generate monthly report, email to Super Admin
-
-**Technical notes:**
-- Use Puppeteer or PDFKit for PDF generation
-- Store report hash in `compliance_reports` table for tamper-proof audit
-
----
-
-## Epic: Operational Efficiency
-
-**Epic Goal:** Automate queue management and content lifecycle.
-
----
-
-### TASK-ADMIN-019: AI Generation Queue Monitoring
-
-| Field | Value |
-|-------|-------|
-| **Summary** | Real-time monitoring of AI content generation queue |
-| **Story Points** | 5 |
-| **Priority** | P1 |
-| **Dependencies** | Student Journey TASK-015 |
-
-**Acceptance Criteria:**
-- [ ] Queue Dashboard: `admin.spinzy.academy/queue`
-- [ ] Metrics:
-  - Jobs in Queue (Pending)
-  - Jobs Processing (In Progress)
-  - Jobs Completed (Today)
-  - Jobs Failed (Today)
-  - Avg. Generation Time (seconds)
-- [ ] Failed jobs table: Topic, Error Message, Retry Count, Date
-- [ ] Actions per failed job: "Retry" / "Cancel" / "View Details"
-- [ ] Cost Estimator: Estimated AI API cost for today (token count × cost per token)
-- [ ] Alert: Email Content Admin if queue depth > 50 pending jobs
-- [ ] Auto-retry failed jobs: 3 retries with exponential backoff (1min, 5min, 15min)
-
-**Technical notes:**
-- Use Bull/Redis dashboard or custom UI
-- Track token usage from AI provider response headers
-
----
-
-### TASK-ADMIN-020: Automated Content Expiry & Archival
-
-| Field | Value |
-|-------|-------|
-| **Summary** | Set expiry dates for time-sensitive content; auto-archive |
-| **Story Points** | 3 |
-| **Priority** | P2 |
-| **Dependencies** | TASK-ADMIN-007 |
-
-**Acceptance Criteria:**
-- [ ] Content upload/creation includes optional "Expiry Date" field (date picker)
-- [ ] On expiry date: Content status changes to `archived` (hidden from students, visible to admins)
-- [ ] 7 days before expiry: Admin email alert "3 topics expiring soon: [Topic Names]"
-- [ ] Expired content can be "Reactivated" with new expiry date (or set to permanent)
-- [ ] Archived content not deleted (preserves analytics and student history)
-- [ ] Bulk archive: Select multiple → "Archive Selected"
-
----
-
-### TASK-ADMIN-021: Automated Content Tagging & Taxonomy
-
-| Field | Value |
-|-------|-------|
-| **Summary** | AI auto-suggests tags and taxonomy for uploaded content |
-| **Story Points** | 5 |
-| **Priority** | P2 |
-| **Dependencies** | TASK-ADMIN-007 |
-
-**Acceptance Criteria:**
-- [ ] On content upload/generation, system auto-suggests:
-  - Subject (based on keyword analysis)
-  - Chapter (match against existing taxonomy)
-  - Topic name normalization (remove duplicates, fix plurals)
-  - Difficulty Level (Easy/Medium/Hard based on vocabulary complexity)
-  - Related Topics (max 3, for "You might also like")
-- [ ] Admin can accept suggestions with one click (checkbox) or override manually
-- [ ] Taxonomy consistency check: Warn if new topic name >80% similar to existing topic (Levenshtein distance)
-- [ ] Auto-suggestions use lightweight ML (e.g., sentence-transformers) or keyword matching
-
-**Technical notes:**
-- Use pgvector for similarity search against existing topics
-- Difficulty heuristic: average word length + sentence complexity
-
----
-
-## Epic: Incident Response
-
-**Epic Goal:** Communicate platform issues and maintain transparency.
-
----
-
-### TASK-ADMIN-022: Platform Status Page Management
-
-| Field | Value |
-|-------|-------|
-| **Summary** | Update public status page during outages/maintenance |
-| **Story Points** | 5 |
-| **Priority** | P1 |
-| **Dependencies** | None |
-
-**Acceptance Criteria:**
-- [ ] Status page at `status.spinzy.academy` (separate subdomain, cached/CDN)
-- [ ] Admin can (from main admin panel):
-  - Create incident: Title, Description, Affected Services (Login / Practice / Content / Payments)
-  - Update status: Investigating → Identified → Monitoring → Resolved
-  - Schedule maintenance: Date, Time, Duration, Affected Services, Impact (e.g., "Read-only mode")
-- [ ] Major incidents: "Notify All Users" checkbox → sends email to all active users (requires Super Admin approval)
-- [ ] Status page auto-refreshes every 30 seconds
-- [ ] Uptime history: Last 90 days (green/yellow/red per day)
-
-**Technical notes:**
-- Use separate lightweight service (e.g., GitHub Pages + JSON API) to avoid dependency on main platform
-- Status updates stored in `incidents` table
-
----
-
-### TASK-ADMIN-023: System Health Monitoring & Alerts
-
-| Field | Value |
-|-------|-------|
-| **Summary** | Monitor critical paths and alert admins on failures |
-| **Story Points** | 5 |
-| **Priority** | P1 |
-| **Dependencies** | None |
-
-**Acceptance Criteria:**
-- [ ] Health checks running every minute:
-  - Login API (`/api/health/auth`) → 200 expected
-  - Content API (`/api/health/content`) → 200 expected
-  - Practice API (`/api/health/practice`) → 200 expected
-  - Database connectivity (PostgreSQL)
-  - Redis connectivity
-  - AI provider API (mock endpoint)
-- [ ] Alert channels: Email (Content Admin + Super Admin) + Slack webhook (optional)
-- [ ] Alert thresholds:
-  - Error rate >5% over 5 minutes
-  - P99 latency >3 seconds over 5 minutes
-  - Health check failure for >2 consecutive checks
-  - AI generation failure rate >20% over 1 hour
-- [ ] Dashboard: Service status cards (green/yellow/red) with last check timestamp
-- [ ] Incident auto-creation: On health check failure, create draft incident in status page
-
-**Technical notes:**
-- Use existing monitoring tool (e.g., UptimeRobot, Better Stack) OR build lightweight cron + alert system
-
----
-
-## Summary: Admin Tasks by Priority
-
-| Priority | Task IDs | Total Points |
-|----------|----------|--------------|
-| **P0 (MVP)** | ADMIN-001, 002, 003, 006, 007, 011, 015 | 42 |
-| **P1 (Sprint 4-6)** | ADMIN-004, 008, 009, 012, 013, 016, 017, 019, 022, 023 | 57 |
-| **P2 (Post-Launch)** | ADMIN-005, 010, 014, 018, 020, 021 | 33 |
-
-**Total: 132 points**
-
----
-
-## Jira Import CSV
-
-```csv
-Summary,Description,Story Points,Priority,Epic Link,Labels
-TASK-ADMIN-001: Super Admin Creates Admin Accounts,Super Admin can create admin accounts with specific roles via secure interface,5,Highest,Epic: Admin Access Control,mvp
-TASK-ADMIN-002: Admin Account Setup & MFA Enrollment,Invited admin sets up password and MFA via time-limited link,3,Highest,Epic: Admin Access Control,mvp
-TASK-ADMIN-003: Admin Login with MFA,Admin logs in via dedicated subdomain with email password and TOTP,5,Highest,Epic: Admin Access Control,mvp
-TASK-ADMIN-004: Role-Based Access Control,Granular permissions enforced per admin role across all endpoints and UI,8,High,Epic: Admin Access Control,post-mvp
-TASK-ADMIN-005: Admin Action Audit Log,Immutable searchable audit log of all admin actions,5,Medium,Epic: Admin Access Control,polish
-TASK-ADMIN-006: Content Moderation Dashboard,Prioritized dashboard of content requiring review,8,Highest,Epic: Content Moderation,mvp
-TASK-ADMIN-007: Content Review Interface,Rich preview with edit capabilities for content review,8,Highest,Epic: Content Moderation,mvp
-TASK-ADMIN-008: Bulk Content Upload,Bulk upload pre-generated content via CSV/JSON with validation,8,High,Epic: Content Moderation,post-mvp
-TASK-ADMIN-009: Content Version History & Rollback,View version history and roll back to any previous version,5,High,Epic: Content Moderation,post-mvp
-TASK-ADMIN-010: Content Flagging by Users,Students/Parents can flag content; Admin reviews and resolves,5,Medium,Epic: Content Moderation,polish
-TASK-ADMIN-011: User Search & Profile View,Search users by email/phone/child name with role-based visibility,8,Highest,Epic: User Support,mvp
-TASK-ADMIN-012: Manual Login Verification,Support Admin can manually verify account for 15 minutes,3,High,Epic: User Support,post-mvp
-TASK-ADMIN-013: Consent Dispute Resolution,Handle consent disputes with audit-compliant overrides,5,High,Epic: User Support,post-mvp
-TASK-ADMIN-014: Bulk User Notification,Send targeted communications to user segments with approval workflow,8,Medium,Epic: User Support,polish
-TASK-ADMIN-015: Executive Dashboard,Real-time dashboard with key platform metrics,8,Highest,Epic: Analytics,mvp
-TASK-ADMIN-016: Content Performance Analytics,Analyze which content pieces are most and least effective,5,High,Epic: Analytics,post-mvp
-TASK-ADMIN-017: Revenue Dashboard,View revenue subscription metrics payment failures (Super Admin only),5,High,Epic: Analytics,post-mvp
-TASK-ADMIN-018: DPDP Compliance Audit Dashboard,Compliance metrics and report generation for DPDP Act,8,Medium,Epic: Analytics,polish
-TASK-ADMIN-019: AI Generation Queue Monitoring,Real-time monitoring of AI content generation queue,5,High,Epic: Operations,post-mvp
-TASK-ADMIN-020: Automated Content Expiry & Archival,Set expiry dates for time-sensitive content; auto-archive,3,Medium,Epic: Operations,polish
-TASK-ADMIN-021: Automated Content Tagging,AI auto-suggests tags and taxonomy for uploaded content,5,Medium,Epic: Operations,polish
-TASK-ADMIN-022: Platform Status Page Management,Update public status page during outages and maintenance,5,High,Epic: Incident Response,post-mvp
-TASK-ADMIN-023: System Health Monitoring & Alerts,Monitor critical paths and alert admins on failures,5,High,Epic: Incident Response,post-mvp
-```
-
----
-
-## MVP Scope (Admin Journey)
-
-For MVP (Sprint 1-3 with Student + Parent journeys):
-
-| Task ID | Summary | Points |
-|---------|---------|--------|
-| ADMIN-001 | Super Admin creates admin accounts | 5 |
-| ADMIN-002 | Admin account setup & MFA | 3 |
-| ADMIN-003 | Admin login with MFA | 5 |
-| ADMIN-006 | Content moderation dashboard | 8 |
-| ADMIN-007 | Content review interface | 8 |
-| ADMIN-011 | User search & profile view | 8 |
-| ADMIN-015 | Executive dashboard (core KPIs) | 8 |
-
-**MVP Total: 45 points** (Admin only)
-
----
-
-## Admin Panel URL Structure
-
-| Page | URL | Access |
-|------|-----|--------|
-| Login | `admin.spinzy.academy/login` | Public |
-| Dashboard | `admin.spinzy.academy/` | All admins |
-| Content Moderation | `admin.spinzy.academy/content/moderation` | Content Admin + Super |
-| Content Upload | `admin.spinzy.academy/content/upload` | Content Admin + Super |
-| User Search | `admin.spinzy.academy/users` | Support + Super |
-| Analytics | `admin.spinzy.academy/analytics` | All admins |
-| Revenue | `admin.spinzy.academy/revenue` | Super only |
-| Compliance | `admin.spinzy.academy/compliance` | Super only |
-| Queue Monitor | `admin.spinzy.academy/queue` | Content Admin + Super |
-| Team Management | `admin.spinzy.academy/team` | Super only |
-| Audit Log | `admin.spinzy.academy/audit` | Super only |
-| Status Page Admin | `admin.spinzy.academy/status`
-
+## A0.1 | P0 | Super Admin Creates Admin Accounts
+**Labels:** P0, phase:onboarding
+**Phase:** Onboarding
+
+### User Story
+As a Super Admin, I want to create admin accounts with specific roles via a secure interface so that only authorized users can access the admin panel.
+
+### Acceptance Criteria
+- [ ] Only Super Admin can access admin creation page
+- [ ] Email field required and validated
+- [ ] Free email domains are blocked
+- [ ] Name must be 2–100 characters
+- [ ] Role dropdown available (Content Admin, Support Admin)
+- [ ] Admin created with INVITED status
+- [ ] Invite token generated (24h expiry)
+- [ ] Invite email sent
+- [ ] Audit log entry created
+- [ ] Admin list table visible
+- [ ] Actions available (Resend, Suspend, Reactivate)
+
+### Dev Tasks
+- [ ] Build AdminTeamPage
+- [ ] Build CreateAdminForm
+- [ ] Build AdminListTable
+- [ ] Create validation schema
+- [ ] Implement POST API
+- [ ] Setup email service
+- [ ] Implement audit logging
+
+### QA
+- [ ] Only Super Admin access enforced
+- [ ] Email validation works
+- [ ] Duplicate email rejected
+- [ ] Invite email delivered
+- [ ] Audit logs recorded
+- [ ] Table displays correctly
+
+## A0.2 | P0 | Admin Accepts Invite & Sets Up Account
+**Labels:** P0, phase:onboarding
+**Phase:** Onboarding
+
+### User Story
+As a newly invited admin, I want to receive an invite email, click a setup link, create a strong password, and enroll in MFA, so that I can securely access the admin panel.
+
+### Acceptance Criteria
+- [ ] Invite email sent with subject "You've been invited to join Spinzy Academy Admin Panel"
+- [ ] Invite email contains admin name, role, setup link, and expiry notice (24 hours)
+- [ ] Setup URL: https://admin.spinzy.academy/setup?token={invite_token}
+- [ ] Invalid/expired token shows error message
+- [ ] Valid token allows multi-step setup
+- [ ] Password requirements: Min 12 chars, 1 uppercase, 1 lowercase, 1 number, 1 special char
+- [ ] Password strength meter (zxcvbn, score ≥ 3/4 required)
+- [ ] Confirm password field with match validation
+- [ ] QR code displayed for MFA enrollment
+- [ ] Secret key provided for manual entry
+- [ ] 6-digit code field to verify MFA enrollment
+- [ ] 10 backup codes displayed (8-char hex, uppercase)
+- [ ] Warning message: "Save these codes. You won't see them again."
+- [ ] "Download as TXT" button for backup codes
+- [ ] Checkbox: "I have saved my backup codes" enables "Complete Setup" button
+- [ ] On complete setup: AdminUser.status = ACTIVE, mfa_enabled = true, invite_token = null
+- [ ] Redirect to Admin Login page
+- [ ] Audit log: admin.setup_complete
+
+### Dev Tasks
+- [ ] Create AdminSetupPage component (multi-step)
+- [ ] Create PasswordStrengthMeter component
+- [ ] Create MFAEnrollment component (QR + input)
+- [ ] Create BackupCodesDisplay component
+- [ ] Implement GET /api/v1/admin/setup/validate?token={token}
+- [ ] Implement GET /api/v1/admin/setup/mfa-qr?token={token}
+- [ ] Implement POST /api/v1/admin/setup/complete
+- [ ] Implement bcrypt hashing for password (cost factor 12)
+- [ ] Implement speakeasy.totp.verify with window:1
+
+### QA
+- [ ] Full setup flow works: token validation → password → MFA → backup codes → complete
+- [ ] Weak password rejected with specific feedback
+- [ ] MFA code validation: correct code passes, wrong code fails, expired code fails
+- [ ] Backup codes shown once, not retrievable later
+- [ ] Expired token shows clear error
+
+## A0.3 | P0 | Admin Login with MFA
+**Labels:** P0, phase:onboarding
+**Phase:** Onboarding
+
+### User Story
+As an admin, I want to log in via a dedicated subdomain with email, password, and TOTP-based MFA, so that the admin panel is protected from credential attacks.
+
+### Acceptance Criteria
+- [ ] Two-step login flow on admin.spinzy.academy/login
+- [ ] Step 1: Email + Password fields with "Sign In" button
+- [ ] Valid credentials return login_session_token (JWT, 5-min TTL, scope: MFA_REQUIRED)
+- [ ] Invalid credentials show error message and increment failed attempt count
+- [ ] 3 failed attempts → 15-minute lockout message
+- [ ] 5 failed attempts → Super Admin email alert
+- [ ] Step 2: 6-digit TOTP input (6 separate boxes, auto-advance, paste support)
+- [ ] Valid TOTP returns access_token (JWT, 30-min TTL) + refresh_token (7-day TTL)
+- [ ] Invalid TOTP shows error without incrementing failed_attempts
+- [ ] "Use Backup Code" link toggles to backup code input (8-char)
+- [ ] "Remember this device" checkbox returns device_token (JWT, 30-day TTL, bound to IP /24 subnet)
+- [ ] Subsequent logins from same device + IP skip MFA
+- [ ] Session timeout: 30 minutes inactivity → Auto-logout
+- [ ] IP Whitelist: Access from non-whitelisted IP shows "Access Denied: Unauthorized Network"
+
+### Dev Tasks
+- [ ] Create AdminLoginPage component (two-step)
+- [ ] Create LoginStep1 component (email + password)
+- [ ] Create LoginStep2 component (MFA code + backup code toggle)
+- [ ] Create OTPInput component (reusable: 6-digit, pasteable)
+- [ ] Implement useAdminAuth hook
+- [ ] Implement POST /api/v1/admin/auth/login
+- [ ] Implement POST /api/v1/admin/auth/mfa
+- [ ] Implement POST /api/v1/admin/auth/refresh
+- [ ] Implement POST /api/v1/admin/auth/device
+- [ ] Implement POST /api/v1/admin/auth/logout
+- [ ] Implement lockout logic (3 failed → 15-min lockout)
+- [ ] Implement IP whitelist middleware
+
+### QA
+- [ ] Full login flow: credentials → MFA → dashboard
+- [ ] Invalid password increments counter and shows error
+- [ ] 3 failed attempts triggers lockout
+- [ ] 5 failed attempts alerts Super Admin
+- [ ] MFA code: correct passes, wrong fails, expired fails
+- [ ] Backup code works once and is removed from stored set
+- [ ] "Remember this device" skips MFA on next login from same device + IP
+- [ ] Session timeout works
+- [ ] IP whitelist blocks unauthorized IPs
+
+## A0.4 | P1 | Admin Role-Based Access Control (RBAC) Enforcement
+**Labels:** P1, phase:onboarding
+**Phase:** Onboarding
+
+### User Story
+As a Super Admin, I want granular permissions enforced server-side for every admin action, so that Content Admins cannot access billing data, and Support Admins cannot delete content.
+
+### Acceptance Criteria
+- [ ] VIEW_ANALYTICS: Super Admin ✅, Content Admin ✅, Support Admin ✅
+- [ ] VIEW_MODERATION_QUEUE: Super Admin ✅, Content Admin ✅, Support Admin ❌
+- [ ] APPROVE_CONTENT: Super Admin ✅, Content Admin ✅, Support Admin ❌
+- [ ] REJECT_CONTENT: Super Admin ✅, Content Admin ✅, Support Admin ❌
+- [ ] EDIT_CONTENT: Super Admin ✅, Content Admin ✅, Support Admin ❌
+- [ ] DELETE_CONTENT: Super Admin ✅, Content Admin ❌, Support Admin ❌
+- [ ] BULK_UPLOAD_CONTENT: Super Admin ✅, Content Admin ✅, Support Admin ❌
+- [ ] VIEW_USER_PROFILES: Super Admin ✅, Content Admin ❌ (anonymized), Support Admin ✅
+- [ ] VIEW_USER_PII: Super Admin ✅, Content Admin ❌, Support Admin ✅
+- [ ] MANUAL_VERIFY_USER: Super Admin ✅, Content Admin ❌, Support Admin ✅
+- [ ] HANDLE_CONSENT_DISPUTE: Super Admin ✅, Content Admin ❌, Support Admin ✅
+- [ ] CREATE_ADMIN: Super Admin ✅, Content Admin ❌, Support Admin ❌
+- [ ] DELETE_ADMIN: Super Admin ✅, Content Admin ❌, Support Admin ❌
+- [ ] SUSPEND_ADMIN: Super Admin ✅, Content Admin ❌, Support Admin ❌
+- [ ] VIEW_REVENUE: Super Admin ✅, Content Admin ❌, Support Admin ❌
+- [ ] VIEW_AUDIT_LOGS: Super Admin ✅, Content Admin ❌, Support Admin ❌
+- [ ] GENERATE_COMPLIANCE_REPORT: Super Admin ✅, Content Admin ❌, Support Admin ❌
+- [ ] SEND_BROADCAST: Super Admin ✅, Content Admin ❌, Support Admin ❌
+- [ ] MANAGE_WHATSAPP_SETTINGS: Super Admin ✅, Content Admin ❌, Support Admin ❌
+- [ ] requirePermission middleware reads admin.role from JWT
+- [ ] Missing permission returns 403 with error message
+- [ ] Frontend gates components behind usePermission(permission) hook
+
+### Dev Tasks
+- [ ] Create AdminPermission enum in shared package
+- [ ] Create ROLE_PERMISSIONS map
+- [ ] Create requirePermission middleware
+- [ ] Create usePermission hook for frontend
+- [ ] Audit all API routes and apply correct permission to each
+
+### QA
+- [ ] Content Admin cannot access /api/v1/admin/revenue (403)
+- [ ] Support Admin cannot access /api/v1/admin/content/delete (403)
+- [ ] UI hides forbidden buttons (not just disabled)
+- [ ] Direct API calls without permission return 403
+
+## A1.1 | P0 | Content Moderation Dashboard
+**Labels:** P0, phase:content-moderation
+**Phase:** Content Moderation
+
+### User Story
+As a Content Admin, I want a prioritized dashboard of all content requiring review, sorted by student demand, so that I can efficiently approve or reject the most requested topics first.
+
+### Acceptance Criteria
+- [ ] Dashboard at admin.spinzy.academy/content/moderation
+- [ ] Default sort: "Pending Review" sorted by "Request Count" descending
+- [ ] Columns: Topic Name, Subject/Grade/Board, Content Type, Request Count, Flag Count, Status, Date Submitted, Generator, Actions
+- [ ] Filters sidebar: Subject (multi-select), Grade (range or multi-select), Board (CBSE/ICSE/State), Content Type, Status, Date Range
+- [ ] Search bar: By topic name, keyword
+- [ ] Batch actions: Select multiple rows via checkbox, "Approve All Selected", "Reject All Selected"
+- [ ] Pagination: 20 rows per page
+- [ ] Real-time updates: New AI-generated content appears without page refresh (WebSocket or polling every 30s)
+
+### Dev Tasks
+- [ ] Create ContentModerationPage component
+- [ ] Create ModerationTable component (with checkbox selection)
+- [ ] Create ModerationFilters component
+- [ ] Create BatchActionBar component
+- [ ] Implement GET /api/v1/admin/content/moderation (paginated, filterable, sortable)
+- [ ] Implement POST /api/v1/admin/content/batch-action
+
+### QA
+- [ ] Dashboard loads within 2 seconds with 100+ items
+- [ ] Default sort by request count works
+- [ ] Filters apply correctly and combine with AND logic
+- [ ] Batch approve/reject processes all selected items
+- [ ] Real-time: New AI content appears within 30 seconds
+
+## A1.2 | P0 | Content Review Interface — Side-by-Side Editor
+**Labels:** P0, phase:content-moderation
+**Phase:** Content Moderation
+
+### User Story
+As a Content Admin, I want to open any pending content in a side-by-side view (rendered preview + Markdown editor) and approve, reject, or request revision, so that I can review quality and make edits efficiently.
+
+### Acceptance Criteria
+- [ ] Left Panel (70%): Rendered content preview as student sees on mobile (320px mockup)
+- [ ] Supports: Rich text, images, LaTeX equations, tables, videos
+- [ ] Right Panel (30%): Markdown editor with syntax highlighting and toolbar
+- [ ] Live preview updates on edit (debounced 500ms)
+- [ ] AI Content Indicator: Yellow banner for AI-generated content showing model version and confidence score
+- [ ] Version History Tab: Collapsible panel with all versions, timestamps, editors, and "Restore This Version" button
+- [ ] Sticky Action Bar: Approve (Green), Reject (Red with reason modal), Request Revision (Amber with note field), Save Draft (Grey)
+- [ ] Approve: Promotes to public Read DB, removes Beta badge, notifies requesting students
+- [ ] Reject options: "Inaccurate Content", "Inappropriate", "Duplicate", "Poor Quality", "Other"
+- [ ] Request Revision: Sends back to AI queue with admin notes
+- [ ] Keyboard shortcuts: Ctrl+Enter (Approve), Ctrl+Shift+R (Reject), Ctrl+S (Save Draft)
+
+### Dev Tasks
+- [ ] Create ContentReviewPage component
+- [ ] Create ContentPreview component (mobile frame)
+- [ ] Create MarkdownEditor component (use @uiw/react-md-editor or similar)
+- [ ] Create VersionHistoryPanel component
+- [ ] Create StickyActionBar component
+- [ ] Implement GET /api/v1/admin/content/{id}
+- [ ] Implement PUT /api/v1/admin/content/{id}
+- [ ] Implement POST /api/v1/admin/content/{id}/approve
+- [ ] Implement POST /api/v1/admin/content/{id}/reject
+- [ ] Implement POST /api/v1/admin/content/{id}/request-revision
+- [ ] Implement keyboard shortcut handler
+
+### QA
+- [ ] Side-by-side view renders correctly on desktop (1920px+)
+- [ ] Markdown edits reflect in preview within 500ms
+- [ ] Approve: Content appears in student search within 1 minute
+- [ ] Reject: Requester student notified
+- [ ] Request Revision: Job appears in AI queue
+- [ ] Version history restore creates new version with correct content
+- [ ] Keyboard shortcuts work
+
+## A1.3 | P1 | Bulk Pre-Generated Content Upload
+**Labels:** P1, phase:content-moderation
+**Phase:** Content Moderation
+
+### User Story
+As a Content Admin, I want to bulk upload pre-generated content via CSV/JSON with validation, so that I can populate the core curriculum for multiple topics at once.
+
+### Acceptance Criteria
+- [ ] Upload interface at admin.spinzy.academy/content/upload
+- [ ] Drag-and-drop file upload area, accepted formats: CSV, JSON, ZIP of Markdown files with manifest
+- [ ] CSV template download link
+- [ ] Preview first 5 rows of uploaded file in table
+- [ ] "Validate" button checks: required columns, board enum, grade 1-12, valid markdown, duplicates
+- [ ] Validation results show Valid rows (green), Warnings (amber), Errors (red with downloadable error report)
+- [ ] "Import Valid Rows" button enabled only if ≥1 valid row
+- [ ] On import: Valid rows created with status APPROVED, content_type PRE_GENERATED
+- [ ] Progress bar for large uploads (>100 rows)
+- [ ] Success message with count and downloadable error report
+- [ ] Max file size: 50MB
+
+### Dev Tasks
+- [ ] Create BulkUploadPage component
+- [ ] Create FileDropzone component
+- [ ] Create ValidationReport component
+- [ ] Create ImportProgress component
+- [ ] Create CSV/JSON parser service
+- [ ] Implement POST /api/v1/admin/content/upload/validate
+- [ ] Implement POST /api/v1/admin/content/upload/import
+- [ ] Implement background job for large imports via BullMQ
+
+### QA
+- [ ] CSV with 100 rows validates within 5 seconds
+- [ ] Validation catches missing fields, invalid board, invalid grade, broken MD, duplicates
+- [ ] Error report downloadable
+- [ ] Import creates content with correct metadata
+- [ ] Duplicate rows skipped (not overwritten)
+- [ ] 50MB file handled without timeout
+
+## A1.4 | P1 | Content Version History & Rollback
+**Labels:** P1, phase:content-moderation
+**Phase:** Content Moderation
+
+### User Story
+As a Content Admin, I want to view version history for any content piece and roll back to a previous version, so that I can recover from accidental edits or revert rejected changes.
+
+### Acceptance Criteria
+- [ ] Every edit creates a new ContentVersion record with version_number, content_body, editor_id, change_summary, created_at
+- [ ] Version History tab in Content Review Interface shows timeline view (newest first)
+- [ ] Each entry shows: Version number, Editor, Timestamp, Change summary
+- [ ] Current version highlighted with "Live" badge
+- [ ] "Preview" button on each version shows rendered content in modal
+- [ ] "Restore This Version" button creates a NEW version with old content (does not delete intermediate versions)
+- [ ] New version marked as is_current: true
+- [ ] Reason prompt: "Why are you restoring this version?" (optional)
+- [ ] Full audit trail preserved
+
+### Dev Tasks
+- [ ] Create VersionHistory component (timeline)
+- [ ] Create VersionPreview modal
+- [ ] Create Prisma ContentVersion model migration
+- [ ] Implement GET /api/v1/admin/content/{id}/versions
+- [ ] Implement POST /api/v1/admin/content/{id}/restore/{version_id}
+
+### QA
+- [ ] Each edit creates a new version
+- [ ] Restore creates new version with old content
+- [ ] Current version correctly marked
+- [ ] Versions never deleted
+
+## A1.5 | P2 | Content Flagging by Students/Parents — Admin Resolution
+**Labels:** P2, phase:content-moderation
+**Phase:** Content Moderation
+
+### User Story
+As a Content Admin, I want to see content flagged by users, review the issue, and resolve it, so that quality issues reported by the community are addressed.
+
+### Acceptance Criteria
+- [ ] Flagged content appears in Moderation Dashboard with "Flagged" filter
+- [ ] Flag detail view shows: Content preview, Flag reason(s), User comment, Flag count, Reporter ID (anonymized)
+- [ ] Admin actions: Dismiss Flag (mark as DISMISSED, notify reporter), Acknowledge & Edit (opens review interface, auto-dismiss on save, notify reporter)
+- [ ] Flag statistics on Analytics Dashboard: Flagged content count, resolution rate, average resolution time
+
+### Dev Tasks
+- [ ] Create ContentFlag Prisma model
+- [ ] Implement GET /api/v1/admin/content/flags (paginated, filterable)
+- [ ] Implement POST /api/v1/admin/content/flags/{id}/dismiss
+- [ ] Implement POST /api/v1/admin/content/flags/{id}/resolve
+
+### QA
+- [ ] Student/Parent can flag content from Lesson View
+- [ ] Flag appears in admin dashboard
+- [ ] Dismiss and resolve flows work
+- [ ] Reporter notified on resolution
+
+## A2.1-R | P1 | Consent Requests Dashboard
+**Labels:** P1, phase:consent-management
+**Phase:** Consent Management
+
+### User Story
+As a Support Admin, I want to view all pending, approved, denied, and expired consent requests, so that I can assist parents who claim they never received a request or need manual intervention.
+
+### Acceptance Criteria
+- [ ] Dashboard at admin.spinzy.academy/consent
+- [ ] Table columns: Student Name, Grade/Board, Parent Contact (masked), Channel, Status, Created At, Expires At, Reminders Sent, Actions
+- [ ] Filters: Status, Channel, Date Range
+- [ ] Search: By student name, parent phone (last 4 digits), parent email domain
+- [ ] Actions per row: Re-send, Re-send via Alternative, Override Approve, Override Deny, View Timeline
+- [ ] Override Approve requires Super Admin co-approval for audit
+- [ ] View Timeline shows full lifecycle: requested → sent → delivered → reminder → approved/denied/expired
+
+### Dev Tasks
+- [ ] Create ConsentDashboardPage component
+- [ ] Create ConsentTable component
+- [ ] Create ConsentTimeline component
+- [ ] Create OverrideConsentModal component
+- [ ] Implement GET /api/v1/admin/consent-requests (paginated, filterable)
+- [ ] Implement POST /api/v1/admin/consent-requests/{id}/resend
+- [ ] Implement POST /api/v1/admin/consent-requests/{id}/resend-alternative
+- [ ] Implement POST /api/v1/admin/consent-requests/{id}/override
+- [ ] Implement GET /api/v1/admin/consent-requests/{id}/timeline
+
+### QA
+- [ ] All consent requests visible
+- [ ] Filters and search work
+- [ ] Re-send triggers actual message delivery
+- [ ] Override approve requires Super Admin confirmation
+- [ ] Timeline shows all events
+- [ ] Masked data for Content Admin (no PII)
+
+## A2.2-R | P1 | Admin Handles "Parent Didn't Receive Consent" Support Ticket
+**Labels:** P1, phase:consent-management
+**Phase:** Consent Management
+
+### User Story
+As a Support Admin responding to a parent inquiry, I want to look up the consent request, verify delivery status, and re-send via alternative channel, so that the issue is resolved without engineering intervention.
+
+### Acceptance Criteria
+- [ ] Support Admin searches by parent phone or email
+- [ ] Consent detail view shows Original Channel (WhatsApp/Email)
+- [ ] Delivery Status: SENT/DELIVERED/READ with timestamps
+- [ ] Reminder History: When reminders were sent, how many
+- [ ] "Re-send via Alternative Channel" button: WhatsApp → Email, Email → WhatsApp
+- [ ] If only one method: Re-send via same channel with note "Second attempt"
+- [ ] "Mark as Contacted" button for cases where admin calls parent directly with note field
+- [ ] All actions logged in ConsentRequest.activity_log
+
+### Dev Tasks
+- [ ] Implement GET /api/v1/admin/consent-requests/{id}/delivery-status
+- [ ] Implement POST /api/v1/admin/consent-requests/{id}/manual-contact
+
+### QA
+- [ ] Delivery status accurately reflects WhatsApp/Email webhook data
+- [ ] Alternative channel resend works
+- [ ] Manual contact note saves
+
+## A2.3-R | P2 | Expired Consent Token Cleanup (Automated)
+**Labels:** P2, phase:consent-management
+**Phase:** Consent Management
+
+### User Story
+As a system (automated), I want expired consent tokens (>48 hours) automatically marked as EXPIRED and students notified, so that stale tokens don't accumulate and students aren't stuck in limbo.
+
+### Acceptance Criteria
+- [ ] Cron job runs every 1 hour (BullMQ repeatable job or node-cron)
+- [ ] Query updates status = 'EXPIRED' where status = 'AWAITING' AND token_expires_at < NOW()
+- [ ] For each updated row: Push WebSocket event to student (if online) or queue for next app open
+- [ ] Log: "Cron: Expired {count} consent tokens"
+- [ ] Consent Dashboard widget shows "Expired Today: X"
+- [ ] Alert: If >100 tokens expired in a single day → Super Admin email
+
+### Dev Tasks
+- [ ] Create cron job for expired token cleanup
+- [ ] Implement WebSocket event push for consent_expired
+- [ ] Create dashboard widget for expired count
+- [ ] Implement alert mechanism for >100 expirations
+
+### QA
+- [ ] Cron runs without errors
+- [ ] Expired tokens show correct status in DB
+- [ ] Student app reflects expired status within 1 hour + next poll cycle
+- [ ] Alert triggers if >100 expires in a day
+
+## A3.1 | P1 | User Search & Profile View
+**Labels:** P1, phase:user-support
+**Phase:** User Support
+
+### User Story
+As a Support Admin, I want to search for any user by email, phone, or child name and view their full profile, so that I can diagnose issues and assist with account problems.
+
+### Acceptance Criteria
+- [ ] Global search bar (top of admin panel) searches by Email, Phone, Parent Name, Child Name
+- [ ] Results dropdown shows Name, Email/Phone (masked), Role, Status
+- [ ] Click result → Full profile page
+- [ ] User Profile Page shows: Account Info (Email, Phone masked, Join Date, Subscription Status, Plan)
+- [ ] Child Profiles (if Parent): Name, Grade, Board, Status, Last Active, Total Time, Accuracy %
+- [ ] Student Profile: Name, Grade, Board, Status, Last Active, Total Time, Accuracy %
+- [ ] Activity Log: Last 50 actions with timestamps
+- [ ] Consent History: Consent timeline (requested, reminders, approved/denied, method)
+- [ ] Subscription History: Payments, invoices, renewals, cancellations
+- [ ] Role-Based Visibility: Support Admin full view, Content Admin restricted (masked email/phone), Super Admin full view + admin actions
+
+### Dev Tasks
+- [ ] Create GlobalSearch component
+- [ ] Create UserProfilePage component
+- [ ] Create ActivityLogTable component
+- [ ] Implement GET /api/v1/admin/users/search?q={query}
+- [ ] Implement GET /api/v1/admin/users/{id}
+
+### QA
+- [ ] Search by partial name, email, phone works
+- [ ] Profile loads within 1 second
+- [ ] Role-based masking works
+
+## A3.2 | P1 | Manual Login Verification (OTP Bypass)
+**Labels:** P1, phase:user-support
+**Phase:** User Support
+
+### User Story
+As a Support Admin handling a parent who cannot receive OTP, I want to manually verify their account for 15 minutes, so that they can log in despite temporary email/WhatsApp delivery issues.
+
+### Acceptance Criteria
+- [ ] From User Profile → Actions → "Verify Account Manually"
+- [ ] Confirmation modal with reason field (required)
+- [ ] On confirm: User.manual_verification_expires = now() + 15 minutes
+- [ ] Parent can log in without OTP for 15 minutes
+- [ ] After 15 minutes: OTP requirement resumes
+- [ ] Audit log: user.manual_verify with admin ID, user ID, reason, timestamp
+- [ ] Alert: If single admin performs >10 manual verifications in 24 hours → Super Admin notification
+
+### Dev Tasks
+- [ ] Add "Verify Account Manually" button to User Profile actions
+- [ ] Create confirmation modal with reason field
+- [ ] Implement API endpoint for manual verification
+- [ ] Implement fraud alert mechanism
+
+### QA
+- [ ] Manual verification works, parent logs in without OTP
+- [ ] OTP requirement resumes after 15 minutes
+- [ ] Fraud alert triggers at >10/day
+
+## A3.3 | P1 | Consent Dispute Resolution
+**Labels:** P1, phase:user-support
+**Phase:** User Support
+
+### User Story
+As a Support Admin, I want to handle consent disputes (parent claims didn't approve, child claims fraudulent approval), so that we resolve issues fairly while maintaining DPDP compliance.
+
+### Acceptance Criteria
+- [ ] Resolution Path 1: Re-send Consent Email/WhatsApp for "I didn't receive it" claims
+- [ ] Resolution Path 2: Override Denial (reverse denial) requires Admin notes + Parent email confirmation + Super Admin co-approval
+- [ ] Resolution Path 3: Revoke Consent for unauthorized account reports (immediate set consent_status = REVOKED, status = INACTIVE, child profile frozen, investigation flag set)
+- [ ] All actions logged in immutable audit trail
+- [ ] Monthly DPDP compliance report includes consent dispute resolution metrics
+
+### Dev Tasks
+- [ ] Implement re-send consent functionality
+- [ ] Implement override denial with Super Admin co-approval workflow
+- [ ] Implement revoke consent functionality
+- [ ] Add dispute resolution metrics to compliance report
+
+### QA
+- [ ] Override requires Super Admin approval
+- [ ] Revoke immediately blocks child access
+- [ ] Audit trail complete
+
+## A3.4 | P2 | Bulk Communication to Users
+**Labels:** P2, phase:user-support
+**Phase:** User Support
+
+### User Story
+As a Support Admin (with Super Admin approval), I want to send targeted communications to user segments, so that we can announce maintenance, policy changes, or exam tips.
+
+### Acceptance Criteria
+- [ ] Feature gated by Super Admin approval workflow
+- [ ] Target segments: Board, Grade, Subscription (Free/Premium), Activity (Active <7 days, Inactive >30 days)
+- [ ] Compose interface: Subject, Body (with variables: {{parent_name}}, {{child_name}}), Preview
+- [ ] Send test to admin's own email
+- [ ] Schedule: Now or specific date/time
+- [ ] Max 1 broadcast per segment per week
+- [ ] Unsubscribe link auto-appended
+
+### Dev Tasks
+- [ ] Create BulkCommunication component
+- [ ] Create Super Admin approval workflow
+- [ ] Implement targeting logic
+- [ ] Implement scheduling mechanism
+- [ ] Implement unsubscribe link handling
+
+### QA
+- [ ] Super Admin approval required
+- [ ] Targeting works
+- [ ] Schedule works
+
+## A4.1 | P0 | Executive Dashboard — Core KPIs
+**Labels:** P0, phase:analytics
+**Phase:** Analytics
+
+### User Story
+As a Super Admin / Content Admin, I want a real-time dashboard with key platform metrics, so that I can monitor growth, engagement, and content quality at a glance.
+
+### Acceptance Criteria
+- [ ] Dashboard at admin.spinzy.academy/analytics with time filter (Today/This Week/This Month/Custom Range)
+- [ ] Metric cards with trend arrows and sparklines for: Total Accounts, Total Active Students, DAU/WAU, New Registrations, Free→Premium Conversion, Churn Rate, Avg. Session Duration, Content Generated, Approval Rate, Avg. Approval Time, Top 5 Requested Topics, Flagged Content Unresolved, WhatsApp API Usage, Consent Pipeline
+- [ ] Click any metric → Drill-down detail page
+- [ ] Export dashboard as PDF
+
+### Dev Tasks
+- [ ] Create AnalyticsDashboard component
+- [ ] Create MetricCard sub-component (with sparkline)
+- [ ] Create TimeFilter component
+- [ ] Implement GET /api/v1/admin/analytics/dashboard?period={period}
+- [ ] Implement Redis caching (5-minute TTL for real-time, 1-hour for historical)
+- [ ] Implement PDF export
+
+### QA
+- [ ] Dashboard loads within 3 seconds
+- [ ] All metrics accurate against raw data
+- [ ] Drill-down works
+- [ ] PDF export includes all visible metrics
+
+## A4.2 | P1 | Content Performance Analytics
+**Labels:** P1, phase:analytics
+**Phase:** Analytics
+
+### User Story
+As a Content Admin, I want to see which content pieces are most and least effective based on student practice accuracy, so that I can prioritize improvements.
+
+### Acceptance Criteria
+- [ ] Table columns: Topic, Views, Avg. Time Spent, Avg. Practice Accuracy, Flag Count, Status
+- [ ] Sort by "Lowest Accuracy" to identify confusing content
+- [ ] Filter: AI-Generated vs Pre-Generated for quality comparison
+- [ ] Action: "Edit" button opens Content Review Interface
+- [ ] Export CSV
+
+### Dev Tasks
+- [ ] Create ContentPerformanceAnalytics component
+- [ ] Implement GET /api/v1/admin/analytics/content-performance
+- [ ] Implement CSV export
+
+### QA
+- [ ] Accuracy data correlates with student practice results
+- [ ] Low-accuracy content identifiable
+
+## A4.3 | P1 | Revenue Dashboard (Super Admin Only)
+**Labels:** P1, phase:analytics
+**Phase:** Analytics
+
+### User Story
+As a Super Admin, I want to view revenue, subscription metrics, and payment failure rates, so that I can forecast growth and identify payment gateway issues.
+
+### Acceptance Criteria
+- [ ] MRR, ARR, ARPU, LTV estimate
+- [ ] Subscription breakdown: Monthly vs Annual, Active vs Trial vs Expired
+- [ ] Payment failure rate: UPI vs Card
+- [ ] Refund rate with reasons
+- [ ] Strictly Super Admin only (others see 403)
+
+### Dev Tasks
+- [ ] Create RevenueDashboard component
+- [ ] Implement GET /api/v1/admin/analytics/revenue
+- [ ] Add Super Admin permission check
+
+### QA
+- [ ] Revenue data matches Razorpay dashboard
+- [ ] Strict access control
+
+## A4.4 | P2 | DPDP Compliance Audit Dashboard
+**Labels:** P2, phase:analytics
+**Phase:** Analytics
+
+### User Story
+As a Super Admin, I want a dashboard for DPDP compliance metrics and a one-click compliance report generator, so that I can demonstrate compliance during regulatory audits.
+
+### Acceptance Criteria
+- [ ] Metrics: Consent requests (total, approved, denied, expired), avg. time to consent, data deletion requests (count, avg. resolution), data export requests, flagged content
+- [ ] "Generate Compliance Report" → PDF with all metrics + audit log summary for selected period
+- [ ] Report timestamped, digitally signed (SHA-256 hash stored)
+
+### Dev Tasks
+- [ ] Create DPDPComplianceDashboard component
+- [ ] Implement GET /api/v1/admin/analytics/compliance
+- [ ] Implement compliance report generation with digital signature
+
+### QA
+- [ ] Report generated within 30 seconds
+- [ ] All metrics accurate
+
+## A5.1 | P1 | AI Generation Queue Monitoring
+**Labels:** P1, phase:operational-efficiency
+**Phase:** Operational Efficiency
+
+### User Story
+As a Content Admin, I want to monitor the AI content generation queue in real-time, so that I can identify bottlenecks, failed jobs, or cost overruns.
+
+### Acceptance Criteria
+- [ ] Queue Dashboard at admin.spinzy.academy/queue
+- [ ] Metrics: Pending Jobs, Processing Jobs, Completed Today, Failed Today, Avg. Generation Time (seconds)
+- [ ] Failed Jobs Table: Topic, Error Message, Retry Count, Actions (Retry/Cancel)
+- [ ] Cost Estimator: Estimated API cost based on token usage
+- [ ] Alert: Queue depth >50 notifies Content Admin
+
+### Dev Tasks
+- [ ] Create QueueDashboard component
+- [ ] Implement real-time metrics (WebSocket or polling every 10s)
+- [ ] Implement retry/cancel functionality
+- [ ] Implement cost estimator
+- [ ] Implement alert mechanism
+
+### QA
+- [ ] Queue metrics real-time (WebSocket or polling every 10s)
+- [ ] Retry works
+- [ ] Cost estimator accurate within 10%
+
+## A5.2 | P2 | Automated Content Expiry & Archival
+**Labels:** P2, phase:operational-efficiency
+**Phase:** Operational Efficiency
+
+### User Story
+As a Content Admin, I want to set expiry dates for time-sensitive content, so that outdated content doesn't clutter the platform.
+
+### Acceptance Criteria
+- [ ] Content upload includes optional "Expiry Date" field
+- [ ] On expiry: Auto-archived (hidden from students, visible to admins)
+- [ ] 7 days before expiry: Admin email alert
+- [ ] Expired content can be reactivated
+
+### Dev Tasks
+- [ ] Add expiry date field to content upload
+- [ ] Create cron job for auto-archival
+- [ ] Create email alert system
+- [ ] Implement reactivation functionality
+
+### QA
+- [ ] Auto-archival works
+- [ ] Alert email sends
+
+## A5.3 | P2 | Automated Content Tagging Suggestions
+**Labels:** P2, phase:operational-efficiency
+**Phase:** Operational Efficiency
+
+### User Story
+As a Content Admin, I want AI to suggest tags, difficulty level, and related topics for uploaded content, so that I don't manually tag every piece.
+
+### Acceptance Criteria
+- [ ] On generation/upload: AI suggests subject, chapter, difficulty (Easy/Medium/Hard), related topics
+- [ ] Admin accepts with one click or overrides
+- [ ] Duplicate title detection: Warns if similar topic exists
+
+### Dev Tasks
+- [ ] Implement AI suggestion service
+- [ ] Create suggestion UI with accept/override buttons
+- [ ] Implement duplicate title detection
+
+### QA
+- [ ] Suggestions accurate >80% of the time
+- [ ] Duplicate detection works
+
+## A6.1 | P1 | WhatsApp API Usage Dashboard
+**Labels:** P1, phase:whatsapp-monitoring
+**Phase:** WhatsApp API Monitoring
+
+### User Story
+As a Super Admin, I want to monitor WhatsApp Cloud API message volume and free tier utilization, so that we don't exceed the free tier unexpectedly and incur costs.
+
+### Acceptance Criteria- [ ] Dashboard Widget on Analytics Dashboard shows: "WhatsApp API Usage"
+- [ ] Messages Sent Today: X / 1,000 (free tier daily limit)
+- [ ] Messages Sent This Month: Y (actual tracked count)
+- [ ] Projected Monthly: Z (based on daily average)
+- [ ] Alert thresholds: Warning at 80%, Critical at 95%
+- [ ] 80% threshold: Email to Super Admin
+- [ ] 95% threshold: Email + urgent push
+- [ ] Settings page at admin.spinzy.academy/settings/whatsapp for Super Admin to configure auto_upgrade, monthly_budget_limit, notification_thresholds
+
+### Dev Tasks
+- [ ] Create WhatsAppUsageWidget component
+- [ ] Create WhatsAppSettings page
+- [ ] Implement GET /api/v1/admin/whatsapp-usage
+- [ ] Implement PUT /api/v1/admin/whatsapp-settings
+- [ ] Implement Redis counter increment on each message send
+- [ ] Implement alerting mechanism
+
+### QA
+- [ ] Usage count matches actual WhatsApp API calls
+- [ ] Alerts fire at correct thresholds
+- [ ] Auto-upgrade setting works
+
+## A6.2 | P2 | WhatsApp Delivery Failure Monitoring
+**Labels:** P2, phase:whatsapp-monitoring
+**Phase:** WhatsApp API Monitoring
+
+### User Story
+As a Super Admin, I want to monitor WhatsApp message delivery failures and retry patterns, so that I can identify systemic issues with the WhatsApp integration.
+
+### Acceptance Criteria
+- [ ] Dashboard Widget shows Delivery Success Rate (%) over last 24 hours, 7 days, 30 days
+- [ ] Failure Reasons Breakdown: Invalid Number, Blocked by User, Rate Limited, Other
+- [ ] Alert: Delivery success rate drops below 90% → Super Admin alert
+
+### Dev Tasks
+- [ ] Create WhatsAppMessageLog Prisma model
+- [ ] Implement webhook tracking for delivery status
+- [ ] Create DeliveryMonitoringWidget component
+- [ ] Implement alert mechanism
+
+### QA
+- [ ] Delivery tracking accurate
+- [ ] Alert fires on rate drop
+
+## A7.1 | P1 | Platform Status Page Management
+**Labels:** P1, phase:incident-response
+**Phase:** Incident Response & Security
+
+### User Story
+As a Super Admin, I want to update a public status page during outages, so that users are informed and support ticket volume decreases.
+
+### Acceptance Criteria
+- [ ] Status page at status.spinzy.academy (separate subdomain)
+- [ ] Admin can: Create incident, update status (Investigating/Identified/Monitoring/Resolved), schedule maintenance
+- [ ] Major incidents: Auto-email to all users (Super Admin approval)
+
+### Dev Tasks
+- [ ] Set up status page subdomain
+- [ ] Create incident management interface
+- [ ] Implement email notification for major incidents
+
+### QA
+- [ ] Incident creation and updates work
+- [ ] Status page reflects changes immediately
+
+## A7.2 | P1 | Immutable Admin Audit Log
+**Labels:** P1, phase:incident-response
+**Phase:** Incident Response & Security
+
+### User Story
+As a Super Admin, I want an immutable, searchable audit log of all admin actions, so that I can investigate anomalies and maintain security compliance.
+
+### Acceptance Criteria
+- [ ] Audit log table shows: Timestamp, Admin ID, Admin Name, Action, Target Type, Target ID, Details (JSON), IP Address
+- [ ] Searchable by: Admin, Action, Target, Date Range
+- [ ] Append-only. No edits. No deletes
+- [ ] Export as CSV/PDF
+- [ ] Auto-archived after 2 years to cold storage (still accessible)
+
+### Dev Tasks
+- [ ] Create AdminAuditLog Prisma model (if not exists)
+- [ ] Implement audit logging middleware
+- [ ] Create AuditLogViewer component
+- [ ] Implement GET /api/v1/admin/audit-logs (searchable, filterable, paginated)
+- [ ] Implement export functionality
+- [ ] Implement archival job
+
+### QA
+- [ ] All admin actions logged
+- [ ] Cannot modify or delete logs
+- [ ] Search works
