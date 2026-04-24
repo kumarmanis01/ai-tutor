@@ -212,7 +212,7 @@ export async function getStudentDrilldown(studentId: string): Promise<StudentDri
     recentSessions: recentSessions.map((s) => ({
       sessionId: s.id,
       topicName: s.topic?.name ?? '--',
-      completedAt: s.completedAt,
+      completedAt: s.completedAt ?? null,
     })),
     weakTopics: weakTopics.map((w) => ({
       topicId: w.topicId,
