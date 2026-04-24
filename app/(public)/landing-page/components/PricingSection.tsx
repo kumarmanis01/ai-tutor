@@ -282,15 +282,3 @@ const PricingSection = () => {
 };
 
 export default PricingSection;
-            or{' '}
-            <a href="tel:+918920754675" className="text-primary hover:underline font-semibold">
-              call us
-            </a>
-          </p>
-        </div>
-      </div>
-    </section>
-  );
-};
-
-export default PricingSection;
