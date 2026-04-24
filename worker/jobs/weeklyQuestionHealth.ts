@@ -56,7 +56,7 @@ export async function runWeeklyQuestionHealth(): Promise<number> {
     ? await prisma.topicDef.findMany({ where: { id: { in: lowTopicIds } }, select: { id: true, name: true } })
     : []
 
-  const lowTopics = topics.map((t) => ({ id: t.id, name: t.name, count: topicCounts[t.id] ?? 0 }))
+  const lowTopics = topics.map((t: { id: string; name: string }) => ({ id: t.id, name: t.name, count: topicCounts[t.id] ?? 0 }))
 
   // Emit analytics event with summary and low topics list
   await prisma.analyticsEvent.create({
