@@ -322,7 +322,7 @@ export async function bootstrapWorker() {
       try {
         logger.debug(`[worker][DEBUG] active job id=${job.id} name=${job.name} data=${JSON.stringify(job.data)}`);
       } catch (e) {
-        logger.debug('[worker][DEBUG] active job (failed to stringify)', e);
+        logger.debug('[worker][DEBUG] active job (failed to stringify)', { error: String(e) });
       }
     });
     worker.on('stalled', (jobId) => {
