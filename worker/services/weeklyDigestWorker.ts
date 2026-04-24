@@ -205,7 +205,7 @@ export async function processWeeklyDigest(): Promise<void> {
 
   // Group children by parent
   const parentMap = new Map<string, { name: string; email: string; timezone?: string; children: { studentId: string; name: string }[] }>()
-  for (const link of allLinks) {
+  for (const link of allLinks as ParentStudentLinkRow[]) {
     if (!link.parent.email) continue
     if (!parentMap.has(link.parentId)) {
       parentMap.set(link.parentId, {
