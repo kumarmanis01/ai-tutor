@@ -14,11 +14,12 @@
  *
  * EDIT LOG:
  * - 2026-04-24T00:00:00Z | staff-engineer | created per P1.3-R AC
+ * - 2026-04-24T00:00:00Z | copilot | wrap ParentApproveInner in Suspense boundary to satisfy Next.js useSearchParams requirement
  */
 
 'use client'
 
-import { useEffect, useState } from 'react'
+import { Suspense, useEffect, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { signIn, useSession } from 'next-auth/react'
 import OTPInput from '@/components/parent/OTPInput'
@@ -55,7 +56,7 @@ const CONTROLS_NOT = [
 
 // ── Component ──────────────────────────────────────────────────────────────────
 
-export default function ParentApprovePage() {
+function ParentApproveInner() {
   const params = useSearchParams()
   const token = params.get('token')
   const actionParam = params.get('action')
@@ -437,6 +438,22 @@ export default function ParentApprovePage() {
         </a>
       </p>
     </PageWrapper>
+  )
+}
+
+// ── Page export (Suspense boundary required for useSearchParams) ───────────────
+
+export default function ParentApprovePage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-gray-50 dark:bg-gray-950 flex items-center justify-center">
+          <div className="w-8 h-8 border-4 border-[#534AB7] border-t-transparent rounded-full animate-spin" />
+        </div>
+      }
+    >
+      <ParentApproveInner />
+    </Suspense>
   )
 }
 

@@ -23,6 +23,7 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
+  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL ?? 'https://spinzyacademy.com'),
   title: 'Spinzy AI Tutor -- Teacher Vidya, Your Child\'s AI Home Tutor',
   description:
     'Turn doubts into confidence with Spinzy AI Tutor. Adaptive practice, mastery checks, and guided hints for Class 1-12 students. CBSE, ICSE & State Boards.',
