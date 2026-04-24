@@ -43,7 +43,8 @@ export class RedisRateLimiter implements RateLimiter {
       this.client = shared as unknown as Redis;
       this._ownsClient = false;
     } else {
-      this.client = new Redis(process.env.REDIS_URL ? process.env.REDIS_URL : undefined);
+      // Ensure REDIS_URL is available at runtime (validated at process start).
+      this.client = new Redis(process.env.REDIS_URL!);
       this._ownsClient = true;
     }
 

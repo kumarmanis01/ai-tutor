@@ -31,6 +31,7 @@ function autoRetryKey(hydrationJobId: string): string {
 export async function getAutoRetryCount(hydrationJobId: string): Promise<number> {
   try {
     const redis = getRedis();
+    if (!redis) return 0;
     const val = await redis.get(autoRetryKey(hydrationJobId));
     return val ? parseInt(val, 10) : 0;
   } catch {
@@ -56,6 +57,7 @@ export async function scheduleAutoRetry(
   lastError: string,
 ): Promise<{ scheduled: boolean; retryNumber: number }> {
   const redis = getRedis();
+  if (!redis) return { scheduled: false, retryNumber: 0 };
   const key = autoRetryKey(hydrationJobId);
 
   let currentCount = 0;

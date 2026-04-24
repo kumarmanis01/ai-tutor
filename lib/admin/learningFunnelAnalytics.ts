@@ -71,16 +71,18 @@ export async function getLearningFunnelSummary(opts: {
     take: 200_000,
   });
 
-  const sessionIds = sessions.map((s) => s.id);
+  type StructuredSessionRow = { id: string; meta?: any; state?: string | null; completedAt?: Date | null }
+  const sessionsRows = sessions as StructuredSessionRow[]
+  const sessionIds = sessionsRows.map((s: StructuredSessionRow) => s.id);
 
   const homeworkSubmitted = sessionIds.length
-    ? await prisma.sessionEvent.findMany({
+    ? (await prisma.sessionEvent.findMany({
         where: { sessionId: { in: sessionIds }, eventType: 'HOMEWORK_SUBMITTED' },
         select: { sessionId: true },
         distinct: ['sessionId'],
-      })
+      })) as { sessionId: string }[]
     : [];
-  const homeworkSet = new Set(homeworkSubmitted.map((r) => r.sessionId));
+  const homeworkSet = new Set((homeworkSubmitted as { sessionId: string }[]).map((r: { sessionId: string }) => r.sessionId));
 
   // Optional top-stage: recommendationComputed from HomeRecommendationDecision
   const decisionCount = await prisma.homeRecommendationDecision.count({
@@ -93,7 +95,7 @@ export async function getLearningFunnelSummary(opts: {
   let homeworkCompleted = 0;
   let sessionCompleted = 0;
 
-  for (const s of sessions) {
+  for (const s of sessionsRows) {
     if (hasMetaFlag(s.meta, 'explanationViewed')) explanationViewed++;
     if (getPracticeTotalAnswers(s.meta) >= 1) practiceCompleted++;
     if (hasMetaObject(s.meta, 'testResult')) testCompleted++;

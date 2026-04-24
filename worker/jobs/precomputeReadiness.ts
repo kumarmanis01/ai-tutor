@@ -27,25 +27,31 @@ export async function precomputeReadiness(): Promise<{ students: number; scores:
   const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
 
   // 1. Students active in the last 7 days
+  // Local row types for strict mode
+  type ActiveRow = { studentId: string };
+  type UserRow = { id: string; subjects: string[] };
+  type SubjectDefRow = { id: string; name: string; slug: string | null };
+  type ParentLinkRow = { parent: { id: string; email: string | null; whatsappPhone: string | null; name: string | null; language: string | null } };
+
   const activeRows = await prisma.structuredSession.findMany({
     where: { startedAt: { gte: since } },
     select: { studentId: true },
     distinct: ['studentId'],
-  })
+  }) as ActiveRow[]
 
   if (activeRows.length === 0) return { students: 0, scores: 0 }
 
-  const studentIds = activeRows.map((r) => r.studentId)
+  const studentIds = (activeRows as ActiveRow[]).map((r: ActiveRow) => r.studentId)
 
   // 2. Load subjects for those students
   const users = await prisma.user.findMany({
     where: { id: { in: studentIds } },
     select: { id: true, subjects: true },
-  })
+  }) as UserRow[]
 
   // Collect all unique subject name/slug strings
   const allSubjectStrings = [
-    ...new Set(users.flatMap((u) => (u.subjects as string[]).filter(Boolean))),
+    ...new Set((users as UserRow[]).flatMap((u: UserRow) => (u.subjects as string[]).filter(Boolean))),
   ]
 
   if (allSubjectStrings.length === 0) return { students: 0, scores: 0 }
@@ -57,12 +63,12 @@ export async function precomputeReadiness(): Promise<{ students: number; scores:
       OR: [{ name: { in: allSubjectStrings } }, { slug: { in: allSubjectStrings } }],
     },
     select: { id: true, name: true, slug: true },
-  })
+  }) as SubjectDefRow[]
 
   // Build name/slug → id map  and id → name map
   const subjectIdMap = new Map<string, string>()
   const subjectNameById = new Map<string, string>()
-  for (const sd of subjectDefs) {
+  for (const sd of subjectDefs as SubjectDefRow[]) {
     subjectIdMap.set(sd.name, sd.id)
     if (sd.slug) subjectIdMap.set(sd.slug, sd.id)
     subjectNameById.set(sd.id, sd.name)
@@ -72,10 +78,10 @@ export async function precomputeReadiness(): Promise<{ students: number; scores:
   let totalScores = 0
   let processedStudents = 0
 
-  for (const user of users) {
+  for (const user of users as UserRow[]) {
     const subjectIds = (user.subjects as string[])
       .filter(Boolean)
-      .map((s) => subjectIdMap.get(s))
+      .map((s: string) => subjectIdMap.get(s))
       .filter((id): id is string => id !== undefined)
 
     if (subjectIds.length === 0) continue
@@ -83,12 +89,12 @@ export async function precomputeReadiness(): Promise<{ students: number; scores:
     processedStudents++
 
     // Fetch parent links once per student (not once per subject)
-    let parentLinks: Array<{ parent: { id: string; email: string | null; whatsappPhone: string | null; name: string | null; language: string | null } }> = []
+    let parentLinks: ParentLinkRow[] = []
     try {
       parentLinks = await prisma.parentStudent.findMany({
         where: { studentId: user.id, status: 'active' },
         select: { parent: { select: { id: true, email: true, whatsappPhone: true, name: true, language: true } } },
-      })
+      }) as ParentLinkRow[]
     } catch (err) {
       logger.warn('precomputeReadiness.parentLinksFailed', { studentId: user.id, error: String(err) })
     }
@@ -176,7 +182,7 @@ async function maybeFireReadinessDrop(
               whatsappPhone: pl.parent.whatsappPhone ?? undefined,
               subject,
               html,
-              meta: { studentId, type: 'milestone', locale: pl.parent.language },
+              meta: { studentId, type: 'milestone', locale: pl.parent.language ?? undefined },
             }),
           )
           void Promise.allSettled(sends)
@@ -224,7 +230,7 @@ async function maybeFireReadinessMilestone(
               whatsappPhone: pl.parent.whatsappPhone ?? undefined,
               subject,
               html,
-              meta: { studentId, type: 'milestone', locale: pl.parent.language },
+              meta: { studentId, type: 'milestone', locale: pl.parent.language ?? undefined },
             }),
           )
           void Promise.allSettled(sends)

@@ -1,3 +1,18 @@
+/**
+ * FILE OBJECTIVE:
+ * - Centralized LLM calling helpers with logging, persistence, and tutor-specific retry logic.
+ *
+ * LINKED UNIT TEST:
+ * - tests/unit/lib/callLLM.spec.ts
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/COPILOT_GUARDRAILS.md
+ * - .github/copilot-instructions.md
+ *
+ * EDIT LOG:
+ * - 2026-04-24T00:00:00Z | copilot | strict-mode: annotate callbacks and add header
+ */
+
 import crypto from 'crypto'
 import OpenAI from 'openai'
 import { prisma } from '@/lib/prisma'
@@ -57,7 +72,7 @@ async function prepareRetrievalContext(meta: any, charLimit = 2000) {
       const chapter = t.chapter?.name || ''
       // sibling topics
       const siblings = await prisma.topicDef.findMany({ where: { chapterId: t.chapterId }, select: { name: true }, take: 20 })
-      const topicNames = siblings.map(s => s.name).join(', ')
+      const topicNames = siblings.map((s: { name: string }) => s.name).join(', ')
       const parts: string[] = []
       if (board) parts.push(`Board: ${board}`)
       if (grade) parts.push(`Grade: ${grade}`)

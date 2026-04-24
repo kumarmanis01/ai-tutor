@@ -50,7 +50,7 @@ export async function getWeakTopics(studentId: string): Promise<WeakTopic[]> {
  */
 export async function getWeakTopicIds(studentId: string): Promise<Set<string>> {
   const topics = await getWeakTopics(studentId);
-  return new Set(topics.map((t) => t.topicId));
+  return new Set(topics.map((t: WeakTopic) => t.topicId));
 }
 
 export interface WeakTopicWithName extends WeakTopic {
@@ -78,7 +78,7 @@ export async function getWeakTopicsWithNames(studentId: string): Promise<WeakTop
     take: 5,
   });
 
-  return rows.map((r) => ({
+  return rows.map((r: { topicId: string; mastery: number; practiceCount: number; lastStudiedAt: Date; topic: { name: string } }) => ({
     topicId: r.topicId,
     mastery: r.mastery,
     practiceCount: r.practiceCount,

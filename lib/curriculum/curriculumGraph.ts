@@ -82,7 +82,10 @@ async function buildGraph(): Promise<CurriculumGraphSnapshot> {
     orderBy: [{ chapter: { subject: { name: 'asc' } } }, { chapter: { order: 'asc' } }, { order: 'asc' }],
   });
 
-  const topics: CurriculumTopic[] = rawTopics.map((t) => ({
+  // Narrow Prisma result for strict typing
+  const raw = rawTopics as Array<any>;
+
+  const topics: CurriculumTopic[] = raw.map((t: any) => ({
     topicId: t.id,
     topicName: t.name,
     chapterId: t.chapter.id,
@@ -186,6 +189,7 @@ let inFlightBuild: Promise<CurriculumGraphSnapshot> | null = null;
 async function loadFromCache(): Promise<CurriculumGraphSnapshot | null> {
   try {
     const redis = getRedis();
+    if (!redis) return null;
     const raw = await redis.get(CACHE_KEY);
     if (!raw) return null;
     return JSON.parse(raw) as CurriculumGraphSnapshot;
@@ -198,6 +202,7 @@ async function loadFromCache(): Promise<CurriculumGraphSnapshot | null> {
 async function storeInCache(snapshot: CurriculumGraphSnapshot): Promise<void> {
   try {
     const redis = getRedis();
+    if (!redis) return;
     await redis.set(CACHE_KEY, JSON.stringify(snapshot), 'EX', CACHE_TTL_SECONDS);
     logger.debug('[CURRICULUM_GRAPH_CACHE] stored', { ttl: CACHE_TTL_SECONDS });
   } catch (err) {
@@ -335,6 +340,7 @@ export function getCurriculumPath(
 export async function invalidateCurriculumGraph(): Promise<void> {
   try {
     const redis = getRedis();
+    if (!redis) return;
     await redis.del(CACHE_KEY);
     logger.info('[CURRICULUM_GRAPH_CACHE] invalidated');
   } catch (err) {

@@ -1,25 +1,29 @@
 /**
- * FILE: Hydration Reconciler Service
+ * FILE OBJECTIVE:
+ * - Reconciler service that orchestrates hierarchical HydrateAll jobs.
  *
- * OBJECTIVE:
- * Orchestrates the cascade of HydrateAll jobs across hierarchical levels.
+ * LINKED UNIT TEST:
+ * - tests/unit/worker/hydrationReconciler.spec.ts
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/COPILOT_GUARDRAILS.md
+ * - .github/copilot-instructions.md
+ *
+ * EDIT LOG:
+ * - 2026-04-23T00:00:00Z | copilot | fix(strict): add typed groupBy handling, annotate callbacks, guard Promise.all types
  *
  * RESPONSIBILITIES:
- * 1. Poll root HydrationJobs with incomplete children
- * 2. Check completion status of each hierarchical level
- * 3. Create child jobs when parent level completes
- * 4. Update progress counters on root job
- * 5. Mark root job as completed when all levels done
+ * - Poll root HydrationJobs with incomplete children
+ * - Check completion status of each hierarchical level
+ * - Create child jobs when parent level completes
+ * - Update progress counters on root job
+ * - Mark root job as completed when all levels done
  *
  * ARCHITECTURE:
  * - Runs as scheduled job (cron: every 5 minutes)
  * - Uses JobLock to ensure single reconciler instance
  * - Short transactions for all DB operations
  * - Creates child jobs in Outbox pattern
- *
- * LINKED DOCS:
- * - /Docs/HYDRATEALL_IMPLEMENTATION_GUIDE.md
- * - /Docs/HYDRATEALL_FINAL_ARCHITECTURE.md
  */
 
 import { prisma } from '@/lib/prisma.js';
@@ -211,10 +215,22 @@ export class HydrationReconciler {
       _count: true,
     });
 
-    const totalJobs = counts.reduce((sum, c) => sum + c._count, 0);
-    const terminalJobs = counts
+    // Narrow the groupBy result so callbacks below have proper types.
+    type CountRow = { status: string; _count: number | Record<string, number> };
+    const countsTyped = counts as CountRow[];
+
+    const extractCount = (c: CountRow): number => {
+      if (typeof c._count === 'number') return c._count;
+      // Prisma may return an object with counts keyed by field (or _all).
+      const obj = c._count as Record<string, number>;
+      if (typeof obj._all === 'number') return obj._all;
+      return Object.values(obj).reduce((a, b) => a + b, 0);
+    };
+
+    const totalJobs = countsTyped.reduce((sum, c) => sum + extractCount(c), 0);
+    const terminalJobs = countsTyped
       .filter((c) => ['completed', 'failed', 'cancelled'].includes(c.status))
-      .reduce((sum, c) => sum + c._count, 0);
+      .reduce((sum, c) => sum + extractCount(c), 0);
 
     // If no jobs at this level: complete only if caller explicitly allows empty levels
     if (totalJobs === 0) return allowEmpty;
@@ -454,7 +470,7 @@ export class HydrationReconciler {
         where: { id: rootJobId },
         select: { subjectId: true },
       })
-      .then((job) => job?.subjectId);
+      .then((job: { subjectId?: string | null } | null) => job?.subjectId);
 
     if (!subjectId) return;
 
@@ -551,7 +567,7 @@ export class HydrationReconciler {
     // Aggregate actual content counts for a final audit record
     try {
       const subjectId = rootJob.subjectId;
-      const [chapters, topics, notes, questions, llmLogs] = await Promise.all([
+      const _res = await Promise.all([
         prisma.chapterDef.count({ where: { subjectId, lifecycle: 'active' } }),
         prisma.topicDef.count({ where: { chapter: { subjectId }, lifecycle: 'active' } }),
         prisma.topicNote.count({ where: { topic: { chapter: { subjectId } } } }),
@@ -561,6 +577,12 @@ export class HydrationReconciler {
           select: { tokensUsed: true, success: true },
         }),
       ]);
+
+      const chapters = _res[0] as number;
+      const topics = _res[1] as number;
+      const notes = _res[2] as number;
+      const questions = _res[3] as number;
+      const llmLogs = _res[4] as Array<{ tokensUsed?: number | null; success?: boolean | null }>;
 
       const totalLLMCalls = llmLogs.length;
       const tokensUsed = llmLogs.reduce((sum, l) => sum + (l.tokensUsed ?? 0), 0);

@@ -73,7 +73,7 @@ export async function getQualitySummary(opts: {
   }
 
   const rejectionReasons = Array.from(reasonCounts.entries())
-    .map(([reason, count]) => ({ reason, count }))
+    .map(([reason, count]: [string, number]) => ({ reason, count }))
     .sort((a, b) => b.count - a.count)
     .slice(0, 20);
 
@@ -129,7 +129,7 @@ export async function getHistoryForEntity(
     },
   });
 
-  return rows.map((r) => ({
+  return rows.map((r: { id: string; entityType: string; entityId: string; fromStatus: string; toStatus: string; reason: string | null; actorId: string | null; createdAt: Date }) => ({
     id: r.id,
     entityType: r.entityType,
     entityId: r.entityId,

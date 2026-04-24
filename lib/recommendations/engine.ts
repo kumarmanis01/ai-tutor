@@ -179,12 +179,12 @@ export class RecommendationEngine {
       const result = this.diversifyAndSort(scored, limit);
 
       if (isTraceEnabled()) {
-        const traces: RecommendationTraceInput[] = result.map(r => ({
+        const traces: RecommendationTraceInput[] = result.map((r: RecommendationItem) => ({
           studentId: this.userId,
           entityType: r.type,
           entityId: r.contentId,
           score: r.score,
-          signals: this._signalCache.get(r.contentId) || { reasoning: r.reasoning },
+          signals: (this._signalCache.get(r.contentId) as Record<string, unknown>) || { reasoning: r.reasoning },
         }));
         persistRecommendationTraces(traces).catch(() => {});
       }
@@ -303,29 +303,45 @@ export class RecommendationEngine {
           })
         : [],
     ]);
-    const lowScoreTopicIds = lowScoreChapterDefs.flatMap(c => c.topics.map(t => t.id));
-    const weakSubjectTopicIds = weakSubjectTopics.map(t => t.id);
+    // Narrow types for the raw Prisma rows used below to avoid implicit any
+    type ChapterWithTopics = { topics: Array<{ id: string }> };
+    type TopicRow = { id: string };
+    type SessionRow = {
+      activityType?: string | null;
+      activityRef?: string | null;
+      isCompleted?: boolean | null;
+      completionPercentage?: number | null;
+      difficultyLevel?: string | null;
+      actualTimeSpent?: number | null;
+      startedAt?: Date | string | null;
+      meta?: Record<string, unknown> | null;
+    };
+    type CompletedRec = { contentId: unknown };
+    type EngagementRow = { contentId: string; isShown?: boolean; isClicked?: boolean; isCompleted?: boolean; isIgnored?: boolean };
+
+    const lowScoreTopicIds = lowScoreChapterDefs.flatMap((c: ChapterWithTopics) => c.topics.map((t: TopicRow) => t.id));
+    const weakSubjectTopicIds = weakSubjectTopics.map((t: TopicRow) => t.id);
 
     // ── Engagement patterns ──
-    const difficulties = sessions.map(s => s.difficultyLevel).filter(Boolean);
+    const difficulties = (sessions as SessionRow[]).map((s) => s.difficultyLevel).filter(Boolean) as string[];
     const preferredDifficulty = this.getMostCommon(difficulties) || 'MEDIUM';
-    const sessionDurations = sessions.map(s => s.actualTimeSpent).filter(Boolean);
+    const sessionDurations = (sessions as SessionRow[]).map((s) => s.actualTimeSpent).filter(Boolean) as number[];
     const averageSessionDuration =
       sessionDurations.length > 0
-        ? sessionDurations.reduce((a, b) => a + b, 0) / sessionDurations.length
+        ? sessionDurations.reduce((a: number, b: number) => a + b, 0) / sessionDurations.length
         : 15;
-    const sessionHours = sessions.map(s => new Date(s.startedAt).getHours());
+    const sessionHours = (sessions as SessionRow[]).map((s) => new Date(String(s.startedAt)).getHours());
     const activeHours = [...new Set(sessionHours)].slice(0, 5) as number[];
     const typeCounts: Record<string, number> = {};
-    for (const s of sessions) {
-      const t = s.activityType?.toLowerCase() || 'other';
+    for (const s of sessions as SessionRow[]) {
+      const t = (s.activityType as string | undefined)?.toLowerCase() || 'other';
       typeCounts[t] = (typeCounts[t] || 0) + 1;
     }
 
     // ── Completed content (both raw and normalized) ──
-    const completedContentIds = new Set<string>(completedRecs.map(r => String(r.contentId)));
+    const completedContentIds = new Set<string>((completedRecs as CompletedRec[]).map((r) => String(r.contentId)));
     const completedTopicIds = new Set<string>();
-    for (const r of completedRecs) {
+    for (const r of completedRecs as CompletedRec[]) {
       const cid = String(r.contentId);
       if (cid.includes(':')) {
         const tid = cid.split(':')[1];
@@ -335,8 +351,8 @@ export class RecommendationEngine {
 
     // ── Engagement by type (Prompt 2 -- mapped keys) ──
     const engagementByType: Record<string, { shown: number; clicked: number; completed: number; ignored: number }> = {};
-    for (const rec of engagementHistory) {
-      const rawPrefix = rec.contentId.includes(':') ? rec.contentId.split(':')[0] : 'catalog';
+    for (const rec of engagementHistory as EngagementRow[]) {
+      const rawPrefix = rec.contentId && rec.contentId.includes(':') ? rec.contentId.split(':')[0] : 'catalog';
       const mapped = SOURCE_TO_ENGAGEMENT_TYPE[rawPrefix] || rawPrefix;
       if (!engagementByType[mapped]) {
         engagementByType[mapped] = { shown: 0, clicked: 0, completed: 0, ignored: 0 };

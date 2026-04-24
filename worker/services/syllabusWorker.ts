@@ -129,7 +129,7 @@ export async function handleSyllabusJob(jobId: string) {
       // Build ordered map: chapter number → opening text snippet (first 200 chars)
       const chapterMap = new Map<number, string>()
       for (const chunk of firstChunks) {
-        const chapterTag = chunk.conceptIds.find((t) => t.startsWith('chapter:'))
+        const chapterTag = chunk.conceptIds.find((t: string) => t.startsWith('chapter:'))
         if (!chapterTag) continue
         const chNum = parseInt(chapterTag.split(':')[1], 10)
         if (!chapterMap.has(chNum)) {
@@ -151,7 +151,7 @@ export async function handleSyllabusJob(jobId: string) {
         context: { jobId: job.id, subject: subjectSlug, grade },
       })
     }
-  } catch (err) {
+  } catch (err: unknown) {
     // Non-fatal: fall back to GPT knowledge if chunk query fails
     logger.warn('[syllabusWorker] CurriculumChunk query error -- using GPT knowledge', {
       event: 'ncert_grounding_error',
@@ -182,10 +182,11 @@ export async function handleSyllabusJob(jobId: string) {
       meta: { promptType: 'syllabus', board, grade, subject: subjectName, language, schemaHash: rendered.schemaHash, promptVersion: rendered.version, useRag: true, hydrationJobId: job.id, suppressLog: true },
       timeoutMs: Number(process.env.SYLLABUS_LLM_TIMEOUT_MS || 20_000)
     })
-  } catch (err) {
+  } catch (err: unknown) {
     const { formatLastError, inferFailureCodeFromMessage } = await import('@/lib/failureCodes');
-    const code = inferFailureCodeFromMessage(err?.message || '');
-    const le = formatLastError(code, String(err?.message || 'llm_call_failed'));
+    const emsg = err instanceof Error ? err.message : String(err);
+    const code = inferFailureCodeFromMessage(emsg || '');
+    const le = formatLastError(code, String(emsg || 'llm_call_failed'));
     await prisma.hydrationJob.update({ where: { id: job.id }, data: { status: JobStatus.Failed, lastError: le } })
     throw err
   }
@@ -206,8 +207,8 @@ export async function handleSyllabusJob(jobId: string) {
     // Strict Zod validation
     validateOrThrow(raw, { jobType: 'syllabus', language, grade, subject: subjectName })
     parsed = raw
-  } catch (err) {
-    logger.error("Failed to parse LLM output in handleSyllabusJob", { jobId: job.id, error: err });
+  } catch (err: unknown) {
+    logger.error("Failed to parse LLM output in handleSyllabusJob", { jobId: job.id, error: String(err) });
     // mark hydration job failed with parse error
     const { formatLastError, FailureCode } = await import('@/lib/failureCodes');
     const le = formatLastError(FailureCode.PARSE_FAILED, 'invalid_llm_output');

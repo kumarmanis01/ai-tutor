@@ -28,6 +28,10 @@ import { logger } from '@/lib/logger.js';
 import { JobStatus, ApprovalStatus } from '@/lib/ai-engine/types';
 import { getNextVersion } from '@/lib/getNextVersion';
 
+// Local row types for strict-mode
+type SiblingRow = { name: string }
+type ChunkRow = { content?: string | null }
+
 // If true, write raw LLM output only to worker logs (via logger) and DO NOT persist
 // the raw text to `AIContentLog.responseBody.raw`. This is useful for transient
 // debugging on VPS without storing potentially sensitive raw outputs.
@@ -248,7 +252,7 @@ export async function handleNotesJob(jobId: string): Promise<void> {
   // Query sibling topics with lower order to build priorTopics list
   const priorTopics: string[] = []
   try {
-    const siblings = await prisma.topicDef.findMany({
+    const siblings = (await prisma.topicDef.findMany({
       where: {
         chapterId: topic.chapterId,
         order: { lt: topic.order ?? 0 },
@@ -256,8 +260,8 @@ export async function handleNotesJob(jobId: string): Promise<void> {
       select: { name: true },
       orderBy: { order: 'asc' },
       take: 5,
-    })
-    priorTopics.push(...siblings.map((s) => s.name))
+    })) as SiblingRow[]
+    priorTopics.push(...siblings.map((s: SiblingRow) => s.name))
   } catch { /* non-fatal -- priorTopics will be empty */ }
 
   // ── Ground notes in NCERT CurriculumChunk content when available ─────────────
@@ -266,7 +270,7 @@ export async function handleNotesJob(jobId: string): Promise<void> {
     const subjectSlug = subjectName.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')
     const chapterOrder = topic.chapter.order ?? 0
     if (chapterOrder > 0) {
-      const chunks = await prisma.curriculumChunk.findMany({
+      const chunks = (await prisma.curriculumChunk.findMany({
         where: {
           subject: subjectSlug,
           grade: String(grade),
@@ -275,9 +279,9 @@ export async function handleNotesJob(jobId: string): Promise<void> {
         select: { content: true },
         orderBy: { createdAt: 'asc' },
         take: 8,
-      })
+      })) as ChunkRow[]
       if (chunks.length > 0) {
-        ncertContext = chunks.map((c) => c.content ?? '').filter(Boolean).join('\n\n---\n\n')
+        ncertContext = chunks.map((c: ChunkRow) => c.content ?? '').filter(Boolean).join('\n\n---\n\n')
         logger.info('[notesWorker] grounding notes with NCERT chunks', {
           event: 'ncert_grounding',
           context: { jobId: job.id, chapterOrder, subject: subjectSlug, grade, chunkCount: chunks.length },

@@ -83,7 +83,7 @@ export async function getRecentlyUsedQuestionIds(
     },
     select: { questionId: true },
   });
-  return new Set(rows.map((r) => r.questionId));
+  return new Set(rows.map((r: { questionId: string }) => r.questionId));
 }
 
 /**
@@ -110,7 +110,7 @@ export async function getRecentlyUsedQuestionPrompts(
     select: { question: { select: { prompt: true } } },
     take: 200,
   });
-  return rows.map((r) => r.question.prompt);
+  return rows.map((r: { question: { prompt: string } }) => r.question.prompt);
 }
 
 /**

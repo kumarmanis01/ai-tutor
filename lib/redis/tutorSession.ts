@@ -1,3 +1,18 @@
+/**
+ * FILE OBJECTIVE:
+ * - Lightweight helper for storing per-tutor-session state in Redis.
+ *
+ * LINKED UNIT TEST:
+ * - tests/unit/lib/redis/tutorSession.spec.ts
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/COPILOT_GUARDRAILS.md
+ * - .github/copilot-instructions.md
+ *
+ * EDIT LOG:
+ * - 2026-04-23T00:00:00Z | copilot | fix(strict): guard getRedis() before Redis ops
+ */
+
 import { getRedis } from '@/lib/redis'
 
 // Key pattern: session:tutor:{sessionId}   TTL: 86400s (refreshed on every write)
@@ -35,6 +50,7 @@ function safeParse(raw: string | null, sessionId: string): RedisSessionState | n
 export async function getTutorSession(sessionId: string): Promise<RedisSessionState | null> {
   try {
     const redis = getRedis()
+    if (!redis) return null
     const raw = await redis.get(key(sessionId))
     return safeParse(raw, sessionId)
   } catch {
@@ -45,6 +61,7 @@ export async function getTutorSession(sessionId: string): Promise<RedisSessionSt
 export async function setTutorSession(sessionId: string, state: RedisSessionState): Promise<void> {
   try {
     const redis = getRedis()
+    if (!redis) return
     const payload: RedisSessionState = { ...state, sessionId }
     await redis.set(key(sessionId), JSON.stringify(payload), 'EX', TTL_SECONDS)
   } catch {
@@ -69,6 +86,7 @@ export async function updateTutorSession(sessionId: string, partial: Partial<Red
 export async function deleteTutorSession(sessionId: string): Promise<void> {
   try {
     const redis = getRedis()
+    if (!redis) return
     await redis.del(key(sessionId))
   } catch {
     // never throw

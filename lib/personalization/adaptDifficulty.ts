@@ -1,3 +1,19 @@
+
+/**
+ * FILE OBJECTIVE:
+ * - Adjusts student difficulty preference after test using deterministic tuning engine.
+ *
+ * LINKED UNIT TEST:
+ * - tests/unit/lib/personalization/adaptDifficulty.spec.ts
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/COPILOT_GUARDRAILS.md
+ * - .github/copilot-instructions.md
+ *
+ * EDIT LOG:
+ * - 2026-04-23T00:00:00Z | copilot | strict-mode: add local row types, annotate callbacks, file header
+ */
+
 import { prisma } from '@/lib/prisma';
 import { logger } from '@/lib/logger';
 import {
@@ -53,40 +69,51 @@ export async function adjustDifficultyAfterTest(
   attempt: TestAttempt,
   result: GradingResult,
 ): Promise<DifficultyFeedback | null> {
+  // Local row type for strict mode
+  type UserRow = { grade: string | number | null; subjects?: unknown };
   const user = await prisma.user.findUnique({
     where: { id: userId },
     select: { grade: true, subjects: true },
-  });
+  }) as UserRow | null;
   if (!user?.grade) return null;
 
   const gradeNum = parseInt(String(user.grade), 10);
   if (isNaN(gradeNum) || gradeNum < 1 || gradeNum > 12) return null;
 
   // Get the subject from the test questions
+
+  // Local row type for attemptQuestion
+  type AttemptQuestionRow = { question?: { subject?: string | null; difficulty?: string | null } | null };
   const aq = await prisma.attemptQuestion.findFirst({
     where: { testResultId: attempt.id },
     include: { question: { select: { subject: true, difficulty: true } } },
-  });
+  }) as AttemptQuestionRow | null;
   const subject = aq?.question?.subject ?? 'general';
   const currentPrismaDifficulty = aq?.question?.difficulty ?? 'medium';
 
   // Look up existing preference
+
+  // Local row type for studentContentPreference
+  type PreferenceRow = { id: string; difficulty: string };
   const pref = await prisma.studentContentPreference.findFirst({
     where: { studentId: userId, subject },
-  });
+  }) as PreferenceRow | null;
 
   const currentDifficulty =
     PRISMA_TO_ENGINE[pref?.difficulty ?? currentPrismaDifficulty] ?? DifficultyLevel.MEDIUM;
 
   // Compute average time per question from AttemptQuestions
+
+  // Local row type for attemptQuestion timeSpent
+  type AttemptQuestionTimeRow = { timeSpent: number | null };
   const allAqs = await prisma.attemptQuestion.findMany({
     where: { testResultId: attempt.id },
     select: { timeSpent: true },
-  });
-  const timesWithValues = allAqs.filter((a) => a.timeSpent != null);
+  }) as AttemptQuestionTimeRow[];
+  const timesWithValues = allAqs.filter((a: AttemptQuestionTimeRow) => a.timeSpent != null);
   const avgTime =
     timesWithValues.length > 0
-      ? timesWithValues.reduce((sum, a) => sum + (a.timeSpent ?? 0), 0) / timesWithValues.length
+      ? timesWithValues.reduce((sum: number, a: AttemptQuestionTimeRow) => sum + (a.timeSpent ?? 0), 0) / timesWithValues.length
       : 30; // default 30s if no time data
 
   const context: StudentDifficultyContext = {
