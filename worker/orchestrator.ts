@@ -231,7 +231,34 @@ async function main() {
 // that may not exist in ESM. Use a guarded CommonJS check and restrict the
 // eslint exception to this single line to make the intent explicit.
 // eslint-disable-next-line @typescript-eslint/no-require-imports -- allowed: node script entrypoint check
-if (typeof require !== 'undefined' && require.main === module) {
+import { pathToFileURL } from 'url'
+
+const isModuleMain = (() => {
+  try {
+    // CommonJS-style check (works when running compiled CJS)
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    if (typeof require !== 'undefined' && (require as any).main === module) return true
+  } catch (_) {
+    // ignore
+  }
+
+  try {
+    // ESM-style check: compare entrypoint file URL to import.meta.url
+    // `import.meta` may not be available in CJS; guard accesses with try/catch.
+    // @ts-ignore -- import.meta is supported in ESM builds
+    if (typeof import.meta !== 'undefined' && typeof process.argv[1] === 'string') {
+      const entryUrl = pathToFileURL(process.argv[1]).href
+      // @ts-ignore
+      if (import.meta.url === entryUrl) return true
+    }
+  } catch (_) {
+    // ignore
+  }
+
+  return false
+})()
+
+if (isModuleMain) {
   main().catch((err) => { logger.error('[orchestrator] fatal error', err instanceof Error ? { error: err.message, stack: err.stack } : { error: String(err) }); process.exit(2) })
 }
 

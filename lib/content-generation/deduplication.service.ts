@@ -75,33 +75,48 @@ export async function setDedup(normalizedTopic: string, jobId: string): Promise<
   }
 }
 
+/** Remove dedup key (best-effort). */
+export async function clearDedup(normalizedTopic: string): Promise<void> {
+  const redis = getRedis()
+  if (!redis) return
+  try {
+    await redis.del(dedupKey(normalizedTopic))
+  } catch (err: unknown) {
+    logger.error('Dedup clear failed', { normalizedTopic, error: err })
+  }
+}
+
 /**
  * Add a subscriber (student) to an existing GenerationJob.
  * Called when a duplicate request is detected for a PENDING/PROCESSING job.
  */
 export async function addSubscriber(jobId: string, studentId: string): Promise<void> {
   try {
-    const existing = await prisma.generationJob.findUnique({
-      where: { id: jobId },
-      select: { subscriberIds: true },
-    })
+    // Attempt an atomic append only if the studentId is not already present.
+    // This uses a single SQL update with a conditional to avoid TOCTOU races
+    // that can occur when multiple requests read-then-update concurrently.
+    // Returns number of rows affected (1 if appended, 0 otherwise).
+    // Note: Using `$executeRaw` with parameter binding to avoid SQL injection.
+    const updated = await prisma.$executeRaw`
+      UPDATE "GenerationJob"
+      SET "subscriberIds" = array_append("subscriberIds", ${studentId})
+      WHERE id = ${jobId} AND NOT ("subscriberIds" @> ARRAY[${studentId}]::text[])
+    `
 
+    if (typeof updated === 'number' && updated > 0) {
+      logger.info('Subscriber atomically added to generation job', { jobId, studentId })
+      return
+    }
+
+    // If no rows were updated, either the job is missing or the student is already subscribed.
+    const existing = await prisma.generationJob.findUnique({ where: { id: jobId }, select: { subscriberIds: true } })
     if (!existing) {
       logger.warn('addSubscriber: job not found', { jobId, studentId })
       return
     }
 
-    if (existing.subscriberIds.includes(studentId)) {
-      // Already subscribed — idempotent
-      return
-    }
-
-    await prisma.generationJob.update({
-      where: { id: jobId },
-      data: { subscriberIds: { push: studentId } },
-    })
-
-    logger.info('Subscriber added to generation job', { jobId, studentId })
+    // Already subscribed — idempotent
+    if (existing.subscriberIds.includes(studentId)) return
   } catch (err: unknown) {
     logger.error('addSubscriber failed', { jobId, studentId, error: err })
   }

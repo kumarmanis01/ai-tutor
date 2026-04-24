@@ -16,14 +16,14 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
+import { getServerSessionForHandlers } from '@/lib/session'
 import { prisma } from '@/lib/db'
 import { getContentGenerationQueue } from '@/lib/content-generation/queue'
 import {
   normalizeTopic,
   checkDedup,
   setDedup,
+  clearDedup,
   addSubscriber,
 } from '@/lib/content-generation/deduplication.service'
 import { logger } from '@/lib/logger'
@@ -32,7 +32,8 @@ import { logger } from '@/lib/logger'
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
   // Auth guard: session check first, before any DB query
-  const session = await getServerSession(authOptions)
+  // Use shared helper to centralize `authOptions` and enable test injection
+  const session = await getServerSessionForHandlers()
   if (!session?.user?.id) {
     return NextResponse.json(
       { code: 'UNAUTHORIZED', message: 'Authentication required' },
@@ -110,9 +111,6 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     )
   }
 
-  // Register in dedup cache
-  await setDedup(normalizedTopic, dbJob.id)
-
   // Enqueue BullMQ job
   try {
     const queue = getContentGenerationQueue()
@@ -129,6 +127,9 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       },
       { jobId: dbJob.id }, // Use DB job ID as BullMQ job ID for traceability
     )
+    // Register in dedup cache only after enqueue succeeds so a failed enqueue
+    // does not cause subsequent requests to be routed to a failed job.
+    await setDedup(normalizedTopic, dbJob.id)
   } catch (err: unknown) {
     logger.error('Failed to enqueue content generation job', { jobId: dbJob.id, error: err })
     // Mark job as failed in DB
@@ -136,6 +137,9 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       where: { id: dbJob.id },
       data: { status: 'FAILED', errorMessage: 'Failed to enqueue job' },
     }).catch(() => {})
+    // Ensure dedup does not point to a failed job if an earlier set succeeded
+    // (best-effort cleanup)
+    try { await clearDedup(normalizedTopic) } catch {}
     return NextResponse.json(
       { code: 'SERVER_ERROR', message: 'Failed to queue generation job' },
       { status: 500 },

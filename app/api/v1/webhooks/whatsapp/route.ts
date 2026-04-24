@@ -55,8 +55,11 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   const signature = req.headers.get('x-hub-signature-256') ?? ''
 
   if (!validateWebhookSignature(rawBody, signature)) {
-    logger.warn('WhatsApp webhook signature validation failed', { signature })
-    return NextResponse.json({ error: 'Invalid signature' }, { status: 403 })
+    // Per webhook guidance, do not return an error status for signature
+    // verification failures to avoid client retries from Meta. Log and
+    // return 200 without processing.
+    logger.warn('WhatsApp webhook signature validation failed — skipping processing', { signature })
+    return NextResponse.json({ ok: true })
   }
 
   let payload: WhatsAppWebhookPayload
