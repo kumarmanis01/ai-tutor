@@ -73,7 +73,7 @@ export async function getQualitySummary(opts: {
   }
 
   const rejectionReasons = Array.from(reasonCounts.entries())
-    .map(([reason, count]) => ({ reason, count }))
+    .map(([reason, count]: [string, number]) => ({ reason, count }))
     .sort((a, b) => b.count - a.count)
     .slice(0, 20);
 
