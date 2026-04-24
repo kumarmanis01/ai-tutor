@@ -12,6 +12,7 @@
  *
  * EDIT LOG:
  * - 2026-04-23T00:00:00Z | copilot | strict-mode: add local row types, annotate callbacks, file header
+ * - 2026-04-24T00:00:00Z | copilot | strict-mode: add unit test and header update
  */
 
 import { prisma } from '@/lib/prisma';
