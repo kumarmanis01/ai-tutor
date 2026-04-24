@@ -182,7 +182,7 @@ async function maybeFireReadinessDrop(
               whatsappPhone: pl.parent.whatsappPhone ?? undefined,
               subject,
               html,
-              meta: { studentId, type: 'milestone', locale: pl.parent.language },
+              meta: { studentId, type: 'milestone', locale: pl.parent.language ?? undefined },
             }),
           )
           void Promise.allSettled(sends)
@@ -230,7 +230,7 @@ async function maybeFireReadinessMilestone(
               whatsappPhone: pl.parent.whatsappPhone ?? undefined,
               subject,
               html,
-              meta: { studentId, type: 'milestone', locale: pl.parent.language },
+              meta: { studentId, type: 'milestone', locale: pl.parent.language ?? undefined },
             }),
           )
           void Promise.allSettled(sends)
