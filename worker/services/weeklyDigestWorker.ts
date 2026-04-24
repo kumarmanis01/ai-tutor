@@ -228,7 +228,7 @@ export async function processWeeklyDigest(): Promise<void> {
   const profiles = parentIds.length
     ? await prisma.parentProfile.findMany({ where: { userId: { in: parentIds } } }) as ParentProfileLocal[]
     : []
-  const profileMap = new Map(profiles.map((p: ParentProfileRowStrict) => [p.userId, p]))
+  const profileMap = new Map(profiles.map((p: ParentProfileLocal) => [p.userId, p]))
 
   let scheduled = 0
 
