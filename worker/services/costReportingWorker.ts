@@ -202,12 +202,12 @@ export async function runDailyCostReport(): Promise<CostReportResult> {
       take: 7,
     }),
     // Cache hit rate: count cached=true vs total for yesterday
-    (prisma.$queryRaw`
+    prisma.$queryRaw`
       SELECT COUNT(*)::bigint AS total,
              COUNT(*) FILTER (WHERE cached = true)::bigint AS cached
       FROM "AITutorTurnLog"
       WHERE "createdAt" >= ${start} AND "createdAt" < ${end}
-    `) as Array<{ total: bigint; cached: bigint }>,
+    `,
     // Previous day metric for dropout detection
     prisma.dailyCostMetric.findFirst({
       where: { date: { gte: sevenDaysAgo, lt: start } },

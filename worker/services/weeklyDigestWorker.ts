@@ -262,9 +262,9 @@ export async function processWeeklyDigest(): Promise<void> {
       // Dedup key for this parent-week to avoid duplicate outbox rows
       const dedupKey = `weeklyDigest:${parentId}:${monday.toISOString().slice(0, 10)}`
 
-      // Local row type for outbox
-      type OutboxRowStrict = { meta: { path: string[]; equals: string } } | null;
-      const existing = await prisma.outbox.findFirst({ where: { meta: { path: ['dedupKey'], equals: dedupKey } } }) as OutboxRowStrict
+      // Local row type for outbox — treat `meta` as unknown/any and narrow at runtime
+      type OutboxRowStrict = { meta: any } | null;
+      const existing = (await prisma.outbox.findFirst({ where: { meta: { path: ['dedupKey'], equals: dedupKey } } })) as OutboxRowStrict
       if (existing) {
         logger.info('[weeklyDigest] outbox exists, skipping create', { parentId, dedupKey })
         continue

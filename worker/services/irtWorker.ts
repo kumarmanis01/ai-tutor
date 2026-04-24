@@ -183,7 +183,7 @@ async function checkChapterMastery(studentId: string, conceptId: string): Promis
             whatsappPhone: p.parent.whatsappPhone ?? undefined,
             subject,
             html,
-            meta: { studentId, type: 'milestone', locale: p.parent.language },
+            meta: { studentId, type: 'milestone', locale: p.parent.language ?? undefined },
           }),
         )
 
