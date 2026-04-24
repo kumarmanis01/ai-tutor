@@ -1,6 +1,9 @@
 /** Jest config using ts-jest for TypeScript tests */
 module.exports = {
   preset: 'ts-jest',
+  // Default to Node so DB-related setup (prismaEnsureColumns) runs correctly.
+  // UI tests that require a DOM should opt-in via per-file environment or
+  // be run under a separate Jest project. Revert: jsdom caused setup to skip.
   testEnvironment: 'node',
   // run only unit tests by default; integration tests are excluded
   testMatch: [
