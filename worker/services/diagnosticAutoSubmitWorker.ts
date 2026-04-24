@@ -130,7 +130,7 @@ export async function processDiagnosticAutoSubmit(
         where: { subjectId, lifecycle: 'active' },
         select: { id: true },
       });
-      chapterIds = allChapters.map((c) => c.id);
+      chapterIds = allChapters.map((c: { id: string }) => c.id);
     } else {
       const questionTopicIds = [...new Set(questions.map((q) => q.topicId).filter((t): t is string => !!t))];
       const topics: { id: string; chapterId: string }[] =
@@ -140,7 +140,7 @@ export async function processDiagnosticAutoSubmit(
               select: { id: true, chapterId: true },
             })
           : [];
-      chapterIds = [...new Set(topics.map((t) => t.chapterId))];
+      chapterIds = [...new Set(topics.map((t: { chapterId: string }) => t.chapterId))];
     }
 
     const user = await prisma.user.findUnique({
