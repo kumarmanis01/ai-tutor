@@ -1,3 +1,19 @@
+/**
+ * FILE OBJECTIVE:
+ * - Sticky top navigation bar for all public/marketing routes. Includes
+ *   desktop nav links (How It Works, Pricing, FAQ, For Schools), mobile
+ *   hamburger menu, and auth-aware CTA button.
+ *
+ * LINKED UNIT TEST:
+ * - tests/unit/components/StickyHeader.spec.ts
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/COPILOT_GUARDRAILS.md
+ * - .github/copilot-instructions.md
+ *
+ * EDIT LOG:
+ * - 2026-04-24T00:00:00Z | copilot | LP-1.1: add For Schools link, mobile hamburger menu, fix CTA to Tangerine #FF6B35
+ */
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -37,11 +53,22 @@ const navigationItems: NavigationItem[] = [
     description: 'Transparent pricing comparison',
   },
   {
-    id: 'success-stories',
-    labelEn: 'Success Stories',
-    labelHi: 'सफलता की कहानियां',
-    target: '#testimonials',
-    description: 'Real parent testimonials',
+    id: 'faq',
+    labelEn: 'FAQ',
+    labelHi: 'सामान्य प्रश्न',
+    target: '#faq',
+    description: 'Frequently asked questions',
+  },
+];
+
+// Desktop-only nav link (not shown in mobile hamburger menu)
+const desktopOnlyNavItems: NavigationItem[] = [
+  {
+    id: 'for-schools',
+    labelEn: 'For Schools',
+    labelHi: 'स्कूलों के लिए',
+    target: '#schools',
+    description: 'Partner with us for school programmes',
   },
 ];
 
@@ -58,6 +85,7 @@ const CODE_TO_PLAIN: Record<string, string> = {
 const StickyHeader = ({ activeSection = '', onSectionChange }: StickyHeaderProps) => {
   const { data: session } = useSession();
   const [isScrolled, setIsScrolled] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [_lang, setLang] = useState<string>('English');
   // TODO Phase 2: re-add language toggle when Hindi content is live
 
@@ -118,6 +146,7 @@ const StickyHeader = ({ activeSection = '', onSectionChange }: StickyHeaderProps
     if (element) {
       element.scrollIntoView({ behavior: 'smooth', block: 'start' });
       onSectionChange?.(id);
+      setMobileMenuOpen(false);
     }
   };
 
@@ -142,6 +171,7 @@ const StickyHeader = ({ activeSection = '', onSectionChange }: StickyHeaderProps
               <span className="flex sm:hidden"><Logo variant="navbar-mobile" /></span>
             </Link>
 
+            {/* Desktop navigation */}
             <nav className="hidden lg:flex items-center gap-8">
               {navigationItems.map((item) => (
                 <button
@@ -158,6 +188,17 @@ const StickyHeader = ({ activeSection = '', onSectionChange }: StickyHeaderProps
                   )}
                 </button>
               ))}
+              {/* For Schools — desktop only */}
+              {desktopOnlyNavItems.map((item) => (
+                <button
+                  key={item.id}
+                  onClick={() => handleSmoothScroll(item.target, item.id)}
+                  className="font-body font-medium text-sm text-foreground transition-colors hover:text-primary"
+                  title={item.description}
+                >
+                  {item.labelEn}
+                </button>
+              ))}
             </nav>
 
             <div className="flex items-center gap-2 md:gap-3">
@@ -171,16 +212,53 @@ const StickyHeader = ({ activeSection = '', onSectionChange }: StickyHeaderProps
                 </Link>
               )}
 
-              {/* Start Free -- navigates directly to /auth/signup */}
+              {/* Start Free CTA — Tangerine #FF6B35 per LP-1.1 spec */}
               <Link
                 href="/auth/signup"
-                className="px-4 py-2 md:px-6 md:py-2.5 bg-[#534AB7] hover:bg-[#4338A0] text-white rounded-lg text-sm font-semibold transition-colors"
+                className="px-4 py-2 md:px-6 md:py-2.5 min-h-[44px] flex items-center bg-[#FF6B35] hover:bg-[#e85f2a] text-white rounded-lg text-sm font-semibold transition-colors"
               >
-                Get started
+                Start Free
               </Link>
+
+              {/* Hamburger — mobile only */}
+              <button
+                className="lg:hidden inline-flex items-center justify-center w-10 h-10 rounded-md text-foreground hover:bg-muted transition-colors"
+                aria-label={mobileMenuOpen ? 'Close menu' : 'Open menu'}
+                aria-expanded={mobileMenuOpen}
+                onClick={() => setMobileMenuOpen((prev) => !prev)}
+              >
+                {mobileMenuOpen ? (
+                  /* X icon */
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-6 h-6">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                ) : (
+                  /* Hamburger icon */
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-6 h-6">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
+                  </svg>
+                )}
+              </button>
             </div>
           </div>
         </div>
+
+        {/* Mobile dropdown menu */}
+        {mobileMenuOpen && (
+          <div className="lg:hidden bg-background border-t border-border shadow-lg">
+            <nav className="mx-auto px-4 py-4 flex flex-col gap-1">
+              {navigationItems.map((item) => (
+                <button
+                  key={item.id}
+                  onClick={() => handleSmoothScroll(item.target, item.id)}
+                  className="text-left w-full px-4 py-3 min-h-[44px] rounded-md font-body font-medium text-sm text-foreground hover:bg-muted hover:text-primary transition-colors"
+                >
+                  {item.labelEn}
+                </button>
+              ))}
+            </nav>
+          </div>
+        )}
       </header>
 
     </>
