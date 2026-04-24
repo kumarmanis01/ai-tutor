@@ -1,8 +1,8 @@
 /**
  * FILE OBJECTIVE:
  * - WhatsApp Cloud API webhook handler.
- *   GET  — webhook verification (hub.challenge handshake).
- *   POST — incoming message handler: validates HMAC signature, processes
+ *   GET  -- webhook verification (hub.challenge handshake).
+ *   POST -- incoming message handler: validates HMAC signature, processes
  *           YES/NO consent replies, and updates ConsentMessageLog delivery status.
  *
  * LINKED UNIT TEST:
@@ -13,7 +13,7 @@
  * - .github/copilot-instructions.md
  *
  * EDIT LOG:
- * - 2025-01-15T00:00:00Z | copilot | created — B3.1 WhatsApp webhook route
+ * - 2025-01-15T00:00:00Z | copilot | created -- B3.1 WhatsApp webhook route
  */
 
 import { NextRequest, NextResponse } from 'next/server'
@@ -26,7 +26,7 @@ import { logger } from '@/lib/logger'
 const YES_PATTERN = /\bYES\b/i
 const NO_PATTERN = /\bNO\b|\bnahi\b/i
 
-// ── GET — webhook verification ────────────────────────────────────────────────
+// ── GET -- webhook verification ────────────────────────────────────────────────
 
 export async function GET(req: NextRequest): Promise<NextResponse> {
   const { searchParams } = new URL(req.url)
@@ -47,7 +47,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
   return NextResponse.json({ error: 'Verification failed' }, { status: 403 })
 }
 
-// ── POST — incoming messages ──────────────────────────────────────────────────
+// ── POST -- incoming messages ──────────────────────────────────────────────────
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
   // Read raw body for HMAC verification
@@ -58,7 +58,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     // Per webhook guidance, do not return an error status for signature
     // verification failures to avoid client retries from Meta. Log and
     // return 200 without processing.
-    logger.warn('WhatsApp webhook signature validation failed — skipping processing', { signature })
+    logger.warn('WhatsApp webhook signature validation failed -- skipping processing', { signature })
     return NextResponse.json({ ok: true })
   }
 

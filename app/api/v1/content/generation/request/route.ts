@@ -1,6 +1,6 @@
 /**
  * FILE OBJECTIVE:
- * - POST /api/v1/content/generation/request — enqueues an AI content generation job.
+ * - POST /api/v1/content/generation/request -- enqueues an AI content generation job.
  *   Checks for duplicate requests within 15 minutes before creating a new job.
  *   Auth-guarded. Returns { jobId, isDuplicate }.
  *
@@ -12,7 +12,7 @@
  * - .github/copilot-instructions.md
  *
  * EDIT LOG:
- * - 2025-01-15T00:00:00Z | copilot | created — B4.1/B4.2 content generation request route
+ * - 2025-01-15T00:00:00Z | copilot | created -- B4.1/B4.2 content generation request route
  */
 
 import { NextRequest, NextResponse } from 'next/server'

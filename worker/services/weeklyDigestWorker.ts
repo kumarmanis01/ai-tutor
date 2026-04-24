@@ -228,7 +228,7 @@ export async function processWeeklyDigest(): Promise<void> {
   const profiles = parentIds.length
     ? await prisma.parentProfile.findMany({ where: { userId: { in: parentIds } } }) as ParentProfileLocal[]
     : []
-  const profileMap = new Map(profiles.map((p: ParentProfileRowStrict) => [p.userId, p]))
+  const profileMap = new Map(profiles.map((p: ParentProfileLocal) => [p.userId, p]))
 
   let scheduled = 0
 
@@ -253,7 +253,7 @@ export async function processWeeklyDigest(): Promise<void> {
       // Dedup key for this parent-week to avoid duplicate outbox rows
       const dedupKey = `weeklyDigest:${parentId}:${monday.toISOString().slice(0, 10)}`
 
-      // Local row type for outbox — treat `meta` as unknown/any and narrow at runtime
+      // Local row type for outbox -- treat `meta` as unknown/any and narrow at runtime
       type OutboxRowStrict = { meta: any } | null;
       const existing = (await prisma.outbox.findFirst({ where: { meta: { path: ['dedupKey'], equals: dedupKey } } })) as OutboxRowStrict
       if (existing) {

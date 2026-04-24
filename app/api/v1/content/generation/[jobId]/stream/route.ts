@@ -1,6 +1,6 @@
 /**
  * FILE OBJECTIVE:
- * - GET /api/v1/content/generation/[jobId]/stream — Server-Sent Events endpoint
+ * - GET /api/v1/content/generation/[jobId]/stream -- Server-Sent Events endpoint
  *   that streams AI generation progress to the student client. Subscribes to
  *   Redis pub/sub and sends partial/complete/error events.
  *
@@ -12,7 +12,7 @@
  * - .github/copilot-instructions.md
  *
  * EDIT LOG:
- * - 2025-01-15T00:00:00Z | copilot | created — B4.3 SSE content generation stream
+ * - 2025-01-15T00:00:00Z | copilot | created -- B4.3 SSE content generation stream
  */
 
 import { NextRequest } from 'next/server'

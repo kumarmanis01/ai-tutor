@@ -11,7 +11,7 @@
  * - .github/copilot-instructions.md
  *
  * EDIT LOG:
- * - 2025-01-15T00:00:00Z | copilot | created — B2.1 token blacklist service
+ * - 2025-01-15T00:00:00Z | copilot | created -- B2.1 token blacklist service
  */
 
 import { getRedis } from '@/lib/redis'
@@ -38,7 +38,7 @@ export async function blacklistToken(jti: string, expiresAt: number): Promise<vo
 
   const redis = getRedis()
   if (!redis) {
-    logger.warn('Redis unavailable — cannot blacklist token', { jti })
+    logger.warn('Redis unavailable -- cannot blacklist token', { jti })
     return
   }
   try {

@@ -553,11 +553,11 @@ export function trialEndingHtml(data: {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// B3.2 — New transactional email templates
+// B3.2 -- New transactional email templates
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
- * OTP email — sends a one-time verification code.
+ * OTP email -- sends a one-time verification code.
  * @param otp            6-digit code
  * @param expiryMinutes  how long the code is valid
  */
@@ -582,7 +582,7 @@ export function otpEmailHtml(otp: string, expiryMinutes = 10): string {
 }
 
 /**
- * Consent request email — sent to parent asking them to approve their child.
+ * Consent request email -- sent to parent asking them to approve their child.
  */
 export function consentRequestEmailHtml(
   parentName: string,
@@ -615,7 +615,7 @@ export function consentRequestEmailHtml(
 }
 
 /**
- * Weekly report email — sent to parent summarising the student's week.
+ * Weekly report email -- sent to parent summarising the student's week.
  */
 export function weeklyReportEmailHtml(data: {
   parentName: string
@@ -660,7 +660,7 @@ export function weeklyReportEmailHtml(data: {
 }
 
 /**
- * Admin invite email — sent when a new admin is invited to the platform.
+ * Admin invite email -- sent when a new admin is invited to the platform.
  */
 export function adminInviteEmailHtml(setupLink: string, role: string): string {
   const roleLabel = role.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase())
@@ -681,7 +681,7 @@ export function adminInviteEmailHtml(setupLink: string, role: string): string {
 }
 
 /**
- * Payment invoice email — sent after a successful payment.
+ * Payment invoice email -- sent after a successful payment.
  */
 export function paymentInvoiceEmailHtml(data: {
   studentName: string

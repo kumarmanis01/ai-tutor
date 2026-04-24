@@ -12,7 +12,7 @@
  * - .github/copilot-instructions.md
  *
  * EDIT LOG:
- * - 2025-01-15T00:00:00Z | copilot | created — B4.2 content generation deduplication
+ * - 2025-01-15T00:00:00Z | copilot | created -- B4.2 content generation deduplication
  */
 
 import { getRedis } from '@/lib/redis'
@@ -115,7 +115,7 @@ export async function addSubscriber(jobId: string, studentId: string): Promise<v
       return
     }
 
-    // Already subscribed — idempotent
+    // Already subscribed -- idempotent
     if (existing.subscriberIds.includes(studentId)) return
   } catch (err: unknown) {
     logger.error('addSubscriber failed', { jobId, studentId, error: err })

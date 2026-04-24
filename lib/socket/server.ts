@@ -12,7 +12,7 @@
  * - .github/copilot-instructions.md
  *
  * EDIT LOG:
- * - 2025-01-15T00:00:00Z | copilot | created — B5.1 Socket.IO server
+ * - 2025-01-15T00:00:00Z | copilot | created -- B5.1 Socket.IO server
  */
 
 import { Server as SocketIOServer, type Socket } from 'socket.io'
@@ -39,7 +39,7 @@ let _io: AppIO | null = null
 
 /**
  * Attach (or return existing) Socket.IO server to the HTTP server.
- * Safe to call multiple times — only initialises once.
+ * Safe to call multiple times -- only initialises once.
  */
 export function initSocketIO(httpServer: HTTPServer): AppIO {
   if (_io) return _io
@@ -64,7 +64,7 @@ export function initSocketIO(httpServer: HTTPServer): AppIO {
       socket.handshake.headers?.authorization?.replace('Bearer ', '')
 
     if (!token) {
-      logger.warn('Socket.IO: connection rejected — no token', { socketId: socket.id })
+      logger.warn('Socket.IO: connection rejected -- no token', { socketId: socket.id })
       return next(new Error('Authentication required'))
     }
 
@@ -74,7 +74,7 @@ export function initSocketIO(httpServer: HTTPServer): AppIO {
       // Check blacklist (logged-out tokens)
       const revoked = await isBlacklisted(payload.jti)
       if (revoked) {
-        logger.warn('Socket.IO: connection rejected — blacklisted token', { socketId: socket.id })
+        logger.warn('Socket.IO: connection rejected -- blacklisted token', { socketId: socket.id })
         return next(new Error('Token has been revoked'))
       }
 
@@ -85,7 +85,7 @@ export function initSocketIO(httpServer: HTTPServer): AppIO {
 
       next()
     } catch {
-      logger.warn('Socket.IO: connection rejected — invalid token', { socketId: socket.id })
+      logger.warn('Socket.IO: connection rejected -- invalid token', { socketId: socket.id })
       next(new Error('Invalid or expired token'))
     }
   })

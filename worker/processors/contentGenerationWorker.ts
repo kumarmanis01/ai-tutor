@@ -12,7 +12,7 @@
  * - .github/copilot-instructions.md
  *
  * EDIT LOG:
- * - 2025-01-15T00:00:00Z | copilot | created — B4.1 ContentGenerationWorker
+ * - 2025-01-15T00:00:00Z | copilot | created -- B4.1 ContentGenerationWorker
  */
 
 import { Worker, type Job } from 'bullmq'
@@ -84,7 +84,7 @@ async function processContentGenerationJob(job: Job<ContentGenerationJobData>): 
   const { jobId, requesterId } = job.data
   const redis = getRedis()
   if (!redis) {
-    throw new Error('Redis unavailable — cannot process content generation job')
+    throw new Error('Redis unavailable -- cannot process content generation job')
   }
   logger.info('ContentGenerationWorker: starting job', { jobId, topic: job.data.topic })
 

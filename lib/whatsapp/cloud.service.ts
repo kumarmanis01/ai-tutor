@@ -11,7 +11,7 @@
  * - .github/copilot-instructions.md
  *
  * EDIT LOG:
- * - 2025-01-15T00:00:00Z | copilot | created — B3.1 WhatsApp Cloud API service
+ * - 2025-01-15T00:00:00Z | copilot | created -- B3.1 WhatsApp Cloud API service
  */
 
 import { createHmac, timingSafeEqual } from 'crypto'
