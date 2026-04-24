@@ -28,6 +28,7 @@ import Link from 'next/link';
 import ParentAccessCard from '@/components/Profile/ParentAccessCard';
 import { useState } from 'react';
 import FontSizeToggle from '@/components/UI/FontSizeToggle';
+import { CardSkeleton } from '@/components/UI/loaders';
 
 export default function ProfilePage() {
   const { data: session } = useSession();
@@ -41,7 +42,25 @@ export default function ProfilePage() {
   const [showDeletionDialog, setShowDeletionDialog] = useState(false);
 
   if (!session) return <div className="p-6">You are not signed in.</div>;
-  if (loading) return <div className="p-6">Loading...</div>;
+  if (loading) return (
+    <div className="max-w-4xl mx-auto p-8">
+      <div className="flex flex-col md:flex-row gap-8">
+        <div className="flex-1 space-y-6">
+          <div className="flex flex-col items-center gap-3">
+            <div className="loader-shimmer w-20 h-20 rounded-full" aria-hidden="true" />
+            <div className="loader-shimmer h-8 w-48 rounded" aria-hidden="true" />
+            <div className="loader-shimmer h-4 w-32 rounded" aria-hidden="true" />
+          </div>
+          <CardSkeleton />
+          <CardSkeleton />
+        </div>
+        <div className="w-full md:w-80">
+          <CardSkeleton />
+        </div>
+      </div>
+      <span className="sr-only">Loading profile...</span>
+    </div>
+  );
 
   const fallback =
     profile?.name?.charAt(0).toUpperCase() ||

@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { SpinnerLoader } from '@/components/UI/loaders';
 
 export default function VerifyParentForm({
   maskedEmail,
@@ -79,9 +80,12 @@ export default function VerifyParentForm({
           type="button"
           onClick={handleSendOtp}
           disabled={sending}
-          className="rounded-md bg-primary px-4 py-2 text-white disabled:opacity-60"
+          className="min-h-[44px] rounded-md bg-primary px-4 py-2 text-white disabled:opacity-60"
         >
-          {sending ? 'Sending...' : 'Send OTP'}
+          <span className="flex items-center gap-2">
+            {sending && <SpinnerLoader size="small" color="#ffffff" />}
+            {sending ? 'Sending...' : 'Send OTP'}
+          </span>
         </button>
         {sendSuccess && (
           <p className="mt-2 text-sm text-green-600">
@@ -107,9 +111,12 @@ export default function VerifyParentForm({
         <button
           type="submit"
           disabled={confirming || otp.length !== 6}
-          className="rounded-md bg-primary px-4 py-2 text-white disabled:opacity-60"
+          className="min-h-[44px] rounded-md bg-primary px-4 py-2 text-white disabled:opacity-60"
         >
-          {confirming ? 'Verifying...' : 'Verify'}
+          <span className="flex items-center gap-2">
+            {confirming && <SpinnerLoader size="small" color="#ffffff" />}
+            {confirming ? 'Verifying...' : 'Verify'}
+          </span>
         </button>
       </form>
 

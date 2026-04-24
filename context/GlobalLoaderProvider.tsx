@@ -1,79 +1,105 @@
+/**
+ * FILE OBJECTIVE:
+ * - Compatibility wrapper around the canonical global loader provider.
+ * - Preserves the legacy `useGlobalLoader()` API (`startLoading`,
+ *   `stopLoading`, `resetLoading`, `loading`, `label`) while delegating
+ *   rendering and canonical behaviour to `components/UI/loaders`.
+ *
+ * LINKED UNIT TEST:
+ * - tests/unit/context/GlobalLoaderProvider.spec.tsx
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/COPILOT_GUARDRAILS.md
+ * - .github/copilot-instructions.md
+ *
+ * EDIT LOG:
+ * - 2026-04-22T00:00:00Z | copilot | implement compatibility wrapper preserving ref-counting semantics
+ */
+
 'use client';
 
-import React, { createContext, useContext, useState, useCallback } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import type { ReactNode } from 'react';
+import { GlobalLoaderProvider as CanonicalProvider, useGlobalLoader as useCanonicalGlobalLoader } from '@/components/UI/loaders';
 
-type LoaderContextType = {
-  startLoading: (label?: string) => void;
-  stopLoading: () => void;
-  resetLoading: () => void;
-  loading: boolean;
-  label?: string | null;
+type LegacyLoaderContextType = {
+	startLoading: (label?: string) => void;
+	stopLoading: () => void;
+	resetLoading: () => void;
+	loading: boolean;
+	label?: string | null;
 };
 
-const GlobalLoaderContext = createContext<LoaderContextType | undefined>(undefined);
+const LegacyGlobalLoaderContext = createContext<LegacyLoaderContextType | null>(null);
 
-export function GlobalLoaderProvider({ children }: { children: React.ReactNode }) {
-  const [count, setCount] = useState(0);
-  const [label, setLabel] = useState<string | undefined>(undefined);
+function LegacyInnerProvider({ children }: { children: ReactNode }) {
+	const canonical = useCanonicalGlobalLoader();
+	const { showLoader, hideLoader } = canonical;
 
-  const startLoading = useCallback((lbl?: string) => {
-    if (lbl) setLabel(lbl);
-    setCount((c) => c + 1);
-  }, []);
+	const [count, setCount] = useState(0);
+	const [label, setLabel] = useState<string | undefined>(undefined);
 
-  const stopLoading = useCallback(() => {
-    setCount((c) => {
-      const next = Math.max(0, c - 1);
-      if (next === 0) setLabel(undefined);
-      return next;
-    });
-  }, []);
+	// Drive canonical provider visibility from `count` via an effect so we avoid
+	// render-phase side-effects (setState during render). This preserves
+	// ref-counting semantics while delegating rendering to the canonical provider.
+	useEffect(() => {
+		if (count > 0) {
+			showLoader(label);
+		} else {
+			hideLoader();
+		}
+	}, [count, label, showLoader, hideLoader]);
 
-  const resetLoading = useCallback(() => {
-    setCount(0);
-    setLabel(undefined);
-  }, []);
+	const startLoading = useCallback((lbl?: string) => {
+		if (lbl) setLabel(lbl);
+		setCount(prev => prev + 1);
+	}, []);
 
-  const value: LoaderContextType = {
-    startLoading,
-    stopLoading,
-    resetLoading,
-    loading: count > 0,
-    label,
-  };
+	const stopLoading = useCallback(() => {
+		setCount(prev => Math.max(0, prev - 1));
+	}, []);
 
-  return (
-    <GlobalLoaderContext.Provider value={value}>
-      {children}
-      {value.loading && (
-        <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm">
-          <div className="w-8 h-8 rounded-full border-4 border-[#534AB7] border-t-transparent animate-spin" />
-          {value.label && (
-            <p className="mt-3 text-sm font-medium text-gray-700 dark:text-gray-300">{value.label}</p>
-          )}
-        </div>
-      )}
-    </GlobalLoaderContext.Provider>
-  );
+	const resetLoading = useCallback(() => {
+		setCount(0);
+		setLabel(undefined);
+	}, []);
+
+	const value = useMemo(() => ({
+		startLoading,
+		stopLoading,
+		resetLoading,
+		loading: count > 0,
+		label,
+	}), [startLoading, stopLoading, resetLoading, count, label]);
+
+	return (
+		<LegacyGlobalLoaderContext.Provider value={value}>
+			{children}
+		</LegacyGlobalLoaderContext.Provider>
+	);
 }
 
-export function useGlobalLoader() {
-  const ctx = useContext(GlobalLoaderContext);
-  
-  // During SSG/SSR, context might be null - return safe defaults
-  if (!ctx) {
-    // Check if we're in a browser environment
-    if (typeof window === 'undefined') {
-      return {
-        startLoading: () => {},
-        stopLoading: () => {},
-        resetLoading: () => {},
-        loading: false,
-        label: undefined,
-      };
-    }
-    throw new Error('useGlobalLoader must be used within GlobalLoaderProvider');
-  }
-  
-  return ctx;
+export function GlobalLoaderProvider({ children }: { children: ReactNode }) {
+	return (
+		<CanonicalProvider>
+			<LegacyInnerProvider>{children}</LegacyInnerProvider>
+		</CanonicalProvider>
+	);
+}
+
+export function useGlobalLoader(): LegacyLoaderContextType {
+	const ctx = useContext(LegacyGlobalLoaderContext);
+	if (!ctx) {
+		if (typeof window === 'undefined') {
+			return {
+				startLoading: () => {},
+				stopLoading: () => {},
+				resetLoading: () => {},
+				loading: false,
+				label: undefined,
+			};
+		}
+		throw new Error('useGlobalLoader must be used within GlobalLoaderProvider');
+	}
+	return ctx;
 }

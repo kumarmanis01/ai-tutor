@@ -18,6 +18,7 @@
 import React, { useState, useEffect } from 'react'
 import useCurrentUser from '@/hooks/useCurrentUser'
 import { logger } from '@/lib/logger'
+import { SpinnerLoader } from '@/components/UI/loaders'
 
 const OPTIONS: Array<{ value: 'auto'|'on'|'off'; label: string }> = [
   { value: 'auto', label: 'Auto' },
@@ -70,6 +71,7 @@ export default function CrunchModeToggle() {
           <option key={o.value} value={o.value}>{o.label}</option>
         ))}
       </select>
+      {loading && <SpinnerLoader size="small" />}
     </div>
   )
 }
