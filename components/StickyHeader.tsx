@@ -13,6 +13,7 @@
  *
  * EDIT LOG:
  * - 2026-04-24T00:00:00Z | copilot | LP-1.1: add For Schools link, mobile hamburger menu, fix CTA to Tangerine #FF6B35
+ * - 2026-04-24T12:00:00Z | copilot | PR review: convert nav buttons to Links (href="/#section") so they work on non-landing pages
  */
 'use client';
 
@@ -82,7 +83,7 @@ const CODE_TO_PLAIN: Record<string, string> = {
   es: 'Spanish',
 };
 
-const StickyHeader = ({ activeSection = '', onSectionChange }: StickyHeaderProps) => {
+const StickyHeader = ({ activeSection = '', onSectionChange: _onSectionChange }: StickyHeaderProps) => {
   const { data: session } = useSession();
   const [isScrolled, setIsScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -141,15 +142,6 @@ const StickyHeader = ({ activeSection = '', onSectionChange }: StickyHeaderProps
     }
   }, []);
 
-  const handleSmoothScroll = (target: string, id: string) => {
-    const element = document.querySelector(target);
-    if (element) {
-      element.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      onSectionChange?.(id);
-      setMobileMenuOpen(false);
-    }
-  };
-
   return (
     <>
       <header
@@ -174,9 +166,10 @@ const StickyHeader = ({ activeSection = '', onSectionChange }: StickyHeaderProps
             {/* Desktop navigation */}
             <nav className="hidden lg:flex items-center gap-8">
               {navigationItems.map((item) => (
-                <button
+                // Link to /#section so navigation works from any public route, not just the landing page
+                <Link
                   key={item.id}
-                  onClick={() => handleSmoothScroll(item.target, item.id)}
+                  href={`/${item.target}`}
                   className={`font-body font-medium text-sm transition-colors hover:text-primary relative group ${
                     activeSection === item.id ? 'text-primary' : 'text-foreground'
                   }`}
@@ -186,18 +179,18 @@ const StickyHeader = ({ activeSection = '', onSectionChange }: StickyHeaderProps
                   {activeSection === item.id && (
                     <span className="absolute -bottom-1 left-0 right-0 h-0.5 bg-primary rounded-full" />
                   )}
-                </button>
+                </Link>
               ))}
               {/* For Schools — desktop only */}
               {desktopOnlyNavItems.map((item) => (
-                <button
+                <Link
                   key={item.id}
-                  onClick={() => handleSmoothScroll(item.target, item.id)}
+                  href={`/${item.target}`}
                   className="font-body font-medium text-sm text-foreground transition-colors hover:text-primary"
                   title={item.description}
                 >
                   {item.labelEn}
-                </button>
+                </Link>
               ))}
             </nav>
 
@@ -248,13 +241,15 @@ const StickyHeader = ({ activeSection = '', onSectionChange }: StickyHeaderProps
           <div className="lg:hidden bg-background border-t border-border shadow-lg">
             <nav className="mx-auto px-4 py-4 flex flex-col gap-1">
               {navigationItems.map((item) => (
-                <button
+                // Link to /#section so navigation works from any public route, not just the landing page
+                <Link
                   key={item.id}
-                  onClick={() => handleSmoothScroll(item.target, item.id)}
-                  className="text-left w-full px-4 py-3 min-h-[44px] rounded-md font-body font-medium text-sm text-foreground hover:bg-muted hover:text-primary transition-colors"
+                  href={`/${item.target}`}
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="text-left w-full px-4 py-3 min-h-[44px] rounded-md font-body font-medium text-sm text-foreground hover:bg-muted hover:text-primary transition-colors block"
                 >
                   {item.labelEn}
-                </button>
+                </Link>
               ))}
             </nav>
           </div>

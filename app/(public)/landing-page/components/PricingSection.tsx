@@ -13,6 +13,8 @@
  * EDIT LOG:
  * - 2026-04-24T00:00:00Z | copilot | LP-6.1: add feature comparison table, annual billing
  *   toggle, Best Value badge on Family, trust signals row, spec-aligned feature rows
+ * - 2026-04-24T12:00:00Z | copilot | PR review: use Math.floor for per-month price (avoids 333 vs 332 rounding error);
+ *   use plan billedDisplay/saveLabel constants instead of computed strings
  */
 'use client';
 
@@ -71,14 +73,16 @@ const PricingSection = () => {
   const familyMonthly = PLANS.family_monthly.billedRupees;
   const familyAnnual = PLANS.family_annual.billedRupees;
 
-  // Displayed prices per billing cycle
-  const individualPrice = billingCycle === 'monthly' ? `₹${individualMonthly}` : `₹${Math.round(individualAnnual / 12)}`;
-  const individualBilledNote = billingCycle === 'annual' ? `₹${individualAnnual}/year` : '';
-  const individualSave = billingCycle === 'annual' ? `Save ₹${(individualMonthly * 12) - individualAnnual}` : '';
+  // Displayed prices per billing cycle.
+  // Use Math.floor (not Math.round) so 3990/12=332 and 5990/12=499 match the product spec exactly.
+  // billedDisplay and saveLabel come from plan constants to avoid drift from the source of truth.
+  const individualPrice = billingCycle === 'monthly' ? `₹${individualMonthly}` : `₹${Math.floor(individualAnnual / 12)}`;
+  const individualBilledNote = billingCycle === 'annual' ? (PLANS.standard_annual.billedDisplay ?? '') : '';
+  const individualSave = billingCycle === 'annual' ? (PLANS.standard_annual.saveLabel ?? '') : '';
 
-  const familyPrice = billingCycle === 'monthly' ? `₹${familyMonthly}` : `₹${Math.round(familyAnnual / 12)}`;
-  const familyBilledNote = billingCycle === 'annual' ? `₹${familyAnnual}/year` : '';
-  const familySave = billingCycle === 'annual' ? `Save ₹${(familyMonthly * 12) - familyAnnual}` : '';
+  const familyPrice = billingCycle === 'monthly' ? `₹${familyMonthly}` : `₹${Math.floor(familyAnnual / 12)}`;
+  const familyBilledNote = billingCycle === 'annual' ? (PLANS.family_annual.billedDisplay ?? '') : '';
+  const familySave = billingCycle === 'annual' ? (PLANS.family_annual.saveLabel ?? '') : '';
 
   const standardPlan = PLANS.standard_monthly;
   const traditionalMin = 3000;

@@ -13,7 +13,9 @@
  * EDIT LOG:
  * - 2026-04-24T00:00:00Z | copilot | LP-3.1: created TrustMoat component with 4-card grid
  *   and parent dashboard preview mockup
+ * - 2026-04-24T12:00:00Z | copilot | mark as client component: uses onClick handlers and document API
  */
+'use client';
 
 interface TrustCardData {
   emoji: string;

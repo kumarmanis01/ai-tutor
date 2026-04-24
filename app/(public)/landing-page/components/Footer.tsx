@@ -13,7 +13,10 @@
  * EDIT LOG:
  * - 2026-04-24T00:00:00Z | copilot | LP-1.1/LP-9.1: add social links (Twitter/LinkedIn),
  *   Made in India marker, DPDP Compliance link, Play Store badge, contact info
+ * - 2026-04-24T12:00:00Z | copilot | mark as client component so it can safely import AppIcon (client component)
  */
+'use client';
+
 import Link from 'next/link';
 import Icon from '@/components/UI/AppIcon';
 
