@@ -12,6 +12,7 @@
  *
  * EDIT LOG:
  * - 2026-04-23T00:00:00Z | copilot | strict-mode: add local row types, annotate callbacks, file header
+ * - 2026-04-24T00:00:00Z | copilot | strict-mode: type subjects and widen parseGrade
  */
 
 import { prisma } from '@/lib/prisma'
@@ -67,7 +68,7 @@ function formatDateShort(d: Date): string {
   return d.toLocaleDateString(undefined, { day: '2-digit', month: 'short', year: 'numeric' })
 }
 
-function parseGrade(grade: string | null | undefined): number {
+function parseGrade(grade: string | number | null | undefined): number {
   const n = Number.parseInt(String(grade ?? ''), 10)
   return Number.isFinite(n) ? n : 0
 }
@@ -96,7 +97,7 @@ export async function buildProgressReport(
       name?: string | null;
       grade?: string | number | null;
       board?: string | null;
-      subjects?: unknown;
+      subjects?: Array<string | null> | null;
       currentStreak?: number | null;
       longestStreak?: number | null;
       level?: number | null;
