@@ -8,9 +8,19 @@
  *
  * Verified sending domain: send.spinzyacademy.com (subdomain verified in Resend).
  * Free tier: 3,000 emails/month, 100/day.
+ *
+ * EDIT LOG:
+ * - 2025-01-15T00:00:00Z | copilot | add B3.2 named send methods: sendOTP, sendConsentRequest, sendWeeklyReport, sendAdminInvite, sendPaymentInvoice
  */
 import { Resend } from 'resend';
 import { logger } from '@/lib/logger';
+import {
+  otpEmailHtml,
+  consentRequestEmailHtml,
+  weeklyReportEmailHtml,
+  adminInviteEmailHtml,
+  paymentInvoiceEmailHtml,
+} from '@/lib/email/templates';
 
 // Lazy singleton -- avoids crash at module load time when RESEND_API_KEY is absent
 // (e.g. during Next.js build or unit tests that do not exercise email).
@@ -91,3 +101,97 @@ export async function sendMailSafe(opts: MailOptions): Promise<void> {
 
 // Alias kept for backwards compatibility with existing call sites.
 export const sendEmail = sendMailSafe;
+
+// ─────────────────────────────────────────────────────────────────────────────
+// B3.2 — Named transactional email methods
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Send a one-time password email.
+ */
+export async function sendOTP(
+  to: string,
+  otp: string,
+  expiryMinutes = 10,
+): Promise<void> {
+  await sendMailSafe({
+    to,
+    subject: `${otp} is your Spinzy verification code`,
+    html: otpEmailHtml(otp, expiryMinutes),
+  });
+}
+
+/**
+ * Send a parent consent request email with a link to approve/deny.
+ */
+export async function sendConsentRequest(
+  to: string,
+  parentName: string,
+  childName: string,
+  grade: string,
+  consentLink: string,
+): Promise<void> {
+  await sendMailSafe({
+    to,
+    subject: `Action needed: Approve ${childName}'s Spinzy Academy account`,
+    html: consentRequestEmailHtml(parentName, childName, grade, consentLink),
+  });
+}
+
+/**
+ * Send a weekly learning report to a parent.
+ */
+export async function sendWeeklyReport(
+  to: string,
+  data: {
+    parentName: string
+    studentName: string
+    sessionsThisWeek: number
+    weeklyGoal: number
+    streakDays: number
+    topSubject: string
+    dashboardUrl?: string
+  },
+): Promise<void> {
+  await sendMailSafe({
+    to,
+    subject: `${data.studentName}'s weekly learning summary`,
+    html: weeklyReportEmailHtml(data),
+  });
+}
+
+/**
+ * Send an admin invitation email with an account setup link.
+ */
+export async function sendAdminInvite(
+  to: string,
+  setupLink: string,
+  role: string,
+): Promise<void> {
+  await sendMailSafe({
+    to,
+    subject: 'You have been invited to Spinzy Admin',
+    html: adminInviteEmailHtml(setupLink, role),
+  });
+}
+
+/**
+ * Send a payment invoice email.
+ */
+export async function sendPaymentInvoice(
+  to: string,
+  data: {
+    studentName: string
+    invoiceNumber: string
+    plan: string
+    amountRupees: number
+    billingCycle: string
+    invoiceUrl: string
+  },
+): Promise<void> {
+  await sendMailSafe({
+    to,
+    subject: `Payment confirmed -- Invoice #${data.invoiceNumber}`,
+    html: paymentInvoiceEmailHtml(data),
+  });
+}
