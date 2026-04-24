@@ -11,6 +11,7 @@
  *
  * EDIT LOG:
  * - 2026-04-24T00:00:00Z | copilot | created
+ * - 2026-04-24T12:00:00Z | copilot | use _count instead of loading all messageLogs to reduce query overhead
  */
 
 import { NextResponse } from 'next/server'
@@ -34,10 +35,13 @@ export async function GET(req: Request) {
     const token = url.searchParams.get('consent_token')
     if (!token) return NextResponse.json({ error: 'missing_token' }, { status: 400 })
 
-    const cr = await prisma.consentRequest.findUnique({ where: { token }, include: { messageLogs: true } })
+    const cr = await prisma.consentRequest.findUnique({
+      where: { token },
+      include: { _count: { select: { messageLogs: true } } },
+    })
     if (!cr) return NextResponse.json({ error: 'not_found' }, { status: 404 })
 
-    const reminderCount = cr.messageLogs.length
+    const reminderCount = cr._count.messageLogs
     const res = NextResponse.json({ ok: true, status: cr.status, expiresAt: cr.expiresAt, sentTo: maskContact(cr.parentPhone, cr.parentEmail), channel: cr.channel, reminderCount })
     logger.logAPI(req, res, { className: 'ConsentStatusAPI', methodName: 'GET' }, start)
     return res

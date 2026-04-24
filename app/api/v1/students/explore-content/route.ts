@@ -11,6 +11,7 @@
  *
  * EDIT LOG:
  * - 2026-04-24T00:00:00Z | copilot | created
+ * - 2026-04-24T12:00:00Z | copilot | validate grade (parseInt, range 1-12); case-insensitive board slug
  */
 
 import { NextResponse } from 'next/server'
@@ -28,14 +29,21 @@ export async function GET(req: Request) {
 
     if (!grade || !board) return NextResponse.json({ error: 'missing_params' }, { status: 400 })
 
+    // Validate grade: must be an integer in [1, 12].
+    const gradeNum = parseInt(grade, 10)
+    if (Number.isNaN(gradeNum) || gradeNum < 1 || gradeNum > 12) {
+      return NextResponse.json({ error: 'invalid_grade' }, { status: 400 })
+    }
+
     const topics = await prisma.topicDef.findMany({
       where: {
         lifecycle: 'active',
         chapter: {
           subject: {
             class: {
-              grade: Number(grade),
-              board: { slug: board },
+              grade: gradeNum,
+              // Case-insensitive slug match so "cbse" and "CBSE" both resolve.
+              board: { slug: { equals: board, mode: 'insensitive' } },
             },
           },
         },
