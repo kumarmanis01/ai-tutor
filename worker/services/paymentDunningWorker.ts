@@ -79,7 +79,7 @@ export async function processPaymentDunning(): Promise<void> {
               return 'standard_monthly'
             }
             const planKey = resolvePlanKey(rawKey)
-            const plan = PLANS[planKey as any]
+            const plan = PLANS[planKey]
             const amountPaise = rupeesToPaise(plan.billedRupees)
 
             const { netAmountPaise, remainingCreditPaise } = applyCreditsToCharge(amountPaise, s.creditBalance ?? 0)
@@ -118,10 +118,11 @@ export async function processPaymentDunning(): Promise<void> {
                 }
               })
 
-              try {
+                try {
                 await createInvoiceForPayment({ userId: s.userId, paymentId: undefined, studentId: undefined, amountPaise: 0, planLabel: plan.label, billingCycle: plan.perMonthDisplay })
                 const subject = `Payment applied from credits -- Spinzy subscription`
-                const html = `<p>Hi ${parent.name ?? 'Parent'},</p><p>We've applied your available credits to renew your Spinzy subscription. Your next renewal is on ${new Date((s.endDate ?? now).getTime()).toLocaleDateString('en-IN')}.</p>`
+                const nextRenewal = s.endDate ? new Date(s.endDate) : now
+                const html = `<p>Hi ${parent.name ?? 'Parent'},</p><p>We've applied your available credits to renew your Spinzy subscription. Your next renewal is on ${nextRenewal.toLocaleDateString('en-IN')}.</p>`
                 await sendMailSafe({ to: parent.email ?? '', subject, html })
               } catch (err) {
                 logger.warn('paymentDunning: invoice/email after credit-apply failed', { subscriptionId: s.id, err: String(err) })
@@ -181,9 +182,10 @@ export async function processPaymentDunning(): Promise<void> {
                 charged = true
 
                 try {
-                  await createInvoiceForPayment({ userId: s.userId, paymentId: chargePaymentId, studentId: undefined, amountPaise: netAmountPaise, planLabel: plan.label, billingCycle: plan.perMonthDisplay })
+                  await createInvoiceForPayment({ userId: s.userId, paymentId: chargePaymentId ?? undefined, studentId: undefined, amountPaise: netAmountPaise, planLabel: plan.label, billingCycle: plan.perMonthDisplay })
                   const subject = `Payment received -- Spinzy subscription`
-                  const html = `<p>Hi ${parent.name ?? 'Parent'},</p><p>We've successfully renewed your Spinzy subscription. Your next renewal is on ${new Date((s.endDate ?? now).getTime()).toLocaleDateString('en-IN')}.</p>`
+                  const nextRenewal = s.endDate ? new Date(s.endDate) : now
+                  const html = `<p>Hi ${parent.name ?? 'Parent'},</p><p>We've successfully renewed your Spinzy subscription. Your next renewal is on ${nextRenewal.toLocaleDateString('en-IN')}.</p>`
                   await sendMailSafe({ to: parent.email ?? '', subject, html })
                 } catch (err) {
                   logger.warn('paymentDunning: invoice/email after auto-charge failed', { subscriptionId: s.id, err: String(err) })
