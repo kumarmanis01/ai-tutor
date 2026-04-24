@@ -76,7 +76,7 @@ export async function selectNextQuestion(session: DiagnosticSessionPayload) {
   if (remaining.length === 0) return null;
 
   // Fetch both candidate rows and administered rows (for topic balancing) in parallel
-  const [candidateRows, administeredRows] = await Promise.all([
+  const [candidateRows, administeredRows] = (await Promise.all([
     prisma.question.findMany({
       where: { id: { in: remaining } },
       select: { id: true, irt_a: true, irt_b: true, irt_c: true, topicId: true, prompt: true, choices: true, difficulty: true },
@@ -87,11 +87,13 @@ export async function selectNextQuestion(session: DiagnosticSessionPayload) {
           select: { id: true, topicId: true },
         })
       : Promise.resolve([] as Pick<QuestionRow, 'id' | 'topicId'>[]),
-  ]);
+  ])) as [QuestionRow[], Pick<QuestionRow, 'id' | 'topicId'>[]];
 
   // Topic balancing: prefer questions from topics not yet administered
-  const administeredTopics = new Set(administeredRows.map((r) => r.topicId).filter(Boolean));
-  const notSeen = candidateRows.filter((c) => !administeredTopics.has(c.topicId ?? ''));
+  const administeredTopics = new Set((administeredRows as Pick<QuestionRow, 'topicId'>[])
+    .map((r) => r.topicId)
+    .filter((tid): tid is string => typeof tid === 'string' && tid.length > 0));
+  const notSeen = (candidateRows as QuestionRow[]).filter((c: QuestionRow) => !administeredTopics.has(c.topicId ?? ''));
 
   const pool = notSeen.length > 0 ? notSeen : candidateRows;
 
