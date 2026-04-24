@@ -145,9 +145,9 @@ async function persistAuditMulti(
           body: { html: opts.html, text: opts.text ?? null },
           sentAt: now,
         },
-      }).catch((e) => {
-        logger.warn('[notifications] audit persist failed', { parentId, channel, error: String(e) })
-      }),
+      ).catch((e: unknown) => {
+          logger.warn('[notifications] audit persist failed', { parentId, channel, error: String(e) })
+        }),
     ),
   )
 }
