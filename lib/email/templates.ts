@@ -584,34 +584,61 @@ export function otpEmailHtml(otp: string, expiryMinutes = 10): string {
 /**
  * Consent request email -- sent to parent asking them to approve their child.
  */
+/**
+ * P1.2-R: Enriched consent request email with board, controls list, deny link,
+ * and DPDP footer as required by P1.2-R acceptance criteria.
+ * - EDIT LOG: 2026-04-24T00:00:00Z | staff-engineer | add board, controls list, deny link per P1.2-R AC
+ */
 export function consentRequestEmailHtml(
   parentName: string,
   childName: string,
   grade: string,
   consentLink: string,
+  opts?: { board?: string; denyLink?: string },
 ): string {
+  const boardLabel = opts?.board ? ` (${opts.board})` : ''
+  const denySection = opts?.denyLink
+    ? `<p style="text-align:center;margin-top:12px;">
+         <a href="${opts.denyLink}" style="color:#888;font-size:13px;">Deny Access</a>
+       </p>`
+    : ''
   return `
     <div style="${BASE}">
       ${LOGO}
-      <h2 style="color:#534AB7;">Approve ${childName}'s Spinzy Academy account</h2>
+      <h2 style="color:#534AB7;">${childName} wants to learn with Spinzy Academy</h2>
       <p>Hi ${parentName},</p>
-      <p>${childName} (Grade ${grade}) has signed up for Spinzy Academy, India's
-         AI home tutor. We need your approval to activate their account.</p>
+      <p><strong>${childName}</strong> (Grade ${grade}${boardLabel}) has signed up for
+         Spinzy Academy, India's AI home tutor. Your approval is needed to activate
+         their account.</p>
       <div style="background:#F5F4FF;border-radius:12px;padding:16px;margin:20px 0;">
-        <p style="margin:0;color:#374151;">
-          By approving, you agree that Spinzy Academy may process ${childName}'s
-          learning data to personalise lessons and show you progress reports.
-          You can withdraw consent at any time from your parent dashboard.
-        </p>
+        <p style="margin:0 0 10px;font-weight:600;color:#374151;">As a parent you can:</p>
+        <ul style="margin:0;padding-left:18px;color:#374151;line-height:1.9;">
+          <li>&#x2705; View ${childName}'s progress and topics covered</li>
+          <li>&#x2705; Set weekly session limits and study time</li>
+          <li>&#x2705; Receive a weekly email summary every Sunday</li>
+          <li>&#x2705; Withdraw consent at any time from Parent Settings</li>
+          <li>&#x274C; ${childName} will NOT have social features (no chat, no friend requests)</li>
+          <li>&#x274C; ${childName}'s data will NOT be shared with third parties or advertisers</li>
+        </ul>
       </div>
-      <a href="${consentLink}" style="${BTN}">Approve account</a>
+      <a href="${consentLink}" style="${BTN}">Approve &amp; Set Limits</a>
+      ${denySection}
       <p style="color:#888;font-size:13px;margin-top:16px;">
         This link expires in 48 hours.
         If you do not recognise this request, ignore this email safely.
       </p>
+      <div style="border-top:1px solid #eee;margin-top:24px;padding-top:16px;">
+        <p style="color:#aaa;font-size:11px;line-height:1.6;margin:0;">
+          This message is sent in compliance with India's Digital Personal Data Protection Act (DPDP) 2023.
+          Spinzy Academy processes your child's learning data only for educational purposes.
+          Contact: <a href="mailto:hello@spinzyacademy.com" style="color:#534AB7;">hello@spinzyacademy.com</a>
+          &nbsp;|&nbsp;
+          <a href="https://spinzyacademy.com/privacy" style="color:#534AB7;">Privacy Policy</a>
+        </p>
+      </div>
       ${FOOTER}
     </div>
-  `;
+  `
 }
 
 /**

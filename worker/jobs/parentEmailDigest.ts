@@ -8,6 +8,7 @@
  * - 2026-02-04 | claude | integrated WhatsApp delivery alongside email
  * - 2026-04-09 | copilot | respect excludeFromParentReport when selecting parent links
  * - 2026-04-23T00:00:00Z | copilot | fix(strict): cast Prisma results to local row types to avoid implicit-any in callbacks
+ * - 2026-04-24T00:00:00Z | staff-engineer | P2.2: add free-tier upgrade teaser + zero-activity email variant
  */
 
 import { prisma } from '@/lib/prisma';
@@ -25,7 +26,7 @@ export async function sendParentDigests(): Promise<number> {
   const parentLinks = await prisma.parentStudent.findMany({
     where: { status: 'active', excludeFromParentReport: false },
     include: {
-      parent: { select: { id: true, email: true, name: true, phone: true, whatsappPhone: true, language: true } },
+      parent: { select: { id: true, email: true, name: true, phone: true, whatsappPhone: true, language: true, subscriptionStatus: true } },
       student: { select: { id: true, name: true, grade: true, board: true } },
     },
   });
@@ -37,6 +38,7 @@ export async function sendParentDigests(): Promise<number> {
     phone: string | null;
     whatsappPhone: string | null;
     language: string;
+    subscriptionStatus: string;
     children: { id: string; name: string; grade: string | null; board: string | null }[];
   }> = {};
 
@@ -54,6 +56,7 @@ export async function sendParentDigests(): Promise<number> {
         phone: link.parent.phone || null,
         whatsappPhone: link.parent.whatsappPhone || null,
         language: link.parent.language || 'en',
+        subscriptionStatus: link.parent.subscriptionStatus ?? 'free',
         children: [],
       };
     }
@@ -210,8 +213,27 @@ export async function sendParentDigests(): Promise<number> {
         childSections.push(buildChildSection(child, summary, flags, readiness, trustSignals, aiParagraph));
       }
 
-      const html = buildDigestHtml(parent.name, childSections);
-      const subject = t('digest.subject', undefined, parent.language)
+      // P2.2: zero-activity detection across all children this week
+      const totalSessions = parent.children.reduce<number>((acc, c) => {
+        return acc + (summaryByStudent.get(c.id)?.sessionsCount ?? 0)
+      }, 0)
+      const isPremium = parent.subscriptionStatus !== 'free'
+
+      // P2.2: Zero-activity subject nudges parent to start a session
+      const subject = totalSessions === 0
+        ? (`${parent.children[0]?.name ?? 'Your child'} hasn't started this week -- try a quick topic!`)
+        : t('digest.subject', undefined, parent.language)
+
+      // P2.2: Free-tier upgrade teaser appended to digest HTML
+      const upgradeTeaserHtml = !isPremium
+        ? `<div style="margin-top:24px;padding:16px;background:#EEEDFE;border-radius:12px;text-align:center;">
+            <p style="margin:0 0 4px;font-weight:bold;color:#534AB7;">&#x2B50; Unlock Premium Features</p>
+            <p style="margin:0 0 12px;font-size:13px;color:#374151;">Get unlimited topics, detailed exam readiness, and priority support for &#x20B9;399/month.</p>
+            <a href="${process.env.NEXTAUTH_URL ?? 'https://spinzyacademy.com'}/pricing" style="display:inline-block;background:#FF6B35;color:#fff;font-weight:bold;padding:10px 24px;border-radius:8px;text-decoration:none;font-size:14px;">Upgrade Now</a>
+           </div>`
+        : ''
+
+      const html = buildDigestHtml(parent.name, [...childSections, upgradeTeaserHtml])
       const text = t('digest.fallback_text', undefined, parent.language)
       const baseUrl = process.env.NEXTAUTH_URL ?? 'https://spinzyacademy.com'
       const reportUrl = `${baseUrl}/parent/dashboard`

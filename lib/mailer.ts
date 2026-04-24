@@ -123,6 +123,7 @@ export async function sendOTP(
 
 /**
  * Send a parent consent request email with a link to approve/deny.
+ * P1.2-R: updated subject and opts for board + deny link.
  */
 export async function sendConsentRequest(
   to: string,
@@ -130,11 +131,12 @@ export async function sendConsentRequest(
   childName: string,
   grade: string,
   consentLink: string,
+  opts?: { board?: string; denyLink?: string },
 ): Promise<void> {
   await sendMailSafe({
     to,
-    subject: `Action needed: Approve ${childName}'s Spinzy Academy account`,
-    html: consentRequestEmailHtml(parentName, childName, grade, consentLink),
+    subject: `${childName} wants to learn with Spinzy Academy -- Your Approval Needed`,
+    html: consentRequestEmailHtml(parentName, childName, grade, consentLink, opts),
   });
 }
 

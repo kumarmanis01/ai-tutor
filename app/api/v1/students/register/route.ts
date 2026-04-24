@@ -151,13 +151,27 @@ export async function POST(req: Request) {
 
     // send message (best-effort)
     try {
+      // P1.2-R: consent URL at /parent/approve per spec
+      const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? ''
+      const consentUrl = `${appUrl}/parent/approve?token=${token}`
+      const denyUrl = `${appUrl}/parent/approve?token=${token}&action=deny`
       if (channel === 'whatsapp') {
         // sendConsentRequest(phone, childName, grade, board, consentToken)
         await sendConsentRequest(parentContact, name, grade ?? '', board ?? '', token)
         await prisma.consentMessageLog.create({ data: { consentRequestId: consentReq.id, channel: 'WHATSAPP', status: 'SENT' } })
       } else {
-        const consentUrl = `${process.env.NEXT_PUBLIC_APP_URL ?? ''}/consent/${token}`
-        await sendMailSafe({ to: parentContact, subject: `Approve ${name}'s Spinzy account`, html: `Please approve: ${consentUrl}` })
+        // P1.2-R: use enriched template with board, deny link, and correct subject
+        await sendMailSafe({
+          to: parentContact,
+          subject: `${name} wants to learn with Spinzy Academy -- Your Approval Needed`,
+          html: (await import('@/lib/email/templates')).consentRequestEmailHtml(
+            'Parent',
+            name,
+            grade ?? '',
+            consentUrl,
+            { board: board ?? undefined, denyLink: denyUrl },
+          ),
+        })
         await prisma.consentMessageLog.create({ data: { consentRequestId: consentReq.id, channel: 'EMAIL', status: 'SENT' } })
       }
     } catch (e) {

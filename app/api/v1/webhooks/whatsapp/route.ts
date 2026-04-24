@@ -17,14 +17,16 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
-import { validateWebhookSignature } from '@/lib/whatsapp/cloud.service'
+import { validateWebhookSignature, sendConfirmation } from '@/lib/whatsapp/cloud.service'
 import { prisma } from '@/lib/db'
 import { logger } from '@/lib/logger'
+import { AccountStatus } from '@prisma/client'
 
 // ── Regex patterns ────────────────────────────────────────────────────────────
-
-const YES_PATTERN = /\bYES\b/i
-const NO_PATTERN = /\bNO\b|\bnahi\b/i
+// P1.4-R: support Hindi affirmative replies (haan, ji, ok) in addition to YES
+const YES_PATTERN = /\b(yes|haan|ji|ok)\b/i
+// P1.6-R: support Hindi denial (nahi, nahi chahiye)
+const NO_PATTERN = /\b(no|nahi|nahi\s+chahiye)\b/i
 
 // ── GET -- webhook verification ────────────────────────────────────────────────
 
@@ -122,15 +124,35 @@ async function handleIncomingMessage(
   }
 
   if (YES_PATTERN.test(replyText)) {
-    await prisma.consentRequest.update({
-      where: { id: consentRequest.id },
-      data: { status: 'APPROVED', updatedAt: new Date() },
-    })
+    // Approve consent and activate student account atomically
+    await prisma.$transaction([
+      prisma.consentRequest.update({
+        where: { id: consentRequest.id },
+        data: { status: 'APPROVED' },
+      }),
+      prisma.user.update({
+        where: { id: consentRequest.studentId },
+        data: { accountStatus: AccountStatus.active },
+      }),
+    ])
     logger.info('Consent approved via WhatsApp', { consentRequestId: consentRequest.id })
+    // P1.4-R: reply to parent with confirmation + dashboard link
+    try {
+      const student = await prisma.user.findUnique({
+        where: { id: consentRequest.studentId },
+        select: { name: true },
+      })
+      const dashboardUrl = `${process.env.NEXT_PUBLIC_APP_URL ?? 'https://spinzyacademy.com'}/parent/dashboard`
+      await sendConfirmation(senderPhone, student?.name ?? 'your child', dashboardUrl)
+    } catch (confirmErr) {
+      logger.warn('WhatsApp: confirmation send failed', {
+        error: confirmErr instanceof Error ? confirmErr.message : String(confirmErr),
+      })
+    }
   } else if (NO_PATTERN.test(replyText)) {
     await prisma.consentRequest.update({
       where: { id: consentRequest.id },
-      data: { status: 'DENIED', updatedAt: new Date() },
+      data: { status: 'DENIED' },
     })
     logger.info('Consent denied via WhatsApp', { consentRequestId: consentRequest.id })
   }

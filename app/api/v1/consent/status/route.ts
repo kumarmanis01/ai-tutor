@@ -37,12 +37,27 @@ export async function GET(req: Request) {
 
     const cr = await prisma.consentRequest.findUnique({
       where: { token },
-      include: { _count: { select: { messageLogs: true } } },
+      include: {
+        _count: { select: { messageLogs: true } },
+        student: { select: { name: true, grade: true, board: true } },
+      },
     })
     if (!cr) return NextResponse.json({ error: 'not_found' }, { status: 404 })
 
     const reminderCount = cr._count.messageLogs
-    const res = NextResponse.json({ ok: true, status: cr.status, expiresAt: cr.expiresAt, sentTo: maskContact(cr.parentPhone, cr.parentEmail), channel: cr.channel, reminderCount })
+    const expired = cr.expiresAt < new Date() && cr.status === 'PENDING'
+    const status = expired ? 'expired' : cr.status
+    const res = NextResponse.json({
+      ok: true,
+      status,
+      expiresAt: cr.expiresAt,
+      sentTo: maskContact(cr.parentPhone, cr.parentEmail),
+      channel: cr.channel,
+      reminderCount,
+      child: cr.student
+        ? { name: cr.student.name, grade: cr.student.grade, board: cr.student.board }
+        : null,
+    })
     logger.logAPI(req, res, { className: 'ConsentStatusAPI', methodName: 'GET' }, start)
     return res
   } catch (err) {

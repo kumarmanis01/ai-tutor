@@ -13,6 +13,7 @@
  * EDIT LOG:
  * - 2026-04-24T00:00:00Z | copilot | LP-2.1: rewrite hero with parent-permission headline,
  *   horizontal trust badge bar, parent/child illustration placeholder, 100vh mobile / 90vh desktop
+ * - 2026-04-24T12:00:00Z | staff-engineer | P0.1: CTA -> /parent-onboarding; add 3 value prop icons
  */
 'use client';
 
@@ -113,7 +114,7 @@ const HeroSection = () => {
             {/* CTA buttons */}
             <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
               <Link
-                href="/auth/signup"
+                href="/parent-onboarding"
                 className="inline-flex items-center justify-center gap-2 w-full sm:w-auto px-6 py-3 md:px-8 md:py-4 min-h-[48px] bg-[#FF6B35] text-white font-cta font-semibold rounded-lg hover:bg-[#e85f2a] transition-all duration-250 text-base md:text-lg shadow-lg"
               >
                 <Icon name="SparklesIcon" size={20} variant="solid" />
@@ -142,6 +143,27 @@ const HeroSection = () => {
                 <Icon name="CheckCircleIcon" size={18} variant="solid" className="text-[#1D9E75]" />
                 Setup in 2 minutes
               </span>
+            </div>
+
+            {/* P0.1: Three value prop icons */}
+            <div className="flex flex-wrap gap-4 justify-center lg:justify-start">
+              {[
+                { icon: '&#x1F4DA;', label: 'All Boards Covered', sub: 'CBSE, ICSE, State Board' },
+                { icon: '&#x1F6E1;&#xFE0F;', label: 'Parental Control', sub: 'You approve every session' },
+                { icon: '&#x2B50;', label: 'Free to Start', sub: 'No credit card needed' },
+              ].map(({ icon, label, sub }) => (
+                <div key={label} className="flex items-center gap-3 bg-[#EEEDFE] rounded-2xl px-4 py-3 min-w-[140px]">
+                  <span
+                    aria-hidden="true"
+                    className="text-2xl"
+                    dangerouslySetInnerHTML={{ __html: icon }}
+                  />
+                  <div>
+                    <p className="text-sm font-bold text-[#534AB7] leading-tight">{label}</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">{sub}</p>
+                  </div>
+                </div>
+              ))}
             </div>
 
             {/* Rotating testimonials */}
