@@ -258,7 +258,7 @@ export async function getTopImprovingTopics(opts: {
     ? await prisma.topicDef.findMany({
         where: { id: { in: topicIds } },
         select: { id: true, name: true },
-      }).then((list) => new Map((list as TopicDefRow[]).map((t: TopicDefRow) => [t.id, t.name])))
+      }).then((list: TopicDefRow[]) => new Map(list.map((t: TopicDefRow) => [t.id, t.name])))
     : new Map<string, string>();
 
   const limit = Math.min(opts.limit ?? 50, 100);

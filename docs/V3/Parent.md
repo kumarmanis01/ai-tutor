@@ -1,4 +1,34 @@
+markdown
+## P0.1 | P0 | Landing Page — Value Proposition & Google Sign-Up
+**ID:** P0.1
+**Labels:** P0, phase:discovery
+**Phase:** Phase 0: Discovery & Acquisition
 
+### User Story
+As a prospective parent discovering Spinzy Academy,
+I want to land on a clear, mobile-optimized page that explains what Spinzy offers and lets me sign up with Google in one tap,
+So that I can understand the value and start without friction.
+
+### Acceptance Criteria
+- [ ] Landing page loads in under 3 seconds on 4G connection (Lighthouse score ≥ 90)
+- [ ] Headline: "The AI Tutor That Asks YOUR Permission First" visible above fold
+- [ ] Trust badges visible: 🛡️ DPDP Compliant · 👁️ No Tracking · 📵 No Social Features · 🇮🇳 Servers in India
+- [ ] Primary CTA: "Start Free — Sign in with Google" (Tangerine #FF6B35, 48px min height)
+- [ ] Three value prop icons: All Boards Covered, Parental Control, Free to Start
+- [ ] Google OAuth popup/redirect on CTA click
+- [ ] On successful Google sign-in → Redirect to /onboarding (Add Child flow — Story P1.1-P)
+- [ ] Secondary link: "Learn more" (scrolls to How It Works section)
+- [ ] No credit card fields or pricing tables above the fold
+- [ ] Backend: POST /api/v1/auth/google — Validates Google ID token
+- [ ] Backend: Creates User record if new; returns JWT if existing
+- [ ] Backend: User table: email, name, google_id, created_at
+
+### Dev Tasks
+- [ ] Create landing page shell (apps/web/src/app/page.tsx)
+- [ ] Implement Google OAuth flow using @react-oauth/google
+- [ ] Create Hero component with trust badges and CTA
+
+### QA
 - [ ] Page loads on ₹8,000 Android phone (Chrome) without layout shift
 - [ ] Google Sign-In works on mobile Chrome (pre-signed-in device → one tap)
 - [ ] Google Sign-In works on incognito (fresh login flow)

@@ -207,7 +207,7 @@ async function enrichTopic(
   topicId: string | null,
   fallback: TopicEnrichment
 ): Promise<TopicEnrichment> {
-  if (!topicId) return { topicName: null, ...fallback };
+  if (!topicId) return { ...fallback, topicName: null };
 
 
   // Local row type for topicDef with chapter/subject join
@@ -224,13 +224,9 @@ async function enrichTopic(
     },
   }) as TopicDefRow;
 
-  if (!topic) return { topicName: null, ...fallback };
+  if (!topic) return { ...fallback, topicName: null };
 
-  return {
-    topicName: topic.name,
-    chapter: topic.chapter.name,
-    subject: topic.chapter.subject.name,
-  };
+  return { ...fallback, topicName: topic.name, chapter: topic.chapter.name, subject: topic.chapter.subject.name };
 }
 
 // ─── Shared progress row type (P2 / P3 / P4) ─────────────────────────────────
@@ -713,7 +709,7 @@ export async function getNextAction(
   // duplicate curriculum fetch). Fall back to a fresh query otherwise.
   const orderedTopics =
     options.preloadedOrderedTopics ?? (await getOrderedTopicsForStudent(studentId));
-  const allowedTopicIds = new Set(orderedTopics.map((t) => t.id));
+  const allowedTopicIds = new Set(orderedTopics.map((t: OrderedTopic) => t.id));
 
   // Local row type for studentTopicProgress
   type ProgressRowStrict = { topicId: string; mastery: number; practiceCount: number; lastStudiedAt: Date };
