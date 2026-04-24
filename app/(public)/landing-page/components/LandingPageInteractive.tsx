@@ -16,7 +16,7 @@ const LandingPageInteractive = () => {
       <main className="min-h-screen">
         <HeroSection />
         <TrustBar />
-        {/* LP-3.1: Trust Moat — DPDP & Safety Icons Grid */}
+        {/* LP-3.1: Trust Moat -- DPDP & Safety Icons Grid */}
         <TrustMoat />
         <HowItWorksSection />
         <ProblemSection />

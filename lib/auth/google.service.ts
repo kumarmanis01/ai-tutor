@@ -11,7 +11,7 @@
  * - .github/copilot-instructions.md
  *
  * EDIT LOG:
- * - 2025-01-15T00:00:00Z | copilot | created — B2.2 Google OAuth service
+ * - 2025-01-15T00:00:00Z | copilot | created -- B2.2 Google OAuth service
  */
 
 import { OAuth2Client } from 'google-auth-library'
@@ -35,7 +35,7 @@ export interface FindOrCreateResult {
   isNewUser: boolean
 }
 
-// ── Client singleton (lazy init — no module-scope side-effects) ───────────────
+// ── Client singleton (lazy init -- no module-scope side-effects) ───────────────
 
 let _client: OAuth2Client | null = null
 

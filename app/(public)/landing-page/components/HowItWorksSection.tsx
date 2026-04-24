@@ -158,14 +158,14 @@ const HowItWorksSection = () => {
             <span>How Spinzy Works</span>
           </div>
           <h2 className="font-headline font-bold text-3xl md:text-4xl lg:text-5xl text-secondary mb-3">
-            How Spinzy Works — For Students &amp; Parents
+            How Spinzy Works -- For Students &amp; Parents
           </h2>
           <p className="font-accent text-lg md:text-xl text-[#534AB7]">
-            Spinzy कैसे काम करता है — छात्रों और माता-पिता के लिए
+            Spinzy कैसे काम करता है -- छात्रों और माता-पिता के लिए
           </p>
         </div>
 
-        {/* Mobile tab toggle — only visible below lg breakpoint */}
+        {/* Mobile tab toggle -- only visible below lg breakpoint */}
         <div className="flex lg:hidden justify-center mb-8">
           <div className="inline-flex rounded-xl bg-white border border-[#534AB7]/20 p-1 gap-1">
             <button

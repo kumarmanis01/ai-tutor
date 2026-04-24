@@ -181,7 +181,7 @@ const StickyHeader = ({ activeSection = '', onSectionChange: _onSectionChange }:
                   )}
                 </Link>
               ))}
-              {/* For Schools — desktop only */}
+              {/* For Schools -- desktop only */}
               {desktopOnlyNavItems.map((item) => (
                 <Link
                   key={item.id}
@@ -205,7 +205,7 @@ const StickyHeader = ({ activeSection = '', onSectionChange: _onSectionChange }:
                 </Link>
               )}
 
-              {/* Start Free CTA — Tangerine #FF6B35 per LP-1.1 spec */}
+              {/* Start Free CTA -- Tangerine #FF6B35 per LP-1.1 spec */}
               <Link
                 href="/auth/signup"
                 className="px-4 py-2 md:px-6 md:py-2.5 min-h-[44px] flex items-center bg-[#FF6B35] hover:bg-[#e85f2a] text-white rounded-lg text-sm font-semibold transition-colors"
@@ -213,7 +213,7 @@ const StickyHeader = ({ activeSection = '', onSectionChange: _onSectionChange }:
                 Start Free
               </Link>
 
-              {/* Hamburger — mobile only */}
+              {/* Hamburger -- mobile only */}
               <button
                 className="lg:hidden inline-flex items-center justify-center w-10 h-10 rounded-md text-foreground hover:bg-muted transition-colors"
                 aria-label={mobileMenuOpen ? 'Close menu' : 'Open menu'}

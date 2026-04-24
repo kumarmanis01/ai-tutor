@@ -61,7 +61,7 @@ const Footer = () => {
             </div>
 
             <p className="text-sm leading-relaxed opacity-80 mb-4">
-              <strong>Spinzy AI Tutor</strong> (Teacher Vidya) — adaptive practice and guided hints for
+              <strong>Spinzy AI Tutor</strong> (Teacher Vidya) -- adaptive practice and guided hints for
               Class 1-12 students. Fast, curriculum-aligned help in Hindi &amp; English.
             </p>
 
@@ -69,7 +69,7 @@ const Footer = () => {
               Spinzy Academy &copy; 2026. Made in India 🇮🇳
             </p>
 
-            {/* Social links — Twitter/LinkedIn only, no Facebook */}
+            {/* Social links -- Twitter/LinkedIn only, no Facebook */}
             <div className="flex items-center gap-3">
               <a
                 href="https://twitter.com/spinzyacademy"
@@ -176,7 +176,7 @@ const Footer = () => {
               </li>
             </ul>
 
-            {/* Play Store badge — rendered only when NEXT_PUBLIC_ANDROID_APP_URL is set */}
+            {/* Play Store badge -- rendered only when NEXT_PUBLIC_ANDROID_APP_URL is set */}
             {process.env.NEXT_PUBLIC_ANDROID_APP_URL ? (
               <a
                 href={process.env.NEXT_PUBLIC_ANDROID_APP_URL}
@@ -198,7 +198,7 @@ const Footer = () => {
         <div className="border-t border-white/10 mt-8 pt-6 flex flex-col md:flex-row items-center justify-between gap-3">
           <p className="text-sm opacity-80">&copy; 2026 Spinzy Academy. All rights reserved.</p>
           <p className="text-sm opacity-70 max-w-md text-center md:text-right italic">
-            Teacher Vidya is an AI assistant — Powered by{' '}
+            Teacher Vidya is an AI assistant -- Powered by{' '}
             <a
               href="https://spinzydigital.com"
               className="hover:opacity-100 transition-colors underline"

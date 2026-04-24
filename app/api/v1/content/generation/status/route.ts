@@ -1,6 +1,6 @@
 /**
  * FILE OBJECTIVE:
- * - GET /api/v1/content/generation/status?jobId=xxx — returns the current
+ * - GET /api/v1/content/generation/status?jobId=xxx -- returns the current
  *   status and metadata for an AI content generation job.
  *   Auth-guarded. User must be the creator or a subscriber.
  *
@@ -12,7 +12,7 @@
  * - .github/copilot-instructions.md
  *
  * EDIT LOG:
- * - 2025-01-15T00:00:00Z | copilot | created — B4.1 content generation status route
+ * - 2025-01-15T00:00:00Z | copilot | created -- B4.1 content generation status route
  */
 
 import { NextRequest, NextResponse } from 'next/server'

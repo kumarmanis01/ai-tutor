@@ -11,7 +11,7 @@
  * - .github/copilot-instructions.md
  *
  * EDIT LOG:
- * - 2025-01-15T00:00:00Z | copilot | created — B4.1 content generation queue
+ * - 2025-01-15T00:00:00Z | copilot | created -- B4.1 content generation queue
  */
 
 import { Queue } from 'bullmq'

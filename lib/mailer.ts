@@ -103,7 +103,7 @@ export async function sendMailSafe(opts: MailOptions): Promise<void> {
 export const sendEmail = sendMailSafe;
 
 // ─────────────────────────────────────────────────────────────────────────────
-// B3.2 — Named transactional email methods
+// B3.2 -- Named transactional email methods
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**

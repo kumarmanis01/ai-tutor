@@ -106,7 +106,7 @@ function DashboardPreview() {
               <div className="flex items-center justify-between bg-[#FCEBEB] rounded-xl p-3">
                 <div>
                   <p className="text-xs font-bold text-secondary">Subject Blocker</p>
-                  <p className="text-[10px] text-[#E24B4A]">Social Studies — Blocked</p>
+                  <p className="text-[10px] text-[#E24B4A]">Social Studies -- Blocked</p>
                 </div>
                 <div className="w-8 h-4 bg-gray-200 rounded-full relative">
                   <div className="absolute left-0.5 top-0.5 w-3 h-3 bg-white rounded-full shadow" />
@@ -138,7 +138,7 @@ const TrustMoat = () => {
   return (
     <section className="py-12 md:py-16 bg-[#F4F7FC]">
       <div className="mx-auto px-4 md:px-6 lg:px-8 max-w-7xl">
-        {/* Section headline — bilingual per LP-3.1 spec */}
+        {/* Section headline -- bilingual per LP-3.1 spec */}
         <div className="text-center mb-8 md:mb-12">
           <h2 className="font-headline font-bold text-2xl md:text-3xl lg:text-4xl text-secondary">
             Built for Indian Parents. Designed for Indian Law.

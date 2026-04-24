@@ -11,7 +11,7 @@
  * - .github/copilot-instructions.md
  *
  * EDIT LOG:
- * - 2025-01-15T00:00:00Z | copilot | created — B2.1 JWT token service
+ * - 2025-01-15T00:00:00Z | copilot | created -- B2.1 JWT token service
  */
 
 import { SignJWT, jwtVerify, type JWTPayload } from 'jose'
@@ -21,13 +21,13 @@ import { logger } from '@/lib/logger'
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 export interface TokenPayload {
-  /** Subject — user id */
+  /** Subject -- user id */
   sub: string
-  /** Role — UserRole or AdminRole */
+  /** Role -- UserRole or AdminRole */
   role: string
-  /** Scope — 'user' | 'admin' */
+  /** Scope -- 'user' | 'admin' */
   scope: 'user' | 'admin'
-  /** JWT ID — unique per token; used for blacklisting */
+  /** JWT ID -- unique per token; used for blacklisting */
   jti: string
   /** Issued at (epoch seconds) */
   iat: number

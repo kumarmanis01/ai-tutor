@@ -68,7 +68,7 @@ const HeroSection = () => {
         <div className="absolute bottom-20 left-10 w-80 h-80 bg-secondary/10 rounded-full blur-3xl" />
       </div>
 
-      {/* Trust badge bar — horizontal scrollable on mobile, static row on desktop */}
+      {/* Trust badge bar -- horizontal scrollable on mobile, static row on desktop */}
       <div className="relative z-10 bg-white/80 border-b border-[#534AB7]/10 py-2.5">
         <div className="mx-auto px-4 md:px-6 lg:px-8 max-w-7xl">
           <div className="flex items-center gap-4 md:gap-8 overflow-x-auto scrollbar-none md:justify-center whitespace-nowrap">
@@ -88,7 +88,7 @@ const HeroSection = () => {
       {/* Hero content */}
       <div className="relative flex-1 w-full mx-auto px-4 md:px-6 lg:px-8 py-10 md:py-16 flex items-center">
         <div className="grid lg:grid-cols-2 gap-8 lg:gap-12 items-center max-w-7xl mx-auto w-full">
-          {/* Left — copy */}
+          {/* Left -- copy */}
           <div className="text-center lg:text-left space-y-6">
             {/* Social proof badge */}
             <div className="inline-flex items-center gap-2 px-4 py-2 bg-[#1D9E75]/10 text-[#1D9E75] rounded-full text-sm font-semibold">
@@ -96,7 +96,7 @@ const HeroSection = () => {
               <span>Trusted by 1 Lakh+ Indian families</span>
             </div>
 
-            {/* Main headline — LP-2.1 spec */}
+            {/* Main headline -- LP-2.1 spec */}
             <div className="space-y-3">
               <h1 className="font-headline font-bold text-4xl md:text-5xl lg:text-6xl text-secondary leading-tight">
                 The AI Tutor That Asks <span className="text-[#534AB7]">YOUR Permission</span> First
@@ -154,7 +154,7 @@ const HeroSection = () => {
             )}
           </div>
 
-          {/* Right — illustration: parent phone → child tablet */}
+          {/* Right -- illustration: parent phone → child tablet */}
           <div className="relative flex justify-center">
             {/*
              * LP-2.1: Illustration showing parent phone (approval screen) → child tablet (learning screen).

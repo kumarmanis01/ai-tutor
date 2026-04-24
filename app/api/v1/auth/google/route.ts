@@ -1,6 +1,6 @@
 /**
  * FILE OBJECTIVE:
- * - POST /api/v1/auth/google — validates a Google ID token and returns
+ * - POST /api/v1/auth/google -- validates a Google ID token and returns
  *   a JWT token pair. Rate-limited to 10 requests per IP per minute.
  *
  * LINKED UNIT TEST:
@@ -11,7 +11,7 @@
  * - .github/copilot-instructions.md
  *
  * EDIT LOG:
- * - 2025-01-15T00:00:00Z | copilot | created — B2.2 Google OAuth API route
+ * - 2025-01-15T00:00:00Z | copilot | created -- B2.2 Google OAuth API route
  */
 
 import { NextRequest, NextResponse } from 'next/server'
@@ -30,7 +30,7 @@ async function checkRateLimit(ip: string): Promise<boolean> {
   const key = `ratelimit:google:auth:${ip}`
   const count = await redis.incr(key)
   if (count === 1) {
-    // First request in window — set expiry
+    // First request in window -- set expiry
     await redis.expire(key, RATE_LIMIT_WINDOW_SECONDS)
   }
   return count <= RATE_LIMIT_MAX
@@ -59,7 +59,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       )
     }
   } catch (err: unknown) {
-    // Redis failure: allow the request through — do not block auth on infra error
+    // Redis failure: allow the request through -- do not block auth on infra error
     logger.error('Rate limit check failed', { ip, error: err })
   }
 
