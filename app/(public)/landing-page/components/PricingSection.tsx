@@ -1,32 +1,23 @@
 /**
+ * FILE OBJECTIVE:
+ * - LP-6.1 Pricing section: monthly/annual messaging, comparison with traditional tuition,
+ *   trust badges, refund & cancel policy.
+ *
+ * LINKED UNIT TEST:
+ * - tests/unit/components/PricingSection.spec.ts
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/COPILOT_GUARDRAILS.md
+ * - .github/copilot-instructions.md
+ *
+ * EDIT LOG:
+ * - 2026-04-24T00:00:00Z | copilot | restore clean PricingSection and imports; remove corrupted leading fragment
+ */
+'use client';
 
-                    <h4 className="font-headline font-bold text-lg text-secondary mb-1">Cancel Anytime</h4>
-                    <p className="font-body text-sm text-muted-foreground">No long-term commitment. Stop subscription whenever you want.</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div className="text-center">
-          <p className="font-body text-base text-muted-foreground">
-            Still have questions?{' '}
-            <a href="#faq" className="text-primary hover:underline font-semibold">
-              Check our FAQ
-            </a>{' '}
-            or{' '}
-            <a href="tel:+918920754675" className="text-primary hover:underline font-semibold">
-              call us
-            </a>
-          </p>
-        </div>
-      </div>
-    </section>
-  );
-};
-
-export default PricingSection;
+import Link from 'next/link';
+import Icon from '@/components/UI/AppIcon';
+import { PLANS } from '@/lib/billing/plans';
 
 interface PricingPlan {
   id: string;
@@ -46,9 +37,8 @@ interface PricingPlan {
 }
 
 const PricingSection = () => {
-
   const plans: PricingPlan[] = [
-        {
+    {
       id: 'free',
       name: 'Free Plan',
       nameHi: 'मुफ्त योजना',
@@ -57,18 +47,8 @@ const PricingSection = () => {
       periodHi: 'हमेशा के लिए',
       description: 'Try AI Tutor with limited features',
       descriptionHi: 'सीमित सुविधाओं के साथ AI Tutor आज़माएं',
-      features: [
-        '5 questions per day',
-        'Basic explanations',
-        'Hindi + English support',
-        'NCERT notes access',
-      ],
-      featuresHi: [
-        'प्रतिदिन 5 सवाल',
-        'बुनियादी समाधान',
-        'हिंदी + अंग्रेजी सहायता',
-        'NCERT नोट्स एक्सेस',
-      ],
+      features: ['5 questions per day', 'Basic explanations', 'Hindi + English support', 'NCERT notes access'],
+      featuresHi: ['प्रतिदिन 5 सवाल', 'बुनियादी समाधान', 'हिंदी + अंग्रेजी सहायता', 'NCERT नोट्स एक्सेस'],
       recommended: false,
       ctaText: 'Start Free',
       ctaTextHi: 'मुफ्त शुरू करें',
@@ -150,54 +130,38 @@ const PricingSection = () => {
   const savingsText = `₹${savingsMin}+`;
 
   return (
-    <section
-      id="pricing"
-      className="py-12 md:py-16 bg-gradient-to-br from-secondary/5 to-primary/5"
-    >
+    <section id="pricing" className="py-12 md:py-16 bg-gradient-to-br from-secondary/5 to-primary/5">
       <div className="mx-auto px-4 md:px-6 lg:px-8 max-w-7xl">
         <div className="text-center mb-12 md:mb-16">
           <div className="inline-flex items-center gap-2 px-4 py-2 bg-primary/10 text-primary rounded-full text-sm font-medium mb-4">
             <Icon name="CurrencyRupeeIcon" size={20} variant="solid" />
             <span>Transparent Pricing</span>
           </div>
-          <h2 className="font-headline font-bold text-3xl md:text-4xl lg:text-5xl text-secondary mb-4">
-            Choose Your Perfect Plan
-          </h2>
+          <h2 className="font-headline font-bold text-3xl md:text-4xl lg:text-5xl text-secondary mb-4">Choose Your Perfect Plan</h2>
           <p className="font-accent text-xl md:text-2xl text-primary mb-2">अपनी सही योजना चुनें</p>
-          <p className="font-body text-lg md:text-xl text-muted-foreground max-w-3xl mx-auto">
-            No hidden charges. Cancel anytime. 7-day refund policy.
-          </p>
+          <p className="font-body text-lg md:text-xl text-muted-foreground max-w-3xl mx-auto">No hidden charges. Cancel anytime. 7-day refund policy.</p>
         </div>
 
         <div className="grid md:grid-cols-3 gap-6 lg:gap-8 mb-6">
           {plans.map((plan) => {
             const displayPrice = plan.price;
-
             return (
               <div
                 key={plan.id}
                 className={`relative rounded-2xl border-2 transition-all duration-250 ${
-                  plan.recommended
-                    ? 'border-primary bg-primary/5 shadow-2xl scale-105'
-                    : 'border-border bg-background hover:border-primary/30'
+                  plan.recommended ? 'border-primary bg-primary/5 shadow-2xl scale-105' : 'border-border bg-background hover:border-primary/30'
                 }`}
               >
                 {plan.recommended && (
-                  <div className="absolute -top-4 left-1/2 -translate-x-1/2 px-4 py-1 bg-primary text-white rounded-full text-sm font-bold shadow-lg">
-                    Recommended
-                  </div>
+                  <div className="absolute -top-4 left-1/2 -translate-x-1/2 px-4 py-1 bg-primary text-white rounded-full text-sm font-bold shadow-lg">Recommended</div>
                 )}
 
                 <div className="p-6 md:p-8">
                   <div className="text-center mb-6">
-                    <h3 className="font-headline font-bold text-2xl text-secondary mb-1">
-                      {plan.name}
-                    </h3>
+                    <h3 className="font-headline font-bold text-2xl text-secondary mb-1">{plan.name}</h3>
                     <p className="font-accent text-base text-primary mb-4">{plan.nameHi}</p>
                     <div className="flex items-baseline justify-center gap-2 mb-2">
-                      <span className="font-headline font-bold text-5xl text-secondary">
-                        {displayPrice}
-                      </span>
+                      <span className="font-headline font-bold text-5xl text-secondary">{displayPrice}</span>
                       <span className="font-body text-base text-muted-foreground">/{plan.period}</span>
                     </div>
                     {/* Prices shown are inclusive of taxes */}
@@ -213,24 +177,16 @@ const PricingSection = () => {
                   <div className="space-y-3 mb-6">
                     {plan.features.map((feature, index) => (
                       <div key={index} className="flex items-start gap-3">
-                        <Icon
-                          name="CheckCircleIcon"
-                          size={20}
-                          variant="solid"
-                          className={plan.recommended ? 'text-primary' : 'text-success'}
-                        />
+                        <Icon name="CheckCircleIcon" size={20} variant="solid" className={plan.recommended ? 'text-primary' : 'text-success'} />
                         <span className="font-body text-sm text-foreground flex-1">{feature}</span>
                       </div>
                     ))}
-
                   </div>
 
                   <Link
                     href="/auth/signup"
                     className={`w-full py-3 rounded-lg font-cta font-semibold transition-all duration-250 min-h-[44px] flex items-center justify-center ${
-                      plan.recommended
-                        ? 'bg-[#534AB7] text-white hover:bg-[#4239a0] shadow-lg'
-                        : 'bg-secondary text-white hover:bg-secondary/90'
+                      plan.recommended ? 'bg-[#534AB7] text-white hover:bg-[#4239a0] shadow-lg' : 'bg-secondary text-white hover:bg-secondary/90'
                     }`}
                   >
                     {plan.ctaText}
@@ -243,28 +199,20 @@ const PricingSection = () => {
 
         {/* Payment trust badges */}
         <div className="text-center mb-10">
-          <p className="text-sm text-muted-foreground">
-            🔒 Secure checkout · UPI / Cards / Net Banking · Powered by Razorpay
-          </p>
+          <p className="text-sm text-muted-foreground">🔒 Secure checkout · UPI / Cards / Net Banking · Powered by Razorpay</p>
           <p className="text-xs text-muted-foreground mt-1">All prices inclusive of taxes</p>
         </div>
 
         <div className="bg-background rounded-2xl border-2 border-border p-6 md:p-8 mb-12">
           <div className="grid md:grid-cols-2 gap-8 items-center">
             <div>
-              <h3 className="font-headline font-bold text-2xl md:text-3xl text-secondary mb-4">
-                Compare with Traditional Tuition
-              </h3>
-              <p className="font-body text-base text-muted-foreground mb-6">
-                See how much you can save while getting better results
-              </p>
+              <h3 className="font-headline font-bold text-2xl md:text-3xl text-secondary mb-4">Compare with Traditional Tuition</h3>
+              <p className="font-body text-base text-muted-foreground mb-6">See how much you can save while getting better results</p>
 
               <div className="space-y-4">
                 <div className="flex items-center justify-between p-4 bg-error/5 rounded-lg border border-error/20">
                   <div>
-                    <p className="font-headline font-bold text-lg text-secondary">
-                      Traditional Tuition
-                    </p>
+                    <p className="font-headline font-bold text-lg text-secondary">Traditional Tuition</p>
                     <p className="font-body text-sm text-muted-foreground">Per month, per child</p>
                   </div>
                   <p className="font-headline font-bold text-2xl text-error">₹3000-5000</p>
@@ -272,12 +220,8 @@ const PricingSection = () => {
 
                 <div className="flex items-center justify-between p-4 bg-success/5 rounded-lg border border-success/20">
                   <div>
-                    <p className="font-headline font-bold text-lg text-secondary">
-                      Spinzy Academy Individual
-                    </p>
-                    <p className="font-body text-sm text-muted-foreground">
-                      Per month, unlimited access (incl. taxes)
-                    </p>
+                    <p className="font-headline font-bold text-lg text-secondary">Spinzy Academy Individual</p>
+                    <p className="font-body text-sm text-muted-foreground">Per month, unlimited access (incl. taxes)</p>
                   </div>
                   <p className="font-headline font-bold text-2xl text-success">{spinzyPriceDisplay}</p>
                 </div>
@@ -297,12 +241,8 @@ const PricingSection = () => {
                 <div className="flex items-start gap-3 mb-3">
                   <Icon name="ShieldCheckIcon" size={24} variant="solid" className="text-success" />
                   <div>
-                    <h4 className="font-headline font-bold text-lg text-secondary mb-1">
-                      7-Day Refund Policy
-                    </h4>
-                    <p className="font-body text-sm text-muted-foreground">
-                      Refunds available within 7 days of purchase.
-                    </p>
+                    <h4 className="font-headline font-bold text-lg text-secondary mb-1">7-Day Refund Policy</h4>
+                    <p className="font-body text-sm text-muted-foreground">Refunds available within 7 days of purchase.</p>
                   </div>
                 </div>
               </div>
@@ -311,31 +251,18 @@ const PricingSection = () => {
                 <div className="flex items-start gap-3 mb-3">
                   <Icon name="CheckCircleIcon" size={24} variant="solid" className="text-success" />
                   <div>
-                    <h4 className="font-headline font-bold text-lg text-secondary mb-1">
-                      Cancel Anytime
-                    </h4>
-                    <p className="font-body text-sm text-muted-foreground">
-                      No long-term commitment. Stop subscription whenever you want
-                    </p>
+                    <h4 className="font-headline font-bold text-lg text-secondary mb-1">Cancel Anytime</h4>
+                    <p className="font-body text-sm text-muted-foreground">No long-term commitment. Stop subscription whenever you want</p>
                   </div>
                 </div>
               </div>
 
               <div className="bg-muted/50 rounded-xl p-6 border border-border">
                 <div className="flex items-start gap-3 mb-3">
-                  <Icon
-                    name="ShieldCheckIcon"
-                    size={24}
-                    variant="solid"
-                    className="text-secondary"
-                  />
+                  <Icon name="ShieldCheckIcon" size={24} variant="solid" className="text-secondary" />
                   <div>
-                    <h4 className="font-headline font-bold text-lg text-secondary mb-1">
-                      Secure Payments
-                    </h4>
-                    <p className="font-body text-sm text-muted-foreground">
-                      Secure checkout · UPI / Cards / Net Banking · Powered by Razorpay
-                    </p>
+                    <h4 className="font-headline font-bold text-lg text-secondary mb-1">Secure Payments</h4>
+                    <p className="font-body text-sm text-muted-foreground">Secure checkout · UPI / Cards / Net Banking · Powered by Razorpay</p>
                   </div>
                 </div>
               </div>
@@ -344,11 +271,17 @@ const PricingSection = () => {
         </div>
 
         <div className="text-center">
-          <p className="font-body text-base text-muted-foreground mb-6">
-            Still have questions about pricing?{' '}
-            <a href="#faq" className="text-primary hover:underline font-semibold">
-              Check our FAQ
-            </a>{' '}
+          <p className="font-body text-base text-muted-foreground mb-6">Still have questions about pricing?{' '}
+            <a href="#faq" className="text-primary hover:underline font-semibold">Check our FAQ</a>{' '}or{' '}
+            <a href="tel:+918920754675" className="text-primary hover:underline font-semibold">call us</a>
+          </p>
+        </div>
+      </div>
+    </section>
+  );
+};
+
+export default PricingSection;
             or{' '}
             <a href="tel:+918920754675" className="text-primary hover:underline font-semibold">
               call us
