@@ -23,8 +23,6 @@ type ParentStudentLinkRow = {
   parent: { name: string | null; email: string | null; timezone?: string | null };
   student: { name: string | null };
 };
-type ParentProfileRow = ParentProfileLocal;
-type OutboxRow = { meta: { path: string[]; equals: string } };
 // Local minimal ParentProfile shape used for runtime checks and type-narrowing.
 // Keep this in sync with the Prisma model `ParentProfile` in prisma/schema.prisma.
 type ParentProfileLocal = {
@@ -194,13 +192,7 @@ export async function processWeeklyDigest(): Promise<void> {
 
   // All parents with at least one active link. Exclude students who opted out of parent reports.
 
-  // Local row type for parentStudent link
-  type ParentStudentLinkRowStrict = {
-    parentId: string;
-    studentId: string;
-    parent: { name: string | null; email: string | null; timezone?: string | null };
-    student: { name: string | null };
-  };
+  // Fetch parent-student links and assert the shape with the shared top-level type
   const allLinks = await prisma.parentStudent.findMany({
     where: { status: 'active', excludeFromParentReport: false },
     select: {
@@ -209,11 +201,11 @@ export async function processWeeklyDigest(): Promise<void> {
       parent: { select: { name: true, email: true, timezone: true } },
       student: { select: { name: true } },
     },
-  }) as ParentStudentLinkRowStrict[]
+  }) as ParentStudentLinkRow[]
 
   // Group children by parent
   const parentMap = new Map<string, { name: string; email: string; timezone?: string; children: { studentId: string; name: string }[] }>()
-  for (const link of allLinks as ParentStudentLinkRow[]) {
+  for (const link of allLinks) {
     if (!link.parent.email) continue
     if (!parentMap.has(link.parentId)) {
       parentMap.set(link.parentId, {
@@ -232,10 +224,9 @@ export async function processWeeklyDigest(): Promise<void> {
   // Bulk-load parent profiles (digest prefs)
   const parentIds = Array.from(parentMap.keys())
 
-  // Local row type for parentProfile
-  type ParentProfileRowStrict = ParentProfileLocal;
+  // ParentProfile rows use the shared `ParentProfileLocal` shape
   const profiles = parentIds.length
-    ? await prisma.parentProfile.findMany({ where: { userId: { in: parentIds } } }) as ParentProfileRowStrict[]
+    ? await prisma.parentProfile.findMany({ where: { userId: { in: parentIds } } }) as ParentProfileLocal[]
     : []
   const profileMap = new Map(profiles.map((p: ParentProfileRowStrict) => [p.userId, p]))
 
