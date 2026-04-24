@@ -28,16 +28,17 @@ export interface ParentReportStudentRow {
 }
 
 export async function getParentReportScope(): Promise<ParentReportScope> {
-  const [links, weekStart] = await Promise.all([
+  const [linksRaw, weekStart] = await Promise.all([
     prisma.parentStudent.findMany({
       where: { status: 'active' },
       select: { studentId: true },
       distinct: ['studentId'],
-    }) as ParentStudentLinkRow[],
+    }),
     getCurrentWeekStart(),
   ]);
 
-  const studentIds = (links as ParentStudentLinkRow[]).map((l: ParentStudentLinkRow) => l.studentId);
+  const links = linksRaw as ParentStudentLinkRow[];
+  const studentIds = links.map((l) => l.studentId);
   const reportsThisWeek =
     studentIds.length > 0
       ? await prisma.weeklyStudentSummary.count({
