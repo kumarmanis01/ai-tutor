@@ -79,6 +79,8 @@ export const prismaMock = {
   mockExamAttempt: mockModel(),
   studentLearningProfile: mockModel(),
   homeworkAssignment: mockModel(),
+  consentRequest: mockModel(),
+  consentMessageLog: mockModel(),
 };
 
 /** Reset all mock functions in prismaMock (call in beforeEach) */

@@ -11,6 +11,7 @@
 /// - 2026-04-09T00:00:00Z | copilot | add excludeFromParentReport to ParentStudent
 /// - 2026-04-10T00:00:00Z | copilot | add PaymentCustomer & PaymentMethod models for stored payment methods
 /// - 2026-04-15T00:10:00Z | copilot | add Trial relation field to User to satisfy Prisma relation
+/// - 2026-04-24T00:00:00Z | copilot | add isAdult boolean to User model for consent gating
 generator client {
   provider = "prisma-client-js"
 }
@@ -38,6 +39,8 @@ model User {
   requiresParentVerification Boolean       @default(false)
   // Self-reported age (integer). Used for under-13 / under-18 parent verification gates.
   age                        Int?
+  // Convenience boolean derived at registration time: true when age >= 18
+  isAdult                    Boolean                  @default(false)
   // Date of birth for child profiles created by a parent (F-PAR-002 AC-01).
   dateOfBirth                DateTime?
   /// Parent account verified at (explicit parent user verification).
