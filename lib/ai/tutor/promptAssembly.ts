@@ -50,7 +50,7 @@ export interface PromptContext {
   // STAGE_INSTRUCTIONS layer inputs
   isHintRequest: boolean // true when student explicitly pressed "Get a hint"
   /** AC-04 (F-STU-011): student requested a re-explanation style. null = no request this turn. */
-  explainStyle?: 'simpler' | 'harder' | 'real_life_example' | null
+  explainStyle?: 'simpler' | 'harder' | 'real_life_example' | 'diagram' | null
   /** AC-08 (F-STU-011): consecutive wrong answers this stage (drives remediation prompt). */
   consecutiveWrongAnswers?: number
 
