@@ -72,9 +72,9 @@ export async function processReadinessDropAlerts(now = new Date()): Promise<void
     const parentsByStudent = new Map<string, { parentId: string; name?: string; email?: string; phone?: string }[]>()
     const parentById = new Map<string, { name?: string; email?: string; phone?: string }>()
     for (const l of links) {
-      parentById.set(l.parentId, { name: l.parent?.name, email: l.parent?.email, phone: l.parent?.phone })
+      parentById.set(l.parentId, { name: l.parent?.name ?? undefined, email: l.parent?.email ?? undefined, phone: l.parent?.phone ?? undefined })
       const arr = parentsByStudent.get(l.studentId) ?? []
-      arr.push({ parentId: l.parentId, name: l.parent?.name, email: l.parent?.email, phone: l.parent?.phone })
+      arr.push({ parentId: l.parentId, name: l.parent?.name ?? undefined, email: l.parent?.email ?? undefined, phone: l.parent?.phone ?? undefined })
       parentsByStudent.set(l.studentId, arr)
     }
 
