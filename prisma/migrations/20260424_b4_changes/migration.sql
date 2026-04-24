@@ -1,16 +1,19 @@
--- Migration placeholder for schema changes introduced on 2026-04-24
--- This file is a placeholder created by the dev agent.
--- Recommended: Run locally to generate an authoritative migration using the Prisma CLI:
---   npx prisma migrate dev --name b4_changes --create-only
--- or
---   npx prisma migrate deploy  (for applying to a remote DB during CI/CD)
+-- Migration intentionally fails fast because the previously committed content was a
+-- no-op placeholder. A no-op migration is unsafe because `prisma migrate deploy`
+-- can record it as applied without applying the required schema changes, causing
+-- schema drift and runtime failures.
 --
--- The project uses PostgreSQL. The schema contains many additive changes (new models,
--- enums, new columns). To avoid drift, generate the migration on a machine with a
--- reachable DATABASE_URL and review the generated SQL before applying.
-
--- Example (manual ALTERs may be required if automatic migration is not run):
--- ALTER TABLE "User" ADD COLUMN "paymentCustomers" text[]; -- <--- example only
-
--- NO-OP placeholder: no SQL executed here. Please generate and review a proper
--- migration using `prisma migrate` before deploying.
+-- Replace this file with the real Prisma-generated SQL for the intended schema
+-- changes before deploying:
+--   npx prisma migrate dev --name b4_changes --create-only
+--
+-- After generating the authoritative SQL, commit the generated statements in place
+-- of this guard block.
+DO $$
+BEGIN
+  RAISE EXCEPTION
+    USING
+      MESSAGE = 'Blocked placeholder Prisma migration 20260424_b4_changes: replace this file with the real Prisma-generated migration SQL before running prisma migrate deploy.',
+      ERRCODE = 'P0001';
+END
+$$;
