@@ -1,19 +1,17 @@
+
 /**
- * ContentReadinessService (ABSTRACTION-01)
+ * FILE OBJECTIVE:
+ * - ContentReadinessService: Determines if a topic has sufficient content for a session (notes, practice, test questions).
  *
- * Determines whether a topic has sufficient content for a structured learning session.
+ * LINKED UNIT TEST:
+ * - tests/unit/lib/session/contentReadinessService.spec.ts
  *
- * Checks:
- *   - TopicNote exists (lifecycle: active)
- *   - Practice questions exist (Question with topicId)
- *   - Test questions exist (GeneratedTest with topicId that has GeneratedQuestion children)
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/COPILOT_GUARDRAILS.md
+ * - .github/copilot-instructions.md
  *
- * Return:
- *   READY   -- all three content types exist
- *   PARTIAL -- at least one exists but not all
- *   MISSING -- none exist
- *
- * SessionEngine calls this before startSession() to gate session creation.
+ * EDIT LOG:
+ * - 2026-04-23T00:00:00Z | copilot | strict-mode: add local row types, file header
  */
 
 import { prisma } from '@/lib/prisma';
@@ -35,16 +33,18 @@ export interface ContentReadinessResult {
  * @returns ContentReadinessResult with readiness level and per-content flags.
  */
 async function isTopicReady(topicId: string): Promise<ContentReadinessResult> {
+
+  // All Prisma .count() calls return number, so no local row types needed for those.
   const [hasNotes, hasPracticeQuestions, hasTestQuestions] = await Promise.all([
     prisma.topicNote
       .count({ where: { topicId, lifecycle: 'active' } })
-      .then((n) => n > 0),
+      .then((n: number) => n > 0),
     prisma.question
       .count({ where: { topicId } })
-      .then((n) => n > 0),
+      .then((n: number) => n > 0),
     prisma.generatedQuestion
       .count({ where: { test: { topicId, lifecycle: 'active' } } })
-      .then((n) => n > 0),
+      .then((n: number) => n > 0),
   ]);
 
   const count = [hasNotes, hasPracticeQuestions, hasTestQuestions].filter(Boolean).length;

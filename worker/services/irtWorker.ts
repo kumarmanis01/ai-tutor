@@ -141,7 +141,7 @@ async function checkChapterMastery(studentId: string, conceptId: string): Promis
     })
     if (allConcepts.length === 0) return
 
-    const conceptIds = allConcepts.map((c) => c.id)
+    const conceptIds = allConcepts.map((c: { id: string }) => c.id)
 
     // How many does this student have mastered?
     const masteredCount = await prisma.studentConceptState.count({
@@ -177,13 +177,13 @@ async function checkChapterMastery(studentId: string, conceptId: string): Promis
         const subject = `${chapter.name} mastered by your child`
         const html = `<p>Hi,</p><p>Your child has mastered the chapter <strong>${chapter.name}</strong>. Great job!</p>`
 
-        const sends = parents.map((p) =>
+        const sends = parents.map((p: { parent: { id: string; email?: string | null; whatsappPhone?: string | null; language?: string | null } }) =>
           sendParentMilestoneNotification(p.parent.id, {
             email: p.parent.email ?? undefined,
             whatsappPhone: p.parent.whatsappPhone ?? undefined,
             subject,
             html,
-            meta: { studentId, type: 'milestone', locale: p.parent.language },
+            meta: { studentId, type: 'milestone', locale: p.parent.language ?? undefined },
           }),
         )
 

@@ -67,6 +67,6 @@ export function incAnalyticsJobRun(status: 'SUCCESS' | 'FAILED' | 'SKIPPED') {
     analyticsJobRuns.labels(status).inc()
     } catch (e) {
     // metrics are best-effort; do not throw
-    logger.warn('[metrics] failed to increment analyticsJobRuns', e)
+    logger.warn('[metrics] failed to increment analyticsJobRuns', { error: String(e) })
   }
 }

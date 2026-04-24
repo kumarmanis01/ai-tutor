@@ -136,7 +136,7 @@ async function isDiagnosticReady(subjectId: string): Promise<boolean> {
         where: { chapter: { subjectId, lifecycle: 'active' }, lifecycle: 'active' },
         select: { id: true },
       })
-      .then((rows) => rows.map((r) => r.id));
+      .then((rows: Array<{ id: string }>) => rows.map((r) => r.id));
 
     if (topicIds.length === 0) return false;
 

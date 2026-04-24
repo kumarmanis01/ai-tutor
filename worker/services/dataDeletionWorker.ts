@@ -78,7 +78,7 @@ export async function runDataDeletionCycle(): Promise<{ pseudonymised: number; p
         where: { studentId: req.userId },
         select: { id: true },
       })
-      const sessionIds = sessions.map((s) => s.id)
+      const sessionIds = sessions.map((s: { id: string }) => s.id)
 
       await prisma.$transaction([
         // Delete safety events

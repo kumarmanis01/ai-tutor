@@ -18,13 +18,38 @@ import { recordPaymentEvent } from '@/lib/payments/audit'
 
 function toIso(d: Date) { return d.toISOString() }
 
+// Local row types for strict-mode
+type SubscriptionRow = {
+  id: string
+  userId: string
+  plan?: string | null
+  billingCycle?: string | null
+  dunningAttempts?: number | null
+  lastDunningAt?: Date | string | null
+  endDate?: Date | string | null
+  creditBalance?: number | null
+  meta?: any
+  graceUntil?: Date | null
+}
+
+type PaymentMethodRow = {
+  id?: string
+  userId?: string
+  provider?: string | null
+  providerPaymentMethodId?: string | null
+  verified?: boolean | null
+  customer?: { providerCustomerId?: string | null } | null
+}
+
+type ParentRow = { id: string; email?: string | null; phone?: string | null; name?: string | null }
+
 export async function processPaymentDunning(): Promise<void> {
   const now = new Date()
   const redis = getRedis()
 
   try {
     // 1) Handle scheduled retry attempts (attempts 1 or 2)
-    const subs = await prisma.subscription.findMany({ where: { active: true, dunningAttempts: { gt: 0, lt: 3 } } })
+    const subs = (await prisma.subscription.findMany({ where: { active: true, dunningAttempts: { gt: 0, lt: 3 } } })) as SubscriptionRow[]
 
     for (const s of subs) {
       try {
@@ -34,10 +59,10 @@ export async function processPaymentDunning(): Promise<void> {
         const shouldRunNext = (attempts === 1 && elapsedMs >= 24 * 60 * 60 * 1000) || (attempts === 2 && elapsedMs >= 2 * 24 * 60 * 60 * 1000)
         if (!shouldRunNext) continue
 
-        const parent = await prisma.user.findUnique({ where: { id: s.userId }, select: { id: true, email: true, phone: true, name: true } })
+        const parent = (await prisma.user.findUnique({ where: { id: s.userId }, select: { id: true, email: true, phone: true, name: true } })) as ParentRow | null
         if (!parent) continue
 
-        const pm = await prisma.paymentMethod.findFirst({ where: { userId: s.userId, verified: true }, orderBy: [{ isDefault: 'desc' }, { updatedAt: 'desc' }], include: { customer: true } })
+        const pm = (await prisma.paymentMethod.findFirst({ where: { userId: s.userId, verified: true }, orderBy: [{ isDefault: 'desc' }, { updatedAt: 'desc' }], include: { customer: true } })) as PaymentMethodRow | null
         let charged = false
         let chargePaymentId: string | null = null
         let chargeOrderId: string | null = null
@@ -54,7 +79,7 @@ export async function processPaymentDunning(): Promise<void> {
               return 'standard_monthly'
             }
             const planKey = resolvePlanKey(rawKey)
-            const plan = PLANS[planKey as any]
+            const plan = PLANS[planKey]
             const amountPaise = rupeesToPaise(plan.billedRupees)
 
             const { netAmountPaise, remainingCreditPaise } = applyCreditsToCharge(amountPaise, s.creditBalance ?? 0)
@@ -93,10 +118,11 @@ export async function processPaymentDunning(): Promise<void> {
                 }
               })
 
-              try {
+                try {
                 await createInvoiceForPayment({ userId: s.userId, paymentId: undefined, studentId: undefined, amountPaise: 0, planLabel: plan.label, billingCycle: plan.perMonthDisplay })
                 const subject = `Payment applied from credits -- Spinzy subscription`
-                const html = `<p>Hi ${parent.name ?? 'Parent'},</p><p>We've applied your available credits to renew your Spinzy subscription. Your next renewal is on ${new Date((s.endDate ?? now).getTime()).toLocaleDateString('en-IN')}.</p>`
+                const nextRenewal = s.endDate ? new Date(s.endDate) : now
+                const html = `<p>Hi ${parent.name ?? 'Parent'},</p><p>We've applied your available credits to renew your Spinzy subscription. Your next renewal is on ${nextRenewal.toLocaleDateString('en-IN')}.</p>`
                 await sendMailSafe({ to: parent.email ?? '', subject, html })
               } catch (err) {
                 logger.warn('paymentDunning: invoice/email after credit-apply failed', { subscriptionId: s.id, err: String(err) })
@@ -156,9 +182,10 @@ export async function processPaymentDunning(): Promise<void> {
                 charged = true
 
                 try {
-                  await createInvoiceForPayment({ userId: s.userId, paymentId: chargePaymentId, studentId: undefined, amountPaise: netAmountPaise, planLabel: plan.label, billingCycle: plan.perMonthDisplay })
+                  await createInvoiceForPayment({ userId: s.userId, paymentId: chargePaymentId ?? undefined, studentId: undefined, amountPaise: netAmountPaise, planLabel: plan.label, billingCycle: plan.perMonthDisplay })
                   const subject = `Payment received -- Spinzy subscription`
-                  const html = `<p>Hi ${parent.name ?? 'Parent'},</p><p>We've successfully renewed your Spinzy subscription. Your next renewal is on ${new Date((s.endDate ?? now).getTime()).toLocaleDateString('en-IN')}.</p>`
+                  const nextRenewal = s.endDate ? new Date(s.endDate) : now
+                  const html = `<p>Hi ${parent.name ?? 'Parent'},</p><p>We've successfully renewed your Spinzy subscription. Your next renewal is on ${nextRenewal.toLocaleDateString('en-IN')}.</p>`
                   await sendMailSafe({ to: parent.email ?? '', subject, html })
                 } catch (err) {
                   logger.warn('paymentDunning: invoice/email after auto-charge failed', { subscriptionId: s.id, err: String(err) })
@@ -190,7 +217,7 @@ export async function processPaymentDunning(): Promise<void> {
     }
 
     // 2) Start grace when attempts hit 3 (if not already started) and notify parent
-    const subsToGrace = await prisma.subscription.findMany({ where: { active: true, dunningAttempts: { gte: 3 }, graceUntil: null } })
+    const subsToGrace = (await prisma.subscription.findMany({ where: { active: true, dunningAttempts: { gte: 3 }, graceUntil: null } })) as SubscriptionRow[]
     for (const s of subsToGrace) {
       try {
         const graceUntil = new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000)
@@ -208,7 +235,7 @@ export async function processPaymentDunning(): Promise<void> {
     }
 
     // 3) Send daily reminders during gracePeriod
-    const subsInGrace = await prisma.subscription.findMany({ where: { active: true, graceUntil: { gt: now } } })
+    const subsInGrace = (await prisma.subscription.findMany({ where: { active: true, graceUntil: { gt: now } } })) as SubscriptionRow[]
     for (const s of subsInGrace) {
       try {
         const parent = await prisma.user.findUnique({ where: { id: s.userId }, select: { id: true, email: true, phone: true, name: true } })
@@ -231,7 +258,7 @@ export async function processPaymentDunning(): Promise<void> {
     }
 
     // 4) Expire grace: subscriptions where graceUntil has passed -> deactivate and revert child accounts
-    const subsToExpire = await prisma.subscription.findMany({ where: { active: true, graceUntil: { lt: now } } })
+    const subsToExpire = (await prisma.subscription.findMany({ where: { active: true, graceUntil: { lt: now } } })) as SubscriptionRow[]
     for (const s of subsToExpire) {
       try {
         await prisma.$transaction(async (tx) => {

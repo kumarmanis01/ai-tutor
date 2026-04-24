@@ -12,6 +12,7 @@
  * EDIT LOG:
  * - 2026-04-15T00:00:00Z | copilot | moved helpers from lib/subscription.ts
  * - 2026-04-15T12:00:00Z | copilot | replace anonymous default export with named const
+ * - 2026-04-24T00:00:00Z | copilot | strict-mode: annotate callback param to remove implicit any
  */
 
 import { prisma } from '@/lib/prisma'
@@ -40,7 +41,8 @@ export async function isPremiumUser(userId: string): Promise<boolean> {
   const parentLinks = await prisma.parentStudent.findMany({ where: { studentId: userId, status: 'active' }, select: { parentId: true } })
   if (parentLinks.length === 0) return false
 
-  const parentIds = parentLinks.map((l) => l.parentId)
+  // Annotate callback param to satisfy strict-mode (no implicit any)
+  const parentIds = parentLinks.map((l: { parentId: string }) => l.parentId)
   const familySub = await prisma.subscription.findFirst({
     where: {
       userId: { in: parentIds },

@@ -140,6 +140,9 @@ export async function resolvePhaseContent(
     case 'COMPLETE':
       return { type: 'complete' };
   }
+
+  // Should be unreachable: ensure function always returns the declared type.
+  throw new Error(`Unsupported session phase: ${phase}`);
 }
 
 // ─── Phase Resolvers ─────────────────────────────────────────────────────────

@@ -50,21 +50,23 @@ export async function generateLearningPlan(
         { topic: { order: 'asc' } },
       ],
     })
+    type ConceptRow = { id: string; topic?: { name?: string | null; order?: number | null; chapter?: { order?: number | null } } | null }
 
     if (concepts.length === 0) {
       logger.warn('[generateLearningPlan] no concepts found', { studentId, subjectId })
       return null
     }
 
-    const conceptIds = concepts.map((c) => c.id)
+    const conceptIds = (concepts as ConceptRow[]).map((c: ConceptRow) => c.id)
 
     // 2. Load mastery scores for this student
     const states = await prisma.studentConceptState.findMany({
       where: { studentId, conceptId: { in: conceptIds } },
       select: { conceptId: true, masteryScore: true },
     })
+    type StateRow = { conceptId: string; masteryScore: number }
     const masteryByConcept = new Map<string, number>(
-      states.map((s) => [s.conceptId, s.masteryScore]),
+      (states as StateRow[]).map((s: StateRow) => [s.conceptId, s.masteryScore] as [string, number]),
     )
 
     // 3. Sort: lowest mastery first, then curriculum order. If a parent has

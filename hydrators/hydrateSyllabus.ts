@@ -102,7 +102,8 @@ export async function enqueueSyllabusHydration(input: {
   const jobId = randomUUID()
   const jobData: any = {
     id: jobId,
-    rootJobId: null,
+    // rootJobId intentionally omitted/undefined for root syllabus jobs; DB reconciler queries for NULL
+    rootJobId: undefined,
     jobType: 'syllabus',
     board: input.board,
     grade: input.grade,
@@ -124,9 +125,9 @@ export async function enqueueSyllabusHydration(input: {
   try {
     const outbox = await prisma.outbox.create({ data: { queue: CONTENT_HYDRATION_QUEUE, payload: { type: 'SYLLABUS', payload: { jobId: job.id } }, meta: { hydrationJobId: job.id } } })
     if (HYDRATION_DEBUG) logger.debug('[hydration][DEBUG] created Outbox row for HydrationJob', { jobId: job.id, outboxId: outbox.id })
-    return { created: true, jobId: job.id, bullJobId: null, outboxId: outbox.id }
+    return { created: true, jobId: job.id, bullJobId: undefined, outboxId: outbox.id }
   } catch (err) {
-    logger.error('Failed to create outbox row for HydrationJob', { error: err, jobId: job.id })
+    logger.error('Failed to create outbox row for HydrationJob', { error: err instanceof Error ? err.message : String(err), jobId: job.id })
     return { created: true, jobId: job.id }
   }
 }

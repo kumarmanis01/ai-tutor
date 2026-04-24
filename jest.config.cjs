@@ -1,6 +1,9 @@
 /** Jest config using ts-jest for TypeScript tests */
 module.exports = {
   preset: 'ts-jest',
+  // Default to Node so DB-related setup (prismaEnsureColumns) runs correctly.
+  // UI tests that require a DOM should opt-in via per-file environment or
+  // be run under a separate Jest project. Revert: jsdom caused setup to skip.
   testEnvironment: 'node',
   // run only unit tests by default; integration tests are excluded
   testMatch: [
@@ -31,7 +34,26 @@ module.exports = {
       // NOTE: do not map generic relative `../lib/*.js` imports — they
       // accidentally match internal relative imports inside node_modules
       // packages (e.g. openai, jose) and break Jest resolution.
-    '^@/(.*)$': ['<rootDir>/src/$1', '<rootDir>/$1']
+    '^@/components/(.*)$': [
+      '<rootDir>/components/$1.tsx',
+      '<rootDir>/components/$1.ts',
+      '<rootDir>/components/$1/index.tsx',
+      '<rootDir>/components/$1/index.ts',
+      '<rootDir>/src/components/$1.tsx',
+      '<rootDir>/src/components/$1.ts',
+      '<rootDir>/src/components/$1/index.tsx',
+      '<rootDir>/src/components/$1/index.ts',
+    ],
+    '^@/(.*)$': [
+      '<rootDir>/src/$1.ts',
+      '<rootDir>/src/$1.tsx',
+      '<rootDir>/src/$1/index.ts',
+      '<rootDir>/src/$1/index.tsx',
+      '<rootDir>/$1.ts',
+      '<rootDir>/$1.tsx',
+      '<rootDir>/$1/index.ts',
+      '<rootDir>/$1/index.tsx',
+    ]
     ,
     '^@prisma/client$': '<rootDir>/tests/mocks/prismaClientMock.ts'
   },

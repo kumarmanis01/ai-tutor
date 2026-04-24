@@ -516,12 +516,18 @@
 
     try {
     // Fetch topic names for context (up to 20 topics)
+    type TopicDefRow = { id: string; name?: string | null }
     const topicNames = await prisma.topicDef
       .findMany({
         where: { id: { in: topicIds.slice(0, 20) } },
         select: { id: true, name: true },
       })
-      .then((rows) => rows.map((r) => r.name).join(', '))
+      .then((rows: TopicDefRow[]) =>
+        rows
+          .map((r) => r.name)
+          .filter((n): n is string => typeof n === 'string' && n.length > 0)
+          .join(', '),
+      )
       .catch(() => '');
 
     const langNote = languageCode && languageCode !== 'en'

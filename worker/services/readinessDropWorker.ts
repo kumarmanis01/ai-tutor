@@ -28,6 +28,21 @@ const LOOKBACK_DAYS = 7
 const RATE_LIMIT_DAYS = 7
 const EXAM_WINDOW_DAYS = 90
 
+// Local row types to satisfy strict mode
+type ParentLinkRow = {
+  parentId: string
+  studentId: string
+  parent?: { name?: string | null; email?: string | null; phone?: string | null } | null
+}
+
+type PlanRow = {
+  studentId: string
+  subjectId: string | null
+  examDate?: Date | null
+}
+
+type SubjectDefRow = { id: string; name: string }
+
 function escapeHtml(str: string) {
   if (!str) return ''
   return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;')
@@ -51,28 +66,28 @@ export async function processReadinessDropAlerts(now = new Date()): Promise<void
     const links = await prisma.parentStudent.findMany({
       where: { status: 'active' },
       select: { parentId: true, studentId: true, parent: { select: { name: true, email: true, phone: true } } },
-    })
+    }) as ParentLinkRow[]
 
     // Build student -> parents map
     const parentsByStudent = new Map<string, { parentId: string; name?: string; email?: string; phone?: string }[]>()
     const parentById = new Map<string, { name?: string; email?: string; phone?: string }>()
     for (const l of links) {
-      parentById.set(l.parentId, { name: l.parent?.name, email: l.parent?.email, phone: l.parent?.phone })
+      parentById.set(l.parentId, { name: l.parent?.name ?? undefined, email: l.parent?.email ?? undefined, phone: l.parent?.phone ?? undefined })
       const arr = parentsByStudent.get(l.studentId) ?? []
-      arr.push({ parentId: l.parentId, name: l.parent?.name, email: l.parent?.email, phone: l.parent?.phone })
+      arr.push({ parentId: l.parentId, name: l.parent?.name ?? undefined, email: l.parent?.email ?? undefined, phone: l.parent?.phone ?? undefined })
       parentsByStudent.set(l.studentId, arr)
     }
 
     // For all students with parent links, fetch their learning plans (subjectId + examDate)
-    const studentIds = Array.from(new Set(links.map((l) => l.studentId)))
+    const studentIds = Array.from(new Set(links.map((l: ParentLinkRow) => l.studentId)))
     if (studentIds.length === 0) return
 
-    const plans = await prisma.learningPlan.findMany({ where: { studentId: { in: studentIds } }, select: { studentId: true, subjectId: true, examDate: true } })
+    const plans = (await prisma.learningPlan.findMany({ where: { studentId: { in: studentIds } }, select: { studentId: true, subjectId: true, examDate: true } })) as PlanRow[]
 
     // Map subjectId -> subject name for nicer messages
-    const subjectIds = Array.from(new Set(plans.map((p) => p.subjectId).filter(Boolean)))
-    const subjectDefs = subjectIds.length > 0 ? await prisma.subjectDef.findMany({ where: { id: { in: subjectIds } }, select: { id: true, name: true } }) : []
-    const subjectNameById = new Map(subjectDefs.map((s) => [s.id, s.name]))
+    const subjectIds = Array.from(new Set(plans.map((p: PlanRow) => p.subjectId).filter(Boolean) as string[]))
+    const subjectDefs = subjectIds.length > 0 ? (await prisma.subjectDef.findMany({ where: { id: { in: subjectIds } }, select: { id: true, name: true } })) as SubjectDefRow[] : []
+    const subjectNameById = new Map<string, string>(subjectDefs.map((s: SubjectDefRow) => [s.id, s.name]))
 
     // For each plan entry, compute readiness now and compare to snapshot LOOKBACK_DAYS ago
     const date7 = new Date(now)

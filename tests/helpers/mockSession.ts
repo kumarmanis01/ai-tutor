@@ -18,3 +18,11 @@ export const mockSession = {
 jest.mock('next-auth', () => ({
   getServerSession: jest.fn().mockResolvedValue(mockSession),
 }));
+// Also mock next-auth/next which is used by server route imports
+jest.mock('next-auth/next', () => ({
+  getServerSession: jest.fn().mockImplementation(() => {
+    const v = (global as any).__TEST_SESSION__;
+    if (typeof v !== 'undefined') return Promise.resolve(v);
+    return Promise.resolve(mockSession);
+  }),
+}));

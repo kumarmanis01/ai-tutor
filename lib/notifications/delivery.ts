@@ -134,21 +134,23 @@ async function persistAuditMulti(
   if (sentChannels.length === 0) return
   const now = new Date()
   await Promise.allSettled(
-    sentChannels.map((channel) =>
-      prisma.parentNotification.create({
-        data: {
-          parentId,
-          studentId: opts.meta?.studentId ?? null,
-          type,
-          channel,
-          subject: opts.subject,
-          body: { html: opts.html, text: opts.text ?? null },
-          sentAt: now,
-        },
-      }).catch((e) => {
+    sentChannels.map(async (channel) => {
+      try {
+        await prisma.parentNotification.create({
+          data: {
+            parentId,
+            studentId: opts.meta?.studentId ?? null,
+            type,
+            channel,
+            subject: opts.subject,
+            body: { html: opts.html, text: opts.text ?? null },
+            sentAt: now,
+          },
+        })
+      } catch (e: unknown) {
         logger.warn('[notifications] audit persist failed', { parentId, channel, error: String(e) })
-      }),
-    ),
+      }
+    }),
   )
 }
 

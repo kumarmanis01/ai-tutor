@@ -80,11 +80,11 @@ export async function checkSessionBadges(params: {
   const { studentId, sessionId, currentStreak, masteryAfter, accuracy, avgTimeSeconds } = params
 
   try {
-    const existing = await prisma.userBadge.findMany({
+    const existing = (await prisma.userBadge.findMany({
       where: { studentId },
       select: { badgeKey: true },
-    })
-    const heldKeys = new Set(existing.map((b) => b.badgeKey))
+    })) as Array<{ badgeKey: string }>
+    const heldKeys = new Set(existing.map((b: { badgeKey: string }) => b.badgeKey))
 
     const toAward: BadgeDefinition[] = []
 
@@ -172,10 +172,10 @@ export async function checkSessionBadges(params: {
     // Fire parent-facing milestone notifications (best-effort).
     try {
       const student = await prisma.user.findUnique({ where: { id: studentId }, select: { name: true } })
-      const parentLinks = await prisma.parentStudent.findMany({
+      const parentLinks = (await prisma.parentStudent.findMany({
         where: { studentId, status: 'active' },
         include: { parent: { select: { id: true, email: true, phone: true, whatsappPhone: true, name: true, language: true } } },
-      })
+      })) as Array<{ parent: { id: string; email?: string | null; phone?: string | null; whatsappPhone?: string | null; name?: string | null; language?: string | null } }>
 
       if (parentLinks.length > 0) {
         const studentName = student?.name ?? 'Your child'
@@ -200,7 +200,7 @@ export async function checkSessionBadges(params: {
             whatsappTemplate: waTemplate,
             subject,
             html: brandedHtml,
-            meta: { studentId, type: 'milestone', locale: pl.parent.language },
+            meta: { studentId, type: 'milestone', locale: pl.parent.language ?? undefined },
           })
         })
 

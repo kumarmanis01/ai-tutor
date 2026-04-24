@@ -1,3 +1,18 @@
+/**
+ * FILE OBJECTIVE:
+ * - Freemium enforcement helpers: free-tier limits, counters and utilities.
+ *
+ * LINKED UNIT TEST:
+ * - tests/unit/lib/freemium.spec.ts
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/COPILOT_GUARDRAILS.md
+ * - .github/copilot-instructions.md
+ *
+ * EDIT LOG:
+ * - 2026-04-24T00:00:00Z | copilot | strict-mode: annotate map callbacks and add header
+ */
+
 import { prisma } from '@/lib/prisma'
 import { isPremiumUser } from '@/lib/subscription'
 import { logger } from '@/lib/logger'
@@ -185,7 +200,7 @@ export async function getStudentsNearingReset(targetDaysOut: number = 3): Promis
 
     if (usageRows.length === 0) return []
 
-    const studentIds = usageRows.map((r) => r.studentId)
+    const studentIds = usageRows.map((r: { studentId: string }) => r.studentId)
 
     // Only notify students who are still on the free tier
     const freeStudents = await prisma.user.findMany({
@@ -193,7 +208,7 @@ export async function getStudentsNearingReset(targetDaysOut: number = 3): Promis
       select: { id: true },
     })
 
-    return freeStudents.map((u) => u.id)
+    return freeStudents.map((u: { id: string }) => u.id)
   } catch {
     return []
   }

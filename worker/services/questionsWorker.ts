@@ -478,7 +478,7 @@ export async function handleQuestionsJob(jobId: string): Promise<void> {
         take: 8,
       })
       if (chunks.length > 0) {
-        ncertContext = chunks.map((c) => c.content ?? '').filter(Boolean).join('\n\n---\n\n')
+        ncertContext = chunks.map((c: { content?: string | null }) => c.content ?? '').filter(Boolean).join('\n\n---\n\n')
         logger.info('[questionsWorker] grounding questions with NCERT chunks', {
           event: 'ncert_grounding',
           context: { jobId: job.id, chapterOrder, subject: subjectSlug, grade, chunkCount: chunks.length },

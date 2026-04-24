@@ -183,10 +183,14 @@ export async function bootstrapWorker() {
     try {
       const { getRedis } = await import('../lib/redis.js');
       const r = getRedis();
-      const pong = await r.ping();
-      logger.debug(`[worker][DEBUG] Redis ping: ${String(pong)}`);
+      if (!r) {
+        logger.warn('[worker][DEBUG] Redis client unavailable');
+      } else {
+        const pong = await r.ping();
+        logger.debug(`[worker][DEBUG] Redis ping: ${String(pong)}`);
+      }
     } catch (err) {
-      logger.error('[worker][DEBUG] Redis ping failed', err);
+      logger.error('[worker][DEBUG] Redis ping failed', { error: String(err) });
     }
     logger.debug(`[worker][DEBUG] starting worker: type=${workerType} concurrency=${effectiveConcurrency} lifecycleId=${lifecycleId} safeMode=${String(isSafeMode)}`);
   } else {
@@ -318,7 +322,7 @@ export async function bootstrapWorker() {
       try {
         logger.debug(`[worker][DEBUG] active job id=${job.id} name=${job.name} data=${JSON.stringify(job.data)}`);
       } catch (e) {
-        logger.debug('[worker][DEBUG] active job (failed to stringify)', e);
+        logger.debug('[worker][DEBUG] active job (failed to stringify)', { error: String(e) });
       }
     });
     worker.on('stalled', (jobId) => {
@@ -340,13 +344,13 @@ export async function bootstrapWorker() {
 
   const heartbeat = setInterval(async () => {
     try {
-      await prisma.workerLifecycle.update({
-        where: { id: lifecycleId },
-        data: { lastHeartbeatAt: new Date() },
-      });
-    } catch (err) {
-      logger.error("[worker] heartbeat failed", err);
-    }
+        await prisma.workerLifecycle.update({
+          where: { id: lifecycleId },
+          data: { lastHeartbeatAt: new Date() },
+        });
+      } catch (err) {
+        logger.error("[worker] heartbeat failed", { error: String(err) });
+      }
   }, heartbeatIntervalMs);
 
   async function shutdown(drain = true) {
@@ -385,7 +389,7 @@ export async function bootstrapWorker() {
 
       process.exit(0);
     } catch (err: any) {
-      logger.error("[worker] shutdown error", err);
+      logger.error("[worker] shutdown error", { error: String(err) });
 
       await prisma.workerLifecycle.update({
         where: { id: lifecycleId },

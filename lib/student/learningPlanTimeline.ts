@@ -103,7 +103,7 @@ export function buildTimeline(plan: any, rawItems?: any[], subjectName?: string)
       }
     })
 
-  const completedConcepts = items.filter((i) => i.status === 'COMPLETED').length
+  const completedConcepts = items.filter((i: { status?: string }) => i.status === 'COMPLETED').length
 
   const payload: TimelineResponse = {
     planId: plan.id,

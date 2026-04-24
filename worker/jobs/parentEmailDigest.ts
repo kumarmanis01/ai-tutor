@@ -7,6 +7,7 @@
  * - 2026-02-04 | claude | created parent email digest job
  * - 2026-02-04 | claude | integrated WhatsApp delivery alongside email
  * - 2026-04-09 | copilot | respect excludeFromParentReport when selecting parent links
+ * - 2026-04-23T00:00:00Z | copilot | fix(strict): cast Prisma results to local row types to avoid implicit-any in callbacks
  */
 
 import { prisma } from '@/lib/prisma';
@@ -78,14 +79,7 @@ export async function sendParentDigests(): Promise<number> {
   const allChildIds = Object.values(parentMap).flatMap((p) => p.children.map((c) => c.id));
 
   // Batch-fetch all per-child data in 6 queries instead of 6N
-  const [
-    allSummaries,
-    allLastWeekSummaries,
-    allFlags,
-    allReadiness,
-    allStrengths,
-    allStreaks,
-  ] = await Promise.all([
+  const _res = await Promise.all([
     prisma.weeklyStudentSummary.findMany({
       where: { studentId: { in: allChildIds }, weekStart: monday },
     }),
@@ -110,6 +104,20 @@ export async function sendParentDigests(): Promise<number> {
       where: { studentId: { in: allChildIds }, kind: 'daily' },
     }),
   ]);
+
+  // Local row shapes to provide typing for downstream callbacks/mappers
+  type WeeklySummaryRow = { studentId: string; sessionsCount?: number; totalMinutes?: number; topicsCovered?: number; testsTaken?: number; averageScore?: number }
+  type AttentionFlagRow = { studentId: string; subject: string; chapter?: string; reason?: string }
+  type ReadinessRow = { studentId: string; subject: string; readinessLabel?: string; readinessScore?: number }
+  type StrengthRow = { studentId: string; subject: string; chapter: string }
+  type StreakRow = { studentId: string; current: number }
+
+  const allSummaries = _res[0] as WeeklySummaryRow[]
+  const allLastWeekSummaries = _res[1] as WeeklySummaryRow[]
+  const allFlags = _res[2] as AttentionFlagRow[]
+  const allReadiness = _res[3] as ReadinessRow[]
+  const allStrengths = _res[4] as StrengthRow[]
+  const allStreaks = _res[5] as StreakRow[]
 
   // Build lookup maps keyed by studentId
   const summaryByStudent = new Map<string, (typeof allSummaries)[number]>(

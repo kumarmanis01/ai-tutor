@@ -26,6 +26,7 @@ export async function getCachedExplanation(
 ): Promise<CachedExplanation | null> {
   try {
     const redis = getRedis()
+    if (!redis) return null
     const key = buildKey(conceptId, lang, modality)
     const raw = await redis.get(key)
     if (!raw) return null
@@ -45,6 +46,7 @@ export async function setCachedExplanation(
 ): Promise<void> {
   try {
     const redis = getRedis()
+    if (!redis) return
     const key = buildKey(conceptId, lang, modality)
     const payload: CachedExplanation = {
       conceptId,
@@ -66,6 +68,7 @@ export async function invalidateExplanation(
 ): Promise<void> {
   try {
     const redis = getRedis()
+    if (!redis) return
     const key = buildKey(conceptId, lang, modality)
     await redis.del(key)
   } catch {

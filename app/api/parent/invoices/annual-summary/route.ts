@@ -81,7 +81,9 @@ export async function GET(req: NextRequest) {
     }
 
     const parentId = session.user.id;
-    const fyParam = req.nextUrl.searchParams.get('fy');
+    // Support both NextRequest (has `nextUrl`) and native Request (has `url`)
+    const urlLike: URL | typeof req.nextUrl = (req as any).nextUrl ?? new URL((req as any).url);
+    const fyParam = urlLike.searchParams.get('fy');
 
     // Parse requested financial year or default to current
     let fyStart: Date;
@@ -153,7 +155,7 @@ export async function GET(req: NextRequest) {
     });
 
     // If the client requested a merged PDF, generate and return it.
-    const format = req.nextUrl.searchParams.get('format');
+    const format = urlLike.searchParams.get('format');
     if (format === 'pdf') {
       try {
         const pdfBuf = await generateAnnualInvoicesPdf(parentId, fyStart, fyEnd);
