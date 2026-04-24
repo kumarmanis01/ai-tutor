@@ -1,4 +1,3 @@
-```markdown
 ## S0.1 | P0 | Student-Initiated Registration with Age Gate
 **ID:** S0.1
 **Labels:** P0, phase:onboarding
