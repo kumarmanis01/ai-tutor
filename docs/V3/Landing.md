@@ -1,5 +1,3 @@
-markdown
-
 ## LP-1.1 | P0 | Landing Page Shell with Consistent Layout
 **ID:** LP-1.1
 **Labels:** P0, phase:onboarding

@@ -1,5 +1,3 @@
-
-```markdown
 # Spinzy Academy — Backend & Infrastructure User Stories
 
 ---

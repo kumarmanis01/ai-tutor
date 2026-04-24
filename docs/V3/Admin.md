@@ -1,4 +1,3 @@
-markdown
 ## A0.1 | P0 | Super Admin Creates Admin Accounts
 **ID:** A0.1
 **Labels:** P0, phase:onboarding
