@@ -1,4 +1,4 @@
-﻿-- Migration: Add ConsentRequest and ConsentMessageLog tables with all enums
+-- Migration: Add ConsentRequest and ConsentMessageLog tables with all enums
 -- This migration was successfully applied to Neon on 2026-04-25
 -- It is idempotent and safe to run on any environment
 
