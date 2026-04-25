@@ -12,15 +12,20 @@
  *
  * EDIT LOG:
  * - 2026-04-25T00:00:00Z | copilot | created S2.2 lesson experience component
+ * - 2026-04-25T01:45:00Z | copilot | added locale toggle, cached revalidation flow, dark mode styling, and inline hint placement
  */
 
 'use client';
 
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
+import { useRouter } from 'next/navigation';
 
 type LessonPayload = {
   topicId: string;
+  locale: 'en' | 'hi';
+  availableLocales: string[];
   chapterId: string;
   chapterName: string;
   subjectId: string;
@@ -28,8 +33,9 @@ type LessonPayload = {
   title: string;
   introduction: string;
   keyPoints: string[];
-  sections: Array<{ heading: string; body: string }>;
+  sections: Array<{ heading: string; body: string; imageUrl: string | null; imageAlt: string | null }>;
   studyBuddyHint: string;
+  hintPlacements: Array<{ sectionIndex: number; hintText: string }>;
   video: string | null;
 };
 
@@ -39,27 +45,45 @@ type LessonExperienceProps = {
 };
 
 export default function LessonExperience({ studentId, topicId }: LessonExperienceProps) {
+  const router = useRouter();
   const [lesson, setLesson] = useState<LessonPayload | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isCompleting, setIsCompleting] = useState(false);
   const [isCompleted, setIsCompleted] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showVideo, setShowVideo] = useState(false);
+  const [locale, setLocale] = useState<'en' | 'hi'>('en');
+
+  function lessonCacheKey(topicIdValue: string, localeValue: 'en' | 'hi'): string {
+    return `lesson-cache:${topicIdValue}:${localeValue}`;
+  }
 
   useEffect(() => {
     let active = true;
 
     async function load() {
-      setIsLoading(true);
+      try {
+        const cachedRaw = window.localStorage.getItem(lessonCacheKey(topicId, locale));
+        if (cachedRaw) {
+          const cachedPayload = JSON.parse(cachedRaw) as LessonPayload;
+          if (active) {
+            setLesson(cachedPayload);
+            setIsLoading(false);
+          }
+        } else {
+          setIsLoading(true);
+        }
+      } catch {
+        setIsLoading(true);
+      }
       setError(null);
       try {
-        const res = await fetch(`/api/v1/content/${encodeURIComponent(topicId)}`, {
-          cache: 'no-store',
-        });
+        const res = await fetch(`/api/v1/content/${encodeURIComponent(topicId)}?locale=${locale}`);
         if (!res.ok) throw new Error(`Failed to load lesson (${res.status})`);
         const payload = (await res.json()) as LessonPayload;
         if (active) {
           setLesson(payload);
+          window.localStorage.setItem(lessonCacheKey(topicId, locale), JSON.stringify(payload));
         }
       } catch (err) {
         if (active) {
@@ -77,7 +101,7 @@ export default function LessonExperience({ studentId, topicId }: LessonExperienc
     return () => {
       active = false;
     };
-  }, [topicId]);
+  }, [locale, topicId]);
 
   async function markComplete() {
     if (isCompleting || isCompleted) return;
@@ -122,30 +146,53 @@ export default function LessonExperience({ studentId, topicId }: LessonExperienc
   return (
     <div className="mx-auto max-w-3xl px-4 py-6 animate-[fadeIn_220ms_ease-out]">
       <div className="mb-3 flex items-center justify-between gap-3">
-        <Link href="/student/learning-map" className="text-sm font-semibold text-[#534AB7] hover:underline">
+        <Link href="/student/learning-map" className="text-sm font-semibold text-[#534AB7] hover:underline dark:text-[#A69DFF]">
           ← Back to Map
         </Link>
-        <button
-          type="button"
-          className="min-h-[44px] rounded-lg border border-gray-300 px-3 text-xs font-semibold text-gray-600 hover:bg-gray-50"
-          onClick={() => {
-            // Reuse existing support flow for content issues.
-            window.location.href = '/doubts';
-          }}
-        >
-          Report Content Issue
-        </button>
+        <div className="flex items-center gap-2">
+          {lesson.availableLocales.includes('hi') && (
+            <div className="flex rounded-lg border border-gray-300 bg-white p-1 dark:border-slate-700 dark:bg-slate-900">
+              <button
+                type="button"
+                onClick={() => setLocale('en')}
+                className={`min-h-[36px] rounded-md px-3 text-xs font-semibold ${
+                  locale === 'en' ? 'bg-[#534AB7] text-white' : 'text-gray-600 dark:text-gray-300'
+                }`}
+              >
+                English
+              </button>
+              <button
+                type="button"
+                onClick={() => setLocale('hi')}
+                className={`min-h-[36px] rounded-md px-3 text-xs font-semibold ${
+                  locale === 'hi' ? 'bg-[#534AB7] text-white' : 'text-gray-600 dark:text-gray-300'
+                }`}
+              >
+                हिन्दी
+              </button>
+            </div>
+          )}
+          <button
+            type="button"
+            className="min-h-[44px] rounded-lg border border-gray-300 px-3 text-xs font-semibold text-gray-600 hover:bg-gray-50 dark:border-slate-700 dark:text-gray-300 dark:hover:bg-slate-800"
+            onClick={() => {
+              router.push('/doubts');
+            }}
+          >
+            Report Content Issue
+          </button>
+        </div>
       </div>
 
-      <article className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
-        <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+      <article className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+        <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
           {lesson.subjectName} · {lesson.chapterName}
         </p>
-        <h1 className="mt-1 text-2xl font-bold text-gray-900">{lesson.title}</h1>
-        <p className="mt-3 text-[15px] leading-relaxed text-gray-700">{lesson.introduction}</p>
+        <h1 className="mt-1 text-2xl font-bold text-gray-900 dark:text-gray-100">{lesson.title}</h1>
+        <p className="mt-3 text-[15px] leading-relaxed text-gray-700 dark:text-gray-300">{lesson.introduction}</p>
 
         {lesson.keyPoints.length > 0 && (
-          <section className="mt-4 rounded-xl border border-[#534AB7]/20 bg-[#EEEDFE] p-4">
+          <section className="mt-4 rounded-xl border border-[#534AB7]/20 bg-[#EEEDFE] p-4 dark:bg-[#534AB7]/15">
             <p className="text-sm font-semibold text-[#534AB7]">Key Points</p>
             <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-[#3C3489]">
               {lesson.keyPoints.map((point, index) => (
@@ -157,15 +204,34 @@ export default function LessonExperience({ studentId, topicId }: LessonExperienc
 
         <section className="mt-5 space-y-4">
           {lesson.sections.map((section, index) => (
-            <div key={`${section.heading}-${index}`} className="rounded-xl border border-gray-200 p-4">
-              <h2 className="text-base font-semibold text-gray-900">{section.heading}</h2>
-              <p className="mt-2 whitespace-pre-line text-sm leading-relaxed text-gray-700">{section.body}</p>
+            <div key={`${section.heading}-${index}`} className="rounded-xl border border-gray-200 p-4 dark:border-slate-800">
+              <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100">{section.heading}</h2>
+              <p className="mt-2 whitespace-pre-line text-sm leading-relaxed text-gray-700 dark:text-gray-300">{section.body}</p>
+              {section.imageUrl && (
+                <div className="mt-3 overflow-hidden rounded-xl border border-gray-200 dark:border-slate-800">
+                  <Image
+                    src={section.imageUrl}
+                    alt={section.imageAlt ?? section.heading}
+                    width={960}
+                    height={540}
+                    className="h-auto w-full"
+                  />
+                </div>
+              )}
+              {lesson.hintPlacements
+                .filter((placement) => placement.sectionIndex === index)
+                .map((placement) => (
+                  <aside key={`${placement.sectionIndex}-${placement.hintText}`} className="mt-3 rounded-xl border border-[#1D9E75]/20 bg-[#EAF3DE] p-4 dark:bg-[#1D9E75]/10">
+                    <p className="text-sm font-semibold text-[#1D9E75]">Study Buddy Hint</p>
+                    <p className="mt-1 text-sm text-[#1D9E75]">{placement.hintText}</p>
+                  </aside>
+                ))}
             </div>
           ))}
         </section>
 
         {lesson.video && (
-          <section className="mt-5 rounded-xl border border-gray-200 p-4">
+          <section className="mt-5 rounded-xl border border-gray-200 p-4 dark:border-slate-800">
             <button
               type="button"
               onClick={() => setShowVideo((prev) => !prev)}
@@ -187,7 +253,7 @@ export default function LessonExperience({ studentId, topicId }: LessonExperienc
           </section>
         )}
 
-        <aside className="mt-5 rounded-xl border border-[#1D9E75]/20 bg-[#EAF3DE] p-4">
+        <aside className="mt-5 rounded-xl border border-[#1D9E75]/20 bg-[#EAF3DE] p-4 dark:bg-[#1D9E75]/10">
           <p className="text-sm font-semibold text-[#1D9E75]">Study Buddy Hint</p>
           <p className="mt-1 text-sm text-[#1D9E75]">{lesson.studyBuddyHint}</p>
         </aside>

@@ -13,6 +13,7 @@
  *
  * EDIT LOG:
  * - 2026-04-25T00:00:00Z | copilot | created S2.4 freemium limits endpoint
+ * - 2026-04-25T01:25:00Z | copilot | exposed upgrade-request cooldown state for modal persistence across restarts
  */
 
 import { NextResponse } from 'next/server';
@@ -53,6 +54,23 @@ async function getPracticeUsed(studentId: string): Promise<number> {
   }
 }
 
+async function getCooldownState(
+  studentId: string,
+  featureType: 'practice' | 'ai_tutor' | 'chapter_quiz'
+): Promise<{ active: boolean; retryAfterSeconds: number }> {
+  const redis = getRedis();
+  if (!redis) return { active: false, retryAfterSeconds: 0 };
+  try {
+    const key = `freemium:upgrade-request:${studentId}:${featureType}`;
+    const raw = await redis.get(key);
+    if (!raw) return { active: false, retryAfterSeconds: 0 };
+    const ttl = await redis.ttl(key);
+    return { active: ttl > 0, retryAfterSeconds: Math.max(0, ttl) };
+  } catch {
+    return { active: false, retryAfterSeconds: 0 };
+  }
+}
+
 export async function GET(req: Request, { params }: Params) {
   const start = Date.now();
   const { studentId } = await params;
@@ -78,7 +96,12 @@ export async function GET(req: Request, { params }: Params) {
     });
 
     const isPremium = user?.subscriptionStatus !== 'free';
-    const practiceUsed = isPremium ? 0 : await getPracticeUsed(userId);
+    const [practiceUsed, practiceCooldown, aiTutorCooldown, chapterQuizCooldown] = await Promise.all([
+      isPremium ? Promise.resolve(0) : getPracticeUsed(userId),
+      getCooldownState(userId, 'practice'),
+      getCooldownState(userId, 'ai_tutor'),
+      getCooldownState(userId, 'chapter_quiz'),
+    ]);
 
     const res = NextResponse.json({
       isPremium,
@@ -87,16 +110,19 @@ export async function GET(req: Request, { params }: Params) {
           limit: isPremium ? null : PRACTICE_DAILY_LIMIT,
           used: isPremium ? 0 : practiceUsed,
           remaining: isPremium ? null : Math.max(0, PRACTICE_DAILY_LIMIT - practiceUsed),
+          cooldown: practiceCooldown,
         },
         aiTutor: {
           limit: isPremium ? null : AI_TUTOR_DAILY_LIMIT,
           used: 0,
           remaining: isPremium ? null : AI_TUTOR_DAILY_LIMIT,
+          cooldown: aiTutorCooldown,
         },
         chapterQuiz: {
           limit: isPremium ? null : CHAPTER_QUIZ_DAILY_LIMIT,
           used: 0,
           remaining: isPremium ? null : CHAPTER_QUIZ_DAILY_LIMIT,
+          cooldown: chapterQuizCooldown,
         },
       },
     });

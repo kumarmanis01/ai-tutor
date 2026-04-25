@@ -12,6 +12,7 @@
  *
  * EDIT LOG:
  * - 2026-04-25T00:00:00Z | copilot | created S2.3 usePractice hook
+ * - 2026-04-25T01:15:00Z | copilot | refactored for explicit answer pacing and offline submission queue
  */
 
 'use client';
@@ -44,8 +45,40 @@ type RemainingPayload = {
   remaining: number | null;
 };
 
+type OfflineSubmission = {
+  studentId: string;
+  topicId: string;
+  questionId: string;
+  answer: string;
+};
+
+type SubmitCurrentResult = {
+  result: PracticeResult;
+  queuedOffline: boolean;
+};
+
 function questionCacheKey(studentId: string, topicId: string): string {
   return `practice-question-cache:${studentId}:${topicId}`;
+}
+
+function offlineQueueKey(studentId: string): string {
+  return `practice-offline-submissions:${studentId}`;
+}
+
+function createOfflineResult(question: PracticeQuestion, answer: string): PracticeResult {
+  const correctAnswer = question.answerKey;
+  const isCorrect = answer === correctAnswer;
+  return {
+    questionId: question.id,
+    question: question.prompt,
+    answer,
+    isCorrect,
+    correctAnswer,
+    hint: isCorrect ? null : question.hint,
+    explanation: isCorrect
+      ? 'Brilliant! You picked the correct answer.'
+      : `The correct answer is ${correctAnswer ?? 'unavailable right now'}.`,
+  };
 }
 
 export function usePractice(studentId: string, topicId: string) {
@@ -62,6 +95,32 @@ export function usePractice(studentId: string, topicId: string) {
     used: 0,
     remaining: 5,
   });
+  const [queuedCount, setQueuedCount] = useState(0);
+  const [syncStatus, setSyncStatus] = useState<'idle' | 'queued' | 'syncing' | 'synced'>('idle');
+
+  const readOfflineQueue = useCallback((): OfflineSubmission[] => {
+    try {
+      const raw = window.localStorage.getItem(offlineQueueKey(studentId));
+      if (!raw) return [];
+      const parsed = JSON.parse(raw) as OfflineSubmission[];
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  }, [studentId]);
+
+  const writeOfflineQueue = useCallback(
+    (entries: OfflineSubmission[]) => {
+      try {
+        window.localStorage.setItem(offlineQueueKey(studentId), JSON.stringify(entries));
+      } catch {
+        // no-op: local fallback only
+      }
+      setQueuedCount(entries.length);
+      setSyncStatus(entries.length > 0 ? 'queued' : 'idle');
+    },
+    [studentId]
+  );
 
   const loadRemaining = useCallback(async () => {
     const res = await fetch(
@@ -109,9 +168,56 @@ export function usePractice(studentId: string, topicId: string) {
     }
   }, [studentId, topicId]);
 
+  const flushOfflineQueue = useCallback(async () => {
+    const pending = readOfflineQueue();
+    if (pending.length === 0 || !window.navigator.onLine) {
+      setQueuedCount(pending.length);
+      return;
+    }
+
+    setSyncStatus('syncing');
+    const remainingQueue: OfflineSubmission[] = [];
+
+    for (const entry of pending) {
+      try {
+        const res = await fetch(`/api/v1/students/${encodeURIComponent(entry.studentId)}/practice/submit`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            topicId: entry.topicId,
+            answers: [{ questionId: entry.questionId, answer: entry.answer }],
+          }),
+        });
+
+        if (!res.ok) {
+          remainingQueue.push(entry);
+        }
+      } catch {
+        remainingQueue.push(entry);
+      }
+    }
+
+    writeOfflineQueue(remainingQueue);
+    if (remainingQueue.length === 0) {
+      setSyncStatus('synced');
+      await loadRemaining();
+      window.setTimeout(() => setSyncStatus('idle'), 1500);
+    }
+  }, [loadRemaining, readOfflineQueue, writeOfflineQueue]);
+
   useEffect(() => {
-    void Promise.all([loadQuestions(), loadRemaining()]);
-  }, [loadQuestions, loadRemaining]);
+    setQueuedCount(readOfflineQueue().length);
+    void Promise.all([loadQuestions(), loadRemaining(), flushOfflineQueue()]);
+
+    function handleOnline() {
+      void flushOfflineQueue();
+    }
+
+    window.addEventListener('online', handleOnline);
+    return () => {
+      window.removeEventListener('online', handleOnline);
+    };
+  }, [flushOfflineQueue, loadQuestions, loadRemaining, readOfflineQueue]);
 
   const currentQuestion = useMemo(() => questions[index] ?? null, [index, questions]);
 
@@ -121,13 +227,37 @@ export function usePractice(studentId: string, topicId: string) {
     return remaining.remaining <= 0;
   }, [remaining]);
 
-  const submitCurrent = useCallback(async () => {
-    if (!currentQuestion || !selectedAnswer || isSubmitting) return;
+  const submitCurrent = useCallback(async (): Promise<SubmitCurrentResult | null> => {
+    if (!currentQuestion || !selectedAnswer || isSubmitting) return null;
 
     setIsSubmitting(true);
     setError(null);
 
     try {
+      if (!window.navigator.onLine) {
+        const queuedResult = createOfflineResult(currentQuestion, selectedAnswer);
+        const nextQueue = [
+          ...readOfflineQueue(),
+          {
+            studentId,
+            topicId,
+            questionId: currentQuestion.id,
+            answer: selectedAnswer,
+          },
+        ];
+        writeOfflineQueue(nextQueue);
+        setResults((prev) => [...prev, queuedResult]);
+        setRemaining((prev) => ({
+          ...prev,
+          used: prev.isPremium ? prev.used : prev.used + 1,
+          remaining:
+            prev.isPremium || typeof prev.remaining !== 'number'
+              ? prev.remaining
+              : Math.max(0, prev.remaining - 1),
+        }));
+        return { result: queuedResult, queuedOffline: true };
+      }
+
       const res = await fetch(`/api/v1/students/${encodeURIComponent(studentId)}/practice/submit`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -153,6 +283,8 @@ export function usePractice(studentId: string, topicId: string) {
       const result = payload.results?.[0];
       if (result) {
         setResults((prev) => [...prev, result]);
+      } else {
+        throw new Error('Practice result unavailable');
       }
 
       if (payload.freemium) {
@@ -166,14 +298,28 @@ export function usePractice(studentId: string, topicId: string) {
         await loadRemaining();
       }
 
-      setSelectedAnswer(null);
-      setIndex((prev) => Math.min(prev + 1, questions.length));
+      return { result, queuedOffline: false };
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to submit answer');
+      return null;
     } finally {
       setIsSubmitting(false);
     }
-  }, [currentQuestion, isSubmitting, loadRemaining, questions.length, selectedAnswer, studentId, topicId]);
+  }, [
+    currentQuestion,
+    isSubmitting,
+    loadRemaining,
+    readOfflineQueue,
+    selectedAnswer,
+    studentId,
+    topicId,
+    writeOfflineQueue,
+  ]);
+
+  const nextQuestion = useCallback(() => {
+    setSelectedAnswer(null);
+    setIndex((prev) => Math.min(prev + 1, questions.length));
+  }, [questions.length]);
 
   const score = useMemo(() => {
     const correct = results.filter((result) => result.isCorrect).length;
@@ -200,6 +346,7 @@ export function usePractice(studentId: string, topicId: string) {
     selectedAnswer,
     setSelectedAnswer,
     submitCurrent,
+    nextQuestion,
     score,
     isFinished,
     canShowFreemiumWall,
@@ -207,6 +354,8 @@ export function usePractice(studentId: string, topicId: string) {
     reload: loadQuestions,
     restart,
     results,
+    queuedCount,
+    syncStatus,
   };
 }
 

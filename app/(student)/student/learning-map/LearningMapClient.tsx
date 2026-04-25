@@ -44,7 +44,7 @@ export default function LearningMapClient({ studentId }: LearningMapClientProps)
           Could not fully refresh learning map. Showing latest available data.
         </div>
       )}
-      <LearningMap data={data} isOfflineCache={isOfflineCache} onRefresh={refresh} />
+      <LearningMap studentId={studentId} data={data} isOfflineCache={isOfflineCache} onRefresh={refresh} />
     </>
   );
 }

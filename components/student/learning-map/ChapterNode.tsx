@@ -13,6 +13,7 @@
  * EDIT LOG:
  * - 2026-04-25T00:00:00Z | copilot | created S2.1 chapter node component
  * - 2026-04-25T00:30:00Z | copilot | removed inline style for progress width and switched to width utility classes
+ * - 2026-04-25T01:45:00Z | copilot | added completed-chapter practice affordance
  */
 
 'use client';
@@ -23,6 +24,7 @@ import type { LearningMapNode } from '@/hooks/useLearningMap';
 type ChapterNodeProps = {
   node: LearningMapNode;
   onClick: (node: LearningMapNode) => void;
+  onPractice?: (node: LearningMapNode) => void;
 };
 
 function nodeStyles(state: LearningMapNode['state']): string {
@@ -46,7 +48,7 @@ function progressWidthClass(percent: number): string {
   return `w-pct-${bucket}`;
 }
 
-export function ChapterNode({ node, onClick }: ChapterNodeProps) {
+export function ChapterNode({ node, onClick, onPractice }: ChapterNodeProps) {
   return (
     <button
       type="button"
@@ -73,7 +75,28 @@ export function ChapterNode({ node, onClick }: ChapterNodeProps) {
       </div>
       <div className="mt-3 flex items-center justify-between">
         <p className="text-xs font-medium">Score: {node.scorePercent}%</p>
-        {node.ctaLabel && <p className="text-xs font-semibold">{node.ctaLabel} →</p>}
+        <div className="flex items-center gap-2">
+          {node.state === 'completed' && node.previewTopicId && onPractice && (
+            <span
+              role="button"
+              tabIndex={0}
+              onClick={(event) => {
+                event.stopPropagation();
+                onPractice(node);
+              }}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter' || event.key === ' ') {
+                  event.preventDefault();
+                  onPractice(node);
+                }
+              }}
+              className="rounded-full bg-white/70 px-2 py-1 text-[11px] font-semibold"
+            >
+              Practice
+            </span>
+          )}
+          {node.ctaLabel && <p className="text-xs font-semibold">{node.ctaLabel} →</p>}
+        </div>
       </div>
     </button>
   );

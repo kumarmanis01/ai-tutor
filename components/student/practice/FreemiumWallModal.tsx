@@ -12,16 +12,48 @@
  *
  * EDIT LOG:
  * - 2026-04-25T00:00:00Z | copilot | created S2.4 freemium wall modal component
+ * - 2026-04-25T01:15:00Z | copilot | restored cooldown state from server and routed lesson-review action back to lesson view
  */
 
 'use client';
 
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { useRouter } from 'next/navigation';
 
 type FeatureType = 'practice' | 'ai_tutor' | 'chapter_quiz';
 
+type LimitsPayload = {
+  limits: {
+    practice?: {
+      cooldown?: {
+        active: boolean;
+        retryAfterSeconds: number;
+      };
+    };
+    aiTutor?: {
+      cooldown?: {
+        active: boolean;
+        retryAfterSeconds: number;
+      };
+    };
+    chapterQuiz?: {
+      cooldown?: {
+        active: boolean;
+        retryAfterSeconds: number;
+      };
+    };
+  };
+};
+
+function featureKey(featureType: FeatureType): 'practice' | 'aiTutor' | 'chapterQuiz' {
+  if (featureType === 'ai_tutor') return 'aiTutor';
+  if (featureType === 'chapter_quiz') return 'chapterQuiz';
+  return 'practice';
+}
+
 type FreemiumWallModalProps = {
   studentId: string;
+  topicId?: string;
   featureType?: FeatureType;
   onClose: () => void;
 };
@@ -47,14 +79,43 @@ function contentByFeature(featureType: FeatureType): { title: string; body: stri
 
 export default function FreemiumWallModal({
   studentId,
+  topicId,
   featureType = 'practice',
   onClose,
 }: FreemiumWallModalProps) {
+  const router = useRouter();
   const [isSending, setIsSending] = useState(false);
   const [isSent, setIsSent] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [retryAfterSeconds, setRetryAfterSeconds] = useState<number | null>(null);
 
   const content = useMemo(() => contentByFeature(featureType), [featureType]);
+
+  useEffect(() => {
+    let active = true;
+
+    async function loadLimits() {
+      try {
+        const res = await fetch(`/api/v1/students/${encodeURIComponent(studentId)}/freemium/limits`, {
+          cache: 'no-store',
+        });
+        if (!res.ok) return;
+        const payload = (await res.json()) as LimitsPayload;
+        const cooldown = payload.limits?.[featureKey(featureType)]?.cooldown;
+        if (active && cooldown?.active) {
+          setIsSent(true);
+          setRetryAfterSeconds(cooldown.retryAfterSeconds);
+        }
+      } catch {
+        // Keep modal usable if limits lookup fails.
+      }
+    }
+
+    void loadLimits();
+    return () => {
+      active = false;
+    };
+  }, [featureType, studentId]);
 
   async function sendRequest() {
     if (isSending || isSent) return;
@@ -76,6 +137,7 @@ export default function FreemiumWallModal({
       }
 
       setIsSent(true);
+      setRetryAfterSeconds(24 * 60 * 60);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not send request right now');
     } finally {
@@ -103,7 +165,13 @@ export default function FreemiumWallModal({
 
         <button
           type="button"
-          onClick={onClose}
+          onClick={() => {
+            if (topicId) {
+              router.push(`/student/learning-map/topic/${encodeURIComponent(topicId)}`);
+              return;
+            }
+            onClose();
+          }}
           className="mt-3 min-h-[44px] w-full rounded-xl border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700"
         >
           Review Lesson Notes for Free
@@ -112,6 +180,12 @@ export default function FreemiumWallModal({
         <p className="mt-2 text-center text-xs text-gray-500">
           Wait until tomorrow? Your 5 free questions reset at midnight.
         </p>
+
+        {retryAfterSeconds && isSent && (
+          <p className="mt-2 text-center text-xs text-gray-500">
+            Parent request already sent. Try again in about {Math.ceil(retryAfterSeconds / 3600)} hour(s).
+          </p>
+        )}
 
         {error && <p className="mt-3 text-xs text-[#E24B4A]">{error}</p>}
       </div>

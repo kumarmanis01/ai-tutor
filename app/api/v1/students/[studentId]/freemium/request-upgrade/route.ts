@@ -13,6 +13,7 @@
  *
  * EDIT LOG:
  * - 2026-04-25T00:00:00Z | copilot | created S2.4 upgrade request endpoint with cooldown
+ * - 2026-04-25T01:25:00Z | copilot | stored request timestamp in cooldown key value for UI restore support
  */
 
 import { NextResponse } from 'next/server';
@@ -102,7 +103,12 @@ export async function POST(req: Request, { params }: Params) {
     });
 
     if (redis) {
-      await redis.set(cooldownKey, '1', 'EX', COOLDOWN_SECONDS);
+      await redis.set(
+        cooldownKey,
+        JSON.stringify({ requestedAt: new Date().toISOString(), featureType }),
+        'EX',
+        COOLDOWN_SECONDS
+      );
     }
 
     await prisma.auditLog.create({

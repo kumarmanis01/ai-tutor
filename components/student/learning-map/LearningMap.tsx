@@ -12,6 +12,7 @@
  *
  * EDIT LOG:
  * - 2026-04-25T00:00:00Z | copilot | created S2.1 learning map UI
+ * - 2026-04-25T01:45:00Z | copilot | routed premium-locked nodes to freemium wall and added completed-chapter practice entry
  */
 
 'use client';
@@ -19,20 +20,23 @@
 import React, { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import type { LearningMapNode, LearningMapPayload } from '@/hooks/useLearningMap';
+import FreemiumWallModal from '@/components/student/practice/FreemiumWallModal';
 import ChapterNode from './ChapterNode';
 import ChapterInfo from './ChapterInfo';
 
 type LearningMapProps = {
+  studentId: string;
   data: LearningMapPayload;
   isOfflineCache: boolean;
   onRefresh: () => Promise<void>;
 };
 
-export function LearningMap({ data, isOfflineCache, onRefresh }: LearningMapProps) {
+export function LearningMap({ studentId, data, isOfflineCache, onRefresh }: LearningMapProps) {
   const router = useRouter();
   const [selectedChapterId, setSelectedChapterId] = useState<string | null>(data.currentChapter?.chapterId ?? null);
   const [toast, setToast] = useState<string | null>(null);
   const [search, setSearch] = useState('');
+  const [premiumTopicId, setPremiumTopicId] = useState<string | null>(null);
 
   const selectedChapter = useMemo(() => {
     if (!selectedChapterId) return data.currentChapter;
@@ -51,7 +55,12 @@ export function LearningMap({ data, isOfflineCache, onRefresh }: LearningMapProp
   function handleNodeClick(node: LearningMapNode) {
     setSelectedChapterId(node.chapterId);
 
-    if (node.state === 'locked' || node.state === 'premium-locked') {
+    if (node.state === 'premium-locked') {
+      setPremiumTopicId(node.previewTopicId);
+      return;
+    }
+
+    if (node.state === 'locked') {
       setToast(node.tooltip ?? 'This chapter is locked.');
       window.setTimeout(() => setToast(null), 2200);
       return;
@@ -60,6 +69,11 @@ export function LearningMap({ data, isOfflineCache, onRefresh }: LearningMapProp
     if (node.previewTopicId) {
       router.push(`/student/learning-map/topic/${encodeURIComponent(node.previewTopicId)}`);
     }
+  }
+
+  function handlePracticeClick(node: LearningMapNode) {
+    if (!node.previewTopicId) return;
+    router.push(`/student/learning-map/topic/${encodeURIComponent(node.previewTopicId)}/practice`);
   }
 
   return (
@@ -125,7 +139,7 @@ export function LearningMap({ data, isOfflineCache, onRefresh }: LearningMapProp
         <div className="overflow-x-auto pb-2">
           <div className="flex min-w-max items-stretch gap-4">
             {filteredChapters.map((node) => (
-              <ChapterNode key={node.chapterId} node={node} onClick={handleNodeClick} />
+              <ChapterNode key={node.chapterId} node={node} onClick={handleNodeClick} onPractice={handlePracticeClick} />
             ))}
           </div>
         </div>
@@ -139,6 +153,15 @@ export function LearningMap({ data, isOfflineCache, onRefresh }: LearningMapProp
         <div className="fixed bottom-6 left-1/2 z-20 -translate-x-1/2 rounded-full bg-gray-900 px-4 py-2 text-xs font-medium text-white">
           {toast}
         </div>
+      )}
+
+      {premiumTopicId && (
+        <FreemiumWallModal
+          studentId={studentId}
+          topicId={premiumTopicId}
+          featureType="chapter_quiz"
+          onClose={() => setPremiumTopicId(null)}
+        />
       )}
     </div>
   );
