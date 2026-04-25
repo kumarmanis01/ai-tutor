@@ -143,7 +143,11 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         language: language as 'en' | 'hi',
         requesterId,
       },
-      { jobId: dbJob.id } // Use DB job ID as BullMQ job ID for traceability
+      {
+        jobId: dbJob.id,
+        attempts: 3,
+        backoff: { type: 'exponential', delay: 1000 },
+      } // Use DB job ID as BullMQ job ID for traceability
     );
     // Register in dedup cache only after enqueue succeeds so a failed enqueue
     // does not cause subsequent requests to be routed to a failed job.

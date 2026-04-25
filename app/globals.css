@@ -199,3 +199,47 @@ body,
 .loader-animate-out {
   animation: loader-fade-out 0.25s ease forwards;
 }
+
+@keyframes practice-flash-green {
+  0% {
+    box-shadow: 0 0 0 0 rgba(29, 158, 117, 0.35);
+  }
+  100% {
+    box-shadow: 0 0 0 16px rgba(29, 158, 117, 0);
+  }
+}
+
+@keyframes practice-flash-red {
+  0% {
+    box-shadow: 0 0 0 0 rgba(226, 75, 74, 0.35);
+  }
+  100% {
+    box-shadow: 0 0 0 16px rgba(226, 75, 74, 0);
+  }
+}
+
+@keyframes practice-coin-burst {
+  0% {
+    transform: translateY(-8px) scale(0.96);
+    opacity: 0;
+  }
+  20% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
+}
+
+.practice-flash-green {
+  animation: practice-flash-green 0.45s ease-out;
+}
+
+.practice-flash-red {
+  animation: practice-flash-red 0.45s ease-out;
+}
+
+.practice-coin-burst {
+  animation: practice-coin-burst 0.35s ease-out;
+}

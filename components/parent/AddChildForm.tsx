@@ -82,7 +82,7 @@ export default function AddChildForm({ onSuccess }: AddChildFormProps) {
 
     try {
       for (const child of children) {
-        const res = await fetch('/api/parent/create-child', {
+        const res = await fetch('/api/v1/parent/children', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({

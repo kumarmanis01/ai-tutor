@@ -20,8 +20,11 @@ import { prisma } from '@/lib/prisma';
 import { logger } from '@/lib/logger';
 import { sendConsentRequest } from '@/lib/whatsapp/cloud.service';
 import { sendMailSafe } from '@/lib/mailer';
+import { getRedis } from '@/lib/redis';
 
 export const dynamic = 'force-dynamic';
+const REG_LIMIT_MAX = 3;
+const REG_LIMIT_WINDOW_SECONDS = 24 * 60 * 60;
 
 /** Mask all but last 4 digits of a phone number. */
 function maskPhone(p: string | null | undefined) {
@@ -36,7 +39,7 @@ function isValidEmail(s: string): boolean {
 }
 
 /**
- * Basic phone check: digits + optional leading '+', 8–15 digits after stripping spaces/dashes.
+ * Basic phone check: digits + optional leading '+', 8-15 digits after stripping spaces/dashes.
  * Accepts +91XXXXXXXXXX, 10-digit numbers, etc.
  */
 function isValidPhone(s: string): boolean {
@@ -56,6 +59,33 @@ function calcAgeFromDob(dob: string) {
 
 export async function POST(req: Request) {
   const start = Date.now();
+
+  const redis = getRedis();
+  if (redis) {
+    try {
+      const forwardedFor = req.headers.get('x-forwarded-for') ?? '';
+      const ip = forwardedFor.split(',')[0]?.trim() || req.headers.get('x-real-ip') || 'unknown';
+      const ua = req.headers.get('user-agent') ?? 'unknown';
+      const suppliedFingerprint = req.headers.get('x-device-fingerprint') ?? '';
+      const fingerprint = suppliedFingerprint || `${ip}:${ua.slice(0, 120)}`;
+      const key = `ratelimit:student-register:${fingerprint}`;
+      const count = await redis.incr(key);
+      if (count === 1) {
+        await redis.expire(key, REG_LIMIT_WINDOW_SECONDS);
+      }
+      if (count > REG_LIMIT_MAX) {
+        const res = NextResponse.json(
+          { error: 'rate_limited', message: 'Too many registration attempts. Please try later.' },
+          { status: 429 }
+        );
+        logger.logAPI(req, res, { className: 'StudentRegisterAPI', methodName: 'POST' }, start);
+        return res;
+      }
+    } catch (rateErr) {
+      logger.warn('student.register: rate limit check failed', { error: String(rateErr) });
+    }
+  }
+
   let body: unknown;
   try {
     body = await req.json();
@@ -90,7 +120,7 @@ export async function POST(req: Request) {
   }
 
   try {
-    // Create student user record (minimal). Use AccountStatus enum — never `as any`.
+    // Create student user record (minimal). Use AccountStatus enum -- never `as any`.
     const isAdult = age >= 18;
     const accountStatus: AccountStatus = isAdult
       ? AccountStatus.active
@@ -128,7 +158,7 @@ export async function POST(req: Request) {
       return res;
     }
 
-    // Validate contact format per channel — return 400 to avoid sending broken messages.
+    // Validate contact format per channel -- return 400 to avoid sending broken messages.
     const parentContact = parentContactRaw;
     if (channel === 'whatsapp' && !isValidPhone(parentContact)) {
       const res = NextResponse.json({ error: 'invalid_phone' }, { status: 400 });
@@ -157,13 +187,13 @@ export async function POST(req: Request) {
     });
 
     // send message (best-effort)
-        try {
+    try {
       // P1.2-R: consent URL at /parent/approve per spec.
       // Always use an absolute fallback to avoid broken relative links in email clients
       // when NEXT_PUBLIC_APP_URL is not configured in an environment.
-      const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://spinzyacademy.com'
-      const consentUrl = `${appUrl}/parent/approve?token=${token}`
-      const denyUrl = `${appUrl}/parent/approve?token=${token}&action=deny`
+      const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://spinzyacademy.com';
+      const consentUrl = `${appUrl}/parent/approve?token=${token}`;
+      const denyUrl = `${appUrl}/parent/approve?token=${token}&action=deny`;
       if (channel === 'whatsapp') {
         // sendConsentRequest(phone, childName, grade, board, consentToken)
         await sendConsentRequest(parentContact, name, grade ?? '', board ?? '', token);

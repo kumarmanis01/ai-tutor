@@ -12,7 +12,7 @@
  *
  * CTAs:
  *   - "Build my learning plan" -- POSTs to /api/student/onboarding/generate-plan
- *     then redirects to /student/diagnostic/[firstSubjectId]
+ *     then redirects to /student/learning-map
  *   - "No upcoming exam -- set a 6-month plan" -- same but examDate = null
  */
 
@@ -145,8 +145,7 @@ export default function ExamDatePage() {
       const diagnosticReady: boolean = json?.diagnosticReady ?? true;
 
       if (!firstSubjectId) {
-        // No subjects resolved -- go to dashboard so the student can complete profile
-        router.push('/dashboard');
+        router.push('/student/learning-map');
         return;
       }
 
@@ -154,10 +153,9 @@ export default function ExamDatePage() {
         // Content pipeline is still running -- show waiting screen instead of
         // redirecting to a broken diagnostic page
         setWaitingForDiagnostic({ subjectId: firstSubjectId, notifyState: 'idle' });
-        return;
       }
 
-      router.push(`/diagnostic/${firstSubjectId}`);
+      router.push('/student/learning-map');
     } catch {
       setError('Network error. Please check your connection.');
     } finally {

@@ -27,6 +27,7 @@ const RATE_LIMIT_WINDOW_SECONDS = 60;
 
 async function checkRateLimit(ip: string): Promise<boolean> {
   const redis = getRedis();
+  if (!redis) return true;
   const key = `ratelimit:google:auth:${ip}`;
   const count = await redis.incr(key);
   if (count === 1) {

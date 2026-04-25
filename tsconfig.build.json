@@ -17,7 +17,7 @@
       "@/*": ["./*"]
     }
   },
-  "include": ["worker/**/*.ts", "lib/**/*.ts"],
+  "include": ["worker/**/*.ts", "lib/**/*.ts", "server.ts"],
   "exclude": [
     "node_modules",
     "dist",

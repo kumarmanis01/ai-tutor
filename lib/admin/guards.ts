@@ -1,0 +1,49 @@
+/**
+ * FILE OBJECTIVE:
+ * - Shared admin authorization guards for v1 admin routes.
+ *
+ * LINKED UNIT TEST:
+ * - tests/unit/lib/admin/guards.spec.ts
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/COPILOT_GUARDRAILS.md
+ * - .github/copilot-instructions.md
+ *
+ * EDIT LOG:
+ * - 2026-04-25T00:00:00Z | copilot | created admin role guards for v1 endpoints
+ */
+
+import { prisma } from '@/lib/prisma';
+import { getServerSessionForHandlers } from '@/lib/session';
+
+export interface GuardResult {
+  ok: boolean;
+  userId?: string;
+  adminUserId?: string;
+  role?: 'SUPER_ADMIN' | 'CONTENT_ADMIN' | 'SUPPORT_ADMIN' | 'BILLING_ADMIN';
+}
+
+export async function requireActiveAdmin(): Promise<GuardResult> {
+  const session = await getServerSessionForHandlers();
+  const userId = (session?.user as { id?: string } | undefined)?.id;
+  if (!userId) return { ok: false };
+
+  const admin = await prisma.adminUser.findUnique({
+    where: { userId },
+    select: { id: true, role: true, status: true },
+  });
+
+  if (!admin || admin.status !== 'ACTIVE') return { ok: false };
+  return {
+    ok: true,
+    userId,
+    adminUserId: admin.id,
+    role: admin.role,
+  };
+}
+
+export async function requireSuperAdmin(): Promise<GuardResult> {
+  const result = await requireActiveAdmin();
+  if (!result.ok || result.role !== 'SUPER_ADMIN') return { ok: false };
+  return result;
+}

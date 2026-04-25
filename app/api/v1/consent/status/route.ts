@@ -46,7 +46,8 @@ export async function GET(req: Request) {
 
     const reminderCount = cr._count.messageLogs;
     const expired = cr.expiresAt < new Date() && cr.status === 'PENDING';
-    const status = expired ? 'expired' : String(cr.status).toLowerCase();
+    // Keep status enum uppercase for client contract consistency.
+    const status = expired ? 'EXPIRED' : String(cr.status).toUpperCase();
     const res = NextResponse.json({
       ok: true,
       status,
