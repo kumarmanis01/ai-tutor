@@ -148,16 +148,14 @@ const HeroSection = () => {
             {/* P0.1: Three value prop icons */}
             <div className="flex flex-wrap gap-4 justify-center lg:justify-start">
               {[
-                { icon: '&#x1F4DA;', label: 'All Boards Covered', sub: 'CBSE, ICSE, State Board' },
-                { icon: '&#x1F6E1;&#xFE0F;', label: 'Parental Control', sub: 'You approve every session' },
-                { icon: '&#x2B50;', label: 'Free to Start', sub: 'No credit card needed' },
+                { icon: '📚', label: 'All Boards Covered', sub: 'CBSE, ICSE, State Board' },
+                { icon: '🛡️', label: 'Parental Control', sub: 'You approve every session' },
+                { icon: '⭐', label: 'Free to Start', sub: 'No credit card needed' },
               ].map(({ icon, label, sub }) => (
                 <div key={label} className="flex items-center gap-3 bg-[#EEEDFE] rounded-2xl px-4 py-3 min-w-[140px]">
-                  <span
-                    aria-hidden="true"
-                    className="text-2xl"
-                    dangerouslySetInnerHTML={{ __html: icon }}
-                  />
+                  <span aria-hidden="true" className="text-2xl">
+                    {icon}
+                  </span>
                   <div>
                     <p className="text-sm font-bold text-[#534AB7] leading-tight">{label}</p>
                     <p className="text-xs text-gray-500 dark:text-gray-400">{sub}</p>
