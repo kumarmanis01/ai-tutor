@@ -16,13 +16,12 @@
  * EDIT LOG:
  * - 2026-04-24T00:00:00Z | staff-engineer | created per P1.3-R AC
  */
-
-import { createHash } from 'crypto';
-import { NextResponse } from 'next/server';
-import { getServerSessionForHandlers } from '@/lib/session';
-import { prisma } from '@/lib/prisma';
-import { logger } from '@/lib/logger';
-import { AccountStatus } from '@prisma/client';
+import { createHash } from 'crypto'
+import { NextResponse } from 'next/server'
+import { getServerSessionForHandlers } from '@/lib/session'
+import { prisma } from '@/lib/prisma'
+import { logger } from '@/lib/logger'
+import { AccountStatus } from '@prisma/client'
 
 export const dynamic = 'force-dynamic';
 

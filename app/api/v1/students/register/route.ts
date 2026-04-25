@@ -157,11 +157,13 @@ export async function POST(req: Request) {
     });
 
     // send message (best-effort)
-    try {
-      // P1.2-R: consent URL at /parent/approve per spec
-      const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? '';
-      const consentUrl = `${appUrl}/parent/approve?token=${token}`;
-      const denyUrl = `${appUrl}/parent/approve?token=${token}&action=deny`;
+        try {
+      // P1.2-R: consent URL at /parent/approve per spec.
+      // Always use an absolute fallback to avoid broken relative links in email clients
+      // when NEXT_PUBLIC_APP_URL is not configured in an environment.
+      const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://spinzyacademy.com'
+      const consentUrl = `${appUrl}/parent/approve?token=${token}`
+      const denyUrl = `${appUrl}/parent/approve?token=${token}&action=deny`
       if (channel === 'whatsapp') {
         // sendConsentRequest(phone, childName, grade, board, consentToken)
         await sendConsentRequest(parentContact, name, grade ?? '', board ?? '', token);
