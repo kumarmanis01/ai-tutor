@@ -22,6 +22,7 @@ import { getServerSessionForHandlers } from '@/lib/session'
 import { prisma } from '@/lib/prisma'
 import { logger } from '@/lib/logger'
 import { AccountStatus } from '@prisma/client'
+import { emitConsentApproved } from '@/lib/socket/server'
 
 export const dynamic = 'force-dynamic';
 
@@ -210,6 +211,8 @@ export async function POST(req: Request) {
       method,
       parentId: parentId ?? 'otp-only',
     });
+
+    emitConsentApproved(token, cr.studentId);
 
     const res = NextResponse.json({
       ok: true,

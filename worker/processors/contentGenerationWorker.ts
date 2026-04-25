@@ -20,6 +20,7 @@ import OpenAI from 'openai';
 import { prisma } from '@/lib/db';
 import { getSharedConnection, getRedis } from '@/lib/redis';
 import { logger } from '@/lib/logger';
+import { emitContentGenerated } from '@/lib/socket/server';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -179,6 +180,22 @@ async function processContentGenerationJob(job: Job<ContentGenerationJobData>): 
     `content_gen:${jobId}:updates`,
     JSON.stringify({ type: 'complete', contentId: content.id, fullContent })
   );
+
+  // Notify all subscribers via Socket.IO rooms.
+  try {
+    const jobState = await prisma.generationJob.findUnique({
+      where: { id: jobId },
+      select: { subscriberIds: true, topic: true },
+    });
+    for (const studentId of jobState?.subscriberIds ?? []) {
+      emitContentGenerated(studentId, content.id, jobState?.topic ?? job.data.topic);
+    }
+  } catch (notifyErr) {
+    logger.warn('ContentGenerationWorker: socket notify failed', {
+      jobId,
+      error: String(notifyErr),
+    });
+  }
 
   // Clean up partial cache after a short delay (keep for 10 minutes post-completion)
   await redis.expire(`content_gen:${jobId}:partial`, 600);

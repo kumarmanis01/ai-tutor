@@ -55,7 +55,7 @@ export default function DPDPConsentScreen({
     setError(null);
     setLoading(true);
     try {
-      const res = await fetch('/api/parent/consent/grant', {
+      const res = await fetch('/api/v1/parent/consent/grant', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ child_id: childId }),

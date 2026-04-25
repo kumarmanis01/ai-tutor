@@ -18,6 +18,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { logger } from '@/lib/logger';
+import { emitConsentDenied } from '@/lib/socket/server';
 
 export const dynamic = 'force-dynamic';
 
@@ -67,6 +68,8 @@ export async function POST(req: Request) {
       where: { id: cr.id },
       data: { status: 'DENIED' },
     });
+
+    emitConsentDenied(token, cr.studentId);
 
     logger.info('consent.deny.success', { consentRequestId: cr.id, studentId: cr.studentId });
 

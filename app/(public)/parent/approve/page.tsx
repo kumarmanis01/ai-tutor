@@ -79,7 +79,7 @@ function ParentApproveInner() {
     }
 
     async function validate() {
-      const res = await fetch(`/api/v1/consent/status?consent_token=${encodeURIComponent(token!)}`);
+      const res = await fetch(`/api/v1/consent/validate?token=${encodeURIComponent(token!)}`);
       if (!res.ok) {
         setPageStatus('invalid');
         return;
@@ -99,19 +99,19 @@ function ParentApproveInner() {
         });
       }
 
-      if (data.status === 'expired') {
+      if (data.status === 'EXPIRED') {
         setPageStatus('expired');
         return;
       }
-      if (data.status === 'approved') {
+      if (data.status === 'APPROVED') {
         setPageStatus('success');
         return;
       }
-      if (data.status === 'denied') {
+      if (data.status === 'DENIED') {
         setPageStatus('denied');
         return;
       }
-      if (data.status === 'pending') {
+      if (data.status === 'PENDING') {
         // If deny action came from the direct deny link in email
         if (actionParam === 'deny') {
           setDenyConfirm(true);

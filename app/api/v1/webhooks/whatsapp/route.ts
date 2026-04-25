@@ -21,6 +21,7 @@ import { validateWebhookSignature, sendConfirmation } from '@/lib/whatsapp/cloud
 import { prisma } from '@/lib/db';
 import { logger } from '@/lib/logger';
 import { AccountStatus } from '@prisma/client';
+import { emitConsentApproved, emitConsentDenied } from '@/lib/socket/server';
 
 // ── Regex patterns ────────────────────────────────────────────────────────────
 // P1.4-R: support Hindi affirmative replies (haan, ji, ok) in addition to YES
@@ -138,6 +139,7 @@ async function handleIncomingMessage(
       }),
     ]);
     logger.info('Consent approved via WhatsApp', { consentRequestId: consentRequest.id });
+    emitConsentApproved(consentRequest.token, consentRequest.studentId);
     // P1.4-R: reply to parent with confirmation + dashboard link
     try {
       const student = await prisma.user.findUnique({
@@ -157,6 +159,7 @@ async function handleIncomingMessage(
       data: { status: 'DENIED' },
     });
     logger.info('Consent denied via WhatsApp', { consentRequestId: consentRequest.id });
+    emitConsentDenied(consentRequest.token, consentRequest.studentId);
   }
 }
 
