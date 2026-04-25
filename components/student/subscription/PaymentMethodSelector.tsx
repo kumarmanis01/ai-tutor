@@ -47,9 +47,7 @@ interface PaymentMethodSelectorProps {
 export function PaymentMethodSelector({ selected, onSelect }: PaymentMethodSelectorProps) {
   return (
     <div className="space-y-3">
-      <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100">
-        Payment method
-      </h2>
+      <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100">Payment method</h2>
       <div className="space-y-2">
         {METHODS.map((m) => {
           const isSelected = selected === m.id;
@@ -80,7 +78,9 @@ export function PaymentMethodSelector({ selected, onSelect }: PaymentMethodSelec
               </span>
 
               {/* Icon */}
-              <span className="text-xl" aria-hidden>{m.icon}</span>
+              <span className="text-xl" aria-hidden>
+                {m.icon}
+              </span>
 
               {/* Label */}
               <div className="flex-1 min-w-0">

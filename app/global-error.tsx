@@ -15,9 +15,7 @@ export default function GlobalError({ error, reset }: GlobalErrorProps) {
           <div className="text-center max-w-md">
             <h1 className="text-7xl font-bold text-red-500 opacity-20 mb-6">Error</h1>
             <h2 className="text-2xl font-medium text-gray-900 mb-2">Something went wrong!</h2>
-            <p className="text-gray-600 mb-8">
-              {error.message || 'An unexpected error occurred'}
-            </p>
+            <p className="text-gray-600 mb-8">{error.message || 'An unexpected error occurred'}</p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <button
                 onClick={() => reset()}

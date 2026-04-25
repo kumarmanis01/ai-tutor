@@ -127,22 +127,28 @@ describe('enqueueSubjectHydration', () => {
           subject: 'mathematics',
           hierarchyLevel: 0,
         }),
-      }),
+      })
     );
     expect(txOutboxCreate!).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({
           queue: 'content-hydration',
         }),
-      }),
+      })
     );
   });
 
   it('should acquire the advisory lock before the findFirst check', async () => {
     prismaMock.topicDef.count.mockResolvedValue(0);
     const callOrder: string[] = [];
-    const txExecuteRaw = jest.fn().mockImplementation(() => { callOrder.push('lock'); return Promise.resolve([]); });
-    const txFindFirst = jest.fn().mockImplementation(() => { callOrder.push('findFirst'); return Promise.resolve(null); });
+    const txExecuteRaw = jest.fn().mockImplementation(() => {
+      callOrder.push('lock');
+      return Promise.resolve([]);
+    });
+    const txFindFirst = jest.fn().mockImplementation(() => {
+      callOrder.push('findFirst');
+      return Promise.resolve(null);
+    });
     prismaMock.$transaction.mockImplementation(async (fn: any) => {
       const tx = makeTx({
         $executeRaw: txExecuteRaw,

@@ -13,10 +13,7 @@ export const dynamic = 'force-dynamic';
  *
  * Auth-guarded: 401 before any DB query.
  */
-export async function GET(
-  req: Request,
-  { params }: { params: { attemptId: string } },
-) {
+export async function GET(req: Request, { params }: { params: { attemptId: string } }) {
   const start = Date.now();
   const session = await getServerSessionForHandlers();
   const user = session?.user as { id: string } | undefined;
@@ -157,7 +154,10 @@ export async function GET(
     }
   } catch (err) {
     // best-effort; if counting fails, leave cohortCount/percentileReliable undefined
-    logger.debug('Failed to compute cohort count for mock report', { className: 'MockReportAPI', error: String(err) });
+    logger.debug('Failed to compute cohort count for mock report', {
+      className: 'MockReportAPI',
+      error: String(err),
+    });
   }
 
   const res = NextResponse.json(payload);

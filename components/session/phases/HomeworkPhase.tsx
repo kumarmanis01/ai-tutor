@@ -17,7 +17,11 @@ interface HomeworkPhaseProps {
   loading?: boolean;
 }
 
-export function HomeworkPhase({ content, onReadyToProceed, loading: _loading }: HomeworkPhaseProps) {
+export function HomeworkPhase({
+  content,
+  onReadyToProceed,
+  loading: _loading,
+}: HomeworkPhaseProps) {
   const router = useRouter();
   React.useEffect(() => {
     onReadyToProceed?.(true);
@@ -27,7 +31,11 @@ export function HomeworkPhase({ content, onReadyToProceed, loading: _loading }: 
   const questionCount = questions.length || 5;
 
   const dueDateLabel = new Date(content.dueDate).toLocaleDateString('en-IN', {
-    weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit',
+    weekday: 'short',
+    day: 'numeric',
+    month: 'short',
+    hour: '2-digit',
+    minute: '2-digit',
   });
 
   return (
@@ -43,16 +51,25 @@ export function HomeworkPhase({ content, onReadyToProceed, loading: _loading }: 
       <div className="bg-card rounded-xl border p-5 space-y-3">
         <div className="flex items-center justify-between">
           <span className="text-sm font-semibold text-foreground">{questionCount} questions</span>
-          <span className={`text-xs px-2 py-0.5 rounded-full ${
-            isAlreadyDone ? 'bg-green-500/10 text-green-600' : 'bg-amber-500/10 text-amber-600'
-          }`}>
+          <span
+            className={`text-xs px-2 py-0.5 rounded-full ${
+              isAlreadyDone ? 'bg-green-500/10 text-green-600' : 'bg-amber-500/10 text-amber-600'
+            }`}
+          >
             {isAlreadyDone ? 'Submitted' : 'Pending'}
           </span>
         </div>
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <svg className="w-4 h-4 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <svg
+            className="w-4 h-4 flex-shrink-0"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+          >
             <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
-            <line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" />
+            <line x1="16" y1="2" x2="16" y2="6" />
+            <line x1="8" y1="2" x2="8" y2="6" />
             <line x1="3" y1="10" x2="21" y2="10" />
           </svg>
           Due: {dueDateLabel}
@@ -68,8 +85,8 @@ export function HomeworkPhase({ content, onReadyToProceed, loading: _loading }: 
       <div className="bg-primary/5 border border-primary/15 rounded-xl p-4 flex items-start gap-3">
         <span className="text-lg flex-shrink-0">🎓</span>
         <p className="text-xs text-muted-foreground leading-relaxed">
-          Completing homework within a few hours of learning locks in the memory.
-          Even 5 minutes makes a big difference.
+          Completing homework within a few hours of learning locks in the memory. Even 5 minutes
+          makes a big difference.
         </p>
       </div>
 

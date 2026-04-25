@@ -121,7 +121,9 @@ export default function TopicCompletionIndicator({
             />
           </svg>
           {/* Center dot */}
-          <div className={`absolute inset-0 flex items-center justify-center ${statusStyles.color}`}>
+          <div
+            className={`absolute inset-0 flex items-center justify-center ${statusStyles.color}`}
+          >
             <div className="w-1.5 h-1.5 rounded-full bg-current" />
           </div>
         </div>

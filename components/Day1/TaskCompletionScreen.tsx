@@ -18,20 +18,16 @@
 'use client';
 
 import React from 'react';
-import {
-  TaskCompletionScreenProps,
-  COMPLETION_COPY_HI,
-  COMPLETION_COPY_EN,
-} from './types';
+import { TaskCompletionScreenProps, COMPLETION_COPY_HI, COMPLETION_COPY_EN } from './types';
 
 /**
  * Day-1 Task Completion Screen
- * 
+ *
  * UX Rules (FROZEN):
  * - No scores
  * - No % marks
  * - No "correct / incorrect" obsession
- * 
+ *
  * Critical Psychology:
  * - Completion > Correctness
  * - Builds habit loop
@@ -45,7 +41,7 @@ export function TaskCompletionScreen({
   const copy = language === 'hi' ? COMPLETION_COPY_HI : COMPLETION_COPY_EN;
 
   return (
-    <div 
+    <div
       className="min-h-screen flex flex-col items-center justify-center p-6 bg-gradient-to-b from-green-50 to-white"
       role="main"
       aria-label="Task completed"
@@ -53,19 +49,14 @@ export function TaskCompletionScreen({
       {/* Success checkmark - Visual anchor */}
       <div className="mb-6">
         <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center">
-          <svg 
-            className="w-12 h-12 text-green-500" 
-            fill="none" 
-            stroke="currentColor" 
+          <svg
+            className="w-12 h-12 text-green-500"
+            fill="none"
+            stroke="currentColor"
             viewBox="0 0 24 24"
             aria-hidden="true"
           >
-            <path 
-              strokeLinecap="round" 
-              strokeLinejoin="round" 
-              strokeWidth={3} 
-              d="M5 13l4 4L19 7" 
-            />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
           </svg>
         </div>
       </div>
@@ -81,9 +72,7 @@ export function TaskCompletionScreen({
       </p>
 
       {/* Gentle preview of tomorrow */}
-      <p className="text-md text-gray-500 text-center mb-10">
-        {copy.secondary}
-      </p>
+      <p className="text-md text-gray-500 text-center mb-10">{copy.secondary}</p>
 
       {/* Close/Finish button */}
       <button

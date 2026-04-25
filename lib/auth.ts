@@ -45,7 +45,11 @@ export async function requireActiveSession() {
     if (!dbUser) return null;
     return session;
   } catch (err) {
-    logger.warn('requireActiveSession failed to verify DB user', { className: 'auth', methodName: 'requireActiveSession', error: String(err) });
+    logger.warn('requireActiveSession failed to verify DB user', {
+      className: 'auth',
+      methodName: 'requireActiveSession',
+      error: String(err),
+    });
     return null;
   }
 }
@@ -60,7 +64,11 @@ async function sendWelcomeEmail(to: string, name?: string) {
     });
     logger.add('Welcome email sent', { className: 'auth', methodName: 'sendWelcomeEmail' });
   } catch (error) {
-    logger.error('Failed to send welcome email', { className: 'auth', methodName: 'sendWelcomeEmail', error: String(error) });
+    logger.error('Failed to send welcome email', {
+      className: 'auth',
+      methodName: 'sendWelcomeEmail',
+      error: String(error),
+    });
   }
 }
 
@@ -68,7 +76,10 @@ async function sendWelcomeEmail(to: string, name?: string) {
 async function maybeSendWelcomeEmail(email: string, name?: string) {
   // Fetch user from DB
   const dbUser = await prisma.user.findUnique({ where: { email } });
-  logger.add(`[maybeSendWelcomeEmail] Database user fetched: ${JSON.stringify(dbUser)}`, { className: 'auth', methodName: 'maybeSendWelcomeEmail' });
+  logger.add(`[maybeSendWelcomeEmail] Database user fetched: ${JSON.stringify(dbUser)}`, {
+    className: 'auth',
+    methodName: 'maybeSendWelcomeEmail',
+  });
   if (dbUser && !dbUser.welcomeEmailSent) {
     // Send welcome email
     await sendWelcomeEmail(email, name);
@@ -77,9 +88,15 @@ async function maybeSendWelcomeEmail(email: string, name?: string) {
       where: { email },
       data: { welcomeEmailSent: true },
     });
-    logger.add(`[maybeSendWelcomeEmail] Welcome email sent and flag updated for: ${email}`, { className: 'auth', methodName: 'maybeSendWelcomeEmail' });
+    logger.add(`[maybeSendWelcomeEmail] Welcome email sent and flag updated for: ${email}`, {
+      className: 'auth',
+      methodName: 'maybeSendWelcomeEmail',
+    });
   } else {
-    logger.add(`[maybeSendWelcomeEmail] Welcome email already sent for: ${email}`, { className: 'auth', methodName: 'maybeSendWelcomeEmail' });
+    logger.add(`[maybeSendWelcomeEmail] Welcome email already sent for: ${email}`, {
+      className: 'auth',
+      methodName: 'maybeSendWelcomeEmail',
+    });
   }
 }
 
@@ -171,8 +188,8 @@ export const authOptions: any = {
               email: user.email!,
               name: user.name ?? undefined,
               image: user.image ?? undefined,
-                language: LanguageCode.en,
-              },
+              language: LanguageCode.en,
+            },
           });
         }
         // Proactively link Google OAuth to existing user by verified email to avoid OAuthAccountNotLinked.
@@ -206,10 +223,17 @@ export const authOptions: any = {
           }
         }
       } catch (err) {
-        logger.warn('signIn upsert user failed', { className: 'auth', methodName: 'signIn', error: String(err) });
+        logger.warn('signIn upsert user failed', {
+          className: 'auth',
+          methodName: 'signIn',
+          error: String(err),
+        });
       }
       await maybeSendWelcomeEmail(user.email!, user.name ?? undefined).catch((err) =>
-        logger.error(`Error in maybeSendWelcomeEmail: ${String(err)}`, { className: 'auth', methodName: 'signIn' }),
+        logger.error(`Error in maybeSendWelcomeEmail: ${String(err)}`, {
+          className: 'auth',
+          methodName: 'signIn',
+        })
       );
       // logger.info('signin callback activated with user:', user.email!);
       // Login guard: detect curriculum (board/grade) changes compared to previous login
@@ -238,12 +262,23 @@ export const authOptions: any = {
               logger.info('student.curriculum.changed', { studentId: dbUser.id });
             }
             // Always record this login with current curriculum snapshot
-            await prisma.auditLog.create({ data: { targetEntity: 'User', targetId: dbUser.id, action: null, details: { legacyAction: 'student.login', board: curBoard, grade: curGrade } } });
+            await prisma.auditLog.create({
+              data: {
+                targetEntity: 'User',
+                targetId: dbUser.id,
+                action: null,
+                details: { legacyAction: 'student.login', board: curBoard, grade: curGrade },
+              },
+            });
           }
         }
       } catch (err) {
         // Non-fatal: don't block sign-in on logging errors
-        logger.warn('signIn login-audit failed', { className: 'auth', methodName: 'signIn', error: String(err) });
+        logger.warn('signIn login-audit failed', {
+          className: 'auth',
+          methodName: 'signIn',
+          error: String(err),
+        });
       }
       // // Best Practice: Use welcomeEmailSent flag to ensure email is sent only once
       // const dbUser = await prisma.user.findUnique({ where: { email: user.email! } });
@@ -280,7 +315,17 @@ export const authOptions: any = {
         try {
           const dbUser = await prisma.user.findUnique({
             where: { email: token.email },
-            select: { role: true, grade: true, board: true, language: true, subjects: true, accountStatus: true, age: true, parentEmail: true, parentPhone: true },
+            select: {
+              role: true,
+              grade: true,
+              board: true,
+              language: true,
+              subjects: true,
+              accountStatus: true,
+              age: true,
+              parentEmail: true,
+              parentPhone: true,
+            },
           });
           if (dbUser) {
             token.role = dbUser.role;
@@ -289,9 +334,14 @@ export const authOptions: any = {
             let subjectCount = 0;
             if (Array.isArray(dbUser.subjects)) {
               subjectCount = (dbUser.subjects as string[]).filter(Boolean).length;
-            } else if (typeof dbUser.subjects === 'string' && (dbUser.subjects as string).length > 0) {
+            } else if (
+              typeof dbUser.subjects === 'string' &&
+              (dbUser.subjects as string).length > 0
+            ) {
               subjectCount = (dbUser.subjects as string)
-                .replace(/^\{/, '').replace(/\}$/, '').split(',')
+                .replace(/^\{/, '')
+                .replace(/\}$/, '')
+                .split(',')
                 .filter((s) => s.trim().length > 0).length;
             }
             // onboardingComplete = academic profile only (board/grade/language/subjects).
@@ -305,11 +355,24 @@ export const authOptions: any = {
           }
         } catch (err) {
           // e.g. accountStatus column missing (migration not applied) -- fallback so OAuth still works
-          logger.warn('jwt callback DB fetch failed, using defaults', { className: 'auth', methodName: 'jwt', error: String(err) });
+          logger.warn('jwt callback DB fetch failed, using defaults', {
+            className: 'auth',
+            methodName: 'jwt',
+            error: String(err),
+          });
           try {
             const fallback = await prisma.user.findUnique({
               where: { email: token.email },
-              select: { role: true, grade: true, board: true, language: true, subjects: true, age: true, parentEmail: true, parentPhone: true },
+              select: {
+                role: true,
+                grade: true,
+                board: true,
+                language: true,
+                subjects: true,
+                age: true,
+                parentEmail: true,
+                parentPhone: true,
+              },
             });
             if (fallback) {
               token.role = fallback.role;
@@ -317,12 +380,22 @@ export const authOptions: any = {
               let fallbackSubjectCount = 0;
               if (Array.isArray(fallback.subjects)) {
                 fallbackSubjectCount = (fallback.subjects as string[]).filter(Boolean).length;
-              } else if (typeof fallback.subjects === 'string' && (fallback.subjects as string).length > 0) {
+              } else if (
+                typeof fallback.subjects === 'string' &&
+                (fallback.subjects as string).length > 0
+              ) {
                 fallbackSubjectCount = (fallback.subjects as string)
-                  .replace(/^\{/, '').replace(/\}$/, '').split(',')
+                  .replace(/^\{/, '')
+                  .replace(/\}$/, '')
+                  .split(',')
                   .filter((s) => s.trim().length > 0).length;
               }
-              token.onboardingComplete = !!(fallback.grade && fallback.board && fallback.language && fallbackSubjectCount > 0);
+              token.onboardingComplete = !!(
+                fallback.grade &&
+                fallback.board &&
+                fallback.language &&
+                fallbackSubjectCount > 0
+              );
             }
           } catch {
             token.accountStatus = 'active';
@@ -344,7 +417,10 @@ export const authOptions: any = {
         session.user.onboardingComplete = (token.onboardingComplete as boolean) ?? false;
         (session.user as any).accountStatus = (token.accountStatus as string) ?? 'active';
 
-        logger.add(`session callback populated minimal session for: ${session.user.email!}`, { className: 'auth', methodName: 'sessionCallback' });
+        logger.add(`session callback populated minimal session for: ${session.user.email!}`, {
+          className: 'auth',
+          methodName: 'sessionCallback',
+        });
         // Call the standalone method to handle welcome email logic
         await maybeSendWelcomeEmail(session.user.email!, session.user.name ?? undefined);
       }

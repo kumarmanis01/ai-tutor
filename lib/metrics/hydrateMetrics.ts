@@ -66,28 +66,36 @@ export function incrementCreated(target = 'unknown') {
   if (!enabled) return;
   try {
     createdCounter.inc({ target }, 1);
-  } catch { /* metric emission is best-effort */ }
+  } catch {
+    /* metric emission is best-effort */
+  }
 }
 
 export function incrementClaimed(target = 'unknown') {
   if (!enabled) return;
   try {
     claimedCounter.inc({ target }, 1);
-  } catch { /* metric emission is best-effort */ }
+  } catch {
+    /* metric emission is best-effort */
+  }
 }
 
 export function incrementCompleted(target = 'unknown') {
   if (!enabled) return;
   try {
     completedCounter.inc({ target }, 1);
-  } catch { /* metric emission is best-effort */ }
+  } catch {
+    /* metric emission is best-effort */
+  }
 }
 
 export function incrementFailed(target = 'unknown') {
   if (!enabled) return;
   try {
     failedCounter.inc({ target }, 1);
-  } catch { /* metric emission is best-effort */ }
+  } catch {
+    /* metric emission is best-effort */
+  }
 }
 
 // Start a timer for a particular target; returns a function to call to observe duration

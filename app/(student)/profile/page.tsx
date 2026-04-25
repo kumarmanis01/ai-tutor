@@ -42,25 +42,26 @@ export default function ProfilePage() {
   const [showDeletionDialog, setShowDeletionDialog] = useState(false);
 
   if (!session) return <div className="p-6">You are not signed in.</div>;
-  if (loading) return (
-    <div className="max-w-4xl mx-auto p-8">
-      <div className="flex flex-col md:flex-row gap-8">
-        <div className="flex-1 space-y-6">
-          <div className="flex flex-col items-center gap-3">
-            <div className="loader-shimmer w-20 h-20 rounded-full" aria-hidden="true" />
-            <div className="loader-shimmer h-8 w-48 rounded" aria-hidden="true" />
-            <div className="loader-shimmer h-4 w-32 rounded" aria-hidden="true" />
+  if (loading)
+    return (
+      <div className="max-w-4xl mx-auto p-8">
+        <div className="flex flex-col md:flex-row gap-8">
+          <div className="flex-1 space-y-6">
+            <div className="flex flex-col items-center gap-3">
+              <div className="loader-shimmer w-20 h-20 rounded-full" aria-hidden="true" />
+              <div className="loader-shimmer h-8 w-48 rounded" aria-hidden="true" />
+              <div className="loader-shimmer h-4 w-32 rounded" aria-hidden="true" />
+            </div>
+            <CardSkeleton />
+            <CardSkeleton />
           </div>
-          <CardSkeleton />
-          <CardSkeleton />
+          <div className="w-full md:w-80">
+            <CardSkeleton />
+          </div>
         </div>
-        <div className="w-full md:w-80">
-          <CardSkeleton />
-        </div>
+        <span className="sr-only">Loading profile...</span>
       </div>
-      <span className="sr-only">Loading profile...</span>
-    </div>
-  );
+    );
 
   const fallback =
     profile?.name?.charAt(0).toUpperCase() ||
@@ -92,7 +93,9 @@ export default function ProfilePage() {
               tierColor={getTierColor(profile?.level ?? 1)}
             />
             <h1 className="text-3xl font-bold mt-2">{profile?.name ?? session?.user?.name}</h1>
-            <p className="text-gray-500 dark:text-gray-400">{profile?.email ?? session?.user?.email}</p>
+            <p className="text-gray-500 dark:text-gray-400">
+              {profile?.email ?? session?.user?.email}
+            </p>
             <div className="mt-2 flex gap-3 items-center text-sm text-gray-600 dark:text-gray-300">
               <div className="inline-flex items-center gap-2">
                 <span className="text-lg">🔥</span>
@@ -109,7 +112,10 @@ export default function ProfilePage() {
                       .map((id) => badges.find((b) => b.id === id))
                       .filter(Boolean)
                       .map((b) => (
-                        <span key={b!.id} className="px-2 py-0.5 bg-primary/10 text-primary rounded text-xs">
+                        <span
+                          key={b!.id}
+                          className="px-2 py-0.5 bg-primary/10 text-primary rounded text-xs"
+                        >
                           {b!.icon ?? '🏅'}
                         </span>
                       ))}
@@ -120,8 +126,15 @@ export default function ProfilePage() {
                 <div className="inline-flex items-center gap-2">
                   <span className="text-xs text-gray-400">Unlocked:</span>
                   <div className="inline-flex gap-1 flex-wrap">
-                    {COSMETIC_ITEMS.filter(ci => (profile.cosmeticUnlocks ?? []).includes(ci.key)).map(ci => (
-                      <span key={ci.key} className="px-2 py-0.5 bg-primary/10 text-primary rounded text-xs">{ci.name}</span>
+                    {COSMETIC_ITEMS.filter((ci) =>
+                      (profile.cosmeticUnlocks ?? []).includes(ci.key)
+                    ).map((ci) => (
+                      <span
+                        key={ci.key}
+                        className="px-2 py-0.5 bg-primary/10 text-primary rounded text-xs"
+                      >
+                        {ci.name}
+                      </span>
                     ))}
                   </div>
                 </div>
@@ -161,7 +174,9 @@ export default function ProfilePage() {
                   <p className="text-sm text-muted-foreground">Set daily & weekly study targets</p>
                 </div>
               </div>
-              <span className="text-muted-foreground group-hover:text-primary transition-colors text-xl">&rarr;</span>
+              <span className="text-muted-foreground group-hover:text-primary transition-colors text-xl">
+                &rarr;
+              </span>
             </Link>
           </div>
 
@@ -191,7 +206,7 @@ export default function ProfilePage() {
               <div>
                 <span className="font-semibold">Language:</span>{' '}
                 {profile?.language ? (
-                  LANGUAGES.find(l => l.code === profile.language)?.name || profile.language
+                  LANGUAGES.find((l) => l.code === profile.language)?.name || profile.language
                 ) : (
                   <span className="text-gray-400">Not set</span>
                 )}
@@ -202,14 +217,21 @@ export default function ProfilePage() {
               </div>
               <div>
                 <span className="font-semibold">Grade:</span>{' '}
-                {profile?.grade ? `Class ${profile.grade}` : <span className="text-gray-400">Not set</span>}
+                {profile?.grade ? (
+                  `Class ${profile.grade}`
+                ) : (
+                  <span className="text-gray-400">Not set</span>
+                )}
               </div>
               <div>
                 <span className="font-semibold">Subjects:</span>{' '}
                 {profile?.subjects && profile.subjects.length > 0 ? (
                   <span className="inline-flex flex-wrap gap-1 mt-1">
                     {profile.subjects.map((s: string) => (
-                      <span key={s} className="px-2 py-0.5 bg-primary/10 text-primary rounded text-sm">
+                      <span
+                        key={s}
+                        className="px-2 py-0.5 bg-primary/10 text-primary rounded text-sm"
+                      >
                         {s}
                       </span>
                     ))}
@@ -238,13 +260,13 @@ export default function ProfilePage() {
 
             {/* Privacy & Data */}
             <div className="bg-gray-50 dark:bg-gray-800 p-6 rounded-lg border border-red-200 dark:border-red-900 space-y-3">
-              <h3 className="font-semibold text-lg text-red-700 dark:text-red-400">Privacy &amp; Data</h3>
-              <p className="text-sm text-gray-600 dark:text-gray-300">
-                Delete my account and data
-              </p>
+              <h3 className="font-semibold text-lg text-red-700 dark:text-red-400">
+                Privacy &amp; Data
+              </h3>
+              <p className="text-sm text-gray-600 dark:text-gray-300">Delete my account and data</p>
               <p className="text-xs text-gray-500 dark:text-gray-400">
-                Permanently deletes your account and personal data within 30 days.
-                Learning analytics are kept anonymously.
+                Permanently deletes your account and personal data within 30 days. Learning
+                analytics are kept anonymously.
               </p>
               {deletionRequested ? (
                 <p className="text-sm text-green-700 dark:text-green-400 font-medium">
@@ -278,7 +300,10 @@ export default function ProfilePage() {
                     <div className="flex gap-2">
                       <button
                         type="button"
-                        onClick={() => { setShowDeletionDialog(false); setDeletionConfirmText(''); }}
+                        onClick={() => {
+                          setShowDeletionDialog(false);
+                          setDeletionConfirmText('');
+                        }}
                         className="flex-1 px-4 py-2 border border-gray-300 rounded text-sm hover:bg-gray-50 dark:hover:bg-gray-700"
                       >
                         Cancel
@@ -289,7 +314,9 @@ export default function ProfilePage() {
                         onClick={async () => {
                           setDeletionPending(true);
                           try {
-                            const res = await fetch('/api/student/account/deletion-request', { method: 'POST' });
+                            const res = await fetch('/api/student/account/deletion-request', {
+                              method: 'POST',
+                            });
                             if (res.ok) {
                               setDeletionRequested(true);
                               setShowDeletionDialog(false);

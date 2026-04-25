@@ -1,4 +1,4 @@
-export const dynamic = 'force-dynamic'
+export const dynamic = 'force-dynamic';
 
 import { logger } from '@/lib/logger';
 import { formatErrorForResponse } from '@/lib/errorResponse';
@@ -35,7 +35,10 @@ export async function GET() {
     // // Count today's questions
     // const todaysCount = await getTodaysQuestionCount(userId);
 
-    logger.add(`Subscription status: userId=${userId}, isPremium=${String(isPremium)}`, { className: 'subscription', methodName: 'status' });
+    logger.add(`Subscription status: userId=${userId}, isPremium=${String(isPremium)}`, {
+      className: 'subscription',
+      methodName: 'status',
+    });
 
     return NextResponse.json({
       authenticated: true,
@@ -43,7 +46,11 @@ export async function GET() {
       // todaysCount,
     });
   } catch (err) {
-    logger.error('subscription status error', { className: 'api.subscription.status', methodName: 'GET', error: err });
+    logger.error('subscription status error', {
+      className: 'api.subscription.status',
+      methodName: 'GET',
+      error: err,
+    });
     return NextResponse.json({ error: formatErrorForResponse(err) }, { status: 500 });
   }
 }

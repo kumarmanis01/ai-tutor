@@ -15,7 +15,7 @@ import { useNotes, NoteEntry } from '../context/NotesProvider';
 
 export function NotesRecentlyAdded() {
   const { recent, loading } = useNotes();
-  
+
   const openNote = useCallback((note: NoteEntry) => {
     // Navigate to learn page with note ID and type for proper context
     const params = new URLSearchParams();

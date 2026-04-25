@@ -12,241 +12,403 @@
  * - 2026-04-13T00:00:00Z | senior-engineer | send student push notifications on readiness drop; add student rate-limit
  */
 
-import { prisma } from '@/lib/prisma'
-import { logger } from '@/lib/logger'
-import { computeReadinessScore } from '@/lib/student/examReadiness'
-import { getRedis } from '@/lib/redis'
-import { callLLM } from '@/lib/callLLM'
-import { buildParentRemediationPrompt, parseParentRemediation } from '@/lib/ai/prompts/parentRemediation'
-import { sendMailSafe } from '@/lib/mailer'
-import { sendSms } from '@/lib/sms'
-import { sendPushSafe } from '@/lib/push/send'
-import { PUSH_NOTIFICATIONS } from '@/lib/push/notifications'
+import { prisma } from '@/lib/prisma';
+import { logger } from '@/lib/logger';
+import { computeReadinessScore } from '@/lib/student/examReadiness';
+import { getRedis } from '@/lib/redis';
+import { callLLM } from '@/lib/callLLM';
+import {
+  buildParentRemediationPrompt,
+  parseParentRemediation,
+} from '@/lib/ai/prompts/parentRemediation';
+import { sendMailSafe } from '@/lib/mailer';
+import { sendSms } from '@/lib/sms';
+import { sendPushSafe } from '@/lib/push/send';
+import { PUSH_NOTIFICATIONS } from '@/lib/push/notifications';
 
-const READINESS_DROP_THRESHOLD = 10 // points (0-100)
-const LOOKBACK_DAYS = 7
-const RATE_LIMIT_DAYS = 7
-const EXAM_WINDOW_DAYS = 90
+const READINESS_DROP_THRESHOLD = 10; // points (0-100)
+const LOOKBACK_DAYS = 7;
+const RATE_LIMIT_DAYS = 7;
+const EXAM_WINDOW_DAYS = 90;
+
+// Local row types to satisfy strict mode
+type ParentLinkRow = {
+  parentId: string;
+  studentId: string;
+  parent?: { name?: string | null; email?: string | null; phone?: string | null } | null;
+};
+
+type PlanRow = {
+  studentId: string;
+  subjectId: string | null;
+  examDate?: Date | null;
+};
+
+type SubjectDefRow = { id: string; name: string };
 
 function escapeHtml(str: string) {
-  if (!str) return ''
-  return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;')
+  if (!str) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
 }
 
 function sanitizeTextForHtml(raw: string) {
-  const escaped = escapeHtml(raw)
-  return escaped.replace(/\n/g, '<br/>')
+  const escaped = escapeHtml(raw);
+  return escaped.replace(/\n/g, '<br/>');
 }
 
 function dateLabelUTC(d: Date) {
-  return d.toISOString().slice(0, 10)
+  return d.toISOString().slice(0, 10);
 }
 
 export async function processReadinessDropAlerts(now = new Date()): Promise<void> {
-  const redis = getRedis()
-  const appUrl = (process.env.NEXTAUTH_URL ?? process.env.NEXT_PUBLIC_APP_URL ?? process.env.APP_URL ?? 'https://app.spinzyacademy.com').replace(/\/$/, '')
+  const redis = getRedis();
+  const appUrl = (
+    process.env.NEXTAUTH_URL ??
+    process.env.NEXT_PUBLIC_APP_URL ??
+    process.env.APP_URL ??
+    'https://app.spinzyacademy.com'
+  ).replace(/\/$/, '');
 
   try {
     // All active parent links
-    const links = await prisma.parentStudent.findMany({
+    const links = (await prisma.parentStudent.findMany({
       where: { status: 'active' },
-      select: { parentId: true, studentId: true, parent: { select: { name: true, email: true, phone: true } } },
-    })
+      select: {
+        parentId: true,
+        studentId: true,
+        parent: { select: { name: true, email: true, phone: true } },
+      },
+    })) as ParentLinkRow[];
 
     // Build student -> parents map
-    const parentsByStudent = new Map<string, { parentId: string; name?: string; email?: string; phone?: string }[]>()
-    const parentById = new Map<string, { name?: string; email?: string; phone?: string }>()
+    const parentsByStudent = new Map<
+      string,
+      { parentId: string; name?: string; email?: string; phone?: string }[]
+    >();
+    const parentById = new Map<string, { name?: string; email?: string; phone?: string }>();
     for (const l of links) {
-      parentById.set(l.parentId, { name: l.parent?.name, email: l.parent?.email, phone: l.parent?.phone })
-      const arr = parentsByStudent.get(l.studentId) ?? []
-      arr.push({ parentId: l.parentId, name: l.parent?.name, email: l.parent?.email, phone: l.parent?.phone })
-      parentsByStudent.set(l.studentId, arr)
+      parentById.set(l.parentId, {
+        name: l.parent?.name ?? undefined,
+        email: l.parent?.email ?? undefined,
+        phone: l.parent?.phone ?? undefined,
+      });
+      const arr = parentsByStudent.get(l.studentId) ?? [];
+      arr.push({
+        parentId: l.parentId,
+        name: l.parent?.name ?? undefined,
+        email: l.parent?.email ?? undefined,
+        phone: l.parent?.phone ?? undefined,
+      });
+      parentsByStudent.set(l.studentId, arr);
     }
 
     // For all students with parent links, fetch their learning plans (subjectId + examDate)
-    const studentIds = Array.from(new Set(links.map((l) => l.studentId)))
-    if (studentIds.length === 0) return
+    const studentIds = Array.from(new Set(links.map((l: ParentLinkRow) => l.studentId)));
+    if (studentIds.length === 0) return;
 
-    const plans = await prisma.learningPlan.findMany({ where: { studentId: { in: studentIds } }, select: { studentId: true, subjectId: true, examDate: true } })
+    const plans = (await prisma.learningPlan.findMany({
+      where: { studentId: { in: studentIds } },
+      select: { studentId: true, subjectId: true, examDate: true },
+    })) as PlanRow[];
 
     // Map subjectId -> subject name for nicer messages
-    const subjectIds = Array.from(new Set(plans.map((p) => p.subjectId).filter(Boolean)))
-    const subjectDefs = subjectIds.length > 0 ? await prisma.subjectDef.findMany({ where: { id: { in: subjectIds } }, select: { id: true, name: true } }) : []
-    const subjectNameById = new Map(subjectDefs.map((s) => [s.id, s.name]))
+    const subjectIds = Array.from(
+      new Set(plans.map((p: PlanRow) => p.subjectId).filter(Boolean) as string[])
+    );
+    const subjectDefs =
+      subjectIds.length > 0
+        ? ((await prisma.subjectDef.findMany({
+            where: { id: { in: subjectIds } },
+            select: { id: true, name: true },
+          })) as SubjectDefRow[])
+        : [];
+    const subjectNameById = new Map<string, string>(
+      subjectDefs.map((s: SubjectDefRow) => [s.id, s.name])
+    );
 
     // For each plan entry, compute readiness now and compare to snapshot LOOKBACK_DAYS ago
-    const date7 = new Date(now)
-    date7.setDate(now.getDate() - LOOKBACK_DAYS)
-    const date7Label = dateLabelUTC(date7)
+    const date7 = new Date(now);
+    date7.setDate(now.getDate() - LOOKBACK_DAYS);
+    const date7Label = dateLabelUTC(date7);
 
-    const alertsByParent = new Map<string, { studentId: string; studentName?: string; subjectId: string; subjectName?: string; prev: number; curr: number; delta: number; examDate?: Date | null }[]>()
+    const alertsByParent = new Map<
+      string,
+      {
+        studentId: string;
+        studentName?: string;
+        subjectId: string;
+        subjectName?: string;
+        prev: number;
+        curr: number;
+        delta: number;
+        examDate?: Date | null;
+      }[]
+    >();
 
     for (const plan of plans) {
       try {
-        if (!plan.subjectId) continue
-        const subjectId = plan.subjectId
+        if (!plan.subjectId) continue;
+        const subjectId = plan.subjectId;
         // Gate: exam within EXAM_WINDOW_DAYS (only upcoming exams within window)
-        if (!plan.examDate) continue
-        const msPerDay = 24 * 60 * 60 * 1000
-        const daysToExam = Math.ceil((plan.examDate.getTime() - now.getTime()) / msPerDay)
+        if (!plan.examDate) continue;
+        const msPerDay = 24 * 60 * 60 * 1000;
+        const daysToExam = Math.ceil((plan.examDate.getTime() - now.getTime()) / msPerDay);
         // Skip if exam already passed or is beyond the configured window
-        if (daysToExam < 0 || daysToExam > EXAM_WINDOW_DAYS) continue
+        if (daysToExam < 0 || daysToExam > EXAM_WINDOW_DAYS) continue;
 
-        const curr = await computeReadinessScore(plan.studentId, subjectId).catch(() => null)
-        if (!curr) continue
-        const currScore = Math.round(curr.score)
+        const curr = await computeReadinessScore(plan.studentId, subjectId).catch(() => null);
+        if (!curr) continue;
+        const currScore = Math.round(curr.score);
 
         // Fetch historical snapshot from Redis (written by precomputeReadiness job)
-        let prevScore: number | null = null
+        let prevScore: number | null = null;
         try {
           if (redis) {
-            const key = `readiness:history:${plan.studentId}:${plan.subjectId}:${date7Label}`
-            const v = await redis.get(key)
-            if (v) prevScore = Number(v)
+            const key = `readiness:history:${plan.studentId}:${plan.subjectId}:${date7Label}`;
+            const v = await redis.get(key);
+            if (v) prevScore = Number(v);
           }
         } catch (e) {
           // ignore redis errors
-          logger.error('readinessDrop.redisReadFailed', { err: String(e), studentId: plan.studentId, subjectId: plan.subjectId })
+          logger.error('readinessDrop.redisReadFailed', {
+            err: String(e),
+            studentId: plan.studentId,
+            subjectId: plan.subjectId,
+          });
         }
 
-        if (prevScore === null) continue // no historical data
+        if (prevScore === null) continue; // no historical data
 
-        const delta = prevScore - currScore
+        const delta = prevScore - currScore;
         if (delta >= READINESS_DROP_THRESHOLD) {
           // Send student notification (push) -- rate-limited per student+subject
           try {
-            const studentKey = `student:alert:readiness:last_sent:${plan.studentId}:${subjectId}`
-            let studentAlready = false
-            try { if (redis) { const v = await redis.get(studentKey); if (v) studentAlready = true } } catch (e) { logger.warn('readinessDrop.redisCheckFailed', { err: String(e), studentId: plan.studentId }) }
+            const studentKey = `student:alert:readiness:last_sent:${plan.studentId}:${subjectId}`;
+            let studentAlready = false;
+            try {
+              if (redis) {
+                const v = await redis.get(studentKey);
+                if (v) studentAlready = true;
+              }
+            } catch (e) {
+              logger.warn('readinessDrop.redisCheckFailed', {
+                err: String(e),
+                studentId: plan.studentId,
+              });
+            }
             if (!studentAlready) {
-              const subjName = String(subjectNameById.get(subjectId) ?? 'the subject')
-              await sendPushSafe(String(plan.studentId), PUSH_NOTIFICATIONS.readiness_drop(subjName, delta))
-              try { if (redis) await redis.set(studentKey, '1', 'EX', RATE_LIMIT_DAYS * 24 * 60 * 60) } catch (e) { logger.warn('readinessDrop.studentRateLimitSetFailed', { err: String(e), studentId: plan.studentId }) }
+              const subjName = String(subjectNameById.get(subjectId) ?? 'the subject');
+              await sendPushSafe(
+                String(plan.studentId),
+                PUSH_NOTIFICATIONS.readiness_drop(subjName, delta)
+              );
+              try {
+                if (redis) await redis.set(studentKey, '1', 'EX', RATE_LIMIT_DAYS * 24 * 60 * 60);
+              } catch (e) {
+                logger.warn('readinessDrop.studentRateLimitSetFailed', {
+                  err: String(e),
+                  studentId: plan.studentId,
+                });
+              }
             }
           } catch (e) {
-            logger.error('readinessDrop.sendStudentPushFailed', { err: String(e), studentId: plan.studentId, subjectId })
+            logger.error('readinessDrop.sendStudentPushFailed', {
+              err: String(e),
+              studentId: plan.studentId,
+              subjectId,
+            });
           }
 
           // Notify all parents of this student (aggregate later per-parent)
-          const parents = parentsByStudent.get(plan.studentId) ?? []
+          const parents = parentsByStudent.get(plan.studentId) ?? [];
           for (const p of parents) {
-            const key = `parent:alert:readiness:last_sent:${p.parentId}:${plan.studentId}:${plan.subjectId}`
-            let already = false
-            try { if (redis) { const v = await redis.get(key); if (v) already = true } } catch {}
-            if (already) continue
+            const key = `parent:alert:readiness:last_sent:${p.parentId}:${plan.studentId}:${plan.subjectId}`;
+            let already = false;
+            try {
+              if (redis) {
+                const v = await redis.get(key);
+                if (v) already = true;
+              }
+            } catch {}
+            if (already) continue;
 
-            const a = alertsByParent.get(p.parentId) ?? []
-            a.push({ studentId: plan.studentId, subjectId, subjectName: subjectNameById.get(subjectId) as string | undefined, prev: prevScore, curr: currScore, delta, examDate: plan.examDate })
-            alertsByParent.set(p.parentId, a)
+            const a = alertsByParent.get(p.parentId) ?? [];
+            a.push({
+              studentId: plan.studentId,
+              subjectId,
+              subjectName: subjectNameById.get(subjectId) as string | undefined,
+              prev: prevScore,
+              curr: currScore,
+              delta,
+              examDate: plan.examDate,
+            });
+            alertsByParent.set(p.parentId, a);
           }
         }
       } catch (err) {
-        logger.error('readinessDrop.errorProcessingPlan', { err: err instanceof Error ? err.message : String(err), plan })
+        logger.error('readinessDrop.errorProcessingPlan', {
+          err: err instanceof Error ? err.message : String(err),
+          plan,
+        });
       }
     }
 
     // Send alerts per parent
     for (const [parentId, issues] of alertsByParent) {
       try {
-        const parent = parentById.get(parentId)
-        if (!parent) continue
+        const parent = parentById.get(parentId);
+        if (!parent) continue;
 
         // Build remediation using LLM per issue (best-effort). Produce both
         // HTML fragments for email and a short plain-text summary for SMS/text.
-        const remediationHtmlParts: string[] = []
-        const remediationTextParts: string[] = []
+        const remediationHtmlParts: string[] = [];
+        const remediationTextParts: string[] = [];
         for (const it of issues) {
           try {
-            const prompt = buildParentRemediationPrompt({ subjectName: String(it.subjectName ?? it.subjectId), prev: it.prev, curr: it.curr, daysAgo: LOOKBACK_DAYS })
-            const defaultText = 'Try 3 targeted 20-minute sessions on key topics and a short practice test.'
-            let htmlFragment = `<p>${escapeHtml(defaultText)}</p>`
-            let textFragment = defaultText
+            const prompt = buildParentRemediationPrompt({
+              subjectName: String(it.subjectName ?? it.subjectId),
+              prev: it.prev,
+              curr: it.curr,
+              daysAgo: LOOKBACK_DAYS,
+            });
+            const defaultText =
+              'Try 3 targeted 20-minute sessions on key topics and a short practice test.';
+            let htmlFragment = `<p>${escapeHtml(defaultText)}</p>`;
+            let textFragment = defaultText;
 
             if (process.env.ALLOW_LLM_CALLS === '1') {
-              const res = await callLLM({ prompt, model: process.env.MODEL_SMALL || 'gpt-4o-mini', meta: { promptType: 'parent_readiness_remediation', subject: it.subjectName ?? it.subjectId, daysAgo: LOOKBACK_DAYS } }).catch(() => null)
-              const raw = res?.content ? String(res.content).trim() : ''
+              const res = await callLLM({
+                prompt,
+                model: process.env.MODEL_SMALL || 'gpt-4o-mini',
+                meta: {
+                  promptType: 'parent_readiness_remediation',
+                  subject: it.subjectName ?? it.subjectId,
+                  daysAgo: LOOKBACK_DAYS,
+                },
+              }).catch(() => null);
+              const raw = res?.content ? String(res.content).trim() : '';
               if (raw) {
-                const parsed = parseParentRemediation(raw)
+                const parsed = parseParentRemediation(raw);
                 if (parsed.valid && parsed.data) {
-                  const bulletsHtml = parsed.data.bullets.map((b) => `<li>${escapeHtml(b)}</li>`).join('')
-                  const practiceHtml = `<p>${escapeHtml(parsed.data.practice)}</p>`
-                  const ctaHtml = `<p>${escapeHtml(parsed.data.callToAction)}</p>`
-                  htmlFragment = `<ul>${bulletsHtml}</ul>${practiceHtml}${ctaHtml}`
+                  const bulletsHtml = parsed.data.bullets
+                    .map((b) => `<li>${escapeHtml(b)}</li>`)
+                    .join('');
+                  const practiceHtml = `<p>${escapeHtml(parsed.data.practice)}</p>`;
+                  const ctaHtml = `<p>${escapeHtml(parsed.data.callToAction)}</p>`;
+                  htmlFragment = `<ul>${bulletsHtml}</ul>${practiceHtml}${ctaHtml}`;
 
-                  const bulletsText = parsed.data.bullets.join('; ')
-                  textFragment = `${bulletsText}. Practice: ${parsed.data.practice}. ${parsed.data.callToAction}`
+                  const bulletsText = parsed.data.bullets.join('; ');
+                  textFragment = `${bulletsText}. Practice: ${parsed.data.practice}. ${parsed.data.callToAction}`;
                 } else {
                   // fallback to sanitized raw string if parsing failed
-                  const safe = sanitizeTextForHtml(raw)
-                  htmlFragment = `<p>${safe}</p>`
-                  const cleaned = raw.replace(/```/g, '').replace(/\n+/g, ' ').trim()
-                  textFragment = cleaned || defaultText
+                  const safe = sanitizeTextForHtml(raw);
+                  htmlFragment = `<p>${safe}</p>`;
+                  const cleaned = raw.replace(/```/g, '').replace(/\n+/g, ' ').trim();
+                  textFragment = cleaned || defaultText;
                 }
               }
             }
 
-            remediationHtmlParts.push(`<h4>${escapeHtml(String(it.subjectName ?? it.subjectId))} (${it.delta} point drop)</h4>${htmlFragment}`)
-            remediationTextParts.push(`${it.subjectName ?? it.subjectId} (${it.delta} point drop): ${textFragment}`)
+            remediationHtmlParts.push(
+              `<h4>${escapeHtml(String(it.subjectName ?? it.subjectId))} (${it.delta} point drop)</h4>${htmlFragment}`
+            );
+            remediationTextParts.push(
+              `${it.subjectName ?? it.subjectId} (${it.delta} point drop): ${textFragment}`
+            );
           } catch (e) {
-            remediationHtmlParts.push(`<h4>${it.subjectName ?? it.subjectId} (${it.delta} point drop)</h4><p>${escapeHtml('Try 3 targeted 20-minute sessions on key topics and a short practice test.')}</p>`)
-            remediationTextParts.push(`${it.subjectName ?? it.subjectId} (${it.delta} point drop): Try 3 targeted 20-minute sessions on key topics and a short practice test.`)
+            remediationHtmlParts.push(
+              `<h4>${it.subjectName ?? it.subjectId} (${it.delta} point drop)</h4><p>${escapeHtml('Try 3 targeted 20-minute sessions on key topics and a short practice test.')}</p>`
+            );
+            remediationTextParts.push(
+              `${it.subjectName ?? it.subjectId} (${it.delta} point drop): Try 3 targeted 20-minute sessions on key topics and a short practice test.`
+            );
           }
         }
 
-        const dashboardLink = `${appUrl}/parent/dashboard?child=${issues[0].studentId}`
-        const subject = `Attention: readiness drop detected` 
-        const remediationHtml = remediationHtmlParts.join('')
-        const remediationPlain = remediationTextParts.join(' | ')
+        const dashboardLink = `${appUrl}/parent/dashboard?child=${issues[0].studentId}`;
+        const subject = `Attention: readiness drop detected`;
+        const remediationHtml = remediationHtmlParts.join('');
+        const remediationPlain = remediationTextParts.join(' | ');
 
-        const html = `<!doctype html><html><body><p>Hi ${escapeHtml(parent.name ?? '')},</p><p>We detected a drop in exam readiness for the following subject(s):</p>${remediationHtml}<p>Open the dashboard to see details: <a href="${dashboardLink}">View dashboard</a></p><p>-- Team Spinzy</p></body></html>`
+        const html = `<!doctype html><html><body><p>Hi ${escapeHtml(parent.name ?? '')},</p><p>We detected a drop in exam readiness for the following subject(s):</p>${remediationHtml}<p>Open the dashboard to see details: <a href="${dashboardLink}">View dashboard</a></p><p>-- Team Spinzy</p></body></html>`;
 
         // Send email and SMS, but only mark rate-limit if at least one channel succeeded
-        let emailSent = false
-        let smsSent = false
+        let emailSent = false;
+        let smsSent = false;
         if (!parent.email && !parent.phone) {
-          logger.info('readinessDrop.noContactDetails', { parentId, count: issues.length })
+          logger.info('readinessDrop.noContactDetails', { parentId, count: issues.length });
         }
         if (parent.email) {
           try {
             // Provide a readable plain-text fallback that includes the remediation summary
-            const textFallback = `${subject}\n\n${remediationPlain}\n\nView dashboard: ${dashboardLink}`
-            await sendMailSafe({ to: parent.email, subject, html, text: textFallback })
-            emailSent = true
+            const textFallback = `${subject}\n\n${remediationPlain}\n\nView dashboard: ${dashboardLink}`;
+            await sendMailSafe({ to: parent.email, subject, html, text: textFallback });
+            emailSent = true;
           } catch (e) {
-            logger.error('readinessDrop.sendMailFailed', { err: String(e), parentId })
+            logger.error('readinessDrop.sendMailFailed', { err: String(e), parentId });
           }
         }
         if (parent.phone) {
           // Short SMS-friendly summary with remediation snippet (trimmed)
-          const smsSnippet = remediationPlain.length > 140 ? remediationPlain.slice(0, 137) + '...' : remediationPlain
-          const smsText = `Alert: ${issues.length} readiness drop(s) detected for your child. Suggestion: ${smsSnippet} Open: ${dashboardLink}`
+          const smsSnippet =
+            remediationPlain.length > 140
+              ? remediationPlain.slice(0, 137) + '...'
+              : remediationPlain;
+          const smsText = `Alert: ${issues.length} readiness drop(s) detected for your child. Suggestion: ${smsSnippet} Open: ${dashboardLink}`;
           try {
-            await sendSms(parent.phone, smsText)
-            smsSent = true
+            await sendSms(parent.phone, smsText);
+            smsSent = true;
           } catch (e) {
-            logger.error('readinessDrop.sendSmsFailed', { err: String(e), parentId })
+            logger.error('readinessDrop.sendSmsFailed', { err: String(e), parentId });
           }
         }
 
-        const notificationSent = emailSent || smsSent
+        const notificationSent = emailSent || smsSent;
         if (notificationSent && redis) {
           for (const it of issues) {
-            try { await redis.set(`parent:alert:readiness:last_sent:${parentId}:${it.studentId}:${it.subjectId}`, '1', 'EX', RATE_LIMIT_DAYS * 24 * 60 * 60) } catch (e) { logger.warn('readinessDrop.rateLimitSetFailed', { err: String(e), parentId }) }
+            try {
+              await redis.set(
+                `parent:alert:readiness:last_sent:${parentId}:${it.studentId}:${it.subjectId}`,
+                '1',
+                'EX',
+                RATE_LIMIT_DAYS * 24 * 60 * 60
+              );
+            } catch (e) {
+              logger.warn('readinessDrop.rateLimitSetFailed', { err: String(e), parentId });
+            }
           }
         }
 
         if (notificationSent) {
-          logger.info('readinessDrop.alertSent', { parentId, count: issues.length, emailSent, smsSent })
+          logger.info('readinessDrop.alertSent', {
+            parentId,
+            count: issues.length,
+            emailSent,
+            smsSent,
+          });
         } else {
-          logger.info('readinessDrop.alertNotSent', { parentId, count: issues.length, hasEmail: Boolean(parent.email), hasPhone: Boolean(parent.phone) })
+          logger.info('readinessDrop.alertNotSent', {
+            parentId,
+            count: issues.length,
+            hasEmail: Boolean(parent.email),
+            hasPhone: Boolean(parent.phone),
+          });
         }
       } catch (err) {
-        logger.error('readinessDrop.failedForParent', { parentId, err: err instanceof Error ? err.message : String(err) })
+        logger.error('readinessDrop.failedForParent', {
+          parentId,
+          err: err instanceof Error ? err.message : String(err),
+        });
       }
     }
   } catch (err) {
-    logger.error('readinessDrop.failed', { err: err instanceof Error ? err.message : String(err) })
+    logger.error('readinessDrop.failed', { err: err instanceof Error ? err.message : String(err) });
   }
 }
 
-export default processReadinessDropAlerts
+export default processReadinessDropAlerts;

@@ -39,7 +39,7 @@ interface Props {
 
 export default async function SessionPage({ params, searchParams }: Props) {
   const { topicId: id } = await params;
-  const { reason, time, sid, cid, focus, itemId } = await searchParams as any;
+  const { reason, time, sid, cid, focus, itemId } = (await searchParams) as any;
 
   // ── Legacy sessionId redirect ─────────────────────────────────────────────
   //
@@ -114,7 +114,10 @@ export default async function SessionPage({ params, searchParams }: Props) {
       topicId={id}
       reasonLabel={reasonLabel}
       estimatedTimeMin={estimatedTimeMin}
-      initialFocus={{ focus: (focus as string) ?? undefined, itemId: (itemId as string) ?? undefined }}
+      initialFocus={{
+        focus: (focus as string) ?? undefined,
+        itemId: (itemId as string) ?? undefined,
+      }}
     />
   );
 }

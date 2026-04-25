@@ -13,16 +13,14 @@
  */
 import { prisma } from '../lib/prisma';
 
-
-
 async function main() {
   console.log('=== HYDRATION JOBS ===\n');
-  
+
   const jobs = await prisma.hydrationJob.findMany({
     orderBy: { createdAt: 'desc' },
-    take: 20
+    take: 20,
   });
-  
+
   for (const job of jobs) {
     console.log(`ID: ${job.id}`);
     console.log(`Type: ${job.jobType}`);
@@ -34,26 +32,26 @@ async function main() {
     console.log(`Created: ${job.createdAt}`);
     console.log('---\n');
   }
-  
+
   console.log('\n=== TOPIC COUNTS ===');
   const topicCount = await prisma.topicDef.count();
   const topicNoteCount = await prisma.topicNote.count();
   console.log(`TopicDef: ${topicCount}`);
   console.log(`TopicNote: ${topicNoteCount}`);
-  
+
   console.log('\n=== TOPICS WITHOUT NOTES (first 10) ===');
   const topicsWithoutNotes = await prisma.topicDef.findMany({
     where: {
-      notes: { none: {} }
+      notes: { none: {} },
     },
     take: 10,
-    select: { id: true, name: true, chapterId: true }
+    select: { id: true, name: true, chapterId: true },
   });
   console.log(topicsWithoutNotes);
-  
+
   console.log('\n=== SYLLABUS JOBS DETAILS ===');
   const syllabusJobs = await prisma.hydrationJob.findMany({
-    where: { jobType: 'syllabus' }
+    where: { jobType: 'syllabus' },
   });
   for (const sj of syllabusJobs) {
     console.log(`ID: ${sj.id}`);

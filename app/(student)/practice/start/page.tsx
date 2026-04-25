@@ -15,9 +15,9 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { Suspense } from 'react';
 
 function PracticeStartContent() {
-  const router    = useRouter();
-  const params    = useSearchParams();
-  const topicId   = params.get('topicId');
+  const router = useRouter();
+  const params = useSearchParams();
+  const topicId = params.get('topicId');
   const difficulty = params.get('difficulty') ?? 'medium';
 
   useEffect(() => {
@@ -27,7 +27,9 @@ function PracticeStartContent() {
       return;
     }
     // Forward to the existing tests page with topicId context pre-set
-    router.replace(`/tests?topicId=${encodeURIComponent(topicId)}&difficulty=${encodeURIComponent(difficulty)}`);
+    router.replace(
+      `/tests?topicId=${encodeURIComponent(topicId)}&difficulty=${encodeURIComponent(difficulty)}`
+    );
   }, [topicId, difficulty, router]);
 
   return (

@@ -28,11 +28,12 @@ export async function middleware(request: NextRequest) {
 
   // Centralized API request logging (dev only)
   const isApiRoute = pathname.startsWith('/api/');
-  const isDev = process.env.NODE_ENV !== 'production' && process.env.NEXT_PUBLIC_DEBUG_MODE === 'true';
+  const isDev =
+    process.env.NODE_ENV !== 'production' && process.env.NEXT_PUBLIC_DEBUG_MODE === 'true';
   if (isApiRoute && isDev) {
     const method = request.method;
     logger.info(`[API] ${method} ${pathname} called`);
-    if (["POST", "PUT", "PATCH"].includes(method)) {
+    if (['POST', 'PUT', 'PATCH'].includes(method)) {
       try {
         const clone = request.clone();
         const body = await clone.text();
@@ -62,7 +63,9 @@ export async function middleware(request: NextRequest) {
     if (pathname.startsWith(prefix)) {
       if (!token) {
         if (prefix === '/session') {
-          return NextResponse.redirect(new URL(`/auth/signin?callbackUrl=${encodeURIComponent(pathname)}`, request.url));
+          return NextResponse.redirect(
+            new URL(`/auth/signin?callbackUrl=${encodeURIComponent(pathname)}`, request.url)
+          );
         }
         return NextResponse.redirect(new URL('/', request.url));
       }
@@ -76,13 +79,18 @@ export async function middleware(request: NextRequest) {
         return NextResponse.redirect(new URL('/dashboard?parent_verify=1', request.url));
       }
 
-      if (!token.onboardingComplete && !pathname.startsWith('/profile') && !pathname.startsWith('/dashboard') && !pathname.startsWith('/parent')) {
+      if (
+        !token.onboardingComplete &&
+        !pathname.startsWith('/profile') &&
+        !pathname.startsWith('/dashboard') &&
+        !pathname.startsWith('/parent')
+      ) {
         return NextResponse.redirect(new URL('/dashboard?onboarding=1', request.url));
       }
 
-  const res = NextResponse.next();
-  res.headers.set('x-pathname', pathname);
-  return res;
+      const res = NextResponse.next();
+      res.headers.set('x-pathname', pathname);
+      return res;
     }
   }
 
@@ -92,5 +100,15 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/session/:path*', '/api/:path*', '/admin/:path*', '/dashboard/:path*', '/profile/:path*', '/rooms/:path*', '/parent/:path*', '/learn/:path*', '/student/:path*'],
+  matcher: [
+    '/session/:path*',
+    '/api/:path*',
+    '/admin/:path*',
+    '/dashboard/:path*',
+    '/profile/:path*',
+    '/rooms/:path*',
+    '/parent/:path*',
+    '/learn/:path*',
+    '/student/:path*',
+  ],
 };

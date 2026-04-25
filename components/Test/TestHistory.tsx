@@ -1,4 +1,4 @@
-"use client";
+'use client';
 
 import React, { useEffect, useState } from 'react';
 
@@ -30,9 +30,13 @@ export default function TestHistory() {
           <li key={a.id} className="flex items-center justify-between rounded border p-2">
             <div>
               <p className="text-sm">{a.testId}</p>
-              <p className="text-xs text-gray-600">{a.finishedAt ? new Date(a.finishedAt).toLocaleString() : 'In progress'}</p>
+              <p className="text-xs text-gray-600">
+                {a.finishedAt ? new Date(a.finishedAt).toLocaleString() : 'In progress'}
+              </p>
             </div>
-            <div className="text-sm font-medium">{a.scorePercent != null ? `${Math.round(a.scorePercent)}%` : '-'}</div>
+            <div className="text-sm font-medium">
+              {a.scorePercent != null ? `${Math.round(a.scorePercent)}%` : '-'}
+            </div>
           </li>
         ))}
         {items.length === 0 && <li className="text-sm text-gray-600">No attempts yet.</li>}

@@ -28,7 +28,11 @@ export async function POST(req: Request) {
   try {
     await logEvent('badge_shared', { badgeId });
   } catch (err) {
-    logger.error('[badges/share] db write failed', { className: 'api.badges.share', methodName: 'POST', error: err });
+    logger.error('[badges/share] db write failed', {
+      className: 'api.badges.share',
+      methodName: 'POST',
+      error: err,
+    });
     // non-blocking: return ok but log the error
     return NextResponse.json({ ok: true, warning: 'db_write_failed' });
   }

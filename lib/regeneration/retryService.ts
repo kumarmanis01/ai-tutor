@@ -1,31 +1,40 @@
-import { PrismaClient } from '@prisma/client'
-import makeRetryIntentStore from '../retryIntent/store'
-import { logAuditEvent } from '../audit/log'
+import { PrismaClient } from '@prisma/client';
+import makeRetryIntentStore from '../retryIntent/store';
+import { logAuditEvent } from '../audit/log';
 
 export function makeRetryService(prisma: PrismaClient) {
   async function createRetryJobFromIntent(intentId: string) {
     return prisma.$transaction(async (tx) => {
-      const store = makeRetryIntentStore(tx as unknown as PrismaClient)
+      const store = makeRetryIntentStore(tx as unknown as PrismaClient);
 
       // Ensure this intent has not already produced a job
       // Support various mocked transaction clients in tests: prefer findFirst, fall back to findUnique or findMany
-      let existing: any = null
+      let existing: any = null;
       if (typeof (tx.regenerationJob as any).findFirst === 'function') {
-        existing = await (tx.regenerationJob as any).findFirst({ where: { retryIntentId: intentId } })
+        existing = await (tx.regenerationJob as any).findFirst({
+          where: { retryIntentId: intentId },
+        });
       } else if (typeof (tx.regenerationJob as any).findUnique === 'function') {
-        existing = await (tx.regenerationJob as any).findUnique({ where: { retryIntentId: intentId } })
+        existing = await (tx.regenerationJob as any).findUnique({
+          where: { retryIntentId: intentId },
+        });
       } else if (typeof (tx.regenerationJob as any).findMany === 'function') {
-        const arr = await (tx.regenerationJob as any).findMany({ where: { retryIntentId: intentId }, take: 1 })
-        existing = arr && arr.length ? arr[0] : null
+        const arr = await (tx.regenerationJob as any).findMany({
+          where: { retryIntentId: intentId },
+          take: 1,
+        });
+        existing = arr && arr.length ? arr[0] : null;
       }
-      if (existing) throw new Error('retry intent already executed')
+      if (existing) throw new Error('retry intent already executed');
 
       // Consume intent (PENDING -> CONSUMED) using store inside tx
-      const consumed = await store.consumeRetryIntent(intentId)
+      const consumed = await store.consumeRetryIntent(intentId);
 
       // Load the source job to copy instructionJson
-      const sourceJob = await tx.regenerationJob.findUnique({ where: { id: consumed?.sourceJobId } })
-      if (!sourceJob) throw new Error('source job not found')
+      const sourceJob = await tx.regenerationJob.findUnique({
+        where: { id: consumed?.sourceJobId },
+      });
+      if (!sourceJob) throw new Error('source job not found');
 
       // Create new regeneration job referencing the intent and source job
       const created = await tx.regenerationJob.create({
@@ -39,7 +48,7 @@ export function makeRetryService(prisma: PrismaClient) {
           retryIntentId: intentId,
           createdBy: sourceJob.createdBy ?? 'system',
         },
-      })
+      });
 
       // created job
 
@@ -49,19 +58,23 @@ export function makeRetryService(prisma: PrismaClient) {
           targetEntity: 'RegenerationJob',
           targetId: created.id,
           action: null,
-          details: { legacyAction: 'REGEN_JOB_RETRIED', sourceJobId: sourceJob.id, retryIntentId: intentId },
-        })
+          details: {
+            legacyAction: 'REGEN_JOB_RETRIED',
+            sourceJobId: sourceJob.id,
+            retryIntentId: intentId,
+          },
+        });
       } catch {
         // swallow
       }
 
-      return created
-    })
+      return created;
+    });
   }
 
-  return { createRetryJobFromIntent }
+  return { createRetryJobFromIntent };
 }
 
-export type RetryService = ReturnType<typeof makeRetryService>
+export type RetryService = ReturnType<typeof makeRetryService>;
 
-export default makeRetryService
+export default makeRetryService;

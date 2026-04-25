@@ -9,8 +9,6 @@ if (!email) {
   process.exit(1);
 }
 
-
-
 async function main() {
   const existing = await prisma.user.findUnique({ where: { email } });
   if (existing) {
@@ -22,8 +20,8 @@ async function main() {
       email,
       name,
       language: 'en',
-      role: 'user'
-    }
+      role: 'user',
+    },
   });
   logger.info(`Created user ${email} with id ${created.id}`);
 }

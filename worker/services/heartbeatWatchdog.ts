@@ -1,7 +1,10 @@
 import { prisma } from '@/lib/prisma.js';
 import { logger } from '@/lib/logger.js';
 
-export function startWorkerLifecycleWatchdog(opts?: { intervalMs?: number; staleAfterMs?: number }) {
+export function startWorkerLifecycleWatchdog(opts?: {
+  intervalMs?: number;
+  staleAfterMs?: number;
+}) {
   const intervalMs = opts?.intervalMs ?? 30_000;
   const staleAfterMs = opts?.staleAfterMs ?? 60_000; // consider worker stale if no heartbeat in this many ms
 
@@ -11,14 +14,26 @@ export function startWorkerLifecycleWatchdog(opts?: { intervalMs?: number; stale
   async function checkOnce() {
     try {
       const cutoff = new Date(Date.now() - staleAfterMs);
-      const staleWorkers = await prisma.workerLifecycle.findMany({ where: { lastHeartbeatAt: { lt: cutoff }, status: { not: 'FAILED' } } });
+      const staleWorkers = await prisma.workerLifecycle.findMany({
+        where: { lastHeartbeatAt: { lt: cutoff }, status: { not: 'FAILED' } },
+      });
       if (staleWorkers.length === 0) return;
       logger.info('watchdog: found stale workers', { count: staleWorkers.length });
 
       for (const wk of staleWorkers) {
         try {
-          await prisma.workerLifecycle.update({ where: { id: wk.id }, data: { status: 'FAILED', stoppedAt: new Date() } });
-          await prisma.auditLog.create({ data: { targetEntity: 'Worker', targetId: wk.id, action: null, details: { legacyAction: 'worker_watchdog_mark_failed', prevStatus: wk.status } } });
+          await prisma.workerLifecycle.update({
+            where: { id: wk.id },
+            data: { status: 'FAILED', stoppedAt: new Date() },
+          });
+          await prisma.auditLog.create({
+            data: {
+              targetEntity: 'Worker',
+              targetId: wk.id,
+              action: null,
+              details: { legacyAction: 'worker_watchdog_mark_failed', prevStatus: wk.status },
+            },
+          });
           logger.warn('watchdog: marked worker FAILED', { workerId: wk.id, prevStatus: wk.status });
         } catch (e) {
           logger?.error?.('watchdog: failed to mark worker FAILED', { err: e, workerId: wk.id });

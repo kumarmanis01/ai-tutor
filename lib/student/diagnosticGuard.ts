@@ -1,5 +1,5 @@
-import { prisma } from '@/lib/prisma'
-import { getSubjectDiagnosticStatus } from '@/lib/diagnostics/stateStore'
+import { prisma } from '@/lib/prisma';
+import { getSubjectDiagnosticStatus } from '@/lib/diagnostics/stateStore';
 
 /**
  * Returns true if the student has completed (or skipped) the diagnostic for a
@@ -16,19 +16,18 @@ import { getSubjectDiagnosticStatus } from '@/lib/diagnostics/stateStore'
  */
 export async function hasDiagnosticForSubject(
   studentId: string,
-  subjectId: string,
+  subjectId: string
 ): Promise<boolean> {
   try {
     // Fast path: check the diagnostic status flag set at submission time.
-    const statusRecord = await getSubjectDiagnosticStatus(studentId, subjectId)
+    const statusRecord = await getSubjectDiagnosticStatus(studentId, subjectId);
     if (
-      statusRecord && (
-        statusRecord.status === 'completed' ||
+      statusRecord &&
+      (statusRecord.status === 'completed' ||
         statusRecord.status === 'skipped' ||
-        statusRecord.status === 'not_applicable'
-      )
+        statusRecord.status === 'not_applicable')
     ) {
-      return true
+      return true;
     }
 
     // Fallback: bootstrap job may have run even without the status flag
@@ -38,9 +37,9 @@ export async function hasDiagnosticForSubject(
         studentId,
         concept: { subjectId },
       },
-    })
-    return count > 0
+    });
+    return count > 0;
   } catch {
-    return false
+    return false;
   }
 }

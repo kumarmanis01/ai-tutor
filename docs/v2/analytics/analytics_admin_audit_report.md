@@ -32,15 +32,18 @@ EDIT LOG:
 # Analytics — Admin Audit Report (v2)
 
 **Executive Summary**
+
 - Purpose: Provide a single authoritative report for admins and engineers describing what the system currently logs, where those logs are emitted, which important user-journey events are missing or inconsistent, privacy/security risks, and a prioritized remediation plan to reach audit-grade observability.
 - Scope: Student, Parent, Admin journeys; server and client instrumentation; LLM/tutor telemetry; messaging channels; aggregation & forwarding.
 - Key outcome: a CSV of detected server-side event write call sites ([analytics_event_callsites.csv](analytics_event_callsites.csv)), a reconciliation report against the client allowlist ([analytics_event_reconciliation.md](analytics_event_reconciliation.md)), and recommended next steps.
 
 **Where this data came from**
+
 - Repo scan for `prisma.analyticsEvent.create(...)` and `prisma.event.create(...)` call sites.
 - Manual review of LLM wrapper (`lib/callLLM.ts`), tutor orchestration (`services/tutor/turn.ts`), onboarding (`app/api/user/onboarding/route.ts`), diagnostics (`app/api/student/diagnostic/submit/route.ts`), messaging (`lib/whatsapp.ts`), and the client analytics endpoint (`app/api/analytics/event/route.ts`).
 
 **Inventory — important server-emitted event types (non-exhaustive)**
+
 - `ai_call` — LLM/embedding telemetry with tokens, cost_usd, cache_hit, session_id, concept_id (emitted from `lib/callLLM.ts` and embedding utilities).
 - `trial_start` — produced during trial signup (`app/api/trial/route.ts`).
 - `converted_to_paid` / `subscription.verified` — produced on payment/verify flow (`app/api/payments/verify-subscription/route.ts`).
@@ -100,6 +103,7 @@ Refer to full mapping: [analytics_event_callsites.csv](analytics_event_callsites
   - `rate_limit` / `quota_exceeded`: Fields: `resource`, `userId|null`, `limit`, `window`, `timestamp`.
 
 **Minimal canonical event schema (required fields)**
+
 - `event_type` (string)
 - `timestamp` (ISO-8601)
 - `source` (`client`|`server`|`worker`)
@@ -113,16 +117,19 @@ Refer to full mapping: [analytics_event_callsites.csv](analytics_event_callsites
 - `metadata` (object — event-specific payload)
 
 Notes:
+
 - Always prefer `prompt_hash` over raw prompt text and enforce strict retention and access controls for any raw LLM artifacts.
 - Keep sensitive operational events (LLM telemetry, safety signals, provider errors) server-generated only; do not accept them from untrusted clients.
 - Use consistent naming and document any additions to this canonical list in `analytics_event_callsites.csv` and the reconciliation doc.
 
 **Client allowlist vs server taxonomy**
+
 - Client `VALID_EVENT_TYPES` (see `app/api/analytics/event/route.ts`) currently allows: `lesson_viewed`, `lesson_completed`, `session_started`, `session_completed`, `quiz_submitted`, `doubt_asked`, `streak_updated`, `xp_earned`, `badge_unlocked`, `hint_requested`, `diagnostic_started`, `diagnostic_completed`, `page_view`.
 - Finding: The client allowlist is intentionally narrow. Many server events are server-only and contain sensitive or operational metadata (LLM telemetry, ingestion runs, safety/hallucination signals, message provider errors) and must remain server-only.
 - Gap: no explicit `subject_selected` event in server-side analytics (onboarding writes profile but does not emit an explicit `subject_selected` `AnalyticsEvent`). If subject-selection analytics is required for admin funnels, add a controlled client-server flow for `subject_selected`.
 
 **Gaps & Risks (priority-ranked)**
+
 - Lacking subject-selection instrumentation (Product funnel gap). Priority: High.
 - No external sink/forwarder configured — dashboards rely on DB-only rollups (Ops/BI gap). Priority: High.
 - LLM prompt storage risk: some logs store `requestBody` / `prompt` in turn/content logs. This may capture user-submitted PII or answers. Risk: PII leakage and privacy. Priority: Critical.
@@ -133,27 +140,32 @@ Notes:
 **Detailed recommendations**
 
 Short-term (1–7 days)
+
 - Add `subject_selected` event: implement client instrumentation and a server-side `AnalyticsEvent` write endpoint (extend `VALID_EVENT_TYPES` + server validation to accept `subject_selected`) — Product/Frontend + Backend.
 - Remove or redact full raw prompts from persisted turn logs: replace `requestBody: { prompt }` writes with `prompt_hash` and a redacted preview (max 200 chars). If raw capture is required for debugging, store it in an access-controlled secure store (encrypted blob) with strict retention rules. — Backend/Security.
 - Add a test to assert `app/api/analytics/event/route.ts` continues to reject unknown client event types and accepts any newly-added ones. (We added tests verifying CSV presence; expand them to validate allowlist behavior.)
 - Ensure `utils/logEvent.ts` only writes when session user exists (already guarded) and confirm it is used consistently for client-originated user-auditable events.
 
 Medium-term (1–4 weeks)
+
 - Implement a scheduled `analyticsAggregator` worker (or enable the skeleton at `worker/services/analyticsAggregator.ts`) to compute daily rollups and materialized counters: DAU, onboarding funnel, diagnostic completion rate, LLM cost by user, message delivery rates. Use a checkpointing strategy (already present in the skeleton). — Backend/Infra.
 - Add an optional forwarder (config-driven) that posts sanitized payloads to a SaaS analytics sink (PostHog/Amplitude/GA4). Forward only aggregated or sanitized event payloads; never forward raw LLM prompts. Include: batching, retries with exponential backoff, idempotency keys, and success/failure metrics. — Infra/Analytics.
 - Build an immutable `AuditLog` table for admin actions (separate from `AnalyticsEvent`) and migrate admin write paths to that table. Mark audit rows as immutable in the application and CI checks. — Backend/Compliance.
 
 Long-term (quarter)
+
 - Build admin dashboards for: onboarding funnel, diagnostic conversion, subject adoption heatmap, LLM cost by user cohort, safety/hallucination alert stream, and message reliability dashboard. Use DB rollups for precise counts and a SaaS sink for exploratory analytics. — Product/BI.
 - Implement data retention & archival policies: purge or archive raw logs older than the retention window; keep aggregated counters for longer. — Infra/Compliance.
 
 **Privacy & Security controls**
+
 - Never persist raw PII in `metadata`. Use hashed identifiers and `ip_hash` for geo/abuse detection.
 - LLM prompt policy: persist only `prompt_hash`, `prompt_redacted_preview` (<=200 chars), `tokens_in`, `tokens_out`, `cost_usd`, `model`, `session_id`. Move any raw prompt to encrypted secure storage if absolutely required for debugging, with strict RBAC and audit.
 - For operational logs that include errors from external providers (e.g., WhatsApp delivery errors), apply redaction rules to remove phone numbers and provider tokens.
 - Add alerts for abnormal rates: safety triggers > X/day, hallucination_detected > Y/day, LLM cost/day > budget threshold.
 
 **Aggregator & Forwarder design (implementation sketch)**
+
 - Source: `AnalyticsEvent` table (server-generated) only.
 - Worker model:
   - Checkpoint on last processed `analyticsEvent.id` (see `worker/services/analyticsAggregator.ts` skeleton).
@@ -162,11 +174,13 @@ Long-term (quarter)
   - Failure handling: retries with backoff; on repeated failure, raise alert and write failure metric to monitoring.
 
 Forwarding rules (must enforce):
+
 - Strip PII from `metadata` before forwarding.
 - Map canonical event fields to sink-specific schema.
 - Use idempotency key: sha256(eventType + eventId + source) to avoid duplicates.
 
 **Testing & CI requirements**
+
 - Unit tests:
   - Presence tests for canonical docs/files (done).
   - `analytics.endpoint` tests: valid allowlist accepted; invalid types rejected (add tests).
@@ -178,10 +192,12 @@ Forwarding rules (must enforce):
   - New code must pass `npm run lint`, `npm run type-check`, and unit tests before merge.
 
 **Operational runbook snapshots**
+
 - Monitor: failed analytics writes, forwarder failures, aggregator checkpoint lag, sudden spike in `ai_call` cost_usd.
 - Alerting: safety_trigger or hallucination_detected spikes should create a P1 ticket for product and trust & safety.
 
 **Actionable checklist (owner + priority)**
+
 1. Backend: Implement `subject_selected` server write & extend `VALID_EVENT_TYPES` (Priority: High, ETA: 1–2 days).
 2. Backend/Security: Stop persisting raw LLM prompts; replace with `prompt_hash` + redacted preview (Priority: Critical, ETA: 1–3 days).
 3. Backend/Infra: Deploy and schedule `analyticsAggregator` worker; enable forwarder behind a feature flag (Priority: High, ETA: 1–2 weeks).
@@ -190,17 +206,20 @@ Forwarding rules (must enforce):
 6. Compliance: Design audit retention policy and immutable `AuditLog` (Priority: Medium, ETA: 2–4 weeks).
 
 **Appendix — files created during audit**
+
 - `analytics_event_callsites.csv` — server-side event call-site mapping.
 - `analytics_event_reconciliation.md` — reconciliation between server events and client allowlist.
 - `analytics_user_journey.md` — canonical user-journey mapping and recommended event schema.
 - `analytics_performance.md` — performance & zero-impact instrumentation strategy.
 
 **Next step (recommended)**
+
 - Prioritise the `prompt redaction` and `subject_selected` instrumentation tasks immediately. Once those are complete, schedule the `analyticsAggregator` deployment and enable controlled forwarding to a SaaS sink.
 
 ---
 
 Report prepared by automation based on a code scan and manual review of server-side analytics instrumentation. If you want I can (pick one):
+
 - implement `subject_selected` server handler and client allowlist update,
 - implement prompt redaction changes in `lib/callLLM.ts` and add tests,
 - or build the aggregator deployment manifests and PM2 worker entry.

@@ -38,11 +38,11 @@ export function GlobalLoaderProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const hideLoader = useCallback(() => {
-    setLoaderState(prev => ({ ...prev, visible: false }));
+    setLoaderState((prev) => ({ ...prev, visible: false }));
   }, []);
 
   const updateProgress = useCallback((progress: number) => {
-    setLoaderState(prev => ({
+    setLoaderState((prev) => ({
       ...prev,
       progress: Math.min(100, Math.max(0, progress)),
     }));

@@ -34,7 +34,15 @@ jest.mock('@/lib/session', () => ({
 
 jest.mock('@/lib/mock/buildPriorityPlan', () => ({ buildPriorityPlan: jest.fn() }));
 jest.mock('@/lib/mock/selectMockQuestions', () => ({ computeSectionScores: jest.fn() }));
-jest.mock('@/lib/logger', () => ({ logger: { info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn(), logAPI: jest.fn() } }));
+jest.mock('@/lib/logger', () => ({
+  logger: {
+    info: jest.fn(),
+    warn: jest.fn(),
+    error: jest.fn(),
+    debug: jest.fn(),
+    logAPI: jest.fn(),
+  },
+}));
 
 import { POST } from '@/app/api/mock/attempt/[attemptId]/complete/route';
 import { GET } from '@/app/api/mock/attempt/[attemptId]/report/route';
@@ -110,7 +118,9 @@ describe('Mock attempt percentile (F-STU-021)', () => {
       cohortCount: 12,
     });
 
-    const req = new Request('http://localhost/api/mock/attempt/attempt-1/complete', { method: 'POST' });
+    const req = new Request('http://localhost/api/mock/attempt/attempt-1/complete', {
+      method: 'POST',
+    });
     // Call the handler
     const res = await POST(req, { params: { attemptId: 'attempt-1' } } as any);
     const body = await res.json();
@@ -119,7 +129,7 @@ describe('Mock attempt percentile (F-STU-021)', () => {
     expect(body.percentileReliable).toBe(true);
     expect(body.percentile).toBeCloseTo((4 / 12) * 100, 3);
     expect(mockPrisma.mockExamAttempt.update).toHaveBeenCalledWith(
-      expect.objectContaining({ where: { id: 'attempt-1' } }),
+      expect.objectContaining({ where: { id: 'attempt-1' } })
     );
   });
 
@@ -154,7 +164,9 @@ describe('Mock attempt percentile (F-STU-021)', () => {
     // Cohort count recomputed in report endpoint
     mockPrisma.mockExamAttempt.count.mockResolvedValueOnce(12);
 
-    const req = new Request('http://localhost/api/mock/attempt/attempt-1/report', { method: 'GET' });
+    const req = new Request('http://localhost/api/mock/attempt/attempt-1/report', {
+      method: 'GET',
+    });
     const res = await GET(req, { params: { attemptId: 'attempt-1' } } as any);
     const body = await res.json();
 

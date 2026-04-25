@@ -1,25 +1,29 @@
 /**
- * FILE: Hydration Reconciler Service
+ * FILE OBJECTIVE:
+ * - Reconciler service that orchestrates hierarchical HydrateAll jobs.
  *
- * OBJECTIVE:
- * Orchestrates the cascade of HydrateAll jobs across hierarchical levels.
+ * LINKED UNIT TEST:
+ * - tests/unit/worker/hydrationReconciler.spec.ts
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/COPILOT_GUARDRAILS.md
+ * - .github/copilot-instructions.md
+ *
+ * EDIT LOG:
+ * - 2026-04-23T00:00:00Z | copilot | fix(strict): add typed groupBy handling, annotate callbacks, guard Promise.all types
  *
  * RESPONSIBILITIES:
- * 1. Poll root HydrationJobs with incomplete children
- * 2. Check completion status of each hierarchical level
- * 3. Create child jobs when parent level completes
- * 4. Update progress counters on root job
- * 5. Mark root job as completed when all levels done
+ * - Poll root HydrationJobs with incomplete children
+ * - Check completion status of each hierarchical level
+ * - Create child jobs when parent level completes
+ * - Update progress counters on root job
+ * - Mark root job as completed when all levels done
  *
  * ARCHITECTURE:
  * - Runs as scheduled job (cron: every 5 minutes)
  * - Uses JobLock to ensure single reconciler instance
  * - Short transactions for all DB operations
  * - Creates child jobs in Outbox pattern
- *
- * LINKED DOCS:
- * - /Docs/HYDRATEALL_IMPLEMENTATION_GUIDE.md
- * - /Docs/HYDRATEALL_FINAL_ARCHITECTURE.md
  */
 
 import { prisma } from '@/lib/prisma.js';
@@ -172,8 +176,8 @@ export class HydrationReconciler {
     // Level 2 (Notes): Once all topic notes are done (or subject has 0 topics),
     // create Level 3 (questions).
     // allowEmpty=rootJob.contentReady ensures 0-topic subjects cascade correctly.
-    const level2Complete = rootJob.contentReady
-      && await this.isLevelComplete(rootJob.id, 2, true);
+    const level2Complete =
+      rootJob.contentReady && (await this.isLevelComplete(rootJob.id, 2, true));
     if (level2Complete) {
       await this.createLevel3Jobs(rootJob); // One questions job per topic (worker handles all difficulties)
     }
@@ -181,8 +185,7 @@ export class HydrationReconciler {
     // Level 3 (Questions): Once all question jobs are done (or level 2 produced
     // no topics), finalize the root job.
     // allowEmpty=level2Complete propagates the "empty is complete" rule.
-    const level3Complete = level2Complete
-      && await this.isLevelComplete(rootJob.id, 3, true);
+    const level3Complete = level2Complete && (await this.isLevelComplete(rootJob.id, 3, true));
     if (level3Complete) {
       await this.finalizeRootJob(rootJob);
     }
@@ -200,7 +203,11 @@ export class HydrationReconciler {
    * When `allowEmpty` is true and no jobs exist at this level, returns true
    * (empty level is trivially complete -- handles subjects with 0 topics).
    */
-  private async isLevelComplete(rootJobId: string, level: number, allowEmpty = false): Promise<boolean> {
+  private async isLevelComplete(
+    rootJobId: string,
+    level: number,
+    allowEmpty = false
+  ): Promise<boolean> {
     // Check if all jobs at this level are in terminal state
     const counts = await prisma.hydrationJob.groupBy({
       by: ['status'],
@@ -211,10 +218,22 @@ export class HydrationReconciler {
       _count: true,
     });
 
-    const totalJobs = counts.reduce((sum, c) => sum + c._count, 0);
-    const terminalJobs = counts
+    // Narrow the groupBy result so callbacks below have proper types.
+    type CountRow = { status: string; _count: number | Record<string, number> };
+    const countsTyped = counts as CountRow[];
+
+    const extractCount = (c: CountRow): number => {
+      if (typeof c._count === 'number') return c._count;
+      // Prisma may return an object with counts keyed by field (or _all).
+      const obj = c._count as Record<string, number>;
+      if (typeof obj._all === 'number') return obj._all;
+      return Object.values(obj).reduce((a, b) => a + b, 0);
+    };
+
+    const totalJobs = countsTyped.reduce((sum, c) => sum + extractCount(c), 0);
+    const terminalJobs = countsTyped
       .filter((c) => ['completed', 'failed', 'cancelled'].includes(c.status))
-      .reduce((sum, c) => sum + c._count, 0);
+      .reduce((sum, c) => sum + extractCount(c), 0);
 
     // If no jobs at this level: complete only if caller explicitly allows empty levels
     if (totalJobs === 0) return allowEmpty;
@@ -260,8 +279,9 @@ export class HydrationReconciler {
 
     // ── Validation cap: limit topics per chapter ──
     const genLimits = (rootJob.inputParams as any)?.generationLimits;
-    const topicsPerChapterCap: number = genLimits?.topicsPerChapterLimit
-      ?? Number(process.env.VALIDATION_CAP_TOPICS_PER_CHAPTER || 0);
+    const topicsPerChapterCap: number =
+      genLimits?.topicsPerChapterLimit ??
+      Number(process.env.VALIDATION_CAP_TOPICS_PER_CHAPTER || 0);
 
     let cappedTopics = topics;
     if (topicsPerChapterCap > 0) {
@@ -285,11 +305,14 @@ export class HydrationReconciler {
       }
     }
 
-    logger.info(`[VALIDATION] Creating ${cappedTopics.length} Level 2 jobs (notes) for root job ${rootJob.id}`, {
-      rootJobId: rootJob.id,
-      topicCountGenerated: cappedTopics.length,
-      topicsPerChapterCap,
-    });
+    logger.info(
+      `[VALIDATION] Creating ${cappedTopics.length} Level 2 jobs (notes) for root job ${rootJob.id}`,
+      {
+        rootJobId: rootJob.id,
+        topicCountGenerated: cappedTopics.length,
+        topicsPerChapterCap,
+      }
+    );
 
     for (const topic of cappedTopics) {
       await this.createChildJob({
@@ -335,8 +358,9 @@ export class HydrationReconciler {
 
     // ── Validation cap: limit topics per chapter (same cap as Level 2) ──
     const genLimits = inputParams.generationLimits;
-    const topicsPerChapterCap: number = genLimits?.topicsPerChapterLimit
-      ?? Number(process.env.VALIDATION_CAP_TOPICS_PER_CHAPTER || 0);
+    const topicsPerChapterCap: number =
+      genLimits?.topicsPerChapterLimit ??
+      Number(process.env.VALIDATION_CAP_TOPICS_PER_CHAPTER || 0);
 
     let cappedTopics = topics;
     if (topicsPerChapterCap > 0) {
@@ -364,12 +388,15 @@ export class HydrationReconciler {
     // Do NOT create one job per difficulty: that causes 3 concurrent workers to upsert
     // the same GeneratedTest rows, producing Neon transaction conflicts and persistence_failed errors.
     const totalJobs = cappedTopics.length;
-    logger.info(`[VALIDATION] Creating ${totalJobs} Level 3 jobs (questions) for root job ${rootJob.id}`, {
-      rootJobId: rootJob.id,
-      topicCount: cappedTopics.length,
-      topicsPerChapterCap,
-      questionsPerDifficulty: genLimits?.questionsPerDifficulty ?? 'uncapped',
-    });
+    logger.info(
+      `[VALIDATION] Creating ${totalJobs} Level 3 jobs (questions) for root job ${rootJob.id}`,
+      {
+        rootJobId: rootJob.id,
+        topicCount: cappedTopics.length,
+        topicsPerChapterCap,
+        questionsPerDifficulty: genLimits?.questionsPerDifficulty ?? 'uncapped',
+      }
+    );
 
     for (const topic of cappedTopics) {
       await this.createChildJob({
@@ -398,7 +425,16 @@ export class HydrationReconciler {
     difficulty: DifficultyLevel;
     questionsPerDifficulty?: number;
   }): Promise<void> {
-    const { rootJobId, level, jobType, topicId, chapterId, language, difficulty, questionsPerDifficulty } = params;
+    const {
+      rootJobId,
+      level,
+      jobType,
+      topicId,
+      chapterId,
+      language,
+      difficulty,
+      questionsPerDifficulty,
+    } = params;
 
     await prisma.$transaction(async (tx) => {
       // Create HydrationJob with topicId/chapterId columns populated
@@ -454,7 +490,7 @@ export class HydrationReconciler {
         where: { id: rootJobId },
         select: { subjectId: true },
       })
-      .then((job) => job?.subjectId);
+      .then((job: { subjectId?: string | null } | null) => job?.subjectId);
 
     if (!subjectId) return;
 
@@ -504,7 +540,7 @@ export class HydrationReconciler {
       where: { id: rootJobId },
       data: {
         chaptersExpected: chaptersCompleted, // chapters are created atomically by syllabus
-        topicsExpected: topicsCompleted,     // topics are created atomically by syllabus
+        topicsExpected: topicsCompleted, // topics are created atomically by syllabus
         notesExpected,
         questionsExpected,
         chaptersCompleted,
@@ -551,7 +587,7 @@ export class HydrationReconciler {
     // Aggregate actual content counts for a final audit record
     try {
       const subjectId = rootJob.subjectId;
-      const [chapters, topics, notes, questions, llmLogs] = await Promise.all([
+      const _res = await Promise.all([
         prisma.chapterDef.count({ where: { subjectId, lifecycle: 'active' } }),
         prisma.topicDef.count({ where: { chapter: { subjectId }, lifecycle: 'active' } }),
         prisma.topicNote.count({ where: { topic: { chapter: { subjectId } } } }),
@@ -561,6 +597,12 @@ export class HydrationReconciler {
           select: { tokensUsed: true, success: true },
         }),
       ]);
+
+      const chapters = _res[0] as number;
+      const topics = _res[1] as number;
+      const notes = _res[2] as number;
+      const questions = _res[3] as number;
+      const llmLogs = _res[4] as Array<{ tokensUsed?: number | null; success?: boolean | null }>;
 
       const totalLLMCalls = llmLogs.length;
       const tokensUsed = llmLogs.reduce((sum, l) => sum + (l.tokensUsed ?? 0), 0);
@@ -579,7 +621,10 @@ export class HydrationReconciler {
         },
       });
     } catch (summaryErr: any) {
-      logger.warn('Failed to compute validation summary', { rootJobId: rootJob.id, error: summaryErr?.message });
+      logger.warn('Failed to compute validation summary', {
+        rootJobId: rootJob.id,
+        error: summaryErr?.message,
+      });
     }
   }
 }

@@ -23,7 +23,7 @@ import { getCandidatesFor } from '@/regeneration/targetMap';
 import { logger } from '@/lib/logger';
 
 export async function GET(request?: Request) {
-  void request
+  void request;
   try {
     await requireAdminOrModerator();
 
@@ -56,23 +56,30 @@ export async function GET(request?: Request) {
  * Create a new regeneration job (idempotent)
  */
 export async function POST(req: Request) {
-  logger.debug('regenerationJob.POST: enter')
-  const isDirectInvoke = !!(req && (req as any).json && typeof (req as any).json === 'function' && !(req as any).headers)
-  const shouldBypassAuth = process.env.NODE_ENV === 'test' || isDirectInvoke
+  logger.debug('regenerationJob.POST: enter');
+  const isDirectInvoke = !!(
+    req &&
+    (req as any).json &&
+    typeof (req as any).json === 'function' &&
+    !(req as any).headers
+  );
+  const shouldBypassAuth = process.env.NODE_ENV === 'test' || isDirectInvoke;
   if (!shouldBypassAuth) {
     try {
       await requireAdminOrModerator();
-      logger.debug('regenerationJob.POST: requireAdminOrModerator OK')
+      logger.debug('regenerationJob.POST: requireAdminOrModerator OK');
     } catch (err: any) {
-      logger.warn('regenerationJob.POST: requireAdminOrModerator threw', { message: err?.message ?? err })
+      logger.warn('regenerationJob.POST: requireAdminOrModerator threw', {
+        message: err?.message ?? err,
+      });
       return new Response(JSON.stringify({ error: 'forbidden' }), { status: 403 });
     }
   } else {
-    logger.debug('regenerationJob.POST: bypassing auth for direct invoke/test')
+    logger.debug('regenerationJob.POST: bypassing auth for direct invoke/test');
   }
 
   const body = await req.json();
-  logger.debug('regenerationJob.POST: body', body as any)
+  logger.debug('regenerationJob.POST: body', body as any);
   if (process.env.NODE_ENV === 'test') {
     logger.debug('regenerationJob.POST: body (test)', { body });
   }
@@ -82,10 +89,16 @@ export async function POST(req: Request) {
   }
 
   const suggestion = await prisma.contentSuggestion.findUnique({ where: { id: suggestionId } });
-  logger.debug('regenerationJob.POST: suggestion', { id: suggestion?.id, status: suggestion?.status } as any)
+  logger.debug('regenerationJob.POST: suggestion', {
+    id: suggestion?.id,
+    status: suggestion?.status,
+  } as any);
   if (process.env.NODE_ENV === 'test') {
     // Extra diagnostic: raw SQL check and suggestionId shape
-    logger.debug('regenerationJob.POST: suggestion (test)', { id: suggestion?.id, status: suggestion?.status });
+    logger.debug('regenerationJob.POST: suggestion (test)', {
+      id: suggestion?.id,
+      status: suggestion?.status,
+    });
     try {
       const total = await prisma.contentSuggestion.count();
       logger.debug('regenerationJob.POST: contentSuggestion.count', { total });
@@ -98,14 +111,18 @@ export async function POST(req: Request) {
         logger.warn('regenerationJob.POST: failed to list contentSuggestion rows', { error: e });
       }
       try {
-        const idShape = typeof suggestionId === 'string' ? { len: suggestionId.length, hex: Buffer.from(suggestionId).toString('hex') } : { len: 0 };
+        const idShape =
+          typeof suggestionId === 'string'
+            ? { len: suggestionId.length, hex: Buffer.from(suggestionId).toString('hex') }
+            : { len: 0 };
         logger.debug('regenerationJob.POST: suggestionId shape', { idShape });
       } catch (e) {
         logger.warn('regenerationJob.POST: suggestionId shape failed', { error: e });
       }
       try {
         // Quote mixed-case column identifiers to avoid Postgres folding to lower-case
-        const raw = await (prisma as any).$queryRaw`SELECT id, "courseId", "targetId", message, status FROM "ContentSuggestion" WHERE id = ${suggestionId} LIMIT 1`;
+        const raw = await (prisma as any)
+          .$queryRaw`SELECT id, "courseId", "targetId", message, status FROM "ContentSuggestion" WHERE id = ${suggestionId} LIMIT 1`;
         logger.debug('regenerationJob.POST: raw SQL lookup result', { raw });
       } catch (e) {
         logger.warn('regenerationJob.POST: raw SQL lookup failed', { error: e });
@@ -115,7 +132,8 @@ export async function POST(req: Request) {
     }
   }
   if (!suggestion) return NextResponse.json({ error: 'suggestion_not_found' }, { status: 404 });
-  if (suggestion.status !== 'ACCEPTED') return NextResponse.json({ error: 'suggestion_not_accepted' }, { status: 400 });
+  if (suggestion.status !== 'ACCEPTED')
+    return NextResponse.json({ error: 'suggestion_not_accepted' }, { status: 400 });
 
   // Best-effort target existence check
   async function targetExists(tt: string, id: string) {
@@ -123,11 +141,17 @@ export async function POST(req: Request) {
     let anyTableFound = false;
     for (const tbl of list) {
       try {
-        const rows: any = await (prisma as any).$queryRawUnsafe(`SELECT 1 as ok FROM ${tbl} WHERE id = $1 LIMIT 1`, id);
+        const rows: any = await (prisma as any).$queryRawUnsafe(
+          `SELECT 1 as ok FROM ${tbl} WHERE id = $1 LIMIT 1`,
+          id
+        );
         if (Array.isArray(rows) && rows.length > 0) return true;
       } catch (e: any) {
         const msg = String(e?.message ?? '');
-        if (msg.toLowerCase().includes('does not exist') || msg.toLowerCase().includes('relation')) {
+        if (
+          msg.toLowerCase().includes('does not exist') ||
+          msg.toLowerCase().includes('relation')
+        ) {
           continue;
         }
         anyTableFound = true;
@@ -138,31 +162,57 @@ export async function POST(req: Request) {
   }
 
   const exists = await targetExists(targetType, targetId);
-  logger.debug('regenerationJob.targetExists', { targetType, targetId, exists } as any)
+  logger.debug('regenerationJob.targetExists', { targetType, targetId, exists } as any);
   if (process.env.NODE_ENV === 'test') {
     logger.debug('regenerationJob.targetExists (test)', { targetType, targetId, exists });
   }
   if (!exists) return NextResponse.json({ error: 'target_not_found' }, { status: 404 });
 
-  const instructionJson = { suggestionMessage: suggestion.message, suggestionEvidence: suggestion.evidenceJson };
+  const instructionJson = {
+    suggestionMessage: suggestion.message,
+    suggestionEvidence: suggestion.evidenceJson,
+  };
 
   try {
-    if (process.env.NODE_ENV === 'test') try { logger.debug('[debug] regenerationJob.POST: creating job for suggestion', { suggestionId }) } catch {}
-    const job = await (prisma as any).regenerationJob.create({ data: {
-      suggestionId: suggestion.id,
-      targetType: targetType as any,
-      targetId,
-      instructionJson,
-      createdBy: 'admin',
-    }});
+    if (process.env.NODE_ENV === 'test')
+      try {
+        logger.debug('[debug] regenerationJob.POST: creating job for suggestion', { suggestionId });
+      } catch {}
+    const job = await (prisma as any).regenerationJob.create({
+      data: {
+        suggestionId: suggestion.id,
+        targetType: targetType as any,
+        targetId,
+        instructionJson,
+        createdBy: 'admin',
+      },
+    });
     // Debug: surface created job in test logs when present
-    try { logger.debug('regenerationJob.created', { id: job?.id, status: job?.status } as any) } catch {}
-    if (process.env.NODE_ENV === 'test') try { logger.debug('[debug] regenerationJob.created', { id: job?.id, status: job?.status } as any) } catch {}
+    try {
+      logger.debug('regenerationJob.created', { id: job?.id, status: job?.status } as any);
+    } catch {}
+    if (process.env.NODE_ENV === 'test')
+      try {
+        logger.debug('[debug] regenerationJob.created', {
+          id: job?.id,
+          status: job?.status,
+        } as any);
+      } catch {}
 
     // Record a typed admin action so integration tests can query `action`.
     // Keep legacyAction in details for backward compatibility.
     try {
-      await logAuditEvent(prisma as any, { action: AuditEvents.REGEN_JOB_CREATED as any, targetEntity: 'RegenerationJob', targetId: job.id, details: { legacyAction: AuditEvents.REGEN_JOB_CREATED, suggestionId: suggestion.id, targetType, targetId } });
+      await logAuditEvent(prisma as any, {
+        action: AuditEvents.REGEN_JOB_CREATED as any,
+        targetEntity: 'RegenerationJob',
+        targetId: job.id,
+        details: {
+          legacyAction: AuditEvents.REGEN_JOB_CREATED,
+          suggestionId: suggestion.id,
+          targetType,
+          targetId,
+        },
+      });
     } catch (e) {
       logger.warn('regenerationJob: failed to write audit event', { error: e, jobId: job?.id });
     }
@@ -170,11 +220,21 @@ export async function POST(req: Request) {
     return NextResponse.json({ job });
   } catch (err: any) {
     // Log the error to make integration test failures easier to diagnose in CI
-    try { logger.error('regenerationJob.create error', { err: err }) } catch (e) { logger.warn('regenerationJob: logger.error failed', { error: e }); }
-    try { logger.error('regenerationJob.create error stack', { stack: err && err.stack ? err.stack : String(err) }) } catch (e) { logger.warn('regenerationJob: logger.error fallback failed', { error: e }); }
+    try {
+      logger.error('regenerationJob.create error', { err: err });
+    } catch (e) {
+      logger.warn('regenerationJob: logger.error failed', { error: e });
+    }
+    try {
+      logger.error('regenerationJob.create error stack', {
+        stack: err && err.stack ? err.stack : String(err),
+      });
+    } catch (e) {
+      logger.warn('regenerationJob: logger.error fallback failed', { error: e });
+    }
     // If the create failed due to unique constraint, return the existing job (idempotent)
-    const errMsg = String(err?.message ?? err ?? '')
-    const lc = errMsg.toLowerCase()
+    const errMsg = String(err?.message ?? err ?? '');
+    const lc = errMsg.toLowerCase();
     // Only treat as a unique-constraint violation when we have a known DB error code
     // or a well-scoped message. Avoid broad matches like 'unique' / 'already exists'
     // that can misclassify unrelated errors and mask real failures.
@@ -182,19 +242,28 @@ export async function POST(req: Request) {
       err?.code === 'P2002' ||
       err?.code === '23505' ||
       lc.includes('unique constraint') ||
-      lc.includes('duplicate key')
+      lc.includes('duplicate key');
     if (isUniqueConstraint) {
       try {
-        const existing = await (prisma as any).regenerationJob.findFirst({ where: { suggestionId: suggestion.id, targetType: targetType as any, targetId } });
+        const existing = await (prisma as any).regenerationJob.findFirst({
+          where: { suggestionId: suggestion.id, targetType: targetType as any, targetId },
+        });
         if (existing) return NextResponse.json({ job: existing });
         // No matching job found for the original uniqueness key -- treat as a real error.
-        logger.error('regenerationJob: unique constraint hit but no matching job found for the original key', {
-          suggestionId: suggestion.id,
-          targetType,
-          targetId,
-        });
+        logger.error(
+          'regenerationJob: unique constraint hit but no matching job found for the original key',
+          {
+            suggestionId: suggestion.id,
+            targetType,
+            targetId,
+          }
+        );
       } catch (e) {
-        try { logger.warn('regenerationJob: failed to fetch existing job after unique constraint', { error: e }) } catch {}
+        try {
+          logger.warn('regenerationJob: failed to fetch existing job after unique constraint', {
+            error: e,
+          });
+        } catch {}
       }
     }
     return NextResponse.json({ error: 'failed' }, { status: 500 });

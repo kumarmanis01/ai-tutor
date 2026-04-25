@@ -1,4 +1,4 @@
-"use client";
+'use client';
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { showAlert } from '@/lib/alerts';
@@ -27,9 +27,7 @@ export default function AttemptRunner(props: {
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
   const [score, setScore] = useState<any | null>(null);
-  const [timeLeft, setTimeLeft] = useState<number | null>(
-    props.timeLimitSeconds ?? null,
-  );
+  const [timeLeft, setTimeLeft] = useState<number | null>(props.timeLimitSeconds ?? null);
 
   const questions = useMemo(() => props.initialQuestions ?? [], [props.initialQuestions]);
 
@@ -72,7 +70,10 @@ export default function AttemptRunner(props: {
       submitRef.current();
       return;
     }
-    const id = setInterval(() => setTimeLeft((t) => (t !== null ? Math.max(0, t - 1) : null)), 1000);
+    const id = setInterval(
+      () => setTimeLeft((t) => (t !== null ? Math.max(0, t - 1) : null)),
+      1000
+    );
     return () => clearInterval(id);
   }, [timeLeft]);
 

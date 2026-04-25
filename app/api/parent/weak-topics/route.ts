@@ -142,22 +142,22 @@ export async function GET(req: NextRequest) {
     const rows = await prisma.studentTopicProgress.findMany({
       where: {
         studentId,
-        mastery:       { lt: WEAK_MASTERY_CEILING },
+        mastery: { lt: WEAK_MASTERY_CEILING },
         practiceCount: { gt: MIN_PRACTICE_COUNT },
       },
       orderBy: { mastery: 'asc' },
       take: RESULT_LIMIT,
       select: {
-        topicId:       true,
-        mastery:       true,
+        topicId: true,
+        mastery: true,
         practiceCount: true,
       },
     });
 
     // ── 5. Shape response ─────────────────────────────────────────────────────
     const weakTopics: WeakTopic[] = rows.map((r) => ({
-      topicId:       r.topicId,
-      mastery:       r.mastery,
+      topicId: r.topicId,
+      mastery: r.mastery,
       practiceCount: r.practiceCount,
     }));
 
@@ -179,9 +179,6 @@ export async function GET(req: NextRequest) {
       methodName: METHOD_NAME,
       error,
     });
-    return NextResponse.json(
-      { error: formatErrorForResponse(error) },
-      { status: 500 },
-    );
+    return NextResponse.json({ error: formatErrorForResponse(error) }, { status: 500 });
   }
 }

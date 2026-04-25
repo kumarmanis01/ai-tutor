@@ -101,7 +101,7 @@ export function DoubtPanel({ subject, chapter, topicName, isOpen, onClose }: Dou
 
       if (!res.ok) throw new Error('Request failed');
 
-      const data = await res.json() as {
+      const data = (await res.json()) as {
         questionId: string;
         response: string;
         followUpQuestion: string;
@@ -122,7 +122,7 @@ export function DoubtPanel({ subject, chapter, topicName, isOpen, onClose }: Dou
         ...prev,
         {
           role: 'vidya',
-          text: "I could not connect right now. Please try again in a moment.",
+          text: 'I could not connect right now. Please try again in a moment.',
         },
       ]);
     } finally {
@@ -178,18 +178,23 @@ export function DoubtPanel({ subject, chapter, topicName, isOpen, onClose }: Dou
             className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M6 18L18 6M6 6l12 12"
+              />
             </svg>
           </button>
         </div>
 
         {/* Messages */}
-        <div
-          ref={scrollRef}
-          className="flex-1 overflow-y-auto px-4 py-4 space-y-4 min-h-0"
-        >
+        <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-4 space-y-4 min-h-0">
           {messages.map((msg, i) => (
-            <div key={i} className={`flex items-start gap-2.5 ${msg.role === 'student' ? 'flex-row-reverse' : 'flex-row'}`}>
+            <div
+              key={i}
+              className={`flex items-start gap-2.5 ${msg.role === 'student' ? 'flex-row-reverse' : 'flex-row'}`}
+            >
               {msg.role === 'vidya' && (
                 <Image
                   src="/logos/vidya/vidya-avatar-64.png"
@@ -199,7 +204,9 @@ export function DoubtPanel({ subject, chapter, topicName, isOpen, onClose }: Dou
                   className="rounded-full flex-shrink-0 mt-0.5 object-cover"
                 />
               )}
-              <div className={`max-w-[80%] space-y-1.5 ${msg.role === 'student' ? 'items-end' : 'items-start'} flex flex-col`}>
+              <div
+                className={`max-w-[80%] space-y-1.5 ${msg.role === 'student' ? 'items-end' : 'items-start'} flex flex-col`}
+              >
                 <div
                   className={`px-3.5 py-2.5 rounded-2xl text-sm leading-relaxed ${
                     msg.role === 'student'
@@ -210,9 +217,7 @@ export function DoubtPanel({ subject, chapter, topicName, isOpen, onClose }: Dou
                   {msg.text}
                 </div>
                 {msg.role === 'vidya' && msg.followUp && (
-                  <p className="text-xs text-[#534AB7] dark:text-indigo-300 px-1">
-                    {msg.followUp}
-                  </p>
+                  <p className="text-xs text-[#534AB7] dark:text-indigo-300 px-1">{msg.followUp}</p>
                 )}
               </div>
             </div>
@@ -229,9 +234,18 @@ export function DoubtPanel({ subject, chapter, topicName, isOpen, onClose }: Dou
               />
               <div className="bg-[#EEEDFE] dark:bg-[#534AB7]/15 px-3.5 py-3 rounded-2xl rounded-tl-sm">
                 <span className="flex gap-1 items-center">
-                  <span className="w-1.5 h-1.5 rounded-full bg-[#534AB7] animate-bounce" style={{ animationDelay: '0ms' }} />
-                  <span className="w-1.5 h-1.5 rounded-full bg-[#534AB7] animate-bounce" style={{ animationDelay: '150ms' }} />
-                  <span className="w-1.5 h-1.5 rounded-full bg-[#534AB7] animate-bounce" style={{ animationDelay: '300ms' }} />
+                  <span
+                    className="w-1.5 h-1.5 rounded-full bg-[#534AB7] animate-bounce"
+                    style={{ animationDelay: '0ms' }}
+                  />
+                  <span
+                    className="w-1.5 h-1.5 rounded-full bg-[#534AB7] animate-bounce"
+                    style={{ animationDelay: '150ms' }}
+                  />
+                  <span
+                    className="w-1.5 h-1.5 rounded-full bg-[#534AB7] animate-bounce"
+                    style={{ animationDelay: '300ms' }}
+                  />
                 </span>
               </div>
             </div>
@@ -265,7 +279,12 @@ export function DoubtPanel({ subject, chapter, topicName, isOpen, onClose }: Dou
               className="flex-shrink-0 min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl bg-[#534AB7] text-white disabled:opacity-40 hover:bg-[#3C3489] transition-colors"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"
+                />
               </svg>
             </button>
           </div>

@@ -1,4 +1,4 @@
-import ClassesClient from "../components/ClassesClient";
+import ClassesClient from '../components/ClassesClient';
 
 export default function ClassesPage() {
   return <ClassesClient />;

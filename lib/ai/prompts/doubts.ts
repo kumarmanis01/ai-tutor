@@ -118,7 +118,7 @@ ${formattedMessages}`;
 
 /**
  * Build the complete doubts/chat prompt
- * 
+ *
  * @param input - Doubts input contract from backend
  * @returns Formatted prompt string for LLM
  */
@@ -126,7 +126,7 @@ export function buildDoubtsPrompt(input: DoubtsInputContract): string {
   // Apply anti-abuse guardrail: rewrite problematic intents
   const effectiveIntent = getEffectiveIntent(input.studentIntent);
   const intentWasRewritten = shouldRewriteIntent(input.studentIntent);
-  
+
   const intentGuidelines = getIntentGuidelines(effectiveIntent);
   const conversationContext = formatConversationHistory(input.conversationHistory);
 
@@ -138,7 +138,8 @@ The student may be seeking a direct answer. Still provide educational value
 by explaining the reasoning. Make learning unavoidable while being helpful.`
     : '';
 
-  const subjectLabel = input.subject && input.subject !== 'General' ? input.subject : 'this subject';
+  const subjectLabel =
+    input.subject && input.subject !== 'General' ? input.subject : 'this subject';
   const topicLabel = input.topic || input.chapter || input.subject || 'this topic';
 
   return `You are Vidya, a warm and knowledgeable home tutor for Indian school students. A Grade ${input.grade} ${input.board} student has asked you a question. Your job is to give a thorough, friendly, textbook-quality explanation -- exactly as a great private tutor would explain it in a one-on-one session.
@@ -213,9 +214,9 @@ Do NOT wrap in markdown code blocks.`;
  */
 export function isValidDoubtsResponse(data: unknown): data is DoubtsOutputSchema {
   if (!data || typeof data !== 'object') return false;
-  
+
   const obj = data as Record<string, unknown>;
-  
+
   return (
     typeof obj.response === 'string' &&
     typeof obj.followUpQuestion === 'string' &&
@@ -230,7 +231,7 @@ export function isValidDoubtsResponse(data: unknown): data is DoubtsOutputSchema
  */
 export function isOffTopicQuestion(question: string, _subject: string): boolean {
   const lowerQuestion = question.toLowerCase();
-  
+
   // Personal/inappropriate patterns
   const inappropriatePatterns = [
     /\b(boyfriend|girlfriend|dating|love|crush)\b/,
@@ -239,13 +240,13 @@ export function isOffTopicQuestion(question: string, _subject: string): boolean 
     /\b(violence|fight|kill|weapon)\b/,
     /\b(hack|cheat|copy|plagiarize)\b/,
   ];
-  
+
   for (const pattern of inappropriatePatterns) {
     if (pattern.test(lowerQuestion)) {
       return true;
     }
   }
-  
+
   return false;
 }
 

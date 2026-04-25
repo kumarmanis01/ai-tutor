@@ -16,18 +16,38 @@ interface DoubtsTabProps {
 }
 
 const SUBJECTS = [
-  { id: 'math', label: 'Math', color: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300' },
-  { id: 'science', label: 'Science', color: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300' },
-  { id: 'english', label: 'English', color: 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300' },
-  { id: 'social', label: 'Social Studies', color: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300' },
-  { id: 'other', label: 'Other', color: 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300' },
+  {
+    id: 'math',
+    label: 'Math',
+    color: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300',
+  },
+  {
+    id: 'science',
+    label: 'Science',
+    color: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300',
+  },
+  {
+    id: 'english',
+    label: 'English',
+    color: 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300',
+  },
+  {
+    id: 'social',
+    label: 'Social Studies',
+    color: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300',
+  },
+  {
+    id: 'other',
+    label: 'Other',
+    color: 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300',
+  },
 ];
 
 const EXAMPLE_QUESTIONS = [
-  "Can you explain fractions with an example?",
-  "Why does the sun rise in the east?",
-  "How do I find the area of a triangle?",
-  "What is photosynthesis?",
+  'Can you explain fractions with an example?',
+  'Why does the sun rise in the east?',
+  'How do I find the area of a triangle?',
+  'What is photosynthesis?',
 ];
 
 /**
@@ -41,72 +61,75 @@ export function DoubtsTab({ onAskQuestion, isLoading: _externalLoading = false }
   const [loading, setLoading] = useState(false);
   const [currentQuestionId, setCurrentQuestionId] = useState<string | null>(null);
 
-  const handleSubmit = useCallback(async (e?: React.FormEvent) => {
-    e?.preventDefault();
-    const trimmed = question.trim();
-    if (!trimmed || loading) return;
+  const handleSubmit = useCallback(
+    async (e?: React.FormEvent) => {
+      e?.preventDefault();
+      const trimmed = question.trim();
+      if (!trimmed || loading) return;
 
-    const userMsg: DoubtsMessage = {
-      id: `u-${Date.now()}`,
-      from: 'user',
-      text: trimmed,
-    };
-    setMessages((prev) => [...prev, userMsg]);
-    setQuestion('');
-    setLoading(true);
+      const userMsg: DoubtsMessage = {
+        id: `u-${Date.now()}`,
+        from: 'user',
+        text: trimmed,
+      };
+      setMessages((prev) => [...prev, userMsg]);
+      setQuestion('');
+      setLoading(true);
 
-    // Also notify legacy callback if provided
-    onAskQuestion?.(trimmed, selectedSubject || undefined);
+      // Also notify legacy callback if provided
+      onAskQuestion?.(trimmed, selectedSubject || undefined);
 
-    try {
-      const res = await fetch('/api/doubts', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          question: trimmed,
-          subject: selectedSubject || undefined,
-          intent: 'conceptual_clarity',
-          questionId: currentQuestionId || undefined,
-        }),
-      });
+      try {
+        const res = await fetch('/api/doubts', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            question: trimmed,
+            subject: selectedSubject || undefined,
+            intent: 'conceptual_clarity',
+            questionId: currentQuestionId || undefined,
+          }),
+        });
 
-      const data = await res.json().catch(() => ({}));
+        const data = await res.json().catch(() => ({}));
 
-      if (!res.ok) {
+        if (!res.ok) {
+          setMessages((prev) => [
+            ...prev,
+            {
+              id: `e-${Date.now()}`,
+              from: 'ai',
+              text: data?.error || 'Something went wrong. Please try again!',
+            },
+          ]);
+          return;
+        }
+
+        // Store questionId for follow-up questions
+        if (data.questionId) setCurrentQuestionId(data.questionId);
+
+        const aiMsg: DoubtsMessage = {
+          id: `a-${Date.now()}`,
+          from: 'ai',
+          text: data.response || 'I could not generate a response. Please try again.',
+          followUp: data.followUpQuestion,
+        };
+        setMessages((prev) => [...prev, aiMsg]);
+      } catch {
         setMessages((prev) => [
           ...prev,
           {
             id: `e-${Date.now()}`,
             from: 'ai',
-            text: data?.error || 'Something went wrong. Please try again!',
+            text: 'Network error. Please check your connection and try again.',
           },
         ]);
-        return;
+      } finally {
+        setLoading(false);
       }
-
-      // Store questionId for follow-up questions
-      if (data.questionId) setCurrentQuestionId(data.questionId);
-
-      const aiMsg: DoubtsMessage = {
-        id: `a-${Date.now()}`,
-        from: 'ai',
-        text: data.response || 'I could not generate a response. Please try again.',
-        followUp: data.followUpQuestion,
-      };
-      setMessages((prev) => [...prev, aiMsg]);
-    } catch {
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: `e-${Date.now()}`,
-          from: 'ai',
-          text: 'Network error. Please check your connection and try again.',
-        },
-      ]);
-    } finally {
-      setLoading(false);
-    }
-  }, [question, selectedSubject, loading, currentQuestionId, onAskQuestion]);
+    },
+    [question, selectedSubject, loading, currentQuestionId, onAskQuestion]
+  );
 
   const handleExampleClick = useCallback((example: string) => {
     setQuestion(example);
@@ -144,9 +167,7 @@ export function DoubtsTab({ onAskQuestion, isLoading: _externalLoading = false }
             <button
               key={subject.id}
               type="button"
-              onClick={() => setSelectedSubject(
-                selectedSubject === subject.id ? null : subject.id
-              )}
+              onClick={() => setSelectedSubject(selectedSubject === subject.id ? null : subject.id)}
               className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all ${
                 selectedSubject === subject.id
                   ? `${subject.color} ring-2 ring-primary ring-offset-2`
@@ -163,13 +184,18 @@ export function DoubtsTab({ onAskQuestion, isLoading: _externalLoading = false }
       {hasMessages && (
         <div className="space-y-3 max-h-96 overflow-y-auto rounded-xl bg-muted/20 dark:bg-slate-800/20 p-3">
           {messages.map((msg) => (
-            <div key={msg.id} className={`flex ${msg.from === 'user' ? 'justify-end' : 'justify-start'}`}>
+            <div
+              key={msg.id}
+              className={`flex ${msg.from === 'user' ? 'justify-end' : 'justify-start'}`}
+            >
               <div className={`max-w-[85%] ${msg.from === 'user' ? 'order-1' : ''}`}>
-                <div className={`px-3 py-2 rounded-2xl text-sm ${
-                  msg.from === 'user'
-                    ? 'bg-primary text-primary-foreground rounded-br-md'
-                    : 'bg-card dark:bg-slate-700 text-foreground rounded-bl-md border border-border/30'
-                }`}>
+                <div
+                  className={`px-3 py-2 rounded-2xl text-sm ${
+                    msg.from === 'user'
+                      ? 'bg-primary text-primary-foreground rounded-br-md'
+                      : 'bg-card dark:bg-slate-700 text-foreground rounded-bl-md border border-border/30'
+                  }`}
+                >
                   <p className="whitespace-pre-wrap leading-relaxed">{msg.text}</p>
                 </div>
                 {/* Follow-up question suggestion */}
@@ -191,9 +217,18 @@ export function DoubtsTab({ onAskQuestion, isLoading: _externalLoading = false }
                 <span className="flex items-center gap-1">
                   Thinking
                   <span className="inline-flex gap-0.5">
-                    <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground/70 animate-bounce" style={{ animationDelay: '0ms' }} />
-                    <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground/70 animate-bounce" style={{ animationDelay: '150ms' }} />
-                    <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground/70 animate-bounce" style={{ animationDelay: '300ms' }} />
+                    <span
+                      className="w-1.5 h-1.5 rounded-full bg-muted-foreground/70 animate-bounce"
+                      style={{ animationDelay: '0ms' }}
+                    />
+                    <span
+                      className="w-1.5 h-1.5 rounded-full bg-muted-foreground/70 animate-bounce"
+                      style={{ animationDelay: '150ms' }}
+                    />
+                    <span
+                      className="w-1.5 h-1.5 rounded-full bg-muted-foreground/70 animate-bounce"
+                      style={{ animationDelay: '300ms' }}
+                    />
                   </span>
                 </span>
               </div>
@@ -237,8 +272,20 @@ export function DoubtsTab({ onAskQuestion, isLoading: _externalLoading = false }
           {loading ? (
             <span className="flex items-center justify-center gap-2">
               <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                <circle
+                  className="opacity-25"
+                  cx="12"
+                  cy="12"
+                  r="10"
+                  stroke="currentColor"
+                  strokeWidth="4"
+                  fill="none"
+                />
+                <path
+                  className="opacity-75"
+                  fill="currentColor"
+                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                />
               </svg>
               Thinking...
             </span>

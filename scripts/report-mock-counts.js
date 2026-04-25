@@ -1,45 +1,1 @@
-#!/usr/bin/env node
-/**
- * FILE OBJECTIVE:
- * - Report existing MockExam counts grouped by subject/grade/board and how many
- *   additional mocks are needed to reach the target minimum per group.
- *
- * USAGE:
- *   DATABASE_URL="postgresql://..." node scripts/report-mock-counts.js
- *
- * EDIT LOG:
- * - 2026-04-16T12:00:00Z | copilot | created report-mock-counts helper
- */import { prisma } from '../lib/prisma';
-
-
-
-async function main() {
-  const minPer = Number(process.env.MIN_MOCKS_PER_GROUP ?? process.env.MIN_PER ?? 5);
-
-  // Fetch active subjectDefs and compute existing mock counts per subject/grade/board
-  const subjects = await prisma.subjectDef.findMany({
-    where: { lifecycle: 'active', isAvailable: true },
-    include: { class: { include: { board: true } } },
-  });
-
-  const report = [];
-  for (const s of subjects) {
-    const grade = s.class?.grade;
-    const board = s.class?.board?.slug ?? null;
-    if (!grade || !board) continue;
-    const existing = await prisma.mockExam.count({ where: { subjectId: s.id, grade, board: { equals: board, mode: 'insensitive' } } });
-    const needed = Math.max(0, minPer - existing);
-    report.push({ subjectId: s.id, subjectName: s.name, grade, board, existing, needed });
-  }
-
-  const totalNeeded = report.reduce((s, r) => s + r.needed, 0);
-
-  console.log(JSON.stringify({ minPer, groups: report, totalNeeded }, null, 2));
-}
-
-main()
-  .catch((e) => {
-    console.error('report-mock-counts failed', String(e));
-    process.exit(2);
-  })
-  .finally(() => prisma.$disconnect());
+#!/usr/bin/env node/** * FILE OBJECTIVE: * - Report existing MockExam counts grouped by subject/grade/board and how many *   additional mocks are needed to reach the target minimum per group. * * USAGE: *   DATABASE_URL="postgresql://..." node scripts/report-mock-counts.js * * EDIT LOG: * - 2026-04-16T12:00:00Z | copilot | created report-mock-counts helper */import { prisma } from '../lib/prisma';async function main() {  const minPer = Number(process.env.MIN_MOCKS_PER_GROUP ?? process.env.MIN_PER ?? 5);  // Fetch active subjectDefs and compute existing mock counts per subject/grade/board  const subjects = await prisma.subjectDef.findMany({    where: { lifecycle: 'active', isAvailable: true },    include: { class: { include: { board: true } } },  });  const report = [];  for (const s of subjects) {    const grade = s.class?.grade;    const board = s.class?.board?.slug ?? null;    if (!grade || !board) continue;    const existing = await prisma.mockExam.count({      where: { subjectId: s.id, grade, board: { equals: board, mode: 'insensitive' } },    });    const needed = Math.max(0, minPer - existing);    report.push({ subjectId: s.id, subjectName: s.name, grade, board, existing, needed });  }  const totalNeeded = report.reduce((s, r) => s + r.needed, 0);  console.log(JSON.stringify({ minPer, groups: report, totalNeeded }, null, 2));}main()  .catch((e) => {    console.error('report-mock-counts failed', String(e));    process.exit(2);  })  .finally(() => prisma.$disconnect());

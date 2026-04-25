@@ -72,13 +72,21 @@ export async function POST(req: Request) {
           }
         } catch (innerErr) {
           // ignore and continue to default provider chain
-          logger.warn('getPresignCredentials failed, falling back to default credentials chain', { className: 'api.s3-presign', methodName: 'POST', error: innerErr });
+          logger.warn('getPresignCredentials failed, falling back to default credentials chain', {
+            className: 'api.s3-presign',
+            methodName: 'POST',
+            error: innerErr,
+          });
         }
       }
 
       s3 = new S3Client(s3Opts);
     } catch (err) {
-      logger.error('Error constructing S3 client', { className: 'api.s3-presign', methodName: 'POST', error: err });
+      logger.error('Error constructing S3 client', {
+        className: 'api.s3-presign',
+        methodName: 'POST',
+        error: err,
+      });
       return NextResponse.json({ error: formatErrorForResponse(err) }, { status: 500 });
     }
 
@@ -86,14 +94,20 @@ export async function POST(req: Request) {
     const command = new PutObjectCommand({ Bucket: bucket, Key: key, ContentType: contentType });
 
     // expiry can be configured via env (seconds), default 5 minutes
-    const expiresIn = Number(process.env.S3_PRESIGN_EXPIRES ?? process.env.NEXT_PUBLIC_S3_PRESIGN_EXPIRES ?? 300);
+    const expiresIn = Number(
+      process.env.S3_PRESIGN_EXPIRES ?? process.env.NEXT_PUBLIC_S3_PRESIGN_EXPIRES ?? 300
+    );
 
     let presignedUrl: string;
     try {
       presignedUrl = await getSignedUrl(s3, command, { expiresIn });
     } catch (err) {
       // Detect common credential errors and return a helpful message to developer
-      logger.error('/api/s3-presign getSignedUrl error', { className: 'api.s3-presign', methodName: 'POST', error: err });
+      logger.error('/api/s3-presign getSignedUrl error', {
+        className: 'api.s3-presign',
+        methodName: 'POST',
+        error: err,
+      });
       const anyErr: any = err || {};
       const msg = (anyErr.message || '').toString().toLowerCase();
       const name = (anyErr.name || '').toString().toLowerCase();
@@ -112,11 +126,14 @@ export async function POST(req: Request) {
             message:
               'AWS credentials error: your session may have expired or credentials are missing. For local dev run `aws sso login` (if using SSO) or set `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` env vars, or configure a valid `AWS_PROFILE`.',
           },
-          { status: 401 },
+          { status: 401 }
         );
       }
 
-      return NextResponse.json({ error: 'presign_failed', message: 'Failed to create presigned URL' }, { status: 500 });
+      return NextResponse.json(
+        { error: 'presign_failed', message: 'Failed to create presigned URL' },
+        { status: 500 }
+      );
     }
 
     // Also provide a short-lived presigned GET for immediate browser preview (object remains private)
@@ -125,7 +142,11 @@ export async function POST(req: Request) {
       const getCmd = new GetObjectCommand({ Bucket: bucket, Key: key });
       previewUrl = await getSignedUrl(s3, getCmd, { expiresIn: Math.min(expiresIn, 300) });
     } catch (e) {
-      logger.warn('Failed to generate preview URL', { className: 'api.s3-presign', methodName: 'POST', error: e });
+      logger.warn('Failed to generate preview URL', {
+        className: 'api.s3-presign',
+        methodName: 'POST',
+        error: e,
+      });
       // ignore preview failures; client can use objectUrl if public policy allows
     }
 
@@ -133,7 +154,11 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ url: presignedUrl, key, objectUrl, previewUrl });
   } catch (e) {
-    logger.error('/api/s3-presign error', { className: 'api.s3-presign', methodName: 'POST', error: e });
+    logger.error('/api/s3-presign error', {
+      className: 'api.s3-presign',
+      methodName: 'POST',
+      error: e,
+    });
     return NextResponse.json({ error: formatErrorForResponse(e) }, { status: 500 });
   }
 }

@@ -61,7 +61,8 @@ export async function PATCH(req: NextRequest) {
 
   const body = await req.json().catch(() => ({}));
   const subjectId = typeof body.subjectId === 'string' ? body.subjectId.trim() : null;
-  const language = typeof body.language === 'string' ? body.language.trim() as SubjectLanguage : null;
+  const language =
+    typeof body.language === 'string' ? (body.language.trim() as SubjectLanguage) : null;
 
   if (!subjectId) {
     const res = NextResponse.json({ error: 'subjectId is required' }, { status: 400 });
@@ -72,7 +73,7 @@ export async function PATCH(req: NextRequest) {
   if (!language || !VALID_LANGUAGES.includes(language)) {
     const res = NextResponse.json(
       { error: `language must be one of: ${VALID_LANGUAGES.join(', ')}` },
-      { status: 400 },
+      { status: 400 }
     );
     logger.logAPI(req, res, { className: 'SubjectLanguageAPI', methodName: 'PATCH' }, start);
     return res;
@@ -84,7 +85,10 @@ export async function PATCH(req: NextRequest) {
     select: { recommendations: true },
   });
   const recommendations = (existing?.recommendations as Record<string, unknown>) ?? {};
-  const subjectLanguages = { ...((recommendations.subjectLanguages as Record<string, string>) ?? {}), [subjectId]: language };
+  const subjectLanguages = {
+    ...((recommendations.subjectLanguages as Record<string, string>) ?? {}),
+    [subjectId]: language,
+  };
 
   await prisma.studentLearningProfile.upsert({
     where: { studentId: userId },

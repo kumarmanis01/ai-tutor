@@ -12,7 +12,7 @@
  *
  * CTAs:
  *   - "Build my learning plan" -- POSTs to /api/student/onboarding/generate-plan
- *     then redirects to /student/diagnostic/[firstSubjectId]
+ *     then redirects to /student/learning-map
  *   - "No upcoming exam -- set a 6-month plan" -- same but examDate = null
  */
 
@@ -41,18 +41,25 @@ interface EstimateResult {
  * - No exam date: weeksToComplete based on TOTAL_CONCEPTS / daysPerWeek.
  * - Exam date set: compares available weeks to weeksToComplete; flags if pace is insufficient.
  */
-function computeEstimate(
-  daysPerWeek: number,
-  weeksUntilExam: number | null,
-): EstimateResult {
+function computeEstimate(daysPerWeek: number, weeksUntilExam: number | null): EstimateResult {
   const sessionsNeeded = TOTAL_CONCEPTS; // one session per concept
   const weeksToComplete = Math.ceil(sessionsNeeded / daysPerWeek);
   const totalSessions = weeksToComplete * daysPerWeek;
-  const revisionRounds = Math.max(1, Math.floor((totalSessions - sessionsNeeded) / (TOTAL_CONCEPTS / 3)));
+  const revisionRounds = Math.max(
+    1,
+    Math.floor((totalSessions - sessionsNeeded) / (TOTAL_CONCEPTS / 3))
+  );
   const months = (weeksToComplete / 4.33).toFixed(1);
 
   if (weeksUntilExam === null) {
-    return { weeksToComplete, months, revisionRounds, sufficient: true, spareWeeks: 0, daysNeeded: 0 };
+    return {
+      weeksToComplete,
+      months,
+      revisionRounds,
+      sufficient: true,
+      spareWeeks: 0,
+      daysNeeded: 0,
+    };
   }
 
   if (weeksUntilExam >= weeksToComplete) {
@@ -61,7 +68,14 @@ function computeEstimate(
   }
 
   const daysNeeded = Math.ceil(sessionsNeeded / weeksUntilExam);
-  return { weeksToComplete, months, revisionRounds: 0, sufficient: false, spareWeeks: 0, daysNeeded };
+  return {
+    weeksToComplete,
+    months,
+    revisionRounds: 0,
+    sufficient: false,
+    spareWeeks: 0,
+    daysNeeded,
+  };
 }
 
 function parseExamDate(raw: string): Date | null {
@@ -95,7 +109,7 @@ export default function ExamDatePage() {
   const estimate = useMemo(() => computeEstimate(studyDays, weeks), [studyDays, weeks]);
 
   const sendNotifyRequest = useCallback(async (subjectId: string) => {
-    setWaitingForDiagnostic((prev) => prev ? { ...prev, notifyState: 'loading' } : null);
+    setWaitingForDiagnostic((prev) => (prev ? { ...prev, notifyState: 'loading' } : null));
     try {
       const res = await fetch('/api/student/diagnostic/notify-ready', {
         method: 'POST',
@@ -103,10 +117,10 @@ export default function ExamDatePage() {
         body: JSON.stringify({ subjectId }),
       });
       setWaitingForDiagnostic((prev) =>
-        prev ? { ...prev, notifyState: res.ok ? 'done' : 'error' } : null,
+        prev ? { ...prev, notifyState: res.ok ? 'done' : 'error' } : null
       );
     } catch {
-      setWaitingForDiagnostic((prev) => prev ? { ...prev, notifyState: 'error' } : null);
+      setWaitingForDiagnostic((prev) => (prev ? { ...prev, notifyState: 'error' } : null));
     }
   }, []);
 
@@ -131,8 +145,7 @@ export default function ExamDatePage() {
       const diagnosticReady: boolean = json?.diagnosticReady ?? true;
 
       if (!firstSubjectId) {
-        // No subjects resolved -- go to dashboard so the student can complete profile
-        router.push('/dashboard');
+        router.push('/student/learning-map');
         return;
       }
 
@@ -140,10 +153,9 @@ export default function ExamDatePage() {
         // Content pipeline is still running -- show waiting screen instead of
         // redirecting to a broken diagnostic page
         setWaitingForDiagnostic({ subjectId: firstSubjectId, notifyState: 'idle' });
-        return;
       }
 
-      router.push(`/diagnostic/${firstSubjectId}`);
+      router.push('/student/learning-map');
     } catch {
       setError('Network error. Please check your connection.');
     } finally {
@@ -152,10 +164,7 @@ export default function ExamDatePage() {
   }
 
   const hasValidDate = parsedDate !== null;
-  const dateError =
-    examDateRaw.trim() && !hasValidDate
-      ? 'Please select a future date.'
-      : '';
+  const dateError = examDateRaw.trim() && !hasValidDate ? 'Please select a future date.' : '';
 
   // Waiting screen: content pipeline still running, diagnostic not yet available
   if (waitingForDiagnostic) {
@@ -194,7 +203,9 @@ export default function ExamDatePage() {
           )}
 
           {notifyState === 'loading' && (
-            <p className="text-sm text-[#534AB7] dark:text-indigo-300 mb-3">Saving your preference&hellip;</p>
+            <p className="text-sm text-[#534AB7] dark:text-indigo-300 mb-3">
+              Saving your preference&hellip;
+            </p>
           )}
 
           {notifyState === 'done' && (
@@ -227,7 +238,6 @@ export default function ExamDatePage() {
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-slate-950 px-4 py-8 flex flex-col">
       <div className="max-w-sm mx-auto w-full flex-1 flex flex-col justify-center gap-6">
-
         {/* Header */}
         <div className="text-center">
           <div className="w-12 h-12 rounded-xl bg-[#534AB7] flex items-center justify-center mx-auto mb-4 shadow-md shadow-[#534AB7]/30">
@@ -242,7 +252,6 @@ export default function ExamDatePage() {
         </div>
 
         <div className="bg-white dark:bg-slate-900 rounded-2xl border border-gray-100 dark:border-slate-800 p-5 space-y-5 shadow-sm">
-
           {/* Exam date input */}
           <div>
             <label
@@ -264,7 +273,12 @@ export default function ExamDatePage() {
             )}
             {hasValidDate && (
               <p className="mt-1 text-xs text-[#1D9E75] dark:text-green-400">
-                {parsedDate!.toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })} · {weeks} {weeks === 1 ? 'week' : 'weeks'} away
+                {parsedDate!.toLocaleDateString('en-IN', {
+                  day: 'numeric',
+                  month: 'long',
+                  year: 'numeric',
+                })}{' '}
+                · {weeks} {weeks === 1 ? 'week' : 'weeks'} away
               </p>
             )}
           </div>
@@ -297,23 +311,38 @@ export default function ExamDatePage() {
           </div>
 
           {/* Live estimate */}
-          <div className={`rounded-xl px-4 py-3 ${estimate.sufficient ? 'bg-[#EEEDFE] dark:bg-[#534AB7]/10' : 'bg-[#FAEEDA] dark:bg-[#BA7517]/10'}`}>
+          <div
+            className={`rounded-xl px-4 py-3 ${estimate.sufficient ? 'bg-[#EEEDFE] dark:bg-[#534AB7]/10' : 'bg-[#FAEEDA] dark:bg-[#BA7517]/10'}`}
+          >
             {!weeks ? (
               // No exam date -- show plan horizon
               <p className="text-sm text-[#534AB7] dark:text-indigo-300 leading-relaxed">
                 With <strong>{studyDays} days/week</strong> -- we&apos;ll cover all chapters in{' '}
-                <strong>{estimate.weeksToComplete} weeks ({estimate.months} months)</strong> with time for{' '}
-                <strong>{estimate.revisionRounds} revision round{estimate.revisionRounds !== 1 ? 's' : ''}</strong>.
+                <strong>
+                  {estimate.weeksToComplete} weeks ({estimate.months} months)
+                </strong>{' '}
+                with time for{' '}
+                <strong>
+                  {estimate.revisionRounds} revision round{estimate.revisionRounds !== 1 ? 's' : ''}
+                </strong>
+                .
               </p>
             ) : estimate.sufficient ? (
               // Exam date set, pace is sufficient
               <p className="text-sm text-[#534AB7] dark:text-indigo-300 leading-relaxed">
                 With <strong>{studyDays} days/week</strong> -- you&apos;ll finish all chapters{' '}
                 {estimate.spareWeeks > 0 ? (
-                  <>with <strong>{estimate.spareWeeks} week{estimate.spareWeeks !== 1 ? 's' : ''} to spare</strong> for revision</>
+                  <>
+                    with{' '}
+                    <strong>
+                      {estimate.spareWeeks} week{estimate.spareWeeks !== 1 ? 's' : ''} to spare
+                    </strong>{' '}
+                    for revision
+                  </>
                 ) : (
                   <>just in time</>
-                )}.
+                )}
+                .
               </p>
             ) : (
               // Exam date set, pace is NOT sufficient
@@ -327,7 +356,9 @@ export default function ExamDatePage() {
           </div>
 
           {error && (
-            <p role="alert" className="text-xs text-[#E24B4A] dark:text-red-400">{error}</p>
+            <p role="alert" className="text-xs text-[#E24B4A] dark:text-red-400">
+              {error}
+            </p>
           )}
 
           {/* Primary CTA */}
@@ -339,7 +370,14 @@ export default function ExamDatePage() {
           >
             {busy ? (
               <>
-                <svg className="w-4 h-4 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+                <svg
+                  className="w-4 h-4 animate-spin"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  aria-hidden
+                >
                   <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
                 </svg>
                 Building your plan...

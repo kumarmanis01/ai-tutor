@@ -1,4 +1,4 @@
-"use client";
+'use client';
 /**
  * FILE OBJECTIVE:
  * - Fetch the recommended practice topic from the DB-backed engine.
@@ -19,7 +19,10 @@ export interface PracticeRecommendation {
 
 /** Parse topic id from recommendation contentId or meta */
 function parseTopicId(item: Record<string, unknown>): string | null {
-  const meta = (item.meta && typeof item.meta === 'object' ? item.meta : {}) as Record<string, unknown>;
+  const meta = (item.meta && typeof item.meta === 'object' ? item.meta : {}) as Record<
+    string,
+    unknown
+  >;
   if (meta.topicId) return String(meta.topicId);
 
   const contentId = String(item.contentId ?? item.id ?? '');
@@ -71,7 +74,10 @@ export function usePracticeRecommendation(): PracticeRecommendation & { loading:
         const score = typeof chosen.score === 'number' ? chosen.score : null;
         const lastAccuracy = score !== null ? Math.round(score * 100) : null;
 
-        const meta = (chosen.meta && typeof chosen.meta === 'object' ? chosen.meta : {}) as Record<string, unknown>;
+        const meta = (chosen.meta && typeof chosen.meta === 'object' ? chosen.meta : {}) as Record<
+          string,
+          unknown
+        >;
         const questionCount = typeof meta.questionCount === 'number' ? meta.questionCount : 10;
 
         if (!cancelled) {
@@ -85,7 +91,9 @@ export function usePracticeRecommendation(): PracticeRecommendation & { loading:
     }
 
     load();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   return { ...result, loading };

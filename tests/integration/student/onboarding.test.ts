@@ -71,26 +71,26 @@ beforeEach(() => {
 // ---------------------------------------------------------------------------
 describe('ProfileCompletionGate — isProfileComplete()', () => {
   it('returns false when all four fields are null', () => {
-    expect(
-      isProfileComplete({ board: null, grade: null, language: null, subjects: [] }),
-    ).toBe(false);
+    expect(isProfileComplete({ board: null, grade: null, language: null, subjects: [] })).toBe(
+      false
+    );
   });
 
   it('returns false when subjects array is empty', () => {
-    expect(
-      isProfileComplete({ board: 'CBSE', grade: '10', language: 'en', subjects: [] }),
-    ).toBe(false);
+    expect(isProfileComplete({ board: 'CBSE', grade: '10', language: 'en', subjects: [] })).toBe(
+      false
+    );
   });
 
   it('returns false when any single field is missing', () => {
     expect(
-      isProfileComplete({ board: null, grade: '10', language: 'en', subjects: ['Math'] }),
+      isProfileComplete({ board: null, grade: '10', language: 'en', subjects: ['Math'] })
     ).toBe(false);
     expect(
-      isProfileComplete({ board: 'CBSE', grade: null, language: 'en', subjects: ['Math'] }),
+      isProfileComplete({ board: 'CBSE', grade: null, language: 'en', subjects: ['Math'] })
     ).toBe(false);
     expect(
-      isProfileComplete({ board: 'CBSE', grade: '10', language: null, subjects: ['Math'] }),
+      isProfileComplete({ board: 'CBSE', grade: '10', language: null, subjects: ['Math'] })
     ).toBe(false);
   });
 
@@ -101,7 +101,7 @@ describe('ProfileCompletionGate — isProfileComplete()', () => {
         grade: '10',
         language: 'en',
         subjects: ['Mathematics'],
-      }),
+      })
     ).toBe(true);
   });
 });
@@ -221,11 +221,21 @@ describe('Grade immutability', () => {
       const userId = 'student-school';
       const existingUser = { id: userId, grade: null };
       prismaMock.user.findUnique.mockResolvedValueOnce(existingUser);
-      prismaMock.user.update.mockResolvedValueOnce({ ...existingUser, schoolName: 'ABC High School' });
+      prismaMock.user.update.mockResolvedValueOnce({
+        ...existingUser,
+        schoolName: 'ABC High School',
+      });
 
-      const body = { class_grade: '10', board: 'CBSE', preferred_language: 'en', subjects: ['mathematics'], school_name: 'ABC High School' };
+      const body = {
+        class_grade: '10',
+        board: 'CBSE',
+        preferred_language: 'en',
+        subjects: ['mathematics'],
+        school_name: 'ABC High School',
+      };
 
-      const schoolNameRaw = typeof body.school_name === 'string' ? body.school_name.trim() : undefined;
+      const schoolNameRaw =
+        typeof body.school_name === 'string' ? body.school_name.trim() : undefined;
       const schoolName = schoolNameRaw && schoolNameRaw.length > 0 ? schoolNameRaw : undefined;
 
       const updates: Record<string, any> = {};
@@ -249,9 +259,16 @@ describe('Grade immutability', () => {
       prismaMock.user.findUnique.mockResolvedValueOnce(existingUser);
       prismaMock.user.update.mockResolvedValueOnce({ ...existingUser });
 
-      const body = { class_grade: '9', board: 'state', preferred_language: 'en', subjects: ['english'], school_name: '   ' };
+      const body = {
+        class_grade: '9',
+        board: 'state',
+        preferred_language: 'en',
+        subjects: ['english'],
+        school_name: '   ',
+      };
 
-      const schoolNameRaw = typeof body.school_name === 'string' ? body.school_name.trim() : undefined;
+      const schoolNameRaw =
+        typeof body.school_name === 'string' ? body.school_name.trim() : undefined;
       const schoolName = schoolNameRaw && schoolNameRaw.length > 0 ? schoolNameRaw : undefined;
 
       const updates: Record<string, any> = {};
@@ -271,7 +288,8 @@ describe('Grade immutability', () => {
       const longName = 'A'.repeat(121);
       const fieldErrors: Record<string, string> = {};
       const schoolName = longName;
-      if (schoolName && schoolName.length > 120) fieldErrors.school_name = 'School name must be 120 characters or fewer';
+      if (schoolName && schoolName.length > 120)
+        fieldErrors.school_name = 'School name must be 120 characters or fewer';
       expect(fieldErrors).toHaveProperty('school_name');
     });
   });

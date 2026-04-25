@@ -1,3 +1,18 @@
+/**
+ * FILE OBJECTIVE:
+ * - Compute per-student risk scores and categories for admin dashboards.
+ *
+ * LINKED UNIT TEST:
+ * - tests/unit/lib/admin/studentRiskDetection.spec.ts
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - .github/copilot-instructions.md
+ * - /docs/COPILOT_GUARDRAILS.md
+ *
+ * EDIT LOG:
+ * - 2026-04-23T06:15:00Z | copilot | fix(strict): add typed casts for Prisma groupBy/findMany results to remove implicit-any map callbacks
+ */
+
 import { prisma } from '@/lib/prisma';
 
 export type RiskCategory = 'low' | 'medium' | 'high';
@@ -127,61 +142,99 @@ export async function getStudentRiskList(opts: {
     }),
   ]);
 
-  const studentIds = users.map((u) => u.id);
+  // Strongly-type the returned user rows to avoid implicit-any in callbacks
+  const usersTyped = users as {
+    id: string;
+    email?: string | null;
+    name?: string | null;
+    board?: string | null;
+    grade?: string | null;
+  }[];
+  const studentIds = usersTyped.map((u) => u.id);
   if (studentIds.length === 0) return { students: [], total };
 
   const since30d = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
   const recentStart7d = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
   const priorStart14d = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000);
 
-  const [lastActive, sessionsStarted, sessionsCompleted, weakCounts, masteryRows] = await Promise.all([
-    prisma.structuredSession.groupBy({
-      by: ['studentId'],
-      where: { studentId: { in: studentIds } },
-      _max: { startedAt: true, completedAt: true },
-    }),
-    prisma.structuredSession.groupBy({
-      by: ['studentId'],
-      where: { studentId: { in: studentIds }, startedAt: { gte: since30d } },
-      _count: { id: true },
-    }),
-    prisma.structuredSession.groupBy({
-      by: ['studentId'],
-      where: { studentId: { in: studentIds }, state: 'COMPLETE', completedAt: { gte: since30d } },
-      _count: { id: true },
-    }),
-    prisma.studentTopicProgress.groupBy({
-      by: ['studentId'],
-      where: { studentId: { in: studentIds }, mastery: { lt: 0.4 }, practiceCount: { gt: 5 } },
-      _count: { topicId: true },
-    }),
-    prisma.studentTopicMastery.findMany({
-      where: {
-        studentId: { in: studentIds },
-        lastAttemptedAt: { gte: priorStart14d },
-      },
-      select: { studentId: true, accuracy: true, questionsAttempted: true, lastAttemptedAt: true },
-      take: 50_000,
-    }),
-  ]);
+  const [lastActive, sessionsStarted, sessionsCompleted, weakCounts, masteryRows] =
+    await Promise.all([
+      prisma.structuredSession.groupBy({
+        by: ['studentId'],
+        where: { studentId: { in: studentIds } },
+        _max: { startedAt: true, completedAt: true },
+      }),
+      prisma.structuredSession.groupBy({
+        by: ['studentId'],
+        where: { studentId: { in: studentIds }, startedAt: { gte: since30d } },
+        _count: { id: true },
+      }),
+      prisma.structuredSession.groupBy({
+        by: ['studentId'],
+        where: { studentId: { in: studentIds }, state: 'COMPLETE', completedAt: { gte: since30d } },
+        _count: { id: true },
+      }),
+      prisma.studentTopicProgress.groupBy({
+        by: ['studentId'],
+        where: { studentId: { in: studentIds }, mastery: { lt: 0.4 }, practiceCount: { gt: 5 } },
+        _count: { topicId: true },
+      }),
+      prisma.studentTopicMastery.findMany({
+        where: {
+          studentId: { in: studentIds },
+          lastAttemptedAt: { gte: priorStart14d },
+        },
+        select: {
+          studentId: true,
+          accuracy: true,
+          questionsAttempted: true,
+          lastAttemptedAt: true,
+        },
+        take: 50_000,
+      }),
+    ]);
+
+  // Cast groupBy/findMany results to local types to avoid implicit any
+  const lastActiveTyped = lastActive as Array<{
+    studentId: string;
+    _max: { startedAt?: Date | null; completedAt?: Date | null };
+  }>;
+  const sessionsStartedTyped = sessionsStarted as Array<{
+    studentId: string;
+    _count: { id: number };
+  }>;
+  const sessionsCompletedTyped = sessionsCompleted as Array<{
+    studentId: string;
+    _count: { id: number };
+  }>;
+  const weakCountsTyped = weakCounts as Array<{ studentId: string; _count: { topicId: number } }>;
+  const masteryRowsTyped = masteryRows as Array<{
+    studentId: string;
+    accuracy: number;
+    questionsAttempted: number;
+    lastAttemptedAt: Date;
+  }>;
 
   const lastMap = new Map<string, Date | null>();
-  for (const r of lastActive) {
+  for (const r of lastActiveTyped) {
     const maxStarted = r._max.startedAt ?? null;
     const maxCompleted = r._max.completedAt ?? null;
     const t = [maxStarted, maxCompleted].filter(Boolean) as Date[];
     lastMap.set(r.studentId, t.length ? new Date(Math.max(...t.map((d) => d.getTime()))) : null);
   }
 
-  const startedMap = new Map(sessionsStarted.map((r) => [r.studentId, r._count.id]));
-  const completedMap = new Map(sessionsCompleted.map((r) => [r.studentId, r._count.id]));
-  const weakMap = new Map(weakCounts.map((r) => [r.studentId, r._count.topicId]));
+  const startedMap = new Map(sessionsStartedTyped.map((r) => [r.studentId, r._count.id]));
+  const completedMap = new Map(sessionsCompletedTyped.map((r) => [r.studentId, r._count.id]));
+  const weakMap = new Map(weakCountsTyped.map((r) => [r.studentId, r._count.topicId]));
 
   // Trend: weighted accuracy in last 7d vs 8-14d
   const recentPairs = new Map<string, Array<{ value: number; weight: number }>>();
   const priorPairs = new Map<string, Array<{ value: number; weight: number }>>();
-  for (const r of masteryRows) {
-    const qa = typeof r.questionsAttempted === 'number' && Number.isFinite(r.questionsAttempted) ? r.questionsAttempted : 0;
+  for (const r of masteryRowsTyped) {
+    const qa =
+      typeof r.questionsAttempted === 'number' && Number.isFinite(r.questionsAttempted)
+        ? r.questionsAttempted
+        : 0;
     const w = qa > 0 ? qa : 1;
     if (r.lastAttemptedAt >= recentStart7d) {
       const arr = recentPairs.get(r.studentId) ?? [];
@@ -194,7 +247,7 @@ export async function getStudentRiskList(opts: {
     }
   }
 
-  const students: StudentRiskRow[] = users.map((u) => {
+  const students: StudentRiskRow[] = usersTyped.map((u) => {
     const last = lastMap.get(u.id) ?? null;
     const inactiveDays = last ? daysBetween(now, last) : null;
     const started = Number(startedMap.get(u.id) ?? 0);
@@ -248,8 +301,15 @@ export async function getStudentRiskSummary(opts: {
   board?: string;
   grade?: string;
 }): Promise<{ low: number; medium: number; high: number }> {
-  const { students } = await getStudentRiskList({ limit: 200, offset: 0, board: opts.board, grade: opts.grade });
-  let low = 0, medium = 0, high = 0;
+  const { students } = await getStudentRiskList({
+    limit: 200,
+    offset: 0,
+    board: opts.board,
+    grade: opts.grade,
+  });
+  let low = 0,
+    medium = 0,
+    high = 0;
   for (const s of students) {
     if (s.category === 'high') high++;
     else if (s.category === 'medium') medium++;
@@ -257,4 +317,3 @@ export async function getStudentRiskSummary(opts: {
   }
   return { low, medium, high };
 }
-

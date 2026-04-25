@@ -15,18 +15,15 @@ let autoSubmitQueue: Queue<DiagnosticAutoSubmitJobData> | null = null;
 
 function getAutoSubmitQueue() {
   if (!autoSubmitQueue) {
-    autoSubmitQueue = new Queue<DiagnosticAutoSubmitJobData>(
-      DIAGNOSTIC_AUTO_SUBMIT_QUEUE_NAME,
-      {
-        connection: getSharedConnection(),
-        defaultJobOptions: {
-          attempts: 2,
-          backoff: { type: 'exponential', delay: 10_000 },
-          removeOnComplete: 50,
-          removeOnFail: 20,
-        },
+    autoSubmitQueue = new Queue<DiagnosticAutoSubmitJobData>(DIAGNOSTIC_AUTO_SUBMIT_QUEUE_NAME, {
+      connection: getSharedConnection(),
+      defaultJobOptions: {
+        attempts: 2,
+        backoff: { type: 'exponential', delay: 10_000 },
+        removeOnComplete: 50,
+        removeOnFail: 20,
       },
-    );
+    });
   }
   return autoSubmitQueue;
 }
@@ -42,7 +39,7 @@ function jobId(userId: string, subjectId: string) {
  * previous job and schedules a fresh 24h window.
  */
 export async function enqueueDiagnosticAutoSubmit(
-  data: DiagnosticAutoSubmitJobData,
+  data: DiagnosticAutoSubmitJobData
 ): Promise<void> {
   const queue = getAutoSubmitQueue();
   const id = jobId(data.userId, data.subjectId);
@@ -59,7 +56,10 @@ export async function enqueueDiagnosticAutoSubmit(
       jobId: id,
       delay: 24 * 60 * 60 * 1000, // 24 hours
     });
-    logger.info('[diagnostic-auto-submit] scheduled', { userId: data.userId, subjectId: data.subjectId });
+    logger.info('[diagnostic-auto-submit] scheduled', {
+      userId: data.userId,
+      subjectId: data.subjectId,
+    });
   } catch (err) {
     // Non-fatal: if scheduling fails the student can still manually submit.
     logger.warn('[diagnostic-auto-submit] failed to schedule', {
@@ -73,10 +73,7 @@ export async function enqueueDiagnosticAutoSubmit(
 /**
  * Cancel a pending auto-submit job (called on successful manual submit).
  */
-export async function cancelDiagnosticAutoSubmit(
-  userId: string,
-  subjectId: string,
-): Promise<void> {
+export async function cancelDiagnosticAutoSubmit(userId: string, subjectId: string): Promise<void> {
   const queue = getAutoSubmitQueue();
   const id = jobId(userId, subjectId);
   try {

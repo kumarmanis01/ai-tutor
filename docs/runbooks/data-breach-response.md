@@ -10,6 +10,7 @@
 ## 1. Detection
 
 A breach may be detected via:
+
 - Automated secret scanning alert (GitHub `run_secret_scanning` or Cloudflare)
 - Unusual DB query volume / data exfiltration patterns in logs
 - Third-party security researcher report
@@ -81,10 +82,10 @@ Classify by data type:
 
 ## 4. Notification Obligations (India — DPDP Act 2023)
 
-| Trigger | Timeline | Recipient |
-|---|---|---|
-| Personal data breach | As soon as reasonably practicable | Data Protection Board of India |
-| Significant breach (payment, health, children) | Within 72 hours | Data Protection Board + affected users |
+| Trigger                                        | Timeline                          | Recipient                              |
+| ---------------------------------------------- | --------------------------------- | -------------------------------------- |
+| Personal data breach                           | As soon as reasonably practicable | Data Protection Board of India         |
+| Significant breach (payment, health, children) | Within 72 hours                   | Data Protection Board + affected users |
 
 ### 4.1 Notify affected users
 
@@ -130,10 +131,10 @@ After breach is contained:
 
 ## 7. Key Contacts
 
-| Role | Contact |
-|---|---|
-| Founder / data controller | Manish (internal Slack) |
-| On-call engineer | See PagerDuty / PM2 monitor |
-| Neon DB support | console.neon.tech |
-| Razorpay support | dashboard.razorpay.com > Help |
-| Cloudflare | dash.cloudflare.com > Support |
+| Role                      | Contact                       |
+| ------------------------- | ----------------------------- |
+| Founder / data controller | Manish (internal Slack)       |
+| On-call engineer          | See PagerDuty / PM2 monitor   |
+| Neon DB support           | console.neon.tech             |
+| Razorpay support          | dashboard.razorpay.com > Help |
+| Cloudflare                | dash.cloudflare.com > Support |

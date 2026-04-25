@@ -26,7 +26,7 @@ import Image from 'next/image';
 import { stripTag } from '@/lib/ai/tutor/tagParser';
 import VisualHintRenderer from './VisualHintRenderer';
 import MisconceptionCard from './MisconceptionCard';
-import { logger } from '@/lib/logger'
+import { logger } from '@/lib/logger';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -50,7 +50,12 @@ export interface AITutorChatPanelProps {
   subjectName: string;
   initialStage: string;
   isAITutorEnabled: boolean;
-  onSessionComplete: (summary: { tag: string; stage: string; turnNumber: number; hintsUsed: number }) => void;
+  onSessionComplete: (summary: {
+    tag: string;
+    stage: string;
+    turnNumber: number;
+    hintsUsed: number;
+  }) => void;
   /** Called with the full text each time an AI message stream completes (F-STU-014 whiteboard). */
   onAiMessage?: (content: string) => void;
   /** Called when the server returns a structured visualHint (diagram) for the whiteboard. */
@@ -234,8 +239,8 @@ function StageStrip({ currentStage }: { currentStage: string }) {
         const cls = done
           ? 'bg-[#EAF3DE] text-[#1D9E75] dark:bg-[#1D9E75]/15 dark:text-green-300'
           : active
-          ? 'bg-[#534AB7] text-white'
-          : 'bg-gray-100 dark:bg-slate-800 text-gray-400 dark:text-gray-500';
+            ? 'bg-[#534AB7] text-white'
+            : 'bg-gray-100 dark:bg-slate-800 text-gray-400 dark:text-gray-500';
         return (
           <span
             key={s}
@@ -263,17 +268,12 @@ function TypingIndicator() {
   );
 }
 
-function AiMessageBubble({
-  msg,
-  showLabel,
-}: {
-  msg: ChatMessage;
-  showLabel: boolean;
-}) {
+function AiMessageBubble({ msg, showLabel }: { msg: ChatMessage; showLabel: boolean }) {
   const content = msg.content ?? '';
   let looksLikeJson = false;
   try {
-    looksLikeJson = !!content.trim() && (content.trim().startsWith('{') || content.trim().startsWith('['));
+    looksLikeJson =
+      !!content.trim() && (content.trim().startsWith('{') || content.trim().startsWith('['));
   } catch {
     looksLikeJson = false;
   }
@@ -283,9 +283,9 @@ function AiMessageBubble({
   let parsedMisconception: any = null;
   if (isMisconception) {
     try {
-      parsedMisconception = JSON.parse(content.slice(MIS_PREFIX.length))
+      parsedMisconception = JSON.parse(content.slice(MIS_PREFIX.length));
     } catch {
-      parsedMisconception = null
+      parsedMisconception = null;
     }
   }
 
@@ -311,7 +311,7 @@ function AiMessageBubble({
         ) : looksLikeJson ? (
           <VisualHintRenderer hint={content} />
         ) : (
-          (msg.content || '\u200B') /* zero-width space keeps bubble visible when empty */
+          msg.content || '\u200B' /* zero-width space keeps bubble visible when empty */
         )}
         {msg.isStreaming && (
           <span className="v2-cursor text-[#534AB7]/50 dark:text-[#EEEDFE]/50">|</span>
@@ -347,22 +347,34 @@ type ReExplainChip = { label: string; sentinel: string; ariaLabel: string };
 
 const RESTYLE_CHIPS: ReExplainChip[] = [
   { label: 'Simpler \u2193', sentinel: '__EXPLAIN_SIMPLER__', ariaLabel: 'Explain it more simply' },
-  { label: 'Deeper \u2191', sentinel: '__EXPLAIN_HARDER__',  ariaLabel: 'Explain it in more depth' },
-  { label: 'Real-life example',  sentinel: '__EXPLAIN_EXAMPLE__', ariaLabel: 'Give a real-life example' },
+  { label: 'Deeper \u2191', sentinel: '__EXPLAIN_HARDER__', ariaLabel: 'Explain it in more depth' },
+  {
+    label: 'Real-life example',
+    sentinel: '__EXPLAIN_EXAMPLE__',
+    ariaLabel: 'Give a real-life example',
+  },
   { label: 'Diagram', sentinel: '__EXPLAIN_DIAGRAM__', ariaLabel: 'Show a diagram' },
 ];
 
 const RESTYLE_DISPLAY: Record<string, string> = {
   __EXPLAIN_SIMPLER__: 'Explain it more simply',
-  __EXPLAIN_HARDER__:  'Explain it in more depth',
+  __EXPLAIN_HARDER__: 'Explain it in more depth',
   __EXPLAIN_EXAMPLE__: 'Give me a real-life example',
   __EXPLAIN_DIAGRAM__: 'Show a diagram or visual explanation',
 };
 
-function ReExplainBar({ onSelect, disabled }: { onSelect: (sentinel: string) => void; disabled: boolean }) {
+function ReExplainBar({
+  onSelect,
+  disabled,
+}: {
+  onSelect: (sentinel: string) => void;
+  disabled: boolean;
+}) {
   return (
     <div className="flex items-center gap-1.5 overflow-x-auto px-3 py-1.5 border-t border-gray-100 dark:border-slate-800 bg-white dark:bg-slate-900">
-      <span className="shrink-0 text-[10px] text-gray-400 dark:text-gray-500 mr-0.5">Re-explain:</span>
+      <span className="shrink-0 text-[10px] text-gray-400 dark:text-gray-500 mr-0.5">
+        Re-explain:
+      </span>
       {RESTYLE_CHIPS.map((chip) => (
         <button
           key={chip.sentinel}
@@ -468,17 +480,24 @@ export const AITutorChatPanel: React.FC<AITutorChatPanelProps> = ({
     let mounted = true;
     (async () => {
       try {
-          const resp = await fetch(`/api/tutor/session/style?sessionId=${encodeURIComponent(sessionId)}`)
-          if (!resp.ok) return
-          const data = await resp.json()
-          if (!mounted) return
-          setSelectedStyle(data?.explainStyle ?? null)
-        } catch (e) {
-          logger.debug('AITutorChatPanel: failed to load session style', { sessionId, error: String(e) })
-        }
-    })()
-    return () => { mounted = false }
-  }, [sessionId])
+        const resp = await fetch(
+          `/api/tutor/session/style?sessionId=${encodeURIComponent(sessionId)}`
+        );
+        if (!resp.ok) return;
+        const data = await resp.json();
+        if (!mounted) return;
+        setSelectedStyle(data?.explainStyle ?? null);
+      } catch (e) {
+        logger.debug('AITutorChatPanel: failed to load session style', {
+          sessionId,
+          error: String(e),
+        });
+      }
+    })();
+    return () => {
+      mounted = false;
+    };
+  }, [sessionId]);
 
   // ── Message helpers ────────────────────────────────────────────────────────
 
@@ -509,8 +528,8 @@ export const AITutorChatPanel: React.FC<AITutorChatPanelProps> = ({
       prev.map((item) =>
         item.kind === 'msg' && item.msg.id === id
           ? { kind: 'msg', msg: { ...item.msg, content: item.msg.content + chunk } }
-          : item,
-      ),
+          : item
+      )
     );
   }, []);
 
@@ -522,8 +541,8 @@ export const AITutorChatPanel: React.FC<AITutorChatPanelProps> = ({
       prev.map((item) =>
         item.kind === 'msg' && item.msg.id === id
           ? { kind: 'msg', msg: { ...item.msg, isStreaming: false } }
-          : item,
-      ),
+          : item
+      )
     );
     // Notify whiteboard panel with completed AI message content (F-STU-014).
     const content = lastAiContentRef.current;
@@ -548,7 +567,10 @@ export const AITutorChatPanel: React.FC<AITutorChatPanelProps> = ({
       // Compute which hint tier was delivered. Prefer server-provided pre-call hintsUsed
       const prevHintsRemaining = hintsRemaining;
       const preHintsUsedLocal = Math.max(0, 3 - prevHintsRemaining);
-      const deliveredTier = typeof payload.hintsUsedDuringTurn === 'number' ? payload.hintsUsedDuringTurn + 1 : preHintsUsedLocal + 1;
+      const deliveredTier =
+        typeof payload.hintsUsedDuringTurn === 'number'
+          ? payload.hintsUsedDuringTurn + 1
+          : preHintsUsedLocal + 1;
 
       setHintsRemaining(payload.hintsRemaining);
       if (payload.stage && payload.stage !== currentStageRef.current) {
@@ -570,8 +592,10 @@ export const AITutorChatPanel: React.FC<AITutorChatPanelProps> = ({
       // If this turn was a hint offer, show a short banner indicating which tier
       if (payload.tag === 'HINT_OFFER') {
         let text = '';
-        if (deliveredTier === 1) text = 'Hint 1 -- Directional nudge (points you to the right idea).';
-        else if (deliveredTier === 2) text = 'Hint 2 -- Structural hint (shows the method, not the solution).';
+        if (deliveredTier === 1)
+          text = 'Hint 1 -- Directional nudge (points you to the right idea).';
+        else if (deliveredTier === 2)
+          text = 'Hint 2 -- Structural hint (shows the method, not the solution).';
         else if (deliveredTier === 3) text = 'Hint 3 -- Worked scaffold (first step shown).';
         else text = 'All hints exhausted -- full solution + isomorphic problem provided.';
 
@@ -589,19 +613,34 @@ export const AITutorChatPanel: React.FC<AITutorChatPanelProps> = ({
         // rendering pipeline can remain unchanged while we add a new card type.
         const sentinel = '__MISCONCEPTION__';
         const json = JSON.stringify(contrast);
-        const cMsg: ChatMessage = { id: makeId('ai'), role: 'ai', content: `${sentinel}${json}`, isStreaming: false };
+        const cMsg: ChatMessage = {
+          id: makeId('ai'),
+          role: 'ai',
+          content: `${sentinel}${json}`,
+          isStreaming: false,
+        };
         setItems((prev) => [...prev, { kind: 'msg', msg: cMsg }]);
       }
 
-      if (typeof (payload as any).visualHint === 'string' && String((payload as any).visualHint).trim()) {
+      if (
+        typeof (payload as any).visualHint === 'string' &&
+        String((payload as any).visualHint).trim()
+      ) {
         const viz = String((payload as any).visualHint).trim();
         // Inform whiteboard shell / panel so it can parse & replay the diagram
-        try { onVisualHintRef.current?.(viz); } catch {}
-        const vizMsg: ChatMessage = { id: makeId('ai'), role: 'ai', content: viz, isStreaming: false };
+        try {
+          onVisualHintRef.current?.(viz);
+        } catch {}
+        const vizMsg: ChatMessage = {
+          id: makeId('ai'),
+          role: 'ai',
+          content: viz,
+          isStreaming: false,
+        };
         setItems((prev) => [...prev, { kind: 'msg', msg: vizMsg }]);
       }
     },
-    [onSessionComplete, scheduleInactivity, insertStageDivider, hintsRemaining],
+    [onSessionComplete, scheduleInactivity, insertStageDivider, hintsRemaining]
   );
 
   const handleErrorEvent = useCallback(
@@ -610,14 +649,12 @@ export const AITutorChatPanel: React.FC<AITutorChatPanelProps> = ({
       setIsStreaming(false);
       setIsTyping(false);
       if (payload.code === 'JAILBREAK_DETECTED') {
-        setConnectionError(
-          'Your message could not be processed safely. Please rephrase.',
-        );
+        setConnectionError('Your message could not be processed safely. Please rephrase.');
       } else {
         setConnectionError('Teacher Vidya will be right back. Please try again in a moment.');
       }
     },
-    [finalizeAiMessage],
+    [finalizeAiMessage]
   );
 
   // ── SSE stream ────────────────────────────────────────────────────────────
@@ -771,16 +808,20 @@ export const AITutorChatPanel: React.FC<AITutorChatPanelProps> = ({
 
   // Persist a session-level style preference and optionally trigger an immediate re-explain.
   async function handleSetStyle(style: string | null) {
-    const s = style || null
-    setSelectedStyle(s)
+    const s = style || null;
+    setSelectedStyle(s);
     try {
       await fetch('/api/tutor/session/style', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ sessionId, explainStyle: s }),
-      })
+      });
     } catch (e) {
-      logger.debug('AITutorChatPanel: failed to persist style', { sessionId, explainStyle: s, error: String(e) })
+      logger.debug('AITutorChatPanel: failed to persist style', {
+        sessionId,
+        explainStyle: s,
+        error: String(e),
+      });
     }
 
     const mapping: Record<string, string> = {
@@ -788,10 +829,10 @@ export const AITutorChatPanel: React.FC<AITutorChatPanelProps> = ({
       harder: '__EXPLAIN_HARDER__',
       real_life_example: '__EXPLAIN_EXAMPLE__',
       diagram: '__EXPLAIN_DIAGRAM__',
-    }
+    };
 
     if (s && mapping[s]) {
-      handleReExplain(mapping[s])
+      handleReExplain(mapping[s]);
     }
   }
 
@@ -819,7 +860,6 @@ export const AITutorChatPanel: React.FC<AITutorChatPanelProps> = ({
       <style>{PANEL_STYLE}</style>
 
       <div className="flex h-full flex-col bg-gray-50 dark:bg-slate-950">
-
         {/* ① Session header */}
         <div className="sticky top-0 z-10 border-b border-gray-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-4 py-2.5">
           <div className="flex items-center justify-between gap-3">
@@ -882,7 +922,9 @@ export const AITutorChatPanel: React.FC<AITutorChatPanelProps> = ({
         {hintBanner && (
           <div className="mx-4 mb-2 flex items-center justify-between gap-3 rounded-xl border border-indigo-200 bg-indigo-50 px-3 py-2 dark:border-indigo-700/40 dark:bg-indigo-900/10">
             <p className="text-xs text-indigo-800 dark:text-indigo-200">{hintBanner.text}</p>
-            <div className="text-xs text-indigo-600 dark:text-indigo-300">Tier {hintBanner.tier}</div>
+            <div className="text-xs text-indigo-600 dark:text-indigo-300">
+              Tier {hintBanner.tier}
+            </div>
           </div>
         )}
 
@@ -904,9 +946,7 @@ export const AITutorChatPanel: React.FC<AITutorChatPanelProps> = ({
         )}
 
         {/* ④b Re-explain style bar (AC-04, F-STU-011) */}
-        {showReExplainBar && (
-          <ReExplainBar onSelect={handleReExplain} disabled={isStreaming} />
-        )}
+        {showReExplainBar && <ReExplainBar onSelect={handleReExplain} disabled={isStreaming} />}
 
         {/* ⑤ Inactivity prompt */}
         {showInactivityPrompt && (
@@ -966,7 +1006,7 @@ export const AITutorChatPanel: React.FC<AITutorChatPanelProps> = ({
         )}
 
         {/* ⑦ Input bar */}
-            <div className="border-t border-gray-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-3 py-2 input-bar-safe">
+        <div className="border-t border-gray-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-3 py-2 input-bar-safe">
           <div className="flex items-end gap-2">
             <textarea
               ref={textareaRef}
@@ -999,7 +1039,6 @@ export const AITutorChatPanel: React.FC<AITutorChatPanelProps> = ({
             </button>
           </div>
         </div>
-
       </div>
     </>
   );

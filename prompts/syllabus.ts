@@ -10,27 +10,30 @@
  */
 
 export type SyllabusParams = {
-  board: string
-  grade: number
-  subject: string
-  language?: 'en' | 'hi'
-  maxChapters?: number
+  board: string;
+  grade: number;
+  subject: string;
+  language?: 'en' | 'hi';
+  maxChapters?: number;
   /** Opening text (first ~200 chars) from the first chunk of each NCERT chapter,
    *  ordered by chapter number. When provided, GPT is constrained to exactly
    *  these chapters — no hallucination. */
-  ncertChapterHints?: string[]
-}
+  ncertChapterHints?: string[];
+};
 
 export function syllabusPrompt(params: SyllabusParams): string {
-  const hints = params.ncertChapterHints
-  const maxChapters = hints ? hints.length : (params.maxChapters ?? 12)
+  const hints = params.ncertChapterHints;
+  const maxChapters = hints ? hints.length : (params.maxChapters ?? 12);
 
-  let prompt = `Role: curriculum generator for board ${params.board}, grade ${params.grade}.
+  let prompt =
+    `Role: curriculum generator for board ${params.board}, grade ${params.grade}.
 
 Task: Produce an ordered syllabus for subject "${params.subject}" in ${params.language === 'hi' ? 'Hindi' : 'English'}.
 
 Constraints:
-- Chapters: 1..${maxChapters}, ordered by ` + "`order`" + ` ascending.
+- Chapters: 1..${maxChapters}, ordered by ` +
+    '`order`' +
+    ` ascending.
 - Each chapter: title (<=8 words), order (integer), topics array.
 - Each topic: title (<=6 words), order (integer). Topics must be concise and non-overlapping.
 - Do NOT include assessments, activities, subtopics, or external references.
@@ -53,14 +56,14 @@ Validation Constraints:
 // If unable to produce, return the empty-syllabus object as a JSON string.
 - If unable to produce, return '{ "chapters": [] }'.
 
-Strict Output Instruction: Return ONLY valid JSON matching the schema above, nothing else.`
+Strict Output Instruction: Return ONLY valid JSON matching the schema above, nothing else.`;
 
   if (hints && hints.length > 0) {
     prompt += `\n\nNCERT Textbook Ground Truth — derive chapter titles from these ${hints.length} content excerpts (one per chapter, in order):
 ${hints.map((h, i) => `Chapter ${i + 1}: "${h}"`).join('\n')}
 
-CRITICAL: Generate EXACTLY ${hints.length} chapters matching the excerpts above. Do NOT add, remove, or reorder chapters.`
+CRITICAL: Generate EXACTLY ${hints.length} chapters matching the excerpts above. Do NOT add, remove, or reorder chapters.`;
   }
 
-  return prompt
+  return prompt;
 }

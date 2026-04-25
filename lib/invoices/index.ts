@@ -44,7 +44,8 @@ function invoiceHtml(opts: {
   hsn?: string | null;
   taxBreakdown?: any;
 }) {
-  const { invoiceNumber, userName, studentName, baseRupees, gstRupees, totalRupees, billingCycle } = opts;
+  const { invoiceNumber, userName, studentName, baseRupees, gstRupees, totalRupees, billingCycle } =
+    opts;
   const gstDisplay = rupees(gstRupees);
   const baseDisplay = rupees(baseRupees);
   const totalDisplay = rupees(totalRupees);
@@ -122,12 +123,14 @@ async function renderHtmlToPdf(html: string): Promise<Buffer> {
     // In test environments, avoid launching Playwright (browsers may not be installed)
     // and force the caller to use the pdf-lib fallback quickly.
     if (process.env.NODE_ENV === 'test' || process.env.JEST_WORKER_ID) {
-      throw new Error('Playwright disabled in test environment')
+      throw new Error('Playwright disabled in test environment');
     }
     // Dynamic import so Playwright is optional; fallback will be used when unavailable
     // eslint-disable-next-line @typescript-eslint/no-var-requires
     const pw = await import('playwright');
-    const browser = await pw.chromium.launch({ args: ['--no-sandbox', '--disable-setuid-sandbox'] });
+    const browser = await pw.chromium.launch({
+      args: ['--no-sandbox', '--disable-setuid-sandbox'],
+    });
     const page = await browser.newPage();
     await page.setContent(html, { waitUntil: 'networkidle' });
     const pdf = await page.pdf({ format: 'A4', printBackground: true });
@@ -176,7 +179,9 @@ export async function generateInvoicePdf(options: {
     return buf;
   } catch (_err) {
     // Playwright render failed -- log and fallback to simple pdf-lib text renderer when Playwright is not available
-    logger.warn('[invoices] Playwright render failed, falling back to pdf-lib', { error: String(_err) });
+    logger.warn('[invoices] Playwright render failed, falling back to pdf-lib', {
+      error: String(_err),
+    });
     const pdfDoc = await PDFDocument.create();
     const page = pdfDoc.addPage([595, 842]); // A4 approx
     const helvetica = await pdfDoc.embedFont(StandardFonts.Helvetica);
@@ -197,8 +202,10 @@ export async function generateInvoicePdf(options: {
     write(``);
     write(`Description: ${options.billingCycle ?? 'Subscription'}`);
     write(`Amount (INR): ${rupees(totalRupees)}`);
-    if (typeof options.baseRupees !== 'undefined') write(`Base (INR): ${rupees(options.baseRupees as number)}`);
-    if (typeof options.gstRupees !== 'undefined') write(`GST (INR): ${rupees(options.gstRupees as number)}`);
+    if (typeof options.baseRupees !== 'undefined')
+      write(`Base (INR): ${rupees(options.baseRupees as number)}`);
+    if (typeof options.gstRupees !== 'undefined')
+      write(`GST (INR): ${rupees(options.gstRupees as number)}`);
     write(`Total (INR): ${rupees(totalRupees)}`);
     if (options.hsn) write(`HSN: ${options.hsn}`);
     if (options.gstin) write(`Platform GSTIN: ${options.gstin}`);
@@ -259,9 +266,13 @@ export async function createInvoiceForPayment(opts: InvoiceCreateOpts) {
 
   // Ensure the paymentId column exists (some test DBs or older schemas may lack it)
   try {
-    await prisma.$executeRawUnsafe(`ALTER TABLE "Invoice" ADD COLUMN IF NOT EXISTS "paymentId" TEXT`);
+    await prisma.$executeRawUnsafe(
+      `ALTER TABLE "Invoice" ADD COLUMN IF NOT EXISTS "paymentId" TEXT`
+    );
     // Ensure there's a unique index on paymentId to match Prisma expectations
-    await prisma.$executeRawUnsafe(`CREATE UNIQUE INDEX IF NOT EXISTS invoice_paymentid_idx ON "Invoice" ("paymentId")`);
+    await prisma.$executeRawUnsafe(
+      `CREATE UNIQUE INDEX IF NOT EXISTS invoice_paymentid_idx ON "Invoice" ("paymentId")`
+    );
   } catch (e) {
     // Non-fatal; proceed and let higher-level code handle missing columns if necessary
     logger.warn('[invoices] could not ensure paymentId column/index', { error: String(e) });
@@ -356,7 +367,9 @@ export async function createInvoiceForPayment(opts: InvoiceCreateOpts) {
     } catch (_innerErr) {
       // If the fallback also fails, re-throw the original error to be handled
       // by the caller. Log the inner failure for diagnostics.
-      try { logger.warn('[invoices] fallback transaction failed', { error: String(_innerErr) }) } catch {}
+      try {
+        logger.warn('[invoices] fallback transaction failed', { error: String(_innerErr) });
+      } catch {}
       throw err;
     }
   }
@@ -381,21 +394,21 @@ export async function createInvoiceForPayment(opts: InvoiceCreateOpts) {
       taxBreakdown,
     });
   } catch (pdfErr) {
-    logger.warn('[invoices] PDF generation failed; invoice created without attachment', { error: String(pdfErr) });
+    logger.warn('[invoices] PDF generation failed; invoice created without attachment', {
+      error: String(pdfErr),
+    });
   }
 
-    // Ensure pdfBuffer is a Node Buffer (pdf-lib may return Uint8Array)
-    if (pdfBuffer && !Buffer.isBuffer(pdfBuffer)) {
-      try {
-        // normalize ArrayBuffer/Uint8Array -> Buffer
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        pdfBuffer = Buffer.from(pdfBuffer as any);
-      } catch (e) {
-        logger.warn('[invoices] could not normalize pdfBuffer to Buffer', { error: String(e) });
-      }
+  // Ensure pdfBuffer is a Node Buffer (pdf-lib may return Uint8Array)
+  if (pdfBuffer && !Buffer.isBuffer(pdfBuffer)) {
+    try {
+      // normalize ArrayBuffer/Uint8Array -> Buffer
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      pdfBuffer = Buffer.from(pdfBuffer as any);
+    } catch (e) {
+      logger.warn('[invoices] could not normalize pdfBuffer to Buffer', { error: String(e) });
     }
-
-    
+  }
 
   // Upload to R2 (best effort) -- only if PDF was generated
   const key = `invoices/invoice-${invoiceNumber}.pdf`;
@@ -409,8 +422,11 @@ export async function createInvoiceForPayment(opts: InvoiceCreateOpts) {
     } catch (err) {
       logger.error('[invoices] failed to upload invoice to R2', { error: err });
       try {
-        const publicBase = process.env.R2_PUBLIC_URL?.replace(/\/$/, '')
-          || (process.env.R2_ENDPOINT ? `${process.env.R2_ENDPOINT.replace(/\/$/, '')}/${process.env.R2_BUCKET ?? ''}` : '');
+        const publicBase =
+          process.env.R2_PUBLIC_URL?.replace(/\/$/, '') ||
+          (process.env.R2_ENDPOINT
+            ? `${process.env.R2_ENDPOINT.replace(/\/$/, '')}/${process.env.R2_BUCKET ?? ''}`
+            : '');
         if (publicBase) {
           const constructed = `${publicBase}/${key}`;
           fileUrl = constructed;
@@ -423,8 +439,6 @@ export async function createInvoiceForPayment(opts: InvoiceCreateOpts) {
     }
   }
 
-  
-
   return { invoiceNumber, pdfBuffer, fileUrl };
 }
 
@@ -436,7 +450,11 @@ export default Invoices;
  * between fyStart and fyEnd (inclusive). Uses per-invoice `fileUrl`
  * when available, falling back to regenerating the invoice PDF.
  */
-export async function generateAnnualInvoicesPdf(userId: string, fyStart: Date, fyEnd: Date): Promise<Buffer> {
+export async function generateAnnualInvoicesPdf(
+  userId: string,
+  fyStart: Date,
+  fyEnd: Date
+): Promise<Buffer> {
   // Lazy-import prisma so simple PDF generation callers don't pull the client
   const { prisma } = await import('@/lib/prisma');
 
@@ -472,7 +490,10 @@ export async function generateAnnualInvoicesPdf(userId: string, fyStart: Date, f
         const ab = await resp.arrayBuffer();
         bytes = Buffer.from(ab);
       } catch (e) {
-        logger.warn('[invoices] failed to download invoice PDF, regenerating', { invoiceId: inv.id, error: String(e) });
+        logger.warn('[invoices] failed to download invoice PDF, regenerating', {
+          invoiceId: inv.id,
+          error: String(e),
+        });
         bytes = await generateInvoicePdf({
           invoiceNumber: inv.invoiceNumber,
           amountPaise: inv.amount,
@@ -508,10 +529,18 @@ export async function generateAnnualInvoicesPdf(userId: string, fyStart: Date, f
       const donor = await PDFDocument.load(bytes as Uint8Array);
       // PDF-lib TypeScript definitions may not expose copyPages/getPageIndices in some versions.
       // Cast to any to avoid type errors and preserve runtime behaviour.
-      const pages = await (outPdf as any).copyPages(donor as any, (donor as any).getPageIndices ? (donor as any).getPageIndices() : (donor as any).getPages().map((_: any, i: number) => i));
+      const pages = await (outPdf as any).copyPages(
+        donor as any,
+        (donor as any).getPageIndices
+          ? (donor as any).getPageIndices()
+          : (donor as any).getPages().map((_: any, i: number) => i)
+      );
       for (const p of pages) outPdf.addPage(p);
     } catch (e) {
-      logger.warn('[invoices] skipping invalid invoice PDF during merge', { invoiceId: inv.id, error: String(e) });
+      logger.warn('[invoices] skipping invalid invoice PDF during merge', {
+        invoiceId: inv.id,
+        error: String(e),
+      });
     }
   }
 

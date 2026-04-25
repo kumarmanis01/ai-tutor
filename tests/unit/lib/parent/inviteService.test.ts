@@ -1,7 +1,13 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 jest.mock('@/lib/logger', () => ({
-  logger: { info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn(), logAPI: jest.fn() },
+  logger: {
+    info: jest.fn(),
+    warn: jest.fn(),
+    error: jest.fn(),
+    debug: jest.fn(),
+    logAPI: jest.fn(),
+  },
 }));
 
 import { describe, it, expect, beforeEach } from '@jest/globals';
@@ -23,7 +29,11 @@ describe('inviteService', () => {
       expiresAt: new Date('2026-03-10T00:00:00Z'),
     });
 
-    const res = await createOrReuseParentInviteForStudent({ prisma: prismaMock as any, studentId: 'stu-1', now: new Date('2026-03-03T00:00:00Z') });
+    const res = await createOrReuseParentInviteForStudent({
+      prisma: prismaMock as any,
+      studentId: 'stu-1',
+      now: new Date('2026-03-03T00:00:00Z'),
+    });
     expect(res.code).toBe('ABCD1234');
   });
 
@@ -35,7 +45,11 @@ describe('inviteService', () => {
       expiresAt: new Date('2026-03-10T00:00:00Z'),
     });
 
-    const res = await createOrReuseParentInviteForStudent({ prisma: prismaMock as any, studentId: 'stu-1', now: new Date('2026-03-03T00:00:00Z') });
+    const res = await createOrReuseParentInviteForStudent({
+      prisma: prismaMock as any,
+      studentId: 'stu-1',
+      now: new Date('2026-03-03T00:00:00Z'),
+    });
     expect(res.code).toBe('FFFFEEEE');
     expect(prismaMock.parentInvite.create).toHaveBeenCalled();
   });
@@ -44,7 +58,10 @@ describe('inviteService', () => {
     prismaMock.user.findUnique.mockResolvedValue({ id: 'stu-1', parentEmail: 'mom@example.com' });
     prismaMock.parentStudent.findUnique.mockResolvedValue(null);
     prismaMock.parentStudent.create.mockResolvedValue({ id: 'ps-1' });
-    prismaMock.user.findUnique.mockResolvedValueOnce({ id: 'stu-1', parentEmail: 'mom@example.com' });
+    prismaMock.user.findUnique.mockResolvedValueOnce({
+      id: 'stu-1',
+      parentEmail: 'mom@example.com',
+    });
     prismaMock.user.findUnique.mockResolvedValueOnce({ role: 'user' });
 
     const ok = await linkParentToStudentByEmail({
@@ -85,4 +102,3 @@ describe('inviteService', () => {
     expect(prismaMock.parentInvite.update).toHaveBeenCalled();
   });
 });
-

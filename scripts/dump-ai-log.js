@@ -9,14 +9,18 @@ async function main() {
     console.error('Usage: node scripts/dump-ai-log.js <aiLogId> [hydrationJobId]');
     process.exit(2);
   }
-  
+
   try {
     if (id) {
       const a = await prisma.aIContentLog.findUnique({ where: { id } });
       console.log('AIContentLog:', JSON.stringify(a, null, 2));
     }
     if (hydrationId) {
-      const logs = await prisma.aIContentLog.findMany({ where: { hydrationJobId: hydrationId }, orderBy: { createdAt: 'desc' }, take: 10 });
+      const logs = await prisma.aIContentLog.findMany({
+        where: { hydrationJobId: hydrationId },
+        orderBy: { createdAt: 'desc' },
+        take: 10,
+      });
       console.log('AIContentLog for hydrationId', hydrationId, ':');
       console.log(JSON.stringify(logs, null, 2));
     }

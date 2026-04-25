@@ -27,18 +27,24 @@ export async function getSecret(secretName: string): Promise<string | null> {
       if (typeof bin === 'string') {
         return Buffer.from(bin, 'base64').toString('utf8');
       }
-    try {
-      return Buffer.from(bin).toString('utf8');
-    } catch (error) {
-      logger.error(`[awsSecrets] Error decoding SecretBinary: ${String(error)}`, { className: 'awsSecrets', methodName: 'getSecret' });
-      return null;
-    }
+      try {
+        return Buffer.from(bin).toString('utf8');
+      } catch (error) {
+        logger.error(`[awsSecrets] Error decoding SecretBinary: ${String(error)}`, {
+          className: 'awsSecrets',
+          methodName: 'getSecret',
+        });
+        return null;
+      }
     }
 
     return null;
   } catch (error) {
     // Non-fatal: log and return null
-    logger.error(`[awsSecrets] getSecret error: ${String(error)}`, { className: 'awsSecrets', methodName: 'getSecret' });
+    logger.error(`[awsSecrets] getSecret error: ${String(error)}`, {
+      className: 'awsSecrets',
+      methodName: 'getSecret',
+    });
     return null;
   }
 }
@@ -54,7 +60,10 @@ export async function getJsonSecret<T = unknown>(secretName: string): Promise<T 
   try {
     return JSON.parse(raw) as T;
   } catch (err) {
-    logger.error(`[awsSecrets] getJsonSecret parse error for ${secretName}: ${String(err)}`, { className: 'awsSecrets', methodName: 'getJsonSecret' });
+    logger.error(`[awsSecrets] getJsonSecret parse error for ${secretName}: ${String(err)}`, {
+      className: 'awsSecrets',
+      methodName: 'getJsonSecret',
+    });
     return null;
   }
 }
@@ -78,10 +87,14 @@ export async function getPresignCredentials(): Promise<PresignCreds> {
     const parsed = JSON.parse(raw) as any;
     return {
       accessKeyId: parsed.AWS_ACCESS_KEY_ID || parsed.accessKeyId || parsed.access_key_id,
-      secretAccessKey: parsed.AWS_SECRET_ACCESS_KEY || parsed.secretAccessKey || parsed.secret_access_key,
+      secretAccessKey:
+        parsed.AWS_SECRET_ACCESS_KEY || parsed.secretAccessKey || parsed.secret_access_key,
     };
   } catch (err) {
-    logger.error(`[awsSecrets] getPresignCredentials parse error: ${String(err)}`, { className: 'awsSecrets', methodName: 'getPresignCredentials' });
+    logger.error(`[awsSecrets] getPresignCredentials parse error: ${String(err)}`, {
+      className: 'awsSecrets',
+      methodName: 'getPresignCredentials',
+    });
     return null;
   }
 }

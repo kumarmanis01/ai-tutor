@@ -59,9 +59,7 @@ export function PaymentConfirmation({
 
   return (
     <div className="flex flex-col gap-4">
-      <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100">
-        Order summary
-      </h2>
+      <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100">Order summary</h2>
 
       {/* Plan summary card */}
       <div className="rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-4 space-y-3">

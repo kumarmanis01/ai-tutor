@@ -1,3 +1,20 @@
+/**
+ * FILE OBJECTIVE:
+ * - LP-6.1 Pricing section: monthly/annual messaging, comparison with traditional tuition,
+ *   trust badges, refund & cancel policy.
+ *
+ * LINKED UNIT TEST:
+ * - tests/unit/components/PricingSection.spec.ts
+ *
+ * COPILOT INSTRUCTIONS FOLLOWED:
+ * - /docs/COPILOT_GUARDRAILS.md
+ * - .github/copilot-instructions.md
+ *
+ * EDIT LOG:
+ * - 2026-04-24T00:00:00Z | copilot | restore clean PricingSection and imports; remove corrupted leading fragment
+ */
+'use client';
+
 import Link from 'next/link';
 import Icon from '@/components/UI/AppIcon';
 import { PLANS } from '@/lib/billing/plans';
@@ -20,9 +37,8 @@ interface PricingPlan {
 }
 
 const PricingSection = () => {
-
   const plans: PricingPlan[] = [
-        {
+    {
       id: 'free',
       name: 'Free Plan',
       nameHi: 'मुफ्त योजना',
@@ -146,7 +162,6 @@ const PricingSection = () => {
         <div className="grid md:grid-cols-3 gap-6 lg:gap-8 mb-6">
           {plans.map((plan) => {
             const displayPrice = plan.price;
-
             return (
               <div
                 key={plan.id}
@@ -172,7 +187,9 @@ const PricingSection = () => {
                       <span className="font-headline font-bold text-5xl text-secondary">
                         {displayPrice}
                       </span>
-                      <span className="font-body text-base text-muted-foreground">/{plan.period}</span>
+                      <span className="font-body text-base text-muted-foreground">
+                        /{plan.period}
+                      </span>
                     </div>
                     {/* Prices shown are inclusive of taxes */}
                     <p className="font-body text-sm text-muted-foreground">{plan.description}</p>
@@ -196,7 +213,6 @@ const PricingSection = () => {
                         <span className="font-body text-sm text-foreground flex-1">{feature}</span>
                       </div>
                     ))}
-
                   </div>
 
                   <Link
@@ -253,7 +269,9 @@ const PricingSection = () => {
                       Per month, unlimited access (incl. taxes)
                     </p>
                   </div>
-                  <p className="font-headline font-bold text-2xl text-success">{spinzyPriceDisplay}</p>
+                  <p className="font-headline font-bold text-2xl text-success">
+                    {spinzyPriceDisplay}
+                  </p>
                 </div>
 
                 <div className="flex items-center justify-between p-4 bg-primary/5 rounded-lg border border-primary/20">

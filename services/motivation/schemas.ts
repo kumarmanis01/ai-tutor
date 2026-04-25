@@ -79,10 +79,10 @@ export enum MotivationTrigger {
 export const LearningAnalyticsSchema = z.object({
   /** Student's grade level */
   grade: z.number().int().min(1).max(12),
-  
+
   /** Preferred language */
   language: z.enum(['en', 'hi', 'hinglish']),
-  
+
   /** Current session metrics */
   currentSession: z.object({
     /** Duration in minutes */
@@ -100,7 +100,7 @@ export const LearningAnalyticsSchema = z.object({
     /** Did student complete planned activity? */
     completedPlannedActivity: z.boolean(),
   }),
-  
+
   /** Historical metrics for comparison */
   history: z.object({
     /** Total sessions completed */
@@ -116,7 +116,7 @@ export const LearningAnalyticsSchema = z.object({
     /** Days since last session */
     daysSinceLastSession: z.number().int().min(0),
   }),
-  
+
   /** Confidence metrics */
   confidence: z.object({
     /** Current confidence score (0-1) */
@@ -138,38 +138,42 @@ export type LearningAnalytics = z.infer<typeof LearningAnalyticsSchema>;
 export const MotivationMessageSchema = z.object({
   /** Unique message ID for tracking */
   id: z.string(),
-  
+
   /** Primary motivation focus */
   focus: z.nativeEnum(MotivationFocus),
-  
+
   /** Message tone (grade-appropriate) */
   tone: z.nativeEnum(MotivationTone),
-  
+
   /** When to show this message */
   trigger: z.nativeEnum(MotivationTrigger),
-  
+
   /** Primary message (1-2 sentences) */
   primaryMessage: z.string().min(10).max(200),
-  
+
   /** Optional secondary message */
   secondaryMessage: z.string().max(150).optional(),
-  
+
   /** Optional emoji for junior grades */
   emoji: z.string().optional(),
-  
+
   /** Specific achievement highlighted (if any) */
-  achievement: z.object({
-    type: z.string(),
-    value: z.string(),
-    isPersonalBest: z.boolean(),
-  }).optional(),
-  
+  achievement: z
+    .object({
+      type: z.string(),
+      value: z.string(),
+      isPersonalBest: z.boolean(),
+    })
+    .optional(),
+
   /** Suggested next action (non-mandatory) */
-  suggestedAction: z.object({
-    label: z.string(),
-    actionType: z.enum(['continue', 'practice', 'rest', 'explore']),
-  }).optional(),
-  
+  suggestedAction: z
+    .object({
+      label: z.string(),
+      actionType: z.enum(['continue', 'practice', 'rest', 'explore']),
+    })
+    .optional(),
+
   /** Metadata for analytics */
   metadata: z.object({
     generatedAt: z.string().datetime(),

@@ -10,7 +10,10 @@ export async function GET(req: NextRequest) {
   try {
     assertNoStringFilters(req);
   } catch (e) {
-    return NextResponse.json({ error: e instanceof Error ? e.message : String(e) }, { status: 400 });
+    return NextResponse.json(
+      { error: e instanceof Error ? e.message : String(e) },
+      { status: 400 }
+    );
   }
 
   const subjectId = searchParams.get('subjectId') || undefined;
@@ -46,6 +49,10 @@ export async function GET(req: NextRequest) {
     take: 10,
     orderBy: { updatedAt: 'desc' },
   });
-  const items = questions.map((q) => ({ id: q.id, title: q.prompt, subject: q.subject || 'General' }));
+  const items = questions.map((q) => ({
+    id: q.id,
+    title: q.prompt,
+    subject: q.subject || 'General',
+  }));
   return NextResponse.json({ items });
 }

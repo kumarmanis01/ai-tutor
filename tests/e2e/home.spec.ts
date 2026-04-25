@@ -4,30 +4,41 @@ import { test, expect } from '@playwright/test';
 test.use({ baseURL: process.env.PLAYWRIGHT_BASE_URL ?? 'http://localhost:3000' });
 
 // Helper to stub the four home APIs with provided payloads
-async function stubHomeApis(page, { nextAction = null, todayGoal = {}, learningSnapshot = {}, dailyPlan = {} } = {}) {
-  await page.route('**/api/home/next-action', (route) => route.fulfill({
-    status: 200,
-    contentType: 'application/json',
-    body: JSON.stringify(nextAction),
-  }));
+async function stubHomeApis(
+  page,
+  { nextAction = null, todayGoal = {}, learningSnapshot = {}, dailyPlan = {} } = {}
+) {
+  await page.route('**/api/home/next-action', (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(nextAction),
+    })
+  );
 
-  await page.route('**/api/home/today-goal', (route) => route.fulfill({
-    status: 200,
-    contentType: 'application/json',
-    body: JSON.stringify(todayGoal),
-  }));
+  await page.route('**/api/home/today-goal', (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(todayGoal),
+    })
+  );
 
-  await page.route('**/api/home/learning-snapshot', (route) => route.fulfill({
-    status: 200,
-    contentType: 'application/json',
-    body: JSON.stringify(learningSnapshot),
-  }));
+  await page.route('**/api/home/learning-snapshot', (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(learningSnapshot),
+    })
+  );
 
-  await page.route('**/api/home/daily-plan', (route) => route.fulfill({
-    status: 200,
-    contentType: 'application/json',
-    body: JSON.stringify(dailyPlan),
-  }));
+  await page.route('**/api/home/daily-plan', (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(dailyPlan),
+    })
+  );
 }
 
 test.describe('Dashboard Home e2e', () => {

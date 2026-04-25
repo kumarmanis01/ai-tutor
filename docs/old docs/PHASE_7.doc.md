@@ -50,7 +50,7 @@ Input:
 ${JSON.stringify(input, null, 2)}
 
 Return an array of Lesson objects.
-`
+`;
 }
 ```
 
@@ -64,6 +64,7 @@ return lessons
 ```
 
 Notes:
+
 - This document contains the contract and prompt guidance only. Do not implement generation logic yet.
 
 ---

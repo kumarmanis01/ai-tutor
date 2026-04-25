@@ -24,14 +24,17 @@ function loadEnv(envPath) {
   try {
     if (!fs.existsSync(envPath)) return;
     const raw = fs.readFileSync(envPath, 'utf8');
-    raw.split(/\r?\n/).forEach(line => {
+    raw.split(/\r?\n/).forEach((line) => {
       const l = line.trim();
       if (!l || l.startsWith('#')) return;
       const idx = l.indexOf('=');
       if (idx === -1) return;
       const key = l.substring(0, idx).trim();
       let val = l.substring(idx + 1).trim();
-      if ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'"))) {
+      if (
+        (val.startsWith('"') && val.endsWith('"')) ||
+        (val.startsWith("'") && val.endsWith("'"))
+      ) {
         val = val.slice(1, -1);
       }
       if (!process.env[key]) process.env[key] = val;
@@ -104,26 +107,46 @@ function fail(msg) {
           redis = new IORedis(redisUrl, { lazyConnect: true, maxRetriesPerRequest: null });
           // prevent unhandled error events from terminating the script
           redis.on('error', (err) => {
-            console.warn('Redis client error (non-fatal):', err && err.message ? err.message : String(err));
+            console.warn(
+              'Redis client error (non-fatal):',
+              err && err.message ? err.message : String(err)
+            );
           });
 
           // connect with timeout
           const connectPromise = redis.connect();
           const timeoutMs = Number(process.env.PRELAUNCH_REDIS_PING_TIMEOUT_MS || 5000);
-          await Promise.race([connectPromise, new Promise((_, rej) => setTimeout(() => rej(new Error('redis connect timed out')), timeoutMs))]);
+          await Promise.race([
+            connectPromise,
+            new Promise((_, rej) =>
+              setTimeout(() => rej(new Error('redis connect timed out')), timeoutMs)
+            ),
+          ]);
 
           const pongPromise = redis.ping();
-          const pong = await Promise.race([pongPromise, new Promise((_, rej) => setTimeout(() => rej(new Error('redis ping timed out')), timeoutMs))]);
+          const pong = await Promise.race([
+            pongPromise,
+            new Promise((_, rej) =>
+              setTimeout(() => rej(new Error('redis ping timed out')), timeoutMs)
+            ),
+          ]);
           if (pong !== 'PONG') {
             console.warn('Redis ping returned unexpected response:', pong);
-            try { await redis.disconnect(); } catch (_) {}
+            try {
+              await redis.disconnect();
+            } catch (_) {}
             redis = null;
           } else {
             console.log('Redis ping OK');
           }
         } catch (e) {
-          console.warn('Redis connectivity check failed (non-fatal):', e && e.message ? e.message : String(e));
-          try { await redis.disconnect(); } catch (_) {}
+          console.warn(
+            'Redis connectivity check failed (non-fatal):',
+            e && e.message ? e.message : String(e)
+          );
+          try {
+            await redis.disconnect();
+          } catch (_) {}
           redis = null;
         }
       }
@@ -146,7 +169,10 @@ function fail(msg) {
           const p = require(path.join(__dirname, c));
           // expect exported `prisma` or default
           prismaClient = p.prisma || p.default || p;
-          if (prismaClient) { found = true; break; }
+          if (prismaClient) {
+            found = true;
+            break;
+          }
         } catch (e) {
           // ignore
         }
@@ -165,7 +191,11 @@ function fail(msg) {
     }
 
     // Determine BASE_URL for server checks
-    const BASE_URL = (process.env.BASE_URL || process.env.NEXTAUTH_URL || 'http://localhost:3000').replace(/\/$/, '');
+    const BASE_URL = (
+      process.env.BASE_URL ||
+      process.env.NEXTAUTH_URL ||
+      'http://localhost:3000'
+    ).replace(/\/$/, '');
 
     async function isServerAvailable() {
       try {
@@ -189,7 +219,8 @@ function fail(msg) {
         // fallback: if schema doesn't have SubjectDef, skip strict per-subject check but ensure some topics exist
         let totalTopics = 0;
         try {
-          if (prismaClient.topicDef) totalTopics = await prismaClient.topicDef.count({ where: { lifecycle: 'active' } });
+          if (prismaClient.topicDef)
+            totalTopics = await prismaClient.topicDef.count({ where: { lifecycle: 'active' } });
         } catch (e) {
           // ignore
         }
@@ -204,43 +235,103 @@ function fail(msg) {
           return;
         }
         for (const s of subjects) {
-          let topicCount = await prismaClient.topicDef.count({ where: { chapter: { subjectId: s.id }, lifecycle: 'active' } });
+          let topicCount = await prismaClient.topicDef.count({
+            where: { chapter: { subjectId: s.id }, lifecycle: 'active' },
+          });
           if (topicCount < 10) {
-            console.log('Subject', s.slug, 'has insufficient active topics:', topicCount, '(attempting to seed)');
+            console.log(
+              'Subject',
+              s.slug,
+              'has insufficient active topics:',
+              topicCount,
+              '(attempting to seed)'
+            );
             try {
               // attempt lightweight seeding for this subject
               const CHAPTERS_PER_SUBJECT = 3;
               const topicsPerChapter = [4, 3, 3];
               for (let c = 1; c <= CHAPTERS_PER_SUBJECT; c++) {
                 const chapSlug = `${s.slug}-chapter-${c}`;
-                let chapter = await prismaClient.chapterDef.findFirst({ where: { subjectId: s.id, slug: chapSlug } });
+                let chapter = await prismaClient.chapterDef.findFirst({
+                  where: { subjectId: s.id, slug: chapSlug },
+                });
                 if (!chapter) {
-                  chapter = await prismaClient.chapterDef.create({ data: { name: `Chapter ${c}`, slug: chapSlug, order: c, subjectId: s.id } });
+                  chapter = await prismaClient.chapterDef.create({
+                    data: { name: `Chapter ${c}`, slug: chapSlug, order: c, subjectId: s.id },
+                  });
                 }
-                const count = topicsPerChapter[c-1] || 0;
+                const count = topicsPerChapter[c - 1] || 0;
                 for (let t = 1; t <= count; t++) {
-                  const topicIndex = ((c-1) === 0 ? t : (topicsPerChapter.slice(0,c-1).reduce((a,b)=>a+b,0) + t));
+                  const topicIndex =
+                    c - 1 === 0
+                      ? t
+                      : topicsPerChapter.slice(0, c - 1).reduce((a, b) => a + b, 0) + t;
                   const topicSlug = `${s.slug}-topic-${topicIndex}`;
-                  let topic = await prismaClient.topicDef.findFirst({ where: { chapterId: chapter.id, slug: topicSlug } });
+                  let topic = await prismaClient.topicDef.findFirst({
+                    where: { chapterId: chapter.id, slug: topicSlug },
+                  });
                   if (!topic) {
-                    topic = await prismaClient.topicDef.create({ data: { name: `Topic ${topicIndex}`, slug: topicSlug, order: topicIndex, chapterId: chapter.id } });
+                    topic = await prismaClient.topicDef.create({
+                      data: {
+                        name: `Topic ${topicIndex}`,
+                        slug: topicSlug,
+                        order: topicIndex,
+                        chapterId: chapter.id,
+                      },
+                    });
                   }
                   // ensure a GeneratedTest exists
-                  const existingTest = await prismaClient.generatedTest.findFirst({ where: { topicId: topic.id, difficulty: 'easy', language: 'en' } });
+                  const existingTest = await prismaClient.generatedTest.findFirst({
+                    where: { topicId: topic.id, difficulty: 'easy', language: 'en' },
+                  });
                   if (!existingTest) {
-                    const createdTest = await prismaClient.generatedTest.create({ data: { topicId: topic.id, title: `Generated Test - ${topic.slug}`, difficulty: 'easy', language: 'en', version: 1, status: 'draft' } });
-                    await prismaClient.generatedQuestion.create({ data: { testId: createdTest.id, type: 'mcq', question: `Seeded: ${topic.name}`, options: JSON.stringify([{ key: 'A', text: 'Option A' }, { key: 'B', text: 'Option B' }]), answer: JSON.stringify({ key: 'A' }), explanation: 'Seeded question', marks: 1 } });
+                    const createdTest = await prismaClient.generatedTest.create({
+                      data: {
+                        topicId: topic.id,
+                        title: `Generated Test - ${topic.slug}`,
+                        difficulty: 'easy',
+                        language: 'en',
+                        version: 1,
+                        status: 'draft',
+                      },
+                    });
+                    await prismaClient.generatedQuestion.create({
+                      data: {
+                        testId: createdTest.id,
+                        type: 'mcq',
+                        question: `Seeded: ${topic.name}`,
+                        options: JSON.stringify([
+                          { key: 'A', text: 'Option A' },
+                          { key: 'B', text: 'Option B' },
+                        ]),
+                        answer: JSON.stringify({ key: 'A' }),
+                        explanation: 'Seeded question',
+                        marks: 1,
+                      },
+                    });
                   }
                 }
               }
               // re-count
-              topicCount = await prismaClient.topicDef.count({ where: { chapter: { subjectId: s.id }, lifecycle: 'active' } });
+              topicCount = await prismaClient.topicDef.count({
+                where: { chapter: { subjectId: s.id }, lifecycle: 'active' },
+              });
             } catch (e) {
-              console.warn('Seeding attempt failed for subject', s.slug, e && e.message ? e.message : e);
+              console.warn(
+                'Seeding attempt failed for subject',
+                s.slug,
+                e && e.message ? e.message : e
+              );
             }
           }
           if (topicCount < 10) {
-            fail('Subject ' + s.slug + ' has insufficient active topics: ' + topicCount + ' (require >= 10)');
+            fail(
+              'Subject ' +
+                s.slug +
+                ' has insufficient active topics: ' +
+                topicCount +
+                ' (require >= 10)'
+            );
             return;
           }
         }
@@ -266,15 +357,25 @@ function fail(msg) {
             cursor = res[0];
             const keys = res[1];
             if (keys && keys.length > 0) {
-              fail('Found STM composite keys in Redis matching pattern ' + p + ' (example: ' + keys[0] + ')');
-              try { await redis.disconnect(); } catch (_) {}
+              fail(
+                'Found STM composite keys in Redis matching pattern ' +
+                  p +
+                  ' (example: ' +
+                  keys[0] +
+                  ')'
+              );
+              try {
+                await redis.disconnect();
+              } catch (_) {}
               return;
             }
           } while (cursor !== '0');
         }
       } catch (e) {
         fail('Redis key scan failed: ' + (e.message || e));
-        try { await redis.disconnect(); } catch (_) {}
+        try {
+          await redis.disconnect();
+        } catch (_) {}
         return;
       }
     }
@@ -286,9 +387,15 @@ function fail(msg) {
         const p = path.join(__dirname, '..', lf);
         if (!fs.existsSync(p)) continue;
         const txt = fs.readFileSync(p, 'utf8');
-        if (/unhandledrejection|unhandled promise rejection|unhandled rejection|UnhandledPromiseRejection/i.test(txt)) {
+        if (
+          /unhandledrejection|unhandled promise rejection|unhandled rejection|UnhandledPromiseRejection/i.test(
+            txt
+          )
+        ) {
           fail('Found unhandled promise rejection traces in ' + lf);
-          try { await redis.disconnect(); } catch (_) {}
+          try {
+            await redis.disconnect();
+          } catch (_) {}
           return;
         }
       }
@@ -304,18 +411,31 @@ function fail(msg) {
         console.log('Concurrency script found. Verifying server availability...');
         const serverOk = await isServerAvailable();
         if (!serverOk) {
-          console.warn('Server at', BASE_URL, 'is not reachable; skipping concurrency-stress-test.cjs');
+          console.warn(
+            'Server at',
+            BASE_URL,
+            'is not reachable; skipping concurrency-stress-test.cjs'
+          );
         } else {
           console.log('Running concurrency-stress-test.cjs (this may take several minutes)');
-          const r = spawnSync('node', [concPath], { stdio: 'inherit', env: process.env, cwd: process.cwd(), timeout: 15 * 60 * 1000 });
+          const r = spawnSync('node', [concPath], {
+            stdio: 'inherit',
+            env: process.env,
+            cwd: process.cwd(),
+            timeout: 15 * 60 * 1000,
+          });
           if (r.error) {
             fail('Execution of concurrency-stress-test failed: ' + r.error.message);
-            try { await redis.disconnect(); } catch (_) {}
+            try {
+              await redis.disconnect();
+            } catch (_) {}
             return;
           }
           if (r.status !== 0) {
             fail('concurrency-stress-test.cjs exited with code ' + r.status);
-            try { await redis.disconnect(); } catch (_) {}
+            try {
+              await redis.disconnect();
+            } catch (_) {}
             return;
           }
         }
@@ -324,7 +444,9 @@ function fail(msg) {
       }
     } catch (e) {
       fail('Running concurrency test failed: ' + (e.message || e));
-      try { await redis.disconnect(); } catch (_) {}
+      try {
+        await redis.disconnect();
+      } catch (_) {}
       return;
     }
 
@@ -337,15 +459,24 @@ function fail(msg) {
           console.warn('Server not reachable; skipping chaos-progress-simulation.cjs');
         } else {
           console.log('Running chaos-progress-simulation.cjs');
-          const r2 = spawnSync('node', [chaosPath], { stdio: 'inherit', env: process.env, cwd: process.cwd(), timeout: 10 * 60 * 1000 });
+          const r2 = spawnSync('node', [chaosPath], {
+            stdio: 'inherit',
+            env: process.env,
+            cwd: process.cwd(),
+            timeout: 10 * 60 * 1000,
+          });
           if (r2.error) {
             fail('Execution of chaos-progress-simulation failed: ' + r2.error.message);
-            try { await redis.disconnect(); } catch (_) {}
+            try {
+              await redis.disconnect();
+            } catch (_) {}
             return;
           }
           if (r2.status !== 0) {
             fail('chaos-progress-simulation.cjs exited with code ' + r2.status);
-            try { await redis.disconnect(); } catch (_) {}
+            try {
+              await redis.disconnect();
+            } catch (_) {}
             return;
           }
         }
@@ -354,7 +485,9 @@ function fail(msg) {
       }
     } catch (e) {
       fail('Running chaos simulation failed: ' + (e.message || e));
-      try { await redis.disconnect(); } catch (_) {}
+      try {
+        await redis.disconnect();
+      } catch (_) {}
       return;
     }
 
@@ -368,15 +501,24 @@ function fail(msg) {
           console.warn('Server not reachable; skipping test-mvp-flow.cjs');
         } else {
           console.log('Running test-mvp-flow.cjs (this may take a while)');
-          const r = spawnSync('node', [testScriptPath], { stdio: 'inherit', env: process.env, cwd: process.cwd(), timeout: 10 * 60 * 1000 });
+          const r = spawnSync('node', [testScriptPath], {
+            stdio: 'inherit',
+            env: process.env,
+            cwd: process.cwd(),
+            timeout: 10 * 60 * 1000,
+          });
           if (r.error) {
             fail('Execution of test-mvp-flow failed: ' + r.error.message);
-            try { await redis.disconnect(); } catch (_) {}
+            try {
+              await redis.disconnect();
+            } catch (_) {}
             return;
           }
           if (r.status !== 0) {
             fail('test-mvp-flow.cjs exited with code ' + r.status);
-            try { await redis.disconnect(); } catch (_) {}
+            try {
+              await redis.disconnect();
+            } catch (_) {}
             return;
           }
         }
@@ -385,12 +527,16 @@ function fail(msg) {
       }
     } catch (e) {
       fail('Running test-mvp-flow failed: ' + (e.message || e));
-      try { await redis.disconnect(); } catch (_) {}
+      try {
+        await redis.disconnect();
+      } catch (_) {}
       return;
     }
 
     // All checks passed
-    try { await redis.disconnect(); } catch (_) {}
+    try {
+      await redis.disconnect();
+    } catch (_) {}
     console.log('READY FOR SOFT LAUNCH');
     process.exitCode = 0;
   } catch (e) {

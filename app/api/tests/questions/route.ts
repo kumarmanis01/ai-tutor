@@ -18,7 +18,9 @@ export async function GET(req: Request) {
   if (!attemptId) return NextResponse.json({ error: 'Missing attemptId' }, { status: 400 });
 
   // Ensure attempt belongs to user
-  const attempt = await prisma.testResult.findFirst({ where: { id: attemptId, studentId: user.id } });
+  const attempt = await prisma.testResult.findFirst({
+    where: { id: attemptId, studentId: user.id },
+  });
   if (!attempt) return NextResponse.json({ error: 'Attempt not found' }, { status: 404 });
 
   const rows = await prisma.attemptQuestion.findMany({

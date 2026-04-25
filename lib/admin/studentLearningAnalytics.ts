@@ -47,11 +47,13 @@ export async function getStudentLearningSummary(): Promise<StudentLearningSummar
 
   const [totalStudents, activeStudents, sessionsCompleted, homeworkPending] = await Promise.all([
     prisma.user.count({ where: { role: ROLE_STUDENT } }),
-    prisma.structuredSession.findMany({
-      where: { completedAt: { gte: since } },
-      select: { studentId: true },
-      distinct: ['studentId'],
-    }).then((rows) => rows.length),
+    prisma.structuredSession
+      .findMany({
+        where: { completedAt: { gte: since } },
+        select: { studentId: true },
+        distinct: ['studentId'],
+      })
+      .then((rows: Array<{ studentId: string }>) => rows.length),
     prisma.structuredSession.count({ where: { completedAt: { gte: since } } }),
     prisma.homeworkAssignment.count({
       where: { status: { in: ['PENDING', 'OVERDUE'] } },
@@ -77,7 +79,7 @@ export async function getStudentLearningList(opts: {
   const since = new Date();
   since.setDate(since.getDate() - ACTIVE_DAYS);
 
-  const students = await prisma.user.findMany({
+  const students = (await prisma.user.findMany({
     where: {
       role: ROLE_STUDENT,
       ...(opts.board ? { board: opts.board } : {}),
@@ -93,11 +95,17 @@ export async function getStudentLearningList(opts: {
     orderBy: { createdAt: 'desc' },
     skip: offset,
     take: limit,
-  });
+  })) as Array<{
+    id: string;
+    email: string | null;
+    name: string | null;
+    board: string | null;
+    grade: string | null;
+  }>;
 
   const studentIds = students.map((s) => s.id);
 
-  const [sessionsByStudent, homeworkByStudent, weakCountByStudent] = await Promise.all([
+  const _groups = await Promise.all([
     prisma.structuredSession.groupBy({
       by: ['studentId'],
       where: {
@@ -126,7 +134,19 @@ export async function getStudentLearningList(opts: {
     }),
   ]);
 
+  type SessionsByStudentRow = {
+    studentId: string;
+    _count: { id: number };
+    _max: { completedAt: Date | null };
+  };
+  type HomeworkByStudentRow = { studentId: string; _count: { id: number } };
+  type WeakCountByStudentRow = { studentId: string; _count: { topicId: number } };
   type SessionInfo = { count: number; last: Date | null };
+
+  const sessionsByStudent = _groups[0] as SessionsByStudentRow[];
+  const homeworkByStudent = _groups[1] as HomeworkByStudentRow[];
+  const weakCountByStudent = _groups[2] as WeakCountByStudentRow[];
+
   const sessionMap = new Map<string, SessionInfo>(
     sessionsByStudent.map((s) => [s.studentId, { count: s._count.id, last: s._max.completedAt }])
   );
@@ -161,31 +181,51 @@ export async function getStudentDrilldown(studentId: string): Promise<StudentDri
   });
   if (!user) return null;
 
-  const [sessionsCompleted, lastActive, homeworkPending, weakTopics, recentSessions] = await Promise.all([
-    prisma.structuredSession.count({
-      where: { studentId, completedAt: { gte: since } },
-    }),
+  const _res = await Promise.all([
+    prisma.structuredSession.count({ where: { studentId, completedAt: { gte: since } } }),
     prisma.structuredSession.findFirst({
       where: { studentId },
       orderBy: { completedAt: 'desc' },
       select: { completedAt: true },
-    }),
+    }) as Promise<{ completedAt?: Date | null } | null>,
     prisma.homeworkAssignment.count({
       where: { studentId, status: { in: ['PENDING', 'OVERDUE'] } },
     }),
     prisma.studentTopicProgress.findMany({
       where: { studentId, mastery: { lt: 0.4 }, practiceCount: { gt: 5 } },
-      select: { topicId: true, mastery: true, practiceCount: true, topic: { select: { name: true } } },
+      select: {
+        topicId: true,
+        mastery: true,
+        practiceCount: true,
+        topic: { select: { name: true } },
+      },
       orderBy: { mastery: 'asc' },
       take: 20,
-    }),
+    }) as Promise<
+      Array<{ topicId: string; mastery: number; practiceCount: number; topic?: { name?: string } }>
+    >,
     prisma.structuredSession.findMany({
       where: { studentId },
       orderBy: { startedAt: 'desc' },
       take: 10,
       select: { id: true, completedAt: true, topic: { select: { name: true } } },
-    }),
+    }) as Promise<Array<{ id: string; completedAt?: Date | null; topic?: { name?: string } }>>,
   ]);
+
+  const sessionsCompleted = _res[0] as number;
+  const lastActive = _res[1] as { completedAt?: Date | null } | null;
+  const homeworkPending = _res[2] as number;
+  const weakTopics = _res[3] as Array<{
+    topicId: string;
+    mastery: number;
+    practiceCount: number;
+    topic?: { name?: string };
+  }>;
+  const recentSessions = _res[4] as Array<{
+    id: string;
+    completedAt?: Date | null;
+    topic?: { name?: string };
+  }>;
 
   return {
     studentId: user.id,
@@ -200,7 +240,7 @@ export async function getStudentDrilldown(studentId: string): Promise<StudentDri
     recentSessions: recentSessions.map((s) => ({
       sessionId: s.id,
       topicName: s.topic?.name ?? '--',
-      completedAt: s.completedAt,
+      completedAt: s.completedAt ?? null,
     })),
     weakTopics: weakTopics.map((w) => ({
       topicId: w.topicId,

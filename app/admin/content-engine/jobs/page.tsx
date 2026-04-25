@@ -1,4 +1,4 @@
-"use client";
+'use client';
 
 import React, { useMemo, useState, useEffect } from 'react';
 import useSWR from 'swr';
@@ -68,42 +68,69 @@ export default function JobsIndexPage() {
       <div className="mb-4 flex gap-2 items-end">
         <div>
           <label className="text-xs">Status</label>
-          <select value={status} onChange={(e) => setStatus(e.target.value)} className="ml-2 border px-2 py-1">
+          <select
+            value={status}
+            onChange={(e) => setStatus(e.target.value)}
+            className="ml-2 border px-2 py-1"
+          >
             <option value="">Any</option>
             {meta?.statuses?.map((s: string) => (
-              <option key={s} value={s}>{s}</option>
+              <option key={s} value={s}>
+                {s}
+              </option>
             ))}
           </select>
         </div>
 
         <div>
           <label className="text-xs">Job Type</label>
-          <select value={jobType} onChange={(e) => setJobType(e.target.value)} className="ml-2 border px-2 py-1">
+          <select
+            value={jobType}
+            onChange={(e) => setJobType(e.target.value)}
+            className="ml-2 border px-2 py-1"
+          >
             <option value="">Any</option>
             {meta?.jobTypes?.map((jt: string) => (
-              <option key={jt} value={jt}>{jt}</option>
+              <option key={jt} value={jt}>
+                {jt}
+              </option>
             ))}
           </select>
         </div>
 
         <div>
           <label className="text-xs">Entity Type</label>
-          <select value={entityType} onChange={(e) => setEntityType(e.target.value)} className="ml-2 border px-2 py-1">
+          <select
+            value={entityType}
+            onChange={(e) => setEntityType(e.target.value)}
+            className="ml-2 border px-2 py-1"
+          >
             <option value="">Any</option>
             {meta?.entityTypes?.map((et: string) => (
-              <option key={et} value={et}>{et}</option>
+              <option key={et} value={et}>
+                {et}
+              </option>
             ))}
           </select>
         </div>
 
         <div>
           <label className="text-xs">Search</label>
-          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="job id or entity id" className="ml-2 border px-2 py-1" />
+          <input
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder="job id or entity id"
+            className="ml-2 border px-2 py-1"
+          />
         </div>
 
         <div>
           <label className="text-xs">Limit</label>
-          <select value={limit} onChange={(e) => setLimit(Number(e.target.value))} className="ml-2 border px-2 py-1">
+          <select
+            value={limit}
+            onChange={(e) => setLimit(Number(e.target.value))}
+            className="ml-2 border px-2 py-1"
+          >
             <option value={10}>10</option>
             <option value={25}>25</option>
             <option value={50}>50</option>
@@ -112,7 +139,9 @@ export default function JobsIndexPage() {
         </div>
 
         <div>
-          <button className="px-3 py-1 bg-blue-600 text-white rounded" onClick={applyFilters}>Apply</button>
+          <button className="px-3 py-1 bg-blue-600 text-white rounded" onClick={applyFilters}>
+            Apply
+          </button>
         </div>
       </div>
 
@@ -144,12 +173,20 @@ export default function JobsIndexPage() {
                   </Link>
                 </td>
                 <td className="px-3 py-2 border">{job.jobType}</td>
-                <td className="px-3 py-2 border">{job.entityType}{job.entityName ? `: ${job.entityName}` : ''}</td>
+                <td className="px-3 py-2 border">
+                  {job.entityType}
+                  {job.entityName ? `: ${job.entityName}` : ''}
+                </td>
                 <td className="px-3 py-2 border">{job.status}</td>
                 <td className="px-3 py-2 border">{new Date(job.createdAt).toLocaleString()}</td>
                 <td className="px-3 py-2 border">
                   <div className="flex items-center gap-2">
-                    <Link href={`/admin/content-engine/jobs/${job.id}`} className="text-sm text-blue-600">View</Link>
+                    <Link
+                      href={`/admin/content-engine/jobs/${job.id}`}
+                      className="text-sm text-blue-600"
+                    >
+                      View
+                    </Link>
                     <JobActions jobId={job.id} status={job.status} onDone={() => mutate()} />
                   </div>
                 </td>
@@ -160,10 +197,18 @@ export default function JobsIndexPage() {
       </div>
 
       <div className="mt-4 flex gap-2">
-        <button className="px-3 py-1 border rounded" onClick={gotoPrev} disabled={history.length === 0}>
+        <button
+          className="px-3 py-1 border rounded"
+          onClick={gotoPrev}
+          disabled={history.length === 0}
+        >
           Previous
         </button>
-        <button className="px-3 py-1 bg-blue-600 text-white rounded" onClick={gotoNext} disabled={!data?.nextCursor}>
+        <button
+          className="px-3 py-1 bg-blue-600 text-white rounded"
+          onClick={gotoNext}
+          disabled={!data?.nextCursor}
+        >
           Next
         </button>
       </div>

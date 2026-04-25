@@ -1,4 +1,3 @@
-
 <!--
 FILE OBJECTIVE:
 - Student actor approach document — requirements and acceptance criteria for student-facing features (MVP).
@@ -20,7 +19,6 @@ AI HOME TUTOR PLATFORM
 Student Actor
 Approach Document — Full Lifecycle Feature Specification
 
-
 Actor
 Document Version
 Scope
@@ -30,15 +28,13 @@ Student
 MVP Phase 1 — ~1K concurrent
 Node.js + TS + Prisma + Neon + React
 
-
 CONFIDENTIAL — FOR INTERNAL REVIEW ONLY
 
 1. Overview
-The student is the primary user and core value recipient of the platform. Every design decision is optimised for three outcomes: measurable learning improvement, sustained daily engagement, and board exam performance. The student interacts exclusively through the React PWA on mobile or desktop.
+   The student is the primary user and core value recipient of the platform. Every design decision is optimised for three outcomes: measurable learning improvement, sustained daily engagement, and board exam performance. The student interacts exclusively through the React PWA on mobile or desktop.
 
 NORTH STAR
 Weekly Active Learning Sessions per Paid Student > 5. Every feature is evaluated against this metric before building.
-
 
 1.1 Student Personas — MVP Scope
 Persona
@@ -57,7 +53,6 @@ Self-Study Student
 6–8
 State Board
 No study structure. Skips chapters. Falls behind silently.
-
 
 1.2 Student Journey Stages
 Stage
@@ -82,7 +77,6 @@ Accessibility
 Voice Mode, Camera Input (OCR), Offline Mode
 Phase 2
 
-
 ## Phase 2 — Referral & Rewards (Deferred)
 
 The backend billing and redemption logic for referrals is implemented in Phase 1 (see implementation summary in repo). The following items are intentionally deferred to Phase 2 (feature-flagged) to prioritise core learning flows and minimise launch scope:
@@ -96,11 +90,10 @@ The backend billing and redemption logic for referrals is implemented in Phase 1
 
 These items will be gated behind a feature flag and scheduled in Phase 2 once the core referral billing loop is validated in production.
 
-
 2. Onboarding & Personalisation
-F-STU-001
-Registration & Account Setup
-MVP
+   F-STU-001
+   Registration & Account Setup
+   MVP
 
 Student creates an account with academic profile. Parent linkage enforced for students under 13.
 AC#
@@ -130,7 +123,6 @@ SHOULD
 AC-08
 On successful registration: welcome email sent, onboarding checklist shown with 3 steps: Complete profile → Take diagnostic → Start first session.
 SHOULD
-
 
 F-STU-002
 Diagnostic Assessment
@@ -168,7 +160,6 @@ AC-09
 Diagnostic results are immediately used to bootstrap the student's knowledge graph (StudentConceptState records created for all concepts).
 MUST
 
-
 F-STU-003
 Learning Path Generation
 MVP
@@ -202,7 +193,6 @@ AC-08
 "Today's Plan" widget on dashboard always reflects the current plan's recommendation for today.
 MUST
 
-
 F-STU-004
 Language & Learning Style Preference
 MVP
@@ -233,12 +223,10 @@ AC-07
 Code-switched input (Hinglish, Tanglish) is accepted by the AI — not penalised or corrected.
 MUST
 
-
-
 3. Core Learning — Session Flow
-F-STU-010
-Session Initiation
-MVP
+   F-STU-010
+   Session Initiation
+   MVP
 
 Student starts a learning session — by plan, by chapter, or via AI recommendation.
 AC#
@@ -262,7 +250,6 @@ MUST
 AC-06
 Session auto-saves state every 60 seconds. No progress is lost on network drop or app close.
 MUST
-
 
 F-STU-011
 AI Teach Mode — Pedagogical Flow
@@ -303,7 +290,6 @@ AC-10
 Dialogue tone calibrated by grade: Grade 6–8 → encouraging elder sibling. Grade 9–10 → peer collaborator. Grade 11–12 → focused mentor.
 SHOULD
 
-
 F-STU-012
 3-Tier Hint System
 MVP
@@ -334,7 +320,6 @@ AC-07
 Hint usage tracked per concept in knowledge graph. High hint dependency on a concept triggers a "needs consolidation" flag and additional practice allocation.
 SHOULD
 
-
 F-STU-013
 Misconception Detection & Correction
 MVP
@@ -361,7 +346,6 @@ SHOULD
 AC-06
 MVP seed: minimum 20 misconceptions per subject, hand-crafted by subject experts.
 MUST
-
 
 F-STU-014
 Virtual Whiteboard Mode
@@ -390,7 +374,6 @@ AC-06
 Whiteboard state saved as part of session artifact. Student can revisit whiteboard from session replay.
 SHOULD
 
-
 F-STU-015
 Session Completion & Summary
 MVP
@@ -418,12 +401,10 @@ AC-06
 Session summary shareable to parent via WhatsApp (Phase 2) or copy-to-clipboard (MVP).
 SHOULD
 
-
-
 4. Assessment Engine
-F-STU-020
-Chapter Practice Test
-MVP
+   F-STU-020
+   Chapter Practice Test
+   MVP
 
 AI-generated unique tests per chapter. Every attempt uses a different question set.
 AC#
@@ -454,19 +435,17 @@ AC-08
 Student can flag any question as "incorrect or ambiguous." Flagged question quarantined after 3 student flags pending admin review.
 SHOULD
 
-
 ### Phase 2 — Chapter Trend UX & History
 
 - Rationale: make score history more discoverable on the chapter detail and provide full, paginated history for review and analytics.
 - Tasks:
-	- Add inline mini-sparkline + last-score badge on each chapter card (compact, mobile-first). (A)
-	- Implement a paginated history API endpoint and a dedicated history page for deep review. (B)
-	- Make the detail view adapt to a bottom-sheet on narrow viewports (mobile) while remaining a centered modal on larger screens. (C)
+  - Add inline mini-sparkline + last-score badge on each chapter card (compact, mobile-first). (A)
+  - Implement a paginated history API endpoint and a dedicated history page for deep review. (B)
+  - Make the detail view adapt to a bottom-sheet on narrow viewports (mobile) while remaining a centered modal on larger screens. (C)
 - Acceptance criteria:
-	- Mini-sparkline displays recent trend and last-score on the chapter card without blocking layout.
-	- "View history" links to a paginated history page that returns `data`, `totalCount`, `limit`, `offset`.
-	- Modal adapts to bottom-sheet on small screens (rounded top, drag-to-dismiss optional) and remains accessible (focus trap, ESC closes, scroll lock).
-
+  - Mini-sparkline displays recent trend and last-score on the chapter card without blocking layout.
+  - "View history" links to a paginated history page that returns `data`, `totalCount`, `limit`, `offset`.
+  - Modal adapts to bottom-sheet on small screens (rounded top, drag-to-dismiss optional) and remains accessible (focus trap, ESC closes, scroll lock).
 
 F-STU-021
 Full Syllabus Mock Exam
@@ -498,7 +477,6 @@ AC-07
 Mock exam available for offline download as PDF (questions only, no answers). For offline paper practice.
 SHOULD
 
-
 F-STU-022
 Spaced Repetition & Revision Scheduling
 MVP
@@ -529,7 +507,6 @@ AC-07
 Pre-exam mode activates automatically 14 days before exam date. Retention threshold raised to 92% (more aggressive scheduling). Student notified of mode change.
 SHOULD
 
-
 F-STU-023
 Exam Readiness Score
 MVP
@@ -554,12 +531,10 @@ AC-05
 If readiness score drops > 10 points in a week (due to forgetting or missed sessions): student notification triggered. Parent notification also triggered (Phase 2).
 SHOULD
 
-
-
 5. Engagement & Retention
-F-STU-030
-Daily Learning Streak
-MVP
+   F-STU-030
+   Daily Learning Streak
+   MVP
 
 Consecutive daily activity tracking with streak protection mechanics.
 AC#
@@ -583,7 +558,6 @@ SHOULD
 AC-06
 Streak milestones unlock cosmetic rewards: avatar items, profile background themes. No academic impact.
 SHOULD
-
 
 F-STU-031
 XP, Levels & Badges
@@ -612,7 +586,6 @@ AC-06
 Level-up is a full-screen celebration animation — cannot be suppressed. It is an earned moment.
 MUST
 
-
 F-STU-032
 Student Dashboard
 MVP
@@ -640,7 +613,6 @@ AC-06
 Dark mode support. Font size adjustable (small / medium / large).
 SHOULD
 
-
 F-STU-033
 Progress Reports
 MVP
@@ -665,12 +637,10 @@ AC-05
 Progress reports accessible on free tier. Progress visibility is never paywalled.
 MUST
 
-
-
 6. Subscription & Payments
-F-STU-040
-Freemium Access Control
-MVP
+   F-STU-040
+   Freemium Access Control
+   MVP
 
 Free tier with meaningful limits. Quality never degrades — only quantity is capped.
 AC#
@@ -691,7 +661,6 @@ MUST
 AC-05
 Free tier resets on the 1st of each calendar month. Reset notification sent 3 days before: "Your free sessions reset in 3 days."
 SHOULD
-
 
 F-STU-041
 Subscription Purchase Flow
@@ -739,7 +708,6 @@ The following enhancements are planned for Phase 2 to expand and harden the Fami
 
 Each Phase 2 item must include acceptance tests (happy, edge, error paths), UI mocks, and an owner assigned in the backlog.
 
-
 F-STU-042
 Referral Programme
 MVP
@@ -764,12 +732,9 @@ AC-05
 Fraud detection: same device fingerprint or same IP referrals flagged and voided. Student notified if reward is voided.
 MUST
 
-
-
 7. Phase 2 Features (Scoped, Not Built at MVP)
-SCOPE NOTE
-The following features are fully designed and acceptance-criteria-ready but explicitly excluded from MVP build scope. They are documented here to ensure MVP architecture does not block their addition.
-
+   SCOPE NOTE
+   The following features are fully designed and acceptance-criteria-ready but explicitly excluded from MVP build scope. They are documented here to ensure MVP architecture does not block their addition.
 
 Feature
 Code
@@ -799,82 +764,81 @@ Accessibility Mode
 F-STU-P2-008
 ARIA compliance, dyslexia font, extended time mode. Important but not blocking initial launch.
 
-
 Additional Phase 2 — Freemium Observability & Tests
 
 - Feature: Freemium job observability
-	Code: F-STU-P2-009
-	Why Deferred: Requires metrics & dashboard work (Prometheus / StatsD + Grafana) and alerting rules. Not required for MVP delivery of freemium UX but important for operational reliability at scale.
-	Acceptance Criteria:
-	- Emit per-run metrics from `worker/jobs/freemiumResetNotifications`:
-		- `freemium.reset_notifications.eligible` (count of eligible students)
-		- `freemium.reset_notifications.sent` (count of notifications sent)
-		- `freemium.reset_notifications.failures` (count of failed sends)
-	- Dashboards display 7d/30d trends and a firing alert when failures rate > 5% over 1h.
-	- Unit tests exercise metric emission using a metrics mock.
+  Code: F-STU-P2-009
+  Why Deferred: Requires metrics & dashboard work (Prometheus / StatsD + Grafana) and alerting rules. Not required for MVP delivery of freemium UX but important for operational reliability at scale.
+  Acceptance Criteria:
+  - Emit per-run metrics from `worker/jobs/freemiumResetNotifications`:
+    - `freemium.reset_notifications.eligible` (count of eligible students)
+    - `freemium.reset_notifications.sent` (count of notifications sent)
+    - `freemium.reset_notifications.failures` (count of failed sends)
+  - Dashboards display 7d/30d trends and a firing alert when failures rate > 5% over 1h.
+  - Unit tests exercise metric emission using a metrics mock.
 
 - Feature: Freemium integration test (end-to-end)
-	Code: F-STU-P2-010
-	Why Deferred: Requires test harness seeding and controlled push send mocks. Valuable for regression coverage but not blocking the initial job implementation.
-	Acceptance Criteria:
-	- Integration test seeds `FreeTierUsage` rows for a small set of students with `sessionsUsed > 0` and `subscriptionStatus='free'`.
-	- Run job in test harness and assert that `sendPushSafe` was called expected number of times and DB unchanged (idempotent).
-	- Test included under `tests/integration/worker/` and runnable in CI with a test DB.
+  Code: F-STU-P2-010
+  Why Deferred: Requires test harness seeding and controlled push send mocks. Valuable for regression coverage but not blocking the initial job implementation.
+  Acceptance Criteria:
+  - Integration test seeds `FreeTierUsage` rows for a small set of students with `sessionsUsed > 0` and `subscriptionStatus='free'`.
+  - Run job in test harness and assert that `sendPushSafe` was called expected number of times and DB unchanged (idempotent).
+  - Test included under `tests/integration/worker/` and runnable in CI with a test DB.
 
 - Feature: Scheduler smoke test (CI dry-run)
-	Code: F-STU-P2-011
-	Why Deferred: Running the full scheduler in CI can be noisy; a lightweight smoke test that imports `worker/scheduler` and runs `runFreemiumResetNotifications()` in dry-run mode validates wiring.
-	Acceptance Criteria:
-	- A CI-only test imports the scheduler or job module and invokes the freemium job with push sending mocked.
-	- Test verifies no uncaught exceptions and that the job returns a valid `FreemiumResetResult` object.
-	- Marked as `ciOnly` and excluded from slower integration gates until infra available.
-
-
+  Code: F-STU-P2-011
+  Why Deferred: Running the full scheduler in CI can be noisy; a lightweight smoke test that imports `worker/scheduler` and runs `runFreemiumResetNotifications()` in dry-run mode validates wiring.
+  Acceptance Criteria:
+  - A CI-only test imports the scheduler or job module and invokes the freemium job with push sending mocked.
+  - Test verifies no uncaught exceptions and that the job returns a valid `FreemiumResetResult` object.
+  - Marked as `ciOnly` and excluded from slower integration gates until infra available.
 
 8. Non-Functional Requirements
-Requirement
-Target
-Notes
-Session load time
-< 3 seconds on 4G
-First AI response within 5 seconds of session start
-AI response latency
-< 8 seconds (text doubt)
-SSE streaming: first token within 2 seconds
-Dashboard load
-< 2 seconds
-Including personalised data from Neon
-Mobile-first
-Works on Android 8+, 2 GB RAM device
-PWA, not native app at MVP
-Availability
-99.5% uptime target
-Excludes Neon scheduled maintenance windows
-Data retention
-Session turns: 90 days hot, archived to R2 after
-India DPDP Act compliance
-Session auto-save
-Every 60 seconds
-Redis session state. Zero progress loss on network drop.
-Concurrent sessions
-1,000 target at MVP
-PM2 cluster x2, Redis-backed session state
-
+   Requirement
+   Target
+   Notes
+   Session load time
+   < 3 seconds on 4G
+   First AI response within 5 seconds of session start
+   AI response latency
+   < 8 seconds (text doubt)
+   SSE streaming: first token within 2 seconds
+   Dashboard load
+   < 2 seconds
+   Including personalised data from Neon
+   Mobile-first
+   Works on Android 8+, 2 GB RAM device
+   PWA, not native app at MVP
+   Availability
+   99.5% uptime target
+   Excludes Neon scheduled maintenance windows
+   Data retention
+   Session turns: 90 days hot, archived to R2 after
+   India DPDP Act compliance
+   Session auto-save
+   Every 60 seconds
+   Redis session state. Zero progress loss on network drop.
+   Concurrent sessions
+   1,000 target at MVP
+   PM2 cluster x2, Redis-backed session state
 
 9. Production Run & Deployment
 
 Overview
+
 - The application runs as a Node.js production deployment managed by PM2. The web frontend (Next.js) and backend API are served from the compiled `dist/` output; background workers run from `dist/worker`.
 
 Key constraints & entry points
+
 - Node version: >= 20 (use the system Node or a version manager). Ensure `npm ci --include=dev` is run during CI to produce a reproducible install.
 - Build outputs:
-	- Web/server: `dist/server.js` (Next.js compiled server artifacts / server-side helpers).
-	- Worker entry: `dist/worker/entry.js` (workers compiled with `tsconfig.workers.json`).
+  - Web/server: `dist/server.js` (Next.js compiled server artifacts / server-side helpers).
+  - Worker entry: `dist/worker/entry.js` (workers compiled with `tsconfig.workers.json`).
 - PM2 processes: use `ecosystem.config.cjs` to declare processes. PM2 must run compiled JS from `dist/` only.
 - Environment injection: production environment variables MUST be provided via server env files or a secrets manager. Do NOT hard-code or use `dotenv` at runtime in production code; rely on PM2 `env_file` (e.g. `.env.production`) or native orchestrator secrets.
 
 Canonical deploy checklist (operator)
+
 1. Pull latest tag/commit on the deploy host.
 2. Ensure a DB snapshot is taken before running migrations (recommended): create a SQL dump or Neon restore point.
 3. Install dependencies and build:
@@ -901,6 +865,7 @@ pm2 logs --lines 200
 ```
 
 Operational notes
+
 - Verification: run `node scripts/verify-dist.cjs` and confirm there are no forbidden runtime dependencies in `dist/` (e.g., `dotenv`, `ts-node`, `tsconfig-paths`). The deployment pipeline should fail on any violation.
 - Workers: build workers with `tsconfig.workers.json` and start via PM2 entry `dist/worker/entry.js`. Workers must be idempotent and safe to restart.
 - Timeouts & fallbacks: All external calls (OpenAI, Redis, DB) must enforce timeouts and retries with safe fallbacks (see developer guardrails in `/docs/COPILOT_GUARDRAILS.md`).
@@ -909,11 +874,13 @@ Operational notes
 - Health checks: expose a simple `/health` or `/api/health` endpoint returning 200; alert if the route fails.
 
 Rollback & emergency
+
 - Before migrations, snapshot DB and note the previous release's commit/tag.
 - If a migration is irreversible, restore DB snapshot then redeploy previous artifact.
 - Use graceful PM2 reloads when possible to drain requests: `pm2 reload ecosystem.config.cjs --only web`.
 
 Security & compliance
+
 - Do not commit `.env.production` or any secrets. Maintain an allowlist of deploy hosts with SSH key access.
 - Verify third-party services and DSP compliance for student data (India DPDP). Retention policy: session turns 90 days hot, archived to R2.
 
@@ -930,26 +897,19 @@ grep -R "tsconfig-paths" dist || echo OK
 
 These steps describe the intended production run model and the operational checks required before release. Add infra-specific automation (CI/CD) to codify these steps in your pipeline.
 
-
 ---
 
 ### Phase 2 Backlog — Post-release Operational & Content Tasks
 
 - Rationale: operational safety and content coverage tasks that must be executed post-launch to ensure mock availability and auditable content generation.
 - Key items (post-release):
-	- Admin-triggered seeding job: implement an admin-only API to enqueue a background `seed-mocks` job (dry-run and real modes) to create missing `MockExam` rows per subject/grade/board.
-	- Worker handler & queue: background worker (BullMQ) to run `ensureMinimumMocks({ minPer })`, support LLM fallbacks safely, and persist detailed run results and errors.
-	- Audit logging & ExecutionJob: every seed run must create an `AuditLog`/`ExecutionJob` entry with operator id, parameters, dryRun flag, and a persisted JSON summary for post-run review.
-	- Admin UI controls: Dry-run preview, explicit backup confirmation, two-step “Run” with typed acknowledgement, and run history view with links to persisted summaries.
-	- DB safety / preflight: require an operator DB snapshot / restore point before any non-dry-run run; document canonical operator commands for dev and prod.
-	- Tests & CI: unit + integration tests for dry-run behavior, worker handler, audit records, and idempotency; add CI gating for these tests.
-	- Post-seed verification: automated validation job that samples counts per subject/grade/board and alerts if `minPer` not met or question bank shortages occur.
-	- Monitoring & retention: store run summaries (R2/S3) with retention policy, expose run metrics to operator dashboard, and surface errors to Sentry.
+  - Admin-triggered seeding job: implement an admin-only API to enqueue a background `seed-mocks` job (dry-run and real modes) to create missing `MockExam` rows per subject/grade/board.
+  - Worker handler & queue: background worker (BullMQ) to run `ensureMinimumMocks({ minPer })`, support LLM fallbacks safely, and persist detailed run results and errors.
+  - Audit logging & ExecutionJob: every seed run must create an `AuditLog`/`ExecutionJob` entry with operator id, parameters, dryRun flag, and a persisted JSON summary for post-run review.
+  - Admin UI controls: Dry-run preview, explicit backup confirmation, two-step “Run” with typed acknowledgement, and run history view with links to persisted summaries.
+  - DB safety / preflight: require an operator DB snapshot / restore point before any non-dry-run run; document canonical operator commands for dev and prod.
+  - Tests & CI: unit + integration tests for dry-run behavior, worker handler, audit records, and idempotency; add CI gating for these tests.
+  - Post-seed verification: automated validation job that samples counts per subject/grade/board and alerts if `minPer` not met or question bank shortages occur.
+  - Monitoring & retention: store run summaries (R2/S3) with retention policy, expose run metrics to operator dashboard, and surface errors to Sentry.
 
-Acceptance criteria:
-	- Admin API supports `dryRun=true` returning a concise preview and `dryRun=false` to enqueue an auditable background job.
-	- Every real run requires explicit backup confirmation in the UI and a persisted `AuditLog` row linking to stored summary JSON.
-	- Worker runs are idempotent and safe to retry; failures are logged and surfaced to operators.
-	- CI includes tests covering dry-run, enqueueing, worker execution (mocked), and audit persistence.
-
-
+Acceptance criteria: - Admin API supports `dryRun=true` returning a concise preview and `dryRun=false` to enqueue an auditable background job. - Every real run requires explicit backup confirmation in the UI and a persisted `AuditLog` row linking to stored summary JSON. - Worker runs are idempotent and safe to retry; failures are logged and surfaced to operators. - CI includes tests covering dry-run, enqueueing, worker execution (mocked), and audit persistence.

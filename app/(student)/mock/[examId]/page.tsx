@@ -1,4 +1,4 @@
-"use client";
+'use client';
 
 /**
  * /mock/[examId] -- Mock Exam Runner Page -- F-STU-021
@@ -81,7 +81,10 @@ export default function MockExamPage() {
               <div className="h-4 w-3/4 rounded bg-gray-200 dark:bg-slate-600 animate-pulse mb-3" />
               <div className="grid grid-cols-2 gap-2">
                 {[1, 2, 3, 4].map((j) => (
-                  <div key={j} className="h-11 rounded-lg bg-gray-100 dark:bg-slate-700 animate-pulse" />
+                  <div
+                    key={j}
+                    className="h-11 rounded-lg bg-gray-100 dark:bg-slate-700 animate-pulse"
+                  />
                 ))}
               </div>
             </div>

@@ -19,14 +19,21 @@ const { prisma } = require('../lib/prisma');
 const path = require('path');
 const { spawnSync } = require('child_process');
 
-const BASE_URL = (process.env.BASE_URL || process.env.NEXTAUTH_URL || 'http://localhost:3000').replace(/\/$/, '');
+const BASE_URL = (
+  process.env.BASE_URL ||
+  process.env.NEXTAUTH_URL ||
+  'http://localhost:3000'
+).replace(/\/$/, '');
 const NEXTAUTH_SECRET = process.env.NEXTAUTH_SECRET;
 const REQUESTS = 100;
 
 let http500 = 0;
 let requestErrors = [];
 let unhandledRejections = 0;
-process.on('unhandledRejection', (r) => { unhandledRejections++; console.error('unhandledRejection:', r); });
+process.on('unhandledRejection', (r) => {
+  unhandledRejections++;
+  console.error('unhandledRejection:', r);
+});
 
 // Install Prisma middleware to inject delay and occasional errors
 prisma.$use(async (params, next) => {
@@ -42,7 +49,12 @@ prisma.$use(async (params, next) => {
 // fetch helper
 let _fetch = global.fetch;
 if (!_fetch) {
-  try { _fetch = require('node-fetch'); } catch (e) { console.error('fetch not available and node-fetch not installed'); process.exit(1); }
+  try {
+    _fetch = require('node-fetch');
+  } catch (e) {
+    console.error('fetch not available and node-fetch not installed');
+    process.exit(1);
+  }
 }
 
 async function getEncoder() {
@@ -54,15 +66,33 @@ async function createSessionCookie(userId, email) {
   if (!NEXTAUTH_SECRET) throw new Error('NEXTAUTH_SECRET required');
   const encode = await getEncoder();
   const now = Math.floor(Date.now() / 1000);
-  const token = await encode({ token: { sub: userId, id: userId, email, name: 'FailTest', role: 'user', iat: now, exp: now + 3600, jti: `fail-${userId}-${now}` }, secret: NEXTAUTH_SECRET, maxAge: 3600 });
-  const cookieName = BASE_URL.startsWith('https') ? '__Secure-next-auth.session-token' : 'next-auth.session-token';
+  const token = await encode({
+    token: {
+      sub: userId,
+      id: userId,
+      email,
+      name: 'FailTest',
+      role: 'user',
+      iat: now,
+      exp: now + 3600,
+      jti: `fail-${userId}-${now}`,
+    },
+    secret: NEXTAUTH_SECRET,
+    maxAge: 3600,
+  });
+  const cookieName = BASE_URL.startsWith('https')
+    ? '__Secure-next-auth.session-token'
+    : 'next-auth.session-token';
   return `${cookieName}=${token}`;
 }
 
 async function apiGet(path, cookie) {
   const url = `${BASE_URL}${path}`;
   try {
-    const res = await _fetch(url, { method: 'GET', headers: { Cookie: cookie, 'Content-Type': 'application/json' } });
+    const res = await _fetch(url, {
+      method: 'GET',
+      headers: { Cookie: cookie, 'Content-Type': 'application/json' },
+    });
     const body = await res.text().catch(() => null);
     if (res.status >= 500) http500++;
     return { status: res.status, body };
@@ -80,7 +110,9 @@ async function snapshotCounts() {
 
 async function findDuplicateSTM() {
   try {
-    const rows = await prisma.$queryRawUnsafe(`SELECT "studentId", "topicId", COUNT(*) as cnt FROM "StudentTopicMastery" GROUP BY "studentId","topicId" HAVING COUNT(*) > 1`);
+    const rows = await prisma.$queryRawUnsafe(
+      `SELECT "studentId", "topicId", COUNT(*) as cnt FROM "StudentTopicMastery" GROUP BY "studentId","topicId" HAVING COUNT(*) > 1`
+    );
     return rows;
   } catch (e) {
     return [{ error: e.message || String(e) }];
@@ -89,7 +121,10 @@ async function findDuplicateSTM() {
 
 async function findBadSessions() {
   try {
-    const rows = await prisma.learningSession.findMany({ where: { endedAt: null, isCompleted: true }, take: 20 });
+    const rows = await prisma.learningSession.findMany({
+      where: { endedAt: null, isCompleted: true },
+      take: 20,
+    });
     return rows;
   } catch (e) {
     return [{ error: e.message || String(e) }];
@@ -101,7 +136,11 @@ async function findBadSessions() {
   try {
     // create a test user
     const testEmail = `failure-inject-${Date.now()}@example.com`;
-    const user = await prisma.user.upsert({ where: { email: testEmail }, update: {}, create: { email: testEmail, language: 'en' } });
+    const user = await prisma.user.upsert({
+      where: { email: testEmail },
+      update: {},
+      create: { email: testEmail, language: 'en' },
+    });
     const cookie = await createSessionCookie(user.id, testEmail);
 
     const before = await snapshotCounts();
@@ -136,11 +175,17 @@ async function findBadSessions() {
       failed = true;
     }
     if (Array.isArray(dup) && dup.length > 0) {
-      console.error('Duplicate StudentTopicMastery rows found:', JSON.stringify(dup.slice(0,5), null, 2));
+      console.error(
+        'Duplicate StudentTopicMastery rows found:',
+        JSON.stringify(dup.slice(0, 5), null, 2)
+      );
       failed = true;
     }
     if (Array.isArray(badSessions) && badSessions.length > 0) {
-      console.error('Bad LearningSession rows found (endedAt=null && isCompleted=true):', JSON.stringify(badSessions.slice(0,5), null, 2));
+      console.error(
+        'Bad LearningSession rows found (endedAt=null && isCompleted=true):',
+        JSON.stringify(badSessions.slice(0, 5), null, 2)
+      );
       failed = true;
     }
 
@@ -155,6 +200,8 @@ async function findBadSessions() {
     console.error('Fatal error:', e && e.stack ? e.stack : e);
     process.exit(1);
   } finally {
-    try { await prisma.$disconnect(); } catch (_) {}
+    try {
+      await prisma.$disconnect();
+    } catch (_) {}
   }
 })();

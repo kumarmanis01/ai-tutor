@@ -41,11 +41,7 @@ export function CardSkeleton() {
 
 export function ListSkeleton({ count = 4 }: { count?: number }) {
   return (
-    <ul
-      className="w-full space-y-2"
-      role="status"
-      aria-label="Loading list"
-    >
+    <ul className="w-full space-y-2" role="status" aria-label="Loading list">
       {Array.from({ length: count }).map((_, i) => (
         <li key={i} className="flex items-center gap-3 p-3 rounded-lg">
           <SkeletonBlock className="h-10 w-10 rounded-full flex-shrink-0" />

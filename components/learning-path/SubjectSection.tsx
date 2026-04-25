@@ -67,14 +67,15 @@ export default function SubjectSection({
               <div
                 className="h-full rounded-full bg-[#534AB7] transition-all"
                 style={{
-                  width: totalTopics > 0
-                    ? `${Math.round((completedTopics / totalTopics) * 100)}%`
-                    : '0%',
+                  width:
+                    totalTopics > 0
+                      ? `${Math.round((completedTopics / totalTopics) * 100)}%`
+                      : '0%',
                 }}
               />
             </div>
             <svg
-              className={`w-4 h-4 text-gray-400 transition-transform ${open ? "rotate-180" : ""}`}
+              className={`w-4 h-4 text-gray-400 transition-transform ${open ? 'rotate-180' : ''}`}
               fill="none"
               viewBox="0 0 24 24"
               stroke="currentColor"
@@ -95,7 +96,10 @@ export default function SubjectSection({
       {open && (
         <div className="border-t border-gray-100">
           {chapters.map((chapter) => (
-            <div key={chapter.chapterId} className="px-5 py-3 border-b border-gray-50 last:border-0">
+            <div
+              key={chapter.chapterId}
+              className="px-5 py-3 border-b border-gray-50 last:border-0"
+            >
               <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">
                 {chapter.chapterName}
               </h3>

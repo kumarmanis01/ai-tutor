@@ -12,17 +12,16 @@ import useSWR from 'swr';
 
 export interface WeeklyActivity {
   activeDays: boolean[]; // 7 elements, index 0 = Monday
-  todayIndex: number;    // 0–6
+  todayIndex: number; // 0–6
 }
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
 export function useWeeklyActivity() {
-  const { data, error, isLoading } = useSWR<WeeklyActivity>(
-    '/api/home/weekly-activity',
-    fetcher,
-    { revalidateOnFocus: false, dedupingInterval: 60_000 },
-  );
+  const { data, error, isLoading } = useSWR<WeeklyActivity>('/api/home/weekly-activity', fetcher, {
+    revalidateOnFocus: false,
+    dedupingInterval: 60_000,
+  });
 
   return {
     activeDays: data?.activeDays ?? Array(7).fill(false),

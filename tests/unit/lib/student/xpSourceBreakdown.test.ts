@@ -13,17 +13,17 @@ const XP_SOURCE_LABELS: Record<string, string> = {
   badge: 'Badge earned',
   session_complete: 'Session completion',
   first_attempt: 'First-attempt bonus',
-}
+};
 
-type XPRow = { source: string; amount: number }
+type XPRow = { source: string; amount: number };
 
 /** Aggregate XP rows into a Record<source, totalAmount>. */
 function aggregateXPBySource(rows: XPRow[]): Record<string, number> {
-  const result: Record<string, number> = {}
+  const result: Record<string, number> = {};
   for (const row of rows) {
-    result[row.source] = (result[row.source] ?? 0) + row.amount
+    result[row.source] = (result[row.source] ?? 0) + row.amount;
   }
-  return result
+  return result;
 }
 
 describe('XP source breakdown', () => {
@@ -32,37 +32,44 @@ describe('XP source breakdown', () => {
       { source: 'session_correct', amount: 15 },
       { source: 'session_correct', amount: 10 },
       { source: 'streak_bonus', amount: 5 },
-    ]
-    const result = aggregateXPBySource(rows)
-    expect(result['session_correct']).toBe(25)
-    expect(result['streak_bonus']).toBe(5)
-  })
+    ];
+    const result = aggregateXPBySource(rows);
+    expect(result['session_correct']).toBe(25);
+    expect(result['streak_bonus']).toBe(5);
+  });
 
   it('should return empty object for empty rows', () => {
-    expect(aggregateXPBySource([])).toEqual({})
-  })
+    expect(aggregateXPBySource([])).toEqual({});
+  });
 
   it('should handle single-source input', () => {
-    const rows: XPRow[] = [{ source: 'revision_complete', amount: 20 }]
-    expect(aggregateXPBySource(rows)).toEqual({ revision_complete: 20 })
-  })
+    const rows: XPRow[] = [{ source: 'revision_complete', amount: 20 }];
+    expect(aggregateXPBySource(rows)).toEqual({ revision_complete: 20 });
+  });
 
   it('should have human-readable labels for all known sources', () => {
-    const knownSources = ['session_correct', 'streak_bonus', 'revision_complete', 'badge', 'session_complete', 'first_attempt']
+    const knownSources = [
+      'session_correct',
+      'streak_bonus',
+      'revision_complete',
+      'badge',
+      'session_complete',
+      'first_attempt',
+    ];
     for (const source of knownSources) {
-      expect(XP_SOURCE_LABELS[source]).toBeTruthy()
+      expect(XP_SOURCE_LABELS[source]).toBeTruthy();
     }
-  })
+  });
 
   it('should sort sources by amount descending', () => {
     const breakdown: Record<string, number> = {
       revision_complete: 10,
       session_correct: 50,
       streak_bonus: 25,
-    }
-    const sorted = Object.entries(breakdown).sort((a, b) => b[1] - a[1])
-    expect(sorted[0][0]).toBe('session_correct')
-    expect(sorted[1][0]).toBe('streak_bonus')
-    expect(sorted[2][0]).toBe('revision_complete')
-  })
-})
+    };
+    const sorted = Object.entries(breakdown).sort((a, b) => b[1] - a[1]);
+    expect(sorted[0][0]).toBe('session_correct');
+    expect(sorted[1][0]).toBe('streak_bonus');
+    expect(sorted[2][0]).toBe('revision_complete');
+  });
+});

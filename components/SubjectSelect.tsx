@@ -58,7 +58,7 @@ export default function SubjectSelect({
   disabled = false,
 }: SubjectSelectProps) {
   const { loading, helpers } = useAcademicHierarchy();
-  
+
   // Parse gradeNum to number if string
   const gradeNumParsed = typeof gradeNum === 'string' ? parseInt(gradeNum, 10) : gradeNum;
   const subjects = helpers.getSubjectsForGrade(boardSlug, gradeNumParsed);

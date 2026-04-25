@@ -43,7 +43,7 @@ export interface QuestionBank {
     skill?: CognitiveSkill;
     excludeIds?: string[];
   }): DiagnosticQuestion | null;
-  
+
   getQuestionsByTopic(params: {
     grade: number;
     subject: string;
@@ -95,20 +95,15 @@ export class DiagnosticEngine {
   private state: AdaptiveState;
   private questionBank: QuestionBank;
   private startTime: Date;
-  
-  constructor(
-    grade: number,
-    subject: string,
-    questionBank: QuestionBank,
-    board?: string
-  ) {
+
+  constructor(grade: number, subject: string, questionBank: QuestionBank, board?: string) {
     this.sessionId = uuidv4();
     this.grade = grade;
     this.subject = subject;
     this.config = getDiagnosticConfig(grade);
     this.questionBank = questionBank;
     this.startTime = new Date();
-    
+
     this.state = {
       currentDifficulty: this.config.startDifficulty,
       consecutiveCorrect: 0,
@@ -127,11 +122,11 @@ export class DiagnosticEngine {
       topicScores: {},
     };
   }
-  
+
   // ==========================================================================
   // PUBLIC METHODS
   // ==========================================================================
-  
+
   /**
    * Get the next question to ask.
    * Returns null if diagnostic should end.
@@ -141,23 +136,23 @@ export class DiagnosticEngine {
     if (this.shouldTerminate()) {
       return null;
     }
-    
+
     // Get question at current difficulty
-    const excludeIds = this.state.questionsAsked.map(q => q.id);
+    const excludeIds = this.state.questionsAsked.map((q) => q.id);
     const question = this.questionBank.getQuestion({
       grade: this.grade,
       subject: this.subject,
       difficulty: this.state.currentDifficulty,
       excludeIds,
     });
-    
+
     if (question) {
       this.state.questionsAsked.push(question);
     }
-    
+
     return question;
   }
-  
+
   /**
    * Process a student's response.
    */
@@ -166,13 +161,13 @@ export class DiagnosticEngine {
     shouldContinue: boolean;
     feedback?: string;
   } {
-    const question = this.state.questionsAsked.find(q => q.id === response.questionId);
+    const question = this.state.questionsAsked.find((q) => q.id === response.questionId);
     if (!question) {
       throw new Error(`Question ${response.questionId} not found in session`);
     }
-    
+
     this.state.responses.push(response);
-    
+
     // Handle skipped questions
     if (response.skipped) {
       this.state.consecutiveCorrect = 0;
@@ -183,10 +178,10 @@ export class DiagnosticEngine {
         feedback: this.getEncouragingFeedback(false, true),
       };
     }
-    
+
     // Check answer
     const isCorrect = this.checkAnswer(question, response);
-    
+
     // Update state
     this.state.totalAttempted++;
     if (isCorrect) {
@@ -197,23 +192,23 @@ export class DiagnosticEngine {
       this.state.consecutiveIncorrect++;
       this.state.consecutiveCorrect = 0;
     }
-    
+
     // Update skill and topic scores
     this.updateScores(question, isCorrect);
-    
+
     // Adapt difficulty
     this.adaptDifficulty(isCorrect, response.hintRequested);
-    
+
     // Update confidence
     this.updateConfidence();
-    
+
     return {
       isCorrect,
       shouldContinue: !this.shouldTerminate(),
       feedback: this.getEncouragingFeedback(isCorrect, false),
     };
   }
-  
+
   /**
    * Complete the diagnostic and get results.
    */
@@ -221,7 +216,7 @@ export class DiagnosticEngine {
     const session = this.getSession();
     return this.calculateOutput(session);
   }
-  
+
   /**
    * Get current session state.
    */
@@ -239,14 +234,14 @@ export class DiagnosticEngine {
       terminationReason: this.getTerminationReason(),
     };
   }
-  
+
   /**
    * Get framing text (NO test language!).
    */
   getFramingText(): string {
     return this.config.framingText;
   }
-  
+
   /**
    * Get current progress for UI.
    */
@@ -261,30 +256,34 @@ export class DiagnosticEngine {
       progressPercent: (this.state.responses.length / this.config.maxQuestions) * 100,
     };
   }
-  
+
   // ==========================================================================
   // PRIVATE METHODS
   // ==========================================================================
-  
+
   private checkAnswer(question: DiagnosticQuestion, response: DiagnosticResponse): boolean {
-    if (question.type === DiagnosticQuestionType.MCQ || 
-        question.type === DiagnosticQuestionType.TRUE_FALSE) {
-      const correctOption = question.options?.find(o => o.isCorrect);
+    if (
+      question.type === DiagnosticQuestionType.MCQ ||
+      question.type === DiagnosticQuestionType.TRUE_FALSE
+    ) {
+      const correctOption = question.options?.find((o) => o.isCorrect);
       return response.selectedOptionId === correctOption?.id;
     }
-    
-    if (question.type === DiagnosticQuestionType.FILL_BLANK ||
-        question.type === DiagnosticQuestionType.NUMERIC) {
+
+    if (
+      question.type === DiagnosticQuestionType.FILL_BLANK ||
+      question.type === DiagnosticQuestionType.NUMERIC
+    ) {
       const answer = response.textAnswer?.trim().toLowerCase();
       const correct = question.correctAnswer?.toLowerCase();
-      const acceptable = question.acceptableAnswers?.map(a => a.toLowerCase());
-      
+      const acceptable = question.acceptableAnswers?.map((a) => a.toLowerCase());
+
       return answer === correct || (acceptable?.includes(answer || '') ?? false);
     }
-    
+
     return false;
   }
-  
+
   private updateScores(question: DiagnosticQuestion, isCorrect: boolean): void {
     // Update skill scores
     const skill = question.skill;
@@ -292,7 +291,7 @@ export class DiagnosticEngine {
     if (isCorrect) {
       this.state.skillScores[skill].correct++;
     }
-    
+
     // Update topic scores
     const topic = question.topic;
     if (!this.state.topicScores[topic]) {
@@ -303,19 +302,22 @@ export class DiagnosticEngine {
       this.state.topicScores[topic].correct++;
     }
   }
-  
+
   private adaptDifficulty(isCorrect: boolean, hintUsed: boolean): void {
     // Increase difficulty if doing well
     if (this.state.consecutiveCorrect >= 2 && !hintUsed) {
       this.adjustDifficultyUp();
     }
-    
+
     // Decrease difficulty if struggling
-    if (this.state.consecutiveIncorrect >= 2 || (this.state.consecutiveIncorrect >= 1 && hintUsed)) {
+    if (
+      this.state.consecutiveIncorrect >= 2 ||
+      (this.state.consecutiveIncorrect >= 1 && hintUsed)
+    ) {
       this.adjustDifficultyDown();
     }
   }
-  
+
   private adjustDifficultyUp(): void {
     const order = [
       DiagnosticDifficulty.FOUNDATION,
@@ -324,13 +326,13 @@ export class DiagnosticEngine {
       DiagnosticDifficulty.ADVANCED,
       DiagnosticDifficulty.CHALLENGE,
     ];
-    
+
     const currentIndex = order.indexOf(this.state.currentDifficulty);
     if (currentIndex < order.length - 1) {
       this.state.currentDifficulty = order[currentIndex + 1];
     }
   }
-  
+
   private adjustDifficultyDown(): void {
     const order = [
       DiagnosticDifficulty.FOUNDATION,
@@ -339,25 +341,26 @@ export class DiagnosticEngine {
       DiagnosticDifficulty.ADVANCED,
       DiagnosticDifficulty.CHALLENGE,
     ];
-    
+
     const currentIndex = order.indexOf(this.state.currentDifficulty);
     if (currentIndex > 0) {
       this.state.currentDifficulty = order[currentIndex - 1];
     }
   }
-  
+
   private updateConfidence(): void {
     // Confidence increases when we can clearly categorize student level
     const accuracy = this.state.totalCorrect / Math.max(this.state.totalAttempted, 1);
     const questionsAnswered = this.state.totalAttempted;
-    
+
     // High accuracy with many questions = confident they're advanced
     // Low accuracy with many questions = confident they need basics
     // Mixed results = less confident
-    
+
     const extremeAccuracy = accuracy > 0.85 || accuracy < 0.35;
-    const consistentPerformance = this.state.consecutiveCorrect >= 3 || this.state.consecutiveIncorrect >= 3;
-    
+    const consistentPerformance =
+      this.state.consecutiveCorrect >= 3 || this.state.consecutiveIncorrect >= 3;
+
     if (questionsAnswered >= 3) {
       if (extremeAccuracy || consistentPerformance) {
         this.state.confidenceLevel = Math.min(this.state.confidenceLevel + 0.2, 1);
@@ -366,38 +369,42 @@ export class DiagnosticEngine {
       }
     }
   }
-  
+
   private shouldTerminate(): boolean {
     // Min questions not met
     if (this.state.totalAttempted < this.config.minQuestions) {
       return false;
     }
-    
+
     // Max questions reached
     if (this.state.totalAttempted >= this.config.maxQuestions) {
       return true;
     }
-    
+
     // High confidence in level
     if (this.state.confidenceLevel >= 0.85) {
       return true;
     }
-    
+
     return false;
   }
-  
+
   private shouldTerminateEarly(): boolean {
-    return this.state.totalAttempted < this.config.maxQuestions && 
-           this.state.confidenceLevel >= 0.85;
+    return (
+      this.state.totalAttempted < this.config.maxQuestions && this.state.confidenceLevel >= 0.85
+    );
   }
-  
+
   private getTerminationReason(): DiagnosticSession['terminationReason'] {
-    if (this.state.confidenceLevel >= 0.85 && this.state.totalAttempted < this.config.maxQuestions) {
+    if (
+      this.state.confidenceLevel >= 0.85 &&
+      this.state.totalAttempted < this.config.maxQuestions
+    ) {
       return 'CONFIDENCE_CLEAR';
     }
     return undefined;
   }
-  
+
   private getEncouragingFeedback(isCorrect: boolean, skipped: boolean): string {
     // Always encouraging, never critical
     if (skipped) {
@@ -408,17 +415,12 @@ export class DiagnosticEngine {
       ];
       return skipMessages[Math.floor(Math.random() * skipMessages.length)];
     }
-    
+
     if (isCorrect) {
-      const correctMessages = [
-        "Great job! 🌟",
-        "You got it! 👍",
-        "Nice work!",
-        "Exactly right!",
-      ];
+      const correctMessages = ['Great job! 🌟', 'You got it! 👍', 'Nice work!', 'Exactly right!'];
       return correctMessages[Math.floor(Math.random() * correctMessages.length)];
     }
-    
+
     const incorrectMessages = [
       "Good try! Let's keep going.",
       "That's okay, you're doing great!",
@@ -427,10 +429,10 @@ export class DiagnosticEngine {
     ];
     return incorrectMessages[Math.floor(Math.random() * incorrectMessages.length)];
   }
-  
+
   private calculateOutput(session: DiagnosticSession): DiagnosticOutput {
     const accuracy = this.state.totalCorrect / Math.max(this.state.totalAttempted, 1);
-    
+
     // Determine recommended difficulty
     let recommendedDifficulty: 'EASY' | 'MEDIUM' | 'HARD';
     if (accuracy >= 0.75 && this.state.currentDifficulty !== DiagnosticDifficulty.FOUNDATION) {
@@ -440,7 +442,7 @@ export class DiagnosticEngine {
     } else {
       recommendedDifficulty = 'EASY';
     }
-    
+
     // Calculate skill breakdown
     const skillBreakdown = {
       recall: this.calculateSkillScore(CognitiveSkill.RECALL),
@@ -448,33 +450,33 @@ export class DiagnosticEngine {
       application: this.calculateSkillScore(CognitiveSkill.APPLICATION),
       analysis: this.calculateSkillScore(CognitiveSkill.ANALYSIS),
     };
-    
+
     // Calculate topic scores
     const topicScores = Object.entries(this.state.topicScores).map(([topic, score]) => ({
       topic,
       score: score.total > 0 ? score.correct / score.total : 0,
       questionsAnswered: score.total,
     }));
-    
+
     // Identify gaps and strengths
     const knowledgeGaps = topicScores
-      .filter(t => t.score < 0.5 && t.questionsAnswered >= 1)
-      .map(t => t.topic);
-    
+      .filter((t) => t.score < 0.5 && t.questionsAnswered >= 1)
+      .map((t) => t.topic);
+
     const strengths = topicScores
-      .filter(t => t.score >= 0.75 && t.questionsAnswered >= 1)
-      .map(t => t.topic);
-    
+      .filter((t) => t.score >= 0.75 && t.questionsAnswered >= 1)
+      .map((t) => t.topic);
+
     // Generate encouraging message
     const studentMessage = this.generateStudentMessage(accuracy, strengths, knowledgeGaps);
-    
+
     // Calculate average time
     const totalTime = session.responses.reduce((sum, r) => sum + r.timeTakenSeconds, 0);
     const avgTime = totalTime / Math.max(session.responses.length, 1);
-    
+
     // Calculate hints used
-    const hintsUsed = session.responses.filter(r => r.hintRequested).length;
-    
+    const hintsUsed = session.responses.filter((r) => r.hintRequested).length;
+
     return {
       sessionId: this.sessionId,
       recommendedDifficulty,
@@ -496,18 +498,14 @@ export class DiagnosticEngine {
       },
     };
   }
-  
+
   private calculateSkillScore(skill: CognitiveSkill): number {
     const skillData = this.state.skillScores[skill];
     if (skillData.total === 0) return 0.5; // Default to medium if not tested
     return skillData.correct / skillData.total;
   }
-  
-  private generateStudentMessage(
-    accuracy: number,
-    strengths: string[],
-    gaps: string[]
-  ): string {
+
+  private generateStudentMessage(accuracy: number, strengths: string[], gaps: string[]): string {
     // Always encouraging, never discouraging!
     if (accuracy >= 0.75) {
       if (strengths.length > 0) {
@@ -515,11 +513,11 @@ export class DiagnosticEngine {
       }
       return "Excellent! You have a strong foundation. Let's explore some interesting challenges!";
     }
-    
+
     if (accuracy >= 0.5) {
       return "Good effort! You have a solid start. I'll help you strengthen a few areas as we learn together.";
     }
-    
+
     // Low accuracy - extra encouraging
     return "Thanks for trying! I now know exactly how to help you. We'll start with the basics and build up from there. You've got this! 💪";
   }

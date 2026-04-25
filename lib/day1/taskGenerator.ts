@@ -51,7 +51,7 @@ export interface Day1TaskOptions {
 
 /**
  * Calculate Day-1 effective difficulty
- * 
+ *
  * RULE: Difficulty MUST be at least 2 levels below grade
  * Example: Grade 5 student → Difficulty level 3 or lower
  */
@@ -122,7 +122,7 @@ function getExample(subject: Day1Subject, difficulty: number): Day1Example {
     const examples = MATH_EXAMPLES[difficulty] || MATH_EXAMPLES[1];
     return examples[0];
   }
-  
+
   // Fallback example
   return {
     problem: 'Simple example',
@@ -229,15 +229,17 @@ function getQuestions(subject: Day1Subject, difficulty: number, count: number): 
     const questions = MATH_QUESTIONS[difficulty] || MATH_QUESTIONS[1];
     return questions.slice(0, Math.min(count, DAY1_RULES.MAX_QUESTIONS));
   }
-  
+
   // Fallback questions
-  return [{
-    questionId: 'fallback-q1',
-    text: 'Simple question',
-    options: ['A', 'B', 'C', 'D'],
-    correctIndex: 0,
-    hint: 'Think simple',
-  }];
+  return [
+    {
+      questionId: 'fallback-q1',
+      text: 'Simple question',
+      options: ['A', 'B', 'C', 'D'],
+      correctIndex: 0,
+      hint: 'Think simple',
+    },
+  ];
 }
 
 // ============================================================================
@@ -246,7 +248,7 @@ function getQuestions(subject: Day1Subject, difficulty: number, count: number): 
 
 /**
  * Generate Day-1 task for student
- * 
+ *
  * Rules (FROZEN):
  * - Difficulty MUST be at least 2 levels below grade
  * - Task MUST be solvable in <15 minutes
@@ -255,21 +257,19 @@ function getQuestions(subject: Day1Subject, difficulty: number, count: number): 
  */
 export function generateDay1Task(options: Day1TaskOptions): Day1Task {
   const { studentName: _studentName, grade, subject, language } = options;
-  
+
   // Calculate difficulty (MUST be grade - 2 or lower)
   const difficulty = calculateDay1Difficulty(grade);
-  
+
   // Get example (shown before questions)
   const example = getExample(subject, difficulty);
-  
+
   // Get very easy questions (max 3)
   const questions = getQuestions(subject, difficulty, 2);
-  
+
   // Generate task title based on subject
-  const taskTitle = language === 'hi'
-    ? getTaskTitleHindi(subject)
-    : getTaskTitleEnglish(subject);
-  
+  const taskTitle = language === 'hi' ? getTaskTitleHindi(subject) : getTaskTitleEnglish(subject);
+
   return {
     taskId: `day1-${options.studentId}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
     title: taskTitle,
@@ -307,7 +307,7 @@ function getTaskTitleEnglish(subject: Day1Subject): string {
     case 'english':
       return 'One simple English reading and 2 small questions';
     default:
-      return 'Today\'s small task';
+      return "Today's small task";
   }
 }
 
@@ -317,7 +317,7 @@ function getTaskTitleEnglish(subject: Day1Subject): string {
 
 /**
  * Generate Day-1 parent message
- * 
+ *
  * Rules (FROZEN):
  * - Do not promise results
  * - Do not compare with others
@@ -328,10 +328,11 @@ export function generateDay1ParentMessage(
   childName: string,
   language: 'en' | 'hi'
 ): Day1ParentMessage {
-  const message = language === 'hi'
-    ? PARENT_MESSAGE_TEMPLATE_HI(childName)
-    : PARENT_MESSAGE_TEMPLATE_EN(childName);
-  
+  const message =
+    language === 'hi'
+      ? PARENT_MESSAGE_TEMPLATE_HI(childName)
+      : PARENT_MESSAGE_TEMPLATE_EN(childName);
+
   return {
     childName,
     message,
@@ -348,27 +349,36 @@ export function validateParentMessage(message: string): {
   violations: string[];
 } {
   const violations: string[] = [];
-  
+
   // Check for banned words/phrases
   const bannedPhrases = [
-    'topper', 'first rank', 'best', 'competition',
-    'other students', 'compare', 'performance', 'score',
-    'percentage', 'marks', '100%', 'perfect'
+    'topper',
+    'first rank',
+    'best',
+    'competition',
+    'other students',
+    'compare',
+    'performance',
+    'score',
+    'percentage',
+    'marks',
+    '100%',
+    'perfect',
   ];
-  
+
   const lowerMessage = message.toLowerCase();
-  bannedPhrases.forEach(phrase => {
+  bannedPhrases.forEach((phrase) => {
     if (lowerMessage.includes(phrase)) {
       violations.push(`Contains banned phrase: "${phrase}"`);
     }
   });
-  
+
   // Check word count (<60 words)
   const wordCount = message.split(/\s+/).length;
   if (wordCount > 60) {
     violations.push(`Message too long: ${wordCount} words (max 60)`);
   }
-  
+
   return {
     valid: violations.length === 0,
     violations,

@@ -43,7 +43,11 @@ export async function POST(req: Request) {
     logger.logAPI(req, res, { className: 'SaveChatsAPI', methodName: 'POST' }, start);
     return res;
   } catch (err) {
-    logger.error('SaveChats API error', { className: 'api.save-chats', methodName: 'POST', error: err });
+    logger.error('SaveChats API error', {
+      className: 'api.save-chats',
+      methodName: 'POST',
+      error: err,
+    });
     res = NextResponse.json({ error: formatErrorForResponse(err) }, { status: 500 });
     logger.logAPI(req, res, { className: 'SaveChatsAPI', methodName: 'POST' }, start);
     return res;

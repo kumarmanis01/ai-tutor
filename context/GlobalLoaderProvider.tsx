@@ -50,7 +50,9 @@ export function GlobalLoaderProvider({ children }: { children: React.ReactNode }
         <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-white/90 dark:bg-gray-900/90 backdrop-blur-sm loader-animate-in">
           <DotPulseLoader size="large" />
           {value.label && (
-            <p className="mt-4 text-sm font-medium text-gray-700 dark:text-gray-300">{value.label}</p>
+            <p className="mt-4 text-sm font-medium text-gray-700 dark:text-gray-300">
+              {value.label}
+            </p>
           )}
         </div>
       )}
@@ -60,7 +62,7 @@ export function GlobalLoaderProvider({ children }: { children: React.ReactNode }
 
 export function useGlobalLoader() {
   const ctx = useContext(GlobalLoaderContext);
-  
+
   // During SSG/SSR, context might be null - return safe defaults
   if (!ctx) {
     // Check if we're in a browser environment
@@ -75,6 +77,6 @@ export function useGlobalLoader() {
     }
     throw new Error('useGlobalLoader must be used within GlobalLoaderProvider');
   }
-  
+
   return ctx;
 }

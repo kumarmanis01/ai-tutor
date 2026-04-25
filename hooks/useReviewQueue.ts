@@ -25,7 +25,7 @@ export function useReviewQueue() {
   const { data, error, isLoading } = useSWR<{ topics: ReviewTopic[] }>(
     '/api/home/review-queue',
     fetcher,
-    { revalidateOnFocus: false, dedupingInterval: 60_000 },
+    { revalidateOnFocus: false, dedupingInterval: 60_000 }
   );
 
   return {

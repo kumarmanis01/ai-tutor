@@ -91,14 +91,23 @@ export async function POST(req: Request) {
 
   // Security gate -- verify signature before any DB write
   if (!verifySignature(orderId, paymentId, signature)) {
-    logger.error('Invalid Razorpay signature', { event: 'subscription.verify.bad_sig', context: { userId, orderId } });
+    logger.error('Invalid Razorpay signature', {
+      event: 'subscription.verify.bad_sig',
+      context: { userId, orderId },
+    });
     return NextResponse.json({ error: 'Payment verification failed' }, { status: 400 });
   }
 
   // Cross-check order belongs to this student
   const order = await prisma.paymentOrder.findUnique({
     where: { razorpayOrderId: orderId },
-    select: { studentId: true, status: true, planMonths: true, providerIdempotencyKey: true, amount: true },
+    select: {
+      studentId: true,
+      status: true,
+      planMonths: true,
+      providerIdempotencyKey: true,
+      amount: true,
+    },
   });
   if (!order || order.studentId !== userId) {
     return NextResponse.json({ error: 'Order not found' }, { status: 403 });
@@ -126,133 +135,178 @@ export async function POST(req: Request) {
           emiMonths = rzNotes?.emiMonths ? Number(rzNotes.emiMonths) : 0;
         }
       } catch (err) {
-        logger.warn('Could not fetch Razorpay order notes', { event: 'subscription.verify.fetch_notes', context: { userId, orderId }, err });
+        logger.warn('Could not fetch Razorpay order notes', {
+          event: 'subscription.verify.fetch_notes',
+          context: { userId, orderId },
+          err,
+        });
       }
 
-      _createdPayment = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
-        if (order.status !== 'paid') {
-          await tx.paymentOrder.update({
-            where: { razorpayOrderId: orderId },
-            data: { status: 'paid', paidAt: now },
+      _createdPayment = await prisma.$transaction(
+        async (tx: Prisma.TransactionClient) => {
+          if (order.status !== 'paid') {
+            await tx.paymentOrder.update({
+              where: { razorpayOrderId: orderId },
+              data: { status: 'paid', paidAt: now },
+            });
+          }
+
+          await tx.user.update({
+            where: { id: userId },
+            data: { subscriptionStatus: 'active', subscriptionExpiry: expiry },
           });
-        }
 
-        await tx.user.update({
-          where: { id: userId },
-          data: { subscriptionStatus: 'active', subscriptionExpiry: expiry },
-        });
+          await tx.freeTierUsage
+            .upsert({
+              where: { studentId: userId },
+              update: { periodStart: now, sessionsUsed: 0 },
+              create: { studentId: userId, periodStart: now, sessionsUsed: 0 },
+            })
+            .catch((err) => {
+              logger.warn('freeTierUsage.upsert failed', {
+                event: 'subscription.verify.upsert',
+                context: { userId },
+                error: String(err),
+              });
+            });
 
-        await tx.freeTierUsage
-          .upsert({
-            where: { studentId: userId },
-            update: { periodStart: now, sessionsUsed: 0 },
-            create: { studentId: userId, periodStart: now, sessionsUsed: 0 },
-          })
-          .catch((err) => { logger.warn('freeTierUsage.upsert failed', { event: 'subscription.verify.upsert', context: { userId }, error: String(err) }) });
+          // Create a Payment record to persist transaction metadata
+          const payment = await tx.payment.create({
+            data: {
+              userId,
+              amount: order.amount,
+              provider: 'razorpay',
+              providerIdempotencyKey: order.providerIdempotencyKey ?? undefined,
+              status: 'success',
+              transactionId: paymentId,
+              orderId: orderId,
+              plan: plan.label,
+              billingCycle: plan.perMonthDisplay,
+              meta: { planId, emiMonths },
+            },
+          });
 
-        // Create a Payment record to persist transaction metadata
-        const payment = await tx.payment.create({
-          data: {
+          // Audit event for subscription activation payment
+          await recordPaymentEvent(tx, {
+            paymentId: payment.id,
             userId,
-            amount: order.amount,
             provider: 'razorpay',
             providerIdempotencyKey: order.providerIdempotencyKey ?? undefined,
-            status: 'success',
             transactionId: paymentId,
-            orderId: orderId,
-            plan: plan.label,
-            billingCycle: plan.perMonthDisplay,
-            meta: { planId, emiMonths },
-          },
-        });
+            orderId,
+            eventType: 'payment.subscription_verified',
+            amount: order.amount,
+            status: 'success',
+            payload: { planId, emiMonths },
+          });
 
-        // Audit event for subscription activation payment
-        await recordPaymentEvent(tx, { paymentId: payment.id, userId, provider: 'razorpay', providerIdempotencyKey: order.providerIdempotencyKey ?? undefined, transactionId: paymentId, orderId, eventType: 'payment.subscription_verified', amount: order.amount, status: 'success', payload: { planId, emiMonths } });
+          // Deactivate any existing active subscription for this student
+          await tx.subscription
+            .updateMany({ where: { userId, active: true }, data: { active: false } })
+            .catch(() => {});
 
-        // Deactivate any existing active subscription for this student
-        await tx.subscription.updateMany({ where: { userId, active: true }, data: { active: false } }).catch(() => {});
+          // Check for pending referral rewards for this user and include in creditBalance
+          const pendingRewards = await tx.referralReward.findMany({
+            where: { userId, status: 'PENDING' },
+          });
+          const pendingSum = pendingRewards.reduce((s, r) => s + (r.amount || 0), 0);
 
-        // Check for pending referral rewards for this user and include in creditBalance
-        const pendingRewards = await tx.referralReward.findMany({ where: { userId, status: 'PENDING' } });
-        const pendingSum = pendingRewards.reduce((s, r) => s + (r.amount || 0), 0);
-
-        // Create subscription record for the student. Apply pending referral rewards as creditBalance.
-        const createdSub = await tx.subscription.create({
-          data: {
-            userId,
-            plan: 'individual',
-            billingCycle: planId,
-            startDate: now,
-            endDate: expiry,
-            active: true,
-            childSlots: 1,
-            paymentId: payment.id,
-            meta: {},
-            creditBalance: pendingSum,
-          },
-        });
-
-        // Mark pending referral rewards as applied (best-effort within the transaction)
-        if (pendingRewards.length > 0) {
-          const ids = pendingRewards.map((r) => r.id);
-          await tx.referralReward.updateMany({ where: { id: { in: ids } }, data: { status: 'APPLIED', appliedAt: new Date() } }).catch(() => {});
-        }
-
-        // Create Installment schedule if EMI selected; first installment marked PAID as we just received payment
-        try {
-          const months = Number(emiMonths || 0);
-          if (months && months > 1) {
-            const totalPaise = order.amount || 0;
-            const base = Math.floor(totalPaise / months);
-            const remainder = totalPaise - base * months;
-            for (let i = 0; i < months; i++) {
-              const amount = base + (i === months - 1 ? remainder : 0);
-              const due = new Date(now);
-              due.setMonth(due.getMonth() + i);
-              await tx.installment.create({ data: {
-                subscriptionId: createdSub.id,
-                number: i + 1,
-                dueAt: due,
-                amount,
-                currency: 'INR',
-                status: i === 0 ? 'PAID' : 'PENDING',
-                provider: 'razorpay',
-                providerPaymentId: i === 0 ? paymentId : undefined,
-                paymentId: i === 0 ? payment.id : undefined,
-                attemptCount: i === 0 ? 1 : 0,
-                paidAt: i === 0 ? now : undefined,
-                meta: { autoCreated: true, planId, emiMonths },
-              } });
-            }
-          } else {
-            // Single paid installment
-            await tx.installment.create({ data: {
-              subscriptionId: createdSub.id,
-              number: 1,
-              dueAt: now,
-              amount: order.amount,
-              currency: 'INR',
-              status: 'PAID',
-              provider: 'razorpay',
-              providerPaymentId: paymentId,
+          // Create subscription record for the student. Apply pending referral rewards as creditBalance.
+          const createdSub = await tx.subscription.create({
+            data: {
+              userId,
+              plan: 'individual',
+              billingCycle: planId,
+              startDate: now,
+              endDate: expiry,
+              active: true,
+              childSlots: 1,
               paymentId: payment.id,
-              attemptCount: 1,
-              paidAt: now,
-              meta: { planId },
-            } });
-          }
-        } catch (err) {
-          logger.warn('subscription.verify: failed to create installment schedule', { err });
-        }
+              meta: {},
+              creditBalance: pendingSum,
+            },
+          });
 
-        return { id: payment.id, subscriptionId: createdSub.id };
-      }, { timeout: 30000, maxWait: 10000 });
+          // Mark pending referral rewards as applied (best-effort within the transaction)
+          if (pendingRewards.length > 0) {
+            const ids = pendingRewards.map((r) => r.id);
+            await tx.referralReward
+              .updateMany({
+                where: { id: { in: ids } },
+                data: { status: 'APPLIED', appliedAt: new Date() },
+              })
+              .catch(() => {});
+          }
+
+          // Create Installment schedule if EMI selected; first installment marked PAID as we just received payment
+          try {
+            const months = Number(emiMonths || 0);
+            if (months && months > 1) {
+              const totalPaise = order.amount || 0;
+              const base = Math.floor(totalPaise / months);
+              const remainder = totalPaise - base * months;
+              for (let i = 0; i < months; i++) {
+                const amount = base + (i === months - 1 ? remainder : 0);
+                const due = new Date(now);
+                due.setMonth(due.getMonth() + i);
+                await tx.installment.create({
+                  data: {
+                    subscriptionId: createdSub.id,
+                    number: i + 1,
+                    dueAt: due,
+                    amount,
+                    currency: 'INR',
+                    status: i === 0 ? 'PAID' : 'PENDING',
+                    provider: 'razorpay',
+                    providerPaymentId: i === 0 ? paymentId : undefined,
+                    paymentId: i === 0 ? payment.id : undefined,
+                    attemptCount: i === 0 ? 1 : 0,
+                    paidAt: i === 0 ? now : undefined,
+                    meta: { autoCreated: true, planId, emiMonths },
+                  },
+                });
+              }
+            } else {
+              // Single paid installment
+              await tx.installment.create({
+                data: {
+                  subscriptionId: createdSub.id,
+                  number: 1,
+                  dueAt: now,
+                  amount: order.amount,
+                  currency: 'INR',
+                  status: 'PAID',
+                  provider: 'razorpay',
+                  providerPaymentId: paymentId,
+                  paymentId: payment.id,
+                  attemptCount: 1,
+                  paidAt: now,
+                  meta: { planId },
+                },
+              });
+            }
+          } catch (err) {
+            logger.warn('subscription.verify: failed to create installment schedule', { err });
+          }
+
+          return { id: payment.id, subscriptionId: createdSub.id };
+        },
+        { timeout: 30000, maxWait: 10000 }
+      );
     } catch (err) {
-      logger.error('Failed to activate subscription', { event: 'subscription.verify.activate_error', context: { userId, orderId }, err });
+      logger.error('Failed to activate subscription', {
+        event: 'subscription.verify.activate_error',
+        context: { userId, orderId },
+        err,
+      });
       return NextResponse.json({ error: 'Could not activate subscription' }, { status: 500 });
     }
   } catch (err) {
-    logger.error('Failed to activate subscription', { event: 'subscription.verify.activate_error', context: { userId, orderId }, err });
+    logger.error('Failed to activate subscription', {
+      event: 'subscription.verify.activate_error',
+      context: { userId, orderId },
+      err,
+    });
     return NextResponse.json({ error: 'Could not activate subscription' }, { status: 500 });
   }
 
@@ -263,12 +317,14 @@ export async function POST(req: Request) {
   });
 
   const renewalDate = expiry.toLocaleDateString('en-IN', {
-    day: 'numeric', month: 'long', year: 'numeric',
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
   });
 
   // Send receipt email -- non-blocking, never throws to caller
   if (user?.email) {
-      try {
+    try {
       // Create invoice PDF, attach to email and upload to R2 (best-effort)
       const invoiceResult = await createInvoiceForPayment({
         userId,
@@ -289,20 +345,30 @@ export async function POST(req: Request) {
           billingCycle: plan.perMonthDisplay,
           renewalDate,
         }),
-        ...(invoiceResult.pdfBuffer ? {
-          attachments: [
-            {
-              filename: `invoice-${invoiceResult.invoiceNumber}.pdf`,
-              content: invoiceResult.pdfBuffer,
-              contentType: 'application/pdf',
-            },
-          ],
-        } : {}),
+        ...(invoiceResult.pdfBuffer
+          ? {
+              attachments: [
+                {
+                  filename: `invoice-${invoiceResult.invoiceNumber}.pdf`,
+                  content: invoiceResult.pdfBuffer,
+                  contentType: 'application/pdf',
+                },
+              ],
+            }
+          : {}),
       } as any).catch((err: unknown) => {
-        logger.error('Receipt email failed', { event: 'subscription.verify.email_error', context: { userId }, err });
+        logger.error('Receipt email failed', {
+          event: 'subscription.verify.email_error',
+          context: { userId },
+          err,
+        });
       });
-      } catch (err: unknown) {
-      logger.error('Invoice generation/email failed', { event: 'subscription.verify.invoice_error', context: { userId, orderId }, err });
+    } catch (err: unknown) {
+      logger.error('Invoice generation/email failed', {
+        event: 'subscription.verify.invoice_error',
+        context: { userId, orderId },
+        err,
+      });
       // Fallback: send receipt without attachment
       sendEmail({
         to: user.email,
@@ -315,7 +381,11 @@ export async function POST(req: Request) {
           renewalDate,
         }),
       }).catch((err2: unknown) => {
-        logger.error('Receipt email fallback failed', { event: 'subscription.verify.email_error', context: { userId }, err: err2 });
+        logger.error('Receipt email fallback failed', {
+          event: 'subscription.verify.email_error',
+          context: { userId },
+          err: err2,
+        });
       });
     }
   }
@@ -324,12 +394,16 @@ export async function POST(req: Request) {
   if (user?.phone) {
     const smsText = `Hi ${user.name ?? ''}! Your Spinzy ${plan.label} plan is active. Happy learning! - Team Spinzy`;
     sendSms(user.phone, smsText).catch((err: unknown) => {
-      logger.error('Receipt SMS failed', { event: 'subscription.verify.sms_error', context: { userId }, err });
+      logger.error('Receipt SMS failed', {
+        event: 'subscription.verify.sms_error',
+        context: { userId },
+        err,
+      });
     });
   }
 
   return NextResponse.json(
     { success: true, subscriptionExpiry: expiry.toISOString() },
-    { status: 200 },
+    { status: 200 }
   );
 }

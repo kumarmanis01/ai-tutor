@@ -11,7 +11,12 @@ describe('DoubtsTab', () => {
     jest.clearAllMocks();
     mockFetch.mockResolvedValue({
       ok: true,
-      json: () => Promise.resolve({ questionId: 'q1', response: 'Great question!', followUpQuestion: 'Want to know more?' }),
+      json: () =>
+        Promise.resolve({
+          questionId: 'q1',
+          response: 'Great question!',
+          followUpQuestion: 'Want to know more?',
+        }),
     });
   });
 
@@ -86,7 +91,10 @@ describe('DoubtsTab', () => {
     fireEvent.click(submitButton);
 
     expect(mockOnAskQuestion).toHaveBeenCalledWith('What is 2+2?', undefined);
-    expect(mockFetch).toHaveBeenCalledWith('/api/doubts', expect.objectContaining({ method: 'POST' }));
+    expect(mockFetch).toHaveBeenCalledWith(
+      '/api/doubts',
+      expect.objectContaining({ method: 'POST' })
+    );
   });
 
   it('includes selected subject when submitting', () => {

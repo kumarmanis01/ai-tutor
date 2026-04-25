@@ -56,12 +56,12 @@ async function resolveTopicWithContext(topicId: string) {
         include: {
           subject: {
             include: {
-              class: { include: { board: true } }
-            }
-          }
-        }
-      }
-    }
+              class: { include: { board: true } },
+            },
+          },
+        },
+      },
+    },
   });
 }
 
@@ -71,7 +71,7 @@ async function resolveTopicWithContext(topicId: string) {
 
 /**
  * Enqueues a notes hydration job for a specific topic.
- * 
+ *
  * COPILOT RULES -- NOTES HYDRATOR:
  * - Hydrators ONLY enqueue jobs
  * - NO AI calls allowed
@@ -84,7 +84,8 @@ export async function enqueueNotesHydration(input: TopicHydrationInput): Promise
   const { topicId, force = false } = input;
   const language = normalizeLanguage(input.language) ?? 'en';
 
-  if (HYDRATION_DEBUG) logger.debug('[hydration][DEBUG] enqueueNotesHydration called', { topicId, language, force });
+  if (HYDRATION_DEBUG)
+    logger.debug('[hydration][DEBUG] enqueueNotesHydration called', { topicId, language, force });
 
   // 1️⃣ Global pause guard
   const paused = await prisma.systemSetting.findUnique({ where: { key: 'HYDRATION_PAUSED' } });
@@ -104,10 +105,11 @@ export async function enqueueNotesHydration(input: TopicHydrationInput): Promise
   if (!force) {
     const existingNotes = await prisma.topicNote.findFirst({
       where: { topicId, language, status: 'approved' },
-      select: { id: true }
+      select: { id: true },
     });
     if (existingNotes) {
-      if (HYDRATION_DEBUG) logger.info('[hydration][DEBUG] aborted: notes_exist', { topicId, language });
+      if (HYDRATION_DEBUG)
+        logger.info('[hydration][DEBUG] aborted: notes_exist', { topicId, language });
       return { created: false, reason: 'content_exists' };
     }
   }
@@ -118,11 +120,12 @@ export async function enqueueNotesHydration(input: TopicHydrationInput): Promise
       jobType: 'notes',
       topicId,
       language,
-      status: { in: [JobStatus.Pending, JobStatus.Running] }
-    }
+      status: { in: [JobStatus.Pending, JobStatus.Running] },
+    },
   });
   if (existingJob) {
-    if (HYDRATION_DEBUG) logger.info('[hydration][DEBUG] aborted: job_already_queued', { jobId: existingJob.id });
+    if (HYDRATION_DEBUG)
+      logger.info('[hydration][DEBUG] aborted: job_already_queued', { jobId: existingJob.id });
     return { created: false, reason: 'job_already_queued', jobId: existingJob.id };
   }
 
@@ -137,13 +140,16 @@ export async function enqueueNotesHydration(input: TopicHydrationInput): Promise
     subject: topic.chapter.subject.name,
     subjectId: topic.chapter.subject.id,
     chapterId: topic.chapter.id,
-    status: JobStatus.Pending
+    status: JobStatus.Pending,
   };
   const generatedId = randomUUID();
   // rootJobId is null for standalone directly-enqueued jobs (no parent pipeline).
   // Reconciler-created children set rootJobId to the syllabus root job's id.
-  const job = await prisma.hydrationJob.create({ data: { id: generatedId, rootJobId: null, ...jobData } });
-  if (HYDRATION_DEBUG) logger.debug('[hydration][DEBUG] created HydrationJob for notes', { jobId: job.id });
+  const job = await prisma.hydrationJob.create({
+    data: { id: generatedId, rootJobId: null, ...jobData },
+  });
+  if (HYDRATION_DEBUG)
+    logger.debug('[hydration][DEBUG] created HydrationJob for notes', { jobId: job.id });
 
   // 6️⃣ Create Outbox row for reliable enqueue
   try {
@@ -151,13 +157,20 @@ export async function enqueueNotesHydration(input: TopicHydrationInput): Promise
       data: {
         queue: CONTENT_HYDRATION_QUEUE,
         payload: { type: 'NOTES', payload: { jobId: job.id } },
-        meta: { hydrationJobId: job.id, topicId, language }
-      }
+        meta: { hydrationJobId: job.id, topicId, language },
+      },
     });
-    if (HYDRATION_DEBUG) logger.debug('[hydration][DEBUG] created Outbox row for notes', { jobId: job.id, outboxId: outbox.id });
+    if (HYDRATION_DEBUG)
+      logger.debug('[hydration][DEBUG] created Outbox row for notes', {
+        jobId: job.id,
+        outboxId: outbox.id,
+      });
     return { created: true, jobId: job.id, outboxId: outbox.id };
   } catch (err) {
-    logger.error('Failed to create outbox row for notes HydrationJob', { error: err, jobId: job.id });
+    logger.error('Failed to create outbox row for notes HydrationJob', {
+      error: err,
+      jobId: job.id,
+    });
     return { created: true, jobId: job.id };
   }
 }
@@ -168,7 +181,7 @@ export async function enqueueNotesHydration(input: TopicHydrationInput): Promise
 
 /**
  * Enqueues a questions hydration job for a specific topic.
- * 
+ *
  * COPILOT RULES -- QUESTIONS HYDRATOR:
  * - Hydrators ONLY enqueue jobs
  * - NO AI calls allowed
@@ -177,12 +190,19 @@ export async function enqueueNotesHydration(input: TopicHydrationInput): Promise
  * - Must never mutate existing content
  * - Questions hydration is TOPIC-scoped
  */
-export async function enqueueQuestionsHydration(input: TopicHydrationInput): Promise<HydrationResult> {
+export async function enqueueQuestionsHydration(
+  input: TopicHydrationInput
+): Promise<HydrationResult> {
   const { topicId } = input;
   const language = normalizeLanguage(input.language) ?? 'en';
   const difficulty = normalizeDifficulty(input.difficulty) ?? 'medium';
 
-  if (HYDRATION_DEBUG) logger.debug('[hydration][DEBUG] enqueueQuestionsHydration called', { topicId, language, difficulty });
+  if (HYDRATION_DEBUG)
+    logger.debug('[hydration][DEBUG] enqueueQuestionsHydration called', {
+      topicId,
+      language,
+      difficulty,
+    });
 
   // 1️⃣ Global pause guard
   const paused = await prisma.systemSetting.findUnique({ where: { key: 'HYDRATION_PAUSED' } });
@@ -204,11 +224,12 @@ export async function enqueueQuestionsHydration(input: TopicHydrationInput): Pro
       topicId,
       language,
       difficulty,
-      status: 'approved'
-    }
+      status: 'approved',
+    },
   });
   if (existingQuestions) {
-    if (HYDRATION_DEBUG) logger.info('[hydration][DEBUG] aborted: questions_exist', { topicId, language, difficulty });
+    if (HYDRATION_DEBUG)
+      logger.info('[hydration][DEBUG] aborted: questions_exist', { topicId, language, difficulty });
     return { created: false, reason: 'content_exists' };
   }
 
@@ -219,11 +240,12 @@ export async function enqueueQuestionsHydration(input: TopicHydrationInput): Pro
       topicId,
       language,
       difficulty,
-      status: { in: [JobStatus.Pending, JobStatus.Running] }
-    }
+      status: { in: [JobStatus.Pending, JobStatus.Running] },
+    },
   });
   if (existingJob) {
-    if (HYDRATION_DEBUG) logger.info('[hydration][DEBUG] aborted: job_already_queued', { jobId: existingJob.id });
+    if (HYDRATION_DEBUG)
+      logger.info('[hydration][DEBUG] aborted: job_already_queued', { jobId: existingJob.id });
     return { created: false, reason: 'job_already_queued', jobId: existingJob.id };
   }
 
@@ -238,12 +260,15 @@ export async function enqueueQuestionsHydration(input: TopicHydrationInput): Pro
     subject: topic.chapter.subject.name,
     subjectId: topic.chapter.subject.id,
     chapterId: topic.chapter.id,
-    status: JobStatus.Pending
+    status: JobStatus.Pending,
   };
   const generatedId = randomUUID();
   // rootJobId is null for standalone directly-enqueued jobs (no parent pipeline).
-  const job = await prisma.hydrationJob.create({ data: { id: generatedId, rootJobId: null, ...jobData } });
-  if (HYDRATION_DEBUG) logger.debug('[hydration][DEBUG] created HydrationJob for questions', { jobId: job.id });
+  const job = await prisma.hydrationJob.create({
+    data: { id: generatedId, rootJobId: null, ...jobData },
+  });
+  if (HYDRATION_DEBUG)
+    logger.debug('[hydration][DEBUG] created HydrationJob for questions', { jobId: job.id });
 
   // 6️⃣ Create Outbox row for reliable enqueue
   try {
@@ -251,13 +276,20 @@ export async function enqueueQuestionsHydration(input: TopicHydrationInput): Pro
       data: {
         queue: CONTENT_HYDRATION_QUEUE,
         payload: { type: 'QUESTIONS', payload: { jobId: job.id } },
-        meta: { hydrationJobId: job.id, topicId, language, difficulty }
-      }
+        meta: { hydrationJobId: job.id, topicId, language, difficulty },
+      },
     });
-    if (HYDRATION_DEBUG) logger.debug('[hydration][DEBUG] created Outbox row for questions', { jobId: job.id, outboxId: outbox.id });
+    if (HYDRATION_DEBUG)
+      logger.debug('[hydration][DEBUG] created Outbox row for questions', {
+        jobId: job.id,
+        outboxId: outbox.id,
+      });
     return { created: true, jobId: job.id, outboxId: outbox.id };
   } catch (err) {
-    logger.error('Failed to create outbox row for questions HydrationJob', { error: err, jobId: job.id });
+    logger.error('Failed to create outbox row for questions HydrationJob', {
+      error: err,
+      jobId: job.id,
+    });
     return { created: true, jobId: job.id };
   }
 }
@@ -269,7 +301,7 @@ export async function enqueueQuestionsHydration(input: TopicHydrationInput): Pro
 /**
  * Enqueues a test assembly hydration job for a specific topic.
  * Tests are assembled from existing questions for a topic.
- * 
+ *
  * COPILOT RULES -- TESTS HYDRATOR:
  * - Hydrators ONLY enqueue jobs
  * - NO AI calls allowed
@@ -283,7 +315,12 @@ export async function enqueueTestsHydration(input: TopicHydrationInput): Promise
   const language = normalizeLanguage(input.language) ?? 'en';
   const difficulty = normalizeDifficulty(input.difficulty) ?? 'medium';
 
-  if (HYDRATION_DEBUG) logger.debug('[hydration][DEBUG] enqueueTestsHydration called', { topicId, language, difficulty });
+  if (HYDRATION_DEBUG)
+    logger.debug('[hydration][DEBUG] enqueueTestsHydration called', {
+      topicId,
+      language,
+      difficulty,
+    });
 
   // 1️⃣ Global pause guard
   const paused = await prisma.systemSetting.findUnique({ where: { key: 'HYDRATION_PAUSED' } });
@@ -306,11 +343,12 @@ export async function enqueueTestsHydration(input: TopicHydrationInput): Promise
       topicId,
       language,
       difficulty,
-      status: { in: [JobStatus.Pending, JobStatus.Running] }
-    }
+      status: { in: [JobStatus.Pending, JobStatus.Running] },
+    },
   });
   if (existingJob) {
-    if (HYDRATION_DEBUG) logger.info('[hydration][DEBUG] aborted: job_already_queued', { jobId: existingJob.id });
+    if (HYDRATION_DEBUG)
+      logger.info('[hydration][DEBUG] aborted: job_already_queued', { jobId: existingJob.id });
     return { created: false, reason: 'job_already_queued', jobId: existingJob.id };
   }
 
@@ -325,12 +363,15 @@ export async function enqueueTestsHydration(input: TopicHydrationInput): Promise
     subject: topic.chapter.subject.name,
     subjectId: topic.chapter.subject.id,
     chapterId: topic.chapter.id,
-    status: JobStatus.Pending
+    status: JobStatus.Pending,
   };
   const generatedId = randomUUID();
   // rootJobId is null for standalone directly-enqueued jobs (no parent pipeline).
-  const job = await prisma.hydrationJob.create({ data: { id: generatedId, rootJobId: null, ...jobData } });
-  if (HYDRATION_DEBUG) logger.debug('[hydration][DEBUG] created HydrationJob for tests', { jobId: job.id });
+  const job = await prisma.hydrationJob.create({
+    data: { id: generatedId, rootJobId: null, ...jobData },
+  });
+  if (HYDRATION_DEBUG)
+    logger.debug('[hydration][DEBUG] created HydrationJob for tests', { jobId: job.id });
 
   // 5️⃣ Create Outbox row for reliable enqueue
   try {
@@ -338,13 +379,20 @@ export async function enqueueTestsHydration(input: TopicHydrationInput): Promise
       data: {
         queue: CONTENT_HYDRATION_QUEUE,
         payload: { type: 'ASSEMBLE_TEST', payload: { jobId: job.id } },
-        meta: { hydrationJobId: job.id, topicId, language, difficulty }
-      }
+        meta: { hydrationJobId: job.id, topicId, language, difficulty },
+      },
     });
-    if (HYDRATION_DEBUG) logger.debug('[hydration][DEBUG] created Outbox row for tests', { jobId: job.id, outboxId: outbox.id });
+    if (HYDRATION_DEBUG)
+      logger.debug('[hydration][DEBUG] created Outbox row for tests', {
+        jobId: job.id,
+        outboxId: outbox.id,
+      });
     return { created: true, jobId: job.id, outboxId: outbox.id };
   } catch (err) {
-    logger.error('Failed to create outbox row for tests HydrationJob', { error: err, jobId: job.id });
+    logger.error('Failed to create outbox row for tests HydrationJob', {
+      error: err,
+      jobId: job.id,
+    });
     return { created: true, jobId: job.id };
   }
 }

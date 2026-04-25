@@ -69,7 +69,10 @@ async function moveToDeadLetter(
       attempts: row.attempts,
     });
   } catch (e) {
-    logger.error('[outbox-dispatcher] failed to move to dead-letter', { outboxId: row.id, error: e });
+    logger.error('[outbox-dispatcher] failed to move to dead-letter', {
+      outboxId: row.id,
+      error: e,
+    });
   }
 }
 
@@ -95,7 +98,10 @@ async function dispatchBatch(): Promise<number> {
       if (metaAny?.deliverAt) {
         const deliverAt = new Date(metaAny.deliverAt);
         if (deliverAt.getTime() > Date.now()) {
-          logger.info('[outbox-dispatcher] skipping scheduled row (not due yet)', { outboxId: row.id, deliverAt: metaAny.deliverAt });
+          logger.info('[outbox-dispatcher] skipping scheduled row (not due yet)', {
+            outboxId: row.id,
+            deliverAt: metaAny.deliverAt,
+          });
           continue;
         }
       }
@@ -111,11 +117,11 @@ async function dispatchBatch(): Promise<number> {
     try {
       const payload = row.payload as { type?: string; payload?: { jobId?: string } };
       if (!payload?.type) {
-        logger.error('[outbox-dispatcher] invalid payload, moving to dead-letter', { outboxId: row.id, payload });
-        await moveToDeadLetter(
-          { ...row, attempts: row.attempts + 1 },
-          'missing_payload_type'
-        );
+        logger.error('[outbox-dispatcher] invalid payload, moving to dead-letter', {
+          outboxId: row.id,
+          payload,
+        });
+        await moveToDeadLetter({ ...row, attempts: row.attempts + 1 }, 'missing_payload_type');
         continue;
       }
       const jobName = `${payload.type.toLowerCase()}-${payload.payload?.jobId ?? row.id}`;
@@ -138,15 +144,14 @@ async function dispatchBatch(): Promise<number> {
       // RISK-04: Exceeded max attempts after this failure -- move to dead-letter
       if (newAttempts >= MAX_ATTEMPTS) {
         const reason = err instanceof Error ? err.message : String(err);
-        await moveToDeadLetter(
-          { ...row, attempts: newAttempts },
-          `dispatch_failed: ${reason}`
-        );
+        await moveToDeadLetter({ ...row, attempts: newAttempts }, `dispatch_failed: ${reason}`);
       } else {
-        await prisma.outbox.update({
-          where: { id: row.id },
-          data: { attempts: newAttempts },
-        }).catch(() => {});
+        await prisma.outbox
+          .update({
+            where: { id: row.id },
+            data: { attempts: newAttempts },
+          })
+          .catch(() => {});
       }
     }
   }
@@ -165,7 +170,10 @@ export function startOutboxDispatcher(): void {
   }
 
   running = true;
-  logger.info('[outbox-dispatcher] starting', { pollInterval: POLL_INTERVAL_MS, batchSize: BATCH_SIZE });
+  logger.info('[outbox-dispatcher] starting', {
+    pollInterval: POLL_INTERVAL_MS,
+    batchSize: BATCH_SIZE,
+  });
 
   // Run initial dispatch immediately
   dispatchBatch().catch((err) => {

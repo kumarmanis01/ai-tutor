@@ -1,4 +1,7 @@
-import { validateQuestionsShapeWithReport, validateQuestionsShape } from '@/worker/services/questionsWorker';
+import {
+  validateQuestionsShapeWithReport,
+  validateQuestionsShape,
+} from '@/worker/services/questionsWorker';
 
 describe('questions validation', () => {
   test('valid math question object passes', () => {
@@ -7,9 +10,9 @@ describe('questions validation', () => {
         {
           type: 'numeric',
           question: 'Solve 2x+3=11',
-          answer: { solution_steps: ['2x+3=11','2x=8','x=4'], final_answer: '4' }
-        }
-      ]
+          answer: { solution_steps: ['2x+3=11', '2x=8', 'x=4'], final_answer: '4' },
+        },
+      ],
     };
     const { valid, report } = validateQuestionsShapeWithReport(sample as any, 'Mathematics');
     expect(valid).toBe(true);

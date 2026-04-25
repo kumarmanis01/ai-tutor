@@ -11,32 +11,32 @@
 
 jest.mock('ioredis', () => {
   return class MockRedis {
-    public on = jest.fn()
-    public once = jest.fn()
-    public quit = jest.fn().mockResolvedValue(undefined)
-    public disconnect = jest.fn()
+    public on = jest.fn();
+    public once = jest.fn();
+    public quit = jest.fn().mockResolvedValue(undefined);
+    public disconnect = jest.fn();
     constructor(..._args: any[]) {}
-  }
-})
+  };
+});
 
-import { getRedis, disconnectRedis } from '@/lib/redis/client'
+import { getRedis, disconnectRedis } from '@/lib/redis/client';
 
 describe('lib/redis/client', () => {
   beforeEach(() => {
     // ensure module cache reset so tests get a fresh client
-    jest.resetModules()
-  })
+    jest.resetModules();
+  });
 
   it('returns same instance on multiple getRedis() calls', () => {
-    const a = getRedis()
-    const b = getRedis()
-    expect(a).toBe(b)
-  })
+    const a = getRedis();
+    const b = getRedis();
+    expect(a).toBe(b);
+  });
 
   it('disconnectRedis allows new instance after quit', async () => {
-    const first = getRedis()
-    await disconnectRedis()
-    const second = getRedis()
-    expect(second).not.toBe(first)
-  })
-})
+    const first = getRedis();
+    await disconnectRedis();
+    const second = getRedis();
+    expect(second).not.toBe(first);
+  });
+});

@@ -83,9 +83,7 @@ export async function GET(req: Request) {
   ]);
 
   // Distinct subjects explored this week
-  const subjectSet = new Set(
-    sessionsThisWeek.map((s) => s.topic.chapter.subject.name)
-  );
+  const subjectSet = new Set(sessionsThisWeek.map((s) => s.topic.chapter.subject.name));
 
   const sessionsCompleted = sessionsThisWeek.filter((s) => s.completedAt !== null).length;
   const subjectsExplored = subjectSet.size;

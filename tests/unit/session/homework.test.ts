@@ -70,20 +70,16 @@ function mockBankQuestions(rows: typeof fiveBankQuestions | []) {
 
 function mockGenTests(questions: typeof threeGenQuestions | []) {
   (prisma.generatedTest.findMany as jest.Mock).mockResolvedValue(
-    questions.length > 0 ? [{ questions }] : [],
+    questions.length > 0 ? [{ questions }] : []
   );
 }
 
 function mockTopicDef(chapterId: string | null) {
-  (prisma.topicDef.findUnique as jest.Mock).mockResolvedValue(
-    chapterId ? { chapterId } : null,
-  );
+  (prisma.topicDef.findUnique as jest.Mock).mockResolvedValue(chapterId ? { chapterId } : null);
 }
 
 function mockSiblingTopics(ids: string[]) {
-  (prisma.topicDef.findMany as jest.Mock).mockResolvedValue(
-    ids.map((id) => ({ id })),
-  );
+  (prisma.topicDef.findMany as jest.Mock).mockResolvedValue(ids.map((id) => ({ id })));
 }
 
 // ─── Tests ────────────────────────────────────────────────────────────────────
@@ -209,7 +205,7 @@ describe('generateHomework()', () => {
     // First gatherQuestions(): bank empty, genTest empty, no chapter.
     // Second gatherQuestions() after retry: bank has questions.
     (prisma.question.findMany as jest.Mock)
-      .mockResolvedValueOnce([])       // first attempt — empty
+      .mockResolvedValueOnce([]) // first attempt — empty
       .mockResolvedValue(fiveBankQuestions); // retry — questions available
 
     (prisma.generatedTest.findMany as jest.Mock).mockResolvedValue([]);
@@ -233,11 +229,11 @@ describe('generateHomework()', () => {
   it('re-throws when the homeworkAssignment.create DB write fails', async () => {
     mockBankQuestions(fiveBankQuestions);
     (prisma.homeworkAssignment.create as jest.Mock).mockRejectedValue(
-      new Error('DB connection lost'),
+      new Error('DB connection lost')
     );
 
-    await expect(
-      generateHomework(STUDENT_ID, TOPIC_ID, SESSION_ID),
-    ).rejects.toThrow('DB connection lost');
+    await expect(generateHomework(STUDENT_ID, TOPIC_ID, SESSION_ID)).rejects.toThrow(
+      'DB connection lost'
+    );
   });
 });

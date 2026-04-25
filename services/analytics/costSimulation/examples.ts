@@ -25,12 +25,7 @@ import {
   type MonthlyStudentCost,
 } from './calculator';
 
-import {
-  MODEL_PRICING,
-  USAGE_PATTERNS,
-  type LanguageCode,
-  type ModelName,
-} from './assumptions';
+import { MODEL_PRICING, USAGE_PATTERNS, type LanguageCode, type ModelName } from './assumptions';
 
 // ============================================================================
 // EXAMPLE: GRADE 3 JUNIOR STUDENT
@@ -38,7 +33,7 @@ import {
 
 /**
  * Cost simulation for a typical Grade 3 student.
- * 
+ *
  * Assumptions:
  * - Junior grade (1-3) usage pattern
  * - English language (baseline)
@@ -56,7 +51,7 @@ export function simulateGrade3StudentCost(): {
     isPremium: false,
     model: 'gpt-4o-mini',
   });
-  
+
   return {
     profile: 'Grade 3 - Free Tier - English',
     cost,
@@ -99,7 +94,7 @@ Profile: Junior student, Free tier, English
 
 /**
  * Cost simulation for a typical Grade 8 student.
- * 
+ *
  * Assumptions:
  * - Senior grade (8-12) usage pattern
  * - Hindi language (2x token multiplier)
@@ -117,7 +112,7 @@ export function simulateGrade8StudentCost(): {
     isPremium: true,
     model: 'gpt-4o',
   });
-  
+
   return {
     profile: 'Grade 8 - Premium - Hindi',
     cost,
@@ -184,41 +179,41 @@ export function simulateCohort100Students(): {
     language: LanguageCode;
     isPremium: boolean;
   }> = [];
-  
+
   // Generate 100 students
   for (let i = 0; i < 100; i++) {
     let grade: number;
     let language: LanguageCode;
     let isPremium: boolean;
-    
+
     // Grade distribution
     const gradeRand = Math.random();
-    if (gradeRand < 0.30) {
+    if (gradeRand < 0.3) {
       grade = Math.floor(Math.random() * 3) + 1; // 1-3
-    } else if (gradeRand < 0.70) {
+    } else if (gradeRand < 0.7) {
       grade = Math.floor(Math.random() * 4) + 4; // 4-7
     } else {
       grade = Math.floor(Math.random() * 5) + 8; // 8-12
     }
-    
+
     // Language distribution
     const langRand = Math.random();
-    if (langRand < 0.60) {
+    if (langRand < 0.6) {
       language = 'en';
     } else if (langRand < 0.85) {
       language = 'hi';
     } else {
       language = 'hinglish';
     }
-    
+
     // Premium distribution (20%)
-    isPremium = Math.random() < 0.20;
-    
+    isPremium = Math.random() < 0.2;
+
     students.push({ grade, language, isPremium });
   }
-  
+
   const result = calculateCohortCost(students);
-  
+
   return {
     description: '100 students with realistic distribution',
     totalCostUSD: result.totalCostUSD,
@@ -271,7 +266,7 @@ export function simulateCohort100Students(): {
  */
 export function compareModelsForNotes(): string {
   const comparison = compareModelCosts('notes', 'gpt-4o', 'gpt-4o-mini', 'en');
-  
+
   return `
 📊 MODEL COMPARISON: Notes Generation (English)
 ================================================
@@ -307,7 +302,7 @@ Reserve gpt-4o for complex senior-grade content.
 export function compareLanguageCostsForPractice(): string {
   const enVsHi = compareLanguageCosts('practice', 'gpt-4o-mini', 'en', 'hi');
   const enVsHinglish = compareLanguageCosts('practice', 'gpt-4o-mini', 'en', 'hinglish');
-  
+
   return `
 🌐 LANGUAGE COMPARISON: Practice Questions (gpt-4o-mini)
 =========================================================
@@ -329,7 +324,7 @@ Hinglish:
 💡 Recommendation:
 For Hindi-speaking students, consider Hinglish prompts
 which provide similar comprehension at much lower cost.
-Hinglish saves ~${Math.round((enVsHi.additionalCostPercent - enVsHinglish.additionalCostPercent))}% compared to pure Hindi.
+Hinglish saves ~${Math.round(enVsHi.additionalCostPercent - enVsHinglish.additionalCostPercent)}% compared to pure Hindi.
   `.trim();
 }
 
@@ -347,35 +342,35 @@ export function projectAnnualCosts(): string {
     language: 'en',
     isPremium: false,
   }).totalCostUSD;
-  
+
   const avgPremiumCost = calculateMonthlyStudentCost({
     grade: 8,
     language: 'en',
     isPremium: true,
   }).totalCostUSD;
-  
+
   const projections = [
     { students: 1000, premium: 0.1 },
     { students: 10000, premium: 0.15 },
     { students: 50000, premium: 0.2 },
     { students: 100000, premium: 0.25 },
   ];
-  
+
   let table = 'Students | Free Monthly | Premium Monthly | Total Annual\n';
   table += '---------|--------------|-----------------|-------------\n';
-  
-  projections.forEach(p => {
+
+  projections.forEach((p) => {
     const freeStudents = p.students * (1 - p.premium);
     const premiumStudents = p.students * p.premium;
-    
+
     const freeMonthlyCost = freeStudents * avgFreeTierCost;
     const premiumMonthlyCost = premiumStudents * avgPremiumCost;
     const totalMonthly = freeMonthlyCost + premiumMonthlyCost;
     const totalAnnual = totalMonthly * 12;
-    
+
     table += `${p.students.toLocaleString().padEnd(9)} | ${formatCostUSD(freeMonthlyCost).padEnd(12)} | ${formatCostUSD(premiumMonthlyCost).padEnd(15)} | ${formatCostUSD(totalAnnual)}\n`;
   });
-  
+
   return `
 📈 ANNUAL COST PROJECTION
 =========================
@@ -409,7 +404,7 @@ export function runAllExamples(): string {
   const modelComparison = compareModelsForNotes();
   const languageComparison = compareLanguageCostsForPractice();
   const annualProjection = projectAnnualCosts();
-  
+
   return `
 ${'='.repeat(60)}
 AI CONTENT ENGINE - COST SIMULATION REPORT

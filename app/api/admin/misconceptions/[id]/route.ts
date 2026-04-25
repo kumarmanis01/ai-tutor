@@ -13,33 +13,40 @@
  * - 2026-04-13T00:00:00Z | copilot | fix: remove duplicate import and stray statement
  */
 
-import { getServerSessionForHandlers } from '@/lib/session'
-import { requireAdmin } from '@/auth/adminGuard'
-import { prisma as dbClient } from '@/lib/prisma'
-import { logger } from '@/lib/logger'
-import { MisconceptionPatchSchema } from '@/lib/validators/misconception'
+import { getServerSessionForHandlers } from '@/lib/session';
+import { requireAdmin } from '@/auth/adminGuard';
+import { prisma as dbClient } from '@/lib/prisma';
+import { logger } from '@/lib/logger';
+import { MisconceptionPatchSchema } from '@/lib/validators/misconception';
 
 export async function PATCH(req: Request, { params }: { params: { id: string } }) {
-  const session = await getServerSessionForHandlers()
-  try { requireAdmin(session) } catch { return new Response('Forbidden', { status: 403 }) }
-  const id = params.id
-  const raw = await req.json()
-
-  const parsed = MisconceptionPatchSchema.safeParse(raw)
-  if (!parsed.success) {
-    return new Response(JSON.stringify({ error: 'invalid_payload', details: parsed.error.format() }), { status: 400 })
+  const session = await getServerSessionForHandlers();
+  try {
+    requireAdmin(session);
+  } catch {
+    return new Response('Forbidden', { status: 403 });
   }
-  const body = parsed.data
+  const id = params.id;
+  const raw = await req.json();
+
+  const parsed = MisconceptionPatchSchema.safeParse(raw);
+  if (!parsed.success) {
+    return new Response(
+      JSON.stringify({ error: 'invalid_payload', details: parsed.error.format() }),
+      { status: 400 }
+    );
+  }
+  const body = parsed.data;
   if (body.subjectId) {
-    const s = await dbClient.subjectDef.findUnique({ where: { id: body.subjectId } })
-    if (!s) return new Response(JSON.stringify({ error: 'invalid_subject' }), { status: 400 })
+    const s = await dbClient.subjectDef.findUnique({ where: { id: body.subjectId } });
+    if (!s) return new Response(JSON.stringify({ error: 'invalid_subject' }), { status: 400 });
   }
   if (body.conceptId) {
-    const c = await dbClient.concept.findUnique({ where: { id: body.conceptId } })
-    if (!c) return new Response(JSON.stringify({ error: 'invalid_concept' }), { status: 400 })
+    const c = await dbClient.concept.findUnique({ where: { id: body.conceptId } });
+    if (!c) return new Response(JSON.stringify({ error: 'invalid_concept' }), { status: 400 });
   }
-  const existing = await dbClient.misconception.findUnique({ where: { id } })
-  if (!existing) return new Response('Not found', { status: 404 })
+  const existing = await dbClient.misconception.findUnique({ where: { id } });
+  if (!existing) return new Response('Not found', { status: 404 });
 
   const updated = await dbClient.misconception.update({
     where: { id },
@@ -52,7 +59,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
       subjectId: body.subjectId ?? existing.subjectId,
       conceptId: body.conceptId ?? existing.conceptId,
     },
-  })
+  });
 
   // audit log
   try {
@@ -65,11 +72,11 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
         previousValue: existing as any,
         newValue: updated as any,
       },
-    })
+    });
   } catch (e) {
     // fail-safe: don't block main update on audit write but record warning
     logger.warn('audit log failed', { error: e });
   }
 
-  return new Response(JSON.stringify(updated), { status: 200 })
+  return new Response(JSON.stringify(updated), { status: 200 });
 }

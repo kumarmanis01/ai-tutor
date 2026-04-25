@@ -1,9 +1,9 @@
-"use client";
-import React from "react";
+'use client';
+import React from 'react';
 
 interface ApproveButtonProps {
   id: string;
-  type: "chapter" | "topic" | "note" | "question";
+  type: 'chapter' | 'topic' | 'note' | 'question';
   onApproved?: () => void;
 }
 
@@ -17,12 +17,12 @@ export const ApproveButton: React.FC<ApproveButtonProps> = ({ id, type, onApprov
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch("/api/admin/content/approve", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+      const res = await fetch('/api/admin/content/approve', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ type, id }),
       });
-      if (!res.ok) throw new Error("Approval failed");
+      if (!res.ok) throw new Error('Approval failed');
       setSuccess(true);
       onApproved?.();
     } catch (e: any) {
@@ -38,7 +38,7 @@ export const ApproveButton: React.FC<ApproveButtonProps> = ({ id, type, onApprov
       className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50"
       disabled={loading || success}
     >
-      {loading ? "Approving..." : success ? "Approved" : "Approve"}
+      {loading ? 'Approving...' : success ? 'Approved' : 'Approve'}
     </button>
   );
 };

@@ -6,7 +6,6 @@
 */
 const { prisma } = require('../lib/prisma');
 
-
 (async () => {
   try {
     const now = new Date();
@@ -15,32 +14,66 @@ const { prisma } = require('../lib/prisma');
 
     const threshold = Number(process.env.QUEUE_BACKLOG_THRESHOLD || '50');
 
-    const rows5 = await prisma.telemetrySample.findMany({ where: { key: 'queue.depth.value', timestamp: { gte: window5 } } });
-    const rows30 = await prisma.telemetrySample.findMany({ where: { key: 'queue.depth.value', timestamp: { gte: window30 } } });
+    const rows5 = await prisma.telemetrySample.findMany({
+      where: { key: 'queue.depth.value', timestamp: { gte: window5 } },
+    });
+    const rows30 = await prisma.telemetrySample.findMany({
+      where: { key: 'queue.depth.value', timestamp: { gte: window30 } },
+    });
 
-    const max5 = rows5.length ? Math.max(...rows5.map(r => Number(r.value))) : 0;
-    const max30 = rows30.length ? Math.max(...rows30.map(r => Number(r.value))) : 0;
+    const max5 = rows5.length ? Math.max(...rows5.map((r) => Number(r.value))) : 0;
+    const max30 = rows30.length ? Math.max(...rows30.map((r) => Number(r.value))) : 0;
 
-    console.log('QUEUE_BACKLOG check:', { threshold, max5, max30, rows5: rows5.length, rows30: rows30.length });
+    console.log('QUEUE_BACKLOG check:', {
+      threshold,
+      max5,
+      max30,
+      rows5: rows5.length,
+      rows30: rows30.length,
+    });
 
     if (max5 > threshold) {
       const severity = max30 > threshold ? 'CRITICAL' : 'WARNING';
       const message = `Queue backlog: depth=${max5} (threshold=${threshold})`;
-      const payload = { threshold, max5, max30, window5Count: rows5.length, window30Count: rows30.length };
+      const payload = {
+        threshold,
+        max5,
+        max30,
+        window5Count: rows5.length,
+        window30Count: rows30.length,
+      };
 
-      const existing = await prisma.systemAlert.findFirst({ where: { type: 'QUEUE_BACKLOG', active: true } });
+      const existing = await prisma.systemAlert.findFirst({
+        where: { type: 'QUEUE_BACKLOG', active: true },
+      });
       if (existing) {
-        await prisma.systemAlert.update({ where: { id: existing.id }, data: { lastSeen: new Date(), message, payload } });
+        await prisma.systemAlert.update({
+          where: { id: existing.id },
+          data: { lastSeen: new Date(), message, payload },
+        });
         console.log('Updated existing SystemAlert', existing.id);
       } else {
-        const created = await prisma.systemAlert.create({ data: { type: 'QUEUE_BACKLOG', severity: severity, message, payload: payload, active: true } });
+        const created = await prisma.systemAlert.create({
+          data: {
+            type: 'QUEUE_BACKLOG',
+            severity: severity,
+            message,
+            payload: payload,
+            active: true,
+          },
+        });
         console.log('Created SystemAlert', created.id);
       }
     } else {
       // resolve if exists
-      const existing = await prisma.systemAlert.findFirst({ where: { type: 'QUEUE_BACKLOG', active: true } });
+      const existing = await prisma.systemAlert.findFirst({
+        where: { type: 'QUEUE_BACKLOG', active: true },
+      });
       if (existing) {
-        await prisma.systemAlert.update({ where: { id: existing.id }, data: { active: false, resolvedAt: new Date() } });
+        await prisma.systemAlert.update({
+          where: { id: existing.id },
+          data: { active: false, resolvedAt: new Date() },
+        });
         console.log('Resolved existing SystemAlert', existing.id);
       } else {
         console.log('No alert triggered; nothing to do.');
@@ -50,18 +83,29 @@ const { prisma } = require('../lib/prisma');
     // Rule: QUEUE_OLD_JOB_AGE (use queue.oldest_age_sec.value, threshold default 300s)
     const ageThreshold = Number(process.env.QUEUE_AGE_THRESHOLD || '300');
     const ageWindow = new Date(now.getTime() - 10 * 60 * 1000); // 10 minutes lookback
-    const ageRows = await prisma.telemetrySample.findMany({ where: { key: 'queue.oldest_age_sec.value', timestamp: { gte: ageWindow } }, orderBy: { timestamp: 'desc' }, take: 1 });
+    const ageRows = await prisma.telemetrySample.findMany({
+      where: { key: 'queue.oldest_age_sec.value', timestamp: { gte: ageWindow } },
+      orderBy: { timestamp: 'desc' },
+      take: 1,
+    });
     const oldestAge = ageRows.length ? Number(ageRows[0].value) : null;
     console.log('QUEUE_OLD_JOB_AGE check:', { ageThreshold, oldestAge });
     if (oldestAge !== null && oldestAge > ageThreshold) {
       const message = `Oldest job age high: ${oldestAge}s (threshold ${ageThreshold}s)`;
       const payload = { oldestAge };
-      const existingAge = await prisma.systemAlert.findFirst({ where: { type: 'QUEUE_BACKLOG', active: true } });
+      const existingAge = await prisma.systemAlert.findFirst({
+        where: { type: 'QUEUE_BACKLOG', active: true },
+      });
       if (existingAge) {
-        await prisma.systemAlert.update({ where: { id: existingAge.id }, data: { lastSeen: new Date(), message, payload } });
+        await prisma.systemAlert.update({
+          where: { id: existingAge.id },
+          data: { lastSeen: new Date(), message, payload },
+        });
         console.log('Updated existing QUEUE_BACKLOG alert for oldest age', existingAge.id);
       } else {
-        const created = await prisma.systemAlert.create({ data: { type: 'QUEUE_BACKLOG', severity: 'CRITICAL', message, payload, active: true } });
+        const created = await prisma.systemAlert.create({
+          data: { type: 'QUEUE_BACKLOG', severity: 'CRITICAL', message, payload, active: true },
+        });
         console.log('Created QUEUE_BACKLOG alert for oldest age', created.id);
       }
     }
@@ -71,21 +115,44 @@ const { prisma } = require('../lib/prisma');
     const minAbsolute = Number(process.env.FAILED_SPIKE_MIN || '5');
     const now1m = new Date(now.getTime() - 1 * 60 * 1000);
     const now15m = new Date(now.getTime() - 15 * 60 * 1000);
-    const recentFailed = await prisma.telemetrySample.findMany({ where: { key: 'jobs.failed.count', timestamp: { gte: now1m } } });
-    const baselineRows = await prisma.telemetrySample.findMany({ where: { key: 'jobs.failed.count', timestamp: { gte: now15m, lt: now1m } } });
+    const recentFailed = await prisma.telemetrySample.findMany({
+      where: { key: 'jobs.failed.count', timestamp: { gte: now1m } },
+    });
+    const baselineRows = await prisma.telemetrySample.findMany({
+      where: { key: 'jobs.failed.count', timestamp: { gte: now15m, lt: now1m } },
+    });
     const recentSum = recentFailed.reduce((s, r) => s + Number(r.value), 0);
-    const baselineAvg = baselineRows.length ? (baselineRows.reduce((s, r) => s + Number(r.value), 0) / baselineRows.length) : 0;
-    console.log('FAILED_JOBS_SPIKE check:', { recentSum, baselineAvg, spikeMultiplier, minAbsolute });
-    if (recentSum >= minAbsolute && (baselineAvg === 0 ? recentSum >= minAbsolute * spikeMultiplier : recentSum > baselineAvg * spikeMultiplier)) {
+    const baselineAvg = baselineRows.length
+      ? baselineRows.reduce((s, r) => s + Number(r.value), 0) / baselineRows.length
+      : 0;
+    console.log('FAILED_JOBS_SPIKE check:', {
+      recentSum,
+      baselineAvg,
+      spikeMultiplier,
+      minAbsolute,
+    });
+    if (
+      recentSum >= minAbsolute &&
+      (baselineAvg === 0
+        ? recentSum >= minAbsolute * spikeMultiplier
+        : recentSum > baselineAvg * spikeMultiplier)
+    ) {
       const severity = recentSum > baselineAvg * spikeMultiplier * 2 ? 'CRITICAL' : 'WARNING';
       const message = `Failed jobs spike: recent=${recentSum}, baselineAvg=${baselineAvg.toFixed(2)}`;
       const payload = { recentSum, baselineAvg };
-      const existingFail = await prisma.systemAlert.findFirst({ where: { type: 'JOB_STUCK', active: true } });
+      const existingFail = await prisma.systemAlert.findFirst({
+        where: { type: 'JOB_STUCK', active: true },
+      });
       if (existingFail) {
-        await prisma.systemAlert.update({ where: { id: existingFail.id }, data: { lastSeen: new Date(), message, payload } });
+        await prisma.systemAlert.update({
+          where: { id: existingFail.id },
+          data: { lastSeen: new Date(), message, payload },
+        });
         console.log('Updated existing JOB_STUCK alert', existingFail.id);
       } else {
-        const created = await prisma.systemAlert.create({ data: { type: 'JOB_STUCK', severity, message, payload, active: true } });
+        const created = await prisma.systemAlert.create({
+          data: { type: 'JOB_STUCK', severity, message, payload, active: true },
+        });
         console.log('Created JOB_STUCK alert', created.id);
       }
     }

@@ -71,21 +71,32 @@ export async function getLearningFunnelSummary(opts: {
     take: 200_000,
   });
 
-  const sessionIds = sessions.map((s) => s.id);
+  type StructuredSessionRow = {
+    id: string;
+    meta?: any;
+    state?: string | null;
+    completedAt?: Date | null;
+  };
+  const sessionsRows = sessions as StructuredSessionRow[];
+  const sessionIds = sessionsRows.map((s: StructuredSessionRow) => s.id);
 
   const homeworkSubmitted = sessionIds.length
-    ? await prisma.sessionEvent.findMany({
+    ? ((await prisma.sessionEvent.findMany({
         where: { sessionId: { in: sessionIds }, eventType: 'HOMEWORK_SUBMITTED' },
         select: { sessionId: true },
         distinct: ['sessionId'],
-      })
+      })) as { sessionId: string }[])
     : [];
-  const homeworkSet = new Set(homeworkSubmitted.map((r) => r.sessionId));
+  const homeworkSet = new Set(
+    (homeworkSubmitted as { sessionId: string }[]).map((r: { sessionId: string }) => r.sessionId)
+  );
 
   // Optional top-stage: recommendationComputed from HomeRecommendationDecision
-  const decisionCount = await prisma.homeRecommendationDecision.count({
-    where: { evaluatedAt: { gte: from, lte: to } },
-  }).catch(() => 0);
+  const decisionCount = await prisma.homeRecommendationDecision
+    .count({
+      where: { evaluatedAt: { gte: from, lte: to } },
+    })
+    .catch(() => 0);
 
   let explanationViewed = 0;
   let practiceCompleted = 0;
@@ -93,7 +104,7 @@ export async function getLearningFunnelSummary(opts: {
   let homeworkCompleted = 0;
   let sessionCompleted = 0;
 
-  for (const s of sessions) {
+  for (const s of sessionsRows) {
     if (hasMetaFlag(s.meta, 'explanationViewed')) explanationViewed++;
     if (getPracticeTotalAnswers(s.meta) >= 1) practiceCompleted++;
     if (hasMetaObject(s.meta, 'testResult')) testCompleted++;
@@ -115,7 +126,9 @@ export async function getLearningFunnelSummary(opts: {
 
   const rates = {
     // If recommendationComputed exists, expose start rate; otherwise session-first rates.
-    startRateFromRecommendation: hasRecommendationComputed ? rate(stages.sessionStarted, stages.recommendationComputed) : 0,
+    startRateFromRecommendation: hasRecommendationComputed
+      ? rate(stages.sessionStarted, stages.recommendationComputed)
+      : 0,
     explanationViewRate: rate(stages.explanationViewed, stages.sessionStarted),
     practiceCompletionRate: rate(stages.practiceCompleted, stages.explanationViewed),
     testCompletionRate: rate(stages.testCompleted, stages.practiceCompleted),
@@ -147,4 +160,3 @@ export async function getLearningFunnelSummary(opts: {
     },
   };
 }
-

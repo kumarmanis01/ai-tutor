@@ -26,10 +26,7 @@ const DIFFICULTIES = ['easy', 'medium', 'hard'] as const;
  * @param topicId - The topic to hydrate.
  * @param triggerReason - Optional reason for observability (e.g. 'session_start_missing').
  */
-export function triggerForTopic(
-  topicId: string,
-  triggerReason = 'session_start_missing',
-): void {
+export function triggerForTopic(topicId: string, triggerReason = 'session_start_missing'): void {
   logger.info('[GAP-03] ContentHydrationTrigger: hydration request', {
     topicId,
     triggerReason,

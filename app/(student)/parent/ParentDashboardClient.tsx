@@ -29,10 +29,18 @@ const WeeklyTrendChart = dynamic(() => import('@/components/parent/WeeklyTrendCh
   ssr: false,
   loading: () => <CardSkeleton />,
 });
-const SubjectRadar = dynamic(() => import('@/components/parent/SubjectRadar'), { ssr: false, loading: () => <CardSkeleton /> });
-const MasteryPie = dynamic(() => import('@/components/parent/MasteryPie'), { ssr: false, loading: () => <CardSkeleton /> });
-const AttentionBar = dynamic(() => import('@/components/parent/AttentionBar'), { ssr: false, loading: () => <CardSkeleton /> });
-
+const SubjectRadar = dynamic(() => import('@/components/parent/SubjectRadar'), {
+  ssr: false,
+  loading: () => <CardSkeleton />,
+});
+const MasteryPie = dynamic(() => import('@/components/parent/MasteryPie'), {
+  ssr: false,
+  loading: () => <CardSkeleton />,
+});
+const AttentionBar = dynamic(() => import('@/components/parent/AttentionBar'), {
+  ssr: false,
+  loading: () => <CardSkeleton />,
+});
 
 // ─── Types (API v2) ────────────────────────────────────────────────────
 
@@ -172,39 +180,57 @@ function formatDate(dateStr: string): string {
 
 function masteryColor(level: string): string {
   switch (level) {
-    case 'expert': return 'text-green-600 bg-green-50 dark:text-green-400 dark:bg-green-900/20';
-    case 'advanced': return 'text-blue-600 bg-blue-50 dark:text-blue-400 dark:bg-blue-900/20';
-    case 'intermediate': return 'text-yellow-600 bg-yellow-50 dark:text-yellow-400 dark:bg-yellow-900/20';
-    case 'beginner': return 'text-red-600 bg-red-50 dark:text-red-400 dark:bg-red-900/20';
-    default: return 'text-gray-500 bg-gray-50';
+    case 'expert':
+      return 'text-green-600 bg-green-50 dark:text-green-400 dark:bg-green-900/20';
+    case 'advanced':
+      return 'text-blue-600 bg-blue-50 dark:text-blue-400 dark:bg-blue-900/20';
+    case 'intermediate':
+      return 'text-yellow-600 bg-yellow-50 dark:text-yellow-400 dark:bg-yellow-900/20';
+    case 'beginner':
+      return 'text-red-600 bg-red-50 dark:text-red-400 dark:bg-red-900/20';
+    default:
+      return 'text-gray-500 bg-gray-50';
   }
 }
 
 function readinessColor(label: string): string {
   switch (label) {
-    case 'ready': return 'text-green-600 border-green-200 bg-green-50';
-    case 'on_track': return 'text-yellow-600 border-yellow-200 bg-yellow-50';
-    case 'needs_work': return 'text-amber-600 border-amber-200 bg-amber-50';
-    default: return 'text-gray-500 border-gray-200 bg-gray-50';
+    case 'ready':
+      return 'text-green-600 border-green-200 bg-green-50';
+    case 'on_track':
+      return 'text-yellow-600 border-yellow-200 bg-yellow-50';
+    case 'needs_work':
+      return 'text-amber-600 border-amber-200 bg-amber-50';
+    default:
+      return 'text-gray-500 border-gray-200 bg-gray-50';
   }
 }
 
 function friendlyReadinessLabel(label: string): string {
   switch (label) {
-    case 'ready': return 'Looking great';
-    case 'on_track': return 'Making progress';
-    case 'needs_work': return 'Developing skills';
-    case 'not_started': return 'Just getting started';
-    default: return label.replace(/_/g, ' ');
+    case 'ready':
+      return 'Looking great';
+    case 'on_track':
+      return 'Making progress';
+    case 'needs_work':
+      return 'Developing skills';
+    case 'not_started':
+      return 'Just getting started';
+    default:
+      return label.replace(/_/g, ' ');
   }
 }
 
 function readinessPillColor(label: string): string {
   switch (label) {
-    case 'ready': return 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300';
-    case 'on_track': return 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300';
-    case 'needs_work': return 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300';
-    default: return 'bg-gray-100 text-gray-700 dark:bg-slate-700 dark:text-gray-200';
+    case 'ready':
+      return 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300';
+    case 'on_track':
+      return 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300';
+    case 'needs_work':
+      return 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300';
+    default:
+      return 'bg-gray-100 text-gray-700 dark:bg-slate-700 dark:text-gray-200';
   }
 }
 
@@ -230,7 +256,8 @@ function _masteryLabel(level: string) {
 // ─── Readiness Badge ───────────────────────────────────────────────────
 
 function ReadinessBadge({ item }: { item: ReadinessItem }) {
-  const lang = typeof navigator !== 'undefined' && navigator.language?.startsWith('hi') ? 'hi' : 'en';
+  const lang =
+    typeof navigator !== 'undefined' && navigator.language?.startsWith('hi') ? 'hi' : 'en';
   const L = LOCAL_STRINGS[lang] ?? LOCAL_STRINGS.en;
   const [min, max] = predictMarkRange(item.readinessScore);
 
@@ -243,15 +270,21 @@ function ReadinessBadge({ item }: { item: ReadinessItem }) {
       <div className="w-full bg-gray-200 rounded-full h-2 mb-1">
         <div
           className={`h-2 rounded-full ${
-            item.readinessLabel === 'ready' ? 'bg-green-500' :
-            item.readinessLabel === 'on_track' ? 'bg-yellow-500' :
-            item.readinessLabel === 'needs_work' ? 'bg-red-500' : 'bg-gray-400'
+            item.readinessLabel === 'ready'
+              ? 'bg-green-500'
+              : item.readinessLabel === 'on_track'
+                ? 'bg-yellow-500'
+                : item.readinessLabel === 'needs_work'
+                  ? 'bg-red-500'
+                  : 'bg-gray-400'
           }`}
           style={{ width: `${Math.min(item.readinessScore, 100)}%` }}
         />
       </div>
       <div className="flex justify-between text-xs mt-1">
-        <span>{item.topicsCovered}/{item.totalTopics} topics</span>
+        <span>
+          {item.topicsCovered}/{item.totalTopics} topics
+        </span>
         <span className="capitalize">{friendlyReadinessLabel(item.readinessLabel)}</span>
       </div>
 
@@ -266,10 +299,14 @@ function ReadinessBadge({ item }: { item: ReadinessItem }) {
 
 function friendlyFlagReason(reason: string): string {
   switch (reason) {
-    case 'very_low_accuracy': return 'Developing skills';
-    case 'low_mastery': return 'Room to grow';
-    case 'declining_accuracy': return 'Needs a little more support';
-    default: return 'Could use more practice';
+    case 'very_low_accuracy':
+      return 'Developing skills';
+    case 'low_mastery':
+      return 'Room to grow';
+    case 'declining_accuracy':
+      return 'Needs a little more support';
+    default:
+      return 'Could use more practice';
   }
 }
 
@@ -300,7 +337,9 @@ function SubjectProgressCard({ subject }: { subject: SubjectProgressData }) {
         className="w-full p-3 flex items-center justify-between hover:bg-gray-50 dark:hover:bg-slate-700/50 transition-colors"
       >
         <div className="flex items-center gap-3">
-          <span className="font-medium text-gray-900 dark:text-white capitalize">{subject.subject}</span>
+          <span className="font-medium text-gray-900 dark:text-white capitalize">
+            {subject.subject}
+          </span>
           <span className="text-xs text-gray-500">
             {subject.topicsCovered}/{subject.totalTopics} topics
           </span>
@@ -328,42 +367,50 @@ function SubjectProgressCard({ subject }: { subject: SubjectProgressData }) {
               <div className="font-bold text-red-600">{subject.weakTopics}</div>
               <div className="text-gray-500">Weak</div>
             </div>
-              <div className="bg-purple-50 dark:bg-purple-900/20 rounded p-2 text-left">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <div className="font-bold text-purple-600">{Math.round(subject.avgAccuracy * 4 * 10) / 10}/4</div>
-                    <div className="text-gray-500 flex items-center gap-2">
-                      <span>
-                        Mastery
-                      </span>
-                      {/* Info tooltip (server provided) */}
-                      <span
-                        className="text-xs text-gray-400 cursor-help"
-                        title={subject.masteryExplanation}
-                      >
-                        ⓘ
-                      </span>
-                    </div>
+            <div className="bg-purple-50 dark:bg-purple-900/20 rounded p-2 text-left">
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="font-bold text-purple-600">
+                    {Math.round(subject.avgAccuracy * 4 * 10) / 10}/4
+                  </div>
+                  <div className="text-gray-500 flex items-center gap-2">
+                    <span>Mastery</span>
+                    {/* Info tooltip (server provided) */}
+                    <span
+                      className="text-xs text-gray-400 cursor-help"
+                      title={subject.masteryExplanation}
+                    >
+                      ⓘ
+                    </span>
                   </div>
                 </div>
-
-                {/* Opt-in benchmarking copy (uses server-provided peerPercentile) */}
-                {(() => {
-                  try {
-                    if (typeof window === 'undefined') return null;
-                    const opt = localStorage.getItem('parent_benchmarking_optin') === '1';
-                    if (!opt) return null;
-                    const pct = subject.peerPercentile ?? null;
-                    if (pct === null) return null;
-                    const lang = navigator.language?.startsWith('hi') ? 'hi' : 'en';
-                    const tpl = LOCAL_STRINGS[lang]?.benchmarkingCopy ?? LOCAL_STRINGS.en.benchmarkingCopy;
-                    return <div className="text-xs text-gray-600 mt-1">{tpl.replace('{pct}', String(pct))}</div>;
-                  } catch (err) {
-                    logger.debug('Failed to render benchmarking copy', { className: CLASS_NAME, error: String(err) });
-                    return null;
-                  }
-                })()}
               </div>
+
+              {/* Opt-in benchmarking copy (uses server-provided peerPercentile) */}
+              {(() => {
+                try {
+                  if (typeof window === 'undefined') return null;
+                  const opt = localStorage.getItem('parent_benchmarking_optin') === '1';
+                  if (!opt) return null;
+                  const pct = subject.peerPercentile ?? null;
+                  if (pct === null) return null;
+                  const lang = navigator.language?.startsWith('hi') ? 'hi' : 'en';
+                  const tpl =
+                    LOCAL_STRINGS[lang]?.benchmarkingCopy ?? LOCAL_STRINGS.en.benchmarkingCopy;
+                  return (
+                    <div className="text-xs text-gray-600 mt-1">
+                      {tpl.replace('{pct}', String(pct))}
+                    </div>
+                  );
+                } catch (err) {
+                  logger.debug('Failed to render benchmarking copy', {
+                    className: CLASS_NAME,
+                    error: String(err),
+                  });
+                  return null;
+                }
+              })()}
+            </div>
           </div>
 
           {subject.predictedDaysTo80 !== null && (
@@ -377,7 +424,9 @@ function SubjectProgressCard({ subject }: { subject: SubjectProgressData }) {
           {subject.chapters.map((ch) => (
             <div key={ch.chapter} className="pl-2 border-l-2 border-indigo-200">
               <div className="flex items-center justify-between mb-1">
-                <span className="text-sm font-medium text-gray-700 dark:text-gray-300 capitalize">{ch.chapter}</span>
+                <span className="text-sm font-medium text-gray-700 dark:text-gray-300 capitalize">
+                  {ch.chapter}
+                </span>
                 <span className="text-xs text-gray-500">{ch.topicCount} topics</span>
               </div>
               <div className="flex flex-wrap gap-1">
@@ -401,7 +450,15 @@ function SubjectProgressCard({ subject }: { subject: SubjectProgressData }) {
 
 // ─── Student Detail Panel ──────────────────────────────────────────────
 
-function StudentDetailPanel({ studentId, onClose, benchmarkingOptIn }: { studentId: string; onClose: () => void; benchmarkingOptIn: boolean }) {
+function StudentDetailPanel({
+  studentId,
+  onClose,
+  benchmarkingOptIn,
+}: {
+  studentId: string;
+  onClose: () => void;
+  benchmarkingOptIn: boolean;
+}) {
   const [data, setData] = useState<StudentDetailData | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'progress' | 'attention' | 'readiness'>('progress');
@@ -409,8 +466,11 @@ function StudentDetailPanel({ studentId, onClose, benchmarkingOptIn }: { student
   useEffect(() => {
     async function fetchDetail() {
       try {
-        const locale = typeof navigator !== 'undefined' && navigator.language?.startsWith('hi') ? 'hi' : 'en';
-        const res = await fetch(`/api/parent/subject-mastery?studentId=${studentId}&benchmarking=${benchmarkingOptIn ? 'true' : 'false'}&locale=${locale}`);
+        const locale =
+          typeof navigator !== 'undefined' && navigator.language?.startsWith('hi') ? 'hi' : 'en';
+        const res = await fetch(
+          `/api/parent/subject-mastery?studentId=${studentId}&benchmarking=${benchmarkingOptIn ? 'true' : 'false'}&locale=${locale}`
+        );
         if (res.ok) {
           const json = await res.json();
           // API returns array of SubjectMastery objects
@@ -437,7 +497,9 @@ function StudentDetailPanel({ studentId, onClose, benchmarkingOptIn }: { student
     return (
       <div className="bg-white dark:bg-slate-800 rounded-xl shadow-lg p-6 text-center">
         <p className="text-gray-500">Unable to load progress data.</p>
-        <button onClick={onClose} className="mt-2 text-[#534AB7] hover:underline text-sm">Close</button>
+        <button onClick={onClose} className="mt-2 text-[#534AB7] hover:underline text-sm">
+          Close
+        </button>
       </div>
     );
   }
@@ -456,10 +518,16 @@ function StudentDetailPanel({ studentId, onClose, benchmarkingOptIn }: { student
                 : 'text-gray-500 hover:text-gray-700'
             }`}
           >
-            {tab === 'progress' ? 'Subjects' : tab === 'attention' ? `Needs Attention (${data.attentionFlags.length})` : 'Readiness'}
+            {tab === 'progress'
+              ? 'Subjects'
+              : tab === 'attention'
+                ? `Needs Attention (${data.attentionFlags.length})`
+                : 'Readiness'}
           </button>
         ))}
-        <button onClick={onClose} className="px-3 text-gray-400 hover:text-gray-600">&times;</button>
+        <button onClick={onClose} className="px-3 text-gray-400 hover:text-gray-600">
+          &times;
+        </button>
       </div>
 
       <div className="p-4 max-h-[60vh] overflow-y-auto">
@@ -468,7 +536,9 @@ function StudentDetailPanel({ studentId, onClose, benchmarkingOptIn }: { student
             {data.subjectProgress.length === 0 ? (
               <p className="text-gray-500 text-center py-4">No subject progress data yet.</p>
             ) : (
-              data.subjectProgress.map((sp) => <SubjectProgressCard key={sp.subject} subject={sp} />)
+              data.subjectProgress.map((sp) => (
+                <SubjectProgressCard key={sp.subject} subject={sp} />
+              ))
             )}
           </div>
         )}
@@ -479,7 +549,9 @@ function StudentDetailPanel({ studentId, onClose, benchmarkingOptIn }: { student
               <div className="text-center py-8">
                 <div className="text-4xl mb-2">&#10004;&#65039;</div>
                 <p className="text-green-600 font-medium">Doing well in all areas!</p>
-                <p className="text-gray-500 text-sm mt-1">No topics need extra support right now.</p>
+                <p className="text-gray-500 text-sm mt-1">
+                  No topics need extra support right now.
+                </p>
               </div>
             ) : (
               <div className="bg-amber-50 dark:bg-amber-900/10 rounded-lg p-3">
@@ -563,7 +635,9 @@ function LinkStudentForm({ onSuccess }: { onSuccess: () => void }) {
           type="button"
           onClick={() => setMode('email')}
           className={`flex-1 py-1.5 text-sm rounded-lg transition-colors ${
-            mode === 'email' ? 'bg-[#EEEDFE] text-[#534AB7] dark:bg-indigo-900/30 dark:text-indigo-400' : 'bg-gray-100 text-gray-600 dark:bg-slate-700 dark:text-gray-400'
+            mode === 'email'
+              ? 'bg-[#EEEDFE] text-[#534AB7] dark:bg-indigo-900/30 dark:text-indigo-400'
+              : 'bg-gray-100 text-gray-600 dark:bg-slate-700 dark:text-gray-400'
           }`}
         >
           By Email
@@ -572,7 +646,9 @@ function LinkStudentForm({ onSuccess }: { onSuccess: () => void }) {
           type="button"
           onClick={() => setMode('code')}
           className={`flex-1 py-1.5 text-sm rounded-lg transition-colors ${
-            mode === 'code' ? 'bg-[#EEEDFE] text-[#534AB7] dark:bg-indigo-900/30 dark:text-indigo-400' : 'bg-gray-100 text-gray-600 dark:bg-slate-700 dark:text-gray-400'
+            mode === 'code'
+              ? 'bg-[#EEEDFE] text-[#534AB7] dark:bg-indigo-900/30 dark:text-indigo-400'
+              : 'bg-gray-100 text-gray-600 dark:bg-slate-700 dark:text-gray-400'
           }`}
         >
           By Invite Code
@@ -582,7 +658,8 @@ function LinkStudentForm({ onSuccess }: { onSuccess: () => void }) {
       {mode === 'email' ? (
         <>
           <p className="text-sm text-gray-500 dark:text-gray-400 mb-3">
-            Email linking works only if your child has added your email under <span className="font-medium">Profile → Parent Email</span>.
+            Email linking works only if your child has added your email under{' '}
+            <span className="font-medium">Profile → Parent Email</span>.
           </p>
           <div className="flex space-x-2">
             <input
@@ -607,7 +684,8 @@ function LinkStudentForm({ onSuccess }: { onSuccess: () => void }) {
       ) : (
         <>
           <p className="text-sm text-gray-500 dark:text-gray-400 mb-3">
-            Ask your child to generate an invite code from their Profile (Parent Access), then enter it here.
+            Ask your child to generate an invite code from their Profile (Parent Access), then enter
+            it here.
           </p>
           <div className="flex space-x-2">
             <input
@@ -652,7 +730,10 @@ export default function ParentDashboardClient() {
       const v = localStorage.getItem('parent_benchmarking_optin') === '1';
       setBenchmarkingOptIn(v);
     } catch (err) {
-      logger.debug('Failed to read parent_benchmarking_optin from localStorage', { className: CLASS_NAME, error: String(err) });
+      logger.debug('Failed to read parent_benchmarking_optin from localStorage', {
+        className: CLASS_NAME,
+        error: String(err),
+      });
     }
   }, []);
 
@@ -660,7 +741,10 @@ export default function ParentDashboardClient() {
     try {
       localStorage.setItem('parent_benchmarking_optin', benchmarkingOptIn ? '1' : '0');
     } catch (err) {
-      logger.debug('Failed to write parent_benchmarking_optin to localStorage', { className: CLASS_NAME, error: String(err) });
+      logger.debug('Failed to write parent_benchmarking_optin to localStorage', {
+        className: CLASS_NAME,
+        error: String(err),
+      });
     }
   }, [benchmarkingOptIn]);
 
@@ -706,7 +790,10 @@ export default function ParentDashboardClient() {
       <div className="min-h-screen bg-gray-50 dark:bg-slate-900 flex items-center justify-center">
         <div className="text-center">
           <p className="text-red-500 mb-4">{error}</p>
-          <button onClick={fetchData} className="px-4 py-2 bg-[#534AB7] text-white rounded-lg hover:bg-[#3C3489]">
+          <button
+            onClick={fetchData}
+            className="px-4 py-2 bg-[#534AB7] text-white rounded-lg hover:bg-[#3C3489]"
+          >
             Retry
           </button>
         </div>
@@ -716,11 +803,10 @@ export default function ParentDashboardClient() {
 
   const selected = data?.students?.find((s) => s.studentId === activeStudentId) ?? null;
   const latestWeek = selected?.weekly?.[0] ?? null;
-  const topReadiness =
-    (selected?.readiness ?? [])
-      .slice()
-      .sort((a, b) => b.readinessScore - a.readinessScore)
-      .slice(0, 3);
+  const topReadiness = (selected?.readiness ?? [])
+    .slice()
+    .sort((a, b) => b.readinessScore - a.readinessScore)
+    .slice(0, 3);
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-slate-900">
@@ -751,10 +837,15 @@ export default function ParentDashboardClient() {
 
         {data && data.students.length === 0 && (
           <div className="text-center py-12 bg-white dark:bg-slate-800 rounded-2xl shadow-lg">
-            <div className="text-6xl mb-4">&#128104;&#8205;&#128105;&#8205;&#128103;&#8205;&#128102;</div>
-            <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">No Students Linked</h3>
+            <div className="text-6xl mb-4">
+              &#128104;&#8205;&#128105;&#8205;&#128103;&#8205;&#128102;
+            </div>
+            <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
+              No Students Linked
+            </h3>
             <p className="text-gray-500 dark:text-gray-400 max-w-xl mx-auto">
-              Link your child's account to start monitoring progress. For the most secure option, use an invite code generated from your child's Profile.
+              Link your child's account to start monitoring progress. For the most secure option,
+              use an invite code generated from your child's Profile.
             </p>
           </div>
         )}
@@ -765,7 +856,9 @@ export default function ParentDashboardClient() {
               <div>
                 <div className="text-sm opacity-90">Linked children</div>
                 <div className="text-3xl font-bold">{data.totalStudents}</div>
-                <div className="text-xs opacity-90 mt-1">Updated {new Date(data.generatedAt).toLocaleString()}</div>
+                <div className="text-xs opacity-90 mt-1">
+                  Updated {new Date(data.generatedAt).toLocaleString()}
+                </div>
                 <div className="mt-2 flex items-center gap-3 text-xs">
                   <label className="flex items-center gap-2 text-white/90">
                     <input
@@ -774,7 +867,12 @@ export default function ParentDashboardClient() {
                       onChange={() => setBenchmarkingOptIn((v) => !v)}
                       className="w-4 h-4 rounded bg-white/10"
                     />
-                    <span>{LOCAL_STRINGS[navigator.language?.startsWith('hi') ? 'hi' : 'en'].benchmarkingOptInLabel}</span>
+                    <span>
+                      {
+                        LOCAL_STRINGS[navigator.language?.startsWith('hi') ? 'hi' : 'en']
+                          .benchmarkingOptInLabel
+                      }
+                    </span>
                   </label>
                   <button
                     type="button"
@@ -813,18 +911,28 @@ export default function ParentDashboardClient() {
                   <div className="flex items-center gap-4">
                     <div className="relative w-14 h-14 rounded-full bg-gradient-to-br from-purple-400 to-indigo-500 flex items-center justify-center text-white text-xl font-bold shadow-md overflow-hidden">
                       {selected.studentImage ? (
-                        <Image src={selected.studentImage} alt={selected.studentName} fill className="object-cover" sizes="56px" />
+                        <Image
+                          src={selected.studentImage}
+                          alt={selected.studentName}
+                          fill
+                          className="object-cover"
+                          sizes="56px"
+                        />
                       ) : (
                         selected.studentName.charAt(0).toUpperCase()
                       )}
                     </div>
                     <div className="flex-1">
-                      <div className="text-lg font-bold text-gray-900 dark:text-white">{selected.studentName}</div>
+                      <div className="text-lg font-bold text-gray-900 dark:text-white">
+                        {selected.studentName}
+                      </div>
                       <div className="text-sm text-gray-500 dark:text-gray-400">
-                        {selected.grade ? `Class ${selected.grade}` : 'Class --'} {selected.board ? `• ${selected.board}` : ''}
+                        {selected.grade ? `Class ${selected.grade}` : 'Class --'}{' '}
+                        {selected.board ? `• ${selected.board}` : ''}
                       </div>
                       <div className="text-xs text-gray-400 mt-1">
-                        Last active: {selected.lastActiveAt ? formatDate(selected.lastActiveAt) : '--'}
+                        Last active:{' '}
+                        {selected.lastActiveAt ? formatDate(selected.lastActiveAt) : '--'}
                       </div>
                     </div>
                   </div>
@@ -834,7 +942,9 @@ export default function ParentDashboardClient() {
                   <div className="rounded-xl bg-[#EEEDFE] dark:bg-indigo-900/20 p-3">
                     <div className="text-xs text-gray-500 dark:text-gray-400">Study time (12w)</div>
                     <div className="text-2xl font-bold text-[#534AB7] dark:text-indigo-300">
-                      {formatDuration((selected.weekly ?? []).reduce((sum, w) => sum + (w.totalMinutes ?? 0), 0))}
+                      {formatDuration(
+                        (selected.weekly ?? []).reduce((sum, w) => sum + (w.totalMinutes ?? 0), 0)
+                      )}
                     </div>
                   </div>
                   <div className="rounded-xl bg-emerald-50 dark:bg-emerald-900/20 p-3">
@@ -844,7 +954,9 @@ export default function ParentDashboardClient() {
                     </div>
                   </div>
                   <div className="rounded-xl bg-amber-50 dark:bg-amber-900/20 p-3">
-                    <div className="text-xs text-gray-500 dark:text-gray-400">Avg score (latest)</div>
+                    <div className="text-xs text-gray-500 dark:text-gray-400">
+                      Avg score (latest)
+                    </div>
                     <div className="text-2xl font-bold text-amber-700 dark:text-amber-300">
                       {latestWeek ? `${clamp(Math.round(latestWeek.averageScore), 0, 100)}%` : '--'}
                     </div>
@@ -859,32 +971,46 @@ export default function ParentDashboardClient() {
 
                 <div className="px-5 pb-5">
                   <div className="flex items-center justify-between">
-                    <div className="text-sm font-semibold text-gray-900 dark:text-white">Top readiness</div>
+                    <div className="text-sm font-semibold text-gray-900 dark:text-white">
+                      Top readiness
+                    </div>
                   </div>
                   <div className="mt-3 grid grid-cols-1 gap-2">
                     {topReadiness.length === 0 ? (
-                      <div className="text-sm text-gray-500 dark:text-gray-400">No readiness data yet.</div>
+                      <div className="text-sm text-gray-500 dark:text-gray-400">
+                        No readiness data yet.
+                      </div>
                     ) : (
                       topReadiness.map((r) => (
-                        <div key={r.subject} className="flex items-center justify-between rounded-xl border border-gray-100 dark:border-slate-700 p-3">
-                          <div className="text-sm font-medium text-gray-900 dark:text-white capitalize">{r.subject}</div>
+                        <div
+                          key={r.subject}
+                          className="flex items-center justify-between rounded-xl border border-gray-100 dark:border-slate-700 p-3"
+                        >
+                          <div className="text-sm font-medium text-gray-900 dark:text-white capitalize">
+                            {r.subject}
+                          </div>
                           <div className="flex items-center gap-2">
-                            <span className={`text-xs px-2 py-1 rounded-full ${readinessPillColor(r.readinessLabel)}`}>
+                            <span
+                              className={`text-xs px-2 py-1 rounded-full ${readinessPillColor(r.readinessLabel)}`}
+                            >
                               {friendlyReadinessLabel(r.readinessLabel)}
                             </span>
-                            <span className="text-sm font-bold text-gray-700 dark:text-gray-200">{r.readinessScore}%</span>
+                            <span className="text-sm font-bold text-gray-700 dark:text-gray-200">
+                              {r.readinessScore}%
+                            </span>
                           </div>
                         </div>
                       ))
                     )}
                   </div>
                 </div>
-
               </div>
 
               <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-lg p-5">
                 <div className="flex items-center justify-between">
-                  <div className="text-sm font-semibold text-gray-900 dark:text-white">Deep dive</div>
+                  <div className="text-sm font-semibold text-gray-900 dark:text-white">
+                    Deep dive
+                  </div>
                 </div>
                 <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
                   View subject drill-down, weak topics, and readiness details.
@@ -903,8 +1029,12 @@ export default function ParentDashboardClient() {
               <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-lg p-5">
                 <div className="flex items-center justify-between mb-3">
                   <div>
-                    <div className="text-sm font-semibold text-gray-900 dark:text-white">Weekly trend</div>
-                    <div className="text-xs text-gray-500 dark:text-gray-400">Minutes, topics attempted, and average score</div>
+                    <div className="text-sm font-semibold text-gray-900 dark:text-white">
+                      Weekly trend
+                    </div>
+                    <div className="text-xs text-gray-500 dark:text-gray-400">
+                      Minutes, topics attempted, and average score
+                    </div>
                   </div>
                 </div>
                 <WeeklyTrendChart weekly={selected.weekly} />
@@ -912,17 +1042,23 @@ export default function ParentDashboardClient() {
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-lg p-5">
-                  <div className="text-sm font-semibold text-gray-900 dark:text-white mb-3">Subject coverage & mastery</div>
+                  <div className="text-sm font-semibold text-gray-900 dark:text-white mb-3">
+                    Subject coverage & mastery
+                  </div>
                   <SubjectRadar subjects={selected.subjectProgress} />
                 </div>
                 <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-lg p-5">
-                  <div className="text-sm font-semibold text-gray-900 dark:text-white mb-3">Mastery distribution</div>
+                  <div className="text-sm font-semibold text-gray-900 dark:text-white mb-3">
+                    Mastery distribution
+                  </div>
                   <MasteryPie distribution={selected.masteryDistribution} />
                 </div>
               </div>
 
               <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-lg p-5">
-                <div className="text-sm font-semibold text-gray-900 dark:text-white mb-3">Needs attention by subject</div>
+                <div className="text-sm font-semibold text-gray-900 dark:text-white mb-3">
+                  Needs attention by subject
+                </div>
                 <AttentionBar items={selected.attentionBySubject} />
               </div>
             </div>
@@ -933,7 +1069,11 @@ export default function ParentDashboardClient() {
         {drilldownStudentId && (
           <div className="mt-6">
             {/* Keep existing drill-down panel for now (uses /api/parent/subject-mastery) */}
-            <StudentDetailPanel studentId={drilldownStudentId} onClose={() => setDrilldownStudentId(null)} benchmarkingOptIn={benchmarkingOptIn} />
+            <StudentDetailPanel
+              studentId={drilldownStudentId}
+              onClose={() => setDrilldownStudentId(null)}
+              benchmarkingOptIn={benchmarkingOptIn}
+            />
           </div>
         )}
       </main>

@@ -16,7 +16,7 @@ import { useParentMode } from '@/hooks/useParentMode';
 const ParentModeCard: React.FC = () => {
   const { data, loading } = useParentMode();
   const isConnected = data.status === 'connected';
-  
+
   const handleClick = () => {
     logger.add('Parent Mode clicked', { className: 'ParentModeCard' });
   };
@@ -35,7 +35,13 @@ const ParentModeCard: React.FC = () => {
           {loading ? 'Checking...' : isConnected ? '✅ Connected' : 'Link parent account'}
         </p>
       </div>
-      <svg className="w-4 h-4 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <svg
+        className="w-4 h-4 text-muted-foreground"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+      >
         <path d="M9 5l7 7-7 7" />
       </svg>
     </button>

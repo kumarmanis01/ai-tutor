@@ -25,14 +25,19 @@ function walk(dir) {
 }
 
 function relImport(fromFile) {
-  const rel = path.relative(path.dirname(fromFile), path.join(ROOT, 'lib', 'prisma'))
+  const rel = path
+    .relative(path.dirname(fromFile), path.join(ROOT, 'lib', 'prisma'))
     .split(path.sep)
     .join('/');
   return rel.startsWith('.') ? rel : `./${rel}`;
 }
 
 function alreadyHasPrismaImport(text) {
-  return /import\s+\{\s*prisma\s*\}/.test(text) || /require\(['"].*lib\/prisma['"]\)/.test(text) || /const\s+\{\s*prisma\s*\}/.test(text);
+  return (
+    /import\s+\{\s*prisma\s*\}/.test(text) ||
+    /require\(['"].*lib\/prisma['"]\)/.test(text) ||
+    /const\s+\{\s*prisma\s*\}/.test(text)
+  );
 }
 
 function processFile(file) {
@@ -49,9 +54,12 @@ function processFile(file) {
   const importMatch = out.match(importRe);
   if (importMatch) {
     const before = importMatch[1];
-    const names = importMatch[2].split(',').map(s => s.trim()).filter(Boolean);
+    const names = importMatch[2]
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean);
     if (names.includes('PrismaClient')) {
-      const remaining = names.filter(n => n !== 'PrismaClient');
+      const remaining = names.filter((n) => n !== 'PrismaClient');
       let replacement = '';
       if (remaining.length > 0) {
         replacement = `${before}import { ${remaining.join(', ')} } from '@prisma/client';\nimport { prisma } from '${libPath}';`;
@@ -66,9 +74,12 @@ function processFile(file) {
     const reqMatch = out.match(reqRe);
     if (reqMatch) {
       const before = reqMatch[1];
-      const names = reqMatch[2].split(',').map(s => s.trim()).filter(Boolean);
+      const names = reqMatch[2]
+        .split(',')
+        .map((s) => s.trim())
+        .filter(Boolean);
       if (names.includes('PrismaClient')) {
-        const remaining = names.filter(n => n !== 'PrismaClient');
+        const remaining = names.filter((n) => n !== 'PrismaClient');
         let replacement = '';
         if (remaining.length > 0) {
           replacement = `${before}const { ${remaining.join(', ')} } = require('@prisma/client');\nconst { prisma } = require('${libPath}');`;
@@ -90,18 +101,24 @@ function processFile(file) {
   }
 
   // Replace common instantiation patterns
-  // 1) 
+  // 1)
   out = out.replace(/const\s+prisma\s*=\s*new\s+PrismaClient\([^;\n]*\);?/g, '');
 
   // 2) const p = prisma;  => const p = prisma;
-  out = out.replace(/const\s+([a-zA-Z_$][\w$]*)\s*=\s*new\s+PrismaClient\([^;\n]*\);?/g, (m, name) => {
-    return `const ${name} = prisma;`;
-  });
+  out = out.replace(
+    /const\s+([a-zA-Z_$][\w$]*)\s*=\s*new\s+PrismaClient\([^;\n]*\);?/g,
+    (m, name) => {
+      return `const ${name} = prisma;`;
+    }
+  );
 
-  // 3) require-style where pkg used: const pkg = require('@prisma/client'); const { PrismaClient } = pkg; 
-  out = out.replace(/const\s+pkg\s*=\s*require\(['"]@prisma\/client['"]\)\s*;?\s*(?:const\s+\{[^}]+\}\s*=\s*pkg\s*;?\s*)?const\s+([a-zA-Z_$][\w$]*)\s*=\s*new\s+PrismaClient\([^;\n]*\);?/g, (m, name) => {
-    return `const ${name} = prisma;`;
-  });
+  // 3) require-style where pkg used: const pkg = require('@prisma/client'); const { PrismaClient } = pkg;
+  out = out.replace(
+    /const\s+pkg\s*=\s*require\(['"]@prisma\/client['"]\)\s*;?\s*(?:const\s+\{[^}]+\}\s*=\s*pkg\s*;?\s*)?const\s+([a-zA-Z_$][\w$]*)\s*=\s*new\s+PrismaClient\([^;\n]*\);?/g,
+    (m, name) => {
+      return `const ${name} = prisma;`;
+    }
+  );
 
   if (out !== src) {
     fs.writeFileSync(file, out, 'utf8');

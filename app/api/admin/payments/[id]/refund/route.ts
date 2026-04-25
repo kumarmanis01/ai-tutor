@@ -1,7 +1,7 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
-import { getServerSessionForHandlers } from '@/lib/session'
-import { AdminActionType } from '@prisma/client'
+import { NextRequest, NextResponse } from 'next/server';
+import { prisma } from '@/lib/prisma';
+import { getServerSessionForHandlers } from '@/lib/session';
+import { AdminActionType } from '@prisma/client';
 
 /**
  * POST /api/admin/payments/:id/refund
@@ -13,42 +13,43 @@ import { AdminActionType } from '@prisma/client'
  * Body: { reason: string }
  * Returns: { ok: true }
  */
-export async function POST(
-  req: NextRequest,
-  { params }: { params: Promise<{ id: string }> },
-) {
-  const session = await getServerSessionForHandlers()
+export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const session = await getServerSessionForHandlers();
   if (!session?.user?.id || session.user.role !== 'admin') {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
-  const { id } = await params
+  const { id } = await params;
 
-  let body: unknown
+  let body: unknown;
   try {
-    body = await req.json()
+    body = await req.json();
   } catch {
-    return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
+    return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
   }
 
-  const reason: string = typeof (body as any)?.reason === 'string' ? String((body as any).reason).trim() : ''
+  const reason: string =
+    typeof (body as any)?.reason === 'string' ? String((body as any).reason).trim() : '';
 
   if (!reason) {
     return NextResponse.json(
       { error: 'reason_required', message: 'reason is required for manual refunds' },
-      { status: 400 },
-    )
+      { status: 400 }
+    );
   }
 
-  const payment = await prisma.payment.findUnique({ where: { id } })
+  const payment = await prisma.payment.findUnique({ where: { id } });
   if (!payment) {
-    return NextResponse.json({ error: 'Not found' }, { status: 404 })
+    return NextResponse.json({ error: 'Not found' }, { status: 404 });
   }
   if (payment.status === 'refunded') {
-    return NextResponse.json({ error: 'already_refunded', message: 'Payment is already marked as refunded' }, { status: 409 })
+    return NextResponse.json(
+      { error: 'already_refunded', message: 'Payment is already marked as refunded' },
+      { status: 409 }
+    );
   }
 
-  const previousStatus = payment.status
+  const previousStatus = payment.status;
 
   await prisma.$transaction([
     prisma.payment.update({
@@ -72,13 +73,13 @@ export async function POST(
         adminId: session.user.id,
         targetEntity: 'Payment',
         targetId: id,
-        action: (AdminActionType?.SUBSCRIPTION_REFUND) ?? 'SUBSCRIPTION_REFUND',
+        action: AdminActionType?.SUBSCRIPTION_REFUND ?? 'SUBSCRIPTION_REFUND',
         previousValue: { status: previousStatus },
         newValue: { status: 'refunded' },
         reason,
       },
     }),
-  ])
+  ]);
 
-  return NextResponse.json({ ok: true })
+  return NextResponse.json({ ok: true });
 }

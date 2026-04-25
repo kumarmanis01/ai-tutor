@@ -113,20 +113,15 @@ beforeEach(() => {
   (prisma.homeworkAssignment.findFirst as jest.Mock).mockResolvedValue(null);
   (prisma.structuredSession.findFirst as jest.Mock).mockResolvedValue(null);
   (prisma.learningSession.findFirst as jest.Mock).mockResolvedValue(null);
-  (prisma.topicDef.findUnique as jest.Mock).mockResolvedValue(
-    makeTopicDef('Fractions'),
-  );
+  (prisma.topicDef.findUnique as jest.Mock).mockResolvedValue(makeTopicDef('Fractions'));
   // Default curriculum: one topic; tests override progressRows per scenario
-  (getOrderedTopicsForStudent as jest.Mock).mockResolvedValue(
-    makeOrderedTopics('topic-001'),
-  );
+  (getOrderedTopicsForStudent as jest.Mock).mockResolvedValue(makeOrderedTopics('topic-001'));
   (prisma.studentTopicProgress.findMany as jest.Mock).mockResolvedValue([]);
 });
 
 // ─── Tests ────────────────────────────────────────────────────────────────────
 
 describe('getNextAction — P3 spaced_revision dynamic intervals', () => {
-
   // ── Band 1: mastery 0.40–0.60 → 3 days ─────────────────────────────────────
 
   it('fires after 4 days for mastery 0.45 (band interval = 3 days)', async () => {
@@ -176,7 +171,7 @@ describe('getNextAction — P3 spaced_revision dynamic intervals', () => {
 
   it('fires after 15 days for mastery 0.80 (band interval = 14 days)', async () => {
     (prisma.studentTopicProgress.findMany as jest.Mock).mockResolvedValue([
-      { topicId: 'topic-001', mastery: 0.80, practiceCount: 6, lastStudiedAt: daysAgo(15) },
+      { topicId: 'topic-001', mastery: 0.8, practiceCount: 6, lastStudiedAt: daysAgo(15) },
     ]);
 
     const result = unwrap(await getNextAction(STUDENT_ID));
@@ -186,7 +181,7 @@ describe('getNextAction — P3 spaced_revision dynamic intervals', () => {
 
   it('does NOT fire at 13 days for mastery 0.80 (not yet overdue — interval = 14 days)', async () => {
     (prisma.studentTopicProgress.findMany as jest.Mock).mockResolvedValue([
-      { topicId: 'topic-001', mastery: 0.80, practiceCount: 6, lastStudiedAt: daysAgo(13) },
+      { topicId: 'topic-001', mastery: 0.8, practiceCount: 6, lastStudiedAt: daysAgo(13) },
     ]);
 
     const result = unwrap(await getNextAction(STUDENT_ID));
@@ -221,7 +216,7 @@ describe('getNextAction — P3 spaced_revision dynamic intervals', () => {
   it('returns the most overdue topic when multiple candidates exist', async () => {
     // Set up two-topic curriculum
     (getOrderedTopicsForStudent as jest.Mock).mockResolvedValue(
-      makeOrderedTopics('topic-A', 'topic-B'),
+      makeOrderedTopics('topic-A', 'topic-B')
     );
 
     // Topic A: mastery 0.65, interval 7 days, studied 20 days ago → overdue by 13 days
@@ -233,9 +228,7 @@ describe('getNextAction — P3 spaced_revision dynamic intervals', () => {
     ]);
 
     // Enrich topic-A
-    (prisma.topicDef.findUnique as jest.Mock).mockResolvedValue(
-      makeTopicDef('Linear Equations'),
-    );
+    (prisma.topicDef.findUnique as jest.Mock).mockResolvedValue(makeTopicDef('Linear Equations'));
 
     const result = unwrap(await getNextAction(STUDENT_ID));
 
@@ -249,9 +242,7 @@ describe('getNextAction — P3 spaced_revision dynamic intervals', () => {
     (prisma.studentTopicProgress.findMany as jest.Mock).mockResolvedValue([
       { topicId: 'topic-001', mastery: 0.65, practiceCount: 5, lastStudiedAt: daysAgo(9) },
     ]);
-    (prisma.topicDef.findUnique as jest.Mock).mockResolvedValue(
-      makeTopicDef('Fractions'),
-    );
+    (prisma.topicDef.findUnique as jest.Mock).mockResolvedValue(makeTopicDef('Fractions'));
 
     const result = unwrap(await getNextAction(STUDENT_ID));
 
@@ -282,7 +273,7 @@ describe('getNextAction — P3 spaced_revision dynamic intervals', () => {
 
   it('fetches progress rows with studentId and curriculum topicId scope', async () => {
     (getOrderedTopicsForStudent as jest.Mock).mockResolvedValue(
-      makeOrderedTopics('topic-x', 'topic-y'),
+      makeOrderedTopics('topic-x', 'topic-y')
     );
     (prisma.studentTopicProgress.findMany as jest.Mock).mockResolvedValue([]);
 
@@ -294,7 +285,7 @@ describe('getNextAction — P3 spaced_revision dynamic intervals', () => {
           studentId: STUDENT_ID,
           topicId: { in: expect.arrayContaining(['topic-x', 'topic-y']) },
         }),
-      }),
+      })
     );
   });
 
@@ -339,8 +330,8 @@ describe('getNextAction — P3 spaced_revision dynamic intervals', () => {
     // With a 3-day interval (mastery 0.45), neither measurement triggers P3 (1 < 3).
     // This test confirms the calendar-normalized path does NOT fire prematurely.
     const studiedAt = new Date();
-    studiedAt.setDate(studiedAt.getDate() - 1);   // yesterday
-    studiedAt.setHours(23, 50, 0, 0);             // at 23:50
+    studiedAt.setDate(studiedAt.getDate() - 1); // yesterday
+    studiedAt.setHours(23, 50, 0, 0); // at 23:50
 
     (prisma.studentTopicProgress.findMany as jest.Mock).mockResolvedValue([
       { topicId: 'topic-001', mastery: 0.45, practiceCount: 3, lastStudiedAt: studiedAt },
@@ -351,5 +342,4 @@ describe('getNextAction — P3 spaced_revision dynamic intervals', () => {
     // 1 calendar day < 3-day interval → must not fire
     expect(result?.ruleId).not.toBe('spaced_revision');
   });
-
 });

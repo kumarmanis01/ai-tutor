@@ -30,7 +30,4 @@ export {
 } from './schemas';
 
 // Detection and recovery logic
-export {
-  detectStuckState,
-  createRecoveryPlan,
-} from './detector';
+export { detectStuckState, createRecoveryPlan } from './detector';

@@ -50,6 +50,7 @@ flowchart LR
 ```
 
 Talking points:
+
 - Outbox guarantees DB-backed enqueue semantics.
 - Workers must perform short DB txs to avoid pooled DB transaction errors.
 
@@ -121,6 +122,7 @@ stateDiagram-v2
 ```
 
 Talking points:
+
 - Claims are atomic updates; if update affects 0 rows, another worker claimed it.
 - Workers should not spawn child HydrationJobs—reconciler/orchestrator does.
 

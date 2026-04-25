@@ -371,4 +371,4 @@ In all cases, safe extension means: keep phase order, transition rules, and comp
 
 ---
 
-*End of document.*
+_End of document._

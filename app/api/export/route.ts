@@ -42,9 +42,15 @@ export async function POST(req: Request) {
       logger.logAPI(req, res, { className: 'ExportAPI', methodName: 'POST' }, start);
       // Audit text export (non-blocking)
       try {
-        const db = (global as any).__TEST_PRISMA__ ?? (await import('@/lib/prisma')).prisma
-        const { logAuditEvent } = await import('@/lib/audit/log')
-        logAuditEvent(db, { actorId: session.user.id, action: 'export_text', entityType: 'CHAT_EXPORT', entityId: null, metadata: { title } })
+        const db = (global as any).__TEST_PRISMA__ ?? (await import('@/lib/prisma')).prisma;
+        const { logAuditEvent } = await import('@/lib/audit/log');
+        logAuditEvent(db, {
+          actorId: session.user.id,
+          action: 'export_text',
+          entityType: 'CHAT_EXPORT',
+          entityId: null,
+          metadata: { title },
+        });
       } catch {
         // swallow
       }
@@ -87,19 +93,25 @@ export async function POST(req: Request) {
 
     const pdfBytes = await pdfDoc.save();
     // Rate-limit exports per user
-    const { allowRequest } = await import('@/lib/rateLimit')
-    const key = `export:${session.user.id}`
+    const { allowRequest } = await import('@/lib/rateLimit');
+    const key = `export:${session.user.id}`;
     if (!allowRequest(key, 5, 60_000)) {
-      res = NextResponse.json({ error: 'rate_limited' }, { status: 429 })
-      logger.logAPI(req, res, { className: 'ExportAPI', methodName: 'POST' }, start)
-      return res
+      res = NextResponse.json({ error: 'rate_limited' }, { status: 429 });
+      logger.logAPI(req, res, { className: 'ExportAPI', methodName: 'POST' }, start);
+      return res;
     }
 
     // Audit PDF export (non-blocking)
     try {
-      const db = (global as any).__TEST_PRISMA__ ?? (await import('@/lib/prisma')).prisma
-      const { logAuditEvent } = await import('@/lib/audit/log')
-      logAuditEvent(db, { actorId: session.user.id, action: 'export_pdf', entityType: 'CHAT_EXPORT', entityId: null, metadata: { title } })
+      const db = (global as any).__TEST_PRISMA__ ?? (await import('@/lib/prisma')).prisma;
+      const { logAuditEvent } = await import('@/lib/audit/log');
+      logAuditEvent(db, {
+        actorId: session.user.id,
+        action: 'export_pdf',
+        entityType: 'CHAT_EXPORT',
+        entityId: null,
+        metadata: { title },
+      });
     } catch {
       // swallow
     }
@@ -112,6 +124,9 @@ export async function POST(req: Request) {
     });
   } catch (err) {
     logger.error('export error', { className: 'api.export', methodName: 'GET', error: err });
-    return NextResponse.json({ error: 'server_error', detail: formatErrorForResponse(err) }, { status: 500 });
+    return NextResponse.json(
+      { error: 'server_error', detail: formatErrorForResponse(err) },
+      { status: 500 }
+    );
   }
 }

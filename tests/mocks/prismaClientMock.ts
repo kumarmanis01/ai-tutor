@@ -16,25 +16,29 @@
 
 export class PrismaClient {
   constructor() {}
-  async $executeRawUnsafe(_sql: string) { return null }
-  async $disconnect() { return null }
+  async $executeRawUnsafe(_sql: string) {
+    return null;
+  }
+  async $disconnect() {
+    return null;
+  }
 }
 
 export const Prisma = {
-  ClientKnownRequestError: class {}
-}
+  ClientKnownRequestError: class {},
+};
 
 export const UserRole = {
   user: 'user',
   parent: 'parent',
   admin: 'admin',
   moderator: 'moderator',
-  support: 'support'
-} as const
+  support: 'support',
+} as const;
 
-export type UserRole = typeof UserRole[keyof typeof UserRole]
+export type UserRole = (typeof UserRole)[keyof typeof UserRole];
 
-export default { PrismaClient, Prisma, UserRole }
+export default { PrismaClient, Prisma, UserRole };
 
 // Minimal enum-like exports used in tests. These mirror the generated
 // @prisma/client enums so unit tests that import them from
@@ -42,15 +46,15 @@ export default { PrismaClient, Prisma, UserRole }
 export const LanguageCode = {
   en: 'en',
   hi: 'hi',
-} as const
-export type LanguageCode = typeof LanguageCode[keyof typeof LanguageCode]
+} as const;
+export type LanguageCode = (typeof LanguageCode)[keyof typeof LanguageCode];
 
 export const DifficultyLevel = {
   easy: 'easy',
   medium: 'medium',
   hard: 'hard',
-} as const
-export type DifficultyLevel = typeof DifficultyLevel[keyof typeof DifficultyLevel]
+} as const;
+export type DifficultyLevel = (typeof DifficultyLevel)[keyof typeof DifficultyLevel];
 
 export const AdminActionType = {
   SUBSCRIPTION_EXTEND: 'SUBSCRIPTION_EXTEND',
@@ -69,28 +73,28 @@ export const AdminActionType = {
   QUESTION_APPROVE: 'QUESTION_APPROVE',
   QUESTION_REJECT: 'QUESTION_REJECT',
   DOUBT_RESOLVE: 'DOUBT_RESOLVE',
-} as const
-export type AdminActionType = typeof AdminActionType[keyof typeof AdminActionType]
+} as const;
+export type AdminActionType = (typeof AdminActionType)[keyof typeof AdminActionType];
 
 // Consent scopes used by the consent APIs and tests
 export const ConsentScope = {
   AI_INTERACTION: 'AI_INTERACTION',
   DATA_PROCESSING: 'DATA_PROCESSING',
   MARKETING: 'MARKETING',
-} as const
-export type ConsentScope = typeof ConsentScope[keyof typeof ConsentScope]
+} as const;
+export type ConsentScope = (typeof ConsentScope)[keyof typeof ConsentScope];
 
 export const JobType = {
   syllabus: 'syllabus',
   notes: 'notes',
   questions: 'questions',
-} as const
-export type JobType = typeof JobType[keyof typeof JobType]
+} as const;
+export type JobType = (typeof JobType)[keyof typeof JobType];
 
 export const JobStatus = {
   pending: 'pending',
   running: 'running',
   completed: 'completed',
   failed: 'failed',
-} as const
-export type JobStatus = typeof JobStatus[keyof typeof JobStatus]
+} as const;
+export type JobStatus = (typeof JobStatus)[keyof typeof JobStatus];

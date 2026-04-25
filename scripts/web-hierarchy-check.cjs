@@ -20,7 +20,10 @@ const p = prisma;
                   orderBy: { order: 'asc' },
                   include: {
                     topics: {
-                      where: { lifecycle: SoftDeleteStatus.active, status: ApprovalStatus.approved },
+                      where: {
+                        lifecycle: SoftDeleteStatus.active,
+                        status: ApprovalStatus.approved,
+                      },
                       orderBy: { order: 'asc' },
                       select: { id: true, name: true, slug: true, order: true },
                     },

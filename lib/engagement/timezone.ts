@@ -23,7 +23,10 @@ export function getLocalDateString(utcDate: Date, timezone: string | null | unde
  * Returns the UTC Date for midnight at the start of the given local date in the given timezone.
  * So "2026-03-08" + "Asia/Kolkata" => UTC instant when it is 2026-03-08 00:00:00 in Kolkata.
  */
-export function startOfLocalDayUtc(localDateStr: string, timezone: string | null | undefined): Date {
+export function startOfLocalDayUtc(
+  localDateStr: string,
+  timezone: string | null | undefined
+): Date {
   const tz = timezone ?? DEFAULT_TZ;
   // Noon UTC on that date is always in the same calendar day in any TZ (within reason)
   const noonUtc = new Date(localDateStr + 'T12:00:00.000Z');

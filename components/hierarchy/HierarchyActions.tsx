@@ -7,13 +7,13 @@
  * - Content requires admin approval
  */
 
-"use client";
-import React, { useState } from "react";
-import { useRouter } from "next/navigation";
+'use client';
+import React, { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { useHierarchy } from "./HierarchyContext";
-import { alerts } from "@/lib/alerts";
-import { logger } from "@/lib/logger";
+import { useHierarchy } from './HierarchyContext';
+import { alerts } from '@/lib/alerts';
+import { logger } from '@/lib/logger';
 
 type Props = {
   // selection is available via context but accept prop for convenience
@@ -22,11 +22,11 @@ type Props = {
 
 // Helper to determine entity type from selection (deepest selected level)
 function resolveEntity(selection: any) {
-  if (selection?.topicId) return { entityType: "TOPIC", entityId: selection.topicId };
-  if (selection?.chapterId) return { entityType: "CHAPTER", entityId: selection.chapterId };
-  if (selection?.subjectId) return { entityType: "SUBJECT", entityId: selection.subjectId };
-  if (selection?.classId) return { entityType: "CLASS", entityId: selection.classId };
-  if (selection?.boardId) return { entityType: "BOARD", entityId: selection.boardId };
+  if (selection?.topicId) return { entityType: 'TOPIC', entityId: selection.topicId };
+  if (selection?.chapterId) return { entityType: 'CHAPTER', entityId: selection.chapterId };
+  if (selection?.subjectId) return { entityType: 'SUBJECT', entityId: selection.subjectId };
+  if (selection?.classId) return { entityType: 'CLASS', entityId: selection.classId };
+  if (selection?.boardId) return { entityType: 'BOARD', entityId: selection.boardId };
   return { entityType: undefined, entityId: undefined };
 }
 
@@ -38,7 +38,8 @@ export default function HierarchyActions({ selection: propSelection }: Props) {
 
   const enqueueJob = async (jobType: string) => {
     const { entityType, entityId } = resolveEntity(selection);
-    if (!entityType || !entityId) return alerts.warning("Please select a scope before running this action.");
+    if (!entityType || !entityId)
+      return alerts.warning('Please select a scope before running this action.');
 
     setSubmitting(true);
     try {
@@ -70,10 +71,10 @@ export default function HierarchyActions({ selection: propSelection }: Props) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       });
-      if (!res.ok) throw new Error("enqueue_failed");
+      if (!res.ok) throw new Error('enqueue_failed');
       const { jobId } = await res.json();
       alerts.success(`${jobType} job created`);
-    router.push(`/admin/content-engine/jobs/${jobId}`);
+      router.push(`/admin/content-engine/jobs/${jobId}`);
     } catch (err) {
       alerts.error(`Failed to enqueue ${jobType}.`);
       (logger as any).error(err, `Failed to enqueue ${jobType}`);
@@ -85,18 +86,65 @@ export default function HierarchyActions({ selection: propSelection }: Props) {
   return (
     <div className="p-4 border rounded">
       <h3 className="font-semibold mb-2">Actions</h3>
-      <p className="text-sm text-gray-600 mb-3">Selected scope: {selection.topicId ? "Topic" : selection.chapterId ? "Chapter" : selection.subjectId ? "Subject" : selection.classId ? "Class" : selection.boardId ? "Board" : "None"}</p>
+      <p className="text-sm text-gray-600 mb-3">
+        Selected scope:{' '}
+        {selection.topicId
+          ? 'Topic'
+          : selection.chapterId
+            ? 'Chapter'
+            : selection.subjectId
+              ? 'Subject'
+              : selection.classId
+                ? 'Class'
+                : selection.boardId
+                  ? 'Board'
+                  : 'None'}
+      </p>
 
       <div className="flex flex-col gap-2">
-        <button className="px-3 py-2 bg-blue-600 text-white rounded" disabled={submitting} onClick={() => enqueueJob("GENERATE_NOTES")}>Generate Notes</button>
-        <button className="px-3 py-2 bg-green-600 text-white rounded" disabled={submitting} onClick={() => enqueueJob("GENERATE_QUESTIONS")}>Generate Questions</button>
-        <button className="px-3 py-2 bg-[#534AB7] text-white rounded" disabled={submitting} onClick={() => enqueueJob("GENERATE_TEST")}>Generate Test</button>
+        <button
+          className="px-3 py-2 bg-blue-600 text-white rounded"
+          disabled={submitting}
+          onClick={() => enqueueJob('GENERATE_NOTES')}
+        >
+          Generate Notes
+        </button>
+        <button
+          className="px-3 py-2 bg-green-600 text-white rounded"
+          disabled={submitting}
+          onClick={() => enqueueJob('GENERATE_QUESTIONS')}
+        >
+          Generate Questions
+        </button>
+        <button
+          className="px-3 py-2 bg-[#534AB7] text-white rounded"
+          disabled={submitting}
+          onClick={() => enqueueJob('GENERATE_TEST')}
+        >
+          Generate Test
+        </button>
         <hr className="my-2" />
-        <button className="px-3 py-2 bg-yellow-600 text-white rounded" disabled={submitting} onClick={() => enqueueJob("SYLLABUS")}>Generate Syllabus (hydrate)</button>
+        <button
+          className="px-3 py-2 bg-yellow-600 text-white rounded"
+          disabled={submitting}
+          onClick={() => enqueueJob('SYLLABUS')}
+        >
+          Generate Syllabus (hydrate)
+        </button>
         <div className="text-sm text-gray-600 mt-2">
-          If chapters don't appear after generation, you can requeue the job from the <Link href="/admin/content-engine/jobs" className="underline text-blue-600">Jobs</Link> page (select the failed job and click Requeue).
+          If chapters don't appear after generation, you can requeue the job from the{' '}
+          <Link href="/admin/content-engine/jobs" className="underline text-blue-600">
+            Jobs
+          </Link>{' '}
+          page (select the failed job and click Requeue).
         </div>
-        <button className="px-3 py-2 bg-gray-200 rounded text-gray-800" disabled={submitting} onClick={() => alerts.info("Assemble test -- action placeholder")}>Assemble Test</button>
+        <button
+          className="px-3 py-2 bg-gray-200 rounded text-gray-800"
+          disabled={submitting}
+          onClick={() => alerts.info('Assemble test -- action placeholder')}
+        >
+          Assemble Test
+        </button>
       </div>
     </div>
   );

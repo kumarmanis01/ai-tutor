@@ -1,4 +1,4 @@
-import { z } from 'zod'
+import { z } from 'zod';
 
 // ---------------------------------------------------------------------------
 // Old flat schema -- kept for BilingualNotesSchema backward compat.
@@ -10,8 +10,8 @@ export const NoteSchema = z.object({
   explanation: z.string(),
   example: z.string(),
   keyPoints: z.array(z.string()).min(4).max(7),
-  commonMistakes: z.array(z.string()).min(2).max(4)
-})
+  commonMistakes: z.array(z.string()).min(2).max(4),
+});
 
 // ---------------------------------------------------------------------------
 // Rich classroom-quality schema (Vidya notes v2)
@@ -21,16 +21,24 @@ const ExampleStepSchema = z.object({
   expression: z.string(),
   teacherComment: z.string(),
   isCommonMistakePoint: z.boolean(),
-})
+});
 
 const ConceptCheckSchema = z.object({
   question: z.string(),
   hint: z.string(),
   answer: z.string(),
-})
+});
 
 export const NoteSectionSchema = z.object({
-  type: z.enum(['hook', 'concept', 'worked_example', 'concept_check', 'common_mistake', 'memory_aid', 'summary']),
+  type: z.enum([
+    'hook',
+    'concept',
+    'worked_example',
+    'concept_check',
+    'common_mistake',
+    'memory_aid',
+    'summary',
+  ]),
   title: z.string(),
   content: z.string().min(50),
   blackboardNotes: z.array(z.string()),
@@ -38,13 +46,13 @@ export const NoteSectionSchema = z.object({
   formulaLatex: z.string().nullable(),
   exampleSteps: z.array(ExampleStepSchema).nullable(),
   conceptCheck: ConceptCheckSchema.nullable(),
-})
+});
 
 const KeyConceptSchema = z.object({
   term: z.string(),
   definition: z.string(),
   formula: z.string().nullable(),
-})
+});
 
 const NoteMetadataSchema = z.object({
   board: z.string(),
@@ -55,7 +63,7 @@ const NoteMetadataSchema = z.object({
   estimatedReadingMinutes: z.number(),
   difficultyLevel: z.string(),
   conceptsIntroduced: z.array(z.string()),
-})
+});
 
 export const VidyaNotesSchema = z.object({
   metadata: NoteMetadataSchema,
@@ -65,10 +73,10 @@ export const VidyaNotesSchema = z.object({
   keyConcepts: z.array(KeyConceptSchema).min(1),
   examTips: z.array(z.string()).min(1),
   bridgeToNext: z.string().min(10),
-})
+});
 
-export type VidyaNotes = z.infer<typeof VidyaNotesSchema>
-export type NoteSection = z.infer<typeof NoteSectionSchema>
+export type VidyaNotes = z.infer<typeof VidyaNotesSchema>;
+export type NoteSection = z.infer<typeof NoteSectionSchema>;
 
 export const QuestionsItemSchema = z.object({
   question: z.string(),
@@ -76,40 +84,50 @@ export const QuestionsItemSchema = z.object({
   options: z.array(z.string()).min(3).max(5).optional(),
   answer: z.any(),
   explanation: z.string().optional(),
-  difficulty: z.string().transform(v => v.toLowerCase()).pipe(z.enum(['easy', 'medium', 'hard'])).optional(),
-  solutionSteps: z.array(z.string()).optional()
-})
+  difficulty: z
+    .string()
+    .transform((v) => v.toLowerCase())
+    .pipe(z.enum(['easy', 'medium', 'hard']))
+    .optional(),
+  solutionSteps: z.array(z.string()).optional(),
+});
 
 export const QuestionsSchema = z.object({
-  questions: z.array(QuestionsItemSchema).min(1)
-})
+  questions: z.array(QuestionsItemSchema).min(1),
+});
 
 export const BilingualNotesSchema = z.object({
   en: NoteSchema.optional(),
-  hi: NoteSchema.optional()
-})
+  hi: NoteSchema.optional(),
+});
 
-export const TopicSchema = z.object({ title: z.string(), order: z.number() })
-export const ChapterSchema = z.object({ title: z.string(), order: z.number(), topics: z.array(TopicSchema) })
-export const SyllabusSchema = z.object({ chapters: z.array(ChapterSchema) })
-
-export const ChaptersArraySchema = z.array(z.object({
+export const TopicSchema = z.object({ title: z.string(), order: z.number() });
+export const ChapterSchema = z.object({
   title: z.string(),
   order: z.number(),
-  summary: z.string(),
-  topics: z.array(TopicSchema).min(3).max(8)
-}))
+  topics: z.array(TopicSchema),
+});
+export const SyllabusSchema = z.object({ chapters: z.array(ChapterSchema) });
+
+export const ChaptersArraySchema = z.array(
+  z.object({
+    title: z.string(),
+    order: z.number(),
+    summary: z.string(),
+    topics: z.array(TopicSchema).min(3).max(8),
+  })
+);
 
 export const AssembleSchema = z.object({
   topic: z.string(),
   grade: z.number(),
   version: z.string(),
   content: z.any(),
-  metadata: z.object({ createdBy: z.string().nullable(), createdAt: z.string() })
-})
+  metadata: z.object({ createdBy: z.string().nullable(), createdAt: z.string() }),
+});
 
-export type Note = z.infer<typeof NoteSchema>
-export type Questions = z.infer<typeof QuestionsSchema>
+export type Note = z.infer<typeof NoteSchema>;
+export type Questions = z.infer<typeof QuestionsSchema>;
 
 const PromptSchemas = {
   NoteSchema,
@@ -119,9 +137,9 @@ const PromptSchemas = {
   SyllabusSchema,
   ChaptersArraySchema,
   AssembleSchema,
-}
+};
 
-export default PromptSchemas
+export default PromptSchemas;
 /**
  * FILE OBJECTIVE:
  * - TypeScript contracts for schema-first prompt architecture.
@@ -172,9 +190,9 @@ export type StudentIntent =
   | 'comparison'
   | 'real_world_application'
   | 'revision'
-  | 'give_final_answer'    // Flagged for rewrite
-  | 'solve_homework'       // Flagged for rewrite
-  | 'copy_paste';          // Flagged for rewrite
+  | 'give_final_answer' // Flagged for rewrite
+  | 'solve_homework' // Flagged for rewrite
+  | 'copy_paste'; // Flagged for rewrite
 
 /** Confidence levels for AI responses */
 export type ConfidenceLevel = 'high' | 'medium' | 'low';

@@ -16,73 +16,99 @@
 
 describe('processParentDigest', () => {
   beforeEach(() => {
-    jest.resetModules()
-    jest.clearAllMocks()
-  })
+    jest.resetModules();
+    jest.clearAllMocks();
+  });
 
   it('calls sendParentMilestoneNotification when a parent and child exist', async () => {
-    const sendMock = jest.fn(async () => ({ sent: true }))
+    const sendMock = jest.fn(async () => ({ sent: true }));
 
     const prismaMock: any = {
-      parentStudent: { findFirst: jest.fn(async () => ({ studentId: 's1', student: { name: 'Asha' }, parent: { name: 'Parent', email: 'p@example.test' } })) },
+      parentStudent: {
+        findFirst: jest.fn(async () => ({
+          studentId: 's1',
+          student: { name: 'Asha' },
+          parent: { name: 'Parent', email: 'p@example.test' },
+        })),
+      },
       structuredSession: { findMany: jest.fn(async () => [{ id: 'sess1' }]) },
       studentStreak: { findFirst: jest.fn(async () => ({ current: 4 })) },
-      studentConceptState: { findFirst: jest.fn(async () => null), findMany: jest.fn(async () => []) },
-    }
+      studentConceptState: {
+        findFirst: jest.fn(async () => null),
+        findMany: jest.fn(async () => []),
+      },
+    };
 
-    jest.doMock('@/lib/prisma', () => ({ prisma: prismaMock }))
-    jest.doMock('@/lib/notifications/delivery', () => ({ sendParentMilestoneNotification: sendMock }))
+    jest.doMock('@/lib/prisma', () => ({ prisma: prismaMock }));
+    jest.doMock('@/lib/notifications/delivery', () => ({
+      sendParentMilestoneNotification: sendMock,
+    }));
     // Prevent real OpenAI calls: ALLOW_LLM_CALLS=1 is set globally in forceTestNodeEnv.cjs
-    jest.doMock('@/lib/callLLM', () => ({ callLLM: jest.fn().mockRejectedValue(new Error('callLLM mocked in unit tests')) }))
+    jest.doMock('@/lib/callLLM', () => ({
+      callLLM: jest.fn().mockRejectedValue(new Error('callLLM mocked in unit tests')),
+    }));
 
-    const { processParentDigest } = await import('../../../worker/services/weeklyDigestWorker')
+    const { processParentDigest } = await import('../../../worker/services/weeklyDigestWorker');
 
-    await processParentDigest('p1', null)
+    await processParentDigest('p1', null);
 
-    expect(sendMock).toHaveBeenCalled()
-  })
+    expect(sendMock).toHaveBeenCalled();
+  });
 
   it('produces mobile-friendly, image-fallback and dark-mode-aware HTML', async () => {
-    const captured: any = {}
+    const captured: any = {};
     const sendMock = jest.fn(async (_parentId: string, opts: any) => {
-      captured.html = opts.html
-      return { sent: true }
-    })
+      captured.html = opts.html;
+      return { sent: true };
+    });
 
     const prismaMock: any = {
-      parentStudent: { findFirst: jest.fn(async () => ({ studentId: 's1', student: { name: 'Asha' }, parent: { name: 'Parent', email: 'p@example.test' } })) },
+      parentStudent: {
+        findFirst: jest.fn(async () => ({
+          studentId: 's1',
+          student: { name: 'Asha' },
+          parent: { name: 'Parent', email: 'p@example.test' },
+        })),
+      },
       structuredSession: { findMany: jest.fn(async () => [{ id: 'sess1' }]) },
       studentStreak: { findFirst: jest.fn(async () => ({ current: 4 })) },
-      studentConceptState: { findFirst: jest.fn(async () => null), findMany: jest.fn(async () => []) },
-    }
+      studentConceptState: {
+        findFirst: jest.fn(async () => null),
+        findMany: jest.fn(async () => []),
+      },
+    };
 
-    jest.doMock('@/lib/prisma', () => ({ prisma: prismaMock }))
-    jest.doMock('@/lib/notifications/delivery', () => ({ sendParentMilestoneNotification: sendMock }))
-    jest.doMock('@/lib/callLLM', () => ({ callLLM: jest.fn().mockRejectedValue(new Error('callLLM mocked in unit tests')) }))
+    jest.doMock('@/lib/prisma', () => ({ prisma: prismaMock }));
+    jest.doMock('@/lib/notifications/delivery', () => ({
+      sendParentMilestoneNotification: sendMock,
+    }));
+    jest.doMock('@/lib/callLLM', () => ({
+      callLLM: jest.fn().mockRejectedValue(new Error('callLLM mocked in unit tests')),
+    }));
 
-    const { processParentDigest } = await import('../../../worker/services/weeklyDigestWorker')
+    const { processParentDigest } = await import('../../../worker/services/weeklyDigestWorker');
 
-    await processParentDigest('p1', null)
+    await processParentDigest('p1', null);
 
-    expect(sendMock).toHaveBeenCalled()
-    expect(typeof captured.html).toBe('string')
+    expect(sendMock).toHaveBeenCalled();
+    expect(typeof captured.html).toBe('string');
     // Mobile viewport and dark-mode media query should be present
-    expect(captured.html).toMatch(/<meta[^>]*name=["']viewport["']/i)
-    expect(captured.html).toContain('prefers-color-scheme')
+    expect(captured.html).toMatch(/<meta[^>]*name=["']viewport["']/i);
+    expect(captured.html).toContain('prefers-color-scheme');
     // Fallback brand text must be present so email is readable without images
-    expect(captured.html).toContain('Spinzy Academy')
-  })
-})
+    expect(captured.html).toContain('Spinzy Academy');
+  });
+});
 
 describe('processWeeklyDigest -- suppression', () => {
   beforeEach(() => {
-    jest.resetModules()
-    jest.clearAllMocks()
-  })
+    jest.resetModules();
+    jest.clearAllMocks();
+  });
 
   it('should skip scheduling when parent has digestOptOut = true', async () => {
-    const outboxCreateMock = jest.fn(async () => ({}))
-    const infoMock = jest.fn()
+    const outboxCreateMock = jest.fn(async () => ({}));
+    const infoMock = jest.fn();
 
     const prismaMock: any = {
       parentStudent: {
@@ -97,37 +123,45 @@ describe('processWeeklyDigest -- suppression', () => {
       },
       parentProfile: {
         findMany: jest.fn(async () => [
-          { userId: 'p1', digestOptOut: true, digestDay: 'Sunday', digestTime: '09:00', digestTimezone: 'Asia/Kolkata' },
+          {
+            userId: 'p1',
+            digestOptOut: true,
+            digestDay: 'Sunday',
+            digestTime: '09:00',
+            digestTimezone: 'Asia/Kolkata',
+          },
         ]),
       },
       outbox: {
         findFirst: jest.fn(async () => null),
         create: outboxCreateMock,
       },
-    }
+    };
 
-    jest.doMock('@/lib/prisma', () => ({ prisma: prismaMock }))
-    jest.doMock('@/lib/logger', () => ({ logger: { info: infoMock, warn: jest.fn(), error: jest.fn() } }))
+    jest.doMock('@/lib/prisma', () => ({ prisma: prismaMock }));
+    jest.doMock('@/lib/logger', () => ({
+      logger: { info: infoMock, warn: jest.fn(), error: jest.fn() },
+    }));
     jest.doMock('@/lib/engagement/timezone', () => ({
       getLocalDateString: jest.fn(() => '2026-04-13'),
       startOfLocalDayUtc: jest.fn(() => new Date('2026-04-13T00:00:00Z')),
-    }))
+    }));
 
-    const { processWeeklyDigest } = await import('../../../worker/services/weeklyDigestWorker')
-    await processWeeklyDigest()
+    const { processWeeklyDigest } = await import('../../../worker/services/weeklyDigestWorker');
+    await processWeeklyDigest();
 
     // Outbox row must NOT be created for opted-out parent
-    expect(outboxCreateMock).not.toHaveBeenCalled()
+    expect(outboxCreateMock).not.toHaveBeenCalled();
     // Should log the opt-out skip
     expect(infoMock).toHaveBeenCalledWith(
       '[weeklyDigest] parent opted out, skipping',
-      expect.objectContaining({ parentId: 'p1' }),
-    )
-  })
+      expect.objectContaining({ parentId: 'p1' })
+    );
+  });
 
   it('should skip scheduling when outbox entry with same dedupKey already exists', async () => {
-    const outboxCreateMock = jest.fn(async () => ({}))
-    const infoMock = jest.fn()
+    const outboxCreateMock = jest.fn(async () => ({}));
+    const infoMock = jest.fn();
 
     const prismaMock: any = {
       parentStudent: {
@@ -149,24 +183,26 @@ describe('processWeeklyDigest -- suppression', () => {
         findFirst: jest.fn(async () => ({ id: 'existing-outbox-row' })),
         create: outboxCreateMock,
       },
-    }
+    };
 
-    jest.doMock('@/lib/prisma', () => ({ prisma: prismaMock }))
-    jest.doMock('@/lib/logger', () => ({ logger: { info: infoMock, warn: jest.fn(), error: jest.fn() } }))
+    jest.doMock('@/lib/prisma', () => ({ prisma: prismaMock }));
+    jest.doMock('@/lib/logger', () => ({
+      logger: { info: infoMock, warn: jest.fn(), error: jest.fn() },
+    }));
     jest.doMock('@/lib/engagement/timezone', () => ({
       getLocalDateString: jest.fn(() => '2026-04-13'),
       startOfLocalDayUtc: jest.fn(() => new Date('2026-04-13T00:00:00Z')),
-    }))
+    }));
 
-    const { processWeeklyDigest } = await import('../../../worker/services/weeklyDigestWorker')
-    await processWeeklyDigest()
+    const { processWeeklyDigest } = await import('../../../worker/services/weeklyDigestWorker');
+    await processWeeklyDigest();
 
     // Outbox row must NOT be created when dedupKey already exists
-    expect(outboxCreateMock).not.toHaveBeenCalled()
+    expect(outboxCreateMock).not.toHaveBeenCalled();
     // Should log the dedup skip
     expect(infoMock).toHaveBeenCalledWith(
       '[weeklyDigest] outbox exists, skipping create',
-      expect.objectContaining({ parentId: 'p2' }),
-    )
-  })
-})
+      expect.objectContaining({ parentId: 'p2' })
+    );
+  });
+});

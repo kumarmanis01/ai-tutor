@@ -48,7 +48,7 @@ export function barConfig(days: number): BarConfig {
 export function buildBucketCounts(
   sessions: { startedAt: Date }[],
   cfg: BarConfig,
-  now = Date.now(),
+  now = Date.now()
 ): [number, number, number, number] {
   const counts: [number, number, number, number] = [0, 0, 0, 0];
   if (sessions.length === 0) return counts;

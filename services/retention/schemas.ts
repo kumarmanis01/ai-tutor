@@ -79,20 +79,20 @@ export enum RedFlag {
 export const DailyEngagementSchema = z.object({
   studentId: z.string(),
   date: z.string().datetime(),
-  
+
   // Session metrics
   sessionsStarted: z.number().int().nonnegative(),
   sessionsCompleted: z.number().int().nonnegative(),
   totalTimeMinutes: z.number().nonnegative(),
   avgSessionLengthMinutes: z.number().nonnegative(),
-  
+
   // Learning metrics
   questionsAttempted: z.number().int().nonnegative(),
   questionsCorrect: z.number().int().nonnegative(),
   hintsUsed: z.number().int().nonnegative(),
   doubtsAsked: z.number().int().nonnegative(),
   topicsExplored: z.number().int().nonnegative(),
-  
+
   // Skip/abandon metrics
   questionsSkipped: z.number().int().nonnegative(),
   sessionsAbandoned: z.number().int().nonnegative(),
@@ -107,14 +107,16 @@ export const ConfidenceTrendSchema = z.object({
   studentId: z.string(),
   periodStart: z.string().datetime(),
   periodEnd: z.string().datetime(),
-  
+
   // Confidence snapshots
-  confidenceScores: z.array(z.object({
-    date: z.string().datetime(),
-    score: z.number().min(0).max(1),
-    topic: z.string().optional(),
-  })),
-  
+  confidenceScores: z.array(
+    z.object({
+      date: z.string().datetime(),
+      score: z.number().min(0).max(1),
+      topic: z.string().optional(),
+    })
+  ),
+
   // Calculated trend
   trend: z.enum(['improving', 'stable', 'declining', 'volatile']),
   averageConfidence: z.number().min(0).max(1),
@@ -131,13 +133,15 @@ export const DifficultyProgressionSchema = z.object({
   subject: z.string(),
   periodStart: z.string().datetime(),
   periodEnd: z.string().datetime(),
-  
+
   // Difficulty snapshots
-  difficultyLevels: z.array(z.object({
-    date: z.string().datetime(),
-    level: z.number().min(1).max(10),
-  })),
-  
+  difficultyLevels: z.array(
+    z.object({
+      date: z.string().datetime(),
+      level: z.number().min(1).max(10),
+    })
+  ),
+
   // Calculated metrics
   startLevel: z.number().min(1).max(10),
   endLevel: z.number().min(1).max(10),
@@ -155,14 +159,14 @@ export const ParentInvolvementSchema = z.object({
   parentId: z.string().optional(),
   periodStart: z.string().datetime(),
   periodEnd: z.string().datetime(),
-  
+
   // Engagement metrics
   dashboardViews: z.number().int().nonnegative(),
   reportViews: z.number().int().nonnegative(),
   messagesRead: z.number().int().nonnegative(),
   settingsChanged: z.number().int().nonnegative(),
   lastActiveAt: z.string().datetime().optional(),
-  
+
   // Calculated
   isActive: z.boolean(),
   daysSinceActive: z.number().int().nonnegative(),
@@ -181,11 +185,11 @@ export const RetentionStatusSchema = z.object({
   studentId: z.string(),
   cohortDate: z.string().datetime(), // Sign-up date
   window: z.nativeEnum(RetentionWindow),
-  
+
   // Status
   isRetained: z.boolean(),
   returnedAt: z.string().datetime().optional(),
-  
+
   // Context
   sessionsInWindow: z.number().int().nonnegative(),
   minutesInWindow: z.number().nonnegative(),
@@ -200,7 +204,7 @@ export const CohortRetentionSchema = z.object({
   cohortDate: z.string().datetime(),
   cohortSize: z.number().int().positive(),
   grade: z.number().int().min(1).max(12).optional(),
-  
+
   // Retention by window
   retentionRates: z.object({
     day_1: z.number().min(0).max(1),
@@ -209,7 +213,7 @@ export const CohortRetentionSchema = z.object({
     day_14: z.number().min(0).max(1),
     day_30: z.number().min(0).max(1),
   }),
-  
+
   // Benchmarks
   targetRates: z.object({
     day_1: z.number().min(0).max(1),
@@ -218,7 +222,7 @@ export const CohortRetentionSchema = z.object({
     day_14: z.number().min(0).max(1),
     day_30: z.number().min(0).max(1),
   }),
-  
+
   // Meeting targets?
   meetsTargets: z.object({
     day_1: z.boolean(),
@@ -243,7 +247,7 @@ export const RedFlagDetectionSchema = z.object({
   flag: z.nativeEnum(RedFlag),
   severity: z.nativeEnum(ChurnRisk),
   detectedAt: z.string().datetime(),
-  
+
   // Evidence
   evidence: z.object({
     metric: z.string(),
@@ -251,7 +255,7 @@ export const RedFlagDetectionSchema = z.object({
     threshold: z.number(),
     periodDays: z.number().int().positive(),
   }),
-  
+
   // Recommended action
   suggestedIntervention: z.string(),
 });
@@ -264,36 +268,40 @@ export type RedFlagDetection = z.infer<typeof RedFlagDetectionSchema>;
 export const ChurnRiskAssessmentSchema = z.object({
   studentId: z.string(),
   assessedAt: z.string().datetime(),
-  
+
   // Overall risk
   overallRisk: z.nativeEnum(ChurnRisk),
   riskScore: z.number().min(0).max(100),
-  
+
   // Red flags
   activeRedFlags: z.array(RedFlagDetectionSchema),
   resolvedRedFlags: z.array(z.string()), // Flag IDs
-  
+
   // Prediction
   churnProbability30Day: z.number().min(0).max(1),
   confidenceInterval: z.object({
     lower: z.number().min(0).max(1),
     upper: z.number().min(0).max(1),
   }),
-  
+
   // Key factors
-  topChurnFactors: z.array(z.object({
-    factor: z.string(),
-    impact: z.number(), // -1 to 1, negative = increases churn
-    description: z.string(),
-  })),
-  
+  topChurnFactors: z.array(
+    z.object({
+      factor: z.string(),
+      impact: z.number(), // -1 to 1, negative = increases churn
+      description: z.string(),
+    })
+  ),
+
   // Recommendations
-  interventions: z.array(z.object({
-    priority: z.number().int().min(1).max(5),
-    action: z.string(),
-    expectedImpact: z.string(),
-    owner: z.enum(['system', 'parent', 'teacher', 'admin']),
-  })),
+  interventions: z.array(
+    z.object({
+      priority: z.number().int().min(1).max(5),
+      action: z.string(),
+      expectedImpact: z.string(),
+      owner: z.enum(['system', 'parent', 'teacher', 'admin']),
+    })
+  ),
 });
 
 export type ChurnRiskAssessment = z.infer<typeof ChurnRiskAssessmentSchema>;
@@ -307,24 +315,24 @@ export type ChurnRiskAssessment = z.infer<typeof ChurnRiskAssessmentSchema>;
  */
 export const RETENTION_TARGETS: Record<string, CohortRetention['targetRates']> = {
   junior: {
-    day_1: 0.80,
+    day_1: 0.8,
     day_3: 0.65,
-    day_7: 0.50,
-    day_14: 0.40,
-    day_30: 0.30,
+    day_7: 0.5,
+    day_14: 0.4,
+    day_30: 0.3,
   },
   middle: {
     day_1: 0.75,
-    day_3: 0.60,
+    day_3: 0.6,
     day_7: 0.45,
     day_14: 0.35,
     day_30: 0.25,
   },
   senior: {
-    day_1: 0.70,
+    day_1: 0.7,
     day_3: 0.55,
-    day_7: 0.40,
-    day_14: 0.30,
+    day_7: 0.4,
+    day_14: 0.3,
     day_30: 0.22,
   },
 };
@@ -358,26 +366,17 @@ export const DEFAULT_RED_FLAG_THRESHOLDS: RedFlagThresholds = {
  * Intervention templates for each red flag.
  */
 export const RED_FLAG_INTERVENTIONS: Record<RedFlag, string> = {
-  [RedFlag.HIGH_DOUBTS_LOW_CONFIDENCE]: 
+  [RedFlag.HIGH_DOUBTS_LOW_CONFIDENCE]:
     'Enable additional scaffolding and reduce difficulty temporarily',
-  [RedFlag.FLAT_DIFFICULTY_3_WEEKS]: 
-    'Review learning path and consider diagnostic reassessment',
-  [RedFlag.NO_PARENT_VIEWS]: 
-    'Send parent engagement reminder with progress highlights',
-  [RedFlag.DECLINING_SESSION_LENGTH]: 
-    'Increase gamification elements and add session milestones',
-  [RedFlag.INCREASING_SKIP_RATE]: 
-    'Adjust difficulty downward and add more visual aids',
-  [RedFlag.NO_RETURN_AFTER_STRUGGLE]: 
-    'Send motivational outreach with easy win opportunity',
-  [RedFlag.LOW_COMPLETION_RATE]: 
-    'Shorten sessions and add more checkpoints',
-  [RedFlag.NEGATIVE_CONFIDENCE_TREND]: 
-    'Increase encouragement frequency and celebrate small wins',
-  [RedFlag.ABANDONED_DIAGNOSTIC]: 
-    'Offer simplified onboarding and skip to personalized content',
-  [RedFlag.STUCK_WITHOUT_RECOVERY]: 
-    'Trigger immediate recovery flow with human escalation option',
+  [RedFlag.FLAT_DIFFICULTY_3_WEEKS]: 'Review learning path and consider diagnostic reassessment',
+  [RedFlag.NO_PARENT_VIEWS]: 'Send parent engagement reminder with progress highlights',
+  [RedFlag.DECLINING_SESSION_LENGTH]: 'Increase gamification elements and add session milestones',
+  [RedFlag.INCREASING_SKIP_RATE]: 'Adjust difficulty downward and add more visual aids',
+  [RedFlag.NO_RETURN_AFTER_STRUGGLE]: 'Send motivational outreach with easy win opportunity',
+  [RedFlag.LOW_COMPLETION_RATE]: 'Shorten sessions and add more checkpoints',
+  [RedFlag.NEGATIVE_CONFIDENCE_TREND]: 'Increase encouragement frequency and celebrate small wins',
+  [RedFlag.ABANDONED_DIAGNOSTIC]: 'Offer simplified onboarding and skip to personalized content',
+  [RedFlag.STUCK_WITHOUT_RECOVERY]: 'Trigger immediate recovery flow with human escalation option',
 };
 
 /**

@@ -19,7 +19,7 @@
  * });
  */
 
-import { normalizeDifficulty } from "../lib/normalize";
+import { normalizeDifficulty } from '../lib/normalize';
 
 type SyllabusPromptArgs = {
   board: string;
@@ -32,7 +32,7 @@ type NotesPromptArgs = {
   grade: string;
   subject: string;
   topic: string;
-  language: "en" | "hi";
+  language: 'en' | 'hi';
 };
 
 type QuestionsPromptArgs = {
@@ -43,11 +43,7 @@ type QuestionsPromptArgs = {
   difficulty: ReturnType<typeof normalizeDifficulty>;
 };
 
-export const syllabusPrompt = ({
-  board,
-  grade,
-  subject,
-}: SyllabusPromptArgs) => `
+export const syllabusPrompt = ({ board, grade, subject }: SyllabusPromptArgs) => `
 You are an expert ${board} curriculum designer.
 
 Generate the official syllabus for:
@@ -66,13 +62,7 @@ Return JSON ONLY in this exact format:
 }
 `;
 
-export const notesPrompt = ({
-  board,
-  grade,
-  subject,
-  topic,
-  language,
-}: NotesPromptArgs) => `
+export const notesPrompt = ({ board, grade, subject, topic, language }: NotesPromptArgs) => `
 You are an experienced ${board} teacher with 20 years of classroom experience in Indian schools.
 
 Teach the following topic as if standing in front of a Grade ${grade} class for the first time.

@@ -7,30 +7,30 @@
  * Never throws -- logs errors and returns a safe result.
  */
 
-import { prisma } from '@/lib/prisma.js'
-import { logger } from '@/lib/logger.js'
-import { sendMailSafe } from '@/lib/mailer.js'
-import { getYesterdayIstBounds } from '../services/costReportingWorker.js'
+import { prisma } from '@/lib/prisma.js';
+import { logger } from '@/lib/logger.js';
+import { sendMailSafe } from '@/lib/mailer.js';
+import { getYesterdayIstBounds } from '../services/costReportingWorker.js';
 
-const LATENCY_ALERT_THRESHOLD_MS = 10_000
+const LATENCY_ALERT_THRESHOLD_MS = 10_000;
 
 export interface LatencyReportResult {
-  date: string
-  p95LatencyMs: number | null
-  totalTurns: number
-  alertSent: boolean
+  date: string;
+  p95LatencyMs: number | null;
+  totalTurns: number;
+  alertSent: boolean;
 }
 
 interface PercentileRow {
-  p95: number | null
-  totalTurns: bigint
+  p95: number | null;
+  totalTurns: bigint;
 }
 
 export async function runDailyLatencyReport(): Promise<LatencyReportResult> {
-  const { start, end, dateLabel } = getYesterdayIstBounds()
+  const { start, end, dateLabel } = getYesterdayIstBounds();
 
-  let p95LatencyMs: number | null = null
-  let totalTurns = 0
+  let p95LatencyMs: number | null = null;
+  let totalTurns = 0;
 
   try {
     const [row] = await prisma.$queryRaw<PercentileRow[]>`
@@ -40,28 +40,28 @@ export async function runDailyLatencyReport(): Promise<LatencyReportResult> {
       FROM "AITutorTurnLog"
       WHERE "createdAt" >= ${start}
         AND "createdAt" < ${end}
-    `
-    p95LatencyMs = row?.p95 !== null && row?.p95 !== undefined ? Math.round(Number(row.p95)) : null
-    totalTurns = Number(row?.totalTurns ?? 0)
+    `;
+    p95LatencyMs = row?.p95 !== null && row?.p95 !== undefined ? Math.round(Number(row.p95)) : null;
+    totalTurns = Number(row?.totalTurns ?? 0);
   } catch (err) {
     logger.error('dailyLatencyReport.queryFailed', {
       event: 'latency_report_error',
       context: { date: dateLabel },
       error: err instanceof Error ? err.message : String(err),
-    })
-    return { date: dateLabel, p95LatencyMs: null, totalTurns: 0, alertSent: false }
+    });
+    return { date: dateLabel, p95LatencyMs: null, totalTurns: 0, alertSent: false };
   }
 
   logger.info('dailyLatencyReport.result', {
     event: 'latency_report',
     context: { date: dateLabel, p95LatencyMs, totalTurns },
-  })
+  });
 
-  const needsAlert = p95LatencyMs !== null && p95LatencyMs > LATENCY_ALERT_THRESHOLD_MS
-  let alertSent = false
+  const needsAlert = p95LatencyMs !== null && p95LatencyMs > LATENCY_ALERT_THRESHOLD_MS;
+  let alertSent = false;
 
   if (needsAlert) {
-    const oncallEmail = process.env.ONCALL_EMAIL
+    const oncallEmail = process.env.ONCALL_EMAIL;
     if (oncallEmail) {
       try {
         await sendMailSafe({
@@ -79,24 +79,24 @@ export async function runDailyLatencyReport(): Promise<LatencyReportResult> {
 <p>p95 latency: <strong style="color:#DC2626">${p95LatencyMs}ms</strong> (threshold: ${LATENCY_ALERT_THRESHOLD_MS}ms)</p>
 <p>Total turns: ${totalTurns}</p>
 <p>Check OpenAI API latency, RAG retrieval times, and DB query performance.</p>`,
-        })
-        alertSent = true
+        });
+        alertSent = true;
         logger.warn('dailyLatencyReport.alertSent', {
           event: 'latency_alert_sent',
           context: { date: dateLabel, p95LatencyMs, threshold: LATENCY_ALERT_THRESHOLD_MS },
-        })
+        });
       } catch (err) {
         logger.error('dailyLatencyReport.alertFailed', {
           error: err instanceof Error ? err.message : String(err),
-        })
+        });
       }
     } else {
       logger.warn('dailyLatencyReport.alertSkipped', {
         reason: 'ONCALL_EMAIL not set',
         p95LatencyMs,
-      })
+      });
     }
   }
 
-  return { date: dateLabel, p95LatencyMs, totalTurns, alertSent }
+  return { date: dateLabel, p95LatencyMs, totalTurns, alertSent };
 }

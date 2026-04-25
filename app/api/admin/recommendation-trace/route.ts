@@ -46,10 +46,7 @@ export async function GET(req: NextRequest) {
   // ── Validate input ──────────────────────────────────────────────────────────
   const studentId = req.nextUrl.searchParams.get('studentId');
   if (!studentId) {
-    return NextResponse.json(
-      { error: 'Missing studentId query parameter' },
-      { status: 400 },
-    );
+    return NextResponse.json({ error: 'Missing studentId query parameter' }, { status: 400 });
   }
 
   // ── Feature flag hint ───────────────────────────────────────────────────────
@@ -60,7 +57,7 @@ export async function GET(req: NextRequest) {
         error: 'RecommendationTrace is disabled',
         hint: 'Set ENABLE_REC_TRACE=1 in your environment and trigger a recommendation to populate the trace.',
       },
-      { status: 503 },
+      { status: 503 }
     );
   }
 
@@ -74,7 +71,7 @@ export async function GET(req: NextRequest) {
           error: 'No trace found for this student',
           hint: 'The trace expires after 10 minutes. Trigger a home-page load for this student then retry.',
         },
-        { status: 404 },
+        { status: 404 }
       );
     }
 
@@ -85,7 +82,7 @@ export async function GET(req: NextRequest) {
         error: 'Failed to read recommendation trace',
         detail: err instanceof Error ? err.message : String(err),
       },
-      { status: 500 },
+      { status: 500 }
     );
   }
 }

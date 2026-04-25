@@ -8,13 +8,13 @@
 
 describe('generateInvoicePdf fallback', () => {
   beforeEach(() => {
-    jest.resetModules()
-  })
+    jest.resetModules();
+  });
 
   it('returns a Buffer even when Playwright is not present', async () => {
-    const { generateInvoicePdf } = await import('@/lib/invoices')
-    const buf = await generateInvoicePdf({ invoiceNumber: 123, amountPaise: 99900 })
-    expect(Buffer.isBuffer(buf)).toBe(true)
-    expect(buf.length).toBeGreaterThan(0)
-  })
-})
+    const { generateInvoicePdf } = await import('@/lib/invoices');
+    const buf = await generateInvoicePdf({ invoiceNumber: 123, amountPaise: 99900 });
+    expect(Buffer.isBuffer(buf)).toBe(true);
+    expect(buf.length).toBeGreaterThan(0);
+  });
+});

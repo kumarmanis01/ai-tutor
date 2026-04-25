@@ -1,1 +1,1 @@
-export type ContentStatus = "pending" | "approved" | "rejected";
+export type ContentStatus = 'pending' | 'approved' | 'rejected';

@@ -44,9 +44,13 @@ for (const file of files) {
   out = out.replace(/console\.error\s*\(/g, 'logger.error(');
 
   // insert import/require if not present
-  if (!new RegExp("logger\s*=\s*require\\(['\"]" + relPath.replace(/\//g, '\\/') + "['\"]\)").test(out)
-      && !new RegExp("from\\s+['\"]" + relPath.replace(/\//g, '\\/') + "['\"]").test(out)
-      && !/\blogger\b/.test(content)) {
+  if (
+    !new RegExp('logger\s*=\s*require\\([\'"]' + relPath.replace(/\//g, '\\/') + '[\'"]\)').test(
+      out
+    ) &&
+    !new RegExp('from\\s+[\'"]' + relPath.replace(/\//g, '\\/') + '[\'"]').test(out) &&
+    !/\blogger\b/.test(content)
+  ) {
     const firstLine = out.split('\n', 1)[0];
     if (usesImportExport) {
       out = loggerImportESM + '\n' + out;

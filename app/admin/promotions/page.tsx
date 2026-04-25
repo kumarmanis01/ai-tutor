@@ -1,13 +1,16 @@
-import React from 'react'
-import { requireAdminOrModerator } from '@/lib/auth'
-import { prisma } from '@/lib/prisma'
-export const dynamic = 'force-dynamic'
-import Link from 'next/link'
+import React from 'react';
+import { requireAdminOrModerator } from '@/lib/auth';
+import { prisma } from '@/lib/prisma';
+export const dynamic = 'force-dynamic';
+import Link from 'next/link';
 
 export default async function PromotionsList() {
-  await requireAdminOrModerator()
+  await requireAdminOrModerator();
   // simple list: fetch latest 200 candidates
-  const candidates = await prisma.promotionCandidate.findMany({ orderBy: { createdAt: 'desc' }, take: 200 })
+  const candidates = await prisma.promotionCandidate.findMany({
+    orderBy: { createdAt: 'desc' },
+    take: 200,
+  });
 
   return (
     <div style={{ padding: 20 }}>
@@ -32,14 +35,23 @@ export default async function PromotionsList() {
             <tr key={c.id} className="border-t">
               <td className="border px-3 py-1">{c.scope}</td>
               <td className="border px-3 py-1">{c.scopeRefId}</td>
-              <td className="border px-3 py-1" style={{ maxWidth: 300, overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.outputRef}</td>
+              <td
+                className="border px-3 py-1"
+                style={{ maxWidth: 300, overflow: 'hidden', textOverflow: 'ellipsis' }}
+              >
+                {c.outputRef}
+              </td>
               <td className="border px-3 py-1">{c.status}</td>
               <td className="border px-3 py-1">{new Date(c.createdAt).toLocaleString()}</td>
-              <td className="border px-3 py-1"><Link href={`/admin/promotions/${c.id}`} className="text-blue-600">View</Link></td>
+              <td className="border px-3 py-1">
+                <Link href={`/admin/promotions/${c.id}`} className="text-blue-600">
+                  View
+                </Link>
+              </td>
             </tr>
           ))}
         </tbody>
       </table>
     </div>
-  )
+  );
 }

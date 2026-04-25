@@ -3,22 +3,22 @@
  * Returns the full content for admin preview before approve/reject.
  * Auth: admin role required.
  */
-import { NextRequest, NextResponse } from 'next/server'
-import { getServerSessionForHandlers } from '@/lib/session'
-import { prisma } from '@/lib/prisma'
-import { logger } from '@/lib/logger'
+import { NextRequest, NextResponse } from 'next/server';
+import { getServerSessionForHandlers } from '@/lib/session';
+import { prisma } from '@/lib/prisma';
+import { logger } from '@/lib/logger';
 
 export async function GET(req: NextRequest) {
-  const session = await getServerSessionForHandlers()
+  const session = await getServerSessionForHandlers();
   if (!session || session.user?.role !== 'admin') {
-    return NextResponse.json({ error: 'forbidden' }, { status: 401 })
+    return NextResponse.json({ error: 'forbidden' }, { status: 401 });
   }
 
-  const type = req.nextUrl.searchParams.get('type')
-  const id = req.nextUrl.searchParams.get('id')
+  const type = req.nextUrl.searchParams.get('type');
+  const id = req.nextUrl.searchParams.get('id');
 
   if (!type || !id) {
-    return NextResponse.json({ error: 'type and id are required' }, { status: 400 })
+    return NextResponse.json({ error: 'type and id are required' }, { status: 400 });
   }
 
   try {
@@ -36,8 +36,8 @@ export async function GET(req: NextRequest) {
               select: { id: true, name: true, status: true },
             },
           },
-        })
-        if (!chapter) return NextResponse.json({ error: 'not_found' }, { status: 404 })
+        });
+        if (!chapter) return NextResponse.json({ error: 'not_found' }, { status: 404 });
         return NextResponse.json({
           type: 'chapter',
           title: chapter.name,
@@ -45,8 +45,8 @@ export async function GET(req: NextRequest) {
           board: chapter.subject.class.board.name,
           grade: chapter.subject.class.grade,
           status: chapter.status,
-          topics: chapter.topics.map(t => ({ name: t.name, status: t.status })),
-        })
+          topics: chapter.topics.map((t) => ({ name: t.name, status: t.status })),
+        });
       }
 
       case 'topic': {
@@ -63,8 +63,8 @@ export async function GET(req: NextRequest) {
               select: { id: true, title: true, language: true, status: true },
             },
           },
-        })
-        if (!topic) return NextResponse.json({ error: 'not_found' }, { status: 404 })
+        });
+        if (!topic) return NextResponse.json({ error: 'not_found' }, { status: 404 });
         return NextResponse.json({
           type: 'topic',
           title: topic.name,
@@ -73,8 +73,12 @@ export async function GET(req: NextRequest) {
           board: topic.chapter.subject.class.board.name,
           grade: topic.chapter.subject.class.grade,
           status: topic.status,
-          notes: topic.notes.map(n => ({ title: n.title, language: n.language, status: n.status })),
-        })
+          notes: topic.notes.map((n) => ({
+            title: n.title,
+            language: n.language,
+            status: n.status,
+          })),
+        });
       }
 
       case 'note': {
@@ -91,8 +95,8 @@ export async function GET(req: NextRequest) {
               },
             },
           },
-        })
-        if (!note) return NextResponse.json({ error: 'not_found' }, { status: 404 })
+        });
+        if (!note) return NextResponse.json({ error: 'not_found' }, { status: 404 });
         return NextResponse.json({
           type: 'note',
           title: note.title,
@@ -104,7 +108,7 @@ export async function GET(req: NextRequest) {
           language: note.language,
           status: note.status,
           contentJson: note.contentJson,
-        })
+        });
       }
 
       case 'test': {
@@ -132,8 +136,8 @@ export async function GET(req: NextRequest) {
               },
             },
           },
-        })
-        if (!test) return NextResponse.json({ error: 'not_found' }, { status: 404 })
+        });
+        if (!test) return NextResponse.json({ error: 'not_found' }, { status: 404 });
         return NextResponse.json({
           type: 'test',
           title: test.title,
@@ -146,14 +150,14 @@ export async function GET(req: NextRequest) {
           language: test.language,
           status: test.status,
           questions: test.questions,
-        })
+        });
       }
 
       default:
-        return NextResponse.json({ error: 'unsupported type' }, { status: 400 })
+        return NextResponse.json({ error: 'unsupported type' }, { status: 400 });
     }
   } catch (err) {
-    logger.error('GET /api/admin/content-approval/preview error', { err })
-    return NextResponse.json({ error: 'failed' }, { status: 500 })
+    logger.error('GET /api/admin/content-approval/preview error', { err });
+    return NextResponse.json({ error: 'failed' }, { status: 500 });
   }
 }

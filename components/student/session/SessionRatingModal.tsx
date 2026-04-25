@@ -1,28 +1,28 @@
-'use client'
+'use client';
 
-import React, { useMemo, useState } from 'react'
-import { useSubmitSessionRating } from '@/hooks/useSubmitSessionRating'
+import React, { useMemo, useState } from 'react';
+import { useSubmitSessionRating } from '@/hooks/useSubmitSessionRating';
 
 export default function SessionRatingModal(props: { sessionId: string; onClose: () => void }) {
-  const { sessionId, onClose } = props
-  const [rating, setRating] = useState<number | null>(null)
-  const [hoverRating, setHoverRating] = useState<number | null>(null)
-  const [feedback, setFeedback] = useState('')
+  const { sessionId, onClose } = props;
+  const [rating, setRating] = useState<number | null>(null);
+  const [hoverRating, setHoverRating] = useState<number | null>(null);
+  const [feedback, setFeedback] = useState('');
 
-  const { submit, submitting, error } = useSubmitSessionRating(sessionId)
+  const { submit, submitting, error } = useSubmitSessionRating(sessionId);
 
-  const activeRating = hoverRating ?? rating ?? 0
-  const canSubmit = rating != null && rating >= 1 && rating <= 5 && !submitting
+  const activeRating = hoverRating ?? rating ?? 0;
+  const canSubmit = rating != null && rating >= 1 && rating <= 5 && !submitting;
 
-  const remaining = useMemo(() => 280 - feedback.length, [feedback.length])
+  const remaining = useMemo(() => 280 - feedback.length, [feedback.length]);
 
   async function handleSubmit() {
-    if (!canSubmit || rating == null) return
+    if (!canSubmit || rating == null) return;
     const ok = await submit({
       rating,
       feedback: feedback.trim().length > 0 ? feedback.trim() : undefined,
-    })
-    if (ok) onClose()
+    });
+    if (ok) onClose();
   }
 
   return (
@@ -39,7 +39,7 @@ export default function SessionRatingModal(props: { sessionId: string; onClose: 
 
         <div className="mt-4 flex items-center gap-1">
           {[1, 2, 3, 4, 5].map((star) => {
-            const filled = star <= activeRating
+            const filled = star <= activeRating;
             return (
               <button
                 key={star}
@@ -61,7 +61,7 @@ export default function SessionRatingModal(props: { sessionId: string; onClose: 
                   <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.18 3.63a1 1 0 00.95.69h3.813c.969 0 1.371 1.24.588 1.81l-3.083 2.24a1 1 0 00-.364 1.118l1.18 3.63c.3.922-.755 1.688-1.54 1.118L10 14.347l-3.575 2.836c-.784.57-1.838-.196-1.539-1.118l1.18-3.63a1 1 0 00-.364-1.118L2.62 9.057c-.783-.57-.38-1.81.588-1.81h3.813a1 1 0 00.95-.69l1.078-3.63z" />
                 </svg>
               </button>
-            )
+            );
           })}
         </div>
 
@@ -99,6 +99,5 @@ export default function SessionRatingModal(props: { sessionId: string; onClose: 
         </div>
       </div>
     </div>
-  )
+  );
 }
-

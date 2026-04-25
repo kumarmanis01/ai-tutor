@@ -36,7 +36,11 @@ describe('enqueueNotesHydration force behaviour', () => {
     prisma.topicDef.findUnique.mockResolvedValue({
       id: 't1',
       name: 'Topic 1',
-      chapter: { id: 'c1', name: 'Chapter 1', subject: { id: 's1', name: 'S', class: { grade: 9, board: { name: 'CBSE' } } } },
+      chapter: {
+        id: 'c1',
+        name: 'Chapter 1',
+        subject: { id: 's1', name: 'S', class: { grade: 9, board: { name: 'CBSE' } } },
+      },
     });
     prisma.topicNote.findFirst.mockResolvedValue({ id: 'note1' });
 
@@ -50,7 +54,11 @@ describe('enqueueNotesHydration force behaviour', () => {
     prisma.topicDef.findUnique.mockResolvedValue({
       id: 't1',
       name: 'Topic 1',
-      chapter: { id: 'c1', name: 'Chapter 1', subject: { id: 's1', name: 'S', class: { grade: 9, board: { name: 'CBSE' } } } },
+      chapter: {
+        id: 'c1',
+        name: 'Chapter 1',
+        subject: { id: 's1', name: 'S', class: { grade: 9, board: { name: 'CBSE' } } },
+      },
     });
     // topicNote exists but force=true skips content check
     prisma.topicNote.findFirst.mockResolvedValue({ id: 'note1' });
@@ -69,7 +77,11 @@ describe('enqueueNotesHydration force behaviour', () => {
     prisma.topicDef.findUnique.mockResolvedValue({
       id: 't1',
       name: 'Topic 1',
-      chapter: { id: 'c1', name: 'Chapter 1', subject: { id: 's1', name: 'S', class: { grade: 9, board: { name: 'CBSE' } } } },
+      chapter: {
+        id: 'c1',
+        name: 'Chapter 1',
+        subject: { id: 's1', name: 'S', class: { grade: 9, board: { name: 'CBSE' } } },
+      },
     });
     prisma.topicNote.findFirst.mockResolvedValue({ id: 'note1' });
     prisma.hydrationJob.findFirst.mockResolvedValue({ id: 'job-existing' });

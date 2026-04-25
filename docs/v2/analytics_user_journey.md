@@ -50,6 +50,7 @@ Use a minimal, consistent schema for every event. Store detailed payload in `met
 ```
 
 Common field notes:
+
 - `actor_id`: canonical PK (User.id) when available; null for unauthenticated actions.
 - `actor_anonymous_id`: persist a stable anonymous id for cross-session attribution when anonymous.
 - `ip_hash`: store a one-way hash of IP to support geo/abuse signals without PII.
@@ -106,6 +107,7 @@ Important: do not log PII in the audit message body; link to a secure storage en
 ## Messaging / Channel fields (all channels)
 
 Every message event should include:
+
 - `channel`: `whatsapp|email|sms|push`
 - `message_id`: provider id
 - `template_id` or `template_name`

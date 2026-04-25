@@ -21,11 +21,14 @@ loadEnvFile(path.resolve(process.cwd(), '.env.production'));
 process.env.DEBUG = '';
 const { prisma } = require('../lib/prisma');
 
-(async ()=>{
+(async () => {
   try {
     const execId = process.argv[2] || 'cmklbxb6800044acsnwfjmaf4';
     // JobExecutionLog links to jobs via `jobId` column
-    const rows = await prisma.$queryRawUnsafe('SELECT * FROM "JobExecutionLog" WHERE "jobId" = $1 ORDER BY "createdAt" DESC LIMIT 200', execId);
+    const rows = await prisma.$queryRawUnsafe(
+      'SELECT * FROM "JobExecutionLog" WHERE "jobId" = $1 ORDER BY "createdAt" DESC LIMIT 200',
+      execId
+    );
     console.log(JSON.stringify(rows, null, 2));
   } catch (e) {
     console.error('ERROR', e && e.stack ? e.stack : e);

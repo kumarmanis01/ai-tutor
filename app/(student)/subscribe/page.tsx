@@ -19,25 +19,25 @@
  *   2026-04-14 | gap-fix P1 | created; was previously missing -- F-STU-041
  */
 
-import type { Metadata } from 'next'
-import { redirect } from 'next/navigation'
-import Link from 'next/link'
-import { requireActiveSession } from '@/lib/auth'
-import { prisma } from '@/lib/prisma'
-import { UpgradeFlow } from '@/components/student/subscription/UpgradeFlow'
+import type { Metadata } from 'next';
+import { redirect } from 'next/navigation';
+import Link from 'next/link';
+import { requireActiveSession } from '@/lib/auth';
+import { prisma } from '@/lib/prisma';
+import { UpgradeFlow } from '@/components/student/subscription/UpgradeFlow';
 
-export const dynamic = 'force-dynamic'
+export const dynamic = 'force-dynamic';
 
 export const metadata: Metadata = {
   title: 'Subscribe | Spinzy AI Tutor',
   description: 'Unlock unlimited AI tutoring sessions with Spinzy',
-}
+};
 
 export default async function SubscribePage() {
-  const authSession = await requireActiveSession()
-  if (!authSession) redirect('/')
+  const authSession = await requireActiveSession();
+  if (!authSession) redirect('/');
 
-  const userId = (authSession.user as { id: string }).id
+  const userId = (authSession.user as { id: string }).id;
 
   const [user, freeTierUsage] = await Promise.all([
     prisma.user.findUnique({
@@ -52,18 +52,19 @@ export default async function SubscribePage() {
       where: { studentId: userId },
       select: { sessionsUsed: true, periodStart: true },
     }),
-  ])
+  ]);
 
-  if (!user) redirect('/')
+  if (!user) redirect('/');
 
   // If already premium, redirect to dashboard -- no need to subscribe again
   if (user.subscriptionStatus === 'premium') {
-    redirect('/dashboard')
+    redirect('/dashboard');
   }
 
-  const sessionsUsed = freeTierUsage?.sessionsUsed ?? 0
-  const sessionsRemaining = Math.max(0, 3 - sessionsUsed)
-  const periodStart = freeTierUsage?.periodStart?.toISOString() ?? new Date(Date.now() - 15 * 86400000).toISOString()
+  const sessionsUsed = freeTierUsage?.sessionsUsed ?? 0;
+  const sessionsRemaining = Math.max(0, 3 - sessionsUsed);
+  const periodStart =
+    freeTierUsage?.periodStart?.toISOString() ?? new Date(Date.now() - 15 * 86400000).toISOString();
 
   return (
     <main className="min-h-screen bg-gray-50 dark:bg-slate-950 px-4 py-8">
@@ -74,7 +75,11 @@ export default async function SubscribePage() {
           className="inline-flex items-center min-h-[44px] text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 mb-6"
         >
           <svg className="w-4 h-4 mr-1" viewBox="0 0 20 20" fill="currentColor" aria-hidden>
-            <path fillRule="evenodd" d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z" clipRule="evenodd" />
+            <path
+              fillRule="evenodd"
+              d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z"
+              clipRule="evenodd"
+            />
           </svg>
           Back to dashboard
         </Link>
@@ -82,8 +87,19 @@ export default async function SubscribePage() {
         {/* Header */}
         <div className="text-center mb-6">
           <div className="w-16 h-16 rounded-2xl bg-[#534AB7] flex items-center justify-center mx-auto mb-4 shadow-lg shadow-[#534AB7]/30">
-            <svg className="w-8 h-8 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+            <svg
+              className="w-8 h-8 text-white"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              aria-hidden
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"
+              />
             </svg>
           </div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-50 mb-2">
@@ -106,7 +122,9 @@ export default async function SubscribePage() {
               key={b.text}
               className="flex items-center gap-2 rounded-xl bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 px-3 py-2.5"
             >
-              <span className="text-base leading-none" aria-hidden>{b.icon}</span>
+              <span className="text-base leading-none" aria-hidden>
+                {b.icon}
+              </span>
               <span className="text-xs font-medium text-gray-700 dark:text-gray-300">{b.text}</span>
             </div>
           ))}
@@ -125,5 +143,5 @@ export default async function SubscribePage() {
         </p>
       </div>
     </main>
-  )
+  );
 }

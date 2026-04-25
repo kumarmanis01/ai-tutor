@@ -1,1 +1,1 @@
-export * from '../../jobs/regenerationJobRunner'
+export * from '../../jobs/regenerationJobRunner';

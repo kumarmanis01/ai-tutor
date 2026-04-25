@@ -7,7 +7,9 @@
 
 jest.mock('@/lib/prisma', () => ({ prisma: require('../../helpers/prismaMock').prismaMock }));
 jest.mock('@/lib/auth', () => ({ authOptions: {} }));
-jest.mock('@/lib/logger', () => ({ logger: { info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn() } }));
+jest.mock('@/lib/logger', () => ({
+  logger: { info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn() },
+}));
 jest.mock('nanoid', () => ({ nanoid: () => 'mock-nanoid-123456' }));
 jest.mock('@/lib/metrics/hydrateMetrics', () => ({ incrementCreated: jest.fn() }));
 

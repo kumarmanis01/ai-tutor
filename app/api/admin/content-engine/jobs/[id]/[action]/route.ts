@@ -16,7 +16,10 @@ import { getServerSessionForHandlers } from '@/lib/session';
 import { JobStatus } from '@/lib/ai-engine/types';
 import { formatLastError, FailureCode } from '@/lib/failureCodes';
 
-export async function POST(req: Request, { params }: { params: Promise<{ id: string; action: string }> }) {
+export async function POST(
+  req: Request,
+  { params }: { params: Promise<{ id: string; action: string }> }
+) {
   try {
     const { id, action } = await params;
     if (!id || !action) return NextResponse.json({ error: 'missing parameters' }, { status: 400 });
@@ -34,42 +37,105 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     if (action === 'cancel') {
       // Only allow cancelling pending jobs per guardrails
       if (job.status !== JobStatus.Pending) {
-        return NextResponse.json({ error: 'cannot_cancel', message: 'Only pending jobs can be cancelled' }, { status: 400 });
+        return NextResponse.json(
+          { error: 'cannot_cancel', message: 'Only pending jobs can be cancelled' },
+          { status: 400 }
+        );
       }
 
       const adminId = session?.user?.id ?? null;
 
-      logger.info('cancel action requested by admin', { jobId: id, prevStatus: job.status, actor: adminId });
+      logger.info('cancel action requested by admin', {
+        jobId: id,
+        prevStatus: job.status,
+        actor: adminId,
+      });
       const le = formatLastError(FailureCode.DB_WRITE_FAILED, 'cancelled_by_admin');
-      const updated = await prisma.executionJob.update({ where: { id }, data: { status: JobStatus.Cancelled, lastError: le } });
-      logger.info('job status updated', { jobId: id, prevStatus: job.status, newStatus: updated.status });
+      const updated = await prisma.executionJob.update({
+        where: { id },
+        data: { status: JobStatus.Cancelled, lastError: le },
+      });
+      logger.info('job status updated', {
+        jobId: id,
+        prevStatus: job.status,
+        newStatus: updated.status,
+      });
       try {
-        await prisma.jobExecutionLog.create({ data: { jobId: id, event: 'CANCELLED', prevStatus: job.status, newStatus: updated.status, message: le, meta: { actor: adminId } } });
+        await prisma.jobExecutionLog.create({
+          data: {
+            jobId: id,
+            event: 'CANCELLED',
+            prevStatus: job.status,
+            newStatus: updated.status,
+            message: le,
+            meta: { actor: adminId },
+          },
+        });
       } catch (e) {
         logger?.warn?.('admin.cancel: failed to write JobExecutionLog', { err: e, jobId: id });
       }
-      await prisma.auditLog.create({ data: { adminId, targetEntity: 'HydrationJob', targetId: id, action: 'JOB_CANCEL', previousValue: { status: job.status } } });
+      await prisma.auditLog.create({
+        data: {
+          adminId,
+          targetEntity: 'HydrationJob',
+          targetId: id,
+          action: 'JOB_CANCEL',
+          previousValue: { status: job.status },
+        },
+      });
       return NextResponse.json({ ok: true, job: updated });
     }
 
     if (action === 'retry') {
       // Retry creates a new job (do not mutate old job). Allowed when previous job failed or cancelled.
       if (job.status !== JobStatus.Failed && job.status !== JobStatus.Cancelled) {
-        return NextResponse.json({ error: 'cannot_retry', message: 'Only failed or cancelled jobs can be retried' }, { status: 400 });
+        return NextResponse.json(
+          { error: 'cannot_retry', message: 'Only failed or cancelled jobs can be retried' },
+          { status: 400 }
+        );
       }
 
-      logger.info('retry action requested by admin', { originalJobId: id, actor: session?.user?.id ?? null });
-      const result = await submitJob({ jobType: job.jobType as any, entityType: job.entityType as any, entityId: job.entityId, payload: job.payload ?? {}, maxAttempts: job.maxAttempts ?? 5 });
-      logger.info('retry created new job', { originalJobId: id, newJobId: result.jobId, existing: result.existing });
+      logger.info('retry action requested by admin', {
+        originalJobId: id,
+        actor: session?.user?.id ?? null,
+      });
+      const result = await submitJob({
+        jobType: job.jobType as any,
+        entityType: job.entityType as any,
+        entityId: job.entityId,
+        payload: job.payload ?? {},
+        maxAttempts: job.maxAttempts ?? 5,
+      });
+      logger.info('retry created new job', {
+        originalJobId: id,
+        newJobId: result.jobId,
+        existing: result.existing,
+      });
 
       try {
-        await prisma.jobExecutionLog.create({ data: { jobId: id, event: 'RETRY', prevStatus: job.status, newStatus: 'retrying', meta: { newJobId: result.jobId, actor: session?.user?.id ?? null } } });
+        await prisma.jobExecutionLog.create({
+          data: {
+            jobId: id,
+            event: 'RETRY',
+            prevStatus: job.status,
+            newStatus: 'retrying',
+            meta: { newJobId: result.jobId, actor: session?.user?.id ?? null },
+          },
+        });
       } catch (e) {
         logger?.warn?.('admin.retry: failed to write JobExecutionLog', { err: e, jobId: id });
       }
 
       const adminId = session?.user?.id ?? null;
-      await prisma.auditLog.create({ data: { adminId, targetEntity: 'HydrationJob', targetId: id, action: 'JOB_RETRY', details: { newJobId: result.jobId } } });
+      await prisma.auditLog.create({
+        data: {
+          adminId,
+          targetEntity: 'HydrationJob',
+          targetId: id,
+          action: 'JOB_RETRY',
+          details: { newJobId: result.jobId },
+        },
+      });
 
       return NextResponse.json({ jobId: result.jobId, existing: result.existing });
     }
@@ -78,10 +144,16 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       // Re-enqueue the hydrator/worker for this job. Prefer reusing an existing
       // hydrationJob if present, otherwise create one via the hydrator helper.
       if (job.status !== JobStatus.Failed) {
-        return NextResponse.json({ error: 'cannot_requeue', message: 'Only failed jobs can be requeued' }, { status: 400 });
+        return NextResponse.json(
+          { error: 'cannot_requeue', message: 'Only failed jobs can be requeued' },
+          { status: 400 }
+        );
       }
 
-      logger.info('requeue action requested by admin', { originalJobId: id, actor: session?.user?.id ?? null });
+      logger.info('requeue action requested by admin', {
+        originalJobId: id,
+        actor: session?.user?.id ?? null,
+      });
 
       // If the execution job payload already contains a hydrationJobId, create an outbox
       // for the existing HydrationJob to enqueue it again. Otherwise attempt to create
@@ -90,9 +162,33 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         const payload = (job.payload as any) ?? {};
         if (payload.hydrationJobId) {
           // Create an outbox entry for the existing hydration job so dispatcher will enqueue it
-          await prisma.outbox.create({ data: { queue: CONTENT_HYDRATION_QUEUE, payload: { type: 'SYLLABUS', payload: { jobId: payload.hydrationJobId } }, meta: { hydrationJobId: payload.hydrationJobId } } });
-          await prisma.jobExecutionLog.create({ data: { jobId: id, event: 'REQUEUE', prevStatus: job.status, newStatus: job.status, meta: { hydrationJobId: payload.hydrationJobId, actor: session?.user?.id ?? null } } }).catch(()=>{});
-          await prisma.auditLog.create({ data: { adminId: session?.user?.id ?? null, targetEntity: 'HydrationJob', targetId: id, action: 'JOB_REQUEUE', details: { hydrationJobId: payload.hydrationJobId } } });
+          await prisma.outbox.create({
+            data: {
+              queue: CONTENT_HYDRATION_QUEUE,
+              payload: { type: 'SYLLABUS', payload: { jobId: payload.hydrationJobId } },
+              meta: { hydrationJobId: payload.hydrationJobId },
+            },
+          });
+          await prisma.jobExecutionLog
+            .create({
+              data: {
+                jobId: id,
+                event: 'REQUEUE',
+                prevStatus: job.status,
+                newStatus: job.status,
+                meta: { hydrationJobId: payload.hydrationJobId, actor: session?.user?.id ?? null },
+              },
+            })
+            .catch(() => {});
+          await prisma.auditLog.create({
+            data: {
+              adminId: session?.user?.id ?? null,
+              targetEntity: 'HydrationJob',
+              targetId: id,
+              action: 'JOB_REQUEUE',
+              details: { hydrationJobId: payload.hydrationJobId },
+            },
+          });
           return NextResponse.json({ ok: true, requeued: true });
         }
 
@@ -104,8 +200,26 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         const language = payload.language ?? null;
 
         const res = await enqueueSyllabusHydration({ board, grade, subject, subjectId, language });
-        await prisma.jobExecutionLog.create({ data: { jobId: id, event: 'REQUEUE', prevStatus: job.status, newStatus: job.status, meta: { hydratorResult: res, actor: session?.user?.id ?? null } } }).catch(()=>{});
-        await prisma.auditLog.create({ data: { adminId: session?.user?.id ?? null, targetEntity: 'HydrationJob', targetId: id, action: 'JOB_REQUEUE', details: { hydratorResult: res } } });
+        await prisma.jobExecutionLog
+          .create({
+            data: {
+              jobId: id,
+              event: 'REQUEUE',
+              prevStatus: job.status,
+              newStatus: job.status,
+              meta: { hydratorResult: res, actor: session?.user?.id ?? null },
+            },
+          })
+          .catch(() => {});
+        await prisma.auditLog.create({
+          data: {
+            adminId: session?.user?.id ?? null,
+            targetEntity: 'HydrationJob',
+            targetId: id,
+            action: 'JOB_REQUEUE',
+            details: { hydratorResult: res },
+          },
+        });
 
         return NextResponse.json({ ok: true, requeued: true, result: res });
       } catch (e) {

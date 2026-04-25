@@ -219,7 +219,7 @@ export interface UIVariantConfig {
 
 /**
  * Junior variant (Grades 1-3)
- * 
+ *
  * EDUCATIONAL REASONING:
  * - Children ages 6-8 are developing motor skills and have shorter attention spans
  * - Large touch targets and minimal cognitive load are essential
@@ -232,7 +232,7 @@ export const JUNIOR_VARIANT: UIVariantConfig = {
   gradeRange: { min: 1, max: 3 },
   density: 'spacious',
   interactionDepth: 'simple',
-  
+
   typography: {
     baseFontSize: 18,
     headingScale: { h1: 2.0, h2: 1.75, h3: 1.5, h4: 1.25 },
@@ -241,15 +241,15 @@ export const JUNIOR_VARIANT: UIVariantConfig = {
     bodyWeight: 400,
     headingWeight: 700,
   },
-  
+
   spacing: {
     baseUnit: 8,
-    componentPadding: 3,    // 24px
-    sectionGap: 4,          // 32px
-    cardPadding: 3,         // 24px
-    buttonPadding: 2.5,     // 20px
+    componentPadding: 3, // 24px
+    sectionGap: 4, // 32px
+    cardPadding: 3, // 24px
+    buttonPadding: 2.5, // 20px
   },
-  
+
   colors: {
     primaryPalette: 'vibrant',
     saturation: 85,
@@ -257,15 +257,15 @@ export const JUNIOR_VARIANT: UIVariantConfig = {
     iconStyle: 'colorful',
     backgroundStyle: 'playful',
   },
-  
+
   animations: {
     enabled: true,
-    durationMultiplier: 1.2,  // Slightly slower for visual processing
+    durationMultiplier: 1.2, // Slightly slower for visual processing
     celebrations: true,
     microInteractions: true,
     transitionStyle: 'bouncy',
   },
-  
+
   components: {
     button: {
       size: 'large',
@@ -287,7 +287,7 @@ export const JUNIOR_VARIANT: UIVariantConfig = {
     question: {
       optionStyle: 'card',
       showHints: true,
-      showTimer: false,      // Timers create anxiety in young children
+      showTimer: false, // Timers create anxiety in young children
       confirmBeforeSubmit: true,
     },
     progress: {
@@ -296,22 +296,22 @@ export const JUNIOR_VARIANT: UIVariantConfig = {
       celebrateCompletion: true,
     },
   },
-  
+
   content: {
-    maxListItems: 4,         // Limit choices to reduce cognitive load
+    maxListItems: 4, // Limit choices to reduce cognitive load
     truncateLength: 50,
     showDescriptions: false, // Minimize text
     readingLevel: 2,
     simplifiedVocabulary: true,
   },
-  
+
   accessibility: {
-    minTouchTarget: 56,      // Larger touch targets for developing motor skills
+    minTouchTarget: 56, // Larger touch targets for developing motor skills
     focusStyle: 'highlight',
     highContrastAvailable: true,
-    speechHints: true,       // Audio feedback for early readers
+    speechHints: true, // Audio feedback for early readers
   },
-  
+
   educationalReasoning: `
     Junior students (grades 1-3, ages 6-8) are in early developmental stages with:
     - Emerging reading skills requiring larger text and visual cues
@@ -324,7 +324,7 @@ export const JUNIOR_VARIANT: UIVariantConfig = {
 
 /**
  * Middle variant (Grades 4-7)
- * 
+ *
  * EDUCATIONAL REASONING:
  * - Pre-teens are developing independence and can handle more complexity
  * - Balance between engagement and information density
@@ -336,7 +336,7 @@ export const MIDDLE_VARIANT: UIVariantConfig = {
   gradeRange: { min: 4, max: 7 },
   density: 'comfortable',
   interactionDepth: 'moderate',
-  
+
   typography: {
     baseFontSize: 16,
     headingScale: { h1: 1.75, h2: 1.5, h3: 1.25, h4: 1.1 },
@@ -345,15 +345,15 @@ export const MIDDLE_VARIANT: UIVariantConfig = {
     bodyWeight: 400,
     headingWeight: 600,
   },
-  
+
   spacing: {
     baseUnit: 8,
-    componentPadding: 2.5,  // 20px
-    sectionGap: 3,          // 24px
-    cardPadding: 2.5,       // 20px
-    buttonPadding: 2,       // 16px
+    componentPadding: 2.5, // 20px
+    sectionGap: 3, // 24px
+    cardPadding: 2.5, // 20px
+    buttonPadding: 2, // 16px
   },
-  
+
   colors: {
     primaryPalette: 'balanced',
     saturation: 70,
@@ -361,7 +361,7 @@ export const MIDDLE_VARIANT: UIVariantConfig = {
     iconStyle: 'colorful',
     backgroundStyle: 'clean',
   },
-  
+
   animations: {
     enabled: true,
     durationMultiplier: 1.0,
@@ -369,7 +369,7 @@ export const MIDDLE_VARIANT: UIVariantConfig = {
     microInteractions: true,
     transitionStyle: 'smooth',
   },
-  
+
   components: {
     button: {
       size: 'medium',
@@ -391,7 +391,7 @@ export const MIDDLE_VARIANT: UIVariantConfig = {
     question: {
       optionStyle: 'card',
       showHints: true,
-      showTimer: true,       // Can handle time awareness
+      showTimer: true, // Can handle time awareness
       confirmBeforeSubmit: true,
     },
     progress: {
@@ -400,7 +400,7 @@ export const MIDDLE_VARIANT: UIVariantConfig = {
       celebrateCompletion: true,
     },
   },
-  
+
   content: {
     maxListItems: 6,
     truncateLength: 80,
@@ -408,14 +408,14 @@ export const MIDDLE_VARIANT: UIVariantConfig = {
     readingLevel: 6,
     simplifiedVocabulary: false,
   },
-  
+
   accessibility: {
     minTouchTarget: 48,
     focusStyle: 'ring',
     highContrastAvailable: true,
     speechHints: false,
   },
-  
+
   educationalReasoning: `
     Middle school students (grades 4-7, ages 9-12) are transitioning:
     - From concrete to abstract thinking
@@ -428,7 +428,7 @@ export const MIDDLE_VARIANT: UIVariantConfig = {
 
 /**
  * Senior variant (Grades 8-12)
- * 
+ *
  * EDUCATIONAL REASONING:
  * - Teenagers can handle complex, information-dense interfaces
  * - Academic-style UI prepares for higher education tools
@@ -441,7 +441,7 @@ export const SENIOR_VARIANT: UIVariantConfig = {
   gradeRange: { min: 8, max: 12 },
   density: 'compact',
   interactionDepth: 'complex',
-  
+
   typography: {
     baseFontSize: 14,
     headingScale: { h1: 1.5, h2: 1.35, h3: 1.2, h4: 1.1 },
@@ -450,15 +450,15 @@ export const SENIOR_VARIANT: UIVariantConfig = {
     bodyWeight: 400,
     headingWeight: 600,
   },
-  
+
   spacing: {
     baseUnit: 8,
-    componentPadding: 2,    // 16px
-    sectionGap: 2.5,        // 20px
-    cardPadding: 2,         // 16px
-    buttonPadding: 1.5,     // 12px
+    componentPadding: 2, // 16px
+    sectionGap: 2.5, // 20px
+    cardPadding: 2, // 16px
+    buttonPadding: 1.5, // 12px
   },
-  
+
   colors: {
     primaryPalette: 'professional',
     saturation: 55,
@@ -466,38 +466,38 @@ export const SENIOR_VARIANT: UIVariantConfig = {
     iconStyle: 'subtle',
     backgroundStyle: 'minimal',
   },
-  
+
   animations: {
     enabled: true,
-    durationMultiplier: 0.8,  // Faster for efficiency
-    celebrations: false,      // Mature enough to not need confetti
+    durationMultiplier: 0.8, // Faster for efficiency
+    celebrations: false, // Mature enough to not need confetti
     microInteractions: true,
     transitionStyle: 'quick',
   },
-  
+
   components: {
     button: {
       size: 'small',
       shape: 'rounded',
-      showIcon: false,        // Text labels sufficient
+      showIcon: false, // Text labels sufficient
       iconPosition: 'left',
     },
     card: {
-      showImage: false,       // Focus on content
+      showImage: false, // Focus on content
       imageSize: 'none',
       borderRadius: 8,
       elevation: 1,
     },
     navigation: {
-      style: 'side-rail',     // More efficient for desktop use
+      style: 'side-rail', // More efficient for desktop use
       showLabels: false,
       iconSize: 24,
     },
     question: {
-      optionStyle: 'list',    // More efficient for reading
+      optionStyle: 'list', // More efficient for reading
       showHints: true,
       showTimer: true,
-      confirmBeforeSubmit: false,  // Trust user actions
+      confirmBeforeSubmit: false, // Trust user actions
     },
     progress: {
       style: 'percentage',
@@ -505,7 +505,7 @@ export const SENIOR_VARIANT: UIVariantConfig = {
       celebrateCompletion: false,
     },
   },
-  
+
   content: {
     maxListItems: 10,
     truncateLength: 150,
@@ -513,14 +513,14 @@ export const SENIOR_VARIANT: UIVariantConfig = {
     readingLevel: 10,
     simplifiedVocabulary: false,
   },
-  
+
   accessibility: {
     minTouchTarget: 44,
     focusStyle: 'outline',
     highContrastAvailable: true,
     speechHints: false,
   },
-  
+
   educationalReasoning: `
     Senior students (grades 8-12, ages 13-18) are approaching adulthood:
     - Capable of handling complex, dense information
@@ -601,7 +601,7 @@ export function isFeatureEnabled(
   feature: 'celebrations' | 'timer' | 'hints' | 'descriptions' | 'speechHints'
 ): boolean {
   const variant = getUIVariant(grade);
-  
+
   switch (feature) {
     case 'celebrations':
       return variant.animations.celebrations;

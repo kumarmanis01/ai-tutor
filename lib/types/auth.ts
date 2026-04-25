@@ -13,10 +13,10 @@ export type AppUser = {
   createdAt?: string | null;
   onboardingComplete?: boolean;
   accountStatus?: string | null;
-}
+};
 
 export type AppSession = {
   user: AppUser;
   // allow extra fields (jwt, etc.)
   [key: string]: any;
-}
+};

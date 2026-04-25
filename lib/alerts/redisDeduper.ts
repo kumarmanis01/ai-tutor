@@ -16,7 +16,7 @@
 
 import type { Deduper } from './types';
 import Redis from 'ioredis';
-import { getRedis } from '@/lib/redis'
+import { getRedis } from '@/lib/redis';
 
 /**
  * Redis-backed deduper using SET NX + EX semantics.
@@ -35,13 +35,15 @@ export class RedisDeduper implements Deduper {
       this.client = shared as unknown as Redis;
       this._ownsClient = false;
     } else {
-      this.client = new Redis(process.env.REDIS_URL ? process.env.REDIS_URL : undefined);
+      // At process startup we validate REDIS_URL is present; assert non-null here
+      // to satisfy strict typing for runtime-only env injection.
+      this.client = new Redis(process.env.REDIS_URL!);
       this._ownsClient = true;
     }
 
     if (this.client && typeof this.client.on === 'function') {
       // swallow network errors when Redis is not available in dev/dry-run
-      this.client.on('error', () => { });
+      this.client.on('error', () => {});
     }
     this.ttlSeconds = opts?.ttlSeconds ?? 60 * 10;
   }

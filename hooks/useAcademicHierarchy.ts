@@ -242,21 +242,25 @@ export function useAcademicHierarchy() {
      * Get available languages
      */
     getLanguages() {
-      return data?.languages ?? [
-        { code: 'en' as const, name: 'English' },
-        { code: 'hi' as const, name: 'हिंदी (Hindi)' },
-      ];
+      return (
+        data?.languages ?? [
+          { code: 'en' as const, name: 'English' },
+          { code: 'hi' as const, name: 'हिंदी (Hindi)' },
+        ]
+      );
     },
 
     /**
      * Get difficulty levels
      */
     getDifficulties() {
-      return data?.difficulties ?? [
-        { value: 'easy' as const, label: 'Easy' },
-        { value: 'medium' as const, label: 'Medium' },
-        { value: 'hard' as const, label: 'Hard' },
-      ];
+      return (
+        data?.difficulties ?? [
+          { value: 'easy' as const, label: 'Easy' },
+          { value: 'medium' as const, label: 'Medium' },
+          { value: 'hard' as const, label: 'Hard' },
+        ]
+      );
     },
   };
 

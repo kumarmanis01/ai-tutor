@@ -11,6 +11,7 @@
 /// - 2026-04-09T00:00:00Z | copilot | add excludeFromParentReport to ParentStudent
 /// - 2026-04-10T00:00:00Z | copilot | add PaymentCustomer & PaymentMethod models for stored payment methods
 /// - 2026-04-15T00:10:00Z | copilot | add Trial relation field to User to satisfy Prisma relation
+/// - 2026-04-24T00:00:00Z | copilot | add isAdult boolean to User model for consent gating
 generator client {
   provider = "prisma-client-js"
 }
@@ -38,6 +39,8 @@ model User {
   requiresParentVerification Boolean       @default(false)
   // Self-reported age (integer). Used for under-13 / under-18 parent verification gates.
   age                        Int?
+  // Convenience boolean derived at registration time: true when age >= 18
+  isAdult                    Boolean       @default(false)
   // Date of birth for child profiles created by a parent (F-PAR-002 AC-01).
   dateOfBirth                DateTime?
   /// Parent account verified at (explicit parent user verification).
@@ -142,6 +145,14 @@ model User {
   deletionRequest             DeletionRequest?
   diagnosticSessions          DiagnosticSession[]
   studentMisconceptions       StudentMisconception[]
+  /// B1.1: admin panel relation
+  adminUser                   AdminUser?
+  /// B1.1: consent requests for this student
+  consentRequests             ConsentRequest[]
+  /// B1.1: AI content generation jobs initiated by this user
+  generationJobs              GenerationJob[]
+  /// B1.1: content pieces created by this user
+  contentCreated              Content[]
 }
 
 model PaymentOrder {
@@ -152,11 +163,11 @@ model PaymentOrder {
   currency               String    @default("INR")
   status                 String    @default("created")
   providerIdempotencyKey String?
-  planMonths      Int       @default(1)
+  planMonths             Int       @default(1)
   /// PlanId from lib/billing/plans.ts (e.g. 'standard_monthly'). Null for legacy orders created before Sprint A.
-  planId          String?
-  createdAt       DateTime  @default(now())
-  paidAt          DateTime?
+  planId                 String?
+  createdAt              DateTime  @default(now())
+  paidAt                 DateTime?
 
   @@index([studentId])
   @@index([razorpayOrderId])
@@ -229,18 +240,22 @@ model DailyCostMetric {
 }
 
 model PhoneOtp {
-  id        String   @id @default(cuid())
-  phone     String
-  codeHash  String
-  createdAt DateTime @default(now())
-  expiresAt DateTime
-  attempts  Int      @default(0)
-  consumed  Boolean  @default(false)
-  ip        String?
-  userId    String?
-  user      User?    @relation(fields: [userId], references: [id])
+  id               String          @id @default(cuid())
+  phone            String
+  /// Optional: associate OTP with a specific ConsentRequest to prevent cross-request replay
+  consentRequestId String?
+  consentRequest   ConsentRequest? @relation(fields: [consentRequestId], references: [id])
+  codeHash         String
+  createdAt        DateTime        @default(now())
+  expiresAt        DateTime
+  attempts         Int             @default(0)
+  consumed         Boolean         @default(false)
+  ip               String?
+  userId           String?
+  user             User?           @relation(fields: [userId], references: [id])
 
   @@index([phone])
+  @@index([consentRequestId])
 }
 
 /// Trial records for short 14-day evaluation periods for prospective users.
@@ -253,19 +268,19 @@ enum TrialStatus {
 }
 
 model Trial {
-  id         String      @id @default(cuid())
-  userId     String?     
-  phone      String
-  parentName String?
-  childClass String?
-  schoolName String?
-  utmSource  String?     @map("utm_source")
-  utmMedium  String?     @map("utm_medium")
-  utmCampaign String?    @map("utm_campaign")
-  startAt    DateTime    @default(now())
-  expiresAt  DateTime
-  status     TrialStatus @default(ACTIVE)
-  createdAt  DateTime    @default(now())
+  id          String      @id @default(cuid())
+  userId      String?
+  phone       String
+  parentName  String?
+  childClass  String?
+  schoolName  String?
+  utmSource   String?     @map("utm_source")
+  utmMedium   String?     @map("utm_medium")
+  utmCampaign String?     @map("utm_campaign")
+  startAt     DateTime    @default(now())
+  expiresAt   DateTime
+  status      TrialStatus @default(ACTIVE)
+  createdAt   DateTime    @default(now())
 
   user User? @relation(fields: [userId], references: [id])
 
@@ -460,13 +475,13 @@ model Subscription {
   dunningAttempts        Int       @default(0)
   lastDunningAt          DateTime?
   /// If set, subscription remains active until this timestamp while parent is in grace period
-  graceUntil       DateTime?
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-  paymentId    String?
+  graceUntil             DateTime?
+  createdAt              DateTime  @default(now())
+  updatedAt              DateTime  @updatedAt
+  paymentId              String?
   /// Razorpay subscription ID (e.g. sub_XXXX) for webhook reconciliation. Null for legacy one-time orders.
   razorpaySubscriptionId String?
-  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user                   User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   // Installments linked to this subscription (one-to-many)
   installments      Installment[]
@@ -481,7 +496,7 @@ model TestPlanAccess {
   id        String   @id @default(cuid())
   email     String   @unique
   grantedAt DateTime @default(now())
-  grantedBy String   /// admin userId who granted access
+  grantedBy String /// admin userId who granted access
 
   @@index([email])
 }
@@ -2929,4 +2944,310 @@ model MockExamSectionAttempt {
 
   @@unique([attemptId, sectionId])
   @@index([attemptId])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// B1.1 — Admin, Content Generation, Consent, School/Lead models
+// Added: 2025-01-15 | copilot | implement B1.1 gap — missing core models
+// ─────────────────────────────────────────────────────────────────────────────
+
+// ── Enums ─────────────────────────────────────────────────────────────────────
+
+enum ContentGenerationJobStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+enum AdminRole {
+  SUPER_ADMIN
+  CONTENT_ADMIN
+  SUPPORT_ADMIN
+  BILLING_ADMIN
+}
+
+enum AdminStatus {
+  ACTIVE
+  INACTIVE
+  LOCKED
+}
+
+enum LeadStatus {
+  NEW
+  CONTACTED
+  QUALIFIED
+  CONVERTED
+  CLOSED
+}
+
+enum ConsentChannel {
+  WHATSAPP
+  EMAIL
+  SMS
+}
+
+enum ConsentReqStatus {
+  PENDING
+  APPROVED
+  DENIED
+  EXPIRED
+}
+
+enum MessageStatus {
+  SENT
+  DELIVERED
+  READ
+  FAILED
+}
+
+enum ContentType {
+  AI_GENERATED
+  CURATED
+  UPLOADED
+}
+
+enum ContentStatus {
+  DRAFT
+  PENDING_REVIEW
+  APPROVED
+  REJECTED
+  ARCHIVED
+}
+
+enum FlagStatus {
+  OPEN
+  IN_REVIEW
+  RESOLVED
+  DISMISSED
+}
+
+// ── GenerationJob ─────────────────────────────────────────────────────────────
+/// AI content generation queue job. Created when a student requests new content.
+/// Separate from RegenerationJob (which regenerates existing curated content).
+model GenerationJob {
+  id              String                     @id @default(cuid())
+  topic           String
+  normalizedTopic String
+  subject         String
+  grade           Int
+  board           String
+  language        LanguageCode               @default(en)
+  status          ContentGenerationJobStatus @default(PENDING)
+  /// Array of studentIds subscribed to this job (dedup merging)
+  subscriberIds   String[]
+  /// FK to the Content record created on completion
+  contentId       String?
+  errorMessage    String?
+  createdById     String
+  createdAt       DateTime                   @default(now())
+  updatedAt       DateTime                   @updatedAt
+
+  createdBy User     @relation(fields: [createdById], references: [id])
+  content   Content? @relation(fields: [contentId], references: [id])
+
+  @@index([normalizedTopic, status])
+  @@index([createdById, createdAt])
+  @@index([status, createdAt])
+}
+
+// ── Content ───────────────────────────────────────────────────────────────────
+/// AI-generated or curated content piece. Created by GenerationJob on completion.
+model Content {
+  id          String        @id @default(cuid())
+  topic       String
+  subject     String
+  grade       Int
+  board       String
+  language    LanguageCode  @default(en)
+  type        ContentType   @default(AI_GENERATED)
+  status      ContentStatus @default(PENDING_REVIEW)
+  contentJson Json
+  version     Int           @default(1)
+  createdById String
+  jobId       String?       @unique
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  createdBy      User             @relation(fields: [createdById], references: [id])
+  versions       ContentVersion[]
+  flags          ContentFlag[]
+  generationJobs GenerationJob[]
+
+  @@index([subject, grade, board, status])
+  @@index([createdById, createdAt])
+  @@index([status, createdAt])
+}
+
+// ── ContentVersion ────────────────────────────────────────────────────────────
+/// Immutable snapshot of a Content record on each edit. version=1 is the original.
+model ContentVersion {
+  id          String   @id @default(cuid())
+  contentId   String
+  version     Int
+  contentJson Json
+  createdAt   DateTime @default(now())
+
+  content Content @relation(fields: [contentId], references: [id], onDelete: Cascade)
+
+  @@unique([contentId, version])
+  @@index([contentId, version])
+}
+
+// ── ContentFlag ───────────────────────────────────────────────────────────────
+/// Moderation flag raised by student, parent, or automated safety checks.
+model ContentFlag {
+  id        String     @id @default(cuid())
+  contentId String
+  reason    FlagReason
+  status    FlagStatus @default(OPEN)
+  flaggedBy String?
+  notes     String?
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+
+  content Content @relation(fields: [contentId], references: [id], onDelete: Cascade)
+
+  @@index([contentId, status])
+  @@index([status, createdAt])
+}
+
+// ── ConsentRequest ────────────────────────────────────────────────────────────
+/// Sent to a parent to approve their child's account. One per student per attempt.
+model ConsentRequest {
+  id          String           @id @default(cuid())
+  studentId   String
+  parentPhone String?
+  parentEmail String?
+  parentName  String?
+  channel     ConsentChannel
+  token       String           @unique
+  status      ConsentReqStatus @default(PENDING)
+  expiresAt   DateTime
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  student     User                @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  messageLogs ConsentMessageLog[]
+  phoneOtps   PhoneOtp[]
+
+  @@index([studentId, status])
+  @@index([token])
+  @@index([expiresAt])
+}
+
+// ── ConsentMessageLog ─────────────────────────────────────────────────────────
+/// Delivery receipt for each message sent as part of a ConsentRequest.
+model ConsentMessageLog {
+  id               String         @id @default(cuid())
+  consentRequestId String
+  channel          ConsentChannel
+  messageId        String?
+  status           MessageStatus  @default(SENT)
+  sentAt           DateTime       @default(now())
+  deliveredAt      DateTime?
+  readAt           DateTime?
+  failedAt         DateTime?
+  createdAt        DateTime       @default(now())
+
+  consentRequest ConsentRequest @relation(fields: [consentRequestId], references: [id], onDelete: Cascade)
+
+  @@index([consentRequestId, status])
+  @@index([messageId])
+}
+
+// ── AdminUser ─────────────────────────────────────────────────────────────────
+/// Admin-panel user. One-to-one with User (separate from student/parent roles).
+model AdminUser {
+  id             String      @id @default(cuid())
+  userId         String      @unique
+  role           AdminRole   @default(SUPPORT_ADMIN)
+  status         AdminStatus @default(ACTIVE)
+  mfaSecret      String?
+  mfaBackupCodes String? /// JSON array of bcrypt-hashed backup codes
+  lastLoginAt    DateTime?
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+
+  user           User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  trustedDevices AdminTrustedDevice[]
+  auditLogs      AdminAuditLog[]
+
+  @@index([role, status])
+}
+
+// ── AdminTrustedDevice ────────────────────────────────────────────────────────
+/// TOTP-verified device for an admin. Valid for 30 days (remember-device flow).
+model AdminTrustedDevice {
+  id          String   @id @default(cuid())
+  adminUserId String
+  deviceHash  String /// SHA-256 of user-agent + IP
+  label       String? /// optional human label
+  expiresAt   DateTime
+  createdAt   DateTime @default(now())
+
+  adminUser AdminUser @relation(fields: [adminUserId], references: [id], onDelete: Cascade)
+
+  @@unique([adminUserId, deviceHash])
+  @@index([adminUserId])
+  @@index([expiresAt])
+}
+
+// ── AdminAuditLog ─────────────────────────────────────────────────────────────
+/// Immutable audit trail for every admin action.
+model AdminAuditLog {
+  id          String   @id @default(cuid())
+  adminUserId String
+  action      String
+  entityType  String?
+  entityId    String?
+  payload     Json?
+  ipAddress   String?
+  userAgent   String?
+  createdAt   DateTime @default(now())
+
+  adminUser AdminUser @relation(fields: [adminUserId], references: [id], onDelete: Cascade)
+
+  @@index([adminUserId, createdAt])
+  @@index([entityType, entityId])
+}
+
+// ── SchoolPartner ─────────────────────────────────────────────────────────────
+/// Registered school or institution that partners with Spinzy.
+model SchoolPartner {
+  id           String   @id @default(cuid())
+  name         String
+  city         String?
+  state        String?
+  board        String?
+  contactEmail String?
+  contactPhone String?
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  leads SchoolLead[]
+
+  @@index([isActive])
+}
+
+// ── SchoolLead ────────────────────────────────────────────────────────────────
+/// Inbound lead from or for a school partner.
+model SchoolLead {
+  id         String     @id @default(cuid())
+  name       String
+  phone      String?
+  email      String?
+  schoolName String
+  partnerId  String?
+  status     LeadStatus @default(NEW)
+  notes      String?
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+
+  partner SchoolPartner? @relation(fields: [partnerId], references: [id], onDelete: SetNull)
+
+  @@index([status, createdAt])
+  @@index([partnerId])
 }

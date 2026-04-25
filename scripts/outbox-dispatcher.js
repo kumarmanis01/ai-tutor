@@ -14,52 +14,65 @@ EDIT LOG:
 - 2026-01-21T00:00:00Z | copilot-agent | added header and documentation
 */
 import { prisma } from '../lib/prisma';
-import { Queue } from 'bullmq'
+import { Queue } from 'bullmq';
 
 // Dispatcher reads unsent Outbox rows and enqueues them to Bull
 // Usage: node scripts/outbox-dispatcher.js
 
-async function sleep(ms) { return new Promise((r) => setTimeout(r, ms)) }
+async function sleep(ms) {
+  return new Promise((r) => setTimeout(r, ms));
+}
 
 async function main() {
-  
-  const redisUrl = process.env.REDIS_URL
+  const redisUrl = process.env.REDIS_URL;
   if (!redisUrl) {
-    console.error('REDIS_URL not set; cannot dispatch outbox')
-    process.exit(1)
+    console.error('REDIS_URL not set; cannot dispatch outbox');
+    process.exit(1);
   }
 
-  const queue = new Queue('content-hydration', { connection: { url: redisUrl } })
+  const queue = new Queue('content-hydration', { connection: { url: redisUrl } });
 
-  console.log('Outbox dispatcher started; polling for unsent outbox rows...')
+  console.log('Outbox dispatcher started; polling for unsent outbox rows...');
 
   while (true) {
     try {
       // Find oldest unsent outbox rows
-      const rows = await prisma.outbox.findMany({ where: { sentAt: null }, orderBy: { createdAt: 'asc' }, take: 10 })
+      const rows = await prisma.outbox.findMany({
+        where: { sentAt: null },
+        orderBy: { createdAt: 'asc' },
+        take: 10,
+      });
       if (!rows || rows.length === 0) {
-        await sleep(1000)
-        continue
+        await sleep(1000);
+        continue;
       }
 
       for (const r of rows) {
         try {
-          const payload = r.payload
+          const payload = r.payload;
           // Add to bull queue
-          const job = await queue.add(`${payload.type.toLowerCase()}-${(payload.payload?.jobId) ?? r.id}`, payload)
-          await prisma.outbox.update({ where: { id: r.id }, data: { sentAt: new Date(), attempts: r.attempts + 1 } })
-          console.log(`dispatched outbox ${r.id} -> bullJobId=${job.id}`)
+          const job = await queue.add(
+            `${payload.type.toLowerCase()}-${payload.payload?.jobId ?? r.id}`,
+            payload
+          );
+          await prisma.outbox.update({
+            where: { id: r.id },
+            data: { sentAt: new Date(), attempts: r.attempts + 1 },
+          });
+          console.log(`dispatched outbox ${r.id} -> bullJobId=${job.id}`);
         } catch (err) {
-          console.error('failed to dispatch outbox row', r.id, err)
-          await prisma.outbox.update({ where: { id: r.id }, data: { attempts: r.attempts + 1 } })
+          console.error('failed to dispatch outbox row', r.id, err);
+          await prisma.outbox.update({ where: { id: r.id }, data: { attempts: r.attempts + 1 } });
         }
       }
-
     } catch (err) {
-      console.error('outbox dispatcher main loop error', err)
-      await sleep(2000)
+      console.error('outbox dispatcher main loop error', err);
+      await sleep(2000);
     }
   }
 }
 
-main().catch((e) => { console.error('fatal', e); process.exit(1) })
+main().catch((e) => {
+  console.error('fatal', e);
+  process.exit(1);
+});

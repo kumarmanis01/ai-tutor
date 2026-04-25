@@ -13,10 +13,10 @@
  * - 2026-04-13T05:25:00Z | copilot | add sanity import test for student verify route
  */
 
-import * as route from '@/app/api/student/subscription/verify/route'
+import * as route from '@/app/api/student/subscription/verify/route';
 
 describe('student subscription verify route', () => {
   it('exports a POST handler', () => {
-    expect(typeof route.POST).toBe('function')
-  })
-})
+    expect(typeof route.POST).toBe('function');
+  });
+});

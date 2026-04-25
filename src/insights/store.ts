@@ -1,1 +1,1 @@
-export * from '../../insights/store'
+export * from '../../insights/store';
