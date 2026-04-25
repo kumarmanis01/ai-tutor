@@ -433,9 +433,9 @@ function ParentApproveInner() {
 
       <p className="mt-6 text-xs text-gray-400 text-center">
         Spinzy Academy complies with India&apos;s DPDP Act 2023.{' '}
-        <a href="/privacy" className="underline hover:text-[#534AB7]">
+        <Link href="/privacy" className="underline hover:text-[#534AB7]">
           Privacy Policy
-        </a>
+        </Link>
       </p>
     </PageWrapper>
   )
